@@ -4,9 +4,9 @@
       <!-- Header -->
       <div class="d-flex align-center mb-6">
         <div>
-          <h1 class="text-h4 font-weight-bold">Data Importer</h1>
+          <h1 class="text-h4 font-weight-bold">{{ $t('dataImporter.title') }}</h1>
           <p class="text-body-1 text-medium-emphasis mt-1">
-            Importiere Daten und erstelle Evaluationsszenarien mit KI-Unterstützung
+            {{ $t('dataImporter.subtitle') }}
           </p>
         </div>
         <v-spacer />
@@ -16,7 +16,7 @@
           prepend-icon="mdi-plus"
           @click="showWizard = true"
         >
-          Neuer Import
+          {{ $t('dataImporter.newImport') }}
         </LBtn>
       </div>
 
@@ -30,10 +30,9 @@
       <!-- Empty State -->
       <v-card v-else variant="outlined" class="empty-state pa-12 text-center">
         <LIcon size="96" color="primary" class="mb-4">llars:evaluation-assistant</LIcon>
-        <h2 class="text-h5 mb-2">Daten importieren</h2>
+        <h2 class="text-h5 mb-2">{{ $t('dataImporter.empty.title') }}</h2>
         <p class="text-body-1 text-medium-emphasis mb-6" style="max-width: 500px; margin: 0 auto;">
-          Lade deine Daten hoch und lass LLARS das Format automatisch erkennen.
-          Die KI hilft dir bei der Transformation und beim Erstellen von Evaluationsszenarien.
+          {{ $t('dataImporter.empty.body') }}
         </p>
 
         <LBtn
@@ -42,7 +41,7 @@
           prepend-icon="mdi-upload"
           @click="showWizard = true"
         >
-          Import starten
+          {{ $t('dataImporter.empty.cta') }}
         </LBtn>
 
         <!-- Feature Highlights -->
@@ -50,27 +49,27 @@
           <v-col cols="12" sm="4">
             <v-card variant="tonal" class="pa-4 h-100">
               <LIcon size="32" color="primary" class="mb-2">wand</LIcon>
-              <div class="text-body-1 font-weight-medium">Auto-Detection</div>
+              <div class="text-body-1 font-weight-medium">{{ $t('dataImporter.highlights.autoDetection.title') }}</div>
               <div class="text-caption text-medium-emphasis">
-                Erkennt OpenAI, LMSYS, CSV und mehr
+                {{ $t('dataImporter.highlights.autoDetection.body') }}
               </div>
             </v-card>
           </v-col>
           <v-col cols="12" sm="4">
             <v-card variant="tonal" class="pa-4 h-100">
               <LIcon size="32" color="purple" class="mb-2">mdi-robot</LIcon>
-              <div class="text-body-1 font-weight-medium">KI-Unterstützung</div>
+              <div class="text-body-1 font-weight-medium">{{ $t('dataImporter.highlights.aiSupport.title') }}</div>
               <div class="text-caption text-medium-emphasis">
-                LLM analysiert und transformiert Daten
+                {{ $t('dataImporter.highlights.aiSupport.body') }}
               </div>
             </v-card>
           </v-col>
           <v-col cols="12" sm="4">
             <v-card variant="tonal" class="pa-4 h-100">
               <LIcon size="32" color="success" class="mb-2">wand</LIcon>
-              <div class="text-body-1 font-weight-medium">Wizard-Flow</div>
+              <div class="text-body-1 font-weight-medium">{{ $t('dataImporter.highlights.wizardFlow.title') }}</div>
               <div class="text-caption text-medium-emphasis">
-                Von Upload bis Evaluation in einem Flow
+                {{ $t('dataImporter.highlights.wizardFlow.body') }}
               </div>
             </v-card>
           </v-col>
@@ -93,11 +92,13 @@
 <script setup>
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { useSnackbar } from '@/composables/useSnackbar'
 import DataImporterWizard from '@/components/DataImporter/DataImporterWizard.vue'
 
 const router = useRouter()
 const { showSuccess } = useSnackbar()
+const { t } = useI18n()
 
 const showWizard = ref(false)
 
@@ -107,7 +108,7 @@ const handleClose = () => {
 
 const handleComplete = (result) => {
   showWizard.value = false
-  showSuccess(`Import erfolgreich! ${result.session?.imported_count || 0} Einträge importiert.`)
+  showSuccess(t('dataImporter.success', { count: result.session?.imported_count || 0 }))
 
   // Optionally redirect to scenario management
   // router.push('/admin/scenarios')

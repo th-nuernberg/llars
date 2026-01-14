@@ -4,6 +4,7 @@
  */
 import { ref, watch, onUnmounted } from 'vue'
 import axios from 'axios'
+import { logI18n } from '@/utils/logI18n'
 
 export function useSourcePanel() {
   // Panel state
@@ -38,19 +39,19 @@ export function useSourcePanel() {
    * Show source detail dialog
    */
   function showSourceDetail(source) {
-    console.log('[useSourcePanel] showSourceDetail called with:', source)
-    console.log('[useSourcePanel] sourcePanel.pinned:', sourcePanel.value.pinned)
-    console.log('[useSourcePanel] sourcePanel.open:', sourcePanel.value.open)
+    logI18n('log', 'logs.sourcePanel.showSourceDetail', source)
+    logI18n('log', 'logs.sourcePanel.pinnedState', sourcePanel.value.pinned)
+    logI18n('log', 'logs.sourcePanel.openState', sourcePanel.value.open)
     if (sourcePanel.value.pinned) {
-      console.log('[useSourcePanel] Panel is pinned, opening in panel')
+      logI18n('log', 'logs.sourcePanel.panelPinnedOpen')
       openSourceInPanel(source)
       return
     }
-    console.log('[useSourcePanel] Opening dialog')
+    logI18n('log', 'logs.sourcePanel.openDialog')
     // Set properties individually to maintain reactivity
     sourceDialog.value.source = source
     sourceDialog.value.show = true
-    console.log('[useSourcePanel] sourceDialog.show:', sourceDialog.value.show)
+    logI18n('log', 'logs.sourcePanel.dialogShowState', sourceDialog.value.show)
   }
 
   /**

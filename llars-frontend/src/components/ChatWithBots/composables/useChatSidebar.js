@@ -4,6 +4,7 @@
  */
 import { ref, computed } from 'vue'
 import axios from 'axios'
+import { logI18n } from '@/utils/logI18n'
 
 export function useChatSidebar() {
   // Sidebar UI state with localStorage persistence
@@ -120,7 +121,7 @@ export function useChatSidebar() {
       const response = await axios.get(`/api/chatbots/${botId}/conversations`)
       botConversations.value[botId] = response.data.conversations || []
     } catch (error) {
-      console.error('Error loading bot conversations:', error)
+      logI18n('error', 'logs.chatSidebar.loadBotConversationsFailed', error)
       botConversations.value[botId] = []
     }
   }

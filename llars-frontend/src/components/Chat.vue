@@ -52,7 +52,7 @@
             v-model="newMessage"
             @keyup.enter="sendMessage"
             @input="onInputChange"
-            placeholder="Schreibe eine Nachricht..."
+            :placeholder="$t('chat.messagePlaceholder')"
             variant="outlined"
             :loading="isProcessing"
             :disabled="isProcessing"
@@ -85,9 +85,12 @@
 <script setup>
 import { ref, onMounted, onUnmounted, nextTick, computed } from 'vue';
 import { io } from 'socket.io-client';
+import { useI18n } from 'vue-i18n';
+import { logI18n } from '@/utils/logI18n';
 
 const socketioEnableWebsocket = String(import.meta.env.VITE_SOCKETIO_ENABLE_WEBSOCKET || '').toLowerCase() === 'true';
 const socketioTransports = socketioEnableWebsocket ? ['polling', 'websocket'] : ['polling'];
+const { t, locale } = useI18n();
 
 const STORAGE_KEY = 'chat_messages';
 const messages = ref([]);
@@ -127,7 +130,7 @@ const loadMessages = () => {
       messages.value = [];
     }
   } catch (error) {
-    console.error('Error loading messages from localStorage:', error);
+    logI18n('error', 'logs.chat.loadMessagesFailed', error);
     messages.value = [];
   }
 };
@@ -137,7 +140,7 @@ const saveMessages = () => {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(messages.value));
   } catch (error) {
-    console.error('Error saving messages to localStorage:', error);
+    logI18n('error', 'logs.chat.saveMessagesFailed', error);
   }
 };
 
@@ -156,7 +159,7 @@ const sendMessage = () => {
     id: messages.value.length + 1,
     content: newMessage.value,
     sender: 'user',
-    timestamp: new Date().toLocaleTimeString(),
+    timestamp: new Date().toLocaleTimeString(locale.value || undefined),
     streaming: false
   };
 
@@ -176,7 +179,7 @@ const addMessage = (content, sender, streaming = false) => {
     id: messages.value.length + 1,
     content,
     sender,
-    timestamp: new Date().toLocaleTimeString(),
+    timestamp: new Date().toLocaleTimeString(locale.value || undefined),
     streaming
   };
 
@@ -218,21 +221,21 @@ const selectCommand = (command) => {
 const handleCommand = (command) => {
   switch (command) {
     case '/help':
-      addMessage('Verfügbare Befehle:\n/help - Zeigt diese Hilfe an\n/clear - Löscht den Chatverlauf', 'bot');
+      addMessage(t('chatLegacy.commands.helpMessage'), 'bot');
       break;
     case '/clear':
       messages.value = [];
       saveMessages();
       break;
     default:
-      addMessage(`Unbekannter Befehl: ${command}`, 'bot');
+      addMessage(t('chatLegacy.commands.unknownCommand', { command }), 'bot');
   }
 };
 
 onMounted(() => {
   loadMessages();
 
-  const username = localStorage.getItem('username') || 'Gast';
+  const username = localStorage.getItem('username') || t('home.user.guest');
   const rawBase = import.meta.env.VITE_API_BASE_URL || (typeof window !== 'undefined' ? window.location.origin : '');
   const trimmedBase = String(rawBase || '').replace(/\/+$/, '');
   const socketBase = trimmedBase.endsWith('/api')
@@ -250,7 +253,7 @@ onMounted(() => {
   });
 
   socket.value.on('connect', () => {
-    console.log('Socket connected');
+    logI18n('log', 'logs.chat.socketConnected');
     // Sende die komplette Chat-Historie als ein Event
     socket.value.emit('sync_history', {
       messages: messages.value.map(msg => ({
@@ -260,7 +263,7 @@ onMounted(() => {
     });
   });
 
-  socket.value.on('disconnect', () => console.log('Socket disconnected'));
+  socket.value.on('disconnect', () => logI18n('log', 'logs.chat.socketDisconnected'));
 
   socket.value.on('chat_response', (data) => {
     const lastMessage = messages.value[messages.value.length - 1];

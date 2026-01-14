@@ -6,6 +6,7 @@
  */
 
 import axios from 'axios';
+import { logI18n } from '@/utils/logI18n';
 
 export function useRAGHelpers() {
   // File size formatting
@@ -148,7 +149,7 @@ export function useRAGHelpers() {
       link.remove();
       window.URL.revokeObjectURL(url);
     } catch (error) {
-      console.error('Error downloading document:', error);
+      logI18n('error', 'logs.admin.ragSectionHelpers.downloadDocumentFailed', error);
     }
   };
 

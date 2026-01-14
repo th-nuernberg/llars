@@ -5,6 +5,7 @@
  */
 
 import axios from 'axios';
+import { logI18n } from '@/utils/logI18n';
 
 export function useAdminRAGActions(state) {
   const {
@@ -44,13 +45,13 @@ export function useAdminRAGActions(state) {
       params.append('per_page', 100);
 
       const response = await axios.get(`/api/rag/documents?${params}`);
-      if (response.data.success) {
-        documents.value = response.data.documents;
-      }
-    } catch (error) {
-      console.error('Error loading documents:', error);
-      showSnackbar('Fehler beim Laden der Dokumente', 'error');
-    } finally {
+    if (response.data.success) {
+      documents.value = response.data.documents;
+    }
+  } catch (error) {
+    logI18n('error', 'logs.admin.ragActions.loadDocumentsFailed', error);
+    showSnackbar('Fehler beim Laden der Dokumente', 'error');
+  } finally {
       loadingDocuments.value = false;
     }
   }
@@ -62,13 +63,13 @@ export function useAdminRAGActions(state) {
     loadingCollections.value = true;
     try {
       const response = await axios.get('/api/rag/collections');
-      if (response.data.success) {
-        collections.value = response.data.collections;
-      }
-    } catch (error) {
-      console.error('Error loading collections:', error);
-      showSnackbar('Fehler beim Laden der Collections', 'error');
-    } finally {
+    if (response.data.success) {
+      collections.value = response.data.collections;
+    }
+  } catch (error) {
+    logI18n('error', 'logs.admin.ragActions.loadCollectionsFailed', error);
+    showSnackbar('Fehler beim Laden der Collections', 'error');
+  } finally {
       loadingCollections.value = false;
     }
   }
@@ -79,12 +80,12 @@ export function useAdminRAGActions(state) {
   async function loadStats() {
     try {
       const response = await axios.get('/api/rag/stats/overview');
-      if (response.data.success) {
-        stats.value = response.data.stats;
-      }
-    } catch (error) {
-      console.error('Error loading stats:', error);
+    if (response.data.success) {
+      stats.value = response.data.stats;
     }
+  } catch (error) {
+    logI18n('error', 'logs.admin.ragActions.loadStatsFailed', error);
+  }
   }
 
   /**
@@ -93,12 +94,12 @@ export function useAdminRAGActions(state) {
   async function loadPopularDocuments() {
     try {
       const response = await axios.get('/api/rag/stats/popular-documents?limit=5');
-      if (response.data.success) {
-        popularDocuments.value = response.data.documents;
-      }
-    } catch (error) {
-      console.error('Error loading popular documents:', error);
+    if (response.data.success) {
+      popularDocuments.value = response.data.documents;
     }
+  } catch (error) {
+    logI18n('error', 'logs.admin.ragActions.loadPopularDocumentsFailed', error);
+  }
   }
 
   /**
@@ -123,19 +124,19 @@ export function useAdminRAGActions(state) {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
 
-      if (response.data.success) {
-        uploadResults.value = response.data.results;
-        showSnackbar(response.data.message, 'success');
+    if (response.data.success) {
+      uploadResults.value = response.data.results;
+      showSnackbar(response.data.message, 'success');
         filesToUpload.value = [];
         // Reload data
         loadDocuments();
         loadCollections();
         loadStats();
-      }
-    } catch (error) {
-      console.error('Error uploading files:', error);
-      showSnackbar('Fehler beim Hochladen', 'error');
-    } finally {
+    }
+  } catch (error) {
+    logI18n('error', 'logs.admin.ragActions.uploadFilesFailed', error);
+    showSnackbar('Fehler beim Hochladen', 'error');
+  } finally {
       uploading.value = false;
     }
   }
@@ -149,16 +150,16 @@ export function useAdminRAGActions(state) {
     creatingCollection.value = true;
     try {
       const response = await axios.post('/api/rag/collections', newCollection.value);
-      if (response.data.success) {
-        showSnackbar('Collection erstellt', 'success');
+    if (response.data.success) {
+      showSnackbar('Collection erstellt', 'success');
         showCreateCollectionDialog.value = false;
         resetNewCollection();
         loadCollections();
-      }
-    } catch (error) {
-      console.error('Error creating collection:', error);
-      showSnackbar(error.response?.data?.error || 'Fehler beim Erstellen', 'error');
-    } finally {
+    }
+  } catch (error) {
+    logI18n('error', 'logs.admin.ragActions.createCollectionFailed', error);
+    showSnackbar(error.response?.data?.error || 'Fehler beim Erstellen', 'error');
+  } finally {
       creatingCollection.value = false;
     }
   }
@@ -172,17 +173,17 @@ export function useAdminRAGActions(state) {
         responseType: 'blob'
       });
       const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement('a');
-      link.href = url;
+    const link = document.createElement('a');
+    link.href = url;
       link.setAttribute('download', doc.original_filename || doc.filename);
       document.body.appendChild(link);
       link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
-    } catch (error) {
-      console.error('Error downloading document:', error);
-      showSnackbar('Fehler beim Download', 'error');
-    }
+    link.remove();
+    window.URL.revokeObjectURL(url);
+  } catch (error) {
+    logI18n('error', 'logs.admin.ragActions.downloadDocumentFailed', error);
+    showSnackbar('Fehler beim Download', 'error');
+  }
   }
 
   /**
@@ -203,7 +204,7 @@ export function useAdminRAGActions(state) {
         loadStats();
       }
     } catch (error) {
-      console.error('Error deleting document:', error);
+      logI18n('error', 'logs.admin.ragActions.deleteDocumentFailed', error);
       showSnackbar('Fehler beim Löschen', 'error');
     } finally {
       deleting.value = false;

@@ -717,6 +717,7 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import axios from 'axios';
+import { logI18n, logI18nParams } from '@/utils/logI18n';
 import { useSkeletonLoading } from '@/composables/useSkeletonLoading';
 import { usePermissions } from '@/composables/usePermissions';
 import { useAuth } from '@/composables/useAuth';
@@ -983,7 +984,7 @@ const reindexCollectionById = async (collectionId) => {
     await fetchCollections();
     await fetchStats();
   } catch (error) {
-    console.error('Error reindexing collection:', error);
+    logI18n('error', 'logs.admin.ragSection.reindexCollectionFailed', error);
     const errorMsg = error.response?.data?.error || 'Reindexierung fehlgeschlagen';
     alert(errorMsg);
   }
@@ -1072,10 +1073,17 @@ function setupWebSocket() {
     socket.on('rag:queue_list', updateQueueFromWebSocket);
     socket.on('rag:queue_updated', updateQueueFromWebSocket);
     socket.on('rag:progress', (data) => {
-      console.log('[RAG] Progress-Update:', data.queue_id, data.progress_percent + '%', data.current_step);
+      logI18nParams('log', 'logs.admin.ragSection.progressUpdate', {
+        queueId: data.queue_id,
+        progress: `${data.progress_percent}%`,
+        step: data.current_step
+      });
     });
     socket.on('rag:document_processed', async (data) => {
-      console.log('[RAG] Dokument verarbeitet:', data.filename, '-', data.status);
+      logI18nParams('log', 'logs.admin.ragSection.documentProcessed', {
+        filename: data.filename,
+        status: data.status
+      });
       applyDocumentProcessed(data);
       await fetchStats();
       await fetchDocuments();
@@ -1090,7 +1098,10 @@ function setupWebSocket() {
 
     // Real-time updates when another user uploads a document
     socket.on('rag:document_uploaded', async (data) => {
-      console.log('[RAG] Dokument hochgeladen (von anderem User):', data.document?.filename, '- Collection:', data.collection?.display_name);
+      logI18nParams('log', 'logs.admin.ragSection.documentUploadedByOther', {
+        filename: data.document?.filename,
+        collection: data.collection?.display_name
+      });
       // Refresh data to show the new document
       await fetchDocuments();
       await fetchCollections();
@@ -1099,19 +1110,22 @@ function setupWebSocket() {
 
     // Real-time updates when a collection is shared with the current user
     socket.on('rag:collection_shared', async (data) => {
-      console.log('[RAG] Collection geteilt:', data.collection?.name, '- von:', data.shared_by);
+      logI18nParams('log', 'logs.admin.ragSection.collectionShared', {
+        collection: data.collection?.name,
+        sharedBy: data.shared_by
+      });
       // Refresh collections to show newly shared collections
       await fetchCollections();
     });
 
     if (socket.connected) {
       socket.emit('rag:subscribe_queue');
-      console.log('[RAG] WebSocket subscribed');
+      logI18n('log', 'logs.admin.ragSection.socketSubscribed');
     }
 
     socket.on('connect', () => {
       socket.emit('rag:subscribe_queue');
-      console.log('[RAG] WebSocket reconnected und subscribed');
+      logI18n('log', 'logs.admin.ragSection.socketReconnectedSubscribed');
     });
   }
 }
@@ -1126,7 +1140,7 @@ function cleanupWebSocket() {
     socket.off('rag:document_uploaded');
     socket.off('rag:collection_shared');
     socket.emit('rag:unsubscribe_queue');
-    console.log('[RAG] WebSocket unsubscribed');
+    logI18n('log', 'logs.admin.ragSection.socketUnsubscribed');
   }
 }
 

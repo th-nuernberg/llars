@@ -316,6 +316,7 @@
 import { ref, computed, watch, nextTick } from 'vue'
 import axios from 'axios'
 import { AUTH_STORAGE_KEYS, getAuthStorageItem } from '@/utils/authStorage'
+import { logI18n } from '@/utils/logI18n'
 
 const props = defineProps({
   modelValue: Boolean,
@@ -429,7 +430,7 @@ async function sendMessage() {
       })
     }
   } catch (error) {
-    console.error('Error sending message:', error)
+    logI18n('error', 'logs.admin.chatbotTest.sendMessageFailed', error)
     messages.value.push({
       role: 'assistant',
       content: 'Fehler bei der Kommunikation mit dem Server.'
@@ -505,7 +506,7 @@ async function streamTestMessage(startTime, requestData) {
             throw new Error(payload.error)
           }
         } catch (e) {
-          console.error('Failed to parse stream chunk', e, line)
+          logI18n('error', 'logs.admin.chatbotTest.streamChunkParseFailed', e, line)
         }
       }
     }
@@ -527,7 +528,7 @@ async function streamTestMessage(startTime, requestData) {
           }
         }
       } catch (e) {
-        console.error('Failed to parse final stream chunk', e, buffer)
+        logI18n('error', 'logs.admin.chatbotTest.finalStreamChunkParseFailed', e, buffer)
       }
     }
 
@@ -535,7 +536,7 @@ async function streamTestMessage(startTime, requestData) {
     scrollToBottom()
     return true
   } catch (error) {
-    console.error('Streaming test message failed:', error)
+    logI18n('error', 'logs.admin.chatbotTest.streamingTestFailed', error)
     if (assistantMessage && assistantMessage.content.length === 0) {
       messages.value.pop()
     }
@@ -587,7 +588,7 @@ function openInFullScreen() {
 
     window.location.href = `/chat?chatbot_id=${props.chatbot.id}`
   } catch (e) {
-    console.error('Failed to open chat in fullscreen:', e)
+    logI18n('error', 'logs.admin.chatbotTest.openFullscreenFailed', e)
     showSnackbar('Konnte Vollbild nicht öffnen', 'error')
   }
 }

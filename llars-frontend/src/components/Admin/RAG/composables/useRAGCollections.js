@@ -1,5 +1,6 @@
 import { ref, computed } from 'vue';
 import axios from 'axios';
+import { logI18n } from '@/utils/logI18n';
 
 /**
  * Composable for RAG Collections management
@@ -53,7 +54,7 @@ export function useRAGCollections() {
       collections.value = response.data.collections || [];
       return { success: true, data: response.data };
     } catch (error) {
-      console.error('Error fetching collections:', error);
+      logI18n('error', 'logs.admin.ragCollections.fetchCollectionsFailed', error);
       return { success: false, error };
     } finally {
       loadingCollections.value = false;
@@ -75,7 +76,7 @@ export function useRAGCollections() {
       await fetchCollections();
       return { success: true, data: response.data };
     } catch (error) {
-      console.error('Error creating collection:', error);
+      logI18n('error', 'logs.admin.ragCollections.createCollectionFailed', error);
       return { success: false, error };
     } finally {
       creatingCollection.value = false;
@@ -100,7 +101,7 @@ export function useRAGCollections() {
       }
       return { success: false, error: 'Delete operation failed' };
     } catch (error) {
-      console.error('Error deleting collection:', error);
+      logI18n('error', 'logs.admin.ragCollections.deleteCollectionFailed', error);
       const errorMsg = error.response?.data?.error || 'Fehler beim Löschen der Collection';
       return { success: false, error: errorMsg };
     } finally {
@@ -133,7 +134,7 @@ export function useRAGCollections() {
         return { success: true, data: { documents: [] } };
       }
     } catch (error) {
-      console.error('Error fetching collection documents:', error);
+      logI18n('error', 'logs.admin.ragCollections.fetchCollectionDocumentsFailed', error);
       collectionDocuments.value = [];
       return { success: false, error };
     } finally {

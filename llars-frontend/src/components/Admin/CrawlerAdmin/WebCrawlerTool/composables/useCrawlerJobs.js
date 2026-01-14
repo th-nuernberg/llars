@@ -7,6 +7,7 @@
 
 import { ref, computed } from 'vue';
 import axios from 'axios';
+import { logI18n } from '@/utils/logI18n';
 
 export function useCrawlerJobs() {
   // State
@@ -56,7 +57,7 @@ export function useCrawlerJobs() {
         sortJobs();
       }
     } catch (error) {
-      console.error('Error loading jobs:', error);
+      logI18n('error', 'logs.admin.crawlerJobsLoadFailed', error);
     } finally {
       loadingJobs.value = false;
     }

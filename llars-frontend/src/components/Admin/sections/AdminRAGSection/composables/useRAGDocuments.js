@@ -7,6 +7,7 @@
 
 import { ref, computed } from 'vue';
 import axios from 'axios';
+import { logI18n } from '@/utils/logI18n';
 
 export function useRAGDocuments(collectionsRef) {
   // State
@@ -68,7 +69,7 @@ export function useRAGDocuments(collectionsRef) {
       const response = await axios.get('/api/rag/documents');
       documents.value = response.data.documents || [];
     } catch (error) {
-      console.error('Error fetching documents:', error);
+      logI18n('error', 'logs.admin.ragSectionDocuments.fetchDocumentsFailed', error);
     }
     loadingDocuments.value = false;
   };
@@ -120,7 +121,7 @@ export function useRAGDocuments(collectionsRef) {
       filesToUpload.value = [];
       if (onSuccess) onSuccess();
     } catch (error) {
-      console.error('Error uploading files:', error);
+      logI18n('error', 'logs.admin.ragSectionDocuments.uploadFilesFailed', error);
       // Extract error message from response
       const errorMessage = error.response?.data?.message
         || error.response?.data?.error
@@ -151,7 +152,7 @@ export function useRAGDocuments(collectionsRef) {
       documentToDelete.value = null;
       if (onSuccess) onSuccess();
     } catch (error) {
-      console.error('Error deleting document:', error);
+      logI18n('error', 'logs.admin.ragSectionDocuments.deleteDocumentFailed', error);
     }
     deletingDocument.value = false;
   };

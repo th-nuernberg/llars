@@ -19,6 +19,59 @@ import { io } from 'socket.io-client'
 import { AUTH_STORAGE_KEYS, clearAuthStorage, getAuthStorageItem } from '@/utils/authStorage'
 
 /**
+ * Calculate character-level diff between two strings.
+ * Uses common prefix/suffix detection for efficient O(n) calculation.
+ *
+ * @param {string} baseline - The original/committed content
+ * @param {string} current - The current content
+ * @returns {{insertions: number, deletions: number, hasChanges: boolean}} Character counts
+ */
+function calculateCharDiff(baseline, current) {
+  if (baseline === current) {
+    return { insertions: 0, deletions: 0, hasChanges: false }
+  }
+
+  const baseLen = baseline.length
+  const currLen = current.length
+
+  // For very long strings, use a simpler heuristic
+  if (baseLen > 50000 || currLen > 50000) {
+    const lenDiff = currLen - baseLen
+    return {
+      insertions: Math.max(0, lenDiff),
+      deletions: Math.max(0, -lenDiff),
+      hasChanges: true
+    }
+  }
+
+  // Find common prefix
+  let prefixLen = 0
+  const minLen = Math.min(baseLen, currLen)
+  while (prefixLen < minLen && baseline[prefixLen] === current[prefixLen]) {
+    prefixLen++
+  }
+
+  // Find common suffix (but don't overlap with prefix)
+  let suffixLen = 0
+  while (
+    suffixLen < minLen - prefixLen &&
+    baseline[baseLen - 1 - suffixLen] === current[currLen - 1 - suffixLen]
+  ) {
+    suffixLen++
+  }
+
+  // The middle part is what changed
+  const baseMiddle = baseLen - prefixLen - suffixLen
+  const currMiddle = currLen - prefixLen - suffixLen
+
+  return {
+    insertions: Math.max(0, currMiddle),
+    deletions: Math.max(0, baseMiddle),
+    hasChanges: true
+  }
+}
+
+/**
  * Vue composable for Yjs-based real-time collaboration.
  *
  * Establishes a Socket.IO connection to the YJS server and manages
@@ -31,7 +84,9 @@ import { AUTH_STORAGE_KEYS, clearAuthStorage, getAuthStorageItem } from '@/utils
  * @param {Object} [options={}] - Additional options
  * @param {boolean} [options.autoSync=false] - Automatically sync local changes to server
  * @param {Function} [options.onColorUpdate] - Callback when user color changes `(userId, color) => void`
- * @param {Function} [options.onDocumentSaved] - Callback for document_saved events (Git panel refresh)
+ * @param {Function} [options.onDocumentSaved] - Callback for document_saved events (Git panel refresh after 2s debounce)
+ * @param {Function} [options.onDocumentUpdated] - Callback for document_updated events (instant Git panel refresh on every keystroke)
+ * @param {Function} [options.onDiffCalculated] - Callback for local diff calculation `({insertions, deletions, hasChanges}) => void`
  *
  * @returns {Object} Composable API
  * @returns {import('vue').Ref<Y.Doc>} returns.ydoc - Reactive Yjs document
@@ -123,11 +178,16 @@ export function useYjsCollaboration(roomId, username, onProcessYDoc, onUpdateCur
     })
 
     socket.value.on('connect', () => {
-      console.log('Connected to server')
+      console.log('[useYjsCollaboration] Connected to YJS server, joining room:', roomId.value)
       socket.value.emit('join_room', {
         room: roomId.value,
         username
       })
+    })
+
+    // Debug: Log ALL incoming events
+    socket.value.onAny((eventName, ...args) => {
+      console.log(`[useYjsCollaboration] Event received: ${eventName}`, args)
     })
 
     socket.value.on('connect_error', (err) => {
@@ -216,9 +276,103 @@ export function useYjsCollaboration(roomId, username, onProcessYDoc, onUpdateCur
       }
     })
 
+    // =====================================================================
+    // Real-time Git Panel Update: Listen for document_updated events
+    // =====================================================================
+    // Unlike document_saved (which fires after 2s debounce), this event
+    // fires on EVERY sync_update, enabling instant Git panel updates.
+    // All users in the workspace see changes immediately as they're typed.
+    //
+    // Event payload: { documentId, workspaceId, kind, timestamp }
+    //
+    // The parent component should pass an onDocumentUpdated callback that
+    // triggers gitPanelRef.value?.checkForChanges?.() to refresh the panel.
+    // =====================================================================
+    socket.value.on('document_updated', (data) => {
+      if (options.onDocumentUpdated) {
+        options.onDocumentUpdated(data)
+      }
+    })
+
+    // =====================================================================
+    // Force Reload: Handle document revert/rollback from other users
+    // =====================================================================
+    // When another user reverts a document, the server sends force_reload
+    // to ALL clients in the room. Unlike snapshot_document (which merges),
+    // force_reload requires clients to completely recreate their ydoc.
+    //
+    // Without this, content would be duplicated because Y.applyUpdate()
+    // merges CRDT states instead of replacing them.
+    // =====================================================================
+    socket.value.on('force_reload', (data) => {
+      console.log('[useYjsCollaboration] force_reload received:', data.room)
+
+      // Only process if this is our current room
+      if (data.room !== roomId.value) {
+        console.log('[useYjsCollaboration] force_reload ignored - different room')
+        return
+      }
+
+      console.log('[useYjsCollaboration] force_reload - recreating ydoc for room:', data.room)
+
+      // Destroy existing ydoc to clear all local state
+      if (ydoc.value) {
+        ydoc.value.destroy()
+      }
+
+      // Create fresh ydoc
+      ydoc.value = new Y.Doc()
+
+      // Apply the snapshot from server
+      applyingRemoteUpdate = true
+      try {
+        Y.applyUpdate(ydoc.value, new Uint8Array(data.snapshot))
+      } finally {
+        applyingRemoteUpdate = false
+      }
+
+      // Re-setup update handler for the new doc
+      ydoc.value.on('update', (update, origin, doc, transaction) => {
+        onProcessYDoc()
+
+        // Calculate diff for instant Git panel updates
+        emitDiffIfNeeded()
+
+        if (autoSync && transaction?.local && !applyingRemoteUpdate && socket.value?.connected) {
+          socket.value.emit('sync_update', {
+            room: roomId.value,
+            update: Array.from(update)
+          })
+        }
+      })
+
+      // Refresh the editor with new content
+      onProcessYDoc()
+
+      console.log('[useYjsCollaboration] force_reload complete')
+    })
+
     socket.value.on('disconnect', () => {
       console.log('Disconnected from server')
     })
+  }
+
+  /**
+   * Calculate and emit diff against baseline.
+   * Called on every YJS update for instant Git panel updates.
+   */
+  const emitDiffIfNeeded = () => {
+    if (!options.onDiffCalculated || !ydoc.value) return
+
+    try {
+      const baselineMap = ydoc.value.getMap('baseline')
+      const baseline = baselineMap.get('text') || ''
+      const current = ydoc.value.getText('content').toString()
+      const diff = calculateCharDiff(baseline, current)
+      options.onDiffCalculated(diff)
+    } catch (e) {
+      // Ignore errors during initial setup
+    }
   }
 
   const initialize = () => {
@@ -227,6 +381,9 @@ export function useYjsCollaboration(roomId, username, onProcessYDoc, onUpdateCur
 
     ydoc.value.on('update', (update, origin, doc, transaction) => {
       onProcessYDoc()
+
+      // Calculate diff for instant Git panel updates
+      emitDiffIfNeeded()
 
       // Only send updates that are truly local (not from remote sync)
       // The applyingRemoteUpdate flag prevents echo from QuillBinding
@@ -299,6 +456,9 @@ export function useYjsCollaboration(roomId, username, onProcessYDoc, onUpdateCur
     ydoc.value.on('update', (update, origin, doc, transaction) => {
       onProcessYDoc()
 
+      // Calculate diff for instant Git panel updates
+      emitDiffIfNeeded()
+
       if (autoSync && transaction?.local && !applyingRemoteUpdate && socket.value?.connected) {
         socket.value.emit('sync_update', {
           room: roomId.value,
@@ -340,6 +500,9 @@ export function useYjsCollaboration(roomId, username, onProcessYDoc, onUpdateCur
       // Set up update handler for the new doc
       ydoc.value.on('update', (update, origin, doc, transaction) => {
         onProcessYDoc()
+
+        // Calculate diff for instant Git panel updates
+        emitDiffIfNeeded()
 
         if (autoSync && transaction?.local && !applyingRemoteUpdate && socket.value?.connected) {
           socket.value.emit('sync_update', {

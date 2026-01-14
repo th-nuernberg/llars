@@ -53,7 +53,7 @@ export function useWorkspaceSocket(workspaceId, options = {}) {
 
     socket.value.on('connect', () => {
       isConnected.value = true
-      console.log('[WorkspaceSocket] Connected')
+      console.log('[WorkspaceSocket] Verbunden')
 
       // Join the workspace room
       if (workspaceId.value) {
@@ -63,17 +63,17 @@ export function useWorkspaceSocket(workspaceId, options = {}) {
 
     socket.value.on('disconnect', () => {
       isConnected.value = false
-      console.log('[WorkspaceSocket] Disconnected')
+      console.log('[WorkspaceSocket] Verbindung getrennt')
     })
 
     socket.value.on('connect_error', (err) => {
-      console.error('[WorkspaceSocket] Connection error:', err.message)
+      console.error('[WorkspaceSocket] Verbindungsfehler:', err.message)
       isConnected.value = false
     })
 
     // Listen for tree changes from other users
     socket.value.on('tree_node_created', (data) => {
-      console.log('[WorkspaceSocket] Node created by other user:', data)
+      console.log('[WorkspaceSocket] Knoten von anderem Benutzer erstellt:', data)
       if (options.onNodeCreated) {
         // Mark as recently added for animation
         recentlyAddedNodeIds.value.add(data.node.id)
@@ -86,21 +86,21 @@ export function useWorkspaceSocket(workspaceId, options = {}) {
     })
 
     socket.value.on('tree_node_renamed', (data) => {
-      console.log('[WorkspaceSocket] Node renamed by other user:', data)
+      console.log('[WorkspaceSocket] Knoten von anderem Benutzer umbenannt:', data)
       if (options.onNodeRenamed) {
         options.onNodeRenamed(data)
       }
     })
 
     socket.value.on('tree_node_deleted', (data) => {
-      console.log('[WorkspaceSocket] Node deleted by other user:', data)
+      console.log('[WorkspaceSocket] Knoten von anderem Benutzer geloescht:', data)
       if (options.onNodeDeleted) {
         options.onNodeDeleted(data)
       }
     })
 
     socket.value.on('tree_node_moved', (data) => {
-      console.log('[WorkspaceSocket] Node moved by other user:', data)
+      console.log('[WorkspaceSocket] Knoten von anderem Benutzer verschoben:', data)
       if (options.onNodeMoved) {
         options.onNodeMoved(data)
       }

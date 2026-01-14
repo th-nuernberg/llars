@@ -64,7 +64,7 @@ import { useI18n } from 'vue-i18n'
 
 import { useAuth } from '@/composables/useAuth'
 import { useYjsCollaboration } from '@/components/PromptEngineering/composables/useYjsCollaboration'
-import { useGitDiff } from './composables/useGitDiff'
+import { useGitDiff } from '@/composables/useGitDiff'
 import { useTypingMetrics } from '@/composables/useAnalyticsMetrics'
 
 const props = defineProps({
@@ -444,7 +444,7 @@ function computeGitSummary() {
   const byUser = new Map()
   let total = 0
   for (const [, meta] of yhighlights.entries()) {
-    const u = meta?.username || 'unknown'
+    const u = meta?.username || t('markdownCollab.editor.userUnknown')
     const color = meta?.color || '#4ECDC4'
     total += 1
     const cur = byUser.get(u) || { username: u, color, changedLines: 0 }
@@ -675,8 +675,8 @@ function initEditorIfNeeded() {
     view.value = new EditorView({ state, parent: editorEl.value })
     nextTick(() => view.value?.focus())
   } catch (e) {
-    console.error('CodeMirror init failed:', e)
-    error.value = `Editor-Initialisierung fehlgeschlagen: ${e?.message || String(e)}`
+    console.error('CodeMirror-Initialisierung fehlgeschlagen:', e)
+    error.value = t('markdownCollab.editor.errors.initFailed', { message: e?.message || String(e) })
     fallbackMode.value = true
     fallbackText.value = ytext?.toString?.() || ''
   }
@@ -773,7 +773,7 @@ const collaboration = useYjsCollaboration(roomId, username.value, processYDoc, o
    * @param {string} data.savedAt - ISO timestamp
    */
   onDocumentSaved: (data) => {
-    console.log('[MarkdownEditorPane] document_saved, emitting to parent:', data)
+    console.log('[MarkdownEditorPane] document_saved, an Parent weitergegeben:', data)
     emit('document-saved', data)
   }
 })
@@ -809,11 +809,11 @@ onMounted(async () => {
     onSocketConnectError = (err) => {
       isConnected.value = false
       const msg = err?.message || err
-      error.value = `Collab-Verbindung fehlgeschlagen: ${msg}`
+      error.value = t('markdownCollab.editor.errors.connectionFailed', { message: msg })
     }
     onSocketDisconnect = () => {
       isConnected.value = false
-      if (!props.readonly) error.value = 'Collab-Verbindung getrennt (Reconnecting …)'
+      if (!props.readonly) error.value = t('markdownCollab.editor.errors.connectionLost')
     }
 
     sock?.on('connect', onSocketConnect)

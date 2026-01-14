@@ -126,55 +126,57 @@
                 </v-checkbox>
               </div>
 
-              <!-- Changed File list -->
-              <div
-                v-for="file in changedFiles"
-                :key="file.id"
-                class="file-item"
-                :class="{ selected: selectedFiles.includes(file.id) }"
-              >
-                <v-checkbox
-                  :model-value="selectedFiles.includes(file.id)"
-                  density="compact"
-                  hide-details
-                  @update:model-value="toggleFile(file.id)"
-                />
-                <!-- Status badge -->
-                <v-tooltip location="top">
-                  <template #activator="{ props: tp }">
-                    <span v-bind="tp" class="status-badge" :class="getStatusBadge(file).color">
-                      {{ getStatusBadge(file).text }}
+              <!-- Changed File list with smooth transitions -->
+              <transition-group name="file-list" tag="div">
+                <div
+                  v-for="file in changedFiles"
+                  :key="file.id"
+                  class="file-item"
+                  :class="{ selected: selectedFiles.includes(file.id) }"
+                >
+                  <v-checkbox
+                    :model-value="selectedFiles.includes(file.id)"
+                    density="compact"
+                    hide-details
+                    @update:model-value="toggleFile(file.id)"
+                  />
+                  <!-- Status badge -->
+                  <v-tooltip location="top">
+                    <template #activator="{ props: tp }">
+                      <span v-bind="tp" class="status-badge" :class="getStatusBadge(file).color">
+                        {{ getStatusBadge(file).text }}
+                      </span>
+                    </template>
+                    <span>{{ getStatusBadge(file).tooltip }}</span>
+                  </v-tooltip>
+                  <LIcon size="16" class="file-icon">mdi-file-document-outline</LIcon>
+                  <div class="file-info">
+                    <span class="file-path">{{ file.path }}</span>
+                    <span class="file-stats">
+                      <span class="text-success">+{{ file.insertions }}</span>
+                      <span class="mx-1">/</span>
+                      <span class="text-error">-{{ file.deletions }}</span>
                     </span>
-                  </template>
-                  <span>{{ getStatusBadge(file).tooltip }}</span>
-                </v-tooltip>
-                <LIcon size="16" class="file-icon">mdi-file-document-outline</LIcon>
-                <div class="file-info">
-                  <span class="file-path">{{ file.path }}</span>
-                  <span class="file-stats">
-                    <span class="text-success">+{{ file.insertions }}</span>
-                    <span class="mx-1">/</span>
-                    <span class="text-error">-{{ file.deletions }}</span>
-                  </span>
+                  </div>
+                  <!-- Rollback button -->
+                  <v-tooltip v-if="file.has_baseline" location="top">
+                    <template #activator="{ props: tp }">
+                      <v-btn
+                        v-bind="tp"
+                        icon
+                        variant="text"
+                        size="x-small"
+                        color="warning"
+                        :loading="rollingBack === file.id"
+                        @click.stop="confirmRollback(file)"
+                      >
+                        <LIcon size="14">mdi-undo</LIcon>
+                      </v-btn>
+                    </template>
+                    <span>{{ $t('workspaceGit.actions.discard') }}</span>
+                  </v-tooltip>
                 </div>
-                <!-- Rollback button -->
-                <v-tooltip v-if="file.has_baseline" location="top">
-                  <template #activator="{ props: tp }">
-                    <v-btn
-                      v-bind="tp"
-                      icon
-                      variant="text"
-                      size="x-small"
-                      color="warning"
-                      :loading="rollingBack === file.id"
-                      @click.stop="confirmRollback(file)"
-                    >
-                      <LIcon size="14">mdi-undo</LIcon>
-                    </v-btn>
-                  </template>
-                  <span>{{ $t('workspaceGit.actions.discard') }}</span>
-                </v-tooltip>
-              </div>
+              </transition-group>
 
               <!-- Deleted Files Section -->
               <template v-if="deletedFiles.length > 0">
@@ -183,35 +185,37 @@
                   <LIcon size="14" color="error" class="mr-1">mdi-delete</LIcon>
                   {{ $t('workspaceGit.files.deletedTitle') }}
                 </div>
-                <div
-                  v-for="file in deletedFiles"
-                  :key="'deleted-' + file.id"
-                  class="file-item deleted"
-                >
-                  <!-- Status badge -->
-                  <span class="status-badge error">D</span>
-                  <LIcon size="16" class="file-icon" color="error">mdi-file-remove-outline</LIcon>
-                  <div class="file-info">
-                    <span class="file-path deleted-path">{{ file.title }}</span>
+                <transition-group name="file-list" tag="div">
+                  <div
+                    v-for="file in deletedFiles"
+                    :key="'deleted-' + file.id"
+                    class="file-item deleted"
+                  >
+                    <!-- Status badge -->
+                    <span class="status-badge error">D</span>
+                    <LIcon size="16" class="file-icon" color="error">mdi-file-remove-outline</LIcon>
+                    <div class="file-info">
+                      <span class="file-path deleted-path">{{ file.title }}</span>
+                    </div>
+                    <!-- Restore button -->
+                    <v-tooltip location="top">
+                      <template #activator="{ props: tp }">
+                        <v-btn
+                          v-bind="tp"
+                          icon
+                          variant="text"
+                          size="x-small"
+                          color="success"
+                          :loading="restoringFile === file.id"
+                          @click.stop="restoreFile({ id: file.id, ...file })"
+                        >
+                          <LIcon size="14">mdi-restore</LIcon>
+                        </v-btn>
+                      </template>
+                      <span>{{ $t('workspaceGit.actions.restore') }}</span>
+                    </v-tooltip>
                   </div>
-                  <!-- Restore button -->
-                  <v-tooltip location="top">
-                    <template #activator="{ props: tp }">
-                      <v-btn
-                        v-bind="tp"
-                        icon
-                        variant="text"
-                        size="x-small"
-                        color="success"
-                        :loading="restoringFile === file.id"
-                        @click.stop="restoreFile({ id: file.id, ...file })"
-                      >
-                        <LIcon size="14">mdi-restore</LIcon>
-                      </v-btn>
-                    </template>
-                    <span>{{ $t('workspaceGit.actions.restore') }}</span>
-                  </v-tooltip>
-                </div>
+                </transition-group>
               </template>
             </div>
           </div>
@@ -338,7 +342,7 @@
                     <v-divider v-if="changedFiles.length > 0" class="my-2" />
 
                     <!-- Changed File list -->
-                    <div class="file-list-full">
+                    <transition-group name="file-list-full" tag="div" class="file-list-full">
                       <div
                         v-for="file in changedFiles"
                         :key="file.id"
@@ -390,8 +394,7 @@
                           <span>{{ $t('workspaceGit.actions.discard') }}</span>
                         </v-tooltip>
                       </div>
-
-                    </div>
+                    </transition-group>
                   </div>
                 </div>
               </div>
@@ -405,7 +408,7 @@
                   <span class="deleted-count">{{ deletedFiles.length }}</span>
                 </div>
                 <div class="card-content">
-                  <div class="deleted-files-list">
+                  <transition-group name="file-list-full" tag="div" class="deleted-files-list">
                     <div
                       v-for="file in deletedFiles"
                       :key="'deleted-' + file.id"
@@ -434,7 +437,7 @@
                         <span>{{ $t('workspaceGit.actions.restore') }}</span>
                       </v-tooltip>
                     </div>
-                  </div>
+                  </transition-group>
                 </div>
               </div>
 
@@ -790,7 +793,7 @@ function getFileIcon(path) {
   const ext = path.split('.').pop()?.toLowerCase()
   switch (ext) {
     case 'tex': return 'mdi-file-document'
-    case 'bib': return 'mdi-book-open-variant'
+    case 'bib': return 'zotero'
     case 'sty': return 'mdi-file-cog'
     case 'cls': return 'mdi-file-settings'
     default: return 'mdi-file-document-outline'
@@ -801,7 +804,7 @@ function getFileIconColor(path) {
   const ext = path.split('.').pop()?.toLowerCase()
   switch (ext) {
     case 'tex': return 'green'
-    case 'bib': return 'blue'
+    case 'bib': return undefined // Zotero icon has built-in brand color
     case 'sty': return 'orange'
     case 'cls': return 'purple'
     default: return 'grey'
@@ -892,11 +895,19 @@ async function executeRollback() {
 }
 
 // API functions
-async function checkForChanges() {
+/**
+ * Check for uncommitted changes in the workspace.
+ * @param {Object} options - Options
+ * @param {boolean} options.silent - If true, don't show loading state (for real-time updates)
+ */
+async function checkForChanges({ silent = false } = {}) {
   if (!props.workspaceId) return
 
-  checkingChanges.value = true
-  loadError.value = ''
+  // Only show loading state for manual refresh, not real-time updates
+  if (!silent) {
+    checkingChanges.value = true
+    loadError.value = ''
+  }
 
   try {
     // Backend uses database content (synced via YJS)
@@ -905,18 +916,41 @@ async function checkForChanges() {
       { headers: authHeaders() }
     )
 
-    changedFiles.value = res.data.changed_files || []
-    deletedFiles.value = res.data.deleted_files || []
+    const newChangedFiles = res.data.changed_files || []
+    const newDeletedFiles = res.data.deleted_files || []
 
-    // Auto-select all changed files
-    selectedFiles.value = changedFiles.value.map(f => f.id)
+    // Smart merge: only update if actually different to avoid unnecessary re-renders
+    const changedFilesChanged = JSON.stringify(newChangedFiles.map(f => ({ id: f.id, insertions: f.insertions, deletions: f.deletions }))) !==
+                                JSON.stringify(changedFiles.value.map(f => ({ id: f.id, insertions: f.insertions, deletions: f.deletions })))
+    const deletedFilesChanged = JSON.stringify(newDeletedFiles.map(f => f.id)) !==
+                                JSON.stringify(deletedFiles.value.map(f => f.id))
+
+    if (changedFilesChanged) {
+      // Preserve selection state for files that still exist
+      const previouslySelected = new Set(selectedFiles.value)
+      changedFiles.value = newChangedFiles
+
+      // Keep previously selected files selected, auto-select new files
+      const newFileIds = new Set(newChangedFiles.map(f => f.id))
+      const stillSelected = selectedFiles.value.filter(id => newFileIds.has(id))
+      const newFiles = newChangedFiles.filter(f => !previouslySelected.has(f.id)).map(f => f.id)
+      selectedFiles.value = [...stillSelected, ...newFiles]
+    }
+
+    if (deletedFilesChanged) {
+      deletedFiles.value = newDeletedFiles
+    }
   } catch (e) {
-    loadError.value = e?.response?.data?.error || e?.message || t('workspaceGit.errors.loadChangesFailed')
-    changedFiles.value = []
-    deletedFiles.value = []
-    selectedFiles.value = []
+    if (!silent) {
+      loadError.value = e?.response?.data?.error || e?.message || t('workspaceGit.errors.loadChangesFailed')
+      changedFiles.value = []
+      deletedFiles.value = []
+      selectedFiles.value = []
+    }
   } finally {
-    checkingChanges.value = false
+    if (!silent) {
+      checkingChanges.value = false
+    }
   }
 }
 
@@ -1127,7 +1161,7 @@ async function loadRecentCommits() {
 
     recentCommits.value = uniqueCommits.slice(0, 10)
   } catch (e) {
-    console.error('Failed to load recent commits:', e)
+    console.error('Konnte letzte Commits nicht laden:', e)
     recentCommits.value = []
   } finally {
     loadingCommits.value = false
@@ -1264,9 +1298,48 @@ onUnmounted(() => {
   resetDiffState()
 })
 
+/**
+ * Update diff stats for a single file (called from real-time document_updated events).
+ * This enables instant Git panel updates without API calls.
+ *
+ * @param {number} documentId - The document ID to update
+ * @param {Object} diff - The diff data from YJS server
+ * @param {number} diff.insertions - Characters inserted
+ * @param {number} diff.deletions - Characters deleted
+ * @param {boolean} diff.hasChanges - Whether document has uncommitted changes
+ */
+function updateFileDiff(documentId, diff) {
+  if (!documentId) return
+
+  const fileIndex = changedFiles.value.findIndex(f => f.id === documentId)
+
+  if (diff.hasChanges) {
+    if (fileIndex >= 0) {
+      // Update existing file's diff stats
+      changedFiles.value[fileIndex] = {
+        ...changedFiles.value[fileIndex],
+        insertions: diff.insertions,
+        deletions: diff.deletions
+      }
+    }
+    // If file not in list yet, we need to fetch full info via API (rare case)
+    // This happens when a new file gets its first change
+    else if (!checkingChanges.value) {
+      checkForChanges({ silent: true })
+    }
+  } else {
+    // No changes - remove from list if present
+    if (fileIndex >= 0) {
+      changedFiles.value.splice(fileIndex, 1)
+      selectedFiles.value = selectedFiles.value.filter(id => id !== documentId)
+    }
+  }
+}
+
 // Expose method for parent to trigger refresh
 defineExpose({
   checkForChanges,
+  updateFileDiff,
   refresh: async () => {
     await Promise.all([checkForChanges(), loadRecentCommits()])
   }
@@ -1421,6 +1494,7 @@ defineExpose({
 .file-list {
   max-height: 200px;
   overflow-y: auto;
+  position: relative; /* For transition-group absolute positioning */
 }
 
 .select-all-row {
@@ -1569,6 +1643,7 @@ defineExpose({
   display: flex;
   flex-direction: column;
   gap: 4px;
+  position: relative; /* For transition-group absolute positioning */
 }
 
 .file-item-full {
@@ -1947,6 +2022,7 @@ defineExpose({
   display: flex;
   flex-direction: column;
   gap: 4px;
+  position: relative; /* For transition-group absolute positioning */
 }
 
 .deleted-file-item {
@@ -1977,5 +2053,59 @@ defineExpose({
 .deleted-file-date {
   font-size: 11px;
   color: rgb(var(--v-theme-on-surface-variant));
+}
+
+/* ============================================
+   FILE LIST TRANSITIONS
+   Smooth animations for real-time updates
+   ============================================ */
+.file-list-enter-active,
+.file-list-leave-active {
+  transition: all 0.25s ease;
+}
+
+.file-list-enter-from {
+  opacity: 0;
+  transform: translateX(-12px);
+}
+
+.file-list-leave-to {
+  opacity: 0;
+  transform: translateX(12px);
+}
+
+.file-list-move {
+  transition: transform 0.25s ease;
+}
+
+/* Prevent layout jumps during leave animation */
+.file-list-leave-active {
+  position: absolute;
+  width: calc(100% - 8px);
+}
+
+/* Fullscreen file list transitions */
+.file-list-full-enter-active,
+.file-list-full-leave-active {
+  transition: all 0.25s ease;
+}
+
+.file-list-full-enter-from {
+  opacity: 0;
+  transform: translateX(-16px);
+}
+
+.file-list-full-leave-to {
+  opacity: 0;
+  transform: translateX(16px);
+}
+
+.file-list-full-move {
+  transition: transform 0.25s ease;
+}
+
+.file-list-full-leave-active {
+  position: absolute;
+  width: calc(100% - 32px);
 }
 </style>

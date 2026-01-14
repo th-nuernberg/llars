@@ -1,160 +1,6 @@
 <template>
   <div class="editor-pane">
-    <!-- Quick Formatting Toolbar (Overleaf-style) -->
-    <div v-if="!readonly" class="formatting-toolbar" :class="{ collapsed: toolbarCollapsed }">
-      <!-- Toggle button -->
-      <v-tooltip location="bottom">
-        <template #activator="{ props: tp }">
-          <button v-bind="tp" class="toolbar-toggle-btn" @click="toggleToolbar">
-            <LIcon size="14">{{ toolbarCollapsed ? 'mdi-chevron-down' : 'mdi-chevron-up' }}</LIcon>
-          </button>
-        </template>
-        <span>{{ toolbarCollapsed ? $t('latexCollab.editor.toolbar.show') : $t('latexCollab.editor.toolbar.hide') }}</span>
-      </v-tooltip>
-
-      <!-- Collapsed state: just show label -->
-      <span v-if="toolbarCollapsed" class="toolbar-collapsed-label" @click="toggleToolbar">
-        {{ $t('latexCollab.editor.toolbar.label') }}
-      </span>
-
-      <!-- Expanded toolbar content -->
-      <template v-if="!toolbarCollapsed">
-        <!-- Text Formatting -->
-        <div class="toolbar-group">
-          <v-tooltip v-for="btn in textFormatButtons" :key="btn.id" location="bottom">
-            <template #activator="{ props: tp }">
-              <button v-bind="tp" class="toolbar-btn" @click="insertSnippet(btn.snippet, btn.wrap)">
-                <LIcon size="16">{{ btn.icon }}</LIcon>
-              </button>
-            </template>
-            <span>{{ btn.label }} <kbd v-if="btn.shortcut">{{ btn.shortcut }}</kbd></span>
-          </v-tooltip>
-        </div>
-
-        <div class="toolbar-divider" />
-
-        <!-- Structure -->
-        <div class="toolbar-group">
-          <v-tooltip v-for="btn in structureButtons" :key="btn.id" location="bottom">
-            <template #activator="{ props: tp }">
-              <button v-bind="tp" class="toolbar-btn" @click="insertSnippet(btn.snippet, btn.wrap)">
-                <LIcon size="16">{{ btn.icon }}</LIcon>
-              </button>
-            </template>
-            <span>{{ btn.label }}</span>
-          </v-tooltip>
-        </div>
-
-        <div class="toolbar-divider" />
-
-        <!-- Lists -->
-        <div class="toolbar-group">
-          <v-tooltip v-for="btn in listButtons" :key="btn.id" location="bottom">
-            <template #activator="{ props: tp }">
-              <button v-bind="tp" class="toolbar-btn" @click="insertSnippet(btn.snippet, btn.wrap)">
-                <LIcon size="16">{{ btn.icon }}</LIcon>
-              </button>
-            </template>
-            <span>{{ btn.label }}</span>
-          </v-tooltip>
-        </div>
-
-        <div class="toolbar-divider" />
-
-        <!-- Content (Figure, Table) -->
-        <div class="toolbar-group">
-          <template v-for="btn in contentButtons" :key="btn.id">
-            <!-- Special table button with size picker -->
-            <v-menu v-if="btn.hasMenu" v-model="showTablePicker" :close-on-content-click="false" location="bottom">
-              <template #activator="{ props: menuProps }">
-                <v-tooltip location="bottom">
-                  <template #activator="{ props: tp }">
-                    <button v-bind="{ ...tp, ...menuProps }" class="toolbar-btn">
-                      <LIcon size="16">{{ btn.icon }}</LIcon>
-                    </button>
-                  </template>
-                  <span>{{ btn.label }}</span>
-                </v-tooltip>
-              </template>
-              <v-card class="table-picker-card" min-width="200">
-                <v-card-text class="pa-3">
-                  <div class="text-subtitle-2 mb-2">{{ $t('latexCollab.editor.table.size') }}</div>
-                  <div class="d-flex align-center ga-3 mb-2">
-                    <v-text-field
-                      v-model.number="tableRows"
-                      :label="$t('latexCollab.editor.table.rows')"
-                      type="number"
-                      min="1"
-                      max="20"
-                      density="compact"
-                      hide-details
-                      variant="outlined"
-                      style="max-width: 70px"
-                    />
-                    <span class="text-body-2">×</span>
-                    <v-text-field
-                      v-model.number="tableCols"
-                      :label="$t('latexCollab.editor.table.columns')"
-                      type="number"
-                      min="1"
-                      max="10"
-                      density="compact"
-                      hide-details
-                      variant="outlined"
-                      style="max-width: 70px"
-                    />
-                  </div>
-                  <div class="text-caption text-medium-emphasis mb-2">
-                    {{ $t('latexCollab.editor.table.preview', { rows: tableRows, cols: tableCols }) }}
-                  </div>
-                  <v-btn color="primary" size="small" block @click="insertTable">
-                    <LIcon start size="small">mdi-table-plus</LIcon>
-                    {{ $t('latexCollab.editor.table.insert') }}
-                  </v-btn>
-                </v-card-text>
-              </v-card>
-            </v-menu>
-            <!-- Regular buttons -->
-            <v-tooltip v-else location="bottom">
-              <template #activator="{ props: tp }">
-                <button v-bind="tp" class="toolbar-btn" @click="insertSnippet(btn.snippet, btn.wrap)">
-                  <LIcon size="16">{{ btn.icon }}</LIcon>
-                </button>
-              </template>
-              <span>{{ btn.label }}</span>
-            </v-tooltip>
-          </template>
-        </div>
-
-        <div class="toolbar-divider" />
-
-        <!-- Math -->
-        <div class="toolbar-group">
-          <v-tooltip v-for="btn in mathButtons" :key="btn.id" location="bottom">
-            <template #activator="{ props: tp }">
-              <button v-bind="tp" class="toolbar-btn" @click="insertSnippet(btn.snippet, btn.wrap)">
-                <LIcon size="16">{{ btn.icon }}</LIcon>
-              </button>
-            </template>
-            <span>{{ btn.label }}</span>
-          </v-tooltip>
-        </div>
-
-        <div class="toolbar-divider" />
-
-        <!-- References -->
-        <div class="toolbar-group">
-          <v-tooltip v-for="btn in refButtons" :key="btn.id" location="bottom">
-            <template #activator="{ props: tp }">
-              <button v-bind="tp" class="toolbar-btn" @click="insertSnippet(btn.snippet, btn.wrap)">
-                <LIcon size="16">{{ btn.icon }}</LIcon>
-              </button>
-            </template>
-            <span>{{ btn.label }}</span>
-          </v-tooltip>
-        </div>
-      </template>
-    </div>
+    <!-- Fixed toolbar removed - only floating selection toolbar now -->
 
     <div v-if="error" class="px-3 pb-3">
       <v-alert type="error" variant="tonal">
@@ -174,6 +20,72 @@
       @update:modelValue="onFallbackInput"
     />
     <div v-else ref="editorEl" class="editor-surface" />
+
+    <!-- Unified Selection Toolbar (floating) - Formatting + AI + Comment -->
+    <Transition name="selection-toolbar">
+      <div
+        v-if="selectionToolbar.visible && !readonly"
+        class="selection-toolbar"
+        :style="{
+          left: `${selectionToolbar.x}px`,
+          top: `${selectionToolbar.y}px`
+        }"
+        @mousedown.prevent
+      >
+        <!-- Quick Formatting Buttons -->
+        <v-tooltip v-for="btn in selectionFormatButtons" :key="btn.id" location="top">
+          <template #activator="{ props: tp }">
+            <button
+              v-bind="tp"
+              class="selection-toolbar-icon-btn"
+              @click.stop="insertSnippet(btn.snippet, btn.wrap)"
+            >
+              <LIcon size="15">{{ btn.icon }}</LIcon>
+            </button>
+          </template>
+          <span>{{ btn.label }} <kbd v-if="btn.shortcut">{{ btn.shortcut }}</kbd></span>
+        </v-tooltip>
+
+        <div class="selection-toolbar-divider" />
+
+        <!-- AI Dropdown -->
+        <v-menu location="bottom" :close-on-content-click="true">
+          <template #activator="{ props: menuProps }">
+            <button
+              v-bind="menuProps"
+              class="selection-toolbar-ai-btn"
+              :disabled="aiActionLoading"
+            >
+              <v-progress-circular v-if="aiActionLoading" indeterminate size="14" width="2" />
+              <LIcon v-else size="14">mdi-auto-fix</LIcon>
+              <span>KI</span>
+              <LIcon size="12">mdi-chevron-down</LIcon>
+            </button>
+          </template>
+          <v-list density="compact" class="ai-action-menu">
+            <v-list-item
+              v-for="action in aiActions"
+              :key="action.key"
+              :prepend-icon="action.icon"
+              :title="action.label"
+              @click="executeAiAction(action.key)"
+            />
+          </v-list>
+        </v-menu>
+
+        <div class="selection-toolbar-divider" />
+
+        <!-- Comment Button -->
+        <button
+          class="selection-toolbar-btn"
+          :title="t('latexCollab.comments.addToSelection')"
+          @click.stop="onSelectionComment"
+        >
+          <LIcon size="14">mdi-comment-plus-outline</LIcon>
+          <span>{{ t('latexCollab.comments.comment') }}</span>
+        </button>
+      </div>
+    </Transition>
   </div>
 </template>
 
@@ -206,7 +118,7 @@ import { useI18n } from 'vue-i18n'
 // External composables
 import { useAuth } from '@/composables/useAuth'
 import { useYjsCollaboration } from '@/components/PromptEngineering/composables/useYjsCollaboration'
-import { useGitDiff } from '@/components/MarkdownCollab/composables/useGitDiff'
+import { useGitDiff } from '@/composables/useGitDiff'
 import { useTypingMetrics } from '@/composables/useAnalyticsMetrics'
 
 // Local modules - constants (shared with LatexAI editor)
@@ -238,7 +150,7 @@ const props = defineProps({
   ghostTextDelay: { type: Number, default: 800 }
 })
 
-const emit = defineEmits(['content-change', 'git-summary', 'cursor-change', 'sync-request', 'ai-command', 'request-completion', 'update:ghostTextEnabled', 'document-saved'])
+const emit = defineEmits(['content-change', 'git-summary', 'cursor-change', 'sync-request', 'ai-command', 'request-completion', 'update:ghostTextEnabled', 'document-saved', 'document-updated', 'diff-calculated', 'request-comment', 'ai-action'])
 
 const { t, locale } = useI18n()
 
@@ -266,6 +178,47 @@ const ghostText = ref('')
 const ghostTextPosition = ref(null)
 let ghostTextTimer = null
 let ghostTextDecorationRange = null
+
+// Selection toolbar state
+const selectionToolbar = ref({
+  visible: false,
+  x: 0,
+  y: 0,
+  range: null
+})
+let selectionToolbarTimer = null
+
+// AI action state
+const aiActionLoading = ref(false)
+
+// AI actions for selection toolbar dropdown
+const aiActions = computed(() => [
+  { key: 'rewrite', icon: 'mdi-refresh', label: t('latexCollab.ai.rewrite') },
+  { key: 'expand', icon: 'mdi-arrow-expand', label: t('latexCollab.ai.expand') },
+  { key: 'summarize', icon: 'mdi-text-short', label: t('latexCollab.ai.summarize') },
+  { key: 'fix', icon: 'mdi-wrench', label: t('latexCollab.ai.fix') }
+])
+
+/**
+ * Execute an AI action on the selected text
+ */
+function executeAiAction(actionKey) {
+  if (!selectionToolbar.value.range || !view.value) return
+
+  const { from, to } = selectionToolbar.value.range
+  const selectedText = view.value.state.doc.sliceString(from, to)
+
+  if (!selectedText.trim()) return
+
+  // Emit action to parent for handling
+  emit('ai-action', {
+    action: actionKey,
+    selectedText,
+    range: { from, to }
+  })
+
+  hideSelectionToolbar()
+}
 
 function mapButtons(buttons, labels) {
   return buttons.map(btn => ({
@@ -317,6 +270,15 @@ const refButtons = computed(() => mapButtons(REF_BUTTONS, {
   footnote: t('latexCollab.editor.toolbar.footnote'),
   url: t('latexCollab.editor.toolbar.url')
 }))
+
+// Selection toolbar: compact formatting buttons for selected text
+const selectionFormatButtons = computed(() => [
+  { id: 'bold', icon: 'mdi-format-bold', label: t('latexCollab.editor.toolbar.bold'), shortcut: 'Ctrl+B', snippet: '\\textbf{$SEL$}', wrap: true },
+  { id: 'italic', icon: 'mdi-format-italic', label: t('latexCollab.editor.toolbar.italic'), shortcut: 'Ctrl+I', snippet: '\\textit{$SEL$}', wrap: true },
+  { id: 'underline', icon: 'mdi-format-underline', label: t('latexCollab.editor.toolbar.underline'), shortcut: 'Ctrl+U', snippet: '\\underline{$SEL$}', wrap: true },
+  { id: 'emph', icon: 'mdi-format-text-variant', label: t('latexCollab.editor.toolbar.emph'), snippet: '\\emph{$SEL$}', wrap: true },
+  { id: 'typewriter', icon: 'mdi-format-font', label: t('latexCollab.editor.toolbar.typewriter'), snippet: '\\texttt{$SEL$}', wrap: true }
+])
 
 const latexCommandInfo = computed(() => ({
   '\\documentclass': t('latexCollab.completions.documentclass'),
@@ -1011,6 +973,62 @@ function scheduleCursorChange() {
   }, 120)
 }
 
+// Selection toolbar functions
+function updateSelectionToolbar() {
+  if (!view.value || props.readonly) {
+    hideSelectionToolbar()
+    return
+  }
+
+  if (selectionToolbarTimer) clearTimeout(selectionToolbarTimer)
+  selectionToolbarTimer = setTimeout(() => {
+    if (!view.value) return
+
+    const sel = view.value.state.selection.main
+    const hasSelection = sel.from !== sel.to
+
+    if (!hasSelection) {
+      hideSelectionToolbar()
+      return
+    }
+
+    // Get the coordinates of the selection
+    const coords = view.value.coordsAtPos(sel.to)
+    if (!coords) {
+      hideSelectionToolbar()
+      return
+    }
+
+    // Get editor container bounds
+    const editorRect = editorEl.value?.getBoundingClientRect()
+    if (!editorRect) {
+      hideSelectionToolbar()
+      return
+    }
+
+    // Position toolbar above selection end
+    // Toolbar is ~280px wide (5 format buttons + divider + comment button)
+    const toolbarWidth = 280
+    selectionToolbar.value = {
+      visible: true,
+      x: Math.max(0, Math.min(coords.left - editorRect.left - toolbarWidth / 2, editorRect.width - toolbarWidth)),
+      y: coords.top - editorRect.top - 44,
+      range: { from: sel.from, to: sel.to }
+    }
+  }, 150)
+}
+
+function hideSelectionToolbar() {
+  selectionToolbar.value.visible = false
+  selectionToolbar.value.range = null
+}
+
+function onSelectionComment() {
+  if (!selectionToolbar.value.range) return
+  emit('request-comment', selectionToolbar.value.range)
+  hideSelectionToolbar()
+}
+
 // Ghost text (AI completion) functions
 function scheduleGhostTextRequest() {
   if (!props.ghostTextEnabled || !props.aiEnabled || !view.value) return
@@ -1328,6 +1346,7 @@ function initEditorIfNeeded() {
           if (update.selectionSet) {
             scheduleCursorUpdate()
             scheduleCursorChange()
+            updateSelectionToolbar()
             // Cancel ghost text when cursor moves
             if (ghostText.value) {
               cancelGhostText()
@@ -1390,8 +1409,8 @@ function initEditorIfNeeded() {
     view.value = new EditorView({ state, parent: editorEl.value })
     nextTick(() => view.value?.focus())
   } catch (e) {
-    console.error('CodeMirror init failed:', e)
-    error.value = `Editor-Initialisierung fehlgeschlagen: ${e?.message || String(e)}`
+    console.error('CodeMirror-Initialisierung fehlgeschlagen:', e)
+    error.value = t('latexCollab.editor.errors.initFailed', { message: e?.message || String(e) })
     fallbackMode.value = true
     fallbackText.value = ytext?.toString?.() || ''
   }
@@ -1426,11 +1445,26 @@ function clearHighlights() {
 }
 
 /**
- * Refresh the git baseline after a commit
- * This will update the baseline and recalculate all decorations
+ * Refresh the git baseline after a commit.
+ * This will:
+ * 1. Fetch new baseline from server (for local git diff highlighting)
+ * 2. Update the baseline in YJS Map (for real-time diff calculation)
+ * 3. Recalculate all decorations
+ *
+ * After this, all clients will see the diff as 0 changes (since current = baseline).
  */
 async function refreshBaseline() {
   await loadBaseline(props.document.id)
+
+  // Also update the baseline in YJS Map so local diff calculation shows 0 changes
+  // This syncs to all connected clients via YJS CRDT
+  if (ydoc.value && ytext) {
+    const currentContent = ytext.toString()
+    const baselineMap = ydoc.value.getMap('baseline')
+    baselineMap.set('text', currentContent)
+    console.log('[refreshBaseline] YJS-Map-Baseline aktualisiert:', currentContent.length, 'Zeichen')
+  }
+
   updateDecorations()
 }
 
@@ -1563,8 +1597,35 @@ const collaboration = useYjsCollaboration(roomId, username.value, processYDoc, o
    * @param {string} data.savedAt - ISO timestamp
    */
   onDocumentSaved: (data) => {
-    console.log('[LatexEditorPane] document_saved, emitting to parent:', data)
+    console.log('[LatexEditorPane] document_saved, an Parent weitergegeben:', data)
     emit('document-saved', data)
+  },
+  /**
+   * Handle document_updated event from YJS server (instant, no debounce).
+   * @param {Object} data - Event payload
+   * @param {number} data.documentId - Updated document ID
+   * @param {number} data.workspaceId - Workspace containing the document
+   * @param {string} data.kind - Document type ('latex')
+   * @param {number} data.timestamp - Event timestamp
+   */
+  onDocumentUpdated: (data) => {
+    emit('document-updated', data)
+  },
+  /**
+   * Handle local diff calculation on every YJS update.
+   * This provides INSTANT diff updates without server roundtrip.
+   * Called after every YJS update event with diff against baseline.
+   * @param {Object} diff - Calculated diff
+   * @param {number} diff.insertions - Characters inserted since baseline
+   * @param {number} diff.deletions - Characters deleted since baseline
+   * @param {boolean} diff.hasChanges - Whether document differs from baseline
+   */
+  onDiffCalculated: (diff) => {
+    // Emit with document ID so parent can update the correct file in Git panel
+    emit('diff-calculated', {
+      documentId: props.document?.id,
+      ...diff
+    })
   }
 })
 const { ydoc, socket, users, updateColor, switchRoom, reloadRoom, reloadAnyRoom } = collaboration
@@ -1597,6 +1658,8 @@ let onSocketConnectError = null
 
 onMounted(async () => {
   error.value = ''
+  // Initialize previousDocumentId so the watcher can detect document changes
+  previousDocumentId = props.document?.id
   try {
     // Load git baseline for diff comparison
     await loadBaseline(props.document.id)
@@ -1619,11 +1682,11 @@ onMounted(async () => {
     onSocketConnectError = (err) => {
       isConnected.value = false
       const msg = err?.message || err
-      error.value = `Collab-Verbindung fehlgeschlagen: ${msg}`
+      error.value = t('latexCollab.editor.errors.connectionFailed', { message: msg })
     }
     onSocketDisconnect = () => {
       isConnected.value = false
-      if (!props.readonly) error.value = 'Collab-Verbindung getrennt (Reconnecting …)'
+      if (!props.readonly) error.value = t('latexCollab.editor.errors.connectionLost')
     }
 
     sock?.on('connect', onSocketConnect)

@@ -55,7 +55,7 @@
         :title="$t('latexCollab.zotero.title')"
         @click="$emit('open-zotero')"
       >
-        <LIcon size="20">mdi-book-open-page-variant</LIcon>
+        <LIcon size="20">zotero</LIcon>
       </v-btn>
 
       <v-btn

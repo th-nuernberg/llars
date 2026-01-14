@@ -415,7 +415,7 @@ async function deleteWorkspace() {
     deleteDialog.value = false
     workspaceToDelete.value = null
   } catch (e) {
-    console.error('Failed to delete workspace:', e)
+    console.error('Konnte Arbeitsbereich nicht loeschen:', e)
     alert(e?.response?.data?.error || t('markdownCollab.errors.deleteFailed'))
   } finally {
     deleting.value = false
@@ -435,7 +435,7 @@ async function leaveWorkspace() {
     leaveDialog.value = false
     workspaceToLeave.value = null
   } catch (e) {
-    console.error('Failed to leave workspace:', e)
+    console.error('Konnte Arbeitsbereich nicht verlassen:', e)
     alert(e?.response?.data?.error || t('markdownCollab.errors.leaveFailed'))
   } finally {
     leaving.value = false
@@ -499,7 +499,7 @@ async function createWorkspace() {
             { headers: authHeaders() }
           )
         } catch (inviteErr) {
-          console.error(`Failed to invite ${username}:`, inviteErr)
+          console.error(`Konnte ${username} nicht einladen:`, inviteErr)
           // Continue with other invites even if one fails
         }
       }

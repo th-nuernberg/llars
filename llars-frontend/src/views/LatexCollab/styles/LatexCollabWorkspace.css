@@ -65,15 +65,15 @@
    3. TREE OUTLINE PANEL
    ============================================ */
 .tree-outline-panel {
-  flex-shrink: 0;
-  margin: 0 8px 8px;
+  flex: 1;
+  min-height: 80px;
+  max-height: 280px;
   display: flex;
   flex-direction: column;
   border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
   border-radius: 10px;
   background: rgba(var(--v-theme-surface-variant), 0.18);
   overflow: hidden;
-  max-height: 240px;
 }
 
 .tree-outline-panel.collapsed {

@@ -12,6 +12,7 @@ import DiffMatchPatch from 'diff-match-patch'
 import axios from 'axios'
 import { Decoration } from '@codemirror/view'
 import { AUTH_STORAGE_KEYS, getAuthStorageItem } from '@/utils/authStorage'
+import { logI18n } from '@/utils/logI18n'
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:55080'
 
@@ -56,7 +57,7 @@ export function useGitDiff(options = {}) {
         baselineCommitId.value = null
       }
     } catch (e) {
-      console.error('Konnte Baseline nicht laden:', e)
+      logI18n('error', 'logs.gitDiff.loadBaselineFailed', e)
       error.value = e?.message || 'Failed to load baseline'
       gitBaseline.value = null
       baselineCommitId.value = null

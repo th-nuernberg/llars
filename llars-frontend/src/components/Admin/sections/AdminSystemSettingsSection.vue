@@ -308,7 +308,7 @@
           <!-- Zotero OAuth Settings -->
           <v-card variant="outlined">
             <v-card-title class="text-subtitle-1 d-flex align-center">
-              <LIcon class="mr-2" size="small">mdi-book-open-page-variant</LIcon>
+              <LIcon class="mr-2" size="small">zotero</LIcon>
               Zotero Integration
               <v-spacer />
               <v-chip
@@ -462,6 +462,7 @@
 <script setup>
 import { ref, reactive, computed, onMounted, watch } from 'vue'
 import axios from 'axios'
+import { logI18n, logI18nParams } from '@/utils/logI18n'
 import { useReferralSystem } from '@/composables/useReferralSystem'
 import LStatusChip from '@/components/common/LStatusChip.vue'
 
@@ -571,7 +572,7 @@ async function saveSettingsSection(sectionKey, fields) {
       }, 3000)
     }
   } catch (error) {
-    console.error(`Failed to save ${sectionKey} settings:`, error)
+    logI18nParams('error', 'logs.admin.systemSettings.saveSectionFailed', { section: sectionKey }, error)
     sectionStates[sectionKey] = 'error'
     snackbar.text = `Fehler beim Speichern: ${error.response?.data?.error || error.message}`
     snackbar.show = true
@@ -714,7 +715,7 @@ async function saveZoteroSettings() {
       }, 3000)
     }
   } catch (error) {
-    console.error('Failed to save Zotero OAuth settings:', error)
+    logI18n('error', 'logs.admin.systemSettings.saveZoteroOauthFailed', error)
     sectionStates.zotero = 'error'
     snackbar.text = 'Fehler beim Speichern der Zotero-Einstellungen'
     snackbar.show = true
@@ -756,7 +757,7 @@ async function loadSettings() {
     // Enable watches after initial load
     initialLoadDone.value = true
   } catch (error) {
-    console.error('Failed to load system settings:', error)
+    logI18n('error', 'logs.admin.systemSettings.loadSettingsFailed', error)
     snackbar.text = 'Fehler beim Laden der Einstellungen'
     snackbar.show = true
   } finally {

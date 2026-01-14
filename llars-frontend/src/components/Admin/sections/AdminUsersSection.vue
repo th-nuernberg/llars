@@ -482,6 +482,7 @@ import { ref, computed, onMounted } from 'vue';
 import axios from 'axios';
 import { useSkeletonLoading } from '@/composables/useSkeletonLoading';
 import { useMobile } from '@/composables/useMobile';
+import { logI18n } from '@/utils/logI18n';
 
 const { isMobile } = useMobile();
 
@@ -663,7 +664,7 @@ const loadRoles = async () => {
     const response = await axios.get('/api/permissions/roles');
     allRoles.value = response.data.roles || [];
   } catch (error) {
-    console.error('Error loading roles:', error);
+    logI18n('error', 'logs.admin.users.loadRolesFailed', error);
   }
 };
 
@@ -675,7 +676,7 @@ const loadUsers = async () => {
       const response = await axios.get('/api/admin/users');
       users.value = response.data.users || [];
     } catch (error) {
-      console.error('Error loading users:', error);
+      logI18n('error', 'logs.admin.users.loadUsersFailed', error);
       users.value = [];
     }
   });
@@ -689,7 +690,7 @@ const searchUser = async () => {
     loadingSearch.value = true;
     await selectUser(searchQuery.value);
   } catch (error) {
-    console.error('Error searching user:', error);
+    logI18n('error', 'logs.admin.users.searchUserFailed', error);
     selectedUser.value = null;
   } finally {
     loadingSearch.value = false;
@@ -725,7 +726,7 @@ const selectUser = async (username) => {
       }
     }
   } catch (error) {
-    console.error('Error loading user:', error);
+    logI18n('error', 'logs.admin.users.loadUserFailed', error);
   }
   loadingUser.value = null;
 };
@@ -783,7 +784,7 @@ const createUser = async () => {
       await selectUser(newUserUsername.value);
     }
   } catch (error) {
-    console.error('Error creating user:', error);
+    logI18n('error', 'logs.admin.users.createUserFailed', error);
     // Show error to user
     if (error.response?.data?.error) {
       alert(`Fehler: ${error.response.data.error}`);
@@ -809,7 +810,7 @@ const toggleUserLock = async (user) => {
       selectedUser.value = { ...selectedUser.value, ...updated };
     }
   } catch (error) {
-    console.error('Error toggling user lock:', error);
+    logI18n('error', 'logs.admin.users.toggleUserLockFailed', error);
   } finally {
     togglingUser.value = null;
   }
@@ -833,7 +834,7 @@ const deleteUser = async () => {
     deleteDialog.value = false;
     userToDelete.value = null;
   } catch (error) {
-    console.error('Error deleting user:', error);
+    logI18n('error', 'logs.admin.users.deleteUserFailed', error);
   } finally {
     deletingUser.value = false;
   }
@@ -855,7 +856,7 @@ const assignRole = async () => {
     await loadUsers();
     roleToAssign.value = null;
   } catch (error) {
-    console.error('Error assigning role:', error);
+    logI18n('error', 'logs.admin.users.assignRoleFailed', error);
   }
   assigningRole.value = false;
 };
@@ -874,7 +875,7 @@ const unassignRole = async (roleName) => {
     await selectUser(selectedUser.value.username);
     await loadUsers();
   } catch (error) {
-    console.error('Error unassigning role:', error);
+    logI18n('error', 'logs.admin.users.unassignRoleFailed', error);
   }
 };
 

@@ -232,7 +232,7 @@ async function loadAllRoles() {
     }
   } catch (error) {
     showSnackbar('Fehler beim Laden der Rollen', 'error')
-    console.error('Failed to load roles:', error)
+    console.error('Konnte Rollen nicht laden:', error)
   }
 }
 
@@ -250,7 +250,7 @@ async function loadAllPermissions() {
     }
   } catch (error) {
     showSnackbar('Fehler beim Laden der Berechtigungen', 'error')
-    console.error('Failed to load permissions:', error)
+    console.error('Konnte Berechtigungen nicht laden:', error)
   }
 }
 
@@ -285,7 +285,7 @@ async function loadUserPermissions() {
     } else {
       showSnackbar('Fehler beim Laden der Benutzerdaten', 'error')
     }
-    console.error('Failed to load user permissions:', error)
+    console.error('Konnte Benutzerberechtigungen nicht laden:', error)
     selectedUser.value = null
   } finally {
     loadingUser.value = false
@@ -310,7 +310,7 @@ async function assignRole(username, roleName) {
     await loadUserPermissions()
   } catch (error) {
     showSnackbar('Fehler beim Zuweisen der Rolle', 'error')
-    console.error('Failed to assign role:', error)
+    console.error('Konnte Rolle nicht zuweisen:', error)
   }
 }
 
@@ -329,7 +329,7 @@ async function unassignRole(username, roleName) {
     await loadUserPermissions()
   } catch (error) {
     showSnackbar('Fehler beim Entfernen der Rolle', 'error')
-    console.error('Failed to unassign role:', error)
+    console.error('Konnte Rolle nicht entfernen:', error)
   }
 }
 

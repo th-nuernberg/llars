@@ -1,8 +1,8 @@
 <template>
   <LEvaluationLayout
     :title="threadTitle"
-    :subtitle="`Thread #${route.params.id}`"
-    back-label="Rating"
+    :subtitle="$t('rater.detail.threadLabel', { id: route.params.id })"
+    :back-label="$t('rater.detail.backLabel')"
     :status="evaluationStatus"
     :can-go-prev="canGoPrev"
     :can-go-next="canGoNext"
@@ -30,9 +30,9 @@
         <div class="panel features-panel" :style="leftPanelStyle()">
           <div class="panel-header">
             <LIcon size="20" class="mr-2">mdi-format-list-bulleted</LIcon>
-            <span class="panel-title">Features</span>
+            <span class="panel-title">{{ $t('rater.detail.featuresTitle') }}</span>
             <v-spacer />
-            <LTooltip v-if="ratedCount > 0" text="Bewertete Features / Gesamtfeatures">
+            <LTooltip v-if="ratedCount > 0" :text="$t('rater.detail.progressTooltip')">
               <LTag variant="info" size="small">
                 {{ ratedCount }} / {{ totalFeatures }}
               </LTag>
@@ -82,7 +82,7 @@
         <div v-if="!isMobile" class="panel email-panel" :style="rightPanelStyle()">
           <div class="panel-header">
             <LIcon size="20" class="mr-2">mdi-email-outline</LIcon>
-            <span class="panel-title">E-Mail Verlauf</span>
+            <span class="panel-title">{{ $t('rater.detail.emailHistory') }}</span>
           </div>
           <div class="panel-content">
             <LMessageList :messages="messages" />
@@ -96,6 +96,7 @@
 <script setup>
 import { ref, watch, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import axios from 'axios'
 import { useSkeletonLoading } from '@/composables/useSkeletonLoading'
 import { usePanelResize } from '@/composables/usePanelResize'
@@ -106,13 +107,14 @@ import { useActiveDuration, useScrollDepth } from '@/composables/useAnalyticsMet
 
 const route = useRoute()
 const router = useRouter()
+const { t } = useI18n()
 
 const features = ref([])
 const messages = ref([])
 const groupedFeatures = ref([])
 const rated = ref(null)
 const ratingThreadsList = ref([])
-const threadTitle = ref('Feature-Bewertung')
+const threadTitle = ref(t('rater.detail.defaultTitle'))
 
 // Skeleton Loading
 const { isLoading, withLoading } = useSkeletonLoading(['data'])
@@ -203,7 +205,7 @@ async function loadCaseData(caseId) {
     ratingThreadsList.value = threads
     const currentThread = threads.find(t => t.thread_id === parseInt(caseId))
     if (currentThread) {
-      threadTitle.value = currentThread.subject || 'Feature-Bewertung'
+      threadTitle.value = currentThread.subject || t('rater.detail.defaultTitle')
     }
   }
 
@@ -251,10 +253,10 @@ watch(
 
 function translateFeatureType(type) {
   const translations = {
-    abstract_summary: 'Abstrakte Fallzusammenfassung',
-    generated_category: 'Generierte Kategorie',
-    generated_subject: 'Generierter Betreff',
-    order_clarification: 'Ordnungsklärung',
+    abstract_summary: t('rater.featureTypes.abstractSummary'),
+    generated_category: t('rater.featureTypes.generatedCategory'),
+    generated_subject: t('rater.featureTypes.generatedSubject'),
+    order_clarification: t('rater.featureTypes.orderClarification'),
   }
   return translations[type] || type
 }

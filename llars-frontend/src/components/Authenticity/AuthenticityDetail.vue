@@ -1,9 +1,9 @@
 <template>
   <LEvaluationLayout
     ref="layoutRef"
-    :title="thread?.subject || 'Fake/Echt Bewertung'"
-    :subtitle="`Thread #${threadId}`"
-    back-label="Übersicht"
+    :title="thread?.subject || $t('authenticity.detail.defaultTitle')"
+    :subtitle="$t('authenticity.detail.threadLabel', { id: threadId })"
+    :back-label="$t('authenticity.detail.backLabel')"
     :error="loadError"
     :status="evaluationStatus"
     :saving="saving || savingMetadata"
@@ -34,7 +34,7 @@
         <div class="panel left-panel" :style="leftPanelStyle()">
           <div class="panel-header">
             <LIcon size="20" class="mr-2">mdi-email-outline</LIcon>
-            <span class="panel-title">Verlauf</span>
+            <span class="panel-title">{{ $t('authenticity.detail.messagePanelTitle') }}</span>
             <v-spacer />
             <LTag v-if="thread?.sender" variant="gray" size="small">{{ thread.sender }}</LTag>
           </div>
@@ -56,18 +56,20 @@
         <div class="panel right-panel" :style="rightPanelStyle()">
           <div class="panel-header">
             <LIcon size="20" class="mr-2">mdi-check-decagram</LIcon>
-            <span class="panel-title">Abstimmung</span>
+            <span class="panel-title">{{ $t('authenticity.detail.votePanelTitle') }}</span>
           </div>
           <div class="panel-content">
             <!-- Info Box -->
             <div class="info-box">
               <LIcon size="18" class="mr-2">mdi-information-outline</LIcon>
-              <span>Ein Verlauf ist <strong>fake</strong>, sobald ein Modell eine oder mehrere Nachrichten ersetzt hat.</span>
+              <i18n-t keypath="authenticity.detail.infoText" tag="span">
+                <strong>{{ $t('authenticity.detail.fakeLabel') }}</strong>
+              </i18n-t>
             </div>
 
             <!-- Vote Buttons -->
             <div class="vote-section">
-              <h4 class="section-title">Ist dieser Verlauf echt oder fake?</h4>
+              <h4 class="section-title">{{ $t('authenticity.detail.voteQuestion') }}</h4>
               <div class="vote-buttons">
                 <button
                   class="vote-btn vote-real"
@@ -76,8 +78,8 @@
                   :disabled="saving"
                 >
                   <LIcon size="24">mdi-account-check</LIcon>
-                  <span>Echt</span>
-                  <span class="vote-hint">Von Menschen geschrieben</span>
+                  <span>{{ $t('authenticity.detail.voteReal') }}</span>
+                  <span class="vote-hint">{{ $t('authenticity.detail.voteRealHint') }}</span>
                 </button>
                 <button
                   class="vote-btn vote-fake"
@@ -86,8 +88,8 @@
                   :disabled="saving"
                 >
                   <LIcon size="24">mdi-robot</LIcon>
-                  <span>Fake</span>
-                  <span class="vote-hint">KI-generierte Anteile</span>
+                  <span>{{ $t('authenticity.detail.voteFake') }}</span>
+                  <span class="vote-hint">{{ $t('authenticity.detail.voteFakeHint') }}</span>
                 </button>
               </div>
             </div>
@@ -95,7 +97,7 @@
             <!-- Confidence Slider -->
             <div class="metadata-section">
               <div class="d-flex align-center mb-2">
-                <span class="section-label">Confidence (optional)</span>
+                <span class="section-label">{{ $t('authenticity.detail.confidenceLabel') }}</span>
                 <v-fade-transition>
                   <LIcon
                     v-if="savingMetadata"
@@ -120,7 +122,7 @@
 
             <!-- Notes -->
             <div class="metadata-section">
-              <span class="section-label">Notizen (optional)</span>
+              <span class="section-label">{{ $t('authenticity.detail.notesLabel') }}</span>
               <v-textarea
                 v-model="voteState.notes"
                 variant="outlined"
@@ -128,7 +130,7 @@
                 auto-grow
                 rows="2"
                 hide-details
-                placeholder="Ihre Beobachtungen oder Begründung..."
+                :placeholder="$t('authenticity.detail.notesPlaceholder')"
               />
             </div>
 
@@ -145,6 +147,7 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { useSkeletonLoading } from '@/composables/useSkeletonLoading'
 import { usePanelResize } from '@/composables/usePanelResize'
 import {
@@ -156,6 +159,7 @@ import {
 
 const route = useRoute()
 const router = useRouter()
+const { t } = useI18n()
 
 const threadId = computed(() => Number(route.params.id))
 
@@ -300,7 +304,7 @@ async function load() {
       }
     })
   } catch (e) {
-    loadError.value = e?.response?.data?.message || e?.message || 'Thread konnte nicht geladen werden.'
+    loadError.value = e?.response?.data?.message || e?.message || t('authenticity.detail.errors.loadFailed')
   } finally {
     setLoading('data', false)
     setTimeout(() => {
@@ -326,7 +330,7 @@ async function submitVote(vote) {
     await saveAuthenticityVote(threadId.value, payload)
     voteState.value.vote = vote
   } catch (e) {
-    error.value = e?.response?.data?.message || e?.message || 'Speichern fehlgeschlagen.'
+    error.value = e?.response?.data?.message || e?.message || t('authenticity.detail.errors.saveFailed')
   } finally {
     saving.value = false
   }

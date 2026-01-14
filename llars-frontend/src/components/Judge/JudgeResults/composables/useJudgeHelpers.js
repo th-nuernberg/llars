@@ -7,6 +7,7 @@
 
 import axios from 'axios';
 import { useI18n } from 'vue-i18n';
+import { logI18n } from '@/utils/logI18n';
 
 export function useJudgeHelpers(sessionId) {
   const { t, locale } = useI18n();
@@ -114,7 +115,7 @@ export function useJudgeHelpers(sessionId) {
       link.click();
       link.remove();
     } catch (error) {
-      console.error('Error exporting CSV:', error);
+      logI18n('error', 'logs.judge.results.exportCsvFailed', error);
     }
   };
 
@@ -134,7 +135,7 @@ export function useJudgeHelpers(sessionId) {
       link.click();
       link.remove();
     } catch (error) {
-      console.error('Error exporting JSON:', error);
+      logI18n('error', 'logs.judge.results.exportJsonFailed', error);
     }
   };
 

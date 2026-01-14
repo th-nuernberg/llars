@@ -1,5 +1,6 @@
 import { ref, computed } from 'vue';
 import axios from 'axios';
+import { logI18n } from '@/utils/logI18n';
 
 /**
  * Composable for managing Judge Session state and API calls
@@ -75,9 +76,9 @@ export function useJudgeSession(sessionId) {
         `${import.meta.env.VITE_API_BASE_URL}/api/judge/sessions/${sessionId}/health`
       );
       sessionHealth.value = response.data;
-      console.log('[Judge] Session health:', response.data);
+      logI18n('log', 'logs.judge.session.sessionHealth', response.data);
     } catch (error) {
-      console.error('Error loading session health:', error);
+      logI18n('error', 'logs.judge.session.loadSessionHealthFailed', error);
       // Fallback: assume healthy if endpoint fails
       sessionHealth.value = {
         workers_running: session.value?.status === 'running',
@@ -113,7 +114,7 @@ export function useJudgeSession(sessionId) {
 
       return session.value;
     } catch (error) {
-      console.error('Error loading session:', error);
+      logI18n('error', 'logs.judge.session.loadSessionFailed', error);
       throw error;
     } finally {
       if (!skipLoading) {
@@ -150,9 +151,9 @@ export function useJudgeSession(sessionId) {
         `${import.meta.env.VITE_API_BASE_URL}/api/judge/sessions/${sessionId}/start`
       );
       await loadSession();
-      console.log('[Judge] Session started');
+      logI18n('log', 'logs.judge.session.sessionStarted');
     } catch (error) {
-      console.error('Error starting session:', error);
+      logI18n('error', 'logs.judge.session.startSessionFailed', error);
       throw error;
     } finally {
       actionLoading.value = false;
@@ -171,9 +172,9 @@ export function useJudgeSession(sessionId) {
         `${import.meta.env.VITE_API_BASE_URL}/api/judge/sessions/${sessionId}/pause`
       );
       await loadSession();
-      console.log('[Judge] Session paused');
+      logI18n('log', 'logs.judge.session.sessionPaused');
     } catch (error) {
-      console.error('Error pausing session:', error);
+      logI18n('error', 'logs.judge.session.pauseSessionFailed', error);
       throw error;
     } finally {
       actionLoading.value = false;
@@ -191,10 +192,10 @@ export function useJudgeSession(sessionId) {
       const response = await axios.post(
         `${import.meta.env.VITE_API_BASE_URL}/api/judge/sessions/${sessionId}/resume`
       );
-      console.log('[Judge] Session resumed:', response.data);
+      logI18n('log', 'logs.judge.session.sessionResumed', response.data);
       await loadSession();
     } catch (error) {
-      console.error('Error resuming session:', error);
+      logI18n('error', 'logs.judge.session.resumeSessionFailed', error);
       throw error;
     } finally {
       actionLoading.value = false;

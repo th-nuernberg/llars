@@ -5,6 +5,7 @@
  */
 
 import axios from 'axios';
+import { logI18n, logI18nParams } from '@/utils/logI18n';
 
 export function useSessionApi(sessionId, state, helpers) {
   const {
@@ -33,9 +34,9 @@ export function useSessionApi(sessionId, state, helpers) {
         `${import.meta.env.VITE_API_BASE_URL}/api/judge/sessions/${sessionId}/health`
       );
       sessionHealth.value = response.data;
-      console.log('[Judge] Session health:', response.data);
+      logI18n('log', 'logs.judge.sessionApi.sessionHealth', response.data);
     } catch (error) {
-      console.error('Error loading session health:', error);
+      logI18n('error', 'logs.judge.sessionApi.loadSessionHealthFailed', error);
       // Fallback: assume healthy if endpoint fails
       sessionHealth.value = {
         workers_running: session.value?.status === 'running',
@@ -83,7 +84,7 @@ export function useSessionApi(sessionId, state, helpers) {
         await loadSessionHealth();
       }
     } catch (error) {
-      console.error('Error loading session:', error);
+      logI18n('error', 'logs.judge.sessionApi.loadSessionFailed', error);
     } finally {
       loading.value = false;
     }
@@ -114,7 +115,7 @@ export function useSessionApi(sessionId, state, helpers) {
         });
       }
     } catch (error) {
-      console.error('Error loading worker pool status:', error);
+      logI18n('error', 'logs.judge.sessionApi.loadWorkerPoolStatusFailed', error);
     }
   };
 
@@ -125,10 +126,10 @@ export function useSessionApi(sessionId, state, helpers) {
         `${import.meta.env.VITE_API_BASE_URL}/api/judge/sessions/${sessionId}/workers/streams`
       );
 
-      console.log('[Judge] Loaded worker streams for reconnect:', response.data);
+      logI18n('log', 'logs.judge.sessionApi.workerStreamsLoaded', response.data);
 
       if (!response.data.running || !response.data.workers?.length) {
-        console.log('[Judge] No active worker pool, skipping stream restore');
+        logI18n('log', 'logs.judge.sessionApi.noActiveWorkerPool');
         return false;
       }
 
@@ -155,7 +156,10 @@ export function useSessionApi(sessionId, state, helpers) {
         // Restore accumulated stream content
         if (worker.stream_content) {
           workerStreams[workerId].content = worker.stream_content;
-          console.log(`[Judge] Restored ${worker.stream_length} chars for worker ${workerId}`);
+          logI18nParams('log', 'logs.judge.sessionApi.workerStreamRestored', {
+            length: worker.stream_length,
+            workerId
+          });
         }
 
         // Restore comparison info
@@ -177,13 +181,13 @@ export function useSessionApi(sessionId, state, helpers) {
       // Load thread messages in parallel (don't block return)
       if (threadLoadPromises.length > 0) {
         Promise.all(threadLoadPromises).then(() => {
-          console.log('[Judge] Thread messages loaded for all workers');
+          logI18n('log', 'logs.judge.sessionApi.threadMessagesLoaded');
         });
       }
 
       return true;
     } catch (error) {
-      console.error('Error loading worker streams:', error);
+      logI18n('error', 'logs.judge.sessionApi.loadWorkerStreamsFailed', error);
       return false;
     }
   };
@@ -196,7 +200,7 @@ export function useSessionApi(sessionId, state, helpers) {
       );
       currentComparison.value = response.data;
     } catch (error) {
-      console.error('Error loading current comparison:', error);
+      logI18n('error', 'logs.judge.sessionApi.loadCurrentComparisonFailed', error);
     }
   };
 
@@ -218,10 +222,10 @@ export function useSessionApi(sessionId, state, helpers) {
         };
       }
 
-      console.log(`[Judge] Loaded thread messages for worker ${workerId}`);
+      logI18nParams('log', 'logs.judge.sessionApi.threadMessagesLoadedForWorker', { workerId });
       return true;
     } catch (error) {
-      console.error(`Error loading thread messages for worker ${workerId}:`, error);
+      logI18nParams('error', 'logs.judge.sessionApi.loadThreadMessagesFailed', { workerId }, error);
       return false;
     }
   };
@@ -234,7 +238,7 @@ export function useSessionApi(sessionId, state, helpers) {
       );
       completedComparisons.value = response.data;
     } catch (error) {
-      console.error('Error loading comparisons:', error);
+      logI18n('error', 'logs.judge.sessionApi.loadComparisonsFailed', error);
     }
   };
 
@@ -247,7 +251,7 @@ export function useSessionApi(sessionId, state, helpers) {
       );
       queue.value = response.data;
     } catch (error) {
-      console.error('Error loading queue:', error);
+      logI18n('error', 'logs.judge.sessionApi.loadQueueFailed', error);
     } finally {
       queueLoading.value = false;
     }
@@ -263,7 +267,7 @@ export function useSessionApi(sessionId, state, helpers) {
       await loadSession();
       if (startPolling) startPolling();
     } catch (error) {
-      console.error('Error starting session:', error);
+      logI18n('error', 'logs.judge.sessionApi.startSessionFailed', error);
     } finally {
       actionLoading.value = false;
     }
@@ -279,7 +283,7 @@ export function useSessionApi(sessionId, state, helpers) {
       if (stopPolling) stopPolling();
       await loadSession();
     } catch (error) {
-      console.error('Error pausing session:', error);
+      logI18n('error', 'logs.judge.sessionApi.pauseSessionFailed', error);
     } finally {
       actionLoading.value = false;
     }
@@ -292,11 +296,11 @@ export function useSessionApi(sessionId, state, helpers) {
       const response = await axios.post(
         `${import.meta.env.VITE_API_BASE_URL}/api/judge/sessions/${sessionId}/resume`
       );
-      console.log('[Judge] Session resumed:', response.data);
+      logI18n('log', 'logs.judge.sessionApi.sessionResumed', response.data);
       await loadSession();
       if (startPolling) startPolling();
     } catch (error) {
-      console.error('Error resuming session:', error);
+      logI18n('error', 'logs.judge.sessionApi.resumeSessionFailed', error);
     } finally {
       actionLoading.value = false;
     }

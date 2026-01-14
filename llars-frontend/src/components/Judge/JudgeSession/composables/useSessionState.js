@@ -6,6 +6,7 @@
 
 import { ref, reactive, computed, watch } from 'vue';
 import { PILLAR_CONFIG } from './useSessionConstants';
+import { logI18n, logI18nParams } from '@/utils/logI18n';
 
 export function useSessionState(sessionId) {
   // Core session state
@@ -65,7 +66,7 @@ export function useSessionState(sessionId) {
 
   // Initialize counter from API data (called once when session loads)
   const initializeProgressFromApi = (completed, total) => {
-    console.log(`[Progress] initializeProgressFromApi called with: completed=${completed}, total=${total}`);
+    logI18nParams('log', 'logs.judge.sessionState.initProgressFromApi', { completed, total });
 
     // Handle null/undefined by converting to 0
     const safeCompleted = typeof completed === 'number' ? completed : 0;
@@ -74,7 +75,7 @@ export function useSessionState(sessionId) {
     // Always update total from API (even if 0, to track that we tried)
     if (safeTotal > 0) {
       confirmedTotal.value = safeTotal;
-      console.log(`[Progress] Set confirmedTotal to ${safeTotal}`);
+      logI18nParams('log', 'logs.judge.sessionState.setConfirmedTotal', { total: safeTotal });
     }
 
     // Only initialize completed count if not already initialized,
@@ -82,7 +83,10 @@ export function useSessionState(sessionId) {
     if (!isCounterInitialized.value || safeCompleted > completedCount.value) {
       completedCount.value = safeCompleted;
       isCounterInitialized.value = true;
-      console.log(`[Progress] Initialized from API: ${safeCompleted}/${safeTotal}`);
+      logI18nParams('log', 'logs.judge.sessionState.initializedFromApi', {
+        completed: safeCompleted,
+        total: safeTotal
+      });
     }
   };
 
@@ -95,9 +99,16 @@ export function useSessionState(sessionId) {
     // or if we haven't reached the total
     if (total === 0 || completedCount.value < total) {
       completedCount.value++;
-      console.log(`[Progress] Incremented: ${completedCount.value}/${total} (confirmedTotal: ${confirmedTotal.value})`);
+      logI18nParams('log', 'logs.judge.sessionState.incremented', {
+        completed: completedCount.value,
+        total,
+        confirmedTotal: confirmedTotal.value
+      });
     } else {
-      console.log(`[Progress] Already at max: ${completedCount.value}/${total}`);
+      logI18nParams('log', 'logs.judge.sessionState.alreadyAtMax', {
+        completed: completedCount.value,
+        total
+      });
     }
   };
 
@@ -106,7 +117,7 @@ export function useSessionState(sessionId) {
     completedCount.value = 0;
     confirmedTotal.value = 0;
     isCounterInitialized.value = false;
-    console.log('[Progress] Tracking reset');
+    logI18n('log', 'logs.judge.sessionState.trackingReset');
   };
 
   // Computed: Is LLM currently streaming

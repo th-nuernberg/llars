@@ -5,6 +5,7 @@
  */
 
 import { PILLAR_CONFIG, PILLAR_NAMES } from './useSessionConstants';
+import { logI18n } from '@/utils/logI18n';
 
 export function useSessionHelpers() {
   // Status color mapping
@@ -150,10 +151,10 @@ export function useSessionHelpers() {
     if (!text) return false;
     try {
       await navigator.clipboard.writeText(text);
-      console.log('Content copied to clipboard');
+      logI18n('log', 'logs.judge.sessionHelpers.copyToClipboardSuccess');
       return true;
     } catch (err) {
-      console.error('Failed to copy content:', err);
+      logI18n('error', 'logs.judge.sessionHelpers.copyToClipboardFailed', err);
       return false;
     }
   };

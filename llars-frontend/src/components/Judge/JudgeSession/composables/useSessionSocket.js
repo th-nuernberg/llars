@@ -5,6 +5,7 @@
  */
 
 import { getSocket } from '@/services/socketService';
+import { logI18n, logI18nParams } from '@/utils/logI18n';
 
 export function useSessionSocket(sessionId, state, api, helpers) {
   const {
@@ -38,7 +39,10 @@ export function useSessionSocket(sessionId, state, api, helpers) {
   // Setup Socket.IO for Live Updates
   const setupSocket = () => {
     socket.value = getSocket();
-    console.log('[Judge Socket] Setting up socket, connected:', socket.value.connected, 'id:', socket.value.id);
+    logI18nParams('log', 'logs.judge.sessionSocket.setup', {
+      connected: socket.value.connected,
+      socketId: socket.value.id
+    });
 
     // Remove existing listeners to prevent duplicates
     socket.value.off('connect');
@@ -55,13 +59,13 @@ export function useSessionSocket(sessionId, state, api, helpers) {
 
     // Helper function to join session room
     const joinSessionRoom = () => {
-      console.log('[Judge Socket] Joining session room:', sessionId);
+      logI18nParams('log', 'logs.judge.sessionSocket.joiningSessionRoom', { sessionId });
       socket.value.emit('judge:join_session', { session_id: parseInt(sessionId) });
     };
 
     // Re-join room when socket reconnects
     socket.value.on('connect', async () => {
-      console.log('[Judge Socket] Connected/Reconnected, socket id:', socket.value.id);
+      logI18n('log', 'logs.judge.sessionSocket.connected', socket.value.id);
       joinSessionRoom();
       // Restore accumulated stream content from workers
       await loadWorkerStreams();
@@ -71,12 +75,12 @@ export function useSessionSocket(sessionId, state, api, helpers) {
 
     // Handle disconnection
     socket.value.on('disconnect', (reason) => {
-      console.warn('[Judge Socket] Disconnected:', reason);
+      logI18n('warn', 'logs.judge.sessionSocket.disconnected', reason);
     });
 
     // Handle reconnect event
     socket.value.on('reconnect', async (attemptNumber) => {
-      console.log(`[Judge Socket] Reconnected after ${attemptNumber} attempts`);
+      logI18nParams('log', 'logs.judge.sessionSocket.reconnected', { attempts: attemptNumber });
       joinSessionRoom();
       // Restore accumulated stream content from workers
       await loadWorkerStreams();
@@ -86,7 +90,7 @@ export function useSessionSocket(sessionId, state, api, helpers) {
 
     // Join immediately if already connected
     if (socket.value.connected) {
-      console.log('[Judge Socket] Already connected, joining room immediately');
+      logI18n('log', 'logs.judge.sessionSocket.alreadyConnected');
       joinSessionRoom();
       // Restore accumulated stream content from workers
       loadWorkerStreams();
@@ -94,17 +98,17 @@ export function useSessionSocket(sessionId, state, api, helpers) {
 
     // Handle join confirmation
     socket.value.on('judge:joined', (data) => {
-      console.log('[Judge Socket] Joined session room:', data);
+      logI18n('log', 'logs.judge.sessionSocket.joinedSessionRoom', data);
     });
 
     // Handle errors
     socket.value.on('judge:error', (data) => {
-      console.error('[Judge Socket] Error:', data.message);
+      logI18n('error', 'logs.judge.sessionSocket.error', data.message);
     });
 
     // Progress updates from worker (only used for status updates, not counting)
     socket.value.on('judge:progress', (data) => {
-      console.log('[Judge Socket] Progress:', data);
+      logI18n('log', 'logs.judge.sessionSocket.progress', data);
       if (data.session_id == sessionId) {
         // Only update status - we count completions ourselves via comparison_complete events
         const newStatus = data.status || session.value?.status;
@@ -119,7 +123,7 @@ export function useSessionSocket(sessionId, state, api, helpers) {
 
     // Comparison started
     socket.value.on('judge:comparison_start', async (data) => {
-      console.log('[Judge Socket] Comparison started:', data);
+      logI18n('log', 'logs.judge.sessionSocket.comparisonStarted', data);
       if (!data.session_id || data.session_id == sessionId) {
         const workerId = data.worker_id ?? 0;
 
@@ -213,9 +217,9 @@ export function useSessionSocket(sessionId, state, api, helpers) {
 
     // Comparison completed - INCREMENT our counter (not trusting reported values)
     socket.value.on('judge:comparison_complete', async (data) => {
-      console.log('[Judge Socket] Comparison complete:', data, 'for session:', sessionId);
+      logI18nParams('log', 'logs.judge.sessionSocket.comparisonComplete', { sessionId }, data);
       if (data.session_id == sessionId) {
-        console.log('[Judge Socket] Session ID matches, processing...');
+        logI18n('log', 'logs.judge.sessionSocket.sessionIdMatches');
         const workerId = data.worker_id ?? 0;
 
         // Multi-worker mode: mark worker as not streaming
@@ -226,7 +230,7 @@ export function useSessionSocket(sessionId, state, api, helpers) {
 
         // INCREMENT our counter - this is the key change!
         // We count events ourselves instead of trusting reported values
-        console.log('[Judge Socket] Calling incrementCompleted...');
+        logI18n('log', 'logs.judge.sessionSocket.incrementCompleted');
         incrementCompleted();
 
         // Update current comparison with result
@@ -245,7 +249,7 @@ export function useSessionSocket(sessionId, state, api, helpers) {
 
     // Session completed - session is done, reload to get final state
     socket.value.on('judge:session_complete', async (data) => {
-      console.log('[Judge Socket] Session complete:', data);
+      logI18n('log', 'logs.judge.sessionSocket.sessionComplete', data);
       if (data.session_id == sessionId) {
         // Reload session to get authoritative final state (will set counter to total)
         await loadSession();
@@ -254,7 +258,7 @@ export function useSessionSocket(sessionId, state, api, helpers) {
 
     // Status response (only used for status updates, not counting)
     socket.value.on('judge:status', (data) => {
-      console.log('[Judge Socket] Status:', data);
+      logI18n('log', 'logs.judge.sessionSocket.status', data);
       if (data.session_id == sessionId) {
         // Only update status - we count completions ourselves
         const newStatus = data.status || session.value?.status;
@@ -313,7 +317,7 @@ export function useSessionSocket(sessionId, state, api, helpers) {
         llm_status: 'running'
       };
     }
-    console.log('[Judge] Reconnected to live stream, restored:', restored);
+    logI18n('log', 'logs.judge.sessionSocket.reconnectedStream', restored);
   };
 
   // Cleanup socket
@@ -341,7 +345,7 @@ export function useSessionSocket(sessionId, state, api, helpers) {
     const isNearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 50;
     if (!isNearBottom && autoScrollEnabled.value) {
       autoScrollEnabled.value = false;
-      console.log('[Stream] Auto-scroll disabled - user scrolled');
+      logI18n('log', 'logs.judge.sessionSocket.autoScrollDisabled');
     }
   };
 
@@ -354,7 +358,7 @@ export function useSessionSocket(sessionId, state, api, helpers) {
     if (streamOutput.value) {
       streamOutput.value.scrollTop = streamOutput.value.scrollHeight;
     }
-    console.log('[Stream] Auto-scroll re-enabled');
+    logI18n('log', 'logs.judge.sessionSocket.autoScrollEnabled');
   };
 
   return {

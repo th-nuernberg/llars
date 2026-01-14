@@ -26,12 +26,40 @@
     "login": "Login",
     "logout": "Logout",
     "register": "Register",
+    "registerTitle": "Registration",
+    "registerSubtitle": "Create your account",
+    "welcomeBack": "Welcome back",
+    "devLabel": "Development",
+    "inviteCode": "Invitation code",
+    "passwordConfirm": "Confirm password",
+    "passwordHint": "At least 8 characters",
+    "displayNameOptional": "Display name (optional)",
+    "loginLink": "Already registered? Log in",
     "username": "Username",
     "password": "Password",
     "email": "Email",
     "forgotPassword": "Forgot password?",
     "noAccount": "Don't have an account?",
-    "hasAccount": "Already have an account?"
+    "hasAccount": "Already have an account?",
+    "devUsers": {
+      "admin": "Admin",
+      "researcher": "Researcher",
+      "evaluator": "Evaluator",
+      "chatbotManager": "Chatbot Manager"
+    },
+    "validation": {
+      "usernamePattern": "Only letters, numbers, _ and - allowed",
+      "passwordMismatch": "Passwords do not match"
+    },
+    "errors": {
+      "missingCredentials": "Please enter username and password.",
+      "registrationDisabled": "Self-registration is currently disabled.",
+      "invalidCode": "Invalid code",
+      "registrationFailed": "Registration failed"
+    },
+    "messages": {
+      "registrationSuccess": "Registration successful! Redirecting to login..."
+    }
   },
   "appbar": {
     "platform": "LLars Platform",
@@ -102,6 +130,1971 @@
   "navigation": {
     "home": "Home",
     "back": "Back"
+  },
+  "notFound": {
+    "title": "Document not found",
+    "subtitle": "This page seems to be hiding in the depths of the archive...",
+    "searchPlaceholder": "What are you looking for?",
+    "searchButton": "Search",
+    "goHome": "Go to home",
+    "openChat": "Open chat",
+    "quickLinksLabel": "Quick links:",
+    "quickLinks": {
+      "home": "Home",
+      "chat": "Chat",
+      "judge": "Chatbot Arena",
+      "ranking": "Ranking",
+      "admin": "Admin"
+    },
+    "easterEggs": {
+      "llm": "Maybe an LLM hallucinated this page?",
+      "coffee": "Error 404: Coffee not found. Wait, wrong error message...",
+      "privacy": "This page was anonymized by the data protection officer.",
+      "ai": "The AI is still searching... please be patient.",
+      "reboot": "Have you tried turning the page off and on again?"
+    }
+  },
+  "adminTester": {
+    "buckets": {
+      "good": "Good",
+      "average": "Average",
+      "bad": "Bad",
+      "neutral": "Neutral"
+    }
+  },
+  "adminDashboard": {
+    "title": "Admin",
+    "subtitle": "Dashboard",
+    "homeLink": "Go to home",
+    "nav": {
+      "overview": "Overview",
+      "analytics": "Analytics",
+      "health": "System health",
+      "system": "System events",
+      "chatbotActivity": "Chatbot activity",
+      "docker": "Docker",
+      "db": "DB",
+      "settings": "Settings",
+      "users": "Users",
+      "referrals": "Referrals",
+      "scenarios": "Scenarios",
+      "chatbots": "Chatbots",
+      "crawler": "Web crawler",
+      "rag": "RAG documents",
+      "permissions": "Permissions",
+      "llmProviders": "LLM providers"
+    }
+  },
+  "comparison": {
+    "detail": {
+      "loadingTitle": "Loading...",
+      "scenarioLabel": "Scenario {id}",
+      "backLabel": "Comparison",
+      "infoDialog": {
+        "title": "Information about the comparison",
+        "modeTitle": "What is comparison mode?",
+        "modeBody": "In this mode you chat with two different AI models. Both models receive the same input and we want to find out, with your help, which model is better and simulates the client more effectively.",
+        "personaTitle": "Persona information",
+        "personaBody": "Some details about the respective client are listed on the left sidebar.",
+        "ratingTitle": "Rating and interaction",
+        "ratingBody": "After the AI models have written something, you should rate which of the two is better (or equally good). Then you can formulate a response to which the models respond again, and so on.",
+        "limitsTitle": "No limits",
+        "limitsBody": "There is no limit here - you can write as much as you like. If you want to try another persona, simply switch to the next session using the bar below or the overview page.",
+        "confirm": "Got it"
+      },
+      "ratedMessages": "{rated} / {total} messages rated"
+    }
+  },
+  "dataImporter": {
+    "title": "Data Importer",
+    "subtitle": "Import data and create evaluation scenarios with AI assistance",
+    "newImport": "New import",
+    "empty": {
+      "title": "Import data",
+      "body": "Upload your data and let LLARS automatically detect the format. The AI helps you with transformation and creating evaluation scenarios.",
+      "cta": "Start import"
+    },
+    "highlights": {
+      "autoDetection": {
+        "title": "Auto-detection",
+        "body": "Detects OpenAI, LMSYS, CSV, and more"
+      },
+      "aiSupport": {
+        "title": "AI support",
+        "body": "LLM analyzes and transforms data"
+      },
+      "wizardFlow": {
+        "title": "Wizard flow",
+        "body": "From upload to evaluation in one flow"
+      }
+    },
+    "success": "Import successful! {count} entries imported."
+  },
+  "docs": {
+    "hero": {
+      "title": "LLARS",
+      "subtitle": "LLM Assisted Research System",
+      "version": "v3.0",
+      "openSource": "Open Source",
+      "organization": "TH Nuremberg"
+    },
+    "overview": {
+      "title": "What is LLARS?",
+      "body": "{0} is a platform for collaborative evaluation of AI-generated content. The system enables systematic evaluation, comparison, and optimization of LLM responses in the context of e-counseling."
+    },
+    "features": {
+      "title": "Key features",
+      "items": {
+        "rankingRating": "Ranking & Rating",
+        "chatbotArena": "Chatbot Arena",
+        "ragChatbots": "RAG chatbots",
+        "promptEngineering": "Prompt engineering",
+        "realtimeCollaboration": "Real-time collaboration",
+        "anonymization": "Anonymization"
+      }
+    },
+    "technical": {
+      "title": "Technical documentation",
+      "body": "The complete technical documentation with architecture, API reference, Agentic AI (RAG, ACT, ReACT, ReflAct), installation guides, and more can be found in our MkDocs documentation:",
+      "linkTitle": "Open MkDocs documentation",
+      "tags": {
+        "agenticAI": "Agentic AI",
+        "ragPipeline": "RAG pipeline",
+        "hybridSearch": "Hybrid search",
+        "chatbotArena": "Chatbot Arena",
+        "apiReference": "API reference",
+        "installation": "Installation"
+      }
+    },
+    "quickStart": {
+      "title": "Quick start",
+      "code": "# Clone and start the repository\ngit clone <repository-url>\ncd llars\ncp .env.template.development .env\n./start_llars.sh",
+      "hint": "After starting, LLARS is available at {0}."
+    },
+    "contact": {
+      "title": "Contact",
+      "email": "info@e-beratungsinstitut.de",
+      "website": "e-beratungsinstitut.de"
+    },
+    "footer": "As of {date} | Version 3.0 | TH Nuremberg"
+  },
+  "judgeSession": {
+    "loading": "Loading session...",
+    "defaultTitle": "Judge session",
+    "idLabel": "ID: {id}",
+    "tabs": {
+      "live": "Live",
+      "history": "History"
+    },
+    "actions": {
+      "refresh": "Refresh",
+      "start": "Start",
+      "pause": "Pause",
+      "resume": "Resume",
+      "recover": "Recover",
+      "results": "Results"
+    },
+    "live": {
+      "activeWorkers": "{active}/{total} workers active",
+      "streamingCount": "{count} streaming",
+      "viewDetailed": "Detailed view",
+      "viewCompact": "Compact view",
+      "fullscreen": "Fullscreen",
+      "emptyTitle": "No active comparison",
+      "emptyCompleted": "Session completed. See history.",
+      "emptyStart": "Start the session to generate comparisons."
+    },
+    "actionBar": {
+      "recoveryNeeded": "Recovery needed"
+    }
+  },
+  "adminProgress": {
+    "unknownScenario": "Unknown scenario",
+    "raterTitle": "Rater",
+    "evaluatorTitle": "Evaluator",
+    "legend": {
+      "user": "User",
+      "done": "Done",
+      "inProgress": "In progress",
+      "notStarted": "Not started",
+      "overallProgress": "Overall progress",
+      "actions": "Actions"
+    },
+    "details": "Details",
+    "threadDetailsTitle": "Thread details for {username}",
+    "threadDetailsMeta": "Thread ID: {threadId} | Chat ID: {chatId} | Institute ID: {instituteId}",
+    "functionTypes": {
+      "ranking": {
+        "subheader": "Ranking progress",
+        "done": "Already ranked",
+        "inProgress": "Partially ranked",
+        "notStarted": "Not ranked yet"
+      },
+      "rating": {
+        "subheader": "Rating progress",
+        "done": "Already rated",
+        "inProgress": "Partially rated",
+        "notStarted": "Not rated yet"
+      },
+      "history": {
+        "subheader": "History generation progress",
+        "done": "Already rated",
+        "inProgress": "Partially rated",
+        "notStarted": "Not rated yet"
+      }
+    }
+  },
+  "privacyPolicy": {
+    "title": "Privacy policy (as of 05/24)",
+    "sections": {
+      "controller": {
+        "title": "Who is responsible for data processing?",
+        "intro": "The party responsible for data protection on this website is:",
+        "contact": "Sigrid Zauter, Managing Director of the Institute for E-Consulting<br>Keßlerplatz 12, 90489 Nuremberg<br>Tel.: 0911-5880-2580<br>Fax: 0911-5880-602580<br>Email: info [at] e-beratungsinstitut . de"
+      },
+      "dataCollection": {
+        "title": "What data is collected and why?",
+        "paragraph1": "When you visit our website, some data is automatically collected, such as your IP address and the pages visited. This data helps us analyze website usage and improve it continuously.",
+        "paragraph2": "In addition, we use data you voluntarily provide to evaluate it within the LLars research project. LLars is software developed to assess and analyze AI-generated content. All collected data is used exclusively for scientific research purposes and processed in anonymized form where possible."
+      },
+      "recipients": {
+        "title": "Who receives my data?",
+        "paragraph1": "Your data is used internally for research and development within the LLars project. It is not shared with third parties unless disclosure is legally required or you have given explicit consent.",
+        "paragraph2": "The servers for this project are hosted on machines of the Nuremberg Institute of Technology (TH Nuremberg), and a data processing agreement has been concluded to ensure compliance with data protection."
+      },
+      "protection": {
+        "title": "How is my data protected?",
+        "paragraph1": "We take measures to protect and securely store your data. This includes technical safeguards such as encryption and secure passwords."
+      },
+      "rights": {
+        "title": "What are my access rights?",
+        "paragraph1": "You have the right to know what data we have stored about you, and you can request that this data be corrected or deleted. Contact us using the contact information above to exercise your rights."
+      },
+      "changes": {
+        "title": "Changes to this privacy policy",
+        "paragraph1": "This privacy policy may be updated from time to time. Changes will be published on our website."
+      },
+      "thNuremberg": "In addition, the {0} applies."
+    },
+    "links": {
+      "thNuremberg": "Privacy policy of TH Nuremberg"
+    }
+  },
+  "historyGeneration": {
+    "detail": {
+      "backLabel": "Overview",
+      "threadLabel": "Thread #{id}",
+      "messagePanelTitle": "History",
+      "emptyMessages": "No messages found.",
+      "helpful": "Helpful",
+      "notHelpful": "Not helpful",
+      "ratingTitle": "Rating",
+      "headerDefault": "History rating",
+      "sections": {
+        "coherence": {
+          "title": "Coherence and logic",
+          "description": "Do the responses follow a natural communication pattern?",
+          "clientLabel": "a) Client",
+          "counsellorLabel": "b) Counsellor"
+        },
+        "quality": {
+          "title": "Counseling quality",
+          "description": "Structured, clear, and empathetic?"
+        },
+        "overall": {
+          "title": "Overall rating",
+          "description": "Authentic and suitable as an example?"
+        },
+        "category": {
+          "title": "Case category",
+          "selectLabel": "Select category",
+          "notesLabel": "Category notes"
+        },
+        "notes": {
+          "title": "Notes",
+          "label": "Your thoughts or remarks"
+        }
+      },
+      "errors": {
+        "saveFailed": "Failed to save.",
+        "invalidThread": "Invalid thread ID.",
+        "loadFailed": "Thread could not be loaded."
+      }
+    }
+  },
+  "imprintPage": {
+    "title": "Imprint",
+    "intro": "The Nuremberg Institute of Technology Georg Simon Ohm is a corporation under public law. It is legally represented by the President Prof. Dr. Niels Oberbeck.",
+    "sections": {
+      "address": {
+        "title": "Address",
+        "project": "LLARS project",
+        "university": "Nuremberg Institute of Technology",
+        "street": "Keßlerplatz 12",
+        "city": "90489 Nuremberg",
+        "phone": "Phone: 0911-5880-2580",
+        "fax": "Fax: 0911-5880-602580",
+        "email": "Email: info [at] e-beratungsinstitut . de",
+        "websiteLabel": "Website:"
+      },
+      "contactPerson": {
+        "title": "Contact person for content",
+        "text": "Sigrid Zauter, Managing Director of the Institute for E-Consulting"
+      },
+      "supervisoryAuthority": {
+        "title": "Supervisory authority",
+        "name": "Bavarian State Ministry of Science and the Arts",
+        "street": "Salvatorstraße 2",
+        "city": "80333 Munich",
+        "websiteLabel": "Website:"
+      },
+      "vatId": {
+        "title": "VAT identification number",
+        "text": "DE 222 858 358 (pursuant to Section 27a of the German VAT Act)"
+      },
+      "terms": {
+        "title": "Terms of use",
+        "text": "Texts, images, graphics, and the design of these web pages may be subject to copyright. Not protected by copyright under Section 5 of the German Copyright Act (UrhG) are laws, regulations, official decrees and announcements, as well as decisions and official headnotes to decisions and other official works that have been published in the official interest for general information, with the restriction that the provisions on prohibition of modification and source citation in Section 62 (1) to (3) and Section 63 (1) and (2) UrhG apply accordingly."
+      },
+      "disclaimer": {
+        "title": "Disclaimer",
+        "text": "The contents of this website and the information provided have been carefully researched and prepared to the best of our knowledge and belief. Nevertheless, the Nuremberg Institute of Technology cannot assume any liability for the timeliness, accuracy, completeness, legal permissibility, quality, and availability at all times of the information provided."
+      },
+      "links": {
+        "title": "Links",
+        "text": "Our own content must be distinguished from references (\"links\") to the websites of other providers. We cannot continuously check these external contents for changes and therefore cannot assume any responsibility for them. The respective provider of the page is solely liable for illegal, incorrect, or incomplete content and, in particular, for damages resulting from the use or non-use of information from third parties."
+      },
+      "copyright": {
+        "title": "Copyright",
+        "text": "Copying and reuse of text and graphics requires the consent of the Nuremberg Institute of Technology Georg Simon Ohm. Please also note that images, graphics, text, or other files may be wholly or partially subject to third-party copyrights."
+      },
+      "jurisdiction": {
+        "title": "Jurisdiction",
+        "text": "All legal disputes arising from this website are subject exclusively to German law."
+      }
+    },
+    "links": {
+      "eConsulting": "www.e-beratungsinstitut.de",
+      "stmwk": "www.stmwk.bayern.de"
+    }
+  },
+  "contactPage": {
+    "title": "Contact",
+    "sections": {
+      "email": {
+        "title": "Email",
+        "address": "Email: info [at] e-beratungsinstitut . de"
+      },
+      "phone": {
+        "title": "Phone",
+        "number": "Phone: +49 911 5880-2580",
+        "voicemail": "Please leave a message on our voicemail; we will gladly call you back.",
+        "fax": "Fax: +49 911 5880-602580"
+      },
+      "postal": {
+        "title": "Postal address",
+        "address": "Institute for E-Consulting<br>Nuremberg Institute of Technology<br>Keßlerplatz 12<br>90489 Nuremberg"
+      },
+      "visitor": {
+        "title": "Visitor address",
+        "address": "LLARS project, Nuremberg Institute of Technology<br>Innere Cramer-Klett-Straße 4-8<br>90403 Nuremberg<br>Rooms SCU 118, 119, 120a, 120b, 121, SC 004, 005, 009, 010"
+      },
+      "social": {
+        "title": "Social media"
+      },
+      "location": {
+        "title": "Location"
+      },
+      "privacy": {
+        "title": "Privacy notice",
+        "text": "More information can be found in our {0}."
+      }
+    },
+    "links": {
+      "privacy": "privacy policy"
+    }
+  },
+  "ranker": {
+    "detail": {
+      "backLabel": "Ranking",
+      "threadLabel": "Thread #{id}",
+      "featuresTitle": "Features",
+      "emailHistory": "Email history",
+      "defaultTitle": "Feature ranking",
+      "buckets": {
+        "good": "Good",
+        "average": "Average",
+        "bad": "Bad",
+        "neutral": "Neutral"
+      }
+    }
+  },
+  "rater": {
+    "detail": {
+      "backLabel": "Rating",
+      "threadLabel": "Thread #{id}",
+      "featuresTitle": "Features",
+      "progressTooltip": "Rated features / total features",
+      "emailHistory": "Email history",
+      "defaultTitle": "Feature rating"
+    },
+    "featureTypes": {
+      "abstractSummary": "Abstract case summary",
+      "generatedCategory": "Generated category",
+      "generatedSubject": "Generated subject",
+      "orderClarification": "Order clarification"
+    }
+  },
+  "raterFeature": {
+    "title": "Feature detail",
+    "rateTitle": "Rate this feature",
+    "scale": {
+      "good": "Good",
+      "bad": "Bad"
+    },
+    "edit": {
+      "title": "Edit feature",
+      "modelName": "Model name",
+      "content": "Feature content",
+      "autoSaveHint": "Changes are saved automatically."
+    },
+    "emailHistory": "Email history",
+    "saveStatus": {
+      "saving": "Saving...",
+      "failed": "Save failed",
+      "saved": "Saved",
+      "autoSaving": "Auto-save active"
+    },
+    "actions": {
+      "retrySave": "Save again",
+      "backToOverview": "Back to overview"
+    },
+    "featureTypes": {
+      "abstractSummary": "Abstract case summary",
+      "generatedCategory": "Generated category",
+      "generatedSubject": "Generated subject",
+      "orderClarification": "Order clarification"
+    },
+    "errors": {
+      "saveFailed": "Failed to save."
+    }
+  },
+  "authenticity": {
+    "detail": {
+      "defaultTitle": "Fake/real rating",
+      "threadLabel": "Thread #{id}",
+      "backLabel": "Overview",
+      "messagePanelTitle": "History",
+      "votePanelTitle": "Vote",
+      "infoText": "A thread is {0} once a model has replaced one or more messages.",
+      "fakeLabel": "fake",
+      "voteQuestion": "Is this thread real or fake?",
+      "voteReal": "Real",
+      "voteRealHint": "Written by humans",
+      "voteFake": "Fake",
+      "voteFakeHint": "AI-generated parts",
+      "confidenceLabel": "Confidence (optional)",
+      "notesLabel": "Notes (optional)",
+      "notesPlaceholder": "Your observations or reasoning...",
+      "errors": {
+        "loadFailed": "Thread could not be loaded.",
+        "saveFailed": "Save failed."
+      }
+    }
+  },
+  "chatLegacy": {
+    "commands": {
+      "helpMessage": "Available commands:\\n/help - Shows this help\\n/clear - Clears the chat history",
+      "unknownCommand": "Unknown command: {command}"
+    }
+  },
+  "tempTest": {
+    "initialBotMessage": "Hello! How can I help you?"
+  },
+  "kaimo": {
+    "hub": {
+      "subtitle": "AI-assisted analysis and modeling for case work",
+      "description": "Quick access to the KAIMO panel and case management. See docs/docs/projekte/kaimo.",
+      "chips": {
+        "phase": "Concept phase",
+        "roles": "Roles: Evaluator & Researcher",
+        "cases": "{total} cases ({published} live / {draft} drafts)"
+      },
+      "alerts": {
+        "noAccess": "KAIMO is not enabled for your account. Contact a researcher for access (feature:kaimo:view)."
+      },
+      "cards": {
+        "panel": {
+          "title": "KAIMO Panel",
+          "subtitle": "Work through cases and assess",
+          "description": "Start in the KAIMO user panel, assign hints to categories, and complete assessments.",
+          "cta": "Open KAIMO",
+          "permission": "feature:kaimo:view"
+        },
+        "newCase": {
+          "title": "Create KAIMO case",
+          "subtitle": "Researcher area",
+          "description": "Create new case vignettes, prepare documents and hints, and release them for teams.",
+          "cta": "Start new case",
+          "badge": "Researcher",
+          "permission": "admin:kaimo:manage"
+        }
+      },
+      "errors": {
+        "load": "KAIMO cases could not be loaded."
+      }
+    },
+    "panel": {
+      "title": "KAIMO Panel",
+      "subtitle": "Work through cases, assign hints, complete assessments",
+      "roleHint": {
+        "researcher": "Researcher: manage and edit cases.",
+        "evaluator": "Evaluator: edit released cases."
+      },
+      "roles": {
+        "researcher": "Researcher",
+        "evaluator": "Evaluator"
+      },
+      "actions": {
+        "newCase": "New case"
+      },
+      "alerts": {
+        "noAccess": "You need {permission} to open the KAIMO panel."
+      },
+      "table": {
+        "title": "Cases",
+        "headers": {
+          "case": "Case",
+          "status": "Status",
+          "docs": "Docs",
+          "hints": "Hints",
+          "assessments": "Assessments",
+          "actions": "Actions"
+        },
+        "noDescription": "No description",
+        "empty": "No KAIMO cases available.",
+        "emptyCta": "Create first case"
+      },
+      "tooltips": {
+        "openCase": "Open case (user view)",
+        "editCase": "Edit case",
+        "publish": "Publish"
+      },
+      "sidebar": {
+        "title": "Hints",
+        "subtitle": "Open a case to edit it.",
+        "publishedCount": "{count} published",
+        "draftCount": "{count} drafts"
+      },
+      "deleteDialog": {
+        "title": "Delete case?",
+        "body": "Do you really want to delete the case {name}?",
+        "warningTitle": "Attention:",
+        "warningBody": "This case has {count} assessment(s). Deleting it will remove all data!"
+      },
+      "publishDialog": {
+        "title": "Publish case?",
+        "body": "Do you want to publish the case {name}?",
+        "note": "After publishing, evaluators can edit the case.",
+        "confirm": "Publish"
+      },
+      "snackbar": {
+        "deleteSuccess": "Case \"{name}\" was deleted.",
+        "deleteError": "Error deleting the case.",
+        "publishSuccess": "Case \"{name}\" was published.",
+        "publishError": "Error publishing the case."
+      }
+    },
+    "newCase": {
+      "title": "Create KAIMO case",
+      "subtitle": "Researcher panel for new case vignettes",
+      "description": "Ready to set up new cases based on the concept at docs/docs/projekte/kaimo.",
+      "researcherOnly": "Researcher only",
+      "backToHub": "Back to KAIMO hub",
+      "alerts": {
+        "noAccess": "This page is only accessible to researchers with {permission}."
+      },
+      "form": {
+        "title": "Create new case",
+        "nameLabel": "Name (internal, unique)",
+        "nameHint": "e.g. fall-malaika",
+        "displayNameLabel": "Display name",
+        "descriptionLabel": "Description",
+        "iconLabel": "Icon (optional)",
+        "colorLabel": "Color (hex)",
+        "categoriesHint": "Categories: If empty, default categories are linked automatically.",
+        "submit": "Create case"
+      },
+      "permissions": {
+        "title": "Permissions",
+        "subtitle": "Researchers + admin:kaimo:manage get the \"Create case\" tile.",
+        "accessConfirmed": "Access confirmed",
+        "concept": "Concept: docs/docs/projekte/kaimo",
+        "reload": "Reload permissions"
+      },
+      "messages": {
+        "created": "Case was created (draft)."
+      },
+      "errors": {
+        "createFailed": "Case could not be created."
+      }
+    },
+    "case": {
+      "navigation": {
+        "documents": "Case file",
+        "diagram": "Diagram",
+        "assessment": "Assessment"
+      },
+      "errors": {
+        "loadCase": "Case could not be loaded.",
+        "noAccess": "You need the permission {permission} to see this page.",
+        "loadFailure": "KAIMO case could not be loaded."
+      },
+      "snackbar": {
+        "hintSaved": "Hint saved",
+        "hintSaveError": "Error saving",
+        "assessmentComplete": "Assessment completed successfully!"
+      }
+    },
+    "caseEditor": {
+      "header": {
+        "title": "Edit case: {name}",
+        "unnamed": "Untitled",
+        "nameFallback": "No description",
+        "descriptionFallback": "No description"
+      },
+      "tabs": {
+        "general": "General",
+        "documents": "Documents",
+        "hints": "Hints",
+        "preview": "Preview"
+      },
+      "general": {
+        "nameLabel": "Technical name",
+        "nameHint": "Unique identifier (e.g. fall-001)",
+        "displayNameLabel": "Display name",
+        "displayNameHint": "Name shown to users",
+        "descriptionLabel": "Description",
+        "descriptionHint": "Short description of the case",
+        "iconLabel": "Icon (emoji)",
+        "iconHint": "e.g. 📁",
+        "colorLabel": "Color (hex)",
+        "colorHint": "e.g. #1976D2",
+        "statusLabel": "Status"
+      },
+      "documents": {
+        "title": "Documents",
+        "add": "Add document",
+        "empty": "No documents yet",
+        "headers": {
+          "title": "Title",
+          "type": "Type",
+          "date": "Date",
+          "order": "Order",
+          "actions": "Actions"
+        }
+      },
+      "hints": {
+        "title": "Hints",
+        "add": "Add hint",
+        "empty": "No hints yet",
+        "headers": {
+          "content": "Content",
+          "source": "Source",
+          "category": "Category",
+          "rating": "Rating",
+          "actions": "Actions"
+        }
+      },
+      "preview": {
+        "title": "User view preview",
+        "subtitle": "This is how users see this case in the KAIMO panel.",
+        "documents": "Documents ({count})",
+        "hints": "Hints ({count})",
+        "noDocuments": "No documents available",
+        "noHints": "No hints available"
+      },
+      "actions": {
+        "publish": "Publish"
+      },
+      "documentDialog": {
+        "editTitle": "Edit document",
+        "newTitle": "New document",
+        "titleLabel": "Title",
+        "typeLabel": "Type",
+        "dateLabel": "Date",
+        "contentLabel": "Content",
+        "contentHint": "Markdown supported",
+        "orderLabel": "Order"
+      },
+      "hintDialog": {
+        "editTitle": "Edit hint",
+        "newTitle": "New hint",
+        "contentLabel": "Content",
+        "sourceLabel": "Source document",
+        "categoryLabel": "Expected category",
+        "subcategoryLabel": "Expected subcategory",
+        "ratingLabel": "Expected rating",
+        "orderLabel": "Order"
+      },
+      "deleteDialog": {
+        "title": "Confirm delete",
+        "body": "Do you really want to delete this item?",
+        "note": "This action cannot be undone."
+      },
+      "documentTypes": {
+        "aktenvermerk": "File note",
+        "bericht": "Report",
+        "protokoll": "Minutes",
+        "sonstiges": "Other"
+      },
+      "placeholders": {
+        "empty": "-"
+      },
+      "snackbar": {
+        "loadFailed": "Case could not be loaded",
+        "saved": "Changes saved",
+        "saveFailed": "Save failed",
+        "published": "Case published",
+        "publishFailed": "Publish failed",
+        "documentUpdated": "Document updated",
+        "documentCreated": "Document created",
+        "hintUpdated": "Hint updated",
+        "hintCreated": "Hint created",
+        "documentDeleted": "Document deleted",
+        "hintDeleted": "Hint deleted",
+        "deleteFailed": "Delete failed",
+        "noPermission": "No permission to edit"
+      }
+    },
+    "documents": {
+      "searchPlaceholder": "Text search",
+      "filters": {
+        "attributes": "Attributes",
+        "actors": "Actors"
+      },
+      "emptySearch": "No results found",
+      "empty": "No documents available",
+      "types": {
+        "aktenvermerk": "File note",
+        "bericht": "Report",
+        "protokoll": "Minutes",
+        "sonstiges": "Document",
+        "default": "File note"
+      },
+      "placeholders": {
+        "date": "—"
+      }
+    },
+    "diagram": {
+      "categories": {
+        "basicCare": "Basic care of the young person",
+        "family": "Family situation",
+        "development": "Development situation of the young person",
+        "parents": "Parents / guardians"
+      },
+      "hints": {
+        "open": "Open hints"
+      }
+    },
+    "assessment": {
+      "title": "Final case assessment",
+      "verdictInstruction": "Select your verdict for the case",
+      "verdicts": {
+        "inconclusive": "A final assessment is not possible",
+        "notEndangered": "The well-being of {name} is not at risk",
+        "endangered": "The well-being of {name} is at risk"
+      },
+      "notesPlaceholder": "Additional notes (optional)",
+      "submit": "Complete assessment",
+      "sidebar": {
+        "title": "Case overview",
+        "caseLabel": "Case",
+        "statusLabel": "Status",
+        "statusCompleted": "Completed",
+        "statusInProgress": "In progress",
+        "hintsAssigned": "Hints assigned",
+        "hintsAssignedValue": "{assigned} of {total}"
+      },
+      "errors": {
+        "completeFailed": "Error completing the assessment"
+      }
+    },
+    "hintDialog": {
+      "categoryFallback": "Category",
+      "noCategory": "No category selected",
+      "subcategoryLabel": "Subcategory",
+      "reset": "Reset",
+      "empty": "No hints for this category"
+    },
+    "ratings": {
+      "risk": "Risk",
+      "resource": "Resource",
+      "unclear": "Unclear",
+      "riskPlural": "Risks",
+      "resourcePlural": "Resources"
+    },
+    "status": {
+      "published": "Published",
+      "draft": "Draft",
+      "archived": "Archived"
+    },
+    "errors": {
+      "loadCases": "KAIMO cases could not be loaded."
+    },
+    "common": {
+      "childFallback": "Child"
+    }
+  },
+  "oncoco": {
+    "status": {
+      "pending": "Pending",
+      "running": "Running",
+      "completed": "Completed",
+      "failed": "Failed"
+    },
+    "pillars": {
+      "one": "Role plays",
+      "three": "Anonymized data",
+      "five": "Live testing",
+      "threeShort": "Anonymized",
+      "fiveShort": "Live test",
+      "default": "Pillar {id}"
+    },
+    "overview": {
+      "title": "OnCoCo Analysis",
+      "subtitle": "Classification of counseling sessions with the OnCoCo model",
+      "actions": {
+        "info": "What is OnCoCo?",
+        "newAnalysis": "Create new analysis",
+        "viewResults": "View results",
+        "viewDetails": "View details",
+        "start": "Start"
+      },
+      "table": {
+        "title": "My OnCoCo analyses",
+        "pillars": "{count} pillars",
+        "sentences": "Sentences",
+        "headers": {
+          "name": "Analysis name",
+          "status": "Status",
+          "progress": "Progress",
+          "pillars": "Pillars",
+          "sentences": "Sentences",
+          "createdAt": "Created at",
+          "actions": "Actions"
+        }
+      },
+      "filters": {
+        "all": "All",
+        "running": "Running",
+        "completed": "Completed",
+        "failed": "Failed"
+      },
+      "empty": {
+        "title": "No analyses found",
+        "subtitle": "Create your first OnCoCo analysis to get started"
+      },
+      "stats": {
+        "total": "Total analyses",
+        "completed": "Completed",
+        "running": "Running",
+        "categories": "OnCoCo categories"
+      },
+      "model": {
+        "title": "OnCoCo model status",
+        "available": "Available",
+        "unavailable": "Unavailable",
+        "modelLabel": "Model",
+        "categoriesLabel": "Categories",
+        "categoriesValue": "{counselor} counselor + {client} client = {total} total",
+        "deviceLabel": "Device"
+      },
+      "deleteDialog": {
+        "title": "Delete analysis?",
+        "body": "Do you really want to delete the analysis {name}? This action cannot be undone."
+      },
+      "placeholders": {
+        "date": "-"
+      }
+    },
+    "config": {
+      "back": "Back to overview",
+      "title": "Configure new OnCoCo analysis",
+      "form": {
+        "nameLabel": "Analysis name",
+        "namePlaceholder": "e.g. OnCoCo analysis pillar 1+3",
+        "pillarsTitle": "Select pillars",
+        "pillarLabel": "Pillar {id}",
+        "threadsLabel": "Threads:",
+        "statusLabel": "Status:",
+        "statusReady": "Ready",
+        "statusSync": "Sync required",
+        "advancedTitle": "Advanced options",
+        "useLevel2Label": "Use level-2 aggregation",
+        "useLevel2Hint": "Groups the 68 categories into 18 higher-level groups",
+        "batchSizeLabel": "Batch size",
+        "batchSizeHint": "Number of sentences per GPU batch (higher = faster, but more memory)"
+      },
+      "actions": {
+        "create": "Create analysis",
+        "createAndStart": "Create & start"
+      },
+      "info": {
+        "title": "About OnCoCo",
+        "description": "The OnCoCo model (Online Counseling Conversations) classifies counseling sessions at sentence level into 68 categories.",
+        "categoriesTitle": "Categories",
+        "counselorLabel": "Counselor (CO):",
+        "clientLabel": "Client (CL):",
+        "metricsTitle": "Metrics",
+        "accuracyLabel": "Accuracy:",
+        "f1Label": "F1 macro:"
+      },
+      "notes": {
+        "title": "Notes",
+        "info": "Depending on data volume, the analysis may take several minutes.",
+        "warning": "Make sure the selected pillars are synchronized."
+      }
+    },
+    "results": {
+      "back": "Back to overview",
+      "metrics": {
+        "progress": "Progress",
+        "threads": "Threads",
+        "sentencesAnalyzed": "Sentences analyzed",
+        "createdAt": "Created"
+      },
+      "actions": {
+        "start": "Start analysis",
+        "resume": "Resume analysis",
+        "retry": "Try again",
+        "load": "Load",
+        "loadMore": "Load more ({loaded} / {total})"
+      },
+      "stuckWarning": "The analysis seems stuck (no updates for {seconds}s). This can happen after a server restart.",
+      "failedFallback": "Analysis failed",
+      "running": {
+        "title": "Analysis running...",
+        "elapsed": "{duration} elapsed"
+      },
+      "live": {
+        "hardware": "Hardware",
+        "deviceType": "Device:",
+        "deviceName": "Device name:",
+        "cpuCores": "CPU cores:",
+        "cpuUsage": "CPU usage:",
+        "memory": "Memory:",
+        "modelSize": "Model size:",
+        "waiting": "Waiting for data...",
+        "currentThread": "Current thread",
+        "pillar": "Pillar:",
+        "threadId": "Thread ID:",
+        "messages": "Messages:",
+        "message": "Message:",
+        "sender": "Sender:",
+        "performance": "Performance",
+        "threadsPerSecond": "Threads/sec:",
+        "sentencesPerSecond": "Sentences/sec:",
+        "elapsed": "Elapsed:",
+        "eta": "ETA:",
+        "workerSingle": "Worker: 1 (single-threaded)",
+        "lastClassified": "Last classified"
+      },
+      "pending": {
+        "title": "Analysis not started yet",
+        "subtitle": "Start the analysis with the button above to generate results."
+      },
+      "failed": {
+        "title": "Analysis failed",
+        "subtitle": "An unknown error occurred. Please try again."
+      },
+      "tabs": {
+        "overview": "Overview",
+        "distribution": "Distribution",
+        "transitions": "Transitions & comparison",
+        "sentences": "Sentences"
+      },
+      "pillarLabel": "Pillar {id}",
+      "overview": {
+        "sentences": "Sentences:",
+        "counselorSentences": "Counselor sentences:",
+        "clientSentences": "Client sentences:",
+        "impactFactorRatio": "Impact factor ratio:",
+        "resourceActivation": "Resource activation:",
+        "mutualInformation": "Mutual information:"
+      },
+      "filters": {
+        "allPillars": "All pillars",
+        "pillar": "Pillar",
+        "detailLevel": "Detail level",
+        "role": "Role",
+        "heatmapMode": "Heatmap color mode",
+        "showValues": "Show values",
+        "label": "Label filter",
+        "labelPlaceholder": "e.g. CO-IF-AC"
+      },
+      "heatmapModes": {
+        "count": "Count",
+        "probability": "Probability"
+      },
+      "levelOptions": {
+        "level2": "Level 2 (aggregated)",
+        "full": "Full"
+      },
+      "roles": {
+        "all": "All",
+        "allLong": "All (counselor & client)",
+        "counselor": "Counselor",
+        "client": "Client",
+        "counselorOnly": "Counselor only",
+        "clientOnly": "Client only"
+      },
+      "transitions": {
+        "heatmapsTitle": "Transition heatmaps per pillar",
+        "totalTransitions": "{count} transitions",
+        "comparisonTitle": "Comparison: {from}",
+        "noHeatmapData": "No heatmap data available. Please wait until the analysis is complete.",
+        "topTitle": "Top 20 transitions",
+        "topPillar": "Pillar {id}",
+        "topAll": "All pillars",
+        "noTransitionData": "No transition data available."
+      },
+      "methodology": {
+        "title": "Statistical matrix comparison metrics"
+      },
+      "distribution": {
+        "headers": {
+          "label": "Label",
+          "role": "Role",
+          "count": "Count"
+        }
+      },
+      "comparison": {
+        "headers": {
+          "pillar": "Pillar",
+          "sentences": "Sentences",
+          "counselorRatio": "Counselor ratio",
+          "impactFactor": "Impact factor",
+          "resourceActivation": "Resource activation",
+          "miScore": "MI score",
+          "confidence": "Confidence"
+        }
+      },
+      "sentences": {
+        "headers": {
+          "sentence": "Sentence",
+          "role": "Role",
+          "label": "Label",
+          "confidence": "Confidence",
+          "pillar": "Pillar"
+        }
+      },
+      "placeholders": {
+        "date": "-"
+      }
+    },
+    "info": {
+      "hero": {
+        "title": "OnCoCo 1.0",
+        "subtitle": "Online Counseling Conversations Dataset",
+        "description": "A fine-grained category and classification system for automated content analysis of psychosocial online counseling. Developed at TH Nuremberg using methods of qualitative social research.",
+        "chips": {
+          "categories": "66 categories",
+          "f1": "F1 Macro: 0.78",
+          "bilingual": "Bilingual DE/EN",
+          "messages": "2,778 messages",
+          "license": "CC BY-SA 4.0"
+        },
+        "performance": {
+          "title": "Model performance",
+          "value": "~0.88",
+          "subtitle": "Cohen's Kappa vs. humans",
+          "note": "XLM-RoBERTa-Large reaches human reliability"
+        }
+      },
+      "hierarchy": {
+        "title": "The hierarchical category system",
+        "description": "OnCoCo uses a 5-level hierarchical system to classify statements in online counseling sessions. Each category has a unique code that describes the path through the hierarchy.",
+        "exampleTitle": "Example: Label code broken down",
+        "parts": {
+          "role": {
+            "label": "Role",
+            "description": "Counselor"
+          },
+          "level1": {
+            "label": "Level 1",
+            "description": "Impact Factors"
+          },
+          "level2": {
+            "label": "Level 2",
+            "description": "Analysis & Clarification"
+          },
+          "level3": {
+            "label": "Level 3",
+            "description": "Reflection (Fact)"
+          },
+          "level45": {
+            "label": "Level 4-5",
+            "description": "Request Living Situation - Social Relationships"
+          }
+        },
+        "fullCodeLabel": "Full code:",
+        "fullCodeDescription": "- \"Question about social relationships/living situation\""
+      },
+      "counselor": {
+        "title": "Counselor categories (CO-)",
+        "subtitle": "Categories for counselor statements",
+        "table": {
+          "level1": "Level 1",
+          "level2": "Level 2"
+        },
+        "rows": {
+          "formalities": "Formalities at the beginning",
+          "moderation": "Moderation",
+          "impactFactors": "Impact Factors",
+          "analysis": "Analysis & problem clarification",
+          "goalSetting": "Goal setting",
+          "motivation": "Motivation building",
+          "resourceActivation": "Resource activation",
+          "help": "Help & problem solving",
+          "closing": "Closing & farewell",
+          "other": "Other statements"
+        }
+      },
+      "client": {
+        "title": "Client categories (CL-)",
+        "subtitle": "Categories for client statements",
+        "table": {
+          "level1": "Level 1",
+          "level2": "Level 2"
+        },
+        "rows": {
+          "formalities": "Formalities at the beginning",
+          "empathy": "Empathy",
+          "impactFactors": "Impact Factors",
+          "analysis": "Analysis & problem clarification",
+          "goalSetting": "Goal setting",
+          "motivation": "Motivation",
+          "resourceActivation": "Resource activation",
+          "help": "Help & coping",
+          "closing": "Closing",
+          "other": "Other statements"
+        }
+      },
+      "impactFactors": {
+        "title": "Impact Factors - The core",
+        "alert": "Impact Factors are the effectiveness-related categories according to Grawe (2000). They are the focus of the analysis because they reflect the quality and methodology of counseling.",
+        "items": [
+          {
+            "code": "AC",
+            "name": "Analysis & problem clarification",
+            "description": "Capturing and understanding the problem through questions, reflections, and mirroring.",
+            "color": "info"
+          },
+          {
+            "code": "AO",
+            "name": "Goal setting",
+            "description": "Defining and aligning counseling goals and expectations.",
+            "color": "success"
+          },
+          {
+            "code": "Mot",
+            "name": "Motivation building",
+            "description": "Promoting readiness for change, change talk (MI), appreciation.",
+            "color": "warning"
+          },
+          {
+            "code": "RA",
+            "name": "Resource activation",
+            "description": "Activating existing support from family, friends, or professional services.",
+            "color": "purple"
+          },
+          {
+            "code": "HP",
+            "name": "Help & problem solving",
+            "description": "Concrete recommendations, explanations, warnings, and advice.",
+            "color": "error"
+          }
+        ]
+      },
+      "useCases": {
+        "title": "Use cases",
+        "items": {
+          "quality": {
+            "title": "Quality monitoring",
+            "subtitle": "Make transitions and impact factors visible"
+          },
+          "training": {
+            "title": "Training & supervision",
+            "subtitle": "Reveal patterns in conversations, provide feedback"
+          },
+          "research": {
+            "title": "Research",
+            "subtitle": "Scalable content analysis for psychosocial counseling"
+          },
+          "chatbot": {
+            "title": "Chatbot evaluation",
+            "subtitle": "Compare humans vs. AI in fine-grained classes"
+          },
+          "risk": {
+            "title": "Risk detection",
+            "subtitle": "Automatic detection of critical situations"
+          }
+        }
+      },
+      "model": {
+        "title": "Model & technology",
+        "baseModel": "Base model",
+        "baseModelValue": "XLM-RoBERTa-Large (561M parameters)",
+        "accuracy": "Accuracy @1",
+        "f1Macro1": "F1 Macro @1",
+        "f1Macro2": "F1 Macro @2",
+        "f1Macro2Value": "~0.87 (considering top-2)",
+        "kappa": "Cohen's Kappa",
+        "kappaValue": "~0.88 (comparable to humans)",
+        "roleMasking": "Role masking",
+        "roleMaskingValue": "Output logits are filtered by role",
+        "warning": "Zero-shot fails: GPT-4o reaches only F1 ~0.29 - fine-tuning is required!"
+      },
+      "examples": {
+        "title": "Example classifications",
+        "headers": {
+          "role": "Role",
+          "code": "Code",
+          "text": "Text",
+          "path": "Category path"
+        },
+        "items": [
+          {
+            "role": "CO",
+            "code": "CO-IF-AC-RF-RLS-L",
+            "text": "To advise you better, it would be helpful to know what hobbies or interests you have.",
+            "path": "Impact Factors → Analysis → Reflection → Living situation → Leisure"
+          },
+          {
+            "role": "CO",
+            "code": "CO-IF-AC-RF-RTP-*",
+            "text": "Can you describe the feeling you have afterwards a bit more precisely?",
+            "path": "Impact Factors → Analysis → Reflection → Targeted inquiry"
+          },
+          {
+            "role": "CO",
+            "code": "CO-IF-HP-*-ITFE-*",
+            "text": "It is completely normal for young people in puberty to start developing sexual desires and fantasies.",
+            "path": "Impact Factors → Help → Professional explanation"
+          },
+          {
+            "role": "CL",
+            "code": "CL-E-*-*-ECP-*",
+            "text": "It's actually more about my brother than about me.",
+            "path": "Empathy → Concern for another person"
+          },
+          {
+            "role": "CL",
+            "code": "CL-IF-ACP-*-FPA-*",
+            "text": "I tried to ease my withdrawal symptoms with medication, but it feels like a constant struggle.",
+            "path": "Impact Factors → Analysis → Feedback on previous attempts"
+          }
+        ]
+      },
+      "resources": {
+        "title": "Resources & references",
+        "paper": {
+          "title": "Paper & dataset",
+          "itemTitle": "LREC 2026 Paper",
+          "itemSubtitle": "OnCoCo 1.0 publication"
+        },
+        "license": {
+          "title": "License",
+          "itemTitle": "CC BY-SA 4.0",
+          "itemSubtitle": "Use for research & education"
+        },
+        "api": {
+          "title": "API in this instance",
+          "itemSubtitle": "Model status & label info"
+        }
+      },
+      "labels": {
+        "counselorTitle": "All counselor labels ({count})",
+        "clientTitle": "All client labels ({count})",
+        "headers": {
+          "code": "Code",
+          "name": "Name",
+          "description": "Description"
+        },
+        "counselorItems": [
+          {
+            "code": "CO-FA-*-*-*-*",
+            "name": "Formalities at the beginning",
+            "description": "Greets and opens the conversation."
+          },
+          {
+            "code": "CO-Mod-*-*-*-*",
+            "name": "Moderation",
+            "description": "Guides the flow, summarizes, sets transitions."
+          },
+          {
+            "code": "CO-IF-AC-RF-RPD-*",
+            "name": "Question about personal data",
+            "description": "Asks for basic info such as age, contact, or context."
+          },
+          {
+            "code": "CO-IF-AC-RF-RPA-*",
+            "name": "Question about previous attempts",
+            "description": "Checks what has already been tried."
+          },
+          {
+            "code": "CO-IF-AC-RF-SRx-*",
+            "name": "Simple reflection",
+            "description": "Briefly mirrors key statements to show understanding."
+          },
+          {
+            "code": "CO-IF-AC-RF-RLS-SR",
+            "name": "Question about living situation - social",
+            "description": "Asks about social environment and relationships."
+          },
+          {
+            "code": "CO-IF-AC-RF-RLS-PS",
+            "name": "Question about living situation - work",
+            "description": "Asks about work, training, or occupational situation."
+          },
+          {
+            "code": "CO-IF-AC-RF-RLS-ES",
+            "name": "Question about living situation - finances",
+            "description": "Clarifies financial situation and burdens."
+          },
+          {
+            "code": "CO-IF-AC-RF-RLS-H",
+            "name": "Question about living situation - health",
+            "description": "Asks about physical or mental health."
+          },
+          {
+            "code": "CO-IF-AC-RF-RLS-L",
+            "name": "Question about living situation - leisure",
+            "description": "Asks about hobbies and leisure activities."
+          },
+          {
+            "code": "CO-IF-AC-RF-RC-*",
+            "name": "Question about the concern",
+            "description": "Helps specify the core concern."
+          },
+          {
+            "code": "CO-IF-AC-RF-RTP-*",
+            "name": "Targeted, precise follow-up",
+            "description": "Asks focused follow-up questions to clarify details."
+          },
+          {
+            "code": "CO-IF-AC-RF-RCD-*",
+            "name": "Question about change",
+            "description": "Asks about desired changes or direction."
+          },
+          {
+            "code": "CO-IF-AC-RE-RCR-*",
+            "name": "Complex reflection",
+            "description": "Reflects and condenses complex content."
+          },
+          {
+            "code": "CO-IF-AC-RE-RES-*",
+            "name": "Question about emotional state",
+            "description": "Inquires about emotions and mood."
+          },
+          {
+            "code": "CO-IF-AO-*-ROW-*",
+            "name": "Question about goals/wishes",
+            "description": "Clarifies goals, wishes, or expectations."
+          },
+          {
+            "code": "CO-IF-AO-*-ICO-*",
+            "name": "Definition of counseling goals",
+            "description": "Formulates shared goals and framework."
+          },
+          {
+            "code": "CO-IF-Mot-*-RFC-*",
+            "name": "Evoke change talk (MI)",
+            "description": "Focuses on reasons for change and intrinsic motivation."
+          },
+          {
+            "code": "CO-IF-Mot-*-IAC-*",
+            "name": "Perceived ability to change",
+            "description": "Mirrors or strengthens confidence in one's ability."
+          },
+          {
+            "code": "CO-IF-Mot-*-ITA-*",
+            "name": "Thanks and appreciation",
+            "description": "Gives positive feedback and appreciation."
+          },
+          {
+            "code": "CO-IF-Mot-*-IEM-*",
+            "name": "Encouragement, motivation",
+            "description": "Provides active support and encouragement."
+          },
+          {
+            "code": "CO-IF-Mot-*-RS-*",
+            "name": "Question about support resources",
+            "description": "Asks about available people or help in the environment."
+          },
+          {
+            "code": "CO-IF-RA-*-RP-*",
+            "name": "Request for problem description",
+            "description": "Encourages a clear description of the problem."
+          },
+          {
+            "code": "CO-IF-RA-*-RAP-*",
+            "name": "Suggestion for professional level",
+            "description": "Recommends professional services or agencies."
+          },
+          {
+            "code": "CO-IF-RA-*-N-RAFa",
+            "name": "Suggestion for family level",
+            "description": "Suggests involving family as a resource."
+          },
+          {
+            "code": "CO-IF-RA-*-N-RAFr",
+            "name": "Suggestion for friends level",
+            "description": "Suggests support from friends."
+          },
+          {
+            "code": "CO-IF-HP-*-ITFE-*",
+            "name": "Professional explanations",
+            "description": "Provides factual or technical information."
+          },
+          {
+            "code": "CO-IF-HP-*-IPFR-*",
+            "name": "Professional recommendation",
+            "description": "Gives specific professional recommendations."
+          },
+          {
+            "code": "CO-IF-HP-*-IF-*",
+            "name": "Future prognosis",
+            "description": "Assesses possible development or course."
+          },
+          {
+            "code": "CO-IF-HP-*-IW-*",
+            "name": "Warning",
+            "description": "Points out risks or dangers."
+          },
+          {
+            "code": "CO-IF-HP-*-ICO-*",
+            "name": "Reassurance",
+            "description": "De-escalates and reduces pressure."
+          },
+          {
+            "code": "CO-IF-HP-*-PP-IA",
+            "name": "Advice",
+            "description": "Gives direct instructions for action."
+          },
+          {
+            "code": "CO-IF-HP-*-IEA",
+            "name": "Evaluation, interpretation",
+            "description": "Interprets and contextualizes what was said."
+          },
+          {
+            "code": "CO-IF-HP-*-PP-IW",
+            "name": "Wish",
+            "description": "Expresses own wish to the client."
+          },
+          {
+            "code": "CO-FC-*-*-F-*",
+            "name": "Farewell",
+            "description": "Closes the conversation."
+          },
+          {
+            "code": "CO-FC-*-*-OPR-*",
+            "name": "Offer of professional resources",
+            "description": "Offers additional services or materials."
+          },
+          {
+            "code": "CO-O-*-*-O-*",
+            "name": "Other statements",
+            "description": "Other, not fitting into other categories."
+          },
+          {
+            "code": "CO-O-*-*-UCO-*",
+            "name": "Inappropriate remark",
+            "description": "Boundary-crossing or inappropriate statement."
+          }
+        ],
+        "clientItems": [
+          {
+            "code": "CL-FB-*-*-*-*",
+            "name": "Formalities at the beginning",
+            "description": "Greets and opens the conversation."
+          },
+          {
+            "code": "CL-E-*-*-PT-*",
+            "name": "Empathy for third parties",
+            "description": "Shows compassion for other involved persons."
+          },
+          {
+            "code": "CL-E-*-*-ECC-*",
+            "name": "Compassion for others",
+            "description": "Expresses compassion in general."
+          },
+          {
+            "code": "CL-E-*-*-ECP-*",
+            "name": "Concern for another person",
+            "description": "Concern or sympathy for someone in their environment."
+          },
+          {
+            "code": "CL-IF-ACP-*-PS-*",
+            "name": "Problem presentation",
+            "description": "Describes the situation or concern."
+          },
+          {
+            "code": "CL-IF-ACP-*-PD-*",
+            "name": "Problem definition",
+            "description": "Defines the problem more precisely or analytically."
+          },
+          {
+            "code": "CL-IF-ACP-*-DPD-*",
+            "name": "Disclosure of personal data",
+            "description": "Shares private data or background information."
+          },
+          {
+            "code": "CL-IF-ACP-*-FPA-*",
+            "name": "Feedback on previous attempts",
+            "description": "Reports on steps already tried."
+          },
+          {
+            "code": "CL-IF-ACP-*-OE-*",
+            "name": "Own emotional expression",
+            "description": "Shares own emotions openly."
+          },
+          {
+            "code": "CL-IF-ACP-*-Cons-*",
+            "name": "Agreement",
+            "description": "Agrees with suggestions or questions."
+          },
+          {
+            "code": "CL-IF-ACP-*-Rej-*",
+            "name": "Rejection",
+            "description": "Rejects suggestions or assumptions."
+          },
+          {
+            "code": "CL-IF-ACP-*-Req-*",
+            "name": "General request",
+            "description": "Asks generally for help or information."
+          },
+          {
+            "code": "CL-IF-AO-*-Obj-*",
+            "name": "Goal of the assignment",
+            "description": "States the desired goal or outcome."
+          },
+          {
+            "code": "CL-IF-AO-*-Ext-*",
+            "name": "Extension of the assignment",
+            "description": "Expands the task or request."
+          },
+          {
+            "code": "CL-IF-Mot-*-FC-*",
+            "name": "Change talk",
+            "description": "States own reasons for change."
+          },
+          {
+            "code": "CL-IF-Mot-*-RC-*",
+            "name": "Reasons for change",
+            "description": "Explains why a change is important."
+          },
+          {
+            "code": "CL-IF-RA-*-RF-*",
+            "name": "Resources friends/family",
+            "description": "Sees support from close contacts."
+          },
+          {
+            "code": "CL-IF-RA-*-RP-*",
+            "name": "Resources professional level",
+            "description": "Uses or considers professional help."
+          },
+          {
+            "code": "CL-IF-HP-*-PosF-*",
+            "name": "General positive feedback",
+            "description": "Gives overall positive feedback."
+          },
+          {
+            "code": "CL-IF-HP-*-PosFR-*",
+            "name": "Positive feedback on recommendations",
+            "description": "Praises specific advice or measures."
+          },
+          {
+            "code": "CL-IF-HP-*-NegFR-*",
+            "name": "Negative feedback on recommendations",
+            "description": "Criticizes specific recommendations."
+          },
+          {
+            "code": "CL-IF-HP-*-RepRA-*",
+            "name": "Report on implementation",
+            "description": "Reports progress or implementation steps."
+          },
+          {
+            "code": "CL-IF-HP-*-Succ-*",
+            "name": "Final success",
+            "description": "Reports a successful outcome."
+          },
+          {
+            "code": "CL-IF-HP-*-Fail-*",
+            "name": "Final failure",
+            "description": "Reports failure or setback."
+          },
+          {
+            "code": "CL-FC-*-*-F-*",
+            "name": "Farewell",
+            "description": "Closes the conversation."
+          },
+          {
+            "code": "CL-FC-*-*-UPR-*",
+            "name": "Further use of professional resources",
+            "description": "Signals willingness to use further offers."
+          },
+          {
+            "code": "CL-O-*-*-O-*",
+            "name": "Other statements",
+            "description": "Other, not fitting into other categories."
+          },
+          {
+            "code": "CL-O-*-*-UCO-*",
+            "name": "Inappropriate remark",
+            "description": "Boundary-crossing or inappropriate statement."
+          }
+        ]
+      },
+      "cta": {
+        "title": "Ready for analysis?",
+        "body": "Start a new analysis on the overview page to track transition matrices, pillar statistics, and sentence labels live.",
+        "button": "Go to analysis overview"
+      }
+    },
+    "kiaSync": {
+      "title": "KIA data sources",
+      "connected": "Connected",
+      "disconnected": "Not connected",
+      "threads": "{count} threads",
+      "actions": {
+        "syncAll": "Sync all"
+      },
+      "status": {
+        "available": "Ready",
+        "notFound": "Not found",
+        "error": "Error",
+        "syncing": "Loading..."
+      },
+      "errors": {
+        "statusFailed": "Status check failed",
+        "syncFailed": "Sync failed"
+      },
+      "messages": {
+        "pillarSuccess": "Pillar {id}: {count} threads created",
+        "pillarError": "Pillar {id}: {message}",
+        "syncAll": "{count} threads created"
+      }
+    },
+    "quickStats": {
+      "similarity": {
+        "label": "Similarity",
+        "levels": {
+          "veryHigh": "Very high",
+          "high": "High",
+          "moderate": "Moderate",
+          "low": "Low",
+          "veryLow": "Very low"
+        }
+      },
+      "frobenius": {
+        "label": "Frobenius",
+        "levels": {
+          "similar": "Similar",
+          "moderate": "Moderate",
+          "distinct": "Distinct",
+          "strong": "Strong"
+        }
+      },
+      "significance": {
+        "label": "Significance",
+        "short": "sig."
+      },
+      "chiSquare": {
+        "label": "Chi-square sig.",
+        "empty": "-",
+        "states": "{percent}% states"
+      },
+      "methodology": "Methodology & explanations"
+    },
+    "transitionHeatmap": {
+      "countLabel": "Count:",
+      "probabilityLabel": "Prob.:"
+    },
+    "pillarComparison": {
+      "title": "Pairwise pillar comparisons",
+      "differences": {
+        "title": "Largest differences",
+        "empty": "No significant differences found (z-score > 2)"
+      },
+      "metrics": {
+        "title": "Statistical metrics",
+        "frobenius": {
+          "label": "Frobenius distance",
+          "levels": {
+            "verySimilar": "Very similar matrices",
+            "moderate": "Moderately different",
+            "distinct": "Distinctly different",
+            "strong": "Strongly different"
+          }
+        },
+        "jsd": {
+          "label": "JSD mean",
+          "max": "Max: {value}"
+        },
+        "permutation": {
+          "label": "Permutation test",
+          "significant": "Significant difference",
+          "notSignificant": "Not significant"
+        },
+        "effect": {
+          "label": "Effect size (norm.)",
+          "levels": {
+            "small": "Small effect size",
+            "medium": "Medium effect size",
+            "large": "Large effect size",
+            "veryLarge": "Very large effect size"
+          }
+        },
+        "chiSquare": {
+          "label": "Chi-square test",
+          "subtitle": "States with significantly different distributions"
+        }
+      },
+      "missing": {
+        "title": "Missing transitions",
+        "onlyIn": "Only in {name}:",
+        "more": "+{count} more"
+      },
+      "chiSquare": {
+        "detailsTitle": "Chi-square details per state",
+        "headers": {
+          "state": "State",
+          "chiSquare": "Chi-square",
+          "pValue": "p-value",
+          "significant": "Significant"
+        }
+      },
+      "fallbacks": {
+        "pillarA": "Pillar A",
+        "pillarB": "Pillar B"
+      },
+      "empty": "No comparison data available. Please wait until the analysis is complete."
+    },
+    "matrixComparison": {
+      "title": "Statistical matrix comparison metrics",
+      "actions": {
+        "methodologySources": "Methodology & sources",
+        "calculate": "Calculate"
+      },
+      "controls": {
+        "detailLevel": "Detail level",
+        "smoothingLabel": "Laplace smoothing (alpha)",
+        "smoothingHint": "Additive smoothing for zero counts. 0 = none, 1 = standard",
+        "permutationsLabel": "Permutations",
+        "permutationsHint": "Number of permutations for the significance test (more = more accurate, but slower)"
+      },
+      "fallbacks": {
+        "pillarA": "Pillar A",
+        "pillarB": "Pillar B"
+      },
+      "metrics": {
+        "frobenius": {
+          "label": "Frobenius distance"
+        },
+        "jsd": {
+          "label": "Jensen-Shannon divergence (mean)",
+          "max": "Max: {value}"
+        },
+        "permutation": {
+          "label": "Permutation test p-value",
+          "significant": "Statistically significant difference (p < 0.05)",
+          "notSignificant": "No significant difference detected"
+        },
+        "effect": {
+          "label": "Effect size",
+          "normalized": "Normalized Frobenius"
+        },
+        "chiSquare": {
+          "label": "Chi-square test",
+          "summary": "{significant} / {total} significant",
+          "subtitle": "States with significantly different transition distributions"
+        }
+      },
+      "outliers": {
+        "title": "Outlier transitions",
+        "show": "Show transitions with z-score > 2",
+        "empty": "No outliers found"
+      },
+      "missing": {
+        "title": "Missing transitions",
+        "onlyInA": "{count} only in A",
+        "onlyInB": "{count} only in B",
+        "show": "Show missing transitions",
+        "onlyIn": "Only in {name}:",
+        "more": "+{count} more",
+        "none": "All transitions present in both matrices"
+      },
+      "footnotes": {
+        "title": "Sources:",
+        "items": {
+          "frobenius": "[1] Frobenius norm: Golub & Van Loan (2013). Matrix Computations. Johns Hopkins University Press.",
+          "jsd": "[2] Jensen-Shannon divergence: Lin, J. (1991). Divergence measures based on the Shannon entropy. IEEE Transactions on Information Theory.",
+          "permutation": "[3] Permutation test: Vautard, R. et al. (1990). Monte Carlo and parametric tests. Journal of Statistical Planning and Inference.",
+          "effectSize": "[4] Effect size: Cohen, J. (1988). Statistical Power Analysis for the Behavioral Sciences. Routledge.",
+          "chiSquare": "[5] Chi-square for Markov chains: Anderson, T.W. & Goodman, L.A. (1957). Statistical inference about Markov chains. The Annals of Mathematical Statistics."
+        }
+      },
+      "empty": "Click \"Calculate\" to generate statistical metrics.",
+      "errors": {
+        "loadFailed": "Error loading metrics"
+      },
+      "methodology": {
+        "title": "Methodology & explanations",
+        "common": {
+          "whatIs": "What is this?",
+          "formula": "Formula",
+          "example": "OnCoCo example",
+          "interpretation": "Interpretation",
+          "source": "Source"
+        },
+        "frobenius": {
+          "title": "Frobenius distance",
+          "whatIs": "The Frobenius norm measures the overall difference between two matrices as the Euclidean distance of all matrix elements.",
+          "exampleIntro": "If we compare the transition matrices of pillar 1 (role plays) and pillar 3 (anonymized data):",
+          "examples": {
+            "item1": "A Frobenius distance of 0.1 means the counseling patterns are very similar",
+            "item2": "A distance of 0.5 shows clear differences in communication transitions",
+            "item3": "The larger the value, the more differently counselors behave across the data sources"
+          },
+          "interpretation": {
+            "verySimilar": "0 - 0.2: Very similar",
+            "moderate": "0.2 - 0.4: Moderately different",
+            "distinct": "0.4 - 0.6: Clearly different",
+            "strong": "> 0.6: Strongly different"
+          },
+          "source": "Golub, G.H. & Van Loan, C.F. (2013). Matrix Computations (4th ed.). Johns Hopkins University Press."
+        },
+        "jsd": {
+          "title": "Jensen-Shannon divergence (JSD)",
+          "whatIs": "JSD is a symmetric measure of the difference between two probability distributions. It is based on Kullback-Leibler divergence, but symmetric and always defined.",
+          "formulaNote": "where",
+          "exampleIntro": "For each row of the transition matrix (each source state) we compute the JSD:",
+          "examples": {
+            "item1": "If a counselor after an \"Active listening\" intervention (CO-IF-AC) in pillar 1 usually moves to \"Questions\" but in pillar 3 to \"Informing\", the JSD for this row shows a high value",
+            "item2": "Average JSD near 0: the transition patterns are almost identical",
+            "item3": "Average JSD near 1: the transition patterns are completely different"
+          },
+          "interpretation": {
+            "verySimilar": "0 - 0.1: Very similar",
+            "moderate": "0.1 - 0.3: Moderate differences",
+            "distinct": "0.3 - 0.5: Clear differences",
+            "strong": "> 0.5: Strong differences"
+          },
+          "source": "Lin, J. (1991). Divergence measures based on the Shannon entropy. IEEE Transactions on Information Theory, 37(1), 145-151."
+        },
+        "permutation": {
+          "title": "Permutation test",
+          "whatIs": "A non-parametric significance test that checks the null hypothesis that two matrices come from the same distribution.",
+          "method": "Method",
+          "steps": {
+            "step1": "Compute the observed Frobenius distance between the original matrices",
+            "step2": "Randomly mix the count data of both matrices",
+            "step3": "Compute the Frobenius distance of the mixed matrices",
+            "step4": "Repeat steps 2-3 n times (e.g., 1000 times)",
+            "step5": "p-value = proportion of permutations with distance >= observed distance"
+          },
+          "exampleIntro": "We test whether the differences between role plays (pillar 1) and real counseling sessions (pillar 3) are statistically significant:",
+          "examples": {
+            "item1": "p < 0.05: The differences are significant - role plays do not perfectly mirror real counseling",
+            "item2": "p >= 0.05: No significant difference detected - the data sources may show the same patterns"
+          },
+          "interpretation": {
+            "high": "p < 0.01: Highly significant",
+            "significant": "p < 0.05: Significant",
+            "notSignificant": "p >= 0.05: Not significant"
+          },
+          "source": "Good, P. (2005). Permutation, Parametric and Bootstrap Tests of Hypotheses (3rd ed.). Springer."
+        },
+        "effect": {
+          "title": "Effect size",
+          "whatIs": "Effect size indicates how large a difference is in practice, independent of sample size. A significant difference can be small when the sample is very large.",
+          "normalizedTitle": "Normalized Frobenius distance",
+          "normalizedNote": "where n, m are the matrix dimensions",
+          "exampleIntro": "Even if the permutation test is significant (p < 0.05), the effect size shows whether the difference is practically relevant:",
+          "examples": {
+            "item1": "Small effect size (< 0.2): The differences are statistical but hardly relevant in practice - counselors behave similarly",
+            "item2": "Medium effect size (0.2 - 0.5): Noticeable differences in counseling patterns",
+            "item3": "Large effect size (> 0.5): Clearly different counseling styles between the data sources"
+          },
+          "interpretationTitle": "Interpretation (after Cohen)",
+          "interpretation": {
+            "small": "< 0.2: Small",
+            "medium": "0.2 - 0.5: Medium",
+            "large": "0.5 - 0.8: Large",
+            "veryLarge": "> 0.8: Very large"
+          },
+          "source": "Cohen, J. (1988). Statistical Power Analysis for the Behavioral Sciences (2nd ed.). Routledge."
+        },
+        "chiSquare": {
+          "title": "Chi-square test for Markov chains",
+          "whatIs": "The chi-square test checks for each source state whether the transition probabilities differ significantly.",
+          "formulaNote": "where O = observed, E = expected frequencies",
+          "exampleIntro": "For each counseling code (e.g. CO-IF-AC \"Active listening\") we test separately:",
+          "examples": {
+            "item1": "If after \"Active listening\" in pillar 1 60% move to \"Questions\" but in pillar 3 only 40%, the chi-square test shows whether this difference is significant",
+            "item2": "This shows exactly which counseling techniques differ between data sources"
+          },
+          "interpretationIntro": "The share of significant states (p < 0.05) shows how many counseling techniques differ:",
+          "interpretation": {
+            "few": "< 20%: Few differences",
+            "moderate": "20 - 40%: Moderate differences",
+            "many": "40 - 60%: Many differences",
+            "veryMany": "> 60%: Very many differences"
+          },
+          "source": "Anderson, T.W. & Goodman, L.A. (1957). Statistical inference about Markov chains. The Annals of Mathematical Statistics, 28(1), 89-110."
+        },
+        "laplace": {
+          "title": "Laplace smoothing (additive smoothing)",
+          "whatIs": "Laplace smoothing prevents issues with zero counts in the matrix by adding a small value to all cells.",
+          "formulaNote": "the smoothing parameter is",
+          "exampleIntro": "If a specific transition (e.g. \"Questions\" -> \"Confrontation\") never occurs in pillar 1 but occurs 5 times in pillar 3:",
+          "examples": {
+            "item1": "Without smoothing: division by zero possible, JSD = infinity",
+            "item2": "With alpha = 1: each cell gets at least 1 pseudo-count",
+            "item3": "Higher alpha: more conservative estimate but smooths real differences"
+          },
+          "recommended": {
+            "title": "Recommended values",
+            "alphaZero": "alpha = 0: No smoothing (only with complete data)",
+            "alphaOne": "alpha = 1: Standard (Laplace)",
+            "alphaHigh": "alpha > 1: Strong smoothing"
+          },
+          "source": "Manning, C.D., Raghavan, P. & Schuetze, H. (2008). Introduction to Information Retrieval. Cambridge University Press."
+        }
+      },
+      "interpretation": {
+        "frobenius": {
+          "verySimilar": "Very similar matrices",
+          "moderate": "Moderately different",
+          "distinct": "Clearly different",
+          "strong": "Strongly different"
+        },
+        "jsd": {
+          "verySimilar": "Very similar distributions",
+          "moderate": "Moderate differences",
+          "distinct": "Clear differences",
+          "strong": "Strongly different distributions"
+        },
+        "effect": {
+          "small": "Small effect size",
+          "medium": "Medium effect size",
+          "large": "Large effect size",
+          "veryLarge": "Very large effect size"
+        }
+      }
+    }
   },
   "home": {
     "header": {
@@ -1253,7 +3246,13 @@
       "liveSync": "Live sync",
       "reconnecting": "Reconnecting...",
       "userFallback": "Unknown user",
-      "deletedText": "Deleted text"
+      "userUnknown": "Unknown user",
+      "deletedText": "Deleted text",
+      "errors": {
+        "initFailed": "Editor initialization failed: {message}",
+        "connectionFailed": "Collab connection failed: {message}",
+        "connectionLost": "Collab connection lost (reconnecting...)"
+      }
     }
   },
   "latexCollab": {
@@ -1405,6 +3404,8 @@
       "title": "Comments",
       "add": "Add comment",
       "addLabel": "Comment",
+      "comment": "Comment",
+      "addToSelection": "Comment on selected text",
       "empty": "No comments yet",
       "resolved": "Resolved",
       "reopen": "Reopen",
@@ -1420,6 +3421,12 @@
         "saveFailed": "Failed to save comment"
       }
     },
+    "ai": {
+      "rewrite": "Rewrite",
+      "expand": "Expand",
+      "summarize": "Summarize",
+      "fix": "Fix LaTeX"
+    },
     "pdf": {
       "title": "PDF Preview",
       "compiling": "Compiling...",
@@ -1430,7 +3437,8 @@
       "empty": "No PDF generated yet",
       "loading": "Loading...",
       "compilingStatus": "Compiling...",
-      "preparing": "Preparing preview..."
+      "preparing": "Preparing preview...",
+      "loadFailed": "Failed to load PDF"
     },
     "outline": {
       "title": "Outline",
@@ -1451,7 +3459,7 @@
       "toolbar": {
         "show": "Show toolbar",
         "hide": "Hide toolbar",
-        "label": "Toolbar",
+        "label": "Label",
         "bold": "Bold",
         "italic": "Italic",
         "underline": "Underline",
@@ -1475,7 +3483,6 @@
         "frac": "Fraction",
         "cite": "Cite",
         "ref": "Reference",
-        "label": "Label",
         "footnote": "Footnote",
         "url": "URL"
       },
@@ -1488,7 +3495,12 @@
       },
       "userFallback": "Unknown user",
       "userUnknown": "Unknown user",
-      "deletedText": "Deleted text"
+      "deletedText": "Deleted text",
+      "errors": {
+        "initFailed": "Editor initialization failed: {message}",
+        "connectionFailed": "Collab connection failed: {message}",
+        "connectionLost": "Collab connection lost (reconnecting...)"
+      }
     },
     "completions": {
       "documentclass": "Document class",
@@ -1717,6 +3729,7 @@
       "chatQuestion": "Asked AI: {text}...",
       "latexErrorsFound": "{count} LaTeX issues found",
       "latexErrorsNone": "No LaTeX issues found",
+      "latexFixed": "LaTeX corrected",
       "aiInserted": "AI content inserted",
       "errorsFound": "{count} issues found",
       "errorsNone": "No issues found",
@@ -1883,7 +3896,10 @@
     "status": {
       "deleted": "Deleted",
       "added": "Added",
-      "modified": "Modified"
+      "modified": "Modified",
+      "renamed": "Renamed",
+      "moved": "Moved",
+      "renamedMoved": "Renamed & moved"
     },
     "rollback": {
       "title": "Discard changes?",

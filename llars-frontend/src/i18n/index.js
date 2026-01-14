@@ -8,28 +8,52 @@
 import { createI18n } from 'vue-i18n'
 import de from '@/locales/de.json'
 import en from '@/locales/en.json'
+import logDe from '@/locales/logs.de.json'
+import logEn from '@/locales/logs.en.json'
 
 export const LANGUAGE_STORAGE_KEY = 'llars-language'
 export const DEFAULT_LANGUAGE = 'de'
 export const SUPPORTED_LANGUAGES = ['de', 'en']
 
 /**
- * Get the saved language from localStorage or return default
- * @returns {string} The language code ('de' or 'en')
+ * Detect a supported language from the browser settings.
+ * @returns {string|null} The language code ('de' or 'en') or null
  */
-function getSavedLanguage() {
-  if (typeof window === 'undefined') return DEFAULT_LANGUAGE
+function getSystemLanguage() {
+  if (typeof navigator === 'undefined') return null
 
-  try {
-    const saved = localStorage.getItem(LANGUAGE_STORAGE_KEY)
-    if (saved && SUPPORTED_LANGUAGES.includes(saved)) {
-      return saved
+  const candidates = Array.isArray(navigator.languages) && navigator.languages.length > 0
+    ? navigator.languages
+    : [navigator.language]
+
+  for (const lang of candidates) {
+    if (!lang) continue
+    const code = String(lang).toLowerCase().split('-')[0]
+    if (SUPPORTED_LANGUAGES.includes(code)) {
+      return code
     }
-  } catch (e) {
-    // localStorage not available (e.g., Safari private mode)
   }
 
-  return DEFAULT_LANGUAGE
+  return null
+}
+
+/**
+ * Get the saved language from localStorage or fall back to system/default.
+ * @returns {string} The language code ('de' or 'en')
+ */
+export function getInitialLanguage() {
+  if (typeof window !== 'undefined') {
+    try {
+      const saved = localStorage.getItem(LANGUAGE_STORAGE_KEY)
+      if (saved && SUPPORTED_LANGUAGES.includes(saved)) {
+        return saved
+      }
+    } catch (e) {
+      // localStorage not available (e.g., Safari private mode)
+    }
+  }
+
+  return getSystemLanguage() || DEFAULT_LANGUAGE
 }
 
 /**
@@ -37,11 +61,11 @@ function getSavedLanguage() {
  */
 export const i18n = createI18n({
   legacy: false, // Use Composition API
-  locale: getSavedLanguage(),
+  locale: getInitialLanguage(),
   fallbackLocale: DEFAULT_LANGUAGE,
   messages: {
-    de,
-    en
+    de: { ...de, logs: logDe },
+    en: { ...en, logs: logEn }
   },
   // Suppress warnings for missing translations during development
   missingWarn: false,

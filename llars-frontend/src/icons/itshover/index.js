@@ -31,9 +31,11 @@ import EvaluationIcon from './EvaluationIcon.vue'
 import EyeIcon from './EyeIcon.vue'
 import EyeOffIcon from './EyeOffIcon.vue'
 import FileIcon from './FileIcon.vue'
+import FilePlusIcon from './FilePlusIcon.vue'
 import FilterIcon from './FilterIcon.vue'
 import FlaskIcon from './FlaskIcon.vue'
 import FolderIcon from './FolderIcon.vue'
+import FolderPlusIcon from './FolderPlusIcon.vue'
 import FullscreenIcon from './FullscreenIcon.vue'
 import GearIcon from './GearIcon.vue'
 import GeminiIcon from './GeminiIcon.vue'
@@ -97,6 +99,7 @@ import UsersIcon from './UsersIcon.vue'
 import VllmIcon from './VllmIcon.vue'
 import WandIcon from './WandIcon.vue'
 import XIcon from './XIcon.vue'
+import ZoteroIcon from './ZoteroIcon.vue'
 
 export const iconComponents = {
   'admin-dashboard': AdminDashboardIcon,
@@ -133,9 +136,11 @@ export const iconComponents = {
   'eye': EyeIcon,
   'eye-off': EyeOffIcon,
   'file': FileIcon,
+  'file-plus': FilePlusIcon,
   'filter': FilterIcon,
   'flask': FlaskIcon,
   'folder': FolderIcon,
+  'folder-plus': FolderPlusIcon,
   'fullscreen': FullscreenIcon,
   'gear': GearIcon,
   'gemini': GeminiIcon,
@@ -198,6 +203,7 @@ export const iconComponents = {
   'vllm': VllmIcon,
   'wand': WandIcon,
   'x': XIcon,
+  'zotero': ZoteroIcon,
 }
 
 const explicitAliases = {
@@ -299,8 +305,14 @@ export const resolveIconKey = (iconName) => {
   if (tokens.includes('upload')) return 'upload'
   if (tokens.includes('download') || tokens.includes('save')) return 'download'
 
-  if (tokens.includes('folder')) return 'folder'
-  if (hasAny(tokens, ['file', 'document', 'note', 'paper', 'pdf', 'word', 'excel', 'powerpoint', 'license', 'archive'])) return 'file'
+  if (tokens.includes('folder')) {
+    if (hasAny(tokens, ['plus', 'add', 'new', 'create'])) return 'folder-plus'
+    return 'folder'
+  }
+  if (hasAny(tokens, ['file', 'document', 'note', 'paper', 'pdf', 'word', 'excel', 'powerpoint', 'license', 'archive'])) {
+    if (hasAny(tokens, ['plus', 'add', 'new', 'create'])) return 'file-plus'
+    return 'file'
+  }
 
   if (tokens.includes('clipboard')) return 'clipboard'
   if (tokens.includes('filter') || tokens.includes('tune')) return 'filter'

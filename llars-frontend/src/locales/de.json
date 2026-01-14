@@ -26,12 +26,40 @@
     "login": "Anmelden",
     "logout": "Abmelden",
     "register": "Registrieren",
+    "registerTitle": "Registrierung",
+    "registerSubtitle": "Erstelle deinen Account",
+    "welcomeBack": "Willkommen zurück",
+    "devLabel": "Entwicklung",
+    "inviteCode": "Einladungscode",
+    "passwordConfirm": "Passwort bestätigen",
+    "passwordHint": "Mindestens 8 Zeichen",
+    "displayNameOptional": "Anzeigename (optional)",
+    "loginLink": "Bereits registriert? Anmelden",
     "username": "Benutzername",
     "password": "Passwort",
     "email": "E-Mail",
     "forgotPassword": "Passwort vergessen?",
     "noAccount": "Noch kein Konto?",
-    "hasAccount": "Bereits ein Konto?"
+    "hasAccount": "Bereits ein Konto?",
+    "devUsers": {
+      "admin": "Admin",
+      "researcher": "Researcher",
+      "evaluator": "Evaluator",
+      "chatbotManager": "Chatbot Manager"
+    },
+    "validation": {
+      "usernamePattern": "Nur Buchstaben, Zahlen, _ und - erlaubt",
+      "passwordMismatch": "Passwörter stimmen nicht überein"
+    },
+    "errors": {
+      "missingCredentials": "Bitte geben Sie Benutzername und Passwort ein.",
+      "registrationDisabled": "Die Selbst-Registrierung ist derzeit deaktiviert.",
+      "invalidCode": "Ungültiger Code",
+      "registrationFailed": "Registrierung fehlgeschlagen"
+    },
+    "messages": {
+      "registrationSuccess": "Registrierung erfolgreich! Du wirst zur Anmeldung weitergeleitet..."
+    }
   },
   "appbar": {
     "platform": "LLars Plattform",
@@ -102,6 +130,1971 @@
   "navigation": {
     "home": "Home",
     "back": "Zurück"
+  },
+  "notFound": {
+    "title": "Dokument nicht gefunden",
+    "subtitle": "Diese Seite scheint sich in den Tiefen des Archivs versteckt zu haben...",
+    "searchPlaceholder": "Wonach suchen Sie?",
+    "searchButton": "Suchen",
+    "goHome": "Zur Startseite",
+    "openChat": "Chat öffnen",
+    "quickLinksLabel": "Schnellzugriff:",
+    "quickLinks": {
+      "home": "Home",
+      "chat": "Chat",
+      "judge": "Chatbot Arena",
+      "ranking": "Ranking",
+      "admin": "Admin"
+    },
+    "easterEggs": {
+      "llm": "Vielleicht hat ein LLM diese Seite halluziniert?",
+      "coffee": "Error 404: Kaffee nicht gefunden. Moment, falsche Fehlermeldung...",
+      "privacy": "Diese Seite wurde vom Datenschutzbeauftragten anonymisiert.",
+      "ai": "Die KI sucht noch... bitte haben Sie Geduld.",
+      "reboot": "Haben Sie versucht, die Seite aus- und wieder einzuschalten?"
+    }
+  },
+  "adminTester": {
+    "buckets": {
+      "good": "Gut",
+      "average": "Mittel",
+      "bad": "Schlecht",
+      "neutral": "Neutral"
+    }
+  },
+  "adminDashboard": {
+    "title": "Admin",
+    "subtitle": "Dashboard",
+    "homeLink": "Zur Startseite",
+    "nav": {
+      "overview": "Übersicht",
+      "analytics": "Analytics",
+      "health": "System Health",
+      "system": "System Events",
+      "chatbotActivity": "Chatbot Activity",
+      "docker": "Docker",
+      "db": "DB",
+      "settings": "Einstellungen",
+      "users": "Benutzer",
+      "referrals": "Referrals",
+      "scenarios": "Szenarien",
+      "chatbots": "Chatbots",
+      "crawler": "Web Crawler",
+      "rag": "RAG Dokumente",
+      "permissions": "Berechtigungen",
+      "llmProviders": "LLM Provider"
+    }
+  },
+  "comparison": {
+    "detail": {
+      "loadingTitle": "Laden...",
+      "scenarioLabel": "Szenario {id}",
+      "backLabel": "Gegenüberstellung",
+      "infoDialog": {
+        "title": "Informationen zur Gegenüberstellung",
+        "modeTitle": "Was ist der Gegenüberstellungsmodus?",
+        "modeBody": "In diesem Modus chatten Sie mit zwei verschiedenen KI-Modellen. Beide Modelle erhalten die selbe Eingabe und wir möchten mit Ihrer Hilfe herausfinden, welches der Modelle besser ist und besser den Klienten simuliert.",
+        "personaTitle": "Persona-Informationen",
+        "personaBody": "Einige Details zum jeweiligen Klienten sind links in der Seitenleiste angegeben.",
+        "ratingTitle": "Bewertung und Interaktion",
+        "ratingBody": "Nachdem die KI-Modelle etwas geschrieben haben, sollen Sie bewerten, welches der beiden besser ist (oder gleich gut). Anschließend können Sie eine Antwort formulieren, auf welche die Modelle wieder antworten etc.",
+        "limitsTitle": "Keine Limits",
+        "limitsBody": "Es gibt hier kein Limit - Sie können so viel schreiben wie sie möchten. Falls Sie eine andere Persona ausprobieren möchten, wechseln Sie einfach zur nächsten Session über die untere Leiste oder die Übersichtsseite.",
+        "confirm": "Verstanden"
+      },
+      "ratedMessages": "{rated} / {total} Nachrichten bewertet"
+    }
+  },
+  "dataImporter": {
+    "title": "Data Importer",
+    "subtitle": "Importiere Daten und erstelle Evaluationsszenarien mit KI-Unterstützung",
+    "newImport": "Neuer Import",
+    "empty": {
+      "title": "Daten importieren",
+      "body": "Lade deine Daten hoch und lass LLARS das Format automatisch erkennen. Die KI hilft dir bei der Transformation und beim Erstellen von Evaluationsszenarien.",
+      "cta": "Import starten"
+    },
+    "highlights": {
+      "autoDetection": {
+        "title": "Auto-Detection",
+        "body": "Erkennt OpenAI, LMSYS, CSV und mehr"
+      },
+      "aiSupport": {
+        "title": "KI-Unterstützung",
+        "body": "LLM analysiert und transformiert Daten"
+      },
+      "wizardFlow": {
+        "title": "Wizard-Flow",
+        "body": "Von Upload bis Evaluation in einem Flow"
+      }
+    },
+    "success": "Import erfolgreich! {count} Einträge importiert."
+  },
+  "docs": {
+    "hero": {
+      "title": "LLARS",
+      "subtitle": "LLM Assisted Research System",
+      "version": "v3.0",
+      "openSource": "Open Source",
+      "organization": "TH Nürnberg"
+    },
+    "overview": {
+      "title": "Was ist LLARS?",
+      "body": "{0} ist eine Plattform zur kollaborativen Bewertung von KI-generierten Inhalten. Das System ermöglicht systematische Evaluation, Vergleich und Optimierung von LLM-Antworten im Kontext der E-Beratung."
+    },
+    "features": {
+      "title": "Hauptfunktionen",
+      "items": {
+        "rankingRating": "Ranking & Rating",
+        "chatbotArena": "Chatbot Arena",
+        "ragChatbots": "RAG-Chatbots",
+        "promptEngineering": "Prompt Engineering",
+        "realtimeCollaboration": "Echtzeit-Kollaboration",
+        "anonymization": "Anonymisierung"
+      }
+    },
+    "technical": {
+      "title": "Technische Dokumentation",
+      "body": "Die vollständige technische Dokumentation mit Architektur, API-Referenz, Agentic AI (RAG, ACT, ReACT, ReflAct), Installationsanleitungen und mehr finden Sie in unserer MkDocs-Dokumentation:",
+      "linkTitle": "MkDocs Dokumentation öffnen",
+      "tags": {
+        "agenticAI": "Agentic AI",
+        "ragPipeline": "RAG Pipeline",
+        "hybridSearch": "Hybrid Search",
+        "chatbotArena": "Chatbot Arena",
+        "apiReference": "API Reference",
+        "installation": "Installation"
+      }
+    },
+    "quickStart": {
+      "title": "Schnellstart",
+      "code": "# Repository klonen und starten\ngit clone <repository-url>\ncd llars\ncp .env.template.development .env\n./start_llars.sh",
+      "hint": "Nach dem Start ist LLARS unter {0} erreichbar."
+    },
+    "contact": {
+      "title": "Kontakt",
+      "email": "info@e-beratungsinstitut.de",
+      "website": "e-beratungsinstitut.de"
+    },
+    "footer": "Stand: {date} | Version 3.0 | TH Nürnberg"
+  },
+  "judgeSession": {
+    "loading": "Session wird geladen...",
+    "defaultTitle": "Judge Session",
+    "idLabel": "ID: {id}",
+    "tabs": {
+      "live": "Live",
+      "history": "Verlauf"
+    },
+    "actions": {
+      "refresh": "Aktualisieren",
+      "start": "Starten",
+      "pause": "Pause",
+      "resume": "Fortsetzen",
+      "recover": "Wiederherstellen",
+      "results": "Ergebnisse"
+    },
+    "live": {
+      "activeWorkers": "{active}/{total} Worker aktiv",
+      "streamingCount": "{count} streaming",
+      "viewDetailed": "Detaillierte Ansicht",
+      "viewCompact": "Kompakte Ansicht",
+      "fullscreen": "Vollbild",
+      "emptyTitle": "Kein aktiver Vergleich",
+      "emptyCompleted": "Session abgeschlossen. Siehe Verlauf.",
+      "emptyStart": "Starten Sie die Session um Vergleiche zu generieren."
+    },
+    "actionBar": {
+      "recoveryNeeded": "Wiederherstellung nötig"
+    }
+  },
+  "adminProgress": {
+    "unknownScenario": "Unbekanntes Szenario",
+    "raterTitle": "Rater",
+    "evaluatorTitle": "Evaluator",
+    "legend": {
+      "user": "Benutzer",
+      "done": "Done",
+      "inProgress": "In Progress",
+      "notStarted": "Not Started",
+      "overallProgress": "Gesamtfortschritt",
+      "actions": "Aktionen"
+    },
+    "details": "Details",
+    "threadDetailsTitle": "Thread Details für {username}",
+    "threadDetailsMeta": "Thread ID: {threadId} | Chat ID: {chatId} | Institut ID: {instituteId}",
+    "functionTypes": {
+      "ranking": {
+        "subheader": "Fortschritt Ranking",
+        "done": "Bereits geranked",
+        "inProgress": "Teilweise geranked",
+        "notStarted": "Noch nicht geranked"
+      },
+      "rating": {
+        "subheader": "Fortschritt Rating",
+        "done": "Bereits bewertet",
+        "inProgress": "Teilweise bewertet",
+        "notStarted": "Noch nicht bewertet"
+      },
+      "history": {
+        "subheader": "Fortschritt Verlaufsgenerierung",
+        "done": "Bereits bewertet",
+        "inProgress": "Teilweise bewertet",
+        "notStarted": "Noch nicht bewertet"
+      }
+    }
+  },
+  "privacyPolicy": {
+    "title": "Datenschutzerklärung (Stand 05/24)",
+    "sections": {
+      "controller": {
+        "title": "Wer ist verantwortlich für die Datenverarbeitung?",
+        "intro": "Verantwortlich für den Datenschutz auf dieser Website ist:",
+        "contact": "Sigrid Zauter, Geschäftsführung des Instituts für E-Beratung<br>Keßlerplatz 12, 90489 Nürnberg<br>Tel.: 0911-5880-2580<br>Fax: 0911-5880-602580<br>E-Mail: info [at] e-beratungsinstitut . de"
+      },
+      "dataCollection": {
+        "title": "Welche Daten werden erhoben und warum?",
+        "paragraph1": "Wenn Sie unsere Website besuchen, werden automatisch einige Daten erfasst, wie zum Beispiel Ihre IP-Adresse und die besuchten Seiten. Diese Daten helfen uns, die Nutzung der Website zu analysieren und sie kontinuierlich zu verbessern.",
+        "paragraph2": "Zusätzlich nutzen wir die Daten, die Sie freiwillig zur Verfügung stellen, um sie im Rahmen des Forschungsprojekts LLars zu evaluieren. LLars ist eine Software, die zur Bewertung und Analyse von KI-generierten Inhalten entwickelt wurde. Alle erfassten Daten werden ausschließlich für wissenschaftliche Forschungszwecke genutzt und anonymisiert verarbeitet, soweit dies möglich ist."
+      },
+      "recipients": {
+        "title": "Wer bekommt meine Daten?",
+        "paragraph1": "Ihre Daten werden intern für die Forschung und Entwicklung im Rahmen des LLars-Projekts verwendet. Sie werden nicht an Dritte weitergegeben, es sei denn, eine Weitergabe ist gesetzlich erforderlich oder Sie haben uns Ihre ausdrückliche Zustimmung gegeben.",
+        "paragraph2": "Die Server für dieses Projekt werden auf Maschinen der Technischen Hochschule Nürnberg gehostet, und es wurde ein Vertrag über Auftragsverarbeitung abgeschlossen, um die Datenschutzkonformität sicherzustellen."
+      },
+      "protection": {
+        "title": "Wie werden meine Daten geschützt?",
+        "paragraph1": "Wir ergreifen Maßnahmen, um Ihre Daten zu schützen und sicher aufzubewahren. Dazu gehören technische Sicherheitsvorkehrungen wie Verschlüsselung und sichere Passwörter."
+      },
+      "rights": {
+        "title": "Was sind meine Auskunftsrechte?",
+        "paragraph1": "Sie haben das Recht zu erfahren, welche Daten wir über Sie gespeichert haben, und Sie können verlangen, dass diese Daten korrigiert oder gelöscht werden. Kontaktieren Sie uns über die oben genannten Kontaktinformationen, um Ihre Rechte wahrzunehmen."
+      },
+      "changes": {
+        "title": "Änderungen an dieser Datenschutzerklärung",
+        "paragraph1": "Diese Datenschutzerklärung kann gelegentlich aktualisiert werden. Änderungen werden auf unserer Website veröffentlicht."
+      },
+      "thNuremberg": "Zusätzlich gilt die {0}."
+    },
+    "links": {
+      "thNuremberg": "Datenschutzerklärung der TH Nürnberg"
+    }
+  },
+  "historyGeneration": {
+    "detail": {
+      "backLabel": "Übersicht",
+      "threadLabel": "Thread #{id}",
+      "messagePanelTitle": "Verlauf",
+      "emptyMessages": "Keine Nachrichten gefunden.",
+      "helpful": "Hilfreich",
+      "notHelpful": "Nicht hilfreich",
+      "ratingTitle": "Bewertung",
+      "headerDefault": "Verlaufsbewertung",
+      "sections": {
+        "coherence": {
+          "title": "Kohärenz und Logik",
+          "description": "Entsprechen die Reaktionen einem natürlichen Kommunikationsmuster?",
+          "clientLabel": "a) Ratsuchende Person",
+          "counsellorLabel": "b) Beratende Person"
+        },
+        "quality": {
+          "title": "Beratungsqualität",
+          "description": "Strukturiert, verständlich und empathisch?"
+        },
+        "overall": {
+          "title": "Gesamtbewertung",
+          "description": "Authentisch und als Beispiel geeignet?"
+        },
+        "category": {
+          "title": "Fallkategorie",
+          "selectLabel": "Kategorie auswählen",
+          "notesLabel": "Anmerkungen zur Kategorie"
+        },
+        "notes": {
+          "title": "Notizen",
+          "label": "Ihre Gedanken oder Anmerkungen"
+        }
+      },
+      "errors": {
+        "saveFailed": "Fehler beim Speichern.",
+        "invalidThread": "Ungültige Thread-ID.",
+        "loadFailed": "Thread konnte nicht geladen werden."
+      }
+    }
+  },
+  "imprintPage": {
+    "title": "Impressum",
+    "intro": "Die Technische Hochschule Nürnberg Georg Simon Ohm, ist eine Körperschaft des Öffentlichen Rechts. Sie wird durch den Präsidenten Prof. Dr. Niels Oberbeck gesetzlich vertreten.",
+    "sections": {
+      "address": {
+        "title": "Anschrift",
+        "project": "LLARS Projekt",
+        "university": "Technische Hochschule Nürnberg",
+        "street": "Keßlerplatz 12",
+        "city": "90489 Nürnberg",
+        "phone": "Tel. 0911-5880-2580",
+        "fax": "Fax 0911-5880-602580",
+        "email": "E-Mail: info [at] e-beratungsinstitut . de",
+        "websiteLabel": "Internet:"
+      },
+      "contactPerson": {
+        "title": "Kontaktperson für den Inhalt",
+        "text": "Sigrid Zauter, Geschäftsführung des Instituts für E-Beratung"
+      },
+      "supervisoryAuthority": {
+        "title": "Zuständige Aufsichtsbehörde",
+        "name": "Bayerisches Staatsministerium für Wissenschaft und Kunst",
+        "street": "Salvatorstraße 2",
+        "city": "80333 München",
+        "websiteLabel": "Internet:"
+      },
+      "vatId": {
+        "title": "Umsatzsteueridentifikationsnummer",
+        "text": "DE 222 858 358 (gemäß § 27a Umsatzsteuergesetz)"
+      },
+      "terms": {
+        "title": "Nutzungsbedingungen",
+        "text": "Texte, Bilder, Grafiken sowie die Gestaltung dieser Internetseiten können dem Urheberrecht unterliegen. Nicht urheberrechtlich geschützt sind nach § 5 des Urheberrechtsgesetzes (UrhG) Gesetze, Verordnungen, amtliche Erlasse und Bekanntmachungen sowie Entscheidungen und amtlich verfasste Leitsätze zu Entscheidungen und andere amtliche Werke, die im amtlichen Interesse zur allgemeinen Kenntnisnahme veröffentlicht worden sind, mit der Einschränkung, dass die Bestimmungen über Änderungsverbot und Quellenangabe in § 62 Abs. 1 bis 3 und § 63 Abs. 1 und 2 UrhG entsprechend anzuwenden sind."
+      },
+      "disclaimer": {
+        "title": "Haftungsausschluss",
+        "text": "Die Inhalte dieses Internetangebotes und die bereitgestellten Informationen sind sorgfältig recherchiert und nach bestem Wissen und Gewissen erarbeitet und geprüft. Dennoch kann die Technische Hochschule Nürnberg keine Gewähr für die Aktualität, Richtigkeit, Vollständigkeit, rechtliche Unbedenklichkeit, Qualität und jederzeitige Verfügbarkeit der bereitgestellten Informationen übernehmen."
+      },
+      "links": {
+        "title": "Links",
+        "text": "Von unseren eigenen Inhalten sind Querverweise („Links“) auf die Webseiten anderer Anbieter zu unterscheiden. Wir können diese fremden Inhalte nicht ständig auf Veränderungen überprüfen und daher auch keine Verantwortung dafür übernehmen. Für illegale, fehlerhafte oder unvollständige Inhalte und insbesondere für Schäden, die aus der Nutzung oder Nichtnutzung von Informationen Dritter entstehen, haftet allein der jeweilige Anbieter der Seite."
+      },
+      "copyright": {
+        "title": "Urheberrecht / Copyright",
+        "text": "Die Kopie und die Weiterverwendung von Text und Graphik erfordert die Zustimmung der Technischen Hochschule Nürnberg Georg Simon Ohm. Zudem gilt zu beachten, dass Bilder, Grafiken, Text- oder sonstige Dateien ganz oder teilweise dem Urheberrecht Dritter unterliegen."
+      },
+      "jurisdiction": {
+        "title": "Gerichtsstand",
+        "text": "Alle aus dieser Website entstehenden Rechtsstreitigkeiten unterliegen ausschließlich deutschem Recht."
+      }
+    },
+    "links": {
+      "eConsulting": "www.e-beratungsinstitut.de",
+      "stmwk": "www.stmwk.bayern.de"
+    }
+  },
+  "contactPage": {
+    "title": "Kontakt",
+    "sections": {
+      "email": {
+        "title": "E-Mail",
+        "address": "E-Mail: info [at] e-beratungsinstitut . de"
+      },
+      "phone": {
+        "title": "Telefon",
+        "number": "Telefon: +49 911 5880-2580",
+        "voicemail": "Bitte hinterlassen Sie gerne eine Nachricht auf unseren Anrufbeantwortern, wir rufen gerne zurück.",
+        "fax": "Telefax: +49 911 5880-602580"
+      },
+      "postal": {
+        "title": "Postadresse",
+        "address": "Institut für E-Beratung<br>Technische Hochschule Nürnberg<br>Keßlerplatz 12<br>90489 Nürnberg"
+      },
+      "visitor": {
+        "title": "Besucheradresse",
+        "address": "LLARS Projekt, Technische Hochschule Nürnberg<br>Innere Cramer-Klett-Straße 4-8<br>90403 Nürnberg<br>Räume SCU 118, 119, 120a, 120b, 121, SC 004, 005, 009, 010"
+      },
+      "social": {
+        "title": "Soziale Medien"
+      },
+      "location": {
+        "title": "Standort"
+      },
+      "privacy": {
+        "title": "Datenschutz Hinweis",
+        "text": "Weitere Informationen finden Sie in unserer {0}."
+      }
+    },
+    "links": {
+      "privacy": "Datenschutzerklärung"
+    }
+  },
+  "ranker": {
+    "detail": {
+      "backLabel": "Ranking",
+      "threadLabel": "Thread #{id}",
+      "featuresTitle": "Features",
+      "emailHistory": "E-Mail Verlauf",
+      "defaultTitle": "Feature-Ranking",
+      "buckets": {
+        "good": "Gut",
+        "average": "Mittel",
+        "bad": "Schlecht",
+        "neutral": "Neutral"
+      }
+    }
+  },
+  "rater": {
+    "detail": {
+      "backLabel": "Rating",
+      "threadLabel": "Thread #{id}",
+      "featuresTitle": "Features",
+      "progressTooltip": "Bewertete Features / Gesamtfeatures",
+      "emailHistory": "E-Mail Verlauf",
+      "defaultTitle": "Feature-Bewertung"
+    },
+    "featureTypes": {
+      "abstractSummary": "Abstrakte Fallzusammenfassung",
+      "generatedCategory": "Generierte Kategorie",
+      "generatedSubject": "Generierter Betreff",
+      "orderClarification": "Ordnungsklärung"
+    }
+  },
+  "raterFeature": {
+    "title": "Feature Detail",
+    "rateTitle": "Bewerten Sie dieses Feature",
+    "scale": {
+      "good": "Gut",
+      "bad": "Schlecht"
+    },
+    "edit": {
+      "title": "Feature bearbeiten",
+      "modelName": "Model Name",
+      "content": "Feature Content",
+      "autoSaveHint": "Änderungen werden automatisch gespeichert."
+    },
+    "emailHistory": "E-Mail Verlauf",
+    "saveStatus": {
+      "saving": "Speichert...",
+      "failed": "Speichern fehlgeschlagen",
+      "saved": "Gespeichert",
+      "autoSaving": "Auto-Speichern aktiv"
+    },
+    "actions": {
+      "retrySave": "Erneut speichern",
+      "backToOverview": "Zurück zur Übersicht"
+    },
+    "featureTypes": {
+      "abstractSummary": "Abstrakte Fallzusammenfassung",
+      "generatedCategory": "Generierte Kategorie",
+      "generatedSubject": "Generierter Betreff",
+      "orderClarification": "Ordnungsklärung"
+    },
+    "errors": {
+      "saveFailed": "Fehler beim Speichern."
+    }
+  },
+  "authenticity": {
+    "detail": {
+      "defaultTitle": "Fake/Echt Bewertung",
+      "threadLabel": "Thread #{id}",
+      "backLabel": "Übersicht",
+      "messagePanelTitle": "Verlauf",
+      "votePanelTitle": "Abstimmung",
+      "infoText": "Ein Verlauf ist {0}, sobald ein Modell eine oder mehrere Nachrichten ersetzt hat.",
+      "fakeLabel": "fake",
+      "voteQuestion": "Ist dieser Verlauf echt oder fake?",
+      "voteReal": "Echt",
+      "voteRealHint": "Von Menschen geschrieben",
+      "voteFake": "Fake",
+      "voteFakeHint": "KI-generierte Anteile",
+      "confidenceLabel": "Sicherheit (optional)",
+      "notesLabel": "Notizen (optional)",
+      "notesPlaceholder": "Ihre Beobachtungen oder Begründung...",
+      "errors": {
+        "loadFailed": "Thread konnte nicht geladen werden.",
+        "saveFailed": "Speichern fehlgeschlagen."
+      }
+    }
+  },
+  "chatLegacy": {
+    "commands": {
+      "helpMessage": "Verfügbare Befehle:\n/help - Zeigt diese Hilfe an\n/clear - Löscht den Chatverlauf",
+      "unknownCommand": "Unbekannter Befehl: {command}"
+    }
+  },
+  "tempTest": {
+    "initialBotMessage": "Hallo! Wie kann ich dir helfen?"
+  },
+  "kaimo": {
+    "hub": {
+      "subtitle": "KI-gestützte Analyse und Modellierung für Fallarbeit",
+      "description": "Schnellzugriff auf das KAIMO Panel und die Fallverwaltung. Siehe docs/docs/projekte/kaimo.",
+      "chips": {
+        "phase": "Konzept Phase",
+        "roles": "Rollen: Evaluator & Researcher",
+        "cases": "{total} Fälle ({published} live / {draft} Entwürfe)"
+      },
+      "alerts": {
+        "noAccess": "KAIMO ist für dein Konto nicht freigeschaltet. Wende dich an eine:n Researcher für Zugriff (feature:kaimo:view)."
+      },
+      "cards": {
+        "panel": {
+          "title": "KAIMO Panel",
+          "subtitle": "Fälle durcharbeiten und bewerten",
+          "description": "Starte in das KAIMO User Panel, ordne Hinweise zu Kategorien zu und schließe Bewertungen ab.",
+          "cta": "KAIMO öffnen",
+          "permission": "feature:kaimo:view"
+        },
+        "newCase": {
+          "title": "KAIMO Fall anlegen",
+          "subtitle": "Researcher Bereich",
+          "description": "Neue Fallvignetten erstellen, Dokumente und Hinweise vorbereiten und für Teams freigeben.",
+          "cta": "Neuen Fall starten",
+          "badge": "Researcher",
+          "permission": "admin:kaimo:manage"
+        }
+      },
+      "errors": {
+        "load": "KAIMO Fälle konnten nicht geladen werden."
+      }
+    },
+    "panel": {
+      "title": "KAIMO Panel",
+      "subtitle": "Fälle durcharbeiten, Hinweise zuordnen, Bewertungen abschließen",
+      "roleHint": {
+        "researcher": "Researcher: Fälle verwalten und bearbeiten.",
+        "evaluator": "Evaluator: Freigegebene Fälle bearbeiten."
+      },
+      "roles": {
+        "researcher": "Researcher",
+        "evaluator": "Evaluator"
+      },
+      "actions": {
+        "newCase": "Neuer Fall"
+      },
+      "alerts": {
+        "noAccess": "Du benötigst {permission}, um das KAIMO Panel zu öffnen."
+      },
+      "table": {
+        "title": "Fälle",
+        "headers": {
+          "case": "Fall",
+          "status": "Status",
+          "docs": "Docs",
+          "hints": "Hinweise",
+          "assessments": "Bewertungen",
+          "actions": "Aktionen"
+        },
+        "noDescription": "Keine Beschreibung",
+        "empty": "Keine KAIMO Fälle verfügbar.",
+        "emptyCta": "Ersten Fall anlegen"
+      },
+      "tooltips": {
+        "openCase": "Fall öffnen (User-Ansicht)",
+        "editCase": "Fall bearbeiten",
+        "publish": "Veröffentlichen"
+      },
+      "sidebar": {
+        "title": "Hinweise",
+        "subtitle": "Öffne einen Fall um ihn zu bearbeiten.",
+        "publishedCount": "{count} veröffentlicht",
+        "draftCount": "{count} Entwürfe"
+      },
+      "deleteDialog": {
+        "title": "Fall löschen?",
+        "body": "Möchtest du den Fall {name} wirklich löschen?",
+        "warningTitle": "Achtung:",
+        "warningBody": "Dieser Fall hat {count} Bewertung(en). Beim Löschen gehen alle Daten verloren!"
+      },
+      "publishDialog": {
+        "title": "Fall veröffentlichen?",
+        "body": "Möchtest du den Fall {name} veröffentlichen?",
+        "note": "Nach der Veröffentlichung können Evaluator den Fall bearbeiten.",
+        "confirm": "Veröffentlichen"
+      },
+      "snackbar": {
+        "deleteSuccess": "Fall \"{name}\" wurde gelöscht.",
+        "deleteError": "Fehler beim Löschen des Falls.",
+        "publishSuccess": "Fall \"{name}\" wurde veröffentlicht.",
+        "publishError": "Fehler beim Veröffentlichen des Falls."
+      }
+    },
+    "newCase": {
+      "title": "KAIMO Fall anlegen",
+      "subtitle": "Researcher Panel für neue Fallvignetten",
+      "description": "Bereit zum Aufsetzen neuer Fälle nach dem Konzept unter docs/docs/projekte/kaimo.",
+      "researcherOnly": "Nur Researcher",
+      "backToHub": "Zurück zum KAIMO Hub",
+      "alerts": {
+        "noAccess": "Diese Seite ist nur für Researcher mit {permission} zugänglich."
+      },
+      "form": {
+        "title": "Neuen Fall anlegen",
+        "nameLabel": "Name (intern, eindeutig)",
+        "nameHint": "z.B. fall-malaika",
+        "displayNameLabel": "Anzeigename",
+        "descriptionLabel": "Beschreibung",
+        "iconLabel": "Icon (optional)",
+        "colorLabel": "Farbe (Hex)",
+        "categoriesHint": "Kategorien: Wenn leer, werden Standard-Kategorien automatisch verknüpft.",
+        "submit": "Fall anlegen"
+      },
+      "permissions": {
+        "title": "Berechtigungen",
+        "subtitle": "Researcher + admin:kaimo:manage erhalten die Kachel \"Fall anlegen\".",
+        "accessConfirmed": "Zugriff bestätigt",
+        "concept": "Konzept: docs/docs/projekte/kaimo",
+        "reload": "Berechtigungen neu laden"
+      },
+      "messages": {
+        "created": "Fall wurde angelegt (Draft)."
+      },
+      "errors": {
+        "createFailed": "Fall konnte nicht angelegt werden."
+      }
+    },
+    "case": {
+      "navigation": {
+        "documents": "Fallakte",
+        "diagram": "Diagramm",
+        "assessment": "Bewertung"
+      },
+      "errors": {
+        "loadCase": "Fall konnte nicht geladen werden.",
+        "noAccess": "Du benötigst die Permission {permission} um diese Seite zu sehen.",
+        "loadFailure": "KAIMO Fall konnte nicht geladen werden."
+      },
+      "snackbar": {
+        "hintSaved": "Hinweis gespeichert",
+        "hintSaveError": "Fehler beim Speichern",
+        "assessmentComplete": "Bewertung erfolgreich abgeschlossen!"
+      }
+    },
+    "caseEditor": {
+      "header": {
+        "title": "Fall bearbeiten: {name}",
+        "unnamed": "Unbenannt",
+        "nameFallback": "Keine Beschreibung",
+        "descriptionFallback": "Keine Beschreibung"
+      },
+      "tabs": {
+        "general": "Grunddaten",
+        "documents": "Dokumente",
+        "hints": "Hinweise",
+        "preview": "Vorschau"
+      },
+      "general": {
+        "nameLabel": "Technischer Name",
+        "nameHint": "Eindeutiger Bezeichner (z.B. fall-001)",
+        "displayNameLabel": "Anzeigename",
+        "displayNameHint": "Name wie er Benutzern angezeigt wird",
+        "descriptionLabel": "Beschreibung",
+        "descriptionHint": "Kurze Beschreibung des Falls",
+        "iconLabel": "Icon (Emoji)",
+        "iconHint": "z.B. 📁",
+        "colorLabel": "Farbe (Hex)",
+        "colorHint": "z.B. #1976D2",
+        "statusLabel": "Status"
+      },
+      "documents": {
+        "title": "Dokumente",
+        "add": "Dokument hinzufügen",
+        "empty": "Noch keine Dokumente vorhanden",
+        "headers": {
+          "title": "Titel",
+          "type": "Typ",
+          "date": "Datum",
+          "order": "Sortierung",
+          "actions": "Aktionen"
+        }
+      },
+      "hints": {
+        "title": "Hinweise",
+        "add": "Hinweis hinzufügen",
+        "empty": "Noch keine Hinweise vorhanden",
+        "headers": {
+          "content": "Inhalt",
+          "source": "Qülle",
+          "category": "Kategorie",
+          "rating": "Rating",
+          "actions": "Aktionen"
+        }
+      },
+      "preview": {
+        "title": "User-Ansicht Vorschau",
+        "subtitle": "So sehen Benutzer diesen Fall im KAIMO Panel.",
+        "documents": "Dokumente ({count})",
+        "hints": "Hinweise ({count})",
+        "noDocuments": "Keine Dokumente verfügbar",
+        "noHints": "Keine Hinweise verfügbar"
+      },
+      "actions": {
+        "publish": "Veröffentlichen"
+      },
+      "documentDialog": {
+        "editTitle": "Dokument bearbeiten",
+        "newTitle": "Neues Dokument",
+        "titleLabel": "Titel",
+        "typeLabel": "Typ",
+        "dateLabel": "Datum",
+        "contentLabel": "Inhalt",
+        "contentHint": "Markdown wird unterstützt",
+        "orderLabel": "Sortierung"
+      },
+      "hintDialog": {
+        "editTitle": "Hinweis bearbeiten",
+        "newTitle": "Neuer Hinweis",
+        "contentLabel": "Inhalt",
+        "sourceLabel": "Qüll-Dokument",
+        "categoryLabel": "Erwartete Kategorie",
+        "subcategoryLabel": "Erwartete Unterkategorie",
+        "ratingLabel": "Erwartetes Rating",
+        "orderLabel": "Sortierung"
+      },
+      "deleteDialog": {
+        "title": "Löschen bestätigen",
+        "body": "Möchten Sie dieses Element wirklich löschen?",
+        "note": "Diese Aktion kann nicht rückgängig gemacht werden."
+      },
+      "documentTypes": {
+        "aktenvermerk": "Aktenvermerk",
+        "bericht": "Bericht",
+        "protokoll": "Protokoll",
+        "sonstiges": "Sonstiges"
+      },
+      "placeholders": {
+        "empty": "-"
+      },
+      "snackbar": {
+        "loadFailed": "Fall konnte nicht geladen werden",
+        "saved": "Änderungen gespeichert",
+        "saveFailed": "Speichern fehlgeschlagen",
+        "published": "Fall veröffentlicht",
+        "publishFailed": "Veröffentlichung fehlgeschlagen",
+        "documentUpdated": "Dokument aktualisiert",
+        "documentCreated": "Dokument erstellt",
+        "hintUpdated": "Hinweis aktualisiert",
+        "hintCreated": "Hinweis erstellt",
+        "documentDeleted": "Dokument gelöscht",
+        "hintDeleted": "Hinweis gelöscht",
+        "deleteFailed": "Löschen fehlgeschlagen",
+        "noPermission": "Keine Berechtigung zum Bearbeiten"
+      }
+    },
+    "documents": {
+      "searchPlaceholder": "Textsuche",
+      "filters": {
+        "attributes": "Merkmale",
+        "actors": "Akteure"
+      },
+      "emptySearch": "Keine Ergebnisse gefunden",
+      "empty": "Keine Dokumente vorhanden",
+      "types": {
+        "aktenvermerk": "Aktenvermerk",
+        "bericht": "Bericht",
+        "protokoll": "Protokoll",
+        "sonstiges": "Dokument",
+        "default": "Aktenvermerk"
+      },
+      "placeholders": {
+        "date": "—"
+      }
+    },
+    "diagram": {
+      "categories": {
+        "basicCare": "Grundversorgung des jungen Menschen",
+        "family": "Familiensituation",
+        "development": "Entwicklungssituation des jungen Menschen",
+        "parents": "Eltern / Erziehungsberechtigte"
+      },
+      "hints": {
+        "open": "Offene Hinweise"
+      }
+    },
+    "assessment": {
+      "title": "Abschließende Fallbeurteilung",
+      "verdictInstruction": "Wählen Sie hier Ihr Urteil zum Fall",
+      "verdicts": {
+        "inconclusive": "Eine abschließende Bewertung ist nicht möglich",
+        "notEndangered": "Das Wohl von {name} ist nicht gefährdet",
+        "endangered": "Das Wohl von {name} ist gefährdet"
+      },
+      "notesPlaceholder": "Zusätzliche Anmerkungen (optional)",
+      "submit": "Bewertung abschließen",
+      "sidebar": {
+        "title": "Fallübersicht",
+        "caseLabel": "Fall",
+        "statusLabel": "Status",
+        "statusCompleted": "Abgeschlossen",
+        "statusInProgress": "In Bearbeitung",
+        "hintsAssigned": "Hinweise zugeordnet",
+        "hintsAssignedValue": "{assigned} von {total}"
+      },
+      "errors": {
+        "completeFailed": "Fehler beim Abschließen der Bewertung"
+      }
+    },
+    "hintDialog": {
+      "categoryFallback": "Kategorie",
+      "noCategory": "Keine Kategorie ausgewählt",
+      "subcategoryLabel": "Unterkategorie",
+      "reset": "Zurücksetzen",
+      "empty": "Keine Hinweise für diese Kategorie"
+    },
+    "ratings": {
+      "risk": "Risiko",
+      "resource": "Ressource",
+      "unclear": "Unklar",
+      "riskPlural": "Risiken",
+      "resourcePlural": "Ressourcen"
+    },
+    "status": {
+      "published": "Veröffentlicht",
+      "draft": "Entwurf",
+      "archived": "Archiviert"
+    },
+    "errors": {
+      "loadCases": "KAIMO Fälle konnten nicht geladen werden."
+    },
+    "common": {
+      "childFallback": "Kind"
+    }
+  },
+  "oncoco": {
+    "status": {
+      "pending": "Ausstehend",
+      "running": "Läuft",
+      "completed": "Abgeschlossen",
+      "failed": "Fehlgeschlagen"
+    },
+    "pillars": {
+      "one": "Rollenspiele",
+      "three": "Anonymisierte Daten",
+      "five": "Live-Testungen",
+      "threeShort": "Anonymisiert",
+      "fiveShort": "Live-Test",
+      "default": "Säule {id}"
+    },
+    "overview": {
+      "title": "OnCoCo Analyse",
+      "subtitle": "Klassifikation von Beratungsgesprächen mit dem OnCoCo Modell",
+      "actions": {
+        "info": "Was ist OnCoCo?",
+        "newAnalysis": "Neue Analyse erstellen",
+        "viewResults": "Ergebnisse anzeigen",
+        "viewDetails": "Details anzeigen",
+        "start": "Starten"
+      },
+      "table": {
+        "title": "Meine OnCoCo Analysen",
+        "pillars": "{count} Säulen",
+        "sentences": "Sätze",
+        "headers": {
+          "name": "Analyse Name",
+          "status": "Status",
+          "progress": "Fortschritt",
+          "pillars": "Säulen",
+          "sentences": "Sätze",
+          "createdAt": "Erstellt am",
+          "actions": "Aktionen"
+        }
+      },
+      "filters": {
+        "all": "Alle",
+        "running": "Laufend",
+        "completed": "Abgeschlossen",
+        "failed": "Fehlgeschlagen"
+      },
+      "empty": {
+        "title": "Keine Analysen gefunden",
+        "subtitle": "Erstellen Sie Ihre erste OnCoCo Analyse, um zu beginnen"
+      },
+      "stats": {
+        "total": "Gesamt Analysen",
+        "completed": "Abgeschlossen",
+        "running": "Laufend",
+        "categories": "OnCoCo Kategorien"
+      },
+      "model": {
+        "title": "OnCoCo Modell Status",
+        "available": "Verfügbar",
+        "unavailable": "Nicht verfügbar",
+        "modelLabel": "Modell",
+        "categoriesLabel": "Kategorien",
+        "categoriesValue": "{counselor} Berater + {client} Klient = {total} Total",
+        "deviceLabel": "Gerät"
+      },
+      "deleteDialog": {
+        "title": "Analyse löschen?",
+        "body": "Möchten Sie die Analyse {name} wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden."
+      },
+      "placeholders": {
+        "date": "-"
+      }
+    },
+    "config": {
+      "back": "Zurück zur Übersicht",
+      "title": "Neue OnCoCo Analyse konfigurieren",
+      "form": {
+        "nameLabel": "Analyse Name",
+        "namePlaceholder": "z.B. OnCoCo Analyse Säule 1+3",
+        "pillarsTitle": "Säulen auswählen",
+        "pillarLabel": "Säule {id}",
+        "threadsLabel": "Threads:",
+        "statusLabel": "Status:",
+        "statusReady": "Bereit",
+        "statusSync": "Sync erforderlich",
+        "advancedTitle": "Erweiterte Optionen",
+        "useLevel2Label": "Level-2 Aggregation verwenden",
+        "useLevel2Hint": "Fasst die 68 Kategorien in 18 übergeordnete Gruppen zusammen",
+        "batchSizeLabel": "Batch-Grösse",
+        "batchSizeHint": "Anzahl Sätze pro GPU-Batch (höher = schneller, aber mehr Speicher)"
+      },
+      "actions": {
+        "create": "Analyse erstellen",
+        "createAndStart": "Erstellen & Starten"
+      },
+      "info": {
+        "title": "Über OnCoCo",
+        "description": "Das OnCoCo-Modell (Online Counseling Conversations) klassifiziert Beratungsgespräche auf Satzebene in 68 Kategorien.",
+        "categoriesTitle": "Kategorien",
+        "counselorLabel": "Berater (CO):",
+        "clientLabel": "Klient (CL):",
+        "metricsTitle": "Metriken",
+        "accuracyLabel": "Genauigkeit:",
+        "f1Label": "F1 Makro:"
+      },
+      "notes": {
+        "title": "Hinweise",
+        "info": "Die Analyse kann je nach Datenmenge einige Minuten dauern.",
+        "warning": "Stellen Sie sicher, dass die ausgewählten Säulen synchronisiert sind."
+      }
+    },
+    "results": {
+      "back": "Zurück zur Übersicht",
+      "metrics": {
+        "progress": "Fortschritt",
+        "threads": "Threads",
+        "sentencesAnalyzed": "Sätze analysiert",
+        "createdAt": "Erstellt"
+      },
+      "actions": {
+        "start": "Analyse starten",
+        "resume": "Analyse fortsetzen",
+        "retry": "Erneut versuchen",
+        "load": "Laden",
+        "loadMore": "Mehr laden ({loaded} / {total})"
+      },
+      "stuckWarning": "Die Analyse scheint festgefahren zu sein (keine Updates seit {seconds}s). Dies kann nach einem Server-Neustart passieren.",
+      "failedFallback": "Analyse fehlgeschlagen",
+      "running": {
+        "title": "Analyse läuft...",
+        "elapsed": "{duration} vergangen"
+      },
+      "live": {
+        "hardware": "Hardware",
+        "deviceType": "Device:",
+        "deviceName": "Device Name:",
+        "cpuCores": "CPU Cores:",
+        "cpuUsage": "CPU Usage:",
+        "memory": "Memory:",
+        "modelSize": "Model Size:",
+        "waiting": "Warte auf Daten...",
+        "currentThread": "Aktüller Thread",
+        "pillar": "Säule:",
+        "threadId": "Thread ID:",
+        "messages": "Nachrichten:",
+        "message": "Nachricht:",
+        "sender": "Sender:",
+        "performance": "Performance",
+        "threadsPerSecond": "Threads/Sek:",
+        "sentencesPerSecond": "Sätze/Sek:",
+        "elapsed": "Vergangen:",
+        "eta": "Geschätzt:",
+        "workerSingle": "Worker: 1 (Single-Threaded)",
+        "lastClassified": "Zuletzt klassifiziert"
+      },
+      "pending": {
+        "title": "Analyse noch nicht gestartet",
+        "subtitle": "Starten Sie die Analyse mit dem Button oben, um Ergebnisse zu generieren."
+      },
+      "failed": {
+        "title": "Analyse fehlgeschlagen",
+        "subtitle": "Ein unbekannter Fehler ist aufgetreten. Bitte versuchen Sie es erneut."
+      },
+      "tabs": {
+        "overview": "Übersicht",
+        "distribution": "Verteilung",
+        "transitions": "Transitionen & Vergleich",
+        "sentences": "Sätze"
+      },
+      "pillarLabel": "Säule {id}",
+      "overview": {
+        "sentences": "Sätze:",
+        "counselorSentences": "Berater-Sätze:",
+        "clientSentences": "Klient-Sätze:",
+        "impactFactorRatio": "Impact Factor Ratio:",
+        "resourceActivation": "Ressourcen-Aktivierung:",
+        "mutualInformation": "Mutual Information:"
+      },
+      "filters": {
+        "allPillars": "Alle Säulen",
+        "pillar": "Säule",
+        "detailLevel": "Detailstufe",
+        "role": "Rolle",
+        "heatmapMode": "Heatmap Farbmodus",
+        "showValues": "Werte anzeigen",
+        "label": "Label Filter",
+        "labelPlaceholder": "z.B. CO-IF-AC"
+      },
+      "heatmapModes": {
+        "count": "Anzahl",
+        "probability": "Wahrscheinlichkeit"
+      },
+      "levelOptions": {
+        "level2": "Level 2 (aggregiert)",
+        "full": "Vollständig"
+      },
+      "roles": {
+        "all": "Alle",
+        "allLong": "Alle (Berater & Ratsuchend)",
+        "counselor": "Berater",
+        "client": "Klient",
+        "counselorOnly": "Nur Berater",
+        "clientOnly": "Nur Ratsuchend"
+      },
+      "transitions": {
+        "heatmapsTitle": "Transitions-Heatmaps pro Säule",
+        "totalTransitions": "{count} Transitionen",
+        "comparisonTitle": "Vergleich: {from}",
+        "noHeatmapData": "Keine Heatmap-Daten verfügbar. Bitte warten Sie bis die Analyse abgeschlossen ist.",
+        "topTitle": "Top 20 Transitionen",
+        "topPillar": "Säule {id}",
+        "topAll": "Alle Säulen",
+        "noTransitionData": "Keine Transitions-Daten verfügbar."
+      },
+      "methodology": {
+        "title": "Statistische Matrix-Vergleichsmetriken"
+      },
+      "distribution": {
+        "headers": {
+          "label": "Label",
+          "role": "Rolle",
+          "count": "Anzahl"
+        }
+      },
+      "comparison": {
+        "headers": {
+          "pillar": "Säule",
+          "sentences": "Sätze",
+          "counselorRatio": "Berater-Anteil",
+          "impactFactor": "Impact Factor",
+          "resourceActivation": "Ressourcen-Aktivierung",
+          "miScore": "MI Score",
+          "confidence": "Konfidenz"
+        }
+      },
+      "sentences": {
+        "headers": {
+          "sentence": "Satz",
+          "role": "Rolle",
+          "label": "Label",
+          "confidence": "Konfidenz",
+          "pillar": "Säule"
+        }
+      },
+      "placeholders": {
+        "date": "-"
+      }
+    },
+    "info": {
+      "hero": {
+        "title": "OnCoCo 1.0",
+        "subtitle": "Online Counseling Conversations Dataset",
+        "description": "Ein fein-granulares Kategorie- und Klassifikationssystem für die automatisierte Inhaltsanalyse von psychosozialer Online-Beratung. Entwickelt an der TH Nürnberg nach Methoden qualitativer Sozialforschung.",
+        "chips": {
+          "categories": "66 Kategorien",
+          "f1": "F1 Macro: 0.78",
+          "bilingual": "Bilingual DE/EN",
+          "messages": "2.778 Nachrichten",
+          "license": "CC BY-SA 4.0"
+        },
+        "performance": {
+          "title": "Modell-Performance",
+          "value": "~0.88",
+          "subtitle": "Cohen's Kappa vs. Menschen",
+          "note": "XLM-RoBERTa-Large erreicht menschliche Zuverlässigkeit"
+        }
+      },
+      "hierarchy": {
+        "title": "Das hierarchische Kategoriensystem",
+        "description": "OnCoCo verwendet ein 5-stufiges hierarchisches System zur Klassifikation von Aussagen in Online-Beratungsgesprächen. Jede Kategorie hat einen eindeutigen Code, der den Pfad durch die Hierarchie beschreibt.",
+        "exampleTitle": "Beispiel: Label-Code aufgeschlüsselt",
+        "parts": {
+          "role": {
+            "label": "Rolle",
+            "description": "Counselor (Berater)"
+          },
+          "level1": {
+            "label": "Level 1",
+            "description": "Impact Factors"
+          },
+          "level2": {
+            "label": "Level 2",
+            "description": "Analysis & Clarification"
+          },
+          "level3": {
+            "label": "Level 3",
+            "description": "Reflection (Fact)"
+          },
+          "level45": {
+            "label": "Level 4-5",
+            "description": "Request Living Situation - Social Relationships"
+          }
+        },
+        "fullCodeLabel": "Vollständiger Code:",
+        "fullCodeDescription": "- \"Frage nach sozialen Beziehungen/Lebenssituation\""
+      },
+      "counselor": {
+        "title": "Berater-Kategorien (CO-)",
+        "subtitle": "Kategorien für Berater-Aussagen",
+        "table": {
+          "level1": "Level 1",
+          "level2": "Level 2"
+        },
+        "rows": {
+          "formalities": "Formalitäten zu Beginn",
+          "moderation": "Moderation",
+          "impactFactors": "Impact Factors",
+          "analysis": "Analyse & Problemklärung",
+          "goalSetting": "Zielvereinbarung",
+          "motivation": "Motivation erzeugen",
+          "resourceActivation": "Ressourcenaktivierung",
+          "help": "Hilfe & Problemlösung",
+          "closing": "Abschluss & Verabschiedung",
+          "other": "Sonstige Aussagen"
+        }
+      },
+      "client": {
+        "title": "Klienten-Kategorien (CL-)",
+        "subtitle": "Kategorien für Klienten-Aussagen",
+        "table": {
+          "level1": "Level 1",
+          "level2": "Level 2"
+        },
+        "rows": {
+          "formalities": "Formalitäten zu Beginn",
+          "empathy": "Empathie",
+          "impactFactors": "Impact Factors",
+          "analysis": "Analyse & Problemklärung",
+          "goalSetting": "Zielvereinbarung",
+          "motivation": "Motivation",
+          "resourceActivation": "Ressourcenaktivierung",
+          "help": "Hilfe & Problembewältigung",
+          "closing": "Abschluss",
+          "other": "Sonstige Aussagen"
+        }
+      },
+      "impactFactors": {
+        "title": "Impact Factors - Das Herzstück",
+        "alert": "Impact Factors sind die wirksamkeitsrelevanten Kategorien nach Grawe (2000). Sie bilden den Schwerpunkt der Analyse, da sie die Qualität und Methodik der Beratung abbilden.",
+        "items": [
+          {
+            "code": "AC",
+            "name": "Analyse & Problemklärung",
+            "description": "Erfassung und Verständnis des Problems durch Fragen, Spiegelungen und Reflexionen.",
+            "color": "info"
+          },
+          {
+            "code": "AO",
+            "name": "Zielvereinbarung",
+            "description": "Definition und Abstimmung von Beratungszielen und Erwartungen.",
+            "color": "success"
+          },
+          {
+            "code": "Mot",
+            "name": "Motivation erzeugen",
+            "description": "Förderung von Veränderungsbereitschaft, Change-Talk (MI), Wertschätzung.",
+            "color": "warning"
+          },
+          {
+            "code": "RA",
+            "name": "Ressourcenaktivierung",
+            "description": "Aktivierung vorhandener Unterstützung aus Familie, Freunden oder professionellen Stellen.",
+            "color": "purple"
+          },
+          {
+            "code": "HP",
+            "name": "Hilfe & Problemlösung",
+            "description": "Konkrete Empfehlungen, Erklärungen, Warnungen und Ratschläge.",
+            "color": "error"
+          }
+        ]
+      },
+      "useCases": {
+        "title": "Anwendungsfelder",
+        "items": {
+          "quality": {
+            "title": "Qualitätsmonitoring",
+            "subtitle": "Übergänge & Impact-Faktoren sichtbar machen"
+          },
+          "training": {
+            "title": "Training & Supervision",
+            "subtitle": "Muster in Gesprächen aufdecken, Feedback geben"
+          },
+          "research": {
+            "title": "Forschung",
+            "subtitle": "Skalierbare Inhaltsanalyse für psychosoziale Beratung"
+          },
+          "chatbot": {
+            "title": "Chatbot-Evaluation",
+            "subtitle": "Vergleich Mensch vs. KI in feingranulären Klassen"
+          },
+          "risk": {
+            "title": "Risikörkennung",
+            "subtitle": "Automatische Erkennung kritischer Situationen"
+          }
+        }
+      },
+      "model": {
+        "title": "Modell & Technik",
+        "baseModel": "Basis-Modell",
+        "baseModelValue": "XLM-RoBERTa-Large (561M Parameter)",
+        "accuracy": "Accuracy @1",
+        "f1Macro1": "F1 Macro @1",
+        "f1Macro2": "F1 Macro @2",
+        "f1Macro2Value": "~0.87 (bei Berücksichtigung Top-2)",
+        "kappa": "Cohen's Kappa",
+        "kappaValue": "~0.88 (vergleichbar mit Menschen)",
+        "roleMasking": "Rollen-Maskierung",
+        "roleMaskingValue": "Output-Logits werden nach Rolle gefiltert",
+        "warning": "Zero-Shot versagt: GPT-4o erreicht nur F1 ~0.29 - Fine-Tuning ist notwendig!"
+      },
+      "examples": {
+        "title": "Beispiel-Klassifikationen",
+        "headers": {
+          "role": "Rolle",
+          "code": "Code",
+          "text": "Text",
+          "path": "Kategorie-Pfad"
+        },
+        "items": [
+          {
+            "role": "CO",
+            "code": "CO-IF-AC-RF-RLS-L",
+            "text": "Um Sie besser beraten zu können, wäre es hilfreich zu wissen, welche Hobbys oder Interessen Sie haben.",
+            "path": "Impact Factors → Analyse → Reflexion → Lebenssituation → Freizeit"
+          },
+          {
+            "role": "CO",
+            "code": "CO-IF-AC-RF-RTP-*",
+            "text": "Können Sie das Gefühl, das Sie danach haben, noch etwas genauer beschreiben?",
+            "path": "Impact Factors → Analyse → Reflexion → Gezielte Nachfrage"
+          },
+          {
+            "role": "CO",
+            "code": "CO-IF-HP-*-ITFE-*",
+            "text": "Es ist völlig normal, dass junge Menschen in der Pubertät anfangen, sexülle Wünsche und Fantasien zu entwickeln.",
+            "path": "Impact Factors → Hilfe → Fachliche Erklärung"
+          },
+          {
+            "role": "CL",
+            "code": "CL-E-*-*-ECP-*",
+            "text": "Es geht eigentlich mehr um meinen Bruder als um mich.",
+            "path": "Empathie → Sorge um andere Person"
+          },
+          {
+            "role": "CL",
+            "code": "CL-IF-ACP-*-FPA-*",
+            "text": "Ich habe versucht, meine Entzugssymptome mit Medikamenten zu lindern, aber es fühlt sich wie ein ständiger Kampf an.",
+            "path": "Impact Factors → Analyse → Feedback zu bisherigen Versuchen"
+          }
+        ]
+      },
+      "resources": {
+        "title": "Ressourcen & Referenzen",
+        "paper": {
+          "title": "Paper & Datensatz",
+          "itemTitle": "LREC 2026 Paper",
+          "itemSubtitle": "OnCoCo 1.0 Publikation"
+        },
+        "license": {
+          "title": "Lizenz",
+          "itemTitle": "CC BY-SA 4.0",
+          "itemSubtitle": "Nutzung für Forschung & Bildung"
+        },
+        "api": {
+          "title": "API in dieser Instanz",
+          "itemSubtitle": "Modell-Status & Label-Infos"
+        }
+      },
+      "labels": {
+        "counselorTitle": "Alle Berater-Labels ({count})",
+        "clientTitle": "Alle Klienten-Labels ({count})",
+        "headers": {
+          "code": "Code",
+          "name": "Name",
+          "description": "Beschreibung"
+        },
+        "counselorItems": [
+          {
+            "code": "CO-FA-*-*-*-*",
+            "name": "Formalitäten zu Beginn",
+            "description": "Begrüßt und eröffnet das Gespräch."
+          },
+          {
+            "code": "CO-Mod-*-*-*-*",
+            "name": "Moderation",
+            "description": "Steuert Ablauf, fasst zusammen, setzt Übergänge."
+          },
+          {
+            "code": "CO-IF-AC-RF-RPD-*",
+            "name": "Frage nach persönlichen Daten",
+            "description": "Erfragt Basisinfos wie Alter, Kontakt oder Rahmenbedingungen."
+          },
+          {
+            "code": "CO-IF-AC-RF-RPA-*",
+            "name": "Frage nach bisherigen Lösungsversuchen",
+            "description": "Prüft, was bereits ausprobiert wurde."
+          },
+          {
+            "code": "CO-IF-AC-RF-SRx-*",
+            "name": "Einfache Spiegelung",
+            "description": "Spiegelt Kernaussagen kurz wider, um Verständnis zu zeigen."
+          },
+          {
+            "code": "CO-IF-AC-RF-RLS-SR",
+            "name": "Frage Lebenssituation - Soziales",
+            "description": "Erkundigt sich nach sozialem Umfeld und Beziehungen."
+          },
+          {
+            "code": "CO-IF-AC-RF-RLS-PS",
+            "name": "Frage Lebenssituation - Beruf",
+            "description": "Fragt nach Arbeit, Ausbildung oder beruflicher Lage."
+          },
+          {
+            "code": "CO-IF-AC-RF-RLS-ES",
+            "name": "Frage Lebenssituation - Finanzen",
+            "description": "Klärt finanzielle Situation und Belastungen."
+          },
+          {
+            "code": "CO-IF-AC-RF-RLS-H",
+            "name": "Frage Lebenssituation - Gesundheit",
+            "description": "Fragt nach körperlichem oder mentalem Gesundheitszustand."
+          },
+          {
+            "code": "CO-IF-AC-RF-RLS-L",
+            "name": "Frage Lebenssituation - Freizeit",
+            "description": "Erkundigt Hobbys und Ausgleichsaktivitäten."
+          },
+          {
+            "code": "CO-IF-AC-RF-RC-*",
+            "name": "Frage nach Anliegen",
+            "description": "Lässt das zentrale Anliegen präzisieren."
+          },
+          {
+            "code": "CO-IF-AC-RF-RTP-*",
+            "name": "Gezielte, präzise Nachfrage",
+            "description": "Stellt fokussierte Rückfragen, um Details zu klären."
+          },
+          {
+            "code": "CO-IF-AC-RF-RCD-*",
+            "name": "Frage nach Veränderung",
+            "description": "Erfragt gewünschte Änderungen oder Zielrichtung."
+          },
+          {
+            "code": "CO-IF-AC-RE-RCR-*",
+            "name": "Komplexe Spiegelung",
+            "description": "Spiegelt und ordnet komplexe Inhalte verdichtend."
+          },
+          {
+            "code": "CO-IF-AC-RE-RES-*",
+            "name": "Frage nach Gefühlszustand",
+            "description": "Erkundigt Emotionen und Stimmung."
+          },
+          {
+            "code": "CO-IF-AO-*-ROW-*",
+            "name": "Frage nach Zielen/Wünschen",
+            "description": "Klärt Ziele, Wünsche oder Erwartungen."
+          },
+          {
+            "code": "CO-IF-AO-*-ICO-*",
+            "name": "Definition der Beratungsziele",
+            "description": "Formuliert gemeinsame Ziele und Rahmen."
+          },
+          {
+            "code": "CO-IF-Mot-*-RFC-*",
+            "name": "Change-Talk evozieren (MI)",
+            "description": "Lenkt auf Veränderungsgründe und intrinsische Motivation."
+          },
+          {
+            "code": "CO-IF-Mot-*-IAC-*",
+            "name": "Wahrgenommene Veränderungsfähigkeit",
+            "description": "Spiegelt oder fördert Zutrauen in die eigene Fähigkeit."
+          },
+          {
+            "code": "CO-IF-Mot-*-ITA-*",
+            "name": "Dank und Wertschätzung",
+            "description": "Gibt positives Feedback und Anerkennung."
+          },
+          {
+            "code": "CO-IF-Mot-*-IEM-*",
+            "name": "Ermutigung, Motivation",
+            "description": "Unterstützt aktiv und bestärkt."
+          },
+          {
+            "code": "CO-IF-Mot-*-RS-*",
+            "name": "Frage nach Unterstützungsressourcen",
+            "description": "Erfragt verfügbare Personen oder Hilfen im Umfeld."
+          },
+          {
+            "code": "CO-IF-RA-*-RP-*",
+            "name": "Anfrage zur Problemdarstellung",
+            "description": "Fordert zur klaren Problembeschreibung auf."
+          },
+          {
+            "code": "CO-IF-RA-*-RAP-*",
+            "name": "Vorschlag professionelle Ebene",
+            "description": "Empfiehlt professionelle Angebote oder Stellen."
+          },
+          {
+            "code": "CO-IF-RA-*-N-RAFa",
+            "name": "Vorschlag Familienebene",
+            "description": "Regt an, Familie als Ressource einzubeziehen."
+          },
+          {
+            "code": "CO-IF-RA-*-N-RAFr",
+            "name": "Vorschlag Freundesebene",
+            "description": "Schlägt Unterstützung durch Freunde vor."
+          },
+          {
+            "code": "CO-IF-HP-*-ITFE-*",
+            "name": "Fachliche Erklärungen",
+            "description": "Gibt sachliche oder technische Infos."
+          },
+          {
+            "code": "CO-IF-HP-*-IPFR-*",
+            "name": "Professionelle Empfehlung",
+            "description": "Spricht konkrete Fach-Empfehlung aus."
+          },
+          {
+            "code": "CO-IF-HP-*-IF-*",
+            "name": "Zukunftsprognose",
+            "description": "Schätzt mögliche Entwicklung oder Verlauf."
+          },
+          {
+            "code": "CO-IF-HP-*-IW-*",
+            "name": "Warnung",
+            "description": "Weist auf Risiken oder Gefahren hin."
+          },
+          {
+            "code": "CO-IF-HP-*-ICO-*",
+            "name": "Beruhigung",
+            "description": "Wirkt deeskalierend und nimmt Druck."
+          },
+          {
+            "code": "CO-IF-HP-*-PP-IA",
+            "name": "Ratschlag",
+            "description": "Gibt direkte Handlungsanweisung."
+          },
+          {
+            "code": "CO-IF-HP-*-IEA",
+            "name": "Bewertung, Interpretation",
+            "description": "Ordnet Gesagtes ein und interpretiert."
+          },
+          {
+            "code": "CO-IF-HP-*-PP-IW",
+            "name": "Wunsch",
+            "description": "Formuliert eigenen Wunsch an die Klientin/den Klienten."
+          },
+          {
+            "code": "CO-FC-*-*-F-*",
+            "name": "Verabschiedung",
+            "description": "Schließt das Gespräch ab."
+          },
+          {
+            "code": "CO-FC-*-*-OPR-*",
+            "name": "Angebot professioneller Ressourcen",
+            "description": "Bietet weitere Stellen oder Materialien an."
+          },
+          {
+            "code": "CO-O-*-*-O-*",
+            "name": "Andere Aussagen",
+            "description": "Sonstiges, nicht in andere Kategorien passend."
+          },
+          {
+            "code": "CO-O-*-*-UCO-*",
+            "name": "Unangemessene Bemerkung",
+            "description": "Grenzüberschreitende oder unpassende Aussage."
+          }
+        ],
+        "clientItems": [
+          {
+            "code": "CL-FB-*-*-*-*",
+            "name": "Formalitäten zu Beginn",
+            "description": "Begrüßt und eröffnet das Gespräch."
+          },
+          {
+            "code": "CL-E-*-*-PT-*",
+            "name": "Empathie für Dritte",
+            "description": "Zeigt Mitgefühl für andere beteiligte Personen."
+          },
+          {
+            "code": "CL-E-*-*-ECC-*",
+            "name": "Mitgefühl für andere",
+            "description": "Bringt Mitgefühl allgemein zum Ausdruck."
+          },
+          {
+            "code": "CL-E-*-*-ECP-*",
+            "name": "Sorge um andere Person",
+            "description": "Sorge oder Anteilnahme für jemanden im Umfeld."
+          },
+          {
+            "code": "CL-IF-ACP-*-PS-*",
+            "name": "Problemdarstellung",
+            "description": "Schildert die Situation oder das Anliegen."
+          },
+          {
+            "code": "CL-IF-ACP-*-PD-*",
+            "name": "Problemdefinition",
+            "description": "Formuliert das Problem präziser oder analytisch."
+          },
+          {
+            "code": "CL-IF-ACP-*-DPD-*",
+            "name": "Offenlegung persönlicher Daten",
+            "description": "Teilt private Daten oder Hintergründe."
+          },
+          {
+            "code": "CL-IF-ACP-*-FPA-*",
+            "name": "Feedback zu bisherigen Versuchen",
+            "description": "Berichtet über bereits getestete Schritte."
+          },
+          {
+            "code": "CL-IF-ACP-*-OE-*",
+            "name": "Eigener Gefühlsausdruck",
+            "description": "Teilt eigene Emotionen offen mit."
+          },
+          {
+            "code": "CL-IF-ACP-*-Cons-*",
+            "name": "Zustimmung",
+            "description": "Stimmt Vorschlägen oder Fragen zu."
+          },
+          {
+            "code": "CL-IF-ACP-*-Rej-*",
+            "name": "Ablehnung",
+            "description": "Lehnt Vorschläge oder Annahmen ab."
+          },
+          {
+            "code": "CL-IF-ACP-*-Req-*",
+            "name": "Allgemeine Anfrage",
+            "description": "Fragt allgemein nach Hilfe oder Information."
+          },
+          {
+            "code": "CL-IF-AO-*-Obj-*",
+            "name": "Ziel des Auftrags",
+            "description": "Benennt das gewünschte Ziel oder Ergebnis."
+          },
+          {
+            "code": "CL-IF-AO-*-Ext-*",
+            "name": "Erweiterung des Auftrags",
+            "description": "Weitet den Auftrag oder die Bitte aus."
+          },
+          {
+            "code": "CL-IF-Mot-*-FC-*",
+            "name": "Change-Talk",
+            "description": "Äussert eigene Beweggründe für Veränderung."
+          },
+          {
+            "code": "CL-IF-Mot-*-RC-*",
+            "name": "Gründe für Veränderung",
+            "description": "Begründet, warum eine Änderung wichtig ist."
+          },
+          {
+            "code": "CL-IF-RA-*-RF-*",
+            "name": "Ressourcen Freunde/Familie",
+            "description": "Sieht Unterstützung durch nähere Kontakte."
+          },
+          {
+            "code": "CL-IF-RA-*-RP-*",
+            "name": "Ressourcen professionelle Ebene",
+            "description": "Nutzt oder erwägt professionelle Hilfe."
+          },
+          {
+            "code": "CL-IF-HP-*-PosF-*",
+            "name": "Allgemeines positives Feedback",
+            "description": "Gibt positives Gesamtfeedback."
+          },
+          {
+            "code": "CL-IF-HP-*-PosFR-*",
+            "name": "Positives Feedback zu Empfehlungen",
+            "description": "Lobt konkrete Ratschläge oder Massnahmen."
+          },
+          {
+            "code": "CL-IF-HP-*-NegFR-*",
+            "name": "Negatives Feedback zu Empfehlungen",
+            "description": "Kritisiert konkrete Empfehlungen."
+          },
+          {
+            "code": "CL-IF-HP-*-RepRA-*",
+            "name": "Bericht zur Umsetzung",
+            "description": "Meldet Fortschritt oder Umsetzungsschritte."
+          },
+          {
+            "code": "CL-IF-HP-*-Succ-*",
+            "name": "Finaler Erfolg",
+            "description": "Meldet gelungenes Ergebnis."
+          },
+          {
+            "code": "CL-IF-HP-*-Fail-*",
+            "name": "Finales Scheitern",
+            "description": "Meldet Scheitern oder Rückschlag."
+          },
+          {
+            "code": "CL-FC-*-*-F-*",
+            "name": "Verabschiedung",
+            "description": "Schließt das Gespräch ab."
+          },
+          {
+            "code": "CL-FC-*-*-UPR-*",
+            "name": "Weitere Nutzung professioneller Ressourcen",
+            "description": "Signalisiert Bereitschaft, weitere Angebote zu nutzen."
+          },
+          {
+            "code": "CL-O-*-*-O-*",
+            "name": "Andere Aussagen",
+            "description": "Sonstiges, nicht in andere Kategorien passend."
+          },
+          {
+            "code": "CL-O-*-*-UCO-*",
+            "name": "Unangemessene Bemerkung",
+            "description": "Grenzüberschreitende oder unpassende Aussage."
+          }
+        ]
+      },
+      "cta": {
+        "title": "Bereit für die Analyse?",
+        "body": "Starte auf der Übersichtsseite eine neue Analyse, um Transition-Matrizen, Säulen-Statistiken und Satz-Labels live zu verfolgen.",
+        "button": "Zur Analyse-Übersicht"
+      }
+    },
+    "kiaSync": {
+      "title": "KIA Datenquellen",
+      "connected": "Verbunden",
+      "disconnected": "Nicht verbunden",
+      "threads": "{count} Threads",
+      "actions": {
+        "syncAll": "Alle synchronisieren"
+      },
+      "status": {
+        "available": "Bereit",
+        "notFound": "Nicht vorhanden",
+        "error": "Fehler",
+        "syncing": "Lädt..."
+      },
+      "errors": {
+        "statusFailed": "Status-Abfrage fehlgeschlagen",
+        "syncFailed": "Sync fehlgeschlagen"
+      },
+      "messages": {
+        "pillarSuccess": "Säule {id}: {count} Threads erstellt",
+        "pillarError": "Säule {id}: {message}",
+        "syncAll": "{count} Threads erstellt"
+      }
+    },
+    "quickStats": {
+      "similarity": {
+        "label": "Ähnlichkeit",
+        "levels": {
+          "veryHigh": "Sehr hoch",
+          "high": "Hoch",
+          "moderate": "Moderat",
+          "low": "Gering",
+          "veryLow": "Sehr gering"
+        }
+      },
+      "frobenius": {
+        "label": "Frobenius",
+        "levels": {
+          "similar": "Ähnlich",
+          "moderate": "Moderat",
+          "distinct": "Deutlich",
+          "strong": "Stark"
+        }
+      },
+      "significance": {
+        "label": "Signifikanz",
+        "short": "sig."
+      },
+      "chiSquare": {
+        "label": "Chi-Quadrat sig.",
+        "empty": "-",
+        "states": "{percent}% Zustände"
+      },
+      "methodology": "Methodik & Erklärungen"
+    },
+    "transitionHeatmap": {
+      "countLabel": "Anzahl:",
+      "probabilityLabel": "Wahrsch.:"
+    },
+    "pillarComparison": {
+      "title": "Paarweise Säulen-Vergleiche",
+      "differences": {
+        "title": "Größte Unterschiede",
+        "empty": "Keine signifikanten Unterschiede gefunden (z-score > 2)"
+      },
+      "metrics": {
+        "title": "Statistische Metriken",
+        "frobenius": {
+          "label": "Frobenius-Distanz",
+          "levels": {
+            "verySimilar": "Sehr ähnliche Matrizen",
+            "moderate": "Moderat unterschiedlich",
+            "distinct": "Deutlich unterschiedlich",
+            "strong": "Stark unterschiedlich"
+          }
+        },
+        "jsd": {
+          "label": "JSD Mittelwert",
+          "max": "Max: {valü}"
+        },
+        "permutation": {
+          "label": "Permutationstest",
+          "significant": "Signifikanter Unterschied",
+          "notSignificant": "Nicht signifikant"
+        },
+        "effect": {
+          "label": "Effektstärke (norm.)",
+          "levels": {
+            "small": "Kleine Effektstärke",
+            "medium": "Mittlere Effektstärke",
+            "large": "Große Effektstärke",
+            "veryLarge": "Sehr große Effektstärke"
+          }
+        },
+        "chiSquare": {
+          "label": "Chi-Quadrat-Test",
+          "subtitle": "Zustände mit sig. unterschiedlichen Verteilungen"
+        }
+      },
+      "missing": {
+        "title": "Fehlende Transitionen",
+        "onlyIn": "Nur in {name}:",
+        "more": "+{count} weitere"
+      },
+      "chiSquare": {
+        "detailsTitle": "Chi-Quadrat Details pro Zustand",
+        "headers": {
+          "state": "Zustand",
+          "chiSquare": "Chi-Quadrat",
+          "pValue": "p-Wert",
+          "significant": "Signifikant"
+        }
+      },
+      "fallbacks": {
+        "pillarA": "Säule A",
+        "pillarB": "Säule B"
+      },
+      "empty": "Keine Vergleichsdaten verfügbar. Bitte warten Sie bis die Analyse abgeschlossen ist."
+    },
+    "matrixComparison": {
+      "title": "Statistische Matrix-Vergleichsmetriken",
+      "actions": {
+        "methodologySources": "Methodik & Qüllen",
+        "calculate": "Berechnen"
+      },
+      "controls": {
+        "detailLevel": "Detailstufe",
+        "smoothingLabel": "Laplace Smoothing (alpha)",
+        "smoothingHint": "Additive Glättung für Nullzählungen. 0 = keine, 1 = Standard",
+        "permutationsLabel": "Permutationen",
+        "permutationsHint": "Anzahl der Permutationen für Signifikanztest (mehr = genauer, aber langsamer)"
+      },
+      "fallbacks": {
+        "pillarA": "Säule A",
+        "pillarB": "Säule B"
+      },
+      "metrics": {
+        "frobenius": {
+          "label": "Frobenius-Distanz"
+        },
+        "jsd": {
+          "label": "Jensen-Shannon Divergenz (Mittel)",
+          "max": "Max: {valü}"
+        },
+        "permutation": {
+          "label": "Permutationstest p-Wert",
+          "significant": "Statistisch signifikanter Unterschied (p < 0.05)",
+          "notSignificant": "Kein signifikanter Unterschied nachgewiesen"
+        },
+        "effect": {
+          "label": "Effektstärke",
+          "normalized": "Norm. Frobenius"
+        },
+        "chiSquare": {
+          "label": "Chi-Quadrat Test",
+          "summary": "{significant} / {total} signifikant",
+          "subtitle": "Zustände mit signifikant unterschiedlichen Übergangsverteilungen"
+        }
+      },
+      "outliers": {
+        "title": "Ausreißer-Transitionen",
+        "show": "Transitionen mit Z-Score > 2 anzeigen",
+        "empty": "Keine Ausreißer gefunden"
+      },
+      "missing": {
+        "title": "Fehlende Transitionen",
+        "onlyInA": "{count} nur in A",
+        "onlyInB": "{count} nur in B",
+        "show": "Fehlende Transitionen anzeigen",
+        "onlyIn": "Nur in {name}:",
+        "more": "+{count} weitere",
+        "none": "Alle Transitionen in beiden Matrizen vorhanden"
+      },
+      "footnotes": {
+        "title": "Qüllen:",
+        "items": {
+          "frobenius": "[1] Frobenius-Norm: Golub & Van Loan (2013). Matrix Computations. Johns Hopkins University Press.",
+          "jsd": "[2] Jensen-Shannon Divergenz: Lin, J. (1991). Divergence measures based on the Shannon entropy. IEEE Transactions on Information Theory.",
+          "permutation": "[3] Permutationstest: Vautard, R. et al. (1990). Monte Carlo and parametric tests. Journal of Statistical Planning and Inference.",
+          "effectSize": "[4] Effektstärke: Cohen, J. (1988). Statistical Power Analysis for the Behavioral Sciences. Routledge.",
+          "chiSquare": "[5] Chi-Quadrat für Markov-Ketten: Anderson, T.W. & Goodman, L.A. (1957). Statistical inference about Markov chains. The Annals of Mathematical Statistics."
+        }
+      },
+      "empty": "Klicken Sie auf \"Berechnen\", um statistische Metriken zu generieren.",
+      "errors": {
+        "loadFailed": "Fehler beim Laden der Metriken"
+      },
+      "methodology": {
+        "title": "Methodik & Erklärungen",
+        "common": {
+          "whatIs": "Was ist das?",
+          "formula": "Formel",
+          "example": "OnCoCo-Beispiel",
+          "interpretation": "Interpretation",
+          "source": "Qülle"
+        },
+        "frobenius": {
+          "title": "Frobenius-Distanz",
+          "whatIs": "Die Frobenius-Norm misst den Gesamtunterschied zwischen zwei Matrizen als euklidische Distanz aller Matrixelemente.",
+          "exampleIntro": "Wenn wir die Übergangsmatrizen von Säule 1 (Rollenspiele) und Säule 3 (Anonymisierte Daten) vergleichen:",
+          "examples": {
+            "item1": "Eine Frobenius-Distanz von 0.1 bedeutet, dass die Beratungsmuster sehr ähnlich sind",
+            "item2": "Eine Distanz von 0.5 zeigt deutliche Unterschiede in den Kommunikationsübergängen",
+            "item3": "Je größer der Wert, desto unterschiedlicher verhalten sich Berater in den verschiedenen Datenquellen"
+          },
+          "interpretation": {
+            "verySimilar": "0 - 0.2: Sehr ähnlich",
+            "moderate": "0.2 - 0.4: Moderat unterschiedlich",
+            "distinct": "0.4 - 0.6: Deutlich unterschiedlich",
+            "strong": "> 0.6: Stark unterschiedlich"
+          },
+          "source": "Golub, G.H. & Van Loan, C.F. (2013). Matrix Computations (4th ed.). Johns Hopkins University Press."
+        },
+        "jsd": {
+          "title": "Jensen-Shannon Divergenz (JSD)",
+          "whatIs": "Die JSD ist ein symmetrisches Mass für den Unterschied zwischen zwei Wahrscheinlichkeitsverteilungen. Sie basiert auf der Kullback-Leibler-Divergenz, ist aber symmetrisch und immer definiert.",
+          "formulaNote": "wobei",
+          "exampleIntro": "Für jede Zeile der Übergangsmatrix (jeden Ausgangszustand) berechnen wir die JSD:",
+          "examples": {
+            "item1": "Wenn ein Berater nach einer \"Aktiven Zuhören\"-Intervention (CO-IF-AC) in Säule 1 meist zu \"Fragen\" übergeht, aber in Säule 3 zu \"Informieren\", zeigt die JSD für diese Zeile einen hohen Wert",
+            "item2": "Mittlere JSD nahe 0: Die Übergangsmuster sind nahezu identisch",
+            "item3": "Mittlere JSD nahe 1: Die Übergangsmuster sind völlig unterschiedlich"
+          },
+          "interpretation": {
+            "verySimilar": "0 - 0.1: Sehr ähnlich",
+            "moderate": "0.1 - 0.3: Moderate Unterschiede",
+            "distinct": "0.3 - 0.5: Deutliche Unterschiede",
+            "strong": "> 0.5: Starke Unterschiede"
+          },
+          "source": "Lin, J. (1991). Divergence measures based on the Shannon entropy. IEEE Transactions on Information Theory, 37(1), 145-151."
+        },
+        "permutation": {
+          "title": "Permutationstest",
+          "whatIs": "Ein nicht-parametrischer Signifikanztest, der die Nullhypothese prüft, dass zwei Matrizen aus derselben Verteilung stammen.",
+          "method": "Verfahren",
+          "steps": {
+            "step1": "Berechne die beobachtete Frobenius-Distanz zwischen den Originalmatrizen",
+            "step2": "Mische die Zähldaten beider Matrizen zufällig",
+            "step3": "Berechne die Frobenius-Distanz der gemischten Matrizen",
+            "step4": "Wiederhole Schritte 2-3 n-mal (z.B. 1000 mal)",
+            "step5": "p-Wert = Anteil der Permutationen mit Distanz >= beobachtete Distanz"
+          },
+          "exampleIntro": "Wir testen, ob die Unterschiede zwischen Rollenspielen (Säule 1) und echten Beratungsgesprächen (Säule 3) statistisch signifikant sind:",
+          "examples": {
+            "item1": "p < 0.05: Die Unterschiede sind signifikant - Rollenspiele spiegeln nicht perfekt echte Beratungen wider",
+            "item2": "p >= 0.05: Kein signifikanter Unterschied nachweisbar - die Datenquellen könnten dieselben Muster zeigen"
+          },
+          "interpretation": {
+            "high": "p < 0.01: Hoch signifikant",
+            "significant": "p < 0.05: Signifikant",
+            "notSignificant": "p >= 0.05: Nicht signifikant"
+          },
+          "source": "Good, P. (2005). Permutation, Parametric and Bootstrap Tests of Hypotheses (3rd ed.). Springer."
+        },
+        "effect": {
+          "title": "Effektstärke",
+          "whatIs": "Die Effektstärke gibt an, wie groß ein Unterschied praktisch ist - unabhängig von der Stichprobengrösse. Ein signifikanter Unterschied kann klein sein, wenn die Stichprobe sehr groß ist.",
+          "normalizedTitle": "Normalisierte Frobenius-Distanz",
+          "normalizedNote": "wobei n, m die Matrixdimensionen sind",
+          "exampleIntro": "Selbst wenn der Permutationstest signifikant ist (p < 0.05), zeigt die Effektstärke, ob der Unterschied praktisch relevant ist:",
+          "examples": {
+            "item1": "Kleine Effektstärke (< 0.2): Die Unterschiede sind statistisch, aber praktisch kaum relevant - Berater verhalten sich ähnlich",
+            "item2": "Mittlere Effektstärke (0.2 - 0.5): Erkennbare Unterschiede in den Beratungsmustern",
+            "item3": "Große Effektstärke (> 0.5): Deutlich unterschiedliche Beratungsstile zwischen den Datenquellen"
+          },
+          "interpretationTitle": "Interpretation (nach Cohen)",
+          "interpretation": {
+            "small": "< 0.2: Klein",
+            "medium": "0.2 - 0.5: Mittel",
+            "large": "0.5 - 0.8: Groß",
+            "veryLarge": "> 0.8: Sehr groß"
+          },
+          "source": "Cohen, J. (1988). Statistical Power Analysis for the Behavioral Sciences (2nd ed.). Routledge."
+        },
+        "chiSquare": {
+          "title": "Chi-Quadrat-Test für Markov-Ketten",
+          "whatIs": "Der Chi-Quadrat-Test prüft für jeden Ausgangszustand, ob die Übergangswahrscheinlichkeiten signifikant unterschiedlich sind.",
+          "formulaNote": "wobei O = beobachtete, E = erwartete Häufigkeiten",
+          "exampleIntro": "Für jeden Beratungscode (z.B. CO-IF-AC \"Aktives Zuhören\") testen wir separat:",
+          "examples": {
+            "item1": "Wenn nach \"Aktives Zuhören\" in Säule 1 60% zu \"Fragen\" übergehen, aber in Säule 3 nur 40%, zeigt der Chi-Quadrat-Test, ob dieser Unterschied signifikant ist",
+            "item2": "So finden wir genau welche Beratungstechniken sich zwischen den Datenquellen unterscheiden"
+          },
+          "interpretationIntro": "Der Anteil signifikanter Zustände (p < 0.05) zeigt, wie viele Beratungstechniken sich unterscheiden:",
+          "interpretation": {
+            "few": "< 20%: Wenige Unterschiede",
+            "moderate": "20 - 40%: Moderate Unterschiede",
+            "many": "40 - 60%: Viele Unterschiede",
+            "veryMany": "> 60%: Sehr viele Unterschiede"
+          },
+          "source": "Anderson, T.W. & Goodman, L.A. (1957). Statistical inference about Markov chains. The Annals of Mathematical Statistics, 28(1), 89-110."
+        },
+        "laplace": {
+          "title": "Laplace-Glättung (Additive Smoothing)",
+          "whatIs": "Laplace-Glättung verhindert Probleme mit Nullzählungen in der Matrix, indem ein kleiner Wert zu allen Zellen addiert wird.",
+          "formulaNote": "der Glättungsparameter ist",
+          "exampleIntro": "Wenn eine bestimmte Transition (z.B. \"Fragen\" -> \"Konfrontation\") in Säule 1 nie vorkommt, aber in Säule 3 5 mal:",
+          "examples": {
+            "item1": "Ohne Glättung: Division durch Null möglich, JSD = unendlich",
+            "item2": "Mit alpha = 1: Jede Zelle erhält mindestens 1 Pseudozählung",
+            "item3": "Höheres alpha: Konservativere Schätzung, aber glättet echte Unterschiede"
+          },
+          "recommended": {
+            "title": "Empfohlene Werte",
+            "alphaZero": "alpha = 0: Keine Glättung (nur bei vollständigen Daten)",
+            "alphaOne": "alpha = 1: Standard (Laplace)",
+            "alphaHigh": "alpha > 1: Starke Glättung"
+          },
+          "source": "Manning, C.D., Raghavan, P. & Schütze, H. (2008). Introduction to Information Retrieval. Cambridge University Press."
+        }
+      },
+      "interpretation": {
+        "frobenius": {
+          "verySimilar": "Sehr ähnliche Matrizen",
+          "moderate": "Moderat unterschiedlich",
+          "distinct": "Deutlich unterschiedlich",
+          "strong": "Stark unterschiedlich"
+        },
+        "jsd": {
+          "verySimilar": "Sehr ähnliche Verteilungen",
+          "moderate": "Moderate Unterschiede",
+          "distinct": "Deutliche Unterschiede",
+          "strong": "Stark unterschiedliche Verteilungen"
+        },
+        "effect": {
+          "small": "Kleine Effektstärke",
+          "medium": "Mittlere Effektstärke",
+          "large": "Große Effektstärke",
+          "veryLarge": "Sehr große Effektstärke"
+        }
+      }
+    }
   },
   "home": {
     "header": {
@@ -1253,7 +3246,13 @@
       "liveSync": "Live-Sync",
       "reconnecting": "Verbinde neu...",
       "userFallback": "Unbekannter Benutzer",
-      "deletedText": "Gelöschter Text"
+      "userUnknown": "Unbekannter Benutzer",
+      "deletedText": "Gelöschter Text",
+      "errors": {
+        "initFailed": "Editor-Initialisierung fehlgeschlagen: {message}",
+        "connectionFailed": "Collab-Verbindung fehlgeschlagen: {message}",
+        "connectionLost": "Collab-Verbindung getrennt (wird wieder verbunden...)"
+      }
     }
   },
   "latexCollab": {
@@ -1405,6 +3404,8 @@
       "title": "Kommentare",
       "add": "Kommentar hinzufügen",
       "addLabel": "Kommentar",
+      "comment": "Kommentieren",
+      "addToSelection": "Markierten Text kommentieren",
       "empty": "Noch keine Kommentare",
       "resolved": "Erledigt",
       "reopen": "Wieder öffnen",
@@ -1420,6 +3421,12 @@
         "saveFailed": "Kommentar konnte nicht gespeichert werden"
       }
     },
+    "ai": {
+      "rewrite": "Umformulieren",
+      "expand": "Erweitern",
+      "summarize": "Zusammenfassen",
+      "fix": "LaTeX korrigieren"
+    },
     "pdf": {
       "title": "PDF-Preview",
       "compiling": "Kompiliere...",
@@ -1430,7 +3437,8 @@
       "empty": "Noch kein PDF erstellt",
       "loading": "Laden...",
       "compilingStatus": "Kompiliere...",
-      "preparing": "PDF wird vorbereitet..."
+      "preparing": "PDF wird vorbereitet...",
+      "loadFailed": "PDF konnte nicht geladen werden"
     },
     "outline": {
       "title": "Gliederung",
@@ -1451,7 +3459,7 @@
       "toolbar": {
         "show": "Toolbar anzeigen",
         "hide": "Toolbar ausblenden",
-        "label": "Toolbar",
+        "label": "Label",
         "bold": "Fett",
         "italic": "Kursiv",
         "underline": "Unterstreichen",
@@ -1475,7 +3483,6 @@
         "frac": "Bruch",
         "cite": "Zitieren",
         "ref": "Referenz",
-        "label": "Label",
         "footnote": "Fußnote",
         "url": "URL"
       },
@@ -1488,7 +3495,12 @@
       },
       "userFallback": "Unbekannter Benutzer",
       "userUnknown": "Unbekannter Benutzer",
-      "deletedText": "Gelöschter Text"
+      "deletedText": "Gelöschter Text",
+      "errors": {
+        "initFailed": "Editor-Initialisierung fehlgeschlagen: {message}",
+        "connectionFailed": "Collab-Verbindung fehlgeschlagen: {message}",
+        "connectionLost": "Collab-Verbindung getrennt (wird wieder verbunden...)"
+      }
     },
     "completions": {
       "documentclass": "Dokumentklasse",
@@ -1717,6 +3729,7 @@
       "chatQuestion": "KI gefragt: {text}...",
       "latexErrorsFound": "{count} LaTeX-Probleme gefunden",
       "latexErrorsNone": "Keine LaTeX-Probleme gefunden",
+      "latexFixed": "LaTeX korrigiert",
       "aiInserted": "KI-Inhalt eingefügt",
       "errorsFound": "{count} Probleme gefunden",
       "errorsNone": "Keine Probleme gefunden",
@@ -1801,10 +3814,10 @@
     "fileSingular": "Datei",
     "filePlural": "Dateien",
     "header": {
-      "title": "Git Panel"
+      "title": "Git-Panel"
     },
     "fullscreen": {
-      "title": "Git Panel",
+      "title": "Git-Panel",
       "changedCount": "{count} geändert"
     },
     "tags": {
@@ -1854,15 +3867,15 @@
     },
     "diff": {
       "title": "Diff-Ansicht",
-      "workingTitle": "Working Tree anzeigen",
-      "working": "Working",
+      "workingTitle": "Arbeitsbaum anzeigen",
+      "working": "Arbeitsbaum",
       "commitTitle": "Commit-Bereich vergleichen",
       "commits": "Commits",
       "selectFile": "Datei zum Vergleichen auswählen",
       "baseLabel": "Basis",
       "compareLabel": "Vergleich",
       "initial": "Initial (kein Commit)",
-      "workingTree": "Working tree",
+      "workingTree": "Arbeitsbaum",
       "emptyLabel": "—",
       "noDocument": "Kein Dokument ausgewählt"
     },
@@ -1883,7 +3896,10 @@
     "status": {
       "deleted": "Gelöscht",
       "added": "Hinzugefügt",
-      "modified": "Geändert"
+      "modified": "Geändert",
+      "renamed": "Umbenannt",
+      "moved": "Verschoben",
+      "renamedMoved": "Umbenannt & verschoben"
     },
     "rollback": {
       "title": "Änderungen verwerfen?",

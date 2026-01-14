@@ -1,0 +1,462 @@
+{
+  "app": {
+    "cleanupChatMessagesError": "Fehler beim Aufraeumen der Chat-Nachrichten:"
+  },
+  "router": {
+    "navigateTo": "Navigiere zu:",
+    "authenticated": "Authentifiziert:",
+    "isAdmin": "Ist Admin:",
+    "requireAuthRedirect": "Route erfordert Auth, leite zum Login um",
+    "requireAdminRedirect": "Benutzer ist kein Admin, leite zu Home um",
+    "requireAdminOrManagerRedirect": "Benutzer ist kein Admin oder Chatbot-Manager, leite zu Home um"
+  },
+  "main": {
+    "tokenExpiredRedirect": "Token abgelaufen oder ungueltig, leite zum Login um",
+    "appInitialized": "App mit benutzerdefinierter Authentifizierung initialisiert"
+  },
+  "socketService": {
+    "reconnecting": "[SocketService] Socket existiert, aber getrennt, verbinde erneut...",
+    "creatingConnection": "[SocketService] Erstelle neue Socket-Verbindung zu:",
+    "connected": "[SocketService] Verbunden",
+    "disconnected": "[SocketService] Verbindung getrennt:",
+    "connectionError": "[SocketService] Verbindungsfehler:",
+    "tabVisible": "[SocketService] Tab wurde sichtbar",
+    "reconnectOnVisible": "[SocketService] Wiederverbinden nach Sichtbarkeitswechsel...",
+    "tabHidden": "[SocketService] Tab wurde ausgeblendet",
+    "cleanupBeforeUnload": "[SocketService] Bereinige vor dem Entladen"
+  },
+  "wizardSession": {
+    "socketUnavailable": "[useWizardSession] Socket nicht verfuegbar",
+    "stateUpdate": "[useWizardSession] Zustands-Update:",
+    "progressUpdate": "[useWizardSession] Fortschritts-Update:",
+    "statusChanged": "[useWizardSession] Status geaendert:",
+    "error": "[useWizardSession] Fehler:",
+    "socketReconnected": "[useWizardSession] Socket wiederverbunden, trete Sitzung erneut bei...",
+    "userSessionsLoadFailed": "[useWizardSession] Konnte Benutzersitzungen nicht laden:"
+  },
+  "gitDiff": {
+    "loadBaselineFailed": "Konnte Baseline nicht laden:"
+  },
+  "kiaCache": {
+    "loadFailed": "Konnte KIA-Cache nicht laden:",
+    "saveFailed": "Konnte KIA-Cache nicht speichern:",
+    "fetchStatusError": "Fehler beim Abrufen des KIA-Status:"
+  },
+  "language": {
+    "invalid": "Ungueltige Sprache: {lang}",
+    "changed": "Sprache geaendert zu: {lang}",
+    "initialized": "Sprache initialisiert: {lang}"
+  },
+  "permissions": {
+    "fetchFailed": "Konnte Berechtigungen nicht laden:"
+  },
+  "gitStatus": {
+    "recentCommitsFailed": "Konnte letzte Commits nicht laden:"
+  },
+  "fieldGen": {
+    "noChatbotId": "[FieldGenService] Keine chatbotId angegeben",
+    "alreadyGenerating": "[FieldGenService] Feld {field} generiert bereits fuer Chatbot {chatbotId}",
+    "streamParseError": "[FieldGenService] Stream-Parse-Fehler:",
+    "finalBufferParseError": "[FieldGenService] Finaler Buffer-Parse-Fehler:",
+    "streamAborted": "[FieldGenService] Stream fuer Feld {field} abgebrochen",
+    "generateError": "[FieldGenService] Fehler beim Generieren von {field}:"
+  },
+  "auth": {
+    "parseStoredRolesFailed": "Konnte gespeicherte Rollen nicht parsen:",
+    "parseTokenFailed": "Konnte Token nicht parsen",
+    "profileFetchFailed": "Konnte Benutzerprofil nicht laden:",
+    "settingsFetchFailed": "Konnte Benutzereinstellungen nicht laden:",
+    "updateCollabColorFailed": "Konnte Collab-Farbe nicht aktualisieren:",
+    "uploadAvatarFailed": "Konnte Avatar nicht hochladen:",
+    "regenerateAvatarFailed": "Konnte Avatar nicht neu generieren:",
+    "resetAvatarFailed": "Konnte Avatar nicht zuruecksetzen:",
+    "loginError": "Login-Fehler:"
+  },
+  "chat": {
+    "loadMessagesFailed": "Fehler beim Laden der Nachrichten aus localStorage:",
+    "saveMessagesFailed": "Fehler beim Speichern der Nachrichten in localStorage:",
+    "socketConnected": "Socket verbunden",
+    "socketDisconnected": "Socket getrennt"
+  },
+  "chatWithBots": {
+    "loadChatbotsFailed": "Fehler beim Laden der Chatbots:",
+    "loadConversationsFailed": "Fehler beim Laden der Konversationen:",
+    "draftSaveFailed": "Konnte Entwurf nicht speichern:",
+    "draftRestoreFailed": "Konnte Entwurf nicht wiederherstellen:",
+    "draftDeleteFailed": "Konnte Entwurf nicht loeschen:",
+    "processingTimeoutReset": "Verarbeitungs-Timeout erreicht, setze Zustand zurueck"
+  },
+  "chatSidebar": {
+    "loadBotConversationsFailed": "Fehler beim Laden der Bot-Konversationen:"
+  },
+  "chatMessages": {
+    "error": "Chat-Fehler:"
+  },
+  "chatSocket": {
+    "connected": "ChatSocket: Verbunden",
+    "disconnected": "ChatSocket: Verbindung getrennt",
+    "notConnectedSend": "Socket nicht verbunden, Nachricht kann nicht gesendet werden",
+    "chatbotError": "Chatbot-Fehler:"
+  },
+  "sourcePanel": {
+    "showSourceDetail": "[useSourcePanel] showSourceDetail aufgerufen mit:",
+    "pinnedState": "[useSourcePanel] sourcePanel.pinned:",
+    "openState": "[useSourcePanel] sourcePanel.open:",
+    "panelPinnedOpen": "[useSourcePanel] Panel ist angeheftet, oeffne im Panel",
+    "openDialog": "[useSourcePanel] Dialog wird geoeffnet",
+    "dialogShowState": "[useSourcePanel] sourceDialog.show:"
+  },
+  "chatMessageList": {
+    "sourceClicked": "[ChatMessageList] Quelle angeklickt:"
+  },
+  "builder": {
+    "invalidStatus": "Ungueltiger Build-Status: {status}"
+  },
+  "rest": {
+    "makePostRequest": "makePostRequestAsync Aufruf",
+    "axiosError": "Axios-Fehler:"
+  },
+  "referral": {
+    "registrationStatusFailed": "Konnte Registrierungsstatus nicht pruefen:",
+    "copyFailed": "Konnte nicht in die Zwischenablage kopieren:"
+  },
+  "theme": {
+    "applied": "Theme angewendet: {theme} (Praeferenz: {preference})",
+    "invalidPreference": "Ungueltige Theme-Praeferenz: {preference}",
+    "initialized": "App-Theme initialisiert: {theme} (Praeferenz: {preference})"
+  },
+  "admin": {
+    "chatbotActivity": {
+      "loadActivitiesFailed": "Konnte Chatbot-Aktivitaeten nicht laden:"
+    },
+    "chatbotCrawler": {
+      "socketConnected": "[Crawler Socket] Verbunden",
+      "joinedSession": "[Crawler Socket] Sitzung beigetreten:",
+      "progress": "[Crawler Socket] Fortschritt:",
+      "pageCrawled": "[Crawler Socket] Seite gecrawlt:",
+      "complete": "[Crawler Socket] Abgeschlossen:",
+      "error": "[Crawler Socket] Fehler:",
+      "crawlError": "Crawl-Fehler:"
+    },
+    "chatbotEditor": {
+      "loadRerankerModelsFailed": "[ChatbotEditor] Fehler beim Laden der Reranker-Modelle:",
+      "iconGenerationFailed": "Icon-Generierung fehlgeschlagen:",
+      "colorGenerationFailed": "Farb-Generierung fehlgeschlagen:"
+    },
+    "chatbotManager": {
+      "assignCollectionsFailed": "Fehler beim Zuweisen von Collections:",
+      "deleteFailed": "Fehler beim Loeschen:",
+      "downloadDocumentFailed": "Fehler beim Herunterladen des Dokuments:",
+      "duplicateChatbotFailed": "Fehler beim Duplizieren des Chatbots:",
+      "loadChatbotAccessFailed": "Fehler beim Laden der Chatbot-Zugriffe:",
+      "loadChatbotForTestFailed": "Fehler beim Laden des Chatbots fuer den Test:",
+      "loadChatbotsFailed": "Fehler beim Laden der Chatbots:",
+      "loadCollectionsFailed": "Fehler beim Laden der Collections:",
+      "loadDocumentsFailed": "Fehler beim Laden der Dokumente:",
+      "loadStatsFailed": "Fehler beim Laden der Statistiken:",
+      "saveChatbotAccessFailed": "Fehler beim Speichern der Chatbot-Zugriffe:",
+      "saveChatbotFailed": "Fehler beim Speichern des Chatbots:",
+      "saveCollectionFailed": "Fehler beim Speichern der Collection:"
+    },
+    "chatbotTest": {
+      "sendMessageFailed": "Fehler beim Senden der Nachricht:",
+      "streamChunkParseFailed": "Stream-Chunk konnte nicht geparst werden",
+      "finalStreamChunkParseFailed": "Finaler Stream-Chunk konnte nicht geparst werden",
+      "streamingTestFailed": "Streaming-Testnachricht fehlgeschlagen:",
+      "openFullscreenFailed": "Chat konnte nicht im Vollbild geoeffnet werden:"
+    },
+    "chatbotWizard": {
+      "startWizardFailed": "Fehler beim Starten des Wizards:",
+      "startCrawlFailed": "Fehler beim Starten des Crawls:",
+      "pauseBuildFailed": "Fehler beim Pausieren des Builds:",
+      "socketUnavailableSubscribe": "[Wizard] Socket nicht verfuegbar, kann Live-Updates nicht abonnieren",
+      "joinWizardSession": "[Wizard] Trete Wizard-Sitzungsraum bei:",
+      "joinCrawlerSession": "[Wizard] Trete Crawler-Sitzung bei:",
+      "socketSubscribed": "[Wizard] Socket-Events abonniert",
+      "socketUnsubscribed": "[Wizard] Socket-Events abbestellt",
+      "stateReceived": "[Wizard] wizard:state vom Server erhalten:",
+      "progressReceived": "[Wizard] wizard:progress vom Server erhalten:",
+      "statusChangedReceived": "[Wizard] wizard:status_changed vom Server erhalten:",
+      "elapsedTimeReceived": "[Wizard] wizard:elapsed_time vom Server erhalten:",
+      "errorReceived": "[Wizard] wizard:error vom Server erhalten:",
+      "crawlerProgress": "[Wizard] Crawler-Fortschritt:",
+      "pageCrawled": "[Wizard] Seite gecrawlt:",
+      "crawlerComplete": "[Wizard] Crawler abgeschlossen:",
+      "crawlerError": "[Wizard] Crawler-Fehler:",
+      "ragSocketError": "[Wizard] RAG-Socket-Fehler:",
+      "embeddingProgress": "[Wizard] Embedding-Fortschritt:",
+      "iconColorSyncFailed": "[Wizard] Icon/Farbe konnte nicht synchronisiert werden:",
+      "embeddingComplete": "[Wizard] Embedding abgeschlossen:",
+      "embeddingError": "[Wizard] Embedding-Fehler:",
+      "socketUnavailableDocuments": "[Wizard] Socket nicht verfuegbar, kann Collection-Dokumente nicht laden",
+      "colorGenerationSkipped": "[Wizard] Farb-Generierung uebersprungen - Farbe bereits gesetzt:",
+      "fieldAlreadyGenerating": "[Wizard] Feld {field} generiert bereits",
+      "fieldGenerateError": "[Wizard] Fehler beim Generieren von {field}:",
+      "finalizedEmbeddingInProgress": "[Wizard] Chatbot finalisiert, Embedding laeuft noch: {progress}%",
+      "finalizeError": "[Wizard] Fehler beim Finalisieren:",
+      "syncFailed": "[Wizard] Wizard konnte nicht vom Backend synchronisiert werden:"
+    },
+    "crawlerForm": {
+      "loadedCollections": "[Crawler] {count} Collections geladen",
+      "loadCollectionsFailed": "[Crawler] Fehler beim Laden der Collections:"
+    },
+    "crawlerJobsLoadFailed": "Fehler beim Laden der Jobs:",
+    "crawlerSocket": {
+      "connected": "[Crawler Socket] Verbunden",
+      "disconnected": "[Crawler Socket] Verbindung getrennt:",
+      "connectionError": "[Crawler Socket] Verbindungsfehler:",
+      "maxReconnectionAttempts": "[Crawler Socket] Maximale Anzahl an Reconnect-Versuchen erreicht",
+      "joinedSession": "[Crawler Socket] Sitzung beigetreten:",
+      "progress": "[Crawler Socket] Fortschritt:",
+      "pageCrawled": "[Crawler Socket] Seite gecrawlt:",
+      "complete": "[Crawler Socket] Abgeschlossen:",
+      "error": "[Crawler Socket] Fehler:",
+      "statusResponse": "[Crawler Socket] Status-Antwort:",
+      "initialJobsListReceived": "[Crawler Socket] Initiale Jobliste erhalten: {count} Jobs",
+      "jobsUpdated": "[Crawler Socket] Jobs aktualisiert: {count} Jobs"
+    },
+    "llmProviders": {
+      "loadProvidersFailed": "Fehler beim Laden der Provider:",
+      "quickConnectFailed": "Quick-Connect fehlgeschlagen:",
+      "saveProviderFailed": "Provider speichern fehlgeschlagen:",
+      "providerTestFailed": "Provider-Test fehlgeschlagen:",
+      "modelSyncFailed": "Modell-Sync fehlgeschlagen:",
+      "loadModelsFailed": "Fehler beim Laden der LLM-Modelle:",
+      "loadRolesFailed": "Fehler beim Laden der Rollen:",
+      "loadUsersFailed": "Fehler beim Laden der Benutzer:",
+      "saveAccessFailed": "Fehler beim Speichern der LLM-Zugriffe:"
+    },
+    "overview": {
+      "ragStatsFetchFailed": "Fehler beim Laden der RAG-Statistiken:",
+      "userStatsFetchFailed": "Fehler beim Laden der Benutzerstatistiken:",
+      "systemEventsFetchFailed": "Fehler beim Laden der System-Events:",
+      "scenariosFetchFailed": "Fehler beim Laden der Szenarien:"
+    },
+    "permissions": {
+      "createRoleFailed": "Fehler beim Erstellen der Rolle:",
+      "saveRolePermissionsFailed": "Fehler beim Speichern der Rollen-Berechtigungen:",
+      "fetchRolesFailed": "Fehler beim Laden der Rollen:",
+      "fetchPermissionsFailed": "Fehler beim Laden der Berechtigungen:",
+      "fetchAuditLogFailed": "Fehler beim Laden des Audit-Logs:",
+      "fetchUsersForAccessFailed": "Fehler beim Laden der Benutzer fuer Zugriffsrechte:",
+      "fetchChatbotAccessOverviewFailed": "Fehler beim Laden der Chatbot-Zugriffsuebersicht:",
+      "fetchLlmAccessOverviewFailed": "Fehler beim Laden der LLM-Zugriffsuebersicht:",
+      "saveChatbotAccessFailed": "Fehler beim Speichern der Chatbot-Zugriffe:",
+      "saveLlmAccessFailed": "Fehler beim Speichern der LLM-Zugriffe:",
+      "syncProviderFailed": "Provider {provider} konnte nicht synchronisiert werden:",
+      "syncLlmModelsFailed": "Fehler beim Synchronisieren der LLM-Modelle:"
+    },
+    "rag": {
+      "editCollection": "Collection bearbeiten:"
+    },
+    "ragActions": {
+      "loadDocumentsFailed": "Fehler beim Laden der Dokumente:",
+      "loadCollectionsFailed": "Fehler beim Laden der Collections:",
+      "loadStatsFailed": "Fehler beim Laden der Statistiken:",
+      "loadPopularDocumentsFailed": "Fehler beim Laden der beliebten Dokumente:",
+      "uploadFilesFailed": "Fehler beim Hochladen der Dateien:",
+      "createCollectionFailed": "Fehler beim Erstellen der Collection:",
+      "downloadDocumentFailed": "Fehler beim Herunterladen des Dokuments:",
+      "deleteDocumentFailed": "Fehler beim Loeschen des Dokuments:"
+    },
+    "ragCollections": {
+      "fetchCollectionsFailed": "Fehler beim Laden der Collections:",
+      "createCollectionFailed": "Fehler beim Erstellen der Collection:",
+      "deleteCollectionFailed": "Fehler beim Loeschen der Collection:",
+      "fetchCollectionDocumentsFailed": "Fehler beim Laden der Collection-Dokumente:"
+    },
+    "ragDocuments": {
+      "fetchDocumentsFailed": "Fehler beim Laden der Dokumente:",
+      "uploadFilesFailed": "Fehler beim Hochladen der Dateien:",
+      "deleteDocumentFailed": "Fehler beim Loeschen des Dokuments:",
+      "loadDocumentContentFailed": "Fehler beim Laden des Dokumentinhalts:",
+      "downloadDocumentFailed": "Fehler beim Herunterladen des Dokuments:"
+    },
+    "ragSection": {
+      "reindexCollectionFailed": "Fehler beim Reindexieren der Collection:",
+      "progressUpdate": "[RAG] Progress-Update: Queue {queueId}, {progress}, Schritt {step}",
+      "documentProcessed": "[RAG] Dokument verarbeitet: {filename} - {status}",
+      "documentUploadedByOther": "[RAG] Dokument hochgeladen (von anderem User): {filename} - Collection: {collection}",
+      "collectionShared": "[RAG] Collection geteilt: {collection} - von: {sharedBy}",
+      "socketSubscribed": "[RAG] WebSocket abonniert",
+      "socketReconnectedSubscribed": "[RAG] WebSocket wiederverbunden und abonniert",
+      "socketUnsubscribed": "[RAG] WebSocket abbestellt"
+    },
+    "ragSectionCollections": {
+      "fetchCollectionsFailed": "Fehler beim Laden der Collections:",
+      "createCollectionFailed": "Fehler beim Erstellen der Collection:",
+      "deleteCollectionFailed": "Fehler beim Loeschen der Collection:",
+      "fetchCollectionDocumentsFailed": "Fehler beim Laden der Collection-Dokumente:",
+      "reindexCollectionFailed": "Fehler beim Reindexieren der Collection:"
+    },
+    "ragSectionDocuments": {
+      "fetchDocumentsFailed": "Fehler beim Laden der Dokumente:",
+      "uploadFilesFailed": "Fehler beim Hochladen der Dateien:",
+      "deleteDocumentFailed": "Fehler beim Loeschen des Dokuments:"
+    },
+    "ragSectionHelpers": {
+      "downloadDocumentFailed": "Fehler beim Herunterladen des Dokuments:"
+    },
+    "ragSectionStats": {
+      "fetchStatsFailed": "Fehler beim Laden der Statistiken:",
+      "fetchEmbeddingInfoFailed": "Fehler beim Laden der Embedding-Info:",
+      "fetchProcessingQueueFailed": "Fehler beim Laden der Verarbeitungswarteschlange:",
+      "queueUpdate": "[RAG] Queue-Update erhalten:",
+      "documentProgress": "[RAG] Dokument-Progress: {filename} {progress} {step}"
+    },
+    "ranker": {
+      "unexpectedApiFormat": "Unerwartetes Format der API-Antwort:",
+      "statsUpdateReceived": "[Ranker] Stats-Update erhalten: {count} User",
+      "rankingSaved": "[Ranker] Ranking gespeichert von User: {userId} fuer Thread: {threadId}",
+      "socketSubscribed": "[Ranker] WebSocket subscribed fuer Szenario: {scenarioId}",
+      "socketReconnectedSubscribed": "[Ranker] WebSocket wiederverbunden und abonniert",
+      "socketUnsubscribed": "[Ranker] WebSocket abbestellt"
+    },
+    "scenarioDeleteFailed": "Fehler beim Loeschen des Szenarios:",
+    "scenariosFetchFailed": "Fehler beim Laden der Szenarien:",
+    "stats": {
+      "fetchStatsFailed": "Fehler beim Laden der Statistiken:",
+      "noMappingForFuncTypeId": "Kein passendes Mapping fuer func_type_id:",
+      "scenarioDetailsLoadFailed": "Fehler beim Laden der Szenario-Details:",
+      "userStatsLoadFailed": "Fehler beim Laden der Benutzerstatistiken:"
+    },
+    "systemSettings": {
+      "saveSectionFailed": "Fehler beim Speichern der Einstellungen ({section}):",
+      "saveZoteroOauthFailed": "Fehler beim Speichern der Zotero-OAuth-Einstellungen:",
+      "loadSettingsFailed": "Fehler beim Laden der Systemeinstellungen:"
+    },
+    "users": {
+      "loadRolesFailed": "Fehler beim Laden der Rollen:",
+      "loadUsersFailed": "Fehler beim Laden der Benutzer:",
+      "searchUserFailed": "Fehler bei der Benutzersuche:",
+      "loadUserFailed": "Fehler beim Laden des Benutzers:",
+      "createUserFailed": "Fehler beim Erstellen des Benutzers:",
+      "toggleUserLockFailed": "Fehler beim Sperren/Entsperren des Benutzers:",
+      "deleteUserFailed": "Fehler beim Loeschen des Benutzers:",
+      "assignRoleFailed": "Fehler beim Zuweisen der Rolle:",
+      "unassignRoleFailed": "Fehler beim Entfernen der Rolle:"
+    }
+  },
+  "judge": {
+    "config": {
+      "fetchEstimateFailed": "Fehler beim Laden der Schaetzung:",
+      "sessionAutoStarted": "Session {sessionId} automatisch gestartet",
+      "autoStartFailed": "Auto-Start fehlgeschlagen, Session kann manuell gestartet werden:",
+      "createSessionFailed": "Fehler beim Erstellen der Session:"
+    },
+    "judgeSocket": {
+      "initWorkerStream": "[Judge Socket] Initialisiere Worker-Stream {workerId}",
+      "cannotJoinNotConnected": "[Judge Socket] Kann Session nicht beitreten - Socket nicht verbunden",
+      "joiningSessionRoom": "[Judge Socket] Trete Sitzungsraum bei: {sessionId}",
+      "connected": "[Judge Socket] Verbunden/Wiederverbunden, Socket-ID:",
+      "disconnected": "[Judge Socket] Verbindung getrennt:",
+      "reconnected": "[Judge Socket] Wiederverbunden nach {attempts} Versuchen",
+      "joinedSessionRoom": "[Judge Socket] Sitzungsraum beigetreten:",
+      "error": "[Judge Socket] Fehler:",
+      "progress": "[Judge Socket] Fortschritt:",
+      "comparisonStarted": "[Judge Socket] Vergleich gestartet:",
+      "workerStreamUpdated": "[Judge Socket] Worker {workerId} Stream fuer neuen Vergleich aktualisiert",
+      "comparisonComplete": "[Judge Socket] Vergleich abgeschlossen:",
+      "sessionComplete": "[Judge Socket] Session abgeschlossen:",
+      "status": "[Judge Socket] Status:",
+      "setupForSession": "[Judge Socket] Socket fuer Session einrichten: {sessionId}",
+      "socketConnectedState": "[Judge Socket] Socket verbunden: {connected}",
+      "alreadyConnected": "[Judge Socket] Bereits verbunden, trete Raum sofort bei",
+      "waitingForConnect": "[Judge Socket] Noch nicht verbunden, warte auf Connect-Event",
+      "leavingSession": "[Judge Socket] Verlasse Session: {sessionId}",
+      "requestingStatus": "[Judge Socket] Status fuer Session anfordern: {sessionId}"
+    },
+    "overview": {
+      "loadSessionsFailed": "Fehler beim Laden der Sessions:",
+      "deleteSessionFailed": "Fehler beim Loeschen der Session:",
+      "socketConnected": "[JudgeOverview] Socket verbunden",
+      "socketDisconnected": "[JudgeOverview] Socket getrennt",
+      "progressUpdate": "[JudgeOverview] Fortschritts-Update:",
+      "comparisonComplete": "[JudgeOverview] Vergleich abgeschlossen:",
+      "sessionComplete": "[JudgeOverview] Session abgeschlossen:",
+      "sessionPaused": "[JudgeOverview] Session pausiert:",
+      "sessionStarted": "[JudgeOverview] Session gestartet:"
+    },
+    "results": {
+      "exportCsvFailed": "Fehler beim Export der CSV:",
+      "exportJsonFailed": "Fehler beim Export der JSON:",
+      "loadResultsFailed": "Fehler beim Laden der Ergebnisse:",
+      "positionSwapLoadFailed": "Positionswechsel-Analyse konnte nicht geladen werden:",
+      "threadPerformanceLoadFailed": "Thread-Performance konnte nicht geladen werden:",
+      "verbosityAnalysisLoadFailed": "Verbositaetsanalyse konnte nicht geladen werden:"
+    },
+    "session": {
+      "mountedLoading": "[JudgeSession] Gemountet, lade Session...",
+      "sessionLoaded": "[JudgeSession] Session geladen, Socket wird eingerichtet...",
+      "runningStartPolling": "[JudgeSession] Session laeuft, starte Polling",
+      "mountComplete": "[JudgeSession] Mount abgeschlossen",
+      "unmountingCleanup": "[JudgeSession] Unmounting, Socket wird bereinigt...",
+      "cleanupComplete": "[JudgeSession] Bereinigung abgeschlossen",
+      "sessionHealth": "[Judge] Session-Health:",
+      "loadSessionHealthFailed": "Fehler beim Laden der Session-Health:",
+      "loadSessionFailed": "Fehler beim Laden der Session:",
+      "sessionStarted": "[Judge] Session gestartet",
+      "startSessionFailed": "Fehler beim Starten der Session:",
+      "sessionPaused": "[Judge] Session pausiert",
+      "pauseSessionFailed": "Fehler beim Pausieren der Session:",
+      "sessionResumed": "[Judge] Session fortgesetzt:",
+      "resumeSessionFailed": "Fehler beim Fortsetzen der Session:"
+    },
+    "sessionApi": {
+      "sessionHealth": "[Judge] Session-Health:",
+      "loadSessionHealthFailed": "Fehler beim Laden der Session-Health:",
+      "loadSessionFailed": "Fehler beim Laden der Session:",
+      "loadWorkerPoolStatusFailed": "Fehler beim Laden des Worker-Pool-Status:",
+      "workerStreamsLoaded": "[Judge] Worker-Streams fuer Reconnect geladen:",
+      "noActiveWorkerPool": "[Judge] Kein aktiver Worker-Pool, ueberspringe Stream-Restore",
+      "workerStreamRestored": "[Judge] {length} Zeichen fuer Worker {workerId} wiederhergestellt",
+      "threadMessagesLoaded": "[Judge] Thread-Nachrichten fuer alle Worker geladen",
+      "loadWorkerStreamsFailed": "Fehler beim Laden der Worker-Streams:",
+      "loadCurrentComparisonFailed": "Fehler beim Laden des aktuellen Vergleichs:",
+      "threadMessagesLoadedForWorker": "[Judge] Thread-Nachrichten fuer Worker {workerId} geladen",
+      "loadThreadMessagesFailed": "Fehler beim Laden der Thread-Nachrichten fuer Worker {workerId}:",
+      "loadComparisonsFailed": "Fehler beim Laden der Vergleiche:",
+      "loadQueueFailed": "Fehler beim Laden der Queue:",
+      "startSessionFailed": "Fehler beim Starten der Session:",
+      "pauseSessionFailed": "Fehler beim Pausieren der Session:",
+      "sessionResumed": "[Judge] Session fortgesetzt:",
+      "resumeSessionFailed": "Fehler beim Fortsetzen der Session:"
+    },
+    "sessionHelpers": {
+      "copyToClipboardSuccess": "Inhalt in die Zwischenablage kopiert",
+      "copyToClipboardFailed": "Konnte Inhalt nicht kopieren:"
+    },
+    "sessionSocket": {
+      "setup": "[Judge Socket] Socket einrichten, verbunden: {connected}, id: {socketId}",
+      "joiningSessionRoom": "[Judge Socket] Trete Sitzungsraum bei: {sessionId}",
+      "connected": "[Judge Socket] Verbunden/Wiederverbunden, Socket-ID:",
+      "disconnected": "[Judge Socket] Verbindung getrennt:",
+      "reconnected": "[Judge Socket] Wiederverbunden nach {attempts} Versuchen",
+      "alreadyConnected": "[Judge Socket] Bereits verbunden, trete Raum sofort bei",
+      "joinedSessionRoom": "[Judge Socket] Sitzungsraum beigetreten:",
+      "error": "[Judge Socket] Fehler:",
+      "progress": "[Judge Socket] Fortschritt:",
+      "comparisonStarted": "[Judge Socket] Vergleich gestartet:",
+      "comparisonComplete": "[Judge Socket] Vergleich abgeschlossen (Session {sessionId}):",
+      "sessionIdMatches": "[Judge Socket] Session-ID passt, verarbeite...",
+      "incrementCompleted": "[Judge Socket] incrementCompleted wird aufgerufen...",
+      "sessionComplete": "[Judge Socket] Session abgeschlossen:",
+      "status": "[Judge Socket] Status:",
+      "reconnectedStream": "[Judge] Live-Stream wiederverbunden, wiederhergestellt:",
+      "autoScrollDisabled": "[Stream] Auto-Scroll deaktiviert - User gescrollt",
+      "autoScrollEnabled": "[Stream] Auto-Scroll wieder aktiviert"
+    },
+    "sessionState": {
+      "initProgressFromApi": "[Progress] initializeProgressFromApi aufgerufen mit: completed={completed}, total={total}",
+      "setConfirmedTotal": "[Progress] confirmedTotal gesetzt auf {total}",
+      "initializedFromApi": "[Progress] Von API initialisiert: {completed}/{total}",
+      "incremented": "[Progress] Inkrementiert: {completed}/{total} (confirmedTotal: {confirmedTotal})",
+      "alreadyAtMax": "[Progress] Bereits am Maximum: {completed}/{total}",
+      "trackingReset": "[Progress] Tracking zurueckgesetzt"
+    }
+  },
+  "latexCollabAi": {
+    "completionFailed": "Completion fehlgeschlagen:",
+    "collectionsLoadFailed": "Fehler beim Laden der Collections:"
+  }
+}

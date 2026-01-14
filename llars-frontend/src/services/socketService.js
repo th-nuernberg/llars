@@ -10,6 +10,7 @@
 import { io } from 'socket.io-client';
 import { ref, readonly } from 'vue';
 import { AUTH_STORAGE_KEYS, getAuthStorageItem } from '@/utils/authStorage';
+import { logI18n } from '@/utils/logI18n';
 
 // Connection state
 const isConnected = ref(false);
@@ -71,14 +72,14 @@ export function getSocket() {
 
     // If socket exists but disconnected, trigger reconnect
     if (!socket.connected) {
-      console.log('[SocketService] Socket exists but disconnected, reconnecting...');
+      logI18n('log', 'logs.socketService.reconnecting');
       socket.connect();
     }
     return socket;
   }
 
   const baseUrl = getSocketBaseUrl();
-  console.log('[SocketService] Creating new socket connection to:', baseUrl);
+  logI18n('log', 'logs.socketService.creatingConnection', baseUrl);
 
   socket = io(baseUrl, {
     transports: socketioTransports,
@@ -99,13 +100,13 @@ export function getSocket() {
 
   // Connection handlers
   socket.on('connect', () => {
-    console.log('[SocketService] Connected');
+    logI18n('log', 'logs.socketService.connected');
     isConnected.value = true;
     connectionError.value = null;
   });
 
   socket.on('disconnect', (reason) => {
-    console.log('[SocketService] Disconnected:', reason);
+    logI18n('log', 'logs.socketService.disconnected', reason);
     isConnected.value = false;
 
     // If disconnected due to transport close (suspension), mark for reconnect
@@ -115,7 +116,7 @@ export function getSocket() {
   });
 
   socket.on('connect_error', (error) => {
-    console.warn('[SocketService] Connection error:', error.message);
+    logI18n('warn', 'logs.socketService.connectionError', error.message);
     connectionError.value = error.message;
     isConnected.value = false;
   });
@@ -142,11 +143,11 @@ function setupVisibilityHandler() {
 
 function handleVisibilityChange() {
   if (document.visibilityState === 'visible') {
-    console.log('[SocketService] Tab became visible');
+    logI18n('log', 'logs.socketService.tabVisible');
 
     // Reconnect if needed
     if (socket && (!socket.connected || reconnectOnVisible)) {
-      console.log('[SocketService] Reconnecting after visibility change...');
+      logI18n('log', 'logs.socketService.reconnectOnVisible');
       reconnectOnVisible = false;
 
       // Small delay to allow browser to stabilize
@@ -157,7 +158,7 @@ function handleVisibilityChange() {
       }, 100);
     }
   } else {
-    console.log('[SocketService] Tab became hidden');
+    logI18n('log', 'logs.socketService.tabHidden');
     // Optionally disconnect to save resources (uncomment if desired)
     // if (socket && socket.connected) {
     //   socket.disconnect();
@@ -178,7 +179,7 @@ function setupUnloadHandler() {
 
 function handleBeforeUnload() {
   if (socket) {
-    console.log('[SocketService] Cleaning up before unload');
+    logI18n('log', 'logs.socketService.cleanupBeforeUnload');
     socket.disconnect();
   }
 }

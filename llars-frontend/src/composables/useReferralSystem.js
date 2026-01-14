@@ -13,6 +13,7 @@
 
 import { ref, computed } from 'vue'
 import axios from 'axios'
+import { logI18n } from '@/utils/logI18n'
 
 // Shared state for registration status (singleton)
 const registrationEnabled = ref(false)
@@ -62,7 +63,7 @@ export function useReferralSystem() {
       statusLoaded.value = true
       return registrationEnabled.value
     } catch (e) {
-      console.warn('Failed to check registration status:', e)
+      logI18n('warn', 'logs.referral.registrationStatusFailed', e)
       registrationEnabled.value = false
       statusLoaded.value = true
       return false
@@ -493,7 +494,7 @@ export function useReferralSystem() {
       await navigator.clipboard.writeText(url)
       return true
     } catch (e) {
-      console.error('Failed to copy to clipboard:', e)
+      logI18n('error', 'logs.referral.copyFailed', e)
       return false
     }
   }

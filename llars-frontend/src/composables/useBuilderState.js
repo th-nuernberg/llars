@@ -11,6 +11,7 @@
  */
 
 import { ref, computed, readonly } from 'vue'
+import { logI18nParams } from '@/utils/logI18n'
 
 // Valid build status values
 export const BUILD_STATUS = {
@@ -185,7 +186,7 @@ export function useBuilderState() {
   const setStatus = (newStatus, errorMessage = null) => {
     const validStatuses = Object.values(BUILD_STATUS)
     if (!validStatuses.includes(newStatus)) {
-      console.error(`Invalid build status: ${newStatus}`)
+      logI18nParams('error', 'logs.builder.invalidStatus', { status: newStatus })
       return false
     }
 

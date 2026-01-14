@@ -18,6 +18,7 @@
 
 import { ref, computed } from 'vue'
 import axios from 'axios'
+import { logI18n } from '@/utils/logI18n'
 
 // Shared state across all instances
 const permissions = ref([])
@@ -52,7 +53,7 @@ export function usePermissions() {
           username.value = payload.username || null
         }
       } catch (error) {
-        console.error('Failed to fetch permissions:', error)
+        logI18n('error', 'logs.permissions.fetchFailed', error)
         if (error.response?.status === 401) {
           permissions.value = []
           roles.value = []

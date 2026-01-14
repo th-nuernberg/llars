@@ -45,6 +45,7 @@ import { useAuth } from '@/composables/useAuth'
 import { initAppTheme } from '@/composables/useAppTheme'
 import { initLanguage } from '@/composables/useLanguage'
 import i18n from '@/i18n'
+import { logI18n } from '@/utils/logI18n'
 
 // Composables
 import { createApp } from 'vue'
@@ -122,7 +123,7 @@ axios.interceptors.response.use(
 
     // If 401 Unauthorized on non-login requests, redirect to login
     if (error.response?.status === 401 && !isLoginRequest) {
-      console.log('Token expired or invalid, redirecting to login')
+      logI18n('log', 'logs.main.tokenExpiredRedirect')
       auth.logout()
       // Redirect to login
       const current = `${window.location.pathname}${window.location.search}${window.location.hash}`
@@ -142,4 +143,4 @@ initMatomo({ router })
 // Mount the app
 app.mount('#app')
 
-console.log('App initialized with custom authentication')
+logI18n('log', 'logs.main.appInitialized')

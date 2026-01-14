@@ -21,6 +21,7 @@
 import { ref, computed, readonly, onMounted, onUnmounted, watch } from 'vue'
 import axios from 'axios'
 import { getSocket } from '@/services/socketService'
+import { logI18n } from '@/utils/logI18n'
 
 // Valid build status values
 export const BUILD_STATUS = {
@@ -148,7 +149,7 @@ export function useWizardSession() {
   function setupSocketListeners() {
     socket = getSocket()
     if (!socket) {
-      console.error('[useWizardSession] Socket not available')
+      logI18n('error', 'logs.wizardSession.socketUnavailable')
       return
     }
 
@@ -171,7 +172,7 @@ export function useWizardSession() {
   }
 
   function handleStateUpdate(data) {
-    console.log('[useWizardSession] State update:', data)
+    logI18n('log', 'logs.wizardSession.stateUpdate', data)
     if (data.session) {
       session.value = data.session
       updateStepFromStatus()
@@ -186,7 +187,7 @@ export function useWizardSession() {
   }
 
   function handleProgressUpdate(data) {
-    console.log('[useWizardSession] Progress update:', data)
+    logI18n('log', 'logs.wizardSession.progressUpdate', data)
     if (data.progress) {
       progress.value = { ...progress.value, ...data.progress }
     }
@@ -197,7 +198,7 @@ export function useWizardSession() {
   }
 
   function handleStatusChanged(data) {
-    console.log('[useWizardSession] Status changed:', data)
+    logI18n('log', 'logs.wizardSession.statusChanged', data)
     if (session.value) {
       session.value = { ...session.value, build_status: data.status }
       if (data.step !== null) {
@@ -222,12 +223,12 @@ export function useWizardSession() {
   }
 
   function handleError(data) {
-    console.error('[useWizardSession] Error:', data)
+    logI18n('error', 'logs.wizardSession.error', data)
     error.value = data.message || 'Unknown error'
   }
 
   async function handleReconnect() {
-    console.log('[useWizardSession] Socket reconnected, rejoining session...')
+    logI18n('log', 'logs.wizardSession.socketReconnected')
     if (chatbotId.value) {
       socket.emit('wizard:join_session', { chatbot_id: chatbotId.value })
     }
@@ -311,7 +312,7 @@ export function useWizardSession() {
       const response = await axios.get('/api/chatbots/wizard/sessions')
       return response.data.sessions || []
     } catch (e) {
-      console.error('[useWizardSession] Failed to get user sessions:', e)
+      logI18n('error', 'logs.wizardSession.userSessionsLoadFailed', e)
       return []
     }
   }

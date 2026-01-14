@@ -9,6 +9,7 @@
 import { reactive, readonly } from 'vue'
 import axios from 'axios'
 import { AUTH_STORAGE_KEYS, getAuthStorageItem } from '@/utils/authStorage'
+import { logI18n, logI18nParams } from '@/utils/logI18n'
 
 // Global singleton state (lives outside of Vue component lifecycle)
 const state = reactive({
@@ -74,7 +75,7 @@ function isCompleted(chatbotId, field) {
  */
 async function startStreamGeneration(chatbotId, field, onUpdate = null) {
   if (!chatbotId) {
-    console.warn('[FieldGenService] No chatbotId provided')
+    logI18n('warn', 'logs.fieldGen.noChatbotId')
     return
   }
 
@@ -83,7 +84,7 @@ async function startStreamGeneration(chatbotId, field, onUpdate = null) {
 
   // If already generating, don't start again
   if (session.generating[field]) {
-    console.log(`[FieldGenService] Field ${field} already generating for chatbot ${chatbotId}`)
+    logI18nParams('log', 'logs.fieldGen.alreadyGenerating', { field, chatbotId })
     return
   }
 
@@ -154,7 +155,7 @@ async function startStreamGeneration(chatbotId, field, onUpdate = null) {
             }
           }
         } catch (e) {
-          console.error('[FieldGenService] Stream parse error:', e)
+          logI18n('error', 'logs.fieldGen.streamParseError', e)
         }
       }
     }
@@ -171,7 +172,7 @@ async function startStreamGeneration(chatbotId, field, onUpdate = null) {
           }
         }
       } catch (e) {
-        console.error('[FieldGenService] Final buffer parse error:', e)
+        logI18n('error', 'logs.fieldGen.finalBufferParseError', e)
       }
     }
 
@@ -185,9 +186,9 @@ async function startStreamGeneration(chatbotId, field, onUpdate = null) {
 
   } catch (error) {
     if (error.name === 'AbortError') {
-      console.log(`[FieldGenService] Stream aborted for field ${field}`)
+      logI18nParams('log', 'logs.fieldGen.streamAborted', { field })
     } else {
-      console.error(`[FieldGenService] Error generating ${field}:`, error)
+      logI18nParams('error', 'logs.fieldGen.generateError', { field }, error)
       fieldState.error = error.message
     }
   } finally {
@@ -201,7 +202,7 @@ async function startStreamGeneration(chatbotId, field, onUpdate = null) {
  */
 async function startDirectGeneration(chatbotId, field, options = {}) {
   if (!chatbotId) {
-    console.warn('[FieldGenService] No chatbotId provided')
+    logI18n('warn', 'logs.fieldGen.noChatbotId')
     return null
   }
 
@@ -210,7 +211,7 @@ async function startDirectGeneration(chatbotId, field, options = {}) {
 
   // If already generating, don't start again
   if (session.generating[field]) {
-    console.log(`[FieldGenService] Field ${field} already generating for chatbot ${chatbotId}`)
+    logI18nParams('log', 'logs.fieldGen.alreadyGenerating', { field, chatbotId })
     return null
   }
 
@@ -237,7 +238,7 @@ async function startDirectGeneration(chatbotId, field, options = {}) {
       return null
     }
   } catch (error) {
-    console.error(`[FieldGenService] Error generating ${field}:`, error)
+    logI18nParams('error', 'logs.fieldGen.generateError', { field }, error)
     fieldState.error = error.message
     return null
   } finally {

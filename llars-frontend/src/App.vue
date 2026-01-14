@@ -156,6 +156,7 @@ import FloatingChat from './components/FloatingChat.vue';
 import UserSettingsDialog from './components/UserSettingsDialog.vue';
 import AnalyticsConsentBanner from './components/common/AnalyticsConsentBanner.vue';
 import { useReferralSystem } from '@/composables/useReferralSystem';
+import { logI18n } from '@/utils/logI18n';
 
 // Global Snackbar
 const { snackbarModel } = useSnackbar();
@@ -233,7 +234,7 @@ const cleanupOldChatMessages = () => {
       }
     }
   } catch (error) {
-    console.error('Error cleaning up chat messages:', error);
+    logI18n('error', 'logs.app.cleanupChatMessagesError', error);
   }
 };
 

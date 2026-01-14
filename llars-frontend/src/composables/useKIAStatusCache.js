@@ -7,6 +7,7 @@
 
 import { ref, reactive } from 'vue';
 import axios from 'axios';
+import { logI18n } from '@/utils/logI18n';
 
 const CACHE_KEY = 'kia-status-cache';
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes TTL
@@ -44,7 +45,7 @@ export function useKIAStatusCache() {
         }
       }
     } catch (e) {
-      console.warn('Failed to load KIA cache:', e);
+      logI18n('warn', 'logs.kiaCache.loadFailed', e);
     }
     return false;
   };
@@ -62,7 +63,7 @@ export function useKIAStatusCache() {
       };
       sessionStorage.setItem(CACHE_KEY, JSON.stringify(data));
     } catch (e) {
-      console.warn('Failed to save KIA cache:', e);
+      logI18n('warn', 'logs.kiaCache.saveFailed', e);
     }
   };
 
@@ -112,7 +113,7 @@ export function useKIAStatusCache() {
       state.error = error.response?.data?.error || error.message;
       // Don't clear existing data on error
       if (error.response?.status !== 401) {
-        console.error('Error fetching KIA status:', error);
+        logI18n('error', 'logs.kiaCache.fetchStatusError', error);
       }
       throw error;
     } finally {

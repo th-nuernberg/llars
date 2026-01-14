@@ -11,8 +11,8 @@
       <div class="mobile-sidebar-header">
         <LIcon color="primary" size="24" class="mr-3">llars:admin-dashboard</LIcon>
         <div>
-          <div class="text-subtitle-1 font-weight-bold">Admin</div>
-          <div class="text-caption text-medium-emphasis">Dashboard</div>
+          <div class="text-subtitle-1 font-weight-bold">{{ $t('adminDashboard.title') }}</div>
+          <div class="text-caption text-medium-emphasis">{{ $t('adminDashboard.subtitle') }}</div>
         </div>
       </div>
       <v-divider />
@@ -33,7 +33,7 @@
         <v-list nav density="compact" class="pa-2">
           <v-list-item
             prepend-icon="mdi-home"
-            title="Zur Startseite"
+            :title="$t('adminDashboard.homeLink')"
             rounded="lg"
             @click="$router.push('/Home')"
           />
@@ -46,8 +46,8 @@
       v-if="!isMobile"
       v-model="activeSection"
       :items="filteredNavItems"
-      title="Admin"
-      subtitle="Dashboard"
+      :title="$t('adminDashboard.title')"
+      :subtitle="$t('adminDashboard.subtitle')"
       icon="llars:admin-dashboard"
       storage-key="admin"
       :show-home-link="true"
@@ -169,6 +169,7 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import { useI18n } from 'vue-i18n';
 import { usePermissions } from '@/composables/usePermissions';
 import { useMobile } from '@/composables/useMobile';
 
@@ -194,6 +195,7 @@ import AppSidebar from '@/components/common/AppSidebar.vue';
 const { hasPermission, hasAnyPermission, fetchPermissions, isAdmin } = usePermissions();
 const route = useRoute();
 const router = useRouter();
+const { t } = useI18n();
 const { isMobile, isTablet, isSmallScreen } = useMobile();
 
 // Mobile sidebar state
@@ -217,31 +219,33 @@ const isChatbotWizardOpen = computed(() => {
 
 // Navigation items
 const navItems = [
-  { title: 'Übersicht', value: 'overview', icon: 'mdi-view-dashboard', adminOnly: true },
-  { title: 'Analytics', value: 'analytics', icon: 'mdi-chart-bar', adminOnly: true },
-  { title: 'System Health', value: 'health', icon: 'mdi-heart-pulse', adminOnly: true },
-  { title: 'System Events', value: 'system', icon: 'mdi-monitor-dashboard', adminOnly: true },
-  { title: 'Chatbot Activity', value: 'chatbot-activity', icon: 'mdi-robot-outline', adminOnly: true },
-  { title: 'Docker', value: 'docker', icon: 'mdi-docker', adminOnly: true },
-  { title: 'DB', value: 'db', icon: 'mdi-database', adminOnly: true },
-  { title: 'Einstellungen', value: 'settings', icon: 'mdi-cog', adminOnly: true },
-  { title: 'Benutzer', value: 'users', icon: 'mdi-account-group', adminOnly: true },
-  { title: 'Referrals', value: 'referrals', icon: 'mdi-account-multiple-plus', adminOnly: true },
-  { title: 'Szenarien', value: 'scenarios', icon: 'mdi-clipboard-list', adminOnly: true },
-  { title: 'Chatbots', value: 'chatbots', icon: 'llars:chatbot-manage', permission: 'feature:chatbots:view' },
-  { title: 'Web Crawler', value: 'crawler', icon: 'mdi-spider-web', adminOnly: true },
-  { title: 'RAG Dokumente', value: 'rag', icon: 'mdi-database-search', permission: 'feature:rag:view' },
-  { title: 'Berechtigungen', value: 'permissions', icon: 'mdi-shield-lock', adminOnly: true },
-  { title: 'LLM Provider', value: 'llm-providers', icon: 'mdi-connection', adminOnly: true },
+  { titleKey: 'adminDashboard.nav.overview', value: 'overview', icon: 'mdi-view-dashboard', adminOnly: true },
+  { titleKey: 'adminDashboard.nav.analytics', value: 'analytics', icon: 'mdi-chart-bar', adminOnly: true },
+  { titleKey: 'adminDashboard.nav.health', value: 'health', icon: 'mdi-heart-pulse', adminOnly: true },
+  { titleKey: 'adminDashboard.nav.system', value: 'system', icon: 'mdi-monitor-dashboard', adminOnly: true },
+  { titleKey: 'adminDashboard.nav.chatbotActivity', value: 'chatbot-activity', icon: 'mdi-robot-outline', adminOnly: true },
+  { titleKey: 'adminDashboard.nav.docker', value: 'docker', icon: 'mdi-docker', adminOnly: true },
+  { titleKey: 'adminDashboard.nav.db', value: 'db', icon: 'mdi-database', adminOnly: true },
+  { titleKey: 'adminDashboard.nav.settings', value: 'settings', icon: 'mdi-cog', adminOnly: true },
+  { titleKey: 'adminDashboard.nav.users', value: 'users', icon: 'mdi-account-group', adminOnly: true },
+  { titleKey: 'adminDashboard.nav.referrals', value: 'referrals', icon: 'mdi-account-multiple-plus', adminOnly: true },
+  { titleKey: 'adminDashboard.nav.scenarios', value: 'scenarios', icon: 'mdi-clipboard-list', adminOnly: true },
+  { titleKey: 'adminDashboard.nav.chatbots', value: 'chatbots', icon: 'llars:chatbot-manage', permission: 'feature:chatbots:view' },
+  { titleKey: 'adminDashboard.nav.crawler', value: 'crawler', icon: 'mdi-spider-web', adminOnly: true },
+  { titleKey: 'adminDashboard.nav.rag', value: 'rag', icon: 'mdi-database-search', permission: 'feature:rag:view' },
+  { titleKey: 'adminDashboard.nav.permissions', value: 'permissions', icon: 'mdi-shield-lock', adminOnly: true },
+  { titleKey: 'adminDashboard.nav.llmProviders', value: 'llm-providers', icon: 'mdi-connection', adminOnly: true },
 ];
 
 const filteredNavItems = computed(() => {
-  return navItems.filter(item => {
-    if (item.adminOnly) return isAdmin.value;
-    if (item.permissionsAny) return hasAnyPermission(...item.permissionsAny);
-    if (item.permission) return hasPermission(item.permission);
-    return true;
-  });
+  return navItems
+    .filter(item => {
+      if (item.adminOnly) return isAdmin.value;
+      if (item.permissionsAny) return hasAnyPermission(...item.permissionsAny);
+      if (item.permission) return hasPermission(item.permission);
+      return true;
+    })
+    .map(item => ({ ...item, title: t(item.titleKey) }));
 });
 
 const currentSectionTitle = computed(() => '');

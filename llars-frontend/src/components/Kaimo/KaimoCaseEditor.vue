@@ -17,10 +17,10 @@
           />
           <div>
             <div class="text-h5 font-weight-bold">
-              Fall bearbeiten: {{ formData.display_name || 'Unbenannt' }}
+              {{ $t('kaimo.caseEditor.header.title', { name: formData.display_name || $t('kaimo.caseEditor.header.unnamed') }) }}
             </div>
             <div class="text-subtitle-2 text-medium-emphasis">
-              {{ formData.name || 'Keine Beschreibung' }}
+              {{ formData.name || $t('kaimo.caseEditor.header.nameFallback') }}
             </div>
           </div>
           <v-spacer />
@@ -29,7 +29,7 @@
             variant="flat"
             size="small"
           >
-            {{ formData.status || 'draft' }}
+            {{ getStatusLabel(formData.status) }}
           </v-chip>
         </div>
       </v-col>
@@ -48,11 +48,11 @@
           <v-tabs v-model="activeTab" bg-color="surface">
             <v-tab value="general">
               <LIcon start>mdi-information</LIcon>
-              Grunddaten
+              {{ $t('kaimo.caseEditor.tabs.general') }}
             </v-tab>
             <v-tab value="documents">
               <LIcon start>mdi-file-document-multiple</LIcon>
-              Dokumente
+              {{ $t('kaimo.caseEditor.tabs.documents') }}
               <v-chip
                 v-if="documents.length > 0"
                 size="x-small"
@@ -65,7 +65,7 @@
             </v-tab>
             <v-tab value="hints">
               <LIcon start>mdi-lightbulb-on</LIcon>
-              Hinweise
+              {{ $t('kaimo.caseEditor.tabs.hints') }}
               <v-chip
                 v-if="hints.length > 0"
                 size="x-small"
@@ -78,7 +78,7 @@
             </v-tab>
             <v-tab value="preview">
               <LIcon start>mdi-eye</LIcon>
-              Vorschau
+              {{ $t('kaimo.caseEditor.tabs.preview') }}
             </v-tab>
           </v-tabs>
 
@@ -94,8 +94,8 @@
                     <v-col cols="12" md="6">
                       <v-text-field
                         v-model="formData.name"
-                        label="Technischer Name"
-                        hint="Eindeutiger Bezeichner (z.B. fall-001)"
+                        :label="$t('kaimo.caseEditor.general.nameLabel')"
+                        :hint="$t('kaimo.caseEditor.general.nameHint')"
                         persistent-hint
                         :rules="[rules.required]"
                         variant="outlined"
@@ -105,8 +105,8 @@
                     <v-col cols="12" md="6">
                       <v-text-field
                         v-model="formData.display_name"
-                        label="Anzeigename"
-                        hint="Name wie er Benutzern angezeigt wird"
+                        :label="$t('kaimo.caseEditor.general.displayNameLabel')"
+                        :hint="$t('kaimo.caseEditor.general.displayNameHint')"
                         persistent-hint
                         :rules="[rules.required]"
                         variant="outlined"
@@ -116,8 +116,8 @@
                     <v-col cols="12">
                       <v-textarea
                         v-model="formData.description"
-                        label="Beschreibung"
-                        hint="Kurze Beschreibung des Falls"
+                        :label="$t('kaimo.caseEditor.general.descriptionLabel')"
+                        :hint="$t('kaimo.caseEditor.general.descriptionHint')"
                         persistent-hint
                         rows="3"
                         variant="outlined"
@@ -127,8 +127,8 @@
                     <v-col cols="12" md="4">
                       <v-text-field
                         v-model="formData.icon"
-                        label="Icon (Emoji)"
-                        hint="z.B. 📁"
+                        :label="$t('kaimo.caseEditor.general.iconLabel')"
+                        :hint="$t('kaimo.caseEditor.general.iconHint')"
                         persistent-hint
                         variant="outlined"
                         density="comfortable"
@@ -141,8 +141,8 @@
                     <v-col cols="12" md="4">
                       <v-text-field
                         v-model="formData.color"
-                        label="Farbe (Hex)"
-                        hint="z.B. #1976D2"
+                        :label="$t('kaimo.caseEditor.general.colorLabel')"
+                        :hint="$t('kaimo.caseEditor.general.colorHint')"
                         persistent-hint
                         variant="outlined"
                         density="comfortable"
@@ -159,7 +159,7 @@
                     <v-col cols="12" md="4">
                       <v-select
                         v-model="formData.status"
-                        label="Status"
+                        :label="$t('kaimo.caseEditor.general.statusLabel')"
                         :items="statusOptions"
                         variant="outlined"
                         density="comfortable"
@@ -172,7 +172,7 @@
               <!-- ============ TAB 2: Dokumente ============ -->
               <v-window-item value="documents" eager>
                 <div class="d-flex align-center mb-4">
-                  <div class="text-h6">Dokumente</div>
+                  <div class="text-h6">{{ $t('kaimo.caseEditor.documents.title') }}</div>
                   <v-spacer />
                   <v-btn
                     color="primary"
@@ -180,7 +180,7 @@
                     variant="outlined"
                     @click="openDocumentDialog(null)"
                   >
-                    Dokument hinzufügen
+                    {{ $t('kaimo.caseEditor.documents.add') }}
                   </v-btn>
                 </div>
 
@@ -222,7 +222,7 @@
                       <LIcon size="48" color="grey-lighten-1" class="mb-2">
                         mdi-file-document-outline
                       </LIcon>
-                      <div>Noch keine Dokumente vorhanden</div>
+                      <div>{{ $t('kaimo.caseEditor.documents.empty') }}</div>
                     </div>
                   </template>
                 </v-data-table>
@@ -231,7 +231,7 @@
               <!-- ============ TAB 3: Hinweise ============ -->
               <v-window-item value="hints" eager>
                 <div class="d-flex align-center mb-4">
-                  <div class="text-h6">Hinweise</div>
+                  <div class="text-h6">{{ $t('kaimo.caseEditor.hints.title') }}</div>
                   <v-spacer />
                   <v-btn
                     color="primary"
@@ -239,7 +239,7 @@
                     variant="outlined"
                     @click="openHintDialog(null)"
                   >
-                    Hinweis hinzufügen
+                    {{ $t('kaimo.caseEditor.hints.add') }}
                   </v-btn>
                 </div>
 
@@ -294,7 +294,7 @@
                       <LIcon size="48" color="grey-lighten-1" class="mb-2">
                         mdi-lightbulb-outline
                       </LIcon>
-                      <div>Noch keine Hinweise vorhanden</div>
+                      <div>{{ $t('kaimo.caseEditor.hints.empty') }}</div>
                     </div>
                   </template>
                 </v-data-table>
@@ -308,9 +308,9 @@
                   class="mb-4"
                   icon="mdi-eye"
                 >
-                  <div class="text-subtitle-2">User-Ansicht Vorschau</div>
+                  <div class="text-subtitle-2">{{ $t('kaimo.caseEditor.preview.title') }}</div>
                   <div class="text-body-2">
-                    So sehen Benutzer diesen Fall im KAIMO Panel.
+                    {{ $t('kaimo.caseEditor.preview.subtitle') }}
                   </div>
                 </v-alert>
 
@@ -321,9 +321,9 @@
                       <span class="text-h5">{{ formData.icon || '📁' }}</span>
                     </v-avatar>
                     <div>
-                      <div class="text-h6">{{ formData.display_name || 'Unbenannt' }}</div>
+                      <div class="text-h6">{{ formData.display_name || $t('kaimo.caseEditor.header.unnamed') }}</div>
                       <div class="text-caption text-medium-emphasis">
-                        {{ formData.description || 'Keine Beschreibung' }}
+                        {{ formData.description || $t('kaimo.caseEditor.header.descriptionFallback') }}
                       </div>
                     </div>
                   </v-card-title>
@@ -332,7 +332,7 @@
                 <!-- Documents Preview -->
                 <div class="mb-4">
                   <div class="text-subtitle-1 font-weight-bold mb-2">
-                    Dokumente ({{ documents.length }})
+                    {{ $t('kaimo.caseEditor.preview.documents', { count: documents.length }) }}
                   </div>
                   <v-row>
                     <v-col
@@ -360,7 +360,7 @@
                     </v-col>
                     <v-col v-if="documents.length === 0" cols="12">
                       <div class="text-center text-medium-emphasis pa-4">
-                        Keine Dokumente verfügbar
+                        {{ $t('kaimo.caseEditor.preview.noDocuments') }}
                       </div>
                     </v-col>
                   </v-row>
@@ -369,7 +369,7 @@
                 <!-- Hints Preview -->
                 <div>
                   <div class="text-subtitle-1 font-weight-bold mb-2">
-                    Hinweise ({{ hints.length }})
+                    {{ $t('kaimo.caseEditor.preview.hints', { count: hints.length }) }}
                   </div>
                   <div class="d-flex flex-wrap gap-2">
                     <v-chip
@@ -386,7 +386,7 @@
                       </v-tooltip>
                     </v-chip>
                     <div v-if="hints.length === 0" class="text-medium-emphasis">
-                      Keine Hinweise verfügbar
+                      {{ $t('kaimo.caseEditor.preview.noHints') }}
                     </div>
                   </div>
                 </div>
@@ -401,7 +401,7 @@
               variant="text"
               @click="goBack"
             >
-              Abbrechen
+              {{ $t('common.cancel') }}
             </v-btn>
             <v-spacer />
             <v-btn
@@ -410,7 +410,7 @@
               :loading="saving"
               @click="saveChanges"
             >
-              Speichern
+              {{ $t('common.save') }}
             </v-btn>
             <v-btn
               v-if="formData.status !== 'published'"
@@ -419,7 +419,7 @@
               :loading="publishing"
               @click="publishCase"
             >
-              Veröffentlichen
+              {{ $t('kaimo.caseEditor.actions.publish') }}
             </v-btn>
           </v-card-actions>
         </v-card>
@@ -438,13 +438,13 @@
       <v-card>
         <v-card-title class="bg-primary">
           <LIcon class="mr-2">{{ editingDocument?.id ? 'mdi-pencil' : 'mdi-plus' }}</LIcon>
-          {{ editingDocument?.id ? 'Dokument bearbeiten' : 'Neues Dokument' }}
+          {{ editingDocument?.id ? $t('kaimo.caseEditor.documentDialog.editTitle') : $t('kaimo.caseEditor.documentDialog.newTitle') }}
         </v-card-title>
         <v-card-text class="pt-4">
           <v-form ref="formDocument">
             <v-text-field
               v-model="editingDocument.title"
-              label="Titel"
+              :label="$t('kaimo.caseEditor.documentDialog.titleLabel')"
               :rules="[rules.required]"
               variant="outlined"
               density="comfortable"
@@ -452,7 +452,7 @@
             />
             <v-select
               v-model="editingDocument.type"
-              label="Typ"
+              :label="$t('kaimo.caseEditor.documentDialog.typeLabel')"
               :items="documentTypes"
               :rules="[rules.required]"
               variant="outlined"
@@ -461,7 +461,7 @@
             />
             <v-text-field
               v-model="editingDocument.date"
-              label="Datum"
+              :label="$t('kaimo.caseEditor.documentDialog.dateLabel')"
               type="date"
               variant="outlined"
               density="comfortable"
@@ -469,8 +469,8 @@
             />
             <v-textarea
               v-model="editingDocument.content"
-              label="Inhalt"
-              hint="Markdown wird unterstützt"
+              :label="$t('kaimo.caseEditor.documentDialog.contentLabel')"
+              :hint="$t('kaimo.caseEditor.documentDialog.contentHint')"
               persistent-hint
               rows="8"
               variant="outlined"
@@ -479,7 +479,7 @@
             />
             <v-text-field
               v-model.number="editingDocument.sort_order"
-              label="Sortierung"
+              :label="$t('kaimo.caseEditor.documentDialog.orderLabel')"
               type="number"
               variant="outlined"
               density="comfortable"
@@ -490,7 +490,7 @@
         <v-card-actions>
           <v-spacer />
           <v-btn variant="text" @click="closeDocumentDialog">
-            Abbrechen
+            {{ $t('common.cancel') }}
           </v-btn>
           <v-btn
             color="primary"
@@ -498,7 +498,7 @@
             :loading="savingDocument"
             @click="saveDocument"
           >
-            Speichern
+            {{ $t('common.save') }}
           </v-btn>
         </v-card-actions>
       </v-card>
@@ -514,13 +514,13 @@
       <v-card>
         <v-card-title class="bg-primary">
           <LIcon class="mr-2">{{ editingHint?.id ? 'mdi-pencil' : 'mdi-plus' }}</LIcon>
-          {{ editingHint?.id ? 'Hinweis bearbeiten' : 'Neuer Hinweis' }}
+          {{ editingHint?.id ? $t('kaimo.caseEditor.hintDialog.editTitle') : $t('kaimo.caseEditor.hintDialog.newTitle') }}
         </v-card-title>
         <v-card-text class="pt-4">
           <v-form ref="formHint">
             <v-textarea
               v-model="editingHint.content"
-              label="Inhalt"
+              :label="$t('kaimo.caseEditor.hintDialog.contentLabel')"
               :rules="[rules.required]"
               rows="4"
               variant="outlined"
@@ -529,7 +529,7 @@
             />
             <v-select
               v-model="editingHint.source_document_id"
-              label="Quell-Dokument"
+              :label="$t('kaimo.caseEditor.hintDialog.sourceLabel')"
               :items="documentItems"
               item-title="title"
               item-value="id"
@@ -539,7 +539,7 @@
             />
             <v-select
               v-model="editingHint.expected_category_id"
-              label="Erwartete Kategorie"
+              :label="$t('kaimo.caseEditor.hintDialog.categoryLabel')"
               :items="categoryItems"
               item-title="name"
               item-value="id"
@@ -551,7 +551,7 @@
             />
             <v-select
               v-model="editingHint.expected_subcategory_id"
-              label="Erwartete Unterkategorie"
+              :label="$t('kaimo.caseEditor.hintDialog.subcategoryLabel')"
               :items="filteredSubcategories"
               item-title="name"
               item-value="id"
@@ -562,7 +562,7 @@
             />
             <v-select
               v-model="editingHint.expected_rating"
-              label="Erwartetes Rating"
+              :label="$t('kaimo.caseEditor.hintDialog.ratingLabel')"
               :items="ratingOptions"
               :rules="[rules.required]"
               variant="outlined"
@@ -571,7 +571,7 @@
             />
             <v-text-field
               v-model.number="editingHint.sort_order"
-              label="Sortierung"
+              :label="$t('kaimo.caseEditor.hintDialog.orderLabel')"
               type="number"
               variant="outlined"
               density="comfortable"
@@ -582,7 +582,7 @@
         <v-card-actions>
           <v-spacer />
           <v-btn variant="text" @click="closeHintDialog">
-            Abbrechen
+            {{ $t('common.cancel') }}
           </v-btn>
           <v-btn
             color="primary"
@@ -590,7 +590,7 @@
             :loading="savingHint"
             @click="saveHint"
           >
-            Speichern
+            {{ $t('common.save') }}
           </v-btn>
         </v-card-actions>
       </v-card>
@@ -601,16 +601,16 @@
       <v-card>
         <v-card-title class="bg-error">
           <LIcon class="mr-2">mdi-alert</LIcon>
-          Löschen bestätigen
+          {{ $t('kaimo.caseEditor.deleteDialog.title') }}
         </v-card-title>
         <v-card-text class="pt-4">
-          <p>Möchten Sie dieses Element wirklich löschen?</p>
-          <p class="text-medium-emphasis">Diese Aktion kann nicht rückgängig gemacht werden.</p>
+          <p>{{ $t('kaimo.caseEditor.deleteDialog.body') }}</p>
+          <p class="text-medium-emphasis">{{ $t('kaimo.caseEditor.deleteDialog.note') }}</p>
         </v-card-text>
         <v-card-actions>
           <v-spacer />
           <v-btn variant="text" @click="deleteDialog = false">
-            Abbrechen
+            {{ $t('common.cancel') }}
           </v-btn>
           <v-btn
             color="error"
@@ -618,7 +618,7 @@
             :loading="deleting"
             @click="confirmDelete"
           >
-            Löschen
+            {{ $t('common.delete') }}
           </v-btn>
         </v-card-actions>
       </v-card>
@@ -638,6 +638,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { useSkeletonLoading } from '@/composables/useSkeletonLoading'
 import { usePermissions } from '@/composables/usePermissions'
 import {
@@ -655,6 +656,7 @@ import {
 
 const route = useRoute()
 const router = useRouter()
+const { t, locale } = useI18n()
 const { isLoading, setLoading, withLoading } = useSkeletonLoading(['header', 'content'])
 const { hasPermission, isResearcher } = usePermissions()
 
@@ -701,46 +703,46 @@ const snackbarMessage = ref('')
 const snackbarColor = ref('success')
 
 // Options
-const statusOptions = [
-  { title: 'Entwurf', value: 'draft' },
-  { title: 'Veröffentlicht', value: 'published' },
-  { title: 'Archiviert', value: 'archived' }
-]
+const statusOptions = computed(() => [
+  { title: t('kaimo.status.draft'), value: 'draft' },
+  { title: t('kaimo.status.published'), value: 'published' },
+  { title: t('kaimo.status.archived'), value: 'archived' }
+])
 
-const documentTypes = [
-  { title: 'Aktenvermerk', value: 'aktenvermerk' },
-  { title: 'Bericht', value: 'bericht' },
-  { title: 'Protokoll', value: 'protokoll' },
-  { title: 'Sonstiges', value: 'sonstiges' }
-]
+const documentTypes = computed(() => [
+  { title: t('kaimo.caseEditor.documentTypes.aktenvermerk'), value: 'aktenvermerk' },
+  { title: t('kaimo.caseEditor.documentTypes.bericht'), value: 'bericht' },
+  { title: t('kaimo.caseEditor.documentTypes.protokoll'), value: 'protokoll' },
+  { title: t('kaimo.caseEditor.documentTypes.sonstiges'), value: 'sonstiges' }
+])
 
-const ratingOptions = [
-  { title: 'Risk', value: 'risk' },
-  { title: 'Resource', value: 'resource' },
-  { title: 'Unclear', value: 'unclear' }
-]
+const ratingOptions = computed(() => [
+  { title: t('kaimo.ratings.risk'), value: 'risk' },
+  { title: t('kaimo.ratings.resource'), value: 'resource' },
+  { title: t('kaimo.ratings.unclear'), value: 'unclear' }
+])
 
 // Validation rules
 const rules = {
-  required: v => !!v || 'Dieses Feld ist erforderlich'
+  required: v => !!v || t('validation.required')
 }
 
 // Table Headers
-const documentHeaders = [
-  { title: 'Titel', key: 'title', sortable: true },
-  { title: 'Typ', key: 'type', sortable: true },
-  { title: 'Datum', key: 'date', sortable: true },
-  { title: 'Sortierung', key: 'sort_order', sortable: true },
-  { title: 'Aktionen', key: 'actions', sortable: false, align: 'end' }
-]
+const documentHeaders = computed(() => [
+  { title: t('kaimo.caseEditor.documents.headers.title'), key: 'title', sortable: true },
+  { title: t('kaimo.caseEditor.documents.headers.type'), key: 'type', sortable: true },
+  { title: t('kaimo.caseEditor.documents.headers.date'), key: 'date', sortable: true },
+  { title: t('kaimo.caseEditor.documents.headers.order'), key: 'sort_order', sortable: true },
+  { title: t('kaimo.caseEditor.documents.headers.actions'), key: 'actions', sortable: false, align: 'end' }
+])
 
-const hintHeaders = [
-  { title: 'Inhalt', key: 'content', sortable: false },
-  { title: 'Quelle', key: 'source_document_id', sortable: false },
-  { title: 'Kategorie', key: 'expected_category_id', sortable: false },
-  { title: 'Rating', key: 'expected_rating', sortable: true },
-  { title: 'Aktionen', key: 'actions', sortable: false, align: 'end' }
-]
+const hintHeaders = computed(() => [
+  { title: t('kaimo.caseEditor.hints.headers.content'), key: 'content', sortable: false },
+  { title: t('kaimo.caseEditor.hints.headers.source'), key: 'source_document_id', sortable: false },
+  { title: t('kaimo.caseEditor.hints.headers.category'), key: 'expected_category_id', sortable: false },
+  { title: t('kaimo.caseEditor.hints.headers.rating'), key: 'expected_rating', sortable: true },
+  { title: t('kaimo.caseEditor.hints.headers.actions'), key: 'actions', sortable: false, align: 'end' }
+])
 
 // Computed
 const documentItems = computed(() => {
@@ -758,19 +760,19 @@ const filteredSubcategories = computed(() => {
 
 // Helper Functions
 function formatDate(dateStr) {
-  if (!dateStr) return '-'
+  if (!dateStr) return t('kaimo.caseEditor.placeholders.empty')
   const date = new Date(dateStr)
-  return date.toLocaleDateString('de-DE')
+  return date.toLocaleDateString(locale.value || undefined)
 }
 
 function getDocumentTitle(docId) {
   const doc = documents.value.find(d => d.id === docId)
-  return doc?.title || '-'
+  return doc?.title || t('kaimo.caseEditor.placeholders.empty')
 }
 
 function getCategoryName(catId) {
   const cat = [...categories.value, ...subcategories.value].find(c => c.id === catId)
-  return cat?.name || '-'
+  return cat?.name || t('kaimo.caseEditor.placeholders.empty')
 }
 
 function getCategoryColor(catId) {
@@ -784,6 +786,15 @@ function getRatingColor(rating) {
     case 'resource': return 'success'
     case 'unclear': return 'warning'
     default: return 'grey'
+  }
+}
+
+function getStatusLabel(status) {
+  switch (status) {
+    case 'draft': return t('kaimo.status.draft')
+    case 'published': return t('kaimo.status.published')
+    case 'archived': return t('kaimo.status.archived')
+    default: return status || t('kaimo.status.draft')
   }
 }
 
@@ -816,8 +827,8 @@ async function loadCase() {
     documents.value = data.documents || []
     hints.value = data.hints || []
   } catch (err) {
-    console.error('Failed to load case:', err)
-    showSnackbar('Fall konnte nicht geladen werden', 'error')
+    console.error('Konnte Fall nicht laden:', err)
+    showSnackbar(t('kaimo.caseEditor.snackbar.loadFailed'), 'error')
   }
 }
 
@@ -827,7 +838,7 @@ async function loadCategories() {
     categories.value = data.categories.filter(c => !c.parent_id) || []
     subcategories.value = data.categories.filter(c => c.parent_id) || []
   } catch (err) {
-    console.error('Failed to load categories:', err)
+    console.error('Konnte Kategorien nicht laden:', err)
   }
 }
 
@@ -837,10 +848,10 @@ async function saveChanges() {
   try {
     const caseId = route.params.id
     await updateKaimoCase(caseId, formData.value)
-    showSnackbar('Änderungen gespeichert')
+    showSnackbar(t('kaimo.caseEditor.snackbar.saved'))
   } catch (err) {
-    console.error('Failed to save case:', err)
-    showSnackbar('Speichern fehlgeschlagen', 'error')
+    console.error('Konnte Fall nicht speichern:', err)
+    showSnackbar(t('kaimo.caseEditor.snackbar.saveFailed'), 'error')
   } finally {
     saving.value = false
   }
@@ -852,10 +863,10 @@ async function publishCase() {
     const caseId = route.params.id
     await publishKaimoCase(caseId)
     formData.value.status = 'published'
-    showSnackbar('Fall veröffentlicht')
+    showSnackbar(t('kaimo.caseEditor.snackbar.published'))
   } catch (err) {
-    console.error('Failed to publish case:', err)
-    showSnackbar('Veröffentlichung fehlgeschlagen', 'error')
+    console.error('Konnte Fall nicht veroeffentlichen:', err)
+    showSnackbar(t('kaimo.caseEditor.snackbar.publishFailed'), 'error')
   } finally {
     publishing.value = false
   }
@@ -892,16 +903,16 @@ async function saveDocument() {
       if (index !== -1) {
         documents.value[index] = updated.document
       }
-      showSnackbar('Dokument aktualisiert')
+      showSnackbar(t('kaimo.caseEditor.snackbar.documentUpdated'))
     } else {
       const created = await createKaimoDocument(caseId, editingDocument.value)
       documents.value.push(created.document)
-      showSnackbar('Dokument erstellt')
+      showSnackbar(t('kaimo.caseEditor.snackbar.documentCreated'))
     }
     closeDocumentDialog()
   } catch (err) {
-    console.error('Failed to save document:', err)
-    showSnackbar('Speichern fehlgeschlagen', 'error')
+    console.error('Konnte Dokument nicht speichern:', err)
+    showSnackbar(t('kaimo.caseEditor.snackbar.saveFailed'), 'error')
   } finally {
     savingDocument.value = false
   }
@@ -949,16 +960,16 @@ async function saveHint() {
       if (index !== -1) {
         hints.value[index] = updated.hint
       }
-      showSnackbar('Hinweis aktualisiert')
+      showSnackbar(t('kaimo.caseEditor.snackbar.hintUpdated'))
     } else {
       const created = await createKaimoHint(caseId, editingHint.value)
       hints.value.push(created.hint)
-      showSnackbar('Hinweis erstellt')
+      showSnackbar(t('kaimo.caseEditor.snackbar.hintCreated'))
     }
     closeHintDialog()
   } catch (err) {
-    console.error('Failed to save hint:', err)
-    showSnackbar('Speichern fehlgeschlagen', 'error')
+    console.error('Konnte Hinweis nicht speichern:', err)
+    showSnackbar(t('kaimo.caseEditor.snackbar.saveFailed'), 'error')
   } finally {
     savingHint.value = false
   }
@@ -977,17 +988,17 @@ async function confirmDelete() {
     if (deleteTarget.value.type === 'document') {
       await deleteKaimoDocument(caseId, deleteTarget.value.item.id)
       documents.value = documents.value.filter(d => d.id !== deleteTarget.value.item.id)
-      showSnackbar('Dokument gelöscht')
+      showSnackbar(t('kaimo.caseEditor.snackbar.documentDeleted'))
     } else if (deleteTarget.value.type === 'hint') {
       await deleteKaimoHint(caseId, deleteTarget.value.item.id)
       hints.value = hints.value.filter(h => h.id !== deleteTarget.value.item.id)
-      showSnackbar('Hinweis gelöscht')
+      showSnackbar(t('kaimo.caseEditor.snackbar.hintDeleted'))
     }
     deleteDialog.value = false
     deleteTarget.value = null
   } catch (err) {
-    console.error('Failed to delete:', err)
-    showSnackbar('Löschen fehlgeschlagen', 'error')
+    console.error('Konnte nicht loeschen:', err)
+    showSnackbar(t('kaimo.caseEditor.snackbar.deleteFailed'), 'error')
   } finally {
     deleting.value = false
   }
@@ -996,7 +1007,7 @@ async function confirmDelete() {
 // Lifecycle
 onMounted(async () => {
   if (!canEditKaimo.value) {
-    showSnackbar('Keine Berechtigung zum Bearbeiten', 'error')
+    showSnackbar(t('kaimo.caseEditor.snackbar.noPermission'), 'error')
     router.push({ name: 'KaimoHub' })
     return
   }

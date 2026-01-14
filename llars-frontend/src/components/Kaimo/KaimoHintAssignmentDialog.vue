@@ -8,9 +8,9 @@
     <v-card>
       <v-card-title class="d-flex align-center pa-4 bg-grey-lighten-4">
         <LIcon class="mr-2" color="primary">mdi-folder-open</LIcon>
-        <span class="text-h6">{{ category?.display_name || 'Kategorie' }}</span>
+        <span class="text-h6">{{ category?.display_name || $t('kaimo.hintDialog.categoryFallback') }}</span>
         <v-spacer />
-        <LIconBtn icon="mdi-close" tooltip="Schließen" @click="closeDialog" />
+        <LIconBtn icon="mdi-close" :tooltip="$t('common.close')" @click="closeDialog" />
       </v-card-title>
 
       <v-divider />
@@ -23,7 +23,7 @@
             variant="tonal"
             class="ma-4"
           >
-            Keine Kategorie ausgewählt
+            {{ $t('kaimo.hintDialog.noCategory') }}
           </v-alert>
 
           <template v-else>
@@ -44,7 +44,7 @@
                       :items="subcategoryOptions"
                       item-title="display_name"
                       item-value="id"
-                      label="Unterkategorie"
+                      :label="$t('kaimo.hintDialog.subcategoryLabel')"
                       density="compact"
                       variant="outlined"
                       hide-details
@@ -60,7 +60,7 @@
                         prepend-icon="mdi-alert-circle"
                         @click="setRating(hint.id, 'risk')"
                       >
-                        Risiko
+                        {{ $t('kaimo.ratings.risk') }}
                       </v-btn>
 
                       <v-btn
@@ -70,7 +70,7 @@
                         prepend-icon="mdi-check-circle"
                         @click="setRating(hint.id, 'resource')"
                       >
-                        Ressource
+                        {{ $t('kaimo.ratings.resource') }}
                       </v-btn>
 
                       <v-btn
@@ -80,7 +80,7 @@
                         prepend-icon="mdi-help-circle"
                         @click="setRating(hint.id, 'unclear')"
                       >
-                        Unklar
+                        {{ $t('kaimo.ratings.unclear') }}
                       </v-btn>
                     </div>
                   </v-col>
@@ -97,7 +97,7 @@
                   :disabled="!canSaveHint(hint.id)"
                   @click="saveHint(hint.id)"
                 >
-                  Speichern
+                  {{ $t('common.save') }}
                 </v-btn>
 
                 <v-btn
@@ -107,14 +107,14 @@
                   size="small"
                   @click="resetHint(hint.id)"
                 >
-                  Zurücksetzen
+                  {{ $t('kaimo.hintDialog.reset') }}
                 </v-btn>
               </div>
             </div>
 
             <div v-if="relevantHints.length === 0" class="no-hints">
               <LIcon size="48" color="grey-lighten-1">mdi-lightbulb-outline</LIcon>
-              <p class="text-grey">Keine Hinweise für diese Kategorie</p>
+              <p class="text-grey">{{ $t('kaimo.hintDialog.empty') }}</p>
             </div>
           </template>
         </v-container>
@@ -128,7 +128,7 @@
           variant="text"
           @click="closeDialog"
         >
-          Schließen
+          {{ $t('common.close') }}
         </v-btn>
       </v-card-actions>
     </v-card>

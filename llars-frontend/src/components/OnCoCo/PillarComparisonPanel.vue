@@ -2,7 +2,7 @@
   <v-card variant="outlined" class="pillar-comparison-panel">
     <v-card-title class="d-flex align-center py-2">
       <LIcon start color="primary">mdi-compare-horizontal</LIcon>
-      Paarweise Säulen-Vergleiche
+      {{ $t('oncoco.pillarComparison.title') }}
     </v-card-title>
 
     <!-- Pillar Pair Tabs -->
@@ -28,10 +28,10 @@
         <v-row>
           <!-- Left Column: Top Differences -->
           <v-col cols="12" md="6">
-            <div class="text-subtitle-2 font-weight-bold mb-2">
-              <LIcon start size="small">mdi-arrow-split-vertical</LIcon>
-              Größte Unterschiede
-            </div>
+          <div class="text-subtitle-2 font-weight-bold mb-2">
+            <LIcon start size="small">mdi-arrow-split-vertical</LIcon>
+            {{ $t('oncoco.pillarComparison.differences.title') }}
+          </div>
 
             <v-list density="compact" class="differences-list" v-if="currentComparison.outlier_transitions?.length > 0">
               <v-list-item
@@ -73,22 +73,22 @@
             </v-list>
 
             <v-alert v-else type="info" variant="tonal" density="compact">
-              Keine signifikanten Unterschiede gefunden (z-score > 2)
+              {{ $t('oncoco.pillarComparison.differences.empty') }}
             </v-alert>
           </v-col>
 
           <!-- Right Column: Statistics -->
           <v-col cols="12" md="6">
-            <div class="text-subtitle-2 font-weight-bold mb-2">
-              <LIcon start size="small">mdi-chart-box</LIcon>
-              Statistische Metriken
-            </div>
+          <div class="text-subtitle-2 font-weight-bold mb-2">
+            <LIcon start size="small">mdi-chart-box</LIcon>
+            {{ $t('oncoco.pillarComparison.metrics.title') }}
+          </div>
 
             <div class="metrics-grid">
               <!-- Frobenius Distance -->
               <div class="metric-card">
                 <div class="d-flex justify-space-between align-center mb-1">
-                  <span class="text-caption">Frobenius-Distanz</span>
+                  <span class="text-caption">{{ $t('oncoco.pillarComparison.metrics.frobenius.label') }}</span>
                   <span class="font-weight-bold">{{ formatNum(currentComparison.metrics?.frobenius_distance, 3) }}</span>
                 </div>
                 <v-progress-linear
@@ -105,7 +105,7 @@
               <!-- JSD Mean -->
               <div class="metric-card">
                 <div class="d-flex justify-space-between align-center mb-1">
-                  <span class="text-caption">JSD Mittelwert</span>
+                  <span class="text-caption">{{ $t('oncoco.pillarComparison.metrics.jsd.label') }}</span>
                   <span class="font-weight-bold">{{ formatNum(currentComparison.metrics?.mean_jsd, 3) }}</span>
                 </div>
                 <v-progress-linear
@@ -115,14 +115,14 @@
                   :color="getJSDColor(currentComparison.metrics?.mean_jsd || 0)"
                 ></v-progress-linear>
                 <div class="text-caption text-medium-emphasis mt-1">
-                  Max: {{ formatNum(currentComparison.metrics?.max_jsd, 3) }}
+                  {{ $t('oncoco.pillarComparison.metrics.jsd.max', { value: formatNum(currentComparison.metrics?.max_jsd, 3) }) }}
                 </div>
               </div>
 
               <!-- Permutation Test -->
               <div class="metric-card" v-if="currentComparison.statistical_tests?.permutation_test">
                 <div class="d-flex justify-space-between align-center mb-1">
-                  <span class="text-caption">Permutationstest</span>
+                  <span class="text-caption">{{ $t('oncoco.pillarComparison.metrics.permutation.label') }}</span>
                   <v-chip
                     :color="getSignificanceColor(currentComparison.statistical_tests.permutation_test.p_value)"
                     size="x-small"
@@ -139,15 +139,15 @@
                     {{ currentComparison.statistical_tests.permutation_test.p_value < 0.05 ? 'mdi-check-circle' : 'mdi-minus-circle' }}
                   </LIcon>
                   {{ currentComparison.statistical_tests.permutation_test.p_value < 0.05
-                    ? 'Signifikanter Unterschied'
-                    : 'Nicht signifikant' }}
+                    ? $t('oncoco.pillarComparison.metrics.permutation.significant')
+                    : $t('oncoco.pillarComparison.metrics.permutation.notSignificant') }}
                 </div>
               </div>
 
               <!-- Effect Size -->
               <div class="metric-card" v-if="currentComparison.effect_size">
                 <div class="d-flex justify-space-between align-center mb-1">
-                  <span class="text-caption">Effektstärke (norm.)</span>
+                  <span class="text-caption">{{ $t('oncoco.pillarComparison.metrics.effect.label') }}</span>
                   <span class="font-weight-bold">{{ formatNum(currentComparison.effect_size.normalized_frobenius, 3) }}</span>
                 </div>
                 <v-progress-linear
@@ -164,7 +164,7 @@
               <!-- Chi-Square -->
               <div class="metric-card" v-if="currentComparison.statistical_tests?.chi_square">
                 <div class="d-flex justify-space-between align-center mb-1">
-                  <span class="text-caption">Chi-Quadrat-Test</span>
+                  <span class="text-caption">{{ $t('oncoco.pillarComparison.metrics.chiSquare.label') }}</span>
                   <v-chip
                     :color="getChiSquareColor(currentComparison.statistical_tests.chi_square)"
                     size="x-small"
@@ -174,7 +174,7 @@
                   </v-chip>
                 </div>
                 <div class="text-caption text-medium-emphasis mt-1">
-                  Zustände mit sig. unterschiedlichen Verteilungen
+                  {{ $t('oncoco.pillarComparison.metrics.chiSquare.subtitle') }}
                 </div>
               </div>
             </div>
@@ -187,7 +187,7 @@
           <v-expansion-panel v-if="hasMissingTransitions">
             <v-expansion-panel-title>
               <LIcon start size="small">mdi-help-circle-outline</LIcon>
-              Fehlende Transitionen
+              {{ $t('oncoco.pillarComparison.missing.title') }}
               <v-chip size="x-small" class="ml-2" variant="tonal">
                 {{ totalMissingTransitions }}
               </v-chip>
@@ -196,7 +196,7 @@
               <v-row>
                 <v-col cols="12" md="6" v-if="currentComparison.missing_transitions?.missing_in_A?.length > 0">
                   <div class="text-caption font-weight-bold mb-2">
-                    Nur in {{ currentPillarNames.labelB }}:
+                    {{ $t('oncoco.pillarComparison.missing.onlyIn', { name: currentPillarNames.labelB }) }}
                   </div>
                   <v-chip
                     v-for="(trans, idx) in currentComparison.missing_transitions.missing_in_A.slice(0, 10)"
@@ -208,12 +208,12 @@
                     {{ trans.from_label }} → {{ trans.to_label }}
                   </v-chip>
                   <span v-if="currentComparison.missing_transitions.missing_in_A.length > 10" class="text-caption">
-                    +{{ currentComparison.missing_transitions.missing_in_A.length - 10 }} weitere
+                    {{ $t('oncoco.pillarComparison.missing.more', { count: currentComparison.missing_transitions.missing_in_A.length - 10 }) }}
                   </span>
                 </v-col>
                 <v-col cols="12" md="6" v-if="currentComparison.missing_transitions?.missing_in_B?.length > 0">
                   <div class="text-caption font-weight-bold mb-2">
-                    Nur in {{ currentPillarNames.labelA }}:
+                    {{ $t('oncoco.pillarComparison.missing.onlyIn', { name: currentPillarNames.labelA }) }}
                   </div>
                   <v-chip
                     v-for="(trans, idx) in currentComparison.missing_transitions.missing_in_B.slice(0, 10)"
@@ -225,7 +225,7 @@
                     {{ trans.from_label }} → {{ trans.to_label }}
                   </v-chip>
                   <span v-if="currentComparison.missing_transitions.missing_in_B.length > 10" class="text-caption">
-                    +{{ currentComparison.missing_transitions.missing_in_B.length - 10 }} weitere
+                    {{ $t('oncoco.pillarComparison.missing.more', { count: currentComparison.missing_transitions.missing_in_B.length - 10 }) }}
                   </span>
                 </v-col>
               </v-row>
@@ -236,7 +236,7 @@
           <v-expansion-panel v-if="currentComparison.statistical_tests?.chi_square?.row_details">
             <v-expansion-panel-title>
               <LIcon start size="small">mdi-chart-bar</LIcon>
-              Chi-Quadrat Details pro Zustand
+              {{ $t('oncoco.pillarComparison.chiSquare.detailsTitle') }}
             </v-expansion-panel-title>
             <v-expansion-panel-text>
               <v-data-table
@@ -261,7 +261,7 @@
 
       <!-- No Data State -->
       <v-alert v-else-if="!loading" type="info" variant="tonal">
-        Keine Vergleichsdaten verfügbar. Bitte warten Sie bis die Analyse abgeschlossen ist.
+        {{ $t('oncoco.pillarComparison.empty') }}
       </v-alert>
     </v-card-text>
   </v-card>
@@ -269,6 +269,7 @@
 
 <script setup>
 import { ref, computed, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
 
 const props = defineProps({
   comparisons: {
@@ -282,14 +283,18 @@ const props = defineProps({
 });
 
 defineEmits(['highlight-transition']);
+const { t } = useI18n();
 
 const selectedPairIndex = ref(0);
 
 // Pillar names mapping
-const pillarNames = {
-  1: 'Rollenspiele',
-  3: 'Anonymisiert',
-  5: 'Live-Test'
+const getPillarLabel = (pillarNum) => {
+  const names = {
+    1: t('oncoco.pillars.one'),
+    3: t('oncoco.pillars.threeShort'),
+    5: t('oncoco.pillars.fiveShort')
+  };
+  return names[pillarNum] || t('oncoco.pillars.default', { id: pillarNum });
 };
 
 const pillarColors = {
@@ -304,8 +309,8 @@ const pillarPairs = computed(() => {
     key: `${comp.pillar_a?.number || idx}-${comp.pillar_b?.number || idx}`,
     pillarA: comp.pillar_a?.number,
     pillarB: comp.pillar_b?.number,
-    labelA: pillarNames[comp.pillar_a?.number] || comp.pillar_a?.name || `Säule ${comp.pillar_a?.number}`,
-    labelB: pillarNames[comp.pillar_b?.number] || comp.pillar_b?.name || `Säule ${comp.pillar_b?.number}`
+    labelA: comp.pillar_a?.name || getPillarLabel(comp.pillar_a?.number),
+    labelB: comp.pillar_b?.name || getPillarLabel(comp.pillar_b?.number)
   }));
 });
 
@@ -315,7 +320,7 @@ const currentComparison = computed(() => {
 
 const currentPillarNames = computed(() => {
   const pair = pillarPairs.value[selectedPairIndex.value];
-  return pair || { labelA: 'Säule A', labelB: 'Säule B' };
+  return pair || { labelA: t('oncoco.pillarComparison.fallbacks.pillarA'), labelB: t('oncoco.pillarComparison.fallbacks.pillarB') };
 });
 
 const hasMissingTransitions = computed(() => {
@@ -329,10 +334,10 @@ const totalMissingTransitions = computed(() => {
 });
 
 const chiSquareHeaders = [
-  { title: 'Zustand', key: 'state', sortable: true },
-  { title: 'χ²', key: 'chi_square', sortable: true },
-  { title: 'p-Wert', key: 'p_value', sortable: true },
-  { title: 'Signifikant', key: 'significant', sortable: true }
+  { title: t('oncoco.pillarComparison.chiSquare.headers.state'), key: 'state', sortable: true },
+  { title: t('oncoco.pillarComparison.chiSquare.headers.chiSquare'), key: 'chi_square', sortable: true },
+  { title: t('oncoco.pillarComparison.chiSquare.headers.pValue'), key: 'p_value', sortable: true },
+  { title: t('oncoco.pillarComparison.chiSquare.headers.significant'), key: 'significant', sortable: true }
 ];
 
 const chiSquareDetailItems = computed(() => {
@@ -377,10 +382,10 @@ const getFrobeniusColor = (value) => {
 };
 
 const getFrobeniusInterpretation = (value) => {
-  if (value < 0.2) return 'Sehr ähnliche Matrizen';
-  if (value < 0.4) return 'Moderat unterschiedlich';
-  if (value < 0.6) return 'Deutlich unterschiedlich';
-  return 'Stark unterschiedlich';
+  if (value < 0.2) return t('oncoco.pillarComparison.metrics.frobenius.levels.verySimilar');
+  if (value < 0.4) return t('oncoco.pillarComparison.metrics.frobenius.levels.moderate');
+  if (value < 0.6) return t('oncoco.pillarComparison.metrics.frobenius.levels.distinct');
+  return t('oncoco.pillarComparison.metrics.frobenius.levels.strong');
 };
 
 const getJSDColor = (value) => {
@@ -404,10 +409,10 @@ const getEffectSizeColor = (value) => {
 };
 
 const getEffectSizeInterpretation = (value) => {
-  if (value < 0.2) return 'Kleine Effektstärke';
-  if (value < 0.5) return 'Mittlere Effektstärke';
-  if (value < 0.8) return 'Große Effektstärke';
-  return 'Sehr große Effektstärke';
+  if (value < 0.2) return t('oncoco.pillarComparison.metrics.effect.levels.small');
+  if (value < 0.5) return t('oncoco.pillarComparison.metrics.effect.levels.medium');
+  if (value < 0.8) return t('oncoco.pillarComparison.metrics.effect.levels.large');
+  return t('oncoco.pillarComparison.metrics.effect.levels.veryLarge');
 };
 
 const getChiSquareColor = (chiSquare) => {

@@ -20,7 +20,7 @@
               <LIcon size="24">mdi-file-document-multiple-outline</LIcon>
             </div>
           </template>
-          <span>Fallakte</span>
+          <span>{{ $t('kaimo.case.navigation.documents') }}</span>
         </v-tooltip>
 
         <v-tooltip location="end">
@@ -34,7 +34,7 @@
               <LIcon size="24">mdi-sitemap</LIcon>
             </div>
           </template>
-          <span>Diagramm</span>
+          <span>{{ $t('kaimo.case.navigation.diagram') }}</span>
         </v-tooltip>
 
         <v-tooltip location="end">
@@ -48,7 +48,7 @@
               <LIcon size="24">mdi-scale-unbalanced</LIcon>
             </div>
           </template>
-          <span>Bewertung</span>
+          <span>{{ $t('kaimo.case.navigation.assessment') }}</span>
         </v-tooltip>
       </div>
     </div>
@@ -114,6 +114,7 @@
 <script setup>
 import { ref, computed, onMounted, reactive } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { usePermissions } from '@/composables/usePermissions'
 import { useSkeletonLoading } from '@/composables/useSkeletonLoading'
 import {
@@ -131,6 +132,7 @@ import KaimoHintAssignmentDialog from './KaimoHintAssignmentDialog.vue'
 
 const route = useRoute()
 const router = useRouter()
+const { t } = useI18n()
 const { hasPermission, isResearcher, fetchPermissions } = usePermissions()
 const { isLoading, withLoading, setLoading } = useSkeletonLoading(['case', 'assessment'])
 
@@ -173,8 +175,8 @@ const loadCase = async () => {
         await loadOrStartAssessment()
       }
     } catch (err) {
-      console.error('Failed to load case:', err)
-      loadError.value = 'Fall konnte nicht geladen werden.'
+      console.error('Konnte Fall nicht laden:', err)
+      loadError.value = t('kaimo.case.errors.loadCase')
       throw err
     }
   })
@@ -208,7 +210,7 @@ const loadOrStartAssessment = async () => {
       const catData = await getKaimoUserCategories()
       categories.value = catData?.categories || []
     } catch (err) {
-      console.error('Failed to load/start assessment:', err)
+      console.error('Konnte Bewertung nicht laden oder starten:', err)
     }
   })
 }
@@ -238,15 +240,15 @@ const handleHintAssignment = async (hintId, assignmentData) => {
     // Force reactivity
     hintAssignments.value = new Map(hintAssignments.value)
 
-    showSnackbar('Hinweis gespeichert', 'success')
+    showSnackbar(t('kaimo.case.snackbar.hintSaved'), 'success')
   } catch (err) {
-    console.error('Failed to save hint assignment:', err)
-    showSnackbar('Fehler beim Speichern', 'error')
+    console.error('Konnte Hinweiszuweisung nicht speichern:', err)
+    showSnackbar(t('kaimo.case.snackbar.hintSaveError'), 'error')
   }
 }
 
 const handleAssessmentComplete = () => {
-  showSnackbar('Bewertung erfolgreich abgeschlossen!', 'success')
+  showSnackbar(t('kaimo.case.snackbar.assessmentComplete'), 'success')
   setTimeout(() => {
     router.push({ name: 'KaimoPanel' })
   }, 2000)
@@ -258,11 +260,11 @@ onMounted(async () => {
     if (canViewKaimo.value) {
       await loadCase()
     } else {
-      loadError.value = 'Du benötigst die Permission feature:kaimo:view um diese Seite zu sehen.'
+      loadError.value = t('kaimo.case.errors.noAccess', { permission: 'feature:kaimo:view' })
     }
   } catch (err) {
-    console.error('KAIMO case load error:', err)
-    loadError.value = 'KAIMO Fall konnte nicht geladen werden.'
+    console.error('KAIMO-Fall-Ladefehler:', err)
+    loadError.value = t('kaimo.case.errors.loadFailure')
     setLoading('case', false)
     setLoading('assessment', false)
   }

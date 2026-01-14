@@ -11,48 +11,46 @@
                   <LIcon size="48" color="primary">mdi-message-text-outline</LIcon>
                 </div>
                 <div>
-                  <h1 class="text-h3 font-weight-bold">OnCoCo 1.0</h1>
+                  <h1 class="text-h3 font-weight-bold">{{ $t('oncoco.info.hero.title') }}</h1>
                   <p class="text-subtitle-1 text-medium-emphasis mb-0">
-                    Online Counseling Conversations Dataset
+                    {{ $t('oncoco.info.hero.subtitle') }}
                   </p>
                 </div>
               </div>
               <p class="text-body-1 mb-4" style="max-width: 700px;">
-                Ein fein-granulares Kategorie- und Klassifikationssystem für die automatisierte
-                Inhaltsanalyse von psychosozialer Online-Beratung. Entwickelt an der TH Nürnberg
-                nach Methoden qualitativer Sozialforschung.
+                {{ $t('oncoco.info.hero.description') }}
               </p>
               <div class="d-flex flex-wrap ga-2">
                 <v-chip color="primary" variant="flat" size="small">
                   <LIcon start size="16">mdi-tag-multiple</LIcon>
-                  66 Kategorien
+                  {{ $t('oncoco.info.hero.chips.categories') }}
                 </v-chip>
                 <v-chip color="success" variant="flat" size="small">
                   <LIcon start size="16">mdi-chart-line</LIcon>
-                  F1 Macro: 0.78
+                  {{ $t('oncoco.info.hero.chips.f1') }}
                 </v-chip>
                 <v-chip color="info" variant="flat" size="small">
                   <LIcon start size="16">mdi-translate</LIcon>
-                  Bilingual DE/EN
+                  {{ $t('oncoco.info.hero.chips.bilingual') }}
                 </v-chip>
                 <v-chip color="secondary" variant="flat" size="small">
                   <LIcon start size="16">mdi-database</LIcon>
-                  2.778 Nachrichten
+                  {{ $t('oncoco.info.hero.chips.messages') }}
                 </v-chip>
                 <v-chip color="purple" variant="flat" size="small">
                   <LIcon start size="16">mdi-license</LIcon>
-                  CC BY-SA 4.0
+                  {{ $t('oncoco.info.hero.chips.license') }}
                 </v-chip>
               </div>
             </v-col>
             <v-col cols="12" md="4" class="text-center">
               <v-card variant="tonal" color="primary" class="pa-4">
-                <div class="text-overline mb-1">Modell-Performance</div>
-                <div class="text-h2 font-weight-bold mb-2">~0.88</div>
-                <div class="text-caption">Cohen's Kappa vs. Menschen</div>
+                <div class="text-overline mb-1">{{ $t('oncoco.info.hero.performance.title') }}</div>
+                <div class="text-h2 font-weight-bold mb-2">{{ $t('oncoco.info.hero.performance.value') }}</div>
+                <div class="text-caption">{{ $t('oncoco.info.hero.performance.subtitle') }}</div>
                 <v-divider class="my-3"></v-divider>
                 <div class="text-caption text-medium-emphasis">
-                  XLM-RoBERTa-Large erreicht menschliche Zuverlässigkeit
+                  {{ $t('oncoco.info.hero.performance.note') }}
                 </div>
               </v-card>
             </v-col>
@@ -67,54 +65,53 @@
         <v-card>
           <v-card-title class="d-flex align-center">
             <LIcon color="primary" class="mr-2">mdi-sitemap</LIcon>
-            Das hierarchische Kategoriensystem
+            {{ $t('oncoco.info.hierarchy.title') }}
           </v-card-title>
           <v-card-text>
             <p class="text-body-1 mb-4">
-              OnCoCo verwendet ein <strong>5-stufiges hierarchisches System</strong> zur Klassifikation
-              von Aussagen in Online-Beratungsgesprächen. Jede Kategorie hat einen eindeutigen Code,
-              der den Pfad durch die Hierarchie beschreibt.
+              {{ $t('oncoco.info.hierarchy.description') }}
             </p>
 
             <!-- Visual Hierarchy Example -->
             <v-card variant="outlined" class="mb-4 pa-4 hierarchy-example">
-              <div class="text-subtitle-2 font-weight-bold mb-3">Beispiel: Label-Code aufgeschlüsselt</div>
+              <div class="text-subtitle-2 font-weight-bold mb-3">{{ $t('oncoco.info.hierarchy.exampleTitle') }}</div>
               <div class="code-breakdown">
                 <div class="code-part">
                   <div class="code-value primary">CO</div>
-                  <div class="code-label">Rolle</div>
-                  <div class="code-desc">Counselor (Berater)</div>
+                  <div class="code-label">{{ $t('oncoco.info.hierarchy.parts.role.label') }}</div>
+                  <div class="code-desc">{{ $t('oncoco.info.hierarchy.parts.role.description') }}</div>
                 </div>
                 <LIcon class="code-separator">mdi-chevron-right</LIcon>
                 <div class="code-part">
                   <div class="code-value success">IF</div>
-                  <div class="code-label">Level 1</div>
-                  <div class="code-desc">Impact Factors</div>
+                  <div class="code-label">{{ $t('oncoco.info.hierarchy.parts.level1.label') }}</div>
+                  <div class="code-desc">{{ $t('oncoco.info.hierarchy.parts.level1.description') }}</div>
                 </div>
                 <LIcon class="code-separator">mdi-chevron-right</LIcon>
                 <div class="code-part">
                   <div class="code-value info">AC</div>
-                  <div class="code-label">Level 2</div>
-                  <div class="code-desc">Analysis & Clarification</div>
+                  <div class="code-label">{{ $t('oncoco.info.hierarchy.parts.level2.label') }}</div>
+                  <div class="code-desc">{{ $t('oncoco.info.hierarchy.parts.level2.description') }}</div>
                 </div>
                 <LIcon class="code-separator">mdi-chevron-right</LIcon>
                 <div class="code-part">
                   <div class="code-value warning">RF</div>
-                  <div class="code-label">Level 3</div>
-                  <div class="code-desc">Reflection (Fact)</div>
+                  <div class="code-label">{{ $t('oncoco.info.hierarchy.parts.level3.label') }}</div>
+                  <div class="code-desc">{{ $t('oncoco.info.hierarchy.parts.level3.description') }}</div>
                 </div>
                 <LIcon class="code-separator">mdi-chevron-right</LIcon>
                 <div class="code-part">
                   <div class="code-value purple">RLS-SR</div>
-                  <div class="code-label">Level 4-5</div>
-                  <div class="code-desc">Request Living Situation - Social Relationships</div>
+                  <div class="code-label">{{ $t('oncoco.info.hierarchy.parts.level45.label') }}</div>
+                  <div class="code-desc">{{ $t('oncoco.info.hierarchy.parts.level45.description') }}</div>
                 </div>
               </div>
               <v-divider class="my-3"></v-divider>
               <div class="text-caption text-medium-emphasis">
                 <LIcon size="small" class="mr-1">mdi-information</LIcon>
-                Vollständiger Code: <code class="bg-grey-lighten-3 px-2 py-1 rounded">CO-IF-AC-RF-RLS-SR</code>
-                – „Frage nach sozialen Beziehungen/Lebenssituation"
+                {{ $t('oncoco.info.hierarchy.fullCodeLabel') }}
+                <code class="bg-grey-lighten-3 px-2 py-1 rounded">CO-IF-AC-RF-RLS-SR</code>
+                {{ $t('oncoco.info.hierarchy.fullCodeDescription') }}
               </div>
             </v-card>
           </v-card-text>
@@ -130,56 +127,56 @@
             <v-avatar color="primary" size="36" class="mr-3">
               <LIcon>mdi-account-tie</LIcon>
             </v-avatar>
-            Berater-Kategorien (CO-)
+            {{ $t('oncoco.info.counselor.title') }}
           </v-card-title>
           <v-card-text>
             <div class="text-h4 font-weight-bold mb-2">38</div>
-            <div class="text-body-2 mb-4">Kategorien für Berater-Aussagen</div>
+            <div class="text-body-2 mb-4">{{ $t('oncoco.info.counselor.subtitle') }}</div>
 
             <v-table density="compact" class="category-table">
               <thead>
                 <tr>
-                  <th>Level 1</th>
-                  <th>Level 2</th>
+                  <th>{{ $t('oncoco.info.counselor.table.level1') }}</th>
+                  <th>{{ $t('oncoco.info.counselor.table.level2') }}</th>
                   <th class="text-right">#</th>
                 </tr>
               </thead>
               <tbody>
                 <tr>
-                  <td colspan="2">Formalitäten zu Beginn</td>
+                  <td colspan="2">{{ $t('oncoco.info.counselor.rows.formalities') }}</td>
                   <td class="text-right">1</td>
                 </tr>
                 <tr>
-                  <td colspan="2">Moderation</td>
+                  <td colspan="2">{{ $t('oncoco.info.counselor.rows.moderation') }}</td>
                   <td class="text-right">1</td>
                 </tr>
                 <tr>
-                  <td rowspan="5" class="font-weight-bold">Impact Factors</td>
-                  <td>Analyse & Problemklärung</td>
+                  <td rowspan="5" class="font-weight-bold">{{ $t('oncoco.info.counselor.rows.impactFactors') }}</td>
+                  <td>{{ $t('oncoco.info.counselor.rows.analysis') }}</td>
                   <td class="text-right">13</td>
                 </tr>
                 <tr>
-                  <td>Zielvereinbarung</td>
+                  <td>{{ $t('oncoco.info.counselor.rows.goalSetting') }}</td>
                   <td class="text-right">2</td>
                 </tr>
                 <tr>
-                  <td>Motivation erzeugen</td>
+                  <td>{{ $t('oncoco.info.counselor.rows.motivation') }}</td>
                   <td class="text-right">4</td>
                 </tr>
                 <tr>
-                  <td>Ressourcenaktivierung</td>
+                  <td>{{ $t('oncoco.info.counselor.rows.resourceActivation') }}</td>
                   <td class="text-right">5</td>
                 </tr>
                 <tr>
-                  <td>Hilfe & Problemlösung</td>
+                  <td>{{ $t('oncoco.info.counselor.rows.help') }}</td>
                   <td class="text-right">8</td>
                 </tr>
                 <tr>
-                  <td colspan="2">Abschluss & Verabschiedung</td>
+                  <td colspan="2">{{ $t('oncoco.info.counselor.rows.closing') }}</td>
                   <td class="text-right">2</td>
                 </tr>
                 <tr>
-                  <td colspan="2">Sonstige Aussagen</td>
+                  <td colspan="2">{{ $t('oncoco.info.counselor.rows.other') }}</td>
                   <td class="text-right">2</td>
                 </tr>
               </tbody>
@@ -194,56 +191,56 @@
             <v-avatar color="secondary" size="36" class="mr-3">
               <LIcon>mdi-account</LIcon>
             </v-avatar>
-            Klienten-Kategorien (CL-)
+            {{ $t('oncoco.info.client.title') }}
           </v-card-title>
           <v-card-text>
             <div class="text-h4 font-weight-bold mb-2">28</div>
-            <div class="text-body-2 mb-4">Kategorien für Klienten-Aussagen</div>
+            <div class="text-body-2 mb-4">{{ $t('oncoco.info.client.subtitle') }}</div>
 
             <v-table density="compact" class="category-table">
               <thead>
                 <tr>
-                  <th>Level 1</th>
-                  <th>Level 2</th>
+                  <th>{{ $t('oncoco.info.client.table.level1') }}</th>
+                  <th>{{ $t('oncoco.info.client.table.level2') }}</th>
                   <th class="text-right">#</th>
                 </tr>
               </thead>
               <tbody>
                 <tr>
-                  <td colspan="2">Formalitäten zu Beginn</td>
+                  <td colspan="2">{{ $t('oncoco.info.client.rows.formalities') }}</td>
                   <td class="text-right">4</td>
                 </tr>
                 <tr>
-                  <td colspan="2">Empathie</td>
+                  <td colspan="2">{{ $t('oncoco.info.client.rows.empathy') }}</td>
                   <td class="text-right">3</td>
                 </tr>
                 <tr>
-                  <td rowspan="5" class="font-weight-bold">Impact Factors</td>
-                  <td>Analyse & Problemklärung</td>
+                  <td rowspan="5" class="font-weight-bold">{{ $t('oncoco.info.client.rows.impactFactors') }}</td>
+                  <td>{{ $t('oncoco.info.client.rows.analysis') }}</td>
                   <td class="text-right">8</td>
                 </tr>
                 <tr>
-                  <td>Zielvereinbarung</td>
+                  <td>{{ $t('oncoco.info.client.rows.goalSetting') }}</td>
                   <td class="text-right">2</td>
                 </tr>
                 <tr>
-                  <td>Motivation</td>
+                  <td>{{ $t('oncoco.info.client.rows.motivation') }}</td>
                   <td class="text-right">2</td>
                 </tr>
                 <tr>
-                  <td>Ressourcenaktivierung</td>
+                  <td>{{ $t('oncoco.info.client.rows.resourceActivation') }}</td>
                   <td class="text-right">2</td>
                 </tr>
                 <tr>
-                  <td>Hilfe & Problembewältigung</td>
+                  <td>{{ $t('oncoco.info.client.rows.help') }}</td>
                   <td class="text-right">6</td>
                 </tr>
                 <tr>
-                  <td colspan="2">Abschluss</td>
+                  <td colspan="2">{{ $t('oncoco.info.client.rows.closing') }}</td>
                   <td class="text-right">2</td>
                 </tr>
                 <tr>
-                  <td colspan="2">Sonstige Aussagen</td>
+                  <td colspan="2">{{ $t('oncoco.info.client.rows.other') }}</td>
                   <td class="text-right">2</td>
                 </tr>
               </tbody>
@@ -259,12 +256,11 @@
         <v-card>
           <v-card-title class="d-flex align-center">
             <LIcon color="warning" class="mr-2">mdi-star-four-points</LIcon>
-            Impact Factors – Das Herzstück
+            {{ $t('oncoco.info.impactFactors.title') }}
           </v-card-title>
           <v-card-text>
             <v-alert type="info" variant="tonal" class="mb-4">
-              <strong>Impact Factors</strong> sind die wirksamkeitsrelevanten Kategorien nach Grawe (2000).
-              Sie bilden den Schwerpunkt der Analyse, da sie die Qualität und Methodik der Beratung abbilden.
+              {{ $t('oncoco.info.impactFactors.alert') }}
             </v-alert>
 
             <v-row>
@@ -291,29 +287,29 @@
         <v-card class="h-100">
           <v-card-title class="d-flex align-center">
             <LIcon color="success" class="mr-2">mdi-target</LIcon>
-            Anwendungsfelder
+            {{ $t('oncoco.info.useCases.title') }}
           </v-card-title>
           <v-card-text>
             <v-list density="compact">
               <v-list-item prepend-icon="mdi-chart-bar">
-                <v-list-item-title>Qualitätsmonitoring</v-list-item-title>
-                <v-list-item-subtitle>Übergänge & Impact-Faktoren sichtbar machen</v-list-item-subtitle>
+                <v-list-item-title>{{ $t('oncoco.info.useCases.items.quality.title') }}</v-list-item-title>
+                <v-list-item-subtitle>{{ $t('oncoco.info.useCases.items.quality.subtitle') }}</v-list-item-subtitle>
               </v-list-item>
               <v-list-item prepend-icon="mdi-school">
-                <v-list-item-title>Training & Supervision</v-list-item-title>
-                <v-list-item-subtitle>Muster in Gesprächen aufdecken, Feedback geben</v-list-item-subtitle>
+                <v-list-item-title>{{ $t('oncoco.info.useCases.items.training.title') }}</v-list-item-title>
+                <v-list-item-subtitle>{{ $t('oncoco.info.useCases.items.training.subtitle') }}</v-list-item-subtitle>
               </v-list-item>
               <v-list-item prepend-icon="mdi-flask">
-                <v-list-item-title>Forschung</v-list-item-title>
-                <v-list-item-subtitle>Skalierbare Inhaltsanalyse für psychosoziale Beratung</v-list-item-subtitle>
+                <v-list-item-title>{{ $t('oncoco.info.useCases.items.research.title') }}</v-list-item-title>
+                <v-list-item-subtitle>{{ $t('oncoco.info.useCases.items.research.subtitle') }}</v-list-item-subtitle>
               </v-list-item>
               <v-list-item prepend-icon="mdi-robot">
-                <v-list-item-title>Chatbot-Evaluation</v-list-item-title>
-                <v-list-item-subtitle>Vergleich Mensch vs. KI in feingranulären Klassen</v-list-item-subtitle>
+                <v-list-item-title>{{ $t('oncoco.info.useCases.items.chatbot.title') }}</v-list-item-title>
+                <v-list-item-subtitle>{{ $t('oncoco.info.useCases.items.chatbot.subtitle') }}</v-list-item-subtitle>
               </v-list-item>
               <v-list-item prepend-icon="mdi-alert">
-                <v-list-item-title>Risikoerkennung</v-list-item-title>
-                <v-list-item-subtitle>Automatische Erkennung kritischer Situationen</v-list-item-subtitle>
+                <v-list-item-title>{{ $t('oncoco.info.useCases.items.risk.title') }}</v-list-item-title>
+                <v-list-item-subtitle>{{ $t('oncoco.info.useCases.items.risk.subtitle') }}</v-list-item-subtitle>
               </v-list-item>
             </v-list>
           </v-card-text>
@@ -324,40 +320,40 @@
         <v-card class="h-100">
           <v-card-title class="d-flex align-center">
             <LIcon color="info" class="mr-2">mdi-chip</LIcon>
-            Modell & Technik
+            {{ $t('oncoco.info.model.title') }}
           </v-card-title>
           <v-card-text>
             <v-table density="compact">
               <tbody>
                 <tr>
-                  <td class="font-weight-bold">Basis-Modell</td>
-                  <td>XLM-RoBERTa-Large (561M Parameter)</td>
+                  <td class="font-weight-bold">{{ $t('oncoco.info.model.baseModel') }}</td>
+                  <td>{{ $t('oncoco.info.model.baseModelValue') }}</td>
                 </tr>
                 <tr>
-                  <td class="font-weight-bold">Accuracy @1</td>
+                  <td class="font-weight-bold">{{ $t('oncoco.info.model.accuracy') }}</td>
                   <td>~0.80</td>
                 </tr>
                 <tr>
-                  <td class="font-weight-bold">F1 Macro @1</td>
+                  <td class="font-weight-bold">{{ $t('oncoco.info.model.f1Macro1') }}</td>
                   <td>~0.78</td>
                 </tr>
                 <tr>
-                  <td class="font-weight-bold">F1 Macro @2</td>
-                  <td>~0.87 (bei Berücksichtigung Top-2)</td>
+                  <td class="font-weight-bold">{{ $t('oncoco.info.model.f1Macro2') }}</td>
+                  <td>{{ $t('oncoco.info.model.f1Macro2Value') }}</td>
                 </tr>
                 <tr>
-                  <td class="font-weight-bold">Cohen's Kappa</td>
-                  <td>~0.88 (vergleichbar mit Menschen)</td>
+                  <td class="font-weight-bold">{{ $t('oncoco.info.model.kappa') }}</td>
+                  <td>{{ $t('oncoco.info.model.kappaValue') }}</td>
                 </tr>
                 <tr>
-                  <td class="font-weight-bold">Rollen-Maskierung</td>
-                  <td>Output-Logits werden nach Rolle gefiltert</td>
+                  <td class="font-weight-bold">{{ $t('oncoco.info.model.roleMasking') }}</td>
+                  <td>{{ $t('oncoco.info.model.roleMaskingValue') }}</td>
                 </tr>
               </tbody>
             </v-table>
 
             <v-alert type="warning" variant="tonal" density="compact" class="mt-3">
-              <strong>Zero-Shot versagt:</strong> GPT-4o erreicht nur F1 ~0.29 – Fine-Tuning ist notwendig!
+              {{ $t('oncoco.info.model.warning') }}
             </v-alert>
           </v-card-text>
         </v-card>
@@ -370,23 +366,23 @@
         <v-card>
           <v-card-title class="d-flex align-center">
             <LIcon color="purple" class="mr-2">mdi-text-box-search</LIcon>
-            Beispiel-Klassifikationen
+            {{ $t('oncoco.info.examples.title') }}
           </v-card-title>
           <v-card-text>
             <v-table density="comfortable" class="examples-table">
               <thead>
                 <tr>
-                  <th style="width: 80px;">Rolle</th>
-                  <th style="width: 150px;">Code</th>
-                  <th>Text</th>
-                  <th style="width: 250px;">Kategorie-Pfad</th>
+                  <th style="width: 80px;">{{ $t('oncoco.info.examples.headers.role') }}</th>
+                  <th style="width: 150px;">{{ $t('oncoco.info.examples.headers.code') }}</th>
+                  <th>{{ $t('oncoco.info.examples.headers.text') }}</th>
+                  <th style="width: 250px;">{{ $t('oncoco.info.examples.headers.path') }}</th>
                 </tr>
               </thead>
               <tbody>
                 <tr v-for="example in exampleClassifications" :key="example.code">
                   <td>
                     <v-chip :color="example.role === 'CO' ? 'primary' : 'secondary'" size="small">
-                      {{ example.role === 'CO' ? 'Berater' : 'Klient' }}
+                      {{ example.role === 'CO' ? $t('oncoco.results.roles.counselor') : $t('oncoco.results.roles.client') }}
                     </v-chip>
                   </td>
                   <td><code class="text-caption">{{ example.code }}</code></td>
@@ -406,38 +402,38 @@
         <v-card variant="tonal" color="primary">
           <v-card-title class="d-flex align-center">
             <LIcon class="mr-2">mdi-link-variant</LIcon>
-            Ressourcen & Referenzen
+            {{ $t('oncoco.info.resources.title') }}
           </v-card-title>
           <v-card-text>
             <v-row>
               <v-col cols="12" md="4">
                 <v-list density="compact" bg-color="transparent">
-                  <v-list-subheader>Paper & Datensatz</v-list-subheader>
+                  <v-list-subheader>{{ $t('oncoco.info.resources.paper.title') }}</v-list-subheader>
                   <v-list-item
                     href="https://anonymous.4open.science/r/OnCoCoV1-78E8"
                     target="_blank"
                     prepend-icon="mdi-file-document"
                   >
-                    <v-list-item-title>LREC 2026 Paper</v-list-item-title>
-                    <v-list-item-subtitle>OnCoCo 1.0 Publikation</v-list-item-subtitle>
+                    <v-list-item-title>{{ $t('oncoco.info.resources.paper.itemTitle') }}</v-list-item-title>
+                    <v-list-item-subtitle>{{ $t('oncoco.info.resources.paper.itemSubtitle') }}</v-list-item-subtitle>
                   </v-list-item>
                 </v-list>
               </v-col>
               <v-col cols="12" md="4">
                 <v-list density="compact" bg-color="transparent">
-                  <v-list-subheader>Lizenz</v-list-subheader>
+                  <v-list-subheader>{{ $t('oncoco.info.resources.license.title') }}</v-list-subheader>
                   <v-list-item prepend-icon="mdi-license">
-                    <v-list-item-title>CC BY-SA 4.0</v-list-item-title>
-                    <v-list-item-subtitle>Nutzung für Forschung & Bildung</v-list-item-subtitle>
+                    <v-list-item-title>{{ $t('oncoco.info.resources.license.itemTitle') }}</v-list-item-title>
+                    <v-list-item-subtitle>{{ $t('oncoco.info.resources.license.itemSubtitle') }}</v-list-item-subtitle>
                   </v-list-item>
                 </v-list>
               </v-col>
               <v-col cols="12" md="4">
                 <v-list density="compact" bg-color="transparent">
-                  <v-list-subheader>API in dieser Instanz</v-list-subheader>
+                  <v-list-subheader>{{ $t('oncoco.info.resources.api.title') }}</v-list-subheader>
                   <v-list-item prepend-icon="mdi-api">
                     <v-list-item-title><code>/api/oncoco/info</code></v-list-item-title>
-                    <v-list-item-subtitle>Modell-Status & Label-Infos</v-list-item-subtitle>
+                    <v-list-item-subtitle>{{ $t('oncoco.info.resources.api.itemSubtitle') }}</v-list-item-subtitle>
                   </v-list-item>
                 </v-list>
               </v-col>
@@ -454,15 +450,15 @@
           <v-expansion-panel>
             <v-expansion-panel-title>
               <LIcon color="primary" class="mr-2">mdi-account-tie</LIcon>
-              <span class="font-weight-bold">Alle Berater-Labels ({{ counselorLabels.length }})</span>
+              <span class="font-weight-bold">{{ $t('oncoco.info.labels.counselorTitle', { count: counselorLabels.length }) }}</span>
             </v-expansion-panel-title>
             <v-expansion-panel-text>
               <v-table density="compact" hover>
                 <thead>
                   <tr>
-                    <th style="width: 180px;">Code</th>
-                    <th style="width: 250px;">Name</th>
-                    <th>Beschreibung</th>
+                    <th style="width: 180px;">{{ $t('oncoco.info.labels.headers.code') }}</th>
+                    <th style="width: 250px;">{{ $t('oncoco.info.labels.headers.name') }}</th>
+                    <th>{{ $t('oncoco.info.labels.headers.description') }}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -479,15 +475,15 @@
           <v-expansion-panel>
             <v-expansion-panel-title>
               <LIcon color="secondary" class="mr-2">mdi-account</LIcon>
-              <span class="font-weight-bold">Alle Klienten-Labels ({{ clientLabels.length }})</span>
+              <span class="font-weight-bold">{{ $t('oncoco.info.labels.clientTitle', { count: clientLabels.length }) }}</span>
             </v-expansion-panel-title>
             <v-expansion-panel-text>
               <v-table density="compact" hover>
                 <thead>
                   <tr>
-                    <th style="width: 180px;">Code</th>
-                    <th style="width: 250px;">Name</th>
-                    <th>Beschreibung</th>
+                    <th style="width: 180px;">{{ $t('oncoco.info.labels.headers.code') }}</th>
+                    <th style="width: 250px;">{{ $t('oncoco.info.labels.headers.name') }}</th>
+                    <th>{{ $t('oncoco.info.labels.headers.description') }}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -511,10 +507,9 @@
           <template v-slot:prepend>
             <LIcon size="large">mdi-rocket-launch</LIcon>
           </template>
-          <v-alert-title>Bereit für die Analyse?</v-alert-title>
+          <v-alert-title>{{ $t('oncoco.info.cta.title') }}</v-alert-title>
           <p class="mb-2">
-            Starte auf der Übersichtsseite eine neue Analyse, um Transition-Matrizen,
-            Säulen-Statistiken und Satz-Labels live zu verfolgen.
+            {{ $t('oncoco.info.cta.body') }}
           </p>
           <v-btn
             color="primary"
@@ -522,7 +517,7 @@
             :to="{ name: 'OnCoCoOverview' }"
             prepend-icon="mdi-play"
           >
-            Zur Analyse-Übersicht
+            {{ $t('oncoco.info.cta.button') }}
           </v-btn>
         </v-alert>
       </v-col>
@@ -531,143 +526,15 @@
 </template>
 
 <script setup>
-const impactFactors = [
-  {
-    code: 'AC',
-    name: 'Analyse & Problemklärung',
-    description: 'Erfassung und Verständnis des Problems durch Fragen, Spiegelungen und Reflexionen.',
-    color: 'info'
-  },
-  {
-    code: 'AO',
-    name: 'Zielvereinbarung',
-    description: 'Definition und Abstimmung von Beratungszielen und Erwartungen.',
-    color: 'success'
-  },
-  {
-    code: 'Mot',
-    name: 'Motivation erzeugen',
-    description: 'Förderung von Veränderungsbereitschaft, Change-Talk (MI), Wertschätzung.',
-    color: 'warning'
-  },
-  {
-    code: 'RA',
-    name: 'Ressourcenaktivierung',
-    description: 'Aktivierung vorhandener Unterstützung aus Familie, Freunden oder professionellen Stellen.',
-    color: 'purple'
-  },
-  {
-    code: 'HP',
-    name: 'Hilfe & Problemlösung',
-    description: 'Konkrete Empfehlungen, Erklärungen, Warnungen und Ratschläge.',
-    color: 'error'
-  }
-];
+import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 
-const exampleClassifications = [
-  {
-    role: 'CO',
-    code: 'CO-IF-AC-RF-RLS-L',
-    text: 'Um Sie besser beraten zu können, wäre es hilfreich zu wissen, welche Hobbys oder Interessen Sie haben.',
-    path: 'Impact Factors → Analyse → Reflexion → Lebenssituation → Freizeit'
-  },
-  {
-    role: 'CO',
-    code: 'CO-IF-AC-RF-RTP-*',
-    text: 'Können Sie das Gefühl, das Sie danach haben, noch etwas genauer beschreiben?',
-    path: 'Impact Factors → Analyse → Reflexion → Gezielte Nachfrage'
-  },
-  {
-    role: 'CO',
-    code: 'CO-IF-HP-*-ITFE-*',
-    text: 'Es ist völlig normal, dass junge Menschen in der Pubertät anfangen, sexuelle Wünsche und Fantasien zu entwickeln.',
-    path: 'Impact Factors → Hilfe → Fachliche Erklärung'
-  },
-  {
-    role: 'CL',
-    code: 'CL-E-*-*-ECP-*',
-    text: 'Es geht eigentlich mehr um meinen Bruder als um mich.',
-    path: 'Empathie → Sorge um andere Person'
-  },
-  {
-    role: 'CL',
-    code: 'CL-IF-ACP-*-FPA-*',
-    text: 'Ich habe versucht, meine Entzugssymptome mit Medikamenten zu lindern, aber es fühlt sich wie ein ständiger Kampf an.',
-    path: 'Impact Factors → Analyse → Feedback zu bisherigen Versuchen'
-  }
-];
+const { tm } = useI18n()
 
-const counselorLabels = [
-  { code: 'CO-FA-*-*-*-*', name: 'Formalitäten zu Beginn', description: 'Begrüßt und eröffnet das Gespräch.' },
-  { code: 'CO-Mod-*-*-*-*', name: 'Moderation', description: 'Steuert Ablauf, fasst zusammen, setzt Übergänge.' },
-  { code: 'CO-IF-AC-RF-RPD-*', name: 'Frage nach persönlichen Daten', description: 'Erfragt Basisinfos wie Alter, Kontakt oder Rahmenbedingungen.' },
-  { code: 'CO-IF-AC-RF-RPA-*', name: 'Frage nach bisherigen Lösungsversuchen', description: 'Prüft, was bereits ausprobiert wurde.' },
-  { code: 'CO-IF-AC-RF-SRx-*', name: 'Einfache Spiegelung', description: 'Spiegelt Kernaussagen kurz wider, um Verständnis zu zeigen.' },
-  { code: 'CO-IF-AC-RF-RLS-SR', name: 'Frage Lebenssituation – Soziales', description: 'Erkundigt sich nach sozialem Umfeld und Beziehungen.' },
-  { code: 'CO-IF-AC-RF-RLS-PS', name: 'Frage Lebenssituation – Beruf', description: 'Fragt nach Arbeit, Ausbildung oder beruflicher Lage.' },
-  { code: 'CO-IF-AC-RF-RLS-ES', name: 'Frage Lebenssituation – Finanzen', description: 'Klärt finanzielle Situation und Belastungen.' },
-  { code: 'CO-IF-AC-RF-RLS-H', name: 'Frage Lebenssituation – Gesundheit', description: 'Fragt nach körperlichem oder mentalem Gesundheitszustand.' },
-  { code: 'CO-IF-AC-RF-RLS-L', name: 'Frage Lebenssituation – Freizeit', description: 'Erkundigt Hobbys und Ausgleichsaktivitäten.' },
-  { code: 'CO-IF-AC-RF-RC-*', name: 'Frage nach Anliegen', description: 'Lässt das zentrale Anliegen präzisieren.' },
-  { code: 'CO-IF-AC-RF-RTP-*', name: 'Gezielte, präzise Nachfrage', description: 'Stellt fokussierte Rückfragen, um Details zu klären.' },
-  { code: 'CO-IF-AC-RF-RCD-*', name: 'Frage nach Veränderung', description: 'Erfragt gewünschte Änderungen oder Zielrichtung.' },
-  { code: 'CO-IF-AC-RE-RCR-*', name: 'Komplexe Spiegelung', description: 'Spiegelt und ordnet komplexe Inhalte verdichtend.' },
-  { code: 'CO-IF-AC-RE-RES-*', name: 'Frage nach Gefühlszustand', description: 'Erkundigt Emotionen und Stimmung.' },
-  { code: 'CO-IF-AO-*-ROW-*', name: 'Frage nach Zielen/Wünschen', description: 'Klärt Ziele, Wünsche oder Erwartungen.' },
-  { code: 'CO-IF-AO-*-ICO-*', name: 'Definition der Beratungsziele', description: 'Formuliert gemeinsame Ziele und Rahmen.' },
-  { code: 'CO-IF-Mot-*-RFC-*', name: 'Change-Talk evozieren (MI)', description: 'Lenkt auf Veränderungsgründe und intrinsische Motivation.' },
-  { code: 'CO-IF-Mot-*-IAC-*', name: 'Wahrgenommene Veränderungsfähigkeit', description: 'Spiegelt oder fördert Zutrauen in die eigene Fähigkeit.' },
-  { code: 'CO-IF-Mot-*-ITA-*', name: 'Dank und Wertschätzung', description: 'Gibt positives Feedback und Anerkennung.' },
-  { code: 'CO-IF-Mot-*-IEM-*', name: 'Ermutigung, Motivation', description: 'Unterstützt aktiv und bestärkt.' },
-  { code: 'CO-IF-Mot-*-RS-*', name: 'Frage nach Unterstützungsressourcen', description: 'Erfragt verfügbare Personen oder Hilfen im Umfeld.' },
-  { code: 'CO-IF-RA-*-RP-*', name: 'Anfrage zur Problemdarstellung', description: 'Fordert zur klaren Problembeschreibung auf.' },
-  { code: 'CO-IF-RA-*-RAP-*', name: 'Vorschlag professionelle Ebene', description: 'Empfiehlt professionelle Angebote oder Stellen.' },
-  { code: 'CO-IF-RA-*-N-RAFa', name: 'Vorschlag Familienebene', description: 'Regt an, Familie als Ressource einzubeziehen.' },
-  { code: 'CO-IF-RA-*-N-RAFr', name: 'Vorschlag Freundesebene', description: 'Schlägt Unterstützung durch Freunde vor.' },
-  { code: 'CO-IF-HP-*-ITFE-*', name: 'Fachliche Erklärungen', description: 'Gibt sachliche oder technische Infos.' },
-  { code: 'CO-IF-HP-*-IPFR-*', name: 'Professionelle Empfehlung', description: 'Spricht konkrete Fach-Empfehlung aus.' },
-  { code: 'CO-IF-HP-*-IF-*', name: 'Zukunftsprognose', description: 'Schätzt mögliche Entwicklung oder Verlauf.' },
-  { code: 'CO-IF-HP-*-IW-*', name: 'Warnung', description: 'Weist auf Risiken oder Gefahren hin.' },
-  { code: 'CO-IF-HP-*-ICO-*', name: 'Beruhigung', description: 'Wirkt deeskalierend und nimmt Druck.' },
-  { code: 'CO-IF-HP-*-PP-IA', name: 'Ratschlag', description: 'Gibt direkte Handlungsanweisung.' },
-  { code: 'CO-IF-HP-*-IEA', name: 'Bewertung, Interpretation', description: 'Ordnet Gesagtes ein und interpretiert.' },
-  { code: 'CO-IF-HP-*-PP-IW', name: 'Wunsch', description: 'Formuliert eigenen Wunsch an die Klientin/den Klienten.' },
-  { code: 'CO-FC-*-*-F-*', name: 'Verabschiedung', description: 'Schließt das Gespräch ab.' },
-  { code: 'CO-FC-*-*-OPR-*', name: 'Angebot professioneller Ressourcen', description: 'Bietet weitere Stellen oder Materialien an.' },
-  { code: 'CO-O-*-*-O-*', name: 'Andere Aussagen', description: 'Sonstiges, nicht in andere Kategorien passend.' },
-  { code: 'CO-O-*-*-UCO-*', name: 'Unangemessene Bemerkung', description: 'Grenzüberschreitende oder unpassende Aussage.' }
-];
-
-const clientLabels = [
-  { code: 'CL-FB-*-*-*-*', name: 'Formalitäten zu Beginn', description: 'Begrüßt und eröffnet das Gespräch.' },
-  { code: 'CL-E-*-*-PT-*', name: 'Empathie für Dritte', description: 'Zeigt Mitgefühl für andere beteiligte Personen.' },
-  { code: 'CL-E-*-*-ECC-*', name: 'Mitgefühl für andere', description: 'Bringt Mitgefühl allgemein zum Ausdruck.' },
-  { code: 'CL-E-*-*-ECP-*', name: 'Sorge um andere Person', description: 'Sorge oder Anteilnahme für jemanden im Umfeld.' },
-  { code: 'CL-IF-ACP-*-PS-*', name: 'Problemdarstellung', description: 'Schildert die Situation oder das Anliegen.' },
-  { code: 'CL-IF-ACP-*-PD-*', name: 'Problemdefinition', description: 'Formuliert das Problem präziser oder analytisch.' },
-  { code: 'CL-IF-ACP-*-DPD-*', name: 'Offenlegung persönlicher Daten', description: 'Teilt private Daten oder Hintergründe.' },
-  { code: 'CL-IF-ACP-*-FPA-*', name: 'Feedback zu bisherigen Versuchen', description: 'Berichtet über bereits getestete Schritte.' },
-  { code: 'CL-IF-ACP-*-OE-*', name: 'Eigener Gefühlsausdruck', description: 'Teilt eigene Emotionen offen mit.' },
-  { code: 'CL-IF-ACP-*-Cons-*', name: 'Zustimmung', description: 'Stimmt Vorschlägen oder Fragen zu.' },
-  { code: 'CL-IF-ACP-*-Rej-*', name: 'Ablehnung', description: 'Lehnt Vorschläge oder Annahmen ab.' },
-  { code: 'CL-IF-ACP-*-Req-*', name: 'Allgemeine Anfrage', description: 'Fragt allgemein nach Hilfe oder Information.' },
-  { code: 'CL-IF-AO-*-Obj-*', name: 'Ziel des Auftrags', description: 'Benennt das gewünschte Ziel oder Ergebnis.' },
-  { code: 'CL-IF-AO-*-Ext-*', name: 'Erweiterung des Auftrags', description: 'Weitet den Auftrag oder die Bitte aus.' },
-  { code: 'CL-IF-Mot-*-FC-*', name: 'Change-Talk', description: 'Äußert eigene Beweggründe für Veränderung.' },
-  { code: 'CL-IF-Mot-*-RC-*', name: 'Gründe für Veränderung', description: 'Begründet, warum eine Änderung wichtig ist.' },
-  { code: 'CL-IF-RA-*-RF-*', name: 'Ressourcen Freunde/Familie', description: 'Sieht Unterstützung durch nähere Kontakte.' },
-  { code: 'CL-IF-RA-*-RP-*', name: 'Ressourcen professionelle Ebene', description: 'Nutzt oder erwägt professionelle Hilfe.' },
-  { code: 'CL-IF-HP-*-PosF-*', name: 'Allgemeines positives Feedback', description: 'Gibt positives Gesamtfeedback.' },
-  { code: 'CL-IF-HP-*-PosFR-*', name: 'Positives Feedback zu Empfehlungen', description: 'Lobt konkrete Ratschläge oder Maßnahmen.' },
-  { code: 'CL-IF-HP-*-NegFR-*', name: 'Negatives Feedback zu Empfehlungen', description: 'Kritisiert konkrete Empfehlungen.' },
-  { code: 'CL-IF-HP-*-RepRA-*', name: 'Bericht zur Umsetzung', description: 'Meldet Fortschritt oder Umsetzungsschritte.' },
-  { code: 'CL-IF-HP-*-Succ-*', name: 'Finaler Erfolg', description: 'Meldet gelungenes Ergebnis.' },
-  { code: 'CL-IF-HP-*-Fail-*', name: 'Finales Scheitern', description: 'Meldet Scheitern oder Rückschlag.' },
-  { code: 'CL-FC-*-*-F-*', name: 'Verabschiedung', description: 'Schließt das Gespräch ab.' },
-  { code: 'CL-FC-*-*-UPR-*', name: 'Weitere Nutzung professioneller Ressourcen', description: 'Signalisiert Bereitschaft, weitere Angebote zu nutzen.' },
-  { code: 'CL-O-*-*-O-*', name: 'Andere Aussagen', description: 'Sonstiges, nicht in andere Kategorien passend.' },
-  { code: 'CL-O-*-*-UCO-*', name: 'Unangemessene Bemerkung', description: 'Grenzüberschreitende oder unpassende Aussage.' }
-];
+const impactFactors = computed(() => tm('oncoco.info.impactFactors.items') || [])
+const exampleClassifications = computed(() => tm('oncoco.info.examples.items') || [])
+const counselorLabels = computed(() => tm('oncoco.info.labels.counselorItems') || [])
+const clientLabels = computed(() => tm('oncoco.info.labels.clientItems') || [])
 </script>
 
 <style scoped>

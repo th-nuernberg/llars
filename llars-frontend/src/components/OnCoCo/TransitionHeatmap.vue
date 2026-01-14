@@ -67,11 +67,11 @@
         {{ labelDisplays[highlightedCell.to] || highlightedCell.to }}
       </div>
       <div class="d-flex justify-space-between text-caption mt-1">
-        <span>Anzahl:</span>
+        <span>{{ $t('oncoco.transitionHeatmap.countLabel') }}</span>
         <span class="font-weight-bold">{{ getCellValue(highlightedCell.from, highlightedCell.to) }}</span>
       </div>
       <div class="d-flex justify-space-between text-caption">
-        <span>Wahrsch.:</span>
+        <span>{{ $t('oncoco.transitionHeatmap.probabilityLabel') }}</span>
         <span class="font-weight-bold">{{ (getCellProbability(highlightedCell.from, highlightedCell.to) * 100).toFixed(1) }}%</span>
       </div>
     </div>

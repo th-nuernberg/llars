@@ -14,7 +14,7 @@
               <span class="text-caption font-weight-bold">{{ Math.round(similarity * 100) }}%</span>
             </v-progress-circular>
             <div class="ml-3">
-              <div class="text-caption text-medium-emphasis">Ähnlichkeit</div>
+              <div class="text-caption text-medium-emphasis">{{ $t('oncoco.quickStats.similarity.label') }}</div>
               <div class="text-body-2 font-weight-medium">{{ getSimilarityText(similarity) }}</div>
             </div>
           </div>
@@ -27,7 +27,7 @@
               <span class="text-caption font-weight-bold">{{ formatNumber(frobeniusDistance) }}</span>
             </v-avatar>
             <div class="ml-3">
-              <div class="text-caption text-medium-emphasis">Frobenius</div>
+              <div class="text-caption text-medium-emphasis">{{ $t('oncoco.quickStats.frobenius.label') }}</div>
               <div class="text-body-2 font-weight-medium">{{ getFrobeniusText(frobeniusDistance) }}</div>
             </div>
           </div>
@@ -41,7 +41,7 @@
               <LIcon v-else>mdi-minus</LIcon>
             </v-avatar>
             <div class="ml-3">
-              <div class="text-caption text-medium-emphasis">Signifikanz</div>
+              <div class="text-caption text-medium-emphasis">{{ $t('oncoco.quickStats.significance.label') }}</div>
               <div class="text-body-2 font-weight-medium">
                 p={{ formatPValue(pValue) }}
                 <v-chip
@@ -50,7 +50,7 @@
                   color="success"
                   class="ml-1"
                 >
-                  sig.
+                  {{ $t('oncoco.quickStats.significance.short') }}
                 </v-chip>
               </div>
             </div>
@@ -64,7 +64,7 @@
               <span class="text-caption font-weight-bold">{{ chiSquareSignificant }}/{{ chiSquareTotal }}</span>
             </v-avatar>
             <div class="ml-3">
-              <div class="text-caption text-medium-emphasis">Chi² sig.</div>
+              <div class="text-caption text-medium-emphasis">{{ $t('oncoco.quickStats.chiSquare.label') }}</div>
               <div class="text-body-2 font-weight-medium">{{ getChiSquareText(chiSquareSignificant, chiSquareTotal) }}</div>
             </div>
           </div>
@@ -77,7 +77,7 @@
             variant="text"
             size="small"
             @click="$emit('show-methodology')"
-            title="Methodik & Erklärungen"
+            :title="$t('oncoco.quickStats.methodology')"
           >
             <LIcon>mdi-information-outline</LIcon>
           </v-btn>
@@ -97,7 +97,7 @@
 </template>
 
 <script setup>
-import { computed } from 'vue';
+import { useI18n } from 'vue-i18n';
 
 const props = defineProps({
   similarity: {
@@ -128,6 +128,8 @@ const props = defineProps({
 
 defineEmits(['show-methodology']);
 
+const { t } = useI18n();
+
 // Helper functions
 const formatNumber = (value) => {
   if (value === undefined || value === null || isNaN(value)) return '-';
@@ -150,11 +152,11 @@ const getSimilarityColor = (value) => {
 };
 
 const getSimilarityText = (value) => {
-  if (value >= 0.9) return 'Sehr hoch';
-  if (value >= 0.7) return 'Hoch';
-  if (value >= 0.5) return 'Moderat';
-  if (value >= 0.3) return 'Gering';
-  return 'Sehr gering';
+  if (value >= 0.9) return t('oncoco.quickStats.similarity.levels.veryHigh');
+  if (value >= 0.7) return t('oncoco.quickStats.similarity.levels.high');
+  if (value >= 0.5) return t('oncoco.quickStats.similarity.levels.moderate');
+  if (value >= 0.3) return t('oncoco.quickStats.similarity.levels.low');
+  return t('oncoco.quickStats.similarity.levels.veryLow');
 };
 
 // Frobenius helpers
@@ -166,10 +168,10 @@ const getFrobeniusColor = (value) => {
 };
 
 const getFrobeniusText = (value) => {
-  if (value < 0.2) return 'Ähnlich';
-  if (value < 0.4) return 'Moderat';
-  if (value < 0.6) return 'Deutlich';
-  return 'Stark';
+  if (value < 0.2) return t('oncoco.quickStats.frobenius.levels.similar');
+  if (value < 0.4) return t('oncoco.quickStats.frobenius.levels.moderate');
+  if (value < 0.6) return t('oncoco.quickStats.frobenius.levels.distinct');
+  return t('oncoco.quickStats.frobenius.levels.strong');
 };
 
 // Significance helpers
@@ -190,9 +192,9 @@ const getChiSquareColor = (significant, total) => {
 };
 
 const getChiSquareText = (significant, total) => {
-  if (total === 0) return '-';
+  if (total === 0) return t('oncoco.quickStats.chiSquare.empty');
   const percent = Math.round((significant / total) * 100);
-  return `${percent}% Zustände`;
+  return t('oncoco.quickStats.chiSquare.states', { percent });
 };
 </script>
 

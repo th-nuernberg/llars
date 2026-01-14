@@ -8,7 +8,7 @@
           prepend-icon="mdi-arrow-left"
           @click="router.push({ name: 'OnCoCoOverview' })"
         >
-          Zurück zur Übersicht
+          {{ $t('oncoco.config.back') }}
         </v-btn>
       </v-col>
     </v-row>
@@ -18,7 +18,7 @@
         <v-card>
           <v-card-title class="d-flex align-center">
             <LIcon class="mr-2" color="primary">mdi-cog</LIcon>
-            Neue OnCoCo Analyse konfigurieren
+            {{ $t('oncoco.config.title') }}
           </v-card-title>
 
           <v-card-text>
@@ -26,9 +26,9 @@
               <!-- Analysis Name -->
               <v-text-field
                 v-model="config.name"
-                label="Analyse Name"
-                placeholder="z.B. OnCoCo Analyse Säule 1+3"
-                :rules="[v => !!v || 'Name ist erforderlich']"
+                :label="$t('oncoco.config.form.nameLabel')"
+                :placeholder="$t('oncoco.config.form.namePlaceholder')"
+                :rules="[v => !!v || $t('validation.required')]"
                 prepend-icon="mdi-label"
                 variant="outlined"
                 class="mb-4"
@@ -37,7 +37,7 @@
               <!-- Pillar Selection -->
               <div class="text-subtitle-1 font-weight-medium mb-2">
                 <LIcon class="mr-1">mdi-database</LIcon>
-                Säulen auswählen
+                {{ $t('oncoco.config.form.pillarsTitle') }}
               </div>
               <v-row class="mb-4">
                 <v-col
@@ -59,30 +59,30 @@
                           :model-value="config.pillars.includes(Number(pillarNum))"
                           hide-details
                           density="compact"
-                          @click.stop
-                          @update:model-value="togglePillar(Number(pillarNum))"
-                        ></v-checkbox>
-                        <div class="ml-2">
-                          <div class="font-weight-bold">Säule {{ pillarNum }}</div>
-                          <div class="text-caption">{{ pillar.name }}</div>
-                        </div>
+                        @click.stop
+                        @update:model-value="togglePillar(Number(pillarNum))"
+                      ></v-checkbox>
+                      <div class="ml-2">
+                        <div class="font-weight-bold">{{ $t('oncoco.config.form.pillarLabel', { id: pillarNum }) }}</div>
+                        <div class="text-caption">{{ pillar.name }}</div>
                       </div>
-                      <v-divider class="my-2"></v-divider>
-                      <div class="d-flex justify-space-between text-caption">
-                        <span>Threads:</span>
-                        <span class="font-weight-bold">{{ pillar.db_thread_count || 0 }}</span>
-                      </div>
-                      <div class="d-flex justify-space-between text-caption">
-                        <span>Status:</span>
-                        <v-chip
-                          :color="pillar.db_thread_count > 0 ? 'success' : 'warning'"
-                          size="x-small"
-                        >
-                          {{ pillar.db_thread_count > 0 ? 'Bereit' : 'Sync erforderlich' }}
-                        </v-chip>
-                      </div>
-                    </v-card-text>
-                  </v-card>
+                    </div>
+                    <v-divider class="my-2"></v-divider>
+                    <div class="d-flex justify-space-between text-caption">
+                      <span>{{ $t('oncoco.config.form.threadsLabel') }}</span>
+                      <span class="font-weight-bold">{{ pillar.db_thread_count || 0 }}</span>
+                    </div>
+                    <div class="d-flex justify-space-between text-caption">
+                      <span>{{ $t('oncoco.config.form.statusLabel') }}</span>
+                      <v-chip
+                        :color="pillar.db_thread_count > 0 ? 'success' : 'warning'"
+                        size="x-small"
+                      >
+                        {{ pillar.db_thread_count > 0 ? $t('oncoco.config.form.statusReady') : $t('oncoco.config.form.statusSync') }}
+                      </v-chip>
+                    </div>
+                  </v-card-text>
+                </v-card>
                 </v-col>
               </v-row>
 
@@ -91,25 +91,25 @@
                 <v-expansion-panel>
                   <v-expansion-panel-title>
                     <LIcon class="mr-2">mdi-tune</LIcon>
-                    Erweiterte Optionen
+                    {{ $t('oncoco.config.form.advancedTitle') }}
                   </v-expansion-panel-title>
                   <v-expansion-panel-text>
                     <v-switch
                       v-model="config.use_level2"
-                      label="Level-2 Aggregation verwenden"
-                      hint="Fasst die 68 Kategorien in 18 übergeordnete Gruppen zusammen"
+                      :label="$t('oncoco.config.form.useLevel2Label')"
+                      :hint="$t('oncoco.config.form.useLevel2Hint')"
                       persistent-hint
                       color="primary"
                     ></v-switch>
 
                     <v-slider
                       v-model="config.batch_size"
-                      label="Batch-Größe"
+                      :label="$t('oncoco.config.form.batchSizeLabel')"
                       min="4"
                       max="64"
                       step="4"
                       thumb-label
-                      hint="Anzahl Sätze pro GPU-Batch (höher = schneller, aber mehr Speicher)"
+                      :hint="$t('oncoco.config.form.batchSizeHint')"
                       persistent-hint
                       class="mt-4"
                     ></v-slider>
@@ -124,7 +124,7 @@
               variant="text"
               @click="router.push({ name: 'OnCoCoOverview' })"
             >
-              Abbrechen
+              {{ $t('common.cancel') }}
             </v-btn>
             <v-spacer></v-spacer>
             <v-btn
@@ -135,7 +135,7 @@
               :loading="creating"
               @click="createAnalysis"
             >
-              Analyse erstellen
+              {{ $t('oncoco.config.actions.create') }}
             </v-btn>
             <v-btn
               color="success"
@@ -145,7 +145,7 @@
               :loading="creating"
               @click="createAndStartAnalysis"
             >
-              Erstellen & Starten
+              {{ $t('oncoco.config.actions.createAndStart') }}
             </v-btn>
           </v-card-actions>
         </v-card>
@@ -156,31 +156,30 @@
         <v-card class="mb-4">
           <v-card-title>
             <LIcon class="mr-2" color="info">mdi-information</LIcon>
-            Über OnCoCo
+            {{ $t('oncoco.config.info.title') }}
           </v-card-title>
           <v-card-text>
             <p class="text-body-2 mb-3">
-              Das OnCoCo-Modell (Online Counseling Conversations) klassifiziert
-              Beratungsgespräche auf Satzebene in 68 Kategorien.
+              {{ $t('oncoco.config.info.description') }}
             </p>
             <v-divider class="my-3"></v-divider>
-            <div class="text-subtitle-2 font-weight-bold mb-2">Kategorien</div>
+            <div class="text-subtitle-2 font-weight-bold mb-2">{{ $t('oncoco.config.info.categoriesTitle') }}</div>
             <div class="d-flex justify-space-between text-body-2 mb-1">
-              <span>Berater (CO):</span>
+              <span>{{ $t('oncoco.config.info.counselorLabel') }}</span>
               <span class="font-weight-bold">40</span>
             </div>
             <div class="d-flex justify-space-between text-body-2 mb-1">
-              <span>Klient (CL):</span>
+              <span>{{ $t('oncoco.config.info.clientLabel') }}</span>
               <span class="font-weight-bold">28</span>
             </div>
             <v-divider class="my-3"></v-divider>
-            <div class="text-subtitle-2 font-weight-bold mb-2">Metriken</div>
+            <div class="text-subtitle-2 font-weight-bold mb-2">{{ $t('oncoco.config.info.metricsTitle') }}</div>
             <div class="d-flex justify-space-between text-body-2 mb-1">
-              <span>Genauigkeit:</span>
+              <span>{{ $t('oncoco.config.info.accuracyLabel') }}</span>
               <span class="font-weight-bold">~80%</span>
             </div>
             <div class="d-flex justify-space-between text-body-2 mb-1">
-              <span>F1 Makro:</span>
+              <span>{{ $t('oncoco.config.info.f1Label') }}</span>
               <span class="font-weight-bold">0.78</span>
             </div>
           </v-card-text>
@@ -189,14 +188,14 @@
         <v-card>
           <v-card-title>
             <LIcon class="mr-2" color="warning">mdi-alert</LIcon>
-            Hinweise
+            {{ $t('oncoco.config.notes.title') }}
           </v-card-title>
           <v-card-text>
             <v-alert type="info" variant="tonal" density="compact" class="mb-2">
-              Die Analyse kann je nach Datenmenge einige Minuten dauern.
+              {{ $t('oncoco.config.notes.info') }}
             </v-alert>
             <v-alert type="warning" variant="tonal" density="compact">
-              Stellen Sie sicher, dass die ausgewählten Säulen synchronisiert sind.
+              {{ $t('oncoco.config.notes.warning') }}
             </v-alert>
           </v-card-text>
         </v-card>

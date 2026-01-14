@@ -5,6 +5,7 @@
 import { ref, onUnmounted } from 'vue'
 import { io } from 'socket.io-client'
 import { AUTH_STORAGE_KEYS, clearAuthStorage, getAuthStorageItem } from '@/utils/authStorage'
+import { logI18n } from '@/utils/logI18n'
 
 export function useChatSocket() {
   const socket = ref(null)
@@ -31,12 +32,12 @@ export function useChatSocket() {
     })
 
     socket.value.on('connect', () => {
-      console.log('ChatSocket: Connected')
+      logI18n('log', 'logs.chatSocket.connected')
       isConnected.value = true
     })
 
     socket.value.on('disconnect', () => {
-      console.log('ChatSocket: Disconnected')
+      logI18n('log', 'logs.chatSocket.disconnected')
       isConnected.value = false
     })
   }
@@ -57,7 +58,7 @@ export function useChatSocket() {
    */
   function sendMessage(chatbotId, message, sessionId, conversationId) {
     if (!socket.value?.connected) {
-      console.warn('Socket not connected, cannot send message')
+      logI18n('warn', 'logs.chatSocket.notConnectedSend')
       return false
     }
 
@@ -127,7 +128,7 @@ export function useChatSocket() {
     if (onError) {
       socket.value.on('chatbot:error', (data) => {
         const errMsg = String(data?.error || '')
-        console.error('Chatbot error:', errMsg)
+        logI18n('error', 'logs.chatSocket.chatbotError', errMsg)
 
         const code = String(data?.code || '')
         const lower = errMsg.toLowerCase()

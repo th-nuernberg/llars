@@ -92,6 +92,7 @@
 import { ref, watch, nextTick } from 'vue'
 import DOMPurify from 'dompurify'
 import { marked } from 'marked'
+import { logI18n } from '@/utils/logI18n'
 
 const props = defineProps({
   messages: {
@@ -112,7 +113,7 @@ const containerRef = ref(null)
  * Handle source chip click - explicit handler for debugging
  */
 function handleSourceClick(source) {
-  console.log('[ChatMessageList] Source clicked:', source)
+  logI18n('log', 'logs.chatMessageList.sourceClicked', source)
   emit('show-source', source)
 }
 

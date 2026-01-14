@@ -97,6 +97,7 @@
 <script setup>
 import { ref, onMounted, onUnmounted, nextTick, watch } from 'vue';
 import { io } from 'socket.io-client';
+import { logI18n } from '@/utils/logI18n';
 
 const socketioEnableWebsocket = String(import.meta.env.VITE_SOCKETIO_ENABLE_WEBSOCKET || '').toLowerCase() === 'true';
 const socketioTransports = socketioEnableWebsocket ? ['polling', 'websocket'] : ['polling'];
@@ -174,7 +175,7 @@ const loadMessages = () => {
       saveMessages();
     }
   } catch (error) {
-    console.error('Error loading messages from localStorage:', error);
+    logI18n('error', 'logs.chat.loadMessagesFailed', error);
     messages.value = [
       {
         id: 1,
@@ -192,7 +193,7 @@ const saveMessages = () => {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(messages.value));
   } catch (error) {
-    console.error('Error saving messages to localStorage:', error);
+    logI18n('error', 'logs.chat.saveMessagesFailed', error);
   }
 };
 
@@ -265,8 +266,8 @@ onMounted(() => {
     }
   });
 
-  socket.value.on('connect', () => console.log('Socket connected'));
-  socket.value.on('disconnect', () => console.log('Socket disconnected'));
+  socket.value.on('connect', () => logI18n('log', 'logs.chat.socketConnected'));
+  socket.value.on('disconnect', () => logI18n('log', 'logs.chat.socketDisconnected'));
 
   socket.value.on('chat_response', (data) => {
     const lastMessage = messages.value[messages.value.length - 1];

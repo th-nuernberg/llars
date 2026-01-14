@@ -4,6 +4,7 @@
  */
 import { ref } from 'vue'
 import axios from 'axios'
+import { logI18n } from '@/utils/logI18n'
 
 export function useChatMessages() {
   const isProcessing = ref(false)
@@ -130,7 +131,7 @@ export function useChatMessages() {
         throw new Error(response.data.error || 'Unbekannter Fehler')
       }
     } catch (error) {
-      console.error('Chat error:', error)
+      logI18n('error', 'logs.chatMessages.error', error)
       return {
         success: false,
         error: error.response?.data?.error || 'Fehler beim Senden'

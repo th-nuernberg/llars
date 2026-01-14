@@ -271,6 +271,7 @@ import { useMobile } from '@/composables/useMobile'
 import { useActiveDuration, useTypingMetrics, useScrollDepth } from '@/composables/useAnalyticsMetrics'
 import { matomoTrackEvent } from '@/plugins/llars-metrics'
 import { AUTH_STORAGE_KEYS, getAuthStorageItem } from '@/utils/authStorage'
+import { logI18n } from '@/utils/logI18n'
 
 // Local composables
 import { useChatMessages } from './ChatWithBots/composables/useChatMessages.js'
@@ -396,7 +397,7 @@ async function loadChatbots() {
       chatbots.value = response.data.chatbots.filter(b => b.is_active)
     }
   } catch (error) {
-    console.error('Error loading chatbots:', error)
+    logI18n('error', 'logs.chatWithBots.loadChatbotsFailed', error)
     showSnackbar(t('chat.loadChatbotsFailed'), 'error')
   }
 }
@@ -451,7 +452,7 @@ async function loadConversations(autoSelect = false) {
       conversations.value = response.data.conversations || []
       sidebar.setBotConversations(botId, conversations.value)
     } catch (error) {
-      console.error('Error loading conversations:', error)
+      logI18n('error', 'logs.chatWithBots.loadConversationsFailed', error)
       conversations.value = []
     }
   })
@@ -753,7 +754,7 @@ function saveDraft() {
 
     localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(drafts))
   } catch (error) {
-    console.warn('Failed to save draft:', error)
+    logI18n('warn', 'logs.chatWithBots.draftSaveFailed', error)
   }
 }
 
@@ -782,7 +783,7 @@ function restoreDraft() {
       newMessage.value = ''
     }
   } catch (error) {
-    console.warn('Failed to restore draft:', error)
+    logI18n('warn', 'logs.chatWithBots.draftRestoreFailed', error)
     newMessage.value = ''
   }
 }
@@ -800,7 +801,7 @@ function clearDraft() {
     delete drafts[botId]
     localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(drafts))
   } catch (error) {
-    console.warn('Failed to clear draft:', error)
+    logI18n('warn', 'logs.chatWithBots.draftDeleteFailed', error)
   }
 }
 
@@ -811,7 +812,7 @@ function startProcessingTimeout() {
   clearProcessingTimeout()
   processingTimeoutId = setTimeout(() => {
     if (chatMessages.isProcessing.value) {
-      console.warn('Processing timeout reached, resetting state')
+      logI18n('warn', 'logs.chatWithBots.processingTimeoutReset')
       chatMessages.isProcessing.value = false
       const lastIdx = messages.value.length - 1
       if (lastIdx >= 0 && messages.value[lastIdx].sender === 'bot' && messages.value[lastIdx].streaming) {

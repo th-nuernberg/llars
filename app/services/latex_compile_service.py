@@ -9,6 +9,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
+from flask import current_app
+
 from db.database import db
 from db.tables import (
     LatexWorkspace,
@@ -18,10 +20,34 @@ from db.tables import (
     LatexCommit,
     LatexNodeType,
 )
+from socketio_handlers.events_latex_collab import emit_compile_status
 
 
 class LatexCompileError(RuntimeError):
     pass
+
+
+def _emit_job_status(job: LatexCompileJob) -> None:
+    """Emit compile job status update via WebSocket."""
+    try:
+        socketio = current_app.extensions.get('socketio')
+        if socketio:
+            job_data = {
+                'id': job.id,
+                'workspace_id': job.workspace_id,
+                'commit_id': job.commit_id,
+                'status': job.status,
+                'error_message': job.error_message,
+                'log_text': job.log_text,
+                'started_at': job.started_at.isoformat() if job.started_at else None,
+                'finished_at': job.finished_at.isoformat() if job.finished_at else None,
+                'has_pdf': job.pdf_blob is not None,
+                'has_synctex': job.synctex_blob is not None,
+            }
+            emit_compile_status(socketio, job.workspace_id, job_data)
+    except Exception:
+        # Don't let WebSocket errors break compilation
+        pass
 
 
 def _doc_path(doc_id: int, docs_by_id: dict[int, LatexDocument], cache: dict[int, str]) -> str:
@@ -164,12 +190,14 @@ def run_compile_job(job_id: int) -> None:
         job.error_message = "Workspace not found"
         job.finished_at = datetime.utcnow()
         db.session.commit()
+        _emit_job_status(job)
         return
 
     job.status = "running"
     job.started_at = datetime.utcnow()
     job.error_message = None
     db.session.commit()
+    _emit_job_status(job)
 
     snapshot = None
     if job.commit_id:
@@ -184,6 +212,7 @@ def run_compile_job(job_id: int) -> None:
             job.error_message = str(exc)
             job.finished_at = datetime.utcnow()
             db.session.commit()
+            _emit_job_status(job)
             return
 
     main_path = _pick_main_tex(snapshot)
@@ -192,6 +221,7 @@ def run_compile_job(job_id: int) -> None:
         job.error_message = "No main .tex file found"
         job.finished_at = datetime.utcnow()
         db.session.commit()
+        _emit_job_status(job)
         return
 
     try:
@@ -231,6 +261,7 @@ def run_compile_job(job_id: int) -> None:
                 job.error_message = "LaTeX compile failed - no PDF generated"
                 job.finished_at = datetime.utcnow()
                 db.session.commit()
+                _emit_job_status(job)
                 return
 
             job.pdf_blob = pdf_path.read_bytes()
@@ -238,6 +269,7 @@ def run_compile_job(job_id: int) -> None:
             job.status = "success"
             job.finished_at = datetime.utcnow()
             db.session.commit()
+            _emit_job_status(job)
 
             _clear_previous_pdfs(workspace.id, job.id)
             workspace.latest_compile_job_id = job.id
@@ -248,6 +280,7 @@ def run_compile_job(job_id: int) -> None:
         job.error_message = str(exc)
         job.finished_at = datetime.utcnow()
         db.session.commit()
+        _emit_job_status(job)
 
 
 def _snapshot_for_job(job: LatexCompileJob) -> dict:

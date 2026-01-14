@@ -500,7 +500,9 @@ function getOrCreateRoom(roomName) {
   if (!rooms[roomName]) {
     rooms[roomName] = {
       users: {},    // socketId -> { username, color }
-      cursors: {}   // socketId -> { blockId, range, username, color }
+      cursors: {},  // socketId -> { blockId, range, username, color }
+      workspaceId: null,  // Cached workspace ID for real-time updates
+      kind: null    // Document kind (latex, markdown, prompt)
     };
   }
   return rooms[roomName];
@@ -583,27 +585,39 @@ function setupSocketHandlers(io) {
       // - Document rooms only contain users editing THAT specific document
       // - Git panel needs updates when ANY document in the workspace changes
       // - Broadcasting to workspace room ensures all workspace users see updates
+      //
+      // We also cache workspaceId in the room object to avoid DB queries on
+      // every sync_update when emitting document_updated events.
       // =====================================================================
+      const roomObj = getOrCreateRoom(room);
+      roomObj.kind = parsed?.kind || null;
+
       if (parsed?.kind === 'latex') {
         const [wsRows] = await pool.query(
           'SELECT workspace_id FROM latex_documents WHERE id = ?',
           [parsed.id]
         );
         if (wsRows.length > 0 && wsRows[0].workspace_id) {
+          roomObj.workspaceId = wsRows[0].workspace_id;
           const workspaceRoom = `workspace_latex_${wsRows[0].workspace_id}`;
           socket.join(workspaceRoom);
           console.log(`[join_room] Also joined workspace room: ${workspaceRoom}`);
         }
+
+        // Load baseline will happen after doc is loaded (see below)
       } else if (parsed?.kind === 'markdown') {
         const [wsRows] = await pool.query(
           'SELECT workspace_id FROM markdown_documents WHERE id = ?',
           [parsed.id]
         );
         if (wsRows.length > 0 && wsRows[0].workspace_id) {
+          roomObj.workspaceId = wsRows[0].workspace_id;
           const workspaceRoom = `workspace_markdown_${wsRows[0].workspace_id}`;
           socket.join(workspaceRoom);
           console.log(`[join_room] Also joined workspace room: ${workspaceRoom}`);
         }
+
+        // Load baseline will happen after doc is loaded (see below)
       }
 
       let doc = ydocs.get(room);
@@ -614,7 +628,37 @@ function setupSocketHandlers(io) {
         ydocs.set(room, doc);
       }
 
-      const roomObj = getOrCreateRoom(room);
+      // =====================================================================
+      // Store baseline in YJS Map for client-side diff calculation
+      // =====================================================================
+      // The baseline (last committed content) is stored in the YJS document
+      // itself, so all clients can calculate diffs locally without server
+      // roundtrips. This enables truly instant diff updates.
+      // =====================================================================
+      const baselineMap = doc.getMap('baseline');
+      if (!baselineMap.has('text')) {
+        // Load baseline from DB (last commit snapshot)
+        let baseline = '';
+        if (parsed?.kind === 'latex') {
+          const [commitRows] = await pool.query(
+            `SELECT content_snapshot FROM latex_commits
+             WHERE document_id = ? AND content_snapshot IS NOT NULL
+             ORDER BY created_at DESC, id DESC LIMIT 1`,
+            [parsed.id]
+          );
+          baseline = commitRows.length > 0 ? (commitRows[0].content_snapshot || '') : '';
+        } else if (parsed?.kind === 'markdown') {
+          const [commitRows] = await pool.query(
+            `SELECT content_snapshot FROM markdown_commits
+             WHERE document_id = ? AND content_snapshot IS NOT NULL
+             ORDER BY created_at DESC, id DESC LIMIT 1`,
+            [parsed.id]
+          );
+          baseline = commitRows.length > 0 ? (commitRows[0].content_snapshot || '') : '';
+        }
+        baselineMap.set('text', baseline);
+        console.log(`[join_room] Stored baseline in YJS Map for ${room}: ${baseline.length} chars`);
+      }
 
       // Use persisted color from handshake auth, or fall back to random color
       const userColor = socket.handshake?.auth?.color || getRandomColor();
@@ -645,7 +689,7 @@ function setupSocketHandlers(io) {
       logRoomsAndUsers(io);
     });
 
-    socket.on('sync_update', (data) => {
+    socket.on('sync_update', async (data) => {
       const { room, update } = data;
       const doc = ydocs.get(room);
       if (!doc) {
@@ -661,6 +705,27 @@ function setupSocketHandlers(io) {
         // Weiterleiten an alle anderen Clients im Raum
         socket.to(room).emit('sync_update', { update });
 
+        // =====================================================================
+        // Real-time Git Panel Update: Emit document_updated IMMEDIATELY
+        // =====================================================================
+        // Unlike document_saved (which fires after 2s debounce), this event
+        // fires on EVERY sync_update. Clients calculate diff locally using
+        // the baseline stored in the YJS document for truly instant updates.
+        // =====================================================================
+        const roomObj = rooms[room];
+        if (roomObj && roomObj.workspaceId && roomObj.kind) {
+          const workspaceRoom = `workspace_${roomObj.kind}_${roomObj.workspaceId}`;
+          const parsed = parseRoom(room);
+
+          // Emit lightweight event - clients calculate diff locally
+          ioInstance.to(workspaceRoom).emit('document_updated', {
+            documentId: parsed?.id || null,
+            workspaceId: roomObj.workspaceId,
+            kind: roomObj.kind,
+            timestamp: Date.now()
+          });
+        }
+
         // Debounced persistence to reduce data-loss on server restarts.
         const existingTimer = saveTimers.get(room);
         if (existingTimer) clearTimeout(existingTimer);
@@ -674,7 +739,7 @@ function setupSocketHandlers(io) {
           } finally {
             saveTimers.delete(room);
           }
-        }, 2000));
+        }, 2000));  // 2s debounce for DB writes (Git panel uses real-time diff from document_updated)
       } catch (error) {
         console.error('Error applying update:', error);
       }
@@ -750,11 +815,34 @@ function setupSocketHandlers(io) {
         const newContent = doc.getText('content').toString();
         console.log(`[reload_room] New doc content length: ${newContent.length}, preview: "${newContent.substring(0, 100)}..."`);
 
-        // Broadcast the new snapshot to ALL clients in the room (including sender)
-        const fullState = Y.encodeStateAsUpdate(doc);
-        io.to(room).emit('snapshot_document', fullState);
+        // =====================================================================
+        // Update baseline in YJS Map for correct diff calculation after revert.
+        // After a revert, the baseline IS the current content (no uncommitted changes).
+        // =====================================================================
+        const parsed = parseRoom(room);
+        if (parsed?.kind === 'latex' || parsed?.kind === 'markdown') {
+          const baselineMap = doc.getMap('baseline');
+          baselineMap.set('text', newContent);
+          console.log(`[reload_room] Updated baseline in YJS Map: ${newContent.length} chars`);
+        }
 
-        console.log(`[reload_room] END - Room "${room}" reloaded and broadcast to all clients`);
+        // =====================================================================
+        // FORCE RELOAD: Send special event that tells ALL clients to recreate
+        // their local ydoc. This is necessary because Y.applyUpdate() MERGES
+        // updates instead of replacing them, which would cause content duplication.
+        //
+        // The force_reload event contains the full snapshot. Clients must:
+        // 1. Destroy their existing ydoc
+        // 2. Create a fresh ydoc
+        // 3. Apply this snapshot to the fresh ydoc
+        // =====================================================================
+        const fullState = Y.encodeStateAsUpdate(doc);
+        io.to(room).emit('force_reload', {
+          room,
+          snapshot: Array.from(fullState)
+        });
+
+        console.log(`[reload_room] END - Room "${room}" reloaded, force_reload sent to all clients`);
         if (callback) callback({ success: true });
       } catch (e) {
         console.error(`[reload_room] FAILED for room ${room}:`, e);

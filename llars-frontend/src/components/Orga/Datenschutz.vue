@@ -2,55 +2,49 @@
   <v-container class="mt-5">
     <v-row justify="center">
       <v-col cols="12" md="8">
-        <h1>Datenschutzerklärung (Stand 05/24)</h1>
+        <h1>{{ $t('privacyPolicy.title') }}</h1>
         <v-divider class="my-4"></v-divider>
 
-        <h3>Wer ist verantwortlich für die Datenverarbeitung?</h3>
+        <h3>{{ $t('privacyPolicy.sections.controller.title') }}</h3>
         <p>
-          Verantwortlich für den Datenschutz auf dieser Website ist:
+          {{ $t('privacyPolicy.sections.controller.intro') }}
+        </p>
+        <p v-html="$t('privacyPolicy.sections.controller.contact')"></p>
+
+        <h3>{{ $t('privacyPolicy.sections.dataCollection.title') }}</h3>
+        <p>
+          {{ $t('privacyPolicy.sections.dataCollection.paragraph1') }}
         </p>
         <p>
-          Sigrid Zauter, Geschäftsführung des Instituts für E-Beratung<br>
-          Keßlerplatz 12, 90489 Nürnberg<br>
-          Tel.: 0911-5880-2580<br>
-          Fax: 0911-5880-602580<br>
-          E-Mail: info [at] e-beratungsinstitut . de
+          {{ $t('privacyPolicy.sections.dataCollection.paragraph2') }}
         </p>
 
-        <h3>Welche Daten werden erhoben und warum?</h3>
+        <h3>{{ $t('privacyPolicy.sections.recipients.title') }}</h3>
         <p>
-          Wenn Sie unsere Website besuchen, werden automatisch einige Daten erfasst, wie zum Beispiel Ihre IP-Adresse und die besuchten Seiten. Diese Daten helfen uns, die Nutzung der Website zu analysieren und sie kontinuierlich zu verbessern.
+          {{ $t('privacyPolicy.sections.recipients.paragraph1') }}
         </p>
         <p>
-          Zusätzlich nutzen wir die Daten, die Sie freiwillig zur Verfügung stellen, um sie im Rahmen des Forschungsprojekts LLars zu evaluieren. LLars ist eine Software, die zur Bewertung und Analyse von KI-generierten Inhalten entwickelt wurde. Alle erfassten Daten werden ausschließlich für wissenschaftliche Forschungszwecke genutzt und anonymisiert verarbeitet, soweit dies möglich ist.
-        </p>
-
-        <h3>Wer bekommt meine Daten?</h3>
-        <p>
-          Ihre Daten werden intern für die Forschung und Entwicklung im Rahmen des LLars-Projekts verwendet. Sie werden nicht an Dritte weitergegeben, es sei denn, eine Weitergabe ist gesetzlich erforderlich oder Sie haben uns Ihre ausdrückliche Zustimmung gegeben.
-        </p>
-        <p>
-          Die Server für dieses Projekt werden auf Maschinen der Technischen Hochschule Nürnberg gehostet, und es wurde ein Vertrag über Auftragsverarbeitung abgeschlossen, um die Datenschutzkonformität sicherzustellen.
+          {{ $t('privacyPolicy.sections.recipients.paragraph2') }}
         </p>
 
-        <h3>Wie werden meine Daten geschützt?</h3>
+        <h3>{{ $t('privacyPolicy.sections.protection.title') }}</h3>
         <p>
-          Wir ergreifen Maßnahmen, um Ihre Daten zu schützen und sicher aufzubewahren. Dazu gehören technische Sicherheitsvorkehrungen wie Verschlüsselung und sichere Passwörter.
+          {{ $t('privacyPolicy.sections.protection.paragraph1') }}
         </p>
 
-        <h3>Was sind meine Auskunftsrechte?</h3>
+        <h3>{{ $t('privacyPolicy.sections.rights.title') }}</h3>
         <p>
-          Sie haben das Recht zu erfahren, welche Daten wir über Sie gespeichert haben, und Sie können verlangen, dass diese Daten korrigiert oder gelöscht werden. Kontaktieren Sie uns über die oben genannten Kontaktinformationen, um Ihre Rechte wahrzunehmen.
+          {{ $t('privacyPolicy.sections.rights.paragraph1') }}
         </p>
 
-        <h3>Änderungen an dieser Datenschutzerklärung</h3>
+        <h3>{{ $t('privacyPolicy.sections.changes.title') }}</h3>
         <p>
-          Diese Datenschutzerklärung kann gelegentlich aktualisiert werden. Änderungen werden auf unserer Website veröffentlicht.
+          {{ $t('privacyPolicy.sections.changes.paragraph1') }}
         </p>
 
-        <p>
-          Zusätzlich gilt die <a href="https://www.th-nuernberg.de/datenschutz/" target="_blank">Datenschutzerklärung der TH Nürnberg</a>.
-        </p>
+        <i18n-t keypath="privacyPolicy.sections.thNuremberg" tag="p">
+          <a href="https://www.th-nuernberg.de/datenschutz/" target="_blank">{{ $t('privacyPolicy.links.thNuremberg') }}</a>
+        </i18n-t>
       </v-col>
     </v-row>
   </v-container>

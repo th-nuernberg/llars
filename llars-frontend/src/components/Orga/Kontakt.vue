@@ -2,38 +2,28 @@
   <v-container class="mt-5">
     <v-row justify="center">
       <v-col cols="12" md="8">
-        <h1>Kontakt</h1>
+        <h1>{{ $t('contactPage.title') }}</h1>
         <v-divider class="my-4"></v-divider>
 
-        <h3>E-Mail</h3>
-        <p>E-Mail: info [at] e-beratungsinstitut . de</p>
+        <h3>{{ $t('contactPage.sections.email.title') }}</h3>
+        <p>{{ $t('contactPage.sections.email.address') }}</p>
 
-        <h3>Telefon</h3>
-        <p>Telefon: +49 911 5880-2580</p>
+        <h3>{{ $t('contactPage.sections.phone.title') }}</h3>
+        <p>{{ $t('contactPage.sections.phone.number') }}</p>
         <p>
-          Bitte hinterlassen Sie gerne eine Nachricht auf unseren Anrufbeantwortern, wir rufen gerne zurück.
+          {{ $t('contactPage.sections.phone.voicemail') }}
         </p>
-        <p>Telefax: +49 911 5880-602580</p>
+        <p>{{ $t('contactPage.sections.phone.fax') }}</p>
 
-        <h3>Postadresse</h3>
-        <p>
-          Institut für E-Beratung<br>
-          Technische Hochschule Nürnberg<br>
-          Keßlerplatz 12<br>
-          90489 Nürnberg
-        </p>
+        <h3>{{ $t('contactPage.sections.postal.title') }}</h3>
+        <p v-html="$t('contactPage.sections.postal.address')"></p>
 
-        <h3>Besucheradresse</h3>
-        <p>
-          LLARS Projekt, Technische Hochschule Nürnberg<br>
-          Innere Cramer-Klett-Straße 4-8<br>
-          90403 Nürnberg<br>
-          Räume SCU 118, 119, 120a, 120b, 121, SC 004, 005, 009, 010
-        </p>
+        <h3>{{ $t('contactPage.sections.visitor.title') }}</h3>
+        <p v-html="$t('contactPage.sections.visitor.address')"></p>
 
         <v-divider class="my-4"></v-divider>
 
-        <h3>Soziale Medien</h3>
+        <h3>{{ $t('contactPage.sections.social.title') }}</h3>
         <p>
           <a href="https://www.linkedin.com/company/institut-f%C3%BCr-e-beratung/about/" target="_blank">LinkedIn</a> |
           <a href="https://www.facebook.com/eberatungsinstitut/" target="_blank">Facebook</a> |
@@ -43,7 +33,7 @@
 
         <v-divider class="my-4"></v-divider>
 
-        <h3>Standort</h3>
+        <h3>{{ $t('contactPage.sections.location.title') }}</h3>
         <div style="width: 100%">
           <iframe
             width="100%"
@@ -59,10 +49,10 @@
 
         <v-divider class="my-4"></v-divider>
 
-        <h3>Datenschutz Hinweis</h3>
-        <p>
-          Weitere Informationen finden Sie in unserer <router-link to="/datenschutz">Datenschutzerklärung</router-link>.
-        </p>
+        <h3>{{ $t('contactPage.sections.privacy.title') }}</h3>
+        <i18n-t keypath="contactPage.sections.privacy.text" tag="p">
+          <router-link to="/datenschutz">{{ $t('contactPage.links.privacy') }}</router-link>
+        </i18n-t>
       </v-col>
     </v-row>
   </v-container>

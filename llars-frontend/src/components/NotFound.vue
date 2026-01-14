@@ -43,16 +43,16 @@
         <transition name="fade">
           <div v-if="showEasterEgg" class="easter-egg">
             <LIcon size="16" class="mr-1">mdi-lightbulb</LIcon>
-            {{ easterEggMessages[currentEasterEgg] }}
+            {{ $t(easterEggMessages[currentEasterEgg]) }}
           </div>
         </transition>
       </div>
 
       <!-- Text Content -->
       <div class="text-content">
-        <h1 class="title">Dokument nicht gefunden</h1>
+        <h1 class="title">{{ $t('notFound.title') }}</h1>
         <p class="subtitle">
-          Diese Seite scheint sich in den Tiefen des Archivs versteckt zu haben...
+          {{ $t('notFound.subtitle') }}
         </p>
       </div>
 
@@ -63,7 +63,7 @@
           <input
             v-model="searchQuery"
             type="text"
-            placeholder="Wonach suchen Sie?"
+            :placeholder="$t('notFound.searchPlaceholder')"
             class="search-input"
             @keyup.enter="handleSearch"
           />
@@ -73,7 +73,7 @@
             size="small"
             @click="handleSearch"
           >
-            Suchen
+            {{ $t('notFound.searchButton') }}
           </LBtn>
         </div>
       </div>
@@ -81,16 +81,16 @@
       <!-- Action Buttons -->
       <div class="action-buttons">
         <LBtn variant="primary" prepend-icon="mdi-home" @click="goHome">
-          Zur Startseite
+          {{ $t('notFound.goHome') }}
         </LBtn>
         <LBtn variant="accent" prepend-icon="mdi-chat" @click="goToChat">
-          Chat öffnen
+          {{ $t('notFound.openChat') }}
         </LBtn>
       </div>
 
       <!-- Quick Links -->
       <div class="quick-links">
-        <span class="quick-links-label">Schnellzugriff:</span>
+        <span class="quick-links-label">{{ $t('notFound.quickLinksLabel') }}</span>
         <div class="quick-links-tags">
           <LTag
             v-for="link in quickLinks"
@@ -100,7 +100,7 @@
             class="quick-link-tag"
             @click="navigateTo(link.path)"
           >
-            {{ link.label }}
+            {{ $t(link.labelKey) }}
           </LTag>
         </div>
       </div>
@@ -130,11 +130,11 @@ const currentEasterEgg = ref(0)
 const currentPath = computed(() => route.fullPath)
 
 const easterEggMessages = [
-  'Vielleicht hat ein LLM diese Seite halluziniert?',
-  'Error 404: Kaffee nicht gefunden. Moment, falsche Fehlermeldung...',
-  'Diese Seite wurde vom Datenschutzbeauftragten anonymisiert.',
-  'Die KI sucht noch... bitte haben Sie Geduld.',
-  'Haben Sie versucht, die Seite aus- und wieder einzuschalten?'
+  'notFound.easterEggs.llm',
+  'notFound.easterEggs.coffee',
+  'notFound.easterEggs.privacy',
+  'notFound.easterEggs.ai',
+  'notFound.easterEggs.reboot'
 ]
 
 // Rotate easter egg messages
@@ -154,23 +154,23 @@ onUnmounted(() => {
 // Dynamic quick links based on permissions
 const quickLinks = computed(() => {
   const links = [
-    { path: '/Home', label: 'Home', icon: 'mdi-home', variant: 'primary' }
+    { path: '/Home', labelKey: 'notFound.quickLinks.home', icon: 'mdi-home', variant: 'primary' }
   ]
 
   if (hasPermission('feature:chat:view')) {
-    links.push({ path: '/chat', label: 'Chat', icon: 'mdi-chat', variant: 'accent' })
+    links.push({ path: '/chat', labelKey: 'notFound.quickLinks.chat', icon: 'mdi-chat', variant: 'accent' })
   }
 
   if (hasPermission('feature:judge:view')) {
-    links.push({ path: '/judge', label: 'Chatbot Arena', icon: 'mdi-sword-cross', variant: 'info' })
+    links.push({ path: '/judge', labelKey: 'notFound.quickLinks.judge', icon: 'mdi-sword-cross', variant: 'info' })
   }
 
   if (hasPermission('feature:ranking:view')) {
-    links.push({ path: '/Ranker', label: 'Ranking', icon: 'mdi-format-list-numbered', variant: 'secondary' })
+    links.push({ path: '/Ranker', labelKey: 'notFound.quickLinks.ranking', icon: 'mdi-format-list-numbered', variant: 'secondary' })
   }
 
   if (hasPermission('admin:dashboard:view')) {
-    links.push({ path: '/admin', label: 'Admin', icon: 'mdi-cog', variant: 'warning' })
+    links.push({ path: '/admin', labelKey: 'notFound.quickLinks.admin', icon: 'mdi-cog', variant: 'warning' })
   }
 
   return links

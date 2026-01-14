@@ -9,9 +9,9 @@
         <!-- Header with Logo -->
         <div class="register-header">
           <img src="@/assets/logo/llars-logo.png" alt="LLARS Logo" class="register-logo" />
-          <h1 class="register-title">Registrierung</h1>
+          <h1 class="register-title">{{ $t('auth.registerTitle') }}</h1>
           <p v-if="campaignName" class="register-subtitle">{{ campaignName }}</p>
-          <p v-else class="register-subtitle">Erstelle deinen Account</p>
+          <p v-else class="register-subtitle">{{ $t('auth.registerSubtitle') }}</p>
         </div>
 
         <!-- Registration Form -->
@@ -20,7 +20,7 @@
             <!-- Referral Code -->
             <v-text-field
               v-model="referralCode"
-              label="Einladungscode"
+              :label="$t('auth.inviteCode')"
               data-testid="referral-code-input"
               autocomplete="off"
               variant="outlined"
@@ -42,7 +42,7 @@
             <!-- Username -->
             <v-text-field
               v-model="username"
-              label="Benutzername"
+              :label="$t('auth.username')"
               data-testid="username-input"
               autocomplete="username"
               variant="outlined"
@@ -57,7 +57,7 @@
             <!-- Email -->
             <v-text-field
               v-model="email"
-              label="E-Mail"
+              :label="$t('auth.email')"
               type="email"
               data-testid="email-input"
               autocomplete="email"
@@ -73,7 +73,7 @@
             <!-- Password -->
             <v-text-field
               v-model="password"
-              label="Passwort"
+              :label="$t('auth.password')"
               data-testid="password-input"
               autocomplete="new-password"
               variant="outlined"
@@ -82,7 +82,7 @@
               :type="showPassword ? 'text' : 'password'"
               :disabled="isRegistering"
               :rules="passwordRules"
-              hint="Mindestens 8 Zeichen"
+              :hint="$t('auth.passwordHint')"
               class="register-field"
               hide-details="auto"
             >
@@ -98,7 +98,7 @@
             <!-- Confirm Password -->
             <v-text-field
               v-model="passwordConfirm"
-              label="Passwort bestätigen"
+              :label="$t('auth.passwordConfirm')"
               data-testid="password-confirm-input"
               autocomplete="new-password"
               variant="outlined"
@@ -115,7 +115,7 @@
             <!-- Display Name (Optional) -->
             <v-text-field
               v-model="displayName"
-              label="Anzeigename (optional)"
+              :label="$t('auth.displayNameOptional')"
               data-testid="display-name-input"
               autocomplete="name"
               variant="outlined"
@@ -137,7 +137,7 @@
               class="register-button"
               data-testid="register-btn"
             >
-              Registrieren
+              {{ $t('auth.register') }}
             </LBtn>
           </v-form>
 
@@ -170,7 +170,7 @@
         <div class="register-footer">
           <router-link to="/login" class="login-link">
             <v-icon size="small" class="mr-1">mdi-arrow-left</v-icon>
-            Bereits registriert? Anmelden
+            {{ $t('auth.loginLink') }}
           </router-link>
         </div>
       </div>
@@ -182,6 +182,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useTheme } from 'vuetify'
+import { useI18n } from 'vue-i18n'
 import { useMobile } from '@/composables/useMobile'
 import { useReferralSystem } from '@/composables/useReferralSystem'
 
@@ -195,6 +196,7 @@ const props = defineProps({
 const theme = useTheme()
 const isDarkMode = computed(() => theme.global.current.value.dark)
 const { isMobile, isIOS } = useMobile()
+const { t } = useI18n()
 
 const router = useRouter()
 const route = useRoute()
@@ -222,24 +224,24 @@ const codeFromUrl = ref(false)
 
 // Validation rules
 const usernameRules = [
-  v => !!v || 'Benutzername ist erforderlich',
-  v => v.length >= 3 || 'Mindestens 3 Zeichen',
-  v => /^[a-zA-Z0-9_-]+$/.test(v) || 'Nur Buchstaben, Zahlen, _ und - erlaubt'
+  v => !!v || t('validation.required'),
+  v => v.length >= 3 || t('validation.minLength', { min: 3 }),
+  v => /^[a-zA-Z0-9_-]+$/.test(v) || t('auth.validation.usernamePattern')
 ]
 
 const emailRules = [
-  v => !!v || 'E-Mail ist erforderlich',
-  v => /.+@.+\..+/.test(v) || 'Ungültige E-Mail-Adresse'
+  v => !!v || t('validation.required'),
+  v => /.+@.+\..+/.test(v) || t('validation.invalidEmail')
 ]
 
 const passwordRules = [
-  v => !!v || 'Passwort ist erforderlich',
-  v => v.length >= 8 || 'Mindestens 8 Zeichen'
+  v => !!v || t('validation.required'),
+  v => v.length >= 8 || t('validation.minLength', { min: 8 })
 ]
 
 const passwordConfirmRules = [
-  v => !!v || 'Bitte Passwort bestätigen',
-  v => v === password.value || 'Passwörter stimmen nicht überein'
+  v => !!v || t('validation.required'),
+  v => v === password.value || t('auth.validation.passwordMismatch')
 ]
 
 // Check if form is valid
@@ -258,7 +260,7 @@ onMounted(async () => {
   // Check if registration is enabled
   const enabled = await referral.checkRegistrationStatus()
   if (!enabled) {
-    errorMessage.value = 'Die Selbst-Registrierung ist derzeit deaktiviert.'
+    errorMessage.value = t('auth.errors.registrationDisabled')
     return
   }
 
@@ -293,7 +295,7 @@ async function validateCode() {
     assignedRole.value = result.role || ''
   } else {
     codeValid.value = false
-    codeError.value = result.error || 'Ungültiger Code'
+    codeError.value = result.error || t('auth.errors.invalidCode')
     campaignName.value = ''
   }
 }
@@ -326,7 +328,7 @@ async function handleRegister() {
       display_name: displayName.value || username.value
     })
 
-    successMessage.value = 'Registrierung erfolgreich! Du wirst zur Anmeldung weitergeleitet...'
+    successMessage.value = t('auth.messages.registrationSuccess')
 
     // Redirect to login after success
     setTimeout(() => {
@@ -337,7 +339,7 @@ async function handleRegister() {
     }, 2000)
 
   } catch (e) {
-    errorMessage.value = e.message || 'Registrierung fehlgeschlagen'
+    errorMessage.value = e.message || t('auth.errors.registrationFailed')
   } finally {
     isRegistering.value = false
   }

@@ -188,14 +188,12 @@ const sizeClasses = computed(() => ({
 }
 
 @keyframes llars-loading-progress {
-  0% {
+  0%,
+  100% {
     transform: translateX(-10%);
   }
   50% {
-    transform: translateX(70%);
-  }
-  100% {
-    transform: translateX(110%);
+    transform: translateX(150%);
   }
 }
 

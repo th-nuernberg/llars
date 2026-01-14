@@ -7,22 +7,11 @@
 
 import { ref, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { LANGUAGE_STORAGE_KEY, DEFAULT_LANGUAGE, SUPPORTED_LANGUAGES } from '@/i18n'
+import { LANGUAGE_STORAGE_KEY, SUPPORTED_LANGUAGES, getInitialLanguage } from '@/i18n'
+import { logI18nParams } from '@/utils/logI18n'
 
 // Shared state (singleton pattern - same as useAppTheme)
-const currentLanguage = ref(DEFAULT_LANGUAGE)
-
-// Initialize from localStorage on module load
-if (typeof window !== 'undefined') {
-  try {
-    const saved = localStorage.getItem(LANGUAGE_STORAGE_KEY)
-    if (saved && SUPPORTED_LANGUAGES.includes(saved)) {
-      currentLanguage.value = saved
-    }
-  } catch (e) {
-    // localStorage not available
-  }
-}
+const currentLanguage = ref(getInitialLanguage())
 
 /**
  * Composable for managing application language
@@ -52,7 +41,7 @@ export function useLanguage() {
    */
   const setLanguage = (lang) => {
     if (!SUPPORTED_LANGUAGES.includes(lang)) {
-      console.warn(`Invalid language: ${lang}`)
+      logI18nParams('warn', 'logs.language.invalid', { lang })
       return
     }
 
@@ -71,7 +60,7 @@ export function useLanguage() {
       document.documentElement.setAttribute('lang', lang)
     }
 
-    console.log(`Language changed to: ${lang}`)
+    logI18nParams('log', 'logs.language.changed', { lang })
   }
 
   /**
@@ -111,21 +100,11 @@ export function useLanguage() {
 export function initLanguage() {
   if (typeof window === 'undefined') return
 
-  // Load saved language preference
-  let savedLang = DEFAULT_LANGUAGE
-  try {
-    const stored = localStorage.getItem(LANGUAGE_STORAGE_KEY)
-    if (stored && SUPPORTED_LANGUAGES.includes(stored)) {
-      savedLang = stored
-    }
-  } catch (e) {
-    // localStorage not available
-  }
-
+  const savedLang = getInitialLanguage()
   currentLanguage.value = savedLang
 
   // Set HTML lang attribute for accessibility and SEO
   document.documentElement.setAttribute('lang', savedLang)
 
-  console.log(`Language initialized: ${savedLang}`)
+  logI18nParams('log', 'logs.language.initialized', { lang: savedLang })
 }

@@ -19,6 +19,7 @@ import Datenschutz from "@/components/Orga/Datenschutz.vue";
 import Kontakt from "@/components/Orga/Kontakt.vue";
 import Documentation from "@/components/Orga/Documentation.vue";
 import { useAuth } from "@/composables/useAuth";
+import { logI18n } from "@/utils/logI18n";
 
 import AdminTester from "@/components/Admin/AdminTester.vue";
 
@@ -58,13 +59,10 @@ import KaimoCaseEditor from "@/components/Kaimo/KaimoCaseEditor.vue";
 // Markdown Collab
 import MarkdownCollabHome from "@/views/MarkdownCollab/MarkdownCollabHome.vue";
 import MarkdownCollabWorkspace from "@/views/MarkdownCollab/MarkdownCollabWorkspace.vue";
-// LaTeX Collab
-import LatexCollabHome from "@/views/LatexCollab/LatexCollabHome.vue";
-import LatexCollabWorkspace from "@/views/LatexCollab/LatexCollabWorkspace.vue";
 
-// LaTeX Collab AI (Test)
-import LatexCollabAIHome from "@/views/LatexCollabAI/LatexCollabAIHome.vue";
-import LatexCollabAIWorkspace from "@/views/LatexCollabAI/LatexCollabAIWorkspace.vue";
+// LaTeX Collab (mit KI-Features)
+import LatexCollabHome from "@/views/LatexCollabAI/LatexCollabAIHome.vue";
+import LatexCollabWorkspace from "@/views/LatexCollabAI/LatexCollabAIWorkspace.vue";
 
 // Evaluation Hub
 import EvaluationHub from "@/components/Evaluation/EvaluationHub.vue";
@@ -152,15 +150,10 @@ const routes = [
     { path: '/MarkdownCollab/workspace/:workspaceId', name: 'MarkdownCollabWorkspace', component: MarkdownCollabWorkspace, meta: { requiresAuth: true } },
     { path: '/MarkdownCollab/workspace/:workspaceId/document/:documentId', name: 'MarkdownCollabWorkspaceDocument', component: MarkdownCollabWorkspace, meta: { requiresAuth: true } },
 
-    // LaTeX Collab
+    // LaTeX Collab (mit optionalen KI-Features)
     { path: '/LatexCollab', name: 'LatexCollabHome', component: LatexCollabHome, meta: { requiresAuth: true } },
     { path: '/LatexCollab/workspace/:workspaceId', name: 'LatexCollabWorkspace', component: LatexCollabWorkspace, meta: { requiresAuth: true } },
     { path: '/LatexCollab/workspace/:workspaceId/document/:documentId', name: 'LatexCollabWorkspaceDocument', component: LatexCollabWorkspace, meta: { requiresAuth: true } },
-
-    // LaTeX Collab AI (Test - KI-Schreibassistent)
-    { path: '/LatexCollabAI', name: 'LatexCollabAIHome', component: LatexCollabAIHome, meta: { requiresAuth: true } },
-    { path: '/LatexCollabAI/workspace/:workspaceId', name: 'LatexCollabAIWorkspace', component: LatexCollabAIWorkspace, meta: { requiresAuth: true } },
-    { path: '/LatexCollabAI/workspace/:workspaceId/document/:documentId', name: 'LatexCollabAIWorkspaceDocument', component: LatexCollabAIWorkspace, meta: { requiresAuth: true } },
 
     { path: '/TempTestPage', component: TempTestPage, meta: { requiresAuth: true } }
 
@@ -203,26 +196,26 @@ router.beforeEach((to, from, next) => {
         auth.logout();
     }
 
-    console.log("Navigating to:", to.path);
-    console.log("Authenticated:", isAuthenticated);
-    console.log("Is admin:", isAdmin);
+    logI18n("log", "logs.router.navigateTo", to.path);
+    logI18n("log", "logs.router.authenticated", isAuthenticated);
+    logI18n("log", "logs.router.isAdmin", isAdmin);
 
     // If route requires authentication and user is not authenticated
     if (requiresAuth && !isAuthenticated) {
-        console.log("Route requires auth, redirecting to login");
+        logI18n("log", "logs.router.requireAuthRedirect");
         next({ path: '/login', query: { redirect: to.fullPath } });
         return;
     }
 
     // If route requires admin role
     if (requiresAdmin && !isAdmin) {
-        console.log("User is not admin, redirecting to Home");
+        logI18n("log", "logs.router.requireAdminRedirect");
         next('/Home');
         return;
     }
 
     if (requiresAdminOrChatbotManager && !(isAdmin || isChatbotManager)) {
-        console.log("User is not admin or chatbot manager, redirecting to Home");
+        logI18n("log", "logs.router.requireAdminOrManagerRedirect");
         next('/Home');
         return;
     }

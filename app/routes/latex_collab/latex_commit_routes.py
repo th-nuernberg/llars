@@ -5,7 +5,7 @@ Handles version control: commits, baselines, rollback, and change tracking.
 """
 
 from datetime import datetime, timezone
-from difflib import unified_diff
+from difflib import SequenceMatcher
 import logging
 
 from flask import Blueprint, jsonify, request, current_app
@@ -30,6 +30,36 @@ from services.latex_compile_service import build_workspace_snapshot
 logger = logging.getLogger(__name__)
 
 latex_commit_bp = Blueprint("latex_commit", __name__, url_prefix="/api/latex-collab")
+
+
+def calculate_char_diff(baseline: str, current: str) -> tuple[int, int]:
+    """
+    Calculate the number of inserted and deleted characters between two strings.
+
+    Uses SequenceMatcher to find matching blocks and calculates the actual
+    character-level insertions and deletions.
+
+    Returns:
+        tuple: (insertions, deletions) - number of characters added/removed
+    """
+    if baseline == current:
+        return 0, 0
+
+    matcher = SequenceMatcher(None, baseline, current, autojunk=False)
+    insertions = 0
+    deletions = 0
+
+    for tag, i1, i2, j1, j2 in matcher.get_opcodes():
+        if tag == 'replace':
+            deletions += i2 - i1
+            insertions += j2 - j1
+        elif tag == 'delete':
+            deletions += i2 - i1
+        elif tag == 'insert':
+            insertions += j2 - j1
+        # 'equal' tags don't contribute to changes
+
+    return insertions, deletions
 
 
 # ============================================================================
@@ -388,6 +418,28 @@ def get_workspace_changes(workspace_id: int):
         raise NotFoundError("Workspace not found")
     require_workspace_access(ws, username)
 
+    # Get the latest workspace snapshot to detect renames/moves
+    latest_workspace_commit = (
+        LatexCommit.query
+        .filter_by(workspace_id=workspace_id)
+        .filter(LatexCommit.workspace_snapshot.isnot(None))
+        .order_by(LatexCommit.created_at.desc(), LatexCommit.id.desc())
+        .first()
+    )
+
+    # Build lookup from snapshot: doc_id -> {title, path, parent_id}
+    snapshot_by_id = {}
+    if latest_workspace_commit and latest_workspace_commit.workspace_snapshot:
+        snapshot = latest_workspace_commit.workspace_snapshot
+        if isinstance(snapshot, dict):
+            for node in snapshot.get("nodes", []):
+                node_id = node.get("id")
+                if node_id:
+                    snapshot_by_id[node_id] = {
+                        "title": node.get("title"),
+                        "path": node.get("path"),
+                    }
+
     # Get all non-deleted text files (no asset_id)
     docs = (
         LatexDocument.query
@@ -401,6 +453,7 @@ def get_workspace_changes(workspace_id: int):
     changed_files = []
     for doc in docs:
         current_content = doc.content_text or ""
+        current_path = build_doc_path(doc)
 
         latest_commit = (
             LatexCommit.query
@@ -425,23 +478,43 @@ def get_workspace_changes(workspace_id: int):
 
         baseline = baseline_commit.content_snapshot if baseline_commit else ""
 
-        if current_content != baseline:
-            baseline_lines = baseline.split('\n') if baseline else []
-            current_lines = current_content.split('\n') if current_content else []
+        # Check for content changes
+        content_changed = current_content != baseline
 
-            diff_lines = list(unified_diff(baseline_lines, current_lines, lineterm=''))
-            actual_insertions = sum(1 for line in diff_lines if line.startswith('+') and not line.startswith('+++'))
-            actual_deletions = sum(1 for line in diff_lines if line.startswith('-') and not line.startswith('---'))
+        # Check for rename/move by comparing with snapshot
+        snapshot_info = snapshot_by_id.get(doc.id, {})
+        old_title = snapshot_info.get("title")
+        old_path = snapshot_info.get("path")
+
+        is_renamed = old_title and old_title != doc.title
+        is_moved = old_path and old_path != current_path and not is_renamed
+
+        # Determine status
+        # Status codes: M=Modified, A=Added, R=Renamed, V=Moved (German: Verschoben)
+        if content_changed or is_renamed or is_moved:
+            char_insertions, char_deletions = calculate_char_diff(baseline or "", current_content or "") if content_changed else (0, 0)
+
+            status = "M"  # Default: Modified
+            if not baseline_commit:
+                status = "A"  # Added (new file)
+            elif is_renamed and is_moved:
+                status = "RV"  # Renamed and Moved
+            elif is_renamed:
+                status = "R"  # Renamed
+            elif is_moved:
+                status = "V"  # Moved (Verschoben)
 
             changed_files.append({
                 "id": doc.id,
                 "title": doc.title,
-                "path": build_doc_path(doc),
-                "insertions": actual_insertions,
-                "deletions": actual_deletions,
+                "path": current_path,
+                "insertions": char_insertions,
+                "deletions": char_deletions,
                 "has_baseline": baseline_commit is not None,
                 "baseline_commit_id": baseline_commit.id if baseline_commit else None,
-                "status": "M",  # Modified
+                "status": status,
+                "old_title": old_title if is_renamed else None,
+                "old_path": old_path if is_moved else None,
             })
 
     # Get deleted files (soft-deleted with commits)
@@ -477,14 +550,14 @@ def get_workspace_changes(workspace_id: int):
                 baseline_commit = non_empty_commit
 
         if baseline_commit:
-            # Count lines in the deleted content
-            baseline_lines = (baseline_commit.content_snapshot or "").split('\n')
+            # Count characters in the deleted content
+            baseline_content = baseline_commit.content_snapshot or ""
             deleted_files.append({
                 "id": doc.id,
                 "title": doc.title,
                 "path": build_doc_path(doc),
                 "insertions": 0,
-                "deletions": len(baseline_lines),
+                "deletions": len(baseline_content),
                 "has_baseline": True,
                 "baseline_commit_id": baseline_commit.id,
                 "status": "D",  # Deleted
@@ -551,11 +624,8 @@ def create_workspace_commit(workspace_id: int):
         )
         baseline = latest_commit.content_snapshot if latest_commit else ""
 
-        baseline_lines = baseline.split('\n') if baseline else []
-        current_lines = content_snapshot.split('\n') if content_snapshot else []
-        diff_lines = list(unified_diff(baseline_lines, current_lines, lineterm=''))
-        insertions = sum(1 for line in diff_lines if line.startswith('+') and not line.startswith('+++'))
-        deletions = sum(1 for line in diff_lines if line.startswith('-') and not line.startswith('---'))
+        # Calculate character-level diff for commit summary
+        insertions, deletions = calculate_char_diff(baseline or "", content_snapshot or "")
 
         diff_summary = {
             "insertions": insertions,

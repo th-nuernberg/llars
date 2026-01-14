@@ -7,10 +7,13 @@ Events:
         - latex_collab:unsubscribe: Unsubscribe from workspace list updates
         - latex_collab:subscribe_document: Subscribe to commit updates for a document
         - latex_collab:unsubscribe_document: Unsubscribe from commit updates
+        - latex_collab:subscribe_workspace: Subscribe to workspace-level updates (compile)
+        - latex_collab:unsubscribe_workspace: Unsubscribe from workspace-level updates
 
     Server → Client:
         - latex_collab:workspace_shared: A workspace was shared with the user
         - latex_collab:commit_created: A new commit was created for a document
+        - latex_collab:compile_status: Compile job status update
 """
 
 import logging
@@ -21,6 +24,7 @@ logger = logging.getLogger(__name__)
 
 WORKSPACE_ROOM_PREFIX = "latex_collab_user_"
 DOCUMENT_ROOM_PREFIX = "latex_collab_doc_"
+WORKSPACE_UPDATES_ROOM_PREFIX = "latex_collab_workspace_"
 
 
 def get_workspace_room(user_id: int) -> str:
@@ -29,6 +33,10 @@ def get_workspace_room(user_id: int) -> str:
 
 def get_document_room(document_id: int) -> str:
     return f"{DOCUMENT_ROOM_PREFIX}{document_id}"
+
+
+def get_workspace_updates_room(workspace_id: int) -> str:
+    return f"{WORKSPACE_UPDATES_ROOM_PREFIX}{workspace_id}"
 
 
 def register_latex_collab_events(socketio):
@@ -90,6 +98,34 @@ def register_latex_collab_events(socketio):
         leave_room(room)
         logger.info(f"[LaTeX Collab] Client {request.sid} unsubscribed from commit updates for document {document_id}")
 
+    @socketio.on('latex_collab:subscribe_workspace')
+    def handle_subscribe_workspace(data=None):
+        if data is None:
+            data = {}
+
+        workspace_id = data.get('workspace_id')
+        if not workspace_id:
+            emit('latex_collab:error', {'error': 'workspace_id is required'})
+            return
+
+        room = get_workspace_updates_room(workspace_id)
+        join_room(room)
+        logger.info(f"[LaTeX Collab] Client {request.sid} subscribed to workspace updates for workspace {workspace_id}")
+        emit('latex_collab:subscribed_workspace', {'workspace_id': workspace_id, 'room': room})
+
+    @socketio.on('latex_collab:unsubscribe_workspace')
+    def handle_unsubscribe_workspace(data=None):
+        if data is None:
+            data = {}
+
+        workspace_id = data.get('workspace_id')
+        if not workspace_id:
+            return
+
+        room = get_workspace_updates_room(workspace_id)
+        leave_room(room)
+        logger.info(f"[LaTeX Collab] Client {request.sid} unsubscribed from workspace updates for workspace {workspace_id}")
+
     logger.info("[LaTeX Collab] Socket events registered")
 
 
@@ -109,3 +145,13 @@ def emit_commit_created(socketio, document_id: int, commit: dict):
         socketio.emit('latex_collab:commit_created', {'document_id': document_id, 'commit': commit}, room=room)
     except Exception as exc:
         logger.error(f"[LaTeX Collab] Failed to emit commit_created for document {document_id}: {exc}")
+
+
+def emit_compile_status(socketio, workspace_id: int, job: dict):
+    """Emit a compile status update to all subscribers of a workspace."""
+    try:
+        room = get_workspace_updates_room(workspace_id)
+        socketio.emit('latex_collab:compile_status', {'workspace_id': workspace_id, 'job': job}, room=room)
+        logger.debug(f"[LaTeX Collab] Emitted compile_status for workspace {workspace_id}: {job.get('status')}")
+    except Exception as exc:
+        logger.error(f"[LaTeX Collab] Failed to emit compile_status for workspace {workspace_id}: {exc}")

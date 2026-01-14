@@ -1,6 +1,6 @@
 <template>
   <div class="tree-panel">
-    <div class="tree-header">
+    <div v-if="!hideHeader" class="tree-header">
       <LIcon size="20" class="header-icon">mdi-file-tree</LIcon>
       <span class="header-title">{{ $t('markdownCollab.tree.title') }}</span>
       <div class="header-actions">
@@ -12,7 +12,7 @@
           :title="$t('markdownCollab.tree.actions.newFile')"
           @click="openCreateDialog('file')"
         >
-          <LIcon size="18">mdi-file-document-plus-outline</LIcon>
+          <LIcon size="18">file-plus</LIcon>
         </v-btn>
         <v-btn
           icon
@@ -22,7 +22,7 @@
           :title="$t('markdownCollab.tree.actions.newFolder')"
           @click="openCreateDialog('folder')"
         >
-          <LIcon size="18">mdi-folder-plus-outline</LIcon>
+          <LIcon size="18">folder-plus</LIcon>
         </v-btn>
         <slot name="header-append" />
       </div>
@@ -43,65 +43,38 @@
     <div class="tree-body">
       <v-skeleton-loader v-if="loading" type="list-item@10" class="px-3 pt-2" />
 
-      <div v-else class="tree-scroll px-2 pb-2">
-        <draggable
-          v-if="dragEnabled"
-          :list="localNodes"
-          item-key="id"
-          :group="{ name: 'markdown-tree', pull: true, put: true }"
-          handle=".drag-handle"
-          :animation="150"
-          @change="(evt) => emitMove(evt, null)"
-        >
-          <template #item="{ element }">
-            <div class="drag-wrapper">
-              <span class="drag-handle" :title="$t('markdownCollab.tree.actions.drag')">
-                <LIcon size="14" class="text-medium-emphasis">mdi-drag</LIcon>
-              </span>
-              <MarkdownTreeNode
-                :node="element"
-                :selected-id="selectedId"
-                :expanded-ids="expandedIds"
-                :can-edit="canEdit"
-                :drag-enabled="dragEnabled"
-                :recently-added-ids="recentlyAddedIds"
-                :file-icon="fileIcon"
-                :file-icon-color="fileIconColor"
-                :folder-icon="folderIcon"
-                :folder-open-icon="folderOpenIcon"
-                @select="$emit('select', $event)"
-                @toggle="toggleExpand"
-                @create="(p) => openCreateDialog(p.type, p.parentId)"
-                @rename="openRenameDialog"
-                @remove="openDeleteDialog"
-                @move="$emit('move', $event)"
-              />
-            </div>
-          </template>
-        </draggable>
-
-        <template v-else>
-          <MarkdownTreeNode
-            v-for="node in filteredNodes"
-            :key="node.id"
-            :node="node"
-            :selected-id="selectedId"
-            :expanded-ids="expandedIds"
-            :can-edit="canEdit"
-            :drag-enabled="false"
-            :recently-added-ids="recentlyAddedIds"
-            :file-icon="fileIcon"
-            :file-icon-color="fileIconColor"
-            :folder-icon="folderIcon"
-            :folder-open-icon="folderOpenIcon"
-            @select="$emit('select', $event)"
-            @toggle="toggleExpand"
-            @create="(p) => openCreateDialog(p.type, p.parentId)"
-            @rename="openRenameDialog"
-            @remove="openDeleteDialog"
-            @move="$emit('move', $event)"
-          />
-        </template>
+      <div v-else class="tree-scroll">
+        <MarkdownTreeNode
+          v-for="(node, index) in displayNodes"
+          :key="node.id"
+          :node="node"
+          :selected-id="selectedId"
+          :expanded-ids="expandedIds"
+          :can-edit="canEdit"
+          :drag-enabled="dragEnabled"
+          :recently-added-ids="recentlyAddedIds"
+          :file-icon="fileIcon"
+          :file-icon-color="fileIconColor"
+          :folder-icon="folderIcon"
+          :folder-open-icon="folderOpenIcon"
+          :sibling-index="index"
+          :sibling-count="displayNodes.length"
+          @select="$emit('select', $event)"
+          @toggle="toggleExpand"
+          @create="(p) => openCreateDialog(p.type, p.parentId)"
+          @rename="openRenameDialog"
+          @remove="openDeleteDialog"
+          @move="$emit('move', $event)"
+        />
+        <!-- Drop zone at END of root level -->
+        <div
+          v-if="dragEnabled && displayNodes.length > 0"
+          class="root-drop-end"
+          @dragover.prevent="onRootDragOver"
+          @dragleave="onRootDragLeave"
+          @drop="onRootDrop"
+          :class="{ active: rootDropActive }"
+        />
       </div>
     </div>
 
@@ -109,7 +82,7 @@
     <v-dialog v-model="createDialog" max-width="520">
       <v-card>
         <v-card-title class="d-flex align-center">
-          <LIcon class="mr-2">{{ createType === 'folder' ? 'mdi-folder-plus-outline' : 'mdi-file-document-plus-outline' }}</LIcon>
+          <LIcon class="mr-2">{{ createType === 'folder' ? 'folder-plus' : 'file-plus' }}</LIcon>
           {{ createType === 'folder' ? $t('markdownCollab.tree.dialogs.createFolderTitle') : $t('markdownCollab.tree.dialogs.createFileTitle') }}
           <v-spacer />
           <LIconBtn icon="mdi-close" :tooltip="$t('common.close')" @click="createDialog = false" />
@@ -202,7 +175,6 @@
 
 <script setup>
 import { computed, ref, watch } from 'vue'
-import draggable from 'vuedraggable'
 import { useI18n } from 'vue-i18n'
 import MarkdownTreeNode from './MarkdownTreeNode.vue'
 
@@ -217,7 +189,8 @@ const props = defineProps({
   fileIcon: { type: String, default: 'mdi-language-markdown' },
   fileIconColor: { type: String, default: 'info' },
   folderIcon: { type: String, default: 'mdi-folder' },
-  folderOpenIcon: { type: String, default: 'mdi-folder-open' }
+  folderOpenIcon: { type: String, default: 'mdi-folder-open' },
+  hideHeader: { type: Boolean, default: false }
 })
 
 const emit = defineEmits(['select', 'create', 'rename', 'remove', 'move'])
@@ -266,6 +239,38 @@ const dragEnabled = computed(() => props.canEdit && filterText.value.trim().leng
 const filePlaceholderText = computed(() => props.filePlaceholder || t('markdownCollab.tree.placeholders.file'))
 const folderPlaceholderText = computed(() => t('markdownCollab.tree.placeholders.folder'))
 
+// Root drop zone state
+const rootDropActive = ref(false)
+
+function onRootDragOver(e) {
+  e.preventDefault()
+  rootDropActive.value = true
+  e.dataTransfer.dropEffect = 'move'
+}
+
+function onRootDragLeave() {
+  rootDropActive.value = false
+}
+
+function onRootDrop(e) {
+  e.preventDefault()
+  rootDropActive.value = false
+
+  if (!dragEnabled.value) return
+
+  try {
+    const data = JSON.parse(e.dataTransfer.getData('text/plain'))
+    // Drop at end of root level
+    emit('move', {
+      id: data.id,
+      parentId: null,
+      orderIndex: displayNodes.value.length
+    })
+  } catch (err) {
+    console.error('Root drop error:', err)
+  }
+}
+
 function toggleExpand(id) {
   const next = new Set(expandedIds.value)
   if (next.has(id)) next.delete(id)
@@ -299,14 +304,13 @@ function filterTree(nodes, query) {
 
 const filteredNodes = computed(() => filterTree(localNodes.value, filterText.value))
 
-function emitMove(evt, parentId) {
-  const moved = evt?.moved
-  const added = evt?.added
-  const element = moved?.element || added?.element
-  const newIndex = moved?.newIndex ?? added?.newIndex
-  if (!element || typeof newIndex !== 'number') return
-  emit('move', { id: element.id, parentId: parentId ?? null, orderIndex: newIndex })
-}
+// Use filtered nodes when searching, otherwise use localNodes for drag-and-drop
+const displayNodes = computed(() => {
+  if (filterText.value.trim().length > 0) {
+    return filteredNodes.value
+  }
+  return localNodes.value
+})
 
 // Create dialog state
 const createDialog = ref(false)
@@ -447,26 +451,7 @@ function submitDelete() {
   height: 100%;
   overflow-y: auto;
   overflow-x: hidden;
-}
-
-.drag-wrapper {
-  display: flex;
-  align-items: stretch;
-}
-
-.drag-handle {
-  width: 18px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  cursor: grab;
-  user-select: none;
-  opacity: 0.5;
-  flex-shrink: 0;
-}
-
-.drag-wrapper:hover .drag-handle {
-  opacity: 0.9;
+  padding: 4px 8px;
 }
 
 .tree-search :deep(.v-field__outline) {
@@ -478,5 +463,31 @@ function submitDelete() {
   .header-title {
     display: none;
   }
+}
+
+/* Root drop zone at end of tree */
+.root-drop-end {
+  height: 20px;
+  margin: 4px 8px;
+  position: relative;
+  cursor: default;
+}
+
+.root-drop-end::after {
+  content: '';
+  position: absolute;
+  left: 4px;
+  right: 4px;
+  top: 50%;
+  height: 3px;
+  transform: translateY(-50%);
+  border-radius: 2px;
+  background: transparent;
+  transition: all 0.1s ease;
+}
+
+.root-drop-end.active::after {
+  background: var(--llars-primary, #b0ca97);
+  box-shadow: 0 0 6px rgba(176, 202, 151, 0.6);
 }
 </style>

@@ -12,15 +12,18 @@
       :is-mobile="isMobile"
       v-model:mobile-open="mobileSidebarOpen"
       v-model:tree-collapsed="treeCollapsed"
+      v-model:files-collapsed="filesCollapsed"
+      v-model:git-collapsed="gitCollapsed"
+      v-model:outline-collapsed="outlineCollapsed"
       :workspace-id="workspaceId"
       :nodes="treeNodes"
       :selected-id="selectedNodeId"
       :loading="isLoading('tree')"
       :can-edit="hasPermission('feature:latex_collab:edit')"
+      :can-commit="hasPermission('feature:latex_collab:edit')"
       :recently-added-ids="recentlyAddedNodeIds"
       :tree-panel-width="treePanelWidth"
       :resizing-tree="resizingTree"
-      :outline-collapsed="outlineCollapsed"
       :outline-flat-items="outlineFlatItems"
       :outline-empty-label="outlineEmptyLabel"
       :is-outline-item-collapsed="isOutlineItemCollapsed"
@@ -33,9 +36,10 @@
       @start-tree-resize="startTreeResize"
       @navigate-home="router.push('/Home')"
       @navigate-workspaces="router.push(routeBase)"
-      @toggle-outline-collapsed="toggleOutlineCollapsed"
       @toggle-outline-item="toggleOutlineItem"
       @jump-to-outline-item="jumpToOutlineItem"
+      @open-git-detail="gitDetailDialog = true"
+      @committed="refreshCommits"
     />
 
     <!-- Main Content Area -->
@@ -146,9 +150,13 @@
                   @git-summary="(s) => (gitSummary = s)"
                   @sync-request="handleEditorSyncRequest"
                   @ai-command="(cmd) => emit('ai-command', cmd)"
+                  @ai-action="(e) => emit('ai-action', e)"
                   @request-completion="(req) => emit('request-completion', req)"
                   @update:ghost-text-enabled="(val) => emit('update:ghostTextEnabled', val)"
                   @document-saved="handleDocumentSaved"
+                  @document-updated="handleDocumentUpdated"
+                  @diff-calculated="handleDiffCalculated"
+                  @request-comment="(range) => openCommentDialog(range)"
                 />
               </div>
 
@@ -315,19 +323,6 @@
               </div>
             </div>
 
-            <!-- Git Panel - Workspace-Level Multi-File Commits -->
-            <LatexWorkspaceGitPanel
-              ref="gitPanelRef"
-              :workspace-id="workspaceId"
-              :selected-document-id="selectedNodeId"
-              :can-commit="hasPermission('feature:latex_collab:edit')"
-              :get-content="getEditorContent"
-              :before-commit="handleBeforeCommit"
-              :before-rollback="handleBeforeRollback"
-              @committed="refreshCommits"
-              @rollback="handleRollback"
-              @restored="handleRestored"
-            />
           </div>
         </template>
       </div>
@@ -346,6 +341,20 @@
       :can-remove="canShareWorkspace"
       @invite="inviteMember"
       @remove="removeMember"
+    />
+
+    <!-- Git Detail Dialog -->
+    <GitDetailDialog
+      v-model="gitDetailDialog"
+      :workspace-id="workspaceId"
+      :selected-document-id="selectedNodeId"
+      :can-commit="hasPermission('feature:latex_collab:edit')"
+      :get-content="getEditorContent"
+      :before-commit="handleBeforeCommit"
+      :before-rollback="handleBeforeRollback"
+      @committed="refreshCommits"
+      @rollback="handleRollback"
+      @restored="handleRestored"
     />
 
     <v-dialog v-model="commentDialog" max-width="520">
@@ -392,7 +401,7 @@
     <v-dialog v-model="zoteroDialog" max-width="600">
       <v-card class="zotero-dialog">
         <v-card-title class="d-flex align-center">
-          <LIcon class="mr-2" color="primary">mdi-book-open-page-variant</LIcon>
+          <LIcon class="mr-2">zotero</LIcon>
           <div>
             <div>{{ $t('latexCollab.zotero.title') }}</div>
             <div class="text-caption text-medium-emphasis">{{ workspace?.name }}</div>
@@ -429,10 +438,11 @@ import { useActiveDuration, useVisibilityTracker, useScrollDepth } from '@/compo
 import MarkdownTreePanel from '@/components/MarkdownCollab/MarkdownTreePanel.vue'
 import LatexEditorPane from '@/components/LatexCollab/LatexEditorPane.vue'
 import LatexPdfViewer from '@/components/LatexCollab/LatexPdfViewer.vue'
-import LatexWorkspaceGitPanel from '@/components/LatexCollab/LatexWorkspaceGitPanel.vue'
+import GitDetailDialog from '@/components/LatexCollab/Git/GitDetailDialog.vue'
 import ZoteroPanel from '@/components/LatexCollab/Zotero/ZoteroPanel.vue'
 import { AUTH_STORAGE_KEYS, getAuthStorageItem } from '@/utils/authStorage'
 import { getAvatarUrl, formatDisplayName, formatRelativeDate } from '@/utils/userUtils'
+import { getSocket } from '@/services/socketService'
 
 // Local composables - now actually used!
 import {
@@ -472,7 +482,7 @@ const props = defineProps({
 })
 
 // Emits for parent communication (used by AI wrapper)
-const emit = defineEmits(['document-change', 'ai-command', 'request-completion', 'update:ghostTextEnabled'])
+const emit = defineEmits(['document-change', 'ai-command', 'ai-action', 'request-completion', 'update:ghostTextEnabled'])
 
 const route = useRoute()
 const router = useRouter()
@@ -505,17 +515,21 @@ const currentText = ref('')
 const gitSummary = ref({ users: [], totalChangedLines: 0 })
 const editorRef = ref(null)
 const pdfViewerRef = ref(null)
-const gitPanelRef = ref(null)
 const pendingDocId = ref(null)
 const pendingJump = ref(null)
-let gitPanelRefreshTimer = null
-let gitPanelRefreshInFlight = false
 
 // Panel states
 const treeCollapsed = ref(localStorage.getItem(TREE_COLLAPSED_KEY) === 'true')
 const treePanelWidth = ref(parseInt(localStorage.getItem(TREE_WIDTH_KEY)) || 280)
 const viewMode = ref(localStorage.getItem(VIEWMODE_KEY) || 'split')
 const resizingTree = ref(false)
+
+// Panel collapse states (for unified tree stack panels)
+const FILES_COLLAPSED_KEY = 'latex-collab-files-collapsed'
+const GIT_COLLAPSED_KEY = 'latex-collab-git-collapsed'
+const filesCollapsed = ref(localStorage.getItem(FILES_COLLAPSED_KEY) === 'true')
+const gitCollapsed = ref(localStorage.getItem(GIT_COLLAPSED_KEY) === 'true')
+const gitDetailDialog = ref(false)
 // Outline state - initialized later via useLatexOutline composable after selectedNode is available
 const {
   panesContainerRef,
@@ -592,6 +606,14 @@ watch(treeCollapsed, (val) => {
   localStorage.setItem(TREE_COLLAPSED_KEY, val.toString())
 })
 
+watch(filesCollapsed, (val) => {
+  localStorage.setItem(FILES_COLLAPSED_KEY, val.toString())
+})
+
+watch(gitCollapsed, (val) => {
+  localStorage.setItem(GIT_COLLAPSED_KEY, val.toString())
+})
+
 // outlineCollapsed watcher is now handled by useLatexOutline composable
 // autoCompileEnabled, autoCompileDelay watchers are now handled by useLatexCompile composable
 // syncEnabled watcher is now handled by useLatexSync composable
@@ -628,6 +650,7 @@ const {
     // Add the new node to the tree
     const newNode = { ...data.node, type: data.node.type }
     nodesFlat.value = [...nodesFlat.value, newNode]
+    // Git panel updates are now handled by useGitStatus composable via socket events
   },
   onNodeRenamed: (data) => {
     // Update the node title in the tree
@@ -636,6 +659,7 @@ const {
       node.title = data.newTitle
       nodesFlat.value = [...nodesFlat.value]
     }
+    // Git panel updates are now handled by useGitStatus composable via socket events
   },
   onNodeDeleted: (data) => {
     // Remove the node from the tree (and children recursively)
@@ -650,6 +674,7 @@ const {
     if (routeDocId.value === data.nodeId) {
       router.push(`${routeBase.value}/workspace/${workspaceId.value}`)
     }
+    // Git panel updates are now handled by useGitStatus composable via socket events
   },
   onNodeMoved: (data) => {
     // Update node position in tree
@@ -661,6 +686,46 @@ const {
     }
   }
 })
+
+// Compile status socket for real-time compile updates
+let compileSocket = null
+let compileSocketConnectHandler = null
+
+function setupCompileSocket() {
+  compileSocket = getSocket()
+  if (!compileSocket) return
+
+  // Handler for compile status updates
+  const onCompileStatus = (data) => {
+    if (data?.workspace_id !== workspaceId.value) return
+    handleCompileStatusUpdate(data)
+  }
+
+  compileSocket.on('latex_collab:compile_status', onCompileStatus)
+
+  // Subscribe to workspace updates when connected
+  compileSocketConnectHandler = () => {
+    compileSocket.emit('latex_collab:subscribe_workspace', { workspace_id: workspaceId.value })
+  }
+
+  if (compileSocket.connected) {
+    compileSocketConnectHandler()
+  }
+  compileSocket.on('connect', compileSocketConnectHandler)
+}
+
+function cleanupCompileSocket() {
+  if (!compileSocket) return
+  compileSocket.off('latex_collab:compile_status')
+  if (compileSocketConnectHandler) {
+    compileSocket.off('connect', compileSocketConnectHandler)
+  }
+  if (workspaceId.value) {
+    compileSocket.emit('latex_collab:unsubscribe_workspace', { workspace_id: workspaceId.value })
+  }
+  compileSocket = null
+  compileSocketConnectHandler = null
+}
 
 const selectedNodeId = computed(() => routeDocId.value)
 const selectedNode = computed(() => {
@@ -759,7 +824,8 @@ const {
   loadCompileStatus,
   loadCommitOptions,
   scheduleAutoCompile,
-  triggerCompile
+  triggerCompile,
+  handleCompileStatusUpdate
 } = useLatexCompile({
   workspaceId,
   selectedNode,
@@ -856,6 +922,9 @@ onMounted(async () => {
   // Connect to workspace socket for real-time tree updates
   wsConnect()
 
+  // Connect to compile status socket for real-time compile updates
+  setupCompileSocket()
+
   // Auto-select first file if none selected
   if (!routeDocId.value) {
     const preferred = nodesFlat.value.find(n => n.id === workspace.value?.main_document_id && n.type === 'file' && !n.asset_id)
@@ -878,34 +947,14 @@ onMounted(async () => {
 onUnmounted(() => {
   document.removeEventListener('mousemove', onTreeMouseMove)
   document.removeEventListener('mouseup', stopTreeResize)
-  if (gitPanelRefreshTimer) clearTimeout(gitPanelRefreshTimer)
+  // Cleanup compile status socket
+  cleanupCompileSocket()
   // Timer cleanups are now handled by composables:
   // - autoCompileTimer, compilePollTimer by useLatexCompile
   // - syncTimer by useLatexSync
   // - outlineUpdateTimer by useLatexOutline
+  // - Git panel refresh is now handled by useGitStatus composable in GitStatusWidget
 })
-
-async function refreshGitPanel({ flush = true } = {}) {
-  if (gitPanelRefreshInFlight || !gitPanelRef.value?.checkForChanges) return
-  gitPanelRefreshInFlight = true
-  try {
-    if (flush && editorRef.value?.flushDocumentState) {
-      await editorRef.value.flushDocumentState()
-    }
-    await gitPanelRef.value.checkForChanges()
-  } finally {
-    gitPanelRefreshInFlight = false
-  }
-}
-
-function scheduleGitPanelRefresh({ flush = true, delay = 1200 } = {}) {
-  if (!gitPanelRef.value?.checkForChanges) return
-  if (gitPanelRefreshTimer) clearTimeout(gitPanelRefreshTimer)
-  gitPanelRefreshTimer = setTimeout(() => {
-    gitPanelRefreshTimer = null
-    refreshGitPanel({ flush })
-  }, delay)
-}
 
 function onEditorContentChange(text) {
   currentText.value = text
@@ -915,7 +964,8 @@ function onEditorContentChange(text) {
   }
   scheduleOutlineUpdate(text)
   scheduleAutoCompile()
-  scheduleGitPanelRefresh()
+  // Git panel is updated via WebSocket 'document_saved' events (see handleDocumentSaved)
+  // No need for polling-based refresh here
   // Emit for AI wrapper component
   emit('document-change', text)
 }
@@ -943,11 +993,43 @@ function onEditorContentChange(text) {
  * @param {string} data.savedAt - ISO timestamp of save
  */
 function handleDocumentSaved(data) {
-  console.log('[LatexCollabWorkspace] document_saved received:', data)
-  // Only refresh Git panel if the saved document belongs to our workspace
-  if (data.workspaceId === workspaceId.value) {
-    gitPanelRef.value?.checkForChanges?.()
-  }
+  console.log('[LatexCollabWorkspace] document_saved empfangen:', data)
+  // Git panel updates are now handled by useGitStatus composable via socket events
+  // The composable automatically listens for 'latex_collab:commit_created' events
+}
+
+/**
+ * Handle document_updated events from YJS server.
+ * Note: Server no longer sends diff data - clients calculate diff locally.
+ *
+ * @param {Object} data - Event payload from YJS server
+ * @param {number} data.documentId - Updated document ID
+ * @param {number} data.workspaceId - Workspace containing the document
+ * @param {string} data.kind - Document type ('latex')
+ * @param {number} data.timestamp - Event timestamp
+ */
+function handleDocumentUpdated(data) {
+  // Server event is now lightweight - local diff is handled by handleDiffCalculated
+  // This event can be used for other purposes like activity indicators
+}
+
+/**
+ * Handle local diff calculation from LatexEditorPane for INSTANT Git panel updates.
+ *
+ * This is called on every YJS update with diff calculated locally against
+ * the baseline stored in the YJS document. No server roundtrip required.
+ *
+ * @param {Object} data - Diff data from local calculation
+ * @param {number} data.documentId - Document ID
+ * @param {number} data.insertions - Characters inserted since baseline
+ * @param {number} data.deletions - Characters deleted since baseline
+ * @param {boolean} data.hasChanges - Whether document differs from baseline
+ */
+function handleDiffCalculated(data) {
+  // Real-time diff updates are now handled by the GitStatusWidget's useGitStatus composable
+  // which listens to socket events directly. This function is kept for potential future use.
+  if (!data.documentId) return
+  console.log('[LatexCollabWorkspace] Diff calculated:', data.documentId, data.insertions, data.deletions)
 }
 
 function authHeaders() {
@@ -971,17 +1053,17 @@ function formatDate(iso) {
 // Zotero library event handlers
 async function handleZoteroLibraryAdded(library) {
   // Refresh the file tree to show the new .bib file
-  await loadDocuments()
+  await loadTree()
 }
 
 async function handleZoteroLibrarySynced(library) {
   // Refresh the file tree to reflect updated .bib content
-  await loadDocuments()
+  await loadTree()
 }
 
 async function handleZoteroLibraryRemoved(library) {
   // The .bib file is kept but no longer synced - no tree refresh needed
-  console.log('Zotero library removed:', library.library_name)
+  console.log('Zotero-Bibliothek entfernt:', library.library_name)
 }
 
 function buildTree(flat) {
@@ -1074,7 +1156,20 @@ async function loadTree() {
   })
 }
 
+// Debounce to prevent double-click issues
+let lastSelectTime = 0
+let lastSelectNodeId = null
+
 function handleSelectNode(nodeId) {
+  // Prevent duplicate clicks within 100ms on the same node
+  const now = Date.now()
+  if (nodeId === lastSelectNodeId && now - lastSelectTime < 100) {
+    console.log('[handleSelectNode] Doppelten Klick auf nodeId ignoriert:', nodeId)
+    return
+  }
+  lastSelectTime = now
+  lastSelectNodeId = nodeId
+
   const node = nodesFlat.value.find(n => n.id === nodeId)
   if (!node) return
 
@@ -1129,7 +1224,7 @@ async function uploadAsset(file) {
       emitNodeCreated(newNode)
     }
   } catch (e) {
-    console.error('Asset upload failed:', e)
+    console.error('Asset-Upload fehlgeschlagen:', e)
     await loadTree()
   }
 }
@@ -1156,7 +1251,7 @@ async function handleCreateNode({ parentId, type, title }) {
       emitNodeCreated(newNode)
     }
   } catch (e) {
-    console.error('Failed to create node:', e)
+    console.error('Konnte Knoten nicht erstellen:', e)
     await loadTree() // Fallback: reload tree
   }
 }
@@ -1179,7 +1274,7 @@ async function handleRenameNode({ id, parentId, title }) {
       emitNodeRenamed(id, title)
     }
   } catch (e) {
-    console.error('Failed to rename node:', e)
+    console.error('Konnte Knoten nicht umbenennen:', e)
     await loadTree() // Fallback: reload tree
   }
 }
@@ -1201,14 +1296,14 @@ async function handleDeleteNode({ id }) {
 
     // Broadcast to other users
     emitNodeDeleted(id)
-    refreshGitPanel({ flush: false })
+    // Git panel updates are now handled by useGitStatus composable via socket events
 
     // Navigate away if viewing deleted document
     if (routeDocId.value === id) {
       router.push(`${routeBase.value}/workspace/${workspaceId.value}`)
     }
   } catch (e) {
-    console.error('Failed to delete node:', e)
+    console.error('Konnte Knoten nicht loeschen:', e)
     await loadTree() // Fallback: reload tree
   }
 }
@@ -1232,7 +1327,7 @@ async function handleMoveNode({ id, parentId, orderIndex }) {
       emitNodeMoved(id, parentId ?? null, orderIndex)
     }
   } catch (e) {
-    console.error('Failed to move node:', e)
+    console.error('Konnte Knoten nicht verschieben:', e)
     await loadTree() // Fallback: reload tree
   }
 }
@@ -1247,7 +1342,7 @@ async function setMainDocument() {
     )
     workspace.value = res.data.workspace || workspace.value
   } catch (e) {
-    console.error('Failed to set main document:', e)
+    console.error('Konnte Hauptdokument nicht festlegen:', e)
   }
 }
 
@@ -1286,14 +1381,13 @@ async function refreshCommits() {
   await editorRef.value?.refreshBaseline?.()
   editorRef.value?.clearHighlights?.()
   await loadCommitOptions()
-  // Also refresh the workspace git panel
-  gitPanelRef.value?.checkForChanges?.()
+  // Git panel updates are now handled by useGitStatus composable via socket events
 }
 
 async function handleRollback(payload) {
   const documentId = typeof payload === 'object' && payload !== null ? payload.documentId : payload
   const baseline = typeof payload === 'object' && payload !== null ? payload.baseline : null
-  console.log('[handleRollback] Called with documentId:', documentId, 'selectedNodeId:', selectedNodeId.value)
+  console.log('[handleRollback] Aufgerufen mit documentId:', documentId, 'selectedNodeId:', selectedNodeId.value)
 
   // Build the room name for this document
   const roomName = `latex_${documentId}`
@@ -1305,9 +1399,9 @@ async function handleRollback(payload) {
   // 4. Server broadcasts snapshot_document to all clients
   // This ensures a clean slate without Yjs merge conflicts
   if (selectedNodeId.value === documentId) {
-    console.log('[handleRollback] Document is currently open, using reloadRoom for clean reset')
+    console.log('[handleRollback] Dokument ist derzeit geoeffnet, verwende reloadRoom fuer sauberen Reset')
     const result = await editorRef.value?.reloadRoom?.()
-    console.log('[handleRollback] reloadRoom result:', result)
+    console.log('[handleRollback] reloadRoom Ergebnis:', result)
     // Refresh the baseline to update diff decorations
     await editorRef.value?.refreshBaseline?.()
     editorRef.value?.clearHighlights?.()
@@ -1315,14 +1409,14 @@ async function handleRollback(payload) {
     // If the document is NOT currently open, only invalidate the YJS server cache
     // This is necessary because the YJS server caches room state and would serve
     // stale content when the user later opens this document
-    console.log('[handleRollback] Document is NOT open, invalidating YJS cache for room:', roomName)
+    console.log('[handleRollback] Dokument ist NICHT geoeffnet, invalidiere YJS-Cache fuer Raum:', roomName)
     const cacheResult = await editorRef.value?.reloadAnyRoom?.(roomName)
-    console.log('[handleRollback] reloadAnyRoom result:', cacheResult)
+    console.log('[handleRollback] reloadAnyRoom Ergebnis:', cacheResult)
   }
 }
 
 async function handleRestored(documentId) {
-  console.log('[handleRestored] File restored:', documentId)
+  console.log('[handleRestored] Datei wiederhergestellt:', documentId)
   // Refresh the tree to show the restored file
   await loadTree()
 }

@@ -396,7 +396,7 @@ async function loadPdf({ isRetry = false } = {}) {
       }
     } else {
       pendingPdf.value = false
-      error.value = err?.response?.data?.error || err?.message || 'PDF konnte nicht geladen werden'
+      error.value = err?.response?.data?.error || err?.message || t('latexCollab.pdf.loadFailed')
     }
   } finally {
     loading.value = false

@@ -164,6 +164,15 @@
 }
 
 /**
+ * Hidden toolbar state (when selection toolbar is visible).
+ * Uses visibility to maintain layout and prevent jumping.
+ */
+.formatting-toolbar.toolbar-hidden {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+/**
  * Toolbar collapse toggle button.
  * Small chevron button to show/hide toolbar.
  */
@@ -295,4 +304,144 @@
 .table-picker-card :deep(.v-field__input) {
   text-align: center;
   font-weight: 500;
+}
+
+/* ==========================================================================
+   SELECTION TOOLBAR (FLOATING) - Unified Formatting + Comments
+   ========================================================================== */
+
+/**
+ * Floating toolbar that appears when text is selected.
+ * Contains formatting buttons (Bold, Italic, etc.) and Comment button.
+ * Positioned relative to the editor pane container.
+ */
+.selection-toolbar {
+  position: absolute;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px 6px;
+  background: rgb(var(--v-theme-surface));
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.12);
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
+  pointer-events: auto;
+}
+
+/**
+ * Icon-only button for formatting actions (B, I, U, etc.)
+ */
+.selection-toolbar-icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  color: rgba(var(--v-theme-on-surface), 0.7);
+  transition: all 0.15s ease;
+}
+
+.selection-toolbar-icon-btn:hover {
+  background: rgba(var(--v-theme-primary), 0.12);
+  color: rgb(var(--v-theme-primary));
+}
+
+.selection-toolbar-icon-btn:active {
+  background: rgba(var(--v-theme-primary), 0.2);
+  transform: scale(0.95);
+}
+
+/**
+ * Vertical divider between formatting and comment button.
+ */
+.selection-toolbar-divider {
+  width: 1px;
+  height: 20px;
+  background: rgba(var(--v-theme-on-surface), 0.12);
+  margin: 0 4px;
+}
+
+/**
+ * AI dropdown button.
+ */
+.selection-toolbar-ai-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border: none;
+  background: linear-gradient(135deg, rgba(176, 202, 151, 0.15), rgba(136, 196, 200, 0.15));
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  color: rgb(var(--v-theme-primary));
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.selection-toolbar-ai-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, rgba(176, 202, 151, 0.25), rgba(136, 196, 200, 0.25));
+}
+
+.selection-toolbar-ai-btn:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+/**
+ * AI action menu styling.
+ */
+.ai-action-menu {
+  min-width: 160px;
+}
+
+.ai-action-menu .v-list-item {
+  min-height: 36px;
+}
+
+/**
+ * Text button for comment action.
+ */
+.selection-toolbar-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border: none;
+  background: rgba(var(--v-theme-warning), 0.1);
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  color: rgb(var(--v-theme-warning));
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.selection-toolbar-btn:hover {
+  background: rgba(var(--v-theme-warning), 0.2);
+}
+
+.selection-toolbar-btn:active {
+  transform: scale(0.98);
+}
+
+/**
+ * Transition for selection toolbar appearance.
+ */
+.selection-toolbar-enter-active,
+.selection-toolbar-leave-active {
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.selection-toolbar-enter-from,
+.selection-toolbar-leave-to {
+  opacity: 0;
+  transform: translateY(4px);
 }

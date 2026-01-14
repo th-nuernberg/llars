@@ -28,6 +28,8 @@
  * })
  */
 
+import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import {
   LATEX_COMMAND_COMPLETIONS,
   LATEX_ENVIRONMENT_NAMES,
@@ -46,6 +48,74 @@ import {
  */
 export function useLatexCompletions(options) {
   const { aiEnabled } = options
+  const { t } = useI18n()
+
+  const latexCommandInfo = computed(() => ({
+    '\\documentclass': t('latexCollab.completions.documentclass'),
+    '\\usepackage': t('latexCollab.completions.usepackage'),
+    '\\begin': t('latexCollab.completions.begin'),
+    '\\end': t('latexCollab.completions.end'),
+    '\\section': t('latexCollab.completions.section'),
+    '\\subsection': t('latexCollab.completions.subsection'),
+    '\\subsubsection': t('latexCollab.completions.subsubsection'),
+    '\\paragraph': t('latexCollab.completions.paragraph'),
+    '\\textbf': t('latexCollab.completions.textbf'),
+    '\\textit': t('latexCollab.completions.textit'),
+    '\\emph': t('latexCollab.completions.emph'),
+    '\\underline': t('latexCollab.completions.underline'),
+    '\\item': t('latexCollab.completions.item'),
+    '\\label': t('latexCollab.completions.label'),
+    '\\ref': t('latexCollab.completions.ref'),
+    '\\pageref': t('latexCollab.completions.pageref'),
+    '\\cite': t('latexCollab.completions.cite'),
+    '\\citet': t('latexCollab.completions.citet'),
+    '\\citep': t('latexCollab.completions.citep'),
+    '\\includegraphics': t('latexCollab.completions.includegraphics'),
+    '\\caption': t('latexCollab.completions.caption'),
+    '\\centering': t('latexCollab.completions.centering'),
+    '\\footnote': t('latexCollab.completions.footnote'),
+    '\\url': t('latexCollab.completions.url'),
+    '\\href': t('latexCollab.completions.href'),
+    '\\title': t('latexCollab.completions.title'),
+    '\\author': t('latexCollab.completions.author'),
+    '\\date': t('latexCollab.completions.date'),
+    '\\maketitle': t('latexCollab.completions.maketitle'),
+    '\\tableofcontents': t('latexCollab.completions.tableofcontents'),
+    '\\newcommand': t('latexCollab.completions.newcommand'),
+    '\\renewcommand': t('latexCollab.completions.renewcommand'),
+    '\\input': t('latexCollab.completions.input'),
+    '\\include': t('latexCollab.completions.include'),
+    '\\frac': t('latexCollab.completions.frac'),
+    '\\sqrt': t('latexCollab.completions.sqrt'),
+    '\\sum': t('latexCollab.completions.sum'),
+    '\\int': t('latexCollab.completions.int')
+  }))
+
+  const localizedLatexCommands = computed(() => (
+    LATEX_COMMAND_COMPLETIONS.map(cmd => ({
+      ...cmd,
+      info: latexCommandInfo.value[cmd.label] || cmd.info
+    }))
+  ))
+
+  const aiCommandInfo = computed(() => ({
+    '@ai': t('latexCollab.aiCommands.ai'),
+    '@rewrite': t('latexCollab.aiCommands.rewrite'),
+    '@expand': t('latexCollab.aiCommands.expand'),
+    '@summarize': t('latexCollab.aiCommands.summarize'),
+    '@fix': t('latexCollab.aiCommands.fix'),
+    '@translate': t('latexCollab.aiCommands.translate'),
+    '@cite': t('latexCollab.aiCommands.cite'),
+    '@abstract': t('latexCollab.aiCommands.abstract'),
+    '@titles': t('latexCollab.aiCommands.titles')
+  }))
+
+  const localizedAiCommands = computed(() => (
+    AI_COMMAND_COMPLETIONS.map(cmd => ({
+      ...cmd,
+      info: aiCommandInfo.value[cmd.label] || cmd.info
+    }))
+  ))
 
   /**
    * LaTeX command and environment completion source.
@@ -96,7 +166,7 @@ export function useLatexCompletions(options) {
 
     return {
       from: word.from,
-      options: LATEX_COMMAND_COMPLETIONS,
+      options: localizedLatexCommands.value,
       validFor: /^\\[A-Za-z]*$/
     }
   }
@@ -124,7 +194,7 @@ export function useLatexCompletions(options) {
 
     return {
       from: word.from,
-      options: AI_COMMAND_COMPLETIONS,
+      options: localizedAiCommands.value,
       validFor: /^@[A-Za-z]*$/
     }
   }

@@ -142,7 +142,7 @@ export const MATH_BUTTONS = [
  * Reference toolbar buttons
  */
 export const REF_BUTTONS = [
-  { id: 'cite', icon: 'mdi-book-open-page-variant', label: 'Zitieren', snippet: '\\cite{$CURSOR$}' },
+  { id: 'cite', icon: 'zotero', label: 'Zitieren', snippet: '\\cite{$CURSOR$}' },
   { id: 'ref', icon: 'mdi-link-variant', label: 'Referenz', snippet: '\\ref{$CURSOR$}' },
   { id: 'label', icon: 'mdi-tag', label: 'Label', snippet: '\\label{$CURSOR$}' },
   { id: 'footnote', icon: 'mdi-message-text-outline', label: 'Fußnote', snippet: '\\footnote{$CURSOR$}' },

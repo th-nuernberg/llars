@@ -5,12 +5,13 @@
       <!-- Embed Original Workspace with AI base path and AI features enabled -->
       <LatexCollabWorkspaceOriginal
         ref="workspaceRef"
-        base-path="/LatexCollabAI"
+        base-path="/LatexCollab"
         :ai-enabled="true"
         v-model:ghost-text-enabled="ghostTextEnabled"
         :ghost-text-delay="800"
         @document-change="handleDocumentChange"
         @ai-command="handleAICommand"
+        @ai-action="handleAIAction"
         @request-completion="handleRequestCompletion"
       />
     </div>
@@ -41,20 +42,6 @@
       </v-btn>
     </transition>
 
-    <!-- Selection Context Menu -->
-    <AISelectionMenu
-      :visible="selectionMenuVisible"
-      :position="selectionMenuPosition"
-      :selected-text="selectedText"
-      :document-content="currentDocumentContent"
-      @close="selectionMenuVisible = false"
-      @rewrite="handleRewrite"
-      @expand="handleExpand"
-      @summarize="handleSummarize"
-      @find-citation="handleFindCitation"
-      @ask-chat="handleAskChat"
-      @fix-latex="handleFixLatex"
-    />
 
     <!-- Citation Finder Dialog -->
     <v-dialog v-model="citationDialog" max-width="700">
@@ -174,9 +161,9 @@ import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import LatexCollabWorkspaceOriginal from '@/views/LatexCollab/LatexCollabWorkspace.vue'
 import AISidebar from '@/components/LatexCollabAI/ai/AISidebar.vue'
-import AISelectionMenu from '@/components/LatexCollabAI/ai/AISelectionMenu.vue'
 import aiWritingService from '@/services/aiWritingService'
 import { AUTH_STORAGE_KEYS, getAuthStorageItem } from '@/utils/authStorage'
+import { logI18n } from '@/utils/logI18n'
 
 const route = useRoute()
 const workspaceId = computed(() => Number(route.params.workspaceId))
@@ -194,11 +181,6 @@ const pendingCompletionPosition = ref(null)
 
 // Document content (synced via observer or event)
 const currentDocumentContent = ref('')
-
-// Selection Menu state
-const selectionMenuVisible = ref(false)
-const selectionMenuPosition = ref(null)
-const selectedText = ref('')
 
 // Citation Dialog
 const citationDialog = ref(false)
@@ -264,7 +246,7 @@ async function handleRequestCompletion(request) {
       }
     }
   } catch (e) {
-    console.warn('[AI Workspace] Completion request failed:', e)
+    logI18n('warn', 'logs.latexCollabAi.completionFailed', e)
   } finally {
     pendingCompletionPosition.value = null
   }
@@ -284,39 +266,95 @@ function insertTextAtCursor(text) {
   })
 }
 
-// Selection Menu Handlers
-function handleRewrite(result) {
-  insertTextAtCursor(result)
-  showNotification(t('latexCollabAi.notifications.rewritten'), 'success')
-}
-
-function handleExpand(result) {
-  insertTextAtCursor(result)
-  showNotification(t('latexCollabAi.notifications.expanded'), 'success')
-}
-
-function handleSummarize(result) {
-  insertTextAtCursor(result)
-  showNotification(t('latexCollabAi.notifications.summarized'), 'success')
-}
-
 function handleFindCitation(text) {
   citationSearchText.value = text
   citationDialog.value = true
   citationResults.value = []
 }
 
-function handleAskChat(text) {
-  // Open sidebar and pre-fill chat
-  aiSidebarOpen.value = true
-  showNotification(t('latexCollabAi.notifications.chatQuestion', { text: text.substring(0, 50) }))
+/**
+ * Handle AI action from selection toolbar dropdown
+ * @param {Object} event - AI action event with action, selectedText, range
+ */
+async function handleAIAction(event) {
+  const { action, selectedText, range } = event
+  if (!selectedText?.trim()) return
+
+  aiProcessing.value = true
+
+  try {
+    let result
+
+    switch (action) {
+      case 'rewrite':
+        result = await aiWritingService.rewrite({
+          text: selectedText,
+          style: 'academic',
+          context: currentDocumentContent.value.substring(0, 500)
+        })
+        if (result.result) {
+          replaceTextInEditor(result.result, range)
+          showNotification(t('latexCollabAi.notifications.rewritten'), 'success')
+        }
+        break
+
+      case 'expand':
+        result = await aiWritingService.expand({
+          text: selectedText,
+          context: currentDocumentContent.value.substring(0, 500)
+        })
+        if (result.result) {
+          replaceTextInEditor(result.result, range)
+          showNotification(t('latexCollabAi.notifications.expanded'), 'success')
+        }
+        break
+
+      case 'summarize':
+        result = await aiWritingService.summarize({
+          text: selectedText
+        })
+        if (result.result) {
+          replaceTextInEditor(result.result, range)
+          showNotification(t('latexCollabAi.notifications.summarized'), 'success')
+        }
+        break
+
+      case 'fix':
+        result = await aiWritingService.fixLatex(selectedText)
+        if (result.corrected) {
+          replaceTextInEditor(result.corrected, range)
+          showNotification(t('latexCollabAi.notifications.latexFixed'), 'success')
+        } else if (result.errors?.length) {
+          showNotification(t('latexCollabAi.notifications.latexErrorsFound', { count: result.errors.length }), 'warning')
+        } else {
+          showNotification(t('latexCollabAi.notifications.latexErrorsNone'), 'success')
+        }
+        break
+
+      default:
+        logI18n('warn', 'logs.latexCollabAi.unknownAction', action)
+    }
+  } catch (e) {
+    showNotification(t('latexCollabAi.notifications.error', { message: e.message }), 'error')
+  } finally {
+    aiProcessing.value = false
+  }
 }
 
-function handleFixLatex(result) {
-  if (result.errors?.length) {
-    showNotification(t('latexCollabAi.notifications.latexErrorsFound', { count: result.errors.length }), 'warning')
+/**
+ * Replace text in editor at given range
+ * @param {string} newText - Text to insert
+ * @param {Object} range - Range with from/to positions
+ */
+function replaceTextInEditor(newText, range) {
+  const editorRef = workspaceRef.value?.$refs?.editorRef
+  if (editorRef?.replaceRange) {
+    editorRef.replaceRange(newText, range.from, range.to)
   } else {
-    showNotification(t('latexCollabAi.notifications.latexErrorsNone'), 'success')
+    // Fallback: copy to clipboard
+    navigator.clipboard.writeText(newText).then(() => {
+      showNotification(t('latexCollabAi.notifications.clipboardCopied'), 'success')
+    })
   }
 }
 
@@ -507,34 +545,6 @@ function handleKeydown(e) {
   }
 }
 
-// Selection change handler for context menu
-function handleSelectionChange() {
-  const selection = window.getSelection()
-  const text = selection?.toString().trim()
-
-  if (text && text.length > 10) {
-    selectedText.value = text
-
-    // Get selection position
-    const range = selection.getRangeAt(0)
-    const rect = range.getBoundingClientRect()
-
-    selectionMenuPosition.value = {
-      x: rect.left + rect.width / 2,
-      y: rect.top
-    }
-
-    // Delay showing menu
-    setTimeout(() => {
-      if (window.getSelection()?.toString().trim() === text) {
-        selectionMenuVisible.value = true
-      }
-    }, 300)
-  } else {
-    selectionMenuVisible.value = false
-  }
-}
-
 // Load available RAG collections
 async function loadCollections() {
   try {
@@ -549,20 +559,18 @@ async function loadCollections() {
       availableCollections.value = data.collections || []
     }
   } catch (e) {
-    console.error('Failed to load collections:', e)
+    logI18n('error', 'logs.latexCollabAi.collectionsLoadFailed', e)
   }
 }
 
 // Lifecycle
 onMounted(() => {
   document.addEventListener('keydown', handleKeydown)
-  document.addEventListener('selectionchange', handleSelectionChange)
   loadCollections()
 })
 
 onUnmounted(() => {
   document.removeEventListener('keydown', handleKeydown)
-  document.removeEventListener('selectionchange', handleSelectionChange)
 })
 </script>
 

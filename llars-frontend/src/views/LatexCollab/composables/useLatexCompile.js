@@ -247,7 +247,7 @@ export function useLatexCompile({
         }
       }
     } catch (e) {
-      console.error('Failed to load compile status:', e)
+      console.error('Konnte Compile-Status nicht laden:', e)
     }
   }
 
@@ -328,15 +328,62 @@ export function useLatexCompile({
     ]
   })
 
-  async function pollCompileJob(jobId) {
+  /**
+   * Handle WebSocket compile status update.
+   * This is called when a 'latex_collab:compile_status' event is received.
+   * @param {Object} data - The WebSocket event data containing job info
+   */
+  function handleCompileStatusUpdate(data) {
+    if (!data?.job) return
+    const job = data.job
+
+    // Only process updates for the current compile job or if we don't have one yet
+    if (compileJobId.value && compileJobId.value !== job.id) return
+
+    compileJobId.value = job.id
+    compileStatus.value = job.status || compileStatus.value
+    compileError.value = job.error_message || ''
+    compileLog.value = job.log_text || ''
+    compileHasPdf.value = !!job.has_pdf
+    compileHasSynctex.value = !!job.has_synctex
+
+    if (job.status === 'success') {
+      compileError.value = ''
+      if (pdfRefreshJobId.value !== job.id) {
+        pdfRefreshJobId.value = job.id
+        pdfRefreshKey.value += 1
+      }
+      // Stop polling if connected via WebSocket
+      if (compilePollTimer) {
+        clearTimeout(compilePollTimer)
+        compilePollTimer = null
+      }
+    }
+
+    if (job.status === 'failed') {
+      // Stop polling on failure
+      if (compilePollTimer) {
+        clearTimeout(compilePollTimer)
+        compilePollTimer = null
+      }
+    }
+  }
+
+  async function pollCompileJob(jobId, useWebSocket = false) {
     if (!jobId) return
     if (compilePollTimer) clearTimeout(compilePollTimer)
+
+    // If using WebSocket, use very long polling interval as fallback only
+    // WebSocket will handle real-time updates
+    const baseDelay = useWebSocket ? 10000 : 1500
+    const initialDelay = useWebSocket ? 2000 : 800
+
     let pdfWaitAttempts = 0
-    const maxPdfWaitAttempts = 12
+    const maxPdfWaitAttempts = useWebSocket ? 6 : 12
     let rateLimitedCount = 0
 
     const poll = async () => {
-      let nextDelay = 1500
+      let nextDelay = baseDelay
       try {
         const res = await axios.get(`${API_BASE}/api/latex-collab/compile/${jobId}`, {
           headers: authHeaders()
@@ -361,7 +408,7 @@ export function useLatexCompile({
               return
             }
             pdfWaitAttempts += 1
-            nextDelay = 800
+            nextDelay = useWebSocket ? 3000 : 800
             if (pdfWaitAttempts > maxPdfWaitAttempts) {
               compilePollTimer = null
               return
@@ -376,15 +423,15 @@ export function useLatexCompile({
         const status = e?.response?.status
         if (status === 429) {
           rateLimitedCount += 1
-          nextDelay = Math.min(12000, 1200 * Math.pow(1.7, rateLimitedCount))
+          nextDelay = Math.min(30000, baseDelay * Math.pow(1.7, rateLimitedCount))
         } else {
-          console.error('Compile polling failed:', e)
+          console.error('Compile-Polling fehlgeschlagen:', e)
         }
       }
       compilePollTimer = setTimeout(poll, nextDelay)
     }
 
-    compilePollTimer = setTimeout(poll, 800)
+    compilePollTimer = setTimeout(poll, initialDelay)
   }
 
   // Cleanup
@@ -423,6 +470,7 @@ export function useLatexCompile({
     loadCommitOptions,
     scheduleAutoCompile,
     triggerCompile,
-    pollCompileJob
+    pollCompileJob,
+    handleCompileStatusUpdate
   }
 }

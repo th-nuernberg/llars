@@ -607,7 +607,7 @@ function onEditorContentChange(text) {
  * @param {string} data.savedAt - ISO timestamp of save
  */
 function handleDocumentSaved(data) {
-  console.log('[MarkdownCollabWorkspace] document_saved received:', data)
+  console.log('[MarkdownCollabWorkspace] document_saved empfangen:', data)
   // Only refresh Git panel if the saved document belongs to our workspace
   if (data.workspaceId === workspaceId.value) {
     gitPanelRef.value?.checkForChanges?.()
@@ -762,7 +762,7 @@ async function handleCreateNode({ parentId, type, title }) {
       emitNodeCreated(newNode)
     }
   } catch (e) {
-    console.error('Failed to create node:', e)
+    console.error('Konnte Knoten nicht erstellen:', e)
     await loadTree() // Fallback: reload tree
   }
 }
@@ -785,7 +785,7 @@ async function handleRenameNode({ id, parentId, title }) {
       emitNodeRenamed(id, title)
     }
   } catch (e) {
-    console.error('Failed to rename node:', e)
+    console.error('Konnte Knoten nicht umbenennen:', e)
     await loadTree() // Fallback: reload tree
   }
 }
@@ -813,7 +813,7 @@ async function handleDeleteNode({ id }) {
       router.push(`/MarkdownCollab/workspace/${workspaceId.value}`)
     }
   } catch (e) {
-    console.error('Failed to delete node:', e)
+    console.error('Konnte Knoten nicht loeschen:', e)
     await loadTree() // Fallback: reload tree
   }
 }
@@ -837,7 +837,7 @@ async function handleMoveNode({ id, parentId, orderIndex }) {
       emitNodeMoved(id, parentId ?? null, orderIndex)
     }
   } catch (e) {
-    console.error('Failed to move node:', e)
+    console.error('Konnte Knoten nicht verschieben:', e)
     await loadTree() // Fallback: reload tree
   }
 }
@@ -870,7 +870,7 @@ async function refreshCommits() {
 async function handleRollback(payload) {
   // Handle payload from LatexWorkspaceGitPanel (object with documentId) or legacy (just documentId)
   const documentId = typeof payload === 'object' && payload !== null ? payload.documentId : payload
-  console.log('[handleRollback] Called with documentId:', documentId, 'selectedNodeId:', selectedNodeId.value)
+  console.log('[handleRollback] Aufgerufen mit documentId:', documentId, 'selectedNodeId:', selectedNodeId.value)
 
   // Build the room name for this document
   const roomName = `markdown_${documentId}`
@@ -882,9 +882,9 @@ async function handleRollback(payload) {
   // 4. Server broadcasts snapshot_document to all clients
   // This ensures a clean slate without Yjs merge conflicts
   if (selectedNodeId.value === documentId) {
-    console.log('[handleRollback] Document is currently open, using reloadRoom for clean reset')
+    console.log('[handleRollback] Dokument ist derzeit geoeffnet, verwende reloadRoom fuer sauberen Reset')
     const result = await editorRef.value?.reloadRoom?.()
-    console.log('[handleRollback] reloadRoom result:', result)
+    console.log('[handleRollback] reloadRoom Ergebnis:', result)
     // Refresh the baseline to update diff decorations
     await editorRef.value?.refreshBaseline?.()
     editorRef.value?.clearHighlights?.()
@@ -892,14 +892,14 @@ async function handleRollback(payload) {
     // If the document is NOT currently open, only invalidate the YJS server cache
     // This is necessary because the YJS server caches room state and would serve
     // stale content when the user later opens this document
-    console.log('[handleRollback] Document is NOT open, invalidating YJS cache for room:', roomName)
+    console.log('[handleRollback] Dokument ist NICHT geoeffnet, invalidiere YJS-Cache fuer Raum:', roomName)
     const cacheResult = await editorRef.value?.reloadAnyRoom?.(roomName)
-    console.log('[handleRollback] reloadAnyRoom result:', cacheResult)
+    console.log('[handleRollback] reloadAnyRoom Ergebnis:', cacheResult)
   }
 }
 
 async function handleRestored(documentId) {
-  console.log('[handleRestored] File restored:', documentId)
+  console.log('[handleRestored] Datei wiederhergestellt:', documentId)
   // Refresh the tree to show the restored file
   await loadTree()
 }

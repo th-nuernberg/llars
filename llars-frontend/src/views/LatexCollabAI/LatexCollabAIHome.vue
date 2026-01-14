@@ -449,7 +449,7 @@ async function deleteWorkspace() {
     deleteDialog.value = false
     workspaceToDelete.value = null
   } catch (e) {
-    console.error('Failed to delete workspace:', e)
+    console.error('Konnte Arbeitsbereich nicht loeschen:', e)
     alert(e?.response?.data?.error || t('latexCollabAi.errors.deleteFailed'))
   } finally {
     deleting.value = false
@@ -469,7 +469,7 @@ async function leaveWorkspace() {
     leaveDialog.value = false
     workspaceToLeave.value = null
   } catch (e) {
-    console.error('Failed to leave workspace:', e)
+    console.error('Konnte Arbeitsbereich nicht verlassen:', e)
     alert(e?.response?.data?.error || t('latexCollabAi.errors.leaveFailed'))
   } finally {
     leaving.value = false
@@ -487,8 +487,7 @@ async function loadWorkspaces(force = false) {
 }
 
 function openWorkspace(id) {
-  // Navigate to AI version of workspace
-  router.push(`/LatexCollabAI/workspace/${id}`)
+  router.push(`/LatexCollab/workspace/${id}`)
 }
 
 function handleInviteUserSelect(user) {
@@ -534,7 +533,7 @@ async function createWorkspace() {
             { headers: authHeaders() }
           )
         } catch (inviteErr) {
-          console.error(`Failed to invite ${username}:`, inviteErr)
+          console.error(`Konnte ${username} nicht einladen:`, inviteErr)
         }
       }
     }

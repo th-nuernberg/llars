@@ -857,7 +857,7 @@ async function loadDeletedFiles() {
       )
       deletedFiles.value = res.data.deleted_files || []
     } catch (e) {
-      console.error('Failed to load deleted files:', e)
+      console.error('Konnte geloeschte Dateien nicht laden:', e)
       deletedFiles.value = []
     }
   })

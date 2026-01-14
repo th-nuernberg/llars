@@ -67,14 +67,14 @@ export function useLatexComments({
       )
       comments.value = res.data?.comments || []
     } catch (e) {
-      console.error('Failed to load comments:', e)
+      console.error('Konnte Kommentare nicht laden:', e)
       comments.value = []
     }
   }
 
-  function openCommentDialog() {
+  function openCommentDialog(presetRange = null) {
     commentError.value = ''
-    const range = editorRef.value?.getSelectionRange?.()
+    const range = presetRange || editorRef.value?.getSelectionRange?.()
     if (!range || range.from === range.to) {
       commentError.value = t('latexCollab.comments.errors.selectText')
       return
@@ -116,7 +116,7 @@ export function useLatexComments({
       )
       await loadComments()
     } catch (e) {
-      console.error('Failed to update comment:', e)
+      console.error('Konnte Kommentar nicht aktualisieren:', e)
     }
   }
 
@@ -128,7 +128,7 @@ export function useLatexComments({
       })
       await loadComments()
     } catch (e) {
-      console.error('Failed to delete comment:', e)
+      console.error('Konnte Kommentar nicht loeschen:', e)
     }
   }
 

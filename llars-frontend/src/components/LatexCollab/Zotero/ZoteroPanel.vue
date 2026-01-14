@@ -3,7 +3,7 @@
     <!-- Connection Status -->
     <div class="zotero-section">
       <div class="section-header">
-        <LIcon class="mr-2" color="primary">mdi-book-open-page-variant</LIcon>
+        <LIcon class="mr-2">zotero</LIcon>
         <span class="section-title">{{ $t('latexCollab.zotero.connection.title') }}</span>
       </div>
 
@@ -530,7 +530,7 @@ async function loadConnectionStatus() {
     connection.value = statusResult.connection
     oauthAvailable.value = oauthResult.oauth_available || false
   } catch (err) {
-    console.error('Failed to load Zotero connection status:', err)
+    console.error('Konnte Zotero-Verbindungsstatus nicht laden:', err)
   } finally {
     loading.value = false
   }
@@ -543,7 +543,7 @@ async function loadWorkspaceLibraries() {
     const result = await zoteroService.getWorkspaceLibraries(props.workspaceId)
     workspaceLibraries.value = result.libraries || []
   } catch (err) {
-    console.error('Failed to load workspace libraries:', err)
+    console.error('Konnte Workspace-Bibliotheken nicht laden:', err)
   } finally {
     loadingLibraries.value = false
   }
@@ -610,7 +610,7 @@ async function loadZoteroLibraries() {
     const result = await zoteroService.getLibraries()
     zoteroLibraries.value = result.libraries || []
   } catch (err) {
-    console.error('Failed to load Zotero libraries:', err)
+    console.error('Konnte Zotero-Bibliotheken nicht laden:', err)
     notify(t('latexCollab.zotero.errors.loadLibrariesFailed'), 'error')
   } finally {
     loadingZoteroLibraries.value = false
@@ -632,7 +632,7 @@ async function loadCollections() {
     )
     collections.value = result.collections || []
   } catch (err) {
-    console.error('Failed to load collections:', err)
+    console.error('Konnte Sammlungen nicht laden:', err)
   } finally {
     loadingCollections.value = false
   }

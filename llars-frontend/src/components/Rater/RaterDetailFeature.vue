@@ -10,7 +10,7 @@
       <!-- Feature-Bereich (links) -->
       <div class="feature-panel" :style="leftPanelStyle()">
         <div class="panel-header">
-          <h2>Feature Detail</h2>
+          <h2>{{ $t('raterFeature.title') }}</h2>
         </div>
         <div class="panel-content">
           <v-card class="feature-card mb-4">
@@ -19,9 +19,9 @@
             <v-card-text class="feature-card-text">{{ feature.content }}</v-card-text>
           </v-card>
 
-          <h3 class="section-title">Bewerten Sie dieses Feature</h3>
+          <h3 class="section-title">{{ $t('raterFeature.rateTitle') }}</h3>
           <div class="likert-scale-container">
-            <span class="likert-label-text">Gut</span>
+            <span class="likert-label-text">{{ $t('raterFeature.scale.good') }}</span>
             <div class="likert-scale">
               <div
                 v-for="rating in 5"
@@ -44,30 +44,30 @@
                 </span>
               </div>
             </div>
-            <span class="likert-label-text">Schlecht</span>
+            <span class="likert-label-text">{{ $t('raterFeature.scale.bad') }}</span>
           </div>
 
           <v-expansion-panels class="mt-6">
             <v-expansion-panel>
-              <v-expansion-panel-title>Feature bearbeiten</v-expansion-panel-title>
+              <v-expansion-panel-title>{{ $t('raterFeature.edit.title') }}</v-expansion-panel-title>
               <v-expansion-panel-text>
                 <v-form>
                   <v-text-field
-                    label="Model Name"
+                    :label="$t('raterFeature.edit.modelName')"
                     v-model="editableFeature.model_name"
                     variant="outlined"
                     density="compact"
                     class="mb-2"
                   ></v-text-field>
                   <v-textarea
-                    label="Feature Content"
+                    :label="$t('raterFeature.edit.content')"
                     v-model="editableFeature.content"
                     variant="outlined"
                     density="compact"
                     rows="4"
                   ></v-textarea>
                   <div class="text-caption text-medium-emphasis mt-2">
-                    Änderungen werden automatisch gespeichert.
+                    {{ $t('raterFeature.edit.autoSaveHint') }}
                   </div>
                 </v-form>
               </v-expansion-panel-text>
@@ -88,7 +88,7 @@
       <!-- E-Mail Verlauf (rechts) -->
       <div class="email-panel" :style="rightPanelStyle()">
         <div class="panel-header">
-          <h2>E-Mail Verlauf</h2>
+          <h2>{{ $t('raterFeature.emailHistory') }}</h2>
         </div>
         <div class="panel-content">
           <div
@@ -117,16 +117,16 @@
         size="x-small"
       >
         <v-progress-circular indeterminate size="10" width="2" class="mr-1"></v-progress-circular>
-        Speichert...
+        {{ $t('raterFeature.saveStatus.saving') }}
       </v-chip>
       <v-chip v-else-if="currentSaveError" color="error" size="x-small">
-        Speichern fehlgeschlagen
+        {{ $t('raterFeature.saveStatus.failed') }}
       </v-chip>
       <v-chip v-else-if="currentLastSavedAt" color="success" size="x-small">
-        Gespeichert
+        {{ $t('raterFeature.saveStatus.saved') }}
       </v-chip>
       <v-chip v-else color="grey" size="x-small">
-        Auto-Speichern aktiv
+        {{ $t('raterFeature.saveStatus.autoSaving') }}
       </v-chip>
 
       <v-spacer></v-spacer>
@@ -139,10 +139,10 @@
         :loading="saving && savingKey === currentKey"
         @click="retrySave"
       >
-        Erneut speichern
+        {{ $t('raterFeature.actions.retrySave') }}
       </LBtn>
       <LBtn variant="secondary" prepend-icon="mdi-arrow-left" @click="goBack">
-        Zurück zur Übersicht
+        {{ $t('raterFeature.actions.backToOverview') }}
       </LBtn>
     </div>
   </div>
@@ -151,6 +151,7 @@
 <script setup>
 import { ref, watch, computed, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import { useI18n } from 'vue-i18n';
 import axios from 'axios';
 import { usePanelResize } from '@/composables/usePanelResize';
 import { useSkeletonLoading } from '@/composables/useSkeletonLoading';
@@ -159,6 +160,7 @@ import { matomoTrackEvent } from '@/plugins/llars-metrics';
 
 const route = useRoute();
 const router = useRouter();
+const { t, locale } = useI18n();
 const feature = ref({});
 const editableFeature = ref({});
 const messages = ref([]);
@@ -325,10 +327,10 @@ function getMessageClass(sender) {
 
 function translateFeatureType(type) {
   const translations = {
-    abstract_summary: 'Abstrakte Fallzusammenfassung',
-    generated_category: 'Generierte Kategorie',
-    generated_subject: 'Generierter Betreff',
-    order_clarification: 'Ordnungsklärung',
+    abstract_summary: t('raterFeature.featureTypes.abstractSummary'),
+    generated_category: t('raterFeature.featureTypes.generatedCategory'),
+    generated_subject: t('raterFeature.featureTypes.generatedSubject'),
+    order_clarification: t('raterFeature.featureTypes.orderClarification'),
   };
   return translations[type] || type;
 }
@@ -336,7 +338,7 @@ function translateFeatureType(type) {
 function formatTimestamp(timestamp) {
   const options = { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' };
   const date = new Date(timestamp);
-  return date.toLocaleDateString('de-DE', options).replace(',', ' um') + ' Uhr';
+  return new Intl.DateTimeFormat(locale.value || undefined, options).format(date);
 }
 
 async function rateFeature(rating) {
@@ -430,7 +432,7 @@ async function processSaveQueue() {
           error?.response?.data?.error ||
           error?.response?.data?.message ||
           error?.message ||
-          'Fehler beim Speichern.';
+          t('raterFeature.errors.saveFailed');
         saveErrors.value[task.key] = msg;
 
         // Re-queue the latest snapshot for this feature and stop processing.

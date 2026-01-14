@@ -21,6 +21,7 @@
 
 import { ref, reactive, onUnmounted } from 'vue';
 import { getSocket } from '@/services/socketService';
+import { logI18n, logI18nParams } from '@/utils/logI18n';
 
 export function useJudgeSocket(sessionId, callbacks = {}) {
   // Socket instance
@@ -45,7 +46,7 @@ export function useJudgeSocket(sessionId, callbacks = {}) {
    */
   const initializeWorkerStream = (workerId) => {
     if (!workerStreams[workerId]) {
-      console.log(`[Judge Socket] Initializing worker stream ${workerId}`);
+      logI18nParams('log', 'logs.judge.judgeSocket.initWorkerStream', { workerId });
       workerStreams[workerId] = {
         content: '',
         comparison: null,
@@ -80,11 +81,11 @@ export function useJudgeSocket(sessionId, callbacks = {}) {
    */
   const joinSessionRoom = () => {
     if (!socket.value || !socket.value.connected) {
-      console.warn('[Judge Socket] Cannot join session - socket not connected');
+      logI18n('warn', 'logs.judge.judgeSocket.cannotJoinNotConnected');
       return;
     }
 
-    console.log('[Judge Socket] Joining session room:', sessionId);
+    logI18nParams('log', 'logs.judge.judgeSocket.joiningSessionRoom', { sessionId });
     socket.value.emit('judge:join_session', { session_id: parseInt(sessionId) });
   };
 
@@ -109,7 +110,7 @@ export function useJudgeSocket(sessionId, callbacks = {}) {
 
     // Connection event handlers
     socket.value.on('connect', () => {
-      console.log('[Judge Socket] Connected/Reconnected, socket id:', socket.value.id);
+      logI18n('log', 'logs.judge.judgeSocket.connected', socket.value.id);
       reconnecting.value = false;
       joinSessionRoom();
 
@@ -120,14 +121,14 @@ export function useJudgeSocket(sessionId, callbacks = {}) {
     });
 
     socket.value.on('disconnect', (reason) => {
-      console.warn('[Judge Socket] Disconnected:', reason);
+      logI18n('warn', 'logs.judge.judgeSocket.disconnected', reason);
       reconnecting.value = true;
       isJoined.value = false;
       // Don't clear worker streams - they will be restored on reconnect
     });
 
     socket.value.on('reconnect', (attemptNumber) => {
-      console.log(`[Judge Socket] Reconnected after ${attemptNumber} attempts`);
+      logI18nParams('log', 'logs.judge.judgeSocket.reconnected', { attempts: attemptNumber });
       reconnecting.value = false;
       joinSessionRoom();
 
@@ -141,13 +142,13 @@ export function useJudgeSocket(sessionId, callbacks = {}) {
 
     // Handle join confirmation
     socket.value.on('judge:joined', (data) => {
-      console.log('[Judge Socket] Joined session room:', data);
+      logI18n('log', 'logs.judge.judgeSocket.joinedSessionRoom', data);
       isJoined.value = true;
     });
 
     // Handle errors
     socket.value.on('judge:error', (data) => {
-      console.error('[Judge Socket] Error:', data.message);
+      logI18n('error', 'logs.judge.judgeSocket.error', data.message);
       if (callbacks.onError) {
         callbacks.onError(data);
       }
@@ -155,7 +156,7 @@ export function useJudgeSocket(sessionId, callbacks = {}) {
 
     // Progress updates from worker
     socket.value.on('judge:progress', (data) => {
-      console.log('[Judge Socket] Progress:', data);
+      logI18n('log', 'logs.judge.judgeSocket.progress', data);
       if (data.session_id == sessionId) {
         if (callbacks.onProgress) {
           callbacks.onProgress(data);
@@ -165,7 +166,7 @@ export function useJudgeSocket(sessionId, callbacks = {}) {
 
     // Comparison started
     socket.value.on('judge:comparison_start', (data) => {
-      console.log('[Judge Socket] Comparison started:', data);
+      logI18n('log', 'logs.judge.judgeSocket.comparisonStarted', data);
 
       // Check session_id if provided, otherwise accept all (room-based filtering)
       if (!data.session_id || data.session_id == sessionId) {
@@ -189,7 +190,7 @@ export function useJudgeSocket(sessionId, callbacks = {}) {
         // Clear single-worker stream content for new comparison
         llmStreamContent.value = '';
 
-        console.log(`[Judge Socket] Worker ${workerId} stream updated for new comparison`, workerStreams[workerId]);
+        logI18nParams('log', 'logs.judge.judgeSocket.workerStreamUpdated', { workerId }, workerStreams[workerId]);
 
         // Call callback if provided
         if (callbacks.onComparisonStart) {
@@ -218,7 +219,7 @@ export function useJudgeSocket(sessionId, callbacks = {}) {
 
     // Comparison completed
     socket.value.on('judge:comparison_complete', (data) => {
-      console.log('[Judge Socket] Comparison complete:', data);
+      logI18n('log', 'logs.judge.judgeSocket.comparisonComplete', data);
       if (data.session_id == sessionId) {
         const workerId = data.worker_id ?? 0;
 
@@ -237,7 +238,7 @@ export function useJudgeSocket(sessionId, callbacks = {}) {
 
     // Session completed
     socket.value.on('judge:session_complete', (data) => {
-      console.log('[Judge Socket] Session complete:', data);
+      logI18n('log', 'logs.judge.judgeSocket.sessionComplete', data);
       if (data.session_id == sessionId) {
         // Call callback if provided
         if (callbacks.onSessionComplete) {
@@ -248,7 +249,7 @@ export function useJudgeSocket(sessionId, callbacks = {}) {
 
     // Status response (from get_status request)
     socket.value.on('judge:status', (data) => {
-      console.log('[Judge Socket] Status:', data);
+      logI18n('log', 'logs.judge.judgeSocket.status', data);
       if (data.session_id == sessionId) {
         if (callbacks.onProgress) {
           callbacks.onProgress(data);
@@ -261,21 +262,21 @@ export function useJudgeSocket(sessionId, callbacks = {}) {
    * Join the session and setup listeners
    */
   const joinSession = () => {
-    console.log('[Judge Socket] Setting up socket for session:', sessionId);
+    logI18nParams('log', 'logs.judge.judgeSocket.setupForSession', { sessionId });
 
     // Get or create socket
     socket.value = getSocket();
-    console.log('[Judge Socket] Socket connected:', socket.value.connected);
+    logI18nParams('log', 'logs.judge.judgeSocket.socketConnectedState', { connected: socket.value.connected });
 
     // Setup all event listeners
     setupEventListeners();
 
     // Join immediately if already connected
     if (socket.value.connected) {
-      console.log('[Judge Socket] Already connected, joining room immediately');
+      logI18n('log', 'logs.judge.judgeSocket.alreadyConnected');
       joinSessionRoom();
     } else {
-      console.log('[Judge Socket] Not yet connected, waiting for connect event');
+      logI18n('log', 'logs.judge.judgeSocket.waitingForConnect');
     }
   };
 
@@ -285,7 +286,7 @@ export function useJudgeSocket(sessionId, callbacks = {}) {
   const leaveSession = () => {
     if (!socket.value) return;
 
-    console.log('[Judge Socket] Leaving session:', sessionId);
+    logI18nParams('log', 'logs.judge.judgeSocket.leavingSession', { sessionId });
 
     // Leave the session room
     socket.value.emit('judge:leave_session', { session_id: parseInt(sessionId) });
@@ -311,7 +312,7 @@ export function useJudgeSocket(sessionId, callbacks = {}) {
    */
   const requestStatus = () => {
     if (socket.value && socket.value.connected) {
-      console.log('[Judge Socket] Requesting status for session:', sessionId);
+      logI18nParams('log', 'logs.judge.judgeSocket.requestingStatus', { sessionId });
       socket.value.emit('judge:get_status', { session_id: parseInt(sessionId) });
     }
   };

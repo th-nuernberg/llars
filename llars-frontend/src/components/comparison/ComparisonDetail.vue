@@ -1,8 +1,8 @@
 <template>
   <LEvaluationLayout
-    :title="session?.persona_name || 'Laden...'"
-    :subtitle="`Szenario ${session?.scenario_id || '-'}`"
-    back-label="Gegenüberstellung"
+    :title="session?.persona_name || $t('comparison.detail.loadingTitle')"
+    :subtitle="$t('comparison.detail.scenarioLabel', { id: session?.scenario_id || '-' })"
+    :back-label="$t('comparison.detail.backLabel')"
     :status="evaluationStatus"
     :can-go-prev="canGoPrev"
     :can-go-next="canGoNext"
@@ -27,45 +27,45 @@
       <v-card>
         <v-card-title class="text-h5 bg-primary text-white pa-4">
           <LIcon start class="mr-2">mdi-information</LIcon>
-          Informationen zur Gegenüberstellung
+          {{ $t('comparison.detail.infoDialog.title') }}
         </v-card-title>
         <v-card-text class="pa-6">
           <div class="text-body-1 mb-4">
             <LIcon color="primary" class="mr-2">mdi-robot</LIcon>
-            <strong>Was ist der Gegenüberstellungsmodus?</strong>
+            <strong>{{ $t('comparison.detail.infoDialog.modeTitle') }}</strong>
           </div>
           <p class="mb-4">
-            In diesem Modus chatten Sie mit zwei verschiedenen KI-Modellen. Beide Modelle erhalten die selbe Eingabe und wir möchten mit Ihrer Hilfe herausfinden, welches der Modelle besser ist und besser den Klienten simuliert.
+            {{ $t('comparison.detail.infoDialog.modeBody') }}
           </p>
 
           <div class="text-body-1 mb-4">
             <LIcon color="primary" class="mr-2">mdi-account-details</LIcon>
-            <strong>Persona-Informationen</strong>
+            <strong>{{ $t('comparison.detail.infoDialog.personaTitle') }}</strong>
           </div>
           <p class="mb-4">
-            Einige Details zum jeweiligen Klienten sind links in der Seitenleiste angegeben.
+            {{ $t('comparison.detail.infoDialog.personaBody') }}
           </p>
 
           <div class="text-body-1 mb-4">
             <LIcon color="primary" class="mr-2">mdi-star</LIcon>
-            <strong>Bewertung und Interaktion</strong>
+            <strong>{{ $t('comparison.detail.infoDialog.ratingTitle') }}</strong>
           </div>
           <p class="mb-4">
-            Nachdem die KI-Modelle etwas geschrieben haben, sollen Sie bewerten, welches der beiden besser ist (oder gleich gut). Anschließend können Sie eine Antwort formulieren, auf welche die Modelle wieder antworten etc.
+            {{ $t('comparison.detail.infoDialog.ratingBody') }}
           </p>
 
           <div class="text-body-1 mb-4">
             <LIcon color="primary" class="mr-2">mdi-infinity</LIcon>
-            <strong>Keine Limits</strong>
+            <strong>{{ $t('comparison.detail.infoDialog.limitsTitle') }}</strong>
           </div>
           <p class="mb-0">
-            Es gibt hier kein Limit - Sie können so viel schreiben wie sie möchten. Falls Sie eine andere Persona ausprobieren möchten, wechseln Sie einfach zur nächsten Session über die untere Leiste oder die Übersichtsseite.
+            {{ $t('comparison.detail.infoDialog.limitsBody') }}
           </p>
         </v-card-text>
         <v-card-actions class="pa-4">
           <v-spacer />
           <LBtn variant="primary" @click="infoDialog = false">
-            Verstanden
+            {{ $t('comparison.detail.infoDialog.confirm') }}
           </LBtn>
         </v-card-actions>
       </v-card>
@@ -107,7 +107,7 @@
     <template #action-bar-right>
       <span class="rating-info">
         <LIcon size="16" class="mr-1">mdi-message-check</LIcon>
-        {{ getRatedMessagesCount() }} / {{ messagesToRate }} Nachrichten bewertet
+        {{ $t('comparison.detail.ratedMessages', { rated: getRatedMessagesCount(), total: messagesToRate }) }}
       </span>
     </template>
   </LEvaluationLayout>

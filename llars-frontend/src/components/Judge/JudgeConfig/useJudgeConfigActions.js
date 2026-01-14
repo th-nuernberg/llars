@@ -7,6 +7,7 @@
 import { ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import axios from 'axios';
+import { logI18n, logI18nParams } from '@/utils/logI18n';
 
 export function useJudgeConfigActions(config, estimate, limitThreadsEnabled, minPillarsRequired, updateThreadCounts) {
   const { t, locale } = useI18n();
@@ -82,7 +83,7 @@ export function useJudgeConfigActions(config, estimate, limitThreadsEnabled, min
       // Update thread counts from estimate
       updateThreadCounts(response.data.threads_per_pillar);
     } catch (error) {
-      console.error('Error fetching estimate:', error);
+      logI18n('error', 'logs.judge.config.fetchEstimateFailed', error);
       estimate.value = null;
     } finally {
       estimateLoading.value = false;
@@ -131,15 +132,15 @@ export function useJudgeConfigActions(config, estimate, limitThreadsEnabled, min
           ? `/api/judge/sessions/${sessionId}/start-debug`
           : `/api/judge/sessions/${sessionId}/start`;
         await axios.post(startEndpoint);
-        console.log(`Session ${sessionId} auto-started`);
+        logI18nParams('log', 'logs.judge.config.sessionAutoStarted', { sessionId });
       } catch (startError) {
-        console.warn('Auto-start failed, session can be started manually:', startError);
+        logI18n('warn', 'logs.judge.config.autoStartFailed', startError);
       }
 
       // Navigate directly to the new session
       router.push({ name: 'JudgeSession', params: { id: sessionId } });
     } catch (error) {
-      console.error('Error creating session:', error);
+      logI18n('error', 'logs.judge.config.createSessionFailed', error);
       alert(t('judge.config.errors.createFailed'));
     } finally {
       creating.value = false;

@@ -2,8 +2,8 @@
   <LEvaluationLayout
     ref="layoutRef"
     :title="headerTitle"
-    :subtitle="`Thread #${threadId}`"
-    back-label="Übersicht"
+    :subtitle="$t('historyGeneration.detail.threadLabel', { id: threadId })"
+    :back-label="$t('historyGeneration.detail.backLabel')"
     :error="loadError"
     :status="evaluationStatus"
     :saving="saving"
@@ -34,14 +34,14 @@
         <div class="panel left-panel" :style="leftPanelStyle()">
           <div class="panel-header">
             <LIcon size="20" class="mr-2">mdi-email-outline</LIcon>
-            <span class="panel-title">Verlauf</span>
+            <span class="panel-title">{{ $t('historyGeneration.detail.messagePanelTitle') }}</span>
             <v-spacer />
             <LTag v-if="meta?.sender" variant="gray" size="small">{{ meta.sender }}</LTag>
           </div>
           <div class="panel-content">
             <div v-if="messages.length === 0" class="empty-state">
               <LIcon size="48" color="grey-lighten-1">mdi-email-off-outline</LIcon>
-              <p class="text-medium-emphasis mt-2">Keine Nachrichten gefunden.</p>
+              <p class="text-medium-emphasis mt-2">{{ $t('historyGeneration.detail.emptyMessages') }}</p>
             </div>
 
             <div v-else class="messages">
@@ -56,14 +56,14 @@
                     :icon="m.rating === 'up' ? 'mdi-thumb-up' : 'mdi-thumb-up-outline'"
                     :variant="m.rating === 'up' ? 'success' : 'default'"
                     size="small"
-                    tooltip="Hilfreich"
+                    :tooltip="$t('historyGeneration.detail.helpful')"
                     @click="toggleMessageRating(m, 'up')"
                   />
                   <LIconBtn
                     :icon="m.rating === 'down' ? 'mdi-thumb-down' : 'mdi-thumb-down-outline'"
                     :variant="m.rating === 'down' ? 'danger' : 'default'"
                     size="small"
-                    tooltip="Nicht hilfreich"
+                    :tooltip="$t('historyGeneration.detail.notHelpful')"
                     @click="toggleMessageRating(m, 'down')"
                   />
                 </template>
@@ -86,7 +86,7 @@
         <div class="panel right-panel" :style="rightPanelStyle()">
           <div class="panel-header">
             <LIcon size="20" class="mr-2">llars:evaluation</LIcon>
-            <span class="panel-title">Bewertung</span>
+            <span class="panel-title">{{ $t('historyGeneration.detail.ratingTitle') }}</span>
           </div>
           <div class="panel-content">
             <v-alert v-if="saveError" type="error" variant="tonal" density="compact" class="mb-4" closable @click:close="saveError = ''">
@@ -98,20 +98,20 @@
               <div class="section-header">
                 <span class="section-number">1</span>
                 <div class="section-info">
-                  <h4>Kohärenz und Logik</h4>
+                  <h4>{{ $t('historyGeneration.detail.sections.coherence.title') }}</h4>
                   <p class="text-caption text-medium-emphasis">
-                    Entsprechen die Reaktionen einem natürlichen Kommunikationsmuster?
+                    {{ $t('historyGeneration.detail.sections.coherence.description') }}
                   </p>
                 </div>
               </div>
 
               <div class="subsection" :class="{ disabled: disabledStates.client }">
-                <span class="subsection-label">a) Ratsuchende Person</span>
+                <span class="subsection-label">{{ $t('historyGeneration.detail.sections.coherence.clientLabel') }}</span>
                 <LikertScale v-model="ratings.client_coherence" :disabled="disabledStates.client" />
               </div>
 
               <div class="subsection" :class="{ disabled: disabledStates.counsellor }">
-                <span class="subsection-label">b) Beratende Person</span>
+                <span class="subsection-label">{{ $t('historyGeneration.detail.sections.coherence.counsellorLabel') }}</span>
                 <LikertScale v-model="ratings.counsellor_coherence" :disabled="disabledStates.counsellor" />
               </div>
             </div>
@@ -121,9 +121,9 @@
               <div class="section-header">
                 <span class="section-number">2</span>
                 <div class="section-info">
-                  <h4>Beratungsqualität</h4>
+                  <h4>{{ $t('historyGeneration.detail.sections.quality.title') }}</h4>
                   <p class="text-caption text-medium-emphasis">
-                    Strukturiert, verständlich und empathisch?
+                    {{ $t('historyGeneration.detail.sections.quality.description') }}
                   </p>
                 </div>
               </div>
@@ -135,9 +135,9 @@
               <div class="section-header">
                 <span class="section-number">3</span>
                 <div class="section-info">
-                  <h4>Gesamtbewertung</h4>
+                  <h4>{{ $t('historyGeneration.detail.sections.overall.title') }}</h4>
                   <p class="text-caption text-medium-emphasis">
-                    Authentisch und als Beispiel geeignet?
+                    {{ $t('historyGeneration.detail.sections.overall.description') }}
                   </p>
                 </div>
               </div>
@@ -149,7 +149,7 @@
               <div class="section-header">
                 <LIcon size="18" class="section-icon">mdi-tag-outline</LIcon>
                 <div class="section-info">
-                  <h4>Fallkategorie</h4>
+                  <h4>{{ $t('historyGeneration.detail.sections.category.title') }}</h4>
                 </div>
               </div>
               <v-select
@@ -157,7 +157,7 @@
                 :items="categories"
                 item-title="name"
                 item-value="id"
-                label="Kategorie auswählen"
+                :label="$t('historyGeneration.detail.sections.category.selectLabel')"
                 variant="outlined"
                 density="compact"
                 clearable
@@ -166,7 +166,7 @@
               />
               <v-textarea
                 v-model="categoryNotes"
-                label="Anmerkungen zur Kategorie"
+                :label="$t('historyGeneration.detail.sections.category.notesLabel')"
                 variant="outlined"
                 density="compact"
                 auto-grow
@@ -181,12 +181,12 @@
               <div class="section-header">
                 <LIcon size="18" class="section-icon">mdi-note-text-outline</LIcon>
                 <div class="section-info">
-                  <h4>Notizen</h4>
+                  <h4>{{ $t('historyGeneration.detail.sections.notes.title') }}</h4>
                 </div>
               </div>
               <v-textarea
                 v-model="feedback"
-                label="Ihre Gedanken oder Anmerkungen"
+                :label="$t('historyGeneration.detail.sections.notes.label')"
                 variant="outlined"
                 auto-grow
                 rows="3"
@@ -203,6 +203,7 @@
 <script setup>
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import axios from 'axios'
 import DOMPurify from 'dompurify'
 import { useSkeletonLoading } from '@/composables/useSkeletonLoading'
@@ -212,6 +213,7 @@ import BinaryLikertScale from '@/components/parts/BinaryLikertScale.vue'
 
 const route = useRoute()
 const router = useRouter()
+const { t } = useI18n()
 
 const threadId = computed(() => Number(route.params.id))
 
@@ -259,7 +261,7 @@ const saving = ref(false)
 const saveError = ref('')
 const isInitialized = ref(false)
 
-const headerTitle = computed(() => meta.value?.subject || 'Verlaufsbewertung')
+const headerTitle = computed(() => meta.value?.subject || t('historyGeneration.detail.headerDefault'))
 
 // Evaluation status for the layout
 const evaluationStatus = computed(() => {
@@ -380,7 +382,7 @@ const autoSave = debounce(async () => {
       e?.response?.data?.error ||
       e?.response?.data?.message ||
       e?.message ||
-      'Fehler beim Speichern.'
+      t('historyGeneration.detail.errors.saveFailed')
   } finally {
     saving.value = false
   }
@@ -388,8 +390,8 @@ const autoSave = debounce(async () => {
 
 async function loadData() {
   const id = threadId.value
-  if (!Number.isFinite(id) || id <= 0) {
-    loadError.value = 'Ungültige Thread-ID.'
+    if (!Number.isFinite(id) || id <= 0) {
+    loadError.value = t('historyGeneration.detail.errors.invalidThread')
     return
   }
 
@@ -447,7 +449,7 @@ async function loadData() {
         e?.response?.data?.error ||
         e?.response?.data?.message ||
         e?.message ||
-        'Thread konnte nicht geladen werden.'
+        t('historyGeneration.detail.errors.loadFailed')
     }
   })
 }

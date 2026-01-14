@@ -3,7 +3,7 @@
     <!-- Loading State -->
     <div v-if="loading && !session" class="loading-container">
       <v-progress-circular indeterminate color="primary" size="48"></v-progress-circular>
-      <p class="mt-4 text-medium-emphasis">Session wird geladen...</p>
+      <p class="mt-4 text-medium-emphasis">{{ $t('judgeSession.loading') }}</p>
     </div>
 
     <!-- Main Content -->
@@ -21,7 +21,7 @@
                 @click="$router.push({ name: 'JudgeOverview' })"
               ></v-btn>
               <div class="ml-2">
-                <h2 class="panel-title">{{ session?.session_name || 'Judge Session' }}</h2>
+                <h2 class="panel-title">{{ session?.session_name || $t('judgeSession.defaultTitle') }}</h2>
                 <div class="d-flex align-center gap-2">
                   <v-chip
                     :color="getStatusColor(session?.status)"
@@ -30,7 +30,7 @@
                   >
                     {{ getStatusText(session?.status) }}
                   </v-chip>
-                  <span class="text-caption text-medium-emphasis">ID: {{ sessionId }}</span>
+                  <span class="text-caption text-medium-emphasis">{{ $t('judgeSession.idLabel', { id: sessionId }) }}</span>
                 </div>
               </div>
             </div>
@@ -82,7 +82,7 @@
             <v-tabs v-model="activeTab" density="compact" color="primary">
               <v-tab value="live" :disabled="session?.status === 'completed'">
                 <LIcon start size="18">mdi-play-circle</LIcon>
-                Live
+                {{ $t('judgeSession.tabs.live') }}
                 <v-chip
                   v-if="workerCount > 1 && activeWorkerCount > 0"
                   size="x-small"
@@ -103,7 +103,7 @@
               </v-tab>
               <v-tab value="history">
                 <LIcon start size="18">mdi-history</LIcon>
-                Verlauf
+                {{ $t('judgeSession.tabs.history') }}
                 <v-chip size="x-small" class="ml-2">{{ completedComparisons.length }}</v-chip>
               </v-tab>
             </v-tabs>
@@ -113,7 +113,7 @@
               size="small"
               @click="refreshAll"
               :loading="loading"
-              title="Aktualisieren"
+              :title="$t('judgeSession.actions.refresh')"
             ></v-btn>
           </div>
 
@@ -127,22 +127,22 @@
                 <div class="live-view-header">
                   <div class="live-view-info">
                     <LIcon size="18" class="mr-2">mdi-account-group</LIcon>
-                    <span class="live-view-title">{{ activeWorkerCount }}/{{ workerCount }} Worker aktiv</span>
+                    <span class="live-view-title">{{ $t('judgeSession.live.activeWorkers', { active: activeWorkerCount, total: workerCount }) }}</span>
                     <v-chip
                       v-if="activeWorkerCount > 0"
                       size="x-small"
                       color="secondary"
                       class="ml-2"
                     >
-                      {{ activeWorkerCount }} streaming
+                      {{ $t('judgeSession.live.streamingCount', { count: activeWorkerCount }) }}
                     </v-chip>
                   </div>
                   <div class="live-view-actions">
                     <v-btn-toggle v-model="liveViewMode" density="compact" mandatory color="primary">
-                      <v-btn value="detailed" size="small" variant="text" title="Detaillierte Ansicht">
+                      <v-btn value="detailed" size="small" variant="text" :title="$t('judgeSession.live.viewDetailed')">
                         <LIcon size="18">mdi-view-grid</LIcon>
                       </v-btn>
-                      <v-btn value="compact" size="small" variant="text" title="Kompakte Ansicht">
+                      <v-btn value="compact" size="small" variant="text" :title="$t('judgeSession.live.viewCompact')">
                         <LIcon size="18">mdi-view-list</LIcon>
                       </v-btn>
                     </v-btn-toggle>
@@ -151,7 +151,7 @@
                       variant="text"
                       size="small"
                       @click="openUnifiedFullscreen('live-multi')"
-                      title="Vollbild"
+                      :title="$t('judgeSession.live.fullscreen')"
                     ></v-btn>
                   </div>
                 </div>
@@ -207,9 +207,9 @@
                 />
                 <div v-else class="empty-state">
                   <LIcon size="48" color="grey">mdi-compare-horizontal</LIcon>
-                  <p class="mt-2 text-medium-emphasis">Kein aktiver Vergleich</p>
+                  <p class="mt-2 text-medium-emphasis">{{ $t('judgeSession.live.emptyTitle') }}</p>
                   <p class="text-caption text-medium-emphasis">
-                    {{ session?.status === 'completed' ? 'Session abgeschlossen. Siehe Verlauf.' : 'Starten Sie die Session um Vergleiche zu generieren.' }}
+                    {{ session?.status === 'completed' ? $t('judgeSession.live.emptyCompleted') : $t('judgeSession.live.emptyStart') }}
                   </p>
                 </div>
               </div>
@@ -239,7 +239,7 @@
           prepend-icon="mdi-alert"
           class="mr-2"
         >
-          Wiederherstellung nötig
+          {{ $t('judgeSession.actionBar.recoveryNeeded') }}
         </v-chip>
 
         <v-spacer></v-spacer>
@@ -254,7 +254,7 @@
             @click="startSession"
             :loading="actionLoading"
           >
-            Starten
+            {{ $t('judgeSession.actions.start') }}
           </LBtn>
 
           <!-- PAUSE -->
@@ -265,7 +265,7 @@
             @click="pauseSession"
             :loading="actionLoading"
           >
-            Pause
+            {{ $t('judgeSession.actions.pause') }}
           </LBtn>
 
           <!-- RESUME/RECOVER -->
@@ -276,7 +276,7 @@
             @click="resumeSession"
             :loading="actionLoading"
           >
-            {{ sessionHealth?.needs_recovery ? 'Wiederherstellen' : 'Fortsetzen' }}
+            {{ sessionHealth?.needs_recovery ? $t('judgeSession.actions.recover') : $t('judgeSession.actions.resume') }}
           </LBtn>
 
           <!-- RESULTS -->
@@ -286,7 +286,7 @@
             prepend-icon="mdi-chart-box"
             @click="navigateToResults"
           >
-            Ergebnisse
+            {{ $t('judgeSession.actions.results') }}
           </LBtn>
         </div>
       </div>
@@ -329,6 +329,7 @@
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import { logI18n } from '@/utils/logI18n';
 
 // Import extracted components
 import SessionProgressBar from './JudgeSession/SessionProgressBar.vue';
@@ -551,25 +552,25 @@ const copyStreamToClipboard = () => copyToClipboard(llmStreamContent.value);
 
 // Lifecycle
 onMounted(async () => {
-  console.log('[JudgeSession] Mounted, loading session...');
+  logI18n('log', 'logs.judge.session.mountedLoading');
   await loadSession();
-  console.log('[JudgeSession] Session loaded, setting up socket...');
+  logI18n('log', 'logs.judge.session.sessionLoaded');
   setupSocket();
   if (session.value?.status === 'running') {
-    console.log('[JudgeSession] Session is running, starting polling');
+    logI18n('log', 'logs.judge.session.runningStartPolling');
     startPolling();
   }
   // Set initial tab based on session status
   if (session.value?.status === 'completed') {
     activeTab.value = 'history';
   }
-  console.log('[JudgeSession] Mount complete');
+  logI18n('log', 'logs.judge.session.mountComplete');
 });
 
 onUnmounted(() => {
-  console.log('[JudgeSession] Unmounting, cleaning up socket...');
+  logI18n('log', 'logs.judge.session.unmountingCleanup');
   cleanupSocket();
-  console.log('[JudgeSession] Cleanup complete');
+  logI18n('log', 'logs.judge.session.cleanupComplete');
 });
 </script>
 

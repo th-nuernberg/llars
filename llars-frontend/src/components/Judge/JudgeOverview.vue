@@ -189,6 +189,7 @@ import { useRouter } from 'vue-router';
 import axios from 'axios';
 import { io } from 'socket.io-client';
 import { useI18n } from 'vue-i18n';
+import { logI18n } from '@/utils/logI18n';
 import { usePanelResize } from '@/composables/usePanelResize';
 import { useMobile } from '@/composables/useMobile';
 import KIADataSync from './KIADataSync.vue';
@@ -264,7 +265,7 @@ const loadSessions = async (isInitial = false) => {
     const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/judge/sessions`);
     sessions.value = response.data;
   } catch (error) {
-    console.error('Error loading sessions:', error);
+    logI18n('error', 'logs.judge.overview.loadSessionsFailed', error);
   } finally {
     loading.value = false;
     loadingTable.value = false;
@@ -303,7 +304,7 @@ const deleteSession = async () => {
     deleteDialog.value = false;
     deleteItem.value = null;
   } catch (error) {
-    console.error('Error deleting session:', error);
+    logI18n('error', 'logs.judge.overview.deleteSessionFailed', error);
   } finally {
     deleting.value = false;
   }
@@ -373,24 +374,24 @@ const setupSocket = () => {
   });
 
   socket.value.on('connect', () => {
-    console.log('[JudgeOverview] Socket connected');
+    logI18n('log', 'logs.judge.overview.socketConnected');
     // Join overview room to receive updates for all sessions
     socket.value.emit('judge:join_overview');
   });
 
   socket.value.on('disconnect', () => {
-    console.log('[JudgeOverview] Socket disconnected');
+    logI18n('log', 'logs.judge.overview.socketDisconnected');
   });
 
   // Listen for progress updates from any session
   socket.value.on('judge:progress', (data) => {
-    console.log('[JudgeOverview] Progress update:', data);
+    logI18n('log', 'logs.judge.overview.progressUpdate', data);
     updateSessionProgress(data.session_id, data.completed, data.total, data.percent);
   });
 
   // Listen for comparison completions (also updates progress)
   socket.value.on('judge:comparison_complete', (data) => {
-    console.log('[JudgeOverview] Comparison complete:', data);
+    logI18n('log', 'logs.judge.overview.comparisonComplete', data);
     if (data.completed !== undefined && data.total !== undefined) {
       const percent = data.total > 0 ? (data.completed / data.total) * 100 : 0;
       updateSessionProgress(data.session_id, data.completed, data.total, percent);
@@ -399,7 +400,7 @@ const setupSocket = () => {
 
   // Listen for session status changes
   socket.value.on('judge:session_complete', (data) => {
-    console.log('[JudgeOverview] Session complete:', data);
+    logI18n('log', 'logs.judge.overview.sessionComplete', data);
     updateSessionStatus(data.session_id, 'completed');
     if (data.total !== undefined) {
       updateSessionProgress(data.session_id, data.total, data.total, 100);
@@ -408,13 +409,13 @@ const setupSocket = () => {
 
   // Listen for session start
   socket.value.on('judge:session_started', (data) => {
-    console.log('[JudgeOverview] Session started:', data);
+    logI18n('log', 'logs.judge.overview.sessionStarted', data);
     updateSessionStatus(data.session_id, 'running');
   });
 
   // Listen for session pause
   socket.value.on('judge:session_paused', (data) => {
-    console.log('[JudgeOverview] Session paused:', data);
+    logI18n('log', 'logs.judge.overview.sessionPaused', data);
     updateSessionStatus(data.session_id, 'paused');
   });
 };

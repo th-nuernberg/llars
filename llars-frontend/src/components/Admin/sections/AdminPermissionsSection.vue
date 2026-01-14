@@ -681,6 +681,7 @@
 import { ref, computed, onMounted, watch } from 'vue';
 import axios from 'axios';
 import { useSkeletonLoading } from '@/composables/useSkeletonLoading';
+import { logI18n, logI18nParams } from '@/utils/logI18n';
 
 // State
 const activeTab = ref('roles');
@@ -893,7 +894,7 @@ const createRole = async () => {
     createRoleDialog.value = false;
     await fetchRoles();
   } catch (error) {
-    console.error('Error creating role:', error);
+    logI18n('error', 'logs.admin.permissions.createRoleFailed', error);
   } finally {
     creatingRole.value = false;
   }
@@ -910,7 +911,7 @@ const saveRolePermissions = async () => {
     upsertRole(updated);
     await fetchRoles();
   } catch (error) {
-    console.error('Error saving role permissions:', error);
+    logI18n('error', 'logs.admin.permissions.saveRolePermissionsFailed', error);
   } finally {
     savingRolePermissions.value = false;
   }
@@ -924,7 +925,7 @@ const fetchRoles = async () => {
       const response = await axios.get('/api/permissions/roles');
       roles.value = response.data.roles || [];
     } catch (error) {
-      console.error('Error fetching roles:', error);
+      logI18n('error', 'logs.admin.permissions.fetchRolesFailed', error);
     }
   });
   loadingRoles.value = false;
@@ -937,7 +938,7 @@ const fetchPermissions = async () => {
       const response = await axios.get('/api/permissions');
       permissions.value = response.data.permissions || [];
     } catch (error) {
-      console.error('Error fetching permissions:', error);
+      logI18n('error', 'logs.admin.permissions.fetchPermissionsFailed', error);
     }
   });
   loadingPermissions.value = false;
@@ -950,7 +951,7 @@ const fetchAuditLog = async () => {
       const response = await axios.get('/api/permissions/audit-log');
       auditLog.value = response.data.entries || [];
     } catch (error) {
-      console.error('Error fetching audit log:', error);
+      logI18n('error', 'logs.admin.permissions.fetchAuditLogFailed', error);
       auditLog.value = [];
     }
   });
@@ -963,7 +964,7 @@ const fetchUsersForAccess = async () => {
     const users = response.data.users || response.data.data || [];
     allUsernames.value = users.map(u => u.username).filter(Boolean).sort();
   } catch (error) {
-    console.error('Error fetching users for access:', error);
+    logI18n('error', 'logs.admin.permissions.fetchUsersForAccessFailed', error);
     allUsernames.value = [];
   }
 };
@@ -975,7 +976,7 @@ const fetchChatbotAccessOverview = async () => {
       const response = await axios.get('/api/chatbots/access/overview?include_inactive=true');
       chatbots.value = response.data.chatbots || [];
     } catch (error) {
-      console.error('Error fetching chatbot access overview:', error);
+      logI18n('error', 'logs.admin.permissions.fetchChatbotAccessOverviewFailed', error);
       chatbots.value = [];
     }
   });
@@ -989,7 +990,7 @@ const fetchLlmAccessOverview = async () => {
       const response = await axios.get('/api/llm/models/access/overview?include_inactive=true');
       llmModels.value = response.data.models || [];
     } catch (error) {
-      console.error('Error fetching LLM access overview:', error);
+      logI18n('error', 'logs.admin.permissions.fetchLlmAccessOverviewFailed', error);
       llmModels.value = [];
     }
   });
@@ -1033,7 +1034,7 @@ const saveAccess = async () => {
     await fetchChatbotAccessOverview();
     accessDialog.value = false;
   } catch (error) {
-    console.error('Error saving chatbot access:', error);
+    logI18n('error', 'logs.admin.permissions.saveChatbotAccessFailed', error);
   } finally {
     savingAccess.value = false;
   }
@@ -1055,7 +1056,7 @@ const saveLlmAccess = async () => {
     await fetchLlmAccessOverview();
     llmAccessDialog.value = false;
   } catch (error) {
-    console.error('Error saving LLM access:', error);
+    logI18n('error', 'logs.admin.permissions.saveLlmAccessFailed', error);
   } finally {
     savingLlmAccess.value = false;
   }
@@ -1078,7 +1079,7 @@ const syncAllLlmModels = async () => {
       .filter(p => p.is_active && p.is_openai_compatible)
       .map(provider =>
         axios.post(`/api/llm/providers/${provider.id}/sync-models`, {}).catch(err => {
-          console.warn(`Failed to sync provider ${provider.name}:`, err);
+          logI18nParams('warn', 'logs.admin.permissions.syncProviderFailed', { provider: provider.name }, err);
           return null;
         })
       );
@@ -1088,7 +1089,7 @@ const syncAllLlmModels = async () => {
     // Refresh the LLM models list
     await fetchLlmAccessOverview();
   } catch (error) {
-    console.error('Error syncing LLM models:', error);
+    logI18n('error', 'logs.admin.permissions.syncLlmModelsFailed', error);
   } finally {
     syncingLlmModels.value = false;
     llmSyncedOnce.value = true;

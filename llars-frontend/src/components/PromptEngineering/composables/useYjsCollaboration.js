@@ -407,7 +407,11 @@ export function useYjsCollaboration(roomId, username, onProcessYDoc, onUpdateCur
    * Call this after saving a new color to the database
    */
   const updateColor = (newColor) => {
-    if (!newColor || !roomId.value) return
+    console.log('[useYjsCollaboration] updateColor called:', newColor, 'roomId:', roomId.value)
+    if (!newColor || !roomId.value) {
+      console.log('[useYjsCollaboration] updateColor aborted: missing newColor or roomId')
+      return
+    }
 
     if (users.value) {
       const next = { ...users.value }
@@ -420,11 +424,16 @@ export function useYjsCollaboration(roomId, username, onProcessYDoc, onUpdateCur
       }
       if (updated) {
         users.value = next
+        console.log('[useYjsCollaboration] Updated local users state with new color')
       }
     }
 
-    if (!socket.value?.connected) return
+    if (!socket.value?.connected) {
+      console.log('[useYjsCollaboration] Socket not connected, skipping emit')
+      return
+    }
 
+    console.log('[useYjsCollaboration] Emitting update_color event to room:', roomId.value)
     socket.value.emit('update_color', {
       room: roomId.value,
       color: newColor

@@ -260,6 +260,42 @@ export function useScenarioManager() {
   }
 
   /**
+   * Get available threads that can be added to a scenario
+   * Returns threads with matching function_type that are not yet in the scenario
+   */
+  async function getAvailableThreads(scenarioId, params = {}) {
+    try {
+      const response = await axios.get(`/api/scenarios/${scenarioId}/available-threads`, {
+        headers: getHeaders(),
+        params
+      })
+      return response.data
+    } catch (err) {
+      console.error('Error fetching available threads:', err)
+      throw err
+    }
+  }
+
+  /**
+   * Add existing threads to a scenario
+   * @param {number} scenarioId - The scenario ID
+   * @param {number[]} threadIds - Array of thread IDs to add
+   */
+  async function addThreadsToScenario(scenarioId, threadIds) {
+    try {
+      const response = await axios.post(`/api/scenarios/${scenarioId}/threads`, {
+        thread_ids: threadIds
+      }, {
+        headers: getHeaders()
+      })
+      return response.data
+    } catch (err) {
+      console.error('Error adding threads to scenario:', err)
+      throw err
+    }
+  }
+
+  /**
    * Respond to a scenario invitation (accept or reject)
    * @param {number} scenarioId - The scenario ID
    * @param {string} action - 'accept' or 'reject'
@@ -327,6 +363,91 @@ export function useScenarioManager() {
     }
   }
 
+  /**
+   * Duplicate a scenario
+   * Creates a copy with all threads but without users/evaluations
+   *
+   * @param {number} scenarioId - ID of the scenario to duplicate
+   * @param {string} newName - Optional new name for the duplicate
+   */
+  async function duplicateScenario(scenarioId, newName = null) {
+    loading.value = true
+    error.value = null
+    try {
+      const payload = newName ? { scenario_name: newName } : {}
+      const response = await axios.post(`/api/scenarios/${scenarioId}/duplicate`, payload, {
+        headers: getHeaders()
+      })
+      const newScenario = response.data.scenario
+      scenarios.value.unshift(newScenario)
+      return newScenario
+    } catch (err) {
+      error.value = err.response?.data?.error || 'Failed to duplicate scenario'
+      console.error('Error duplicating scenario:', err)
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  /**
+   * Archive a scenario
+   * Sets status to 'archived'
+   */
+  async function archiveScenario(scenarioId) {
+    loading.value = true
+    error.value = null
+    try {
+      const response = await axios.post(`/api/scenarios/${scenarioId}/archive`, {}, {
+        headers: getHeaders()
+      })
+      // Update local state
+      const idx = scenarios.value.findIndex(s => s.id === scenarioId)
+      if (idx !== -1) {
+        scenarios.value[idx] = response.data.scenario
+      }
+      if (currentScenario.value?.id === scenarioId) {
+        currentScenario.value = response.data.scenario
+      }
+      return response.data.scenario
+    } catch (err) {
+      error.value = err.response?.data?.error || 'Failed to archive scenario'
+      console.error('Error archiving scenario:', err)
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  /**
+   * Unarchive a scenario
+   * Restores the scenario from archived status
+   */
+  async function unarchiveScenario(scenarioId) {
+    loading.value = true
+    error.value = null
+    try {
+      const response = await axios.post(`/api/scenarios/${scenarioId}/unarchive`, {}, {
+        headers: getHeaders()
+      })
+      // Update local state
+      const idx = scenarios.value.findIndex(s => s.id === scenarioId)
+      if (idx !== -1) {
+        scenarios.value[idx] = response.data.scenario
+      }
+      if (currentScenario.value?.id === scenarioId) {
+        currentScenario.value = response.data.scenario
+      }
+      return response.data.scenario
+    } catch (err) {
+      error.value = err.response?.data?.error || 'Failed to unarchive scenario'
+      console.error('Error unarchiving scenario:', err)
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
   return {
     // State
     scenarios,
@@ -348,10 +469,17 @@ export function useScenarioManager() {
     stopLLMEvaluation,
     exportResults,
     getAvailableUsers,
+    getAvailableThreads,
+    addThreadsToScenario,
 
     // Invitation Management
     respondToInvitation,
     reinviteUser,
-    getScenarioTeam
+    getScenarioTeam,
+
+    // Scenario Management
+    duplicateScenario,
+    archiveScenario,
+    unarchiveScenario
   }
 }

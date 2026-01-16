@@ -127,7 +127,21 @@
 
           <div v-if="analyzing" class="analyzing-state">
             <v-progress-circular indeterminate color="primary" size="24" class="mr-3" />
-            <span>{{ $t('scenarioManager.wizard.step1.analyzing') }}</span>
+            <div class="analyzing-content">
+              <span v-if="streamingPhase === 'parsing'">{{ $t('scenarioManager.wizard.step1.parsingFiles') }}</span>
+              <span v-else-if="streamingPhase === 'thinking'">{{ $t('scenarioManager.wizard.step1.aiThinking') }}</span>
+              <span v-else-if="streamingPhase === 'streaming'">{{ $t('scenarioManager.wizard.step1.aiStreaming') }}</span>
+              <span v-else>{{ $t('scenarioManager.wizard.step1.analyzing') }}</span>
+            </div>
+          </div>
+
+          <!-- Streaming JSON Preview -->
+          <div v-if="streamingPhase === 'streaming' && streamedJsonContent" class="streaming-preview">
+            <div class="streaming-header">
+              <LIcon size="16" color="primary" class="mr-2 pulse-icon">mdi-robot</LIcon>
+              <span>{{ $t('scenarioManager.wizard.step1.aiGenerating') }}</span>
+            </div>
+            <pre class="streaming-content">{{ streamedJsonContent }}<span class="cursor">|</span></pre>
           </div>
 
           <div v-else-if="analysisResult" class="analysis-result">
@@ -543,7 +557,7 @@
                   :class="{ selected: isUserSelected(user) }"
                   @click="toggleUser(user)"
                 >
-                  <LAvatar :user="user" size="32" class="mr-2" />
+                  <LAvatar :user="user" size="sm" class="mr-2" />
                   <div class="user-info">
                     <span class="user-name">{{ user.display_name || user.username }}</span>
                     <span class="user-email">{{ user.email }}</span>
@@ -715,7 +729,7 @@
             </h5>
             <div class="summary-row">
               <span class="summary-label">{{ $t('scenarioManager.wizard.step5.type') }}</span>
-              <LTag :variant="selectedTypeInfo?.variant || 'default'">
+              <LTag :variant="selectedTypeInfo?.variant || 'gray'">
                 <LIcon size="16" class="mr-1">{{ selectedTypeInfo?.icon }}</LIcon>
                 {{ selectedTypeInfo?.name }}
               </LTag>
@@ -896,6 +910,7 @@
 import { ref, computed, watch, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import axios from 'axios'
+import { useAuth } from '@/composables/useAuth'
 import { useScenarioManager } from '../composables/useScenarioManager'
 import EvaluationConfigEditor from './EvaluationConfigEditor.vue'
 import {
@@ -912,6 +927,7 @@ const emit = defineEmits(['close', 'created'])
 
 const { t, locale } = useI18n()
 const { createNewScenario, inviteUsers } = useScenarioManager()
+const auth = useAuth()
 
 // Refs
 const fileInput = ref(null)
@@ -929,6 +945,11 @@ const analyzing = ref(false)
 const analysisResult = ref(null)
 const analyzedData = ref([]) // Merged data from all files
 const aiSuggestions = ref(null) // AI-generated suggestions
+
+// Streaming AI state
+const aiThinking = ref(false)
+const streamedJsonContent = ref('') // Raw JSON being streamed from LLM
+const streamingPhase = ref(null) // 'parsing' | 'thinking' | 'streaming' | 'done'
 
 // Team/User state
 const availableUsers = ref([])
@@ -998,7 +1019,7 @@ function getTypeVariant(typeId) {
     [EVAL_TYPES.MAIL_RATING]: 'info',
     [EVAL_TYPES.AUTHENTICITY]: 'success'
   }
-  return variants[typeId] || 'default'
+  return variants[typeId] || 'gray'
 }
 
 // Get base type name for display
@@ -1312,12 +1333,15 @@ function formatFileSize(bytes) {
   return (bytes / (1024 * 1024)).toFixed(1) + ' MB'
 }
 
-// AI Analysis
+// AI Analysis with Streaming
 async function analyzeData() {
   if (uploadedFiles.value.length === 0) return
 
   analyzing.value = true
   aiSuggestions.value = null
+  aiThinking.value = false
+  streamedJsonContent.value = ''
+  streamingPhase.value = 'parsing'
   const allData = []
   const fileResults = []
   let totalErrors = 0
@@ -1356,53 +1380,146 @@ async function analyzeData() {
     // Store merged data for later use
     analyzedData.value = allData
 
-    // Step 2: Call AI analysis endpoint
+    // Step 2: Call streaming AI analysis endpoint
     try {
-      const response = await axios.post('/api/ai-assist/analyze-scenario-data', {
-        data: allData,
-        filename: uploadedFiles.value[0]?.name || 'data',
-        file_count: uploadedFiles.value.length
+      streamingPhase.value = 'thinking'
+      aiThinking.value = true
+
+      // Get auth token for fetch (axios interceptors don't apply to fetch)
+      const token = auth.getToken()
+      const headers = {
+        'Content-Type': 'application/json'
+      }
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`
+      }
+
+      const response = await fetch('/api/ai-assist/analyze-scenario-data/stream', {
+        method: 'POST',
+        headers,
+        credentials: 'include',
+        body: JSON.stringify({
+          data: allData,
+          filename: uploadedFiles.value[0]?.name || 'data',
+          file_count: uploadedFiles.value.length
+        })
       })
 
-      if (response.data.success && response.data.analysis) {
-        const { analysis } = response.data
-
-        // Store AI suggestions
-        aiSuggestions.value = analysis.suggestions
-
-        // Build analysis result with AI data
-        analysisResult.value = {
-          itemCount: analysis.data_summary.item_count,
-          fieldsCount: analysis.data_summary.fields.length,
-          fields: analysis.data_summary.fields,
-          suggestedType: analysis.suggestions?.eval_type || EVAL_TYPES.RATING,
-          suggestedTypeConfidence: analysis.suggestions?.eval_type_confidence,
-          suggestedTypeReasoning: analysis.suggestions?.eval_type_reasoning,
-          sampleData: analysis.data_summary.sample_items,
-          fileResults,
-          filesProcessed: uploadedFiles.value.length,
-          filesSuccessful: uploadedFiles.value.length - totalErrors,
-          errors: totalErrors,
-          dataQuality: analysis.data_quality,
-          tokensUsed: response.data.tokens_used,
-          aiPowered: true
-        }
-
-        // Auto-apply AI suggestions
-        if (analysis.suggestions?.eval_type) {
-          formData.value.evalType = analysis.suggestions.eval_type
-        }
-        if (analysis.suggestions?.scenario_name) {
-          formData.value.scenario_name = analysis.suggestions.scenario_name
-        }
-        if (analysis.suggestions?.scenario_description) {
-          formData.value.description = analysis.suggestions.scenario_description
-        }
-
-        return // Success - exit early
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`)
       }
+
+      const reader = response.body.getReader()
+      const decoder = new TextDecoder()
+      let buffer = ''
+      let tokensUsed = 0
+      let currentEventType = null
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+
+        buffer += decoder.decode(value, { stream: true })
+        const lines = buffer.split('\n')
+        buffer = lines.pop() || ''
+
+        for (const line of lines) {
+          if (line.startsWith('event: ')) {
+            currentEventType = line.slice(7).trim()
+            continue
+          }
+          if (line.startsWith('data: ')) {
+            const eventData = line.slice(6)
+            try {
+              const parsed = JSON.parse(eventData)
+
+              // Handle events based on tracked event type
+              switch (currentEventType) {
+                case 'data_summary':
+                  analysisResult.value = {
+                    itemCount: parsed.item_count,
+                    fieldsCount: parsed.fields?.length || 0,
+                    fields: parsed.fields || [],
+                    sampleData: parsed.sample_items || [],
+                    fileResults,
+                    filesProcessed: uploadedFiles.value.length,
+                    filesSuccessful: uploadedFiles.value.length - totalErrors,
+                    errors: totalErrors,
+                    aiPowered: true,
+                    streaming: true
+                  }
+                  break
+
+                case 'thinking':
+                  streamingPhase.value = 'thinking'
+                  break
+
+                case 'chunk':
+                  streamingPhase.value = 'streaming'
+                  aiThinking.value = false
+                  streamedJsonContent.value += parsed.content || ''
+                  break
+
+                case 'suggestions':
+                  aiSuggestions.value = parsed
+
+                  // Update analysis result with suggestions
+                  if (analysisResult.value) {
+                    analysisResult.value.suggestedType = parsed.eval_type || EVAL_TYPES.RATING
+                    analysisResult.value.suggestedTypeConfidence = parsed.eval_type_confidence
+                    analysisResult.value.suggestedTypeReasoning = parsed.eval_type_reasoning
+                  }
+
+                  // Auto-apply AI suggestions
+                  if (parsed.eval_type) {
+                    formData.value.evalType = parsed.eval_type
+                  }
+                  if (parsed.scenario_name) {
+                    formData.value.scenario_name = parsed.scenario_name
+                  }
+                  if (parsed.scenario_description) {
+                    formData.value.description = parsed.scenario_description
+                  }
+                  break
+
+                case 'data_quality':
+                  if (analysisResult.value) {
+                    analysisResult.value.dataQuality = parsed
+                  }
+                  break
+
+                case 'done':
+                  tokensUsed = parsed.tokens_used || 0
+                  if (analysisResult.value) {
+                    analysisResult.value.tokensUsed = tokensUsed
+                    analysisResult.value.streaming = false
+                  }
+                  streamingPhase.value = 'done'
+                  break
+
+                case 'error':
+                  console.warn('Streaming AI error:', parsed.error)
+                  throw new Error(parsed.error)
+              }
+
+              currentEventType = null // Reset after processing data
+            } catch (parseError) {
+              // Ignore parse errors for incomplete JSON
+              if (parseError.message && !parseError.message.includes('Unexpected')) {
+                throw parseError
+              }
+            }
+          }
+        }
+      }
+
+      // Success - streaming complete
+      return
+
     } catch (apiError) {
-      console.warn('AI analysis API failed, falling back to local analysis:', apiError)
+      console.warn('Streaming AI analysis failed, falling back to local analysis:', apiError)
+      aiThinking.value = false
+      streamingPhase.value = null
     }
 
     // Step 3: Fallback to local heuristic analysis
@@ -1424,6 +1541,7 @@ async function analyzeData() {
     }
   } finally {
     analyzing.value = false
+    aiThinking.value = false
   }
 }
 
@@ -1890,6 +2008,64 @@ onMounted(() => {
   display: flex;
   align-items: center;
   color: rgba(var(--v-theme-on-surface), 0.7);
+}
+
+.analyzing-content {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Streaming Preview */
+.streaming-preview {
+  margin-top: 12px;
+  padding: 12px;
+  background-color: rgba(var(--v-theme-surface-variant), 0.3);
+  border-radius: 8px;
+  border: 1px solid rgba(var(--v-theme-primary), 0.2);
+}
+
+.streaming-header {
+  display: flex;
+  align-items: center;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: rgb(var(--v-theme-primary));
+  margin-bottom: 8px;
+}
+
+.streaming-content {
+  font-family: 'Fira Code', 'Monaco', monospace;
+  font-size: 0.7rem;
+  line-height: 1.4;
+  max-height: 150px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  margin: 0;
+  padding: 8px;
+  background-color: rgba(var(--v-theme-surface), 0.5);
+  border-radius: 4px;
+  color: rgba(var(--v-theme-on-surface), 0.8);
+}
+
+.streaming-content .cursor {
+  animation: blink 1s step-end infinite;
+  color: rgb(var(--v-theme-primary));
+  font-weight: bold;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+.pulse-icon {
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
 }
 
 .analysis-result {

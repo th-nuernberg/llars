@@ -167,10 +167,77 @@
           <!-- Existing Data Selection -->
           <div v-if="importMethod === 'existing' && !importing" class="import-content">
             <p class="text-body-2 mb-4">{{ $t('scenarioManager.data.selectExistingDesc') }}</p>
-            <!-- TODO: Add thread selection from existing data -->
-            <v-alert type="info" variant="tonal" density="compact">
-              {{ $t('scenarioManager.data.comingSoon') }}
+
+            <!-- Loading state -->
+            <div v-if="loadingAvailable" class="text-center py-4">
+              <v-progress-circular indeterminate color="primary" />
+            </div>
+
+            <!-- No threads available -->
+            <v-alert v-else-if="availableThreads.length === 0" type="info" variant="tonal" density="compact">
+              {{ $t('scenarioManager.data.noAvailableThreads') }}
             </v-alert>
+
+            <!-- Thread selection -->
+            <div v-else class="thread-selection">
+              <v-text-field
+                v-model="availableSearch"
+                :placeholder="$t('scenarioManager.data.searchAvailable')"
+                prepend-inner-icon="mdi-magnify"
+                variant="outlined"
+                density="compact"
+                hide-details
+                clearable
+                class="mb-3"
+              />
+
+              <div class="selection-header">
+                <v-checkbox
+                  v-model="selectAll"
+                  :label="$t('scenarioManager.data.selectAll')"
+                  density="compact"
+                  hide-details
+                  @change="toggleSelectAll"
+                />
+                <span class="selection-count">
+                  {{ selectedThreadIds.length }} / {{ filteredAvailableThreads.length }}
+                  {{ $t('scenarioManager.data.selected') }}
+                </span>
+              </div>
+
+              <div class="thread-list">
+                <div
+                  v-for="thread in filteredAvailableThreads.slice(0, 50)"
+                  :key="thread.thread_id"
+                  class="thread-select-item"
+                  :class="{ selected: selectedThreadIds.includes(thread.thread_id) }"
+                  @click="toggleThread(thread.thread_id)"
+                >
+                  <v-checkbox
+                    :model-value="selectedThreadIds.includes(thread.thread_id)"
+                    density="compact"
+                    hide-details
+                    @click.stop
+                    @change="toggleThread(thread.thread_id)"
+                  />
+                  <div class="thread-info">
+                    <span class="thread-subject">{{ thread.subject || $t('scenarioManager.data.noSubject') }}</span>
+                    <span class="thread-meta">
+                      <LIcon size="12">mdi-message-outline</LIcon>
+                      {{ thread.message_count || 0 }}
+                      <span v-if="thread.sender" class="ml-2">
+                        <LIcon size="12">mdi-account-outline</LIcon>
+                        {{ thread.sender }}
+                      </span>
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div v-if="filteredAvailableThreads.length > 50" class="text-caption text-center mt-2">
+                {{ $t('scenarioManager.data.showingFirst', { count: 50, total: filteredAvailableThreads.length }) }}
+              </div>
+            </div>
           </div>
         </v-card-text>
         <v-card-actions>
@@ -192,6 +259,7 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import axios from 'axios'
 import { useDataImport } from '../../composables/useDataImport'
+import { useScenarioManager } from '../../composables/useScenarioManager'
 
 const props = defineProps({
   scenario: {
@@ -213,6 +281,11 @@ const {
   resetImport
 } = useDataImport()
 
+const {
+  getAvailableThreads,
+  addThreadsToScenario
+} = useScenarioManager()
+
 // State
 const showImportDialog = ref(false)
 const importMethod = ref('file')
@@ -222,6 +295,13 @@ const searchQuery = ref('')
 const sortBy = ref('date_desc')
 const threads = ref([])
 const threadsError = ref(null)
+
+// State for existing threads import
+const loadingAvailable = ref(false)
+const availableThreads = ref([])
+const selectedThreadIds = ref([])
+const selectAll = ref(false)
+const availableSearch = ref('')
 
 // Sort options
 const sortOptions = computed(() => [
@@ -244,7 +324,19 @@ const canImport = computed(() => {
   if (importMethod.value === 'file') {
     return uploadFile.value !== null
   }
+  if (importMethod.value === 'existing') {
+    return selectedThreadIds.value.length > 0
+  }
   return false
+})
+
+const filteredAvailableThreads = computed(() => {
+  if (!availableSearch.value) return availableThreads.value
+  const query = availableSearch.value.toLowerCase()
+  return availableThreads.value.filter(t =>
+    t.subject?.toLowerCase().includes(query) ||
+    t.sender?.toLowerCase().includes(query)
+  )
 })
 
 const filteredThreads = computed(() => {
@@ -280,6 +372,64 @@ function confirmRemoveThread(thread) {
 }
 
 /**
+ * Load available threads for import from existing data
+ */
+async function loadAvailableThreads() {
+  if (!props.scenario?.id) return
+
+  loadingAvailable.value = true
+  try {
+    const result = await getAvailableThreads(props.scenario.id, { per_page: 200 })
+    availableThreads.value = result.threads || []
+  } catch (error) {
+    console.error('Failed to load available threads:', error)
+    availableThreads.value = []
+  } finally {
+    loadingAvailable.value = false
+  }
+}
+
+function toggleThread(threadId) {
+  const index = selectedThreadIds.value.indexOf(threadId)
+  if (index === -1) {
+    selectedThreadIds.value.push(threadId)
+  } else {
+    selectedThreadIds.value.splice(index, 1)
+  }
+  selectAll.value = selectedThreadIds.value.length === filteredAvailableThreads.value.length
+}
+
+function toggleSelectAll() {
+  if (selectAll.value) {
+    selectedThreadIds.value = filteredAvailableThreads.value.map(t => t.thread_id)
+  } else {
+    selectedThreadIds.value = []
+  }
+}
+
+/**
+ * Import selected existing threads
+ */
+async function importExistingThreads() {
+  if (!props.scenario?.id || selectedThreadIds.value.length === 0) return
+
+  try {
+    await addThreadsToScenario(props.scenario.id, selectedThreadIds.value)
+
+    // Success
+    showImportDialog.value = false
+    selectedThreadIds.value = []
+    availableThreads.value = []
+    emit('data-imported')
+
+    // Reload threads after import
+    await loadThreads()
+  } catch (error) {
+    console.error('Import failed:', error)
+  }
+}
+
+/**
  * Load threads for the current scenario.
  */
 async function loadThreads() {
@@ -306,7 +456,16 @@ async function loadThreads() {
 }
 
 async function doImport() {
-  if (!uploadFile.value || !props.scenario?.id) return
+  if (!props.scenario?.id) return
+
+  // Handle existing threads import
+  if (importMethod.value === 'existing') {
+    await importExistingThreads()
+    return
+  }
+
+  // Handle file import
+  if (!uploadFile.value) return
 
   try {
     // Get the file from v-file-input (it returns an array)
@@ -341,8 +500,17 @@ async function doImport() {
 function closeImportDialog() {
   showImportDialog.value = false
   uploadFile.value = null
+  selectedThreadIds.value = []
+  availableThreads.value = []
   resetImport()
 }
+
+// Load available threads when switching to existing import mode
+watch(importMethod, (newMethod) => {
+  if (newMethod === 'existing' && props.scenario?.id) {
+    loadAvailableThreads()
+  }
+})
 
 // Load threads when scenario changes or on mount
 watch(() => props.scenario?.id, (newId) => {
@@ -524,5 +692,73 @@ onMounted(() => {
 
 .import-content {
   margin-top: 16px;
+}
+
+/* Thread Selection for existing import */
+.thread-selection {
+  max-height: 400px;
+  display: flex;
+  flex-direction: column;
+}
+
+.selection-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.1);
+  margin-bottom: 8px;
+}
+
+.selection-count {
+  font-size: 0.8rem;
+  color: rgba(var(--v-theme-on-surface), 0.6);
+}
+
+.thread-list {
+  flex: 1;
+  overflow-y: auto;
+  max-height: 300px;
+}
+
+.thread-select-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+
+.thread-select-item:hover {
+  background-color: rgba(var(--v-theme-on-surface), 0.04);
+}
+
+.thread-select-item.selected {
+  background-color: rgba(var(--v-theme-primary), 0.08);
+}
+
+.thread-select-item .thread-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.thread-select-item .thread-subject {
+  display: block;
+  font-weight: 500;
+  color: rgb(var(--v-theme-on-surface));
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.thread-select-item .thread-meta {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.75rem;
+  color: rgba(var(--v-theme-on-surface), 0.5);
+  margin-top: 2px;
 }
 </style>

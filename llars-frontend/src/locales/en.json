@@ -2382,7 +2382,11 @@
         "aiSuggestions": "AI Suggestions",
         "suggestedName": "Suggested name",
         "suggestedDescription": "Suggested description",
-        "dataQuality": "Data quality"
+        "dataQuality": "Data quality",
+        "parsingFiles": "Processing files...",
+        "aiThinking": "AI is analyzing data structure...",
+        "aiStreaming": "AI is generating suggestions...",
+        "aiGenerating": "AI is generating analysis..."
       },
       "step2": {
         "title": "Define Task",

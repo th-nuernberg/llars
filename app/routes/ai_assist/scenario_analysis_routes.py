@@ -3,11 +3,12 @@ AI-powered scenario data analysis routes.
 
 Provides intelligent analysis of uploaded data to suggest
 evaluation type, scenario name, description, and configuration.
+Supports both standard and streaming (SSE) responses.
 """
 
 import json
 import logging
-from flask import jsonify, request, g
+from flask import jsonify, request, g, Response
 
 from auth.decorators import authentik_required
 from decorators.error_handler import handle_api_errors, ValidationError, NotFoundError
@@ -223,3 +224,170 @@ def analyze_scenario_data():
             },
             'tokens_used': 0
         })
+
+
+@data_bp.post("/ai-assist/analyze-scenario-data/stream")
+@authentik_required
+def analyze_scenario_data_stream():
+    """
+    Stream AI analysis of uploaded data using Server-Sent Events (SSE).
+
+    Emits events:
+        data_summary: Immediate local analysis (fields, types, counts)
+        thinking: AI is processing the data
+        chunk: Streaming token from LLM
+        suggestions: Parsed AI suggestions (eval_type, name, description)
+        data_quality: Data quality assessment
+        done: Analysis complete
+        error: Error occurred
+
+    Body:
+        data: List of data items (required)
+        filename: Original filename for context (optional)
+        file_count: Number of files uploaded (optional)
+        user_hint: User's description of what they want (optional)
+    """
+    from services.llm.llm_client_factory import LLMClientFactory
+    from db.models.llm_model import LLMModel
+
+    data = request.get_json(silent=True) or {}
+
+    # Validate input
+    items = data.get('data', [])
+    if not items:
+        return Response(
+            f"event: error\ndata: {json.dumps({'error': 'Missing required field: data'})}\n\n",
+            mimetype='text/event-stream'
+        )
+    if not isinstance(items, list) or len(items) == 0:
+        return Response(
+            f"event: error\ndata: {json.dumps({'error': 'Field data must be a non-empty array'})}\n\n",
+            mimetype='text/event-stream'
+        )
+
+    filename = data.get('filename', 'unknown')
+    file_count = data.get('file_count', 1)
+    user_hint = data.get('user_hint', '')
+
+    # PRE-FETCH all context-dependent data BEFORE the generator starts
+    # (generator runs outside Flask request context)
+    username = g.authentik_user.username if g.authentik_user else 'unknown'
+
+    # Load prompt template (requires app context)
+    template = FieldPromptService.get_by_field_key(SCENARIO_ANALYSIS_FIELD_KEY)
+    if not template:
+        return Response(
+            f"event: error\ndata: {json.dumps({'error': f'Prompt template {SCENARIO_ANALYSIS_FIELD_KEY} not found'})}\n\n",
+            mimetype='text/event-stream'
+        )
+
+    # Get LLM model (requires app context)
+    model_id = LLMModel.get_default_model_id(model_type=LLMModel.MODEL_TYPE_LLM)
+    if not model_id:
+        return Response(
+            f"event: error\ndata: {json.dumps({'error': 'No default LLM model configured'})}\n\n",
+            mimetype='text/event-stream'
+        )
+
+    # Get LLM client (requires app context for config lookup)
+    client = LLMClientFactory.get_client_for_model(None)
+
+    # Extract template settings for use in generator
+    system_prompt = template.system_prompt
+    max_tokens = template.max_tokens
+    temperature = template.temperature
+
+    # Pre-compute fields and context
+    sample_items = items[:5]
+    fields = detect_field_types(items)
+
+    context = {
+        "filename": filename,
+        "file_count": file_count,
+        "item_count": len(items),
+        "fields_json": json.dumps(fields, ensure_ascii=False, indent=2),
+        "sample_count": len(sample_items),
+        "sample_data": json.dumps(sample_items, ensure_ascii=False, indent=2)[:3000],
+        "user_hint_text": f'Benutzerhinweis: {user_hint}' if user_hint else ''
+    }
+    user_prompt = FieldPromptService.render_prompt(template, context)
+
+    def generate():
+        """
+        Generator function for SSE streaming.
+        NOTE: This runs OUTSIDE Flask request context.
+        All Flask-dependent data must be pre-fetched above.
+        """
+        try:
+            # Step 1: Emit immediate local analysis
+            data_summary = {
+                'item_count': len(items),
+                'fields': list(fields.keys()),
+                'field_types': {k: v['type'] for k, v in fields.items()},
+                'field_completeness': {k: v['completeness'] for k, v in fields.items()},
+                'sample_items': sample_items[:3]
+            }
+            yield f"event: data_summary\ndata: {json.dumps(data_summary)}\n\n"
+
+            # Step 2: Signal AI is thinking
+            yield f"event: thinking\ndata: {json.dumps({'status': 'analyzing', 'message': 'KI analysiert die Daten...'})}\n\n"
+
+            # Step 3: Stream LLM response (client already created with context)
+            response_text = ""
+            tokens_used = 0
+
+            stream = client.chat.completions.create(
+                model=model_id,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt}
+                ],
+                max_tokens=max_tokens,
+                temperature=temperature,
+                stream=True,
+                extra_body={"response_format": {"type": "json_object"}}
+            )
+
+            for chunk in stream:
+                if chunk.choices and chunk.choices[0].delta.content:
+                    content = chunk.choices[0].delta.content
+                    response_text += content
+                    yield f"event: chunk\ndata: {json.dumps({'content': content})}\n\n"
+
+                # Capture usage from final chunk if available
+                if hasattr(chunk, 'usage') and chunk.usage:
+                    tokens_used = chunk.usage.total_tokens
+
+            # Step 4: Parse and emit structured suggestions
+            try:
+                result = json.loads(response_text)
+                suggestions = result.get('suggestions', {})
+                data_quality = result.get('data_quality', {})
+
+                yield f"event: suggestions\ndata: {json.dumps(suggestions)}\n\n"
+                yield f"event: data_quality\ndata: {json.dumps(data_quality)}\n\n"
+
+            except json.JSONDecodeError as e:
+                # Log without Flask context (use print as fallback)
+                print(f"Failed to parse LLM response as JSON: {e}")
+                yield f"event: suggestions\ndata: {json.dumps({'parse_error': True})}\n\n"
+
+            # Step 5: Done
+            yield f"event: done\ndata: {json.dumps({'tokens_used': tokens_used, 'success': True})}\n\n"
+
+            # Log completion (username captured before generator)
+            print(f"AI scenario analysis stream completed for {username}: {len(items)} items, {tokens_used} tokens")
+
+        except Exception as e:
+            print(f"AI scenario analysis stream failed: {e}")
+            yield f"event: error\ndata: {json.dumps({'error': str(e)})}\n\n"
+
+    return Response(
+        generate(),
+        mimetype='text/event-stream',
+        headers={
+            'Cache-Control': 'no-cache',
+            'X-Accel-Buffering': 'no',
+            'Connection': 'keep-alive'
+        }
+    )

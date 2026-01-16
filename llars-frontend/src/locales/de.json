@@ -2382,7 +2382,11 @@
         "aiSuggestions": "KI-Vorschläge",
         "suggestedName": "Vorgeschlagener Name",
         "suggestedDescription": "Vorgeschlagene Beschreibung",
-        "dataQuality": "Datenqualität"
+        "dataQuality": "Datenqualität",
+        "parsingFiles": "Dateien werden verarbeitet...",
+        "aiThinking": "KI analysiert die Datenstruktur...",
+        "aiStreaming": "KI generiert Vorschläge...",
+        "aiGenerating": "KI generiert Analyse..."
       },
       "step2": {
         "title": "Aufgabe definieren",

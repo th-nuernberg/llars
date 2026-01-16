@@ -9,6 +9,7 @@ This module provides a simplified API for users to:
 - Start/stop LLM evaluations
 """
 
+import json
 import logging
 from datetime import datetime
 from flask import jsonify, request, g
@@ -20,15 +21,16 @@ from decorators.permission_decorator import require_permission, has_role
 from db.database import db
 from db.tables import (
     RatingScenarios, FeatureFunctionType, ScenarioUsers,
-    EmailThread, ScenarioThreads, ScenarioRoles, User,
+    EmailThread, Message, ScenarioThreads, ScenarioRoles, User,
     ScenarioThreadDistribution, InvitationStatus,
-    UserFeatureRanking, UserFeatureRating, Feature
+    UserFeatureRanking, UserFeatureRating, Feature,
+    UserMailHistoryRating, UserConsultingCategorySelection
 )
 from db.models.authenticity import UserAuthenticityVote
 from db.models.llm_task_result import LLMTaskResult
 from services.scenario_stats_service import get_progress_stats
 from .. import data_blueprint
-from .scenario_utils import is_scenario_owner
+from .scenario_utils import is_scenario_owner, check_scenario_ownership
 
 logger = logging.getLogger(__name__)
 
@@ -223,8 +225,13 @@ def format_scenario_for_api(scenario, user, invitation_map=None, include_detaile
             'llm_completed': 0
         }
 
-    # Get config
+    # Get config - parse JSON string if needed
     config = scenario.config_json or {}
+    if isinstance(config, str):
+        try:
+            config = json.loads(config)
+        except (json.JSONDecodeError, TypeError):
+            config = {}
 
     # Get invitation info for current user
     invitation_info = None
@@ -378,7 +385,7 @@ def get_scenario_detail(scenario_id):
                 'user_id': su.user_id,
                 'username': db_user.username,
                 'display_name': getattr(db_user, 'display_name', db_user.username),
-                'role': su.role,
+                'role': su.role.value if hasattr(su.role, 'value') else str(su.role),
                 'completed': user_progress.get('done', 0),
                 'total': user_progress.get('total', result['thread_count'])
             })
@@ -493,6 +500,172 @@ def get_scenario_threads(scenario_id):
     }), 200
 
 
+@data_blueprint.route('/scenarios/<int:scenario_id>/available-threads', methods=['GET'])
+@authentik_required
+@handle_api_errors(logger_name='scenario_manager')
+def get_available_threads(scenario_id):
+    """
+    Get threads that can be added to a scenario.
+    Returns threads matching the scenario's function_type that are NOT already in the scenario.
+
+    Query params:
+        - page: Page number (default: 1)
+        - per_page: Items per page (default: 50)
+        - search: Search query for subject/sender
+
+    Returns:
+        - threads: List of available threads
+        - total: Total number of available threads
+    """
+    user = g.authentik_user
+    scenario = RatingScenarios.query.get(scenario_id)
+
+    if not scenario:
+        raise NotFoundError(f'Scenario {scenario_id} not found')
+
+    # Check ownership - only owner can add threads
+    username = getattr(user, 'username', str(user))
+    is_admin = has_role(user, 'admin')
+    is_owner = scenario.created_by == username
+
+    if not (is_admin or is_owner):
+        raise ForbiddenError('Only the owner can add threads to this scenario')
+
+    # Query params
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 50, type=int)
+    search = request.args.get('search', '')
+
+    # Get thread IDs already in this scenario
+    existing_thread_ids = db.session.query(ScenarioThreads.thread_id).filter(
+        ScenarioThreads.scenario_id == scenario_id
+    ).subquery()
+
+    # Query threads with matching function_type but NOT in scenario
+    query = EmailThread.query.filter(
+        EmailThread.function_type_id == scenario.function_type_id,
+        ~EmailThread.thread_id.in_(existing_thread_ids)
+    )
+
+    if search:
+        query = query.filter(
+            db.or_(
+                EmailThread.subject.ilike(f'%{search}%'),
+                EmailThread.sender.ilike(f'%{search}%')
+            )
+        )
+
+    total = query.count()
+    email_threads = query.order_by(EmailThread.thread_id.desc()).offset(
+        (page - 1) * per_page
+    ).limit(per_page).all()
+
+    threads = []
+    for thread in email_threads:
+        # Get message count
+        message_count = db.session.query(db.func.count()).filter(
+            Message.thread_id == thread.thread_id
+        ).scalar() or 0
+
+        threads.append({
+            'thread_id': thread.thread_id,
+            'subject': thread.subject,
+            'sender': thread.sender,
+            'message_count': message_count,
+            'chat_id': thread.chat_id,
+            'institut_id': thread.institut_id
+        })
+
+    return jsonify({
+        'threads': threads,
+        'total': total,
+        'page': page,
+        'per_page': per_page,
+        'pages': (total + per_page - 1) // per_page
+    }), 200
+
+
+@data_blueprint.route('/scenarios/<int:scenario_id>/threads', methods=['POST'])
+@authentik_required
+@handle_api_errors(logger_name='scenario_manager')
+def scenario_manager_add_threads(scenario_id):
+    """
+    Add existing threads to a scenario.
+
+    Request body:
+        - thread_ids: list of int (required)
+
+    Returns:
+        - message: Success message
+        - added_count: Number of threads added
+        - failed_threads: List of thread IDs that couldn't be added
+    """
+    user = g.authentik_user
+    scenario = RatingScenarios.query.get(scenario_id)
+
+    if not scenario:
+        raise NotFoundError(f'Scenario {scenario_id} not found')
+
+    # Check ownership
+    username = getattr(user, 'username', str(user))
+    is_admin = has_role(user, 'admin')
+    is_owner = scenario.created_by == username
+
+    if not (is_admin or is_owner):
+        raise ForbiddenError('Only the owner can add threads to this scenario')
+
+    data = request.get_json()
+    thread_ids = data.get('thread_ids', [])
+
+    if not thread_ids or not isinstance(thread_ids, list):
+        raise ValidationError('thread_ids must be a non-empty list')
+
+    validated_threads = []
+    failed_threads = []
+
+    for thread_id in thread_ids:
+        if not isinstance(thread_id, int):
+            failed_threads.append(thread_id)
+            continue
+
+        # Check thread exists and matches function_type
+        thread = EmailThread.query.filter_by(
+            thread_id=thread_id,
+            function_type_id=scenario.function_type_id
+        ).first()
+
+        if not thread:
+            failed_threads.append(thread_id)
+            continue
+
+        # Check if already in scenario
+        existing = ScenarioThreads.query.filter_by(
+            scenario_id=scenario_id,
+            thread_id=thread_id
+        ).first()
+
+        if existing:
+            continue  # Skip silently
+
+        validated_threads.append(thread_id)
+
+    # Add validated threads
+    for thread_id in validated_threads:
+        new_scenario_thread = ScenarioThreads(
+            scenario_id=scenario_id,
+            thread_id=thread_id
+        )
+        db.session.add(new_scenario_thread)
+
+    db.session.commit()
+
+    return jsonify({
+        'message': f'Successfully added {len(validated_threads)} threads',
+        'added_count': len(validated_threads),
+        'failed_threads': failed_threads
+    }), 200
+
+
 @data_blueprint.route('/scenarios', methods=['POST'])
 @require_permission('data:manage_scenarios')
 @handle_api_errors(logger_name='scenario_manager')
@@ -596,8 +769,7 @@ def update_scenario(scenario_id):
         raise NotFoundError(f'Scenario {scenario_id} not found')
 
     # Check ownership
-    if not is_scenario_owner(user, scenario):
-        raise ForbiddenError('Only the owner can update this scenario')
+    check_scenario_ownership(scenario, user)  # Verifies user is owner or admin, raises ForbiddenError if not
 
     data = request.get_json()
     if not data:
@@ -648,8 +820,7 @@ def sm_delete_scenario(scenario_id):
         raise NotFoundError(f'Scenario {scenario_id} not found')
 
     # Check ownership
-    if not is_scenario_owner(user, scenario):
-        raise ForbiddenError('Only the owner can delete this scenario')
+    check_scenario_ownership(scenario, user)  # Verifies user is owner or admin, raises ForbiddenError if not
 
     # Delete related records
     ScenarioThreadDistribution.query.filter_by(scenario_id=scenario_id).delete()
@@ -759,8 +930,7 @@ def sm_invite_users(scenario_id):
     if not scenario:
         raise NotFoundError(f'Scenario {scenario_id} not found')
 
-    if not is_scenario_owner(user, scenario):
-        raise ForbiddenError('Only the owner can invite users')
+    check_scenario_ownership(scenario, user)  # Verifies user is owner or admin, raises ForbiddenError if not
 
     data = request.get_json()
     user_ids = data.get('user_ids', [])
@@ -821,8 +991,7 @@ def sm_remove_user(scenario_id, user_id):
     if not scenario:
         raise NotFoundError(f'Scenario {scenario_id} not found')
 
-    if not is_scenario_owner(user, scenario):
-        raise ForbiddenError('Only the owner can remove users')
+    check_scenario_ownership(scenario, user)  # Verifies user is owner or admin, raises ForbiddenError if not
 
     su = ScenarioUsers.query.filter_by(
         scenario_id=scenario_id,
@@ -1013,6 +1182,67 @@ def export_scenario_results(scenario_id):
                 'timestamp': result.created_at.isoformat() if result.created_at else None
             })
 
+    elif func_type_name == 'mail_rating':
+        # Export mail history ratings
+        mail_ratings = UserMailHistoryRating.query.filter(
+            UserMailHistoryRating.user_id.in_(scenario_user_ids),
+            UserMailHistoryRating.thread_id.in_(scenario_thread_ids)
+        ).all()
+
+        for rating in mail_ratings:
+            user_info = user_map.get(rating.user_id, {})
+            thread_info = thread_map.get(rating.thread_id, {})
+            results.append({
+                'type': 'mail_rating',
+                'user_id': rating.user_id,
+                'username': user_info.get('username'),
+                'thread_id': rating.thread_id,
+                'thread_subject': thread_info.get('subject'),
+                'rating': rating.rating,
+                'comment': rating.comment,
+                'timestamp': rating.timestamp.isoformat() if rating.timestamp else None
+            })
+
+        # Also include consulting category selections
+        category_selections = UserConsultingCategorySelection.query.filter(
+            UserConsultingCategorySelection.user_id.in_(scenario_user_ids),
+            UserConsultingCategorySelection.thread_id.in_(scenario_thread_ids)
+        ).all()
+
+        for selection in category_selections:
+            user_info = user_map.get(selection.user_id, {})
+            thread_info = thread_map.get(selection.thread_id, {})
+            results.append({
+                'type': 'consulting_category',
+                'user_id': selection.user_id,
+                'username': user_info.get('username'),
+                'thread_id': selection.thread_id,
+                'thread_subject': thread_info.get('subject'),
+                'category_id': selection.category_id,
+                'timestamp': selection.timestamp.isoformat() if selection.timestamp else None
+            })
+
+        # Also include LLM evaluations if any
+        llm_results = LLMTaskResult.query.filter(
+            LLMTaskResult.scenario_id == scenario_id,
+            LLMTaskResult.task_type == 'mail_rating',
+            LLMTaskResult.thread_id.in_(scenario_thread_ids)
+        ).all()
+
+        for result in llm_results:
+            thread_info = thread_map.get(result.thread_id, {})
+            payload = result.payload_json or {}
+            results.append({
+                'type': 'mail_rating_llm',
+                'model_id': result.model_id,
+                'thread_id': result.thread_id,
+                'thread_subject': thread_info.get('subject'),
+                'rating': payload.get('rating'),
+                'reasoning': payload.get('reasoning'),
+                'error': result.error,
+                'timestamp': result.created_at.isoformat() if result.created_at else None
+            })
+
     else:
         # Generic export - try to get any LLM task results
         llm_results = LLMTaskResult.query.filter(
@@ -1153,8 +1383,7 @@ def reinvite_user(scenario_id, target_user_id):
     if not scenario:
         raise NotFoundError(f'Scenario {scenario_id} not found')
 
-    if not is_scenario_owner(user, scenario):
-        raise ForbiddenError('Only the owner can reinvite users')
+    check_scenario_ownership(scenario, user)  # Verifies user is owner or admin, raises ForbiddenError if not
 
     # Find the user's invitation record
     su = ScenarioUsers.query.filter_by(
@@ -1207,8 +1436,7 @@ def get_scenario_team(scenario_id):
         raise NotFoundError(f'Scenario {scenario_id} not found')
 
     # Check access (owner or admin)
-    if not is_scenario_owner(user, scenario):
-        raise ForbiddenError('Only the owner can view team details')
+    check_scenario_ownership(scenario, user)  # Verifies user is owner or admin, raises ForbiddenError if not
 
     scenario_users = ScenarioUsers.query.filter_by(scenario_id=scenario_id).all()
 
@@ -1241,4 +1469,164 @@ def get_scenario_team(scenario_id):
         'team': team,
         'counts': status_counts,
         'total': len(team)
+    }), 200
+
+
+@data_blueprint.route('/scenarios/<int:scenario_id>/duplicate', methods=['POST'])
+@authentik_required
+@handle_api_errors(logger_name='scenario_manager')
+def duplicate_scenario(scenario_id):
+    """
+    Duplicate an existing scenario.
+
+    Creates a copy of the scenario with all its threads but without
+    users, evaluations, or results. The new scenario starts as 'draft'.
+
+    Request body (optional):
+        - scenario_name: str (default: original name + " (Copy)")
+    """
+    user = g.authentik_user
+    username = getattr(user, 'username', str(user))
+    scenario = RatingScenarios.query.get(scenario_id)
+
+    if not scenario:
+        raise NotFoundError(f'Scenario {scenario_id} not found')
+
+    # Check ownership
+    check_scenario_ownership(scenario, user)  # Verifies user is owner or admin, raises ForbiddenError if not
+
+    data = request.get_json() or {}
+
+    # Create new scenario name
+    new_name = data.get('scenario_name', f"{scenario.scenario_name} (Kopie)")
+
+    # Copy config but reset LLM evaluators
+    new_config = dict(scenario.config_json or {})
+    new_config['llm_evaluators'] = []  # Reset LLM evaluators for fresh start
+
+    # Create the duplicate scenario
+    from datetime import timedelta
+    new_scenario = RatingScenarios(
+        scenario_name=new_name,
+        function_type_id=scenario.function_type_id,
+        begin=datetime.utcnow(),
+        end=datetime.utcnow() + timedelta(days=30),
+        created_by=username,
+        config_json=new_config
+    )
+
+    # Copy optional fields
+    if hasattr(scenario, 'description') and hasattr(new_scenario, 'description'):
+        new_scenario.description = scenario.description
+    if hasattr(new_scenario, 'status'):
+        new_scenario.status = 'draft'
+    if hasattr(scenario, 'visibility') and hasattr(new_scenario, 'visibility'):
+        new_scenario.visibility = scenario.visibility
+
+    db.session.add(new_scenario)
+    db.session.flush()  # Get the new ID
+
+    # Copy all threads from original scenario
+    original_threads = ScenarioThreads.query.filter_by(scenario_id=scenario_id).all()
+    for st in original_threads:
+        new_thread_link = ScenarioThreads(
+            scenario_id=new_scenario.id,
+            thread_id=st.thread_id
+        )
+        db.session.add(new_thread_link)
+
+    db.session.commit()
+
+    logger.info(f"User {username} duplicated scenario {scenario_id} -> {new_scenario.id}")
+
+    return jsonify({
+        'message': 'Scenario duplicated successfully',
+        'scenario': format_scenario_for_api(new_scenario, user)
+    }), 201
+
+
+@data_blueprint.route('/scenarios/<int:scenario_id>/archive', methods=['POST'])
+@authentik_required
+@handle_api_errors(logger_name='scenario_manager')
+def archive_scenario(scenario_id):
+    """
+    Archive a scenario.
+
+    Sets the scenario status to 'archived'. Archived scenarios are
+    read-only and hidden from the default scenario list.
+    """
+    user = g.authentik_user
+    username = getattr(user, 'username', str(user))
+    scenario = RatingScenarios.query.get(scenario_id)
+
+    if not scenario:
+        raise NotFoundError(f'Scenario {scenario_id} not found')
+
+    # Check ownership
+    check_scenario_ownership(scenario, user)  # Verifies user is owner or admin, raises ForbiddenError if not
+
+    # Check if already archived
+    current_status = getattr(scenario, 'status', None)
+    if current_status == 'archived':
+        raise ValidationError('Scenario is already archived')
+
+    # Archive the scenario
+    if hasattr(scenario, 'status'):
+        scenario.status = 'archived'
+    else:
+        raise ValidationError('Scenario model does not support archiving')
+
+    db.session.commit()
+
+    logger.info(f"User {username} archived scenario {scenario_id}")
+
+    return jsonify({
+        'message': 'Scenario archived successfully',
+        'scenario': format_scenario_for_api(scenario, user)
+    }), 200
+
+
+@data_blueprint.route('/scenarios/<int:scenario_id>/unarchive', methods=['POST'])
+@authentik_required
+@handle_api_errors(logger_name='scenario_manager')
+def unarchive_scenario(scenario_id):
+    """
+    Unarchive a scenario.
+
+    Sets the scenario status back to 'completed' or 'draft' depending on
+    whether it has evaluations.
+    """
+    user = g.authentik_user
+    username = getattr(user, 'username', str(user))
+    scenario = RatingScenarios.query.get(scenario_id)
+
+    if not scenario:
+        raise NotFoundError(f'Scenario {scenario_id} not found')
+
+    # Check ownership
+    check_scenario_ownership(scenario, user)  # Verifies user is owner or admin, raises ForbiddenError if not
+
+    # Check if actually archived
+    current_status = getattr(scenario, 'status', None)
+    if current_status != 'archived':
+        raise ValidationError('Scenario is not archived')
+
+    # Determine new status based on progress
+    thread_count = ScenarioThreads.query.filter_by(scenario_id=scenario_id).count()
+    user_count = ScenarioUsers.query.filter_by(scenario_id=scenario_id).count()
+
+    if thread_count > 0 and user_count > 0:
+        scenario.status = 'evaluating'
+    elif thread_count > 0:
+        scenario.status = 'data_collection'
+    else:
+        scenario.status = 'draft'
+
+    db.session.commit()
+
+    logger.info(f"User {username} unarchived scenario {scenario_id}")
+
+    return jsonify({
+        'message': 'Scenario unarchived successfully',
+        'scenario': format_scenario_for_api(scenario, user)
     }), 200

@@ -99,6 +99,12 @@ const routes = [
     // Scenario Manager
     { path: '/scenarios', name: 'ScenarioManager', component: ScenarioManagerHome, meta: { requiresAuth: true } },
     { path: '/scenarios/:id', name: 'ScenarioWorkspace', component: ScenarioWorkspace, props: true, meta: { requiresAuth: true } },
+    // Evaluation route for evaluators (redirects to workspace with evaluation mode)
+    {
+      path: '/evaluate/:id',
+      name: 'ScenarioEvaluation',
+      redirect: to => ({ name: 'ScenarioWorkspace', params: { id: to.params.id }, query: { mode: 'evaluate' } })
+    },
 
     { path: '/Ranker', name: 'Ranker', component: Ranker, meta: { requiresAuth: true } },
     { path: '/Ranker/:id', name: 'RankerDetail', component: RankerDetail, props: true, meta: { requiresAuth: true } },

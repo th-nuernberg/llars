@@ -209,7 +209,7 @@ const typeName = computed(() => {
 })
 
 const typeVariant = computed(() => {
-  return typeConfig[props.scenario.function_type_id]?.variant || 'default'
+  return typeConfig[props.scenario.function_type_id]?.variant || 'gray'
 })
 
 // Status mapping

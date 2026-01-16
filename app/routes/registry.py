@@ -73,8 +73,9 @@ def register_all_blueprints(app: Flask) -> None:
     # ============================================================
 
     # LLM Models management
-    from routes.llm import llm_bp
+    from routes.llm import llm_bp, llm_evaluation_bp
     app.register_blueprint(llm_bp, url_prefix='/api/llm')
+    app.register_blueprint(llm_evaluation_bp)  # url_prefix already in blueprint
 
     # LLM-as-Judge (Automated evaluation)
     from routes.judge import judge_bp

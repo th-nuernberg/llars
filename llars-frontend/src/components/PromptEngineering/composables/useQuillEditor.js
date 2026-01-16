@@ -849,6 +849,36 @@ export function useQuillEditor(ydoc, socket, roomId, options = {}) {
     })
   }
 
+  // Update cursor color for a user (when they change their collab color)
+  const updateUserColor = (userId, newColor) => {
+    console.log('[useQuillEditor] updateUserColor called:', userId, newColor)
+    const cursor = remoteCursors.get(userId)
+    if (!cursor) {
+      console.log('[useQuillEditor] No remote cursor found for userId:', userId, 'remoteCursors keys:', Array.from(remoteCursors.keys()))
+      return
+    }
+
+    // Update the stored cursor color
+    cursor.color = newColor
+    remoteCursors.set(userId, cursor)
+
+    // Recreate cursors in all blocks with the new color
+    cursorsModules.forEach((cursorsModule, blockId) => {
+      const existingCursor = cursorsModule.cursors().find(c => c.id === userId)
+      if (existingCursor) {
+        console.log('[useQuillEditor] Recreating cursor in block:', blockId, 'with new color:', newColor)
+        // Get the current range before removing
+        const currentRange = existingCursor.range
+        // Remove and recreate with new color
+        cursorsModule.removeCursor(userId)
+        cursorsModule.createCursor(userId, cursor.username, newColor)
+        if (currentRange) {
+          cursorsModule.moveCursor(userId, currentRange)
+        }
+      }
+    })
+  }
+
   // Clear all user highlights (e.g., after commit)
   const clearUserHighlights = () => {
     userHighlights.clear()
@@ -884,6 +914,7 @@ export function useQuillEditor(ydoc, socket, roomId, options = {}) {
     cleanupAll,
     applyHighlightingToAll,
     removeCursorForUser,
+    updateUserColor,
     clearUserHighlights,
     flushPendingHighlights
   }

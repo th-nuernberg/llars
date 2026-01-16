@@ -14,6 +14,12 @@ class ScenarioRoles(Enum):
     EVALUATOR = 'Evaluator'  # Kann an Evaluationen teilnehmen (ehemals Viewer)
 
 
+class InvitationStatus(Enum):
+    ACCEPTED = 'accepted'    # Einladung angenommen (Standard für neue Einladungen)
+    REJECTED = 'rejected'    # Einladung abgelehnt - Szenario erscheint nicht mehr
+    PENDING = 'pending'      # Optional: Einladung noch nicht beantwortet
+
+
 class ProgressionStatus(Enum):
     NOT_STARTED = 'Not Started'
     PROGRESSING = 'Progressing'
@@ -152,6 +158,18 @@ class ScenarioUsers(db.Model):
     scenario_id = mapped_column(db.Integer, db.ForeignKey('rating_scenarios.id'))
     user_id = mapped_column(db.Integer, db.ForeignKey('users.id'))
     role = mapped_column(db.Enum(ScenarioRoles))
+    # Einladungsstatus: accepted (default), rejected, pending
+    invitation_status = mapped_column(
+        db.Enum(InvitationStatus),
+        default=InvitationStatus.ACCEPTED,
+        nullable=False
+    )
+    # Zeitstempel für Einladung und Antwort
+    invited_at = mapped_column(db.DateTime, default=datetime.utcnow, nullable=True)
+    responded_at = mapped_column(db.DateTime, nullable=True)
+    # Wer hat eingeladen (für Re-Invite Tracking)
+    invited_by: Mapped[Optional[str]] = mapped_column(db.String(255), nullable=True)
+
     user = db.relationship('User', backref='scenario_users')
 
     # Definiere den Unique Constraint für die Kombination von user_id und szenario_id

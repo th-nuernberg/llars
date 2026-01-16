@@ -201,6 +201,52 @@ def _ensure_unique_constraint(
     return True
 
 
+def _is_column_nullable(db, table_name: str, column_name: str) -> bool:
+    """Check if a column allows NULL values."""
+    result = db.session.execute(
+        text(
+            """
+            SELECT IS_NULLABLE
+            FROM INFORMATION_SCHEMA.COLUMNS
+            WHERE TABLE_SCHEMA = DATABASE()
+              AND TABLE_NAME = :table_name
+              AND COLUMN_NAME = :column_name
+            """
+        ),
+        {"table_name": table_name, "column_name": column_name},
+    ).scalar()
+    return result == 'YES'
+
+
+def _ensure_column_nullable(db, table_name: str, column_name: str, column_type: str) -> bool:
+    """
+    Ensure a column allows NULL values.
+
+    Args:
+        db: SQLAlchemy instance
+        table_name: DB table name (validated)
+        column_name: Column to modify (validated)
+        column_type: SQL type for the column (e.g., 'INT', 'VARCHAR(255)')
+
+    Returns:
+        True if the column was modified, False if already nullable or doesn't exist.
+    """
+    _validate_identifier(table_name, "table_name")
+    _validate_identifier(column_name, "column_name")
+
+    if not _column_exists(db, table_name, column_name):
+        return False
+
+    if _is_column_nullable(db, table_name, column_name):
+        return False
+
+    db.session.execute(
+        text(f"ALTER TABLE `{table_name}` MODIFY COLUMN `{column_name}` {column_type} NULL")
+    )
+    db.session.commit()
+    return True
+
+
 def apply_schema_patches(db) -> None:
     """Apply required schema patches (safe to run multiple times)."""
     try:
@@ -278,6 +324,18 @@ def apply_schema_patches(db) -> None:
             table_name="users",
             column_name="llm_model_id",
             column_definition_sql="`llm_model_id` VARCHAR(255) NULL",
+        )
+        changed |= _ensure_column(
+            db,
+            table_name="users",
+            column_name="last_seen_at",
+            column_definition_sql="`last_seen_at` DATETIME NULL",
+        )
+        changed |= _ensure_column(
+            db,
+            table_name="users",
+            column_name="last_active_at",
+            column_definition_sql="`last_active_at` DATETIME NULL",
         )
 
         # Scenarios: per-scenario config + comparison model config
@@ -589,6 +647,342 @@ def apply_schema_patches(db) -> None:
             table_name="markdown_documents",
             column_name="content_text",
             column_definition_sql="`content_text` TEXT NULL",
+        )
+
+        # LaTeX Comments: threading support (parent_id for replies)
+        changed |= _ensure_column(
+            db,
+            table_name="latex_comments",
+            column_name="parent_id",
+            column_definition_sql="`parent_id` INT NULL",
+        )
+        # LaTeX Comments: author color for collab identification
+        changed |= _ensure_column(
+            db,
+            table_name="latex_comments",
+            column_name="author_color",
+            column_definition_sql="`author_color` VARCHAR(7) NULL",
+        )
+        # LaTeX Comments: make range columns nullable for replies (replies don't have ranges)
+        changed |= _ensure_column_nullable(
+            db,
+            table_name="latex_comments",
+            column_name="range_start",
+            column_type="INT",
+        )
+        changed |= _ensure_column_nullable(
+            db,
+            table_name="latex_comments",
+            column_name="range_end",
+            column_type="INT",
+        )
+
+        # AI Assistant settings for LaTeX Collab
+        changed |= _ensure_column(
+            db,
+            table_name="system_settings",
+            column_name="ai_assistant_enabled",
+            column_definition_sql="`ai_assistant_enabled` TINYINT(1) NOT NULL DEFAULT 1",
+        )
+        changed |= _ensure_column(
+            db,
+            table_name="system_settings",
+            column_name="ai_assistant_color",
+            column_definition_sql="`ai_assistant_color` VARCHAR(7) NOT NULL DEFAULT '#9B59B6'",
+        )
+        changed |= _ensure_column(
+            db,
+            table_name="system_settings",
+            column_name="ai_assistant_username",
+            column_definition_sql="`ai_assistant_username` VARCHAR(50) NOT NULL DEFAULT 'LLARS KI'",
+        )
+
+        # =========================================================================
+        # Evaluation Assistant: Prompt Templates, LLM Usage Tracking, Budgets
+        # =========================================================================
+
+        # Prompt Templates table
+        changed |= _ensure_table(
+            db,
+            table_name="prompt_templates",
+            create_sql=(
+                """
+                CREATE TABLE `prompt_templates` (
+                    `id` INT NOT NULL AUTO_INCREMENT,
+                    `name` VARCHAR(100) NOT NULL,
+                    `task_type` VARCHAR(50) NOT NULL,
+                    `version` VARCHAR(20) NOT NULL DEFAULT '1.0',
+                    `system_prompt` TEXT NOT NULL,
+                    `user_prompt_template` TEXT NOT NULL,
+                    `variables` JSON NULL,
+                    `output_schema_version` VARCHAR(20) NOT NULL DEFAULT '1.0',
+                    `is_default` TINYINT(1) NOT NULL DEFAULT 0,
+                    `is_active` TINYINT(1) NOT NULL DEFAULT 1,
+                    `created_by` VARCHAR(100) NULL,
+                    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                    PRIMARY KEY (`id`),
+                    INDEX `ix_prompt_templates_task_type` (`task_type`),
+                    INDEX `ix_prompt_templates_active` (`is_active`)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+                """
+            ),
+        )
+
+        # LLM Usage Tracking table
+        changed |= _ensure_table(
+            db,
+            table_name="llm_usage_tracking",
+            create_sql=(
+                """
+                CREATE TABLE `llm_usage_tracking` (
+                    `id` INT NOT NULL AUTO_INCREMENT,
+                    `user_id` INT NOT NULL,
+                    `scenario_id` INT NULL,
+                    `thread_id` INT NULL,
+                    `model_id` VARCHAR(100) NOT NULL,
+                    `task_type` VARCHAR(50) NOT NULL,
+                    `input_tokens` INT NOT NULL DEFAULT 0,
+                    `output_tokens` INT NOT NULL DEFAULT 0,
+                    `estimated_cost_usd` DECIMAL(10, 6) NULL,
+                    `prompt_template_id` INT NULL,
+                    `prompt_version` VARCHAR(20) NULL,
+                    `processing_time_ms` INT NULL,
+                    `success` TINYINT(1) NOT NULL DEFAULT 1,
+                    `error_message` TEXT NULL,
+                    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (`id`),
+                    INDEX `ix_llm_usage_user_id` (`user_id`),
+                    INDEX `ix_llm_usage_scenario_id` (`scenario_id`),
+                    INDEX `ix_llm_usage_model_id` (`model_id`),
+                    INDEX `ix_llm_usage_user_month` (`user_id`, `created_at`),
+                    INDEX `ix_llm_usage_model_task` (`model_id`, `task_type`)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+                """
+            ),
+        )
+
+        # User Token Budgets table
+        changed |= _ensure_table(
+            db,
+            table_name="user_token_budgets",
+            create_sql=(
+                """
+                CREATE TABLE `user_token_budgets` (
+                    `id` INT NOT NULL AUTO_INCREMENT,
+                    `user_id` INT NOT NULL,
+                    `monthly_token_limit` INT NOT NULL DEFAULT 1000000,
+                    `current_month_usage` INT NOT NULL DEFAULT 0,
+                    `last_reset_date` DATE NULL,
+                    `warning_threshold_percent` INT NOT NULL DEFAULT 80,
+                    `is_hard_limit` TINYINT(1) NOT NULL DEFAULT 1,
+                    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                    PRIMARY KEY (`id`),
+                    UNIQUE KEY `uq_user_token_budget_user` (`user_id`)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+                """
+            ),
+        )
+
+        # LLM Task Results: Add new columns for extended tracking
+        changed |= _ensure_column(
+            db,
+            table_name="llm_task_results",
+            column_name="reasoning_json",
+            column_definition_sql="`reasoning_json` JSON NULL",
+        )
+        changed |= _ensure_column(
+            db,
+            table_name="llm_task_results",
+            column_name="prompt_template_id",
+            column_definition_sql="`prompt_template_id` INT NULL",
+        )
+        changed |= _ensure_column(
+            db,
+            table_name="llm_task_results",
+            column_name="prompt_version",
+            column_definition_sql="`prompt_version` VARCHAR(20) NULL",
+        )
+        changed |= _ensure_column(
+            db,
+            table_name="llm_task_results",
+            column_name="input_tokens",
+            column_definition_sql="`input_tokens` INT NULL",
+        )
+        changed |= _ensure_column(
+            db,
+            table_name="llm_task_results",
+            column_name="output_tokens",
+            column_definition_sql="`output_tokens` INT NULL",
+        )
+        changed |= _ensure_column(
+            db,
+            table_name="llm_task_results",
+            column_name="processing_time_ms",
+            column_definition_sql="`processing_time_ms` INT NULL",
+        )
+
+        # =========================================================================
+        # User LLM Providers: Personal API Key Management & Sharing
+        # =========================================================================
+
+        # User LLM Providers table
+        changed |= _ensure_table(
+            db,
+            table_name="user_llm_providers",
+            create_sql=(
+                """
+                CREATE TABLE `user_llm_providers` (
+                    `id` INT NOT NULL AUTO_INCREMENT,
+                    `user_id` INT NOT NULL,
+                    `provider_type` VARCHAR(50) NOT NULL COMMENT 'Provider type: openai, anthropic, gemini, ollama, litellm, custom',
+                    `name` VARCHAR(100) NOT NULL COMMENT 'User-friendly name for this provider',
+                    `api_key_encrypted` TEXT NULL COMMENT 'Fernet-encrypted API key - NEVER store plaintext',
+                    `base_url` VARCHAR(500) NULL COMMENT 'Base URL for self-hosted or proxy providers',
+                    `config_json` JSON NULL COMMENT 'Provider-specific configuration',
+                    `is_active` TINYINT(1) NOT NULL DEFAULT 1,
+                    `is_default` TINYINT(1) NOT NULL DEFAULT 0 COMMENT 'Default provider for this user',
+                    `priority` INT NOT NULL DEFAULT 0 COMMENT 'Priority for fallback ordering (lower = higher priority)',
+                    `is_shared` TINYINT(1) NOT NULL DEFAULT 0 COMMENT 'Whether this provider is shared with others',
+                    `share_with_all` TINYINT(1) NOT NULL DEFAULT 0 COMMENT 'Share with all users (requires permission)',
+                    `total_requests` INT NOT NULL DEFAULT 0,
+                    `total_tokens` INT NOT NULL DEFAULT 0,
+                    `last_used_at` DATETIME NULL,
+                    `last_error` TEXT NULL COMMENT 'Last error message (for debugging)',
+                    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                    PRIMARY KEY (`id`),
+                    INDEX `ix_user_llm_providers_user_id` (`user_id`),
+                    INDEX `ix_user_provider_type` (`user_id`, `provider_type`),
+                    UNIQUE KEY `uq_user_provider_name` (`user_id`, `name`),
+                    CONSTRAINT `fk_user_llm_provider_user` FOREIGN KEY (`user_id`)
+                        REFERENCES `users` (`id`) ON DELETE CASCADE
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+                """
+            ),
+        )
+
+        # User LLM Provider Shares table
+        changed |= _ensure_table(
+            db,
+            table_name="user_llm_provider_shares",
+            create_sql=(
+                """
+                CREATE TABLE `user_llm_provider_shares` (
+                    `id` INT NOT NULL AUTO_INCREMENT,
+                    `provider_id` INT NOT NULL,
+                    `share_type` VARCHAR(20) NOT NULL COMMENT 'Type of share: user, role',
+                    `target_identifier` VARCHAR(255) NOT NULL COMMENT 'Username or role name',
+                    `can_use` TINYINT(1) NOT NULL DEFAULT 1 COMMENT 'Can use this provider for API calls',
+                    `usage_limit_tokens` INT NULL COMMENT 'Optional token limit per month for this share',
+                    `current_month_usage` INT NOT NULL DEFAULT 0,
+                    `shared_by` INT NULL,
+                    `shared_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    `expires_at` DATETIME NULL COMMENT 'Optional expiration date',
+                    PRIMARY KEY (`id`),
+                    INDEX `ix_user_llm_provider_shares_provider` (`provider_id`),
+                    UNIQUE KEY `uq_provider_share_target` (`provider_id`, `share_type`, `target_identifier`),
+                    CONSTRAINT `fk_provider_share_provider` FOREIGN KEY (`provider_id`)
+                        REFERENCES `user_llm_providers` (`id`) ON DELETE CASCADE,
+                    CONSTRAINT `fk_provider_share_user` FOREIGN KEY (`shared_by`)
+                        REFERENCES `users` (`id`) ON DELETE SET NULL
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+                """
+            ),
+        )
+
+        # =========================================================================
+        # Referral System: User-level link creation support
+        # =========================================================================
+
+        # Add created_by_user_id column to referral_links for user-owned links
+        changed |= _ensure_column(
+            db,
+            table_name="referral_links",
+            column_name="owner_user_id",
+            column_definition_sql="`owner_user_id` INT NULL COMMENT 'User who owns this link (NULL = admin-created)'",
+        )
+
+        # Add description column to referral_links
+        changed |= _ensure_column(
+            db,
+            table_name="referral_links",
+            column_name="description",
+            column_definition_sql="`description` TEXT NULL COMMENT 'Additional description for the link'",
+        )
+
+        # User Settings/Preferences column on users table
+        changed |= _ensure_column(
+            db,
+            table_name="users",
+            column_name="settings_json",
+            column_definition_sql="`settings_json` JSON NULL COMMENT 'User preferences (theme, language, etc.)'",
+        )
+
+        # =========================================================================
+        # Scenario Invitations: Status tracking for user invitations
+        # =========================================================================
+
+        # Invitation status for scenario users (ACCEPTED, REJECTED, PENDING)
+        # NOTE: SQLAlchemy Enum uses member NAMES, not values - must be uppercase
+        changed |= _ensure_column(
+            db,
+            table_name="scenario_users",
+            column_name="invitation_status",
+            column_definition_sql="`invitation_status` ENUM('ACCEPTED', 'REJECTED', 'PENDING') NOT NULL DEFAULT 'ACCEPTED'",
+        )
+        # When the user was invited
+        changed |= _ensure_column(
+            db,
+            table_name="scenario_users",
+            column_name="invited_at",
+            column_definition_sql="`invited_at` DATETIME NULL",
+        )
+        # When the user responded to the invitation
+        changed |= _ensure_column(
+            db,
+            table_name="scenario_users",
+            column_name="responded_at",
+            column_definition_sql="`responded_at` DATETIME NULL",
+        )
+        # Who invited the user (username)
+        changed |= _ensure_column(
+            db,
+            table_name="scenario_users",
+            column_name="invited_by",
+            column_definition_sql="`invited_by` VARCHAR(255) NULL",
+        )
+
+        # =========================================================================
+        # AI Field Assist: Prompt Templates for AI-Assisted Form Fields
+        # =========================================================================
+
+        # Field Prompt Templates table
+        changed |= _ensure_table(
+            db,
+            table_name="field_prompt_templates",
+            create_sql=(
+                """
+                CREATE TABLE `field_prompt_templates` (
+                    `id` INT NOT NULL AUTO_INCREMENT,
+                    `field_key` VARCHAR(100) NOT NULL COMMENT 'Unique key: {module}.{entity}.{field}',
+                    `display_name` VARCHAR(200) NOT NULL COMMENT 'Human-readable name',
+                    `description` TEXT NULL COMMENT 'Help text for admins',
+                    `system_prompt` TEXT NOT NULL COMMENT 'System prompt for LLM',
+                    `user_prompt_template` TEXT NOT NULL COMMENT 'User prompt with {variables}',
+                    `context_variables` JSON NULL COMMENT 'Expected context variables',
+                    `max_tokens` INT NOT NULL DEFAULT 200,
+                    `temperature` FLOAT NOT NULL DEFAULT 0.7,
+                    `is_active` TINYINT(1) NOT NULL DEFAULT 1,
+                    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                    PRIMARY KEY (`id`),
+                    UNIQUE KEY `uq_field_prompt_key` (`field_key`),
+                    INDEX `ix_field_prompt_active` (`is_active`)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+                """
+            ),
         )
 
         if changed:

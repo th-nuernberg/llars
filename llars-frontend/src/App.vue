@@ -144,7 +144,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { Motion, AnimatePresence } from 'motion-v';
 import { useAuth } from '@/composables/useAuth';
@@ -152,6 +152,7 @@ import { useAppTheme } from '@/composables/useAppTheme';
 import { usePermissions } from '@/composables/usePermissions';
 import { useMobile } from '@/composables/useMobile';
 import { useSnackbar } from '@/composables/useSnackbar';
+import { usePresenceHeartbeat } from '@/composables/usePresenceHeartbeat';
 import FloatingChat from './components/FloatingChat.vue';
 import UserSettingsDialog from './components/UserSettingsDialog.vue';
 import AnalyticsConsentBanner from './components/common/AnalyticsConsentBanner.vue';
@@ -171,6 +172,7 @@ const permissions = usePermissions();
 const { applyTheme } = useAppTheme();
 const { isMobile } = useMobile();
 const { registrationEnabled, checkRegistrationStatus } = useReferralSystem();
+const { start: startPresence, stop: stopPresence } = usePresenceHeartbeat();
 
 /**
  * Smart router-view key that prevents full remount on document switches.
@@ -204,6 +206,18 @@ const username = computed(() => {
     return '';
   }
 });
+
+watch(
+  isAuthenticated,
+  (value) => {
+    if (value) {
+      startPresence();
+    } else {
+      stopPresence();
+    }
+  },
+  { immediate: true }
+);
 const isAdminUser = computed(() => auth.isAdmin.value);
 const links = ref(['Dokumentation', 'Impressum', 'Datenschutz', 'Kontakt']);
 const settingsDialogOpen = ref(false);

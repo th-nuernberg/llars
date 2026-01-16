@@ -100,7 +100,8 @@
     "collabColor": "Kollaborationsfarbe",
     "collabColorHint": "Diese Farbe wird verwendet, um deine Bearbeitungen in Echtzeit-Kollaborationen hervorzuheben.",
     "noColorSelected": "Keine Farbe gewählt",
-    "saveColor": "Farbe speichern"
+    "saveColor": "Farbe speichern",
+    "aiReservedColorHint": "Diese Farbe ist für {name} reserviert."
   },
   "theme": {
     "system": "System",
@@ -171,6 +172,7 @@
       "analytics": "Analytics",
       "health": "System Health",
       "system": "System Events",
+      "presence": "User Presence",
       "chatbotActivity": "Chatbot Activity",
       "docker": "Docker",
       "db": "DB",
@@ -182,7 +184,75 @@
       "crawler": "Web Crawler",
       "rag": "RAG Dokumente",
       "permissions": "Berechtigungen",
-      "llmProviders": "LLM Provider"
+      "llmProviders": "LLM Provider",
+      "fieldPrompts": "KI-Feld-Prompts"
+    }
+  },
+  "aiAssist": {
+    "generate": "Mit KI generieren",
+    "generateShort": "KI",
+    "generating": "Generiere...",
+    "success": "Erfolgreich generiert",
+    "error": "Generierung fehlgeschlagen",
+    "noPrompt": "Kein Prompt für dieses Feld konfiguriert",
+    "admin": {
+      "title": "KI-Feld-Prompts",
+      "subtitle": "Konfigurieren Sie die KI-Prompts für automatische Feldgenerierung",
+      "fieldKey": "Feld-Key",
+      "fieldKeyHint": "Format: modul.entität.feld (z.B. scenario.settings.name)",
+      "displayName": "Anzeigename",
+      "description": "Beschreibung",
+      "systemPrompt": "System-Prompt",
+      "userPrompt": "User-Prompt-Template",
+      "contextVariables": "Kontext-Variablen",
+      "maxTokens": "Max. Tokens",
+      "temperature": "Temperatur",
+      "isActive": "Aktiv",
+      "create": "Prompt erstellen",
+      "edit": "Prompt bearbeiten",
+      "delete": "Prompt löschen",
+      "deleteConfirm": "Möchten Sie den Prompt \"{name}\" wirklich löschen?",
+      "test": "Testen",
+      "testTitle": "Prompt testen",
+      "testContext": "Test-Kontext (JSON)",
+      "testResult": "Ergebnis",
+      "seedDefaults": "Standard-Prompts laden",
+      "seeded": "{count} Standard-Prompts wurden erstellt",
+      "noPrompts": "Keine Prompts konfiguriert. Klicken Sie auf \"Standard-Prompts laden\" um die Basis-Prompts zu erstellen.",
+      "columns": {
+        "fieldKey": "Feld-Key",
+        "displayName": "Name",
+        "isActive": "Status",
+        "actions": "Aktionen"
+      }
+    }
+  },
+  "adminPresence": {
+    "title": "User Presence",
+    "user": "Benutzer",
+    "statusLabel": "Status",
+    "lastActive": "Letzte Aktivität",
+    "lastSeen": "Zuletzt gesehen",
+    "searchPlaceholder": "Suche nach Name...",
+    "empty": "Keine Nutzer gefunden",
+    "status": {
+      "active": "Aktiv",
+      "online": "Online",
+      "offline": "Offline"
+    },
+    "connection": {
+      "live": "Live",
+      "connecting": "Verbinde...",
+      "disconnected": "Getrennt"
+    },
+    "errors": {
+      "generic": "Präsenz-Stream nicht verfügbar."
+    },
+    "time": {
+      "justNow": "Gerade eben",
+      "minutes": "vor {count} Min.",
+      "hours": "vor {count} Std.",
+      "days": "vor {count} Tagen"
     }
   },
   "comparison": {
@@ -2123,9 +2193,9 @@
         "title": "Evaluierung",
         "description": "Ranking, Rating, Fake/Echt, Verlaufsbewertung & Gegenüberstellung"
       },
-      "evaluationAssistant": {
-        "title": "Evaluations-Assistent",
-        "description": "Daten importieren und KI-gestützt Evaluations-Szenarien erstellen"
+      "scenarioManager": {
+        "title": "Szenario Manager",
+        "description": "Eigene Szenarien erstellen, verwalten und mit LLM-Evaluierung auswerten"
       },
       "chatbot": {
         "title": "Chatbot",
@@ -2174,6 +2244,10 @@
       "ragAdmin": {
         "title": "RAG Verwaltung",
         "description": "Dokumente für die RAG-Pipeline verwalten und hochladen"
+      },
+      "userSettings": {
+        "title": "Einstellungen",
+        "description": "Persönliche Einstellungen, LLM-Provider und Einladungslinks"
       }
     },
     "badges": {
@@ -2181,6 +2255,462 @@
       "alpha": "Alpha",
       "beta": "Beta",
       "test": "Test"
+    }
+  },
+  "scenarioManager": {
+    "title": "Szenario Manager",
+    "subtitle": "Eigene Szenarien erstellen, verwalten und auswerten",
+    "newScenario": "Neues Szenario",
+    "count": "{count} Szenarien",
+    "filters": {
+      "title": "Filter",
+      "ownership": "Zugehörigkeit",
+      "all": "Alle",
+      "own": "Eigene",
+      "shared": "Geteilt mit mir",
+      "invited": "Eingeladen",
+      "rejected": "Abgelehnt",
+      "status": "Status",
+      "allStatus": "Alle Status",
+      "type": "Typ",
+      "allTypes": "Alle Typen"
+    },
+    "sections": {
+      "all": "Alle Szenarien",
+      "own": "Meine Szenarien",
+      "shared": "Geteilte Szenarien",
+      "invited": "Eingeladene Szenarien",
+      "rejected": "Abgelehnte Einladungen"
+    },
+    "invitation": {
+      "accepted": "Angenommen",
+      "rejected": "Abgelehnt",
+      "pending": "Ausstehend",
+      "reject": "Einladung ablehnen",
+      "accept": "Einladung annehmen",
+      "acceptAgain": "Wieder annehmen",
+      "reinvite": "Erneut einladen",
+      "invitedBy": "Eingeladen von {name}",
+      "invitedAt": "Eingeladen am {date}"
+    },
+    "status": {
+      "draft": "Entwurf",
+      "dataCollection": "Daten sammeln",
+      "evaluating": "Evaluierung läuft",
+      "analyzing": "Analyse",
+      "completed": "Abgeschlossen",
+      "archived": "Archiviert",
+      "active": "Aktiv"
+    },
+    "progress": {
+      "complete": "abgeschlossen"
+    },
+    "actions": {
+      "open": "Öffnen",
+      "edit": "Bearbeiten",
+      "delete": "Löschen",
+      "settings": "Einstellungen",
+      "duplicate": "Duplizieren",
+      "archive": "Archivieren"
+    },
+    "delete": {
+      "title": "Szenario löschen",
+      "confirm": "Möchten Sie das Szenario \"{name}\" wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden."
+    },
+    "empty": {
+      "title": "Keine Szenarien vorhanden",
+      "description": "Erstellen Sie Ihr erstes Szenario, um mit der Evaluierung zu beginnen.",
+      "action": "Erstes Szenario erstellen"
+    },
+    "tabs": {
+      "overview": "Übersicht",
+      "data": "Daten",
+      "evaluation": "Evaluierung",
+      "results": "Ergebnisse",
+      "team": "Team"
+    },
+    "stats": {
+      "threads": "Threads",
+      "evaluators": "Evaluatoren",
+      "llmModels": "LLM Modelle",
+      "complete": "abgeschlossen"
+    },
+    "wizard": {
+      "title": "Neues Szenario erstellen",
+      "create": "Szenario erstellen",
+      "aiPowered": "KI-Unterstützt",
+      "steps": {
+        "data": "Daten",
+        "task": "Aufgabe",
+        "config": "Konfiguration",
+        "team": "Team",
+        "summary": "Zusammenfassung",
+        "type": "Typ",
+        "info": "Details"
+      },
+      "step1": {
+        "title": "Daten hochladen",
+        "description": "Laden Sie Ihre Daten hoch und lassen Sie die KI sie analysieren.",
+        "dropFiles": "Dateien hierher ziehen oder klicken",
+        "supportedFormats": "Unterstützte Formate: JSON, CSV, XLSX",
+        "multiFileHint": "Mehrere Dateien mit Cmd+A oder Strg+A auswählen",
+        "filesSelected": "Dateien ausgewählt",
+        "addMore": "Weitere hinzufügen",
+        "totalSize": "Gesamtgröße",
+        "clearAll": "Alle entfernen",
+        "filesProcessed": "Dateien verarbeitet",
+        "fileBreakdown": "Datei-Details",
+        "aiAnalysis": "KI-Analyse",
+        "analyzing": "Analysiere Daten...",
+        "itemsDetected": "Datensätze erkannt",
+        "fieldsDetected": "Felder erkannt",
+        "suggestedType": "Empfohlener Typ",
+        "sampleData": "Beispieldaten",
+        "startAnalysis": "Analyse starten",
+        "aiPoweredAnalysis": "KI-gestützte Analyse",
+        "aiSuggestions": "KI-Vorschläge",
+        "suggestedName": "Vorgeschlagener Name",
+        "suggestedDescription": "Vorgeschlagene Beschreibung",
+        "dataQuality": "Datenqualität"
+      },
+      "step2": {
+        "title": "Aufgabe definieren",
+        "description": "Wählen Sie den Evaluierungstyp und geben Sie grundlegende Informationen an.",
+        "aiSuggests": "Basierend auf Ihren Daten empfehlen wir: {type}",
+        "recommended": "Empfohlen",
+        "basicInfo": "Grunddaten",
+        "name": "Szenario-Name",
+        "descriptionField": "Beschreibung",
+        "descriptionHint": "Optional: Beschreiben Sie den Zweck dieses Szenarios",
+        "startDate": "Startdatum",
+        "endDate": "Enddatum"
+      },
+      "step3": {
+        "title": "Konfiguration",
+        "description": "Passen Sie die Bewertungsskala und Verteilungsoptionen an.",
+        "distributionSettings": "Verteilungseinstellungen",
+        "distribution": "Thread-Verteilung",
+        "distributionAll": "Alle an jeden",
+        "distributionRandom": "Zufällige Verteilung",
+        "distributionSequential": "Sequentielle Verteilung",
+        "order": "Reihenfolge",
+        "orderFixed": "Feste Reihenfolge",
+        "orderRandom": "Zufällige Reihenfolge",
+        "llmEvaluation": "LLM-Evaluierung",
+        "enableLLM": "LLM-Evaluierung aktivieren"
+      },
+      "step4": {
+        "teamTitle": "Team zusammenstellen",
+        "teamDescription": "Wählen Sie die menschlichen und KI-Evaluatoren für dieses Szenario.",
+        "humanEvaluators": "Menschliche Evaluatoren",
+        "aiEvaluators": "KI-Evaluatoren",
+        "defaultRole": "Standardrolle",
+        "noUsersAvailable": "Keine Benutzer verfügbar",
+        "noLLMsAvailable": "Keine LLM-Modelle verfügbar",
+        "selectedSummary": "Ausgewählte Evaluatoren",
+        "aiNativeHint": "LLARS ist AI-Nativ: KI-Modelle werden wie Benutzer behandelt und starten die Evaluierung automatisch nach dem Erstellen.",
+        "aiAutoStart": "KI startet automatisch nach Erstellung",
+        "systemModels": "System-Modelle",
+        "myProviders": "Meine Provider",
+        "addProviderHint": "Eigenen API-Schlüssel in den Einstellungen hinzufügen"
+      },
+      "step5": {
+        "title": "Zusammenfassung",
+        "description": "Überprüfen Sie die Details Ihres neuen Szenarios.",
+        "basicInfo": "Grunddaten",
+        "evaluationType": "Evaluierungstyp",
+        "data": "Daten",
+        "settings": "Einstellungen",
+        "team": "Team",
+        "type": "Typ",
+        "name": "Name",
+        "descriptionLabel": "Beschreibung",
+        "preset": "Vorlage",
+        "file": "Datei",
+        "files": "Dateien",
+        "items": "Datensätze",
+        "period": "Zeitraum",
+        "distribution": "Verteilung",
+        "llmEnabled": "LLM aktiviert",
+        "humanEvaluators": "Menschliche Evaluatoren",
+        "aiEvaluators": "KI-Evaluatoren",
+        "userProviders": "Ihre Provider",
+        "aiAutoStartInfo": "Die ausgewählten KI-Modelle beginnen automatisch mit der Evaluierung nach dem Erstellen des Szenarios.",
+        "nextSteps": "Nach dem Erstellen beginnen die KI-Evaluatoren automatisch. Sie können den Fortschritt im Status-Panel verfolgen."
+      }
+    },
+    "types": {
+      "ranking": "Ranking",
+      "rating": "Rating",
+      "mailRating": "E-Mail Bewertung",
+      "comparison": "Vergleich",
+      "authenticity": "Authentizität",
+      "labeling": "Labeling"
+    },
+    "typeDescriptions": {
+      "ranking": "Items nach Qualität sortieren oder in Kategorien einteilen",
+      "rating": "Bewertung auf einer konfigurierbaren Skala",
+      "mailRating": "E-Mail-Konversationen bewerten",
+      "comparison": "Items gegeneinander vergleichen (A vs B)",
+      "authenticity": "E-Mails als echt oder gefälscht klassifizieren",
+      "labeling": "Kategorien zuweisen (z.B. Fake/Echt, Sentiment)"
+    },
+    "evalConfig": {
+      "selectPreset": "Vorlage wählen",
+      "customizeConfig": "Konfiguration anpassen",
+      "preview": "Vorschau",
+      "rating": {
+        "scaleType": "Skalen-Typ",
+        "minValue": "Minimalwert",
+        "maxValue": "Maximalwert",
+        "stepSize": "Schrittweite",
+        "showLabels": "Beschriftungen anzeigen",
+        "allowHalfSteps": "Halbe Schritte erlauben",
+        "scaleLabels": "Skalen-Beschriftungen",
+        "labelPlaceholder": "Beschriftung eingeben...",
+        "dimensions": "Dimensionen",
+        "addDimension": "Dimension hinzufügen",
+        "dimensionName": "Dimensionsname"
+      },
+      "ranking": {
+        "rankingType": "Ranking-Typ",
+        "allowTies": "Gleichstände erlauben",
+        "enableDragDrop": "Drag & Drop aktivieren",
+        "showPositions": "Positionen anzeigen",
+        "buckets": "Kategorien",
+        "addBucket": "Kategorie hinzufügen",
+        "bucketName": "Kategoriename",
+        "minBucketsHint": "Mindestens 2 Kategorien erforderlich",
+        "orderLabels": "Reihenfolgenbeschriftung",
+        "firstLabel": "Erste Position",
+        "lastLabel": "Letzte Position",
+        "firstPlaceholder": "z.B. Höchste Priorität",
+        "lastPlaceholder": "z.B. Niedrigste Priorität",
+        "selectColor": "Farbe wählen"
+      },
+      "labeling": {
+        "labelingType": "Labeling-Typ",
+        "multiLabel": "Multi-Label erlauben",
+        "multiLabelHint": "Mehrere Labels pro Item auswählbar",
+        "allowUnsure": "Unsicher-Option erlauben",
+        "categories": "Kategorien",
+        "addCategory": "Kategorie hinzufügen",
+        "categoryName": "Kategoriename",
+        "minCategoriesHint": "Mindestens 2 Kategorien erforderlich",
+        "unsureOption": "Unsicher-Option",
+        "unsureName": "Beschriftung für Unsicher",
+        "selectColor": "Farbe wählen",
+        "constraints": "Einschränkungen",
+        "minLabels": "Mindestanzahl Labels",
+        "maxLabels": "Maximalanzahl Labels",
+        "unlimited": "Unbegrenzt"
+      },
+      "comparison": {
+        "comparisonType": "Vergleichs-Typ",
+        "allowTie": "Unentschieden erlauben",
+        "showConfidence": "Konfidenz abfragen",
+        "itemsPerComparison": "Items pro Vergleich",
+        "confidenceScale": "Konfidenz-Skala",
+        "confidenceMin": "Minimum",
+        "confidenceMax": "Maximum",
+        "criteria": "Kriterien",
+        "addCriterion": "Kriterium hinzufügen",
+        "criterionName": "Kriteriumsname",
+        "weight": "Gewicht",
+        "totalWeight": "Gesamtgewicht",
+        "shouldBeOne": "sollte 1.0 sein",
+        "minCriteriaHint": "Mindestens 1 Kriterium erforderlich",
+        "tournamentOptions": "Turnier-Optionen",
+        "rounds": "Runden"
+      },
+      "preview": {
+        "ratingDemo": "Bewertungsvorschau",
+        "rankingDemo": "Ranking-Vorschau",
+        "labelingDemo": "Labeling-Vorschau",
+        "comparisonDemo": "Vergleichs-Vorschau",
+        "tie": "Unentschieden",
+        "criteriaUsed": "Verwendete Kriterien",
+        "confidence": "Konfidenz"
+      }
+    },
+    "overview": {
+      "quickActions": "Schnellaktionen",
+      "importData": "Daten importieren",
+      "importDataDesc": "CSV, JSON oder Excel-Dateien mit Threads hochladen",
+      "llmEvaluation": "LLM Evaluierung",
+      "llmEvaluationDesc": "Automatische Evaluierung durch KI-Modelle starten",
+      "viewResults": "Ergebnisse anzeigen",
+      "viewResultsDesc": "Statistiken und Auswertungen einsehen",
+      "progress": "Fortschritt",
+      "humanEvaluators": "Human Evaluators",
+      "llmEvaluators": "LLM Evaluators",
+      "details": "Details",
+      "type": "Typ",
+      "description": "Beschreibung",
+      "created": "Erstellt am",
+      "period": "Zeitraum",
+      "distribution": "Verteilung",
+      "recentActivity": "Letzte Aktivität",
+      "noActivity": "Noch keine Aktivität",
+      "evaluatorProgress": "Evaluator-Fortschritt",
+      "done": "Fertig",
+      "inProgress": "In Bearbeitung",
+      "pending": "Ausstehend",
+      "accuracy": "Genauigkeit",
+      "noEvaluators": "Noch keine Evaluatoren",
+      "threads": "Threads",
+      "users": "Nutzer",
+      "agreementMetrics": "Agreement-Metriken",
+      "overallAccuracy": "Gesamtgenauigkeit"
+    },
+    "data": {
+      "title": "Daten & Threads",
+      "importData": "Daten importieren",
+      "threads": "Threads",
+      "messages": "Nachrichten",
+      "features": "Features",
+      "emptyTitle": "Noch keine Daten",
+      "emptyDescription": "Importieren Sie Daten, um mit der Evaluierung zu beginnen.",
+      "importFirst": "Erste Daten importieren",
+      "searchThreads": "Threads durchsuchen...",
+      "sortNewest": "Neueste zuerst",
+      "sortOldest": "Älteste zuerst",
+      "sortSubject": "Nach Betreff",
+      "subject": "Betreff",
+      "sender": "Absender",
+      "date": "Datum",
+      "statusHeader": "Status",
+      "noSubject": "(Kein Betreff)",
+      "status": {
+        "pending": "Ausstehend",
+        "evaluated": "Bewertet",
+        "in_progress": "In Bearbeitung"
+      },
+      "importTitle": "Daten importieren",
+      "importFile": "Datei hochladen",
+      "importFileDesc": "CSV, JSON oder Excel-Datei mit Threads",
+      "importExisting": "Bestehende Daten",
+      "importExistingDesc": "Threads aus dem System auswählen",
+      "selectFile": "Datei auswählen",
+      "supportedFormats": "Unterstützte Formate: JSON, CSV, XLSX",
+      "selectExistingDesc": "Wählen Sie Threads aus bereits importierten Daten aus.",
+      "comingSoon": "Diese Funktion ist in Kürze verfügbar.",
+      "import": "Importieren",
+      "importing": "Daten werden importiert..."
+    },
+    "evaluation": {
+      "llmControl": "LLM Evaluierung",
+      "model": "Modell",
+      "template": "Template",
+      "start": "Evaluierung starten",
+      "stop": "Stoppen",
+      "metrics": "Metriken",
+      "progress": "Fortschritt",
+      "completed": "Abgeschlossen",
+      "pending": "Ausstehend",
+      "failed": "Fehlgeschlagen",
+      "tokenUsage": "Token-Verbrauch",
+      "tokens": "Tokens",
+      "cost": "Kosten",
+      "liveResults": "Live-Ergebnisse",
+      "evaluations": "Evaluierungen",
+      "confidence": "Konfidenz",
+      "noResults": "Noch keine Ergebnisse. Starten Sie eine Evaluierung.",
+      "agreementMetrics": "Agreement-Metriken",
+      "noMetricsYet": "Metriken werden berechnet, sobald mehrere Evaluierungen abgeschlossen sind.",
+      "status": {
+        "idle": "Bereit",
+        "running": "Läuft",
+        "completed": "Abgeschlossen",
+        "error": "Fehler"
+      }
+    },
+    "results": {
+      "title": "Ergebnisse",
+      "export": "Exportieren",
+      "totalEvaluations": "Gesamt-Evaluierungen",
+      "humanEvaluators": "Human Evaluators",
+      "llmEvaluators": "LLM Evaluators",
+      "agreementRate": "Übereinstimmung",
+      "agreementMetrics": "Agreement-Metriken",
+      "byEvaluator": "Nach Evaluator",
+      "completed": "Abgeschlossen",
+      "avgScore": "Durchschnitt",
+      "human": "Human",
+      "noEvaluators": "Noch keine Evaluatoren mit Ergebnissen",
+      "distribution": "Verteilung der Bewertungen",
+      "chartComingSoon": "Diagramm wird in Kürze verfügbar sein.",
+      "accuracy": "Genauigkeit",
+      "evaluationDetails": "Evaluierungs-Details",
+      "completedThreads": "Abgeschlossene Evaluierungen",
+      "pendingThreads": "Ausstehende Evaluierungen",
+      "confidence": "Konfidenz",
+      "more": "weitere",
+      "kappa": {
+        "excellent": "Exzellent",
+        "good": "Gut",
+        "moderate": "Moderat",
+        "fair": "Ausreichend",
+        "poor": "Schwach"
+      }
+    },
+    "team": {
+      "title": "Team",
+      "invite": "Einladen",
+      "evaluators": "Evaluatoren",
+      "llmModels": "LLM Modelle",
+      "humanEvaluators": "Human Evaluators",
+      "llmEvaluators": "LLM Evaluators",
+      "addLLM": "LLM hinzufügen",
+      "noEvaluators": "Noch keine Evaluatoren eingeladen",
+      "noLLM": "Noch keine LLM-Modelle konfiguriert",
+      "changeRole": "Rolle ändern",
+      "remove": "Entfernen",
+      "inviteTitle": "Nutzer einladen",
+      "selectUsers": "Nutzer auswählen",
+      "role": "Rolle",
+      "sendInvite": "Einladung senden",
+      "addLLMTitle": "LLM-Evaluator hinzufügen",
+      "selectModel": "Modell auswählen",
+      "selectTemplate": "Template auswählen",
+      "add": "Hinzufügen",
+      "removeTitle": "Nutzer entfernen",
+      "removeConfirm": "Möchten Sie {name} wirklich aus diesem Szenario entfernen?",
+      "roles": {
+        "owner": "Besitzer",
+        "evaluator": "Evaluator",
+        "rater": "Rater"
+      }
+    },
+    "settings": {
+      "title": "Szenario-Einstellungen",
+      "basicInfo": "Grundinformationen",
+      "name": "Name",
+      "description": "Beschreibung",
+      "timePeriod": "Zeitraum",
+      "startDate": "Startdatum",
+      "endDate": "Enddatum",
+      "distribution": "Verteilung",
+      "distributionAll": "Alle an jeden",
+      "distributionAllDesc": "Jeder Evaluator bewertet alle Threads",
+      "distributionRandom": "Zufällig",
+      "distributionRandomDesc": "Threads werden zufällig auf Evaluatoren verteilt",
+      "distributionSequential": "Sequentiell",
+      "distributionSequentialDesc": "Threads werden der Reihe nach zugewiesen",
+      "order": "Reihenfolge",
+      "orderFixed": "Feste Reihenfolge",
+      "orderRandom": "Zufällige Reihenfolge",
+      "visibility": "Sichtbarkeit",
+      "visibilityPrivate": "Privat (nur für mich)",
+      "visibilityTeam": "Team (eingeladene Nutzer)",
+      "visibilityPublic": "Öffentlich",
+      "status": "Status",
+      "delete": "Szenario löschen"
+    },
+    "distribution": {
+      "all": "Alle an jeden",
+      "random": "Zufällig",
+      "sequential": "Sequentiell"
     }
   },
   "promptEngineering": {
@@ -3410,6 +3940,8 @@
       "resolved": "Erledigt",
       "reopen": "Wieder öffnen",
       "resolve": "Erledigen",
+      "reply": "Antworten",
+      "replyPlaceholder": "Antwort schreiben...",
       "dialog": {
         "title": "Kommentar hinzufügen",
         "label": "Kommentar",
@@ -3419,7 +3951,13 @@
       "errors": {
         "selectText": "Bitte Text markieren",
         "saveFailed": "Kommentar konnte nicht gespeichert werden"
-      }
+      },
+      "aiResolve": "Mit KI umsetzen",
+      "aiResolveTitle": "KI analysiert den Kommentar und setzt die Anmerkung um",
+      "aiProcessing": "KI verarbeitet...",
+      "aiSuccess": "KI hat die Änderung umgesetzt",
+      "aiError": "KI konnte die Änderung nicht umsetzen: {error}",
+      "aiDisabled": "KI-Assistent ist deaktiviert"
     },
     "ai": {
       "rewrite": "Umformulieren",
@@ -3632,6 +4170,18 @@
         "hoursAgo": "vor {count} Std.",
         "daysAgo": "vor {count} Tagen"
       }
+    },
+    "zip": {
+      "menuTitle": "ZIP Import/Export",
+      "downloadTitle": "Als ZIP herunterladen",
+      "downloadSubtitle": "Projekt als ZIP-Archiv exportieren",
+      "importTitle": "ZIP importieren",
+      "importSubtitle": "Dateien aus ZIP-Archiv hinzufügen",
+      "downloadSuccess": "ZIP-Download gestartet",
+      "downloadError": "ZIP-Download fehlgeschlagen",
+      "importSuccess": "{imported} Dateien importiert, {skipped} übersprungen",
+      "importError": "ZIP-Import fehlgeschlagen: {error}",
+      "invalidFile": "Bitte eine ZIP-Datei auswählen"
     }
   },
   "latexCollabAi": {
@@ -3910,6 +4460,119 @@
       "confirmAction": "Verwerfen",
       "simpleConfirm": "Alle nicht committeten Änderungen werden verworfen und das Dokument wird auf den letzten Commit zurückgesetzt.",
       "simpleHint": "Diese Aktion kann nicht rückgängig gemacht werden."
+    }
+  },
+  "userSettings": {
+    "title": "Einstellungen",
+    "subtitle": "Verwalten Sie Ihre persönlichen Einstellungen und Präferenzen",
+    "tabs": {
+      "personal": "Persönlich",
+      "providers": "LLM-Provider",
+      "referrals": "Einladungen"
+    },
+    "personal": {
+      "avatar": {
+        "title": "Profilbild",
+        "upload": "Hochladen",
+        "delete": "Entfernen",
+        "regenerate": "Neu generieren",
+        "hint": "Max. 2MB. Erlaubte Formate: PNG, JPG, GIF, WebP",
+        "current": "Aktuelles Profilbild",
+        "selectFile": "Bilddatei auswählen"
+      },
+      "collabColor": {
+        "title": "Kollaborationsfarbe",
+        "description": "Diese Farbe wird verwendet, um Ihre Cursor und Markierungen in kollaborativen Editoren anzuzeigen.",
+        "custom": "Eigene",
+        "preview": "Vorschau",
+        "aiReservedHint": "Lila/Violett-Töne sind für {name} reserviert",
+        "aiReservedError": "Diese Farbe liegt im reservierten Lila/Violett-Bereich für die KI. Bitte wählen Sie eine andere Farbe."
+      },
+      "preferences": {
+        "title": "Präferenzen",
+        "theme": "Design",
+        "themeHint": "Wählen Sie das Farbschema der Benutzeroberfläche",
+        "themeSystem": "System",
+        "themeLight": "Hell",
+        "themeDark": "Dunkel",
+        "language": "Sprache",
+        "languageHint": "Wählen Sie Ihre bevorzugte Sprache"
+      }
+    },
+    "providers": {
+      "info": "Verbinden Sie Ihre eigenen LLM-API-Keys, um persönliche Modelle zu nutzen oder mit anderen zu teilen.",
+      "myProviders": "Meine Provider",
+      "addProvider": "Provider hinzufügen",
+      "noProviders": "Sie haben noch keine eigenen LLM-Provider konfiguriert.",
+      "addFirstProvider": "Ersten Provider hinzufügen",
+      "sharedWithMe": "Mit mir geteilt",
+      "requests": "Anfragen",
+      "lastUsed": "Zuletzt verwendet",
+      "test": "Verbindung testen",
+      "share": "Teilen",
+      "setDefault": "Als Standard",
+      "editProvider": "Provider bearbeiten",
+      "testSuccess": "Verbindung erfolgreich!",
+      "testFailed": "Verbindungstest fehlgeschlagen: {error}",
+      "deleteConfirm": "Möchten Sie den Provider \"{name}\" wirklich löschen?",
+      "shareTitle": "\"{name}\" teilen",
+      "currentShares": "Aktuelle Freigaben",
+      "shareWithAll": "Mit allen Nutzern teilen",
+      "addShare": "Freigabe hinzufügen",
+      "shareTypeUser": "Benutzer",
+      "shareTypeRole": "Rolle",
+      "username": "Benutzername",
+      "roleName": "Rollenname",
+      "form": {
+        "type": "Provider-Typ",
+        "typeRequired": "Provider-Typ ist erforderlich",
+        "name": "Name",
+        "nameRequired": "Name ist erforderlich",
+        "namePlaceholder": "z.B. Mein OpenAI Account",
+        "apiKey": "API-Schlüssel",
+        "apiKeyUnchanged": "Unverändert lassen",
+        "baseUrl": "Basis-URL (optional)",
+        "setAsDefault": "Als Standard-Provider verwenden"
+      }
+    },
+    "referrals": {
+      "info": "Erstellen Sie Einladungslinks, um andere Nutzer zur Plattform einzuladen.",
+      "myLinks": "Meine Einladungslinks",
+      "createLink": "Link erstellen",
+      "createFirstLink": "Ersten Link erstellen",
+      "noLinks": "Sie haben noch keine Einladungslinks erstellt.",
+      "defaultLabel": "Einladungslink",
+      "inactive": "Inaktiv",
+      "expired": "Abgelaufen",
+      "active": "Aktiv",
+      "registrations": "Registrierungen",
+      "remaining": "verbleibend",
+      "copyLink": "Link kopieren",
+      "deactivate": "Deaktivieren",
+      "deleteConfirm": "Möchten Sie diesen Einladungslink wirklich löschen?",
+      "editLink": "Link bearbeiten",
+      "recentRegistrations": "Letzte Registrierungen",
+      "stats": {
+        "totalLinks": "Gesamt Links",
+        "totalRegistrations": "Registrierungen",
+        "activeLinks": "Aktive Links"
+      },
+      "table": {
+        "user": "Benutzer",
+        "link": "Einladungslink",
+        "date": "Datum"
+      },
+      "form": {
+        "label": "Bezeichnung",
+        "labelPlaceholder": "z.B. IJCAI Reviewer",
+        "slug": "Kurz-URL",
+        "slugPlaceholder": "z.B. ijcai-2026",
+        "description": "Beschreibung",
+        "descriptionPlaceholder": "Optionale Beschreibung für diesen Link",
+        "maxUses": "Max. Nutzungen",
+        "maxUsesPlaceholder": "Unbegrenzt",
+        "expiresAt": "Gültig bis"
+      }
     }
   }
 }

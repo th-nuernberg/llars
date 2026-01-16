@@ -10,6 +10,7 @@ import 'vuetify/styles'
 // Composables
 import { createVuetify } from 'vuetify'
 import { h } from 'vue'
+import { aliases as mdiAliases, mdi } from 'vuetify/iconsets/mdi'
 
 // Theme configuration
 import { lightTheme, darkTheme } from '@/config/theme'
@@ -19,8 +20,10 @@ import { llarsAliases, resolveIconComponent } from '@/icons/itshover'
 export default createVuetify({
   icons: {
     defaultSet: 'llars',
-    aliases: llarsAliases,
+    aliases: { ...mdiAliases, ...llarsAliases },
     sets: {
+      // MDI icon set for direct MDI icon usage (e.g., icon="mdi:mdi-format-bold")
+      mdi,
       llars: {
         component: (props) => {
           const { icon, tag, ...rest } = props

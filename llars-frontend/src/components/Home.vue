@@ -232,11 +232,12 @@ const allItems = computed(() => ([
     category: 'rating'
   },
   {
-    title: t('home.features.evaluationAssistant.title'),
-    description: t('home.features.evaluationAssistant.description'),
-    route: '/import',
-    icon: 'llars:evaluation-assistant',
-    permission: 'data:import',
+    title: t('home.features.scenarioManager.title'),
+    description: t('home.features.scenarioManager.description'),
+    route: '/scenarios',
+    icon: 'mdi-clipboard-check-multiple-outline',
+    permission: 'data:manage_scenarios',
+    permissionsAny: ['data:manage_scenarios', 'feature:ranking:view', 'feature:rating:view'],
     category: 'rating',
     badge: t('home.badges.new'),
     badgeColor: 'success'
@@ -275,21 +276,11 @@ const allItems = computed(() => ([
     title: t('home.features.latexCollab.title'),
     description: t('home.features.latexCollab.description'),
     route: '/LatexCollab',
-    icon: 'llars:latex-doc',
+    icon: 'llars:latex-collab-ai',
     permission: 'feature:latex_collab:view',
     category: 'research',
     badge: t('home.badges.beta'),
     badgeColor: 'info'
-  },
-  {
-    title: t('home.features.latexCollabAi.title'),
-    description: t('home.features.latexCollabAi.description'),
-    route: '/LatexCollabAI',
-    icon: 'llars:latex-collab-ai',
-    permission: 'feature:latex_collab:view',
-    category: 'ai',
-    badge: t('home.badges.test'),
-    badgeColor: 'warning'
   },
   {
     title: t('home.features.chatbotArena.title'),
@@ -348,6 +339,14 @@ const allItems = computed(() => ([
     icon: 'llars:rag',
     permission: 'feature:rag:edit',
     category: 'admin'
+  },
+  {
+    title: t('home.features.userSettings.title'),
+    description: t('home.features.userSettings.description'),
+    route: '/settings',
+    icon: 'mdi-account-cog',
+    permission: null,
+    category: 'all'
   }
 ]))
 

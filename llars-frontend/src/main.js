@@ -11,6 +11,8 @@ import axios from 'axios'
 
 // Global Styles
 import '@/styles/global.css'
+// MDI Font for native MDI icons (used when bypassing llars icon set)
+import '@mdi/font/css/materialdesignicons.css'
 
 // Components
 import App from './App.vue'
@@ -40,6 +42,11 @@ import LMessage from '@/components/common/LMessage.vue'
 import LMessageList from '@/components/common/LMessageList.vue'
 import LUserSearch from '@/components/common/LUserSearch.vue'
 import LLoading from '@/components/common/LLoading.vue'
+import LCheckbox from '@/components/common/LCheckbox.vue'
+import LRadio from '@/components/common/LRadio.vue'
+import LRadioGroup from '@/components/common/LRadioGroup.vue'
+import LSwitch from '@/components/common/LSwitch.vue'
+import LAIFieldButton from '@/components/common/LAIFieldButton.vue'
 import { initMatomo } from '@/plugins/llars-metrics'
 import { useAuth } from '@/composables/useAuth'
 import { initAppTheme } from '@/composables/useAppTheme'
@@ -90,6 +97,11 @@ app.component('LMessage', LMessage)
 app.component('LMessageList', LMessageList)
 app.component('LUserSearch', LUserSearch)
 app.component('LLoading', LLoading)
+app.component('LCheckbox', LCheckbox)
+app.component('LRadio', LRadio)
+app.component('LRadioGroup', LRadioGroup)
+app.component('LSwitch', LSwitch)
+app.component('LAIFieldButton', LAIFieldButton)
 
 // Set default Axios headers
 axios.defaults.headers.common['Content-Type'] = 'application/json'

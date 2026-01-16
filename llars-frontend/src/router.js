@@ -67,12 +67,22 @@ import LatexCollabWorkspace from "@/views/LatexCollabAI/LatexCollabAIWorkspace.v
 // Evaluation Hub
 import EvaluationHub from "@/components/Evaluation/EvaluationHub.vue";
 
+// Evaluation Assistant (LLM Transparency)
+import EvaluationAssistant from "@/components/EvaluationAssistant/EvaluationAssistant.vue";
+
 // Data Importer
 import DataImporterView from "@/views/DataImporter/DataImporterView.vue";
+
+// Scenario Manager
+import ScenarioManagerHome from "@/views/ScenarioManager/ScenarioManagerHome.vue";
+import ScenarioWorkspace from "@/views/ScenarioManager/ScenarioWorkspace.vue";
 
 // Fake/Echt (Authenticity)
 import AuthenticityOverview from "@/components/Authenticity/AuthenticityOverview.vue";
 import AuthenticityDetail from "@/components/Authenticity/AuthenticityDetail.vue";
+
+// User Settings
+import UserSettingsPage from "@/views/UserSettings/UserSettingsPage.vue";
 
 const routes = [
     { path: '/Impressum', component: Impressum, meta: { requiresAuth: false } },
@@ -81,8 +91,15 @@ const routes = [
     { path: '/docs', component: Documentation, meta: { requiresAuth: false } },
 
     { path: '/Home', component: Home, meta: { requiresAuth: true } },
+    { path: '/settings', name: 'UserSettings', component: UserSettingsPage, meta: { requiresAuth: true } },
     { path: '/evaluation', name: 'EvaluationHub', component: EvaluationHub, meta: { requiresAuth: true } },
+    { path: '/evaluation/assistant/:id', name: 'EvaluationAssistant', component: EvaluationAssistant, props: true, meta: { requiresAuth: true } },
     { path: '/data-import', alias: '/import', name: 'DataImporter', component: DataImporterView, meta: { requiresAuth: true } },
+
+    // Scenario Manager
+    { path: '/scenarios', name: 'ScenarioManager', component: ScenarioManagerHome, meta: { requiresAuth: true } },
+    { path: '/scenarios/:id', name: 'ScenarioWorkspace', component: ScenarioWorkspace, props: true, meta: { requiresAuth: true } },
+
     { path: '/Ranker', name: 'Ranker', component: Ranker, meta: { requiresAuth: true } },
     { path: '/Ranker/:id', name: 'RankerDetail', component: RankerDetail, props: true, meta: { requiresAuth: true } },
     { path: '/Rater', name: 'Rater', component: Rater, meta: { requiresAuth: true } },

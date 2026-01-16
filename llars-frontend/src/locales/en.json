@@ -100,7 +100,8 @@
     "collabColor": "Collaboration Color",
     "collabColorHint": "This color is used to highlight your edits in real-time collaborations.",
     "noColorSelected": "No color selected",
-    "saveColor": "Save Color"
+    "saveColor": "Save Color",
+    "aiReservedColorHint": "This color is reserved for {name}."
   },
   "theme": {
     "system": "System",
@@ -171,6 +172,7 @@
       "analytics": "Analytics",
       "health": "System health",
       "system": "System events",
+      "presence": "User presence",
       "chatbotActivity": "Chatbot activity",
       "docker": "Docker",
       "db": "DB",
@@ -182,7 +184,75 @@
       "crawler": "Web crawler",
       "rag": "RAG documents",
       "permissions": "Permissions",
-      "llmProviders": "LLM providers"
+      "llmProviders": "LLM providers",
+      "fieldPrompts": "AI Field Prompts"
+    }
+  },
+  "aiAssist": {
+    "generate": "Generate with AI",
+    "generateShort": "AI",
+    "generating": "Generating...",
+    "success": "Successfully generated",
+    "error": "Generation failed",
+    "noPrompt": "No prompt configured for this field",
+    "admin": {
+      "title": "AI Field Prompts",
+      "subtitle": "Configure AI prompts for automatic field generation",
+      "fieldKey": "Field key",
+      "fieldKeyHint": "Format: module.entity.field (e.g., scenario.settings.name)",
+      "displayName": "Display name",
+      "description": "Description",
+      "systemPrompt": "System prompt",
+      "userPrompt": "User prompt template",
+      "contextVariables": "Context variables",
+      "maxTokens": "Max tokens",
+      "temperature": "Temperature",
+      "isActive": "Active",
+      "create": "Create prompt",
+      "edit": "Edit prompt",
+      "delete": "Delete prompt",
+      "deleteConfirm": "Do you really want to delete the prompt \"{name}\"?",
+      "test": "Test",
+      "testTitle": "Test prompt",
+      "testContext": "Test context (JSON)",
+      "testResult": "Result",
+      "seedDefaults": "Load default prompts",
+      "seeded": "{count} default prompts were created",
+      "noPrompts": "No prompts configured. Click \"Load default prompts\" to create the base prompts.",
+      "columns": {
+        "fieldKey": "Field key",
+        "displayName": "Name",
+        "isActive": "Status",
+        "actions": "Actions"
+      }
+    }
+  },
+  "adminPresence": {
+    "title": "User presence",
+    "user": "User",
+    "statusLabel": "Status",
+    "lastActive": "Last activity",
+    "lastSeen": "Last seen",
+    "searchPlaceholder": "Search by name...",
+    "empty": "No users found",
+    "status": {
+      "active": "Active",
+      "online": "Online",
+      "offline": "Offline"
+    },
+    "connection": {
+      "live": "Live",
+      "connecting": "Connecting...",
+      "disconnected": "Disconnected"
+    },
+    "errors": {
+      "generic": "Presence stream unavailable."
+    },
+    "time": {
+      "justNow": "Just now",
+      "minutes": "{count} min ago",
+      "hours": "{count} h ago",
+      "days": "{count} d ago"
     }
   },
   "comparison": {
@@ -2123,9 +2193,9 @@
         "title": "Evaluation",
         "description": "Ranking, rating, fake/real, history rating & comparison"
       },
-      "evaluationAssistant": {
-        "title": "Evaluation Assistant",
-        "description": "Import data and create evaluation scenarios with AI support"
+      "scenarioManager": {
+        "title": "Scenario Manager",
+        "description": "Create, manage and evaluate your own scenarios with LLM evaluation"
       },
       "chatbot": {
         "title": "Chatbot",
@@ -2174,6 +2244,10 @@
       "ragAdmin": {
         "title": "RAG Management",
         "description": "Manage and upload documents for the RAG pipeline"
+      },
+      "userSettings": {
+        "title": "Settings",
+        "description": "Personal settings, LLM providers, and invitation links"
       }
     },
     "badges": {
@@ -2181,6 +2255,462 @@
       "alpha": "Alpha",
       "beta": "Beta",
       "test": "Test"
+    }
+  },
+  "scenarioManager": {
+    "title": "Scenario Manager",
+    "subtitle": "Create, manage, and evaluate your own scenarios",
+    "newScenario": "New Scenario",
+    "count": "{count} Scenarios",
+    "filters": {
+      "title": "Filters",
+      "ownership": "Ownership",
+      "all": "All",
+      "own": "My Scenarios",
+      "shared": "Shared with me",
+      "invited": "Invited",
+      "rejected": "Rejected",
+      "status": "Status",
+      "allStatus": "All Statuses",
+      "type": "Type",
+      "allTypes": "All Types"
+    },
+    "sections": {
+      "all": "All Scenarios",
+      "own": "My Scenarios",
+      "shared": "Shared Scenarios",
+      "invited": "Invited Scenarios",
+      "rejected": "Rejected Invitations"
+    },
+    "invitation": {
+      "accepted": "Accepted",
+      "rejected": "Rejected",
+      "pending": "Pending",
+      "reject": "Reject invitation",
+      "accept": "Accept invitation",
+      "acceptAgain": "Accept again",
+      "reinvite": "Reinvite",
+      "invitedBy": "Invited by {name}",
+      "invitedAt": "Invited on {date}"
+    },
+    "status": {
+      "draft": "Draft",
+      "dataCollection": "Collecting Data",
+      "evaluating": "Evaluating",
+      "analyzing": "Analyzing",
+      "completed": "Completed",
+      "archived": "Archived",
+      "active": "Active"
+    },
+    "progress": {
+      "complete": "complete"
+    },
+    "actions": {
+      "open": "Open",
+      "edit": "Edit",
+      "delete": "Delete",
+      "settings": "Settings",
+      "duplicate": "Duplicate",
+      "archive": "Archive"
+    },
+    "delete": {
+      "title": "Delete Scenario",
+      "confirm": "Are you sure you want to delete the scenario \"{name}\"? This action cannot be undone."
+    },
+    "empty": {
+      "title": "No Scenarios",
+      "description": "Create your first scenario to start evaluating.",
+      "action": "Create First Scenario"
+    },
+    "tabs": {
+      "overview": "Overview",
+      "data": "Data",
+      "evaluation": "Evaluation",
+      "results": "Results",
+      "team": "Team"
+    },
+    "stats": {
+      "threads": "Threads",
+      "evaluators": "Evaluators",
+      "llmModels": "LLM Models",
+      "complete": "complete"
+    },
+    "wizard": {
+      "title": "Create New Scenario",
+      "create": "Create Scenario",
+      "aiPowered": "AI-Powered",
+      "steps": {
+        "data": "Data",
+        "task": "Task",
+        "config": "Configuration",
+        "team": "Team",
+        "summary": "Summary",
+        "type": "Type",
+        "info": "Details"
+      },
+      "step1": {
+        "title": "Upload Data",
+        "description": "Upload your data and let AI analyze it.",
+        "dropFiles": "Drop files here or click to select",
+        "supportedFormats": "Supported formats: JSON, CSV, XLSX",
+        "multiFileHint": "Select multiple files with Cmd+A or Ctrl+A",
+        "filesSelected": "files selected",
+        "addMore": "Add more",
+        "totalSize": "Total size",
+        "clearAll": "Clear all",
+        "filesProcessed": "files processed",
+        "fileBreakdown": "File details",
+        "aiAnalysis": "AI Analysis",
+        "analyzing": "Analyzing data...",
+        "itemsDetected": "items detected",
+        "fieldsDetected": "fields detected",
+        "suggestedType": "Suggested type",
+        "sampleData": "Sample data",
+        "startAnalysis": "Start Analysis",
+        "aiPoweredAnalysis": "AI-powered analysis",
+        "aiSuggestions": "AI Suggestions",
+        "suggestedName": "Suggested name",
+        "suggestedDescription": "Suggested description",
+        "dataQuality": "Data quality"
+      },
+      "step2": {
+        "title": "Define Task",
+        "description": "Choose the evaluation type and provide basic information.",
+        "aiSuggests": "Based on your data, we recommend: {type}",
+        "recommended": "Recommended",
+        "basicInfo": "Basic Info",
+        "name": "Scenario Name",
+        "descriptionField": "Description",
+        "descriptionHint": "Optional: Describe the purpose of this scenario",
+        "startDate": "Start Date",
+        "endDate": "End Date"
+      },
+      "step3": {
+        "title": "Configuration",
+        "description": "Customize the rating scale and distribution options.",
+        "distributionSettings": "Distribution Settings",
+        "distribution": "Thread Distribution",
+        "distributionAll": "All to everyone",
+        "distributionRandom": "Random distribution",
+        "distributionSequential": "Sequential distribution",
+        "order": "Order",
+        "orderFixed": "Fixed order",
+        "orderRandom": "Random order",
+        "llmEvaluation": "LLM Evaluation",
+        "enableLLM": "Enable LLM evaluation"
+      },
+      "step4": {
+        "teamTitle": "Build Your Team",
+        "teamDescription": "Select human and AI evaluators for this scenario.",
+        "humanEvaluators": "Human Evaluators",
+        "aiEvaluators": "AI Evaluators",
+        "defaultRole": "Default Role",
+        "noUsersAvailable": "No users available",
+        "noLLMsAvailable": "No LLM models available",
+        "systemModels": "System Models",
+        "myProviders": "My Providers",
+        "addProviderHint": "Add your own API key in Settings",
+        "selectedSummary": "Selected Evaluators",
+        "aiNativeHint": "LLARS is AI-Native: AI models are treated like users and will start evaluation automatically after creation.",
+        "aiAutoStart": "AI starts automatically after creation"
+      },
+      "step5": {
+        "title": "Summary",
+        "description": "Review the details of your new scenario.",
+        "basicInfo": "Basic Info",
+        "evaluationType": "Evaluation Type",
+        "data": "Data",
+        "settings": "Settings",
+        "team": "Team",
+        "type": "Type",
+        "name": "Name",
+        "descriptionLabel": "Description",
+        "preset": "Preset",
+        "file": "File",
+        "files": "Files",
+        "items": "Items",
+        "period": "Period",
+        "distribution": "Distribution",
+        "llmEnabled": "LLM Enabled",
+        "humanEvaluators": "Human Evaluators",
+        "aiEvaluators": "AI Evaluators",
+        "userProviders": "Your Providers",
+        "aiAutoStartInfo": "Selected AI models will automatically begin evaluation after scenario creation.",
+        "nextSteps": "After creation, AI evaluators will start automatically. You can track progress in the status panel."
+      }
+    },
+    "types": {
+      "ranking": "Ranking",
+      "rating": "Rating",
+      "mailRating": "Mail Rating",
+      "comparison": "Comparison",
+      "authenticity": "Authenticity",
+      "labeling": "Labeling"
+    },
+    "typeDescriptions": {
+      "ranking": "Sort items by quality or categorize into buckets",
+      "rating": "Rate on a configurable scale",
+      "mailRating": "Rate email conversations",
+      "comparison": "Compare items against each other (A vs B)",
+      "authenticity": "Classify emails as authentic or fake",
+      "labeling": "Assign categories (e.g. Fake/Real, Sentiment)"
+    },
+    "evalConfig": {
+      "selectPreset": "Select Preset",
+      "customizeConfig": "Customize Configuration",
+      "preview": "Preview",
+      "rating": {
+        "scaleType": "Scale Type",
+        "minValue": "Minimum Value",
+        "maxValue": "Maximum Value",
+        "stepSize": "Step Size",
+        "showLabels": "Show Labels",
+        "allowHalfSteps": "Allow Half Steps",
+        "scaleLabels": "Scale Labels",
+        "labelPlaceholder": "Enter label...",
+        "dimensions": "Dimensions",
+        "addDimension": "Add Dimension",
+        "dimensionName": "Dimension Name"
+      },
+      "ranking": {
+        "rankingType": "Ranking Type",
+        "allowTies": "Allow Ties",
+        "enableDragDrop": "Enable Drag & Drop",
+        "showPositions": "Show Positions",
+        "buckets": "Categories",
+        "addBucket": "Add Category",
+        "bucketName": "Category Name",
+        "minBucketsHint": "At least 2 categories required",
+        "orderLabels": "Order Labels",
+        "firstLabel": "First Position",
+        "lastLabel": "Last Position",
+        "firstPlaceholder": "e.g. Highest Priority",
+        "lastPlaceholder": "e.g. Lowest Priority",
+        "selectColor": "Select Color"
+      },
+      "labeling": {
+        "labelingType": "Labeling Type",
+        "multiLabel": "Allow Multi-Label",
+        "multiLabelHint": "Multiple labels per item selectable",
+        "allowUnsure": "Allow Unsure Option",
+        "categories": "Categories",
+        "addCategory": "Add Category",
+        "categoryName": "Category Name",
+        "minCategoriesHint": "At least 2 categories required",
+        "unsureOption": "Unsure Option",
+        "unsureName": "Label for Unsure",
+        "selectColor": "Select Color",
+        "constraints": "Constraints",
+        "minLabels": "Minimum Labels",
+        "maxLabels": "Maximum Labels",
+        "unlimited": "Unlimited"
+      },
+      "comparison": {
+        "comparisonType": "Comparison Type",
+        "allowTie": "Allow Tie",
+        "showConfidence": "Show Confidence",
+        "itemsPerComparison": "Items per Comparison",
+        "confidenceScale": "Confidence Scale",
+        "confidenceMin": "Minimum",
+        "confidenceMax": "Maximum",
+        "criteria": "Criteria",
+        "addCriterion": "Add Criterion",
+        "criterionName": "Criterion Name",
+        "weight": "Weight",
+        "totalWeight": "Total Weight",
+        "shouldBeOne": "should be 1.0",
+        "minCriteriaHint": "At least 1 criterion required",
+        "tournamentOptions": "Tournament Options",
+        "rounds": "Rounds"
+      },
+      "preview": {
+        "ratingDemo": "Rating Preview",
+        "rankingDemo": "Ranking Preview",
+        "labelingDemo": "Labeling Preview",
+        "comparisonDemo": "Comparison Preview",
+        "tie": "Tie",
+        "criteriaUsed": "Criteria used",
+        "confidence": "Confidence"
+      }
+    },
+    "overview": {
+      "quickActions": "Quick Actions",
+      "importData": "Import Data",
+      "importDataDesc": "Upload CSV, JSON or Excel files with threads",
+      "llmEvaluation": "LLM Evaluation",
+      "llmEvaluationDesc": "Start automatic evaluation by AI models",
+      "viewResults": "View Results",
+      "viewResultsDesc": "View statistics and analysis",
+      "progress": "Progress",
+      "humanEvaluators": "Human Evaluators",
+      "llmEvaluators": "LLM Evaluators",
+      "details": "Details",
+      "type": "Type",
+      "description": "Description",
+      "created": "Created",
+      "period": "Period",
+      "distribution": "Distribution",
+      "recentActivity": "Recent Activity",
+      "noActivity": "No activity yet",
+      "evaluatorProgress": "Evaluator Progress",
+      "done": "Done",
+      "inProgress": "In Progress",
+      "pending": "Pending",
+      "accuracy": "Accuracy",
+      "noEvaluators": "No evaluators yet",
+      "threads": "Threads",
+      "users": "Users",
+      "agreementMetrics": "Agreement Metrics",
+      "overallAccuracy": "Overall Accuracy"
+    },
+    "data": {
+      "title": "Data & Threads",
+      "importData": "Import Data",
+      "threads": "Threads",
+      "messages": "Messages",
+      "features": "Features",
+      "emptyTitle": "No Data Yet",
+      "emptyDescription": "Import data to start evaluating.",
+      "importFirst": "Import First Data",
+      "searchThreads": "Search threads...",
+      "sortNewest": "Newest first",
+      "sortOldest": "Oldest first",
+      "sortSubject": "By subject",
+      "subject": "Subject",
+      "sender": "Sender",
+      "date": "Date",
+      "statusHeader": "Status",
+      "noSubject": "(No subject)",
+      "status": {
+        "pending": "Pending",
+        "evaluated": "Evaluated",
+        "in_progress": "In Progress"
+      },
+      "importTitle": "Import Data",
+      "importFile": "Upload File",
+      "importFileDesc": "CSV, JSON or Excel file with threads",
+      "importExisting": "Existing Data",
+      "importExistingDesc": "Select threads from the system",
+      "selectFile": "Select file",
+      "supportedFormats": "Supported formats: JSON, CSV, XLSX",
+      "selectExistingDesc": "Select threads from already imported data.",
+      "comingSoon": "This feature will be available soon.",
+      "import": "Import",
+      "importing": "Importing data..."
+    },
+    "evaluation": {
+      "llmControl": "LLM Evaluation",
+      "model": "Model",
+      "template": "Template",
+      "start": "Start Evaluation",
+      "stop": "Stop",
+      "metrics": "Metrics",
+      "progress": "Progress",
+      "completed": "Completed",
+      "pending": "Pending",
+      "failed": "Failed",
+      "tokenUsage": "Token Usage",
+      "tokens": "Tokens",
+      "cost": "Cost",
+      "liveResults": "Live Results",
+      "evaluations": "Evaluations",
+      "confidence": "Confidence",
+      "noResults": "No results yet. Start an evaluation.",
+      "agreementMetrics": "Agreement Metrics",
+      "noMetricsYet": "Metrics will be calculated once multiple evaluations are complete.",
+      "status": {
+        "idle": "Ready",
+        "running": "Running",
+        "completed": "Completed",
+        "error": "Error"
+      }
+    },
+    "results": {
+      "title": "Results",
+      "export": "Export",
+      "totalEvaluations": "Total Evaluations",
+      "humanEvaluators": "Human Evaluators",
+      "llmEvaluators": "LLM Evaluators",
+      "agreementRate": "Agreement Rate",
+      "agreementMetrics": "Agreement Metrics",
+      "byEvaluator": "By Evaluator",
+      "completed": "Completed",
+      "avgScore": "Average",
+      "human": "Human",
+      "noEvaluators": "No evaluators with results yet",
+      "distribution": "Rating Distribution",
+      "chartComingSoon": "Chart will be available soon.",
+      "accuracy": "Accuracy",
+      "evaluationDetails": "Evaluation Details",
+      "completedThreads": "Completed Evaluations",
+      "pendingThreads": "Pending Evaluations",
+      "confidence": "confidence",
+      "more": "more",
+      "kappa": {
+        "excellent": "Excellent",
+        "good": "Good",
+        "moderate": "Moderate",
+        "fair": "Fair",
+        "poor": "Poor"
+      }
+    },
+    "team": {
+      "title": "Team",
+      "invite": "Invite",
+      "evaluators": "Evaluators",
+      "llmModels": "LLM Models",
+      "humanEvaluators": "Human Evaluators",
+      "llmEvaluators": "LLM Evaluators",
+      "addLLM": "Add LLM",
+      "noEvaluators": "No evaluators invited yet",
+      "noLLM": "No LLM models configured yet",
+      "changeRole": "Change Role",
+      "remove": "Remove",
+      "inviteTitle": "Invite Users",
+      "selectUsers": "Select users",
+      "role": "Role",
+      "sendInvite": "Send Invitation",
+      "addLLMTitle": "Add LLM Evaluator",
+      "selectModel": "Select model",
+      "selectTemplate": "Select template",
+      "add": "Add",
+      "removeTitle": "Remove User",
+      "removeConfirm": "Are you sure you want to remove {name} from this scenario?",
+      "roles": {
+        "owner": "Owner",
+        "evaluator": "Evaluator",
+        "rater": "Rater"
+      }
+    },
+    "settings": {
+      "title": "Scenario Settings",
+      "basicInfo": "Basic Information",
+      "name": "Name",
+      "description": "Description",
+      "timePeriod": "Time Period",
+      "startDate": "Start Date",
+      "endDate": "End Date",
+      "distribution": "Distribution",
+      "distributionAll": "All to everyone",
+      "distributionAllDesc": "Every evaluator evaluates all threads",
+      "distributionRandom": "Random",
+      "distributionRandomDesc": "Threads are randomly distributed to evaluators",
+      "distributionSequential": "Sequential",
+      "distributionSequentialDesc": "Threads are assigned in sequence",
+      "order": "Order",
+      "orderFixed": "Fixed order",
+      "orderRandom": "Random order",
+      "visibility": "Visibility",
+      "visibilityPrivate": "Private (only me)",
+      "visibilityTeam": "Team (invited users)",
+      "visibilityPublic": "Public",
+      "status": "Status",
+      "delete": "Delete Scenario"
+    },
+    "distribution": {
+      "all": "All to everyone",
+      "random": "Random",
+      "sequential": "Sequential"
     }
   },
   "promptEngineering": {
@@ -2492,6 +3022,164 @@
       "emptyHint": "No comparison sessions have been created yet.",
       "scenarioLabel": "Scenario {id}",
       "ratedMessages": "{count} messages rated"
+    }
+  },
+  "evaluationAssistant": {
+    "title": "Evaluation Assistant",
+    "loading": "Loading...",
+    "connected": "Connected",
+    "disconnected": "Disconnected",
+    "noResults": "No evaluation results yet",
+    "waitingForEval": "Waiting for evaluation...",
+    "notRunning": "Evaluation not running",
+    "status": {
+      "idle": "Idle",
+      "running": "Running",
+      "completed": "Completed",
+      "error": "Error"
+    },
+    "tabs": {
+      "results": "Results",
+      "live": "Live",
+      "comparison": "Comparison"
+    },
+    "progress": {
+      "title": "Progress",
+      "completed": "Completed",
+      "pending": "Pending",
+      "failed": "Failed",
+      "currentlyEvaluating": "Currently evaluating",
+      "tokenUsage": "Token Usage",
+      "tokens": "Tokens",
+      "cost": "Cost"
+    },
+    "controls": {
+      "title": "Configuration",
+      "model": "LLM Model",
+      "template": "Prompt Template",
+      "defaultTemplate": "Default Template",
+      "default": "Default",
+      "start": "Start Evaluation",
+      "stop": "Stop Evaluation",
+      "noModels": "No models available",
+      "selectModel": "Please select a model"
+    },
+    "metrics": {
+      "title": "Agreement Metrics",
+      "helpText": "Inter-rater reliability metrics measure how consistent evaluators are in their assessments.",
+      "rangeLabel": "Range",
+      "evaluatorsSummary": "Evaluators",
+      "krippendorffAlpha": {
+        "name": "Krippendorff's Alpha",
+        "description": "Measures agreement between multiple raters for various data types. Accounts for chance agreement.",
+        "range": "-1 to 1 (>0.8 reliable, >0.67 acceptable)"
+      },
+      "cohensKappa": {
+        "name": "Cohen's Kappa",
+        "description": "Measures agreement between exactly two raters for categorical data, correcting for chance.",
+        "range": "-1 to 1 (>0.8 excellent, >0.6 substantial)"
+      },
+      "fleissKappa": {
+        "name": "Fleiss' Kappa",
+        "description": "Extension of Cohen's Kappa for multiple raters on categorical data.",
+        "range": "-1 to 1 (>0.75 excellent)"
+      },
+      "spearmanRho": {
+        "name": "Spearman's Rho",
+        "description": "Measures rank correlation between two raters. Robust to outliers.",
+        "range": "-1 to 1 (|rho| > 0.7 strong)"
+      },
+      "kendallTau": {
+        "name": "Kendall's Tau",
+        "description": "Measures ordinal association. More robust than Spearman for small samples.",
+        "range": "-1 to 1 (|tau| > 0.5 strong)"
+      },
+      "percentAgreement": {
+        "name": "Percent Agreement",
+        "description": "Simple percentage of items where raters agree. Does not correct for chance.",
+        "range": "0-100% (>90% excellent)"
+      }
+    },
+    "responseCard": {
+      "reasoning": "Reasoning",
+      "detailedResult": "Detailed Result",
+      "confidenceTooltip": "LLM's self-reported confidence in its evaluation",
+      "confidenceScore": "Confidence Score",
+      "indicators": "Indicators",
+      "linguisticAnalysis": "Linguistic Analysis",
+      "behavioralAnalysis": "Behavioral Analysis",
+      "keyPhrases": "Key Phrases",
+      "summary": "Summary",
+      "overallRating": "Overall Rating",
+      "tokenUsage": "Token Usage",
+      "viewDetails": "View Details"
+    },
+    "live": {
+      "evaluating": "Evaluating",
+      "output": "Output",
+      "steps": {
+        "preparing": "Preparing",
+        "processing": "Processing",
+        "analyzing": "Analyzing",
+        "completing": "Completing"
+      }
+    },
+    "comparison": {
+      "title": "Evaluator Comparison",
+      "needMoreEvaluators": "Need at least 2 evaluators to compare",
+      "evaluator1": "Evaluator 1",
+      "evaluator2": "Evaluator 2",
+      "agreementRate": "Agreement Rate",
+      "thread": "Thread",
+      "match": "Match",
+      "tie": "TIE",
+      "winner": "Winner: {winner}"
+    },
+    "detail": {
+      "thread": "Thread",
+      "confidence": "Confidence",
+      "result": "Result",
+      "reasoning": "Reasoning",
+      "meta": "Meta Information",
+      "model": "Model",
+      "template": "Template",
+      "tokens": "Tokens",
+      "cost": "Cost",
+      "processingTime": "Processing Time",
+      "rawData": "Raw Data",
+      "averageRating": "Average Rating",
+      "strengths": "Strengths",
+      "weaknesses": "Weaknesses",
+      "confidenceScore": "Confidence Score",
+      "indicators": "Indicators",
+      "linguisticAnalysis": "Linguistic Analysis",
+      "behavioralAnalysis": "Behavioral Analysis",
+      "aspects": "Comparison Aspects",
+      "alternatives": "Alternatives",
+      "keyPhrases": "Key Phrases",
+      "criteria": "Criteria",
+      "improvements": "Areas for Improvement",
+      "summary": "Summary",
+      "overallRating": "Overall Rating",
+      "noFeatures": "No features"
+    },
+    "taskTypes": {
+      "ranking": "Ranking",
+      "rating": "Rating",
+      "authenticity": "Authenticity",
+      "mail_rating": "Mail Rating",
+      "comparison": "Comparison",
+      "text_classification": "Classification"
+    },
+    "buckets": {
+      "gut": "Good",
+      "mittel": "Medium",
+      "schlecht": "Poor",
+      "neutral": "Neutral"
+    },
+    "votes": {
+      "real": "Real",
+      "fake": "Fake"
     }
   },
   "judge": {
@@ -3410,6 +4098,8 @@
       "resolved": "Resolved",
       "reopen": "Reopen",
       "resolve": "Resolve",
+      "reply": "Reply",
+      "replyPlaceholder": "Write a reply...",
       "dialog": {
         "title": "Add comment",
         "label": "Comment",
@@ -3419,7 +4109,13 @@
       "errors": {
         "selectText": "Select text to comment on",
         "saveFailed": "Failed to save comment"
-      }
+      },
+      "aiResolve": "Resolve with AI",
+      "aiResolveTitle": "AI analyzes the comment and implements the suggestion",
+      "aiProcessing": "AI is processing...",
+      "aiSuccess": "AI has implemented the change",
+      "aiError": "AI could not implement the change: {error}",
+      "aiDisabled": "AI assistant is disabled"
     },
     "ai": {
       "rewrite": "Rewrite",
@@ -3632,6 +4328,18 @@
         "hoursAgo": "{count} h ago",
         "daysAgo": "{count} days ago"
       }
+    },
+    "zip": {
+      "menuTitle": "ZIP Import/Export",
+      "downloadTitle": "Download as ZIP",
+      "downloadSubtitle": "Export project as ZIP archive",
+      "importTitle": "Import ZIP",
+      "importSubtitle": "Add files from ZIP archive",
+      "downloadSuccess": "ZIP download started",
+      "downloadError": "ZIP download failed",
+      "importSuccess": "{imported} files imported, {skipped} skipped",
+      "importError": "ZIP import failed: {error}",
+      "invalidFile": "Please select a ZIP file"
     }
   },
   "latexCollabAi": {
@@ -3910,6 +4618,119 @@
       "confirmAction": "Discard",
       "simpleConfirm": "All uncommitted changes will be discarded and the document will reset to the last commit.",
       "simpleHint": "This action cannot be undone."
+    }
+  },
+  "userSettings": {
+    "title": "Settings",
+    "subtitle": "Manage your personal settings and preferences",
+    "tabs": {
+      "personal": "Personal",
+      "providers": "LLM Providers",
+      "referrals": "Invitations"
+    },
+    "personal": {
+      "avatar": {
+        "title": "Profile Picture",
+        "upload": "Upload",
+        "delete": "Remove",
+        "regenerate": "Regenerate",
+        "hint": "Max 2MB. Allowed formats: PNG, JPG, GIF, WebP",
+        "current": "Current profile picture",
+        "selectFile": "Select image file"
+      },
+      "collabColor": {
+        "title": "Collaboration Color",
+        "description": "This color is used to display your cursor and highlights in collaborative editors.",
+        "custom": "Custom",
+        "preview": "Preview",
+        "aiReservedHint": "Purple/violet tones are reserved for {name}",
+        "aiReservedError": "This color is in the reserved purple/violet range for AI. Please choose a different color."
+      },
+      "preferences": {
+        "title": "Preferences",
+        "theme": "Theme",
+        "themeHint": "Choose the interface color scheme",
+        "themeSystem": "System",
+        "themeLight": "Light",
+        "themeDark": "Dark",
+        "language": "Language",
+        "languageHint": "Choose your preferred language"
+      }
+    },
+    "providers": {
+      "info": "Connect your own LLM API keys to use personal models or share with others.",
+      "myProviders": "My Providers",
+      "addProvider": "Add Provider",
+      "noProviders": "You haven't configured any LLM providers yet.",
+      "addFirstProvider": "Add First Provider",
+      "sharedWithMe": "Shared with Me",
+      "requests": "requests",
+      "lastUsed": "Last used",
+      "test": "Test Connection",
+      "share": "Share",
+      "setDefault": "Set as Default",
+      "editProvider": "Edit Provider",
+      "testSuccess": "Connection successful!",
+      "testFailed": "Connection test failed: {error}",
+      "deleteConfirm": "Are you sure you want to delete the provider \"{name}\"?",
+      "shareTitle": "Share \"{name}\"",
+      "currentShares": "Current Shares",
+      "shareWithAll": "Share with all users",
+      "addShare": "Add Share",
+      "shareTypeUser": "User",
+      "shareTypeRole": "Role",
+      "username": "Username",
+      "roleName": "Role name",
+      "form": {
+        "type": "Provider Type",
+        "typeRequired": "Provider type is required",
+        "name": "Name",
+        "nameRequired": "Name is required",
+        "namePlaceholder": "e.g., My OpenAI Account",
+        "apiKey": "API Key",
+        "apiKeyUnchanged": "Leave unchanged",
+        "baseUrl": "Base URL (optional)",
+        "setAsDefault": "Use as default provider"
+      }
+    },
+    "referrals": {
+      "info": "Create invitation links to invite other users to the platform.",
+      "myLinks": "My Invitation Links",
+      "createLink": "Create Link",
+      "createFirstLink": "Create First Link",
+      "noLinks": "You haven't created any invitation links yet.",
+      "defaultLabel": "Invitation Link",
+      "inactive": "Inactive",
+      "expired": "Expired",
+      "active": "Active",
+      "registrations": "registrations",
+      "remaining": "remaining",
+      "copyLink": "Copy Link",
+      "deactivate": "Deactivate",
+      "deleteConfirm": "Are you sure you want to delete this invitation link?",
+      "editLink": "Edit Link",
+      "recentRegistrations": "Recent Registrations",
+      "stats": {
+        "totalLinks": "Total Links",
+        "totalRegistrations": "Registrations",
+        "activeLinks": "Active Links"
+      },
+      "table": {
+        "user": "User",
+        "link": "Invitation Link",
+        "date": "Date"
+      },
+      "form": {
+        "label": "Label",
+        "labelPlaceholder": "e.g., IJCAI Reviewer",
+        "slug": "Short URL",
+        "slugPlaceholder": "e.g., ijcai-2026",
+        "description": "Description",
+        "descriptionPlaceholder": "Optional description for this link",
+        "maxUses": "Max Uses",
+        "maxUsesPlaceholder": "Unlimited",
+        "expiresAt": "Valid Until"
+      }
     }
   }
 }

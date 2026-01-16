@@ -152,8 +152,23 @@ class ReferralLink(db.Model):
     created_by: Mapped[str] = mapped_column(db.String(255), nullable=False)
     created_at: Mapped[datetime] = mapped_column(db.DateTime, default=datetime.now, nullable=False)
 
+    # User-created links support (NULL = admin-created)
+    owner_user_id: Mapped[Optional[int]] = mapped_column(
+        db.Integer,
+        db.ForeignKey('users.id', ondelete='SET NULL'),
+        nullable=True,
+        index=True,
+        comment="User who owns this link (NULL = admin-created)"
+    )
+    description: Mapped[Optional[str]] = mapped_column(
+        db.Text,
+        nullable=True,
+        comment="Additional description for the link"
+    )
+
     # Relationships
     campaign = db.relationship('ReferralCampaign', back_populates='links')
+    owner = db.relationship('User', backref='referral_links', lazy='selectin')
     registrations = db.relationship(
         'ReferralRegistration',
         back_populates='link',
@@ -174,11 +189,14 @@ class ReferralLink(db.Model):
             'slug': self.slug,
             'role_name': self.role_name,
             'label': self.label,
+            'description': self.description,
             'is_active': self.is_active,
             'max_uses': self.max_uses,
             'expires_at': self.expires_at.isoformat() if self.expires_at else None,
             'created_by': self.created_by,
             'created_at': self.created_at.isoformat() if self.created_at else None,
+            'owner_user_id': self.owner_user_id,
+            'owner_username': self.owner.username if self.owner else None,
             'url': f"/join/{self.slug or self.code}"
         }
         if include_stats:

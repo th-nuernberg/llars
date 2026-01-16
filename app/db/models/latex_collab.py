@@ -228,6 +228,12 @@ class LatexCompileJob(db.Model):
 
 
 class LatexComment(db.Model):
+    """
+    Document comment with threading support.
+
+    Comments can be top-level (on text ranges) or replies (to other comments).
+    Top-level comments have range_start/range_end, replies have parent_id.
+    """
     __tablename__ = "latex_comments"
 
     id: Mapped[int] = mapped_column(db.Integer, primary_key=True, autoincrement=True)
@@ -237,11 +243,19 @@ class LatexComment(db.Model):
         nullable=False,
         index=True,
     )
+    parent_id: Mapped[Optional[int]] = mapped_column(
+        db.Integer,
+        db.ForeignKey("latex_comments.id", ondelete="CASCADE"),
+        nullable=True,
+        index=True,
+    )
     author_username: Mapped[str] = mapped_column(db.String(255), nullable=False)
-    range_start: Mapped[int] = mapped_column(db.Integer, nullable=False)
-    range_end: Mapped[int] = mapped_column(db.Integer, nullable=False)
+    author_color: Mapped[Optional[str]] = mapped_column(db.String(7), nullable=True)  # Hex color e.g. #ff5733
+    range_start: Mapped[Optional[int]] = mapped_column(db.Integer, nullable=True)  # Nullable for replies
+    range_end: Mapped[Optional[int]] = mapped_column(db.Integer, nullable=True)  # Nullable for replies
     body: Mapped[str] = mapped_column(db.Text, nullable=False)
     resolved_at: Mapped[Optional[datetime]] = mapped_column(db.DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(db.DateTime, default=datetime.utcnow, nullable=False)
 
     document = db.relationship("LatexDocument", backref=db.backref("comments", cascade="all, delete-orphan", lazy="selectin"))
+    replies = db.relationship("LatexComment", backref=db.backref("parent", remote_side=[id]), cascade="all, delete-orphan", lazy="selectin")

@@ -101,6 +101,20 @@ class SystemSettings(db.Model):
         comment="Default role for users registered via referral"
     )
 
+    # AI Assistant Settings (LLARS KI for LaTeX Collab comments)
+    ai_assistant_enabled: Mapped[bool] = mapped_column(
+        db.Boolean, default=True, nullable=False,
+        comment="Enable AI assistant for comment resolution in LaTeX Collab"
+    )
+    ai_assistant_color: Mapped[str] = mapped_column(
+        db.String(7), default='#9B59B6', nullable=False,
+        comment="Reserved color for AI assistant (hex, default: purple)"
+    )
+    ai_assistant_username: Mapped[str] = mapped_column(
+        db.String(50), default='LLARS KI', nullable=False,
+        comment="Display name for AI assistant"
+    )
+
     created_at: Mapped[datetime] = mapped_column(db.DateTime, default=datetime.now, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(db.DateTime, default=datetime.now, onupdate=datetime.now, nullable=False)
 
@@ -125,6 +139,10 @@ class SystemSettings(db.Model):
             'referral_system_enabled': self.referral_system_enabled,
             'self_registration_enabled': self.self_registration_enabled,
             'default_referral_role': self.default_referral_role,
+            # AI Assistant
+            'ai_assistant_enabled': self.ai_assistant_enabled,
+            'ai_assistant_color': self.ai_assistant_color,
+            'ai_assistant_username': self.ai_assistant_username,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None
         }
         # Never expose the actual secret, only indicate if it's set

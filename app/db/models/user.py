@@ -47,6 +47,13 @@ class User(db.Model):
     avatar_updated_at: Mapped[Optional[datetime]] = mapped_column(db.DateTime, nullable=True)
     avatar_change_count: Mapped[int] = mapped_column(db.Integer, default=0, nullable=False)
     avatar_change_date: Mapped[Optional[date]] = mapped_column(db.Date, nullable=True)
+    last_seen_at: Mapped[Optional[datetime]] = mapped_column(db.DateTime, nullable=True)
+    last_active_at: Mapped[Optional[datetime]] = mapped_column(db.DateTime, nullable=True)
+    settings_json: Mapped[Optional[dict]] = mapped_column(
+        db.JSON,
+        nullable=True,
+        comment="User preferences (theme, language, etc.)"
+    )
 
     group = db.relationship('UserGroup', backref='users')
 

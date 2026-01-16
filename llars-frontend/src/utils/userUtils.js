@@ -30,15 +30,17 @@ export function getColorFromSeed(seed) {
 }
 
 /**
- * Generate DiceBear avatar URL with bottts-neutral style
+ * Generate DiceBear avatar URL with initials style for humans
+ * Note: bottts-neutral (robots) should only be used for AI/bot avatars
  * @param {string} seed - Seed for avatar generation
  * @param {number} size - Avatar size in pixels (default: 80)
+ * @param {string} variant - Avatar variant (default: 'initials', use 'bottts-neutral' for bots)
  * @returns {string} DiceBear avatar URL
  */
-export function getDiceBearUrl(seed, size = 80) {
+export function getDiceBearUrl(seed, size = 80, variant = 'initials') {
   const safeSeed = seed || '?'
   const bgColor = getColorFromSeed(safeSeed)
-  return `https://api.dicebear.com/7.x/bottts-neutral/svg?seed=${encodeURIComponent(safeSeed)}&size=${size}&backgroundColor=${bgColor}`
+  return `https://api.dicebear.com/7.x/${variant}/svg?seed=${encodeURIComponent(safeSeed)}&size=${size}&backgroundColor=${bgColor}`
 }
 
 /**

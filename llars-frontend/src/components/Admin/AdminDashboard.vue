@@ -141,6 +141,11 @@
             <AdminSystemMonitorSection />
           </div>
 
+          <!-- Presence Section -->
+          <div v-else-if="activeSection === 'presence'" key="presence" class="section-container--full">
+            <AdminPresenceSection />
+          </div>
+
           <!-- Chatbot Activity Section -->
           <div v-else-if="activeSection === 'chatbot-activity'" key="chatbot-activity" class="section-container--full">
             <AdminChatbotActivitySection />
@@ -159,6 +164,11 @@
           <!-- System Settings Section -->
           <div v-else-if="activeSection === 'settings'" key="settings" class="section-container">
             <AdminSystemSettingsSection />
+          </div>
+
+          <!-- Field Prompts Section (AI Assist) -->
+          <div v-else-if="activeSection === 'field-prompts'" key="field-prompts" class="section-container">
+            <AdminFieldPromptsSection />
           </div>
         </v-fade-transition>
       </div>
@@ -188,6 +198,8 @@ import AdminDockerMonitorSection from './sections/AdminDockerMonitorSection.vue'
 import AdminDatabaseSection from './sections/AdminDatabaseSection.vue';
 import AdminSystemSettingsSection from './sections/AdminSystemSettingsSection.vue';
 import AdminReferralSection from './sections/AdminReferralSection.vue';
+import AdminPresenceSection from './sections/AdminPresenceSection.vue';
+import AdminFieldPromptsSection from './sections/AdminFieldPromptsSection.vue';
 import ChatbotManager from './ChatbotAdmin/ChatbotManager.vue';
 import WebCrawlerTool from './CrawlerAdmin/WebCrawlerTool.vue';
 import AppSidebar from '@/components/common/AppSidebar.vue';
@@ -223,10 +235,12 @@ const navItems = [
   { titleKey: 'adminDashboard.nav.analytics', value: 'analytics', icon: 'mdi-chart-bar', adminOnly: true },
   { titleKey: 'adminDashboard.nav.health', value: 'health', icon: 'mdi-heart-pulse', adminOnly: true },
   { titleKey: 'adminDashboard.nav.system', value: 'system', icon: 'mdi-monitor-dashboard', adminOnly: true },
+  { titleKey: 'adminDashboard.nav.presence', value: 'presence', icon: 'mdi-account-check', adminOnly: true },
   { titleKey: 'adminDashboard.nav.chatbotActivity', value: 'chatbot-activity', icon: 'mdi-robot-outline', adminOnly: true },
   { titleKey: 'adminDashboard.nav.docker', value: 'docker', icon: 'mdi-docker', adminOnly: true },
   { titleKey: 'adminDashboard.nav.db', value: 'db', icon: 'mdi-database', adminOnly: true },
   { titleKey: 'adminDashboard.nav.settings', value: 'settings', icon: 'mdi-cog', adminOnly: true },
+  { titleKey: 'adminDashboard.nav.fieldPrompts', value: 'field-prompts', icon: 'mdi-auto-fix', adminOnly: true },
   { titleKey: 'adminDashboard.nav.users', value: 'users', icon: 'mdi-account-group', adminOnly: true },
   { titleKey: 'adminDashboard.nav.referrals', value: 'referrals', icon: 'mdi-account-multiple-plus', adminOnly: true },
   { titleKey: 'adminDashboard.nav.scenarios', value: 'scenarios', icon: 'mdi-clipboard-list', adminOnly: true },

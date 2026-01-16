@@ -483,6 +483,7 @@ import axios from 'axios';
 import { useSkeletonLoading } from '@/composables/useSkeletonLoading';
 import { useMobile } from '@/composables/useMobile';
 import { logI18n } from '@/utils/logI18n';
+import { COLLAB_COLOR_PRESETS, isColorInAiReservedRange } from '@/constants/colors';
 
 const { isMobile } = useMobile();
 
@@ -534,11 +535,8 @@ const headers = computed(() => {
   ];
 });
 
-const collabColorPresets = [
-  '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4',
-  '#FFEEAD', '#D4A5A5', '#9B59B6', '#3498DB',
-  '#E74C3C', '#2ECC71', '#F39C12', '#1ABC9C'
-];
+// Use global LLARS color presets (filtered to exclude AI reserved purple/violet range)
+const collabColorPresets = COLLAB_COLOR_PRESETS.filter(c => !isColorInAiReservedRange(c));
 
 // Role filter options
 const roleFilterOptions = computed(() => {

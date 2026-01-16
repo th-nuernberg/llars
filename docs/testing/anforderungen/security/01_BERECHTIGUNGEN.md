@@ -16,12 +16,10 @@ Dieses Dokument beschreibt alle Tests für das LLARS Permission System (RBAC).
 
 ## 1. Alle Permissions (43 Total)
 
-### Feature Permissions (28)
+### Feature Permissions (26)
 
 | Permission | Beschreibung | Rollen |
 |------------|--------------|--------|
-| `feature:mail_rating:view` | Mail Rating ansehen | admin, researcher, evaluator |
-| `feature:mail_rating:edit` | Mail Rating bearbeiten | admin, researcher |
 | `feature:ranking:view` | Ranking ansehen | admin, researcher, evaluator |
 | `feature:ranking:edit` | Ranking bearbeiten | admin, researcher |
 | `feature:rating:view` | Rating ansehen | admin, researcher, evaluator |

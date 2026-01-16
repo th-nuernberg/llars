@@ -380,9 +380,10 @@ Scenario
 
 | function_type_id | Name | Beschreibung |
 |------------------|------|--------------|
-| 1 | ranking | Features sortieren (Drag & Drop) |
-| 2 | rating | Features bewerten (Sterne) |
-| 3 | mail_rating | E-Mail-Konversation bewerten |
+| 1 | ranking | Items sortieren oder kategorisieren |
+| 2 | rating | Bewertung auf einer Skala (Likert, Sterne) |
+| 4 | comparison | Items paarweise vergleichen (A vs B) |
+| 5 | labeling | Kategorien zuweisen (binär, multi-class) |
 
 ---
 

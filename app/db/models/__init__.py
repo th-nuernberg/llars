@@ -108,6 +108,11 @@ from db.models.llm_model_permission import LLMModelPermission
 from db.models.llm_provider import LLMProvider
 from db.models.llm_task_result import LLMTaskResult
 
+# Prompt Templates and LLM Usage Tracking
+from db.models.prompt_template import PromptTemplate
+from db.models.field_prompt_template import FieldPromptTemplate
+from db.models.llm_usage_tracking import LLMUsageTracking, UserTokenBudget
+
 # KAIMO models
 from db.models.kaimo import (
     KaimoCase,
@@ -125,6 +130,7 @@ from db.models.kaimo import (
 # Scenario and Rating models
 from db.models.scenario import (
     ScenarioRoles,
+    InvitationStatus,
     ProgressionStatus,
     FeatureFunctionType,
     EmailThread,
@@ -170,6 +176,12 @@ from db.models.referral import (
     ReferralCampaign,
     ReferralLink,
     ReferralRegistration,
+)
+
+# User LLM Provider models
+from db.models.user_llm_provider import (
+    UserLLMProvider,
+    UserLLMProviderShare,
 )
 
 __all__ = [
@@ -249,6 +261,11 @@ __all__ = [
     'LLMModelPermission',
     'LLMProvider',
     'LLMTaskResult',
+    # Prompt Templates and Usage Tracking
+    'PromptTemplate',
+    'FieldPromptTemplate',
+    'LLMUsageTracking',
+    'UserTokenBudget',
     # KAIMO
     'KaimoCase',
     'KaimoDocument',
@@ -262,6 +279,7 @@ __all__ = [
     'KaimoCasePermission',
     # Scenario
     'ScenarioRoles',
+    'InvitationStatus',
     'ProgressionStatus',
     'FeatureFunctionType',
     'EmailThread',
@@ -298,4 +316,7 @@ __all__ = [
     'ReferralCampaign',
     'ReferralLink',
     'ReferralRegistration',
+    # User LLM Provider
+    'UserLLMProvider',
+    'UserLLMProviderShare',
 ]

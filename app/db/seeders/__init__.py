@@ -20,6 +20,7 @@ from .scenarios import seed_demo_scenarios
 from .legal_assistant import initialize_legal_assistant
 from .analytics_settings import initialize_analytics_settings
 from db.models.llm_model import seed_default_models
+from services.ai_assist import FieldPromptService
 
 
 def run_all_seeders(db):
@@ -83,6 +84,9 @@ def run_all_seeders(db):
 
     # Create LaTeX Collab demo workspace with LLARS paper
     initialize_latex_collab_defaults(db)
+
+    # Seed default field prompts for AI-Assist feature
+    FieldPromptService.seed_defaults()
 
     # Seed demo scenarios in development mode only
     project_state = os.getenv('PROJECT_STATE', 'development').lower()

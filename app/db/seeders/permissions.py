@@ -173,6 +173,12 @@ def initialize_permissions(db):
             'category': 'admin',
             'description': 'Erlaubt das Verwalten von Referral-Kampagnen und Einladungslinks'
         },
+        {
+            'permission_key': 'admin:field_prompts:manage',
+            'display_name': 'KI-Feld-Prompts verwalten',
+            'category': 'admin',
+            'description': 'Erlaubt das Verwalten von KI-Prompts für automatische Feldgenerierung'
+        },
         # Data Operations
         {
             'permission_key': 'data:export',

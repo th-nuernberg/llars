@@ -51,12 +51,10 @@ RBAC mit „deny by default“ über Frontend und Backend:
 
 ---
 
-## Verfügbare Permissions (40)
+## Verfügbare Permissions (38)
 
-**Feature (30):**
+**Feature (28):**
 ```
-feature:mail_rating:view
-feature:mail_rating:edit
 feature:ranking:view
 feature:ranking:edit
 feature:rating:view

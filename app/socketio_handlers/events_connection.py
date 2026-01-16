@@ -11,6 +11,7 @@ from flask import request
 from flask_socketio import emit
 
 from socketio_handlers.events_rag import unregister_queue_subscriber
+from services.presence_service import get_presence_service
 
 
 def register_connection_events(socketio, chat_manager):
@@ -47,4 +48,11 @@ def register_connection_events(socketio, chat_manager):
         """Handle client disconnection"""
         chat_manager.clear_history(request.sid)
         unregister_queue_subscriber(request.sid)
+        try:
+            service = get_presence_service()
+            payload = service.remove_socket(request.sid)
+            if payload:
+                socketio.emit("presence:update", payload, room="presence_admin")
+        except Exception:
+            pass
         logging.info(f'Client {request.sid} disconnected')

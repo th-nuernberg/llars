@@ -36,6 +36,7 @@ def register_all_blueprints(app: Flask) -> None:
     from routes import analytics
     from routes import system_monitor
     from routes import admin  # System settings and admin config
+    from routes import ai_assist  # AI field generation
 
     # ============================================================
     # Core Features
@@ -62,6 +63,10 @@ def register_all_blueprints(app: Flask) -> None:
     # Referral/Invitation System (self-registration via invite links)
     from routes.referral import referral_bp
     app.register_blueprint(referral_bp)
+
+    # User Settings (personal settings, LLM providers, user referrals)
+    from routes.user_settings import user_settings_bp
+    app.register_blueprint(user_settings_bp)
 
     # ============================================================
     # LLM & AI Features
@@ -134,6 +139,16 @@ def register_all_blueprints(app: Flask) -> None:
     app.register_blueprint(authentik_auth_blueprint, url_prefix='/auth/authentik')
     app.register_blueprint(kaimo_bp)
 
+    # ============================================================
+    # Development-Only Routes (hidden in production)
+    # ============================================================
+    # These routes are for testing and development purposes only.
+    # They are protected by a dev_only decorator that returns 404 in production.
+    import os
+    if app.debug or os.getenv('FLASK_ENV') == 'development':
+        from routes.dev import bp as dev_bp
+        app.register_blueprint(dev_bp)
+
 
 def get_blueprint_info() -> dict:
     """
@@ -176,6 +191,9 @@ def get_blueprint_info() -> dict:
         ],
         'projects': [
             {'name': 'kaimo', 'prefix': '/api/kaimo', 'description': 'KAIMO project routes'},
+        ],
+        'development': [
+            {'name': 'dev', 'prefix': '/api/dev', 'description': 'Development-only routes for testing (hidden in production)'},
         ]
     }
 

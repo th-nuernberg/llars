@@ -18,6 +18,7 @@ import logging
 import hashlib
 
 from db.tables import ProgressionStatus
+from db.models.scenario import InvitationStatus
 
 MAIL_RATING_FUNCTION_TYPE_ID = 3
 
@@ -213,12 +214,24 @@ def can_access_thread(user_id, thread_id, function_type_id):
 
 
 def get_user_scenarios(user_id, function_type_id):
+  """
+  Get all scenarios where the user has an active role and accepted invitation.
+
+  Args:
+      user_id: The user ID
+      function_type_id: The function type ID
+
+  Returns:
+      List of ScenarioUsers objects for accepted scenarios within valid timeframe
+  """
   # Aktuellen Zeitpunkt ermitteln
   current_time = datetime.utcnow()
 
-  # Alle Szenarien, in denen der User eine Rolle hat und deren Zeitraum gültig ist
+  # Alle Szenarien, in denen der User eine Rolle hat, die Einladung akzeptiert wurde
+  # und deren Zeitraum gültig ist
   return db.session.query(ScenarioUsers).join(RatingScenarios).filter(
       ScenarioUsers.user_id == user_id,
+      ScenarioUsers.invitation_status == InvitationStatus.ACCEPTED,
       RatingScenarios.begin <= current_time,
       RatingScenarios.end >= current_time,
       RatingScenarios.function_type_id == function_type_id

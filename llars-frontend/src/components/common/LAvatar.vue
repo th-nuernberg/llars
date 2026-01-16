@@ -22,6 +22,7 @@
 
 <script setup>
 import { computed, ref, watch } from 'vue';
+import { LLARS_COLORS } from '@/constants/colors';
 
 const props = defineProps({
   /**
@@ -56,11 +57,11 @@ const props = defineProps({
   },
   /**
    * Avatar style/type from DiceBear
-   * Options: bottts, shapes, thumbs, fun-emoji, lorelei-neutral, identicon, rings
+   * Options: initials (human default), bottts-neutral (for AI/bots only), shapes, thumbs, fun-emoji
    */
   variant: {
     type: String,
-    default: 'bottts-neutral'
+    default: 'initials'
   },
   /**
    * Background color (optional - uses LLARS colors by default)
@@ -82,6 +83,13 @@ const props = defineProps({
   clickable: {
     type: Boolean,
     default: false
+  },
+  /**
+   * Whether to use LLARS gradient background (for fallback/initials)
+   */
+  gradient: {
+    type: Boolean,
+    default: true
   }
 });
 
@@ -97,18 +105,8 @@ const sizeMap = {
   xl: 80
 };
 
-// LLARS color palette for backgrounds (pastel colors)
-const llarsColors = [
-  'b0ca97', // primary - sage green
-  '98d4bb', // success - soft mint
-  'a8c5e2', // info - soft blue
-  'e8c87a', // warning - soft gold
-  '88c4c8', // accent - soft teal
-  'D1BC8A', // secondary - golden beige
-  'e8a087', // danger - soft coral
-  'c5b4e3', // purple - soft lavender
-  'f0b6c2', // pink - soft rose
-];
+// Use global LLARS color palette for backgrounds
+const llarsColors = LLARS_COLORS;
 
 // Generate a consistent color index from seed/username
 const colorFromSeed = computed(() => {
@@ -125,7 +123,9 @@ const colorFromSeed = computed(() => {
 const generatedAvatarUrl = computed(() => {
   const seedValue = props.seed || props.username || 'anonymous';
   const size = sizeMap[props.size] * 2; // 2x for retina
-  const bgColor = props.backgroundColor || colorFromSeed.value;
+
+  // Use transparent background when gradient is enabled, otherwise use solid color
+  const bgColor = props.gradient ? 'transparent' : (props.backgroundColor || colorFromSeed.value);
 
   // DiceBear API v7
   return `https://api.dicebear.com/7.x/${props.variant}/svg?seed=${encodeURIComponent(seedValue)}&size=${size}&backgroundColor=${bgColor}`;
@@ -143,15 +143,52 @@ const fallbackInitial = computed(() => {
   return props.username.charAt(0).toUpperCase();
 });
 
+// Generate gradient colors based on seed (two colors for gradient)
+const gradientColors = computed(() => {
+  const str = props.seed || props.username || 'default';
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = str.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const index1 = Math.abs(hash) % llarsColors.length;
+  const index2 = Math.abs(hash * 7) % llarsColors.length;
+  return [llarsColors[index1], llarsColors[index2 === index1 ? (index2 + 1) % llarsColors.length : index2]];
+});
+
+// Check if using custom uploaded image (not DiceBear generated)
+const hasCustomImage = computed(() => {
+  return props.src && !customFailed.value;
+});
+
 // Avatar container style
 const avatarStyle = computed(() => {
   const size = sizeMap[props.size];
-  const bgColor = props.backgroundColor || `#${colorFromSeed.value}`;
 
+  // If custom uploaded image, transparent background
+  if (hasCustomImage.value) {
+    return {
+      width: `${size}px`,
+      height: `${size}px`,
+      background: 'transparent'
+    };
+  }
+
+  // For DiceBear generated or fallback: use gradient or solid color
+  if (props.gradient) {
+    const [color1, color2] = gradientColors.value;
+    return {
+      width: `${size}px`,
+      height: `${size}px`,
+      background: `linear-gradient(135deg, #${color1} 0%, #${color2} 100%)`
+    };
+  }
+
+  // Solid color
+  const bgColor = props.backgroundColor || `#${colorFromSeed.value}`;
   return {
     width: `${size}px`,
     height: `${size}px`,
-    backgroundColor: avatarUrl.value ? 'transparent' : bgColor
+    background: bgColor
   };
 });
 

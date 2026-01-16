@@ -81,18 +81,33 @@ def workspace_to_dict(ws: LatexWorkspace) -> dict:
     return _generic_workspace_to_dict(ws, include_compile=True)
 
 
-def comment_to_dict(comment: LatexComment) -> dict:
-    """Convert LatexComment to API response dict (LaTeX-only)."""
-    return {
+def comment_to_dict(comment: LatexComment, include_replies: bool = True) -> dict:
+    """Convert LatexComment to API response dict (LaTeX-only).
+
+    Args:
+        comment: The comment to convert
+        include_replies: Whether to include nested replies (default True)
+
+    Returns:
+        Dict with comment data including optional nested replies
+    """
+    result = {
         "id": comment.id,
         "document_id": comment.document_id,
+        "parent_id": comment.parent_id,
         "author_username": comment.author_username,
+        "author_color": comment.author_color,
         "range_start": comment.range_start,
         "range_end": comment.range_end,
         "body": comment.body,
         "resolved_at": comment.resolved_at.isoformat() if comment.resolved_at else None,
         "created_at": comment.created_at.isoformat() if comment.created_at else None,
     }
+    if include_replies and comment.replies:
+        result["replies"] = [comment_to_dict(r, include_replies=True) for r in comment.replies]
+    else:
+        result["replies"] = []
+    return result
 
 
 # ============================================================================

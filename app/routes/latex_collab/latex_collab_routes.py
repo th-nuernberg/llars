@@ -11,6 +11,7 @@ The routes are split into focused modules:
 - latex_comment_routes.py: Document comments/annotations
 - latex_asset_routes.py: Binary file uploads (images, PDFs)
 - latex_compile_routes.py: Compilation, PDF generation, SyncTeX
+- latex_zip_routes.py: ZIP import/export
 - latex_helpers.py: Shared helper functions
 """
 
@@ -23,6 +24,7 @@ from routes.latex_collab.latex_commit_routes import latex_commit_bp
 from routes.latex_collab.latex_comment_routes import latex_comment_bp
 from routes.latex_collab.latex_asset_routes import latex_asset_bp
 from routes.latex_collab.latex_compile_routes import latex_compile_bp
+from routes.latex_collab.latex_zip_routes import latex_zip_bp
 
 # Main blueprint for backwards compatibility
 # Note: This blueprint itself has no routes - all routes are in sub-blueprints
@@ -37,6 +39,7 @@ __all__ = [
     'latex_comment_bp',
     'latex_asset_bp',
     'latex_compile_bp',
+    'latex_zip_bp',
 ]
 
 
@@ -54,3 +57,4 @@ def register_latex_collab_routes(app):
     app.register_blueprint(latex_comment_bp)
     app.register_blueprint(latex_asset_bp)
     app.register_blueprint(latex_compile_bp)
+    app.register_blueprint(latex_zip_bp)

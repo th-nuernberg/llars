@@ -436,6 +436,52 @@
   min-height: 0;
 }
 
+/* Preview content container (PDF + Comments with resize) */
+.preview-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.preview-content .pdf-section {
+  flex: 1;
+  min-height: 100px;
+  overflow: hidden;
+}
+
+/* Resize divider between PDF and Comments */
+.preview-resize-divider {
+  flex-shrink: 0;
+  height: 10px;
+  cursor: row-resize;
+  background: rgba(var(--v-theme-on-surface), 0.04);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s;
+}
+
+.preview-resize-divider:hover,
+.preview-resize-divider.resizing {
+  background: rgba(var(--v-theme-primary), 0.15);
+}
+
+.preview-resize-handle {
+  width: 40px;
+  height: 4px;
+  background: rgba(var(--v-theme-on-surface), 0.2);
+  border-radius: 2px;
+  transition: background 0.15s, width 0.15s;
+}
+
+.preview-resize-divider:hover .preview-resize-handle,
+.preview-resize-divider.resizing .preview-resize-handle {
+  background: rgb(var(--v-theme-primary));
+  width: 60px;
+}
+
 /* Split mode */
 .panes-container.mode-split .editor-pane {
   flex-shrink: 0;
@@ -524,8 +570,8 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
-  min-height: 160px;
-  max-height: 260px;
+  /* Height is controlled by commentsPanelStyle for resizable panels */
+  flex-shrink: 0;
   overflow: hidden;
 }
 
@@ -583,6 +629,127 @@
   display: flex;
   align-items: center;
   gap: 4px;
+  margin-top: 6px;
+}
+
+/* Comment threading */
+.comment-thread {
+  border-radius: 10px;
+  background: rgba(var(--v-theme-on-surface), 0.02);
+  overflow: hidden;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+  /* Default border - will be overridden by inline style for author color */
+  border: 2px solid rgba(var(--v-theme-on-surface), 0.08);
+}
+
+.comment-thread.active {
+  background: rgba(var(--v-theme-primary), 0.06);
+}
+
+.comment-thread.other-document {
+  opacity: 0.75;
+}
+
+.comment-thread.other-document:hover {
+  opacity: 1;
+}
+
+.comment-thread .comment-item {
+  border: none;
+  border-radius: 0;
+  background: transparent;
+}
+
+/* Document indicator for workspace-wide comments */
+.comment-document {
+  display: flex;
+  align-items: center;
+  padding: 4px 8px;
+  font-size: 10px;
+  color: rgba(var(--v-theme-on-surface), 0.6);
+  background: rgba(var(--v-theme-on-surface), 0.03);
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.06);
+}
+
+.comment-document.clickable {
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.comment-document.clickable:hover {
+  background: rgba(var(--v-theme-primary), 0.08);
+  color: rgb(var(--v-theme-primary));
+}
+
+.comment-document .document-title {
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 150px;
+}
+
+.comment-document .jump-icon {
+  opacity: 0.5;
+  transition: opacity 0.15s;
+}
+
+.comment-document.clickable:hover .jump-icon {
+  opacity: 1;
+}
+
+.author-color-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 5px;
+  vertical-align: middle;
+}
+
+.comment-replies {
+  border-top: 1px solid rgba(var(--v-theme-on-surface), 0.06);
+  margin-left: 16px;
+  padding-left: 8px;
+  border-left: 2px solid rgba(var(--v-theme-on-surface), 0.1);
+}
+
+.comment-reply {
+  padding: 6px 8px;
+  font-size: 11px;
+}
+
+.comment-reply + .comment-reply {
+  border-top: 1px solid rgba(var(--v-theme-on-surface), 0.04);
+}
+
+.comment-reply .comment-meta {
+  font-size: 10px;
+  margin-bottom: 2px;
+}
+
+.comment-reply .comment-body {
+  font-size: 11px;
+}
+
+.comment-reply .comment-actions {
+  margin-top: 4px;
+}
+
+.reply-input {
+  padding: 8px;
+  border-top: 1px solid rgba(var(--v-theme-on-surface), 0.06);
+  background: rgba(var(--v-theme-on-surface), 0.02);
+}
+
+.reply-textarea {
+  font-size: 12px;
+}
+
+.reply-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
   margin-top: 6px;
 }
 

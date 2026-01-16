@@ -10,17 +10,17 @@
     <div class="git-status-row">
       <LTag variant="info" size="sm">main</LTag>
       <LTag v-if="changedCount > 0" variant="warning" size="sm">
-        {{ changedCount }} {{ $t('workspaceGit.changed') }}
+        {{ $t('workspaceGit.tags.changed', { count: changedCount }) }}
       </LTag>
       <LTag v-if="deletedCount > 0" variant="danger" size="sm">
-        {{ deletedCount }} {{ $t('workspaceGit.deleted') }}
+        {{ $t('workspaceGit.tags.deleted', { count: deletedCount }) }}
       </LTag>
       <v-spacer />
       <LIconBtn
         v-if="!checkingChanges"
         icon="mdi-refresh"
         size="x-small"
-        :tooltip="$t('workspaceGit.refresh')"
+        :tooltip="$t('workspaceGit.actions.refresh')"
         @click="refresh"
       />
       <LIcon v-else size="14" class="mdi-spin text-medium-emphasis">mdi-loading</LIcon>
@@ -32,7 +32,7 @@
         v-model="quickMessage"
         density="compact"
         variant="outlined"
-        :placeholder="$t('workspaceGit.commitPlaceholder')"
+        :placeholder="$t('workspaceGit.commit.placeholder')"
         hide-details
         class="commit-input"
         @keyup.enter="handleQuickCommit"
@@ -44,7 +44,7 @@
         :disabled="!quickMessage.trim() || committing"
         @click="handleQuickCommit"
       >
-        {{ $t('workspaceGit.commit') }}
+        Commit
       </LBtn>
     </div>
 
@@ -91,7 +91,7 @@
       <!-- Empty State -->
       <div v-if="!checkingChanges && totalChanges === 0" class="git-empty">
         <LIcon size="16" class="text-medium-emphasis">mdi-check-circle</LIcon>
-        <span class="text-medium-emphasis">{{ $t('workspaceGit.noChanges') }}</span>
+        <span class="text-medium-emphasis">{{ $t('workspaceGit.files.empty') }}</span>
       </div>
     </div>
 

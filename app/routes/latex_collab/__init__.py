@@ -8,6 +8,7 @@ Blueprints:
     - latex_comment_bp: Document comments
     - latex_asset_bp: Binary file uploads
     - latex_compile_bp: Compilation, PDF, SyncTeX
+    - latex_zip_bp: ZIP import/export
 """
 
 from .latex_collab_routes import (
@@ -18,6 +19,7 @@ from .latex_collab_routes import (
     latex_comment_bp,
     latex_asset_bp,
     latex_compile_bp,
+    latex_zip_bp,
     register_latex_collab_routes,
 )
 
@@ -29,5 +31,6 @@ __all__ = [
     "latex_comment_bp",
     "latex_asset_bp",
     "latex_compile_bp",
+    "latex_zip_bp",
     "register_latex_collab_routes",
 ]

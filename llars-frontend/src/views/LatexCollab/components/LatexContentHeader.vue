@@ -80,6 +80,36 @@
         <LIcon size="20">mdi-comment-text-outline</LIcon>
       </v-btn>
 
+      <!-- ZIP Import/Export Menu -->
+      <v-menu location="bottom end">
+        <template #activator="{ props: menuProps }">
+          <v-btn
+            icon
+            variant="text"
+            size="small"
+            v-bind="menuProps"
+            :title="$t('latexCollab.zip.menuTitle')"
+          >
+            <LIcon size="20">mdi-folder-zip</LIcon>
+          </v-btn>
+        </template>
+        <v-list density="compact">
+          <v-list-item
+            prepend-icon="mdi-download"
+            :title="$t('latexCollab.zip.downloadTitle')"
+            :subtitle="$t('latexCollab.zip.downloadSubtitle')"
+            @click="$emit('download-zip')"
+          />
+          <v-list-item
+            v-if="canEdit"
+            prepend-icon="mdi-upload"
+            :title="$t('latexCollab.zip.importTitle')"
+            :subtitle="$t('latexCollab.zip.importSubtitle')"
+            @click="$emit('import-zip')"
+          />
+        </v-list>
+      </v-menu>
+
       <!-- Divider -->
       <div v-if="showConnectionStatus" class="header-divider" />
 
@@ -182,6 +212,10 @@ defineProps({
     type: Boolean,
     default: false
   },
+  canEdit: {
+    type: Boolean,
+    default: false
+  },
   isMainDocument: {
     type: Boolean,
     default: false
@@ -224,7 +258,9 @@ defineEmits([
   'set-main-document',
   'toggle-review-mode',
   'toggle-ghost-text',
-  'update:viewMode'
+  'update:viewMode',
+  'download-zip',
+  'import-zip'
 ])
 </script>
 

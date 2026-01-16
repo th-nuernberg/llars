@@ -5,14 +5,15 @@ Events:
     Client → Server:
         - latex_collab:subscribe: Subscribe to workspace list updates for a user
         - latex_collab:unsubscribe: Unsubscribe from workspace list updates
-        - latex_collab:subscribe_document: Subscribe to commit updates for a document
-        - latex_collab:unsubscribe_document: Unsubscribe from commit updates
+        - latex_collab:subscribe_document: Subscribe to document updates (commits, comments)
+        - latex_collab:unsubscribe_document: Unsubscribe from document updates
         - latex_collab:subscribe_workspace: Subscribe to workspace-level updates (compile)
         - latex_collab:unsubscribe_workspace: Unsubscribe from workspace-level updates
 
     Server → Client:
         - latex_collab:workspace_shared: A workspace was shared with the user
         - latex_collab:commit_created: A new commit was created for a document
+        - latex_collab:comment_changed: A comment was created, updated, or deleted
         - latex_collab:compile_status: Compile job status update
 """
 
@@ -155,3 +156,53 @@ def emit_compile_status(socketio, workspace_id: int, job: dict):
         logger.debug(f"[LaTeX Collab] Emitted compile_status for workspace {workspace_id}: {job.get('status')}")
     except Exception as exc:
         logger.error(f"[LaTeX Collab] Failed to emit compile_status for workspace {workspace_id}: {exc}")
+
+
+def emit_comment_changed(socketio, document_id: int, action: str, comment: dict = None):
+    """
+    Emit a comment-changed event to all subscribers of a document.
+
+    Args:
+        socketio: SocketIO instance
+        document_id: The document ID
+        action: 'created', 'updated', or 'deleted'
+        comment: Comment data dict (optional for 'deleted')
+    """
+    try:
+        room = get_document_room(document_id)
+        payload = {
+            'document_id': document_id,
+            'action': action
+        }
+        if comment:
+            payload['comment'] = comment
+        socketio.emit('latex_collab:comment_changed', payload, room=room)
+        logger.debug(f"[LaTeX Collab] Emitted comment_changed ({action}) for document {document_id}")
+    except Exception as exc:
+        logger.error(f"[LaTeX Collab] Failed to emit comment_changed for document {document_id}: {exc}")
+
+
+def emit_workspace_comment_changed(socketio, workspace_id: int, action: str, comment: dict = None):
+    """
+    Emit a comment-changed event to all subscribers of a workspace.
+
+    Used for global/workspace-wide comments panel.
+
+    Args:
+        socketio: SocketIO instance
+        workspace_id: The workspace ID
+        action: 'created', 'updated', 'deleted', or 'reply_created'
+        comment: Comment data dict (optional for 'deleted')
+    """
+    try:
+        room = get_workspace_updates_room(workspace_id)
+        payload = {
+            'workspace_id': workspace_id,
+            'action': action
+        }
+        if comment:
+            payload['comment'] = comment
+        socketio.emit('latex_collab:workspace_comment_changed', payload, room=room)
+        logger.debug(f"[LaTeX Collab] Emitted workspace_comment_changed ({action}) for workspace {workspace_id}")
+    except Exception as exc:
+        logger.error(f"[LaTeX Collab] Failed to emit workspace_comment_changed for workspace {workspace_id}: {exc}")

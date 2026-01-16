@@ -7,6 +7,13 @@
       multiple
       @change="handleAssetFiles"
     />
+    <input
+      ref="zipInputRef"
+      type="file"
+      class="asset-input"
+      accept=".zip"
+      @change="handleZipImport"
+    />
     <!-- Tree Panel (Mobile Drawer + Desktop Sidebar) -->
     <LatexTreePanel
       :is-mobile="isMobile"
@@ -51,6 +58,7 @@
         :workspace-name="workspace?.name || $t('latexCollab.workspace.fallbackName', { id: workspaceId })"
         :can-share="canShareWorkspace"
         :can-set-main="canSetMainDocument"
+        :can-edit="hasPermission('feature:latex_collab:edit')"
         :is-main-document="selectedNode?.id === workspace?.main_document_id"
         :review-mode="reviewMode"
         :show-connection-status="selectedNode?.type === 'file' && !selectedNode?.asset_id"
@@ -66,6 +74,8 @@
         @set-main-document="setMainDocument"
         @toggle-review-mode="reviewMode = !reviewMode"
         @toggle-ghost-text="editorRef?.toggleGhostText?.()"
+        @download-zip="downloadWorkspaceZip"
+        @import-zip="openZipImportDialog"
       />
 
       <!-- Content Body -->
@@ -246,17 +256,29 @@
               </div>
             </div>
 
-                <LatexPdfViewer
-                  ref="pdfViewerRef"
-                  :workspace-id="workspaceId"
-                  :job-id="pdfJobId"
-                  :refresh-key="pdfRefreshKey"
-                  :is-compiling="isCompiling"
-                  @pdf-click="handlePdfClick"
-                  @no-pdf="handleNoPdf"
-                />
+                <!-- PDF + Comments resizable container -->
+                <div ref="previewContentRef" class="preview-content">
+                  <LatexPdfViewer
+                    ref="pdfViewerRef"
+                    class="pdf-section"
+                    :workspace-id="workspaceId"
+                    :job-id="pdfJobId"
+                    :refresh-key="pdfRefreshKey"
+                    :is-compiling="isCompiling"
+                    @pdf-click="handlePdfClick"
+                    @no-pdf="handleNoPdf"
+                  />
 
-                <div class="comments-panel">
+                  <!-- Resize divider between PDF and Comments -->
+                  <div
+                    class="preview-resize-divider"
+                    :class="{ resizing: resizingComments }"
+                    @mousedown="startCommentsResize"
+                  >
+                    <div class="preview-resize-handle" />
+                  </div>
+
+                  <div class="comments-panel" :style="commentsPanelStyle">
                   <div class="comments-header">
                     <div class="d-flex align-center ga-2">
                       <LIcon size="18">mdi-comment-multiple-outline</LIcon>
@@ -287,41 +309,159 @@
                     <div
                       v-for="c in comments"
                       :key="c.id"
-                      class="comment-item"
-                      :class="{ active: c.id === activeCommentId }"
-                      @click="selectComment(c)"
+                      class="comment-thread"
+                      :class="{
+                        active: c.id === activeCommentId,
+                        'other-document': isCommentInOtherDocument(c)
+                      }"
+                      :style="c.author_color ? { borderColor: c.author_color } : {}"
                     >
-                      <div class="comment-meta">
-                        <span class="comment-author">{{ c.author_username }}</span>
-                        <span class="comment-date">{{ formatDate(c.created_at) }}</span>
+                      <!-- Document indicator (for workspace-wide comments) -->
+                      <div
+                        v-if="c.document"
+                        class="comment-document"
+                        :class="{ clickable: isCommentInOtherDocument(c) }"
+                        @click="navigateToComment(c)"
+                      >
+                        <LIcon size="14" class="mr-1">mdi-file-document-outline</LIcon>
+                        <span class="document-title">{{ c.document.title }}</span>
+                        <LIcon
+                          v-if="isCommentInOtherDocument(c)"
+                          size="12"
+                          class="ml-1 jump-icon"
+                        >mdi-arrow-right</LIcon>
                       </div>
-                      <div class="comment-body">{{ c.body }}</div>
-                      <div class="comment-actions">
-                        <LTag v-if="c.resolved_at" variant="success" size="x-small">{{ $t('latexCollab.comments.resolved') }}</LTag>
-                        <v-btn
-                          icon
-                          variant="text"
-                          size="x-small"
-                          :title="c.resolved_at ? $t('latexCollab.comments.reopen') : $t('latexCollab.comments.resolve')"
-                          @click.stop="toggleCommentResolved(c)"
+
+                      <!-- Top-level comment -->
+                      <div class="comment-item" @click="navigateToComment(c)">
+                        <div class="comment-meta">
+                          <span class="comment-author">
+                            <span
+                              v-if="c.author_color"
+                              class="author-color-dot"
+                              :style="{ backgroundColor: c.author_color }"
+                            />
+                            {{ c.author_username }}
+                          </span>
+                          <span class="comment-date">{{ formatDate(c.created_at) }}</span>
+                        </div>
+                        <div class="comment-body">{{ c.body }}</div>
+                        <div class="comment-actions">
+                          <LTag v-if="c.resolved_at" variant="success" size="x-small">{{ $t('latexCollab.comments.resolved') }}</LTag>
+                          <!-- AI Resolve Button -->
+                          <v-btn
+                            v-if="!c.resolved_at && aiAssistantEnabled"
+                            icon
+                            variant="text"
+                            size="x-small"
+                            color="purple"
+                            :title="$t('latexCollab.comments.aiResolveTitle')"
+                            :loading="aiResolvingCommentId === c.id"
+                            :disabled="aiResolvingCommentId !== null"
+                            @click.stop="aiResolveComment(c)"
+                          >
+                            <LIcon size="16">mdi-robot</LIcon>
+                          </v-btn>
+                          <v-btn
+                            icon
+                            variant="text"
+                            size="x-small"
+                            :title="$t('latexCollab.comments.reply')"
+                            @click.stop="startReply(c.id)"
+                          >
+                            <LIcon size="16">mdi-reply</LIcon>
+                          </v-btn>
+                          <v-btn
+                            icon
+                            variant="text"
+                            size="x-small"
+                            :title="c.resolved_at ? $t('latexCollab.comments.reopen') : $t('latexCollab.comments.resolve')"
+                            @click.stop="toggleCommentResolved(c)"
+                          >
+                            <LIcon size="16">mdi-check</LIcon>
+                          </v-btn>
+                          <v-btn
+                            icon
+                            variant="text"
+                            size="x-small"
+                            :title="$t('common.delete')"
+                            @click.stop="deleteComment(c)"
+                          >
+                            <LIcon size="16">mdi-delete-outline</LIcon>
+                          </v-btn>
+                        </div>
+                      </div>
+
+                      <!-- Replies -->
+                      <div v-if="c.replies && c.replies.length > 0" class="comment-replies">
+                        <div
+                          v-for="reply in c.replies"
+                          :key="reply.id"
+                          class="comment-reply"
                         >
-                          <LIcon size="16">mdi-check</LIcon>
-                        </v-btn>
-                        <v-btn
-                          icon
-                          variant="text"
-                          size="x-small"
-                          :title="$t('common.delete')"
-                          @click.stop="deleteComment(c)"
-                        >
-                          <LIcon size="16">mdi-delete-outline</LIcon>
-                        </v-btn>
+                          <div class="comment-meta">
+                            <span class="comment-author">
+                              <span
+                                v-if="reply.author_color"
+                                class="author-color-dot"
+                                :style="{ backgroundColor: reply.author_color }"
+                              />
+                              {{ reply.author_username }}
+                            </span>
+                            <span class="comment-date">{{ formatDate(reply.created_at) }}</span>
+                          </div>
+                          <div class="comment-body">{{ reply.body }}</div>
+                          <div class="comment-actions">
+                            <v-btn
+                              icon
+                              variant="text"
+                              size="x-small"
+                              :title="$t('common.delete')"
+                              @click.stop="deleteComment(reply)"
+                            >
+                              <LIcon size="14">mdi-delete-outline</LIcon>
+                            </v-btn>
+                          </div>
+                        </div>
+                      </div>
+
+                      <!-- Reply input -->
+                      <div v-if="replyingToId === c.id" class="reply-input">
+                        <v-textarea
+                          v-model="replyDraft"
+                          :placeholder="$t('latexCollab.comments.replyPlaceholder')"
+                          variant="outlined"
+                          density="compact"
+                          rows="2"
+                          auto-grow
+                          hide-details
+                          class="reply-textarea"
+                          @click.stop
+                        />
+                        <div class="reply-actions">
+                          <v-btn
+                            variant="text"
+                            size="x-small"
+                            @click.stop="cancelReply"
+                          >
+                            {{ $t('common.cancel') }}
+                          </v-btn>
+                          <v-btn
+                            color="primary"
+                            size="x-small"
+                            :disabled="!canSubmitReply"
+                            @click.stop="submitReply(collabColor)"
+                          >
+                            {{ $t('latexCollab.comments.reply') }}
+                          </v-btn>
+                        </div>
                       </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            </div>
+              </div>  <!-- Close preview-content -->
+            </div>  <!-- Close preview-pane -->
+          </div>  <!-- Close panes-container -->
 
           </div>
         </template>
@@ -381,7 +521,7 @@
         </v-card-text>
         <v-card-actions class="justify-end">
           <v-btn variant="text" :title="$t('latexCollab.comments.dialog.cancelTitle')" @click="commentDialog = false">{{ $t('common.cancel') }}</v-btn>
-          <v-btn color="primary" :title="$t('latexCollab.comments.dialog.saveTitle')" :disabled="!canSubmitComment" @click="submitComment">
+          <v-btn color="primary" :title="$t('latexCollab.comments.dialog.saveTitle')" :disabled="!canSubmitComment" @click="submitComment(collabColor)">
             {{ $t('common.save') }}
           </v-btn>
         </v-card-actions>
@@ -421,6 +561,16 @@
         </v-card-text>
       </v-card>
     </v-dialog>
+
+    <!-- Notification Snackbar -->
+    <v-snackbar
+      v-model="snackbar.show"
+      :color="snackbar.color"
+      :timeout="4000"
+      location="bottom right"
+    >
+      {{ snackbar.text }}
+    </v-snackbar>
   </div>
 </template>
 
@@ -431,6 +581,7 @@ import axios from 'axios'
 import { useI18n } from 'vue-i18n'
 import { useSkeletonLoading } from '@/composables/useSkeletonLoading'
 import { usePermissions } from '@/composables/usePermissions'
+import { useAuth } from '@/composables/useAuth'
 import { useMobile } from '@/composables/useMobile'
 import { useSplitPaneResize } from '@/composables/useSplitPaneResize'
 import { useWorkspaceSocket } from '@/components/MarkdownCollab/composables/useWorkspaceSocket'
@@ -486,12 +637,20 @@ const emit = defineEmits(['document-change', 'ai-command', 'ai-action', 'request
 
 const route = useRoute()
 const router = useRouter()
-const { locale } = useI18n()
+const { locale, t } = useI18n()
+
+// Simple snackbar for notifications
+const snackbar = ref({ show: false, text: '', color: 'info' })
+function showSnackbar(text, color = 'info') {
+  snackbar.value = { show: true, text, color }
+  setTimeout(() => { snackbar.value.show = false }, 4000)
+}
 
 // Computed route base for navigation
 const routeBase = computed(() => props.basePath)
 
 const { hasPermission, fetchPermissions, username: currentUsername, isAdmin } = usePermissions()
+const { collabColor } = useAuth()
 const { isLoading, withLoading, setLoading } = useSkeletonLoading(['tree', 'document'])
 const { isMobile, isTablet } = useMobile()
 
@@ -505,6 +664,7 @@ const TREE_WIDTH_KEY = 'latex-collab-tree-width'
 const PANES_WIDTH_KEY = 'latex-collab-panes-width'
 const OUTLINE_COLLAPSED_KEY = 'latex-outline-collapsed'
 const AUTO_COMPILE_KEY = 'latex-collab-auto-compile'
+const COMMENTS_HEIGHT_KEY = 'latex-collab-comments-height'
 const AUTO_COMPILE_DELAY_KEY = 'latex-collab-auto-compile-delay'
 const SYNC_KEY = 'latex-collab-sync-enabled'
 
@@ -523,6 +683,11 @@ const treeCollapsed = ref(localStorage.getItem(TREE_COLLAPSED_KEY) === 'true')
 const treePanelWidth = ref(parseInt(localStorage.getItem(TREE_WIDTH_KEY)) || 280)
 const viewMode = ref(localStorage.getItem(VIEWMODE_KEY) || 'split')
 const resizingTree = ref(false)
+
+// Comments panel resize state
+const commentsPanelHeight = ref(parseInt(localStorage.getItem(COMMENTS_HEIGHT_KEY)) || 200)
+const resizingComments = ref(false)
+const previewContentRef = ref(null)
 
 // Panel collapse states (for unified tree stack panels)
 const FILES_COLLAPSED_KEY = 'latex-collab-files-collapsed'
@@ -555,6 +720,8 @@ const reviewMode = ref(false)
 const zoteroDialog = ref(false)
 
 const assetInputRef = ref(null)
+const zipInputRef = ref(null)
+const zipImporting = ref(false)
 
 // Analytics: entity dimension for this workspace/document
 const workspaceEntity = computed(() => `ws:${workspaceId.value}`)
@@ -777,6 +944,14 @@ const {
   editorRef
 })
 
+// Comments socket for real-time comment sync
+const commentsSocket = ref(null)
+
+// Initialize comments socket
+function initCommentsSocket() {
+  commentsSocket.value = getSocket()
+}
+
 // Comments management composable
 const {
   comments,
@@ -785,20 +960,150 @@ const {
   commentDraft,
   commentError,
   pendingCommentRange,
+  replyingToId,
+  replyDraft,
   canComment,
   canSubmitComment,
+  canSubmitReply,
   loadComments,
   openCommentDialog,
   submitComment,
   toggleCommentResolved,
   deleteComment,
   selectComment,
-  resetComments
+  resetComments,
+  startReply,
+  cancelReply,
+  submitReply,
+  navigateToComment,
+  highlightCommentRange
 } = useLatexComments({
+  workspaceId,
   selectedNode,
   editorRef,
-  hasPermission
+  hasPermission,
+  onNavigateToDocument: handleNavigateToDocument,
+  socket: commentsSocket
 })
+
+/**
+ * Check if a comment belongs to a different document than currently selected.
+ * Uses number comparison to avoid string/number type mismatch.
+ * @param {Object} comment - The comment to check
+ * @returns {boolean} True if comment is in a different document
+ */
+function isCommentInOtherDocument(comment) {
+  if (!comment?.document_id) return false
+  const currentDocId = selectedNode.value?.id
+  if (currentDocId == null) return true
+  return Number(comment.document_id) !== Number(currentDocId)
+}
+
+/**
+ * Handle navigation to a document from a comment click.
+ * Opens the document and then highlights the comment range.
+ */
+function handleNavigateToDocument(documentId, comment) {
+  // Convert to number for consistent comparison with nodeById keys
+  const docIdNum = Number(documentId)
+  const node = nodeById.value.get(docIdNum)
+
+  if (!node) {
+    console.warn('[handleNavigateToDocument] Node not found for documentId:', documentId)
+    return
+  }
+
+  // Select the document node - use the router to navigate
+  router.push(`${routeBase.value}/workspace/${workspaceId.value}/document/${docIdNum}`)
+
+  // After document loads, highlight the comment range
+  if (comment && comment.range_start != null && comment.range_end != null) {
+    // Wait for editor to be ready then highlight
+    nextTick(() => {
+      setTimeout(() => {
+        highlightCommentRange(comment)
+      }, 400) // Delay to ensure editor has loaded the new document
+    })
+  }
+}
+
+// ============================================================
+// AI Assistant for Comment Resolution
+// ============================================================
+const aiAssistantEnabled = ref(false)
+const aiAssistantColor = ref('#9B59B6')
+const aiAssistantUsername = ref('LLARS KI')
+const aiResolvingCommentId = ref(null)
+
+/**
+ * Fetch AI assistant settings from the server
+ */
+async function loadAiAssistantSettings() {
+  try {
+    const res = await axios.get(`${API_BASE}/api/system/ai-assistant`, {
+      headers: authHeaders()
+    })
+    if (res.data?.success && res.data?.ai_assistant) {
+      aiAssistantEnabled.value = res.data.ai_assistant.enabled
+      aiAssistantColor.value = res.data.ai_assistant.color
+      aiAssistantUsername.value = res.data.ai_assistant.username
+    }
+  } catch (e) {
+    console.warn('Could not load AI assistant settings:', e)
+    aiAssistantEnabled.value = false
+  }
+}
+
+/**
+ * Use AI to resolve a comment by analyzing the text and suggesting changes.
+ * @param {Object} comment - The comment to resolve
+ */
+async function aiResolveComment(comment) {
+  if (!comment || aiResolvingCommentId.value !== null) return
+
+  // Navigate to the comment's document first if needed (compare as numbers)
+  const currentDocId = selectedNode.value?.id
+  const commentDocId = comment.document_id
+  const isSameDoc = currentDocId != null && Number(currentDocId) === Number(commentDocId)
+
+  if (!isSameDoc) {
+    handleNavigateToDocument(commentDocId, comment)
+    // Wait a bit for document to load before proceeding
+    await new Promise(resolve => setTimeout(resolve, 600))
+  }
+
+  aiResolvingCommentId.value = comment.id
+
+  try {
+    const res = await axios.post(
+      `${API_BASE}/api/latex-collab/comments/${comment.id}/ai-resolve`,
+      { auto_resolve: true },
+      { headers: authHeaders() }
+    )
+
+    if (res.data?.success) {
+      const { changes } = res.data
+
+      // Apply the text change to the editor if we have old and new text
+      if (changes?.old_text && changes?.new_text && changes.range_start != null && changes.range_end != null) {
+        // The editor should have a method to replace text at a range
+        if (editorRef.value?.replaceRange) {
+          editorRef.value.replaceRange(changes.range_start, changes.range_end, changes.new_text)
+        }
+      }
+
+      // Comments will be updated via Socket.IO event
+      // Show success notification
+      showSnackbar(t('latexCollab.comments.aiSuccess'), 'success')
+    }
+  } catch (e) {
+    const errorMsg = e?.response?.data?.error || e?.message || 'Unknown error'
+    showSnackbar(t('latexCollab.comments.aiError', { error: errorMsg }), 'error')
+    console.error('AI resolve failed:', e)
+  } finally {
+    aiResolvingCommentId.value = null
+  }
+}
 
 // Compile management composable
 const {
@@ -892,6 +1197,43 @@ function stopTreeResize() {
   localStorage.setItem(TREE_WIDTH_KEY, treePanelWidth.value.toString())
 }
 
+// Comments panel resize (vertical)
+function startCommentsResize(event) {
+  event.preventDefault()
+  resizingComments.value = true
+  document.body.style.cursor = 'row-resize'
+  document.body.style.userSelect = 'none'
+  document.addEventListener('mousemove', onCommentsMouseMove)
+  document.addEventListener('mouseup', stopCommentsResize)
+}
+
+function onCommentsMouseMove(event) {
+  if (!resizingComments.value || !previewContentRef.value) return
+  const containerRect = previewContentRef.value.getBoundingClientRect()
+  const mouseY = event.clientY
+  const containerBottom = containerRect.bottom
+  // Height is from mouse position to bottom of container
+  const newHeight = containerBottom - mouseY
+  // Min 100px, max 400px
+  commentsPanelHeight.value = Math.max(100, Math.min(400, newHeight))
+}
+
+function stopCommentsResize() {
+  resizingComments.value = false
+  document.body.style.cursor = ''
+  document.body.style.userSelect = ''
+  document.removeEventListener('mousemove', onCommentsMouseMove)
+  document.removeEventListener('mouseup', stopCommentsResize)
+  localStorage.setItem(COMMENTS_HEIGHT_KEY, commentsPanelHeight.value.toString())
+}
+
+// Computed style for comments panel
+const commentsPanelStyle = computed(() => ({
+  height: `${commentsPanelHeight.value}px`,
+  minHeight: `${commentsPanelHeight.value}px`,
+  maxHeight: `${commentsPanelHeight.value}px`
+}))
+
 // Outline functions now provided by useLatexOutline composable
 
 // Auto-compile when no PDF exists
@@ -919,11 +1261,17 @@ onMounted(async () => {
   await fetchPermissions()
   await loadTree()
 
+  // Load AI assistant settings
+  loadAiAssistantSettings()
+
   // Connect to workspace socket for real-time tree updates
   wsConnect()
 
   // Connect to compile status socket for real-time compile updates
   setupCompileSocket()
+
+  // Connect to comments socket for real-time comment sync
+  initCommentsSocket()
 
   // Auto-select first file if none selected
   if (!routeDocId.value) {
@@ -947,6 +1295,8 @@ onMounted(async () => {
 onUnmounted(() => {
   document.removeEventListener('mousemove', onTreeMouseMove)
   document.removeEventListener('mouseup', stopTreeResize)
+  document.removeEventListener('mousemove', onCommentsMouseMove)
+  document.removeEventListener('mouseup', stopCommentsResize)
   // Cleanup compile status socket
   cleanupCompileSocket()
   // Timer cleanups are now handled by composables:
@@ -1185,6 +1535,108 @@ function handleSelectNode(nodeId) {
 function openAssetPicker() {
   if (!hasPermission('feature:latex_collab:edit')) return
   assetInputRef.value?.click()
+}
+
+// ============================================================
+// ZIP Import/Export Functions
+// ============================================================
+
+/**
+ * Download the workspace as a ZIP file
+ */
+async function downloadWorkspaceZip() {
+  if (!workspaceId.value) return
+
+  try {
+    const response = await axios.get(
+      `${API_BASE}/api/latex-collab/workspaces/${workspaceId.value}/export`,
+      {
+        headers: authHeaders(),
+        responseType: 'blob'
+      }
+    )
+
+    // Extract filename from Content-Disposition header or generate one
+    const contentDisposition = response.headers['content-disposition']
+    let filename = `workspace_${workspaceId.value}.zip`
+    if (contentDisposition) {
+      const match = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/)
+      if (match && match[1]) {
+        filename = match[1].replace(/['"]/g, '')
+      }
+    }
+
+    // Create download link
+    const blob = new Blob([response.data], { type: 'application/zip' })
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = filename
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    window.URL.revokeObjectURL(url)
+
+    showSnackbar(t('latexCollab.zip.downloadSuccess'), 'success')
+  } catch (e) {
+    console.error('ZIP download failed:', e)
+    showSnackbar(t('latexCollab.zip.downloadError'), 'error')
+  }
+}
+
+/**
+ * Open the ZIP file picker for import
+ */
+function openZipImportDialog() {
+  if (!hasPermission('feature:latex_collab:edit')) return
+  zipInputRef.value?.click()
+}
+
+/**
+ * Handle ZIP file import
+ */
+async function handleZipImport(event) {
+  const file = event?.target?.files?.[0]
+  if (!file) return
+
+  if (!file.name.toLowerCase().endsWith('.zip')) {
+    showSnackbar(t('latexCollab.zip.invalidFile'), 'error')
+    return
+  }
+
+  if (zipImporting.value) return
+  zipImporting.value = true
+
+  try {
+    const formData = new FormData()
+    formData.append('file', file)
+
+    const response = await axios.post(
+      `${API_BASE}/api/latex-collab/workspaces/${workspaceId.value}/import`,
+      formData,
+      { headers: authHeaders() }
+    )
+
+    if (response.data?.success) {
+      const { imported_count, skipped_count } = response.data
+      showSnackbar(
+        t('latexCollab.zip.importSuccess', { imported: imported_count, skipped: skipped_count }),
+        'success'
+      )
+      // Refresh the tree to show imported files
+      await loadTree()
+    }
+  } catch (e) {
+    console.error('ZIP import failed:', e)
+    const errorMsg = e?.response?.data?.error || e?.message || 'Unknown error'
+    showSnackbar(t('latexCollab.zip.importError', { error: errorMsg }), 'error')
+  } finally {
+    zipImporting.value = false
+    // Reset the input so the same file can be selected again
+    if (event?.target) {
+      event.target.value = ''
+    }
+  }
 }
 
 async function handleAssetFiles(event) {
@@ -1458,7 +1910,7 @@ watch(
       activeCommentId.value = null
       commentError.value = ''
       commentDraft.value = ''
-      loadComments()
+      // Comments are loaded at workspace level now, no need to reload on document change
       loadCommitOptions()
       if (pendingJump.value && pendingJump.value.documentId === docId) {
         const { line, column } = pendingJump.value
@@ -1486,7 +1938,7 @@ watch(
   selectedNode,
   (node) => {
     if (node && node.type === 'file' && !node.asset_id) {
-      loadComments()
+      // Comments are loaded at workspace level now
       loadCommitOptions()
     }
   }

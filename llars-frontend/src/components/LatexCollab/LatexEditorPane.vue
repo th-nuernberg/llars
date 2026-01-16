@@ -40,7 +40,7 @@
               class="selection-toolbar-icon-btn"
               @click.stop="insertSnippet(btn.snippet, btn.wrap)"
             >
-              <LIcon size="15">{{ btn.icon }}</LIcon>
+              <v-icon size="16" :icon="btn.icon" />
             </button>
           </template>
           <span>{{ btn.label }} <kbd v-if="btn.shortcut">{{ btn.shortcut }}</kbd></span>
@@ -48,30 +48,21 @@
 
         <div class="selection-toolbar-divider" />
 
-        <!-- AI Dropdown -->
-        <v-menu location="bottom" :close-on-content-click="true">
-          <template #activator="{ props: menuProps }">
+        <!-- AI Action Buttons -->
+        <v-tooltip v-for="action in aiActions" :key="action.key" location="top">
+          <template #activator="{ props: tp }">
             <button
-              v-bind="menuProps"
-              class="selection-toolbar-ai-btn"
+              v-bind="tp"
+              class="selection-toolbar-icon-btn"
               :disabled="aiActionLoading"
+              @click.stop="executeAiAction(action.key)"
             >
-              <v-progress-circular v-if="aiActionLoading" indeterminate size="14" width="2" />
-              <LIcon v-else size="14">mdi-auto-fix</LIcon>
-              <span>KI</span>
-              <LIcon size="12">mdi-chevron-down</LIcon>
+              <v-progress-circular v-if="aiActionLoading && aiActionKey === action.key" indeterminate size="14" width="2" />
+              <v-icon v-else size="16" :icon="action.icon" />
             </button>
           </template>
-          <v-list density="compact" class="ai-action-menu">
-            <v-list-item
-              v-for="action in aiActions"
-              :key="action.key"
-              :prepend-icon="action.icon"
-              :title="action.label"
-              @click="executeAiAction(action.key)"
-            />
-          </v-list>
-        </v-menu>
+          <span>{{ action.label }}</span>
+        </v-tooltip>
 
         <div class="selection-toolbar-divider" />
 
@@ -81,7 +72,7 @@
           :title="t('latexCollab.comments.addToSelection')"
           @click.stop="onSelectionComment"
         >
-          <LIcon size="14">mdi-comment-plus-outline</LIcon>
+          <LIcon size="16">mdi-comment-plus-outline</LIcon>
           <span>{{ t('latexCollab.comments.comment') }}</span>
         </button>
       </div>
@@ -190,13 +181,14 @@ let selectionToolbarTimer = null
 
 // AI action state
 const aiActionLoading = ref(false)
+const aiActionKey = ref(null)
 
-// AI actions for selection toolbar dropdown
+// AI actions for selection toolbar - use mdi: prefix for native MDI icons
 const aiActions = computed(() => [
-  { key: 'rewrite', icon: 'mdi-refresh', label: t('latexCollab.ai.rewrite') },
-  { key: 'expand', icon: 'mdi-arrow-expand', label: t('latexCollab.ai.expand') },
-  { key: 'summarize', icon: 'mdi-text-short', label: t('latexCollab.ai.summarize') },
-  { key: 'fix', icon: 'mdi-wrench', label: t('latexCollab.ai.fix') }
+  { key: 'rewrite', icon: 'mdi:mdi-cached', label: t('latexCollab.ai.rewrite') },
+  { key: 'expand', icon: 'mdi:mdi-arrow-expand-all', label: t('latexCollab.ai.expand') },
+  { key: 'summarize', icon: 'mdi:mdi-text-short', label: t('latexCollab.ai.summarize') },
+  { key: 'fix', icon: 'mdi:mdi-auto-fix', label: t('latexCollab.ai.fix') }
 ])
 
 /**
@@ -272,12 +264,11 @@ const refButtons = computed(() => mapButtons(REF_BUTTONS, {
 }))
 
 // Selection toolbar: compact formatting buttons for selected text
+// Use 'mdi:' prefix to force MDI icon set (bypasses llars custom resolver)
 const selectionFormatButtons = computed(() => [
-  { id: 'bold', icon: 'mdi-format-bold', label: t('latexCollab.editor.toolbar.bold'), shortcut: 'Ctrl+B', snippet: '\\textbf{$SEL$}', wrap: true },
-  { id: 'italic', icon: 'mdi-format-italic', label: t('latexCollab.editor.toolbar.italic'), shortcut: 'Ctrl+I', snippet: '\\textit{$SEL$}', wrap: true },
-  { id: 'underline', icon: 'mdi-format-underline', label: t('latexCollab.editor.toolbar.underline'), shortcut: 'Ctrl+U', snippet: '\\underline{$SEL$}', wrap: true },
-  { id: 'emph', icon: 'mdi-format-text-variant', label: t('latexCollab.editor.toolbar.emph'), snippet: '\\emph{$SEL$}', wrap: true },
-  { id: 'typewriter', icon: 'mdi-format-font', label: t('latexCollab.editor.toolbar.typewriter'), snippet: '\\texttt{$SEL$}', wrap: true }
+  { id: 'bold', icon: 'mdi:mdi-format-bold', label: t('latexCollab.editor.toolbar.bold'), shortcut: 'Ctrl+B', snippet: '\\textbf{$SEL$}', wrap: true },
+  { id: 'italic', icon: 'mdi:mdi-format-italic', label: t('latexCollab.editor.toolbar.italic'), shortcut: 'Ctrl+I', snippet: '\\textit{$SEL$}', wrap: true },
+  { id: 'underline', icon: 'mdi:mdi-format-underline', label: t('latexCollab.editor.toolbar.underline'), shortcut: 'Ctrl+U', snippet: '\\underline{$SEL$}', wrap: true }
 ])
 
 const latexCommandInfo = computed(() => ({
@@ -673,20 +664,61 @@ function buildCommentDecorations() {
   if (!list.length) return []
   const decos = []
   const docLen = view.value.state.doc.length
+  const currentDocId = props.document?.id
+
   for (const comment of list) {
     if (!comment) continue
+    // Only show decorations for comments belonging to the current document
+    // Compare as numbers to avoid string/number type mismatch
+    if (currentDocId == null || Number(comment.document_id) !== Number(currentDocId)) continue
     const from = clampPos(comment.range_start, docLen)
     const to = clampPos(comment.range_end, docLen)
     if (from >= to) continue
-    const classes = ['cm-comment-range']
-    if (comment.resolved_at) classes.push('cm-comment-range-resolved')
-    if (comment.id === props.activeCommentId) classes.push('cm-comment-range-active')
-    decos.push(
-      Decoration.mark({
-        class: classes.join(' '),
-        attributes: { 'data-comment-id': String(comment.id || '') }
-      }).range(from, to)
-    )
+
+    // Get author color for the comment decoration
+    const authorColor = comment.author_color
+    const isActive = comment.id === props.activeCommentId
+    const isResolved = !!comment.resolved_at
+
+    if (isResolved) {
+      // Resolved comments: muted gray dashed underline
+      decos.push(
+        Decoration.mark({
+          class: 'cm-comment-range cm-comment-range-resolved',
+          attributes: { 'data-comment-id': String(comment.id || '') }
+        }).range(from, to)
+      )
+    } else if (authorColor && isValidHexColor(authorColor)) {
+      // Use author's color for the comment highlight with spaced dashed underline
+      const bgAlpha = isActive ? 0.12 : 0.05
+      const lineColor = rgbaFromHex(authorColor, isActive ? 0.85 : 0.65)
+      decos.push(
+        Decoration.mark({
+          attributes: {
+            'data-comment-id': String(comment.id || ''),
+            style: `
+              background: ${rgbaFromHex(authorColor, bgAlpha)};
+              background-image: repeating-linear-gradient(to right, ${lineColor} 0, ${lineColor} 6px, transparent 6px, transparent 12px);
+              background-size: 100% 2px;
+              background-repeat: no-repeat;
+              background-position: bottom;
+              padding-bottom: 1px;
+              border-radius: 2px;
+            `
+          }
+        }).range(from, to)
+      )
+    } else {
+      // Fallback: default warning color styling
+      const classes = ['cm-comment-range']
+      if (isActive) classes.push('cm-comment-range-active')
+      decos.push(
+        Decoration.mark({
+          class: classes.join(' '),
+          attributes: { 'data-comment-id': String(comment.id || '') }
+        }).range(from, to)
+      )
+    }
   }
   return decos
 }
@@ -1535,6 +1567,42 @@ function jumpToLine(line, column = 1) {
   view.value.focus()
 }
 
+/**
+ * Highlight and scroll to a character range (for comment highlighting)
+ * @param {number} from - Start position (character offset)
+ * @param {number} to - End position (character offset)
+ */
+function highlightRange(from, to) {
+  if (!view.value) return
+  const docLength = view.value.state.doc.length
+  const safeFrom = Math.max(0, Math.min(from, docLength))
+  const safeTo = Math.max(safeFrom, Math.min(to, docLength))
+  view.value.dispatch({
+    selection: { anchor: safeFrom, head: safeTo },
+    effects: EditorView.scrollIntoView(safeFrom, { y: 'center' })
+  })
+  view.value.focus()
+}
+
+/**
+ * Replace text at a specific range (for AI resolve)
+ * @param {number} from - Start position (character offset)
+ * @param {number} to - End position (character offset)
+ * @param {string} newText - Text to insert at the range
+ */
+function replaceRange(from, to, newText) {
+  if (!view.value || !ytext) return
+  const docLength = view.value.state.doc.length
+  const safeFrom = Math.max(0, Math.min(from, docLength))
+  const safeTo = Math.max(safeFrom, Math.min(to, docLength))
+
+  // Apply via Yjs for proper sync
+  ydoc.value?.transact(() => {
+    ytext.delete(safeFrom, safeTo - safeFrom)
+    ytext.insert(safeFrom, newText)
+  }, 'ai-resolve')
+}
+
 function flushDocumentState() {
   return new Promise((resolve) => {
     const sock = socket.value
@@ -1639,6 +1707,8 @@ defineExpose({
   getSelectionRange,
   getSelectionText,
   jumpToLine,
+  highlightRange,
+  replaceRange,
   flushDocumentState,
   reloadRoom,
   reloadAnyRoom,

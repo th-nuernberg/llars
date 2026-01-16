@@ -92,25 +92,52 @@
 
 /* ==========================================================================
    COMMENT RANGES
+
+   Comment decorations use SPACED DASHED underlines to differentiate from:
+   - Author change tracking (solid underline with text-decoration)
+   - Git diff insertions (solid box-shadow outline)
+
+   Uses repeating-linear-gradient for controllable dash/gap spacing (6px/6px).
+   Comments are author-colored when author_color is set, otherwise yellow.
    ========================================================================== */
 
 /**
  * Base comment range styling.
- * Yellow-tinted background with underline.
+ * Light yellow background with spaced dashed underline.
  */
 :global(.cm-comment-range) {
-  background: rgba(var(--v-theme-warning), 0.18);
-  border-bottom: 2px solid rgba(var(--v-theme-warning), 0.6);
+  background: rgba(var(--v-theme-warning), 0.05);
+  background-image: repeating-linear-gradient(
+    to right,
+    rgba(var(--v-theme-warning), 0.65) 0,
+    rgba(var(--v-theme-warning), 0.65) 6px,
+    transparent 6px,
+    transparent 12px
+  );
+  background-size: 100% 2px;
+  background-repeat: no-repeat;
+  background-position: bottom;
+  padding-bottom: 1px;
   border-radius: 2px;
 }
 
 /**
  * Resolved comment styling.
- * Muted appearance for closed comments.
+ * Muted gray with spaced dashed underline for closed comments.
  */
 :global(.cm-comment-range-resolved) {
-  background: rgba(var(--v-theme-surface-variant), 0.35);
-  border-bottom: 2px solid rgba(var(--v-theme-on-surface), 0.35);
+  background: rgba(var(--v-theme-surface-variant), 0.08);
+  background-image: repeating-linear-gradient(
+    to right,
+    rgba(var(--v-theme-on-surface), 0.25) 0,
+    rgba(var(--v-theme-on-surface), 0.25) 6px,
+    transparent 6px,
+    transparent 12px
+  );
+  background-size: 100% 2px;
+  background-repeat: no-repeat;
+  background-position: bottom;
+  padding-bottom: 1px;
 }
 
 /**
@@ -118,8 +145,18 @@
  * Stronger highlight when comment is focused.
  */
 :global(.cm-comment-range-active) {
-  background: rgba(var(--v-theme-warning), 0.32);
-  box-shadow: inset 0 -2px 0 rgba(var(--v-theme-warning), 0.75);
+  background: rgba(var(--v-theme-warning), 0.12);
+  background-image: repeating-linear-gradient(
+    to right,
+    rgba(var(--v-theme-warning), 0.85) 0,
+    rgba(var(--v-theme-warning), 0.85) 6px,
+    transparent 6px,
+    transparent 12px
+  );
+  background-size: 100% 2px;
+  background-repeat: no-repeat;
+  background-position: bottom;
+  padding-bottom: 1px;
 }
 
 /* ==========================================================================
@@ -398,11 +435,22 @@
  * AI action menu styling.
  */
 .ai-action-menu {
-  min-width: 160px;
+  min-width: 140px;
+  padding: 4px 0;
 }
 
 .ai-action-menu .v-list-item {
-  min-height: 36px;
+  min-height: 28px;
+  padding: 0 10px;
+  font-size: 0.8rem;
+}
+
+.ai-action-menu .v-list-item .v-list-item__prepend {
+  margin-right: 8px;
+}
+
+.ai-action-menu .v-list-item .v-list-item__prepend .v-icon {
+  font-size: 16px;
 }
 
 /**

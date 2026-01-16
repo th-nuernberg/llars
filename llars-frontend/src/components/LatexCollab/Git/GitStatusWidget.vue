@@ -25,18 +25,18 @@
     <!-- Header -->
     <div class="widget-header">
       <LIcon size="16">mdi-source-branch</LIcon>
-      <span class="header-title">Git</span>
+      <span class="header-title">{{ t('workspaceGit.title') }}</span>
       <v-spacer />
       <LIconBtn
         icon="mdi-open-in-new"
         size="x-small"
-        :tooltip="$t('workspaceGit.openDetail')"
+        :tooltip="t('workspaceGit.actions.fullscreen')"
         @click="$emit('open-detail')"
       />
       <LIconBtn
         icon="mdi-chevron-up"
         size="x-small"
-        :tooltip="$t('common.collapse')"
+        :tooltip="t('workspaceGit.actions.collapse')"
         @click="$emit('update:collapsed', true)"
       />
     </div>
@@ -45,16 +45,16 @@
     <div class="widget-status">
       <LTag variant="info" size="sm">main</LTag>
       <LTag v-if="changedCount > 0" variant="warning" size="sm">
-        {{ changedCount }} {{ $t('workspaceGit.changed') }}
+        {{ t('workspaceGit.tags.changed', { count: changedCount }) }}
       </LTag>
       <LTag v-if="deletedCount > 0" variant="danger" size="sm">
-        {{ deletedCount }} {{ $t('workspaceGit.deleted') }}
+        {{ t('workspaceGit.tags.deleted', { count: deletedCount }) }}
       </LTag>
       <LIconBtn
         v-if="!checkingChanges"
         icon="mdi-refresh"
         size="x-small"
-        :tooltip="$t('workspaceGit.refresh')"
+        :tooltip="t('workspaceGit.actions.refresh')"
         @click="refresh"
       />
       <LIcon v-else size="14" class="mdi-spin text-medium-emphasis">mdi-loading</LIcon>
@@ -66,7 +66,7 @@
         v-model="quickMessage"
         density="compact"
         variant="outlined"
-        :placeholder="$t('workspaceGit.commitPlaceholder')"
+        :placeholder="t('workspaceGit.commit.placeholder')"
         hide-details
         class="commit-input"
         @keyup.enter="handleQuickCommit"
@@ -78,7 +78,7 @@
         :disabled="!quickMessage.trim() || committing"
         @click="handleQuickCommit"
       >
-        {{ $t('workspaceGit.commit') }}
+        Commit
       </LBtn>
     </div>
 
@@ -102,14 +102,14 @@
         </span>
       </div>
       <div v-if="moreFilesCount > 0" class="more-files" @click="$emit('open-detail')">
-        +{{ moreFilesCount }} {{ $t('workspaceGit.moreFiles') }}
+        {{ t('workspaceGit.history.more', { count: moreFilesCount }) }}
       </div>
     </div>
 
     <!-- Empty State -->
     <div v-else-if="!checkingChanges" class="widget-empty">
       <LIcon size="16" class="text-medium-emphasis">mdi-check-circle</LIcon>
-      <span class="text-medium-emphasis">{{ $t('workspaceGit.noChanges') }}</span>
+      <span class="text-medium-emphasis">{{ t('workspaceGit.files.empty') }}</span>
     </div>
 
     <!-- Error -->
@@ -122,7 +122,10 @@
 
 <script setup>
 import { ref, computed, toRef } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useGitStatus } from '@/composables/useGitStatus'
+
+const { t } = useI18n()
 
 const MAX_PREVIEW_FILES = 5
 

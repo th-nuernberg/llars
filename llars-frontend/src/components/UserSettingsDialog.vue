@@ -189,16 +189,19 @@
               ></div>
             </div>
 
-            <div class="d-flex justify-end">
-              <LBtn
-                variant="primary"
-                size="small"
-                :loading="savingCollabColor"
-                :disabled="!collabColorChanged"
-                @click="saveCollabColor"
-              >
-                {{ $t('settings.saveColor') }}
-              </LBtn>
+            <!-- AI Reserved Color Info -->
+            <div v-if="aiAssistantSettings.enabled" class="d-flex align-center gap-2 mb-3 text-caption text-medium-emphasis">
+              <div
+                class="ai-reserved-color"
+                :style="{ backgroundColor: aiAssistantSettings.color }"
+              ></div>
+              <span>{{ $t('settings.aiReservedColorHint', { name: aiAssistantSettings.username }) }}</span>
+            </div>
+
+            <!-- Auto-save indicator -->
+            <div v-if="savingCollabColor" class="d-flex align-center gap-2 text-caption text-medium-emphasis">
+              <v-progress-circular size="14" width="2" indeterminate color="primary" />
+              <span>{{ $t('common.saving') }}</span>
             </div>
           </v-card>
         </div>
@@ -276,11 +279,13 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
+import axios from 'axios'
 import { useAppTheme } from '@/composables/useAppTheme'
 import { useAuth } from '@/composables/useAuth'
 import { useLanguage } from '@/composables/useLanguage'
+import { COLLAB_COLOR_PRESETS, isColorInAiReservedRange } from '@/constants/colors'
 
 const { t } = useI18n()
 
@@ -324,12 +329,32 @@ const avatarInput = ref(null)
 const avatarUploading = ref(false)
 const avatarError = ref('')
 
-// Collab color presets (LLARS design colors)
-const collabColorPresets = [
-  '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4',
-  '#FFEEAD', '#D4A5A5', '#9B59B6', '#3498DB',
-  '#E74C3C', '#2ECC71', '#F39C12', '#1ABC9C'
-]
+// AI Assistant settings (reserved color)
+const aiAssistantSettings = ref({
+  enabled: false,
+  color: '#9B59B6',
+  username: 'LLARS KI'
+})
+
+// Fetch AI assistant settings to know which color is reserved
+async function fetchAiAssistantSettings() {
+  try {
+    const response = await axios.get('/api/system/ai-assistant')
+    if (response.data.success) {
+      aiAssistantSettings.value = response.data.ai_assistant
+    }
+  } catch {
+    // Use defaults if API fails
+  }
+}
+
+// Use global LLARS color presets
+const allCollabColorPresets = COLLAB_COLOR_PRESETS
+
+// Filter out colors in the AI reserved purple/violet range
+const collabColorPresets = computed(() => {
+  return allCollabColorPresets.filter(c => !isColorInAiReservedRange(c))
+})
 
 // Collab color state
 const selectedCollabColor = ref(auth.collabColor.value || null)
@@ -339,8 +364,17 @@ const collabColorChanged = computed(() => {
   return selectedCollabColor.value !== auth.collabColor.value
 })
 
-function selectCollabColor(color) {
+// Watch for external collab color changes (e.g., from Settings page)
+watch(() => auth.collabColor.value, (newColor) => {
+  if (newColor !== selectedCollabColor.value) {
+    selectedCollabColor.value = newColor
+  }
+})
+
+async function selectCollabColor(color) {
   selectedCollabColor.value = color
+  // Auto-save immediately like PersonalSettingsTab
+  await saveCollabColor()
 }
 
 async function saveCollabColor() {
@@ -418,7 +452,13 @@ watch(() => props.modelValue, (isOpen) => {
     selectedLanguage.value = currentLanguage.value
     avatarError.value = ''
     auth.fetchUserSettings()
+    fetchAiAssistantSettings()
   }
+})
+
+// Fetch AI settings on mount (in case dialog is already open)
+onMounted(() => {
+  fetchAiAssistantSettings()
 })
 
 // User profile data
@@ -548,6 +588,14 @@ function closeDialog() {
   border-color: rgb(var(--v-theme-on-surface));
   transform: scale(1.1);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.ai-reserved-color {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.2);
+  flex-shrink: 0;
 }
 
 /* Animation for dialog */

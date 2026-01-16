@@ -305,6 +305,105 @@
             </v-card-text>
           </v-card>
 
+          <!-- AI Assistant Settings -->
+          <v-card variant="outlined" class="mb-4">
+            <v-card-title class="text-subtitle-1 d-flex align-center">
+              <LIcon class="mr-2" size="small">mdi-robot</LIcon>
+              KI-Assistent (LaTeX Collab)
+              <v-spacer />
+              <LStatusChip :state="sectionStates.aiAssistant" />
+            </v-card-title>
+            <v-card-text>
+              <v-alert
+                type="info"
+                variant="tonal"
+                density="compact"
+                class="mb-4"
+              >
+                Der KI-Assistent kann in LaTeX Collab Kommentare automatisch auflösen.
+                Die KI-Farbe ist exklusiv für den Assistenten reserviert und kann nicht von Nutzern gewählt werden.
+              </v-alert>
+
+              <v-row>
+                <v-col cols="12" md="6">
+                  <v-switch
+                    v-model="settings.ai_assistant_enabled"
+                    label="KI-Assistent aktivieren"
+                    color="primary"
+                    hide-details
+                    density="compact"
+                    class="mb-2"
+                  />
+                  <div class="text-caption text-medium-emphasis ml-10">
+                    Aktiviert den KI-Button bei Kommentaren für automatische Auflösung.
+                  </div>
+                </v-col>
+                <v-col cols="12" md="6">
+                  <v-text-field
+                    v-model="settings.ai_assistant_username"
+                    label="KI-Anzeigename"
+                    variant="outlined"
+                    density="comfortable"
+                    hint="Name, der als Autor bei KI-Antworten angezeigt wird."
+                    persistent-hint
+                    maxlength="50"
+                  />
+                </v-col>
+              </v-row>
+
+              <v-row class="mt-2">
+                <v-col cols="12" md="6">
+                  <div class="d-flex align-center">
+                    <v-menu
+                      :close-on-content-click="false"
+                      location="bottom start"
+                    >
+                      <template #activator="{ props }">
+                        <div
+                          v-bind="props"
+                          class="color-preview cursor-pointer mr-3"
+                          :style="{ backgroundColor: settings.ai_assistant_color }"
+                        />
+                      </template>
+                      <v-color-picker
+                        v-model="settings.ai_assistant_color"
+                        mode="hex"
+                        :modes="['hex']"
+                        hide-inputs
+                        show-swatches
+                        :swatches="aiColorSwatches"
+                      />
+                    </v-menu>
+                    <v-text-field
+                      v-model="settings.ai_assistant_color"
+                      label="KI-Farbe (Hex)"
+                      variant="outlined"
+                      density="comfortable"
+                      hint="Reservierte Farbe für KI-Änderungen. Standard: #9B59B6 (Lila)"
+                      persistent-hint
+                      maxlength="7"
+                      style="max-width: 200px;"
+                    />
+                  </div>
+                </v-col>
+                <v-col cols="12" md="6" class="d-flex align-center">
+                  <div class="ai-preview-card pa-3 rounded">
+                    <div class="text-caption text-medium-emphasis mb-1">Vorschau:</div>
+                    <div class="d-flex align-center">
+                      <div
+                        class="ai-avatar mr-2"
+                        :style="{ backgroundColor: settings.ai_assistant_color }"
+                      >
+                        <LIcon size="small" color="white">mdi-robot</LIcon>
+                      </div>
+                      <span class="font-weight-medium">{{ settings.ai_assistant_username || 'LLARS KI' }}</span>
+                    </div>
+                  </div>
+                </v-col>
+              </v-row>
+            </v-card-text>
+          </v-card>
+
           <!-- Zotero OAuth Settings -->
           <v-card variant="outlined">
             <v-card-title class="text-subtitle-1 d-flex align-center">
@@ -479,6 +578,7 @@ const sectionStates = reactive({
   rag: 'idle',
   llmLogging: 'idle',
   referral: 'idle',
+  aiAssistant: 'idle',
   zotero: 'idle'
 })
 
@@ -506,6 +606,9 @@ const settings = reactive({
   referral_system_enabled: false,
   self_registration_enabled: false,
   default_referral_role: 'evaluator',
+  ai_assistant_enabled: true,
+  ai_assistant_color: '#9B59B6',
+  ai_assistant_username: 'LLARS KI',
   updated_at: null
 })
 
@@ -513,6 +616,14 @@ const availableRoles = [
   { value: 'evaluator', label: 'Evaluator' },
   { value: 'researcher', label: 'Researcher' },
   { value: 'chatbot_manager', label: 'Chatbot Manager' }
+]
+
+// AI Assistant color swatches (distinct colors for the AI)
+const aiColorSwatches = [
+  ['#9B59B6', '#8E44AD', '#6C3483'], // Purple variants (default)
+  ['#3498DB', '#2980B9', '#1F618D'], // Blue variants
+  ['#1ABC9C', '#16A085', '#117A65'], // Teal variants
+  ['#E74C3C', '#C0392B', '#922B21']  // Red variants
 ]
 
 const originalSettings = ref({})
@@ -667,6 +778,23 @@ watch(
   }
 )
 
+// Watch AI Assistant Settings
+watch(
+  () => [
+    settings.ai_assistant_enabled,
+    settings.ai_assistant_color,
+    settings.ai_assistant_username
+  ],
+  () => {
+    if (!initialLoadDone.value) return
+    debouncedSave('aiAssistant', [
+      'ai_assistant_enabled',
+      'ai_assistant_color',
+      'ai_assistant_username'
+    ], 300)
+  }
+)
+
 // Watch Zotero settings
 watch(
   () => [zoteroDb.enabled, zoteroDb.client_key, zoteroDb.client_secret],
@@ -787,5 +915,32 @@ onMounted(() => {
 <style scoped>
 .system-settings-section {
   max-width: 900px;
+}
+
+.color-preview {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  border: 2px solid rgba(var(--v-theme-on-surface), 0.12);
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.color-preview:hover {
+  transform: scale(1.05);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.ai-preview-card {
+  background: rgba(var(--v-theme-on-surface), 0.04);
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+}
+
+.ai-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 </style>

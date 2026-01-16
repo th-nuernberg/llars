@@ -14,5 +14,6 @@ from . import scenario_crud
 from . import scenario_management
 from . import scenario_resources
 from . import scenario_stats
+from . import scenario_manager_api  # User-facing Scenario Manager API
 
 __all__ = ['scenarios_bp']

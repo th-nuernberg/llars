@@ -39,10 +39,10 @@ export const TASK_TYPES = {
 
 /**
  * LLM Evaluation composable
- * @param {number} scenarioId - Scenario ID to monitor
+ * @param {number} [initialScenarioId] - Optional initial scenario ID to monitor
  * @returns {Object} Evaluation state and methods
  */
-export function useLLMEvaluation(scenarioId) {
+export function useLLMEvaluation(initialScenarioId = null) {
   // ===== State =====
   const status = ref(EVAL_STATUS.IDLE)
   const progress = ref({
@@ -62,6 +62,9 @@ export function useLLMEvaluation(scenarioId) {
   })
   const error = ref(null)
   const connected = ref(false)
+
+  // ===== Internal State =====
+  let scenarioId = initialScenarioId
 
   // ===== Socket Reference =====
   let socket = null
@@ -157,6 +160,7 @@ export function useLLMEvaluation(scenarioId) {
 
   // ===== Socket Connection =====
   function connect() {
+    if (!scenarioId) return
     if (socket && socket.connected) return
 
     socket = getSocket()
@@ -164,7 +168,9 @@ export function useLLMEvaluation(scenarioId) {
     socket.on('connect', () => {
       connected.value = true
       // Join scenario room
-      socket.emit('llm_eval:join_scenario', { scenario_id: scenarioId })
+      if (scenarioId) {
+        socket.emit('llm_eval:join_scenario', { scenario_id: scenarioId })
+      }
     })
 
     socket.on('disconnect', () => {
@@ -180,15 +186,35 @@ export function useLLMEvaluation(scenarioId) {
     // If already connected, join room immediately
     if (socket.connected) {
       connected.value = true
-      socket.emit('llm_eval:join_scenario', { scenario_id: scenarioId })
+      if (scenarioId) {
+        socket.emit('llm_eval:join_scenario', { scenario_id: scenarioId })
+      }
     }
+  }
+
+  /**
+   * Connect to a specific scenario for live evaluation updates
+   * @param {number} newScenarioId - Scenario ID to connect to
+   */
+  function connectToScenario(newScenarioId) {
+    if (!newScenarioId) return
+
+    // Disconnect from previous scenario if different
+    if (scenarioId && scenarioId !== newScenarioId) {
+      disconnect()
+    }
+
+    scenarioId = newScenarioId
+    reset()
+    connect()
+    fetchProgress()
   }
 
   function disconnect() {
     if (!socket) return
 
     // Leave scenario room
-    if (socket.connected) {
+    if (socket.connected && scenarioId) {
       socket.emit('llm_eval:leave_scenario', { scenario_id: scenarioId })
     }
 
@@ -290,8 +316,11 @@ export function useLLMEvaluation(scenarioId) {
 
   // ===== Lifecycle =====
   onMounted(() => {
-    connect()
-    fetchProgress()
+    // Only auto-connect if initialScenarioId was provided
+    if (initialScenarioId) {
+      connect()
+      fetchProgress()
+    }
   })
 
   onUnmounted(() => {
@@ -325,6 +354,7 @@ export function useLLMEvaluation(scenarioId) {
     clearError,
     reset,
     connect,
+    connectToScenario,
     disconnect
   }
 }

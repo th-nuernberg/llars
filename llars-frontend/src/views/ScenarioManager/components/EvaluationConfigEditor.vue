@@ -96,7 +96,7 @@ const props = defineProps({
   evalType: {
     type: String,
     required: true,
-    validator: (v) => ['rating', 'ranking', 'labeling', 'comparison'].includes(v)
+    validator: (v) => ['rating', 'ranking', 'labeling', 'comparison', 'mail_rating', 'authenticity'].includes(v)
   },
   modelValue: {
     type: Object,

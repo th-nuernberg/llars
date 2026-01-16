@@ -221,7 +221,7 @@
                   <span class="thread-id">#{{ thread.thread_id }}</span>
                   <span class="thread-subject" v-if="thread.subject">{{ thread.subject }}</span>
                 </div>
-                <LTag variant="default" size="sm">Pending</LTag>
+                <LTag variant="gray" size="sm">Pending</LTag>
               </div>
               <div v-if="expandedEvaluatorData.pendingThreads.length > 10" class="more-threads">
                 + {{ expandedEvaluatorData.pendingThreads.length - 10 }} {{ $t('scenarioManager.results.more') || 'more' }}
@@ -237,12 +237,38 @@
       </div>
     </div>
 
-    <!-- Results Distribution Chart (placeholder) -->
-    <div class="section">
+    <!-- Results Distribution Chart -->
+    <div class="section" v-if="distributionData.length > 0">
       <h4 class="section-title">{{ $t('scenarioManager.results.distribution') }}</h4>
-      <div class="chart-placeholder">
-        <LIcon size="64" color="grey-lighten-1">mdi-chart-bar</LIcon>
-        <p>{{ $t('scenarioManager.results.chartComingSoon') }}</p>
+      <div class="distribution-chart">
+        <div class="chart-bars">
+          <div
+            v-for="(item, index) in distributionData"
+            :key="item.label"
+            class="bar-container"
+          >
+            <div class="bar-label">{{ item.label }}</div>
+            <div class="bar-wrapper">
+              <div
+                class="bar-fill"
+                :style="{
+                  width: item.percentage + '%',
+                  backgroundColor: getBarColor(index)
+                }"
+              >
+                <span class="bar-value" v-if="item.percentage > 15">{{ item.count }}</span>
+              </div>
+              <span class="bar-value outside" v-if="item.percentage <= 15">{{ item.count }}</span>
+            </div>
+            <div class="bar-percentage">{{ item.percentage }}%</div>
+          </div>
+        </div>
+        <div class="chart-legend" v-if="distributionData.length > 0">
+          <span class="legend-item">
+            <LIcon size="14" color="grey">mdi-sigma</LIcon>
+            {{ $t('scenarioManager.results.totalVotes') || 'Total' }}: {{ totalDistributionCount }}
+          </span>
+        </div>
       </div>
     </div>
   </div>
@@ -284,6 +310,59 @@ const expandedEvaluatorData = computed(() => {
   if (!expandedEvaluator.value) return null
   return evaluatorStatsList.value.find(e => e.id === expandedEvaluator.value)
 })
+
+// Distribution data from live stats or computed from evaluator data
+const distributionData = computed(() => {
+  // Check if liveStats has distribution data directly
+  if (props.liveStats?.distribution) {
+    return props.liveStats.distribution
+  }
+
+  // Otherwise, compute from evaluator voted threads
+  const voteCounts = {}
+  evaluatorStatsList.value.forEach(evaluator => {
+    if (evaluator.votedThreads) {
+      evaluator.votedThreads.forEach(thread => {
+        const vote = thread.vote || thread.rating || thread.label || 'unknown'
+        voteCounts[vote] = (voteCounts[vote] || 0) + 1
+      })
+    }
+  })
+
+  const total = Object.values(voteCounts).reduce((sum, count) => sum + count, 0)
+  if (total === 0) return []
+
+  return Object.entries(voteCounts)
+    .map(([label, count]) => ({
+      label: formatLabel(label),
+      count,
+      percentage: Math.round((count / total) * 100)
+    }))
+    .sort((a, b) => b.count - a.count)
+})
+
+const totalDistributionCount = computed(() => {
+  return distributionData.value.reduce((sum, item) => sum + item.count, 0)
+})
+
+function formatLabel(label) {
+  // Capitalize first letter and handle common labels
+  const labelMap = {
+    'fake': t('scenarioManager.results.labels.fake') || 'Fake',
+    'real': t('scenarioManager.results.labels.real') || 'Real',
+    'authentic': t('scenarioManager.results.labels.authentic') || 'Authentic',
+    'phishing': t('scenarioManager.results.labels.phishing') || 'Phishing',
+    'spam': t('scenarioManager.results.labels.spam') || 'Spam',
+    'legitimate': t('scenarioManager.results.labels.legitimate') || 'Legitimate'
+  }
+  return labelMap[label?.toLowerCase()] || String(label).charAt(0).toUpperCase() + String(label).slice(1)
+}
+
+const barColors = ['#b0ca97', '#88c4c8', '#D1BC8A', '#c4a0d4', '#e8a087', '#98d4bb']
+
+function getBarColor(index) {
+  return barColors[index % barColors.length]
+}
 
 // Computed
 const summaryStats = computed(() => {
@@ -761,20 +840,101 @@ function downloadBlob(blob, filename) {
   color: rgba(var(--v-theme-on-surface), 0.5);
 }
 
-/* Chart Placeholder */
-.chart-placeholder {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 64px 24px;
+/* Distribution Chart */
+.distribution-chart {
   background-color: rgb(var(--v-theme-surface));
-  border: 1px dashed rgba(var(--v-theme-on-surface), 0.2);
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.1);
   border-radius: 12px;
+  padding: 24px;
 }
 
-.chart-placeholder p {
-  margin-top: 16px;
-  color: rgba(var(--v-theme-on-surface), 0.5);
+.chart-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.bar-container {
+  display: grid;
+  grid-template-columns: 120px 1fr 60px;
+  align-items: center;
+  gap: 16px;
+}
+
+.bar-label {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: rgb(var(--v-theme-on-surface));
+  text-align: right;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bar-wrapper {
+  display: flex;
+  align-items: center;
+  height: 32px;
+  background-color: rgba(var(--v-theme-on-surface), 0.06);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.bar-fill {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 10px;
+  border-radius: 6px;
+  transition: width 0.5s ease;
+  min-width: fit-content;
+}
+
+.bar-value {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: white;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.bar-value.outside {
+  color: rgb(var(--v-theme-on-surface));
+  text-shadow: none;
+  padding-left: 8px;
+}
+
+.bar-percentage {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: rgba(var(--v-theme-on-surface), 0.6);
+  text-align: right;
+}
+
+.chart-legend {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
+  color: rgba(var(--v-theme-on-surface), 0.6);
+}
+
+@media (max-width: 600px) {
+  .bar-container {
+    grid-template-columns: 80px 1fr 50px;
+    gap: 10px;
+  }
+
+  .bar-label {
+    font-size: 0.75rem;
+  }
 }
 </style>

@@ -21,7 +21,7 @@
         <LBtn variant="text" @click="refreshScenario" :loading="loading">
           <LIcon>mdi-refresh</LIcon>
         </LBtn>
-        <v-menu v-if="scenario?.is_owner">
+        <v-menu v-if="isOwner">
           <template #activator="{ props }">
             <LBtn variant="text" v-bind="props">
               <LIcon>mdi-dots-vertical</LIcon>
@@ -52,8 +52,8 @@
       </div>
     </div>
 
-    <!-- Quick Stats Bar -->
-    <div class="stats-bar" v-if="scenario">
+    <!-- Quick Stats Bar (only for owners) -->
+    <div class="stats-bar" v-if="scenario && isOwner">
       <div class="stat-item">
         <LIcon size="18" color="grey">mdi-email-outline</LIcon>
         <span class="stat-value">{{ scenario.thread_count || 0 }}</span>
@@ -195,14 +195,28 @@ const {
 const activeTab = ref('overview')
 const showSettings = ref(false)
 
-// Tabs configuration
-const tabs = computed(() => [
-  { value: 'overview', label: t('scenarioManager.tabs.overview'), icon: 'mdi-view-dashboard-outline' },
-  { value: 'data', label: t('scenarioManager.tabs.data'), icon: 'mdi-database-outline' },
-  { value: 'evaluation', label: t('scenarioManager.tabs.evaluation'), icon: 'mdi-robot-outline' },
-  { value: 'results', label: t('scenarioManager.tabs.results'), icon: 'mdi-chart-bar' },
-  { value: 'team', label: t('scenarioManager.tabs.team'), icon: 'mdi-account-group-outline' }
-])
+// Access control: Check if user is owner or in evaluate mode
+const isEvaluatorMode = computed(() => {
+  return route.query.mode === 'evaluate' || scenario.value?.is_owner === false
+})
+
+const isOwner = computed(() => scenario.value?.is_owner === true)
+
+// Tabs configuration - evaluators only see the evaluation tab
+const tabs = computed(() => {
+  if (isEvaluatorMode.value) {
+    return [
+      { value: 'evaluation', label: t('scenarioManager.tabs.evaluation'), icon: 'mdi-clipboard-edit-outline' }
+    ]
+  }
+  return [
+    { value: 'overview', label: t('scenarioManager.tabs.overview'), icon: 'mdi-view-dashboard-outline' },
+    { value: 'data', label: t('scenarioManager.tabs.data'), icon: 'mdi-database-outline' },
+    { value: 'evaluation', label: t('scenarioManager.tabs.evaluation'), icon: 'mdi-robot-outline' },
+    { value: 'results', label: t('scenarioManager.tabs.results'), icon: 'mdi-chart-bar' },
+    { value: 'team', label: t('scenarioManager.tabs.team'), icon: 'mdi-account-group-outline' }
+  ]
+})
 
 // Type mapping
 const typeConfig = {
@@ -215,12 +229,12 @@ const typeConfig = {
 
 // Status mapping
 const statusConfig = {
-  draft: { variant: 'default', label: 'draft' },
+  draft: { variant: 'gray', label: 'draft' },
   data_collection: { variant: 'info', label: 'dataCollection' },
   evaluating: { variant: 'info', label: 'evaluating' },
   analyzing: { variant: 'info', label: 'analyzing' },
   completed: { variant: 'success', label: 'completed' },
-  archived: { variant: 'default', label: 'archived' }
+  archived: { variant: 'gray', label: 'archived' }
 }
 
 // Computed
@@ -238,7 +252,7 @@ const typeName = computed(() => {
 })
 
 const statusVariant = computed(() => {
-  return statusConfig[scenario.value?.status]?.variant || 'default'
+  return statusConfig[scenario.value?.status]?.variant || 'gray'
 })
 
 const statusLabel = computed(() => {
@@ -297,6 +311,13 @@ async function onSettingsSaved(updates) {
 watch(() => route.query.tab, (newTab) => {
   if (newTab && tabs.value.some(t => t.value === newTab)) {
     activeTab.value = newTab
+  }
+}, { immediate: true })
+
+// Auto-switch to evaluation tab in evaluator mode
+watch(isEvaluatorMode, (isEvaluator) => {
+  if (isEvaluator && activeTab.value !== 'evaluation') {
+    activeTab.value = 'evaluation'
   }
 }, { immediate: true })
 

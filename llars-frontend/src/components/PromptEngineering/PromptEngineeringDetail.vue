@@ -618,7 +618,10 @@ const collaboration = useYjsCollaboration(
   username,
   () => processYDoc(),
   (userId, cursor) => updateCursor(userId, cursor),
-  { autoSync: true }  // Enable automatic Yjs sync (sends incremental updates only)
+  {
+    autoSync: true,  // Enable automatic Yjs sync (sends incremental updates only)
+    onColorUpdate: (userId, color) => updateUserColor(userId, color)  // Broadcast color changes to cursor overlays
+  }
 );
 
 const { ydoc, socket, users, updateColor } = collaboration;
@@ -681,6 +684,7 @@ const {
   cleanupAll,
   applyHighlightingToAll,
   removeCursorForUser,
+  updateUserColor,
   clearUserHighlights,
   flushPendingHighlights,
   editors
@@ -868,9 +872,16 @@ onMounted(async () => {
 
 watch(
   () => auth.collabColor.value,
-  (newColor) => {
+  (newColor, oldColor) => {
+    console.log('[PromptEngineering] collabColor changed:', oldColor, '->', newColor, 'socket connected:', socket.value?.connected);
     if (newColor && socket.value?.connected) {
+      console.log('[PromptEngineering] Broadcasting color update and updating local cursor');
       updateColor(newColor);
+      // Also update own cursor color locally
+      const mySocketId = socket.value?.id;
+      if (mySocketId) {
+        updateUserColor(mySocketId, newColor);
+      }
     }
   }
 );

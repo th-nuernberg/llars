@@ -1,0 +1,2245 @@
+<template>
+  <v-card class="scenario-wizard">
+    <!-- Header -->
+    <v-card-title class="wizard-header">
+      <LIcon color="primary" class="mr-3" size="28">mdi-robot-outline</LIcon>
+      <span>{{ $t('scenarioManager.wizard.title') }}</span>
+      <v-spacer />
+      <v-btn icon variant="text" @click="$emit('close')">
+        <LIcon>mdi-close</LIcon>
+      </v-btn>
+    </v-card-title>
+
+    <!-- AI-Native Badge -->
+    <div class="ai-badge">
+      <LIcon size="16" color="primary">mdi-sparkles</LIcon>
+      <span>{{ $t('scenarioManager.wizard.aiPowered') }}</span>
+    </div>
+
+    <!-- Stepper -->
+    <div class="wizard-stepper">
+      <div
+        v-for="(step, index) in steps"
+        :key="step.key"
+        class="step"
+        :class="{
+          active: currentStep === index,
+          completed: currentStep > index,
+          clickable: currentStep > index
+        }"
+        @click="currentStep > index && goToStep(index)"
+      >
+        <div class="step-indicator">
+          <LIcon v-if="currentStep > index" size="18">mdi-check</LIcon>
+          <LIcon v-else-if="step.icon" size="18">{{ step.icon }}</LIcon>
+          <span v-else>{{ index + 1 }}</span>
+        </div>
+        <span class="step-label">{{ step.label }}</span>
+      </div>
+    </div>
+
+    <v-divider />
+
+    <!-- Step Content -->
+    <v-card-text class="wizard-content">
+      <!-- Step 1: Data Upload & AI Analysis -->
+      <div v-if="currentStep === 0" class="step-content">
+        <h3 class="step-title">{{ $t('scenarioManager.wizard.step1.title') }}</h3>
+        <p class="step-description">{{ $t('scenarioManager.wizard.step1.description') }}</p>
+
+        <!-- File Upload Area -->
+        <div
+          class="upload-zone"
+          :class="{ 'drag-over': isDragging, 'has-files': uploadedFiles.length > 0 }"
+          @dragover.prevent="isDragging = true"
+          @dragleave="isDragging = false"
+          @drop.prevent="handleFileDrop"
+          @click="triggerFileInput"
+        >
+          <input
+            ref="fileInput"
+            type="file"
+            accept=".json,.csv,.xlsx,.xls"
+            multiple
+            hidden
+            @change="handleFileSelect"
+          />
+
+          <template v-if="uploadedFiles.length === 0">
+            <LIcon size="48" color="primary" class="upload-icon">mdi-cloud-upload-outline</LIcon>
+            <p class="upload-text">{{ $t('scenarioManager.wizard.step1.dropFiles') }}</p>
+            <p class="upload-hint">{{ $t('scenarioManager.wizard.step1.supportedFormats') }}</p>
+            <p class="upload-hint-multi">
+              <LIcon size="14" class="mr-1">mdi-information-outline</LIcon>
+              {{ $t('scenarioManager.wizard.step1.multiFileHint') }}
+            </p>
+          </template>
+
+          <template v-else>
+            <div class="files-list" @click.stop>
+              <div class="files-header">
+                <span class="files-count">
+                  <LIcon size="18" class="mr-1">mdi-file-multiple</LIcon>
+                  {{ uploadedFiles.length }} {{ $t('scenarioManager.wizard.step1.filesSelected') }}
+                </span>
+                <v-btn size="small" variant="text" color="primary" @click.stop="triggerFileInput">
+                  <LIcon start size="16">mdi-plus</LIcon>
+                  {{ $t('scenarioManager.wizard.step1.addMore') }}
+                </v-btn>
+              </div>
+              <div class="files-scroll">
+                <div
+                  v-for="(file, index) in uploadedFiles"
+                  :key="file.name + index"
+                  class="file-item"
+                >
+                  <LIcon size="24" :color="getFileColor(file.name)">
+                    {{ getFileIcon(file.name) }}
+                  </LIcon>
+                  <div class="file-details">
+                    <span class="file-name">{{ file.name }}</span>
+                    <span class="file-size">{{ formatFileSize(file.size) }}</span>
+                  </div>
+                  <v-btn icon size="small" variant="text" @click.stop="removeFile(index)">
+                    <LIcon size="16">mdi-close</LIcon>
+                  </v-btn>
+                </div>
+              </div>
+              <div class="files-footer">
+                <span class="total-size">
+                  {{ $t('scenarioManager.wizard.step1.totalSize') }}: {{ formatFileSize(totalFileSize) }}
+                </span>
+                <v-btn size="small" variant="text" color="error" @click.stop="clearAllFiles">
+                  <LIcon start size="16">mdi-delete-outline</LIcon>
+                  {{ $t('scenarioManager.wizard.step1.clearAll') }}
+                </v-btn>
+              </div>
+            </div>
+          </template>
+        </div>
+
+        <!-- AI Analysis Section -->
+        <div v-if="uploadedFiles.length > 0" class="ai-analysis-section">
+          <div class="analysis-header">
+            <LIcon color="primary" class="mr-2">mdi-robot</LIcon>
+            <span>{{ $t('scenarioManager.wizard.step1.aiAnalysis') }}</span>
+          </div>
+
+          <div v-if="analyzing" class="analyzing-state">
+            <v-progress-circular indeterminate color="primary" size="24" class="mr-3" />
+            <span>{{ $t('scenarioManager.wizard.step1.analyzing') }}</span>
+          </div>
+
+          <div v-else-if="analysisResult" class="analysis-result">
+            <!-- AI-Powered Badge -->
+            <div v-if="analysisResult.aiPowered" class="ai-powered-badge mb-3">
+              <LIcon size="16" color="primary" class="mr-1">mdi-sparkles</LIcon>
+              <span>{{ $t('scenarioManager.wizard.step1.aiPoweredAnalysis') }}</span>
+              <v-chip v-if="analysisResult.tokensUsed" size="x-small" class="ml-2">
+                {{ analysisResult.tokensUsed }} tokens
+              </v-chip>
+            </div>
+
+            <!-- Files processed info -->
+            <div v-if="analysisResult.filesProcessed > 1" class="result-item files-processed">
+              <LIcon :color="analysisResult.errors > 0 ? 'warning' : 'success'" class="mr-2">
+                {{ analysisResult.errors > 0 ? 'mdi-file-alert' : 'mdi-file-check' }}
+              </LIcon>
+              <span>
+                <strong>{{ analysisResult.filesSuccessful }}</strong>/{{ analysisResult.filesProcessed }}
+                {{ $t('scenarioManager.wizard.step1.filesProcessed') }}
+              </span>
+            </div>
+
+            <div class="result-item">
+              <LIcon color="success" class="mr-2">mdi-database</LIcon>
+              <span><strong>{{ analysisResult.itemCount }}</strong> {{ $t('scenarioManager.wizard.step1.itemsDetected') }}</span>
+            </div>
+            <div class="result-item">
+              <LIcon color="info" class="mr-2">mdi-format-list-bulleted</LIcon>
+              <span><strong>{{ analysisResult.fieldsCount }}</strong> {{ $t('scenarioManager.wizard.step1.fieldsDetected') }}</span>
+            </div>
+
+            <!-- AI Suggested Type with Confidence -->
+            <div v-if="analysisResult.suggestedType" class="result-item suggested">
+              <LIcon color="warning" class="mr-2">mdi-lightbulb-outline</LIcon>
+              <span>
+                {{ $t('scenarioManager.wizard.step1.suggestedType') }}:
+                <strong>{{ getSuggestedTypeName(analysisResult.suggestedType) }}</strong>
+              </span>
+              <v-chip
+                v-if="analysisResult.suggestedTypeConfidence"
+                size="x-small"
+                :color="analysisResult.suggestedTypeConfidence > 0.8 ? 'success' : 'warning'"
+                class="ml-2"
+              >
+                {{ Math.round(analysisResult.suggestedTypeConfidence * 100) }}%
+              </v-chip>
+            </div>
+
+            <!-- AI Reasoning -->
+            <div v-if="analysisResult.suggestedTypeReasoning" class="ai-reasoning">
+              <LIcon size="14" color="grey" class="mr-1">mdi-information-outline</LIcon>
+              <span class="text-caption text-medium-emphasis">{{ analysisResult.suggestedTypeReasoning }}</span>
+            </div>
+
+            <!-- AI Suggestions Panel -->
+            <div v-if="aiSuggestions" class="ai-suggestions-panel mt-4">
+              <h5 class="ai-suggestions-title">
+                <LIcon size="18" color="primary" class="mr-2">mdi-robot</LIcon>
+                {{ $t('scenarioManager.wizard.step1.aiSuggestions') }}
+              </h5>
+
+              <!-- Suggested Name -->
+              <div class="suggestion-field">
+                <label class="suggestion-label">{{ $t('scenarioManager.wizard.step1.suggestedName') }}</label>
+                <v-text-field
+                  v-model="formData.scenario_name"
+                  variant="outlined"
+                  density="compact"
+                  hide-details
+                >
+                  <template #append-inner>
+                    <v-btn
+                      v-if="formData.scenario_name !== aiSuggestions.scenario_name && aiSuggestions.scenario_name"
+                      icon
+                      size="x-small"
+                      variant="text"
+                      @click="formData.scenario_name = aiSuggestions.scenario_name"
+                    >
+                      <LIcon size="16">mdi-restore</LIcon>
+                    </v-btn>
+                  </template>
+                </v-text-field>
+              </div>
+
+              <!-- Suggested Description -->
+              <div class="suggestion-field">
+                <label class="suggestion-label">{{ $t('scenarioManager.wizard.step1.suggestedDescription') }}</label>
+                <v-textarea
+                  v-model="formData.description"
+                  variant="outlined"
+                  density="compact"
+                  rows="2"
+                  hide-details
+                >
+                  <template #append-inner>
+                    <v-btn
+                      v-if="formData.description !== aiSuggestions.scenario_description && aiSuggestions.scenario_description"
+                      icon
+                      size="x-small"
+                      variant="text"
+                      @click="formData.description = aiSuggestions.scenario_description"
+                    >
+                      <LIcon size="16">mdi-restore</LIcon>
+                    </v-btn>
+                  </template>
+                </v-textarea>
+              </div>
+            </div>
+
+            <!-- Data Quality Warnings -->
+            <v-alert
+              v-if="analysisResult.dataQuality?.issues?.length"
+              type="warning"
+              variant="tonal"
+              density="compact"
+              class="mt-3"
+            >
+              <div class="text-subtitle-2 mb-1">{{ $t('scenarioManager.wizard.step1.dataQuality') }}</div>
+              <ul class="text-caption ma-0 pl-4">
+                <li v-for="(issue, idx) in analysisResult.dataQuality.issues" :key="idx">
+                  {{ issue }}
+                </li>
+              </ul>
+            </v-alert>
+
+            <!-- File breakdown (expandable) -->
+            <v-expansion-panels v-if="analysisResult.fileResults?.length > 1" variant="accordion" class="mt-3">
+              <v-expansion-panel>
+                <v-expansion-panel-title>
+                  <LIcon size="18" class="mr-2">mdi-file-document-multiple</LIcon>
+                  {{ $t('scenarioManager.wizard.step1.fileBreakdown') }}
+                </v-expansion-panel-title>
+                <v-expansion-panel-text>
+                  <div class="file-breakdown">
+                    <div
+                      v-for="(fr, idx) in analysisResult.fileResults"
+                      :key="idx"
+                      class="file-result-item"
+                      :class="{ error: !fr.success }"
+                    >
+                      <LIcon
+                        size="16"
+                        :color="fr.success ? 'success' : 'error'"
+                        class="mr-2"
+                      >
+                        {{ fr.success ? 'mdi-check-circle' : 'mdi-alert-circle' }}
+                      </LIcon>
+                      <span class="file-result-name">{{ fr.name }}</span>
+                      <span class="file-result-count">
+                        {{ fr.success ? `${fr.count} items` : fr.error }}
+                      </span>
+                    </div>
+                  </div>
+                </v-expansion-panel-text>
+              </v-expansion-panel>
+            </v-expansion-panels>
+
+            <!-- Sample Data Preview -->
+            <div v-if="analysisResult.sampleData?.length" class="sample-preview">
+              <h5>{{ $t('scenarioManager.wizard.step1.sampleData') }}</h5>
+              <div class="sample-cards">
+                <div v-for="(item, idx) in analysisResult.sampleData.slice(0, 3)" :key="idx" class="sample-card">
+                  <pre>{{ formatSample(item) }}</pre>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <LBtn
+            v-if="!analyzing && !analysisResult"
+            variant="primary"
+            @click="analyzeData"
+          >
+            <LIcon start>mdi-magnify-scan</LIcon>
+            {{ $t('scenarioManager.wizard.step1.startAnalysis') }}
+          </LBtn>
+        </div>
+      </div>
+
+      <!-- Step 2: Task Definition -->
+      <div v-if="currentStep === 1" class="step-content">
+        <h3 class="step-title">{{ $t('scenarioManager.wizard.step2.title') }}</h3>
+        <p class="step-description">{{ $t('scenarioManager.wizard.step2.description') }}</p>
+
+        <!-- AI Suggestion Banner -->
+        <v-alert
+          v-if="analysisResult?.suggestedType"
+          type="info"
+          variant="tonal"
+          class="mb-4"
+        >
+          <template v-slot:prepend>
+            <LIcon>mdi-robot</LIcon>
+          </template>
+          {{ $t('scenarioManager.wizard.step2.aiSuggests', { type: getSuggestedTypeName(analysisResult.suggestedType) }) }}
+        </v-alert>
+
+        <!-- Evaluation Type Selection -->
+        <div class="type-grid">
+          <div
+            v-for="type in evaluationTypes"
+            :key="type.id"
+            class="type-card"
+            :class="{
+              selected: formData.evalType === type.id,
+              suggested: analysisResult?.suggestedType === type.id
+            }"
+            @click="selectEvalType(type.id)"
+          >
+            <div class="type-icon" :style="{ backgroundColor: type.color + '20' }">
+              <LIcon :color="type.color" size="32">{{ type.icon }}</LIcon>
+            </div>
+            <h4 class="type-name">{{ type.name }}</h4>
+            <p class="type-description">{{ type.description }}</p>
+            <div class="type-check" v-if="formData.evalType === type.id">
+              <LIcon color="primary">mdi-check-circle</LIcon>
+            </div>
+            <LTag v-if="analysisResult?.suggestedType === type.id" variant="warning" size="small" class="suggested-tag">
+              {{ $t('scenarioManager.wizard.step2.recommended') }}
+            </LTag>
+          </div>
+        </div>
+
+        <!-- Basic Info Form -->
+        <div class="basic-info-form mt-6">
+          <h4 class="subsection-title">{{ $t('scenarioManager.wizard.step2.basicInfo') }}</h4>
+          <v-form ref="infoForm" v-model="infoFormValid">
+            <v-text-field
+              v-model="formData.scenario_name"
+              :label="$t('scenarioManager.wizard.step2.name')"
+              :rules="[rules.required, rules.minLength(3)]"
+              variant="outlined"
+              class="mb-3"
+            >
+              <template #append-inner>
+                <LAIFieldButton
+                  field-key="scenario.settings.name"
+                  :context="{
+                    scenario_type: formData.evalType,
+                    existing_description: formData.description,
+                    existing_name: formData.scenario_name
+                  }"
+                  icon-only
+                  size="small"
+                  @generated="formData.scenario_name = $event"
+                />
+              </template>
+            </v-text-field>
+
+            <v-textarea
+              v-model="formData.description"
+              :label="$t('scenarioManager.wizard.step2.descriptionField')"
+              :hint="$t('scenarioManager.wizard.step2.descriptionHint')"
+              variant="outlined"
+              rows="2"
+            >
+              <template #append-inner>
+                <LAIFieldButton
+                  field-key="scenario.settings.description"
+                  :context="{
+                    scenario_type: formData.evalType,
+                    scenario_name: formData.scenario_name,
+                    existing_description: formData.description
+                  }"
+                  icon-only
+                  size="small"
+                  @generated="formData.description = $event"
+                />
+              </template>
+            </v-textarea>
+          </v-form>
+        </div>
+      </div>
+
+      <!-- Step 3: Configuration -->
+      <div v-if="currentStep === 2" class="step-content">
+        <h3 class="step-title">{{ $t('scenarioManager.wizard.step3.title') }}</h3>
+        <p class="step-description">{{ $t('scenarioManager.wizard.step3.description') }}</p>
+
+        <!-- Evaluation Config Editor -->
+        <EvaluationConfigEditor
+          v-if="formData.evalType"
+          :eval-type="formData.evalType"
+          v-model="formData.evalConfig"
+          :show-presets="true"
+          :show-preview="true"
+        />
+
+        <v-divider class="my-6" />
+
+        <!-- Distribution Settings -->
+        <div class="distribution-settings">
+          <h4 class="subsection-title">{{ $t('scenarioManager.wizard.step3.distributionSettings') }}</h4>
+
+          <div class="config-section">
+            <LRadioGroup
+              v-model="formData.config.distribution_mode"
+              :label="$t('scenarioManager.wizard.step3.distribution')"
+              :options="distributionOptions"
+              row
+            />
+          </div>
+
+          <div class="config-section">
+            <LRadioGroup
+              v-model="formData.config.order_mode"
+              :label="$t('scenarioManager.wizard.step3.order')"
+              :options="orderOptions"
+              row
+            />
+          </div>
+
+          <div class="config-section">
+            <LSwitch
+              v-model="formData.config.enable_llm_evaluation"
+              :label="$t('scenarioManager.wizard.step3.enableLLM')"
+            />
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 4: Team (Users & AI) -->
+      <div v-if="currentStep === 3" class="step-content">
+        <h3 class="step-title">{{ $t('scenarioManager.wizard.step4.teamTitle') }}</h3>
+        <p class="step-description">{{ $t('scenarioManager.wizard.step4.teamDescription') }}</p>
+
+        <!-- AI Native Banner -->
+        <v-alert type="info" variant="tonal" class="mb-4">
+          <template v-slot:prepend>
+            <LIcon>mdi-robot</LIcon>
+          </template>
+          {{ $t('scenarioManager.wizard.step4.aiNativeHint') }}
+        </v-alert>
+
+        <v-row>
+          <!-- Human Evaluators -->
+          <v-col cols="12" md="6">
+            <div class="team-section">
+              <div class="team-section-header">
+                <LIcon color="primary" class="mr-2">mdi-account-group</LIcon>
+                <span class="font-weight-bold">{{ $t('scenarioManager.wizard.step4.humanEvaluators') }}</span>
+                <v-chip size="small" class="ml-2">{{ selectedUsers.length }}</v-chip>
+              </div>
+
+              <v-select
+                v-model="inviteRole"
+                :items="roleOptions"
+                :label="$t('scenarioManager.wizard.step4.defaultRole')"
+                variant="outlined"
+                density="compact"
+                class="mb-3"
+              />
+
+              <div v-if="loadingUsers" class="d-flex justify-center py-4">
+                <v-progress-circular indeterminate size="24" />
+              </div>
+
+              <div v-else class="user-list">
+                <div
+                  v-for="user in availableUsers"
+                  :key="user.id"
+                  class="user-item"
+                  :class="{ selected: isUserSelected(user) }"
+                  @click="toggleUser(user)"
+                >
+                  <LAvatar :user="user" size="32" class="mr-2" />
+                  <div class="user-info">
+                    <span class="user-name">{{ user.display_name || user.username }}</span>
+                    <span class="user-email">{{ user.email }}</span>
+                  </div>
+                  <LIcon v-if="isUserSelected(user)" color="primary">mdi-check-circle</LIcon>
+                </div>
+                <p v-if="availableUsers.length === 0" class="text-caption text-medium-emphasis pa-4 text-center">
+                  {{ $t('scenarioManager.wizard.step4.noUsersAvailable') }}
+                </p>
+              </div>
+            </div>
+          </v-col>
+
+          <!-- AI Evaluators (LLMs) -->
+          <v-col cols="12" md="6">
+            <div class="team-section team-section--ai">
+              <div class="team-section-header">
+                <LIcon color="accent" class="mr-2">mdi-robot-outline</LIcon>
+                <span class="font-weight-bold">{{ $t('scenarioManager.wizard.step4.aiEvaluators') }}</span>
+                <v-chip size="small" color="accent" class="ml-2">{{ selectedLLMs.length }}</v-chip>
+              </div>
+
+              <v-alert v-if="selectedLLMs.length > 0" type="success" variant="tonal" density="compact" class="mb-3">
+                <LIcon size="16" class="mr-1">mdi-lightning-bolt</LIcon>
+                {{ $t('scenarioManager.wizard.step4.aiAutoStart') }}
+              </v-alert>
+
+              <div v-if="loadingLLMs && loadingUserProviders" class="d-flex justify-center py-4">
+                <v-progress-circular indeterminate size="24" />
+              </div>
+
+              <div v-else class="llm-list">
+                <!-- System LLMs Section -->
+                <div v-if="availableLLMs.length > 0" class="llm-category">
+                  <div class="llm-category-header">
+                    <LIcon size="16" color="primary">mdi-server</LIcon>
+                    <span>{{ $t('scenarioManager.wizard.step4.systemModels') }}</span>
+                    <v-chip size="x-small" variant="outlined" class="ml-auto">{{ availableLLMs.length }}</v-chip>
+                  </div>
+                  <div
+                    v-for="llm in availableLLMs"
+                    :key="'system-' + llm.id"
+                    class="llm-item"
+                    :class="{ selected: isLLMSelected(llm) }"
+                    @click="toggleLLM(llm)"
+                  >
+                    <div class="llm-icon">
+                      <LIcon size="24" color="accent">mdi-chip</LIcon>
+                    </div>
+                    <div class="llm-info">
+                      <span class="llm-name">{{ llm.display_name || llm.model_id }}</span>
+                      <span class="llm-provider">{{ llm.provider || 'System' }}</span>
+                    </div>
+                    <LIcon v-if="isLLMSelected(llm)" color="accent">mdi-check-circle</LIcon>
+                  </div>
+                </div>
+
+                <!-- User Providers Section -->
+                <div v-if="userProviders.length > 0" class="llm-category mt-3">
+                  <div class="llm-category-header">
+                    <LIcon size="16" color="secondary">mdi-account-key</LIcon>
+                    <span>{{ $t('scenarioManager.wizard.step4.myProviders') }}</span>
+                    <v-chip size="x-small" variant="outlined" class="ml-auto">{{ userProviders.length }}</v-chip>
+                  </div>
+                  <div
+                    v-for="provider in userProviders"
+                    :key="'provider-' + provider.id"
+                    class="llm-item llm-item--user"
+                    :class="{ selected: isProviderSelected(provider) }"
+                    @click="toggleProvider(provider)"
+                  >
+                    <div class="llm-icon">
+                      <LIcon size="24" :color="getProviderIconColor(provider)">{{ getProviderIcon(provider) }}</LIcon>
+                    </div>
+                    <div class="llm-info">
+                      <span class="llm-name">{{ provider.name }}</span>
+                      <span class="llm-provider">
+                        {{ getProviderTypeLabel(provider.provider_type) }}
+                        <span v-if="provider.source !== 'own'" class="llm-shared-badge">
+                          <LIcon size="12">mdi-share-variant</LIcon>
+                          {{ provider.shared_by }}
+                        </span>
+                      </span>
+                    </div>
+                    <LIcon v-if="isProviderSelected(provider)" color="secondary">mdi-check-circle</LIcon>
+                  </div>
+                </div>
+
+                <!-- Empty State -->
+                <p v-if="availableLLMs.length === 0 && userProviders.length === 0" class="text-caption text-medium-emphasis pa-4 text-center">
+                  {{ $t('scenarioManager.wizard.step4.noLLMsAvailable') }}
+                  <br />
+                  <router-link to="/settings" class="text-primary">
+                    {{ $t('scenarioManager.wizard.step4.addProviderHint') }}
+                  </router-link>
+                </p>
+              </div>
+            </div>
+          </v-col>
+        </v-row>
+
+        <!-- Selected Summary -->
+        <div v-if="selectedUsers.length > 0 || selectedLLMs.length > 0 || selectedProviders.length > 0" class="selected-summary mt-4">
+          <h5 class="text-subtitle-2 mb-2">{{ $t('scenarioManager.wizard.step4.selectedSummary') }}</h5>
+          <div class="d-flex flex-wrap gap-2">
+            <v-chip
+              v-for="user in selectedUsers"
+              :key="'user-' + user.id"
+              closable
+              size="small"
+              @click:close="toggleUser(user)"
+            >
+              <LIcon size="16" class="mr-1">mdi-account</LIcon>
+              {{ user.display_name || user.username }}
+            </v-chip>
+            <v-chip
+              v-for="llm in selectedLLMs"
+              :key="'llm-' + llm.id"
+              closable
+              size="small"
+              color="accent"
+              @click:close="toggleLLM(llm)"
+            >
+              <LIcon size="16" class="mr-1">mdi-robot</LIcon>
+              {{ llm.display_name || llm.model_id }}
+            </v-chip>
+            <v-chip
+              v-for="provider in selectedProviders"
+              :key="'provider-' + provider.id"
+              closable
+              size="small"
+              color="secondary"
+              @click:close="toggleProvider(provider)"
+            >
+              <LIcon size="16" class="mr-1">{{ getProviderIcon(provider) }}</LIcon>
+              {{ provider.name }}
+            </v-chip>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 5: Summary & Create -->
+      <div v-if="currentStep === 4" class="step-content">
+        <h3 class="step-title">{{ $t('scenarioManager.wizard.step5.title') }}</h3>
+        <p class="step-description">{{ $t('scenarioManager.wizard.step5.description') }}</p>
+
+        <div class="summary-card">
+          <div class="summary-section">
+            <h5 class="summary-section-title">
+              <LIcon class="mr-2" color="primary">mdi-information-outline</LIcon>
+              {{ $t('scenarioManager.wizard.step5.basicInfo') }}
+            </h5>
+            <div class="summary-row">
+              <span class="summary-label">{{ $t('scenarioManager.wizard.step5.name') }}</span>
+              <span class="summary-value">{{ formData.scenario_name }}</span>
+            </div>
+            <div class="summary-row" v-if="formData.description">
+              <span class="summary-label">{{ $t('scenarioManager.wizard.step5.descriptionLabel') }}</span>
+              <span class="summary-value">{{ formData.description }}</span>
+            </div>
+          </div>
+
+          <v-divider class="my-3" />
+
+          <div class="summary-section">
+            <h5 class="summary-section-title">
+              <LIcon class="mr-2" color="primary">mdi-clipboard-check-outline</LIcon>
+              {{ $t('scenarioManager.wizard.step5.evaluationType') }}
+            </h5>
+            <div class="summary-row">
+              <span class="summary-label">{{ $t('scenarioManager.wizard.step5.type') }}</span>
+              <LTag :variant="selectedTypeInfo?.variant || 'default'">
+                <LIcon size="16" class="mr-1">{{ selectedTypeInfo?.icon }}</LIcon>
+                {{ selectedTypeInfo?.name }}
+              </LTag>
+            </div>
+            <div class="summary-row">
+              <span class="summary-label">{{ $t('scenarioManager.wizard.step5.preset') }}</span>
+              <span class="summary-value">{{ formData.evalConfig?.presetId || 'custom' }}</span>
+            </div>
+          </div>
+
+          <v-divider class="my-3" />
+
+          <div class="summary-section">
+            <h5 class="summary-section-title">
+              <LIcon class="mr-2" color="primary">mdi-database-outline</LIcon>
+              {{ $t('scenarioManager.wizard.step5.data') }}
+            </h5>
+            <div class="summary-row">
+              <span class="summary-label">{{ $t('scenarioManager.wizard.step5.files') }}</span>
+              <span class="summary-value">
+                {{ uploadedFiles.length > 0 ? `${uploadedFiles.length} ${$t('scenarioManager.wizard.step1.filesSelected')}` : '-' }}
+              </span>
+            </div>
+            <div class="summary-row" v-if="analysisResult">
+              <span class="summary-label">{{ $t('scenarioManager.wizard.step5.items') }}</span>
+              <span class="summary-value">{{ analysisResult.itemCount }}</span>
+            </div>
+          </div>
+
+          <v-divider class="my-3" />
+
+          <!-- Team Section -->
+          <div class="summary-section">
+            <h5 class="summary-section-title">
+              <LIcon class="mr-2" color="primary">mdi-account-group</LIcon>
+              {{ $t('scenarioManager.wizard.step5.team') }}
+            </h5>
+
+            <!-- Human Evaluators -->
+            <div class="summary-row">
+              <span class="summary-label">{{ $t('scenarioManager.wizard.step5.humanEvaluators') }}</span>
+              <span class="summary-value">
+                <span v-if="selectedUsers.length === 0" class="text-medium-emphasis">-</span>
+                <div v-else class="d-flex flex-wrap gap-1">
+                  <v-chip
+                    v-for="user in selectedUsers"
+                    :key="user.id"
+                    size="small"
+                    variant="tonal"
+                  >
+                    <LIcon size="14" class="mr-1">mdi-account</LIcon>
+                    {{ user.display_name || user.username }}
+                  </v-chip>
+                </div>
+              </span>
+            </div>
+
+            <!-- AI Evaluators -->
+            <div class="summary-row">
+              <span class="summary-label">{{ $t('scenarioManager.wizard.step5.aiEvaluators') }}</span>
+              <span class="summary-value">
+                <span v-if="selectedLLMs.length === 0" class="text-medium-emphasis">-</span>
+                <div v-else class="d-flex flex-wrap gap-1">
+                  <v-chip
+                    v-for="llm in selectedLLMs"
+                    :key="llm.id"
+                    size="small"
+                    variant="tonal"
+                    color="accent"
+                  >
+                    <LIcon size="14" class="mr-1">mdi-robot</LIcon>
+                    {{ llm.display_name || llm.model_id }}
+                  </v-chip>
+                </div>
+              </span>
+            </div>
+
+            <!-- User Providers -->
+            <div v-if="selectedProviders.length > 0" class="summary-row">
+              <span class="summary-label">{{ $t('scenarioManager.wizard.step5.userProviders') }}</span>
+              <span class="summary-value">
+                <div class="d-flex flex-wrap gap-1">
+                  <v-chip
+                    v-for="provider in selectedProviders"
+                    :key="provider.id"
+                    size="small"
+                    variant="tonal"
+                    color="secondary"
+                  >
+                    <LIcon size="14" class="mr-1">{{ getProviderIcon(provider) }}</LIcon>
+                    {{ provider.name }}
+                  </v-chip>
+                </div>
+              </span>
+            </div>
+
+            <!-- AI Auto-start Info -->
+            <v-alert
+              v-if="selectedLLMs.length > 0 || selectedProviders.length > 0"
+              type="info"
+              variant="tonal"
+              density="compact"
+              class="mt-3"
+            >
+              <LIcon size="16" class="mr-1">mdi-lightning-bolt</LIcon>
+              {{ $t('scenarioManager.wizard.step5.aiAutoStartInfo') }}
+            </v-alert>
+          </div>
+
+          <v-divider class="my-3" />
+
+          <div class="summary-section">
+            <h5 class="summary-section-title">
+              <LIcon class="mr-2" color="primary">mdi-cog-outline</LIcon>
+              {{ $t('scenarioManager.wizard.step5.settings') }}
+            </h5>
+            <div class="summary-row">
+              <span class="summary-label">{{ $t('scenarioManager.wizard.step5.distribution') }}</span>
+              <span class="summary-value">{{ $t(`scenarioManager.wizard.step3.distribution${capitalize(formData.config.distribution_mode)}`) }}</span>
+            </div>
+            <div class="summary-row">
+              <span class="summary-label">{{ $t('scenarioManager.wizard.step5.llmEnabled') }}</span>
+              <LIcon :color="formData.config.enable_llm_evaluation ? 'success' : 'grey'">
+                {{ formData.config.enable_llm_evaluation ? 'mdi-check-circle' : 'mdi-close-circle' }}
+              </LIcon>
+            </div>
+          </div>
+        </div>
+
+        <v-alert type="info" variant="tonal" class="mt-4">
+          <template v-slot:prepend>
+            <LIcon>mdi-information</LIcon>
+          </template>
+          {{ $t('scenarioManager.wizard.step5.nextSteps') }}
+        </v-alert>
+      </div>
+    </v-card-text>
+
+    <v-divider />
+
+    <!-- Actions -->
+    <v-card-actions class="wizard-actions">
+      <LBtn variant="text" @click="$emit('close')">
+        {{ $t('common.cancel') }}
+      </LBtn>
+      <v-spacer />
+      <LBtn
+        v-if="currentStep > 0"
+        variant="secondary"
+        @click="currentStep--"
+      >
+        <LIcon start>mdi-chevron-left</LIcon>
+        {{ $t('common.back') }}
+      </LBtn>
+      <LBtn
+        v-if="currentStep < steps.length - 1"
+        variant="primary"
+        :disabled="!canProceed"
+        @click="nextStep"
+      >
+        {{ $t('common.next') }}
+        <LIcon end>mdi-chevron-right</LIcon>
+      </LBtn>
+      <LBtn
+        v-else
+        variant="primary"
+        :loading="creating"
+        @click="createScenario"
+      >
+        <LIcon start>mdi-check</LIcon>
+        {{ $t('scenarioManager.wizard.create') }}
+      </LBtn>
+    </v-card-actions>
+  </v-card>
+</template>
+
+<script setup>
+import { ref, computed, watch, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
+import axios from 'axios'
+import { useScenarioManager } from '../composables/useScenarioManager'
+import EvaluationConfigEditor from './EvaluationConfigEditor.vue'
+import {
+  EVAL_TYPES,
+  ID_TYPE_MAP,
+  TYPE_INFO,
+  getDefaultConfig
+} from '../config/evaluationPresets'
+
+const emit = defineEmits(['close', 'created'])
+
+const { t, locale } = useI18n()
+const { createNewScenario, inviteUsers } = useScenarioManager()
+
+// Refs
+const fileInput = ref(null)
+const infoForm = ref(null)
+const infoFormValid = ref(false)
+
+// Stepper state
+const currentStep = ref(0)
+const creating = ref(false)
+
+// File upload state
+const uploadedFiles = ref([])
+const isDragging = ref(false)
+const analyzing = ref(false)
+const analysisResult = ref(null)
+const analyzedData = ref([]) // Merged data from all files
+const aiSuggestions = ref(null) // AI-generated suggestions
+
+// Team/User state
+const availableUsers = ref([])
+const selectedUsers = ref([])
+const loadingUsers = ref(false)
+const inviteRole = ref('EVALUATOR')
+
+// LLM state - System models (admin-configured)
+const availableLLMs = ref([])
+const selectedLLMs = ref([])
+const loadingLLMs = ref(false)
+
+// User Provider state - User's own and shared providers
+const userProviders = ref([])
+const selectedProviders = ref([])
+const loadingUserProviders = ref(false)
+
+// Steps definition
+const steps = computed(() => [
+  { key: 'data', label: t('scenarioManager.wizard.steps.data'), icon: 'mdi-database-import-outline' },
+  { key: 'task', label: t('scenarioManager.wizard.steps.task'), icon: 'mdi-clipboard-list-outline' },
+  { key: 'config', label: t('scenarioManager.wizard.steps.config'), icon: 'mdi-tune' },
+  { key: 'team', label: t('scenarioManager.wizard.steps.team'), icon: 'mdi-account-group' },
+  { key: 'summary', label: t('scenarioManager.wizard.steps.summary'), icon: 'mdi-check-all' }
+])
+
+// Evaluation types
+const evaluationTypes = computed(() => [
+  {
+    id: EVAL_TYPES.RATING,
+    name: t('scenarioManager.types.rating'),
+    description: t('scenarioManager.typeDescriptions.rating'),
+    icon: TYPE_INFO[EVAL_TYPES.RATING].icon,
+    color: TYPE_INFO[EVAL_TYPES.RATING].color,
+    variant: 'warning'
+  },
+  {
+    id: EVAL_TYPES.RANKING,
+    name: t('scenarioManager.types.ranking'),
+    description: t('scenarioManager.typeDescriptions.ranking'),
+    icon: TYPE_INFO[EVAL_TYPES.RANKING].icon,
+    color: TYPE_INFO[EVAL_TYPES.RANKING].color,
+    variant: 'success'
+  },
+  {
+    id: EVAL_TYPES.LABELING,
+    name: t('scenarioManager.types.labeling'),
+    description: t('scenarioManager.typeDescriptions.labeling'),
+    icon: TYPE_INFO[EVAL_TYPES.LABELING].icon,
+    color: TYPE_INFO[EVAL_TYPES.LABELING].color,
+    variant: 'danger'
+  },
+  {
+    id: EVAL_TYPES.COMPARISON,
+    name: t('scenarioManager.types.comparison'),
+    description: t('scenarioManager.typeDescriptions.comparison'),
+    icon: TYPE_INFO[EVAL_TYPES.COMPARISON].icon,
+    color: TYPE_INFO[EVAL_TYPES.COMPARISON].color,
+    variant: 'primary'
+  }
+])
+
+// Form data
+const formData = ref({
+  evalType: null,
+  scenario_name: '',
+  description: '',
+  evalConfig: null,
+  config: {
+    distribution_mode: 'all',
+    order_mode: 'random',
+    enable_llm_evaluation: true
+  }
+})
+
+// Validation rules
+const rules = {
+  required: v => !!v || t('validation.required'),
+  minLength: (len) => v => (v && v.length >= len) || t('validation.minLength', { length: len })
+}
+
+// Computed
+const selectedTypeInfo = computed(() => {
+  return evaluationTypes.value.find(t => t.id === formData.value.evalType)
+})
+
+// Radio options for distribution settings
+const distributionOptions = computed(() => [
+  { value: 'all', label: t('scenarioManager.wizard.step3.distributionAll') },
+  { value: 'random', label: t('scenarioManager.wizard.step3.distributionRandom') },
+  { value: 'sequential', label: t('scenarioManager.wizard.step3.distributionSequential') }
+])
+
+const orderOptions = computed(() => [
+  { value: 'fixed', label: t('scenarioManager.wizard.step3.orderFixed') },
+  { value: 'random', label: t('scenarioManager.wizard.step3.orderRandom') }
+])
+
+// Computed for total file size
+const totalFileSize = computed(() => {
+  return uploadedFiles.value.reduce((sum, file) => sum + file.size, 0)
+})
+
+const canProceed = computed(() => {
+  if (currentStep.value === 0) {
+    // Step 1: Need files and analysis
+    return uploadedFiles.value.length > 0 && analysisResult.value !== null
+  }
+  if (currentStep.value === 1) {
+    // Step 2: Need type and name
+    return formData.value.evalType !== null &&
+           formData.value.scenario_name &&
+           formData.value.scenario_name.length >= 3
+  }
+  if (currentStep.value === 2) {
+    // Step 3: Need config
+    return formData.value.evalConfig !== null
+  }
+  if (currentStep.value === 3) {
+    // Step 4: Team - need at least one evaluator (human or LLM)
+    return selectedUsers.value.length > 0 || selectedLLMs.value.length > 0
+  }
+  return true
+})
+
+// Role options for user invitations
+const roleOptions = [
+  { value: 'EVALUATOR', title: 'Evaluator' },
+  { value: 'RATER', title: 'Rater' }
+]
+
+// Methods
+function capitalize(str) {
+  if (!str) return ''
+  return str.charAt(0).toUpperCase() + str.slice(1)
+}
+
+function goToStep(index) {
+  if (index < currentStep.value) {
+    currentStep.value = index
+  }
+}
+
+function nextStep() {
+  if (currentStep.value === 1 && infoForm.value) {
+    infoForm.value.validate()
+    if (!infoFormValid.value) return
+  }
+  currentStep.value++
+}
+
+// File handling
+function triggerFileInput() {
+  fileInput.value?.click()
+}
+
+function handleFileSelect(event) {
+  const files = Array.from(event.target.files || [])
+  processFiles(files)
+  // Reset input so same files can be selected again
+  if (fileInput.value) {
+    fileInput.value.value = ''
+  }
+}
+
+function handleFileDrop(event) {
+  isDragging.value = false
+  const files = Array.from(event.dataTransfer?.files || [])
+  processFiles(files)
+}
+
+function processFiles(files) {
+  const validTypes = ['.json', '.csv', '.xlsx', '.xls']
+  const validFiles = files.filter(file => {
+    const ext = '.' + file.name.split('.').pop().toLowerCase()
+    return validTypes.includes(ext)
+  })
+
+  if (validFiles.length === 0) {
+    console.error('No valid files selected')
+    return
+  }
+
+  // Add to existing files, avoiding duplicates by name
+  const existingNames = new Set(uploadedFiles.value.map(f => f.name))
+  const newFiles = validFiles.filter(f => !existingNames.has(f.name))
+
+  uploadedFiles.value = [...uploadedFiles.value, ...newFiles]
+  analysisResult.value = null
+  analyzedData.value = []
+}
+
+function removeFile(index) {
+  uploadedFiles.value.splice(index, 1)
+  if (uploadedFiles.value.length === 0) {
+    analysisResult.value = null
+    analyzedData.value = []
+  }
+}
+
+function clearAllFiles() {
+  uploadedFiles.value = []
+  analysisResult.value = null
+  analyzedData.value = []
+}
+
+// Fetch available users for invitation
+async function fetchAvailableUsers() {
+  loadingUsers.value = true
+  try {
+    const response = await axios.get('/api/admin/available_users_for_scenario')
+    availableUsers.value = response.data.users || response.data || []
+  } catch (error) {
+    console.error('Failed to fetch users:', error)
+    availableUsers.value = []
+  } finally {
+    loadingUsers.value = false
+  }
+}
+
+// Fetch available LLM models for evaluation (chat models only, not embedding models)
+async function fetchAvailableLLMs() {
+  loadingLLMs.value = true
+  try {
+    // Filter by model_type=llm to exclude embedding/reranker models
+    const response = await axios.get('/api/llm/models/available', {
+      params: { model_type: 'llm' }
+    })
+    availableLLMs.value = (response.data.models || []).filter(m => m.is_active)
+  } catch (error) {
+    console.error('Failed to fetch LLM models:', error)
+    availableLLMs.value = []
+  } finally {
+    loadingLLMs.value = false
+  }
+}
+
+// Fetch user's own and shared LLM providers
+async function fetchUserProviders() {
+  loadingUserProviders.value = true
+  try {
+    const response = await axios.get('/api/user/providers/available')
+    userProviders.value = (response.data.providers || []).filter(p => p.is_active)
+  } catch (error) {
+    console.error('Failed to fetch user providers:', error)
+    userProviders.value = []
+  } finally {
+    loadingUserProviders.value = false
+  }
+}
+
+// Toggle user selection
+function toggleUser(user) {
+  const index = selectedUsers.value.findIndex(u => u.id === user.id)
+  if (index >= 0) {
+    selectedUsers.value.splice(index, 1)
+  } else {
+    selectedUsers.value.push({ ...user, role: inviteRole.value })
+  }
+}
+
+// Toggle LLM selection
+function toggleLLM(llm) {
+  const index = selectedLLMs.value.findIndex(l => l.id === llm.id)
+  if (index >= 0) {
+    selectedLLMs.value.splice(index, 1)
+  } else {
+    selectedLLMs.value.push(llm)
+  }
+}
+
+// Check if user is selected
+function isUserSelected(user) {
+  return selectedUsers.value.some(u => u.id === user.id)
+}
+
+// Check if LLM is selected
+function isLLMSelected(llm) {
+  return selectedLLMs.value.some(l => l.id === llm.id)
+}
+
+// Toggle user provider selection
+function toggleProvider(provider) {
+  const index = selectedProviders.value.findIndex(p => p.id === provider.id)
+  if (index >= 0) {
+    selectedProviders.value.splice(index, 1)
+  } else {
+    selectedProviders.value.push(provider)
+  }
+}
+
+// Check if user provider is selected
+function isProviderSelected(provider) {
+  return selectedProviders.value.some(p => p.id === provider.id)
+}
+
+// Get provider icon based on type
+function getProviderIcon(provider) {
+  const icons = {
+    openai: 'mdi-creation',
+    anthropic: 'mdi-head-snowflake',
+    gemini: 'mdi-google',
+    azure: 'mdi-microsoft-azure',
+    ollama: 'mdi-llama',
+    litellm: 'mdi-api',
+    custom: 'mdi-cog'
+  }
+  return icons[provider.provider_type] || 'mdi-api'
+}
+
+// Get provider icon color based on type
+function getProviderIconColor(provider) {
+  const colors = {
+    openai: '#10a37f',
+    anthropic: '#d4a574',
+    gemini: '#4285f4',
+    azure: '#0078d4',
+    ollama: '#ffffff',
+    litellm: '#ffc107',
+    custom: '#9e9e9e'
+  }
+  return colors[provider.provider_type] || 'secondary'
+}
+
+// Get human-readable provider type label
+function getProviderTypeLabel(providerType) {
+  const labels = {
+    openai: 'OpenAI',
+    anthropic: 'Anthropic',
+    gemini: 'Google Gemini',
+    azure: 'Azure OpenAI',
+    ollama: 'Ollama',
+    litellm: 'LiteLLM',
+    custom: 'Custom'
+  }
+  return labels[providerType] || providerType
+}
+
+function getFileIcon(filename) {
+  const ext = filename.split('.').pop().toLowerCase()
+  switch (ext) {
+    case 'json': return 'mdi-code-json'
+    case 'csv': return 'mdi-file-delimited'
+    case 'xlsx':
+    case 'xls': return 'mdi-file-excel'
+    default: return 'mdi-file'
+  }
+}
+
+function getFileColor(filename) {
+  const ext = filename.split('.').pop().toLowerCase()
+  switch (ext) {
+    case 'json': return '#f5a623'
+    case 'csv': return '#4caf50'
+    case 'xlsx':
+    case 'xls': return '#217346'
+    default: return 'grey'
+  }
+}
+
+function formatFileSize(bytes) {
+  if (bytes < 1024) return bytes + ' B'
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB'
+  return (bytes / (1024 * 1024)).toFixed(1) + ' MB'
+}
+
+// AI Analysis
+async function analyzeData() {
+  if (uploadedFiles.value.length === 0) return
+
+  analyzing.value = true
+  aiSuggestions.value = null
+  const allData = []
+  const fileResults = []
+  let totalErrors = 0
+
+  try {
+    // Step 1: Parse all files locally
+    for (const file of uploadedFiles.value) {
+      try {
+        const text = await readFileContent(file)
+        let data = []
+
+        const ext = file.name.split('.').pop().toLowerCase()
+        if (ext === 'json') {
+          data = JSON.parse(text)
+          if (!Array.isArray(data)) {
+            data = data.data || data.items || data.results || [data]
+          }
+        } else if (ext === 'csv') {
+          data = parseCSV(text)
+        }
+
+        if (Array.isArray(data)) {
+          allData.push(...data)
+          fileResults.push({ name: file.name, count: data.length, success: true })
+        } else {
+          allData.push(data)
+          fileResults.push({ name: file.name, count: 1, success: true })
+        }
+      } catch (fileError) {
+        console.error(`Error processing ${file.name}:`, fileError)
+        fileResults.push({ name: file.name, count: 0, success: false, error: fileError.message })
+        totalErrors++
+      }
+    }
+
+    // Store merged data for later use
+    analyzedData.value = allData
+
+    // Step 2: Call AI analysis endpoint
+    try {
+      const response = await axios.post('/api/ai-assist/analyze-scenario-data', {
+        data: allData,
+        filename: uploadedFiles.value[0]?.name || 'data',
+        file_count: uploadedFiles.value.length
+      })
+
+      if (response.data.success && response.data.analysis) {
+        const { analysis } = response.data
+
+        // Store AI suggestions
+        aiSuggestions.value = analysis.suggestions
+
+        // Build analysis result with AI data
+        analysisResult.value = {
+          itemCount: analysis.data_summary.item_count,
+          fieldsCount: analysis.data_summary.fields.length,
+          fields: analysis.data_summary.fields,
+          suggestedType: analysis.suggestions?.eval_type || EVAL_TYPES.RATING,
+          suggestedTypeConfidence: analysis.suggestions?.eval_type_confidence,
+          suggestedTypeReasoning: analysis.suggestions?.eval_type_reasoning,
+          sampleData: analysis.data_summary.sample_items,
+          fileResults,
+          filesProcessed: uploadedFiles.value.length,
+          filesSuccessful: uploadedFiles.value.length - totalErrors,
+          errors: totalErrors,
+          dataQuality: analysis.data_quality,
+          tokensUsed: response.data.tokens_used,
+          aiPowered: true
+        }
+
+        // Auto-apply AI suggestions
+        if (analysis.suggestions?.eval_type) {
+          formData.value.evalType = analysis.suggestions.eval_type
+        }
+        if (analysis.suggestions?.scenario_name) {
+          formData.value.scenario_name = analysis.suggestions.scenario_name
+        }
+        if (analysis.suggestions?.scenario_description) {
+          formData.value.description = analysis.suggestions.scenario_description
+        }
+
+        return // Success - exit early
+      }
+    } catch (apiError) {
+      console.warn('AI analysis API failed, falling back to local analysis:', apiError)
+    }
+
+    // Step 3: Fallback to local heuristic analysis
+    performLocalAnalysis(allData, fileResults, totalErrors)
+
+  } catch (error) {
+    console.error('Analysis error:', error)
+    analysisResult.value = {
+      itemCount: 0,
+      fieldsCount: 0,
+      fields: [],
+      suggestedType: EVAL_TYPES.RATING,
+      error: error.message,
+      fileResults,
+      filesProcessed: uploadedFiles.value.length,
+      filesSuccessful: 0,
+      errors: uploadedFiles.value.length,
+      aiPowered: false
+    }
+  } finally {
+    analyzing.value = false
+  }
+}
+
+// Local heuristic analysis (fallback when AI is unavailable)
+function performLocalAnalysis(allData, fileResults, totalErrors) {
+  const itemCount = allData.length
+  const sampleItem = allData[0]
+  const fields = sampleItem ? Object.keys(sampleItem) : []
+
+  // Simple heuristic type suggestion based on field names
+  let suggestedType = EVAL_TYPES.RATING
+  if (fields.some(f => f.toLowerCase().includes('label') || f.toLowerCase().includes('category') || f.toLowerCase().includes('class'))) {
+    suggestedType = EVAL_TYPES.LABELING
+  } else if (fields.some(f => f.toLowerCase().includes('compare') || f.toLowerCase().includes('versus') || f.toLowerCase().includes('chosen'))) {
+    suggestedType = EVAL_TYPES.COMPARISON
+  } else if (fields.some(f => f.toLowerCase().includes('rank') || f.toLowerCase().includes('order') || f.toLowerCase().includes('bucket'))) {
+    suggestedType = EVAL_TYPES.RANKING
+  }
+  // Default is RATING (including for message/email data which uses rating with custom dimensions)
+
+  analysisResult.value = {
+    itemCount,
+    fieldsCount: fields.length,
+    fields,
+    suggestedType,
+    sampleData: allData.slice(0, 3),
+    fileResults,
+    filesProcessed: uploadedFiles.value.length,
+    filesSuccessful: uploadedFiles.value.length - totalErrors,
+    errors: totalErrors,
+    aiPowered: false
+  }
+
+  // Auto-select suggested type
+  formData.value.evalType = suggestedType
+}
+
+function readFileContent(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = (e) => resolve(e.target.result)
+    reader.onerror = (e) => reject(e)
+    reader.readAsText(file)
+  })
+}
+
+function parseCSV(text) {
+  const lines = text.trim().split('\n')
+  if (lines.length < 2) return []
+
+  const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''))
+  const data = []
+
+  for (let i = 1; i < lines.length; i++) {
+    const values = lines[i].split(',').map(v => v.trim().replace(/^"|"$/g, ''))
+    const obj = {}
+    headers.forEach((h, idx) => {
+      obj[h] = values[idx] || ''
+    })
+    data.push(obj)
+  }
+
+  return data
+}
+
+function formatSample(item) {
+  const maxLength = 100
+  const str = JSON.stringify(item, null, 2)
+  if (str.length > maxLength) {
+    return str.substring(0, maxLength) + '...'
+  }
+  return str
+}
+
+function getSuggestedTypeName(typeId) {
+  const info = TYPE_INFO[typeId]
+  if (!info) return typeId
+  return info.name[locale.value] || info.name.de || typeId
+}
+
+function selectEvalType(typeId) {
+  formData.value.evalType = typeId
+  // Initialize default config for the type
+  formData.value.evalConfig = {
+    presetId: null,
+    config: getDefaultConfig(typeId)
+  }
+}
+
+// Create scenario
+async function createScenario() {
+  creating.value = true
+  try {
+    // Map eval type to function_type_id for backend compatibility
+    const functionTypeId = ID_TYPE_MAP[formData.value.evalType] || 2
+
+    const scenarioPayload = {
+      scenario_name: formData.value.scenario_name,
+      function_type_id: functionTypeId,
+      description: formData.value.description,
+      config_json: {
+        ...formData.value.config,
+        eval_type: formData.value.evalType,
+        eval_config: formData.value.evalConfig,
+        // Include selected LLMs for AI evaluation
+        selected_llms: selectedLLMs.value.map(l => ({
+          id: l.id,
+          model_id: l.model_id,
+          display_name: l.display_name
+        }))
+      }
+    }
+
+    const scenario = await createNewScenario(scenarioPayload)
+
+    // Invite selected human users
+    if (selectedUsers.value.length > 0 && scenario?.id) {
+      // Group users by role
+      const evaluators = selectedUsers.value.filter(u => u.role === 'EVALUATOR').map(u => u.id)
+      const raters = selectedUsers.value.filter(u => u.role === 'RATER').map(u => u.id)
+
+      if (evaluators.length > 0) {
+        await inviteUsers(scenario.id, evaluators, 'EVALUATOR')
+      }
+      if (raters.length > 0) {
+        await inviteUsers(scenario.id, raters, 'RATER')
+      }
+    }
+
+    // If we have file data, we could import it here
+    // For now, just emit the created scenario
+    emit('created', scenario)
+  } catch (error) {
+    console.error('Failed to create scenario:', error)
+  } finally {
+    creating.value = false
+  }
+}
+
+// Watch eval type changes to update config
+watch(() => formData.value.evalType, (newType) => {
+  if (newType && !formData.value.evalConfig) {
+    formData.value.evalConfig = {
+      presetId: null,
+      config: getDefaultConfig(newType)
+    }
+  }
+})
+
+// Fetch data on mount
+onMounted(() => {
+  fetchAvailableUsers()
+  fetchAvailableLLMs()
+  fetchUserProviders()
+})
+</script>
+
+<style scoped>
+.scenario-wizard {
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.wizard-header {
+  display: flex;
+  align-items: center;
+  padding: 16px 24px;
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+/* AI Badge */
+.ai-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 16px;
+  background: linear-gradient(90deg, rgba(176, 202, 151, 0.1), rgba(136, 196, 200, 0.1));
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: rgb(var(--v-theme-primary));
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Stepper */
+.wizard-stepper {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  padding: 16px 24px;
+  background-color: rgba(var(--v-theme-on-surface), 0.02);
+}
+
+.step {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 0.875rem;
+  color: rgba(var(--v-theme-on-surface), 0.5);
+  transition: all 0.2s;
+}
+
+.step.clickable {
+  cursor: pointer;
+}
+
+.step.clickable:hover {
+  background-color: rgba(var(--v-theme-primary), 0.08);
+}
+
+.step.active {
+  background-color: rgba(var(--v-theme-primary), 0.12);
+  color: rgb(var(--v-theme-primary));
+}
+
+.step.completed {
+  color: rgb(var(--v-theme-primary));
+}
+
+.step-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background-color: rgba(var(--v-theme-on-surface), 0.1);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.step.active .step-indicator,
+.step.completed .step-indicator {
+  background-color: rgb(var(--v-theme-primary));
+  color: white;
+}
+
+.step-label {
+  font-weight: 500;
+}
+
+/* Content */
+.wizard-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px !important;
+}
+
+.step-content {
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.step-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: rgb(var(--v-theme-on-surface));
+}
+
+.step-description {
+  font-size: 0.9rem;
+  color: rgba(var(--v-theme-on-surface), 0.6);
+  margin-bottom: 24px;
+}
+
+.subsection-title {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 12px;
+  color: rgb(var(--v-theme-on-surface));
+}
+
+/* Upload Zone */
+.upload-zone {
+  border: 2px dashed rgba(var(--v-theme-on-surface), 0.2);
+  border-radius: 12px;
+  padding: 40px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  background-color: rgba(var(--v-theme-on-surface), 0.02);
+}
+
+.upload-zone:hover,
+.upload-zone.drag-over {
+  border-color: rgb(var(--v-theme-primary));
+  background-color: rgba(var(--v-theme-primary), 0.05);
+}
+
+.upload-zone.has-files {
+  border-style: solid;
+  border-color: rgb(var(--v-theme-primary));
+  padding: 16px;
+  cursor: default;
+}
+
+.upload-icon {
+  margin-bottom: 12px;
+}
+
+.upload-text {
+  font-size: 1rem;
+  font-weight: 500;
+  margin-bottom: 4px;
+  color: rgb(var(--v-theme-on-surface));
+}
+
+.upload-hint {
+  font-size: 0.8rem;
+  color: rgba(var(--v-theme-on-surface), 0.5);
+  margin: 0;
+}
+
+.upload-hint-multi {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  color: rgb(var(--v-theme-primary));
+  margin-top: 12px;
+}
+
+/* Files List */
+.files-list {
+  width: 100%;
+  text-align: left;
+}
+
+.files-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.1);
+}
+
+.files-count {
+  display: flex;
+  align-items: center;
+  font-weight: 600;
+  color: rgb(var(--v-theme-primary));
+}
+
+.files-scroll {
+  max-height: 200px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.file-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  background-color: rgba(var(--v-theme-surface), 1);
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  border-radius: 8px;
+  transition: all 0.15s;
+}
+
+.file-item:hover {
+  background-color: rgba(var(--v-theme-on-surface), 0.04);
+}
+
+.file-details {
+  flex: 1;
+  text-align: left;
+  min-width: 0;
+}
+
+.file-name {
+  display: block;
+  font-weight: 500;
+  font-size: 0.875rem;
+  color: rgb(var(--v-theme-on-surface));
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.file-size {
+  font-size: 0.75rem;
+  color: rgba(var(--v-theme-on-surface), 0.5);
+}
+
+.files-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 12px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(var(--v-theme-on-surface), 0.1);
+}
+
+.total-size {
+  font-size: 0.8rem;
+  color: rgba(var(--v-theme-on-surface), 0.6);
+}
+
+/* File breakdown in analysis */
+.file-breakdown {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.file-result-item {
+  display: flex;
+  align-items: center;
+  padding: 6px 8px;
+  font-size: 0.8rem;
+  border-radius: 4px;
+}
+
+.file-result-item.error {
+  background-color: rgba(var(--v-theme-error), 0.08);
+}
+
+.file-result-name {
+  flex: 1;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.file-result-count {
+  font-size: 0.75rem;
+  color: rgba(var(--v-theme-on-surface), 0.6);
+}
+
+.files-processed {
+  padding-bottom: 8px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.1);
+}
+
+/* AI Analysis */
+.ai-analysis-section {
+  margin-top: 20px;
+  padding: 16px;
+  background-color: rgba(var(--v-theme-primary), 0.05);
+  border-radius: 12px;
+  border: 1px solid rgba(var(--v-theme-primary), 0.2);
+}
+
+.analysis-header {
+  display: flex;
+  align-items: center;
+  font-weight: 600;
+  margin-bottom: 12px;
+  color: rgb(var(--v-theme-primary));
+}
+
+.analyzing-state {
+  display: flex;
+  align-items: center;
+  color: rgba(var(--v-theme-on-surface), 0.7);
+}
+
+.analysis-result {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.result-item {
+  display: flex;
+  align-items: center;
+  font-size: 0.9rem;
+}
+
+.result-item.suggested {
+  margin-top: 8px;
+  padding: 8px 12px;
+  background-color: rgba(var(--v-theme-warning), 0.1);
+  border-radius: 8px;
+}
+
+.sample-preview {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(var(--v-theme-on-surface), 0.1);
+}
+
+.sample-preview h5 {
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.sample-cards {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+}
+
+.sample-card {
+  flex-shrink: 0;
+  padding: 8px 12px;
+  background-color: rgba(var(--v-theme-surface), 1);
+  border-radius: 6px;
+  font-size: 0.75rem;
+}
+
+.sample-card pre {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: monospace;
+}
+
+/* Type Grid */
+.type-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 16px;
+}
+
+.type-card {
+  position: relative;
+  padding: 20px;
+  border: 2px solid rgba(var(--v-theme-on-surface), 0.1);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.type-card:hover {
+  border-color: rgba(var(--v-theme-primary), 0.3);
+  background-color: rgba(var(--v-theme-primary), 0.02);
+}
+
+.type-card.selected {
+  border-color: rgb(var(--v-theme-primary));
+  background-color: rgba(var(--v-theme-primary), 0.05);
+}
+
+.type-card.suggested {
+  border-color: rgba(var(--v-theme-warning), 0.5);
+}
+
+.type-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 12px;
+  margin-bottom: 12px;
+}
+
+.type-name {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 6px;
+  color: rgb(var(--v-theme-on-surface));
+}
+
+.type-description {
+  font-size: 0.8rem;
+  color: rgba(var(--v-theme-on-surface), 0.6);
+  line-height: 1.4;
+  margin: 0;
+}
+
+.type-check {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+}
+
+.suggested-tag {
+  position: absolute;
+  top: -8px;
+  left: 12px;
+}
+
+/* Config Section */
+.config-section {
+  margin-bottom: 20px;
+}
+
+.config-label {
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: rgb(var(--v-theme-on-surface));
+}
+
+/* Summary */
+.summary-card {
+  background-color: rgba(var(--v-theme-on-surface), 0.03);
+  border-radius: 12px;
+  padding: 20px;
+}
+
+.summary-section {
+  margin-bottom: 4px;
+}
+
+.summary-section-title {
+  display: flex;
+  align-items: center;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: rgb(var(--v-theme-on-surface));
+  margin-bottom: 12px;
+}
+
+.summary-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+}
+
+.summary-label {
+  font-size: 0.875rem;
+  color: rgba(var(--v-theme-on-surface), 0.6);
+}
+
+.summary-value {
+  font-weight: 500;
+  color: rgb(var(--v-theme-on-surface));
+}
+
+/* Actions */
+.wizard-actions {
+  padding: 16px 24px;
+}
+
+/* Team Step Styles */
+.team-section {
+  background-color: rgba(var(--v-theme-on-surface), 0.02);
+  border-radius: 12px;
+  padding: 16px;
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+}
+
+.team-section--ai {
+  background-color: rgba(var(--v-theme-accent), 0.03);
+  border-color: rgba(var(--v-theme-accent), 0.15);
+}
+
+.team-section-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+}
+
+/* User List */
+.user-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.user-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background-color: rgba(var(--v-theme-surface), 1);
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.user-item:hover {
+  background-color: rgba(var(--v-theme-primary), 0.05);
+  border-color: rgba(var(--v-theme-primary), 0.2);
+}
+
+.user-item.selected {
+  background-color: rgba(var(--v-theme-primary), 0.1);
+  border-color: rgb(var(--v-theme-primary));
+}
+
+.user-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.user-name {
+  font-weight: 500;
+  font-size: 0.875rem;
+  color: rgb(var(--v-theme-on-surface));
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.user-email {
+  font-size: 0.75rem;
+  color: rgba(var(--v-theme-on-surface), 0.5);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* LLM List */
+.llm-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.llm-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background-color: rgba(var(--v-theme-surface), 1);
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.llm-item:hover {
+  background-color: rgba(var(--v-theme-accent), 0.05);
+  border-color: rgba(var(--v-theme-accent), 0.2);
+}
+
+.llm-item.selected {
+  background-color: rgba(var(--v-theme-accent), 0.1);
+  border-color: rgb(var(--v-theme-accent));
+}
+
+.llm-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  background-color: rgba(var(--v-theme-accent), 0.1);
+  border-radius: 8px;
+}
+
+.llm-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.llm-name {
+  font-weight: 500;
+  font-size: 0.875rem;
+  color: rgb(var(--v-theme-on-surface));
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.llm-provider {
+  font-size: 0.75rem;
+  color: rgba(var(--v-theme-on-surface), 0.5);
+}
+
+/* LLM Category Sections */
+.llm-category {
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  border-radius: 12px;
+  padding: 8px;
+  background-color: rgba(var(--v-theme-surface-variant), 0.3);
+}
+
+.llm-category-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  margin-bottom: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: rgba(var(--v-theme-on-surface), 0.7);
+}
+
+/* User Provider Items */
+.llm-item--user .llm-icon {
+  background-color: rgba(var(--v-theme-secondary), 0.1);
+}
+
+.llm-item--user:hover {
+  background-color: rgba(var(--v-theme-secondary), 0.05);
+  border-color: rgba(var(--v-theme-secondary), 0.2);
+}
+
+.llm-item--user.selected {
+  background-color: rgba(var(--v-theme-secondary), 0.1);
+  border-color: rgb(var(--v-theme-secondary));
+}
+
+/* Shared Badge */
+.llm-shared-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: 6px;
+  padding: 1px 6px;
+  background-color: rgba(var(--v-theme-info), 0.1);
+  border-radius: 10px;
+  font-size: 0.65rem;
+  color: rgb(var(--v-theme-info));
+}
+
+/* Selected Summary */
+.selected-summary {
+  background-color: rgba(var(--v-theme-on-surface), 0.03);
+  border-radius: 8px;
+  padding: 12px 16px;
+}
+
+/* AI Analysis Styles */
+.ai-powered-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  background: linear-gradient(90deg, rgba(176, 202, 151, 0.15), rgba(136, 196, 200, 0.15));
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: rgb(var(--v-theme-primary));
+}
+
+.ai-reasoning {
+  display: flex;
+  align-items: flex-start;
+  padding: 8px 12px;
+  margin-top: 8px;
+  background-color: rgba(var(--v-theme-on-surface), 0.03);
+  border-radius: 6px;
+  font-style: italic;
+}
+
+.ai-suggestions-panel {
+  background-color: rgba(var(--v-theme-primary), 0.03);
+  border: 1px solid rgba(var(--v-theme-primary), 0.15);
+  border-radius: 12px;
+  padding: 16px;
+}
+
+.ai-suggestions-title {
+  display: flex;
+  align-items: center;
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin-bottom: 16px;
+  color: rgb(var(--v-theme-primary));
+}
+
+.suggestion-field {
+  margin-bottom: 12px;
+}
+
+.suggestion-field:last-child {
+  margin-bottom: 0;
+}
+
+.suggestion-label {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: rgba(var(--v-theme-on-surface), 0.7);
+  margin-bottom: 4px;
+}
+</style>

@@ -2320,14 +2320,25 @@
     "empty": {
       "title": "Keine Szenarien vorhanden",
       "description": "Erstellen Sie Ihr erstes Szenario, um mit der Evaluierung zu beginnen.",
-      "action": "Erstes Szenario erstellen"
+      "action": "Erstes Szenario erstellen",
+      "ownTitle": "Noch keine eigenen Szenarien",
+      "ownDescription": "Erstellen Sie Ihr erstes Szenario, um mit der Evaluierung zu beginnen.",
+      "invitationsTitle": "Keine Einladungen",
+      "invitationsDescription": "Sie wurden noch zu keinem Szenario eingeladen."
     },
     "tabs": {
       "overview": "Übersicht",
       "data": "Daten",
       "evaluation": "Evaluierung",
       "results": "Ergebnisse",
-      "team": "Team"
+      "team": "Team",
+      "myScenarios": "Meine Szenarien",
+      "invitations": "Einladungen"
+    },
+    "card": {
+      "evaluators": "Evaluatoren",
+      "yourProgress": "Dein Fortschritt",
+      "goToEvaluation": "Zur Evaluation"
     },
     "stats": {
       "threads": "Threads",
@@ -2378,6 +2389,11 @@
         "description": "Wählen Sie den Evaluierungstyp und geben Sie grundlegende Informationen an.",
         "aiSuggests": "Basierend auf Ihren Daten empfehlen wir: {type}",
         "recommended": "Empfohlen",
+        "generalTypes": "Allgemeine Evaluierungstypen",
+        "generalTypesDescription": "Universelle Evaluierungstypen für verschiedene Forschungsszenarien",
+        "llarsTypes": "LLARS Domänen-Typen",
+        "llarsTypesDescription": "Spezialisierte Typen für psychosoziale Online-Beratung",
+        "basedOn": "Basiert auf",
         "basicInfo": "Grunddaten",
         "name": "Szenario-Name",
         "descriptionField": "Beschreibung",

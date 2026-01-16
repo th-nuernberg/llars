@@ -281,25 +281,32 @@ export function useScenarioStats(scenarioIdRef) {
         headers: { Authorization: `Bearer ${getToken()}` }
       })
 
-      // Process response similar to socket payload
+      const data = response.data
+
+      // Process response - API returns rater_stats and evaluator_stats directly
       processStatsPayload({
         scenario_id: scenarioId,
-        function_type: response.data.function_type,
-        kind: response.data.kind || 'progress',
+        function_type: data.function_type,
+        kind: data.kind || 'progress',
         stats: {
-          rater_stats: response.data.rater_stats || [],
-          evaluator_stats: response.data.evaluator_stats || [],
-          user_stats: response.data.user_stats || [],
-          krippendorff_alpha: response.data.agreement_metrics?.alpha,
-          overall_accuracy: response.data.overall_accuracy
+          rater_stats: data.rater_stats || [],
+          evaluator_stats: data.evaluator_stats || [],
+          user_stats: data.user_stats || [],
+          krippendorff_alpha: data.agreement_metrics?.alpha,
+          overall_accuracy: data.overall_accuracy,
+          // Include authenticity stats if present
+          vote_distribution: data.vote_distribution
         }
       })
 
-      return response.data
+      return data
     } catch (err) {
-      error.value = err.response?.data?.error || err.message
-      console.error('[ScenarioStats] Error fetching stats:', err)
-      throw err
+      // Silently handle 404s for scenarios without data yet
+      if (err.response?.status !== 404) {
+        error.value = err.response?.data?.error || err.message
+        console.error('[ScenarioStats] Error fetching stats:', err)
+      }
+      // Don't throw - allow UI to show empty state
     } finally {
       loading.value = false
     }

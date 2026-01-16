@@ -6,33 +6,63 @@
  * - Ranking (buckets, pairwise, etc.)
  * - Labeling/Classification (binary, multi-class, multi-label)
  * - Comparison (A vs B, multiple items)
+ *
+ * Plus LLARS domain-specific presets for psychosocial online counseling:
+ * - Mail Rating (multi-dimensional email quality assessment)
+ * - Message Authenticity (fake/real message detection)
  */
 
 // ===== Evaluation Types =====
-// Generalized evaluation types - mail_rating removed (use rating instead)
+// Generalized evaluation types
 export const EVAL_TYPES = {
   RATING: 'rating',
   RANKING: 'ranking',
   LABELING: 'labeling',
-  COMPARISON: 'comparison'
+  COMPARISON: 'comparison',
+  // LLARS Domain-Specific Types (map to base types internally)
+  MAIL_RATING: 'mail_rating',         // → rating with dimensions
+  AUTHENTICITY: 'authenticity'        // → labeling binary
 }
 
 // ===== Type ID Mapping (for DB compatibility) =====
-// DB IDs: 1=ranking, 2=rating, 4=comparison, 5=authenticity (mapped to labeling)
-// Note: ID 3 (mail_rating) is deprecated, ID 5 (authenticity) is a labeling preset
+// DB IDs: 1=ranking, 2=rating, 3=mail_rating, 4=comparison, 5=authenticity
 export const TYPE_ID_MAP = {
   1: EVAL_TYPES.RANKING,
   2: EVAL_TYPES.RATING,
+  3: EVAL_TYPES.MAIL_RATING,          // LLARS-specific
   4: EVAL_TYPES.COMPARISON,
-  5: EVAL_TYPES.LABELING,    // authenticity → labeling preset
-  7: EVAL_TYPES.LABELING     // text_classification → labeling
+  5: EVAL_TYPES.AUTHENTICITY,         // LLARS-specific (labeling variant)
+  7: EVAL_TYPES.LABELING              // text_classification
 }
 
 export const ID_TYPE_MAP = {
   [EVAL_TYPES.RANKING]: 1,
   [EVAL_TYPES.RATING]: 2,
+  [EVAL_TYPES.MAIL_RATING]: 3,        // LLARS-specific
   [EVAL_TYPES.COMPARISON]: 4,
-  [EVAL_TYPES.LABELING]: 5   // Use authenticity ID for labeling
+  [EVAL_TYPES.LABELING]: 5,
+  [EVAL_TYPES.AUTHENTICITY]: 5        // Same DB ID as labeling
+}
+
+// ===== Base Type Mapping (for LLARS domain types) =====
+// Maps domain-specific types to their underlying base type
+export const BASE_TYPE_MAP = {
+  [EVAL_TYPES.RATING]: EVAL_TYPES.RATING,
+  [EVAL_TYPES.RANKING]: EVAL_TYPES.RANKING,
+  [EVAL_TYPES.LABELING]: EVAL_TYPES.LABELING,
+  [EVAL_TYPES.COMPARISON]: EVAL_TYPES.COMPARISON,
+  [EVAL_TYPES.MAIL_RATING]: EVAL_TYPES.RATING,      // mail_rating uses rating base
+  [EVAL_TYPES.AUTHENTICITY]: EVAL_TYPES.LABELING    // authenticity uses labeling base
+}
+
+// Check if a type is LLARS domain-specific
+export function isLlarsDomainType(evalType) {
+  return [EVAL_TYPES.MAIL_RATING, EVAL_TYPES.AUTHENTICITY].includes(evalType)
+}
+
+// Get the base type for any evaluation type
+export function getBaseType(evalType) {
+  return BASE_TYPE_MAP[evalType] || evalType
 }
 
 // ===== Rating Configuration =====
@@ -371,21 +401,320 @@ export const COMPARISON_PRESETS = {
   }
 }
 
+// =============================================================================
+// LLARS DOMAIN-SPECIFIC PRESETS (Psychosoziale Online-Beratung)
+// =============================================================================
+
+/**
+ * Mail Rating Presets
+ * For evaluating email/message quality in psychosocial online counseling
+ * Base type: rating (with multiple dimensions)
+ */
+export const MAIL_RATING_PRESETS = {
+  'beratungsqualitaet': {
+    id: 'beratungsqualitaet',
+    name: 'Beratungsqualität',
+    description: 'Mehrdimensionale Bewertung der Beratungsqualität in E-Mail-Konversationen',
+    llarsSpecific: true,
+    config: {
+      type: 'multi-dimensional',
+      baseType: 'rating',
+      min: 1,
+      max: 5,
+      step: 1,
+      dimensions: [
+        {
+          id: 'empathie',
+          name: { de: 'Empathie', en: 'Empathy' },
+          description: { de: 'Einfühlungsvermögen und emotionale Resonanz', en: 'Empathy and emotional resonance' },
+          weight: 0.25
+        },
+        {
+          id: 'klarheit',
+          name: { de: 'Klarheit', en: 'Clarity' },
+          description: { de: 'Verständlichkeit und Strukturiertheit der Antwort', en: 'Clarity and structure of response' },
+          weight: 0.20
+        },
+        {
+          id: 'professionalitaet',
+          name: { de: 'Professionalität', en: 'Professionalism' },
+          description: { de: 'Fachliche Kompetenz und angemessene Sprache', en: 'Professional competence and appropriate language' },
+          weight: 0.20
+        },
+        {
+          id: 'hilfsbereitschaft',
+          name: { de: 'Hilfsbereitschaft', en: 'Helpfulness' },
+          description: { de: 'Konkrete Unterstützungsangebote und Handlungsvorschläge', en: 'Concrete support offers and action suggestions' },
+          weight: 0.20
+        },
+        {
+          id: 'angemessenheit',
+          name: { de: 'Angemessenheit', en: 'Appropriateness' },
+          description: { de: 'Passung der Antwort zur Anfrage', en: 'Fit of response to inquiry' },
+          weight: 0.15
+        }
+      ],
+      labels: {
+        1: { de: 'Unzureichend', en: 'Insufficient' },
+        2: { de: 'Mangelhaft', en: 'Poor' },
+        3: { de: 'Befriedigend', en: 'Satisfactory' },
+        4: { de: 'Gut', en: 'Good' },
+        5: { de: 'Sehr gut', en: 'Very good' }
+      },
+      showOverallScore: true,
+      allowComments: true
+    }
+  },
+  'antwortqualitaet': {
+    id: 'antwortqualitaet',
+    name: 'Antwortqualität',
+    description: 'Bewertung der Qualität einzelner Beraterantworten',
+    llarsSpecific: true,
+    config: {
+      type: 'multi-dimensional',
+      baseType: 'rating',
+      min: 1,
+      max: 5,
+      step: 1,
+      dimensions: [
+        {
+          id: 'inhalt',
+          name: { de: 'Inhaltliche Qualität', en: 'Content Quality' },
+          description: { de: 'Relevanz und Nützlichkeit des Inhalts', en: 'Relevance and usefulness of content' },
+          weight: 0.35
+        },
+        {
+          id: 'struktur',
+          name: { de: 'Struktur', en: 'Structure' },
+          description: { de: 'Logischer Aufbau und Gliederung', en: 'Logical structure and organization' },
+          weight: 0.25
+        },
+        {
+          id: 'ton',
+          name: { de: 'Tonalität', en: 'Tone' },
+          description: { de: 'Angemessener und respektvoller Umgangston', en: 'Appropriate and respectful tone' },
+          weight: 0.25
+        },
+        {
+          id: 'vollstaendigkeit',
+          name: { de: 'Vollständigkeit', en: 'Completeness' },
+          description: { de: 'Alle relevanten Aspekte werden angesprochen', en: 'All relevant aspects are addressed' },
+          weight: 0.15
+        }
+      ],
+      labels: {
+        1: { de: 'Unzureichend', en: 'Insufficient' },
+        2: { de: 'Mangelhaft', en: 'Poor' },
+        3: { de: 'Befriedigend', en: 'Satisfactory' },
+        4: { de: 'Gut', en: 'Good' },
+        5: { de: 'Sehr gut', en: 'Very good' }
+      },
+      showOverallScore: true,
+      allowComments: true
+    }
+  },
+  'einfach': {
+    id: 'einfach',
+    name: 'Einfache Bewertung',
+    description: 'Schnelle Gesamtbewertung ohne Dimensionen',
+    llarsSpecific: true,
+    config: {
+      type: 'single',
+      baseType: 'rating',
+      min: 1,
+      max: 5,
+      step: 1,
+      dimensions: [],
+      labels: {
+        1: { de: 'Sehr schlecht', en: 'Very poor' },
+        2: { de: 'Schlecht', en: 'Poor' },
+        3: { de: 'Akzeptabel', en: 'Acceptable' },
+        4: { de: 'Gut', en: 'Good' },
+        5: { de: 'Sehr gut', en: 'Very good' }
+      },
+      showOverallScore: true,
+      allowComments: true
+    }
+  },
+  'custom': {
+    id: 'custom',
+    name: 'Benutzerdefiniert',
+    description: 'Eigene Bewertungsdimensionen definieren',
+    llarsSpecific: true,
+    config: {
+      type: 'multi-dimensional',
+      baseType: 'rating',
+      min: 1,
+      max: 5,
+      step: 1,
+      dimensions: [],
+      labels: {},
+      showOverallScore: true,
+      allowComments: true
+    }
+  }
+}
+
+/**
+ * Authenticity Presets
+ * For detecting fake/authentic messages in psychosocial online counseling
+ * Base type: labeling (binary classification)
+ */
+export const AUTHENTICITY_PRESETS = {
+  'nachricht-echtheit': {
+    id: 'nachricht-echtheit',
+    name: 'Nachrichten-Echtheit',
+    description: 'Erkennung von echten vs. gefälschten Beratungsnachrichten',
+    llarsSpecific: true,
+    config: {
+      type: 'binary',
+      baseType: 'labeling',
+      multiLabel: false,
+      categories: [
+        {
+          id: 'echt',
+          name: { de: 'Echt', en: 'Authentic' },
+          description: { de: 'Authentische Nachricht eines echten Ratsuchenden/Beraters', en: 'Authentic message from real client/counselor' },
+          color: '#98d4bb',
+          icon: 'mdi-check-decagram'
+        },
+        {
+          id: 'fake',
+          name: { de: 'Fake', en: 'Fake' },
+          description: { de: 'Generierte oder gefälschte Nachricht', en: 'Generated or fake message' },
+          color: '#e8a087',
+          icon: 'mdi-alert-decagram'
+        }
+      ],
+      allowUnsure: true,
+      unsureOption: {
+        id: 'unsicher',
+        name: { de: 'Unsicher', en: 'Unsure' },
+        description: { de: 'Keine eindeutige Einschätzung möglich', en: 'Cannot determine with certainty' },
+        color: '#D1BC8A',
+        icon: 'mdi-help-circle'
+      },
+      requireReasoning: true,
+      reasoningPrompt: { de: 'Begründung für die Einschätzung', en: 'Reason for assessment' }
+    }
+  },
+  'ki-generiert': {
+    id: 'ki-generiert',
+    name: 'KI-Erkennung',
+    description: 'Erkennung von KI-generierten vs. menschlichen Texten',
+    llarsSpecific: true,
+    config: {
+      type: 'binary',
+      baseType: 'labeling',
+      multiLabel: false,
+      categories: [
+        {
+          id: 'mensch',
+          name: { de: 'Menschlich', en: 'Human' },
+          description: { de: 'Von einem Menschen verfasster Text', en: 'Text written by a human' },
+          color: '#98d4bb',
+          icon: 'mdi-account'
+        },
+        {
+          id: 'ki',
+          name: { de: 'KI-generiert', en: 'AI-generated' },
+          description: { de: 'Von einer KI generierter Text', en: 'Text generated by AI' },
+          color: '#88c4c8',
+          icon: 'mdi-robot'
+        }
+      ],
+      allowUnsure: true,
+      unsureOption: {
+        id: 'unklar',
+        name: { de: 'Unklar', en: 'Unclear' },
+        color: '#D1BC8A',
+        icon: 'mdi-help-circle'
+      },
+      requireReasoning: true
+    }
+  },
+  'dringlichkeit': {
+    id: 'dringlichkeit',
+    name: 'Dringlichkeits-Einschätzung',
+    description: 'Einschätzung der Dringlichkeit einer Beratungsanfrage',
+    llarsSpecific: true,
+    config: {
+      type: 'multiclass',
+      baseType: 'labeling',
+      multiLabel: false,
+      categories: [
+        {
+          id: 'akut',
+          name: { de: 'Akut/Krise', en: 'Acute/Crisis' },
+          description: { de: 'Sofortige Intervention erforderlich', en: 'Immediate intervention required' },
+          color: '#d46b6b',
+          icon: 'mdi-alert'
+        },
+        {
+          id: 'dringend',
+          name: { de: 'Dringend', en: 'Urgent' },
+          description: { de: 'Zeitnahe Bearbeitung notwendig', en: 'Timely processing necessary' },
+          color: '#e8a087',
+          icon: 'mdi-clock-alert'
+        },
+        {
+          id: 'normal',
+          name: { de: 'Normal', en: 'Normal' },
+          description: { de: 'Reguläre Bearbeitungszeit', en: 'Regular processing time' },
+          color: '#D1BC8A',
+          icon: 'mdi-clock'
+        },
+        {
+          id: 'niedrig',
+          name: { de: 'Niedrig', en: 'Low' },
+          description: { de: 'Keine besondere Eile', en: 'No particular urgency' },
+          color: '#98d4bb',
+          icon: 'mdi-clock-outline'
+        }
+      ],
+      allowUnsure: false,
+      requireReasoning: true
+    }
+  },
+  'custom': {
+    id: 'custom',
+    name: 'Benutzerdefiniert',
+    description: 'Eigene Kategorien definieren',
+    llarsSpecific: true,
+    config: {
+      type: 'binary',
+      baseType: 'labeling',
+      multiLabel: false,
+      categories: [],
+      allowUnsure: true,
+      unsureOption: null,
+      requireReasoning: false
+    }
+  }
+}
+
 // ===== All Presets by Type =====
-// Note: mail_rating removed - use rating presets with custom dimensions instead
 export const PRESETS_BY_TYPE = {
+  // General types
   [EVAL_TYPES.RATING]: RATING_PRESETS,
   [EVAL_TYPES.RANKING]: RANKING_PRESETS,
   [EVAL_TYPES.LABELING]: LABELING_PRESETS,
-  [EVAL_TYPES.COMPARISON]: COMPARISON_PRESETS
+  [EVAL_TYPES.COMPARISON]: COMPARISON_PRESETS,
+  // LLARS domain-specific types
+  [EVAL_TYPES.MAIL_RATING]: MAIL_RATING_PRESETS,
+  [EVAL_TYPES.AUTHENTICITY]: AUTHENTICITY_PRESETS
 }
 
 // ===== Default Config by Type =====
 export const DEFAULT_CONFIG_BY_TYPE = {
+  // General types
   [EVAL_TYPES.RATING]: RATING_PRESETS['likert-5'].config,
   [EVAL_TYPES.RANKING]: RANKING_PRESETS['buckets-3'].config,
   [EVAL_TYPES.LABELING]: LABELING_PRESETS['binary-authentic'].config,
-  [EVAL_TYPES.COMPARISON]: COMPARISON_PRESETS['pairwise'].config
+  [EVAL_TYPES.COMPARISON]: COMPARISON_PRESETS['pairwise'].config,
+  // LLARS domain-specific types
+  [EVAL_TYPES.MAIL_RATING]: MAIL_RATING_PRESETS['beratungsqualitaet'].config,
+  [EVAL_TYPES.AUTHENTICITY]: AUTHENTICITY_PRESETS['nachricht-echtheit'].config
 }
 
 // ===== Utility Functions =====
@@ -469,28 +798,74 @@ export function validateConfig(evalType, config) {
  * Get type info for display
  */
 export const TYPE_INFO = {
+  // ===== General Evaluation Types =====
   [EVAL_TYPES.RATING]: {
     name: { de: 'Rating', en: 'Rating' },
     description: { de: 'Bewertung auf einer Skala (Likert, Sterne, Prozent)', en: 'Rate on a scale (Likert, stars, percentage)' },
     icon: 'mdi-star-outline',
-    color: '#D1BC8A'
+    color: '#D1BC8A',
+    category: 'general'
   },
   [EVAL_TYPES.RANKING]: {
     name: { de: 'Ranking', en: 'Ranking' },
     description: { de: 'Items sortieren oder in Kategorien einteilen', en: 'Sort items or categorize into buckets' },
     icon: 'mdi-sort-variant',
-    color: '#b0ca97'
+    color: '#b0ca97',
+    category: 'general'
   },
   [EVAL_TYPES.LABELING]: {
     name: { de: 'Labeling', en: 'Labeling' },
     description: { de: 'Kategorien zuweisen (binär, multi-class, multi-label)', en: 'Assign categories (binary, multi-class, multi-label)' },
     icon: 'mdi-tag-multiple',
-    color: '#e8a087'
+    color: '#e8a087',
+    category: 'general'
   },
   [EVAL_TYPES.COMPARISON]: {
     name: { de: 'Vergleich', en: 'Comparison' },
     description: { de: 'Items paarweise vergleichen (A vs B)', en: 'Compare items pairwise (A vs B)' },
     icon: 'mdi-compare-horizontal',
-    color: '#c4a0d4'
+    color: '#c4a0d4',
+    category: 'general'
+  },
+  // ===== LLARS Domain-Specific Types (Psychosoziale Online-Beratung) =====
+  [EVAL_TYPES.MAIL_RATING]: {
+    name: { de: 'Mail-Bewertung', en: 'Mail Rating' },
+    description: { de: 'Mehrdimensionale Bewertung von Beratungs-E-Mails', en: 'Multi-dimensional rating of counseling emails' },
+    icon: 'mdi-email-check',
+    color: '#88c4c8',
+    category: 'llars',
+    baseType: EVAL_TYPES.RATING
+  },
+  [EVAL_TYPES.AUTHENTICITY]: {
+    name: { de: 'Echtheit', en: 'Authenticity' },
+    description: { de: 'Erkennung von echten vs. gefälschten Nachrichten', en: 'Detection of authentic vs. fake messages' },
+    icon: 'mdi-shield-check',
+    color: '#98d4bb',
+    category: 'llars',
+    baseType: EVAL_TYPES.LABELING
   }
+}
+
+/**
+ * Get types grouped by category
+ */
+export function getTypesByCategory() {
+  return {
+    general: [EVAL_TYPES.RATING, EVAL_TYPES.RANKING, EVAL_TYPES.LABELING, EVAL_TYPES.COMPARISON],
+    llars: [EVAL_TYPES.MAIL_RATING, EVAL_TYPES.AUTHENTICITY]
+  }
+}
+
+/**
+ * Get all general types
+ */
+export function getGeneralTypes() {
+  return [EVAL_TYPES.RATING, EVAL_TYPES.RANKING, EVAL_TYPES.LABELING, EVAL_TYPES.COMPARISON]
+}
+
+/**
+ * Get all LLARS domain-specific types
+ */
+export function getLlarsTypes() {
+  return [EVAL_TYPES.MAIL_RATING, EVAL_TYPES.AUTHENTICITY]
 }

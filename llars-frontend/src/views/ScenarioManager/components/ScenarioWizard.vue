@@ -326,29 +326,78 @@
           {{ $t('scenarioManager.wizard.step2.aiSuggests', { type: getSuggestedTypeName(analysisResult.suggestedType) }) }}
         </v-alert>
 
-        <!-- Evaluation Type Selection -->
-        <div class="type-grid">
-          <div
-            v-for="type in evaluationTypes"
-            :key="type.id"
-            class="type-card"
-            :class="{
-              selected: formData.evalType === type.id,
-              suggested: analysisResult?.suggestedType === type.id
-            }"
-            @click="selectEvalType(type.id)"
-          >
-            <div class="type-icon" :style="{ backgroundColor: type.color + '20' }">
-              <LIcon :color="type.color" size="32">{{ type.icon }}</LIcon>
+        <!-- Evaluation Type Selection - General Types -->
+        <div class="type-category">
+          <h4 class="type-category-title">
+            <LIcon color="primary" size="20" class="mr-2">mdi-view-grid</LIcon>
+            {{ $t('scenarioManager.wizard.step2.generalTypes') }}
+          </h4>
+          <p class="type-category-description">
+            {{ $t('scenarioManager.wizard.step2.generalTypesDescription') }}
+          </p>
+          <div class="type-grid">
+            <div
+              v-for="type in evaluationTypesGrouped.general"
+              :key="type.id"
+              class="type-card"
+              :class="{
+                selected: formData.evalType === type.id,
+                suggested: analysisResult?.suggestedType === type.id
+              }"
+              @click="selectEvalType(type.id)"
+            >
+              <div class="type-icon" :style="{ backgroundColor: type.color + '20' }">
+                <LIcon :color="type.color" size="32">{{ type.icon }}</LIcon>
+              </div>
+              <h4 class="type-name">{{ type.name }}</h4>
+              <p class="type-description">{{ type.description }}</p>
+              <div class="type-check" v-if="formData.evalType === type.id">
+                <LIcon color="primary">mdi-check-circle</LIcon>
+              </div>
+              <LTag v-if="analysisResult?.suggestedType === type.id" variant="warning" size="small" class="suggested-tag">
+                {{ $t('scenarioManager.wizard.step2.recommended') }}
+              </LTag>
             </div>
-            <h4 class="type-name">{{ type.name }}</h4>
-            <p class="type-description">{{ type.description }}</p>
-            <div class="type-check" v-if="formData.evalType === type.id">
-              <LIcon color="primary">mdi-check-circle</LIcon>
+          </div>
+        </div>
+
+        <!-- Evaluation Type Selection - LLARS Domain Types -->
+        <div class="type-category type-category--llars mt-6">
+          <h4 class="type-category-title">
+            <LIcon color="accent" size="20" class="mr-2">mdi-school</LIcon>
+            {{ $t('scenarioManager.wizard.step2.llarsTypes') }}
+            <LTag variant="info" size="x-small" class="ml-2">LLARS</LTag>
+          </h4>
+          <p class="type-category-description">
+            {{ $t('scenarioManager.wizard.step2.llarsTypesDescription') }}
+          </p>
+          <div class="type-grid">
+            <div
+              v-for="type in evaluationTypesGrouped.llars"
+              :key="type.id"
+              class="type-card type-card--llars"
+              :class="{
+                selected: formData.evalType === type.id,
+                suggested: analysisResult?.suggestedType === type.id
+              }"
+              @click="selectEvalType(type.id)"
+            >
+              <div class="type-icon" :style="{ backgroundColor: type.color + '20' }">
+                <LIcon :color="type.color" size="32">{{ type.icon }}</LIcon>
+              </div>
+              <h4 class="type-name">{{ type.name }}</h4>
+              <p class="type-description">{{ type.description }}</p>
+              <div v-if="type.baseType" class="type-base-hint">
+                <LIcon size="12" class="mr-1">mdi-arrow-right</LIcon>
+                {{ $t('scenarioManager.wizard.step2.basedOn') }} {{ getBaseTypeName(type.baseType) }}
+              </div>
+              <div class="type-check" v-if="formData.evalType === type.id">
+                <LIcon color="accent">mdi-check-circle</LIcon>
+              </div>
+              <LTag v-if="analysisResult?.suggestedType === type.id" variant="warning" size="small" class="suggested-tag">
+                {{ $t('scenarioManager.wizard.step2.recommended') }}
+              </LTag>
             </div>
-            <LTag v-if="analysisResult?.suggestedType === type.id" variant="warning" size="small" class="suggested-tag">
-              {{ $t('scenarioManager.wizard.step2.recommended') }}
-            </LTag>
           </div>
         </div>
 
@@ -853,7 +902,10 @@ import {
   EVAL_TYPES,
   ID_TYPE_MAP,
   TYPE_INFO,
-  getDefaultConfig
+  getDefaultConfig,
+  getTypesByCategory,
+  isLlarsDomainType,
+  getBaseType
 } from '../config/evaluationPresets'
 
 const emit = defineEmits(['close', 'created'])
@@ -903,41 +955,58 @@ const steps = computed(() => [
   { key: 'summary', label: t('scenarioManager.wizard.steps.summary'), icon: 'mdi-check-all' }
 ])
 
-// Evaluation types
-const evaluationTypes = computed(() => [
-  {
-    id: EVAL_TYPES.RATING,
-    name: t('scenarioManager.types.rating'),
-    description: t('scenarioManager.typeDescriptions.rating'),
-    icon: TYPE_INFO[EVAL_TYPES.RATING].icon,
-    color: TYPE_INFO[EVAL_TYPES.RATING].color,
-    variant: 'warning'
-  },
-  {
-    id: EVAL_TYPES.RANKING,
-    name: t('scenarioManager.types.ranking'),
-    description: t('scenarioManager.typeDescriptions.ranking'),
-    icon: TYPE_INFO[EVAL_TYPES.RANKING].icon,
-    color: TYPE_INFO[EVAL_TYPES.RANKING].color,
-    variant: 'success'
-  },
-  {
-    id: EVAL_TYPES.LABELING,
-    name: t('scenarioManager.types.labeling'),
-    description: t('scenarioManager.typeDescriptions.labeling'),
-    icon: TYPE_INFO[EVAL_TYPES.LABELING].icon,
-    color: TYPE_INFO[EVAL_TYPES.LABELING].color,
-    variant: 'danger'
-  },
-  {
-    id: EVAL_TYPES.COMPARISON,
-    name: t('scenarioManager.types.comparison'),
-    description: t('scenarioManager.typeDescriptions.comparison'),
-    icon: TYPE_INFO[EVAL_TYPES.COMPARISON].icon,
-    color: TYPE_INFO[EVAL_TYPES.COMPARISON].color,
-    variant: 'primary'
+// Evaluation types - grouped by category
+const evaluationTypesGrouped = computed(() => {
+  const categories = getTypesByCategory()
+
+  return {
+    general: categories.general.map(typeId => ({
+      id: typeId,
+      name: TYPE_INFO[typeId]?.name[locale.value] || TYPE_INFO[typeId]?.name.de || typeId,
+      description: TYPE_INFO[typeId]?.description[locale.value] || TYPE_INFO[typeId]?.description.de || '',
+      icon: TYPE_INFO[typeId]?.icon,
+      color: TYPE_INFO[typeId]?.color,
+      variant: getTypeVariant(typeId),
+      category: 'general'
+    })),
+    llars: categories.llars.map(typeId => ({
+      id: typeId,
+      name: TYPE_INFO[typeId]?.name[locale.value] || TYPE_INFO[typeId]?.name.de || typeId,
+      description: TYPE_INFO[typeId]?.description[locale.value] || TYPE_INFO[typeId]?.description.de || '',
+      icon: TYPE_INFO[typeId]?.icon,
+      color: TYPE_INFO[typeId]?.color,
+      variant: getTypeVariant(typeId),
+      category: 'llars',
+      baseType: TYPE_INFO[typeId]?.baseType
+    }))
   }
+})
+
+// All evaluation types as flat list (for compatibility)
+const evaluationTypes = computed(() => [
+  ...evaluationTypesGrouped.value.general,
+  ...evaluationTypesGrouped.value.llars
 ])
+
+// Get variant for type (used for tags)
+function getTypeVariant(typeId) {
+  const variants = {
+    [EVAL_TYPES.RATING]: 'warning',
+    [EVAL_TYPES.RANKING]: 'success',
+    [EVAL_TYPES.LABELING]: 'danger',
+    [EVAL_TYPES.COMPARISON]: 'primary',
+    [EVAL_TYPES.MAIL_RATING]: 'info',
+    [EVAL_TYPES.AUTHENTICITY]: 'success'
+  }
+  return variants[typeId] || 'default'
+}
+
+// Get base type name for display
+function getBaseTypeName(baseTypeId) {
+  const info = TYPE_INFO[baseTypeId]
+  if (!info) return baseTypeId
+  return info.name[locale.value] || info.name.de || baseTypeId
+}
 
 // Form data
 const formData = ref({
@@ -1875,6 +1944,33 @@ onMounted(() => {
   font-family: monospace;
 }
 
+/* Type Category */
+.type-category {
+  margin-bottom: 24px;
+}
+
+.type-category-title {
+  display: flex;
+  align-items: center;
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 6px;
+  color: rgb(var(--v-theme-on-surface));
+}
+
+.type-category-description {
+  font-size: 0.85rem;
+  color: rgba(var(--v-theme-on-surface), 0.6);
+  margin-bottom: 16px;
+}
+
+.type-category--llars {
+  padding: 16px;
+  background: linear-gradient(135deg, rgba(136, 196, 200, 0.05), rgba(152, 212, 187, 0.05));
+  border: 1px solid rgba(136, 196, 200, 0.2);
+  border-radius: 12px;
+}
+
 /* Type Grid */
 .type-grid {
   display: grid;
@@ -1939,6 +2035,31 @@ onMounted(() => {
   position: absolute;
   top: -8px;
   left: 12px;
+}
+
+/* LLARS-specific type cards */
+.type-card--llars {
+  border-color: rgba(136, 196, 200, 0.3);
+}
+
+.type-card--llars:hover {
+  border-color: rgba(136, 196, 200, 0.5);
+  background-color: rgba(136, 196, 200, 0.05);
+}
+
+.type-card--llars.selected {
+  border-color: rgb(var(--v-theme-accent));
+  background-color: rgba(var(--v-theme-accent), 0.08);
+}
+
+.type-base-hint {
+  display: flex;
+  align-items: center;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed rgba(var(--v-theme-on-surface), 0.1);
+  font-size: 0.7rem;
+  color: rgba(var(--v-theme-on-surface), 0.5);
 }
 
 /* Config Section */

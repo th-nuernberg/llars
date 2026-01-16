@@ -2320,14 +2320,25 @@
     "empty": {
       "title": "No Scenarios",
       "description": "Create your first scenario to start evaluating.",
-      "action": "Create First Scenario"
+      "action": "Create First Scenario",
+      "ownTitle": "No scenarios yet",
+      "ownDescription": "Create your first scenario to start evaluating.",
+      "invitationsTitle": "No invitations",
+      "invitationsDescription": "You haven't been invited to any scenarios yet."
     },
     "tabs": {
       "overview": "Overview",
       "data": "Data",
       "evaluation": "Evaluation",
       "results": "Results",
-      "team": "Team"
+      "team": "Team",
+      "myScenarios": "My Scenarios",
+      "invitations": "Invitations"
+    },
+    "card": {
+      "evaluators": "Evaluators",
+      "yourProgress": "Your Progress",
+      "goToEvaluation": "Go to Evaluation"
     },
     "stats": {
       "threads": "Threads",
@@ -2378,6 +2389,11 @@
         "description": "Choose the evaluation type and provide basic information.",
         "aiSuggests": "Based on your data, we recommend: {type}",
         "recommended": "Recommended",
+        "generalTypes": "General Evaluation Types",
+        "generalTypesDescription": "Universal evaluation types for various research scenarios",
+        "llarsTypes": "LLARS Domain Types",
+        "llarsTypesDescription": "Specialized types for psychosocial online counseling",
+        "basedOn": "Based on",
         "basicInfo": "Basic Info",
         "name": "Scenario Name",
         "descriptionField": "Description",

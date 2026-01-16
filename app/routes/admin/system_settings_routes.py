@@ -3,6 +3,7 @@ Admin routes for system-wide settings management.
 """
 
 import os
+import re
 
 from flask import jsonify, request
 
@@ -36,6 +37,25 @@ def get_system_settings():
     })
 
 
+@data_bp.get("/system/ai-assistant")
+def get_ai_assistant_settings():
+    """
+    Get AI assistant settings (public endpoint).
+
+    Returns the AI assistant configuration needed by the frontend
+    for displaying AI features and reserving the AI color.
+    """
+    settings = _get_or_create_settings()
+    return jsonify({
+        'success': True,
+        'ai_assistant': {
+            'enabled': settings.ai_assistant_enabled,
+            'color': settings.ai_assistant_color,
+            'username': settings.ai_assistant_username,
+        }
+    })
+
+
 @data_bp.patch("/admin/system/settings")
 @require_permission("admin:system:configure")
 def update_system_settings():
@@ -62,11 +82,18 @@ def update_system_settings():
         'llm_ai_log_prompts',
         'referral_system_enabled',
         'self_registration_enabled',
+        'ai_assistant_enabled',
     }
 
     string_fields = {
         'llm_ai_log_tasks',
         'default_referral_role',
+        'ai_assistant_username',
+    }
+
+    # Color fields with hex validation
+    color_fields = {
+        'ai_assistant_color',
     }
 
     errors = []
@@ -118,10 +145,28 @@ def update_system_settings():
         if raw is None:
             value = ""
         else:
-            value = str(raw)
-        value = ",".join([part.strip().lower() for part in value.split(",") if part.strip()])
+            value = str(raw).strip()
+        # Only apply comma normalization for task lists, not display names
+        if key in {'llm_ai_log_tasks'}:
+            value = ",".join([part.strip().lower() for part in value.split(",") if part.strip()])
         if len(value) > 255:
             value = value[:255]
+        setattr(settings, key, value)
+        updated_fields.append(key)
+
+    # Handle color fields with hex validation
+    hex_color_pattern = re.compile(r'^#[0-9A-Fa-f]{6}$')
+    for key in color_fields:
+        if key not in payload:
+            continue
+        raw = payload.get(key)
+        if raw is None:
+            errors.append(f"Color value for {key} cannot be null")
+            continue
+        value = str(raw).strip()
+        if not hex_color_pattern.match(value):
+            errors.append(f"Invalid hex color for {key}: must be #RRGGBB format")
+            continue
         setattr(settings, key, value)
         updated_fields.append(key)
 

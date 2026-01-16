@@ -17,6 +17,8 @@ Event Namespaces:
     - crawler:*   - Web crawler job progress
     - oncoco:*    - OnCoCo analysis progress
     - wizard:*    - Chatbot Builder Wizard sessions (server-authoritative)
+    - presence:*  - Live user presence (admin)
+    - llm_eval:*  - LLM evaluator progress and results
     - (default)   - Chat streaming, connection events
 """
 
@@ -38,6 +40,8 @@ from .events_markdown_collab import register_markdown_collab_events
 from .events_latex_collab import register_latex_collab_events
 from .events_prompt_collab import register_prompt_collab_events
 from .events_wizard import register_wizard_events
+from .events_presence import register_presence_events
+from .events_llm_evaluation import register_llm_evaluation_events
 
 # Enhanced logging format
 logging.basicConfig(
@@ -117,6 +121,8 @@ def configure_socket_routes(socketio, verbose=True):
     register_latex_collab_events(socketio)
     register_prompt_collab_events(socketio)
     register_wizard_events(socketio)
+    register_presence_events(socketio)
+    register_llm_evaluation_events(socketio)
 
     logging.info("SocketIO routes configured successfully")
 

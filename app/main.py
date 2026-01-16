@@ -233,6 +233,28 @@ def seed_llm_models():
 
 seed_llm_models()
 
+
+# Seed default field prompts for AI-assist features
+def seed_field_prompts():
+    """Seed default field prompts on startup."""
+    if _skip_startup_tasks():
+        print("[Startup] Skipping field prompt seeding (LLARS_SKIP_STARTUP_TASKS=true)")
+        return
+    from services.ai_assist import FieldPromptService
+
+    with app.app_context():
+        try:
+            print("[Startup] Seeding field prompts...")
+            created = FieldPromptService.seed_defaults()
+            if created > 0:
+                print(f"[Startup] Created {created} new field prompts")
+            else:
+                print("[Startup] Field prompts already exist")
+        except Exception as e:
+            print(f"[Startup] Error seeding field prompts: {e}")
+
+seed_field_prompts()
+
 if __name__ == '__main__':
     # Debug mode nur in development aktivieren
     debug_mode = os.environ.get('FLASK_ENV', 'production') == 'development'

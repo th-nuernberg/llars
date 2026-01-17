@@ -111,7 +111,10 @@ def deterministic_shuffle(items, seed):
 def get_progression_ranking(thread: EmailThread, user_id: int) -> ProgressionStatus:
     """ Berechnet den Fortschritt für das Feature Ranking (function_type_id=1) """
     total_features = db.session.query(Feature).filter_by(thread_id=thread.thread_id).count()
-    ranked_features = db.session.query(UserFeatureRanking).join(Feature).filter(
+    # Explicit join condition to avoid ambiguity
+    ranked_features = db.session.query(UserFeatureRanking).join(
+        Feature, UserFeatureRanking.feature_id == Feature.feature_id
+    ).filter(
         UserFeatureRanking.user_id == user_id,
         Feature.thread_id == thread.thread_id
     ).count()
@@ -126,8 +129,11 @@ def get_progression_ranking(thread: EmailThread, user_id: int) -> ProgressionSta
 def get_progression_rating(thread: EmailThread, user_id: int) -> ProgressionStatus:
     """ Berechnet den Fortschritt für das Feature Rating (function_type_id=2) """
     total_features = db.session.query(Feature).filter_by(thread_id=thread.thread_id).count()
-    rated_features = db.session.query(UserMessageRating).join(Feature).filter(
-        UserMessageRating.user_id == user_id,
+    # Use UserFeatureRating (not UserMessageRating) with explicit join
+    rated_features = db.session.query(UserFeatureRating).join(
+        Feature, UserFeatureRating.feature_id == Feature.feature_id
+    ).filter(
+        UserFeatureRating.user_id == user_id,
         Feature.thread_id == thread.thread_id
     ).count()
 

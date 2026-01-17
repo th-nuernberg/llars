@@ -331,26 +331,115 @@ class AgreementMetricsService:
 
         return None
 
+    # Bucket to ordinal value mapping for ranking
+    BUCKET_ORDINAL = {
+        "gut": 3,
+        "mittel": 2,
+        "neutral": 1,
+        "schlecht": 0,
+    }
+
+    @staticmethod
+    def _convert_bucket_data_to_feature_level(
+        data: Dict[int, Dict[str, Any]],
+        raters: List[str],
+        items: List[int],
+    ) -> Tuple[Dict[int, Dict[str, int]], List[int]]:
+        """
+        Convert bucket-based ranking data to feature-level ordinal data.
+
+        Input format (per thread):
+            data[thread_id][rater_id] = {"gut": [f1, f2], "mittel": [f3], ...}
+
+        Output format (per feature):
+            feature_data[feature_id][rater_id] = ordinal_value (0-3)
+
+        Returns:
+            Tuple of (feature_data dict, list of all feature_ids)
+        """
+        feature_data = defaultdict(dict)
+        all_features = set()
+
+        for thread_id in items:
+            for rater in raters:
+                bucket_dict = data.get(thread_id, {}).get(rater, {})
+                if not isinstance(bucket_dict, dict):
+                    continue
+
+                for bucket_name, feature_ids in bucket_dict.items():
+                    ordinal = AgreementMetricsService.BUCKET_ORDINAL.get(bucket_name)
+                    if ordinal is None:
+                        continue
+                    if not isinstance(feature_ids, list):
+                        continue
+
+                    for feature_id in feature_ids:
+                        feature_data[feature_id][rater] = ordinal
+                        all_features.add(feature_id)
+
+        return dict(feature_data), sorted(all_features)
+
     @staticmethod
     def _calculate_ranking_metrics(evaluations: Dict[str, Any]) -> Dict[str, Any]:
-        """Calculate metrics for ranking evaluations."""
+        """
+        Calculate metrics for ranking evaluations.
+
+        For ranking, each rater assigns features to buckets (gut/mittel/schlecht/neutral).
+        We convert this to feature-level ordinal data for Krippendorff's Alpha.
+        """
         data = evaluations["data"]
         raters = evaluations["raters"]
         items = evaluations["items"]
 
-        # For ranking, calculate various agreement metrics
         results = {}
 
-        # Krippendorff's Alpha for ordinal/ranking data
-        alpha = AgreementMetricsService._krippendorff_alpha(data, raters, items, "ordinal")
+        # Convert bucket data to feature-level ordinal data
+        feature_data, feature_ids = AgreementMetricsService._convert_bucket_data_to_feature_level(
+            data, raters, items
+        )
+
+        if not feature_ids or len(feature_ids) < 2:
+            return {"error": "Not enough features for agreement calculation"}
+
+        # Krippendorff's Alpha on feature-level data (ordinal)
+        alpha = AgreementMetricsService._krippendorff_alpha(
+            feature_data, raters, feature_ids, "ordinal"
+        )
         if alpha is not None:
             results["krippendorff_alpha"] = {
                 "value": alpha,
                 "interpretation": AgreementMetricsService._interpret_alpha(alpha),
             }
 
+        # Fleiss' Kappa on feature-level bucket assignments (nominal)
+        kappa = AgreementMetricsService._fleiss_kappa(feature_data, raters, feature_ids)
+        if kappa is not None:
+            results["fleiss_kappa"] = {
+                "value": kappa,
+                "interpretation": AgreementMetricsService._interpret_kappa(kappa),
+            }
+
+        # Percent agreement on feature-level
+        percent = AgreementMetricsService._percent_agreement(feature_data, raters, feature_ids)
+        if percent is not None:
+            results["percent_agreement"] = {
+                "value": percent,
+                "interpretation": f"{percent:.1f}% der Feature-Bucket-Zuordnungen stimmen überein",
+            }
+
         if len(raters) >= 2:
-            # Calculate pairwise Kendall's Tau
+            # Pairwise Cohen's Kappa for feature assignments
+            if len(raters) == 2:
+                cohen_k = AgreementMetricsService._cohens_kappa(
+                    feature_data, raters[0], raters[1], feature_ids
+                )
+                if cohen_k is not None:
+                    results["cohens_kappa"] = {
+                        "value": cohen_k,
+                        "interpretation": AgreementMetricsService._interpret_kappa(cohen_k),
+                    }
+
+            # Kendall's Tau for bucket ordinal correlation
             tau_values = []
             for i, r1 in enumerate(raters):
                 for r2 in raters[i + 1:]:
@@ -362,36 +451,27 @@ class AgreementMetricsService:
 
             if tau_values:
                 results["kendall_tau"] = {
-                    "value": sum(tau_values) / len(tau_values),
+                    "value": round(sum(tau_values) / len(tau_values), 4),
                     "pairwise_values": tau_values,
                     "interpretation": AgreementMetricsService._interpret_correlation(
                         sum(tau_values) / len(tau_values)
                     ),
                 }
 
-            # Kendall's W (Coefficient of Concordance)
-            kendall_w = AgreementMetricsService._kendall_w(data, raters, items)
+            # Kendall's W (Coefficient of Concordance) on feature-level
+            kendall_w = AgreementMetricsService._kendall_w(feature_data, raters, feature_ids)
             if kendall_w is not None:
                 results["kendall_w"] = {
                     "value": kendall_w,
                     "interpretation": AgreementMetricsService._interpret_kendall_w(kendall_w),
                 }
 
-        # Calculate Fleiss' Kappa for bucket assignments
-        kappa = AgreementMetricsService._fleiss_kappa_for_buckets(data, raters, items)
-        if kappa is not None:
-            results["fleiss_kappa"] = {
-                "value": kappa,
-                "interpretation": AgreementMetricsService._interpret_kappa(kappa),
-            }
-
-        # Percent agreement
-        percent = AgreementMetricsService._percent_agreement(data, raters, items)
-        if percent is not None:
-            results["percent_agreement"] = {
-                "value": percent,
-                "interpretation": f"{percent:.1f}% der Bewertungen stimmen überein",
-            }
+        # Add metadata
+        results["_meta"] = {
+            "feature_count": len(feature_ids),
+            "rater_count": len(raters),
+            "thread_count": len(items),
+        }
 
         return results
 

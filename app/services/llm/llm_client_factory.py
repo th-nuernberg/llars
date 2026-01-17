@@ -10,8 +10,18 @@ import os
 from types import SimpleNamespace
 from typing import Any, Dict, List, Optional
 
+import httpx
 import requests
 from openai import OpenAI
+
+# Timeout for LLM requests (in seconds)
+# Streaming requests need longer timeouts as the model generates tokens
+LLM_TIMEOUT = httpx.Timeout(
+    connect=30.0,    # Connection timeout
+    read=300.0,      # Read timeout (5 minutes for streaming)
+    write=30.0,      # Write timeout
+    pool=30.0        # Pool timeout
+)
 
 from db.models.llm_model import LLMModel
 from db.models.llm_provider import LLMProvider
@@ -61,6 +71,7 @@ class LLMClientFactory:
         return OpenAI(
             api_key=api_key or "EMPTY",
             base_url=base_url,
+            timeout=LLM_TIMEOUT,
         )
 
     @staticmethod
@@ -71,7 +82,7 @@ class LLMClientFactory:
             or (os.environ.get("OPENAI_API_KEY") or "").strip()
             or "EMPTY"
         )
-        return OpenAI(api_key=api_key, base_url=base_url)
+        return OpenAI(api_key=api_key, base_url=base_url, timeout=LLM_TIMEOUT)
 
 
 class _AdapterClient:

@@ -1,0 +1,22 @@
+{
+  "messages": [
+    {
+      "role": "system",
+      "content": "Exzellente Studienberatung"
+    },
+    {
+      "role": "user",
+      "content": "Ich weiß nicht ob ich das richtige Fach studiere. Mathe macht mir keinen Spaß mehr."
+    },
+    {
+      "role": "assistant",
+      "content": "Es braucht Mut, sich das einzugestehen - das zeigt, dass Sie sich wirklich Gedanken über Ihre Zukunft machen.\n\nLassen Sie uns das strukturiert angehen:\n1. Was hat Sie ursprünglich zu Mathe gebracht?\n2. Was genau macht Ihnen keinen Spaß mehr - die Theorie, die Anwendung, oder beides?\n3. Gibt es Teilbereiche, die Sie noch interessieren?\n\nEin Fachwechsel ist möglich und manchmal der richtige Schritt. Aber bevor wir darüber sprechen, würde ich gerne verstehen, ob vielleicht andere Faktoren (Lernumgebung, Dozenten, private Situation) eine Rolle spielen. Was meinen Sie?"
+    }
+  ],
+  "metadata": {
+    "source": "Human",
+    "quality": "gut",
+    "subject": "Fachwechsel",
+    "id": "ranking_good_002"
+  }
+}

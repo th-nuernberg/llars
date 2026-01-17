@@ -196,7 +196,7 @@ export function useLLMEvaluation(initialScenarioId = null) {
    * Connect to a specific scenario for live evaluation updates
    * @param {number} newScenarioId - Scenario ID to connect to
    */
-  function connectToScenario(newScenarioId) {
+  async function connectToScenario(newScenarioId) {
     if (!newScenarioId) return
 
     // Disconnect from previous scenario if different
@@ -207,7 +207,12 @@ export function useLLMEvaluation(initialScenarioId = null) {
     scenarioId = newScenarioId
     reset()
     connect()
-    fetchProgress()
+
+    // Fetch initial data in parallel
+    await Promise.all([
+      fetchProgress(),
+      fetchAgreementMetrics()
+    ])
   }
 
   function disconnect() {
@@ -256,13 +261,49 @@ export function useLLMEvaluation(initialScenarioId = null) {
   }
 
   async function fetchAgreementMetrics() {
+    if (!scenarioId) {
+      console.warn('Cannot fetch agreement metrics: no scenarioId')
+      return null
+    }
     try {
       const response = await axios.get(`/api/evaluation/${scenarioId}/agreement-metrics`)
-      agreementMetrics.value = response.data
-      return response.data
+      const data = response.data
+
+      // Transform API response to expected flat format
+      const metrics = data.metrics || {}
+      agreementMetrics.value = {
+        // Core agreement metrics
+        alpha: metrics.krippendorff_alpha?.value ?? null,
+        kappa: metrics.cohens_kappa?.value ?? null,
+        fleiss: metrics.fleiss_kappa?.value ?? null,
+        kendall: metrics.kendall_tau?.value ?? null,
+        spearman: metrics.spearman_rho?.value ?? null,
+        accuracy: metrics.percent_agreement?.value ?? null,
+        // New metrics
+        icc: metrics.icc?.value ?? null,
+        kendallW: metrics.kendall_w?.value ?? null,
+        mae: metrics.mae?.value ?? null,
+        rmse: metrics.rmse?.value ?? null,
+        macroF1: metrics.macro_f1?.value ?? null,
+        microF1: metrics.micro_f1?.value ?? null,
+        // Interpretations
+        interpretation: metrics.krippendorff_alpha?.interpretation ||
+                       metrics.fleiss_kappa?.interpretation ||
+                       metrics.cohens_kappa?.interpretation || null,
+        iccInterpretation: metrics.icc?.interpretation ?? null,
+        kendallWInterpretation: metrics.kendall_w?.interpretation ?? null,
+        // Metadata
+        raterCount: data.rater_count || 0,
+        itemCount: data.item_count || 0,
+        raters: data.raters || [],
+        taskType: data.task_type || null,
+        metricDescriptions: data.metric_descriptions || {}
+      }
+      return agreementMetrics.value
     } catch (err) {
       console.error('Error fetching agreement metrics:', err)
-      throw err
+      // Don't throw - just return null to allow UI to handle gracefully
+      return null
     }
   }
 

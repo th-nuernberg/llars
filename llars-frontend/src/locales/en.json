@@ -2317,6 +2317,24 @@
       "title": "Delete Scenario",
       "confirm": "Are you sure you want to delete the scenario \"{name}\"? This action cannot be undone."
     },
+    "duplicate": {
+      "title": "Duplicate Scenario",
+      "description": "Create a copy of \"{name}\" with all data but without evaluations.",
+      "newName": "New name",
+      "newNamePlaceholder": "Copy of {name}",
+      "includeThreads": "Include all threads",
+      "success": "Scenario duplicated successfully"
+    },
+    "archive": {
+      "title": "Archive Scenario",
+      "confirm": "Are you sure you want to archive the scenario \"{name}\"? Archived scenarios can be restored later.",
+      "success": "Scenario archived successfully"
+    },
+    "unarchive": {
+      "title": "Restore Scenario",
+      "confirm": "Do you want to restore the scenario \"{name}\"?",
+      "success": "Scenario restored successfully"
+    },
     "empty": {
       "title": "No Scenarios",
       "description": "Create your first scenario to start evaluating.",
@@ -2362,6 +2380,13 @@
       "step1": {
         "title": "Upload Data",
         "description": "Upload your data and let AI analyze it.",
+        "dataFormatTooltipTitle": "Data format & AI mapping",
+        "dataFormatTooltipIntro": "The analysis works best when:",
+        "dataFormatTooltipItem1": "JSON: array of objects, each object = one item/thread.",
+        "dataFormatTooltipItem2": "CSV/XLSX: one row per item, columns = fields.",
+        "dataFormatTooltipItem3": "Use clear field names (e.g. text/message/body, label/category, rating/score).",
+        "dataFormatTooltipItem4": "The AI looks for similar field names and example values to infer mappings.",
+        "dataFormatTooltipItem5": "Unknown fields are kept and treated as additional context.",
         "dropFiles": "Drop files here or click to select",
         "supportedFormats": "Supported formats: JSON, CSV, XLSX",
         "multiFileHint": "Select multiple files with Cmd+A or Ctrl+A",
@@ -2616,14 +2641,40 @@
       "selectExistingDesc": "Select threads from already imported data.",
       "comingSoon": "This feature will be available soon.",
       "import": "Import",
-      "importing": "Importing data..."
+      "importing": "Importing data...",
+      "removeThread": {
+        "title": "Remove Thread",
+        "confirm": "Are you sure you want to remove \"{subject}\" from this scenario?",
+        "hint": "This only removes the thread from the scenario. The original data will remain in the system.",
+        "action": "Remove"
+      }
+    },
+    "threadDetail": {
+      "messageCount": "{count} messages",
+      "messages": "Messages",
+      "evaluations": "Evaluations",
+      "noVotes": "No evaluations yet",
+      "humanVotes": "Human Evaluations",
+      "llmVotes": "LLM Evaluations",
+      "confidence": "Confidence",
+      "reasoning": "Reasoning"
     },
     "evaluation": {
+      "humanEvaluation": "Human Evaluation",
+      "participate": "Participate",
       "llmControl": "LLM Evaluation",
       "model": "Model",
       "template": "Template",
+      "selectModel": "Select model...",
       "start": "Start Evaluation",
       "stop": "Stop",
+      "addEvaluator": "Add Evaluator",
+      "noHumanEvaluators": "No human evaluators have completed evaluations yet",
+      "noLLMEvaluators": "No LLM evaluators configured",
+      "addLLMHint": "Add LLM models to automatically evaluate this scenario",
+      "activeEvaluators": "Active Evaluators",
+      "removeEvaluator": "Remove Evaluator",
+      "removeEvaluatorConfirm": "Are you sure you want to remove {name} from this scenario? All evaluations by this model will be deleted.",
       "metrics": "Metrics",
       "progress": "Progress",
       "completed": "Completed",
@@ -2632,23 +2683,36 @@
       "tokenUsage": "Token Usage",
       "tokens": "Tokens",
       "cost": "Cost",
+      "costEstimate": "Estimated Cost",
+      "estimatedCost": "Estimated Cost",
       "liveResults": "Live Results",
       "evaluations": "Evaluations",
       "confidence": "Confidence",
       "noResults": "No results yet. Start an evaluation.",
       "agreementMetrics": "Agreement Metrics",
+      "agreement": "Agreement",
+      "raters": "Raters",
+      "items": "Items",
       "noMetricsYet": "Metrics will be calculated once multiple evaluations are complete.",
+      "templates": {
+        "standard": "Standard",
+        "detailed": "Detailed",
+        "quick": "Quick"
+      },
       "status": {
         "idle": "Ready",
         "running": "Running",
         "completed": "Completed",
         "error": "Error"
-      }
+      },
+      "metricsResults": "Metrics & Results",
+      "noResultsYet": "No results yet. Start an evaluation to see metrics and results here."
     },
     "results": {
       "title": "Results",
       "export": "Export",
       "totalEvaluations": "Total Evaluations",
+      "totalVotes": "Total Votes",
       "humanEvaluators": "Human Evaluators",
       "llmEvaluators": "LLM Evaluators",
       "agreementRate": "Agreement Rate",
@@ -2666,12 +2730,48 @@
       "pendingThreads": "Pending Evaluations",
       "confidence": "confidence",
       "more": "more",
+      "labels": {
+        "real": "Real",
+        "fake": "Fake",
+        "authentic": "Authentic",
+        "ai_generated": "AI Generated",
+        "phishing": "Phishing",
+        "spam": "Spam",
+        "legitimate": "Legitimate"
+      },
       "kappa": {
         "excellent": "Excellent",
         "good": "Good",
         "moderate": "Moderate",
         "fair": "Fair",
         "poor": "Poor"
+      },
+      "confusionMatrix": {
+        "title": "Confusion Matrix",
+        "counts": "Counts",
+        "percentages": "Percentages",
+        "predicted": "Predicted",
+        "actual": "Actual",
+        "actualFake": "Actual Fake",
+        "actualReal": "Actual Real",
+        "predictedFake": "Pred. Fake",
+        "predictedReal": "Pred. Real",
+        "total": "Total",
+        "accuracy": "Accuracy",
+        "precision": "Precision",
+        "recall": "Recall",
+        "f1Score": "F1 Score",
+        "precisionTooltip": "Of all items predicted as fake, how many are actually fake",
+        "recallTooltip": "Of all actual fake items, how many were correctly identified",
+        "f1Tooltip": "Harmonic mean of precision and recall",
+        "tpDescription": "True Positive - Correctly identified as fake",
+        "fpDescription": "False Positive - Real incorrectly marked as fake",
+        "fnDescription": "False Negative - Fake incorrectly marked as real",
+        "tnDescription": "True Negative - Correctly identified as real",
+        "aggregated": "Aggregated (All Evaluators)",
+        "byEvaluator": "By Evaluator",
+        "noData": "Not enough data for confusion matrix",
+        "selectEvaluator": "Select an evaluator to view their confusion matrix"
       }
     },
     "team": {
@@ -2731,6 +2831,64 @@
       "all": "All to everyone",
       "random": "Random",
       "sequential": "Sequential"
+    },
+    "tooltips": {
+      "agreementMetrics": "Statistical measures of inter-rater reliability - how consistently multiple evaluators rate the same items",
+      "cohensKappa": "Measures agreement between exactly 2 raters, adjusting for chance agreement. Considers how often raters would agree randomly.",
+      "krippendorffAlpha": "A robust measure suitable for any number of raters, missing data, and various data types. The standard metric for content analysis.",
+      "fleissKappa": "Extension of Cohen's Kappa for 3 or more raters. Measures agreement across all evaluators simultaneously.",
+      "percentAgreement": "Simple percentage of cases where evaluators agreed. Easy to interpret but doesn't account for chance agreement.",
+      "icc": {
+        "title": "ICC (Intraclass Correlation)",
+        "description": "Measures the reliability of ratings by comparing between-rater variance to total variance. Ideal for continuous rating scales.",
+        "poor": "Poor reliability",
+        "moderate": "Moderate reliability",
+        "good": "Good reliability",
+        "excellent": "Excellent reliability"
+      },
+      "kendallW": {
+        "title": "Kendall's W (Coefficient of Concordance)",
+        "description": "Measures agreement among multiple raters when ranking items. Values range from 0 (no agreement) to 1 (complete agreement).",
+        "weak": "Weak agreement",
+        "moderate": "Moderate agreement",
+        "substantial": "Substantial agreement",
+        "high": "High agreement",
+        "veryHigh": "Very high agreement"
+      },
+      "mae": {
+        "title": "MAE (Mean Absolute Error)",
+        "description": "Average absolute difference between predictions and ground truth. Lower values indicate better agreement."
+      },
+      "rmse": {
+        "title": "RMSE (Root Mean Squared Error)",
+        "description": "Square root of average squared differences. More sensitive to outliers than MAE. Lower values indicate better agreement."
+      },
+      "macroF1": {
+        "title": "Macro F1 Score",
+        "description": "Average F1 score across all classes, treating each class equally regardless of frequency. Good for balanced evaluation."
+      },
+      "microF1": {
+        "title": "Micro F1 Score",
+        "description": "F1 score calculated by aggregating true positives across all classes. Weighted by class frequency."
+      },
+      "f1": {
+        "poor": "Poor classification",
+        "moderate": "Moderate classification",
+        "good": "Good classification",
+        "excellent": "Excellent classification"
+      },
+      "interpretation": {
+        "worseThanChance": "Worse than chance",
+        "slight": "Slight agreement",
+        "fair": "Fair agreement",
+        "moderate": "Moderate agreement",
+        "substantial": "Substantial agreement",
+        "almostPerfect": "Almost perfect",
+        "poor": "Poor / tentative",
+        "tentative": "Tentative conclusions only",
+        "acceptable": "Acceptable for tentative conclusions",
+        "reliable": "Good reliability"
+      }
     }
   },
   "promptEngineering": {
@@ -4750,6 +4908,64 @@
         "maxUses": "Max Uses",
         "maxUsesPlaceholder": "Unlimited",
         "expiresAt": "Valid Until"
+      }
+    }
+  },
+  "scenarioWizard": {
+    "analysis": {
+      "title": "AI Analysis",
+      "complete": "Complete",
+      "analyzing": "Analyzing...",
+      "evalType": "Evaluation Type",
+      "confidence": "Confidence",
+      "changeType": "Change Type",
+      "scenarioSuggestion": "Scenario Suggestion",
+      "scenarioName": "Name",
+      "scenarioDescription": "Description",
+      "regenerate": "Regenerate",
+      "reasoning": "AI Reasoning",
+      "noReasoning": "No reasoning available",
+      "data": "Data",
+      "fields": "Fields",
+      "files": "Files",
+      "fieldOverview": "Field Overview",
+      "dataQuality": "Data Quality",
+      "issues": "Issues",
+      "recommendations": "Recommendations",
+      "dataLooksGood": "Data looks good!",
+      "generatingConfig": "Generating configuration recommendations..."
+    },
+    "evalTypes": {
+      "rating": "Rating",
+      "ranking": "Ranking",
+      "labeling": "Labeling",
+      "comparison": "Comparison",
+      "authenticity": "Authenticity",
+      "text_classification": "Classification",
+      "mail_rating": "Email Rating",
+      "text_rating": "Text Rating"
+    },
+    "chat": {
+      "title": "Refine with AI",
+      "welcome": "I've analyzed the data. You can adjust the configuration above or ask me questions here.",
+      "placeholder": "Describe your needs or ask a question...",
+      "error": "Sorry, an error occurred. Please try again.",
+      "initialMessage": "I've analyzed the data and suggest a {evalType} task. Would you like to adjust anything or do you have questions?",
+      "changes": "Changes",
+      "actions": {
+        "labels": "Define Labels",
+        "scale": "Adjust Scale",
+        "changeType": "Change Type",
+        "explain": "Explain",
+        "looksGood": "Looks Good",
+        "moreChanges": "More Changes"
+      },
+      "prompts": {
+        "labels": "Help me define labels for this task",
+        "scale": "I want to adjust the rating scale",
+        "changeType": "I think a different evaluation type would be better",
+        "explain": "Explain why you chose this type",
+        "moreChanges": "I want to make more changes"
       }
     }
   }

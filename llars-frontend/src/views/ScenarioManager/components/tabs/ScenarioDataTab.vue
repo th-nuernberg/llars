@@ -107,6 +107,38 @@
       </v-data-table>
     </div>
 
+    <!-- Thread Detail Dialog -->
+    <ThreadDetailDialog
+      v-model="showDetailDialog"
+      :thread="threadDetail"
+    />
+
+    <!-- Remove Thread Confirmation -->
+    <v-dialog v-model="showRemoveDialog" max-width="400">
+      <v-card>
+        <v-card-title class="d-flex align-center">
+          <LIcon color="error" class="mr-2">mdi-delete-alert-outline</LIcon>
+          {{ $t('scenarioManager.data.removeThread.title') }}
+        </v-card-title>
+        <v-card-text>
+          <p>{{ $t('scenarioManager.data.removeThread.confirm', { subject: threadToRemove?.subject || $t('scenarioManager.data.noSubject') }) }}</p>
+          <v-alert type="info" variant="tonal" density="compact" class="mt-3">
+            {{ $t('scenarioManager.data.removeThread.hint') }}
+          </v-alert>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <LBtn variant="text" @click="showRemoveDialog = false" :disabled="removing">
+            {{ $t('common.cancel') }}
+          </LBtn>
+          <LBtn variant="danger" @click="executeRemoveThread" :loading="removing">
+            <LIcon start>mdi-delete-outline</LIcon>
+            {{ $t('scenarioManager.data.removeThread.action') }}
+          </LBtn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
     <!-- Import Dialog -->
     <v-dialog v-model="showImportDialog" max-width="800" persistent>
       <v-card>
@@ -260,6 +292,7 @@ import { useI18n } from 'vue-i18n'
 import axios from 'axios'
 import { useDataImport } from '../../composables/useDataImport'
 import { useScenarioManager } from '../../composables/useScenarioManager'
+import ThreadDetailDialog from '../ThreadDetailDialog.vue'
 
 const props = defineProps({
   scenario: {
@@ -283,7 +316,9 @@ const {
 
 const {
   getAvailableThreads,
-  addThreadsToScenario
+  addThreadsToScenario,
+  removeThreadFromScenario,
+  getThreadDetail
 } = useScenarioManager()
 
 // State
@@ -295,6 +330,16 @@ const searchQuery = ref('')
 const sortBy = ref('date_desc')
 const threads = ref([])
 const threadsError = ref(null)
+
+// Remove thread state
+const showRemoveDialog = ref(false)
+const threadToRemove = ref(null)
+const removing = ref(false)
+
+// Thread detail state
+const showDetailDialog = ref(false)
+const threadDetail = ref(null)
+const loadingDetail = ref(false)
 
 // State for existing threads import
 const loadingAvailable = ref(false)
@@ -361,14 +406,44 @@ function getStatusVariant(status) {
   return map[status] || 'default'
 }
 
-function viewThread(thread) {
-  // TODO: Open thread detail view
-  console.log('View thread:', thread)
+async function viewThread(thread) {
+  if (!props.scenario?.id || !thread.thread_id) return
+
+  showDetailDialog.value = true
+  loadingDetail.value = true
+  threadDetail.value = null
+
+  try {
+    threadDetail.value = await getThreadDetail(props.scenario.id, thread.thread_id)
+  } catch (error) {
+    console.error('Failed to load thread detail:', error)
+    showDetailDialog.value = false
+  } finally {
+    loadingDetail.value = false
+  }
 }
 
 function confirmRemoveThread(thread) {
-  // TODO: Confirm and remove thread
-  console.log('Remove thread:', thread)
+  threadToRemove.value = thread
+  showRemoveDialog.value = true
+}
+
+async function executeRemoveThread() {
+  if (!props.scenario?.id || !threadToRemove.value) return
+
+  removing.value = true
+  try {
+    await removeThreadFromScenario(props.scenario.id, threadToRemove.value.thread_id)
+    showRemoveDialog.value = false
+    threadToRemove.value = null
+    // Reload threads
+    await loadThreads()
+    emit('data-imported') // Refresh scenario to update thread count
+  } catch (error) {
+    console.error('Failed to remove thread:', error)
+  } finally {
+    removing.value = false
+  }
 }
 
 /**

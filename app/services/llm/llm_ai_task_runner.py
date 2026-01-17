@@ -2,6 +2,7 @@
 LLM AI Task Runner
 
 Executes scenario tasks (ranking, rating, authenticity) for LLM evaluators.
+Broadcasts progress updates via WebSocket for real-time UI feedback.
 """
 
 from __future__ import annotations
@@ -11,6 +12,7 @@ import json
 import logging
 import random
 import threading
+import time
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 from db.database import db
@@ -28,6 +30,107 @@ from services.llm.llm_client_factory import LLMClientFactory
 from services.system_settings_service import get_setting
 
 logger = logging.getLogger(__name__)
+
+
+def _get_socketio():
+    """
+    Get the Flask-SocketIO instance for broadcasting progress.
+
+    Tries multiple import paths to handle different execution contexts.
+
+    Returns:
+        SocketIO instance if found, None otherwise
+    """
+    try:
+        # Try direct import from main
+        try:
+            from main import socketio
+            return socketio
+        except ImportError:
+            pass
+
+        # Try import from app.main
+        try:
+            from app.main import socketio
+            return socketio
+        except ImportError:
+            pass
+
+        # Try Flask extensions
+        from flask import current_app
+        if hasattr(current_app, 'extensions') and 'socketio' in current_app.extensions:
+            return current_app.extensions['socketio']
+
+        return None
+    except Exception:
+        return None
+
+
+def _broadcast_task_completed(
+    scenario_id: int,
+    model_id: str,
+    thread_id: int,
+    task_type: str,
+    result: dict,
+    processing_time_ms: int = 0,
+):
+    """Broadcast that a task completed successfully."""
+    socketio = _get_socketio()
+    if not socketio:
+        return
+
+    try:
+        from socketio_handlers.events_llm_evaluation import broadcast_evaluation_completed
+        broadcast_evaluation_completed(
+            socketio,
+            scenario_id=scenario_id,
+            model_id=model_id,
+            thread_id=thread_id,
+            task_type=task_type,
+            result=result,
+            processing_time_ms=processing_time_ms,
+        )
+    except Exception as e:
+        logger.debug(f"[LLM AI Runner] Failed to broadcast completion: {e}")
+
+
+def _broadcast_task_failed(
+    scenario_id: int,
+    model_id: str,
+    thread_id: int,
+    task_type: str,
+    error: str,
+):
+    """Broadcast that a task failed."""
+    socketio = _get_socketio()
+    if not socketio:
+        return
+
+    try:
+        from socketio_handlers.events_llm_evaluation import broadcast_evaluation_failed
+        broadcast_evaluation_failed(
+            socketio,
+            scenario_id=scenario_id,
+            model_id=model_id,
+            thread_id=thread_id,
+            task_type=task_type,
+            error=error,
+        )
+    except Exception as e:
+        logger.debug(f"[LLM AI Runner] Failed to broadcast failure: {e}")
+
+
+def _broadcast_scenario_completed(scenario_id: int, summary: dict):
+    """Broadcast that all evaluations for a scenario are complete."""
+    socketio = _get_socketio()
+    if not socketio:
+        return
+
+    try:
+        from socketio_handlers.events_llm_evaluation import broadcast_scenario_completed
+        broadcast_scenario_completed(socketio, scenario_id=scenario_id, summary=summary)
+    except Exception as e:
+        logger.debug(f"[LLM AI Runner] Failed to broadcast scenario completion: {e}")
 
 def _safe_int(value: Any, default: int) -> int:
     try:
@@ -172,15 +275,25 @@ class LLMAITaskRunner:
     ) -> List[str]:
         selected = model_ids
         if selected is None:
-            config = scenario.config_json if isinstance(scenario.config_json, dict) else {}
-            selected = config.get("llm_evaluators") or []
+            config = scenario.config_json
+            if isinstance(config, str):
+                try:
+                    config = json.loads(config)
+                except (json.JSONDecodeError, TypeError):
+                    config = {}
+            if not isinstance(config, dict):
+                config = {}
+            selected = config.get("llm_evaluators") or config.get("selected_llms") or []
         if not isinstance(selected, list):
             return []
         cleaned = []
         for model_id in selected:
-            if not isinstance(model_id, str):
+            if isinstance(model_id, str):
+                mid = model_id.strip()
+            elif isinstance(model_id, dict):
+                mid = str(model_id.get("model_id") or "").strip()
+            else:
                 continue
-            mid = model_id.strip()
             if mid and mid not in cleaned:
                 cleaned.append(mid)
         return cleaned
@@ -320,6 +433,16 @@ class LLMAITaskRunner:
                         error=None,
                     ))
                 db.session.commit()
+
+                # Broadcast success
+                _broadcast_task_completed(
+                    scenario_id=scenario_id,
+                    model_id=model_id,
+                    thread_id=thread_id,
+                    task_type="ranking",
+                    result=bucket_map,
+                )
+
             except LLMResponseError as exc:
                 db.session.rollback()
                 LLMAITaskRunner._store_error(
@@ -330,9 +453,25 @@ class LLMAITaskRunner:
                     error=str(exc),
                     raw_response=exc.raw_response,
                 )
+                # Broadcast failure
+                _broadcast_task_failed(
+                    scenario_id=scenario_id,
+                    model_id=model_id,
+                    thread_id=thread_id,
+                    task_type="ranking",
+                    error=str(exc),
+                )
             except Exception as exc:
                 db.session.rollback()
                 logger.warning("[LLM AI Runner] Ranking failed for thread %s: %s", thread_id, exc)
+                # Broadcast failure
+                _broadcast_task_failed(
+                    scenario_id=scenario_id,
+                    model_id=model_id,
+                    thread_id=thread_id,
+                    task_type="ranking",
+                    error=str(exc),
+                )
 
     @staticmethod
     def _run_rating(model_id: str, thread_ids: Iterable[int], scenario_id: int) -> None:
@@ -421,6 +560,16 @@ class LLMAITaskRunner:
                         error=None,
                     ))
                 db.session.commit()
+
+                # Broadcast success
+                _broadcast_task_completed(
+                    scenario_id=scenario_id,
+                    model_id=model_id,
+                    thread_id=thread_id,
+                    task_type="rating",
+                    result=payload_out,
+                )
+
             except LLMResponseError as exc:
                 db.session.rollback()
                 LLMAITaskRunner._store_error(
@@ -431,9 +580,25 @@ class LLMAITaskRunner:
                     error=str(exc),
                     raw_response=exc.raw_response,
                 )
+                # Broadcast failure
+                _broadcast_task_failed(
+                    scenario_id=scenario_id,
+                    model_id=model_id,
+                    thread_id=thread_id,
+                    task_type="rating",
+                    error=str(exc),
+                )
             except Exception as exc:
                 db.session.rollback()
                 logger.warning("[LLM AI Runner] Rating failed for thread %s: %s", thread_id, exc)
+                # Broadcast failure
+                _broadcast_task_failed(
+                    scenario_id=scenario_id,
+                    model_id=model_id,
+                    thread_id=thread_id,
+                    task_type="rating",
+                    error=str(exc),
+                )
 
     @staticmethod
     def _run_authenticity(model_id: str, thread_ids: Iterable[int], scenario_id: int) -> None:
@@ -503,6 +668,16 @@ class LLMAITaskRunner:
                         error=None,
                     ))
                 db.session.commit()
+
+                # Broadcast success
+                _broadcast_task_completed(
+                    scenario_id=scenario_id,
+                    model_id=model_id,
+                    thread_id=thread_id,
+                    task_type="authenticity",
+                    result=vote_data,
+                )
+
             except LLMResponseError as exc:
                 db.session.rollback()
                 LLMAITaskRunner._store_error(
@@ -513,9 +688,25 @@ class LLMAITaskRunner:
                     error=str(exc),
                     raw_response=exc.raw_response,
                 )
+                # Broadcast failure
+                _broadcast_task_failed(
+                    scenario_id=scenario_id,
+                    model_id=model_id,
+                    thread_id=thread_id,
+                    task_type="authenticity",
+                    error=str(exc),
+                )
             except Exception as exc:
                 db.session.rollback()
                 logger.warning("[LLM AI Runner] Authenticity failed for thread %s: %s", thread_id, exc)
+                # Broadcast failure
+                _broadcast_task_failed(
+                    scenario_id=scenario_id,
+                    model_id=model_id,
+                    thread_id=thread_id,
+                    task_type="authenticity",
+                    error=str(exc),
+                )
 
     @staticmethod
     def _run_mail_rating(model_id: str, thread_ids: Iterable[int], scenario_id: int) -> None:
@@ -595,6 +786,16 @@ class LLMAITaskRunner:
                         error=None,
                     ))
                 db.session.commit()
+
+                # Broadcast success
+                _broadcast_task_completed(
+                    scenario_id=scenario_id,
+                    model_id=model_id,
+                    thread_id=thread_id,
+                    task_type="mail_rating",
+                    result=rating_data,
+                )
+
             except LLMResponseError as exc:
                 db.session.rollback()
                 LLMAITaskRunner._store_error(
@@ -605,9 +806,25 @@ class LLMAITaskRunner:
                     error=str(exc),
                     raw_response=exc.raw_response,
                 )
+                # Broadcast failure
+                _broadcast_task_failed(
+                    scenario_id=scenario_id,
+                    model_id=model_id,
+                    thread_id=thread_id,
+                    task_type="mail_rating",
+                    error=str(exc),
+                )
             except Exception as exc:
                 db.session.rollback()
                 logger.warning("[LLM AI Runner] Mail rating failed for thread %s: %s", thread_id, exc)
+                # Broadcast failure
+                _broadcast_task_failed(
+                    scenario_id=scenario_id,
+                    model_id=model_id,
+                    thread_id=thread_id,
+                    task_type="mail_rating",
+                    error=str(exc),
+                )
 
     @staticmethod
     def _run_text_classification(
@@ -701,6 +918,16 @@ class LLMAITaskRunner:
                         error=None,
                     ))
                 db.session.commit()
+
+                # Broadcast success
+                _broadcast_task_completed(
+                    scenario_id=scenario_id,
+                    model_id=model_id,
+                    thread_id=thread_id,
+                    task_type="text_classification",
+                    result=classification_data,
+                )
+
             except LLMResponseError as exc:
                 db.session.rollback()
                 LLMAITaskRunner._store_error(
@@ -711,9 +938,25 @@ class LLMAITaskRunner:
                     error=str(exc),
                     raw_response=exc.raw_response,
                 )
+                # Broadcast failure
+                _broadcast_task_failed(
+                    scenario_id=scenario_id,
+                    model_id=model_id,
+                    thread_id=thread_id,
+                    task_type="text_classification",
+                    error=str(exc),
+                )
             except Exception as exc:
                 db.session.rollback()
                 logger.warning("[LLM AI Runner] Text classification failed for thread %s: %s", thread_id, exc)
+                # Broadcast failure
+                _broadcast_task_failed(
+                    scenario_id=scenario_id,
+                    model_id=model_id,
+                    thread_id=thread_id,
+                    task_type="text_classification",
+                    error=str(exc),
+                )
 
     @staticmethod
     def _run_comparison(model_id: str, thread_ids: Iterable[int], scenario_id: int) -> None:
@@ -795,6 +1038,16 @@ class LLMAITaskRunner:
                         error=None,
                     ))
                 db.session.commit()
+
+                # Broadcast success
+                _broadcast_task_completed(
+                    scenario_id=scenario_id,
+                    model_id=model_id,
+                    thread_id=thread_id,
+                    task_type="comparison",
+                    result=comparison_data,
+                )
+
             except LLMResponseError as exc:
                 db.session.rollback()
                 LLMAITaskRunner._store_error(
@@ -805,9 +1058,25 @@ class LLMAITaskRunner:
                     error=str(exc),
                     raw_response=exc.raw_response,
                 )
+                # Broadcast failure
+                _broadcast_task_failed(
+                    scenario_id=scenario_id,
+                    model_id=model_id,
+                    thread_id=thread_id,
+                    task_type="comparison",
+                    error=str(exc),
+                )
             except Exception as exc:
                 db.session.rollback()
                 logger.warning("[LLM AI Runner] Comparison failed for thread %s: %s", thread_id, exc)
+                # Broadcast failure
+                _broadcast_task_failed(
+                    scenario_id=scenario_id,
+                    model_id=model_id,
+                    thread_id=thread_id,
+                    task_type="comparison",
+                    error=str(exc),
+                )
 
     @staticmethod
     def _request_json(

@@ -118,7 +118,14 @@ export function useScenarioStats(scenarioIdRef) {
         accuracy: rater.accuracy_percent,
         progress: rater.progress_percent ?? (rater.total_threads > 0
           ? Math.round(((rater.done_threads || 0) / rater.total_threads) * 100)
-          : 0)
+          : 0),
+        // Confusion matrix data
+        fake_correct: rater.fake_correct,
+        fake_incorrect: rater.fake_incorrect,
+        real_correct: rater.real_correct,
+        real_incorrect: rater.real_incorrect,
+        votedThreads: rater.voted_threads || [],
+        pendingThreads: rater.pending_threads || []
       })
     }
 
@@ -136,26 +143,45 @@ export function useScenarioStats(scenarioIdRef) {
         accuracy: evaluator.accuracy_percent,
         progress: evaluator.progress_percent ?? (evaluator.total_threads > 0
           ? Math.round(((evaluator.done_threads || 0) / evaluator.total_threads) * 100)
-          : 0)
+          : 0),
+        // Confusion matrix data
+        fake_correct: evaluator.fake_correct,
+        fake_incorrect: evaluator.fake_incorrect,
+        real_correct: evaluator.real_correct,
+        real_incorrect: evaluator.real_incorrect,
+        votedThreads: evaluator.voted_threads || [],
+        pendingThreads: evaluator.pending_threads || []
       })
     }
 
     // Add LLM evaluators
     for (const llm of evaluatorStats.value.filter(e => e.is_llm)) {
+      // Extract model_id, cleaning any "llm:" prefix from user_id if model_id not present
+      const rawModelId = llm.model_id || (llm.user_id?.startsWith('llm:') ? llm.user_id.slice(4) : null)
+      const modelId = rawModelId || llm.username
+
       result.push({
-        id: llm.model_id || llm.username,
-        name: llm.username,
+        id: modelId,
+        name: llm.username || modelId,
+        username: llm.username,
         role: 'LLM',
         isLLM: true,
-        modelId: llm.model_id,
+        modelId: modelId,
+        model_id: modelId, // Keep snake_case for compatibility
+        user_id: llm.user_id,
         completed: llm.done_threads || llm.voted_count || 0,
         total: llm.total_threads || 0,
         inProgress: 0,
         notStarted: llm.not_started_threads || llm.pending_count || 0,
         accuracy: llm.accuracy_percent,
         progress: llm.progress_percent ?? (llm.total_threads > 0
-          ? Math.round(((llm.done_threads || 0) / llm.total_threads) * 100)
+          ? Math.round(((llm.done_threads || llm.voted_count || 0) / llm.total_threads) * 100)
           : 0),
+        // Confusion matrix data
+        fake_correct: llm.fake_correct,
+        fake_incorrect: llm.fake_incorrect,
+        real_correct: llm.real_correct,
+        real_incorrect: llm.real_incorrect,
         votedThreads: llm.voted_threads || llm.done_threads_list || [],
         pendingThreads: llm.pending_threads || llm.not_started_threads_list || []
       })
@@ -194,6 +220,14 @@ export function useScenarioStats(scenarioIdRef) {
       // Progress stats have rater_stats and evaluator_stats arrays
       raterStats.value = data.stats?.rater_stats || []
       evaluatorStats.value = data.stats?.evaluator_stats || []
+      // Also extract agreement metrics for ranking/rating scenarios
+      if (data.stats?.krippendorff_alpha !== undefined || data.stats?.alpha_interpretation) {
+        agreementMetrics.value = {
+          alpha: data.stats?.krippendorff_alpha,
+          interpretation: data.stats?.alpha_interpretation,
+          accuracy: null
+        }
+      }
     }
 
     // Separate LLM and human stats
@@ -284,18 +318,22 @@ export function useScenarioStats(scenarioIdRef) {
       const data = response.data
 
       // Process response - API returns rater_stats and evaluator_stats directly
+      // Also handle nested stats structure from get_scenario_stats_payload
+      const statsData = data.stats || data
       processStatsPayload({
         scenario_id: scenarioId,
         function_type: data.function_type,
         kind: data.kind || 'progress',
         stats: {
-          rater_stats: data.rater_stats || [],
-          evaluator_stats: data.evaluator_stats || [],
-          user_stats: data.user_stats || [],
-          krippendorff_alpha: data.agreement_metrics?.alpha,
-          overall_accuracy: data.overall_accuracy,
+          rater_stats: statsData.rater_stats || [],
+          evaluator_stats: statsData.evaluator_stats || [],
+          user_stats: statsData.user_stats || [],
+          // Agreement metrics - check both direct and nested locations
+          krippendorff_alpha: statsData.krippendorff_alpha ?? data.agreement_metrics?.alpha,
+          alpha_interpretation: statsData.alpha_interpretation ?? data.agreement_metrics?.interpretation,
+          overall_accuracy: statsData.overall_accuracy ?? data.overall_accuracy,
           // Include authenticity stats if present
-          vote_distribution: data.vote_distribution
+          vote_distribution: statsData.vote_distribution || data.vote_distribution
         }
       })
 

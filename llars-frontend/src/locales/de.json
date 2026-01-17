@@ -2317,6 +2317,24 @@
       "title": "Szenario löschen",
       "confirm": "Möchten Sie das Szenario \"{name}\" wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden."
     },
+    "duplicate": {
+      "title": "Szenario duplizieren",
+      "description": "Eine Kopie von \"{name}\" mit allen Daten aber ohne Bewertungen erstellen.",
+      "newName": "Neuer Name",
+      "newNamePlaceholder": "Kopie von {name}",
+      "includeThreads": "Alle Threads übernehmen",
+      "success": "Szenario erfolgreich dupliziert"
+    },
+    "archive": {
+      "title": "Szenario archivieren",
+      "confirm": "Möchten Sie das Szenario \"{name}\" wirklich archivieren? Archivierte Szenarien können später wiederhergestellt werden.",
+      "success": "Szenario erfolgreich archiviert"
+    },
+    "unarchive": {
+      "title": "Szenario wiederherstellen",
+      "confirm": "Möchten Sie das Szenario \"{name}\" wiederherstellen?",
+      "success": "Szenario erfolgreich wiederhergestellt"
+    },
     "empty": {
       "title": "Keine Szenarien vorhanden",
       "description": "Erstellen Sie Ihr erstes Szenario, um mit der Evaluierung zu beginnen.",
@@ -2362,6 +2380,13 @@
       "step1": {
         "title": "Daten hochladen",
         "description": "Laden Sie Ihre Daten hoch und lassen Sie die KI sie analysieren.",
+        "dataFormatTooltipTitle": "Datenformat & KI-Mapping",
+        "dataFormatTooltipIntro": "So klappt die Analyse am besten:",
+        "dataFormatTooltipItem1": "JSON: Array von Objekten, jedes Objekt = ein Item/Thread.",
+        "dataFormatTooltipItem2": "CSV/XLSX: eine Zeile pro Item, Spalten = Felder.",
+        "dataFormatTooltipItem3": "Sprechende Feldnamen helfen (z.B. text/message/body, label/category, rating/score).",
+        "dataFormatTooltipItem4": "Die KI sucht nach ähnlichen Feldnamen und Beispielwerten, um passende Zuordnungen zu erkennen.",
+        "dataFormatTooltipItem5": "Unbekannte Felder bleiben erhalten und werden als Zusatzinfos behandelt.",
         "dropFiles": "Dateien hierher ziehen oder klicken",
         "supportedFormats": "Unterstützte Formate: JSON, CSV, XLSX",
         "multiFileHint": "Mehrere Dateien mit Cmd+A oder Strg+A auswählen",
@@ -2616,14 +2641,40 @@
       "selectExistingDesc": "Wählen Sie Threads aus bereits importierten Daten aus.",
       "comingSoon": "Diese Funktion ist in Kürze verfügbar.",
       "import": "Importieren",
-      "importing": "Daten werden importiert..."
+      "importing": "Daten werden importiert...",
+      "removeThread": {
+        "title": "Thread entfernen",
+        "confirm": "Möchten Sie \"{subject}\" wirklich aus diesem Szenario entfernen?",
+        "hint": "Dies entfernt nur den Thread aus dem Szenario. Die Originaldaten bleiben im System erhalten.",
+        "action": "Entfernen"
+      }
+    },
+    "threadDetail": {
+      "messageCount": "{count} Nachrichten",
+      "messages": "Nachrichten",
+      "evaluations": "Bewertungen",
+      "noVotes": "Noch keine Bewertungen",
+      "humanVotes": "Menschliche Bewertungen",
+      "llmVotes": "LLM Bewertungen",
+      "confidence": "Konfidenz",
+      "reasoning": "Begründung"
     },
     "evaluation": {
+      "humanEvaluation": "Menschliche Evaluierung",
+      "participate": "Teilnehmen",
       "llmControl": "LLM Evaluierung",
       "model": "Modell",
       "template": "Template",
+      "selectModel": "Modell auswählen...",
       "start": "Evaluierung starten",
       "stop": "Stoppen",
+      "addEvaluator": "Evaluator hinzufügen",
+      "noHumanEvaluators": "Noch keine menschlichen Evaluatoren haben Bewertungen abgeschlossen",
+      "noLLMEvaluators": "Keine LLM-Evaluatoren konfiguriert",
+      "addLLMHint": "Fügen Sie LLM-Modelle hinzu, um dieses Szenario automatisch zu evaluieren",
+      "activeEvaluators": "Aktive Evaluatoren",
+      "removeEvaluator": "Evaluator entfernen",
+      "removeEvaluatorConfirm": "Möchten Sie {name} wirklich aus diesem Szenario entfernen? Alle Evaluierungen dieses Modells werden gelöscht.",
       "metrics": "Metriken",
       "progress": "Fortschritt",
       "completed": "Abgeschlossen",
@@ -2632,31 +2683,44 @@
       "tokenUsage": "Token-Verbrauch",
       "tokens": "Tokens",
       "cost": "Kosten",
+      "costEstimate": "Geschätzte Kosten",
+      "estimatedCost": "Geschätzte Kosten",
       "liveResults": "Live-Ergebnisse",
       "evaluations": "Evaluierungen",
       "confidence": "Konfidenz",
       "noResults": "Noch keine Ergebnisse. Starten Sie eine Evaluierung.",
       "agreementMetrics": "Agreement-Metriken",
+      "agreement": "Übereinstimmung",
+      "raters": "Bewerter",
+      "items": "Einträge",
       "noMetricsYet": "Metriken werden berechnet, sobald mehrere Evaluierungen abgeschlossen sind.",
+      "templates": {
+        "standard": "Standard",
+        "detailed": "Detailliert",
+        "quick": "Schnell"
+      },
       "status": {
         "idle": "Bereit",
         "running": "Läuft",
         "completed": "Abgeschlossen",
         "error": "Fehler"
-      }
+      },
+      "metricsResults": "Metriken & Ergebnisse",
+      "noResultsYet": "Noch keine Ergebnisse. Starten Sie eine Evaluierung um Metriken und Ergebnisse zu sehen."
     },
     "results": {
       "title": "Ergebnisse",
       "export": "Exportieren",
       "totalEvaluations": "Gesamt-Evaluierungen",
-      "humanEvaluators": "Human Evaluators",
-      "llmEvaluators": "LLM Evaluators",
+      "totalVotes": "Gesamte Stimmen",
+      "humanEvaluators": "Menschliche Evaluatoren",
+      "llmEvaluators": "LLM Evaluatoren",
       "agreementRate": "Übereinstimmung",
       "agreementMetrics": "Agreement-Metriken",
       "byEvaluator": "Nach Evaluator",
       "completed": "Abgeschlossen",
       "avgScore": "Durchschnitt",
-      "human": "Human",
+      "human": "Mensch",
       "noEvaluators": "Noch keine Evaluatoren mit Ergebnissen",
       "distribution": "Verteilung der Bewertungen",
       "chartComingSoon": "Diagramm wird in Kürze verfügbar sein.",
@@ -2666,12 +2730,48 @@
       "pendingThreads": "Ausstehende Evaluierungen",
       "confidence": "Konfidenz",
       "more": "weitere",
+      "labels": {
+        "real": "Echt",
+        "fake": "Fake",
+        "authentic": "Authentisch",
+        "ai_generated": "KI-generiert",
+        "phishing": "Phishing",
+        "spam": "Spam",
+        "legitimate": "Legitim"
+      },
       "kappa": {
         "excellent": "Exzellent",
         "good": "Gut",
         "moderate": "Moderat",
         "fair": "Ausreichend",
         "poor": "Schwach"
+      },
+      "confusionMatrix": {
+        "title": "Konfusionsmatrix",
+        "counts": "Anzahl",
+        "percentages": "Prozent",
+        "predicted": "Vorhersage",
+        "actual": "Tatsächlich",
+        "actualFake": "Tats. Fake",
+        "actualReal": "Tats. Echt",
+        "predictedFake": "Vorh. Fake",
+        "predictedReal": "Vorh. Echt",
+        "total": "Gesamt",
+        "accuracy": "Genauigkeit",
+        "precision": "Präzision",
+        "recall": "Recall",
+        "f1Score": "F1-Wert",
+        "precisionTooltip": "Von allen als Fake vorhergesagten, wie viele sind tatsächlich Fake",
+        "recallTooltip": "Von allen tatsächlichen Fakes, wie viele wurden korrekt erkannt",
+        "f1Tooltip": "Harmonisches Mittel aus Präzision und Recall",
+        "tpDescription": "True Positive - Korrekt als Fake identifiziert",
+        "fpDescription": "False Positive - Echt fälschlicherweise als Fake markiert",
+        "fnDescription": "False Negative - Fake fälschlicherweise als Echt markiert",
+        "tnDescription": "True Negative - Korrekt als Echt identifiziert",
+        "aggregated": "Aggregiert (Alle Evaluatoren)",
+        "byEvaluator": "Nach Evaluator",
+        "noData": "Nicht genügend Daten für Konfusionsmatrix",
+        "selectEvaluator": "Wählen Sie einen Evaluator um dessen Konfusionsmatrix anzuzeigen"
       }
     },
     "team": {
@@ -2731,6 +2831,64 @@
       "all": "Alle an jeden",
       "random": "Zufällig",
       "sequential": "Sequentiell"
+    },
+    "tooltips": {
+      "agreementMetrics": "Statistische Maße für Inter-Rater-Reliabilität - wie konsistent mehrere Evaluatoren dieselben Items bewerten",
+      "cohensKappa": "Misst die Übereinstimmung zwischen genau 2 Bewertern unter Berücksichtigung zufälliger Übereinstimmung.",
+      "krippendorffAlpha": "Ein robustes Maß für beliebig viele Bewerter, fehlende Daten und verschiedene Datentypen. Standardmetrik für Inhaltsanalysen.",
+      "fleissKappa": "Erweiterung von Cohen's Kappa für 3 oder mehr Bewerter. Misst die Übereinstimmung aller Evaluatoren gleichzeitig.",
+      "percentAgreement": "Einfacher Prozentsatz der Fälle mit Übereinstimmung. Leicht verständlich, berücksichtigt aber keine Zufallsübereinstimmung.",
+      "icc": {
+        "title": "ICC (Intraklassen-Korrelation)",
+        "description": "Misst die Reliabilität von Bewertungen durch Vergleich der Varianz zwischen Bewertern zur Gesamtvarianz. Ideal für kontinuierliche Skalen.",
+        "poor": "Geringe Reliabilität",
+        "moderate": "Moderate Reliabilität",
+        "good": "Gute Reliabilität",
+        "excellent": "Exzellente Reliabilität"
+      },
+      "kendallW": {
+        "title": "Kendall's W (Konkordanzkoeffizient)",
+        "description": "Misst die Übereinstimmung mehrerer Bewerter bei Rankings. Werte von 0 (keine Übereinstimmung) bis 1 (vollständige Übereinstimmung).",
+        "weak": "Schwache Übereinstimmung",
+        "moderate": "Moderate Übereinstimmung",
+        "substantial": "Erhebliche Übereinstimmung",
+        "high": "Hohe Übereinstimmung",
+        "veryHigh": "Sehr hohe Übereinstimmung"
+      },
+      "mae": {
+        "title": "MAE (Mittlerer absoluter Fehler)",
+        "description": "Durchschnittliche absolute Abweichung zwischen Vorhersagen und Ground Truth. Niedrigere Werte bedeuten bessere Übereinstimmung."
+      },
+      "rmse": {
+        "title": "RMSE (Wurzel des mittleren quadratischen Fehlers)",
+        "description": "Quadratwurzel der durchschnittlichen quadrierten Abweichungen. Empfindlicher gegenüber Ausreißern als MAE."
+      },
+      "macroF1": {
+        "title": "Macro F1-Score",
+        "description": "Durchschnittlicher F1-Score über alle Klassen, jede Klasse gleich gewichtet. Gut für ausgewogene Evaluation."
+      },
+      "microF1": {
+        "title": "Micro F1-Score",
+        "description": "F1-Score berechnet durch Aggregation der True Positives über alle Klassen. Gewichtet nach Klassenhäufigkeit."
+      },
+      "f1": {
+        "poor": "Schwache Klassifikation",
+        "moderate": "Moderate Klassifikation",
+        "good": "Gute Klassifikation",
+        "excellent": "Exzellente Klassifikation"
+      },
+      "interpretation": {
+        "worseThanChance": "Schlechter als Zufall",
+        "slight": "Geringfügige Übereinstimmung",
+        "fair": "Ausreichende Übereinstimmung",
+        "moderate": "Moderate Übereinstimmung",
+        "substantial": "Erhebliche Übereinstimmung",
+        "almostPerfect": "Fast perfekt",
+        "poor": "Schwach / vorläufig",
+        "tentative": "Nur vorläufige Schlüsse",
+        "acceptable": "Akzeptabel für vorläufige Schlüsse",
+        "reliable": "Gute Reliabilität"
+      }
     }
   },
   "promptEngineering": {
@@ -4592,6 +4750,64 @@
         "maxUses": "Max. Nutzungen",
         "maxUsesPlaceholder": "Unbegrenzt",
         "expiresAt": "Gültig bis"
+      }
+    }
+  },
+  "scenarioWizard": {
+    "analysis": {
+      "title": "KI-Analyse",
+      "complete": "Fertig",
+      "analyzing": "Analysiere...",
+      "evalType": "Evaluationstyp",
+      "confidence": "Konfidenz",
+      "changeType": "Typ ändern",
+      "scenarioSuggestion": "Szenario-Vorschlag",
+      "scenarioName": "Name",
+      "scenarioDescription": "Beschreibung",
+      "regenerate": "Neu generieren",
+      "reasoning": "KI-Begründung",
+      "noReasoning": "Keine Begründung verfügbar",
+      "data": "Daten",
+      "fields": "Felder",
+      "files": "Dateien",
+      "fieldOverview": "Feldübersicht",
+      "dataQuality": "Datenqualität",
+      "issues": "Probleme",
+      "recommendations": "Empfehlungen",
+      "dataLooksGood": "Daten sehen gut aus!",
+      "generatingConfig": "Konfigurationsempfehlungen werden generiert..."
+    },
+    "evalTypes": {
+      "rating": "Rating",
+      "ranking": "Ranking",
+      "labeling": "Labeling",
+      "comparison": "Vergleich",
+      "authenticity": "Authentizität",
+      "text_classification": "Klassifikation",
+      "mail_rating": "E-Mail Rating",
+      "text_rating": "Text Rating"
+    },
+    "chat": {
+      "title": "Mit KI verfeinern",
+      "welcome": "Ich habe die Daten analysiert. Du kannst die Konfiguration oben anpassen oder mir hier Fragen stellen.",
+      "placeholder": "Beschreibe dein Vorhaben oder stelle eine Frage...",
+      "error": "Entschuldigung, es ist ein Fehler aufgetreten. Bitte versuche es erneut.",
+      "initialMessage": "Ich habe die Daten analysiert und schlage einen {evalType}-Task vor. Möchtest du etwas anpassen oder hast du Fragen?",
+      "changes": "Änderungen",
+      "actions": {
+        "labels": "Labels definieren",
+        "scale": "Skala anpassen",
+        "changeType": "Typ ändern",
+        "explain": "Erklären",
+        "looksGood": "Passt so",
+        "moreChanges": "Weitere Änderungen"
+      },
+      "prompts": {
+        "labels": "Hilf mir Labels für diesen Task zu definieren",
+        "scale": "Ich möchte die Bewertungsskala anpassen",
+        "changeType": "Ich denke ein anderer Evaluationstyp wäre besser",
+        "explain": "Erkläre mir warum du diesen Typ gewählt hast",
+        "moreChanges": "Ich möchte noch weitere Änderungen vornehmen"
       }
     }
   }

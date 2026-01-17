@@ -77,6 +77,10 @@ def register_all_blueprints(app: Flask) -> None:
     app.register_blueprint(llm_bp, url_prefix='/api/llm')
     app.register_blueprint(llm_evaluation_bp)  # url_prefix already in blueprint
 
+    # Evaluation metrics (agreement metrics, etc.)
+    from routes.evaluation_routes import evaluation_bp
+    app.register_blueprint(evaluation_bp)  # url_prefix already in blueprint
+
     # LLM-as-Judge (Automated evaluation)
     from routes.judge import judge_bp
     app.register_blueprint(judge_bp)
@@ -176,6 +180,8 @@ def get_blueprint_info() -> dict:
         ],
         'llm_features': [
             {'name': 'llm', 'prefix': '/api/llm', 'description': 'LLM model management'},
+            {'name': 'llm_evaluation', 'prefix': '/api/evaluation/llm', 'description': 'LLM-specific evaluation progress and control'},
+            {'name': 'evaluation', 'prefix': '/api/evaluation', 'description': 'Evaluation metrics (agreement metrics)'},
             {'name': 'judge', 'prefix': '/api/judge', 'description': 'LLM-as-Judge automated evaluation'},
             {'name': 'oncoco', 'prefix': '/api/oncoco', 'description': 'OnCoCo analysis'},
             {'name': 'ai_writing', 'prefix': '/api/ai-writing', 'description': 'AI writing assistant for LaTeX/Markdown'},

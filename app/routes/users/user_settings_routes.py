@@ -9,7 +9,7 @@ import uuid
 from datetime import date, datetime
 from pathlib import Path
 
-from flask import g, jsonify, request, send_file
+from flask import current_app, g, jsonify, request, send_file
 from PIL import Image
 
 from auth.decorators import authentik_required, public_endpoint
@@ -133,6 +133,7 @@ def update_user_settings():
     """
     user = g.authentik_user
     data = request.get_json() or {}
+    prev_collab_color = user.collab_color
 
     if "collab_color" in data:
         color = data["collab_color"]
@@ -144,6 +145,14 @@ def update_user_settings():
             user.collab_color = color
 
     db.session.commit()
+
+    if "collab_color" in data and prev_collab_color != user.collab_color:
+        socketio = current_app.extensions.get("socketio")
+        if socketio:
+            socketio.emit("user:collab_color_updated", {
+                "username": user.username,
+                "collab_color": user.collab_color
+            })
 
     return jsonify({
         "success": True,

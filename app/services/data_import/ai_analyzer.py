@@ -2,16 +2,22 @@
 AI Analyzer Service for LLM-assisted data analysis and transformation.
 
 Uses LLM to analyze unknown data formats and generate transformation scripts.
+Supports streaming responses for real-time configuration extraction.
 """
 
-from typing import Any
+from typing import Any, Generator
 import json
 import logging
+import re
 
 from llm.litellm_client import LiteLLMClient
 from db.models.llm_model import LLMModel
 
 logger = logging.getLogger(__name__)
+
+# Default colors for config items
+DEFAULT_LABEL_COLORS = ["#98d4bb", "#e8a087", "#D1BC8A", "#88c4c8", "#b0ca97"]
+DEFAULT_BUCKET_COLORS = ["#98d4bb", "#D1BC8A", "#e8a087"]
 
 
 class AIAnalyzer:
@@ -451,3 +457,209 @@ Return ONLY valid JSON."""
         except Exception as e:
             logger.exception(f"Improvement suggestions failed: {e}")
             return {"error": str(e)}
+
+    def chat_refine_streaming(
+        self,
+        data: Any,
+        messages: list[dict],
+        current_config: dict | None = None,
+        filename: str | None = None
+    ) -> Generator[dict, None, None]:
+        """
+        Streaming chat for configuration refinement.
+
+        Enables conversational refinement of scenario configuration.
+        Extracts structured config updates (labels, buckets, scales) during streaming.
+
+        Args:
+            data: Sample data from uploaded files
+            messages: Chat history [{role, content}]
+            current_config: Current configuration to refine
+            filename: Original filename for context
+
+        Yields:
+            {"type": "thinking", "message": "..."}
+            {"type": "config", "field": "task_type", "value": "rating"}
+            {"type": "config", "field": "labels", "value": [...]}
+            {"type": "config", "field": "buckets", "value": [...]}
+            {"type": "config", "field": "scales", "value": [...]}
+            {"type": "chunk", "content": "..."}
+            {"type": "done", "config": {...}, "response": "..."}
+        """
+        # Prepare sample data
+        if isinstance(data, list):
+            sample = data[:3]
+        elif isinstance(data, dict) and "items" in data:
+            sample = data["items"][:3]
+        else:
+            sample = data
+
+        sample_json = json.dumps(sample, indent=2, ensure_ascii=False, default=str)
+        if len(sample_json) > 2500:
+            sample_json = sample_json[:2500] + "\n... (truncated)"
+
+        current_config = current_config or {}
+        config_json = json.dumps(current_config, indent=2, ensure_ascii=False)
+
+        # Build system prompt for config extraction
+        system_prompt = """Du bist ein Assistent für das LLARS Evaluations-System.
+Du hilfst Benutzern, ihre Daten zu konfigurieren für Evaluationen.
+
+DEINE AUFGABE:
+1. Verstehe was der Benutzer möchte
+2. Extrahiere Konfigurationswerte aus dem Gespräch
+3. Gib strukturierte Updates und freundliche Antworten
+
+VERFÜGBARE TASK-TYPEN:
+- "rating": Einzelne Einträge auf Skala bewerten (z.B. 1-5 Sterne)
+- "ranking": Mehrere Einträge sortieren/in Buckets einteilen
+- "comparison": Zwei Antworten direkt vergleichen (A vs B)
+- "mail_rating": E-Mail/Chat-Konversationen bewerten
+- "authenticity": Echt/Fake erkennen (Mensch vs KI)
+- "classification": Labels/Kategorien zuweisen
+
+KONFIGURATIONSSTRUKTUR:
+Wenn der Benutzer Labels, Buckets oder Skalen definieren möchte, extrahiere diese.
+
+Labels (für authenticity/classification):
+[{"name": "echt", "color": "#98d4bb", "description": "Von Menschen"}, ...]
+
+Buckets (für ranking):
+[{"name": "gut", "order": 1, "color": "#98d4bb"}, {"name": "mittel", "order": 2}, ...]
+
+Scales (für rating/mail_rating):
+[{"name": "Qualität", "min": 1, "max": 5, "labels": ["schlecht", "", "", "", "sehr gut"]}]
+
+ANTWORTFORMAT:
+Antworte mit einem JSON-Block am ANFANG deiner Nachricht, gefolgt von deiner Erklärung:
+
+```config
+{
+  "task_type": "...",
+  "labels": [...],
+  "buckets": [...],
+  "scales": [...],
+  "field_mapping": {...},
+  "role_mapping": {...}
+}
+```
+
+Dann deine freundliche Erklärung auf Deutsch.
+
+WICHTIG:
+- Gib nur Felder im config-Block an, die du ändern möchtest
+- Lass Felder weg, die unverändert bleiben
+- Wenn nichts geändert werden soll, lass den config-Block weg
+- Antworte immer auf Deutsch und freundlich"""
+
+        # Build user context
+        context_msg = f"""KONTEXT:
+Dateiname: {filename or 'unbekannt'}
+
+Datenbeispiel:
+```json
+{sample_json}
+```
+
+Aktuelle Konfiguration:
+```json
+{config_json}
+```"""
+
+        # Build full message list
+        full_messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": context_msg}
+        ]
+
+        # Add chat history
+        for msg in messages:
+            full_messages.append({
+                "role": msg.get("role", "user"),
+                "content": msg.get("content", "")
+            })
+
+        try:
+            # Emit thinking event
+            yield {"type": "thinking", "message": "KI verarbeitet..."}
+
+            # Stream the response
+            full_response = ""
+            config_extracted = False
+            extracted_config = {}
+
+            for chunk in self._client.stream_complete(
+                messages=full_messages,
+                temperature=0.3,
+                max_tokens=1500
+            ):
+                full_response += chunk
+                yield {"type": "chunk", "content": chunk}
+
+                # Try to extract config from accumulated response
+                if not config_extracted and "```config" in full_response:
+                    config_match = re.search(r'```config\s*\n(.*?)\n```', full_response, re.DOTALL)
+                    if config_match:
+                        try:
+                            config_json_str = config_match.group(1)
+                            extracted_config = json.loads(config_json_str)
+                            config_extracted = True
+
+                            # Emit config updates for each field
+                            for field in ["task_type", "task_description", "labels",
+                                          "buckets", "scales", "field_mapping", "role_mapping"]:
+                                if field in extracted_config:
+                                    value = extracted_config[field]
+                                    # Add default colors to labels/buckets if missing
+                                    if field == "labels" and isinstance(value, list):
+                                        value = self._add_label_colors(value)
+                                    elif field == "buckets" and isinstance(value, list):
+                                        value = self._add_bucket_colors(value)
+                                    yield {"type": "config", "field": field, "value": value}
+
+                        except json.JSONDecodeError:
+                            pass  # Config not complete yet
+
+            # Extract text response (everything after config block)
+            text_response = full_response
+            if "```config" in text_response:
+                text_response = re.sub(r'```config\s*\n.*?\n```\s*', '', text_response, flags=re.DOTALL)
+            text_response = text_response.strip()
+
+            # Merge extracted config with current config
+            final_config = {**current_config, **extracted_config}
+
+            yield {
+                "type": "done",
+                "config": final_config,
+                "response": text_response
+            }
+
+        except Exception as e:
+            logger.exception(f"Chat refinement failed: {e}")
+            yield {"type": "error", "error": str(e)}
+
+    def _add_label_colors(self, labels: list) -> list:
+        """Add default colors to labels if missing."""
+        result = []
+        for i, label in enumerate(labels):
+            if isinstance(label, str):
+                label = {"name": label}
+            if isinstance(label, dict) and "color" not in label:
+                label["color"] = DEFAULT_LABEL_COLORS[i % len(DEFAULT_LABEL_COLORS)]
+            result.append(label)
+        return result
+
+    def _add_bucket_colors(self, buckets: list) -> list:
+        """Add default colors and order to buckets if missing."""
+        result = []
+        for i, bucket in enumerate(buckets):
+            if isinstance(bucket, str):
+                bucket = {"name": bucket}
+            if isinstance(bucket, dict):
+                if "color" not in bucket:
+                    bucket["color"] = DEFAULT_BUCKET_COLORS[i % len(DEFAULT_BUCKET_COLORS)]
+                if "order" not in bucket:
+                    bucket["order"] = i + 1
+            result.append(bucket)
+        return result

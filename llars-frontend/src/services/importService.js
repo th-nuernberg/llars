@@ -164,6 +164,53 @@ const importService = {
       current_mapping: currentMapping
     })
     return response.data
+  },
+
+  /**
+   * Get the URL for the AI chat stream endpoint.
+   * Use with fetch() for SSE streaming.
+   * @returns {string} The chat stream endpoint URL
+   */
+  getChatStreamUrl() {
+    return `${API_BASE}/ai/chat-stream`
+  },
+
+  /**
+   * Create the request body for AI chat stream.
+   * @param {string} sessionId - Session ID
+   * @param {Array} messages - Chat messages [{role, content}]
+   * @param {Object} currentConfig - Current configuration
+   * @returns {string} JSON stringified body
+   */
+  buildChatStreamBody(sessionId, messages, currentConfig = {}) {
+    return JSON.stringify({
+      session_id: sessionId,
+      messages: messages.map(m => ({
+        role: m.role,
+        content: m.content
+      })),
+      current_config: currentConfig
+    })
+  },
+
+  /**
+   * Import data directly into an existing scenario (without file upload).
+   * Used by ScenarioWizard which parses files client-side.
+   *
+   * @param {Array} data - Array of items to import
+   * @param {number} scenarioId - ID of existing scenario to import into
+   * @param {string} taskType - Task type (rating, ranking, authenticity, etc.)
+   * @param {string} sourceName - Name for the import source
+   * @returns {Promise<Object>} Import result
+   */
+  async importFromData(data, scenarioId, taskType, sourceName = 'Wizard Import') {
+    const response = await axios.post(`${API_BASE}/from-data`, {
+      data,
+      scenario_id: scenarioId,
+      task_type: taskType,
+      source_name: sourceName
+    })
+    return response.data
   }
 }
 

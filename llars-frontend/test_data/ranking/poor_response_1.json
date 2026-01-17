@@ -1,0 +1,22 @@
+{
+  "messages": [
+    {
+      "role": "system",
+      "content": "Schlechte Beratungsqualität"
+    },
+    {
+      "role": "user",
+      "content": "Ich habe psychische Probleme und kann gerade nicht zur Uni kommen."
+    },
+    {
+      "role": "assistant",
+      "content": "Dann müssen Sie sich krankschreiben lassen. Bringen Sie ein Attest."
+    }
+  ],
+  "metadata": {
+    "source": "Human",
+    "quality": "schlecht",
+    "subject": "Psychische Probleme",
+    "id": "ranking_poor_001"
+  }
+}

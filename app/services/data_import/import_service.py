@@ -331,12 +331,53 @@ class ImportService:
 
         return session
 
+    def create_session_from_data(
+        self,
+        data: list[dict],
+        task_type: TaskType | None = None,
+        filename: str = "wizard-data"
+    ) -> ImportSession:
+        """
+        Create an import session directly from parsed data.
+
+        This bypasses the file upload step - useful when data is already parsed
+        (e.g., from the ScenarioWizard which parses files client-side).
+
+        Args:
+            data: List of data items (conversations, texts, etc.)
+            task_type: Task type for the import
+            filename: Display name for the data source
+
+        Returns:
+            New ImportSession with data ready for transformation
+        """
+        session = self.create_session(filename=filename, file_size=0)
+        session.raw_data = data
+        session.detected_format = "generic"  # Use GenericAdapter
+        session.format_confidence = 1.0
+        session.task_type = task_type
+        session.status = "analyzed"
+
+        # Analyze structure for display
+        if data and len(data) > 0:
+            first_item = data[0]
+            if isinstance(first_item, dict):
+                session.structure = {
+                    "item_count": len(data),
+                    "fields": list(first_item.keys()),
+                    "sample": data[:3] if len(data) >= 3 else data
+                }
+
+        logger.info(f"Created session from data: {len(data)} items, task_type={task_type}")
+        return session
+
     def execute_import(
         self,
         session_id: str,
         task_type: TaskType | None = None,
         source_name: str | None = None,
         create_scenario: bool = True,
+        scenario_id: int | None = None,
         created_by: str | None = None,
         ai_analysis: dict | None = None
     ) -> ImportSession:
@@ -348,6 +389,7 @@ class ImportService:
             task_type: Override task type
             source_name: Name for the import source
             create_scenario: Whether to create a scenario for the imported data
+            scenario_id: Existing scenario ID to import into (if not creating new)
             created_by: Username of creator (for scenario)
             ai_analysis: AI analysis result with evaluation criteria etc.
 
@@ -383,9 +425,14 @@ class ImportService:
 
             db.session.flush()
 
-            # Create scenario and link threads
+            # Create scenario and link threads OR link to existing scenario
             scenario = None
-            if create_scenario and imported_threads:
+            if scenario_id and imported_threads:
+                # Link threads to existing scenario
+                self._link_threads_to_scenario(scenario_id, imported_threads)
+                session.options["scenario_id"] = scenario_id
+                logger.info(f"Linked {len(imported_threads)} threads to existing scenario_id={scenario_id}")
+            elif create_scenario and imported_threads:
                 scenario = self._create_scenario(
                     source_name=source,
                     task_type=final_task_type,
@@ -685,6 +732,34 @@ class ImportService:
         )
 
         return scenario
+
+    def _link_threads_to_scenario(
+        self,
+        scenario_id: int,
+        threads: list[EmailThread]
+    ) -> None:
+        """
+        Link threads to an existing scenario.
+
+        Args:
+            scenario_id: ID of existing scenario
+            threads: List of EmailThread objects to link
+        """
+        for thread in threads:
+            # Check if link already exists
+            existing = ScenarioThreads.query.filter_by(
+                scenario_id=scenario_id,
+                thread_id=thread.thread_id
+            ).first()
+
+            if not existing:
+                scenario_thread = ScenarioThreads(
+                    scenario_id=scenario_id,
+                    thread_id=thread.thread_id,
+                )
+                db.session.add(scenario_thread)
+
+        logger.info(f"Linked {len(threads)} threads to scenario_id={scenario_id}")
 
     def get_available_formats(self) -> list[dict[str, Any]]:
         """Get list of all supported formats."""

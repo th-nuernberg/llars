@@ -1,6 +1,6 @@
 <template>
   <div class="step-describe">
-    <!-- Split Layout: Data Preview | Intent Input -->
+    <!-- Split Layout: Data Preview | Intent + Chat -->
     <div class="describe-layout">
       <!-- Left: Data Preview -->
       <div class="data-preview-panel">
@@ -65,56 +65,223 @@
         </div>
       </div>
 
-      <!-- Right: Intent Input -->
+      <!-- Right: Intent Input + Chat -->
       <div class="intent-panel">
         <div class="panel-header">
           <LIcon size="20" color="accent" class="mr-2">mdi-chat-question</LIcon>
-          <span class="panel-title">Was möchtest du machen?</span>
+          <span class="panel-title">{{ chat.hasAnalysis.value ? 'Chat mit KI' : 'Was möchtest du machen?' }}</span>
         </div>
 
-        <div class="intent-input-container">
-          <textarea
-            v-model="userIntent"
-            class="intent-textarea"
-            :placeholder="intentPlaceholder"
-            rows="6"
-            @input="onIntentChange"
-          />
+        <!-- Initial Intent Input (before first analysis) -->
+        <template v-if="!chat.hasAnalysis.value">
+          <div class="intent-input-container">
+            <textarea
+              v-model="userIntent"
+              class="intent-textarea"
+              :placeholder="intentPlaceholder"
+              rows="6"
+              @input="onIntentChange"
+              @keydown.ctrl.enter="runStreamingAnalysis"
+            />
 
-          <!-- Example Prompts -->
-          <div class="example-prompts">
-            <span class="example-label">Beispiele:</span>
-            <button
-              v-for="example in examplePrompts"
-              :key="example.short"
-              class="example-chip"
-              @click="useExample(example)"
-            >
-              {{ example.short }}
-            </button>
+            <!-- Example Prompts -->
+            <div class="example-prompts">
+              <span class="example-label">Beispiele:</span>
+              <button
+                v-for="example in examplePrompts"
+                :key="example.short"
+                class="example-chip"
+                @click="useExample(example)"
+              >
+                {{ example.short }}
+              </button>
+            </div>
           </div>
-        </div>
 
-        <!-- AI Analysis Button -->
-        <div class="analyze-section">
-          <LBtn
-            variant="primary"
-            size="large"
-            :loading="analyzing"
-            :disabled="!canAnalyze"
-            prepend-icon="wand"
-            block
-            @click="runAnalysis"
-          >
-            {{ analyzing ? 'Analysiere...' : 'KI analysieren lassen' }}
-          </LBtn>
-        </div>
+          <!-- AI Analysis Button -->
+          <div class="analyze-section">
+            <LBtn
+              variant="primary"
+              size="large"
+              :loading="chat.streaming.value"
+              :disabled="!canAnalyze"
+              prepend-icon="wand"
+              block
+              @click="runStreamingAnalysis"
+            >
+              {{ chat.streaming.value ? 'Analysiere...' : 'KI analysieren lassen' }}
+            </LBtn>
+          </div>
+        </template>
+
+        <!-- Chat Interface (after first analysis) -->
+        <template v-else>
+          <div class="chat-container">
+            <!-- Chat Messages -->
+            <div ref="chatMessagesRef" class="chat-messages">
+              <ChatMessage
+                v-for="(msg, idx) in chat.messages.value"
+                :key="idx"
+                :message="msg"
+              />
+              <!-- Streaming message -->
+              <ChatMessage
+                v-if="chat.streaming.value && chat.streamingContent.value"
+                :message="{ role: 'assistant', content: chat.streamingContent.value }"
+                streaming
+              />
+            </div>
+
+            <!-- Chat Input -->
+            <div class="chat-input-container">
+              <textarea
+                v-model="followUpMessage"
+                class="chat-input"
+                placeholder="Verfeinere die Konfiguration... (Strg+Enter zum Senden)"
+                rows="2"
+                :disabled="chat.streaming.value"
+                @keydown.ctrl.enter="sendFollowUp"
+              />
+              <LBtn
+                variant="primary"
+                size="small"
+                :loading="chat.streaming.value"
+                :disabled="!followUpMessage.trim() || chat.streaming.value"
+                prepend-icon="send"
+                @click="sendFollowUp"
+              >
+                Senden
+              </LBtn>
+            </div>
+          </div>
+        </template>
       </div>
     </div>
 
-    <!-- Analysis Results -->
+    <!-- Streaming Config Cards -->
     <v-expand-transition>
-      <div v-if="analysisResult" class="analysis-results">
+      <div v-if="chat.hasAnalysis.value || chat.streaming.value" class="config-cards-section">
+        <div class="config-cards-header">
+          <LIcon size="20" color="primary" class="mr-2">mdi-cog</LIcon>
+          <span class="config-cards-title">Konfiguration</span>
+          <v-chip v-if="chat.streaming.value" size="x-small" color="primary" variant="tonal" class="ml-2">
+            Live
+          </v-chip>
+        </div>
+
+        <div class="config-cards-grid">
+          <!-- Task Type -->
+          <ConfigCard
+            title="Evaluationstyp"
+            icon="mdi-target"
+            :loading="chat.streamingFields.task_type.loading"
+            :value="getTaskTypeLabel(chat.streamingFields.task_type.value)"
+          >
+            <div v-if="chat.streamingFields.task_type.value" class="task-type-badge">
+              <LIcon size="18" class="mr-1">{{ getTaskTypeIcon(chat.streamingFields.task_type.value) }}</LIcon>
+              {{ getTaskTypeLabel(chat.streamingFields.task_type.value) }}
+            </div>
+          </ConfigCard>
+
+          <!-- Field Mapping -->
+          <ConfigCard
+            title="Feld-Mapping"
+            icon="mdi-link-variant"
+            :loading="chat.streamingFields.field_mapping.loading"
+            :value="chat.streamingFields.field_mapping.value"
+          >
+            <template v-if="Object.keys(chat.streamingFields.field_mapping.value || {}).length">
+              <div
+                v-for="(target, source) in chat.streamingFields.field_mapping.value"
+                :key="source"
+                class="mapping-row-small"
+              >
+                <span class="mapping-source">{{ source }}</span>
+                <LIcon size="12" class="mx-1" color="primary">mdi-arrow-right</LIcon>
+                <span class="mapping-target">{{ target }}</span>
+              </div>
+            </template>
+          </ConfigCard>
+
+          <!-- Labels (for authenticity/classification) -->
+          <ConfigCard
+            v-if="chat.showLabels.value"
+            title="Labels"
+            icon="mdi-tag-multiple"
+            :loading="chat.streamingFields.labels.loading"
+            :value="chat.streamingFields.labels.value"
+          >
+            <div v-if="chat.streamingFields.labels.value?.length" class="labels-list">
+              <LTag
+                v-for="(label, idx) in chat.streamingFields.labels.value"
+                :key="idx"
+                :color="label.color || '#b0ca97'"
+                size="small"
+              >
+                {{ label.name || label }}
+              </LTag>
+            </div>
+          </ConfigCard>
+
+          <!-- Buckets (for ranking) -->
+          <ConfigCard
+            v-if="chat.showBuckets.value"
+            title="Buckets"
+            icon="mdi-format-list-bulleted"
+            :loading="chat.streamingFields.buckets.loading"
+            :value="chat.streamingFields.buckets.value"
+          >
+            <div v-if="chat.streamingFields.buckets.value?.length" class="buckets-list">
+              <BucketChip
+                v-for="(bucket, idx) in chat.streamingFields.buckets.value"
+                :key="idx"
+                :bucket="bucket"
+                :index="idx"
+              />
+            </div>
+          </ConfigCard>
+
+          <!-- Scales (for rating) -->
+          <ConfigCard
+            v-if="chat.showScales.value"
+            title="Bewertungsskalen"
+            icon="mdi-star"
+            :loading="chat.streamingFields.scales.loading"
+            :value="chat.streamingFields.scales.value"
+            class="config-card--wide"
+          >
+            <div v-if="chat.streamingFields.scales.value?.length" class="scales-list">
+              <ScalePreview
+                v-for="(scale, idx) in chat.streamingFields.scales.value"
+                :key="idx"
+                :scale="scale"
+              />
+            </div>
+          </ConfigCard>
+        </div>
+
+        <!-- Alternative Task Types -->
+        <div v-if="alternativeTaskTypes.length && !chat.streaming.value" class="alternatives-section">
+          <span class="alternatives-label">Anderen Typ wählen:</span>
+          <div class="alternatives-list">
+            <button
+              v-for="alt in alternativeTaskTypes"
+              :key="alt.value"
+              class="alternative-btn"
+              :class="{ 'alternative-btn--selected': chat.streamingFields.task_type.value === alt.value }"
+              @click="selectTaskType(alt.value)"
+            >
+              <LIcon size="18" class="mr-1">{{ alt.icon }}</LIcon>
+              {{ alt.label }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </v-expand-transition>
+
+    <!-- Legacy Analysis Results (fallback) -->
+    <v-expand-transition>
+      <div v-if="analysisResult && !chat.hasAnalysis.value" class="analysis-results">
         <div class="results-header">
           <LIcon size="24" color="success" class="mr-2">mdi-check-circle</LIcon>
           <span class="results-title">Verstanden!</span>
@@ -202,8 +369,10 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch, onMounted, nextTick } from 'vue'
 import importService from '@/services/importService'
+import { useWizardChat } from '../composables/useWizardChat'
+import { ConfigCard, BucketChip, ScalePreview, ChatMessage } from '../components'
 
 const props = defineProps({
   sessions: { type: Array, default: () => [] },
@@ -211,7 +380,15 @@ const props = defineProps({
   loading: { type: Boolean, default: false }
 })
 
-const emit = defineEmits(['analyzed', 'update:taskType', 'update:mapping'])
+const emit = defineEmits(['analyzed', 'update:taskType', 'update:mapping', 'update:config'])
+
+// Session ID computed for chat
+const sessionId = computed(() => {
+  return props.sessions?.[0]?.session_id || props.session?.session_id
+})
+
+// Initialize wizard chat
+const chat = useWizardChat(sessionId)
 
 // State
 const userIntent = ref('')
@@ -221,6 +398,8 @@ const sampleData = ref(null)
 const loadingSample = ref(false)
 const activeSampleIdx = ref(0)
 const selectedTaskType = ref(null)
+const followUpMessage = ref('')
+const chatMessagesRef = ref(null)
 
 // Computed
 const totalFiles = computed(() => props.sessions?.length || (props.session ? 1 : 0))
@@ -251,8 +430,9 @@ const canAnalyze = computed(() => {
 })
 
 const alternativeTaskTypes = computed(() => {
-  if (!analysisResult.value) return []
-  const current = analysisResult.value.task_type
+  // Use chat config or legacy analysis result
+  const current = chat.streamingFields.task_type.value || analysisResult.value?.task_type
+  if (!current) return []
   return taskTypes.filter(t => t.value !== current)
 })
 
@@ -331,10 +511,20 @@ function getTaskTypeLabel(type) {
 
 function selectTaskType(type) {
   selectedTaskType.value = type
+
+  // Update chat config
+  if (chat.config.value) {
+    chat.config.value.task_type = type
+    chat.streamingFields.task_type.value = type
+  }
+
+  // Update legacy analysis result
   if (analysisResult.value) {
     analysisResult.value.task_type = type
   }
+
   emit('update:taskType', type)
+  emitConfigUpdate()
 }
 
 async function loadSampleData() {
@@ -364,13 +554,13 @@ async function runAnalysis() {
   analyzing.value = true
   try {
     // Use first session for analysis
-    const sessionId = props.sessions?.[0]?.session_id || props.session?.session_id
-    if (!sessionId) {
+    const sessionIdValue = props.sessions?.[0]?.session_id || props.session?.session_id
+    if (!sessionIdValue) {
       throw new Error('Keine Session verfügbar')
     }
 
     const result = await importService.aiAnalyzeIntent({
-      session_id: sessionId,
+      session_id: sessionIdValue,
       user_intent: userIntent.value,
       file_count: totalFiles.value
     })
@@ -387,6 +577,67 @@ async function runAnalysis() {
   } finally {
     analyzing.value = false
   }
+}
+
+/**
+ * Run streaming analysis using the chat interface.
+ */
+async function runStreamingAnalysis() {
+  if (!canAnalyze.value) return
+
+  // Send initial message via chat
+  await chat.sendMessage(userIntent.value)
+
+  // Scroll to bottom after response
+  await nextTick()
+  scrollChatToBottom()
+
+  // Emit config update
+  emitConfigUpdate()
+}
+
+/**
+ * Send a follow-up message to refine configuration.
+ */
+async function sendFollowUp() {
+  if (!followUpMessage.value.trim() || chat.streaming.value) return
+
+  const message = followUpMessage.value
+  followUpMessage.value = ''
+
+  await chat.sendMessage(message)
+
+  // Scroll to bottom after response
+  await nextTick()
+  scrollChatToBottom()
+
+  // Emit config update
+  emitConfigUpdate()
+}
+
+/**
+ * Scroll chat messages to bottom.
+ */
+function scrollChatToBottom() {
+  if (chatMessagesRef.value) {
+    chatMessagesRef.value.scrollTop = chatMessagesRef.value.scrollHeight
+  }
+}
+
+/**
+ * Emit config update to parent.
+ */
+function emitConfigUpdate() {
+  const config = chat.config.value
+  if (config.task_type) {
+    emit('update:taskType', config.task_type)
+  }
+  emit('update:config', config)
+  emit('analyzed', {
+    ...config,
+    user_intent: userIntent.value,
+    success: true
+  })
 }
 
 // Lifecycle
@@ -723,5 +974,126 @@ watch(() => [props.sessions, props.session], () => {
 .alternative-btn--selected {
   background: rgba(var(--v-theme-primary), 0.15);
   border-color: rgb(var(--v-theme-primary));
+}
+
+/* Chat Interface */
+.chat-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  max-height: 300px;
+}
+
+.chat-input-container {
+  display: flex;
+  gap: 8px;
+  padding: 12px 16px;
+  border-top: 1px solid rgba(var(--v-border-color), 0.1);
+  background: rgba(var(--v-theme-surface-variant), 0.3);
+}
+
+.chat-input {
+  flex: 1;
+  padding: 10px 14px;
+  border: 1px solid rgba(var(--v-border-color), 0.2);
+  border-radius: 8px 2px 8px 2px;
+  background: rgba(255, 255, 255, 0.6);
+  font-family: inherit;
+  font-size: 0.9rem;
+  line-height: 1.4;
+  resize: none;
+  transition: border-color 0.15s;
+}
+
+.chat-input:focus {
+  outline: none;
+  border-color: rgb(var(--v-theme-primary));
+}
+
+.chat-input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.chat-input::placeholder {
+  color: rgba(var(--v-theme-on-surface), 0.4);
+}
+
+/* Config Cards Section */
+.config-cards-section {
+  margin-top: 24px;
+  padding: 20px;
+  background: rgba(176, 202, 151, 0.08);
+  border: 1px solid rgba(176, 202, 151, 0.2);
+  border-radius: 16px 4px 16px 4px;
+}
+
+.config-cards-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.config-cards-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: rgba(var(--v-theme-on-surface), 0.9);
+}
+
+.config-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.config-card--wide {
+  grid-column: 1 / -1;
+}
+
+/* Small mapping row for config cards */
+.mapping-row-small {
+  display: flex;
+  align-items: center;
+  padding: 3px 0;
+  font-size: 0.75rem;
+}
+
+.mapping-row-small .mapping-source {
+  font-family: 'Fira Code', monospace;
+  font-size: 0.7rem;
+  color: rgba(var(--v-theme-on-surface), 0.6);
+}
+
+.mapping-row-small .mapping-target {
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+/* Labels list */
+.labels-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+/* Buckets list */
+.buckets-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* Scales list */
+.scales-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 </style>

@@ -66,6 +66,7 @@ import { useAuth } from '@/composables/useAuth'
 import { useYjsCollaboration } from '@/components/PromptEngineering/composables/useYjsCollaboration'
 import { useGitDiff } from '@/composables/useGitDiff'
 import { useTypingMetrics } from '@/composables/useAnalyticsMetrics'
+import { getSocket } from '@/services/socketService'
 
 const props = defineProps({
   document: { type: Object, required: true },
@@ -88,6 +89,8 @@ let yhighlights = null
 const isConnected = ref(false)
 const remoteCursors = ref({})
 let cursorSendTimer = null
+const collabColorOverrides = ref({})
+const appSocket = ref(null)
 
 const { tokenParsed, collabColor } = useAuth()
 const username = computed(() => tokenParsed.value?.preferred_username || localStorage.getItem('username') || t('markdownCollab.editor.userFallback'))
@@ -190,6 +193,65 @@ function isValidHexColor(value) {
   return typeof value === 'string' && /^#[0-9a-fA-F]{6}$/.test(value)
 }
 
+function setUserColorOverride(name, color) {
+  if (!name || !isValidHexColor(color)) return
+  collabColorOverrides.value = { ...collabColorOverrides.value, [name]: color }
+}
+
+function resolveUserColor(name, fallback) {
+  if (!name) return fallback
+  const override = collabColorOverrides.value[name]
+  if (override) return override
+  if (users.value) {
+    for (const user of Object.values(users.value)) {
+      if (user?.username === name && isValidHexColor(user.color)) {
+        return user.color
+      }
+    }
+  }
+  return fallback
+}
+
+function updateUsersColorByUsername(name, color) {
+  if (!name || !isValidHexColor(color) || !users.value) return
+  const next = { ...users.value }
+  let updated = false
+  for (const [userId, user] of Object.entries(next)) {
+    if (user?.username === name) {
+      next[userId] = { ...user, color }
+      updated = true
+    }
+  }
+  if (updated) {
+    users.value = next
+  }
+}
+
+function updateCursorColorsByUsername(name, color) {
+  if (!name || !isValidHexColor(color)) return
+  const next = { ...remoteCursors.value }
+  let updated = false
+  for (const [userId, cursor] of Object.entries(next)) {
+    if (cursor?.username === name) {
+      next[userId] = { ...cursor, color }
+      updated = true
+    }
+  }
+  if (updated) {
+    remoteCursors.value = next
+  }
+}
+
+function handleGlobalColorUpdate(payload) {
+  const name = payload?.username
+  const color = payload?.collab_color || payload?.color
+  if (!name || !isValidHexColor(color)) return
+  setUserColorOverride(name, color)
+  updateUsersColorByUsername(name, color)
+  updateCursorColorsByUsername(name, color)
+  updateDecorations()
+}
+
 function updateLocalUserColor(newColor) {
   if (!newColor || !users.value) return
   const next = { ...users.value }
@@ -251,7 +313,7 @@ function buildInsertDecorations(insertRanges = []) {
     const text = typeof insert === 'string' ? insert : ''
     const length = text.length
     const attrs = op?.attributes || {}
-    const color = attrs.collabColor || attrs.color
+    const color = resolveUserColor(attrs.collabUser, attrs.collabColor || attrs.color)
     if (length === 0) continue
 
     const segmentStart = pos
@@ -349,7 +411,9 @@ function updateDecorations() {
   const myUsername = username.value
 
   for (const [lineNoStr, meta] of Object.entries(highlightsData)) {
-    if (!meta || !meta.ts || !meta.color) continue
+    if (!meta || !meta.ts) continue
+    const highlightColor = resolveUserColor(meta.username, meta.color)
+    if (!highlightColor) continue
 
     // Only show other users' recent edits (not own edits)
     if (meta.username === myUsername) continue
@@ -364,7 +428,7 @@ function updateDecorations() {
       decorations.push(
         Decoration.line({
           attributes: {
-            style: `border-left: 3px solid ${meta.color}; margin-left: -3px;`
+            style: `border-left: 3px solid ${highlightColor}; margin-left: -3px;`
           }
         }).range(line.from)
       )
@@ -445,7 +509,7 @@ function computeGitSummary() {
   let total = 0
   for (const [, meta] of yhighlights.entries()) {
     const u = meta?.username || t('markdownCollab.editor.userUnknown')
-    const color = meta?.color || '#4ECDC4'
+    const color = resolveUserColor(u, meta?.color) || '#4ECDC4'
     total += 1
     const cur = byUser.get(u) || { username: u, color, changedLines: 0 }
     cur.changedLines += 1
@@ -738,6 +802,10 @@ function refresh() {
 
 // Callback for when another user updates their color
 function onColorUpdate(userId, newColor) {
+  const userName = users.value?.[userId]?.username
+  if (userName) {
+    setUserColorOverride(userName, newColor)
+  }
   // Update the remote cursor color if it exists
   if (remoteCursors.value[userId]) {
     remoteCursors.value[userId] = {
@@ -800,6 +868,8 @@ onMounted(async () => {
     updateDecorations()
 
     const sock = socket.value
+    appSocket.value = getSocket()
+    appSocket.value?.on('user:collab_color_updated', handleGlobalColorUpdate)
     isConnected.value = sock?.connected === true
 
     onSocketConnect = () => {
@@ -839,6 +909,7 @@ watch(
   () => collabColor.value,
   (newColor) => {
     if (!newColor) return
+    setUserColorOverride(username.value, newColor)
     applyCollabColorChange(newColor)
     if (socket.value?.connected) {
       // Broadcast color change to other users
@@ -911,6 +982,9 @@ onUnmounted(() => {
     sendCursorUpdate(null)
   } catch {}
 
+  if (appSocket.value) {
+    appSocket.value.off('user:collab_color_updated', handleGlobalColorUpdate)
+  }
   if (cursorSendTimer) clearTimeout(cursorSendTimer)
   if (socket.value) {
     if (onSocketConnect) socket.value.off('connect', onSocketConnect)

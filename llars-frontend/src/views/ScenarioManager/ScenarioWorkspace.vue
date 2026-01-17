@@ -102,7 +102,7 @@
         :live-stats="liveStats"
         @import-data="activeTab = 'data'"
         @start-evaluation="activeTab = 'evaluation'"
-        @view-results="activeTab = 'results'"
+        @view-results="activeTab = 'evaluation'"
       />
 
       <!-- Data Tab -->
@@ -116,14 +116,8 @@
       <ScenarioEvaluationTab
         v-else-if="activeTab === 'evaluation'"
         :scenario="scenario"
-        @evaluation-complete="refreshScenario"
-      />
-
-      <!-- Results Tab -->
-      <ScenarioResultsTab
-        v-else-if="activeTab === 'results'"
-        :scenario="scenario"
         :live-stats="liveStats"
+        @evaluation-complete="refreshScenario"
       />
 
       <!-- Team Tab -->
@@ -143,6 +137,65 @@
         @saved="onSettingsSaved"
       />
     </v-dialog>
+
+    <!-- Duplicate Dialog -->
+    <v-dialog v-model="showDuplicateDialog" max-width="450">
+      <v-card>
+        <v-card-title class="d-flex align-center">
+          <LIcon color="primary" class="mr-2">mdi-content-copy</LIcon>
+          {{ $t('scenarioManager.duplicate.title') }}
+        </v-card-title>
+        <v-card-text>
+          <p class="mb-4">{{ $t('scenarioManager.duplicate.description', { name: scenario?.scenario_name }) }}</p>
+          <v-text-field
+            v-model="duplicateName"
+            :label="$t('scenarioManager.duplicate.newName')"
+            :placeholder="$t('scenarioManager.duplicate.newNamePlaceholder', { name: scenario?.scenario_name })"
+            variant="outlined"
+            density="comfortable"
+            autofocus
+          />
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <LBtn variant="text" @click="showDuplicateDialog = false" :disabled="duplicating">
+            {{ $t('common.cancel') }}
+          </LBtn>
+          <LBtn variant="primary" @click="executeDuplicate" :loading="duplicating">
+            <LIcon start>mdi-content-copy</LIcon>
+            {{ $t('scenarioManager.actions.duplicate') }}
+          </LBtn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- Archive Dialog -->
+    <v-dialog v-model="showArchiveDialog" max-width="400">
+      <v-card>
+        <v-card-title class="d-flex align-center">
+          <LIcon color="warning" class="mr-2">mdi-archive-outline</LIcon>
+          {{ $t('scenarioManager.archive.title') }}
+        </v-card-title>
+        <v-card-text>
+          {{ $t('scenarioManager.archive.confirm', { name: scenario?.scenario_name }) }}
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <LBtn variant="text" @click="showArchiveDialog = false" :disabled="archiving">
+            {{ $t('common.cancel') }}
+          </LBtn>
+          <LBtn variant="warning" @click="executeArchive" :loading="archiving">
+            <LIcon start>mdi-archive-outline</LIcon>
+            {{ $t('scenarioManager.actions.archive') }}
+          </LBtn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- Snackbar for notifications -->
+    <v-snackbar v-model="snackbar.show" :color="snackbar.color" :timeout="3000">
+      {{ snackbar.message }}
+    </v-snackbar>
   </div>
 </template>
 
@@ -156,7 +209,6 @@ import { useScenarioStats } from './composables/useScenarioStats'
 import ScenarioOverviewTab from './components/tabs/ScenarioOverviewTab.vue'
 import ScenarioDataTab from './components/tabs/ScenarioDataTab.vue'
 import ScenarioEvaluationTab from './components/tabs/ScenarioEvaluationTab.vue'
-import ScenarioResultsTab from './components/tabs/ScenarioResultsTab.vue'
 import ScenarioTeamTab from './components/tabs/ScenarioTeamTab.vue'
 import ScenarioSettingsDialog from './components/ScenarioSettingsDialog.vue'
 
@@ -176,7 +228,9 @@ const {
   currentScenario: scenario,
   loading,
   fetchScenario,
-  updateScenario
+  updateScenario,
+  duplicateScenario: duplicateScenarioApi,
+  archiveScenario: archiveScenarioApi
 } = useScenarioManager()
 
 // Real-time stats subscription
@@ -194,6 +248,12 @@ const {
 // UI State
 const activeTab = ref('overview')
 const showSettings = ref(false)
+const showDuplicateDialog = ref(false)
+const showArchiveDialog = ref(false)
+const duplicateName = ref('')
+const duplicating = ref(false)
+const archiving = ref(false)
+const snackbar = ref({ show: false, message: '', color: 'success' })
 
 // Access control: Check if user is owner or in evaluate mode
 const isEvaluatorMode = computed(() => {
@@ -212,8 +272,7 @@ const tabs = computed(() => {
   return [
     { value: 'overview', label: t('scenarioManager.tabs.overview'), icon: 'mdi-view-dashboard-outline' },
     { value: 'data', label: t('scenarioManager.tabs.data'), icon: 'mdi-database-outline' },
-    { value: 'evaluation', label: t('scenarioManager.tabs.evaluation'), icon: 'mdi-robot-outline' },
-    { value: 'results', label: t('scenarioManager.tabs.results'), icon: 'mdi-chart-bar' },
+    { value: 'evaluation', label: t('scenarioManager.tabs.evaluation'), icon: 'mdi-clipboard-edit-outline' },
     { value: 'team', label: t('scenarioManager.tabs.team'), icon: 'mdi-account-group-outline' }
   ]
 })
@@ -293,13 +352,60 @@ async function refreshScenario() {
 }
 
 function duplicateScenario() {
-  // TODO: Implement duplication
-  console.log('Duplicate scenario')
+  duplicateName.value = t('scenarioManager.duplicate.newNamePlaceholder', { name: scenario.value?.scenario_name })
+  showDuplicateDialog.value = true
+}
+
+async function executeDuplicate() {
+  if (!scenario.value) return
+  duplicating.value = true
+  try {
+    const newScenario = await duplicateScenarioApi(scenario.value.id, duplicateName.value || null)
+    showDuplicateDialog.value = false
+    snackbar.value = {
+      show: true,
+      message: t('scenarioManager.duplicate.success'),
+      color: 'success'
+    }
+    // Navigate to the new scenario
+    router.push({ name: 'ScenarioWorkspace', params: { id: newScenario.id } })
+  } catch (err) {
+    snackbar.value = {
+      show: true,
+      message: err.response?.data?.error || 'Failed to duplicate scenario',
+      color: 'error'
+    }
+  } finally {
+    duplicating.value = false
+  }
 }
 
 function confirmArchive() {
-  // TODO: Implement archive confirmation
-  console.log('Archive scenario')
+  showArchiveDialog.value = true
+}
+
+async function executeArchive() {
+  if (!scenario.value) return
+  archiving.value = true
+  try {
+    await archiveScenarioApi(scenario.value.id)
+    showArchiveDialog.value = false
+    snackbar.value = {
+      show: true,
+      message: t('scenarioManager.archive.success'),
+      color: 'success'
+    }
+    // Navigate back to scenario list
+    router.push({ name: 'ScenarioManager' })
+  } catch (err) {
+    snackbar.value = {
+      show: true,
+      message: err.response?.data?.error || 'Failed to archive scenario',
+      color: 'error'
+    }
+  } finally {
+    archiving.value = false
+  }
 }
 
 async function onSettingsSaved(updates) {

@@ -1,7 +1,7 @@
 <template>
   <div class="evaluation-preview">
     <!-- Rating Preview -->
-    <div v-if="evalType === 'rating'" class="preview-rating">
+    <div v-if="resolvedType === 'rating'" class="preview-rating">
       <div class="preview-label">{{ $t('scenarioManager.evalConfig.preview.ratingDemo') }}</div>
 
       <!-- Stars Preview -->
@@ -75,7 +75,7 @@
     </div>
 
     <!-- Ranking Preview -->
-    <div v-else-if="evalType === 'ranking'" class="preview-ranking">
+    <div v-else-if="resolvedType === 'ranking'" class="preview-ranking">
       <div class="preview-label">{{ $t('scenarioManager.evalConfig.preview.rankingDemo') }}</div>
 
       <!-- Buckets Preview -->
@@ -113,7 +113,7 @@
     </div>
 
     <!-- Labeling Preview -->
-    <div v-else-if="evalType === 'labeling'" class="preview-labeling">
+    <div v-else-if="resolvedType === 'labeling'" class="preview-labeling">
       <div class="preview-label">{{ $t('scenarioManager.evalConfig.preview.labelingDemo') }}</div>
 
       <div class="labels-preview">
@@ -155,7 +155,7 @@
     </div>
 
     <!-- Comparison Preview -->
-    <div v-else-if="evalType === 'comparison'" class="preview-comparison">
+    <div v-else-if="resolvedType === 'comparison'" class="preview-comparison">
       <div class="preview-label">{{ $t('scenarioManager.evalConfig.preview.comparisonDemo') }}</div>
 
       <div class="comparison-layout">
@@ -221,6 +221,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { getBaseType } from '../../config/evaluationPresets'
 
 const props = defineProps({
   evalType: {
@@ -242,6 +243,8 @@ const selectedLabels = ref([])
 const selectedWinner = ref(null)
 
 // Computed
+const resolvedType = computed(() => getBaseType(props.evalType))
+
 const scaleValues = computed(() => {
   if (!props.config) return []
   const values = []

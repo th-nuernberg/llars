@@ -55,7 +55,21 @@ def get_evaluation_progress(scenario_id):
     elif not isinstance(config, dict):
         config = {}
 
-    llm_evaluators = config.get('llm_evaluators', [])
+    llm_evaluators = config.get('llm_evaluators')
+    if not llm_evaluators:
+        llm_evaluators = config.get('selected_llms') or []
+
+    normalized_models = []
+    for model in llm_evaluators:
+        if isinstance(model, str):
+            mid = model.strip()
+        elif isinstance(model, dict):
+            mid = str(model.get('model_id') or '').strip()
+        else:
+            continue
+        if mid and mid not in normalized_models:
+            normalized_models.append(mid)
+    llm_evaluators = normalized_models
 
     # Get completed evaluations per model
     model_progress = {}
@@ -166,8 +180,19 @@ def start_evaluation(scenario_id):
     data = request.get_json(silent=True) or {}
     model_id = data.get('model_id')
 
-    # TODO: Implement actual evaluation triggering
-    # This would typically queue tasks to a Celery worker or similar
+    username = getattr(g.authentik_user, 'username', str(g.authentik_user))
+
+    if model_id:
+        from services.llm.llm_access_service import LLMAccessService
+        if not LLMAccessService.user_can_access_model(username, model_id):
+            raise ValidationError(f'No access to LLM model: {model_id}')
+
+    from services.llm.llm_ai_task_runner import LLMAITaskRunner
+    LLMAITaskRunner.run_for_scenario_async(
+        scenario_id,
+        model_ids=[model_id] if model_id else None,
+    )
+
     logger.info(f"LLM evaluation start requested for scenario {scenario_id}")
 
     return jsonify({

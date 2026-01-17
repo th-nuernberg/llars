@@ -24,15 +24,47 @@ from db.tables import (
     EmailThread, Message, ScenarioThreads, ScenarioRoles, User,
     ScenarioThreadDistribution, InvitationStatus,
     UserFeatureRanking, UserFeatureRating, Feature,
-    UserMailHistoryRating, UserConsultingCategorySelection
+    UserMailHistoryRating, UserConsultingCategorySelection,
+    ComparisonSession
 )
 from db.models.authenticity import UserAuthenticityVote
 from db.models.llm_task_result import LLMTaskResult
-from services.scenario_stats_service import get_progress_stats
+from services.scenario_stats_service import get_progress_stats, get_authenticity_stats, get_scenario_stats_payload
 from .. import data_blueprint
 from .scenario_utils import is_scenario_owner, check_scenario_ownership
 
 logger = logging.getLogger(__name__)
+
+
+def _normalize_llm_evaluators(config):
+    if not isinstance(config, dict):
+        return []
+
+    if config.get('enable_llm_evaluation') is False:
+        return []
+
+    raw_llm_evaluators = config.get('llm_evaluators')
+    if raw_llm_evaluators is None:
+        raw_llm_evaluators = config.get('selected_llms')
+
+    if isinstance(raw_llm_evaluators, str):
+        raw_llm_evaluators = [raw_llm_evaluators]
+    if raw_llm_evaluators is None:
+        raw_llm_evaluators = []
+    if not isinstance(raw_llm_evaluators, list):
+        return []
+
+    llm_evaluators = []
+    for model in raw_llm_evaluators:
+        if isinstance(model, str):
+            mid = model.strip()
+        elif isinstance(model, dict):
+            mid = str(model.get('model_id') or '').strip()
+        else:
+            continue
+        if mid and mid not in llm_evaluators:
+            llm_evaluators.append(mid)
+    return llm_evaluators
 
 
 def get_user_scenarios(user, invitation_filter=None):
@@ -232,6 +264,12 @@ def format_scenario_for_api(scenario, user, invitation_map=None, include_detaile
             config = json.loads(config)
         except (json.JSONDecodeError, TypeError):
             config = {}
+    if not isinstance(config, dict):
+        config = {}
+
+    llm_evaluators = _normalize_llm_evaluators(config)
+    if llm_evaluators:
+        config['llm_evaluators'] = llm_evaluators
 
     # Get invitation info for current user
     invitation_info = None
@@ -266,7 +304,7 @@ def format_scenario_for_api(scenario, user, invitation_map=None, include_detaile
         'owner_name': owner_name,
         'thread_count': thread_count,
         'user_count': user_count,
-        'llm_evaluator_count': len(config.get('llm_evaluators', [])),
+        'llm_evaluator_count': len(llm_evaluators),
         'config_json': config,
         'stats': stats,
         'invitation': invitation_info  # New: invitation status for current user
@@ -285,6 +323,7 @@ def list_user_scenarios():
     Query params:
         - filter: 'owned', 'accepted', 'rejected', 'pending', 'all'
                   Default behavior excludes rejected invitations.
+        - include_stats: 'true' to include detailed progress stats (slower but shows actual progress)
 
     Returns:
         - Scenarios created by the user
@@ -292,6 +331,7 @@ def list_user_scenarios():
     """
     user = g.authentik_user
     invitation_filter = request.args.get('filter', None)
+    include_stats = request.args.get('include_stats', 'false').lower() == 'true'
 
     # Special handling for 'all' - get everything including rejected
     if invitation_filter == 'all':
@@ -308,7 +348,7 @@ def list_user_scenarios():
     else:
         scenarios, invitation_map = get_user_scenarios(user, invitation_filter)
 
-    formatted = [format_scenario_for_api(s, user, invitation_map) for s in scenarios]
+    formatted = [format_scenario_for_api(s, user, invitation_map, include_detailed_stats=include_stats) for s in scenarios]
 
     # Sort by status (active first) then by date
     status_order = {'evaluating': 0, 'data_collection': 1, 'draft': 2, 'completed': 3, 'archived': 4}
@@ -393,7 +433,43 @@ def get_scenario_detail(scenario_id):
 
     # Add LLM evaluators from config
     config = scenario.config_json or {}
-    result['llm_evaluators'] = config.get('llm_evaluators', [])
+    if isinstance(config, str):
+        try:
+            config = json.loads(config)
+        except (json.JSONDecodeError, TypeError):
+            config = {}
+    if not isinstance(config, dict):
+        config = {}
+
+    llm_evaluators = _normalize_llm_evaluators(config)
+    if llm_evaluators:
+        config['llm_evaluators'] = llm_evaluators
+    result['llm_evaluators'] = llm_evaluators
+
+    if llm_evaluators and (is_admin or is_owner) and result.get('thread_count', 0) > 0:
+        try:
+            existing_models = set()
+            model_rows = db.session.query(LLMTaskResult.model_id).filter(
+                LLMTaskResult.scenario_id == scenario.id,
+                LLMTaskResult.model_id.in_(llm_evaluators),
+            ).distinct().all()
+            for row in model_rows:
+                if row and row[0]:
+                    existing_models.add(row[0])
+
+            pending_models = [mid for mid in llm_evaluators if mid not in existing_models]
+            if pending_models:
+                from services.llm.llm_ai_task_runner import LLMAITaskRunner
+                LLMAITaskRunner.run_for_scenario_async(
+                    scenario.id,
+                    model_ids=pending_models,
+                )
+        except Exception as exc:
+            logger.warning(
+                "[LLM AI Runner] Auto-start failed for scenario %s: %s",
+                scenario.id,
+                exc,
+            )
 
     return jsonify(result), 200
 
@@ -659,10 +735,207 @@ def scenario_manager_add_threads(scenario_id):
 
     db.session.commit()
 
+    try:
+        if validated_threads:
+            config = scenario.config_json or {}
+            if isinstance(config, str):
+                try:
+                    config = json.loads(config)
+                except (json.JSONDecodeError, TypeError):
+                    config = {}
+            llm_evaluators = _normalize_llm_evaluators(config)
+            if llm_evaluators:
+                from services.llm.llm_ai_task_runner import LLMAITaskRunner
+                LLMAITaskRunner.run_for_scenario_async(
+                    scenario.id,
+                    model_ids=llm_evaluators,
+                    thread_ids=validated_threads,
+                )
+    except Exception as exc:
+        logger.warning("[LLM AI Runner] Add threads trigger failed: %s", exc)
+
     return jsonify({
         'message': f'Successfully added {len(validated_threads)} threads',
         'added_count': len(validated_threads),
         'failed_threads': failed_threads
+    }), 200
+
+
+@data_blueprint.route('/scenarios/<int:scenario_id>/threads/<int:thread_id>', methods=['GET'])
+@authentik_required
+@handle_api_errors(logger_name='scenario_manager')
+def get_scenario_thread_detail(scenario_id, thread_id):
+    """
+    Get detailed information about a specific thread in a scenario.
+
+    Includes:
+        - Thread metadata
+        - All messages
+        - Evaluation votes (human and LLM)
+
+    Path params:
+        - scenario_id: Scenario ID
+        - thread_id: Thread ID
+
+    Returns:
+        - thread: Thread object with messages and votes
+    """
+    # Verify scenario exists
+    scenario = RatingScenarios.query.get(scenario_id)
+    if not scenario:
+        raise NotFoundError(f'Scenario {scenario_id} not found')
+
+    # Verify thread is in this scenario
+    scenario_thread = ScenarioThreads.query.filter_by(
+        scenario_id=scenario_id,
+        thread_id=thread_id
+    ).first()
+
+    if not scenario_thread:
+        raise NotFoundError(f'Thread {thread_id} is not part of scenario {scenario_id}')
+
+    # Get email thread with messages
+    email_thread = EmailThread.query.get(thread_id)
+    if not email_thread:
+        raise NotFoundError(f'Thread {thread_id} not found')
+
+    # Get messages sorted by timestamp
+    messages = sorted(email_thread.messages, key=lambda m: m.timestamp if m.timestamp else datetime.max)
+
+    # Get function type to determine which votes to fetch
+    func_type = FeatureFunctionType.query.get(scenario.function_type_id)
+    func_type_name = func_type.name if func_type else 'unknown'
+
+    # Collect votes based on function type
+    votes = []
+
+    if func_type_name == 'authenticity':
+        from db.models.authenticity import UserAuthenticityVote
+        human_votes = UserAuthenticityVote.query.filter_by(thread_id=thread_id).all()
+        for vote in human_votes:
+            user = User.query.get(vote.user_id)
+            votes.append({
+                'type': 'human',
+                'user_id': vote.user_id,
+                'username': user.username if user else 'Unknown',
+                'vote': vote.authenticity_vote,
+                'confidence': vote.confidence,
+                'created_at': vote.created_at.isoformat() if vote.created_at else None
+            })
+
+        # Get LLM votes
+        llm_votes = LLMTaskResult.query.filter_by(
+            scenario_id=scenario_id,
+            thread_id=thread_id,
+            task_type='authenticity'
+        ).all()
+        for vote in llm_votes:
+            payload = vote.payload_json or {}
+            votes.append({
+                'type': 'llm',
+                'model_id': vote.model_id,
+                'vote': payload.get('label') or payload.get('vote'),
+                'confidence': payload.get('confidence'),
+                'reasoning': payload.get('reasoning'),
+                'created_at': vote.created_at.isoformat() if vote.created_at else None
+            })
+
+    elif func_type_name == 'mail_rating':
+        mail_ratings = UserMailHistoryRating.query.filter_by(thread_id=thread_id).all()
+        for rating in mail_ratings:
+            user = User.query.get(rating.user_id)
+            votes.append({
+                'type': 'human',
+                'user_id': rating.user_id,
+                'username': user.username if user else 'Unknown',
+                'ratings': rating.ratings,
+                'created_at': rating.created_at.isoformat() if hasattr(rating, 'created_at') and rating.created_at else None
+            })
+
+        llm_ratings = LLMTaskResult.query.filter_by(
+            scenario_id=scenario_id,
+            thread_id=thread_id,
+            task_type='mail_rating'
+        ).all()
+        for rating in llm_ratings:
+            payload = rating.payload_json or {}
+            votes.append({
+                'type': 'llm',
+                'model_id': rating.model_id,
+                'ratings': payload.get('ratings'),
+                'created_at': rating.created_at.isoformat() if rating.created_at else None
+            })
+
+    return jsonify({
+        'thread': {
+            'thread_id': email_thread.thread_id,
+            'subject': email_thread.subject,
+            'sender': email_thread.sender,
+            'chat_id': email_thread.chat_id,
+            'messages': [{
+                'id': m.id,
+                'sender': m.sender,
+                'content': m.content,
+                'timestamp': m.timestamp.isoformat() if m.timestamp else None,
+                'role': m.role if hasattr(m, 'role') else None
+            } for m in messages],
+            'votes': votes
+        }
+    })
+
+
+@data_blueprint.route('/scenarios/<int:scenario_id>/threads/<int:thread_id>', methods=['DELETE'])
+@require_permission('data:manage_scenarios')
+@handle_api_errors(logger_name='scenario_manager')
+def remove_thread_from_scenario(scenario_id, thread_id):
+    """
+    Remove a thread from a scenario.
+
+    This only removes the association between the scenario and thread,
+    it does not delete the actual thread or its data.
+
+    Path params:
+        - scenario_id: Scenario ID
+        - thread_id: Thread ID to remove
+
+    Returns:
+        - message: Success message
+    """
+    user = g.authentik_user
+    username = getattr(user, 'username', str(user))
+
+    # Verify scenario exists
+    scenario = RatingScenarios.query.get(scenario_id)
+    if not scenario:
+        raise NotFoundError(f'Scenario {scenario_id} not found')
+
+    # Verify ownership
+    if not is_scenario_owner(scenario, user):
+        raise ValidationError('Only scenario owner can remove threads')
+
+    # Find the scenario-thread association
+    scenario_thread = ScenarioThreads.query.filter_by(
+        scenario_id=scenario_id,
+        thread_id=thread_id
+    ).first()
+
+    if not scenario_thread:
+        raise NotFoundError(f'Thread {thread_id} is not part of scenario {scenario_id}')
+
+    # Remove associated thread distributions (assignments to users)
+    ScenarioThreadDistribution.query.filter_by(
+        scenario_id=scenario_id,
+        thread_id=thread_id
+    ).delete()
+
+    # Remove the scenario-thread association
+    db.session.delete(scenario_thread)
+    db.session.commit()
+
+    logger.info(f"User {username} removed thread {thread_id} from scenario {scenario_id}")
+
+    return jsonify({
+        'message': f'Thread {thread_id} removed from scenario successfully'
     }), 200
 
 
@@ -718,10 +991,56 @@ def sm_create_scenario():
 
     # Build config
     config = data.get('config_json', {})
+    if isinstance(config, str):
+        try:
+            config = json.loads(config)
+        except (json.JSONDecodeError, TypeError):
+            config = {}
+    if not isinstance(config, dict):
+        config = {}
     if not config.get('distribution_mode'):
         config['distribution_mode'] = 'all'
     if not config.get('order_mode'):
         config['order_mode'] = 'random'
+
+    # Resolve LLM evaluators (supports legacy selected_llms from older frontends)
+    raw_llm_evaluators = data.get('llm_evaluators')
+    if raw_llm_evaluators is None:
+        raw_llm_evaluators = config.get('llm_evaluators')
+    if raw_llm_evaluators is None:
+        raw_llm_evaluators = config.get('selected_llms')
+
+    if isinstance(raw_llm_evaluators, str):
+        raw_llm_evaluators = [raw_llm_evaluators]
+    if raw_llm_evaluators is None:
+        raw_llm_evaluators = []
+    if not isinstance(raw_llm_evaluators, list):
+        raise ValidationError('llm_evaluators must be a list of model IDs')
+
+    llm_evaluators = []
+    for model in raw_llm_evaluators:
+        if isinstance(model, str):
+            mid = model.strip()
+        elif isinstance(model, dict):
+            mid = str(model.get('model_id') or '').strip()
+        else:
+            continue
+        if mid and mid not in llm_evaluators:
+            llm_evaluators.append(mid)
+
+    enable_llm = bool(config.get('enable_llm_evaluation', False))
+    if enable_llm and llm_evaluators:
+        from services.llm.llm_access_service import LLMAccessService
+        unauthorized = [
+            model_id
+            for model_id in llm_evaluators
+            if not LLMAccessService.user_can_access_model(username, model_id)
+        ]
+        if unauthorized:
+            raise ForbiddenError('No access to LLM models: ' + ', '.join(unauthorized))
+        config['llm_evaluators'] = llm_evaluators
+    else:
+        config.pop('llm_evaluators', None)
 
     # Create scenario
     new_scenario = RatingScenarios(
@@ -745,6 +1064,13 @@ def sm_create_scenario():
     db.session.commit()
 
     logger.info(f"User {username} created scenario {new_scenario.id}: {scenario_name}")
+
+    if enable_llm and config.get('llm_evaluators'):
+        from services.llm.llm_ai_task_runner import LLMAITaskRunner
+        LLMAITaskRunner.run_for_scenario_async(
+            new_scenario.id,
+            model_ids=config.get('llm_evaluators'),
+        )
 
     return jsonify({
         'message': 'Scenario created successfully',
@@ -822,7 +1148,9 @@ def sm_delete_scenario(scenario_id):
     # Check ownership
     check_scenario_ownership(scenario, user)  # Verifies user is owner or admin, raises ForbiddenError if not
 
-    # Delete related records
+    # Delete related records (order matters for FK constraints)
+    # First delete comparison sessions (for comparison scenarios)
+    ComparisonSession.query.filter_by(scenario_id=scenario_id).delete()
     ScenarioThreadDistribution.query.filter_by(scenario_id=scenario_id).delete()
     ScenarioThreads.query.filter_by(scenario_id=scenario_id).delete()
     ScenarioUsers.query.filter_by(scenario_id=scenario_id).delete()
@@ -841,6 +1169,9 @@ def sm_delete_scenario(scenario_id):
 def get_scenario_stats(scenario_id):
     """
     Get detailed statistics for a scenario.
+
+    Uses the unified stats payload which routes to the appropriate
+    stats function based on scenario type (authenticity vs progress).
     """
     user = g.authentik_user
     scenario = RatingScenarios.query.get(scenario_id)
@@ -851,44 +1182,90 @@ def get_scenario_stats(scenario_id):
     thread_count = ScenarioThreads.query.filter_by(scenario_id=scenario_id).count()
     user_count = ScenarioUsers.query.filter_by(scenario_id=scenario_id).count()
 
-    # Get detailed progress stats
+    # Use unified stats payload which handles both authenticity and progress scenarios
     try:
-        progress_data = get_progress_stats(scenario_id)
-        rater_stats = progress_data.get('rater_stats', [])
-        evaluator_stats = progress_data.get('evaluator_stats', [])
+        stats_payload = get_scenario_stats_payload(scenario_id)
+        stats_data = stats_payload.get('stats', {})
+        function_type = stats_payload.get('function_type')
+        kind = stats_payload.get('kind')
 
-        # Aggregate human evaluator stats
-        human_stats = rater_stats + [e for e in evaluator_stats if not e.get('is_llm')]
-        human_done = sum(u.get('done_threads', 0) for u in human_stats)
-        human_total = sum(u.get('total_threads', 0) for u in human_stats)
+        # For authenticity scenarios, data is structured differently
+        if kind == 'authenticity':
+            user_stats = stats_data.get('user_stats', [])
+            rater_stats = [u for u in user_stats if u.get('role') == 'rater' and not u.get('is_llm')]
+            evaluator_stats = [u for u in user_stats if u.get('role') == 'evaluator' or u.get('is_llm')]
 
-        # Aggregate LLM evaluator stats
-        llm_stats = [e for e in evaluator_stats if e.get('is_llm')]
-        llm_done = sum(u.get('done_threads', 0) for u in llm_stats)
-        llm_total = sum(u.get('total_threads', 0) for u in llm_stats)
+            # Map authenticity fields to standard progress fields
+            for stat in rater_stats + evaluator_stats:
+                stat['done_threads'] = stat.get('voted_count', 0)
+                stat['not_started_threads'] = stat.get('pending_count', 0)
 
-        # Total evaluations
-        total_evaluations = human_total + llm_total
-        completed_evaluations = human_done + llm_done
-        pending_evaluations = total_evaluations - completed_evaluations
+            human_stats = [u for u in user_stats if not u.get('is_llm')]
+            llm_stats_list = [u for u in user_stats if u.get('is_llm')]
 
-        response = {
-            'scenario_id': scenario_id,
-            'total_threads': thread_count,
-            'total_evaluators': user_count + len(llm_stats),
-            'human_evaluators': len(human_stats),
-            'llm_evaluators': len(llm_stats),
-            'total_evaluations': total_evaluations,
-            'completed_evaluations': completed_evaluations,
-            'pending_evaluations': pending_evaluations,
-            'rater_stats': rater_stats,
-            'evaluator_stats': evaluator_stats,
-            'agreement_metrics': {
-                'kappa': None,
-                'alpha': None,
-                'fleiss': None
+            human_done = sum(u.get('voted_count', 0) for u in human_stats)
+            human_total = sum(u.get('total_threads', 0) for u in human_stats)
+            llm_done = sum(u.get('voted_count', 0) for u in llm_stats_list)
+            llm_total = sum(u.get('total_threads', 0) for u in llm_stats_list)
+
+            response = {
+                'scenario_id': scenario_id,
+                'function_type': function_type,
+                'kind': kind,
+                'total_threads': thread_count,
+                'total_evaluators': len(user_stats),
+                'human_evaluators': len(human_stats),
+                'llm_evaluators': len(llm_stats_list),
+                'total_evaluations': human_total + llm_total,
+                'completed_evaluations': human_done + llm_done,
+                'pending_evaluations': (human_total + llm_total) - (human_done + llm_done),
+                'rater_stats': rater_stats,
+                'evaluator_stats': evaluator_stats,
+                'user_stats': user_stats,  # Include for authenticity
+                'agreement_metrics': {
+                    'kappa': None,
+                    'alpha': stats_data.get('krippendorff_alpha'),
+                    'interpretation': stats_data.get('alpha_interpretation'),
+                    'fleiss': None,
+                    'accuracy': stats_data.get('overall_accuracy')
+                },
+                'vote_distribution': stats_data.get('vote_distribution'),
+                'overall_accuracy': stats_data.get('overall_accuracy'),
+                'ground_truth_stats': stats_data.get('ground_truth_stats')
             }
-        }
+        else:
+            # Standard progress scenarios (ranking, rating, mail_rating, etc.)
+            rater_stats = stats_data.get('rater_stats', [])
+            evaluator_stats = stats_data.get('evaluator_stats', [])
+
+            human_stats = rater_stats + [e for e in evaluator_stats if not e.get('is_llm')]
+            llm_stats_list = [e for e in evaluator_stats if e.get('is_llm')]
+
+            human_done = sum(u.get('done_threads', 0) for u in human_stats)
+            human_total = sum(u.get('total_threads', 0) for u in human_stats)
+            llm_done = sum(u.get('done_threads', 0) for u in llm_stats_list)
+            llm_total = sum(u.get('total_threads', 0) for u in llm_stats_list)
+
+            response = {
+                'scenario_id': scenario_id,
+                'function_type': function_type,
+                'kind': kind,
+                'total_threads': thread_count,
+                'total_evaluators': user_count + len(llm_stats_list),
+                'human_evaluators': len(human_stats),
+                'llm_evaluators': len(llm_stats_list),
+                'total_evaluations': human_total + llm_total,
+                'completed_evaluations': human_done + llm_done,
+                'pending_evaluations': (human_total + llm_total) - (human_done + llm_done),
+                'rater_stats': rater_stats,
+                'evaluator_stats': evaluator_stats,
+                'agreement_metrics': {
+                    'kappa': None,
+                    'alpha': stats_data.get('krippendorff_alpha'),
+                    'interpretation': stats_data.get('alpha_interpretation'),
+                    'fleiss': None
+                }
+            }
     except Exception as e:
         logger.warning(f"Failed to get stats for scenario {scenario_id}: {e}")
         response = {

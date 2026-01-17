@@ -147,9 +147,11 @@ class RatingScenarios(db.Model):
     config_json: Mapped[Optional[dict]] = mapped_column(db.JSON, nullable=True)
 
     # Definiere die Beziehungen mit Cascade-Option
-    scenario_users = db.relationship('ScenarioUsers', backref='rating_scenario', cascade="all, delete")
-    scenario_threads = db.relationship('ScenarioThreads', backref='rating_scenario', cascade="all, delete")
-    scenario_thread_distribution = db.relationship('ScenarioThreadDistribution', backref='rating_scenario', cascade="all, delete")
+    scenario_users = db.relationship('ScenarioUsers', backref='rating_scenario', cascade="all, delete-orphan")
+    scenario_threads = db.relationship('ScenarioThreads', backref='rating_scenario', cascade="all, delete-orphan")
+    scenario_thread_distribution = db.relationship('ScenarioThreadDistribution', backref='rating_scenario', cascade="all, delete-orphan")
+    # Comparison sessions (for comparison function type)
+    comparison_sessions_rel = db.relationship('ComparisonSession', back_populates="scenario", cascade="all, delete-orphan", passive_deletes=True)
 
 
 class ScenarioUsers(db.Model):
@@ -262,7 +264,7 @@ class ComparisonSession(db.Model):
     messages: Mapped[list["ComparisonMessage"]] = db.relationship("ComparisonMessage", backref="session", cascade="all, delete-orphan", lazy="selectin")
 
     user = db.relationship("User", backref="comparison_sessions")
-    scenario = db.relationship("RatingScenarios", backref="comparison_sessions")
+    scenario = db.relationship("RatingScenarios", back_populates="comparison_sessions_rel")
 
 
 class ComparisonMessage(db.Model):

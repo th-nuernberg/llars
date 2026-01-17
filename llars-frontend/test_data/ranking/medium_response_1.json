@@ -1,0 +1,22 @@
+{
+  "messages": [
+    {
+      "role": "system",
+      "content": "Durchschnittliche Beratungsqualität"
+    },
+    {
+      "role": "user",
+      "content": "Ich habe Probleme mit meinem Stundenplan. Die Kurse überschneiden sich."
+    },
+    {
+      "role": "assistant",
+      "content": "Bei überschneidenden Kursen haben Sie mehrere Optionen. Sie können schauen ob einer der Kurse in einem anderen Semester angeboten wird. Oder Sie fragen beim Prüfungsamt nach einer Ausnahmeregelung. Manche Dozenten bieten auch Alternativtermine für Prüfungen an. Schauen Sie mal im Vorlesungsverzeichnis nach den genauen Zeiten."
+    }
+  ],
+  "metadata": {
+    "source": "Human",
+    "quality": "mittel",
+    "subject": "Stundenplan",
+    "id": "ranking_medium_001"
+  }
+}

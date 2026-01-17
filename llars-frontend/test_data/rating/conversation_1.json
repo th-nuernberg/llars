@@ -1,0 +1,37 @@
+{
+  "messages": [
+    {
+      "role": "system",
+      "content": "Studienberatung - Ausführliche Konversation"
+    },
+    {
+      "role": "user",
+      "content": "Hallo, ich bin neu an der Uni und total verwirrt. Wo finde ich meine Vorlesungen?"
+    },
+    {
+      "role": "assistant",
+      "content": "Willkommen an unserer Hochschule! Das geht vielen Erstis so - keine Sorge. Ihre Vorlesungen finden Sie im Online-Vorlesungsverzeichnis. Loggen Sie sich mit Ihren Zugangsdaten ein und wählen Sie Ihren Studiengang aus. Dort sehen Sie alle Kurse mit Raum und Zeit. Brauchen Sie Hilfe beim Login?"
+    },
+    {
+      "role": "user",
+      "content": "Ja, ich weiß nicht mal wie mein Passwort ist!"
+    },
+    {
+      "role": "assistant",
+      "content": "Kein Problem! Ihre Erstzugangsdaten sollten Sie per Post oder E-Mail an Ihre private Adresse bekommen haben. Falls nicht, gehen Sie zum IT-Service im Gebäude B, Erdgeschoss. Mit Ihrem Personalausweis können die Ihnen sofort neue Zugangsdaten erstellen. Die haben auch bis 16 Uhr offen."
+    },
+    {
+      "role": "user",
+      "content": "Super, danke! Noch eine Frage - muss ich mich für alle Kurse anmelden?"
+    },
+    {
+      "role": "assistant",
+      "content": "Ja, für die meisten Kurse ist eine Anmeldung erforderlich. Die Anmeldephase beginnt meist 2 Wochen vor Semesterstart. Für Pflichtveranstaltungen bekommen Sie meistens automatisch einen Platz, bei Wahlkursen gilt oft 'first come, first served'. Achten Sie auf die Deadlines - die stehen im Studienportal!"
+    }
+  ],
+  "metadata": {
+    "source": "Human",
+    "subject": "Erstis Fragen",
+    "id": "rating_001"
+  }
+}

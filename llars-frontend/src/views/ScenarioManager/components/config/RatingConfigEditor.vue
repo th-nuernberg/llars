@@ -109,13 +109,13 @@
           <div class="dimension-row">
             <LIcon class="drag-handle" size="18">mdi-drag-vertical</LIcon>
             <v-text-field
-              v-model="element.name"
+              :model-value="getDimensionName(element.name)"
               :placeholder="$t('scenarioManager.evalConfig.rating.dimensionName')"
               variant="outlined"
               density="compact"
               hide-details
               class="flex-grow-1"
-              @update:modelValue="emitUpdate"
+              @update:modelValue="updateDimensionName(index, $event)"
             />
             <v-btn
               icon
@@ -177,6 +177,23 @@ const scaleValues = computed(() => {
   }
   return values
 })
+
+function getDimensionName(name) {
+  if (!name) return ''
+  if (typeof name === 'string') return name
+  return name[locale.value] || name.de || name.en || ''
+}
+
+function updateDimensionName(index, value) {
+  const dimension = localConfig.value.dimensions?.[index]
+  if (!dimension) return
+  if (dimension.name && typeof dimension.name === 'object') {
+    dimension.name[locale.value] = value
+  } else {
+    dimension.name = value
+  }
+  emitUpdate()
+}
 
 function handleLabelUpdate(value, label) {
   if (!localConfig.value.labels) {

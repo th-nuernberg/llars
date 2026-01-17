@@ -1,0 +1,22 @@
+{
+  "messages": [
+    {
+      "role": "system",
+      "content": "Mangelhafte Beratung"
+    },
+    {
+      "role": "user",
+      "content": "Ich verstehe nicht wie ich mich für Kurse anmelden soll. Das System ist so kompliziert!"
+    },
+    {
+      "role": "assistant",
+      "content": "Das steht alles auf der Website. Lesen Sie die Anleitung."
+    }
+  ],
+  "metadata": {
+    "source": "Human",
+    "quality": "schlecht",
+    "subject": "Kursanmeldung",
+    "id": "ranking_poor_002"
+  }
+}

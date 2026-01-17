@@ -35,16 +35,16 @@
       <h4 class="section-title">{{ $t('scenarioManager.evalConfig.customizeConfig') }}</h4>
 
       <!-- Rating Configuration -->
-      <template v-if="evalType === 'rating'">
+      <template v-if="editorType === 'rating'">
         <RatingConfigEditor
           v-model="localConfig"
-          :show-dimensions="false"
+          :show-dimensions="showDimensions"
           @update:modelValue="emitUpdate"
         />
       </template>
 
       <!-- Ranking Configuration -->
-      <template v-else-if="evalType === 'ranking'">
+      <template v-else-if="editorType === 'ranking'">
         <RankingConfigEditor
           v-model="localConfig"
           @update:modelValue="emitUpdate"
@@ -52,7 +52,7 @@
       </template>
 
       <!-- Labeling Configuration -->
-      <template v-else-if="evalType === 'labeling'">
+      <template v-else-if="editorType === 'labeling'">
         <LabelingConfigEditor
           v-model="localConfig"
           @update:modelValue="emitUpdate"
@@ -60,7 +60,7 @@
       </template>
 
       <!-- Comparison Configuration -->
-      <template v-else-if="evalType === 'comparison'">
+      <template v-else-if="editorType === 'comparison'">
         <ComparisonConfigEditor
           v-model="localConfig"
           @update:modelValue="emitUpdate"
@@ -80,7 +80,9 @@
 import { ref, computed, watch, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import {
+  EVAL_TYPES,
   PRESETS_BY_TYPE,
+  getBaseType,
   getPresetsArray,
   getDefaultConfig,
   cloneConfig,
@@ -126,11 +128,25 @@ const availablePresets = computed(() => {
 })
 
 const showCustomConfig = computed(() => {
+  if (!editorType.value) return false
   return selectedPresetId.value === 'custom' || !props.showPresets
 })
 
 const presetIcon = computed(() => {
   return TYPE_INFO[props.evalType]?.icon || 'mdi-cog'
+})
+
+const resolvedType = computed(() => getBaseType(props.evalType))
+
+const editorType = computed(() => {
+  if (props.evalType === EVAL_TYPES.MAIL_RATING) return null
+  return resolvedType.value
+})
+
+const showDimensions = computed(() => {
+  if (resolvedType.value !== EVAL_TYPES.RATING) return false
+  if (props.evalType === EVAL_TYPES.MAIL_RATING) return true
+  return Array.isArray(localConfig.value?.dimensions) && localConfig.value.dimensions.length > 0
 })
 
 // Methods

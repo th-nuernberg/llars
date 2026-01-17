@@ -1,0 +1,29 @@
+{
+  "messages": [
+    {
+      "role": "system",
+      "content": "Studienberatung - Prüfungsangelegenheiten"
+    },
+    {
+      "role": "user",
+      "content": "Hi, ich hab da ein Problem. Hab die Mathe-Klausur zum zweiten Mal nicht bestanden und weiß nicht was ich jetzt machen soll... Gibt es noch eine Chance?"
+    },
+    {
+      "role": "assistant",
+      "content": "Das tut mir leid zu hören. Aber keine Panik - Sie haben in der Regel einen Drittversuch. Allerdings sollten Sie sich gut darauf vorbereiten. Haben Sie schon die Sprechstunde des Professors besucht oder Tutorenprogramme genutzt?"
+    },
+    {
+      "role": "user",
+      "content": "Nee, noch nicht. Muss ich mich für den Drittversuch extra anmelden?"
+    },
+    {
+      "role": "assistant",
+      "content": "Ja, beim Prüfungsamt. Am besten machen Sie das persönlich, dann können die auch gleich Ihren Notenspiegel prüfen. Die Öffnungszeiten sind Mo-Fr 9-12 Uhr. Nehmen Sie Ihren Studierendenausweis mit."
+    }
+  ],
+  "metadata": {
+    "source": "Human",
+    "subject": "Drittversuch Mathematik",
+    "id": "human_002"
+  }
+}

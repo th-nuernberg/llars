@@ -71,6 +71,41 @@ class AgreementMetricsService:
             "description": "Simple percentage of identical ratings. Easy to interpret but doesn't account for chance agreement. Use alongside other metrics.",
             "range": "0% to 100%",
         },
+        "icc": {
+            "name": "ICC (Intraclass Correlation)",
+            "description": "Measures reliability of ratings by comparing variability within subjects to total variability. ICC(2,1) for single rater reliability. Values: <0.50 = poor, 0.50-0.75 = moderate, 0.75-0.90 = good, >0.90 = excellent.",
+            "range": "0.0 to 1.0",
+        },
+        "kendall_w": {
+            "name": "Kendall's W (Concordance)",
+            "description": "Measures agreement among multiple raters on rankings. Values: 0 = no agreement, 1 = perfect agreement. W > 0.7 indicates strong agreement.",
+            "range": "0.0 to 1.0",
+        },
+        "mae": {
+            "name": "MAE (Mean Absolute Error)",
+            "description": "Average absolute difference between predictions and ground truth. Lower is better. Useful when ground truth labels are available.",
+            "range": "0.0 to max_scale",
+        },
+        "rmse": {
+            "name": "RMSE (Root Mean Squared Error)",
+            "description": "Square root of average squared differences. Penalizes large errors more than MAE. Lower is better.",
+            "range": "0.0 to max_scale",
+        },
+        "bradley_terry": {
+            "name": "Bradley-Terry Score",
+            "description": "Estimates item strength from pairwise comparisons. Higher scores indicate items that win more comparisons. Useful for ranking items by preference.",
+            "range": "0.0 to 1.0 (normalized)",
+        },
+        "macro_f1": {
+            "name": "Macro F1 Score",
+            "description": "Average F1 across all classes (unweighted). Treats all classes equally regardless of frequency. Good for imbalanced datasets.",
+            "range": "0.0 to 1.0",
+        },
+        "micro_f1": {
+            "name": "Micro F1 Score",
+            "description": "F1 calculated from total TP, FP, FN across classes. Weighted by class frequency. Better reflects overall performance.",
+            "range": "0.0 to 1.0",
+        },
     }
 
     @staticmethod
@@ -290,9 +325,18 @@ class AgreementMetricsService:
         """Calculate metrics for ranking evaluations."""
         data = evaluations["data"]
         raters = evaluations["raters"]
+        items = evaluations["items"]
 
-        # For ranking, calculate Kendall's Tau between pairs
+        # For ranking, calculate various agreement metrics
         results = {}
+
+        # Krippendorff's Alpha for ordinal/ranking data
+        alpha = AgreementMetricsService._krippendorff_alpha(data, raters, items, "ordinal")
+        if alpha is not None:
+            results["krippendorff_alpha"] = {
+                "value": alpha,
+                "interpretation": AgreementMetricsService._interpret_alpha(alpha),
+            }
 
         if len(raters) >= 2:
             # Calculate pairwise Kendall's Tau
@@ -300,7 +344,7 @@ class AgreementMetricsService:
             for i, r1 in enumerate(raters):
                 for r2 in raters[i + 1:]:
                     tau = AgreementMetricsService._kendall_tau_for_buckets(
-                        data, r1, r2, evaluations["items"]
+                        data, r1, r2, items
                     )
                     if tau is not None:
                         tau_values.append(tau)
@@ -314,12 +358,28 @@ class AgreementMetricsService:
                     ),
                 }
 
+            # Kendall's W (Coefficient of Concordance)
+            kendall_w = AgreementMetricsService._kendall_w(data, raters, items)
+            if kendall_w is not None:
+                results["kendall_w"] = {
+                    "value": kendall_w,
+                    "interpretation": AgreementMetricsService._interpret_kendall_w(kendall_w),
+                }
+
         # Calculate Fleiss' Kappa for bucket assignments
-        kappa = AgreementMetricsService._fleiss_kappa_for_buckets(data, raters, evaluations["items"])
+        kappa = AgreementMetricsService._fleiss_kappa_for_buckets(data, raters, items)
         if kappa is not None:
             results["fleiss_kappa"] = {
                 "value": kappa,
                 "interpretation": AgreementMetricsService._interpret_kappa(kappa),
+            }
+
+        # Percent agreement
+        percent = AgreementMetricsService._percent_agreement(data, raters, items)
+        if percent is not None:
+            results["percent_agreement"] = {
+                "value": percent,
+                "interpretation": f"{percent:.1f}% der Bewertungen stimmen überein",
             }
 
         return results
@@ -349,6 +409,14 @@ class AgreementMetricsService:
             results["krippendorff_alpha"] = {
                 "value": alpha,
                 "interpretation": AgreementMetricsService._interpret_alpha(alpha),
+            }
+
+        # ICC (Intraclass Correlation Coefficient)
+        icc = AgreementMetricsService._icc(data, raters, items)
+        if icc is not None:
+            results["icc"] = {
+                "value": icc,
+                "interpretation": AgreementMetricsService._interpret_icc(icc),
             }
 
         # Percent agreement
@@ -384,6 +452,28 @@ class AgreementMetricsService:
                     "interpretation": AgreementMetricsService._interpret_correlation(avg_rho),
                 }
 
+        # Kendall's W (Coefficient of Concordance)
+        if len(raters) >= 2:
+            kendall_w = AgreementMetricsService._kendall_w(data, raters, items)
+            if kendall_w is not None:
+                results["kendall_w"] = {
+                    "value": kendall_w,
+                    "interpretation": AgreementMetricsService._interpret_kendall_w(kendall_w),
+                }
+
+        # MAE and RMSE (against consensus)
+        mae, rmse = AgreementMetricsService._mae_rmse(data, raters, items)
+        if mae is not None:
+            results["mae"] = {
+                "value": mae,
+                "interpretation": f"Mittlere Abweichung vom Konsens: {mae:.2f}",
+            }
+        if rmse is not None:
+            results["rmse"] = {
+                "value": rmse,
+                "interpretation": f"RMSE vom Konsens: {rmse:.2f}",
+            }
+
         return results
 
     @staticmethod
@@ -418,7 +508,16 @@ class AgreementMetricsService:
                 "interpretation": AgreementMetricsService._interpret_alpha(alpha),
             }
 
-        # Fleiss' Kappa
+        # Cohen's Kappa (for exactly 2 raters)
+        if len(raters) == 2:
+            cohens = AgreementMetricsService._cohens_kappa(data, raters[0], raters[1], items)
+            if cohens is not None:
+                results["cohens_kappa"] = {
+                    "value": cohens,
+                    "interpretation": AgreementMetricsService._interpret_kappa(cohens),
+                }
+
+        # Fleiss' Kappa (for 3+ raters, but also works for 2)
         kappa = AgreementMetricsService._fleiss_kappa(data, raters, items)
         if kappa is not None:
             results["fleiss_kappa"] = {
@@ -899,3 +998,385 @@ class AgreementMetricsService:
             strength = "Sehr schwache"
 
         return f"{strength} {direction} Korrelation"
+
+    @staticmethod
+    def _interpret_icc(value: float) -> str:
+        """Interpret ICC value."""
+        if value >= 0.90:
+            return "Exzellente Reliabilität (excellent)"
+        elif value >= 0.75:
+            return "Gute Reliabilität (good)"
+        elif value >= 0.50:
+            return "Moderate Reliabilität (moderate)"
+        else:
+            return "Geringe Reliabilität (poor)"
+
+    @staticmethod
+    def _interpret_kendall_w(value: float) -> str:
+        """Interpret Kendall's W value."""
+        if value >= 0.9:
+            return "Sehr hohe Übereinstimmung"
+        elif value >= 0.7:
+            return "Hohe Übereinstimmung"
+        elif value >= 0.5:
+            return "Moderate Übereinstimmung"
+        elif value >= 0.3:
+            return "Schwache Übereinstimmung"
+        else:
+            return "Sehr schwache Übereinstimmung"
+
+    # ==========================================================================
+    # New Metric Implementations
+    # ==========================================================================
+
+    @staticmethod
+    def _icc(
+        data: Dict[int, Dict[str, Any]],
+        raters: List[str],
+        items: List[int],
+    ) -> Optional[float]:
+        """
+        Calculate ICC(2,1) - Two-way random effects, single measures.
+
+        This is appropriate when raters are a random sample and each rater
+        rates all items.
+        """
+        if len(raters) < 2 or len(items) < 2:
+            return None
+
+        # Build ratings matrix: items x raters
+        ratings = []
+        valid_items = []
+        for item in items:
+            item_ratings = []
+            all_valid = True
+            for rater in raters:
+                val = data.get(item, {}).get(rater)
+                if val is not None:
+                    try:
+                        item_ratings.append(float(val))
+                    except (ValueError, TypeError):
+                        all_valid = False
+                        break
+                else:
+                    all_valid = False
+                    break
+
+            if all_valid and len(item_ratings) == len(raters):
+                ratings.append(item_ratings)
+                valid_items.append(item)
+
+        n = len(ratings)  # Number of items
+        k = len(raters)   # Number of raters
+
+        if n < 2:
+            return None
+
+        # Calculate means
+        grand_mean = sum(sum(row) for row in ratings) / (n * k)
+        item_means = [sum(row) / k for row in ratings]
+        rater_means = [sum(ratings[i][j] for i in range(n)) / n for j in range(k)]
+
+        # Calculate sum of squares
+        ss_total = sum(
+            (ratings[i][j] - grand_mean) ** 2
+            for i in range(n)
+            for j in range(k)
+        )
+
+        ss_between_items = k * sum((m - grand_mean) ** 2 for m in item_means)
+        ss_between_raters = n * sum((m - grand_mean) ** 2 for m in rater_means)
+        ss_error = ss_total - ss_between_items - ss_between_raters
+
+        # Mean squares
+        ms_between_items = ss_between_items / (n - 1) if n > 1 else 0
+        ms_error = ss_error / ((n - 1) * (k - 1)) if (n > 1 and k > 1) else 0
+        ms_between_raters = ss_between_raters / (k - 1) if k > 1 else 0
+
+        # ICC(2,1) formula
+        denominator = ms_between_items + (k - 1) * ms_error + (k / n) * (ms_between_raters - ms_error)
+        if denominator == 0:
+            return None
+
+        icc = (ms_between_items - ms_error) / denominator
+        return round(max(0, min(1, icc)), 4)  # Clamp to [0, 1]
+
+    @staticmethod
+    def _kendall_w(
+        data: Dict[int, Dict[str, Any]],
+        raters: List[str],
+        items: List[int],
+    ) -> Optional[float]:
+        """
+        Calculate Kendall's W (Coefficient of Concordance).
+
+        Measures agreement among multiple raters when ranking items.
+        """
+        if len(raters) < 2 or len(items) < 2:
+            return None
+
+        # Build rank matrix
+        # For each rater, rank the items by their rating values
+        rank_matrix = []  # raters x items
+
+        for rater in raters:
+            rater_values = []
+            for item in items:
+                val = data.get(item, {}).get(rater)
+                if val is not None:
+                    try:
+                        rater_values.append((item, float(val)))
+                    except (ValueError, TypeError):
+                        return None
+                else:
+                    return None
+
+            # Rank the values for this rater
+            sorted_items = sorted(rater_values, key=lambda x: x[1])
+            item_ranks = {item: 0.0 for item, _ in rater_values}
+
+            i = 0
+            while i < len(sorted_items):
+                j = i
+                while j < len(sorted_items) and sorted_items[j][1] == sorted_items[i][1]:
+                    j += 1
+                avg_rank = (i + j + 1) / 2
+                for k in range(i, j):
+                    item_ranks[sorted_items[k][0]] = avg_rank
+                i = j
+
+            rank_matrix.append([item_ranks[item] for item in items])
+
+        n = len(items)
+        m = len(raters)
+
+        # Calculate rank sums for each item
+        rank_sums = [sum(rank_matrix[r][i] for r in range(m)) for i in range(n)]
+        mean_rank_sum = sum(rank_sums) / n
+
+        # Calculate S (sum of squared deviations)
+        s = sum((rs - mean_rank_sum) ** 2 for rs in rank_sums)
+
+        # Calculate W
+        # W = 12 * S / (m^2 * (n^3 - n))
+        denominator = m ** 2 * (n ** 3 - n)
+        if denominator == 0:
+            return None
+
+        w = (12 * s) / denominator
+        return round(max(0, min(1, w)), 4)  # Clamp to [0, 1]
+
+    @staticmethod
+    def _mae_rmse(
+        data: Dict[int, Dict[str, Any]],
+        raters: List[str],
+        items: List[int],
+        ground_truth: Optional[Dict[int, float]] = None,
+    ) -> Tuple[Optional[float], Optional[float]]:
+        """
+        Calculate MAE and RMSE against ground truth or consensus.
+
+        If no ground_truth provided, uses mean of all raters as reference.
+        """
+        if len(raters) < 1 or len(items) < 1:
+            return None, None
+
+        errors = []
+
+        for item in items:
+            # Get all ratings for this item
+            item_ratings = []
+            for rater in raters:
+                val = data.get(item, {}).get(rater)
+                if val is not None:
+                    try:
+                        item_ratings.append(float(val))
+                    except (ValueError, TypeError):
+                        continue
+
+            if not item_ratings:
+                continue
+
+            # Determine reference value
+            if ground_truth and item in ground_truth:
+                ref = ground_truth[item]
+            else:
+                # Use mean as consensus
+                ref = sum(item_ratings) / len(item_ratings)
+
+            # Calculate errors for each rating
+            for rating in item_ratings:
+                errors.append(abs(rating - ref))
+
+        if not errors:
+            return None, None
+
+        mae = sum(errors) / len(errors)
+        rmse = math.sqrt(sum(e ** 2 for e in errors) / len(errors))
+
+        return round(mae, 4), round(rmse, 4)
+
+    @staticmethod
+    def _bradley_terry(
+        comparisons: List[Tuple[Any, Any, Any]],  # (item_a, item_b, winner)
+    ) -> Optional[Dict[Any, float]]:
+        """
+        Calculate Bradley-Terry scores from pairwise comparisons.
+
+        Uses iterative algorithm to estimate item strengths.
+        Returns normalized scores (0-1).
+        """
+        if not comparisons:
+            return None
+
+        # Collect all items
+        items = set()
+        for a, b, winner in comparisons:
+            items.add(a)
+            items.add(b)
+
+        items = list(items)
+        if len(items) < 2:
+            return None
+
+        # Initialize scores (all equal)
+        scores = {item: 1.0 for item in items}
+
+        # Count wins and losses for each item
+        wins = {item: 0 for item in items}
+        total = {item: 0 for item in items}
+
+        for a, b, winner in comparisons:
+            total[a] += 1
+            total[b] += 1
+            if winner == a:
+                wins[a] += 1
+            elif winner == b:
+                wins[b] += 1
+            else:  # Tie
+                wins[a] += 0.5
+                wins[b] += 0.5
+
+        # Iterative estimation (simplified MM algorithm)
+        for _ in range(100):  # Max iterations
+            new_scores = {}
+            for item in items:
+                if total[item] == 0:
+                    new_scores[item] = scores[item]
+                    continue
+
+                # Sum of 1/(p_i + p_j) for all comparisons involving item
+                denominator = 0
+                for a, b, _ in comparisons:
+                    if a == item:
+                        denominator += 1 / (scores[item] + scores[b])
+                    elif b == item:
+                        denominator += 1 / (scores[a] + scores[item])
+
+                if denominator > 0:
+                    new_scores[item] = wins[item] / denominator
+                else:
+                    new_scores[item] = scores[item]
+
+            # Normalize
+            total_score = sum(new_scores.values())
+            if total_score > 0:
+                new_scores = {k: v / total_score for k, v in new_scores.items()}
+
+            # Check convergence
+            max_diff = max(abs(new_scores[i] - scores[i]) for i in items)
+            scores = new_scores
+            if max_diff < 0.0001:
+                break
+
+        return {k: round(v, 4) for k, v in scores.items()}
+
+    @staticmethod
+    def _f1_scores(
+        data: Dict[int, Dict[str, Any]],
+        raters: List[str],
+        items: List[int],
+        ground_truth: Optional[Dict[int, str]] = None,
+    ) -> Tuple[Optional[float], Optional[float]]:
+        """
+        Calculate Macro and Micro F1 scores.
+
+        Requires ground truth labels.
+        Returns (macro_f1, micro_f1).
+        """
+        if not ground_truth or not raters or not items:
+            return None, None
+
+        # Collect all classes
+        classes = set(ground_truth.values())
+        for item in items:
+            for rater in raters:
+                val = data.get(item, {}).get(rater)
+                if val is not None:
+                    classes.add(str(val))
+
+        classes = list(classes)
+        if len(classes) < 2:
+            return None, None
+
+        # Initialize confusion counts per class
+        class_stats = {
+            c: {"tp": 0, "fp": 0, "fn": 0}
+            for c in classes
+        }
+
+        # Count predictions vs ground truth
+        for item in items:
+            true_label = ground_truth.get(item)
+            if true_label is None:
+                continue
+
+            for rater in raters:
+                pred = data.get(item, {}).get(rater)
+                if pred is None:
+                    continue
+                pred = str(pred)
+
+                for c in classes:
+                    if pred == c and true_label == c:
+                        class_stats[c]["tp"] += 1
+                    elif pred == c and true_label != c:
+                        class_stats[c]["fp"] += 1
+                    elif pred != c and true_label == c:
+                        class_stats[c]["fn"] += 1
+
+        # Calculate per-class F1
+        f1_scores = []
+        total_tp = 0
+        total_fp = 0
+        total_fn = 0
+
+        for c in classes:
+            tp = class_stats[c]["tp"]
+            fp = class_stats[c]["fp"]
+            fn = class_stats[c]["fn"]
+
+            total_tp += tp
+            total_fp += fp
+            total_fn += fn
+
+            precision = tp / (tp + fp) if (tp + fp) > 0 else 0
+            recall = tp / (tp + fn) if (tp + fn) > 0 else 0
+            f1 = 2 * precision * recall / (precision + recall) if (precision + recall) > 0 else 0
+            f1_scores.append(f1)
+
+        # Macro F1 (average of per-class F1)
+        macro_f1 = sum(f1_scores) / len(f1_scores) if f1_scores else None
+
+        # Micro F1 (from total counts)
+        micro_precision = total_tp / (total_tp + total_fp) if (total_tp + total_fp) > 0 else 0
+        micro_recall = total_tp / (total_tp + total_fn) if (total_tp + total_fn) > 0 else 0
+        micro_f1 = (
+            2 * micro_precision * micro_recall / (micro_precision + micro_recall)
+            if (micro_precision + micro_recall) > 0 else None
+        )
+
+        return (
+            round(macro_f1, 4) if macro_f1 is not None else None,
+            round(micro_f1, 4) if micro_f1 is not None else None
+        )

@@ -4,7 +4,7 @@ User Settings Routes.
 Personal settings management (theme, avatar, collab color, etc.)
 """
 
-from flask import Blueprint, jsonify, request, g
+from flask import Blueprint, jsonify, request, g, current_app
 from datetime import datetime
 
 from auth.decorators import authentik_required
@@ -42,6 +42,7 @@ def update_user_settings():
 
     user = g.authentik_user
     data = request.get_json() or {}
+    prev_collab_color = user.collab_color
 
     # Update collab color
     if 'collab_color' in data:
@@ -61,6 +62,14 @@ def update_user_settings():
         user.settings_json = current
 
     db.session.commit()
+
+    if 'collab_color' in data and prev_collab_color != user.collab_color:
+        socketio = current_app.extensions.get('socketio')
+        if socketio:
+            socketio.emit('user:collab_color_updated', {
+                'username': user.username,
+                'collab_color': user.collab_color
+            })
 
     return jsonify({
         'success': True,

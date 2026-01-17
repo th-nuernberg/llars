@@ -1,0 +1,29 @@
+{
+  "messages": [
+    {
+      "role": "system",
+      "content": "Finanzielle Beratung"
+    },
+    {
+      "role": "user",
+      "content": "Mein BAföG wurde abgelehnt weil meine Eltern angeblich zu viel verdienen. Aber die unterstützen mich nicht!"
+    },
+    {
+      "role": "assistant",
+      "content": "Das ist leider eine häufige und belastende Situation. Wenn Ihre Eltern trotz Unterhaltspflicht nicht zahlen, haben Sie mehrere Optionen:\n\n1. **Vorausleistung beantragen**: Das BAföG-Amt kann Ihnen den Betrag vorstrecken und selbst von Ihren Eltern einfordern\n2. **Unterhalt einklagen**: Die Rechtsberatung des AStA kann hier helfen - kostenlos für Studierende\n3. **Härtefallantrag**: Bei besonderen Umständen\n\nWichtig: Dokumentieren Sie alle Kommunikationsversuche mit Ihren Eltern. Wann wurden Sie zuletzt abgelehnt?"
+    },
+    {
+      "role": "user",
+      "content": "Vor 2 Wochen. Meine Eltern reden nicht mehr mit mir seit ich ausgezogen bin."
+    },
+    {
+      "role": "assistant",
+      "content": "Das klingt nach einer schwierigen familiären Situation. Neben der finanziellen Seite möchte ich auch auf unsere psychologische Beratung hinweisen - Familienkonflikte können sehr belastend sein.\n\nZum praktischen Vorgehen:\n1. Beantragen Sie morgen beim BAföG-Amt die Vorausleistung - Formulare gibts online\n2. Holen Sie sich beim AStA einen Beratungstermin\n3. Als Überbrückung: Notfonds des Studierendenwerks (bis 500€ zinslos)\n\nIch kann Ihnen auch die Nummern geben wenn Sie möchten."
+    }
+  ],
+  "metadata": {
+    "source": "Human",
+    "subject": "BAföG und Eltern",
+    "id": "rating_004"
+  }
+}

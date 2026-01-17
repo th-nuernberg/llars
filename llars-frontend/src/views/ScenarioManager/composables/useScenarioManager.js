@@ -31,11 +31,14 @@ export function useScenarioManager() {
    *
    * @param {string} filter - Optional filter: 'owned', 'accepted', 'rejected', 'pending', 'all'
    */
-  async function fetchScenarios(filter = null) {
+  async function fetchScenarios(filter = null, includeStats = true) {
     loading.value = true
     error.value = null
     try {
-      const params = filter ? { filter } : {}
+      const params = {
+        ...(filter ? { filter } : {}),
+        include_stats: includeStats ? 'true' : 'false'
+      }
       const response = await axios.get('/api/scenarios', {
         headers: getHeaders(),
         params
@@ -296,6 +299,40 @@ export function useScenarioManager() {
   }
 
   /**
+   * Remove a thread from a scenario
+   * @param {number} scenarioId - The scenario ID
+   * @param {number} threadId - Thread ID to remove
+   */
+  async function removeThreadFromScenario(scenarioId, threadId) {
+    try {
+      const response = await axios.delete(`/api/scenarios/${scenarioId}/threads/${threadId}`, {
+        headers: getHeaders()
+      })
+      return response.data
+    } catch (err) {
+      console.error('Error removing thread from scenario:', err)
+      throw err
+    }
+  }
+
+  /**
+   * Get detailed information about a specific thread in a scenario
+   * @param {number} scenarioId - The scenario ID
+   * @param {number} threadId - Thread ID
+   */
+  async function getThreadDetail(scenarioId, threadId) {
+    try {
+      const response = await axios.get(`/api/scenarios/${scenarioId}/threads/${threadId}`, {
+        headers: getHeaders()
+      })
+      return response.data.thread
+    } catch (err) {
+      console.error('Error fetching thread detail:', err)
+      throw err
+    }
+  }
+
+  /**
    * Respond to a scenario invitation (accept or reject)
    * @param {number} scenarioId - The scenario ID
    * @param {string} action - 'accept' or 'reject'
@@ -471,6 +508,8 @@ export function useScenarioManager() {
     getAvailableUsers,
     getAvailableThreads,
     addThreadsToScenario,
+    removeThreadFromScenario,
+    getThreadDetail,
 
     // Invitation Management
     respondToInvitation,

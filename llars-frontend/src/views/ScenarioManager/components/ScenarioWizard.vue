@@ -44,7 +44,24 @@
     <v-card-text class="wizard-content">
       <!-- Step 1: Data Upload & AI Analysis -->
       <div v-if="currentStep === 0" class="step-content">
-        <h3 class="step-title">{{ $t('scenarioManager.wizard.step1.title') }}</h3>
+        <div class="step-title-row">
+          <h3 class="step-title">{{ $t('scenarioManager.wizard.step1.title') }}</h3>
+          <LInfoTooltip
+            :title="$t('scenarioManager.wizard.step1.dataFormatTooltipTitle')"
+            :aria-label="$t('scenarioManager.wizard.step1.dataFormatTooltipTitle')"
+            location="bottom"
+            max-width="420"
+          >
+            <div>{{ $t('scenarioManager.wizard.step1.dataFormatTooltipIntro') }}</div>
+            <ul>
+              <li>{{ $t('scenarioManager.wizard.step1.dataFormatTooltipItem1') }}</li>
+              <li>{{ $t('scenarioManager.wizard.step1.dataFormatTooltipItem2') }}</li>
+              <li>{{ $t('scenarioManager.wizard.step1.dataFormatTooltipItem3') }}</li>
+              <li>{{ $t('scenarioManager.wizard.step1.dataFormatTooltipItem4') }}</li>
+              <li>{{ $t('scenarioManager.wizard.step1.dataFormatTooltipItem5') }}</li>
+            </ul>
+          </LInfoTooltip>
+        </div>
         <p class="step-description">{{ $t('scenarioManager.wizard.step1.description') }}</p>
 
         <!-- File Upload Area -->
@@ -125,200 +142,26 @@
             <span>{{ $t('scenarioManager.wizard.step1.aiAnalysis') }}</span>
           </div>
 
-          <div v-if="analyzing" class="analyzing-state">
-            <v-progress-circular indeterminate color="primary" size="24" class="mr-3" />
-            <div class="analyzing-content">
-              <span v-if="streamingPhase === 'parsing'">{{ $t('scenarioManager.wizard.step1.parsingFiles') }}</span>
-              <span v-else-if="streamingPhase === 'thinking'">{{ $t('scenarioManager.wizard.step1.aiThinking') }}</span>
-              <span v-else-if="streamingPhase === 'streaming'">{{ $t('scenarioManager.wizard.step1.aiStreaming') }}</span>
-              <span v-else>{{ $t('scenarioManager.wizard.step1.analyzing') }}</span>
-            </div>
-          </div>
-
-          <!-- Streaming JSON Preview -->
-          <div v-if="streamingPhase === 'streaming' && streamedJsonContent" class="streaming-preview">
-            <div class="streaming-header">
-              <LIcon size="16" color="primary" class="mr-2 pulse-icon">mdi-robot</LIcon>
-              <span>{{ $t('scenarioManager.wizard.step1.aiGenerating') }}</span>
-            </div>
-            <pre class="streaming-content">{{ streamedJsonContent }}<span class="cursor">|</span></pre>
-          </div>
-
-          <div v-else-if="analysisResult" class="analysis-result">
-            <!-- AI-Powered Badge -->
-            <div v-if="analysisResult.aiPowered" class="ai-powered-badge mb-3">
-              <LIcon size="16" color="primary" class="mr-1">mdi-sparkles</LIcon>
-              <span>{{ $t('scenarioManager.wizard.step1.aiPoweredAnalysis') }}</span>
-              <v-chip v-if="analysisResult.tokensUsed" size="x-small" class="ml-2">
-                {{ analysisResult.tokensUsed }} tokens
-              </v-chip>
-            </div>
-
-            <!-- Files processed info -->
-            <div v-if="analysisResult.filesProcessed > 1" class="result-item files-processed">
-              <LIcon :color="analysisResult.errors > 0 ? 'warning' : 'success'" class="mr-2">
-                {{ analysisResult.errors > 0 ? 'mdi-file-alert' : 'mdi-file-check' }}
-              </LIcon>
-              <span>
-                <strong>{{ analysisResult.filesSuccessful }}</strong>/{{ analysisResult.filesProcessed }}
-                {{ $t('scenarioManager.wizard.step1.filesProcessed') }}
-              </span>
-            </div>
-
-            <div class="result-item">
-              <LIcon color="success" class="mr-2">mdi-database</LIcon>
-              <span><strong>{{ analysisResult.itemCount }}</strong> {{ $t('scenarioManager.wizard.step1.itemsDetected') }}</span>
-            </div>
-            <div class="result-item">
-              <LIcon color="info" class="mr-2">mdi-format-list-bulleted</LIcon>
-              <span><strong>{{ analysisResult.fieldsCount }}</strong> {{ $t('scenarioManager.wizard.step1.fieldsDetected') }}</span>
-            </div>
-
-            <!-- AI Suggested Type with Confidence -->
-            <div v-if="analysisResult.suggestedType" class="result-item suggested">
-              <LIcon color="warning" class="mr-2">mdi-lightbulb-outline</LIcon>
-              <span>
-                {{ $t('scenarioManager.wizard.step1.suggestedType') }}:
-                <strong>{{ getSuggestedTypeName(analysisResult.suggestedType) }}</strong>
-              </span>
-              <v-chip
-                v-if="analysisResult.suggestedTypeConfidence"
-                size="x-small"
-                :color="analysisResult.suggestedTypeConfidence > 0.8 ? 'success' : 'warning'"
-                class="ml-2"
-              >
-                {{ Math.round(analysisResult.suggestedTypeConfidence * 100) }}%
-              </v-chip>
-            </div>
-
-            <!-- AI Reasoning -->
-            <div v-if="analysisResult.suggestedTypeReasoning" class="ai-reasoning">
-              <LIcon size="14" color="grey" class="mr-1">mdi-information-outline</LIcon>
-              <span class="text-caption text-medium-emphasis">{{ analysisResult.suggestedTypeReasoning }}</span>
-            </div>
-
-            <!-- AI Suggestions Panel -->
-            <div v-if="aiSuggestions" class="ai-suggestions-panel mt-4">
-              <h5 class="ai-suggestions-title">
-                <LIcon size="18" color="primary" class="mr-2">mdi-robot</LIcon>
-                {{ $t('scenarioManager.wizard.step1.aiSuggestions') }}
-              </h5>
-
-              <!-- Suggested Name -->
-              <div class="suggestion-field">
-                <label class="suggestion-label">{{ $t('scenarioManager.wizard.step1.suggestedName') }}</label>
-                <v-text-field
-                  v-model="formData.scenario_name"
-                  variant="outlined"
-                  density="compact"
-                  hide-details
-                >
-                  <template #append-inner>
-                    <v-btn
-                      v-if="formData.scenario_name !== aiSuggestions.scenario_name && aiSuggestions.scenario_name"
-                      icon
-                      size="x-small"
-                      variant="text"
-                      @click="formData.scenario_name = aiSuggestions.scenario_name"
-                    >
-                      <LIcon size="16">mdi-restore</LIcon>
-                    </v-btn>
-                  </template>
-                </v-text-field>
-              </div>
-
-              <!-- Suggested Description -->
-              <div class="suggestion-field">
-                <label class="suggestion-label">{{ $t('scenarioManager.wizard.step1.suggestedDescription') }}</label>
-                <v-textarea
-                  v-model="formData.description"
-                  variant="outlined"
-                  density="compact"
-                  rows="2"
-                  hide-details
-                >
-                  <template #append-inner>
-                    <v-btn
-                      v-if="formData.description !== aiSuggestions.scenario_description && aiSuggestions.scenario_description"
-                      icon
-                      size="x-small"
-                      variant="text"
-                      @click="formData.description = aiSuggestions.scenario_description"
-                    >
-                      <LIcon size="16">mdi-restore</LIcon>
-                    </v-btn>
-                  </template>
-                </v-textarea>
-              </div>
-            </div>
-
-            <!-- Data Quality Warnings -->
-            <v-alert
-              v-if="analysisResult.dataQuality?.issues?.length"
-              type="warning"
-              variant="tonal"
-              density="compact"
-              class="mt-3"
-            >
-              <div class="text-subtitle-2 mb-1">{{ $t('scenarioManager.wizard.step1.dataQuality') }}</div>
-              <ul class="text-caption ma-0 pl-4">
-                <li v-for="(issue, idx) in analysisResult.dataQuality.issues" :key="idx">
-                  {{ issue }}
-                </li>
-              </ul>
-            </v-alert>
-
-            <!-- File breakdown (expandable) -->
-            <v-expansion-panels v-if="analysisResult.fileResults?.length > 1" variant="accordion" class="mt-3">
-              <v-expansion-panel>
-                <v-expansion-panel-title>
-                  <LIcon size="18" class="mr-2">mdi-file-document-multiple</LIcon>
-                  {{ $t('scenarioManager.wizard.step1.fileBreakdown') }}
-                </v-expansion-panel-title>
-                <v-expansion-panel-text>
-                  <div class="file-breakdown">
-                    <div
-                      v-for="(fr, idx) in analysisResult.fileResults"
-                      :key="idx"
-                      class="file-result-item"
-                      :class="{ error: !fr.success }"
-                    >
-                      <LIcon
-                        size="16"
-                        :color="fr.success ? 'success' : 'error'"
-                        class="mr-2"
-                      >
-                        {{ fr.success ? 'mdi-check-circle' : 'mdi-alert-circle' }}
-                      </LIcon>
-                      <span class="file-result-name">{{ fr.name }}</span>
-                      <span class="file-result-count">
-                        {{ fr.success ? `${fr.count} items` : fr.error }}
-                      </span>
-                    </div>
-                  </div>
-                </v-expansion-panel-text>
-              </v-expansion-panel>
-            </v-expansion-panels>
-
-            <!-- Sample Data Preview -->
-            <div v-if="analysisResult.sampleData?.length" class="sample-preview">
-              <h5>{{ $t('scenarioManager.wizard.step1.sampleData') }}</h5>
-              <div class="sample-cards">
-                <div v-for="(item, idx) in analysisResult.sampleData.slice(0, 3)" :key="idx" class="sample-card">
-                  <pre>{{ formatSample(item) }}</pre>
-                </div>
-              </div>
-            </div>
-          </div>
-
+          <!-- Start Analysis Button (before analysis) -->
           <LBtn
-            v-if="!analyzing && !analysisResult"
+            v-if="!analyzing && !analysisResult && !streamingPhase"
             variant="primary"
             @click="analyzeData"
           >
             <LIcon start>mdi-magnify-scan</LIcon>
             {{ $t('scenarioManager.wizard.step1.startAnalysis') }}
           </LBtn>
+
+          <!-- Streaming Analysis Panel (during and after analysis) -->
+          <StreamingAnalysisPanel
+            v-if="analyzing || analysisResult || streamingPhase"
+            ref="analysisPanel"
+            :data-summary="dataSummaryForPanel"
+            :data-quality="analysisResult?.dataQuality"
+            :show-chat="streamingPhase === 'done' && analysisResult?.aiPowered"
+            @update:config="handleAnalysisPanelConfigUpdate"
+            @regenerate="reanalyzeData"
+          />
         </div>
       </div>
 
@@ -912,7 +755,9 @@ import { useI18n } from 'vue-i18n'
 import axios from 'axios'
 import { useAuth } from '@/composables/useAuth'
 import { useScenarioManager } from '../composables/useScenarioManager'
+import importService from '@/services/importService'
 import EvaluationConfigEditor from './EvaluationConfigEditor.vue'
+import { StreamingAnalysisPanel } from '@/components/ScenarioWizard/AIAnalysis'
 import {
   EVAL_TYPES,
   ID_TYPE_MAP,
@@ -933,6 +778,7 @@ const auth = useAuth()
 const fileInput = ref(null)
 const infoForm = ref(null)
 const infoFormValid = ref(false)
+const analysisPanel = ref(null) // StreamingAnalysisPanel ref
 
 // Stepper state
 const currentStep = ref(0)
@@ -1068,6 +914,21 @@ const orderOptions = computed(() => [
 // Computed for total file size
 const totalFileSize = computed(() => {
   return uploadedFiles.value.reduce((sum, file) => sum + file.size, 0)
+})
+
+// Data summary for StreamingAnalysisPanel
+const dataSummaryForPanel = computed(() => {
+  const result = analysisResult.value
+  return {
+    itemCount: result?.itemCount || 0,
+    fieldsCount: result?.fieldsCount || 0,
+    fileCount: uploadedFiles.value.length,
+    fields: result?.fields?.map(f => ({
+      name: f,
+      type: 'string',
+      completeness: 1
+    })) || []
+  }
 })
 
 const canProceed = computed(() => {
@@ -1458,6 +1319,10 @@ async function analyzeData() {
                   streamingPhase.value = 'streaming'
                   aiThinking.value = false
                   streamedJsonContent.value += parsed.content || ''
+                  // Forward to panel for live parsing
+                  if (analysisPanel.value?.processChunk) {
+                    analysisPanel.value.processChunk(parsed.content || '')
+                  }
                   break
 
                 case 'suggestions':
@@ -1480,11 +1345,20 @@ async function analyzeData() {
                   if (parsed.scenario_description) {
                     formData.value.description = parsed.scenario_description
                   }
+
+                  // Forward to panel for final parsing
+                  if (analysisPanel.value?.processSuggestions) {
+                    analysisPanel.value.processSuggestions(parsed)
+                  }
                   break
 
                 case 'data_quality':
                   if (analysisResult.value) {
                     analysisResult.value.dataQuality = parsed
+                  }
+                  // Forward to panel
+                  if (analysisPanel.value?.processDataQuality) {
+                    analysisPanel.value.processDataQuality(parsed)
                   }
                   break
 
@@ -1495,10 +1369,17 @@ async function analyzeData() {
                     analysisResult.value.streaming = false
                   }
                   streamingPhase.value = 'done'
+                  // Finalize panel
+                  if (analysisPanel.value?.finalize) {
+                    analysisPanel.value.finalize()
+                  }
                   break
 
                 case 'error':
                   console.warn('Streaming AI error:', parsed.error)
+                  if (analysisPanel.value?.setError) {
+                    analysisPanel.value.setError(parsed.error)
+                  }
                   throw new Error(parsed.error)
               }
 
@@ -1579,6 +1460,46 @@ function performLocalAnalysis(allData, fileResults, totalErrors) {
   formData.value.evalType = suggestedType
 }
 
+// Handle config updates from StreamingAnalysisPanel
+function handleAnalysisPanelConfigUpdate(config) {
+  if (config.evalType) {
+    formData.value.evalType = config.evalType
+  }
+  if (config.scenarioName) {
+    formData.value.scenario_name = config.scenarioName
+  }
+  if (config.scenarioDescription) {
+    formData.value.description = config.scenarioDescription
+  }
+  // Handle additional config like labels, scales, buckets
+  if (config.labels) {
+    formData.value.labels = config.labels
+  }
+  if (config.scales) {
+    formData.value.scales = config.scales
+  }
+  if (config.buckets) {
+    formData.value.buckets = config.buckets
+  }
+}
+
+// Re-analyze data (triggered by regenerate button in panel)
+function reanalyzeData() {
+  // Reset analysis state
+  analysisResult.value = null
+  aiSuggestions.value = null
+  streamingPhase.value = null
+  streamedJsonContent.value = ''
+
+  // Reset panel state
+  if (analysisPanel.value) {
+    analysisPanel.value.reset()
+  }
+
+  // Start new analysis
+  analyzeData()
+}
+
 function readFileContent(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
@@ -1631,12 +1552,30 @@ function selectEvalType(typeId) {
   }
 }
 
+// Map eval type string to backend task_type string
+function getTaskType(evalType) {
+  const taskTypeMapping = {
+    [EVAL_TYPES.RANKING]: 'ranking',
+    [EVAL_TYPES.RATING]: 'rating',
+    [EVAL_TYPES.MAIL_RATING]: 'mail_rating',
+    [EVAL_TYPES.COMPARISON]: 'comparison',
+    [EVAL_TYPES.AUTHENTICITY]: 'authenticity',
+    [EVAL_TYPES.LABELING]: 'text_classification',
+    [EVAL_TYPES.TEXT_RATING]: 'text_rating'
+  }
+  return taskTypeMapping[evalType] || 'mail_rating'
+}
+
 // Create scenario
 async function createScenario() {
   creating.value = true
   try {
     // Map eval type to function_type_id for backend compatibility
     const functionTypeId = ID_TYPE_MAP[formData.value.evalType] || 2
+
+    const llmEvaluators = formData.value.config.enable_llm_evaluation
+      ? selectedLLMs.value.map(l => l.model_id).filter(Boolean)
+      : []
 
     const scenarioPayload = {
       scenario_name: formData.value.scenario_name,
@@ -1646,13 +1585,12 @@ async function createScenario() {
         ...formData.value.config,
         eval_type: formData.value.evalType,
         eval_config: formData.value.evalConfig,
-        // Include selected LLMs for AI evaluation
-        selected_llms: selectedLLMs.value.map(l => ({
-          id: l.id,
-          model_id: l.model_id,
-          display_name: l.display_name
-        }))
+        llm_evaluators: llmEvaluators
       }
+    }
+
+    if (!llmEvaluators.length) {
+      delete scenarioPayload.config_json.llm_evaluators
     }
 
     const scenario = await createNewScenario(scenarioPayload)
@@ -1671,8 +1609,27 @@ async function createScenario() {
       }
     }
 
-    // If we have file data, we could import it here
-    // For now, just emit the created scenario
+    // Import file data into the scenario
+    if (analyzedData.value.length > 0 && scenario?.id) {
+      try {
+        const taskType = getTaskType(formData.value.evalType)
+        const importResult = await importService.importFromData(
+          analyzedData.value,
+          scenario.id,
+          taskType,
+          formData.value.scenario_name
+        )
+        console.log('Data import result:', importResult)
+
+        if (importResult.warnings?.length > 0) {
+          console.warn('Import warnings:', importResult.warnings)
+        }
+      } catch (importError) {
+        console.error('Failed to import data:', importError)
+        // Continue anyway - scenario was created, just data import failed
+      }
+    }
+
     emit('created', scenario)
   } catch (error) {
     console.error('Failed to create scenario:', error)
@@ -1804,6 +1761,12 @@ onMounted(() => {
   font-weight: 600;
   margin-bottom: 8px;
   color: rgb(var(--v-theme-on-surface));
+}
+
+.step-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .step-description {

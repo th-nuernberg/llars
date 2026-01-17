@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
 
+import json
 import numpy as np
 
 from db.database import db
@@ -58,6 +59,99 @@ def get_scenario_ids_for_thread(thread_id: int) -> List[int]:
         return []
     scenario_rows = ScenarioThreads.query.filter_by(thread_id=thread_id).all()
     return sorted({row.scenario_id for row in scenario_rows if row.scenario_id})
+
+
+def _calculate_ranking_agreement(
+    evaluator_stats: List[Dict[str, Any]],
+    scenario_id: int,
+    function_type_name: str,
+) -> Optional[float]:
+    """
+    Calculate Krippendorff's Alpha for ranking/rating scenarios.
+
+    For ranking: compares bucket assignments across evaluators
+    For rating: compares rating values across evaluators
+    """
+    from db.models import UserFeatureRanking, UserFeatureRating, UserMailHistoryRating
+
+    # Get evaluators who have completed at least one thread
+    active_evaluators = [e for e in evaluator_stats if e.get("done_threads", 0) > 0]
+    if len(active_evaluators) < 2:
+        return None
+
+    # Get all thread IDs from the scenario
+    scenario_threads = ScenarioThreads.query.filter_by(scenario_id=scenario_id).all()
+    thread_ids = [st.thread_id for st in scenario_threads if st.thread_id]
+    if len(thread_ids) < 2:
+        return None
+
+    # Build ratings matrix based on function type
+    user_ids = []
+    for e in active_evaluators:
+        if e.get("is_llm"):
+            continue  # Skip LLM evaluators for now - different storage
+        # Try to get user_id from username
+        user = User.query.filter_by(username=e.get("username")).first()
+        if user:
+            user_ids.append(user.id)
+
+    if len(user_ids) < 2:
+        return None
+
+    ratings_matrix = np.full((len(user_ids), len(thread_ids)), np.nan)
+
+    if function_type_name == "ranking":
+        # Get bucket assignments
+        for i, user_id in enumerate(user_ids):
+            rankings = UserFeatureRanking.query.filter(
+                UserFeatureRanking.user_id == user_id,
+                UserFeatureRanking.feature.has(thread_id=thread_ids[0]) if thread_ids else False
+            ).all()
+            # Map buckets to numeric values
+            bucket_map = {"gut": 0, "good": 0, "mittel": 1, "medium": 1, "schlecht": 2, "bad": 2, "poor": 2}
+            for ranking in rankings:
+                if ranking.feature and ranking.bucket:
+                    try:
+                        tid = ranking.feature.thread_id
+                        if tid in thread_ids:
+                            j = thread_ids.index(tid)
+                            bucket_val = bucket_map.get(ranking.bucket.lower())
+                            if bucket_val is not None:
+                                ratings_matrix[i, j] = bucket_val
+                    except (ValueError, AttributeError):
+                        continue
+
+    elif function_type_name == "rating":
+        # Get rating values
+        for i, user_id in enumerate(user_ids):
+            ratings = UserFeatureRating.query.filter_by(user_id=user_id).all()
+            for rating in ratings:
+                if rating.feature and rating.rating_content is not None:
+                    try:
+                        tid = rating.feature.thread_id
+                        if tid in thread_ids:
+                            j = thread_ids.index(tid)
+                            ratings_matrix[i, j] = float(rating.rating_content)
+                    except (ValueError, AttributeError):
+                        continue
+
+    elif function_type_name == "mail_rating":
+        # Get mail ratings (use overall_rating)
+        for i, user_id in enumerate(user_ids):
+            ratings = UserMailHistoryRating.query.filter(
+                UserMailHistoryRating.user_id == user_id,
+                UserMailHistoryRating.thread_id.in_(thread_ids)
+            ).all()
+            for rating in ratings:
+                if rating.overall_rating is not None:
+                    try:
+                        j = thread_ids.index(rating.thread_id)
+                        ratings_matrix[i, j] = float(rating.overall_rating)
+                    except (ValueError, AttributeError):
+                        continue
+
+    # Calculate alpha using ordinal metric for ratings
+    return _calculate_krippendorff_alpha(ratings_matrix)
 
 
 def get_progress_stats(scenario_id: int) -> Dict[str, Any]:
@@ -177,8 +271,28 @@ def get_progress_stats(scenario_id: int) -> Dict[str, Any]:
             for row in ScenarioThreads.query.filter_by(scenario_id=scenario_id).all()
             if row.thread_id
         ]
-        config = scenario.config_json if isinstance(scenario.config_json, dict) else {}
-        config_models = config.get("llm_evaluators") or []
+        config = scenario.config_json
+        if isinstance(config, str):
+            try:
+                config = json.loads(config)
+            except (json.JSONDecodeError, TypeError):
+                config = {}
+        if not isinstance(config, dict):
+            config = {}
+        config_models = config.get("llm_evaluators")
+        if not config_models:
+            config_models = config.get("selected_llms") or []
+        normalized_models = []
+        for model in config_models:
+            if isinstance(model, str):
+                mid = model.strip()
+            elif isinstance(model, dict):
+                mid = str(model.get("model_id") or "").strip()
+            else:
+                continue
+            if mid and mid not in normalized_models:
+                normalized_models.append(mid)
+        config_models = normalized_models
         llm_stats = _build_llm_progress_entries(
             scenario_id=scenario_id,
             thread_ids=scenario_thread_ids,
@@ -187,10 +301,18 @@ def get_progress_stats(scenario_id: int) -> Dict[str, Any]:
         )
         evaluator_stats.extend(llm_stats)
 
+    # Calculate agreement metrics for ranking/rating scenarios
+    all_stats = rater_stats + evaluator_stats
+    alpha = None
+    if function_type.name in {"ranking", "rating", "mail_rating"} and len(all_stats) >= 2:
+        alpha = _calculate_ranking_agreement(all_stats, scenario_id, function_type.name)
+
     return {
         "rater_stats": rater_stats,
         "evaluator_stats": evaluator_stats,
         "viewer_stats": evaluator_stats,  # backward compatibility
+        "krippendorff_alpha": alpha,
+        "alpha_interpretation": _interpret_alpha(alpha),
     }
 
 
@@ -561,48 +683,113 @@ def get_authenticity_stats(scenario_id: int) -> Dict[str, Any]:
             }
         )
 
-    # Calculate Krippendorff's Alpha
-    rater_ids = [u["user_id"] for u in user_stats if u["voted_count"] > 0]
+    # Get LLM evaluator stats first (so we can include in alpha calculation)
+    config = scenario.config_json
+    if isinstance(config, str):
+        try:
+            config = json.loads(config)
+        except (json.JSONDecodeError, TypeError):
+            config = {}
+    if not isinstance(config, dict):
+        config = {}
+    config_models = config.get("llm_evaluators")
+    if not config_models:
+        config_models = config.get("selected_llms") or []
+    normalized_models = []
+    for model in config_models:
+        if isinstance(model, str):
+            mid = model.strip()
+        elif isinstance(model, dict):
+            mid = str(model.get("model_id") or "").strip()
+        else:
+            continue
+        if mid and mid not in normalized_models:
+            normalized_models.append(mid)
 
-    if len(rater_ids) >= 2 and len(thread_ids) >= 2:
-        ratings_matrix = np.full((len(rater_ids), len(thread_ids)), np.nan)
+    llm_user_stats = _build_llm_authenticity_stats(
+        scenario_id=scenario_id,
+        thread_ids=thread_ids,
+        ground_truth=ground_truth,
+        model_ids=normalized_models,
+    )
 
-        for i, uid in enumerate(rater_ids):
-            votes_dict = user_vote_map.get(uid, {})
+    # Build vote map for LLM evaluators too
+    llm_vote_map = {}  # model_id -> {thread_id -> vote_string}
+    for llm_stat in llm_user_stats:
+        model_id = llm_stat.get("model_id")
+        if model_id:
+            votes = {}
+            for vt in llm_stat.get("voted_threads", []):
+                if vt.get("vote"):
+                    votes[vt["thread_id"]] = vt["vote"]
+            llm_vote_map[model_id] = votes
+
+    # Calculate Krippendorff's Alpha (including both human and LLM evaluators)
+    # Collect all raters: human users + LLM evaluators
+    all_raters = []
+    rater_vote_sources = []  # List of (rater_id, is_llm, vote_data)
+
+    # Add human raters
+    for u in user_stats:
+        if u["voted_count"] > 0:
+            all_raters.append(u["user_id"])
+            rater_vote_sources.append((u["user_id"], False, user_vote_map.get(u["user_id"], {})))
+
+    # Add LLM raters
+    for llm_stat in llm_user_stats:
+        if llm_stat.get("voted_count", 0) > 0:
+            model_id = llm_stat.get("model_id")
+            all_raters.append(f"llm:{model_id}")
+            rater_vote_sources.append((model_id, True, llm_vote_map.get(model_id, {})))
+
+    if len(all_raters) >= 2 and len(thread_ids) >= 2:
+        ratings_matrix = np.full((len(all_raters), len(thread_ids)), np.nan)
+
+        for i, (rater_id, is_llm, vote_data) in enumerate(rater_vote_sources):
             for j, tid in enumerate(thread_ids):
-                vote = votes_dict.get(tid)
-                if vote and vote.vote:
-                    # 0 = real, 1 = fake
-                    ratings_matrix[i, j] = 1.0 if vote.vote.lower() == "fake" else 0.0
+                if is_llm:
+                    # LLM vote data is {thread_id: vote_string}
+                    vote_str = vote_data.get(tid)
+                    if vote_str:
+                        ratings_matrix[i, j] = 1.0 if vote_str.lower() == "fake" else 0.0
+                else:
+                    # Human vote data is {thread_id: vote_object}
+                    vote = vote_data.get(tid)
+                    if vote and vote.vote:
+                        ratings_matrix[i, j] = 1.0 if vote.vote.lower() == "fake" else 0.0
 
         alpha = _calculate_krippendorff_alpha(ratings_matrix)
     else:
         alpha = None
 
-    # Overall vote distribution
+    # Add LLM stats to user_stats
+    if llm_user_stats:
+        user_stats.extend(llm_user_stats)
+
+    # Overall vote distribution (human votes only for backwards compatibility)
     total_real_votes = sum(1 for v in all_votes if v.vote and v.vote.lower() == "real")
     total_fake_votes = sum(1 for v in all_votes if v.vote and v.vote.lower() == "fake")
-    total_possible_votes = sum(u["total_threads"] for u in user_stats if u["role"] == "rater")
+
+    # Add LLM votes to distribution
+    for llm_stat in llm_user_stats:
+        for vt in llm_stat.get("voted_threads", []):
+            if vt.get("vote"):
+                if vt["vote"].lower() == "real":
+                    total_real_votes += 1
+                elif vt["vote"].lower() == "fake":
+                    total_fake_votes += 1
+
+    total_possible_votes = sum(u["total_threads"] for u in user_stats)
     total_pending = total_possible_votes - (total_real_votes + total_fake_votes)
 
-    # Overall accuracy
-    all_correct = sum(u["correct_count"] for u in user_stats)
-    all_incorrect = sum(u["incorrect_count"] for u in user_stats)
+    # Overall accuracy (including LLM evaluators)
+    all_correct = sum(u.get("correct_count", 0) for u in user_stats)
+    all_incorrect = sum(u.get("incorrect_count", 0) for u in user_stats)
     overall_accuracy = (
         round(all_correct / (all_correct + all_incorrect) * 100, 1)
         if (all_correct + all_incorrect) > 0
         else None
     )
-
-    config = scenario.config_json if isinstance(scenario.config_json, dict) else {}
-    llm_user_stats = _build_llm_authenticity_stats(
-        scenario_id=scenario_id,
-        thread_ids=thread_ids,
-        ground_truth=ground_truth,
-        model_ids=config.get("llm_evaluators") or [],
-    )
-    if llm_user_stats:
-        user_stats.extend(llm_user_stats)
 
     return {
         "scenario_id": scenario_id,

@@ -1,0 +1,29 @@
+{
+  "messages": [
+    {
+      "role": "system",
+      "content": "Technischer Support - IT-Helpdesk"
+    },
+    {
+      "role": "user",
+      "content": "Mein VPN funktioniert nicht mehr seit dem letzten Update. Bekomme immer Fehler 691."
+    },
+    {
+      "role": "assistant",
+      "content": "Fehler 691 deutet auf ein Authentifizierungsproblem hin. Haben Sie Ihr Passwort kürzlich geändert? Falls ja, müssen Sie die VPN-Verbindung mit dem neuen Passwort neu einrichten."
+    },
+    {
+      "role": "user",
+      "content": "Stimmt, hab vor 2 Wochen das Passwort geändert! Wie mache ich das genau?"
+    },
+    {
+      "role": "assistant",
+      "content": "Gehen Sie auf Netzwerkeinstellungen > VPN > Ihre Verbindung und klicken Sie auf 'Erweiterte Optionen'. Dort können Sie das neue Passwort eintragen. Falls das nicht hilft, löschen Sie die Verbindung komplett und richten Sie sie neu ein mit der Anleitung auf unserer Website."
+    }
+  ],
+  "metadata": {
+    "source": "Human",
+    "subject": "VPN Fehler 691",
+    "id": "human_003"
+  }
+}

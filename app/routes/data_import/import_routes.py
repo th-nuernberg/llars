@@ -10,9 +10,11 @@ Endpoints:
 - GET /api/import/formats - List supported formats
 - POST /api/import/ai/analyze - AI-assisted analysis
 - POST /api/import/ai/transform - AI-generated transform script
+- POST /api/import/ai/chat-stream - Streaming chat for config refinement
 """
 
-from flask import request, jsonify, g
+from flask import request, jsonify, g, Response
+import json
 import logging
 
 from . import bp
@@ -196,6 +198,7 @@ def execute_import():
             "task_type": "rating",
             "source_name": "My Dataset",
             "create_scenario": true,
+            "scenario_id": 123,  (optional, existing scenario to import into)
             "ai_analysis": {...}  (optional, from ai/analyze-intent)
         }
     """
@@ -217,6 +220,7 @@ def execute_import():
 
     source_name = data.get('source_name')
     create_scenario = data.get('create_scenario', True)  # Default to True
+    scenario_id = data.get('scenario_id')  # Existing scenario to import into
     ai_analysis = data.get('ai_analysis')
 
     # Get username from authenticated user
@@ -229,6 +233,7 @@ def execute_import():
         task_type=task_type,
         source_name=source_name,
         create_scenario=create_scenario,
+        scenario_id=scenario_id,
         created_by=created_by,
         ai_analysis=ai_analysis
     )
@@ -248,6 +253,89 @@ def delete_session(session_id: str):
         raise ValidationError(f"Session not found: {session_id}")
 
     return jsonify({"deleted": True, "session_id": session_id})
+
+
+@bp.route('/from-data', methods=['POST'])
+@authentik_required
+@require_permission('data:import')
+@handle_api_errors(logger_name='import')
+def import_from_data():
+    """
+    Import data directly from parsed JSON (without file upload).
+
+    Used by ScenarioWizard which parses files client-side.
+
+    Request body:
+        {
+            "data": [...],           // Array of items to import
+            "scenario_id": 123,      // Existing scenario to import into
+            "task_type": "authenticity",
+            "source_name": "Wizard Import"
+        }
+
+    Returns:
+        {
+            "success": true,
+            "imported_count": 5,
+            "thread_ids": [1, 2, 3, 4, 5]
+        }
+    """
+    data = request.get_json()
+    if not data:
+        raise ValidationError("No data provided")
+
+    items = data.get('data')
+    if not items or not isinstance(items, list):
+        raise ValidationError("'data' must be a non-empty array")
+
+    scenario_id = data.get('scenario_id')
+    if not scenario_id:
+        raise ValidationError("scenario_id is required")
+
+    # Get task type
+    task_type = None
+    if 'task_type' in data:
+        try:
+            task_type = TaskType(data['task_type'])
+        except ValueError:
+            raise ValidationError(f"Invalid task_type: {data['task_type']}")
+
+    source_name = data.get('source_name', 'Wizard Import')
+
+    # Create session from data
+    session = import_service.create_session_from_data(
+        data=items,
+        task_type=task_type,
+        filename=source_name
+    )
+
+    # Transform the data
+    session = import_service.transform(session.session_id)
+
+    if session.status == "error":
+        raise ValidationError(f"Transform failed: {session.errors}")
+
+    # Execute import into existing scenario
+    session = import_service.execute_import(
+        session_id=session.session_id,
+        task_type=task_type,
+        source_name=source_name,
+        create_scenario=False,
+        scenario_id=scenario_id
+    )
+
+    if session.status == "error":
+        raise ValidationError(f"Import failed: {session.errors}")
+
+    # Clean up session
+    import_service.delete_session(session.session_id)
+
+    return jsonify({
+        "success": True,
+        "imported_count": session.imported_count,
+        "scenario_id": scenario_id,
+        "warnings": session.warnings
+    })
 
 
 # ============================================================================
@@ -458,3 +546,110 @@ def ai_suggest():
     )
 
     return jsonify(result)
+
+
+@bp.route('/ai/chat-stream', methods=['POST'])
+@authentik_required
+@require_permission('data:import')
+def ai_chat_stream():
+    """
+    SSE streaming chat for scenario configuration refinement.
+
+    Enables conversational refinement of scenario configuration.
+    The AI extracts structured config updates (labels, buckets, scales)
+    during streaming and emits them as SSE events.
+
+    Request body:
+        {
+            "session_id": "...",
+            "messages": [
+                {"role": "user", "content": "Ich möchte 3 Labels..."}
+            ],
+            "current_config": {
+                "task_type": "authenticity",
+                "labels": [...]
+            }
+        }
+
+    SSE Events:
+        - thinking: KI verarbeitet ({"message": "..."})
+        - config: Konfigurationsupdate ({"field": "labels", "value": [...]})
+        - chunk: Text-Chunk ({"content": "..."})
+        - done: Fertig ({"config": {...}, "response": "..."})
+        - error: Fehler ({"error": "..."})
+    """
+    data = request.get_json(silent=True) or {}
+
+    # Validate input
+    session_id = data.get('session_id')
+    if not session_id:
+        return Response(
+            f"event: error\ndata: {json.dumps({'error': 'session_id is required'})}\n\n",
+            mimetype='text/event-stream'
+        )
+
+    messages = data.get('messages', [])
+    if not messages:
+        return Response(
+            f"event: error\ndata: {json.dumps({'error': 'messages array is required'})}\n\n",
+            mimetype='text/event-stream'
+        )
+
+    current_config = data.get('current_config', {})
+
+    # Get session
+    session = import_service.get_session(session_id)
+    if not session:
+        return Response(
+            f"event: error\ndata: {json.dumps({'error': f'Session not found: {session_id}'})}\n\n",
+            mimetype='text/event-stream'
+        )
+
+    # Pre-fetch context-dependent data before generator starts
+    username = g.authentik_user.username if g.authentik_user else 'unknown'
+    raw_data = session.raw_data
+    filename = session.filename
+
+    # Get AI analyzer instance
+    ai_analyzer = get_ai_analyzer()
+
+    def generate():
+        """
+        Generator function for SSE streaming.
+        NOTE: This runs OUTSIDE Flask request context.
+        """
+        try:
+            for event in ai_analyzer.chat_refine_streaming(
+                data=raw_data,
+                messages=messages,
+                current_config=current_config,
+                filename=filename
+            ):
+                event_type = event.get('type', 'chunk')
+
+                if event_type == 'thinking':
+                    yield f"event: thinking\ndata: {json.dumps({'message': event.get('message', '')})}\n\n"
+                elif event_type == 'config':
+                    yield f"event: config\ndata: {json.dumps({'field': event.get('field'), 'value': event.get('value')})}\n\n"
+                elif event_type == 'chunk':
+                    yield f"event: chunk\ndata: {json.dumps({'content': event.get('content', '')})}\n\n"
+                elif event_type == 'done':
+                    yield f"event: done\ndata: {json.dumps({'config': event.get('config', {}), 'response': event.get('response', '')})}\n\n"
+                elif event_type == 'error':
+                    yield f"event: error\ndata: {json.dumps({'error': event.get('error', 'Unknown error')})}\n\n"
+
+            logger.info(f"AI chat stream completed for {username}, session {session_id}")
+
+        except Exception as e:
+            logger.exception(f"AI chat stream failed: {e}")
+            yield f"event: error\ndata: {json.dumps({'error': str(e)})}\n\n"
+
+    return Response(
+        generate(),
+        mimetype='text/event-stream',
+        headers={
+            'Cache-Control': 'no-cache',
+            'X-Accel-Buffering': 'no',
+            'Connection': 'keep-alive'
+        }
+    )

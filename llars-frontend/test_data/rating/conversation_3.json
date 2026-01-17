@@ -1,0 +1,29 @@
+{
+  "messages": [
+    {
+      "role": "system",
+      "content": "Karriereberatung"
+    },
+    {
+      "role": "user",
+      "content": "Ich bin im letzten Semester und habe noch keinen Job. Alle meine Kommilitonen haben schon was!"
+    },
+    {
+      "role": "assistant",
+      "content": "Ich verstehe, dass das Druck aufbaut - aber versuchen Sie, sich nicht zu sehr mit anderen zu vergleichen. Jeder hat seinen eigenen Weg.\n\nLassen Sie uns konkret werden:\n- Haben Sie schon aktiv Bewerbungen geschrieben?\n- Nutzen Sie unser Career Center? Die haben oft direkte Kontakte zu Unternehmen.\n- Haben Sie Ihr LinkedIn-Profil optimiert?\n\nViele Stellen werden erst kurz vor oder nach dem Abschluss besetzt. Sie sind noch nicht zu spät dran!"
+    },
+    {
+      "role": "user",
+      "content": "Ich hab ein paar Bewerbungen geschickt aber nur Absagen bekommen."
+    },
+    {
+      "role": "assistant",
+      "content": "Absagen sind frustrierend, aber auch normal - die Konkurrenz ist groß. Lassen Sie uns Ihre Bewerbungen optimieren:\n\n1. Bringen Sie Ihre Unterlagen zu unserem kostenlosen Bewerbungscheck (Di + Do 14-16 Uhr)\n2. Üben Sie Vorstellungsgespräche in unseren Mock-Interviews\n3. Schauen Sie bei unserer Jobbörse - dort sind Stellen speziell für Absolventen\n\nManchmal liegt es auch an kleinen Details. Soll ich mir mal Ihr Anschreiben anschauen?"
+    }
+  ],
+  "metadata": {
+    "source": "Human",
+    "subject": "Jobsuche",
+    "id": "rating_003"
+  }
+}

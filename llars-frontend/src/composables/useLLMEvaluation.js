@@ -158,6 +158,88 @@ export function useLLMEvaluation(initialScenarioId = null) {
     currentEvaluation.value = null
   }
 
+  // ===== Backend Task Event Handlers =====
+  function handleTaskStarted(data) {
+    if (data.scenario_id !== scenarioId) return
+
+    status.value = EVAL_STATUS.RUNNING
+    currentEvaluation.value = {
+      model_id: data.model_id,
+      thread_id: data.thread_id,
+      status: 'running'
+    }
+  }
+
+  function handleTaskCompleted(data) {
+    if (data.scenario_id !== scenarioId) return
+
+    // Update progress
+    progress.value.completed += 1
+    progress.value.percent = progress.value.total > 0
+      ? Math.round((progress.value.completed / progress.value.total) * 100)
+      : 0
+
+    // Add result to list
+    const result = {
+      id: `${data.model_id}-${data.thread_id}`,
+      model_id: data.model_id,
+      thread_id: data.thread_id,
+      task_type: data.task_type,
+      status: 'completed',
+      result: data.result,
+      meta: data.meta,
+      created_at: new Date().toISOString()
+    }
+    results.value.push(result)
+
+    // Update token usage if provided
+    if (data.meta) {
+      tokenUsage.value.total_tokens += data.meta.tokens_used || 0
+      tokenUsage.value.total_cost_usd += data.meta.cost_usd || 0
+    }
+
+    currentEvaluation.value = null
+  }
+
+  function handleTaskFailed(data) {
+    if (data.scenario_id !== scenarioId) return
+
+    // Update progress
+    progress.value.failed = (progress.value.failed || 0) + 1
+
+    // Add error result to list
+    const result = {
+      id: `${data.model_id}-${data.thread_id}`,
+      model_id: data.model_id,
+      thread_id: data.thread_id,
+      task_type: data.task_type,
+      status: 'failed',
+      error: data.error,
+      created_at: new Date().toISOString()
+    }
+    results.value.push(result)
+
+    currentEvaluation.value = null
+  }
+
+  function handleScenarioCompleted(data) {
+    if (data.scenario_id !== scenarioId) return
+
+    status.value = EVAL_STATUS.COMPLETED
+    currentEvaluation.value = null
+
+    // Update final metrics from summary
+    if (data.summary) {
+      progress.value = {
+        total: data.summary.total || progress.value.total,
+        completed: data.summary.completed || progress.value.completed,
+        pending: 0,
+        failed: data.summary.failed || 0,
+        percent: 100
+      }
+    }
+  }
+
   // ===== Socket Connection =====
   function connect() {
     if (!scenarioId) return
@@ -177,11 +259,17 @@ export function useLLMEvaluation(initialScenarioId = null) {
       connected.value = false
     })
 
-    // Register event handlers
+    // Register event handlers (legacy names for backwards compatibility)
     socket.on('llm_eval:progress', handleProgress)
     socket.on('llm_eval:result', handleResult)
     socket.on('llm_eval:completed', handleCompleted)
     socket.on('llm_eval:error', handleError)
+
+    // Register handlers for actual backend events
+    socket.on('llm_eval:task_started', handleTaskStarted)
+    socket.on('llm_eval:task_completed', handleTaskCompleted)
+    socket.on('llm_eval:task_failed', handleTaskFailed)
+    socket.on('llm_eval:scenario_completed', handleScenarioCompleted)
 
     // If already connected, join room immediately
     if (socket.connected) {
@@ -228,6 +316,12 @@ export function useLLMEvaluation(initialScenarioId = null) {
     socket.off('llm_eval:result', handleResult)
     socket.off('llm_eval:completed', handleCompleted)
     socket.off('llm_eval:error', handleError)
+
+    // Remove handlers for backend events
+    socket.off('llm_eval:task_started', handleTaskStarted)
+    socket.off('llm_eval:task_completed', handleTaskCompleted)
+    socket.off('llm_eval:task_failed', handleTaskFailed)
+    socket.off('llm_eval:scenario_completed', handleScenarioCompleted)
   }
 
   // ===== API Methods =====

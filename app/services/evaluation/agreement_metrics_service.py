@@ -19,6 +19,7 @@ import math
 
 from db import db
 from db.models import (
+    Feature,
     LLMTaskResult,
     RatingScenarios,
     ScenarioThreads,
@@ -235,41 +236,51 @@ class AgreementMetricsService:
         human_raters = set()
 
         if task_type == "ranking":
-            rankings = UserFeatureRanking.query.filter(
-                UserFeatureRanking.scenario_id == scenario_id,
-                UserFeatureRanking.thread_id.in_(thread_ids),
+            # Join through Feature to get thread_id
+            rankings = db.session.query(
+                UserFeatureRanking, Feature.thread_id
+            ).join(
+                Feature, UserFeatureRanking.feature_id == Feature.feature_id
+            ).filter(
+                Feature.thread_id.in_(thread_ids),
             ).all()
 
-            for ranking in rankings:
+            for ranking, thread_id in rankings:
                 rater_id = f"human:{ranking.user_id}"
                 human_raters.add(rater_id)
                 value = ranking.bucket
                 if value:
-                    evaluations["data"][ranking.thread_id][rater_id] = value
+                    evaluations["data"][thread_id][rater_id] = value
 
         elif task_type == "rating":
-            ratings = UserFeatureRating.query.filter(
-                UserFeatureRating.scenario_id == scenario_id,
-                UserFeatureRating.thread_id.in_(thread_ids),
+            # Join through Feature to get thread_id
+            # UserFeatureRating uses rating_content, not rating
+            ratings = db.session.query(
+                UserFeatureRating, Feature.thread_id
+            ).join(
+                Feature, UserFeatureRating.feature_id == Feature.feature_id
+            ).filter(
+                Feature.thread_id.in_(thread_ids),
             ).all()
 
-            for rating in ratings:
+            for rating, thread_id in ratings:
                 rater_id = f"human:{rating.user_id}"
                 human_raters.add(rater_id)
-                if rating.rating is not None:
-                    evaluations["data"][rating.thread_id][rater_id] = rating.rating
+                if rating.rating_content is not None:
+                    evaluations["data"][thread_id][rater_id] = rating.rating_content
 
         elif task_type == "mail_rating":
+            # UserMailHistoryRating has direct thread_id
             ratings = UserMailHistoryRating.query.filter(
-                UserMailHistoryRating.scenario_id == scenario_id,
                 UserMailHistoryRating.thread_id.in_(thread_ids),
             ).all()
 
             for rating in ratings:
                 rater_id = f"human:{rating.user_id}"
                 human_raters.add(rater_id)
-                if rating.rating is not None:
-                    evaluations["data"][rating.thread_id][rater_id] = rating.rating
+                # Use overall_rating as the primary rating field
+                if rating.overall_rating is not None:
+                    evaluations["data"][rating.thread_id][rater_id] = rating.overall_rating
 
         elif task_type == "authenticity":
             votes = UserAuthenticityVote.query.filter(

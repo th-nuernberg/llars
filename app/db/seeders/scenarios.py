@@ -5,9 +5,20 @@ Seeds example Rating and Ranking scenarios with sample email threads,
 messages, and LLM-generated features for testing purposes.
 
 Maps scenarios to 'evaluator' and 'researcher' users.
+
+In development mode (PROJECT_STATE=development), seeds 20-30 samples per
+scenario type for realistic demos.
 """
 
 from datetime import datetime, timedelta
+import os
+
+
+def _is_development_mode() -> bool:
+    """Check if running in development mode for extended demo data."""
+    project_state = os.environ.get('PROJECT_STATE', '').lower()
+    flask_env = os.environ.get('FLASK_ENV', '').lower()
+    return project_state == 'development' or flask_env == 'development'
 
 
 def seed_demo_scenarios(db):
@@ -79,8 +90,11 @@ def seed_demo_scenarios(db):
     mail_rating_type = FeatureFunctionType.query.filter_by(name='mail_rating').first()
     comparison_type = FeatureFunctionType.query.filter_by(name='comparison').first()
     authenticity_type = FeatureFunctionType.query.filter_by(name='authenticity').first()
+    labeling_type = FeatureFunctionType.query.filter_by(name='labeling').first()
+    if not labeling_type:
+        labeling_type = FeatureFunctionType.query.filter_by(name='text_classification').first()
 
-    if not rating_type or not ranking_type or not mail_rating_type or not comparison_type or not authenticity_type:
+    if not rating_type or not ranking_type or not mail_rating_type or not comparison_type or not authenticity_type or not labeling_type:
         print("  ERROR: FeatureFunctionTypes not found. Run initialize_feature_function_types first.")
         return
 
@@ -118,7 +132,9 @@ def seed_demo_scenarios(db):
     existing_ranking = RatingScenarios.query.filter_by(scenario_name='Demo Ranking Szenario').first()
     existing_mail_rating = RatingScenarios.query.filter_by(scenario_name='Demo Verlauf Bewerter Szenario').first()
     existing_comparison = RatingScenarios.query.filter_by(scenario_name='Demo Gegenüberstellung Szenario').first()
+    existing_wizard_comparison = RatingScenarios.query.filter_by(scenario_name='Demo Vergleich Szenario (Wizard)').first()
     existing_authenticity = RatingScenarios.query.filter_by(scenario_name='Demo Fake/Echt Szenario').first()
+    existing_labeling = RatingScenarios.query.filter_by(scenario_name='Demo Labeling Szenario').first()
 
     def _ensure_scenario_user(scenario_id: int, user_id: int, role: ScenarioRoles) -> None:
         existing = ScenarioUsers.query.filter_by(scenario_id=scenario_id, user_id=user_id).first()
@@ -486,6 +502,87 @@ def seed_demo_scenarios(db):
             )
         )
 
+    # Threads for Labeling (generalized text categorization)
+    labeling_threads = []
+
+    # Thread 8: Customer feedback for sentiment labeling
+    thread8 = EmailThread.query.filter_by(chat_id=9201, institut_id=1, function_type_id=labeling_type.function_type_id).first()
+    if not thread8:
+        thread8 = EmailThread(
+            chat_id=9201,
+            institut_id=1,
+            subject='Labeling Demo: Kundenfeedback',
+            sender='demo@labeling.com',
+            function_type_id=labeling_type.function_type_id
+        )
+        db.session.add(thread8)
+        db.session.flush()
+
+        messages8 = [
+            Message(
+                thread_id=thread8.thread_id,
+                sender='Kunde',
+                content='Ich bin sehr zufrieden mit dem Service! Die Beratung war kompetent und freundlich. Vielen Dank für die schnelle Hilfe.',
+                timestamp=datetime.now() - timedelta(days=3, hours=14)
+            ),
+        ]
+        for msg in messages8:
+            db.session.add(msg)
+
+    labeling_threads.append(thread8)
+
+    # Thread 9: Mixed feedback
+    thread9 = EmailThread.query.filter_by(chat_id=9202, institut_id=1, function_type_id=labeling_type.function_type_id).first()
+    if not thread9:
+        thread9 = EmailThread(
+            chat_id=9202,
+            institut_id=1,
+            subject='Labeling Demo: Gemischtes Feedback',
+            sender='demo@labeling.com',
+            function_type_id=labeling_type.function_type_id
+        )
+        db.session.add(thread9)
+        db.session.flush()
+
+        messages9 = [
+            Message(
+                thread_id=thread9.thread_id,
+                sender='Kunde',
+                content='Die Wartezeit war leider sehr lang, aber als ich dann dran kam, war die Beratung hilfreich. Könnte besser organisiert sein.',
+                timestamp=datetime.now() - timedelta(days=2, hours=11)
+            ),
+        ]
+        for msg in messages9:
+            db.session.add(msg)
+
+    labeling_threads.append(thread9)
+
+    # Thread 10: Negative feedback
+    thread10 = EmailThread.query.filter_by(chat_id=9203, institut_id=1, function_type_id=labeling_type.function_type_id).first()
+    if not thread10:
+        thread10 = EmailThread(
+            chat_id=9203,
+            institut_id=1,
+            subject='Labeling Demo: Kritisches Feedback',
+            sender='demo@labeling.com',
+            function_type_id=labeling_type.function_type_id
+        )
+        db.session.add(thread10)
+        db.session.flush()
+
+        messages10 = [
+            Message(
+                thread_id=thread10.thread_id,
+                sender='Kunde',
+                content='Enttäuschend. Niemand konnte mir weiterhelfen und ich wurde mehrfach weitergeleitet. Mein Problem ist immer noch nicht gelöst.',
+                timestamp=datetime.now() - timedelta(days=1, hours=9)
+            ),
+        ]
+        for msg in messages10:
+            db.session.add(msg)
+
+    labeling_threads.append(thread10)
+
     db.session.flush()
 
     # Create Features for each thread
@@ -580,6 +677,12 @@ def seed_demo_scenarios(db):
 
     db.session.flush()
 
+    # Default LLM evaluators for demo scenarios
+    demo_llm_evaluators = [
+        "mistralai/Mistral-Small-3.2-24B-Instruct-2506",
+        "mistralai/Magistral-Small-2509"
+    ]
+
     # Create Rating Scenario
     if not existing_rating:
         rating_scenario = RatingScenarios(
@@ -587,7 +690,12 @@ def seed_demo_scenarios(db):
             function_type_id=rating_type.function_type_id,
             begin=datetime.now() - timedelta(days=7),
             end=datetime.now() + timedelta(days=30),
-            timestamp=datetime.now()
+            timestamp=datetime.now(),
+            config_json={
+                "evaluation": "rating",
+                "enable_llm_evaluation": True,
+                "llm_evaluators": demo_llm_evaluators,
+            }
         )
         db.session.add(rating_scenario)
         db.session.flush()
@@ -634,6 +742,14 @@ def seed_demo_scenarios(db):
         print(f"  Created Rating Scenario: {rating_scenario.scenario_name}")
     else:
         rating_scenario = existing_rating
+        # Update existing scenario with LLM evaluators if not set
+        config = rating_scenario.config_json or {}
+        if not config.get('llm_evaluators'):
+            config['evaluation'] = 'rating'
+            config['enable_llm_evaluation'] = True
+            config['llm_evaluators'] = demo_llm_evaluators
+            rating_scenario.config_json = config
+            print(f"  Updated Rating Scenario with LLM evaluators")
 
     # Ensure admin can evaluate demo scenarios
     if admin_user and rating_scenario:
@@ -646,7 +762,12 @@ def seed_demo_scenarios(db):
             function_type_id=ranking_type.function_type_id,
             begin=datetime.now() - timedelta(days=7),
             end=datetime.now() + timedelta(days=30),
-            timestamp=datetime.now()
+            timestamp=datetime.now(),
+            config_json={
+                "evaluation": "ranking",
+                "enable_llm_evaluation": True,
+                "llm_evaluators": demo_llm_evaluators,
+            }
         )
         db.session.add(ranking_scenario)
         db.session.flush()
@@ -687,6 +808,14 @@ def seed_demo_scenarios(db):
         print(f"  Created Ranking Scenario: {ranking_scenario.scenario_name}")
     else:
         ranking_scenario = existing_ranking
+        # Update existing scenario with LLM evaluators if not set
+        config = ranking_scenario.config_json or {}
+        if not config.get('llm_evaluators'):
+            config['evaluation'] = 'ranking'
+            config['enable_llm_evaluation'] = True
+            config['llm_evaluators'] = demo_llm_evaluators
+            ranking_scenario.config_json = config
+            print(f"  Updated Ranking Scenario with LLM evaluators")
 
     if admin_user and ranking_scenario:
         _ensure_scenario_user(ranking_scenario.id, admin_user.id, ScenarioRoles.EVALUATOR)
@@ -698,7 +827,12 @@ def seed_demo_scenarios(db):
             function_type_id=mail_rating_type.function_type_id,
             begin=datetime.now() - timedelta(days=7),
             end=datetime.now() + timedelta(days=30),
-            timestamp=datetime.now()
+            timestamp=datetime.now(),
+            config_json={
+                "evaluation": "mail_rating",
+                "enable_llm_evaluation": True,
+                "llm_evaluators": demo_llm_evaluators,
+            }
         )
         db.session.add(mail_rating_scenario)
         db.session.flush()
@@ -744,6 +878,14 @@ def seed_demo_scenarios(db):
         print(f"  Created Mail Rating Scenario: {mail_rating_scenario.scenario_name}")
     else:
         mail_rating_scenario = existing_mail_rating
+        # Update existing scenario with LLM evaluators if not set
+        config = mail_rating_scenario.config_json or {}
+        if not config.get('llm_evaluators'):
+            config['evaluation'] = 'mail_rating'
+            config['enable_llm_evaluation'] = True
+            config['llm_evaluators'] = demo_llm_evaluators
+            mail_rating_scenario.config_json = config
+            print(f"  Updated Mail Rating Scenario with LLM evaluators")
 
     if admin_user and mail_rating_scenario:
         _ensure_scenario_user(mail_rating_scenario.id, admin_user.id, ScenarioRoles.EVALUATOR)
@@ -760,6 +902,8 @@ def seed_demo_scenarios(db):
                 "evaluation": "authenticity",
                 "labels": {"real": "Echt", "fake": "Fake"},
                 "format_version": "v6",
+                "enable_llm_evaluation": True,
+                "llm_evaluators": demo_llm_evaluators,
             },
         )
         db.session.add(authenticity_scenario)
@@ -803,9 +947,93 @@ def seed_demo_scenarios(db):
         print(f"  Created Authenticity Scenario: {authenticity_scenario.scenario_name}")
     else:
         authenticity_scenario = existing_authenticity
+        # Update existing scenario with LLM evaluators if not set
+        config = authenticity_scenario.config_json or {}
+        if not config.get('llm_evaluators'):
+            config['enable_llm_evaluation'] = True
+            config['llm_evaluators'] = demo_llm_evaluators
+            authenticity_scenario.config_json = config
+            print(f"  Updated Authenticity Scenario with LLM evaluators")
 
     if admin_user and authenticity_scenario:
         _ensure_scenario_user(authenticity_scenario.id, admin_user.id, ScenarioRoles.EVALUATOR)
+
+    # Create Labeling Scenario (generalized text categorization)
+    if not existing_labeling:
+        labeling_scenario = RatingScenarios(
+            scenario_name='Demo Labeling Szenario',
+            function_type_id=labeling_type.function_type_id,
+            begin=datetime.now() - timedelta(days=7),
+            end=datetime.now() + timedelta(days=30),
+            timestamp=datetime.now(),
+            config_json={
+                "evaluation": "labeling",
+                "preset": "sentiment-3",
+                "categories": [
+                    {"id": "positive", "name": "Positiv", "color": "#98d4bb"},
+                    {"id": "neutral", "name": "Neutral", "color": "#D1BC8A"},
+                    {"id": "negative", "name": "Negativ", "color": "#e8a087"}
+                ],
+                "multiLabel": False,
+                "allowUnsure": False,
+                "enable_llm_evaluation": True,
+                "llm_evaluators": demo_llm_evaluators,
+            },
+        )
+        db.session.add(labeling_scenario)
+        db.session.flush()
+
+        for user, role in [(evaluator_user, ScenarioRoles.EVALUATOR), (researcher_user, ScenarioRoles.RATER)]:
+            db.session.add(
+                ScenarioUsers(
+                    scenario_id=labeling_scenario.id,
+                    user_id=user.id,
+                    role=role
+                )
+            )
+
+        db.session.flush()
+
+        # Add labeling threads to scenario
+        scenario_thread_objs = []
+        for thread in labeling_threads:
+            st = ScenarioThreads(
+                scenario_id=labeling_scenario.id,
+                thread_id=thread.thread_id
+            )
+            db.session.add(st)
+            scenario_thread_objs.append(st)
+
+        db.session.flush()
+
+        rater_scenario_user = ScenarioUsers.query.filter_by(
+            scenario_id=labeling_scenario.id,
+            role=ScenarioRoles.RATER
+        ).first()
+
+        if rater_scenario_user:
+            for st in scenario_thread_objs:
+                dist = ScenarioThreadDistribution(
+                    scenario_id=labeling_scenario.id,
+                    scenario_user_id=rater_scenario_user.id,
+                    scenario_thread_id=st.id
+                )
+                db.session.add(dist)
+
+        print(f"  Created Labeling Scenario: {labeling_scenario.scenario_name}")
+    else:
+        labeling_scenario = existing_labeling
+        # Update existing scenario with LLM evaluators if not set
+        config = labeling_scenario.config_json or {}
+        if not config.get('llm_evaluators'):
+            config['evaluation'] = 'labeling'
+            config['enable_llm_evaluation'] = True
+            config['llm_evaluators'] = demo_llm_evaluators
+            labeling_scenario.config_json = config
+            print(f"  Updated Labeling Scenario with LLM evaluators")
+
+    if admin_user and labeling_scenario:
+        _ensure_scenario_user(labeling_scenario.id, admin_user.id, ScenarioRoles.EVALUATOR)
 
     # Create Comparison Scenario (Gegenüberstellung) – placeholder without sessions
     if not existing_comparison:
@@ -821,6 +1049,10 @@ def seed_demo_scenarios(db):
                 "evaluation": "comparison",
                 "llm1_model": "gpt-4o-mini",
                 "llm2_model": "gpt-4.1-mini",
+                "llm_evaluators": [
+                    "mistralai/Mistral-Small-3.2-24B-Instruct-2506",
+                    "mistralai/Magistral-Small-2509"
+                ],
             },
         )
         db.session.add(comparison_scenario)
@@ -841,6 +1073,86 @@ def seed_demo_scenarios(db):
 
     if admin_user and comparison_scenario:
         _ensure_scenario_user(comparison_scenario.id, admin_user.id, ScenarioRoles.EVALUATOR)
+
+    # Create Wizard-compatible Comparison Scenario using EmailThreads
+    wizard_comparison_scenario = existing_wizard_comparison
+    if not existing_wizard_comparison:
+        wizard_comparison_scenario = RatingScenarios(
+            scenario_name='Demo Vergleich Szenario (Wizard)',
+            function_type_id=comparison_type.function_type_id,
+            created_by=researcher_user.username if researcher_user else evaluator_user.username,
+            begin=datetime.now() - timedelta(days=7),
+            end=datetime.now() + timedelta(days=30),
+            timestamp=datetime.now(),
+            config_json={
+                "evaluation": "comparison",
+                "type": "pairwise",
+                "criteria": [{"id": "overall", "name": "Gesamt"}],
+                "allowTie": True,
+                "wizard_compatible": True,
+                "description": "Wizard-kompatibles Vergleichs-Szenario zum Vergleichen von zwei Textversionen (A vs B)",
+            },
+        )
+        db.session.add(wizard_comparison_scenario)
+        db.session.flush()
+
+        for user, role in [(evaluator_user, ScenarioRoles.EVALUATOR), (researcher_user, ScenarioRoles.RATER)]:
+            db.session.add(
+                ScenarioUsers(
+                    scenario_id=wizard_comparison_scenario.id,
+                    user_id=user.id,
+                    role=role
+                )
+            )
+
+        # Create Wizard Comparison threads using WIZARD_COMPARISON_SAMPLES
+        from .demo_datasets import WIZARD_COMPARISON_SAMPLES
+
+        for idx, sample in enumerate(WIZARD_COMPARISON_SAMPLES[:5]):  # Start with 5 samples
+            chat_id = 15000 + idx
+            existing_thread = EmailThread.query.filter_by(
+                chat_id=chat_id,
+                function_type_id=comparison_type.function_type_id
+            ).first()
+
+            if not existing_thread:
+                thread = EmailThread(
+                    chat_id=chat_id,
+                    institut_id=1,
+                    subject=sample['subject'],
+                    sender='wizard_comparison@example.com',
+                    function_type_id=comparison_type.function_type_id
+                )
+                db.session.add(thread)
+                db.session.flush()
+
+                # Create two messages representing Option A and Option B
+                db.session.add(Message(
+                    thread_id=thread.thread_id,
+                    sender='Option A',
+                    content=sample['option_a']['content'],
+                    timestamp=datetime.now() - timedelta(days=5, hours=idx)
+                ))
+                db.session.add(Message(
+                    thread_id=thread.thread_id,
+                    sender='Option B',
+                    content=sample['option_b']['content'],
+                    timestamp=datetime.now() - timedelta(days=5, hours=idx, minutes=1)
+                ))
+
+                # Add thread to scenario
+                st = ScenarioThreads(
+                    scenario_id=wizard_comparison_scenario.id,
+                    thread_id=thread.thread_id
+                )
+                db.session.add(st)
+
+        print(f"  Created Wizard Comparison Scenario: {wizard_comparison_scenario.scenario_name}")
+    else:
+        wizard_comparison_scenario = existing_wizard_comparison
+
+    if admin_user and wizard_comparison_scenario:
+        _ensure_scenario_user(wizard_comparison_scenario.id, admin_user.id, ScenarioRoles.EVALUATOR)
 
     # Seed demo ComparisonSessions so the dashboard is not empty
     if comparison_scenario:
@@ -952,3 +1264,463 @@ def seed_demo_scenarios(db):
 
     db.session.commit()
     print("Demo scenarios seeded successfully.")
+
+    # In development mode, seed extended demo data
+    if _is_development_mode():
+        _seed_extended_demo_data(db, rating_scenario, ranking_scenario, mail_rating_scenario,
+                                  authenticity_scenario, comparison_scenario, labeling_scenario,
+                                  evaluator_user, researcher_user, admin_user)
+
+
+def _seed_extended_demo_data(db, rating_scenario, ranking_scenario, mail_rating_scenario,
+                              authenticity_scenario, comparison_scenario, labeling_scenario,
+                              evaluator_user, researcher_user, admin_user):
+    """
+    Seed extended demo data (20-30 samples per scenario) for development mode.
+
+    Only runs when PROJECT_STATE=development or FLASK_ENV=development.
+    """
+    from .demo_datasets import get_demo_data_for_scenario_type
+    from ..tables import (
+        EmailThread, Message, Feature, FeatureType, LLM, ScenarioThreads,
+        ScenarioThreadDistribution, ScenarioUsers, ScenarioRoles,
+        AuthenticityConversation, ComparisonSession, ComparisonMessage,
+        FeatureFunctionType,
+    )
+    import json
+
+    print("\n[Dev Mode] Seeding extended demo data (20-30 samples per scenario)...")
+
+    # Get function types
+    rating_type = FeatureFunctionType.query.filter_by(name='rating').first()
+    ranking_type = FeatureFunctionType.query.filter_by(name='ranking').first()
+    mail_rating_type = FeatureFunctionType.query.filter_by(name='mail_rating').first()
+    authenticity_type = FeatureFunctionType.query.filter_by(name='authenticity').first()
+    comparison_type = FeatureFunctionType.query.filter_by(name='comparison').first()
+    labeling_type = FeatureFunctionType.query.filter_by(name='labeling').first()
+    if not labeling_type:
+        labeling_type = FeatureFunctionType.query.filter_by(name='text_classification').first()
+
+    # Get or create LLMs
+    llm_gpt4 = LLM.query.filter_by(name='GPT-4').first()
+    llm_claude = LLM.query.filter_by(name='Claude-3').first()
+    llm_mistral = LLM.query.filter_by(name='Mistral-7B').first()
+    llms = [l for l in [llm_gpt4, llm_claude, llm_mistral] if l]
+
+    # Get or create Feature Types
+    feature_types = {}
+    for ft_name in ['Situation Summary', 'Client Needs', 'Recommended Actions', 'Risk Assessment']:
+        ft = FeatureType.query.filter_by(name=ft_name).first()
+        if ft:
+            feature_types[ft_name] = ft
+
+    # Helper to get rater scenario user
+    def _get_rater_user(scenario_id):
+        return ScenarioUsers.query.filter_by(
+            scenario_id=scenario_id,
+            role=ScenarioRoles.RATER
+        ).first()
+
+    # =========================================================================
+    # 1. RATING SCENARIO - Extended threads
+    # =========================================================================
+    if rating_scenario and rating_type:
+        rating_samples = get_demo_data_for_scenario_type('rating', count=20)
+        existing_count = ScenarioThreads.query.filter_by(scenario_id=rating_scenario.id).count()
+
+        if existing_count < 10:  # Only seed if not enough data
+            print(f"  Seeding {len(rating_samples)} rating samples...")
+            rater_user = _get_rater_user(rating_scenario.id)
+
+            for idx, sample in enumerate(rating_samples):
+                chat_id = 10000 + idx
+                existing_thread = EmailThread.query.filter_by(
+                    chat_id=chat_id,
+                    function_type_id=rating_type.function_type_id
+                ).first()
+
+                if existing_thread:
+                    continue
+
+                # Create thread
+                thread = EmailThread(
+                    chat_id=chat_id,
+                    institut_id=1,
+                    subject=sample['subject'],
+                    sender=f'demo_rating_{idx}@example.com',
+                    function_type_id=rating_type.function_type_id
+                )
+                db.session.add(thread)
+                db.session.flush()
+
+                # Create messages
+                for msg_idx, msg in enumerate(sample['messages']):
+                    db.session.add(Message(
+                        thread_id=thread.thread_id,
+                        sender=msg['sender'],
+                        content=msg['content'],
+                        timestamp=datetime.now() - timedelta(days=7-idx, hours=10-msg_idx)
+                    ))
+
+                # Create features
+                if sample.get('features') and feature_types and llms:
+                    for ft_name, content in sample['features'].items():
+                        ft = feature_types.get(ft_name)
+                        if ft:
+                            for llm in llms:
+                                db.session.add(Feature(
+                                    thread_id=thread.thread_id,
+                                    type_id=ft.type_id,
+                                    llm_id=llm.llm_id,
+                                    content=content
+                                ))
+
+                # Add to scenario
+                st = ScenarioThreads(
+                    scenario_id=rating_scenario.id,
+                    thread_id=thread.thread_id
+                )
+                db.session.add(st)
+                db.session.flush()
+
+                # Distribute to rater
+                if rater_user:
+                    db.session.add(ScenarioThreadDistribution(
+                        scenario_id=rating_scenario.id,
+                        scenario_user_id=rater_user.id,
+                        scenario_thread_id=st.id
+                    ))
+
+            print(f"    Created {len(rating_samples)} rating threads")
+
+    # =========================================================================
+    # 2. RANKING SCENARIO - Extended threads with features to rank
+    # =========================================================================
+    if ranking_scenario and ranking_type:
+        ranking_samples = get_demo_data_for_scenario_type('ranking', count=25)
+        existing_count = ScenarioThreads.query.filter_by(scenario_id=ranking_scenario.id).count()
+
+        if existing_count < 10:
+            print(f"  Seeding {len(ranking_samples)} ranking samples...")
+            rater_user = _get_rater_user(ranking_scenario.id)
+
+            for idx, sample in enumerate(ranking_samples):
+                chat_id = 11000 + idx
+                existing_thread = EmailThread.query.filter_by(
+                    chat_id=chat_id,
+                    function_type_id=ranking_type.function_type_id
+                ).first()
+
+                if existing_thread:
+                    continue
+
+                thread = EmailThread(
+                    chat_id=chat_id,
+                    institut_id=1,
+                    subject=sample['subject'],
+                    sender=f'demo_ranking_{idx}@example.com',
+                    function_type_id=ranking_type.function_type_id
+                )
+                db.session.add(thread)
+                db.session.flush()
+
+                # Add article content as a message (no duplicate features for news articles)
+                db.session.add(Message(
+                    thread_id=thread.thread_id,
+                    sender='Nachrichtenartikel',
+                    content=sample['feature_text'],
+                    timestamp=datetime.now() - timedelta(days=idx)
+                ))
+
+                st = ScenarioThreads(
+                    scenario_id=ranking_scenario.id,
+                    thread_id=thread.thread_id
+                )
+                db.session.add(st)
+                db.session.flush()
+
+                if rater_user:
+                    db.session.add(ScenarioThreadDistribution(
+                        scenario_id=ranking_scenario.id,
+                        scenario_user_id=rater_user.id,
+                        scenario_thread_id=st.id
+                    ))
+
+            print(f"    Created {len(ranking_samples)} ranking threads")
+
+    # =========================================================================
+    # 3. MAIL RATING SCENARIO - Extended conversation threads
+    # =========================================================================
+    if mail_rating_scenario and mail_rating_type:
+        mail_rating_samples = get_demo_data_for_scenario_type('mail_rating', count=10)
+        existing_count = ScenarioThreads.query.filter_by(scenario_id=mail_rating_scenario.id).count()
+
+        if existing_count < 5:
+            print(f"  Seeding {len(mail_rating_samples)} mail rating samples...")
+            rater_user = _get_rater_user(mail_rating_scenario.id)
+
+            for idx, sample in enumerate(mail_rating_samples):
+                chat_id = 12000 + idx
+                existing_thread = EmailThread.query.filter_by(
+                    chat_id=chat_id,
+                    function_type_id=mail_rating_type.function_type_id
+                ).first()
+
+                if existing_thread:
+                    continue
+
+                thread = EmailThread(
+                    chat_id=chat_id,
+                    institut_id=1,
+                    subject=sample['subject'],
+                    sender=f'demo_mail_{idx}@example.com',
+                    function_type_id=mail_rating_type.function_type_id
+                )
+                db.session.add(thread)
+                db.session.flush()
+
+                for msg_idx, msg in enumerate(sample['messages']):
+                    db.session.add(Message(
+                        thread_id=thread.thread_id,
+                        sender=msg['sender'],
+                        content=msg['content'],
+                        timestamp=datetime.now() - timedelta(days=14-idx, hours=10-msg_idx)
+                    ))
+
+                st = ScenarioThreads(
+                    scenario_id=mail_rating_scenario.id,
+                    thread_id=thread.thread_id
+                )
+                db.session.add(st)
+                db.session.flush()
+
+                if rater_user:
+                    db.session.add(ScenarioThreadDistribution(
+                        scenario_id=mail_rating_scenario.id,
+                        scenario_user_id=rater_user.id,
+                        scenario_thread_id=st.id
+                    ))
+
+            print(f"    Created {len(mail_rating_samples)} mail rating threads")
+
+    # =========================================================================
+    # 4. AUTHENTICITY SCENARIO - Real vs AI-generated samples
+    # =========================================================================
+    if authenticity_scenario and authenticity_type:
+        auth_samples = get_demo_data_for_scenario_type('authenticity', count=20)
+        existing_count = ScenarioThreads.query.filter_by(scenario_id=authenticity_scenario.id).count()
+
+        if existing_count < 10:
+            print(f"  Seeding {len(auth_samples)} authenticity samples...")
+            rater_user = _get_rater_user(authenticity_scenario.id)
+
+            for idx, sample in enumerate(auth_samples):
+                chat_id = 13000 + idx
+                existing_thread = EmailThread.query.filter_by(
+                    chat_id=chat_id,
+                    function_type_id=authenticity_type.function_type_id
+                ).first()
+
+                if existing_thread:
+                    continue
+
+                is_fake = sample.get('is_fake', False)
+                thread = EmailThread(
+                    chat_id=chat_id,
+                    institut_id=3,
+                    subject=f"Authenticity Sample {'(Fake)' if is_fake else '(Real)'} - {idx+1}",
+                    sender='demo@authenticity.com',
+                    function_type_id=authenticity_type.function_type_id
+                )
+                db.session.add(thread)
+                db.session.flush()
+
+                for msg_idx, msg in enumerate(sample['messages']):
+                    db.session.add(Message(
+                        thread_id=thread.thread_id,
+                        sender=msg['sender'],
+                        content=msg['content'],
+                        timestamp=datetime.now() - timedelta(days=idx, hours=msg_idx),
+                        generated_by=msg.get('generated_by', 'Human')
+                    ))
+
+                # Create AuthenticityConversation entry
+                metadata = sample.get('metadata', {})
+                metadata['conversation_id'] = chat_id
+                metadata['generated_at'] = datetime.now().isoformat()
+                metadata['format_version'] = 'v6'
+                metadata['total_messages'] = len(sample['messages'])
+
+                db.session.add(AuthenticityConversation(
+                    thread_id=thread.thread_id,
+                    sample_key=f"v6:demo-auth-{chat_id}",
+                    conversation_id=chat_id,
+                    augmentation_type=metadata.get('augmentation_type', 'reg_single_any'),
+                    replaced_positions=metadata.get('replaced_positions', [1] if is_fake else []),
+                    num_replacements=metadata.get('num_replacements', 1 if is_fake else 0),
+                    total_messages=metadata.get('total_messages', 2),
+                    saeule='3',
+                    split='train',
+                    model=metadata.get('model'),
+                    model_short=metadata.get('model', '').split('-')[0] if metadata.get('model') else None,
+                    generated_at=datetime.now(),
+                    format_version='v6',
+                    is_fake=is_fake,
+                    metadata_json=metadata,
+                ))
+
+                st = ScenarioThreads(
+                    scenario_id=authenticity_scenario.id,
+                    thread_id=thread.thread_id
+                )
+                db.session.add(st)
+                db.session.flush()
+
+                if rater_user:
+                    db.session.add(ScenarioThreadDistribution(
+                        scenario_id=authenticity_scenario.id,
+                        scenario_user_id=rater_user.id,
+                        scenario_thread_id=st.id
+                    ))
+
+            print(f"    Created {len(auth_samples)} authenticity threads")
+
+    # =========================================================================
+    # 5. LABELING SCENARIO - Extended text categorization samples
+    # =========================================================================
+    if labeling_scenario and labeling_type:
+        labeling_samples = get_demo_data_for_scenario_type('labeling', count=15)
+        existing_count = ScenarioThreads.query.filter_by(scenario_id=labeling_scenario.id).count()
+
+        if existing_count < 10:
+            print(f"  Seeding {len(labeling_samples)} labeling samples...")
+            rater_user = _get_rater_user(labeling_scenario.id)
+
+            for idx, sample in enumerate(labeling_samples):
+                chat_id = 14000 + idx
+                existing_thread = EmailThread.query.filter_by(
+                    chat_id=chat_id,
+                    function_type_id=labeling_type.function_type_id
+                ).first()
+
+                if existing_thread:
+                    continue
+
+                thread = EmailThread(
+                    chat_id=chat_id,
+                    institut_id=1,
+                    subject=sample.get('subject', f'Labeling Sample {idx+1}'),
+                    sender=f'demo_labeling_{idx}@example.com',
+                    function_type_id=labeling_type.function_type_id
+                )
+                db.session.add(thread)
+                db.session.flush()
+
+                # Create message with text to be labeled
+                db.session.add(Message(
+                    thread_id=thread.thread_id,
+                    sender=sample.get('sender', 'User'),
+                    content=sample.get('text', sample.get('content', '')),
+                    timestamp=datetime.now() - timedelta(days=idx)
+                ))
+
+                st = ScenarioThreads(
+                    scenario_id=labeling_scenario.id,
+                    thread_id=thread.thread_id
+                )
+                db.session.add(st)
+                db.session.flush()
+
+                if rater_user:
+                    db.session.add(ScenarioThreadDistribution(
+                        scenario_id=labeling_scenario.id,
+                        scenario_user_id=rater_user.id,
+                        scenario_thread_id=st.id
+                    ))
+
+            print(f"    Created {len(labeling_samples)} labeling threads")
+
+    # =========================================================================
+    # 6. COMPARISON SCENARIO - Extended A/B comparison sessions
+    # =========================================================================
+    if comparison_scenario and comparison_type:
+        comparison_samples = get_demo_data_for_scenario_type('comparison', count=10)
+        existing_count = ComparisonSession.query.filter_by(scenario_id=comparison_scenario.id).count()
+
+        if existing_count < 5:
+            print(f"  Seeding comparison sessions with {len(comparison_samples)} message pairs...")
+
+            users_for_comparison = [u for u in [evaluator_user, researcher_user, admin_user] if u]
+
+            # Group samples by persona
+            persona_groups = {}
+            for sample in comparison_samples:
+                persona = sample.get('persona', {})
+                persona_key = persona.get('name', 'Demo Persona')
+                if persona_key not in persona_groups:
+                    persona_groups[persona_key] = {'persona': persona, 'pairs': []}
+                persona_groups[persona_key]['pairs'].append(sample)
+
+            # Create sessions for each user with different personas
+            session_count = 0
+            for user_idx, user in enumerate(users_for_comparison):
+                # Each user gets sessions with different personas
+                persona_list = list(persona_groups.items())
+                for p_idx, (persona_name, persona_data) in enumerate(persona_list):
+                    # Check if session exists
+                    existing = ComparisonSession.query.filter(
+                        ComparisonSession.scenario_id == comparison_scenario.id,
+                        ComparisonSession.user_id == user.id,
+                        ComparisonSession.persona_name == persona_name
+                    ).first()
+
+                    if existing:
+                        continue
+
+                    persona_json = {
+                        'name': persona_name,
+                        'properties': {
+                            'Steckbrief': {'Alter': 30 + p_idx * 5},
+                            'Hauptanliegen': persona_data['persona'].get('concern', 'Demo-Anliegen'),
+                        }
+                    }
+
+                    session = ComparisonSession(
+                        scenario_id=comparison_scenario.id,
+                        user_id=user.id,
+                        persona_json=persona_json,
+                        persona_name=persona_name,
+                    )
+                    db.session.add(session)
+                    db.session.flush()
+
+                    # Add message pairs
+                    message_idx = 0
+                    for pair in persona_data['pairs']:
+                        db.session.add(ComparisonMessage(
+                            session_id=session.id,
+                            idx=message_idx,
+                            type="user",
+                            content=pair['counselor_message'],
+                            selected=None,
+                        ))
+                        message_idx += 1
+
+                        db.session.add(ComparisonMessage(
+                            session_id=session.id,
+                            idx=message_idx,
+                            type="bot_pair",
+                            content=json.dumps({
+                                "llm1": pair['llm1_response'],
+                                "llm2": pair['llm2_response']
+                            }),
+                            selected=None,
+                        ))
+                        message_idx += 1
+
+                    session_count += 1
+
+            print(f"    Created {session_count} comparison sessions")
+
+    db.session.commit()
+    print("[Dev Mode] Extended demo data seeded successfully.")

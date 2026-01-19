@@ -4,7 +4,7 @@ import json
 from typing import Optional
 from datetime import datetime
 from enum import Enum
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, synonym
 from db import db
 
 
@@ -32,32 +32,58 @@ class FeatureFunctionType(db.Model):
     name = mapped_column(db.String(255), unique=True)
 
 
-class EmailThread(db.Model):
-    __tablename__ = 'email_threads'
-    thread_id = mapped_column(db.Integer, primary_key=True)
+class EvaluationItem(db.Model):
+    """
+    Generic evaluation item that can be rated, compared, labeled, or analyzed.
+
+    Replaces the legacy EmailThread model. Supports multiple evaluation types:
+    - rating: Likert/star scale evaluations
+    - ranking: Sort/categorize items
+    - comparison: A/B comparisons
+    - labeling: Category assignment
+    - authenticity: Fake/Real voting
+    """
+    __tablename__ = 'evaluation_items'
+    item_id = mapped_column(db.Integer, primary_key=True)
     chat_id = mapped_column(db.Integer)
     institut_id = mapped_column(db.Integer)
     subject = mapped_column(db.String(255))
-    sender = mapped_column(db.String(255))  # Neues Feld für den Sender
+    sender = mapped_column(db.String(255))
     function_type_id = mapped_column(db.Integer, db.ForeignKey('feature_function_types.function_type_id'))
 
-    messages = db.relationship('Message', backref='email_thread')
-    features = db.relationship('Feature', backref='email_thread')
-    function_type = db.relationship('FeatureFunctionType', backref='email_threads')
+    # Backwards compatibility: thread_id is a synonym for item_id (for queries)
+    thread_id = synonym('item_id')
+
+    messages = db.relationship('Message', backref='evaluation_item')
+    features = db.relationship('Feature', backref='evaluation_item')
+    function_type = db.relationship('FeatureFunctionType', backref='evaluation_items')
+
+    # Legacy backref names for backwards compatibility
+    @property
+    def email_thread(self):
+        """Backwards compatibility alias."""
+        return self
 
     __table_args__ = (
         db.UniqueConstraint('chat_id', 'institut_id', 'function_type_id', name='_chat_institut_function_uc'),
     )
 
 
+# Backwards compatibility alias (deprecated)
+EmailThread = EvaluationItem
+
+
 class Message(db.Model):
     __tablename__ = 'messages'
     message_id = mapped_column(db.Integer, primary_key=True)
-    thread_id = mapped_column(db.Integer, db.ForeignKey('email_threads.thread_id'))
+    item_id = mapped_column(db.Integer, db.ForeignKey('evaluation_items.item_id'))
     sender = mapped_column(db.String(255))
     content = mapped_column(db.TEXT)
     timestamp = mapped_column(db.DateTime)
     generated_by = mapped_column(db.String(255), default="Human")
+
+    # Backwards compatibility: thread_id is a synonym for item_id (for queries)
+    thread_id = synonym('item_id')
 
 
 class LLM(db.Model):
@@ -83,22 +109,28 @@ class UserConsultingCategorySelection(db.Model):
     __tablename__ = 'user_consulting_category_selection'
     id = mapped_column(db.Integer, primary_key=True)
     user_id = mapped_column(db.Integer, db.ForeignKey('users.id'))
-    thread_id = mapped_column(db.Integer, db.ForeignKey('email_threads.thread_id'))
+    item_id = mapped_column(db.Integer, db.ForeignKey('evaluation_items.item_id'))
     consulting_category_type_id = mapped_column(db.Integer, db.ForeignKey('consulting_category_types.id'))
     notes = mapped_column(db.String(255))
     timestamp = mapped_column(db.DateTime, default=datetime.utcnow)
+
+    # Backwards compatibility: thread_id is a synonym for item_id (for queries)
+    thread_id = synonym('item_id')
 
 
 class Feature(db.Model):
     __tablename__ = 'features'
     feature_id = mapped_column(db.Integer, primary_key=True)
-    thread_id = mapped_column(db.Integer, db.ForeignKey('email_threads.thread_id'))
+    item_id = mapped_column(db.Integer, db.ForeignKey('evaluation_items.item_id'))
     type_id = mapped_column(db.Integer, db.ForeignKey('feature_types.type_id'))
     llm_id = mapped_column(db.Integer, db.ForeignKey('llms.llm_id'))
     content = mapped_column(db.TEXT)
 
     feature_type = db.relationship('FeatureType', backref='features')
     llm = db.relationship('LLM', backref='features')
+
+    # Backwards compatibility: thread_id is a synonym for item_id (for queries)
+    thread_id = synonym('item_id')
 
 
 class UserFeatureRanking(db.Model):
@@ -148,10 +180,19 @@ class RatingScenarios(db.Model):
 
     # Definiere die Beziehungen mit Cascade-Option
     scenario_users = db.relationship('ScenarioUsers', backref='rating_scenario', cascade="all, delete-orphan")
-    scenario_threads = db.relationship('ScenarioThreads', backref='rating_scenario', cascade="all, delete-orphan")
-    scenario_thread_distribution = db.relationship('ScenarioThreadDistribution', backref='rating_scenario', cascade="all, delete-orphan")
+    scenario_items = db.relationship('ScenarioItems', backref='rating_scenario', cascade="all, delete-orphan")
+    scenario_item_distribution = db.relationship('ScenarioItemDistribution', backref='rating_scenario', cascade="all, delete-orphan")
     # Comparison sessions (for comparison function type)
     comparison_sessions_rel = db.relationship('ComparisonSession', back_populates="scenario", cascade="all, delete-orphan", passive_deletes=True)
+
+    # Backwards compatibility properties
+    @property
+    def scenario_threads(self):
+        return self.scenario_items
+
+    @property
+    def scenario_thread_distribution(self):
+        return self.scenario_item_distribution
 
 
 class ScenarioUsers(db.Model):
@@ -180,27 +221,52 @@ class ScenarioUsers(db.Model):
     )
 
 
-class ScenarioThreads(db.Model):
-    __tablename__ = 'scenario_threads'
+class ScenarioItems(db.Model):
+    """Links EvaluationItems to Scenarios. Renamed from ScenarioThreads."""
+    __tablename__ = 'scenario_items'
     id = mapped_column(db.Integer, primary_key=True, autoincrement=True)
     scenario_id = mapped_column(db.Integer, db.ForeignKey('rating_scenarios.id'))
-    thread_id = mapped_column(db.Integer, db.ForeignKey('email_threads.thread_id'))
-    thread = db.relationship('EmailThread', backref='scenario_threads')
+    item_id = mapped_column(db.Integer, db.ForeignKey('evaluation_items.item_id'))
+    item = db.relationship('EvaluationItem', backref='scenario_items')
 
-    # Definiere den Unique Constraint für die Kombination von user_id und szenario_id
+    # Backwards compatibility: thread_id is a synonym for item_id (for queries)
+    thread_id = synonym('item_id')
+
     __table_args__ = (
-        db.UniqueConstraint('thread_id', 'scenario_id', name='uix_thread_szenario'),
+        db.UniqueConstraint('item_id', 'scenario_id', name='uix_item_scenario'),
     )
 
+    # Backwards compatibility property for relationship
+    @property
+    def thread(self):
+        return self.item
 
-class ScenarioThreadDistribution(db.Model):
-    __tablename__ = 'scenario_thread_distribution'
+
+# Backwards compatibility alias
+ScenarioThreads = ScenarioItems
+
+
+class ScenarioItemDistribution(db.Model):
+    """Distributes EvaluationItems to ScenarioUsers. Renamed from ScenarioThreadDistribution."""
+    __tablename__ = 'scenario_item_distribution'
     id = mapped_column(db.Integer, primary_key=True, autoincrement=True)
     scenario_id = mapped_column(db.Integer, db.ForeignKey('rating_scenarios.id'))
     scenario_user_id = mapped_column(db.Integer, db.ForeignKey('scenario_users.id'))
-    scenario_thread_id = mapped_column(db.Integer, db.ForeignKey('scenario_threads.id'))
-    scenario_thread = db.relationship('ScenarioThreads', backref='distributions')
-    scenario_user = db.relationship('ScenarioUsers', backref='thread_distributions')
+    scenario_item_id = mapped_column(db.Integer, db.ForeignKey('scenario_items.id'))
+    scenario_item = db.relationship('ScenarioItems', backref='distributions')
+    scenario_user = db.relationship('ScenarioUsers', backref='item_distributions')
+
+    # Backwards compatibility: scenario_thread_id is a synonym for scenario_item_id (for queries)
+    scenario_thread_id = synonym('scenario_item_id')
+
+    # Backwards compatibility property for relationship
+    @property
+    def scenario_thread(self):
+        return self.scenario_item
+
+
+# Backwards compatibility alias
+ScenarioThreadDistribution = ScenarioItemDistribution
 
 
 
@@ -208,27 +274,38 @@ class UserMailHistoryRating(db.Model):
     __tablename__ = 'user_mailhistory_ratings'
     rating_id = mapped_column(db.Integer, primary_key=True, autoincrement=True)
     user_id = mapped_column(db.Integer, db.ForeignKey('users.id'))
-    thread_id = mapped_column(db.Integer, db.ForeignKey('email_threads.thread_id'))
+    item_id = mapped_column(db.Integer, db.ForeignKey('evaluation_items.item_id'))
     counsellor_coherence_rating = mapped_column(db.Integer, nullable=True)
     client_coherence_rating = mapped_column(db.Integer, nullable=True)
     quality_rating = mapped_column(db.Integer, nullable=True)
     overall_rating = mapped_column(db.Integer, nullable=True)
-    feedback = mapped_column(db.TEXT)  # Optionales Feld für textbasiertes Feedback
+    feedback = mapped_column(db.TEXT)
     status = mapped_column(db.Enum(ProgressionStatus), default=ProgressionStatus.NOT_STARTED)
     timestamp = mapped_column(db.DateTime, default=datetime.utcnow)
 
     user = db.relationship('User', backref='mail_ratings')
-    email_thread = db.relationship('EmailThread', backref='mail_ratings')
+    evaluation_item = db.relationship('EvaluationItem', backref='mail_ratings')
+
+    # Backwards compatibility: thread_id is a synonym for item_id (for queries)
+    thread_id = synonym('item_id')
+
+    # Backwards compatibility property for relationship
+    @property
+    def email_thread(self):
+        return self.evaluation_item
 
 
 class UserMessageRating(db.Model):
     __tablename__ = 'user_message_ratings'
     msg_rating_id = mapped_column(db.Integer, primary_key=True, autoincrement=True)
     user_id = mapped_column(db.Integer, db.ForeignKey('users.id'))
-    thread_id = mapped_column(db.Integer, db.ForeignKey('email_threads.thread_id'))
+    item_id = mapped_column(db.Integer, db.ForeignKey('evaluation_items.item_id'))
     message_id = mapped_column(db.Integer, db.ForeignKey('messages.message_id'))
     rating = mapped_column(db.String(4), nullable=True)
     timestamp = mapped_column(db.DateTime, default=datetime.utcnow)
+
+    # Backwards compatibility: thread_id is a synonym for item_id (for queries)
+    thread_id = synonym('item_id')
 
 
 class UserPrompt(db.Model):

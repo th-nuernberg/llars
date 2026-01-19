@@ -10,7 +10,7 @@ from __future__ import annotations
 from datetime import datetime, date
 from typing import Optional
 
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column, relationship, synonym
 from sqlalchemy import func
 
 from db import db
@@ -49,12 +49,14 @@ class LLMUsageTracking(db.Model):
         nullable=True,
         index=True
     )
-    thread_id: Mapped[Optional[int]] = mapped_column(
+    item_id: Mapped[Optional[int]] = mapped_column(
         db.Integer,
-        db.ForeignKey("email_threads.thread_id", ondelete="SET NULL"),
+        db.ForeignKey("evaluation_items.item_id", ondelete="SET NULL"),
         nullable=True,
         index=True
     )
+    # Backwards compatibility: thread_id is a synonym for item_id
+    thread_id = synonym('item_id')
 
     # Model info
     model_id: Mapped[str] = mapped_column(

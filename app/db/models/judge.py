@@ -3,7 +3,7 @@
 from typing import Optional
 from datetime import datetime
 from enum import Enum
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, synonym
 from db import db
 
 
@@ -33,13 +33,13 @@ class JudgeWinner(Enum):
 
 
 class PillarThread(db.Model):
-    """Maps email threads to KIA pillars (1-5) for structured evaluation"""
+    """Maps EvaluationItems to KIA pillars (1-5) for structured evaluation"""
     __tablename__ = 'pillar_threads'
 
     id: Mapped[int] = mapped_column(db.Integer, primary_key=True, autoincrement=True)
-    thread_id: Mapped[int] = mapped_column(
+    item_id: Mapped[int] = mapped_column(
         db.Integer,
-        db.ForeignKey('email_threads.thread_id', ondelete='CASCADE'),
+        db.ForeignKey('evaluation_items.item_id', ondelete='CASCADE'),
         nullable=False,
         index=True
     )
@@ -48,12 +48,20 @@ class PillarThread(db.Model):
     metadata_json: Mapped[Optional[dict]] = mapped_column(db.JSON, nullable=True)
     created_at: Mapped[datetime] = mapped_column(db.DateTime, default=datetime.now, nullable=False)
 
-    thread = db.relationship('EmailThread', backref='pillar_assignments')
+    evaluation_item = db.relationship('EvaluationItem', backref='pillar_assignments')
+
+    # Backwards compatibility: thread_id is a synonym for item_id (for queries)
+    thread_id = synonym('item_id')
 
     __table_args__ = (
-        db.UniqueConstraint('thread_id', 'pillar_number', name='unique_thread_pillar'),
+        db.UniqueConstraint('item_id', 'pillar_number', name='unique_item_pillar'),
         db.CheckConstraint('pillar_number >= 1 AND pillar_number <= 5', name='check_pillar_range'),
     )
+
+    # Backwards compatibility property for relationship
+    @property
+    def thread(self):
+        return self.evaluation_item
 
 
 class JudgeSession(db.Model):
@@ -83,7 +91,7 @@ class JudgeSession(db.Model):
 
 
 class JudgeComparison(db.Model):
-    """Individual pairwise comparison of two email threads within a session"""
+    """Individual pairwise comparison of two EvaluationItems within a session"""
     __tablename__ = 'judge_comparisons'
 
     id: Mapped[int] = mapped_column(db.Integer, primary_key=True, autoincrement=True)
@@ -93,15 +101,15 @@ class JudgeComparison(db.Model):
         nullable=False,
         index=True
     )
-    thread_a_id: Mapped[int] = mapped_column(
+    item_a_id: Mapped[int] = mapped_column(
         db.Integer,
-        db.ForeignKey('email_threads.thread_id', ondelete='CASCADE'),
+        db.ForeignKey('evaluation_items.item_id', ondelete='CASCADE'),
         nullable=False,
         index=True
     )
-    thread_b_id: Mapped[int] = mapped_column(
+    item_b_id: Mapped[int] = mapped_column(
         db.Integer,
-        db.ForeignKey('email_threads.thread_id', ondelete='CASCADE'),
+        db.ForeignKey('evaluation_items.item_id', ondelete='CASCADE'),
         nullable=False,
         index=True
     )
@@ -126,15 +134,28 @@ class JudgeComparison(db.Model):
     last_heartbeat: Mapped[Optional[datetime]] = mapped_column(db.DateTime, nullable=True)
     error_message: Mapped[Optional[str]] = mapped_column(db.String(500), nullable=True)
 
-    thread_a = db.relationship('EmailThread', foreign_keys=[thread_a_id], backref='comparisons_as_a')
-    thread_b = db.relationship('EmailThread', foreign_keys=[thread_b_id], backref='comparisons_as_b')
+    item_a = db.relationship('EvaluationItem', foreign_keys=[item_a_id], backref='comparisons_as_a')
+    item_b = db.relationship('EvaluationItem', foreign_keys=[item_b_id], backref='comparisons_as_b')
     evaluations = db.relationship('JudgeEvaluation', backref='comparison', cascade='all, delete-orphan')
+
+    # Backwards compatibility: thread_*_id are synonyms for item_*_id (for queries)
+    thread_a_id = synonym('item_a_id')
+    thread_b_id = synonym('item_b_id')
 
     __table_args__ = (
         db.CheckConstraint('pillar_a >= 1 AND pillar_a <= 5', name='check_pillar_a_range'),
         db.CheckConstraint('pillar_b >= 1 AND pillar_b <= 5', name='check_pillar_b_range'),
         db.CheckConstraint('position_order IN (1, 2)', name='check_position_order'),
     )
+
+    # Backwards compatibility properties for relationships
+    @property
+    def thread_a(self):
+        return self.item_a
+
+    @property
+    def thread_b(self):
+        return self.item_b
 
 
 class JudgeEvaluation(db.Model):

@@ -3,7 +3,7 @@
 from typing import Optional
 from datetime import datetime
 from enum import Enum
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, synonym
 from db import db
 
 
@@ -60,9 +60,9 @@ class OnCoCoSentenceLabel(db.Model):
         nullable=False,
         index=True
     )
-    thread_id: Mapped[int] = mapped_column(
+    item_id: Mapped[int] = mapped_column(
         db.Integer,
-        db.ForeignKey('email_threads.thread_id', ondelete='CASCADE'),
+        db.ForeignKey('evaluation_items.item_id', ondelete='CASCADE'),
         nullable=False,
         index=True
     )
@@ -89,8 +89,16 @@ class OnCoCoSentenceLabel(db.Model):
     created_at: Mapped[datetime] = mapped_column(db.DateTime, default=datetime.now, nullable=False)
 
     # Relationships
-    thread = db.relationship('EmailThread', backref='oncoco_labels')
+    evaluation_item = db.relationship('EvaluationItem', backref='oncoco_labels')
     message = db.relationship('Message', backref='oncoco_labels')
+
+    # Backwards compatibility: thread_id is a synonym for item_id (for queries)
+    thread_id = synonym('item_id')
+
+    # Backwards compatibility property for relationship
+    @property
+    def thread(self):
+        return self.evaluation_item
 
 
 class OnCoCoPillarStatistics(db.Model):

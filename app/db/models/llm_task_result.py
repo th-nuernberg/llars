@@ -9,7 +9,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column, relationship, synonym
 
 from db import db
 
@@ -35,12 +35,14 @@ class LLMTaskResult(db.Model):
         nullable=False,
         index=True,
     )
-    thread_id: Mapped[int] = mapped_column(
+    item_id: Mapped[int] = mapped_column(
         db.Integer,
-        db.ForeignKey("email_threads.thread_id", ondelete="CASCADE"),
+        db.ForeignKey("evaluation_items.item_id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )
+    # Backwards compatibility: thread_id is a synonym for item_id
+    thread_id = synonym('item_id')
     model_id: Mapped[str] = mapped_column(db.String(255), nullable=False, index=True)
     task_type: Mapped[str] = mapped_column(db.String(50), nullable=False, index=True)
 
@@ -100,7 +102,7 @@ class LLMTaskResult(db.Model):
     __table_args__ = (
         db.UniqueConstraint(
             "scenario_id",
-            "thread_id",
+            "item_id",
             "model_id",
             "task_type",
             name="uix_llm_task_result",

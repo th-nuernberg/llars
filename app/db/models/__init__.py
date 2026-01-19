@@ -133,7 +133,15 @@ from db.models.scenario import (
     InvitationStatus,
     ProgressionStatus,
     FeatureFunctionType,
+    # New names (preferred)
+    EvaluationItem,
+    ScenarioItems,
+    ScenarioItemDistribution,
+    # Legacy aliases (deprecated)
     EmailThread,
+    ScenarioThreads,
+    ScenarioThreadDistribution,
+    # Other models
     Message,
     LLM,
     FeatureType,
@@ -144,8 +152,6 @@ from db.models.scenario import (
     UserFeatureRating,
     RatingScenarios,
     ScenarioUsers,
-    ScenarioThreads,
-    ScenarioThreadDistribution,
     UserMailHistoryRating,
     UserMessageRating,
     UserPrompt,
@@ -282,7 +288,15 @@ __all__ = [
     'InvitationStatus',
     'ProgressionStatus',
     'FeatureFunctionType',
+    # New names (preferred)
+    'EvaluationItem',
+    'ScenarioItems',
+    'ScenarioItemDistribution',
+    # Legacy aliases (deprecated)
     'EmailThread',
+    'ScenarioThreads',
+    'ScenarioThreadDistribution',
+    # Other models
     'Message',
     'LLM',
     'FeatureType',
@@ -293,8 +307,6 @@ __all__ = [
     'UserFeatureRating',
     'RatingScenarios',
     'ScenarioUsers',
-    'ScenarioThreads',
-    'ScenarioThreadDistribution',
     'UserMailHistoryRating',
     'UserMessageRating',
     # Authenticity

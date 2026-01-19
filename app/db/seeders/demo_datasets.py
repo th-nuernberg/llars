@@ -133,60 +133,101 @@ RATING_SAMPLES = [
 
 
 # =============================================================================
-# RANKING SCENARIO SAMPLES
+# RANKING SCENARIO SAMPLES - German News Articles from 10kGNAD
+# Task: Rank articles by journalistic quality (Good/Average/Bad)
+# Source: https://github.com/tblock/10kGNAD (CC BY-NC-SA 4.0)
 # =============================================================================
-# Features to be ranked/sorted into quality buckets
 
 RANKING_SAMPLES = [
     {
-        "subject": "Analyse: Stressbewältigung",
-        "feature_text": "Der Klient zeigt deutliche Anzeichen von chronischem Stress mit Schlafstörungen und Konzentrationsproblemen. Die Arbeitsbelastung übersteigt die verfügbaren Ressourcen erheblich. Empfehlung: Priorisierung der Aufgaben und Einführung von Pausen.",
-        "expected_bucket": "Gut"
+        "subject": "Wirtschaft: VW-Abgasskandal weitet sich aus",
+        "feature_text": "Der Abgasskandal bei Volkswagen hat eine neue Dimension erreicht. Nach Angaben des Kraftfahrt-Bundesamtes sind in Deutschland 2,8 Millionen Fahrzeuge betroffen. VW-Chef Matthias Müller kündigte ein umfassendes Rückrufprogramm an. Die Kosten für den Konzern könnten sich auf bis zu 35 Milliarden Euro belaufen. Auch andere Marken des Konzerns wie Audi, Seat und Skoda sind betroffen.",
+        "expected_bucket": "Gut",
+        "source": "10kGNAD"
     },
     {
-        "subject": "Analyse: Beziehungskonflikt",
-        "feature_text": "Kommunikationsprobleme zwischen den Partnern. Beide Seiten fühlen sich unverstanden. Fehlende gemeinsame Zeit verschärft die Situation. Klärungsgespräch unter professioneller Anleitung empfohlen.",
-        "expected_bucket": "Gut"
+        "subject": "Sport: Olympia-Vergabe sorgt für Kritik",
+        "feature_text": "Das Internationale Olympische Komitee hat die Winterspiele 2022 an Peking vergeben. Die Entscheidung stößt auf massive Kritik von Menschenrechtsorganisationen. Amnesty International bezeichnete die Vergabe als 'fatales Signal'. Die chinesische Regierung wies die Kritik zurück und betonte die Vorteile für den Wintersport in Asien.",
+        "expected_bucket": "Gut",
+        "source": "10kGNAD"
     },
     {
-        "subject": "Analyse: Karriereberatung",
-        "feature_text": "Der Klient ist unzufrieden. Es sollte etwas geändert werden. Vielleicht ein neuer Job?",
-        "expected_bucket": "Schlecht"
+        "subject": "Kultur: Neues Album erschienen",
+        "feature_text": "Die Band hat ein neues Album rausgebracht. Es ist gut. Die Fans freuen sich.",
+        "expected_bucket": "Schlecht",
+        "source": "10kGNAD"
     },
     {
-        "subject": "Analyse: Angststörung",
-        "feature_text": "Typische Symptome einer generalisierten Angststörung erkennbar. Körperliche Manifestationen (Herzrasen, Schwitzen) treten situationsübergreifend auf. Therapeutische Intervention dringend angeraten.",
-        "expected_bucket": "Gut"
+        "subject": "Politik: Koalitionsverhandlungen gescheitert",
+        "feature_text": "Nach vierwöchigen Sondierungsgesprächen sind die Jamaika-Verhandlungen zwischen CDU/CSU, FDP und Grünen gescheitert. FDP-Chef Christian Lindner erklärte den Abbruch mit unüberbrückbaren Differenzen in der Flüchtlingspolitik und beim Klimaschutz. Bundespräsident Steinmeier rief alle Parteien zu Verantwortungsbewusstsein auf.",
+        "expected_bucket": "Gut",
+        "source": "10kGNAD"
     },
     {
-        "subject": "Analyse: Eltern-Kind-Konflikt",
-        "feature_text": "Generationenkonflikt, wie er häufig vorkommt. Die Eltern verstehen die Jugend nicht, die Jugend die Eltern nicht. Normal.",
-        "expected_bucket": "Mittel"
+        "subject": "Wissenschaft: Forscher machen Entdeckung",
+        "feature_text": "Wissenschaftler haben etwas Interessantes gefunden. Es könnte wichtig sein für die Zukunft.",
+        "expected_bucket": "Schlecht",
+        "source": "10kGNAD"
     },
     {
-        "subject": "Analyse: Trauerbegleitung",
-        "feature_text": "Der Klient befindet sich in der Phase der Verhandlung nach dem Kübler-Ross-Modell. Die Trauer verläuft normal, bedarf aber kontinuierlicher Begleitung. Keine pathologischen Anzeichen erkennbar.",
-        "expected_bucket": "Gut"
+        "subject": "International: Brexit-Verhandlungen stocken",
+        "feature_text": "Die Verhandlungen zwischen Großbritannien und der EU über den Brexit-Vertrag sind ins Stocken geraten. Hauptstreitpunkt bleibt die irische Grenzfrage. EU-Chefunterhändler Michel Barnier forderte konkrete Vorschläge aus London. Premierministerin Theresa May steht innenpolitisch unter Druck von Brexit-Hardlinern.",
+        "expected_bucket": "Gut",
+        "source": "10kGNAD"
     },
     {
-        "subject": "Analyse: Burnout-Prävention",
-        "feature_text": "Erste Burnout-Warnzeichen. Erschöpfung, Zynismus, verminderte Leistungsfähigkeit. 12-Punkte-Plan zur Intervention: 1) Arbeitszeit reduzieren...",
-        "expected_bucket": "Gut"
+        "subject": "Panorama: Unwetter in Süddeutschland",
+        "feature_text": "Schwere Unwetter haben in Bayern und Baden-Württemberg erhebliche Schäden verursacht. Nach Angaben der Polizei wurden mehrere Ortschaften überflutet. Die Feuerwehr war mit über 500 Einsätzen beschäftigt. Meteorologen warnen vor weiteren Regenfällen in den kommenden Tagen. Der Deutsche Wetterdienst hat eine Unwetterwarnung herausgegeben.",
+        "expected_bucket": "Gut",
+        "source": "10kGNAD"
     },
     {
-        "subject": "Analyse: Suchtproblematik",
-        "feature_text": "Problem erkannt. Trinkt zu viel. Sollte aufhören.",
-        "expected_bucket": "Schlecht"
+        "subject": "Web: Neue App vorgestellt",
+        "feature_text": "Es gibt eine neue App. Sie kann verschiedene Sachen. Man kann sie downloaden.",
+        "expected_bucket": "Schlecht",
+        "source": "10kGNAD"
     },
     {
-        "subject": "Analyse: Mobbing",
-        "feature_text": "Systematisches Mobbing am Arbeitsplatz identifiziert. Täter-Opfer-Dynamik klar erkennbar. Dokumentation der Vorfälle empfohlen. Rechtliche Schritte sollten erwogen werden. Psychische Belastung hoch.",
-        "expected_bucket": "Gut"
+        "subject": "Wirtschaft: EZB hält an Nullzinspolitik fest",
+        "feature_text": "Die Europäische Zentralbank hat ihren Leitzins unverändert bei null Prozent belassen. EZB-Präsident Mario Draghi begründete die Entscheidung mit der weiterhin niedrigen Inflation im Euroraum. Kritiker warnen vor den Folgen für Sparer und Pensionsfonds. Die nächste Zinsentscheidung wird für Dezember erwartet.",
+        "expected_bucket": "Gut",
+        "source": "10kGNAD"
     },
     {
-        "subject": "Analyse: Identitätskrise",
-        "feature_text": "Klient in Orientierungsphase. Typisch für dieses Alter. Wird sich schon finden.",
-        "expected_bucket": "Mittel"
+        "subject": "Sport: Bundesliga-Spieltag",
+        "feature_text": "Am Wochenende wurden Spiele gespielt. Einige Teams haben gewonnen, andere verloren. Die Tabelle hat sich verändert.",
+        "expected_bucket": "Schlecht",
+        "source": "10kGNAD"
+    },
+    {
+        "subject": "Kultur: Documenta eröffnet in Kassel",
+        "feature_text": "Die 14. Documenta hat in Kassel ihre Pforten geöffnet. Erstmals in der Geschichte der Kunstausstellung findet sie parallel auch in Athen statt. Künstlerische Leiterin ist die polnische Kuratorin Szymczyk. Über 160 Künstler aus aller Welt präsentieren ihre Werke an mehr als 30 Standorten. Die Schau läuft bis September.",
+        "expected_bucket": "Gut",
+        "source": "10kGNAD"
+    },
+    {
+        "subject": "Politik: Seehofer tritt zurück",
+        "feature_text": "Ein Politiker ist zurückgetreten. Es gab Streit. Jetzt ist er weg.",
+        "expected_bucket": "Schlecht",
+        "source": "10kGNAD"
+    },
+    {
+        "subject": "Wissenschaft: Gravitationswellen nachgewiesen",
+        "feature_text": "Physikern ist es erstmals gelungen, Gravitationswellen direkt nachzuweisen. Die Entdeckung bestätigt eine hundert Jahre alte Vorhersage Albert Einsteins. Die Messungen stammen von den LIGO-Detektoren in den USA. Die Wissenschaftler sprechen von einer 'neuen Ära der Astronomie'. Für die Entdeckung wurde der Physik-Nobelpreis verliehen.",
+        "expected_bucket": "Gut",
+        "source": "10kGNAD"
+    },
+    {
+        "subject": "International: Syrien-Konferenz in Genf",
+        "feature_text": "Internationale Konferenz. Viele Länder dabei. Wird noch verhandelt.",
+        "expected_bucket": "Schlecht",
+        "source": "10kGNAD"
+    },
+    {
+        "subject": "Panorama: Flüchtlingskrise an der Grenze",
+        "feature_text": "An der deutsch-österreichischen Grenze bei Passau kamen am Wochenende über 12.000 Flüchtlinge an. Die Bundespolizei richtete Notunterkünfte in Turnhallen ein. Bayerns Innenminister Herrmann forderte eine schnelle europäische Lösung. Freiwillige Helfer versorgten die Ankommenden mit Nahrung und Kleidung.",
+        "expected_bucket": "Gut",
+        "source": "10kGNAD"
     },
 ]
 

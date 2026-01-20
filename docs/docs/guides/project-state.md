@@ -24,6 +24,7 @@ PROJECT_STATE=production
 - MkDocs via nginx: `/mkdocs/` (Dev)
 - Optional direkter Zugriff auf Authentik/DB/MkDocs über die externen Ports (Defaults: 55095/55306/55800)
 - Ausführliches Logging
+- Erweiterte Demo-Daten (20-30 Samples pro Szenario) werden automatisch gesät
 - Debug-Ports nur, wenn benötigt (Standard-Compose hält die Exposes minimal)
 
 ### Production (`production`)

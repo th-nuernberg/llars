@@ -139,13 +139,16 @@ const presetIcon = computed(() => {
 const resolvedType = computed(() => getBaseType(props.evalType))
 
 const editorType = computed(() => {
-  if (props.evalType === EVAL_TYPES.MAIL_RATING) return null
+  // mail_rating uses rating base type with dimensions enabled
+  if (props.evalType === EVAL_TYPES.MAIL_RATING) return EVAL_TYPES.RATING
   return resolvedType.value
 })
 
 const showDimensions = computed(() => {
   if (resolvedType.value !== EVAL_TYPES.RATING) return false
   if (props.evalType === EVAL_TYPES.MAIL_RATING) return true
+  // Show dimensions for multi-dimensional type or when dimensions exist
+  if (localConfig.value?.type === 'multi-dimensional') return true
   return Array.isArray(localConfig.value?.dimensions) && localConfig.value.dimensions.length > 0
 })
 

@@ -34,7 +34,8 @@ export const TASK_TYPES = {
   AUTHENTICITY: 'authenticity',
   MAIL_RATING: 'mail_rating',
   COMPARISON: 'comparison',
-  TEXT_CLASSIFICATION: 'text_classification'
+  LABELING: 'labeling',
+  TEXT_CLASSIFICATION: 'text_classification' // legacy alias
 }
 
 /**

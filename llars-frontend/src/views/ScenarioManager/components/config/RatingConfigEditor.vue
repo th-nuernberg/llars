@@ -89,12 +89,13 @@
     <!-- Dimensions (optional multi-dimensional rating) -->
     <div v-if="showDimensions" class="dimensions-section mt-4">
       <h5 class="subsection-title">{{ $t('scenarioManager.evalConfig.rating.dimensions') }}</h5>
+      <p class="section-hint mb-3">{{ $t('scenarioManager.evalConfig.rating.dimensionsHint') }}</p>
       <v-btn
         size="small"
         variant="text"
         color="primary"
         prepend-icon="mdi-plus"
-        class="mb-2"
+        class="mb-3"
         @click="addDimension"
       >
         {{ $t('scenarioManager.evalConfig.rating.addDimension') }}
@@ -106,29 +107,67 @@
         @change="emitUpdate"
       >
         <template #item="{ element, index }">
-          <div class="dimension-row">
-            <LIcon class="drag-handle" size="18">mdi-drag-vertical</LIcon>
-            <v-text-field
-              :model-value="getDimensionName(element.name)"
-              :placeholder="$t('scenarioManager.evalConfig.rating.dimensionName')"
-              variant="outlined"
-              density="compact"
-              hide-details
-              class="flex-grow-1"
-              @update:modelValue="updateDimensionName(index, $event)"
-            />
-            <v-btn
-              icon
-              size="x-small"
-              variant="text"
-              color="error"
-              @click="removeDimension(index)"
-            >
-              <LIcon size="18">mdi-delete-outline</LIcon>
-            </v-btn>
+          <div class="dimension-card">
+            <div class="dimension-header">
+              <LIcon class="drag-handle" size="18">mdi-drag-vertical</LIcon>
+              <v-text-field
+                :model-value="getDimensionName(element.name)"
+                :placeholder="$t('scenarioManager.evalConfig.rating.dimensionName')"
+                variant="outlined"
+                density="compact"
+                hide-details
+                class="dimension-name-input"
+                @update:modelValue="updateDimensionName(index, $event)"
+              />
+              <v-btn
+                icon
+                size="x-small"
+                variant="text"
+                color="error"
+                @click="removeDimension(index)"
+              >
+                <LIcon size="18">mdi-delete-outline</LIcon>
+              </v-btn>
+            </div>
+            <div class="dimension-details">
+              <v-textarea
+                :model-value="getDimensionDescription(element.description)"
+                :placeholder="$t('scenarioManager.evalConfig.rating.dimensionDescription')"
+                variant="outlined"
+                density="compact"
+                rows="2"
+                hide-details
+                class="dimension-description-input"
+                @update:modelValue="updateDimensionDescription(index, $event)"
+              />
+              <v-text-field
+                :model-value="element.weight"
+                :label="$t('scenarioManager.evalConfig.rating.dimensionWeight')"
+                type="number"
+                variant="outlined"
+                density="compact"
+                hide-details
+                class="dimension-weight-input"
+                :min="0"
+                :max="1"
+                :step="0.05"
+                @update:modelValue="updateDimensionWeight(index, $event)"
+              />
+            </div>
           </div>
         </template>
       </draggable>
+
+      <!-- Weight Summary -->
+      <div v-if="localConfig.dimensions?.length > 0" class="weight-summary mt-3">
+        <span class="weight-label">{{ $t('scenarioManager.evalConfig.rating.totalWeight') }}:</span>
+        <span class="weight-value" :class="{ 'weight-warning': totalWeight !== 1 }">
+          {{ (totalWeight * 100).toFixed(0) }}%
+        </span>
+        <span v-if="totalWeight !== 1" class="weight-hint">
+          ({{ $t('scenarioManager.evalConfig.rating.shouldBe100') }})
+        </span>
+      </div>
     </div>
   </div>
 </template>
@@ -153,6 +192,7 @@ const emit = defineEmits(['update:modelValue'])
 const { t, locale } = useI18n()
 
 const scaleTypes = [
+  { title: 'Multi-Dimensional (LLM-as-Judge)', value: 'multi-dimensional' },
   { title: 'Likert', value: 'likert' },
   { title: 'Sterne', value: 'stars' },
   { title: 'Numerisch', value: 'numeric' },
@@ -184,6 +224,12 @@ function getDimensionName(name) {
   return name[locale.value] || name.de || name.en || ''
 }
 
+function getDimensionDescription(description) {
+  if (!description) return ''
+  if (typeof description === 'string') return description
+  return description[locale.value] || description.de || description.en || ''
+}
+
 function updateDimensionName(index, value) {
   const dimension = localConfig.value.dimensions?.[index]
   if (!dimension) return
@@ -194,6 +240,29 @@ function updateDimensionName(index, value) {
   }
   emitUpdate()
 }
+
+function updateDimensionDescription(index, value) {
+  const dimension = localConfig.value.dimensions?.[index]
+  if (!dimension) return
+  if (dimension.description && typeof dimension.description === 'object') {
+    dimension.description[locale.value] = value
+  } else {
+    dimension.description = { de: value, en: value }
+  }
+  emitUpdate()
+}
+
+function updateDimensionWeight(index, value) {
+  const dimension = localConfig.value.dimensions?.[index]
+  if (!dimension) return
+  dimension.weight = parseFloat(value) || 0
+  emitUpdate()
+}
+
+const totalWeight = computed(() => {
+  if (!localConfig.value.dimensions?.length) return 0
+  return localConfig.value.dimensions.reduce((sum, dim) => sum + (dim.weight || 0), 0)
+})
 
 function handleLabelUpdate(value, label) {
   if (!localConfig.value.labels) {
@@ -210,10 +279,24 @@ function addDimension() {
   if (!localConfig.value.dimensions) {
     localConfig.value.dimensions = []
   }
+  // Calculate default weight to make total = 1
+  const existingCount = localConfig.value.dimensions.length
+  const defaultWeight = existingCount === 0 ? 1 : Math.round((1 / (existingCount + 1)) * 100) / 100
+
   localConfig.value.dimensions.push({
     id: `dim_${Date.now()}`,
-    name: ''
+    name: { de: '', en: '' },
+    description: { de: '', en: '' },
+    weight: defaultWeight
   })
+
+  // Optionally redistribute weights evenly
+  const newCount = localConfig.value.dimensions.length
+  const evenWeight = Math.round((1 / newCount) * 100) / 100
+  localConfig.value.dimensions.forEach(dim => {
+    dim.weight = evenWeight
+  })
+
   emitUpdate()
 }
 
@@ -299,22 +382,81 @@ onMounted(initFromProps)
   padding: 12px;
 }
 
-.dimension-row {
+.section-hint {
+  font-size: 0.8rem;
+  color: rgba(var(--v-theme-on-surface), 0.6);
+}
+
+.dimension-card {
+  background-color: rgba(var(--v-theme-surface), 1);
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.1);
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 8px;
+}
+
+.dimension-header {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 8px;
-  background-color: rgba(var(--v-theme-surface), 1);
-  border-radius: 6px;
-  margin-bottom: 4px;
+  margin-bottom: 10px;
+}
+
+.dimension-name-input {
+  flex: 1;
+}
+
+.dimension-details {
+  display: flex;
+  gap: 12px;
+  padding-left: 26px;
+}
+
+.dimension-description-input {
+  flex: 1;
+}
+
+.dimension-weight-input {
+  width: 100px;
+  flex-shrink: 0;
 }
 
 .drag-handle {
   cursor: grab;
   color: rgba(var(--v-theme-on-surface), 0.4);
+  flex-shrink: 0;
 }
 
 .drag-handle:hover {
   color: rgba(var(--v-theme-on-surface), 0.7);
+}
+
+/* Weight Summary */
+.weight-summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background-color: rgba(var(--v-theme-on-surface), 0.05);
+  border-radius: 6px;
+  font-size: 0.85rem;
+}
+
+.weight-label {
+  color: rgba(var(--v-theme-on-surface), 0.7);
+}
+
+.weight-value {
+  font-weight: 600;
+  color: rgb(var(--v-theme-success));
+}
+
+.weight-value.weight-warning {
+  color: rgb(var(--v-theme-warning));
+}
+
+.weight-hint {
+  color: rgba(var(--v-theme-on-surface), 0.5);
+  font-size: 0.8rem;
 }
 </style>

@@ -368,22 +368,49 @@ embeddings, model_id, chroma_name, dims = get_best_embedding_for_collection(coll
 ## Rating/Ranking System
 
 ```
-EmailThread
+EvaluationItem (früher EmailThread)
 ├── Messages[] (Klient ↔ Berater)
-└── Features[] (LLM-generierte Analysen)
+└── content (Plain-Text-Inhalt)
 
 Scenario
 ├── ScenarioUsers[] (EVALUATOR oder RATER)
 ├── ScenarioThreads[]
-└── config_json (distribution_mode, order_mode)
+├── config_json (dimensions, labels, scale settings)
+└── ItemDimensionRating[] (Multi-dimensionale Bewertungen)
 ```
 
 | function_type_id | Name | Beschreibung |
 |------------------|------|--------------|
 | 1 | ranking | Items sortieren oder kategorisieren |
-| 2 | rating | Bewertung auf einer Skala (Likert, Sterne) |
+| 2 | rating | Multi-dimensionales Rating (LLM-as-Judge Metriken) |
+| 3 | mail_rating | E-Mail-Verläufe bewerten (LLARS-spezifisch) |
 | 4 | comparison | Items paarweise vergleichen (A vs B) |
-| 5 | labeling | Kategorien zuweisen (binär, multi-class) |
+| 5 | authenticity | Fake/Echt Bewertung (LLARS-spezifisch) |
+| 7 | labeling | Kategorien zuweisen (binär, multi-class) |
+
+### Multi-Dimensionales Rating (LLM-as-Judge)
+
+Rating verwendet jetzt standardmäßig das multi-dimensionale Format:
+- **Layout:** Links Text, rechts mehrere Likert-Skalen pro Dimension
+- **Standard-Dimensionen:** Kohärenz, Flüssigkeit, Relevanz, Konsistenz
+- **Gewichtung:** Jede Dimension hat ein Gewicht für die Gesamtbewertung
+- **Presets:** `llm-judge-standard`, `summeval`, `response-quality`, `news-article`
+
+```json
+// Beispiel config_json für Rating
+{
+  "type": "multi-dimensional",
+  "min": 1, "max": 5, "step": 1,
+  "dimensions": [
+    {"id": "coherence", "name": {"de": "Kohärenz"}, "weight": 0.25},
+    {"id": "fluency", "name": {"de": "Flüssigkeit"}, "weight": 0.25}
+  ],
+  "labels": {"1": {"de": "Sehr schlecht"}, "5": {"de": "Sehr gut"}}
+}
+```
+
+**Backend-Service:** `app/services/evaluation/dimensional_rating_service.py`
+**Frontend-Composable:** `llars-frontend/src/composables/useDimensionalRating.js`
 
 ---
 

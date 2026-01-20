@@ -8,16 +8,23 @@ Der Szenario Wizard ist ein mehrstufiger Assistent zur Erstellung von Evaluation
 
 ## Evaluierungstypen
 
-LLARS unterstützt 4 generalisierte Evaluierungstypen:
+LLARS unterstützt 4 generalisierte Evaluierungstypen sowie 2 LLARS-spezifische Typen:
 
 | Typ | Beschreibung | Anwendungsfälle | Presets |
 |-----|--------------|-----------------|---------|
-| **rating** | Bewertung auf einer Skala | Qualitätsbewertung, Sentiment-Score, Empfehlungswahrscheinlichkeit | Likert-5, Likert-7, Sterne (1-5), Prozent |
+| **rating** | Multi-dimensionales Rating (LLM-as-Judge) | Text-Qualität, LLM-Evaluation, Zusammenfassungen | LLM-Judge Standard, SummEval, Antwort-Qualität, Nachrichtenartikel |
 | **ranking** | Items sortieren oder kategorisieren | Priorisierung, Qualitätseinteilung, Relevanz-Sortierung | 3 Kategorien, 5 Kategorien, Priorität, Relevanz |
 | **labeling** | Kategorien zuweisen | Klassifikation, Themenerkennung, Authentizitätsprüfung | Binär (Echt/Fake), Multi-Class, Multi-Label |
 | **comparison** | Items paarweise vergleichen | A/B-Vergleiche, Präferenz-Studien, Modell-Vergleiche | Paarweise, Mit Konfidenz, Multi-Kriterien |
 
-> **Hinweis:** Der frühere Typ `mail_rating` wurde entfernt. Alle Bewertungsaufgaben nutzen nun den generalisierten `rating`-Typ mit konfigurierbaren Dimensionen.
+LLARS-spezifische Typen (Psychosoziale Online-Beratung):
+
+| Typ | Beschreibung | Basistyp | Presets |
+|-----|--------------|----------|---------|
+| **mail_rating** | Mehrdimensionale Bewertung von Beratungs-E-Mails | rating | Beratungsqualität, Antwortqualität, Einfache Bewertung |
+| **authenticity** | Erkennung von echten vs. gefälschten Nachrichten | labeling | Nachrichten-Echtheit, KI-Erkennung, Dringlichkeit |
+
+> **Hinweis:** LLARS-spezifische Typen nutzen die generalisierten Basistypen (`mail_rating` → `rating`, `authenticity` → `labeling`).
 
 ## Wizard-Schritte
 
@@ -27,6 +34,7 @@ LLARS unterstützt 4 generalisierte Evaluierungstypen:
 - **Drag & Drop** oder Dateiauswahl
 - **AI-Analyse:** Automatische Erkennung des Evaluierungstyps
 - **Vorschau:** Erste Datensätze werden angezeigt
+- **Beispiele:** Ideales Datenformat im Tab **Datenformat** (neben Einladungen)
 
 ```
 ┌─────────────────────────────────────────────┐
@@ -39,7 +47,7 @@ LLARS unterstützt 4 generalisierte Evaluierungstypen:
 ### Schritt 2: Aufgabentyp definieren
 
 - **AI-Vorschlag:** Basierend auf Datenanalyse
-- **Manuelle Auswahl:** 4 Typen zur Auswahl
+- **Manuelle Auswahl:** 4 generalisierte + 2 LLARS-spezifische Typen
 - **Beschreibung:** Erklärt jeden Typ
 
 ```
@@ -53,10 +61,12 @@ LLARS unterstützt 4 generalisierte Evaluierungstypen:
 
 Je nach gewähltem Typ:
 
-**Rating:**
-- Skala (min, max, Schrittweite)
-- Preset auswählen (Likert-5, Sterne, etc.)
-- Labels für Skalenwerte
+**Rating (Multi-Dimensional):**
+- **Typ:** Multi-Dimensional (LLM-as-Judge) oder klassisch (Likert, Sterne)
+- **Dimensionen:** Kohärenz, Flüssigkeit, Relevanz, Konsistenz (anpassbar)
+- **Skala:** min, max, Schrittweite (Standard: 1-5)
+- **Gewichtung:** Jede Dimension hat ein Gewicht für die Gesamtbewertung
+- **Presets:** LLM-Judge Standard, SummEval, Antwort-Qualität, Nachrichtenartikel
 
 **Ranking:**
 - Kategorie-Buckets definieren
@@ -154,7 +164,9 @@ const ID_TYPE_MAP = {
   ranking: 1,
   rating: 2,
   comparison: 4,
-  labeling: 5
+  labeling: 7,
+  mail_rating: 3,
+  authenticity: 5
 }
 ```
 
@@ -193,6 +205,24 @@ const ID_TYPE_MAP = {
 | `pairwise` | Paarweiser Vergleich | A vs B |
 | `pairwise-confidence` | Mit Konfidenz | + Sicherheitsbewertung |
 | `multicriteria` | Multi-Kriterien | Mehrere Dimensionen |
+
+### Mail-Rating Presets
+
+| ID | Name | Beschreibung |
+|----|------|--------------|
+| `beratungsqualitaet` | Beratungsqualität | Mehrdimensionale Bewertung von Beratungs-E-Mails |
+| `antwortqualitaet` | Antwortqualität | Bewertung der Qualität einzelner Beraterantworten |
+| `einfach` | Einfache Bewertung | Schnelle Gesamtbewertung ohne Dimensionen |
+| `custom` | Benutzerdefiniert | Eigene Bewertungsdimensionen definieren |
+
+### Authenticity Presets
+
+| ID | Name | Beschreibung |
+|----|------|--------------|
+| `nachricht-echtheit` | Nachrichten-Echtheit | Echte vs. gefälschte Beratungsnachrichten |
+| `ki-generiert` | KI-Erkennung | KI-generiert vs. menschlich |
+| `dringlichkeit` | Dringlichkeits-Einschätzung | Akut bis niedrig |
+| `custom` | Benutzerdefiniert | Eigene Kategorien definieren |
 
 ## Lokalisierung
 
@@ -238,8 +268,87 @@ Der Wizard unterstützt DE und EN:
 7. **Lädt Team ein** (3 Evaluatoren + GPT-4)
 8. **Erstellt Szenario** → Evaluation startet
 
+## Datenformate für Import
+
+### Rating-Daten
+
+```json
+[
+  {
+    "id": "1",
+    "text": "Der zu bewertende Text...",
+    "category": "Optional: Kategorie"
+  }
+]
+```
+
+### Ranking-Daten (z.B. Summary-Qualität)
+
+**WICHTIG:** Bei Ranking-Szenarien wie Summary-Qualität werden:
+- Der **Quelltext** als Kontext angezeigt (rechtes Panel)
+- Die **zu rankenden Items** (z.B. Summaries) als Features gespeichert (linkes Panel)
+
+```json
+[
+  {
+    "subject": "Summary Ranking: Artikeltitel",
+    "source_text": "Der vollständige Originaltext, der als Kontext dient...",
+    "items": [
+      { "id": "A", "content": "Erste Zusammenfassung..." },
+      { "id": "B", "content": "Zweite Zusammenfassung..." },
+      { "id": "C", "content": "Dritte Zusammenfassung..." }
+    ],
+    "task": "Ranken Sie die Zusammenfassungen nach Qualität"
+  }
+]
+```
+
+**Technische Umsetzung:**
+- `source_text` → wird als **Message** gespeichert (Anzeige rechts)
+- `items` → werden als **Features** gespeichert (Ranking links)
+- Items werden NICHT als Messages gespeichert!
+
+### Labeling-Daten
+
+```json
+[
+  {
+    "id": "1",
+    "text": "Der zu klassifizierende Text...",
+    "ground_truth": "kategorie_a"  // Optional für Accuracy-Berechnung
+  }
+]
+```
+
+### Comparison-Daten
+
+```json
+[
+  {
+    "id": "1",
+    "context": "Optionaler Kontext...",
+    "option_a": "Erste Option zum Vergleichen",
+    "option_b": "Zweite Option zum Vergleichen",
+    "task": "Welche Option ist besser?"
+  }
+]
+```
+
+### Authenticity-Daten
+
+```json
+[
+  {
+    "id": "1",
+    "text": "Der Text zur Echtheitsprüfung...",
+    "is_fake": true  // Ground Truth für Accuracy/F1-Berechnung
+  }
+]
+```
+
 ## Siehe auch
 
+- [Ranking-Szenarien im Detail](./ranking-scenarios.md)
 - [Szenario Manager Testing](./scenario-manager-testing.md)
 - [Datenbank-Schema](../docs/entwickler/datenbank-schema.md)
 - [Permission System](../docs/guides/permission-system.md)

@@ -182,7 +182,7 @@ Bewertungs-Szenarien.
 | `description` | TEXT | Beschreibung |
 | `begin` | DATETIME | Startdatum |
 | `end` | DATETIME | Enddatum |
-| `function_type_id` | INT | 1=ranking, 2=rating, 4=comparison, 5=labeling |
+| `function_type_id` | INT | 1=ranking, 2=rating, 3=mail_rating, 4=comparison, 5=authenticity, 7=labeling |
 | `distribution_mode` | ENUM | all, round_robin |
 | `order_mode` | ENUM | none, shuffle_same, shuffle_per_user |
 | `config_json` | JSON | Erweiterte Konfiguration |
@@ -206,7 +206,7 @@ E-Mail-Konversationen zur Bewertung.
 |--------|-----|--------------|
 | `id` | INT | Primary Key |
 | `subject` | VARCHAR(500) | Betreff |
-| `function_type_id` | INT | 1=ranking, 2=rating, 4=comparison, 5=labeling |
+| `function_type_id` | INT | 1=ranking, 2=rating, 3=mail_rating, 4=comparison, 5=authenticity, 7=labeling |
 | `created_at` | DATETIME | Erstellzeitpunkt |
 
 ### Feature

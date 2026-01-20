@@ -2351,7 +2351,24 @@
       "results": "Ergebnisse",
       "team": "Team",
       "myScenarios": "Meine Szenarien",
-      "invitations": "Einladungen"
+      "invitations": "Einladungen",
+      "dataFormat": "Datenformat"
+    },
+    "dataFormat": {
+      "title": "Ideales Datenformat (Kurzbeispiele)",
+      "intro": "Je klarer die Struktur, desto besser erkennt die KI Typ und Mapping.",
+      "tip1": "JSON: Array von Objekten, jedes Objekt = ein Item/Thread.",
+      "tip2": "CSV/XLSX: eine Zeile pro Item, Spalten = Felder.",
+      "tip3": "Sprechende Feldnamen helfen (z.B. text/message/body, label/category, rating/score).",
+      "tip4": "Die KI sucht nach ähnlichen Feldnamen und Beispielwerten, um passende Zuordnungen zu erkennen.",
+      "tip5": "Unbekannte Felder bleiben erhalten und werden als Zusatzinfos behandelt.",
+      "singleLabel": "Einzeltext (Rating/Labeling)",
+      "singleExample": "[{\"id\":\"1\",\"text\":\"...\",\"label\":\"positive\"}]",
+      "conversationLabel": "Konversation (Mail Rating/Authenticity)",
+      "conversationExample": "{\"id\":\"1\",\"messages\":[{\"role\":\"user\",\"content\":\"...\"},{\"role\":\"assistant\",\"content\":\"...\"}]}",
+      "comparisonLabel": "Vergleich (A/B)",
+      "comparisonExample": "{\"id\":\"1\",\"text_a\":\"...\",\"text_b\":\"...\"}",
+      "hint": "Feldnamen wie text/message/label/score helfen beim automatischen Mapping."
     },
     "card": {
       "evaluators": "Evaluatoren",
@@ -2387,6 +2404,18 @@
         "dataFormatTooltipItem3": "Sprechende Feldnamen helfen (z.B. text/message/body, label/category, rating/score).",
         "dataFormatTooltipItem4": "Die KI sucht nach ähnlichen Feldnamen und Beispielwerten, um passende Zuordnungen zu erkennen.",
         "dataFormatTooltipItem5": "Unbekannte Felder bleiben erhalten und werden als Zusatzinfos behandelt.",
+        "idealDataTitle": "Ideales Datenformat (Kurzbeispiele)",
+        "idealDataIntro": "Je klarer die Struktur, desto besser erkennt die KI Typ und Mapping.",
+        "idealDataSingleLabel": "Einzeltext (Rating/Labeling)",
+        "idealDataSingleExample": "[{\"id\":\"1\",\"text\":\"...\",\"label\":\"positive\"}]",
+        "idealDataConversationLabel": "Konversation (Mail Rating/Authenticity)",
+        "idealDataConversationExample": "{\"id\":\"1\",\"messages\":[{\"role\":\"user\",\"content\":\"...\"},{\"role\":\"assistant\",\"content\":\"...\"}]}",
+        "idealDataComparisonLabel": "Vergleich (A/B)",
+        "idealDataComparisonExample": "{\"id\":\"1\",\"text_a\":\"...\",\"text_b\":\"...\"}",
+        "idealDataRankingLabel": "Ranking (z.B. Summaries)",
+        "idealDataRankingExample": "{\"source_text\":\"Originaltext...\",\"items\":[{\"id\":\"A\",\"content\":\"Item 1...\"},{\"id\":\"B\",\"content\":\"Item 2...\"}]}",
+        "idealDataRankingHint": "source_text = Kontext (rechts), items = zu rankende Items (links)",
+        "idealDataHint": "Feldnamen wie text/message/label/score helfen beim automatischen Mapping.",
         "dropFiles": "Dateien hierher ziehen oder klicken",
         "supportedFormats": "Unterstützte Formate: JSON, CSV, XLSX",
         "multiFileHint": "Mehrere Dateien mit Cmd+A oder Strg+A auswählen",
@@ -2513,9 +2542,14 @@
         "allowHalfSteps": "Halbe Schritte erlauben",
         "scaleLabels": "Skalen-Beschriftungen",
         "labelPlaceholder": "Beschriftung eingeben...",
-        "dimensions": "Dimensionen",
+        "dimensions": "Bewertungsdimensionen",
+        "dimensionsHint": "Definieren Sie eigene Dimensionen, auf denen der Text bewertet werden soll.",
         "addDimension": "Dimension hinzufügen",
-        "dimensionName": "Dimensionsname"
+        "dimensionName": "Name der Dimension",
+        "dimensionDescription": "Beschreibung (Was soll hier bewertet werden?)",
+        "dimensionWeight": "Gewicht",
+        "totalWeight": "Gesamtgewicht",
+        "shouldBe100": "sollte 100% sein"
       },
       "ranking": {
         "rankingType": "Ranking-Typ",
@@ -2855,6 +2889,11 @@
         "high": "Hohe Übereinstimmung",
         "veryHigh": "Sehr hohe Übereinstimmung"
       },
+      "kendallTau": {
+        "name": "Kendall's Tau",
+        "description": "Misst ordinale Assoziation zwischen Rankings. Robuster als Spearman bei kleinen Stichproben.",
+        "range": "-1 bis 1 (|τ| > 0.5 = stark)"
+      },
       "mae": {
         "title": "MAE (Mittlerer absoluter Fehler)",
         "description": "Durchschnittliche absolute Abweichung zwischen Vorhersagen und Ground Truth. Niedrigere Werte bedeuten bessere Übereinstimmung."
@@ -2887,8 +2926,58 @@
         "poor": "Schwach / vorläufig",
         "tentative": "Nur vorläufige Schlüsse",
         "acceptable": "Akzeptabel für vorläufige Schlüsse",
-        "reliable": "Gute Reliabilität"
+        "reliable": "Gute Reliabilität",
+        "perfectNegative": "Perfekte negative Korrelation",
+        "noCorrelation": "Keine Korrelation",
+        "perfectPositive": "Perfekte positive Korrelation"
       }
+    },
+    "session": {
+      "title": "Evaluierung",
+      "back": "Zurück zur Übersicht",
+      "progress": "{done} von {total} bewertet",
+      "progressLabel": "Fortschritt",
+      "item": "Eintrag {current} von {total}",
+      "previousItem": "Vorheriger Eintrag",
+      "nextItem": "Nächster Eintrag",
+      "loading": "Daten werden geladen...",
+      "empty": "Keine Einträge zur Bewertung verfügbar",
+      "emptyHint": "Möglicherweise wurden Ihnen noch keine Einträge zugewiesen.",
+      "complete": "Bewertung abgeschlossen!",
+      "completeMessage": "Sie haben alle zugewiesenen Einträge bewertet.",
+      "backToOverview": "Zurück zur Übersicht",
+      "error": "Fehler beim Laden der Daten",
+      "errorHint": "Bitte versuchen Sie es erneut oder kontaktieren Sie den Administrator.",
+      "retry": "Erneut versuchen",
+      "selectFeature": "Wählen Sie ein Feature aus der Liste aus",
+      "selectFeatureHint": "Klicken Sie auf ein Feature links, um es zu bewerten",
+      "featureTypes": {
+        "all": "Alle",
+        "general": "Allgemein",
+        "quality": "Qualität",
+        "custom": "Benutzerdefiniert"
+      },
+      "noFeaturesForThread": "Keine Features für diesen Thread verfügbar",
+      "threadProgress": "{done} von {total} Features bewertet",
+      "markComplete": "Als abgeschlossen markieren",
+      "saveAndNext": "Speichern & Weiter"
+    },
+    "rating": {
+      "title": "Bewertung",
+      "good": "Gut",
+      "bad": "Schlecht",
+      "notRated": "Nicht bewertet",
+      "rated": "Bewertet",
+      "scale": {
+        "1": "Sehr gut",
+        "2": "Gut",
+        "3": "Neutral",
+        "4": "Schlecht",
+        "5": "Sehr schlecht"
+      },
+      "editContent": "Inhalt bearbeiten",
+      "editHint": "Sie können den Text bearbeiten, um Korrekturen vorzuschlagen",
+      "saveRating": "Bewertung speichern"
     }
   },
   "promptEngineering": {
@@ -3178,8 +3267,65 @@
     },
     "rating": {
       "pageTitle": "Rating",
-      "pageSubtitle": "Öffne einen Fall und bewerte die einzelnen Features.",
-      "emptyTitle": "Keine Rating-Fälle verfügbar"
+      "pageSubtitle": "Öffne einen Fall und bewerte den Text auf mehreren Dimensionen.",
+      "emptyTitle": "Keine Rating-Fälle verfügbar",
+      "context": "Kontext",
+      "content": "Inhalt",
+      "dimensions": "Bewertungsdimensionen",
+      "features": "Features bewerten",
+      "rated": "bewertet",
+      "noFeatures": "Keine Features vorhanden",
+      "noFeaturesHint": "Es wurden keine Features für diesen Thread gefunden.",
+      "noMessages": "Kein Kontext vorhanden",
+      "noContent": "Kein Inhalt vorhanden",
+      "keyboardHint": "Tasten 1-5 zum Bewerten, ↑↓ Navigation",
+      "autoSaveEnabled": "Auto-Save aktiv",
+      "completeAndNext": "Abschließen & Weiter",
+      "saveAndNext": "Speichern & Weiter",
+      "complete": "Abschließen",
+      "overallScore": "Gesamtbewertung",
+      "dimensionsRated": "Dimensionen bewertet",
+      "rateDimension": "Dimension bewerten",
+      "messages": "Nachrichten",
+      "counselor": "Berater",
+      "client": "Klient",
+      "system": "System",
+      "feedbackPlaceholder": "Optionales Feedback oder Anmerkungen...",
+      "feedback": "Feedback",
+      "progress": "Fortschritt",
+      "itemsCompleted": "Items abgeschlossen",
+      "scale": {
+        "good": "Gut",
+        "bad": "Schlecht"
+      },
+      "labels": {
+        "veryPoor": "Sehr schlecht",
+        "poor": "Schlecht",
+        "acceptable": "Akzeptabel",
+        "good": "Gut",
+        "veryGood": "Sehr gut"
+      },
+      "dimensions": {
+        "coherence": "Kohärenz",
+        "coherenceDesc": "Logischer Aufbau und Zusammenhang",
+        "fluency": "Flüssigkeit",
+        "fluencyDesc": "Sprachliche Qualität und Lesbarkeit",
+        "relevance": "Relevanz",
+        "relevanceDesc": "Bezug zum Thema/Kontext",
+        "consistency": "Konsistenz",
+        "consistencyDesc": "Widerspruchsfreiheit und Faktentreue"
+      }
+    },
+    "featureTypes": {
+      "summary": "Zusammenfassung",
+      "keywords": "Schlagwörter",
+      "sentiment": "Stimmung",
+      "topics": "Themen",
+      "response": "Antwort",
+      "category": "Kategorie",
+      "subject": "Betreff",
+      "orderClarification": "Ordnungsklärung",
+      "other": "Sonstiges"
     },
     "historyRating": {
       "pageTitle": "Verlaufsbewertung",
@@ -4485,7 +4631,10 @@
         "title": "Chat",
         "clear": "Chat löschen",
         "thinking": "Denke...",
-        "placeholder": "Frage stellen..."
+        "placeholder": "Frage stellen...",
+        "contextLabel": "Kontext gesendet",
+        "contextEmpty": "Nur aktuelles Dokument",
+        "contextTruncatedSuffix": "(gekuerzt)"
       },
       "welcome": {
         "greeting": "Hi! Ich bin dein KI-Schreibassistent.",

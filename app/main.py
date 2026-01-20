@@ -255,6 +255,145 @@ def seed_field_prompts():
 
 seed_field_prompts()
 
+
+# Auto-start LLM evaluations for scenarios with configured evaluators
+def start_pending_llm_evaluations():
+    """
+    Start LLM evaluations for all scenarios that have pending evaluations.
+
+    This runs on startup to ensure LLM evaluators process any threads that
+    haven't been evaluated yet. Runs in background threads to not block startup.
+    """
+    if _skip_startup_tasks():
+        print("[Startup] Skipping LLM evaluation startup (LLARS_SKIP_STARTUP_TASKS=true)")
+        return
+
+    import json
+    import threading
+    from db.database import db
+    from db.models import (
+        RatingScenarios, ScenarioThreads, LLMTaskResult,
+        ComparisonSession, FeatureFunctionType
+    )
+
+    def _run_pending_evaluations():
+        with app.app_context():
+            try:
+                # Find all scenarios with LLM evaluators configured
+                scenarios = RatingScenarios.query.filter(
+                    RatingScenarios.config_json.isnot(None)
+                ).all()
+
+                scenarios_to_process = []
+                for scenario in scenarios:
+                    config = scenario.config_json
+                    if isinstance(config, str):
+                        try:
+                            config = json.loads(config)
+                        except (json.JSONDecodeError, TypeError):
+                            continue
+                    if not isinstance(config, dict):
+                        continue
+
+                    llm_evaluators = config.get('llm_evaluators') or config.get('selected_llms') or []
+                    if not llm_evaluators:
+                        continue
+
+                    # Get function type to handle comparison scenarios differently
+                    function_type = FeatureFunctionType.query.filter_by(
+                        function_type_id=scenario.function_type_id
+                    ).first()
+                    function_name = function_type.name if function_type else None
+
+                    # For comparison scenarios, use ComparisonSessions
+                    if function_name == "comparison":
+                        comparison_sessions = ComparisonSession.query.filter_by(
+                            scenario_id=scenario.id
+                        ).all()
+                        all_ids = {cs.id for cs in comparison_sessions}
+                    else:
+                        # For other scenarios, use ScenarioThreads
+                        scenario_threads = ScenarioThreads.query.filter_by(
+                            scenario_id=scenario.id
+                        ).all()
+                        all_ids = {st.thread_id for st in scenario_threads}
+
+                    if not all_ids:
+                        continue
+
+                    scenarios_to_process.append({
+                        'scenario': scenario,
+                        'llm_evaluators': llm_evaluators,
+                        'all_ids': all_ids,
+                        'is_comparison': function_name == "comparison",
+                    })
+
+                if not scenarios_to_process:
+                    print("[Startup] No scenarios with pending LLM evaluations")
+                    return
+
+                print(f"[Startup] Checking {len(scenarios_to_process)} scenarios for pending LLM evaluations...")
+
+                from services.llm.llm_ai_task_runner import LLMAITaskRunner
+
+                total_started = 0
+                for item in scenarios_to_process:
+                    scenario = item['scenario']
+                    llm_evaluators = item['llm_evaluators']
+                    all_ids = item['all_ids']
+
+                    for model_id in llm_evaluators:
+                        # Get IDs that already have successful results
+                        completed_rows = db.session.query(LLMTaskResult.thread_id).filter(
+                            LLMTaskResult.scenario_id == scenario.id,
+                            LLMTaskResult.model_id == model_id,
+                            LLMTaskResult.payload_json.isnot(None),
+                            LLMTaskResult.error.is_(None),
+                        ).all()
+                        completed_ids = {row[0] for row in completed_rows if row[0]}
+
+                        # Find IDs that need evaluation
+                        pending_ids = list(all_ids - completed_ids)
+
+                        if pending_ids:
+                            id_type = "sessions" if item['is_comparison'] else "threads"
+                            print(
+                                f"[Startup] Starting LLM evaluation: scenario={scenario.id} "
+                                f"({scenario.scenario_name}), model={model_id}, "
+                                f"pending_{id_type}={len(pending_ids)}/{len(all_ids)}"
+                            )
+                            LLMAITaskRunner.run_for_scenario_async(
+                                scenario.id,
+                                model_ids=[model_id],
+                                thread_ids=pending_ids,  # Works for both threads and session IDs
+                            )
+                            total_started += 1
+
+                if total_started > 0:
+                    print(f"[Startup] Started {total_started} LLM evaluation tasks")
+                else:
+                    print("[Startup] All LLM evaluations are up to date")
+
+            except Exception as e:
+                print(f"[Startup] Error starting LLM evaluations: {e}")
+
+    # Run in background thread after a short delay to let other services initialize
+    def _delayed_start():
+        import time
+        time.sleep(5)  # Wait 5 seconds for other services to be ready
+        _run_pending_evaluations()
+
+    # Start background thread - skip only if LLARS_SKIP_STARTUP_TASKS is set
+    # For Docker/Gunicorn, we always want to run this (unlike embedding worker which
+    # has special handling for Flask reloader)
+    thread = threading.Thread(target=_delayed_start, daemon=True)
+    thread.start()
+    print("[Startup] LLM evaluation checker scheduled")
+
+
+start_pending_llm_evaluations()
+
+
 if __name__ == '__main__':
     # Debug mode nur in development aktivieren
     debug_mode = os.environ.get('FLASK_ENV', 'production') == 'development'

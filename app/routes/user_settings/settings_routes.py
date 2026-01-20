@@ -9,6 +9,7 @@ from datetime import datetime
 
 from auth.decorators import authentik_required
 from decorators.error_handler import handle_api_errors, ValidationError
+from db.tables import LatexComment
 
 settings_bp = Blueprint('settings', __name__, url_prefix='/settings')
 
@@ -60,6 +61,12 @@ def update_user_settings():
         current = user.settings_json or {}
         current.update(data['preferences'])
         user.settings_json = current
+
+    if 'collab_color' in data and prev_collab_color != user.collab_color:
+        LatexComment.query.filter_by(author_username=user.username).update(
+            {LatexComment.author_color: user.collab_color},
+            synchronize_session=False
+        )
 
     db.session.commit()
 

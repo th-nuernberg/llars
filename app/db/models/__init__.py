@@ -153,6 +153,7 @@ from db.models.scenario import (
     RatingScenarios,
     ScenarioUsers,
     UserMailHistoryRating,
+    ItemDimensionRating,  # New multi-dimensional rating model
     UserMessageRating,
     UserPrompt,
     UserPromptShare,
@@ -308,6 +309,7 @@ __all__ = [
     'RatingScenarios',
     'ScenarioUsers',
     'UserMailHistoryRating',
+    'ItemDimensionRating',
     'UserMessageRating',
     # Authenticity
     'AuthenticityConversation',

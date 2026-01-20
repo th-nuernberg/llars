@@ -15,6 +15,7 @@ from PIL import Image
 from auth.decorators import authentik_required, public_endpoint
 from decorators.error_handler import NotFoundError, ValidationError, handle_api_errors
 from db.database import db
+from db.tables import LatexComment
 from db.models.user import generate_avatar_seed
 from routes.auth import data_bp
 from services.user_profile_service import build_avatar_url, is_valid_collab_color, pick_collab_color
@@ -143,6 +144,12 @@ def update_user_settings():
             if not is_valid_collab_color(color):
                 raise ValidationError("collab_color must be a valid hex color (#RRGGBB format)")
             user.collab_color = color
+
+    if "collab_color" in data and prev_collab_color != user.collab_color:
+        LatexComment.query.filter_by(author_username=user.username).update(
+            {LatexComment.author_color: user.collab_color},
+            synchronize_session=False
+        )
 
     db.session.commit()
 

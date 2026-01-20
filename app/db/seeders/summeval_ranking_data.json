@@ -1,0 +1,782 @@
+[
+  {
+    "subject": "Summary Ranking: News Article 1",
+    "source_text": "(CNN)Donald Sterling's racist remarks cost him an NBA team last year. But now it's his former female companion who has lost big. A Los Angeles judge has ordered V. Stiviano to pay back more than $2.6 million in gifts after Sterling's wife sued her. In the lawsuit, Rochelle \"Shelly\" Sterling accused Stiviano of targeting extremely wealthy older men. She claimed Donald Sterling used the couple's money to buy Stiviano a Ferrari, two Bentleys and a Range Rover, and that he helped her get a $1.8 million duplex. Who is V. Stiviano? Stiviano countered that there was nothing wrong with Donald Sterling giving her gifts and that she never took advantage of the former Los Angeles Clippers owner, who made much of his fortune in real estate. Shelly Sterling was thrilled with the court decision Tuesday, her lawyer told CNN affiliate KABC. \"This is a victory for the Sterling family in recovering the $2,630,000 that Donald lavished on a conniving mistress,\" attorney Pierce O'Donnell said in a statement. \"It also sets a precedent that the injured spouse can recover damages from the recipient of these ill-begotten gifts.\" Stiviano's gifts from Donald Sterling didn't just include uber-expensive items like luxury cars. According to the Los Angeles Times, the list also includes a $391 Easter bunny costume, a $299 two-speed blender and a $12 lace thong. Donald Sterling's downfall came after an audio recording surfaced of the octogenarian arguing with Stiviano. In the tape, Sterling chastises Stiviano for posting pictures on social media of her posing with African-Americans, including basketball legend Magic Johnson. \"In your lousy f**ing Instagrams, you don't have to have yourself with -- walking with black people,\" Sterling said in the audio first posted by TMZ. He also tells Stiviano not to bring Johnson to Clippers games and not to post photos with the Hall of Famer so Sterling's friends can see. \"Admire him, bring him here, feed him, f**k him, but don't put (Magic) on an Instagram fo...",
+    "summaries": [
+      {
+        "content": "-lrb- cnn -rrb- donald sterling 's racist remarks cost him an nba team last year . but now it 's his former female companion who has lost big . a los angeles judge has ordered v. stiviano to pay back more than $ 2.6 million in gifts after sterling 's wife sued her .",
+        "relevance": 3.0,
+        "coherence": null,
+        "consistency": null,
+        "fluency": null,
+        "avg_score": 3.0,
+        "id": "A"
+      },
+      {
+        "content": "a los angeles judge has ordered v. stiviano to pay back more than $ 2.6 million in gifts after sterling 's wife sued her . in the lawsuit , rochelle `` shelly '' sterling accused stiviano of targeting extremely wealthy older men . she claimed donald sterling used the couple 's money to buy stiviano a ferrari , two bentleys and a range rover , and that he helped her get a $ 1.8 million duplex .",
+        "relevance": 4.333333333333333,
+        "coherence": null,
+        "consistency": null,
+        "fluency": null,
+        "avg_score": 4.333333333333333,
+        "id": "B"
+      },
+      {
+        "content": "( cnn ) donald sterling 's racist remarks cost him an nba team last year . but now it 's his former female companion who has lost big . a los angeles judge has ordered v. stiviano to pay back more than $ 2.6 million in gifts after sterling 's wife sued her . in the lawsuit , rochelle \" shelly \" sterling accused stiviano of targeting extremely wealthy older men .",
+        "relevance": 4.666666666666667,
+        "coherence": null,
+        "consistency": null,
+        "fluency": null,
+        "avg_score": 4.666666666666667,
+        "id": "C"
+      },
+      {
+        "content": "donald sterling 's racist remarks cost him an nba team last year . in the lawsuit , rochelle `` shelly '' sterling used the couple 's money to buy stiviano a ferrari , wealthy older men . shelly sterling 's gifts from donald sterling was $ 2.6 million in gifts .",
+        "relevance": 1.6666666666666667,
+        "coherence": null,
+        "consistency": null,
+        "fluency": null,
+        "avg_score": 1.6666666666666667,
+        "id": "D"
+      },
+      {
+        "content": "donald sterling , nba team last year . sterling 's wife sued for $ 2.6 million in gifts . sterling says he is the former female companion who has lost the . sterling has ordered v. stiviano to pay back $ 2.6 m in gifts after his wife sued . sterling also includes a $ 391 easter bunny costume , $ 299 and a $ 299 .",
+        "relevance": 1.6666666666666667,
+        "coherence": null,
+        "consistency": null,
+        "fluency": null,
+        "avg_score": 1.6666666666666667,
+        "id": "E"
+      }
+    ],
+    "task": "Rank these summaries by quality (coherence, relevance, fluency)"
+  },
+  {
+    "subject": "Summary Ranking: News Article 2",
+    "source_text": "(CNN)A North Pacific gray whale has earned a spot in the record books after completing the longest migration of a mammal ever recorded. The whale, named Varvara, swam nearly 14,000 miles (22,500 kilometers), according to a release from Oregon State University, whose scientists helped conduct the whale-tracking study. Varvara, which is Russian for \"Barbara,\" left her primary feeding ground off Russia's Sakhalin Island to cross the  Pacific Ocean and down the West Coast of the United States to Baja, Mexico. Varvara's journey surpassed a record listed on the Guinness Worlds Records website. It said the previous record was set by a humpback whale that swam a mere 10,190-mile round trip between the \"warm breeding waters near the equator and the colder food-rich waters of the Arctic and Antarctic regions.\" Records are nice, but Bruce Mate, the lead author of the study, thinks the long trip might say more about the whale than just its ability to swim. During her 14,000-mile journey, Varvara visited \"three major breeding areas for eastern gray whales,\" which was a surprise to Mate, who is also the director of the Marine Mammal Institute at Oregon State University. \"For her to go to Mexico,\" Mate said, \"It's pretty strong evidence that it's where she's from.\" Varvara was thought to be an endangered western whale, but her ability to \"navigate across open water over tremendously long distances is impressive,\" he said in the release, which could mean that some western gray whales are actually eastern grays. With only 150 western gray whales believed to be in existence, that number might be even lower. \"Past studies have indicated genetic differentiation between the species, but this suggests we may need to take a closer look,\" Mate said. Fourth baby orca born this season",
+    "summaries": [
+      {
+        "content": "north pacific gray whale has earned a spot in the record books . the whale , named varvara , swam nearly 14,000 miles -lrb- 22,500 kilometers -rrb- . varvara , which is russian for `` barbara , '' left her primary feeding ground off russia .",
+        "relevance": 3.6666666666666665,
+        "coherence": null,
+        "consistency": null,
+        "fluency": null,
+        "avg_score": 3.6666666666666665,
+        "id": "A"
+      },
+      {
+        "content": "the whale , named varvara , swam nearly 14,000 miles ( 22,500 kilometers ) . it said the previous record was set by a humpback whale that swam a mere 10,190-mile round trip between the `` warm breeding waters of the arctic and antarctic regions '' .",
+        "relevance": 2.6666666666666665,
+        "coherence": null,
+        "consistency": null,
+        "fluency": null,
+        "avg_score": 2.6666666666666665,
+        "id": "B"
+      },
+      {
+        "content": "a north pacific gray whale swam nearly 14,000 miles from oregon state university . varvara 's journey surpassed a record listed on the guinness worlds records . the whale is russian for `` barbara , '' which is set by a humpback whale .",
+        "relevance": 2.0,
+        "coherence": null,
+        "consistency": null,
+        "fluency": null,
+        "avg_score": 2.0,
+        "id": "C"
+      },
+      {
+        "content": "a north pacific gray whale has earned a spot in the record books after completing the longest migration of a mammal ever recorded . the whale , named varvara , swam nearly 14,000 miles -lrb- 22,500 kilometers -rrb- , according to a release from oregon state university . varvara 's journey surpassed a record listed on the guinness worlds records website .",
+        "relevance": 4.666666666666667,
+        "coherence": null,
+        "consistency": null,
+        "fluency": null,
+        "avg_score": 4.666666666666667,
+        "id": "D"
+      },
+      {
+        "content": "-lrb- cnn -rrb- a north pacific gray whale has earned a spot in the record books after completing the longest migration of a mammal ever recorded . the whale , named varvara , swam nearly 14,000 miles -lrb- 22,500 kilometers -rrb- , according to a release from oregon state university , whose scientists helped conduct the whale-tracking study . varvara , which is russian for `` barbara , '' left her primary feeding ground off russia 's sakhalin island to cross the pacific ocean and down the west coast of the united states to baja , mexico .",
+        "relevance": 4.333333333333333,
+        "coherence": null,
+        "consistency": null,
+        "fluency": null,
+        "avg_score": 4.333333333333333,
+        "id": "E"
+      }
+    ],
+    "task": "Rank these summaries by quality (coherence, relevance, fluency)"
+  },
+  {
+    "subject": "Summary Ranking: News Article 3",
+    "source_text": "(CNN)After a Russian fighter jet intercepted a U.S. reconnaissance plane in an \"unsafe and unprofessional manner\" earlier this week, the United States is complaining to Moscow about the incident. On Tuesday, a U.S. RC-135U was flying over the Baltic Sea when it was intercepted by a Russian SU-27 Flanker. The Pentagon said the incident occurred in international airspace north of Poland. The U.S. crew believed the Russian pilot's actions were \"unsafe and unprofessional due to the aggressive maneuvers it performed in close proximity to their aircraft and its high rate of speed,\" Pentagon spokesman Mark Wright said. Russian state news agency Sputnik reported the U.S. plane was flying toward the Russian border with its transponder switched off, according to a Defense Ministry spokesman. Maj. Gen. Igor Konashenkov said the Russian jet flew around the U.S. plane several times to identify it and get its tail number. An official with the U.S. European Command said the claim that the transponder was off was false. Wright said the Pentagon and State Department will \"file the appropriate petition through diplomatic channels\" with Russia. This is not the first time the U.S. has complained about an incident involving a RC-135U and a SU-27.  A year ago, a Russian jet flew within 100 feet of a RC-135U over the Sea of Okhotsk in the western Pacific, according to U.S. officials who called it \"one of the most dangerous close passes in decades.\" The Pentagon complained to the Russia military about that incident. Russian and U.S. aircraft often encounter each other, both in Northern Europe as well as the area between the Russian Far East and Alaska. CNN's Steve Brusk and Jamie Crawford contributed to this report.",
+    "summaries": [
+      {
+        "content": "russian fighter jet intercepted a u.s. reconnaissance plane in an `` unsafe and unprofessional manner '' earlier this week , the united states is complaining to moscow about the incident . the pentagon said the incident occurred in international airspace north of poland . russian state news agency sputnik reported the u.s. plane was flying toward the russian border with its transponder switched off .",
+        "relevance": 4.0,
+        "coherence": null,
+        "consistency": null,
+        "fluency": null,
+        "avg_score": 4.0,
+        "id": "A"
+      },
+      {
+        "content": "a u.s. rc-135u was flying over the baltic sea when it was intercepted by a russian flanker . the pentagon said the incident occurred in international airspace north of poland . the u.s. crew believed the russian pilot 's actions were `` unsafe and unprofessional , '' pentagon says .",
+        "relevance": 4.333333333333333,
+        "coherence": null,
+        "consistency": null,
+        "fluency": null,
+        "avg_score": 4.333333333333333,
+        "id": "B"
+      },
+      {
+        "content": "the united states is complaining to moscow about the incident . u.s. rc-135u was flying over baltic sea when it was intercepted by russian su-27 flanker . u.s. command says the transponder was off was false . the u.s. crew believed the pilot 's actions were `` unsafe and unprofessional due to the aggressive maneuvers ''",
+        "relevance": 3.6666666666666665,
+        "coherence": null,
+        "consistency": null,
+        "fluency": null,
+        "avg_score": 3.6666666666666665,
+        "id": "C"
+      },
+      {
+        "content": "the incident occurred in international airspace north of poland . the u.s. crew believed the russian pilot 's actions were `` unsafe and unprofessional due to the aggressive maneuvers it performed in close proximity to their aircraft and its high rate of speed '' .",
+        "relevance": 1.6666666666666667,
+        "coherence": null,
+        "consistency": null,
+        "fluency": null,
+        "avg_score": 1.6666666666666667,
+        "id": "D"
+      },
+      {
+        "content": "( cnn ) after a russian fighter jet intercepted a u.s. reconnaissance plane in an \" unsafe and unprofessional manner \" earlier this week , the united states is complaining to moscow about the incident . on tuesday , a u.s. rc - 135u was flying over the baltic sea when it was intercepted by a russian su - 27 flanker . the pentagon said the incident occurred in international airspace north of poland .",
+        "relevance": 4.666666666666667,
+        "coherence": null,
+        "consistency": null,
+        "fluency": null,
+        "avg_score": 4.666666666666667,
+        "id": "E"
+      }
+    ],
+    "task": "Rank these summaries by quality (coherence, relevance, fluency)"
+  },
+  {
+    "subject": "Summary Ranking: News Article 4",
+    "source_text": "(CNN)Lady Antebellum singer Hillary Scott's tour bus caught fire on a Texas freeway Thursday morning, but everyone on board was safely evacuated. Michael Barnett captured dramatic video of the fire, on Interstate 30 just northeast of Dallas, and uploaded it to CNN iReport. Smoke and flames poured from the rear of the bus as traffic slowed to a crawl and Barnett slowly approached in his vehicle. As he drew closer to the bus, Barnett decided to stop filming because he didn't know what to expect. \"It was shocking,\" he said. \"I didn't know what I was about to see. I didn't know if anyone was hurt.\" Barnett said he didn't realize at the time that the bus belonged to the country band. Hillary Scott, co-lead singer for the band, posted a photo of the charred bus on Instagram and noted that she, her husband, the tour manager and the driver were all evacuated safely. \"Thanking God for our safety and the safety of all of those who helped put this fire out and keep us safe,\" she wrote. The tour manager told CNN affiliate KTVT that the bus stopped after a rear tire blew out. It burst into flames after everyone had gotten off. Scott also posted an Instagram photo and message saying that the fire destroyed everything in the bus's back lounge except her Bible. The band's two other members, Charles Kelley and Dave Haywood, were not traveling on the bus, KTVT reported. Lady Antebellum is set to perform at the 50th Academy of Country Music Awards on Sunday in Arlington, Texas.",
+    "summaries": [
+      {
+        "content": "lady antebellum singer hillary scott's tour bus catches fire on a texas freeway . everyone on board was evacuated safely, scott posts on instagram .",
+        "relevance": 4.666666666666667,
+        "coherence": null,
+        "consistency": null,
+        "fluency": null,
+        "avg_score": 4.666666666666667,
+        "id": "A"
+      },
+      {
+        "content": "hillary scott 's tour bus caught fire on a texas freeway thursday morning . smoke and flames poured from the rear of the bus as traffic slowed to a crawl and barnett slowly approached in his vehicle . barnett said he did n't realize at the time that the bus belonged to the country band .",
+        "relevance": 3.0,
+        "coherence": null,
+        "consistency": null,
+        "fluency": null,
+        "avg_score": 3.0,
+        "id": "B"
+      },
+      {
+        "content": "lady antebellum 's tour bus caught fire on a texas freeway thursday morning . michael barnett captured dramatic video of fire on interstate 30 . he decided to stop filming because he did n't know what to expect . hillary scott , co-lead singer , posted a photo of the charred bus on instagram .",
+        "relevance": 3.0,
+        "coherence": null,
+        "consistency": null,
+        "fluency": null,
+        "avg_score": 3.0,
+        "id": "C"
+      },
+      {
+        "content": "michael barnett captured the fire on interstate 30 just northeast of dallas . the antebellum singer hillary scott , co-lead singer for the band . the band 's two other members , charles kelley and dave haywood were not traveling on the bus . the tour manager says he did n't know what he was about to see . the bus is set to perform at the 50th academy of country music awards .",
+        "relevance": 2.0,
+        "coherence": null,
+        "consistency": null,
+        "fluency": null,
+        "avg_score": 2.0,
+        "id": "D"
+      },
+      {
+        "content": "hillary scott 's tour bus caught fire on a texas freeway thursday morning . michael barnett captured dramatic video of the fire , on interstate 30 just northeast of dallas . barnett decided to stop filming because he did n't know what to expect .",
+        "relevance": 3.6666666666666665,
+        "coherence": null,
+        "consistency": null,
+        "fluency": null,
+        "avg_score": 3.6666666666666665,
+        "id": "E"
+      }
+    ],
+    "task": "Rank these summaries by quality (coherence, relevance, fluency)"
+  },
+  {
+    "subject": "Summary Ranking: News Article 5",
+    "source_text": "(CNN)A fiery sunset greeted people in Washington Sunday. The deep reddish color caught Seattle native Tim Durkan's eye. He photographed a handful of aerial shots of the sunset warming the city's skyline and shared them on CNN iReport. The stunning sunsets were the result of raging wildfires in parts of Siberia. \"The dramatic sunsets began showing up over the weekend and had Seattle locals wondering where the amber-colored haze was originating from,\" Durken said. The fires were started in southeastern Siberia, by farmers burning grass in their fields. But on April 14, it is believed that the flames quickly grew out of control because of strong winds and spread throughout the region, according to CNN affiliate KOMO-TV. As a result, the fires have destroyed dozens of villages in the region. Rescue crews were able to put out the flames. However, the lingering smoke from the widespread fires were picked up by atmospheric winds. The winds carried the smoke from Siberia across the Pacific Ocean and brought it to the Pacific Northwest. Parts of Oregon, Washington and British Columbia are seeing the results of the smoke, wind and solar light combination. The reason people are seeing an intense red sunset is a result of smoke particles filtering out the shorter wavelength colors from the sunlight like greens, blues, yellows and purples, KOMO-TV said. That means colors like red and orange are able to penetrate the air unfiltered. The colors are especially intense during sunrises and sunsets because there is more atmosphere for the light to travel through to get to a person's eye. As the smoke starts to dissipate, air quality will get better and these fiery sunsets will lose their reddish hue.",
+    "summaries": [
+      {
+        "content": "-lrb- cnn -rrb- a fiery sunset greeted people in washington sunday . the deep reddish color caught seattle native tim durkan 's eye . he photographed a handful of aerial shots of the sunset warming the city 's skyline and shared them on cnn ireport .",
+        "relevance": 2.3333333333333335,
+        "coherence": null,
+        "consistency": null,
+        "fluency": null,
+        "avg_score": 2.3333333333333335,
+        "id": "A"
+      },
+      {
+        "content": "A fiery sunset greeted people in Washington Sunday.",
+        "relevance": 1.6666666666666667,
+        "coherence": null,
+        "consistency": null,
+        "fluency": null,
+        "avg_score": 1.6666666666666667,
+        "id": "B"
+      },
+      {
+        "content": "raging wildfires in parts of siberia are causing stunning sunsets in the pacific northwest . lingering smoke from the fires is being carried across the pacific ocean by atmospheric winds . parts of oregon, washington and british columbia are seeing the results of the smoke, wind and solar light combination .",
+        "relevance": 4.333333333333333,
+        "coherence": null,
+        "consistency": null,
+        "fluency": null,
+        "avg_score": 4.333333333333333,
+        "id": "C"
+      },
+      {
+        "content": "stunning sunsets were the result of raging wildfires in parts of siberia . fires were started in southeastern siberia , by farmers burning grass in their fields . but on april 14 , it is believed that the flames quickly grew out of control .",
+        "relevance": 3.3333333333333335,
+        "coherence": null,
+        "consistency": null,
+        "fluency": null,
+        "avg_score": 3.3333333333333335,
+        "id": "D"
+      },
+      {
+        "content": "the deep reddish color caught seattle native tim durkan 's eye . the stunning sunsets were the result of raging wildfires in parts of siberia . the fires were started in southeastern siberia , by farmers burning grass in their fields .",
+        "relevance": 3.6666666666666665,
+        "coherence": null,
+        "consistency": null,
+        "fluency": null,
+        "avg_score": 3.6666666666666665,
+        "id": "E"
+      }
+    ],
+    "task": "Rank these summaries by quality (coherence, relevance, fluency)"
+  },
+  {
+    "subject": "Summary Ranking: News Article 6",
+    "source_text": "Rome (CNN)Italy is coping with a rising wave of desperate migrants from Africa and Middle East hoping to make it to Europe. From Friday to Monday, a total of 8,480 migrants were rescued, according to the Italian coast guard, which said it received on Monday -- alone -- SOS calls from 20 boats in distress. On Tuesday, a spokesman with Save the Children told CNN the group fears 400 migrants could be missing, citing testimony from survivors who said their ship carrying 550 people capsized in the Mediterranean Sea about 80 miles off the Libyan coast. The Italian coast guard, however, told CNN that while it is taking the report seriously, it cannot confirm such an incident and has not yet found evidence at sea to indicate a migrant boat carrying approximately 550 has capsized with 145 rescued. An operation that included boats and planes did not find any survivors, nor bodies, nor any evidence to indicate a particular boat capsized, Coast Guard official Filippo Marini said. There has been a recent upsurge in migrant boats crossing the Mediterranean into Italy and an increase in rescues performed by the Italian Coast Guard to aid migrant boats. Why migrants are dying trying to reach Italy According to the International Organization for Migration, Italy registered more than 10,000 migrants arriving in the first three months of 2015, and about 2,000 were rescued at sea during the first weekend of April in the Channel of Sicily. Most migrants recorded this year come from countries in West Africa as well as Somalia and Syria, the IOM said. They use Libya as a country of transit. At least 480 migrants have died while crossing the Mediterranean since the beginning of the year, often because of bad weather and overcrowded vessels used by smugglers, the IOM said. Sometimes the captains and crews abandon the ships, leaving passengers to fend for themselves. Last week: 978 migrants rescued in one day in Mediterranean Sea CNN's Ralph Ellis contributed to this report.",
+    "summaries": [
+      {
+        "content": "italy is coping with a rising wave of desperate migrants from africa and middle east . from friday to monday , a total of 8,480 migrants were rescued , according to the italian coast guard , which said it received on monday -- alone -- sos calls from 20 boats in distress . the italian coast guard , however , told cnn the group fears 400 migrants could be missing .",
+        "relevance": 4.666666666666667,
+        "coherence": null,
+        "consistency": null,
+        "fluency": null,
+        "avg_score": 4.666666666666667,
+        "id": "A"
+      },
+      {
+        "content": "italy is coping with a rising wave of desperate migrants from africa and middle east hoping to make it to europe . from friday to monday , a total of 8,480 migrants were rescued , according to the italian coast guard . on tuesday , a spokesman with save the children told cnn the group fears 400 migrants could be missing .",
+        "relevance": 4.333333333333333,
+        "coherence": null,
+        "consistency": null,
+        "fluency": null,
+        "avg_score": 4.333333333333333,
+        "id": "B"
+      },
+      {
+        "content": "a total of 8,480 migrants were rescued . the group fears 400 migrants could be missing . the italian coast guard has not yet found evidence . italy registered more than 10,000 migrants in the first three months of 2015 .",
+        "relevance": 2.6666666666666665,
+        "coherence": null,
+        "consistency": null,
+        "fluency": null,
+        "avg_score": 2.6666666666666665,
+        "id": "C"
+      },
+      {
+        "content": "A Save the Children spokesman says a ship carrying 550 people capsized off the Libyan coast . The Italian coast guard says it can not confirm such an incident . There has been a recent upsurge in migrant boats crossing the Mediterranean . Italy registered more than 10,000 migrants arriving in first three months of 2015 .",
+        "relevance": 3.6666666666666665,
+        "coherence": null,
+        "consistency": null,
+        "fluency": null,
+        "avg_score": 3.6666666666666665,
+        "id": "D"
+      },
+      {
+        "content": "a total of 8,480 migrants were rescued at sea during the first weekend of april . the italian coast guard says 400 migrants are missing in the mediterranean sea . the 400 migrants have died while crossing the libyan coast . the coast guard official says 20 boats are missing . the group fears 400 migrants could be missing .",
+        "relevance": 1.6666666666666667,
+        "coherence": null,
+        "consistency": null,
+        "fluency": null,
+        "avg_score": 1.6666666666666667,
+        "id": "E"
+      }
+    ],
+    "task": "Rank these summaries by quality (coherence, relevance, fluency)"
+  },
+  {
+    "subject": "Summary Ranking: News Article 7",
+    "source_text": "(CNN)SpaceX on Tuesday launched a two-stage Falcon 9 rocket carrying an uncrewed cargo spacecraft called Dragon on a flight from Cape Canaveral, Florida, to the International Space Station. That was the easy part. In a difficult bid to land a rocket stage on a floating barge for the first time, the private space exploration company  was unsuccessful. SpaceX founder Elon Musk tweeted: \"Ascent successful. Dragon enroute to Space Station. Rocket landed on droneship, but too hard for survival.\" He later clarified that the rocket landed, but tipped over. SpaceX tried to land a Falcon 9 on the drone ship in January, but the rocket hit at an angle and exploded. SpaceX has said it will keep trying and, after it masters landing at sea, hopes to someday land rockets on the ground. Usually booster rockets burn up in Earth's atmosphere or, like NASA's space shuttle boosters, they fall back into the ocean. So why try to land one? Musk wants to cut costs. On his company's website, he says that if anyone can figure out how to \"reuse rockets just like airplanes, the cost of access to space will be reduced by as much as a factor of a hundred.\" What about the rest of the rocket and the Dragon? The smaller, top part of the rocket will carry the Dragon into orbit and then break away from the cargo ship and burn up in Earth's atmosphere. The Dragon will dock with the space station a couple of days after launch to deliver more than 4,300 pounds (1,950 kilograms) of supplies, including research equipment and ISSpresso, an espresso maker that astronauts can use to make coffee and tea. The space station crew will spend about five weeks unpacking the Dragon. They'll then stuff it with over 3,000 pounds of science experiments, trash and other stuff to send back to Earth. When they're done, Dragon will leave the space station and mission controllers will guide it to splashdown in the Pacific Ocean off California. This is the sixth SpaceX mission to the International Space Station. The company ...",
+    "summaries": [
+      {
+        "content": "-lrb- cnn -rrb- spacex on tuesday launched a two-stage falcon 9 rocket carrying an uncrewed cargo spacecraft called dragon on a flight from cape canaveral , florida , to the international space station . that was the easy part . dragon enroute to space station .",
+        "relevance": 2.3333333333333335,
+        "coherence": null,
+        "consistency": null,
+        "fluency": null,
+        "avg_score": 2.3333333333333335,
+        "id": "A"
+      },
+      {
+        "content": "two-stage falcon 9 rocket carrying an uncrewed cargo spacecraft called dragon on a flight from cape canaveral , florida , to the international space station . spacex has said it will keep trying and , after it masters landing at sea , hopes to someday land rockets on the ground . dragon will dock with the space station a couple of days after launch to deliver more than 4,300 pounds .",
+        "relevance": 2.6666666666666665,
+        "coherence": null,
+        "consistency": null,
+        "fluency": null,
+        "avg_score": 2.6666666666666665,
+        "id": "B"
+      },
+      {
+        "content": "spacex launched a two-stage falcon 9 rocket carrying an uncrewed cargo spacecraft called dragon on a flight from cape canaveral , florida , to the international space station . that was the easy part . in a difficult bid to land a rocket stage on a floating barge for the first time . musk wants to cut costs .",
+        "relevance": 3.6666666666666665,
+        "coherence": null,
+        "consistency": null,
+        "fluency": null,
+        "avg_score": 3.6666666666666665,
+        "id": "C"
+      },
+      {
+        "content": "-lrb- cnn -rrb- spacex on tuesday launched a two-stage falcon 9 rocket carrying an uncrewed cargo spacecraft called dragon on a flight from cape canaveral , florida , to the international space station . that was the easy part . in a difficult bid to land a rocket stage on a floating barge for the first time , the private space exploration company was unsuccessful .",
+        "relevance": 4.666666666666667,
+        "coherence": null,
+        "consistency": null,
+        "fluency": null,
+        "avg_score": 4.666666666666667,
+        "id": "D"
+      },
+      {
+        "content": "spacex founder elon musk tweeted : `` ascent successful . rocket landed on droneship , but too hard for survival '' . spacex has said it will keep trying and , after it hit at an angle and exploded .",
+        "relevance": 2.0,
+        "coherence": null,
+        "consistency": null,
+        "fluency": null,
+        "avg_score": 2.0,
+        "id": "E"
+      }
+    ],
+    "task": "Rank these summaries by quality (coherence, relevance, fluency)"
+  },
+  {
+    "subject": "Summary Ranking: News Article 8",
+    "source_text": "(CNN)Two passengers found dead on a cruise ship in Puerto Rico appear to have died in a murder-suicide, the cruise line said. Holland America Line said two guests were found dead inside their stateroom on the ms Ryndam at 11:30 a.m. Thursday. \"The cabin was immediately secured, and the authorities were notified, including the FBI,\" Holland America said. \"We are cooperating fully with the investigation, and the authorities will make the official determination on what occurred.\" FBI spokesman Moises Quiñones said authorities were on scene investigating. The ship left Tampa, Florida, on March 29 on a 14-day Southern Caribbean cruise. It's currently in San Juan, Puerto Rico. Puerto Rico Port Authority spokesman Efraín Santiago told El Nuevo Dia newspaper that the cleaning staff on the ship had discovered the deceased passengers after knocking on the cabin's door.",
+    "summaries": [
+      {
+        "content": "holland left tampa , florida , on march 29 . two passengers found dead inside their stateroom on the ship . it 's in san juan , puerto rico .",
+        "relevance": 3.3333333333333335,
+        "coherence": null,
+        "consistency": null,
+        "fluency": null,
+        "avg_score": 3.3333333333333335,
+        "id": "A"
+      },
+      {
+        "content": "Holland America Line says two guests were found dead inside their stateroom . The ship left Tampa , Florida , on March 29 on a 14-day Southern Caribbean cruise . Puerto Rico Port Authority spokesman Efraín Santiago says cleaning staff discovered the deceased passengers .",
+        "relevance": 4.333333333333333,
+        "coherence": null,
+        "consistency": null,
+        "fluency": null,
+        "avg_score": 4.333333333333333,
+        "id": "B"
+      },
+      {
+        "content": "-lrb- cnn -rrb- two passengers found dead on a cruise ship in puerto rico appear to have died in a murder-suicide , the cruise line said . holland america line said two guests were found dead inside their stateroom on the ms ryndam at 11:30 a.m. thursday . `` the cabin was immediately secured , and the authorities were notified , including the fbi , '' holland america said .",
+        "relevance": 3.6666666666666665,
+        "coherence": null,
+        "consistency": null,
+        "fluency": null,
+        "avg_score": 3.6666666666666665,
+        "id": "C"
+      },
+      {
+        "content": "( cnn ) two passengers found dead on a cruise ship in puerto rico appear to have died in a murder - suicide , the cruise line said . holland america line said two guests were found dead inside their stateroom on the ms ryndam at 11:30 a.m. thursday . the ship left tampa , florida , on march 29 on a 14 - day southern caribbean cruise .",
+        "relevance": 4.0,
+        "coherence": null,
+        "consistency": null,
+        "fluency": null,
+        "avg_score": 4.0,
+        "id": "D"
+      },
+      {
+        "content": "two passengers found dead on a cruise ship in puerto rico appear to have died in a murder-suicide . the ship left tampa , florida , on a 14-day southern caribbean cruise .",
+        "relevance": 3.6666666666666665,
+        "coherence": null,
+        "consistency": null,
+        "fluency": null,
+        "avg_score": 3.6666666666666665,
+        "id": "E"
+      }
+    ],
+    "task": "Rank these summaries by quality (coherence, relevance, fluency)"
+  },
+  {
+    "subject": "Summary Ranking: News Article 9",
+    "source_text": "(CNN)ISIS on Wednesday released more than 200 Yazidis, a minority group whose members were killed, captured and displaced when the Islamist terror organization overtook their towns in northern Iraq last summer, officials said. Most of those released were women and children; the rest were ill or elderly, said Rassol Omar, a commander in the Peshmerga force that defends  northern Iraq's semi-autonomous Kurdish region. Omar didn't say what led to the release, other than asserting that Arab tribal leaders helped to coordinate it. The freed Yazidis were received by Peshmerga, who sent them to the Kurdish regional capital, Irbil, said Nuri Osman, an official with Iraq's Kurdistan Regional Government. It wasn't immediately clear what motivated Wednesday's release, Osman said. Osman said 217 Yazidis were released. Omar, the Peshmerga commander, had a higher count: 228. ISIS previously released scores of other Yazidis -- largely children and the elderly -- since attacking the group's towns last year. The Sunni Islamist militant group steamrolled into Iraq's north last summer, forcing hundreds of thousands of minorities -- Yazidis among them -- from their homes. Yazidis are of Kurdish descent, and their religion is considered a pre-Islamic sect that draws from Christianity, Judaism and Zoroastrianism. One of the oldest religious communities in the world, the Yazidis have long suffered persecution, with many Muslims referring to them as devil worshipers. ISIS' cruelty to them has been extraordinary. ISIS' conquest of the town of Sinjar, in particular, provoked a major humanitarian crisis as some Yazidis fled into the mountains -- where many became trapped for a time without food and water -- and others fled by foot into neighboring Syria. ISIS slaughtered Yazidis by the hundreds, Yian Dakhil, the only lawmaker representing the Yazidis in Iraq's Parliament, told CNN last year. Reports emerged from some Yazidi survivors that ISIS raped and enslaved female Yazidi captives. An int...",
+    "summaries": [
+      {
+        "content": "new : isis released more than 200 yazidis , a minority group group says . the islamist terror group has been killed in recent summer . the isis released scores of other yazidis , mainly children and the elderly . the peshmerga commander says the freed yazidis are released .",
+        "relevance": 2.0,
+        "coherence": null,
+        "consistency": null,
+        "fluency": null,
+        "avg_score": 2.0,
+        "id": "A"
+      },
+      {
+        "content": "isis on wednesday released more than 200 yazidis , a minority group whose members were killed , captured and displaced when the islamist terror organization overtook their towns in northern iraq last summer . most of those released were women and children ; the rest were ill or elderly , said rassol omar , a commander in the peshmerga force that defends northern iraq 's semi-autonomous kurdish region .",
+        "relevance": 4.666666666666667,
+        "coherence": null,
+        "consistency": null,
+        "fluency": null,
+        "avg_score": 4.666666666666667,
+        "id": "B"
+      },
+      {
+        "content": "yazidis are of kurdish descent , and their religion is considered a pre-islamic sect that draws from christianity , judaism and zoroastrianism . isis ' conquest of the town of sinjar , in particular , provoked a major humanitarian crisis .",
+        "relevance": 1.6666666666666667,
+        "coherence": null,
+        "consistency": null,
+        "fluency": null,
+        "avg_score": 1.6666666666666667,
+        "id": "C"
+      },
+      {
+        "content": "most of those released were women and children ; the rest were ill or elderly , officials say . freed yazidis , a minority group , captured and displaced in northern iraq last summer . arab tribal leaders did not say what led to release .",
+        "relevance": 3.3333333333333335,
+        "coherence": null,
+        "consistency": null,
+        "fluency": null,
+        "avg_score": 3.3333333333333335,
+        "id": "D"
+      },
+      {
+        "content": "-lrb- cnn -rrb- isis on wednesday released more than 200 yazidis , a minority group whose members were killed , captured and displaced when the islamist terror organization overtook their towns in northern iraq last summer , officials said . most of those released were women and children ; the rest were ill or elderly , said rassol omar , a commander in the peshmerga force that defends northern iraq 's semi-autonomous kurdish region . omar did n't say what led to the release , other than asserting that arab tribal leaders helped to coordinate it .",
+        "relevance": 4.333333333333333,
+        "coherence": null,
+        "consistency": null,
+        "fluency": null,
+        "avg_score": 4.333333333333333,
+        "id": "E"
+      }
+    ],
+    "task": "Rank these summaries by quality (coherence, relevance, fluency)"
+  },
+  {
+    "subject": "Summary Ranking: News Article 10",
+    "source_text": "(CNN)Eight Iranian border guards have been killed in clashes with militants near the border with Pakistan, Iranian state media reported. Three of the militants were killed by Iranian forces in the fighting Monday in the southeastern town of Negur, the state-run news agency IRNA reported. The news agency cited Ali Asghar Mirshekari, the deputy governor of Iran's Sistan-Baluchestan province, who said the militants crossed into the country from Pakistan. Iranian officials have reportedly asked Pakistani authorities to catch the surviving assailants. A militant group called Jaish al Adal claimed responsibility for the attack, according to Iranian state media and a Twitter account believed to be associated with the organization. According to Pakistani media, Jaish al Adal is an anti-Iranian group that has emerged during recent years in areas of Balochistan, the restive Pakistani province that borders southeastern Iran. The Sunni Muslim group has targeted Shiites and says it aims to thwart Iranian influence in Pakistan, according to the Pakistani newspaper Dawn. Jaish al Adal has also claimed responsibility for attacks on Iranian territory. One of the deadliest was in October 2013, when 14 Iranian border guards were killed near the city of Saravan. Iranian authorities say that after similar attacks, the militants have fled back into Balochistan. \"Iran has repeatedly criticized its eastern neighbor for failing to rein in the terrorists,\" IRNA said, referring to Pakistan. The Pakistani government condemned Monday's attack, calling it an \"act of terrorism.\" \"The concerned security agencies of Pakistan are actively investigating this incident, which took place on Iran's territory, and have asked Iranian authorities to share with us any evidence that they have,\" the government said in a statement Wednesday. If the militants entered Pakistan after the attack, \"they will be apprehended and brought to justice,\" it said.",
+    "summaries": [
+      {
+        "content": "three of the militants were killed by iranian forces near the border with pakistan , iranian state media reports . jaish al adal says it aims to thwart iranian influence in pakistan . the sunni muslim group has targeted shiites .",
+        "relevance": 1.6666666666666667,
+        "coherence": null,
+        "consistency": null,
+        "fluency": null,
+        "avg_score": 1.6666666666666667,
+        "id": "A"
+      },
+      {
+        "content": "eight iranian border guards killed in clashes with militants near the border with pakistan, iranian state media reports . a militant group called jaish al adal claimed responsibility for the attack .",
+        "relevance": 4.666666666666667,
+        "coherence": null,
+        "consistency": null,
+        "fluency": null,
+        "avg_score": 4.666666666666667,
+        "id": "B"
+      },
+      {
+        "content": "( cnn ) eight iranian border guards have been killed in clashes with militants near the border with pakistan , iranian state media reported . three of the militants were killed by iranian forces in the fighting monday in the southeastern town of negur , the state - run news agency irna reported . a militant group called jaish al adal claimed responsibility for the attack , according to iranian state media and a twitter account believed to be associated with the organization .",
+        "relevance": 4.0,
+        "coherence": null,
+        "consistency": null,
+        "fluency": null,
+        "avg_score": 4.0,
+        "id": "C"
+      },
+      {
+        "content": "The Iranian border guards were killed by militants in the eastern province of Baluchistan. Iran is a major ally of Pakistan in the region.",
+        "relevance": 3.6666666666666665,
+        "coherence": null,
+        "consistency": null,
+        "fluency": null,
+        "avg_score": 3.6666666666666665,
+        "id": "D"
+      },
+      {
+        "content": "three of the militants were killed by iranian forces in the fighting monday in the southeastern town of negur . iranian officials have reportedly asked pakistani authorities to catch the surviving assailants . jaish al adal has also claimed responsibility for the attack .",
+        "relevance": 3.0,
+        "coherence": null,
+        "consistency": null,
+        "fluency": null,
+        "avg_score": 3.0,
+        "id": "E"
+      }
+    ],
+    "task": "Rank these summaries by quality (coherence, relevance, fluency)"
+  },
+  {
+    "subject": "Summary Ranking: News Article 11",
+    "source_text": "(CNN)The classic video game \"Space Invaders\" was developed in Japan back in the late 1970's -- and now their real-life counterparts are the topic of an earnest political discussion in Japan's corridors of power. Luckily, Japanese can sleep soundly in their beds tonight as the government's top military official earnestly revealed that the country's Air Self Defense Force (ASDF) had never encountered an extraterrestrial unidentified flying object. Responding to a query from flamboyant former wrestler-turned-lawmaker Antonio Inoki, Defense Minister Gen Nakatani told the Diet, Japan's parliament, that his jets had, to date, never come across any UFOs from outer space. \"When the Air Self Defense Force detects indications of an unidentified flying object that could violate our country's airspace, it scrambles fighter jets if necessary and makes visual observation,\" Nakatani said. He continued: \"They sometimes find birds or flying objects other than aircraft but I don't know of a case of finding an unidentified flying object believed to have come over from anywhere other than Earth.\" Inoki has appeared in the U.S.-based WWE -- which describes him as \"among the most respected men in sports-entertainment\" -- and is the founder of the New Japan Pro Wrestling organization. He entered Japan's Upper House for a second stint in politics in 2013. He also famously fought Muhammad Ali in 1976, in one of the first-ever mixed-discipline matches, which would later pave the way for today's wildly popular Mixed Martial Arts contests. Before his return to politics he was a regular fixture on Japanese TV variety shows and has promoted a slew of products, from hot sauce to banks. The maverick politician also traveled to Iraq in 1990 to try to secure the release of Japanese hostages, and has more recently attempted to replicate former NBA star Dennis Rodman's \"basketball diplomacy\" by staging a wrestling tournament in North Korea. He reportedly converted to Islam in the 1990s, although he sa...",
+    "summaries": [
+      {
+        "content": "`` space invaders '' was developed in japan back in the late 1970 's -- and now their real-life counterparts are the topic of an earnest political discussion in japan 's corridors of power . luckily , japanese can sleep soundly in their beds tonight as the government 's top military official earnestly . inoki has appeared in the u.s.-based wwe -- which describes him as `` among the most respected men in sports-entertainment '' .",
+        "relevance": 1.3333333333333333,
+        "coherence": null,
+        "consistency": null,
+        "fluency": null,
+        "avg_score": 1.3333333333333333,
+        "id": "A"
+      },
+      {
+        "content": "Japan's military has never seen an alien, and apparently never will. Image: AP This article originally published at The Daily Dot here",
+        "relevance": 2.6666666666666665,
+        "coherence": null,
+        "consistency": null,
+        "fluency": null,
+        "avg_score": 2.6666666666666665,
+        "id": "B"
+      },
+      {
+        "content": "japan's top military official reveals that the country's air self defense force has never encountered an extraterrestrial unidentified flying object . defense minister gen nakatani told the diet that his jets had, to date, never come across any ufos from outer space . inoki has claimed to have seen a ufo with his own eyes, but admitted that he didn't know personally if aliens existed .",
+        "relevance": 4.0,
+        "coherence": null,
+        "consistency": null,
+        "fluency": null,
+        "avg_score": 4.0,
+        "id": "C"
+      },
+      {
+        "content": "-lrb- cnn -rrb- the classic video game `` space invaders '' was developed in japan back in the late 1970 's -- and now their real-life counterparts are the topic of an earnest political discussion in japan 's corridors of power . luckily , japanese can sleep soundly in their beds tonight as the government 's top military official earnestly revealed that the country 's air self defense force -lrb- asdf -rrb- had never encountered an extraterrestrial unidentified flying object . responding to a query from flamboyant former wrestler-turned-lawmaker antonio inoki , defense minister gen nakatani told the diet , japan 's parliament , that his jets had , to date , never come across any ufos from outer space .",
+        "relevance": 4.666666666666667,
+        "coherence": null,
+        "consistency": null,
+        "fluency": null,
+        "avg_score": 4.666666666666667,
+        "id": "D"
+      },
+      {
+        "content": "`` space invaders '' was developed in japan back in 1970 . japanese can sleep soundly in their beds tonight as government 's top military official . he also fought muhammad ali in 1976 . inoki has appeared in the u.s.-based wwe .",
+        "relevance": 1.0,
+        "coherence": null,
+        "consistency": null,
+        "fluency": null,
+        "avg_score": 1.0,
+        "id": "E"
+      }
+    ],
+    "task": "Rank these summaries by quality (coherence, relevance, fluency)"
+  },
+  {
+    "subject": "Summary Ranking: News Article 12",
+    "source_text": "(CNN)The parents of the youngest victim of the Boston Marathon bombings are making an emotional, passionate plea to take the death penalty off the table for the man convicted in the case. Last week, Dzhokhar Tsarnaev was found guilty on all 30 charges he faced related to the bombings at the 2013 race and the dramatic violence that dragged out for days afterward. A look at all of the charges The sentencing phase begins Tuesday, a day after this year's edition of the landmark race. It is expected to last four weeks. The 13th Juror: Now it gets real In a front-page opinion piece in The Boston Globe, Bill and Denise Richard wrote about the toll taken on their family after the death of their 8-year-old son, Martin. Their daughter, Jane, also was severely injured. \"Our family has grieved, buried our young son, battled injuries, and endured numerous surgeries -- all while trying to rebuild lives that will never be the same,\" they said in the Globe column titled \"To end the anguish, drop the death penalty.\" \"We sat in the courtroom, day after day, bearing witness to overwhelming evidence that included graphic video and photographs, replicated bombs, and even the clothes our son wore his last day alive.\" They said they understood the \"heinousness and brutality of the crimes committed.\" \"We were there. We lived it. The defendant murdered our 8-year-old son, maimed our 7-year-old daughter, and stole part of our soul.\" But now the Richards are urging the Justice Department to bring the case to a close. \"We are in favor of and would support the Department of Justice in taking the death penalty off the table in exchange for the defendant spending the rest of his life in prison without any possibility of release and waiving all of his rights to appeal,\" they wrote. They go on to say: \"We know that the government has its reasons for seeking the death penalty, but the continued pursuit of that punishment could bring years of appeals and prolong reliving the most painful day of our l...",
+    "summaries": [
+      {
+        "content": "dzhokhar tsarnaev was found guilty on all 30 charges he faced related to the bombings at the 2013 race and the dramatic violence that dragged out for days afterward . the sentencing phase begins tuesday , a day after this year 's edition of the landmark race .",
+        "relevance": 2.6666666666666665,
+        "coherence": null,
+        "consistency": null,
+        "fluency": null,
+        "avg_score": 2.6666666666666665,
+        "id": "A"
+      },
+      {
+        "content": "-lrb- cnn -rrb- the parents of the youngest victim of the boston marathon bombings are making an emotional , passionate plea to take the death penalty off the table for the man convicted in the case . last week , dzhokhar tsarnaev was found guilty on all 30 charges he faced related to the bombings at the 2013 race and the dramatic violence that dragged out for days afterward . a look at all of the charges .",
+        "relevance": 4.666666666666667,
+        "coherence": null,
+        "consistency": null,
+        "fluency": null,
+        "avg_score": 4.666666666666667,
+        "id": "B"
+      },
+      {
+        "content": "( cnn ) the parents of the youngest victim of the boston marathon bombings are making an emotional , passionate plea to take the death penalty off the table for the man convicted in the case . last week , dzhokhar tsarnaev was found guilty on all 30 charges he faced related to the bombings at the 2013 race and the dramatic violence that dragged out for days afterward . the sentencing phase begins tuesday , a day after this year 's edition of the landmark race . it is expected to last four weeks .",
+        "relevance": 4.0,
+        "coherence": null,
+        "consistency": null,
+        "fluency": null,
+        "avg_score": 4.0,
+        "id": "C"
+      },
+      {
+        "content": "dzhokhar tsarnaev was found guilty on all 30 charges in the 2013 race . it is expected to last four weeks , a day after the race . the 13th juror : now it is real .",
+        "relevance": 1.6666666666666667,
+        "coherence": null,
+        "consistency": null,
+        "fluency": null,
+        "avg_score": 1.6666666666666667,
+        "id": "D"
+      },
+      {
+        "content": "the sentencing phase begins tuesday , a day after this year 's edition of the landmark race . it is expected to last four weeks . bill and denise richard wrote about the toll taken on their family after the death of their 8-year-old son , martin .",
+        "relevance": 2.0,
+        "coherence": null,
+        "consistency": null,
+        "fluency": null,
+        "avg_score": 2.0,
+        "id": "E"
+      }
+    ],
+    "task": "Rank these summaries by quality (coherence, relevance, fluency)"
+  },
+  {
+    "subject": "Summary Ranking: News Article 13",
+    "source_text": "(CNN)One of the biggest TV events of all time is being reimagined for new audiences. \"Roots,\" the epic miniseries about an African-American slave and his descendants, had a staggering audience of over 100 million viewers back in 1977. Now A&E networks are remaking the miniseries, to air in 2016. A&E, Lifetime and History (formerly the History Channel) announced Thursday that the three networks would simulcast a remake of the saga of Kunta Kinte, an African who was captured, shipped to America and sold into slavery to work on a Virginia plantation. LeVar Burton, who portrayed Kinte in the original, will co-executive produce the new miniseries. A press release describes the new version as \"original\" and \"contemporary\" and will draw more from Alex Haley's classic novel, \"Roots: The Saga of an American Family.\" Producers will consult scholars in African and African-American history for added authenticity. \"We are proud to bring this saga to fans of the original, as well as to a new generation that will experience this powerful and poignant tale for the first time,\" said Dirk Hoogstra, History's executive vice president and general manager. \"Audiences will once again feel the impact of Kunta Kinte's indomitable spirit.\" Executive producer Mark Wolper, son of the original's producer David L. Wolper, added, \"Kunta Kinte began telling his story over 200 years ago and that story went through his family lineage, to Alex Haley, to my father, and now the mantle rests with me. Like Kunta Kinte fought to tell his story over and over again, so must we.\" The remade \"Roots\" will encounter a new generation of viewers who have witnessed Barack Obama make history as the nation's first African-American president and \"12 Years a Slave\" win the Oscar for Best Picture, but also widespread racial unrest over police treatment of black suspects in many U.S. cities. \"My career began with 'Roots' and I am proud to be a part of this new adaptation,\" said Burton. \"There is a huge audience of cont...",
+    "summaries": [
+      {
+        "content": "`` roots , '' the epic miniseries about an african-american slave and his descendants , had a staggering audience of over 100 million viewers back in 1977 . a&e networks are remaking the miniseries , to air in 2016 . levar burton , who portrayed kinte in the original , will co-executive produce the new miniseries .",
+        "relevance": 5.0,
+        "coherence": null,
+        "consistency": null,
+        "fluency": null,
+        "avg_score": 5.0,
+        "id": "A"
+      },
+      {
+        "content": "A&E Networks will simulcast the original \"Roots\" in 2016. The original \"Roots\" premiered in 1977 and ran for four seasons. The miniseries followed Kunta Kinte, a free black man in Virginia, as he was sold into slavery.",
+        "relevance": 4.333333333333333,
+        "coherence": null,
+        "consistency": null,
+        "fluency": null,
+        "avg_score": 4.333333333333333,
+        "id": "B"
+      },
+      {
+        "content": "a&e , lifetime and history are remaking the miniseries , to air in 2016 . `` roots , '' levar burton , will co-executive produce the new miniseries . alex haley 's `` contemporary '' novel is `` original '' novel .",
+        "relevance": 2.3333333333333335,
+        "coherence": null,
+        "consistency": null,
+        "fluency": null,
+        "avg_score": 2.3333333333333335,
+        "id": "C"
+      },
+      {
+        "content": "`` roots , '' the epic miniseries about an african-american slave and his descendants , had a staggering audience of over 100 million viewers back in 1977 . now a&e networks are remaking the miniseries , to air in 2016 .",
+        "relevance": 4.0,
+        "coherence": null,
+        "consistency": null,
+        "fluency": null,
+        "avg_score": 4.0,
+        "id": "D"
+      },
+      {
+        "content": "a&e networks are remaking the series , to air in 2016 . the three networks will broadcast a remake of the saga of kunta kinte . the `` roots '' is the epic episode of the african-american slave and his descendants . the series of `` original '' and `` contemporary '' will be the new version of the original version .",
+        "relevance": 3.3333333333333335,
+        "coherence": null,
+        "consistency": null,
+        "fluency": null,
+        "avg_score": 3.3333333333333335,
+        "id": "E"
+      }
+    ],
+    "task": "Rank these summaries by quality (coherence, relevance, fluency)"
+  },
+  {
+    "subject": "Summary Ranking: News Article 14",
+    "source_text": "Ten people, including four children, have been involved in a multi-vehicle crash in Brisbane's west. Three vehicles collided on the Brisbane Valley Highway, 2km south of Fernvale, on Wednesday afternoon. A 40-year-old man with chest and shoulder injuries and a five-year-old boy with chest pain were the first patients flown out by rescue helicopter. They've been taken to the Princess Alexandra Hospital in Brisbane. Shortly after, a 27-year-old woman with arm injuries and a six-year-old girl suffering from abdominal pain were also being flown out. The three car pileup happened at on the Brisbane Valley Highway, near Fernvale Six others - including an infant and two young girls - have been taken to Ipswich Hospital with minor injuries or for further assessment. A man has also suffered hand lacerations and two females escaped injuries. The affected stretch of the highway has been closed off, with diversions in place south of Fernvale. The Courier-Mail reports that earlier emergency crews found one person trapped inside their vehicle and Queensland Fire and Rescue crews used hydraulic cutting gear to free them. The Rescue 500 helicopter then landed at the scene and airlifted a number of patients to hospital. Police said the highway would be closed for a few hours with diversions in place south of Fernvale.",
+    "summaries": [
+      {
+        "content": "three vehicles collided on the brisbane valley highway, 2km south of fernvale, on wednesday afternoon . a 40-year-old man with chest and shoulder injuries and a five-year-old boy with chest pain were the first patients flown out by rescue helicopter . six others - including an infant and two young girls - have been taken to ipswich hospital with minor injuries or for further assessment .",
+        "relevance": 4.333333333333333,
+        "coherence": null,
+        "consistency": null,
+        "fluency": null,
+        "avg_score": 4.333333333333333,
+        "id": "A"
+      },
+      {
+        "content": "ten people , including four children , have been involved in a multi-vehicle crash in brisbane 's west . three vehicles collided on the brisbane valley highway , 2km south of fernvale , on wednesday afternoon . a 40-year-old man with chest and shoulder injuries and a five-year-old boy with chest pain were the first patients flown out by rescue helicopter .",
+        "relevance": 5.0,
+        "coherence": null,
+        "consistency": null,
+        "fluency": null,
+        "avg_score": 5.0,
+        "id": "B"
+      },
+      {
+        "content": "three vehicles collided on the brisbane valley highway , 2km south of fernvale . a 40-year-old man with chest and shoulder injuries and a five-year-old girl suffering from abdominal pain were also being flown out . a man has also suffered hand lacerations and two females escaped injuries .",
+        "relevance": 4.0,
+        "coherence": null,
+        "consistency": null,
+        "fluency": null,
+        "avg_score": 4.0,
+        "id": "C"
+      },
+      {
+        "content": "One person was trapped inside their car. The helicopter landed at the scene and airlifted a number of patients to hospital. © Nine Digital Pty Ltd 2018",
+        "relevance": 2.6666666666666665,
+        "coherence": null,
+        "consistency": null,
+        "fluency": null,
+        "avg_score": 2.6666666666666665,
+        "id": "D"
+      },
+      {
+        "content": "ten people , including four children , have been involved in a multi-vehicle crash in brisbane 's west . three vehicles collided on the brisbane valley highway , 2km south of fernvale , on wednesday afternoon . a 27-year-old woman with arm injuries and a six-year-old girl suffering from abdominal pain were also being flown out by rescue helicopter .",
+        "relevance": 4.0,
+        "coherence": null,
+        "consistency": null,
+        "fluency": null,
+        "avg_score": 4.0,
+        "id": "E"
+      }
+    ],
+    "task": "Rank these summaries by quality (coherence, relevance, fluency)"
+  },
+  {
+    "subject": "Summary Ranking: News Article 15",
+    "source_text": "Twice French Open champion Serena Williams said her struggle to beat Sara Errani in the Fed Cup on Sunday had been a real 'eye-opener' as the claycourt season gets into full swing. World No 1 Williams eventually prevailed 4-6 7-6(3) 6-3 against the dogged Italian to take her career record over her to 8-0 but the American was not impressed. The US  were beaten 3-2 as Williams and Alison Riske were thrashed 6-0 6-3 in the doubles rubber by Errani and Flavia Pennetta, meaning they were relegated to World Group II. American tennis star Serena Williams fought back to beat Italian Sara Errani in the Fed Cup play-off on Sunday Tough weather conditions made it difficult for both players who had to keep on re-tossing their serves Errani gave Williams a real scare but in the end the world No 1's power proved to be too much 'Today has been a big eye opener,' Williams said afterwards. 'I'm totally not as ready for the claycourt season as I thought I was. Now I'm in the mindset of, \"You know what, I'm not on hard court.\" I'm playing like I'm on hard court and I'm not. 'So I have to play and be ready to hit a thousand shots if necessary.' Williams, 33, won her 19th singles grand slam at the Australian Open and her dominance has raised talk of her claiming all the majors this year. The French Open has been her least successful of the four though despite claiming the title in Paris in 2002 and 2013. Her doubles defeat on Sunday blotted an otherwise flawless Fed Cup record and left the US facing a battle to get back amongst the elite nations next year. 'We have to work harder,' US captain Mary Joe Fernandez said. 'We came close today and need to just keep plugging away. 'The good news is that we have a lot of players in the top 100 and, hopefully, we can get two wins next year and get back into the World Group.' Williams congratulates Italy captain Corrado Barazzutti after competing in America's doubles defeat",
+    "summaries": [
+      {
+        "content": "Serena Williams won 6-3 6-3 against Sara Errani to become the first woman to win four majors Williams was happy with her performance in the Fed Cup, but she was not impressed by the way Errani had played Errani and Pennetta were beaten 6-0 6-3 by Williams and Alison Riske in the doubles rubber Errani was not impressed by Williams' display, saying: 'I didn't play bad today but",
+        "relevance": 2.6666666666666665,
+        "coherence": null,
+        "consistency": null,
+        "fluency": null,
+        "avg_score": 2.6666666666666665,
+        "id": "A"
+      },
+      {
+        "content": "french open champion serena williams says her struggle to beat sara errani . serena williams beat italian sara errani in the fed cup play-off . williams eventually prevailed 4-6 7-6 -lrb- 3 -rrb- 6-3 against italian . williams and alison riske were relegated to world group ii . williams won her 19th singles grand slam at the australian open .",
+        "relevance": 3.6666666666666665,
+        "coherence": null,
+        "consistency": null,
+        "fluency": null,
+        "avg_score": 3.6666666666666665,
+        "id": "B"
+      },
+      {
+        "content": "serena williams beat sara errani 4-6 7-6 -lrb- 3 -rrb- in the fed cup . the claycourt season gets into full swing . world no 1 williams defeated sara errani in the semi-finals . the american tennis star is to beat the italian sara errani .",
+        "relevance": 3.0,
+        "coherence": null,
+        "consistency": null,
+        "fluency": null,
+        "avg_score": 3.0,
+        "id": "C"
+      },
+      {
+        "content": "twice french open champion serena williams said her struggle to beat sara errani in the fed cup on sunday had been a real ' eye - opener ' as the claycourt season gets into full swing . world no 1 williams eventually prevailed 4 - 6 7 - 6 ( 3 ) 6 - 3 against the dogged italian to take her career record over her to 8 - 0 but the american was not impressed . the us were beaten 3 - 2 as williams and alison riske were thrashed 6 - 0 6 - 3 in the doubles rubber by errani and flavia pennetta , meaning they were relegated to world group ii.",
+        "relevance": 4.333333333333333,
+        "coherence": null,
+        "consistency": null,
+        "fluency": null,
+        "avg_score": 4.333333333333333,
+        "id": "D"
+      },
+      {
+        "content": "twice french open champion serena williams said her struggle to beat sara errani in the fed cup on sunday had been a real ` eye-opener ' as the claycourt season gets into full swing . world no 1 williams eventually prevailed 4-6 7-6 -lrb- 3 -rrb- 6-3 against the dogged italian to take her career record over her to 8-0 but the american was not impressed . the us were beaten 3-2 as williams and alison riske were thrashed 6-0 6-3 in the doubles rubber by errani and flavia pennetta , meaning they were relegated to world group ii .",
+        "relevance": 5.0,
+        "coherence": null,
+        "consistency": null,
+        "fluency": null,
+        "avg_score": 5.0,
+        "id": "E"
+      }
+    ],
+    "task": "Rank these summaries by quality (coherence, relevance, fluency)"
+  }
+]

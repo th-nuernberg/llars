@@ -133,101 +133,192 @@ RATING_SAMPLES = [
 
 
 # =============================================================================
-# RANKING SCENARIO SAMPLES - German News Articles from 10kGNAD
-# Task: Rank articles by journalistic quality (Good/Average/Bad)
-# Source: https://github.com/tblock/10kGNAD (CC BY-NC-SA 4.0)
+# RANKING SCENARIO SAMPLES - SummEval Dataset
+# Source: https://huggingface.co/datasets/mteb/summeval
+# Task: Rank multiple summaries of the same news article by quality
+# Each summary has human ratings for relevance (1-5 scale)
 # =============================================================================
 
 RANKING_SAMPLES = [
     {
-        "subject": "Wirtschaft: VW-Abgasskandal weitet sich aus",
-        "feature_text": "Der Abgasskandal bei Volkswagen hat eine neue Dimension erreicht. Nach Angaben des Kraftfahrt-Bundesamtes sind in Deutschland 2,8 Millionen Fahrzeuge betroffen. VW-Chef Matthias Müller kündigte ein umfassendes Rückrufprogramm an. Die Kosten für den Konzern könnten sich auf bis zu 35 Milliarden Euro belaufen. Auch andere Marken des Konzerns wie Audi, Seat und Skoda sind betroffen.",
-        "expected_bucket": "Gut",
-        "source": "10kGNAD"
+        "subject": "Summary Ranking: Sterling Court Case",
+        "source_text": """(CNN)Donald Sterling's racist remarks cost him an NBA team last year. But now it's his former female companion who has lost big. A Los Angeles judge has ordered V. Stiviano to pay back more than $2.6 million in gifts after Sterling's wife sued her. In the lawsuit, Rochelle "Shelly" Sterling accused Stiviano of targeting extremely wealthy older men. She claimed Donald Sterling used the couple's money to buy Stiviano a Ferrari, two Bentleys and a Range Rover, and that he helped her get a $1.8 million duplex. Stiviano countered that there was nothing wrong with Donald Sterling giving her gifts and that she never took advantage of the former Los Angeles Clippers owner. Shelly Sterling was thrilled with the court decision Tuesday, her lawyer told CNN affiliate KABC. "This is a victory for the Sterling family in recovering the $2,630,000 that Donald lavished on a conniving mistress," attorney Pierce O'Donnell said.""",
+        "summaries": [
+            {"id": "A", "content": "Donald Sterling's racist remarks cost him an NBA team last year. But now it's his former female companion who has lost big. A Los Angeles judge has ordered V. Stiviano to pay back more than $2.6 million in gifts after Sterling's wife sued her.", "human_scores": {"relevance": 3.0, "avg": 3.0}},
+            {"id": "B", "content": "A Los Angeles judge has ordered V. Stiviano to pay back more than $2.6 million in gifts after Sterling's wife sued her. In the lawsuit, Rochelle 'Shelly' Sterling accused Stiviano of targeting extremely wealthy older men. She claimed Donald Sterling used the couple's money to buy Stiviano a Ferrari, two Bentleys and a Range Rover.", "human_scores": {"relevance": 4.33, "avg": 4.33}},
+            {"id": "C", "content": "(CNN) Donald Sterling's racist remarks cost him an NBA team last year. But now it's his former female companion who has lost big. A Los Angeles judge has ordered V. Stiviano to pay back more than $2.6 million in gifts after Sterling's wife sued her. In the lawsuit, Rochelle 'Shelly' Sterling accused Stiviano of targeting extremely wealthy older men.", "human_scores": {"relevance": 4.67, "avg": 4.67}},
+            {"id": "D", "content": "Donald Sterling's racist remarks cost him an NBA team last year. In the lawsuit, Rochelle 'Shelly' Sterling used the couple's money to buy Stiviano a Ferrari, wealthy older men. Shelly Sterling's gifts from Donald Sterling was $2.6 million in gifts.", "human_scores": {"relevance": 1.67, "avg": 1.67}},
+            {"id": "E", "content": "Donald Sterling, NBA team last year. Sterling's wife sued for $2.6 million in gifts. Sterling says he is the former female companion who has lost the. Sterling has ordered V. Stiviano to pay back $2.6m in gifts after his wife sued.", "human_scores": {"relevance": 1.67, "avg": 1.67}},
+        ],
+        "task": "Rank these summaries by quality (coherence, relevance, fluency)"
     },
     {
-        "subject": "Sport: Olympia-Vergabe sorgt für Kritik",
-        "feature_text": "Das Internationale Olympische Komitee hat die Winterspiele 2022 an Peking vergeben. Die Entscheidung stößt auf massive Kritik von Menschenrechtsorganisationen. Amnesty International bezeichnete die Vergabe als 'fatales Signal'. Die chinesische Regierung wies die Kritik zurück und betonte die Vorteile für den Wintersport in Asien.",
-        "expected_bucket": "Gut",
-        "source": "10kGNAD"
+        "subject": "Summary Ranking: Gray Whale Migration Record",
+        "source_text": """(CNN)A North Pacific gray whale has earned a spot in the record books after completing the longest migration of a mammal ever recorded. The whale, named Varvara, swam nearly 14,000 miles (22,500 kilometers), according to a release from Oregon State University, whose scientists helped conduct the whale-tracking study. Varvara, which is Russian for "Barbara," left her primary feeding ground off Russia's Sakhalin Island to cross the Pacific Ocean and down the West Coast of the United States to Baja, Mexico. Varvara's journey surpassed a record listed on the Guinness Worlds Records website. It said the previous record was set by a humpback whale that swam a mere 10,190-mile round trip.""",
+        "summaries": [
+            {"id": "A", "content": "North Pacific gray whale has earned a spot in the record books. The whale, named Varvara, swam nearly 14,000 miles (22,500 kilometers). Varvara, which is Russian for 'Barbara,' left her primary feeding ground off Russia.", "human_scores": {"relevance": 3.67, "avg": 3.67}},
+            {"id": "B", "content": "The whale, named Varvara, swam nearly 14,000 miles (22,500 kilometers). It said the previous record was set by a humpback whale that swam a mere 10,190-mile round trip between the 'warm breeding waters of the Arctic and Antarctic regions'.", "human_scores": {"relevance": 2.67, "avg": 2.67}},
+            {"id": "C", "content": "A North Pacific gray whale swam nearly 14,000 miles from Oregon State University. Varvara's journey surpassed a record listed on the Guinness Worlds Records. The whale is Russian for 'Barbara,' which is set by a humpback whale.", "human_scores": {"relevance": 2.0, "avg": 2.0}},
+            {"id": "D", "content": "A North Pacific gray whale has earned a spot in the record books after completing the longest migration of a mammal ever recorded. The whale, named Varvara, swam nearly 14,000 miles (22,500 kilometers), according to a release from Oregon State University. Varvara's journey surpassed a record listed on the Guinness Worlds Records website.", "human_scores": {"relevance": 4.67, "avg": 4.67}},
+            {"id": "E", "content": "(CNN) A North Pacific gray whale has earned a spot in the record books after completing the longest migration of a mammal ever recorded. The whale, named Varvara, swam nearly 14,000 miles (22,500 kilometers), according to a release from Oregon State University, whose scientists helped conduct the whale-tracking study.", "human_scores": {"relevance": 4.33, "avg": 4.33}},
+        ],
+        "task": "Rank these summaries by quality (coherence, relevance, fluency)"
     },
     {
-        "subject": "Kultur: Neues Album erschienen",
-        "feature_text": "Die Band hat ein neues Album rausgebracht. Es ist gut. Die Fans freuen sich.",
-        "expected_bucket": "Schlecht",
-        "source": "10kGNAD"
+        "subject": "Summary Ranking: US-Russia Air Incident",
+        "source_text": """(CNN)After a Russian fighter jet intercepted a U.S. reconnaissance plane in an "unsafe and unprofessional manner" earlier this week, the United States is complaining to Moscow about the incident. On Tuesday, a U.S. RC-135U was flying over the Baltic Sea when it was intercepted by a Russian SU-27 Flanker. The Pentagon said the incident occurred in international airspace north of Poland. The U.S. crew believed the Russian pilot's actions were "unsafe and unprofessional due to the aggressive maneuvers it performed in close proximity to their aircraft and its high rate of speed," Pentagon spokesman Mark Wright said.""",
+        "summaries": [
+            {"id": "A", "content": "Russian fighter jet intercepted a U.S. reconnaissance plane in an 'unsafe and unprofessional manner' earlier this week, the United States is complaining to Moscow about the incident. The Pentagon said the incident occurred in international airspace north of Poland. Russian state news agency Sputnik reported the U.S. plane was flying toward the Russian border with its transponder switched off.", "human_scores": {"relevance": 4.0, "avg": 4.0}},
+            {"id": "B", "content": "A U.S. RC-135U was flying over the Baltic Sea when it was intercepted by a Russian Flanker. The Pentagon said the incident occurred in international airspace north of Poland. The U.S. crew believed the Russian pilot's actions were 'unsafe and unprofessional,' Pentagon says.", "human_scores": {"relevance": 4.33, "avg": 4.33}},
+            {"id": "C", "content": "The United States is complaining to Moscow about the incident. U.S. RC-135U was flying over Baltic Sea when it was intercepted by Russian SU-27 Flanker. U.S. command says the transponder was off was false.", "human_scores": {"relevance": 3.67, "avg": 3.67}},
+            {"id": "D", "content": "The incident occurred in international airspace north of Poland. The U.S. crew believed the Russian pilot's actions were 'unsafe and unprofessional due to the aggressive maneuvers it performed in close proximity to their aircraft and its high rate of speed'.", "human_scores": {"relevance": 1.67, "avg": 1.67}},
+            {"id": "E", "content": "(CNN) After a Russian fighter jet intercepted a U.S. reconnaissance plane in an 'unsafe and unprofessional manner' earlier this week, the United States is complaining to Moscow about the incident. On Tuesday, a U.S. RC-135U was flying over the Baltic Sea when it was intercepted by a Russian SU-27 Flanker. The Pentagon said the incident occurred in international airspace north of Poland.", "human_scores": {"relevance": 4.67, "avg": 4.67}},
+        ],
+        "task": "Rank these summaries by quality (coherence, relevance, fluency)"
     },
     {
-        "subject": "Politik: Koalitionsverhandlungen gescheitert",
-        "feature_text": "Nach vierwöchigen Sondierungsgesprächen sind die Jamaika-Verhandlungen zwischen CDU/CSU, FDP und Grünen gescheitert. FDP-Chef Christian Lindner erklärte den Abbruch mit unüberbrückbaren Differenzen in der Flüchtlingspolitik und beim Klimaschutz. Bundespräsident Steinmeier rief alle Parteien zu Verantwortungsbewusstsein auf.",
-        "expected_bucket": "Gut",
-        "source": "10kGNAD"
+        "subject": "Summary Ranking: Tour Bus Fire",
+        "source_text": """(CNN)Lady Antebellum singer Hillary Scott's tour bus caught fire on a Texas freeway Thursday morning, but everyone on board was safely evacuated. Michael Barnett captured dramatic video of the fire, on Interstate 30 just northeast of Dallas. Smoke and flames poured from the rear of the bus as traffic slowed to a crawl. Hillary Scott, co-lead singer for the band, posted a photo of the charred bus on Instagram and noted that she, her husband, the tour manager and the driver were all evacuated safely. "Thanking God for our safety," she wrote. The tour manager told CNN affiliate KTVT that the bus stopped after a rear tire blew out.""",
+        "summaries": [
+            {"id": "A", "content": "Lady Antebellum singer Hillary Scott's tour bus catches fire on a Texas freeway. Everyone on board was evacuated safely, Scott posts on Instagram.", "human_scores": {"relevance": 4.67, "avg": 4.67}},
+            {"id": "B", "content": "Hillary Scott's tour bus caught fire on a Texas freeway Thursday morning. Smoke and flames poured from the rear of the bus as traffic slowed to a crawl and Barnett slowly approached in his vehicle. Barnett said he didn't realize at the time that the bus belonged to the country band.", "human_scores": {"relevance": 3.0, "avg": 3.0}},
+            {"id": "C", "content": "Lady Antebellum's tour bus caught fire on a Texas freeway Thursday morning. Michael Barnett captured dramatic video of fire on Interstate 30. He decided to stop filming because he didn't know what to expect. Hillary Scott, co-lead singer, posted a photo of the charred bus on Instagram.", "human_scores": {"relevance": 3.0, "avg": 3.0}},
+            {"id": "D", "content": "Michael Barnett captured the fire on Interstate 30 just northeast of Dallas. The Antebellum singer Hillary Scott, co-lead singer for the band. The band's two other members, Charles Kelley and Dave Haywood were not traveling on the bus. The bus is set to perform at the 50th Academy of Country Music Awards.", "human_scores": {"relevance": 2.0, "avg": 2.0}},
+            {"id": "E", "content": "Hillary Scott's tour bus caught fire on a Texas freeway Thursday morning. Michael Barnett captured dramatic video of the fire, on Interstate 30 just northeast of Dallas. Barnett decided to stop filming because he didn't know what to expect.", "human_scores": {"relevance": 3.67, "avg": 3.67}},
+        ],
+        "task": "Rank these summaries by quality (coherence, relevance, fluency)"
     },
     {
-        "subject": "Wissenschaft: Forscher machen Entdeckung",
-        "feature_text": "Wissenschaftler haben etwas Interessantes gefunden. Es könnte wichtig sein für die Zukunft.",
-        "expected_bucket": "Schlecht",
-        "source": "10kGNAD"
+        "subject": "Summary Ranking: Siberian Wildfires Sunset",
+        "source_text": """(CNN)A fiery sunset greeted people in Washington Sunday. The deep reddish color caught Seattle native Tim Durkan's eye. He photographed aerial shots of the sunset warming the city's skyline. The stunning sunsets were the result of raging wildfires in parts of Siberia. The fires were started in southeastern Siberia by farmers burning grass in their fields. But on April 14, the flames quickly grew out of control because of strong winds. The lingering smoke from the widespread fires were picked up by atmospheric winds, carrying the smoke from Siberia across the Pacific Ocean to the Pacific Northwest.""",
+        "summaries": [
+            {"id": "A", "content": "(CNN) A fiery sunset greeted people in Washington Sunday. The deep reddish color caught Seattle native Tim Durkan's eye. He photographed a handful of aerial shots of the sunset warming the city's skyline and shared them on CNN iReport.", "human_scores": {"relevance": 2.33, "avg": 2.33}},
+            {"id": "B", "content": "A fiery sunset greeted people in Washington Sunday.", "human_scores": {"relevance": 1.67, "avg": 1.67}},
+            {"id": "C", "content": "Raging wildfires in parts of Siberia are causing stunning sunsets in the Pacific Northwest. Lingering smoke from the fires is being carried across the Pacific Ocean by atmospheric winds. Parts of Oregon, Washington and British Columbia are seeing the results of the smoke, wind and solar light combination.", "human_scores": {"relevance": 4.33, "avg": 4.33}},
+            {"id": "D", "content": "Stunning sunsets were the result of raging wildfires in parts of Siberia. Fires were started in southeastern Siberia by farmers burning grass in their fields. But on April 14, it is believed that the flames quickly grew out of control.", "human_scores": {"relevance": 3.33, "avg": 3.33}},
+            {"id": "E", "content": "The deep reddish color caught Seattle native Tim Durkan's eye. The stunning sunsets were the result of raging wildfires in parts of Siberia. The fires were started in southeastern Siberia by farmers burning grass in their fields.", "human_scores": {"relevance": 3.67, "avg": 3.67}},
+        ],
+        "task": "Rank these summaries by quality (coherence, relevance, fluency)"
     },
     {
-        "subject": "International: Brexit-Verhandlungen stocken",
-        "feature_text": "Die Verhandlungen zwischen Großbritannien und der EU über den Brexit-Vertrag sind ins Stocken geraten. Hauptstreitpunkt bleibt die irische Grenzfrage. EU-Chefunterhändler Michel Barnier forderte konkrete Vorschläge aus London. Premierministerin Theresa May steht innenpolitisch unter Druck von Brexit-Hardlinern.",
-        "expected_bucket": "Gut",
-        "source": "10kGNAD"
+        "subject": "Summary Ranking: Mediterranean Migrant Crisis",
+        "source_text": """Rome (CNN)Italy is coping with a rising wave of desperate migrants from Africa and Middle East hoping to make it to Europe. From Friday to Monday, a total of 8,480 migrants were rescued, according to the Italian coast guard, which said it received on Monday alone SOS calls from 20 boats in distress. On Tuesday, a spokesman with Save the Children told CNN the group fears 400 migrants could be missing, citing testimony from survivors who said their ship carrying 550 people capsized in the Mediterranean Sea about 80 miles off the Libyan coast.""",
+        "summaries": [
+            {"id": "A", "content": "Italy is coping with a rising wave of desperate migrants from Africa and Middle East. From Friday to Monday, a total of 8,480 migrants were rescued, according to the Italian coast guard, which said it received on Monday alone SOS calls from 20 boats in distress. The Italian coast guard fears 400 migrants could be missing.", "human_scores": {"relevance": 4.67, "avg": 4.67}},
+            {"id": "B", "content": "Italy is coping with a rising wave of desperate migrants from Africa and Middle East hoping to make it to Europe. From Friday to Monday, a total of 8,480 migrants were rescued, according to the Italian coast guard. On Tuesday, a spokesman with Save the Children told CNN the group fears 400 migrants could be missing.", "human_scores": {"relevance": 4.33, "avg": 4.33}},
+            {"id": "C", "content": "A total of 8,480 migrants were rescued. The group fears 400 migrants could be missing. The Italian coast guard has not yet found evidence. Italy registered more than 10,000 migrants in the first three months of 2015.", "human_scores": {"relevance": 2.67, "avg": 2.67}},
+            {"id": "D", "content": "A Save the Children spokesman says a ship carrying 550 people capsized off the Libyan coast. The Italian coast guard says it cannot confirm such an incident. There has been a recent upsurge in migrant boats crossing the Mediterranean. Italy registered more than 10,000 migrants arriving in first three months of 2015.", "human_scores": {"relevance": 3.67, "avg": 3.67}},
+            {"id": "E", "content": "A total of 8,480 migrants were rescued at sea during the first weekend of April. The Italian coast guard says 400 migrants are missing in the Mediterranean Sea. The 400 migrants have died while crossing the Libyan coast. The coast guard official says 20 boats are missing.", "human_scores": {"relevance": 1.67, "avg": 1.67}},
+        ],
+        "task": "Rank these summaries by quality (coherence, relevance, fluency)"
     },
     {
-        "subject": "Panorama: Unwetter in Süddeutschland",
-        "feature_text": "Schwere Unwetter haben in Bayern und Baden-Württemberg erhebliche Schäden verursacht. Nach Angaben der Polizei wurden mehrere Ortschaften überflutet. Die Feuerwehr war mit über 500 Einsätzen beschäftigt. Meteorologen warnen vor weiteren Regenfällen in den kommenden Tagen. Der Deutsche Wetterdienst hat eine Unwetterwarnung herausgegeben.",
-        "expected_bucket": "Gut",
-        "source": "10kGNAD"
+        "subject": "Summary Ranking: SpaceX Rocket Landing",
+        "source_text": """(CNN)SpaceX on Tuesday launched a two-stage Falcon 9 rocket carrying an uncrewed cargo spacecraft called Dragon on a flight from Cape Canaveral, Florida, to the International Space Station. That was the easy part. In a difficult bid to land a rocket stage on a floating barge for the first time, the private space exploration company was unsuccessful. SpaceX founder Elon Musk tweeted: "Ascent successful. Dragon enroute to Space Station. Rocket landed on droneship, but too hard for survival." He later clarified that the rocket landed, but tipped over.""",
+        "summaries": [
+            {"id": "A", "content": "(CNN) SpaceX on Tuesday launched a two-stage Falcon 9 rocket carrying an uncrewed cargo spacecraft called Dragon on a flight from Cape Canaveral, Florida, to the International Space Station. That was the easy part. Dragon enroute to Space Station.", "human_scores": {"relevance": 2.33, "avg": 2.33}},
+            {"id": "B", "content": "Two-stage Falcon 9 rocket carrying an uncrewed cargo spacecraft called Dragon on a flight from Cape Canaveral, Florida, to the International Space Station. SpaceX has said it will keep trying and, after it masters landing at sea, hopes to someday land rockets on the ground.", "human_scores": {"relevance": 2.67, "avg": 2.67}},
+            {"id": "C", "content": "SpaceX launched a two-stage Falcon 9 rocket carrying an uncrewed cargo spacecraft called Dragon on a flight from Cape Canaveral, Florida, to the International Space Station. That was the easy part. In a difficult bid to land a rocket stage on a floating barge for the first time. Musk wants to cut costs.", "human_scores": {"relevance": 3.67, "avg": 3.67}},
+            {"id": "D", "content": "(CNN) SpaceX on Tuesday launched a two-stage Falcon 9 rocket carrying an uncrewed cargo spacecraft called Dragon on a flight from Cape Canaveral, Florida, to the International Space Station. That was the easy part. In a difficult bid to land a rocket stage on a floating barge for the first time, the private space exploration company was unsuccessful.", "human_scores": {"relevance": 4.67, "avg": 4.67}},
+            {"id": "E", "content": "SpaceX founder Elon Musk tweeted: 'Ascent successful. Rocket landed on droneship, but too hard for survival'. SpaceX has said it will keep trying and, after it hit at an angle and exploded.", "human_scores": {"relevance": 2.0, "avg": 2.0}},
+        ],
+        "task": "Rank these summaries by quality (coherence, relevance, fluency)"
     },
     {
-        "subject": "Web: Neue App vorgestellt",
-        "feature_text": "Es gibt eine neue App. Sie kann verschiedene Sachen. Man kann sie downloaden.",
-        "expected_bucket": "Schlecht",
-        "source": "10kGNAD"
+        "subject": "Summary Ranking: Cruise Ship Deaths",
+        "source_text": """(CNN)Two passengers found dead on a cruise ship in Puerto Rico appear to have died in a murder-suicide, the cruise line said. Holland America Line said two guests were found dead inside their stateroom on the ms Ryndam at 11:30 a.m. Thursday. "The cabin was immediately secured, and the authorities were notified, including the FBI," Holland America said. The ship left Tampa, Florida, on March 29 on a 14-day Southern Caribbean cruise. It's currently in San Juan, Puerto Rico.""",
+        "summaries": [
+            {"id": "A", "content": "Holland left Tampa, Florida, on March 29. Two passengers found dead inside their stateroom on the ship. It's in San Juan, Puerto Rico.", "human_scores": {"relevance": 3.33, "avg": 3.33}},
+            {"id": "B", "content": "Holland America Line says two guests were found dead inside their stateroom. The ship left Tampa, Florida, on March 29 on a 14-day Southern Caribbean cruise. Puerto Rico Port Authority spokesman says cleaning staff discovered the deceased passengers.", "human_scores": {"relevance": 4.33, "avg": 4.33}},
+            {"id": "C", "content": "(CNN) Two passengers found dead on a cruise ship in Puerto Rico appear to have died in a murder-suicide, the cruise line said. Holland America Line said two guests were found dead inside their stateroom on the ms Ryndam at 11:30 a.m. Thursday. 'The cabin was immediately secured, and the authorities were notified, including the FBI,' Holland America said.", "human_scores": {"relevance": 3.67, "avg": 3.67}},
+            {"id": "D", "content": "(CNN) Two passengers found dead on a cruise ship in Puerto Rico appear to have died in a murder-suicide, the cruise line said. Holland America Line said two guests were found dead inside their stateroom on the ms Ryndam at 11:30 a.m. Thursday. The ship left Tampa, Florida, on March 29 on a 14-day Southern Caribbean cruise.", "human_scores": {"relevance": 4.0, "avg": 4.0}},
+            {"id": "E", "content": "Two passengers found dead on a cruise ship in Puerto Rico appear to have died in a murder-suicide. The ship left Tampa, Florida, on a 14-day Southern Caribbean cruise.", "human_scores": {"relevance": 3.67, "avg": 3.67}},
+        ],
+        "task": "Rank these summaries by quality (coherence, relevance, fluency)"
     },
     {
-        "subject": "Wirtschaft: EZB hält an Nullzinspolitik fest",
-        "feature_text": "Die Europäische Zentralbank hat ihren Leitzins unverändert bei null Prozent belassen. EZB-Präsident Mario Draghi begründete die Entscheidung mit der weiterhin niedrigen Inflation im Euroraum. Kritiker warnen vor den Folgen für Sparer und Pensionsfonds. Die nächste Zinsentscheidung wird für Dezember erwartet.",
-        "expected_bucket": "Gut",
-        "source": "10kGNAD"
+        "subject": "Summary Ranking: ISIS Releases Yazidis",
+        "source_text": """(CNN)ISIS on Wednesday released more than 200 Yazidis, a minority group whose members were killed, captured and displaced when the Islamist terror organization overtook their towns in northern Iraq last summer, officials said. Most of those released were women and children; the rest were ill or elderly, said Rassol Omar, a commander in the Peshmerga force that defends northern Iraq's semi-autonomous Kurdish region. Omar didn't say what led to the release, other than asserting that Arab tribal leaders helped to coordinate it.""",
+        "summaries": [
+            {"id": "A", "content": "NEW: ISIS released more than 200 Yazidis, a minority group group says. The Islamist terror group has been killed in recent summer. The ISIS released scores of other Yazidis, mainly children and the elderly. The Peshmerga commander says the freed Yazidis are released.", "human_scores": {"relevance": 2.0, "avg": 2.0}},
+            {"id": "B", "content": "ISIS on Wednesday released more than 200 Yazidis, a minority group whose members were killed, captured and displaced when the Islamist terror organization overtook their towns in northern Iraq last summer. Most of those released were women and children; the rest were ill or elderly, said Rassol Omar, a commander in the Peshmerga force.", "human_scores": {"relevance": 4.67, "avg": 4.67}},
+            {"id": "C", "content": "Yazidis are of Kurdish descent, and their religion is considered a pre-Islamic sect that draws from Christianity, Judaism and Zoroastrianism. ISIS' conquest of the town of Sinjar, in particular, provoked a major humanitarian crisis.", "human_scores": {"relevance": 1.67, "avg": 1.67}},
+            {"id": "D", "content": "Most of those released were women and children; the rest were ill or elderly, officials say. Freed Yazidis, a minority group, captured and displaced in northern Iraq last summer. Arab tribal leaders did not say what led to release.", "human_scores": {"relevance": 3.33, "avg": 3.33}},
+            {"id": "E", "content": "(CNN) ISIS on Wednesday released more than 200 Yazidis, a minority group whose members were killed, captured and displaced when the Islamist terror organization overtook their towns in northern Iraq last summer, officials said. Most of those released were women and children; the rest were ill or elderly. Omar didn't say what led to the release, other than asserting that Arab tribal leaders helped to coordinate it.", "human_scores": {"relevance": 4.33, "avg": 4.33}},
+        ],
+        "task": "Rank these summaries by quality (coherence, relevance, fluency)"
     },
     {
-        "subject": "Sport: Bundesliga-Spieltag",
-        "feature_text": "Am Wochenende wurden Spiele gespielt. Einige Teams haben gewonnen, andere verloren. Die Tabelle hat sich verändert.",
-        "expected_bucket": "Schlecht",
-        "source": "10kGNAD"
+        "subject": "Summary Ranking: Iran Border Guards Killed",
+        "source_text": """(CNN)Eight Iranian border guards have been killed in clashes with militants near the border with Pakistan, Iranian state media reported. Three of the militants were killed by Iranian forces in the fighting Monday in the southeastern town of Negur. A militant group called Jaish al Adal claimed responsibility for the attack, according to Iranian state media. The Pakistani government condemned Monday's attack, calling it an "act of terrorism." "The concerned security agencies of Pakistan are actively investigating this incident," the government said.""",
+        "summaries": [
+            {"id": "A", "content": "Three of the militants were killed by Iranian forces near the border with Pakistan, Iranian state media reports. Jaish al Adal says it aims to thwart Iranian influence in Pakistan. The Sunni Muslim group has targeted Shiites.", "human_scores": {"relevance": 1.67, "avg": 1.67}},
+            {"id": "B", "content": "Eight Iranian border guards killed in clashes with militants near the border with Pakistan, Iranian state media reports. A militant group called Jaish al Adal claimed responsibility for the attack.", "human_scores": {"relevance": 4.67, "avg": 4.67}},
+            {"id": "C", "content": "(CNN) Eight Iranian border guards have been killed in clashes with militants near the border with Pakistan, Iranian state media reported. Three of the militants were killed by Iranian forces in the fighting Monday in the southeastern town of Negur. A militant group called Jaish al Adal claimed responsibility for the attack.", "human_scores": {"relevance": 4.0, "avg": 4.0}},
+            {"id": "D", "content": "The Iranian border guards were killed by militants in the eastern province of Baluchistan. Iran is a major ally of Pakistan in the region.", "human_scores": {"relevance": 3.67, "avg": 3.67}},
+            {"id": "E", "content": "Three of the militants were killed by Iranian forces in the fighting Monday in the southeastern town of Negur. Iranian officials have reportedly asked Pakistani authorities to catch the surviving assailants. Jaish al Adal has also claimed responsibility for the attack.", "human_scores": {"relevance": 3.0, "avg": 3.0}},
+        ],
+        "task": "Rank these summaries by quality (coherence, relevance, fluency)"
     },
     {
-        "subject": "Kultur: Documenta eröffnet in Kassel",
-        "feature_text": "Die 14. Documenta hat in Kassel ihre Pforten geöffnet. Erstmals in der Geschichte der Kunstausstellung findet sie parallel auch in Athen statt. Künstlerische Leiterin ist die polnische Kuratorin Szymczyk. Über 160 Künstler aus aller Welt präsentieren ihre Werke an mehr als 30 Standorten. Die Schau läuft bis September.",
-        "expected_bucket": "Gut",
-        "source": "10kGNAD"
+        "subject": "Summary Ranking: Japan UFO Discussion",
+        "source_text": """(CNN)The classic video game "Space Invaders" was developed in Japan back in the late 1970's -- and now their real-life counterparts are the topic of an earnest political discussion in Japan's corridors of power. Luckily, Japanese can sleep soundly in their beds tonight as the government's top military official earnestly revealed that the country's Air Self Defense Force (ASDF) had never encountered an extraterrestrial unidentified flying object. Responding to a query from flamboyant former wrestler-turned-lawmaker Antonio Inoki, Defense Minister Gen Nakatani told the Diet, Japan's parliament, that his jets had, to date, never come across any UFOs from outer space.""",
+        "summaries": [
+            {"id": "A", "content": "'Space Invaders' was developed in Japan back in the late 1970's -- and now their real-life counterparts are the topic of an earnest political discussion in Japan's corridors of power. Luckily, Japanese can sleep soundly in their beds tonight as the government's top military official earnestly. Inoki has appeared in the U.S.-based WWE.", "human_scores": {"relevance": 1.33, "avg": 1.33}},
+            {"id": "B", "content": "Japan's military has never seen an alien, and apparently never will.", "human_scores": {"relevance": 2.67, "avg": 2.67}},
+            {"id": "C", "content": "Japan's top military official reveals that the country's Air Self Defense Force has never encountered an extraterrestrial unidentified flying object. Defense Minister Gen Nakatani told the Diet that his jets had, to date, never come across any UFOs from outer space.", "human_scores": {"relevance": 4.0, "avg": 4.0}},
+            {"id": "D", "content": "(CNN) The classic video game 'Space Invaders' was developed in Japan back in the late 1970's -- and now their real-life counterparts are the topic of an earnest political discussion in Japan's corridors of power. Luckily, Japanese can sleep soundly in their beds tonight as the government's top military official earnestly revealed that the country's Air Self Defense Force (ASDF) had never encountered an extraterrestrial unidentified flying object.", "human_scores": {"relevance": 4.67, "avg": 4.67}},
+            {"id": "E", "content": "'Space Invaders' was developed in Japan back in 1970. Japanese can sleep soundly in their beds tonight as government's top military official. He also fought Muhammad Ali in 1976. Inoki has appeared in the U.S.-based WWE.", "human_scores": {"relevance": 1.0, "avg": 1.0}},
+        ],
+        "task": "Rank these summaries by quality (coherence, relevance, fluency)"
     },
     {
-        "subject": "Politik: Seehofer tritt zurück",
-        "feature_text": "Ein Politiker ist zurückgetreten. Es gab Streit. Jetzt ist er weg.",
-        "expected_bucket": "Schlecht",
-        "source": "10kGNAD"
+        "subject": "Summary Ranking: Boston Marathon Bombing Sentencing",
+        "source_text": """(CNN)The parents of the youngest victim of the Boston Marathon bombings are making an emotional, passionate plea to take the death penalty off the table for the man convicted in the case. Last week, Dzhokhar Tsarnaev was found guilty on all 30 charges he faced related to the bombings at the 2013 race and the dramatic violence that dragged out for days afterward. The sentencing phase begins Tuesday, a day after this year's edition of the landmark race. It is expected to last four weeks. In a front-page opinion piece in The Boston Globe, Bill and Denise Richard wrote about the toll taken on their family after the death of their 8-year-old son, Martin.""",
+        "summaries": [
+            {"id": "A", "content": "Dzhokhar Tsarnaev was found guilty on all 30 charges he faced related to the bombings at the 2013 race and the dramatic violence that dragged out for days afterward. The sentencing phase begins Tuesday, a day after this year's edition of the landmark race.", "human_scores": {"relevance": 2.67, "avg": 2.67}},
+            {"id": "B", "content": "(CNN) The parents of the youngest victim of the Boston Marathon bombings are making an emotional, passionate plea to take the death penalty off the table for the man convicted in the case. Last week, Dzhokhar Tsarnaev was found guilty on all 30 charges he faced related to the bombings at the 2013 race and the dramatic violence that dragged out for days afterward.", "human_scores": {"relevance": 4.67, "avg": 4.67}},
+            {"id": "C", "content": "(CNN) The parents of the youngest victim of the Boston Marathon bombings are making an emotional, passionate plea to take the death penalty off the table for the man convicted in the case. Last week, Dzhokhar Tsarnaev was found guilty on all 30 charges he faced related to the bombings. The sentencing phase begins Tuesday, a day after this year's edition of the landmark race.", "human_scores": {"relevance": 4.0, "avg": 4.0}},
+            {"id": "D", "content": "Dzhokhar Tsarnaev was found guilty on all 30 charges in the 2013 race. It is expected to last four weeks, a day after the race. The 13th Juror: Now it is real.", "human_scores": {"relevance": 1.67, "avg": 1.67}},
+            {"id": "E", "content": "The sentencing phase begins Tuesday, a day after this year's edition of the landmark race. It is expected to last four weeks. Bill and Denise Richard wrote about the toll taken on their family after the death of their 8-year-old son, Martin.", "human_scores": {"relevance": 2.0, "avg": 2.0}},
+        ],
+        "task": "Rank these summaries by quality (coherence, relevance, fluency)"
     },
     {
-        "subject": "Wissenschaft: Gravitationswellen nachgewiesen",
-        "feature_text": "Physikern ist es erstmals gelungen, Gravitationswellen direkt nachzuweisen. Die Entdeckung bestätigt eine hundert Jahre alte Vorhersage Albert Einsteins. Die Messungen stammen von den LIGO-Detektoren in den USA. Die Wissenschaftler sprechen von einer 'neuen Ära der Astronomie'. Für die Entdeckung wurde der Physik-Nobelpreis verliehen.",
-        "expected_bucket": "Gut",
-        "source": "10kGNAD"
+        "subject": "Summary Ranking: Roots TV Remake",
+        "source_text": """(CNN)One of the biggest TV events of all time is being reimagined for new audiences. "Roots," the epic miniseries about an African-American slave and his descendants, had a staggering audience of over 100 million viewers back in 1977. Now A&E networks are remaking the miniseries, to air in 2016. LeVar Burton, who portrayed Kinte in the original, will co-executive produce the new miniseries. A press release describes the new version as "original" and "contemporary" and will draw more from Alex Haley's classic novel.""",
+        "summaries": [
+            {"id": "A", "content": "'Roots,' the epic miniseries about an African-American slave and his descendants, had a staggering audience of over 100 million viewers back in 1977. A&E networks are remaking the miniseries, to air in 2016. LeVar Burton, who portrayed Kinte in the original, will co-executive produce the new miniseries.", "human_scores": {"relevance": 5.0, "avg": 5.0}},
+            {"id": "B", "content": "A&E Networks will simulcast the original 'Roots' in 2016. The original 'Roots' premiered in 1977 and ran for four seasons. The miniseries followed Kunta Kinte, a free black man in Virginia, as he was sold into slavery.", "human_scores": {"relevance": 4.33, "avg": 4.33}},
+            {"id": "C", "content": "A&E, Lifetime and History are remaking the miniseries, to air in 2016. 'Roots,' LeVar Burton, will co-executive produce the new miniseries. Alex Haley's 'contemporary' novel is 'original' novel.", "human_scores": {"relevance": 2.33, "avg": 2.33}},
+            {"id": "D", "content": "'Roots,' the epic miniseries about an African-American slave and his descendants, had a staggering audience of over 100 million viewers back in 1977. Now A&E networks are remaking the miniseries, to air in 2016.", "human_scores": {"relevance": 4.0, "avg": 4.0}},
+            {"id": "E", "content": "A&E networks are remaking the series, to air in 2016. The three networks will broadcast a remake of the saga of Kunta Kinte. The 'Roots' is the epic episode of the African-American slave and his descendants.", "human_scores": {"relevance": 3.33, "avg": 3.33}},
+        ],
+        "task": "Rank these summaries by quality (coherence, relevance, fluency)"
     },
     {
-        "subject": "International: Syrien-Konferenz in Genf",
-        "feature_text": "Internationale Konferenz. Viele Länder dabei. Wird noch verhandelt.",
-        "expected_bucket": "Schlecht",
-        "source": "10kGNAD"
+        "subject": "Summary Ranking: Brisbane Car Crash",
+        "source_text": """Ten people, including four children, have been involved in a multi-vehicle crash in Brisbane's west. Three vehicles collided on the Brisbane Valley Highway, 2km south of Fernvale, on Wednesday afternoon. A 40-year-old man with chest and shoulder injuries and a five-year-old boy with chest pain were the first patients flown out by rescue helicopter. They've been taken to the Princess Alexandra Hospital in Brisbane. Shortly after, a 27-year-old woman with arm injuries and a six-year-old girl suffering from abdominal pain were also being flown out. Six others have been taken to Ipswich Hospital with minor injuries.""",
+        "summaries": [
+            {"id": "A", "content": "Three vehicles collided on the Brisbane Valley Highway, 2km south of Fernvale, on Wednesday afternoon. A 40-year-old man with chest and shoulder injuries and a five-year-old boy with chest pain were the first patients flown out by rescue helicopter. Six others - including an infant and two young girls - have been taken to Ipswich Hospital with minor injuries.", "human_scores": {"relevance": 4.33, "avg": 4.33}},
+            {"id": "B", "content": "Ten people, including four children, have been involved in a multi-vehicle crash in Brisbane's west. Three vehicles collided on the Brisbane Valley Highway, 2km south of Fernvale, on Wednesday afternoon. A 40-year-old man with chest and shoulder injuries and a five-year-old boy with chest pain were the first patients flown out by rescue helicopter.", "human_scores": {"relevance": 5.0, "avg": 5.0}},
+            {"id": "C", "content": "Three vehicles collided on the Brisbane Valley Highway, 2km south of Fernvale. A 40-year-old man with chest and shoulder injuries and a five-year-old girl suffering from abdominal pain were also being flown out. A man has also suffered hand lacerations and two females escaped injuries.", "human_scores": {"relevance": 4.0, "avg": 4.0}},
+            {"id": "D", "content": "One person was trapped inside their car. The helicopter landed at the scene and airlifted a number of patients to hospital.", "human_scores": {"relevance": 2.67, "avg": 2.67}},
+            {"id": "E", "content": "Ten people, including four children, have been involved in a multi-vehicle crash in Brisbane's west. Three vehicles collided on the Brisbane Valley Highway, 2km south of Fernvale, on Wednesday afternoon. A 27-year-old woman with arm injuries and a six-year-old girl suffering from abdominal pain were also being flown out by rescue helicopter.", "human_scores": {"relevance": 4.0, "avg": 4.0}},
+        ],
+        "task": "Rank these summaries by quality (coherence, relevance, fluency)"
     },
     {
-        "subject": "Panorama: Flüchtlingskrise an der Grenze",
-        "feature_text": "An der deutsch-österreichischen Grenze bei Passau kamen am Wochenende über 12.000 Flüchtlinge an. Die Bundespolizei richtete Notunterkünfte in Turnhallen ein. Bayerns Innenminister Herrmann forderte eine schnelle europäische Lösung. Freiwillige Helfer versorgten die Ankommenden mit Nahrung und Kleidung.",
-        "expected_bucket": "Gut",
-        "source": "10kGNAD"
+        "subject": "Summary Ranking: Serena Williams Fed Cup",
+        "source_text": """Twice French Open champion Serena Williams said her struggle to beat Sara Errani in the Fed Cup on Sunday had been a real 'eye-opener' as the claycourt season gets into full swing. World No 1 Williams eventually prevailed 4-6 7-6(3) 6-3 against the dogged Italian to take her career record over her to 8-0 but the American was not impressed. The US were beaten 3-2 as Williams and Alison Riske were thrashed 6-0 6-3 in the doubles rubber by Errani and Flavia Pennetta, meaning they were relegated to World Group II.""",
+        "summaries": [
+            {"id": "A", "content": "Serena Williams won 6-3 6-3 against Sara Errani to become the first woman to win four majors. Williams was happy with her performance in the Fed Cup, but she was not impressed by the way Errani had played. Errani and Pennetta were beaten 6-0 6-3 by Williams and Alison Riske in the doubles rubber.", "human_scores": {"relevance": 2.67, "avg": 2.67}},
+            {"id": "B", "content": "French Open champion Serena Williams says her struggle to beat Sara Errani. Serena Williams beat Italian Sara Errani in the Fed Cup play-off. Williams eventually prevailed 4-6 7-6(3) 6-3 against Italian. Williams and Alison Riske were relegated to World Group II. Williams won her 19th singles grand slam at the Australian Open.", "human_scores": {"relevance": 3.67, "avg": 3.67}},
+            {"id": "C", "content": "Serena Williams beat Sara Errani 4-6 7-6(3) in the Fed Cup. The claycourt season gets into full swing. World No 1 Williams defeated Sara Errani in the semi-finals.", "human_scores": {"relevance": 3.0, "avg": 3.0}},
+            {"id": "D", "content": "Twice French Open champion Serena Williams said her struggle to beat Sara Errani in the Fed Cup on Sunday had been a real 'eye-opener' as the claycourt season gets into full swing. World No 1 Williams eventually prevailed 4-6 7-6(3) 6-3 against the dogged Italian. The US were beaten 3-2 as Williams and Alison Riske were thrashed 6-0 6-3 in the doubles rubber by Errani and Flavia Pennetta, meaning they were relegated to World Group II.", "human_scores": {"relevance": 4.33, "avg": 4.33}},
+            {"id": "E", "content": "Twice French Open champion Serena Williams said her struggle to beat Sara Errani in the Fed Cup on Sunday had been a real 'eye-opener' as the claycourt season gets into full swing. World No 1 Williams eventually prevailed 4-6 7-6(3) 6-3 against the dogged Italian to take her career record over her to 8-0 but the American was not impressed. The US were beaten 3-2 as Williams and Alison Riske were thrashed 6-0 6-3 in the doubles rubber by Errani and Flavia Pennetta, meaning they were relegated to World Group II.", "human_scores": {"relevance": 5.0, "avg": 5.0}},
+        ],
+        "task": "Rank these summaries by quality (coherence, relevance, fluency)"
     },
 ]
 

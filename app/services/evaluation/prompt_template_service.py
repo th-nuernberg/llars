@@ -285,6 +285,9 @@ Antworte im folgenden JSON-Format:
     },
 }
 
+# Alias: labeling uses the same prompt defaults as text_classification
+DEFAULT_PROMPTS["labeling"] = DEFAULT_PROMPTS["text_classification"]
+
 
 class PromptTemplateService:
     """Service for managing prompt templates for LLM evaluators."""

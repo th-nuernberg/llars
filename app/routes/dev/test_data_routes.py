@@ -299,7 +299,7 @@ def seed_scenario():
         'rating': 2,
         'comparison': 4,
         'authenticity': 5,
-        'labeling': 7  # text_classification
+        'labeling': 7  # labeling
     }
     function_type_id = type_map.get(llars_type)
     if not function_type_id:

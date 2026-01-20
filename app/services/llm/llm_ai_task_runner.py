@@ -17,6 +17,8 @@ from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 from db.database import db
 from db.models import (
+    ComparisonMessage,
+    ComparisonSession,
     EmailThread,
     Feature,
     FeatureFunctionType,
@@ -244,6 +246,16 @@ class LLMAITaskRunner:
         if not resolved_models:
             return
 
+        # Comparison scenarios use ComparisonSessions, not ScenarioThreads
+        if function_name == "comparison":
+            session_ids = LLMAITaskRunner._resolve_comparison_session_ids(scenario, thread_ids)
+            if not session_ids:
+                logger.info("[LLM AI Runner] No comparison sessions for scenario %s", scenario_id)
+                return
+            for model_id in resolved_models:
+                LLMAITaskRunner._run_comparison_sessions(model_id, session_ids, scenario.id)
+            return
+
         scenario_thread_ids = LLMAITaskRunner._resolve_thread_ids(scenario, thread_ids)
         if not scenario_thread_ids:
             return
@@ -257,10 +269,15 @@ class LLMAITaskRunner:
                 LLMAITaskRunner._run_authenticity(model_id, scenario_thread_ids, scenario.id)
             elif function_name == "mail_rating":
                 LLMAITaskRunner._run_mail_rating(model_id, scenario_thread_ids, scenario.id)
-            elif function_name == "text_classification":
-                LLMAITaskRunner._run_text_classification(model_id, scenario_thread_ids, scenario.id, scenario)
-            elif function_name == "comparison":
-                LLMAITaskRunner._run_comparison(model_id, scenario_thread_ids, scenario.id)
+            elif function_name in ("labeling", "text_classification"):
+                task_type = "labeling" if function_name == "labeling" else "text_classification"
+                LLMAITaskRunner._run_text_classification(
+                    model_id,
+                    scenario_thread_ids,
+                    scenario.id,
+                    scenario,
+                    task_type=task_type,
+                )
             else:
                 logger.info(
                     "[LLM AI Runner] Task type '%s' not supported for model %s",
@@ -311,6 +328,195 @@ class LLMAITaskRunner:
         return available
 
     @staticmethod
+    def _resolve_comparison_session_ids(
+        scenario: RatingScenarios,
+        session_ids: Optional[List[int]] = None,
+    ) -> List[int]:
+        """Resolve ComparisonSession IDs for comparison scenarios."""
+        sessions = ComparisonSession.query.filter_by(scenario_id=scenario.id).all()
+        available = [s.id for s in sessions]
+        if session_ids:
+            session_set = {sid for sid in session_ids if isinstance(sid, int)}
+            return [sid for sid in available if sid in session_set]
+        return available
+
+    @staticmethod
+    def _run_comparison_sessions(
+        model_id: str,
+        session_ids: Iterable[int],
+        scenario_id: int
+    ) -> None:
+        """
+        Run LLM evaluation for ComparisonSessions.
+
+        For each session, evaluate all bot_pair messages where the LLM
+        compares the two responses and picks a winner.
+        """
+        client = LLMClientFactory.get_client_for_model(model_id)
+
+        for session_id in session_ids:
+            try:
+                session = ComparisonSession.query.get(session_id)
+                if not session:
+                    continue
+
+                # Get all bot_pair messages for this session
+                bot_pair_messages = ComparisonMessage.query.filter_by(
+                    session_id=session_id,
+                    type='bot_pair'
+                ).order_by(ComparisonMessage.idx.asc()).all()
+
+                if not bot_pair_messages:
+                    continue
+
+                for msg in bot_pair_messages:
+                    # Check if we already have a result for this message
+                    # Use session_id as thread_id and msg.idx as a sub-identifier in payload
+                    existing = LLMTaskResult.query.filter_by(
+                        scenario_id=scenario_id,
+                        thread_id=session_id,  # Using session_id as thread_id
+                        model_id=model_id,
+                        task_type="comparison",
+                    ).first()
+
+                    # Check if this specific message idx was already evaluated
+                    if existing and existing.payload_json:
+                        evaluated_indices = existing.payload_json.get('evaluated_indices', [])
+                        if msg.idx in evaluated_indices:
+                            continue
+
+                    # Parse the bot_pair content (JSON with llm1 and llm2 responses)
+                    try:
+                        content = json.loads(msg.content) if isinstance(msg.content, str) else msg.content
+                        llm1_response = content.get('llm1', '')
+                        llm2_response = content.get('llm2', '')
+                    except (json.JSONDecodeError, TypeError):
+                        # If not JSON, skip
+                        continue
+
+                    if not llm1_response or not llm2_response:
+                        continue
+
+                    # Get context from previous user message
+                    user_msg = ComparisonMessage.query.filter_by(
+                        session_id=session_id,
+                        type='user',
+                        idx=msg.idx - 1
+                    ).first()
+                    user_question = user_msg.content if user_msg else "Keine Frage verfügbar"
+
+                    system_prompt = (
+                        "Du bist ein Experte für den Vergleich von KI-Antworten. "
+                        "Vergleiche die beiden Antworten auf die gleiche Nutzeranfrage und "
+                        "entscheide, welche besser ist. "
+                        "Antworte ausschließlich im JSON-Format."
+                    )
+                    user_prompt = (
+                        f"Nutzeranfrage: {user_question}\n\n"
+                        f"Antwort A (LLM 1):\n{llm1_response}\n\n"
+                        f"Antwort B (LLM 2):\n{llm2_response}\n\n"
+                        "Welche Antwort ist besser? Gib JSON im Format:\n"
+                        "{\n"
+                        '  "winner": "A" | "B" | "tie",\n'
+                        '  "confidence": 1-5,\n'
+                        '  "reasoning": "Begründung für die Entscheidung"\n'
+                        "}"
+                    )
+
+                    raw_response = None
+                    payload, raw_response = LLMAITaskRunner._request_json(
+                        client,
+                        model_id,
+                        system_prompt,
+                        user_prompt,
+                        max_tokens=500,
+                        trace={
+                            "task": "comparison",
+                            "scenario_id": scenario_id,
+                            "session_id": session_id,
+                            "message_idx": msg.idx,
+                            "model_id": model_id,
+                        },
+                    )
+
+                    comparison_data = LLMAITaskRunner._validate_comparison_payload(payload)
+                    if comparison_data is None:
+                        raise ValueError("Invalid comparison payload")
+
+                    # Add message index to track which messages were evaluated
+                    comparison_data['message_idx'] = msg.idx
+                    comparison_data['session_id'] = session_id
+
+                    if existing:
+                        # Append to existing results
+                        existing_results = existing.payload_json.get('results', []) if existing.payload_json else []
+                        existing_results.append(comparison_data)
+                        evaluated_indices = existing.payload_json.get('evaluated_indices', []) if existing.payload_json else []
+                        evaluated_indices.append(msg.idx)
+                        existing.payload_json = {
+                            'results': existing_results,
+                            'evaluated_indices': evaluated_indices,
+                        }
+                        existing.raw_response = raw_response
+                        existing.error = None
+                        db.session.add(existing)
+                    else:
+                        db.session.add(LLMTaskResult(
+                            scenario_id=scenario_id,
+                            thread_id=session_id,
+                            model_id=model_id,
+                            task_type="comparison",
+                            payload_json={
+                                'results': [comparison_data],
+                                'evaluated_indices': [msg.idx],
+                            },
+                            raw_response=raw_response,
+                            error=None,
+                        ))
+                    db.session.commit()
+
+                    # Broadcast success
+                    _broadcast_task_completed(
+                        scenario_id=scenario_id,
+                        model_id=model_id,
+                        thread_id=session_id,
+                        task_type="comparison",
+                        result=comparison_data,
+                    )
+
+            except LLMResponseError as exc:
+                db.session.rollback()
+                LLMAITaskRunner._store_error(
+                    scenario_id=scenario_id,
+                    thread_id=session_id,
+                    model_id=model_id,
+                    task_type="comparison",
+                    error=str(exc),
+                    raw_response=exc.raw_response if hasattr(exc, 'raw_response') else None,
+                )
+                _broadcast_task_failed(
+                    scenario_id=scenario_id,
+                    model_id=model_id,
+                    thread_id=session_id,
+                    task_type="comparison",
+                    error=str(exc),
+                )
+            except Exception as exc:
+                db.session.rollback()
+                logger.warning(
+                    "[LLM AI Runner] Comparison session %s failed: %s",
+                    session_id,
+                    exc,
+                )
+                _broadcast_task_failed(
+                    scenario_id=scenario_id,
+                    model_id=model_id,
+                    thread_id=session_id,
+                    task_type="comparison",
+                    error=str(exc),
+                )
+
+    @staticmethod
     def _store_error(
         *,
         scenario_id: int,
@@ -347,8 +553,62 @@ class LLMAITaskRunner:
             db.session.rollback()
 
     @staticmethod
+    def _get_bucket_config(scenario: RatingScenarios) -> Tuple[List[str], List[str]]:
+        """
+        Extract bucket configuration from scenario config_json.
+
+        Returns:
+            Tuple of (bucket_names, bucket_keys) where:
+            - bucket_names: Display names for prompts (e.g., ["Gut", "Mittel", "Schlecht"])
+            - bucket_keys: Lowercase keys for JSON response (e.g., ["gut", "mittel", "schlecht"])
+        """
+        default_buckets = ["Gut", "Mittel", "Schlecht", "Neutral"]
+        config = scenario.config_json
+        if isinstance(config, str):
+            try:
+                config = json.loads(config)
+            except (json.JSONDecodeError, TypeError):
+                config = {}
+        if not isinstance(config, dict):
+            config = {}
+
+        buckets_config = config.get("buckets", [])
+        if not buckets_config or not isinstance(buckets_config, list):
+            return default_buckets, [b.lower() for b in default_buckets]
+
+        bucket_names = []
+        for bucket in buckets_config:
+            if isinstance(bucket, dict):
+                name = bucket.get("name", {})
+                if isinstance(name, dict):
+                    # Use German name, fallback to English, fallback to id
+                    bucket_name = name.get("de") or name.get("en") or str(bucket.get("id", ""))
+                elif isinstance(name, str):
+                    bucket_name = name
+                else:
+                    bucket_name = str(bucket.get("id", ""))
+                if bucket_name:
+                    bucket_names.append(bucket_name)
+            elif isinstance(bucket, str):
+                bucket_names.append(bucket)
+
+        if not bucket_names:
+            return default_buckets, [b.lower() for b in default_buckets]
+
+        bucket_keys = [b.lower() for b in bucket_names]
+        return bucket_names, bucket_keys
+
+    @staticmethod
     def _run_ranking(model_id: str, thread_ids: Iterable[int], scenario_id: int) -> None:
         client = LLMClientFactory.get_client_for_model(model_id)
+
+        # Load scenario to get bucket configuration
+        scenario = RatingScenarios.query.get(scenario_id)
+        if not scenario:
+            logger.warning("[LLM AI Runner] Scenario not found for ranking: %s", scenario_id)
+            return
+
+        bucket_names, bucket_keys = LLMAITaskRunner._get_bucket_config(scenario)
 
         for thread_id in thread_ids:
             try:
@@ -365,6 +625,19 @@ class LLMAITaskRunner:
                 if not features:
                     continue
 
+                # Load messages to get source/context text
+                messages = Message.query.filter_by(thread_id=thread_id).order_by(Message.timestamp).all()
+                source_text = None
+                for msg in messages:
+                    # Look for source article or similar context messages
+                    sender_lower = (msg.sender or "").lower()
+                    if "source" in sender_lower or "artikel" in sender_lower or "original" in sender_lower:
+                        source_text = msg.content
+                        break
+                # Fallback: use first message if no explicit source found
+                if not source_text and messages:
+                    source_text = messages[0].content
+
                 seed = int(
                     hashlib.sha256(
                         f"{scenario_id}:{thread_id}:{model_id}".encode("utf-8")
@@ -375,29 +648,68 @@ class LLMAITaskRunner:
                 shuffled = list(features)
                 rng.shuffle(shuffled)
 
-                feature_lines = []
-                for feature in shuffled:
-                    feature_lines.append(
-                        f"- ID {feature.feature_id} (Typ: {feature.feature_type.name}, Modell: {feature.llm.name}): {feature.content}"
-                    )
+                # Determine feature type for context-aware prompts
+                feature_type = features[0].feature_type.name if features else "Feature"
+                is_summary_ranking = feature_type.lower() in ("summary", "zusammenfassung")
 
-                system_prompt = (
-                    "Du bist ein strenger Evaluator für Feature-Rankings. "
-                    "Antworte ausschließlich im JSON-Format."
-                )
-                user_prompt = (
-                    "Ordne alle Feature-IDs genau einmal einem Bucket zu. "
-                    "Erlaubte Buckets: gut, mittel, schlecht, neutral.\n"
-                    "Gib JSON im Format:\n"
-                    "{\n"
-                    '  "gut": [feature_id, ...],\n'
-                    '  "mittel": [feature_id, ...],\n'
-                    '  "schlecht": [feature_id, ...],\n'
-                    '  "neutral": [feature_id, ...]\n'
-                    "}\n\n"
-                    "Features (zufällig sortiert):\n"
-                    + "\n".join(feature_lines)
-                )
+                # Build feature list with letter IDs for easier reference
+                feature_lines = []
+                letter_map = {}  # Maps letter to feature_id for response parsing
+                for idx, feature in enumerate(shuffled):
+                    letter = chr(65 + idx)  # A, B, C, ...
+                    letter_map[letter] = feature.feature_id
+                    # Truncate very long content for prompt efficiency
+                    content = feature.content[:500] + "..." if len(feature.content) > 500 else feature.content
+                    feature_lines.append(f"{letter} (ID {feature.feature_id}): {content}")
+
+                # Build dynamic prompt based on configured buckets
+                buckets_list = ", ".join(bucket_keys)
+                json_example_lines = [f'  "{key}": [feature_id, ...]' for key in bucket_keys]
+                json_example = "{\n" + ",\n".join(json_example_lines) + "\n}"
+
+                # Context-aware system prompt
+                if is_summary_ranking and source_text:
+                    system_prompt = """Du bist ein Experte für die Bewertung von Textzusammenfassungen.
+
+Bewertungskriterien:
+- **Relevanz**: Erfasst die wichtigsten Informationen des Originaltexts
+- **Konsistenz**: Faktentreu, keine erfundenen Informationen
+- **Kohärenz**: Logischer Aufbau, zusammenhängende Sätze
+- **Flüssigkeit**: Gut lesbar, grammatikalisch korrekt
+
+Antworte AUSSCHLIESSLICH im JSON-Format mit den Feature-IDs (Zahlen)."""
+
+                    user_prompt = f"""Bewerte die folgenden Zusammenfassungen basierend auf dem Originaltext.
+
+ORIGINALTEXT:
+{source_text[:2000]}{"..." if len(source_text) > 2000 else ""}
+
+ZUSAMMENFASSUNGEN (zufällig sortiert):
+{chr(10).join(feature_lines)}
+
+Ordne JEDE Feature-ID genau EINEM Bucket zu:
+- **{bucket_keys[0]}**: Erfasst Kerninhalt präzise, faktisch korrekt, gut lesbar
+- **{bucket_keys[1] if len(bucket_keys) > 1 else 'mittel'}**: Akzeptabel, aber mit Schwächen (fehlende Details, kleine Fehler)
+- **{bucket_keys[2] if len(bucket_keys) > 2 else 'schlecht'}**: Unvollständig, faktisch falsch, oder schlecht lesbar
+{f'- **{bucket_keys[3]}**: Nicht eindeutig kategorisierbar' if len(bucket_keys) > 3 else ''}
+
+Antworte im JSON-Format (verwende die numerischen Feature-IDs, nicht die Buchstaben):
+{json_example}"""
+                else:
+                    # Generic ranking prompt for non-summary features
+                    system_prompt = (
+                        "Du bist ein strenger Evaluator für Qualitäts-Rankings. "
+                        "Antworte ausschließlich im JSON-Format."
+                    )
+                    context_section = f"\nKONTEXT:\n{source_text[:1500]}...\n" if source_text else ""
+                    user_prompt = (
+                        f"Ordne alle Feature-IDs genau einmal einem Bucket zu. "
+                        f"Erlaubte Buckets: {buckets_list}.\n"
+                        f"{context_section}\n"
+                        f"Features (zufällig sortiert):\n"
+                        + "\n".join(feature_lines)
+                        + f"\n\nGib JSON im Format:\n{json_example}"
+                    )
 
                 raw_response = None
                 payload, raw_response = LLMAITaskRunner._request_json(
@@ -413,7 +725,7 @@ class LLMAITaskRunner:
                         "model_id": model_id,
                     },
                 )
-                bucket_map = LLMAITaskRunner._validate_bucket_payload(payload, features)
+                bucket_map = LLMAITaskRunner._validate_bucket_payload(payload, features, bucket_keys)
                 if not bucket_map:
                     raise ValueError("Invalid ranking payload")
 
@@ -831,15 +1143,76 @@ class LLMAITaskRunner:
         model_id: str,
         thread_ids: Iterable[int],
         scenario_id: int,
-        scenario: RatingScenarios
+        scenario: RatingScenarios,
+        task_type: str = "text_classification",
     ) -> None:
         """Classify texts into custom labels defined in scenario config."""
         client = LLMClientFactory.get_client_for_model(model_id)
 
         # Get custom labels from scenario config
-        config = scenario.config_json if isinstance(scenario.config_json, dict) else {}
-        custom_labels = config.get("classification_labels", ["positive", "negative", "neutral"])
-        label_descriptions = config.get("label_descriptions", {})
+        config = scenario.config_json
+        if isinstance(config, str):
+            try:
+                config = json.loads(config)
+            except (json.JSONDecodeError, TypeError):
+                config = {}
+        if not isinstance(config, dict):
+            config = {}
+
+        custom_labels = []
+        label_descriptions = {}
+
+        if isinstance(config.get("classification_labels"), list):
+            custom_labels = [label for label in config.get("classification_labels", []) if isinstance(label, str)]
+            if isinstance(config.get("label_descriptions"), dict):
+                label_descriptions = {
+                    key: value
+                    for key, value in config.get("label_descriptions", {}).items()
+                    if isinstance(key, str) and isinstance(value, str)
+                }
+        elif isinstance(config.get("labels"), list):
+            custom_labels = [label for label in config.get("labels", []) if isinstance(label, str)]
+        else:
+            categories = []
+            if isinstance(config.get("categories"), list):
+                categories = config.get("categories", [])
+            else:
+                eval_config = config.get("eval_config")
+                if isinstance(eval_config, dict):
+                    eval_config_inner = eval_config.get("config")
+                    if isinstance(eval_config_inner, dict) and isinstance(eval_config_inner.get("categories"), list):
+                        categories = eval_config_inner.get("categories", [])
+                    elif isinstance(eval_config.get("categories"), list):
+                        categories = eval_config.get("categories", [])
+
+            for category in categories:
+                label = None
+                description = None
+
+                if isinstance(category, str):
+                    label = category
+                elif isinstance(category, dict):
+                    label = category.get("id")
+                    name = category.get("name")
+                    if not label:
+                        if isinstance(name, dict):
+                            label = name.get("de") or name.get("en")
+                        elif isinstance(name, str):
+                            label = name
+
+                    desc = category.get("description")
+                    if isinstance(desc, dict):
+                        description = desc.get("de") or desc.get("en")
+                    elif isinstance(desc, str):
+                        description = desc
+
+                if label:
+                    custom_labels.append(str(label))
+                    if description:
+                        label_descriptions[str(label)] = str(description)
+
+        if not custom_labels:
+            custom_labels = ["positive", "negative", "neutral"]
 
         labels_text = ", ".join(f'"{label}"' for label in custom_labels)
         descriptions_text = ""
@@ -855,7 +1228,7 @@ class LLMAITaskRunner:
                     scenario_id=scenario_id,
                     thread_id=thread_id,
                     model_id=model_id,
-                    task_type="text_classification",
+                    task_type=task_type,
                 ).first()
                 if existing and existing.payload_json:
                     continue
@@ -892,7 +1265,7 @@ class LLMAITaskRunner:
                     user_prompt,
                     max_tokens=500,
                     trace={
-                        "task": "text_classification",
+                        "task": task_type,
                         "scenario_id": scenario_id,
                         "thread_id": thread_id,
                         "model_id": model_id,
@@ -900,7 +1273,7 @@ class LLMAITaskRunner:
                 )
                 classification_data = LLMAITaskRunner._validate_classification_payload(payload, custom_labels)
                 if classification_data is None:
-                    raise ValueError("Invalid text_classification payload")
+                    raise ValueError(f"Invalid {task_type} payload")
 
                 if existing:
                     existing.payload_json = classification_data
@@ -912,7 +1285,7 @@ class LLMAITaskRunner:
                         scenario_id=scenario_id,
                         thread_id=thread_id,
                         model_id=model_id,
-                        task_type="text_classification",
+                        task_type=task_type,
                         payload_json=classification_data,
                         raw_response=raw_response,
                         error=None,
@@ -924,7 +1297,7 @@ class LLMAITaskRunner:
                     scenario_id=scenario_id,
                     model_id=model_id,
                     thread_id=thread_id,
-                    task_type="text_classification",
+                    task_type=task_type,
                     result=classification_data,
                 )
 
@@ -934,7 +1307,7 @@ class LLMAITaskRunner:
                     scenario_id=scenario_id,
                     thread_id=thread_id,
                     model_id=model_id,
-                    task_type="text_classification",
+                    task_type=task_type,
                     error=str(exc),
                     raw_response=exc.raw_response,
                 )
@@ -943,18 +1316,18 @@ class LLMAITaskRunner:
                     scenario_id=scenario_id,
                     model_id=model_id,
                     thread_id=thread_id,
-                    task_type="text_classification",
+                    task_type=task_type,
                     error=str(exc),
                 )
             except Exception as exc:
                 db.session.rollback()
-                logger.warning("[LLM AI Runner] Text classification failed for thread %s: %s", thread_id, exc)
+                logger.warning("[LLM AI Runner] %s failed for thread %s: %s", task_type, thread_id, exc)
                 # Broadcast failure
                 _broadcast_task_failed(
                     scenario_id=scenario_id,
                     model_id=model_id,
                     thread_id=thread_id,
-                    task_type="text_classification",
+                    task_type=task_type,
                     error=str(exc),
                 )
 
@@ -1170,12 +1543,32 @@ class LLMAITaskRunner:
         return json.loads(raw)
 
     @staticmethod
-    def _validate_bucket_payload(payload: Dict[str, Any], features: List[Feature]) -> Optional[Dict[str, List[int]]]:
+    def _validate_bucket_payload(
+        payload: Dict[str, Any],
+        features: List[Feature],
+        bucket_keys: Optional[List[str]] = None
+    ) -> Optional[Dict[str, List[int]]]:
+        """
+        Validate bucket payload from LLM response.
+
+        Args:
+            payload: The parsed JSON response from LLM
+            features: List of features that should be assigned to buckets
+            bucket_keys: List of valid bucket names (lowercase). If None, uses defaults.
+
+        Returns:
+            Dictionary mapping bucket names to feature IDs, or None if invalid
+        """
         if not isinstance(payload, dict):
             return None
+
+        # Use provided bucket keys or fall back to defaults
+        valid_keys = bucket_keys if bucket_keys else ["gut", "mittel", "schlecht", "neutral"]
+
         expected_ids = {f.feature_id for f in features}
         buckets = {}
-        for key in ("gut", "mittel", "schlecht", "neutral"):
+
+        for key in valid_keys:
             ids = payload.get(key, [])
             if not isinstance(ids, list):
                 return None
@@ -1185,8 +1578,7 @@ class LLMAITaskRunner:
                     clean_ids.append(item)
                 elif isinstance(item, str) and item.strip().isdigit():
                     clean_ids.append(int(item.strip()))
-                else:
-                    return None
+                # Skip invalid items instead of failing completely
             buckets[key] = clean_ids
 
         all_ids = [fid for ids in buckets.values() for fid in ids]
@@ -1263,7 +1655,7 @@ class LLMAITaskRunner:
         payload: Dict[str, Any],
         allowed_labels: List[str]
     ) -> Optional[Dict[str, Any]]:
-        """Validate text_classification response with custom labels."""
+        """Validate labeling/classification response with custom labels."""
         if not isinstance(payload, dict):
             return None
         label = payload.get("label")

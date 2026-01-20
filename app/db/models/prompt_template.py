@@ -37,7 +37,7 @@ class PromptTemplate(db.Model):
         db.String(50),
         nullable=False,
         index=True,
-        comment="ranking, rating, authenticity, mail_rating, comparison, text_classification"
+        comment="ranking, rating, authenticity, mail_rating, comparison, labeling, text_classification"
     )
     version: Mapped[str] = mapped_column(db.String(20), nullable=False, default="1.0")
 

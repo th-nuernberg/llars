@@ -295,6 +295,110 @@ class UserMailHistoryRating(db.Model):
         return self.evaluation_item
 
 
+class ItemDimensionRating(db.Model):
+    """
+    Multi-dimensional rating for an evaluation item.
+
+    Used for the new generalized rating system where items are evaluated
+    on multiple configurable dimensions (e.g., Coherence, Fluency, Relevance).
+    This is the base for both generic ratings and specialized types like mail_rating.
+
+    Example dimension_ratings JSON:
+    {
+        "coherence": 4,
+        "fluency": 5,
+        "relevance": 3,
+        "consistency": 4
+    }
+    """
+    __tablename__ = 'item_dimension_ratings'
+
+    id: Mapped[int] = mapped_column(db.Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
+    item_id: Mapped[int] = mapped_column(db.Integer, db.ForeignKey('evaluation_items.item_id'), nullable=False, index=True)
+    scenario_id: Mapped[int] = mapped_column(db.Integer, db.ForeignKey('rating_scenarios.id'), nullable=False, index=True)
+
+    # Dimension scores as JSON for flexibility
+    # Example: {"coherence": 4, "fluency": 5, "relevance": 3, "consistency": 4}
+    dimension_ratings: Mapped[dict] = mapped_column(db.JSON, nullable=False)
+
+    # Calculated weighted average of all dimensions
+    overall_score: Mapped[Optional[float]] = mapped_column(db.Float, nullable=True)
+
+    # Optional user feedback/notes
+    feedback: Mapped[Optional[str]] = mapped_column(db.TEXT, nullable=True)
+
+    # Progression status tracking
+    status: Mapped[ProgressionStatus] = mapped_column(
+        db.Enum(ProgressionStatus),
+        default=ProgressionStatus.NOT_STARTED,
+        nullable=False
+    )
+
+    # Timestamps
+    created_at: Mapped[datetime] = mapped_column(db.DateTime, default=datetime.utcnow, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(
+        db.DateTime,
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
+        nullable=False
+    )
+
+    # Relationships
+    user = db.relationship('User', backref='item_dimension_ratings')
+    item = db.relationship('EvaluationItem', backref='dimension_ratings')
+    scenario = db.relationship('RatingScenarios', backref='dimension_ratings')
+
+    # Backwards compatibility: thread_id is a synonym for item_id
+    thread_id = synonym('item_id')
+
+    __table_args__ = (
+        db.UniqueConstraint('user_id', 'item_id', 'scenario_id', name='uix_user_item_scenario_dim_rating'),
+    )
+
+    def calculate_overall_score(self, weights: dict = None) -> float:
+        """
+        Calculate weighted average from dimension ratings.
+
+        Args:
+            weights: Optional dict mapping dimension_id to weight.
+                     If not provided, equal weights are used.
+
+        Returns:
+            Weighted average score
+        """
+        if not self.dimension_ratings:
+            return 0.0
+
+        if weights:
+            total_weight = 0.0
+            weighted_sum = 0.0
+            for dim_id, score in self.dimension_ratings.items():
+                weight = weights.get(dim_id, 1.0)
+                weighted_sum += score * weight
+                total_weight += weight
+            return round(weighted_sum / total_weight, 2) if total_weight > 0 else 0.0
+        else:
+            # Equal weights
+            scores = list(self.dimension_ratings.values())
+            return round(sum(scores) / len(scores), 2) if scores else 0.0
+
+    def to_dict(self) -> dict:
+        """Convert to dictionary for API responses."""
+        return {
+            'id': self.id,
+            'user_id': self.user_id,
+            'item_id': self.item_id,
+            'scenario_id': self.scenario_id,
+            'dimension_ratings': self.dimension_ratings,
+            'overall_score': self.overall_score,
+            'feedback': self.feedback,
+            'status': self.status.value if self.status else None,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None
+        }
+
+
 class UserMessageRating(db.Model):
     __tablename__ = 'user_message_ratings'
     msg_rating_id = mapped_column(db.Integer, primary_key=True, autoincrement=True)

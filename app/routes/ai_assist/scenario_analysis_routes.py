@@ -12,6 +12,7 @@ from flask import jsonify, request, g, Response
 
 from auth.decorators import authentik_required
 from decorators.error_handler import handle_api_errors, ValidationError, NotFoundError
+from decorators.permission_decorator import require_permission
 from routes.auth import data_bp
 from services.ai_assist import FieldPromptService
 
@@ -79,6 +80,7 @@ def detect_field_types(items):
 
 @data_bp.post("/ai-assist/analyze-scenario-data")
 @authentik_required
+@require_permission('data:import')
 @handle_api_errors(logger_name='ai_assist')
 def analyze_scenario_data():
     """
@@ -228,6 +230,8 @@ def analyze_scenario_data():
 
 @data_bp.post("/ai-assist/analyze-scenario-data/stream")
 @authentik_required
+@require_permission('data:import')
+@handle_api_errors(logger_name='ai_assist')
 def analyze_scenario_data_stream():
     """
     Stream AI analysis of uploaded data using Server-Sent Events (SSE).
@@ -380,6 +384,92 @@ def analyze_scenario_data_stream():
 
         except Exception as e:
             print(f"AI scenario analysis stream failed: {e}")
+            yield f"event: error\ndata: {json.dumps({'error': str(e)})}\n\n"
+
+    return Response(
+        generate(),
+        mimetype='text/event-stream',
+        headers={
+            'Cache-Control': 'no-cache',
+            'X-Accel-Buffering': 'no',
+            'Connection': 'keep-alive'
+        }
+    )
+
+
+@data_bp.post("/ai-assist/scenario-chat/stream")
+@authentik_required
+@require_permission('data:import')
+@handle_api_errors(logger_name='ai_assist')
+def scenario_chat_stream():
+    """
+    Streaming chat for scenario configuration refinement.
+
+    Unlike /api/import/ai/chat-stream, this endpoint accepts data directly
+    rather than requiring an import session. Used by the Scenario Wizard.
+
+    Body:
+        data: Sample data items (required)
+        messages: Chat history [{role, content}] (required)
+        current_config: Current configuration to refine (optional)
+        filename: Original filename for context (optional)
+
+    SSE Events:
+        thinking: AI is processing
+        config_update: Configuration change (field + value)
+        chunk: Text chunk from LLM
+        done: Chat complete
+        error: Error occurred
+    """
+    from services.data_import.ai_analyzer import AIAnalyzer
+
+    request_data = request.get_json(silent=True) or {}
+
+    # Validate input
+    data = request_data.get('data', [])
+    messages = request_data.get('messages', [])
+
+    if not messages:
+        return Response(
+            f"event: error\ndata: {json.dumps({'error': 'messages array is required'})}\n\n",
+            mimetype='text/event-stream'
+        )
+
+    current_config = request_data.get('current_config', {})
+    filename = request_data.get('filename', 'data')
+
+    # Pre-fetch user info before generator
+    username = g.authentik_user.username if g.authentik_user else 'unknown'
+
+    # Initialize AI analyzer
+    ai_analyzer = AIAnalyzer()
+
+    def generate():
+        """Generator for SSE streaming - runs outside Flask context."""
+        try:
+            for event in ai_analyzer.chat_refine_streaming(
+                data=data,
+                messages=messages,
+                current_config=current_config,
+                filename=filename
+            ):
+                event_type = event.get('type', 'chunk')
+
+                if event_type == 'thinking':
+                    yield f"event: thinking\ndata: {json.dumps({'message': event.get('message', '')})}\n\n"
+                elif event_type == 'config':
+                    yield f"event: config_update\ndata: {json.dumps({'field': event.get('field'), 'value': event.get('value')})}\n\n"
+                elif event_type == 'chunk':
+                    yield f"event: chunk\ndata: {json.dumps({'content': event.get('content', '')})}\n\n"
+                elif event_type == 'done':
+                    yield f"event: done\ndata: {json.dumps({'config': event.get('config', {}), 'response': event.get('response', '')})}\n\n"
+                elif event_type == 'error':
+                    yield f"event: error\ndata: {json.dumps({'error': event.get('error', 'Unknown error')})}\n\n"
+
+            print(f"Scenario chat stream completed for {username}")
+
+        except Exception as e:
+            print(f"Scenario chat stream failed: {e}")
             yield f"event: error\ndata: {json.dumps({'error': str(e)})}\n\n"
 
     return Response(

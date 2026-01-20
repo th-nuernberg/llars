@@ -203,7 +203,7 @@
             </template>
           </ConfigCard>
 
-          <!-- Labels (for authenticity/classification) -->
+          <!-- Labels (for authenticity/labeling) -->
           <ConfigCard
             v-if="chat.showLabels.value"
             title="Labels"
@@ -442,7 +442,7 @@ const taskTypes = [
   { value: 'ranking', label: 'Ranking', icon: 'mdi-sort' },
   { value: 'comparison', label: 'Vergleich', icon: 'mdi-compare' },
   { value: 'authenticity', label: 'Echt/Fake', icon: 'mdi-shield-check' },
-  { value: 'classification', label: 'Klassifikation', icon: 'mdi-tag-multiple' },
+  { value: 'labeling', label: 'Klassifikation', icon: 'mdi-tag-multiple' },
   { value: 'mail_rating', label: 'Mail Rating', icon: 'mdi-email-star' }
 ]
 

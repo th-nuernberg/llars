@@ -17,11 +17,11 @@
       <!-- Secondary Stats -->
       <div class="secondary-stats">
         <div class="stat-row">
-          <v-icon size="16" class="mr-2" color="rgba(255,255,255,0.5)">mdi-format-list-bulleted</v-icon>
+          <v-icon size="16" class="mr-2 stat-icon">mdi-format-list-bulleted</v-icon>
           <span>{{ fieldCount }} {{ $t('scenarioWizard.analysis.fields') }}</span>
         </div>
         <div class="stat-row">
-          <v-icon size="16" class="mr-2" color="rgba(255,255,255,0.5)">mdi-file-multiple</v-icon>
+          <v-icon size="16" class="mr-2 stat-icon">mdi-file-multiple</v-icon>
           <span>{{ fileCount }} {{ $t('scenarioWizard.analysis.files') }}</span>
         </div>
       </div>
@@ -79,10 +79,13 @@ const showFields = ref(false)
 
 <style scoped>
 .data-stats-card {
-  background: rgba(255, 255, 255, 0.03);
+  background: rgba(var(--v-theme-on-surface), 0.02);
   border: 1px solid rgba(136, 196, 200, 0.3);
   border-radius: 12px 4px 12px 4px;
   overflow: hidden;
+  height: 200px;
+  display: flex;
+  flex-direction: column;
 }
 
 .card-header {
@@ -102,6 +105,8 @@ const showFields = ref(false)
   display: flex;
   flex-direction: column;
   gap: 12px;
+  flex: 1;
+  overflow-y: auto;
 }
 
 /* Main Stat */
@@ -112,13 +117,13 @@ const showFields = ref(false)
 .stat-value {
   font-size: 32px;
   font-weight: 700;
-  color: #fff;
+  color: rgb(var(--v-theme-on-surface));
   line-height: 1;
 }
 
 .stat-label {
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.5);
+  color: rgba(var(--v-theme-on-surface), 0.5);
   text-transform: uppercase;
   letter-spacing: 0.5px;
   margin-top: 4px;
@@ -135,12 +140,16 @@ const showFields = ref(false)
   display: flex;
   align-items: center;
   font-size: 13px;
-  color: rgba(255, 255, 255, 0.7);
+  color: rgba(var(--v-theme-on-surface), 0.7);
+}
+
+.stat-icon {
+  color: rgba(var(--v-theme-on-surface), 0.5);
 }
 
 /* Fields Section */
 .fields-section {
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  border-top: 1px solid rgba(var(--v-theme-on-surface), 0.1);
   padding-top: 12px;
 }
 
@@ -149,13 +158,13 @@ const showFields = ref(false)
   align-items: center;
   gap: 6px;
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.6);
+  color: rgba(var(--v-theme-on-surface), 0.6);
   cursor: pointer;
   user-select: none;
 }
 
 .fields-header:hover {
-  color: rgba(255, 255, 255, 0.8);
+  color: rgba(var(--v-theme-on-surface), 0.8);
 }
 
 .fields-header .v-icon {
@@ -179,12 +188,12 @@ const showFields = ref(false)
   gap: 8px;
   font-size: 12px;
   padding: 4px 8px;
-  background: rgba(255, 255, 255, 0.03);
+  background: rgba(var(--v-theme-on-surface), 0.03);
   border-radius: 4px;
 }
 
 .field-name {
-  color: rgba(255, 255, 255, 0.9);
+  color: rgba(var(--v-theme-on-surface), 0.9);
   font-family: monospace;
   flex: 1;
 }
@@ -200,7 +209,7 @@ const showFields = ref(false)
 .field-completeness {
   width: 40px;
   height: 4px;
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(var(--v-theme-on-surface), 0.1);
   border-radius: 2px;
   overflow: hidden;
 }

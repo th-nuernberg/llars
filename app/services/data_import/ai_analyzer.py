@@ -93,7 +93,7 @@ Analyze and return a JSON object with:
    - "role_field": Field for message role (user/assistant)
    - "content_field": Field for message content
    - "subject_field": Field for conversation subject (optional)
-4. "suggested_task_type": Best evaluation type ("rating", "ranking", "comparison", "mail_rating", "authenticity")
+4. "suggested_task_type": Best evaluation type ("rating", "ranking", "comparison", "mail_rating", "authenticity", "labeling")
 5. "reasoning": Brief explanation of your analysis
 6. "warnings": List of any issues or concerns
 
@@ -313,13 +313,31 @@ DATENBEISPIEL:
 {sample_json}
 ```
 
-VERFÜGBARE TASK-TYPEN in LLARS:
+VERFÜGBARE TASK-TYPEN in LLARS (NUR diese Werte):
 1. "rating" - Einzelne Einträge auf Skala bewerten (z.B. 1-5 Sterne)
 2. "ranking" - Mehrere Einträge nach Kriterium sortieren
 3. "comparison" - Zwei Antworten/Texte direkt vergleichen (A vs B)
 4. "mail_rating" - E-Mail/Chat-Konversationen bewerten
 5. "authenticity" - Echt/Fake erkennen (ist es von Mensch oder KI?)
-6. "classification" - Labels/Kategorien zuweisen
+6. "labeling" - Labels/Kategorien zuweisen (Klassifikation)
+
+LLARS ZIELFORMAT (vereinfachte Beispiele pro Item):
+- conversation:
+  {{"id":"id-1","conversation":[{{"role":"user","content":"..."}},{{"role":"assistant","content":"..."}}],"subject":"...","metadata":{{...}}}}
+- single_text:
+  {{"id":"id-2","content":"...","subject":"...","metadata":{{...}}}}
+- comparison (text_pair):
+  {{"id":"id-3","text_a":"...","text_b":"...","label_a":"A","label_b":"B"}}
+- labeling/authenticity:
+  {{"id":"id-4","content":"...","label":"optional-ground-truth"}}
+
+Hinweise zur Typ-Erkennung:
+- comparison: zwei Antwortfelder (A/B, response_a/response_b, text_a/text_b)
+- ranking: Rang/Position/Bucket oder gruppierte Items, die sortiert werden sollen
+- labeling: Kategorien/Labels im Datensatz oder klares Klassifikationsziel
+- authenticity: Labels wie is_fake, generated_by, synthetic/real
+- mail_rating: mehrteilige Konversationen oder E-Mails mit subject/thread
+- rating: einzelne Texte oder Antworten mit Qualitätsbewertung
 
 Analysiere und gib ein JSON-Objekt zurück mit:
 
@@ -344,6 +362,7 @@ WICHTIG:
 - evaluation_criteria nur bei rating/mail_rating relevant
 - role_mapping für Konversationen (wer ist user, wer assistant)
 - field_mapping: Pfade wie "messages[].content" sind erlaubt
+- task_type muss einer der obigen Werte sein (nutze "labeling", nicht "classification")
 
 Gib NUR valides JSON zurück, keine Markdown-Formatierung."""
 
@@ -510,18 +529,28 @@ DEINE AUFGABE:
 2. Extrahiere Konfigurationswerte aus dem Gespräch
 3. Gib strukturierte Updates und freundliche Antworten
 
-VERFÜGBARE TASK-TYPEN:
+VERFÜGBARE TASK-TYPEN (NUR diese Werte):
 - "rating": Einzelne Einträge auf Skala bewerten (z.B. 1-5 Sterne)
 - "ranking": Mehrere Einträge sortieren/in Buckets einteilen
 - "comparison": Zwei Antworten direkt vergleichen (A vs B)
 - "mail_rating": E-Mail/Chat-Konversationen bewerten
 - "authenticity": Echt/Fake erkennen (Mensch vs KI)
-- "classification": Labels/Kategorien zuweisen
+- "labeling": Labels/Kategorien zuweisen (Klassifikation)
+
+LLARS ZIELFORMAT (vereinfachte Beispiele pro Item):
+- conversation:
+  {"id":"id-1","conversation":[{"role":"user","content":"..."},{"role":"assistant","content":"..."}],"subject":"...","metadata":{...}}
+- single_text:
+  {"id":"id-2","content":"...","subject":"...","metadata":{...}}
+- comparison (text_pair):
+  {"id":"id-3","text_a":"...","text_b":"...","label_a":"A","label_b":"B"}
+- labeling/authenticity:
+  {"id":"id-4","content":"...","label":"optional-ground-truth"}
 
 KONFIGURATIONSSTRUKTUR:
 Wenn der Benutzer Labels, Buckets oder Skalen definieren möchte, extrahiere diese.
 
-Labels (für authenticity/classification):
+Labels (für authenticity/labeling):
 [{"name": "echt", "color": "#98d4bb", "description": "Von Menschen"}, ...]
 
 Buckets (für ranking):
@@ -550,6 +579,7 @@ WICHTIG:
 - Gib nur Felder im config-Block an, die du ändern möchtest
 - Lass Felder weg, die unverändert bleiben
 - Wenn nichts geändert werden soll, lass den config-Block weg
+- task_type muss einer der obigen Werte sein (nutze "labeling", nicht "classification")
 - Antworte immer auf Deutsch und freundlich"""
 
         # Build user context

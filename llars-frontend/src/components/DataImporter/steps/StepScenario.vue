@@ -413,12 +413,14 @@ const generateAiSuggestion = () => {
     taskType = 'mail_rating'
     reasoning = 'Deine Daten enthalten Konversationen. Empfehlung: Mail-Rating für die Bewertung der gesamten Gesprächsqualität.'
   } else if (structure.detected_item_type === 'single_text') {
-    taskType = 'text_rating'
-    reasoning = 'Deine Daten enthalten einzelne Texte. Empfehlung: Text-Rating für die Bewertung der Textqualität.'
+    taskType = 'rating'
+    reasoning = 'Deine Daten enthalten einzelne Texte. Empfehlung: Rating-Task für die Bewertung der Textqualität.'
   } else {
     taskType = suggestedType || 'rating'
     reasoning = 'Basierend auf der Datenstruktur empfehlen wir einen Rating-Task für flexible Bewertungen.'
   }
+
+  taskType = normalizeTaskType(taskType)
 
   aiSuggestion.value = {
     taskType,
@@ -429,9 +431,17 @@ const generateAiSuggestion = () => {
   }
 }
 
+const normalizeTaskType = (taskType) => {
+  if (taskType === 'classification') return 'labeling'
+  if (taskType === 'text_classification') return 'labeling'
+  if (taskType === 'text_rating') return 'rating'
+  return taskType
+}
+
 const generateDefaultName = (taskType) => {
   const today = new Date()
   const dateStr = today.toISOString().split('T')[0]
+  const normalizedType = normalizeTaskType(taskType)
   const typeNames = {
     rating: 'Rating',
     ranking: 'Ranking',
@@ -439,10 +449,9 @@ const generateDefaultName = (taskType) => {
     comparison: 'Vergleich',
     authenticity: 'Authentizität',
     judge: 'LLM-Judge',
-    text_classification: 'Klassifikation',
-    text_rating: 'Text-Rating'
+    labeling: 'Labeling'
   }
-  return `${typeNames[taskType] || 'Evaluation'} ${dateStr}`
+  return `${typeNames[normalizedType] || 'Evaluation'} ${dateStr}`
 }
 
 const applyAiSuggestion = () => {
@@ -501,20 +510,22 @@ const taskTypes = [
   { value: 'comparison', name: 'Comparison', icon: 'mdi-compare', color: 'purple', description: 'Paarweiser Vergleich (A vs B)' },
   { value: 'authenticity', name: 'Authenticity', icon: 'mdi-shield-check', color: 'orange', description: 'Fake/Real Unterscheidung' },
   { value: 'judge', name: 'Chatbot Arena', icon: 'mdi-sword-cross', color: 'teal', description: 'Paarweise Vergleiche im Arena-Modus' },
-  { value: 'text_classification', name: 'Text Classification', icon: 'mdi-label-multiple', color: 'indigo', description: 'Texte in Kategorien einordnen' },
-  { value: 'text_rating', name: 'Text Rating', icon: 'mdi-text-box-check', color: 'cyan', description: 'Einzelne Texte bewerten (Reviews, etc.)' }
+  { value: 'labeling', name: 'Labeling', icon: 'mdi-label-multiple', color: 'indigo', description: 'Texte in Kategorien einordnen' }
 ]
 
 const getTaskTypeIcon = (type) => {
-  return taskTypes.find(t => t.value === type)?.icon || 'mdi-help-circle'
+  const normalizedType = normalizeTaskType(type)
+  return taskTypes.find(t => t.value === normalizedType)?.icon || 'mdi-help-circle'
 }
 
 const getTaskTypeColor = (type) => {
-  return taskTypes.find(t => t.value === type)?.color || 'grey'
+  const normalizedType = normalizeTaskType(type)
+  return taskTypes.find(t => t.value === normalizedType)?.color || 'grey'
 }
 
 const getTaskTypeName = (type) => {
-  return taskTypes.find(t => t.value === type)?.name || type
+  const normalizedType = normalizeTaskType(type)
+  return taskTypes.find(t => t.value === normalizedType)?.name || normalizedType
 }
 
 const distributionModes = [

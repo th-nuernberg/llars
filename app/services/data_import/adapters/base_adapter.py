@@ -17,7 +17,9 @@ class TaskType(str, Enum):
     MAIL_RATING = "mail_rating"
     COMPARISON = "comparison"
     AUTHENTICITY = "authenticity"
+    LABELING = "labeling"
     JUDGE = "judge"
+    # Legacy aliases (kept for backward compatibility)
     TEXT_CLASSIFICATION = "text_classification"
     TEXT_RATING = "text_rating"
 

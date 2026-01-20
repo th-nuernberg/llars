@@ -204,7 +204,7 @@ class GenericAdapter(BaseAdapter):
 
         # Suggest task type based on item type
         task_type_mapping = {
-            ItemType.SINGLE_TEXT: TaskType.TEXT_RATING,
+            ItemType.SINGLE_TEXT: TaskType.RATING,
             ItemType.QA_PAIR: TaskType.RATING,
             ItemType.TEXT_PAIR: TaskType.COMPARISON,
             ItemType.CONVERSATION: TaskType.MAIL_RATING,

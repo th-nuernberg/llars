@@ -109,7 +109,7 @@
     <!-- AI Chat Panel -->
     <AIChatPanel
       v-if="showChat"
-      :session-id="sessionId"
+      :data="analyzedData"
       :current-config="config"
       :initial-message="chatInitialMessage"
       @config-update="handleChatConfigUpdate"
@@ -132,9 +132,9 @@ import { useStreamingParser, FIELD_STATE } from './useStreamingParser'
 const { t } = useI18n()
 
 const props = defineProps({
-  sessionId: {
-    type: String,
-    default: null
+  analyzedData: {
+    type: Array,
+    default: () => []
   },
   dataSummary: {
     type: Object,
@@ -209,7 +209,18 @@ function updateConfig(field, value) {
 }
 
 function handleChatConfigUpdate({ field, value }) {
-  config[field] = value
+  console.log('Chat config update received:', { field, value })
+
+  // Map backend field names to frontend field names
+  const fieldMapping = {
+    'task_type': 'evalType',
+    'scenario_name': 'scenarioName',
+    'scenario_description': 'scenarioDescription'
+  }
+  const mappedField = fieldMapping[field] || field
+
+  config[mappedField] = value
+  console.log('Emitting config update:', { ...config })
   emit('update:config', { ...config })
 }
 
@@ -229,7 +240,7 @@ defineExpose({
 
 <style scoped>
 .streaming-analysis-panel {
-  background: rgba(255, 255, 255, 0.01);
+  background: rgba(var(--v-theme-on-surface), 0.01);
   border: 1px solid rgba(176, 202, 151, 0.2);
   border-radius: 20px 6px 20px 6px;
   overflow: hidden;
@@ -284,22 +295,22 @@ defineExpose({
   }
 }
 
-/* Individual card classes for styling if needed */
+/* Individual card classes - fixed heights for consistent layout */
 .card-eval-type {
-  min-height: 200px;
+  height: 220px;
 }
 
 .card-scenario {
-  min-height: 200px;
+  height: 220px;
 }
 
 .card-reasoning {
-  /* Full width by default */
+  /* Full width by default, height controlled by component */
 }
 
 .card-data,
 .card-quality {
-  /* Equal width in stats row */
+  height: 200px;
 }
 
 /* Config Generating Indicator */
@@ -311,7 +322,7 @@ defineExpose({
   background: rgba(176, 202, 151, 0.08);
   border: 1px dashed rgba(176, 202, 151, 0.3);
   border-radius: 12px 4px 12px 4px;
-  color: rgba(255, 255, 255, 0.7);
+  color: rgba(var(--v-theme-on-surface), 0.7);
   font-size: 14px;
   animation: pulse-border 2s ease-in-out infinite;
 }

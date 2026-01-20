@@ -104,10 +104,13 @@ const completenessColor = computed(() => {
 
 <style scoped>
 .data-quality-card {
-  background: rgba(255, 255, 255, 0.03);
+  background: rgba(var(--v-theme-on-surface), 0.02);
   border: 1px solid rgba(152, 212, 187, 0.3);
   border-radius: 12px 4px 12px 4px;
   overflow: hidden;
+  height: 200px;
+  display: flex;
+  flex-direction: column;
 }
 
 .card-header {
@@ -120,6 +123,7 @@ const completenessColor = computed(() => {
   text-transform: uppercase;
   letter-spacing: 0.5px;
   color: #98d4bb;
+  flex-shrink: 0;
 }
 
 .card-content {
@@ -127,27 +131,29 @@ const completenessColor = computed(() => {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  flex: 1;
+  overflow-y: auto;
 }
 
 /* Loading Skeleton */
 .skeleton-bar {
   width: 100%;
   height: 8px;
-  background: #3a3a3a;
+  background: rgba(var(--v-theme-on-surface), 0.12);
   border-radius: 4px;
   animation: skeleton-pulse 1.5s ease-in-out infinite;
 }
 
 .skeleton-line {
   height: 12px;
-  background: #3a3a3a;
+  background: rgba(var(--v-theme-on-surface), 0.12);
   border-radius: 4px;
   animation: skeleton-pulse 1.5s ease-in-out infinite;
 }
 
 @keyframes skeleton-pulse {
-  0%, 100% { opacity: 0.3; }
-  50% { opacity: 0.7; }
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 0.8; }
 }
 
 /* Completeness */
@@ -160,7 +166,7 @@ const completenessColor = computed(() => {
 .completeness-bar-container {
   flex: 1;
   height: 8px;
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(var(--v-theme-on-surface), 0.1);
   border-radius: 4px;
   overflow: hidden;
 }
@@ -181,7 +187,7 @@ const completenessColor = computed(() => {
 /* Issues */
 .issues-section,
 .recommendations-section {
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  border-top: 1px solid rgba(var(--v-theme-on-surface), 0.08);
   padding-top: 10px;
 }
 
@@ -192,7 +198,7 @@ const completenessColor = computed(() => {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.3px;
-  color: rgba(255, 255, 255, 0.7);
+  color: rgba(var(--v-theme-on-surface), 0.7);
   margin-bottom: 8px;
 }
 
@@ -209,7 +215,7 @@ const completenessColor = computed(() => {
   align-items: flex-start;
   gap: 8px;
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.8);
+  color: rgba(var(--v-theme-on-surface), 0.8);
   line-height: 1.4;
 }
 

@@ -38,7 +38,7 @@ export function useWizardChat(sessionId) {
   // Computed: which config sections to show based on task type
   const showLabels = computed(() => {
     const taskType = streamingFields.task_type.value || config.value.task_type
-    return ['authenticity', 'classification'].includes(taskType)
+    return ['authenticity', 'classification', 'labeling', 'text_classification'].includes(taskType)
   })
 
   const showBuckets = computed(() => {

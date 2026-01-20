@@ -50,7 +50,7 @@
             :title="$t('scenarioManager.wizard.step1.dataFormatTooltipTitle')"
             :aria-label="$t('scenarioManager.wizard.step1.dataFormatTooltipTitle')"
             location="bottom"
-            max-width="420"
+            max-width="520"
           >
             <div>{{ $t('scenarioManager.wizard.step1.dataFormatTooltipIntro') }}</div>
             <ul>
@@ -60,6 +60,22 @@
               <li>{{ $t('scenarioManager.wizard.step1.dataFormatTooltipItem4') }}</li>
               <li>{{ $t('scenarioManager.wizard.step1.dataFormatTooltipItem5') }}</li>
             </ul>
+            <div class="mt-3"><strong>{{ $t('scenarioManager.wizard.step1.idealDataTitle') }}</strong></div>
+            <div class="format-examples">
+              <div class="format-example">
+                <span class="format-label">{{ $t('scenarioManager.wizard.step1.idealDataSingleLabel') }}:</span>
+                <code>{{ $t('scenarioManager.wizard.step1.idealDataSingleExample') }}</code>
+              </div>
+              <div class="format-example">
+                <span class="format-label">{{ $t('scenarioManager.wizard.step1.idealDataRankingLabel') }}:</span>
+                <code>{{ $t('scenarioManager.wizard.step1.idealDataRankingExample') }}</code>
+                <div class="format-hint">{{ $t('scenarioManager.wizard.step1.idealDataRankingHint') }}</div>
+              </div>
+              <div class="format-example">
+                <span class="format-label">{{ $t('scenarioManager.wizard.step1.idealDataComparisonLabel') }}:</span>
+                <code>{{ $t('scenarioManager.wizard.step1.idealDataComparisonExample') }}</code>
+              </div>
+            </div>
           </LInfoTooltip>
         </div>
         <p class="step-description">{{ $t('scenarioManager.wizard.step1.description') }}</p>
@@ -156,6 +172,7 @@
           <StreamingAnalysisPanel
             v-if="analyzing || analysisResult || streamingPhase"
             ref="analysisPanel"
+            :analyzed-data="analyzedData"
             :data-summary="dataSummaryForPanel"
             :data-quality="analysisResult?.dataQuality"
             :show-chat="streamingPhase === 'done' && analysisResult?.aiPowered"
@@ -1462,6 +1479,8 @@ function performLocalAnalysis(allData, fileResults, totalErrors) {
 
 // Handle config updates from StreamingAnalysisPanel
 function handleAnalysisPanelConfigUpdate(config) {
+  console.log('Config update from AI chat:', config)
+
   if (config.evalType) {
     formData.value.evalType = config.evalType
   }
@@ -1471,15 +1490,80 @@ function handleAnalysisPanelConfigUpdate(config) {
   if (config.scenarioDescription) {
     formData.value.description = config.scenarioDescription
   }
-  // Handle additional config like labels, scales, buckets
-  if (config.labels) {
-    formData.value.labels = config.labels
-  }
-  if (config.scales) {
-    formData.value.scales = config.scales
-  }
-  if (config.buckets) {
-    formData.value.buckets = config.buckets
+
+  // Ensure evalConfig is initialized before applying detailed config updates
+  const hasConfigUpdates = config.labels || config.scales || config.buckets ||
+    config.categories || config.criteria || config.min !== undefined ||
+    config.max !== undefined || config.step !== undefined
+
+  if (hasConfigUpdates) {
+    // Initialize evalConfig if not present
+    if (!formData.value.evalConfig) {
+      const evalType = config.evalType || formData.value.evalType || EVAL_TYPES.RATING
+      formData.value.evalConfig = {
+        presetId: 'custom',
+        config: getDefaultConfig(evalType) || {}
+      }
+    }
+    if (!formData.value.evalConfig.config) {
+      formData.value.evalConfig.config = {}
+    }
+
+    // Apply config updates
+    if (config.labels) {
+      // For authenticity/labeling types, labels map to categories
+      const evalType = formData.value.evalType
+      const defaultColors = ['#98d4bb', '#e8a087', '#88c4c8', '#D1BC8A', '#b0ca97']
+
+      if (evalType === EVAL_TYPES.AUTHENTICITY || evalType === EVAL_TYPES.LABELING) {
+        // Convert labels to categories format
+        const categories = config.labels.map((label, idx) => ({
+          id: label.name?.toLowerCase().replace(/\s+/g, '-') || `label-${idx}`,
+          name: { de: label.name, en: label.name },
+          description: label.description ? { de: label.description, en: label.description } : undefined,
+          color: label.color || defaultColors[idx % defaultColors.length]
+        }))
+        formData.value.evalConfig.config.categories = categories
+        console.log('Applied labels as categories:', categories)
+      } else {
+        formData.value.evalConfig.config.labels = config.labels
+        console.log('Applied labels:', config.labels)
+      }
+      formData.value.evalConfig.presetId = 'custom'
+    }
+    if (config.scales) {
+      formData.value.evalConfig.config.scales = config.scales
+      formData.value.evalConfig.presetId = 'custom'
+      console.log('Applied scales:', config.scales)
+    }
+    if (config.buckets) {
+      formData.value.evalConfig.config.buckets = config.buckets
+      formData.value.evalConfig.presetId = 'custom'
+      console.log('Applied buckets:', config.buckets)
+    }
+    if (config.categories) {
+      formData.value.evalConfig.config.categories = config.categories
+      formData.value.evalConfig.presetId = 'custom'
+      console.log('Applied categories:', config.categories)
+    }
+    if (config.criteria) {
+      formData.value.evalConfig.config.criteria = config.criteria
+      formData.value.evalConfig.presetId = 'custom'
+      console.log('Applied criteria:', config.criteria)
+    }
+    // Handle rating config (min, max, step)
+    if (config.min !== undefined) {
+      formData.value.evalConfig.config.min = config.min
+      formData.value.evalConfig.presetId = 'custom'
+    }
+    if (config.max !== undefined) {
+      formData.value.evalConfig.config.max = config.max
+      formData.value.evalConfig.presetId = 'custom'
+    }
+    if (config.step !== undefined) {
+      formData.value.evalConfig.config.step = config.step
+      formData.value.evalConfig.presetId = 'custom'
+    }
   }
 }
 
@@ -1560,8 +1644,7 @@ function getTaskType(evalType) {
     [EVAL_TYPES.MAIL_RATING]: 'mail_rating',
     [EVAL_TYPES.COMPARISON]: 'comparison',
     [EVAL_TYPES.AUTHENTICITY]: 'authenticity',
-    [EVAL_TYPES.LABELING]: 'text_classification',
-    [EVAL_TYPES.TEXT_RATING]: 'text_rating'
+    [EVAL_TYPES.LABELING]: 'labeling'
   }
   return taskTypeMapping[evalType] || 'mail_rating'
 }
@@ -1773,6 +1856,39 @@ onMounted(() => {
   font-size: 0.9rem;
   color: rgba(var(--v-theme-on-surface), 0.6);
   margin-bottom: 24px;
+}
+
+/* Format Examples in Tooltip */
+.format-examples {
+  margin-top: 8px;
+}
+
+.format-example {
+  margin-bottom: 8px;
+}
+
+.format-label {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+
+.format-example code {
+  display: block;
+  font-size: 0.7rem;
+  background: rgba(0, 0, 0, 0.1);
+  padding: 4px 8px;
+  border-radius: 4px;
+  word-break: break-all;
+  white-space: pre-wrap;
+}
+
+.format-hint {
+  font-size: 0.7rem;
+  color: rgba(255, 255, 255, 0.7);
+  margin-top: 2px;
+  font-style: italic;
 }
 
 .subsection-title {

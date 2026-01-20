@@ -2351,7 +2351,24 @@
       "results": "Results",
       "team": "Team",
       "myScenarios": "My Scenarios",
-      "invitations": "Invitations"
+      "invitations": "Invitations",
+      "dataFormat": "Data format"
+    },
+    "dataFormat": {
+      "title": "Ideal data format (quick examples)",
+      "intro": "The clearer the structure, the better the AI can detect type and mapping.",
+      "tip1": "JSON: array of objects, each object = one item/thread.",
+      "tip2": "CSV/XLSX: one row per item, columns = fields.",
+      "tip3": "Descriptive field names help (e.g., text/message/body, label/category, rating/score).",
+      "tip4": "The AI looks for similar field names and example values to infer suitable mappings.",
+      "tip5": "Unknown fields are preserved and treated as additional context.",
+      "singleLabel": "Single text (rating/labeling)",
+      "singleExample": "[{\"id\":\"1\",\"text\":\"...\",\"label\":\"positive\"}]",
+      "conversationLabel": "Conversation (mail rating/authenticity)",
+      "conversationExample": "{\"id\":\"1\",\"messages\":[{\"role\":\"user\",\"content\":\"...\"},{\"role\":\"assistant\",\"content\":\"...\"}]}",
+      "comparisonLabel": "Comparison (A/B)",
+      "comparisonExample": "{\"id\":\"1\",\"text_a\":\"...\",\"text_b\":\"...\"}",
+      "hint": "Field names like text/message/label/score help with automatic mapping."
     },
     "card": {
       "evaluators": "Evaluators",
@@ -2387,6 +2404,18 @@
         "dataFormatTooltipItem3": "Use clear field names (e.g. text/message/body, label/category, rating/score).",
         "dataFormatTooltipItem4": "The AI looks for similar field names and example values to infer mappings.",
         "dataFormatTooltipItem5": "Unknown fields are kept and treated as additional context.",
+        "idealDataTitle": "Ideal Data Format (Quick Examples)",
+        "idealDataIntro": "The clearer the structure, the better the AI can detect type and mapping.",
+        "idealDataSingleLabel": "Single Text (Rating/Labeling)",
+        "idealDataSingleExample": "[{\"id\":\"1\",\"text\":\"...\",\"label\":\"positive\"}]",
+        "idealDataConversationLabel": "Conversation (Mail Rating/Authenticity)",
+        "idealDataConversationExample": "{\"id\":\"1\",\"messages\":[{\"role\":\"user\",\"content\":\"...\"},{\"role\":\"assistant\",\"content\":\"...\"}]}",
+        "idealDataComparisonLabel": "Comparison (A/B)",
+        "idealDataComparisonExample": "{\"id\":\"1\",\"text_a\":\"...\",\"text_b\":\"...\"}",
+        "idealDataRankingLabel": "Ranking (e.g. Summaries)",
+        "idealDataRankingExample": "{\"source_text\":\"Original text...\",\"items\":[{\"id\":\"A\",\"content\":\"Item 1...\"},{\"id\":\"B\",\"content\":\"Item 2...\"}]}",
+        "idealDataRankingHint": "source_text = context (right panel), items = items to rank (left panel)",
+        "idealDataHint": "Field names like text/message/label/score help automatic mapping.",
         "dropFiles": "Drop files here or click to select",
         "supportedFormats": "Supported formats: JSON, CSV, XLSX",
         "multiFileHint": "Select multiple files with Cmd+A or Ctrl+A",
@@ -2513,9 +2542,14 @@
         "allowHalfSteps": "Allow Half Steps",
         "scaleLabels": "Scale Labels",
         "labelPlaceholder": "Enter label...",
-        "dimensions": "Dimensions",
+        "dimensions": "Rating Dimensions",
+        "dimensionsHint": "Define custom dimensions on which the text should be rated.",
         "addDimension": "Add Dimension",
-        "dimensionName": "Dimension Name"
+        "dimensionName": "Dimension Name",
+        "dimensionDescription": "Description (What should be rated here?)",
+        "dimensionWeight": "Weight",
+        "totalWeight": "Total Weight",
+        "shouldBe100": "should be 100%"
       },
       "ranking": {
         "rankingType": "Ranking Type",
@@ -2887,8 +2921,58 @@
         "poor": "Poor / tentative",
         "tentative": "Tentative conclusions only",
         "acceptable": "Acceptable for tentative conclusions",
-        "reliable": "Good reliability"
+        "reliable": "Good reliability",
+        "perfectNegative": "Perfect negative correlation",
+        "noCorrelation": "No correlation",
+        "perfectPositive": "Perfect positive correlation"
       }
+    },
+    "session": {
+      "title": "Evaluation",
+      "back": "Back to Overview",
+      "progress": "{done} of {total} rated",
+      "progressLabel": "Progress",
+      "item": "Item {current} of {total}",
+      "previousItem": "Previous Item",
+      "nextItem": "Next Item",
+      "loading": "Loading data...",
+      "empty": "No items available for evaluation",
+      "emptyHint": "You may not have been assigned any items yet.",
+      "complete": "Evaluation Complete!",
+      "completeMessage": "You have rated all assigned items.",
+      "backToOverview": "Back to Overview",
+      "error": "Error loading data",
+      "errorHint": "Please try again or contact the administrator.",
+      "retry": "Try Again",
+      "selectFeature": "Select a feature from the list",
+      "selectFeatureHint": "Click on a feature on the left to rate it",
+      "featureTypes": {
+        "all": "All",
+        "general": "General",
+        "quality": "Quality",
+        "custom": "Custom"
+      },
+      "noFeaturesForThread": "No features available for this thread",
+      "threadProgress": "{done} of {total} features rated",
+      "markComplete": "Mark as Complete",
+      "saveAndNext": "Save & Next"
+    },
+    "rating": {
+      "title": "Rating",
+      "good": "Good",
+      "bad": "Bad",
+      "notRated": "Not rated",
+      "rated": "Rated",
+      "scale": {
+        "1": "Very good",
+        "2": "Good",
+        "3": "Neutral",
+        "4": "Bad",
+        "5": "Very bad"
+      },
+      "editContent": "Edit Content",
+      "editHint": "You can edit the text to suggest corrections",
+      "saveRating": "Save Rating"
     }
   },
   "promptEngineering": {
@@ -3178,8 +3262,65 @@
     },
     "rating": {
       "pageTitle": "Rating",
-      "pageSubtitle": "Open a case and rate the individual features.",
-      "emptyTitle": "No rating cases available"
+      "pageSubtitle": "Open a case and rate the text on multiple dimensions.",
+      "emptyTitle": "No rating cases available",
+      "context": "Context",
+      "content": "Content",
+      "dimensions": "Rating Dimensions",
+      "features": "Rate Features",
+      "rated": "rated",
+      "noFeatures": "No features available",
+      "noFeaturesHint": "No features found for this thread.",
+      "noMessages": "No context available",
+      "noContent": "No content available",
+      "keyboardHint": "Keys 1-5 to rate, ↑↓ navigation",
+      "autoSaveEnabled": "Auto-save active",
+      "completeAndNext": "Complete & Next",
+      "saveAndNext": "Save & Next",
+      "complete": "Complete",
+      "overallScore": "Overall Score",
+      "dimensionsRated": "dimensions rated",
+      "rateDimension": "Rate dimension",
+      "messages": "Messages",
+      "counselor": "Counselor",
+      "client": "Client",
+      "system": "System",
+      "feedbackPlaceholder": "Optional feedback or notes...",
+      "feedback": "Feedback",
+      "progress": "Progress",
+      "itemsCompleted": "items completed",
+      "scale": {
+        "good": "Good",
+        "bad": "Bad"
+      },
+      "labels": {
+        "veryPoor": "Very poor",
+        "poor": "Poor",
+        "acceptable": "Acceptable",
+        "good": "Good",
+        "veryGood": "Very good"
+      },
+      "dimensions": {
+        "coherence": "Coherence",
+        "coherenceDesc": "Logical structure and flow",
+        "fluency": "Fluency",
+        "fluencyDesc": "Language quality and readability",
+        "relevance": "Relevance",
+        "relevanceDesc": "Topic and context relevance",
+        "consistency": "Consistency",
+        "consistencyDesc": "Factual consistency"
+      }
+    },
+    "featureTypes": {
+      "summary": "Summary",
+      "keywords": "Keywords",
+      "sentiment": "Sentiment",
+      "topics": "Topics",
+      "response": "Response",
+      "category": "Category",
+      "subject": "Subject",
+      "orderClarification": "Order Clarification",
+      "other": "Other"
     },
     "historyRating": {
       "pageTitle": "History Rating",
@@ -4643,7 +4784,10 @@
         "title": "Chat",
         "clear": "Clear chat",
         "thinking": "Thinking...",
-        "placeholder": "Ask a question..."
+        "placeholder": "Ask a question...",
+        "contextLabel": "Context sent",
+        "contextEmpty": "Current document only",
+        "contextTruncatedSuffix": "(truncated)"
       },
       "welcome": {
         "greeting": "Hi! I'm your AI writing assistant.",

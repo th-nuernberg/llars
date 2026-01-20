@@ -86,7 +86,7 @@
               variant="text"
               size="x-small"
               :title="$t('latexCollabAi.sidebar.chat.clear')"
-              @click="aiChat.clearHistory()"
+              @click="clearChat"
             >
               <LIcon size="14">mdi-delete-outline</LIcon>
             </v-btn>
@@ -166,6 +166,31 @@
                 />
                 <span class="ml-2 text-medium-emphasis">{{ $t('latexCollabAi.sidebar.chat.thinking') }}</span>
               </div>
+            </div>
+          </div>
+
+          <!-- Context Sources -->
+          <div v-if="hasSentMessage" class="chat-context">
+            <div class="context-label">
+              <LIcon size="14" class="mr-1">mdi-file-document-multiple</LIcon>
+              <span>{{ $t('latexCollabAi.sidebar.chat.contextLabel') }}</span>
+            </div>
+            <div class="context-files">
+              <template v-if="contextSources.length">
+                <v-chip
+                  v-for="source in contextSources"
+                  :key="source.id || source.path"
+                  size="x-small"
+                  variant="tonal"
+                  color="primary"
+                  :title="contextTooltip(source)"
+                >
+                  {{ contextDisplayName(source) }}<span v-if="source.truncated">…</span>
+                </v-chip>
+              </template>
+              <span v-else class="context-empty">
+                {{ $t('latexCollabAi.sidebar.chat.contextEmpty') }}
+              </span>
             </div>
           </div>
 
@@ -322,6 +347,10 @@ const props = defineProps({
   documentContent: {
     type: String,
     default: ''
+  },
+  getContext: {
+    type: Function,
+    default: null
   }
 })
 
@@ -333,6 +362,8 @@ const expanded = ref(true)
 const chatInput = ref('')
 const chatMessagesRef = ref(null)
 const loadingTool = ref(null)
+const contextSources = ref([])
+const hasSentMessage = ref(false)
 
 // Tool result dialog
 const toolResultDialog = ref(false)
@@ -359,17 +390,58 @@ async function sendChatMessage() {
   const message = chatInput.value.trim()
   chatInput.value = ''
 
-  await aiChat.sendMessage(message, props.documentContent, false)
+  const { content, sources } = await resolveChatContext()
+  contextSources.value = sources
+  hasSentMessage.value = true
+
+  await aiChat.sendMessage(message, content, true)
 
   // Scroll to bottom
   await nextTick()
   scrollChatToBottom()
 }
 
+async function resolveChatContext() {
+  if (typeof props.getContext !== 'function') {
+    return { content: props.documentContent, sources: [] }
+  }
+
+  try {
+    const context = await props.getContext()
+    const content = typeof context?.content === 'string' ? context.content : props.documentContent
+    const sources = Array.isArray(context?.sources) ? context.sources : []
+    return { content, sources }
+  } catch (e) {
+    console.warn('[AISidebar] Kontext konnte nicht geladen werden:', e)
+    return { content: props.documentContent, sources: [] }
+  }
+}
+
+function contextDisplayName(source) {
+  const rawPath = String(source?.path || '')
+  if (rawPath) {
+    const parts = rawPath.split('/')
+    return parts[parts.length - 1] || rawPath
+  }
+  return source?.title || ''
+}
+
+function contextTooltip(source) {
+  const rawPath = String(source?.path || source?.title || '')
+  if (!rawPath) return ''
+  return source?.truncated ? `${rawPath} ${t('latexCollabAi.sidebar.chat.contextTruncatedSuffix')}` : rawPath
+}
+
 function scrollChatToBottom() {
   if (chatMessagesRef.value) {
     chatMessagesRef.value.scrollTop = chatMessagesRef.value.scrollHeight
   }
+}
+
+function clearChat() {
+  aiChat.clearHistory()
+  contextSources.value = []
+  hasSentMessage.value = false
 }
 
 function formatMessage(content) {
@@ -511,6 +583,36 @@ watch(() => aiChat.messages.value.length, () => {
   padding: 8px 0;
 }
 
+.chat-context {
+  flex-shrink: 0;
+  border-top: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  padding: 8px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.context-label {
+  display: flex;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: rgba(var(--v-theme-on-surface), 0.55);
+}
+
+.context-files {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.context-empty {
+  font-size: 12px;
+  color: rgba(var(--v-theme-on-surface), 0.6);
+}
+
 .chat-message {
   display: flex;
   gap: 10px;
@@ -622,7 +724,6 @@ watch(() => aiChat.messages.value.length, () => {
 .chat-input-container {
   flex-shrink: 0;
   padding-top: 8px;
-  border-top: 1px solid rgba(var(--v-theme-on-surface), 0.08);
 }
 
 /* Footer */

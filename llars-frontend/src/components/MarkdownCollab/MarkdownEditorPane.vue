@@ -905,10 +905,12 @@ watch(
 )
 
 // Watch for collab color changes (when user updates their color in settings)
+// Use direct ref watch for cross-component reactivity (more robust than getter)
 watch(
-  () => collabColor.value,
+  collabColor,
   (newColor) => {
     if (!newColor) return
+    console.log('[MarkdownEditorPane] collabColor changed:', newColor)
     setUserColorOverride(username.value, newColor)
     applyCollabColorChange(newColor)
     if (socket.value?.connected) {

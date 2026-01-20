@@ -326,6 +326,51 @@ export function useLatexComments({
     }
   }
 
+  function updateCommentTreeColor(node, username, color) {
+    if (!node) return { updated: node, changed: false }
+
+    let changed = false
+    let nextNode = node
+
+    if (node.author_username === username && node.author_color !== color) {
+      nextNode = { ...nextNode, author_color: color }
+      changed = true
+    }
+
+    if (Array.isArray(node.replies) && node.replies.length > 0) {
+      const updatedReplies = []
+      let repliesChanged = false
+      for (const reply of node.replies) {
+        const { updated, changed: replyChanged } = updateCommentTreeColor(reply, username, color)
+        updatedReplies.push(updated)
+        if (replyChanged) repliesChanged = true
+      }
+      if (repliesChanged) {
+        nextNode = nextNode === node ? { ...node, replies: updatedReplies } : { ...nextNode, replies: updatedReplies }
+        changed = true
+      }
+    }
+
+    return { updated: nextNode, changed }
+  }
+
+  function handleUserColorUpdated(payload) {
+    const username = payload?.username
+    const color = payload?.collab_color ?? null
+    if (!username) return
+
+    let anyChanged = false
+    const next = comments.value.map((comment) => {
+      const { updated, changed } = updateCommentTreeColor(comment, username, color)
+      if (changed) anyChanged = true
+      return updated
+    })
+
+    if (anyChanged) {
+      comments.value = next
+    }
+  }
+
   /**
    * Subscribe to workspace comment updates
    */
@@ -357,6 +402,7 @@ export function useLatexComments({
     if (!socket?.value) return
 
     socket.value.on('latex_collab:workspace_comment_changed', handleWorkspaceCommentChanged)
+    socket.value.on('user:collab_color_updated', handleUserColorUpdated)
   }
 
   /**
@@ -366,6 +412,7 @@ export function useLatexComments({
     if (!socket?.value) return
 
     socket.value.off('latex_collab:workspace_comment_changed', handleWorkspaceCommentChanged)
+    socket.value.off('user:collab_color_updated', handleUserColorUpdated)
     unsubscribeFromWorkspace()
   }
 

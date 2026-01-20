@@ -22,6 +22,7 @@
         v-if="aiSidebarOpen"
         key="ai-sidebar"
         :document-content="currentDocumentContent"
+        :get-context="getChatContext"
         @insert-artifact="insertTextAtCursor"
       />
     </transition>
@@ -219,6 +220,18 @@ function handleDocumentChange(content) {
   currentDocumentContent.value = content
 }
 
+async function getChatContext() {
+  try {
+    const context = await workspaceRef.value?.getAiChatContext?.()
+    if (context?.content) {
+      return context
+    }
+  } catch (e) {
+    console.warn('[LatexCollabAI] Konnte Kontext nicht laden:', e)
+  }
+  return { content: currentDocumentContent.value || '', sources: [] }
+}
+
 /**
  * Handle ghost text completion request from editor
  * Called when user pauses typing and ghost text is enabled
@@ -370,9 +383,10 @@ async function handleAICommand(cmdEvent) {
     switch (command) {
       case 'ai':
         // Free-form AI request via chat
+        const chatContext = await getChatContext()
         result = await aiWritingService.chat({
           message: args || selectedText,
-          document_content: currentDocumentContent.value
+          document_content: chatContext.content
         })
         if (result.response) {
           insertTextAtCursor(result.response)

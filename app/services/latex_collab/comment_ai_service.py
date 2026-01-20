@@ -66,8 +66,10 @@ class CommentAIService:
                 error="AI assistant is disabled"
             )
 
-        # Get document content
-        content = document.content or ""
+        # Get document content (plain text cache)
+        content = document.content_text if isinstance(document.content_text, str) else ""
+        if not content and isinstance(document.content, str):
+            content = document.content
         if not content:
             return AIResolveResult(
                 success=False,

@@ -66,6 +66,57 @@ def get_workspace_tree(workspace_id: int):
     }), 200
 
 
+@latex_document_bp.route("/documents/content", methods=["POST"])
+@require_permission("feature:latex_collab:view")
+@handle_api_errors(logger_name="latex_collab")
+def get_documents_content():
+    """Get current text content for multiple documents."""
+    username = AuthUtils.extract_username_without_validation()
+    if not username:
+        raise ValidationError("Invalid token")
+
+    data = request.get_json() or {}
+    document_ids = data.get("document_ids") or []
+
+    if not isinstance(document_ids, list):
+        raise ValidationError("document_ids must be a list")
+
+    # Normalize and cap to avoid oversized payloads.
+    normalized_ids = []
+    for doc_id in document_ids:
+        try:
+            normalized_ids.append(int(doc_id))
+        except (TypeError, ValueError):
+            continue
+
+    if not normalized_ids:
+        return jsonify({"success": True, "documents": []}), 200
+
+    max_ids = 20
+    normalized_ids = normalized_ids[:max_ids]
+
+    docs = LatexDocument.query.filter(LatexDocument.id.in_(normalized_ids)).all()
+    docs_by_id = {doc.id: doc for doc in docs}
+
+    documents = []
+    for doc_id in normalized_ids:
+        doc = docs_by_id.get(doc_id)
+        if not doc:
+            continue
+        require_document_access(doc, username)
+        if doc.node_type != LatexNodeType.file or doc.asset_id:
+            continue
+        documents.append({
+            "id": doc.id,
+            "content_text": doc.content_text or ""
+        })
+
+    return jsonify({
+        "success": True,
+        "documents": documents
+    }), 200
+
+
 @latex_document_bp.route("/workspaces/<int:workspace_id>/main", methods=["PATCH"])
 @require_permission("feature:latex_collab:edit")
 @handle_api_errors(logger_name="latex_collab")

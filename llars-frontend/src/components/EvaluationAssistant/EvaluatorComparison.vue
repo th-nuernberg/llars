@@ -249,6 +249,7 @@ function compareResults(result1, result2) {
     case 'comparison':
       return result1.winner === result2.winner
     case 'text_classification':
+    case 'labeling':
       return result1.label === result2.label
     default:
       return false

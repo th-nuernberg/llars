@@ -116,6 +116,7 @@ export function useScenarioStats(scenarioIdRef) {
         inProgress: rater.progressing_threads || 0,
         notStarted: rater.not_started_threads || rater.pending_count || 0,
         accuracy: rater.accuracy_percent,
+        f1Score: rater.f1_score_percent,
         progress: rater.progress_percent ?? (rater.total_threads > 0
           ? Math.round(((rater.done_threads || 0) / rater.total_threads) * 100)
           : 0),
@@ -141,6 +142,7 @@ export function useScenarioStats(scenarioIdRef) {
         inProgress: evaluator.progressing_threads || 0,
         notStarted: evaluator.not_started_threads || evaluator.pending_count || 0,
         accuracy: evaluator.accuracy_percent,
+        f1Score: evaluator.f1_score_percent,
         progress: evaluator.progress_percent ?? (evaluator.total_threads > 0
           ? Math.round(((evaluator.done_threads || 0) / evaluator.total_threads) * 100)
           : 0),
@@ -174,6 +176,7 @@ export function useScenarioStats(scenarioIdRef) {
         inProgress: 0,
         notStarted: llm.not_started_threads || llm.pending_count || 0,
         accuracy: llm.accuracy_percent,
+        f1Score: llm.f1_score_percent,
         progress: llm.progress_percent ?? (llm.total_threads > 0
           ? Math.round(((llm.done_threads || llm.voted_count || 0) / llm.total_threads) * 100)
           : 0),
@@ -193,16 +196,36 @@ export function useScenarioStats(scenarioIdRef) {
   // ===== Socket Event Handlers =====
 
   function handleStats(data) {
-    if (data.scenario_id !== currentScenarioId) return
+    console.log('[ScenarioStats] Received initial stats event:', {
+      receivedScenarioId: data.scenario_id,
+      currentScenarioId,
+      match: data.scenario_id === currentScenarioId
+    })
+    if (data.scenario_id !== currentScenarioId) {
+      console.warn('[ScenarioStats] Initial stats - Scenario ID mismatch, ignoring')
+      return
+    }
     processStatsPayload(data)
   }
 
   function handleStatsUpdated(data) {
-    if (data.scenario_id !== currentScenarioId) return
+    console.log('[ScenarioStats] Received stats_updated event:', {
+      receivedScenarioId: data.scenario_id,
+      currentScenarioId,
+      match: data.scenario_id === currentScenarioId,
+      typeOfReceived: typeof data.scenario_id,
+      typeOfCurrent: typeof currentScenarioId
+    })
+    if (data.scenario_id !== currentScenarioId) {
+      console.warn('[ScenarioStats] Scenario ID mismatch, ignoring update')
+      return
+    }
+    console.log('[ScenarioStats] Processing payload with evaluator_stats:', data.stats?.evaluator_stats?.length || 0)
     processStatsPayload(data)
   }
 
   function processStatsPayload(data) {
+    console.log('[ScenarioStats] processStatsPayload called with function_type:', data.function_type)
     functionType.value = data.function_type
     stats.value = data.stats
 
@@ -211,10 +234,31 @@ export function useScenarioStats(scenarioIdRef) {
       const userStats = data.stats?.user_stats || []
       raterStats.value = userStats.filter(u => u.role === 'rater' && !u.is_llm)
       evaluatorStats.value = userStats.filter(u => u.role === 'evaluator' || u.is_llm)
+
+      // Calculate overall F1 Score from all evaluators
+      let totalFakeCorrect = 0
+      let totalFakeIncorrect = 0
+      let totalRealIncorrect = 0
+      for (const user of userStats) {
+        totalFakeCorrect += user.fake_correct || 0
+        totalFakeIncorrect += user.fake_incorrect || 0
+        totalRealIncorrect += user.real_incorrect || 0
+      }
+      const precision = (totalFakeCorrect + totalFakeIncorrect) > 0
+        ? totalFakeCorrect / (totalFakeCorrect + totalFakeIncorrect)
+        : 0
+      const recall = (totalFakeCorrect + totalRealIncorrect) > 0
+        ? totalFakeCorrect / (totalFakeCorrect + totalRealIncorrect)
+        : 0
+      const overallF1 = (precision + recall) > 0
+        ? Math.round(2 * precision * recall / (precision + recall) * 1000) / 10
+        : null
+
       agreementMetrics.value = {
         alpha: data.stats?.krippendorff_alpha,
         interpretation: data.stats?.alpha_interpretation,
-        accuracy: data.stats?.overall_accuracy
+        accuracy: data.stats?.overall_accuracy,
+        f1Score: overallF1
       }
     } else {
       // Progress stats have rater_stats and evaluator_stats arrays
@@ -236,6 +280,12 @@ export function useScenarioStats(scenarioIdRef) {
       ...raterStats.value,
       ...evaluatorStats.value.filter(e => !e.is_llm)
     ]
+
+    console.log('[ScenarioStats] After processing - LLM stats:', llmStats.value.map(s => ({
+      model_id: s.model_id,
+      done_threads: s.done_threads,
+      total_threads: s.total_threads
+    })))
   }
 
   function handleError(data) {
@@ -244,6 +294,10 @@ export function useScenarioStats(scenarioIdRef) {
   }
 
   // ===== Socket Connection =====
+
+  // Store handler references for proper cleanup
+  let connectHandler = null
+  let disconnectHandler = null
 
   function connect(scenarioId) {
     if (!scenarioId) return
@@ -261,15 +315,23 @@ export function useScenarioStats(scenarioIdRef) {
       return
     }
 
-    socket.on('connect', () => {
+    // Create handlers with proper references for cleanup
+    connectHandler = () => {
       connected.value = true
-      // Subscribe to scenario stats
-      socket.emit('scenario:subscribe', { scenario_id: scenarioId })
-    })
+      console.log('[ScenarioStats] Socket connected, subscribing to scenario:', currentScenarioId)
+      // Use currentScenarioId instead of scenarioId to always subscribe to the latest
+      if (currentScenarioId) {
+        socket.emit('scenario:subscribe', { scenario_id: currentScenarioId })
+      }
+    }
 
-    socket.on('disconnect', () => {
+    disconnectHandler = () => {
       connected.value = false
-    })
+      console.log('[ScenarioStats] Socket disconnected')
+    }
+
+    socket.on('connect', connectHandler)
+    socket.on('disconnect', disconnectHandler)
 
     // Register event handlers
     socket.on('scenario:stats', handleStats)
@@ -279,7 +341,10 @@ export function useScenarioStats(scenarioIdRef) {
     // If already connected, subscribe immediately
     if (socket.connected) {
       connected.value = true
+      console.log('[ScenarioStats] Socket already connected, subscribing to scenario:', scenarioId)
       socket.emit('scenario:subscribe', { scenario_id: scenarioId })
+    } else {
+      console.log('[ScenarioStats] Socket not connected yet, will subscribe on connect for scenario:', scenarioId)
     }
   }
 
@@ -288,10 +353,19 @@ export function useScenarioStats(scenarioIdRef) {
 
     // Unsubscribe from scenario stats
     if (socket.connected && currentScenarioId) {
+      console.log('[ScenarioStats] Unsubscribing from scenario:', currentScenarioId)
       socket.emit('scenario:unsubscribe', { scenario_id: currentScenarioId })
     }
 
-    // Remove event handlers
+    // Remove ALL event handlers including connect/disconnect
+    if (connectHandler) {
+      socket.off('connect', connectHandler)
+      connectHandler = null
+    }
+    if (disconnectHandler) {
+      socket.off('disconnect', disconnectHandler)
+      disconnectHandler = null
+    }
     socket.off('scenario:stats', handleStats)
     socket.off('scenario:stats_updated', handleStatsUpdated)
     socket.off('scenario:error', handleError)

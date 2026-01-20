@@ -207,7 +207,7 @@ const {
   localStorageKey,
   ranked,
   saveToLocalStorage,
-  loadFromLocalStorage,
+  applyLocalStorageBuckets,
   groupFeaturesByType,
   applyServerRanking,
   prepareForServerSave
@@ -341,38 +341,29 @@ const loadCaseData = async (caseId) => {
     }
   }
 
-  let dataLoadedFromLocalStorage = false
-
-  if (loadFromLocalStorage(caseId)) {
-    dataLoadedFromLocalStorage = true
-  }
-
-  if (!dataLoadedFromLocalStorage) {
-    const threadData = await fetchEmailThreads(caseId)
-    if (!threadData) return
-
-    const serverRanking = await fetchServerRanking(caseId)
-
-    ranked.value = threadData.ranked
-    features.value = threadData.features
-
-    const featureMap = groupFeaturesByType(features.value)
-
-    if (serverRanking) {
-      applyServerRanking(featureMap, serverRanking)
-    }
-
-    groupedFeatures.value = Array.from(featureMap.values())
-    localStorageKey.value = `featureOrder_${caseId}`
-    saveToLocalStorage(caseId)
-  }
-
+  // ALWAYS fetch features from server (never rely on localStorage for feature data)
   const threadData = await fetchEmailThreads(caseId)
-  if (threadData) {
-    messages.value = threadData.messages
-    features.value = threadData.features
-    ranked.value = threadData.ranked
+  if (!threadData) return
+
+  messages.value = threadData.messages
+  features.value = threadData.features
+  ranked.value = threadData.ranked
+
+  // Group server features by type
+  const featureMap = groupFeaturesByType(features.value)
+
+  // Apply server ranking if user has already saved rankings
+  const serverRanking = await fetchServerRanking(caseId)
+  if (serverRanking) {
+    applyServerRanking(featureMap, serverRanking)
+  } else {
+    // No server ranking - try to restore from localStorage
+    // This preserves unsaved work between page reloads
+    applyLocalStorageBuckets(featureMap, caseId)
   }
+
+  groupedFeatures.value = Array.from(featureMap.values())
+  localStorageKey.value = `rankerDetail_buckets_${caseId}`
 }
 
 onMounted(() => {

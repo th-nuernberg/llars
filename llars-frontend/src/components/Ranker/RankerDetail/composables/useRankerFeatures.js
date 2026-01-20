@@ -3,11 +3,15 @@
  *
  * Handles feature grouping, localStorage persistence, and feature ordering.
  * Extracted from RankerDetail.vue for better maintainability.
+ *
+ * IMPORTANT: Features are always loaded from the server.
+ * localStorage only stores bucket assignments (feature_id -> bucket mapping)
+ * to preserve user's ranking progress between page reloads.
  */
 
 import { ref } from 'vue';
 
-const STORAGE_KEY = 'rankerDetail_data';
+const STORAGE_KEY = 'rankerDetail_buckets';
 
 export function useRankerFeatures() {
   const features = ref([]);
@@ -15,35 +19,107 @@ export function useRankerFeatures() {
   const localStorageKey = ref('');
   const ranked = ref(null);
 
-  // Save to LocalStorage with threadId
+  /**
+   * Save bucket assignments to localStorage.
+   * Only stores feature_id -> bucket mapping, NOT feature content.
+   */
   function saveToLocalStorage(threadId) {
     const key = `${STORAGE_KEY}_${threadId}`;
-    const data = groupedFeatures.value.map(group => ({
-      type: group.type,
-      goodList: group.goodList,
-      averageList: group.averageList,
-      badList: group.badList,
-      neutralList: group.neutralList,
-    }));
-    localStorage.setItem(key, JSON.stringify(data));
+    const bucketAssignments = {};
+
+    groupedFeatures.value.forEach(group => {
+      group.goodList.forEach((f, idx) => {
+        bucketAssignments[f.feature_id] = { bucket: 'good', position: idx };
+      });
+      group.averageList.forEach((f, idx) => {
+        bucketAssignments[f.feature_id] = { bucket: 'average', position: idx };
+      });
+      group.badList.forEach((f, idx) => {
+        bucketAssignments[f.feature_id] = { bucket: 'bad', position: idx };
+      });
+      // neutral items don't need to be saved (default state)
+    });
+
+    localStorage.setItem(key, JSON.stringify(bucketAssignments));
   }
 
-  // Load from LocalStorage with threadId
-  function loadFromLocalStorage(threadId) {
+  /**
+   * Get bucket assignments from localStorage.
+   * Returns a map of feature_id -> {bucket, position} or null if no data.
+   */
+  function getBucketAssignments(threadId) {
     const key = `${STORAGE_KEY}_${threadId}`;
     const savedData = localStorage.getItem(key);
 
     if (savedData) {
-      const parsedData = JSON.parse(savedData);
-      groupedFeatures.value = parsedData.map(group => ({
-        type: group.type,
-        goodList: group.goodList || [],
-        averageList: group.averageList || [],
-        badList: group.badList || [],
-        neutralList: group.neutralList || []
-      }));
-      return true;
+      try {
+        return JSON.parse(savedData);
+      } catch (e) {
+        console.warn('Failed to parse localStorage bucket assignments:', e);
+        return null;
+      }
     }
+    return null;
+  }
+
+  /**
+   * Apply localStorage bucket assignments to server-fetched features.
+   * Features are matched by feature_id. Unknown features go to neutral.
+   */
+  function applyLocalStorageBuckets(featureMap, threadId) {
+    const bucketAssignments = getBucketAssignments(threadId);
+    if (!bucketAssignments) return featureMap;
+
+    // Redistribute features based on saved bucket assignments
+    featureMap.forEach((group, type) => {
+      const allFeatures = [
+        ...group.goodList,
+        ...group.averageList,
+        ...group.badList,
+        ...group.neutralList
+      ];
+
+      // Reset lists
+      group.goodList = [];
+      group.averageList = [];
+      group.badList = [];
+      group.neutralList = [];
+
+      // Sort features into buckets based on saved assignments
+      allFeatures.forEach(feature => {
+        const assignment = bucketAssignments[feature.feature_id];
+        if (assignment) {
+          if (assignment.bucket === 'good') {
+            group.goodList.push({ ...feature, position: assignment.position });
+          } else if (assignment.bucket === 'average') {
+            group.averageList.push({ ...feature, position: assignment.position });
+          } else if (assignment.bucket === 'bad') {
+            group.badList.push({ ...feature, position: assignment.position });
+          } else {
+            group.neutralList.push(feature);
+          }
+        } else {
+          // No saved assignment -> neutral
+          group.neutralList.push(feature);
+        }
+      });
+
+      // Sort by position within each bucket
+      group.goodList.sort((a, b) => (a.position || 0) - (b.position || 0));
+      group.averageList.sort((a, b) => (a.position || 0) - (b.position || 0));
+      group.badList.sort((a, b) => (a.position || 0) - (b.position || 0));
+    });
+
+    return featureMap;
+  }
+
+  /**
+   * @deprecated Use applyLocalStorageBuckets instead.
+   * Kept for backwards compatibility during transition.
+   */
+  function loadFromLocalStorage(threadId) {
+    // This function no longer directly loads features.
+    // Return false to force server fetch.
     return false;
   }
 
@@ -171,7 +247,8 @@ export function useRankerFeatures() {
 
     // Methods
     saveToLocalStorage,
-    loadFromLocalStorage,
+    loadFromLocalStorage,  // deprecated, always returns false
+    applyLocalStorageBuckets,
     groupFeaturesByType,
     applyServerRanking,
     applyFeatureOrder,

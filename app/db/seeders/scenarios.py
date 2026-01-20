@@ -114,11 +114,17 @@ def seed_demo_scenarios(db):
         llm_mistral = LLM(name='Mistral-7B')
         db.session.add(llm_mistral)
 
+    # Create LLM entry for SummEval dataset (for ranking features)
+    llm_summeval = LLM.query.filter_by(name='SummEval').first()
+    if not llm_summeval:
+        llm_summeval = LLM(name='SummEval')
+        db.session.add(llm_summeval)
+
     db.session.flush()
 
     # Create or get Feature Types
     feature_types = {}
-    for ft_name in ['Situation Summary', 'Client Needs', 'Recommended Actions', 'Risk Assessment']:
+    for ft_name in ['Situation Summary', 'Client Needs', 'Recommended Actions', 'Risk Assessment', 'Summary']:
         ft = FeatureType.query.filter_by(name=ft_name).first()
         if not ft:
             ft = FeatureType(name=ft_name)
@@ -683,6 +689,65 @@ def seed_demo_scenarios(db):
         "mistralai/Magistral-Small-2509"
     ]
 
+    # Multi-dimensional rating configuration for Demo Rating Szenario
+    # Uses standard LLM-as-Judge metrics (Coherence, Fluency, Relevance, Consistency)
+    multi_dimensional_config = {
+        "evaluation": "rating",
+        "type": "multi-dimensional",
+        "enable_llm_evaluation": True,
+        "llm_evaluators": demo_llm_evaluators,
+        "min": 1,
+        "max": 5,
+        "step": 1,
+        "showOverallScore": True,
+        "allowFeedback": True,
+        "dimensions": [
+            {
+                "id": "coherence",
+                "name": {"de": "Kohärenz", "en": "Coherence"},
+                "description": {
+                    "de": "Bewertet den logischen Zusammenhang und die Strukturierung des Textes. Sind die Ideen klar miteinander verbunden?",
+                    "en": "Evaluates the logical connection and structure of the text. Are the ideas clearly connected?"
+                },
+                "weight": 1.0
+            },
+            {
+                "id": "fluency",
+                "name": {"de": "Flüssigkeit", "en": "Fluency"},
+                "description": {
+                    "de": "Bewertet die sprachliche Qualität und Lesbarkeit. Ist der Text grammatikalisch korrekt und gut lesbar?",
+                    "en": "Evaluates the linguistic quality and readability. Is the text grammatically correct and easy to read?"
+                },
+                "weight": 1.0
+            },
+            {
+                "id": "relevance",
+                "name": {"de": "Relevanz", "en": "Relevance"},
+                "description": {
+                    "de": "Bewertet, wie gut der Text das Thema behandelt. Werden die wichtigsten Aspekte angesprochen?",
+                    "en": "Evaluates how well the text addresses the topic. Are the most important aspects covered?"
+                },
+                "weight": 1.0
+            },
+            {
+                "id": "consistency",
+                "name": {"de": "Konsistenz", "en": "Consistency"},
+                "description": {
+                    "de": "Bewertet die inhaltliche Widerspruchsfreiheit. Widersprechen sich Aussagen im Text?",
+                    "en": "Evaluates factual consistency. Do statements in the text contradict each other?"
+                },
+                "weight": 1.0
+            }
+        ],
+        "labels": {
+            "1": {"de": "Sehr schlecht", "en": "Very poor"},
+            "2": {"de": "Schlecht", "en": "Poor"},
+            "3": {"de": "Akzeptabel", "en": "Acceptable"},
+            "4": {"de": "Gut", "en": "Good"},
+            "5": {"de": "Sehr gut", "en": "Very good"}
+        }
+    }
+
     # Create Rating Scenario
     if not existing_rating:
         rating_scenario = RatingScenarios(
@@ -691,11 +756,7 @@ def seed_demo_scenarios(db):
             begin=datetime.now() - timedelta(days=7),
             end=datetime.now() + timedelta(days=30),
             timestamp=datetime.now(),
-            config_json={
-                "evaluation": "rating",
-                "enable_llm_evaluation": True,
-                "llm_evaluators": demo_llm_evaluators,
-            }
+            config_json=multi_dimensional_config
         )
         db.session.add(rating_scenario)
         db.session.flush()
@@ -742,14 +803,11 @@ def seed_demo_scenarios(db):
         print(f"  Created Rating Scenario: {rating_scenario.scenario_name}")
     else:
         rating_scenario = existing_rating
-        # Update existing scenario with LLM evaluators if not set
+        # Update existing scenario with multi-dimensional config if not set
         config = rating_scenario.config_json or {}
-        if not config.get('llm_evaluators'):
-            config['evaluation'] = 'rating'
-            config['enable_llm_evaluation'] = True
-            config['llm_evaluators'] = demo_llm_evaluators
-            rating_scenario.config_json = config
-            print(f"  Updated Rating Scenario with LLM evaluators")
+        if not config.get('dimensions') or not config.get('type') == 'multi-dimensional':
+            rating_scenario.config_json = multi_dimensional_config
+            print(f"  Updated Rating Scenario with multi-dimensional config")
 
     # Ensure admin can evaluate demo scenarios
     if admin_user and rating_scenario:
@@ -1309,7 +1367,7 @@ def _seed_extended_demo_data(db, rating_scenario, ranking_scenario, mail_rating_
 
     # Get or create Feature Types
     feature_types = {}
-    for ft_name in ['Situation Summary', 'Client Needs', 'Recommended Actions', 'Risk Assessment']:
+    for ft_name in ['Situation Summary', 'Client Needs', 'Recommended Actions', 'Risk Assessment', 'Summary']:
         ft = FeatureType.query.filter_by(name=ft_name).first()
         if ft:
             feature_types[ft_name] = ft
@@ -1424,13 +1482,30 @@ def _seed_extended_demo_data(db, rating_scenario, ranking_scenario, mail_rating_
                 db.session.add(thread)
                 db.session.flush()
 
-                # Add article content as a message (no duplicate features for news articles)
+                # Add source text as first message
                 db.session.add(Message(
                     thread_id=thread.thread_id,
-                    sender='Nachrichtenartikel',
-                    content=sample['feature_text'],
-                    timestamp=datetime.now() - timedelta(days=idx)
+                    sender='Source Article',
+                    content=sample['source_text'],
+                    timestamp=datetime.now() - timedelta(days=idx, hours=5)
                 ))
+
+                # Get Summary FeatureType and SummEval LLM for ranking features
+                summary_ft = feature_types.get('Summary')
+                summeval_llm = LLM.query.filter_by(name='SummEval').first()
+
+                # Add each summary ONLY as a Feature (for ranking in left panel)
+                # Do NOT create Messages for summaries - they should only appear
+                # in the left panel as rankable items, not in the right panel
+                for sum_idx, summary in enumerate(sample.get('summaries', [])):
+                    # Create Feature for ranking (this is what users actually rank)
+                    if summary_ft and summeval_llm:
+                        db.session.add(Feature(
+                            thread_id=thread.thread_id,
+                            type_id=summary_ft.type_id,
+                            llm_id=summeval_llm.llm_id,
+                            content=summary['content']
+                        ))
 
                 st = ScenarioThreads(
                     scenario_id=ranking_scenario.id,

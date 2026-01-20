@@ -985,6 +985,43 @@ def apply_schema_patches(db) -> None:
             ),
         )
 
+        # =========================================================================
+        # Multi-Dimensional Rating: New generalized rating system
+        # =========================================================================
+
+        # Item Dimension Ratings table (for generalized multi-dimensional ratings)
+        changed |= _ensure_table(
+            db,
+            table_name="item_dimension_ratings",
+            create_sql=(
+                """
+                CREATE TABLE `item_dimension_ratings` (
+                    `id` INT NOT NULL AUTO_INCREMENT,
+                    `user_id` INT NOT NULL,
+                    `item_id` INT NOT NULL,
+                    `scenario_id` INT NOT NULL,
+                    `dimension_ratings` JSON NOT NULL COMMENT 'Dict of dimension_id: score, e.g. {"coherence": 4, "fluency": 5}',
+                    `overall_score` FLOAT NULL COMMENT 'Calculated weighted average',
+                    `feedback` TEXT NULL COMMENT 'Optional user feedback',
+                    `status` ENUM('NOT_STARTED', 'PROGRESSING', 'DONE') NOT NULL DEFAULT 'NOT_STARTED',
+                    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                    PRIMARY KEY (`id`),
+                    INDEX `ix_item_dim_ratings_user` (`user_id`),
+                    INDEX `ix_item_dim_ratings_item` (`item_id`),
+                    INDEX `ix_item_dim_ratings_scenario` (`scenario_id`),
+                    UNIQUE KEY `uix_user_item_scenario_dim_rating` (`user_id`, `item_id`, `scenario_id`),
+                    CONSTRAINT `fk_item_dim_rating_user` FOREIGN KEY (`user_id`)
+                        REFERENCES `users` (`id`) ON DELETE CASCADE,
+                    CONSTRAINT `fk_item_dim_rating_item` FOREIGN KEY (`item_id`)
+                        REFERENCES `evaluation_items` (`item_id`) ON DELETE CASCADE,
+                    CONSTRAINT `fk_item_dim_rating_scenario` FOREIGN KEY (`scenario_id`)
+                        REFERENCES `rating_scenarios` (`id`) ON DELETE CASCADE
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+                """
+            ),
+        )
+
         if changed:
             print("✅ Applied schema patches")
     except Exception as exc:

@@ -667,6 +667,9 @@ const AUTO_COMPILE_KEY = 'latex-collab-auto-compile'
 const COMMENTS_HEIGHT_KEY = 'latex-collab-comments-height'
 const AUTO_COMPILE_DELAY_KEY = 'latex-collab-auto-compile-delay'
 const SYNC_KEY = 'latex-collab-sync-enabled'
+const AI_CONTEXT_MAX_CHARS = 3800
+const AI_CONTEXT_MAX_FILES = 6
+const AI_CONTEXT_ALLOWED_EXTS = ['.tex', '.bib']
 
 const workspace = ref(null)
 const nodesFlat = ref([])
@@ -1496,6 +1499,118 @@ function resolveDocumentIdFromPath(path) {
   return null
 }
 
+function isAiContextNode(node) {
+  if (!node || node.type !== 'file' || node.asset_id) return false
+  const title = String(node.title || '').toLowerCase()
+  return AI_CONTEXT_ALLOWED_EXTS.some(ext => title.endsWith(ext))
+}
+
+function getNodePathForAi(node) {
+  if (!node?.id) return node?.title || ''
+  return nodePathById.value.get(node.id) || node.title || ''
+}
+
+async function fetchAiContextDocuments(documentIds) {
+  if (!Array.isArray(documentIds) || documentIds.length === 0) return new Map()
+
+  try {
+    const res = await axios.post(
+      `${API_BASE}/api/latex-collab/documents/content`,
+      { document_ids: documentIds },
+      { headers: authHeaders() }
+    )
+    const docs = res.data?.documents || []
+    const map = new Map()
+    docs.forEach((doc) => {
+      map.set(doc.id, doc.content_text || '')
+    })
+    return map
+  } catch (e) {
+    console.warn('[LatexCollabWorkspace] Konnte AI-Kontext nicht laden:', e)
+    return new Map()
+  }
+}
+
+async function getAiChatContext() {
+  const currentNode = selectedNode.value
+  const currentId = currentNode?.id || null
+  const currentContent = editorRef.value?.getCurrentContent?.() || currentText.value || ''
+
+  const mainId = workspace.value?.main_document_id || null
+
+  const candidates = []
+  if (currentNode && currentNode.type === 'file' && !currentNode.asset_id) {
+    candidates.push(currentNode)
+  }
+
+  if (mainId && mainId !== currentId) {
+    const mainNode = nodesFlat.value.find(n => n.id === mainId)
+    if (isAiContextNode(mainNode)) {
+      candidates.push(mainNode)
+    }
+  }
+
+  if (candidates.length < AI_CONTEXT_MAX_FILES) {
+    const additional = nodesFlat.value.filter((node) => {
+      if (!isAiContextNode(node)) return false
+      if (node.id === currentId) return false
+      if (node.id === mainId) return false
+      return true
+    })
+    candidates.push(...additional)
+  }
+
+  const limited = candidates.slice(0, AI_CONTEXT_MAX_FILES)
+  const otherIds = limited
+    .map(node => node.id)
+    .filter(id => id && id !== currentId)
+
+  const otherContentMap = await fetchAiContextDocuments(otherIds)
+
+  let remaining = AI_CONTEXT_MAX_CHARS
+  let context = ''
+  const sources = []
+
+  for (const node of limited) {
+    const path = getNodePathForAi(node)
+    const header = `${context ? '\n\n' : ''}[FILE: ${path}]\n`
+    if (remaining <= header.length + 1) break
+
+    const rawContent = node.id === currentId ? currentContent : (otherContentMap.get(node.id) || '')
+    if (!rawContent) continue
+
+    const available = remaining - header.length
+    const truncated = rawContent.length > available
+    const contentSlice = truncated ? rawContent.slice(0, available) : rawContent
+
+    context += header + contentSlice
+    remaining -= header.length + contentSlice.length
+
+    sources.push({
+      id: node.id,
+      title: node.title || '',
+      path,
+      chars: contentSlice.length,
+      truncated
+    })
+
+    if (remaining <= 0) break
+  }
+
+  if (!context && currentContent) {
+    context = currentContent.slice(0, AI_CONTEXT_MAX_CHARS)
+    sources.push({
+      id: currentId,
+      title: currentNode?.title || '',
+      path: getNodePathForAi(currentNode),
+      chars: context.length,
+      truncated: currentContent.length > context.length
+    })
+  }
+
+  return { content: context, sources }
+}
+
 async function loadTree() {
   await withLoading('tree', async () => {
     const res = await axios.get(`${API_BASE}/api/latex-collab/workspaces/${workspaceId.value}/tree`, {
@@ -1943,6 +2058,10 @@ watch(
     }
   }
 )
+
+defineExpose({
+  getAiChatContext
+})
 </script>
 
 <style scoped>

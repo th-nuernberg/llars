@@ -279,18 +279,19 @@ const debouncedSaveSettings = useDebounceFn(async () => {
   try {
     emit('save-status', 'saving')
 
+    // Update collab color via useAuth (handles backend + global state + broadcasts event)
+    // This must happen FIRST so the watch in LatexEditorPane triggers properly
+    if (collabColor.value !== globalCollabColor.value) {
+      await updateCollabColor(collabColor.value)
+    }
+
+    // Save other preferences (NOT collab_color - already saved by updateCollabColor)
     await axios.put('/api/user/settings', {
-      collab_color: collabColor.value,
       preferences: {
         theme: themePreference.value,
         language: selectedLanguage.value
       }
     })
-
-    // Update global state
-    if (collabColor.value !== globalCollabColor.value) {
-      await updateCollabColor(collabColor.value)
-    }
 
     emit('save-status', 'saved')
   } catch (error) {

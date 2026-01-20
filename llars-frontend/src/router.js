@@ -84,6 +84,9 @@ import AuthenticityDetail from "@/components/Authenticity/AuthenticityDetail.vue
 // User Settings
 import UserSettingsPage from "@/views/UserSettings/UserSettingsPage.vue";
 
+// Evaluation Session (new unified evaluation interface)
+import EvaluationSession from "@/views/Evaluation/EvaluationSession.vue";
+
 const routes = [
     { path: '/Impressum', component: Impressum, meta: { requiresAuth: false } },
     { path: '/Datenschutz', component: Datenschutz, meta: { requiresAuth: false } },
@@ -104,6 +107,43 @@ const routes = [
       path: '/evaluate/:id',
       name: 'ScenarioEvaluation',
       redirect: to => ({ name: 'ScenarioWorkspace', params: { id: to.params.id }, query: { mode: 'evaluate' } })
+    },
+
+    // New unified Evaluation Session routes
+    {
+      path: '/scenarios/:scenarioId/evaluate',
+      name: 'EvaluationSession',
+      component: EvaluationSession,
+      props: true,
+      meta: { requiresAuth: true, functionType: 'rating' }
+    },
+    {
+      path: '/scenarios/:scenarioId/evaluate/rating',
+      name: 'RatingSession',
+      component: EvaluationSession,
+      props: true,
+      meta: { requiresAuth: true, functionType: 'rating' }
+    },
+    {
+      path: '/scenarios/:scenarioId/evaluate/ranking',
+      name: 'RankingSession',
+      component: EvaluationSession,
+      props: true,
+      meta: { requiresAuth: true, functionType: 'ranking' }
+    },
+    {
+      path: '/scenarios/:scenarioId/evaluate/comparison',
+      name: 'ComparisonSession',
+      component: EvaluationSession,
+      props: true,
+      meta: { requiresAuth: true, functionType: 'comparison' }
+    },
+    {
+      path: '/scenarios/:scenarioId/evaluate/authenticity',
+      name: 'AuthenticitySession',
+      component: EvaluationSession,
+      props: true,
+      meta: { requiresAuth: true, functionType: 'authenticity' }
     },
 
     { path: '/Ranker', name: 'Ranker', component: Ranker, meta: { requiresAuth: true } },

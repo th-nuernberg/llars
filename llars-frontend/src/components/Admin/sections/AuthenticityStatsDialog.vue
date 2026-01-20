@@ -85,6 +85,22 @@
             </div>
           </div>
 
+          <!-- F1 Score -->
+          <div class="metric-card metric-f1">
+            <div class="metric-icon" :class="f1IconClass">
+              <LIcon>mdi-target</LIcon>
+            </div>
+            <div class="metric-body">
+              <span class="metric-label">F1 Score</span>
+              <div class="metric-value-row">
+                <span class="metric-value" :class="f1ColorClass">
+                  {{ overallF1 != null ? overallF1 + '%' : 'N/A' }}
+                </span>
+              </div>
+              <span class="metric-hint">Fake-Erkennung</span>
+            </div>
+          </div>
+
           <!-- Progress -->
           <div class="metric-card metric-progress">
             <div class="metric-icon icon-accent">
@@ -209,6 +225,7 @@
                   <th class="th-user">Benutzer</th>
                   <th class="th-progress">Fortschritt</th>
                   <th class="th-accuracy">Genauigkeit</th>
+                  <th class="th-f1">F1 Score</th>
                   <th class="th-action"></th>
                 </tr>
               </thead>
@@ -265,6 +282,17 @@
                     </div>
                     <span v-else class="no-data">—</span>
                   </td>
+                  <td class="td-f1">
+                    <div v-if="user.f1_score_percent != null" class="f1-cell">
+                      <LIcon :color="getF1Color(user.f1_score_percent)" size="18">
+                        {{ getF1Icon(user.f1_score_percent) }}
+                      </LIcon>
+                      <span class="f1-value" :class="getF1Class(user.f1_score_percent)">
+                        {{ user.f1_score_percent }}%
+                      </span>
+                    </div>
+                    <span v-else class="no-data">—</span>
+                  </td>
                   <td class="td-action">
                     <LIconBtn
                       icon="mdi-chevron-right"
@@ -274,7 +302,7 @@
                   </td>
                 </tr>
                 <tr v-if="!filteredUsers.length">
-                  <td colspan="4" class="empty-row">
+                  <td colspan="5" class="empty-row">
                     <LIcon class="empty-icon">mdi-account-search</LIcon>
                     <span>Keine Benutzer gefunden</span>
                   </td>
@@ -313,6 +341,12 @@
             <div class="detail-stat">
               <span class="detail-stat-value">{{ selectedUser.accuracy_percent ?? 'N/A' }}%</span>
               <span class="detail-stat-label">Genauigkeit</span>
+            </div>
+            <div class="detail-stat">
+              <span class="detail-stat-value" :class="selectedUser.f1_score_percent != null ? getF1Class(selectedUser.f1_score_percent) : ''">
+                {{ selectedUser.f1_score_percent ?? 'N/A' }}%
+              </span>
+              <span class="detail-stat-label">F1 Score</span>
             </div>
             <div class="detail-stat">
               <span class="detail-stat-value">{{ selectedUser.voted_count }}/{{ selectedUser.total_threads }}</span>
@@ -454,6 +488,12 @@
           <div class="detail-stat">
             <span class="detail-stat-value">{{ selectedUser.accuracy_percent ?? 'N/A' }}%</span>
             <span class="detail-stat-label">Genauigkeit</span>
+          </div>
+          <div class="detail-stat">
+            <span class="detail-stat-value" :class="selectedUser.f1_score_percent != null ? getF1Class(selectedUser.f1_score_percent) : ''">
+              {{ selectedUser.f1_score_percent ?? 'N/A' }}%
+            </span>
+            <span class="detail-stat-label">F1 Score</span>
           </div>
           <div class="detail-stat">
             <span class="detail-stat-value">{{ selectedUser.voted_count }}/{{ selectedUser.total_threads }}</span>
@@ -634,6 +674,46 @@ const alphaIconClass = computed(() => {
   return 'icon-danger'
 })
 
+const overallF1 = computed(() => {
+  if (!stats.value?.user_stats?.length) return null
+  // Calculate overall F1 from all evaluators (human + LLM)
+  let totalFakeCorrect = 0
+  let totalFakeIncorrect = 0
+  let totalRealIncorrect = 0
+  for (const user of stats.value.user_stats) {
+    totalFakeCorrect += user.fake_correct || 0
+    totalFakeIncorrect += user.fake_incorrect || 0
+    totalRealIncorrect += user.real_incorrect || 0
+  }
+  // Precision = TP / (TP + FP), Recall = TP / (TP + FN)
+  const precision = (totalFakeCorrect + totalFakeIncorrect) > 0
+    ? totalFakeCorrect / (totalFakeCorrect + totalFakeIncorrect)
+    : 0
+  const recall = (totalFakeCorrect + totalRealIncorrect) > 0
+    ? totalFakeCorrect / (totalFakeCorrect + totalRealIncorrect)
+    : 0
+  if (precision + recall === 0) return null
+  return Math.round(2 * precision * recall / (precision + recall) * 1000) / 10
+})
+
+const f1ColorClass = computed(() => {
+  const f1 = overallF1.value
+  if (f1 == null) return 'text-muted'
+  if (f1 >= 80) return 'text-success'
+  if (f1 >= 60) return 'text-accent'
+  if (f1 >= 40) return 'text-warning'
+  return 'text-danger'
+})
+
+const f1IconClass = computed(() => {
+  const f1 = overallF1.value
+  if (f1 == null) return 'icon-muted'
+  if (f1 >= 80) return 'icon-success'
+  if (f1 >= 60) return 'icon-accent'
+  if (f1 >= 40) return 'icon-warning'
+  return 'icon-danger'
+})
+
 // Methods
 async function fetchStats() {
   if (!props.scenario?.scenario_id) return
@@ -688,6 +768,24 @@ function getAccuracyClass(percent) {
   if (percent >= 70) return 'accuracy-good'
   if (percent >= 50) return 'accuracy-moderate'
   return 'accuracy-poor'
+}
+
+function getF1Color(percent) {
+  if (percent >= 70) return 'success'
+  if (percent >= 50) return 'warning'
+  return 'error'
+}
+
+function getF1Icon(percent) {
+  if (percent >= 70) return 'mdi-check-circle'
+  if (percent >= 50) return 'mdi-minus-circle'
+  return 'mdi-close-circle'
+}
+
+function getF1Class(percent) {
+  if (percent >= 70) return 'f1-good'
+  if (percent >= 50) return 'f1-moderate'
+  return 'f1-poor'
 }
 
 function getAvatarColor(username) {
@@ -1284,6 +1382,20 @@ onUnmounted(() => {
 .accuracy-value.accuracy-good { color: #4a9f7e; }
 .accuracy-value.accuracy-moderate { color: #c9a84a; }
 .accuracy-value.accuracy-poor { color: #c87a6a; }
+
+.f1-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.f1-value {
+  font-weight: 600;
+}
+
+.f1-value.f1-good { color: #4a9f7e; }
+.f1-value.f1-moderate { color: #c9a84a; }
+.f1-value.f1-poor { color: #c87a6a; }
 
 .accuracy-detail {
   font-size: 0.8125rem;

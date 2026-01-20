@@ -687,6 +687,7 @@ const {
   updateUserColor,
   clearUserHighlights,
   flushPendingHighlights,
+  updateAllHighlightColors,
   editors
 } = editorManager;
 const gitSummary = ref({ users: [], insertions: 0, deletions: 0, hasChanges: false, totalChangedLines: 0 });
@@ -870,17 +871,23 @@ onMounted(async () => {
   });
 });
 
+// Watch for collab color changes - use direct ref for cross-component reactivity
 watch(
-  () => auth.collabColor.value,
+  auth.collabColor,
   (newColor, oldColor) => {
     console.log('[PromptEngineering] collabColor changed:', oldColor, '->', newColor, 'socket connected:', socket.value?.connected);
-    if (newColor && socket.value?.connected) {
-      console.log('[PromptEngineering] Broadcasting color update and updating local cursor');
-      updateColor(newColor);
-      // Also update own cursor color locally
-      const mySocketId = socket.value?.id;
-      if (mySocketId) {
-        updateUserColor(mySocketId, newColor);
+    if (newColor) {
+      // Update all existing text highlights with the new color (pass oldColor to find and replace)
+      updateAllHighlightColors(newColor, oldColor);
+
+      if (socket.value?.connected) {
+        console.log('[PromptEngineering] Broadcasting color update and updating local cursor');
+        updateColor(newColor);
+        // Also update own cursor color locally
+        const mySocketId = socket.value?.id;
+        if (mySocketId) {
+          updateUserColor(mySocketId, newColor);
+        }
       }
     }
   }
@@ -888,7 +895,7 @@ watch(
 
 watch(
   [
-    () => auth.collabColor.value,
+    auth.collabColor,
     () => users.value,
     () => socket.value?.id
   ],

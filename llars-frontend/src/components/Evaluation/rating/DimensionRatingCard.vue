@@ -1,0 +1,331 @@
+<template>
+  <div
+    class="dimension-rating-card"
+    :class="{
+      'is-rated': modelValue !== null && modelValue !== undefined,
+      'is-highlighted': highlighted
+    }"
+  >
+    <!-- Dimension Header -->
+    <div class="dimension-header">
+      <div class="dimension-info">
+        <span class="dimension-name">{{ dimensionName }}</span>
+        <span v-if="weight" class="dimension-weight">
+          {{ Math.round(weight * 100) }}%
+        </span>
+      </div>
+      <v-tooltip v-if="description" location="top" max-width="300">
+        <template #activator="{ props: tooltipProps }">
+          <v-icon
+            v-bind="tooltipProps"
+            size="16"
+            color="grey"
+            class="help-icon"
+          >
+            mdi-help-circle-outline
+          </v-icon>
+        </template>
+        {{ description }}
+      </v-tooltip>
+    </div>
+
+    <!-- Rating Scale -->
+    <div class="dimension-scale">
+      <LRatingScale
+        :model-value="modelValue"
+        :min="min"
+        :max="max"
+        :step="step"
+        :labels="scaleLabels"
+        :show-labels="showEndLabels"
+        :show-value-labels="showValueLabels"
+        :variant="variant"
+        :size="size"
+        :disabled="disabled"
+        :aria-label="`${$t('evaluation.rating.rateDimension')}: ${dimensionName}`"
+        @update:model-value="emitUpdate"
+      />
+    </div>
+
+    <!-- Current Value Display -->
+    <div v-if="showCurrentValue && modelValue !== null" class="current-value">
+      <span class="value-badge" :class="getValueClass()">
+        {{ modelValue }}/{{ max }}
+      </span>
+      <span v-if="currentLabel" class="value-label">{{ currentLabel }}</span>
+    </div>
+  </div>
+</template>
+
+<script setup>
+/**
+ * DimensionRatingCard - Rating card for a single dimension
+ *
+ * Displays a dimension name, description, and rating scale.
+ * Used in the multi-dimensional rating interface.
+ */
+import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
+import LRatingScale from '@/components/common/LRatingScale.vue'
+
+const { locale } = useI18n()
+
+const props = defineProps({
+  modelValue: {
+    type: Number,
+    default: null
+  },
+  dimension: {
+    type: Object,
+    required: true
+    // Expected: { id, name: {de, en}, description: {de, en}, weight }
+  },
+  labels: {
+    type: Object,
+    default: () => ({})
+    // Expected: { 1: {de, en}, 2: {de, en}, ... }
+  },
+  min: {
+    type: Number,
+    default: 1
+  },
+  max: {
+    type: Number,
+    default: 5
+  },
+  step: {
+    type: Number,
+    default: 1
+  },
+  variant: {
+    type: String,
+    default: 'gradient'
+  },
+  size: {
+    type: String,
+    default: 'default'
+  },
+  disabled: {
+    type: Boolean,
+    default: false
+  },
+  highlighted: {
+    type: Boolean,
+    default: false
+  },
+  showEndLabels: {
+    type: Boolean,
+    default: true
+  },
+  showValueLabels: {
+    type: Boolean,
+    default: false
+  },
+  showCurrentValue: {
+    type: Boolean,
+    default: true
+  }
+})
+
+const emit = defineEmits(['update:modelValue'])
+
+// Get localized dimension name
+const dimensionName = computed(() => {
+  if (typeof props.dimension.name === 'string') {
+    return props.dimension.name
+  }
+  return props.dimension.name?.[locale.value] || props.dimension.name?.de || props.dimension.id
+})
+
+// Get localized description
+const description = computed(() => {
+  if (!props.dimension.description) return null
+  if (typeof props.dimension.description === 'string') {
+    return props.dimension.description
+  }
+  return props.dimension.description?.[locale.value] || props.dimension.description?.de
+})
+
+// Get weight
+const weight = computed(() => props.dimension.weight)
+
+// Transform labels for LRatingScale
+const scaleLabels = computed(() => {
+  const result = {}
+
+  // Set min/max labels from the provided labels
+  if (props.labels) {
+    const minLabel = props.labels[props.min]
+    const maxLabel = props.labels[props.max]
+
+    if (minLabel) {
+      result.min = typeof minLabel === 'string' ? minLabel : (minLabel[locale.value] || minLabel.de)
+    }
+    if (maxLabel) {
+      result.max = typeof maxLabel === 'string' ? maxLabel : (maxLabel[locale.value] || maxLabel.de)
+    }
+
+    // Individual value labels
+    for (let v = props.min; v <= props.max; v += props.step) {
+      const label = props.labels[v] || props.labels[String(v)]
+      if (label) {
+        result[v] = typeof label === 'string' ? label : (label[locale.value] || label.de)
+      }
+    }
+  }
+
+  return result
+})
+
+// Get current value's label
+const currentLabel = computed(() => {
+  if (props.modelValue === null) return null
+  const label = props.labels[props.modelValue] || props.labels[String(props.modelValue)]
+  if (!label) return null
+  return typeof label === 'string' ? label : (label[locale.value] || label.de)
+})
+
+// Get CSS class for value badge based on position
+function getValueClass() {
+  if (props.modelValue === null) return ''
+
+  const range = props.max - props.min
+  const position = (props.modelValue - props.min) / range
+
+  if (position <= 0.3) return 'value-low'
+  if (position >= 0.7) return 'value-high'
+  return 'value-mid'
+}
+
+function emitUpdate(value) {
+  emit('update:modelValue', value)
+}
+</script>
+
+<style scoped>
+.dimension-rating-card {
+  padding: 16px;
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.1);
+  border-radius: 12px 4px 12px 4px; /* Signature LLARS asymmetric style */
+  background: rgba(var(--v-theme-surface-variant), 0.3);
+  transition: all 0.2s ease;
+}
+
+.dimension-rating-card:hover {
+  border-color: rgba(var(--v-theme-on-surface), 0.2);
+  background: rgba(var(--v-theme-surface-variant), 0.5);
+}
+
+.dimension-rating-card.is-rated {
+  border-color: var(--llars-primary, #b0ca97);
+  background: rgba(176, 202, 151, 0.08);
+}
+
+.dimension-rating-card.is-highlighted {
+  border-color: var(--llars-accent, #88c4c8);
+  box-shadow: 0 0 0 2px rgba(136, 196, 200, 0.2);
+}
+
+/* Header */
+.dimension-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.dimension-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dimension-name {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: rgb(var(--v-theme-on-surface));
+}
+
+.dimension-weight {
+  font-size: 0.75rem;
+  font-weight: 500;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(var(--v-theme-on-surface), 0.08);
+  color: rgba(var(--v-theme-on-surface), 0.6);
+}
+
+.help-icon {
+  cursor: help;
+  opacity: 0.6;
+  transition: opacity 0.2s ease;
+}
+
+.help-icon:hover {
+  opacity: 1;
+}
+
+/* Scale */
+.dimension-scale {
+  display: flex;
+  justify-content: center;
+}
+
+/* Current Value Display */
+.current-value {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+}
+
+.value-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  padding: 4px 10px;
+  border-radius: 6px 2px 6px 2px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: white;
+  background: var(--llars-secondary, #D1BC8A);
+}
+
+.value-badge.value-low {
+  background: var(--llars-danger, #e8a087);
+}
+
+.value-badge.value-mid {
+  background: var(--llars-secondary, #D1BC8A);
+}
+
+.value-badge.value-high {
+  background: var(--llars-success, #98d4bb);
+}
+
+.value-label {
+  font-size: 0.8rem;
+  color: rgba(var(--v-theme-on-surface), 0.7);
+  font-style: italic;
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+  .dimension-rating-card {
+    padding: 12px;
+  }
+
+  .dimension-name {
+    font-size: 0.9rem;
+  }
+
+  .current-value {
+    flex-direction: column;
+    gap: 4px;
+  }
+}
+</style>

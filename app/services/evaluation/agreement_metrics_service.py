@@ -161,7 +161,7 @@ class AgreementMetricsService:
             metrics = AgreementMetricsService._calculate_mail_rating_metrics(evaluations)
         elif task_type == "comparison":
             metrics = AgreementMetricsService._calculate_comparison_metrics(evaluations)
-        elif task_type == "text_classification":
+        elif task_type in ("text_classification", "labeling"):
             metrics = AgreementMetricsService._calculate_classification_metrics(evaluations)
 
         return {
@@ -236,21 +236,29 @@ class AgreementMetricsService:
         human_raters = set()
 
         if task_type == "ranking":
-            # Join through Feature to get thread_id
+            # Join through Feature to get thread_id and feature_id
             rankings = db.session.query(
-                UserFeatureRanking, Feature.thread_id
+                UserFeatureRanking, Feature.thread_id, Feature.feature_id
             ).join(
                 Feature, UserFeatureRanking.feature_id == Feature.feature_id
             ).filter(
                 Feature.thread_id.in_(thread_ids),
             ).all()
 
-            for ranking, thread_id in rankings:
+            # Build bucket dict: data[thread_id][rater_id] = {"gut": [f1, f2], "mittel": [f3], ...}
+            for ranking, thread_id, feature_id in rankings:
                 rater_id = f"human:{ranking.user_id}"
                 human_raters.add(rater_id)
-                value = ranking.bucket
-                if value:
-                    evaluations["data"][thread_id][rater_id] = value
+                bucket = ranking.bucket
+                if bucket:
+                    # Normalize bucket name to lowercase for consistent matching
+                    bucket_normalized = bucket.lower()
+                    # Initialize nested dict structure if needed
+                    if rater_id not in evaluations["data"][thread_id]:
+                        evaluations["data"][thread_id][rater_id] = {}
+                    if bucket_normalized not in evaluations["data"][thread_id][rater_id]:
+                        evaluations["data"][thread_id][rater_id][bucket_normalized] = []
+                    evaluations["data"][thread_id][rater_id][bucket_normalized].append(feature_id)
 
         elif task_type == "rating":
             # Join through Feature to get thread_id
@@ -326,7 +334,7 @@ class AgreementMetricsService:
         elif task_type == "comparison":
             return payload.get("winner")
 
-        elif task_type == "text_classification":
+        elif task_type in ("text_classification", "labeling"):
             return payload.get("label")
 
         return None

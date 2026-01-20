@@ -282,6 +282,15 @@ def broadcast_evaluation_completed(
     socketio.emit('llm_eval:task_completed', data, room=room)
     socketio.emit('llm_eval:task_completed', data, room="llm_eval_overview")
 
+    # Also emit scenario stats update for unified progress tracking
+    try:
+        from socketio_handlers.events_scenarios import emit_scenario_stats_updated
+        logger.info("[LLM Eval] Emitting scenario stats update for scenario %s after task completion", scenario_id)
+        emit_scenario_stats_updated(socketio, scenario_id)
+        logger.info("[LLM Eval] Successfully emitted scenario stats update for scenario %s", scenario_id)
+    except Exception as exc:
+        logger.warning("[LLM Eval] Failed to emit scenario stats update: %s", exc, exc_info=True)
+
 
 def broadcast_evaluation_failed(
     socketio,
@@ -314,6 +323,13 @@ def broadcast_evaluation_failed(
     socketio.emit('llm_eval:task_failed', data, room=room)
     socketio.emit('llm_eval:task_failed', data, room="llm_eval_overview")
 
+    # Also emit scenario stats update for unified progress tracking
+    try:
+        from socketio_handlers.events_scenarios import emit_scenario_stats_updated
+        emit_scenario_stats_updated(socketio, scenario_id)
+    except Exception as exc:
+        logger.warning("[LLM Eval] Failed to emit scenario stats update: %s", exc)
+
 
 def broadcast_scenario_completed(
     socketio,
@@ -336,3 +352,10 @@ def broadcast_scenario_completed(
     }
     socketio.emit('llm_eval:scenario_completed', data, room=room)
     socketio.emit('llm_eval:scenario_completed', data, room="llm_eval_overview")
+
+    # Final stats update when all evaluations complete
+    try:
+        from socketio_handlers.events_scenarios import emit_scenario_stats_updated
+        emit_scenario_stats_updated(socketio, scenario_id)
+    except Exception as exc:
+        logger.warning("[LLM Eval] Failed to emit final scenario stats update: %s", exc)

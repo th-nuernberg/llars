@@ -25,23 +25,28 @@ export const EVAL_TYPES = {
 }
 
 // ===== Type ID Mapping (for DB compatibility) =====
-// DB IDs: 1=ranking, 2=rating, 3=mail_rating, 4=comparison, 5=authenticity
+// Generalized: 1=ranking, 2=rating, 4=comparison, 7=labeling
+// LLARS-specific: 3=mail_rating, 5=authenticity
 export const TYPE_ID_MAP = {
+  // Generalized types
   1: EVAL_TYPES.RANKING,
   2: EVAL_TYPES.RATING,
-  3: EVAL_TYPES.MAIL_RATING,          // LLARS-specific
   4: EVAL_TYPES.COMPARISON,
-  5: EVAL_TYPES.AUTHENTICITY,         // LLARS-specific (labeling variant)
-  7: EVAL_TYPES.LABELING              // text_classification
+  7: EVAL_TYPES.LABELING,
+  // LLARS-specific types
+  3: EVAL_TYPES.MAIL_RATING,
+  5: EVAL_TYPES.AUTHENTICITY
 }
 
 export const ID_TYPE_MAP = {
+  // Generalized types
   [EVAL_TYPES.RANKING]: 1,
   [EVAL_TYPES.RATING]: 2,
-  [EVAL_TYPES.MAIL_RATING]: 3,        // LLARS-specific
   [EVAL_TYPES.COMPARISON]: 4,
-  [EVAL_TYPES.LABELING]: 5,
-  [EVAL_TYPES.AUTHENTICITY]: 5        // Same DB ID as labeling
+  [EVAL_TYPES.LABELING]: 7,
+  // LLARS-specific types
+  [EVAL_TYPES.MAIL_RATING]: 3,
+  [EVAL_TYPES.AUTHENTICITY]: 5
 }
 
 // ===== Base Type Mapping (for LLARS domain types) =====
@@ -171,6 +176,253 @@ export const RATING_PRESETS = {
       labels: {},
       showLabels: true,
       allowHalf: false
+    }
+  },
+
+  // ===== LLM-as-Judge Multi-Dimensional Presets =====
+  'llm-judge-standard': {
+    id: 'llm-judge-standard',
+    name: 'LLM-as-Judge Standard',
+    description: 'Standard-Metriken für Text-Evaluation (Coherence, Fluency, Relevance, Consistency)',
+    config: {
+      type: 'multi-dimensional',
+      min: 1,
+      max: 5,
+      step: 1,
+      dimensions: [
+        {
+          id: 'coherence',
+          name: { de: 'Kohärenz', en: 'Coherence' },
+          description: { de: 'Logischer Aufbau und Zusammenhang', en: 'Logical structure and flow' },
+          weight: 0.25
+        },
+        {
+          id: 'fluency',
+          name: { de: 'Flüssigkeit', en: 'Fluency' },
+          description: { de: 'Sprachliche Qualität und Lesbarkeit', en: 'Language quality and readability' },
+          weight: 0.25
+        },
+        {
+          id: 'relevance',
+          name: { de: 'Relevanz', en: 'Relevance' },
+          description: { de: 'Bezug zum Thema/Kontext', en: 'Topic and context relevance' },
+          weight: 0.25
+        },
+        {
+          id: 'consistency',
+          name: { de: 'Konsistenz', en: 'Consistency' },
+          description: { de: 'Widerspruchsfreiheit und Faktentreue', en: 'Factual consistency' },
+          weight: 0.25
+        }
+      ],
+      labels: {
+        1: { de: 'Sehr schlecht', en: 'Very poor' },
+        2: { de: 'Schlecht', en: 'Poor' },
+        3: { de: 'Akzeptabel', en: 'Acceptable' },
+        4: { de: 'Gut', en: 'Good' },
+        5: { de: 'Sehr gut', en: 'Very good' }
+      },
+      showOverallScore: true,
+      allowFeedback: true
+    }
+  },
+  'summeval': {
+    id: 'summeval',
+    name: 'SummEval',
+    description: 'Metriken aus dem SummEval-Benchmark für Zusammenfassungen',
+    config: {
+      type: 'multi-dimensional',
+      min: 1,
+      max: 5,
+      step: 1,
+      dimensions: [
+        {
+          id: 'coherence',
+          name: { de: 'Kohärenz', en: 'Coherence' },
+          description: { de: 'Logischer Aufbau und strukturelle Qualität', en: 'Logical structure and flow' },
+          weight: 0.25
+        },
+        {
+          id: 'consistency',
+          name: { de: 'Konsistenz', en: 'Consistency' },
+          description: { de: 'Faktische Übereinstimmung mit dem Quelltext', en: 'Factual alignment with source' },
+          weight: 0.25
+        },
+        {
+          id: 'fluency',
+          name: { de: 'Flüssigkeit', en: 'Fluency' },
+          description: { de: 'Grammatik, Lesbarkeit, Sprachqualität', en: 'Grammar, readability, language quality' },
+          weight: 0.25
+        },
+        {
+          id: 'relevance',
+          name: { de: 'Relevanz', en: 'Relevance' },
+          description: { de: 'Wichtige Informationen aus dem Quelltext', en: 'Important information from source' },
+          weight: 0.25
+        }
+      ],
+      labels: {
+        1: { de: 'Sehr schlecht', en: 'Very poor' },
+        2: { de: 'Schlecht', en: 'Poor' },
+        3: { de: 'Akzeptabel', en: 'Acceptable' },
+        4: { de: 'Gut', en: 'Good' },
+        5: { de: 'Sehr gut', en: 'Very good' }
+      },
+      showOverallScore: true,
+      allowFeedback: false
+    }
+  },
+  'response-quality': {
+    id: 'response-quality',
+    name: 'Antwort-Qualität',
+    description: 'Bewertung von LLM-generierten Antworten auf Nutzerfragen',
+    config: {
+      type: 'multi-dimensional',
+      min: 1,
+      max: 5,
+      step: 1,
+      dimensions: [
+        {
+          id: 'helpfulness',
+          name: { de: 'Hilfsbereitschaft', en: 'Helpfulness' },
+          description: { de: 'Wie nützlich ist die Antwort für den Nutzer?', en: 'How useful is the answer for the user?' },
+          weight: 0.30
+        },
+        {
+          id: 'accuracy',
+          name: { de: 'Genauigkeit', en: 'Accuracy' },
+          description: { de: 'Faktische Korrektheit der Informationen', en: 'Factual correctness of information' },
+          weight: 0.30
+        },
+        {
+          id: 'completeness',
+          name: { de: 'Vollständigkeit', en: 'Completeness' },
+          description: { de: 'Werden alle relevanten Aspekte abgedeckt?', en: 'Are all relevant aspects covered?' },
+          weight: 0.20
+        },
+        {
+          id: 'clarity',
+          name: { de: 'Klarheit', en: 'Clarity' },
+          description: { de: 'Verständlichkeit und Strukturiertheit', en: 'Understandability and structure' },
+          weight: 0.20
+        }
+      ],
+      labels: {
+        1: { de: 'Unzureichend', en: 'Insufficient' },
+        2: { de: 'Mangelhaft', en: 'Poor' },
+        3: { de: 'Befriedigend', en: 'Satisfactory' },
+        4: { de: 'Gut', en: 'Good' },
+        5: { de: 'Ausgezeichnet', en: 'Excellent' }
+      },
+      showOverallScore: true,
+      allowFeedback: true
+    }
+  },
+  'text-quality-3dim': {
+    id: 'text-quality-3dim',
+    name: 'Textqualität (3 Dimensionen)',
+    description: 'Kompakte Bewertung mit 3 Kerndimensionen',
+    config: {
+      type: 'multi-dimensional',
+      min: 1,
+      max: 5,
+      step: 1,
+      dimensions: [
+        {
+          id: 'content',
+          name: { de: 'Inhalt', en: 'Content' },
+          description: { de: 'Informationsgehalt und Relevanz', en: 'Information value and relevance' },
+          weight: 0.40
+        },
+        {
+          id: 'language',
+          name: { de: 'Sprache', en: 'Language' },
+          description: { de: 'Grammatik, Stil, Lesbarkeit', en: 'Grammar, style, readability' },
+          weight: 0.30
+        },
+        {
+          id: 'structure',
+          name: { de: 'Struktur', en: 'Structure' },
+          description: { de: 'Aufbau, Gliederung, Logik', en: 'Organization, outline, logic' },
+          weight: 0.30
+        }
+      ],
+      labels: {
+        1: { de: 'Sehr schlecht', en: 'Very poor' },
+        2: { de: 'Schlecht', en: 'Poor' },
+        3: { de: 'Akzeptabel', en: 'Acceptable' },
+        4: { de: 'Gut', en: 'Good' },
+        5: { de: 'Sehr gut', en: 'Very good' }
+      },
+      showOverallScore: true,
+      allowFeedback: true
+    }
+  },
+  'news-article': {
+    id: 'news-article',
+    name: 'Nachrichtenartikel',
+    description: 'Bewertung von Nachrichtenartikeln nach journalistischen Standards',
+    config: {
+      type: 'multi-dimensional',
+      min: 1,
+      max: 5,
+      step: 1,
+      dimensions: [
+        {
+          id: 'accuracy',
+          name: { de: 'Genauigkeit', en: 'Accuracy' },
+          description: { de: 'Faktische Korrektheit und Quellennähe', en: 'Factual correctness and source accuracy' },
+          weight: 0.30
+        },
+        {
+          id: 'objectivity',
+          name: { de: 'Objektivität', en: 'Objectivity' },
+          description: { de: 'Ausgewogene Darstellung ohne Verzerrung', en: 'Balanced presentation without bias' },
+          weight: 0.25
+        },
+        {
+          id: 'completeness',
+          name: { de: 'Vollständigkeit', en: 'Completeness' },
+          description: { de: 'Abdeckung aller relevanten Aspekte', en: 'Coverage of all relevant aspects' },
+          weight: 0.25
+        },
+        {
+          id: 'readability',
+          name: { de: 'Lesbarkeit', en: 'Readability' },
+          description: { de: 'Verständlichkeit und Sprachqualität', en: 'Understandability and language quality' },
+          weight: 0.20
+        }
+      ],
+      labels: {
+        1: { de: 'Mangelhaft', en: 'Poor' },
+        2: { de: 'Unzureichend', en: 'Insufficient' },
+        3: { de: 'Befriedigend', en: 'Satisfactory' },
+        4: { de: 'Gut', en: 'Good' },
+        5: { de: 'Sehr gut', en: 'Very good' }
+      },
+      showOverallScore: true,
+      allowFeedback: true
+    }
+  },
+  'multi-dimensional-custom': {
+    id: 'multi-dimensional-custom',
+    name: 'Multi-Dimensional (Benutzerdefiniert)',
+    description: 'Eigene Dimensionen definieren für mehrdimensionales Rating',
+    config: {
+      type: 'multi-dimensional',
+      min: 1,
+      max: 5,
+      step: 1,
+      dimensions: [],
+      labels: {
+        1: { de: 'Sehr schlecht', en: 'Very poor' },
+        2: { de: 'Schlecht', en: 'Poor' },
+        3: { de: 'Akzeptabel', en: 'Acceptable' },
+        4: { de: 'Gut', en: 'Good' },
+        5: { de: 'Sehr gut', en: 'Very good' }
+      },
+      showOverallScore: true,
+      allowFeedback: true
     }
   }
 }
@@ -707,8 +959,8 @@ export const PRESETS_BY_TYPE = {
 
 // ===== Default Config by Type =====
 export const DEFAULT_CONFIG_BY_TYPE = {
-  // General types
-  [EVAL_TYPES.RATING]: RATING_PRESETS['likert-5'].config,
+  // General types - RATING now uses multi-dimensional as default (LLM-as-Judge standard)
+  [EVAL_TYPES.RATING]: RATING_PRESETS['llm-judge-standard'].config,
   [EVAL_TYPES.RANKING]: RANKING_PRESETS['buckets-3'].config,
   [EVAL_TYPES.LABELING]: LABELING_PRESETS['binary-authentic'].config,
   [EVAL_TYPES.COMPARISON]: COMPARISON_PRESETS['pairwise'].config,

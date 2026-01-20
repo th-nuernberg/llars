@@ -465,6 +465,7 @@ TASK_TYPE_SCHEMAS: Dict[str, Type[BaseEvaluationResult]] = {
     "mail_rating": MailRatingEvaluationResult,
     "comparison": ComparisonEvaluationResult,
     "text_classification": ClassificationEvaluationResult,
+    "labeling": ClassificationEvaluationResult,
 }
 
 
@@ -473,7 +474,7 @@ def get_schema_for_task_type(task_type: str) -> Type[BaseEvaluationResult]:
     Get the appropriate Pydantic schema for a task type.
 
     Args:
-        task_type: One of: ranking, rating, authenticity, mail_rating, comparison, text_classification
+        task_type: One of: ranking, rating, authenticity, mail_rating, comparison, text_classification, labeling
 
     Returns:
         The corresponding Pydantic model class

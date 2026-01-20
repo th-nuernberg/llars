@@ -302,8 +302,8 @@
           </LTooltip>
         </h4>
         <div class="metrics-grid">
-          <!-- Cohen's Kappa -->
-          <div class="metric-item" v-if="liveAgreementMetrics?.kappa !== null && liveAgreementMetrics?.kappa !== undefined">
+          <!-- Cohen's Kappa (Rating, Classification) -->
+          <div class="metric-item" v-if="showKappa && liveAgreementMetrics?.kappa !== null && liveAgreementMetrics?.kappa !== undefined">
             <LTooltip location="top">
               <template #content>
                 <div class="tooltip-content">
@@ -329,8 +329,8 @@
             </LTooltip>
           </div>
 
-          <!-- Krippendorff's Alpha -->
-          <div class="metric-item" v-if="liveAgreementMetrics?.alpha !== null && liveAgreementMetrics?.alpha !== undefined">
+          <!-- Krippendorff's Alpha (Ranking, Rating, Classification) -->
+          <div class="metric-item" v-if="showAlpha && liveAgreementMetrics?.alpha !== null && liveAgreementMetrics?.alpha !== undefined">
             <LTooltip location="top">
               <template #content>
                 <div class="tooltip-content">
@@ -355,8 +355,8 @@
             </LTooltip>
           </div>
 
-          <!-- Fleiss' Kappa -->
-          <div class="metric-item" v-if="liveAgreementMetrics?.fleiss !== null && liveAgreementMetrics?.fleiss !== undefined">
+          <!-- Fleiss' Kappa (Ranking, Rating) -->
+          <div class="metric-item" v-if="showFleiss && liveAgreementMetrics?.fleiss !== null && liveAgreementMetrics?.fleiss !== undefined">
             <LTooltip location="top">
               <template #content>
                 <div class="tooltip-content">
@@ -382,8 +382,8 @@
             </LTooltip>
           </div>
 
-          <!-- Percent Agreement / Accuracy -->
-          <div class="metric-item" v-if="liveAgreementMetrics?.accuracy !== null && liveAgreementMetrics?.accuracy !== undefined">
+          <!-- Accuracy (Classification, Comparison only) -->
+          <div class="metric-item" v-if="showAccuracy && liveAgreementMetrics?.accuracy !== null && liveAgreementMetrics?.accuracy !== undefined">
             <LTooltip location="top">
               <template #content>
                 <div class="tooltip-content">
@@ -400,8 +400,8 @@
             </LTooltip>
           </div>
 
-          <!-- ICC (Intraclass Correlation Coefficient) - für Rating -->
-          <div class="metric-item" v-if="liveAgreementMetrics?.icc !== null && liveAgreementMetrics?.icc !== undefined">
+          <!-- ICC (Intraclass Correlation Coefficient) - Rating only -->
+          <div class="metric-item" v-if="showICC && liveAgreementMetrics?.icc !== null && liveAgreementMetrics?.icc !== undefined">
             <LTooltip location="top">
               <template #content>
                 <div class="tooltip-content">
@@ -425,8 +425,8 @@
             </LTooltip>
           </div>
 
-          <!-- Kendall's W (Coefficient of Concordance) - für Ranking -->
-          <div class="metric-item" v-if="liveAgreementMetrics?.kendallW !== null && liveAgreementMetrics?.kendallW !== undefined">
+          <!-- Kendall's W (Coefficient of Concordance) - Ranking only -->
+          <div class="metric-item" v-if="showKendallW && liveAgreementMetrics?.kendallW !== null && liveAgreementMetrics?.kendallW !== undefined">
             <LTooltip location="top">
               <template #content>
                 <div class="tooltip-content">
@@ -451,8 +451,31 @@
             </LTooltip>
           </div>
 
-          <!-- MAE (Mean Absolute Error) -->
-          <div class="metric-item" v-if="liveAgreementMetrics?.mae !== null && liveAgreementMetrics?.mae !== undefined">
+          <!-- Kendall's Tau - Ranking only -->
+          <div class="metric-item" v-if="showKendallTau && liveAgreementMetrics?.kendall !== null && liveAgreementMetrics?.kendall !== undefined">
+            <LTooltip location="top">
+              <template #content>
+                <div class="tooltip-content">
+                  <strong>Kendall's Tau (τ)</strong>
+                  <p>{{ $t('scenarioManager.tooltips.kendallTau.description') }}</p>
+                  <div class="tooltip-scale">
+                    <div>-1.0: {{ $t('scenarioManager.tooltips.interpretation.perfectNegative') }}</div>
+                    <div>0: {{ $t('scenarioManager.tooltips.interpretation.noCorrelation') }}</div>
+                    <div>+1.0: {{ $t('scenarioManager.tooltips.interpretation.perfectPositive') }}</div>
+                  </div>
+                </div>
+              </template>
+              <div class="metric-content">
+                <span class="metric-value" :class="getCorrelationClass(liveAgreementMetrics.kendall)">
+                  {{ liveAgreementMetrics.kendall?.toFixed(3) }}
+                </span>
+                <span class="metric-label">Kendall's τ <v-icon size="12" class="info-icon">mdi-information-outline</v-icon></span>
+              </div>
+            </LTooltip>
+          </div>
+
+          <!-- MAE (Mean Absolute Error) - Rating only -->
+          <div class="metric-item" v-if="showMAE && liveAgreementMetrics?.mae !== null && liveAgreementMetrics?.mae !== undefined">
             <LTooltip location="top">
               <template #content>
                 <div class="tooltip-content">
@@ -469,8 +492,8 @@
             </LTooltip>
           </div>
 
-          <!-- RMSE (Root Mean Squared Error) -->
-          <div class="metric-item" v-if="liveAgreementMetrics?.rmse !== null && liveAgreementMetrics?.rmse !== undefined">
+          <!-- RMSE (Root Mean Squared Error) - Rating only -->
+          <div class="metric-item" v-if="showRMSE && liveAgreementMetrics?.rmse !== null && liveAgreementMetrics?.rmse !== undefined">
             <LTooltip location="top">
               <template #content>
                 <div class="tooltip-content">
@@ -487,8 +510,8 @@
             </LTooltip>
           </div>
 
-          <!-- Macro F1 Score - für Labeling/Classification -->
-          <div class="metric-item" v-if="liveAgreementMetrics?.macroF1 !== null && liveAgreementMetrics?.macroF1 !== undefined">
+          <!-- Macro F1 Score - Classification only -->
+          <div class="metric-item" v-if="showF1Scores && liveAgreementMetrics?.macroF1 !== null && liveAgreementMetrics?.macroF1 !== undefined">
             <LTooltip location="top">
               <template #content>
                 <div class="tooltip-content">
@@ -511,8 +534,8 @@
             </LTooltip>
           </div>
 
-          <!-- Micro F1 Score - für Labeling/Classification -->
-          <div class="metric-item" v-if="liveAgreementMetrics?.microF1 !== null && liveAgreementMetrics?.microF1 !== undefined">
+          <!-- Micro F1 Score - Classification only -->
+          <div class="metric-item" v-if="showF1Scores && liveAgreementMetrics?.microF1 !== null && liveAgreementMetrics?.microF1 !== undefined">
             <LTooltip location="top">
               <template #content>
                 <div class="tooltip-content">
@@ -788,12 +811,74 @@ const hasMetrics = computed(() => {
     m.accuracy !== null ||
     m.icc !== null ||
     m.kendallW !== null ||
+    m.kendall !== null ||  // Kendall's Tau
     m.mae !== null ||
     m.rmse !== null ||
     m.macroF1 !== null ||
     m.microF1 !== null
   )
 })
+
+// ===== Task-Type Specific Metric Visibility =====
+const currentTaskType = computed(() => {
+  return liveAgreementMetrics.value?.taskType ||
+         props.liveStats?.functionType ||
+         props.scenario?.function_type ||
+         null
+})
+
+// Ranking: Krippendorff's α, Kendall's W, Kendall's τ, Fleiss' κ
+const isRankingScenario = computed(() => currentTaskType.value === 'ranking')
+
+// Rating: ICC, Krippendorff's α, MAE, RMSE, Cohen's/Fleiss' κ
+const isRatingScenario = computed(() =>
+  currentTaskType.value === 'rating' || currentTaskType.value === 'mail_rating'
+)
+
+// Classification/Authenticity: Accuracy, F1, Confusion Matrix, Cohen's κ
+const isClassificationScenario = computed(() =>
+  currentTaskType.value === 'authenticity' ||
+  currentTaskType.value === 'text_classification' ||
+  currentTaskType.value === 'labeling'
+)
+
+// Comparison: Bradley-Terry, Percent Agreement
+const isComparisonScenario = computed(() => currentTaskType.value === 'comparison')
+
+// If task type is unknown, show all metrics that have values (fallback mode)
+const hasKnownTaskType = computed(() => currentTaskType.value !== null)
+
+// Metric visibility helpers - show if type matches OR if type unknown (fallback)
+const showKappa = computed(() =>
+  !hasKnownTaskType.value || isClassificationScenario.value || isRatingScenario.value
+)
+const showAlpha = computed(() =>
+  !hasKnownTaskType.value || isRankingScenario.value || isRatingScenario.value || isClassificationScenario.value
+)
+const showFleiss = computed(() =>
+  !hasKnownTaskType.value || isRankingScenario.value || isRatingScenario.value
+)
+const showAccuracy = computed(() =>
+  isClassificationScenario.value || isComparisonScenario.value
+)
+const showICC = computed(() =>
+  !hasKnownTaskType.value || isRatingScenario.value
+)
+const showKendallW = computed(() =>
+  !hasKnownTaskType.value || isRankingScenario.value
+)
+const showKendallTau = computed(() =>
+  !hasKnownTaskType.value || isRankingScenario.value
+)
+const showMAE = computed(() =>
+  !hasKnownTaskType.value || isRatingScenario.value
+)
+const showRMSE = computed(() =>
+  !hasKnownTaskType.value || isRatingScenario.value
+)
+const showF1Scores = computed(() =>
+  !hasKnownTaskType.value || isClassificationScenario.value
+)
 
 // ===== Computed: LLM Controls =====
 
@@ -1047,6 +1132,14 @@ function getKendallWClass(value) {
   return 'poor'
 }
 
+function getCorrelationClass(value) {
+  const absValue = Math.abs(value)
+  if (absValue >= 0.8) return 'excellent'
+  if (absValue >= 0.6) return 'good'
+  if (absValue >= 0.4) return 'moderate'
+  return 'poor'
+}
+
 function getF1Class(value) {
   if (value >= 0.85) return 'excellent'
   if (value >= 0.7) return 'good'
@@ -1061,9 +1154,10 @@ function startHumanEvaluation() {
   const routeMap = {
     'ranking': 'RankingSession',
     'rating': 'RatingSession',
+    'mail_rating': 'RatingSession',  // mail_rating uses the same rating interface
     'authenticity': 'AuthenticitySession',
     'comparison': 'ComparisonSession',
-    'mail_rating': 'MailRatingSession'
+    'labeling': 'RatingSession'  // labeling uses rating interface
   }
   const routeName = routeMap[functionType] || 'RatingSession'
 

@@ -158,7 +158,9 @@ const resultComponent = computed(() => {
     case 'rating': return RatingResult
     case 'authenticity': return AuthenticityResult
     case 'comparison': return ComparisonResult
-    case 'text_classification': return ClassificationResult
+    case 'text_classification':
+    case 'labeling':
+      return ClassificationResult
     case 'mail_rating': return MailRatingResult
     default: return GenericResult
   }

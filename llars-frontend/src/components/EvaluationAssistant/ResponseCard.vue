@@ -159,11 +159,15 @@
           </div>
 
           <!-- Classification Result -->
-          <div v-else-if="result.task_type === 'text_classification'" class="result-detail classification-detail">
+          <div
+            v-else-if="result.task_type === 'text_classification' || result.task_type === 'labeling'"
+            class="result-detail classification-detail"
+          >
             <div class="label-display">
               <LTag variant="primary" size="lg">{{ result.label }}</LTag>
               <div class="confidence-score">
-                {{ $t('evaluationAssistant.responseCard.confidenceScore') }}: {{ result.confidence_score }}/5
+                {{ $t('evaluationAssistant.responseCard.confidenceScore') }}:
+                {{ result.confidence_score ?? result.confidence }}/5
               </div>
             </div>
             <div v-if="result.key_phrases?.length" class="key-phrases">

@@ -32,7 +32,7 @@
     </template>
 
     <!-- Classification Result -->
-    <template v-else-if="result.task_type === 'text_classification'">
+    <template v-else-if="result.task_type === 'text_classification' || result.task_type === 'labeling'">
       <LTag variant="info" size="sm">
         {{ result.label }}
       </LTag>

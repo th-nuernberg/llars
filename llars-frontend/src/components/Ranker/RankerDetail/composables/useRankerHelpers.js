@@ -55,7 +55,9 @@ export function useRankerHelpers() {
       generated_category: 'Generierte Kategorie',
       generated_subject: 'Generierter Betreff',
       order_clarification: 'Ordnungsklärung',
-      situation_summary: 'Situationsbeschreibung'
+      situation_summary: 'Situationsbeschreibung',
+      'Situation Summary': 'Situationsbeschreibung',
+      'Summary': 'Zusammenfassung'
     };
     return translations[type] || type;
   }
@@ -69,14 +71,21 @@ export function useRankerHelpers() {
 
   // Format feature content based on type
   function formatFeatureContent(type, content) {
+    // Strip [Summary X] prefix if present (backwards compatibility)
+    const cleanedContent = content.replace(/^\[Summary [A-Z]\]\s*/i, '');
+
     switch (type) {
+      case 'Summary':
+        // For SummEval summaries, just return the cleaned content
+        return sanitizeHtml(cleanedContent);
+
       case 'generated_subject':
         try {
-          const subjectObj = JSON.parse(content);
-          return sanitizeHtml(subjectObj.Betreff || content);
+          const subjectObj = JSON.parse(cleanedContent);
+          return sanitizeHtml(subjectObj.Betreff || cleanedContent);
         } catch (error) {
           console.error('Error parsing generated_subject JSON:', error);
-          return sanitizeHtml(content);
+          return sanitizeHtml(cleanedContent);
         }
 
       case 'situation_summary':
@@ -114,7 +123,7 @@ export function useRankerHelpers() {
         }
 
       default:
-        return sanitizeHtml(content);
+        return sanitizeHtml(cleanedContent);
     }
   }
 

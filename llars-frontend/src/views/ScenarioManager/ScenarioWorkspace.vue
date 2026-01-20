@@ -124,6 +124,7 @@
       <ScenarioTeamTab
         v-else-if="activeTab === 'team'"
         :scenario="scenario"
+        :live-stats="liveStats"
         @team-updated="refreshScenario"
       />
     </div>
@@ -413,12 +414,19 @@ async function onSettingsSaved(updates) {
   await refreshScenario()
 }
 
-// Watch for tab query parameter
+// Watch for tab query parameter (read from URL)
 watch(() => route.query.tab, (newTab) => {
   if (newTab && tabs.value.some(t => t.value === newTab)) {
     activeTab.value = newTab
   }
 }, { immediate: true })
+
+// Update URL when tab changes (for shareable links)
+watch(activeTab, (newTab) => {
+  if (newTab && newTab !== route.query.tab) {
+    router.replace({ query: { ...route.query, tab: newTab } })
+  }
+})
 
 // Auto-switch to evaluation tab in evaluator mode
 watch(isEvaluatorMode, (isEvaluator) => {

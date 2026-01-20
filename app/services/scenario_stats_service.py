@@ -399,7 +399,10 @@ def _get_comparison_progress_stats(scenario_id: int) -> Dict[str, Any]:
 
     sessions = ComparisonSession.query.filter_by(scenario_id=scenario_id).all()
     sessions_by_user = {}
+    session_pair_counts = {}
     for session in sessions:
+        bot_pairs = [msg for msg in session.messages if msg.type == "bot_pair"]
+        session_pair_counts[session.id] = len(bot_pairs)
         sessions_by_user.setdefault(session.user_id, []).append(session)
 
     rater_stats = []
@@ -418,9 +421,11 @@ def _get_comparison_progress_stats(scenario_id: int) -> Dict[str, Any]:
         total_rated_pairs = 0
 
         for session in user_sessions:
-            bot_pairs = [msg for msg in session.messages if msg.type == "bot_pair"]
-            total_pairs_session = len(bot_pairs)
-            rated_pairs_session = sum(1 for msg in bot_pairs if msg.selected is not None)
+            total_pairs_session = session_pair_counts.get(session.id, 0)
+            rated_pairs_session = sum(
+                1 for msg in session.messages
+                if msg.type == "bot_pair" and msg.selected is not None
+            )
 
             total_pairs += total_pairs_session
             total_rated_pairs += rated_pairs_session
@@ -457,6 +462,63 @@ def _get_comparison_progress_stats(scenario_id: int) -> Dict[str, Any]:
             rater_stats.append(new_data)
         elif scenario_user.role == ScenarioRoles.EVALUATOR:
             evaluator_stats.append(new_data)
+
+    # Add LLM evaluator stats (comparison sessions)
+    config = scenario.config_json or {}
+    if isinstance(config, str):
+        try:
+            config = json.loads(config)
+        except (json.JSONDecodeError, TypeError):
+            config = {}
+    if not isinstance(config, dict):
+        config = {}
+
+    model_ids = config.get("llm_evaluators") or config.get("selected_llms") or []
+    cleaned_model_ids = []
+    for model_id in model_ids:
+        if isinstance(model_id, str):
+            mid = model_id.strip()
+            if mid and mid not in cleaned_model_ids:
+                cleaned_model_ids.append(mid)
+
+    if cleaned_model_ids:
+        results = LLMTaskResult.query.filter_by(
+            scenario_id=scenario_id,
+            task_type="comparison",
+        ).all()
+
+        by_model = {}
+        for result in results:
+            if result.thread_id not in session_pair_counts:
+                continue
+            evaluated_indices = []
+            if result.payload_json and isinstance(result.payload_json, dict):
+                evaluated_indices = result.payload_json.get("evaluated_indices", []) or []
+            by_model.setdefault(result.model_id, {})[result.thread_id] = len(evaluated_indices)
+
+        all_model_ids = sorted(set(list(by_model.keys()) + cleaned_model_ids))
+        model_meta = {
+            model.model_id: model
+            for model in LLMModel.query.filter(LLMModel.model_id.in_(all_model_ids)).all()
+        }
+
+        total_pairs_all = sum(session_pair_counts.values())
+        for model_id in all_model_ids:
+            model_results = by_model.get(model_id, {})
+            done_pairs = sum(model_results.get(session_id, 0) for session_id in session_pair_counts.keys())
+            display_name = model_meta.get(model_id).display_name if model_meta.get(model_id) else model_id
+            evaluator_stats.append({
+                "username": display_name,
+                "model_id": model_id,
+                "is_llm": True,
+                "total_threads": total_pairs_all,
+                "done_threads": done_pairs,
+                "not_started_threads": max(total_pairs_all - done_pairs, 0),
+                "progressing_threads": 0,
+                "done_threads_list": [],
+                "not_started_threads_list": [],
+                "progressing_threads_list": [],
+            })
 
     return {
         "rater_stats": rater_stats,
@@ -644,6 +706,12 @@ def get_authenticity_stats(scenario_id: int) -> Dict[str, Any]:
 
         accuracy = round(correct / (correct + incorrect) * 100, 1) if (correct + incorrect) > 0 else None
 
+        # Calculate F1 Score (fake is positive class)
+        # TP = fake_correct, FP = fake_incorrect, FN = real_incorrect
+        precision = fake_correct / (fake_correct + fake_incorrect) if (fake_correct + fake_incorrect) > 0 else 0
+        recall = fake_correct / (fake_correct + real_incorrect) if (fake_correct + real_incorrect) > 0 else 0
+        f1_score = round(2 * precision * recall / (precision + recall) * 100, 1) if (precision + recall) > 0 else None
+
         # Detailed vote lists
         voted_threads = []
         pending_threads = []
@@ -672,6 +740,7 @@ def get_authenticity_stats(scenario_id: int) -> Dict[str, Any]:
                 "pending_count": total_assigned - voted_count,
                 "progress_percent": round(voted_count / total_assigned * 100, 1) if total_assigned > 0 else 0,
                 "accuracy_percent": accuracy,
+                "f1_score_percent": f1_score,
                 "correct_count": correct,
                 "incorrect_count": incorrect,
                 "fake_correct": fake_correct,
@@ -936,6 +1005,11 @@ def _build_llm_authenticity_stats(
         total_assigned = len(thread_ids)
         accuracy = round(correct / (correct + incorrect) * 100, 1) if (correct + incorrect) > 0 else None
 
+        # Calculate F1 Score (fake is positive class)
+        precision = fake_correct / (fake_correct + fake_incorrect) if (fake_correct + fake_incorrect) > 0 else 0
+        recall = fake_correct / (fake_correct + real_incorrect) if (fake_correct + real_incorrect) > 0 else 0
+        f1_score = round(2 * precision * recall / (precision + recall) * 100, 1) if (precision + recall) > 0 else None
+
         user_stats.append({
             "user_id": f"llm:{model_id}",
             "username": display_name,
@@ -947,6 +1021,7 @@ def _build_llm_authenticity_stats(
             "pending_count": total_assigned - voted_count,
             "progress_percent": round(voted_count / total_assigned * 100, 1) if total_assigned > 0 else 0,
             "accuracy_percent": accuracy,
+            "f1_score_percent": f1_score,
             "correct_count": correct,
             "incorrect_count": incorrect,
             "fake_correct": fake_correct,

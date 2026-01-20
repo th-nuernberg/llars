@@ -38,7 +38,7 @@
           :class="{ 'is-rejected': member.invitation_status === 'rejected' }"
         >
           <div class="member-avatar">
-            <LAvatar :user="member" size="40" />
+            <LAvatar :username="member.display_name || member.username" :seed="member.username" size="md" />
           </div>
           <div class="member-info">
             <span class="member-name">{{ member.display_name || member.username }}</span>
@@ -267,6 +267,10 @@ const props = defineProps({
   scenario: {
     type: Object,
     default: null
+  },
+  liveStats: {
+    type: Object,
+    default: null
   }
 })
 
@@ -326,7 +330,32 @@ const evaluators = computed(() => {
 })
 
 const llmEvaluators = computed(() => {
-  return props.scenario?.llm_evaluators || []
+  const evaluators = props.scenario?.llm_evaluators || []
+  // Get live stats for LLM evaluators if available
+  const llmLiveStats = props.liveStats?.evaluatorStats?.filter(e => e.is_llm) || []
+
+  // Transform string model IDs to objects with display info
+  return evaluators.map(modelId => {
+    // If it's already an object, return as-is
+    if (typeof modelId === 'object' && modelId !== null) {
+      return modelId
+    }
+    // Otherwise, parse the model ID string
+    const parts = modelId.split('/')
+    const provider = parts.length > 1 ? parts[0] : 'Unknown'
+    const modelName = parts.length > 1 ? parts.slice(1).join('/') : modelId
+
+    // Find matching live stats (username in evaluatorStats is the model_id for LLMs)
+    const liveData = llmLiveStats.find(s => s.username === modelId || s.model_id === modelId)
+
+    return {
+      id: modelId,
+      model_name: modelName,
+      provider: provider,
+      completed: liveData?.done_threads || liveData?.voted_count || 0,
+      total: liveData?.total_threads || 0
+    }
+  })
 })
 
 // Methods

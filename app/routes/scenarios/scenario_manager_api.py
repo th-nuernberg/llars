@@ -181,8 +181,12 @@ def format_scenario_for_api(scenario, user, invitation_map=None, include_detaile
     ).first()
     func_type_name = func_type.name if func_type else None
 
-    # Count threads and users (only count accepted users for user_count display)
-    thread_count = ScenarioThreads.query.filter_by(scenario_id=scenario.id).count()
+    # Count threads/sessions and users (only count accepted users for user_count display)
+    # For comparison scenarios, count ComparisonSession instead of ScenarioThreads
+    if func_type_name == 'comparison':
+        thread_count = ComparisonSession.query.filter_by(scenario_id=scenario.id).count()
+    else:
+        thread_count = ScenarioThreads.query.filter_by(scenario_id=scenario.id).count()
     user_count = ScenarioUsers.query.filter(
         ScenarioUsers.scenario_id == scenario.id,
         ScenarioUsers.invitation_status == InvitationStatus.ACCEPTED
@@ -226,8 +230,11 @@ def format_scenario_for_api(scenario, user, invitation_map=None, include_detaile
             # Count users who are fully done
             raters_done = len([u for u in rater_stats if u.get('done_threads', 0) == u.get('total_threads', 0) and u.get('total_threads', 0) > 0])
 
+            # Total evaluations = sum of expected evaluations from all evaluators
+            # This ensures progress calculation is correct (completed/total <= 100%)
+            total_expected = human_total + llm_total
             stats = {
-                'total': thread_count,
+                'total': total_expected if total_expected > 0 else thread_count,
                 'completed': human_done + llm_done,
                 'human_total': human_total,
                 'human_completed': human_done,
@@ -448,22 +455,51 @@ def get_scenario_detail(scenario_id):
 
     if llm_evaluators and (is_admin or is_owner) and result.get('thread_count', 0) > 0:
         try:
-            existing_models = set()
-            model_rows = db.session.query(LLMTaskResult.model_id).filter(
-                LLMTaskResult.scenario_id == scenario.id,
-                LLMTaskResult.model_id.in_(llm_evaluators),
-            ).distinct().all()
-            for row in model_rows:
-                if row and row[0]:
-                    existing_models.add(row[0])
+            # Get all item IDs for this scenario (threads or comparison sessions)
+            function_type = FeatureFunctionType.query.filter_by(
+                function_type_id=scenario.function_type_id
+            ).first()
+            function_name = function_type.name if function_type else None
 
-            pending_models = [mid for mid in llm_evaluators if mid not in existing_models]
-            if pending_models:
+            if function_name == "comparison":
+                all_thread_ids = {session.id for session in ComparisonSession.query.filter_by(scenario_id=scenario.id).all()}
+                id_label = "sessions"
+            else:
+                scenario_threads = ScenarioThreads.query.filter_by(scenario_id=scenario.id).all()
+                all_thread_ids = {st.thread_id for st in scenario_threads}
+                id_label = "threads"
+
+            if all_thread_ids:
+                # For each model, find which threads are missing evaluations
                 from services.llm.llm_ai_task_runner import LLMAITaskRunner
-                LLMAITaskRunner.run_for_scenario_async(
-                    scenario.id,
-                    model_ids=pending_models,
-                )
+
+                for model_id in llm_evaluators:
+                    # Get threads that already have results for this model
+                    completed_rows = db.session.query(LLMTaskResult.thread_id).filter(
+                        LLMTaskResult.scenario_id == scenario.id,
+                        LLMTaskResult.model_id == model_id,
+                        LLMTaskResult.payload_json.isnot(None),
+                        LLMTaskResult.error.is_(None),
+                    ).all()
+                    completed_thread_ids = {row[0] for row in completed_rows if row[0]}
+
+                    # Find threads that need evaluation
+                    pending_thread_ids = list(all_thread_ids - completed_thread_ids)
+
+                    if pending_thread_ids:
+                        logger.info(
+                            "[LLM AI Runner] Auto-starting %s for scenario %s: %d/%d %s pending",
+                            model_id,
+                            scenario.id,
+                            len(pending_thread_ids),
+                            len(all_thread_ids),
+                            id_label,
+                        )
+                        LLMAITaskRunner.run_for_scenario_async(
+                            scenario.id,
+                            model_ids=[model_id],
+                            thread_ids=pending_thread_ids,
+                        )
         except Exception as exc:
             logger.warning(
                 "[LLM AI Runner] Auto-start failed for scenario %s: %s",
@@ -848,8 +884,13 @@ def get_scenario_thread_detail(scenario_id, thread_id):
                 'type': 'human',
                 'user_id': rating.user_id,
                 'username': user.username if user else 'Unknown',
-                'ratings': rating.ratings,
-                'created_at': rating.created_at.isoformat() if hasattr(rating, 'created_at') and rating.created_at else None
+                'overall_rating': rating.overall_rating,
+                'counsellor_coherence_rating': rating.counsellor_coherence_rating,
+                'client_coherence_rating': rating.client_coherence_rating,
+                'quality_rating': rating.quality_rating,
+                'feedback': rating.feedback,
+                'status': rating.status.value if rating.status else None,
+                'created_at': rating.timestamp.isoformat() if rating.timestamp else None
             })
 
         llm_ratings = LLMTaskResult.query.filter_by(
@@ -873,11 +914,11 @@ def get_scenario_thread_detail(scenario_id, thread_id):
             'sender': email_thread.sender,
             'chat_id': email_thread.chat_id,
             'messages': [{
-                'id': m.id,
+                'id': m.message_id,
                 'sender': m.sender,
                 'content': m.content,
                 'timestamp': m.timestamp.isoformat() if m.timestamp else None,
-                'role': m.role if hasattr(m, 'role') else None
+                'role': getattr(m, 'role', m.sender)  # Use sender as fallback for role
             } for m in messages],
             'votes': votes
         }
@@ -1575,8 +1616,12 @@ def export_scenario_results(scenario_id):
                 'username': user_info.get('username'),
                 'thread_id': rating.thread_id,
                 'thread_subject': thread_info.get('subject'),
-                'rating': rating.rating,
-                'comment': rating.comment,
+                'overall_rating': rating.overall_rating,
+                'counsellor_coherence_rating': rating.counsellor_coherence_rating,
+                'client_coherence_rating': rating.client_coherence_rating,
+                'quality_rating': rating.quality_rating,
+                'feedback': rating.feedback,
+                'status': rating.status.value if rating.status else None,
                 'timestamp': rating.timestamp.isoformat() if rating.timestamp else None
             })
 
@@ -1595,7 +1640,8 @@ def export_scenario_results(scenario_id):
                 'username': user_info.get('username'),
                 'thread_id': selection.thread_id,
                 'thread_subject': thread_info.get('subject'),
-                'category_id': selection.category_id,
+                'consulting_category_type_id': selection.consulting_category_type_id,
+                'notes': selection.notes,
                 'timestamp': selection.timestamp.isoformat() if selection.timestamp else None
             })
 

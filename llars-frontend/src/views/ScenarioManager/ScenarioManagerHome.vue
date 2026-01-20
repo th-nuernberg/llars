@@ -71,6 +71,45 @@
           <p>{{ $t('scenarioManager.empty.invitationsDescription') }}</p>
         </div>
       </template>
+
+      <!-- Data Format Tab -->
+      <template v-else-if="activeTab === 'data-format'">
+        <div class="data-format">
+          <LCard
+            class="ideal-data-card"
+            :title="$t('scenarioManager.dataFormat.title')"
+            icon="mdi-file-code-outline"
+            color="#b0ca97"
+          >
+            <p class="ideal-data-intro">{{ $t('scenarioManager.dataFormat.intro') }}</p>
+            <ul class="ideal-data-list">
+              <li>{{ $t('scenarioManager.dataFormat.tip1') }}</li>
+              <li>{{ $t('scenarioManager.dataFormat.tip2') }}</li>
+              <li>{{ $t('scenarioManager.dataFormat.tip3') }}</li>
+              <li>{{ $t('scenarioManager.dataFormat.tip4') }}</li>
+              <li>{{ $t('scenarioManager.dataFormat.tip5') }}</li>
+            </ul>
+            <div class="ideal-data-grid">
+              <div class="ideal-data-example">
+                <div class="ideal-data-label">{{ $t('scenarioManager.dataFormat.singleLabel') }}</div>
+                <pre class="ideal-data-code">{{ $t('scenarioManager.dataFormat.singleExample') }}</pre>
+              </div>
+              <div class="ideal-data-example">
+                <div class="ideal-data-label">{{ $t('scenarioManager.dataFormat.conversationLabel') }}</div>
+                <pre class="ideal-data-code">{{ $t('scenarioManager.dataFormat.conversationExample') }}</pre>
+              </div>
+              <div class="ideal-data-example">
+                <div class="ideal-data-label">{{ $t('scenarioManager.dataFormat.comparisonLabel') }}</div>
+                <pre class="ideal-data-code">{{ $t('scenarioManager.dataFormat.comparisonExample') }}</pre>
+              </div>
+            </div>
+            <div class="ideal-data-hint">
+              <LIcon size="16" class="mr-1">mdi-information-outline</LIcon>
+              <span>{{ $t('scenarioManager.dataFormat.hint') }}</span>
+            </div>
+          </LCard>
+        </div>
+      </template>
     </div>
 
     <!-- New Scenario Wizard -->
@@ -146,6 +185,10 @@ const tabs = computed(() => [
     value: 'invitations',
     label: t('scenarioManager.tabs.invitations'),
     badge: invitedScenarios.value.length || undefined
+  },
+  {
+    value: 'data-format',
+    label: t('scenarioManager.tabs.dataFormat')
   }
 ])
 
@@ -284,6 +327,10 @@ onMounted(() => {
   padding: 24px;
 }
 
+.data-format {
+  max-width: 980px;
+}
+
 /* Scenarios Grid */
 .scenarios-grid {
   display: grid;
@@ -345,5 +392,61 @@ onMounted(() => {
   margin-bottom: 24px;
   color: rgba(var(--v-theme-on-surface), 0.6);
   max-width: 320px;
+}
+
+.ideal-data-card {
+  margin: 16px 0 24px;
+}
+
+.ideal-data-intro {
+  margin-bottom: 12px;
+  color: rgba(var(--v-theme-on-surface), 0.8);
+}
+
+.ideal-data-list {
+  margin: 0 0 16px;
+  padding-left: 18px;
+  color: rgba(var(--v-theme-on-surface), 0.7);
+}
+
+.ideal-data-list li {
+  margin-bottom: 6px;
+}
+
+.ideal-data-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.ideal-data-example {
+  background: rgba(var(--v-theme-on-surface), 0.03);
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  border-radius: 12px 4px 12px 4px;
+  padding: 12px;
+}
+
+.ideal-data-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(var(--v-theme-on-surface), 0.75);
+  margin-bottom: 8px;
+}
+
+.ideal-data-code {
+  font-family: "IBM Plex Mono", "Courier New", monospace;
+  font-size: 12px;
+  line-height: 1.4;
+  white-space: pre-wrap;
+  color: rgba(var(--v-theme-on-surface), 0.85);
+  margin: 0;
+}
+
+.ideal-data-hint {
+  display: flex;
+  align-items: center;
+  font-size: 13px;
+  color: rgba(var(--v-theme-on-surface), 0.7);
 }
 </style>

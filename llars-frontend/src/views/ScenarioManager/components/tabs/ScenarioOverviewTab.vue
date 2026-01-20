@@ -122,6 +122,10 @@
               <span class="stat-value accuracy" :class="getAccuracyClass(user.accuracy)">{{ user.accuracy }}%</span>
               <span class="stat-label">{{ $t('scenarioManager.overview.accuracy') || 'Accuracy' }}</span>
             </div>
+            <div class="stat" v-if="user.f1Score !== null && user.f1Score !== undefined">
+              <span class="stat-value f1" :class="getF1Class(user.f1Score)">{{ user.f1Score }}%</span>
+              <span class="stat-label">F1</span>
+            </div>
           </div>
           <div class="evaluator-progress">
             <div class="progress-bar-small">
@@ -197,6 +201,13 @@
             {{ agreementMetrics.accuracy }}%
           </span>
           <span class="metric-label">{{ $t('scenarioManager.overview.overallAccuracy') || 'Overall Accuracy' }}</span>
+        </div>
+        <div class="metric-card" v-if="agreementMetrics.f1Score !== null && agreementMetrics.f1Score !== undefined">
+          <span class="metric-value" :class="getF1Class(agreementMetrics.f1Score)">
+            {{ agreementMetrics.f1Score }}%
+          </span>
+          <span class="metric-label">{{ $t('scenarioManager.overview.f1Score') || 'F1 Score' }}</span>
+          <span class="metric-interpretation">{{ $t('scenarioManager.overview.f1Hint') || 'Fake-Erkennung' }}</span>
         </div>
       </div>
     </div>
@@ -310,6 +321,13 @@ function getAlphaClass(alpha) {
   if (alpha >= 0.8) return 'excellent'
   if (alpha >= 0.667) return 'good'
   if (alpha >= 0.4) return 'moderate'
+  return 'poor'
+}
+
+function getF1Class(f1) {
+  if (f1 >= 80) return 'excellent'
+  if (f1 >= 60) return 'good'
+  if (f1 >= 40) return 'moderate'
   return 'poor'
 }
 </script>
@@ -583,7 +601,8 @@ function getAlphaClass(alpha) {
   color: rgba(var(--v-theme-on-surface), 0.4);
 }
 
-.stat-value.accuracy {
+.stat-value.accuracy,
+.stat-value.f1 {
   font-size: 0.85rem;
 }
 

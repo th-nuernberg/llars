@@ -191,7 +191,7 @@ const taskTypes = [
   { value: 'ranking', label: 'Ranking', icon: 'mdi-sort' },
   { value: 'comparison', label: 'Vergleich', icon: 'mdi-compare' },
   { value: 'authenticity', label: 'Echt/Fake', icon: 'mdi-shield-check' },
-  { value: 'classification', label: 'Labels', icon: 'mdi-tag-multiple' }
+  { value: 'labeling', label: 'Labels', icon: 'mdi-tag-multiple' }
 ]
 
 // Computed

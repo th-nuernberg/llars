@@ -89,7 +89,7 @@ function toggle() {
 
 <style scoped>
 .reasoning-card {
-  background: rgba(255, 255, 255, 0.03);
+  background: rgba(var(--v-theme-on-surface), 0.02);
   border: 1px solid rgba(176, 202, 151, 0.2);
   border-radius: 12px 4px 12px 4px;
   overflow: hidden;
@@ -126,7 +126,7 @@ function toggle() {
 }
 
 .toggle-icon {
-  color: rgba(255, 255, 255, 0.5);
+  color: rgba(var(--v-theme-on-surface), 0.5);
   transition: transform 0.3s ease;
 }
 
@@ -136,12 +136,14 @@ function toggle() {
 
 .card-content {
   padding: 16px;
+  max-height: 120px;
+  overflow-y: auto;
 }
 
 /* Loading Skeleton */
 .skeleton-line {
   height: 14px;
-  background: #3a3a3a;
+  background: rgba(var(--v-theme-on-surface), 0.12);
   border-radius: 4px;
   margin-bottom: 8px;
   animation: skeleton-pulse 1.5s ease-in-out infinite;
@@ -152,15 +154,15 @@ function toggle() {
 }
 
 @keyframes skeleton-pulse {
-  0%, 100% { opacity: 0.3; }
-  50% { opacity: 0.7; }
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 0.8; }
 }
 
 /* Reasoning Text */
 .reasoning-text {
   font-size: 14px;
   line-height: 1.6;
-  color: rgba(255, 255, 255, 0.85);
+  color: rgba(var(--v-theme-on-surface), 0.85);
   font-style: italic;
 }
 
@@ -183,7 +185,7 @@ function toggle() {
 }
 
 .no-content {
-  color: rgba(255, 255, 255, 0.4);
+  color: rgba(var(--v-theme-on-surface), 0.4);
   font-style: normal;
 }
 

@@ -119,35 +119,32 @@ export function useStreamingParser() {
 
   /**
    * Process a new chunk from the stream.
+   * Extraction order matches UI display order (top-to-bottom, left-to-right):
+   * 1. eval_type + confidence (EvalTypeCard - top left)
+   * 2. scenario_name + description (ScenarioSuggestionCard - top right)
+   * 3. eval_type_reasoning (ReasoningCard - middle)
+   * 4. config_suggestions (for Configuration step)
+   * 5. data_quality (DataQualityCard - bottom right)
    */
   function processChunk(chunk) {
     buffer.value += chunk
     isStreaming.value = true
 
-    // Extract eval_type (simple field)
+    // 1. Extract eval_type (EvalTypeCard - top left)
     if (fieldState.evalType !== FIELD_STATE.COMPLETE) {
       if (extractSimpleField('eval_type', (v) => { parsed.evalType = v })) {
         fieldState.evalType = FIELD_STATE.COMPLETE
       }
     }
 
-    // Extract eval_type_confidence (number)
+    // 2. Extract eval_type_confidence (EvalTypeCard - top left)
     if (fieldState.evalTypeConfidence !== FIELD_STATE.COMPLETE) {
       if (extractSimpleField('eval_type_confidence', (v) => { parsed.evalTypeConfidence = v })) {
         fieldState.evalTypeConfidence = FIELD_STATE.COMPLETE
       }
     }
 
-    // Extract eval_type_reasoning (streaming text)
-    if (fieldState.evalTypeReasoning !== FIELD_STATE.COMPLETE) {
-      const result = extractStreamingField('eval_type_reasoning')
-      if (result) {
-        parsed.evalTypeReasoning = result.value
-        fieldState.evalTypeReasoning = result.complete ? FIELD_STATE.COMPLETE : FIELD_STATE.STREAMING
-      }
-    }
-
-    // Extract scenario_name (streaming text)
+    // 3. Extract scenario_name (ScenarioSuggestionCard - top right)
     if (fieldState.scenarioName !== FIELD_STATE.COMPLETE) {
       const result = extractStreamingField('scenario_name')
       if (result) {
@@ -156,7 +153,7 @@ export function useStreamingParser() {
       }
     }
 
-    // Extract scenario_description (streaming text)
+    // 4. Extract scenario_description (ScenarioSuggestionCard - top right)
     if (fieldState.scenarioDescription !== FIELD_STATE.COMPLETE) {
       const result = extractStreamingField('scenario_description')
       if (result) {
@@ -165,7 +162,16 @@ export function useStreamingParser() {
       }
     }
 
-    // Detect config_suggestions start (shows loading indicator while complex object is being generated)
+    // 5. Extract eval_type_reasoning (ReasoningCard - middle, full width)
+    if (fieldState.evalTypeReasoning !== FIELD_STATE.COMPLETE) {
+      const result = extractStreamingField('eval_type_reasoning')
+      if (result) {
+        parsed.evalTypeReasoning = result.value
+        fieldState.evalTypeReasoning = result.complete ? FIELD_STATE.COMPLETE : FIELD_STATE.STREAMING
+      }
+    }
+
+    // 6. Detect config_suggestions start (for Configuration step)
     if (fieldState.configSuggestions === FIELD_STATE.PENDING) {
       const configStart = buffer.value.match(/"config_suggestions"\s*:\s*\{/)
       if (configStart) {

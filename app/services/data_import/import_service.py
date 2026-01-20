@@ -478,9 +478,10 @@ class ImportService:
             TaskType.MAIL_RATING: 3,
             TaskType.COMPARISON: 4,
             TaskType.AUTHENTICITY: 5,
-            TaskType.JUDGE: 6,
-            TaskType.TEXT_CLASSIFICATION: 7,
-            TaskType.TEXT_RATING: 8,
+            TaskType.LABELING: 7,
+            TaskType.TEXT_CLASSIFICATION: 7,  # legacy alias
+            TaskType.TEXT_RATING: 2,  # legacy alias
+            TaskType.JUDGE: 4,  # fallback to comparison for legacy imports
         }
         function_type_id = task_type_mapping.get(task_type, 3)
 
@@ -683,9 +684,10 @@ class ImportService:
             TaskType.MAIL_RATING: 3,
             TaskType.COMPARISON: 4,
             TaskType.AUTHENTICITY: 5,
-            TaskType.JUDGE: 6,
-            TaskType.TEXT_CLASSIFICATION: 7,
-            TaskType.TEXT_RATING: 8,
+            TaskType.LABELING: 7,
+            TaskType.TEXT_CLASSIFICATION: 7,  # legacy alias
+            TaskType.TEXT_RATING: 2,  # legacy alias
+            TaskType.JUDGE: 4,  # fallback to comparison for legacy imports
         }
         function_type_id = task_type_mapping.get(task_type, 3)
 
@@ -696,7 +698,7 @@ class ImportService:
             if 'evaluation_criteria' in ai_analysis:
                 config_json['evaluation_criteria'] = ai_analysis['evaluation_criteria']
 
-            # Include classification labels if present (for text_classification)
+            # Include classification labels if present (for labeling)
             if 'classification_labels' in ai_analysis:
                 config_json['classification_labels'] = ai_analysis['classification_labels']
 

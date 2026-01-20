@@ -36,7 +36,7 @@
             >
               <template #append-inner>
                 <span v-if="nameStreaming" class="streaming-cursor">|</span>
-                <v-icon v-else-if="editable" size="18" color="rgba(255,255,255,0.5)">mdi-pencil</v-icon>
+                <v-icon v-else-if="editable" size="18" class="edit-icon">mdi-pencil</v-icon>
               </template>
             </v-text-field>
           </div>
@@ -58,7 +58,7 @@
             >
               <template #append-inner>
                 <span v-if="descriptionStreaming" class="streaming-cursor">|</span>
-                <v-icon v-else-if="editable" size="18" color="rgba(255,255,255,0.5)">mdi-pencil</v-icon>
+                <v-icon v-else-if="editable" size="18" class="edit-icon">mdi-pencil</v-icon>
               </template>
             </v-textarea>
           </div>
@@ -127,11 +127,14 @@ watch(() => props.description, (v) => { localDescription.value = v })
 
 <style scoped>
 .scenario-card {
-  background: rgba(255, 255, 255, 0.03);
+  background: rgba(var(--v-theme-on-surface), 0.02);
   border: 1px solid rgba(176, 202, 151, 0.3);
   border-radius: 16px 4px 16px 4px;
   overflow: hidden;
   transition: border-color 0.3s ease;
+  height: 220px;
+  display: flex;
+  flex-direction: column;
 }
 
 .scenario-card.is-complete {
@@ -148,6 +151,7 @@ watch(() => props.description, (v) => { localDescription.value = v })
   text-transform: uppercase;
   letter-spacing: 0.5px;
   color: #b0ca97;
+  flex-shrink: 0;
 }
 
 .card-content {
@@ -155,6 +159,8 @@ watch(() => props.description, (v) => { localDescription.value = v })
   display: flex;
   flex-direction: column;
   gap: 16px;
+  flex: 1;
+  overflow-y: auto;
 }
 
 /* Loading Skeleton */
@@ -167,7 +173,7 @@ watch(() => props.description, (v) => { localDescription.value = v })
 .skeleton-label {
   width: 80px;
   height: 12px;
-  background: #3a3a3a;
+  background: rgba(var(--v-theme-on-surface), 0.12);
   border-radius: 4px;
   animation: skeleton-pulse 1.5s ease-in-out infinite;
 }
@@ -175,7 +181,7 @@ watch(() => props.description, (v) => { localDescription.value = v })
 .skeleton-input {
   width: 100%;
   height: 40px;
-  background: #3a3a3a;
+  background: rgba(var(--v-theme-on-surface), 0.12);
   border-radius: 8px;
   animation: skeleton-pulse 1.5s ease-in-out infinite;
 }
@@ -183,14 +189,14 @@ watch(() => props.description, (v) => { localDescription.value = v })
 .skeleton-textarea {
   width: 100%;
   height: 80px;
-  background: #3a3a3a;
+  background: rgba(var(--v-theme-on-surface), 0.12);
   border-radius: 8px;
   animation: skeleton-pulse 1.5s ease-in-out infinite;
 }
 
 @keyframes skeleton-pulse {
-  0%, 100% { opacity: 0.3; }
-  50% { opacity: 0.7; }
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 0.8; }
 }
 
 /* Field Groups */
@@ -203,7 +209,7 @@ watch(() => props.description, (v) => { localDescription.value = v })
 .field-label {
   font-size: 12px;
   font-weight: 500;
-  color: rgba(255, 255, 255, 0.7);
+  color: rgba(var(--v-theme-on-surface), 0.7);
   text-transform: uppercase;
   letter-spacing: 0.3px;
 }
@@ -239,5 +245,9 @@ watch(() => props.description, (v) => { localDescription.value = v })
 .regenerate-section :deep(.v-btn) {
   text-transform: none;
   font-size: 13px;
+}
+
+.edit-icon {
+  color: rgba(var(--v-theme-on-surface), 0.5);
 }
 </style>

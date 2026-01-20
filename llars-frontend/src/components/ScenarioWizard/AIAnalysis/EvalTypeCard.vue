@@ -179,11 +179,14 @@ const evalTypeOptions = computed(() => {
 
 <style scoped>
 .eval-type-card {
-  background: rgba(255, 255, 255, 0.03);
+  background: rgba(var(--v-theme-on-surface), 0.02);
   border: 1px solid rgba(176, 202, 151, 0.3);
   border-radius: 16px 4px 16px 4px;
   overflow: hidden;
   transition: border-color 0.3s ease;
+  height: 220px;
+  display: flex;
+  flex-direction: column;
 }
 
 .eval-type-card.is-complete {
@@ -200,6 +203,7 @@ const evalTypeOptions = computed(() => {
   text-transform: uppercase;
   letter-spacing: 0.5px;
   color: #b0ca97;
+  flex-shrink: 0;
 }
 
 .card-content {
@@ -208,6 +212,8 @@ const evalTypeOptions = computed(() => {
   flex-direction: column;
   align-items: center;
   gap: 16px;
+  flex: 1;
+  overflow-y: auto;
 }
 
 /* Loading Skeleton */
@@ -215,12 +221,12 @@ const evalTypeOptions = computed(() => {
   width: 48px;
   height: 48px;
   border-radius: 50%;
-  background: #3a3a3a;
+  background: rgba(var(--v-theme-on-surface), 0.12);
   animation: skeleton-pulse 1.5s ease-in-out infinite;
 }
 
 .skeleton-text {
-  background: #3a3a3a;
+  background: rgba(var(--v-theme-on-surface), 0.12);
   border-radius: 4px;
   animation: skeleton-pulse 1.5s ease-in-out infinite;
 }
@@ -236,8 +242,8 @@ const evalTypeOptions = computed(() => {
 }
 
 @keyframes skeleton-pulse {
-  0%, 100% { opacity: 0.3; }
-  50% { opacity: 0.7; }
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 0.8; }
 }
 
 /* Eval Type Display */
@@ -266,7 +272,7 @@ const evalTypeOptions = computed(() => {
 .type-name {
   font-size: 18px;
   font-weight: 600;
-  color: #fff;
+  color: rgb(var(--v-theme-on-surface));
 }
 
 /* Confidence */
@@ -277,7 +283,7 @@ const evalTypeOptions = computed(() => {
 
 .confidence-label {
   font-size: 13px;
-  color: rgba(255, 255, 255, 0.7);
+  color: rgba(var(--v-theme-on-surface), 0.7);
   margin-bottom: 8px;
 }
 
@@ -291,7 +297,7 @@ const evalTypeOptions = computed(() => {
   width: 10px;
   height: 10px;
   border-radius: 50%;
-  background: #3a3a3a;
+  background: rgba(var(--v-theme-on-surface), 0.15);
   transition: background-color 0.3s ease;
 }
 

@@ -115,9 +115,9 @@ const { t } = useI18n()
 const auth = useAuth()
 
 const props = defineProps({
-  sessionId: {
-    type: String,
-    default: null
+  data: {
+    type: Array,
+    default: () => []
   },
   currentConfig: {
     type: Object,
@@ -227,12 +227,12 @@ async function streamChatResponse(userMessage) {
     headers['Authorization'] = `Bearer ${token}`
   }
 
-  const response = await fetch('/api/import/ai/chat-stream', {
+  const response = await fetch('/api/ai-assist/scenario-chat/stream', {
     method: 'POST',
     headers,
     credentials: 'include',
     body: JSON.stringify({
-      session_id: props.sessionId,
+      data: props.data,
       messages: messages.value.map(m => ({
         role: m.role,
         content: m.content
@@ -369,7 +369,7 @@ async function scrollToBottom() {
 
 <style scoped>
 .ai-chat-panel {
-  background: rgba(255, 255, 255, 0.02);
+  background: rgba(var(--v-theme-on-surface), 0.02);
   border: 1px solid rgba(176, 202, 151, 0.3);
   border-radius: 16px 4px 16px 4px;
   overflow: hidden;
@@ -400,7 +400,7 @@ async function scrollToBottom() {
 }
 
 .toggle-icon {
-  color: rgba(255, 255, 255, 0.5);
+  color: rgba(var(--v-theme-on-surface), 0.5);
   transition: transform 0.3s ease;
 }
 
@@ -446,7 +446,7 @@ async function scrollToBottom() {
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(var(--v-theme-on-surface), 0.05);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -469,8 +469,8 @@ async function scrollToBottom() {
 .message-text {
   font-size: 14px;
   line-height: 1.5;
-  color: rgba(255, 255, 255, 0.9);
-  background: rgba(255, 255, 255, 0.03);
+  color: rgba(var(--v-theme-on-surface), 0.9);
+  background: rgba(var(--v-theme-on-surface), 0.03);
   padding: 12px 16px;
   border-radius: 4px 16px 16px 16px;
 }
@@ -516,7 +516,7 @@ async function scrollToBottom() {
   display: flex;
   align-items: center;
   font-size: 13px;
-  color: rgba(255, 255, 255, 0.8);
+  color: rgba(var(--v-theme-on-surface), 0.8);
   margin-bottom: 4px;
 }
 
@@ -525,7 +525,7 @@ async function scrollToBottom() {
 }
 
 .change-field {
-  color: rgba(255, 255, 255, 0.6);
+  color: rgba(var(--v-theme-on-surface), 0.6);
   margin-right: 4px;
 }
 
@@ -559,7 +559,7 @@ async function scrollToBottom() {
   display: flex;
   gap: 4px;
   padding: 12px 16px;
-  background: rgba(255, 255, 255, 0.03);
+  background: rgba(var(--v-theme-on-surface), 0.03);
   border-radius: 4px 16px 16px 16px;
 }
 
@@ -591,8 +591,8 @@ async function scrollToBottom() {
   display: flex;
   gap: 12px;
   padding: 16px;
-  background: rgba(0, 0, 0, 0.2);
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  background: rgba(var(--v-theme-on-surface), 0.05);
+  border-top: 1px solid rgba(var(--v-theme-on-surface), 0.05);
 }
 
 .input-area :deep(.v-field) {

@@ -217,20 +217,29 @@ const taskTypes = {
   comparison: { name: 'Comparison', icon: 'mdi-compare', color: 'purple' },
   authenticity: { name: 'Authenticity', icon: 'mdi-shield-check', color: 'orange' },
   judge: { name: 'Chatbot Arena', icon: 'mdi-sword-cross', color: 'teal' },
-  text_classification: { name: 'Text Classification', icon: 'mdi-label-multiple', color: 'indigo' },
-  text_rating: { name: 'Text Rating', icon: 'mdi-text-box-check', color: 'cyan' }
+  labeling: { name: 'Labeling', icon: 'mdi-label-multiple', color: 'indigo' }
+}
+
+const normalizeTaskType = (taskType) => {
+  if (taskType === 'classification') return 'labeling'
+  if (taskType === 'text_classification') return 'labeling'
+  if (taskType === 'text_rating') return 'rating'
+  return taskType
 }
 
 const taskTypeName = computed(() => {
-  return taskTypes[props.scenarioConfig?.taskType]?.name || props.scenarioConfig?.taskType
+  const taskType = normalizeTaskType(props.scenarioConfig?.taskType)
+  return taskTypes[taskType]?.name || taskType
 })
 
 const taskTypeIcon = computed(() => {
-  return taskTypes[props.scenarioConfig?.taskType]?.icon || 'mdi-help'
+  const taskType = normalizeTaskType(props.scenarioConfig?.taskType)
+  return taskTypes[taskType]?.icon || 'mdi-help'
 })
 
 const taskTypeColor = computed(() => {
-  return taskTypes[props.scenarioConfig?.taskType]?.color || 'grey'
+  const taskType = normalizeTaskType(props.scenarioConfig?.taskType)
+  return taskTypes[taskType]?.color || 'grey'
 })
 
 const formatNames = {

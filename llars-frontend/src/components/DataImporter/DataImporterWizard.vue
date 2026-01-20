@@ -293,7 +293,16 @@ const taskTypeLabels = {
   comparison: 'Vergleich',
   mail_rating: 'Mail Rating',
   authenticity: 'Echt/Fake',
-  classification: 'Klassifikation'
+  labeling: 'Klassifikation',
+  classification: 'Klassifikation',
+  text_classification: 'Klassifikation'
+}
+
+const normalizeTaskType = (taskType) => {
+  if (!taskType) return taskType
+  if (taskType === 'classification' || taskType === 'text_classification') return 'labeling'
+  if (taskType === 'text_rating') return 'rating'
+  return taskType
 }
 
 // Computed
@@ -391,11 +400,12 @@ const handleFilesUploaded = (uploadedSessions) => {
 }
 
 const handleIntentAnalyzed = (result) => {
-  analysisResult.value = result
+  const normalizedTaskType = normalizeTaskType(result?.task_type)
+  analysisResult.value = { ...result, task_type: normalizedTaskType }
 
   // Apply analyzed settings
-  if (result.task_type) {
-    scenarioConfig.value.taskType = result.task_type
+  if (normalizedTaskType) {
+    scenarioConfig.value.taskType = normalizedTaskType
   }
 
   // Store evaluation criteria for later use
@@ -421,10 +431,15 @@ const handleExecuteImport = async () => {
     importProgress.value = 20
 
     // Execute with AI analysis for transformation
+    const normalizedTaskType = normalizeTaskType(scenarioConfig.value.taskType)
+    const normalizedAnalysis = analysisResult.value
+      ? { ...analysisResult.value, task_type: normalizedTaskType }
+      : null
+
     const result = await executeImport({
-      taskType: scenarioConfig.value.taskType,
+      taskType: normalizedTaskType,
       sourceName: scenarioConfig.value.name,
-      aiAnalysis: analysisResult.value
+      aiAnalysis: normalizedAnalysis
     })
 
     importStatus.value = 'Importiere Daten...'
@@ -460,7 +475,7 @@ const handleComplete = () => {
 // Watch for task type from analysis
 watch(() => analysisResult.value?.task_type, (newType) => {
   if (newType) {
-    scenarioConfig.value.taskType = newType
+    scenarioConfig.value.taskType = normalizeTaskType(newType)
   }
 })
 </script>

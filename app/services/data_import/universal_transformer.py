@@ -359,8 +359,9 @@ class UniversalTransformer:
             TaskType.RANKING: ItemType.SINGLE_TEXT,
             TaskType.COMPARISON: ItemType.TEXT_PAIR,
             TaskType.AUTHENTICITY: ItemType.CONVERSATION,
-            TaskType.TEXT_CLASSIFICATION: ItemType.SINGLE_TEXT,
-            TaskType.TEXT_RATING: ItemType.SINGLE_TEXT,
+            TaskType.LABELING: ItemType.SINGLE_TEXT,
+            TaskType.TEXT_CLASSIFICATION: ItemType.SINGLE_TEXT,  # legacy alias
+            TaskType.TEXT_RATING: ItemType.SINGLE_TEXT,  # legacy alias
         }
 
         return task_type_defaults.get(config.task_type, ItemType.CONVERSATION)

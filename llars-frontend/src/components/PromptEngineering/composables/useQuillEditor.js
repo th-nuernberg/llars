@@ -900,6 +900,62 @@ export function useQuillEditor(ydoc, socket, roomId, options = {}) {
     })
   }
 
+  /**
+   * Update all highlight colors for the current user when their collab color changes.
+   * This re-applies formatting to all text that was highlighted by the current user.
+   * Works in two ways:
+   * 1. Updates highlights tracked in userHighlights Map (for new highlights)
+   * 2. Searches the Quill delta for the old color and replaces it (for existing highlights)
+   * @param {string} newColor - The new hex color to apply
+   * @param {string} oldColor - The previous hex color to find and replace
+   */
+  const updateAllHighlightColors = (newColor, oldColor) => {
+    if (!newColor) return
+
+    const currentUsername = getUsername()
+    console.log('[useQuillEditor] updateAllHighlightColors:', oldColor, '->', newColor, 'for user:', currentUsername)
+
+    const newHighlightColor = hexToRgba(newColor, 0.3)
+    const oldHighlightColor = oldColor ? hexToRgba(oldColor, 0.3) : null
+
+    editors.forEach((editor, blockId) => {
+      if (!editor) return
+
+      try {
+        const delta = editor.getContents()
+        let position = 0
+
+        // Iterate through the delta to find all highlights with the old color
+        delta.ops.forEach(op => {
+          const length = typeof op.insert === 'string' ? op.insert.length : 1
+          const attrs = op.attributes || {}
+          const currentHighlight = attrs['llars-user-highlight']
+
+          // Check if this has the old highlight color and replace it
+          if (currentHighlight && oldHighlightColor && currentHighlight === oldHighlightColor) {
+            editor.formatText(position, length, {
+              'llars-user-highlight': newHighlightColor
+            }, Quill.sources.API)
+          }
+
+          position += length
+        })
+
+        // Also update the userHighlights Map for this block
+        const highlights = userHighlights.get(blockId)
+        if (highlights && currentUsername) {
+          highlights.forEach((data) => {
+            if (data.username === currentUsername) {
+              data.color = newColor
+            }
+          })
+        }
+      } catch (e) {
+        console.error('[useQuillEditor] Error updating highlight colors:', e)
+      }
+    })
+  }
+
   return {
     editorsMap,
     editors,
@@ -916,6 +972,7 @@ export function useQuillEditor(ydoc, socket, roomId, options = {}) {
     removeCursorForUser,
     updateUserColor,
     clearUserHighlights,
-    flushPendingHighlights
+    flushPendingHighlights,
+    updateAllHighlightColors
   }
 }

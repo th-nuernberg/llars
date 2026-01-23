@@ -312,6 +312,87 @@ def unshare_prompt(prompt_id):
 
 
 
+@data_blueprint.route('/prompts/templates', methods=['GET'])
+@authentik_required
+@handle_api_errors(logger_name='prompts')
+def get_prompt_templates():
+    """
+    Get all prompts as templates for the Generation module.
+    Returns prompts with assembled text content for preview.
+    Includes both own and shared prompts.
+    """
+    user = g.authentik_user
+
+    # Get own prompts
+    own_prompts = UserPrompt.query.filter_by(user_id=user.id).all()
+
+    # Get shared prompts
+    shared_prompts = db.session.query(UserPrompt).join(
+        UserPromptShare, UserPrompt.prompt_id == UserPromptShare.prompt_id
+    ).filter(
+        UserPromptShare.shared_with_user_id == user.id
+    ).all()
+
+    def assemble_prompt_text(content):
+        """Assemble prompt text from blocks structure."""
+        if not isinstance(content, dict):
+            return str(content) if content else ''
+
+        # Handle YJS binary format (array of numbers) - return empty for now
+        if isinstance(content, list):
+            return '[YJS Content - Open in Prompt Engineering to view]'
+
+        blocks = content.get('blocks', {})
+        if not blocks:
+            return ''
+
+        # Sort blocks by position and concatenate content
+        sorted_blocks = sorted(
+            blocks.items(),
+            key=lambda x: x[1].get('position', 0) if isinstance(x[1], dict) else 0
+        )
+
+        text_parts = []
+        for block_id, block_data in sorted_blocks:
+            if isinstance(block_data, dict):
+                block_content = block_data.get('content', '')
+                if block_content:
+                    text_parts.append(block_content)
+
+        return '\n\n'.join(text_parts)
+
+    templates = []
+
+    # Add own prompts
+    for prompt in own_prompts:
+        templates.append({
+            'id': prompt.prompt_id,
+            'name': prompt.name,
+            'preview': assemble_prompt_text(prompt.content)[:500],  # First 500 chars
+            'full_text': assemble_prompt_text(prompt.content),
+            'owner': user.username,
+            'is_own': True,
+            'updated_at': prompt.updated_at.isoformat() if prompt.updated_at else None
+        })
+
+    # Add shared prompts
+    for prompt in shared_prompts:
+        templates.append({
+            'id': prompt.prompt_id,
+            'name': prompt.name,
+            'preview': assemble_prompt_text(prompt.content)[:500],
+            'full_text': assemble_prompt_text(prompt.content),
+            'owner': prompt.user.username if prompt.user else 'Unknown',
+            'is_own': False,
+            'updated_at': prompt.updated_at.isoformat() if prompt.updated_at else None
+        })
+
+    return jsonify({
+        'success': True,
+        'templates': templates
+    }), 200
+
+
 @data_blueprint.route('/prompts/shared', methods=['GET'])
 @authentik_required
 @handle_api_errors(logger_name='prompts')

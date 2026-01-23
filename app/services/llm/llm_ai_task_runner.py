@@ -20,6 +20,7 @@ from db.models import (
     ComparisonMessage,
     ComparisonSession,
     EmailThread,
+    EvaluationItem,
     Feature,
     FeatureFunctionType,
     LLMTaskResult,
@@ -788,6 +789,7 @@ Antworte im JSON-Format (verwende die numerischen Feature-IDs, nicht die Buchsta
     @staticmethod
     def _run_rating(model_id: str, thread_ids: Iterable[int], scenario_id: int) -> None:
         client = LLMClientFactory.get_client_for_model(model_id)
+        scenario = RatingScenarios.query.get(scenario_id)
 
         for thread_id in thread_ids:
             try:
@@ -800,62 +802,141 @@ Antworte im JSON-Format (verwende die numerischen Feature-IDs, nicht die Buchsta
                 if existing and existing.payload_json:
                     continue
 
-                thread = EmailThread.query.filter_by(thread_id=thread_id).first()
-                features = Feature.query.filter_by(thread_id=thread_id).all()
-                if not thread or not features:
-                    continue
+                # Try EvaluationItem model first (new model)
+                eval_item = EvaluationItem.query.filter_by(item_id=thread_id).first()
+                if eval_item:
+                    # Use dimensional rating for EvaluationItem-based scenarios
+                    messages = Message.query.filter_by(item_id=thread_id).order_by(Message.timestamp.asc()).all()
+                    if not messages:
+                        logger.info("[LLM AI Runner] No messages for item %s, skipping", thread_id)
+                        continue
 
-                messages = Message.query.filter_by(thread_id=thread_id).order_by(Message.timestamp.asc()).all()
-                message_lines = [
-                    f"{msg.sender}: {msg.content}"
-                    for msg in messages
-                ]
+                    message_lines = [
+                        f"{msg.sender}: {msg.content}"
+                        for msg in messages
+                    ]
 
-                feature_lines = []
-                for feature in features:
-                    feature_lines.append(
-                        f"- ID {feature.feature_id} (Typ: {feature.feature_type.name}, Modell: {feature.llm.name}): {feature.content}"
+                    # Get dimensional rating config from scenario
+                    config = scenario.config_json or {} if scenario else {}
+                    dimensions = config.get('dimensions', [
+                        {'id': 'coherence', 'name': {'de': 'Kohärenz', 'en': 'Coherence'}},
+                        {'id': 'fluency', 'name': {'de': 'Flüssigkeit', 'en': 'Fluency'}},
+                        {'id': 'relevance', 'name': {'de': 'Relevanz', 'en': 'Relevance'}},
+                        {'id': 'consistency', 'name': {'de': 'Konsistenz', 'en': 'Consistency'}}
+                    ])
+                    scale_min = config.get('min', 1)
+                    scale_max = config.get('max', 5)
+
+                    dimension_names = [d.get('name', {}).get('en', d.get('id', 'unknown')) for d in dimensions]
+                    dim_list_str = ", ".join(dimension_names)
+
+                    system_prompt = (
+                        f"You are evaluating text quality on multiple dimensions: {dim_list_str}. "
+                        f"Rate each dimension on a scale from {scale_min} (very poor) to {scale_max} (excellent). "
+                        "Respond only in JSON format."
+                    )
+                    user_prompt = (
+                        "Rate the following text on each dimension.\n"
+                        "Return JSON in this format:\n"
+                        "{\n"
+                        '  "dimensional_ratings": [\n'
+                        + ",\n".join([f'    {{"dimension": "{d.get("id", "unknown")}", "rating": <{scale_min}-{scale_max}>}}' for d in dimensions])
+                        + "\n  ],\n"
+                        '  "overall_rating": <weighted average>,\n'
+                        '  "justification": "<brief explanation>"\n'
+                        "}\n\n"
+                        f"Subject: {eval_item.subject or 'N/A'}\n\n"
+                        "Content:\n"
+                        + "\n".join(message_lines)
                     )
 
-                system_prompt = (
-                    "Bewerte die Qualität jedes Features auf einer Skala von 1 (schlecht) bis 5 (sehr gut). "
-                    "Antworte ausschließlich im JSON-Format."
-                )
-                user_prompt = (
-                    "Gib JSON im Format:\n"
-                    "{\n"
-                    '  "ratings": [{"feature_id": 123, "rating": 1}, ...]\n'
-                    "}\n\n"
-                    "Kontext (Konversation):\n"
-                    + "\n".join(message_lines)
-                    + "\n\nFeatures:\n"
-                    + "\n".join(feature_lines)
-                )
+                    raw_response = None
+                    payload, raw_response = LLMAITaskRunner._request_json(
+                        client,
+                        model_id,
+                        system_prompt,
+                        user_prompt,
+                        max_tokens=1500,
+                        trace={
+                            "task": "rating",
+                            "scenario_id": scenario_id,
+                            "thread_id": thread_id,
+                            "model_id": model_id,
+                            "type": "dimensional",
+                        },
+                    )
 
-                raw_response = None
-                payload, raw_response = LLMAITaskRunner._request_json(
-                    client,
-                    model_id,
-                    system_prompt,
-                    user_prompt,
-                    max_tokens=1200,
-                    trace={
-                        "task": "rating",
-                        "scenario_id": scenario_id,
-                        "thread_id": thread_id,
-                        "model_id": model_id,
-                    },
-                )
-                ratings = LLMAITaskRunner._validate_ratings_payload(payload, features)
-                if ratings is None:
-                    raise ValueError("Invalid ratings payload")
+                    # Validate dimensional ratings
+                    dim_ratings = payload.get("dimensional_ratings", [])
+                    if not dim_ratings:
+                        raise ValueError("No dimensional_ratings in response")
 
-                payload_out = {
-                    "ratings": [
-                        {"feature_id": fid, "rating": rating}
-                        for fid, rating in ratings.items()
+                    payload_out = {
+                        "type": "dimensional",
+                        "dimensional_ratings": dim_ratings,
+                        "overall_rating": payload.get("overall_rating"),
+                        "justification": payload.get("justification", ""),
+                    }
+
+                else:
+                    # Fall back to legacy EmailThread/Feature model
+                    thread = EmailThread.query.filter_by(thread_id=thread_id).first()
+                    features = Feature.query.filter_by(thread_id=thread_id).all()
+                    if not thread or not features:
+                        continue
+
+                    messages = Message.query.filter_by(thread_id=thread_id).order_by(Message.timestamp.asc()).all()
+                    message_lines = [
+                        f"{msg.sender}: {msg.content}"
+                        for msg in messages
                     ]
-                }
+
+                    feature_lines = []
+                    for feature in features:
+                        feature_lines.append(
+                            f"- ID {feature.feature_id} (Typ: {feature.feature_type.name}, Modell: {feature.llm.name}): {feature.content}"
+                        )
+
+                    system_prompt = (
+                        "Bewerte die Qualität jedes Features auf einer Skala von 1 (schlecht) bis 5 (sehr gut). "
+                        "Antworte ausschließlich im JSON-Format."
+                    )
+                    user_prompt = (
+                        "Gib JSON im Format:\n"
+                        "{\n"
+                        '  "ratings": [{"feature_id": 123, "rating": 1}, ...]\n'
+                        "}\n\n"
+                        "Kontext (Konversation):\n"
+                        + "\n".join(message_lines)
+                        + "\n\nFeatures:\n"
+                        + "\n".join(feature_lines)
+                    )
+
+                    raw_response = None
+                    payload, raw_response = LLMAITaskRunner._request_json(
+                        client,
+                        model_id,
+                        system_prompt,
+                        user_prompt,
+                        max_tokens=1200,
+                        trace={
+                            "task": "rating",
+                            "scenario_id": scenario_id,
+                            "thread_id": thread_id,
+                            "model_id": model_id,
+                        },
+                    )
+                    ratings = LLMAITaskRunner._validate_ratings_payload(payload, features)
+                    if ratings is None:
+                        raise ValueError("Invalid ratings payload")
+
+                    payload_out = {
+                        "ratings": [
+                            {"feature_id": fid, "rating": rating}
+                            for fid, rating in ratings.items()
+                        ]
+                    }
+
                 if existing:
                     existing.payload_json = payload_out
                     existing.raw_response = raw_response

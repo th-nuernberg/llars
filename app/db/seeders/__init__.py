@@ -17,6 +17,7 @@ from .chatbot_prompt_settings import initialize_chatbot_prompt_settings
 from .markdown_collab import initialize_markdown_collab_defaults
 from .latex_collab import initialize_latex_collab_defaults
 from .scenarios import seed_demo_scenarios
+from .prompts import seed_demo_prompts
 from .legal_assistant import initialize_legal_assistant
 from .analytics_settings import initialize_analytics_settings
 from db.models.llm_model import seed_default_models
@@ -88,10 +89,11 @@ def run_all_seeders(db):
     # Seed default field prompts for AI-Assist feature
     FieldPromptService.seed_defaults()
 
-    # Seed demo scenarios in development mode only
+    # Seed demo scenarios and prompts in development mode only
     project_state = os.getenv('PROJECT_STATE', 'development').lower()
     if project_state == 'development':
         seed_demo_scenarios(db)
+        seed_demo_prompts()
     else:
         print(f"Demo-Szenarien übersprungen (PROJECT_STATE={project_state})")
 
@@ -116,4 +118,5 @@ __all__ = [
     'initialize_latex_collab_defaults',
     'initialize_analytics_settings',
     'seed_demo_scenarios',
+    'seed_demo_prompts',
 ]

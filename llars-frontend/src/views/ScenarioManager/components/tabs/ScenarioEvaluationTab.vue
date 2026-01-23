@@ -43,217 +43,6 @@
       </div>
     </div>
 
-    <!-- Human Evaluators Section -->
-    <div class="section-card">
-      <div class="section-header">
-        <div class="section-title">
-          <LIcon color="primary" class="mr-2">mdi-account-group</LIcon>
-          <h3>{{ $t('scenarioManager.evaluation.humanEvaluation') }}</h3>
-        </div>
-        <LBtn variant="primary" size="small" @click="startHumanEvaluation">
-          <LIcon start size="16">mdi-play</LIcon>
-          {{ $t('scenarioManager.evaluation.participate') }}
-        </LBtn>
-      </div>
-
-      <div class="evaluator-grid" v-if="humanEvaluators.length > 0">
-        <div
-          v-for="evaluator in humanEvaluators"
-          :key="evaluator.id"
-          class="evaluator-card"
-        >
-          <div class="evaluator-header">
-            <LAvatar :user="evaluator" size="32" />
-            <div class="evaluator-info">
-              <span class="evaluator-name">{{ evaluator.name || evaluator.username }}</span>
-              <LTag :variant="evaluator.completed === evaluator.total ? 'success' : 'default'" size="sm">
-                {{ evaluator.completed || 0 }} / {{ evaluator.total || 0 }}
-              </LTag>
-            </div>
-          </div>
-          <div class="evaluator-progress">
-            <div class="mini-progress-bar">
-              <div
-                class="mini-progress-fill"
-                :style="{ width: getProgressPercent(evaluator) + '%' }"
-              />
-            </div>
-            <span class="progress-text">{{ getProgressPercent(evaluator) }}%</span>
-          </div>
-        </div>
-      </div>
-
-      <div v-else class="empty-state small">
-        <LIcon size="32" color="grey-lighten-1">mdi-account-clock-outline</LIcon>
-        <p>{{ $t('scenarioManager.evaluation.noHumanEvaluators') }}</p>
-      </div>
-    </div>
-
-    <!-- LLM Evaluators Section -->
-    <div class="section-card">
-      <div class="section-header">
-        <div class="section-title">
-          <LIcon color="accent" class="mr-2">mdi-robot-outline</LIcon>
-          <h3>{{ $t('scenarioManager.evaluation.llmControl') }}</h3>
-        </div>
-      </div>
-
-      <!-- Add LLM Evaluator -->
-      <div class="add-evaluator-form" v-if="scenario?.is_owner">
-        <div class="form-row">
-          <div class="form-group flex-2">
-            <label>{{ $t('scenarioManager.evaluation.model') }}</label>
-            <v-select
-              v-model="selectedModel"
-              :items="modelSelectItems"
-              :loading="modelsLoading"
-              item-title="name"
-              item-value="id"
-              variant="outlined"
-              density="compact"
-              hide-details
-              :placeholder="$t('scenarioManager.evaluation.selectModel')"
-            >
-              <template #item="{ item, props }">
-                <v-list-item v-bind="props">
-                  <template #append>
-                    <span class="model-cost" v-if="item.raw.costPer1k">
-                      ${{ item.raw.costPer1k?.toFixed(4) }}/1k
-                    </span>
-                    <LTag v-else size="sm" variant="success">Free</LTag>
-                  </template>
-                </v-list-item>
-              </template>
-            </v-select>
-          </div>
-
-          <div class="form-group flex-1">
-            <label>{{ $t('scenarioManager.evaluation.template') }}</label>
-            <v-select
-              v-model="selectedTemplate"
-              :items="promptTemplates"
-              item-title="name"
-              item-value="id"
-              variant="outlined"
-              density="compact"
-              hide-details
-            />
-          </div>
-
-          <div class="form-group form-actions">
-            <label>&nbsp;</label>
-            <LBtn
-              variant="primary"
-              :disabled="!canAddEvaluator"
-              :loading="addingEvaluator"
-              @click="addLLMEvaluator"
-            >
-              <LIcon start>mdi-plus</LIcon>
-              {{ $t('scenarioManager.evaluation.addEvaluator') }}
-            </LBtn>
-          </div>
-        </div>
-
-        <!-- Cost Estimate -->
-        <div class="cost-estimate" v-if="selectedModel && costEstimate">
-          <LIcon size="16" color="warning">mdi-information-outline</LIcon>
-          <span>
-            {{ $t('scenarioManager.evaluation.estimatedCost') }}:
-            <strong>~${{ costEstimate.toFixed(2) }}</strong>
-            ({{ scenario?.thread_count || 0 }} Threads × ${{ selectedModelCost?.toFixed(4) || '0' }}/1k)
-          </span>
-        </div>
-      </div>
-
-      <!-- Active LLM Evaluators -->
-      <div class="llm-evaluators-list" v-if="llmEvaluators.length > 0">
-        <div class="list-header">
-          <span>{{ $t('scenarioManager.evaluation.activeEvaluators') }}</span>
-          <span class="count">{{ llmEvaluators.length }}</span>
-        </div>
-
-        <div
-          v-for="evaluator in llmEvaluators"
-          :key="evaluator.modelId || evaluator.model_id || evaluator.id"
-          class="llm-evaluator-card"
-          :class="{ 'is-running': evaluator.status === 'running' }"
-        >
-          <div class="evaluator-main">
-            <div class="evaluator-icon">
-              <LIcon size="20">mdi-robot-outline</LIcon>
-            </div>
-            <div class="evaluator-info">
-              <span class="model-name">{{ getEvaluatorName(evaluator) }}</span>
-              <span class="model-provider">{{ evaluator.provider || getProviderFromModelId(evaluator) }}</span>
-            </div>
-          </div>
-
-          <div class="evaluator-progress-section">
-            <div class="progress-bar-container">
-              <div class="progress-bar">
-                <div
-                  class="progress-fill"
-                  :class="getProgressClass(evaluator)"
-                  :style="{ width: getProgressPercent(evaluator) + '%' }"
-                />
-              </div>
-              <div class="progress-stats">
-                <span>{{ evaluator.completed || 0 }} / {{ evaluator.total || 0 }}</span>
-                <span class="percent">{{ getProgressPercent(evaluator) }}%</span>
-              </div>
-            </div>
-          </div>
-
-          <div class="evaluator-meta">
-            <LTag
-              :variant="getStatusVariant(evaluator)"
-              size="sm"
-            >
-              {{ getStatusLabel(evaluator) }}
-            </LTag>
-            <span class="cost" v-if="evaluator.cost">
-              ${{ evaluator.cost?.toFixed(4) }}
-            </span>
-          </div>
-
-          <div class="evaluator-actions" v-if="scenario?.is_owner">
-            <LBtn
-              v-if="evaluator.status === 'running'"
-              variant="text"
-              size="small"
-              color="warning"
-              @click="pauseEvaluator(evaluator)"
-            >
-              <LIcon size="18">mdi-pause</LIcon>
-            </LBtn>
-            <LBtn
-              v-else-if="evaluator.status !== 'completed' && evaluator.completed < evaluator.total"
-              variant="text"
-              size="small"
-              color="success"
-              @click="resumeEvaluator(evaluator)"
-            >
-              <LIcon size="18">mdi-play</LIcon>
-            </LBtn>
-            <LBtn
-              variant="text"
-              size="small"
-              color="error"
-              @click="confirmRemoveEvaluator(evaluator)"
-            >
-              <LIcon size="18">mdi-delete-outline</LIcon>
-            </LBtn>
-          </div>
-        </div>
-      </div>
-
-      <div v-else class="empty-state">
-        <LIcon size="48" color="grey-lighten-1">mdi-robot-confused-outline</LIcon>
-        <p>{{ $t('scenarioManager.evaluation.noLLMEvaluators') }}</p>
-        <p class="hint">{{ $t('scenarioManager.evaluation.addLLMHint') }}</p>
-      </div>
-    </div>
-
     <!-- Metrics & Results Section -->
     <div class="section-card metrics-results-section">
       <div class="section-header">
@@ -262,6 +51,27 @@
           <h3>{{ $t('scenarioManager.evaluation.metricsResults') }}</h3>
         </div>
         <div class="header-actions">
+          <!-- Evaluator Type Filter Toggle -->
+          <v-btn-toggle
+            v-model="evaluatorTypeFilter"
+            mandatory
+            density="compact"
+            class="evaluator-filter-toggle"
+          >
+            <v-btn value="all" size="small">
+              <LIcon start size="16">mdi-account-group</LIcon>
+              {{ $t('scenarioManager.evaluation.filter.all') }}
+            </v-btn>
+            <v-btn value="human" size="small">
+              <LIcon start size="16">mdi-account</LIcon>
+              {{ $t('scenarioManager.evaluation.filter.human') }}
+            </v-btn>
+            <v-btn value="llm" size="small">
+              <LIcon start size="16">mdi-robot</LIcon>
+              {{ $t('scenarioManager.evaluation.filter.llm') }}
+            </v-btn>
+          </v-btn-toggle>
+
           <v-menu>
             <template #activator="{ props }">
               <LBtn variant="secondary" size="small" v-bind="props">
@@ -589,11 +399,11 @@
       </div>
 
       <!-- Distribution Chart -->
-      <div class="distribution-section" v-if="distributionData.length > 0">
+      <div class="distribution-section" v-if="filteredDistributionData.length > 0">
         <h4 class="subsection-title">{{ $t('scenarioManager.results.distribution') }}</h4>
         <div class="chart-bars">
           <div
-            v-for="(item, index) in distributionData"
+            v-for="(item, index) in filteredDistributionData"
             :key="item.label"
             class="bar-container"
           >
@@ -615,8 +425,346 @@
         </div>
       </div>
 
+      <!-- DEBUG PANEL - Remove after fixing -->
+      <div class="debug-panel">
+        <div><strong>DEBUG Dimensions:</strong></div>
+        <div>dimensions.length: {{ dimensions.length }}</div>
+        <div>dimensions IDs: {{ dimensions.map(d => d.id) }}</div>
+        <div>hasDimensionDistribution: {{ hasDimensionDistribution }}</div>
+        <div>hasDimensionAverages: {{ hasDimensionAverages }}</div>
+        <div style="margin-top: 8px;"><strong>Selection:</strong></div>
+        <div>selectedDimension: "{{ selectedDimension }}"</div>
+        <div>currentDimensionScale: {{ JSON.stringify(currentDimensionScale) }}</div>
+        <div style="margin-top: 8px;"><strong>Data:</strong></div>
+        <div>dimensionDistributionMap keys: {{ Object.keys(dimensionDistributionMap) }}</div>
+        <div>currentDimensionDistribution: {{ currentDimensionDistribution ? 'HAS DATA (' + currentDimensionDistribution.length + ' items)' : 'NULL' }}</div>
+        <div style="margin-top: 8px;"><strong>Raw liveStats:</strong></div>
+        <div>ratingDistribution: {{ ratingDistributionDebug }}</div>
+        <div>by_dimension count: {{ byDimensionDebugCount }}</div>
+        <div>by_dimension IDs: {{ byDimensionDebugIds }}</div>
+      </div>
+
+      <!-- Dimension Visualizations Grid (Heatmap + Spider Chart side by side) -->
+      <div class="dimension-visualizations-grid" v-if="hasDimensionDistribution || hasDimensionAverages">
+        <!-- Per-Dimension Distribution (Heatmap) -->
+        <div class="visualization-panel" v-if="hasDimensionDistribution">
+          <h4 class="subsection-title">
+            {{ $t('scenarioManager.results.dimensionDistribution') }}
+            <LTooltip :text="$t('scenarioManager.tooltips.dimensionDistribution')" location="top">
+              <v-icon size="16" class="help-icon">mdi-help-circle-outline</v-icon>
+            </LTooltip>
+          </h4>
+
+          <!-- Dimension Selector -->
+          <div class="dimension-selector" v-if="dimensionOptions.length > 1">
+            <v-select
+              v-model="selectedDimension"
+              :items="dimensionOptions"
+              item-title="name"
+              item-value="id"
+              density="compact"
+              variant="outlined"
+              hide-details
+              class="dimension-select"
+            />
+          </div>
+
+          <!-- Dimension Heatmap -->
+          <div class="heatmap-container" v-if="currentDimensionDistribution && currentDimensionDistribution.length > 0">
+            <div class="heatmap-header">
+              <span class="heatmap-label">{{ selectedDimensionName }}</span>
+              <span class="heatmap-scale" v-if="currentDimensionScale">
+                {{ $t('scenarioManager.results.scale') }}: {{ currentDimensionScale.min }} - {{ currentDimensionScale.max }}
+              </span>
+            </div>
+            <div class="heatmap-grid">
+              <div
+                v-for="(item, index) in currentDimensionDistribution"
+                :key="item.value"
+                class="heatmap-cell"
+                :style="{ backgroundColor: getHeatmapColor(item.percentage) }"
+              >
+                <span class="heatmap-value">{{ item.value }}</span>
+                <span class="heatmap-count">{{ item.count }}</span>
+                <span class="heatmap-percent">{{ item.percentage }}%</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Empty State Heatmap -->
+          <div class="heatmap-container empty-heatmap" v-else-if="selectedDimension && currentDimensionScale">
+            <div class="heatmap-header">
+              <span class="heatmap-label">{{ selectedDimensionName }}</span>
+              <span class="heatmap-scale">
+                {{ $t('scenarioManager.results.scale') }}: {{ currentDimensionScale.min }} - {{ currentDimensionScale.max }}
+              </span>
+            </div>
+            <div class="heatmap-grid">
+              <div
+                v-for="value in getScaleValues(currentDimensionScale)"
+                :key="value"
+                class="heatmap-cell empty-cell"
+              >
+                <span class="heatmap-value">{{ value }}</span>
+                <span class="heatmap-count">0</span>
+                <span class="heatmap-percent">-</span>
+              </div>
+            </div>
+            <p class="no-data-hint">{{ $t('scenarioManager.evaluation.noRatingsYet') }}</p>
+          </div>
+
+          <!-- Debug: No dimension selected -->
+          <div v-else class="no-data-panel">
+            <p class="text-medium-emphasis">
+              No dimension data available.
+              Selected: {{ selectedDimension || 'none' }},
+              Scale: {{ currentDimensionScale ? 'OK' : 'missing' }},
+              MapKeys: {{ Object.keys(dimensionDistributionMap).join(', ') || 'empty' }}
+            </p>
+          </div>
+        </div>
+
+        <!-- Dimension Comparison (Spider/Bar Chart) -->
+        <div class="visualization-panel" v-if="hasDimensionAverages && dimensions.length >= 1">
+          <h4 class="subsection-title">
+            {{ $t('scenarioManager.results.dimensionComparison') }}
+            <LTooltip :text="$t('scenarioManager.tooltips.spiderChart')" location="top">
+              <v-icon size="16" class="help-icon">mdi-help-circle-outline</v-icon>
+            </LTooltip>
+          </h4>
+
+          <!-- Bar Chart for 1-2 dimensions -->
+          <div v-if="dimensions.length <= 2" class="dimension-bar-chart">
+            <div
+              v-for="dim in dimensions"
+              :key="dim.id"
+              class="dimension-bar-row"
+            >
+              <div class="dimension-bar-label">{{ dim.name || dim.id }}</div>
+              <div class="dimension-bar-container">
+                <div
+                  v-if="evaluatorTypeFilter !== 'llm'"
+                  class="dimension-bar human-bar"
+                  :style="{ width: getDimensionBarWidth('human', dim.id) + '%' }"
+                >
+                  <span class="bar-value-label">{{ getDimensionAverage('human', dim.id)?.toFixed(2) || '-' }}</span>
+                </div>
+                <div
+                  v-if="evaluatorTypeFilter !== 'human'"
+                  class="dimension-bar llm-bar"
+                  :style="{ width: getDimensionBarWidth('llm', dim.id) + '%' }"
+                >
+                  <span class="bar-value-label">{{ getDimensionAverage('llm', dim.id)?.toFixed(2) || '-' }}</span>
+                </div>
+              </div>
+              <div class="dimension-bar-scale">
+                {{ getDimensionScaleLabel(dim.id) }}
+              </div>
+            </div>
+            <div class="bar-chart-legend">
+              <div class="legend-item" v-if="evaluatorTypeFilter !== 'llm'">
+                <span class="legend-color" style="background-color: #88c4c8;"></span>
+                <span>{{ $t('scenarioManager.evaluation.filter.human') }}</span>
+              </div>
+              <div class="legend-item" v-if="evaluatorTypeFilter !== 'human'">
+                <span class="legend-color" style="background-color: #c4a0d4;"></span>
+                <span>{{ $t('scenarioManager.evaluation.filter.llm') }}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Spider Chart for 3+ dimensions -->
+          <div v-else class="spider-chart-container">
+            <svg :viewBox="`0 0 ${spiderSize} ${spiderSize}`" class="spider-chart">
+              <circle
+                v-for="level in 5"
+                :key="'bg-' + level"
+                :cx="spiderCenter"
+                :cy="spiderCenter"
+                :r="(spiderRadius / 5) * level"
+                fill="none"
+                stroke="rgba(var(--v-theme-on-surface), 0.1)"
+                stroke-width="1"
+              />
+              <line
+                v-for="(dim, i) in dimensions"
+                :key="'axis-' + i"
+                :x1="spiderCenter"
+                :y1="spiderCenter"
+                :x2="getSpiderPoint(i, 1).x"
+                :y2="getSpiderPoint(i, 1).y"
+                stroke="rgba(var(--v-theme-on-surface), 0.2)"
+                stroke-width="1"
+              />
+              <polygon
+                v-if="evaluatorTypeFilter !== 'llm' && humanSpiderPoints.length > 0"
+                :points="humanSpiderPoints.map(p => `${p.x},${p.y}`).join(' ')"
+                fill="rgba(136, 196, 200, 0.3)"
+                stroke="#88c4c8"
+                stroke-width="2"
+              />
+              <polygon
+                v-if="evaluatorTypeFilter !== 'human' && llmSpiderPoints.length > 0"
+                :points="llmSpiderPoints.map(p => `${p.x},${p.y}`).join(' ')"
+                fill="rgba(196, 160, 212, 0.3)"
+                stroke="#c4a0d4"
+                stroke-width="2"
+              />
+              <g v-if="evaluatorTypeFilter !== 'llm'">
+                <circle
+                  v-for="(point, i) in humanSpiderPoints"
+                  :key="'human-point-' + i"
+                  :cx="point.x"
+                  :cy="point.y"
+                  r="4"
+                  fill="#88c4c8"
+                />
+              </g>
+              <g v-if="evaluatorTypeFilter !== 'human'">
+                <circle
+                  v-for="(point, i) in llmSpiderPoints"
+                  :key="'llm-point-' + i"
+                  :cx="point.x"
+                  :cy="point.y"
+                  r="4"
+                  fill="#c4a0d4"
+                />
+              </g>
+              <text
+                v-for="(dim, i) in dimensions"
+                :key="'label-' + i"
+                :x="getSpiderLabelPoint(i).x"
+                :y="getSpiderLabelPoint(i).y"
+                class="spider-label"
+                text-anchor="middle"
+                dominant-baseline="middle"
+              >
+                {{ dim.name || dim.id }}
+              </text>
+            </svg>
+
+            <div class="spider-legend">
+              <div class="legend-item" v-if="evaluatorTypeFilter !== 'llm'">
+                <span class="legend-color" style="background-color: #88c4c8;"></span>
+                <span>{{ $t('scenarioManager.evaluation.filter.human') }}</span>
+              </div>
+              <div class="legend-item" v-if="evaluatorTypeFilter !== 'human'">
+                <span class="legend-color" style="background-color: #c4a0d4;"></span>
+                <span>{{ $t('scenarioManager.evaluation.filter.llm') }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Dimension Averages Table (full width below) -->
+      <div class="dimension-averages-section" v-if="hasDimensionAverages && dimensions.length >= 1">
+        <div class="dimension-averages-table">
+          <table>
+            <thead>
+              <tr>
+                <th>{{ $t('scenarioManager.results.dimension') }}</th>
+                <th v-if="evaluatorTypeFilter !== 'llm'">{{ $t('scenarioManager.evaluation.filter.human') }}</th>
+                <th v-if="evaluatorTypeFilter !== 'human'">{{ $t('scenarioManager.evaluation.filter.llm') }}</th>
+                <th v-if="evaluatorTypeFilter === 'all'">{{ $t('scenarioManager.results.difference') }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="dim in dimensions" :key="dim.id">
+                <td>{{ dim.name || dim.id }}</td>
+                <td v-if="evaluatorTypeFilter !== 'llm'">
+                  {{ getDimensionAverage('human', dim.id)?.toFixed(2) || '-' }}
+                </td>
+                <td v-if="evaluatorTypeFilter !== 'human'">
+                  {{ getDimensionAverage('llm', dim.id)?.toFixed(2) || '-' }}
+                </td>
+                <td v-if="evaluatorTypeFilter === 'all'" :class="getDifferenceClass(dim.id)">
+                  {{ getDimensionDifference(dim.id) }}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Inter-Rater Agreement Heatmap -->
+      <div class="agreement-heatmap-section" v-if="hasPairwiseAgreement">
+        <h4 class="subsection-title">
+          {{ $t('scenarioManager.results.interRaterAgreement') }}
+          <LTooltip :text="$t('scenarioManager.tooltips.interRaterAgreement')" location="top">
+            <v-icon size="16" class="help-icon">mdi-help-circle-outline</v-icon>
+          </LTooltip>
+        </h4>
+
+        <div class="agreement-heatmap-container">
+          <!-- Heatmap Matrix -->
+          <div class="heatmap-matrix">
+            <!-- Header row -->
+            <div class="heatmap-row header-row">
+              <div class="heatmap-cell corner-cell"></div>
+              <div
+                v-for="evaluator in pairwiseEvaluators"
+                :key="'header-' + evaluator.id"
+                class="heatmap-cell header-cell"
+                :class="{ 'is-llm': evaluator.isLLM }"
+              >
+                <span class="evaluator-name-short" :title="evaluator.name">
+                  {{ getShortName(evaluator.name) }}
+                </span>
+                <LIcon v-if="evaluator.isLLM" size="12" class="llm-icon">mdi-robot</LIcon>
+              </div>
+            </div>
+
+            <!-- Data rows -->
+            <div
+              v-for="(rowEval, rowIndex) in pairwiseEvaluators"
+              :key="'row-' + rowEval.id"
+              class="heatmap-row"
+            >
+              <div class="heatmap-cell row-label" :class="{ 'is-llm': rowEval.isLLM }">
+                <span class="evaluator-name-short" :title="rowEval.name">
+                  {{ getShortName(rowEval.name) }}
+                </span>
+                <LIcon v-if="rowEval.isLLM" size="12" class="llm-icon">mdi-robot</LIcon>
+              </div>
+              <div
+                v-for="(colEval, colIndex) in pairwiseEvaluators"
+                :key="'cell-' + rowEval.id + '-' + colEval.id"
+                class="heatmap-cell data-cell"
+                :style="{ backgroundColor: getAgreementColor(rowEval.id, colEval.id, rowIndex, colIndex) }"
+                :title="getAgreementTooltip(rowEval, colEval, rowIndex, colIndex)"
+              >
+                <span v-if="rowIndex !== colIndex" class="agreement-value">
+                  {{ getAgreementValue(rowEval.id, colEval.id) }}
+                </span>
+                <span v-else class="diagonal-indicator">-</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Legend -->
+          <div class="heatmap-legend">
+            <span class="legend-label">{{ $t('scenarioManager.results.lowAgreement') }}</span>
+            <div class="legend-gradient"></div>
+            <span class="legend-label">{{ $t('scenarioManager.results.highAgreement') }}</span>
+          </div>
+
+          <!-- Legend for evaluator types -->
+          <div class="evaluator-type-legend">
+            <div class="legend-item">
+              <LIcon size="14">mdi-account</LIcon>
+              <span>{{ $t('scenarioManager.evaluation.filter.human') }}</span>
+            </div>
+            <div class="legend-item">
+              <LIcon size="14">mdi-robot</LIcon>
+              <span>{{ $t('scenarioManager.evaluation.filter.llm') }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- No Results Yet -->
-      <div v-if="!hasMetrics && distributionData.length === 0" class="empty-state">
+      <div v-if="!hasMetrics && filteredDistributionData.length === 0" class="empty-state">
         <LIcon size="48" color="grey-lighten-1">mdi-chart-box-outline</LIcon>
         <p>{{ $t('scenarioManager.evaluation.noResultsYet') }}</p>
       </div>
@@ -699,6 +847,13 @@ const showRemoveDialog = ref(false)
 const evaluatorToRemove = ref(null)
 const removingEvaluator = ref(false)
 const selectedMatrixEvaluator = ref('all')
+const evaluatorTypeFilter = ref('all')
+const selectedDimension = ref(null)
+
+// Spider chart constants
+const spiderSize = 300
+const spiderCenter = 150
+const spiderRadius = 120
 
 // Prompt templates
 const promptTemplates = ref([
@@ -1017,6 +1172,395 @@ function getBarColor(index) {
   return barColors[index % barColors.length]
 }
 
+// ===== Computed: Filtered Distribution Data =====
+
+const filteredDistributionData = computed(() => {
+  const ratingDist = props.liveStats?.ratingDistribution
+
+  // Use filtered data based on evaluator type
+  if (ratingDist) {
+    if (evaluatorTypeFilter.value === 'human' && ratingDist.humans) {
+      return ratingDist.humans
+    }
+    if (evaluatorTypeFilter.value === 'llm' && ratingDist.llms) {
+      return ratingDist.llms
+    }
+    if (ratingDist.all) {
+      return ratingDist.all
+    }
+  }
+
+  // Fallback to distributionData
+  return distributionData.value
+})
+
+// ===== Computed: Dimensions =====
+
+const dimensions = computed(() => {
+  // Get dimensions from scenario config
+  const config = props.scenario?.config_json || props.scenario?.config
+  const evalConfig = config?.eval_config || {}
+
+  // Dimensions can be at root level or in eval_config
+  const configDimensions = config?.dimensions || evalConfig?.dimensions || []
+
+  if (configDimensions.length > 0) {
+    return configDimensions.map(d => ({
+      id: d.id,
+      name: d.name?.de || d.name?.en || d.name || d.id,
+      scale: d.scale
+    }))
+  }
+
+  // Fallback: Get dimensions from rating distribution data
+  const byDim = props.liveStats?.ratingDistribution?.by_dimension
+  if (byDim && Array.isArray(byDim) && byDim.length > 0) {
+    return byDim.map(d => ({
+      id: d.dimension_id,
+      name: d.dimension_name || d.dimension_id,
+      scale: d.scale_min !== undefined ? { min: d.scale_min, max: d.scale_max } : null
+    }))
+  }
+
+  return []
+})
+
+const dimensionOptions = computed(() => {
+  return dimensions.value.map(d => ({
+    id: d.id,
+    name: d.name
+  }))
+})
+
+const selectedDimensionName = computed(() => {
+  const dim = dimensions.value.find(d => d.id === selectedDimension.value)
+  return dim?.name || selectedDimension.value || ''
+})
+
+// ===== Computed: Per-Dimension Distribution =====
+
+const hasDimensionDistribution = computed(() => {
+  // Show if we have rating data OR if dimensions are configured
+  const byDim = props.liveStats?.ratingDistribution?.by_dimension
+  const hasRatingData = byDim && Array.isArray(byDim) && byDim.length > 0
+  const hasConfigDimensions = dimensions.value.length > 0
+  return hasRatingData || hasConfigDimensions
+})
+
+// Convert by_dimension array to object keyed by dimension_id for easier access
+const dimensionDistributionMap = computed(() => {
+  const byDim = props.liveStats?.ratingDistribution?.by_dimension
+  if (!byDim || !Array.isArray(byDim)) return {}
+
+  const map = {}
+  for (const dim of byDim) {
+    if (dim.dimension_id) {
+      map[dim.dimension_id] = dim
+    }
+  }
+  return map
+})
+
+const currentDimensionDistribution = computed(() => {
+  if (!selectedDimension.value) return null
+
+  const dimData = dimensionDistributionMap.value[selectedDimension.value]
+  if (!dimData) return null
+
+  // Get the right data based on filter
+  let data = null
+  if (evaluatorTypeFilter.value === 'human') {
+    data = dimData.humans || dimData.all
+  } else if (evaluatorTypeFilter.value === 'llm') {
+    data = dimData.llms || dimData.all
+  } else {
+    data = dimData.all
+  }
+
+  return data
+})
+
+const currentDimensionScale = computed(() => {
+  // First try from dimension config
+  const dim = dimensions.value.find(d => d.id === selectedDimension.value)
+  if (dim?.scale) return dim.scale
+
+  // Fallback to distribution data which includes scale_min/scale_max
+  const dimData = dimensionDistributionMap.value[selectedDimension.value]
+  if (dimData) {
+    return {
+      min: dimData.scale_min ?? 1,
+      max: dimData.scale_max ?? 5
+    }
+  }
+
+  return { min: 1, max: 5 }
+})
+
+// ===== Computed: Dimension Averages =====
+
+const hasDimensionAverages = computed(() => {
+  // Show dimension comparison if dimensions are configured (even without data yet)
+  return dimensions.value.length > 0
+})
+
+function getDimensionAverage(type, dimensionId) {
+  const dimData = dimensionDistributionMap.value[dimensionId]
+  if (!dimData) return null
+
+  let data = null
+
+  if (type === 'human') {
+    data = dimData.humans || []
+  } else if (type === 'llm') {
+    data = dimData.llms || []
+  } else {
+    data = dimData.all || []
+  }
+
+  if (!data || data.length === 0) return null
+
+  // Calculate weighted average
+  let totalWeight = 0
+  let weightedSum = 0
+
+  data.forEach(item => {
+    const value = parseFloat(item.value)
+    const count = item.count || 0
+    if (!isNaN(value) && count > 0) {
+      weightedSum += value * count
+      totalWeight += count
+    }
+  })
+
+  return totalWeight > 0 ? weightedSum / totalWeight : null
+}
+
+function getDimensionDifference(dimensionId) {
+  const humanAvg = getDimensionAverage('human', dimensionId)
+  const llmAvg = getDimensionAverage('llm', dimensionId)
+
+  if (humanAvg === null || llmAvg === null) return '-'
+
+  const diff = llmAvg - humanAvg
+  const sign = diff >= 0 ? '+' : ''
+  return `${sign}${diff.toFixed(2)}`
+}
+
+function getDifferenceClass(dimensionId) {
+  const humanAvg = getDimensionAverage('human', dimensionId)
+  const llmAvg = getDimensionAverage('llm', dimensionId)
+
+  if (humanAvg === null || llmAvg === null) return ''
+
+  const diff = Math.abs(llmAvg - humanAvg)
+  if (diff < 0.3) return 'diff-small'
+  if (diff < 0.7) return 'diff-medium'
+  return 'diff-large'
+}
+
+// ===== Bar Chart Helpers =====
+
+function getDimensionBarWidth(type, dimensionId) {
+  const avg = getDimensionAverage(type, dimensionId)
+  if (avg === null) return 0
+
+  // Get scale for this dimension
+  const dim = dimensions.value.find(d => d.id === dimensionId)
+  const dimData = dimensionDistributionMap.value[dimensionId]
+
+  const min = dim?.scale?.min ?? dimData?.scale_min ?? 1
+  const max = dim?.scale?.max ?? dimData?.scale_max ?? 5
+
+  // Calculate percentage of scale
+  if (max === min) return 50
+  return Math.round(((avg - min) / (max - min)) * 100)
+}
+
+function getDimensionScaleLabel(dimensionId) {
+  const dim = dimensions.value.find(d => d.id === dimensionId)
+  const dimData = dimensionDistributionMap.value[dimensionId]
+
+  const min = dim?.scale?.min ?? dimData?.scale_min ?? 1
+  const max = dim?.scale?.max ?? dimData?.scale_max ?? 5
+
+  return `${min}-${max}`
+}
+
+function getScaleValues(scale) {
+  if (!scale) return [1, 2, 3, 4, 5]
+  const min = scale.min ?? 1
+  const max = scale.max ?? 5
+  const step = scale.step ?? 1
+  const values = []
+  for (let v = min; v <= max; v += step) {
+    values.push(v)
+  }
+  return values
+}
+
+// ===== Spider Chart Helpers =====
+
+function getSpiderPoint(index, value) {
+  const count = dimensions.value.length
+  const angle = (Math.PI * 2 * index) / count - Math.PI / 2
+  const r = spiderRadius * value
+  return {
+    x: spiderCenter + r * Math.cos(angle),
+    y: spiderCenter + r * Math.sin(angle)
+  }
+}
+
+function getSpiderLabelPoint(index) {
+  const count = dimensions.value.length
+  const angle = (Math.PI * 2 * index) / count - Math.PI / 2
+  const r = spiderRadius + 25
+  return {
+    x: spiderCenter + r * Math.cos(angle),
+    y: spiderCenter + r * Math.sin(angle)
+  }
+}
+
+function getNormalizedValue(type, dimensionId) {
+  const avg = getDimensionAverage(type, dimensionId)
+  if (avg === null) return 0
+
+  // Get scale from dimension config or distribution data
+  const dim = dimensions.value.find(d => d.id === dimensionId)
+  const dimData = dimensionDistributionMap.value[dimensionId]
+
+  const min = dim?.scale?.min ?? dimData?.scale_min ?? 1
+  const max = dim?.scale?.max ?? dimData?.scale_max ?? 5
+
+  // Normalize to 0-1 range
+  if (max === min) return 0.5  // Avoid division by zero
+  return (avg - min) / (max - min)
+}
+
+const humanSpiderPoints = computed(() => {
+  return dimensions.value.map((dim, i) => {
+    const normalizedValue = getNormalizedValue('human', dim.id)
+    return getSpiderPoint(i, normalizedValue)
+  })
+})
+
+const llmSpiderPoints = computed(() => {
+  return dimensions.value.map((dim, i) => {
+    const normalizedValue = getNormalizedValue('llm', dim.id)
+    return getSpiderPoint(i, normalizedValue)
+  })
+})
+
+// ===== Heatmap Helpers =====
+
+function getHeatmapColor(percentage) {
+  // Gradient from light to primary color
+  const intensity = percentage / 100
+  const r = Math.round(255 - (255 - 176) * intensity)
+  const g = Math.round(255 - (255 - 202) * intensity)
+  const b = Math.round(255 - (255 - 151) * intensity)
+  return `rgb(${r}, ${g}, ${b})`
+}
+
+// ===== Pairwise Agreement Heatmap =====
+
+const hasPairwiseAgreement = computed(() => {
+  const pairwise = props.liveStats?.pairwiseAgreement
+  return pairwise && pairwise.evaluators && pairwise.evaluators.length >= 2
+})
+
+const pairwiseEvaluators = computed(() => {
+  const pairwise = props.liveStats?.pairwiseAgreement
+  if (!pairwise?.evaluators) return []
+  // Sort: humans first, then LLMs
+  return [...pairwise.evaluators].sort((a, b) => {
+    if (a.isLLM === b.isLLM) return a.name.localeCompare(b.name)
+    return a.isLLM ? 1 : -1
+  })
+})
+
+const pairwiseAgreements = computed(() => {
+  const pairwise = props.liveStats?.pairwiseAgreement
+  return pairwise?.agreements || {}
+})
+
+function getAgreementKey(id1, id2) {
+  // Keys are stored as "min-max" for consistency
+  const str1 = String(id1)
+  const str2 = String(id2)
+  return str1 < str2 ? `${str1}-${str2}` : `${str2}-${str1}`
+}
+
+function getAgreementValue(id1, id2) {
+  if (id1 === id2) return '-'
+  const key = getAgreementKey(id1, id2)
+  const value = pairwiseAgreements.value[key]
+  if (value === undefined || value === null) return '-'
+  return Math.round(value * 100) + '%'
+}
+
+function getAgreementColor(id1, id2, rowIndex, colIndex) {
+  if (rowIndex === colIndex) return 'rgba(var(--v-theme-surface-variant), 0.3)'
+
+  const key = getAgreementKey(id1, id2)
+  const value = pairwiseAgreements.value[key]
+
+  if (value === undefined || value === null) {
+    return 'rgba(var(--v-theme-surface-variant), 0.1)'
+  }
+
+  // Gradient: red (low) -> yellow (medium) -> green (high)
+  if (value < 0.4) {
+    // Red to yellow
+    const t = value / 0.4
+    const r = 232
+    const g = Math.round(160 + (200 - 160) * t)
+    const b = Math.round(135 + (100 - 135) * t)
+    return `rgba(${r}, ${g}, ${b}, 0.7)`
+  } else if (value < 0.7) {
+    // Yellow to light green
+    const t = (value - 0.4) / 0.3
+    const r = Math.round(232 - (232 - 152) * t)
+    const g = Math.round(200 - (200 - 212) * t)
+    const b = Math.round(100 + (187 - 100) * t)
+    return `rgba(${r}, ${g}, ${b}, 0.7)`
+  } else {
+    // Light green to green
+    const t = (value - 0.7) / 0.3
+    const r = Math.round(152 - (152 - 98) * t)
+    const g = Math.round(212 - (212 - 200) * t)
+    const b = Math.round(187 - (187 - 140) * t)
+    return `rgba(${r}, ${g}, ${b}, 0.8)`
+  }
+}
+
+function getAgreementTooltip(eval1, eval2, rowIndex, colIndex) {
+  if (rowIndex === colIndex) return eval1.name
+
+  const key = getAgreementKey(eval1.id, eval2.id)
+  const value = pairwiseAgreements.value[key]
+
+  if (value === undefined || value === null) {
+    return `${eval1.name} / ${eval2.name}: ${t('scenarioManager.results.noOverlap')}`
+  }
+
+  const percentage = Math.round(value * 100)
+  return `${eval1.name} / ${eval2.name}: ${percentage}% ${t('scenarioManager.results.agreement')}`
+}
+
+function getShortName(name) {
+  if (!name) return '?'
+  // For LLM model names, extract the model part
+  if (name.includes('/')) {
+    name = name.split('/').pop()
+  }
+  // Truncate long names
+  if (name.length > 8) {
+    return name.substring(0, 7) + '...'
+  }
+  return name
+}
+
 function formatLabel(label) {
   const labelMap = {
     'fake': t('scenarioManager.results.labels.fake') || 'Fake',
@@ -1282,9 +1826,101 @@ watch(() => props.scenario?.id, (newId) => {
     connectToScenario(newId)
   }
 }, { immediate: true })
+
+// Initialize selected dimension when dimensions change
+watch(dimensions, (newDimensions) => {
+  console.log('[EvaluationTab] dimensions watcher fired:', {
+    dimensionsCount: newDimensions.length,
+    dimensionIds: newDimensions.map(d => d.id),
+    currentSelectedDimension: selectedDimension.value
+  })
+  if (newDimensions.length > 0 && !selectedDimension.value) {
+    console.log('[EvaluationTab] Setting selectedDimension to:', newDimensions[0].id)
+    selectedDimension.value = newDimensions[0].id
+  }
+}, { immediate: true })
+
+// Fix dimension selection if current selection doesn't exist in distribution map
+watch(
+  () => ({ map: dimensionDistributionMap.value, selected: selectedDimension.value }),
+  ({ map, selected }) => {
+    const mapKeys = Object.keys(map)
+    // If we have data in the map but selected dimension is not in it, auto-select first available
+    if (mapKeys.length > 0 && selected && !mapKeys.includes(selected)) {
+      console.log('[EvaluationTab] Dimension ID mismatch detected, auto-selecting:', mapKeys[0])
+      selectedDimension.value = mapKeys[0]
+    }
+  },
+  { immediate: true }
+)
+
+// Debug computed properties - remove after fixing
+const ratingDistributionDebug = computed(() => {
+  return props.liveStats?.ratingDistribution ? 'EXISTS' : 'NULL'
+})
+const byDimensionDebugCount = computed(() => {
+  return props.liveStats?.ratingDistribution?.by_dimension?.length || 0
+})
+const byDimensionDebugIds = computed(() => {
+  return (props.liveStats?.ratingDistribution?.by_dimension || []).map(d => d.dimension_id)
+})
+
+// Debug watcher - remove after fixing
+watch(
+  () => ({
+    scenario: props.scenario?.id,
+    liveStats: props.liveStats,
+    dims: dimensions.value,
+    hasDimDist: hasDimensionDistribution.value,
+    hasDimAvg: hasDimensionAverages.value,
+    selectedDim: selectedDimension.value,
+    currentScale: currentDimensionScale.value,
+    currentDist: currentDimensionDistribution.value,
+    dimMapKeys: Object.keys(dimensionDistributionMap.value)
+  }),
+  (val) => {
+    const byDim = val.liveStats?.ratingDistribution?.by_dimension
+    console.log('[EvaluationTab DEBUG]', {
+      scenarioId: val.scenario,
+      hasLiveStats: !!val.liveStats,
+      ratingDistributionExists: !!val.liveStats?.ratingDistribution,
+      byDimensionCount: byDim?.length || 0,
+      byDimensionIds: byDim?.map(d => d.dimension_id) || [],
+      configDimensionIds: val.dims?.map(d => d.id) || [],
+      dimensionDistributionMapKeys: val.dimMapKeys,
+      selectedDimension: val.selectedDim,
+      selectedDimensionInMap: val.dimMapKeys?.includes(val.selectedDim),
+      currentDimensionScale: val.currentScale,
+      currentDimensionDistribution: val.currentDist,
+      currentDimensionDistributionLength: val.currentDist?.length
+    })
+  },
+  { immediate: true, deep: true }
+)
 </script>
 
 <style scoped>
+/* DEBUG - Remove after fixing */
+.debug-panel {
+  background-color: rgba(var(--v-theme-error), 0.1);
+  border: 2px solid rgb(var(--v-theme-error));
+  padding: 12px;
+  margin: 12px 0;
+  border-radius: 8px;
+  font-size: 12px;
+  font-family: monospace;
+  max-height: 400px;
+  overflow-y: auto;
+  color: rgb(var(--v-theme-on-surface));
+}
+
+.no-data-panel {
+  padding: 16px;
+  text-align: center;
+  color: rgba(var(--v-theme-on-surface), 0.6);
+  font-size: 0.85rem;
+}
+
 .evaluation-tab {
   display: flex;
   flex-direction: column;
@@ -1856,8 +2492,475 @@ watch(() => props.scenario?.id, (newId) => {
   color: rgba(var(--v-theme-on-surface), 0.4);
 }
 
+/* Evaluator Filter Toggle */
+.evaluator-filter-toggle {
+  margin-right: 12px;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.evaluator-filter-toggle .v-btn {
+  font-size: 0.75rem;
+  text-transform: none;
+  min-width: 80px;
+}
+
+/* Per-Dimension Section */
+.per-dimension-section {
+  padding: 20px;
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.06);
+}
+
+/* Dimension Visualizations Grid (Heatmap + Spider side by side) */
+.dimension-visualizations-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  padding: 20px;
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.06);
+}
+
+.visualization-panel {
+  background-color: rgba(var(--v-theme-on-surface), 0.02);
+  border-radius: 12px;
+  padding: 16px;
+  min-height: 320px;
+  display: flex;
+  flex-direction: column;
+}
+
+.visualization-panel .subsection-title {
+  margin-bottom: 12px;
+}
+
+.visualization-panel .heatmap-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.visualization-panel .spider-chart-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.visualization-panel .dimension-bar-chart {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.dimension-selector {
+  margin-bottom: 16px;
+}
+
+.dimension-select {
+  max-width: 300px;
+}
+
+/* Heatmap */
+.heatmap-container {
+  background-color: rgba(var(--v-theme-on-surface), 0.02);
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.heatmap-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.heatmap-label {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.heatmap-scale {
+  font-size: 0.75rem;
+  color: rgba(var(--v-theme-on-surface), 0.5);
+}
+
+.heatmap-grid {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.heatmap-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-width: 60px;
+  padding: 12px 16px;
+  border-radius: 8px;
+  text-align: center;
+  transition: transform 0.2s;
+}
+
+.heatmap-cell:hover {
+  transform: scale(1.05);
+}
+
+.heatmap-value {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: rgba(0, 0, 0, 0.7);
+}
+
+.heatmap-count {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: rgba(0, 0, 0, 0.6);
+  margin-top: 2px;
+}
+
+.heatmap-percent {
+  font-size: 0.7rem;
+  color: rgba(0, 0, 0, 0.5);
+}
+
+/* Empty State Heatmap */
+.empty-heatmap .empty-cell {
+  background-color: rgba(var(--v-theme-on-surface), 0.05);
+  border: 1px dashed rgba(var(--v-theme-on-surface), 0.15);
+}
+
+.empty-heatmap .empty-cell .heatmap-value {
+  color: rgba(var(--v-theme-on-surface), 0.5);
+}
+
+.empty-heatmap .empty-cell .heatmap-count,
+.empty-heatmap .empty-cell .heatmap-percent {
+  color: rgba(var(--v-theme-on-surface), 0.3);
+}
+
+.no-data-hint {
+  margin-top: 12px;
+  font-size: 0.8rem;
+  color: rgba(var(--v-theme-on-surface), 0.5);
+  text-align: center;
+  font-style: italic;
+}
+
+/* Dimension Comparison Section */
+.dimension-comparison-section {
+  padding: 20px;
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.06);
+}
+
+/* Dimension Bar Chart (for 1-2 dimensions) */
+.dimension-bar-chart {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.dimension-bar-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.dimension-bar-label {
+  min-width: 120px;
+  font-weight: 500;
+  font-size: 0.9rem;
+  color: rgb(var(--v-theme-on-surface));
+}
+
+.dimension-bar-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background-color: rgba(var(--v-theme-on-surface), 0.05);
+  border-radius: 8px;
+  padding: 8px;
+}
+
+.dimension-bar {
+  height: 28px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 10px;
+  min-width: 50px;
+  transition: width 0.3s ease;
+}
+
+.dimension-bar.human-bar {
+  background: linear-gradient(90deg, rgba(136, 196, 200, 0.3) 0%, #88c4c8 100%);
+}
+
+.dimension-bar.llm-bar {
+  background: linear-gradient(90deg, rgba(196, 160, 212, 0.3) 0%, #c4a0d4 100%);
+}
+
+.dimension-bar .bar-value-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: rgba(0, 0, 0, 0.7);
+  text-shadow: 0 0 4px rgba(255, 255, 255, 0.8);
+}
+
+.dimension-bar-scale {
+  min-width: 50px;
+  font-size: 0.75rem;
+  color: rgba(var(--v-theme-on-surface), 0.5);
+  text-align: right;
+}
+
+.bar-chart-legend {
+  display: flex;
+  gap: 24px;
+  justify-content: center;
+  margin-top: 8px;
+}
+
+/* Spider Chart Section */
+.spider-chart-section {
+  padding: 20px;
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.06);
+}
+
+.spider-chart-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.spider-chart {
+  width: 100%;
+  max-width: 350px;
+  height: auto;
+}
+
+.spider-label {
+  font-size: 10px;
+  fill: rgb(var(--v-theme-on-surface));
+  font-weight: 500;
+}
+
+.spider-legend {
+  display: flex;
+  gap: 24px;
+  justify-content: center;
+  margin-top: 16px;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+}
+
+.legend-color {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+}
+
+/* Dimension Averages Table */
+.dimension-averages-table {
+  margin-top: 16px;
+  overflow-x: auto;
+}
+
+.dimension-averages-table table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.dimension-averages-table th,
+.dimension-averages-table td {
+  padding: 10px 12px;
+  text-align: left;
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.1);
+}
+
+.dimension-averages-table th {
+  font-weight: 600;
+  color: rgba(var(--v-theme-on-surface), 0.7);
+  background-color: rgba(var(--v-theme-on-surface), 0.02);
+}
+
+.dimension-averages-table td {
+  color: rgb(var(--v-theme-on-surface));
+}
+
+.dimension-averages-table tr:last-child td {
+  border-bottom: none;
+}
+
+.dimension-averages-table .diff-small {
+  color: rgb(var(--v-theme-success));
+}
+
+.dimension-averages-table .diff-medium {
+  color: rgb(var(--v-theme-warning));
+}
+
+.dimension-averages-table .diff-large {
+  color: rgb(var(--v-theme-error));
+}
+
+/* Inter-Rater Agreement Heatmap */
+.agreement-heatmap-section {
+  padding: 20px;
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.06);
+}
+
+.agreement-heatmap-container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.heatmap-matrix {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+}
+
+.heatmap-row {
+  display: flex;
+  gap: 2px;
+}
+
+.heatmap-row.header-row .heatmap-cell {
+  font-weight: 600;
+  font-size: 0.7rem;
+}
+
+.heatmap-matrix .heatmap-cell {
+  min-width: 56px;
+  max-width: 56px;
+  height: 44px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  transition: transform 0.15s, box-shadow 0.15s;
+  padding: 4px;
+}
+
+.heatmap-matrix .heatmap-cell:not(.corner-cell):not(.row-label):not(.header-cell):hover {
+  transform: scale(1.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  z-index: 10;
+}
+
+.heatmap-matrix .corner-cell {
+  background: transparent;
+}
+
+.heatmap-matrix .header-cell,
+.heatmap-matrix .row-label {
+  background-color: rgba(var(--v-theme-surface-variant), 0.3);
+  font-weight: 500;
+}
+
+.heatmap-matrix .header-cell.is-llm,
+.heatmap-matrix .row-label.is-llm {
+  background-color: rgba(196, 160, 212, 0.2);
+}
+
+.heatmap-matrix .data-cell {
+  cursor: default;
+}
+
+.heatmap-matrix .agreement-value {
+  font-weight: 600;
+  font-size: 0.8rem;
+  color: rgba(0, 0, 0, 0.75);
+}
+
+.heatmap-matrix .diagonal-indicator {
+  color: rgba(var(--v-theme-on-surface), 0.3);
+  font-size: 1rem;
+}
+
+.evaluator-name-short {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 48px;
+  font-size: 0.65rem;
+  line-height: 1.2;
+}
+
+.heatmap-matrix .llm-icon {
+  color: #c4a0d4;
+  margin-top: 2px;
+}
+
+.heatmap-legend {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  font-size: 0.75rem;
+  color: rgba(var(--v-theme-on-surface), 0.6);
+}
+
+.heatmap-legend .legend-gradient {
+  width: 120px;
+  height: 12px;
+  border-radius: 6px;
+  background: linear-gradient(to right,
+    rgba(232, 160, 135, 0.7) 0%,
+    rgba(232, 200, 100, 0.7) 40%,
+    rgba(152, 212, 187, 0.7) 70%,
+    rgba(98, 200, 140, 0.8) 100%
+  );
+}
+
+.heatmap-legend .legend-label {
+  font-size: 0.7rem;
+}
+
+.evaluator-type-legend {
+  display: flex;
+  gap: 20px;
+  justify-content: center;
+  font-size: 0.8rem;
+  color: rgba(var(--v-theme-on-surface), 0.6);
+}
+
+.evaluator-type-legend .legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
+  .dimension-visualizations-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+    padding: 16px;
+  }
+
+  .visualization-panel {
+    min-height: 280px;
+  }
+
   .form-row {
     flex-direction: column;
     align-items: stretch;
@@ -1886,6 +2989,49 @@ watch(() => props.scenario?.id, (newId) => {
 
   .bar-container {
     grid-template-columns: 80px 1fr 40px;
+  }
+
+  .evaluator-filter-toggle {
+    margin-right: 0;
+    margin-bottom: 8px;
+    width: 100%;
+  }
+
+  .header-actions {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .heatmap-grid {
+    justify-content: center;
+  }
+
+  .spider-chart {
+    max-width: 280px;
+  }
+
+  .dimension-averages-table {
+    font-size: 0.8rem;
+  }
+
+  .dimension-averages-table th,
+  .dimension-averages-table td {
+    padding: 8px;
+  }
+
+  .dimension-bar-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .dimension-bar-label {
+    min-width: auto;
+    margin-bottom: 4px;
+  }
+
+  .dimension-bar-scale {
+    text-align: left;
+    margin-top: 4px;
   }
 }
 </style>

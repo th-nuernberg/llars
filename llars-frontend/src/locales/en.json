@@ -132,6 +132,17 @@
     "home": "Home",
     "back": "Back"
   },
+  "likertScale": {
+    "veryGood": "Very good",
+    "good": "Good",
+    "neutral": "Neutral",
+    "bad": "Bad",
+    "veryBad": "Very bad"
+  },
+  "binaryScale": {
+    "yes": "Yes",
+    "no": "No"
+  },
   "notFound": {
     "title": "Document not found",
     "subtitle": "This page seems to be hiding in the depths of the archive...",
@@ -2205,6 +2216,10 @@
         "title": "Prompt Engineering",
         "description": "Collaborative design and testing of prompts"
       },
+      "batchGeneration": {
+        "title": "Batch Generation",
+        "description": "Generate LLM outputs at scale from prompts and data"
+      },
       "markdownCollab": {
         "title": "Markdown Collab",
         "description": "Collaborate on Markdown files with live preview"
@@ -2373,7 +2388,8 @@
     "card": {
       "evaluators": "Evaluators",
       "yourProgress": "Your Progress",
-      "goToEvaluation": "Go to Evaluation"
+      "goToEvaluation": "Go to Evaluation",
+      "owner": "Owner"
     },
     "stats": {
       "threads": "Threads",
@@ -2706,6 +2722,7 @@
       "noHumanEvaluators": "No human evaluators have completed evaluations yet",
       "noLLMEvaluators": "No LLM evaluators configured",
       "addLLMHint": "Add LLM models to automatically evaluate this scenario",
+      "noRatingsYet": "No ratings available yet",
       "activeEvaluators": "Active Evaluators",
       "removeEvaluator": "Remove Evaluator",
       "removeEvaluatorConfirm": "Are you sure you want to remove {name} from this scenario? All evaluations by this model will be deleted.",
@@ -2740,7 +2757,12 @@
         "error": "Error"
       },
       "metricsResults": "Metrics & Results",
-      "noResultsYet": "No results yet. Start an evaluation to see metrics and results here."
+      "noResultsYet": "No results yet. Start an evaluation to see metrics and results here.",
+      "filter": {
+        "all": "All",
+        "human": "Human",
+        "llm": "Machine"
+      }
     },
     "results": {
       "title": "Results",
@@ -2757,6 +2779,16 @@
       "human": "Human",
       "noEvaluators": "No evaluators with results yet",
       "distribution": "Rating Distribution",
+      "dimensionDistribution": "Distribution by Dimension",
+      "dimensionComparison": "Dimension Comparison",
+      "dimension": "Dimension",
+      "difference": "Difference",
+      "scale": "Scale",
+      "interRaterAgreement": "Inter-Rater Agreement",
+      "lowAgreement": "Low",
+      "highAgreement": "High",
+      "agreement": "agreement",
+      "noOverlap": "No overlapping ratings",
       "chartComingSoon": "Chart will be available soon.",
       "accuracy": "Accuracy",
       "evaluationDetails": "Evaluation Details",
@@ -2925,7 +2957,10 @@
         "perfectNegative": "Perfect negative correlation",
         "noCorrelation": "No correlation",
         "perfectPositive": "Perfect positive correlation"
-      }
+      },
+      "dimensionDistribution": "Shows the distribution of ratings for each dimension. Heatmap colors indicate relative frequency.",
+      "spiderChart": "Compares average ratings between humans and LLMs across all dimensions. Larger areas = higher average values.",
+      "interRaterAgreement": "Shows pairwise agreement between all raters. Green = high agreement, Red = low agreement. Calculated as the proportion of ratings within 1 point difference."
     },
     "session": {
       "title": "Evaluation",
@@ -2938,9 +2973,12 @@
       "loading": "Loading data...",
       "empty": "No items available for evaluation",
       "emptyHint": "You may not have been assigned any items yet.",
+      "noItems": "No items available for evaluation",
+      "noItemsHint": "You may not have been assigned any items yet.",
       "complete": "Evaluation Complete!",
       "completeMessage": "You have rated all assigned items.",
       "backToOverview": "Back to Overview",
+      "backToScenario": "Back to Scenario",
       "error": "Error loading data",
       "errorHint": "Please try again or contact the administrator.",
       "retry": "Try Again",
@@ -3224,9 +3262,23 @@
     "title": "Evaluation",
     "subtitle": "Select an evaluation tool and start the normal workflow.",
     "available": "{count} available",
+    "status": {
+      "pending": "Pending",
+      "inProgress": "In Progress",
+      "done": "Completed",
+      "saving": "Saving..."
+    },
+    "types": {
+      "rating": "Rating",
+      "ranking": "Ranking",
+      "labeling": "Labeling",
+      "comparison": "Comparison",
+      "authenticity": "Authenticity"
+    },
     "noToolsAvailable": "No evaluation tools are currently available for your account.",
     "noScenarios": "No scenarios",
     "noScenariosAssigned": "No scenarios assigned",
+    "noScenariosAvailable": "No scenarios available. You need to be invited to a scenario to participate in an evaluation.",
     "backToEvaluations": "Evaluations",
     "progress": "{done} / {total} completed",
     "emptyHint": "Make sure an active scenario exists and threads are assigned.",
@@ -5111,6 +5163,132 @@
         "explain": "Explain why you chose this type",
         "moreChanges": "I want to make more changes"
       }
+    }
+  },
+  "generation": {
+    "title": "Batch Generation",
+    "subtitle": "Generate LLM outputs from data and prompts",
+    "failed": "failed",
+    "hub": {
+      "allStatuses": "All Statuses",
+      "newJob": "New Job",
+      "activeJobs": "Active Jobs",
+      "allJobs": "All Jobs",
+      "emptyTitle": "No Generation Jobs",
+      "emptyHint": "Create your first batch generation job to get started.",
+      "emptyFilterHint": "No jobs found with the selected status.",
+      "clearFilter": "Clear Filter",
+      "createFirst": "Create First Job",
+      "deleteTitle": "Delete Job",
+      "deleteConfirm": "Are you sure you want to delete the job \"{name}\"? This action cannot be undone."
+    },
+    "status": {
+      "created": "Created",
+      "queued": "Queued",
+      "running": "Running",
+      "paused": "Paused",
+      "completed": "Completed",
+      "failed": "Failed",
+      "cancelled": "Cancelled",
+      "pending": "Pending"
+    },
+    "actions": {
+      "start": "Start",
+      "pause": "Pause",
+      "cancel": "Cancel",
+      "export": "Export",
+      "toScenario": "Create Scenario"
+    },
+    "wizard": {
+      "title": "New Generation Job",
+      "createJob": "Create Job",
+      "steps": {
+        "source": "Source",
+        "prompts": "Prompts",
+        "models": "Models",
+        "config": "Config",
+        "review": "Review"
+      },
+      "step1": {
+        "title": "Data Source",
+        "description": "Choose where your input data comes from.",
+        "scenarioSource": "Existing Scenario",
+        "scenarioSourceDesc": "Use items from an existing evaluation scenario.",
+        "manualSource": "Upload Data",
+        "manualSourceDesc": "Upload JSON or CSV with your data.",
+        "promptOnlySource": "Prompt Only",
+        "promptOnlySourceDesc": "Generate outputs without source data.",
+        "selectScenario": "Select Scenario",
+        "dropFiles": "Drop files here or click to upload",
+        "pasteData": "Or paste data directly",
+        "pasteDataPlaceholder": "Paste JSON array or CSV data...",
+        "itemsParsed": "Items parsed",
+        "promptOnlyInfo": "In prompt-only mode, outputs are generated directly from prompt templates without input data."
+      },
+      "step2": {
+        "title": "Prompt Templates",
+        "description": "Select which prompt templates to use for generation.",
+        "selectVariants": "Select variants:",
+        "promptsSelected": "prompts selected",
+        "noPrompts": "No prompt templates available. Create templates in Prompt Engineering first."
+      },
+      "step3": {
+        "title": "LLM Models",
+        "description": "Select which models to use for generation.",
+        "modelsSelected": "models selected",
+        "noModels": "No models available. Configure models in admin settings."
+      },
+      "step4": {
+        "title": "Configuration",
+        "description": "Set job name and generation parameters.",
+        "jobName": "Job Name",
+        "jobNameHint": "Auto-generated - can be customized",
+        "parameters": "Generation Parameters",
+        "temperature": "Temperature",
+        "maxTokens": "Max Tokens",
+        "maxTokensPlaceholder": "Unlimited",
+        "maxTokensHint": "Leave empty for unlimited (recommended for reasoning models)",
+        "budget": "Budget Limit",
+        "budgetLimit": "Max Cost (USD)",
+        "budgetHint": "Leave empty for no limit",
+        "retryCount": "Retry Count"
+      },
+      "step5": {
+        "title": "Review & Create",
+        "description": "Review your configuration before creating the job.",
+        "jobInfo": "Job Information",
+        "sourceInfo": "Source Configuration",
+        "itemCount": "Items",
+        "matrix": "Generation Matrix",
+        "costEstimate": "Estimated Cost"
+      }
+    },
+    "detail": {
+      "created": "Created",
+      "started": "Started",
+      "completed": "Completed",
+      "totalCost": "Total Cost",
+      "configuration": "Configuration",
+      "source": "Data Source",
+      "prompts": "Prompt Templates",
+      "models": "Models",
+      "parameters": "Parameters",
+      "outputs": "Generated Outputs",
+      "allOutputs": "All Outputs",
+      "noOutputs": "No outputs yet",
+      "outputDetail": "Output Details",
+      "generatedContent": "Generated Content",
+      "errorMessage": "Error Message",
+      "currentlyProcessing": "Currently Processing",
+      "waitingForResponse": "Waiting for LLM response...",
+      "inputPrompt": "Input Prompt",
+      "noPromptData": "Prompt data not available",
+      "noContent": "No content generated"
+    },
+    "scenario": {
+      "name": "Scenario Name",
+      "evaluationType": "Evaluation Type",
+      "info": "{count} completed outputs will be used to create evaluation items."
     }
   }
 }

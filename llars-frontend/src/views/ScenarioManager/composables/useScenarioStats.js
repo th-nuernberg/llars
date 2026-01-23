@@ -407,7 +407,11 @@ export function useScenarioStats(scenarioIdRef) {
           alpha_interpretation: statsData.alpha_interpretation ?? data.agreement_metrics?.interpretation,
           overall_accuracy: statsData.overall_accuracy ?? data.overall_accuracy,
           // Include authenticity stats if present
-          vote_distribution: statsData.vote_distribution || data.vote_distribution
+          vote_distribution: statsData.vote_distribution || data.vote_distribution,
+          // Include rating/dimension stats
+          rating_distribution: statsData.rating_distribution || data.rating_distribution,
+          dimension_averages: statsData.dimension_averages || data.dimension_averages,
+          pairwise_agreement: statsData.pairwise_agreement || data.pairwise_agreement
         }
       })
 

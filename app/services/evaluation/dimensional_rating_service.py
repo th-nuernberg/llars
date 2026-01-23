@@ -6,10 +6,11 @@ This service supports the new generalized rating system where items
 are evaluated on multiple configurable dimensions (e.g., Coherence, Fluency, Relevance).
 
 This is the base for both generic ratings and specialized types like mail_rating.
+Supports variable Likert scales (0-1, 0-4, 1-5, 1-7, 0-9, 1-10, etc.).
 """
 
 import logging
-from typing import Optional
+from typing import Optional, Dict, Any
 from datetime import datetime
 
 from flask import current_app
@@ -69,6 +70,9 @@ class DimensionalRatingService:
         """
         Get the rating configuration for a scenario.
 
+        Supports variable Likert scales. If min/max not configured,
+        uses sensible defaults based on the scale type or preset.
+
         Args:
             scenario_id: Scenario ID
 
@@ -85,17 +89,53 @@ class DimensionalRatingService:
         if 'dimensions' not in config:
             config['dimensions'] = DEFAULT_DIMENSIONS
 
-        # Ensure scale settings
-        config.setdefault('min', 1)
-        config.setdefault('max', 5)
-        config.setdefault('step', 1)
+        # Get scale settings from config - don't override if explicitly set
+        # This allows for variable scales (0-1, 0-4, 1-7, 0-9, etc.)
+        if 'min' not in config:
+            config['min'] = 1  # Default to 1-based scale
+        if 'max' not in config:
+            config['max'] = 5  # Default to 5-point scale
+        if 'step' not in config:
+            config['step'] = 1
+
         config.setdefault('showOverallScore', True)
         config.setdefault('allowFeedback', True)
 
-        # Default labels
-        config.setdefault('labels', DEFAULT_LABELS)
+        # Generate default labels based on scale range if not configured
+        if 'labels' not in config:
+            config['labels'] = DimensionalRatingService._generate_default_labels(
+                config['min'], config['max']
+            )
 
         return config
+
+    @staticmethod
+    def _generate_default_labels(min_val: int, max_val: int) -> dict:
+        """
+        Generate default labels for a scale range.
+
+        Args:
+            min_val: Minimum scale value
+            max_val: Maximum scale value
+
+        Returns:
+            Dictionary of labels
+        """
+        # Import here to avoid circular imports
+        from services.evaluation.rating_prompt_generator import get_scale_labels_for_range
+
+        labels_raw = get_scale_labels_for_range(min_val, max_val, 'de')
+
+        # Convert to localized format
+        labels = {}
+        for value, label_de in labels_raw.items():
+            labels[str(value)] = {'de': label_de, 'en': label_de}
+
+        # If no preset found, use standard defaults
+        if not labels:
+            labels = DEFAULT_LABELS
+
+        return labels
 
     @staticmethod
     def get_items_for_user(scenario_id: int, user_id: int) -> list:
@@ -298,11 +338,13 @@ class DimensionalRatingService:
         # Get scenario config for weight calculation
         config = DimensionalRatingService.get_scenario_config(scenario_id)
         dimensions = config.get('dimensions', DEFAULT_DIMENSIONS)
+        scale_min = config.get('min', 1)
+        scale_max = config.get('max', 5)
 
         # Calculate overall score with weights
         weights = {d['id']: d.get('weight', 1.0) for d in dimensions}
         overall_score = DimensionalRatingService._calculate_weighted_score(
-            dimension_ratings, weights
+            dimension_ratings, weights, scale_min, scale_max
         )
 
         # Determine status
@@ -369,16 +411,25 @@ class DimensionalRatingService:
         }
 
     @staticmethod
-    def _calculate_weighted_score(ratings: dict, weights: dict) -> float:
+    def _calculate_weighted_score(
+        ratings: dict,
+        weights: dict,
+        scale_min: int = 1,
+        scale_max: int = 5
+    ) -> float:
         """
         Calculate weighted average from dimension ratings.
+
+        Supports variable scale ranges for proper normalization.
 
         Args:
             ratings: Dict mapping dimension_id to score
             weights: Dict mapping dimension_id to weight
+            scale_min: Minimum scale value (default 1)
+            scale_max: Maximum scale value (default 5)
 
         Returns:
-            Weighted average score
+            Weighted average score (in the original scale range)
         """
         if not ratings:
             return 0.0
@@ -393,6 +444,40 @@ class DimensionalRatingService:
                 total_weight += weight
 
         return round(weighted_sum / total_weight, 2) if total_weight > 0 else 0.0
+
+    @staticmethod
+    def calculate_normalized_score(
+        ratings: dict,
+        weights: dict,
+        scale_min: int = 1,
+        scale_max: int = 5
+    ) -> Optional[float]:
+        """
+        Calculate normalized score (0-1 range) from dimension ratings.
+
+        Useful for comparing ratings across different scale ranges.
+
+        Args:
+            ratings: Dict mapping dimension_id to score
+            weights: Dict mapping dimension_id to weight
+            scale_min: Minimum scale value
+            scale_max: Maximum scale value
+
+        Returns:
+            Normalized score (0.0 to 1.0) or None if no ratings
+        """
+        if not ratings:
+            return None
+
+        raw_score = DimensionalRatingService._calculate_weighted_score(
+            ratings, weights, scale_min, scale_max
+        )
+
+        if scale_max == scale_min:
+            return 1.0 if raw_score > 0 else 0.0
+
+        normalized = (raw_score - scale_min) / (scale_max - scale_min)
+        return round(max(0.0, min(1.0, normalized)), 4)
 
     @staticmethod
     def get_user_progress(scenario_id: int, user_id: int) -> dict:
@@ -537,3 +622,147 @@ class DimensionalRatingService:
             'average_overall_score': round(sum(overall_scores) / len(overall_scores), 2) if overall_scores else None,
             'dimension_averages': dimension_averages
         }
+
+    @staticmethod
+    def trigger_llm_evaluation(
+        scenario_id: int,
+        item_id: int,
+        model_id: str,
+        llm_user_id: int = None,
+        locale: str = 'de'
+    ) -> Dict[str, Any]:
+        """
+        Trigger LLM-based evaluation for an item.
+
+        Uses the scenario's dimension configuration and scale settings
+        to generate appropriate prompts and parse the LLM response.
+
+        Args:
+            scenario_id: Scenario ID
+            item_id: Item ID to evaluate
+            model_id: LLM model ID to use for evaluation
+            llm_user_id: User ID to attribute the LLM rating to (optional)
+            locale: Language locale for prompts
+
+        Returns:
+            Dictionary with evaluation results or error
+        """
+        from services.evaluation.rating_prompt_generator import RatingPromptGenerator
+        from services.llm.llm_client_factory import LLMClientFactory
+
+        # Get scenario config
+        config = DimensionalRatingService.get_scenario_config(scenario_id)
+        if 'error' in config:
+            return config
+
+        # Get item content
+        item = EvaluationItem.query.get(item_id)
+        if not item:
+            return {'error': 'Item not found'}
+
+        # Get messages for the item
+        messages = Message.query.filter_by(
+            item_id=item_id
+        ).order_by(Message.timestamp).all()
+
+        # Build content text
+        content = DimensionalRatingService._build_content_text([
+            {
+                'sender': msg.sender,
+                'content': msg.content
+            }
+            for msg in messages
+        ])
+
+        dimensions = config.get('dimensions', DEFAULT_DIMENSIONS)
+        scale_config = {
+            'min': config.get('min', 1),
+            'max': config.get('max', 5),
+            'step': config.get('step', 1),
+            'labels': config.get('labels', {})
+        }
+
+        # Generate prompts
+        prompts = RatingPromptGenerator.generate_rating_prompt(
+            dimensions=dimensions,
+            scale_config=scale_config,
+            content=content,
+            locale=locale,
+            content_type='Beratungskonversation' if locale == 'de' else 'Counseling conversation'
+        )
+
+        try:
+            # Get LLM client and make request
+            client = LLMClientFactory.get_client_for_model(model_id)
+            completion = client.chat.completions.create(
+                model=model_id,
+                messages=[
+                    {'role': 'system', 'content': prompts['system_prompt']},
+                    {'role': 'user', 'content': prompts['user_prompt']}
+                ],
+                temperature=0.3,  # Lower temperature for consistent ratings
+                max_tokens=2000
+            )
+
+            # Extract response content
+            response_content = completion.choices[0].message.content if completion.choices else ''
+            parsed = RatingPromptGenerator.parse_llm_rating_response(
+                response_content, dimensions, scale_config
+            )
+
+            if not parsed['success']:
+                return {
+                    'error': 'Failed to parse LLM response',
+                    'details': parsed['errors'],
+                    'raw_response': response_content
+                }
+
+            # Optionally save the rating
+            if llm_user_id:
+                save_result = DimensionalRatingService.save_dimensional_rating(
+                    scenario_id=scenario_id,
+                    item_id=item_id,
+                    user_id=llm_user_id,
+                    dimension_ratings=parsed['ratings'],
+                    feedback=parsed.get('summary'),
+                    auto_complete=True
+                )
+                parsed['saved'] = save_result.get('success', False)
+
+            parsed['model_id'] = model_id
+            parsed['item_id'] = item_id
+            parsed['scenario_id'] = scenario_id
+
+            return parsed
+
+        except Exception as e:
+            logger.exception(f"Error during LLM evaluation: {e}")
+            return {'error': f"LLM evaluation failed: {str(e)}"}
+
+    @staticmethod
+    def get_llm_evaluations(scenario_id: int) -> list:
+        """
+        Get all LLM evaluations for a scenario.
+
+        Returns ratings that were created by LLM evaluators (identified
+        by the user having is_llm_evaluator=True or special user IDs).
+
+        Args:
+            scenario_id: Scenario ID
+
+        Returns:
+            List of LLM evaluation records
+        """
+        # Get all ratings for this scenario
+        ratings = ItemDimensionRating.query.filter_by(
+            scenario_id=scenario_id
+        ).all()
+
+        # Filter for LLM evaluators
+        llm_evaluations = []
+        for rating in ratings:
+            user = User.query.get(rating.user_id)
+            if user and getattr(user, 'is_llm_evaluator', False):
+                llm_evaluations.append(rating.to_dict())
+
+        return llm_evaluations

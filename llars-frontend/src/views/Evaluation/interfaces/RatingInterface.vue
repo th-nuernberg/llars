@@ -51,10 +51,10 @@
             :key="dim.id"
             :dimension="dim"
             :model-value="dimensionRatings[dim.id]"
-            :labels="scaleLabels"
-            :min="scaleMin"
-            :max="scaleMax"
-            :step="scaleStep"
+            :labels="getDimensionLabels(dim)"
+            :min="getDimensionMin(dim)"
+            :max="getDimensionMax(dim)"
+            :step="getDimensionStep(dim)"
             :disabled="submitting"
             @update:model-value="handleDimensionRating(dim.id, $event)"
           />
@@ -225,6 +225,32 @@ watch(feedback, (newVal) => {
 watch(localFeedback, (newVal) => {
   feedback.value = newVal
 })
+
+// Per-dimension scale helpers
+// Returns the minimum value for a dimension (uses dimension's scale if available, else global)
+function getDimensionMin(dim) {
+  return dim.scale?.min ?? scaleMin.value
+}
+
+// Returns the maximum value for a dimension (uses dimension's scale if available, else global)
+function getDimensionMax(dim) {
+  return dim.scale?.max ?? scaleMax.value
+}
+
+// Returns the step value for a dimension (uses dimension's scale if available, else global)
+function getDimensionStep(dim) {
+  return dim.scale?.step ?? scaleStep.value
+}
+
+// Returns the labels for a dimension (uses dimension's scale labels if available, else global)
+function getDimensionLabels(dim) {
+  // If dimension has its own scale with labels, use those
+  if (dim.scale?.labels && Object.keys(dim.scale.labels).length > 0) {
+    return dim.scale.labels
+  }
+  // Otherwise use global labels
+  return scaleLabels.value
+}
 
 // Handle dimension rating change
 function handleDimensionRating(dimensionId, value) {

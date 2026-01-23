@@ -191,6 +191,16 @@ from db.models.user_llm_provider import (
     UserLLMProviderShare,
 )
 
+# Batch Generation models
+from db.models.generation import (
+    GenerationJobStatus,
+    GeneratedOutputStatus,
+    GenerationJob,
+    GeneratedOutput,
+    get_pending_outputs_for_job,
+    get_failed_outputs_for_job,
+)
+
 __all__ = [
     # User
     'User',
@@ -333,4 +343,11 @@ __all__ = [
     # User LLM Provider
     'UserLLMProvider',
     'UserLLMProviderShare',
+    # Batch Generation
+    'GenerationJobStatus',
+    'GeneratedOutputStatus',
+    'GenerationJob',
+    'GeneratedOutput',
+    'get_pending_outputs_for_job',
+    'get_failed_outputs_for_job',
 ]

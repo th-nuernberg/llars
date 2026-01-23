@@ -28,6 +28,7 @@ from db.models import (
     ProgressionStatus,
     LLMTaskResult,
     LLMModel,
+    ItemDimensionRating,
 )
 from decorators.error_handler import NotFoundError, ValidationError
 from routes.HelperFunctions import (
@@ -265,7 +266,7 @@ def get_progress_stats(scenario_id: int) -> Dict[str, Any]:
         elif scenario_user.role == ScenarioRoles.EVALUATOR:
             evaluator_stats.append(new_data)
 
-    if function_type.name in {"ranking", "rating", "authenticity"}:
+    if function_type.name in {"ranking", "rating", "mail_rating", "authenticity", "labeling"}:
         scenario_thread_ids = [
             row.thread_id
             for row in ScenarioThreads.query.filter_by(scenario_id=scenario_id).all()
@@ -307,12 +308,39 @@ def get_progress_stats(scenario_id: int) -> Dict[str, Any]:
     if function_type.name in {"ranking", "rating", "mail_rating"} and len(all_stats) >= 2:
         alpha = _calculate_ranking_agreement(all_stats, scenario_id, function_type.name)
 
+    # Calculate distribution and agreement metrics based on scenario type
+    rating_distribution = None
+    dimension_averages = None
+    pairwise_agreement = None
+    bucket_distribution = None
+    ranking_agreement = None
+    rating_alpha = None  # New: Krippendorff's Alpha split by evaluator type
+
+    if function_type.name in {"rating", "mail_rating", "labeling"}:
+        rating_distribution = _calculate_rating_distribution(scenario_id)
+        dimension_averages = _calculate_dimension_averages(scenario_id)
+        pairwise_agreement = _calculate_pairwise_agreement(scenario_id)
+        # Calculate Krippendorff's Alpha using new rating system (ItemDimensionRating + LLMTaskResult)
+        rating_alpha = _calculate_rating_krippendorff_alpha(scenario_id)
+        # Use the "all" alpha as the main alpha if no legacy alpha calculated
+        if alpha is None and rating_alpha and rating_alpha.get("all") is not None:
+            alpha = rating_alpha["all"]
+    elif function_type.name == "ranking":
+        bucket_distribution = _calculate_bucket_distribution(scenario_id)
+        ranking_agreement = _calculate_ranking_agreement_heatmap(scenario_id)
+
     return {
         "rater_stats": rater_stats,
         "evaluator_stats": evaluator_stats,
         "viewer_stats": evaluator_stats,  # backward compatibility
         "krippendorff_alpha": alpha,
         "alpha_interpretation": _interpret_alpha(alpha),
+        "rating_alpha": rating_alpha,  # New: split by evaluator type {all, humans, llms}
+        "rating_distribution": rating_distribution,
+        "dimension_averages": dimension_averages,
+        "pairwise_agreement": pairwise_agreement,
+        "bucket_distribution": bucket_distribution,
+        "ranking_agreement": ranking_agreement,
     }
 
 
@@ -586,6 +614,862 @@ def _interpret_alpha(alpha: Optional[float]) -> str:
     if alpha >= 0.4:
         return "Moderat"
     return "Gering"
+
+
+def _calculate_rating_krippendorff_alpha(scenario_id: int) -> Dict[str, Any]:
+    """
+    Calculate Krippendorff's Alpha for rating scenarios using interval metric.
+
+    Uses ItemDimensionRating for human ratings and LLMTaskResult for LLM ratings.
+    Returns alpha values split by evaluator type: all, humans, llms.
+
+    Krippendorff's Alpha formula: α = 1 - (Do / De)
+    For interval/ordinal data: δ(v, v') = (v - v')²
+
+    Sources:
+    - https://en.wikipedia.org/wiki/Krippendorff's_alpha
+    - https://www.k-alpha.org/methodological-notes
+    """
+    # Get all thread IDs for this scenario
+    scenario_threads = ScenarioThreads.query.filter_by(scenario_id=scenario_id).all()
+    thread_ids = [st.thread_id for st in scenario_threads if st.thread_id]
+    if len(thread_ids) < 2:
+        return {"all": None, "humans": None, "llms": None}
+
+    # Collect ratings: {thread_id: {evaluator_id: score}}
+    human_ratings: Dict[int, Dict[str, float]] = {tid: {} for tid in thread_ids}
+    llm_ratings: Dict[int, Dict[str, float]] = {tid: {} for tid in thread_ids}
+
+    # 1. Get human ratings from ItemDimensionRating
+    human_rating_records = (
+        ItemDimensionRating.query
+        .filter_by(scenario_id=scenario_id, status=ProgressionStatus.DONE)
+        .all()
+    )
+
+    for rating in human_rating_records:
+        if rating.overall_score is not None and rating.item_id in thread_ids:
+            evaluator_id = f"human:{rating.user_id}"
+            human_ratings[rating.item_id][evaluator_id] = float(rating.overall_score)
+
+    # 2. Get LLM ratings from LLMTaskResult
+    llm_results = LLMTaskResult.query.filter_by(
+        scenario_id=scenario_id,
+        task_type="rating"
+    ).filter(LLMTaskResult.error.is_(None)).all()
+
+    for result in llm_results:
+        if result.item_id not in thread_ids:
+            continue
+
+        payload = result.payload_json
+        if not payload:
+            continue
+        if isinstance(payload, str):
+            try:
+                payload = json.loads(payload)
+            except (json.JSONDecodeError, TypeError):
+                continue
+
+        # Extract overall_rating from payload
+        overall_rating = None
+        if payload.get("type") == "dimensional":
+            overall_rating = payload.get("overall_rating")
+        elif "overall_rating" in payload:
+            overall_rating = payload.get("overall_rating")
+        elif "rating" in payload:
+            overall_rating = payload.get("rating")
+
+        if overall_rating is not None:
+            try:
+                evaluator_id = f"llm:{result.model_id}"
+                llm_ratings[result.item_id][evaluator_id] = float(overall_rating)
+            except (ValueError, TypeError):
+                pass
+
+    def calculate_alpha(ratings_dict: Dict[int, Dict[str, float]]) -> Optional[float]:
+        """Calculate Krippendorff's Alpha for interval data."""
+        # Collect all values per unit (thread)
+        units_with_values = []
+        all_values = []
+
+        for thread_id, evaluator_scores in ratings_dict.items():
+            values = list(evaluator_scores.values())
+            if len(values) >= 2:  # Need at least 2 raters per unit
+                units_with_values.append(values)
+                all_values.extend(values)
+
+        if len(units_with_values) < 2 or len(all_values) < 4:
+            return None
+
+        # Calculate observed disagreement (Do)
+        # Sum of squared differences within each unit, normalized
+        do_sum = 0.0
+        pair_count_observed = 0
+
+        for values in units_with_values:
+            n = len(values)
+            for i in range(n):
+                for j in range(i + 1, n):
+                    do_sum += (values[i] - values[j]) ** 2
+                    pair_count_observed += 1
+
+        if pair_count_observed == 0:
+            return None
+
+        do = do_sum / pair_count_observed
+
+        # Calculate expected disagreement (De)
+        # Sum of squared differences across all values
+        de_sum = 0.0
+        n_total = len(all_values)
+        pair_count_expected = 0
+
+        for i in range(n_total):
+            for j in range(i + 1, n_total):
+                de_sum += (all_values[i] - all_values[j]) ** 2
+                pair_count_expected += 1
+
+        if pair_count_expected == 0:
+            return None
+
+        de = de_sum / pair_count_expected
+
+        # Calculate alpha
+        if de == 0:
+            return 1.0 if do == 0 else None
+
+        alpha = 1.0 - (do / de)
+        return round(alpha, 4)
+
+    # Combine human and LLM ratings for "all"
+    all_ratings: Dict[int, Dict[str, float]] = {tid: {} for tid in thread_ids}
+    for tid in thread_ids:
+        all_ratings[tid].update(human_ratings.get(tid, {}))
+        all_ratings[tid].update(llm_ratings.get(tid, {}))
+
+    return {
+        "all": calculate_alpha(all_ratings),
+        "humans": calculate_alpha(human_ratings),
+        "llms": calculate_alpha(llm_ratings),
+    }
+
+
+def _calculate_rating_distribution(scenario_id: int) -> Dict[str, Any]:
+    """
+    Calculate rating distribution for a rating scenario.
+
+    For scenarios with per-dimension scales, returns distribution per dimension.
+    For scenarios with uniform scales, returns overall_score distribution.
+
+    Returns dict with:
+    - 'all', 'humans', 'llms': overall score distributions
+    - 'by_dimension': per-dimension distributions (for mixed scales)
+    - 'has_mixed_scales': boolean indicating if dimensions have different scales
+    """
+    # Get scenario config first to determine scales
+    scenario = RatingScenarios.query.get(scenario_id)
+    config = scenario.config_json if scenario else {}
+    if isinstance(config, str):
+        try:
+            config = json.loads(config)
+        except (json.JSONDecodeError, TypeError):
+            config = {}
+    if not isinstance(config, dict):
+        config = {}
+
+    # Get scale configuration - check both root level and eval_config
+    eval_config = config.get("eval_config", {})
+    if not isinstance(eval_config, dict):
+        eval_config = {}
+
+    # Scale can be at root level or in eval_config
+    global_min = config.get("min", eval_config.get("min", 1))
+    global_max = config.get("max", eval_config.get("max", 5))
+    global_labels = config.get("labels", eval_config.get("labels", {}))
+    dimensions = config.get("dimensions", eval_config.get("dimensions", []))
+
+    # Check if we have mixed scales (per-dimension scales)
+    has_mixed_scales = False
+    dimension_scales = {}
+    for dim in dimensions:
+        dim_id = dim.get("id")
+        if dim.get("scale"):
+            has_mixed_scales = True
+            dim_scale = dim["scale"]
+            dimension_scales[dim_id] = {
+                "min": dim_scale.get("min", global_min),
+                "max": dim_scale.get("max", global_max),
+                "labels": dim_scale.get("labels", {}),
+                "name": dim.get("name", {})
+            }
+        else:
+            dimension_scales[dim_id] = {
+                "min": global_min,
+                "max": global_max,
+                "labels": global_labels,
+                "name": dim.get("name", {})
+            }
+
+    # Collect dimension ratings from humans and LLMs
+    human_dim_ratings: Dict[str, Dict[int, int]] = {}  # {dim_id: {score: count}}
+    llm_dim_ratings: Dict[str, Dict[int, int]] = {}
+
+    # Initialize dimension counters
+    for dim_id in dimension_scales:
+        human_dim_ratings[dim_id] = {}
+        llm_dim_ratings[dim_id] = {}
+
+    # 1. Get human ratings from ItemDimensionRating
+    human_ratings = (
+        ItemDimensionRating.query
+        .filter_by(scenario_id=scenario_id, status=ProgressionStatus.DONE)
+        .all()
+    )
+
+    for rating in human_ratings:
+        dim_scores = rating.dimension_ratings
+        if not dim_scores or not isinstance(dim_scores, dict):
+            continue
+        for dim_id, score in dim_scores.items():
+            if dim_id in human_dim_ratings and score is not None:
+                try:
+                    score_int = round(float(score))
+                    human_dim_ratings[dim_id][score_int] = human_dim_ratings[dim_id].get(score_int, 0) + 1
+                except (ValueError, TypeError):
+                    pass
+
+    # 2. Get LLM ratings from LLMTaskResult
+    llm_results = LLMTaskResult.query.filter_by(
+        scenario_id=scenario_id,
+        task_type="rating"
+    ).filter(LLMTaskResult.error.is_(None)).all()
+
+    for result in llm_results:
+        payload = result.payload_json
+        if not payload:
+            continue
+        if isinstance(payload, str):
+            try:
+                payload = json.loads(payload)
+            except (json.JSONDecodeError, TypeError):
+                continue
+
+        # Extract dimension ratings from payload
+        ratings = payload.get("ratings", {})
+        if isinstance(ratings, dict):
+            for dim_id, score in ratings.items():
+                if dim_id in llm_dim_ratings and score is not None:
+                    try:
+                        score_int = round(float(score))
+                        llm_dim_ratings[dim_id][score_int] = llm_dim_ratings[dim_id].get(score_int, 0) + 1
+                    except (ValueError, TypeError):
+                        pass
+
+    def build_dimension_distribution(
+        dim_id: str,
+        human_counts: Dict[int, int],
+        llm_counts: Dict[int, int],
+        scale_info: Dict
+    ) -> Dict[str, Any]:
+        """Build distribution for a single dimension."""
+        scale_min = scale_info["min"]
+        scale_max = scale_info["max"]
+        labels = scale_info["labels"]
+        name = scale_info["name"]
+
+        def build_dist(counts: Dict[int, int]) -> List[Dict[str, Any]]:
+            if not counts:
+                return []
+            total = sum(counts.values())
+            distribution = []
+            for score in range(scale_min, scale_max + 1):
+                count = counts.get(score, 0)
+                label_data = labels.get(str(score), {})
+                if isinstance(label_data, dict):
+                    label = label_data.get("en", label_data.get("de", str(score)))
+                else:
+                    label = str(label_data) if label_data else str(score)
+                distribution.append({
+                    "label": f"{score} - {label}" if label != str(score) else str(score),
+                    "value": score,
+                    "count": count,
+                    "percentage": round((count / total) * 100) if total > 0 else 0
+                })
+            return distribution
+
+        # Combine for "all"
+        all_counts = {}
+        for score, count in human_counts.items():
+            all_counts[score] = all_counts.get(score, 0) + count
+        for score, count in llm_counts.items():
+            all_counts[score] = all_counts.get(score, 0) + count
+
+        return {
+            "dimension_id": dim_id,
+            "dimension_name": name.get("en", name.get("de", dim_id)) if isinstance(name, dict) else str(name),
+            "scale_min": scale_min,
+            "scale_max": scale_max,
+            "all": build_dist(all_counts),
+            "humans": build_dist(human_counts),
+            "llms": build_dist(llm_counts)
+        }
+
+    # Build per-dimension distributions
+    by_dimension = []
+    for dim_id, scale_info in dimension_scales.items():
+        dim_dist = build_dimension_distribution(
+            dim_id,
+            human_dim_ratings.get(dim_id, {}),
+            llm_dim_ratings.get(dim_id, {}),
+            scale_info
+        )
+        by_dimension.append(dim_dist)
+
+    # Also build overall score distribution for backwards compatibility
+    human_overall: Dict[int, int] = {}
+    llm_overall: Dict[int, int] = {}
+
+    for rating in human_ratings:
+        if rating.overall_score is not None:
+            score = round(rating.overall_score)
+            human_overall[score] = human_overall.get(score, 0) + 1
+
+    for result in llm_results:
+        payload = result.payload_json
+        if not payload:
+            continue
+        if isinstance(payload, str):
+            try:
+                payload = json.loads(payload)
+            except (json.JSONDecodeError, TypeError):
+                continue
+        overall_rating = payload.get("overall_rating") or payload.get("rating")
+        if overall_rating is not None:
+            try:
+                score = round(float(overall_rating))
+                llm_overall[score] = llm_overall.get(score, 0) + 1
+            except (ValueError, TypeError):
+                pass
+
+    def build_overall_distribution(counts: Dict[int, int]) -> List[Dict[str, Any]]:
+        if not counts:
+            return []
+        total = sum(counts.values())
+        distribution = []
+        # Use global scale for overall distribution
+        for score in range(global_min, global_max + 1):
+            count = counts.get(score, 0)
+            label_data = global_labels.get(str(score), {})
+            if isinstance(label_data, dict):
+                label = label_data.get("en", label_data.get("de", str(score)))
+            else:
+                label = str(label_data) if label_data else str(score)
+            distribution.append({
+                "label": f"{score} - {label}" if label != str(score) else str(score),
+                "value": score,
+                "count": count,
+                "percentage": round((count / total) * 100) if total > 0 else 0
+            })
+        return distribution
+
+    all_overall = {}
+    for score, count in human_overall.items():
+        all_overall[score] = all_overall.get(score, 0) + count
+    for score, count in llm_overall.items():
+        all_overall[score] = all_overall.get(score, 0) + count
+
+    return {
+        "all": build_overall_distribution(all_overall),
+        "humans": build_overall_distribution(human_overall),
+        "llms": build_overall_distribution(llm_overall),
+        "by_dimension": by_dimension,
+        "has_mixed_scales": has_mixed_scales
+    }
+
+
+def _calculate_dimension_averages(scenario_id: int) -> Dict[str, Any]:
+    """
+    Calculate average scores per dimension for a rating scenario.
+
+    Returns dimension averages split by evaluator type (all, humans, LLMs).
+    Includes both human ratings from ItemDimensionRating and LLM ratings from LLMTaskResult.
+    """
+    # Get scenario config for dimension info
+    scenario = RatingScenarios.query.get(scenario_id)
+    if not scenario:
+        return {}
+
+    config = scenario.config_json if scenario else {}
+    if isinstance(config, str):
+        try:
+            config = json.loads(config)
+        except (json.JSONDecodeError, TypeError):
+            config = {}
+    if not isinstance(config, dict):
+        config = {}
+
+    # Get dimensions and eval_config from config (dimensions can be at root level or in eval_config)
+    eval_config = config.get("eval_config", {})
+    if not isinstance(eval_config, dict):
+        eval_config = {}
+
+    dimensions = config.get("dimensions", [])
+    if not dimensions:
+        dimensions = eval_config.get("dimensions", [])
+    if not dimensions:
+        return {}
+
+    dimension_ids = [d.get("id") for d in dimensions]
+
+    # Collect all dimension scores: list of {dim_id: score} dicts
+    from collections import defaultdict
+    human_scores = []  # List of {dim_id: score} dicts
+    llm_scores = []    # List of {dim_id: score} dicts
+
+    # 1. Get human ratings from ItemDimensionRating
+    human_ratings = (
+        ItemDimensionRating.query
+        .filter_by(scenario_id=scenario_id, status=ProgressionStatus.DONE)
+        .all()
+    )
+
+    for rating in human_ratings:
+        scores = rating.dimension_ratings or {}
+        if isinstance(scores, str):
+            try:
+                scores = json.loads(scores)
+            except (json.JSONDecodeError, TypeError):
+                scores = {}
+        if scores:
+            human_scores.append(scores)
+
+    # 2. Get LLM ratings from LLMTaskResult (dimensional format)
+    llm_results = LLMTaskResult.query.filter_by(
+        scenario_id=scenario_id,
+        task_type="rating"
+    ).filter(LLMTaskResult.error.is_(None)).all()
+
+    for result in llm_results:
+        payload = result.payload_json
+        if not payload:
+            continue
+        if isinstance(payload, str):
+            try:
+                payload = json.loads(payload)
+            except (json.JSONDecodeError, TypeError):
+                continue
+
+        # Check for dimensional format: {"type": "dimensional", "dimensional_ratings": [...]}
+        if payload.get("type") == "dimensional" and "dimensional_ratings" in payload:
+            dim_ratings = payload.get("dimensional_ratings", [])
+            scores = {}
+            for dr in dim_ratings:
+                dim_id = dr.get("dimension")
+                rating_val = dr.get("rating")
+                if dim_id and rating_val is not None:
+                    scores[dim_id] = rating_val
+            if scores:
+                llm_scores.append(scores)
+
+    # If no data at all, return empty
+    if not human_scores and not llm_scores:
+        return {
+            "dimensions": [{"id": d.get("id"), "label": d.get("name", {}).get("en", d.get("id"))} for d in dimensions],
+            "series": []
+        }
+
+    def calc_averages(scores_list):
+        """Calculate average for each dimension from a list of score dicts."""
+        dim_sums = {dim_id: 0.0 for dim_id in dimension_ids}
+        dim_counts = {dim_id: 0 for dim_id in dimension_ids}
+
+        for scores in scores_list:
+            for dim_id in dimension_ids:
+                if dim_id in scores and scores[dim_id] is not None:
+                    dim_sums[dim_id] += float(scores[dim_id])
+                    dim_counts[dim_id] += 1
+
+        return [
+            round(dim_sums[dim_id] / dim_counts[dim_id], 2) if dim_counts[dim_id] > 0 else 0
+            for dim_id in dimension_ids
+        ]
+
+    series = []
+
+    # All evaluators (humans + LLMs)
+    all_scores = human_scores + llm_scores
+    if all_scores:
+        series.append({
+            "label": "All",
+            "values": calc_averages(all_scores),
+            "color": "primary"
+        })
+
+    # Humans only
+    if human_scores:
+        series.append({
+            "label": "Humans",
+            "values": calc_averages(human_scores),
+            "color": "secondary"
+        })
+
+    # LLMs only
+    if llm_scores:
+        series.append({
+            "label": "LLMs",
+            "values": calc_averages(llm_scores),
+            "color": "accent"
+        })
+
+    # Get maxValue from config (can be at root level or in eval_config)
+    max_value = config.get("max") or eval_config.get("max", 5)
+
+    return {
+        "dimensions": [
+            {
+                "id": d.get("id"),
+                "label": d.get("name", {}).get("en", d.get("id"))
+            }
+            for d in dimensions
+        ],
+        "series": series,
+        "maxValue": max_value
+    }
+
+
+def _calculate_pairwise_agreement(scenario_id: int) -> Dict[str, Any]:
+    """
+    Calculate pairwise agreement between evaluators.
+
+    Returns agreement scores for each pair of evaluators who have
+    rated the same items. Includes both human ratings and LLM ratings.
+    """
+    from collections import defaultdict
+
+    # item_id -> {evaluator_id: overall_score}
+    item_ratings = defaultdict(dict)
+    users_set = set()
+    user_info = {}
+
+    # 1. Get human ratings from ItemDimensionRating
+    human_ratings = (
+        ItemDimensionRating.query
+        .filter_by(scenario_id=scenario_id, status=ProgressionStatus.DONE)
+        .all()
+    )
+
+    for rating in human_ratings:
+        item_id = rating.item_id
+        user_id = rating.user_id
+        users_set.add(user_id)
+
+        # Store user info
+        if user_id not in user_info:
+            user = User.query.get(user_id)
+            name = user.username if user else f"User {user_id}"
+            user_info[user_id] = {"id": user_id, "name": name, "isLLM": False}
+
+        if rating.overall_score is not None:
+            item_ratings[item_id][user_id] = rating.overall_score
+
+    # 2. Get LLM ratings from LLMTaskResult
+    llm_results = LLMTaskResult.query.filter_by(
+        scenario_id=scenario_id,
+        task_type="rating"
+    ).filter(LLMTaskResult.error.is_(None)).all()
+
+    for result in llm_results:
+        payload = result.payload_json
+        if not payload:
+            continue
+        if isinstance(payload, str):
+            try:
+                payload = json.loads(payload)
+            except (json.JSONDecodeError, TypeError):
+                continue
+
+        # Extract overall_rating from dimensional format
+        overall_rating = None
+        if payload.get("type") == "dimensional":
+            overall_rating = payload.get("overall_rating")
+        elif "overall_rating" in payload:
+            overall_rating = payload.get("overall_rating")
+
+        if overall_rating is not None:
+            item_id = result.item_id
+            model_id = result.model_id
+            llm_user_id = f"llm:{model_id}"
+
+            users_set.add(llm_user_id)
+
+            # Store LLM info
+            if llm_user_id not in user_info:
+                # Get display name from LLM model if available
+                llm_model = LLMModel.query.filter_by(model_id=model_id).first()
+                name = llm_model.display_name if llm_model else model_id.split("/")[-1]
+                user_info[llm_user_id] = {"id": llm_user_id, "name": name, "isLLM": True}
+
+            item_ratings[item_id][llm_user_id] = overall_rating
+
+    if not users_set:
+        return {"evaluators": [], "agreements": {}}
+
+    # Build evaluator list
+    evaluators = list(user_info.values())
+
+    # Calculate pairwise agreement (percent agreement within 1 point)
+    agreements = {}
+    user_list = list(users_set)
+
+    for i, user1 in enumerate(user_list):
+        for user2 in user_list[i+1:]:
+            # Find common items
+            common_items = []
+            for item_id, user_scores in item_ratings.items():
+                if user1 in user_scores and user2 in user_scores:
+                    common_items.append((user_scores[user1], user_scores[user2]))
+
+            if len(common_items) >= 1:
+                # Calculate agreement (percentage of ratings within 1 point)
+                agreements_count = sum(
+                    1 for s1, s2 in common_items if abs(s1 - s2) <= 1
+                )
+                agreement = agreements_count / len(common_items)
+
+                # Store with sorted key for consistency
+                key = f"{min(str(user1), str(user2))}-{max(str(user1), str(user2))}"
+                agreements[key] = round(agreement, 3)
+
+    return {
+        "evaluators": evaluators,
+        "agreements": agreements
+    }
+
+
+def _calculate_bucket_distribution(scenario_id: int) -> List[Dict[str, Any]]:
+    """
+    Calculate bucket distribution for a ranking scenario.
+
+    Returns distribution of items across buckets (gut/mittel/schlecht).
+    Includes both human and LLM evaluator bucket assignments.
+    """
+    from db.models import UserFeatureRanking, Feature, ScenarioItems
+
+    # Get all items for this scenario
+    scenario_items = ScenarioItems.query.filter_by(scenario_id=scenario_id).all()
+    item_ids = [si.item_id for si in scenario_items]
+
+    if not item_ids:
+        return []
+
+    # Bucket counts from all evaluators
+    bucket_counts = {"gut": 0, "mittel": 0, "schlecht": 0}
+
+    # 1. Get human rankings
+    human_rankings = (
+        UserFeatureRanking.query
+        .join(Feature, UserFeatureRanking.feature_id == Feature.feature_id)
+        .filter(Feature.thread_id.in_(item_ids))
+        .filter(UserFeatureRanking.bucket.isnot(None))
+        .all()
+    )
+
+    for ranking in human_rankings:
+        bucket = ranking.bucket.lower() if ranking.bucket else None
+        if bucket in bucket_counts:
+            bucket_counts[bucket] += 1
+        elif bucket == "good":
+            bucket_counts["gut"] += 1
+        elif bucket in ("medium", "middle"):
+            bucket_counts["mittel"] += 1
+        elif bucket in ("bad", "poor"):
+            bucket_counts["schlecht"] += 1
+
+    # 2. Get LLM rankings from llm_task_results
+    llm_results = LLMTaskResult.query.filter_by(
+        scenario_id=scenario_id,
+        task_type="ranking"
+    ).filter(LLMTaskResult.error.is_(None)).all()
+
+    for result in llm_results:
+        payload = result.payload_json
+        if not payload:
+            continue
+        if isinstance(payload, str):
+            try:
+                payload = json.loads(payload)
+            except (json.JSONDecodeError, TypeError):
+                continue
+
+        # Count items in each bucket
+        for bucket_key in ["gut", "good"]:
+            items = payload.get(bucket_key, [])
+            if isinstance(items, list):
+                bucket_counts["gut"] += len(items)
+
+        for bucket_key in ["mittel", "medium", "middle"]:
+            items = payload.get(bucket_key, [])
+            if isinstance(items, list):
+                bucket_counts["mittel"] += len(items)
+
+        for bucket_key in ["schlecht", "bad", "poor"]:
+            items = payload.get(bucket_key, [])
+            if isinstance(items, list):
+                bucket_counts["schlecht"] += len(items)
+
+    total = sum(bucket_counts.values())
+    if total == 0:
+        return []
+
+    # Build distribution with colors
+    bucket_colors = {
+        "gut": "#b0ca97",      # Green (LLARS primary)
+        "mittel": "#e8c87a",   # Yellow (warning)
+        "schlecht": "#e8a087"  # Red (danger)
+    }
+
+    bucket_labels = {
+        "gut": "Gut",
+        "mittel": "Mittel",
+        "schlecht": "Schlecht"
+    }
+
+    distribution = []
+    for bucket in ["gut", "mittel", "schlecht"]:
+        count = bucket_counts[bucket]
+        distribution.append({
+            "bucket": bucket,
+            "label": bucket_labels[bucket],
+            "count": count,
+            "percentage": round((count / total) * 100) if total > 0 else 0,
+            "color": bucket_colors[bucket]
+        })
+
+    return distribution
+
+
+def _calculate_ranking_agreement_heatmap(scenario_id: int) -> Dict[str, Any]:
+    """
+    Calculate pairwise agreement between evaluators for ranking scenarios.
+
+    Agreement is measured by how often evaluators assign the same bucket to an item.
+    """
+    from db.models import UserFeatureRanking, Feature, ScenarioItems
+    from collections import defaultdict
+
+    # Get all items for this scenario
+    scenario_items = ScenarioItems.query.filter_by(scenario_id=scenario_id).all()
+    item_ids = [si.item_id for si in scenario_items]
+
+    if not item_ids:
+        return {"evaluators": [], "agreements": {}}
+
+    # item_id -> {evaluator_id: bucket}
+    item_buckets = defaultdict(dict)
+    users_set = set()
+    user_info = {}
+
+    # 1. Get human rankings
+    human_rankings = (
+        UserFeatureRanking.query
+        .join(Feature, UserFeatureRanking.feature_id == Feature.feature_id)
+        .filter(Feature.thread_id.in_(item_ids))
+        .filter(UserFeatureRanking.bucket.isnot(None))
+        .all()
+    )
+
+    for ranking in human_rankings:
+        item_id = ranking.feature.thread_id if ranking.feature else None
+        user_id = ranking.user_id
+        bucket = ranking.bucket.lower() if ranking.bucket else None
+
+        if not item_id or not bucket:
+            continue
+
+        # Normalize bucket names
+        if bucket in ("good",):
+            bucket = "gut"
+        elif bucket in ("medium", "middle"):
+            bucket = "mittel"
+        elif bucket in ("bad", "poor"):
+            bucket = "schlecht"
+
+        users_set.add(user_id)
+        if user_id not in user_info:
+            user = User.query.get(user_id)
+            name = user.username if user else f"User {user_id}"
+            user_info[user_id] = {"id": user_id, "name": name, "isLLM": False}
+
+        item_buckets[item_id][user_id] = bucket
+
+    # 2. Get LLM rankings
+    llm_results = LLMTaskResult.query.filter_by(
+        scenario_id=scenario_id,
+        task_type="ranking"
+    ).filter(LLMTaskResult.error.is_(None)).all()
+
+    for result in llm_results:
+        payload = result.payload_json
+        if not payload:
+            continue
+        if isinstance(payload, str):
+            try:
+                payload = json.loads(payload)
+            except (json.JSONDecodeError, TypeError):
+                continue
+
+        model_id = result.model_id
+        llm_user_id = f"llm:{model_id}"
+        users_set.add(llm_user_id)
+
+        if llm_user_id not in user_info:
+            llm_model = LLMModel.query.filter_by(model_id=model_id).first()
+            name = llm_model.display_name if llm_model else model_id.split("/")[-1]
+            user_info[llm_user_id] = {"id": llm_user_id, "name": name, "isLLM": True}
+
+        # Extract bucket assignments
+        bucket_map = {
+            "gut": ["gut", "good"],
+            "mittel": ["mittel", "medium", "middle"],
+            "schlecht": ["schlecht", "bad", "poor"]
+        }
+
+        for normalized_bucket, keys in bucket_map.items():
+            for key in keys:
+                items = payload.get(key, [])
+                if isinstance(items, list):
+                    for item_id in items:
+                        item_buckets[item_id][llm_user_id] = normalized_bucket
+
+    if not users_set:
+        return {"evaluators": [], "agreements": {}}
+
+    evaluators = list(user_info.values())
+
+    # Calculate pairwise agreement (percentage of items with same bucket)
+    agreements = {}
+    user_list = list(users_set)
+
+    for i, user1 in enumerate(user_list):
+        for user2 in user_list[i+1:]:
+            common_items = []
+            for item_id, user_buckets in item_buckets.items():
+                if user1 in user_buckets and user2 in user_buckets:
+                    common_items.append((user_buckets[user1], user_buckets[user2]))
+
+            if len(common_items) >= 1:
+                # Calculate agreement (percentage with same bucket)
+                agreements_count = sum(1 for b1, b2 in common_items if b1 == b2)
+                agreement = agreements_count / len(common_items)
+
+                key = f"{min(str(user1), str(user2))}-{max(str(user1), str(user2))}"
+                agreements[key] = round(agreement, 3)
+
+    return {
+        "evaluators": evaluators,
+        "agreements": agreements
+    }
 
 
 def get_authenticity_stats(scenario_id: int) -> Dict[str, Any]:

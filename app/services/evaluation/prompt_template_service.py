@@ -288,6 +288,46 @@ Antworte im folgenden JSON-Format:
 # Alias: labeling uses the same prompt defaults as text_classification
 DEFAULT_PROMPTS["labeling"] = DEFAULT_PROMPTS["text_classification"]
 
+# New: Dimensional Rating template for dynamic multi-dimensional evaluation
+DEFAULT_PROMPTS["dimensional_rating"] = {
+    "name": "Default Dimensional Rating Prompt",
+    "system_prompt": """Du bist ein Experte für mehrdimensionale Bewertung von Inhalten.
+Deine Aufgabe ist es, den folgenden Inhalt auf mehreren Dimensionen zu bewerten.
+
+Die Bewertungsskala und Dimensionen werden dynamisch bereitgestellt.
+Für jede Dimension sollst du:
+- Eine Bewertung im angegebenen Skalenbereich geben
+- Eine kurze Begründung für die Bewertung liefern
+
+Antworte AUSSCHLIESSLICH im vorgegebenen JSON-Format.""",
+    "user_prompt_template": """Bewerte den folgenden Inhalt.
+
+Bewertungsskala: {scale_min} bis {scale_max}
+{scale_labels}
+
+Dimensionen:
+{dimensions_list}
+
+Inhalt zur Bewertung:
+{content}
+
+Antworte im folgenden JSON-Format:
+{{
+  "ratings": {{
+    {dimension_schema}
+  }},
+  "reasoning": {{
+    {reasoning_schema}
+  }},
+  "overall_score": <gewichteter Durchschnitt>,
+  "summary": "<Kurze Zusammenfassung>",
+  "confidence": <0.0-1.0>
+}}""",
+    "variables": ["scale_min", "scale_max", "scale_labels", "dimensions_list",
+                  "content", "dimension_schema", "reasoning_schema"],
+    "output_schema_version": "2.0",
+}
+
 
 class PromptTemplateService:
     """Service for managing prompt templates for LLM evaluators."""
@@ -500,3 +540,35 @@ class PromptTemplateService:
     def get_available_task_types() -> List[str]:
         """Get all available task types."""
         return list(DEFAULT_PROMPTS.keys())
+
+    @staticmethod
+    def render_dimensional_prompt(
+        dimensions: List[Dict[str, Any]],
+        scale_config: Dict[str, Any],
+        content: str,
+        locale: str = 'de'
+    ) -> Dict[str, str]:
+        """
+        Render dimensional rating prompts with dynamic dimensions and scale.
+
+        This is a convenience method that uses the RatingPromptGenerator
+        for more sophisticated prompt generation.
+
+        Args:
+            dimensions: List of dimension configurations
+                Each: {id, name: {de, en}, description: {de, en}, weight, prompt_hint?}
+            scale_config: Scale configuration {min, max, step, labels}
+            content: The content to evaluate
+            locale: Language locale ('de' or 'en')
+
+        Returns:
+            Dict with 'system_prompt' and 'user_prompt' keys
+        """
+        from services.evaluation.rating_prompt_generator import RatingPromptGenerator
+
+        return RatingPromptGenerator.generate_rating_prompt(
+            dimensions=dimensions,
+            scale_config=scale_config,
+            content=content,
+            locale=locale
+        )

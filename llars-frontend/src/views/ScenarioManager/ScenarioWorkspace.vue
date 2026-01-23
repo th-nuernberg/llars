@@ -237,6 +237,7 @@ const {
 // Real-time stats subscription
 const scenarioIdRef = computed(() => props.id ? Number(props.id) : null)
 const {
+  stats,
   userStatsList,
   humanProgress: liveHumanProgress,
   llmProgress: liveLlmProgress,
@@ -337,7 +338,9 @@ const liveStats = computed(() => ({
   overallProgress: liveOverallProgress.value,
   agreementMetrics: liveAgreementMetrics.value,
   userStatsList: userStatsList.value,
-  connected: statsConnected.value
+  connected: statsConnected.value,
+  ratingDistribution: stats.value?.rating_distribution,
+  functionType: stats.value?.function_type
 }))
 
 // Methods

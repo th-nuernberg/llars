@@ -71,14 +71,19 @@ class EvaluationSessionService:
             except (json.JSONDecodeError, TypeError):
                 config = {}
 
+        # Description may be in config_json (new scenarios) or doesn't exist
+        description = None
+        if isinstance(config, dict):
+            description = config.get('description')
+
         return {
             'scenario': {
                 'id': scenario.id,
                 'name': scenario.scenario_name,
-                'description': scenario.scenario_description,
+                'description': description,
                 'function_type': function_type_name,
                 'function_type_id': scenario.function_type_id,
-                'created_at': scenario.created_at.isoformat() if scenario.created_at else None,
+                'created_at': scenario.timestamp.isoformat() if scenario.timestamp else None,
                 'is_owner': EvaluationSessionService._is_owner(scenario, user_id)
             },
             'config': config or {},
@@ -88,7 +93,13 @@ class EvaluationSessionService:
     @staticmethod
     def _is_owner(scenario: RatingScenarios, user_id: int) -> bool:
         """Check if user is the scenario owner."""
-        return scenario.owner_id == user_id
+        if not scenario.created_by:
+            return False
+        # Look up user to compare username with created_by
+        user = User.query.get(user_id)
+        if not user:
+            return False
+        return user.username == scenario.created_by
 
     @staticmethod
     def _get_items_for_scenario(scenario_id: int, user_id: int, function_type: str) -> list:
@@ -143,12 +154,12 @@ class EvaluationSessionService:
             return FeatureRatingService.has_user_fully_rated_thread(user_id, thread_id)
         elif function_type == 'authenticity':
             # Check authenticity votes
-            from db.models import UserThreadVote
-            vote = UserThreadVote.query.filter_by(
+            from db.models import UserAuthenticityVote
+            vote = UserAuthenticityVote.query.filter_by(
                 user_id=user_id,
-                thread_id=thread_id
+                item_id=thread_id
             ).first()
-            return vote is not None
+            return vote is not None and vote.vote is not None
         # For other types, check if any evaluation exists
         return False
 

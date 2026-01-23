@@ -5,7 +5,8 @@ from db.tables import (User, EmailThread, Message, Feature, FeatureType, LLM, Us
                        FeatureFunctionType, UserFeatureRating, UserMailHistoryRating, UserMessageRating,
                        UserGroup, UserPrompt, UserPromptShare,
                        UserAuthenticityVote,
-                       ConsultingCategoryType, UserConsultingCategorySelection, RatingScenarios, ScenarioUsers, ScenarioThreadDistribution, ScenarioThreads, ScenarioRoles)
+                       ConsultingCategoryType, UserConsultingCategorySelection, RatingScenarios, ScenarioUsers, ScenarioThreadDistribution, ScenarioThreads, ScenarioRoles,
+                       ItemDimensionRating)
 from sqlalchemy import func
 from uuid import uuid4
 import uuid
@@ -127,7 +128,31 @@ def get_progression_ranking(thread: EmailThread, user_id: int) -> ProgressionSta
 
 
 def get_progression_rating(thread: EmailThread, user_id: int) -> ProgressionStatus:
-    """ Berechnet den Fortschritt für das Feature Rating (function_type_id=2) """
+    """
+    Berechnet den Fortschritt für das Rating (function_type_id=2).
+
+    Prüft zuerst das neue dimensionale Rating-System (ItemDimensionRating),
+    falls dort kein Rating gefunden wird, fällt es auf das alte Feature-basierte
+    System zurück (UserFeatureRating).
+    """
+    # First check new dimensional rating system
+    # We need to find which scenario this thread belongs to
+    scenario_thread = db.session.query(ScenarioThreads).filter_by(
+        thread_id=thread.thread_id
+    ).first()
+
+    if scenario_thread:
+        # Check ItemDimensionRating for this scenario
+        dim_rating = db.session.query(ItemDimensionRating).filter_by(
+            user_id=user_id,
+            item_id=thread.thread_id,
+            scenario_id=scenario_thread.scenario_id
+        ).first()
+
+        if dim_rating:
+            return dim_rating.status if dim_rating.status else ProgressionStatus.NOT_STARTED
+
+    # Fallback to old feature-based rating system
     total_features = db.session.query(Feature).filter_by(thread_id=thread.thread_id).count()
     # Use UserFeatureRating (not UserMessageRating) with explicit join
     rated_features = db.session.query(UserFeatureRating).join(
@@ -159,6 +184,30 @@ def get_progression_authenticity(thread: EmailThread, user_id: int) -> Progressi
         user_id=user_id, thread_id=thread.thread_id
     ).first()
     return ProgressionStatus.DONE if vote else ProgressionStatus.NOT_STARTED
+
+
+def get_progression_labeling(thread: EmailThread, user_id: int) -> ProgressionStatus:
+    """
+    Berechnet den Fortschritt für das Labeling (function_type_id=7).
+
+    Prüft ItemDimensionRating für dieses Item - Labeling speichert die
+    Kategorie-Auswahl als dimension_ratings JSON.
+    """
+    scenario_thread = db.session.query(ScenarioThreads).filter_by(
+        thread_id=thread.thread_id
+    ).first()
+
+    if scenario_thread:
+        dim_rating = db.session.query(ItemDimensionRating).filter_by(
+            user_id=user_id,
+            item_id=thread.thread_id,
+            scenario_id=scenario_thread.scenario_id
+        ).first()
+
+        if dim_rating:
+            return dim_rating.status if dim_rating.status else ProgressionStatus.NOT_STARTED
+
+    return ProgressionStatus.NOT_STARTED
 
 
 
@@ -339,6 +388,7 @@ def get_thread_progression_state(thread: EmailThread, user_id: int, function_typ
         2: get_progression_rating,
         3: get_progression_mail_rating,
         5: get_progression_authenticity,
+        7: get_progression_labeling,
     }
     handler = PROGRESSION_HANDLERS.get(function_type_id)
 

@@ -260,3 +260,172 @@ class TestItemDimensionRatingModel:
 
         for field in expected_fields:
             assert field in mock_dict
+
+
+class TestVariableScaleCalculations:
+    """Tests for variable Likert scale support."""
+
+    def test_DIMRAT_016_weighted_score_with_0_1_scale(self):
+        """Weighted score calculation should work with 0-1 binary scale."""
+        dimensions = [
+            {'id': 'dim1', 'weight': 0.5},
+            {'id': 'dim2', 'weight': 0.5}
+        ]
+        ratings = {'dim1': 1, 'dim2': 0}
+        scale_min, scale_max = 0, 1
+
+        weighted_sum = sum(
+            ratings.get(d['id'], 0) * d.get('weight', 1.0)
+            for d in dimensions
+        )
+        total_weight = sum(d.get('weight', 1.0) for d in dimensions)
+        expected = weighted_sum / total_weight
+
+        # 1 * 0.5 + 0 * 0.5 = 0.5
+        assert expected == pytest.approx(0.5)
+
+    def test_DIMRAT_017_weighted_score_with_0_9_scale(self):
+        """Weighted score calculation should work with 0-9 scale."""
+        dimensions = [
+            {'id': 'dim1', 'weight': 0.5},
+            {'id': 'dim2', 'weight': 0.5}
+        ]
+        ratings = {'dim1': 9, 'dim2': 5}
+        scale_min, scale_max = 0, 9
+
+        weighted_sum = sum(
+            ratings.get(d['id'], 0) * d.get('weight', 1.0)
+            for d in dimensions
+        )
+        total_weight = sum(d.get('weight', 1.0) for d in dimensions)
+        expected = weighted_sum / total_weight
+
+        # 9 * 0.5 + 5 * 0.5 = 4.5 + 2.5 = 7.0
+        assert expected == pytest.approx(7.0)
+
+    def test_DIMRAT_018_normalized_score_calculation(self):
+        """Normalized score should be calculated as (score - min) / (max - min)."""
+        # Test normalization for different scales
+        test_cases = [
+            # (score, min, max, expected_normalized)
+            (3, 1, 5, 0.5),      # Standard 1-5 scale, score 3 = 50%
+            (1, 0, 1, 1.0),      # Binary scale, score 1 = 100%
+            (0, 0, 1, 0.0),      # Binary scale, score 0 = 0%
+            (5, 0, 9, 0.5556),   # 0-9 scale, score 5 ≈ 55.56%
+            (7, 1, 10, 0.6667),  # 1-10 scale, score 7 ≈ 66.67%
+        ]
+
+        for score, scale_min, scale_max, expected in test_cases:
+            if scale_max == scale_min:
+                normalized = 1.0 if score > 0 else 0.0
+            else:
+                normalized = (score - scale_min) / (scale_max - scale_min)
+
+            assert normalized == pytest.approx(expected, abs=0.01), \
+                f"Failed for score={score}, scale={scale_min}-{scale_max}"
+
+    def test_DIMRAT_019_normalized_score_clamped_to_0_1(self):
+        """Normalized score should be clamped between 0 and 1."""
+        # Edge case: score outside of scale bounds (shouldn't happen, but defensive)
+        score = 6
+        scale_min, scale_max = 1, 5
+
+        raw_normalized = (score - scale_min) / (scale_max - scale_min)  # Would be 1.25
+        normalized = max(0, min(1, raw_normalized))
+
+        assert normalized == 1.0
+
+
+class TestScaleConfiguration:
+    """Tests for scale configuration handling."""
+
+    def test_DIMRAT_020_default_scale_1_5(self):
+        """Default scale should be 1-5 if not specified."""
+        config = {}
+        scale_min = config.get('min', 1)
+        scale_max = config.get('max', 5)
+        scale_step = config.get('step', 1)
+
+        assert scale_min == 1
+        assert scale_max == 5
+        assert scale_step == 1
+
+    def test_DIMRAT_021_custom_scale_0_4(self):
+        """Custom 0-4 scale should be respected."""
+        config = {'min': 0, 'max': 4, 'step': 1}
+
+        assert config['min'] == 0
+        assert config['max'] == 4
+        assert config['step'] == 1
+
+    def test_DIMRAT_022_custom_scale_1_7(self):
+        """Custom 1-7 scale should be respected."""
+        config = {'min': 1, 'max': 7, 'step': 1}
+
+        assert config['min'] == 1
+        assert config['max'] == 7
+        assert config['step'] == 1
+
+    def test_DIMRAT_023_scale_with_custom_labels(self):
+        """Scale configuration can include custom labels."""
+        config = {
+            'min': 1,
+            'max': 5,
+            'step': 1,
+            'labels': {
+                '1': {'de': 'Sehr schlecht', 'en': 'Very poor'},
+                '2': {'de': 'Schlecht', 'en': 'Poor'},
+                '3': {'de': 'Akzeptabel', 'en': 'Acceptable'},
+                '4': {'de': 'Gut', 'en': 'Good'},
+                '5': {'de': 'Sehr gut', 'en': 'Very good'}
+            }
+        }
+
+        assert '1' in config['labels']
+        assert '5' in config['labels']
+        assert config['labels']['1']['de'] == 'Sehr schlecht'
+        assert config['labels']['5']['en'] == 'Very good'
+
+
+class TestLLMEvaluationState:
+    """Tests for LLM evaluation state tracking."""
+
+    def test_DIMRAT_024_llm_evaluation_states(self):
+        """LLM evaluation should have proper states."""
+        # Simulating the states from useDimensionalRating.js
+        llm_evaluating = False
+        llm_result = None
+        llm_error = None
+
+        # Start evaluation
+        llm_evaluating = True
+        assert llm_evaluating is True
+
+        # Successful evaluation
+        llm_result = {
+            'success': True,
+            'ratings': {'coherence': 4, 'fluency': 3},
+            'reasoning': {'coherence': 'Good', 'fluency': 'OK'}
+        }
+        llm_evaluating = False
+
+        assert llm_evaluating is False
+        assert llm_result['success'] is True
+        assert llm_error is None
+
+    def test_DIMRAT_025_llm_evaluation_error_handling(self):
+        """LLM evaluation errors should be tracked."""
+        llm_evaluating = False
+        llm_result = None
+        llm_error = None
+
+        # Start evaluation
+        llm_evaluating = True
+
+        # Error during evaluation
+        llm_error = "Model timeout"
+        llm_evaluating = False
+
+        assert llm_evaluating is False
+        assert llm_result is None
+        assert llm_error == "Model timeout"

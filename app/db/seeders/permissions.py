@@ -325,6 +325,37 @@ def initialize_permissions(db):
             'category': 'admin',
             'description': 'Erlaubt aggregierte Ergebnisse und Statistiken zu sehen'
         },
+        # Feature: Batch Generation (Prompt → LLM → Evaluation Pipeline)
+        {
+            'permission_key': 'feature:generation:view',
+            'display_name': 'Batch Generation ansehen',
+            'category': 'feature',
+            'description': 'Erlaubt das Ansehen von Batch-Generation-Jobs'
+        },
+        {
+            'permission_key': 'feature:generation:create',
+            'display_name': 'Batch Generation erstellen',
+            'category': 'feature',
+            'description': 'Erlaubt das Erstellen neuer Batch-Generation-Jobs'
+        },
+        {
+            'permission_key': 'feature:generation:manage',
+            'display_name': 'Batch Generation verwalten',
+            'category': 'feature',
+            'description': 'Erlaubt das Starten, Pausieren und Abbrechen von Jobs'
+        },
+        {
+            'permission_key': 'feature:generation:export',
+            'display_name': 'Generation-Outputs exportieren',
+            'category': 'feature',
+            'description': 'Erlaubt den Export von generierten Outputs als CSV/JSON'
+        },
+        {
+            'permission_key': 'feature:generation:to_scenario',
+            'display_name': 'Generation zu Evaluation',
+            'category': 'feature',
+            'description': 'Erlaubt das Erstellen von Evaluation-Szenarien aus generierten Outputs'
+        },
     ]
 
     # Create permissions (idempotent)
@@ -355,7 +386,7 @@ def initialize_permissions(db):
         {
             'role_name': 'researcher',
             'display_name': 'Forscher',
-            'description': 'Zugriff auf Evaluierung, Chatbot, Prompt Engineering, Markdown Collab, Anonymisierung und KAIMO',
+            'description': 'Zugriff auf Evaluierung, Chatbot, Prompt Engineering, Batch Generation, Markdown Collab, Anonymisierung und KAIMO',
             'permissions': [
                 # Evaluierung (alle Bewertungsfeatures)
                 'feature:mail_rating:view',
@@ -375,6 +406,12 @@ def initialize_permissions(db):
                 # Prompt Engineering
                 'feature:prompt_engineering:view',
                 'feature:prompt_engineering:edit',
+                # Batch Generation (vollständig)
+                'feature:generation:view',
+                'feature:generation:create',
+                'feature:generation:manage',
+                'feature:generation:export',
+                'feature:generation:to_scenario',
                 # Markdown Collab
                 'feature:markdown_collab:view',
                 'feature:markdown_collab:edit',
@@ -409,6 +446,9 @@ def initialize_permissions(db):
                 # Prompt Engineering
                 'feature:prompt_engineering:view',
                 'feature:prompt_engineering:edit',
+                # Batch Generation (ansehen und erstellen)
+                'feature:generation:view',
+                'feature:generation:create',
                 # Markdown Collab
                 'feature:markdown_collab:view',
                 'feature:markdown_collab:edit',
@@ -443,6 +483,7 @@ def initialize_permissions(db):
                 'feature:authenticity:edit',
                 # Allgemeine Features
                 'feature:prompt_engineering:view',
+                'feature:generation:view',  # Kann Jobs ansehen aber nicht erstellen
                 'feature:rag:view',
                 'feature:chatbots:view',
                 'feature:llm:view',

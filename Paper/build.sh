@@ -7,7 +7,7 @@ set -e
 
 cd "$(dirname "$0")"
 
-PAPER_NAME="llars"
+PAPER_NAME="ijcai26"
 OUT_DIR="out"
 
 echo "Building IJCAI-ECAI 2026 Demo Paper: ${PAPER_NAME}.tex"

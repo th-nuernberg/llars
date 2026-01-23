@@ -25,7 +25,7 @@ from db.tables import (
     ScenarioThreadDistribution, InvitationStatus,
     UserFeatureRanking, UserFeatureRating, Feature,
     UserMailHistoryRating, UserConsultingCategorySelection,
-    ComparisonSession
+    ComparisonSession, ItemDimensionRating
 )
 from db.models.authenticity import UserAuthenticityVote
 from db.models.llm_task_result import LLMTaskResult
@@ -580,9 +580,122 @@ def get_scenario_threads(scenario_id):
     query = query.order_by(EmailThread.thread_id.desc())
     query = query.offset((page - 1) * per_page).limit(per_page)
 
+    # Get all thread IDs for batch status lookup
+    all_results = query.all()
+    thread_ids = [et.thread_id for _, et in all_results]
+
+    # Get function type name for type-specific status calculation
+    func_type = FeatureFunctionType.query.filter_by(
+        function_type_id=scenario.function_type_id
+    ).first()
+    func_type_name = func_type.name if func_type else None
+
+    # Get evaluation status for current user (batch query for performance)
+    # Uses different tables depending on scenario type
+    user_status_map = {}
+
+    if user_id and thread_ids:
+        config = scenario.config_json or {}
+
+        if func_type_name == 'rating':
+            # Rating: use ItemDimensionRating
+            ratings = ItemDimensionRating.query.filter(
+                ItemDimensionRating.scenario_id == scenario_id,
+                ItemDimensionRating.user_id == user_id,
+                ItemDimensionRating.item_id.in_(thread_ids)
+            ).all()
+
+            required_dimensions = len(config.get('dimensions', []))
+            if required_dimensions == 0:
+                required_dimensions = 4  # Default fallback
+
+            for r in ratings:
+                dim_ratings = r.dimension_ratings or {}
+                rated_count = sum(1 for v in dim_ratings.values() if v is not None)
+                if rated_count >= required_dimensions:
+                    user_status_map[r.item_id] = 'done'
+                elif rated_count > 0:
+                    user_status_map[r.item_id] = 'in_progress'
+
+        elif func_type_name == 'mail_rating':
+            # Mail rating: use UserMailHistoryRating
+            mail_ratings = UserMailHistoryRating.query.filter(
+                UserMailHistoryRating.user_id == user_id,
+                UserMailHistoryRating.thread_id.in_(thread_ids)
+            ).all()
+
+            for rating in mail_ratings:
+                # Check if rating is complete (has overall rating)
+                if rating.status and rating.status.value == 'Done':
+                    user_status_map[rating.thread_id] = 'done'
+                elif (rating.overall_rating is not None or
+                      rating.quality_rating is not None or
+                      rating.counsellor_coherence_rating is not None or
+                      rating.client_coherence_rating is not None):
+                    user_status_map[rating.thread_id] = 'in_progress'
+
+        elif func_type_name == 'ranking':
+            # Ranking: check UserFeatureRanking for features in these threads
+            features = Feature.query.filter(Feature.thread_id.in_(thread_ids)).all()
+            feature_to_thread = {f.feature_id: f.thread_id for f in features}
+            feature_ids = list(feature_to_thread.keys())
+
+            if feature_ids:
+                rankings = UserFeatureRanking.query.filter(
+                    UserFeatureRanking.user_id == user_id,
+                    UserFeatureRanking.feature_id.in_(feature_ids)
+                ).all()
+
+                # Group rankings by thread
+                thread_ranked_features = {}
+                for ranking in rankings:
+                    tid = feature_to_thread.get(ranking.feature_id)
+                    if tid:
+                        if tid not in thread_ranked_features:
+                            thread_ranked_features[tid] = set()
+                        thread_ranked_features[tid].add(ranking.feature_id)
+
+                # Count expected features per thread
+                thread_feature_counts = {}
+                for f in features:
+                    thread_feature_counts[f.thread_id] = thread_feature_counts.get(f.thread_id, 0) + 1
+
+                # Determine status per thread
+                for tid in thread_ids:
+                    expected = thread_feature_counts.get(tid, 0)
+                    ranked = len(thread_ranked_features.get(tid, set()))
+                    if expected > 0 and ranked >= expected:
+                        user_status_map[tid] = 'done'
+                    elif ranked > 0:
+                        user_status_map[tid] = 'in_progress'
+
+        elif func_type_name == 'authenticity':
+            # Authenticity: check UserAuthenticityVote (uses item_id, not thread_id)
+            votes = UserAuthenticityVote.query.filter(
+                UserAuthenticityVote.user_id == user_id,
+                UserAuthenticityVote.item_id.in_(thread_ids)
+            ).all()
+
+            for vote in votes:
+                if vote.vote is not None:
+                    user_status_map[vote.item_id] = 'done'
+
+        elif func_type_name == 'labeling':
+            # Labeling: check for label assignments (using ItemDimensionRating for now)
+            ratings = ItemDimensionRating.query.filter(
+                ItemDimensionRating.scenario_id == scenario_id,
+                ItemDimensionRating.user_id == user_id,
+                ItemDimensionRating.item_id.in_(thread_ids)
+            ).all()
+
+            for r in ratings:
+                # For labeling, having any rating means done
+                if r.dimension_ratings:
+                    user_status_map[r.item_id] = 'done'
+
     # Build response
     threads = []
-    for scenario_thread, email_thread in query.all():
+    for scenario_thread, email_thread in all_results:
         # Count messages in thread
         message_count = len(email_thread.messages) if email_thread.messages else 0
 
@@ -590,6 +703,9 @@ def get_scenario_threads(scenario_id):
         first_message = None
         if email_thread.messages:
             first_message = min(email_thread.messages, key=lambda m: m.timestamp if m.timestamp else datetime.max)
+
+        # Get status from precomputed map
+        status = user_status_map.get(email_thread.thread_id, 'pending')
 
         threads.append({
             'thread_id': email_thread.thread_id,
@@ -600,7 +716,7 @@ def get_scenario_threads(scenario_id):
             'created_at': first_message.timestamp.isoformat() if first_message and first_message.timestamp else None,
             'chat_id': email_thread.chat_id,
             'institut_id': email_thread.institut_id,
-            'status': 'pending'  # TODO: Calculate from evaluations
+            'status': status
         })
 
     return jsonify({
@@ -874,6 +990,63 @@ def get_scenario_thread_detail(scenario_id, thread_id):
                 'confidence': payload.get('confidence'),
                 'reasoning': payload.get('reasoning'),
                 'created_at': vote.created_at.isoformat() if vote.created_at else None
+            })
+
+    elif func_type_name == 'rating':
+        # Get human dimensional ratings and group by user
+        from db.models.scenario import ItemDimensionRating
+        from collections import defaultdict
+        human_ratings = ItemDimensionRating.query.filter_by(
+            scenario_id=scenario_id,
+            item_id=thread_id
+        ).all()
+
+        # Group by user_id
+        user_ratings_map = defaultdict(dict)
+        user_created_map = {}
+        for rating in human_ratings:
+            user_ratings_map[rating.user_id][rating.dimension_key] = rating.rating_value
+            if rating.user_id not in user_created_map and rating.created_at:
+                user_created_map[rating.user_id] = rating.created_at
+
+        for user_id, ratings_dict in user_ratings_map.items():
+            user = User.query.get(user_id)
+            votes.append({
+                'type': 'human',
+                'user_id': user_id,
+                'username': user.username if user else 'Unknown',
+                'ratings': ratings_dict,
+                'created_at': user_created_map.get(user_id).isoformat() if user_created_map.get(user_id) else None
+            })
+
+        # Get LLM ratings
+        llm_ratings = LLMTaskResult.query.filter_by(
+            scenario_id=scenario_id,
+            thread_id=thread_id,
+            task_type='rating'
+        ).all()
+        for rating in llm_ratings:
+            payload = rating.payload_json or {}
+            # Transform dimensional_ratings array to dict format
+            ratings_dict = None
+            if payload.get('dimensional_ratings'):
+                ratings_dict = {
+                    item.get('dimension'): item.get('rating')
+                    for item in payload['dimensional_ratings']
+                    if item.get('dimension') is not None
+                }
+            elif payload.get('ratings'):
+                ratings_dict = payload['ratings']
+            elif payload.get('dimensions'):
+                ratings_dict = payload['dimensions']
+
+            votes.append({
+                'type': 'llm',
+                'model_id': rating.model_id,
+                'ratings': ratings_dict,
+                'overall_score': payload.get('overall_rating') or payload.get('overall_score') or payload.get('score'),
+                'reasoning': payload.get('justification') or payload.get('reasoning'),
+                'created_at': rating.created_at.isoformat() if rating.created_at else None
             })
 
     elif func_type_name == 'mail_rating':
@@ -1300,6 +1473,13 @@ def get_scenario_stats(scenario_id):
                 'pending_evaluations': (human_total + llm_total) - (human_done + llm_done),
                 'rater_stats': rater_stats,
                 'evaluator_stats': evaluator_stats,
+                'rating_distribution': stats_data.get('rating_distribution', []),
+                'rating_alpha': stats_data.get('rating_alpha'),  # Krippendorff's Alpha split by evaluator type
+                'dimension_averages': stats_data.get('dimension_averages'),
+                'pairwise_agreement': stats_data.get('pairwise_agreement'),
+                # Ranking-specific stats
+                'bucket_distribution': stats_data.get('bucket_distribution'),
+                'ranking_agreement': stats_data.get('ranking_agreement'),
                 'agreement_metrics': {
                     'kappa': None,
                     'alpha': stats_data.get('krippendorff_alpha'),
@@ -1505,10 +1685,11 @@ def export_scenario_results(scenario_id):
 
     # Export based on function type
     if func_type_name == 'ranking':
-        # Export feature rankings
+        # Export feature rankings (human evaluators)
         # Get features for these threads
         features = Feature.query.filter(Feature.thread_id.in_(scenario_thread_ids)).all()
         feature_ids = [f.feature_id for f in features]
+        feature_map = {f.feature_id: f for f in features}
 
         rankings = UserFeatureRanking.query.filter(
             UserFeatureRanking.user_id.in_(scenario_user_ids),
@@ -1517,45 +1698,121 @@ def export_scenario_results(scenario_id):
 
         for ranking in rankings:
             user_info = user_map.get(ranking.user_id, {})
-            feature = Feature.query.get(ranking.feature_id)
+            feature = feature_map.get(ranking.feature_id)
             thread_info = thread_map.get(feature.thread_id, {}) if feature else {}
             results.append({
                 'type': 'ranking',
                 'user_id': ranking.user_id,
                 'username': user_info.get('username'),
-                'thread_id': feature.thread_id if feature else None,
-                'thread_subject': thread_info.get('subject'),
+                'item_id': feature.thread_id if feature else None,
+                'item_subject': thread_info.get('subject'),
                 'feature_id': ranking.feature_id,
-                'feature_content': feature.feature_content if feature else None,
+                'feature_content': feature.content if feature else None,
                 'ranking_value': ranking.ranking_content,
                 'bucket': ranking.bucket
             })
 
-    elif func_type_name == 'rating':
-        # Export feature ratings
-        features = Feature.query.filter(Feature.thread_id.in_(scenario_thread_ids)).all()
-        feature_ids = [f.feature_id for f in features]
-
-        ratings = UserFeatureRating.query.filter(
-            UserFeatureRating.user_id.in_(scenario_user_ids),
-            UserFeatureRating.feature_id.in_(feature_ids)
+        # Also include LLM rankings from llm_task_results
+        llm_results = LLMTaskResult.query.filter(
+            LLMTaskResult.scenario_id == scenario_id,
+            LLMTaskResult.task_type == 'ranking',
+            LLMTaskResult.thread_id.in_(scenario_thread_ids)
         ).all()
 
-        for rating in ratings:
-            user_info = user_map.get(rating.user_id, {})
-            feature = Feature.query.get(rating.feature_id)
-            thread_info = thread_map.get(feature.thread_id, {}) if feature else {}
+        for result in llm_results:
+            thread_info = thread_map.get(result.thread_id, {})
+            payload = result.payload_json or {}
             results.append({
-                'type': 'rating',
+                'type': 'ranking_llm',
+                'model_id': result.model_id,
+                'item_id': result.thread_id,
+                'item_subject': thread_info.get('subject'),
+                'gut': payload.get('gut', []),
+                'mittel': payload.get('mittel', []),
+                'schlecht': payload.get('schlecht', []),
+                'neutral': payload.get('neutral', []),
+                'error': result.error,
+                'timestamp': result.created_at.isoformat() if result.created_at else None
+            })
+
+    elif func_type_name == 'rating':
+        # Export dimensional ratings (new system - ItemDimensionRating)
+        dimensional_ratings = ItemDimensionRating.query.filter(
+            ItemDimensionRating.scenario_id == scenario_id,
+            ItemDimensionRating.item_id.in_(scenario_thread_ids)
+        ).all()
+
+        for rating in dimensional_ratings:
+            user_info = user_map.get(rating.user_id, {})
+            thread_info = thread_map.get(rating.item_id, {})
+            results.append({
+                'type': 'dimensional_rating',
                 'user_id': rating.user_id,
                 'username': user_info.get('username'),
-                'thread_id': feature.thread_id if feature else None,
-                'thread_subject': thread_info.get('subject'),
-                'feature_id': rating.feature_id,
-                'feature_content': feature.feature_content if feature else None,
-                'rating_value': rating.rating_content,
-                'edited_feature': rating.edited_feature
+                'item_id': rating.item_id,
+                'item_subject': thread_info.get('subject'),
+                'dimension_ratings': rating.dimension_ratings,
+                'overall_score': rating.overall_score,
+                'feedback': rating.feedback,
+                'status': rating.status.value if rating.status else None,
+                'timestamp': rating.created_at.isoformat() if rating.created_at else None
             })
+
+        # Also include LLM evaluations from llm_task_results
+        llm_results = LLMTaskResult.query.filter(
+            LLMTaskResult.scenario_id == scenario_id,
+            LLMTaskResult.task_type == 'rating',
+            LLMTaskResult.thread_id.in_(scenario_thread_ids)
+        ).all()
+
+        for result in llm_results:
+            thread_info = thread_map.get(result.thread_id, {})
+            payload = result.payload_json or {}
+            # Handle both dimensional and simple rating formats
+            if payload.get('type') == 'dimensional' and 'dimensional_ratings' in payload:
+                dim_ratings = {dr.get('dimension'): dr.get('rating') for dr in payload.get('dimensional_ratings', [])}
+                overall = payload.get('overall_rating')
+            else:
+                dim_ratings = payload
+                overall = payload.get('overall_rating') or payload.get('rating')
+            results.append({
+                'type': 'rating_llm',
+                'model_id': result.model_id,
+                'item_id': result.thread_id,
+                'item_subject': thread_info.get('subject'),
+                'dimension_ratings': dim_ratings,
+                'overall_rating': overall,
+                'reasoning': payload.get('reasoning'),
+                'error': result.error,
+                'timestamp': result.created_at.isoformat() if result.created_at else None
+            })
+
+        # Fallback: also check legacy UserFeatureRating if no dimensional ratings found
+        if not dimensional_ratings and not llm_results:
+            features = Feature.query.filter(Feature.thread_id.in_(scenario_thread_ids)).all()
+            feature_ids = [f.feature_id for f in features]
+            feature_map = {f.feature_id: f for f in features}
+
+            old_ratings = UserFeatureRating.query.filter(
+                UserFeatureRating.user_id.in_(scenario_user_ids),
+                UserFeatureRating.feature_id.in_(feature_ids)
+            ).all()
+
+            for rating in old_ratings:
+                user_info = user_map.get(rating.user_id, {})
+                feature = feature_map.get(rating.feature_id)
+                thread_info = thread_map.get(feature.thread_id, {}) if feature else {}
+                results.append({
+                    'type': 'rating_legacy',
+                    'user_id': rating.user_id,
+                    'username': user_info.get('username'),
+                    'item_id': feature.thread_id if feature else None,
+                    'item_subject': thread_info.get('subject'),
+                    'feature_id': rating.feature_id,
+                    'feature_content': feature.content if feature else None,
+                    'rating_value': rating.rating_content,
+                    'edited_feature': rating.edited_feature
+                })
 
     elif func_type_name == 'authenticity':
         # Export authenticity votes

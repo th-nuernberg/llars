@@ -51,6 +51,9 @@ class EvaluationItem(db.Model):
     sender = mapped_column(db.String(255))
     function_type_id = mapped_column(db.Integer, db.ForeignKey('feature_function_types.function_type_id'))
 
+    # Optional ground truth for supervised evaluation (labeling, comparison)
+    ground_truth_label = mapped_column(db.String(255), nullable=True)
+
     # Backwards compatibility: thread_id is a synonym for item_id (for queries)
     thread_id = synonym('item_id')
 

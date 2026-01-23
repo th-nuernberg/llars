@@ -93,6 +93,10 @@ def register_all_blueprints(app: Flask) -> None:
     from routes.ai_writing import ai_writing_bp
     app.register_blueprint(ai_writing_bp)
 
+    # Batch Generation (Prompt Engineering → LLM → Evaluation pipeline)
+    from routes.generation import generation_bp
+    app.register_blueprint(generation_bp)
+
     # ============================================================
     # Document & Knowledge Management
     # ============================================================
@@ -185,6 +189,7 @@ def get_blueprint_info() -> dict:
             {'name': 'judge', 'prefix': '/api/judge', 'description': 'LLM-as-Judge automated evaluation'},
             {'name': 'oncoco', 'prefix': '/api/oncoco', 'description': 'OnCoCo analysis'},
             {'name': 'ai_writing', 'prefix': '/api/ai-writing', 'description': 'AI writing assistant for LaTeX/Markdown'},
+            {'name': 'generation', 'prefix': '/api/generation', 'description': 'Batch generation pipeline (Prompt → LLM → Evaluation)'},
         ],
         'knowledge_management': [
             {'name': 'rag', 'prefix': '/api/rag', 'description': 'RAG document management and search'},

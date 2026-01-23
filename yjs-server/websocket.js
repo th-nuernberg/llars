@@ -421,7 +421,56 @@ async function loadYdocFromDB(roomName) {
       );
 
       if (rows.length > 0 && rows[0].content) {
-        return jsonToYdoc(rows[0].content);
+        // Check if content is YJS binary format (JSON array) or plain JSON (object with blocks)
+        let contentData;
+        try {
+          contentData = typeof rows[0].content === 'string'
+            ? JSON.parse(rows[0].content)
+            : rows[0].content;
+        } catch (e) {
+          console.error(`[loadYdocFromDB] Failed to parse prompt content for ${roomId}:`, e.message);
+          return new Y.Doc();
+        }
+
+        // If it's a plain JSON object with blocks structure (from seeder), convert to YJS
+        if (contentData && typeof contentData === 'object' && contentData.blocks && !Array.isArray(contentData)) {
+          console.log(`[loadYdocFromDB] Converting plain JSON prompt ${roomId} to YJS format`);
+          const doc = new Y.Doc();
+          const blocksMap = doc.getMap('blocks');
+
+          // Convert each block to YJS structure
+          for (const [blockId, blockData] of Object.entries(contentData.blocks)) {
+            const blockMap = new Y.Map();
+            blockMap.set('title', blockData.title || blockId);
+            blockMap.set('position', blockData.position || 0);
+
+            // Content must be Y.Text for collaborative editing
+            const ytext = new Y.Text();
+            if (blockData.content) {
+              ytext.insert(0, blockData.content);
+            }
+            blockMap.set('content', ytext);
+
+            blocksMap.set(blockId, blockMap);
+          }
+
+          // Save the converted YJS state back to DB for future loads
+          const jsonString = ydocToJson(doc);
+          pool.query(
+            'UPDATE user_prompts SET content = ?, updated_at = NOW() WHERE prompt_id = ?',
+            [jsonString, roomId]
+          ).catch(e => console.error(`[loadYdocFromDB] Failed to save converted prompt ${roomId}:`, e.message));
+
+          return doc;
+        }
+
+        // It's already YJS binary format (array of numbers)
+        if (Array.isArray(contentData)) {
+          return jsonToYdoc(rows[0].content);
+        }
+
+        console.warn(`[loadYdocFromDB] Unknown content format for prompt ${roomId}`);
+        return new Y.Doc();
       }
       return new Y.Doc();
     }

@@ -979,6 +979,12 @@ const selectedEvaluatorName = computed(() => {
 // ===== Computed: Distribution =====
 
 const distributionData = computed(() => {
+  // Check for rating distribution (for rating type scenarios)
+  const ratingDist = props.liveStats?.ratingDistribution
+  if (ratingDist?.all) {
+    return ratingDist.all
+  }
+  // Fall back to general distribution
   if (props.liveStats?.distribution) {
     return props.liveStats.distribution
   }

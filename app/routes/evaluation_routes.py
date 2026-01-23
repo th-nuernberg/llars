@@ -453,3 +453,200 @@ def get_rating_statistics(scenario_id):
         'scenario_id': scenario_id,
         'statistics': stats
     })
+
+
+# =============================================================================
+# LLM Evaluation Routes
+# =============================================================================
+
+
+@evaluation_bp.post('/rating/<int:scenario_id>/items/<int:item_id>/llm-evaluate')
+@authentik_required
+@handle_api_errors(logger_name='evaluation')
+def trigger_llm_evaluation(scenario_id, item_id):
+    """
+    Trigger LLM evaluation for a specific item.
+
+    Uses the scenario's dimension configuration and scale settings
+    to generate prompts and evaluate the item using an LLM.
+
+    Request body:
+        model_id: The LLM model ID to use for evaluation (required)
+        save_rating: Whether to save the rating (default: false)
+        locale: Language for prompts ('de' or 'en', default: 'de')
+
+    Args:
+        scenario_id: Scenario ID
+        item_id: Item ID to evaluate
+
+    Returns:
+        JSON with LLM evaluation results including ratings and reasoning
+    """
+    from services.evaluation.dimensional_rating_service import DimensionalRatingService
+    from db.models import RatingScenarios
+
+    user = g.authentik_user
+    data = request.get_json() or {}
+
+    model_id = data.get('model_id')
+    if not model_id:
+        raise ValidationError('model_id is required')
+
+    # Verify scenario exists
+    scenario = RatingScenarios.query.get(scenario_id)
+    if not scenario:
+        raise NotFoundError(f'Scenario {scenario_id} not found')
+
+    save_rating = data.get('save_rating', False)
+    locale = data.get('locale', 'de')
+
+    # Determine user ID for saving (use current user if saving)
+    llm_user_id = user.id if save_rating else None
+
+    result = DimensionalRatingService.trigger_llm_evaluation(
+        scenario_id=scenario_id,
+        item_id=item_id,
+        model_id=model_id,
+        llm_user_id=llm_user_id,
+        locale=locale
+    )
+
+    if 'error' in result:
+        raise ValidationError(result['error'])
+
+    return jsonify(result)
+
+
+@evaluation_bp.get('/rating/<int:scenario_id>/llm-evaluations')
+@authentik_required
+@handle_api_errors(logger_name='evaluation')
+def get_llm_evaluations(scenario_id):
+    """
+    Get all LLM evaluations for a scenario.
+
+    Returns evaluations that were created by LLM evaluators.
+
+    Args:
+        scenario_id: Scenario ID
+
+    Returns:
+        JSON with list of LLM evaluations
+    """
+    from services.evaluation.dimensional_rating_service import DimensionalRatingService
+    from db.models import RatingScenarios
+
+    # Verify scenario exists
+    scenario = RatingScenarios.query.get(scenario_id)
+    if not scenario:
+        raise NotFoundError(f'Scenario {scenario_id} not found')
+
+    evaluations = DimensionalRatingService.get_llm_evaluations(scenario_id)
+
+    return jsonify({
+        'scenario_id': scenario_id,
+        'evaluations': evaluations,
+        'count': len(evaluations)
+    })
+
+
+# =============================================================================
+# Rating Preset Routes
+# =============================================================================
+
+
+@evaluation_bp.get('/rating/presets')
+@authentik_required
+@handle_api_errors(logger_name='evaluation')
+def get_rating_presets():
+    """
+    Get all available rating presets.
+
+    Returns presets organized by category including:
+    - Standard presets (Likert scales)
+    - LLM-as-Judge presets (multi-dimensional)
+    - Mail/Counseling presets (LLARS-specific)
+
+    Query Parameters:
+        category: Filter by category ('standard', 'llm-judge', 'mail', 'all')
+
+    Returns:
+        JSON with available presets
+    """
+    from services.evaluation.rating_preset_service import RatingPresetService
+
+    category = request.args.get('category', 'all')
+
+    if category == 'all':
+        presets = RatingPresetService.get_all_presets()
+    else:
+        presets = RatingPresetService.get_presets_by_category(category)
+
+    return jsonify({
+        'presets': presets,
+        'categories': RatingPresetService.get_categories()
+    })
+
+
+@evaluation_bp.get('/rating/presets/<preset_id>')
+@authentik_required
+@handle_api_errors(logger_name='evaluation')
+def get_rating_preset(preset_id):
+    """
+    Get a specific rating preset by ID.
+
+    Args:
+        preset_id: Preset ID
+
+    Returns:
+        JSON with preset configuration
+    """
+    from services.evaluation.rating_preset_service import RatingPresetService
+
+    preset = RatingPresetService.get_preset(preset_id)
+
+    if not preset:
+        raise NotFoundError(f'Preset {preset_id} not found')
+
+    return jsonify({'preset': preset})
+
+
+@evaluation_bp.get('/rating/scale-labels/<scale_range>')
+@authentik_required
+@handle_api_errors(logger_name='evaluation')
+def get_scale_labels(scale_range):
+    """
+    Get default labels for a scale range.
+
+    Args:
+        scale_range: Scale range in format 'min-max' (e.g., '1-5', '0-4')
+
+    Query Parameters:
+        locale: Language ('de' or 'en', default: 'de')
+
+    Returns:
+        JSON with scale labels
+    """
+    from services.evaluation.rating_prompt_generator import get_scale_labels_for_range
+
+    locale = request.args.get('locale', 'de')
+
+    try:
+        parts = scale_range.split('-')
+        min_val = int(parts[0])
+        max_val = int(parts[1])
+    except (ValueError, IndexError):
+        raise ValidationError('Invalid scale range format. Expected: min-max (e.g., 1-5)')
+
+    labels = get_scale_labels_for_range(min_val, max_val, locale)
+
+    # Convert to localized format expected by frontend
+    labels_formatted = {}
+    for value, label in labels.items():
+        labels_formatted[str(value)] = {'de': label, 'en': label}
+
+    return jsonify({
+        'scale_range': scale_range,
+        'min': min_val,
+        'max': max_val,
+        'labels': labels_formatted
+    })

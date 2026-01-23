@@ -448,6 +448,8 @@
       <div class="dimension-visualizations-grid" v-if="hasDimensionDistribution || hasDimensionAverages">
         <!-- Per-Dimension Distribution (Heatmap) -->
         <div class="visualization-panel" v-if="hasDimensionDistribution">
+          <!-- DEBUG: Panel is rendering -->
+          <div class="debug-indicator">PANEL 1: Verteilung (dist.length={{ currentDimensionDistribution?.length ?? 'null' }})</div>
           <h4 class="subsection-title">
             {{ $t('scenarioManager.results.dimensionDistribution') }}
             <LTooltip :text="$t('scenarioManager.tooltips.dimensionDistribution')" location="top">
@@ -526,6 +528,8 @@
 
         <!-- Dimension Comparison (Spider/Bar Chart) -->
         <div class="visualization-panel" v-if="hasDimensionAverages && dimensions.length >= 1">
+          <!-- DEBUG: Panel is rendering -->
+          <div class="debug-indicator">PANEL 2: Vergleich (dims={{ dimensions.length }}, spider={{ dimensions.length > 2 }})</div>
           <h4 class="subsection-title">
             {{ $t('scenarioManager.results.dimensionComparison') }}
             <LTooltip :text="$t('scenarioManager.tooltips.spiderChart')" location="top">
@@ -1919,6 +1923,17 @@ watch(
   text-align: center;
   color: rgba(var(--v-theme-on-surface), 0.6);
   font-size: 0.85rem;
+}
+
+.debug-indicator {
+  background-color: rgba(var(--v-theme-warning), 0.2);
+  border: 1px solid rgb(var(--v-theme-warning));
+  color: rgb(var(--v-theme-on-surface));
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-family: monospace;
+  margin-bottom: 8px;
 }
 
 .evaluation-tab {

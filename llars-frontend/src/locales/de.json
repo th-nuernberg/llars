@@ -132,6 +132,17 @@
     "home": "Home",
     "back": "Zurück"
   },
+  "likertScale": {
+    "veryGood": "Sehr gut",
+    "good": "Gut",
+    "neutral": "Neutral",
+    "bad": "Schlecht",
+    "veryBad": "Sehr schlecht"
+  },
+  "binaryScale": {
+    "yes": "Ja",
+    "no": "Nein"
+  },
   "notFound": {
     "title": "Dokument nicht gefunden",
     "subtitle": "Diese Seite scheint sich in den Tiefen des Archivs versteckt zu haben...",
@@ -2205,6 +2216,10 @@
         "title": "Prompt Engineering",
         "description": "Kollaboratives Entwerfen und Testen von Prompts"
       },
+      "batchGeneration": {
+        "title": "Batch-Generierung",
+        "description": "LLM-Ausgaben aus Prompts und Daten im großen Maßstab generieren"
+      },
       "markdownCollab": {
         "title": "Markdown Collab",
         "description": "Kollaboratives Arbeiten an Markdown-Dateien mit Live-Preview"
@@ -2373,7 +2388,8 @@
     "card": {
       "evaluators": "Evaluatoren",
       "yourProgress": "Dein Fortschritt",
-      "goToEvaluation": "Zur Evaluation"
+      "goToEvaluation": "Zur Evaluation",
+      "owner": "Besitzer"
     },
     "stats": {
       "threads": "Threads",
@@ -2706,6 +2722,7 @@
       "noHumanEvaluators": "Noch keine menschlichen Evaluatoren haben Bewertungen abgeschlossen",
       "noLLMEvaluators": "Keine LLM-Evaluatoren konfiguriert",
       "addLLMHint": "Fügen Sie LLM-Modelle hinzu, um dieses Szenario automatisch zu evaluieren",
+      "noRatingsYet": "Noch keine Bewertungen vorhanden",
       "activeEvaluators": "Aktive Evaluatoren",
       "removeEvaluator": "Evaluator entfernen",
       "removeEvaluatorConfirm": "Möchten Sie {name} wirklich aus diesem Szenario entfernen? Alle Evaluierungen dieses Modells werden gelöscht.",
@@ -2740,7 +2757,12 @@
         "error": "Fehler"
       },
       "metricsResults": "Metriken & Ergebnisse",
-      "noResultsYet": "Noch keine Ergebnisse. Starten Sie eine Evaluierung um Metriken und Ergebnisse zu sehen."
+      "noResultsYet": "Noch keine Ergebnisse. Starten Sie eine Evaluierung um Metriken und Ergebnisse zu sehen.",
+      "filter": {
+        "all": "Alle",
+        "human": "Mensch",
+        "llm": "Maschine"
+      }
     },
     "results": {
       "title": "Ergebnisse",
@@ -2757,6 +2779,16 @@
       "human": "Mensch",
       "noEvaluators": "Noch keine Evaluatoren mit Ergebnissen",
       "distribution": "Verteilung der Bewertungen",
+      "dimensionDistribution": "Verteilung nach Dimensionen",
+      "dimensionComparison": "Dimensionsvergleich",
+      "dimension": "Dimension",
+      "difference": "Differenz",
+      "scale": "Skala",
+      "interRaterAgreement": "Übereinstimmung zwischen Bewertern",
+      "lowAgreement": "Niedrig",
+      "highAgreement": "Hoch",
+      "agreement": "Übereinstimmung",
+      "noOverlap": "Keine gemeinsamen Bewertungen",
       "chartComingSoon": "Diagramm wird in Kürze verfügbar sein.",
       "accuracy": "Genauigkeit",
       "evaluationDetails": "Evaluierungs-Details",
@@ -2930,7 +2962,10 @@
         "perfectNegative": "Perfekte negative Korrelation",
         "noCorrelation": "Keine Korrelation",
         "perfectPositive": "Perfekte positive Korrelation"
-      }
+      },
+      "dimensionDistribution": "Zeigt die Verteilung der Bewertungen für jede Dimension. Die Heatmap-Farben zeigen relative Häufigkeit.",
+      "spiderChart": "Vergleicht Durchschnittsbewertungen zwischen Menschen und LLMs über alle Dimensionen. Größere Flächen = höhere Durchschnittswerte.",
+      "interRaterAgreement": "Zeigt die paarweise Übereinstimmung zwischen allen Bewertern. Grün = hohe Übereinstimmung, Rot = niedrige Übereinstimmung. Berechnet als Anteil der Bewertungen innerhalb von 1 Punkt Differenz."
     },
     "session": {
       "title": "Evaluierung",
@@ -2943,9 +2978,12 @@
       "loading": "Daten werden geladen...",
       "empty": "Keine Einträge zur Bewertung verfügbar",
       "emptyHint": "Möglicherweise wurden Ihnen noch keine Einträge zugewiesen.",
+      "noItems": "Keine Einträge zur Bewertung verfügbar",
+      "noItemsHint": "Möglicherweise wurden Ihnen noch keine Einträge zugewiesen.",
       "complete": "Bewertung abgeschlossen!",
       "completeMessage": "Sie haben alle zugewiesenen Einträge bewertet.",
       "backToOverview": "Zurück zur Übersicht",
+      "backToScenario": "Zurück zum Szenario",
       "error": "Fehler beim Laden der Daten",
       "errorHint": "Bitte versuchen Sie es erneut oder kontaktieren Sie den Administrator.",
       "retry": "Erneut versuchen",
@@ -3229,9 +3267,23 @@
     "title": "Evaluierung",
     "subtitle": "Wähle ein Evaluierungstool aus und starte den normalen Workflow.",
     "available": "{count} verfügbar",
+    "status": {
+      "pending": "Ausstehend",
+      "inProgress": "In Bearbeitung",
+      "done": "Abgeschlossen",
+      "saving": "Speichert..."
+    },
+    "types": {
+      "rating": "Rating",
+      "ranking": "Ranking",
+      "labeling": "Labeling",
+      "comparison": "Vergleich",
+      "authenticity": "Authentizität"
+    },
     "noToolsAvailable": "Für deinen Account sind aktuell keine Evaluierungstools freigeschaltet.",
     "noScenarios": "Keine Szenarien",
     "noScenariosAssigned": "Keine Szenarien zugewiesen",
+    "noScenariosAvailable": "Keine Szenarien verfügbar. Du musst zu einem Szenario eingeladen werden, um an einer Evaluation teilzunehmen.",
     "backToEvaluations": "Evaluierungen",
     "progress": "{done} / {total} abgeschlossen",
     "emptyHint": "Stelle sicher, dass ein aktives Szenario existiert und Threads zugewiesen sind.",
@@ -4958,6 +5010,132 @@
         "explain": "Erkläre mir warum du diesen Typ gewählt hast",
         "moreChanges": "Ich möchte noch weitere Änderungen vornehmen"
       }
+    }
+  },
+  "generation": {
+    "title": "Batch-Generierung",
+    "subtitle": "LLM-Ausgaben aus Daten und Prompts generieren",
+    "failed": "fehlgeschlagen",
+    "hub": {
+      "allStatuses": "Alle Status",
+      "newJob": "Neuer Job",
+      "activeJobs": "Aktive Jobs",
+      "allJobs": "Alle Jobs",
+      "emptyTitle": "Keine Generierungs-Jobs",
+      "emptyHint": "Erstelle deinen ersten Batch-Generierungs-Job um loszulegen.",
+      "emptyFilterHint": "Keine Jobs mit dem ausgewählten Status gefunden.",
+      "clearFilter": "Filter zurücksetzen",
+      "createFirst": "Ersten Job erstellen",
+      "deleteTitle": "Job löschen",
+      "deleteConfirm": "Bist du sicher, dass du den Job \"{name}\" löschen möchtest? Diese Aktion kann nicht rückgängig gemacht werden."
+    },
+    "status": {
+      "created": "Erstellt",
+      "queued": "In Warteschlange",
+      "running": "Läuft",
+      "paused": "Pausiert",
+      "completed": "Abgeschlossen",
+      "failed": "Fehlgeschlagen",
+      "cancelled": "Abgebrochen",
+      "pending": "Ausstehend"
+    },
+    "actions": {
+      "start": "Starten",
+      "pause": "Pausieren",
+      "cancel": "Abbrechen",
+      "export": "Exportieren",
+      "toScenario": "Szenario erstellen"
+    },
+    "wizard": {
+      "title": "Neuer Generierungs-Job",
+      "createJob": "Job erstellen",
+      "steps": {
+        "source": "Quelle",
+        "prompts": "Prompts",
+        "models": "Modelle",
+        "config": "Konfig",
+        "review": "Prüfen"
+      },
+      "step1": {
+        "title": "Datenquelle",
+        "description": "Wähle aus, woher deine Eingabedaten kommen.",
+        "scenarioSource": "Bestehendes Szenario",
+        "scenarioSourceDesc": "Verwende Items aus einem bestehenden Evaluationsszenario.",
+        "manualSource": "Daten hochladen",
+        "manualSourceDesc": "Lade JSON oder CSV mit deinen Daten hoch.",
+        "promptOnlySource": "Nur Prompt",
+        "promptOnlySourceDesc": "Generiere Ausgaben ohne Quelldaten.",
+        "selectScenario": "Szenario auswählen",
+        "dropFiles": "Dateien hier ablegen oder klicken zum Hochladen",
+        "pasteData": "Oder Daten direkt einfügen",
+        "pasteDataPlaceholder": "JSON-Array oder CSV-Daten einfügen...",
+        "itemsParsed": "Items erkannt",
+        "promptOnlyInfo": "Im Nur-Prompt-Modus werden Ausgaben direkt aus Prompt-Templates ohne Eingabedaten generiert."
+      },
+      "step2": {
+        "title": "Prompt-Templates",
+        "description": "Wähle aus, welche Prompt-Templates für die Generierung verwendet werden sollen.",
+        "selectVariants": "Varianten auswählen:",
+        "promptsSelected": "Prompts ausgewählt",
+        "noPrompts": "Keine Prompt-Templates verfügbar. Erstelle zuerst Templates im Prompt Engineering."
+      },
+      "step3": {
+        "title": "LLM-Modelle",
+        "description": "Wähle aus, welche Modelle für die Generierung verwendet werden sollen.",
+        "modelsSelected": "Modelle ausgewählt",
+        "noModels": "Keine Modelle verfügbar. Konfiguriere Modelle in den Admin-Einstellungen."
+      },
+      "step4": {
+        "title": "Konfiguration",
+        "description": "Setze Job-Namen und Generierungsparameter.",
+        "jobName": "Job-Name",
+        "jobNameHint": "Automatisch generiert - kann angepasst werden",
+        "parameters": "Generierungsparameter",
+        "temperature": "Temperatur",
+        "maxTokens": "Max Tokens",
+        "maxTokensPlaceholder": "Unbegrenzt",
+        "maxTokensHint": "Leer lassen für unbegrenzt (empfohlen für Reasoning-Modelle)",
+        "budget": "Budget-Limit",
+        "budgetLimit": "Max. Kosten (USD)",
+        "budgetHint": "Leer lassen für kein Limit",
+        "retryCount": "Wiederholungen"
+      },
+      "step5": {
+        "title": "Prüfen & Erstellen",
+        "description": "Überprüfe deine Konfiguration bevor du den Job erstellst.",
+        "jobInfo": "Job-Informationen",
+        "sourceInfo": "Quellen-Konfiguration",
+        "itemCount": "Items",
+        "matrix": "Generierungs-Matrix",
+        "costEstimate": "Geschätzte Kosten"
+      }
+    },
+    "detail": {
+      "created": "Erstellt",
+      "started": "Gestartet",
+      "completed": "Abgeschlossen",
+      "totalCost": "Gesamtkosten",
+      "configuration": "Konfiguration",
+      "source": "Datenquelle",
+      "prompts": "Prompt-Templates",
+      "models": "Modelle",
+      "parameters": "Parameter",
+      "outputs": "Generierte Ausgaben",
+      "allOutputs": "Alle Ausgaben",
+      "noOutputs": "Noch keine Ausgaben",
+      "outputDetail": "Ausgabe-Details",
+      "generatedContent": "Generierter Inhalt",
+      "errorMessage": "Fehlermeldung",
+      "currentlyProcessing": "Wird verarbeitet",
+      "waitingForResponse": "Warte auf LLM-Antwort...",
+      "inputPrompt": "Eingabe-Prompt",
+      "noPromptData": "Prompt-Daten nicht verfügbar",
+      "noContent": "Kein Inhalt generiert"
+    },
+    "scenario": {
+      "name": "Szenario-Name",
+      "evaluationType": "Evaluationstyp",
+      "info": "{count} abgeschlossene Ausgaben werden verwendet um Evaluations-Items zu erstellen."
     }
   }
 }

@@ -856,9 +856,29 @@ def _calculate_rating_distribution(scenario_id: int) -> Dict[str, Any]:
                 continue
 
         # Extract dimension ratings from payload
+        # Support both formats:
+        # 1. {"ratings": {"dim_id": score, ...}} - legacy format
+        # 2. {"dimensional_ratings": [{"dimension": "dim_id", "rating": score}, ...]} - new format
         ratings = payload.get("ratings", {})
+        dimensional_ratings = payload.get("dimensional_ratings", [])
+
+        # Handle legacy dict format
         if isinstance(ratings, dict):
             for dim_id, score in ratings.items():
+                if dim_id in llm_dim_ratings and score is not None:
+                    try:
+                        score_int = round(float(score))
+                        llm_dim_ratings[dim_id][score_int] = llm_dim_ratings[dim_id].get(score_int, 0) + 1
+                    except (ValueError, TypeError):
+                        pass
+
+        # Handle new array format
+        if isinstance(dimensional_ratings, list):
+            for rating_item in dimensional_ratings:
+                if not isinstance(rating_item, dict):
+                    continue
+                dim_id = rating_item.get("dimension") or rating_item.get("dimension_id")
+                score = rating_item.get("rating") or rating_item.get("score") or rating_item.get("value")
                 if dim_id in llm_dim_ratings and score is not None:
                     try:
                         score_int = round(float(score))

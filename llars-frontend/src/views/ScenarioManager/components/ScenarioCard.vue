@@ -188,7 +188,7 @@ async function handleReject() {
 
 // Type mapping
 const typeConfig = {
-  1: { icon: 'mdi-sort-variant', color: '#b0ca97', name: 'ranking', variant: 'success' },
+  1: { icon: 'mdi-podium', color: '#b0ca97', name: 'ranking', variant: 'success' },
   2: { icon: 'mdi-star-outline', color: '#D1BC8A', name: 'rating', variant: 'warning' },
   3: { icon: 'mdi-email-outline', color: '#88c4c8', name: 'mailRating', variant: 'info' },
   4: { icon: 'mdi-compare-horizontal', color: '#c4a0d4', name: 'comparison', variant: 'primary' },
@@ -253,16 +253,16 @@ const progressPercent = computed(() => {
   flex-direction: column;
   padding: 16px;
   background-color: rgb(var(--v-theme-surface));
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.1);
-  border-radius: 12px;
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  border-radius: 12px 4px 12px 4px;
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .scenario-card:hover {
-  border-color: rgb(var(--v-theme-primary));
-  box-shadow: 0 4px 12px rgba(var(--v-theme-primary), 0.15);
   transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
+  border-color: rgba(var(--v-theme-primary), 0.3);
 }
 
 .scenario-card.is-owner {
@@ -281,9 +281,9 @@ const progressPercent = computed(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 44px;
-  height: 44px;
-  border-radius: 10px;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px 3px 8px 3px;
 }
 
 /* Body */

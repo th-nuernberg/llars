@@ -244,6 +244,7 @@ const {
   overallProgress: liveOverallProgress,
   agreementMetrics: liveAgreementMetrics,
   connected: statsConnected,
+  functionType: liveFunctionType,
   refresh: refreshStats
 } = useScenarioStats(scenarioIdRef)
 
@@ -281,7 +282,7 @@ const tabs = computed(() => {
 
 // Type mapping
 const typeConfig = {
-  1: { icon: 'mdi-sort-variant', color: '#b0ca97', name: 'ranking', variant: 'success' },
+  1: { icon: 'mdi-podium', color: '#b0ca97', name: 'ranking', variant: 'success' },
   2: { icon: 'mdi-star-outline', color: '#D1BC8A', name: 'rating', variant: 'warning' },
   3: { icon: 'mdi-email-outline', color: '#88c4c8', name: 'mailRating', variant: 'info' },
   4: { icon: 'mdi-compare-horizontal', color: '#c4a0d4', name: 'comparison', variant: 'primary' },
@@ -341,7 +342,7 @@ const liveStats = computed(() => ({
   connected: statsConnected.value,
   ratingDistribution: stats.value?.rating_distribution,
   pairwiseAgreement: stats.value?.pairwise_agreement,
-  functionType: stats.value?.function_type,
+  functionType: liveFunctionType.value,
   bucket_distribution: stats.value?.bucket_distribution,
   ranking_agreement: stats.value?.ranking_agreement
 }))

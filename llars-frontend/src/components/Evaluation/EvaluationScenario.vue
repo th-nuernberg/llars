@@ -113,7 +113,7 @@ const items = ref([])
 
 // Type config - rating and mail_rating use the same RaterDetail component (only dimensions differ)
 const TYPE_CONFIG = {
-  1: { key: 'ranking', icon: 'mdi-sort-variant', color: '#7986cb', itemRoute: 'RankerDetail' },
+  1: { key: 'ranking', icon: 'mdi-podium', color: '#7986cb', itemRoute: 'RankerDetail' },
   2: { key: 'rating', icon: 'mdi-star-outline', color: '#b0ca97', itemRoute: 'RaterDetail' },
   3: { key: 'mail_rating', icon: 'mdi-email-outline', color: '#d1bc8a', itemRoute: 'RaterDetail' },
   4: { key: 'comparison', icon: 'mdi-compare-horizontal', color: '#88c4c8', itemRoute: 'ComparisonDetail' },

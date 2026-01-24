@@ -716,8 +716,10 @@ watch(outputFilter, () => {
 watch(streamingContent, () => {
   if (streamingContentRef.value) {
     // Use nextTick to ensure DOM is updated before scrolling
+    // Store ref locally to avoid null issues in setTimeout callback
+    const el = streamingContentRef.value
     setTimeout(() => {
-      streamingContentRef.value.scrollTop = streamingContentRef.value.scrollHeight
+      if (el) el.scrollTop = el.scrollHeight
     }, 0)
   }
 })
@@ -725,8 +727,9 @@ watch(streamingContent, () => {
 // Auto-scroll outputs list when new items are added
 watch(outputs, () => {
   if (outputsListRef.value) {
+    const el = outputsListRef.value
     setTimeout(() => {
-      outputsListRef.value.scrollTop = outputsListRef.value.scrollHeight
+      if (el) el.scrollTop = el.scrollHeight
     }, 100)
   }
 }, { deep: true })
@@ -737,7 +740,14 @@ watch(outputs, () => {
 
 function setupSocketListeners() {
   socket = getSocket()
-  console.log('[Generation] Setting up socket listeners for job', jobId.value)
+  console.log('[Generation] Setting up socket listeners for job', jobId.value, 'socket connected:', socket.connected)
+
+  // Debug: log all incoming events
+  socket.onAny((eventName, ...args) => {
+    if (eventName.startsWith('generation:')) {
+      console.log('[Generation] Received event:', eventName, args)
+    }
+  })
 
   // Job started
   socket.on('generation:job:started', (data) => {
@@ -797,8 +807,16 @@ function setupSocketListeners() {
         currentlyProcessing.value = null
         streamingContent.value = ''
       }
-      // Reload outputs to show the completed item
-      loadOutputs(jobId.value, { page: outputsPage.value, status: outputFilter.value })
+      // Update the output locally if it exists in the list
+      const output = outputs.value.find(o => o.id === data.output_id)
+      if (output) {
+        output.status = 'COMPLETED'
+        output.generated_content = data.content_preview
+        output.input_tokens = data.tokens?.input || 0
+        output.output_tokens = data.tokens?.output || 0
+        output.total_cost_usd = data.cost_usd || 0
+      }
+      // Don't reload - just update locally to avoid page refresh
     }
   })
 
@@ -809,7 +827,13 @@ function setupSocketListeners() {
         currentlyProcessing.value = null
         streamingContent.value = ''
       }
-      loadOutputs(jobId.value, { page: outputsPage.value, status: outputFilter.value })
+      // Update the output locally if it exists in the list
+      const output = outputs.value.find(o => o.id === data.output_id)
+      if (output) {
+        output.status = 'FAILED'
+        output.error_message = data.error || 'Unknown error'
+      }
+      // Don't reload - just update locally to avoid page refresh
     }
   })
 
@@ -843,6 +867,7 @@ function setupSocketListeners() {
 
 function cleanupSocketListeners() {
   if (socket) {
+    socket.offAny()  // Remove the debug listener
     socket.off('generation:job:started')
     socket.off('generation:job:progress')
     socket.off('generation:item:started')
@@ -860,6 +885,10 @@ function cleanupSocketListeners() {
 // =============================================================================
 
 onMounted(async () => {
+  // Setup Socket.IO listeners FIRST to capture any events during data loading
+  // This prevents missing streaming events if the job is already running
+  setupSocketListeners()
+
   await loadJob(jobId.value)
   await loadOutputs(jobId.value)
 
@@ -867,9 +896,6 @@ onMounted(async () => {
   if (currentJob.value) {
     scenarioForm.value.name = `${currentJob.value.name} - Evaluation`
   }
-
-  // Setup Socket.IO listeners for real-time updates
-  setupSocketListeners()
 })
 
 onUnmounted(() => {

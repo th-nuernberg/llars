@@ -554,8 +554,8 @@
         </div>
       </div>
 
-      <!-- Distribution Chart -->
-      <div class="distribution-section" v-if="filteredDistributionData.length > 0">
+      <!-- Distribution Chart (not for ranking - ranking uses bucket distribution) -->
+      <div class="distribution-section" v-if="filteredDistributionData.length > 0 && !isRankingScenario">
         <h4 class="subsection-title">{{ $t('scenarioManager.results.distribution') }}</h4>
         <div class="chart-bars">
           <div
@@ -581,27 +581,6 @@
         </div>
       </div>
 
-      <!-- DEBUG PANEL - Remove after fixing -->
-      <div class="debug-panel">
-        <div><strong>DEBUG Dimensions:</strong></div>
-        <div>dimensions.length: {{ dimensions.length }}</div>
-        <div>evaluatorTypeFilter: {{ evaluatorTypeFilter }}</div>
-        <div style="margin-top: 8px;"><strong>Selected Dimension Data:</strong></div>
-        <div>selectedDimension: "{{ selectedDimension }}"</div>
-        <div>currentDimensionDistribution: {{ currentDimensionDistribution ? currentDimensionDistribution.length + ' items' : 'NULL' }}</div>
-        <div style="margin-top: 8px;"><strong>Per-Dimension Breakdown:</strong></div>
-        <div v-for="dimId in Object.keys(dimensionDistributionMap)" :key="dimId" style="margin-left: 8px;">
-          <strong>{{ dimId }}:</strong>
-          all={{ dimensionDistributionMap[dimId]?.all?.length || 0 }},
-          humans={{ dimensionDistributionMap[dimId]?.humans?.length || 0 }},
-          llms={{ dimensionDistributionMap[dimId]?.llms?.length || 0 }}
-        </div>
-        <div style="margin-top: 8px;"><strong>Human Avg per Dim:</strong></div>
-        <div v-for="dim in dimensions" :key="'avg-' + dim.id" style="margin-left: 8px;">
-          {{ dim.id }}: human={{ getDimensionAverage('human', dim.id)?.toFixed(2) || 'null' }}, llm={{ getDimensionAverage('llm', dim.id)?.toFixed(2) || 'null' }}
-        </div>
-      </div>
-
       <!-- ROW 1: Spider Chart + Heatmap -->
       <div class="dimension-visualizations-grid" v-if="hasDimensionDistribution || hasDimensionAverages">
         <!-- Spider Chart (Left) -->
@@ -622,6 +601,15 @@
             >
               <div class="dimension-bar-label">{{ dim.name || dim.id }}</div>
               <div class="dimension-bar-container">
+                <!-- All combined bar (shown when filter is 'all') -->
+                <div
+                  v-if="evaluatorTypeFilter === 'all'"
+                  class="dimension-bar all-bar"
+                  :style="{ width: getDimensionBarWidth('all', dim.id) + '%' }"
+                >
+                  <span class="bar-value-label">{{ getDimensionAverage('all', dim.id)?.toFixed(2) || '-' }}</span>
+                </div>
+                <!-- Human bar -->
                 <div
                   v-if="evaluatorTypeFilter !== 'llm'"
                   class="dimension-bar human-bar"
@@ -629,6 +617,7 @@
                 >
                   <span class="bar-value-label">{{ getDimensionAverage('human', dim.id)?.toFixed(2) || '-' }}</span>
                 </div>
+                <!-- LLM bar -->
                 <div
                   v-if="evaluatorTypeFilter !== 'human'"
                   class="dimension-bar llm-bar"
@@ -642,6 +631,10 @@
               </div>
             </div>
             <div class="bar-chart-legend">
+              <div class="legend-item" v-if="evaluatorTypeFilter === 'all'">
+                <span class="legend-color all-color"></span>
+                <span>{{ $t('scenarioManager.evaluation.filter.all') }}</span>
+              </div>
               <div class="legend-item" v-if="evaluatorTypeFilter !== 'llm'">
                 <span class="legend-color human-color"></span>
                 <span>{{ $t('scenarioManager.evaluation.filter.human') }}</span>
@@ -676,6 +669,15 @@
                 stroke="rgba(var(--v-theme-on-surface), 0.2)"
                 stroke-width="1"
               />
+              <!-- All combined polygon (shown when filter is 'all') -->
+              <polygon
+                v-if="evaluatorTypeFilter === 'all' && allSpiderPoints.length > 0"
+                :points="allSpiderPoints.map(p => `${p.x},${p.y}`).join(' ')"
+                fill="rgba(176, 202, 151, 0.3)"
+                stroke="#b0ca97"
+                stroke-width="2"
+              />
+              <!-- Human polygon -->
               <polygon
                 v-if="evaluatorTypeFilter !== 'llm' && humanSpiderPoints.length > 0"
                 :points="humanSpiderPoints.map(p => `${p.x},${p.y}`).join(' ')"
@@ -683,6 +685,7 @@
                 stroke="#88c4c8"
                 stroke-width="2"
               />
+              <!-- LLM polygon -->
               <polygon
                 v-if="evaluatorTypeFilter !== 'human' && llmSpiderPoints.length > 0"
                 :points="llmSpiderPoints.map(p => `${p.x},${p.y}`).join(' ')"
@@ -690,6 +693,21 @@
                 stroke="#c4a0d4"
                 stroke-width="2"
               />
+              <!-- All combined points (shown when filter is 'all') -->
+              <g v-if="evaluatorTypeFilter === 'all'">
+                <circle
+                  v-for="(point, i) in allSpiderPoints"
+                  :key="'all-point-' + i"
+                  :cx="point.x"
+                  :cy="point.y"
+                  :r="hoveredPoint?.type === 'all' && hoveredPoint?.index === i ? 7 : 5"
+                  fill="#b0ca97"
+                  class="spider-point"
+                  @mouseenter="showSpiderTooltip($event, 'all', i)"
+                  @mouseleave="hideSpiderTooltip"
+                />
+              </g>
+              <!-- Human points -->
               <g v-if="evaluatorTypeFilter !== 'llm'">
                 <circle
                   v-for="(point, i) in humanSpiderPoints"
@@ -703,6 +721,7 @@
                   @mouseleave="hideSpiderTooltip"
                 />
               </g>
+              <!-- LLM points -->
               <g v-if="evaluatorTypeFilter !== 'human'">
                 <circle
                   v-for="(point, i) in llmSpiderPoints"
@@ -738,7 +757,7 @@
               <div class="tooltip-header">
                 <span class="tooltip-dimension">{{ spiderTooltip.dimension }}</span>
                 <span class="tooltip-type" :class="spiderTooltip.type">
-                  {{ spiderTooltip.type === 'human' ? $t('scenarioManager.evaluation.filter.human') : $t('scenarioManager.evaluation.filter.llm') }}
+                  {{ spiderTooltip.type === 'human' ? $t('scenarioManager.evaluation.filter.human') : spiderTooltip.type === 'llm' ? $t('scenarioManager.evaluation.filter.llm') : $t('scenarioManager.evaluation.filter.all') }}
                 </span>
               </div>
               <div class="tooltip-value">
@@ -751,6 +770,10 @@
             </div>
 
             <div class="spider-legend">
+              <div class="legend-item" v-if="evaluatorTypeFilter === 'all'">
+                <span class="legend-color all-color"></span>
+                <span>{{ $t('scenarioManager.evaluation.filter.all') }}</span>
+              </div>
               <div class="legend-item" v-if="evaluatorTypeFilter !== 'llm'">
                 <span class="legend-color human-color"></span>
                 <span>{{ $t('scenarioManager.evaluation.filter.human') }}</span>
@@ -1915,6 +1938,13 @@ const llmSpiderPoints = computed(() => {
   })
 })
 
+const allSpiderPoints = computed(() => {
+  return dimensions.value.map((dim, i) => {
+    const normalizedValue = getNormalizedValue('all', dim.id)
+    return getSpiderPoint(i, normalizedValue)
+  })
+})
+
 // ===== Heatmap Helpers =====
 
 function getHeatmapColor(percentage) {
@@ -2364,13 +2394,7 @@ watch(() => props.scenario?.id, (newId) => {
 
 // Initialize selected dimension when dimensions change
 watch(dimensions, (newDimensions) => {
-  console.log('[EvaluationTab] dimensions watcher fired:', {
-    dimensionsCount: newDimensions.length,
-    dimensionIds: newDimensions.map(d => d.id),
-    currentSelectedDimension: selectedDimension.value
-  })
   if (newDimensions.length > 0 && !selectedDimension.value) {
-    console.log('[EvaluationTab] Setting selectedDimension to:', newDimensions[0].id)
     selectedDimension.value = newDimensions[0].id
   }
 }, { immediate: true })
@@ -2382,89 +2406,20 @@ watch(
     const mapKeys = Object.keys(map)
     // If we have data in the map but selected dimension is not in it, auto-select first available
     if (mapKeys.length > 0 && selected && !mapKeys.includes(selected)) {
-      console.log('[EvaluationTab] Dimension ID mismatch detected, auto-selecting:', mapKeys[0])
       selectedDimension.value = mapKeys[0]
     }
   },
   { immediate: true }
 )
 
-// Debug computed properties - remove after fixing
-const ratingDistributionDebug = computed(() => {
-  return props.liveStats?.ratingDistribution ? 'EXISTS' : 'NULL'
-})
-const byDimensionDebugCount = computed(() => {
-  return props.liveStats?.ratingDistribution?.by_dimension?.length || 0
-})
-const byDimensionDebugIds = computed(() => {
-  return (props.liveStats?.ratingDistribution?.by_dimension || []).map(d => d.dimension_id)
-})
-
-// Debug watcher - remove after fixing
-watch(
-  () => ({
-    scenario: props.scenario?.id,
-    liveStats: props.liveStats,
-    dims: dimensions.value,
-    hasDimDist: hasDimensionDistribution.value,
-    hasDimAvg: hasDimensionAverages.value,
-    selectedDim: selectedDimension.value,
-    currentScale: currentDimensionScale.value,
-    currentDist: currentDimensionDistribution.value,
-    dimMapKeys: Object.keys(dimensionDistributionMap.value)
-  }),
-  (val) => {
-    const byDim = val.liveStats?.ratingDistribution?.by_dimension
-    console.log('[EvaluationTab DEBUG]', {
-      scenarioId: val.scenario,
-      hasLiveStats: !!val.liveStats,
-      ratingDistributionExists: !!val.liveStats?.ratingDistribution,
-      byDimensionCount: byDim?.length || 0,
-      byDimensionIds: byDim?.map(d => d.dimension_id) || [],
-      configDimensionIds: val.dims?.map(d => d.id) || [],
-      dimensionDistributionMapKeys: val.dimMapKeys,
-      selectedDimension: val.selectedDim,
-      selectedDimensionInMap: val.dimMapKeys?.includes(val.selectedDim),
-      currentDimensionScale: val.currentScale,
-      currentDimensionDistribution: val.currentDist,
-      currentDimensionDistributionLength: val.currentDist?.length
-    })
-  },
-  { immediate: true, deep: true }
-)
 </script>
 
 <style scoped>
-/* DEBUG - Remove after fixing */
-.debug-panel {
-  background-color: rgba(var(--v-theme-error), 0.1);
-  border: 2px solid rgb(var(--v-theme-error));
-  padding: 12px;
-  margin: 12px 0;
-  border-radius: 8px;
-  font-size: 12px;
-  font-family: monospace;
-  max-height: 400px;
-  overflow-y: auto;
-  color: rgb(var(--v-theme-on-surface));
-}
-
 .no-data-panel {
   padding: 16px;
   text-align: center;
   color: rgba(var(--v-theme-on-surface), 0.6);
   font-size: 0.85rem;
-}
-
-.debug-indicator {
-  background-color: rgba(var(--v-theme-warning), 0.2);
-  border: 1px solid rgb(var(--v-theme-warning));
-  color: rgb(var(--v-theme-on-surface));
-  padding: 4px 8px;
-  border-radius: 4px;
-  font-size: 11px;
-  font-family: monospace;
-  margin-bottom: 8px;
 }
 
 .evaluation-tab {
@@ -3560,6 +3515,10 @@ watch(
   transition: width 0.3s ease;
 }
 
+.dimension-bar.all-bar {
+  background: linear-gradient(90deg, rgba(176, 202, 151, 0.3) 0%, #b0ca97 100%);
+}
+
 .dimension-bar.human-bar {
   background: linear-gradient(90deg, rgba(136, 196, 200, 0.3) 0%, #88c4c8 100%);
 }
@@ -3635,6 +3594,18 @@ watch(
   border-radius: 4px;
 }
 
+.legend-color.human-color {
+  background-color: #88c4c8;
+}
+
+.legend-color.llm-color {
+  background-color: #c4a0d4;
+}
+
+.legend-color.all-color {
+  background-color: #b0ca97;
+}
+
 /* Spider Point Interaction */
 .spider-point {
   cursor: pointer;
@@ -3687,6 +3658,11 @@ watch(
 .spider-tooltip .tooltip-type.llm {
   background-color: rgba(196, 160, 212, 0.2);
   color: #c4a0d4;
+}
+
+.spider-tooltip .tooltip-type.all {
+  background-color: rgba(176, 202, 151, 0.2);
+  color: #b0ca97;
 }
 
 .spider-tooltip .tooltip-value {

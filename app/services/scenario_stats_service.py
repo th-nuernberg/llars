@@ -1271,10 +1271,85 @@ def _calculate_bucket_distribution(scenario_id: int) -> List[Dict[str, Any]]:
     """
     Calculate bucket distribution for a ranking scenario.
 
-    Returns distribution of items across buckets (gut/mittel/schlecht).
+    Returns distribution of items across buckets. Reads bucket configuration
+    from scenario config_json to support dynamic number of buckets (2, 3, 4, etc.).
     Includes both human and LLM evaluator bucket assignments.
     """
-    from db.models import UserFeatureRanking, Feature, ScenarioItems
+    from db.models import UserFeatureRanking, Feature, ScenarioItems, RatingScenarios
+
+    # Get scenario to read bucket configuration
+    scenario = RatingScenarios.query.get(scenario_id)
+    if not scenario:
+        return []
+
+    # Get bucket configuration from config_json
+    config = scenario.config_json or {}
+    if isinstance(config, str):
+        try:
+            config = json.loads(config)
+        except (json.JSONDecodeError, TypeError):
+            config = {}
+
+    configured_buckets = config.get("buckets", [])
+
+    # Fallback to legacy 3-bucket system if no buckets configured
+    if not configured_buckets:
+        configured_buckets = [
+            {"id": "gut", "name": {"de": "Gut", "en": "Good"}, "color": "#b0ca97"},
+            {"id": "mittel", "name": {"de": "Mittel", "en": "Medium"}, "color": "#e8c87a"},
+            {"id": "schlecht", "name": {"de": "Schlecht", "en": "Bad"}, "color": "#e8a087"},
+        ]
+
+    # Build bucket ID mapping (normalize names to IDs)
+    bucket_ids = []
+    bucket_info = {}
+    for bucket in configured_buckets:
+        bucket_id = bucket.get("id") or bucket.get("name", {}).get("de", "").lower()
+        if not bucket_id:
+            continue
+        bucket_ids.append(bucket_id)
+        bucket_info[bucket_id] = {
+            "label": bucket.get("name", {}).get("de") or bucket_id,
+            "color": bucket.get("color", "#88c4c8")
+        }
+
+    if not bucket_ids:
+        return []
+
+    # Initialize counts for all configured buckets
+    bucket_counts = {bid: 0 for bid in bucket_ids}
+
+    # Legacy bucket name mappings (for backwards compatibility)
+    legacy_mappings = {
+        "good": "gut",
+        "medium": "mittel",
+        "middle": "mittel",
+        "bad": "schlecht",
+        "poor": "schlecht",
+    }
+
+    def normalize_bucket_name(name: str) -> Optional[str]:
+        """Normalize bucket name to match configured bucket IDs."""
+        if not name:
+            return None
+        name_lower = name.lower().strip()
+
+        # Direct match
+        if name_lower in bucket_counts:
+            return name_lower
+
+        # Try legacy mapping
+        if name_lower in legacy_mappings:
+            mapped = legacy_mappings[name_lower]
+            if mapped in bucket_counts:
+                return mapped
+
+        # Try matching by label
+        for bid, info in bucket_info.items():
+            if info["label"].lower() == name_lower:
+                return bid
+
+        return None
 
     # Get all items for this scenario
     scenario_items = ScenarioItems.query.filter_by(scenario_id=scenario_id).all()
@@ -1282,9 +1357,6 @@ def _calculate_bucket_distribution(scenario_id: int) -> List[Dict[str, Any]]:
 
     if not item_ids:
         return []
-
-    # Bucket counts from all evaluators
-    bucket_counts = {"gut": 0, "mittel": 0, "schlecht": 0}
 
     # 1. Get human rankings
     human_rankings = (
@@ -1296,15 +1368,9 @@ def _calculate_bucket_distribution(scenario_id: int) -> List[Dict[str, Any]]:
     )
 
     for ranking in human_rankings:
-        bucket = ranking.bucket.lower() if ranking.bucket else None
-        if bucket in bucket_counts:
-            bucket_counts[bucket] += 1
-        elif bucket == "good":
-            bucket_counts["gut"] += 1
-        elif bucket in ("medium", "middle"):
-            bucket_counts["mittel"] += 1
-        elif bucket in ("bad", "poor"):
-            bucket_counts["schlecht"] += 1
+        normalized = normalize_bucket_name(ranking.bucket)
+        if normalized:
+            bucket_counts[normalized] += 1
 
     # 2. Get LLM rankings from llm_task_results
     llm_results = LLMTaskResult.query.filter_by(
@@ -1322,48 +1388,28 @@ def _calculate_bucket_distribution(scenario_id: int) -> List[Dict[str, Any]]:
             except (json.JSONDecodeError, TypeError):
                 continue
 
-        # Count items in each bucket
-        for bucket_key in ["gut", "good"]:
-            items = payload.get(bucket_key, [])
-            if isinstance(items, list):
-                bucket_counts["gut"] += len(items)
-
-        for bucket_key in ["mittel", "medium", "middle"]:
-            items = payload.get(bucket_key, [])
-            if isinstance(items, list):
-                bucket_counts["mittel"] += len(items)
-
-        for bucket_key in ["schlecht", "bad", "poor"]:
-            items = payload.get(bucket_key, [])
-            if isinstance(items, list):
-                bucket_counts["schlecht"] += len(items)
+        # Count items in each bucket from payload
+        for key, value in payload.items():
+            if isinstance(value, list):
+                normalized = normalize_bucket_name(key)
+                if normalized:
+                    bucket_counts[normalized] += len(value)
 
     total = sum(bucket_counts.values())
     if total == 0:
         return []
 
-    # Build distribution with colors
-    bucket_colors = {
-        "gut": "#b0ca97",      # Green (LLARS primary)
-        "mittel": "#e8c87a",   # Yellow (warning)
-        "schlecht": "#e8a087"  # Red (danger)
-    }
-
-    bucket_labels = {
-        "gut": "Gut",
-        "mittel": "Mittel",
-        "schlecht": "Schlecht"
-    }
-
+    # Build distribution in configured bucket order
     distribution = []
-    for bucket in ["gut", "mittel", "schlecht"]:
-        count = bucket_counts[bucket]
+    for bucket_id in bucket_ids:
+        count = bucket_counts[bucket_id]
+        info = bucket_info[bucket_id]
         distribution.append({
-            "bucket": bucket,
-            "label": bucket_labels[bucket],
+            "bucket": bucket_id,
+            "label": info["label"],
             "count": count,
             "percentage": round((count / total) * 100) if total > 0 else 0,
-            "color": bucket_colors[bucket]
+            "color": info["color"]
         })
 
     return distribution

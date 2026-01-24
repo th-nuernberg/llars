@@ -341,7 +341,9 @@ const liveStats = computed(() => ({
   connected: statsConnected.value,
   ratingDistribution: stats.value?.rating_distribution,
   pairwiseAgreement: stats.value?.pairwise_agreement,
-  functionType: stats.value?.function_type
+  functionType: stats.value?.function_type,
+  bucket_distribution: stats.value?.bucket_distribution,
+  ranking_agreement: stats.value?.ranking_agreement
 }))
 
 // Methods

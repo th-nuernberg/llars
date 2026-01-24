@@ -16,6 +16,7 @@
     "reset": "Reset",
     "refresh": "Refresh",
     "back": "Back",
+    "previous": "Previous",
     "next": "Next",
     "yes": "Yes",
     "no": "No",
@@ -677,6 +678,8 @@
       "confidenceLabel": "Confidence (optional)",
       "notesLabel": "Notes (optional)",
       "notesPlaceholder": "Your observations or reasoning...",
+      "noContent": "No content available",
+      "emptyTitle": "No thread selected",
       "errors": {
         "loadFailed": "Thread could not be loaded.",
         "saveFailed": "Save failed."
@@ -2784,6 +2787,7 @@
       "dimension": "Dimension",
       "difference": "Difference",
       "scale": "Scale",
+      "average": "Average",
       "interRaterAgreement": "Inter-Rater Agreement",
       "lowAgreement": "Low",
       "highAgreement": "High",
@@ -3310,7 +3314,23 @@
     "ranking": {
       "pageTitle": "Ranking",
       "pageSubtitle": "Open a case and sort the features by quality.",
-      "emptyTitle": "No ranking cases available"
+      "emptyTitle": "No ranking cases available",
+      "content": "Content",
+      "buckets": "Buckets",
+      "selectBucket": "Select bucket",
+      "noContent": "No content available",
+      "notesLabel": "Notes",
+      "notesPlaceholder": "Optional notes..."
+    },
+    "comparison": {
+      "title": "Comparison",
+      "emptyTitle": "No comparisons available",
+      "noContent": "No content available",
+      "selectA": "Select Option A",
+      "selectB": "Select Option B",
+      "tie": "Tie",
+      "notesLabel": "Notes",
+      "notesPlaceholder": "Optional notes..."
     },
     "rating": {
       "pageTitle": "Rating",

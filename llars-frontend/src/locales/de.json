@@ -16,6 +16,7 @@
     "reset": "Zurücksetzen",
     "refresh": "Aktualisieren",
     "back": "Zurück",
+    "previous": "Zurück",
     "next": "Weiter",
     "yes": "Ja",
     "no": "Nein",
@@ -677,6 +678,8 @@
       "confidenceLabel": "Sicherheit (optional)",
       "notesLabel": "Notizen (optional)",
       "notesPlaceholder": "Ihre Beobachtungen oder Begründung...",
+      "noContent": "Kein Inhalt vorhanden",
+      "emptyTitle": "Kein Thread ausgewählt",
       "errors": {
         "loadFailed": "Thread konnte nicht geladen werden.",
         "saveFailed": "Speichern fehlgeschlagen."
@@ -2784,6 +2787,7 @@
       "dimension": "Dimension",
       "difference": "Differenz",
       "scale": "Skala",
+      "average": "Durchschnitt",
       "interRaterAgreement": "Übereinstimmung zwischen Bewertern",
       "lowAgreement": "Niedrig",
       "highAgreement": "Hoch",
@@ -3315,7 +3319,23 @@
     "ranking": {
       "pageTitle": "Ranking",
       "pageSubtitle": "Öffne einen Fall und ordne die Features nach Qualität.",
-      "emptyTitle": "Keine Ranking-Fälle verfügbar"
+      "emptyTitle": "Keine Ranking-Fälle verfügbar",
+      "content": "Inhalt",
+      "buckets": "Buckets",
+      "selectBucket": "Bucket auswählen",
+      "noContent": "Kein Inhalt vorhanden",
+      "notesLabel": "Anmerkungen",
+      "notesPlaceholder": "Optionale Anmerkungen..."
+    },
+    "comparison": {
+      "title": "Vergleich",
+      "emptyTitle": "Keine Vergleiche verfügbar",
+      "noContent": "Kein Inhalt vorhanden",
+      "selectA": "Option A wählen",
+      "selectB": "Option B wählen",
+      "tie": "Unentschieden",
+      "notesLabel": "Anmerkungen",
+      "notesPlaceholder": "Optionale Anmerkungen..."
     },
     "rating": {
       "pageTitle": "Rating",

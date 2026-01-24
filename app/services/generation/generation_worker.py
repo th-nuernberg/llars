@@ -26,6 +26,7 @@ Usage:
 from __future__ import annotations
 
 import logging
+import re
 import time
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
@@ -47,7 +48,16 @@ from llm.openai_utils import extract_message_text
 from services.evaluation import PromptTemplateService
 from services.llm.llm_client_factory import LLMClientFactory
 
+# YJS decoding for UserPrompt content
 logger = logging.getLogger(__name__)
+
+# YJS decoding for UserPrompt content
+try:
+    import y_py as Y
+    YJS_AVAILABLE = True
+except ImportError:
+    YJS_AVAILABLE = False
+    logger.warning("y-py not installed, YJS content decoding will not work")
 
 
 # =============================================================================
@@ -61,6 +71,249 @@ DEFAULT_BATCH_SIZE = 10
 
 # Retry delays (exponential backoff)
 RETRY_DELAYS = [1, 5, 15]  # seconds
+
+
+# =============================================================================
+# YJS DECODING HELPERS
+# =============================================================================
+
+def decode_yjs_content(content) -> Dict[str, Any]:
+    """
+    Decode YJS binary content to extract text.
+
+    YJS content is stored as a JSON array of numbers representing
+    the Yjs CRDT state update. This function extracts readable text
+    from the binary data.
+
+    Since the Python y-py library may have compatibility issues with
+    the JavaScript YJS encoding, this function uses a hybrid approach:
+    1. First try y-py decoding (if available and compatible)
+    2. Fall back to direct text extraction from binary data
+
+    Args:
+        content: Either a list of numbers (YJS binary) or a dict (already decoded)
+
+    Returns:
+        Dict with 'blocks' structure: {"blocks": {"default": {"title": "default", "content": "...", "position": 0}}}
+    """
+    if not isinstance(content, list):
+        # Already decoded or unknown format
+        return content if isinstance(content, dict) else {}
+
+    try:
+        # Try y-py decoding first (if available)
+        if YJS_AVAILABLE:
+            try:
+                result = _decode_yjs_with_ypy(content)
+                if result and result.get('blocks'):
+                    return result
+            except Exception as e:
+                logger.debug(f"y-py decoding failed, falling back to text extraction: {e}")
+
+        # Fall back to direct text extraction from binary data
+        return _extract_text_from_yjs_binary(content)
+
+    except Exception as e:
+        logger.error(f"Failed to decode YJS content: {e}")
+        return {}
+
+
+def _decode_yjs_with_ypy(content: list) -> Dict[str, Any]:
+    """
+    Try to decode YJS content using y-py library.
+
+    Note: y-py loses embedded objects (variable placeholders) when converting
+    Y.Text to string. We extract these from the raw binary and restore them.
+
+    Returns empty dict if decoding fails.
+    """
+    if not YJS_AVAILABLE:
+        return {}
+
+    try:
+        update_bytes = bytes(content)
+
+        # First, extract embedded variable placeholders from raw binary
+        # Y.js stores them as JSON: {"variable":"name"}
+        embedded_vars = _extract_embedded_variables(update_bytes)
+        logger.debug(f"Found {len(embedded_vars)} embedded variables in YJS binary")
+
+        doc = Y.YDoc()
+        with doc.begin_transaction() as txn:
+            txn.apply_v1(update_bytes)
+
+        blocks_map = doc.get_map('blocks')
+        result_blocks = {}
+
+        for block_id in blocks_map:
+            block_value = blocks_map.get(block_id)
+            if block_value is None:
+                continue
+
+            block_data = {}
+            if hasattr(block_value, 'get'):
+                block_data['title'] = block_value.get('title') or block_id
+                block_data['position'] = block_value.get('position') or 0
+                content_ytext = block_value.get('content')
+                if content_ytext is not None:
+                    text_content = str(content_ytext) if hasattr(content_ytext, '__str__') else ''
+                    # Restore embedded variables as {{variable}} placeholders
+                    text_content = _restore_variable_placeholders(text_content, embedded_vars)
+                    block_data['content'] = text_content
+                else:
+                    block_data['content'] = ''
+            else:
+                block_data = {'title': block_id, 'content': str(block_value), 'position': 0}
+
+            result_blocks[block_id] = block_data
+
+        if result_blocks:
+            logger.info(f"Decoded YJS content with y-py: {len(result_blocks)} blocks found")
+            return {'blocks': result_blocks}
+
+    except Exception as e:
+        logger.debug(f"y-py decoding failed: {e}")
+
+    return {}
+
+
+def _extract_embedded_variables(data: bytes) -> List[str]:
+    """
+    Extract embedded variable names from YJS binary data.
+
+    Y.js stores embedded objects as JSON: {"variable":"name"}
+    These are lost when converting Y.Text to string.
+
+    Returns list of variable names found.
+    """
+    import re
+    variables = []
+
+    # Convert bytes to string, ignoring non-UTF8 bytes
+    try:
+        text = data.decode('utf-8', errors='ignore')
+        # Find all {"variable":"..."} patterns
+        pattern = r'\{"variable"\s*:\s*"([^"]+)"\}'
+        matches = re.findall(pattern, text)
+        variables.extend(matches)
+    except Exception:
+        pass
+
+    return variables
+
+
+def _restore_variable_placeholders(text: str, variables: List[str]) -> str:
+    """
+    Restore variable placeholders in text.
+
+    When Y.Text is converted to string, embedded objects are lost.
+    This function inserts {{variable}} placeholders at common patterns.
+
+    Supported patterns:
+    - "Betreff: " followed by nothing -> insert {{subject}}
+    - Empty lines where {{messages}} should be -> insert {{messages}}
+    """
+    if not variables:
+        return text
+
+    result = text
+
+    # Handle 'subject' variable - typically after "Betreff: "
+    if 'subject' in variables:
+        # Look for "Betreff: " followed by newlines (empty subject)
+        result = re.sub(r'(Betreff:\s*)\n', r'\1{{subject}}\n', result)
+
+    # Handle 'messages' variable - typically the main content area
+    if 'messages' in variables:
+        # Look for patterns where messages should be inserted:
+        # 1. After {{subject}} and before ---
+        result = re.sub(
+            r'(\{\{subject\}\}\s*\n)(\n*)(---)',
+            r'\1{{messages}}\n\n\3',
+            result
+        )
+        # 2. If no subject, after "Betreff:" line and before ---
+        result = re.sub(
+            r'(Betreff:[^\n]*\n\n)(\n*)(---)',
+            r'\1{{messages}}\n\n\3',
+            result
+        )
+        # 3. If the text has a pattern like "\n\n\n\n---", insert before ---
+        if '{{messages}}' not in result and '---' in result:
+            result = re.sub(
+                r'(\n\n)(\n*)(---)',
+                r'\1{{messages}}\n\n\3',
+                result,
+                count=1  # Only replace first occurrence
+            )
+
+    return result
+
+
+def _extract_text_from_yjs_binary(content: list) -> Dict[str, Any]:
+    """
+    Extract readable text directly from YJS binary data.
+
+    This is a fallback method that extracts ASCII text sequences
+    from the raw binary data. It works because YJS stores text
+    content as readable strings within the CRDT structure.
+
+    Returns a single block with all extracted text concatenated.
+    """
+    try:
+        data_bytes = bytes(content)
+
+        # Find readable ASCII sequences (minimum length 8 characters)
+        # to filter out short noise sequences
+        ascii_sequences = []
+        current_seq = []
+
+        for b in data_bytes:
+            # Accept printable ASCII and common control chars (newlines, tabs)
+            if 32 <= b <= 126 or b in (10, 13, 9):
+                char = chr(b) if 32 <= b <= 126 else ('\n' if b in (10, 13) else '\t')
+                current_seq.append(char)
+            else:
+                if len(current_seq) >= 8:  # Minimum sequence length
+                    ascii_sequences.append(''.join(current_seq))
+                current_seq = []
+
+        # Don't forget the last sequence
+        if len(current_seq) >= 8:
+            ascii_sequences.append(''.join(current_seq))
+
+        # Filter out known YJS structure strings
+        yjs_keywords = {'blocks', 'system', 'title', 'position', 'content', 'default'}
+        filtered_sequences = []
+
+        for seq in ascii_sequences:
+            # Skip sequences that are just YJS structure keywords
+            seq_stripped = seq.strip()
+            if seq_stripped.lower() in yjs_keywords:
+                continue
+            # Skip very short sequences that look like noise
+            if len(seq_stripped) < 10:
+                continue
+            filtered_sequences.append(seq)
+
+        if filtered_sequences:
+            # Combine all text sequences
+            full_text = '\n'.join(filtered_sequences)
+            logger.info(f"Extracted text from YJS binary: {len(full_text)} chars from {len(filtered_sequences)} sequences")
+            return {
+                'blocks': {
+                    'default': {
+                        'title': 'default',
+                        'content': full_text,
+                        'position': 0
+                    }
+                }
+            }
+
+    except Exception as e:
+        logger.error(f"Failed to extract text from YJS binary: {e}")
+
+    return {}
 
 
 class GenerationWorker:
@@ -112,7 +365,8 @@ class GenerationWorker:
         This is the main entry point. It processes all pending outputs
         and updates the job status when done.
         """
-        logger.info("[GenWorker] Starting job %d", self.job_id)
+        logger.info("[GenWorker] Starting job %d (socketio=%s)", self.job_id,
+                   "present" if self.socketio else "None")
 
         # Update job status to RUNNING
         job = self._update_job_status(GenerationJobStatus.RUNNING)
@@ -334,15 +588,35 @@ class GenerationWorker:
         Returns:
             Tuple of (system_prompt, user_prompt)
         """
-        # Get source content
-        content = self._get_source_content(output)
+        # Get source data (content, subject, messages, etc.)
+        source_data = self._get_source_data(output)
+        content = source_data.get("content", "")
+        subject = source_data.get("subject", "")
+        messages = source_data.get("messages", [])
 
-        # Build variables
+        # Build variables with multiple aliases for common template patterns
+        # If no structured messages, use content as messages (for templates using {{messages}})
+        messages_value = messages if messages else content
+        logger.debug(
+            "[GenWorker] Building variables: content_len=%d, messages_len=%d, messages_value_len=%d",
+            len(content) if content else 0,
+            len(messages) if messages else 0,
+            len(messages_value) if isinstance(messages_value, (str, list)) else 0
+        )
         variables = {
+            # Content aliases
             "content": content,
-            "input": content,  # Common variable name
+            "input": content,
             "text_content": content,
             "thread_content": content,
+            "email_thread": content,  # Common template variable
+            "email_content": content,
+            "thread": content,
+            # Subject
+            "subject": subject,
+            "betreff": subject,  # German alias
+            # Messages - either structured array or formatted content as fallback
+            "messages": messages_value,
         }
 
         # Add any custom variables from output config (excluding internal keys)
@@ -353,6 +627,9 @@ class GenerationWorker:
 
         # Handle UserPrompt (from Prompt Engineering)
         if isinstance(template, UserPrompt):
+            logger.debug("[GenWorker] Rendering UserPrompt with variables: %s",
+                        {k: (len(v) if isinstance(v, (str, list)) else type(v).__name__)
+                         for k, v in variables.items()})
             return self._render_user_prompt(template, variables)
 
         # Handle PromptTemplate (legacy)
@@ -367,21 +644,39 @@ class GenerationWorker:
         """
         Render prompts from UserPrompt (Prompt Engineering module).
 
-        UserPrompt stores content as JSON with blocks structure:
-        {
-            "blocks": {
-                "system": {"content": "...", "position": 0},
-                "instructions": {"content": "...", "position": 1}
-            }
-        }
+        UserPrompt stores content in one of two formats:
+        1. JSON with blocks structure (original/seeder format):
+           {"blocks": {"system": {"content": "...", "position": 0}}}
+
+        2. YJS binary format (after collaborative editing):
+           [2, 16, 151, 147, ...] - array of numbers representing YJS state
+
+        This method handles both formats automatically.
         """
         content = user_prompt.content
+
+        # Handle YJS binary format (list of numbers)
+        if isinstance(content, list):
+            logger.info(f"Decoding YJS binary content for UserPrompt {user_prompt.prompt_id}")
+            content = decode_yjs_content(content)
+            if not content:
+                logger.warning(f"Failed to decode YJS content for UserPrompt {user_prompt.prompt_id}")
+                return "", ""
+            logger.info(f"[GenWorker] Decoded YJS content: {list(content.keys()) if isinstance(content, dict) else type(content)}")
+
         if not isinstance(content, dict):
             return "", str(content) if content else ""
 
         blocks = content.get('blocks', {})
         if not blocks:
+            logger.warning("[GenWorker] No blocks found in decoded content")
             return "", ""
+
+        # Log block details
+        for block_id, block_data in blocks.items():
+            if isinstance(block_data, dict):
+                block_content = block_data.get('content', '')
+                logger.info(f"[GenWorker] Block '{block_id}': content_len={len(block_content) if block_content else 0}, has_messages={{'{{messages}}' in block_content if block_content else False}}")
 
         # Sort blocks by position
         sorted_blocks = sorted(
@@ -415,7 +710,10 @@ class GenerationWorker:
         def replace(match):
             var_name = match.group(1)
             value = variables.get(var_name, match.group(0))
-            return self._format_variable_value(value)
+            formatted = self._format_variable_value(value)
+            logger.info("[GenWorker] Substituting {{%s}}: value_type=%s, result_len=%d",
+                        var_name, type(value).__name__, len(formatted) if formatted else 0)
+            return formatted
 
         return re.sub(pattern, replace, text)
 
@@ -482,9 +780,9 @@ class GenerationWorker:
 
         return "\n\n---\n\n".join(formatted_parts)
 
-    def _get_source_content(self, output: GeneratedOutput) -> str:
+    def _get_source_data(self, output: GeneratedOutput) -> Dict[str, Any]:
         """
-        Get the source content for an output.
+        Get the source data for an output including content, subject, and messages.
 
         Sources (in priority order):
         1. Input variable stored in prompt_variables_json (manual data)
@@ -492,28 +790,62 @@ class GenerationWorker:
         3. Custom text from job config
 
         Returns:
-            Source content string
+            Dict with 'content', 'subject', and 'messages' keys
         """
+        result = {"content": "", "subject": "", "messages": []}
+
+        # Debug: Log what we receive
+        logger.debug(
+            "[GenWorker] _get_source_data for output %s: prompt_variables_json=%s, source_item_id=%s",
+            output.id, type(output.prompt_variables_json), output.source_item_id
+        )
+
         # Check for input in variables (from manual data upload)
         if output.prompt_variables_json:
+            logger.debug("[GenWorker] prompt_variables_json keys: %s", list(output.prompt_variables_json.keys()))
             input_text = output.prompt_variables_json.get('input')
             if input_text:
-                return input_text
+                logger.info("[GenWorker] Found input in prompt_variables_json, length=%d", len(input_text))
+                result["content"] = input_text
+
+            # Also extract subject and messages if present (from manual items)
+            if output.prompt_variables_json.get('subject'):
+                result["subject"] = output.prompt_variables_json['subject']
+                logger.debug("[GenWorker] Found subject in prompt_variables_json: %s", result["subject"])
+            if output.prompt_variables_json.get('messages'):
+                result["messages"] = output.prompt_variables_json['messages']
+                logger.debug("[GenWorker] Found %d messages in prompt_variables_json", len(result["messages"]))
+
+            # If we have input content, return now
+            if input_text:
+                return result
 
         if output.source_item_id:
             # Get content from EvaluationItem
             item = EvaluationItem.query.get(output.source_item_id)
             if item:
+                result["subject"] = item.subject or ""
+
                 # Get messages for this item
                 messages = Message.query.filter_by(item_id=item.item_id).order_by(
                     Message.timestamp.asc()
                 ).all()
 
                 if messages:
-                    return "\n".join(f"{msg.sender}: {msg.content}" for msg in messages)
+                    # Store structured messages for advanced templates
+                    result["messages"] = [
+                        {"role": msg.sender, "content": msg.content}
+                        for msg in messages
+                    ]
+                    # Format content as readable thread
+                    result["content"] = "\n".join(
+                        f"{msg.sender}: {msg.content}" for msg in messages
+                    )
+                else:
+                    # Fallback to subject if no messages
+                    result["content"] = item.subject or ""
 
-                # Fallback to subject if no messages
-                return item.subject or ""
+                return result
 
         # Check for custom text in job config
         job = GenerationJob.query.get(output.job_id)
@@ -524,9 +856,20 @@ class GenerationWorker:
                 # Find the index of this output among custom text outputs
                 # (simplified: just use the first text for now)
                 if texts:
-                    return texts[0]
+                    result["content"] = texts[0]
 
-        return ""
+        return result
+
+    def _get_source_content(self, output: GeneratedOutput) -> str:
+        """
+        Get the source content for an output.
+
+        Convenience wrapper around _get_source_data that returns just the content.
+
+        Returns:
+            Source content string
+        """
+        return self._get_source_data(output).get("content", "")
 
     def _call_llm(
         self,
@@ -566,6 +909,8 @@ class GenerationWorker:
 
         # Check if streaming is enabled (default: True for real-time updates)
         enable_streaming = self.socketio is not None and output_id is not None
+        logger.info("[GenWorker] Streaming check: socketio=%s, output_id=%s, enabled=%s",
+                   "present" if self.socketio else "None", output_id, enable_streaming)
 
         if enable_streaming:
             # Streaming call
@@ -573,21 +918,41 @@ class GenerationWorker:
             tokens = {"input": 0, "output": 0, "total": 0}
 
             try:
-                stream = client.chat.completions.create(
-                    model=model_id,
-                    messages=messages,
-                    temperature=gen_params.get("temperature", 0.7),
-                    max_tokens=gen_params.get("max_tokens", 1000),
-                    top_p=gen_params.get("top_p", 1.0),
-                    stream=True,
-                )
+                # Build API call params - only include max_tokens if explicitly set
+                stream_params = {
+                    "model": model_id,
+                    "messages": messages,
+                    "temperature": gen_params.get("temperature", 0.7),
+                    "top_p": gen_params.get("top_p", 1.0),
+                    "stream": True,
+                }
+                # Only add max_tokens if explicitly specified (allows unlimited for reasoning models)
+                if gen_params.get("max_tokens"):
+                    stream_params["max_tokens"] = gen_params["max_tokens"]
+
+                stream = client.chat.completions.create(**stream_params)
 
                 # Collect streamed content and emit tokens
+                used_reasoning_field = False  # Track if we're using reasoning_content
                 for chunk in stream:
                     if chunk.choices and chunk.choices[0].delta:
                         delta = chunk.choices[0].delta
+                        # Check content first, then reasoning_content for reasoning models (Magistral)
+                        token = None
                         if hasattr(delta, "content") and delta.content:
                             token = delta.content
+                        elif hasattr(delta, "reasoning_content") and delta.reasoning_content:
+                            token = delta.reasoning_content
+                            if not used_reasoning_field:
+                                logger.info("[GenWorker] Using reasoning_content field (reasoning model detected)")
+                                used_reasoning_field = True
+                        elif hasattr(delta, "reasoning") and delta.reasoning:
+                            token = delta.reasoning
+                            if not used_reasoning_field:
+                                logger.info("[GenWorker] Using reasoning field (reasoning model detected)")
+                                used_reasoning_field = True
+
+                        if token:
                             content += token
                             # Emit token for real-time streaming
                             self._emit_event("generation:item:token", {
@@ -608,14 +973,18 @@ class GenerationWorker:
                 enable_streaming = False
 
         if not enable_streaming:
-            # Non-streaming call
-            response = client.chat.completions.create(
-                model=model_id,
-                messages=messages,
-                temperature=gen_params.get("temperature", 0.7),
-                max_tokens=gen_params.get("max_tokens", 1000),
-                top_p=gen_params.get("top_p", 1.0),
-            )
+            # Non-streaming call - build params without max_tokens if not specified
+            call_params = {
+                "model": model_id,
+                "messages": messages,
+                "temperature": gen_params.get("temperature", 0.7),
+                "top_p": gen_params.get("top_p", 1.0),
+            }
+            # Only add max_tokens if explicitly specified (allows unlimited for reasoning models)
+            if gen_params.get("max_tokens"):
+                call_params["max_tokens"] = gen_params["max_tokens"]
+
+            response = client.chat.completions.create(**call_params)
 
             # Extract content
             content = ""
@@ -758,12 +1127,18 @@ class GenerationWorker:
         """Emit a Socket.IO event if socketio is available."""
         if self.socketio:
             try:
-                logger.info("[GenWorker] Emitting event %s: %s", event, data)
-                self.socketio.emit(event, data)
+                # Emit to all connected clients on default namespace
+                # namespace='/' ensures broadcast to default namespace
+                self.socketio.emit(event, data, namespace='/')
+                # Log token events at debug level to avoid spam, others at info
+                if 'token' in event:
+                    logger.debug("[GenWorker] Emitted %s", event)
+                else:
+                    logger.info("[GenWorker] Emitted event %s: %s", event, data)
             except Exception as e:
                 logger.warning("[GenWorker] Failed to emit event %s: %s", event, e)
         else:
-            logger.warning("[GenWorker] No socketio instance available for event %s", event)
+            logger.warning("[GenWorker] No socketio instance - event %s not sent", event)
 
     # -------------------------------------------------------------------------
     # Static Methods

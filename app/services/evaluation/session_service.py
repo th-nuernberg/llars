@@ -129,9 +129,9 @@ class EvaluationSessionService:
 
         items = []
         for thread in threads:
-            # Check if user has evaluated this thread
-            evaluated = EvaluationSessionService._is_thread_evaluated(
-                thread.thread_id, user_id, function_type
+            # Get evaluation status for this thread
+            status = EvaluationSessionService._get_thread_evaluation_status(
+                thread.thread_id, user_id, function_type, scenario_id
             )
 
             items.append({
@@ -139,7 +139,8 @@ class EvaluationSessionService:
                 'thread_id': thread.thread_id,
                 'subject': thread.subject,
                 'chat_id': thread.chat_id,
-                'evaluated': evaluated,
+                'status': status,
+                'evaluated': status == 'done',  # Backward compatibility
                 'message_count': len(thread.messages) if thread.messages else 0,
                 'feature_count': len(thread.features) if thread.features else 0
             })
@@ -147,11 +148,57 @@ class EvaluationSessionService:
         return items
 
     @staticmethod
-    def _is_thread_evaluated(thread_id: int, user_id: int, function_type: str) -> bool:
-        """Check if user has fully evaluated a thread."""
+    def _get_thread_evaluation_status(thread_id: int, user_id: int, function_type: str, scenario_id: int = None) -> str:
+        """
+        Get the evaluation status for a thread.
+
+        Args:
+            thread_id: Thread/item ID
+            user_id: User ID
+            function_type: Type of evaluation (rating, ranking, etc.)
+            scenario_id: Scenario ID (needed for dimensional ratings)
+
+        Returns:
+            'done' - fully evaluated
+            'in_progress' - partially evaluated
+            'pending' - not started
+        """
         if function_type == 'rating' or function_type == 'mail_rating':
+            # First check dimensional ratings (new system)
+            from db.models import ItemDimensionRating
+            from db.models.scenario import ProgressionStatus
+            dim_rating = ItemDimensionRating.query.filter_by(
+                user_id=user_id,
+                item_id=thread_id,
+                scenario_id=scenario_id
+            ).first()
+
+            if dim_rating:
+                # Map enum status to our status format
+                if dim_rating.status == ProgressionStatus.DONE:
+                    return 'done'
+                elif dim_rating.status == ProgressionStatus.PROGRESSING:
+                    return 'in_progress'
+                else:
+                    return 'pending'
+
+            # Fallback: Check feature-based ratings (legacy system)
             from services.feature_rating_service import FeatureRatingService
-            return FeatureRatingService.has_user_fully_rated_thread(user_id, thread_id)
+
+            total_features = db.session.query(Feature).filter_by(thread_id=thread_id).count()
+            if total_features == 0:
+                return 'pending'
+
+            ratings = FeatureRatingService.get_user_ratings_for_thread(user_id, thread_id)
+            rated_count = len(ratings)
+
+            if rated_count == 0:
+                return 'pending'
+            elif rated_count >= total_features:
+                return 'done'
+            else:
+                return 'in_progress'
+
         elif function_type == 'authenticity':
             # Check authenticity votes
             from db.models import UserAuthenticityVote
@@ -159,9 +206,65 @@ class EvaluationSessionService:
                 user_id=user_id,
                 item_id=thread_id
             ).first()
-            return vote is not None and vote.vote is not None
-        # For other types, check if any evaluation exists
-        return False
+            if vote is not None and vote.vote is not None:
+                return 'done'
+            return 'pending'
+
+        elif function_type == 'ranking':
+            # Check ranking evaluations via RankingService
+            from services.ranking_service import RankingService
+
+            # Check if fully ranked (all features in buckets)
+            if RankingService.has_user_fully_ranked_thread(user_id, thread_id):
+                return 'done'
+            # Check if partially ranked (at least one feature in a bucket)
+            if RankingService.has_user_ranked_thread(user_id, thread_id):
+                return 'in_progress'
+            return 'pending'
+
+        elif function_type == 'comparison':
+            # Comparison uses ComparisonSession -> ComparisonMessage -> ComparisonEvaluation
+            # For now, check if any evaluation exists for this session
+            try:
+                from db.models import ComparisonSession, ComparisonEvaluation
+                session = ComparisonSession.query.filter_by(
+                    scenario_id=thread_id  # thread_id is used as scenario_id in comparison
+                ).first()
+                if session:
+                    # Check if user has made any evaluations
+                    eval_count = db.session.query(ComparisonEvaluation).join(
+                        ComparisonSession.messages
+                    ).filter(
+                        ComparisonSession.id == session.id
+                    ).count()
+                    if eval_count > 0:
+                        return 'done'
+                return 'pending'
+            except Exception:
+                return 'pending'
+
+        elif function_type == 'labeling':
+            # Check labeling evaluations
+            from db.models.scenario import ItemLabelingEvaluation
+            labeling_eval = ItemLabelingEvaluation.query.filter_by(
+                user_id=user_id,
+                item_id=thread_id,
+                scenario_id=scenario_id
+            ).first()
+            if labeling_eval is not None and (labeling_eval.category_id is not None or labeling_eval.is_unsure):
+                return 'done'
+            return 'pending'
+
+        # Default: pending
+        return 'pending'
+
+    @staticmethod
+    def _is_thread_evaluated(thread_id: int, user_id: int, function_type: str) -> bool:
+        """Check if user has fully evaluated a thread (backward compatibility)."""
+        status = EvaluationSessionService._get_thread_evaluation_status(
+            thread_id, user_id, function_type
+        )
+        return status == 'done'
 
     @staticmethod
     def get_thread_features(scenario_id: int, thread_id: int, user_id: int) -> dict:

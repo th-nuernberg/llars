@@ -219,8 +219,11 @@ def submit_evaluation(scenario_id, item_id):
     or for simple evaluation types that rate the thread directly.
 
     Request body:
-        status: 'completed' to mark as done
-        function_type: Type of evaluation
+        function_type: Type of evaluation (labeling, comparison, etc.)
+        category_id: For labeling - selected category
+        is_unsure: For labeling - whether user is unsure
+        feedback: Optional feedback text
+        choice: For comparison - selected option (A, B, tie)
 
     Args:
         scenario_id: Scenario ID
@@ -232,15 +235,57 @@ def submit_evaluation(scenario_id, item_id):
     from services.evaluation.session_service import (
         EvaluationSessionService, emit_evaluation_update
     )
+    from db.models.scenario import ItemLabelingEvaluation
+    from db import db
 
     user = g.authentik_user
     data = request.get_json() or {}
+    function_type = data.get('function_type')
 
-    result = EvaluationSessionService.mark_thread_complete(
-        scenario_id=scenario_id,
-        thread_id=item_id,
-        user_id=user.id
-    )
+    # Handle labeling evaluations
+    if function_type == 'labeling':
+        category_id = data.get('category_id')
+        is_unsure = data.get('is_unsure', False)
+        feedback = data.get('feedback')
+
+        # Find or create labeling evaluation
+        evaluation = ItemLabelingEvaluation.query.filter_by(
+            user_id=user.id,
+            item_id=item_id,
+            scenario_id=scenario_id
+        ).first()
+
+        if evaluation:
+            # Update existing
+            evaluation.category_id = category_id
+            evaluation.is_unsure = is_unsure
+            evaluation.feedback = feedback
+        else:
+            # Create new
+            evaluation = ItemLabelingEvaluation(
+                user_id=user.id,
+                item_id=item_id,
+                scenario_id=scenario_id,
+                category_id=category_id,
+                is_unsure=is_unsure,
+                feedback=feedback
+            )
+            db.session.add(evaluation)
+
+        db.session.commit()
+
+        result = {
+            'success': True,
+            'evaluation': evaluation.to_dict(),
+            'status': 'completed'
+        }
+    else:
+        # Default behavior for other types
+        result = EvaluationSessionService.mark_thread_complete(
+            scenario_id=scenario_id,
+            thread_id=item_id,
+            user_id=user.id
+        )
 
     if 'error' in result:
         raise ValidationError(result['error'])

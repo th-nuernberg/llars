@@ -1022,6 +1022,38 @@ def apply_schema_patches(db) -> None:
             ),
         )
 
+        # Table: item_labeling_evaluations (Labeling evaluations for text classification)
+        changed |= _ensure_table(
+            db,
+            table_name="item_labeling_evaluations",
+            create_sql=(
+                """
+                CREATE TABLE `item_labeling_evaluations` (
+                    `id` INT NOT NULL AUTO_INCREMENT,
+                    `user_id` INT NOT NULL,
+                    `item_id` INT NOT NULL,
+                    `scenario_id` INT NOT NULL,
+                    `category_id` VARCHAR(255) NULL COMMENT 'Selected category ID from scenario config',
+                    `is_unsure` TINYINT(1) NOT NULL DEFAULT 0,
+                    `feedback` TEXT NULL,
+                    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                    PRIMARY KEY (`id`),
+                    INDEX `ix_labeling_eval_user` (`user_id`),
+                    INDEX `ix_labeling_eval_item` (`item_id`),
+                    INDEX `ix_labeling_eval_scenario` (`scenario_id`),
+                    UNIQUE KEY `uix_user_item_scenario_labeling` (`user_id`, `item_id`, `scenario_id`),
+                    CONSTRAINT `fk_labeling_eval_user` FOREIGN KEY (`user_id`)
+                        REFERENCES `users` (`id`) ON DELETE CASCADE,
+                    CONSTRAINT `fk_labeling_eval_item` FOREIGN KEY (`item_id`)
+                        REFERENCES `evaluation_items` (`item_id`) ON DELETE CASCADE,
+                    CONSTRAINT `fk_labeling_eval_scenario` FOREIGN KEY (`scenario_id`)
+                        REFERENCES `rating_scenarios` (`id`) ON DELETE CASCADE
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+                """
+            ),
+        )
+
         if changed:
             print("✅ Applied schema patches")
     except Exception as exc:

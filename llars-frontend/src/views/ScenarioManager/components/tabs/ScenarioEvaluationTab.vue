@@ -440,7 +440,7 @@
             class="evaluator-select"
           />
         </div>
-        <ConfusionMatrix
+        <LConfusionMatrix
           v-if="currentConfusionMatrix"
           :matrix="currentConfusionMatrix"
           :title="selectedMatrixEvaluator === 'all'
@@ -450,6 +450,7 @@
           :show-metrics="true"
           :show-legend="false"
           :use-heatmap="true"
+          size="default"
         />
       </div>
 
@@ -903,53 +904,14 @@
 
           <!-- Dimension Heatmap -->
           <div class="heatmap-wrapper">
-            <div class="heatmap-container" v-if="currentDimensionDistribution && currentDimensionDistribution.length > 0">
-              <div class="heatmap-header">
-                <span class="heatmap-label">{{ selectedDimensionName }}</span>
-                <span class="heatmap-scale" v-if="currentDimensionScale">
-                  {{ $t('scenarioManager.results.scale') }}: {{ currentDimensionScale.min }} - {{ currentDimensionScale.max }}
-                </span>
-              </div>
-              <div class="heatmap-grid">
-                <div
-                  v-for="(item, index) in currentDimensionDistribution"
-                  :key="item.value"
-                  class="heatmap-cell"
-                  :style="{ backgroundColor: getHeatmapColor(item.percentage) }"
-                >
-                  <span class="heatmap-value">{{ item.value }}</span>
-                  <span class="heatmap-count">{{ item.count }}</span>
-                  <span class="heatmap-percent">{{ item.percentage }}%</span>
-                </div>
-              </div>
-            </div>
-
-            <!-- Empty State Heatmap -->
-            <div class="heatmap-container empty-heatmap" v-else-if="selectedDimension && currentDimensionScale">
-              <div class="heatmap-header">
-                <span class="heatmap-label">{{ selectedDimensionName }}</span>
-                <span class="heatmap-scale">
-                  {{ $t('scenarioManager.results.scale') }}: {{ currentDimensionScale.min }} - {{ currentDimensionScale.max }}
-                </span>
-              </div>
-              <div class="heatmap-grid">
-                <div
-                  v-for="value in getScaleValues(currentDimensionScale)"
-                  :key="value"
-                  class="heatmap-cell empty-cell"
-                >
-                  <span class="heatmap-value">{{ value }}</span>
-                  <span class="heatmap-count">0</span>
-                  <span class="heatmap-percent">-</span>
-                </div>
-              </div>
-              <p class="no-data-hint">{{ $t('scenarioManager.evaluation.noRatingsYet') }}</p>
-            </div>
-
-            <!-- No dimension selected -->
-            <div v-else class="no-data-panel">
-              <p class="text-medium-emphasis">{{ $t('scenarioManager.evaluation.noRatingsYet') }}</p>
-            </div>
+            <LRatingDistribution
+              :items="currentDimensionDistribution || []"
+              :label="selectedDimensionName"
+              :scale-min="currentDimensionScale?.min"
+              :scale-max="currentDimensionScale?.max"
+              :scale-step="currentDimensionScale?.step || 1"
+              size="default"
+            />
           </div>
         </div>
 
@@ -1129,7 +1091,6 @@ import { useLLMEvaluation } from '@/composables/useLLMEvaluation'
 import { useLLMModels } from '@/composables/useLLMModels'
 import { useScenarioManager } from '../../composables/useScenarioManager'
 import LAvatar from '@/components/common/LAvatar.vue'
-import ConfusionMatrix from '../ConfusionMatrix.vue'
 
 const props = defineProps({
   scenario: {
@@ -1800,29 +1761,22 @@ function getDimensionScaleLabel(dimensionId) {
   return `${min}-${max}`
 }
 
-function getScaleValues(scale) {
-  if (!scale) return [1, 2, 3, 4, 5]
-  const min = scale.min ?? 1
-  const max = scale.max ?? 5
-  const step = scale.step ?? 1
-  const values = []
-  for (let v = min; v <= max; v += step) {
-    values.push(v)
-  }
-  return values
-}
-
 // ===== Ranking Agreement Helpers =====
 
 function getShortEvaluatorName(evaluator) {
   const name = evaluator.name || evaluator.id
   if (evaluator.isLLM) {
-    // For LLM models, show last part of model ID
+    // For LLM models, show last part of model ID (e.g., "Mistral-Small-24B")
     const parts = String(name).split('/')
-    return parts[parts.length - 1].substring(0, 12)
+    const modelName = parts[parts.length - 1]
+    // Remove common suffixes to shorten
+    return modelName
+      .replace(/-Instruct.*$/, '')
+      .replace(/-\d{4}$/, '')
+      .substring(0, 18)
   }
-  // For humans, truncate to 8 chars
-  return String(name).substring(0, 8)
+  // For humans, show full name (tooltip shows full anyway)
+  return String(name).substring(0, 15)
 }
 
 function getRankingAgreementValue(id1, id2) {
@@ -1944,17 +1898,6 @@ const allSpiderPoints = computed(() => {
     return getSpiderPoint(i, normalizedValue)
   })
 })
-
-// ===== Heatmap Helpers =====
-
-function getHeatmapColor(percentage) {
-  // Gradient from light to primary color
-  const intensity = percentage / 100
-  const r = Math.round(255 - (255 - 176) * intensity)
-  const g = Math.round(255 - (255 - 202) * intensity)
-  const b = Math.round(255 - (255 - 151) * intensity)
-  return `rgb(${r}, ${g}, ${b})`
-}
 
 // ===== Pairwise Agreement Heatmap =====
 
@@ -2965,8 +2908,8 @@ watch(
 }
 
 .matrix-cell {
-  min-width: 70px;
-  height: 40px;
+  min-width: 100px;
+  height: 44px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -3002,7 +2945,7 @@ watch(
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 60px;
+  max-width: 90px;
   font-size: 0.75rem;
 }
 
@@ -3310,12 +3253,6 @@ watch(
   margin-bottom: 12px;
 }
 
-.visualization-panel .heatmap-container {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-}
-
 .visualization-panel .spider-chart-container {
   flex: 1;
   display: flex;
@@ -3378,93 +3315,6 @@ watch(
   justify-content: center;
   padding: 32px;
   gap: 12px;
-}
-
-/* Heatmap */
-.heatmap-container {
-  background-color: rgba(var(--v-theme-on-surface), 0.02);
-  border-radius: 8px;
-  padding: 16px;
-}
-
-.heatmap-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 12px;
-}
-
-.heatmap-label {
-  font-weight: 600;
-  font-size: 0.9rem;
-}
-
-.heatmap-scale {
-  font-size: 0.75rem;
-  color: rgba(var(--v-theme-on-surface), 0.5);
-}
-
-.heatmap-grid {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.heatmap-cell {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-width: 60px;
-  padding: 12px 16px;
-  border-radius: 8px;
-  text-align: center;
-  transition: transform 0.2s;
-}
-
-.heatmap-cell:hover {
-  transform: scale(1.05);
-}
-
-.heatmap-value {
-  font-size: 1.1rem;
-  font-weight: 700;
-  color: rgba(0, 0, 0, 0.7);
-}
-
-.heatmap-count {
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: rgba(0, 0, 0, 0.6);
-  margin-top: 2px;
-}
-
-.heatmap-percent {
-  font-size: 0.7rem;
-  color: rgba(0, 0, 0, 0.5);
-}
-
-/* Empty State Heatmap */
-.empty-heatmap .empty-cell {
-  background-color: rgba(var(--v-theme-on-surface), 0.05);
-  border: 1px dashed rgba(var(--v-theme-on-surface), 0.15);
-}
-
-.empty-heatmap .empty-cell .heatmap-value {
-  color: rgba(var(--v-theme-on-surface), 0.5);
-}
-
-.empty-heatmap .empty-cell .heatmap-count,
-.empty-heatmap .empty-cell .heatmap-percent {
-  color: rgba(var(--v-theme-on-surface), 0.3);
-}
-
-.no-data-hint {
-  margin-top: 12px;
-  font-size: 0.8rem;
-  color: rgba(var(--v-theme-on-surface), 0.5);
-  text-align: center;
-  font-style: italic;
 }
 
 /* Dimension Comparison Section */
@@ -4119,10 +3969,6 @@ watch(
   .header-actions {
     flex-direction: column;
     width: 100%;
-  }
-
-  .heatmap-grid {
-    justify-content: center;
   }
 
   .spider-chart {

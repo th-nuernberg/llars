@@ -14,6 +14,7 @@
 
 <script setup>
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 const props = defineProps({
   status: {
@@ -23,6 +24,8 @@ const props = defineProps({
   },
   saving: { type: Boolean, default: false }
 })
+
+const { t } = useI18n()
 
 // Normalize different status formats
 const displayStatus = computed(() => {
@@ -47,14 +50,14 @@ const statusClass = computed(() => {
 })
 
 const statusLabel = computed(() => {
-  if (props.saving) return 'Speichert...'
+  if (props.saving) return t('evaluation.status.saving')
 
   const labels = {
-    'pending': 'Ausstehend',
-    'in_progress': 'In Bearbeitung',
-    'done': 'Abgeschlossen'
+    'pending': t('evaluation.status.pending'),
+    'in_progress': t('evaluation.status.inProgress'),
+    'done': t('evaluation.status.done')
   }
-  return labels[displayStatus.value] || 'Ausstehend'
+  return labels[displayStatus.value] || t('evaluation.status.pending')
 })
 </script>
 

@@ -47,12 +47,15 @@
       />
     </div>
 
-    <!-- Current Value Display -->
-    <div v-if="showCurrentValue && modelValue !== null" class="current-value">
-      <span class="value-badge" :class="getValueClass()">
-        {{ modelValue }}/{{ max }}
-      </span>
-      <span v-if="currentLabel" class="value-label">{{ currentLabel }}</span>
+    <!-- Current Value Display (always reserve space) -->
+    <div v-if="showCurrentValue" class="current-value" :class="{ 'has-value': modelValue !== null }">
+      <template v-if="modelValue !== null">
+        <span class="value-badge" :class="getValueClass()">
+          {{ modelValue }}/{{ max }}
+        </span>
+        <span v-if="currentLabel" class="value-label">{{ currentLabel }}</span>
+      </template>
+      <span v-else class="value-placeholder">—</span>
     </div>
   </div>
 </template>
@@ -204,9 +207,9 @@ function emitUpdate(value) {
 
 <style scoped>
 .dimension-rating-card {
-  padding: 16px;
+  padding: 12px 14px;
   border: 1px solid rgba(var(--v-theme-on-surface), 0.1);
-  border-radius: 12px 4px 12px 4px; /* Signature LLARS asymmetric style */
+  border-radius: 10px 3px 10px 3px; /* Signature LLARS asymmetric style */
   background: rgba(var(--v-theme-surface-variant), 0.3);
   transition: all 0.2s ease;
 }
@@ -231,7 +234,7 @@ function emitUpdate(value) {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 12px;
+  margin-bottom: 10px;
 }
 
 .dimension-info {
@@ -241,15 +244,15 @@ function emitUpdate(value) {
 }
 
 .dimension-name {
-  font-size: 0.95rem;
+  font-size: 0.85rem;
   font-weight: 600;
   color: rgb(var(--v-theme-on-surface));
 }
 
 .dimension-weight {
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   font-weight: 500;
-  padding: 2px 6px;
+  padding: 2px 5px;
   border-radius: 4px;
   background: rgba(var(--v-theme-on-surface), 0.08);
   color: rgba(var(--v-theme-on-surface), 0.6);
@@ -271,32 +274,38 @@ function emitUpdate(value) {
   justify-content: center;
 }
 
-/* Current Value Display */
+/* Current Value Display - always reserve space */
 .current-value {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  margin-top: 12px;
-  padding-top: 12px;
+  margin-top: 10px;
+  padding-top: 10px;
   border-top: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  min-height: 28px; /* Reserve space for badge + label */
+}
+
+.value-placeholder {
+  font-size: 0.8rem;
+  color: rgba(var(--v-theme-on-surface), 0.3);
 }
 
 .value-badge {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 44px;
-  padding: 4px 10px;
+  min-width: 40px;
+  padding: 3px 8px;
   border-radius: 6px 2px 6px 2px;
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   font-weight: 600;
   color: white;
   background: var(--llars-secondary, #D1BC8A);
 }
 
 .value-badge.value-low {
-  background: var(--llars-danger, #e8a087);
+  background: var(--llars-success, #98d4bb);
 }
 
 .value-badge.value-mid {
@@ -304,11 +313,11 @@ function emitUpdate(value) {
 }
 
 .value-badge.value-high {
-  background: var(--llars-success, #98d4bb);
+  background: var(--llars-danger, #e8a087);
 }
 
 .value-label {
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   color: rgba(var(--v-theme-on-surface), 0.7);
   font-style: italic;
 }
@@ -316,16 +325,17 @@ function emitUpdate(value) {
 /* Responsive */
 @media (max-width: 600px) {
   .dimension-rating-card {
-    padding: 12px;
+    padding: 10px 12px;
   }
 
   .dimension-name {
-    font-size: 0.9rem;
+    font-size: 0.8rem;
   }
 
   .current-value {
     flex-direction: column;
     gap: 4px;
+    min-height: 40px;
   }
 }
 </style>

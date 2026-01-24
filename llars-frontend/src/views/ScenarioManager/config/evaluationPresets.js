@@ -1061,7 +1061,7 @@ export const TYPE_INFO = {
   [EVAL_TYPES.RANKING]: {
     name: { de: 'Ranking', en: 'Ranking' },
     description: { de: 'Items sortieren oder in Kategorien einteilen', en: 'Sort items or categorize into buckets' },
-    icon: 'mdi-sort-variant',
+    icon: 'mdi-podium',
     color: '#b0ca97',
     category: 'general'
   },

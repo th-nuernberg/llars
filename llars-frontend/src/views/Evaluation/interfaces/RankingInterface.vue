@@ -4,7 +4,7 @@
     <div class="left-panel" :style="leftPanelStyle()">
       <!-- Panel Header (hidden when embedded in EvaluationSession) -->
       <div v-if="!hideNavigation" class="panel-header">
-        <LIcon size="20" class="mr-2">mdi-sort-variant</LIcon>
+        <LIcon size="20" class="mr-2">mdi-podium</LIcon>
         <h3>{{ $t('ranker.detail.featuresTitle') }}</h3>
         <v-spacer />
         <LEvaluationStatus

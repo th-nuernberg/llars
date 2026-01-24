@@ -165,7 +165,7 @@ class EvaluationSessionService:
         """
         if function_type == 'rating' or function_type == 'mail_rating':
             # First check dimensional ratings (new system)
-            from db.models import ItemDimensionRating
+            from db.models import ItemDimensionRating, RatingScenarios
             from db.models.scenario import ProgressionStatus
             dim_rating = ItemDimensionRating.query.filter_by(
                 user_id=user_id,
@@ -174,13 +174,37 @@ class EvaluationSessionService:
             ).first()
 
             if dim_rating:
-                # Map enum status to our status format
+                # Check if status is DONE
                 if dim_rating.status == ProgressionStatus.DONE:
                     return 'done'
-                elif dim_rating.status == ProgressionStatus.PROGRESSING:
+
+                # Fallback: Check if all dimensions are actually rated
+                # (in case status wasn't properly set)
+                scenario = RatingScenarios.query.get(scenario_id)
+                if scenario and scenario.config_json:
+                    import json
+                    config = scenario.config_json
+                    if isinstance(config, str):
+                        try:
+                            config = json.loads(config)
+                        except (json.JSONDecodeError, TypeError):
+                            config = {}
+
+                    dimensions = config.get('dimensions', [])
+                    if dimensions and dim_rating.dimension_ratings:
+                        required_dims = [d.get('id') for d in dimensions if d.get('id')]
+                        all_rated = all(
+                            dim_id in dim_rating.dimension_ratings and
+                            dim_rating.dimension_ratings.get(dim_id) is not None
+                            for dim_id in required_dims
+                        )
+                        if all_rated:
+                            return 'done'
+
+                # Has some ratings but not complete
+                if dim_rating.dimension_ratings:
                     return 'in_progress'
-                else:
-                    return 'pending'
+                return 'pending'
 
             # Fallback: Check feature-based ratings (legacy system)
             from services.feature_rating_service import FeatureRatingService

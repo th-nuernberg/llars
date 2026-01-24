@@ -72,6 +72,29 @@
         />
       </div>
 
+      <!-- Status Legend -->
+      <div class="status-legend">
+        <span class="legend-label">{{ $t('scenarioManager.data.legend.title') }}:</span>
+        <div class="legend-items">
+          <div class="legend-item">
+            <LTag variant="default" size="sm">{{ $t('scenarioManager.data.status.pending') }}</LTag>
+            <span class="legend-desc">{{ $t('scenarioManager.data.legend.pending') }}</span>
+          </div>
+          <div class="legend-item">
+            <LTag variant="info" size="sm">{{ $t('scenarioManager.data.status.in_progress') }}</LTag>
+            <span class="legend-desc">{{ $t('scenarioManager.data.legend.in_progress') }}</span>
+          </div>
+          <div class="legend-item">
+            <LTag variant="accent" size="sm">{{ $t('scenarioManager.data.status.llm_done') }}</LTag>
+            <span class="legend-desc">{{ $t('scenarioManager.data.legend.llm_done') }}</span>
+          </div>
+          <div class="legend-item">
+            <LTag variant="success" size="sm">{{ $t('scenarioManager.data.status.done') }}</LTag>
+            <span class="legend-desc">{{ $t('scenarioManager.data.legend.done') }}</span>
+          </div>
+        </div>
+      </div>
+
       <!-- Threads Table -->
       <v-data-table
         :headers="tableHeaders"
@@ -401,6 +424,8 @@ function getStatusVariant(status) {
   const map = {
     pending: 'default',
     evaluated: 'success',
+    done: 'success',
+    llm_done: 'accent',
     in_progress: 'info'
   }
   return map[status] || 'default'
@@ -708,6 +733,40 @@ onMounted(() => {
 
 .sort-select {
   width: 180px;
+}
+
+/* Status Legend */
+.status-legend {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background-color: rgba(var(--v-theme-on-surface), 0.02);
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+}
+
+.legend-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: rgba(var(--v-theme-on-surface), 0.7);
+  white-space: nowrap;
+}
+
+.legend-items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.legend-desc {
+  font-size: 0.75rem;
+  color: rgba(var(--v-theme-on-surface), 0.6);
 }
 
 .thread-subject {

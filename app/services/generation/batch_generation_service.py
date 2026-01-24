@@ -21,7 +21,7 @@ Usage:
             "sources": {"type": "scenario", "scenario_id": 123},
             "prompts": [{"template_id": 1, "variant_name": "Standard"}],
             "llm_models": ["gpt-4"],
-            "generation_params": {"temperature": 0.7, "max_tokens": 1000}
+            "generation_params": {"temperature": 0.7}
         },
         created_by="admin"
     )
@@ -93,8 +93,8 @@ Job Configuration Schema (config_json):
 
     "generation_params": {
         "temperature": 0.7,
-        "max_tokens": 1000,
-        "top_p": 1.0
+        "top_p": 1.0,
+        "max_tokens": null
     },
 
     "output": {
@@ -303,6 +303,7 @@ class BatchGenerationService:
 
         source_items: List[Optional[int]] = []
         custom_texts: List[Optional[str]] = []
+        manual_structured_data: List[Dict[str, Any]] = []  # For manual items
 
         if source_type == "scenario":
             scenario_id = sources["scenario_id"]
@@ -323,13 +324,38 @@ class BatchGenerationService:
             logger.debug("[BatchGen] Using %d custom texts", len(custom_texts))
 
         elif source_type == "manual":
-            # Manual data upload - items with 'input' or 'content' field
+            # Manual data upload - items with various formats:
+            # - Simple: {"input": "text"} or {"content": "text"}
+            # - Structured: {"subject": "...", "messages": [{role, content}]}
             manual_items = sources.get("items", [])
             custom_texts = []
+            manual_structured_data = []  # Store structured data for later
             for item in manual_items:
-                # Support both 'input' and 'content' fields
-                text = item.get("input") or item.get("content") or ""
+                text = ""
+                item_data = {"subject": "", "messages": []}
+                # Try simple input/content fields first
+                if item.get("input"):
+                    text = item["input"]
+                elif item.get("content"):
+                    text = item["content"]
+                # Handle structured messages format (email-style data)
+                elif item.get("messages"):
+                    messages = item["messages"]
+                    item_data["messages"] = messages
+                    item_data["subject"] = item.get("subject", "")
+                    parts = []
+                    if item.get("subject"):
+                        parts.append(f"Betreff: {item['subject']}")
+                    for msg in messages:
+                        role = msg.get("role", "")
+                        content = msg.get("content", "")
+                        if role and content:
+                            parts.append(f"{role}: {content}")
+                        elif content:
+                            parts.append(content)
+                    text = "\n\n".join(parts)
                 custom_texts.append(text)
+                manual_structured_data.append(item_data)
             source_items = [None] * len(custom_texts)
             logger.debug("[BatchGen] Using %d manual items", len(custom_texts))
 
@@ -344,12 +370,18 @@ class BatchGenerationService:
         llm_models = config["llm_models"]
 
         # Build matrix (all combinations)
+        # Ensure manual_structured_data has entries for all items (empty for non-manual)
+        if not manual_structured_data:
+            manual_structured_data = [{"subject": "", "messages": []}] * len(custom_texts)
+
         for i, (item_id, custom_text) in enumerate(zip(source_items, custom_texts)):
+            structured = manual_structured_data[i] if i < len(manual_structured_data) else {}
             for prompt_cfg in prompts:
                 for model_name in llm_models:
                     matrix.append({
                         "source_item_id": item_id,
                         "custom_text": custom_text,
+                        "structured_data": structured,  # Include structured data
                         "prompt_config": prompt_cfg,
                         "llm_model_name": model_name,
                     })
@@ -402,6 +434,12 @@ class BatchGenerationService:
             variables = prompt_cfg.get("variables") or {}
             if entry.get("custom_text"):
                 variables["input"] = entry["custom_text"]
+            # Include structured data from manual items (subject, messages)
+            structured = entry.get("structured_data", {})
+            if structured.get("subject"):
+                variables["subject"] = structured["subject"]
+            if structured.get("messages"):
+                variables["messages"] = structured["messages"]
             if user_prompt:
                 variables["_user_prompt_id"] = template_id
 

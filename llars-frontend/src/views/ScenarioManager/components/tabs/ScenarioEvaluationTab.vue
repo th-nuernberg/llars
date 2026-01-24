@@ -103,6 +103,61 @@
         </div>
       </div>
 
+      <!-- Total Progress Section -->
+      <div class="total-progress-section">
+        <div class="progress-header">
+          <h4 class="subsection-title">
+            <LIcon size="18" class="mr-2">mdi-progress-check</LIcon>
+            {{ $t('scenarioManager.evaluation.totalProgress') }}
+          </h4>
+          <div class="progress-stats">
+            <span class="progress-count">{{ filteredProgress.completed }} / {{ filteredProgress.total }}</span>
+            <span class="progress-percent">{{ filteredProgress.percent }}%</span>
+          </div>
+        </div>
+
+        <!-- Main Progress Bar -->
+        <div class="progress-bar-container">
+          <div class="progress-bar-track">
+            <div
+              class="progress-bar-fill"
+              :style="{ width: filteredProgress.percent + '%' }"
+              :class="getProgressColorClass(filteredProgress.percent)"
+            ></div>
+          </div>
+        </div>
+
+        <!-- Progress Legend (when filter is "all") -->
+        <div class="progress-legend" v-if="evaluatorTypeFilter === 'all'">
+          <div class="legend-item human">
+            <LIcon size="14">mdi-account</LIcon>
+            <span class="legend-label">{{ $t('scenarioManager.evaluation.filter.human') }}</span>
+            <span class="legend-value">{{ filteredProgress.human.completed }}/{{ filteredProgress.human.total }}</span>
+            <span class="legend-percent">({{ filteredProgress.human.percent }}%)</span>
+          </div>
+          <div class="legend-item llm">
+            <LIcon size="14">mdi-robot</LIcon>
+            <span class="legend-label">{{ $t('scenarioManager.evaluation.filter.llm') }}</span>
+            <span class="legend-value">{{ filteredProgress.llm.completed }}/{{ filteredProgress.llm.total }}</span>
+            <span class="legend-percent">({{ filteredProgress.llm.percent }}%)</span>
+          </div>
+        </div>
+
+        <!-- Evaluator count info -->
+        <div class="evaluator-count-info">
+          <span v-if="evaluatorTypeFilter === 'all'">
+            {{ filteredProgress.human.count + filteredProgress.llm.count }} {{ $t('scenarioManager.evaluation.evaluators') }}
+            ({{ filteredProgress.human.count }} {{ $t('scenarioManager.evaluation.filter.human') }}, {{ filteredProgress.llm.count }} LLM)
+          </span>
+          <span v-else-if="evaluatorTypeFilter === 'human'">
+            {{ filteredProgress.human.count }} {{ $t('scenarioManager.evaluation.humanEvaluators') }}
+          </span>
+          <span v-else>
+            {{ filteredProgress.llm.count }} {{ $t('scenarioManager.evaluation.llmEvaluators') }}
+          </span>
+        </div>
+      </div>
+
       <!-- Agreement Metrics -->
       <div class="metrics-section" v-if="hasMetrics">
         <h4 class="subsection-title">
@@ -398,6 +453,107 @@
         />
       </div>
 
+      <!-- Ranking Bucket Distribution Chart -->
+      <div class="bucket-distribution-section" v-if="hasBucketDistribution">
+        <h4 class="subsection-title">
+          {{ $t('scenarioManager.results.bucketDistribution') }}
+          <LTooltip :text="$t('scenarioManager.tooltips.bucketDistribution')" location="top">
+            <v-icon size="16" class="help-icon">mdi-help-circle-outline</v-icon>
+          </LTooltip>
+        </h4>
+        <div class="bucket-chart">
+          <div
+            v-for="bucket in bucketDistribution"
+            :key="bucket.bucket"
+            class="bucket-bar-container"
+          >
+            <div class="bucket-label">{{ bucket.label }}</div>
+            <div class="bucket-bar-wrapper">
+              <div
+                class="bucket-bar-fill"
+                :style="{
+                  width: bucket.percentage + '%',
+                  backgroundColor: bucket.color
+                }"
+              >
+                <span class="bucket-bar-value" v-if="bucket.percentage > 15">{{ bucket.count }}</span>
+              </div>
+              <span class="bucket-bar-value outside" v-if="bucket.percentage <= 15">{{ bucket.count }}</span>
+            </div>
+            <div class="bucket-percentage">{{ bucket.percentage }}%</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Ranking Agreement Matrix -->
+      <div class="ranking-agreement-section" v-if="hasRankingAgreement">
+        <h4 class="subsection-title">
+          {{ $t('scenarioManager.results.rankingAgreement') }}
+          <LTooltip :text="$t('scenarioManager.tooltips.rankingAgreement')" location="top">
+            <v-icon size="16" class="help-icon">mdi-help-circle-outline</v-icon>
+          </LTooltip>
+        </h4>
+        <div class="ranking-agreement-matrix">
+          <!-- Header row -->
+          <div class="matrix-row header-row">
+            <div class="matrix-cell corner-cell"></div>
+            <div
+              v-for="evaluator in rankingAgreement.evaluators"
+              :key="'header-' + evaluator.id"
+              class="matrix-cell header-cell"
+            >
+              <LTooltip :text="evaluator.name" location="top">
+                <span class="evaluator-name">{{ getShortEvaluatorName(evaluator) }}</span>
+              </LTooltip>
+              <LIcon v-if="evaluator.isLLM" size="12" color="#c4a0d4" class="llm-badge">mdi-robot</LIcon>
+            </div>
+          </div>
+
+          <!-- Data rows -->
+          <div
+            v-for="(rowEvaluator, rowIndex) in rankingAgreement.evaluators"
+            :key="'row-' + rowEvaluator.id"
+            class="matrix-row"
+          >
+            <div class="matrix-cell row-header-cell">
+              <LTooltip :text="rowEvaluator.name" location="left">
+                <span class="evaluator-name">{{ getShortEvaluatorName(rowEvaluator) }}</span>
+              </LTooltip>
+              <LIcon v-if="rowEvaluator.isLLM" size="12" color="#c4a0d4" class="llm-badge">mdi-robot</LIcon>
+            </div>
+            <div
+              v-for="(colEvaluator, colIndex) in rankingAgreement.evaluators"
+              :key="'cell-' + rowEvaluator.id + '-' + colEvaluator.id"
+              class="matrix-cell data-cell"
+              :class="{
+                'diagonal-cell': rowIndex === colIndex,
+                'above-diagonal': rowIndex < colIndex,
+                'below-diagonal': rowIndex > colIndex
+              }"
+              :style="getCellStyle(rowEvaluator.id, colEvaluator.id, rowIndex, colIndex)"
+            >
+              <span v-if="rowIndex === colIndex">-</span>
+              <span v-else-if="rowIndex < colIndex">
+                {{ getRankingAgreementValue(rowEvaluator.id, colEvaluator.id) }}
+              </span>
+              <span v-else class="mirror-value">
+                {{ getRankingAgreementValue(colEvaluator.id, rowEvaluator.id) }}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Agreement Legend -->
+        <div class="agreement-legend">
+          <div class="legend-gradient">
+            <span class="legend-min">0%</span>
+            <div class="gradient-bar"></div>
+            <span class="legend-max">100%</span>
+          </div>
+          <span class="legend-label">{{ $t('scenarioManager.results.agreementLevel') }}</span>
+        </div>
+      </div>
+
       <!-- Distribution Chart -->
       <div class="distribution-section" v-if="filteredDistributionData.length > 0">
         <h4 class="subsection-title">{{ $t('scenarioManager.results.distribution') }}</h4>
@@ -429,107 +585,27 @@
       <div class="debug-panel">
         <div><strong>DEBUG Dimensions:</strong></div>
         <div>dimensions.length: {{ dimensions.length }}</div>
-        <div>dimensions IDs: {{ dimensions.map(d => d.id) }}</div>
-        <div>hasDimensionDistribution: {{ hasDimensionDistribution }}</div>
-        <div>hasDimensionAverages: {{ hasDimensionAverages }}</div>
-        <div style="margin-top: 8px;"><strong>Selection:</strong></div>
+        <div>evaluatorTypeFilter: {{ evaluatorTypeFilter }}</div>
+        <div style="margin-top: 8px;"><strong>Selected Dimension Data:</strong></div>
         <div>selectedDimension: "{{ selectedDimension }}"</div>
-        <div>currentDimensionScale: {{ JSON.stringify(currentDimensionScale) }}</div>
-        <div style="margin-top: 8px;"><strong>Data:</strong></div>
-        <div>dimensionDistributionMap keys: {{ Object.keys(dimensionDistributionMap) }}</div>
-        <div>currentDimensionDistribution: {{ currentDimensionDistribution ? 'HAS DATA (' + currentDimensionDistribution.length + ' items)' : 'NULL' }}</div>
-        <div style="margin-top: 8px;"><strong>Raw liveStats:</strong></div>
-        <div>ratingDistribution: {{ ratingDistributionDebug }}</div>
-        <div>by_dimension count: {{ byDimensionDebugCount }}</div>
-        <div>by_dimension IDs: {{ byDimensionDebugIds }}</div>
+        <div>currentDimensionDistribution: {{ currentDimensionDistribution ? currentDimensionDistribution.length + ' items' : 'NULL' }}</div>
+        <div style="margin-top: 8px;"><strong>Per-Dimension Breakdown:</strong></div>
+        <div v-for="dimId in Object.keys(dimensionDistributionMap)" :key="dimId" style="margin-left: 8px;">
+          <strong>{{ dimId }}:</strong>
+          all={{ dimensionDistributionMap[dimId]?.all?.length || 0 }},
+          humans={{ dimensionDistributionMap[dimId]?.humans?.length || 0 }},
+          llms={{ dimensionDistributionMap[dimId]?.llms?.length || 0 }}
+        </div>
+        <div style="margin-top: 8px;"><strong>Human Avg per Dim:</strong></div>
+        <div v-for="dim in dimensions" :key="'avg-' + dim.id" style="margin-left: 8px;">
+          {{ dim.id }}: human={{ getDimensionAverage('human', dim.id)?.toFixed(2) || 'null' }}, llm={{ getDimensionAverage('llm', dim.id)?.toFixed(2) || 'null' }}
+        </div>
       </div>
 
-      <!-- Dimension Visualizations Grid (Heatmap + Spider Chart side by side) -->
+      <!-- ROW 1: Spider Chart + Heatmap -->
       <div class="dimension-visualizations-grid" v-if="hasDimensionDistribution || hasDimensionAverages">
-        <!-- Per-Dimension Distribution (Heatmap) -->
-        <div class="visualization-panel" v-if="hasDimensionDistribution">
-          <!-- DEBUG: Panel is rendering -->
-          <div class="debug-indicator">PANEL 1: Verteilung (dist.length={{ currentDimensionDistribution?.length ?? 'null' }})</div>
-          <h4 class="subsection-title">
-            {{ $t('scenarioManager.results.dimensionDistribution') }}
-            <LTooltip :text="$t('scenarioManager.tooltips.dimensionDistribution')" location="top">
-              <v-icon size="16" class="help-icon">mdi-help-circle-outline</v-icon>
-            </LTooltip>
-          </h4>
-
-          <!-- Dimension Selector -->
-          <div class="dimension-selector" v-if="dimensionOptions.length > 1">
-            <v-select
-              v-model="selectedDimension"
-              :items="dimensionOptions"
-              item-title="name"
-              item-value="id"
-              density="compact"
-              variant="outlined"
-              hide-details
-              class="dimension-select"
-            />
-          </div>
-
-          <!-- Dimension Heatmap -->
-          <div class="heatmap-container" v-if="currentDimensionDistribution && currentDimensionDistribution.length > 0">
-            <div class="heatmap-header">
-              <span class="heatmap-label">{{ selectedDimensionName }}</span>
-              <span class="heatmap-scale" v-if="currentDimensionScale">
-                {{ $t('scenarioManager.results.scale') }}: {{ currentDimensionScale.min }} - {{ currentDimensionScale.max }}
-              </span>
-            </div>
-            <div class="heatmap-grid">
-              <div
-                v-for="(item, index) in currentDimensionDistribution"
-                :key="item.value"
-                class="heatmap-cell"
-                :style="{ backgroundColor: getHeatmapColor(item.percentage) }"
-              >
-                <span class="heatmap-value">{{ item.value }}</span>
-                <span class="heatmap-count">{{ item.count }}</span>
-                <span class="heatmap-percent">{{ item.percentage }}%</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- Empty State Heatmap -->
-          <div class="heatmap-container empty-heatmap" v-else-if="selectedDimension && currentDimensionScale">
-            <div class="heatmap-header">
-              <span class="heatmap-label">{{ selectedDimensionName }}</span>
-              <span class="heatmap-scale">
-                {{ $t('scenarioManager.results.scale') }}: {{ currentDimensionScale.min }} - {{ currentDimensionScale.max }}
-              </span>
-            </div>
-            <div class="heatmap-grid">
-              <div
-                v-for="value in getScaleValues(currentDimensionScale)"
-                :key="value"
-                class="heatmap-cell empty-cell"
-              >
-                <span class="heatmap-value">{{ value }}</span>
-                <span class="heatmap-count">0</span>
-                <span class="heatmap-percent">-</span>
-              </div>
-            </div>
-            <p class="no-data-hint">{{ $t('scenarioManager.evaluation.noRatingsYet') }}</p>
-          </div>
-
-          <!-- Debug: No dimension selected -->
-          <div v-else class="no-data-panel">
-            <p class="text-medium-emphasis">
-              No dimension data available.
-              Selected: {{ selectedDimension || 'none' }},
-              Scale: {{ currentDimensionScale ? 'OK' : 'missing' }},
-              MapKeys: {{ Object.keys(dimensionDistributionMap).join(', ') || 'empty' }}
-            </p>
-          </div>
-        </div>
-
-        <!-- Dimension Comparison (Spider/Bar Chart) -->
+        <!-- Spider Chart (Left) -->
         <div class="visualization-panel" v-if="hasDimensionAverages && dimensions.length >= 1">
-          <!-- DEBUG: Panel is rendering -->
-          <div class="debug-indicator">PANEL 2: Vergleich (dims={{ dimensions.length }}, spider={{ dimensions.length > 2 }})</div>
           <h4 class="subsection-title">
             {{ $t('scenarioManager.results.dimensionComparison') }}
             <LTooltip :text="$t('scenarioManager.tooltips.spiderChart')" location="top">
@@ -567,11 +643,11 @@
             </div>
             <div class="bar-chart-legend">
               <div class="legend-item" v-if="evaluatorTypeFilter !== 'llm'">
-                <span class="legend-color" style="background-color: #88c4c8;"></span>
+                <span class="legend-color human-color"></span>
                 <span>{{ $t('scenarioManager.evaluation.filter.human') }}</span>
               </div>
               <div class="legend-item" v-if="evaluatorTypeFilter !== 'human'">
-                <span class="legend-color" style="background-color: #c4a0d4;"></span>
+                <span class="legend-color llm-color"></span>
                 <span>{{ $t('scenarioManager.evaluation.filter.llm') }}</span>
               </div>
             </div>
@@ -676,120 +752,214 @@
 
             <div class="spider-legend">
               <div class="legend-item" v-if="evaluatorTypeFilter !== 'llm'">
-                <span class="legend-color" style="background-color: #88c4c8;"></span>
+                <span class="legend-color human-color"></span>
                 <span>{{ $t('scenarioManager.evaluation.filter.human') }}</span>
               </div>
               <div class="legend-item" v-if="evaluatorTypeFilter !== 'human'">
-                <span class="legend-color" style="background-color: #c4a0d4;"></span>
+                <span class="legend-color llm-color"></span>
                 <span>{{ $t('scenarioManager.evaluation.filter.llm') }}</span>
               </div>
             </div>
           </div>
         </div>
-      </div>
 
-      <!-- Dimension Averages Table (full width below) -->
-      <div class="dimension-averages-section" v-if="hasDimensionAverages && dimensions.length >= 1">
-        <div class="dimension-averages-table">
-          <table>
-            <thead>
-              <tr>
-                <th>{{ $t('scenarioManager.results.dimension') }}</th>
-                <th v-if="evaluatorTypeFilter !== 'llm'">{{ $t('scenarioManager.evaluation.filter.human') }}</th>
-                <th v-if="evaluatorTypeFilter !== 'human'">{{ $t('scenarioManager.evaluation.filter.llm') }}</th>
-                <th v-if="evaluatorTypeFilter === 'all'">{{ $t('scenarioManager.results.difference') }}</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="dim in dimensions" :key="dim.id">
-                <td>{{ dim.name || dim.id }}</td>
-                <td v-if="evaluatorTypeFilter !== 'llm'">
-                  {{ getDimensionAverage('human', dim.id)?.toFixed(2) || '-' }}
-                </td>
-                <td v-if="evaluatorTypeFilter !== 'human'">
-                  {{ getDimensionAverage('llm', dim.id)?.toFixed(2) || '-' }}
-                </td>
-                <td v-if="evaluatorTypeFilter === 'all'" :class="getDifferenceClass(dim.id)">
-                  {{ getDimensionDifference(dim.id) }}
-                </td>
-              </tr>
-            </tbody>
-          </table>
+        <!-- Inter-Rater Agreement Heatmap (Right, centered) -->
+        <div class="visualization-panel heatmap-panel" v-if="hasPairwiseAgreement">
+          <h4 class="subsection-title">
+            {{ $t('scenarioManager.results.interRaterAgreement') }}
+            <LTooltip :text="$t('scenarioManager.tooltips.interRaterAgreement')" location="top">
+              <v-icon size="16" class="help-icon">mdi-help-circle-outline</v-icon>
+            </LTooltip>
+          </h4>
+
+          <div class="agreement-heatmap-container">
+            <!-- Heatmap Matrix -->
+            <div class="heatmap-matrix">
+              <!-- Header row -->
+              <div class="heatmap-row header-row">
+                <div class="heatmap-cell corner-cell"></div>
+                <div
+                  v-for="evaluator in pairwiseEvaluators"
+                  :key="'header-' + evaluator.id"
+                  class="heatmap-cell header-cell"
+                  :class="{ 'is-llm': evaluator.isLLM }"
+                >
+                  <span class="evaluator-name-short" :title="evaluator.name">
+                    {{ getShortName(evaluator.name) }}
+                  </span>
+                  <LIcon v-if="evaluator.isLLM" size="12" class="llm-icon">mdi-robot</LIcon>
+                </div>
+              </div>
+
+              <!-- Data rows -->
+              <div
+                v-for="(rowEval, rowIndex) in pairwiseEvaluators"
+                :key="'row-' + rowEval.id"
+                class="heatmap-row"
+              >
+                <div class="heatmap-cell row-label" :class="{ 'is-llm': rowEval.isLLM }">
+                  <span class="evaluator-name-short" :title="rowEval.name">
+                    {{ getShortName(rowEval.name) }}
+                  </span>
+                  <LIcon v-if="rowEval.isLLM" size="12" class="llm-icon">mdi-robot</LIcon>
+                </div>
+                <div
+                  v-for="(colEval, colIndex) in pairwiseEvaluators"
+                  :key="'cell-' + rowEval.id + '-' + colEval.id"
+                  class="heatmap-cell data-cell"
+                  :class="{ 'clickable': rowIndex !== colIndex }"
+                  :style="{ backgroundColor: getAgreementColor(rowEval.id, colEval.id, rowIndex, colIndex) }"
+                  :title="getAgreementTooltip(rowEval, colEval, rowIndex, colIndex)"
+                  @click="rowIndex !== colIndex && openAgreementDetail(rowEval, colEval)"
+                >
+                  <span v-if="rowIndex !== colIndex" class="agreement-value">
+                    {{ getAgreementValue(rowEval.id, colEval.id) }}
+                  </span>
+                  <span v-else class="diagonal-indicator">-</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Legend -->
+            <div class="heatmap-legend">
+              <span class="legend-label">{{ $t('scenarioManager.results.lowAgreement') }}</span>
+              <div class="legend-gradient"></div>
+              <span class="legend-label">{{ $t('scenarioManager.results.highAgreement') }}</span>
+            </div>
+
+            <!-- Legend for evaluator types -->
+            <div class="evaluator-type-legend">
+              <div class="legend-item">
+                <LIcon size="14">mdi-account</LIcon>
+                <span>{{ $t('scenarioManager.evaluation.filter.human') }}</span>
+              </div>
+              <div class="legend-item">
+                <LIcon size="14">mdi-robot</LIcon>
+                <span>{{ $t('scenarioManager.evaluation.filter.llm') }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Empty placeholder if no agreement data -->
+        <div class="visualization-panel heatmap-panel empty-panel" v-else>
+          <h4 class="subsection-title">
+            {{ $t('scenarioManager.results.interRaterAgreement') }}
+          </h4>
+          <div class="no-data-panel">
+            <LIcon size="32" color="grey-lighten-1">mdi-chart-box-outline</LIcon>
+            <p class="text-medium-emphasis">{{ $t('scenarioManager.evaluation.noResultsYet') }}</p>
+          </div>
         </div>
       </div>
 
-      <!-- Inter-Rater Agreement Heatmap -->
-      <div class="agreement-heatmap-section" v-if="hasPairwiseAgreement">
-        <h4 class="subsection-title">
-          {{ $t('scenarioManager.results.interRaterAgreement') }}
-          <LTooltip :text="$t('scenarioManager.tooltips.interRaterAgreement')" location="top">
-            <v-icon size="16" class="help-icon">mdi-help-circle-outline</v-icon>
-          </LTooltip>
-        </h4>
+      <!-- ROW 2: Distribution + Differences Table -->
+      <div class="dimension-details-grid" v-if="hasDimensionDistribution || (hasDimensionAverages && dimensions.length >= 1)">
+        <!-- Per-Dimension Distribution (Left) -->
+        <div class="visualization-panel" v-if="hasDimensionDistribution">
+          <h4 class="subsection-title">
+            {{ $t('scenarioManager.results.dimensionDistribution') }}
+            <LTooltip :text="$t('scenarioManager.tooltips.dimensionDistribution')" location="top">
+              <v-icon size="16" class="help-icon">mdi-help-circle-outline</v-icon>
+            </LTooltip>
+          </h4>
 
-        <div class="agreement-heatmap-container">
-          <!-- Heatmap Matrix -->
-          <div class="heatmap-matrix">
-            <!-- Header row -->
-            <div class="heatmap-row header-row">
-              <div class="heatmap-cell corner-cell"></div>
-              <div
-                v-for="evaluator in pairwiseEvaluators"
-                :key="'header-' + evaluator.id"
-                class="heatmap-cell header-cell"
-                :class="{ 'is-llm': evaluator.isLLM }"
-              >
-                <span class="evaluator-name-short" :title="evaluator.name">
-                  {{ getShortName(evaluator.name) }}
-                </span>
-                <LIcon v-if="evaluator.isLLM" size="12" class="llm-icon">mdi-robot</LIcon>
-              </div>
-            </div>
-
-            <!-- Data rows -->
-            <div
-              v-for="(rowEval, rowIndex) in pairwiseEvaluators"
-              :key="'row-' + rowEval.id"
-              class="heatmap-row"
-            >
-              <div class="heatmap-cell row-label" :class="{ 'is-llm': rowEval.isLLM }">
-                <span class="evaluator-name-short" :title="rowEval.name">
-                  {{ getShortName(rowEval.name) }}
-                </span>
-                <LIcon v-if="rowEval.isLLM" size="12" class="llm-icon">mdi-robot</LIcon>
-              </div>
-              <div
-                v-for="(colEval, colIndex) in pairwiseEvaluators"
-                :key="'cell-' + rowEval.id + '-' + colEval.id"
-                class="heatmap-cell data-cell"
-                :style="{ backgroundColor: getAgreementColor(rowEval.id, colEval.id, rowIndex, colIndex) }"
-                :title="getAgreementTooltip(rowEval, colEval, rowIndex, colIndex)"
-              >
-                <span v-if="rowIndex !== colIndex" class="agreement-value">
-                  {{ getAgreementValue(rowEval.id, colEval.id) }}
-                </span>
-                <span v-else class="diagonal-indicator">-</span>
-              </div>
-            </div>
+          <!-- Dimension Selector -->
+          <div class="dimension-selector" v-if="dimensionOptions.length > 1">
+            <v-select
+              v-model="selectedDimension"
+              :items="dimensionOptions"
+              item-title="name"
+              item-value="id"
+              density="compact"
+              variant="outlined"
+              hide-details
+              class="dimension-select"
+            />
           </div>
 
-          <!-- Legend -->
-          <div class="heatmap-legend">
-            <span class="legend-label">{{ $t('scenarioManager.results.lowAgreement') }}</span>
-            <div class="legend-gradient"></div>
-            <span class="legend-label">{{ $t('scenarioManager.results.highAgreement') }}</span>
-          </div>
+          <!-- Dimension Heatmap -->
+          <div class="heatmap-wrapper">
+            <div class="heatmap-container" v-if="currentDimensionDistribution && currentDimensionDistribution.length > 0">
+              <div class="heatmap-header">
+                <span class="heatmap-label">{{ selectedDimensionName }}</span>
+                <span class="heatmap-scale" v-if="currentDimensionScale">
+                  {{ $t('scenarioManager.results.scale') }}: {{ currentDimensionScale.min }} - {{ currentDimensionScale.max }}
+                </span>
+              </div>
+              <div class="heatmap-grid">
+                <div
+                  v-for="(item, index) in currentDimensionDistribution"
+                  :key="item.value"
+                  class="heatmap-cell"
+                  :style="{ backgroundColor: getHeatmapColor(item.percentage) }"
+                >
+                  <span class="heatmap-value">{{ item.value }}</span>
+                  <span class="heatmap-count">{{ item.count }}</span>
+                  <span class="heatmap-percent">{{ item.percentage }}%</span>
+                </div>
+              </div>
+            </div>
 
-          <!-- Legend for evaluator types -->
-          <div class="evaluator-type-legend">
-            <div class="legend-item">
-              <LIcon size="14">mdi-account</LIcon>
-              <span>{{ $t('scenarioManager.evaluation.filter.human') }}</span>
+            <!-- Empty State Heatmap -->
+            <div class="heatmap-container empty-heatmap" v-else-if="selectedDimension && currentDimensionScale">
+              <div class="heatmap-header">
+                <span class="heatmap-label">{{ selectedDimensionName }}</span>
+                <span class="heatmap-scale">
+                  {{ $t('scenarioManager.results.scale') }}: {{ currentDimensionScale.min }} - {{ currentDimensionScale.max }}
+                </span>
+              </div>
+              <div class="heatmap-grid">
+                <div
+                  v-for="value in getScaleValues(currentDimensionScale)"
+                  :key="value"
+                  class="heatmap-cell empty-cell"
+                >
+                  <span class="heatmap-value">{{ value }}</span>
+                  <span class="heatmap-count">0</span>
+                  <span class="heatmap-percent">-</span>
+                </div>
+              </div>
+              <p class="no-data-hint">{{ $t('scenarioManager.evaluation.noRatingsYet') }}</p>
             </div>
-            <div class="legend-item">
-              <LIcon size="14">mdi-robot</LIcon>
-              <span>{{ $t('scenarioManager.evaluation.filter.llm') }}</span>
+
+            <!-- No dimension selected -->
+            <div v-else class="no-data-panel">
+              <p class="text-medium-emphasis">{{ $t('scenarioManager.evaluation.noRatingsYet') }}</p>
             </div>
+          </div>
+        </div>
+
+        <!-- Differences Table (Right) -->
+        <div class="visualization-panel" v-if="hasDimensionAverages && dimensions.length >= 1">
+          <h4 class="subsection-title">
+            {{ $t('scenarioManager.results.dimension') }} {{ $t('scenarioManager.results.difference') }}
+          </h4>
+          <div class="dimension-averages-table">
+            <table>
+              <thead>
+                <tr>
+                  <th>{{ $t('scenarioManager.results.dimension') }}</th>
+                  <th v-if="evaluatorTypeFilter !== 'llm'">{{ $t('scenarioManager.evaluation.filter.human') }}</th>
+                  <th v-if="evaluatorTypeFilter !== 'human'">{{ $t('scenarioManager.evaluation.filter.llm') }}</th>
+                  <th v-if="evaluatorTypeFilter === 'all'">{{ $t('scenarioManager.results.difference') }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="dim in dimensions" :key="dim.id">
+                  <td>{{ dim.name || dim.id }}</td>
+                  <td v-if="evaluatorTypeFilter !== 'llm'">
+                    {{ getDimensionAverage('human', dim.id)?.toFixed(2) || '-' }}
+                  </td>
+                  <td v-if="evaluatorTypeFilter !== 'human'">
+                    {{ getDimensionAverage('llm', dim.id)?.toFixed(2) || '-' }}
+                  </td>
+                  <td v-if="evaluatorTypeFilter === 'all'" :class="getDifferenceClass(dim.id)">
+                    {{ getDimensionDifference(dim.id) }}
+                  </td>
+              </tr>
+            </tbody>
+          </table>
           </div>
         </div>
       </div>
@@ -820,6 +990,109 @@
             {{ $t('common.delete') }}
           </LBtn>
         </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- Agreement Detail Dialog -->
+    <v-dialog v-model="showAgreementDialog" max-width="500">
+      <v-card class="agreement-detail-card">
+        <v-card-title class="d-flex align-center justify-space-between">
+          <div class="d-flex align-center">
+            <LIcon color="primary" class="mr-2">mdi-handshake</LIcon>
+            {{ $t('scenarioManager.results.agreementDetail') }}
+          </div>
+          <v-btn icon variant="text" size="small" @click="showAgreementDialog = false">
+            <LIcon>mdi-close</LIcon>
+          </v-btn>
+        </v-card-title>
+
+        <v-card-text v-if="selectedAgreement">
+          <!-- Evaluator Comparison Header -->
+          <div class="agreement-comparison">
+            <!-- Evaluator 1 -->
+            <div class="evaluator-info" :class="{ 'is-llm': selectedAgreement.eval1?.isLLM }">
+              <div class="evaluator-avatar">
+                <LIcon :color="selectedAgreement.eval1?.isLLM ? '#c4a0d4' : '#88c4c8'" size="24">
+                  {{ selectedAgreement.eval1?.isLLM ? 'mdi-robot' : 'mdi-account' }}
+                </LIcon>
+              </div>
+              <div class="evaluator-details">
+                <span class="evaluator-name">{{ selectedAgreement.eval1?.name }}</span>
+                <span class="evaluator-type">
+                  {{ selectedAgreement.eval1?.isLLM ? $t('scenarioManager.evaluation.filter.llm') : $t('scenarioManager.evaluation.filter.human') }}
+                </span>
+              </div>
+            </div>
+
+            <!-- VS Indicator -->
+            <div class="vs-indicator">
+              <span>vs</span>
+            </div>
+
+            <!-- Evaluator 2 -->
+            <div class="evaluator-info" :class="{ 'is-llm': selectedAgreement.eval2?.isLLM }">
+              <div class="evaluator-avatar">
+                <LIcon :color="selectedAgreement.eval2?.isLLM ? '#c4a0d4' : '#88c4c8'" size="24">
+                  {{ selectedAgreement.eval2?.isLLM ? 'mdi-robot' : 'mdi-account' }}
+                </LIcon>
+              </div>
+              <div class="evaluator-details">
+                <span class="evaluator-name">{{ selectedAgreement.eval2?.name }}</span>
+                <span class="evaluator-type">
+                  {{ selectedAgreement.eval2?.isLLM ? $t('scenarioManager.evaluation.filter.llm') : $t('scenarioManager.evaluation.filter.human') }}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Agreement Score -->
+          <div class="agreement-score-section">
+            <div class="score-circle" :style="{ borderColor: getAgreementScoreColor(selectedAgreement.value) }">
+              <span class="score-value">{{ selectedAgreement.percentage }}%</span>
+              <span class="score-label">{{ $t('scenarioManager.results.agreement') }}</span>
+            </div>
+          </div>
+
+          <!-- Agreement Interpretation -->
+          <div class="agreement-interpretation">
+            <div class="interpretation-badge" :class="getAgreementLevelClass(selectedAgreement.value)">
+              <LIcon size="16">{{ getAgreementLevelIcon(selectedAgreement.value) }}</LIcon>
+              <span>{{ getAgreementLevelText(selectedAgreement.value) }}</span>
+            </div>
+          </div>
+
+          <!-- Details Grid -->
+          <div class="agreement-details-grid">
+            <div class="detail-item">
+              <span class="detail-label">{{ $t('scenarioManager.results.comparisonType') }}</span>
+              <span class="detail-value">
+                <template v-if="selectedAgreement.eval1?.isLLM && selectedAgreement.eval2?.isLLM">
+                  <LIcon size="14" class="mr-1">mdi-robot</LIcon>
+                  LLM vs LLM
+                </template>
+                <template v-else-if="!selectedAgreement.eval1?.isLLM && !selectedAgreement.eval2?.isLLM">
+                  <LIcon size="14" class="mr-1">mdi-account-multiple</LIcon>
+                  {{ $t('scenarioManager.evaluation.filter.human') }} vs {{ $t('scenarioManager.evaluation.filter.human') }}
+                </template>
+                <template v-else>
+                  <LIcon size="14" class="mr-1">mdi-account-supervisor</LIcon>
+                  {{ $t('scenarioManager.evaluation.filter.human') }} vs LLM
+                </template>
+              </span>
+            </div>
+
+            <div class="detail-item">
+              <span class="detail-label">{{ $t('scenarioManager.results.rawScore') }}</span>
+              <span class="detail-value">{{ selectedAgreement.value?.toFixed(4) || '-' }}</span>
+            </div>
+          </div>
+
+          <!-- Explanation -->
+          <div class="agreement-explanation">
+            <LIcon size="16" class="mr-2">mdi-information-outline</LIcon>
+            <span>{{ getAgreementExplanation(selectedAgreement.value) }}</span>
+          </div>
+        </v-card-text>
       </v-card>
     </v-dialog>
   </div>
@@ -880,6 +1153,10 @@ const removingEvaluator = ref(false)
 const selectedMatrixEvaluator = ref('all')
 const evaluatorTypeFilter = ref('all')
 const selectedDimension = ref(null)
+
+// Agreement detail dialog state
+const showAgreementDialog = ref(false)
+const selectedAgreement = ref(null)
 
 // Spider chart constants
 const spiderSize = 300
@@ -961,6 +1238,53 @@ const summaryStats = computed(() => {
     humanEvaluators: humanCount || props.scenario?.user_count || 0,
     llmEvaluators: llmCount || props.scenario?.llm_evaluator_count || 0,
     agreementRate: liveAgreementMetrics.value?.accuracy || avgAccuracy || 0
+  }
+})
+
+// ===== Computed: Filtered Progress =====
+
+const filteredProgress = computed(() => {
+  const users = evaluatorStatsList.value
+
+  // Filter users based on evaluatorTypeFilter
+  let filteredUsers = users
+  if (evaluatorTypeFilter.value === 'human') {
+    filteredUsers = users.filter(u => !u.isLLM)
+  } else if (evaluatorTypeFilter.value === 'llm') {
+    filteredUsers = users.filter(u => u.isLLM)
+  }
+
+  // Calculate totals
+  const completed = filteredUsers.reduce((sum, u) => sum + (u.completed || 0), 0)
+  const total = filteredUsers.reduce((sum, u) => sum + (u.total || 0), 0)
+  const percent = total > 0 ? Math.round((completed / total) * 100) : 0
+
+  // Calculate per-type progress for the legend
+  const humanUsers = users.filter(u => !u.isLLM)
+  const llmUsers = users.filter(u => u.isLLM)
+
+  const humanCompleted = humanUsers.reduce((sum, u) => sum + (u.completed || 0), 0)
+  const humanTotal = humanUsers.reduce((sum, u) => sum + (u.total || 0), 0)
+  const llmCompleted = llmUsers.reduce((sum, u) => sum + (u.completed || 0), 0)
+  const llmTotal = llmUsers.reduce((sum, u) => sum + (u.total || 0), 0)
+
+  return {
+    completed,
+    total,
+    percent,
+    evaluatorCount: filteredUsers.length,
+    human: {
+      completed: humanCompleted,
+      total: humanTotal,
+      percent: humanTotal > 0 ? Math.round((humanCompleted / humanTotal) * 100) : 0,
+      count: humanUsers.length
+    },
+    llm: {
+      completed: llmCompleted,
+      total: llmTotal,
+      percent: llmTotal > 0 ? Math.round((llmCompleted / llmTotal) * 100) : 0,
+      count: llmUsers.length
+    }
   }
 })
 
@@ -1238,6 +1562,28 @@ const filteredDistributionData = computed(() => {
   return distributionData.value
 })
 
+// ===== Computed: Ranking Bucket Distribution =====
+
+const bucketDistribution = computed(() => {
+  return props.liveStats?.bucket_distribution || []
+})
+
+const hasBucketDistribution = computed(() => {
+  return isRankingScenario.value && bucketDistribution.value.length > 0
+})
+
+// ===== Computed: Ranking Agreement Matrix =====
+
+const rankingAgreement = computed(() => {
+  return props.liveStats?.ranking_agreement || { evaluators: [], agreements: {} }
+})
+
+const hasRankingAgreement = computed(() => {
+  return isRankingScenario.value &&
+    rankingAgreement.value.evaluators?.length >= 2 &&
+    Object.keys(rankingAgreement.value.agreements || {}).length > 0
+})
+
 // ===== Computed: Dimensions =====
 
 const dimensions = computed(() => {
@@ -1443,6 +1789,47 @@ function getScaleValues(scale) {
   return values
 }
 
+// ===== Ranking Agreement Helpers =====
+
+function getShortEvaluatorName(evaluator) {
+  const name = evaluator.name || evaluator.id
+  if (evaluator.isLLM) {
+    // For LLM models, show last part of model ID
+    const parts = String(name).split('/')
+    return parts[parts.length - 1].substring(0, 12)
+  }
+  // For humans, truncate to 8 chars
+  return String(name).substring(0, 8)
+}
+
+function getRankingAgreementValue(id1, id2) {
+  const agreements = rankingAgreement.value.agreements || {}
+  // Keys are formatted as "min-max"
+  const key1 = `${id1}-${id2}`
+  const key2 = `${id2}-${id1}`
+  const value = agreements[key1] ?? agreements[key2]
+  if (value === null || value === undefined) return '-'
+  return Math.round(value * 100) + '%'
+}
+
+function getCellStyle(id1, id2, rowIndex, colIndex) {
+  if (rowIndex === colIndex) {
+    return { backgroundColor: 'rgba(var(--v-theme-surface), 0.5)' }
+  }
+  const agreements = rankingAgreement.value.agreements || {}
+  const key1 = `${id1}-${id2}`
+  const key2 = `${id2}-${id1}`
+  const value = agreements[key1] ?? agreements[key2]
+  if (value === null || value === undefined) {
+    return { backgroundColor: 'rgba(var(--v-theme-on-surface), 0.05)' }
+  }
+  // Color from red (0%) to green (100%)
+  const hue = value * 120 // 0 = red, 120 = green
+  return {
+    backgroundColor: `hsla(${hue}, 70%, 85%, 0.6)`
+  }
+}
+
 // ===== Spider Chart Helpers =====
 
 function getSpiderPoint(index, value) {
@@ -1636,6 +2023,77 @@ function getShortName(name) {
     return name.substring(0, 7) + '...'
   }
   return name
+}
+
+// ===== Agreement Detail Dialog =====
+
+function openAgreementDetail(eval1, eval2) {
+  const key = getAgreementKey(eval1.id, eval2.id)
+  const value = pairwiseAgreements.value[key]
+
+  selectedAgreement.value = {
+    eval1: eval1,
+    eval2: eval2,
+    value: value,
+    percentage: value !== undefined && value !== null ? Math.round(value * 100) : null
+  }
+  showAgreementDialog.value = true
+}
+
+function getAgreementScoreColor(value) {
+  if (value === undefined || value === null) return 'rgba(var(--v-theme-on-surface), 0.3)'
+  if (value >= 0.8) return '#62c88c'  // High - green
+  if (value >= 0.6) return '#98d4bb'  // Good - light green
+  if (value >= 0.4) return '#e8c864'  // Moderate - yellow
+  return '#e8a087'  // Low - red/orange
+}
+
+function getAgreementLevelClass(value) {
+  if (value === undefined || value === null) return 'level-unknown'
+  if (value >= 0.8) return 'level-excellent'
+  if (value >= 0.6) return 'level-good'
+  if (value >= 0.4) return 'level-moderate'
+  return 'level-low'
+}
+
+function getAgreementLevelIcon(value) {
+  if (value === undefined || value === null) return 'mdi-help-circle'
+  if (value >= 0.8) return 'mdi-check-circle'
+  if (value >= 0.6) return 'mdi-check'
+  if (value >= 0.4) return 'mdi-alert-circle'
+  return 'mdi-close-circle'
+}
+
+function getAgreementLevelText(value) {
+  if (value === undefined || value === null) return t('scenarioManager.results.agreementLevels.unknown')
+  if (value >= 0.8) return t('scenarioManager.results.agreementLevels.excellent')
+  if (value >= 0.6) return t('scenarioManager.results.agreementLevels.good')
+  if (value >= 0.4) return t('scenarioManager.results.agreementLevels.moderate')
+  return t('scenarioManager.results.agreementLevels.low')
+}
+
+function getProgressColorClass(percent) {
+  if (percent >= 100) return 'progress-complete'
+  if (percent >= 75) return 'progress-high'
+  if (percent >= 50) return 'progress-medium'
+  if (percent >= 25) return 'progress-low'
+  return 'progress-start'
+}
+
+function getAgreementExplanation(value) {
+  if (value === undefined || value === null) {
+    return t('scenarioManager.results.agreementExplanation.noData')
+  }
+  if (value >= 0.8) {
+    return t('scenarioManager.results.agreementExplanation.excellent')
+  }
+  if (value >= 0.6) {
+    return t('scenarioManager.results.agreementExplanation.good')
+  }
+  if (value >= 0.4) {
+    return t('scenarioManager.results.agreementExplanation.moderate')
+  }
+  return t('scenarioManager.results.agreementExplanation.low')
 }
 
 function formatLabel(label) {
@@ -2091,6 +2549,119 @@ watch(
   gap: 8px;
 }
 
+/* Total Progress Section */
+.total-progress-section {
+  padding: 16px 20px;
+  background-color: rgba(var(--v-theme-on-surface), 0.02);
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.06);
+}
+
+.progress-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.progress-header .subsection-title {
+  display: flex;
+  align-items: center;
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: rgba(var(--v-theme-on-surface), 0.8);
+}
+
+.progress-stats {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.progress-count {
+  font-size: 0.85rem;
+  color: rgba(var(--v-theme-on-surface), 0.7);
+}
+
+.progress-percent {
+  font-size: 1rem;
+  font-weight: 600;
+  color: rgb(var(--v-theme-primary));
+}
+
+.progress-bar-container {
+  margin-bottom: 10px;
+}
+
+.progress-bar-track {
+  height: 8px;
+  background-color: rgba(var(--v-theme-on-surface), 0.1);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.4s ease;
+}
+
+.progress-bar-fill.progress-low {
+  background-color: rgba(232, 160, 135, 0.8);
+}
+
+.progress-bar-fill.progress-medium {
+  background-color: rgba(209, 188, 138, 0.8);
+}
+
+.progress-bar-fill.progress-high {
+  background-color: rgba(136, 196, 200, 0.8);
+}
+
+.progress-bar-fill.progress-complete {
+  background-color: rgba(152, 212, 187, 0.9);
+}
+
+.progress-legend {
+  display: flex;
+  gap: 24px;
+  margin-bottom: 8px;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
+  color: rgba(var(--v-theme-on-surface), 0.7);
+}
+
+.legend-item.human .v-icon {
+  color: #88c4c8;
+}
+
+.legend-item.llm .v-icon {
+  color: #c4a0d4;
+}
+
+.legend-label {
+  font-weight: 500;
+}
+
+.legend-value {
+  color: rgba(var(--v-theme-on-surface), 0.9);
+}
+
+.legend-percent {
+  color: rgba(var(--v-theme-on-surface), 0.5);
+  font-size: 0.75rem;
+}
+
+.evaluator-count-info {
+  font-size: 0.75rem;
+  color: rgba(var(--v-theme-on-surface), 0.5);
+}
+
 /* Human Evaluators Grid */
 .evaluator-grid {
   display: grid;
@@ -2350,15 +2921,178 @@ watch(
 
 .metrics-section,
 .confusion-matrix-section,
-.distribution-section {
+.distribution-section,
+.bucket-distribution-section,
+.ranking-agreement-section {
   padding: 20px;
   border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.06);
 }
 
 .metrics-section:last-child,
 .confusion-matrix-section:last-child,
-.distribution-section:last-child {
+.distribution-section:last-child,
+.bucket-distribution-section:last-child,
+.ranking-agreement-section:last-child {
   border-bottom: none;
+}
+
+/* Bucket Distribution Styles */
+.bucket-chart {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.bucket-bar-container {
+  display: grid;
+  grid-template-columns: 100px 1fr 60px;
+  gap: 12px;
+  align-items: center;
+}
+
+.bucket-label {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: rgba(var(--v-theme-on-surface), 0.8);
+  text-align: right;
+}
+
+.bucket-bar-wrapper {
+  position: relative;
+  height: 28px;
+  background-color: rgba(var(--v-theme-on-surface), 0.06);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.bucket-bar-fill {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 8px;
+  transition: width 0.3s ease-out;
+  border-radius: 4px;
+}
+
+.bucket-bar-value {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: rgba(0, 0, 0, 0.7);
+}
+
+.bucket-bar-value.outside {
+  position: absolute;
+  left: calc(100% + 8px);
+  top: 50%;
+  transform: translateY(-50%);
+  color: rgba(var(--v-theme-on-surface), 0.7);
+}
+
+.bucket-percentage {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: rgba(var(--v-theme-on-surface), 0.6);
+  text-align: left;
+}
+
+/* Ranking Agreement Matrix Styles */
+.ranking-agreement-matrix {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow-x: auto;
+}
+
+.matrix-row {
+  display: flex;
+  gap: 2px;
+}
+
+.matrix-cell {
+  min-width: 70px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  font-weight: 500;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.matrix-cell.corner-cell {
+  background: transparent;
+}
+
+.matrix-cell.header-cell,
+.matrix-cell.row-header-cell {
+  background-color: rgba(var(--v-theme-on-surface), 0.04);
+  font-weight: 600;
+  color: rgba(var(--v-theme-on-surface), 0.8);
+  flex-direction: column;
+  gap: 2px;
+}
+
+.matrix-cell.data-cell {
+  color: rgba(0, 0, 0, 0.7);
+}
+
+.matrix-cell.diagonal-cell {
+  background-color: rgba(var(--v-theme-on-surface), 0.08);
+  color: rgba(var(--v-theme-on-surface), 0.4);
+}
+
+.evaluator-name {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 60px;
+  font-size: 0.75rem;
+}
+
+.llm-badge {
+  margin-top: 2px;
+}
+
+.mirror-value {
+  opacity: 0.6;
+  font-size: 0.75rem;
+}
+
+.agreement-legend {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 16px;
+  padding: 12px;
+  background-color: rgba(var(--v-theme-on-surface), 0.02);
+  border-radius: 8px;
+}
+
+.legend-gradient {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.gradient-bar {
+  width: 120px;
+  height: 12px;
+  border-radius: 6px;
+  background: linear-gradient(to right, hsla(0, 70%, 85%, 0.6), hsla(60, 70%, 85%, 0.6), hsla(120, 70%, 85%, 0.6));
+}
+
+.legend-min,
+.legend-max {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: rgba(var(--v-theme-on-surface), 0.6);
+}
+
+.legend-label {
+  font-size: 0.8rem;
+  color: rgba(var(--v-theme-on-surface), 0.7);
 }
 
 .subsection-title {
@@ -2648,6 +3382,47 @@ watch(
 
 .dimension-select {
   max-width: 300px;
+}
+
+/* Dimension Details Grid (ROW 2: Distribution + Table) */
+.dimension-details-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  padding: 20px;
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.06);
+}
+
+/* Heatmap Panel - Centered Content */
+.heatmap-panel {
+  display: flex;
+  flex-direction: column;
+}
+
+.heatmap-panel .agreement-heatmap-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+}
+
+/* Empty Panel */
+.empty-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.no-data-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 32px;
+  gap: 12px;
 }
 
 /* Heatmap */
@@ -3051,6 +3826,16 @@ watch(
   cursor: default;
 }
 
+.heatmap-matrix .data-cell.clickable {
+  cursor: pointer;
+}
+
+.heatmap-matrix .data-cell.clickable:hover {
+  transform: scale(1.15);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  z-index: 15;
+}
+
 .heatmap-matrix .agreement-value {
   font-weight: 600;
   font-size: 0.8rem;
@@ -3115,9 +3900,201 @@ watch(
   gap: 6px;
 }
 
+/* Agreement Detail Dialog */
+.agreement-detail-card {
+  border-radius: 16px 4px 16px 4px;
+}
+
+.agreement-comparison {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px;
+  background-color: rgba(var(--v-theme-on-surface), 0.03);
+  border-radius: 12px;
+  margin-bottom: 20px;
+}
+
+.evaluator-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+}
+
+.evaluator-avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px 4px 12px 4px;
+  background-color: rgba(136, 196, 200, 0.15);
+}
+
+.evaluator-info.is-llm .evaluator-avatar {
+  background-color: rgba(196, 160, 212, 0.15);
+}
+
+.evaluator-details {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.evaluator-name {
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.evaluator-type {
+  font-size: 0.75rem;
+  color: rgba(var(--v-theme-on-surface), 0.6);
+}
+
+.vs-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background-color: rgba(var(--v-theme-on-surface), 0.08);
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: rgba(var(--v-theme-on-surface), 0.5);
+  flex-shrink: 0;
+}
+
+.agreement-score-section {
+  display: flex;
+  justify-content: center;
+  padding: 20px 0;
+}
+
+.score-circle {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  border: 4px solid #b0ca97;
+  background-color: rgba(var(--v-theme-surface), 1);
+}
+
+.score-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: rgb(var(--v-theme-on-surface));
+}
+
+.score-label {
+  font-size: 0.7rem;
+  color: rgba(var(--v-theme-on-surface), 0.6);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.agreement-interpretation {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+
+.interpretation-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 16px;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.interpretation-badge.level-excellent {
+  background-color: rgba(98, 200, 140, 0.15);
+  color: #3d9a5c;
+}
+
+.interpretation-badge.level-good {
+  background-color: rgba(152, 212, 187, 0.2);
+  color: #4a9a7a;
+}
+
+.interpretation-badge.level-moderate {
+  background-color: rgba(232, 200, 100, 0.2);
+  color: #9a8030;
+}
+
+.interpretation-badge.level-low {
+  background-color: rgba(232, 160, 135, 0.2);
+  color: #b05a40;
+}
+
+.interpretation-badge.level-unknown {
+  background-color: rgba(var(--v-theme-on-surface), 0.1);
+  color: rgba(var(--v-theme-on-surface), 0.6);
+}
+
+.agreement-details-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.detail-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px;
+  background-color: rgba(var(--v-theme-on-surface), 0.03);
+  border-radius: 8px;
+}
+
+.detail-label {
+  font-size: 0.7rem;
+  color: rgba(var(--v-theme-on-surface), 0.6);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.detail-value {
+  font-size: 0.9rem;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+}
+
+.agreement-explanation {
+  display: flex;
+  align-items: flex-start;
+  padding: 12px;
+  background-color: rgba(var(--v-theme-primary), 0.08);
+  border-radius: 8px;
+  font-size: 0.85rem;
+  color: rgba(var(--v-theme-on-surface), 0.8);
+  line-height: 1.5;
+}
+
+.agreement-explanation .v-icon {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: rgb(var(--v-theme-primary));
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   .dimension-visualizations-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+    padding: 16px;
+  }
+
+  .dimension-details-grid {
     grid-template-columns: 1fr;
     gap: 16px;
     padding: 16px;

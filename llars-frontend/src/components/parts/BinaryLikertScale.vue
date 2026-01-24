@@ -1,138 +1,141 @@
 <template>
-  <div class="binary-likert-scale-container">
-    <span class="binary-label-text">Ja</span>
-    <div class="binary-likert-scale">
-      <div
-        class="binary-option green-tone"
-        :class="{
-          'selected-yes': modelValue === 1,
-          'disabled-option': disabled
-        }"
-        @click="selectOption(1)"
-      >
-        <span class="binary-circle">
-          <template v-if="modelValue === 1">
-            <v-icon class="white-icon">mdi-check</v-icon>
-          </template>
-        </span>
-      </div>
-      <div
-        class="binary-option purple-tone"
-        :class="{
-          'selected-no': modelValue === 2,
-          'disabled-option': disabled
-        }"
-        @click="selectOption(2)"
-      >
-        <span class="binary-circle">
-          <template v-if="modelValue === 2">
-            <v-icon class="white-icon">mdi-check</v-icon>
-          </template>
-        </span>
-      </div>
-    </div>
-    <span class="binary-label-text">Nein</span>
+  <div class="binary-scale" :class="{ disabled }">
+    <button
+      type="button"
+      class="binary-btn yes"
+      :class="{ selected: modelValue === 1 }"
+      :disabled="disabled"
+      @click="selectOption(1)"
+    >
+      <LIcon size="20" class="btn-icon">mdi-check</LIcon>
+      <span class="btn-label">{{ computedYesLabel }}</span>
+    </button>
+    <button
+      type="button"
+      class="binary-btn no"
+      :class="{ selected: modelValue === 2 }"
+      :disabled="disabled"
+      @click="selectOption(2)"
+    >
+      <LIcon size="20" class="btn-icon">mdi-close</LIcon>
+      <span class="btn-label">{{ computedNoLabel }}</span>
+    </button>
   </div>
 </template>
 
-
 <script setup>
-import { defineProps, defineEmits, watch } from 'vue';
+import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 
-// Props für modelValue und disabled
 const props = defineProps({
   modelValue: { type: Number, default: null },
-  disabled: { type: Boolean, default: false }
-});
+  disabled: { type: Boolean, default: false },
+  yesLabel: { type: String, default: null },
+  noLabel: { type: String, default: null }
+})
 
-const emit = defineEmits(['update:modelValue']);
+const emit = defineEmits(['update:modelValue'])
+const { t } = useI18n()
 
+const computedYesLabel = computed(() => props.yesLabel || t('binaryScale.yes', 'Ja'))
+const computedNoLabel = computed(() => props.noLabel || t('binaryScale.no', 'Nein'))
 
-// Option auswählen, wenn nicht disabled
 function selectOption(value) {
-  if (props.disabled) return; // Keine Aktion, wenn disabled aktiv ist
-
-  if (value === props.modelValue) {
-    emit('update:modelValue', null); // Zurücksetzen auf null
-  } else {
-    emit('update:modelValue', value); // Den neuen Wert setzen
-  }
+  if (props.disabled) return
+  // Toggle: if same value clicked, deselect
+  emit('update:modelValue', value === props.modelValue ? null : value)
 }
 </script>
 
-
 <style scoped>
-.binary-likert-scale-container {
+.binary-scale {
   display: flex;
-  justify-content: center;
-  align-items: center;
-  margin-top: 10px;
+  gap: 12px;
 }
 
-.binary-likert-scale {
-  display: flex;
-  justify-content: space-around;
-  align-items: center;
-  margin: 0 20px;
-  gap: 10vh;
-}
-
-.binary-option {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  cursor: pointer;
-  transition: opacity 0.3s, cursor 0.3s;
-}
-
-.binary-circle {
-  width: 44px;
-  height: 44px;
-  border: 2.5px solid #BDBDBD;
-  border-radius: 50%;
-  margin-bottom: 4px;
-  transition: background-color 0.3s, border-color 0.3s, transform 0.3s;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-
-.green-tone .binary-circle {
-  border-color: #66BB6A;
-}
-
-.purple-tone .binary-circle {
-  border-color: #AB47BC;
-}
-
-.selected-yes .binary-circle {
-  background-color: #66BB6A;
-  border-color: #66BB6A;
-}
-
-.selected-no .binary-circle {
-  background-color: #AB47BC;
-  border-color: #AB47BC;
-}
-
-/* Hover-Effekt */
-.binary-option:hover .binary-circle {
-  transform: scale(1.1);
-}
-
-.green-tone:hover .binary-circle {
-  background-color: #68c66b;
-  border-color: #54a356;
-}
-
-.purple-tone:hover .binary-circle {
-  background-color: #bb55c1;
-  border-color: #8e4a9a;
-}
-
-/* Disabled-Stile */
-.disabled-option {
-  cursor: not-allowed;
+.binary-scale.disabled {
   opacity: 0.5;
+  pointer-events: none;
+}
+
+.binary-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 100px;
+  padding: 12px 20px;
+  border: 2px solid rgba(var(--v-theme-on-surface), 0.12);
+  /* LLARS signature asymmetric border-radius */
+  border-radius: 12px 3px 12px 3px;
+  background: rgb(var(--v-theme-surface));
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-weight: 600;
+}
+
+.binary-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.binary-btn:disabled {
+  cursor: not-allowed;
+}
+
+/* Yes button - LLARS Primary/Success */
+.binary-btn.yes {
+  --btn-color: #b0ca97;
+}
+
+.binary-btn.yes:not(.selected) .btn-icon {
+  color: var(--btn-color);
+}
+
+.binary-btn.yes:hover:not(:disabled):not(.selected) {
+  border-color: var(--btn-color);
+  background: color-mix(in srgb, var(--btn-color) 12%, rgb(var(--v-theme-surface)));
+}
+
+.binary-btn.yes.selected {
+  border-color: var(--btn-color);
+  background: var(--btn-color);
+  color: white;
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--btn-color) 40%, transparent);
+}
+
+.binary-btn.yes.selected .btn-icon {
+  color: white;
+}
+
+/* No button - LLARS Danger */
+.binary-btn.no {
+  --btn-color: #e8a087;
+}
+
+.binary-btn.no:not(.selected) .btn-icon {
+  color: var(--btn-color);
+}
+
+.binary-btn.no:hover:not(:disabled):not(.selected) {
+  border-color: var(--btn-color);
+  background: color-mix(in srgb, var(--btn-color) 12%, rgb(var(--v-theme-surface)));
+}
+
+.binary-btn.no.selected {
+  border-color: var(--btn-color);
+  background: var(--btn-color);
+  color: white;
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--btn-color) 40%, transparent);
+}
+
+.binary-btn.no.selected .btn-icon {
+  color: white;
+}
+
+/* Label */
+.btn-label {
+  font-size: 0.9rem;
 }
 </style>

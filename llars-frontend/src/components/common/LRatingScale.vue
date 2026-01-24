@@ -188,7 +188,7 @@ function selectValue(value) {
 /* Scale Buttons Container */
 .scale-buttons {
   display: flex;
-  gap: 6px;
+  gap: 5px;
   justify-content: center;
 }
 
@@ -199,19 +199,19 @@ function selectValue(value) {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-width: 44px;
-  height: 44px;
-  padding: 8px 12px;
+  min-width: 38px;
+  height: 38px;
+  padding: 6px 10px;
   border: 2px solid rgba(var(--v-theme-on-surface), 0.15);
-  border-radius: 10px 3px 10px 3px; /* Signature LLARS asymmetric style */
+  border-radius: 8px 3px 8px 3px; /* Signature LLARS asymmetric style */
   background: rgba(var(--v-theme-on-surface), 0.03);
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
 .scale-button:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transform: translateY(-1px);
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
 }
 
 .scale-button:focus-visible {
@@ -226,17 +226,17 @@ function selectValue(value) {
 
 /* Scale Value Number */
 .scale-value {
-  font-size: 1rem;
+  font-size: 0.9rem;
   font-weight: 600;
   color: rgba(var(--v-theme-on-surface), 0.8);
   transition: all 0.2s ease;
 }
 
 .scale-value-label {
-  font-size: 0.65rem;
+  font-size: 0.6rem;
   color: rgba(var(--v-theme-on-surface), 0.5);
   text-align: center;
-  max-width: 60px;
+  max-width: 50px;
   line-height: 1.2;
 }
 
@@ -319,54 +319,54 @@ function selectValue(value) {
 
 /* Size Variants */
 .l-rating-scale--small .scale-button {
-  min-width: 36px;
-  height: 36px;
-  padding: 6px 8px;
+  min-width: 32px;
+  height: 32px;
+  padding: 4px 6px;
 }
 
 .l-rating-scale--small .scale-value {
-  font-size: 0.85rem;
+  font-size: 0.8rem;
 }
 
 .l-rating-scale--large .scale-button {
-  min-width: 56px;
-  height: 56px;
-  padding: 10px 16px;
+  min-width: 48px;
+  height: 48px;
+  padding: 8px 14px;
 }
 
 .l-rating-scale--large .scale-value {
-  font-size: 1.2rem;
+  font-size: 1.1rem;
 }
 
-/* Size Progression (middle items slightly larger) */
+/* Size Progression (middle items slightly larger) - disabled for compact design */
 .scale-button.is-center {
-  min-width: 48px;
-  height: 48px;
-}
-
-.l-rating-scale--small .scale-button.is-center {
   min-width: 40px;
   height: 40px;
 }
 
+.l-rating-scale--small .scale-button.is-center {
+  min-width: 34px;
+  height: 34px;
+}
+
 .l-rating-scale--large .scale-button.is-center {
-  min-width: 60px;
-  height: 60px;
+  min-width: 52px;
+  height: 52px;
 }
 
 /* Individual Labels Row */
 .scale-labels-row {
   display: flex;
   justify-content: center;
-  gap: 6px;
+  gap: 5px;
 }
 
 .scale-individual-label {
-  min-width: 44px;
+  min-width: 38px;
   text-align: center;
-  font-size: 0.7rem;
+  font-size: 0.65rem;
   color: rgba(var(--v-theme-on-surface), 0.5);
-  padding: 0 4px;
+  padding: 0 3px;
   transition: color 0.2s ease;
 }
 
@@ -384,22 +384,22 @@ function selectValue(value) {
 /* Responsive adjustments */
 @media (max-width: 480px) {
   .scale-buttons {
-    gap: 4px;
+    gap: 3px;
   }
 
   .scale-button {
-    min-width: 38px;
-    height: 38px;
-    padding: 6px 8px;
+    min-width: 34px;
+    height: 34px;
+    padding: 5px 7px;
   }
 
   .scale-value {
-    font-size: 0.9rem;
+    font-size: 0.85rem;
   }
 
   .scale-button.is-center {
-    min-width: 42px;
-    height: 42px;
+    min-width: 36px;
+    height: 36px;
   }
 }
 </style>

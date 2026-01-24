@@ -35,38 +35,30 @@
             :class="{ 'is-completed': getProgress(scenario).percent === 100 }"
             @click="goToEvaluation(scenario)"
           >
-            <!-- Status Badge -->
-            <LEvaluationStatus
-              class="card-status"
-              :status="getStatus(scenario)"
-            />
-
-            <!-- Card Content (horizontal layout) -->
-            <div class="card-content">
-              <!-- Type Icon -->
-              <div class="type-icon" :style="{ backgroundColor: getTypeConfig(scenario).bgColor }">
-                <LIcon :color="getTypeConfig(scenario).color" size="20">{{ getTypeConfig(scenario).icon }}</LIcon>
-              </div>
-
-              <!-- Card Info -->
-              <div class="card-info">
-                <h3 class="card-title">{{ scenario.scenario_name }}</h3>
-                <div class="card-meta">
-                  <!-- Type Chip with color -->
-                  <span
-                    class="type-chip"
-                    :style="{ backgroundColor: getTypeConfig(scenario).bgColor, color: getTypeConfig(scenario).color }"
-                  >
-                    {{ getTypeConfig(scenario).label }}
-                  </span>
-                  <span class="meta-separator">·</span>
-                  <span class="owner-name">{{ scenario.is_owner ? $t('scenarioManager.card.owner') : scenario.owner_name }}</span>
+            <!-- Header Row: Icon, Type Tag, Status Badge -->
+            <div class="card-header">
+              <div class="header-left">
+                <div class="type-icon" :style="{ backgroundColor: getTypeConfig(scenario).bgColor }">
+                  <LIcon :color="getTypeConfig(scenario).color" size="18">{{ getTypeConfig(scenario).icon }}</LIcon>
                 </div>
+                <span
+                  class="type-chip"
+                  :style="{ backgroundColor: getTypeConfig(scenario).bgColor, color: getTypeConfig(scenario).color }"
+                >
+                  {{ getTypeConfig(scenario).label }}
+                </span>
               </div>
+              <LEvaluationStatus :status="getStatus(scenario)" />
             </div>
 
-            <!-- Progress Bar (compact) -->
-            <div v-if="getProgress(scenario).total > 0" class="progress-section">
+            <!-- Card Content -->
+            <div class="card-content">
+              <h3 class="card-title">{{ scenario.scenario_name }}</h3>
+              <span class="owner-name">{{ scenario.is_owner ? $t('scenarioManager.card.owner') : scenario.owner_name }}</span>
+            </div>
+
+            <!-- Progress Bar (always at bottom) -->
+            <div class="progress-section">
               <div class="progress-bar">
                 <div class="progress-fill" :style="{ width: getProgress(scenario).percent + '%' }"></div>
               </div>
@@ -164,8 +156,8 @@ async function fetchScenarios() {
 }
 
 function goToEvaluation(scenario) {
-  // Navigate directly to the evaluation session for this scenario
-  router.push({ name: 'EvaluationSession', params: { scenarioId: scenario.id } })
+  // Navigate to the items overview for this scenario
+  router.push({ name: 'EvaluationItemsOverview', params: { scenarioId: scenario.id } })
 }
 
 function goHome() {
@@ -251,72 +243,64 @@ onMounted(async () => {
   border-left: 3px solid rgb(var(--v-theme-success));
 }
 
-.card-status {
-  position: absolute;
-  top: 10px;
-  right: 10px;
+/* Header row with icon, type tag and status badge */
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
 }
 
-/* Horizontal card content */
-.card-content {
+.header-left {
   display: flex;
-  align-items: flex-start;
-  gap: 12px;
+  align-items: center;
+  gap: 8px;
 }
 
 .type-icon {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
-  border-radius: 10px 3px 10px 3px;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px 3px 8px 3px;
   flex-shrink: 0;
-}
-
-.card-info {
-  flex: 1;
-  min-width: 0;
-  padding-right: 60px;
-}
-
-.card-title {
-  font-size: 0.95rem;
-  font-weight: 600;
-  margin: 0 0 6px 0;
-  display: -webkit-box;
-  -webkit-line-clamp: 1;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.card-meta {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex-wrap: wrap;
 }
 
 .type-chip {
   display: inline-flex;
   align-items: center;
-  padding: 2px 8px;
+  padding: 3px 10px;
   border-radius: 6px 2px 6px 2px;
   font-size: 0.7rem;
   font-weight: 600;
 }
 
-.meta-separator {
-  color: rgba(var(--v-theme-on-surface), 0.3);
-  font-size: 0.7rem;
+/* Card content */
+.card-content {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+}
+
+.card-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  margin: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  line-height: 1.3;
 }
 
 .owner-name {
   font-size: 0.75rem;
-  color: rgba(var(--v-theme-on-surface), 0.6);
+  color: rgba(var(--v-theme-on-surface), 0.5);
 }
 
-/* Compact Progress Section */
+/* Progress Section (always at bottom) */
 .progress-section {
   display: flex;
   align-items: center;
@@ -324,6 +308,7 @@ onMounted(async () => {
   padding: 8px 10px;
   background-color: rgba(var(--v-theme-on-surface), 0.03);
   border-radius: 6px;
+  margin-top: auto;
 }
 
 .progress-bar {

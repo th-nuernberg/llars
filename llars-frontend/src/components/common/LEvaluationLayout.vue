@@ -1,7 +1,7 @@
 <template>
-  <div class="evaluation-layout" :class="{ 'is-mobile': isMobile }">
-    <!-- Header -->
-    <div class="evaluation-header">
+  <div class="evaluation-layout" :class="{ 'is-mobile': isMobile, 'is-embedded': embedded }">
+    <!-- Header (hidden in embedded mode) -->
+    <div v-if="!embedded" class="evaluation-header">
       <div class="header-left">
         <LBtn
           variant="tonal"
@@ -36,8 +36,8 @@
       <slot />
     </div>
 
-    <!-- Action Bar -->
-    <div class="evaluation-action-bar">
+    <!-- Action Bar (hidden in embedded mode) -->
+    <div v-if="!embedded" class="evaluation-action-bar">
       <div class="action-bar-left">
         <LBtn
           variant="tonal"
@@ -92,7 +92,8 @@ defineProps({
   canGoPrev: { type: Boolean, default: false },
   canGoNext: { type: Boolean, default: false },
   currentIndex: { type: Number, default: 0 },
-  totalItems: { type: Number, default: 0 }
+  totalItems: { type: Number, default: 0 },
+  embedded: { type: Boolean, default: false } // When true, hides header and action bar (used when embedded in EvaluationSession)
 })
 
 defineEmits(['back', 'prev', 'next', 'clear-error'])

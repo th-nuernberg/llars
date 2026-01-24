@@ -620,8 +620,11 @@
                   :key="'human-point-' + i"
                   :cx="point.x"
                   :cy="point.y"
-                  r="4"
+                  :r="hoveredPoint?.type === 'human' && hoveredPoint?.index === i ? 7 : 5"
                   fill="#88c4c8"
+                  class="spider-point"
+                  @mouseenter="showSpiderTooltip($event, 'human', i)"
+                  @mouseleave="hideSpiderTooltip"
                 />
               </g>
               <g v-if="evaluatorTypeFilter !== 'human'">
@@ -630,8 +633,11 @@
                   :key="'llm-point-' + i"
                   :cx="point.x"
                   :cy="point.y"
-                  r="4"
+                  :r="hoveredPoint?.type === 'llm' && hoveredPoint?.index === i ? 7 : 5"
                   fill="#c4a0d4"
+                  class="spider-point"
+                  @mouseenter="showSpiderTooltip($event, 'llm', i)"
+                  @mouseleave="hideSpiderTooltip"
                 />
               </g>
               <text
@@ -646,6 +652,27 @@
                 {{ dim.name || dim.id }}
               </text>
             </svg>
+
+            <!-- Spider Tooltip -->
+            <div
+              v-if="spiderTooltip.visible"
+              class="spider-tooltip"
+              :style="{ left: spiderTooltip.x + 'px', top: spiderTooltip.y + 'px' }"
+            >
+              <div class="tooltip-header">
+                <span class="tooltip-dimension">{{ spiderTooltip.dimension }}</span>
+                <span class="tooltip-type" :class="spiderTooltip.type">
+                  {{ spiderTooltip.type === 'human' ? $t('scenarioManager.evaluation.filter.human') : $t('scenarioManager.evaluation.filter.llm') }}
+                </span>
+              </div>
+              <div class="tooltip-value">
+                <span class="value-label">{{ $t('scenarioManager.results.average') }}:</span>
+                <span class="value-number">{{ spiderTooltip.value }}</span>
+              </div>
+              <div class="tooltip-scale">
+                {{ $t('scenarioManager.results.scale') }}: {{ spiderTooltip.scaleMin }} - {{ spiderTooltip.scaleMax }}
+              </div>
+            </div>
 
             <div class="spider-legend">
               <div class="legend-item" v-if="evaluatorTypeFilter !== 'llm'">
@@ -858,6 +885,19 @@ const selectedDimension = ref(null)
 const spiderSize = 300
 const spiderCenter = 150
 const spiderRadius = 120
+
+// Spider tooltip state
+const hoveredPoint = ref(null)
+const spiderTooltip = ref({
+  visible: false,
+  x: 0,
+  y: 0,
+  dimension: '',
+  type: '',
+  value: '-',
+  scaleMin: 1,
+  scaleMax: 5
+})
 
 // Prompt templates
 const promptTemplates = ref([
@@ -1423,6 +1463,39 @@ function getSpiderLabelPoint(index) {
     x: spiderCenter + r * Math.cos(angle),
     y: spiderCenter + r * Math.sin(angle)
   }
+}
+
+function showSpiderTooltip(event, type, index) {
+  const dim = dimensions.value[index]
+  if (!dim) return
+
+  const avg = getDimensionAverage(type, dim.id)
+  const dimData = dimensionDistributionMap.value[dim.id]
+
+  const scaleMin = dim?.scale?.min ?? dimData?.scale_min ?? 1
+  const scaleMax = dim?.scale?.max ?? dimData?.scale_max ?? 5
+
+  // Get position relative to the spider chart container
+  const container = event.target.closest('.spider-chart-container')
+  const rect = container?.getBoundingClientRect()
+  const svgRect = event.target.closest('svg')?.getBoundingClientRect()
+
+  hoveredPoint.value = { type, index }
+  spiderTooltip.value = {
+    visible: true,
+    x: svgRect ? event.clientX - rect.left + 10 : event.offsetX + 10,
+    y: svgRect ? event.clientY - rect.top - 40 : event.offsetY - 40,
+    dimension: dim.name || dim.id,
+    type: type,
+    value: avg !== null ? avg.toFixed(2) : '-',
+    scaleMin,
+    scaleMax
+  }
+}
+
+function hideSpiderTooltip() {
+  hoveredPoint.value = null
+  spiderTooltip.value.visible = false
 }
 
 function getNormalizedValue(type, dimensionId) {
@@ -2748,6 +2821,7 @@ watch(
 }
 
 .spider-chart-container {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -2784,6 +2858,83 @@ watch(
   width: 16px;
   height: 16px;
   border-radius: 4px;
+}
+
+/* Spider Point Interaction */
+.spider-point {
+  cursor: pointer;
+  transition: r 0.15s ease, filter 0.15s ease;
+}
+
+.spider-point:hover {
+  filter: brightness(1.2);
+}
+
+/* Spider Tooltip */
+.spider-tooltip {
+  position: absolute;
+  z-index: 100;
+  background-color: rgb(var(--v-theme-surface));
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.15);
+  border-radius: 8px;
+  padding: 10px 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  pointer-events: none;
+  min-width: 140px;
+}
+
+.spider-tooltip .tooltip-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+
+.spider-tooltip .tooltip-dimension {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: rgb(var(--v-theme-on-surface));
+}
+
+.spider-tooltip .tooltip-type {
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.spider-tooltip .tooltip-type.human {
+  background-color: rgba(136, 196, 200, 0.2);
+  color: #88c4c8;
+}
+
+.spider-tooltip .tooltip-type.llm {
+  background-color: rgba(196, 160, 212, 0.2);
+  color: #c4a0d4;
+}
+
+.spider-tooltip .tooltip-value {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.spider-tooltip .value-label {
+  font-size: 0.75rem;
+  color: rgba(var(--v-theme-on-surface), 0.6);
+}
+
+.spider-tooltip .value-number {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: rgb(var(--v-theme-primary));
+}
+
+.spider-tooltip .tooltip-scale {
+  font-size: 0.7rem;
+  color: rgba(var(--v-theme-on-surface), 0.5);
 }
 
 /* Dimension Averages Table */

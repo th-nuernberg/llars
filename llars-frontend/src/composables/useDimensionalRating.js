@@ -18,6 +18,17 @@
 import { ref, computed, watch } from 'vue'
 import axios from 'axios'
 
+/**
+ * Debounce helper for auto-save
+ */
+function debounce(fn, delay) {
+  let timeoutId = null
+  return (...args) => {
+    if (timeoutId) clearTimeout(timeoutId)
+    timeoutId = setTimeout(() => fn(...args), delay)
+  }
+}
+
 export function useDimensionalRating(scenarioId) {
   // State
   const items = ref([])
@@ -34,7 +45,14 @@ export function useDimensionalRating(scenarioId) {
   const loading = ref(false)
   const loadingItem = ref(false)
   const submitting = ref(false)
+  const saving = ref(false) // For auto-save indicator
   const error = ref(null)
+
+  // Cache for loaded item details (prevents flicker on navigation)
+  const itemCache = ref({})
+
+  // Auto-save enabled flag
+  const autoSaveEnabled = ref(true)
 
   // Computed: Dimensions from config
   const dimensions = computed(() => {
@@ -109,6 +127,33 @@ export function useDimensionalRating(scenarioId) {
   const hasNext = computed(() => currentItemIndex.value < items.value.length - 1)
   const hasPrev = computed(() => currentItemIndex.value > 0)
 
+  // Computed: Current item status
+  const currentItemStatus = computed(() => {
+    if (!currentItem.value) return 'pending'
+
+    // If evaluated/done
+    if (currentItem.value.evaluated || currentItem.value.status === 'Done') {
+      return 'done'
+    }
+
+    // If all dimensions are rated, it's done (even if not yet saved)
+    if (canSubmit.value) {
+      return 'done'
+    }
+
+    // If has some ratings but not all
+    if (ratedDimensionCount.value > 0) {
+      return 'in_progress'
+    }
+
+    // Check item status
+    if (currentItem.value.status === 'Progressing') {
+      return 'in_progress'
+    }
+
+    return 'pending'
+  })
+
   // Load scenario configuration
   async function loadConfig() {
     try {
@@ -148,42 +193,26 @@ export function useDimensionalRating(scenarioId) {
 
   // Load a specific item's content
   async function loadItem(itemId) {
-    loadingItem.value = true
     error.value = null
+
+    // Check cache first - if cached, apply immediately without loading state
+    const cacheKey = String(itemId)
+    if (itemCache.value[cacheKey]) {
+      applyItemData(itemCache.value[cacheKey], itemId)
+      return
+    }
+
+    loadingItem.value = true
 
     try {
       const response = await axios.get(
         `/api/evaluation/rating/${scenarioId.value}/items/${itemId}`
       )
 
-      currentItem.value = response.data.item
-      messages.value = response.data.messages || []
-      content.value = response.data.content || ''
-      existingRating.value = response.data.existing_rating
+      // Cache the response
+      itemCache.value[cacheKey] = response.data
 
-      // Update config if returned
-      if (response.data.config) {
-        config.value = response.data.config
-      }
-
-      // Initialize dimension ratings from existing rating or empty
-      if (existingRating.value) {
-        dimensionRatings.value = { ...existingRating.value.dimension_ratings }
-        feedback.value = existingRating.value.feedback || ''
-      } else {
-        // Initialize all dimensions as null
-        dimensionRatings.value = {}
-        for (const dim of dimensions.value) {
-          dimensionRatings.value[dim.id] = null
-        }
-        feedback.value = ''
-      }
-
-      // Update current index
-      const index = items.value.findIndex(item => item.item_id === itemId)
-      if (index >= 0) {
-        currentItemIndex.value = index
-      }
+      applyItemData(response.data, itemId)
     } catch (err) {
       console.error('Failed to load item:', err)
       error.value = err.response?.data?.message || 'Failed to load item'
@@ -192,11 +221,95 @@ export function useDimensionalRating(scenarioId) {
     }
   }
 
-  // Set rating for a dimension
+  // Helper to apply item data (used by loadItem and cache)
+  function applyItemData(data, itemId) {
+    currentItem.value = data.item
+    messages.value = data.messages || []
+    content.value = data.content || ''
+    existingRating.value = data.existing_rating
+
+    // Update config if returned
+    if (data.config) {
+      config.value = data.config
+    }
+
+    // Initialize dimension ratings from existing rating or empty
+    if (existingRating.value) {
+      dimensionRatings.value = { ...existingRating.value.dimension_ratings }
+      feedback.value = existingRating.value.feedback || ''
+    } else {
+      // Initialize all dimensions as null
+      dimensionRatings.value = {}
+      for (const dim of dimensions.value) {
+        dimensionRatings.value[dim.id] = null
+      }
+      feedback.value = ''
+    }
+
+    // Update current index
+    const index = items.value.findIndex(item => item.item_id === itemId)
+    if (index >= 0) {
+      currentItemIndex.value = index
+    }
+  }
+
+  // Update cache with current ratings
+  function updateCache() {
+    if (!currentItem.value) return
+    const cacheKey = String(currentItem.value.item_id)
+    if (itemCache.value[cacheKey]) {
+      itemCache.value[cacheKey] = {
+        ...itemCache.value[cacheKey],
+        existing_rating: {
+          dimension_ratings: { ...dimensionRatings.value },
+          feedback: feedback.value || ''
+        }
+      }
+    }
+  }
+
+  // Auto-save function (debounced)
+  const autoSave = debounce(async () => {
+    if (!currentItem.value || !autoSaveEnabled.value) return
+
+    saving.value = true
+    try {
+      await axios.post(
+        `/api/evaluation/rating/${scenarioId.value}/items/${currentItem.value.item_id}/rate`,
+        {
+          dimension_ratings: dimensionRatings.value,
+          feedback: feedback.value || null,
+          auto_complete: false // Don't auto-complete on partial saves
+        }
+      )
+
+      // Update cache with current state
+      updateCache()
+
+      // Update item status in list to "in_progress" if not all rated
+      const itemIndex = items.value.findIndex(
+        item => item.item_id === currentItem.value.item_id
+      )
+      if (itemIndex >= 0 && !items.value[itemIndex].evaluated) {
+        items.value[itemIndex].status = 'Progressing'
+      }
+    } catch (err) {
+      console.error('Auto-save failed:', err)
+    } finally {
+      saving.value = false
+    }
+  }, 800) // 800ms debounce
+
+  // Set rating for a dimension (triggers auto-save)
   function setDimensionRating(dimensionId, value) {
     dimensionRatings.value = {
       ...dimensionRatings.value,
       [dimensionId]: value
+    }
+
+    // Trigger auto-save
+    if (autoSaveEnabled.value) {
+      autoSave()
     }
   }
 
@@ -218,6 +331,9 @@ export function useDimensionalRating(scenarioId) {
         }
       )
 
+      // Update cache with current state
+      updateCache()
+
       // Update item status in list
       const itemIndex = items.value.findIndex(
         item => item.item_id === currentItem.value.item_id
@@ -226,6 +342,11 @@ export function useDimensionalRating(scenarioId) {
         items.value[itemIndex].evaluated = response.data.rating?.status === 'Done'
         items.value[itemIndex].status = response.data.rating?.status
         items.value[itemIndex].overall_score = response.data.rating?.overall_score
+      }
+
+      // Update currentItem to reflect the new status
+      if (response.data.rating?.status === 'Done') {
+        currentItem.value = { ...currentItem.value, evaluated: true, status: 'Done' }
       }
 
       // Auto-advance to next item if requested
@@ -303,11 +424,13 @@ export function useDimensionalRating(scenarioId) {
     dimensionRatings,
     feedback,
     existingRating,
+    autoSaveEnabled,
 
     // Loading states
     loading,
     loadingItem,
     submitting,
+    saving,
     error,
 
     // Computed
@@ -322,6 +445,7 @@ export function useDimensionalRating(scenarioId) {
     progress,
     hasNext,
     hasPrev,
+    currentItemStatus,
 
     // Methods
     loadConfig,

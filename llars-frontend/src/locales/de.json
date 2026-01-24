@@ -21,7 +21,9 @@
     "yes": "Ja",
     "no": "Nein",
     "more": "Mehr",
-    "less": "Weniger"
+    "less": "Weniger",
+    "all": "Alle",
+    "retry": "Erneut versuchen"
   },
   "auth": {
     "login": "Anmelden",
@@ -2682,7 +2684,16 @@
       "status": {
         "pending": "Ausstehend",
         "evaluated": "Bewertet",
+        "done": "Bewertet",
+        "llm_done": "LLM bewertet",
         "in_progress": "In Bearbeitung"
+      },
+      "legend": {
+        "title": "Legende",
+        "pending": "Keine Bewertung",
+        "in_progress": "Mensch begonnen",
+        "llm_done": "Nur LLM bewertet",
+        "done": "Mensch abgeschlossen"
       },
       "importTitle": "Daten importieren",
       "importFile": "Datei hochladen",
@@ -2765,7 +2776,11 @@
         "all": "Alle",
         "human": "Mensch",
         "llm": "Maschine"
-      }
+      },
+      "totalProgress": "Gesamtfortschritt",
+      "evaluators": "Evaluatoren",
+      "humanEvaluators": "Menschliche Evaluatoren",
+      "llmEvaluators": "LLM Evaluatoren"
     },
     "results": {
       "title": "Ergebnisse",
@@ -2789,10 +2804,30 @@
       "scale": "Skala",
       "average": "Durchschnitt",
       "interRaterAgreement": "Übereinstimmung zwischen Bewertern",
+      "bucketDistribution": "Bucket-Verteilung",
+      "rankingAgreement": "Ranking-Übereinstimmung",
+      "agreementLevel": "Übereinstimmungs-Level",
       "lowAgreement": "Niedrig",
       "highAgreement": "Hoch",
       "agreement": "Übereinstimmung",
       "noOverlap": "Keine gemeinsamen Bewertungen",
+      "agreementDetail": "Übereinstimmungs-Details",
+      "comparisonType": "Vergleichstyp",
+      "rawScore": "Rohwert",
+      "agreementLevels": {
+        "excellent": "Ausgezeichnet",
+        "good": "Gut",
+        "moderate": "Moderat",
+        "low": "Niedrig",
+        "unknown": "Unbekannt"
+      },
+      "agreementExplanation": {
+        "excellent": "Beide Evaluatoren stimmen in mehr als 80% der Fälle überein. Dies deutet auf eine sehr hohe Konsistenz in den Bewertungen hin.",
+        "good": "Die Übereinstimmung liegt zwischen 60% und 80%. Die Evaluatoren haben eine solide Grundlage an gemeinsamen Bewertungskriterien.",
+        "moderate": "Die Übereinstimmung liegt zwischen 40% und 60%. Es gibt merkliche Unterschiede in den Bewertungsansätzen.",
+        "low": "Die Übereinstimmung liegt unter 40%. Die Evaluatoren haben sehr unterschiedliche Bewertungskriterien oder -stile.",
+        "noData": "Es liegen keine gemeinsamen Bewertungen vor, um die Übereinstimmung zu berechnen."
+      },
       "chartComingSoon": "Diagramm wird in Kürze verfügbar sein.",
       "accuracy": "Genauigkeit",
       "evaluationDetails": "Evaluierungs-Details",
@@ -2969,7 +3004,9 @@
       },
       "dimensionDistribution": "Zeigt die Verteilung der Bewertungen für jede Dimension. Die Heatmap-Farben zeigen relative Häufigkeit.",
       "spiderChart": "Vergleicht Durchschnittsbewertungen zwischen Menschen und LLMs über alle Dimensionen. Größere Flächen = höhere Durchschnittswerte.",
-      "interRaterAgreement": "Zeigt die paarweise Übereinstimmung zwischen allen Bewertern. Grün = hohe Übereinstimmung, Rot = niedrige Übereinstimmung. Berechnet als Anteil der Bewertungen innerhalb von 1 Punkt Differenz."
+      "interRaterAgreement": "Zeigt die paarweise Übereinstimmung zwischen allen Bewertern. Grün = hohe Übereinstimmung, Rot = niedrige Übereinstimmung. Berechnet als Anteil der Bewertungen innerhalb von 1 Punkt Differenz.",
+      "bucketDistribution": "Zeigt wie viele Items in welchen Bucket (Gut/Mittel/Schlecht) einsortiert wurden. Aggregiert über alle menschlichen und LLM-Evaluatoren.",
+      "rankingAgreement": "Paarweise Übereinstimmung zwischen Evaluatoren für Ranking-Zuweisungen. Zeigt den Prozentsatz der Items, die gleich eingeordnet wurden."
     },
     "session": {
       "title": "Evaluierung",
@@ -3290,7 +3327,21 @@
     "noScenariosAvailable": "Keine Szenarien verfügbar. Du musst zu einem Szenario eingeladen werden, um an einer Evaluation teilzunehmen.",
     "backToEvaluations": "Evaluierungen",
     "progress": "{done} / {total} abgeschlossen",
+    "caseNumber": "Fall {current} / {total}",
     "emptyHint": "Stelle sicher, dass ein aktives Szenario existiert und Threads zugewiesen sind.",
+    "session": {
+      "title": "Evaluierung",
+      "loading": "Daten werden geladen...",
+      "error": "Fehler beim Laden der Daten",
+      "noItems": "Keine Einträge zur Bewertung verfügbar",
+      "noItemsHint": "Möglicherweise wurden Ihnen noch keine Einträge zugewiesen.",
+      "complete": "Bewertung abgeschlossen!",
+      "completeMessage": "Sie haben alle zugewiesenen Einträge bewertet."
+    },
+    "noItemsInFilter": "Keine Einträge mit diesem Status",
+    "showAll": "Alle anzeigen",
+    "clickToView": "Klicken zum Öffnen",
+    "item": "Eintrag #{num}",
     "tools": {
       "ranking": {
         "title": "Ranking",
@@ -3324,6 +3375,7 @@
       "buckets": "Buckets",
       "selectBucket": "Bucket auswählen",
       "noContent": "Kein Inhalt vorhanden",
+      "noFeatures": "Keine Features zum Ranken vorhanden",
       "notesLabel": "Anmerkungen",
       "notesPlaceholder": "Optionale Anmerkungen..."
     },
@@ -3386,6 +3438,25 @@
         "relevanceDesc": "Bezug zum Thema/Kontext",
         "consistency": "Konsistenz",
         "consistencyDesc": "Widerspruchsfreiheit und Faktentreue"
+      }
+    },
+    "labeling": {
+      "pageTitle": "Labeling",
+      "pageSubtitle": "Texte kategorisieren und mit Labels versehen.",
+      "emptyTitle": "Kein Inhalt vorhanden",
+      "content": "Inhalt",
+      "selectCategory": "Kategorie auswählen",
+      "instruction": "Wählen Sie die passende Kategorie für diesen Text aus.",
+      "feedback": "Feedback",
+      "feedbackPlaceholder": "Optionale Anmerkungen zur Kategorisierung...",
+      "selected": "Ausgewählt",
+      "notSelected": "Nicht ausgewählt",
+      "unsure": "Unsicher",
+      "submit": "Speichern",
+      "categories": {
+        "positive": "Positiv",
+        "neutral": "Neutral",
+        "negative": "Negativ"
       }
     },
     "featureTypes": {

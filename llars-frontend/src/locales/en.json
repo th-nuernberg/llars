@@ -21,7 +21,9 @@
     "yes": "Yes",
     "no": "No",
     "more": "More",
-    "less": "Less"
+    "less": "Less",
+    "all": "All",
+    "retry": "Retry"
   },
   "auth": {
     "login": "Login",
@@ -2682,7 +2684,16 @@
       "status": {
         "pending": "Pending",
         "evaluated": "Evaluated",
+        "done": "Evaluated",
+        "llm_done": "LLM evaluated",
         "in_progress": "In Progress"
+      },
+      "legend": {
+        "title": "Legend",
+        "pending": "No evaluation",
+        "in_progress": "Human started",
+        "llm_done": "LLM only",
+        "done": "Human completed"
       },
       "importTitle": "Import Data",
       "importFile": "Upload File",
@@ -2765,7 +2776,11 @@
         "all": "All",
         "human": "Human",
         "llm": "Machine"
-      }
+      },
+      "totalProgress": "Total Progress",
+      "evaluators": "Evaluators",
+      "humanEvaluators": "Human Evaluators",
+      "llmEvaluators": "LLM Evaluators"
     },
     "results": {
       "title": "Results",
@@ -2789,10 +2804,30 @@
       "scale": "Scale",
       "average": "Average",
       "interRaterAgreement": "Inter-Rater Agreement",
+      "bucketDistribution": "Bucket Distribution",
+      "rankingAgreement": "Ranking Agreement",
+      "agreementLevel": "Agreement Level",
       "lowAgreement": "Low",
       "highAgreement": "High",
       "agreement": "agreement",
       "noOverlap": "No overlapping ratings",
+      "agreementDetail": "Agreement Details",
+      "comparisonType": "Comparison Type",
+      "rawScore": "Raw Score",
+      "agreementLevels": {
+        "excellent": "Excellent",
+        "good": "Good",
+        "moderate": "Moderate",
+        "low": "Low",
+        "unknown": "Unknown"
+      },
+      "agreementExplanation": {
+        "excellent": "Both evaluators agree in more than 80% of cases. This indicates very high consistency in ratings.",
+        "good": "Agreement is between 60% and 80%. The evaluators share a solid foundation of common rating criteria.",
+        "moderate": "Agreement is between 40% and 60%. There are noticeable differences in rating approaches.",
+        "low": "Agreement is below 40%. The evaluators have very different rating criteria or styles.",
+        "noData": "There are no overlapping ratings to calculate agreement."
+      },
       "chartComingSoon": "Chart will be available soon.",
       "accuracy": "Accuracy",
       "evaluationDetails": "Evaluation Details",
@@ -2964,7 +2999,9 @@
       },
       "dimensionDistribution": "Shows the distribution of ratings for each dimension. Heatmap colors indicate relative frequency.",
       "spiderChart": "Compares average ratings between humans and LLMs across all dimensions. Larger areas = higher average values.",
-      "interRaterAgreement": "Shows pairwise agreement between all raters. Green = high agreement, Red = low agreement. Calculated as the proportion of ratings within 1 point difference."
+      "interRaterAgreement": "Shows pairwise agreement between all raters. Green = high agreement, Red = low agreement. Calculated as the proportion of ratings within 1 point difference.",
+      "bucketDistribution": "Shows how many items were assigned to each bucket (Good/Medium/Bad). Aggregated across all human and LLM evaluators.",
+      "rankingAgreement": "Pairwise agreement between evaluators for ranking assignments. Shows the percentage of items that were assigned to the same bucket."
     },
     "session": {
       "title": "Evaluation",
@@ -3285,7 +3322,21 @@
     "noScenariosAvailable": "No scenarios available. You need to be invited to a scenario to participate in an evaluation.",
     "backToEvaluations": "Evaluations",
     "progress": "{done} / {total} completed",
+    "caseNumber": "Case {current} / {total}",
     "emptyHint": "Make sure an active scenario exists and threads are assigned.",
+    "session": {
+      "title": "Evaluation",
+      "loading": "Loading data...",
+      "error": "Error loading data",
+      "noItems": "No items available for evaluation",
+      "noItemsHint": "You may not have been assigned any items yet.",
+      "complete": "Evaluation complete!",
+      "completeMessage": "You have evaluated all assigned items."
+    },
+    "noItemsInFilter": "No items with this status",
+    "showAll": "Show all",
+    "clickToView": "Click to open",
+    "item": "Item #{num}",
     "tools": {
       "ranking": {
         "title": "Ranking",
@@ -3319,6 +3370,7 @@
       "buckets": "Buckets",
       "selectBucket": "Select bucket",
       "noContent": "No content available",
+      "noFeatures": "No features available for ranking",
       "notesLabel": "Notes",
       "notesPlaceholder": "Optional notes..."
     },
@@ -3381,6 +3433,25 @@
         "relevanceDesc": "Topic and context relevance",
         "consistency": "Consistency",
         "consistencyDesc": "Factual consistency"
+      }
+    },
+    "labeling": {
+      "pageTitle": "Labeling",
+      "pageSubtitle": "Categorize texts and assign labels.",
+      "emptyTitle": "No content available",
+      "content": "Content",
+      "selectCategory": "Select Category",
+      "instruction": "Select the appropriate category for this text.",
+      "feedback": "Feedback",
+      "feedbackPlaceholder": "Optional notes about the categorization...",
+      "selected": "Selected",
+      "notSelected": "Not selected",
+      "unsure": "Unsure",
+      "submit": "Save",
+      "categories": {
+        "positive": "Positive",
+        "neutral": "Neutral",
+        "negative": "Negative"
       }
     },
     "featureTypes": {

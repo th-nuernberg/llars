@@ -643,7 +643,7 @@ def _calculate_rating_krippendorff_alpha(scenario_id: int) -> Dict[str, Any]:
     # 1. Get human ratings from ItemDimensionRating
     human_rating_records = (
         ItemDimensionRating.query
-        .filter_by(scenario_id=scenario_id, status=ProgressionStatus.DONE)
+        .filter_by(scenario_id=scenario_id).filter(ItemDimensionRating.status.in_([ProgressionStatus.DONE, ProgressionStatus.PROGRESSING]))
         .all()
     )
 
@@ -823,7 +823,7 @@ def _calculate_rating_distribution(scenario_id: int) -> Dict[str, Any]:
     # 1. Get human ratings from ItemDimensionRating
     human_ratings = (
         ItemDimensionRating.query
-        .filter_by(scenario_id=scenario_id, status=ProgressionStatus.DONE)
+        .filter_by(scenario_id=scenario_id).filter(ItemDimensionRating.status.in_([ProgressionStatus.DONE, ProgressionStatus.PROGRESSING]))
         .all()
     )
 
@@ -1050,7 +1050,7 @@ def _calculate_dimension_averages(scenario_id: int) -> Dict[str, Any]:
     # 1. Get human ratings from ItemDimensionRating
     human_ratings = (
         ItemDimensionRating.query
-        .filter_by(scenario_id=scenario_id, status=ProgressionStatus.DONE)
+        .filter_by(scenario_id=scenario_id).filter(ItemDimensionRating.status.in_([ProgressionStatus.DONE, ProgressionStatus.PROGRESSING]))
         .all()
     )
 
@@ -1175,7 +1175,7 @@ def _calculate_pairwise_agreement(scenario_id: int) -> Dict[str, Any]:
     # 1. Get human ratings from ItemDimensionRating
     human_ratings = (
         ItemDimensionRating.query
-        .filter_by(scenario_id=scenario_id, status=ProgressionStatus.DONE)
+        .filter_by(scenario_id=scenario_id).filter(ItemDimensionRating.status.in_([ProgressionStatus.DONE, ProgressionStatus.PROGRESSING]))
         .all()
     )
 

@@ -402,6 +402,60 @@ class ItemDimensionRating(db.Model):
         }
 
 
+class ItemLabelingEvaluation(db.Model):
+    """
+    Labeling evaluation for an item - category assignment by a user.
+
+    Used for text classification/categorization tasks where users
+    assign one or more category labels to items.
+    """
+    __tablename__ = 'item_labeling_evaluations'
+
+    id: Mapped[int] = mapped_column(db.Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
+    item_id: Mapped[int] = mapped_column(db.Integer, db.ForeignKey('evaluation_items.item_id'), nullable=False, index=True)
+    scenario_id: Mapped[int] = mapped_column(db.Integer, db.ForeignKey('rating_scenarios.id'), nullable=False, index=True)
+
+    # Selected category ID (from scenario config)
+    category_id: Mapped[str] = mapped_column(db.String(255), nullable=True)
+
+    # Whether user marked as unsure
+    is_unsure: Mapped[bool] = mapped_column(db.Boolean, default=False)
+
+    # Optional feedback
+    feedback: Mapped[Optional[str]] = mapped_column(db.TEXT, nullable=True)
+
+    # Timestamps
+    created_at: Mapped[datetime] = mapped_column(db.DateTime, default=datetime.now, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(db.DateTime, default=datetime.now, onupdate=datetime.now, nullable=False)
+
+    # Relationships
+    user = db.relationship('User', backref='labeling_evaluations')
+    item = db.relationship('EvaluationItem', backref='labeling_evaluations')
+    scenario = db.relationship('RatingScenarios', backref='labeling_evaluations')
+
+    # Backwards compatibility
+    thread_id = synonym('item_id')
+
+    __table_args__ = (
+        db.UniqueConstraint('user_id', 'item_id', 'scenario_id', name='uix_user_item_scenario_labeling'),
+    )
+
+    def to_dict(self) -> dict:
+        """Convert to dictionary for API responses."""
+        return {
+            'id': self.id,
+            'user_id': self.user_id,
+            'item_id': self.item_id,
+            'scenario_id': self.scenario_id,
+            'category_id': self.category_id,
+            'is_unsure': self.is_unsure,
+            'feedback': self.feedback,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None
+        }
+
+
 class UserMessageRating(db.Model):
     __tablename__ = 'user_message_ratings'
     msg_rating_id = mapped_column(db.Integer, primary_key=True, autoincrement=True)

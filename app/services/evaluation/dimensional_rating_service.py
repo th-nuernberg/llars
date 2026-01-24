@@ -52,6 +52,44 @@ DEFAULT_DIMENSIONS = [
     }
 ]
 
+# Mail Rating dimensions (LLARS-specific for psychosocial online counseling)
+# Original LLARS dimensions based on UserMailHistoryRating model
+MAIL_RATING_DIMENSIONS = [
+    {
+        'id': 'counsellor_coherence',
+        'name': {'de': 'Berater-Kohärenz', 'en': 'Counsellor Coherence'},
+        'description': {'de': 'Logischer Zusammenhang und Konsistenz der Berater-Antworten', 'en': 'Logical connection and consistency of counsellor responses'},
+        'weight': 0.25
+    },
+    {
+        'id': 'client_coherence',
+        'name': {'de': 'Klient-Kohärenz', 'en': 'Client Coherence'},
+        'description': {'de': 'Verständlichkeit und Nachvollziehbarkeit der Klienten-Nachrichten', 'en': 'Comprehensibility and traceability of client messages'},
+        'weight': 0.25
+    },
+    {
+        'id': 'quality',
+        'name': {'de': 'Qualität', 'en': 'Quality'},
+        'description': {'de': 'Gesamtqualität der Beratungsinteraktion', 'en': 'Overall quality of the counseling interaction'},
+        'weight': 0.25
+    },
+    {
+        'id': 'overall',
+        'name': {'de': 'Gesamtbewertung', 'en': 'Overall Rating'},
+        'description': {'de': 'Zusammenfassende Bewertung des gesamten Verlaufs', 'en': 'Summary assessment of the entire conversation'},
+        'weight': 0.25
+    }
+]
+
+# Mail Rating scale labels
+MAIL_RATING_LABELS = {
+    '1': {'de': 'Unzureichend', 'en': 'Insufficient'},
+    '2': {'de': 'Mangelhaft', 'en': 'Poor'},
+    '3': {'de': 'Befriedigend', 'en': 'Satisfactory'},
+    '4': {'de': 'Gut', 'en': 'Good'},
+    '5': {'de': 'Sehr gut', 'en': 'Very good'}
+}
+
 # Default scale labels (1-5 scale)
 DEFAULT_LABELS = {
     '1': {'de': 'Sehr schlecht', 'en': 'Very poor'},
@@ -73,6 +111,9 @@ class DimensionalRatingService:
         Supports variable Likert scales. If min/max not configured,
         uses sensible defaults based on the scale type or preset.
 
+        For mail_rating scenarios (function_type_id=3), uses LLARS-specific
+        dimensions (Empathie, Klarheit, Professionalität, etc.).
+
         Args:
             scenario_id: Scenario ID
 
@@ -85,9 +126,15 @@ class DimensionalRatingService:
 
         config = scenario.config_json or {}
 
-        # Ensure dimensions are present (use defaults if not configured)
+        # Determine if this is a mail_rating scenario (function_type_id = 3)
+        is_mail_rating = scenario.function_type_id == 3
+
+        # Ensure dimensions are present (use type-specific defaults if not configured)
         if 'dimensions' not in config:
-            config['dimensions'] = DEFAULT_DIMENSIONS
+            if is_mail_rating:
+                config['dimensions'] = MAIL_RATING_DIMENSIONS
+            else:
+                config['dimensions'] = DEFAULT_DIMENSIONS
 
         # Get scale settings from config - don't override if explicitly set
         # This allows for variable scales (0-1, 0-4, 1-7, 0-9, etc.)
@@ -103,9 +150,12 @@ class DimensionalRatingService:
 
         # Generate default labels based on scale range if not configured
         if 'labels' not in config:
-            config['labels'] = DimensionalRatingService._generate_default_labels(
-                config['min'], config['max']
-            )
+            if is_mail_rating:
+                config['labels'] = MAIL_RATING_LABELS
+            else:
+                config['labels'] = DimensionalRatingService._generate_default_labels(
+                    config['min'], config['max']
+                )
 
         return config
 

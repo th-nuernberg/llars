@@ -209,13 +209,25 @@ def format_scenario_for_api(scenario, user, invitation_map=None, include_detaile
     # Get owner info
     owner_name = scenario.created_by
 
-    # Compute stats
+    # Compute stats and user progress
+    user_progress = {'completed': 0, 'total': thread_count}
+
     if include_detailed_stats and thread_count > 0:
         # Calculate detailed progress stats from actual evaluations
         try:
             progress_data = get_progress_stats(scenario.id)
             rater_stats = progress_data.get('rater_stats', [])
             evaluator_stats = progress_data.get('evaluator_stats', [])
+
+            # Find current user's progress (check both raters and evaluators)
+            all_user_stats = rater_stats + [e for e in evaluator_stats if not e.get('is_llm')]
+            for user_stat in all_user_stats:
+                if user_stat.get('username') == username:
+                    user_progress = {
+                        'completed': user_stat.get('done_threads', 0),
+                        'total': user_stat.get('total_threads', thread_count)
+                    }
+                    break
 
             # Aggregate human evaluator stats
             human_stats = rater_stats + [e for e in evaluator_stats if not e.get('is_llm')]
@@ -314,6 +326,7 @@ def format_scenario_for_api(scenario, user, invitation_map=None, include_detaile
         'llm_evaluator_count': len(llm_evaluators),
         'config_json': config,
         'stats': stats,
+        'user_progress': user_progress,  # Current user's evaluation progress
         'invitation': invitation_info  # New: invitation status for current user
     }
 
@@ -693,6 +706,25 @@ def get_scenario_threads(scenario_id):
                 if r.dimension_ratings:
                     user_status_map[r.item_id] = 'done'
 
+    # Also check for LLM evaluations (independent of user)
+    # This ensures Data tab shows items as evaluated when LLMs have processed them
+    if thread_ids and func_type_name:
+        llm_task_type = func_type_name
+        # Map function type to task type if different
+        if func_type_name == 'authenticity':
+            llm_task_type = 'authenticity'
+
+        llm_results = LLMTaskResult.query.filter(
+            LLMTaskResult.scenario_id == scenario_id,
+            LLMTaskResult.item_id.in_(thread_ids),
+            LLMTaskResult.task_type == llm_task_type
+        ).all()
+
+        for result in llm_results:
+            # If no human evaluation exists, mark as 'llm_done' to show LLM has evaluated
+            if result.item_id not in user_status_map:
+                user_status_map[result.item_id] = 'llm_done'
+
     # Build response
     threads = []
     for scenario_thread, email_thread in all_results:
@@ -978,7 +1010,7 @@ def get_scenario_thread_detail(scenario_id, thread_id):
         # Get LLM votes
         llm_votes = LLMTaskResult.query.filter_by(
             scenario_id=scenario_id,
-            thread_id=thread_id,
+            item_id=thread_id,
             task_type='authenticity'
         ).all()
         for vote in llm_votes:
@@ -993,7 +1025,7 @@ def get_scenario_thread_detail(scenario_id, thread_id):
             })
 
     elif func_type_name == 'rating':
-        # Get human dimensional ratings and group by user
+        # Get human dimensional ratings from ItemDimensionRating table
         from db.models.scenario import ItemDimensionRating
         from collections import defaultdict
         human_ratings = ItemDimensionRating.query.filter_by(
@@ -1001,12 +1033,16 @@ def get_scenario_thread_detail(scenario_id, thread_id):
             item_id=thread_id
         ).all()
 
-        # Group by user_id
-        user_ratings_map = defaultdict(dict)
+        # Group by user_id - dimension_ratings is a JSON column with all dimensions
+        user_ratings_map = {}
+        user_status_map = {}
         user_created_map = {}
         for rating in human_ratings:
-            user_ratings_map[rating.user_id][rating.dimension_key] = rating.rating_value
-            if rating.user_id not in user_created_map and rating.created_at:
+            if rating.dimension_ratings:
+                user_ratings_map[rating.user_id] = rating.dimension_ratings
+            if rating.status:
+                user_status_map[rating.user_id] = rating.status.value
+            if rating.created_at:
                 user_created_map[rating.user_id] = rating.created_at
 
         for user_id, ratings_dict in user_ratings_map.items():
@@ -1016,13 +1052,14 @@ def get_scenario_thread_detail(scenario_id, thread_id):
                 'user_id': user_id,
                 'username': user.username if user else 'Unknown',
                 'ratings': ratings_dict,
+                'status': user_status_map.get(user_id),
                 'created_at': user_created_map.get(user_id).isoformat() if user_created_map.get(user_id) else None
             })
 
         # Get LLM ratings
         llm_ratings = LLMTaskResult.query.filter_by(
             scenario_id=scenario_id,
-            thread_id=thread_id,
+            item_id=thread_id,
             task_type='rating'
         ).all()
         for rating in llm_ratings:
@@ -1050,34 +1087,185 @@ def get_scenario_thread_detail(scenario_id, thread_id):
             })
 
     elif func_type_name == 'mail_rating':
-        mail_ratings = UserMailHistoryRating.query.filter_by(thread_id=thread_id).all()
-        for rating in mail_ratings:
-            user = User.query.get(rating.user_id)
-            votes.append({
-                'type': 'human',
-                'user_id': rating.user_id,
-                'username': user.username if user else 'Unknown',
-                'overall_rating': rating.overall_rating,
-                'counsellor_coherence_rating': rating.counsellor_coherence_rating,
-                'client_coherence_rating': rating.client_coherence_rating,
-                'quality_rating': rating.quality_rating,
-                'feedback': rating.feedback,
-                'status': rating.status.value if rating.status else None,
-                'created_at': rating.timestamp.isoformat() if rating.timestamp else None
-            })
+        # First check new ItemDimensionRating table (multi-dimensional ratings)
+        from db.models.scenario import ItemDimensionRating
+        from collections import defaultdict
+        dim_ratings = ItemDimensionRating.query.filter_by(
+            scenario_id=scenario_id,
+            item_id=thread_id
+        ).all()
+
+        if dim_ratings:
+            # Group by user_id
+            user_ratings_map = defaultdict(dict)
+            user_status_map = {}
+            user_created_map = {}
+            for rating in dim_ratings:
+                if rating.dimension_ratings:
+                    user_ratings_map[rating.user_id] = rating.dimension_ratings
+                if rating.status:
+                    user_status_map[rating.user_id] = rating.status.value
+                if rating.created_at:
+                    user_created_map[rating.user_id] = rating.created_at
+
+            for user_id, ratings_dict in user_ratings_map.items():
+                user = User.query.get(user_id)
+                votes.append({
+                    'type': 'human',
+                    'user_id': user_id,
+                    'username': user.username if user else 'Unknown',
+                    'ratings': ratings_dict,
+                    'status': user_status_map.get(user_id),
+                    'created_at': user_created_map.get(user_id).isoformat() if user_created_map.get(user_id) else None
+                })
+        else:
+            # Fallback to legacy UserMailHistoryRating table
+            mail_ratings = UserMailHistoryRating.query.filter_by(item_id=thread_id).all()
+            for rating in mail_ratings:
+                user = User.query.get(rating.user_id)
+                votes.append({
+                    'type': 'human',
+                    'user_id': rating.user_id,
+                    'username': user.username if user else 'Unknown',
+                    'ratings': {
+                        'overall_rating': rating.overall_rating,
+                        'counsellor_coherence': rating.counsellor_coherence_rating,
+                        'client_coherence': rating.client_coherence_rating,
+                        'quality': rating.quality_rating
+                    },
+                    'feedback': rating.feedback,
+                    'status': rating.status.value if rating.status else None,
+                    'created_at': rating.timestamp.isoformat() if rating.timestamp else None
+                })
 
         llm_ratings = LLMTaskResult.query.filter_by(
             scenario_id=scenario_id,
-            thread_id=thread_id,
+            item_id=thread_id,
             task_type='mail_rating'
         ).all()
         for rating in llm_ratings:
             payload = rating.payload_json or {}
+            # Handle different payload formats:
+            # 1. Simple format: {"rating": 4, "reasoning": "..."}
+            # 2. Dimensional format: {"dimensional_ratings": [...], "reasoning": "..."}
+            # 3. Dict format: {"ratings": {...}, "reasoning": "..."}
+            ratings_dict = None
+            overall_rating = None
+            if payload.get('dimensional_ratings'):
+                ratings_dict = {
+                    item.get('dimension'): item.get('rating')
+                    for item in payload['dimensional_ratings']
+                    if item.get('dimension') is not None
+                }
+            elif payload.get('ratings'):
+                ratings_dict = payload['ratings']
+            elif payload.get('rating') is not None:
+                # Simple single rating format
+                overall_rating = payload.get('rating')
+
             votes.append({
                 'type': 'llm',
                 'model_id': rating.model_id,
-                'ratings': payload.get('ratings'),
+                'ratings': ratings_dict,
+                'overall_rating': overall_rating,
+                'reasoning': payload.get('justification') or payload.get('reasoning'),
                 'created_at': rating.created_at.isoformat() if rating.created_at else None
+            })
+
+    elif func_type_name == 'ranking':
+        # Get features for this thread/item
+        features = Feature.query.filter_by(item_id=thread_id).all()
+        feature_ids = [f.feature_id for f in features]
+
+        if feature_ids:
+            # Get human rankings
+            from collections import defaultdict
+            human_rankings = UserFeatureRanking.query.filter(
+                UserFeatureRanking.feature_id.in_(feature_ids)
+            ).all()
+
+            # Group rankings by user
+            user_rankings_map = defaultdict(list)
+            for ranking in human_rankings:
+                user_rankings_map[ranking.user_id].append({
+                    'feature_id': ranking.feature_id,
+                    'bucket': ranking.bucket,
+                    'ranking_content': ranking.ranking_content
+                })
+
+            for user_id, rankings_list in user_rankings_map.items():
+                user = User.query.get(user_id)
+                votes.append({
+                    'type': 'human',
+                    'user_id': user_id,
+                    'username': user.username if user else 'Unknown',
+                    'rankings': rankings_list,
+                    'ranked_count': len(rankings_list),
+                    'total_features': len(feature_ids)
+                })
+
+            # Get LLM rankings
+            llm_rankings = LLMTaskResult.query.filter_by(
+                scenario_id=scenario_id,
+                item_id=thread_id,
+                task_type='ranking'
+            ).all()
+            for ranking in llm_rankings:
+                payload = ranking.payload_json or {}
+                # Transform bucket-based format to list format
+                # Payload format: {"gut": [id1, id2], "mittel": [id3], ...}
+                rankings_list = []
+                for bucket_name, feature_ids in payload.items():
+                    if bucket_name not in ['reasoning', 'justification'] and isinstance(feature_ids, list):
+                        for fid in feature_ids:
+                            rankings_list.append({
+                                'feature_id': fid,
+                                'bucket': bucket_name
+                            })
+                votes.append({
+                    'type': 'llm',
+                    'model_id': ranking.model_id,
+                    'rankings': rankings_list if rankings_list else None,
+                    'ranked_count': len(rankings_list),
+                    'total_features': len(feature_ids) if feature_ids else 0,
+                    'reasoning': payload.get('reasoning') or payload.get('justification'),
+                    'created_at': ranking.created_at.isoformat() if ranking.created_at else None
+                })
+
+    elif func_type_name == 'labeling':
+        # Get human labelings from ItemDimensionRating table
+        from db.models.scenario import ItemDimensionRating
+        human_labels = ItemDimensionRating.query.filter_by(
+            scenario_id=scenario_id,
+            item_id=thread_id
+        ).all()
+
+        for label in human_labels:
+            user = User.query.get(label.user_id)
+            votes.append({
+                'type': 'human',
+                'user_id': label.user_id,
+                'username': user.username if user else 'Unknown',
+                'label': label.dimension_ratings.get('label') if label.dimension_ratings else None,
+                'status': label.status.value if label.status else None,
+                'created_at': label.created_at.isoformat() if label.created_at else None
+            })
+
+        # Get LLM labelings
+        llm_labels = LLMTaskResult.query.filter_by(
+            scenario_id=scenario_id,
+            item_id=thread_id,
+            task_type='labeling'
+        ).all()
+        for label in llm_labels:
+            payload = label.payload_json or {}
+            votes.append({
+                'type': 'llm',
+                'model_id': label.model_id,
+                'label': payload.get('label'),
+                'confidence': payload.get('confidence'),
+                'reasoning': payload.get('reasoning'),
+                'created_at': label.created_at.isoformat() if label.created_at else None
             })
 
     return jsonify({

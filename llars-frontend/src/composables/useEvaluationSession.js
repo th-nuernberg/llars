@@ -29,13 +29,23 @@ export const SESSION_STATUS = {
   ERROR: 'error'
 }
 
+// Map function_type_id to function type name
+const FUNCTION_TYPE_MAP = {
+  1: 'ranking',
+  2: 'rating',
+  3: 'mail_rating',
+  4: 'comparison',
+  5: 'authenticity',
+  7: 'labeling'
+}
+
 /**
  * Generic evaluation session composable
  * @param {number} scenarioId - Scenario ID
- * @param {string} functionType - Evaluation type (rating, ranking, comparison, etc.)
+ * @param {string} functionType - Evaluation type (optional, derived from scenario if not provided)
  * @returns {Object} Session state and methods
  */
-export function useEvaluationSession(scenarioId, functionType) {
+export function useEvaluationSession(scenarioId, functionType = null) {
   // ===== State =====
   const status = ref(SESSION_STATUS.LOADING)
   const items = ref([])
@@ -111,6 +121,19 @@ export function useEvaluationSession(scenarioId, functionType) {
     return false
   }
 
+  function goToItemById(itemId) {
+    if (!itemId) return false
+    const id = Number(itemId)
+    const index = items.value.findIndex(item =>
+      item.id === id || item.thread_id === id || item.item_id === id
+    )
+    if (index >= 0) {
+      currentIndex.value = index
+      return true
+    }
+    return false
+  }
+
   // ===== API Methods =====
 
   /**
@@ -168,10 +191,15 @@ export function useEvaluationSession(scenarioId, functionType) {
     status.value = SESSION_STATUS.SUBMITTING
 
     try {
+      // Get function type from parameter or from loaded scenario
+      const effectiveFunctionType = functionType ||
+        FUNCTION_TYPE_MAP[scenario.value?.function_type_id] ||
+        'rating'
+
       const response = await axios.post(
         `/api/evaluation/session/${scenarioId}/items/${itemId}/evaluate`,
         {
-          function_type: functionType,
+          function_type: effectiveFunctionType,
           ...evaluationData
         }
       )
@@ -292,6 +320,36 @@ export function useEvaluationSession(scenarioId, functionType) {
     error.value = null
   }
 
+  /**
+   * Mark an item as completed and update progress
+   * @param {number} itemId - The item ID to mark as completed
+   */
+  function markItemCompleted(itemId) {
+    if (!itemId) return
+
+    const id = Number(itemId)
+    const itemIndex = items.value.findIndex(item =>
+      item.id === id || item.thread_id === id || item.item_id === id
+    )
+
+    if (itemIndex >= 0 && !items.value[itemIndex].evaluated) {
+      // Replace the item to ensure reactivity
+      items.value = items.value.map((item, idx) =>
+        idx === itemIndex
+          ? { ...item, evaluated: true, status: 'Done' }
+          : item
+      )
+
+      // Update progress (force new object for reactivity)
+      const completed = items.value.filter(i => i.evaluated).length
+      progress.value = {
+        total: items.value.length,
+        completed,
+        remaining: items.value.length - completed
+      }
+    }
+  }
+
   // ===== Lifecycle =====
 
   onMounted(() => {
@@ -325,6 +383,7 @@ export function useEvaluationSession(scenarioId, functionType) {
 
     // Navigation
     goToItem,
+    goToItemById,
     goNext,
     goPrev,
     goToFirstIncomplete,
@@ -332,6 +391,7 @@ export function useEvaluationSession(scenarioId, functionType) {
     // Actions
     loadSession,
     submitEvaluation,
+    markItemCompleted,
     clearError,
     reset
   }

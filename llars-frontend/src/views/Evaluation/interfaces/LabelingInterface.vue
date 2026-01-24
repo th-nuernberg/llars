@@ -8,6 +8,7 @@
     :can-go-next="hasNext"
     :current-index="currentItemIndex"
     :total-items="items.length"
+    :embedded="hideNavigation"
     @back="navigateBack"
     @prev="goPrev"
     @next="goNext"
@@ -28,7 +29,8 @@
       <template v-else>
         <!-- Content Panel (links) - Messages/Text -->
         <div class="panel content-panel" :style="leftPanelStyle()">
-          <div class="panel-header">
+          <!-- Panel Header (hidden when embedded in EvaluationSession) -->
+          <div v-if="!hideNavigation" class="panel-header">
             <LIcon size="20" class="mr-2">mdi-text-box-outline</LIcon>
             <span class="panel-title">{{ $t('evaluation.labeling.content') }}</span>
             <v-spacer />
@@ -68,7 +70,8 @@
 
         <!-- Labeling Panel (rechts) - Category Selection -->
         <div class="panel labeling-panel" :style="rightPanelStyle()">
-          <div class="panel-header">
+          <!-- Panel Header (hidden when embedded in EvaluationSession) -->
+          <div v-if="!hideNavigation" class="panel-header">
             <LIcon size="20" class="mr-2">mdi-label-outline</LIcon>
             <span class="panel-title">{{ $t('evaluation.labeling.selectCategory') }}</span>
             <v-spacer />
@@ -172,10 +175,21 @@ const props = defineProps({
   config: {
     type: Object,
     default: () => ({})
+  },
+  initialItemId: {
+    type: [Number, String],
+    default: null
+  },
+  hideNavigation: {
+    type: Boolean,
+    default: false
   }
 })
 
-const emit = defineEmits(['item-completed', 'all-completed'])
+const emit = defineEmits(['item-completed', 'all-completed', 'status-change', 'saving-change'])
+
+// Computed prop for hideNavigation to use in template
+const hideNavigation = computed(() => props.hideNavigation)
 
 const route = useRoute()
 const router = useRouter()
@@ -252,6 +266,16 @@ const evaluationStatus = computed(() => {
   return 'in_progress'
 })
 
+// Emit status changes to parent
+watch(evaluationStatus, (newStatus) => {
+  emit('status-change', newStatus)
+}, { immediate: true })
+
+// Emit saving/submitting changes to parent
+watch(submitting, (isSaving) => {
+  emit('saving-change', isSaving)
+})
+
 // Methods
 function getCategoryStyle(cat) {
   const isSelected = selectedCategory.value === cat.id
@@ -280,9 +304,21 @@ async function loadItems() {
     const response = await axios.get(`/api/evaluation/session/${props.scenarioId}`)
     items.value = response.data.items || []
 
-    const firstIncomplete = items.value.findIndex(i => !i.evaluated)
-    if (firstIncomplete >= 0) {
-      currentItemIndex.value = firstIncomplete
+    // Navigate to initial item if specified
+    if (props.initialItemId && items.value.length > 0) {
+      const targetId = Number(props.initialItemId)
+      const targetIndex = items.value.findIndex(item =>
+        (item.thread_id || item.id || item.item_id) === targetId
+      )
+      if (targetIndex >= 0) {
+        currentItemIndex.value = targetIndex
+      }
+    } else {
+      // Default: find first incomplete item
+      const firstIncomplete = items.value.findIndex(i => !i.evaluated)
+      if (firstIncomplete >= 0) {
+        currentItemIndex.value = firstIncomplete
+      }
     }
 
     await loadCurrentItemDetail()
@@ -392,6 +428,24 @@ onMounted(() => {
 watch(() => props.scenarioId, (newId) => {
   if (newId) {
     loadItems()
+  }
+})
+
+// Watch for initialItemId changes (e.g., when navigating between items via URL)
+watch(() => props.initialItemId, (newItemId) => {
+  if (newItemId && items.value.length > 0) {
+    const targetId = Number(newItemId)
+    // Check if this item is already the current item
+    const currentId = currentItem.value?.thread_id || currentItem.value?.id || currentItem.value?.item_id
+    if (currentId === targetId) return // Already on this item
+
+    const targetIndex = items.value.findIndex(item =>
+      (item.thread_id || item.id || item.item_id) === targetId
+    )
+    if (targetIndex >= 0 && targetIndex !== currentItemIndex.value) {
+      currentItemIndex.value = targetIndex
+      loadCurrentItemDetail()
+    }
   }
 })
 </script>

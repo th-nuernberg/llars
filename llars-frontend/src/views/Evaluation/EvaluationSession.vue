@@ -27,29 +27,6 @@
           </div>
           <span class="progress-percent">{{ progressPercent }}%</span>
         </div>
-
-        <!-- Navigation Buttons -->
-        <div class="nav-buttons">
-          <LBtn
-            variant="tonal"
-            size="small"
-            :disabled="!hasPrev"
-            @click="goPrev"
-          >
-            <LIcon>mdi-chevron-left</LIcon>
-          </LBtn>
-          <span class="nav-position">
-            {{ currentIndex + 1 }} / {{ items.length }}
-          </span>
-          <LBtn
-            variant="tonal"
-            size="small"
-            :disabled="!hasNext"
-            @click="goNext"
-          >
-            <LIcon>mdi-chevron-right</LIcon>
-          </LBtn>
-        </div>
       </div>
     </div>
 
@@ -85,32 +62,71 @@
       <h3>{{ $t('evaluation.session.complete') }}</h3>
       <p class="text-medium-emphasis">{{ $t('evaluation.session.completeMessage') }}</p>
       <LBtn variant="primary" @click="goBack">
-        {{ $t('evaluation.session.backToScenario') }}
+        {{ $t('evaluation.backToEvaluations') }}
       </LBtn>
     </div>
 
-    <!-- Main Content - Interface Component -->
-    <div v-else class="session-content">
-      <router-view
-        v-slot="{ Component }"
-        :scenario="scenario"
-        :config="config"
-        :current-item="currentItem"
-        :progress="progress"
-        @item-completed="onItemCompleted"
-        @next="goNext"
-        @prev="goPrev"
-      >
-        <component
-          :is="Component || defaultInterface"
-          :scenario-id="scenarioId"
+    <!-- Main Content - Interface Component + Unified Footer -->
+    <template v-else>
+      <div class="session-content">
+        <router-view
+          v-slot="{ Component }"
           :scenario="scenario"
           :config="config"
           :current-item="currentItem"
-          @item-completed="onItemCompleted"
-        />
-      </router-view>
-    </div>
+          :progress="progress"
+        >
+          <keep-alive>
+            <component
+              :is="Component || defaultInterface"
+              :key="scenarioId"
+              :scenario-id="scenarioId"
+              :scenario="scenario"
+              :config="config"
+              :current-item="currentItem"
+              :initial-item-id="initialItemId"
+              :hide-navigation="true"
+              @status-change="handleStatusChange"
+              @saving-change="handleSavingChange"
+              @item-completed="handleItemCompleted"
+            />
+          </keep-alive>
+        </router-view>
+      </div>
+
+      <!-- Unified Navigation Footer -->
+      <div class="session-footer">
+        <LBtn
+          variant="tonal"
+          size="small"
+          :disabled="!hasPrev"
+          @click="handlePrev"
+        >
+          <LIcon start>mdi-chevron-left</LIcon>
+          {{ $t('common.previous') }}
+        </LBtn>
+
+        <div class="footer-center">
+          <LEvaluationStatus
+            :status="currentItemStatus"
+            :saving="isSaving"
+          />
+          <span class="nav-position">
+            {{ $t('evaluation.caseNumber', { current: currentIndex + 1, total: items.length }) }}
+          </span>
+        </div>
+
+        <LBtn
+          variant="primary"
+          size="small"
+          :disabled="!hasNext"
+          @click="handleNext"
+        >
+          {{ $t('common.next') }}
+          <LIcon end>mdi-chevron-right</LIcon>
+        </LBtn>
+      </div>
+    </template>
   </div>
 </template>
 
@@ -121,8 +137,13 @@
  * Provides the main layout and navigation for evaluation sessions.
  * Wraps type-specific interfaces (RatingInterface, RankingInterface, etc.)
  * and handles progress tracking, navigation, and state management.
+ *
+ * Unified layout structure:
+ * - Header: Back button, scenario name, overall progress
+ * - Content: Interface-specific evaluation UI
+ * - Footer: Previous/Next navigation, status tag, case number
  */
-import { computed, defineAsyncComponent } from 'vue'
+import { ref, computed, defineAsyncComponent, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useMobile } from '@/composables/useMobile'
@@ -132,6 +153,10 @@ const props = defineProps({
   scenarioId: {
     type: [Number, String],
     required: true
+  },
+  itemId: {
+    type: [Number, String],
+    default: null
   }
 })
 
@@ -143,11 +168,6 @@ const { isMobile } = useMobile()
 // Get scenario ID from props or route
 const scenarioId = computed(() => {
   return Number(props.scenarioId || route.params.scenarioId)
-})
-
-// Function type from route
-const functionType = computed(() => {
-  return route.meta?.functionType || route.params.type || 'rating'
 })
 
 // Use evaluation session composable
@@ -164,10 +184,59 @@ const {
   hasPrev,
   progressPercent,
   isComplete,
+  isReady,
+  loadSession,
+  goToItemById,
   goNext,
   goPrev,
-  loadSession
-} = useEvaluationSession(scenarioId.value, functionType.value)
+  markItemCompleted
+} = useEvaluationSession(scenarioId.value)
+
+// Local state for current item status (updated by child interfaces)
+const currentItemStatus = ref('pending')
+const isSaving = ref(false)
+
+// Watch for session ready and navigate to initial item if provided
+watch(isReady, (ready) => {
+  if (ready && initialItemId.value) {
+    goToItemById(initialItemId.value)
+  }
+}, { immediate: true })
+
+// Watch for route changes (when navigating between items)
+watch(() => route.params.itemId, (newItemId) => {
+  if (isReady.value && newItemId) {
+    goToItemById(newItemId)
+  }
+})
+
+// Watch for current item changes to reset status
+watch(currentItem, (newItem) => {
+  if (newItem) {
+    // Reset status based on item's evaluated state
+    currentItemStatus.value = newItem.status || (newItem.evaluated ? 'done' : 'pending')
+  }
+}, { immediate: true })
+
+// Function type from loaded scenario (function_type_id)
+// 1=ranking, 2=rating, 3=mail_rating, 4=comparison, 5=authenticity, 7=labeling
+const FUNCTION_TYPE_MAP = {
+  1: 'ranking',
+  2: 'rating',
+  3: 'mail_rating',
+  4: 'comparison',
+  5: 'authenticity',
+  7: 'labeling'
+}
+
+const functionType = computed(() => {
+  // First try from loaded scenario data
+  if (scenario.value?.function_type_id) {
+    return FUNCTION_TYPE_MAP[scenario.value.function_type_id] || 'rating'
+  }
+  // Fallback to route meta or params
+  return route.meta?.functionType || route.params.type || 'rating'
+})
 
 // Computed
 const isLoading = computed(() => status.value === SESSION_STATUS.LOADING)
@@ -176,34 +245,71 @@ const isLoading = computed(() => status.value === SESSION_STATUS.LOADING)
 const defaultInterface = computed(() => {
   const interfaces = {
     rating: defineAsyncComponent(() => import('./interfaces/RatingInterface.vue')),
-    // TODO: Create dedicated interfaces for ranking, comparison, authenticity
-    ranking: defineAsyncComponent(() => import('./interfaces/RatingInterface.vue')),
-    comparison: defineAsyncComponent(() => import('./interfaces/RatingInterface.vue')),
-    authenticity: defineAsyncComponent(() => import('./interfaces/RatingInterface.vue')),
-    mail_rating: defineAsyncComponent(() => import('./interfaces/RatingInterface.vue'))
+    mail_rating: defineAsyncComponent(() => import('./interfaces/RatingInterface.vue')),
+    ranking: defineAsyncComponent(() => import('./interfaces/RankingInterface.vue')),
+    comparison: defineAsyncComponent(() => import('./interfaces/ComparisonInterface.vue')),
+    authenticity: defineAsyncComponent(() => import('./interfaces/AuthenticityInterface.vue')),
+    labeling: defineAsyncComponent(() => import('./interfaces/LabelingInterface.vue'))
   }
   return interfaces[functionType.value] || interfaces.rating
 })
 
+// Get initial item ID from props or route
+const initialItemId = computed(() => {
+  return props.itemId || route.params.itemId || null
+})
+
 // Navigation
 function goBack() {
-  router.push({
-    name: 'ScenarioWorkspace',
-    params: { id: scenarioId.value },
-    query: { tab: 'evaluation' }
-  })
+  // Go back to items overview for this scenario
+  router.push({ name: 'EvaluationItemsOverview', params: { scenarioId: scenarioId.value } })
 }
 
 function reload() {
   loadSession()
 }
 
-// Event handlers
-function onItemCompleted(itemId) {
-  // Move to next item if available
+// Handle navigation with route update
+function handleNext() {
   if (hasNext.value) {
-    goNext()
+    const nextIndex = currentIndex.value + 1
+    const nextItem = items.value[nextIndex]
+    const nextItemId = nextItem?.thread_id || nextItem?.id || nextItem?.item_id
+    if (nextItemId) {
+      router.push({
+        name: 'EvaluationSessionItem',
+        params: { scenarioId: scenarioId.value, itemId: nextItemId }
+      })
+    }
   }
+}
+
+function handlePrev() {
+  if (hasPrev.value) {
+    const prevIndex = currentIndex.value - 1
+    const prevItem = items.value[prevIndex]
+    const prevItemId = prevItem?.thread_id || prevItem?.id || prevItem?.item_id
+    if (prevItemId) {
+      router.push({
+        name: 'EvaluationSessionItem',
+        params: { scenarioId: scenarioId.value, itemId: prevItemId }
+      })
+    }
+  }
+}
+
+// Handle status updates from child interfaces
+function handleStatusChange(newStatus) {
+  currentItemStatus.value = newStatus
+}
+
+function handleSavingChange(saving) {
+  isSaving.value = saving
+}
+
+// Handle item completion - update progress without reloading
+function handleItemCompleted(itemId) {
+  markItemCompleted(itemId)
 }
 </script>
 
@@ -307,6 +413,30 @@ function onItemCompleted(itemId) {
   flex-direction: column;
 }
 
+/* Unified Navigation Footer */
+.session-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 24px;
+  border-top: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  background: rgb(var(--v-theme-surface));
+  flex-shrink: 0;
+}
+
+.footer-center {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.footer-center .nav-position {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: rgba(var(--v-theme-on-surface), 0.8);
+  white-space: nowrap;
+}
+
 /* Loading State */
 .session-loading {
   flex: 1;
@@ -406,5 +536,17 @@ function onItemCompleted(itemId) {
 
 .evaluation-session.is-mobile .header-info h1 {
   font-size: 1rem;
+}
+
+.evaluation-session.is-mobile .session-footer {
+  padding: 10px 16px;
+}
+
+.evaluation-session.is-mobile .footer-center {
+  gap: 8px;
+}
+
+.evaluation-session.is-mobile .footer-center .nav-position {
+  font-size: 0.8rem;
 }
 </style>

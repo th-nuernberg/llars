@@ -2,13 +2,10 @@
   <div class="rating-interface" ref="containerRef">
     <!-- Left Panel: Content to Rate -->
     <div class="left-panel" :style="leftPanelStyle()">
-      <div class="panel-header">
+      <!-- Panel Header (hidden when embedded in EvaluationSession) -->
+      <div v-if="!hideNavigation" class="panel-header">
         <LIcon size="20" class="mr-2">mdi-text-box-outline</LIcon>
         <h3>{{ $t('evaluation.rating.content') }}</h3>
-        <v-spacer />
-        <LTag v-if="items.length > 0" variant="info" size="sm">
-          {{ currentItemIndex + 1 }}/{{ items.length }}
-        </LTag>
       </div>
 
       <!-- Content Panel Component -->
@@ -27,13 +24,16 @@
 
     <!-- Right Panel: Dimensional Rating -->
     <div class="right-panel" :style="rightPanelStyle()">
-      <div class="panel-header">
+      <!-- Panel Header (hidden when embedded in EvaluationSession) -->
+      <div v-if="!hideNavigation" class="panel-header">
         <LIcon size="20" class="mr-2">mdi-clipboard-check-outline</LIcon>
         <h3>{{ $t('evaluation.rating.dimensions') }}</h3>
         <v-spacer />
-        <LTag :variant="canSubmit ? 'success' : 'default'" size="sm">
-          {{ ratedDimensionCount }}/{{ dimensions.length }} {{ $t('evaluation.rating.rated') }}
-        </LTag>
+        <!-- Status Chip -->
+        <LEvaluationStatus
+          :status="currentItemStatus"
+          :saving="saving"
+        />
       </div>
 
       <!-- Loading State -->
@@ -93,40 +93,45 @@
         <h3>{{ $t('evaluation.rating.emptyTitle') }}</h3>
       </div>
 
-      <!-- Bottom Action Bar -->
-      <div class="action-bar" v-if="currentItem">
-        <LBtn
-          variant="text"
-          :disabled="!hasPrev || submitting"
-          @click="handlePrev"
-        >
-          <LIcon start>mdi-arrow-left</LIcon>
-          {{ $t('common.back') }}
-        </LBtn>
-
-        <div class="progress-indicator">
-          <span class="progress-text">
-            {{ progress.completed }}/{{ progress.total }}
-            {{ $t('evaluation.rating.itemsCompleted') }}
+      <!-- Rating Progress + Navigation Footer (hidden when embedded in EvaluationSession) -->
+      <div class="rating-footer" v-if="currentItem && !hideNavigation">
+        <div class="footer-progress" v-if="dimensions.length > 0">
+          <span class="progress-label">
+            {{ ratedDimensionCount }}/{{ dimensions.length }} {{ $t('evaluation.rating.rated') }}
           </span>
           <v-progress-linear
-            :model-value="progress.percent"
+            :model-value="(ratedDimensionCount / dimensions.length) * 100"
             height="4"
-            :color="progress.percent === 100 ? 'success' : 'primary'"
+            :color="canSubmit ? 'success' : 'primary'"
             rounded
             class="progress-bar"
           />
         </div>
 
-        <LBtn
-          :variant="canSubmit ? 'primary' : 'secondary'"
-          :disabled="!canSubmit || submitting"
-          :loading="submitting"
-          @click="handleSubmit"
-        >
-          {{ hasNext ? $t('evaluation.rating.saveAndNext') : $t('evaluation.rating.complete') }}
-          <LIcon end>{{ hasNext ? 'mdi-arrow-right' : 'mdi-check' }}</LIcon>
-        </LBtn>
+        <!-- Navigation Buttons -->
+        <div class="footer-nav">
+          <LBtn
+            variant="tonal"
+            size="small"
+            :disabled="!hasPrev"
+            @click="goPrev"
+          >
+            <LIcon start>mdi-chevron-left</LIcon>
+            {{ $t('common.previous') }}
+          </LBtn>
+          <span class="nav-position">
+            {{ currentItemIndex + 1 }} / {{ items.length }}
+          </span>
+          <LBtn
+            variant="primary"
+            size="small"
+            :disabled="!hasNext"
+            @click="goNext"
+          >
+            {{ $t('common.next') }}
+            <LIcon end>mdi-chevron-right</LIcon>
+          </LBtn>
+        </div>
       </div>
     </div>
   </div>
@@ -147,7 +152,6 @@
  * feature-based rating with a text-based multi-dimensional approach.
  */
 import { ref, computed, watch, onMounted, toRef } from 'vue'
-import { useI18n } from 'vue-i18n'
 import { usePanelResize } from '@/composables/usePanelResize'
 import { useDimensionalRating } from '@/composables/useDimensionalRating'
 import { DimensionRatingCard, ContentPanel, OverallScoreDisplay } from '@/components/Evaluation/rating'
@@ -164,12 +168,21 @@ const props = defineProps({
   config: {
     type: Object,
     default: () => ({})
+  },
+  initialItemId: {
+    type: [Number, String],
+    default: null
+  },
+  hideNavigation: {
+    type: Boolean,
+    default: false
   }
 })
 
-const emit = defineEmits(['item-completed', 'all-completed'])
+const emit = defineEmits(['item-completed', 'all-completed', 'status-change', 'saving-change'])
 
-const { t } = useI18n()
+// Computed prop for hideNavigation to use in template
+const hideNavigation = computed(() => props.hideNavigation)
 
 // Panel resize composable
 const { containerRef, leftPanelStyle, rightPanelStyle, startResize } = usePanelResize({
@@ -194,6 +207,7 @@ const {
   loading,
   loadingItem,
   submitting,
+  saving,
   error,
 
   dimensions,
@@ -207,8 +221,10 @@ const {
   progress,
   hasNext,
   hasPrev,
+  currentItemStatus,
 
   loadItems,
+  loadItem,
   setDimensionRating,
   submitRating,
   goNext,
@@ -224,6 +240,16 @@ watch(feedback, (newVal) => {
 
 watch(localFeedback, (newVal) => {
   feedback.value = newVal
+})
+
+// Emit status changes to parent
+watch(currentItemStatus, (newStatus) => {
+  emit('status-change', newStatus)
+}, { immediate: true })
+
+// Emit saving changes to parent
+watch(saving, (isSaving) => {
+  emit('saving-change', isSaving)
 })
 
 // Per-dimension scale helpers
@@ -252,42 +278,62 @@ function getDimensionLabels(dim) {
   return scaleLabels.value
 }
 
-// Handle dimension rating change
+// Handle dimension rating change (auto-saves via composable)
 function handleDimensionRating(dimensionId, value) {
   setDimensionRating(dimensionId, value)
-}
 
-// Handle submit and next
-async function handleSubmit() {
-  // Sync feedback before submit
-  feedback.value = localFeedback.value
+  // Emit item-completed when all dimensions are rated
+  if (canSubmit.value) {
+    // Auto-complete the rating when all dimensions are filled
+    submitRating({ autoAdvance: false }).then(result => {
+      if (result.success) {
+        emit('item-completed', currentItem.value?.item_id)
 
-  const result = await submitRating({ autoAdvance: hasNext.value })
-
-  if (result.success) {
-    emit('item-completed', currentItem.value?.item_id)
-
-    // Check if all completed
-    if (progress.value.completed === progress.value.total) {
-      emit('all-completed')
-    }
+        // Check if all completed
+        if (progress.value.completed === progress.value.total) {
+          emit('all-completed')
+        }
+      }
+    })
   }
 }
 
-// Handle previous navigation
-async function handlePrev() {
-  await goPrev()
-}
-
 // Initialize on mount
-onMounted(() => {
-  loadItems()
+onMounted(async () => {
+  await loadItems()
+  // Navigate to initial item if specified
+  if (props.initialItemId && items.value.length > 0) {
+    const targetItemId = Number(props.initialItemId)
+    const targetIndex = items.value.findIndex(item =>
+      item.item_id === targetItemId || item.thread_id === targetItemId || item.id === targetItemId
+    )
+    if (targetIndex >= 0 && targetIndex !== currentItemIndex.value) {
+      await loadItem(items.value[targetIndex].item_id)
+    }
+  }
 })
 
 // Watch for scenario changes
 watch(() => props.scenarioId, (newId) => {
   if (newId) {
     loadItems()
+  }
+})
+
+// Watch for initialItemId changes (e.g., when navigating between items via URL)
+watch(() => props.initialItemId, async (newItemId) => {
+  if (newItemId && items.value.length > 0) {
+    const targetItemId = Number(newItemId)
+    // Check if this item is already the current item
+    const currentId = currentItem.value?.item_id || currentItem.value?.thread_id || currentItem.value?.id
+    if (currentId === targetItemId) return // Already on this item
+
+    const targetIndex = items.value.findIndex(item =>
+      item.item_id === targetItemId || item.thread_id === targetItemId || item.id === targetItemId
+    )
+    if (targetIndex >= 0 && targetIndex !== currentItemIndex.value) {
+      await loadItem(items.value[targetIndex].item_id)
+    }
   }
 })
 </script>
@@ -403,33 +449,48 @@ watch(() => props.scenarioId, (newId) => {
   font-weight: 500;
 }
 
-/* Action Bar */
-.action-bar {
+/* Rating Footer */
+.rating-footer {
   display: flex;
   align-items: center;
-  gap: 16px;
+  justify-content: space-between;
   padding: 12px 16px;
   border-top: 1px solid rgba(var(--v-theme-on-surface), 0.08);
   background: rgba(var(--v-theme-surface-variant), 0.3);
   flex-shrink: 0;
+  gap: 16px;
 }
 
-.progress-indicator {
-  flex: 1;
+.footer-progress {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 4px;
+  gap: 8px;
+  flex: 1;
 }
 
-.progress-text {
+.footer-progress .progress-label {
   font-size: 0.75rem;
   color: rgba(var(--v-theme-on-surface), 0.6);
+  white-space: nowrap;
 }
 
-.progress-bar {
-  width: 100%;
-  max-width: 200px;
+.footer-progress .progress-bar {
+  flex: 1;
+  max-width: 150px;
+}
+
+.footer-nav {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.footer-nav .nav-position {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: rgba(var(--v-theme-on-surface), 0.7);
+  min-width: 60px;
+  text-align: center;
 }
 
 /* Scrollbar styling */
@@ -471,15 +532,19 @@ watch(() => props.scenarioId, (newId) => {
     display: none;
   }
 
-  .action-bar {
-    flex-wrap: wrap;
+  .rating-footer {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .footer-progress {
+    width: 100%;
     justify-content: center;
   }
 
-  .progress-indicator {
-    order: -1;
+  .footer-nav {
     width: 100%;
-    margin-bottom: 8px;
+    justify-content: space-between;
   }
 }
 </style>

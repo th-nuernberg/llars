@@ -263,6 +263,16 @@ const allItems = computed(() => ([
     badgeColor: 'info'
   },
   {
+    title: t('home.features.batchGeneration.title'),
+    description: t('home.features.batchGeneration.description'),
+    route: '/generation',
+    icon: 'mdi-cog-play-outline',
+    permission: 'feature:generation:view',
+    category: 'research',
+    badge: t('home.badges.beta'),
+    badgeColor: 'info'
+  },
+  {
     title: t('home.features.markdownCollab.title'),
     description: t('home.features.markdownCollab.description'),
     route: '/MarkdownCollab',

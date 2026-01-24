@@ -29,6 +29,8 @@ export { default as LMessageList } from './LMessageList.vue'
 // Evaluation Components
 export { default as LEvaluationLayout } from './LEvaluationLayout.vue'
 export { default as LEvaluationStatus } from './LEvaluationStatus.vue'
+export { default as LConfusionMatrix } from './LConfusionMatrix.vue'
+export { default as LRatingDistribution } from './LRatingDistribution.vue'
 
 // Other Common Components
 export { default as KatexFormula } from './KatexFormula.vue'
@@ -53,6 +55,8 @@ export const LlarsComponents = {
     app.component('LMessageList', () => import('./LMessageList.vue'))
     app.component('LEvaluationLayout', () => import('./LEvaluationLayout.vue'))
     app.component('LEvaluationStatus', () => import('./LEvaluationStatus.vue'))
+    app.component('LConfusionMatrix', () => import('./LConfusionMatrix.vue'))
+    app.component('LRatingDistribution', () => import('./LRatingDistribution.vue'))
     app.component('KatexFormula', () => import('./KatexFormula.vue'))
     app.component('LCardSkeleton', () => import('./LCardSkeleton.vue'))
   }

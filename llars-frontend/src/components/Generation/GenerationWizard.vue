@@ -298,7 +298,11 @@
                 type="number"
                 variant="outlined"
                 :min="1"
-                :max="32000"
+                :max="128000"
+                :placeholder="$t('generation.wizard.step4.maxTokensPlaceholder')"
+                :hint="$t('generation.wizard.step4.maxTokensHint')"
+                persistent-hint
+                clearable
               />
             </v-col>
           </v-row>
@@ -498,7 +502,7 @@ const formData = ref({
   llmModels: [],
   generationParams: {
     temperature: 0.7,
-    max_tokens: 2048,
+    max_tokens: null,  // null = unlimited (good for reasoning models like Magistral)
     retry_count: 3
   },
   budgetLimit: null

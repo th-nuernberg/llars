@@ -86,6 +86,12 @@ import UserSettingsPage from "@/views/UserSettings/UserSettingsPage.vue";
 
 // Evaluation Session (new unified evaluation interface)
 import EvaluationSession from "@/views/Evaluation/EvaluationSession.vue";
+import EvaluationItemsOverview from "@/views/Evaluation/EvaluationItemsOverview.vue";
+
+// Batch Generation
+import GenerationHub from "@/components/Generation/GenerationHub.vue";
+import GenerationJobDetail from "@/components/Generation/GenerationJobDetail.vue";
+import GenerationWizard from "@/components/Generation/GenerationWizard.vue";
 
 const routes = [
     { path: '/Impressum', component: Impressum, meta: { requiresAuth: false } },
@@ -110,40 +116,28 @@ const routes = [
     },
 
     // New unified Evaluation Session routes
+    // Items Overview - shows all items as cards
     {
       path: '/scenarios/:scenarioId/evaluate',
+      name: 'EvaluationItemsOverview',
+      component: EvaluationItemsOverview,
+      props: true,
+      meta: { requiresAuth: true }
+    },
+    // Evaluation Session - for evaluating a specific item or first item
+    {
+      path: '/scenarios/:scenarioId/evaluate/item/:itemId',
+      name: 'EvaluationSessionItem',
+      component: EvaluationSession,
+      props: true,
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/scenarios/:scenarioId/evaluate/start',
       name: 'EvaluationSession',
       component: EvaluationSession,
       props: true,
-      meta: { requiresAuth: true, functionType: 'rating' }
-    },
-    {
-      path: '/scenarios/:scenarioId/evaluate/rating',
-      name: 'RatingSession',
-      component: EvaluationSession,
-      props: true,
-      meta: { requiresAuth: true, functionType: 'rating' }
-    },
-    {
-      path: '/scenarios/:scenarioId/evaluate/ranking',
-      name: 'RankingSession',
-      component: EvaluationSession,
-      props: true,
-      meta: { requiresAuth: true, functionType: 'ranking' }
-    },
-    {
-      path: '/scenarios/:scenarioId/evaluate/comparison',
-      name: 'ComparisonSession',
-      component: EvaluationSession,
-      props: true,
-      meta: { requiresAuth: true, functionType: 'comparison' }
-    },
-    {
-      path: '/scenarios/:scenarioId/evaluate/authenticity',
-      name: 'AuthenticitySession',
-      component: EvaluationSession,
-      props: true,
-      meta: { requiresAuth: true, functionType: 'authenticity' }
+      meta: { requiresAuth: true }
     },
 
     { path: '/Ranker', name: 'Ranker', component: Ranker, meta: { requiresAuth: true } },
@@ -158,6 +152,12 @@ const routes = [
     { path: '/PromptEngineering', name: 'PromptEngineering', component: PromptEngineering, meta: { requiresAuth: true } },
     // PromptEngineeringDetail liest die ID intern aus der Route, props: true entfernt, um Vue-Warnung zu vermeiden
     { path : '/PromptEngineering/:id', name:'PromptEngineeringDetail', component: PromptEngineeringDetail, meta: { requiresAuth: true } },
+
+    // Batch Generation
+    { path: '/generation', name: 'GenerationHub', component: GenerationHub, meta: { requiresAuth: true } },
+    { path: '/generation/new', name: 'GenerationWizard', component: GenerationWizard, meta: { requiresAuth: true } },
+    { path: '/generation/:jobId', name: 'GenerationJobDetail', component: GenerationJobDetail, props: true, meta: { requiresAuth: true } },
+
     { path : '/comparison', name:'Comparison', component: Comparison, meta: { requiresAuth: true } },
     {
       path: '/comparison/session/:session_id',

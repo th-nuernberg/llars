@@ -689,7 +689,7 @@ onUnmounted(() => {
   font-weight: 500;
   background: rgba(var(--v-theme-primary), 0.12);
   color: rgb(var(--v-theme-primary));
-  border-radius: 10px;
+  border-radius: 6px 2px 6px 2px;
 }
 
 .prompts-grid {
@@ -761,7 +761,7 @@ onUnmounted(() => {
   text-align: center;
   padding: 48px 24px;
   background: rgb(var(--v-theme-surface));
-  border-radius: 12px;
+  border-radius: 12px 4px 12px 4px;
   border: 1px dashed rgba(var(--v-theme-on-surface), 0.12);
 }
 
@@ -770,7 +770,7 @@ onUnmounted(() => {
   align-items: center;
   padding: 24px;
   background: rgb(var(--v-theme-surface));
-  border-radius: 12px;
+  border-radius: 12px 4px 12px 4px;
   border: 1px dashed rgba(var(--v-theme-on-surface), 0.12);
 }
 

@@ -157,23 +157,27 @@
           {{ $t('scenarioManager.team.inviteTitle') }}
         </v-card-title>
         <v-card-text>
-          <v-autocomplete
-            v-model="selectedUsers"
-            :items="availableUsers"
-            :loading="loadingUsers"
-            :label="$t('scenarioManager.team.selectUsers')"
-            item-title="display_name"
-            item-value="id"
-            multiple
-            chips
-            closable-chips
-            variant="outlined"
-            @update:search="searchUsers"
-          >
-            <template #chip="{ props, item }">
-              <v-chip v-bind="props" :text="item.raw.display_name || item.raw.username" />
-            </template>
-          </v-autocomplete>
+          <!-- Selected users as chips -->
+          <div v-if="selectedUsers.length > 0" class="selected-users mb-3">
+            <LTag
+              v-for="user in selectedUsers"
+              :key="user.username"
+              variant="secondary"
+              closable
+              class="mr-2 mb-2"
+              @close="removeSelectedUser(user)"
+            >
+              {{ user.display_name || user.username }}
+            </LTag>
+          </div>
+
+          <!-- User search -->
+          <LUserSearch
+            ref="userSearchRef"
+            :exclude-usernames="excludedUsernames"
+            :placeholder="$t('scenarioManager.team.searchUsers')"
+            @select="handleUserSelect"
+          />
 
           <v-select
             v-model="inviteRole"
@@ -262,6 +266,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useScenarioManager } from '../../composables/useScenarioManager'
 import LAvatar from '@/components/common/LAvatar.vue'
+import LUserSearch from '@/components/common/LUserSearch.vue'
 
 const props = defineProps({
   scenario: {
@@ -280,7 +285,6 @@ const { t } = useI18n()
 const {
   inviteUsers: doInvite,
   removeUser,
-  getAvailableUsers,
   reinviteUser,
   getScenarioTeam
 } = useScenarioManager()
@@ -291,13 +295,12 @@ const reinviting = ref(null)
 const teamData = ref(null)
 const showAddLLMDialog = ref(false)
 const showRemoveDialog = ref(false)
-const selectedUsers = ref([])
+const selectedUsers = ref([])  // Array of user objects { username, display_name, ... }
 const inviteRole = ref('EVALUATOR')
 const inviting = ref(false)
-const loadingUsers = ref(false)
-const availableUsers = ref([])
 const memberToRemove = ref(null)
 const removing = ref(false)
+const userSearchRef = ref(null)
 
 const selectedLLM = ref(null)
 const selectedTemplate = ref(null)
@@ -319,6 +322,13 @@ const roleOptions = computed(() => [
   { title: t('scenarioManager.team.roles.evaluator'), value: 'EVALUATOR' },
   { title: t('scenarioManager.team.roles.rater'), value: 'RATER' }
 ])
+
+// Usernames to exclude from search (already selected + already in team)
+const excludedUsernames = computed(() => {
+  const selected = selectedUsers.value.map(u => u.username)
+  const existing = evaluators.value.map(u => u.username)
+  return [...new Set([...selected, ...existing])]
+})
 
 // Computed
 const evaluators = computed(() => {
@@ -399,22 +409,30 @@ async function loadTeamData() {
   }
 }
 
-async function searchUsers(query) {
-  if (!query || query.length < 2) return
-  loadingUsers.value = true
-  try {
-    availableUsers.value = await getAvailableUsers(props.scenario.id)
-  } finally {
-    loadingUsers.value = false
+function handleUserSelect(user) {
+  if (user && !selectedUsers.value.find(u => u.username === user.username)) {
+    selectedUsers.value.push(user)
   }
+  // Reset the search component
+  if (userSearchRef.value) {
+    userSearchRef.value.reset()
+  }
+}
+
+function removeSelectedUser(user) {
+  selectedUsers.value = selectedUsers.value.filter(u => u.username !== user.username)
 }
 
 async function inviteUsers() {
   inviting.value = true
   try {
-    await doInvite(props.scenario.id, selectedUsers.value, inviteRole.value)
+    // Extract user IDs from the user objects
+    const userIds = selectedUsers.value.map(u => u.id)
+    await doInvite(props.scenario.id, userIds, inviteRole.value)
     showInviteDialog.value = false
     selectedUsers.value = []
+    // Refresh team data
+    await loadTeamData()
     emit('team-updated')
   } finally {
     inviting.value = false
@@ -462,8 +480,6 @@ async function addLLMEvaluator() {
 
 onMounted(async () => {
   if (props.scenario?.id) {
-    // Load available users for invite dialog
-    availableUsers.value = await getAvailableUsers(props.scenario.id)
     // Load team data with invitation status (only for owners)
     await loadTeamData()
   }

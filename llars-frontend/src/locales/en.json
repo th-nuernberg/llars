@@ -2896,6 +2896,7 @@
       "remove": "Remove",
       "inviteTitle": "Invite Users",
       "selectUsers": "Select users",
+      "searchUsers": "Search users...",
       "role": "Role",
       "sendInvite": "Send Invitation",
       "addLLMTitle": "Add LLM Evaluator",

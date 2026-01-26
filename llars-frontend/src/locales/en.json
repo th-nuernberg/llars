@@ -2553,7 +2553,6 @@
     "evalConfig": {
       "selectPreset": "Select Preset",
       "customizeConfig": "Customize Configuration",
-      "preview": "Preview",
       "rating": {
         "scaleType": "Scale Type",
         "minValue": "Minimum Value",
@@ -2570,7 +2569,10 @@
         "dimensionDescription": "Description (What should be rated here?)",
         "dimensionWeight": "Weight",
         "totalWeight": "Total Weight",
-        "shouldBe100": "should be 100%"
+        "shouldBe100": "should be 100%",
+        "useCustomScale": "Custom scale for this dimension",
+        "yesLabel": "Yes Label",
+        "noLabel": "No Label"
       },
       "ranking": {
         "rankingType": "Ranking Type",
@@ -2624,6 +2626,7 @@
         "rounds": "Rounds"
       },
       "preview": {
+        "title": "Preview",
         "ratingDemo": "Rating Preview",
         "rankingDemo": "Ranking Preview",
         "labelingDemo": "Labeling Preview",
@@ -5288,7 +5291,8 @@
       "pause": "Pause",
       "cancel": "Cancel",
       "export": "Export",
-      "toScenario": "Create Scenario"
+      "toScenario": "Create Scenario",
+      "scenarioWizard": "Scenario Wizard"
     },
     "wizard": {
       "title": "New Generation Job",
@@ -5372,6 +5376,7 @@
       "errorMessage": "Error Message",
       "currentlyProcessing": "Currently Processing",
       "waitingForResponse": "Waiting for LLM response...",
+      "reconnecting": "Reconnecting to running stream...",
       "inputPrompt": "Input Prompt",
       "noPromptData": "Prompt data not available",
       "noContent": "No content generated"

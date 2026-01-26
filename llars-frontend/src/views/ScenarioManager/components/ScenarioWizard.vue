@@ -64,16 +64,16 @@
             <div class="format-examples">
               <div class="format-example">
                 <span class="format-label">{{ $t('scenarioManager.wizard.step1.idealDataSingleLabel') }}:</span>
-                <code>{{ $t('scenarioManager.wizard.step1.idealDataSingleExample') }}</code>
+                <code>{{ codeExamples.single }}</code>
               </div>
               <div class="format-example">
                 <span class="format-label">{{ $t('scenarioManager.wizard.step1.idealDataRankingLabel') }}:</span>
-                <code>{{ $t('scenarioManager.wizard.step1.idealDataRankingExample') }}</code>
+                <code>{{ codeExamples.ranking }}</code>
                 <div class="format-hint">{{ $t('scenarioManager.wizard.step1.idealDataRankingHint') }}</div>
               </div>
               <div class="format-example">
                 <span class="format-label">{{ $t('scenarioManager.wizard.step1.idealDataComparisonLabel') }}:</span>
-                <code>{{ $t('scenarioManager.wizard.step1.idealDataComparisonExample') }}</code>
+                <code>{{ codeExamples.comparison }}</code>
               </div>
             </div>
           </LInfoTooltip>
@@ -785,11 +785,32 @@ import {
   getBaseType
 } from '../config/evaluationPresets'
 
+const props = defineProps({
+  /**
+   * Optional generation job ID to load data from.
+   * When provided, the wizard will pre-load outputs from this batch generation job.
+   */
+  generationJobId: {
+    type: Number,
+    default: null
+  }
+})
+
 const emit = defineEmits(['close', 'created'])
 
 const { t, locale } = useI18n()
 const { createNewScenario, inviteUsers } = useScenarioManager()
 const auth = useAuth()
+
+// JSON code examples (raw strings to avoid vue-i18n placeholder parsing)
+const codeExamples = computed(() => ({
+  single: '[{"id":"1","text":"...","label":"positive"}]',
+  conversation: '{"id":"1","messages":[{"role":"user","content":"..."},{"role":"assistant","content":"..."}]}',
+  comparison: '{"id":"1","text_a":"...","text_b":"..."}',
+  ranking: locale.value === 'de'
+    ? '{"source_text":"Originaltext...","items":[{"id":"A","content":"Item 1..."},{"id":"B","content":"Item 2..."}]}'
+    : '{"source_text":"Original text...","items":[{"id":"A","content":"Item 1..."},{"id":"B","content":"Item 2..."}]}'
+}))
 
 // Refs
 const fileInput = ref(null)
@@ -1731,11 +1752,78 @@ watch(() => formData.value.evalType, (newType) => {
   }
 })
 
+// Load data from generation job if provided
+const loadingFromGeneration = ref(false)
+const generationJobName = ref('')
+
+async function loadFromGenerationJob() {
+  if (!props.generationJobId) return
+
+  loadingFromGeneration.value = true
+  try {
+    // Fetch all completed outputs from the generation job
+    const response = await axios.get(`/api/generation/jobs/${props.generationJobId}/outputs`, {
+      params: { status: 'completed', per_page: 1000 }
+    })
+
+    const outputs = response.data.items || []
+    if (outputs.length === 0) {
+      console.warn('No completed outputs found in generation job')
+      return
+    }
+
+    // Fetch job info for the name
+    const jobResponse = await axios.get(`/api/generation/jobs/${props.generationJobId}`)
+    generationJobName.value = jobResponse.data.job?.name || `Generation Job #${props.generationJobId}`
+
+    // Transform outputs into items for the wizard
+    // Each output becomes an evaluation item with the generated content
+    const items = outputs.map((output, index) => ({
+      id: output.id.toString(),
+      text: output.generated_content || '',
+      content: output.generated_content || '',
+      // Include metadata for context
+      _source: 'generation',
+      _model: output.llm_model_name,
+      _prompt_variant: output.prompt_variant_name,
+      _source_item_id: output.source_item_id
+    }))
+
+    // Set the data
+    analyzedData.value = items
+
+    // Create a virtual "file" entry to show in the UI
+    uploadedFiles.value = [{
+      name: `${generationJobName.value}.json`,
+      size: JSON.stringify(items).length,
+      _isVirtual: true,
+      _generationJobId: props.generationJobId
+    }]
+
+    // Pre-fill scenario name based on job name
+    formData.value.scenario_name = generationJobName.value
+
+    // Auto-advance to step 1 (task type selection) since we have data
+    // The user can still go back to see the data if needed
+    currentStep.value = 1
+
+  } catch (error) {
+    console.error('Failed to load generation job data:', error)
+  } finally {
+    loadingFromGeneration.value = false
+  }
+}
+
 // Fetch data on mount
 onMounted(() => {
   fetchAvailableUsers()
   fetchAvailableLLMs()
   fetchUserProviders()
+
+  // If generation job ID is provided, load data from it
+  if (props.generationJobId) {
+    loadFromGenerationJob()
+  }
 })
 </script>
 

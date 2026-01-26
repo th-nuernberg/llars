@@ -116,7 +116,8 @@
     <v-dialog v-model="showWizard" max-width="900" persistent>
       <ScenarioWizard
         v-if="showWizard"
-        @close="showWizard = false"
+        :generation-job-id="generationJobId"
+        @close="closeWizard"
         @created="onScenarioCreated"
       />
     </v-dialog>
@@ -148,13 +149,14 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { useScenarioManager } from './composables/useScenarioManager'
 import ScenarioOwnerCard from './components/ScenarioOwnerCard.vue'
 import ScenarioInviteCard from './components/ScenarioInviteCard.vue'
 import ScenarioWizard from './components/ScenarioWizard.vue'
 
 const router = useRouter()
+const route = useRoute()
 const { t } = useI18n()
 
 const {
@@ -173,6 +175,9 @@ const showWizard = ref(false)
 const showDeleteDialog = ref(false)
 const scenarioToDelete = ref(null)
 const deleting = ref(false)
+
+// Generation job ID for pre-loading data in wizard
+const generationJobId = ref(null)
 
 // Tabs
 const tabs = computed(() => [
@@ -274,8 +279,24 @@ function onScenarioCreated(scenario) {
   router.push({ name: 'ScenarioWorkspace', params: { id: scenario.id } })
 }
 
+function closeWizard() {
+  showWizard.value = false
+  generationJobId.value = null
+  // Clear query param from URL
+  if (route.query.fromGeneration) {
+    router.replace({ query: {} })
+  }
+}
+
 onMounted(() => {
   fetchScenarios('all')
+
+  // Check if we should open wizard with data from a generation job
+  const fromGeneration = route.query.fromGeneration
+  if (fromGeneration) {
+    generationJobId.value = Number(fromGeneration)
+    showWizard.value = true
+  }
 })
 </script>
 

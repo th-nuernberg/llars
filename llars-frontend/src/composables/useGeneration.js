@@ -466,10 +466,9 @@ export function useGeneration(options = {}) {
     // Job progress
     socket.on('generation:job:progress', (data) => {
       if (data.job_id === currentJob.value?.id) {
-        currentJob.value.completed_items = data.completed
-        currentJob.value.failed_items = data.failed
         currentJob.value.total_cost_usd = data.cost_usd
         if (currentJob.value.progress) {
+          currentJob.value.progress.total = data.total
           currentJob.value.progress.completed = data.completed
           currentJob.value.progress.failed = data.failed
           currentJob.value.progress.percent = data.percent
@@ -482,8 +481,10 @@ export function useGeneration(options = {}) {
     socket.on('generation:job:completed', (data) => {
       if (data.job_id === currentJob.value?.id) {
         currentJob.value.status = JOB_STATUS.COMPLETED
-        currentJob.value.completed_items = data.completed
-        currentJob.value.failed_items = data.failed
+        if (currentJob.value.progress) {
+          currentJob.value.progress.completed = data.completed
+          currentJob.value.progress.failed = data.failed
+        }
         showSuccess(`Job abgeschlossen: ${data.completed} Outputs`)
       }
       _updateJobStatusInList(data.job_id, JOB_STATUS.COMPLETED)

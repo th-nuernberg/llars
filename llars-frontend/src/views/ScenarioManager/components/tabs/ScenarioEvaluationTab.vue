@@ -796,73 +796,17 @@
             </LTooltip>
           </h4>
 
-          <div class="agreement-heatmap-container">
-            <!-- Heatmap Matrix -->
-            <div class="heatmap-matrix">
-              <!-- Header row -->
-              <div class="heatmap-row header-row">
-                <div class="heatmap-cell corner-cell"></div>
-                <div
-                  v-for="evaluator in pairwiseEvaluators"
-                  :key="'header-' + evaluator.id"
-                  class="heatmap-cell header-cell"
-                  :class="{ 'is-llm': evaluator.isLLM }"
-                >
-                  <span class="evaluator-name-short" :title="evaluator.name">
-                    {{ getShortName(evaluator.name) }}
-                  </span>
-                  <LIcon v-if="evaluator.isLLM" size="12" class="llm-icon">mdi-robot</LIcon>
-                </div>
-              </div>
-
-              <!-- Data rows -->
-              <div
-                v-for="(rowEval, rowIndex) in pairwiseEvaluators"
-                :key="'row-' + rowEval.id"
-                class="heatmap-row"
-              >
-                <div class="heatmap-cell row-label" :class="{ 'is-llm': rowEval.isLLM }">
-                  <span class="evaluator-name-short" :title="rowEval.name">
-                    {{ getShortName(rowEval.name) }}
-                  </span>
-                  <LIcon v-if="rowEval.isLLM" size="12" class="llm-icon">mdi-robot</LIcon>
-                </div>
-                <div
-                  v-for="(colEval, colIndex) in pairwiseEvaluators"
-                  :key="'cell-' + rowEval.id + '-' + colEval.id"
-                  class="heatmap-cell data-cell"
-                  :class="{ 'clickable': rowIndex !== colIndex }"
-                  :style="{ backgroundColor: getAgreementColor(rowEval.id, colEval.id, rowIndex, colIndex) }"
-                  :title="getAgreementTooltip(rowEval, colEval, rowIndex, colIndex)"
-                  @click="rowIndex !== colIndex && openAgreementDetail(rowEval, colEval)"
-                >
-                  <span v-if="rowIndex !== colIndex" class="agreement-value">
-                    {{ getAgreementValue(rowEval.id, colEval.id) }}
-                  </span>
-                  <span v-else class="diagonal-indicator">-</span>
-                </div>
-              </div>
-            </div>
-
-            <!-- Legend -->
-            <div class="heatmap-legend">
-              <span class="legend-label">{{ $t('scenarioManager.results.lowAgreement') }}</span>
-              <div class="legend-gradient"></div>
-              <span class="legend-label">{{ $t('scenarioManager.results.highAgreement') }}</span>
-            </div>
-
-            <!-- Legend for evaluator types -->
-            <div class="evaluator-type-legend">
-              <div class="legend-item">
-                <LIcon size="14">mdi-account</LIcon>
-                <span>{{ $t('scenarioManager.evaluation.filter.human') }}</span>
-              </div>
-              <div class="legend-item">
-                <LIcon size="14">mdi-robot</LIcon>
-                <span>{{ $t('scenarioManager.evaluation.filter.llm') }}</span>
-              </div>
-            </div>
-          </div>
+          <LAgreementHeatmap
+            :evaluators="pairwiseEvaluators"
+            :agreements="pairwiseAgreements"
+            :show-values="true"
+            :show-hover-info="true"
+            :show-legend="true"
+            :show-evaluator-type-legend="true"
+            :low-label="$t('scenarioManager.results.lowAgreement')"
+            :high-label="$t('scenarioManager.results.highAgreement')"
+            @cell-click="openAgreementDetail"
+          />
         </div>
 
         <!-- Empty placeholder if no agreement data -->
@@ -1575,8 +1519,11 @@ const dimensions = computed(() => {
   const config = props.scenario?.config_json || props.scenario?.config
   const evalConfig = config?.eval_config || {}
 
-  // Dimensions can be at root level or in eval_config
-  const configDimensions = config?.dimensions || evalConfig?.dimensions || []
+  // Dimensions can be at multiple locations:
+  // 1. config.dimensions (direct)
+  // 2. config.eval_config.dimensions (nested in eval_config)
+  // 3. config.eval_config.config.dimensions (nested in eval_config.config - from wizard)
+  const configDimensions = config?.dimensions || evalConfig?.dimensions || evalConfig?.config?.dimensions || []
 
   if (configDimensions.length > 0) {
     return configDimensions.map(d => ({
@@ -1928,81 +1875,13 @@ function getAgreementKey(id1, id2) {
   return str1 < str2 ? `${str1}-${str2}` : `${str2}-${str1}`
 }
 
-function getAgreementValue(id1, id2) {
-  if (id1 === id2) return '-'
-  const key = getAgreementKey(id1, id2)
-  const value = pairwiseAgreements.value[key]
-  if (value === undefined || value === null) return '-'
-  return Math.round(value * 100) + '%'
-}
-
-function getAgreementColor(id1, id2, rowIndex, colIndex) {
-  if (rowIndex === colIndex) return 'rgba(var(--v-theme-surface-variant), 0.3)'
-
-  const key = getAgreementKey(id1, id2)
-  const value = pairwiseAgreements.value[key]
-
-  if (value === undefined || value === null) {
-    return 'rgba(var(--v-theme-surface-variant), 0.1)'
-  }
-
-  // Gradient: red (low) -> yellow (medium) -> green (high)
-  if (value < 0.4) {
-    // Red to yellow
-    const t = value / 0.4
-    const r = 232
-    const g = Math.round(160 + (200 - 160) * t)
-    const b = Math.round(135 + (100 - 135) * t)
-    return `rgba(${r}, ${g}, ${b}, 0.7)`
-  } else if (value < 0.7) {
-    // Yellow to light green
-    const t = (value - 0.4) / 0.3
-    const r = Math.round(232 - (232 - 152) * t)
-    const g = Math.round(200 - (200 - 212) * t)
-    const b = Math.round(100 + (187 - 100) * t)
-    return `rgba(${r}, ${g}, ${b}, 0.7)`
-  } else {
-    // Light green to green
-    const t = (value - 0.7) / 0.3
-    const r = Math.round(152 - (152 - 98) * t)
-    const g = Math.round(212 - (212 - 200) * t)
-    const b = Math.round(187 - (187 - 140) * t)
-    return `rgba(${r}, ${g}, ${b}, 0.8)`
-  }
-}
-
-function getAgreementTooltip(eval1, eval2, rowIndex, colIndex) {
-  if (rowIndex === colIndex) return eval1.name
-
-  const key = getAgreementKey(eval1.id, eval2.id)
-  const value = pairwiseAgreements.value[key]
-
-  if (value === undefined || value === null) {
-    return `${eval1.name} / ${eval2.name}: ${t('scenarioManager.results.noOverlap')}`
-  }
-
-  const percentage = Math.round(value * 100)
-  return `${eval1.name} / ${eval2.name}: ${percentage}% ${t('scenarioManager.results.agreement')}`
-}
-
-function getShortName(name) {
-  if (!name) return '?'
-  // For LLM model names, extract the model part
-  if (name.includes('/')) {
-    name = name.split('/').pop()
-  }
-  // Truncate long names
-  if (name.length > 8) {
-    return name.substring(0, 7) + '...'
-  }
-  return name
-}
-
 // ===== Agreement Detail Dialog =====
 
-function openAgreementDetail(eval1, eval2) {
-  const key = getAgreementKey(eval1.id, eval2.id)
-  const value = pairwiseAgreements.value[key]
+function openAgreementDetail(eventData) {
+  // Support both old (eval1, eval2) and new ({ evaluator1, evaluator2, value }) formats
+  const eval1 = eventData.evaluator1 || eventData
+  const eval2 = eventData.evaluator2 || arguments[1]
+  const value = eventData.value !== undefined ? eventData.value : pairwiseAgreements.value[getAgreementKey(eval1.id, eval2.id)]
 
   selectedAgreement.value = {
     eval1: eval1,
@@ -3291,15 +3170,6 @@ watch(
   flex-direction: column;
 }
 
-.heatmap-panel .agreement-heatmap-container {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 16px;
-}
-
 /* Empty Panel */
 .empty-panel {
   display: flex;
@@ -3581,149 +3451,6 @@ watch(
 
 .dimension-averages-table .diff-large {
   color: rgb(var(--v-theme-error));
-}
-
-/* Inter-Rater Agreement Heatmap */
-.agreement-heatmap-section {
-  padding: 20px;
-  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.06);
-}
-
-.agreement-heatmap-container {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.heatmap-matrix {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  overflow-x: auto;
-  padding-bottom: 8px;
-}
-
-.heatmap-row {
-  display: flex;
-  gap: 2px;
-}
-
-.heatmap-row.header-row .heatmap-cell {
-  font-weight: 600;
-  font-size: 0.7rem;
-}
-
-.heatmap-matrix .heatmap-cell {
-  min-width: 56px;
-  max-width: 56px;
-  height: 44px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  border-radius: 4px;
-  font-size: 0.75rem;
-  transition: transform 0.15s, box-shadow 0.15s;
-  padding: 4px;
-}
-
-.heatmap-matrix .heatmap-cell:not(.corner-cell):not(.row-label):not(.header-cell):hover {
-  transform: scale(1.1);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-  z-index: 10;
-}
-
-.heatmap-matrix .corner-cell {
-  background: transparent;
-}
-
-.heatmap-matrix .header-cell,
-.heatmap-matrix .row-label {
-  background-color: rgba(var(--v-theme-surface-variant), 0.3);
-  font-weight: 500;
-}
-
-.heatmap-matrix .header-cell.is-llm,
-.heatmap-matrix .row-label.is-llm {
-  background-color: rgba(196, 160, 212, 0.2);
-}
-
-.heatmap-matrix .data-cell {
-  cursor: default;
-}
-
-.heatmap-matrix .data-cell.clickable {
-  cursor: pointer;
-}
-
-.heatmap-matrix .data-cell.clickable:hover {
-  transform: scale(1.15);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-  z-index: 15;
-}
-
-.heatmap-matrix .agreement-value {
-  font-weight: 600;
-  font-size: 0.8rem;
-  color: rgba(0, 0, 0, 0.75);
-}
-
-.heatmap-matrix .diagonal-indicator {
-  color: rgba(var(--v-theme-on-surface), 0.3);
-  font-size: 1rem;
-}
-
-.evaluator-name-short {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  max-width: 48px;
-  font-size: 0.65rem;
-  line-height: 1.2;
-}
-
-.heatmap-matrix .llm-icon {
-  color: #c4a0d4;
-  margin-top: 2px;
-}
-
-.heatmap-legend {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  font-size: 0.75rem;
-  color: rgba(var(--v-theme-on-surface), 0.6);
-}
-
-.heatmap-legend .legend-gradient {
-  width: 120px;
-  height: 12px;
-  border-radius: 6px;
-  background: linear-gradient(to right,
-    rgba(232, 160, 135, 0.7) 0%,
-    rgba(232, 200, 100, 0.7) 40%,
-    rgba(152, 212, 187, 0.7) 70%,
-    rgba(98, 200, 140, 0.8) 100%
-  );
-}
-
-.heatmap-legend .legend-label {
-  font-size: 0.7rem;
-}
-
-.evaluator-type-legend {
-  display: flex;
-  gap: 20px;
-  justify-content: center;
-  font-size: 0.8rem;
-  color: rgba(var(--v-theme-on-surface), 0.6);
-}
-
-.evaluator-type-legend .legend-item {
-  display: flex;
-  align-items: center;
-  gap: 6px;
 }
 
 /* Agreement Detail Dialog */

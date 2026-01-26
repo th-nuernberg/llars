@@ -654,7 +654,30 @@ class BatchGenerationService:
             Dict with job status, progress, and statistics
         """
         job = cls._get_job_or_raise(job_id)
-        return job.to_dict(include_outputs=True)
+        result = job.to_dict(include_outputs=True)
+
+        # Include currently processing output for reconnection support
+        processing_output = GeneratedOutput.query.filter_by(
+            job_id=job_id,
+            status=GeneratedOutputStatus.PROCESSING
+        ).first()
+
+        if processing_output:
+            result["currently_processing"] = {
+                "output_id": processing_output.id,
+                "model_name": processing_output.llm_model_name,
+                "source_item_id": processing_output.source_item_id,
+                "prompt_variant": processing_output.prompt_variant_name,
+                "item_name": f"{processing_output.prompt_variant_name} (Item #{processing_output.source_item_id or processing_output.id})"
+                    if processing_output.prompt_variant_name
+                    else f"Item #{processing_output.source_item_id or processing_output.id}",
+                # Include partial content for reconnection support
+                "partial_content": processing_output.generated_content or ""
+            }
+        else:
+            result["currently_processing"] = None
+
+        return result
 
     @classmethod
     def get_jobs_for_user(

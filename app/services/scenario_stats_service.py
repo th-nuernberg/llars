@@ -252,6 +252,7 @@ def get_progress_stats(scenario_id: int) -> Dict[str, Any]:
 
         new_data = {
             "username": scenario_user.user.username,
+            "is_llm": False,  # Explicit flag for human evaluators
             "total_threads": len(user_threads),
             "done_threads": total_done_threads,
             "not_started_threads": total_not_started_threads,
@@ -477,6 +478,7 @@ def _get_comparison_progress_stats(scenario_id: int) -> Dict[str, Any]:
 
         new_data = {
             "username": scenario_user.user.username,
+            "is_llm": False,  # Explicit flag for human evaluators
             "total_threads": total_pairs,
             "done_threads": total_rated_pairs,
             "not_started_threads": max(total_pairs - total_rated_pairs, 0),
@@ -652,11 +654,13 @@ def _calculate_rating_krippendorff_alpha(scenario_id: int) -> Dict[str, Any]:
             evaluator_id = f"human:{rating.user_id}"
             human_ratings[rating.item_id][evaluator_id] = float(rating.overall_score)
 
-    # 2. Get LLM ratings from LLMTaskResult
+    # 2. Get LLM ratings from LLMTaskResult (includes both rating and mail_rating)
     llm_results = LLMTaskResult.query.filter_by(
-        scenario_id=scenario_id,
-        task_type="rating"
-    ).filter(LLMTaskResult.error.is_(None)).all()
+        scenario_id=scenario_id
+    ).filter(
+        LLMTaskResult.task_type.in_(["rating", "mail_rating"]),
+        LLMTaskResult.error.is_(None)
+    ).all()
 
     for result in llm_results:
         if result.item_id not in thread_ids:
@@ -778,16 +782,20 @@ def _calculate_rating_distribution(scenario_id: int) -> Dict[str, Any]:
     if not isinstance(config, dict):
         config = {}
 
-    # Get scale configuration - check both root level and eval_config
+    # Get scale configuration - check root level, eval_config, and eval_config.config
     eval_config = config.get("eval_config", {})
     if not isinstance(eval_config, dict):
         eval_config = {}
 
-    # Scale can be at root level or in eval_config
-    global_min = config.get("min", eval_config.get("min", 1))
-    global_max = config.get("max", eval_config.get("max", 5))
-    global_labels = config.get("labels", eval_config.get("labels", {}))
-    dimensions = config.get("dimensions", eval_config.get("dimensions", []))
+    eval_config_inner = eval_config.get("config", {})
+    if not isinstance(eval_config_inner, dict):
+        eval_config_inner = {}
+
+    # Scale can be at root level, eval_config, or eval_config.config (from wizard)
+    global_min = config.get("min", eval_config.get("min", eval_config_inner.get("min", 1)))
+    global_max = config.get("max", eval_config.get("max", eval_config_inner.get("max", 5)))
+    global_labels = config.get("labels", eval_config.get("labels", eval_config_inner.get("labels", {})))
+    dimensions = config.get("dimensions", eval_config.get("dimensions", eval_config_inner.get("dimensions", [])))
 
     # Check if we have mixed scales (per-dimension scales)
     has_mixed_scales = False
@@ -839,11 +847,13 @@ def _calculate_rating_distribution(scenario_id: int) -> Dict[str, Any]:
                 except (ValueError, TypeError):
                     pass
 
-    # 2. Get LLM ratings from LLMTaskResult
+    # 2. Get LLM ratings from LLMTaskResult (includes both rating and mail_rating)
     llm_results = LLMTaskResult.query.filter_by(
-        scenario_id=scenario_id,
-        task_type="rating"
-    ).filter(LLMTaskResult.error.is_(None)).all()
+        scenario_id=scenario_id
+    ).filter(
+        LLMTaskResult.task_type.in_(["rating", "mail_rating"]),
+        LLMTaskResult.error.is_(None)
+    ).all()
 
     for result in llm_results:
         payload = result.payload_json
@@ -1029,14 +1039,24 @@ def _calculate_dimension_averages(scenario_id: int) -> Dict[str, Any]:
     if not isinstance(config, dict):
         config = {}
 
-    # Get dimensions and eval_config from config (dimensions can be at root level or in eval_config)
+    # Get dimensions and eval_config from config
+    # Dimensions can be at multiple locations:
+    # 1. config.dimensions (direct)
+    # 2. config.eval_config.dimensions (nested in eval_config)
+    # 3. config.eval_config.config.dimensions (nested in eval_config.config - from wizard)
     eval_config = config.get("eval_config", {})
     if not isinstance(eval_config, dict):
         eval_config = {}
 
+    eval_config_inner = eval_config.get("config", {})
+    if not isinstance(eval_config_inner, dict):
+        eval_config_inner = {}
+
     dimensions = config.get("dimensions", [])
     if not dimensions:
         dimensions = eval_config.get("dimensions", [])
+    if not dimensions:
+        dimensions = eval_config_inner.get("dimensions", [])
     if not dimensions:
         return {}
 
@@ -1064,11 +1084,13 @@ def _calculate_dimension_averages(scenario_id: int) -> Dict[str, Any]:
         if scores:
             human_scores.append(scores)
 
-    # 2. Get LLM ratings from LLMTaskResult (dimensional format)
+    # 2. Get LLM ratings from LLMTaskResult (dimensional format, includes mail_rating)
     llm_results = LLMTaskResult.query.filter_by(
-        scenario_id=scenario_id,
-        task_type="rating"
-    ).filter(LLMTaskResult.error.is_(None)).all()
+        scenario_id=scenario_id
+    ).filter(
+        LLMTaskResult.task_type.in_(["rating", "mail_rating"]),
+        LLMTaskResult.error.is_(None)
+    ).all()
 
     for result in llm_results:
         payload = result.payload_json
@@ -1193,11 +1215,13 @@ def _calculate_pairwise_agreement(scenario_id: int) -> Dict[str, Any]:
         if rating.overall_score is not None:
             item_ratings[item_id][user_id] = rating.overall_score
 
-    # 2. Get LLM ratings from LLMTaskResult
+    # 2. Get LLM ratings from LLMTaskResult (includes both rating and mail_rating)
     llm_results = LLMTaskResult.query.filter_by(
-        scenario_id=scenario_id,
-        task_type="rating"
-    ).filter(LLMTaskResult.error.is_(None)).all()
+        scenario_id=scenario_id
+    ).filter(
+        LLMTaskResult.task_type.in_(["rating", "mail_rating"]),
+        LLMTaskResult.error.is_(None)
+    ).all()
 
     for result in llm_results:
         payload = result.payload_json
@@ -1209,12 +1233,17 @@ def _calculate_pairwise_agreement(scenario_id: int) -> Dict[str, Any]:
             except (json.JSONDecodeError, TypeError):
                 continue
 
-        # Extract overall_rating from dimensional format
+        # Extract overall_rating from various formats:
+        # 1. Dimensional format: {"type": "dimensional", "overall_rating": X}
+        # 2. Overall rating field: {"overall_rating": X}
+        # 3. Simple rating format (mail_rating): {"rating": X, "reasoning": "..."}
         overall_rating = None
         if payload.get("type") == "dimensional":
             overall_rating = payload.get("overall_rating")
         elif "overall_rating" in payload:
             overall_rating = payload.get("overall_rating")
+        elif "rating" in payload:
+            overall_rating = payload.get("rating")
 
         if overall_rating is not None:
             item_id = result.item_id
@@ -1494,19 +1523,28 @@ def _calculate_ranking_agreement_heatmap(scenario_id: int) -> Dict[str, Any]:
             name = llm_model.display_name if llm_model else model_id.split("/")[-1]
             user_info[llm_user_id] = {"id": llm_user_id, "name": name, "isLLM": True}
 
-        # Extract bucket assignments
+        # The payload contains feature_ids in buckets, but result.item_id tells us
+        # which item this ranking is for. We need to determine the "dominant" bucket
+        # for the item based on where most features were placed.
         bucket_map = {
             "gut": ["gut", "good"],
             "mittel": ["mittel", "medium", "middle"],
             "schlecht": ["schlecht", "bad", "poor"]
         }
 
+        # Count features per bucket for this item
+        bucket_counts = {"gut": 0, "mittel": 0, "schlecht": 0}
         for normalized_bucket, keys in bucket_map.items():
             for key in keys:
-                items = payload.get(key, [])
-                if isinstance(items, list):
-                    for item_id in items:
-                        item_buckets[item_id][llm_user_id] = normalized_bucket
+                features = payload.get(key, [])
+                if isinstance(features, list):
+                    bucket_counts[normalized_bucket] += len(features)
+
+        # Assign item to the bucket with most features (if any)
+        total_features = sum(bucket_counts.values())
+        if total_features > 0:
+            dominant_bucket = max(bucket_counts, key=bucket_counts.get)
+            item_buckets[result.item_id][llm_user_id] = dominant_bucket
 
     if not users_set:
         return {"evaluators": [], "agreements": {}}
@@ -1530,6 +1568,90 @@ def _calculate_ranking_agreement_heatmap(scenario_id: int) -> Dict[str, Any]:
                 agreement = agreements_count / len(common_items)
 
                 key = f"{min(str(user1), str(user2))}-{max(str(user1), str(user2))}"
+                agreements[key] = round(agreement, 3)
+
+    return {
+        "evaluators": evaluators,
+        "agreements": agreements
+    }
+
+
+def _calculate_authenticity_pairwise_agreement(
+    *,
+    user_stats: List[Dict],
+    llm_user_stats: List[Dict],
+    user_vote_map: Dict[int, Dict],
+    llm_vote_map: Dict[str, Dict],
+    thread_ids: List[int],
+) -> Dict[str, Any]:
+    """
+    Calculate pairwise agreement between evaluators for authenticity scenarios.
+
+    Agreement is calculated as the percentage of threads where two evaluators
+    gave the same vote (both "real" or both "fake").
+
+    Returns:
+        Dict with 'evaluators' list and 'agreements' dict with agreement scores.
+    """
+    evaluators = []
+    all_raters = []  # List of (rater_id, is_llm, vote_dict)
+
+    # Add human evaluators
+    for u in user_stats:
+        if u.get("is_llm"):
+            continue  # Skip LLMs already in user_stats
+        user_id = u.get("user_id")
+        if user_id and u.get("voted_count", 0) > 0:
+            evaluators.append({
+                "id": user_id,
+                "name": u.get("username", f"User {user_id}"),
+                "isLLM": False
+            })
+            # Convert user_vote_map values to simple vote strings
+            vote_dict = {}
+            for tid, vote_obj in user_vote_map.get(user_id, {}).items():
+                if vote_obj and vote_obj.vote:
+                    vote_dict[tid] = vote_obj.vote.lower()
+            all_raters.append((user_id, False, vote_dict))
+
+    # Add LLM evaluators
+    for llm_stat in llm_user_stats:
+        model_id = llm_stat.get("model_id")
+        if model_id and llm_stat.get("voted_count", 0) > 0:
+            llm_id = f"llm:{model_id}"
+            evaluators.append({
+                "id": llm_id,
+                "name": llm_stat.get("username", model_id.split("/")[-1]),
+                "isLLM": True
+            })
+            # Convert llm_vote_map to lowercase
+            vote_dict = {
+                tid: vote.lower()
+                for tid, vote in llm_vote_map.get(model_id, {}).items()
+            }
+            all_raters.append((llm_id, True, vote_dict))
+
+    if len(all_raters) < 2:
+        return {"evaluators": evaluators, "agreements": {}}
+
+    # Calculate pairwise agreement
+    agreements = {}
+
+    for i, (rater1_id, is_llm1, votes1) in enumerate(all_raters):
+        for rater2_id, is_llm2, votes2 in all_raters[i + 1:]:
+            # Find common threads both evaluators voted on
+            common_threads = set(votes1.keys()) & set(votes2.keys())
+
+            if len(common_threads) >= 1:
+                # Count agreements (both voted same)
+                agreements_count = sum(
+                    1 for tid in common_threads
+                    if votes1[tid] == votes2[tid]
+                )
+                agreement = agreements_count / len(common_threads)
+
+                # Store with sorted key for consistency
+                key = f"{min(str(rater1_id), str(rater2_id))}-{max(str(rater1_id), str(rater2_id))}"
                 agreements[key] = round(agreement, 3)
 
     return {
@@ -1685,6 +1807,7 @@ def get_authenticity_stats(scenario_id: int) -> Dict[str, Any]:
                 "user_id": user_id,
                 "username": user.username,
                 "role": su.role.value if su.role else "unknown",
+                "is_llm": False,  # Explicit flag for human evaluators
                 "total_threads": total_assigned,
                 "voted_count": voted_count,
                 "pending_count": total_assigned - voted_count,
@@ -1810,6 +1933,15 @@ def get_authenticity_stats(scenario_id: int) -> Dict[str, Any]:
         else None
     )
 
+    # Calculate pairwise agreement between evaluators
+    pairwise_agreement = _calculate_authenticity_pairwise_agreement(
+        user_stats=user_stats,
+        llm_user_stats=llm_user_stats,
+        user_vote_map=user_vote_map,
+        llm_vote_map=llm_vote_map,
+        thread_ids=thread_ids,
+    )
+
     return {
         "scenario_id": scenario_id,
         "scenario_name": scenario.scenario_name,
@@ -1828,6 +1960,7 @@ def get_authenticity_stats(scenario_id: int) -> Dict[str, Any]:
             "fake_count": fake_count,
             "real_count": real_count,
         },
+        "pairwise_agreement": pairwise_agreement,
     }
 
 

@@ -1103,8 +1103,27 @@ Antworte im JSON-Format (verwende die numerischen Feature-IDs, nicht die Buchsta
 
     @staticmethod
     def _run_mail_rating(model_id: str, thread_ids: Iterable[int], scenario_id: int) -> None:
-        """Rate entire email conversations on a scale of 1-5."""
+        """Rate entire email conversations using configured dimensions."""
         client = LLMClientFactory.get_client_for_model(model_id)
+
+        # Load scenario config to get dimensions
+        scenario = RatingScenarios.query.get(scenario_id)
+        config = scenario.config_json if scenario else {}
+        if isinstance(config, str):
+            import json
+            try:
+                config = json.loads(config)
+            except (json.JSONDecodeError, TypeError):
+                config = {}
+
+        # Get dimensions from config (check multiple locations)
+        eval_config = config.get("eval_config", {}) or {}
+        eval_config_inner = eval_config.get("config", {}) or {}
+        dimensions = config.get("dimensions", []) or eval_config.get("dimensions", []) or eval_config_inner.get("dimensions", [])
+
+        # Get global scale settings
+        global_min = config.get("min", eval_config.get("min", eval_config_inner.get("min", 1)))
+        global_max = config.get("max", eval_config.get("max", eval_config_inner.get("max", 5)))
 
         for thread_id in thread_ids:
             try:
@@ -1127,23 +1146,63 @@ Antworte im JSON-Format (verwende die numerischen Feature-IDs, nicht die Buchsta
 
                 message_lines = [f"{msg.sender}: {msg.content}" for msg in messages]
 
-                system_prompt = (
-                    "Du bist ein Experte für die Bewertung von E-Mail-Konversationen. "
-                    "Bewerte die Gesamtqualität der Beratungskonversation auf einer Skala von 1 bis 5. "
-                    "Berücksichtige dabei: Empathie, Fachlichkeit, Verständlichkeit, Hilfsbereitschaft und Lösungsorientierung. "
-                    "Antworte ausschließlich im JSON-Format."
-                )
-                user_prompt = (
-                    "Bewerte die folgende E-Mail-Konversation.\n"
-                    "Gib JSON im Format:\n"
-                    "{\n"
-                    '  "rating": 1-5,\n'
-                    '  "reasoning": "Kurze Begründung für die Bewertung"\n'
-                    "}\n\n"
-                    f"Betreff: {thread.subject or 'Kein Betreff'}\n\n"
-                    "Konversation:\n"
-                    + "\n".join(message_lines)
-                )
+                # Build dimension descriptions for prompt
+                if dimensions:
+                    dim_descriptions = []
+                    for dim in dimensions:
+                        dim_id = dim.get("id", "unknown")
+                        dim_name = dim.get("name", {})
+                        name = dim_name.get("de", dim_name.get("en", dim_id)) if isinstance(dim_name, dict) else str(dim_name)
+                        dim_desc = dim.get("description", {})
+                        desc = dim_desc.get("de", dim_desc.get("en", "")) if isinstance(dim_desc, dict) else str(dim_desc)
+                        # Get dimension-specific scale or use global
+                        dim_scale = dim.get("scale", {})
+                        scale_min = dim_scale.get("min", global_min) if dim_scale else global_min
+                        scale_max = dim_scale.get("max", global_max) if dim_scale else global_max
+                        dim_descriptions.append(f'- "{dim_id}" ({name}, Skala {scale_min}-{scale_max}): {desc}')
+
+                    dimensions_text = "\n".join(dim_descriptions)
+                    dim_ids = [d.get("id") for d in dimensions]
+
+                    system_prompt = (
+                        "Du bist ein Experte für die Bewertung von E-Mail-Beratungsverläufen. "
+                        "Bewerte die Konversation auf mehreren Dimensionen. "
+                        "Antworte ausschließlich im JSON-Format."
+                    )
+                    user_prompt = (
+                        "Bewerte die folgende E-Mail-Konversation auf diesen Dimensionen:\n"
+                        f"{dimensions_text}\n\n"
+                        "Gib JSON im Format:\n"
+                        "{\n"
+                        '  "type": "dimensional",\n'
+                        '  "dimensional_ratings": [\n'
+                        + ",\n".join([f'    {{"dimension": "{d}", "rating": <Wert>, "reasoning": "<Begründung>"}}' for d in dim_ids])
+                        + "\n  ],\n"
+                        '  "overall_rating": <Durchschnitt aller Dimensionen>,\n'
+                        '  "overall_reasoning": "<Gesamtbegründung>"\n'
+                        "}\n\n"
+                        f"Betreff: {thread.subject or 'Kein Betreff'}\n\n"
+                        "Konversation:\n"
+                        + "\n".join(message_lines)
+                    )
+                else:
+                    # Fallback to simple rating if no dimensions configured
+                    system_prompt = (
+                        "Du bist ein Experte für die Bewertung von E-Mail-Konversationen. "
+                        f"Bewerte die Gesamtqualität der Beratungskonversation auf einer Skala von {global_min} bis {global_max}. "
+                        "Antworte ausschließlich im JSON-Format."
+                    )
+                    user_prompt = (
+                        "Bewerte die folgende E-Mail-Konversation.\n"
+                        "Gib JSON im Format:\n"
+                        "{\n"
+                        f'  "rating": {global_min}-{global_max},\n'
+                        '  "reasoning": "Kurze Begründung für die Bewertung"\n'
+                        "}\n\n"
+                        f"Betreff: {thread.subject or 'Kein Betreff'}\n\n"
+                        "Konversation:\n"
+                        + "\n".join(message_lines)
+                    )
 
                 raw_response = None
                 payload, raw_response = LLMAITaskRunner._request_json(
@@ -1151,7 +1210,7 @@ Antworte im JSON-Format (verwende die numerischen Feature-IDs, nicht die Buchsta
                     model_id,
                     system_prompt,
                     user_prompt,
-                    max_tokens=500,
+                    max_tokens=1500,  # More tokens for dimensional response
                     trace={
                         "task": "mail_rating",
                         "scenario_id": scenario_id,
@@ -1159,7 +1218,7 @@ Antworte im JSON-Format (verwende die numerischen Feature-IDs, nicht die Buchsta
                         "model_id": model_id,
                     },
                 )
-                rating_data = LLMAITaskRunner._validate_mail_rating_payload(payload)
+                rating_data = LLMAITaskRunner._validate_mail_rating_payload(payload, dimensions=dimensions)
                 if rating_data is None:
                     raise ValueError("Invalid mail_rating payload")
 
@@ -1710,19 +1769,83 @@ Antworte im JSON-Format (verwende die numerischen Feature-IDs, nicht die Buchsta
         return {"vote": vote, "confidence": confidence}
 
     @staticmethod
-    def _validate_mail_rating_payload(payload: Dict[str, Any]) -> Optional[Dict[str, Any]]:
-        """Validate mail_rating response: rating (1-5) and optional reasoning."""
+    def _validate_mail_rating_payload(
+        payload: Dict[str, Any],
+        dimensions: List[Dict[str, Any]] = None
+    ) -> Optional[Dict[str, Any]]:
+        """Validate mail_rating response: supports both simple and dimensional formats."""
         if not isinstance(payload, dict):
             return None
+
+        # Check for dimensional format
+        if payload.get("type") == "dimensional" and "dimensional_ratings" in payload:
+            dim_ratings = payload.get("dimensional_ratings", [])
+            if not isinstance(dim_ratings, list):
+                return None
+
+            validated_ratings = []
+            for dr in dim_ratings:
+                if not isinstance(dr, dict):
+                    continue
+                dim_id = dr.get("dimension")
+                rating = dr.get("rating")
+                reasoning = dr.get("reasoning", "")
+
+                # Handle string ratings
+                if isinstance(rating, str):
+                    try:
+                        rating = float(rating.strip())
+                        if rating == int(rating):
+                            rating = int(rating)
+                    except (ValueError, AttributeError):
+                        continue
+
+                if dim_id and rating is not None:
+                    validated_ratings.append({
+                        "dimension": dim_id,
+                        "rating": rating,
+                        "reasoning": str(reasoning) if reasoning else ""
+                    })
+
+            if not validated_ratings:
+                return None
+
+            # Get overall rating
+            overall_rating = payload.get("overall_rating")
+            if isinstance(overall_rating, str):
+                try:
+                    overall_rating = float(overall_rating.strip())
+                    if overall_rating == int(overall_rating):
+                        overall_rating = int(overall_rating)
+                except (ValueError, AttributeError):
+                    # Calculate average if not provided
+                    overall_rating = sum(r["rating"] for r in validated_ratings) / len(validated_ratings)
+                    overall_rating = round(overall_rating, 2)
+
+            if overall_rating is None:
+                # Calculate average
+                overall_rating = sum(r["rating"] for r in validated_ratings) / len(validated_ratings)
+                overall_rating = round(overall_rating, 2)
+
+            return {
+                "type": "dimensional",
+                "dimensional_ratings": validated_ratings,
+                "overall_rating": overall_rating,
+                "overall_reasoning": str(payload.get("overall_reasoning", "")) or ""
+            }
+
+        # Fallback: Simple format {"rating": X, "reasoning": "..."}
         rating = payload.get("rating")
         reasoning = payload.get("reasoning", "")
 
         # Handle string ratings
-        if isinstance(rating, str) and rating.strip().isdigit():
-            rating = int(rating.strip())
+        if isinstance(rating, str) and rating.strip().replace(".", "").isdigit():
+            rating = float(rating.strip())
+            if rating == int(rating):
+                rating = int(rating)
 
-        # Validate rating is 1-5
-        if not isinstance(rating, int) or rating < 1 or rating > 5:
+        # Validate rating exists and is numeric
+        if rating is None or not isinstance(rating, (int, float)):
             return None
 
         # Reasoning is optional but should be a string if present

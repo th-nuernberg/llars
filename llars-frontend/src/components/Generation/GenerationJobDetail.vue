@@ -1087,6 +1087,15 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  min-height: 0; /* Required for flex child to shrink and enable scrolling */
+}
+
+.outputs-card :deep(.l-card__content) {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 
 .outputs-list {

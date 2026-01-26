@@ -148,11 +148,12 @@ def get_job(job_id: int):
         200: Job details
         404: Job not found
     """
-    job = BatchGenerationService.get_job(job_id)
+    # Use get_job_status to include currently_processing for reconnection support
+    job_data = BatchGenerationService.get_job_status(job_id)
 
     return jsonify({
         'success': True,
-        'job': job.to_dict(include_outputs=True),
+        'job': job_data,
     })
 
 

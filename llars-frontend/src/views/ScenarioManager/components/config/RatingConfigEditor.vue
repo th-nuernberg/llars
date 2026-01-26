@@ -74,7 +74,7 @@
         >
           <span class="label-value">{{ value }}</span>
           <v-text-field
-            v-model="localConfig.labels[value]"
+            :model-value="getLabelText(localConfig.labels[value])"
             :placeholder="$t('scenarioManager.evalConfig.rating.labelPlaceholder')"
             variant="outlined"
             density="compact"
@@ -154,6 +154,79 @@
                 @update:modelValue="updateDimensionWeight(index, $event)"
               />
             </div>
+
+            <!-- Per-Dimension Custom Scale -->
+            <div class="dimension-scale-section">
+              <LSwitch
+                :model-value="!!element.scale"
+                :label="$t('scenarioManager.evalConfig.rating.useCustomScale')"
+                size="small"
+                @update:modelValue="toggleDimensionScale(index, $event)"
+              />
+
+              <div v-if="element.scale" class="custom-scale-config">
+                <v-select
+                  :model-value="element.scale?.type || 'likert'"
+                  :items="dimensionScaleTypes"
+                  :label="$t('scenarioManager.evalConfig.rating.scaleType')"
+                  variant="outlined"
+                  density="compact"
+                  hide-details
+                  class="scale-type-select"
+                  @update:modelValue="updateDimensionScaleType(index, $event)"
+                />
+
+                <!-- Non-binary scale options -->
+                <template v-if="element.scale?.type !== 'binary'">
+                  <div class="scale-range-row">
+                    <v-text-field
+                      :model-value="element.scale?.min ?? localConfig.min"
+                      :label="$t('scenarioManager.evalConfig.rating.minValue')"
+                      type="number"
+                      variant="outlined"
+                      density="compact"
+                      hide-details
+                      class="scale-range-input"
+                      @update:modelValue="updateDimensionScaleMin(index, $event)"
+                    />
+                    <v-text-field
+                      :model-value="element.scale?.max ?? localConfig.max"
+                      :label="$t('scenarioManager.evalConfig.rating.maxValue')"
+                      type="number"
+                      variant="outlined"
+                      density="compact"
+                      hide-details
+                      class="scale-range-input"
+                      @update:modelValue="updateDimensionScaleMax(index, $event)"
+                    />
+                  </div>
+                </template>
+
+                <!-- Binary scale labels -->
+                <template v-if="element.scale?.type === 'binary'">
+                  <div class="binary-labels-row">
+                    <v-text-field
+                      :model-value="getBinaryLabel(element.scale, 1)"
+                      :label="$t('scenarioManager.evalConfig.rating.yesLabel')"
+                      variant="outlined"
+                      density="compact"
+                      hide-details
+                      class="binary-label-input"
+                      @update:modelValue="updateBinaryLabel(index, 1, $event)"
+                    />
+                    <v-text-field
+                      :model-value="getBinaryLabel(element.scale, 2)"
+                      :label="$t('scenarioManager.evalConfig.rating.noLabel')"
+                      variant="outlined"
+                      density="compact"
+                      hide-details
+                      class="binary-label-input"
+                      @update:modelValue="updateBinaryLabel(index, 2, $event)"
+                    />
+                  </div>
+                </template>
+              </div>
+            </div>
           </div>
         </template>
       </draggable>
@@ -199,6 +272,12 @@ const scaleTypes = [
   { title: 'Slider', value: 'slider' }
 ]
 
+// Scale types available for individual dimensions
+const dimensionScaleTypes = [
+  { title: 'Likert (Standard)', value: 'likert' },
+  { title: 'Binär (Ja/Nein)', value: 'binary' }
+]
+
 const localConfig = ref({
   type: 'likert',
   min: 1,
@@ -217,6 +296,12 @@ const scaleValues = computed(() => {
   }
   return values
 })
+
+function getLabelText(label) {
+  if (!label) return ''
+  if (typeof label === 'string') return label
+  return label[locale.value] || label.de || label.en || ''
+}
 
 function getDimensionName(name) {
   if (!name) return ''
@@ -256,6 +341,86 @@ function updateDimensionWeight(index, value) {
   const dimension = localConfig.value.dimensions?.[index]
   if (!dimension) return
   dimension.weight = parseFloat(value) || 0
+  emitUpdate()
+}
+
+// Per-dimension scale functions
+function toggleDimensionScale(index, enabled) {
+  const dimension = localConfig.value.dimensions?.[index]
+  if (!dimension) return
+
+  if (enabled) {
+    // Initialize with default likert scale
+    dimension.scale = {
+      type: 'likert',
+      min: localConfig.value.min,
+      max: localConfig.value.max
+    }
+  } else {
+    // Remove custom scale - use global settings
+    delete dimension.scale
+  }
+  emitUpdate()
+}
+
+function updateDimensionScaleType(index, type) {
+  const dimension = localConfig.value.dimensions?.[index]
+  if (!dimension?.scale) return
+
+  dimension.scale.type = type
+
+  if (type === 'binary') {
+    // Set binary defaults
+    dimension.scale.min = 1
+    dimension.scale.max = 2
+    dimension.scale.labels = {
+      1: { de: 'Ja', en: 'Yes' },
+      2: { de: 'Nein', en: 'No' }
+    }
+    dimension.scale.colors = {
+      1: '#66BB6A',
+      2: '#AB47BC'
+    }
+  } else {
+    // Reset to global defaults for likert
+    dimension.scale.min = localConfig.value.min
+    dimension.scale.max = localConfig.value.max
+    delete dimension.scale.labels
+    delete dimension.scale.colors
+  }
+  emitUpdate()
+}
+
+function updateDimensionScaleMin(index, value) {
+  const dimension = localConfig.value.dimensions?.[index]
+  if (!dimension?.scale) return
+  dimension.scale.min = parseInt(value) || 1
+  emitUpdate()
+}
+
+function updateDimensionScaleMax(index, value) {
+  const dimension = localConfig.value.dimensions?.[index]
+  if (!dimension?.scale) return
+  dimension.scale.max = parseInt(value) || 5
+  emitUpdate()
+}
+
+function getBinaryLabel(scale, value) {
+  if (!scale?.labels) return value === 1 ? 'Ja' : 'Nein'
+  const label = scale.labels[value] || scale.labels[String(value)]
+  if (!label) return value === 1 ? 'Ja' : 'Nein'
+  if (typeof label === 'string') return label
+  return label[locale.value] || label.de || label.en || ''
+}
+
+function updateBinaryLabel(index, value, text) {
+  const dimension = localConfig.value.dimensions?.[index]
+  if (!dimension?.scale) return
+
+  if (!dimension.scale.labels) {
+    dimension.scale.labels = {}
+  }
+  dimension.scale.labels[value] = { de: text, en: text }
   emitUpdate()
 }
 
@@ -458,5 +623,45 @@ onMounted(initFromProps)
 .weight-hint {
   color: rgba(var(--v-theme-on-surface), 0.5);
   font-size: 0.8rem;
+}
+
+/* Per-Dimension Scale Configuration */
+.dimension-scale-section {
+  margin-top: 12px;
+  padding-top: 12px;
+  padding-left: 26px;
+  border-top: 1px dashed rgba(var(--v-theme-on-surface), 0.1);
+}
+
+.custom-scale-config {
+  margin-top: 10px;
+  padding: 10px;
+  background-color: rgba(var(--v-theme-on-surface), 0.03);
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.scale-type-select {
+  max-width: 200px;
+}
+
+.scale-range-row {
+  display: flex;
+  gap: 12px;
+}
+
+.scale-range-input {
+  max-width: 100px;
+}
+
+.binary-labels-row {
+  display: flex;
+  gap: 12px;
+}
+
+.binary-label-input {
+  flex: 1;
 }
 </style>

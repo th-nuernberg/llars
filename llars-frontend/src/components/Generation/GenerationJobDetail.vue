@@ -72,14 +72,14 @@
           </v-list>
         </v-menu>
 
-        <!-- Create Scenario -->
+        <!-- Open Scenario Wizard -->
         <LBtn
           v-if="canCreateScenario"
           variant="accent"
-          @click="showScenarioDialog = true"
+          @click="openScenarioWizard"
         >
-          <LIcon start>mdi-clipboard-plus</LIcon>
-          {{ $t('generation.actions.toScenario') }}
+          <LIcon start>mdi-wizard-hat</LIcon>
+          {{ $t('generation.actions.scenarioWizard') }}
         </LBtn>
       </div>
     </div>
@@ -99,7 +99,7 @@
           <div class="progress-section">
             <div class="progress-stats">
               <span class="progress-text">
-                {{ currentJob?.completed_items || 0 }} / {{ currentJob?.total_items || 0 }}
+                {{ currentJob?.progress?.completed || 0 }} / {{ currentJob?.progress?.total || 0 }}
               </span>
               <span class="progress-percent">{{ progressPercent }}%</span>
             </div>
@@ -109,9 +109,9 @@
               height="8"
               rounded
             />
-            <div v-if="currentJob?.failed_items" class="failed-info">
+            <div v-if="currentJob?.progress?.failed" class="failed-info">
               <LIcon size="16" color="error" class="mr-1">mdi-alert</LIcon>
-              {{ currentJob.failed_items }} {{ $t('generation.failed') }}
+              {{ currentJob.progress.failed }} {{ $t('generation.failed') }}
             </div>
 
             <!-- Currently Processing Indicator (Socket.IO driven) -->
@@ -396,52 +396,6 @@
       </LCard>
     </v-dialog>
 
-    <!-- Create Scenario Dialog -->
-    <v-dialog v-model="showScenarioDialog" max-width="500">
-      <LCard>
-        <template #title>
-          <LIcon color="accent" class="mr-2">mdi-clipboard-plus</LIcon>
-          {{ $t('generation.actions.toScenario') }}
-        </template>
-
-        <v-card-text>
-          <v-text-field
-            v-model="scenarioForm.name"
-            :label="$t('generation.scenario.name')"
-            variant="outlined"
-            class="mb-4"
-          />
-
-          <v-select
-            v-model="scenarioForm.evaluationType"
-            :items="evaluationTypes"
-            item-title="label"
-            item-value="value"
-            :label="$t('generation.scenario.evaluationType')"
-            variant="outlined"
-          />
-
-          <v-alert type="info" variant="tonal" class="mt-4">
-            {{ $t('generation.scenario.info', { count: currentJob?.completed_items || 0 }) }}
-          </v-alert>
-        </v-card-text>
-
-        <v-card-actions>
-          <v-spacer />
-          <LBtn variant="cancel" @click="showScenarioDialog = false">
-            {{ $t('common.cancel') }}
-          </LBtn>
-          <LBtn
-            variant="primary"
-            :loading="creatingScenario"
-            :disabled="!scenarioForm.name || !scenarioForm.evaluationType"
-            @click="handleCreateScenario"
-          >
-            {{ $t('common.create') }}
-          </LBtn>
-        </v-card-actions>
-      </LCard>
-    </v-dialog>
   </div>
 </template>
 
@@ -475,18 +429,15 @@ const {
   pauseJob,
   cancelJob,
   downloadCsv,
-  downloadJson,
-  createScenario
+  downloadJson
 } = useGeneration()
 
 // Local state
 const outputFilter = ref(null)
 const outputsPage = ref(1)
 const showOutputDialog = ref(false)
-const showScenarioDialog = ref(false)
 const selectedOutput = ref(null)
 const isLoadingOutput = ref(false)
-const creatingScenario = ref(false)
 
 // Real-time streaming state
 const currentlyProcessing = ref(null)  // { model: 'gpt-4', outputId: 123, content: 'Streaming...' }
@@ -496,29 +447,14 @@ const streamingContent = ref('')  // Current streaming content
 const streamingContentRef = ref(null)
 const outputsListRef = ref(null)
 
-// Scenario form
-const scenarioForm = ref({
-  name: '',
-  evaluationType: 'rating'  // Default to rating for generated text evaluation
-})
-
-// Evaluation types suitable for generated content
-// Rating is recommended for LLM output quality evaluation (coherence, fluency, etc.)
-const evaluationTypes = [
-  { value: 'rating', label: t('evaluation.types.rating') + ' (' + t('common.recommended') + ')' },
-  { value: 'labeling', label: t('evaluation.types.labeling') },
-  { value: 'ranking', label: t('evaluation.types.ranking') },
-  { value: 'comparison', label: t('evaluation.types.comparison') }
-]
-
 // Computed
 const jobId = computed(() => Number(route.params.jobId))
 
 const jobConfig = computed(() => currentJob.value?.config || {})
 
 const progressPercent = computed(() => {
-  if (!currentJob.value?.total_items) return 0
-  return Math.round(((currentJob.value.completed_items || 0) / currentJob.value.total_items) * 100)
+  if (!currentJob.value?.progress?.total) return 0
+  return Math.round(((currentJob.value.progress.completed || 0) / currentJob.value.progress.total) * 100)
 })
 
 const statusConfig = computed(() => {
@@ -592,7 +528,7 @@ const canCancel = computed(() =>
 
 const canCreateScenario = computed(() =>
   currentJob.value?.status === JOB_STATUS.COMPLETED &&
-  (currentJob.value?.progress?.completed || currentJob.value?.completed_items || 0) > 0
+  (currentJob.value?.progress?.completed || 0) > 0
 )
 
 // Methods
@@ -685,25 +621,13 @@ function formatDate(dateStr) {
   })
 }
 
-async function handleCreateScenario() {
-  creatingScenario.value = true
-  try {
-    const result = await createScenario(jobId.value, {
-      scenario_name: scenarioForm.value.name,
-      evaluation_type: scenarioForm.value.evaluationType
-    })
-    if (result) {
-      showScenarioDialog.value = false
-      // Navigate to the new scenario's team tab to invite evaluators
-      router.push({
-        name: 'ScenarioWorkspace',
-        params: { id: result.scenario_id },
-        query: { tab: 'team' }
-      })
-    }
-  } finally {
-    creatingScenario.value = false
-  }
+function openScenarioWizard() {
+  // Navigate to Scenario Manager with the generation job ID
+  // The wizard will open automatically and load the generated outputs
+  router.push({
+    name: 'ScenarioManager',
+    query: { fromGeneration: jobId.value }
+  })
 }
 
 // Watch for filter changes
@@ -892,9 +816,17 @@ onMounted(async () => {
   await loadJob(jobId.value)
   await loadOutputs(jobId.value)
 
-  // Pre-fill scenario name
-  if (currentJob.value) {
-    scenarioForm.value.name = `${currentJob.value.name} - Evaluation`
+  // Check if there's a currently processing item (for reconnection support)
+  if (currentJob.value?.currently_processing) {
+    const cp = currentJob.value.currently_processing
+    currentlyProcessing.value = {
+      model: cp.model_name,
+      outputId: cp.output_id,
+      itemName: cp.item_name
+    }
+    // Load partial content that was streamed before reconnection
+    // New tokens will be appended via Socket.IO
+    streamingContent.value = cp.partial_content || ''
   }
 })
 

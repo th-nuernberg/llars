@@ -916,6 +916,8 @@ class GenerationWorker:
             # Streaming call
             content = ""
             tokens = {"input": 0, "output": 0, "total": 0}
+            last_save_time = time.time()
+            SAVE_INTERVAL = 2.0  # Save partial content every 2 seconds for reconnection support
 
             try:
                 # Build API call params - only include max_tokens if explicitly set
@@ -960,6 +962,12 @@ class GenerationWorker:
                                 "output_id": output_id,
                                 "token": token,
                             })
+
+                            # Periodically save partial content for reconnection support
+                            current_time = time.time()
+                            if current_time - last_save_time >= SAVE_INTERVAL:
+                                self._save_partial_content(output_id, content)
+                                last_save_time = current_time
 
                 # Estimate tokens for streaming (actual count not always available)
                 # Use rough estimation: ~4 chars per token
@@ -1118,6 +1126,30 @@ class GenerationWorker:
             "percent": job.progress_percent,
             "cost_usd": job.total_cost_usd,
         })
+
+    # -------------------------------------------------------------------------
+    # Partial Content Storage (for reconnection support)
+    # -------------------------------------------------------------------------
+
+    def _save_partial_content(self, output_id: int, content: str) -> None:
+        """
+        Save partial streaming content to the database for reconnection support.
+
+        This allows clients who reconnect mid-stream to see what has been
+        generated so far.
+        """
+        try:
+            output = GeneratedOutput.query.get(output_id)
+            if output and output.status == GeneratedOutputStatus.PROCESSING:
+                output.generated_content = content
+                db.session.commit()
+                logger.debug("[GenWorker] Saved partial content for output %d (%d chars)",
+                           output_id, len(content))
+        except Exception as e:
+            logger.warning("[GenWorker] Failed to save partial content for output %d: %s",
+                         output_id, e)
+            # Don't fail the streaming, just log the warning
+            db.session.rollback()
 
     # -------------------------------------------------------------------------
     # Socket.IO Events

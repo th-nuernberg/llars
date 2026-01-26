@@ -2553,7 +2553,6 @@
     "evalConfig": {
       "selectPreset": "Vorlage wählen",
       "customizeConfig": "Konfiguration anpassen",
-      "preview": "Vorschau",
       "rating": {
         "scaleType": "Skalen-Typ",
         "minValue": "Minimalwert",
@@ -2570,7 +2569,10 @@
         "dimensionDescription": "Beschreibung (Was soll hier bewertet werden?)",
         "dimensionWeight": "Gewicht",
         "totalWeight": "Gesamtgewicht",
-        "shouldBe100": "sollte 100% sein"
+        "shouldBe100": "sollte 100% sein",
+        "useCustomScale": "Eigene Skala für diese Dimension",
+        "yesLabel": "Ja-Label",
+        "noLabel": "Nein-Label"
       },
       "ranking": {
         "rankingType": "Ranking-Typ",
@@ -2624,6 +2626,7 @@
         "rounds": "Runden"
       },
       "preview": {
+        "title": "Vorschau",
         "ratingDemo": "Bewertungsvorschau",
         "rankingDemo": "Ranking-Vorschau",
         "labelingDemo": "Labeling-Vorschau",
@@ -5135,7 +5138,8 @@
       "pause": "Pausieren",
       "cancel": "Abbrechen",
       "export": "Exportieren",
-      "toScenario": "Szenario erstellen"
+      "toScenario": "Szenario erstellen",
+      "scenarioWizard": "Szenario Wizard"
     },
     "wizard": {
       "title": "Neuer Generierungs-Job",
@@ -5219,6 +5223,7 @@
       "errorMessage": "Fehlermeldung",
       "currentlyProcessing": "Wird verarbeitet",
       "waitingForResponse": "Warte auf LLM-Antwort...",
+      "reconnecting": "Verbinde zum laufenden Stream...",
       "inputPrompt": "Eingabe-Prompt",
       "noPromptData": "Prompt-Daten nicht verfügbar",
       "noContent": "Kein Inhalt generiert"

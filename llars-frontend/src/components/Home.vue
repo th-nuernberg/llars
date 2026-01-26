@@ -266,7 +266,7 @@ const allItems = computed(() => ([
     title: t('home.features.batchGeneration.title'),
     description: t('home.features.batchGeneration.description'),
     route: '/generation',
-    icon: 'mdi-creation-outline',
+    icon: 'llars:batch-generation',
     permission: 'feature:generation:view',
     category: 'research',
     badge: t('home.badges.beta'),

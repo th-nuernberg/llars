@@ -1,6 +1,7 @@
 import AdminDashboardIcon from './AdminDashboardIcon.vue'
 import AnonymizeIcon from './AnonymizeIcon.vue'
 import AlphaAIcon from './AlphaAIcon.vue'
+import BatchGenerationIcon from './BatchGenerationIcon.vue'
 import AlphaBIcon from './AlphaBIcon.vue'
 import ArrowBackIcon from './ArrowBackIcon.vue'
 import ClaudeIcon from './ClaudeIcon.vue'
@@ -106,6 +107,7 @@ export const iconComponents = {
   'anonymize': AnonymizeIcon,
   'alpha-a': AlphaAIcon,
   'alpha-b': AlphaBIcon,
+  'batch-generation': BatchGenerationIcon,
   'arrow-back': ArrowBackIcon,
   'arrow-down': ArrowNarrowDownIcon,
   'arrow-left': ArrowNarrowLeftIcon,

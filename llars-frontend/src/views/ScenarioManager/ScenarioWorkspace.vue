@@ -435,15 +435,17 @@ watch(activeTab, (newTab) => {
   }
 })
 
-// Auto-switch to evaluation tab in evaluator mode
-watch(isEvaluatorMode, (isEvaluator) => {
-  if (isEvaluator && activeTab.value !== 'evaluation') {
-    activeTab.value = 'evaluation'
+// Redirect non-owners to the dedicated evaluation interface
+watch(scenario, (sc) => {
+  if (sc && !sc.is_owner) {
+    // Non-owners should use the evaluation items overview, not the workspace
+    router.replace({ name: 'EvaluationItemsOverview', params: { scenarioId: sc.id } })
   }
 }, { immediate: true })
 
-onMounted(() => {
-  fetchScenario(props.id)
+onMounted(async () => {
+  await fetchScenario(props.id)
+  refreshStats()  // Also load stats initially
 })
 </script>
 

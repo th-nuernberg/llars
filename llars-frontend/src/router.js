@@ -108,11 +108,11 @@ const routes = [
     // Scenario Manager
     { path: '/scenarios', name: 'ScenarioManager', component: ScenarioManagerHome, meta: { requiresAuth: true } },
     { path: '/scenarios/:id', name: 'ScenarioWorkspace', component: ScenarioWorkspace, props: true, meta: { requiresAuth: true } },
-    // Evaluation route for evaluators (redirects to workspace with evaluation mode)
+    // Legacy evaluation route - redirects to new evaluation interface
     {
       path: '/evaluate/:id',
       name: 'ScenarioEvaluation',
-      redirect: to => ({ name: 'ScenarioWorkspace', params: { id: to.params.id }, query: { mode: 'evaluate' } })
+      redirect: to => ({ name: 'EvaluationItemsOverview', params: { scenarioId: to.params.id } })
     },
 
     // New unified Evaluation Session routes

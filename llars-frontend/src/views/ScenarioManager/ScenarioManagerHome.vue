@@ -269,9 +269,8 @@ async function rejectInvitation(scenario) {
 }
 
 function goToEvaluation(scenario) {
-  // Navigate to evaluation interface
-  // Check if route exists, otherwise go to a generic evaluation page
-  router.push({ name: 'ScenarioEvaluation', params: { id: scenario.id } })
+  // Navigate to evaluation items overview for invited evaluators
+  router.push({ name: 'EvaluationItemsOverview', params: { scenarioId: scenario.id } })
 }
 
 function onScenarioCreated(scenario) {

@@ -94,8 +94,9 @@ def register_all_blueprints(app: Flask) -> None:
     app.register_blueprint(ai_writing_bp)
 
     # Batch Generation (Prompt Engineering → LLM → Evaluation pipeline)
-    from routes.generation import generation_bp
+    from routes.generation import generation_bp, generation_debug_bp
     app.register_blueprint(generation_bp)
+    app.register_blueprint(generation_debug_bp)
 
     # ============================================================
     # Document & Knowledge Management
@@ -147,6 +148,10 @@ def register_all_blueprints(app: Flask) -> None:
     app.register_blueprint(data_bp, url_prefix='/api')
     app.register_blueprint(authentik_auth_blueprint, url_prefix='/auth/authentik')
     app.register_blueprint(kaimo_bp)
+
+    # API Key Management
+    from routes.auth.api_key_routes import api_key_bp
+    app.register_blueprint(api_key_bp)
 
     # ============================================================
     # Development-Only Routes (hidden in production)

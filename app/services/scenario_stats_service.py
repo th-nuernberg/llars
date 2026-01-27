@@ -182,6 +182,7 @@ def get_progress_stats(scenario_id: int) -> Dict[str, Any]:
 
         use_full_threads = (
             scenario_user.role == ScenarioRoles.EVALUATOR
+            or scenario_user.role == ScenarioRoles.OWNER
             or (scenario_user.role == ScenarioRoles.RATER and raters_receive_all_threads(scenario))
         )
 
@@ -264,7 +265,8 @@ def get_progress_stats(scenario_id: int) -> Dict[str, Any]:
 
         if scenario_user.role == ScenarioRoles.RATER:
             rater_stats.append(new_data)
-        elif scenario_user.role == ScenarioRoles.EVALUATOR:
+        elif scenario_user.role in (ScenarioRoles.EVALUATOR, ScenarioRoles.OWNER):
+            # OWNER also counts as evaluator for stats purposes
             evaluator_stats.append(new_data)
 
     if function_type.name in {"ranking", "rating", "mail_rating", "authenticity", "labeling"}:
@@ -490,7 +492,8 @@ def _get_comparison_progress_stats(scenario_id: int) -> Dict[str, Any]:
 
         if scenario_user.role == ScenarioRoles.RATER:
             rater_stats.append(new_data)
-        elif scenario_user.role == ScenarioRoles.EVALUATOR:
+        elif scenario_user.role in (ScenarioRoles.EVALUATOR, ScenarioRoles.OWNER):
+            # OWNER also counts as evaluator for stats purposes
             evaluator_stats.append(new_data)
 
     # Add LLM evaluator stats (comparison sessions)

@@ -2087,19 +2087,10 @@ function getF1Class(value) {
 // ===== Methods: Actions =====
 
 function startHumanEvaluation() {
-  const functionType = props.scenario?.function_type_name || 'rating'
-  const routeMap = {
-    'ranking': 'RankingSession',
-    'rating': 'RatingSession',
-    'mail_rating': 'RatingSession',  // mail_rating uses the same rating interface
-    'authenticity': 'AuthenticitySession',
-    'comparison': 'ComparisonSession',
-    'labeling': 'RatingSession'  // labeling uses rating interface
-  }
-  const routeName = routeMap[functionType] || 'RatingSession'
-
+  // Use unified EvaluationSession for all evaluation types
+  // EvaluationSession auto-detects the interface based on scenario function_type_id
   router.push({
-    name: routeName,
+    name: 'EvaluationSession',
     params: { scenarioId: props.scenario.id }
   })
 }

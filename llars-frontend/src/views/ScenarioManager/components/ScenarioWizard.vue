@@ -1777,17 +1777,52 @@ async function loadFromGenerationJob() {
     generationJobName.value = jobResponse.data.job?.name || `Generation Job #${props.generationJobId}`
 
     // Transform outputs into items for the wizard
-    // Each output becomes an evaluation item with the generated content
-    const items = outputs.map((output, index) => ({
-      id: output.id.toString(),
-      text: output.generated_content || '',
-      content: output.generated_content || '',
-      // Include metadata for context
-      _source: 'generation',
-      _model: output.llm_model_name,
-      _prompt_variant: output.prompt_variant_name,
-      _source_item_id: output.source_item_id
-    }))
+    // Combine original input data with generated response as a complete conversation
+    const items = outputs.map((output) => {
+      const promptVars = output.prompt_variables || {}
+      const generatedContent = output.generated_content || ''
+
+      // Build the combined content structure
+      let messages = []
+      let text = ''
+
+      // Check if there are original messages (conversation history)
+      if (promptVars.messages && Array.isArray(promptVars.messages)) {
+        // Copy original messages
+        messages = [...promptVars.messages]
+        // Add the generated response as a new assistant message
+        messages.push({
+          role: 'assistant',
+          content: generatedContent
+        })
+        // For text field, create a summary
+        text = messages.map(m => `${m.role}: ${m.content}`).join('\n\n')
+      } else if (promptVars.input) {
+        // Single input text - create a Q&A pair
+        messages = [
+          { role: 'user', content: promptVars.input },
+          { role: 'assistant', content: generatedContent }
+        ]
+        text = `User: ${promptVars.input}\n\nAssistant: ${generatedContent}`
+      } else {
+        // No original input, just the generated content
+        text = generatedContent
+      }
+
+      return {
+        id: output.id.toString(),
+        text: text,
+        content: generatedContent,
+        messages: messages.length > 0 ? messages : undefined,
+        subject: promptVars.subject || undefined,
+        // Include metadata for context
+        _source: 'generation',
+        _model: output.llm_model_name,
+        _prompt_variant: output.prompt_variant_name,
+        _source_item_id: output.source_item_id,
+        _original_input: promptVars.input || null
+      }
+    })
 
     // Set the data
     analyzedData.value = items

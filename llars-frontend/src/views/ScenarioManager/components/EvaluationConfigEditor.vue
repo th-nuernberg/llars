@@ -70,7 +70,7 @@
 
     <!-- Config Preview -->
     <div class="config-preview" v-if="showPreview">
-      <h4 class="section-title">{{ $t('scenarioManager.evalConfig.preview') }}</h4>
+      <h4 class="section-title">{{ $t('scenarioManager.evalConfig.preview.title') }}</h4>
       <EvaluationPreview :eval-type="evalType" :config="localConfig" />
     </div>
   </div>

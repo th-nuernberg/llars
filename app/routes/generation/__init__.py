@@ -25,5 +25,6 @@ Endpoints:
 """
 
 from routes.generation.generation_routes import generation_bp
+from routes.generation.generation_debug_routes import generation_debug_bp
 
-__all__ = ['generation_bp']
+__all__ = ['generation_bp', 'generation_debug_bp']

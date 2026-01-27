@@ -190,7 +190,23 @@ class EvaluationSessionService:
                         except (json.JSONDecodeError, TypeError):
                             config = {}
 
+                    # Dimensions can be at multiple locations:
+                    # 1. config.dimensions (direct)
+                    # 2. config.eval_config.dimensions (nested in eval_config)
+                    # 3. config.eval_config.config.dimensions (from wizard)
+                    eval_config = config.get('eval_config', {})
+                    if not isinstance(eval_config, dict):
+                        eval_config = {}
+                    eval_config_inner = eval_config.get('config', {})
+                    if not isinstance(eval_config_inner, dict):
+                        eval_config_inner = {}
+
                     dimensions = config.get('dimensions', [])
+                    if not dimensions:
+                        dimensions = eval_config.get('dimensions', [])
+                    if not dimensions:
+                        dimensions = eval_config_inner.get('dimensions', [])
+
                     if dimensions and dim_rating.dimension_ratings:
                         required_dims = [d.get('id') for d in dimensions if d.get('id')]
                         all_rated = all(

@@ -2783,7 +2783,8 @@
       "totalProgress": "Gesamtfortschritt",
       "evaluators": "Evaluatoren",
       "humanEvaluators": "Menschliche Evaluatoren",
-      "llmEvaluators": "LLM Evaluatoren"
+      "llmEvaluators": "LLM Evaluatoren",
+      "hoverForDetails": "Für Details mit der Maus darüberfahren"
     },
     "results": {
       "title": "Ergebnisse",

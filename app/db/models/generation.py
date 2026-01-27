@@ -410,15 +410,23 @@ class GenerationJob(db.Model):
 
     def to_summary_dict(self) -> Dict[str, Any]:
         """Convert to lightweight summary for list views."""
+        config = self.config_json or {}
         return {
             'id': self.id,
             'name': self.name,
+            'description': self.description,
             'status': self.status.value if self.status else None,
             'progress_percent': self.progress_percent,
             'total_items': self.total_items,
             'completed_items': self.completed_items,
+            'failed_items': self.failed_items,
+            'total_cost_usd': self.total_cost_usd,
             'created_by': self.created_by,
             'created_at': self.created_at.isoformat() if self.created_at else None,
+            'config_json': {
+                'prompts': config.get('prompts', []),
+                'llm_models': config.get('llm_models', []),
+            },
         }
 
     @classmethod

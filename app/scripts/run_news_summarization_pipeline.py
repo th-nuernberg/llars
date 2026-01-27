@@ -5,17 +5,41 @@ import json
 import sys
 import os
 import time
+from collections import defaultdict
 
 # Ensure app is in path
 sys.path.insert(0, '/app')
 os.chdir('/app')
+
+
+def get_or_create_feature_type(db, name: str) -> int:
+    """Get or create a FeatureType by name."""
+    from db.models import FeatureType
+    ft = FeatureType.query.filter_by(name=name).first()
+    if not ft:
+        ft = FeatureType(name=name)
+        db.session.add(ft)
+        db.session.flush()
+    return ft.type_id
+
+
+def get_or_create_llm(db, name: str) -> int:
+    """Get or create an LLM by name."""
+    from db.models import LLM
+    llm = LLM.query.filter_by(name=name).first()
+    if not llm:
+        llm = LLM(name=name)
+        db.session.add(llm)
+        db.session.flush()
+    return llm.llm_id
+
 
 def main():
     # Import Flask app
     from main import app
     from db import db
     from db.models import User, RatingScenarios, EvaluationItem, ScenarioItems, ScenarioUsers, Message
-    from db.models import UserPrompt, GenerationJob, GeneratedOutput
+    from db.models import UserPrompt, GenerationJob, GeneratedOutput, Feature
     from db.models.scenario import ScenarioRoles
     from datetime import datetime
     from services.generation.batch_generation_service import BatchGenerationService
@@ -205,28 +229,62 @@ def main():
         from db.models import GeneratedOutputStatus
         outputs = GeneratedOutput.query.filter_by(job_id=job.id, status=GeneratedOutputStatus.COMPLETED).all()
 
+        # === CORRECT STRUCTURE FOR RANKING ===
+        # Group outputs by source item (original article)
+        # Each source article becomes ONE EvaluationItem with multiple Features
+        outputs_by_source = defaultdict(list)
         for output in outputs:
-            source_item = EvaluationItem.query.get(output.source_item_id) if output.source_item_id else None
-            model_name = output.llm_model_name.split('/')[-1] if output.llm_model_name else "Unknown"
+            if output.source_item_id:
+                outputs_by_source[output.source_item_id].append(output)
 
+        # Create FeatureType for summaries
+        summary_type_id = get_or_create_feature_type(db, 'summary')
+
+        items_created = 0
+        features_created = 0
+
+        for source_item_id, source_outputs in outputs_by_source.items():
+            source_item = db.session.get(EvaluationItem, source_item_id)
+            if not source_item:
+                continue
+
+            # Create ONE ranking item per original article
             ranking_item = EvaluationItem(
-                subject=f"{model_name}: {source_item.subject[:50] if source_item else 'Summary'}",
-                sender=model_name,
-                chat_id=2000 + output.id  # Numeric ID
+                subject=f"Ranking: {source_item.subject[:60]}",
+                sender='ranking',
+                chat_id=3000 + source_item_id,  # Unique ID
+                function_type_id=1  # ranking
             )
             db.session.add(ranking_item)
             db.session.flush()
+            items_created += 1
 
-            # Message mit generiertem Content
-            gen_message = Message(
-                item_id=ranking_item.item_id,
-                sender=model_name,
-                content=output.generated_content or "No content generated",
-                timestamp=datetime.now(),
-                generated_by=model_name
-            )
-            db.session.add(gen_message)
+            # Add the ORIGINAL ARTICLE as source message (displayed on right side)
+            source_message = Message.query.filter_by(item_id=source_item_id).first()
+            if source_message:
+                orig_message = Message(
+                    item_id=ranking_item.item_id,
+                    sender='Original Article',
+                    content=source_message.content,
+                    timestamp=datetime.now()
+                )
+                db.session.add(orig_message)
 
+            # Create FEATURE for each generated summary (displayed on left side for ranking)
+            for output in source_outputs:
+                model_name = output.llm_model_name.split('/')[-1] if output.llm_model_name else "Unknown"
+                llm_id = get_or_create_llm(db, model_name)
+
+                feature = Feature(
+                    item_id=ranking_item.item_id,
+                    content=output.generated_content or "No content generated",
+                    type_id=summary_type_id,
+                    llm_id=llm_id
+                )
+                db.session.add(feature)
+                features_created += 1
+
+            # Link ranking item to scenario
             scenario_item = ScenarioItems(scenario_id=ranking_scenario.id, item_id=ranking_item.item_id)
             db.session.add(scenario_item)
 
@@ -235,7 +293,8 @@ def main():
         db.session.commit()
 
         print(f"   OK: Ranking-Szenario erstellt: ID {ranking_scenario.id}")
-        print(f"   {len(outputs)} Items importiert")
+        print(f"   {items_created} Items erstellt (je 1 pro Original-Artikel)")
+        print(f"   {features_created} Features erstellt (Zusammenfassungen zum Ranken)")
 
         print("\n" + "=" * 60)
         print("PIPELINE ABGESCHLOSSEN!")
@@ -246,8 +305,14 @@ Ergebnisse:
   - Prompt:           ID {prompt.prompt_id}
   - Generation Job:   ID {job.id} ({job.completed_items} Outputs)
   - Ranking-Szenario: ID {ranking_scenario.id}
+    - {items_created} Items (Original-Artikel)
+    - {features_created} Features (Zusammenfassungen zum Ranken)
 
 Oeffne: http://localhost:55080/scenarios/{ranking_scenario.id}/evaluate
+
+Struktur pro Item:
+  - Rechts: Original-Artikel (Message)
+  - Links:  LLM-Zusammenfassungen (Features) zum Ranken in Buckets
 
 Kosten: ${job.total_cost_usd:.4f} USD
 """)

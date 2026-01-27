@@ -610,8 +610,9 @@ class LLMAITaskRunner:
             return
 
         bucket_names, bucket_keys = LLMAITaskRunner._get_bucket_config(scenario)
+        thread_ids_list = list(thread_ids)
 
-        for thread_id in thread_ids:
+        for thread_id in thread_ids_list:
             try:
                 existing = LLMTaskResult.query.filter_by(
                     scenario_id=scenario_id,
@@ -623,9 +624,15 @@ class LLMAITaskRunner:
                     continue
 
                 features = Feature.query.filter_by(thread_id=thread_id).all()
+
+                # NEW: If no Features, try EvaluationItem/Message approach
                 if not features:
+                    LLMAITaskRunner._run_ranking_for_item(
+                        client, model_id, thread_id, scenario_id, bucket_keys
+                    )
                     continue
 
+                # Legacy: Feature-based ranking (multiple features per thread)
                 # Load messages to get source/context text
                 messages = Message.query.filter_by(thread_id=thread_id).order_by(Message.timestamp).all()
                 source_text = None
@@ -785,6 +792,215 @@ Antworte im JSON-Format (verwende die numerischen Feature-IDs, nicht die Buchsta
                     task_type="ranking",
                     error=str(exc),
                 )
+
+    @staticmethod
+    def _run_ranking_for_item(
+        client,
+        model_id: str,
+        thread_id: int,
+        scenario_id: int,
+        bucket_keys: List[str],
+    ) -> None:
+        """
+        Rank a single EvaluationItem/Message into a bucket.
+
+        This is used when no Features exist but we have an EvaluationItem with content.
+        The item content (from Message) is evaluated and assigned to a quality bucket.
+        """
+        from db.models import EvaluationItem
+
+        try:
+            # Check if already processed
+            existing = LLMTaskResult.query.filter_by(
+                scenario_id=scenario_id,
+                thread_id=thread_id,
+                model_id=model_id,
+                task_type="ranking",
+            ).first()
+            if existing and existing.payload_json:
+                return
+
+            # Load the EvaluationItem and its messages
+            item = EvaluationItem.query.get(thread_id)
+            if not item:
+                logger.debug("[LLM AI Runner] No EvaluationItem for thread %s", thread_id)
+                return
+
+            # Get item content from messages
+            messages = Message.query.filter_by(item_id=thread_id).order_by(Message.timestamp).all()
+            if not messages:
+                # Fallback: try thread_id based messages
+                messages = Message.query.filter_by(thread_id=thread_id).order_by(Message.timestamp).all()
+
+            if not messages:
+                logger.debug("[LLM AI Runner] No messages for item %s", thread_id)
+                return
+
+            # Get the main content (typically the generated text to rank)
+            item_content = messages[0].content if messages else ""
+            item_subject = item.subject or "Item"
+
+            # Detect if this is a summary (from sender or subject)
+            is_summary = any(
+                kw in (item_subject.lower() + " " + (messages[0].sender or "").lower())
+                for kw in ["summary", "zusammenfassung", "mistral", "magistral", "gpt", "claude", "llm"]
+            )
+
+            # Build evaluation prompt
+            if is_summary:
+                system_prompt = """Du bist ein Experte für die Bewertung von Textzusammenfassungen.
+
+Bewertungskriterien:
+- **Relevanz**: Erfasst die wichtigsten Informationen
+- **Konsistenz**: Faktentreu, keine erfundenen Informationen
+- **Kohärenz**: Logischer Aufbau, zusammenhängende Sätze
+- **Flüssigkeit**: Gut lesbar, grammatikalisch korrekt
+
+Antworte AUSSCHLIESSLICH im JSON-Format."""
+
+                bucket_descriptions = {
+                    "gut": "Erfasst Kerninhalt präzise, faktisch korrekt, gut lesbar",
+                    "good": "Captures core content precisely, factually correct, readable",
+                    "moderat": "Akzeptabel, aber mit Schwächen (fehlende Details, kleine Fehler)",
+                    "moderate": "Acceptable but with weaknesses (missing details, minor errors)",
+                    "schlecht": "Unvollständig, faktisch falsch, oder schlecht lesbar",
+                    "poor": "Incomplete, factually incorrect, or poorly readable",
+                }
+
+                bucket_desc_lines = []
+                for key in bucket_keys:
+                    desc = bucket_descriptions.get(key.lower(), f"Bucket {key}")
+                    bucket_desc_lines.append(f"- **{key}**: {desc}")
+
+                user_prompt = f"""Bewerte die folgende Zusammenfassung:
+
+TITEL: {item_subject}
+
+INHALT:
+{item_content[:3000]}{"..." if len(item_content) > 3000 else ""}
+
+Ordne diese Zusammenfassung genau EINEM der folgenden Buckets zu:
+{chr(10).join(bucket_desc_lines)}
+
+Antworte im JSON-Format:
+{{"bucket": "<bucket_name>", "reasoning": "<kurze Begründung>"}}"""
+            else:
+                # Generic item ranking
+                system_prompt = (
+                    "Du bist ein strenger Evaluator für Qualitäts-Rankings. "
+                    "Antworte ausschließlich im JSON-Format."
+                )
+                user_prompt = f"""Bewerte den folgenden Text und ordne ihn einem Bucket zu.
+
+TITEL: {item_subject}
+
+INHALT:
+{item_content[:3000]}{"..." if len(item_content) > 3000 else ""}
+
+Erlaubte Buckets: {", ".join(bucket_keys)}
+
+Antworte im JSON-Format:
+{{"bucket": "<bucket_name>", "reasoning": "<kurze Begründung>"}}"""
+
+            raw_response = None
+            payload, raw_response = LLMAITaskRunner._request_json(
+                client,
+                model_id,
+                system_prompt,
+                user_prompt,
+                max_tokens=500,
+                trace={
+                    "task": "ranking",
+                    "scenario_id": scenario_id,
+                    "thread_id": thread_id,
+                    "model_id": model_id,
+                },
+            )
+
+            # Validate and normalize bucket assignment
+            assigned_bucket = payload.get("bucket", "").strip().lower()
+            bucket_keys_lower = [k.lower() for k in bucket_keys]
+
+            if assigned_bucket not in bucket_keys_lower:
+                # Try to find closest match
+                for key in bucket_keys:
+                    if key.lower() in assigned_bucket or assigned_bucket in key.lower():
+                        assigned_bucket = key.lower()
+                        break
+                else:
+                    # Default to middle bucket if no match
+                    assigned_bucket = bucket_keys_lower[len(bucket_keys) // 2] if bucket_keys else "moderat"
+
+            # Find the original case bucket key
+            final_bucket = bucket_keys[bucket_keys_lower.index(assigned_bucket)]
+
+            # Store result - format compatible with ranking display
+            result_payload = {
+                "bucket": final_bucket,
+                "reasoning": payload.get("reasoning", ""),
+                "item_id": thread_id,
+                # Store in bucket_map format for compatibility
+                final_bucket: [thread_id],
+            }
+
+            if existing:
+                existing.payload_json = result_payload
+                existing.raw_response = raw_response
+                existing.error = None
+                db.session.add(existing)
+            else:
+                db.session.add(LLMTaskResult(
+                    scenario_id=scenario_id,
+                    thread_id=thread_id,
+                    model_id=model_id,
+                    task_type="ranking",
+                    payload_json=result_payload,
+                    raw_response=raw_response,
+                    error=None,
+                ))
+            db.session.commit()
+
+            logger.info(
+                "[LLM AI Runner] Ranked item %s into bucket '%s' (model: %s)",
+                thread_id, final_bucket, model_id
+            )
+
+            # Broadcast success
+            _broadcast_task_completed(
+                scenario_id=scenario_id,
+                model_id=model_id,
+                thread_id=thread_id,
+                task_type="ranking",
+                result=result_payload,
+            )
+
+        except LLMResponseError as exc:
+            db.session.rollback()
+            LLMAITaskRunner._store_error(
+                scenario_id=scenario_id,
+                thread_id=thread_id,
+                model_id=model_id,
+                task_type="ranking",
+                error=str(exc),
+                raw_response=exc.raw_response,
+            )
+            _broadcast_task_failed(
+                scenario_id=scenario_id,
+                model_id=model_id,
+                thread_id=thread_id,
+                task_type="ranking",
+                error=str(exc),
+            )
+        except Exception as exc:
+            db.session.rollback()
+            logger.warning("[LLM AI Runner] Item ranking failed for %s: %s", thread_id, exc)
+            _broadcast_task_failed(
+                scenario_id=scenario_id,
+                model_id=model_id,
+                thread_id=thread_id,
+                task_type="ranking",
+                error=str(exc),
+            )
 
     @staticmethod
     def _run_rating(model_id: str, thread_ids: Iterable[int], scenario_id: int) -> None:

@@ -168,6 +168,12 @@ def main():
         # ============ PHASE 5: Ranking-Szenario ============
         print("\n[5/5] Erstelle Ranking-Szenario...")
 
+        # LLM Assessors - die Modelle die die Zusammenfassungen generiert haben
+        llm_assessors = [
+            "mistralai/Mistral-Small-3.2-24B-Instruct-2506",
+            "mistralai/Magistral-Small-2509"
+        ]
+
         ranking_config = {
             "eval_type": "ranking",
             "eval_config": {
@@ -182,7 +188,9 @@ def main():
                     "dragDrop": True
                 }
             },
-            "source_job_id": job.id
+            "source_job_id": job.id,
+            "enable_llm_evaluation": True,
+            "llm_evaluators": llm_assessors
         }
 
         ranking_scenario = RatingScenarios(

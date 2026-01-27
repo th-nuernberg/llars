@@ -139,7 +139,9 @@ function getProgress(scenario) {
 function getStatus(scenario) {
   const progress = getProgress(scenario)
   if (progress.percent === 100) return 'done'
-  if (progress.completed > 0) return 'in_progress'
+  // Show 'in_progress' if any items are completed OR if any are currently being worked on
+  const progressing = scenario.user_progress?.progressing || 0
+  if (progress.completed > 0 || progressing > 0) return 'in_progress'
   if (scenario.invitation?.status === 'pending') return 'pending'
   return 'pending'
 }

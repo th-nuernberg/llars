@@ -395,3 +395,92 @@ def debug_route_protected(f):
         return system_api_key_required(f)(*args, **kwargs)
 
     return decorated_function
+
+
+def api_key_or_token_required(f):
+    """
+    Decorator that accepts either:
+    1. User's personal API key (X-API-Key header or api_key query param)
+    2. System Admin API key
+    3. OAuth Bearer token
+
+    This is useful for programmatic access to the API.
+
+    The user's API key is stored in the users.api_key field.
+
+    Usage:
+        @app.route('/api/something')
+        @api_key_or_token_required
+        def api_route():
+            user = g.authentik_user  # User object
+            return jsonify({'message': f'Hello {user.username}'})
+    """
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        from db.models import User
+
+        # 1. Try API Key first (header or query param)
+        api_key = request.headers.get('X-API-Key') or request.args.get('api_key')
+
+        if api_key:
+            # Check if it's the System Admin API Key
+            if SYSTEM_ADMIN_API_KEY and api_key == SYSTEM_ADMIN_API_KEY:
+                g.authentik_user = get_or_create_user(SYSTEM_ADMIN_USERNAME)
+                g.authentik_user_id = SYSTEM_ADMIN_USERNAME
+                g.is_system_api_key = True
+                g.auth_method = 'system_api_key'
+
+                denied = _check_user_account_state(g.authentik_user)
+                if denied is not None:
+                    return denied
+
+                logger.debug(f"System API key authenticated for {request.path}")
+                return f(*args, **kwargs)
+
+            # Check if it's a user's personal API key
+            user = User.query.filter_by(api_key=api_key).first()
+            if user:
+                denied = _check_user_account_state(user)
+                if denied is not None:
+                    return denied
+
+                g.authentik_user = user
+                g.authentik_user_id = user.id
+                g.is_system_api_key = False
+                g.auth_method = 'user_api_key'
+
+                logger.debug(f"User API key authenticated: {user.username} for {request.path}")
+                return f(*args, **kwargs)
+
+            # Invalid API key
+            logger.warning(f"Invalid API key attempt from {request.remote_addr}")
+            return jsonify({
+                'error': 'Invalid API key',
+                'message': 'The provided API key is not valid'
+            }), 401
+
+        # 2. Try OAuth Bearer token
+        token = get_token_from_request()
+
+        if token:
+            token_payload = validate_token(token)
+            if token_payload:
+                g.authentik_token = token_payload
+                username = get_username(token_payload)
+                g.authentik_user = get_or_create_user(username)
+                g.authentik_user_id = get_user_id(token_payload)
+                g.auth_method = 'oauth_token'
+
+                denied = _check_user_account_state(g.authentik_user)
+                if denied is not None:
+                    return denied
+
+                return f(*args, **kwargs)
+
+        # 3. No valid authentication provided
+        return jsonify({
+            'error': 'Authentication required',
+            'message': 'Provide either X-API-Key header, api_key query param, or Authorization Bearer token'
+        }), 401
+
+    return decorated_function

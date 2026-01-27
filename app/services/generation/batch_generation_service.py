@@ -380,6 +380,7 @@ class BatchGenerationService:
                 for model_name in llm_models:
                     matrix.append({
                         "source_item_id": item_id,
+                        "source_index": i,  # Index in sources.items for later retrieval
                         "custom_text": custom_text,
                         "structured_data": structured,  # Include structured data
                         "prompt_config": prompt_cfg,
@@ -442,6 +443,9 @@ class BatchGenerationService:
                 variables["messages"] = structured["messages"]
             if user_prompt:
                 variables["_user_prompt_id"] = template_id
+            # Store source index for later retrieval during export
+            if entry.get("source_index") is not None:
+                variables["_source_index"] = entry["source_index"]
 
             output = GeneratedOutput(
                 job_id=job_id,

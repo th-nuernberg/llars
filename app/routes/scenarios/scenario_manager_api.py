@@ -12,7 +12,7 @@ This module provides a simplified API for users to:
 import json
 import logging
 from datetime import datetime
-from flask import jsonify, request, g
+from flask import jsonify, request, g, current_app
 from auth.decorators import authentik_required
 from decorators.error_handler import (
     handle_api_errors, NotFoundError, ValidationError, ForbiddenError
@@ -65,6 +65,19 @@ def _normalize_llm_evaluators(config):
         if mid and mid not in llm_evaluators:
             llm_evaluators.append(mid)
     return llm_evaluators
+
+
+def _emit_scenario_stats_update(scenario_id: int) -> None:
+    """Emit WebSocket event when scenario stats change (e.g., config updated)."""
+    socketio = current_app.extensions.get('socketio')
+    if not socketio:
+        return
+    try:
+        from socketio_handlers.events_scenarios import emit_scenario_stats_updated
+        emit_scenario_stats_updated(socketio, scenario_id)
+        logger.debug(f"Emitted scenario stats update for scenario {scenario_id}")
+    except Exception as e:
+        logger.warning(f"Failed to emit scenario stats update: {e}")
 
 
 def get_user_scenarios(user, invitation_filter=None):
@@ -210,7 +223,7 @@ def format_scenario_for_api(scenario, user, invitation_map=None, include_detaile
     owner_name = scenario.created_by
 
     # Compute stats and user progress
-    user_progress = {'completed': 0, 'total': thread_count}
+    user_progress = {'completed': 0, 'progressing': 0, 'total': thread_count}
 
     if include_detailed_stats and thread_count > 0:
         # Calculate detailed progress stats from actual evaluations
@@ -221,13 +234,49 @@ def format_scenario_for_api(scenario, user, invitation_map=None, include_detaile
 
             # Find current user's progress (check both raters and evaluators)
             all_user_stats = rater_stats + [e for e in evaluator_stats if not e.get('is_llm')]
+            user_found = False
             for user_stat in all_user_stats:
                 if user_stat.get('username') == username:
                     user_progress = {
                         'completed': user_stat.get('done_threads', 0),
+                        'progressing': user_stat.get('progressing_threads', 0),
                         'total': user_stat.get('total_threads', thread_count)
                     }
+                    user_found = True
                     break
+
+            # Fallback for owners not in ScenarioUsers: calculate progress directly
+            if not user_found and is_owner:
+                from db.models import ItemDimensionRating, ProgressionStatus
+                from db.models import ScenarioThreads as ST, UserMailHistoryRating
+                scenario_thread_ids = [
+                    st.thread_id for st in ST.query.filter_by(scenario_id=scenario.id).all()
+                ]
+                if scenario_thread_ids:
+                    # Check ItemDimensionRating for this user's progress
+                    user_ratings = ItemDimensionRating.query.filter(
+                        ItemDimensionRating.user_id == user_id,
+                        ItemDimensionRating.scenario_id == scenario.id,
+                        ItemDimensionRating.item_id.in_(scenario_thread_ids)
+                    ).all()
+
+                    completed = sum(1 for r in user_ratings if r.status == ProgressionStatus.DONE)
+                    progressing = sum(1 for r in user_ratings if r.status == ProgressionStatus.PROGRESSING)
+
+                    # Also check mail_rating if function_type is mail_rating (3)
+                    if scenario.function_type_id == 3:
+                        mail_ratings = UserMailHistoryRating.query.filter(
+                            UserMailHistoryRating.user_id == user_id,
+                            UserMailHistoryRating.thread_id.in_(scenario_thread_ids)
+                        ).all()
+                        completed = sum(1 for r in mail_ratings if r.status == ProgressionStatus.DONE)
+                        progressing = sum(1 for r in mail_ratings if r.status == ProgressionStatus.PROGRESSING)
+
+                    user_progress = {
+                        'completed': completed,
+                        'progressing': progressing,
+                        'total': thread_count
+                    }
 
             # Aggregate human evaluator stats
             human_stats = rater_stats + [e for e in evaluator_stats if not e.get('is_llm')]
@@ -1002,7 +1051,7 @@ def get_scenario_thread_detail(scenario_id, thread_id):
                 'type': 'human',
                 'user_id': vote.user_id,
                 'username': user.username if user else 'Unknown',
-                'vote': vote.authenticity_vote,
+                'vote': vote.vote,
                 'confidence': vote.confidence,
                 'created_at': vote.created_at.isoformat() if vote.created_at else None
             })
@@ -1522,6 +1571,9 @@ def update_scenario(scenario_id):
         scenario.visibility = data['visibility']
 
     db.session.commit()
+
+    # Emit WebSocket event for live updates (especially for config/LLM evaluator changes)
+    _emit_scenario_stats_update(scenario_id)
 
     logger.info(f"User {username} updated scenario {scenario_id}")
 

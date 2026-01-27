@@ -237,8 +237,8 @@ def can_access_thread(user_id, thread_id, function_type_id):
         if scenario is None:
             scenario = RatingScenarios.query.filter_by(id=scenario_id).first()
 
-        if role == ScenarioRoles.EVALUATOR or raters_receive_all_threads(scenario, function_type_id):
-            # Evaluator oder All-Distribution-Rater sehen alle Threads des Szenarios
+        if role in (ScenarioRoles.EVALUATOR, ScenarioRoles.OWNER) or raters_receive_all_threads(scenario, function_type_id):
+            # Evaluator, Owner oder All-Distribution-Rater sehen alle Threads des Szenarios
             if db.session.query(ScenarioThreads).join(
                 RatingScenarios, RatingScenarios.id == ScenarioThreads.scenario_id
             ).filter(

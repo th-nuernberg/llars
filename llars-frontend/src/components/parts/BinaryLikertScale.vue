@@ -84,9 +84,9 @@ function selectOption(value) {
   cursor: not-allowed;
 }
 
-/* Yes button - LLARS Primary/Success */
+/* Yes button - Original green */
 .binary-btn.yes {
-  --btn-color: #b0ca97;
+  --btn-color: #66BB6A;
 }
 
 .binary-btn.yes:not(.selected) .btn-icon {
@@ -109,9 +109,9 @@ function selectOption(value) {
   color: white;
 }
 
-/* No button - LLARS Danger */
+/* No button - Original purple */
 .binary-btn.no {
-  --btn-color: #e8a087;
+  --btn-color: #AB47BC;
 }
 
 .binary-btn.no:not(.selected) .btn-icon {

@@ -1,15 +1,15 @@
 <template>
-  <div class="agreement-heatmap">
+  <div class="l-agreement-heatmap">
     <div v-if="title" class="heatmap-title">{{ title }}</div>
 
-    <div class="heatmap-container" v-if="evaluators.length > 1">
+    <div class="heatmap-container" v-if="sortedEvaluators.length > 1">
       <!-- Corner (empty) -->
       <div class="corner-cell"></div>
 
       <!-- X-axis labels (top) -->
       <div class="x-labels">
         <div
-          v-for="evaluator in evaluators"
+          v-for="evaluator in sortedEvaluators"
           :key="'x-' + evaluator.id"
           class="x-label"
           :class="{
@@ -26,7 +26,7 @@
       <!-- Y-axis labels (left side) -->
       <div class="y-labels">
         <div
-          v-for="evaluator in evaluators"
+          v-for="evaluator in sortedEvaluators"
           :key="'y-' + evaluator.id"
           class="y-label"
           :class="{
@@ -43,21 +43,23 @@
       <!-- Cells grid -->
       <div class="cells-container">
         <div
-          v-for="rowEval in evaluators"
+          v-for="rowEval in sortedEvaluators"
           :key="'row-' + rowEval.id"
           class="heatmap-row"
         >
           <div
-            v-for="colEval in evaluators"
+            v-for="colEval in sortedEvaluators"
             :key="rowEval.id + '-' + colEval.id"
             class="heatmap-cell"
             :class="{
               'diagonal': rowEval.id === colEval.id,
-              'highlighted': highlightedCell?.row === rowEval.id && highlightedCell?.col === colEval.id
+              'highlighted': highlightedCell?.row === rowEval.id && highlightedCell?.col === colEval.id,
+              'clickable': rowEval.id !== colEval.id
             }"
             :style="getCellStyle(rowEval.id, colEval.id)"
             @mouseenter="onCellHover(rowEval, colEval)"
             @mouseleave="onCellLeave"
+            @click="onCellClick(rowEval, colEval)"
           >
             <span v-if="showValues && rowEval.id !== colEval.id" class="cell-value">
               {{ formatValue(getAgreement(rowEval.id, colEval.id)) }}
@@ -71,11 +73,11 @@
     <!-- Empty state -->
     <div v-else class="empty-state">
       <LIcon size="32" color="grey-lighten-1">mdi-account-multiple-outline</LIcon>
-      <span>{{ $t('scenarioManager.evaluation.needMoreEvaluators') || 'Mindestens 2 Evaluatoren benötigt' }}</span>
+      <span>{{ emptyText || $t('scenarioManager.evaluation.needMoreEvaluators') }}</span>
     </div>
 
     <!-- Hover info - always visible to reserve space -->
-    <div v-if="evaluators.length > 1" class="hover-info">
+    <div v-if="sortedEvaluators.length > 1 && showHoverInfo" class="hover-info">
       <template v-if="highlightedCell && highlightedCell.row !== highlightedCell.col">
         <div class="hover-evaluators">
           <span class="evaluator-name">{{ highlightedCell.rowName }}</span>
@@ -83,35 +85,48 @@
           <span class="evaluator-name">{{ highlightedCell.colName }}</span>
         </div>
         <div class="hover-value">
-          {{ $t('scenarioManager.evaluation.agreement') || 'Übereinstimmung' }}:
+          {{ $t('scenarioManager.evaluation.agreement') }}:
           <strong>{{ formatValue(highlightedCell.value) }}</strong>
         </div>
       </template>
       <template v-else>
         <div class="hover-placeholder">
-          {{ $t('scenarioManager.evaluation.hoverForDetails') || 'Für Details über eine Zelle fahren' }}
+          {{ $t('scenarioManager.evaluation.hoverForDetails') }}
         </div>
       </template>
     </div>
 
     <!-- Legend -->
-    <div class="heatmap-legend">
-      <span class="legend-label">0%</span>
+    <div class="heatmap-legend" v-if="showLegend">
+      <span class="legend-label">{{ lowLabel }}</span>
       <div class="legend-gradient"></div>
-      <span class="legend-label">100%</span>
+      <span class="legend-label">{{ highLabel }}</span>
+    </div>
+
+    <!-- Evaluator type legend -->
+    <div class="evaluator-type-legend" v-if="showEvaluatorTypeLegend && hasLLMEvaluators">
+      <div class="legend-item">
+        <LIcon size="14">mdi-account</LIcon>
+        <span>{{ $t('scenarioManager.evaluation.filter.human') }}</span>
+      </div>
+      <div class="legend-item llm">
+        <LIcon size="14">mdi-robot</LIcon>
+        <span>{{ $t('scenarioManager.evaluation.filter.llm') }}</span>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup>
 /**
- * AgreementHeatmap - Shows pairwise agreement between evaluators
+ * LAgreementHeatmap - Global component for pairwise agreement visualization
  *
  * Displays a matrix showing how much each pair of evaluators agrees.
  * Values range from 0 (no agreement) to 1 (perfect agreement).
+ * Uses LLARS Design System colors: red (low) -> yellow (medium) -> green (high).
  *
  * Usage:
- *   <AgreementHeatmap
+ *   <LAgreementHeatmap
  *     :evaluators="[
  *       { id: 1, name: 'User A', isLLM: false },
  *       { id: 2, name: 'User B', isLLM: false },
@@ -122,6 +137,7 @@
  *       '1-gpt-4': 0.72,
  *       '2-gpt-4': 0.78
  *     }"
+ *     @cell-click="onCellClicked"
  *   />
  */
 import { ref, computed } from 'vue'
@@ -146,21 +162,76 @@ const props = defineProps({
   showValues: {
     type: Boolean,
     default: true
+  },
+  /** Show hover info panel */
+  showHoverInfo: {
+    type: Boolean,
+    default: true
+  },
+  /** Show color legend */
+  showLegend: {
+    type: Boolean,
+    default: true
+  },
+  /** Show evaluator type legend (human/LLM) */
+  showEvaluatorTypeLegend: {
+    type: Boolean,
+    default: true
+  },
+  /** Sort evaluators (humans first, then LLMs) */
+  sortEvaluators: {
+    type: Boolean,
+    default: true
+  },
+  /** Label for low agreement */
+  lowLabel: {
+    type: String,
+    default: '0%'
+  },
+  /** Label for high agreement */
+  highLabel: {
+    type: String,
+    default: '100%'
+  },
+  /** Empty state text */
+  emptyText: {
+    type: String,
+    default: ''
   }
 })
 
+const emit = defineEmits(['cell-click', 'cell-hover', 'cell-leave'])
+
 const highlightedCell = ref(null)
+
+// Sort evaluators: humans first, then LLMs (alphabetically within each group)
+const sortedEvaluators = computed(() => {
+  if (!props.sortEvaluators) return props.evaluators
+  return [...props.evaluators].sort((a, b) => {
+    if (a.isLLM === b.isLLM) return (a.name || '').localeCompare(b.name || '')
+    return a.isLLM ? 1 : -1
+  })
+})
+
+const hasLLMEvaluators = computed(() => {
+  return props.evaluators.some(e => e.isLLM)
+})
 
 function getShortName(name) {
   if (!name) return '?'
+  // For LLM model names, extract the model part
+  if (name.includes('/')) {
+    name = name.split('/').pop()
+  }
   if (name.length <= 8) return name
-  return name.substring(0, 7) + '…'
+  return name.substring(0, 7) + '...'
 }
 
 function getAgreementKey(id1, id2) {
   // Normalize key order for symmetric lookup
-  const sorted = [String(id1), String(id2)].sort()
-  return `${sorted[0]}-${sorted[1]}`
+  const str1 = String(id1)
+  const str2 = String(id2)
+  return str1 < str2 ? `${str1}-${str2}` : `${str2}-${str1}`
 }
 
 function getAgreement(id1, id2) {
@@ -188,7 +259,8 @@ function getCellStyle(rowId, colId) {
     }
   }
 
-  // Color gradient: low (red) -> medium (yellow) -> high (green)
+  // Color gradient using LLARS Design System colors:
+  // low (red #e8a087) -> medium (yellow #D1BC8A) -> high (green #98d4bb)
   const intensity = Math.max(0, Math.min(1, value))
 
   let r, g, b
@@ -201,9 +273,9 @@ function getCellStyle(rowId, colId) {
   } else {
     // Yellow to green
     const t = (intensity - 0.5) * 2
-    r = Math.round(232 - t * 56) // e8 -> b0
-    g = Math.round(200 + t * 2) // c8 -> ca
-    b = Math.round(100 + t * 51) // 64 -> 97
+    r = Math.round(232 - t * 80) // e8 -> 98
+    g = Math.round(200 + t * 12) // c8 -> d4
+    b = Math.round(100 + t * 87) // 64 -> bb
   }
 
   return {
@@ -220,22 +292,38 @@ function onCellHover(rowEval, colEval) {
     colName: colEval.name,
     value: getAgreement(rowEval.id, colEval.id)
   }
+  emit('cell-hover', {
+    evaluator1: rowEval,
+    evaluator2: colEval,
+    value: getAgreement(rowEval.id, colEval.id)
+  })
 }
 
 function onCellLeave() {
   highlightedCell.value = null
+  emit('cell-leave')
+}
+
+function onCellClick(rowEval, colEval) {
+  if (rowEval.id === colEval.id) return
+  emit('cell-click', {
+    evaluator1: rowEval,
+    evaluator2: colEval,
+    value: getAgreement(rowEval.id, colEval.id),
+    percentage: Math.round((getAgreement(rowEval.id, colEval.id) || 0) * 100)
+  })
 }
 </script>
 
 <style scoped>
-.agreement-heatmap {
+.l-agreement-heatmap {
   display: flex;
   flex-direction: column;
   align-items: center;
   padding: 20px;
   background-color: rgba(var(--v-theme-surface-variant), 0.3);
   border-radius: 12px;
-  min-height: 320px;
+  min-height: 280px;
 }
 
 .heatmap-title {
@@ -273,7 +361,7 @@ function onCellLeave() {
 }
 
 .y-label {
-  height: 64px;
+  height: 56px;
   max-width: 120px;
   display: flex;
   align-items: center;
@@ -306,7 +394,7 @@ function onCellLeave() {
 }
 
 .x-label {
-  width: 64px;
+  width: 56px;
   height: 80px;
   flex-shrink: 0;
   display: flex;
@@ -344,12 +432,12 @@ function onCellLeave() {
 
 .heatmap-row {
   display: flex;
-  height: 64px;
+  height: 56px;
 }
 
 .heatmap-cell {
-  width: 64px;
-  height: 64px;
+  width: 56px;
+  height: 56px;
   flex-shrink: 0;
   display: flex;
   align-items: center;
@@ -361,12 +449,12 @@ function onCellLeave() {
   box-sizing: border-box;
 }
 
-.heatmap-cell:not(.diagonal) {
+.heatmap-cell.clickable {
   cursor: pointer;
 }
 
 /* Subtle hover: no size change, just highlight */
-.heatmap-cell:not(.diagonal):hover {
+.heatmap-cell.clickable:hover {
   box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.4);
 }
 
@@ -376,7 +464,7 @@ function onCellLeave() {
 }
 
 .cell-value {
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   font-weight: 600;
 }
 
@@ -400,15 +488,15 @@ function onCellLeave() {
 
 /* Reserved space for hover info - fixed size prevents layout shift */
 .hover-info {
-  margin-top: 20px;
-  padding: 14px 24px;
+  margin-top: 16px;
+  padding: 12px 20px;
   background-color: rgba(var(--v-theme-surface), 0.9);
   border: 1px solid rgba(var(--v-theme-on-surface), 0.12);
   border-radius: 10px;
   text-align: center;
   /* Fixed dimensions to prevent any layout shift */
-  height: 64px;
-  width: min(90%, 320px);
+  height: 56px;
+  width: min(90%, 300px);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -420,27 +508,27 @@ function onCellLeave() {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   font-weight: 500;
-  margin-bottom: 4px;
+  margin-bottom: 2px;
   line-height: 1.2;
 }
 
 .evaluator-name {
-  max-width: 120px;
+  max-width: 100px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .hover-value {
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   color: rgba(var(--v-theme-on-surface), 0.7);
   line-height: 1.2;
 }
 
 .hover-placeholder {
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   color: rgba(var(--v-theme-on-surface), 0.4);
   line-height: 1.2;
 }
@@ -449,19 +537,69 @@ function onCellLeave() {
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-top: 20px;
-  gap: 12px;
+  margin-top: 16px;
+  gap: 10px;
 }
 
 .legend-gradient {
-  width: 120px;
-  height: 12px;
-  background: linear-gradient(to right, #e8a087, #e8c87a, #b0ca97);
+  width: 100px;
+  height: 10px;
+  background: linear-gradient(to right, #e8a087, #D1BC8A, #98d4bb);
   border-radius: 4px;
 }
 
 .legend-label {
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   color: rgba(var(--v-theme-on-surface), 0.6);
+}
+
+/* Evaluator type legend */
+.evaluator-type-legend {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+}
+
+.evaluator-type-legend .legend-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.7rem;
+  color: rgba(var(--v-theme-on-surface), 0.6);
+}
+
+.evaluator-type-legend .legend-item.llm {
+  color: rgb(var(--v-theme-accent));
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+  .l-agreement-heatmap {
+    padding: 12px;
+  }
+
+  .y-label, .x-label {
+    font-size: 0.65rem;
+  }
+
+  .heatmap-cell, .y-label, .heatmap-row, .x-label {
+    width: 44px;
+    height: 44px;
+  }
+
+  .x-label {
+    height: 60px;
+  }
+
+  .corner-cell {
+    height: 60px;
+  }
+
+  .cell-value {
+    font-size: 0.7rem;
+  }
 }
 </style>

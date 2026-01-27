@@ -28,13 +28,16 @@
       </div>
 
       <div class="matrix-content">
-        <!-- X-Axis Label -->
-        <div class="axis-label x-axis">
-          <span>{{ xAxisLabel || $t('scenarioManager.results.confusionMatrix.actual') }}</span>
-        </div>
-
         <!-- Matrix Table -->
-        <div class="matrix-table">
+        <div class="matrix-table" :style="{ '--cols': columns.length + 1 }">
+          <!-- X-Axis Label Row -->
+          <div class="matrix-row axis-row">
+            <div class="matrix-cell corner-cell axis-spacer"></div>
+            <div class="axis-label x-axis">
+              <span>{{ xAxisLabel || $t('scenarioManager.results.confusionMatrix.actual') }}</span>
+            </div>
+          </div>
+
           <!-- Header Row -->
           <div class="matrix-row header-row">
             <div class="matrix-cell corner-cell"></div>
@@ -542,7 +545,7 @@ function getDefaultHeaderColor(index) {
 }
 
 .l-confusion-matrix.size-compact .row-header {
-  min-width: 72px;
+  /* Let grid handle width - row-header column uses max-content */
 }
 
 .l-confusion-matrix.size-compact .axis-label {
@@ -591,7 +594,7 @@ function getDefaultHeaderColor(index) {
 /* Matrix Wrapper */
 .matrix-wrapper {
   display: flex;
-  align-items: stretch;
+  align-items: center;
   justify-content: center;
   margin-bottom: 16px;
 }
@@ -611,12 +614,21 @@ function getDefaultHeaderColor(index) {
   writing-mode: vertical-rl;
   text-orientation: mixed;
   transform: rotate(180deg);
-  padding-right: 12px;
+  padding-right: 8px;
+  margin-top: 28px; /* Offset for x-axis label + header row */
+  margin-bottom: auto; /* Don't extend to totals row */
 }
 
 .axis-label.x-axis {
-  padding-bottom: 8px;
-  margin-left: 80px;
+  grid-column: 2 / -1; /* Span from 2nd column to last */
+  padding-bottom: 4px;
+  text-align: center;
+  min-height: 24px;
+}
+
+.matrix-row.axis-row .axis-spacer {
+  min-height: 24px;
+  height: 24px;
 }
 
 .matrix-content {
@@ -625,28 +637,29 @@ function getDefaultHeaderColor(index) {
 }
 
 .matrix-table {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  /* First column auto-sizes to widest row header, rest are equal 1fr columns */
+  grid-template-columns: max-content repeat(var(--cols, 3), minmax(70px, 1fr));
   gap: 2px;
 }
 
 .matrix-row {
-  display: flex;
-  gap: 2px;
+  display: contents; /* Children participate directly in grid */
 }
 
 .matrix-cell {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-width: 80px;
   min-height: 56px;
+  min-width: 0; /* Prevent grid items from overflowing */
   padding: 6px 10px;
   font-size: 0.8rem;
 }
 
 .corner-cell {
   background: transparent;
+  min-width: 0;
 }
 
 .header-cell {
@@ -658,9 +671,10 @@ function getDefaultHeaderColor(index) {
 .row-header {
   background-color: rgba(var(--v-theme-on-surface), 0.04);
   font-weight: 600;
-  min-width: 80px;
   justify-content: flex-start;
   border-radius: 6px 0 0 6px;
+  white-space: nowrap;
+  padding: 6px 12px;
 }
 
 .value-cell {
@@ -802,7 +816,7 @@ function getDefaultHeaderColor(index) {
   }
 
   .row-header {
-    min-width: 56px;
+    /* Let grid handle width - row-header column uses max-content */
   }
 
   .metrics-summary {
@@ -817,8 +831,8 @@ function getDefaultHeaderColor(index) {
     display: none;
   }
 
-  .axis-label.x-axis {
-    margin-left: 56px;
+  .matrix-row.axis-row .axis-spacer {
+    /* Let grid handle width - row-header column uses max-content */
   }
 }
 </style>

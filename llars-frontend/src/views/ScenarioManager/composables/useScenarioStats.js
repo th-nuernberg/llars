@@ -232,8 +232,9 @@ export function useScenarioStats(scenarioIdRef) {
     if (data.kind === 'authenticity' || data.function_type === 'authenticity') {
       // Authenticity stats have user_stats array
       const userStats = data.stats?.user_stats || []
-      raterStats.value = userStats.filter(u => u.role === 'rater' && !u.is_llm)
-      evaluatorStats.value = userStats.filter(u => u.role === 'evaluator' || u.is_llm)
+      // Note: Backend returns role as 'Rater'/'Evaluator' (capitalized), so use case-insensitive comparison
+      raterStats.value = userStats.filter(u => u.role?.toLowerCase() === 'rater' && !u.is_llm)
+      evaluatorStats.value = userStats.filter(u => u.role?.toLowerCase() === 'evaluator' || u.is_llm)
 
       // Calculate overall F1 Score from all evaluators
       let totalFakeCorrect = 0
@@ -411,7 +412,10 @@ export function useScenarioStats(scenarioIdRef) {
           // Include rating/dimension stats
           rating_distribution: statsData.rating_distribution || data.rating_distribution,
           dimension_averages: statsData.dimension_averages || data.dimension_averages,
-          pairwise_agreement: statsData.pairwise_agreement || data.pairwise_agreement
+          pairwise_agreement: statsData.pairwise_agreement || data.pairwise_agreement,
+          // Include ranking stats
+          bucket_distribution: statsData.bucket_distribution || data.bucket_distribution,
+          ranking_agreement: statsData.ranking_agreement || data.ranking_agreement
         }
       })
 

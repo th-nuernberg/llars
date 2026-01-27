@@ -1,6 +1,6 @@
 # LLARS - LLM Assisted Research System
 
-**Version:** 3.0 | **Stand:** 4. Januar 2026
+**Version:** 3.0 | **Stand:** 27. Januar 2026
 
 ## Projekt-Übersicht
 
@@ -373,8 +373,8 @@ EvaluationItem (früher EmailThread)
 └── content (Plain-Text-Inhalt)
 
 Scenario
-├── ScenarioUsers[] (EVALUATOR oder RATER)
-├── ScenarioThreads[]
+├── ScenarioUsers[] (OWNER, EVALUATOR oder RATER)
+├── ScenarioItems[] (früher ScenarioThreads)
 ├── config_json (dimensions, labels, scale settings)
 └── ItemDimensionRating[] (Multi-dimensionale Bewertungen)
 ```
@@ -411,6 +411,35 @@ Rating verwendet jetzt standardmäßig das multi-dimensionale Format:
 
 **Backend-Service:** `app/services/evaluation/dimensional_rating_service.py`
 **Frontend-Composable:** `llars-frontend/src/composables/useDimensionalRating.js`
+
+### Evaluation Status-Berechnung
+
+Der Bewertungsstatus (`pending`, `in_progress`, `done`) wird an mehreren Stellen berechnet:
+
+**Wichtige Dateien:**
+- `app/services/scenario_stats_service.py` - `get_progress_stats()` für aggregierte Statistiken
+- `app/services/evaluation/session_service.py` - `_get_thread_evaluation_status()` für Einzel-Item-Status
+- `app/routes/HelperFunctions.py` - `get_thread_progression_state()` für Progress-Enum
+
+**Status-Werte:**
+- `ProgressionStatus.NOT_STARTED` / `'pending'` - Keine Bewertung vorhanden
+- `ProgressionStatus.PROGRESSING` / `'in_progress'` - Teilweise bewertet
+- `ProgressionStatus.DONE` / `'done'` - Vollständig bewertet
+
+**Dimensions-Config Lokationen (wichtig für Entwickler):**
+Die Config kann an verschiedenen Stellen sein je nach Erstellungsart:
+```python
+# Direkt (manuell erstellt)
+config.get('dimensions', [])
+# Via Wizard (nested)
+config.get('eval_config', {}).get('dimensions', [])
+config.get('eval_config', {}).get('config', {}).get('dimensions', [])
+```
+
+**ScenarioUsers Rollen:**
+- `OWNER` - Szenario-Ersteller, erhält alle Items, wird in `evaluator_stats` gezählt
+- `EVALUATOR` - Bewerter, erhält alle Items
+- `RATER` - Bewerter mit optionaler Item-Distribution
 
 ---
 
@@ -463,26 +492,48 @@ border-radius: 6px 2px 6px 2px;    /* Tags */
 | Success | `#98d4bb` | Erfolg |
 | Danger | `#e8a087` | Destruktiv |
 
-### Globale Komponenten
+### Globale Komponenten (35 L-Komponenten)
 
 ```vue
-<!-- Buttons -->
+<!-- Buttons & Actions -->
 <LBtn variant="primary|secondary|accent|danger|cancel|text">
-
-<!-- Tags -->
-<LTag variant="success|info|warning|danger" closable>
-
-<!-- Cards -->
-<LCard title="Titel" icon="mdi-robot" color="#b0ca97">
-
-<!-- Tabs -->
-<LTabs v-model="tab" :tabs="[{value:'a',label:'Tab A'}]" />
-
-<!-- Action Groups -->
+<LIconBtn icon="mdi-edit" tooltip="Bearbeiten" />
 <LActionGroup :actions="['view','edit','delete']" @action="handle" />
 
-<!-- Tooltips -->
+<!-- Formulare -->
+<LCheckbox v-model="checked" label="Option" />
+<LRadioGroup v-model="selected" :options="[...]" />
+<LSwitch v-model="enabled" label="Aktiviert" />
+<LSlider v-model="value" :min="1" :max="10" />
+<LRatingScale v-model="rating" :min="1" :max="5" />
+
+<!-- Anzeige -->
+<LTag variant="success|info|warning|danger" closable>
+<LCard title="Titel" icon="mdi-robot" color="#b0ca97">
+<LTabs v-model="tab" :tabs="[{value:'a',label:'Tab A'}]" />
 <LTooltip text="Hilfetext"><v-icon>mdi-help</v-icon></LTooltip>
+<LAvatar :user="user" size="32" />
+<LStatusChip status="active|pending|error" />
+<LEvaluationStatus status="done|in_progress|pending" />
+
+<!-- Charts & Statistiken -->
+<LChart type="bar|line|pie" :data="chartData" />
+<LGauge :value="75" :max="100" label="Progress" />
+<LStatCard title="Users" :value="42" icon="mdi-account" />
+<LConfusionMatrix :data="matrix" />
+<LAgreementHeatmap :evaluators="[...]" :agreements="{...}" />
+<LRatingDistribution :distribution="[...]" />
+
+<!-- Loading & Skeleton -->
+<LLoading text="Wird geladen..." />
+<LSkeleton type="card|list|text" />
+<LCardSkeleton />
+
+<!-- Spezial -->
+<LUserSearch v-model="selectedUser" />
+<LlmModelSelect v-model="model" />
+<LLanguageToggle />
+<LThemeToggle />
 ```
 
 ---
@@ -512,6 +563,8 @@ EOF
 | Auth-Fehler | `./scripts/setup_authentik.sh` |
 | 502 Bad Gateway (Prod) | `NGINX_EXTERNAL_PORT=80` in `.env` |
 | Crawler findet nichts | exclude_patterns prüfen |
+| Status "Ausstehend" obwohl bewertet | OWNER-Rolle in ScenarioUsers prüfen, Container neu starten |
+| Items-Status inkonsistent | Dimensions-Config Lokationen prüfen (siehe Evaluation Status) |
 
 ---
 
@@ -536,14 +589,26 @@ app/
 │   ├── permission_decorator.py   # @require_permission
 │   └── error_handler.py          # @handle_api_errors
 ├── routes/                       # API Endpoints
-├── services/                     # Business Logic
-├── db/tables.py                  # Alle Models
+│   ├── scenarios/                # Szenario-Management
+│   ├── evaluation_routes.py      # Bewertungs-Endpoints
+│   └── HelperFunctions.py        # Progression-State etc.
+├── services/
+│   ├── evaluation/               # Rating, Session, Dimensional
+│   └── scenario_stats_service.py # Progress-Statistiken
+├── db/
+│   ├── models/                   # SQLAlchemy Models (scenario.py, etc.)
+│   └── tables.py                 # Legacy imports
 └── main.py
 
 llars-frontend/src/
-├── components/common/            # LBtn, LTag, LCard, etc.
-├── composables/                  # useAuth, usePermissions
-└── views/
+├── components/
+│   ├── common/                   # 35 L-Komponenten (Design System)
+│   └── Evaluation/               # EvaluationHub, StatusTag, etc.
+├── composables/                  # useAuth, usePermissions, useDimensionalRating
+├── views/
+│   ├── Evaluation/               # EvaluationItemsOverview, etc.
+│   └── ScenarioManager/          # ScenarioWizard, etc.
+└── locales/                      # i18n (de.json, en.json)
 ```
 
 ---
@@ -569,16 +634,13 @@ llars-frontend/src/
 | embedding_worker.py | 825→67 |
 | markdown_collab_routes.py | 798→24 |
 
-### Metriken (Stand: 2026-01-03)
+### Metriken (Stand: 2026-01-27)
 
 ```
-Backend:  287 Python-Dateien, 72,607 Zeilen
-Frontend: 293 Vue/JS-Dateien, 112,096 Zeilen
+Backend:  425 Python-Dateien, ~126,000 Zeilen
+Frontend: 577 Vue/JS-Dateien, ~193,000 Zeilen
 
-Docstring Coverage: 82% Functions, 75% Classes, 93% Modules
-JSDoc Coverage: 35% (Components 31%, Composables 69%)
-
-Große Dateien (>500 Zeilen): Backend 12, Frontend 82
+L-Komponenten: 35 (Design System)
 ```
 
 ### Offen
@@ -590,4 +652,4 @@ Große Dateien (>500 Zeilen): Backend 12, Frontend 82
 
 ---
 
-**Stand:** 3. Januar 2026
+**Stand:** 27. Januar 2026

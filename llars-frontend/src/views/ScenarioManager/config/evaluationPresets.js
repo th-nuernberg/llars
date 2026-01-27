@@ -228,8 +228,8 @@ export const RATING_PRESETS = {
   },
   'summeval': {
     id: 'summeval',
-    name: 'SummEval',
-    description: 'Metriken aus dem SummEval-Benchmark für Zusammenfassungen',
+    name: 'SummEval Demo (Mixed Scales)',
+    description: 'Demo-Preset mit 7 Dimensionen und unterschiedlichen Skalengrößen',
     config: {
       type: 'multi-dimensional',
       min: 1,
@@ -237,28 +237,115 @@ export const RATING_PRESETS = {
       step: 1,
       dimensions: [
         {
-          id: 'coherence',
-          name: { de: 'Kohärenz', en: 'Coherence' },
-          description: { de: 'Logischer Aufbau und strukturelle Qualität', en: 'Logical structure and flow' },
-          weight: 0.25
+          id: 'creativity',
+          name: { de: 'Kreativität', en: 'Creativity' },
+          description: { de: 'Originalität und kreative Qualität des Textes', en: 'Originality and creative quality of the text' },
+          weight: 0.15,
+          scale: {
+            type: 'likert',
+            min: 0,
+            max: 9,
+            labels: {
+              0: { de: 'Keine', en: 'None' },
+              3: { de: 'Wenig', en: 'Low' },
+              6: { de: 'Mittel', en: 'Medium' },
+              9: { de: 'Sehr hoch', en: 'Very high' }
+            }
+          }
         },
         {
-          id: 'consistency',
-          name: { de: 'Konsistenz', en: 'Consistency' },
-          description: { de: 'Faktische Übereinstimmung mit dem Quelltext', en: 'Factual alignment with source' },
-          weight: 0.25
+          id: 'accuracy',
+          name: { de: 'Genauigkeit', en: 'Accuracy' },
+          description: { de: 'Faktische Korrektheit der Informationen', en: 'Factual correctness of information' },
+          weight: 0.15,
+          scale: {
+            type: 'likert',
+            min: 1,
+            max: 3,
+            labels: {
+              1: { de: 'Falsch', en: 'Incorrect' },
+              2: { de: 'Teilweise korrekt', en: 'Partially correct' },
+              3: { de: 'Korrekt', en: 'Correct' }
+            }
+          }
         },
         {
-          id: 'fluency',
-          name: { de: 'Flüssigkeit', en: 'Fluency' },
-          description: { de: 'Grammatik, Lesbarkeit, Sprachqualität', en: 'Grammar, readability, language quality' },
-          weight: 0.25
+          id: 'engagement',
+          name: { de: 'Engagement', en: 'Engagement' },
+          description: { de: 'Wie fesselnd und interessant ist der Text?', en: 'How captivating and interesting is the text?' },
+          weight: 0.15,
+          scale: {
+            type: 'likert',
+            min: 1,
+            max: 7,
+            labels: {
+              1: { de: 'Langweilig', en: 'Boring' },
+              4: { de: 'Neutral', en: 'Neutral' },
+              7: { de: 'Fesselnd', en: 'Captivating' }
+            }
+          }
         },
         {
-          id: 'relevance',
-          name: { de: 'Relevanz', en: 'Relevance' },
-          description: { de: 'Wichtige Informationen aus dem Quelltext', en: 'Important information from source' },
-          weight: 0.25
+          id: 'bias_free',
+          name: { de: 'Vorurteilsfrei', en: 'Bias-Free' },
+          description: { de: 'Ist der Text frei von Vorurteilen und Verzerrungen?', en: 'Is the text free from bias and distortions?' },
+          weight: 0.10,
+          scale: {
+            type: 'binary',
+            min: 1,
+            max: 2,
+            labels: {
+              1: { de: 'Ja', en: 'Yes' },
+              2: { de: 'Nein', en: 'No' }
+            },
+            colors: {
+              1: '#66BB6A',
+              2: '#AB47BC'
+            }
+          }
+        },
+        {
+          id: 'complexity',
+          name: { de: 'Komplexität', en: 'Complexity' },
+          description: { de: 'Angemessene Komplexität für die Zielgruppe', en: 'Appropriate complexity for the target audience' },
+          weight: 0.15,
+          scale: {
+            type: 'likert',
+            min: 0,
+            max: 3,
+            labels: {
+              0: { de: 'Zu einfach', en: 'Too simple' },
+              1: { de: 'Etwas einfach', en: 'Somewhat simple' },
+              2: { de: 'Angemessen', en: 'Appropriate' },
+              3: { de: 'Zu komplex', en: 'Too complex' }
+            }
+          }
+        },
+        {
+          id: 'structure',
+          name: { de: 'Struktur', en: 'Structure' },
+          description: { de: 'Logischer Aufbau und Gliederung', en: 'Logical structure and organization' },
+          weight: 0.15
+          // Uses global scale (1-5)
+        },
+        {
+          id: 'actionable',
+          name: { de: 'Umsetzbarkeit', en: 'Actionable' },
+          description: { de: 'Enthält der Text praktisch umsetzbare Empfehlungen?', en: 'Does the text contain actionable recommendations?' },
+          weight: 0.15,
+          scale: {
+            type: 'binary',
+            min: 1,
+            max: 2,
+            labels: {
+              1: { de: 'Ja', en: 'Yes' },
+              2: { de: 'Nein', en: 'No' }
+            },
+            colors: {
+              1: '#4CAF50',
+              2: '#FF5722'
+            }
+          }
         }
       ],
       labels: {
@@ -663,11 +750,12 @@ export const COMPARISON_PRESETS = {
  * Base type: rating (with multiple dimensions)
  */
 export const MAIL_RATING_PRESETS = {
-  'beratungsqualitaet': {
-    id: 'beratungsqualitaet',
-    name: 'Beratungsqualität',
-    description: 'Mehrdimensionale Bewertung der Beratungsqualität in E-Mail-Konversationen',
+  'mail-verlauf-bewertung': {
+    id: 'mail-verlauf-bewertung',
+    name: 'Mail-Verlauf Bewertung',
+    description: 'Bewertung von E-Mail-Beratungsverläufen mit Kohärenz, Beratungsqualität und Gesamteignung',
     llarsSpecific: true,
+    isDefault: true,
     config: {
       type: 'multi-dimensional',
       baseType: 'rating',
@@ -676,116 +764,72 @@ export const MAIL_RATING_PRESETS = {
       step: 1,
       dimensions: [
         {
-          id: 'empathie',
-          name: { de: 'Empathie', en: 'Empathy' },
-          description: { de: 'Einfühlungsvermögen und emotionale Resonanz', en: 'Empathy and emotional resonance' },
+          id: 'client_coherence',
+          name: { de: 'Kohärenz ratsuchende Person', en: 'Client Coherence' },
+          description: {
+            de: 'Entsprechen die Reaktionen und Interaktionen einem natürlichen Kommunikationsmuster? Stehen die Texte in einem inhaltlichen Zusammenhang zueinander? Gibt es Brüche oder Unstimmigkeiten? Wird auf die Antwort des jeweilig anderen eingegangen und auch neue inhaltliche Aspekte generiert oder wird „stoisch" immer das gleiche wiederholt? Gibt es Halluzinationen?',
+            en: 'Do the reactions and interactions follow a natural communication pattern? Are the texts coherent? Are there breaks or inconsistencies? Are there hallucinations?'
+          },
           weight: 0.25
         },
         {
-          id: 'klarheit',
-          name: { de: 'Klarheit', en: 'Clarity' },
-          description: { de: 'Verständlichkeit und Strukturiertheit der Antwort', en: 'Clarity and structure of response' },
-          weight: 0.20
+          id: 'counsellor_coherence',
+          name: { de: 'Kohärenz beratende Person', en: 'Counsellor Coherence' },
+          description: {
+            de: 'Entsprechen die Reaktionen und Interaktionen einem natürlichen Kommunikationsmuster? Stehen die Texte in einem inhaltlichen Zusammenhang zueinander? Gibt es Brüche oder Unstimmigkeiten? Wird auf die Antwort des jeweilig anderen eingegangen und auch neue inhaltliche Aspekte generiert oder wird „stoisch" immer das gleiche wiederholt? Gibt es Halluzinationen?',
+            en: 'Do the reactions and interactions follow a natural communication pattern? Are the texts coherent? Are there breaks or inconsistencies? Are there hallucinations?'
+          },
+          weight: 0.25
         },
         {
-          id: 'professionalitaet',
-          name: { de: 'Professionalität', en: 'Professionalism' },
-          description: { de: 'Fachliche Kompetenz und angemessene Sprache', en: 'Professional competence and appropriate language' },
-          weight: 0.20
+          id: 'quality',
+          name: { de: 'Beratungsqualität', en: 'Counseling Quality' },
+          description: {
+            de: 'Ist die Antwort gut strukturiert und verständlich? Zeigt sich die beratende Person empathisch, wertschätzend und kongruent? Setzt die beratende Person gezielt Beratungstechniken ein, um das Anliegen systematisch zu bearbeiten und Lösungen zu entwickeln?',
+            en: 'Is the response well-structured and understandable? Does the counselor show empathy, appreciation and congruence? Does the counselor use counseling techniques to develop solutions?'
+          },
+          weight: 0.25
         },
         {
-          id: 'hilfsbereitschaft',
-          name: { de: 'Hilfsbereitschaft', en: 'Helpfulness' },
-          description: { de: 'Konkrete Unterstützungsangebote und Handlungsvorschläge', en: 'Concrete support offers and action suggestions' },
-          weight: 0.20
-        },
-        {
-          id: 'angemessenheit',
-          name: { de: 'Angemessenheit', en: 'Appropriateness' },
-          description: { de: 'Passung der Antwort zur Anfrage', en: 'Fit of response to inquiry' },
-          weight: 0.15
+          id: 'overall',
+          name: { de: 'Gesamtbewertung', en: 'Overall Rating' },
+          description: {
+            de: 'Ist der Fall in seiner Gesamtheit authentisch und realistisch? Eignet sich der Fall hinsichtlich Thema und Fachlichkeit als gutes Beispiel für Onlineberatung?',
+            en: 'Is the case authentic and realistic overall? Is the case suitable as a good example for online counseling?'
+          },
+          weight: 0.25,
+          scale: {
+            type: 'binary',
+            min: 1,
+            max: 2,
+            labels: {
+              1: { de: 'Ja', en: 'Yes' },
+              2: { de: 'Nein', en: 'No' }
+            },
+            colors: {
+              1: '#66BB6A',
+              2: '#AB47BC'
+            }
+          }
         }
       ],
       labels: {
-        1: { de: 'Unzureichend', en: 'Insufficient' },
-        2: { de: 'Mangelhaft', en: 'Poor' },
-        3: { de: 'Befriedigend', en: 'Satisfactory' },
-        4: { de: 'Gut', en: 'Good' },
-        5: { de: 'Sehr gut', en: 'Very good' }
-      },
-      showOverallScore: true,
-      allowComments: true
-    }
-  },
-  'antwortqualitaet': {
-    id: 'antwortqualitaet',
-    name: 'Antwortqualität',
-    description: 'Bewertung der Qualität einzelner Beraterantworten',
-    llarsSpecific: true,
-    config: {
-      type: 'multi-dimensional',
-      baseType: 'rating',
-      min: 1,
-      max: 5,
-      step: 1,
-      dimensions: [
-        {
-          id: 'inhalt',
-          name: { de: 'Inhaltliche Qualität', en: 'Content Quality' },
-          description: { de: 'Relevanz und Nützlichkeit des Inhalts', en: 'Relevance and usefulness of content' },
-          weight: 0.35
-        },
-        {
-          id: 'struktur',
-          name: { de: 'Struktur', en: 'Structure' },
-          description: { de: 'Logischer Aufbau und Gliederung', en: 'Logical structure and organization' },
-          weight: 0.25
-        },
-        {
-          id: 'ton',
-          name: { de: 'Tonalität', en: 'Tone' },
-          description: { de: 'Angemessener und respektvoller Umgangston', en: 'Appropriate and respectful tone' },
-          weight: 0.25
-        },
-        {
-          id: 'vollstaendigkeit',
-          name: { de: 'Vollständigkeit', en: 'Completeness' },
-          description: { de: 'Alle relevanten Aspekte werden angesprochen', en: 'All relevant aspects are addressed' },
-          weight: 0.15
-        }
-      ],
-      labels: {
-        1: { de: 'Unzureichend', en: 'Insufficient' },
-        2: { de: 'Mangelhaft', en: 'Poor' },
-        3: { de: 'Befriedigend', en: 'Satisfactory' },
-        4: { de: 'Gut', en: 'Good' },
-        5: { de: 'Sehr gut', en: 'Very good' }
-      },
-      showOverallScore: true,
-      allowComments: true
-    }
-  },
-  'einfach': {
-    id: 'einfach',
-    name: 'Einfache Bewertung',
-    description: 'Schnelle Gesamtbewertung ohne Dimensionen',
-    llarsSpecific: true,
-    config: {
-      type: 'single',
-      baseType: 'rating',
-      min: 1,
-      max: 5,
-      step: 1,
-      dimensions: [],
-      labels: {
-        1: { de: 'Sehr schlecht', en: 'Very poor' },
-        2: { de: 'Schlecht', en: 'Poor' },
+        1: { de: 'Sehr gut', en: 'Very good' },
+        2: { de: 'Gut', en: 'Good' },
         3: { de: 'Akzeptabel', en: 'Acceptable' },
-        4: { de: 'Gut', en: 'Good' },
-        5: { de: 'Sehr gut', en: 'Very good' }
+        4: { de: 'Schlecht', en: 'Poor' },
+        5: { de: 'Sehr schlecht', en: 'Very poor' }
       },
-      showOverallScore: true,
-      allowComments: true
+      colors: {
+        1: '#66BB6A',
+        2: '#81C784',
+        3: '#BDBDBD',
+        4: '#CE93D8',
+        5: '#AB47BC'
+      },
+      showOverallScore: false,
+      allowFeedback: true,
+      disableOnBadRating: true
     }
   },
   'custom': {
@@ -965,7 +1009,7 @@ export const DEFAULT_CONFIG_BY_TYPE = {
   [EVAL_TYPES.LABELING]: LABELING_PRESETS['binary-authentic'].config,
   [EVAL_TYPES.COMPARISON]: COMPARISON_PRESETS['pairwise'].config,
   // LLARS domain-specific types
-  [EVAL_TYPES.MAIL_RATING]: MAIL_RATING_PRESETS['beratungsqualitaet'].config,
+  [EVAL_TYPES.MAIL_RATING]: MAIL_RATING_PRESETS['mail-verlauf-bewertung'].config,
   [EVAL_TYPES.AUTHENTICITY]: AUTHENTICITY_PRESETS['nachricht-echtheit'].config
 }
 

@@ -215,12 +215,20 @@ function getItemStatus(item) {
   // Use backend status if available
   if (item.status) {
     // Map backend status to frontend status
+    // Handle various formats: lowercase, capitalized, and enum values
     const statusMap = {
+      // Lowercase (from session_service)
       'done': 'done',
       'in_progress': 'in_progress',
       'pending': 'pending',
+      // Capitalized (from ProgressionStatus enum .value)
       'Done': 'done',
-      'Progressing': 'in_progress'
+      'Progressing': 'in_progress',
+      'Not Started': 'pending',
+      // Uppercase (enum names)
+      'DONE': 'done',
+      'PROGRESSING': 'in_progress',
+      'NOT_STARTED': 'pending'
     }
     return statusMap[item.status] || 'pending'
   }

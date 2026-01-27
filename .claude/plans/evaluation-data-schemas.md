@@ -109,23 +109,28 @@ interface SimpleRankingConfig {
 // Multi-Group Ranking (mehrere Tabs, je mit eigenen Buckets)
 interface MultiGroupRankingConfig {
   mode: "multi_group";
-  groups: RankingGroup[];
+  groups: RankingGroup[];     // Gruppen-Definitionen (werden als Tabs gerendert)
   require_complete: boolean;  // Müssen alle Gruppen vollständig sein?
 }
 
+// Gruppen-Definition: Enthält Label (für Tab-Name) und Bucket-Konfiguration
 interface RankingGroup {
-  id: string;                 // "summaries", "comments"
-  label: {
+  id: string;                 // Technische ID: "summaries", "comments"
+  label: {                    // → Wird im Frontend als Tab-Name gerendert
     de: string;               // "Zusammenfassungen"
     en: string;               // "Summaries"
   };
-  buckets: Bucket[];          // Jede Gruppe kann eigene Buckets haben
+  description?: {             // Optional: Tooltip/Hilfetext
+    de: string;
+    en: string;
+  };
+  buckets: Bucket[];          // Jede Gruppe hat eigene Buckets
   allow_ties: boolean;
 }
 
 interface Bucket {
   id: string;           // "good", "moderate", "poor"
-  label: {
+  label: {              // → Wird im Frontend als Bucket-Überschrift gerendert
     de: string;         // "Gut"
     en: string;         // "Good"
   };
@@ -133,12 +138,22 @@ interface Bucket {
   order: number;        // Sortierreihenfolge (1 = beste Qualität)
 }
 
-// Items haben optional eine group_id für Multi-Group Ranking
+// Items referenzieren ihre Gruppe über `group` Feld
 interface RankingItem extends Item {
-  group_id?: string;    // Referenz auf RankingGroup.id
+  group?: string;       // Referenz auf RankingGroup.id → bestimmt Tab-Zugehörigkeit
+                        // Optional bei mode: "simple" (alle Items in einer Gruppe)
 }
 
 type RankingConfig = SimpleRankingConfig | MultiGroupRankingConfig;
+```
+
+**Beziehung Item → Group → Label:**
+```
+Item.group = "summaries"
+     ↓
+config.groups[].id = "summaries"
+     ↓
+config.groups[].label.de = "Zusammenfassungen"  → Tab-Name im Frontend
 ```
 
 ### Beispiel: Einfaches Ranking (News-Zusammenfassungen)
@@ -202,42 +217,42 @@ type RankingConfig = SimpleRankingConfig | MultiGroupRankingConfig;
     {
       "id": "item_1",
       "label": "Zusammenfassung 1",
-      "group_id": "summaries",
+      "group": "summaries",
       "source": { "type": "llm", "name": "mistralai/Mistral-Small-3.2" },
       "content": "Auf dem Weltklimagipfel einigten sich die Teilnehmer auf eine CO2-Reduktion von 55% bis 2030."
     },
     {
       "id": "item_2",
       "label": "Zusammenfassung 2",
-      "group_id": "summaries",
+      "group": "summaries",
       "source": { "type": "llm", "name": "mistralai/Magistral-Small" },
       "content": "Die Klimakonferenz beschloss neue Ziele zur Emissionsreduktion mit Fokus auf Industrieländer."
     },
     {
       "id": "item_3",
       "label": "Zusammenfassung 3",
-      "group_id": "summaries",
+      "group": "summaries",
       "source": { "type": "llm", "name": "openai/gpt-4" },
       "content": "Industrieländer einigen sich auf 55% Emissionsreduktion bis 2030, Deutschland plant Kohleausstieg."
     },
     {
       "id": "item_4",
       "label": "Kommentar 1",
-      "group_id": "comments",
+      "group": "comments",
       "source": { "type": "llm", "name": "mistralai/Mistral-Small-3.2" },
       "content": "Die Einigung ist ein wichtiger Schritt, aber die konkrete Umsetzung bleibt abzuwarten. Die Ziele sind ambitioniert, jedoch fehlen verbindliche Sanktionsmechanismen."
     },
     {
       "id": "item_5",
       "label": "Kommentar 2",
-      "group_id": "comments",
+      "group": "comments",
       "source": { "type": "llm", "name": "mistralai/Magistral-Small" },
       "content": "Ein historischer Moment für den Klimaschutz. Die Verpflichtung der Industrieländer zeigt, dass internationaler Druck wirkt."
     },
     {
       "id": "item_6",
       "label": "Kommentar 3",
-      "group_id": "comments",
+      "group": "comments",
       "source": { "type": "llm", "name": "openai/gpt-4" },
       "content": "Die Ergebnisse sind gemischt zu bewerten: Einerseits ambitionierte Ziele, andererseits bleiben Schwellenländer weitgehend verschont."
     }
@@ -341,28 +356,28 @@ type RankingConfig = SimpleRankingConfig | MultiGroupRankingConfig;
     {
       "id": "item_1",
       "label": "Antwort 1",
-      "group_id": "responses",
+      "group": "responses",
       "source": { "type": "llm", "name": "openai/gpt-4" },
       "content": "Das tut mir sehr leid zu hören. Eine Kündigung nach 5 Jahren ist sicher ein Schock. Haben Sie die Kündigung bereits schriftlich erhalten?"
     },
     {
       "id": "item_2",
       "label": "Antwort 2",
-      "group_id": "responses",
+      "group": "responses",
       "source": { "type": "llm", "name": "anthropic/claude-3" },
       "content": "Ich verstehe, dass das sehr belastend für Sie ist. Bevor wir über rechtliche Schritte sprechen - wie geht es Ihnen damit?"
     },
     {
       "id": "item_3",
       "label": "Rückfrage 1",
-      "group_id": "questions",
+      "group": "questions",
       "source": { "type": "llm", "name": "openai/gpt-4" },
       "content": "Wurde ein Grund für die Kündigung genannt? Gab es vorher Abmahnungen?"
     },
     {
       "id": "item_4",
       "label": "Rückfrage 2",
-      "group_id": "questions",
+      "group": "questions",
       "source": { "type": "llm", "name": "anthropic/claude-3" },
       "content": "Gibt es einen Betriebsrat in Ihrem Unternehmen? Und haben Sie einen Arbeitsvertrag mit Kündigungsfristen?"
     }

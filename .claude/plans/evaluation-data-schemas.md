@@ -87,7 +87,7 @@ interface GroundTruth {
 **Zweck:** Mehrere Items in Qualitätsbuckets einordnen (Drag & Drop)
 
 **UI-Layout:**
-- Links: Items (Features) zum Ranken in Buckets
+- Links: Items (Features) zum Ranken in Buckets, optional in Tabs gruppiert
 - Rechts: Referenz/Kontext (Original-Text oder Konversation)
 
 ### Schema
@@ -95,11 +95,32 @@ interface GroundTruth {
 ```typescript
 interface RankingData extends EvaluationData {
   type: "ranking";
-  config: {
-    buckets: Bucket[];
-    allow_ties: boolean;        // Mehrere Items pro Bucket erlaubt?
-    require_complete: boolean;  // Müssen alle Items zugeordnet werden?
+  config: RankingConfig;
+}
+
+// Einfaches Ranking (eine Gruppe, ein Bucket-Set)
+interface SimpleRankingConfig {
+  mode: "simple";
+  buckets: Bucket[];
+  allow_ties: boolean;        // Mehrere Items pro Bucket erlaubt?
+  require_complete: boolean;  // Müssen alle Items zugeordnet werden?
+}
+
+// Multi-Group Ranking (mehrere Tabs, je mit eigenen Buckets)
+interface MultiGroupRankingConfig {
+  mode: "multi_group";
+  groups: RankingGroup[];
+  require_complete: boolean;  // Müssen alle Gruppen vollständig sein?
+}
+
+interface RankingGroup {
+  id: string;                 // "summaries", "comments"
+  label: {
+    de: string;               // "Zusammenfassungen"
+    en: string;               // "Summaries"
   };
+  buckets: Bucket[];          // Jede Gruppe kann eigene Buckets haben
+  allow_ties: boolean;
 }
 
 interface Bucket {
@@ -111,9 +132,16 @@ interface Bucket {
   color: string;        // "#98d4bb"
   order: number;        // Sortierreihenfolge (1 = beste Qualität)
 }
+
+// Items haben optional eine group_id für Multi-Group Ranking
+interface RankingItem extends Item {
+  group_id?: string;    // Referenz auf RankingGroup.id
+}
+
+type RankingConfig = SimpleRankingConfig | MultiGroupRankingConfig;
 ```
 
-### Beispiel: News-Zusammenfassungen ranken
+### Beispiel: Einfaches Ranking (News-Zusammenfassungen)
 
 ```json
 {
@@ -143,6 +171,7 @@ interface Bucket {
     }
   ],
   "config": {
+    "mode": "simple",
     "buckets": [
       { "id": "good", "label": { "de": "Gut", "en": "Good" }, "color": "#98d4bb", "order": 1 },
       { "id": "moderate", "label": { "de": "Moderat", "en": "Moderate" }, "color": "#D1BC8A", "order": 2 },
@@ -154,7 +183,95 @@ interface Bucket {
 }
 ```
 
-### Beispiel: LLARS Beratungsantworten ranken
+### Beispiel: Multi-Group Ranking (Zusammenfassungen + Kommentare parallel)
+
+```json
+{
+  "schema_version": "1.0",
+  "type": "ranking",
+  "reference": {
+    "type": "text",
+    "label": "Original-Artikel",
+    "content": "Die Teilnehmer des Weltklimagipfels haben sich auf neue ambitionierte Ziele zur Reduktion von Treibhausgasen geeinigt. Die Industrieländer verpflichten sich zu einer Senkung der Emissionen um 55% bis 2030. Bundeskanzler Olaf Scholz bezeichnete die Einigung als historischen Durchbruch...",
+    "metadata": {
+      "source": "Reuters",
+      "date": "2024-01-15"
+    }
+  },
+  "items": [
+    {
+      "id": "item_1",
+      "label": "Zusammenfassung 1",
+      "group_id": "summaries",
+      "source": { "type": "llm", "name": "mistralai/Mistral-Small-3.2" },
+      "content": "Auf dem Weltklimagipfel einigten sich die Teilnehmer auf eine CO2-Reduktion von 55% bis 2030."
+    },
+    {
+      "id": "item_2",
+      "label": "Zusammenfassung 2",
+      "group_id": "summaries",
+      "source": { "type": "llm", "name": "mistralai/Magistral-Small" },
+      "content": "Die Klimakonferenz beschloss neue Ziele zur Emissionsreduktion mit Fokus auf Industrieländer."
+    },
+    {
+      "id": "item_3",
+      "label": "Zusammenfassung 3",
+      "group_id": "summaries",
+      "source": { "type": "llm", "name": "openai/gpt-4" },
+      "content": "Industrieländer einigen sich auf 55% Emissionsreduktion bis 2030, Deutschland plant Kohleausstieg."
+    },
+    {
+      "id": "item_4",
+      "label": "Kommentar 1",
+      "group_id": "comments",
+      "source": { "type": "llm", "name": "mistralai/Mistral-Small-3.2" },
+      "content": "Die Einigung ist ein wichtiger Schritt, aber die konkrete Umsetzung bleibt abzuwarten. Die Ziele sind ambitioniert, jedoch fehlen verbindliche Sanktionsmechanismen."
+    },
+    {
+      "id": "item_5",
+      "label": "Kommentar 2",
+      "group_id": "comments",
+      "source": { "type": "llm", "name": "mistralai/Magistral-Small" },
+      "content": "Ein historischer Moment für den Klimaschutz. Die Verpflichtung der Industrieländer zeigt, dass internationaler Druck wirkt."
+    },
+    {
+      "id": "item_6",
+      "label": "Kommentar 3",
+      "group_id": "comments",
+      "source": { "type": "llm", "name": "openai/gpt-4" },
+      "content": "Die Ergebnisse sind gemischt zu bewerten: Einerseits ambitionierte Ziele, andererseits bleiben Schwellenländer weitgehend verschont."
+    }
+  ],
+  "config": {
+    "mode": "multi_group",
+    "groups": [
+      {
+        "id": "summaries",
+        "label": { "de": "Zusammenfassungen", "en": "Summaries" },
+        "buckets": [
+          { "id": "accurate", "label": { "de": "Präzise", "en": "Accurate" }, "color": "#98d4bb", "order": 1 },
+          { "id": "acceptable", "label": { "de": "Akzeptabel", "en": "Acceptable" }, "color": "#D1BC8A", "order": 2 },
+          { "id": "inaccurate", "label": { "de": "Ungenau", "en": "Inaccurate" }, "color": "#e8a087", "order": 3 }
+        ],
+        "allow_ties": true
+      },
+      {
+        "id": "comments",
+        "label": { "de": "Kommentare", "en": "Comments" },
+        "buckets": [
+          { "id": "insightful", "label": { "de": "Einsichtsreich", "en": "Insightful" }, "color": "#88c4c8", "order": 1 },
+          { "id": "balanced", "label": { "de": "Ausgewogen", "en": "Balanced" }, "color": "#b0ca97", "order": 2 },
+          { "id": "biased", "label": { "de": "Einseitig", "en": "Biased" }, "color": "#e8a087", "order": 3 }
+        ],
+        "allow_ties": true
+      }
+    ],
+    "require_complete": true
+  }
+}
+```
+
+### Beispiel: LLARS Beratungsantworten ranken (einfach)
 
 ```json
 {
@@ -191,12 +308,89 @@ interface Bucket {
     }
   ],
   "config": {
+    "mode": "simple",
     "buckets": [
       { "id": "good", "label": { "de": "Gut", "en": "Good" }, "color": "#98d4bb", "order": 1 },
       { "id": "moderate", "label": { "de": "Moderat", "en": "Moderate" }, "color": "#D1BC8A", "order": 2 },
       { "id": "poor", "label": { "de": "Schlecht", "en": "Poor" }, "color": "#e8a087", "order": 3 }
     ],
     "allow_ties": true,
+    "require_complete": true
+  }
+}
+```
+
+### Beispiel: LLARS Multi-Group (Antworten + Rückfragen parallel ranken)
+
+```json
+{
+  "schema_version": "1.0",
+  "type": "ranking",
+  "reference": {
+    "type": "conversation",
+    "label": "Beratungsverlauf",
+    "content": [
+      {
+        "role": "Klient",
+        "content": "Mein Chef hat mir heute gesagt, dass ich gekündigt werde. Ich arbeite seit 5 Jahren dort.",
+        "timestamp": "2024-01-15T10:00:00Z"
+      }
+    ]
+  },
+  "items": [
+    {
+      "id": "item_1",
+      "label": "Antwort 1",
+      "group_id": "responses",
+      "source": { "type": "llm", "name": "openai/gpt-4" },
+      "content": "Das tut mir sehr leid zu hören. Eine Kündigung nach 5 Jahren ist sicher ein Schock. Haben Sie die Kündigung bereits schriftlich erhalten?"
+    },
+    {
+      "id": "item_2",
+      "label": "Antwort 2",
+      "group_id": "responses",
+      "source": { "type": "llm", "name": "anthropic/claude-3" },
+      "content": "Ich verstehe, dass das sehr belastend für Sie ist. Bevor wir über rechtliche Schritte sprechen - wie geht es Ihnen damit?"
+    },
+    {
+      "id": "item_3",
+      "label": "Rückfrage 1",
+      "group_id": "questions",
+      "source": { "type": "llm", "name": "openai/gpt-4" },
+      "content": "Wurde ein Grund für die Kündigung genannt? Gab es vorher Abmahnungen?"
+    },
+    {
+      "id": "item_4",
+      "label": "Rückfrage 2",
+      "group_id": "questions",
+      "source": { "type": "llm", "name": "anthropic/claude-3" },
+      "content": "Gibt es einen Betriebsrat in Ihrem Unternehmen? Und haben Sie einen Arbeitsvertrag mit Kündigungsfristen?"
+    }
+  ],
+  "config": {
+    "mode": "multi_group",
+    "groups": [
+      {
+        "id": "responses",
+        "label": { "de": "Antworten", "en": "Responses" },
+        "buckets": [
+          { "id": "empathetic", "label": { "de": "Empathisch", "en": "Empathetic" }, "color": "#98d4bb", "order": 1 },
+          { "id": "neutral", "label": { "de": "Neutral", "en": "Neutral" }, "color": "#D1BC8A", "order": 2 },
+          { "id": "cold", "label": { "de": "Distanziert", "en": "Cold" }, "color": "#e8a087", "order": 3 }
+        ],
+        "allow_ties": true
+      },
+      {
+        "id": "questions",
+        "label": { "de": "Rückfragen", "en": "Follow-up Questions" },
+        "buckets": [
+          { "id": "relevant", "label": { "de": "Relevant", "en": "Relevant" }, "color": "#88c4c8", "order": 1 },
+          { "id": "helpful", "label": { "de": "Hilfreich", "en": "Helpful" }, "color": "#b0ca97", "order": 2 },
+          { "id": "irrelevant", "label": { "de": "Irrelevant", "en": "Irrelevant" }, "color": "#e8a087", "order": 3 }
+        ],
+        "allow_ties": true
+      }
+    ],
     "require_complete": true
   }
 }
@@ -739,12 +933,19 @@ interface Label {
 
 | Typ | function_type_id | Reference | Items | Besonderheit |
 |-----|------------------|-----------|-------|--------------|
-| **Ranking** | 1 | Text/Conversation | N Items → Buckets | Drag & Drop |
+| **Ranking** | 1 | Text/Conversation | N Items → Buckets | Drag & Drop, Multi-Group (Tabs) |
 | **Rating** | 2 | Text/Conversation | 1-N Items | Multi-Dimensional |
 | **Mail Rating** | 3 | null | 1 Conversation | LLARS-spezifisch |
 | **Comparison** | 4 | Text/Conversation | Genau 2 Items | A vs B |
 | **Authenticity** | 5 | Optional | 1 Item | Binär |
 | **Labeling** | 7 | Optional | 1 Item | Single/Multi-Label |
+
+### Ranking Modi
+
+| Modus | Beschreibung | Use Case |
+|-------|--------------|----------|
+| `simple` | Eine Gruppe, ein Bucket-Set | Zusammenfassungen ranken |
+| `multi_group` | Mehrere Tabs, je eigene Buckets | Zusammenfassungen + Kommentare parallel |
 
 ---
 

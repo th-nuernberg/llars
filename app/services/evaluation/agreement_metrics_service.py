@@ -310,7 +310,15 @@ class AgreementMetricsService:
             return None
 
         if task_type == "ranking":
-            # Return bucket assignments as a dict
+            # Single-item bucket assignment (new format from _run_ranking_for_item)
+            # Format: {"bucket": "gut", "reasoning": "..."}
+            if "bucket" in payload:
+                bucket = str(payload["bucket"]).strip().lower()
+                # Return ordinal value for direct comparison
+                ordinal_map = {"gut": 3, "mittel": 2, "schlecht": 1, "neutral": 1}
+                return ordinal_map.get(bucket, 2)
+
+            # Multi-feature bucket format (old format)
             if "buckets" in payload:
                 return payload["buckets"]
             return {k: v for k, v in payload.items() if k in ["gut", "mittel", "schlecht", "neutral"]}

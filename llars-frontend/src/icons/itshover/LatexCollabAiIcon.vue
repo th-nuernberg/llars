@@ -17,7 +17,7 @@
     />
 
     <!-- Corner cover (hides rounded corner in default state, fades on hover) -->
-    <rect class="l-its-hover__latex-corner-fill" x="14" y="3" width="5" height="5" fill="rgb(var(--v-theme-background))" stroke="none" />
+    <rect class="l-its-hover__latex-corner-fill" x="13.5" y="2.5" width="6" height="6" fill="rgb(var(--v-theme-surface))" stroke="none" />
 
     <!-- Corner indent lines (fade on hover to show flat document) -->
     <path class="l-its-hover__latex-corner" d="M14 3V8H19" />

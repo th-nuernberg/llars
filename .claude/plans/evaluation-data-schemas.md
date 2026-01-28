@@ -2,7 +2,7 @@
 
 **Version:** 1.0
 **Datum:** 2026-01-27
-**Status:** Draft
+**Status:** Active
 
 ---
 
@@ -969,24 +969,34 @@ interface Label {
 Diese Schemas werden zentral definiert unter:
 
 ```
-app/
-├── schemas/
-│   ├── __init__.py
-│   ├── evaluation_schemas.py    # Python-Klassen (Pydantic/dataclass)
-│   └── validation.py            # Schema-Validierung
-│
-llars-frontend/src/
-├── schemas/
-│   ├── evaluationSchemas.ts     # TypeScript-Interfaces
-│   └── validation.ts            # Runtime-Validierung (Zod)
+app/schemas/
+├── __init__.py                        # Export der Schemas
+├── evaluation_data_schemas.py         # GROUND TRUTH: Pydantic-Models für alle 6 Typen
+└── evaluation_schemas.py              # LLM-Output Schemas (nicht Evaluation-Input!)
+
+app/services/evaluation/
+├── schema_transformer_service.py      # DB-Models → EvaluationData Schema
+
+app/routes/scenarios/
+├── scenario_schema_api.py             # API-Endpoints für Schema-Daten
+
+llars-frontend/src/schemas/
+├── index.js                           # Export aller Schemas
+├── evaluationSchemas.js               # JS-Version der Schemas mit JSDoc
+
+llars-frontend/src/composables/
+├── useEvaluationSchema.js             # Vue Composable für Schema-Nutzung
 ```
 
 ---
 
-## Nächste Schritte
+## Implementierungs-Status
 
-1. **Schema-Klassen erstellen** (Backend: Pydantic, Frontend: TypeScript + Zod)
-2. **Migrations-Service** für bestehende Daten
-3. **API-Endpoints anpassen** um neue Struktur zu liefern
-4. **UI-Komponenten aktualisieren** um Schema zu konsumieren
-5. **Import/Export** mit Schema-Validierung
+| Komponente | Status | Beschreibung |
+|------------|--------|--------------|
+| Backend Pydantic Models | ✅ Fertig | `evaluation_data_schemas.py` |
+| SchemaTransformer Service | ✅ Fertig | DB → Schema Konvertierung |
+| Schema API Endpoints | ✅ Fertig | `/api/scenarios/{id}/schema` etc. |
+| Frontend JS Schemas | ✅ Fertig | `evaluationSchemas.js` |
+| Vue Composable | ✅ Fertig | `useEvaluationSchema.js` |
+| Code-Dokumentation | ✅ Fertig | Alle Dateien mit Ground Truth Hinweisen |

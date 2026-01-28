@@ -253,55 +253,121 @@ Schreibe das Abstract.""",
         "description": "Analysiert hochgeladene Daten und generiert KI-Vorschläge für Evaluationstyp, Name, Beschreibung und Konfiguration.",
         "system_prompt": """Du bist ein Experte für Evaluations-Studiendesign. Analysiere die bereitgestellten Daten und generiere Vorschläge für ein LLARS-Evaluationsszenario.
 
-LLARS unterstützt folgende Evaluierungstypen (feste Szenarien):
-- rating: Multi-dimensionales Rating mit LLM-as-Judge Standard-Metriken (Kohärenz, Flüssigkeit, Relevanz, Konsistenz). Links Text, rechts Likert-Skalen pro Dimension.
-- ranking: Items nach Qualität sortieren oder in Kategorien einteilen (gut/mittel/schlecht)
-- labeling: Kategorien zuweisen (z.B. Fake/Echt, Sentiment, Themen)
-- comparison: Items paarweise vergleichen (A vs B) - für direkte Vergleiche
-- mail_rating: E-Mail-Konversationen bewerten - spezialisiert auf Beratungsqualität mit Empathie, Klarheit, etc.
-- authenticity: Echt/Fake erkennen (Mensch vs KI)
+Die Schema-Informationen stammen aus dem zentralen LLARS-Schema (app/schemas/evaluation_data_schemas.py).
 
-RATING-DIMENSIONEN (LLM-as-Judge Standard-Metriken):
-- Kohärenz (coherence): Logischer Aufbau, Zusammenhang der Ideen
-- Flüssigkeit (fluency): Grammatik, Lesbarkeit, Sprachqualität
-- Relevanz (relevance): Bezug zum Thema/Kontext, wichtige Aspekte abgedeckt
-- Konsistenz (consistency): Widerspruchsfreiheit, Faktentreue
+## EVALUATIONSTYPEN (function_type_id)
 
-Für bestimmte Domänen können passendere Dimensionen gewählt werden:
-- Nachrichten/Artikel: Genauigkeit, Objektivität, Vollständigkeit, Lesbarkeit
-- LLM-Antworten: Hilfsbereitschaft, Genauigkeit, Vollständigkeit, Klarheit
-- Textzusammenfassungen: Kohärenz, Konsistenz, Flüssigkeit, Relevanz (SummEval)
+| Typ | ID | Beschreibung | Erkennung |
+|-----|----|--------------| ----------|
+| ranking | 1 | Items sortieren/kategorisieren (Gut/Mittel/Schlecht) | Rang/Position/Bucket-Felder; Mehrere Items zum Vergleichen |
+| rating | 2 | Multi-dimensionales Rating (Kohärenz, Flüssigkeit, Relevanz, Konsistenz) | Einzelne Texte zur Qualitätsbewertung |
+| mail_rating | 3 | E-Mail-Beratungsverläufe bewerten (LLARS-spezifisch) | E-Mail/Chat mit subject/thread, Klient/Berater |
+| comparison | 4 | A vs B Vergleich - welches ist besser? | answer_a/answer_b, text_a/text_b, conversation_a/b |
+| authenticity | 5 | Echt/Fake erkennen (Mensch vs KI) | is_fake, is_human, synthetic Labels |
+| labeling | 7 | Kategorien zuweisen (binär, multi-class) | category, label, sentiment Felder |
 
-LLARS ZIELFORMAT (vereinfachte Beispiele pro Item):
-- conversation:
-  {"id":"id-1","conversation":[{"role":"user","content":"..."},{"role":"assistant","content":"..."}],"subject":"...","metadata":{...}}
-- single_text:
-  {"id":"id-2","content":"...","subject":"...","metadata":{...}}
-- comparison (text_pair):
-  {"id":"id-3","text_a":"...","text_b":"...","label_a":"A","label_b":"B"}
-- labeling/authenticity:
-  {"id":"id-4","content":"...","label":"optional-ground-truth"}
+## ENTSCHEIDUNGSBAUM FÜR EVALUATIONSTYP
 
-Analysiere:
-1. Die Datenstruktur (Felder, Typen, Inhalte)
-2. Den wahrscheinlichsten Anwendungsfall basierend auf den Daten
-3. Passende Konfiguration für den Evaluierungstyp
+```
+┌─ Haben die Daten ZWEI Antwort-Versionen pro Item?
+│  │  (answer_a/answer_b, text_a/text_b, conversation_a/b)
+│  ├─ JA → comparison
+│  └─ NEIN
+│     ├─ Gibt es Label-Felder? (is_fake, is_human, sentiment, category)
+│     │  ├─ JA, binär (fake/real, human/ai) → authenticity
+│     │  └─ JA, mehrklassig → labeling
+│     └─ Sollen Items sortiert/kategorisiert werden?
+│        ├─ JA, Qualitätskategorien → ranking
+│        └─ NEIN, einzeln bewerten
+│           ├─ E-Mail/Chat-Konversationen (Beratung)? → mail_rating
+│           └─ Einzelne Texte/Antworten → rating
+```
 
-WICHTIG: Antworte IMMER im folgenden JSON-Format und halte die EXAKTE Reihenfolge der Felder ein (für optimale Streaming-Darstellung):
+## DATEIFORMAT MAPPING-BEISPIELE
+
+### CSV mit Vergleichsdaten (comparison)
+```csv
+id,question,answer_a,answer_b,model_a,model_b
+1,"Was ist Python?","Python ist...","Python ist eine...","gpt-4","claude-3"
+```
+Mapping: id→item_id, question→reference.content, answer_a→items[0].content, model_a→items[0].source.name
+
+### CSV mit einzelnen Texten (rating/ranking)
+```csv
+id,text,source,category
+1,"Der Artikel handelt von...","gpt-4","news"
+```
+Mapping: id→item_id, text→content, source→source.name
+
+### JSON mit Konversationen (mail_rating)
+```json
+{"id": "conv_1", "subject": "Beratungsanfrage", "messages": [{"role": "user", "content": "..."}, {"role": "assistant", "content": "..."}]}
+```
+Mapping: id→item_id, subject→reference.label, messages→conversation
+
+### OpenAI/LMSYS Format (comparison)
+```json
+{"conversation_a": [...], "conversation_b": [...], "model_a": "gpt-4", "model_b": "claude-3", "winner": "model_a"}
+```
+Mapping: conversation_a→items[0].content, winner→ground_truth
+
+### JSONL mit Labels (labeling/authenticity)
+```jsonl
+{"id": "1", "text": "...", "is_human": true}
+{"id": "2", "text": "...", "is_human": false, "model": "gpt-4"}
+```
+Mapping: id→item_id, text→content, is_human→ground_truth
+
+## PRESET-EMPFEHLUNGEN
+
+Nutze Standard-Presets wenn möglich. Empfehle `custom` nur bei besonderen Anforderungen.
+
+### RATING
+- `llm-judge-standard` (DEFAULT): 4 Dimensionen (Kohärenz, Flüssigkeit, Relevanz, Konsistenz)
+- `response-quality`: Für LLM-Antworten (Hilfsbereitschaft, Genauigkeit, Vollständigkeit, Klarheit)
+- `news-article`: Für Nachrichtenartikel (Genauigkeit, Objektivität, Vollständigkeit, Lesbarkeit)
+- Custom wenn: Domänenspezifische Dimensionen (Medizin, Recht), ungewöhnliche Skalen
+
+### RANKING
+- `buckets-3` (DEFAULT): Gut/Mittel/Schlecht
+- `buckets-5`: Sehr gut bis Sehr schlecht (feinere Abstufung)
+- Custom wenn: Andere Kategorie-Namen, mehr als 5 Buckets
+
+### LABELING
+- `binary-authentic` (DEFAULT): Fake/Echt mit Unsicher-Option
+- `sentiment-3`: Positiv/Neutral/Negativ
+- Custom wenn: Andere Kategorien als Sentiment/Authentizität
+
+### COMPARISON
+- `pairwise` (DEFAULT): A vs B - welches ist besser?
+- `multicriteria`: Vergleich nach mehreren Kriterien
+- Custom wenn: Spezielle Vergleichskriterien
+
+## AUSGABEFORMAT
+
+WICHTIG: Antworte IMMER im folgenden JSON-Format. Halte die EXAKTEN Feldnamen ein:
+
+```json
 {
   "suggestions": {
-    "eval_type": "rating|ranking|labeling|comparison|mail_rating|authenticity",
-    "eval_type_confidence": 0.0-1.0,
-    "scenario_name": "Vorgeschlagener Name (kurz, prägnant)",
-    "scenario_description": "Beschreibung des Szenarios (1-2 Sätze)",
-    "eval_type_reasoning": "Begründung auf Deutsch warum dieser Typ gewählt wurde",
-    "config_suggestions": {
+    "evaluation_type": "rating|ranking|labeling|comparison|mail_rating|authenticity",
+    "confidence": 0.0-1.0,
+    "name": "Kurzer prägnanter Name (deutsch)",
+    "description": "Beschreibung des Szenarios (1-2 Sätze, deutsch)",
+    "reasoning": "Begründung warum dieser Typ und Preset gewählt wurde (deutsch)",
+    "preset": "preset-id oder 'custom'",
+    "config": {
       "rating": {"scale_min": 1, "scale_max": 5, "dimensions": ["Kohärenz", "Flüssigkeit", "Relevanz", "Konsistenz"]},
-      "mail_rating": {"scale_min": 1, "scale_max": 5, "dimensions": ["Empathie", "Klarheit", "Professionalität", "Hilfsbereitschaft"]},
-      "labeling": {"categories": ["Kat1", "Kat2", "Kat3"]},
-      "authenticity": {"labels": ["Echt", "Fake"]},
+      "mail_rating": {"scale_min": 1, "scale_max": 5, "dimensions": ["Kohärenz Klient", "Kohärenz Berater", "Beratungsqualität", "Gesamteignung"]},
+      "labeling": {"categories": ["Kategorie1", "Kategorie2"], "mode": "single|multi"},
+      "authenticity": {"labels": ["Echt", "Fake"], "allowUnsure": true},
       "ranking": {"buckets": ["Gut", "Mittel", "Schlecht"]},
-      "comparison": {"criteria": ["Gesamt"]}
+      "comparison": {"criteria": ["Gesamt"], "allowTie": true}
+    },
+    "field_mapping": {
+      "id_field": "welches Feld für item_id",
+      "content_field": "welches Feld für content",
+      "label_field": "welches Feld für ground_truth (falls vorhanden)"
     }
   },
   "data_quality": {
@@ -310,13 +376,14 @@ WICHTIG: Antworte IMMER im folgenden JSON-Format und halte die EXAKTE Reihenfolg
     "recommendations": ["Empfehlung 1"]
   }
 }
+```
 
-Wichtig:
+REGELN:
 - Antworte NUR mit dem JSON, keine zusätzlichen Erklärungen
-- HALTE DIE EXAKTE REIHENFOLGE DER FELDER EIN wie oben gezeigt
 - Verwende deutsche Texte für Namen, Beschreibungen und Kategorien
-- Sei spezifisch bei den Konfigurationsvorschlägen basierend auf den Daten
-- Wähle passende Dimensionen für den Kontext (z.B. für Nachrichtenartikel andere als für LLM-Antworten)""",
+- Die Feldnamen müssen EXAKT sein: evaluation_type, confidence, name, description, reasoning, preset, config
+- Empfehle immer ein konkretes Preset, nutze "custom" nur wenn nötig
+- Erkläre im reasoning WARUM dieser Typ und dieses Preset gewählt wurde""",
         "user_prompt_template": """Analysiere diese Daten für ein Evaluationsszenario:
 
 Dateiname: {filename}
@@ -331,7 +398,7 @@ Beispieldaten (erste {sample_count} von {item_count}):
 
 {user_hint_text}
 
-Generiere Vorschläge im JSON-Format.""",
+Generiere Vorschläge im JSON-Format. Nutze den Entscheidungsbaum um den Evaluationstyp zu bestimmen.""",
         "context_variables": ["filename", "file_count", "item_count", "fields_json", "sample_count", "sample_data", "user_hint_text"],
         "max_tokens": 2000,
         "temperature": 0.7,
@@ -377,6 +444,65 @@ class FieldPromptService:
             logger.info(f"Seeded {created} default field prompts")
 
         return created
+
+    @staticmethod
+    def reseed_defaults(field_keys: List[str] = None) -> Dict[str, int]:
+        """
+        Reseed field prompts, updating existing ones with default values.
+
+        Args:
+            field_keys: Optional list of specific field keys to reseed.
+                       If None, reseeds all default prompts.
+
+        Returns:
+            Dict with 'created' and 'updated' counts
+        """
+        created = 0
+        updated = 0
+
+        keys_to_process = field_keys or list(DEFAULT_FIELD_PROMPTS.keys())
+
+        for field_key in keys_to_process:
+            if field_key not in DEFAULT_FIELD_PROMPTS:
+                logger.warning(f"Unknown field key, skipping: {field_key}")
+                continue
+
+            config = DEFAULT_FIELD_PROMPTS[field_key]
+            existing = FieldPromptTemplate.query.filter_by(field_key=field_key).first()
+
+            if existing:
+                # Update existing prompt with new defaults
+                existing.display_name = config["display_name"]
+                existing.description = config.get("description")
+                existing.system_prompt = config["system_prompt"]
+                existing.user_prompt_template = config["user_prompt_template"]
+                existing.context_variables = config.get("context_variables", [])
+                existing.max_tokens = config.get("max_tokens", 200)
+                existing.temperature = config.get("temperature", 0.7)
+                updated += 1
+                logger.info(f"Updated field prompt: {field_key}")
+            else:
+                # Create new prompt
+                template = FieldPromptTemplate(
+                    field_key=field_key,
+                    display_name=config["display_name"],
+                    description=config.get("description"),
+                    system_prompt=config["system_prompt"],
+                    user_prompt_template=config["user_prompt_template"],
+                    context_variables=config.get("context_variables", []),
+                    max_tokens=config.get("max_tokens", 200),
+                    temperature=config.get("temperature", 0.7),
+                    is_active=True,
+                )
+                db.session.add(template)
+                created += 1
+                logger.info(f"Created field prompt: {field_key}")
+
+        if created > 0 or updated > 0:
+            db.session.commit()
+            logger.info(f"Reseeded field prompts: {created} created, {updated} updated")
+
+        return {"created": created, "updated": updated}
 
     @staticmethod
     def get_by_field_key(field_key: str) -> Optional[FieldPromptTemplate]:

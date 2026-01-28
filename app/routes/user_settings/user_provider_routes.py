@@ -49,7 +49,7 @@ def list_available_providers():
     # Get user roles from PermissionService
     from services.permission_service import PermissionService
     user_roles_data = PermissionService.get_user_roles(user.username)
-    roles = [r['name'] for r in user_roles_data] if user_roles_data else []
+    roles = [r['role_name'] for r in user_roles_data] if user_roles_data else []
 
     providers = UserLLMProviderService.get_available_providers_for_user(
         user_id=user.id,

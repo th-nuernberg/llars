@@ -1,6 +1,6 @@
 # LLARS - LLM Assisted Research System
 
-**Version:** 3.0 | **Stand:** 27. Januar 2026
+**Version:** 3.0 | **Stand:** 28. Januar 2026
 
 ## Projekt-Übersicht
 
@@ -388,6 +388,32 @@ Scenario
 | 5 | authenticity | Fake/Echt Bewertung (LLARS-spezifisch) |
 | 7 | labeling | Kategorien zuweisen (binär, multi-class) |
 
+### Evaluation Data Schemas (Ground Truth)
+
+**ZENTRALE REFERENZ für alle Evaluationsformate:**
+
+```
+Backend (Pydantic):  app/schemas/evaluation_data_schemas.py
+Frontend (JS):       llars-frontend/src/schemas/evaluationSchemas.js
+Dokumentation:       .claude/plans/evaluation-data-schemas.md
+```
+
+**Schema-Struktur:**
+```json
+{
+  "schema_version": "1.0",
+  "type": "ranking|rating|mail_rating|comparison|authenticity|labeling",
+  "reference": { "type": "text|conversation", "label": "...", "content": "..." },
+  "items": [{ "id": "item_1", "label": "...", "source": {...}, "content": "..." }],
+  "config": { /* typ-spezifische Konfiguration */ }
+}
+```
+
+**Wichtige Konventionen:**
+- `item.id` = Technische ID (z.B. "item_1") - NIEMALS LLM-Namen!
+- `item.label` = UI-Anzeigename (generische Labels)
+- `item.source.type` = "human" | "llm" | "unknown"
+
 ### Multi-Dimensionales Rating (LLM-as-Judge)
 
 Rating verwendet jetzt standardmäßig das multi-dimensionale Format:
@@ -411,6 +437,35 @@ Rating verwendet jetzt standardmäßig das multi-dimensionale Format:
 
 **Backend-Service:** `app/services/evaluation/dimensional_rating_service.py`
 **Frontend-Composable:** `llars-frontend/src/composables/useDimensionalRating.js`
+
+### Scenario Wizard AI System
+
+Der Scenario Wizard nutzt KI um hochgeladene Daten zu analysieren und passende Evaluationstypen vorzuschlagen.
+
+**Wichtige Dateien:**
+```
+app/services/evaluation/schema_export_service.py  # Schema-Export für AI-Prompts
+app/services/ai_assist/field_prompt_service.py    # AI Prompt Templates (DB-gestützt)
+app/services/data_import/ai_analyzer.py           # AI Analyse-Logik
+```
+
+**Schema-Integration:**
+- `SchemaExportService` exportiert Schema-Definitionen aus `evaluation_data_schemas.py`
+- AI-Prompts erhalten konsistente Typ-Informationen und Mapping-Beispiele
+- Entscheidungsbaum für automatische Evaluationstyp-Erkennung
+
+**Unterstützte Dateiformate:**
+- CSV (mit Vergleichsdaten oder Einzeltexten)
+- JSON (verschachtelte Strukturen, Konversationen)
+- JSONL (eine JSON pro Zeile)
+- OpenAI/LMSYS Format (conversation_a/b mit winner)
+
+**Preset-Empfehlungen:**
+Die AI empfiehlt automatisch passende Presets aus `evaluationPresets.js`:
+- rating: `llm-judge-standard`, `response-quality`, `news-article`
+- ranking: `buckets-3`, `buckets-5`
+- labeling: `binary-authentic`, `sentiment-3`
+- comparison: `pairwise`, `multicriteria`
 
 ### Evaluation Status-Berechnung
 

@@ -68,7 +68,7 @@ Das Skript startet alle Docker-Container und konfiguriert Authentik automatisch.
 | Backend API | http://localhost:55080/api |
 | Authentik Admin | http://localhost:55095 |
 | Matomo Analytics | http://localhost:55080/analytics/ |
-| Dokumentation | http://localhost:55080/mkdocs/ |
+| Dokumentation | http://localhost:55080/docs/ |
 
 ---
 
@@ -93,7 +93,7 @@ nginx (:80) → Reverse Proxy
 ├── /authentik/ → Authentik UI (:9000)
 ├── /analytics/ → Matomo (:80)
 ├── /collab/    → YJS WebSocket (:8082)
-└── /mkdocs/    → MkDocs (:8000)
+└── /docs/    → MkDocs (:8000)
 
 Databases:
 ├── MariaDB     → Anwendungsdaten

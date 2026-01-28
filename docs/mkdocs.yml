@@ -83,6 +83,7 @@ nav:
       - ReflAct: agentic-ai/reflact.md
   - Entwickler:
       - API-Referenz: entwickler/api-referenz.md
+      - Evaluation Datenformate: entwickler/evaluation-datenformate.md
       - WebSocket API: entwickler/websocket-api.md
       - Collaboration System: entwickler/collab-system.md
       - Datenbank-Schema: entwickler/datenbank-schema.md

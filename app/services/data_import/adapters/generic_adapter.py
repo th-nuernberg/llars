@@ -58,10 +58,11 @@ class GenericAdapter(BaseAdapter):
         "toxic", "hate", "offensive", "spam", "newsgroup", "topic", "intent"
     ]
     ID_FIELDS = [
-        "id", "idx", "index", "item_id", "doc_id", "row_id", "uid", "guid"
+        "id", "idx", "index", "item_id", "doc_id", "row_id", "uid", "guid",
+        "chat_id", "thread_id", "conversation_id"
     ]
     TITLE_FIELDS = [
-        "title", "subject", "headline", "name", "header"
+        "title", "subject", "headline", "name", "header", "betreff"
     ]
     # Text pair fields for NLI, paraphrase, translation
     TEXT_PAIR_A_FIELDS = [
@@ -72,6 +73,14 @@ class GenericAdapter(BaseAdapter):
         "text_b", "text_2", "sentence2", "sentence_2", "hypothesis", "target",
         "text2", "sent2", "s2", "translation", "de", "fr", "es", "tgt", "mt"
     ]
+    # Conversation/Message array fields
+    CONVERSATION_FIELDS = [
+        "messages", "conversation", "turns", "dialog", "dialogue", "chat",
+        "thread", "exchanges", "mails", "emails", "nachrichten", "verlauf"
+    ]
+    # Role fields within messages
+    ROLE_FIELDS = ["role", "sender", "speaker", "author", "from", "name", "absender"]
+    CONTENT_FIELDS = ["content", "text", "message", "body", "inhalt", "nachricht"]
 
     def can_handle(self, data: Any) -> tuple[bool, float]:
         """Check if this adapter can handle the data."""
@@ -130,11 +139,24 @@ class GenericAdapter(BaseAdapter):
             "title": self._find_field(first_item, self.TITLE_FIELDS),
             "text_a": self._find_field(first_item, self.TEXT_PAIR_A_FIELDS),
             "text_b": self._find_field(first_item, self.TEXT_PAIR_B_FIELDS),
+            "conversation": self._find_field(first_item, self.CONVERSATION_FIELDS),
         }
 
         # Determine item type based on detected fields
         fields = structure["detected_fields"]
-        if fields["text_a"] and fields["text_b"]:
+        if fields["conversation"]:
+            # Check if conversation field contains message-like objects
+            conv_field = fields["conversation"]
+            conv_value = first_item.get(conv_field)
+            if isinstance(conv_value, list) and conv_value:
+                first_msg = conv_value[0]
+                if isinstance(first_msg, dict):
+                    structure["detected_item_type"] = ItemType.CONVERSATION.value
+                else:
+                    structure["detected_item_type"] = ItemType.SINGLE_TEXT.value
+            else:
+                structure["detected_item_type"] = ItemType.SINGLE_TEXT.value
+        elif fields["text_a"] and fields["text_b"]:
             # Text pair (NLI, paraphrase, translation)
             structure["detected_item_type"] = ItemType.TEXT_PAIR.value
         elif fields["question"] and fields["answer"]:
@@ -333,6 +355,79 @@ class GenericAdapter(BaseAdapter):
                 text_b=text_b,
                 label_a=label_a,
                 label_b=label_b,
+                title=title,
+                label=label,
+                metadata=metadata,
+            )
+
+        elif item_type == ItemType.CONVERSATION:
+            # Handle conversation/message array data
+            conv_field = mappings.get("conversation") or mappings.get("text")
+            conv_data = raw_item.get(conv_field) if conv_field else None
+
+            # Try to find conversation field if not mapped
+            if not conv_data:
+                for field in self.CONVERSATION_FIELDS:
+                    if field in raw_item:
+                        conv_data = raw_item[field]
+                        break
+
+            if not conv_data or not isinstance(conv_data, list):
+                # Fall back to single text
+                return self._parse_item(raw_item, index, ItemType.SINGLE_TEXT, mappings)
+
+            # Parse messages from conversation
+            messages = []
+            for msg in conv_data:
+                if isinstance(msg, dict):
+                    # Find role field
+                    role = None
+                    for role_field in self.ROLE_FIELDS:
+                        if role_field in msg:
+                            role = str(msg[role_field])
+                            break
+                    if not role:
+                        role = "Unknown"
+
+                    # Find content field
+                    content = None
+                    for content_field in self.CONTENT_FIELDS:
+                        if content_field in msg:
+                            content = str(msg[content_field])
+                            break
+                    if not content:
+                        # Use first string field
+                        for k, v in msg.items():
+                            if isinstance(v, str) and len(v) > 5:
+                                content = v
+                                break
+
+                    if content:
+                        # Map common role names to standard roles
+                        role_mapping = {
+                            "klient": MessageRole.USER,
+                            "client": MessageRole.USER,
+                            "user": MessageRole.USER,
+                            "nutzer": MessageRole.USER,
+                            "berater": MessageRole.ASSISTANT,
+                            "counselor": MessageRole.ASSISTANT,
+                            "assistant": MessageRole.ASSISTANT,
+                            "bot": MessageRole.ASSISTANT,
+                            "system": MessageRole.SYSTEM,
+                        }
+                        msg_role = role_mapping.get(role.lower(), MessageRole.USER)
+                        messages.append(Message(role=msg_role, content=content))
+
+                elif isinstance(msg, str):
+                    # Simple string message
+                    messages.append(Message(role=MessageRole.USER, content=msg))
+
+            if not messages:
+                return None
+
+            return ImportItem.from_conversation(
+                id=item_id,
+                messages=messages,
                 title=title,
                 label=label,
                 metadata=metadata,

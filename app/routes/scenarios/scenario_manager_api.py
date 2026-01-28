@@ -7,6 +7,13 @@ This module provides a simplified API for users to:
 - View scenarios they're invited to
 - Track progress and statistics
 - Start/stop LLM evaluations
+
+SCHEMA GROUND TRUTH:
+-------------------
+This module uses the unified EvaluationData schemas for evaluation types:
+- Backend: app/schemas/evaluation_data_schemas.py (EvaluationType enum)
+- Frontend: llars-frontend/src/schemas/evaluationSchemas.js
+- Dokumentation: .claude/plans/evaluation-data-schemas.md
 """
 
 import json
@@ -29,6 +36,7 @@ from db.tables import (
 )
 from db.models.authenticity import UserAuthenticityVote
 from db.models.llm_task_result import LLMTaskResult
+from schemas.evaluation_data_schemas import EvaluationType
 from services.scenario_stats_service import get_progress_stats, get_authenticity_stats, get_scenario_stats_payload
 from .. import data_blueprint
 from .scenario_utils import is_scenario_owner, check_scenario_ownership

@@ -4,6 +4,23 @@ Batch Generation Service.
 Orchestrates batch LLM generation jobs that apply prompts to items
 using one or more LLM models.
 
+SCHEMA GROUND TRUTH:
+-------------------
+Die generierten Outputs werden beim Export in das einheitliche
+EvaluationData Schema-Format konvertiert:
+
+- Backend: app/schemas/evaluation_data_schemas.py (Pydantic Models)
+- Frontend: llars-frontend/src/schemas/evaluationSchemas.js
+- Transformer: app/services/evaluation/schema_transformer_service.py
+
+Wenn Outputs für Ranking/Rating-Szenarien verwendet werden,
+müssen sie als Features mit Source-Tracking erstellt werden:
+- Item.id: Technische ID (z.B. "item_1")
+- Item.label: UI-Anzeigename (NIEMALS LLM-Namen!)
+- Item.source: {"type": "llm", "name": "model_name"}
+
+Dokumentation: .claude/plans/evaluation-data-schemas.md
+
 Architecture:
     BatchGenerationService (this file)
         ├── Creates and manages GenerationJob instances
@@ -55,6 +72,11 @@ from db.models import (
     get_pending_outputs_for_job,
 )
 from decorators.error_handler import NotFoundError, ValidationError
+from schemas.evaluation_data_schemas import (
+    EvaluationType,
+    SourceType,
+    Source,
+)
 
 logger = logging.getLogger(__name__)
 

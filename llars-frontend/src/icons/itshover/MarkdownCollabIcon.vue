@@ -10,17 +10,17 @@
     stroke-linejoin="round"
     aria-hidden="true"
   >
-    <!-- Document body: rounded corners -->
+    <!-- Document with folded corner (DEFAULT - visible) -->
     <path
-      class="l-its-hover__markdown-file"
-      d="M6.5 3H17.5Q19 3 19 4.5V19.5Q19 21 17.5 21H6.5Q5 21 5 19.5V4.5Q5 3 6.5 3Z"
+      class="l-its-hover__markdown-file-folded"
+      d="M6.5 3H14V8H19V19.5Q19 21 17.5 21H6.5Q5 21 5 19.5V4.5Q5 3 6.5 3Z"
     />
 
-    <!-- Corner cover (hides rounded corner in default state, fades on hover) -->
-    <rect class="l-its-hover__markdown-corner-fill" x="13.5" y="2.5" width="6" height="6" fill="rgb(var(--v-theme-surface))" stroke="none" />
-
-    <!-- Corner indent lines (fade on hover to show flat document) -->
-    <path class="l-its-hover__markdown-corner" d="M14 3V8H19" />
+    <!-- Document with rounded corner (HOVER - hidden by default) -->
+    <path
+      class="l-its-hover__markdown-file-flat"
+      d="M6.5 3H17.5Q19 3 19 4.5V19.5Q19 21 17.5 21H6.5Q5 21 5 19.5V4.5Q5 3 6.5 3Z"
+    />
 
     <!-- Fold corner - animated dog-ear -->
     <path class="l-its-hover__markdown-crease" d="M14.5 3.5L18.5 7.5" />

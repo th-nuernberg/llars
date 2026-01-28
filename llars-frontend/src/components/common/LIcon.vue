@@ -792,8 +792,9 @@ const iconAttrs = computed(() => {
 }
 
 :is(.v-icon:hover, .feature-card:hover .v-icon, .category-item:hover .v-icon, .mobile-category-item:hover .v-icon) .l-its-hover--latex-ai .l-its-hover__latex-crease,
-:is(.v-icon:hover, .feature-card:hover .v-icon, .category-item:hover .v-icon, .mobile-category-item:hover .v-icon) .l-its-hover--latex-ai .l-its-hover__latex-file-folded {
-  /* HOVER STATE: Crease and folded document fade */
+:is(.v-icon:hover, .feature-card:hover .v-icon, .category-item:hover .v-icon, .mobile-category-item:hover .v-icon) .l-its-hover--latex-ai .l-its-hover__latex-file-folded,
+:is(.v-icon:hover, .feature-card:hover .v-icon, .category-item:hover .v-icon, .mobile-category-item:hover .v-icon) .l-its-hover--latex-ai .l-its-hover__latex-fold {
+  /* HOVER STATE: Crease, fold and folded document fade */
   opacity: 0;
 }
 
@@ -830,8 +831,9 @@ const iconAttrs = computed(() => {
 }
 
 :is(.v-icon:hover, .feature-card:hover .v-icon, .category-item:hover .v-icon, .mobile-category-item:hover .v-icon) .l-its-hover--markdown-collab .l-its-hover__markdown-crease,
-:is(.v-icon:hover, .feature-card:hover .v-icon, .category-item:hover .v-icon, .mobile-category-item:hover .v-icon) .l-its-hover--markdown-collab .l-its-hover__markdown-file-folded {
-  /* HOVER STATE: Crease and folded document fade */
+:is(.v-icon:hover, .feature-card:hover .v-icon, .category-item:hover .v-icon, .mobile-category-item:hover .v-icon) .l-its-hover--markdown-collab .l-its-hover__markdown-file-folded,
+:is(.v-icon:hover, .feature-card:hover .v-icon, .category-item:hover .v-icon, .mobile-category-item:hover .v-icon) .l-its-hover--markdown-collab .l-its-hover__markdown-fold {
+  /* HOVER STATE: Crease, fold and folded document fade */
   opacity: 0;
 }
 

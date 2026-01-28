@@ -8,12 +8,30 @@ Provides preset configurations for various evaluation use cases:
 - Mail/Counseling evaluation (LLARS-specific)
 - Custom presets
 
-Synced with frontend evaluationPresets.js for consistency.
+SCHEMA GROUND TRUTH:
+-------------------
+Preset configurations MUST align with the unified schemas:
+- Backend: app/schemas/evaluation_data_schemas.py (RatingConfig, Dimension, Scale)
+- Frontend: llars-frontend/src/schemas/evaluationSchemas.js
+- Presets synced with: llars-frontend/src/views/ScenarioManager/config/evaluationPresets.js
+- Dokumentation: .claude/plans/evaluation-data-schemas.md
+
+Note: The factory functions in evaluation_data_schemas.py provide default configs
+that can be used as starting points for presets.
 """
 
 import logging
 from typing import Dict, List, Optional, Any
 from copy import deepcopy
+
+from schemas.evaluation_data_schemas import (
+    EvaluationType,
+    RatingConfig,
+    Scale,
+    Dimension,
+    create_default_rating_dimensions,
+    create_default_scale,
+)
 
 logger = logging.getLogger(__name__)
 

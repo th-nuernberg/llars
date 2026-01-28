@@ -7,6 +7,13 @@ comparison, etc.). This service handles:
 - Retrieving items to evaluate (threads, features, etc.)
 - Saving evaluation results
 - Progress tracking
+
+SCHEMA GROUND TRUTH:
+-------------------
+Uses EvaluationType from unified schemas for evaluation type handling:
+- Backend: app/schemas/evaluation_data_schemas.py
+- Frontend: llars-frontend/src/schemas/evaluationSchemas.js
+- Dokumentation: .claude/plans/evaluation-data-schemas.md
 """
 
 import logging
@@ -19,6 +26,7 @@ from db.models import (
     EmailThread, Feature, UserFeatureRating, Message,
     FeatureFunctionType, User
 )
+from schemas.evaluation_data_schemas import EvaluationType
 
 logger = logging.getLogger(__name__)
 

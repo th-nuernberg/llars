@@ -912,9 +912,8 @@ def _calculate_rating_distribution(scenario_id: int) -> Dict[str, Any]:
         name = scale_info["name"]
 
         def build_dist(counts: Dict[int, int]) -> List[Dict[str, Any]]:
-            if not counts:
-                return []
-            total = sum(counts.values())
+            # Always return full scale with zero counts if needed (for consistent UI display)
+            total = sum(counts.values()) if counts else 0
             distribution = []
             for score in range(scale_min, scale_max + 1):
                 count = counts.get(score, 0)
@@ -986,9 +985,8 @@ def _calculate_rating_distribution(scenario_id: int) -> Dict[str, Any]:
                 pass
 
     def build_overall_distribution(counts: Dict[int, int]) -> List[Dict[str, Any]]:
-        if not counts:
-            return []
-        total = sum(counts.values())
+        # Always return full scale with zero counts if needed (for consistent UI display)
+        total = sum(counts.values()) if counts else 0
         distribution = []
         # Use global scale for overall distribution
         for score in range(global_min, global_max + 1):

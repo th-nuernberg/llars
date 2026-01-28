@@ -3,6 +3,31 @@ Prompt Template Service for LLM Evaluators.
 
 Manages prompt templates for different evaluation task types.
 Provides default prompts and allows scenario-specific overrides.
+
+SCHEMA GROUND TRUTH:
+-------------------
+Die Prompts hier generieren LLM-OUTPUT, der gegen die Schemas in
+evaluation_schemas.py validiert wird.
+
+UNTERSCHIED der Schemas:
+- evaluation_schemas.py: Schemas für LLM-OUTPUT (strukturierte Antworten)
+- evaluation_data_schemas.py: Schemas für EVALUATION-INPUT (Daten zum Bewerten)
+
+Prompts erhalten Daten im EvaluationData Format und liefern:
+- RankingEvaluationResult
+- RatingEvaluationResult
+- AuthenticityEvaluationResult
+- etc.
+
+WICHTIG für Prompts:
+- Feature/Item IDs sind technisch (z.B. "item_1", "feature_2")
+- Prompts sollten NIEMALS LLM-Namen in der Ausgabe erwarten
+- Output muss gegen Pydantic-Schemas in evaluation_schemas.py validieren
+
+Schema-Referenz:
+- Backend Output Schemas: app/schemas/evaluation_schemas.py
+- Backend Data Schemas: app/schemas/evaluation_data_schemas.py
+- Dokumentation: .claude/plans/evaluation-data-schemas.md
 """
 
 from __future__ import annotations

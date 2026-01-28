@@ -7,6 +7,14 @@ are evaluated on multiple configurable dimensions (e.g., Coherence, Fluency, Rel
 
 This is the base for both generic ratings and specialized types like mail_rating.
 Supports variable Likert scales (0-1, 0-4, 1-5, 1-7, 0-9, 1-10, etc.).
+
+SCHEMA GROUND TRUTH:
+-------------------
+Rating dimensions and scale configurations should align with:
+- Backend: app/schemas/evaluation_data_schemas.py (RatingConfig, Dimension, Scale)
+- Frontend: llars-frontend/src/schemas/evaluationSchemas.js
+- Factory functions: create_default_rating_dimensions(), create_default_scale()
+- Dokumentation: .claude/plans/evaluation-data-schemas.md
 """
 
 import logging
@@ -19,6 +27,11 @@ from db.models import (
     RatingScenarios, ScenarioItems, ScenarioUsers, ScenarioItemDistribution,
     EvaluationItem, Message, ItemDimensionRating, ProgressionStatus,
     FeatureFunctionType, User, ScenarioRoles
+)
+from schemas.evaluation_data_schemas import (
+    EvaluationType,
+    create_default_rating_dimensions,
+    create_default_scale,
 )
 
 logger = logging.getLogger(__name__)

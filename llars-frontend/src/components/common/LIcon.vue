@@ -115,13 +115,17 @@ const iconAttrs = computed(() => {
   stroke-width: 1;
 }
 
-/* Corner indent lines - fade on hover when fold opens */
-.l-its-hover__markdown-corner,
-.l-its-hover__latex-corner,
-.l-its-hover__markdown-corner-fill,
-.l-its-hover__latex-corner-fill {
+/* Document shape swap - folded vs flat */
+.l-its-hover__markdown-file-folded,
+.l-its-hover__latex-file-folded {
   transition: opacity 0.35s cubic-bezier(0.4, 0, 0.2, 1);
   opacity: 1;
+}
+
+.l-its-hover__markdown-file-flat,
+.l-its-hover__latex-file-flat {
+  transition: opacity 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  opacity: 0;
 }
 
 .l-its-hover--refresh,
@@ -788,10 +792,14 @@ const iconAttrs = computed(() => {
 }
 
 :is(.v-icon:hover, .feature-card:hover .v-icon, .category-item:hover .v-icon, .mobile-category-item:hover .v-icon) .l-its-hover--latex-ai .l-its-hover__latex-crease,
-:is(.v-icon:hover, .feature-card:hover .v-icon, .category-item:hover .v-icon, .mobile-category-item:hover .v-icon) .l-its-hover--latex-ai .l-its-hover__latex-corner,
-:is(.v-icon:hover, .feature-card:hover .v-icon, .category-item:hover .v-icon, .mobile-category-item:hover .v-icon) .l-its-hover--latex-ai .l-its-hover__latex-corner-fill {
-  /* HOVER STATE: Crease, corner lines and fill fade as paper flattens */
+:is(.v-icon:hover, .feature-card:hover .v-icon, .category-item:hover .v-icon, .mobile-category-item:hover .v-icon) .l-its-hover--latex-ai .l-its-hover__latex-file-folded {
+  /* HOVER STATE: Crease and folded document fade */
   opacity: 0;
+}
+
+:is(.v-icon:hover, .feature-card:hover .v-icon, .category-item:hover .v-icon, .mobile-category-item:hover .v-icon) .l-its-hover--latex-ai .l-its-hover__latex-file-flat {
+  /* HOVER STATE: Flat document appears */
+  opacity: 1;
 }
 
 :is(
@@ -822,10 +830,14 @@ const iconAttrs = computed(() => {
 }
 
 :is(.v-icon:hover, .feature-card:hover .v-icon, .category-item:hover .v-icon, .mobile-category-item:hover .v-icon) .l-its-hover--markdown-collab .l-its-hover__markdown-crease,
-:is(.v-icon:hover, .feature-card:hover .v-icon, .category-item:hover .v-icon, .mobile-category-item:hover .v-icon) .l-its-hover--markdown-collab .l-its-hover__markdown-corner,
-:is(.v-icon:hover, .feature-card:hover .v-icon, .category-item:hover .v-icon, .mobile-category-item:hover .v-icon) .l-its-hover--markdown-collab .l-its-hover__markdown-corner-fill {
-  /* HOVER STATE: Crease, corner lines and fill fade as paper flattens */
+:is(.v-icon:hover, .feature-card:hover .v-icon, .category-item:hover .v-icon, .mobile-category-item:hover .v-icon) .l-its-hover--markdown-collab .l-its-hover__markdown-file-folded {
+  /* HOVER STATE: Crease and folded document fade */
   opacity: 0;
+}
+
+:is(.v-icon:hover, .feature-card:hover .v-icon, .category-item:hover .v-icon, .mobile-category-item:hover .v-icon) .l-its-hover--markdown-collab .l-its-hover__markdown-file-flat {
+  /* HOVER STATE: Flat document appears */
+  opacity: 1;
 }
 
 :is(.v-icon:hover, .feature-card:hover .v-icon, .category-item:hover .v-icon) .l-its-hover--markdown-collab .l-its-hover__markdown-users {

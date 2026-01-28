@@ -464,7 +464,7 @@ def llm_evaluation_status(scenario_id: int):
     """
     Check LLM evaluation status for a scenario.
     """
-    from db.models import LLMTaskResult, ItemDimensionRating
+    from db.models import LLMTaskResult
 
     scenario = RatingScenarios.query.get(scenario_id)
     if not scenario:
@@ -477,21 +477,22 @@ def llm_evaluation_status(scenario_id: int):
     scenario_items = ScenarioItems.query.filter_by(scenario_id=scenario_id).all()
     item_ids = [si.item_id for si in scenario_items]
 
-    # Check ratings from LLMs
-    llm_ratings = ItemDimensionRating.query.filter(
-        ItemDimensionRating.scenario_id == scenario_id,
-        ItemDimensionRating.evaluated_by_model.isnot(None)
+    # Check ratings from LLMs - use LLMTaskResult, not ItemDimensionRating
+    llm_results = LLMTaskResult.query.filter(
+        LLMTaskResult.scenario_id == scenario_id,
+        LLMTaskResult.task_type.in_(["rating", "mail_rating"]),
+        LLMTaskResult.error.is_(None)
     ).all()
 
     # Group by model
     ratings_by_model = {}
-    for rating in llm_ratings:
-        model = rating.evaluated_by_model or "unknown"
+    for result in llm_results:
+        model = result.model_id or "unknown"
         if model not in ratings_by_model:
             ratings_by_model[model] = []
         ratings_by_model[model].append({
-            "item_id": rating.item_id,
-            "dimensions": rating.dimension_ratings,
+            "item_id": result.item_id,
+            "payload": result.payload_json,
         })
 
     return jsonify({
@@ -506,7 +507,35 @@ def llm_evaluation_status(scenario_id: int):
             }
             for model, ratings in ratings_by_model.items()
         },
-        "total_llm_ratings": len(llm_ratings),
+        "total_llm_results": len(llm_results),
+    })
+
+
+@generation_debug_bp.route('/scenario-stats/<int:scenario_id>', methods=['GET'])
+@api_key_or_token_required
+@handle_api_errors(logger_name='generation_debug')
+def debug_scenario_stats(scenario_id: int):
+    """
+    Get full scenario stats for debugging.
+    """
+    from services.scenario_stats_service import get_scenario_stats_payload
+
+    scenario = RatingScenarios.query.get(scenario_id)
+    if not scenario:
+        raise NotFoundError(f"Scenario {scenario_id} not found")
+
+    payload = get_scenario_stats_payload(scenario_id)
+
+    # Extract key info for debugging
+    stats = payload.get("stats", {})
+    return jsonify({
+        "success": True,
+        "scenario_id": scenario_id,
+        "function_type": payload.get("function_type"),
+        "evaluator_stats_count": len(stats.get("evaluator_stats", [])),
+        "evaluator_stats": stats.get("evaluator_stats", []),
+        "rating_distribution": stats.get("rating_distribution"),
+        "dimension_averages": stats.get("dimension_averages"),
     })
 
 

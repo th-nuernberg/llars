@@ -4,9 +4,26 @@ Output Export Service.
 Handles export of generated outputs to various formats and creation
 of evaluation scenarios from generated content.
 
+SCHEMA GROUND TRUTH:
+-------------------
+Beim Export von Outputs und Erstellung von Evaluation-Szenarien
+müssen die einheitlichen EvaluationData Schemas beachtet werden:
+
+- Backend: app/schemas/evaluation_data_schemas.py (Pydantic Models)
+- Frontend: llars-frontend/src/schemas/evaluationSchemas.js
+- Transformer: app/services/evaluation/schema_transformer_service.py
+
+WICHTIG für Szenario-Erstellung:
+- Item.id: Technische ID (z.B. "item_1") - NIEMALS LLM-Namen!
+- Item.label: UI-Anzeigename (generische Labels wie "Zusammenfassung 1")
+- Item.source: {"type": "llm", "name": "model_name"} für LLM-Herkunft
+- Message.generated_by: LLM-Modellname (für Tracking)
+
+Dokumentation: .claude/plans/evaluation-data-schemas.md
+
 Supported exports:
 - CSV: Tabular format with all output metadata
-- JSON: Full structured export
+- JSON: Full structured export (kann mit SchemaTransformer zu EvaluationData werden)
 - Evaluation Scenario: Creates a new scenario with generated outputs as items
 
 Usage:
@@ -50,23 +67,26 @@ from db.models import (
     ScenarioUsers,
 )
 from decorators.error_handler import NotFoundError, ValidationError
+from schemas.evaluation_data_schemas import EvaluationType
 
 logger = logging.getLogger(__name__)
 
 
 # =============================================================================
-# EVALUATION TYPE MAPPING
+# EVALUATION TYPE MAPPING (via unified schema)
 # =============================================================================
 
-# Map evaluation type names to function_type_ids
-EVALUATION_TYPE_MAP = {
-    "ranking": 1,
-    "rating": 2,
-    "mail_rating": 3,
-    "comparison": 4,
-    "authenticity": 5,
-    "labeling": 7,
-}
+def _get_evaluation_type_map() -> dict:
+    """
+    Get evaluation type to function_type_id mapping from unified schema.
+
+    Uses EvaluationType enum from evaluation_data_schemas.py as ground truth.
+    """
+    return {et.value: et.to_function_type_id() for et in EvaluationType}
+
+
+# Cached mapping for backward compatibility
+EVALUATION_TYPE_MAP = _get_evaluation_type_map()
 
 
 class OutputExportService:

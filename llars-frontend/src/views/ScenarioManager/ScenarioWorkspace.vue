@@ -201,6 +201,24 @@
 </template>
 
 <script setup>
+/**
+ * Scenario Workspace Component
+ *
+ * Main workspace for managing a single evaluation scenario.
+ *
+ * SCHEMA GROUND TRUTH:
+ * -------------------
+ * Item-Daten werden über die Schema-API abgerufen:
+ * - GET /api/scenarios/{id}/schema - Szenario-Übersicht
+ * - GET /api/scenarios/{id}/items/{item_id}/schema - Item im Schema-Format
+ *
+ * Schema-Definitionen:
+ * - Backend: app/schemas/evaluation_data_schemas.py
+ * - Frontend: src/schemas/evaluationSchemas.js
+ * - Composable: src/composables/useEvaluationSchema.js
+ *
+ * Dokumentation: .claude/plans/evaluation-data-schemas.md
+ */
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter, useRoute } from 'vue-router'

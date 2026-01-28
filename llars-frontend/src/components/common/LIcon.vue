@@ -1329,4 +1329,35 @@ const iconAttrs = computed(() => {
 ) .l-its-hover--system-theme .l-its-hover__system-divider {
   opacity: 0.3;
 }
+
+/* ========================================
+   BATCH GENERATION ICON - Document stack with AI sparkles
+   Smooth transitions + continuous animations on hover
+   ======================================== */
+
+/* Base transitions for smooth return to original state */
+.l-its-hover__batch-doc {
+  transform-origin: center;
+  transition: transform 0.3s ease;
+}
+
+.l-its-hover__batch-sparkle {
+  transform-origin: center;
+  transition: transform 0.3s ease, opacity 0.3s ease;
+  opacity: 0.6;
+}
+
+/* Hover state - sparkles glitter */
+:is(.v-icon:hover, .feature-card:hover .v-icon, .category-item:hover .v-icon) .l-its-hover--batch-generation .l-its-hover__batch-doc--front {
+  transform: scale(1.02);
+}
+
+:is(.v-icon:hover, .feature-card:hover .v-icon, .category-item:hover .v-icon) .l-its-hover--batch-generation .l-its-hover__batch-sparkle {
+  animation: llars-sparkle-pulse 0.6s ease-in-out infinite;
+  opacity: 1;
+}
+
+:is(.v-icon:hover, .feature-card:hover .v-icon, .category-item:hover .v-icon) .l-its-hover--batch-generation .l-its-hover__batch-sparkle--two {
+  animation-delay: 0.2s;
+}
 </style>

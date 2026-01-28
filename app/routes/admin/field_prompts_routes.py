@@ -260,3 +260,35 @@ def seed_default_prompts():
         'created': created,
         'message': f"Created {created} default field prompts"
     })
+
+
+@data_bp.post("/admin/field-prompts/reseed-defaults")
+@require_permission("admin:field_prompts:manage")
+@handle_api_errors(logger_name='field_prompts')
+def reseed_default_prompts():
+    """
+    Reseed field prompts, updating existing ones with default values.
+
+    Body:
+        field_keys: Optional list of specific field keys to reseed.
+                   If not provided, reseeds all default prompts.
+
+    Returns:
+        Number of prompts created and updated
+    """
+    data = request.get_json(silent=True) or {}
+    field_keys = data.get('field_keys')
+
+    result = FieldPromptService.reseed_defaults(field_keys)
+
+    logger.info(
+        f"Reseeded field prompts by {g.authentik_user.username}: "
+        f"{result['created']} created, {result['updated']} updated"
+    )
+
+    return jsonify({
+        'success': True,
+        'created': result['created'],
+        'updated': result['updated'],
+        'message': f"Created {result['created']}, updated {result['updated']} field prompts"
+    })

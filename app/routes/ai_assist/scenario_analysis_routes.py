@@ -10,7 +10,7 @@ import json
 import logging
 from flask import jsonify, request, g, Response
 
-from auth.decorators import authentik_required
+from auth.decorators import authentik_required, api_key_or_token_required
 from decorators.error_handler import handle_api_errors, ValidationError, NotFoundError
 from decorators.permission_decorator import require_permission
 from routes.auth import data_bp
@@ -79,7 +79,7 @@ def detect_field_types(items):
 
 
 @data_bp.post("/ai-assist/analyze-scenario-data")
-@authentik_required
+@api_key_or_token_required
 @require_permission('data:import')
 @handle_api_errors(logger_name='ai_assist')
 def analyze_scenario_data():
@@ -229,7 +229,7 @@ def analyze_scenario_data():
 
 
 @data_bp.post("/ai-assist/analyze-scenario-data/stream")
-@authentik_required
+@api_key_or_token_required
 @require_permission('data:import')
 @handle_api_errors(logger_name='ai_assist')
 def analyze_scenario_data_stream():

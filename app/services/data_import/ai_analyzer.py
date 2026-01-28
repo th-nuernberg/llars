@@ -298,7 +298,7 @@ Bereits erkannte Struktur:
 - Einträge: {detected_structure.get('item_count', '?')}
 """
 
-        prompt = f"""Du bist ein Assistent für ein Evaluations-System (LLARS). Analysiere die Benutzeranfrage und die Datenstruktur.
+        prompt = f"""Du bist ein Assistent für das LLARS Evaluations-System. Analysiere die Benutzeranfrage und die Datenstruktur.
 
 BENUTZERANFRAGE:
 "{user_intent}"
@@ -313,31 +313,28 @@ DATENBEISPIEL:
 {sample_json}
 ```
 
-VERFÜGBARE TASK-TYPEN in LLARS (NUR diese Werte):
-1. "rating" - Einzelne Einträge auf Skala bewerten (z.B. 1-5 Sterne)
-2. "ranking" - Mehrere Einträge nach Kriterium sortieren
-3. "comparison" - Zwei Antworten/Texte direkt vergleichen (A vs B)
-4. "mail_rating" - E-Mail/Chat-Konversationen bewerten
-5. "authenticity" - Echt/Fake erkennen (ist es von Mensch oder KI?)
-6. "labeling" - Labels/Kategorien zuweisen (Klassifikation)
+EVALUATIONSTYPEN (function_type_id):
+| Typ | ID | Beschreibung |
+|-----|----| -------------|
+| ranking | 1 | Items sortieren/kategorisieren (Gut/Mittel/Schlecht) |
+| rating | 2 | Multi-dimensionales Rating (Kohärenz, Flüssigkeit, Relevanz, Konsistenz) |
+| mail_rating | 3 | E-Mail-Beratungsverläufe bewerten (LLARS-spezifisch) |
+| comparison | 4 | A vs B Vergleich - welches ist besser? |
+| authenticity | 5 | Echt/Fake erkennen (Mensch vs KI) |
+| labeling | 7 | Kategorien zuweisen (binär, multi-class) |
 
-LLARS ZIELFORMAT (vereinfachte Beispiele pro Item):
-- conversation:
-  {{"id":"id-1","conversation":[{{"role":"user","content":"..."}},{{"role":"assistant","content":"..."}}],"subject":"...","metadata":{{...}}}}
-- single_text:
-  {{"id":"id-2","content":"...","subject":"...","metadata":{{...}}}}
-- comparison (text_pair):
-  {{"id":"id-3","text_a":"...","text_b":"...","label_a":"A","label_b":"B"}}
-- labeling/authenticity:
-  {{"id":"id-4","content":"...","label":"optional-ground-truth"}}
+ENTSCHEIDUNGSBAUM:
+1. Zwei Antwort-Versionen (answer_a/answer_b, text_a/text_b)? → comparison
+2. Label-Felder (is_fake, is_human, sentiment)? → authenticity (binär) oder labeling (mehrklassig)
+3. Items sortieren/kategorisieren? → ranking
+4. E-Mail/Chat-Konversationen mit Beratungskontext? → mail_rating
+5. Einzelne Texte bewerten? → rating
 
-Hinweise zur Typ-Erkennung:
-- comparison: zwei Antwortfelder (A/B, response_a/response_b, text_a/text_b)
-- ranking: Rang/Position/Bucket oder gruppierte Items, die sortiert werden sollen
-- labeling: Kategorien/Labels im Datensatz oder klares Klassifikationsziel
-- authenticity: Labels wie is_fake, generated_by, synthetic/real
-- mail_rating: mehrteilige Konversationen oder E-Mails mit subject/thread
-- rating: einzelne Texte oder Antworten mit Qualitätsbewertung
+ZIELFORMAT pro Item:
+- conversation: {{"id":"id-1","conversation":[{{"role":"user","content":"..."}},{{"role":"assistant","content":"..."}}],"subject":"..."}}
+- single_text: {{"id":"id-2","content":"...","subject":"..."}}
+- comparison: {{"id":"id-3","text_a":"...","text_b":"...","label_a":"A","label_b":"B"}}
+- labeling/authenticity: {{"id":"id-4","content":"...","label":"optional-ground-truth"}}
 
 Analysiere und gib ein JSON-Objekt zurück mit:
 
@@ -521,43 +518,45 @@ Return ONLY valid JSON."""
         config_json = json.dumps(current_config, indent=2, ensure_ascii=False)
 
         # Build system prompt for config extraction
+        # Schema information aligned with central evaluation_data_schemas.py
         system_prompt = """Du bist ein Assistent für das LLARS Evaluations-System.
-Du hilfst Benutzern, ihre Daten zu konfigurieren für Evaluationen.
+Du hilfst Benutzern, ihre Daten für Evaluationen zu konfigurieren.
 
 DEINE AUFGABE:
 1. Verstehe was der Benutzer möchte
 2. Extrahiere Konfigurationswerte aus dem Gespräch
 3. Gib strukturierte Updates und freundliche Antworten
 
-VERFÜGBARE TASK-TYPEN (NUR diese Werte):
-- "rating": Einzelne Einträge auf Skala bewerten (z.B. 1-5 Sterne)
-- "ranking": Mehrere Einträge sortieren/in Buckets einteilen
-- "comparison": Zwei Antworten direkt vergleichen (A vs B)
-- "mail_rating": E-Mail/Chat-Konversationen bewerten
-- "authenticity": Echt/Fake erkennen (Mensch vs KI)
-- "labeling": Labels/Kategorien zuweisen (Klassifikation)
+EVALUATIONSTYPEN (function_type_id):
+| Typ | ID | Beschreibung |
+|-----|----| -------------|
+| ranking | 1 | Items sortieren/kategorisieren (Gut/Mittel/Schlecht) |
+| rating | 2 | Multi-dimensionales Rating (Kohärenz, Flüssigkeit, Relevanz, Konsistenz) |
+| mail_rating | 3 | E-Mail-Beratungsverläufe bewerten (LLARS-spezifisch) |
+| comparison | 4 | A vs B Vergleich - welches ist besser? |
+| authenticity | 5 | Echt/Fake erkennen (Mensch vs KI) |
+| labeling | 7 | Kategorien zuweisen (binär, multi-class) |
 
-LLARS ZIELFORMAT (vereinfachte Beispiele pro Item):
-- conversation:
-  {"id":"id-1","conversation":[{"role":"user","content":"..."},{"role":"assistant","content":"..."}],"subject":"...","metadata":{...}}
-- single_text:
-  {"id":"id-2","content":"...","subject":"...","metadata":{...}}
-- comparison (text_pair):
-  {"id":"id-3","text_a":"...","text_b":"...","label_a":"A","label_b":"B"}
-- labeling/authenticity:
-  {"id":"id-4","content":"...","label":"optional-ground-truth"}
+PRESET-EMPFEHLUNGEN:
+- rating: "llm-judge-standard" (4 Dimensionen) oder "response-quality", "news-article"
+- ranking: "buckets-3" (Gut/Mittel/Schlecht) oder "buckets-5"
+- labeling: "binary-authentic" oder "sentiment-3"
+- comparison: "pairwise" oder "multicriteria"
+- authenticity: "nachricht-echtheit" oder "ki-generiert"
 
 KONFIGURATIONSSTRUKTUR:
-Wenn der Benutzer Labels, Buckets oder Skalen definieren möchte, extrahiere diese.
 
 Labels (für authenticity/labeling):
 [{"name": "echt", "color": "#98d4bb", "description": "Von Menschen"}, ...]
 
 Buckets (für ranking):
-[{"name": "gut", "order": 1, "color": "#98d4bb"}, {"name": "mittel", "order": 2}, ...]
+[{"name": "gut", "order": 1, "color": "#98d4bb"}, {"name": "mittel", "order": 2, "color": "#D1BC8A"}, {"name": "schlecht", "order": 3, "color": "#e8a087"}]
+
+Dimensions (für rating/mail_rating):
+[{"id": "coherence", "name": "Kohärenz", "weight": 0.25}, {"id": "fluency", "name": "Flüssigkeit", "weight": 0.25}]
 
 Scales (für rating/mail_rating):
-[{"name": "Qualität", "min": 1, "max": 5, "labels": ["schlecht", "", "", "", "sehr gut"]}]
+{"min": 1, "max": 5, "labels": {"1": "Sehr schlecht", "5": "Sehr gut"}}
 
 ANTWORTFORMAT:
 Antworte mit einem JSON-Block am ANFANG deiner Nachricht, gefolgt von deiner Erklärung:
@@ -565,9 +564,11 @@ Antworte mit einem JSON-Block am ANFANG deiner Nachricht, gefolgt von deiner Erk
 ```config
 {
   "task_type": "...",
+  "recommended_preset": "preset-id",
   "labels": [...],
   "buckets": [...],
-  "scales": [...],
+  "dimensions": [...],
+  "scales": {...},
   "field_mapping": {...},
   "role_mapping": {...}
 }
@@ -580,6 +581,7 @@ WICHTIG:
 - Lass Felder weg, die unverändert bleiben
 - Wenn nichts geändert werden soll, lass den config-Block weg
 - task_type muss einer der obigen Werte sein (nutze "labeling", nicht "classification")
+- Empfehle immer ein passendes Preset mit recommended_preset
 - Antworte immer auf Deutsch und freundlich"""
 
         # Build user context

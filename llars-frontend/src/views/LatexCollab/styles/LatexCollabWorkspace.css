@@ -454,32 +454,49 @@
 /* Resize divider between PDF and Comments */
 .preview-resize-divider {
   flex-shrink: 0;
-  height: 10px;
+  height: 8px;
   cursor: row-resize;
-  background: rgba(var(--v-theme-on-surface), 0.04);
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background 0.15s;
+  position: relative;
+  z-index: 10;
 }
 
 .preview-resize-divider:hover,
 .preview-resize-divider.resizing {
-  background: rgba(var(--v-theme-primary), 0.15);
+  background: rgba(var(--v-theme-primary), 0.08);
 }
 
 .preview-resize-handle {
   width: 40px;
   height: 4px;
-  background: rgba(var(--v-theme-on-surface), 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
   border-radius: 2px;
-  transition: background 0.15s, width 0.15s;
+  opacity: 0;
+  transition: opacity 0.15s ease;
 }
 
 .preview-resize-divider:hover .preview-resize-handle,
 .preview-resize-divider.resizing .preview-resize-handle {
-  background: rgb(var(--v-theme-primary));
-  width: 60px;
+  opacity: 1;
+}
+
+/* Three dots handle like PanelResizeDivider */
+.preview-resize-handle span {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: rgba(var(--v-theme-on-surface), 0.3);
+  transition: background 0.15s ease;
+}
+
+.preview-resize-divider:hover .preview-resize-handle span,
+.preview-resize-divider.resizing .preview-resize-handle span {
+  background: var(--llars-primary, #b0ca97);
 }
 
 /* Split mode */
@@ -579,6 +596,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-shrink: 0;
 }
 
 .comments-empty {
@@ -592,6 +610,8 @@
   flex-direction: column;
   gap: 8px;
   overflow-y: auto;
+  flex: 1;
+  min-height: 0;
 }
 
 .comment-item {
@@ -623,6 +643,10 @@
 .comment-body {
   font-size: 12px;
   color: rgb(var(--v-theme-on-surface));
+  max-height: 100px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 .comment-actions {
@@ -636,7 +660,11 @@
 .comment-thread {
   border-radius: 10px;
   background: rgba(var(--v-theme-on-surface), 0.02);
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
+  max-height: 200px;
+  min-height: 60px;
+  resize: vertical;
   transition: border-color 0.15s ease, background-color 0.15s ease;
   /* Default border - will be overridden by inline style for author color */
   border: 2px solid rgba(var(--v-theme-on-surface), 0.08);

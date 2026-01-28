@@ -275,7 +275,9 @@
                     :class="{ resizing: resizingComments }"
                     @mousedown="startCommentsResize"
                   >
-                    <div class="preview-resize-handle" />
+                    <div class="preview-resize-handle">
+                      <span /><span /><span />
+                    </div>
                   </div>
 
                   <div class="comments-panel" :style="commentsPanelStyle">

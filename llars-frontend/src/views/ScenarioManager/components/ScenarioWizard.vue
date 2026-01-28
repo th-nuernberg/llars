@@ -1347,15 +1347,12 @@ async function analyzeData() {
         for (const line of lines) {
           if (line.startsWith('event: ')) {
             currentEventType = line.slice(7).trim()
-            console.log('[SSE] Event type:', currentEventType)
             continue
           }
           if (line.startsWith('data: ')) {
             const eventData = line.slice(6)
-            console.log('[SSE] Data for event', currentEventType, ':', eventData.substring(0, 200))
             try {
               const parsed = JSON.parse(eventData)
-              console.log('[SSE] Parsed:', currentEventType, parsed)
 
               // Handle events based on tracked event type
               switch (currentEventType) {
@@ -1389,7 +1386,6 @@ async function analyzeData() {
                   break
 
                 case 'suggestions': {
-                  console.log('[SSE] Processing suggestions:', parsed)
                   aiSuggestions.value = parsed
 
                   // Update analysis result with suggestions
@@ -1418,8 +1414,6 @@ async function analyzeData() {
                   if (analysisPanel.value?.processSuggestions) {
                     analysisPanel.value.processSuggestions(parsed)
                   }
-                  console.log('[SSE] After suggestions - analysisResult:', JSON.stringify(analysisResult.value, null, 2))
-                  console.log('[SSE] After suggestions - formData:', { evalType: formData.value.evalType, scenario_name: formData.value.scenario_name, description: formData.value.description })
                   break
                 }
 
@@ -1434,16 +1428,12 @@ async function analyzeData() {
                   break
 
                 case 'done':
-                  console.log('[SSE] Done event received:', parsed)
                   tokensUsed = parsed.tokens_used || 0
                   if (analysisResult.value) {
                     analysisResult.value.tokensUsed = tokensUsed
                     analysisResult.value.streaming = false
                   }
                   streamingPhase.value = 'done'
-                  console.log('[SSE] Final state - streamingPhase:', streamingPhase.value)
-                  console.log('[SSE] Final state - analysisResult.suggestedType:', analysisResult.value?.suggestedType)
-                  console.log('[SSE] Final state - formData.evalType:', formData.value.evalType)
                   // Finalize panel
                   if (analysisPanel.value?.finalize) {
                     analysisPanel.value.finalize()
@@ -1451,7 +1441,7 @@ async function analyzeData() {
                   break
 
                 case 'error':
-                  console.error('[SSE] Error event:', parsed.error)
+                  console.warn('Streaming AI error:', parsed.error)
                   if (analysisPanel.value?.setError) {
                     analysisPanel.value.setError(parsed.error)
                   }
@@ -1460,7 +1450,6 @@ async function analyzeData() {
 
               currentEventType = null // Reset after processing data
             } catch (parseError) {
-              console.warn('[SSE] Parse error for event', currentEventType, ':', parseError.message, 'Data:', eventData.substring(0, 100))
               // Ignore parse errors for incomplete JSON
               if (parseError.message && !parseError.message.includes('Unexpected')) {
                 throw parseError
@@ -1755,11 +1744,16 @@ async function createScenario() {
     if (analyzedData.value.length > 0 && scenario?.id) {
       try {
         const taskType = getTaskType(formData.value.evalType)
+
+        // Get AI-suggested field mapping if available
+        const fieldMapping = aiSuggestions.value?.field_mapping || null
+
         const importResult = await importService.importFromData(
           analyzedData.value,
           scenario.id,
           taskType,
-          formData.value.scenario_name
+          formData.value.scenario_name,
+          fieldMapping
         )
         console.log('Data import result:', importResult)
 

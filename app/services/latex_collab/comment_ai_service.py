@@ -38,7 +38,7 @@ class CommentAIService:
         """Get AI assistant settings from system settings."""
         return {
             'enabled': bool(get_setting('ai_assistant_enabled', True)),
-            'color': get_setting('ai_assistant_color', '#b0ca97'),  # LLARS Primary color
+            'color': get_setting('ai_assistant_color', '#9B59B6'),  # LLARS KI purple
             'username': get_setting('ai_assistant_username', 'LLARS KI'),
         }
 

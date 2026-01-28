@@ -1,6 +1,30 @@
 /**
  * Evaluation Presets & Configuration Schema
  *
+ * SCHEMA GROUND TRUTH:
+ * -------------------
+ * Dieses Modul definiert UI-Presets für Evaluations-Konfigurationen.
+ * Die einheitlichen Schema-Definitionen befinden sich in:
+ *
+ * - Backend: app/schemas/evaluation_data_schemas.py (Pydantic Models)
+ * - Frontend: llars-frontend/src/schemas/evaluationSchemas.js (Validation)
+ * - Transformer: app/services/evaluation/schema_transformer_service.py
+ *
+ * WICHTIG:
+ * - Presets hier definieren UI-Konfiguration
+ * - EvaluationData Schemas definieren Daten-Format für API
+ * - SchemaTransformer konvertiert DB-Daten → Schema-Format
+ *
+ * TYPEN-MAPPING (function_type_id) - aus evaluationSchemas.js:
+ * - 1 = ranking
+ * - 2 = rating
+ * - 3 = mail_rating
+ * - 4 = comparison
+ * - 5 = authenticity
+ * - 7 = labeling
+ *
+ * Dokumentation: .claude/plans/evaluation-data-schemas.md
+ *
  * Defines generalized evaluation configurations for:
  * - Rating (Likert scales, continuous, etc.)
  * - Ranking (buckets, pairwise, etc.)
@@ -12,42 +36,27 @@
  * - Message Authenticity (fake/real message detection)
  */
 
-// ===== Evaluation Types =====
-// Generalized evaluation types
-export const EVAL_TYPES = {
-  RATING: 'rating',
-  RANKING: 'ranking',
-  LABELING: 'labeling',
-  COMPARISON: 'comparison',
-  // LLARS Domain-Specific Types (map to base types internally)
-  MAIL_RATING: 'mail_rating',         // → rating with dimensions
-  AUTHENTICITY: 'authenticity'        // → labeling binary
-}
+// Import from unified schema definitions
+import {
+  EvaluationType,
+  FUNCTION_TYPE_MAP,
+  EVALUATION_TYPE_TO_ID,
+  createDefaultScale,
+  createDefaultRatingDimensions,
+  createDefaultRankingBuckets
+} from '@/schemas/evaluationSchemas'
 
-// ===== Type ID Mapping (for DB compatibility) =====
-// Generalized: 1=ranking, 2=rating, 4=comparison, 7=labeling
-// LLARS-specific: 3=mail_rating, 5=authenticity
-export const TYPE_ID_MAP = {
-  // Generalized types
-  1: EVAL_TYPES.RANKING,
-  2: EVAL_TYPES.RATING,
-  4: EVAL_TYPES.COMPARISON,
-  7: EVAL_TYPES.LABELING,
-  // LLARS-specific types
-  3: EVAL_TYPES.MAIL_RATING,
-  5: EVAL_TYPES.AUTHENTICITY
-}
+// ===== Evaluation Types (re-export from schema) =====
+// Generalized evaluation types - use schema as source of truth
+export const EVAL_TYPES = EvaluationType
 
-export const ID_TYPE_MAP = {
-  // Generalized types
-  [EVAL_TYPES.RANKING]: 1,
-  [EVAL_TYPES.RATING]: 2,
-  [EVAL_TYPES.COMPARISON]: 4,
-  [EVAL_TYPES.LABELING]: 7,
-  // LLARS-specific types
-  [EVAL_TYPES.MAIL_RATING]: 3,
-  [EVAL_TYPES.AUTHENTICITY]: 5
-}
+// ===== Type ID Mapping (from unified schema) =====
+// Re-export from schema for backward compatibility
+export const TYPE_ID_MAP = FUNCTION_TYPE_MAP
+export const ID_TYPE_MAP = EVALUATION_TYPE_TO_ID
+
+// Re-export factory functions for convenience
+export { createDefaultScale, createDefaultRatingDimensions, createDefaultRankingBuckets }
 
 // ===== Base Type Mapping (for LLARS domain types) =====
 // Maps domain-specific types to their underlying base type

@@ -104,7 +104,7 @@ const fetchUserProfile = async () => {
   if (!token.value) return null;
 
   try {
-    const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:55080';
+    const baseUrl = import.meta.env.VITE_API_BASE_URL || '';
     const response = await axios.get(`${baseUrl}/auth/authentik/me`, {
       headers: {
         Authorization: `Bearer ${token.value}`
@@ -140,7 +140,7 @@ const fetchUserSettings = async () => {
   if (!token.value) return null;
 
   try {
-    const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:55080';
+    const baseUrl = import.meta.env.VITE_API_BASE_URL || '';
     const response = await axios.get(`${baseUrl}/api/users/me/settings`, {
       headers: {
         Authorization: `Bearer ${token.value}`
@@ -182,7 +182,7 @@ const updateCollabColor = async (color) => {
   if (!token.value) return false;
 
   try {
-    const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:55080';
+    const baseUrl = import.meta.env.VITE_API_BASE_URL || '';
     const response = await axios.patch(`${baseUrl}/api/users/me/settings`, {
       collab_color: color
     }, {
@@ -233,7 +233,7 @@ const uploadAvatar = async (file) => {
   if (!file) return { success: false };
 
   try {
-    const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:55080';
+    const baseUrl = import.meta.env.VITE_API_BASE_URL || '';
     const formData = new FormData();
     formData.append('file', file);
 
@@ -259,7 +259,7 @@ const regenerateAvatar = async () => {
   if (!token.value) return { success: false };
 
   try {
-    const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:55080';
+    const baseUrl = import.meta.env.VITE_API_BASE_URL || '';
     const response = await axios.patch(`${baseUrl}/api/users/me/avatar`, {}, {
       headers: {
         Authorization: `Bearer ${token.value}`
@@ -281,7 +281,7 @@ const resetAvatar = async () => {
   if (!token.value) return { success: false };
 
   try {
-    const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:55080';
+    const baseUrl = import.meta.env.VITE_API_BASE_URL || '';
     const response = await axios.delete(`${baseUrl}/api/users/me/avatar`, {
       headers: {
         Authorization: `Bearer ${token.value}`
@@ -328,7 +328,7 @@ export const useAuth = () => {
 
   const login = async (username, password) => {
     // Use backend proxy endpoint for authentication (avoids CORS issues)
-    const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:55080';
+    const baseUrl = import.meta.env.VITE_API_BASE_URL || '';
     const loginUrl = `${baseUrl}/auth/authentik/login`;
 
     try {

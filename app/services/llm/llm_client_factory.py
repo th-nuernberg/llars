@@ -33,6 +33,47 @@ class LLMClientFactory:
     """Create LLM clients routed by model or provider."""
 
     @staticmethod
+    def get_default_model_id() -> Optional[str]:
+        """
+        Get the default model ID.
+
+        Returns the model_id of the first matching:
+        1. Model with is_default=True and is_active=True
+        2. First active model of the default provider
+        3. None if no models are configured
+        """
+        # First try explicit default model
+        default_model = (
+            LLMModel.query
+            .filter_by(is_default=True, is_active=True, model_type=LLMModel.MODEL_TYPE_LLM)
+            .first()
+        )
+        if default_model:
+            return default_model.model_id
+
+        # Fallback: first model of default provider
+        default_provider = LLMProviderService.get_default_provider()
+        if default_provider:
+            first_model = (
+                LLMModel.query
+                .filter_by(provider_id=default_provider.id, is_active=True, model_type=LLMModel.MODEL_TYPE_LLM)
+                .first()
+            )
+            if first_model:
+                return first_model.model_id
+
+        # Fallback: any active LLM model
+        any_model = (
+            LLMModel.query
+            .filter_by(is_active=True, model_type=LLMModel.MODEL_TYPE_LLM)
+            .first()
+        )
+        if any_model:
+            return any_model.model_id
+
+        return None
+
+    @staticmethod
     def get_client_for_model(model_id: Optional[str]):
         provider = LLMClientFactory._resolve_provider(model_id)
         return LLMClientFactory.get_client_for_provider(provider)

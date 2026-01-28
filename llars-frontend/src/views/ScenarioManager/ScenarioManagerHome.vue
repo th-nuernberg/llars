@@ -74,41 +74,7 @@
 
       <!-- Data Format Tab -->
       <template v-else-if="activeTab === 'data-format'">
-        <div class="data-format">
-          <LCard
-            class="ideal-data-card"
-            :title="$t('scenarioManager.dataFormat.title')"
-            icon="mdi-file-code-outline"
-            color="#b0ca97"
-          >
-            <p class="ideal-data-intro">{{ $t('scenarioManager.dataFormat.intro') }}</p>
-            <ul class="ideal-data-list">
-              <li>{{ $t('scenarioManager.dataFormat.tip1') }}</li>
-              <li>{{ $t('scenarioManager.dataFormat.tip2') }}</li>
-              <li>{{ $t('scenarioManager.dataFormat.tip3') }}</li>
-              <li>{{ $t('scenarioManager.dataFormat.tip4') }}</li>
-              <li>{{ $t('scenarioManager.dataFormat.tip5') }}</li>
-            </ul>
-            <div class="ideal-data-grid">
-              <div class="ideal-data-example">
-                <div class="ideal-data-label">{{ $t('scenarioManager.dataFormat.singleLabel') }}</div>
-                <pre class="ideal-data-code">{{ $t('scenarioManager.dataFormat.singleExample') }}</pre>
-              </div>
-              <div class="ideal-data-example">
-                <div class="ideal-data-label">{{ $t('scenarioManager.dataFormat.conversationLabel') }}</div>
-                <pre class="ideal-data-code">{{ $t('scenarioManager.dataFormat.conversationExample') }}</pre>
-              </div>
-              <div class="ideal-data-example">
-                <div class="ideal-data-label">{{ $t('scenarioManager.dataFormat.comparisonLabel') }}</div>
-                <pre class="ideal-data-code">{{ $t('scenarioManager.dataFormat.comparisonExample') }}</pre>
-              </div>
-            </div>
-            <div class="ideal-data-hint">
-              <LIcon size="16" class="mr-1">mdi-information-outline</LIcon>
-              <span>{{ $t('scenarioManager.dataFormat.hint') }}</span>
-            </div>
-          </LCard>
-        </div>
+        <DataFormatGuide />
       </template>
     </div>
 
@@ -154,6 +120,7 @@ import { useScenarioManager } from './composables/useScenarioManager'
 import ScenarioOwnerCard from './components/ScenarioOwnerCard.vue'
 import ScenarioInviteCard from './components/ScenarioInviteCard.vue'
 import ScenarioWizard from './components/ScenarioWizard.vue'
+import DataFormatGuide from './components/DataFormatGuide.vue'
 
 const router = useRouter()
 const route = useRoute()

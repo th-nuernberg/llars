@@ -107,8 +107,8 @@ class SystemSettings(db.Model):
         comment="Enable AI assistant for comment resolution in LaTeX Collab"
     )
     ai_assistant_color: Mapped[str] = mapped_column(
-        db.String(7), default='#9B59B6', nullable=False,
-        comment="Reserved color for AI assistant (hex, default: purple)"
+        db.String(7), default='#b0ca97', nullable=False,
+        comment="Reserved color for AI assistant (hex, default: LLARS Primary)"
     )
     ai_assistant_username: Mapped[str] = mapped_column(
         db.String(50), default='LLARS KI', nullable=False,

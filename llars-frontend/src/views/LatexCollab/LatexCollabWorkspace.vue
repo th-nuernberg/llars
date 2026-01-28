@@ -1036,7 +1036,7 @@ function handleNavigateToDocument(documentId, comment) {
 // AI Assistant for Comment Resolution
 // ============================================================
 const aiAssistantEnabled = ref(false)
-const aiAssistantColor = ref('#9B59B6')
+const aiAssistantColor = ref('#b0ca97')  // LLARS Primary color
 const aiAssistantUsername = ref('LLARS KI')
 const aiResolvingCommentId = ref(null)
 
@@ -1093,7 +1093,16 @@ async function aiResolveComment(comment) {
       if (changes?.old_text && changes?.new_text && changes.range_start != null && changes.range_end != null) {
         // The editor should have a method to replace text at a range
         if (editorRef.value?.replaceRange) {
-          editorRef.value.replaceRange(changes.range_start, changes.range_end, changes.new_text)
+          // Pass LLARS KI color and username for visual collab attribution
+          editorRef.value.replaceRange(
+            changes.range_start,
+            changes.range_end,
+            changes.new_text,
+            {
+              collabColor: aiAssistantColor.value,
+              collabUser: aiAssistantUsername.value
+            }
+          )
         }
       }
 

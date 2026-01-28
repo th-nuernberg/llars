@@ -1649,22 +1649,45 @@ function highlightRange(from, to) {
 }
 
 /**
- * Replace text at a specific range (for AI resolve)
+ * Replace text at a specific range (for AI resolve or other programmatic changes)
  * @param {number} from - Start position (character offset)
  * @param {number} to - End position (character offset)
  * @param {string} newText - Text to insert at the range
+ * @param {Object} [options] - Optional configuration
+ * @param {string} [options.collabColor] - Color for collab attribution (hex, e.g. '#9B59B6')
+ * @param {string} [options.collabUser] - Username for collab attribution (e.g. 'LLARS KI')
  */
-function replaceRange(from, to, newText) {
+function replaceRange(from, to, newText, options = {}) {
   if (!view.value || !ytext) return
   const docLength = view.value.state.doc.length
   const safeFrom = Math.max(0, Math.min(from, docLength))
   const safeTo = Math.max(safeFrom, Math.min(to, docLength))
 
+  // Build collab attributes if provided (for visual diff highlighting)
+  const attrs = {}
+  if (options.collabColor) {
+    attrs.collabColor = options.collabColor
+  }
+  if (options.collabUser) {
+    attrs.collabUser = options.collabUser
+  }
+  const hasAttrs = Object.keys(attrs).length > 0
+
   // Apply via Yjs for proper sync
   ydoc.value?.transact(() => {
     ytext.delete(safeFrom, safeTo - safeFrom)
-    ytext.insert(safeFrom, newText)
+    if (hasAttrs) {
+      // Insert with collab attributes for visual tracking
+      ytext.insert(safeFrom, newText, attrs)
+    } else {
+      ytext.insert(safeFrom, newText)
+    }
   }, 'ai-resolve')
+
+  // Trigger decoration update to show the change immediately
+  if (hasAttrs) {
+    nextTick(() => updateDecorations())
+  }
 }
 
 function flushDocumentState() {

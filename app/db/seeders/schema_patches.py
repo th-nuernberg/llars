@@ -688,7 +688,7 @@ def apply_schema_patches(db) -> None:
             db,
             table_name="system_settings",
             column_name="ai_assistant_color",
-            column_definition_sql="`ai_assistant_color` VARCHAR(7) NOT NULL DEFAULT '#9B59B6'",
+            column_definition_sql="`ai_assistant_color` VARCHAR(7) NOT NULL DEFAULT '#b0ca97'",
         )
         changed |= _ensure_column(
             db,

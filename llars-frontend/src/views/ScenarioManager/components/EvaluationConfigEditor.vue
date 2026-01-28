@@ -77,6 +77,29 @@
 </template>
 
 <script setup>
+/**
+ * Evaluation Config Editor Component
+ *
+ * Unified editor for all evaluation type configurations.
+ *
+ * SCHEMA GROUND TRUTH:
+ * -------------------
+ * Die Konfigurationen hier müssen mit den Schema-Definitionen übereinstimmen:
+ *
+ * - Backend: app/schemas/evaluation_data_schemas.py
+ * - Frontend: src/schemas/evaluationSchemas.js
+ * - Presets: src/views/ScenarioManager/config/evaluationPresets.js
+ *
+ * Unterstützte Typen (function_type_id):
+ * - 1 = ranking: SimpleRankingConfig | MultiGroupRankingConfig
+ * - 2 = rating: RatingConfig
+ * - 3 = mail_rating: MailRatingConfig
+ * - 4 = comparison: ComparisonConfig
+ * - 5 = authenticity: AuthenticityConfig
+ * - 7 = labeling: LabelingConfig
+ *
+ * Dokumentation: .claude/plans/evaluation-data-schemas.md
+ */
 import { ref, computed, watch, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import {

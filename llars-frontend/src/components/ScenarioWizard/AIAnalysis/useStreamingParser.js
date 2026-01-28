@@ -120,60 +120,72 @@ export function useStreamingParser() {
   /**
    * Process a new chunk from the stream.
    * Extraction order matches UI display order (top-to-bottom, left-to-right):
-   * 1. eval_type + confidence (EvalTypeCard - top left)
-   * 2. scenario_name + description (ScenarioSuggestionCard - top right)
-   * 3. eval_type_reasoning (ReasoningCard - middle)
-   * 4. config_suggestions (for Configuration step)
+   * 1. evaluation_type + confidence (EvalTypeCard - top left)
+   * 2. name + description (ScenarioSuggestionCard - top right)
+   * 3. reasoning (ReasoningCard - middle)
+   * 4. config (for Configuration step)
    * 5. data_quality (DataQualityCard - bottom right)
+   *
+   * Supports both old and new field names for backwards compatibility.
    */
   function processChunk(chunk) {
     buffer.value += chunk
     isStreaming.value = true
 
-    // 1. Extract eval_type (EvalTypeCard - top left)
+    // 1. Extract evaluation_type or eval_type (EvalTypeCard - top left)
     if (fieldState.evalType !== FIELD_STATE.COMPLETE) {
-      if (extractSimpleField('eval_type', (v) => { parsed.evalType = v })) {
+      // Try new field name first, then old
+      if (extractSimpleField('evaluation_type', (v) => { parsed.evalType = v }) ||
+          extractSimpleField('eval_type', (v) => { parsed.evalType = v })) {
         fieldState.evalType = FIELD_STATE.COMPLETE
       }
     }
 
-    // 2. Extract eval_type_confidence (EvalTypeCard - top left)
+    // 2. Extract confidence or eval_type_confidence (EvalTypeCard - top left)
     if (fieldState.evalTypeConfidence !== FIELD_STATE.COMPLETE) {
-      if (extractSimpleField('eval_type_confidence', (v) => { parsed.evalTypeConfidence = v })) {
+      // Try new field name first, then old
+      if (extractSimpleField('confidence', (v) => { parsed.evalTypeConfidence = v }) ||
+          extractSimpleField('eval_type_confidence', (v) => { parsed.evalTypeConfidence = v })) {
         fieldState.evalTypeConfidence = FIELD_STATE.COMPLETE
       }
     }
 
-    // 3. Extract scenario_name (ScenarioSuggestionCard - top right)
+    // 3. Extract name or scenario_name (ScenarioSuggestionCard - top right)
     if (fieldState.scenarioName !== FIELD_STATE.COMPLETE) {
-      const result = extractStreamingField('scenario_name')
+      // Try new field name first, then old
+      let result = extractStreamingField('name')
+      if (!result) result = extractStreamingField('scenario_name')
       if (result) {
         parsed.scenarioName = result.value
         fieldState.scenarioName = result.complete ? FIELD_STATE.COMPLETE : FIELD_STATE.STREAMING
       }
     }
 
-    // 4. Extract scenario_description (ScenarioSuggestionCard - top right)
+    // 4. Extract description or scenario_description (ScenarioSuggestionCard - top right)
     if (fieldState.scenarioDescription !== FIELD_STATE.COMPLETE) {
-      const result = extractStreamingField('scenario_description')
+      // Try new field name first, then old
+      let result = extractStreamingField('description')
+      if (!result) result = extractStreamingField('scenario_description')
       if (result) {
         parsed.scenarioDescription = result.value
         fieldState.scenarioDescription = result.complete ? FIELD_STATE.COMPLETE : FIELD_STATE.STREAMING
       }
     }
 
-    // 5. Extract eval_type_reasoning (ReasoningCard - middle, full width)
+    // 5. Extract reasoning or eval_type_reasoning (ReasoningCard - middle, full width)
     if (fieldState.evalTypeReasoning !== FIELD_STATE.COMPLETE) {
-      const result = extractStreamingField('eval_type_reasoning')
+      // Try new field name first, then old
+      let result = extractStreamingField('reasoning')
+      if (!result) result = extractStreamingField('eval_type_reasoning')
       if (result) {
         parsed.evalTypeReasoning = result.value
         fieldState.evalTypeReasoning = result.complete ? FIELD_STATE.COMPLETE : FIELD_STATE.STREAMING
       }
     }
 
-    // 6. Detect config_suggestions start (for Configuration step)
+    // 6. Detect config or config_suggestions start (for Configuration step)
     if (fieldState.configSuggestions === FIELD_STATE.PENDING) {
-      const configStart = buffer.value.match(/"config_suggestions"\s*:\s*\{/)
+      const configStart = buffer.value.match(/"config"\s*:\s*\{/) || buffer.value.match(/"config_suggestions"\s*:\s*\{/)
       if (configStart) {
         fieldState.configSuggestions = FIELD_STATE.STREAMING
       }
@@ -182,30 +194,46 @@ export function useStreamingParser() {
 
   /**
    * Process the suggestions event (complete parsed JSON).
+   * Supports both old (eval_type, scenario_name) and new (evaluation_type, name) field names.
    */
   function processSuggestions(suggestions) {
-    if (suggestions.eval_type) {
-      parsed.evalType = suggestions.eval_type
+    // Support both old (eval_type) and new (evaluation_type) field names
+    const evalType = suggestions.evaluation_type || suggestions.eval_type
+    if (evalType) {
+      parsed.evalType = evalType
       fieldState.evalType = FIELD_STATE.COMPLETE
     }
-    if (suggestions.eval_type_confidence !== undefined) {
-      parsed.evalTypeConfidence = suggestions.eval_type_confidence
+
+    // Support both old (eval_type_confidence) and new (confidence) field names
+    const confidence = suggestions.confidence ?? suggestions.eval_type_confidence
+    if (confidence !== undefined) {
+      parsed.evalTypeConfidence = confidence
       fieldState.evalTypeConfidence = FIELD_STATE.COMPLETE
     }
-    if (suggestions.eval_type_reasoning) {
-      parsed.evalTypeReasoning = suggestions.eval_type_reasoning
+
+    // Support both old (eval_type_reasoning) and new (reasoning) field names
+    const reasoning = suggestions.reasoning || suggestions.eval_type_reasoning
+    if (reasoning) {
+      parsed.evalTypeReasoning = reasoning
       fieldState.evalTypeReasoning = FIELD_STATE.COMPLETE
     }
-    if (suggestions.scenario_name) {
-      parsed.scenarioName = suggestions.scenario_name
+
+    // Support both old (scenario_name) and new (name) field names
+    const scenarioName = suggestions.name || suggestions.scenario_name
+    if (scenarioName) {
+      parsed.scenarioName = scenarioName
       fieldState.scenarioName = FIELD_STATE.COMPLETE
     }
-    if (suggestions.scenario_description) {
-      parsed.scenarioDescription = suggestions.scenario_description
+
+    // Support both old (scenario_description) and new (description) field names
+    const scenarioDescription = suggestions.description || suggestions.scenario_description
+    if (scenarioDescription) {
+      parsed.scenarioDescription = scenarioDescription
       fieldState.scenarioDescription = FIELD_STATE.COMPLETE
     }
-    if (suggestions.config_suggestions) {
-      parsed.configSuggestions = suggestions.config_suggestions
+
+    if (suggestions.config_suggestions || suggestions.config) {
+      parsed.configSuggestions = suggestions.config_suggestions || suggestions.config
       fieldState.configSuggestions = FIELD_STATE.COMPLETE
     }
   }

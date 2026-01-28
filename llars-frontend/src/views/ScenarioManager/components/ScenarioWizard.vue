@@ -767,6 +767,28 @@
 </template>
 
 <script setup>
+/**
+ * Scenario Wizard Component
+ *
+ * AI-powered wizard for creating evaluation scenarios.
+ *
+ * SCHEMA GROUND TRUTH:
+ * -------------------
+ * Dieses Komponente erstellt Szenarien, deren Daten im einheitlichen
+ * EvaluationData Schema-Format gespeichert werden:
+ *
+ * - Backend: app/schemas/evaluation_data_schemas.py (Pydantic Models)
+ * - Frontend: src/schemas/evaluationSchemas.js (Validation)
+ * - Presets: src/views/ScenarioManager/config/evaluationPresets.js
+ *
+ * WICHTIG:
+ * - Hochgeladene Daten werden in Items mit technischen IDs konvertiert
+ * - Item.id = "item_1", "item_2" etc. (NIEMALS LLM-Namen!)
+ * - Item.label = UI-Anzeigename (generisch)
+ * - Item.source = Herkunft (human/llm/unknown)
+ *
+ * Dokumentation: .claude/plans/evaluation-data-schemas.md
+ */
 import { ref, computed, watch, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import axios from 'axios'
@@ -1325,12 +1347,15 @@ async function analyzeData() {
         for (const line of lines) {
           if (line.startsWith('event: ')) {
             currentEventType = line.slice(7).trim()
+            console.log('[SSE] Event type:', currentEventType)
             continue
           }
           if (line.startsWith('data: ')) {
             const eventData = line.slice(6)
+            console.log('[SSE] Data for event', currentEventType, ':', eventData.substring(0, 200))
             try {
               const parsed = JSON.parse(eventData)
+              console.log('[SSE] Parsed:', currentEventType, parsed)
 
               // Handle events based on tracked event type
               switch (currentEventType) {
@@ -1363,32 +1388,40 @@ async function analyzeData() {
                   }
                   break
 
-                case 'suggestions':
+                case 'suggestions': {
+                  console.log('[SSE] Processing suggestions:', parsed)
                   aiSuggestions.value = parsed
 
                   // Update analysis result with suggestions
+                  // Support both old (eval_type) and new (evaluation_type) field names
                   if (analysisResult.value) {
-                    analysisResult.value.suggestedType = parsed.eval_type || EVAL_TYPES.RATING
-                    analysisResult.value.suggestedTypeConfidence = parsed.eval_type_confidence
-                    analysisResult.value.suggestedTypeReasoning = parsed.eval_type_reasoning
+                    analysisResult.value.suggestedType = parsed.evaluation_type || parsed.eval_type || EVAL_TYPES.RATING
+                    analysisResult.value.suggestedTypeConfidence = parsed.confidence || parsed.eval_type_confidence
+                    analysisResult.value.suggestedTypeReasoning = parsed.reasoning || parsed.eval_type_reasoning
                   }
 
                   // Auto-apply AI suggestions
-                  if (parsed.eval_type) {
-                    formData.value.evalType = parsed.eval_type
+                  const evalType = parsed.evaluation_type || parsed.eval_type
+                  if (evalType) {
+                    formData.value.evalType = evalType
                   }
-                  if (parsed.scenario_name) {
-                    formData.value.scenario_name = parsed.scenario_name
+                  const scenarioName = parsed.name || parsed.scenario_name
+                  if (scenarioName) {
+                    formData.value.scenario_name = scenarioName
                   }
-                  if (parsed.scenario_description) {
-                    formData.value.description = parsed.scenario_description
+                  const scenarioDescription = parsed.description || parsed.scenario_description
+                  if (scenarioDescription) {
+                    formData.value.description = scenarioDescription
                   }
 
                   // Forward to panel for final parsing
                   if (analysisPanel.value?.processSuggestions) {
                     analysisPanel.value.processSuggestions(parsed)
                   }
+                  console.log('[SSE] After suggestions - analysisResult:', JSON.stringify(analysisResult.value, null, 2))
+                  console.log('[SSE] After suggestions - formData:', { evalType: formData.value.evalType, scenario_name: formData.value.scenario_name, description: formData.value.description })
                   break
+                }
 
                 case 'data_quality':
                   if (analysisResult.value) {
@@ -1401,12 +1434,16 @@ async function analyzeData() {
                   break
 
                 case 'done':
+                  console.log('[SSE] Done event received:', parsed)
                   tokensUsed = parsed.tokens_used || 0
                   if (analysisResult.value) {
                     analysisResult.value.tokensUsed = tokensUsed
                     analysisResult.value.streaming = false
                   }
                   streamingPhase.value = 'done'
+                  console.log('[SSE] Final state - streamingPhase:', streamingPhase.value)
+                  console.log('[SSE] Final state - analysisResult.suggestedType:', analysisResult.value?.suggestedType)
+                  console.log('[SSE] Final state - formData.evalType:', formData.value.evalType)
                   // Finalize panel
                   if (analysisPanel.value?.finalize) {
                     analysisPanel.value.finalize()
@@ -1414,7 +1451,7 @@ async function analyzeData() {
                   break
 
                 case 'error':
-                  console.warn('Streaming AI error:', parsed.error)
+                  console.error('[SSE] Error event:', parsed.error)
                   if (analysisPanel.value?.setError) {
                     analysisPanel.value.setError(parsed.error)
                   }
@@ -1423,6 +1460,7 @@ async function analyzeData() {
 
               currentEventType = null // Reset after processing data
             } catch (parseError) {
+              console.warn('[SSE] Parse error for event', currentEventType, ':', parseError.message, 'Data:', eventData.substring(0, 100))
               // Ignore parse errors for incomplete JSON
               if (parseError.message && !parseError.message.includes('Unexpected')) {
                 throw parseError

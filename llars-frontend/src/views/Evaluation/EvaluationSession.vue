@@ -148,6 +148,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useMobile } from '@/composables/useMobile'
 import { useEvaluationSession, SESSION_STATUS } from '@/composables/useEvaluationSession'
+import { FUNCTION_TYPE_MAP, EvaluationType } from '@/schemas/evaluationSchemas'
 
 const props = defineProps({
   scenarioId: {
@@ -219,23 +220,16 @@ watch(currentItem, (newItem) => {
 }, { immediate: true })
 
 // Function type from loaded scenario (function_type_id)
+// Uses FUNCTION_TYPE_MAP from unified schema (evaluationSchemas.js)
 // 1=ranking, 2=rating, 3=mail_rating, 4=comparison, 5=authenticity, 7=labeling
-const FUNCTION_TYPE_MAP = {
-  1: 'ranking',
-  2: 'rating',
-  3: 'mail_rating',
-  4: 'comparison',
-  5: 'authenticity',
-  7: 'labeling'
-}
 
 const functionType = computed(() => {
   // First try from loaded scenario data
   if (scenario.value?.function_type_id) {
-    return FUNCTION_TYPE_MAP[scenario.value.function_type_id] || 'rating'
+    return FUNCTION_TYPE_MAP[scenario.value.function_type_id] || EvaluationType.RATING
   }
   // Fallback to route meta or params
-  return route.meta?.functionType || route.params.type || 'rating'
+  return route.meta?.functionType || route.params.type || EvaluationType.RATING
 })
 
 // Computed

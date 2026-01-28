@@ -5,21 +5,23 @@
     viewBox="0 0 24 24"
     fill="none"
     stroke="currentColor"
-    stroke-width="var(--llars-icon-stroke, 1.35)"
+    stroke-width="var(--llars-icon-stroke, 1.5)"
     stroke-linecap="round"
     stroke-linejoin="round"
     aria-hidden="true"
   >
-    <!-- OpenAI-inspired hexagonal/neural pattern -->
-    <path class="l-its-hover__openai-outer" d="M12 2L4 6.5v11L12 22l8-4.5v-11L12 2z" />
-    <path class="l-its-hover__openai-inner" d="M12 6l-5 3v6l5 3l5-3V9l-5-3z" />
-    <circle class="l-its-hover__openai-core" cx="12" cy="12" r="2" fill="currentColor" stroke="none" />
-    <!-- Connection lines -->
-    <g class="l-its-hover__openai-connections">
-      <line x1="12" y1="6" x2="12" y2="2" />
-      <line x1="12" y1="18" x2="12" y2="22" />
-      <line x1="7" y1="9" x2="4" y2="6.5" />
-      <line x1="17" y1="9" x2="20" y2="6.5" />
+    <!-- OpenAI logo - spiral knot with 5 curved arms -->
+    <g class="l-its-hover__openai-spiral">
+      <!-- Arm 1 (top) -->
+      <path d="M12 2C12 2 7 4 7 8C7 11 9 12 12 12" />
+      <!-- Arm 2 (top-right) -->
+      <path d="M21 8C21 8 18 4 14 5C11 6 11 9 12 12" />
+      <!-- Arm 3 (bottom-right) -->
+      <path d="M19 18C19 18 21 13 18 10C15 8 13 10 12 12" />
+      <!-- Arm 4 (bottom-left) -->
+      <path d="M5 18C5 18 3 13 6 10C9 8 11 10 12 12" />
+      <!-- Arm 5 (top-left) -->
+      <path d="M3 8C3 8 6 4 10 5C13 6 13 9 12 12" />
     </g>
   </svg>
 </template>

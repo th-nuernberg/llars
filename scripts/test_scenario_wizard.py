@@ -19,6 +19,7 @@ ANALYZE_URL = f"{BASE_URL}/api/ai-assist/analyze-scenario-data"
 # Test credentials
 USERNAME = "admin"
 PASSWORD = "admin123"
+API_KEY = "llars-admin-key-change-in-production-12345"  # From database
 
 
 # ============================================================================
@@ -198,27 +199,24 @@ DATASETS = {
 
 
 def get_auth_token():
-    """Authenticate and get session token."""
+    """Authenticate using API key."""
     session = requests.Session()
 
-    # First, get the login page to establish session
+    # Use API key authentication
     try:
-        # Use the Authentik OAuth flow - simplified for testing
-        # In a real test, we'd go through the full OAuth flow
-        # For now, we'll try direct API access with session
-
-        # Try to authenticate via the backend directly
-        response = session.post(
-            f"{BASE_URL}/auth/api-login",
-            json={"username": USERNAME, "password": PASSWORD},
-            headers={"Content-Type": "application/json"}
+        # Verify the API key works
+        response = session.get(
+            f"{BASE_URL}/api/auth/api-key/verify",
+            headers={"X-API-Key": API_KEY}
         )
 
         if response.status_code == 200:
             data = response.json()
-            return session, data.get('access_token')
+            if data.get('valid'):
+                print(f"   Authenticated as: {data.get('username')}")
+                return session, API_KEY
     except Exception as e:
-        print(f"Auth via api-login failed: {e}")
+        print(f"Auth via API key failed: {e}")
 
     return session, None
 
@@ -237,7 +235,7 @@ def test_scenario_analysis(session, token, dataset_key, dataset_info):
     }
 
     if token:
-        headers["Authorization"] = f"Bearer {token}"
+        headers["X-API-Key"] = token
 
     payload = {
         "data": dataset_info["data"],

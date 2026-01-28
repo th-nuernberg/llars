@@ -1,8 +1,13 @@
 """
 Rating Routes
 
-Provides endpoints for rating email threads and features.
+Provides endpoints for rating evaluation items and features.
+
+NOTE: Diese Endpoints verwenden den SchemaAdapter Service für einheitliche
+Datenformate. Neue Frontend-Komponenten sollten die /schema Endpoints nutzen.
 """
+
+import logging
 
 from flask import jsonify, request, g, current_app
 
@@ -10,16 +15,20 @@ from auth.decorators import authentik_required
 from decorators.error_handler import handle_api_errors, NotFoundError, ValidationError
 from routes.auth import data_bp
 from db.database import db
-from db.tables import (
-    FeatureType, UserFeatureRating, Feature, Message
+from db.models import (
+    FeatureType, UserFeatureRating, Feature, Message,
+    EvaluationItem, ScenarioItems, ScenarioUsers, RatingScenarios
 )
+from services.evaluation.schema_adapter_service import SchemaAdapter
 from services.feature_rating_service import FeatureRatingService
 from services.scenario_stats_service import get_scenario_ids_for_thread
 
-from routes.HelperFunctions import can_access_thread
+
+logger = logging.getLogger(__name__)
 
 
 def _emit_scenario_stats_updates(thread_id: int) -> None:
+    """Emit scenario stats updates via SocketIO."""
     socketio = current_app.extensions.get('socketio')
     if not socketio:
         return
@@ -31,14 +40,72 @@ def _emit_scenario_stats_updates(thread_id: int) -> None:
         pass
 
 
+def _check_rating_access(item_id: int, user_id: int) -> bool:
+    """Check if user has access to a rating item."""
+    # First try new EvaluationItem model
+    eval_item = EvaluationItem.query.get(item_id)
+    if eval_item:
+        scenario = SchemaAdapter.check_scenario_access(item_id, user_id)
+        return scenario is not None
+
+    # Fallback to legacy check
+    from routes.HelperFunctions import can_access_thread
+    return can_access_thread(user_id, item_id, 2)
+
+
 @data_bp.route('/email_threads/ratings/<int:thread_id>', methods=['GET'])
 @authentik_required
 @handle_api_errors(logger_name='rating')
 def get_email_thread_for_ratings(thread_id):
-    """Get email thread with features for rating"""
-    user = g.authentik_user
+    """
+    Get evaluation item with features for rating.
 
-    # check if user can access thread
+    Supports query param ?schema=true for new schema format.
+    Default returns legacy format for backwards compatibility.
+    """
+    user = g.authentik_user
+    use_schema = request.args.get('schema', 'false').lower() == 'true'
+
+    # First try new EvaluationItem model
+    eval_item = EvaluationItem.query.get(thread_id)
+    if eval_item:
+        scenario = SchemaAdapter.check_scenario_access(thread_id, user.id)
+        if not scenario:
+            raise ValidationError('Access denied')
+
+        # Return new schema format if requested
+        if use_schema:
+            schema_data = SchemaAdapter.get_schema_data(scenario, thread_id)
+            return jsonify(schema_data.model_dump()), 200
+
+        # Return legacy format using SchemaAdapter
+        thread_data = SchemaAdapter.get_rating_thread_data(thread_id, user.id)
+        if not thread_data:
+            raise NotFoundError('Item not found')
+
+        # Add rating status
+        rated = FeatureRatingService.has_user_fully_rated_thread(user.id, thread_id)
+        ratings_by_feature_id = FeatureRatingService.get_user_ratings_map_for_thread(user.id, thread_id)
+
+        thread_data['rated'] = rated
+
+        # Add user ratings to features
+        features = Feature.query.filter_by(item_id=thread_id).all()
+        thread_data['features'] = [
+            {
+                'model_name': feature.llm.name if feature.llm else 'Unknown',
+                'type': feature.feature_type.name if feature.feature_type else 'Summary',
+                'content': feature.content,
+                'user_rating': ratings_by_feature_id.get(feature.feature_id).rating_content
+                if ratings_by_feature_id.get(feature.feature_id) else None,
+                'feature_id': feature.feature_id
+            } for feature in features
+        ]
+
+        return jsonify(thread_data), 200
+
+    # Fallback to legacy EmailThread model
+    from routes.HelperFunctions import can_access_thread
     if not can_access_thread(user.id, thread_id, 2):
         raise ValidationError('Access denied')
 
@@ -47,8 +114,10 @@ def get_email_thread_for_ratings(thread_id):
     if not rating_function_type:
         raise NotFoundError('Rating function type not found')
 
-    email_thread = EmailThread.query.filter_by(thread_id=thread_id,
-                                               function_type_id=rating_function_type.function_type_id).first()
+    email_thread = EmailThread.query.filter_by(
+        thread_id=thread_id,
+        function_type_id=rating_function_type.function_type_id
+    ).first()
     if not email_thread:
         raise NotFoundError('Email thread not found or not for rating')
 
@@ -65,17 +134,17 @@ def get_email_thread_for_ratings(thread_id):
                 'message_id': msg.message_id,
                 'sender': msg.sender,
                 'content': msg.content,
-                'timestamp': msg.timestamp.isoformat()
+                'timestamp': msg.timestamp.isoformat() if msg.timestamp else None
             } for msg in email_thread.messages
         ],
         'features': [
             {
-                'model_name': feature.llm.name,
-                'type': feature.feature_type.name,
+                'model_name': feature.llm.name if feature.llm else 'Unknown',
+                'type': feature.feature_type.name if feature.feature_type else 'Summary',
                 'content': feature.content,
                 'user_rating': ratings_by_feature_id.get(feature.feature_id).rating_content
                 if ratings_by_feature_id.get(feature.feature_id) else None,
-                'feature_id': feature.feature_id  # Include the feature_id here
+                'feature_id': feature.feature_id
             } for feature in email_thread.features
         ]
     }
@@ -87,26 +156,29 @@ def get_email_thread_for_ratings(thread_id):
 @authentik_required
 @handle_api_errors(logger_name='rating')
 def get_feature_and_messages(thread_id, feature_id):
-    """Get specific feature and messages for a thread"""
+    """Get specific feature and messages for a thread."""
     user = g.authentik_user
 
-    # check if user can access thread
-    if not can_access_thread(user.id, thread_id, 2):
+    if not _check_rating_access(thread_id, user.id):
         raise ValidationError('Access denied')
 
-    # Get the feature by thread_id and feature_id
-    feature = Feature.query.filter_by(thread_id=thread_id, feature_id=feature_id).first()
+    # Try item_id first (new model), then thread_id (legacy)
+    feature = Feature.query.filter_by(item_id=thread_id, feature_id=feature_id).first()
+    if not feature:
+        feature = Feature.query.filter_by(thread_id=thread_id, feature_id=feature_id).first()
     if not feature:
         raise NotFoundError('Feature not found')
 
-    # Get the messages for the thread_id
-    messages = Message.query.filter_by(thread_id=thread_id).all()
+    # Get messages - try item_id first
+    messages = Message.query.filter_by(item_id=thread_id).all()
+    if not messages:
+        messages = Message.query.filter_by(thread_id=thread_id).all()
     if not messages:
         raise NotFoundError('No messages found for the given thread_id')
 
     feature_data = {
-        'model_name': feature.llm.name,
-        'type': feature.feature_type.name,
+        'model_name': feature.llm.name if feature.llm else 'Unknown',
+        'type': feature.feature_type.name if feature.feature_type else 'Summary',
         'content': feature.content,
         'feature_id': feature.feature_id
     }
@@ -116,43 +188,73 @@ def get_feature_and_messages(thread_id, feature_id):
             'message_id': msg.message_id,
             'sender': msg.sender,
             'content': msg.content,
-            'timestamp': msg.timestamp.isoformat()
+            'timestamp': msg.timestamp.isoformat() if msg.timestamp else None
         } for msg in messages
     ]
 
-    response_data = {
+    return jsonify({
         'feature': feature_data,
         'messages': messages_data
-    }
-
-    return jsonify(response_data), 200
+    }), 200
 
 
 @data_bp.route('/email_threads/ratings', methods=['GET'])
 @authentik_required
 @handle_api_errors(logger_name='rating')
 def list_email_threads_for_ratings():
-    """List all email threads available for rating"""
+    """List all evaluation items available for rating."""
     user = g.authentik_user
 
-    from db.tables import FeatureFunctionType
-    from routes.HelperFunctions import get_user_threads
+    # Try new EvaluationItem model first (rating function_type_id = 2)
+    scenarios = RatingScenarios.query.filter_by(function_type_id=2).all()
 
-    rating_function_type = FeatureFunctionType.query.filter_by(name='rating').first()
-    if not rating_function_type:
-        raise NotFoundError('Rating function type not found')
+    threads_list = []
+    seen_items = set()
 
-    email_threads = get_user_threads(user.id, 2)
+    for scenario in scenarios:
+        scenario_user = ScenarioUsers.query.filter_by(
+            scenario_id=scenario.id,
+            user_id=user.id
+        ).first()
+        if not scenario_user:
+            continue
 
-    threads_list = [
-        {
-            'thread_id': thread.thread_id,
-            'chat_id': thread.chat_id,
-            'institut_id': thread.institut_id,
-            'subject': thread.subject,
-            'rated': FeatureRatingService.has_user_fully_rated_thread(user.id, thread.thread_id)
-        } for thread in email_threads
-    ]
+        scenario_items = ScenarioItems.query.filter_by(scenario_id=scenario.id).all()
+        for si in scenario_items:
+            if si.item_id in seen_items:
+                continue
+            seen_items.add(si.item_id)
+
+            eval_item = EvaluationItem.query.get(si.item_id)
+            if eval_item:
+                rated = FeatureRatingService.has_user_fully_rated_thread(user.id, si.item_id)
+                threads_list.append({
+                    'thread_id': eval_item.item_id,
+                    'chat_id': eval_item.chat_id,
+                    'institut_id': getattr(eval_item, 'institut_id', None),
+                    'subject': eval_item.subject,
+                    'rated': rated
+                })
+
+    # Fallback to legacy EmailThread
+    try:
+        from db.tables import FeatureFunctionType
+        from routes.HelperFunctions import get_user_threads
+
+        rating_function_type = FeatureFunctionType.query.filter_by(name='rating').first()
+        if rating_function_type:
+            email_threads = get_user_threads(user.id, 2)
+            for thread in email_threads:
+                if thread.thread_id not in seen_items:
+                    threads_list.append({
+                        'thread_id': thread.thread_id,
+                        'chat_id': thread.chat_id,
+                        'institut_id': thread.institut_id,
+                        'subject': thread.subject,
+                        'rated': FeatureRatingService.has_user_fully_rated_thread(user.id, thread.thread_id)
+                    })
+    except Exception:
+        pass  # Legacy table might not exist
 
     return jsonify(threads_list), 200
 
@@ -161,7 +263,7 @@ def list_email_threads_for_ratings():
 @authentik_required
 @handle_api_errors(logger_name='rating')
 def get_feature_type_mapping():
-    """Get mapping of feature types"""
+    """Get mapping of feature types."""
     feature_types = FeatureType.query.all()
 
     if not feature_types:
@@ -179,15 +281,13 @@ def get_feature_type_mapping():
 @authentik_required
 @handle_api_errors(logger_name='rating')
 def get_feature_type(identifier):
-    """Get specific feature type by ID or name"""
+    """Get specific feature type by ID or name."""
     if identifier.isdigit():
-        # Identifier is a number, assume it's a FeatureType ID
         feature_type = FeatureType.query.filter_by(type_id=int(identifier)).first()
         if not feature_type:
             raise NotFoundError(f'Feature type ID {identifier} not found')
         return jsonify({'name': feature_type.name}), 200
     else:
-        # Identifier is a string, assume it's a FeatureType name
         feature_type = FeatureType.query.filter_by(name=identifier).first()
         if not feature_type:
             raise NotFoundError(f'Feature type name {identifier} not found')
@@ -198,12 +298,12 @@ def get_feature_type(identifier):
 @authentik_required
 @handle_api_errors(logger_name='rating')
 def save_rating(thread_id, feature_id):
-    """Save a rating for a feature"""
+    """Save a rating for a feature."""
     user = g.authentik_user
 
-    # check if user can access thread
-    if not can_access_thread(user.id, thread_id, 2):
+    if not _check_rating_access(thread_id, user.id):
         raise ValidationError('Access denied')
+
     data = request.get_json()
     rating_content = data.get('rating_content')
     edited_feature = data.get('edited_feature')
@@ -212,7 +312,10 @@ def save_rating(thread_id, feature_id):
         raise ValidationError('Rating content and edited feature are required')
 
     # Find or create the feature rating
-    feature_rating = UserFeatureRating.query.filter_by(user_id=user.id, feature_id=feature_id).first()
+    feature_rating = UserFeatureRating.query.filter_by(
+        user_id=user.id,
+        feature_id=feature_id
+    ).first()
 
     if feature_rating:
         feature_rating.rating_content = rating_content
@@ -227,7 +330,6 @@ def save_rating(thread_id, feature_id):
         db.session.add(new_rating)
 
     db.session.commit()
-
     _emit_scenario_stats_updates(thread_id)
 
     return jsonify({'status': 'Rating saved successfully'}), 201
@@ -237,20 +339,21 @@ def save_rating(thread_id, feature_id):
 @authentik_required
 @handle_api_errors(logger_name='rating')
 def get_rating(thread_id, feature_id):
-    """Get a saved rating for a feature"""
+    """Get a saved rating for a feature."""
     user = g.authentik_user
 
-    # check if user can access thread
-    if not can_access_thread(user.id, thread_id, 2):
+    if not _check_rating_access(thread_id, user.id):
         raise ValidationError('Access denied')
-    feature_rating = UserFeatureRating.query.filter_by(user_id=user.id, feature_id=feature_id).first()
+
+    feature_rating = UserFeatureRating.query.filter_by(
+        user_id=user.id,
+        feature_id=feature_id
+    ).first()
 
     if not feature_rating:
         raise NotFoundError('Rating not found')
 
-    rating_data = {
+    return jsonify({
         'rating_content': feature_rating.rating_content,
         'edited_feature': feature_rating.edited_feature
-    }
-
-    return jsonify(rating_data), 200
+    }), 200

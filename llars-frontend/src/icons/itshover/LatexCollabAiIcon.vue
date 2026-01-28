@@ -10,10 +10,13 @@
     stroke-linejoin="round"
     aria-hidden="true"
   >
-    <!-- Document body with rounded corners (like BatchGeneration) -->
-    <rect class="l-its-hover__latex-file" x="5" y="3" width="14" height="18" rx="1.5" />
+    <!-- Document body: 3 rounded corners, top-right is square for fold -->
+    <path
+      class="l-its-hover__latex-file"
+      d="M6.5 3H14V8H19V19.5Q19 21 17.5 21H6.5Q5 21 5 19.5V4.5Q5 3 6.5 3Z"
+    />
 
-    <!-- Fold corner overlay - covers top-right corner -->
+    <!-- Fold corner - animated dog-ear -->
     <path class="l-its-hover__latex-crease" d="M14.5 3.5L18.5 7.5" />
     <path class="l-its-hover__latex-fold" d="M14 3v4q0 1 1 1h4" />
 

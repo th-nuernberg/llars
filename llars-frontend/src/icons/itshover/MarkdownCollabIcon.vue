@@ -10,20 +10,17 @@
     stroke-linejoin="round"
     aria-hidden="true"
   >
-    <!-- Document body with rounded corners (like BatchGeneration) -->
-    <rect class="l-its-hover__markdown-file" x="5" y="3" width="14" height="18" rx="1.5" />
+    <!-- Document body: 3 rounded corners, top-right is square for fold -->
+    <path
+      class="l-its-hover__markdown-file"
+      d="M6.5 3H14V8H19V19.5Q19 21 17.5 21H6.5Q5 21 5 19.5V4.5Q5 3 6.5 3Z"
+    />
 
-    <!-- Fold corner overlay - covers top-right corner -->
+    <!-- Fold corner - animated dog-ear -->
     <path class="l-its-hover__markdown-crease" d="M14.5 3.5L18.5 7.5" />
     <path class="l-its-hover__markdown-fold" d="M14 3v4q0 1 1 1h4" />
 
     <!-- Markdown hash symbol (#) -->
-    <path class="l-its-hover__markdown-hash" d="M9.5 10.5v5M11.5 10.5v5M8 12h5M8 14h5" />
-
-    <!-- Collab users indicator -->
-    <g class="l-its-hover__markdown-users">
-      <circle cx="16" cy="17" r="1.5" />
-      <circle cx="18" cy="15" r="1.5" />
-    </g>
+    <path class="l-its-hover__markdown-hash" d="M9.5 10v5M11.5 10v5M8 11.5h5M8 13.5h5" />
   </svg>
 </template>

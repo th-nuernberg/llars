@@ -10,17 +10,22 @@
     stroke-linejoin="round"
     aria-hidden="true"
   >
-    <!-- Wand stick - diagonal line -->
-    <path class="l-its-hover__wand-stick" d="M4 20L17 7" />
-    <!-- Wand tip - small star -->
-    <g class="l-its-hover__wand-tip">
-      <path d="M19 5l0.6-1.8l0.6 1.8l1.8 0.6l-1.8 0.6l-0.6 1.8l-0.6-1.8l-1.8-0.6z" fill="currentColor" stroke="none" />
+    <!-- Wand stick - thicker diagonal -->
+    <g class="l-its-hover__wand-stick">
+      <path d="M5 19L15 9" stroke-width="2.5" />
+      <!-- Handle/grip at bottom -->
+      <circle cx="4" cy="20" r="1.5" fill="currentColor" stroke="none" />
     </g>
-    <!-- Magic sparkles -->
+
+    <!-- Star tip - clean 4-point star -->
+    <g class="l-its-hover__wand-tip">
+      <path d="M18 4l1 3l3 1l-3 1l-1 3l-1-3l-3-1l3-1z" fill="currentColor" stroke="none" />
+    </g>
+
+    <!-- Magic sparkles - concentrated near tip -->
     <g class="l-its-hover__wand-sparkles">
-      <path class="l-its-hover__wand-sparkle l-its-hover__wand-sparkle--one" d="M9 6v1.2M8.4 6.6h1.2" />
-      <path class="l-its-hover__wand-sparkle l-its-hover__wand-sparkle--two" d="M14 11v1M13.5 11.5h1" />
-      <path class="l-its-hover__wand-sparkle l-its-hover__wand-sparkle--three" d="M6 12v1M5.5 12.5h1" />
+      <path class="l-its-hover__wand-sparkle l-its-hover__wand-sparkle--one" d="M13 3v1.5M12.25 3.75h1.5" />
+      <path class="l-its-hover__wand-sparkle l-its-hover__wand-sparkle--two" d="M21 10v1.5M20.25 10.75h1.5" />
     </g>
   </svg>
 </template>

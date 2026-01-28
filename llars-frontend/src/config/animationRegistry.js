@@ -143,6 +143,13 @@ export const iconAnimations = [
     file: 'WandIcon.vue'
   },
   {
+    id: 'batch-generation',
+    name: 'Batch Generation',
+    description: 'Dokument-Stack mit glitzernden AI-Sparkles',
+    trigger: 'hover',
+    file: 'BatchGenerationIcon.vue'
+  },
+  {
     id: 'oncoco',
     name: 'OnCoCo',
     description: 'Nadel schwingt, Balken wachsen',

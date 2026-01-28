@@ -1084,10 +1084,6 @@ const iconAttrs = computed(() => {
   animation-delay: 0.15s;
 }
 
-:is(.v-icon:hover, .feature-card:hover .v-icon, .category-item:hover .v-icon) .l-its-hover--wand .l-its-hover__wand-sparkle--three {
-  animation-delay: 0.3s;
-}
-
 /* Flask Icon */
 @keyframes llars-flask-bubble {
   0% {

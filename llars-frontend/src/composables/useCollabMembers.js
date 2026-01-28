@@ -13,7 +13,7 @@ import axios from 'axios'
 import { useI18n } from 'vue-i18n'
 import { AUTH_STORAGE_KEYS, getAuthStorageItem } from '@/utils/authStorage'
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:55080'
+const API_BASE = import.meta.env.VITE_API_BASE_URL || ''
 
 function authHeaders() {
   const token = getAuthStorageItem(AUTH_STORAGE_KEYS.token)

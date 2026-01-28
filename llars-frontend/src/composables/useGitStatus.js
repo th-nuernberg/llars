@@ -11,7 +11,7 @@ import { AUTH_STORAGE_KEYS, getAuthStorageItem } from '@/utils/authStorage'
 import { getSocket } from '@/services/socketService'
 import { logI18n } from '@/utils/logI18n'
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:55080'
+const API_BASE = import.meta.env.VITE_API_BASE_URL || ''
 
 /**
  * @param {import('vue').Ref<number>} workspaceIdRef - Reactive workspace ID

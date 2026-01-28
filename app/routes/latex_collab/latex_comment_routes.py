@@ -353,7 +353,7 @@ def ai_resolve_comment(comment_id: int):
             "reply": {
                 "id": 42,
                 "author_username": "LLARS KI",
-                "author_color": "#b0ca97",
+                "author_color": "#9B59B6",
                 "body": "..."
             }
         }

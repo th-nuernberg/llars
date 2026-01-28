@@ -1036,7 +1036,7 @@ function handleNavigateToDocument(documentId, comment) {
 // AI Assistant for Comment Resolution
 // ============================================================
 const aiAssistantEnabled = ref(false)
-const aiAssistantColor = ref('#b0ca97')  // LLARS Primary color
+const aiAssistantColor = ref('#9B59B6')  // LLARS KI purple
 const aiAssistantUsername = ref('LLARS KI')
 const aiResolvingCommentId = ref(null)
 

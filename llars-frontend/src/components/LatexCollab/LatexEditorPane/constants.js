@@ -7,8 +7,8 @@
  * @module LatexEditorPane/constants
  */
 
-// AI Collab color for AI-generated changes (LLARS Primary color)
-export const AI_COLLAB_COLOR = '#b0ca97'
+// AI Collab color for AI-generated changes (LLARS KI purple)
+export const AI_COLLAB_COLOR = '#9B59B6'
 export const AI_COLLAB_USERNAME = 'LLARS KI'
 
 /**

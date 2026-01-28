@@ -201,15 +201,23 @@ const importService = {
    * @param {number} scenarioId - ID of existing scenario to import into
    * @param {string} taskType - Task type (rating, ranking, authenticity, etc.)
    * @param {string} sourceName - Name for the import source
+   * @param {Object} fieldMapping - AI-suggested field mappings (optional)
    * @returns {Promise<Object>} Import result
    */
-  async importFromData(data, scenarioId, taskType, sourceName = 'Wizard Import') {
-    const response = await axios.post(`${API_BASE}/from-data`, {
+  async importFromData(data, scenarioId, taskType, sourceName = 'Wizard Import', fieldMapping = null) {
+    const payload = {
       data,
       scenario_id: scenarioId,
       task_type: taskType,
       source_name: sourceName
-    })
+    }
+
+    // Add field mapping if provided (enables AI-assisted data transformation)
+    if (fieldMapping) {
+      payload.field_mapping = fieldMapping
+    }
+
+    const response = await axios.post(`${API_BASE}/from-data`, payload)
     return response.data
   }
 }

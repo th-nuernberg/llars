@@ -270,7 +270,13 @@ def import_from_data():
             "data": [...],           // Array of items to import
             "scenario_id": 123,      // Existing scenario to import into
             "task_type": "authenticity",
-            "source_name": "Wizard Import"
+            "source_name": "Wizard Import",
+            "field_mapping": {       // Optional: AI-suggested field mappings
+                "id_field": "chat_id",
+                "content_field": "messages",
+                "label_field": "subject",
+                "reference_field": null
+            }
         }
 
     Returns:
@@ -302,6 +308,9 @@ def import_from_data():
 
     source_name = data.get('source_name', 'Wizard Import')
 
+    # Get AI-suggested field mappings (optional)
+    field_mapping = data.get('field_mapping')
+
     # Create session from data
     session = import_service.create_session_from_data(
         data=items,
@@ -309,8 +318,19 @@ def import_from_data():
         filename=source_name
     )
 
-    # Transform the data
-    session = import_service.transform(session.session_id)
+    # Transform the data with field mappings if provided
+    transform_options = {}
+    if field_mapping:
+        # Convert AI field_mapping format to adapter mappings format
+        transform_options['mappings'] = {
+            'id': field_mapping.get('id_field'),
+            'text': field_mapping.get('content_field'),
+            'title': field_mapping.get('label_field'),
+            'question': field_mapping.get('reference_field'),
+        }
+        logger.info(f"Using AI-provided field mappings: {transform_options['mappings']}")
+
+    session = import_service.transform(session.session_id, options=transform_options)
 
     if session.status == "error":
         raise ValidationError(f"Transform failed: {session.errors}")

@@ -10,11 +10,14 @@
     stroke-linejoin="round"
     aria-hidden="true"
   >
-    <!-- Document body: 3 rounded corners, top-right is square for fold -->
+    <!-- Document body: rounded corners -->
     <path
       class="l-its-hover__latex-file"
-      d="M6.5 3H14V8H19V19.5Q19 21 17.5 21H6.5Q5 21 5 19.5V4.5Q5 3 6.5 3Z"
+      d="M6.5 3H17.5Q19 3 19 4.5V19.5Q19 21 17.5 21H6.5Q5 21 5 19.5V4.5Q5 3 6.5 3Z"
     />
+
+    <!-- Corner indent lines (fade on hover to show flat document) -->
+    <path class="l-its-hover__latex-corner" d="M14 3V8H19" />
 
     <!-- Fold corner - animated dog-ear -->
     <path class="l-its-hover__latex-crease" d="M14.5 3.5L18.5 7.5" />

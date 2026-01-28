@@ -117,7 +117,9 @@ const iconAttrs = computed(() => {
 
 /* Corner indent lines - fade on hover when fold opens */
 .l-its-hover__markdown-corner,
-.l-its-hover__latex-corner {
+.l-its-hover__latex-corner,
+.l-its-hover__markdown-corner-fill,
+.l-its-hover__latex-corner-fill {
   transition: opacity 0.35s cubic-bezier(0.4, 0, 0.2, 1);
   opacity: 1;
 }
@@ -786,8 +788,9 @@ const iconAttrs = computed(() => {
 }
 
 :is(.v-icon:hover, .feature-card:hover .v-icon, .category-item:hover .v-icon, .mobile-category-item:hover .v-icon) .l-its-hover--latex-ai .l-its-hover__latex-crease,
-:is(.v-icon:hover, .feature-card:hover .v-icon, .category-item:hover .v-icon, .mobile-category-item:hover .v-icon) .l-its-hover--latex-ai .l-its-hover__latex-corner {
-  /* HOVER STATE: Crease and corner lines fade as paper flattens */
+:is(.v-icon:hover, .feature-card:hover .v-icon, .category-item:hover .v-icon, .mobile-category-item:hover .v-icon) .l-its-hover--latex-ai .l-its-hover__latex-corner,
+:is(.v-icon:hover, .feature-card:hover .v-icon, .category-item:hover .v-icon, .mobile-category-item:hover .v-icon) .l-its-hover--latex-ai .l-its-hover__latex-corner-fill {
+  /* HOVER STATE: Crease, corner lines and fill fade as paper flattens */
   opacity: 0;
 }
 
@@ -819,8 +822,9 @@ const iconAttrs = computed(() => {
 }
 
 :is(.v-icon:hover, .feature-card:hover .v-icon, .category-item:hover .v-icon, .mobile-category-item:hover .v-icon) .l-its-hover--markdown-collab .l-its-hover__markdown-crease,
-:is(.v-icon:hover, .feature-card:hover .v-icon, .category-item:hover .v-icon, .mobile-category-item:hover .v-icon) .l-its-hover--markdown-collab .l-its-hover__markdown-corner {
-  /* HOVER STATE: Crease and corner lines fade as paper flattens */
+:is(.v-icon:hover, .feature-card:hover .v-icon, .category-item:hover .v-icon, .mobile-category-item:hover .v-icon) .l-its-hover--markdown-collab .l-its-hover__markdown-corner,
+:is(.v-icon:hover, .feature-card:hover .v-icon, .category-item:hover .v-icon, .mobile-category-item:hover .v-icon) .l-its-hover--markdown-collab .l-its-hover__markdown-corner-fill {
+  /* HOVER STATE: Crease, corner lines and fill fade as paper flattens */
   opacity: 0;
 }
 

@@ -15,6 +15,7 @@ from decorators.error_handler import handle_api_errors, ValidationError, NotFoun
 from decorators.permission_decorator import require_permission
 from routes.auth import data_bp
 from services.ai_assist import FieldPromptService
+from services.ai_assist.data_preprocessor import DataPreprocessor
 
 logger = logging.getLogger(__name__)
 
@@ -113,11 +114,9 @@ def analyze_scenario_data():
     file_count = data.get('file_count', 1)
     user_hint = data.get('user_hint', '')
 
-    # Extract sample items (max 5 for token efficiency)
-    sample_items = items[:5]
-
-    # Detect field types and info
-    fields = detect_field_types(items)
+    # Preprocess data: extract schema, select samples, detect patterns
+    preprocessed = DataPreprocessor.preprocess(items, filename)
+    preprocessed_text = DataPreprocessor.format_for_prompt(preprocessed)
 
     # Load prompt template from database (configurable via Admin Panel)
     template = FieldPromptService.get_by_field_key(SCENARIO_ANALYSIS_FIELD_KEY)
@@ -129,12 +128,7 @@ def analyze_scenario_data():
 
     # Build context for prompt rendering
     context = {
-        "filename": filename,
-        "file_count": file_count,
-        "item_count": len(items),
-        "fields_json": json.dumps(fields, ensure_ascii=False, indent=2),
-        "sample_count": len(sample_items),
-        "sample_data": json.dumps(sample_items, ensure_ascii=False, indent=2)[:3000],
+        "preprocessed_data": preprocessed_text,
         "user_hint_text": f'Benutzerhinweis: {user_hint}' if user_hint else ''
     }
 
@@ -171,15 +165,18 @@ def analyze_scenario_data():
             f"{len(items)} items, {tokens_used} tokens"
         )
 
+        # Build response with preprocessed data summary
+        schema = preprocessed.get('schema', {})
         return jsonify({
             'success': True,
             'analysis': {
                 'data_summary': {
                     'item_count': len(items),
-                    'fields': list(fields.keys()),
-                    'field_types': {k: v['type'] for k, v in fields.items()},
-                    'field_completeness': {k: v['completeness'] for k, v in fields.items()},
-                    'sample_items': sample_items[:3]
+                    'fields': list(schema.keys()),
+                    'field_types': {k: v.get('type', 'unknown') for k, v in schema.items()},
+                    'field_completeness': {k: v.get('completeness', 0) for k, v in schema.items()},
+                    'sample_items': preprocessed.get('samples', [])[:3],
+                    'detected_patterns': preprocessed.get('detected_patterns', [])
                 },
                 'suggestions': result.get('suggestions', {}),
                 'data_quality': result.get('data_quality', {})
@@ -190,15 +187,17 @@ def analyze_scenario_data():
     except json.JSONDecodeError as e:
         logger.error(f"Failed to parse LLM response as JSON: {e}")
         # Return partial result with local analysis only
+        schema = preprocessed.get('schema', {})
         return jsonify({
             'success': True,
             'analysis': {
                 'data_summary': {
                     'item_count': len(items),
-                    'fields': list(fields.keys()),
-                    'field_types': {k: v['type'] for k, v in fields.items()},
-                    'field_completeness': {k: v['completeness'] for k, v in fields.items()},
-                    'sample_items': sample_items[:3]
+                    'fields': list(schema.keys()),
+                    'field_types': {k: v.get('type', 'unknown') for k, v in schema.items()},
+                    'field_completeness': {k: v.get('completeness', 0) for k, v in schema.items()},
+                    'sample_items': preprocessed.get('samples', [])[:3],
+                    'detected_patterns': preprocessed.get('detected_patterns', [])
                 },
                 'suggestions': None,
                 'data_quality': None,
@@ -210,15 +209,17 @@ def analyze_scenario_data():
     except Exception as e:
         logger.error(f"AI scenario analysis failed: {e}")
         # Return local analysis as fallback
+        schema = preprocessed.get('schema', {})
         return jsonify({
             'success': True,
             'analysis': {
                 'data_summary': {
                     'item_count': len(items),
-                    'fields': list(fields.keys()),
-                    'field_types': {k: v['type'] for k, v in fields.items()},
-                    'field_completeness': {k: v['completeness'] for k, v in fields.items()},
-                    'sample_items': sample_items[:3]
+                    'fields': list(schema.keys()),
+                    'field_types': {k: v.get('type', 'unknown') for k, v in schema.items()},
+                    'field_completeness': {k: v.get('completeness', 0) for k, v in schema.items()},
+                    'sample_items': preprocessed.get('samples', [])[:3],
+                    'detected_patterns': preprocessed.get('detected_patterns', [])
                 },
                 'suggestions': None,
                 'data_quality': None,
@@ -301,20 +302,19 @@ def analyze_scenario_data_stream():
     max_tokens = template.max_tokens
     temperature = template.temperature
 
-    # Pre-compute fields and context
-    sample_items = items[:5]
-    fields = detect_field_types(items)
+    # Preprocess data: extract schema, select samples, detect patterns
+    preprocessed = DataPreprocessor.preprocess(items, filename)
+    preprocessed_text = DataPreprocessor.format_for_prompt(preprocessed)
 
+    # Build context for prompt
     context = {
-        "filename": filename,
-        "file_count": file_count,
-        "item_count": len(items),
-        "fields_json": json.dumps(fields, ensure_ascii=False, indent=2),
-        "sample_count": len(sample_items),
-        "sample_data": json.dumps(sample_items, ensure_ascii=False, indent=2)[:3000],
+        "preprocessed_data": preprocessed_text,
         "user_hint_text": f'Benutzerhinweis: {user_hint}' if user_hint else ''
     }
     user_prompt = FieldPromptService.render_prompt(template, context)
+
+    # Extract schema for data_summary event
+    schema = preprocessed.get('schema', {})
 
     def generate():
         """
@@ -323,13 +323,14 @@ def analyze_scenario_data_stream():
         All Flask-dependent data must be pre-fetched above.
         """
         try:
-            # Step 1: Emit immediate local analysis
+            # Step 1: Emit immediate local analysis with preprocessed data
             data_summary = {
                 'item_count': len(items),
-                'fields': list(fields.keys()),
-                'field_types': {k: v['type'] for k, v in fields.items()},
-                'field_completeness': {k: v['completeness'] for k, v in fields.items()},
-                'sample_items': sample_items[:3]
+                'fields': list(schema.keys()),
+                'field_types': {k: v.get('type', 'unknown') for k, v in schema.items()},
+                'field_completeness': {k: v.get('completeness', 0) for k, v in schema.items()},
+                'sample_items': preprocessed.get('samples', [])[:3],
+                'detected_patterns': preprocessed.get('detected_patterns', [])
             }
             yield f"event: data_summary\ndata: {json.dumps(data_summary)}\n\n"
 

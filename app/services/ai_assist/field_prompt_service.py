@@ -253,99 +253,191 @@ Schreibe das Abstract.""",
         "description": "Analysiert hochgeladene Daten und generiert KI-Vorschläge für Evaluationstyp, Name, Beschreibung und Konfiguration.",
         "system_prompt": """Du bist ein Experte für Evaluations-Studiendesign. Analysiere die bereitgestellten Daten und generiere Vorschläge für ein LLARS-Evaluationsszenario.
 
-Die Schema-Informationen stammen aus dem zentralen LLARS-Schema (app/schemas/evaluation_data_schemas.py).
+## LLARS ZIEL-SCHEMA
 
-## EVALUATIONSTYPEN (function_type_id)
+Das Ziel ist die Transformation der Eingabedaten in das LLARS EvaluationData-Format:
 
-| Typ | ID | Beschreibung | Erkennung |
-|-----|----|--------------| ----------|
-| ranking | 1 | Items sortieren/kategorisieren (Gut/Mittel/Schlecht) | Rang/Position/Bucket-Felder; Mehrere Items zum Vergleichen |
-| rating | 2 | Multi-dimensionales Rating (Kohärenz, Flüssigkeit, Relevanz, Konsistenz) | Einzelne Texte zur Qualitätsbewertung |
-| mail_rating | 3 | E-Mail-Beratungsverläufe bewerten (LLARS-spezifisch) | E-Mail/Chat mit subject/thread, Klient/Berater |
-| comparison | 4 | A vs B Vergleich - welches ist besser? | answer_a/answer_b, text_a/text_b, conversation_a/b |
-| authenticity | 5 | Echt/Fake erkennen (Mensch vs KI) | is_fake, is_human, synthetic Labels |
-| labeling | 7 | Kategorien zuweisen (binär, multi-class) | category, label, sentiment Felder |
+```typescript
+interface EvaluationData {
+  schema_version: "1.0";
+  type: "ranking" | "rating" | "mail_rating" | "comparison" | "authenticity" | "labeling";
+  reference?: Reference;      // Kontext/Original (z.B. Frage, Originalartikel)
+  items: Item[];              // Zu bewertende Elemente
+  config: EvaluationConfig;   // Typ-spezifische Konfiguration
+  ground_truth?: GroundTruth; // Falls vorhanden: Referenzlösung
+}
 
-## ENTSCHEIDUNGSBAUM FÜR EVALUATIONSTYP
+interface Item {
+  id: string;                 // Technische ID: "item_1", "item_2"
+  label: string;              // UI-Name: "Antwort A", "Zusammenfassung 1"
+  source: {
+    type: "human" | "llm" | "unknown";
+    name?: string;            // Bei LLM: Modellname
+  };
+  content: string | Conversation;
+}
 
+interface Reference {
+  type: "text" | "conversation";
+  label: string;              // "Original-Artikel", "Kundenanfrage"
+  content: string | Message[];
+}
+
+interface Message {
+  role: string;               // "Klient", "Berater", "User", "Assistant"
+  content: string;
+}
 ```
-┌─ Haben die Daten ZWEI Antwort-Versionen pro Item?
-│  │  (answer_a/answer_b, text_a/text_b, conversation_a/b)
-│  ├─ JA → comparison
-│  └─ NEIN
-│     ├─ Gibt es Label-Felder? (is_fake, is_human, sentiment, category)
-│     │  ├─ JA, binär (fake/real, human/ai) → authenticity
-│     │  └─ JA, mehrklassig → labeling
-│     └─ Sollen Items sortiert/kategorisiert werden?
-│        ├─ JA, Qualitätskategorien → ranking
-│        └─ NEIN, einzeln bewerten
-│           ├─ E-Mail/Chat-Konversationen (Beratung)? → mail_rating
-│           └─ Einzelne Texte/Antworten → rating
-```
 
-## DATEIFORMAT MAPPING-BEISPIELE
+## EVALUATIONSTYPEN
 
-### CSV mit Vergleichsdaten (comparison)
+| Typ | Wann verwenden | Erkennungsmuster |
+|-----|----------------|------------------|
+| **comparison** | A vs B Vergleich | Felder mit `_a`/`_b` Suffix, `model_a`/`model_b`, `winner` |
+| **authenticity** | Mensch vs KI erkennen | Felder: `is_human`, `is_fake`, `is_synthetic`, `is_ai` |
+| **labeling** | Kategorien zuweisen | Felder: `label`, `category`, `sentiment`, `class` (nicht binär human/fake) |
+| **ranking** | Items in Buckets sortieren | Mehrere Items pro Datensatz, `rank`, `position`, `bucket` Felder |
+| **mail_rating** | Beratungsverläufe bewerten | Messages-Array mit Klient/Berater Rollen, `subject`, `thread` |
+| **rating** | Einzeltexte mehrdimensional bewerten | Einzelne Texte ohne spezielle Struktur (DEFAULT) |
+
+## ENTSCHEIDUNGSLOGIK
+
+1. **Vergleichsstruktur?** → Felder mit `_a`/`_b`, `conversation_a`/`conversation_b` → `comparison`
+2. **Binäre Authentizitäts-Labels?** → `is_human`, `is_fake`, `is_synthetic` → `authenticity`
+3. **Kategorien-Labels?** → `label`, `category`, `sentiment` (mehrere Werte) → `labeling`
+4. **Konversations-Array mit Beratungsrollen?** → `messages` mit `Klient`/`Berater` → `mail_rating`
+5. **Mehrere Items zum Sortieren?** → Items-Array oder Rang-Felder → `ranking`
+6. **Einzelne Texte?** → Nur `text`/`content` Felder → `rating`
+
+## MAPPING-BEISPIELE
+
+### Beispiel 1: CSV → comparison
+**Eingabe:**
 ```csv
 id,question,answer_a,answer_b,model_a,model_b
-1,"Was ist Python?","Python ist...","Python ist eine...","gpt-4","claude-3"
+1,"Was ist KI?","KI ist...","Künstliche Intelligenz...","gpt-4","claude-3"
 ```
-Mapping: id→item_id, question→reference.content, answer_a→items[0].content, model_a→items[0].source.name
-
-### CSV mit einzelnen Texten (rating/ranking)
-```csv
-id,text,source,category
-1,"Der Artikel handelt von...","gpt-4","news"
-```
-Mapping: id→item_id, text→content, source→source.name
-
-### JSON mit Konversationen (mail_rating)
+**LLARS-Ausgabe:**
 ```json
-{"id": "conv_1", "subject": "Beratungsanfrage", "messages": [{"role": "user", "content": "..."}, {"role": "assistant", "content": "..."}]}
+{
+  "type": "comparison",
+  "reference": {"type": "text", "label": "Frage", "content": "Was ist KI?"},
+  "items": [
+    {"id": "item_a", "label": "Antwort A", "source": {"type": "llm", "name": "gpt-4"}, "content": "KI ist..."},
+    {"id": "item_b", "label": "Antwort B", "source": {"type": "llm", "name": "claude-3"}, "content": "Künstliche Intelligenz..."}
+  ],
+  "config": {"question": {"de": "Welche Antwort ist besser?"}, "allow_tie": true}
+}
 ```
-Mapping: id→item_id, subject→reference.label, messages→conversation
+**field_mapping:** `{"id_field": "id", "content_field": "answer_a/answer_b", "reference_field": "question"}`
 
-### OpenAI/LMSYS Format (comparison)
+### Beispiel 2: JSON mit Konversationen → mail_rating
+**Eingabe:**
 ```json
-{"conversation_a": [...], "conversation_b": [...], "model_a": "gpt-4", "model_b": "claude-3", "winner": "model_a"}
+{
+  "chat_id": "conv_001",
+  "subject": "Beratungsanfrage",
+  "mails": [
+    {"role": "Klient", "content": "Ich habe ein Problem..."},
+    {"role": "Berater", "content": "Vielen Dank für Ihre Nachricht..."}
+  ]
+}
 ```
-Mapping: conversation_a→items[0].content, winner→ground_truth
+**LLARS-Ausgabe:**
+```json
+{
+  "type": "mail_rating",
+  "items": [{
+    "id": "conv_001",
+    "label": "Beratungsanfrage",
+    "source": {"type": "unknown"},
+    "content": {"type": "conversation", "messages": [...]}
+  }],
+  "config": {"scale": {"min": 1, "max": 5}, "dimensions": [...]}
+}
+```
+**field_mapping:** `{"id_field": "chat_id", "content_field": "mails", "label_field": "subject"}`
 
-### JSONL mit Labels (labeling/authenticity)
+### Beispiel 3: JSONL mit Labels → authenticity
+**Eingabe:**
 ```jsonl
-{"id": "1", "text": "...", "is_human": true}
-{"id": "2", "text": "...", "is_human": false, "model": "gpt-4"}
+{"id": "1", "text": "Ein gut geschriebener Text...", "is_human": true}
+{"id": "2", "text": "Dieser Text wurde generiert...", "is_human": false, "model": "gpt-4"}
 ```
-Mapping: id→item_id, text→content, is_human→ground_truth
+**LLARS-Ausgabe:**
+```json
+{
+  "type": "authenticity",
+  "items": [
+    {"id": "1", "label": "Text 1", "source": {"type": "human"}, "content": "Ein gut geschriebener Text..."},
+    {"id": "2", "label": "Text 2", "source": {"type": "llm", "name": "gpt-4"}, "content": "Dieser Text wurde generiert..."}
+  ],
+  "config": {"options": [{"id": "human", "label": {"de": "Mensch"}}, {"id": "ai", "label": {"de": "KI"}}]}
+}
+```
+**field_mapping:** `{"id_field": "id", "content_field": "text", "label_field": "is_human"}`
 
-## PRESET-EMPFEHLUNGEN
+### Beispiel 4: Texte bewerten → rating
+**Eingabe:**
+```json
+{"id": "sum_1", "source_text": "Langer Originalartikel...", "summary": "Kurze Zusammenfassung...", "model": "gpt-4"}
+```
+**LLARS-Ausgabe:**
+```json
+{
+  "type": "rating",
+  "reference": {"type": "text", "label": "Original", "content": "Langer Originalartikel..."},
+  "items": [{"id": "sum_1", "label": "Zusammenfassung", "source": {"type": "llm", "name": "gpt-4"}, "content": "Kurze Zusammenfassung..."}],
+  "config": {"scale": {"min": 1, "max": 5}, "dimensions": [{"id": "coherence", "label": {"de": "Kohärenz"}}]}
+}
+```
+**field_mapping:** `{"id_field": "id", "content_field": "summary", "reference_field": "source_text"}`
 
-Nutze Standard-Presets wenn möglich. Empfehle `custom` nur bei besonderen Anforderungen.
+## KONFIGURATION NACH TYP
 
-### RATING
-- `llm-judge-standard` (DEFAULT): 4 Dimensionen (Kohärenz, Flüssigkeit, Relevanz, Konsistenz)
-- `response-quality`: Für LLM-Antworten (Hilfsbereitschaft, Genauigkeit, Vollständigkeit, Klarheit)
-- `news-article`: Für Nachrichtenartikel (Genauigkeit, Objektivität, Vollständigkeit, Lesbarkeit)
-- Custom wenn: Domänenspezifische Dimensionen (Medizin, Recht), ungewöhnliche Skalen
+### rating / mail_rating
+```json
+{"scale": {"min": 1, "max": 5, "step": 1}, "dimensions": [
+  {"id": "coherence", "label": {"de": "Kohärenz", "en": "Coherence"}, "weight": 0.25},
+  {"id": "fluency", "label": {"de": "Flüssigkeit", "en": "Fluency"}, "weight": 0.25},
+  {"id": "relevance", "label": {"de": "Relevanz", "en": "Relevance"}, "weight": 0.25},
+  {"id": "consistency", "label": {"de": "Konsistenz", "en": "Consistency"}, "weight": 0.25}
+]}
+```
 
-### RANKING
-- `buckets-3` (DEFAULT): Gut/Mittel/Schlecht
-- `buckets-5`: Sehr gut bis Sehr schlecht (feinere Abstufung)
-- Custom wenn: Andere Kategorie-Namen, mehr als 5 Buckets
+### ranking
+```json
+{"buckets": [
+  {"id": "good", "label": {"de": "Gut", "en": "Good"}, "color": "#98d4bb", "order": 1},
+  {"id": "moderate", "label": {"de": "Mittel", "en": "Moderate"}, "color": "#D1BC8A", "order": 2},
+  {"id": "poor", "label": {"de": "Schlecht", "en": "Poor"}, "color": "#e8a087", "order": 3}
+], "allow_ties": true}
+```
 
-### LABELING
-- `binary-authentic` (DEFAULT): Fake/Echt mit Unsicher-Option
-- `sentiment-3`: Positiv/Neutral/Negativ
-- Custom wenn: Andere Kategorien als Sentiment/Authentizität
+### comparison
+```json
+{"question": {"de": "Welche Antwort ist besser?", "en": "Which answer is better?"}, "allow_tie": true, "show_source": false}
+```
 
-### COMPARISON
-- `pairwise` (DEFAULT): A vs B - welches ist besser?
-- `multicriteria`: Vergleich nach mehreren Kriterien
-- Custom wenn: Spezielle Vergleichskriterien
+### authenticity
+```json
+{"options": [
+  {"id": "human", "label": {"de": "Mensch", "en": "Human"}},
+  {"id": "ai", "label": {"de": "KI-generiert", "en": "AI-generated"}}
+], "show_confidence": true}
+```
+
+### labeling
+```json
+{"mode": "single", "labels": [
+  {"id": "cat1", "label": {"de": "Kategorie 1"}},
+  {"id": "cat2", "label": {"de": "Kategorie 2"}}
+], "allow_other": false}
+```
 
 ## AUSGABEFORMAT
 
-WICHTIG: Antworte IMMER im folgenden JSON-Format. Halte die EXAKTEN Feldnamen ein:
+Antworte IMMER in diesem JSON-Format:
 
 ```json
 {
@@ -354,25 +446,19 @@ WICHTIG: Antworte IMMER im folgenden JSON-Format. Halte die EXAKTEN Feldnamen ei
     "confidence": 0.0-1.0,
     "name": "Kurzer prägnanter Name (deutsch)",
     "description": "Beschreibung des Szenarios (1-2 Sätze, deutsch)",
-    "reasoning": "Begründung warum dieser Typ und Preset gewählt wurde (deutsch)",
-    "preset": "preset-id oder 'custom'",
-    "config": {
-      "rating": {"scale_min": 1, "scale_max": 5, "dimensions": ["Kohärenz", "Flüssigkeit", "Relevanz", "Konsistenz"]},
-      "mail_rating": {"scale_min": 1, "scale_max": 5, "dimensions": ["Kohärenz Klient", "Kohärenz Berater", "Beratungsqualität", "Gesamteignung"]},
-      "labeling": {"categories": ["Kategorie1", "Kategorie2"], "mode": "single|multi"},
-      "authenticity": {"labels": ["Echt", "Fake"], "allowUnsure": true},
-      "ranking": {"buckets": ["Gut", "Mittel", "Schlecht"]},
-      "comparison": {"criteria": ["Gesamt"], "allowTie": true}
-    },
+    "reasoning": "Begründung: Welche Muster wurden erkannt? Warum dieser Typ?",
+    "preset": "llm-judge-standard|buckets-3|pairwise|binary-authentic|custom",
+    "config": { /* Typ-spezifische Konfiguration siehe oben */ },
     "field_mapping": {
-      "id_field": "welches Feld für item_id",
-      "content_field": "welches Feld für content",
-      "label_field": "welches Feld für ground_truth (falls vorhanden)"
+      "id_field": "Feldname für Item-ID",
+      "content_field": "Feldname für Hauptinhalt",
+      "reference_field": "Feldname für Kontext/Original (optional)",
+      "label_field": "Feldname für Ground-Truth-Labels (optional)"
     }
   },
   "data_quality": {
     "completeness": 0.0-1.0,
-    "issues": ["Problem 1", "Problem 2"],
+    "issues": ["Problem 1"],
     "recommendations": ["Empfehlung 1"]
   }
 }
@@ -380,28 +466,17 @@ WICHTIG: Antworte IMMER im folgenden JSON-Format. Halte die EXAKTEN Feldnamen ei
 
 REGELN:
 - Antworte NUR mit dem JSON, keine zusätzlichen Erklärungen
-- Verwende deutsche Texte für Namen, Beschreibungen und Kategorien
-- Die Feldnamen müssen EXAKT sein: evaluation_type, confidence, name, description, reasoning, preset, config
-- Empfehle immer ein konkretes Preset, nutze "custom" nur wenn nötig
-- Erkläre im reasoning WARUM dieser Typ und dieses Preset gewählt wurde""",
-        "user_prompt_template": """Analysiere diese Daten für ein Evaluationsszenario:
-
-Dateiname: {filename}
-Anzahl Dateien: {file_count}
-Anzahl Datensätze: {item_count}
-
-Erkannte Felder:
-{fields_json}
-
-Beispieldaten (erste {sample_count} von {item_count}):
-{sample_data}
+- Nutze die erkannten Muster (detected_patterns) aus der Datenanalyse
+- Das field_mapping muss die tatsächlichen Feldnamen aus den Eingabedaten verwenden
+- Bei Unsicherheit: `rating` als sicherer Default""",
+        "user_prompt_template": """{preprocessed_data}
 
 {user_hint_text}
 
-Generiere Vorschläge im JSON-Format. Nutze den Entscheidungsbaum um den Evaluationstyp zu bestimmen.""",
-        "context_variables": ["filename", "file_count", "item_count", "fields_json", "sample_count", "sample_data", "user_hint_text"],
+Analysiere die Datenstruktur und erkannten Muster. Generiere einen passenden LLARS-Evaluationsvorschlag im JSON-Format.""",
+        "context_variables": ["preprocessed_data", "user_hint_text"],
         "max_tokens": 2000,
-        "temperature": 0.7,
+        "temperature": 0.5,
     },
 }
 

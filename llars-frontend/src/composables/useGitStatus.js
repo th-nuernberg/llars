@@ -1,8 +1,13 @@
 /**
  * Git Status Composable
  *
- * Shared state management for Git operations in LaTeX/Markdown Collab workspaces.
+ * Shared state management for Git operations in LaTeX/Markdown Collab workspaces
+ * and single-entity mode for Prompt Engineering.
  * Used by GitStatusWidget and GitDetailDialog for consistent state.
+ *
+ * Supports two modes:
+ * - 'workspace': Multiple documents in a workspace (LaTeX/Markdown Collab)
+ * - 'single': Single entity with version history (Prompt Engineering)
  */
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import axios from 'axios'
@@ -14,15 +19,21 @@ import { logI18n } from '@/utils/logI18n'
 const API_BASE = import.meta.env.VITE_API_BASE_URL || ''
 
 /**
- * @param {import('vue').Ref<number>} workspaceIdRef - Reactive workspace ID
+ * @param {import('vue').Ref<number>} entityIdRef - Reactive entity ID (workspace or prompt)
  * @param {Object} options - Configuration options
  * @param {string} options.apiPrefix - API prefix (default: '/api/latex-collab')
+ * @param {string} options.entityMode - 'workspace' (default) or 'single'
  * @param {boolean} options.autoSetup - Automatically setup socket and load data on mount
+ * @param {Object} options.summary - For single mode: reactive summary object with hasChanges, insertions, deletions
+ * @param {Function} options.getContent - For single mode: function to get current content
  */
-export function useGitStatus(workspaceIdRef, options = {}) {
+export function useGitStatus(entityIdRef, options = {}) {
   const {
     apiPrefix = '/api/latex-collab',
-    autoSetup = true
+    entityMode = 'workspace',
+    autoSetup = true,
+    summary = null,
+    getContent = null
   } = options
 
   const { t, locale } = useI18n()
@@ -79,9 +90,15 @@ export function useGitStatus(workspaceIdRef, options = {}) {
       .reduce((sum, f) => sum + (f.deletions || 0), 0)
   )
 
-  const canSubmitCommit = computed(() =>
-    commitMessage.value.trim().length > 0 && selectedFiles.value.length > 0
-  )
+  const canSubmitCommit = computed(() => {
+    const msgOk = commitMessage.value.trim().length > 0
+    if (entityMode === 'single') {
+      // For single entity mode, check summary for changes
+      const hasChanges = summary?.value?.hasChanges === true || (summary?.value?.totalChangedLines || 0) > 0
+      return msgOk && hasChanges
+    }
+    return msgOk && selectedFiles.value.length > 0
+  })
 
   // ============ HELPERS ============
 
@@ -169,12 +186,16 @@ export function useGitStatus(workspaceIdRef, options = {}) {
 
   /**
    * Check for uncommitted changes in the workspace.
+   * In single entity mode, this is a no-op (changes are tracked via summary prop).
    * @param {Object} opts - Options
    * @param {boolean} opts.silent - If true, don't show loading state
    */
   async function checkForChanges({ silent = false } = {}) {
-    const workspaceId = workspaceIdRef.value
-    if (!workspaceId) return
+    const entityId = entityIdRef.value
+    if (!entityId) return
+
+    // In single entity mode, changes are tracked externally via summary prop
+    if (entityMode === 'single') return
 
     if (!silent) {
       checkingChanges.value = true
@@ -183,7 +204,7 @@ export function useGitStatus(workspaceIdRef, options = {}) {
 
     try {
       const res = await axios.get(
-        `${API_BASE}${apiPrefix}/workspaces/${workspaceId}/changes`,
+        `${API_BASE}${apiPrefix}/workspaces/${entityId}/changes`,
         { headers: authHeaders() }
       )
 
@@ -224,51 +245,65 @@ export function useGitStatus(workspaceIdRef, options = {}) {
   }
 
   /**
-   * Load recent commits for the workspace
+   * Load recent commits for the workspace or single entity
    */
   async function loadRecentCommits() {
-    const workspaceId = workspaceIdRef.value
-    if (!workspaceId) return
+    const entityId = entityIdRef.value
+    if (!entityId) return
 
     loadingCommits.value = true
     try {
-      const res = await axios.get(
-        `${API_BASE}${apiPrefix}/workspaces/${workspaceId}/tree`,
-        { headers: authHeaders() }
-      )
+      if (entityMode === 'single') {
+        // Single entity mode: Load commits directly for the entity
+        const res = await axios.get(
+          `${API_BASE}${apiPrefix}/${entityId}/commits`,
+          { headers: authHeaders() }
+        )
+        recentCommits.value = (res.data.commits || []).map(c => ({
+          ...c,
+          file_count: 1,
+          author_username: c.author || c.author_username
+        }))
+      } else {
+        // Workspace mode: Aggregate commits from all documents
+        const res = await axios.get(
+          `${API_BASE}${apiPrefix}/workspaces/${entityId}/tree`,
+          { headers: authHeaders() }
+        )
 
-      const nodes = res.data.nodes || []
-      const textFiles = nodes.filter(n => n.type === 'file' && !n.asset_id)
+        const nodes = res.data.nodes || []
+        const textFiles = nodes.filter(n => n.type === 'file' && !n.asset_id)
 
-      const commitPromises = textFiles.slice(0, 5).map(async (node) => {
-        try {
-          const commitRes = await axios.get(
-            `${API_BASE}${apiPrefix}/documents/${node.id}/commits`,
-            { headers: authHeaders() }
-          )
-          return commitRes.data.commits || []
-        } catch {
-          return []
+        const commitPromises = textFiles.slice(0, 5).map(async (node) => {
+          try {
+            const commitRes = await axios.get(
+              `${API_BASE}${apiPrefix}/documents/${node.id}/commits`,
+              { headers: authHeaders() }
+            )
+            return commitRes.data.commits || []
+          } catch {
+            return []
+          }
+        })
+
+        const allCommits = (await Promise.all(commitPromises)).flat()
+
+        // Deduplicate
+        const uniqueCommits = []
+        const seen = new Set()
+        for (const c of allCommits.sort((a, b) => new Date(b.created_at) - new Date(a.created_at))) {
+          const key = `${c.message}|${c.created_at}`
+          if (!seen.has(key)) {
+            seen.add(key)
+            const sameCommits = allCommits.filter(cc =>
+              cc.message === c.message && cc.created_at === c.created_at
+            )
+            uniqueCommits.push({ ...c, file_count: sameCommits.length })
+          }
         }
-      })
 
-      const allCommits = (await Promise.all(commitPromises)).flat()
-
-      // Deduplicate
-      const uniqueCommits = []
-      const seen = new Set()
-      for (const c of allCommits.sort((a, b) => new Date(b.created_at) - new Date(a.created_at))) {
-        const key = `${c.message}|${c.created_at}`
-        if (!seen.has(key)) {
-          seen.add(key)
-          const sameCommits = allCommits.filter(cc =>
-            cc.message === c.message && cc.created_at === c.created_at
-          )
-          uniqueCommits.push({ ...c, file_count: sameCommits.length })
-        }
+        recentCommits.value = uniqueCommits.slice(0, 10)
       }
-
-      recentCommits.value = uniqueCommits.slice(0, 10)
     } catch (e) {
       logI18n('error', 'logs.gitStatus.recentCommitsFailed', e)
       recentCommits.value = []
@@ -290,22 +325,36 @@ export function useGitStatus(workspaceIdRef, options = {}) {
 
     try {
       if (typeof beforeCommit === 'function') {
-        await beforeCommit([...selectedFiles.value])
+        await beforeCommit(entityMode === 'single' ? null : [...selectedFiles.value])
       }
 
-      await axios.post(
-        `${API_BASE}${apiPrefix}/workspaces/${workspaceIdRef.value}/commit`,
-        {
-          message: commitMessage.value.trim(),
-          document_ids: selectedFiles.value
-        },
-        { headers: authHeaders() }
-      )
+      if (entityMode === 'single') {
+        // Single entity mode: Commit the single entity
+        const contentSnapshot = getContent ? getContent() : null
+        await axios.post(
+          `${API_BASE}${apiPrefix}/${entityIdRef.value}/commit`,
+          {
+            message: commitMessage.value.trim(),
+            diff_summary: summary?.value || null,
+            content_snapshot: contentSnapshot
+          },
+          { headers: authHeaders() }
+        )
+      } else {
+        // Workspace mode: Commit selected documents
+        await axios.post(
+          `${API_BASE}${apiPrefix}/workspaces/${entityIdRef.value}/commit`,
+          {
+            message: commitMessage.value.trim(),
+            document_ids: selectedFiles.value
+          },
+          { headers: authHeaders() }
+        )
+        selectedFiles.value = []
+        changedFiles.value = []
+      }
 
       commitMessage.value = ''
-      selectedFiles.value = []
-      changedFiles.value = []
-
       await Promise.all([checkForChanges(), loadRecentCommits()])
       return true
     } catch (e) {
@@ -317,17 +366,25 @@ export function useGitStatus(workspaceIdRef, options = {}) {
   }
 
   /**
-   * Quick commit - commits ALL changed files
+   * Quick commit - commits ALL changed files (workspace mode) or current content (single mode)
    * @param {string} message - Commit message
    * @param {Object} opts - Options
    */
   async function quickCommit(message, { beforeCommit } = {}) {
-    if (!message?.trim() || changedFiles.value.length === 0) return false
+    if (!message?.trim()) return false
 
-    // Select all files for quick commit
-    selectedFiles.value = changedFiles.value.map(f => f.id)
+    if (entityMode === 'single') {
+      // Single mode: Check summary for changes
+      const hasChanges = summary?.value?.hasChanges === true || (summary?.value?.totalChangedLines || 0) > 0
+      if (!hasChanges) return false
+    } else {
+      // Workspace mode: Need changed files
+      if (changedFiles.value.length === 0) return false
+      // Select all files for quick commit
+      selectedFiles.value = changedFiles.value.map(f => f.id)
+    }
+
     commitMessage.value = message.trim()
-
     return await submitCommit({ beforeCommit })
   }
 
@@ -434,7 +491,9 @@ export function useGitStatus(workspaceIdRef, options = {}) {
   let socket = null
   let onSocketConnect = null
 
-  function handleCommitCreated() {
+  function handleCommitCreated(payload) {
+    // For single mode, check if the payload matches our entity
+    if (entityMode === 'single' && payload?.prompt_id !== entityIdRef.value) return
     checkForChanges()
     loadRecentCommits()
   }
@@ -443,10 +502,20 @@ export function useGitStatus(workspaceIdRef, options = {}) {
     socket = getSocket()
     if (!socket) return
 
-    socket.on('latex_collab:commit_created', handleCommitCreated)
+    if (entityMode === 'single') {
+      // Single entity mode (prompts)
+      socket.on('prompt:commit_created', handleCommitCreated)
 
-    onSocketConnect = () => {
-      socket.emit('latex_collab:subscribe_workspace', { workspace_id: workspaceIdRef.value })
+      onSocketConnect = () => {
+        socket.emit('prompt:subscribe', { prompt_id: entityIdRef.value })
+      }
+    } else {
+      // Workspace mode
+      socket.on('latex_collab:commit_created', handleCommitCreated)
+
+      onSocketConnect = () => {
+        socket.emit('latex_collab:subscribe_workspace', { workspace_id: entityIdRef.value })
+      }
     }
 
     if (socket.connected) {
@@ -457,10 +526,19 @@ export function useGitStatus(workspaceIdRef, options = {}) {
 
   function cleanupSocket() {
     if (!socket) return
-    socket.off('latex_collab:commit_created', handleCommitCreated)
-    if (onSocketConnect) socket.off('connect', onSocketConnect)
-    if (workspaceIdRef.value) {
-      socket.emit('latex_collab:unsubscribe_workspace', { workspace_id: workspaceIdRef.value })
+
+    if (entityMode === 'single') {
+      socket.off('prompt:commit_created', handleCommitCreated)
+      if (onSocketConnect) socket.off('connect', onSocketConnect)
+      if (entityIdRef.value) {
+        socket.emit('prompt:unsubscribe', { prompt_id: entityIdRef.value })
+      }
+    } else {
+      socket.off('latex_collab:commit_created', handleCommitCreated)
+      if (onSocketConnect) socket.off('connect', onSocketConnect)
+      if (entityIdRef.value) {
+        socket.emit('latex_collab:unsubscribe_workspace', { workspace_id: entityIdRef.value })
+      }
     }
     onSocketConnect = null
   }
@@ -481,8 +559,8 @@ export function useGitStatus(workspaceIdRef, options = {}) {
     await Promise.all([checkForChanges(), loadRecentCommits()])
   }
 
-  // Watch workspace ID changes
-  watch(workspaceIdRef, async (newId, oldId) => {
+  // Watch entity ID changes
+  watch(entityIdRef, async (newId, oldId) => {
     if (oldId && oldId !== newId) {
       cleanupSocket()
     }
@@ -496,7 +574,7 @@ export function useGitStatus(workspaceIdRef, options = {}) {
 
   if (autoSetup) {
     onMounted(async () => {
-      if (workspaceIdRef.value) {
+      if (entityIdRef.value) {
         await refresh()
         setupSocket()
       }
@@ -507,9 +585,30 @@ export function useGitStatus(workspaceIdRef, options = {}) {
     })
   }
 
+  // ============ SINGLE MODE COMPUTED ============
+
+  // Convenience computed for single entity mode
+  const singleModeHasChanges = computed(() => {
+    if (entityMode !== 'single') return false
+    return summary?.value?.hasChanges === true || (summary?.value?.totalChangedLines || 0) > 0
+  })
+
+  const singleModeInsertions = computed(() => {
+    if (entityMode !== 'single') return 0
+    return summary?.value?.insertions || 0
+  })
+
+  const singleModeDeletions = computed(() => {
+    if (entityMode !== 'single') return 0
+    return summary?.value?.deletions || 0
+  })
+
   // ============ RETURN ============
 
   return {
+    // Config
+    entityMode,
+
     // State
     changedFiles,
     deletedFiles,
@@ -537,6 +636,11 @@ export function useGitStatus(workspaceIdRef, options = {}) {
     totalInsertions,
     totalDeletions,
     canSubmitCommit,
+
+    // Single mode computed
+    singleModeHasChanges,
+    singleModeInsertions,
+    singleModeDeletions,
 
     // Helpers
     formatDate,

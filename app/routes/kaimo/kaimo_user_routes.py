@@ -145,14 +145,16 @@ def get_case_detail(case_id: int):
     if not case:
         raise NotFoundError("Case not found")
 
-    # Check access: owner or shared with
+    # Check access: owner, shared with, or admin
+    from services.permission_service import PermissionService
     is_owner = case.created_by == username
     is_shared = KaimoCaseShare.query.filter_by(
         case_id=case_id,
         shared_with_username=username
     ).first() is not None
+    is_admin = PermissionService.check_permission(username, 'admin:kaimo:manage')
 
-    if not is_owner and not is_shared:
+    if not is_owner and not is_shared and not is_admin:
         raise ForbiddenError("Access denied - you don't have access to this case")
 
     # Get sharing info

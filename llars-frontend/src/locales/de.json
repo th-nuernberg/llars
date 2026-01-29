@@ -4417,6 +4417,7 @@
       "dialog": {
         "title": "Kommentar hinzufügen",
         "label": "Kommentar",
+        "placeholder": "Kommentar eingeben... (Strg+Enter zum Speichern)",
         "cancelTitle": "Abbrechen",
         "saveTitle": "Speichern"
       },

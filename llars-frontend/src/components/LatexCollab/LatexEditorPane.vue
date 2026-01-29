@@ -1121,7 +1121,12 @@ function hideSelectionToolbar() {
 
 function onSelectionComment() {
   if (!selectionToolbar.value.range) return
-  emit('request-comment', selectionToolbar.value.range)
+  // Include position info for floating comment card
+  emit('request-comment', {
+    ...selectionToolbar.value.range,
+    x: selectionToolbar.value.x,
+    y: selectionToolbar.value.y
+  })
   hideSelectionToolbar()
 }
 

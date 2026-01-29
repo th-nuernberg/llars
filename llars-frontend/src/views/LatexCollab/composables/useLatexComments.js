@@ -47,6 +47,9 @@ export function useLatexComments({
   const commentDraft = ref('')
   const commentError = ref('')
   const pendingCommentRange = ref(null)
+  // Floating comment card position (for inline comments beside text)
+  const commentCardPosition = ref({ x: 0, y: 0 })
+  const commentTextareaRef = ref(null)
   // Reply state
   const replyingToId = ref(null)
   const replyDraft = ref('')
@@ -143,9 +146,17 @@ export function useLatexComments({
       commentError.value = t('latexCollab.comments.errors.selectText')
       return
     }
-    pendingCommentRange.value = range
+    pendingCommentRange.value = { from: range.from, to: range.to }
+    // Store position for floating card (if provided)
+    if (range.x !== undefined && range.y !== undefined) {
+      commentCardPosition.value = { x: range.x, y: range.y + 50 } // Offset below selection
+    }
     commentDraft.value = ''
     commentDialog.value = true
+    // Auto-focus the textarea after dialog opens
+    setTimeout(() => {
+      commentTextareaRef.value?.focus?.()
+    }, 100)
   }
 
   /**
@@ -460,6 +471,8 @@ export function useLatexComments({
     commentDraft,
     commentError,
     pendingCommentRange,
+    commentCardPosition,
+    commentTextareaRef,
     replyingToId,
     replyDraft,
 

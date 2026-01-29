@@ -166,7 +166,7 @@
                   @document-saved="handleDocumentSaved"
                   @document-updated="handleDocumentUpdated"
                   @diff-calculated="handleDiffCalculated"
-                  @request-comment="(range) => openCommentDialog(range)"
+                  @request-comment="openCommentDialog"
                 />
               </div>
 
@@ -499,36 +499,72 @@
       @restored="handleRestored"
     />
 
-    <v-dialog v-model="commentDialog" max-width="520">
-      <v-card>
-        <v-card-title class="d-flex align-center">
-          <LIcon class="mr-2">mdi-comment-plus-outline</LIcon>
-          {{ $t('latexCollab.comments.dialog.title') }}
+    <!-- Floating Comment Card (no overlay, draggable, beside text) -->
+    <Teleport to="body">
+      <div
+        v-if="commentDialog"
+        ref="floatingCommentCardRef"
+        class="floating-comment-card"
+        :style="floatingCommentCardStyle"
+        @keydown.esc="commentDialog = false"
+        @keydown.ctrl.enter="canSubmitComment && submitComment(collabColor)"
+      >
+        <!-- Draggable Header -->
+        <div
+          class="floating-comment-header"
+          @mousedown="startDragCommentCard"
+        >
+          <LIcon size="16" class="mr-1">mdi-comment-plus-outline</LIcon>
+          <span class="floating-comment-title">{{ $t('latexCollab.comments.dialog.title') }}</span>
           <v-spacer />
-          <LIconBtn icon="mdi-close" :tooltip="$t('common.close')" @click="commentDialog = false" />
-        </v-card-title>
-        <v-divider />
-        <v-card-text>
-          <v-alert v-if="commentError" type="error" variant="tonal" class="mb-3" density="compact">
+          <LIconBtn
+            icon="mdi-close"
+            size="x-small"
+            :tooltip="$t('common.close')"
+            @click="commentDialog = false"
+          />
+        </div>
+        <!-- Content -->
+        <div class="floating-comment-body">
+          <v-alert v-if="commentError" type="error" variant="tonal" class="mb-2" density="compact">
             {{ commentError }}
           </v-alert>
           <v-textarea
+            ref="commentTextareaRef"
             v-model="commentDraft"
-            :label="$t('latexCollab.comments.dialog.label')"
+            :placeholder="$t('latexCollab.comments.dialog.placeholder')"
             variant="outlined"
-            density="comfortable"
+            density="compact"
+            rows="3"
             auto-grow
             hide-details
+            autofocus
+            @keydown.esc.stop="commentDialog = false"
+            @keydown.ctrl.enter="canSubmitComment && submitComment(collabColor)"
           />
-        </v-card-text>
-        <v-card-actions class="justify-end">
-          <v-btn variant="text" :title="$t('latexCollab.comments.dialog.cancelTitle')" @click="commentDialog = false">{{ $t('common.cancel') }}</v-btn>
-          <v-btn color="primary" :title="$t('latexCollab.comments.dialog.saveTitle')" :disabled="!canSubmitComment" @click="submitComment(collabColor)">
+        </div>
+        <!-- Actions -->
+        <div class="floating-comment-actions">
+          <v-btn
+            variant="text"
+            size="small"
+            :title="$t('latexCollab.comments.dialog.cancelTitle')"
+            @click="commentDialog = false"
+          >
+            {{ $t('common.cancel') }}
+          </v-btn>
+          <v-btn
+            color="primary"
+            size="small"
+            :title="$t('latexCollab.comments.dialog.saveTitle')"
+            :disabled="!canSubmitComment"
+            @click="submitComment(collabColor)"
+          >
             {{ $t('common.save') }}
           </v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
+        </div>
+      </div>
+    </Teleport>
 
     <!-- Compile Log Dialog -->
     <CompileLogDialog
@@ -965,6 +1001,8 @@ const {
   commentDraft,
   commentError,
   pendingCommentRange,
+  commentCardPosition,
+  commentTextareaRef,
   replyingToId,
   replyDraft,
   canComment,
@@ -1247,6 +1285,50 @@ const commentsPanelStyle = computed(() => ({
   minHeight: `${commentsPanelHeight.value}px`,
   maxHeight: `${commentsPanelHeight.value}px`
 }))
+
+// Floating comment card (inline beside text, no overlay)
+const floatingCommentCardRef = ref(null)
+const floatingCommentDragOffset = ref({ x: 0, y: 0 })
+const isDraggingCommentCard = ref(false)
+
+const floatingCommentCardStyle = computed(() => {
+  const pos = commentCardPosition.value
+  return {
+    left: `${Math.max(10, pos.x)}px`,
+    top: `${Math.max(10, pos.y)}px`
+  }
+})
+
+function startDragCommentCard(e) {
+  if (e.button !== 0) return // Only left mouse button
+  isDraggingCommentCard.value = true
+  const card = floatingCommentCardRef.value
+  if (!card) return
+  const rect = card.getBoundingClientRect()
+  floatingCommentDragOffset.value = {
+    x: e.clientX - rect.left,
+    y: e.clientY - rect.top
+  }
+  document.addEventListener('mousemove', dragCommentCard)
+  document.addEventListener('mouseup', stopDragCommentCard)
+  e.preventDefault()
+}
+
+function dragCommentCard(e) {
+  if (!isDraggingCommentCard.value) return
+  const newX = e.clientX - floatingCommentDragOffset.value.x
+  const newY = e.clientY - floatingCommentDragOffset.value.y
+  commentCardPosition.value = {
+    x: Math.max(0, newX),
+    y: Math.max(0, newY)
+  }
+}
+
+function stopDragCommentCard() {
+  isDraggingCommentCard.value = false
+  document.removeEventListener('mousemove', dragCommentCard)
+  document.removeEventListener('mouseup', stopDragCommentCard)
+}
 
 // Outline functions now provided by useLatexOutline composable
 

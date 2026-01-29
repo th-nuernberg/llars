@@ -4570,6 +4570,7 @@
       "dialog": {
         "title": "Add comment",
         "label": "Comment",
+        "placeholder": "Enter comment... (Ctrl+Enter to save)",
         "cancelTitle": "Cancel",
         "saveTitle": "Save"
       },

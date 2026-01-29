@@ -245,8 +245,8 @@
                       <div class="user-details">
                         <span class="user-name">{{ user.username }}</span>
                         <div class="user-tags">
-                          <LTag :variant="user.role === 'rater' ? 'primary' : 'gray'" size="sm">
-                            {{ user.role === 'rater' ? 'Viewer' : 'Evaluator' }}
+                          <LTag :variant="user.role === 'Evaluator' ? 'primary' : 'gray'" size="sm">
+                            {{ user.role === 'Evaluator' ? 'Evaluator' : 'Viewer' }}
                           </LTag>
                           <LTag v-if="user.is_llm" variant="info" size="sm">LLM</LTag>
                         </div>
@@ -322,8 +322,8 @@
             <div class="detail-user-info">
               <h3 class="section-title">{{ selectedUser.username }}</h3>
               <div class="user-tags">
-                <LTag :variant="selectedUser.role === 'rater' ? 'primary' : 'gray'" size="sm">
-                  {{ selectedUser.role === 'rater' ? 'Viewer' : 'Evaluator' }}
+                <LTag :variant="selectedUser.role === 'Evaluator' ? 'primary' : 'gray'" size="sm">
+                  {{ selectedUser.role === 'Evaluator' ? 'Evaluator' : 'Viewer' }}
                 </LTag>
                 <LTag v-if="selectedUser.is_llm" variant="info" size="sm">LLM</LTag>
               </div>
@@ -470,8 +470,8 @@
         <div class="detail-user-info">
           <h3>{{ selectedUser.username }}</h3>
           <div class="user-tags">
-            <LTag :variant="selectedUser.role === 'rater' ? 'primary' : 'gray'" size="sm">
-              {{ selectedUser.role === 'rater' ? 'Viewer' : 'Evaluator' }}
+            <LTag :variant="selectedUser.role === 'Evaluator' ? 'primary' : 'gray'" size="sm">
+              {{ selectedUser.role === 'Evaluator' ? 'Evaluator' : 'Viewer' }}
             </LTag>
             <LTag v-if="selectedUser.is_llm" variant="info" size="sm">LLM</LTag>
           </div>

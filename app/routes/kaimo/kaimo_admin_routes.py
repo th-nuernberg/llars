@@ -19,6 +19,11 @@ from services.kaimo import (
     KaimoDocumentService,
     KaimoHintService,
     KaimoCategoryService,
+    KaimoExportService,
+)
+from services.kaimo.kaimo_export_service import (
+    CaseExportException,
+    CaseImportException,
 )
 from services.kaimo.kaimo_case_service import (
     CaseNotFoundException,
@@ -368,3 +373,77 @@ def get_categories_admin():
     """Get all KAIMO categories with subcategories."""
     categories = KaimoCategoryService.get_all_categories_with_subcategories()
     return jsonify({"success": True, "categories": categories}), 200
+
+
+# =============================================================================
+# Export / Import Endpoints
+# =============================================================================
+
+@kaimo_admin_bp.route('/cases/<int:case_id>/export', methods=['GET'])
+@require_permission('admin:kaimo:manage')
+@handle_api_errors(logger_name='kaimo.admin')
+def export_case(case_id: int):
+    """
+    Export a KAIMO case as JSON.
+
+    Returns a JSON file that can be used for backup or importing into another instance.
+    """
+    try:
+        export_data = KaimoExportService.export_case(case_id)
+        return jsonify({"success": True, "export": export_data}), 200
+    except CaseExportException as e:
+        raise NotFoundError(str(e))
+
+
+@kaimo_admin_bp.route('/cases/import', methods=['POST'])
+@require_permission('admin:kaimo:manage')
+@handle_api_errors(logger_name='kaimo.admin')
+def import_case():
+    """
+    Import a KAIMO case from JSON.
+
+    Request body should contain:
+    - export: The export data (from export endpoint or external source)
+    - name_override: (optional) Override the case name
+    - status_override: (optional) Override status (default: draft)
+    - publish: (optional) If true, publish immediately
+
+    Returns the created case.
+    """
+    data = request.get_json() or {}
+    export_data = data.get('export')
+
+    if not export_data:
+        raise ValidationError("'export' field is required with case data")
+
+    name_override = data.get('name_override')
+    status_override = data.get('status_override')
+    publish = data.get('publish', False)
+
+    try:
+        created_by = AuthUtils.extract_username_without_validation() or 'api'
+
+        # If publish requested, set status to published
+        if publish:
+            status_override = 'published'
+
+        case = KaimoExportService.import_case(
+            data=export_data,
+            created_by=created_by,
+            name_override=name_override,
+            status_override=status_override
+        )
+
+        return jsonify({
+            "success": True,
+            "case": {
+                "id": case.id,
+                "name": case.name,
+                "display_name": case.display_name,
+                "status": case.status,
+            },
+            "message": f"Case '{case.display_name}' imported successfully"
+        }), 201
+
+    except CaseImportException as e:
+        raise ValidationError(str(e))

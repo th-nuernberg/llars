@@ -37,6 +37,31 @@ export async function publishKaimoCase(caseId) {
   return res.data
 }
 
+// ============ Admin API - Export/Import ============
+
+export async function exportKaimoCase(caseId, includeAssessments = false) {
+  const token = getToken()
+  const params = includeAssessments ? '?include_assessments=true' : ''
+  const res = await axios.get(`${baseUrl}/api/kaimo/admin/cases/${caseId}/export${params}`, {
+    headers: { Authorization: `Bearer ${token}` }
+  })
+  return res.data
+}
+
+export async function importKaimoCase(exportData, options = {}) {
+  const token = getToken()
+  const payload = {
+    export: exportData,
+    name_override: options.nameOverride || null,
+    status_override: options.statusOverride || null,
+    publish: options.publish || false
+  }
+  const res = await axios.post(`${baseUrl}/api/kaimo/admin/cases/import`, payload, {
+    headers: { Authorization: `Bearer ${token}` }
+  })
+  return res.data
+}
+
 // ============ Admin API - Cases ============
 
 export async function updateKaimoCase(caseId, payload) {

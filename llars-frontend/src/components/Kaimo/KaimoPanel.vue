@@ -1,447 +1,868 @@
 <template>
-<v-container class="kaimo-panel">
-    <v-row class="mb-6">
-      <v-col cols="12">
-        <v-skeleton-loader
-          v-if="isLoading('hero')"
-          type="heading, text, chip"
-          class="mb-4"
-        />
-        <div v-else class="d-flex align-start flex-wrap gap-3">
-          <div>
-            <div class="d-flex align-center mb-1">
-              <v-avatar color="primary" size="42" class="mr-3">
-                <LIcon color="white">mdi-human-child</LIcon>
-              </v-avatar>
+  <div class="kaimo-panel">
+    <!-- Hero Section -->
+    <div class="panel-header">
+      <v-skeleton-loader
+        v-if="isLoading('hero')"
+        type="heading, text"
+        class="mb-4"
+      />
+      <template v-else>
+        <div class="header-content">
+          <div class="header-left">
+            <div class="header-title-row">
+              <div class="header-icon">
+                <LIcon size="24" color="white">mdi-human-child</LIcon>
+              </div>
               <div>
-                <div class="text-h5 font-weight-bold">{{ $t('kaimo.panel.title') }}</div>
-                <div class="text-subtitle-2 text-medium-emphasis">
-                  {{ $t('kaimo.panel.subtitle') }}
-                </div>
+                <h1 class="panel-title">{{ $t('kaimo.panel.title') }}</h1>
+                <p class="panel-subtitle">{{ $t('kaimo.panel.subtitle') }}</p>
               </div>
             </div>
-            <div class="text-body-2 text-medium-emphasis">
+            <p class="role-hint">
               {{ canManageKaimo ? $t('kaimo.panel.roleHint.researcher') : $t('kaimo.panel.roleHint.evaluator') }}
+            </p>
+          </div>
+
+          <div class="header-right">
+            <LTag v-if="canManageKaimo" variant="secondary">
+              <LIcon size="14" class="mr-1">mdi-shield-account</LIcon>
+              {{ $t('kaimo.panel.roles.researcher') }}
+            </LTag>
+            <LTag v-else variant="primary">
+              <LIcon size="14" class="mr-1">mdi-account</LIcon>
+              {{ $t('kaimo.panel.roles.evaluator') }}
+            </LTag>
+
+            <div class="header-actions">
+              <LBtn
+                v-if="canManageKaimo"
+                variant="primary"
+                @click="router.push({ name: 'KaimoNewCase' })"
+              >
+                <LIcon size="18" class="mr-1">mdi-plus</LIcon>
+                {{ $t('kaimo.panel.actions.newCase') }}
+              </LBtn>
+              <LBtn
+                v-if="canManageKaimo"
+                variant="outlined"
+                @click="openImportDialog"
+              >
+                <LIcon size="18" class="mr-1">mdi-import</LIcon>
+                {{ $t('kaimo.import.button') }}
+              </LBtn>
+              <LBtn
+                variant="text"
+                @click="router.push({ name: 'KaimoHub' })"
+              >
+                <LIcon size="18" class="mr-1">mdi-arrow-left</LIcon>
+                {{ $t('common.back') }}
+              </LBtn>
             </div>
           </div>
-          <v-spacer />
-          <div class="d-flex align-center gap-2 flex-wrap">
-            <v-chip v-if="canManageKaimo" color="secondary" variant="flat" prepend-icon="mdi-shield-account">
-              {{ $t('kaimo.panel.roles.researcher') }}
-            </v-chip>
-            <v-chip v-else color="primary" variant="outlined" prepend-icon="mdi-account">
-              {{ $t('kaimo.panel.roles.evaluator') }}
-            </v-chip>
-            <v-btn
-              v-if="canManageKaimo"
-              color="secondary"
-              variant="flat"
-              prepend-icon="mdi-plus"
-              @click="router.push({ name: 'KaimoNewCase' })"
-            >
-              {{ $t('kaimo.panel.actions.newCase') }}
-            </v-btn>
-            <v-btn
-              variant="text"
-              color="secondary"
-              prepend-icon="mdi-arrow-left"
-              @click="router.push({ name: 'KaimoHub' })"
-            >
-              {{ $t('common.back') }}
-            </v-btn>
-          </div>
         </div>
-      </v-col>
-    </v-row>
+      </template>
+    </div>
 
-    <v-row>
-      <v-col cols="12">
-        <v-skeleton-loader
-          v-if="isLoading('content')"
-          type="table-heading, table-thead, table-tbody"
-          class="mb-4"
-        />
-        <v-alert
-          v-else-if="!canViewKaimo"
-          type="warning"
-          variant="tonal"
-          icon="mdi-lock"
-        >
-          {{ $t('kaimo.panel.alerts.noAccess', { permission: 'feature:kaimo:view' }) }}
-        </v-alert>
-        <v-alert
-          v-else-if="loadError"
-          type="error"
-          variant="tonal"
-          icon="mdi-alert"
-          class="mb-4"
-        >
-          {{ loadError }}
-        </v-alert>
-      </v-col>
-    </v-row>
+    <!-- Alerts -->
+    <v-alert
+      v-if="!isLoading('content') && !canViewKaimo"
+      type="warning"
+      variant="tonal"
+      icon="mdi-lock"
+      class="mb-4"
+    >
+      {{ $t('kaimo.panel.alerts.noAccess', { permission: 'feature:kaimo:view' }) }}
+    </v-alert>
+    <v-alert
+      v-else-if="!isLoading('content') && loadError"
+      type="error"
+      variant="tonal"
+      icon="mdi-alert"
+      class="mb-4"
+    >
+      {{ loadError }}
+    </v-alert>
 
-    <v-row v-if="!isLoading('content') && canViewKaimo" class="align-stretch">
-      <v-col cols="12" :md="canManageKaimo ? 12 : 7">
-        <v-card class="pa-4" elevation="2">
-          <v-card-title class="px-0 d-flex align-center">
-            <LIcon class="mr-2" color="primary">mdi-format-list-bulleted</LIcon>
-            {{ $t('kaimo.panel.table.title') }}
-            <v-chip class="ml-2" size="small" color="primary" variant="outlined">
-              {{ cases.length }}
-            </v-chip>
-            <v-spacer />
-            <v-btn
+    <!-- Main Content -->
+    <div v-if="!isLoading('content') && canViewKaimo" class="panel-content">
+      <!-- Cases Table Card -->
+      <LCard class="cases-card" :class="{ 'full-width': canManageKaimo }">
+        <template #header>
+          <div class="card-header">
+            <div class="card-header-left">
+              <LIcon size="20" color="primary" class="mr-2">mdi-format-list-bulleted</LIcon>
+              <span class="card-title">{{ $t('kaimo.panel.table.title') }}</span>
+              <LTag variant="primary" size="small" class="ml-2">{{ cases.length }}</LTag>
+            </div>
+            <LIconBtn
               icon="mdi-refresh"
-              variant="text"
+              :tooltip="$t('common.refresh')"
               :loading="isLoading('content')"
               @click="refresh"
             />
-          </v-card-title>
-          <v-card-text class="px-0">
-            <v-table density="comfortable">
-              <thead>
-                <tr>
-                  <th>{{ $t('kaimo.panel.table.headers.case') }}</th>
-                  <th>{{ $t('kaimo.panel.table.headers.status') }}</th>
-                  <th class="text-right">{{ $t('kaimo.panel.table.headers.docs') }}</th>
-                  <th class="text-right">{{ $t('kaimo.panel.table.headers.hints') }}</th>
-                  <th v-if="canManageKaimo" class="text-right">{{ $t('kaimo.panel.table.headers.assessments') }}</th>
-                  <th class="text-right">{{ $t('kaimo.panel.table.headers.actions') }}</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="c in cases" :key="c.id">
-                  <td>
-                    <div class="d-flex align-center">
-                      <span v-if="c.icon" class="mr-2 text-h6">{{ c.icon }}</span>
-                      <div>
-                        <div class="font-weight-medium">{{ c.display_name }}</div>
-                        <div class="text-caption text-medium-emphasis text-truncate" style="max-width: 300px;">
-                          {{ c.description || $t('kaimo.panel.table.noDescription') }}
-                        </div>
+          </div>
+        </template>
+
+        <v-skeleton-loader
+          v-if="isLoading('content')"
+          type="table-heading, table-tbody"
+        />
+        <div v-else class="table-wrapper">
+          <table class="cases-table">
+            <thead>
+              <tr>
+                <th class="text-left">{{ $t('kaimo.panel.table.headers.case') }}</th>
+                <th class="text-left">{{ $t('kaimo.panel.table.headers.status') }}</th>
+                <th class="text-right">{{ $t('kaimo.panel.table.headers.docs') }}</th>
+                <th class="text-right">{{ $t('kaimo.panel.table.headers.hints') }}</th>
+                <th v-if="canManageKaimo" class="text-right">{{ $t('kaimo.panel.table.headers.assessments') }}</th>
+                <th class="text-right">{{ $t('kaimo.panel.table.headers.actions') }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="c in cases" :key="c.id" class="case-row clickable" @click="openCase(c)">
+                <td>
+                  <div class="case-info">
+                    <span v-if="c.icon" class="case-icon">{{ c.icon }}</span>
+                    <div>
+                      <div class="case-name">{{ c.display_name }}</div>
+                      <div class="case-description">
+                        {{ c.description || $t('kaimo.panel.table.noDescription') }}
                       </div>
                     </div>
-                  </td>
-                  <td>
-                    <v-chip
+                  </div>
+                </td>
+                <td>
+                  <LTag :variant="getStatusVariant(c.status)" size="small">
+                    {{ getStatusLabel(c.status) }}
+                  </LTag>
+                </td>
+                <td class="text-right">{{ c.document_count || 0 }}</td>
+                <td class="text-right">{{ c.hint_count || 0 }}</td>
+                <td v-if="canManageKaimo" class="text-right">{{ c.assessment_count || 0 }}</td>
+                <td class="text-right">
+                  <div class="action-buttons" @click.stop>
+                    <LIconBtn
+                      icon="mdi-eye"
+                      :tooltip="$t('kaimo.panel.tooltips.openCase')"
                       size="small"
-                      :color="getStatusColor(c.status)"
-                      variant="flat"
-                    >
-                      {{ getStatusLabel(c.status) }}
-                    </v-chip>
-                  </td>
-                  <td class="text-right">{{ c.document_count || 0 }}</td>
-                  <td class="text-right">{{ c.hint_count || 0 }}</td>
-                  <td v-if="canManageKaimo" class="text-right">{{ c.assessment_count || 0 }}</td>
-                  <td class="text-right">
-                    <div class="d-flex justify-end gap-1">
-                      <v-tooltip :text="$t('kaimo.panel.tooltips.openCase')" location="top">
-                        <template v-slot:activator="{ props }">
-                          <v-btn
-                            v-bind="props"
-                            size="small"
-                            icon="mdi-eye"
-                            color="primary"
-                            variant="text"
-                            @click="openCase(c)"
-                          />
-                        </template>
-                      </v-tooltip>
-                      <template v-if="canManageKaimo">
-                        <v-tooltip :text="$t('kaimo.panel.tooltips.editCase')" location="top">
-                          <template v-slot:activator="{ props }">
-                            <v-btn
-                              v-bind="props"
-                              size="small"
-                              icon="mdi-pencil"
-                              color="secondary"
-                              variant="text"
-                              @click="editCase(c)"
-                            />
-                          </template>
-                        </v-tooltip>
-                        <v-tooltip v-if="c.status === 'draft'" :text="$t('kaimo.panel.tooltips.publish')" location="top">
-                          <template v-slot:activator="{ props }">
-                            <v-btn
-                              v-bind="props"
-                              size="small"
-                              icon="mdi-publish"
-                              color="success"
-                              variant="text"
-                              @click="confirmPublish(c)"
-                            />
-                          </template>
-                        </v-tooltip>
-                        <v-tooltip :text="$t('common.delete')" location="top">
-                          <template v-slot:activator="{ props }">
-                            <v-btn
-                              v-bind="props"
-                              size="small"
-                              icon="mdi-delete"
-                              color="error"
-                              variant="text"
-                              @click="confirmDelete(c)"
-                            />
-                          </template>
-                        </v-tooltip>
-                      </template>
-                    </div>
-                  </td>
-                </tr>
-                <tr v-if="cases.length === 0">
-                  <td :colspan="canManageKaimo ? 6 : 5" class="text-center text-medium-emphasis py-4">
-                    <LIcon class="mr-2">mdi-folder-open-outline</LIcon>
-                    {{ $t('kaimo.panel.table.empty') }}
-                    <v-btn
-                      v-if="canManageKaimo"
-                      class="ml-2"
-                      color="secondary"
-                      size="small"
-                      variant="text"
-                      @click="router.push({ name: 'KaimoNewCase' })"
-                    >
-                      {{ $t('kaimo.panel.table.emptyCta') }}
-                    </v-btn>
-                  </td>
-                </tr>
-              </tbody>
-            </v-table>
-          </v-card-text>
-        </v-card>
-      </v-col>
+                      @click="openCase(c)"
+                    />
+                    <template v-if="canManageKaimo">
+                      <LIconBtn
+                        icon="mdi-pencil"
+                        :tooltip="$t('kaimo.panel.tooltips.editCase')"
+                        size="small"
+                        @click="editCase(c)"
+                      />
+                      <LIconBtn
+                        v-if="c.status === 'draft'"
+                        icon="mdi-publish"
+                        :tooltip="$t('kaimo.panel.tooltips.publish')"
+                        size="small"
+                        color="success"
+                        @click="confirmPublish(c)"
+                      />
+                      <LIconBtn
+                        icon="mdi-delete"
+                        :tooltip="$t('common.delete')"
+                        size="small"
+                        color="danger"
+                        @click="confirmDelete(c)"
+                      />
+                    </template>
+                  </div>
+                </td>
+              </tr>
+              <tr v-if="cases.length === 0">
+                <td :colspan="canManageKaimo ? 6 : 5" class="empty-state">
+                  <LIcon size="24" class="mr-2">mdi-folder-open-outline</LIcon>
+                  <span>{{ $t('kaimo.panel.table.empty') }}</span>
+                  <LBtn
+                    v-if="canManageKaimo"
+                    variant="text"
+                    size="small"
+                    class="ml-2"
+                    @click="router.push({ name: 'KaimoNewCase' })"
+                  >
+                    {{ $t('kaimo.panel.table.emptyCta') }}
+                  </LBtn>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </LCard>
 
-      <v-col v-if="!canManageKaimo" cols="12" md="5">
-        <v-card class="pa-4" color="primary" variant="tonal" elevation="2">
-          <div class="d-flex align-center mb-3">
-            <v-avatar color="primary" size="40" class="mr-3">
-              <LIcon color="white">mdi-information-outline</LIcon>
-            </v-avatar>
-            <div>
-              <div class="text-subtitle-1 font-weight-bold">{{ $t('kaimo.panel.sidebar.title') }}</div>
-              <div class="text-body-2 text-medium-emphasis">
-                {{ $t('kaimo.panel.sidebar.subtitle') }}
-              </div>
-            </div>
+      <!-- Info Sidebar (for Evaluators only) -->
+      <LCard v-if="!canManageKaimo" class="info-card" color="primary">
+        <div class="info-header">
+          <div class="info-icon">
+            <LIcon size="20" color="white">mdi-information-outline</LIcon>
           </div>
-          <v-chip-group column class="mb-4">
-            <v-chip color="success" variant="flat" prepend-icon="mdi-check">
-              {{ $t('kaimo.panel.sidebar.publishedCount', { count: cases.filter(c => c.status === 'published').length }) }}
-            </v-chip>
-            <v-chip color="warning" variant="outlined" prepend-icon="mdi-pencil">
-              {{ $t('kaimo.panel.sidebar.draftCount', { count: cases.filter(c => c.status === 'draft').length }) }}
-            </v-chip>
-          </v-chip-group>
-        </v-card>
-      </v-col>
-    </v-row>
+          <div>
+            <div class="info-title">{{ $t('kaimo.panel.sidebar.title') }}</div>
+            <div class="info-subtitle">{{ $t('kaimo.panel.sidebar.subtitle') }}</div>
+          </div>
+        </div>
+        <div class="info-stats">
+          <LTag variant="success" size="small">
+            <LIcon size="14" class="mr-1">mdi-check</LIcon>
+            {{ $t('kaimo.panel.sidebar.publishedCount', { count: cases.filter(c => c.status === 'published').length }) }}
+          </LTag>
+          <LTag variant="warning" size="small">
+            <LIcon size="14" class="mr-1">mdi-pencil</LIcon>
+            {{ $t('kaimo.panel.sidebar.draftCount', { count: cases.filter(c => c.status === 'draft').length }) }}
+          </LTag>
+        </div>
+      </LCard>
+    </div>
 
     <!-- Delete Confirmation Dialog -->
     <v-dialog v-model="deleteDialog" max-width="450">
-      <v-card>
-        <v-card-title class="text-h6">
-          <LIcon class="mr-2" color="error">mdi-delete-alert</LIcon>
-          {{ $t('kaimo.panel.deleteDialog.title') }}
-        </v-card-title>
-        <v-card-text>
+      <LCard>
+        <template #header>
+          <div class="dialog-header">
+            <LIcon size="20" color="danger" class="mr-2">mdi-delete-alert</LIcon>
+            <span>{{ $t('kaimo.panel.deleteDialog.title') }}</span>
+          </div>
+        </template>
+        <div class="dialog-body">
           <p>{{ $t('kaimo.panel.deleteDialog.body', { name: caseToDelete?.display_name }) }}</p>
           <v-alert v-if="caseToDelete?.assessment_count > 0" type="warning" variant="tonal" class="mt-3">
             <strong>{{ $t('kaimo.panel.deleteDialog.warningTitle') }}</strong>
             {{ $t('kaimo.panel.deleteDialog.warningBody', { count: caseToDelete?.assessment_count }) }}
           </v-alert>
-        </v-card-text>
-        <v-card-actions>
-          <v-spacer />
-          <v-btn variant="text" @click="deleteDialog = false">{{ $t('common.cancel') }}</v-btn>
-          <v-btn color="error" variant="flat" :loading="deleting" @click="executeDelete">
+        </div>
+        <div class="dialog-actions">
+          <LBtn variant="cancel" @click="deleteDialog = false">{{ $t('common.cancel') }}</LBtn>
+          <LBtn variant="danger" :loading="deleting" @click="executeDelete">
             {{ $t('common.delete') }}
-          </v-btn>
-        </v-card-actions>
-      </v-card>
+          </LBtn>
+        </div>
+      </LCard>
     </v-dialog>
 
     <!-- Publish Confirmation Dialog -->
     <v-dialog v-model="publishDialog" max-width="450">
-      <v-card>
-        <v-card-title class="text-h6">
-          <LIcon class="mr-2" color="success">mdi-publish</LIcon>
-          {{ $t('kaimo.panel.publishDialog.title') }}
-        </v-card-title>
-        <v-card-text>
+      <LCard>
+        <template #header>
+          <div class="dialog-header">
+            <LIcon size="20" color="success" class="mr-2">mdi-publish</LIcon>
+            <span>{{ $t('kaimo.panel.publishDialog.title') }}</span>
+          </div>
+        </template>
+        <div class="dialog-body">
           <p>{{ $t('kaimo.panel.publishDialog.body', { name: caseToPublish?.display_name }) }}</p>
-          <p class="text-medium-emphasis">{{ $t('kaimo.panel.publishDialog.note') }}</p>
-        </v-card-text>
-        <v-card-actions>
-          <v-spacer />
-          <v-btn variant="text" @click="publishDialog = false">{{ $t('common.cancel') }}</v-btn>
-          <v-btn color="success" variant="flat" :loading="publishing" @click="executePublish">
+          <p class="text-muted">{{ $t('kaimo.panel.publishDialog.note') }}</p>
+        </div>
+        <div class="dialog-actions">
+          <LBtn variant="cancel" @click="publishDialog = false">{{ $t('common.cancel') }}</LBtn>
+          <LBtn variant="primary" :loading="publishing" @click="executePublish">
             {{ $t('kaimo.panel.publishDialog.confirm') }}
-          </v-btn>
-        </v-card-actions>
-      </v-card>
+          </LBtn>
+        </div>
+      </LCard>
+    </v-dialog>
+
+    <!-- Import Dialog -->
+    <v-dialog v-model="importDialog" max-width="550">
+      <LCard>
+        <template #header>
+          <div class="dialog-header">
+            <LIcon size="20" color="secondary" class="mr-2">mdi-import</LIcon>
+            <span>{{ $t('kaimo.import.title') }}</span>
+          </div>
+        </template>
+        <div class="dialog-body">
+          <p class="text-muted mb-4">{{ $t('kaimo.import.description') }}</p>
+
+          <v-file-input
+            v-model="importFile"
+            :label="$t('kaimo.import.fileLabel')"
+            accept=".json"
+            prepend-icon="mdi-file-document"
+            variant="outlined"
+            density="comfortable"
+            :error-messages="importError"
+            @update:model-value="validateImportFile"
+          />
+
+          <v-text-field
+            v-model="importNameOverride"
+            :label="$t('kaimo.import.nameOverride')"
+            :hint="$t('kaimo.import.nameOverrideHint')"
+            persistent-hint
+            variant="outlined"
+            density="comfortable"
+            class="mt-3"
+          />
+
+          <v-checkbox
+            v-model="importPublish"
+            :label="$t('kaimo.import.publishImmediately')"
+            color="success"
+            hide-details
+            class="mt-2"
+          />
+
+          <div v-if="importPreview" class="import-preview">
+            <div class="preview-title">{{ importPreview.case?.display_name || importPreview.case?.name }}</div>
+            <div class="preview-meta">
+              {{ $t('kaimo.import.preview', {
+                docs: importPreview.documents?.length || 0,
+                hints: importPreview.hints?.length || 0
+              }) }}
+            </div>
+          </div>
+        </div>
+        <div class="dialog-actions">
+          <LBtn variant="cancel" @click="closeImportDialog">{{ $t('common.cancel') }}</LBtn>
+          <LBtn
+            variant="secondary"
+            :loading="importing"
+            :disabled="!importFile || !!importError"
+            @click="executeImport"
+          >
+            {{ $t('kaimo.import.button') }}
+          </LBtn>
+        </div>
+      </LCard>
     </v-dialog>
 
     <!-- Snackbar -->
     <v-snackbar v-model="snackbar.show" :color="snackbar.color" :timeout="3000">
       {{ snackbar.text }}
     </v-snackbar>
-
-  </v-container>
+  </div>
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue';
-import { useRouter } from 'vue-router';
-import { useI18n } from 'vue-i18n';
-import { usePermissions } from '@/composables/usePermissions';
-import { useSkeletonLoading } from '@/composables/useSkeletonLoading';
-import { getKaimoCases, getKaimoAdminCases, deleteKaimoCase, publishKaimoCase } from '@/services/kaimoApi';
+import { computed, onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
+import { usePermissions } from '@/composables/usePermissions'
+import { useSkeletonLoading } from '@/composables/useSkeletonLoading'
+import { getKaimoCases, getKaimoAdminCases, deleteKaimoCase, publishKaimoCase, importKaimoCase } from '@/services/kaimoApi'
 
-const router = useRouter();
-const { t, locale } = useI18n();
-const { hasPermission, isResearcher, fetchPermissions } = usePermissions();
-const { isLoading, setLoading, withLoading } = useSkeletonLoading(['hero', 'content']);
+const router = useRouter()
+const { t, locale } = useI18n()
+const { hasPermission, isResearcher, fetchPermissions } = usePermissions()
+const { isLoading, setLoading, withLoading } = useSkeletonLoading(['hero', 'content'])
 
 const canViewKaimo = computed(() => {
-  return hasPermission('feature:kaimo:view') || isResearcher.value || hasPermission('admin:kaimo:manage');
-});
+  return hasPermission('feature:kaimo:view') || isResearcher.value || hasPermission('admin:kaimo:manage')
+})
 
 const canManageKaimo = computed(() => {
-  return isResearcher.value || hasPermission('admin:kaimo:manage');
-});
+  return isResearcher.value || hasPermission('admin:kaimo:manage')
+})
 
-const cases = ref([]);
-const loadError = ref(null);
+const cases = ref([])
+const loadError = ref(null)
 
 // Delete dialog
-const deleteDialog = ref(false);
-const caseToDelete = ref(null);
-const deleting = ref(false);
+const deleteDialog = ref(false)
+const caseToDelete = ref(null)
+const deleting = ref(false)
 
 // Publish dialog
-const publishDialog = ref(false);
-const caseToPublish = ref(null);
-const publishing = ref(false);
+const publishDialog = ref(false)
+const caseToPublish = ref(null)
+const publishing = ref(false)
+
+// Import dialog
+const importDialog = ref(false)
+const importFile = ref(null)
+const importNameOverride = ref('')
+const importPublish = ref(false)
+const importPreview = ref(null)
+const importError = ref('')
+const importing = ref(false)
 
 // Snackbar
-const snackbar = ref({ show: false, text: '', color: 'success' });
+const snackbar = ref({ show: false, text: '', color: 'success' })
 
 const showSnackbar = (text, color = 'success') => {
-  snackbar.value = { show: true, text, color };
-};
+  snackbar.value = { show: true, text, color }
+}
 
-const getStatusColor = (status) => {
+const getStatusVariant = (status) => {
   switch (status) {
-    case 'published': return 'success';
-    case 'draft': return 'warning';
-    case 'archived': return 'grey';
-    default: return 'primary';
+    case 'published': return 'success'
+    case 'draft': return 'warning'
+    case 'archived': return 'info'
+    default: return 'primary'
   }
-};
+}
 
 const getStatusLabel = (status) => {
-  locale.value;
+  locale.value
   switch (status) {
-    case 'published': return t('kaimo.status.published');
-    case 'draft': return t('kaimo.status.draft');
-    case 'archived': return t('kaimo.status.archived');
-    default: return status;
+    case 'published': return t('kaimo.status.published')
+    case 'draft': return t('kaimo.status.draft')
+    case 'archived': return t('kaimo.status.archived')
+    default: return status
   }
-};
+}
 
 const loadCases = async () => {
-  loadError.value = null;
-  // Researcher sehen alle Fälle mit Admin-API (inkl. assessment_count)
+  loadError.value = null
   const data = canManageKaimo.value
     ? await getKaimoAdminCases()
-    : await getKaimoCases();
-  cases.value = data?.cases || [];
-};
+    : await getKaimoCases()
+  cases.value = data?.cases || []
+}
 
 const refresh = async () => {
   await withLoading('content', async () => {
-    await fetchPermissions(true);
+    await fetchPermissions(true)
     if (canViewKaimo.value) {
-      await loadCases();
+      await loadCases()
     }
-  });
-  setLoading('hero', false);
-};
+  })
+  setLoading('hero', false)
+}
 
 const openCase = (c) => {
-  router.push({ name: 'KaimoCase', params: { id: c.id } });
-};
+  router.push({ name: 'KaimoCase', params: { id: c.id } })
+}
 
 const editCase = (c) => {
-  router.push({ name: 'KaimoCaseEditor', params: { id: c.id } });
-};
+  router.push({ name: 'KaimoCaseEditor', params: { id: c.id } })
+}
 
 const confirmDelete = (c) => {
-  caseToDelete.value = c;
-  deleteDialog.value = true;
-};
+  caseToDelete.value = c
+  deleteDialog.value = true
+}
 
 const executeDelete = async () => {
-  if (!caseToDelete.value) return;
-  deleting.value = true;
+  if (!caseToDelete.value) return
+  deleting.value = true
   try {
-    // Force delete wenn Assessments vorhanden
-    const force = (caseToDelete.value.assessment_count || 0) > 0;
-    await deleteKaimoCase(caseToDelete.value.id, force);
-    showSnackbar(t('kaimo.panel.snackbar.deleteSuccess', { name: caseToDelete.value.display_name }), 'success');
-    deleteDialog.value = false;
-    await loadCases();
+    const force = (caseToDelete.value.assessment_count || 0) > 0
+    await deleteKaimoCase(caseToDelete.value.id, force)
+    showSnackbar(t('kaimo.panel.snackbar.deleteSuccess', { name: caseToDelete.value.display_name }), 'success')
+    deleteDialog.value = false
+    await loadCases()
   } catch (err) {
-    console.error('Fehler beim Loeschen:', err);
-    showSnackbar(t('kaimo.panel.snackbar.deleteError'), 'error');
+    console.error('Fehler beim Loeschen:', err)
+    showSnackbar(t('kaimo.panel.snackbar.deleteError'), 'error')
   } finally {
-    deleting.value = false;
+    deleting.value = false
   }
-};
+}
 
 const confirmPublish = (c) => {
-  caseToPublish.value = c;
-  publishDialog.value = true;
-};
+  caseToPublish.value = c
+  publishDialog.value = true
+}
 
 const executePublish = async () => {
-  if (!caseToPublish.value) return;
-  publishing.value = true;
+  if (!caseToPublish.value) return
+  publishing.value = true
   try {
-    await publishKaimoCase(caseToPublish.value.id);
-    showSnackbar(t('kaimo.panel.snackbar.publishSuccess', { name: caseToPublish.value.display_name }), 'success');
-    publishDialog.value = false;
-    await loadCases();
+    await publishKaimoCase(caseToPublish.value.id)
+    showSnackbar(t('kaimo.panel.snackbar.publishSuccess', { name: caseToPublish.value.display_name }), 'success')
+    publishDialog.value = false
+    await loadCases()
   } catch (err) {
-    console.error('Fehler beim Veroeffentlichen:', err);
-    showSnackbar(t('kaimo.panel.snackbar.publishError'), 'error');
+    console.error('Fehler beim Veroeffentlichen:', err)
+    showSnackbar(t('kaimo.panel.snackbar.publishError'), 'error')
   } finally {
-    publishing.value = false;
+    publishing.value = false
   }
-};
+}
+
+// Import functions
+const openImportDialog = () => {
+  importFile.value = null
+  importNameOverride.value = ''
+  importPublish.value = false
+  importPreview.value = null
+  importError.value = ''
+  importDialog.value = true
+}
+
+const closeImportDialog = () => {
+  importDialog.value = false
+  importFile.value = null
+  importPreview.value = null
+  importError.value = ''
+}
+
+const validateImportFile = async (files) => {
+  importError.value = ''
+  importPreview.value = null
+
+  if (!files || files.length === 0) return
+
+  const file = Array.isArray(files) ? files[0] : files
+  if (!file) return
+
+  try {
+    const text = await file.text()
+    const data = JSON.parse(text)
+
+    if (!data.export_version || !data.case) {
+      importError.value = t('kaimo.import.invalidFormat')
+      return
+    }
+
+    importPreview.value = data
+  } catch (err) {
+    console.error('Import-Validierung fehlgeschlagen:', err)
+    importError.value = t('kaimo.import.parseError')
+  }
+}
+
+const executeImport = async () => {
+  if (!importPreview.value) return
+
+  importing.value = true
+  try {
+    const result = await importKaimoCase(importPreview.value, {
+      nameOverride: importNameOverride.value || null,
+      publish: importPublish.value
+    })
+
+    showSnackbar(t('kaimo.import.success', { name: result.case?.display_name || result.case?.name }), 'success')
+    closeImportDialog()
+    await loadCases()
+  } catch (err) {
+    console.error('Import fehlgeschlagen:', err)
+    const errorMsg = err.response?.data?.error || t('kaimo.import.error')
+    showSnackbar(errorMsg, 'error')
+  } finally {
+    importing.value = false
+  }
+}
 
 onMounted(async () => {
   try {
-    await refresh();
+    await refresh()
   } catch (err) {
-    loadError.value = t('kaimo.errors.loadCases');
-    console.error('KAIMO-Ladefehler', err);
-    setLoading('hero', false);
+    loadError.value = t('kaimo.errors.loadCases')
+    console.error('KAIMO-Ladefehler', err)
+    setLoading('hero', false)
   }
-});
+})
 </script>
 
 <style scoped>
 .kaimo-panel {
-  max-width: 1100px;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 24px;
 }
 
-.gap-3 {
+/* Header Section */
+.panel-header {
+  margin-bottom: 24px;
+}
+
+.header-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 20px;
+}
+
+.header-left {
+  flex: 1;
+  min-width: 280px;
+}
+
+.header-title-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.header-icon {
+  width: 42px;
+  height: 42px;
+  background-color: #b0ca97; /* LLARS Primary */
+  border-radius: 16px 4px 16px 4px; /* LLARS signature */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.panel-title {
+  font-size: 24px;
+  font-weight: 600;
+  color: #1e293b;
+  margin: 0;
+}
+
+.panel-subtitle {
+  font-size: 14px;
+  color: #64748b;
+  margin: 0;
+}
+
+.role-hint {
+  font-size: 13px;
+  color: #94a3b8;
+  margin: 0;
+}
+
+.header-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
   gap: 12px;
 }
 
-.gap-2 {
+.header-actions {
+  display: flex;
   gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* Main Content */
+.panel-content {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 24px;
+}
+
+@media (min-width: 900px) {
+  .panel-content {
+    grid-template-columns: 1fr 320px;
+  }
+
+  .panel-content .cases-card.full-width {
+    grid-column: 1 / -1;
+  }
+}
+
+/* Cases Card */
+.cases-card {
+  overflow: hidden;
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.card-header-left {
+  display: flex;
+  align-items: center;
+}
+
+.card-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+/* Table Styles */
+.table-wrapper {
+  overflow-x: auto;
+}
+
+.cases-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.cases-table th {
+  padding: 12px 16px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #64748b;
+  background-color: #f8fafc;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.cases-table td {
+  padding: 16px;
+  border-bottom: 1px solid #f1f5f9;
+  vertical-align: middle;
+}
+
+.case-row.clickable {
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.case-row:hover {
+  background-color: #f8fafc;
+}
+
+.case-row.clickable:active {
+  background-color: #f1f5f9;
+}
+
+.case-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.case-icon {
+  font-size: 24px;
+}
+
+.case-name {
+  font-weight: 500;
+  color: #1e293b;
+  margin-bottom: 2px;
+}
+
+.case-description {
+  font-size: 12px;
+  color: #94a3b8;
+  max-width: 300px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.action-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 4px;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 32px 16px !important;
+  color: #94a3b8;
+}
+
+/* Info Card */
+.info-card {
+  height: fit-content;
+}
+
+.info-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.info-icon {
+  width: 40px;
+  height: 40px;
+  background-color: #b0ca97;
+  border-radius: 16px 4px 16px 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.info-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.info-subtitle {
+  font-size: 13px;
+  color: #64748b;
+}
+
+.info-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* Dialogs */
+.dialog-header {
+  display: flex;
+  align-items: center;
+  padding: 16px 20px;
+  font-size: 18px;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.dialog-body {
+  padding: 0 20px 20px;
+}
+
+.dialog-body p {
+  margin: 0 0 12px;
+  color: #475569;
+}
+
+.dialog-body .text-muted {
+  color: #94a3b8;
+}
+
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 16px 20px;
+  border-top: 1px solid #e2e8f0;
+}
+
+/* Import Preview */
+.import-preview {
+  margin-top: 16px;
+  padding: 12px 16px;
+  background-color: rgba(136, 196, 200, 0.1); /* LLARS Accent */
+  border-radius: 6px 2px 6px 2px;
+  border-left: 3px solid #88c4c8;
+}
+
+.preview-title {
+  font-weight: 600;
+  color: #1e293b;
+  margin-bottom: 4px;
+}
+
+.preview-meta {
+  font-size: 12px;
+  color: #64748b;
+}
+
+/* Utilities */
+.text-left {
+  text-align: left;
+}
+
+.text-right {
+  text-align: right;
+}
+
+.mr-1 {
+  margin-right: 4px;
+}
+
+.mr-2 {
+  margin-right: 8px;
+}
+
+.ml-2 {
+  margin-left: 8px;
+}
+
+.mb-4 {
+  margin-bottom: 16px;
+}
+
+.mt-3 {
+  margin-top: 12px;
+}
+
+.mt-2 {
+  margin-top: 8px;
 }
 </style>

@@ -1014,9 +1014,10 @@ const canProceed = computed(() => {
 })
 
 // Role options for user invitations
+// EVALUATOR can interact (rate/evaluate), VIEWER is read-only
 const roleOptions = [
   { value: 'EVALUATOR', title: 'Evaluator' },
-  { value: 'RATER', title: 'Rater' }
+  { value: 'VIEWER', title: 'Viewer' }
 ]
 
 // Methods
@@ -1728,15 +1729,15 @@ async function createScenario() {
 
     // Invite selected human users
     if (selectedUsers.value.length > 0 && scenario?.id) {
-      // Group users by role
+      // Group users by role: EVALUATOR can interact, VIEWER is read-only
       const evaluators = selectedUsers.value.filter(u => u.role === 'EVALUATOR').map(u => u.id)
-      const raters = selectedUsers.value.filter(u => u.role === 'RATER').map(u => u.id)
+      const viewers = selectedUsers.value.filter(u => u.role === 'VIEWER').map(u => u.id)
 
       if (evaluators.length > 0) {
         await inviteUsers(scenario.id, evaluators, 'EVALUATOR')
       }
-      if (raters.length > 0) {
-        await inviteUsers(scenario.id, raters, 'RATER')
+      if (viewers.length > 0) {
+        await inviteUsers(scenario.id, viewers, 'VIEWER')
       }
     }
 

@@ -258,6 +258,45 @@
         </v-card-actions>
       </v-card>
     </v-dialog>
+
+    <!-- Change Role Dialog -->
+    <v-dialog v-model="showRoleDialog" max-width="400">
+      <v-card>
+        <v-card-title class="d-flex align-center">
+          <LIcon color="primary" class="mr-2">mdi-account-convert</LIcon>
+          {{ $t('scenarioManager.team.changeRole') }}
+        </v-card-title>
+        <v-card-text>
+          <p class="mb-4">
+            {{ $t('scenarioManager.team.changeRoleFor', { name: memberToChangeRole?.display_name || memberToChangeRole?.username }) }}
+          </p>
+          <v-select
+            v-model="newRole"
+            :items="roleOptions"
+            :label="$t('scenarioManager.team.newRole')"
+            variant="outlined"
+          />
+          <v-alert
+            v-if="newRole === 'VIEWER'"
+            type="info"
+            variant="tonal"
+            density="compact"
+            class="mt-3"
+          >
+            {{ $t('scenarioManager.team.viewerHint') }}
+          </v-alert>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <LBtn variant="text" @click="showRoleDialog = false">
+            {{ $t('common.cancel') }}
+          </LBtn>
+          <LBtn variant="primary" :loading="changingRole" @click="confirmRoleChange">
+            {{ $t('common.save') }}
+          </LBtn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </div>
 </template>
 
@@ -286,6 +325,7 @@ const {
   inviteUsers: doInvite,
   removeUser,
   reinviteUser,
+  updateUserRole,
   getScenarioTeam
 } = useScenarioManager()
 
@@ -306,6 +346,12 @@ const selectedLLM = ref(null)
 const selectedTemplate = ref(null)
 const addingLLM = ref(false)
 
+// Role change dialog
+const showRoleDialog = ref(false)
+const memberToChangeRole = ref(null)
+const newRole = ref('EVALUATOR')
+const changingRole = ref(false)
+
 // Mock data
 const availableLLMs = ref([
   { id: 'gpt-4o', name: 'GPT-4o' },
@@ -320,7 +366,7 @@ const availableTemplates = ref([
 
 const roleOptions = computed(() => [
   { title: t('scenarioManager.team.roles.evaluator'), value: 'EVALUATOR' },
-  { title: t('scenarioManager.team.roles.rater'), value: 'RATER' }
+  { title: t('scenarioManager.team.roles.viewer'), value: 'VIEWER' }
 ])
 
 // Usernames to exclude from search (already selected + already in team)
@@ -333,16 +379,37 @@ const excludedUsernames = computed(() => {
 // Computed
 const evaluators = computed(() => {
   // Use team data if available (includes invitation_status), otherwise fall back to scenario.users
+  let users = []
   if (teamData.value?.team) {
-    return teamData.value.team.filter(u => !u.is_ai)
+    users = teamData.value.team.filter(u => !u.is_ai)
+  } else {
+    users = props.scenario?.users?.filter(u => !u.is_llm) || []
   }
-  return props.scenario?.users?.filter(u => !u.is_llm) || []
+
+  // Merge with live stats to get completed/total counts
+  // userStatsList contains all human users with their progress
+  const userStats = props.liveStats?.userStatsList?.filter(e => !e.isLLM) || []
+
+  return users.map(user => {
+    // Find matching stats by user_id, id, or username
+    const stats = userStats.find(s =>
+      s.id === user.user_id ||
+      s.id === user.username ||
+      s.name === user.username
+    )
+
+    return {
+      ...user,
+      completed: stats?.completed || 0,
+      total: stats?.total || 0
+    }
+  })
 })
 
 const llmEvaluators = computed(() => {
   const evaluators = props.scenario?.llm_evaluators || []
-  // Get live stats for LLM evaluators if available
-  const llmLiveStats = props.liveStats?.evaluatorStats?.filter(e => e.is_llm) || []
+  // Get live stats for LLM evaluators from userStatsList
+  const llmLiveStats = props.liveStats?.userStatsList?.filter(e => e.isLLM) || []
 
   // Transform string model IDs to objects with display info
   return evaluators.map(modelId => {
@@ -355,15 +422,19 @@ const llmEvaluators = computed(() => {
     const provider = parts.length > 1 ? parts[0] : 'Unknown'
     const modelName = parts.length > 1 ? parts.slice(1).join('/') : modelId
 
-    // Find matching live stats (username in evaluatorStats is the model_id for LLMs)
-    const liveData = llmLiveStats.find(s => s.username === modelId || s.model_id === modelId)
+    // Find matching live stats (name or id contains the model_id for LLMs)
+    const liveData = llmLiveStats.find(s =>
+      s.name === modelId ||
+      s.id === modelId ||
+      s.name?.includes(modelName)
+    )
 
     return {
       id: modelId,
       model_name: modelName,
       provider: provider,
-      completed: liveData?.done_threads || liveData?.voted_count || 0,
-      total: liveData?.total_threads || 0
+      completed: liveData?.completed || 0,
+      total: liveData?.total || 0
     }
   })
 })
@@ -372,8 +443,8 @@ const llmEvaluators = computed(() => {
 function getRoleVariant(role) {
   const map = {
     'OWNER': 'primary',
-    'RATER': 'info',
-    'EVALUATOR': 'default'
+    'EVALUATOR': 'info',
+    'VIEWER': 'default'
   }
   return map[role] || 'default'
 }
@@ -450,6 +521,8 @@ async function removeMember() {
     await removeUser(props.scenario.id, memberToRemove.value.user_id)
     showRemoveDialog.value = false
     memberToRemove.value = null
+    // Refresh team data to remove archived user from display
+    await loadTeamData()
     emit('team-updated')
   } finally {
     removing.value = false
@@ -457,8 +530,28 @@ async function removeMember() {
 }
 
 function changeRole(member) {
-  // TODO: Implement role change
-  console.log('Change role:', member)
+  memberToChangeRole.value = member
+  // Set current role as default, but allow changing to other role
+  newRole.value = member.role === 'EVALUATOR' ? 'VIEWER' : 'EVALUATOR'
+  showRoleDialog.value = true
+}
+
+async function confirmRoleChange() {
+  if (!memberToChangeRole.value) return
+
+  changingRole.value = true
+  try {
+    await updateUserRole(props.scenario.id, memberToChangeRole.value.user_id, newRole.value)
+    showRoleDialog.value = false
+    memberToChangeRole.value = null
+    // Refresh team data
+    await loadTeamData()
+    emit('team-updated')
+  } catch (err) {
+    console.error('Failed to change role:', err)
+  } finally {
+    changingRole.value = false
+  }
 }
 
 function confirmRemoveLLM(llm) {

@@ -21,11 +21,11 @@
         <template v-else>
           <!-- Quick Actions -->
           <div class="d-flex flex-wrap gap-2 mb-4">
-            <LBtn variant="text" size="small" @click="selectAllAsRaters">
-              Alle als Rater
+            <LBtn variant="text" size="small" @click="selectAllAsEvaluators">
+              Alle als Evaluator
             </LBtn>
-            <LBtn variant="text" size="small" @click="selectResearchersAsRaters">
-              Researcher als Rater
+            <LBtn variant="text" size="small" @click="selectResearchersAsEvaluators">
+              Researcher als Evaluator
             </LBtn>
             <LBtn variant="text" size="small" @click="clearSelection">
               Auswahl löschen
@@ -37,8 +37,8 @@
             <thead>
               <tr>
                 <th style="width: 50%">Benutzer</th>
-                <th class="text-center">Rater</th>
                 <th class="text-center">Evaluator</th>
+                <th class="text-center">Viewer</th>
               </tr>
             </thead>
             <tbody>
@@ -71,20 +71,20 @@
                 </td>
                 <td class="text-center">
                   <v-checkbox
-                    :model-value="localConfig.raters.includes(user.id)"
+                    :model-value="localConfig.evaluators.includes(user.id)"
                     hide-details
                     density="compact"
                     color="primary"
-                    @update:model-value="toggleRater(user.id, $event)"
+                    @update:model-value="toggleEvaluator(user.id, $event)"
                   />
                 </td>
                 <td class="text-center">
                   <v-checkbox
-                    :model-value="localConfig.evaluators.includes(user.id)"
+                    :model-value="localConfig.viewers.includes(user.id)"
                     hide-details
                     density="compact"
                     color="secondary"
-                    @update:model-value="toggleEvaluator(user.id, $event)"
+                    @update:model-value="toggleViewer(user.id, $event)"
                   />
                 </td>
               </tr>
@@ -100,7 +100,7 @@
     </v-card>
 
     <!-- Distribution Preview -->
-    <v-card v-if="localConfig.raters.length && scenarioConfig?.distributionMode !== 'all'" variant="outlined">
+    <v-card v-if="localConfig.evaluators.length && scenarioConfig?.distributionMode !== 'all'" variant="outlined">
       <v-card-title>
         <LIcon class="mr-2">mdi-chart-pie</LIcon>
         Verteilungs-Vorschau
@@ -108,16 +108,16 @@
 
       <v-card-text>
         <v-row>
-          <v-col v-for="raterId in localConfig.raters" :key="raterId" cols="6" sm="4" md="3">
+          <v-col v-for="evaluatorId in localConfig.evaluators" :key="evaluatorId" cols="6" sm="4" md="3">
             <v-card variant="tonal" class="pa-3 text-center">
               <v-avatar size="40" color="primary" class="mb-2">
-                <span>{{ getInitials(getUserName(raterId)) }}</span>
+                <span>{{ getInitials(getUserName(evaluatorId)) }}</span>
               </v-avatar>
               <div class="text-body-2 font-weight-medium text-truncate">
-                {{ getUserName(raterId) }}
+                {{ getUserName(evaluatorId) }}
               </div>
               <div class="text-caption text-medium-emphasis">
-                ~{{ threadsPerRater }} Threads
+                ~{{ threadsPerEvaluator }} Threads
               </div>
             </v-card>
           </v-col>
@@ -133,14 +133,14 @@
       density="compact"
     >
       <div class="text-body-2">
-        <strong>Rater:</strong> Können Items im Szenario bewerten/ranken.<br>
-        <strong>Evaluator:</strong> Können an Evaluationen teilnehmen und Ergebnisse sehen.
+        <strong>Evaluator:</strong> Können Items im Szenario bewerten/ranken (interaktiv).<br>
+        <strong>Viewer:</strong> Können Ergebnisse sehen (nur Lesezugriff).
       </div>
     </v-alert>
 
     <!-- Selection Summary -->
     <v-alert
-      v-if="localConfig.raters.length === 0 && localConfig.evaluators.length === 0"
+      v-if="localConfig.evaluators.length === 0 && localConfig.viewers.length === 0"
       type="warning"
       variant="tonal"
       class="mt-4"
@@ -156,8 +156,8 @@
       class="mt-4"
     >
       <div>
-        <strong>{{ localConfig.raters.length }} Rater</strong> und
-        <strong>{{ localConfig.evaluators.length }} Evaluatoren</strong> werden eingeladen.
+        <strong>{{ localConfig.evaluators.length }} Evaluatoren</strong> und
+        <strong>{{ localConfig.viewers.length }} Viewer</strong> werden eingeladen.
       </div>
     </v-alert>
   </div>
@@ -192,10 +192,10 @@ const props = defineProps({
 
 const emit = defineEmits(['update:userConfig'])
 
-// Local copy - ensure evaluators array exists
+// Local copy - evaluators can interact, viewers are read-only
 const localConfig = ref({
-  raters: props.userConfig?.raters || [],
-  evaluators: props.userConfig?.evaluators || props.userConfig?.viewers || []
+  evaluators: props.userConfig?.evaluators || props.userConfig?.raters || [],
+  viewers: props.userConfig?.viewers || []
 })
 
 // Sync
@@ -205,8 +205,8 @@ watch(localConfig, (newVal) => {
 
 watch(() => props.userConfig, (newVal) => {
   localConfig.value = {
-    raters: newVal?.raters || [],
-    evaluators: newVal?.evaluators || newVal?.viewers || []
+    evaluators: newVal?.evaluators || newVal?.raters || [],
+    viewers: newVal?.viewers || []
   }
 }, { deep: true })
 
@@ -214,7 +214,7 @@ const users = ref([])
 const loadingUsers = ref(false)
 
 const selectedCount = computed(() => {
-  return localConfig.value.raters.length + localConfig.value.evaluators.length
+  return localConfig.value.evaluators.length + localConfig.value.viewers.length
 })
 
 const itemCount = computed(() => {
@@ -223,9 +223,9 @@ const itemCount = computed(() => {
          0
 })
 
-const threadsPerRater = computed(() => {
-  if (!localConfig.value.raters.length) return 0
-  return Math.ceil(itemCount.value / localConfig.value.raters.length)
+const threadsPerEvaluator = computed(() => {
+  if (!localConfig.value.evaluators.length) return 0
+  return Math.ceil(itemCount.value / localConfig.value.evaluators.length)
 })
 
 const getInitials = (name) => {
@@ -243,33 +243,15 @@ const getUserName = (userId) => {
   return getDisplayName(user)
 }
 
-const toggleRater = (userId, isSelected) => {
-  if (isSelected) {
-    if (!localConfig.value.raters.includes(userId)) {
-      localConfig.value.raters.push(userId)
-    }
-    // Remove from evaluators if added as rater
-    const evalIdx = localConfig.value.evaluators.indexOf(userId)
-    if (evalIdx > -1) {
-      localConfig.value.evaluators.splice(evalIdx, 1)
-    }
-  } else {
-    const idx = localConfig.value.raters.indexOf(userId)
-    if (idx > -1) {
-      localConfig.value.raters.splice(idx, 1)
-    }
-  }
-}
-
 const toggleEvaluator = (userId, isSelected) => {
   if (isSelected) {
     if (!localConfig.value.evaluators.includes(userId)) {
       localConfig.value.evaluators.push(userId)
     }
-    // Remove from raters if added as evaluator
-    const raterIdx = localConfig.value.raters.indexOf(userId)
-    if (raterIdx > -1) {
-      localConfig.value.raters.splice(raterIdx, 1)
+    // Remove from viewers if added as evaluator
+    const viewerIdx = localConfig.value.viewers.indexOf(userId)
+    if (viewerIdx > -1) {
+      localConfig.value.viewers.splice(viewerIdx, 1)
     }
   } else {
     const idx = localConfig.value.evaluators.indexOf(userId)
@@ -279,21 +261,39 @@ const toggleEvaluator = (userId, isSelected) => {
   }
 }
 
-const selectAllAsRaters = () => {
-  localConfig.value.raters = users.value.map(u => u.id)
-  localConfig.value.evaluators = []
+const toggleViewer = (userId, isSelected) => {
+  if (isSelected) {
+    if (!localConfig.value.viewers.includes(userId)) {
+      localConfig.value.viewers.push(userId)
+    }
+    // Remove from evaluators if added as viewer
+    const evalIdx = localConfig.value.evaluators.indexOf(userId)
+    if (evalIdx > -1) {
+      localConfig.value.evaluators.splice(evalIdx, 1)
+    }
+  } else {
+    const idx = localConfig.value.viewers.indexOf(userId)
+    if (idx > -1) {
+      localConfig.value.viewers.splice(idx, 1)
+    }
+  }
 }
 
-const selectResearchersAsRaters = () => {
-  // Filter users by system role (researcher or admin should be raters)
-  localConfig.value.raters = users.value
+const selectAllAsEvaluators = () => {
+  localConfig.value.evaluators = users.value.map(u => u.id)
+  localConfig.value.viewers = []
+}
+
+const selectResearchersAsEvaluators = () => {
+  // Filter users by system role (researcher or admin should be evaluators)
+  localConfig.value.evaluators = users.value
     .filter(u => !u.in_scenario)
     .map(u => u.id)
 }
 
 const clearSelection = () => {
-  localConfig.value.raters = []
   localConfig.value.evaluators = []
+  localConfig.value.viewers = []
 }
 
 const loadUsers = async () => {

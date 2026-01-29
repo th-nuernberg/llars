@@ -20,6 +20,7 @@ from db.models import (
     ScenarioThreads,
     ScenarioThreadDistribution,
     ScenarioRoles,
+    MembershipStatus,
     User,
     ComparisonSession,
     EmailThread,
@@ -29,6 +30,8 @@ from db.models import (
     LLMTaskResult,
     LLMModel,
     ItemDimensionRating,
+    ItemLabelingEvaluation,
+    UserMailHistoryRating,
 )
 from decorators.error_handler import NotFoundError, ValidationError
 from routes.HelperFunctions import (
@@ -60,6 +63,27 @@ def get_scenario_ids_for_thread(thread_id: int) -> List[int]:
         return []
     scenario_rows = ScenarioThreads.query.filter_by(thread_id=thread_id).all()
     return sorted({row.scenario_id for row in scenario_rows if row.scenario_id})
+
+
+def _calculate_unified_pairwise_agreement(scenario_id: int, function_type_name: str) -> Dict[str, Any]:
+    """
+    Calculate pairwise agreement based on scenario type.
+
+    Unified dispatcher that routes to the appropriate agreement calculation
+    based on the scenario's function type.
+
+    Returns:
+        Dict with 'evaluators' list and 'agreements' dict with agreement scores.
+    """
+    if function_type_name == "ranking":
+        return _calculate_ranking_agreement_heatmap(scenario_id)
+    elif function_type_name == "labeling":
+        return _calculate_labeling_pairwise_agreement(scenario_id)
+    elif function_type_name == "mail_rating":
+        return _calculate_mail_rating_pairwise_agreement(scenario_id)
+    elif function_type_name in {"rating"}:
+        return _calculate_pairwise_agreement(scenario_id)
+    return {"evaluators": [], "agreements": {}}
 
 
 def _calculate_ranking_agreement(
@@ -165,10 +189,14 @@ def get_progress_stats(scenario_id: int) -> Dict[str, Any]:
     rater_stats = []
     evaluator_stats = []
 
+    # Only include active members in stats
     scenario_users = (
         db.session.query(ScenarioUsers)
         .join(User, ScenarioUsers.user_id == User.id)
-        .filter(ScenarioUsers.scenario_id == scenario_id)
+        .filter(
+            ScenarioUsers.scenario_id == scenario_id,
+            ScenarioUsers.membership_status == MembershipStatus.ACTIVE
+        )
         .all()
     )
 
@@ -181,9 +209,9 @@ def get_progress_stats(scenario_id: int) -> Dict[str, Any]:
         total_not_started_threads = 0
 
         use_full_threads = (
-            scenario_user.role == ScenarioRoles.EVALUATOR
+            scenario_user.role == ScenarioRoles.VIEWER
             or scenario_user.role == ScenarioRoles.OWNER
-            or (scenario_user.role == ScenarioRoles.RATER and raters_receive_all_threads(scenario))
+            or (scenario_user.role == ScenarioRoles.EVALUATOR and raters_receive_all_threads(scenario))
         )
 
         if use_full_threads:
@@ -263,10 +291,11 @@ def get_progress_stats(scenario_id: int) -> Dict[str, Any]:
             "progressing_threads_list": progressing_threads_list,
         }
 
-        if scenario_user.role == ScenarioRoles.RATER:
+        if scenario_user.role == ScenarioRoles.EVALUATOR:
+            # EVALUATOR can interact (rate/evaluate)
             rater_stats.append(new_data)
-        elif scenario_user.role in (ScenarioRoles.EVALUATOR, ScenarioRoles.OWNER):
-            # OWNER also counts as evaluator for stats purposes
+        elif scenario_user.role in (ScenarioRoles.VIEWER, ScenarioRoles.OWNER):
+            # OWNER also counts as evaluator for stats purposes, VIEWER is read-only
             evaluator_stats.append(new_data)
 
     if function_type.name in {"ranking", "rating", "mail_rating", "authenticity", "labeling"}:
@@ -316,13 +345,15 @@ def get_progress_stats(scenario_id: int) -> Dict[str, Any]:
     dimension_averages = None
     pairwise_agreement = None
     bucket_distribution = None
-    ranking_agreement = None
-    rating_alpha = None  # New: Krippendorff's Alpha split by evaluator type
+    rating_alpha = None  # Krippendorff's Alpha split by evaluator type
+
+    # Calculate pairwise agreement using unified dispatcher (works for all types)
+    if function_type.name in {"rating", "mail_rating", "labeling", "ranking"}:
+        pairwise_agreement = _calculate_unified_pairwise_agreement(scenario_id, function_type.name)
 
     if function_type.name in {"rating", "mail_rating", "labeling"}:
         rating_distribution = _calculate_rating_distribution(scenario_id)
         dimension_averages = _calculate_dimension_averages(scenario_id)
-        pairwise_agreement = _calculate_pairwise_agreement(scenario_id)
         # Calculate Krippendorff's Alpha using new rating system (ItemDimensionRating + LLMTaskResult)
         rating_alpha = _calculate_rating_krippendorff_alpha(scenario_id)
         # Use the "all" alpha as the main alpha if no legacy alpha calculated
@@ -330,7 +361,6 @@ def get_progress_stats(scenario_id: int) -> Dict[str, Any]:
             alpha = rating_alpha["all"]
     elif function_type.name == "ranking":
         bucket_distribution = _calculate_bucket_distribution(scenario_id)
-        ranking_agreement = _calculate_ranking_agreement_heatmap(scenario_id)
 
     return {
         "rater_stats": rater_stats,
@@ -338,12 +368,12 @@ def get_progress_stats(scenario_id: int) -> Dict[str, Any]:
         "viewer_stats": evaluator_stats,  # backward compatibility
         "krippendorff_alpha": alpha,
         "alpha_interpretation": _interpret_alpha(alpha),
-        "rating_alpha": rating_alpha,  # New: split by evaluator type {all, humans, llms}
+        "rating_alpha": rating_alpha,  # split by evaluator type {all, humans, llms}
         "rating_distribution": rating_distribution,
         "dimension_averages": dimension_averages,
         "pairwise_agreement": pairwise_agreement,
         "bucket_distribution": bucket_distribution,
-        "ranking_agreement": ranking_agreement,
+        "ranking_agreement": pairwise_agreement,  # backward compatibility (deprecated)
     }
 
 
@@ -421,10 +451,14 @@ def _build_llm_progress_entries(
 def _get_comparison_progress_stats(scenario_id: int) -> Dict[str, Any]:
     scenario = _get_scenario_or_raise(scenario_id)
 
+    # Only include active members in stats
     scenario_users = (
         db.session.query(ScenarioUsers)
         .join(User, ScenarioUsers.user_id == User.id)
-        .filter(ScenarioUsers.scenario_id == scenario_id)
+        .filter(
+            ScenarioUsers.scenario_id == scenario_id,
+            ScenarioUsers.membership_status == MembershipStatus.ACTIVE
+        )
         .all()
     )
 
@@ -490,10 +524,11 @@ def _get_comparison_progress_stats(scenario_id: int) -> Dict[str, Any]:
             "progressing_threads_list": progressing_threads_list,
         }
 
-        if scenario_user.role == ScenarioRoles.RATER:
+        if scenario_user.role == ScenarioRoles.EVALUATOR:
+            # EVALUATOR can interact (rate/evaluate)
             rater_stats.append(new_data)
-        elif scenario_user.role in (ScenarioRoles.EVALUATOR, ScenarioRoles.OWNER):
-            # OWNER also counts as evaluator for stats purposes
+        elif scenario_user.role in (ScenarioRoles.VIEWER, ScenarioRoles.OWNER):
+            # OWNER also counts as evaluator for stats purposes, VIEWER is read-only
             evaluator_stats.append(new_data)
 
     # Add LLM evaluator stats (comparison sessions)
@@ -918,12 +953,17 @@ def _calculate_rating_distribution(scenario_id: int) -> Dict[str, Any]:
             for score in range(scale_min, scale_max + 1):
                 count = counts.get(score, 0)
                 label_data = labels.get(str(score), {})
+                # Send both language versions to frontend for i18n selection
                 if isinstance(label_data, dict):
-                    label = label_data.get("en", label_data.get("de", str(score)))
+                    label_en = label_data.get("en", str(score))
+                    label_de = label_data.get("de", str(score))
                 else:
-                    label = str(label_data) if label_data else str(score)
+                    label_en = str(label_data) if label_data else str(score)
+                    label_de = label_en
                 distribution.append({
-                    "label": f"{score} - {label}" if label != str(score) else str(score),
+                    "label": f"{score} - {label_en}" if label_en != str(score) else str(score),
+                    "label_en": label_en,
+                    "label_de": label_de,
                     "value": score,
                     "count": count,
                     "percentage": round((count / total) * 100) if total > 0 else 0
@@ -1268,7 +1308,7 @@ def _calculate_pairwise_agreement(scenario_id: int) -> Dict[str, Any]:
     # Build evaluator list
     evaluators = list(user_info.values())
 
-    # Calculate pairwise agreement (percent agreement within 1 point)
+    # Calculate pairwise agreement (exact match after rounding)
     agreements = {}
     user_list = list(users_set)
 
@@ -1281,9 +1321,9 @@ def _calculate_pairwise_agreement(scenario_id: int) -> Dict[str, Any]:
                     common_items.append((user_scores[user1], user_scores[user2]))
 
             if len(common_items) >= 1:
-                # Calculate agreement (percentage of ratings within 1 point)
+                # Calculate agreement (percentage of exact matches, rounded to integers)
                 agreements_count = sum(
-                    1 for s1, s2 in common_items if abs(s1 - s2) <= 1
+                    1 for s1, s2 in common_items if round(s1) == round(s2)
                 )
                 agreement = agreements_count / len(common_items)
 
@@ -1577,6 +1617,264 @@ def _calculate_ranking_agreement_heatmap(scenario_id: int) -> Dict[str, Any]:
     }
 
 
+def _calculate_labeling_pairwise_agreement(scenario_id: int) -> Dict[str, Any]:
+    """
+    Calculate pairwise agreement between evaluators for labeling scenarios.
+
+    Agreement is measured by how often evaluators assign the same category to an item.
+    """
+    from collections import defaultdict
+
+    # Get all items for this scenario
+    scenario_threads = ScenarioThreads.query.filter_by(scenario_id=scenario_id).all()
+    item_ids = [st.thread_id for st in scenario_threads if st.thread_id]
+
+    if not item_ids:
+        return {"evaluators": [], "agreements": {}}
+
+    # item_id -> {evaluator_id: category_id}
+    item_categories = defaultdict(dict)
+    users_set = set()
+    user_info = {}
+
+    # 1. Get human labeling evaluations
+    human_labelings = (
+        ItemLabelingEvaluation.query
+        .filter(
+            ItemLabelingEvaluation.scenario_id == scenario_id,
+            ItemLabelingEvaluation.item_id.in_(item_ids),
+            ItemLabelingEvaluation.category_id.isnot(None)
+        )
+        .all()
+    )
+
+    for labeling in human_labelings:
+        item_id = labeling.item_id
+        user_id = labeling.user_id
+        category_id = labeling.category_id
+
+        if not item_id or not category_id:
+            continue
+
+        users_set.add(user_id)
+        if user_id not in user_info:
+            user = User.query.get(user_id)
+            name = user.username if user else f"User {user_id}"
+            user_info[user_id] = {"id": user_id, "name": name, "isLLM": False}
+
+        item_categories[item_id][user_id] = category_id
+
+    # 2. Get LLM labeling results
+    llm_results = LLMTaskResult.query.filter_by(
+        scenario_id=scenario_id,
+        task_type="labeling"
+    ).filter(LLMTaskResult.error.is_(None)).all()
+
+    for result in llm_results:
+        payload = result.payload_json
+        if not payload:
+            continue
+        if isinstance(payload, str):
+            try:
+                payload = json.loads(payload)
+            except (json.JSONDecodeError, TypeError):
+                continue
+
+        model_id = result.model_id
+        llm_user_id = f"llm:{model_id}"
+        item_id = result.item_id
+
+        if item_id not in item_ids:
+            continue
+
+        # Extract category from payload
+        category_id = payload.get("category_id") or payload.get("category") or payload.get("label")
+        if not category_id:
+            continue
+
+        users_set.add(llm_user_id)
+        if llm_user_id not in user_info:
+            llm_model = LLMModel.query.filter_by(model_id=model_id).first()
+            name = llm_model.display_name if llm_model else model_id.split("/")[-1]
+            user_info[llm_user_id] = {"id": llm_user_id, "name": name, "isLLM": True}
+
+        item_categories[item_id][llm_user_id] = category_id
+
+    if not users_set:
+        return {"evaluators": [], "agreements": {}}
+
+    evaluators = list(user_info.values())
+
+    # Calculate pairwise agreement (percentage of items with same category)
+    agreements = {}
+    user_list = list(users_set)
+
+    for i, user1 in enumerate(user_list):
+        for user2 in user_list[i+1:]:
+            common_items = []
+            for item_id, user_cats in item_categories.items():
+                if user1 in user_cats and user2 in user_cats:
+                    common_items.append((user_cats[user1], user_cats[user2]))
+
+            if len(common_items) >= 1:
+                # Calculate agreement (percentage with same category)
+                agreements_count = sum(1 for c1, c2 in common_items if c1 == c2)
+                agreement = agreements_count / len(common_items)
+
+                key = f"{min(str(user1), str(user2))}-{max(str(user1), str(user2))}"
+                agreements[key] = round(agreement, 3)
+
+    return {
+        "evaluators": evaluators,
+        "agreements": agreements
+    }
+
+
+def _calculate_mail_rating_pairwise_agreement(scenario_id: int) -> Dict[str, Any]:
+    """
+    Calculate pairwise agreement between evaluators for mail_rating scenarios.
+
+    Includes both new ItemDimensionRating and legacy UserMailHistoryRating data.
+    Agreement is calculated using overall_score/overall_rating (exact match after rounding).
+    """
+    from collections import defaultdict
+
+    # Get all items for this scenario
+    scenario_threads = ScenarioThreads.query.filter_by(scenario_id=scenario_id).all()
+    item_ids = [st.thread_id for st in scenario_threads if st.thread_id]
+
+    if not item_ids:
+        return {"evaluators": [], "agreements": {}}
+
+    # item_id -> {evaluator_id: overall_score}
+    item_ratings = defaultdict(dict)
+    users_set = set()
+    user_info = {}
+
+    # 1. Get ratings from ItemDimensionRating (new system)
+    new_ratings = (
+        ItemDimensionRating.query
+        .filter_by(scenario_id=scenario_id)
+        .filter(ItemDimensionRating.status.in_([ProgressionStatus.DONE, ProgressionStatus.PROGRESSING]))
+        .all()
+    )
+
+    for rating in new_ratings:
+        item_id = rating.item_id
+        user_id = rating.user_id
+
+        if item_id not in item_ids:
+            continue
+
+        users_set.add(user_id)
+        if user_id not in user_info:
+            user = User.query.get(user_id)
+            name = user.username if user else f"User {user_id}"
+            user_info[user_id] = {"id": user_id, "name": name, "isLLM": False}
+
+        if rating.overall_score is not None:
+            item_ratings[item_id][user_id] = rating.overall_score
+
+    # 2. Get ratings from UserMailHistoryRating (legacy system)
+    legacy_ratings = (
+        UserMailHistoryRating.query
+        .filter(
+            UserMailHistoryRating.item_id.in_(item_ids),
+            UserMailHistoryRating.overall_rating.isnot(None),
+            UserMailHistoryRating.status.in_([ProgressionStatus.DONE, ProgressionStatus.PROGRESSING])
+        )
+        .all()
+    )
+
+    for rating in legacy_ratings:
+        item_id = rating.item_id
+        user_id = rating.user_id
+
+        # Check if this item belongs to this scenario
+        if item_id not in item_ids:
+            continue
+
+        users_set.add(user_id)
+        if user_id not in user_info:
+            user = User.query.get(user_id)
+            name = user.username if user else f"User {user_id}"
+            user_info[user_id] = {"id": user_id, "name": name, "isLLM": False}
+
+        # Only add if not already present from new system
+        if user_id not in item_ratings.get(item_id, {}):
+            item_ratings[item_id][user_id] = float(rating.overall_rating)
+
+    # 3. Get LLM ratings from LLMTaskResult
+    llm_results = LLMTaskResult.query.filter_by(
+        scenario_id=scenario_id,
+        task_type="mail_rating"
+    ).filter(LLMTaskResult.error.is_(None)).all()
+
+    for result in llm_results:
+        payload = result.payload_json
+        if not payload:
+            continue
+        if isinstance(payload, str):
+            try:
+                payload = json.loads(payload)
+            except (json.JSONDecodeError, TypeError):
+                continue
+
+        model_id = result.model_id
+        llm_user_id = f"llm:{model_id}"
+        item_id = result.item_id
+
+        if item_id not in item_ids:
+            continue
+
+        # Extract overall_rating from payload
+        overall_rating = None
+        if payload.get("type") == "dimensional":
+            overall_rating = payload.get("overall_rating")
+        elif "overall_rating" in payload:
+            overall_rating = payload.get("overall_rating")
+        elif "rating" in payload:
+            overall_rating = payload.get("rating")
+
+        if overall_rating is not None:
+            users_set.add(llm_user_id)
+            if llm_user_id not in user_info:
+                llm_model = LLMModel.query.filter_by(model_id=model_id).first()
+                name = llm_model.display_name if llm_model else model_id.split("/")[-1]
+                user_info[llm_user_id] = {"id": llm_user_id, "name": name, "isLLM": True}
+
+            item_ratings[item_id][llm_user_id] = float(overall_rating)
+
+    if not users_set:
+        return {"evaluators": [], "agreements": {}}
+
+    evaluators = list(user_info.values())
+
+    # Calculate pairwise agreement (exact match after rounding)
+    agreements = {}
+    user_list = list(users_set)
+
+    for i, user1 in enumerate(user_list):
+        for user2 in user_list[i+1:]:
+            common_items = []
+            for item_id, user_scores in item_ratings.items():
+                if user1 in user_scores and user2 in user_scores:
+                    common_items.append((user_scores[user1], user_scores[user2]))
+
+            if len(common_items) >= 1:
+                # Calculate agreement (exact match after rounding to integers)
+                agreements_count = sum(1 for s1, s2 in common_items if round(s1) == round(s2))
+                agreement = agreements_count / len(common_items)
+
+                key = f"{min(str(user1), str(user2))}-{max(str(user1), str(user2))}"
+                agreements[key] = round(agreement, 3)
+
+    return {
+        "evaluators": evaluators,
+        "agreements": agreements
+    }
+
+
 def _calculate_authenticity_pairwise_agreement(
     *,
     user_stats: List[Dict],
@@ -1665,10 +1963,14 @@ def get_authenticity_stats(scenario_id: int) -> Dict[str, Any]:
     """Get comprehensive statistics for an authenticity scenario."""
     scenario = _get_scenario_or_raise(scenario_id)
 
+    # Only include active members in stats
     scenario_users = (
         db.session.query(ScenarioUsers)
         .join(User, ScenarioUsers.user_id == User.id)
-        .filter(ScenarioUsers.scenario_id == scenario_id)
+        .filter(
+            ScenarioUsers.scenario_id == scenario_id,
+            ScenarioUsers.membership_status == MembershipStatus.ACTIVE
+        )
         .all()
     )
 
@@ -1725,7 +2027,7 @@ def get_authenticity_stats(scenario_id: int) -> Dict[str, Any]:
         user_id = user.id
 
         # Get threads assigned to this user (for RATER role) or all threads (for EVALUATOR)
-        if su.role == ScenarioRoles.RATER and distribution_mode != DISTRIBUTION_MODE_ALL:
+        if su.role == ScenarioRoles.EVALUATOR and distribution_mode != DISTRIBUTION_MODE_ALL:
             user_thread_ids = [
                 dist.scenario_thread.thread.thread_id
                 for dist in (

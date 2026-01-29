@@ -359,10 +359,11 @@ const liveStats = computed(() => ({
   userStatsList: userStatsList.value,
   connected: statsConnected.value,
   ratingDistribution: stats.value?.rating_distribution,
-  pairwiseAgreement: stats.value?.pairwise_agreement,
+  // Unified pairwise agreement - prefer pairwise_agreement, fallback to ranking_agreement
+  pairwiseAgreement: stats.value?.pairwise_agreement || stats.value?.ranking_agreement,
   functionType: liveFunctionType.value,
   bucket_distribution: stats.value?.bucket_distribution,
-  ranking_agreement: stats.value?.ranking_agreement
+  ranking_agreement: stats.value?.ranking_agreement  // Deprecated, kept for backwards compatibility
 }))
 
 // Methods

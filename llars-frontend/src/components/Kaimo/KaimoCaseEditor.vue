@@ -24,6 +24,19 @@
             </div>
           </div>
           <v-spacer />
+          <v-tooltip :text="$t('kaimo.export.button')" location="bottom">
+            <template v-slot:activator="{ props }">
+              <v-btn
+                v-bind="props"
+                icon="mdi-export"
+                variant="text"
+                color="secondary"
+                class="mr-2"
+                :loading="exporting"
+                @click="exportCase"
+              />
+            </template>
+          </v-tooltip>
           <v-chip
             :color="formData.status === 'published' ? 'success' : formData.status === 'archived' ? 'error' : 'warning'"
             variant="flat"
@@ -651,7 +664,8 @@ import {
   updateKaimoHint,
   deleteKaimoHint,
   getKaimoCategories,
-  publishKaimoCase
+  publishKaimoCase,
+  exportKaimoCase
 } from '@/services/kaimoApi'
 
 const route = useRoute()
@@ -696,6 +710,7 @@ const publishing = ref(false)
 const savingDocument = ref(false)
 const savingHint = ref(false)
 const deleting = ref(false)
+const exporting = ref(false)
 
 // Snackbar
 const snackbar = ref(false)
@@ -869,6 +884,32 @@ async function publishCase() {
     showSnackbar(t('kaimo.caseEditor.snackbar.publishFailed'), 'error')
   } finally {
     publishing.value = false
+  }
+}
+
+async function exportCase() {
+  exporting.value = true
+  try {
+    const caseId = route.params.id
+    const exportData = await exportKaimoCase(caseId)
+
+    // Create download
+    const blob = new Blob([JSON.stringify(exportData.export, null, 2)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${formData.value.name || 'kaimo-case'}.json`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+
+    showSnackbar(t('kaimo.export.success'))
+  } catch (err) {
+    console.error('Export fehlgeschlagen:', err)
+    showSnackbar(t('kaimo.export.error'), 'error')
+  } finally {
+    exporting.value = false
   }
 }
 

@@ -385,9 +385,10 @@ def seed_summeval_demo_scenario(db):
     db.session.flush()
 
     # Add users to scenario
+    # EVALUATOR can interact (rate/evaluate), VIEWER is read-only
     for user, role in [
-        (evaluator, ScenarioRoles.EVALUATOR),
-        (researcher, ScenarioRoles.RATER)
+        (evaluator, ScenarioRoles.VIEWER),
+        (researcher, ScenarioRoles.EVALUATOR)
     ]:
         scenario_user = ScenarioUsers(
             scenario_id=scenario.id,
@@ -400,7 +401,7 @@ def seed_summeval_demo_scenario(db):
         admin_scenario_user = ScenarioUsers(
             scenario_id=scenario.id,
             user_id=admin.id,
-            role=ScenarioRoles.EVALUATOR
+            role=ScenarioRoles.VIEWER
         )
         db.session.add(admin_scenario_user)
 
@@ -418,17 +419,17 @@ def seed_summeval_demo_scenario(db):
 
     db.session.flush()
 
-    # Create distributions for rater
-    rater_user = ScenarioUsers.query.filter_by(
+    # Create distributions for evaluator (who can interact)
+    evaluator_user = ScenarioUsers.query.filter_by(
         scenario_id=scenario.id,
-        role=ScenarioRoles.RATER
+        role=ScenarioRoles.EVALUATOR
     ).first()
 
-    if rater_user:
+    if evaluator_user:
         for scenario_item in scenario_items:
             dist = ScenarioItemDistribution(
                 scenario_id=scenario.id,
-                scenario_user_id=rater_user.id,
+                scenario_user_id=evaluator_user.id,
                 scenario_item_id=scenario_item.id
             )
             db.session.add(dist)

@@ -112,7 +112,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, reactive } from 'vue'
+import { ref, computed, onMounted, reactive, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { usePermissions } from '@/composables/usePermissions'
@@ -137,7 +137,16 @@ const { hasPermission, isResearcher, fetchPermissions } = usePermissions()
 const { isLoading, withLoading, setLoading } = useSkeletonLoading(['case', 'assessment'])
 
 const caseId = computed(() => Number(route.params.id))
-const activeView = ref('documents')
+
+// Valid views for KAIMO
+const validViews = ['documents', 'diagram', 'assessment']
+
+// Initialize activeView from URL query parameter or default to 'documents'
+const getInitialView = () => {
+  const viewParam = route.query.view
+  return validViews.includes(viewParam) ? viewParam : 'documents'
+}
+const activeView = ref(getInitialView())
 
 // State
 const caseData = ref(null)
@@ -158,6 +167,22 @@ const showSnackbar = (text, color = 'success') => {
   snackbar.color = color
   snackbar.show = true
 }
+
+// Update URL when view changes
+watch(activeView, (newView) => {
+  if (route.query.view !== newView) {
+    router.replace({
+      query: { ...route.query, view: newView }
+    })
+  }
+})
+
+// Update view when URL query changes (e.g., browser back/forward)
+watch(() => route.query.view, (newView) => {
+  if (validViews.includes(newView) && activeView.value !== newView) {
+    activeView.value = newView
+  }
+})
 
 const canViewKaimo = computed(() => {
   return hasPermission('feature:kaimo:view') || isResearcher.value || hasPermission('admin:kaimo:manage')

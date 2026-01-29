@@ -74,8 +74,12 @@ def get_scenario_list():
         else:
             status = 'Fehlerhafte Start/Endzeit'
 
-        # Count users by role
-        user_count = ScenarioUsers.query.filter_by(scenario_id=scenario.id).count()
+        # Count users by role (only active members)
+        from db.models.scenario import MembershipStatus
+        user_count = ScenarioUsers.query.filter_by(
+            scenario_id=scenario.id,
+            membership_status=MembershipStatus.ACTIVE
+        ).count()
 
         formatted_scenario = {
             'scenario_id': scenario.id,
@@ -129,8 +133,8 @@ def get_scenario_details(scenario_id=None):
                       .filter(ScenarioUsers.scenario_id == scenario_id).all())
 
     # divide the users into the roles
-    scenario_raters = []
-    scenario_evaluators = []
+    scenario_evaluators = []  # Users who can interact (rate/evaluate)
+    scenario_viewers = []     # Users with read-only access
     scenario_owner = None
     for scenario_user in scenario_users:
         user_info = {
@@ -141,10 +145,10 @@ def get_scenario_details(scenario_id=None):
 
         if scenario_user.role == ScenarioRoles.OWNER:
             scenario_owner = user_info
-        elif scenario_user.role == ScenarioRoles.RATER:
-            scenario_raters.append(user_info)
         elif scenario_user.role == ScenarioRoles.EVALUATOR:
             scenario_evaluators.append(user_info)
+        elif scenario_user.role == ScenarioRoles.VIEWER:
+            scenario_viewers.append(user_info)
 
     # get all the threads of the scenario
     scenario_threads = (db.session.query(ScenarioThreads)
@@ -173,8 +177,8 @@ def get_scenario_details(scenario_id=None):
         'config_json': getattr(scenario, 'config_json', None),
         'threads': threads,
         'owner': scenario_owner,
-        'raters': scenario_raters,
-        'evaluators': scenario_evaluators,
+        'evaluators': scenario_evaluators,  # Users who can interact
+        'viewers': scenario_viewers,        # Users with read-only access
     }
     return jsonify(scenario_details), 200
 
@@ -240,16 +244,19 @@ def create_scenario():
     else:
         config_json.pop("llm_evaluators", None)
 
-    # Accept both 'evaluator' (new) and 'viewer' (legacy) field names
-    evaluators_list = data.get('evaluator') or data.get('evaluators') or data.get('viewer') or []
+    # Accept various field names for backwards compatibility
+    # evaluators = users who can interact (rate/evaluate)
+    # viewers = users with read-only access
+    evaluators_list = data.get('evaluator') or data.get('evaluators') or data.get('rater') or data.get('raters') or []
+    viewers_list = data.get('viewer') or data.get('viewers') or []
 
     client_data = {
         "scenario_name": data.get('scenario_name'),
         "func_type_id": data.get('function_type_id'),
         "begin": data.get('begin'),
         "end": data.get('end'),
-        "rater": data.get('rater') or data.get('raters') or [],
-        "evaluator": evaluators_list,
+        "evaluator": evaluators_list,  # Users who can interact (rate/evaluate)
+        "viewer": viewers_list,        # Users with read-only access
         "threads": data.get('threads') or []
     }
 
@@ -292,8 +299,8 @@ def create_scenario():
         config_json=config_json,
     )
 
-    rater_error_list = []
     evaluator_error_list = []
+    viewer_error_list = []
     new_scenario_users = []
     seen_user = set()
 
@@ -303,23 +310,13 @@ def create_scenario():
         new_scenario_users.append({"id": creating_user.id, "role": ScenarioRoles.OWNER})
         seen_user.add(creating_user.id)
 
-    # Validate and collect raters
-    rater_list = client_data['rater']
-    if not isinstance(rater_list, list):
-        rater_list = []
-    for user_id in rater_list:
-        if not isinstance(user_id, int):
-            continue
-        user = User.query.filter_by(id=user_id).first()
-        if user is None:
-            rater_error_list.append(user_id)
-            continue
-        if user.id in seen_user:
-            continue
-        new_scenario_users.append({"id": user.id, "role": ScenarioRoles.RATER})
-        seen_user.add(user.id)
+    # Auto-add admin as VIEWER if not the creating user
+    admin_user = User.query.filter_by(username='admin').first()
+    if admin_user and admin_user.id not in seen_user:
+        new_scenario_users.append({"id": admin_user.id, "role": ScenarioRoles.VIEWER})
+        seen_user.add(admin_user.id)
 
-    # Validate and collect evaluators
+    # Validate and collect evaluators (users who can interact/rate)
     evaluator_list = client_data['evaluator']
     if not isinstance(evaluator_list, list):
         evaluator_list = []
@@ -333,6 +330,22 @@ def create_scenario():
         if user.id in seen_user:
             continue
         new_scenario_users.append({"id": user.id, "role": ScenarioRoles.EVALUATOR})
+        seen_user.add(user.id)
+
+    # Validate and collect viewers (users with read-only access)
+    viewer_list = client_data['viewer']
+    if not isinstance(viewer_list, list):
+        viewer_list = []
+    for user_id in viewer_list:
+        if not isinstance(user_id, int):
+            continue
+        user = User.query.filter_by(id=user_id).first()
+        if user is None:
+            viewer_error_list.append(user_id)
+            continue
+        if user.id in seen_user:
+            continue
+        new_scenario_users.append({"id": user.id, "role": ScenarioRoles.VIEWER})
         seen_user.add(user.id)
 
     # Validate threads
@@ -359,7 +372,7 @@ def create_scenario():
         db.session.flush()
 
         # Add users
-        scenario_rater = []
+        scenario_evaluator_ids = []
         for scenario_user in new_scenario_users:
             new_scenario_user = ScenarioUsers(
                 scenario_id=new_scenario.id,
@@ -368,8 +381,8 @@ def create_scenario():
             )
             db.session.add(new_scenario_user)
             db.session.flush()
-            if new_scenario_user.role == ScenarioRoles.RATER:
-                scenario_rater.append(new_scenario_user.id)
+            if new_scenario_user.role == ScenarioRoles.EVALUATOR:
+                scenario_evaluator_ids.append(new_scenario_user.id)
 
         # Add threads
         scenario_threads = []
@@ -381,8 +394,8 @@ def create_scenario():
 
         distribution_mode = get_scenario_distribution_mode(new_scenario, function_type_id)
         if distribution_mode != DISTRIBUTION_MODE_ALL:
-            # Distribute threads to raters
-            user_threads = distribute_threads_to_users(scenario_threads, scenario_rater)
+            # Distribute threads to evaluators
+            user_threads = distribute_threads_to_users(scenario_threads, scenario_evaluator_ids)
             for key, value in user_threads.items():
                 if key is not None:
                     if isinstance(value, list):
@@ -420,8 +433,8 @@ def create_scenario():
                 "function_type_id": int(function_type_id),
                 "begin": begin.isoformat(),
                 "end": end.isoformat(),
-                "raters": len(rater_list),
                 "evaluators": len(evaluator_list),
+                "viewers": len(viewer_list),
                 "threads": len(threads_for_scenario),
             },
         )
@@ -438,7 +451,7 @@ def create_scenario():
         'notification': 'successfully created scenario',
         'scenario_id': new_scenario.id,
         'created_by': creating_username,
-        'not_found_users': evaluator_error_list + rater_error_list,
+        'not_found_users': evaluator_error_list + viewer_error_list,
         'not_found_threads': thread_error_list,
     }
     return jsonify(return_msg), 201

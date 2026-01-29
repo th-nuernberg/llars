@@ -77,7 +77,7 @@ def add_threads_to_scenario():
 
         scenario_users_ids = [
             user_id[0] for user_id in ScenarioUsers.query.with_entities(ScenarioUsers.id).filter_by(
-                scenario_id=scenario.id, role=ScenarioRoles.RATER).all()
+                scenario_id=scenario.id, role=ScenarioRoles.EVALUATOR).all()
         ]
 
         distribution_mode = get_scenario_distribution_mode(scenario, scenario.function_type_id)
@@ -148,13 +148,13 @@ def add_viewers_to_scenario():
     for viewer_id in viewers:
         scenario_user = ScenarioUsers.query.filter_by(user_id=viewer_id, scenario_id=scenario_id).first()
         if not scenario_user:  # only add new users to scenario
-            db.session.add(ScenarioUsers(user_id=viewer_id, scenario_id=scenario_id, role=ScenarioRoles.EVALUATOR))
+            db.session.add(ScenarioUsers(user_id=viewer_id, scenario_id=scenario_id, role=ScenarioRoles.VIEWER))
             db.session.commit()
         else:
-            scenario_user.role = ScenarioRoles.EVALUATOR
+            scenario_user.role = ScenarioRoles.VIEWER
             db.session.commit()
 
-    return jsonify({'message': 'Successfully added evaluators to the db'}), 200
+    return jsonify({'message': 'Successfully added viewers to the db'}), 200
 
 
 @data_blueprint.route('/admin/invite_users_to_scenario', methods=['POST'])
@@ -176,8 +176,8 @@ def invite_users_to_scenario():
         }
 
     Roles:
-        - "rater": Can rate/rank items in the scenario
-        - "evaluator": Can view and participate in evaluations
+        - "evaluator": Can rate/rank items in the scenario (can interact)
+        - "viewer": Read-only access to scenario
     """
     try:
         data = request.get_json()
@@ -218,10 +218,10 @@ def invite_users_to_scenario():
             continue
 
         # Map role string to enum
-        if role_str == 'rater':
-            role = ScenarioRoles.RATER
-        elif role_str in ('evaluator', 'viewer'):  # Accept 'viewer' for backwards compat
+        if role_str in ('evaluator', 'rater'):  # Accept 'rater' for backwards compat
             role = ScenarioRoles.EVALUATOR
+        elif role_str == 'viewer':
+            role = ScenarioRoles.VIEWER
         else:
             failed_users.append({'user_id': user_id, 'reason': f'Invalid role: {role_str}'})
             continue

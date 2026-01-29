@@ -957,7 +957,8 @@
       "searchPlaceholder": "Textsuche",
       "filters": {
         "attributes": "Merkmale",
-        "actors": "Akteure"
+        "actors": "Akteure",
+        "clear": "Zurücksetzen"
       },
       "emptySearch": "Keine Ergebnisse gefunden",
       "empty": "Keine Dokumente vorhanden",
@@ -967,6 +968,15 @@
         "protokoll": "Protokoll",
         "sonstiges": "Dokument",
         "default": "Aktenvermerk"
+      },
+      "actors": {
+        "mother": "Mutter",
+        "father": "Vater",
+        "child": "Kind",
+        "teacher": "Lehrer:in",
+        "socialWorker": "Jugendamt",
+        "neighbor": "Nachbar:in",
+        "reporter": "Meldende Person"
       },
       "placeholders": {
         "date": "—"
@@ -985,6 +995,8 @@
     },
     "assessment": {
       "title": "Abschließende Fallbeurteilung",
+      "showMatrix": "Matrix anzeigen",
+      "hideMatrix": "Matrix ausblenden",
       "verdictInstruction": "Wählen Sie hier Ihr Urteil zum Fall",
       "verdicts": {
         "inconclusive": "Eine abschließende Bewertung ist nicht möglich",
@@ -1011,7 +1023,13 @@
       "noCategory": "Keine Kategorie ausgewählt",
       "subcategoryLabel": "Unterkategorie",
       "reset": "Zurücksetzen",
-      "empty": "Keine Hinweise für diese Kategorie"
+      "empty": "Keine Hinweise für diese Kategorie",
+      "progress": "{assigned} von {total} Hinweisen zugeordnet",
+      "saving": "Speichert...",
+      "saved": "Vollständig",
+      "partialSaved": "Teilweise gespeichert",
+      "readyToSave": "Wird gespeichert...",
+      "selectAny": "Bewertung oder Unterkategorie wählen"
     },
     "ratings": {
       "risk": "Risiko",
@@ -3074,7 +3092,7 @@
       },
       "dimensionDistribution": "Zeigt die Verteilung der Bewertungen für jede Dimension. Die Heatmap-Farben zeigen relative Häufigkeit.",
       "spiderChart": "Vergleicht Durchschnittsbewertungen zwischen Menschen und LLMs über alle Dimensionen. Größere Flächen = höhere Durchschnittswerte.",
-      "interRaterAgreement": "Zeigt die paarweise Übereinstimmung zwischen allen Bewertern. Grün = hohe Übereinstimmung, Rot = niedrige Übereinstimmung. Berechnet als Anteil der Bewertungen innerhalb von 1 Punkt Differenz.",
+      "interRaterAgreement": "Zeigt die paarweise Übereinstimmung zwischen allen Bewertern. Grün = hohe Übereinstimmung, Rot = niedrige Übereinstimmung. Berechnet als Anteil der exakt übereinstimmenden Bewertungen (gerundet auf ganze Zahlen).",
       "bucketDistribution": "Zeigt wie viele Items in welchen Bucket (Gut/Mittel/Schlecht) einsortiert wurden. Aggregiert über alle menschlichen und LLM-Evaluatoren.",
       "rankingAgreement": "Paarweise Übereinstimmung zwischen Evaluatoren für Ranking-Zuweisungen. Zeigt den Prozentsatz der Items, die gleich eingeordnet wurden."
     },

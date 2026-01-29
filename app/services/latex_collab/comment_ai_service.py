@@ -31,7 +31,7 @@ class AIResolveResult:
 class CommentAIService:
     """Service for AI-assisted comment resolution in LaTeX Collab."""
 
-    CONTEXT_CHARS = 500  # Characters of context before/after the selected range
+    CONTEXT_CHARS = 1000  # Characters of context before/after the selected range
 
     @staticmethod
     def get_ai_settings() -> dict:

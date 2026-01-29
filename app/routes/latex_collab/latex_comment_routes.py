@@ -442,19 +442,22 @@ def ai_resolve_comment(comment_id: int):
         range_start = comment.range_start
         range_end = comment.range_end
 
+        # Capture app reference for background thread callbacks
+        app = current_app._get_current_object()
+
         def on_token(token: str):
             """Emit token via Socket.IO"""
-            socketio.emit('latex_collab:ai_resolve:token', {
-                'comment_id': comment_id,
-                'workspace_id': workspace_id,
-                'document_id': document_id,
-                'token': token,
-            })
+            with app.app_context():
+                socketio.emit('latex_collab:ai_resolve:token', {
+                    'comment_id': comment_id,
+                    'workspace_id': workspace_id,
+                    'document_id': document_id,
+                    'token': token,
+                })
 
         def on_complete(new_text: str, ai_reply_text: str):
             """Handle completion: create reply, emit events"""
-            from flask import current_app
-            with current_app.app_context():
+            with app.app_context():
                 # Re-fetch comment and doc in new context
                 _comment = LatexComment.query.get(comment_id)
                 _doc = LatexDocument.query.get(document_id)
@@ -522,12 +525,13 @@ def ai_resolve_comment(comment_id: int):
 
         def on_error(error_msg: str):
             """Emit error via Socket.IO"""
-            socketio.emit('latex_collab:ai_resolve:error', {
-                'comment_id': comment_id,
-                'workspace_id': workspace_id,
-                'document_id': document_id,
-                'error': error_msg,
-            })
+            with app.app_context():
+                socketio.emit('latex_collab:ai_resolve:error', {
+                    'comment_id': comment_id,
+                    'workspace_id': workspace_id,
+                    'document_id': document_id,
+                    'error': error_msg,
+                })
             # Clear stream state
             CommentAIService.clear_stream(comment_id)
 

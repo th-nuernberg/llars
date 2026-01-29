@@ -841,6 +841,121 @@
 }
 
 /* ============================================
+   12b. FLOATING AI STREAM WINDOW
+   ============================================ */
+.floating-ai-stream-card {
+  position: fixed;
+  z-index: 9999;
+  width: 360px;
+  max-width: calc(100vw - 20px);
+  background: rgb(var(--v-theme-surface));
+  border: 2px solid #9B59B6;
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(155, 89, 182, 0.2), 0 2px 8px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+.floating-ai-stream-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 12px;
+  background: linear-gradient(135deg, rgba(155, 89, 182, 0.12) 0%, rgba(155, 89, 182, 0.06) 100%);
+  border-bottom: 1px solid rgba(155, 89, 182, 0.2);
+  cursor: grab;
+  user-select: none;
+}
+
+.floating-ai-stream-header:active {
+  cursor: grabbing;
+}
+
+.ai-stream-header-left {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ai-pulse-indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #9B59B6;
+  animation: ai-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes ai-pulse {
+  0%, 100% { opacity: 0.4; transform: scale(0.9); }
+  50% { opacity: 1; transform: scale(1.1); }
+}
+
+.floating-ai-stream-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #9B59B6;
+}
+
+.floating-ai-stream-body {
+  padding: 12px;
+  max-height: 300px;
+  overflow-y: auto;
+  background: rgba(var(--v-theme-surface-variant), 0.15);
+}
+
+.ai-stream-waiting {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  color: rgba(var(--v-theme-on-surface), 0.6);
+  font-size: 13px;
+}
+
+.ai-stream-content {
+  font-family: 'JetBrains Mono', 'Fira Code', 'Monaco', monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: rgb(var(--v-theme-on-surface));
+  margin: 0;
+  padding: 0;
+}
+
+.ai-cursor {
+  display: inline-block;
+  width: 2px;
+  height: 1em;
+  background: #9B59B6;
+  margin-left: 2px;
+  animation: ai-cursor-blink 0.8s ease-in-out infinite;
+}
+
+@keyframes ai-cursor-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+.floating-ai-stream-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border-top: 1px solid rgba(var(--v-theme-on-surface), 0.06);
+  background: rgba(var(--v-theme-on-surface), 0.02);
+}
+
+.ai-stream-chars {
+  font-size: 11px;
+  color: rgba(var(--v-theme-on-surface), 0.5);
+}
+
+/* Dark mode adjustments for AI stream */
+.v-theme--dark .floating-ai-stream-card {
+  box-shadow: 0 8px 32px rgba(155, 89, 182, 0.3), 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+/* ============================================
    13. ZOTERO READ-ONLY NOTICE
    ============================================ */
 .zotero-readonly-notice {

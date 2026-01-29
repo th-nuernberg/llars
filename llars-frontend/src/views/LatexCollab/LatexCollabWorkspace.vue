@@ -317,6 +317,7 @@
                         'other-document': isCommentInOtherDocument(c)
                       }"
                       :style="c.author_color ? { borderColor: c.author_color } : {}"
+                      :data-comment-id="c.id"
                     >
                       <!-- Document indicator (for workspace-wide comments) -->
                       <div
@@ -357,10 +358,10 @@
                             variant="text"
                             size="x-small"
                             color="purple"
-                            :title="$t('latexCollab.comments.aiResolveTitle')"
-                            :loading="aiResolvingCommentId === c.id"
-                            :disabled="aiResolvingCommentId !== null"
-                            @click.stop="aiResolveComment(c)"
+                            :title="aiResolvingCommentId === c.id ? $t('latexCollab.comments.aiStreamToggle') : $t('latexCollab.comments.aiResolveTitle')"
+                            :loading="aiResolvingCommentId === c.id && !aiStreamWindowOpen"
+                            :disabled="aiResolvingCommentId !== null && aiResolvingCommentId !== c.id"
+                            @click.stop="handleAiButtonClick(c)"
                           >
                             <LIcon size="16">mdi-robot</LIcon>
                           </v-btn>
@@ -562,6 +563,57 @@
           >
             {{ $t('common.save') }}
           </v-btn>
+        </div>
+      </div>
+    </Teleport>
+
+    <!-- Floating AI Stream Window (shows streaming tokens) -->
+    <Teleport to="body">
+      <div
+        v-if="aiStreamWindowOpen && aiResolvingCommentId !== null"
+        ref="floatingAiStreamRef"
+        class="floating-ai-stream-card"
+        :style="floatingAiStreamStyle"
+      >
+        <!-- Draggable Header -->
+        <div
+          class="floating-ai-stream-header"
+          @mousedown="startDragAiStream"
+        >
+          <div class="ai-stream-header-left">
+            <div class="ai-pulse-indicator" />
+            <LIcon size="16" class="mr-1" color="purple">mdi-robot</LIcon>
+            <span class="floating-ai-stream-title">{{ $t('latexCollab.comments.aiStreaming') }}</span>
+          </div>
+          <v-spacer />
+          <LIconBtn
+            icon="mdi-close"
+            size="x-small"
+            :tooltip="$t('common.close')"
+            @click="aiStreamWindowOpen = false"
+          />
+        </div>
+        <!-- Stream Content -->
+        <div ref="aiStreamContentRef" class="floating-ai-stream-body">
+          <div v-if="!aiStreamContent" class="ai-stream-waiting">
+            <v-progress-circular indeterminate size="20" width="2" color="purple" class="mr-2" />
+            {{ $t('latexCollab.comments.aiWaiting') }}
+          </div>
+          <pre v-else class="ai-stream-content">{{ aiStreamContent }}<span class="ai-cursor" v-if="aiStreamStatus === 'streaming'">|</span></pre>
+        </div>
+        <!-- Status Footer -->
+        <div class="floating-ai-stream-footer">
+          <LTag
+            :variant="aiStreamStatus === 'completed' ? 'success' : aiStreamStatus === 'error' ? 'danger' : 'info'"
+            size="x-small"
+          >
+            {{ aiStreamStatus === 'completed' ? $t('latexCollab.comments.aiCompleted') :
+               aiStreamStatus === 'error' ? $t('latexCollab.comments.aiError', { error: '' }) :
+               $t('latexCollab.comments.aiProcessing') }}
+          </LTag>
+          <span v-if="aiStreamContent" class="ai-stream-chars">
+            {{ aiStreamContent.length }} {{ $t('latexCollab.comments.aiChars') }}
+          </span>
         </div>
       </div>
     </Teleport>
@@ -911,6 +963,11 @@ function setupCompileSocket() {
 
   compileSocket.on('latex_collab:compile_status', onCompileStatus)
 
+  // AI streaming event handlers
+  compileSocket.on('latex_collab:ai_resolve:token', handleAiStreamToken)
+  compileSocket.on('latex_collab:ai_resolve:completed', handleAiStreamCompleted)
+  compileSocket.on('latex_collab:ai_resolve:error', handleAiStreamError)
+
   // Subscribe to workspace updates when connected
   compileSocketConnectHandler = () => {
     compileSocket.emit('latex_collab:subscribe_workspace', { workspace_id: workspaceId.value })
@@ -925,6 +982,9 @@ function setupCompileSocket() {
 function cleanupCompileSocket() {
   if (!compileSocket) return
   compileSocket.off('latex_collab:compile_status')
+  compileSocket.off('latex_collab:ai_resolve:token', handleAiStreamToken)
+  compileSocket.off('latex_collab:ai_resolve:completed', handleAiStreamCompleted)
+  compileSocket.off('latex_collab:ai_resolve:error', handleAiStreamError)
   if (compileSocketConnectHandler) {
     compileSocket.off('connect', compileSocketConnectHandler)
   }
@@ -1078,6 +1138,22 @@ const aiAssistantColor = ref('#9B59B6')  // LLARS KI purple
 const aiAssistantUsername = ref('LLARS KI')
 const aiResolvingCommentId = ref(null)
 
+// AI Streaming Window State
+const aiStreamWindowOpen = ref(false)
+const aiStreamContent = ref('')
+const aiStreamStatus = ref('idle') // 'idle' | 'streaming' | 'completed' | 'error'
+const aiStreamResult = ref(null)
+const floatingAiStreamRef = ref(null)
+const aiStreamDragOffset = ref({ x: 0, y: 0 })
+const isDraggingAiStream = ref(false)
+const aiStreamPosition = ref({ x: 100, y: 100 })
+const aiStreamContentRef = ref(null)
+
+const floatingAiStreamStyle = computed(() => ({
+  left: `${Math.max(10, aiStreamPosition.value.x)}px`,
+  top: `${Math.max(10, aiStreamPosition.value.y)}px`
+}))
+
 /**
  * Fetch AI assistant settings from the server
  */
@@ -1098,63 +1174,185 @@ async function loadAiAssistantSettings() {
 }
 
 /**
- * Use AI to resolve a comment by analyzing the text and suggesting changes.
+ * Handle click on AI button - either start resolve or toggle stream window
+ * @param {Object} comment - The comment
+ */
+function handleAiButtonClick(comment) {
+  if (aiResolvingCommentId.value === comment.id) {
+    // Already processing this comment - toggle the stream window
+    aiStreamWindowOpen.value = !aiStreamWindowOpen.value
+  } else {
+    // Start new AI resolve
+    aiResolveComment(comment)
+  }
+}
+
+/**
+ * Use AI to resolve a comment with streaming support.
  * @param {Object} comment - The comment to resolve
  */
 async function aiResolveComment(comment) {
   if (!comment || aiResolvingCommentId.value !== null) return
 
-  // Navigate to the comment's document first if needed (compare as numbers)
+  // Navigate to the comment's document first if needed
   const currentDocId = selectedNode.value?.id
   const commentDocId = comment.document_id
   const isSameDoc = currentDocId != null && Number(currentDocId) === Number(commentDocId)
 
   if (!isSameDoc) {
     handleNavigateToDocument(commentDocId, comment)
-    // Wait a bit for document to load before proceeding
     await new Promise(resolve => setTimeout(resolve, 600))
   }
 
+  // Reset stream state
   aiResolvingCommentId.value = comment.id
+  aiStreamContent.value = ''
+  aiStreamStatus.value = 'streaming'
+  aiStreamResult.value = null
+  aiStreamWindowOpen.value = false  // Start closed, user can open by clicking loading button
+
+  // Position the stream window near the comment
+  const commentEl = document.querySelector(`.comment-thread[data-comment-id="${comment.id}"]`)
+  if (commentEl) {
+    const rect = commentEl.getBoundingClientRect()
+    aiStreamPosition.value = { x: rect.right + 20, y: rect.top }
+  } else {
+    aiStreamPosition.value = { x: window.innerWidth / 2 - 180, y: window.innerHeight / 3 }
+  }
 
   try {
-    const res = await axios.post(
-      `${API_BASE}/api/latex-collab/comments/${comment.id}/ai-resolve`,
-      { auto_resolve: true },
+    // Check if there's an existing stream we can reconnect to
+    const statusRes = await axios.get(
+      `${API_BASE}/api/latex-collab/comments/${comment.id}/ai-resolve/status`,
       { headers: authHeaders() }
     )
 
-    if (res.data?.success) {
-      const { changes } = res.data
-
-      // Apply the text change to the editor if we have old and new text
-      if (changes?.old_text && changes?.new_text && changes.range_start != null && changes.range_end != null) {
-        // The editor should have a method to replace text at a range
-        if (editorRef.value?.replaceRange) {
-          // Pass LLARS KI color and username for visual collab attribution
-          editorRef.value.replaceRange(
-            changes.range_start,
-            changes.range_end,
-            changes.new_text,
-            {
-              collabColor: aiAssistantColor.value,
-              collabUser: aiAssistantUsername.value
-            }
-          )
-        }
+    if (statusRes.data?.active) {
+      // Reconnect to existing stream
+      aiStreamContent.value = statusRes.data.content || ''
+      aiStreamStatus.value = statusRes.data.status || 'streaming'
+      if (statusRes.data.result) {
+        aiStreamResult.value = statusRes.data.result
       }
-
-      // Comments will be updated via Socket.IO event
-      // Show success notification
-      showSnackbar(t('latexCollab.comments.aiSuccess'), 'success')
+      return
     }
+
+    // Start new streaming request
+    const res = await axios.post(
+      `${API_BASE}/api/latex-collab/comments/${comment.id}/ai-resolve`,
+      { auto_resolve: true, streaming: true },
+      { headers: authHeaders() }
+    )
+
+    if (!res.data?.success) {
+      throw new Error(res.data?.error || 'Failed to start AI streaming')
+    }
+
+    // Streaming started - tokens will arrive via Socket.IO
+    // The REST response just confirms streaming has started
   } catch (e) {
     const errorMsg = e?.response?.data?.error || e?.message || 'Unknown error'
     showSnackbar(t('latexCollab.comments.aiError', { error: errorMsg }), 'error')
     console.error('AI resolve failed:', e)
-  } finally {
     aiResolvingCommentId.value = null
+    aiStreamStatus.value = 'error'
   }
+}
+
+/**
+ * Handle incoming AI stream token
+ */
+function handleAiStreamToken(data) {
+  if (data.comment_id !== aiResolvingCommentId.value) return
+
+  aiStreamContent.value += data.token
+
+  // Auto-scroll stream content
+  nextTick(() => {
+    if (aiStreamContentRef.value) {
+      aiStreamContentRef.value.scrollTop = aiStreamContentRef.value.scrollHeight
+    }
+  })
+}
+
+/**
+ * Handle AI stream completion
+ */
+function handleAiStreamCompleted(data) {
+  if (data.comment_id !== aiResolvingCommentId.value) return
+
+  aiStreamStatus.value = 'completed'
+  aiStreamResult.value = data
+
+  // Apply the text change to the editor
+  const { changes } = data
+  if (changes?.old_text && changes?.new_text && changes.range_start != null && changes.range_end != null) {
+    if (editorRef.value?.replaceRange) {
+      editorRef.value.replaceRange(
+        changes.range_start,
+        changes.range_end,
+        changes.new_text,
+        {
+          collabColor: aiAssistantColor.value,
+          collabUser: aiAssistantUsername.value
+        }
+      )
+    }
+  }
+
+  showSnackbar(t('latexCollab.comments.aiSuccess'), 'success')
+
+  // Reset after a delay to allow user to see the result
+  setTimeout(() => {
+    if (aiStreamStatus.value === 'completed') {
+      aiResolvingCommentId.value = null
+      // Keep window open so user can see final result
+    }
+  }, 2000)
+}
+
+/**
+ * Handle AI stream error
+ */
+function handleAiStreamError(data) {
+  if (data.comment_id !== aiResolvingCommentId.value) return
+
+  aiStreamStatus.value = 'error'
+  showSnackbar(t('latexCollab.comments.aiError', { error: data.error }), 'error')
+
+  setTimeout(() => {
+    aiResolvingCommentId.value = null
+  }, 3000)
+}
+
+// AI Stream Window Drag Functions
+function startDragAiStream(e) {
+  if (e.button !== 0) return
+  isDraggingAiStream.value = true
+  const card = floatingAiStreamRef.value
+  if (!card) return
+  const rect = card.getBoundingClientRect()
+  aiStreamDragOffset.value = {
+    x: e.clientX - rect.left,
+    y: e.clientY - rect.top
+  }
+  document.addEventListener('mousemove', dragAiStream)
+  document.addEventListener('mouseup', stopDragAiStream)
+  e.preventDefault()
+}
+
+function dragAiStream(e) {
+  if (!isDraggingAiStream.value) return
+  aiStreamPosition.value = {
+    x: Math.max(0, e.clientX - aiStreamDragOffset.value.x),
+    y: Math.max(0, e.clientY - aiStreamDragOffset.value.y)
+  }
+}
+
+function stopDragAiStream() {
+  isDraggingAiStream.value = false
+  document.removeEventListener('mousemove', dragAiStream)
+  document.removeEventListener('mouseup', stopDragAiStream)
 }
 
 // Compile management composable

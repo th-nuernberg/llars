@@ -957,7 +957,8 @@
       "searchPlaceholder": "Text search",
       "filters": {
         "attributes": "Attributes",
-        "actors": "Actors"
+        "actors": "Actors",
+        "clear": "Clear"
       },
       "emptySearch": "No results found",
       "empty": "No documents available",
@@ -967,6 +968,15 @@
         "protokoll": "Minutes",
         "sonstiges": "Document",
         "default": "File note"
+      },
+      "actors": {
+        "mother": "Mother",
+        "father": "Father",
+        "child": "Child",
+        "teacher": "Teacher",
+        "socialWorker": "Social services",
+        "neighbor": "Neighbor",
+        "reporter": "Reporter"
       },
       "placeholders": {
         "date": "—"
@@ -985,6 +995,8 @@
     },
     "assessment": {
       "title": "Final case assessment",
+      "showMatrix": "Show matrix",
+      "hideMatrix": "Hide matrix",
       "verdictInstruction": "Select your verdict for the case",
       "verdicts": {
         "inconclusive": "A final assessment is not possible",
@@ -1011,7 +1023,13 @@
       "noCategory": "No category selected",
       "subcategoryLabel": "Subcategory",
       "reset": "Reset",
-      "empty": "No hints for this category"
+      "empty": "No hints for this category",
+      "progress": "{assigned} of {total} hints assigned",
+      "saving": "Saving...",
+      "saved": "Complete",
+      "partialSaved": "Partially saved",
+      "readyToSave": "Saving...",
+      "selectAny": "Select rating or subcategory"
     },
     "ratings": {
       "risk": "Risk",
@@ -3069,7 +3087,7 @@
       },
       "dimensionDistribution": "Shows the distribution of ratings for each dimension. Heatmap colors indicate relative frequency.",
       "spiderChart": "Compares average ratings between humans and LLMs across all dimensions. Larger areas = higher average values.",
-      "interRaterAgreement": "Shows pairwise agreement between all raters. Green = high agreement, Red = low agreement. Calculated as the proportion of ratings within 1 point difference.",
+      "interRaterAgreement": "Shows pairwise agreement between all raters. Green = high agreement, Red = low agreement. Calculated as the proportion of exactly matching ratings (rounded to integers).",
       "bucketDistribution": "Shows how many items were assigned to each bucket (Good/Medium/Bad). Aggregated across all human and LLM evaluators.",
       "rankingAgreement": "Pairwise agreement between evaluators for ranking assignments. Shows the percentage of items that were assigned to the same bucket."
     },

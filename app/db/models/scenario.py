@@ -9,15 +9,20 @@ from db import db
 
 
 class ScenarioRoles(Enum):
-    OWNER = 'Owner'      # Szenario-Ersteller - kann bearbeiten, User verwalten, löschen
-    RATER = 'Rater'      # Kann bewerten
-    EVALUATOR = 'Evaluator'  # Kann an Evaluationen teilnehmen (ehemals Viewer)
+    OWNER = 'Owner'          # Szenario-Ersteller - kann bearbeiten, User verwalten, löschen
+    EVALUATOR = 'Evaluator'  # Kann bewerten/interagieren (ehemals RATER)
+    VIEWER = 'Viewer'        # Nur lesend (ehemals EVALUATOR)
 
 
 class InvitationStatus(Enum):
     ACCEPTED = 'accepted'    # Einladung angenommen (Standard für neue Einladungen)
     REJECTED = 'rejected'    # Einladung abgelehnt - Szenario erscheint nicht mehr
     PENDING = 'pending'      # Optional: Einladung noch nicht beantwortet
+
+
+class MembershipStatus(Enum):
+    ACTIVE = 'active'        # User ist aktiv im Szenario
+    ARCHIVED = 'archived'    # User wurde entfernt, Bewertungen bleiben erhalten
 
 
 class ProgressionStatus(Enum):
@@ -215,6 +220,17 @@ class ScenarioUsers(db.Model):
     responded_at = mapped_column(db.DateTime, nullable=True)
     # Wer hat eingeladen (für Re-Invite Tracking)
     invited_by: Mapped[Optional[str]] = mapped_column(db.String(255), nullable=True)
+
+    # Membership status: active (default) or archived (soft-delete)
+    membership_status = mapped_column(
+        db.Enum(MembershipStatus),
+        default=MembershipStatus.ACTIVE,
+        nullable=False,
+        server_default='active'
+    )
+    # Archivierungs-Metadaten
+    archived_at = mapped_column(db.DateTime, nullable=True)
+    archived_by: Mapped[Optional[str]] = mapped_column(db.String(255), nullable=True)
 
     user = db.relationship('User', backref='scenario_users')
 

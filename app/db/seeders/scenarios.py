@@ -702,7 +702,7 @@ def seed_demo_scenarios(db):
         db.session.flush()
 
         # Add users to scenario
-        for user, role in [(evaluator_user, ScenarioRoles.EVALUATOR), (researcher_user, ScenarioRoles.RATER)]:
+        for user, role in [(evaluator_user, ScenarioRoles.VIEWER), (researcher_user, ScenarioRoles.EVALUATOR)]:
             scenario_user = ScenarioUsers(
                 scenario_id=ranking_scenario.id,
                 user_id=user.id,
@@ -723,7 +723,7 @@ def seed_demo_scenarios(db):
         # Distribute to rater
         rater_scenario_user = ScenarioUsers.query.filter_by(
             scenario_id=ranking_scenario.id,
-            role=ScenarioRoles.RATER
+            role=ScenarioRoles.EVALUATOR
         ).first()
 
         if rater_scenario_user:
@@ -747,7 +747,7 @@ def seed_demo_scenarios(db):
             print(f"  Updated Ranking Scenario with LLM evaluators")
 
     if admin_user and ranking_scenario:
-        _ensure_scenario_user(ranking_scenario.id, admin_user.id, ScenarioRoles.EVALUATOR)
+        _ensure_scenario_user(ranking_scenario.id, admin_user.id, ScenarioRoles.VIEWER)
 
     # Create Mail Rating Scenario (Verlauf Bewerter)
     if not existing_mail_rating:
@@ -767,7 +767,7 @@ def seed_demo_scenarios(db):
         db.session.flush()
 
         # Add users to scenario
-        for user, role in [(evaluator_user, ScenarioRoles.EVALUATOR), (researcher_user, ScenarioRoles.RATER)]:
+        for user, role in [(evaluator_user, ScenarioRoles.VIEWER), (researcher_user, ScenarioRoles.EVALUATOR)]:
             scenario_user = ScenarioUsers(
                 scenario_id=mail_rating_scenario.id,
                 user_id=user.id,
@@ -792,7 +792,7 @@ def seed_demo_scenarios(db):
         # Distribute to rater
         rater_scenario_user = ScenarioUsers.query.filter_by(
             scenario_id=mail_rating_scenario.id,
-            role=ScenarioRoles.RATER
+            role=ScenarioRoles.EVALUATOR
         ).first()
 
         if rater_scenario_user:
@@ -817,7 +817,7 @@ def seed_demo_scenarios(db):
             print(f"  Updated Mail Rating Scenario with LLM evaluators")
 
     if admin_user and mail_rating_scenario:
-        _ensure_scenario_user(mail_rating_scenario.id, admin_user.id, ScenarioRoles.EVALUATOR)
+        _ensure_scenario_user(mail_rating_scenario.id, admin_user.id, ScenarioRoles.VIEWER)
 
     # Create Fake/Echt Scenario (Authenticity)
     if not existing_authenticity:
@@ -838,7 +838,7 @@ def seed_demo_scenarios(db):
         db.session.add(authenticity_scenario)
         db.session.flush()
 
-        for user, role in [(evaluator_user, ScenarioRoles.EVALUATOR), (researcher_user, ScenarioRoles.RATER)]:
+        for user, role in [(evaluator_user, ScenarioRoles.VIEWER), (researcher_user, ScenarioRoles.EVALUATOR)]:
             scenario_user = ScenarioUsers(
                 scenario_id=authenticity_scenario.id,
                 user_id=user.id,
@@ -861,7 +861,7 @@ def seed_demo_scenarios(db):
 
         rater_scenario_user = ScenarioUsers.query.filter_by(
             scenario_id=authenticity_scenario.id,
-            role=ScenarioRoles.RATER
+            role=ScenarioRoles.EVALUATOR
         ).first()
 
         if rater_scenario_user:
@@ -885,7 +885,7 @@ def seed_demo_scenarios(db):
             print(f"  Updated Authenticity Scenario with LLM evaluators")
 
     if admin_user and authenticity_scenario:
-        _ensure_scenario_user(authenticity_scenario.id, admin_user.id, ScenarioRoles.EVALUATOR)
+        _ensure_scenario_user(authenticity_scenario.id, admin_user.id, ScenarioRoles.VIEWER)
 
     # Create Labeling Scenario (generalized text categorization)
     if not existing_labeling:
@@ -912,7 +912,7 @@ def seed_demo_scenarios(db):
         db.session.add(labeling_scenario)
         db.session.flush()
 
-        for user, role in [(evaluator_user, ScenarioRoles.EVALUATOR), (researcher_user, ScenarioRoles.RATER)]:
+        for user, role in [(evaluator_user, ScenarioRoles.VIEWER), (researcher_user, ScenarioRoles.EVALUATOR)]:
             db.session.add(
                 ScenarioUsers(
                     scenario_id=labeling_scenario.id,
@@ -937,7 +937,7 @@ def seed_demo_scenarios(db):
 
         rater_scenario_user = ScenarioUsers.query.filter_by(
             scenario_id=labeling_scenario.id,
-            role=ScenarioRoles.RATER
+            role=ScenarioRoles.EVALUATOR
         ).first()
 
         if rater_scenario_user:
@@ -962,7 +962,7 @@ def seed_demo_scenarios(db):
             print(f"  Updated Labeling Scenario with LLM evaluators")
 
     if admin_user and labeling_scenario:
-        _ensure_scenario_user(labeling_scenario.id, admin_user.id, ScenarioRoles.EVALUATOR)
+        _ensure_scenario_user(labeling_scenario.id, admin_user.id, ScenarioRoles.VIEWER)
 
     db.session.commit()
     print("Demo scenarios seeded successfully.")
@@ -1031,7 +1031,7 @@ def _seed_extended_demo_data(db, ranking_scenario, mail_rating_scenario,
     def _get_rater_user(scenario_id):
         return ScenarioUsers.query.filter_by(
             scenario_id=scenario_id,
-            role=ScenarioRoles.RATER
+            role=ScenarioRoles.EVALUATOR
         ).first()
 
     # =========================================================================

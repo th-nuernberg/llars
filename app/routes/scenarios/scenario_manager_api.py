@@ -29,7 +29,7 @@ from db.database import db
 from db.tables import (
     RatingScenarios, FeatureFunctionType, ScenarioUsers,
     EmailThread, Message, ScenarioThreads, ScenarioRoles, User,
-    ScenarioThreadDistribution, InvitationStatus,
+    ScenarioThreadDistribution, InvitationStatus, MembershipStatus,
     UserFeatureRanking, UserFeatureRating, Feature,
     UserMailHistoryRating, UserConsultingCategorySelection,
     ComparisonSession, ItemDimensionRating
@@ -118,9 +118,10 @@ def get_user_scenarios(user, invitation_filter=None):
     invitation_map = {}  # scenario_id -> invitation_status
 
     if user_id:
-        # Get all scenario_users records for this user
+        # Get all scenario_users records for this user (only ACTIVE memberships)
         scenario_users = ScenarioUsers.query.filter(
-            ScenarioUsers.user_id == user_id
+            ScenarioUsers.user_id == user_id,
+            ScenarioUsers.membership_status == MembershipStatus.ACTIVE
         ).all()
 
         for su in scenario_users:
@@ -210,7 +211,8 @@ def format_scenario_for_api(scenario, user, invitation_map=None, include_detaile
         thread_count = ScenarioThreads.query.filter_by(scenario_id=scenario.id).count()
     user_count = ScenarioUsers.query.filter(
         ScenarioUsers.scenario_id == scenario.id,
-        ScenarioUsers.invitation_status == InvitationStatus.ACCEPTED
+        ScenarioUsers.invitation_status == InvitationStatus.ACCEPTED,
+        ScenarioUsers.membership_status == MembershipStatus.ACTIVE
     ).count()
 
     # Compute status based on dates if not explicitly set
@@ -491,8 +493,11 @@ def get_scenario_detail(scenario_id):
     except Exception:
         user_stats_map = {}
 
-    # Add users list with real progress
-    scenario_users = ScenarioUsers.query.filter_by(scenario_id=scenario_id).all()
+    # Add users list with real progress (only ACTIVE members)
+    scenario_users = ScenarioUsers.query.filter_by(
+        scenario_id=scenario_id,
+        membership_status=MembershipStatus.ACTIVE
+    ).all()
     users_list = []
     for su in scenario_users:
         db_user = User.query.get(su.user_id)
@@ -1642,7 +1647,10 @@ def get_scenario_stats(scenario_id):
         raise NotFoundError(f'Scenario {scenario_id} not found')
 
     thread_count = ScenarioThreads.query.filter_by(scenario_id=scenario_id).count()
-    user_count = ScenarioUsers.query.filter_by(scenario_id=scenario_id).count()
+    user_count = ScenarioUsers.query.filter_by(
+        scenario_id=scenario_id,
+        membership_status=MembershipStatus.ACTIVE
+    ).count()
 
     # Use unified stats payload which handles both authenticity and progress scenarios
     try:
@@ -1654,8 +1662,9 @@ def get_scenario_stats(scenario_id):
         # For authenticity scenarios, data is structured differently
         if kind == 'authenticity':
             user_stats = stats_data.get('user_stats', [])
-            rater_stats = [u for u in user_stats if u.get('role') == 'rater' and not u.get('is_llm')]
-            evaluator_stats = [u for u in user_stats if u.get('role') == 'evaluator' or u.get('is_llm')]
+            # EVALUATOR role can interact (rate/evaluate), VIEWER is read-only
+            rater_stats = [u for u in user_stats if u.get('role') == 'Evaluator' and not u.get('is_llm')]
+            evaluator_stats = [u for u in user_stats if u.get('role') in ('Viewer', 'Owner') or u.get('is_llm')]
 
             # Map authenticity fields to standard progress fields
             for stat in rater_stats + evaluator_stats:
@@ -1765,7 +1774,7 @@ def sm_invite_users(scenario_id):
 
     Request body:
         - user_ids: list of user IDs
-        - role: EVALUATOR or RATER (default: EVALUATOR)
+        - role: EVALUATOR (can interact) or VIEWER (read-only) (default: EVALUATOR)
 
     Invitations are auto-accepted by default. Users can later reject them.
     """
@@ -1780,15 +1789,24 @@ def sm_invite_users(scenario_id):
 
     data = request.get_json()
     user_ids = data.get('user_ids', [])
-    role = data.get('role', 'EVALUATOR')
+    role_str = data.get('role', 'EVALUATOR').lower()
+
+    # Map role string to enum
+    if role_str in ('evaluator', 'rater'):  # Accept 'rater' for backwards compatibility
+        role_enum = ScenarioRoles.EVALUATOR
+    elif role_str == 'viewer':
+        role_enum = ScenarioRoles.VIEWER
+    else:
+        raise ValidationError(f'Invalid role: {role_str}. Must be EVALUATOR or VIEWER.')
 
     if not user_ids:
         raise ValidationError('user_ids is required')
 
     added = 0
     reinvited = 0
+    restored = 0
     for uid in user_ids:
-        # Check if already added
+        # Check if already added (including archived users)
         existing = ScenarioUsers.query.filter_by(
             scenario_id=scenario_id,
             user_id=uid
@@ -1798,13 +1816,25 @@ def sm_invite_users(scenario_id):
             su = ScenarioUsers(
                 scenario_id=scenario_id,
                 user_id=uid,
-                role=role,
+                role=role_enum,
                 invitation_status=InvitationStatus.ACCEPTED,  # Auto-accept new invitations
                 invited_at=datetime.utcnow(),
-                invited_by=username
+                invited_by=username,
+                membership_status=MembershipStatus.ACTIVE
             )
             db.session.add(su)
             added += 1
+        elif existing.membership_status == MembershipStatus.ARCHIVED:
+            # Restore archived user - their evaluations are preserved
+            # Role is set to the new requested role (EVALUATOR can continue, VIEWER is read-only)
+            existing.membership_status = MembershipStatus.ACTIVE
+            existing.role = role_enum
+            existing.invitation_status = InvitationStatus.ACCEPTED
+            existing.invited_at = datetime.utcnow()
+            existing.invited_by = username
+            existing.archived_at = None
+            existing.archived_by = None
+            restored += 1
         elif existing.invitation_status == InvitationStatus.REJECTED:
             # Re-invite a rejected user
             existing.invitation_status = InvitationStatus.ACCEPTED
@@ -1815,12 +1845,21 @@ def sm_invite_users(scenario_id):
 
     db.session.commit()
 
-    logger.info(f"User {username} invited {added} users (reinvited {reinvited}) to scenario {scenario_id}")
+    logger.info(f"User {username} invited {added} users (reinvited {reinvited}, restored {restored}) to scenario {scenario_id}")
+
+    msg_parts = []
+    if added:
+        msg_parts.append(f'Added {added} users')
+    if reinvited:
+        msg_parts.append(f'reinvited {reinvited}')
+    if restored:
+        msg_parts.append(f'restored {restored}')
 
     return jsonify({
-        'message': f'Added {added} users to scenario' + (f', reinvited {reinvited}' if reinvited else ''),
+        'message': ', '.join(msg_parts) if msg_parts else 'No changes made',
         'added': added,
-        'reinvited': reinvited
+        'reinvited': reinvited,
+        'restored': restored
     }), 200
 
 
@@ -1829,9 +1868,13 @@ def sm_invite_users(scenario_id):
 @handle_api_errors(logger_name='scenario_manager')
 def sm_remove_user(scenario_id, user_id):
     """
-    Remove a user from a scenario.
+    Archive a user from a scenario (soft-delete).
+
+    The user is hidden from the frontend but their evaluations are preserved.
+    If they are re-invited as EVALUATOR, their progress will be restored.
     """
     user = g.authentik_user
+    username = getattr(user, 'username', str(user))
     scenario = RatingScenarios.query.get(scenario_id)
 
     if not scenario:
@@ -1847,10 +1890,77 @@ def sm_remove_user(scenario_id, user_id):
     if not su:
         raise NotFoundError('User not found in scenario')
 
-    db.session.delete(su)
+    # Cannot archive the owner
+    if su.role == ScenarioRoles.OWNER:
+        raise ValidationError('Cannot remove the scenario owner')
+
+    # Archive instead of delete - preserves evaluations for potential restoration
+    su.membership_status = MembershipStatus.ARCHIVED
+    su.archived_at = datetime.utcnow()
+    su.archived_by = username
     db.session.commit()
 
+    logger.info(f"User {username} archived user {user_id} from scenario {scenario_id}")
+
     return jsonify({'message': 'User removed from scenario'}), 200
+
+
+@data_blueprint.route('/scenarios/<int:scenario_id>/users/<int:user_id>/role', methods=['PUT'])
+@authentik_required
+@handle_api_errors(logger_name='scenario_manager')
+def sm_update_user_role(scenario_id, user_id):
+    """
+    Update a user's role in a scenario.
+
+    Request body:
+        - role: EVALUATOR (can interact) or VIEWER (read-only)
+
+    Cannot change the OWNER role.
+    """
+    user = g.authentik_user
+    username = getattr(user, 'username', str(user))
+    scenario = RatingScenarios.query.get(scenario_id)
+
+    if not scenario:
+        raise NotFoundError(f'Scenario {scenario_id} not found')
+
+    check_scenario_ownership(scenario, user)  # Verifies user is owner or admin, raises ForbiddenError if not
+
+    su = ScenarioUsers.query.filter_by(
+        scenario_id=scenario_id,
+        user_id=user_id
+    ).first()
+
+    if not su:
+        raise NotFoundError('User not found in scenario')
+
+    # Cannot change OWNER role
+    if su.role == ScenarioRoles.OWNER:
+        raise ValidationError('Cannot change the role of the scenario owner')
+
+    data = request.get_json()
+    role_str = data.get('role', '').lower()
+
+    # Map role string to enum
+    if role_str in ('evaluator', 'rater'):  # Accept 'rater' for backwards compatibility
+        role_enum = ScenarioRoles.EVALUATOR
+    elif role_str == 'viewer':
+        role_enum = ScenarioRoles.VIEWER
+    else:
+        raise ValidationError(f'Invalid role: {role_str}. Must be EVALUATOR or VIEWER.')
+
+    old_role = su.role.value
+    su.role = role_enum
+    db.session.commit()
+
+    logger.info(f"User {username} changed role of user {user_id} from {old_role} to {role_enum.value} in scenario {scenario_id}")
+
+    return jsonify({
+        'message': 'Role updated successfully',
+        'user_id': user_id,
+        'old_role': old_role,
+        'new_role': role_enum.value
+    }), 200
 
 
 @data_blueprint.route('/scenarios/<int:scenario_id>/available-users', methods=['GET'])
@@ -2366,7 +2476,11 @@ def get_scenario_team(scenario_id):
     # Check access (owner or admin)
     check_scenario_ownership(scenario, user)  # Verifies user is owner or admin, raises ForbiddenError if not
 
-    scenario_users = ScenarioUsers.query.filter_by(scenario_id=scenario_id).all()
+    # Only show active members in team view
+    scenario_users = ScenarioUsers.query.filter_by(
+        scenario_id=scenario_id,
+        membership_status=MembershipStatus.ACTIVE
+    ).all()
 
     team = []
     for su in scenario_users:
@@ -2541,7 +2655,10 @@ def unarchive_scenario(scenario_id):
 
     # Determine new status based on progress
     thread_count = ScenarioThreads.query.filter_by(scenario_id=scenario_id).count()
-    user_count = ScenarioUsers.query.filter_by(scenario_id=scenario_id).count()
+    user_count = ScenarioUsers.query.filter_by(
+        scenario_id=scenario_id,
+        membership_status=MembershipStatus.ACTIVE
+    ).count()
 
     if thread_count > 0 and user_count > 0:
         scenario.status = 'evaluating'

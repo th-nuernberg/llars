@@ -1212,6 +1212,7 @@ async function aiResolveComment(comment) {
   aiStreamStatus.value = 'streaming'
   aiStreamResult.value = null
   aiStreamWindowOpen.value = true  // Open stream window automatically
+  console.log('[AI Stream] Window opened, commentId:', comment.id, 'windowOpen:', aiStreamWindowOpen.value)
 
   // Position the stream window near the comment
   const commentEl = document.querySelector(`.comment-thread[data-comment-id="${comment.id}"]`)
@@ -1265,6 +1266,7 @@ async function aiResolveComment(comment) {
  * Handle incoming AI stream token
  */
 function handleAiStreamToken(data) {
+  console.log('[AI Stream] Token received:', data)
   if (data.comment_id !== aiResolvingCommentId.value) return
 
   aiStreamContent.value += data.token
@@ -1281,6 +1283,7 @@ function handleAiStreamToken(data) {
  * Handle AI stream completion
  */
 function handleAiStreamCompleted(data) {
+  console.log('[AI Stream] Completed:', data)
   if (data.comment_id !== aiResolvingCommentId.value) return
 
   aiStreamStatus.value = 'completed'
@@ -1321,6 +1324,7 @@ function handleAiStreamCompleted(data) {
  * Handle AI stream error
  */
 function handleAiStreamError(data) {
+  console.log('[AI Stream] Error:', data)
   if (data.comment_id !== aiResolvingCommentId.value) return
 
   aiStreamStatus.value = 'error'

@@ -7,6 +7,16 @@
     <!-- Header -->
     <div class="assessment-header">
       <h1 class="assessment-title">{{ $t('kaimo.assessment.title') }}</h1>
+
+      <!-- Toggle Matrix Button -->
+      <button class="matrix-toggle-btn" @click="showMatrix = !showMatrix">
+        <LIcon size="20">{{ showMatrix ? 'mdi-table-off' : 'mdi-table' }}</LIcon>
+        <span>{{ showMatrix ? $t('kaimo.assessment.hideMatrix') : $t('kaimo.assessment.showMatrix') }}</span>
+      </button>
+
+      <v-spacer />
+
+      <!-- Overview/Folder Button -->
       <button class="overview-btn" @click="showSidebar = !showSidebar">
         <LIcon size="20">mdi-folder-open-outline</LIcon>
       </button>
@@ -298,6 +308,25 @@ const submitAssessment = async () => {
   font-weight: 500;
   color: #475569;
   margin: 0;
+}
+
+.matrix-toggle-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background-color: rgba(99, 102, 241, 0.1);
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  color: #6366f1;
+  font-size: 14px;
+  font-weight: 500;
+  transition: background-color 0.2s ease;
+}
+
+.matrix-toggle-btn:hover {
+  background-color: rgba(99, 102, 241, 0.2);
 }
 
 .overview-btn {

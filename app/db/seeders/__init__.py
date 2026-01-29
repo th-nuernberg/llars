@@ -7,7 +7,7 @@ All seeder functions use lazy imports to avoid circular dependencies.
 import os
 from .feature_types import initialize_feature_function_types
 from .categories import initialize_consulting_category_types
-from .kaimo import initialize_kaimo_defaults
+from .kaimo import initialize_kaimo_defaults, seed_kaimo_demo_cases
 from .schema_patches import apply_schema_patches
 from .users import seed_user_groups, seed_bootstrap_admin, seed_avatar_seeds, seed_collab_colors
 from .permissions import initialize_permissions
@@ -89,13 +89,14 @@ def run_all_seeders(db):
     # Seed default field prompts for AI-Assist feature
     FieldPromptService.seed_defaults()
 
-    # Seed demo scenarios and prompts in development mode only
+    # Seed demo data in development mode only
     project_state = os.getenv('PROJECT_STATE', 'development').lower()
     if project_state == 'development':
         seed_demo_scenarios(db)
         seed_demo_prompts()
+        seed_kaimo_demo_cases(db)
     else:
-        print(f"Demo-Szenarien übersprungen (PROJECT_STATE={project_state})")
+        print(f"Demo-Daten übersprungen (PROJECT_STATE={project_state})")
 
 
 __all__ = [
@@ -104,6 +105,7 @@ __all__ = [
     'initialize_feature_function_types',
     'initialize_consulting_category_types',
     'initialize_kaimo_defaults',
+    'seed_kaimo_demo_cases',
     'seed_user_groups',
     'seed_bootstrap_admin',
     'seed_avatar_seeds',

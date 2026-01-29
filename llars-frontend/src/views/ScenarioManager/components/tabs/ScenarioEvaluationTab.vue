@@ -561,16 +561,16 @@
         <div class="chart-bars">
           <div
             v-for="(item, index) in filteredDistributionData"
-            :key="item.label"
+            :key="item.value || item.label"
             class="bar-container"
           >
-            <div class="bar-label">{{ item.label }}</div>
+            <div class="bar-label">{{ getLocalizedLabel(item) }}</div>
             <div class="bar-wrapper">
               <div
                 class="bar-fill"
                 :style="{
                   width: item.percentage + '%',
-                  backgroundColor: getBarColor(index)
+                  backgroundColor: getLikertColor(item.value, index)
                 }"
               >
                 <span class="bar-value" v-if="item.percentage > 15">{{ item.count }}</span>
@@ -582,7 +582,30 @@
         </div>
       </div>
 
-      <!-- ROW 1: Spider Chart + Heatmap -->
+      <!-- Inter-Rater Agreement Heatmap (standalone section - only for scenarios WITHOUT dimensions like labeling) -->
+      <div class="agreement-heatmap-section" v-if="hasPairwiseAgreement && !isRankingScenario && !hasDimensionAverages">
+        <h4 class="subsection-title">
+          {{ $t('scenarioManager.results.interRaterAgreement') }}
+          <LTooltip :text="$t('scenarioManager.tooltips.interRaterAgreement')" location="top">
+            <v-icon size="16" class="help-icon">mdi-help-circle-outline</v-icon>
+          </LTooltip>
+        </h4>
+        <div class="heatmap-container">
+          <LAgreementHeatmap
+            :evaluators="pairwiseEvaluators"
+            :agreements="pairwiseAgreements"
+            :show-values="true"
+            :show-hover-info="true"
+            :show-legend="true"
+            :show-evaluator-type-legend="true"
+            :low-label="$t('scenarioManager.results.lowAgreement')"
+            :high-label="$t('scenarioManager.results.highAgreement')"
+            @cell-click="openAgreementDetail"
+          />
+        </div>
+      </div>
+
+      <!-- ROW 1: Spider Chart + Heatmap (for scenarios WITH dimensions like rating, mail_rating) -->
       <div class="dimension-visualizations-grid" v-if="hasDimensionDistribution || hasDimensionAverages">
         <!-- Spider Chart (Left) -->
         <div class="visualization-panel" v-if="hasDimensionAverages && dimensions.length >= 1">
@@ -787,7 +810,7 @@
           </div>
         </div>
 
-        <!-- Inter-Rater Agreement Heatmap (Right, centered) -->
+        <!-- Inter-Rater Agreement Heatmap (Right, next to Spider Chart) -->
         <div class="visualization-panel heatmap-panel" v-if="hasPairwiseAgreement">
           <h4 class="subsection-title">
             {{ $t('scenarioManager.results.interRaterAgreement') }}
@@ -809,7 +832,7 @@
           />
         </div>
 
-        <!-- Empty placeholder if no agreement data -->
+        <!-- Empty placeholder if no agreement data yet -->
         <div class="visualization-panel heatmap-panel empty-panel" v-else>
           <h4 class="subsection-title">
             {{ $t('scenarioManager.results.interRaterAgreement') }}
@@ -1049,7 +1072,7 @@ const props = defineProps({
 
 const emit = defineEmits(['evaluation-complete', 'refresh'])
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const router = useRouter()
 const { exportResults: doExport } = useScenarioManager()
 
@@ -1086,10 +1109,10 @@ const selectedDimension = ref(null)
 const showAgreementDialog = ref(false)
 const selectedAgreement = ref(null)
 
-// Spider chart constants
-const spiderSize = 300
-const spiderCenter = 150
-const spiderRadius = 120
+// Spider chart constants - increased size for longer labels
+const spiderSize = 360
+const spiderCenter = 180
+const spiderRadius = 110
 
 // Spider tooltip state
 const hoveredPoint = ref(null)
@@ -1464,8 +1487,51 @@ const distributionData = computed(() => {
 
 const barColors = ['#b0ca97', '#88c4c8', '#D1BC8A', '#c4a0d4', '#e8a087', '#98d4bb']
 
+// Likert scale colors: red (bad) -> yellow (neutral) -> green (good)
+const likertColors = {
+  1: '#e57373',  // Red - Very poor
+  2: '#ffb74d',  // Orange - Poor
+  3: '#fff176',  // Yellow - Acceptable
+  4: '#aed581',  // Light green - Good
+  5: '#81c784'   // Green - Excellent
+}
+
 function getBarColor(index) {
   return barColors[index % barColors.length]
+}
+
+/**
+ * Get color for Likert scale items based on value.
+ * Uses a red-yellow-green gradient for semantic meaning.
+ */
+function getLikertColor(value, index) {
+  // If value is in Likert scale range (1-5), use semantic colors
+  if (value >= 1 && value <= 5 && likertColors[value]) {
+    return likertColors[value]
+  }
+  // Fallback to index-based colors for non-Likert scales
+  return barColors[index % barColors.length]
+}
+
+/**
+ * Get localized label for distribution item.
+ * Uses label_de/label_en from backend, falls back to label.
+ */
+function getLocalizedLabel(item) {
+  if (!item) return ''
+
+  const lang = locale.value || 'en'
+
+  // Use localized label if available
+  if (lang === 'de' && item.label_de) {
+    return item.value ? `${item.value} - ${item.label_de}` : item.label_de
+  }
+  if (item.label_en) {
+    return item.value ? `${item.value} - ${item.label_en}` : item.label_en
+  }
+
+  // Fallback to default label
+  return item.label || String(item.value || '')
 }
 
 // ===== Computed: Filtered Distribution Data =====
@@ -1769,7 +1835,7 @@ function getSpiderPoint(index, value) {
 function getSpiderLabelPoint(index) {
   const count = dimensions.value.length
   const angle = (Math.PI * 2 * index) / count - Math.PI / 2
-  const r = spiderRadius + 25
+  const r = spiderRadius + 35  // More space for labels
   return {
     x: spiderCenter + r * Math.cos(angle),
     y: spiderCenter + r * Math.sin(angle)
@@ -1848,13 +1914,19 @@ const allSpiderPoints = computed(() => {
 
 // ===== Pairwise Agreement Heatmap =====
 
+// Get pairwise data from either source (unified or legacy ranking_agreement)
+const pairwiseData = computed(() => {
+  // Prefer pairwiseAgreement (unified), fallback to ranking_agreement (deprecated)
+  return props.liveStats?.pairwiseAgreement || props.liveStats?.ranking_agreement || null
+})
+
 const hasPairwiseAgreement = computed(() => {
-  const pairwise = props.liveStats?.pairwiseAgreement
+  const pairwise = pairwiseData.value
   return pairwise && pairwise.evaluators && pairwise.evaluators.length >= 2
 })
 
 const pairwiseEvaluators = computed(() => {
-  const pairwise = props.liveStats?.pairwiseAgreement
+  const pairwise = pairwiseData.value
   if (!pairwise?.evaluators) return []
   // Sort: humans first, then LLMs
   return [...pairwise.evaluators].sort((a, b) => {
@@ -1864,7 +1936,7 @@ const pairwiseEvaluators = computed(() => {
 })
 
 const pairwiseAgreements = computed(() => {
-  const pairwise = props.liveStats?.pairwiseAgreement
+  const pairwise = pairwiseData.value
   return pairwise?.agreements || {}
 })
 
@@ -3101,7 +3173,21 @@ watch(
   border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.06);
 }
 
-/* Dimension Visualizations Grid (Heatmap + Spider side by side) */
+/* Agreement Heatmap Section (independent, shows for all scenario types) */
+.agreement-heatmap-section {
+  padding: 20px;
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.06);
+}
+
+.agreement-heatmap-section .heatmap-container {
+  background-color: rgba(var(--v-theme-on-surface), 0.02);
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  justify-content: center;
+}
+
+/* Dimension Visualizations Grid (Spider only, no longer includes heatmap) */
 .dimension-visualizations-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -3117,6 +3203,7 @@ watch(
   min-height: 320px;
   display: flex;
   flex-direction: column;
+  overflow: visible;  /* Allow spider chart labels to extend outside */
 }
 
 .visualization-panel .subsection-title {
@@ -3271,12 +3358,14 @@ watch(
   flex-direction: column;
   align-items: center;
   margin-bottom: 20px;
+  overflow: visible;  /* Ensure labels aren't clipped */
 }
 
 .spider-chart {
   width: 100%;
-  max-width: 350px;
+  max-width: 400px;
   height: auto;
+  overflow: visible;  /* Ensure labels aren't clipped */
 }
 
 .spider-label {

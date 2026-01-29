@@ -109,7 +109,7 @@ export function useScenarioStats(scenarioIdRef) {
       result.push({
         id: rater.user_id || rater.username,
         name: rater.username,
-        role: 'RATER',
+        role: 'EVALUATOR',
         isLLM: false,
         completed: rater.done_threads || rater.voted_count || 0,
         total: rater.total_threads || 0,
@@ -232,9 +232,10 @@ export function useScenarioStats(scenarioIdRef) {
     if (data.kind === 'authenticity' || data.function_type === 'authenticity') {
       // Authenticity stats have user_stats array
       const userStats = data.stats?.user_stats || []
-      // Note: Backend returns role as 'Rater'/'Evaluator' (capitalized), so use case-insensitive comparison
-      raterStats.value = userStats.filter(u => u.role?.toLowerCase() === 'rater' && !u.is_llm)
-      evaluatorStats.value = userStats.filter(u => u.role?.toLowerCase() === 'evaluator' || u.is_llm)
+      // Note: Backend returns role as 'Evaluator'/'Viewer' (capitalized), so use case-insensitive comparison
+      // EVALUATOR can interact (rate/evaluate), VIEWER is read-only
+      raterStats.value = userStats.filter(u => u.role?.toLowerCase() === 'evaluator' && !u.is_llm)
+      evaluatorStats.value = userStats.filter(u => u.role?.toLowerCase() === 'viewer' || u.is_llm)
 
       // Calculate overall F1 Score from all evaluators
       let totalFakeCorrect = 0
@@ -412,10 +413,12 @@ export function useScenarioStats(scenarioIdRef) {
           // Include rating/dimension stats
           rating_distribution: statsData.rating_distribution || data.rating_distribution,
           dimension_averages: statsData.dimension_averages || data.dimension_averages,
-          pairwise_agreement: statsData.pairwise_agreement || data.pairwise_agreement,
+          // Unified pairwise agreement - prefer pairwise_agreement, fallback to ranking_agreement
+          pairwise_agreement: statsData.pairwise_agreement || data.pairwise_agreement ||
+                              statsData.ranking_agreement || data.ranking_agreement,
           // Include ranking stats
           bucket_distribution: statsData.bucket_distribution || data.bucket_distribution,
-          ranking_agreement: statsData.ranking_agreement || data.ranking_agreement
+          ranking_agreement: statsData.ranking_agreement || data.ranking_agreement  // Deprecated
         }
       })
 

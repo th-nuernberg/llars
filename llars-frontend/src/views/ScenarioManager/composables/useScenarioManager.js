@@ -201,6 +201,26 @@ export function useScenarioManager() {
   }
 
   /**
+   * Update a user's role in a scenario
+   * @param {number} scenarioId - Scenario ID
+   * @param {number} userId - User ID
+   * @param {string} role - New role ('EVALUATOR' or 'VIEWER')
+   */
+  async function updateUserRole(scenarioId, userId, role) {
+    try {
+      const response = await axios.put(`/api/scenarios/${scenarioId}/users/${userId}/role`, {
+        role
+      }, {
+        headers: getHeaders()
+      })
+      return response.data
+    } catch (err) {
+      console.error('Error updating user role:', err)
+      throw err
+    }
+  }
+
+  /**
    * Start LLM evaluation for a scenario
    */
   async function startLLMEvaluation(scenarioId, options = {}) {
@@ -502,6 +522,7 @@ export function useScenarioManager() {
     fetchScenarioStats,
     inviteUsers,
     removeUser,
+    updateUserRole,
     startLLMEvaluation,
     stopLLMEvaluation,
     exportResults,

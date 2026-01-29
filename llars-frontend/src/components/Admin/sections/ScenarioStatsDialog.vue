@@ -155,7 +155,7 @@
                           <span class="user-name">{{ user.username }}</span>
                           <div class="user-tags">
                             <LTag :variant="roleTab === 'raters' ? 'primary' : 'gray'" size="sm">
-                              {{ roleTab === 'raters' ? 'Viewer' : 'Evaluator' }}
+                              {{ roleTab === 'raters' ? 'Evaluator' : 'Viewer' }}
                             </LTag>
                             <LTag v-if="user.is_llm" variant="info" size="sm">LLM</LTag>
                           </div>
@@ -261,11 +261,13 @@ const evaluatorStats = computed(() => stats.value?.evaluator_stats || [])
 
 const roleTabs = computed(() => {
   const tabs = []
+  // raterStats contains EVALUATOR role users (who can interact/rate)
   if (raterStats.value.length || !evaluatorStats.value.length) {
-    tabs.push({ value: 'raters', label: `Viewer (${raterStats.value.length})`, icon: 'mdi-account-check' })
+    tabs.push({ value: 'raters', label: `Evaluator (${raterStats.value.length})`, icon: 'mdi-account-check' })
   }
+  // evaluatorStats contains VIEWER role users (read-only) and LLMs
   if (evaluatorStats.value.length) {
-    tabs.push({ value: 'evaluators', label: `Evaluatoren (${evaluatorStats.value.length})`, icon: 'mdi-account-eye' })
+    tabs.push({ value: 'evaluators', label: `Viewer (${evaluatorStats.value.length})`, icon: 'mdi-account-eye' })
   }
   return tabs
 })

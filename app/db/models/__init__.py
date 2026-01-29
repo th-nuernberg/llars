@@ -133,6 +133,7 @@ from db.models.scenario import (
     InvitationStatus,
     ProgressionStatus,
     FeatureFunctionType,
+    MembershipStatus,
     # New names (preferred)
     EvaluationItem,
     ScenarioItems,
@@ -154,6 +155,7 @@ from db.models.scenario import (
     ScenarioUsers,
     UserMailHistoryRating,
     ItemDimensionRating,  # New multi-dimensional rating model
+    ItemLabelingEvaluation,  # Labeling/classification evaluation model
     UserMessageRating,
     UserPrompt,
     UserPromptShare,
@@ -299,6 +301,7 @@ __all__ = [
     'InvitationStatus',
     'ProgressionStatus',
     'FeatureFunctionType',
+    'MembershipStatus',
     # New names (preferred)
     'EvaluationItem',
     'ScenarioItems',
@@ -320,6 +323,7 @@ __all__ = [
     'ScenarioUsers',
     'UserMailHistoryRating',
     'ItemDimensionRating',
+    'ItemLabelingEvaluation',
     'UserMessageRating',
     # Authenticity
     'AuthenticityConversation',

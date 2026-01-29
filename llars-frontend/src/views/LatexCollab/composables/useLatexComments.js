@@ -289,13 +289,23 @@ export function useLatexComments({
         break
 
       case 'updated':
-        // Update existing comment
+        // Update existing comment - MERGE to preserve author_color and other existing fields
         if (comment) {
           const idx = comments.value.findIndex(c => c.id === comment.id)
           if (idx !== -1) {
+            const existing = comments.value[idx]
+            // Merge incoming update with existing comment, preserving author_color if not provided
+            const merged = {
+              ...existing,
+              ...comment,
+              // Preserve author_color if existing and new one is null/undefined
+              author_color: comment.author_color ?? existing.author_color,
+              // Preserve replies if not provided in update (can happen with race conditions)
+              replies: comment.replies ?? existing.replies ?? []
+            }
             comments.value = [
               ...comments.value.slice(0, idx),
-              comment,
+              merged,
               ...comments.value.slice(idx + 1)
             ]
           }

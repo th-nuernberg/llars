@@ -81,6 +81,25 @@
         <input ref="jsonFileInput" type="file" accept=".json" style="display: none" @change="handleJsonFileUpload" />
       </div>
 
+      <!-- Git Version Control -->
+      <div v-if="showGitPanel" class="sidebar-section">
+        <div class="section-label">
+          <LIcon size="14" class="mr-1">mdi-source-branch</LIcon>
+          {{ $t('promptEngineering.sidebar.gitPanel') }}
+        </div>
+        <GitStatusWidget
+          :entity-id="promptId"
+          entity-mode="single"
+          api-prefix="/api/prompts"
+          :collapsed="false"
+          :can-commit="true"
+          :summary="gitSummary"
+          :get-content="getContent"
+          @committed="$emit('gitCommitted')"
+          @open-detail="$emit('openGitDetail')"
+        />
+      </div>
+
       <!-- Options Section -->
       <div class="sidebar-section">
         <div class="section-label">
@@ -219,6 +238,7 @@ import { getDiceBearUrl } from '@/utils/userUtils';
 import axios from 'axios';
 import { useI18n } from 'vue-i18n';
 import PlaceholderPalette from './testing/PlaceholderPalette.vue';
+import { GitStatusWidget } from '@/components/common/Git';
 
 const props = defineProps({
   users: { type: Object, required: true },
@@ -230,10 +250,12 @@ const props = defineProps({
   promptName: { type: String, required: true },
   showGitPanel: { type: Boolean, default: true },
   extractedVariables: { type: Array, default: () => [] },
-  userVariables: { type: Array, default: () => [] }
+  userVariables: { type: Array, default: () => [] },
+  gitSummary: { type: Object, default: () => ({ users: [], totalChangedLines: 0, hasChanges: false, insertions: 0, deletions: 0 }) },
+  getContent: { type: Function, default: null }
 });
 
-const emit = defineEmits(['showAddBlockDialog', 'refreshPromptDetails', 'uploadJsonFileSelected', 'triggerTestPrompt', 'toggleGitPanel', 'openVariableManager']);
+const emit = defineEmits(['showAddBlockDialog', 'refreshPromptDetails', 'uploadJsonFileSelected', 'triggerTestPrompt', 'toggleGitPanel', 'openVariableManager', 'gitCommitted', 'openGitDetail']);
 
 const router = useRouter();
 const { t } = useI18n();

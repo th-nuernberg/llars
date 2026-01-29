@@ -86,14 +86,14 @@
 
     <!-- Main Content -->
     <div v-if="!isLoading('content') && canViewKaimo" class="panel-content">
-      <!-- Cases Table Card -->
+      <!-- My Cases Section -->
       <LCard class="cases-card" :class="{ 'full-width': canManageKaimo }">
         <template #header>
           <div class="card-header">
             <div class="card-header-left">
-              <LIcon size="20" color="primary" class="mr-2">mdi-format-list-bulleted</LIcon>
-              <span class="card-title">{{ $t('kaimo.panel.table.title') }}</span>
-              <LTag variant="primary" size="small" class="ml-2">{{ cases.length }}</LTag>
+              <LIcon size="20" color="primary" class="mr-2">mdi-folder-account</LIcon>
+              <span class="card-title">{{ $t('kaimo.panel.sections.myCases') }}</span>
+              <LTag variant="primary" size="small" class="ml-2">{{ ownedCases.length }}</LTag>
             </div>
             <LIconBtn
               icon="mdi-refresh"
@@ -116,12 +116,12 @@
                 <th class="text-left">{{ $t('kaimo.panel.table.headers.status') }}</th>
                 <th class="text-right">{{ $t('kaimo.panel.table.headers.docs') }}</th>
                 <th class="text-right">{{ $t('kaimo.panel.table.headers.hints') }}</th>
-                <th v-if="canManageKaimo" class="text-right">{{ $t('kaimo.panel.table.headers.assessments') }}</th>
+                <th class="text-right">{{ $t('kaimo.panel.table.headers.shared') }}</th>
                 <th class="text-right">{{ $t('kaimo.panel.table.headers.actions') }}</th>
               </tr>
             </thead>
             <tbody>
-              <tr v-for="c in cases" :key="c.id" class="case-row clickable" @click="openCase(c)">
+              <tr v-for="c in ownedCases" :key="c.id" class="case-row clickable" @click="openCase(c)">
                 <td>
                   <div class="case-info">
                     <span v-if="c.icon" class="case-icon">{{ c.icon }}</span>
@@ -140,7 +140,13 @@
                 </td>
                 <td class="text-right">{{ c.document_count || 0 }}</td>
                 <td class="text-right">{{ c.hint_count || 0 }}</td>
-                <td v-if="canManageKaimo" class="text-right">{{ c.assessment_count || 0 }}</td>
+                <td class="text-right">
+                  <LTag v-if="c.share_count > 0" variant="info" size="small">
+                    <LIcon size="12" class="mr-1">mdi-share-variant</LIcon>
+                    {{ c.share_count }}
+                  </LTag>
+                  <span v-else class="text-muted">-</span>
+                </td>
                 <td class="text-right">
                   <div class="action-buttons" @click.stop>
                     <LIconBtn
@@ -149,38 +155,42 @@
                       size="small"
                       @click="openCase(c)"
                     />
-                    <template v-if="canManageKaimo">
-                      <LIconBtn
-                        icon="mdi-pencil"
-                        :tooltip="$t('kaimo.panel.tooltips.editCase')"
-                        size="small"
-                        @click="editCase(c)"
-                      />
-                      <LIconBtn
-                        v-if="c.status === 'draft'"
-                        icon="mdi-publish"
-                        :tooltip="$t('kaimo.panel.tooltips.publish')"
-                        size="small"
-                        color="success"
-                        @click="confirmPublish(c)"
-                      />
-                      <LIconBtn
-                        icon="mdi-delete"
-                        :tooltip="$t('common.delete')"
-                        size="small"
-                        color="danger"
-                        @click="confirmDelete(c)"
-                      />
-                    </template>
+                    <LIconBtn
+                      icon="mdi-share-variant"
+                      :tooltip="$t('kaimo.panel.tooltips.shareCase')"
+                      size="small"
+                      color="info"
+                      @click="openShareDialog(c)"
+                    />
+                    <LIconBtn
+                      icon="mdi-pencil"
+                      :tooltip="$t('kaimo.panel.tooltips.editCase')"
+                      size="small"
+                      @click="editCase(c)"
+                    />
+                    <LIconBtn
+                      v-if="c.status === 'draft'"
+                      icon="mdi-publish"
+                      :tooltip="$t('kaimo.panel.tooltips.publish')"
+                      size="small"
+                      color="success"
+                      @click="confirmPublish(c)"
+                    />
+                    <LIconBtn
+                      icon="mdi-delete"
+                      :tooltip="$t('common.delete')"
+                      size="small"
+                      color="danger"
+                      @click="confirmDelete(c)"
+                    />
                   </div>
                 </td>
               </tr>
-              <tr v-if="cases.length === 0">
-                <td :colspan="canManageKaimo ? 6 : 5" class="empty-state">
+              <tr v-if="ownedCases.length === 0">
+                <td colspan="6" class="empty-state">
                   <LIcon size="24" class="mr-2">mdi-folder-open-outline</LIcon>
-                  <span>{{ $t('kaimo.panel.table.empty') }}</span>
+                  <span>{{ $t('kaimo.panel.table.emptyOwned') }}</span>
                   <LBtn
-                    v-if="canManageKaimo"
                     variant="text"
                     size="small"
                     class="ml-2"
@@ -188,6 +198,78 @@
                   >
                     {{ $t('kaimo.panel.table.emptyCta') }}
                   </LBtn>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </LCard>
+
+      <!-- Shared With Me Section -->
+      <LCard v-if="sharedCases.length > 0 || !canManageKaimo" class="cases-card shared-cases-card">
+        <template #header>
+          <div class="card-header">
+            <div class="card-header-left">
+              <LIcon size="20" color="accent" class="mr-2">mdi-account-group</LIcon>
+              <span class="card-title">{{ $t('kaimo.panel.sections.sharedWithMe') }}</span>
+              <LTag variant="accent" size="small" class="ml-2">{{ sharedCases.length }}</LTag>
+            </div>
+          </div>
+        </template>
+
+        <div class="table-wrapper">
+          <table class="cases-table">
+            <thead>
+              <tr>
+                <th class="text-left">{{ $t('kaimo.panel.table.headers.case') }}</th>
+                <th class="text-left">{{ $t('kaimo.panel.table.headers.owner') }}</th>
+                <th class="text-left">{{ $t('kaimo.panel.table.headers.status') }}</th>
+                <th class="text-right">{{ $t('kaimo.panel.table.headers.docs') }}</th>
+                <th class="text-right">{{ $t('kaimo.panel.table.headers.hints') }}</th>
+                <th class="text-right">{{ $t('kaimo.panel.table.headers.actions') }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="c in sharedCases" :key="c.id" class="case-row clickable" @click="openCase(c)">
+                <td>
+                  <div class="case-info">
+                    <span v-if="c.icon" class="case-icon">{{ c.icon }}</span>
+                    <div>
+                      <div class="case-name">{{ c.display_name }}</div>
+                      <div class="case-description">
+                        {{ c.description || $t('kaimo.panel.table.noDescription') }}
+                      </div>
+                    </div>
+                  </div>
+                </td>
+                <td>
+                  <div class="owner-info">
+                    <LAvatar :name="c.owner" size="24" class="mr-1" />
+                    <span class="owner-name">{{ c.owner }}</span>
+                  </div>
+                </td>
+                <td>
+                  <LTag :variant="getStatusVariant(c.status)" size="small">
+                    {{ getStatusLabel(c.status) }}
+                  </LTag>
+                </td>
+                <td class="text-right">{{ c.document_count || 0 }}</td>
+                <td class="text-right">{{ c.hint_count || 0 }}</td>
+                <td class="text-right">
+                  <div class="action-buttons" @click.stop>
+                    <LIconBtn
+                      icon="mdi-eye"
+                      :tooltip="$t('kaimo.panel.tooltips.openCase')"
+                      size="small"
+                      @click="openCase(c)"
+                    />
+                  </div>
+                </td>
+              </tr>
+              <tr v-if="sharedCases.length === 0">
+                <td colspan="6" class="empty-state">
+                  <LIcon size="24" class="mr-2">mdi-share-variant-outline</LIcon>
+                  <span>{{ $t('kaimo.panel.table.emptyShared') }}</span>
                 </td>
               </tr>
             </tbody>
@@ -331,6 +413,78 @@
       </LCard>
     </v-dialog>
 
+    <!-- Share Dialog -->
+    <v-dialog v-model="shareDialog" max-width="500">
+      <LCard>
+        <template #header>
+          <div class="dialog-header">
+            <LIcon size="20" color="info" class="mr-2">mdi-share-variant</LIcon>
+            <span>{{ $t('kaimo.share.title') }}</span>
+          </div>
+        </template>
+        <div class="dialog-body">
+          <p class="text-muted mb-4">
+            {{ $t('kaimo.share.description', { name: caseToShare?.display_name }) }}
+          </p>
+
+          <!-- Share input -->
+          <div class="share-input-row">
+            <v-text-field
+              v-model="shareUsername"
+              :label="$t('kaimo.share.usernameLabel')"
+              :placeholder="$t('kaimo.share.usernamePlaceholder')"
+              :error-messages="shareError"
+              variant="outlined"
+              density="comfortable"
+              hide-details="auto"
+              class="flex-grow-1"
+              @keyup.enter="executeShare"
+            />
+            <LBtn
+              variant="primary"
+              :loading="sharing"
+              :disabled="!shareUsername.trim()"
+              @click="executeShare"
+            >
+              <LIcon size="18">mdi-plus</LIcon>
+            </LBtn>
+          </div>
+
+          <!-- Shared users list -->
+          <div v-if="sharedWithUsers.length > 0" class="shared-users-list mt-4">
+            <div class="shared-users-header">
+              <LIcon size="16" class="mr-1">mdi-account-group</LIcon>
+              {{ $t('kaimo.share.sharedWith') }}
+            </div>
+            <div
+              v-for="user in sharedWithUsers"
+              :key="user"
+              class="shared-user-item"
+            >
+              <LAvatar :name="user" size="28" class="mr-2" />
+              <span class="shared-user-name">{{ user }}</span>
+              <v-spacer />
+              <LIconBtn
+                icon="mdi-close"
+                size="x-small"
+                :tooltip="$t('kaimo.share.remove')"
+                color="danger"
+                @click="executeUnshare(user)"
+              />
+            </div>
+          </div>
+
+          <div v-else class="no-shares-hint mt-4">
+            <LIcon size="16" class="mr-1 text-muted">mdi-information-outline</LIcon>
+            <span class="text-muted">{{ $t('kaimo.share.noShares') }}</span>
+          </div>
+        </div>
+        <div class="dialog-actions">
+          <LBtn variant="cancel" @click="closeShareDialog">{{ $t('common.close') }}</LBtn>
+        </div>
+      </LCard>
+    </v-dialog>
+
     <!-- Snackbar -->
     <v-snackbar v-model="snackbar.show" :color="snackbar.color" :timeout="3000">
       {{ snackbar.text }}
@@ -344,7 +498,7 @@ import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { usePermissions } from '@/composables/usePermissions'
 import { useSkeletonLoading } from '@/composables/useSkeletonLoading'
-import { getKaimoCases, getKaimoAdminCases, deleteKaimoCase, publishKaimoCase, importKaimoCase } from '@/services/kaimoApi'
+import { getKaimoCases, getKaimoAdminCases, deleteKaimoCase, publishKaimoCase, importKaimoCase, shareKaimoCase, unshareKaimoCase, getKaimoCaseShares } from '@/services/kaimoApi'
 
 const router = useRouter()
 const { t, locale } = useI18n()
@@ -359,8 +513,12 @@ const canManageKaimo = computed(() => {
   return isResearcher.value || hasPermission('admin:kaimo:manage')
 })
 
-const cases = ref([])
+const ownedCases = ref([])
+const sharedCases = ref([])
 const loadError = ref(null)
+
+// Computed for combined cases (for compatibility)
+const cases = computed(() => [...ownedCases.value, ...sharedCases.value])
 
 // Delete dialog
 const deleteDialog = ref(false)
@@ -380,6 +538,14 @@ const importPublish = ref(false)
 const importPreview = ref(null)
 const importError = ref('')
 const importing = ref(false)
+
+// Share dialog
+const shareDialog = ref(false)
+const caseToShare = ref(null)
+const sharedWithUsers = ref([])
+const shareUsername = ref('')
+const sharing = ref(false)
+const shareError = ref('')
 
 // Snackbar
 const snackbar = ref({ show: false, text: '', color: 'success' })
@@ -409,10 +575,17 @@ const getStatusLabel = (status) => {
 
 const loadCases = async () => {
   loadError.value = null
-  const data = canManageKaimo.value
-    ? await getKaimoAdminCases()
-    : await getKaimoCases()
-  cases.value = data?.cases || []
+  if (canManageKaimo.value) {
+    // Admin API returns flat list
+    const data = await getKaimoAdminCases()
+    ownedCases.value = data?.cases || []
+    sharedCases.value = []
+  } else {
+    // User API returns owned and shared separately
+    const data = await getKaimoCases()
+    ownedCases.value = data?.owned_cases || []
+    sharedCases.value = data?.shared_cases || []
+  }
 }
 
 const refresh = async () => {
@@ -474,6 +647,66 @@ const executePublish = async () => {
   } finally {
     publishing.value = false
   }
+}
+
+// Share functions
+const openShareDialog = async (c) => {
+  caseToShare.value = c
+  shareUsername.value = ''
+  shareError.value = ''
+  sharing.value = false
+
+  // Load current shares
+  try {
+    const data = await getKaimoCaseShares(c.id)
+    sharedWithUsers.value = data?.shared_with || []
+  } catch (err) {
+    console.error('Error loading shares:', err)
+    sharedWithUsers.value = []
+  }
+
+  shareDialog.value = true
+}
+
+const executeShare = async () => {
+  if (!caseToShare.value || !shareUsername.value.trim()) return
+  sharing.value = true
+  shareError.value = ''
+
+  try {
+    await shareKaimoCase(caseToShare.value.id, shareUsername.value.trim())
+    sharedWithUsers.value.push(shareUsername.value.trim())
+    shareUsername.value = ''
+    showSnackbar(t('kaimo.panel.snackbar.shareSuccess'), 'success')
+    await loadCases()
+  } catch (err) {
+    console.error('Error sharing case:', err)
+    shareError.value = err.response?.data?.error || t('kaimo.panel.snackbar.shareError')
+  } finally {
+    sharing.value = false
+  }
+}
+
+const executeUnshare = async (username) => {
+  if (!caseToShare.value) return
+
+  try {
+    await unshareKaimoCase(caseToShare.value.id, username)
+    sharedWithUsers.value = sharedWithUsers.value.filter(u => u !== username)
+    showSnackbar(t('kaimo.panel.snackbar.unshareSuccess'), 'success')
+    await loadCases()
+  } catch (err) {
+    console.error('Error unsharing case:', err)
+    showSnackbar(t('kaimo.panel.snackbar.unshareError'), 'error')
+  }
+}
+
+const closeShareDialog = () => {
+  shareDialog.value = false
+  caseToShare.value = null
+  sharedWithUsers.value = []
+  shareUsername.value = ''
+  shareError.value = ''
 }
 
 // Import functions
@@ -864,5 +1097,84 @@ onMounted(async () => {
 
 .mt-2 {
   margin-top: 8px;
+}
+
+.mt-4 {
+  margin-top: 16px;
+}
+
+.flex-grow-1 {
+  flex-grow: 1;
+}
+
+.text-muted {
+  color: #94a3b8;
+}
+
+/* Shared Cases Card */
+.shared-cases-card {
+  margin-top: 24px;
+}
+
+/* Owner Info */
+.owner-info {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.owner-name {
+  font-size: 13px;
+  color: #475569;
+}
+
+/* Share Dialog */
+.share-input-row {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.shared-users-list {
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.shared-users-header {
+  display: flex;
+  align-items: center;
+  padding: 10px 12px;
+  background-color: #f8fafc;
+  font-size: 12px;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.shared-user-item {
+  display: flex;
+  align-items: center;
+  padding: 10px 12px;
+  border-top: 1px solid #f1f5f9;
+}
+
+.shared-user-item:hover {
+  background-color: #f8fafc;
+}
+
+.shared-user-name {
+  font-size: 14px;
+  color: #1e293b;
+}
+
+.no-shares-hint {
+  display: flex;
+  align-items: center;
+  padding: 16px;
+  background-color: #f8fafc;
+  border-radius: 8px;
+  font-size: 13px;
 }
 </style>

@@ -407,6 +407,7 @@ def import_case():
     - name_override: (optional) Override the case name
     - status_override: (optional) Override status (default: draft)
     - publish: (optional) If true, publish immediately
+    - owner: (optional) Set the case owner (admin only)
 
     Returns the created case.
     """
@@ -419,9 +420,11 @@ def import_case():
     name_override = data.get('name_override')
     status_override = data.get('status_override')
     publish = data.get('publish', False)
+    owner_override = data.get('owner')
 
     try:
-        created_by = AuthUtils.extract_username_without_validation() or 'api'
+        # Use owner_override if provided (admin feature for seeding per-user cases)
+        created_by = owner_override or AuthUtils.extract_username_without_validation() or 'api'
 
         # If publish requested, set status to published
         if publish:

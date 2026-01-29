@@ -747,6 +747,10 @@
       "alerts": {
         "noAccess": "Du benötigst {permission}, um das KAIMO Panel zu öffnen."
       },
+      "sections": {
+        "myCases": "Meine Fälle",
+        "sharedWithMe": "Mit mir geteilt"
+      },
       "table": {
         "title": "Fälle",
         "headers": {
@@ -755,16 +759,21 @@
           "docs": "Docs",
           "hints": "Hinweise",
           "assessments": "Bewertungen",
-          "actions": "Aktionen"
+          "actions": "Aktionen",
+          "shared": "Geteilt",
+          "owner": "Besitzer"
         },
         "noDescription": "Keine Beschreibung",
         "empty": "Keine KAIMO Fälle verfügbar.",
+        "emptyOwned": "Du hast noch keine eigenen Fälle.",
+        "emptyShared": "Noch keine Fälle mit dir geteilt.",
         "emptyCta": "Ersten Fall anlegen"
       },
       "tooltips": {
         "openCase": "Fall öffnen (User-Ansicht)",
         "editCase": "Fall bearbeiten",
-        "publish": "Veröffentlichen"
+        "publish": "Veröffentlichen",
+        "shareCase": "Fall teilen"
       },
       "sidebar": {
         "title": "Hinweise",
@@ -788,8 +797,21 @@
         "deleteSuccess": "Fall \"{name}\" wurde gelöscht.",
         "deleteError": "Fehler beim Löschen des Falls.",
         "publishSuccess": "Fall \"{name}\" wurde veröffentlicht.",
-        "publishError": "Fehler beim Veröffentlichen des Falls."
+        "publishError": "Fehler beim Veröffentlichen des Falls.",
+        "shareSuccess": "Fall wurde erfolgreich geteilt.",
+        "shareError": "Fehler beim Teilen des Falls.",
+        "unshareSuccess": "Freigabe wurde entfernt.",
+        "unshareError": "Fehler beim Entfernen der Freigabe."
       }
+    },
+    "share": {
+      "title": "Fall teilen",
+      "description": "Teile \"{name}\" mit anderen Benutzern, damit sie den Fall bearbeiten können.",
+      "usernameLabel": "Benutzername",
+      "usernamePlaceholder": "z.B. max.mustermann",
+      "sharedWith": "Geteilt mit",
+      "noShares": "Dieser Fall ist noch mit niemandem geteilt.",
+      "remove": "Freigabe entfernen"
     },
     "newCase": {
       "title": "KAIMO Fall anlegen",
@@ -4487,11 +4509,15 @@
     },
     "comments": {
       "title": "Kommentare",
+      "archiveTitle": "Archiv",
       "add": "Kommentar hinzufügen",
       "addLabel": "Kommentar",
       "comment": "Kommentieren",
       "addToSelection": "Markierten Text kommentieren",
       "empty": "Noch keine Kommentare",
+      "archiveEmpty": "Keine archivierten Kommentare",
+      "showArchive": "Archiv anzeigen",
+      "showActive": "Aktive Kommentare anzeigen",
       "resolved": "Erledigt",
       "reopen": "Wieder öffnen",
       "resolve": "Erledigen",
@@ -4940,6 +4966,12 @@
       "synced": "Synchron",
       "noChanges": "Keine Änderungen"
     },
+    "status": {
+      "deleted": "Gelöscht",
+      "modified": "Geändert",
+      "added": "Hinzugefügt",
+      "renamed": "Umbenannt"
+    },
     "actions": {
       "refresh": "Aktualisieren",
       "fullscreen": "Vollbild",
@@ -4991,7 +5023,10 @@
       "initial": "Initial (kein Commit)",
       "workingTree": "Arbeitsbaum",
       "emptyLabel": "—",
-      "noDocument": "Kein Dokument ausgewählt"
+      "noDocument": "Kein Dokument ausgewählt",
+      "loading": "Diff wird geladen...",
+      "baseline": "Baseline",
+      "noChanges": "Keine Änderungen"
     },
     "relative": {
       "justNow": "Gerade eben",

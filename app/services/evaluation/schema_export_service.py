@@ -233,6 +233,176 @@ class SchemaExportService:
     }
 
     # =========================================================================
+    # INPUT DATA EXAMPLES (per Evaluation Type)
+    # These show concrete examples of data patterns that indicate each type
+    # =========================================================================
+
+    INPUT_DATA_EXAMPLES: Dict[str, Dict[str, Any]] = {
+        "ranking": {
+            "description_de": "Mehrere Items (z.B. Zusammenfassungen) sollen nach Qualität sortiert werden",
+            "description_en": "Multiple items (e.g. summaries) should be sorted by quality",
+            "pattern_detection": [
+                "source_text + summary_a/b/c (Referenztext + mehrere Zusammenfassungen)",
+                "reference + item_a/item_b/item_c (Original + Varianten)",
+                "Mehrere Felder die verglichen werden sollen"
+            ],
+            "example_input": {
+                "id": "article_1",
+                "source_text": "Die Europäische Union hat heute neue Klimaziele beschlossen...",
+                "summary_a": "EU beschließt ambitionierte Klimaziele mit CO2-Reduktion um 55%...",
+                "summary_b": "EU macht was mit Klima. Ist wichtig für alle.",
+                "summary_c": "Die Europäische Union hat auf ihrem Gipfeltreffen..."
+            },
+            "why_ranking": "Es gibt EINEN Referenztext und MEHRERE Items (summary_a/b/c) die verglichen und sortiert werden sollen",
+            "default_config": {
+                "type": "buckets",
+                "buckets": [
+                    {"id": "good", "name": {"de": "Gut", "en": "Good"}, "color": "#98d4bb", "order": 1},
+                    {"id": "moderate", "name": {"de": "Moderat", "en": "Moderate"}, "color": "#D1BC8A", "order": 2},
+                    {"id": "poor", "name": {"de": "Schlecht", "en": "Poor"}, "color": "#e8a087", "order": 3}
+                ],
+                "allowTies": True
+            }
+        },
+        "rating": {
+            "description_de": "Einzelne Texte/Antworten sollen auf einer Skala bewertet werden",
+            "description_en": "Single texts/responses should be rated on a scale",
+            "pattern_detection": [
+                "question + response (Frage mit einer Antwort)",
+                "text + model/source (einzelner Text mit Quelle)",
+                "Einzelne Items ohne Vergleichspaare"
+            ],
+            "example_input": {
+                "id": "qa_001",
+                "question": "Was ist Machine Learning?",
+                "response": "Machine Learning ist ein Teilbereich der künstlichen Intelligenz...",
+                "model": "GPT-4",
+                "category": "Technologie"
+            },
+            "why_rating": "Es gibt einzelne Texte/Antworten die UNABHÄNGIG voneinander bewertet werden sollen (nicht verglichen)",
+            "default_config": {
+                "type": "multi-dimensional",
+                "min": 1,
+                "max": 5,
+                "step": 1,
+                "dimensions": [
+                    {"id": "coherence", "name": {"de": "Kohärenz", "en": "Coherence"}, "weight": 0.25},
+                    {"id": "fluency", "name": {"de": "Flüssigkeit", "en": "Fluency"}, "weight": 0.25},
+                    {"id": "relevance", "name": {"de": "Relevanz", "en": "Relevance"}, "weight": 0.25},
+                    {"id": "consistency", "name": {"de": "Konsistenz", "en": "Consistency"}, "weight": 0.25}
+                ],
+                "labels": {"1": {"de": "Sehr schlecht"}, "3": {"de": "Mittel"}, "5": {"de": "Sehr gut"}}
+            }
+        },
+        "comparison": {
+            "description_de": "Zwei Versionen direkt gegeneinander vergleichen (A vs B)",
+            "description_en": "Compare two versions directly against each other (A vs B)",
+            "pattern_detection": [
+                "answer_a + answer_b oder text_a + text_b (zwei Versionen)",
+                "conversation_a + conversation_b (zwei Dialoge)",
+                "model_a + model_b mit winner Feld"
+            ],
+            "example_input": {
+                "id": "cmp_001",
+                "question": "Erkläre Quantencomputing",
+                "answer_a": "Quantencomputer nutzen Qubits die durch Superposition...",
+                "answer_b": "Quantencomputer sind schnelle Computer mit Quanten.",
+                "model_a": "GPT-4",
+                "model_b": "Mistral-7B"
+            },
+            "why_comparison": "Es gibt ZWEI Antwort-Versionen (answer_a/answer_b) die DIREKT verglichen werden sollen",
+            "default_config": {
+                "type": "pairwise",
+                "criteria": [{"id": "overall", "name": {"de": "Gesamt", "en": "Overall"}}],
+                "allowTie": True
+            }
+        },
+        "mail_rating": {
+            "description_de": "E-Mail-Konversationen (Klient-Berater) bewerten",
+            "description_en": "Rate email conversations (client-counselor)",
+            "pattern_detection": [
+                "subject + messages[] (E-Mail-Thread)",
+                "Konversation mit user/assistant oder Klient/Berater Rollen",
+                "Beratungskontext erkennbar",
+                "WICHTIG: NUR wenn KEIN is_human/is_fake Feld vorhanden ist!"
+            ],
+            "example_input": {
+                "id": "thread_001",
+                "subject": "Beratungsanfrage",
+                "messages": [
+                    {"role": "user", "content": "Hallo, ich habe ein Problem und brauche Hilfe..."},
+                    {"role": "assistant", "content": "Vielen Dank für Ihre Nachricht. Ich verstehe..."}
+                ]
+            },
+            "why_mail_rating": "Es sind KONVERSATIONEN mit messages-Array OHNE is_human/is_fake Feld. Wenn is_human/is_fake existiert → authenticity!",
+            "default_config": {
+                "type": "multi-dimensional",
+                "min": 1,
+                "max": 5,
+                "dimensions": [
+                    {"id": "client_coherence", "name": {"de": "Kohärenz Klient", "en": "Client Coherence"}, "weight": 0.25},
+                    {"id": "counsellor_coherence", "name": {"de": "Kohärenz Berater", "en": "Counsellor Coherence"}, "weight": 0.25},
+                    {"id": "quality", "name": {"de": "Beratungsqualität", "en": "Counseling Quality"}, "weight": 0.25},
+                    {"id": "overall", "name": {"de": "Gesamteignung", "en": "Overall Suitability"}, "weight": 0.25}
+                ]
+            }
+        },
+        "authenticity": {
+            "description_de": "Echt vs. Fake erkennen (Mensch vs. KI-generiert)",
+            "description_en": "Detect authentic vs. fake (Human vs. AI-generated)",
+            "pattern_detection": [
+                "is_human, is_fake, synthetic Felder vorhanden → IMMER authenticity!",
+                "Hat VORRANG vor messages[] Struktur!",
+                "Konversation MIT is_human/is_fake = authenticity (NICHT mail_rating!)",
+                "Binäre Klassifikation Mensch/KI"
+            ],
+            "example_input": {
+                "id": "auth_001",
+                "subject": "Beratungsanfrage",
+                "messages": [
+                    {"role": "user", "content": "Hallo, ich brauche dringend Hilfe..."},
+                    {"role": "assistant", "content": "Vielen Dank für Ihre Nachricht..."}
+                ],
+                "is_human": True,
+                "source": "human"
+            },
+            "why_authenticity": "OBWOHL es eine Konversation mit messages[] ist, existiert das Feld 'is_human' - das bedeutet IMMER authenticity! Das is_human/is_fake Feld hat VORRANG vor allem anderen.",
+            "default_config": {
+                "type": "binary",
+                "categories": [
+                    {"id": "authentic", "name": {"de": "Echt", "en": "Authentic"}, "color": "#98d4bb"},
+                    {"id": "fake", "name": {"de": "Fake", "en": "Fake"}, "color": "#e8a087"}
+                ],
+                "allowUnsure": True
+            }
+        },
+        "labeling": {
+            "description_de": "Kategorien/Labels zuweisen (Sentiment, Thema, etc.)",
+            "description_en": "Assign categories/labels (sentiment, topic, etc.)",
+            "pattern_detection": [
+                "sentiment, category, label, topic Felder",
+                "Mehrklassige Kategorisierung (nicht nur binär)",
+                "Themen- oder Sentiment-Analyse"
+            ],
+            "example_input": {
+                "id": "label_001",
+                "text": "Das Produkt ist absolut fantastisch! Sehr zufrieden.",
+                "sentiment": "positive"
+            },
+            "why_labeling": "Es gibt KATEGORISCHE Labels (sentiment, topic) die auf MEHRKLASSIGE Klassifikation hindeuten",
+            "default_config": {
+                "type": "multiclass",
+                "categories": [
+                    {"id": "positive", "name": {"de": "Positiv", "en": "Positive"}, "color": "#98d4bb"},
+                    {"id": "neutral", "name": {"de": "Neutral", "en": "Neutral"}, "color": "#D1BC8A"},
+                    {"id": "negative", "name": {"de": "Negativ", "en": "Negative"}, "color": "#e8a087"}
+                ],
+                "allowUnsure": True
+            }
+        }
+    }
+
+    # =========================================================================
     # File Format Mapping Examples
     # =========================================================================
 
@@ -317,6 +487,7 @@ class SchemaExportService:
             cls._get_header(),
             cls.get_evaluation_types_description(),
             cls._get_decision_tree(),
+            cls.get_input_data_examples(),  # NEU: Konkrete Eingabedaten-Beispiele
             cls.get_file_format_examples(),
             cls.get_preset_recommendations(),
             cls._get_target_format(),
@@ -341,6 +512,45 @@ class SchemaExportService:
                 f"| {eval_type.value} | {info['function_type_id']} | "
                 f"{info['description_de']} | {hints} |"
             )
+
+        return "\n".join(lines)
+
+    @classmethod
+    def get_input_data_examples(cls) -> str:
+        """
+        Generiert konkrete INPUT-Datenbeispiele für jeden Evaluationstyp.
+
+        Diese Beispiele zeigen der KI, wie typische Eingabedaten für jeden
+        Evaluationstyp aussehen, sodass sie das Muster erkennen kann.
+
+        Returns:
+            Formatierte Beispiele mit Pattern-Detection und Default-Config
+        """
+        lines = ["## KONKRETE EINGABEDATEN-BEISPIELE\n"]
+        lines.append("Die folgenden Beispiele zeigen typische Eingabedaten für jeden Evaluationstyp.\n")
+        lines.append("**WICHTIG:** Erkenne das Muster in den Eingabedaten um den richtigen Typ zu wählen!\n")
+
+        for eval_type, info in cls.INPUT_DATA_EXAMPLES.items():
+            lines.append(f"### {eval_type.upper()}")
+            lines.append(f"**Beschreibung:** {info['description_de']}\n")
+
+            lines.append("**Pattern-Erkennung:**")
+            for pattern in info['pattern_detection']:
+                lines.append(f"- {pattern}")
+
+            lines.append("\n**Beispiel-Eingabedaten:**")
+            lines.append("```json")
+            lines.append(json.dumps(info['example_input'], indent=2, ensure_ascii=False))
+            lines.append("```")
+
+            lines.append(f"\n**Warum {eval_type}?** {info['why_' + eval_type]}\n")
+
+            lines.append("**Standard-Konfiguration:**")
+            lines.append("```json")
+            lines.append(json.dumps(info['default_config'], indent=2, ensure_ascii=False))
+            lines.append("```\n")
+
+            lines.append("---\n")
 
         return "\n".join(lines)
 
@@ -500,43 +710,43 @@ Die folgenden Schema-Informationen stammen direkt aus dem zentralen LLARS-Schema
         """Generiert den Entscheidungsbaum für Evaluationstyp-Auswahl."""
         return """## ENTSCHEIDUNGSBAUM FÜR EVALUATIONSTYP
 
+**WICHTIG: Prüfe die Felder in dieser REIHENFOLGE!**
+
 ```
-┌─ Haben die Daten ZWEI Antwort-Versionen pro Item?
+┌─ SCHRITT 1: Gibt es is_human oder is_fake Felder?
+│  │  (HÖCHSTE PRIORITÄT - egal ob messages[] existiert!)
+│  │
+│  └─ JA → authenticity (IMMER, auch bei Konversationen!)
+│
+├─ SCHRITT 2: Haben die Daten ZWEI Antwort-Versionen pro Item?
 │  │  (answer_a/answer_b, text_a/text_b, conversation_a/b)
 │  │
-│  ├─ JA → comparison
+│  └─ JA → comparison
+│
+├─ SCHRITT 3: Gibt es sentiment/category/topic/label Felder?
+│  │  (NICHT is_human/is_fake - die sind authenticity!)
 │  │
-│  └─ NEIN
-│     │
-│     ├─ Gibt es Label-Felder?
-│     │  │  (is_fake, is_human, sentiment, category)
-│     │  │
-│     │  ├─ JA, binär (fake/real, human/ai)
-│     │  │  └─ → authenticity
-│     │  │
-│     │  └─ JA, mehrklassig (sentiment, topic, etc.)
-│     │     └─ → labeling
-│     │
-│     └─ Sollen Items sortiert/kategorisiert werden?
-│        │
-│        ├─ JA, in Qualitätskategorien (gut/mittel/schlecht)
-│        │  └─ → ranking
-│        │
-│        └─ NEIN, einzeln bewerten
-│           │
-│           ├─ E-Mail/Chat-Konversationen (Beratung)?
-│           │  │  (subject + mehrteilige messages, Klient/Berater)
-│           │  │
-│           │  └─ JA → mail_rating
-│           │
-│           └─ Einzelne Texte/Antworten
-│              └─ → rating
+│  └─ JA → labeling
+│
+├─ SCHRITT 4: Gibt es source_text + summary_a/b/c Muster?
+│  │  (Referenztext + mehrere Varianten)
+│  │
+│  └─ JA → ranking
+│
+├─ SCHRITT 5: Gibt es messages[] Array OHNE is_human/is_fake?
+│  │  (Konversationen zur Qualitätsbewertung)
+│  │
+│  └─ JA → mail_rating
+│
+└─ SCHRITT 6: Einzelne Texte/Antworten
+   │
+   └─ → rating
 ```
 
-**Priorität bei Unsicherheit:**
-1. Prüfe auf comparison (zwei Versionen sind eindeutig)
-2. Prüfe auf Labels (authenticity/labeling)
-3. Unterscheide ranking vs rating nach Aufgabenstellung"""
+**KRITISCHE REGEL:**
+- is_human/is_fake Feld = IMMER authenticity (egal ob messages[] existiert!)
+- messages[] OHNE is_human = mail_rating
+- messages[] MIT is_human = authenticity"""
 
     @classmethod
     def _get_target_format(cls) -> str:

@@ -232,12 +232,53 @@ Bitte setze die Anmerkung um und gib das Ergebnis im JSON-Format zurück."""
         if not content:
             raise ValueError("Empty response from LLM")
 
-        # Parse JSON response
+        # Parse JSON response - handle LaTeX backslashes
         raw = content.strip()
         if raw.startswith("```"):
             raw = raw.replace("```json", "").replace("```", "").strip()
 
-        parsed = json.loads(raw)
+        # Try standard JSON parsing first
+        parsed = None
+        try:
+            parsed = json.loads(raw)
+        except json.JSONDecodeError:
+            # LaTeX content may contain backslashes that break JSON parsing
+            # Try to extract fields manually using regex
+            import re
+
+            # Extract new_text field (handles multiline content)
+            new_text_match = re.search(
+                r'"new_text"\s*:\s*"((?:[^"\\]|\\.|"(?=\s*,|\s*}))*)"',
+                raw,
+                re.DOTALL
+            )
+            # Extract reply field
+            reply_match = re.search(
+                r'"reply"\s*:\s*"((?:[^"\\]|\\.)*)"',
+                raw
+            )
+
+            if new_text_match:
+                extracted_new_text = new_text_match.group(1)
+                # Unescape common JSON escapes while preserving LaTeX
+                extracted_new_text = extracted_new_text.replace('\\"', '"')
+                extracted_new_text = extracted_new_text.replace('\\n', '\n')
+                extracted_new_text = extracted_new_text.replace('\\t', '\t')
+
+                parsed = {
+                    "new_text": extracted_new_text,
+                    "reply": reply_match.group(1) if reply_match else "Änderung wurde umgesetzt."
+                }
+            else:
+                # Last resort: try to fix common LaTeX escaping issues
+                fixed_raw = re.sub(r'\\(?!["\\/bfnrtu])', r'\\\\', raw)
+                try:
+                    parsed = json.loads(fixed_raw)
+                except json.JSONDecodeError as e2:
+                    raise ValueError(f"Could not parse LLM response as JSON: {e2}")
+
+        if not parsed:
+            raise ValueError("Could not extract response from LLM output")
 
         new_text = parsed.get("new_text", "")
         ai_reply = parsed.get("reply", "Änderung wurde umgesetzt.")
@@ -378,12 +419,60 @@ Bitte setze die Anmerkung um und gib das Ergebnis im JSON-Format zurück."""
                         # Emit token
                         on_token(token)
 
-                # Parse the complete response
+                # Parse the complete response - handle LaTeX backslashes
                 raw = full_content.strip()
                 if raw.startswith("```"):
                     raw = raw.replace("```json", "").replace("```", "").strip()
 
-                parsed = json.loads(raw)
+                # Try standard JSON parsing first
+                parsed = None
+                try:
+                    parsed = json.loads(raw)
+                except json.JSONDecodeError:
+                    # LaTeX content may contain backslashes that break JSON parsing
+                    # Try to extract fields manually using regex
+                    logger.info("Standard JSON parsing failed, attempting regex extraction")
+                    import re
+
+                    # Extract new_text field (handles multiline content)
+                    new_text_match = re.search(
+                        r'"new_text"\s*:\s*"((?:[^"\\]|\\.|"(?=\s*,|\s*}))*)"',
+                        raw,
+                        re.DOTALL
+                    )
+                    # Extract reply field
+                    reply_match = re.search(
+                        r'"reply"\s*:\s*"((?:[^"\\]|\\.)*)"',
+                        raw
+                    )
+
+                    if new_text_match:
+                        extracted_new_text = new_text_match.group(1)
+                        # Unescape common JSON escapes while preserving LaTeX
+                        extracted_new_text = extracted_new_text.replace('\\"', '"')
+                        extracted_new_text = extracted_new_text.replace('\\n', '\n')
+                        extracted_new_text = extracted_new_text.replace('\\t', '\t')
+
+                        parsed = {
+                            "new_text": extracted_new_text,
+                            "reply": reply_match.group(1) if reply_match else "Änderung wurde umgesetzt."
+                        }
+                    else:
+                        # Last resort: try to fix common LaTeX escaping issues
+                        # Escape unescaped backslashes that aren't part of JSON escapes
+                        fixed_raw = re.sub(
+                            r'\\(?!["\\/bfnrtu])',
+                            r'\\\\',
+                            raw
+                        )
+                        try:
+                            parsed = json.loads(fixed_raw)
+                        except json.JSONDecodeError as e2:
+                            raise ValueError(f"Could not parse LLM response as JSON: {e2}")
+
+                if not parsed:
+                    raise ValueError("Could not extract response from LLM output")
+
                 new_text = parsed.get("new_text", "")
                 ai_reply = parsed.get("reply", "Änderung wurde umgesetzt.")
 

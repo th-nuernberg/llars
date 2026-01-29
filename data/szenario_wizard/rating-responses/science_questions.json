@@ -1,0 +1,23 @@
+[
+  {
+    "id": "sci_001",
+    "question": "Warum ist der Himmel blau?",
+    "response": "Der Himmel erscheint blau aufgrund der Rayleigh-Streuung. Sonnenlicht besteht aus allen Farben des Spektrums. Wenn es auf die Erdatmosphäre trifft, werden kürzere Wellenlängen (blau, violett) stärker gestreut als längere (rot, orange).\n\nObwohl violettes Licht noch stärker gestreut wird, sehen wir den Himmel blau, weil:\n1. Unsere Augen empfindlicher für Blau sind\n2. Ein Teil des violetten Lichts in der oberen Atmosphäre absorbiert wird\n3. Sonnenlicht mehr Blau als Violett enthält\n\nBei Sonnenuntergang erscheint der Himmel rot, weil das Licht einen längeren Weg durch die Atmosphäre nimmt und das Blau komplett weggestreut wird.",
+    "model": "GPT-4",
+    "category": "Physik"
+  },
+  {
+    "id": "sci_002",
+    "question": "Warum ist der Himmel blau?",
+    "response": "Das liegt an der Atmosphäre und wie Licht gebrochen wird. Die Farbe Blau wird halt mehr gestreut als andere Farben.",
+    "model": "LLaMA-2-7B",
+    "category": "Physik"
+  },
+  {
+    "id": "sci_003",
+    "question": "Wie funktioniert Photosynthese?",
+    "response": "Photosynthese ist der Prozess, bei dem Pflanzen Lichtenergie in chemische Energie umwandeln:\n\n**Gleichung:**\n6 CO₂ + 6 H₂O + Lichtenergie → C₆H₁₂O₆ + 6 O₂\n\n**Ablauf:**\n1. **Lichtreaktion** (Thylakoidmembran):\n   - Chlorophyll absorbiert Licht\n   - Wasser wird gespalten → O₂ wird freigesetzt\n   - ATP und NADPH werden gebildet\n\n2. **Dunkelreaktion/Calvin-Zyklus** (Stroma):\n   - CO₂ wird fixiert\n   - Mit ATP und NADPH wird Glucose aufgebaut\n\nDie Pflanze nutzt die Glucose für Wachstum und Energiegewinnung. Der freigesetzte Sauerstoff ist ein 'Abfallprodukt', das für uns lebenswichtig ist.",
+    "model": "Claude-3",
+    "category": "Biologie"
+  }
+]

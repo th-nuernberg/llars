@@ -4,6 +4,10 @@ AI-powered scenario data analysis routes.
 Provides intelligent analysis of uploaded data to suggest
 evaluation type, scenario name, description, and configuration.
 Supports both standard and streaming (SSE) responses.
+
+IMPORTANT: Uses SchemaDetector FIRST for deterministic type detection.
+AI is only used for configuration details when type is known,
+or for full analysis when structure is ambiguous.
 """
 
 import json
@@ -16,8 +20,12 @@ from decorators.permission_decorator import require_permission
 from routes.auth import data_bp
 from services.ai_assist import FieldPromptService
 from services.ai_assist.data_preprocessor import DataPreprocessor
+from services.data_import.schema_detector import SchemaDetector, DetectionResult
 
 logger = logging.getLogger(__name__)
+
+# Singleton schema detector
+_schema_detector = SchemaDetector()
 
 # Field key for scenario analysis prompt (configurable via Admin Panel)
 SCENARIO_ANALYSIS_FIELD_KEY = "scenario.analysis"
@@ -316,6 +324,14 @@ def analyze_scenario_data_stream():
     # Extract schema for data_summary event
     schema = preprocessed.get('schema', {})
 
+    # STEP 0: Run deterministic schema detection FIRST
+    schema_detection = _schema_detector.detect(items, filename)
+    schema_detected = schema_detection.confidence == 'definite'
+    detected_eval_type = schema_detection.eval_type.value if schema_detection.eval_type else None
+    matched_fields = schema_detection.matched_fields
+
+    logger.info(f"SchemaDetector result: {detected_eval_type} (confidence: {schema_detection.confidence}, fields: {matched_fields})")
+
     def generate():
         """
         Generator function for SSE streaming.
@@ -330,12 +346,20 @@ def analyze_scenario_data_stream():
                 'field_types': {k: v.get('type', 'unknown') for k, v in schema.items()},
                 'field_completeness': {k: v.get('completeness', 0) for k, v in schema.items()},
                 'sample_items': preprocessed.get('samples', [])[:3],
-                'detected_patterns': preprocessed.get('detected_patterns', [])
+                'detected_patterns': preprocessed.get('detected_patterns', []),
+                # Include schema detection results
+                'schema_detected': schema_detected,
+                'detected_eval_type': detected_eval_type,
+                'matched_fields': matched_fields
             }
             yield f"event: data_summary\ndata: {json.dumps(data_summary)}\n\n"
 
-            # Step 2: Signal AI is thinking
-            yield f"event: thinking\ndata: {json.dumps({'status': 'analyzing', 'message': 'KI analysiert die Daten...'})}\n\n"
+            # If type is definitively detected, we can skip/simplify AI analysis
+            if schema_detected:
+                print(f"Schema detection definite: {detected_eval_type} - AI for config only")
+                yield f"event: thinking\ndata: {json.dumps({'status': 'analyzing', 'message': 'Typ erkannt, generiere Konfiguration...'})}\n\n"
+            else:
+                yield f"event: thinking\ndata: {json.dumps({'status': 'analyzing', 'message': 'KI analysiert die Daten...'})}\n\n"
 
             # Step 3: Stream LLM response (client already created with context)
             response_text = ""
@@ -369,19 +393,41 @@ def analyze_scenario_data_stream():
                 suggestions = result.get('suggestions', {})
                 data_quality = result.get('data_quality', {})
 
+                # IMPORTANT: If schema detected type definitively, OVERRIDE AI suggestion
+                if schema_detected and detected_eval_type:
+                    suggestions['evaluation_type'] = detected_eval_type
+                    suggestions['eval_type'] = detected_eval_type  # For backwards compatibility
+
+                # Add schema detection metadata to suggestions
+                suggestions['schema_detected'] = schema_detected
+                suggestions['detection_source'] = 'schema_detection' if schema_detected else 'ai_analysis'
+                suggestions['matched_fields'] = matched_fields
+                suggestions['detection_reason'] = schema_detection.reason
+
                 yield f"event: suggestions\ndata: {json.dumps(suggestions)}\n\n"
                 yield f"event: data_quality\ndata: {json.dumps(data_quality)}\n\n"
 
             except json.JSONDecodeError as e:
                 # Log without Flask context (use print as fallback)
                 print(f"Failed to parse LLM response as JSON: {e}")
-                yield f"event: suggestions\ndata: {json.dumps({'parse_error': True})}\n\n"
+                # Still emit schema detection result even if AI parsing failed
+                fallback_suggestions = {
+                    'parse_error': True,
+                    'schema_detected': schema_detected,
+                    'detection_source': 'schema_detection' if schema_detected else 'failed',
+                    'matched_fields': matched_fields,
+                }
+                if schema_detected:
+                    fallback_suggestions['evaluation_type'] = detected_eval_type
+                    fallback_suggestions['eval_type'] = detected_eval_type
+                yield f"event: suggestions\ndata: {json.dumps(fallback_suggestions)}\n\n"
 
             # Step 5: Done
             yield f"event: done\ndata: {json.dumps({'tokens_used': tokens_used, 'success': True})}\n\n"
 
             # Log completion (username captured before generator)
-            print(f"AI scenario analysis stream completed for {username}: {len(items)} items, {tokens_used} tokens")
+            detection_note = f" (schema: {detected_eval_type})" if schema_detected else ""
+            print(f"AI scenario analysis stream completed for {username}: {len(items)} items, {tokens_used} tokens{detection_note}")
 
         except Exception as e:
             print(f"AI scenario analysis stream failed: {e}")

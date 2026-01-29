@@ -52,12 +52,12 @@ class EvaluationItem(db.Model):
     item_id = mapped_column(db.Integer, primary_key=True)
     chat_id = mapped_column(db.Integer)
     institut_id = mapped_column(db.Integer)
-    subject = mapped_column(db.String(255))
-    sender = mapped_column(db.String(255))
+    subject = mapped_column(db.Text)  # TEXT for long content (summaries, articles, etc.)
+    sender = mapped_column(db.Text)   # TEXT for flexibility
     function_type_id = mapped_column(db.Integer, db.ForeignKey('feature_function_types.function_type_id'))
 
     # Optional ground truth for supervised evaluation (labeling, comparison)
-    ground_truth_label = mapped_column(db.String(255), nullable=True)
+    ground_truth_label = mapped_column(db.Text, nullable=True)  # TEXT for long labels
 
     # Backwards compatibility: thread_id is a synonym for item_id (for queries)
     thread_id = synonym('item_id')

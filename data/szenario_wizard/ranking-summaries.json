@@ -1,0 +1,37 @@
+[
+  {
+    "id": "article_1",
+    "source_text": "Wissenschaftler der ETH Zürich haben einen Durchbruch in der Quantenkommunikation erzielt. Das Team um Prof. Dr. Sarah Mueller demonstrierte erstmals die sichere Übertragung von Quanteninformationen über eine Distanz von 500 Kilometern mittels Glasfaserkabeln. Bisherige Rekorde lagen bei etwa 100 Kilometern. Der Durchbruch wurde durch eine neuartige Fehlerkorrektur-Methode ermöglicht, die Quantenzustände auch über lange Strecken stabil hält. Die Technologie könnte in Zukunft abhörsichere Kommunikation zwischen Städten und sogar Kontinenten ermöglichen.",
+    "summary_a": "Das ETH-Team um Prof. Mueller hat sichere Quantenkommunikation über 500km demonstriert - fünfmal weiter als bisherige Rekorde. Eine neue Fehlerkorrektur-Methode stabilisiert Quantenzustände über lange Distanzen und ermöglicht künftig abhörsichere Kommunikation zwischen Städten.",
+    "summary_b": "Quanten sind kleine Teilchen. Computer benutzen sie manchmal. Zürich ist eine Stadt in der Schweiz. Es wurde etwas mit Kabeln gemacht. Die EU hat Geld gegeben.",
+    "summary_c": "ETH-Forscher erreichen 500km Quantenkommunikation mit neuer Fehlerkorrektur. Die Technologie ermöglicht abhörsichere Datenübertragung."
+  },
+  {
+    "id": "article_2",
+    "source_text": "Eine neue Studie des Potsdam-Instituts für Klimafolgenforschung zeigt alarmierende Trends bei der Eisschmelze in Grönland. Die Forscher analysierten Satellitendaten der letzten 30 Jahre und stellten fest, dass die Schmelzrate sich seit 2010 verdreifacht hat. Besonders betroffen sind die Küstenregionen im Südwesten der Insel. Bei ungebremstem Klimawandel könnte der Meeresspiegel bis 2100 um bis zu 50 Zentimeter allein durch Grönlands Eisverlust steigen.",
+    "summary_a": "Laut Potsdam-Institut hat sich die Eisschmelze in Grönland seit 2010 verdreifacht. Die 30-Jahres-Analyse von Satellitendaten prognostiziert einen möglichen Meeresspiegelanstieg von 50cm bis 2100 - besonders die Südwestküste ist betroffen.",
+    "summary_b": "Potsdam-Forscher untersuchten Grönland-Eis. Die Schmelzrate ist gestiegen. Es gibt Sorgen wegen des Meeresspiegels.",
+    "summary_c": "Eis schmilzt. Wasser wird mehr. Grönland kalt aber wärmer. Studie sagt Probleme. Forscher machen sich Gedanken."
+  },
+  {
+    "id": "article_3",
+    "source_text": "Die Charité Berlin setzt ab Januar 2026 ein KI-System zur Früherkennung von Sepsis ein. Das System analysiert kontinuierlich Vitalparameter von Intensivpatienten und warnt Ärzte bis zu 6 Stunden vor dem Auftreten kritischer Symptome. In einer zweijährigen Testphase konnte die Sterblichkeitsrate bei Sepsis-Patienten um 23 Prozent gesenkt werden. Das von einem Berliner Startup entwickelte System wurde von der EMA zugelassen.",
+    "summary_a": "Krankenhaus benutzt Computer. Computer guckt auf Patienten. Manchmal gibt es Alarm. Berlin ist Hauptstadt. EMA hat ja gesagt.",
+    "summary_b": "Die Charité führt ein EMA-zugelassenes KI-System zur Sepsis-Früherkennung ein, das 6 Stunden vor Symptomen warnt. Die Testphase zeigte 23% weniger Todesfälle.",
+    "summary_c": "Ab 2026 nutzt die Charité KI zur Sepsis-Erkennung. Das System warnt Ärzte frühzeitig und senkte die Sterblichkeit in Tests um fast ein Viertel."
+  },
+  {
+    "id": "article_4",
+    "source_text": "Volkswagen hat auf der IAA 2025 sein neues Elektrofahrzeug ID.8 vorgestellt. Das SUV verfügt über eine Reichweite von 700 Kilometern dank einer neuen Feststoffbatterie und kann an Schnellladesäulen in nur 15 Minuten auf 80 Prozent geladen werden. Der Einstiegspreis liegt bei 52.000 Euro. Besonders innovativ ist das integrierte Vehicle-to-Grid-System, das es ermöglicht, überschüssigen Strom ins Netz zurückzuspeisen.",
+    "summary_a": "VW präsentiert ID.8: E-SUV mit 700km Reichweite, 15-Min-Schnellladung und Vehicle-to-Grid-Technik. Preis ab 52.000€, Produktion startet bald.",
+    "summary_b": "Auto fährt elektrisch. Batterie neu. Laden geht schnell. VW baut irgendwo. Kostet Geld. IAA ist Messe für Autos.",
+    "summary_c": "Der neue VW ID.8 hat 700km Reichweite durch Feststoffbatterie. Das E-SUV lädt in 15 Minuten und kann Strom zurückspeisen."
+  },
+  {
+    "id": "article_5",
+    "source_text": "Die ESA hat grünes Licht für die Mission Lunar Gateway gegeben, eine permanente Raumstation im Mondorbit. Deutschland beteiligt sich mit 850 Millionen Euro an dem internationalen Projekt, das als Sprungbrett für künftige Mars-Missionen dienen soll. Die Station wird aus mehreren Modulen bestehen und Platz für vier Astronauten bieten. Der erste Baustein soll 2028 mit einer SpaceX Falcon Heavy ins All geschossen werden.",
+    "summary_a": "ESA baut Lunar Gateway: Raumstation im Mondorbit für 4 Astronauten. Deutschland investiert 850 Mio. €. Start 2028, Ziel: Basis für Mars-Missionen.",
+    "summary_b": "Die ESA genehmigt die Lunar Gateway Station im Mondorbit. Deutschland zahlt 850 Millionen, Start ist 2028.",
+    "summary_c": "Mond bekommt Station. Rakete fliegt hoch. Astronauten wohnen dort. Deutschland gibt Geld. Mars ist weit weg."
+  }
+]

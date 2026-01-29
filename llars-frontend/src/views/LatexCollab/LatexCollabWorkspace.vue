@@ -152,7 +152,7 @@
                   ref="editorRef"
                   :document="selectedNode"
                   :readonly="editorReadonly"
-                  :comments="comments"
+                  :comments="activeComments"
                   :active-comment-id="activeCommentId"
                   :ai-enabled="props.aiEnabled"
                   :ghost-text-enabled="props.ghostTextEnabled"
@@ -284,11 +284,37 @@
                   <div class="comments-panel" :style="commentsPanelStyle">
                   <div class="comments-header">
                     <div class="d-flex align-center ga-2">
-                      <LIcon size="18">mdi-comment-multiple-outline</LIcon>
-                      <span class="text-body-2">{{ $t('latexCollab.comments.title') }}</span>
+                      <LIcon size="18">{{ showCommentArchive ? 'mdi-archive' : 'mdi-comment-multiple-outline' }}</LIcon>
+                      <span class="text-body-2">
+                        {{ showCommentArchive ? $t('latexCollab.comments.archiveTitle') : $t('latexCollab.comments.title') }}
+                      </span>
+                      <LTag v-if="!showCommentArchive && activeComments.length > 0" variant="info" size="x-small">
+                        {{ activeComments.length }}
+                      </LTag>
                     </div>
                     <v-spacer />
+                    <!-- Archive Toggle Button -->
+                    <v-btn
+                      icon
+                      variant="text"
+                      size="x-small"
+                      :color="showCommentArchive ? 'primary' : undefined"
+                      :title="showCommentArchive ? $t('latexCollab.comments.showActive') : $t('latexCollab.comments.showArchive')"
+                      @click="showCommentArchive = !showCommentArchive"
+                    >
+                      <v-badge
+                        v-if="!showCommentArchive && archivedCount > 0"
+                        :content="archivedCount"
+                        color="success"
+                        offset-x="-2"
+                        offset-y="-2"
+                      >
+                        <LIcon size="18">mdi-archive</LIcon>
+                      </v-badge>
+                      <LIcon v-else size="18">{{ showCommentArchive ? 'mdi-comment-multiple-outline' : 'mdi-archive' }}</LIcon>
+                    </v-btn>
                     <LBtn
+                      v-if="!showCommentArchive"
                       variant="text"
                       size="small"
                       prepend-icon="mdi-comment-plus-outline"
@@ -304,18 +330,22 @@
                     {{ commentError }}
                   </v-alert>
 
-                  <div v-if="comments.length === 0" class="comments-empty">
-                    {{ $t('latexCollab.comments.empty') }}
+                  <div v-if="displayedComments.length === 0" class="comments-empty">
+                    <LIcon size="24" class="mb-2 text-medium-emphasis">
+                      {{ showCommentArchive ? 'mdi-archive-off' : 'mdi-comment-off-outline' }}
+                    </LIcon>
+                    <span>{{ showCommentArchive ? $t('latexCollab.comments.archiveEmpty') : $t('latexCollab.comments.empty') }}</span>
                   </div>
 
                   <div v-else class="comment-list">
                     <div
-                      v-for="c in comments"
+                      v-for="c in displayedComments"
                       :key="c.id"
                       class="comment-thread"
                       :class="{
                         active: c.id === activeCommentId,
-                        'other-document': isCommentInOtherDocument(c)
+                        'other-document': isCommentInOtherDocument(c),
+                        'archived': c.resolved_at
                       }"
                       :style="c.author_color ? { borderColor: c.author_color } : {}"
                       :data-comment-id="c.id"
@@ -487,15 +517,13 @@
       @remove="removeMember"
     />
 
-    <!-- Git Detail Dialog -->
-    <GitDetailDialog
+    <!-- Floating Git Panel (draggable window) -->
+    <FloatingGitPanel
       v-model="gitDetailDialog"
       :workspace-id="workspaceId"
       :selected-document-id="selectedNodeId"
-      :can-commit="hasPermission('feature:latex_collab:edit')"
+      :can-commit-prop="hasPermission('feature:latex_collab:edit')"
       :get-content="getEditorContent"
-      :before-commit="handleBeforeCommit"
-      :before-rollback="handleBeforeRollback"
       @committed="refreshCommits"
       @rollback="handleRollback"
       @restored="handleRestored"
@@ -680,7 +708,7 @@ import { useActiveDuration, useVisibilityTracker, useScrollDepth } from '@/compo
 import MarkdownTreePanel from '@/components/MarkdownCollab/MarkdownTreePanel.vue'
 import LatexEditorPane from '@/components/LatexCollab/LatexEditorPane.vue'
 import LatexPdfViewer from '@/components/LatexCollab/LatexPdfViewer.vue'
-import { GitDetailDialog } from '@/components/common/Git'
+import FloatingGitPanel from './components/FloatingGitPanel.vue'
 import ZoteroPanel from '@/components/LatexCollab/Zotero/ZoteroPanel.vue'
 import { AUTH_STORAGE_KEYS, getAuthStorageItem } from '@/utils/authStorage'
 import { getAvatarUrl, formatDisplayName, formatRelativeDate } from '@/utils/userUtils'
@@ -1091,6 +1119,31 @@ const {
   socket: commentsSocket
 })
 
+// ============================================================
+// COMMENT ARCHIVE FEATURE
+// ============================================================
+
+/** Whether to show archived (resolved) comments instead of active ones */
+const showCommentArchive = ref(false)
+
+/** Active comments (not resolved) - shown by default and highlighted in editor */
+const activeComments = computed(() =>
+  comments.value.filter(c => !c.resolved_at)
+)
+
+/** Archived comments (resolved) - shown when archive mode is active */
+const archivedComments = computed(() =>
+  comments.value.filter(c => c.resolved_at)
+)
+
+/** Comments to display in the list based on current mode */
+const displayedComments = computed(() =>
+  showCommentArchive.value ? archivedComments.value : activeComments.value
+)
+
+/** Count of archived comments for badge display */
+const archivedCount = computed(() => archivedComments.value.length)
+
 /**
  * Check if a comment belongs to a different document than currently selected.
  * Uses number comparison to avoid string/number type mismatch.
@@ -1151,10 +1204,18 @@ const isDraggingAiStream = ref(false)
 const aiStreamPosition = ref({ x: 100, y: 100 })
 const aiStreamContentRef = ref(null)
 
-const floatingAiStreamStyle = computed(() => ({
-  left: `${Math.max(10, aiStreamPosition.value.x)}px`,
-  top: `${Math.max(10, aiStreamPosition.value.y)}px`
-}))
+const floatingAiStreamStyle = computed(() => {
+  // Ensure the window stays within viewport bounds
+  const windowWidth = 360  // CSS width of the card
+  const windowHeight = 400 // Approximate height
+  const maxX = Math.max(10, window.innerWidth - windowWidth - 10)
+  const maxY = Math.max(10, window.innerHeight - windowHeight - 10)
+
+  return {
+    left: `${Math.max(10, Math.min(maxX, aiStreamPosition.value.x))}px`,
+    top: `${Math.max(10, Math.min(maxY, aiStreamPosition.value.y))}px`
+  }
+})
 
 /**
  * Fetch AI assistant settings from the server
@@ -1212,16 +1273,36 @@ async function aiResolveComment(comment) {
   aiStreamStatus.value = 'streaming'
   aiStreamResult.value = null
   aiStreamWindowOpen.value = true  // Open stream window automatically
-  console.log('[AI Stream] Window opened, commentId:', comment.id, 'windowOpen:', aiStreamWindowOpen.value)
 
-  // Position the stream window near the comment
+  // Position the stream window - try to place it near the comment but within viewport
+  const windowWidth = 360
+  const windowHeight = 400
   const commentEl = document.querySelector(`.comment-thread[data-comment-id="${comment.id}"]`)
+
   if (commentEl) {
     const rect = commentEl.getBoundingClientRect()
-    aiStreamPosition.value = { x: rect.right + 20, y: rect.top }
+    // Try to position to the left of the comment panel (which is on the right side)
+    let x = rect.left - windowWidth - 20
+    // If that would go off-screen, position centered on screen
+    if (x < 10) {
+      x = Math.max(10, (window.innerWidth - windowWidth) / 2)
+    }
+    let y = Math.max(10, Math.min(rect.top, window.innerHeight - windowHeight - 10))
+    aiStreamPosition.value = { x, y }
   } else {
-    aiStreamPosition.value = { x: window.innerWidth / 2 - 180, y: window.innerHeight / 3 }
+    // Fallback: center on screen
+    aiStreamPosition.value = {
+      x: Math.max(10, (window.innerWidth - windowWidth) / 2),
+      y: Math.max(10, (window.innerHeight - windowHeight) / 3)
+    }
   }
+
+  console.log('[AI Stream] State updated:', {
+    commentId: comment.id,
+    windowOpen: aiStreamWindowOpen.value,
+    position: aiStreamPosition.value,
+    status: aiStreamStatus.value
+  })
 
   try {
     // Check if there's an existing stream we can reconnect to
@@ -1289,7 +1370,12 @@ function handleAiStreamCompleted(data) {
   aiStreamStatus.value = 'completed'
   aiStreamResult.value = data
 
-  // Apply the text change to the editor
+  // Find the original comment to get the author's color
+  const originalComment = comments.value.find(c => c.id === data.comment_id)
+  const authorColor = originalComment?.author_color || collabColor.value
+  const authorUsername = originalComment?.author_username || 'Unknown'
+
+  // Apply the text change to the editor using the original comment author's color
   const { changes } = data
   if (changes?.old_text && changes?.new_text && changes.range_start != null && changes.range_end != null) {
     if (editorRef.value?.replaceRange) {
@@ -1298,14 +1384,27 @@ function handleAiStreamCompleted(data) {
         changes.range_end,
         changes.new_text,
         {
-          collabColor: aiAssistantColor.value,
-          collabUser: aiAssistantUsername.value
+          collabColor: authorColor,  // Use original comment author's color
+          collabUser: authorUsername
         }
       )
-      // Refresh Git panel after AI changes
+      // Refresh Git panel after AI changes (wait for YJS to sync and save)
+      // YJS has a 2-second debounce, so we wait 3 seconds to be safe
       setTimeout(() => {
         treePanelRef.value?.refreshGit?.()
-      }, 500)
+      }, 3000)
+    }
+  }
+
+  // Update the comment's range in local state to match new text length
+  // This ensures the comment highlight covers the correct text after AI changes
+  if (data.comment_updated) {
+    const { id, range_start, range_end } = data.comment_updated
+    const commentIndex = comments.value.findIndex(c => c.id === id)
+    if (commentIndex !== -1) {
+      comments.value[commentIndex].range_start = range_start
+      comments.value[commentIndex].range_end = range_end
+      console.log('[AI Stream] Updated comment range:', { id, range_start, range_end })
     }
   }
 
@@ -1648,8 +1747,8 @@ function onEditorContentChange(text) {
  */
 function handleDocumentSaved(data) {
   console.log('[LatexCollabWorkspace] document_saved empfangen:', data)
-  // Git panel updates are now handled by useGitStatus composable via socket events
-  // The composable automatically listens for 'latex_collab:commit_created' events
+  // Refresh Git panel when document is saved to show updated changes
+  treePanelRef.value?.refreshGit?.()
 }
 
 /**
@@ -2368,4 +2467,170 @@ defineExpose({
 <style scoped>
 /* Import extracted styles */
 @import './styles/LatexCollabWorkspace.css';
+</style>
+
+<!-- Separate non-scoped styles for Teleported elements (rendered outside component) -->
+<style>
+/* Floating AI Stream Window - must be non-scoped for Teleport to body */
+.floating-ai-stream-card {
+  position: fixed;
+  z-index: 9999;
+  width: 360px;
+  max-width: calc(100vw - 20px);
+  background: rgb(var(--v-theme-surface));
+  border: 2px solid #9B59B6;
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(155, 89, 182, 0.2), 0 2px 8px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+.floating-ai-stream-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 12px;
+  background: linear-gradient(135deg, rgba(155, 89, 182, 0.12) 0%, rgba(155, 89, 182, 0.06) 100%);
+  border-bottom: 1px solid rgba(155, 89, 182, 0.2);
+  cursor: grab;
+  user-select: none;
+}
+
+.floating-ai-stream-header:active {
+  cursor: grabbing;
+}
+
+.ai-stream-header-left {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ai-pulse-indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #9B59B6;
+  animation: ai-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes ai-pulse {
+  0%, 100% { opacity: 0.4; transform: scale(0.9); }
+  50% { opacity: 1; transform: scale(1.1); }
+}
+
+.floating-ai-stream-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #9B59B6;
+}
+
+.floating-ai-stream-body {
+  padding: 12px;
+  max-height: 300px;
+  overflow-y: auto;
+  background: rgba(var(--v-theme-surface-variant), 0.15);
+}
+
+.ai-stream-waiting {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  color: rgba(var(--v-theme-on-surface), 0.6);
+  font-size: 13px;
+}
+
+.ai-stream-content {
+  font-family: 'JetBrains Mono', 'Fira Code', 'Monaco', monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: rgb(var(--v-theme-on-surface));
+  margin: 0;
+  padding: 0;
+}
+
+.ai-cursor {
+  display: inline-block;
+  width: 2px;
+  height: 1em;
+  background: #9B59B6;
+  margin-left: 2px;
+  animation: ai-cursor-blink 0.8s ease-in-out infinite;
+}
+
+@keyframes ai-cursor-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+.floating-ai-stream-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border-top: 1px solid rgba(var(--v-theme-on-surface), 0.06);
+  background: rgba(var(--v-theme-on-surface), 0.02);
+}
+
+.ai-stream-chars {
+  font-size: 11px;
+  color: rgba(var(--v-theme-on-surface), 0.5);
+}
+
+/* Dark mode adjustments for AI stream */
+.v-theme--dark .floating-ai-stream-card {
+  box-shadow: 0 8px 32px rgba(155, 89, 182, 0.3), 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+/* Also make floating comment card non-scoped for consistency */
+.floating-comment-card {
+  position: fixed;
+  z-index: 9999;
+  width: 320px;
+  max-width: calc(100vw - 20px);
+  background: rgb(var(--v-theme-surface));
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.12);
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15), 0 2px 8px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+.floating-comment-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 12px;
+  background: rgba(var(--v-theme-on-surface), 0.03);
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  cursor: grab;
+  user-select: none;
+}
+
+.floating-comment-header:active {
+  cursor: grabbing;
+}
+
+.floating-comment-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: rgb(var(--v-theme-on-surface));
+}
+
+.floating-comment-body {
+  padding: 12px;
+}
+
+.floating-comment-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 8px 12px 12px;
+  border-top: 1px solid rgba(var(--v-theme-on-surface), 0.06);
+}
+
+.v-theme--dark .floating-comment-card {
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 2px 8px rgba(0, 0, 0, 0.3);
+}
 </style>

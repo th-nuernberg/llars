@@ -1,0 +1,23 @@
+[
+  {
+    "id": "code_001",
+    "question": "Wie implementiere ich eine Binärsuche in Python?",
+    "response": "Hier ist eine effiziente Implementierung der Binärsuche:\n\n```python\ndef binary_search(arr, target):\n    left, right = 0, len(arr) - 1\n    \n    while left <= right:\n        mid = (left + right) // 2\n        if arr[mid] == target:\n            return mid\n        elif arr[mid] < target:\n            left = mid + 1\n        else:\n            right = mid - 1\n    \n    return -1\n```\n\nDie Zeitkomplexität ist O(log n), da wir den Suchbereich bei jedem Schritt halbieren. Voraussetzung: Das Array muss sortiert sein.",
+    "model": "GPT-4",
+    "category": "Algorithmen"
+  },
+  {
+    "id": "code_002",
+    "question": "Wie implementiere ich eine Binärsuche in Python?",
+    "response": "Du kannst eine for-Schleife benutzen und jedes Element durchgehen bis du es findest. Oder du benutzt einfach `if x in liste`.",
+    "model": "Mistral-7B",
+    "category": "Algorithmen"
+  },
+  {
+    "id": "code_003",
+    "question": "Was ist der Unterschied zwischen einer Liste und einem Tuple in Python?",
+    "response": "Listen und Tuples sind beides Sequenztypen, unterscheiden sich aber fundamental:\n\n**Liste (list)**:\n- Mutable (veränderbar)\n- Syntax: `[1, 2, 3]`\n- Methoden wie append(), remove(), sort()\n- Mehr Speicherverbrauch\n- Für Daten die sich ändern\n\n**Tuple (tuple)**:\n- Immutable (unveränderbar)\n- Syntax: `(1, 2, 3)`\n- Keine Änderungsmethoden\n- Weniger Speicherverbrauch\n- Für konstante Daten, als Dict-Keys nutzbar\n\n```python\nliste = [1, 2, 3]\nliste[0] = 99  # OK\n\ntuple = (1, 2, 3)\ntuple[0] = 99  # TypeError!\n```",
+    "model": "Claude-3",
+    "category": "Python Basics"
+  }
+]

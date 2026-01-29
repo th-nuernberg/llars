@@ -1,11 +1,14 @@
 <template>
   <label
     class="l-checkbox"
-    :class="{
-      'l-checkbox--checked': isChecked,
-      'l-checkbox--disabled': disabled,
-      'l-checkbox--error': error
-    }"
+    :class="[
+      `l-checkbox--size-${size}`,
+      {
+        'l-checkbox--checked': isChecked,
+        'l-checkbox--disabled': disabled,
+        'l-checkbox--error': error
+      }
+    ]"
   >
     <input
       type="checkbox"
@@ -41,10 +44,14 @@
  * A custom checkbox with the signature LLARS asymmetric border-radius styling.
  * Features an animated checkmark on selection.
  *
+ * Props:
+ *   - size: 'x-small' (14px) | 'small' (18px) | 'default' (22px) | 'large' (28px)
+ *
  * Usage:
  *   <LCheckbox v-model="agreed" label="I agree to terms" />
  *   <LCheckbox v-model="items" value="item1">Item 1</LCheckbox>
  *   <LCheckbox v-model="enabled" color="success" />
+ *   <LCheckbox v-model="compact" size="x-small" />
  */
 import { computed, ref, watch } from 'vue'
 
@@ -73,6 +80,11 @@ const props = defineProps({
     type: String,
     default: 'primary',
     validator: (v) => ['primary', 'secondary', 'accent', 'success', 'warning', 'danger'].includes(v)
+  },
+  size: {
+    type: String,
+    default: 'default',
+    validator: (v) => ['x-small', 'small', 'default', 'large'].includes(v)
   }
 })
 
@@ -239,5 +251,71 @@ watch(isChecked, (newVal) => {
 .l-checkbox__input:focus-visible + .l-checkbox__box {
   outline: 2px solid var(--llars-primary);
   outline-offset: 2px;
+}
+
+/* Size variants */
+/* X-Small: 14px */
+.l-checkbox--size-x-small .l-checkbox__box {
+  width: 14px;
+  height: 14px;
+  border-width: 1.5px;
+  border-radius: 4px 1px 4px 1px;
+}
+
+.l-checkbox--size-x-small .l-checkbox__checkmark {
+  width: 10px;
+  height: 10px;
+}
+
+.l-checkbox--size-x-small .l-checkbox__label {
+  font-size: 0.75rem;
+}
+
+.l-checkbox--size-x-small {
+  gap: 6px;
+}
+
+/* Small: 18px */
+.l-checkbox--size-small .l-checkbox__box {
+  width: 18px;
+  height: 18px;
+  border-width: 1.5px;
+  border-radius: 5px 2px 5px 2px;
+}
+
+.l-checkbox--size-small .l-checkbox__checkmark {
+  width: 12px;
+  height: 12px;
+}
+
+.l-checkbox--size-small .l-checkbox__label {
+  font-size: 0.8rem;
+}
+
+.l-checkbox--size-small {
+  gap: 8px;
+}
+
+/* Default: 22px (already defined above) */
+
+/* Large: 28px */
+.l-checkbox--size-large .l-checkbox__box {
+  width: 28px;
+  height: 28px;
+  border-width: 2.5px;
+  border-radius: 8px 3px 8px 3px;
+}
+
+.l-checkbox--size-large .l-checkbox__checkmark {
+  width: 20px;
+  height: 20px;
+}
+
+.l-checkbox--size-large .l-checkbox__label {
+  font-size: 1rem;
+}
+
+.l-checkbox--size-large {
+  gap: 12px;
 }
 </style>

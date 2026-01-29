@@ -1,0 +1,122 @@
+[
+  {
+    "id": "qa_001",
+    "question": "Was ist der Unterschied zwischen Machine Learning und Deep Learning?",
+    "response": "Machine Learning (ML) ist ein Teilbereich der künstlichen Intelligenz, bei dem Algorithmen aus Daten lernen, um Vorhersagen zu treffen. Deep Learning ist eine spezielle Form des ML, die neuronale Netze mit vielen Schichten (daher 'deep') verwendet. Der Hauptunterschied: Während klassisches ML oft manuelle Feature-Extraktion erfordert, lernt Deep Learning diese Features automatisch aus Rohdaten. Deep Learning benötigt typischerweise mehr Daten und Rechenleistung, erzielt aber bei komplexen Aufgaben wie Bilderkennung oder Sprachverarbeitung bessere Ergebnisse.",
+    "model": "GPT-4",
+    "category": "Technologie",
+    "expected_quality": "high"
+  },
+  {
+    "id": "qa_002",
+    "question": "Was ist der Unterschied zwischen Machine Learning und Deep Learning?",
+    "response": "ML und DL sind beide AI. DL hat mehr Layer. ML ist einfacher. DL braucht GPUs.",
+    "model": "Mistral-7B",
+    "category": "Technologie",
+    "expected_quality": "low"
+  },
+  {
+    "id": "qa_003",
+    "question": "Erkläre das Konzept der Quantenverschränkung für Laien.",
+    "response": "Quantenverschränkung ist ein faszinierendes Phänomen der Quantenphysik. Stellen Sie sich zwei Teilchen vor, die so miteinander verbunden sind, dass der Zustand des einen sofort den Zustand des anderen beeinflusst - egal wie weit sie voneinander entfernt sind. Einstein nannte dies 'spukhafte Fernwirkung'. Wenn wir eines der verschränkten Teilchen messen und feststellen, dass es sich in einem bestimmten Zustand befindet, wissen wir sofort auch den Zustand des anderen Teilchens. Dies ist keine Kommunikation schneller als Licht, sondern eine fundamentale Eigenschaft der Quantenmechanik. Anwendungen finden sich in der Quantenkryptographie und Quantencomputern.",
+    "model": "Claude-3",
+    "category": "Physik",
+    "expected_quality": "high"
+  },
+  {
+    "id": "qa_004",
+    "question": "Erkläre das Konzept der Quantenverschränkung für Laien.",
+    "response": "Quanten sind kleine Dinger die sich komisch verhalten. Verschränkung bedeutet sie sind irgendwie verbunden. Einstein mochte das nicht. Es ist halt Physik und sehr kompliziert. Wissenschaftler verstehen das besser als normale Leute.",
+    "model": "LLaMA-2-7B",
+    "category": "Physik",
+    "expected_quality": "low"
+  },
+  {
+    "id": "qa_005",
+    "question": "Was sind die wichtigsten Prinzipien der objektorientierten Programmierung?",
+    "response": "Die vier Grundpfeiler der OOP sind:\n\n1. **Kapselung**: Daten und Methoden werden in Klassen gebündelt. Interne Details werden verborgen, nur definierte Schnittstellen sind zugänglich.\n\n2. **Vererbung**: Klassen können Eigenschaften und Methoden von Elternklassen erben, was Wiederverwendung ermöglicht.\n\n3. **Polymorphismus**: Objekte verschiedener Klassen können über eine gemeinsame Schnittstelle angesprochen werden. Dieselbe Methode kann je nach Objekttyp unterschiedlich reagieren.\n\n4. **Abstraktion**: Komplexe Realitäten werden auf wesentliche Merkmale reduziert. Abstrakte Klassen und Interfaces definieren Verträge ohne Implementierungsdetails.\n\nDiese Prinzipien fördern modularen, wartbaren und erweiterbaren Code.",
+    "model": "GPT-4",
+    "category": "Programmierung",
+    "expected_quality": "high"
+  },
+  {
+    "id": "qa_006",
+    "question": "Was sind die wichtigsten Prinzipien der objektorientierten Programmierung?",
+    "response": "OOP hat Klassen und Objekte. Man kann Sachen vererben. Es gibt public und private. Polymorphismus ist wenn verschiedene Dinge gleich aussehen aber anders sind. Java und Python nutzen OOP.",
+    "model": "Mistral-7B",
+    "category": "Programmierung",
+    "expected_quality": "medium"
+  },
+  {
+    "id": "qa_007",
+    "question": "Wie funktioniert das Immunsystem des Menschen?",
+    "response": "Das menschliche Immunsystem ist ein komplexes Netzwerk aus Zellen, Geweben und Organen, das den Körper vor Krankheitserregern schützt.\n\n**Angeborene Immunität**: Die erste Verteidigungslinie umfasst physische Barrieren (Haut, Schleimhäute), chemische Barrieren (Magensäure, Enzyme) und zelluläre Komponenten wie Makrophagen und natürliche Killerzellen, die schnell auf Eindringlinge reagieren.\n\n**Adaptive Immunität**: Diese spezifischere Abwehr entwickelt sich nach Kontakt mit Erregern. T-Zellen koordinieren die Immunantwort und zerstören infizierte Zellen direkt. B-Zellen produzieren Antikörper, die Erreger markieren und neutralisieren.\n\n**Immunologisches Gedächtnis**: Nach einer Infektion bleiben Gedächtniszellen zurück, die bei erneutem Kontakt eine schnellere, stärkere Reaktion ermöglichen - das Prinzip hinter Impfungen.",
+    "model": "Claude-3",
+    "category": "Medizin",
+    "expected_quality": "high"
+  },
+  {
+    "id": "qa_008",
+    "question": "Was ist der Klimawandel und welche Auswirkungen hat er?",
+    "response": "Der Klimawandel bezeichnet die langfristige Veränderung der globalen Durchschnittstemperaturen und Wettermuster, hauptsächlich verursacht durch menschliche Aktivitäten seit der Industrialisierung.\n\n**Ursachen**: Verbrennung fossiler Brennstoffe, Abholzung und industrielle Prozesse erhöhen die Konzentration von Treibhausgasen (CO₂, Methan) in der Atmosphäre.\n\n**Auswirkungen**:\n- Steigende Meeresspiegel durch schmelzende Gletscher und thermische Expansion\n- Häufigere Extremwetterereignisse (Hitzewellen, Überschwemmungen, Dürren)\n- Verschiebung von Klimazonen und Ökosystemen\n- Bedrohung der Biodiversität und Artensterben\n- Auswirkungen auf Landwirtschaft und Wasserversorgung\n\n**Gegenmaßnahmen**: Reduktion von Emissionen, erneuerbare Energien, Aufforstung und Anpassungsstrategien.",
+    "model": "GPT-4",
+    "category": "Umwelt",
+    "expected_quality": "high"
+  },
+  {
+    "id": "qa_009",
+    "question": "Was ist der Klimawandel und welche Auswirkungen hat er?",
+    "response": "Klimawandel ist wenn es wärmer wird auf der Erde. Das kommt von CO2 und so. Es gibt mehr Stürme und das Eis schmilzt. Manche Leute glauben nicht dran aber die Wissenschaft sagt es ist echt. Wir sollten weniger Auto fahren.",
+    "model": "LLaMA-2-7B",
+    "category": "Umwelt",
+    "expected_quality": "low"
+  },
+  {
+    "id": "qa_010",
+    "question": "Erkläre die Blockchain-Technologie und ihre Anwendungen.",
+    "response": "Blockchain ist eine dezentrale, verteilte Datenbanktechnologie, die Transaktionen in verketteten, kryptographisch gesicherten Blöcken speichert.\n\n**Funktionsweise**:\n- Jeder Block enthält Transaktionsdaten, einen Zeitstempel und den Hash des vorherigen Blocks\n- Änderungen an einem Block würden alle folgenden Hashes invalidieren\n- Konsensmechanismen (Proof of Work, Proof of Stake) sichern das Netzwerk\n\n**Eigenschaften**:\n- Dezentralisierung: Keine zentrale Kontrollinstanz\n- Transparenz: Alle Teilnehmer können Transaktionen einsehen\n- Unveränderlichkeit: Einmal geschriebene Daten können nicht manipuliert werden\n\n**Anwendungen**:\n- Kryptowährungen (Bitcoin, Ethereum)\n- Smart Contracts für automatisierte Vertragsausführung\n- Supply-Chain-Management für Rückverfolgbarkeit\n- Digitale Identität und Abstimmungssysteme\n- NFTs für digitale Eigentumsrechte",
+    "model": "Claude-3",
+    "category": "Technologie",
+    "expected_quality": "high"
+  },
+  {
+    "id": "qa_011",
+    "question": "Erkläre die Blockchain-Technologie und ihre Anwendungen.",
+    "response": "Blockchain speichert Daten. Bitcoin nutzt Blockchain. Es ist dezentral und sicher. Man kann damit auch andere Sachen machen wie NFTs. Ethereum ist auch eine Blockchain.",
+    "model": "Mistral-7B",
+    "category": "Technologie",
+    "expected_quality": "low"
+  },
+  {
+    "id": "qa_012",
+    "question": "Was ist kognitive Verhaltenstherapie und wie funktioniert sie?",
+    "response": "Die kognitive Verhaltenstherapie (KVT) ist eine evidenzbasierte Psychotherapieform, die auf der Wechselwirkung zwischen Gedanken, Gefühlen und Verhalten basiert.\n\n**Grundprinzip**: Nicht die Situation selbst, sondern unsere Interpretation davon beeinflusst unsere emotionale Reaktion. Dysfunktionale Denkmuster können zu psychischen Problemen führen.\n\n**Vorgehen**:\n1. **Psychoedukation**: Vermittlung des Störungsmodells\n2. **Kognitive Umstrukturierung**: Identifikation und Hinterfragung negativer automatischer Gedanken\n3. **Verhaltensexperimente**: Überprüfung dysfunktionaler Überzeugungen in der Realität\n4. **Expositionsübungen**: Schrittweise Konfrontation mit angstauslösenden Situationen\n5. **Fertigkeitentraining**: Erlernen von Bewältigungsstrategien\n\n**Anwendungsgebiete**: Depression, Angststörungen, Phobien, Zwangsstörungen, PTBS, Essstörungen. KVT ist gut erforscht und zeigt hohe Wirksamkeit, oft vergleichbar mit medikamentöser Behandlung.",
+    "model": "GPT-4",
+    "category": "Psychologie",
+    "expected_quality": "high"
+  },
+  {
+    "id": "qa_013",
+    "question": "Beschreibe die Funktionsweise eines Kernkraftwerks.",
+    "response": "Ein Kernkraftwerk nutzt kontrollierte Kernspaltung zur Stromerzeugung.\n\n**Kernspaltung**: Schwere Atomkerne (meist Uran-235 oder Plutonium-239) werden durch Neutronenbeschuss gespalten. Dabei entstehen:\n- Zwei leichtere Atomkerne (Spaltprodukte)\n- 2-3 freie Neutronen (können weitere Spaltungen auslösen)\n- Große Mengen Energie als Wärme\n\n**Reaktortypen**:\n- Druckwasserreaktor: Wasser unter hohem Druck als Kühlmittel und Moderator\n- Siedewasserreaktor: Wasser verdampft direkt im Reaktor\n\n**Stromerzeugung**:\n1. Spaltungswärme erhitzt Wasser zu Dampf\n2. Dampf treibt Turbinen an\n3. Turbinen treiben Generatoren zur Stromerzeugung\n4. Dampf wird kondensiert und zurückgeführt\n\n**Sicherheitssysteme**:\n- Steuerstäbe zur Regulierung der Kettenreaktion\n- Mehrfache Sicherheitshüllen (Containment)\n- Notkühlsysteme",
+    "model": "Claude-3",
+    "category": "Energie",
+    "expected_quality": "high"
+  },
+  {
+    "id": "qa_014",
+    "question": "Beschreibe die Funktionsweise eines Kernkraftwerks.",
+    "response": "In Kernkraftwerken wird Uran gespalten was Energie freisetzt. Diese Energie macht Wasser heiß und dann Dampf. Der Dampf dreht Turbinen und das macht Strom. Es gibt Sicherheitsprobleme und radioaktiven Müll. Tschernobyl und Fukushima waren schlimm.",
+    "model": "LLaMA-2-7B",
+    "category": "Energie",
+    "expected_quality": "medium"
+  },
+  {
+    "id": "qa_015",
+    "question": "Was sind die wichtigsten Unterschiede zwischen SQL und NoSQL Datenbanken?",
+    "response": "SQL (relationale) und NoSQL Datenbanken unterscheiden sich fundamental in ihrer Architektur und Anwendung.\n\n**SQL-Datenbanken**:\n- Strukturiert mit festem Schema (Tabellen, Spalten, Zeilen)\n- ACID-konform (Atomicity, Consistency, Isolation, Durability)\n- Komplexe Abfragen über Joins möglich\n- Vertikale Skalierung (leistungsstärkere Hardware)\n- Beispiele: PostgreSQL, MySQL, Oracle, SQL Server\n\n**NoSQL-Datenbanken**:\n- Flexibles/dynamisches Schema\n- BASE-Prinzip (Basically Available, Soft state, Eventually consistent)\n- Verschiedene Datenmodelle:\n  - Dokumentbasiert (MongoDB, CouchDB)\n  - Key-Value (Redis, DynamoDB)\n  - Spaltenorientiert (Cassandra, HBase)\n  - Graphbasiert (Neo4j)\n- Horizontale Skalierung (mehr Server)\n\n**Wann was verwenden**:\n- SQL: Komplexe Transaktionen, strukturierte Daten, starke Konsistenz\n- NoSQL: Große Datenmengen, flexible Strukturen, hohe Skalierbarkeit, Echtzeit-Anwendungen",
+    "model": "GPT-4",
+    "category": "Datenbanken",
+    "expected_quality": "high"
+  }
+]

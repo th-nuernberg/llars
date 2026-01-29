@@ -1,0 +1,234 @@
+[
+  {
+    "id": "auth_001",
+    "subject": "Überforderung im Job",
+    "messages": [
+      {"role": "user", "content": "Hallo, ich weiß nicht mehr weiter. Mein Chef gibt mir immer mehr Aufgaben und ich schaff das einfach nicht mehr. Letzte Woche hab ich zweimal bis 22 Uhr gearbeitet und trotzdem meckert er nur. Ich kann nachts kaum noch schlafen weil ich immer an die Arbeit denke."},
+      {"role": "assistant", "content": "Das klingt nach einer sehr belastenden Situation. Der Druck von außen kombiniert mit den Schlafproblemen - das zehrt sicher sehr an Ihren Kräften. Haben Sie schon versucht, mit Ihrem Chef über die Arbeitsbelastung zu sprechen?"},
+      {"role": "user", "content": "ja einmal, aber der hat nur gesagt ich soll mich besser organisieren. Als ob das so einfach wäre!! Ich arbeite doch schon am limit"},
+      {"role": "assistant", "content": "Das ist frustrierend, wenn man sich nicht gehört fühlt. 'Besser organisieren' ist leicht gesagt, wenn die Aufgabenmenge einfach zu viel ist. Wie sieht es bei Ihren Kollegen aus - haben die ähnliche Probleme?"},
+      {"role": "user", "content": "manche schon, aber die beschweren sich nie. ich glaub die haben einfach aufgegeben oder es ist denen egal. eine kollegin ist letzten monat gegangen, einfach so gekündigt"},
+      {"role": "assistant", "content": "Das zeigt ja, dass Sie nicht alleine sind mit dem Problem. Wenn sogar jemand kündigt... Haben Sie selbst auch schon über einen Wechsel nachgedacht? Oder gibt es etwas, das Sie an diesem Job hält?"},
+      {"role": "user", "content": "kündigen kann ich mir grad nicht leisten, hab noch nen kredit abbezahlen. aber so kanns auch nicht weitergehen. vielleicht sollt ich zum arzt wegen den schlafproblemen erstmal"}
+    ],
+    "is_human": true,
+    "source": "human",
+    "difficulty": "hard"
+  },
+  {
+    "id": "auth_002",
+    "subject": "Streit mit Partner",
+    "messages": [
+      {"role": "user", "content": "Mein Freund und ich streiten uns ständig wegen Kleinigkeiten. Gestern wars wieder soweit nur weil ich vergessen hab einzukaufen. Er hat mich angeschrien und ist dann einfach gegangen. Ich weiß nicht ob das noch Sinn macht mit uns"},
+      {"role": "assistant", "content": "Solche wiederkehrenden Konflikte über Alltagsdinge sind oft ein Zeichen, dass dahinter etwas Größeres steckt. Wie lange geht das schon so bei Ihnen beiden?"},
+      {"role": "user", "content": "seit so 3-4 monaten ungefähr. davor wars eigentlich ok. naja nicht perfekt aber normal halt. keine ahnung was passiert ist"},
+      {"role": "assistant", "content": "Vor 3-4 Monaten - ist da vielleicht etwas vorgefallen? Ein Ereignis, eine Veränderung in eurem Leben?"},
+      {"role": "user", "content": "hm er hat da ne beförderung bekommen und arbeitet seitdem viel mehr. vielleicht ist er einfach gestresst? aber das ist doch keine entschuldigung mich anzuschreien oder"}
+    ],
+    "is_human": true,
+    "source": "human",
+    "difficulty": "hard"
+  },
+  {
+    "id": "auth_003",
+    "subject": "Angst vor Prüfungen",
+    "messages": [
+      {"role": "user", "content": "ich hab in 2 wochen meine Abschlussprüfung und ich krieg jetzt schon Panik wenn ich nur dran denke. Beim letzten mal bin ich im Prüfungsraum fast umgekippt, mir wurde schwindelig und ich konnte kaum atmen. Ich hab so angst dass das wieder passiert"},
+      {"role": "assistant", "content": "Eine Panikattacke in der Prüfungssituation - das war bestimmt sehr erschreckend für Sie. Solche körperlichen Reaktionen bei Prüfungsangst sind gar nicht so selten. Wissen Sie noch, was genau der Auslöser war?"},
+      {"role": "user", "content": "ich glaub es war als ich die erste aufgabe gelesen hab und dachte ich kann das nicht. dann gings los mit dem herzrasen und so"},
+      {"role": "assistant", "content": "Dieser Gedanke 'ich kann das nicht' - der scheint ja eine starke Reaktion ausgelöst zu haben. Kennen Sie solche Gedanken auch aus anderen Situationen?"},
+      {"role": "user", "content": "ja eigentlich schon immer bei prüfungen. in der schule wars auch so nur nicht ganz so schlimm. da konnt ich wenigstens noch irgendwie durchhalten"},
+      {"role": "assistant", "content": "Also begleitet Sie das schon länger. Und jetzt bei der Abschlussprüfung ist der Druck noch größer. Haben Sie irgendwelche Strategien, die Ihnen bisher geholfen haben?"},
+      {"role": "user", "content": "früher hat mir manchmal geholfen vorher musik zu hören aber jetzt hilft das auch nicht mehr. eine freundin meinte ich soll atemübungen machen aber das vergess ich dann wenns soweit ist"}
+    ],
+    "is_human": true,
+    "source": "human",
+    "difficulty": "medium"
+  },
+  {
+    "id": "auth_004",
+    "subject": "Einsamkeit nach Umzug",
+    "messages": [
+      {"role": "user", "content": "Bin vor 4 Monaten wegen dem Job in eine neue Stadt gezogen. Kenne hier niemanden und sitze jeden Abend alleine rum. Auf der Arbeit sind alle nett aber privat trifft sich keiner. Vermisse meine Freunde zuhause total"},
+      {"role": "assistant", "content": "Ein Neuanfang in einer fremden Stadt kann wirklich einsam sein, besonders wenn die sozialen Kontakte fehlen. Vier Monate sind noch nicht so lang - haben Sie schon versucht, außerhalb der Arbeit Anschluss zu finden?"},
+      {"role": "user", "content": "hab mich bei nem sportverein angemeldet aber bin erst zweimal hingegangen. ist irgendwie komisch wenn alle sich schon kennen und man der neue ist"},
+      {"role": "assistant", "content": "Dieses Gefühl als 'der Neue' von außen auf eine bestehende Gruppe zu schauen - das kann wirklich unangenehm sein. Was hält Sie davon ab, öfter hinzugehen?"},
+      {"role": "user", "content": "keine ahnung, nach der arbeit bin ich oft einfach platt und hab keine energie mehr. und dann denk ich mir wozu, die mögen mich eh nicht besonders"},
+      {"role": "assistant", "content": "Das klingt nach einem Teufelskreis - keine Energie, also nicht hingehen, dadurch keine Kontakte, was wieder auf die Stimmung drückt. Woher kommt der Gedanke, dass die anderen Sie nicht mögen?"}
+    ],
+    "is_human": true,
+    "source": "human",
+    "difficulty": "medium"
+  },
+  {
+    "id": "auth_005",
+    "subject": "Sorgen um Eltern",
+    "messages": [
+      {"role": "user", "content": "Meine Mutter ist letzte Woche gestürzt und liegt jetzt im Krankenhaus. Sie ist 78 und baut in letzter Zeit stark ab. Mein Vater ist total überfordert alleine und ich wohne 400km weg. Ich fühl mich so schuldig dass ich nicht da sein kann"},
+      {"role": "assistant", "content": "Das ist eine schwierige Situation - die Sorge um Ihre Mutter und gleichzeitig die Distanz zu überbrücken. Schuldgefühle sind da ganz normal, auch wenn Sie ja einen Grund haben, woanders zu wohnen. Wie geht es Ihrer Mutter aktuell?"},
+      {"role": "user", "content": "die ärzte sagen sie muss noch mindestens 2 wochen bleiben. Oberschenkelhals gebrochen. Und danach reha. Ich überleg ob ich unbezahlten urlaub nehmen soll aber weiß nicht ob mein chef das erlaubt"},
+      {"role": "assistant", "content": "Ein Oberschenkelhalsbruch in dem Alter ist wirklich ernst. Gut, dass sie versorgt ist. Und Ihr Vater - wie kommt er zurecht? Bekommt er Unterstützung?"},
+      {"role": "user", "content": "er sagt immer alles ist ok aber ich glaub ihm nicht. er klingt am telefon so müde und verwirrt manchmal. meine schwester wohnt näher aber die hat selber drei kinder und kann nicht immer"},
+      {"role": "assistant", "content": "Es klingt als würden Sie sich auch um Ihren Vater große Sorgen machen. Haben Sie und Ihre Schwester schon mal zusammen überlegt, wie ihr die Situation gemeinsam stemmen könnt?"},
+      {"role": "user", "content": "nicht richtig. wir haben uns früher öfter gestritten und reden jetzt nur das nötigste. aber vielleicht muss ich mal den ersten schritt machen. geht ja um unsere eltern"}
+    ],
+    "is_human": true,
+    "source": "human",
+    "difficulty": "hard"
+  },
+  {
+    "id": "auth_006",
+    "subject": "Berufliche Neuorientierung",
+    "messages": [
+      {"role": "user", "content": "Sehr geehrte Damen und Herren, ich befinde mich derzeit in einer Phase der beruflichen Neuorientierung und würde gerne Ihre Beratung in Anspruch nehmen. Nach 15 Jahren in meinem aktuellen Beruf verspüre ich zunehmend das Bedürfnis nach Veränderung, bin mir jedoch unsicher, welche Richtung ich einschlagen sollte."},
+      {"role": "assistant", "content": "Vielen Dank für Ihre Anfrage. Der Wunsch nach beruflicher Veränderung nach einer langen Zeit im selben Bereich ist durchaus nachvollziehbar. Um Sie besser beraten zu können: Was genau löst bei Ihnen dieses Bedürfnis nach Veränderung aus?"},
+      {"role": "user", "content": "Zum einen fehlt mir die intellektuelle Herausforderung, die mein Beruf anfangs bot. Zum anderen habe ich das Gefühl, dass meine Fähigkeiten nicht optimal genutzt werden. Ich würde gerne einen Bereich finden, in dem ich meine Kompetenzen besser einbringen kann."},
+      {"role": "assistant", "content": "Das sind nachvollziehbare Gründe. Können Sie mir mehr über Ihre aktuellen Kompetenzen und Interessen erzählen? Was würden Sie in einem neuen Berufsfeld gerne anders machen?"},
+      {"role": "user", "content": "Ich verfüge über ausgeprägte analytische Fähigkeiten sowie Erfahrung im Projektmanagement. Idealerweise würde ich gerne in einem Bereich arbeiten, der sowohl strategisches Denken als auch Kreativität erfordert. Zudem wäre mir eine bessere Work-Life-Balance wichtig."},
+      {"role": "assistant", "content": "Analytische Fähigkeiten kombiniert mit Kreativität - das eröffnet verschiedene Möglichkeiten. Haben Sie bereits konkrete Branchen oder Tätigkeitsfelder im Blick, die Sie interessieren könnten?"},
+      {"role": "user", "content": "Ich habe recherchiert und finde den Bereich Unternehmensberatung oder auch UX-Design interessant. Allerdings bin ich mir unsicher, ob ein Quereinstieg in meinem Alter noch realistisch ist. Ich würde gerne Ihre professionelle Einschätzung dazu erhalten."}
+    ],
+    "is_human": false,
+    "source": "gpt-4",
+    "difficulty": "hard",
+    "ai_indicators": ["Übermäßig formeller Ton", "Perfekte Struktur", "Keine emotionalen Ausbrüche", "Buzzwords"]
+  },
+  {
+    "id": "auth_007",
+    "subject": "Beziehungsprobleme",
+    "messages": [
+      {"role": "user", "content": "Ich habe festgestellt, dass meine Beziehung zu meinem Partner in letzter Zeit unter erheblichen Kommunikationsproblemen leidet. Wir scheinen aneinander vorbeizureden und Missverständnisse häufen sich. Ich würde gerne konstruktive Wege finden, um diese Situation zu verbessern."},
+      {"role": "assistant", "content": "Kommunikationsprobleme in Partnerschaften sind ein häufiges Thema. Es ist positiv, dass Sie aktiv nach Lösungen suchen. Können Sie mir ein konkretes Beispiel für ein solches Missverständnis nennen?"},
+      {"role": "user", "content": "Natürlich. Kürzlich hatte ich meinem Partner mitgeteilt, dass ich mehr Quality Time benötige. Er interpretierte dies als Kritik an seinem Engagement in der Beziehung, obwohl ich lediglich einen Wunsch äußern wollte. Solche Situationen wiederholen sich regelmäßig."},
+      {"role": "assistant", "content": "Ich verstehe. Es klingt, als würden Ihre Botschaften anders ankommen als beabsichtigt. Wie reagieren Sie typischerweise, wenn solche Missverständnisse auftreten?"},
+      {"role": "user", "content": "Ich versuche in der Regel, ruhig zu bleiben und die Situation sachlich zu klären. Allerdings eskaliert die Diskussion häufig, da mein Partner sich angegriffen fühlt. Dies führt dazu, dass wir das eigentliche Thema aus den Augen verlieren."}
+    ],
+    "is_human": false,
+    "source": "gpt-4",
+    "difficulty": "medium",
+    "ai_indicators": ["Fachbegriffe wie 'Quality Time'", "Distanzierte Beschreibung", "Keine Tippfehler"]
+  },
+  {
+    "id": "auth_008",
+    "subject": "Stress und Erschöpfung",
+    "messages": [
+      {"role": "user", "content": "Guten Tag, ich leide seit einigen Monaten unter chronischem Stress und zunehmender Erschöpfung. Die Anforderungen meines Alltags - Beruf, Familie und persönliche Verpflichtungen - scheinen meine Kapazitäten zu übersteigen. Ich suche nach Strategien, um besser mit dieser Belastung umzugehen."},
+      {"role": "assistant", "content": "Chronischer Stress ist ein ernstes Thema, das sowohl körperliche als auch psychische Auswirkungen haben kann. Es ist wichtig, dass Sie sich Unterstützung suchen. Welcher Bereich belastet Sie am meisten?"},
+      {"role": "user", "content": "Der berufliche Bereich ist definitiv am belastendsten. Die Erwartungen meines Arbeitgebers sind hoch, und ich habe Schwierigkeiten, Grenzen zu setzen. Gleichzeitig möchte ich meine Familie nicht vernachlässigen, was zu einem ständigen Gefühl des Ungenügens führt."},
+      {"role": "assistant", "content": "Das klingt nach einem klassischen Dilemma zwischen beruflichen Anforderungen und familiären Bedürfnissen. Haben Sie schon versucht, mit Ihrem Arbeitgeber über die Belastung zu sprechen?"},
+      {"role": "user", "content": "Bisher habe ich gezögert, das Thema anzusprechen, da ich befürchte, als weniger leistungsfähig wahrgenommen zu werden. In meiner Branche wird ein hohes Maß an Einsatzbereitschaft erwartet, und ich möchte meine Karrierechancen nicht gefährden."},
+      {"role": "assistant", "content": "Diese Befürchtung ist nachvollziehbar. Viele Menschen teilen die Sorge, bei Überlastung als schwach angesehen zu werden. Gibt es vielleicht kleine Veränderungen, die Sie zunächst ohne Gespräch mit dem Arbeitgeber umsetzen könnten?"},
+      {"role": "user", "content": "Ich könnte versuchen, meine Arbeitszeiten effizienter zu gestalten und Aufgaben zu priorisieren. Zudem wäre es sinnvoll, feste Zeiten für Familie und Erholung einzuplanen. Ich bin mir jedoch unsicher, ob diese Maßnahmen ausreichend sein werden."}
+    ],
+    "is_human": false,
+    "source": "gpt-4",
+    "difficulty": "medium",
+    "ai_indicators": ["Strukturierte Aufzählung", "Abstrakte Formulierungen", "Klinisch distanziert"]
+  },
+  {
+    "id": "auth_009",
+    "subject": "Unterstützung bei Trauer",
+    "messages": [
+      {"role": "user", "content": "Ich möchte mich an Sie wenden, da ich vor drei Monaten meinen Vater verloren habe und seither mit intensiven Trauergefühlen kämpfe. Der Verlust hat mein Leben stark beeinflusst, und ich würde gerne lernen, konstruktiv mit dieser Trauer umzugehen."},
+      {"role": "assistant", "content": "Mein aufrichtiges Beileid für Ihren Verlust. Trauer ist ein sehr individueller Prozess, und drei Monate sind noch nicht lange. Wie zeigt sich die Trauer bei Ihnen im Alltag?"},
+      {"role": "user", "content": "Die Trauer manifestiert sich primär in Form von Konzentrationsschwierigkeiten bei der Arbeit sowie einem verminderten Interesse an sozialen Aktivitäten. Zudem erlebe ich wiederkehrende Phasen tiefer Traurigkeit, insbesondere an Orten, die mich an meinen Vater erinnern."}
+    ],
+    "is_human": false,
+    "source": "gpt-4",
+    "difficulty": "easy",
+    "ai_indicators": ["'manifestiert sich'", "Klinische Sprache", "Emotionale Distanz bei sensiblem Thema"]
+  },
+  {
+    "id": "auth_010",
+    "subject": "Selbstwertprobleme",
+    "messages": [
+      {"role": "user", "content": "Ich habe erkannt, dass ich unter einem geringen Selbstwertgefühl leide, das verschiedene Bereiche meines Lebens negativ beeinflusst. Sowohl in beruflichen als auch in privaten Kontexten zweifle ich häufig an meinen Fähigkeiten und vergleiche mich ungünstig mit anderen."},
+      {"role": "assistant", "content": "Es erfordert Mut, solche Selbsterkenntnisse zu teilen. Ein niedriges Selbstwertgefühl kann tatsächlich weitreichende Auswirkungen haben. Seit wann begleitet Sie dieses Gefühl?"},
+      {"role": "user", "content": "Rückblickend betrachtet begleitet mich dieses Muster bereits seit meiner Jugend. Ich vermute, dass bestimmte Erfahrungen in meiner Schulzeit prägend waren, insbesondere negative Rückmeldungen von Lehrern und Gleichaltrigen."},
+      {"role": "assistant", "content": "Negative Erfahrungen in der Jugend können tatsächlich prägende Auswirkungen haben. Wie wirkt sich das niedrige Selbstwertgefühl konkret auf Ihren Alltag aus?"},
+      {"role": "user", "content": "Im beruflichen Kontext hindert es mich daran, meine Ideen selbstbewusst zu präsentieren oder mich für Beförderungen zu bewerben. Im privaten Bereich führt es dazu, dass ich Schwierigkeiten habe, enge Beziehungen aufzubauen, da ich befürchte, nicht interessant genug zu sein."}
+    ],
+    "is_human": false,
+    "source": "gpt-4",
+    "difficulty": "easy",
+    "ai_indicators": ["Selbstreflexion zu perfekt formuliert", "Therapeutische Terminologie", "Keine spontanen Emotionen"]
+  },
+  {
+    "id": "auth_011",
+    "subject": "finanzielle Sorgen",
+    "messages": [
+      {"role": "user", "content": "hey, ich brauch mal nen rat. hab mich total verschuldet wegen dummer entscheidungen und weiß jetz nich weiter. 3 kredite am laufen und komm kaum über die runden. schäm mich auch zu sehr um mit irgendwem drüber zu reden"},
+      {"role": "assistant", "content": "Erstmal gut, dass Sie sich hier melden - das ist schon ein wichtiger Schritt. Schulden können sehr belastend sein, und die Scham macht es oft noch schwerer. Haben Sie einen Überblick über die Gesamtsumme?"},
+      {"role": "user", "content": "so ungefähr 15000 euro. klingt vielleicht nich so viel für manche aber für mich is das ne katastrophe. verdien auch nich so gut und muss noch miete zahlen und alles. manchmal denk ich es wird nie besser"},
+      {"role": "assistant", "content": "15.000 Euro bei einem kleineren Einkommen - das ist eine reale Belastung, da brauchen Sie sich nicht kleinzumachen. Der Gedanke 'es wird nie besser' - kommt der öfter?"},
+      {"role": "user", "content": "ja schon. grad abends wenn ich nicht schlafen kann und alles durchrechne. hab auch angst dass mein vermieter irgendwann was merkt oder so"},
+      {"role": "assistant", "content": "Diese schlaflosen Nächte klingen sehr belastend. Haben Sie schon mal über eine Schuldnerberatung nachgedacht? Die ist kostenlos und kann helfen, einen Plan zu machen."},
+      {"role": "user", "content": "davon hab ich gehört aber ich trau mich nicht da hinzugehen. is mir peinlich dass ich so dumm war. hab das geld für sachen ausgegeben die ich gar nicht brauchte, einfach weil ich mich besser fühlen wollte"}
+    ],
+    "is_human": true,
+    "source": "human",
+    "difficulty": "hard"
+  },
+  {
+    "id": "auth_012",
+    "subject": "Probleme mit Teenager-Kind",
+    "messages": [
+      {"role": "user", "content": "Mein Sohn 15 ist total in sich gekehrt seit ein paar Monaten, redet kaum noch mit uns und hängt nur am Handy. Seine Noten sind auch schlechter geworden. Mache mir echt Sorgen ob da was ist aber er blockt ab wenn man ihn fragt"},
+      {"role": "assistant", "content": "Das klingt nach einer herausfordernden Phase. Veränderungen im Verhalten bei Jugendlichen können viele Ursachen haben. Gibt es etwas Bestimmtes, das vor einigen Monaten passiert ist - Schulwechsel, Freundschaften, familiäre Veränderungen?"},
+      {"role": "user", "content": "hmm sein bester kumpel ist weggezogen im sommer. die waren seit der grundschule befreundet. vielleicht hängt es damit zusammen? hab das gar nicht so als großes ding gesehen"},
+      {"role": "assistant", "content": "Für einen 15-Jährigen kann so ein Verlust eines engen Freundes tatsächlich sehr bedeutsam sein. In dem Alter sind Freundschaften oft wichtiger als Familie. Wie war sein Verhalten direkt nach dem Umzug des Freundes?"},
+      {"role": "user", "content": "jetzt wo sie es sagen, da fings eigentlich an. er war erstmal still und dann wurde es immer mehr. wir dachten das geht vorbei aber scheint ja nicht so"},
+      {"role": "assistant", "content": "Es ist gut, dass Sie jetzt die Verbindung sehen. Haben die beiden noch Kontakt? Online oder per Handy vielleicht?"},
+      {"role": "user", "content": "ich glaub sie zocken manchmal zusammen online aber weiß nicht wie oft. vielleicht sollte ich mal fragen ob er seinen kumpel besuchen will in den ferien? der wohnt jetzt 3 stunden weg"}
+    ],
+    "is_human": true,
+    "source": "human",
+    "difficulty": "medium"
+  },
+  {
+    "id": "auth_013",
+    "subject": "Anfrage bezüglich Angstzuständen",
+    "messages": [
+      {"role": "user", "content": "Ich wende mich an Sie, da ich in letzter Zeit vermehrt unter Angstzuständen leide. Diese treten insbesondere in sozialen Situationen auf und beeinträchtigen meine Lebensqualität erheblich. Ich würde gerne verstehen, woher diese Ängste stammen und wie ich sie überwinden kann."},
+      {"role": "assistant", "content": "Angstzustände in sozialen Situationen sind weit verbreitet und sehr gut behandelbar. Können Sie mir beschreiben, wie sich diese Angst bei Ihnen körperlich und gedanklich äußert?"},
+      {"role": "user", "content": "Die körperlichen Symptome umfassen Herzrasen, Schweißausbrüche und ein Engegefühl in der Brust. Gedanklich kreisen meine Überlegungen um die Befürchtung, von anderen negativ bewertet zu werden oder mich in irgendeiner Weise zu blamieren."},
+      {"role": "assistant", "content": "Das sind klassische Symptome einer sozialen Angst. Wie lange erleben Sie diese Beschwerden schon, und in welchen Situationen treten sie am stärksten auf?"},
+      {"role": "user", "content": "Die Symptome begleiten mich seit etwa zwei Jahren, wobei sie sich in letzter Zeit intensiviert haben. Besonders ausgeprägt sind sie bei beruflichen Präsentationen, Networking-Events und Situationen, in denen ich mit unbekannten Personen interagieren muss."},
+      {"role": "assistant", "content": "Eine Verschlechterung über die Zeit kann verschiedene Gründe haben. Gab es vor etwa zwei Jahren ein bestimmtes Ereignis, das diese Ängste ausgelöst haben könnte?"},
+      {"role": "user", "content": "Tatsächlich fällt der Beginn mit einem Vorfall zusammen, bei dem eine berufliche Präsentation nicht gut verlief und ich kritisiert wurde. Seither habe ich Schwierigkeiten, vor Gruppen zu sprechen, und vermeide solche Situationen nach Möglichkeit."}
+    ],
+    "is_human": false,
+    "source": "claude-3",
+    "difficulty": "easy",
+    "ai_indicators": ["Medizinische Auflistung", "'beeinträchtigen meine Lebensqualität'", "Zu strukturierte Symptombeschreibung"]
+  },
+  {
+    "id": "auth_014",
+    "subject": "Depression und Antriebslosigkeit",
+    "messages": [
+      {"role": "user", "content": "weiß nicht genau wie ich anfangen soll. fühl mich seit wochen wie in watte gepackt. alles ist so anstrengend, selbst aufstehen. meine freundin meint ich soll mir hilfe holen deshalb schreib ich jetzt"},
+      {"role": "assistant", "content": "Es ist gut, dass Sie sich gemeldet haben, auch wenn es sich gerade alles schwer anfühlt. Das 'wie in Watte gepackt' - können Sie das noch etwas beschreiben? Betrifft das eher Ihre Gefühle oder auch körperlich?"},
+      {"role": "user", "content": "beides irgendwie. emotional fühl ich garnichts mehr richtig. und körperlich bin ich einfach nur müde, egal wie viel ich schlafe. sogar essen ist anstrengend geworden. meine freundin macht sich sorgen und ich auch langsam"},
+      {"role": "assistant", "content": "Das klingt nach einer wirklich schweren Zeit. Dass sogar Essen anstrengend geworden ist - wie sieht das konkret aus? Essen Sie regelmäßig?"},
+      {"role": "user", "content": "nicht wirklich. manchmal vergess ich es einfach oder hab keinen hunger. meine freundin muss mich oft erinnern. hab bestimmt 5 kilo abgenommen ohne es zu wollen"},
+      {"role": "assistant", "content": "Die Kombination aus Erschöpfung, fehlendem Appetit und Gewichtsverlust sollte auch ärztlich abgeklärt werden. Haben Sie einen Hausarzt, zu dem Sie gehen könnten?"},
+      {"role": "user", "content": "ja aber ich war ewig nicht. müsste mal anrufen. fühlt sich grad alles so überwältigend an, selbst so ein anruf"}
+    ],
+    "is_human": true,
+    "source": "human",
+    "difficulty": "hard"
+  },
+  {
+    "id": "auth_015",
+    "subject": "Work-Life-Balance optimieren",
+    "messages": [
+      {"role": "user", "content": "Ich würde gerne meine Work-Life-Balance verbessern und suche nach professioneller Unterstützung bei diesem Vorhaben. Aktuell investiere ich einen Großteil meiner Zeit und Energie in berufliche Aktivitäten, was zu Lasten meiner persönlichen Beziehungen und meiner Selbstfürsorge geht."},
+      {"role": "assistant", "content": "Work-Life-Balance ist ein wichtiges Thema für das langfristige Wohlbefinden. Bevor wir an Lösungen arbeiten - was hat Sie dazu bewogen, gerade jetzt etwas zu ändern?"},
+      {"role": "user", "content": "Ein Gespräch mit einem engen Freund hat mir vor Augen geführt, dass ich wichtige Lebensbereiche vernachlässige. Zudem habe ich erste körperliche Warnsignale wie Kopfschmerzen und Schlafstörungen bemerkt, die auf eine unausgewogene Lebensführung hindeuten könnten."}
+    ],
+    "is_human": false,
+    "source": "gpt-4",
+    "difficulty": "medium",
+    "ai_indicators": ["Buzzwords wie 'Work-Life-Balance'", "'Warnsignale die hindeuten könnten'", "Distanzierte Selbstanalyse"]
+  }
+]

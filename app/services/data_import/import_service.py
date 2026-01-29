@@ -13,7 +13,10 @@ import uuid
 import hashlib
 
 from db.database import db
-from db.models.scenario import EmailThread, Message as DBMessage, RatingScenarios, ScenarioThreads
+from db.models.scenario import (
+    EmailThread, Message as DBMessage, RatingScenarios, ScenarioThreads,
+    Feature as DBFeature, FeatureType, LLM
+)
 
 from .format_detector import FormatDetector
 from .schema_validator import SchemaValidator, ValidationResult
@@ -508,6 +511,15 @@ class ImportService:
             else:
                 logger.debug(f"Thread already exists with messages: {item.id}")
 
+            # Check if ranking features need to be created
+            if item.features and task_type == TaskType.RANKING:
+                existing_features = DBFeature.query.filter_by(
+                    item_id=existing.thread_id
+                ).count()
+                if existing_features == 0:
+                    logger.info(f"Thread exists without features, creating: {item.id}")
+                    self._create_features_for_item(existing, item, source)
+
             return existing
 
         # Determine subject based on item type
@@ -525,6 +537,10 @@ class ImportService:
 
         # Create messages based on ItemType
         self._create_messages_for_item(thread, item, source)
+
+        # Create features for ranking items
+        if item.features and task_type == TaskType.RANKING:
+            self._create_features_for_item(thread, item, source)
 
         return thread
 
@@ -657,6 +673,68 @@ class ImportService:
             MessageRole.SYSTEM: "System",
         }
         return role_mapping.get(role, "Unknown")
+
+    def _create_features_for_item(
+        self,
+        thread: EmailThread,
+        item: ImportItem,
+        source: str
+    ) -> None:
+        """
+        Create database features for ranking items.
+
+        Features are LLM-generated texts that users can rank/sort.
+        For example, multiple summaries of an article.
+
+        Args:
+            thread: The parent EvaluationItem/EmailThread
+            item: ImportItem with features to create
+            source: Source name for tracking
+        """
+        if not item.features:
+            return
+
+        # Get or create the "Summary" FeatureType (default for ranking)
+        default_feature_type_name = "Summary"
+
+        for feature in item.features:
+            feature_type_name = feature.type or default_feature_type_name
+
+            # Get or create FeatureType
+            feature_type = FeatureType.query.filter_by(name=feature_type_name).first()
+            if not feature_type:
+                feature_type = FeatureType(name=feature_type_name)
+                db.session.add(feature_type)
+                db.session.flush()
+                logger.info(f"Created FeatureType: {feature_type_name}")
+
+            # Get or create LLM entry for the model/source
+            llm_name = feature.generated_by or source or "Imported"
+            llm = LLM.query.filter_by(name=llm_name).first()
+            if not llm:
+                llm = LLM(name=llm_name)
+                db.session.add(llm)
+                db.session.flush()
+                logger.info(f"Created LLM: {llm_name}")
+
+            # Check if feature already exists (avoid duplicates)
+            existing = DBFeature.query.filter_by(
+                item_id=thread.thread_id,
+                type_id=feature_type.type_id,
+                llm_id=llm.llm_id
+            ).first()
+
+            if not existing:
+                db_feature = DBFeature(
+                    item_id=thread.thread_id,
+                    type_id=feature_type.type_id,
+                    llm_id=llm.llm_id,
+                    content=feature.content
+                )
+                db.session.add(db_feature)
+                logger.debug(f"Created Feature for item {thread.thread_id}: {feature_type_name} by {llm_name}")
+
+        logger.info(f"Created {len(item.features)} features for item {thread.thread_id}")
 
     def get_sample(self, session_id: str, count: int = 5) -> list[dict[str, Any]]:
         """Get a sample of transformed items for preview."""

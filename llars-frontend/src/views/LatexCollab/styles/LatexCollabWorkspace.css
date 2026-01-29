@@ -600,24 +600,50 @@
 }
 
 .comments-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
   font-size: 12px;
   color: rgba(var(--v-theme-on-surface), 0.55);
-  padding: 8px;
+  padding: 20px 8px;
+  text-align: center;
 }
 
 .comment-list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
   overflow-y: auto;
   flex: 1;
   min-height: 0;
+  padding-right: 4px; /* Space for scrollbar */
+}
+
+/* Custom scrollbar for comment list */
+.comment-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.comment-list::-webkit-scrollbar-track {
+  background: rgba(var(--v-theme-on-surface), 0.04);
+  border-radius: 3px;
+}
+
+.comment-list::-webkit-scrollbar-thumb {
+  background: rgba(var(--v-theme-on-surface), 0.15);
+  border-radius: 3px;
+}
+
+.comment-list::-webkit-scrollbar-thumb:hover {
+  background: rgba(var(--v-theme-on-surface), 0.25);
 }
 
 .comment-item {
   border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
   border-radius: 10px;
-  padding: 8px;
+  padding: 10px 12px;
   background: rgba(var(--v-theme-on-surface), 0.02);
   cursor: pointer;
   transition: border-color 0.15s ease, background-color 0.15s ease;
@@ -642,9 +668,8 @@
 
 .comment-body {
   font-size: 12px;
+  line-height: 1.5;
   color: rgb(var(--v-theme-on-surface));
-  max-height: 100px;
-  overflow-y: auto;
   white-space: pre-wrap;
   word-break: break-word;
 }
@@ -659,15 +684,22 @@
 /* Comment threading */
 .comment-thread {
   border-radius: 10px;
-  background: rgba(var(--v-theme-on-surface), 0.02);
-  overflow-y: auto;
-  overflow-x: hidden;
-  max-height: 200px;
-  min-height: 60px;
-  resize: vertical;
+  background: rgba(var(--v-theme-surface-variant), 0.25);
+  overflow: auto; /* Required for resize to work */
+  min-height: 90px; /* Generous minimum height */
+  height: 120px; /* Good initial height */
+  max-height: 400px; /* Reasonable maximum */
+  flex-shrink: 0; /* Don't shrink comments to fit */
+  resize: vertical; /* User can resize vertically */
   transition: border-color 0.15s ease, background-color 0.15s ease;
   /* Default border - will be overridden by inline style for author color */
   border: 2px solid rgba(var(--v-theme-on-surface), 0.08);
+}
+
+/* Resize handle indicator */
+.comment-thread::-webkit-resizer {
+  background: linear-gradient(135deg, transparent 50%, rgba(var(--v-theme-on-surface), 0.2) 50%);
+  border-radius: 0 0 8px 0;
 }
 
 .comment-thread.active {
@@ -680,6 +712,15 @@
 
 .comment-thread.other-document:hover {
   opacity: 1;
+}
+
+.comment-thread.archived {
+  opacity: 0.7;
+  border-style: dashed;
+}
+
+.comment-thread.archived:hover {
+  opacity: 0.9;
 }
 
 .comment-thread .comment-item {

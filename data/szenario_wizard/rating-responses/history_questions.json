@@ -1,0 +1,23 @@
+[
+  {
+    "id": "hist_001",
+    "question": "Was waren die Hauptursachen des Ersten Weltkriegs?",
+    "response": "Der Erste Weltkrieg hatte multiple, verflochtene Ursachen:\n\n**Langfristige Faktoren:**\n- **Imperialismus**: Rivalität um Kolonien, besonders zwischen Deutschland, Frankreich und Großbritannien\n- **Nationalismus**: Übersteigertes Nationalbewusstsein und Unabhängigkeitsbestrebungen (z.B. auf dem Balkan)\n- **Militarismus**: Wettrüsten, besonders die deutsch-britische Flottenrivalität\n- **Bündnissysteme**: Dreibund vs. Triple Entente schufen automatische Eskalationsmechanismen\n\n**Auslöser:**\nDas Attentat von Sarajevo (28. Juni 1914) auf Erzherzog Franz Ferdinand setzte eine Kettenreaktion in Gang: Österreich-Ungarn stellte Serbien ein Ultimatum, Russland mobilisierte, Deutschland erklärte Russland und Frankreich den Krieg.\n\nDie Julikrise zeigt, wie die starren Bündnisse einen lokalen Konflikt zum Weltkrieg eskalierten.",
+    "model": "GPT-4",
+    "category": "Geschichte"
+  },
+  {
+    "id": "hist_002",
+    "question": "Was waren die Hauptursachen des Ersten Weltkriegs?",
+    "response": "Franz Ferdinand wurde erschossen und dann haben alle angefangen zu kämpfen weil sie Bündnisse hatten.",
+    "model": "Mistral-7B",
+    "category": "Geschichte"
+  },
+  {
+    "id": "hist_003",
+    "question": "Erkläre die Bedeutung der Französischen Revolution.",
+    "response": "Die Französische Revolution (1789-1799) war ein Wendepunkt der Weltgeschichte:\n\n**Unmittelbare Errungenschaften:**\n- Abschaffung der absoluten Monarchie und des Feudalsystems\n- Erklärung der Menschen- und Bürgerrechte (1789)\n- Trennung von Kirche und Staat\n\n**Langfristige Auswirkungen:**\n- Verbreitung der Ideale 'Freiheit, Gleichheit, Brüderlichkeit'\n- Entstehung des modernen Nationalstaats\n- Inspiration für Revolutionen weltweit (Lateinamerika, 1848er Revolutionen)\n- Grundlage für Demokratie und Menschenrechte\n\n**Schattenseiten:**\n- Die Terreur kostete tausende Leben\n- Führte zu Napoleons Diktatur\n\nDie Revolution zeigte erstmals, dass das Volk die politische Ordnung grundlegend ändern kann. Ihre Prinzipien prägen bis heute unsere Verfassungen.",
+    "model": "Claude-3",
+    "category": "Geschichte"
+  }
+]

@@ -456,7 +456,7 @@ def ai_resolve_comment(comment_id: int):
                 })
 
         def on_complete(new_text: str, ai_reply_text: str):
-            """Handle completion: create reply, emit events"""
+            """Handle completion: create reply, update comment range, emit events"""
             with app.app_context():
                 # Re-fetch comment and doc in new context
                 _comment = LatexComment.query.get(comment_id)
@@ -467,6 +467,14 @@ def ai_resolve_comment(comment_id: int):
                 # Get the old text from stream state
                 stream_state = CommentAIService.get_active_stream(comment_id)
                 old_text = stream_state.get("old_text", "") if stream_state else ""
+
+                # Update comment range to match new text length
+                # The start position stays the same, but end position changes
+                old_range_end = _comment.range_end
+                new_range_end = _comment.range_start + len(new_text) if _comment.range_start is not None else None
+                if new_range_end is not None:
+                    _comment.range_end = new_range_end
+                    logger.info(f"Updated comment {comment_id} range_end: {old_range_end} -> {new_range_end}")
 
                 # Create AI reply
                 _ai_reply = LatexComment(
@@ -501,18 +509,24 @@ def ai_resolve_comment(comment_id: int):
                     _emit_comment_event(_comment.document_id, 'updated', comment_dict)
                     _emit_workspace_comment_event(_doc.workspace_id, 'updated', comment_dict)
 
-                # Emit completion event
+                # Emit completion event with updated range
                 socketio.emit('latex_collab:ai_resolve:completed', {
                     'comment_id': comment_id,
                     'workspace_id': workspace_id,
                     'document_id': document_id,
                     'changes': {
                         'range_start': range_start,
-                        'range_end': range_end,
+                        'range_end': range_end,  # Original end position (for replacement)
                         'old_text': old_text,
                         'new_text': new_text,
+                        'new_range_end': new_range_end,  # New end position after replacement
                     },
                     'reply': reply_dict,
+                    'comment_updated': {  # Updated comment data for frontend sync
+                        'id': comment_id,
+                        'range_start': range_start,
+                        'range_end': new_range_end,
+                    },
                 })
 
                 # Clear stream state after a delay (allow reconnecting clients to fetch result)

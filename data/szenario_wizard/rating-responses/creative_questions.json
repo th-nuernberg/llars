@@ -1,0 +1,23 @@
+[
+  {
+    "id": "cre_001",
+    "question": "Schreibe einen kurzen Anfang für eine Sci-Fi-Geschichte über den ersten Kontakt mit Außerirdischen.",
+    "response": "**Stille Frequenz**\n\nDr. Maya Chen starrte auf den Monitor, ihre Kaffeetasse vergessen in der Hand. Nach 47 Jahren hatte SETI endlich etwas gefunden – und es war keine zufällige Radioquelle.\n\nDas Signal wiederholte sich alle 73 Sekunden. Primzahlen. Dann die Fibonacci-Folge. Dann etwas, das aussah wie... eine Antwort auf die Voyager-Goldene-Schallplatte.\n\n\"Das ist unmöglich\", flüsterte ihr Kollege. \"Die Voyager ist noch nicht mal—\"\n\n\"Sie haben sie abgefangen\", unterbrach Maya. Ihre Stimme zitterte. \"Vor Jahrzehnten. Und sie kommen.\"\n\nDas Signal änderte sich. Koordinaten erschienen auf dem Bildschirm. Nicht irgendwelche Koordinaten.\n\nDie Koordinaten der Erde.\n\nUnd ein Datum: 47 Tage.",
+    "model": "GPT-4",
+    "category": "Kreatives Schreiben"
+  },
+  {
+    "id": "cre_002",
+    "question": "Schreibe einen kurzen Anfang für eine Sci-Fi-Geschichte über den ersten Kontakt mit Außerirdischen.",
+    "response": "Es war ein normaler Tag bis die Aliens kamen. Sie landeten mit ihrem Raumschiff und sagten hallo. Die Menschen waren überrascht.",
+    "model": "Mistral-7B",
+    "category": "Kreatives Schreiben"
+  },
+  {
+    "id": "cre_003",
+    "question": "Erkläre das Konzept der Relativitätstheorie so, dass ein 10-Jähriger es versteht.",
+    "response": "Stell dir vor, du sitzt in einem superschnellen Zug und wirfst einen Ball nach vorne.\n\n**Für dich im Zug:** Der Ball fliegt ganz normal.\n\n**Für jemanden am Bahnsteig:** Der Ball fliegt viel schneller, weil er die Zuggeschwindigkeit plus deine Wurfkraft hat.\n\nWer hat recht? Beide! Das ist Relativität – Geschwindigkeit hängt davon ab, von wo du guckst.\n\n**Jetzt wird's verrückt:**\nEinstein fand heraus, dass Licht IMMER gleich schnell ist – egal ob du dich bewegst oder nicht. Das ist komisch!\n\nUm das möglich zu machen, passieren seltsame Dinge:\n- **Zeit dehnt sich**: Je schneller du fliegst, desto langsamer vergeht für dich die Zeit. Astronauten altern winzig langsamer!\n- **Dinge werden kürzer**: Ein superscnelles Raumschiff schrumpft in Flugrichtung.\n\nKlingt verrückt, aber GPS-Satelliten müssen das berücksichtigen, sonst wäre die Navigation falsch!",
+    "model": "Claude-3",
+    "category": "Wissenschaftskommunikation"
+  }
+]

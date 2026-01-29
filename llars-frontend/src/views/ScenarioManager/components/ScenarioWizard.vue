@@ -187,17 +187,29 @@
         <h3 class="step-title">{{ $t('scenarioManager.wizard.step2.title') }}</h3>
         <p class="step-description">{{ $t('scenarioManager.wizard.step2.description') }}</p>
 
-        <!-- AI Suggestion Banner -->
+        <!-- Detection Result Banner -->
         <v-alert
           v-if="analysisResult?.suggestedType"
-          type="info"
+          :type="analysisResult?.schemaDetected ? 'success' : 'info'"
           variant="tonal"
           class="mb-4"
         >
           <template v-slot:prepend>
-            <LIcon>mdi-robot</LIcon>
+            <LIcon>{{ analysisResult?.schemaDetected ? 'mdi-check-decagram' : 'mdi-robot' }}</LIcon>
           </template>
-          {{ $t('scenarioManager.wizard.step2.aiSuggests', { type: getSuggestedTypeName(analysisResult.suggestedType) }) }}
+          <template v-if="analysisResult?.schemaDetected">
+            <strong>{{ $t('scenarioManager.wizard.step2.autoDetected') }}:</strong>
+            {{ getSuggestedTypeName(analysisResult.suggestedType) }}
+            <div class="text-caption mt-1" style="opacity: 0.8">
+              {{ $t('scenarioManager.wizard.step2.detectedFields') }}: {{ analysisResult?.matchedFields?.join(', ') || '-' }}
+            </div>
+          </template>
+          <template v-else>
+            {{ $t('scenarioManager.wizard.step2.aiSuggests', { type: getSuggestedTypeName(analysisResult.suggestedType) }) }}
+            <div class="text-caption mt-1" style="opacity: 0.8">
+              {{ $t('scenarioManager.wizard.step2.aiSuggestionNote') }}
+            </div>
+          </template>
         </v-alert>
 
         <!-- Evaluation Type Selection - General Types -->
@@ -1395,6 +1407,10 @@ async function analyzeData() {
                     analysisResult.value.suggestedType = parsed.evaluation_type || parsed.eval_type || EVAL_TYPES.RATING
                     analysisResult.value.suggestedTypeConfidence = parsed.confidence || parsed.eval_type_confidence
                     analysisResult.value.suggestedTypeReasoning = parsed.reasoning || parsed.eval_type_reasoning
+                    // Schema detection metadata
+                    analysisResult.value.schemaDetected = parsed.schema_detected || false
+                    analysisResult.value.detectionSource = parsed.detection_source || 'ai_analysis'
+                    analysisResult.value.matchedFields = parsed.matched_fields || []
                   }
 
                   // Auto-apply AI suggestions

@@ -13,7 +13,7 @@ import hashlib
 import re
 
 from .adapters.base_adapter import (
-    ImportItem, Message, MessageRole, ItemType, TaskType, AdapterResult
+    ImportItem, Message, MessageRole, ItemType, TaskType, AdapterResult, Feature
 )
 
 logger = logging.getLogger(__name__)
@@ -190,6 +190,10 @@ class UniversalTransformer:
 
         # Extract ID
         item_id = self._extract_id(data, config, index)
+
+        # Check for ranking with features (source_text + summary_a/b/c pattern)
+        if self._is_ranking_with_features(data, config):
+            return self._transform_ranking_item(data, config, index, item_id)
 
         # Determine item type based on data structure and task type
         item_type = self._determine_item_type(data, config)
@@ -564,6 +568,161 @@ class UniversalTransformer:
                 return key
 
         return None
+
+    def _detect_ranking_features(self, data: dict[str, Any]) -> tuple[str | None, list[Feature]]:
+        """
+        Detect ranking format with reference text and multiple features to rank.
+
+        Supports patterns like:
+        - source_text + summary_a/b/c
+        - reference + response_1/2/3
+        - article + text_a/b/c
+        - original + summary_1/summary_2/summary_3
+
+        Returns:
+            Tuple of (reference_text, list of Features)
+        """
+        # Reference field patterns (the context/source shown on right side)
+        reference_patterns = [
+            "source_text", "source", "reference", "article", "original",
+            "document", "context", "input_text", "text"
+        ]
+
+        # Find reference text
+        reference_text = None
+        for pattern in reference_patterns:
+            if pattern in data and data[pattern]:
+                reference_text = str(data[pattern])
+                break
+            # Case-insensitive
+            for key in data.keys():
+                if key.lower() == pattern.lower() and data[key]:
+                    reference_text = str(data[key])
+                    break
+            if reference_text:
+                break
+
+        # Feature field patterns (items to rank, shown on left side)
+        # Pattern: prefix + suffix (e.g., summary_a, response_1)
+        feature_prefixes = [
+            "summary", "response", "output", "text", "answer",
+            "generation", "completion", "result"
+        ]
+        feature_suffixes = ["_a", "_b", "_c", "_d", "_e", "_1", "_2", "_3", "_4", "_5"]
+
+        features: list[Feature] = []
+        found_keys: set[str] = set()
+
+        # Search for pattern-based features
+        for prefix in feature_prefixes:
+            for suffix in feature_suffixes:
+                key_patterns = [
+                    f"{prefix}{suffix}",           # summary_a
+                    f"{prefix.title()}{suffix}",   # Summary_a
+                    f"{prefix.upper()}{suffix}",   # SUMMARY_a
+                ]
+
+                for key_pattern in key_patterns:
+                    # Direct match
+                    if key_pattern in data and data[key_pattern] and key_pattern not in found_keys:
+                        # Generate a label from suffix (A, B, C or 1, 2, 3)
+                        label_char = suffix[-1].upper()
+                        features.append(Feature(
+                            type="Summary",
+                            content=str(data[key_pattern]),
+                            generated_by=f"Model_{label_char}"
+                        ))
+                        found_keys.add(key_pattern)
+                        break
+
+                    # Case-insensitive search
+                    for actual_key in data.keys():
+                        if actual_key.lower() == key_pattern.lower() and actual_key not in found_keys:
+                            if data[actual_key]:
+                                label_char = suffix[-1].upper()
+                                features.append(Feature(
+                                    type="Summary",
+                                    content=str(data[actual_key]),
+                                    generated_by=f"Model_{label_char}"
+                                ))
+                                found_keys.add(actual_key)
+                                break
+
+        # Also check for numbered/lettered items array (summaries: [...])
+        array_keys = ["summaries", "responses", "outputs", "items", "texts"]
+        for array_key in array_keys:
+            if array_key in data and isinstance(data[array_key], list):
+                for idx, item in enumerate(data[array_key]):
+                    if item:
+                        label_char = chr(65 + idx)  # A, B, C, ...
+                        content = str(item) if isinstance(item, str) else item.get("content", item.get("text", str(item)))
+                        generated_by = item.get("model", item.get("source", f"Model_{label_char}")) if isinstance(item, dict) else f"Model_{label_char}"
+                        features.append(Feature(
+                            type="Summary",
+                            content=content,
+                            generated_by=generated_by
+                        ))
+
+        return reference_text, features
+
+    def _is_ranking_with_features(self, data: dict[str, Any], config: TransformConfig) -> bool:
+        """
+        Check if data has ranking format with multiple features.
+
+        Returns True if:
+        - task_type is RANKING
+        - Data has reference + multiple feature fields (summary_a/b/c, etc.)
+        """
+        if config.task_type != TaskType.RANKING:
+            return False
+
+        reference_text, features = self._detect_ranking_features(data)
+        return reference_text is not None and len(features) >= 2
+
+    def _transform_ranking_item(
+        self,
+        data: dict[str, Any],
+        config: TransformConfig,
+        index: int,
+        item_id: str
+    ) -> ImportItem | None:
+        """
+        Transform ranking data with reference text and multiple features.
+
+        Creates an ImportItem with:
+        - content: The reference/source text (shown on right side)
+        - features: List of Feature objects to rank (shown on left side)
+        """
+        reference_text, features = self._detect_ranking_features(data)
+
+        if not reference_text:
+            self._warnings.append(f"Item {index}: No reference text found for ranking")
+            return None
+
+        if len(features) < 2:
+            self._warnings.append(f"Item {index}: Need at least 2 features for ranking, found {len(features)}")
+            return None
+
+        # Extract common fields
+        subject = self._extract_field(data, ["subject", "title", "topic", "betreff"])
+        label = self._extract_field(data, ["label", "class", "category", "ground_truth"])
+        metadata = self._extract_metadata(data, config)
+
+        # Add ranking-specific metadata
+        metadata["ranking_features_count"] = len(features)
+        metadata["has_reference"] = True
+
+        logger.info(f"Item {index}: Created ranking item with {len(features)} features")
+
+        return ImportItem(
+            id=item_id,
+            item_type=ItemType.SINGLE_TEXT,  # Reference is single text
+            content=reference_text,
+            features=features,
+            subject=subject,
+            label=str(label) if label is not None else None,
+            metadata=metadata,
+        )
 
 
 def transform_with_ai_analysis(

@@ -5,7 +5,7 @@ Handles version control: commits, baselines, rollback, and change tracking.
 """
 
 from datetime import datetime, timezone
-from difflib import SequenceMatcher
+from difflib import SequenceMatcher, unified_diff
 import logging
 
 from flask import Blueprint, jsonify, request, current_app
@@ -677,3 +677,107 @@ def create_workspace_commit(workspace_id: int):
         ],
         "total_committed": len(created_commits),
     }), 201
+
+
+# ============================================================================
+# Document Diff
+# ============================================================================
+
+@latex_commit_bp.route("/documents/<int:document_id>/diff", methods=["GET"])
+@require_permission("feature:latex_collab:view")
+@handle_api_errors(logger_name="latex_collab")
+def get_document_diff(document_id: int):
+    """Get unified diff for a single document comparing current content to baseline."""
+    username = AuthUtils.extract_username_without_validation()
+    if not username:
+        raise ValidationError("Invalid token")
+
+    doc = LatexDocument.query.get(document_id)
+    if not doc:
+        raise NotFoundError("Document not found")
+
+    ws = LatexWorkspace.query.get(doc.workspace_id)
+    if not ws:
+        raise NotFoundError("Workspace not found")
+    require_workspace_access(ws, username)
+
+    current_content = doc.content_text or ""
+    current_path = build_doc_path(doc)
+
+    # Get baseline from latest commit
+    latest_commit = (
+        LatexCommit.query
+        .filter_by(document_id=doc.id)
+        .filter(LatexCommit.content_snapshot.isnot(None))
+        .order_by(LatexCommit.created_at.desc(), LatexCommit.id.desc())
+        .first()
+    )
+
+    baseline = latest_commit.content_snapshot if latest_commit else ""
+
+    # Generate unified diff
+    baseline_lines = (baseline or "").splitlines(keepends=True)
+    current_lines = current_content.splitlines(keepends=True)
+
+    # Ensure lines end with newline for proper diff formatting
+    if baseline_lines and not baseline_lines[-1].endswith('\n'):
+        baseline_lines[-1] += '\n'
+    if current_lines and not current_lines[-1].endswith('\n'):
+        current_lines[-1] += '\n'
+
+    diff_lines = list(unified_diff(
+        baseline_lines,
+        current_lines,
+        fromfile=f"a/{current_path}",
+        tofile=f"b/{current_path}",
+        lineterm=''
+    ))
+
+    # Calculate stats
+    insertions, deletions = calculate_char_diff(baseline or "", current_content)
+
+    # Parse diff into structured format for frontend
+    hunks = []
+    current_hunk = None
+
+    for line in diff_lines:
+        if line.startswith('@@'):
+            if current_hunk:
+                hunks.append(current_hunk)
+            current_hunk = {
+                'header': line,
+                'lines': []
+            }
+        elif current_hunk is not None:
+            line_type = 'context'
+            if line.startswith('+') and not line.startswith('+++'):
+                line_type = 'addition'
+            elif line.startswith('-') and not line.startswith('---'):
+                line_type = 'deletion'
+            elif line.startswith('\\'):
+                line_type = 'info'
+
+            current_hunk['lines'].append({
+                'type': line_type,
+                'content': line
+            })
+
+    if current_hunk:
+        hunks.append(current_hunk)
+
+    return jsonify({
+        "success": True,
+        "document_id": document_id,
+        "title": doc.title,
+        "path": current_path,
+        "has_changes": current_content != baseline,
+        "insertions": insertions,
+        "deletions": deletions,
+        "baseline_commit_id": latest_commit.id if latest_commit else None,
+        "baseline_text": baseline or "",
+        "current_text": current_content,
+        "diff": {
+            "raw": ''.join(diff_lines),
+            "hunks": hunks
+        }
+    }), 200

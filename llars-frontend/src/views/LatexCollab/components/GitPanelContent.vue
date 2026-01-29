@@ -50,12 +50,40 @@
 
     <!-- File List -->
     <div class="git-files-list">
+      <!-- Select All Row -->
+      <div v-if="totalChanges > 0" class="git-select-all-row">
+        <LCheckbox
+          :model-value="allFilesSelected"
+          :indeterminate="selectedFilesForCommit.length > 0 && !allFilesSelected"
+          size="x-small"
+          class="file-checkbox"
+          @update:model-value="$event ? selectAllFiles() : deselectAllFiles()"
+        />
+        <span class="select-all-label">
+          {{ $t('workspaceGit.files.selectAll') }}
+          <span v-if="selectedFilesForCommit.length > 0" class="selected-count">
+            ({{ selectedFilesForCommit.length }}/{{ totalChanges }})
+          </span>
+        </span>
+      </div>
+
       <div
         v-for="file in changedFiles"
         :key="file.id"
         class="git-file-row"
-        :class="{ 'has-rename': file.old_title || file.old_path }"
+        :class="{
+          'has-rename': file.old_title || file.old_path,
+          'selected': selectedFileId === file.id
+        }"
+        @click="selectFile(file)"
       >
+        <LCheckbox
+          :model-value="selectedFilesForCommit.includes(file.id)"
+          size="x-small"
+          class="file-checkbox"
+          @update:model-value="toggleFileSelection(file.id, $event)"
+          @click.stop
+        />
         <LIcon size="14" :color="getFileIconColor(file.path)">
           {{ getFileIcon(file.path) }}
         </LIcon>
@@ -82,7 +110,16 @@
         v-for="file in deletedFiles"
         :key="`del-${file.id}`"
         class="git-file-row deleted"
+        :class="{ 'selected': selectedFileId === `del-${file.id}` }"
+        @click="selectDeletedFile(file)"
       >
+        <LCheckbox
+          :model-value="selectedFilesForCommit.includes(`del-${file.id}`)"
+          size="x-small"
+          class="file-checkbox"
+          @update:model-value="toggleFileSelection(`del-${file.id}`, $event)"
+          @click.stop
+        />
         <LIcon size="14" color="error">mdi-file-remove</LIcon>
         <span class="file-name">{{ file.title || file.path }}</span>
         <LTag variant="danger" size="sm">D</LTag>
@@ -104,7 +141,7 @@
 </template>
 
 <script setup>
-import { ref, toRef, watch } from 'vue'
+import { ref, toRef, watch, computed } from 'vue'
 import { useGitStatus } from '@/composables/useGitStatus'
 
 const props = defineProps({
@@ -113,7 +150,11 @@ const props = defineProps({
   apiPrefix: { type: String, default: '/api/latex-collab' }
 })
 
-const emit = defineEmits(['open-detail', 'committed', 'total-changes'])
+const emit = defineEmits(['open-detail', 'committed', 'total-changes', 'file-selected'])
+
+// File selection state
+const selectedFileId = ref(null)
+const selectedFilesForCommit = ref([])
 
 const workspaceIdRef = toRef(props, 'workspaceId')
 const {
@@ -147,12 +188,78 @@ async function handleQuickCommit() {
   const success = await quickCommit(quickMessage.value)
   if (success) {
     quickMessage.value = ''
+    selectedFilesForCommit.value = []
     emit('committed')
   }
 }
 
+// File selection for diff viewing
+function selectFile(file) {
+  selectedFileId.value = file.id
+  emit('file-selected', {
+    id: file.id,
+    path: file.path,
+    title: file.title,
+    type: 'changed',
+    status: file.status,
+    insertions: file.insertions,
+    deletions: file.deletions
+  })
+}
+
+function selectDeletedFile(file) {
+  const fileId = `del-${file.id}`
+  selectedFileId.value = fileId
+  emit('file-selected', {
+    id: file.id,
+    path: file.path,
+    title: file.title,
+    type: 'deleted'
+  })
+}
+
+// Toggle checkbox selection for commit
+function toggleFileSelection(fileId, selected) {
+  if (selected) {
+    if (!selectedFilesForCommit.value.includes(fileId)) {
+      selectedFilesForCommit.value.push(fileId)
+    }
+  } else {
+    const index = selectedFilesForCommit.value.indexOf(fileId)
+    if (index > -1) {
+      selectedFilesForCommit.value.splice(index, 1)
+    }
+  }
+}
+
+// Select all files for commit
+function selectAllFiles() {
+  const allIds = [
+    ...changedFiles.value.map(f => f.id),
+    ...deletedFiles.value.map(f => `del-${f.id}`)
+  ]
+  selectedFilesForCommit.value = allIds
+}
+
+// Deselect all files
+function deselectAllFiles() {
+  selectedFilesForCommit.value = []
+}
+
+// Computed: check if all files are selected
+const allFilesSelected = computed(() => {
+  const totalFiles = changedFiles.value.length + deletedFiles.value.length
+  return totalFiles > 0 && selectedFilesForCommit.value.length === totalFiles
+})
+
 // Expose refresh function for parent components
-defineExpose({ refresh })
+defineExpose({
+  refresh,
+  selectedFilesForCommit,
+  selectAllFiles,
+  deselectAllFiles,
+  allFilesSelected
+})
 </script>
 
 <style scoped>
@@ -200,20 +307,52 @@ defineExpose({ refresh })
   padding: 6px 0;
 }
 
+.git-select-all-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  font-size: 0.75rem;
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.06);
+  margin-bottom: 4px;
+}
+
+.select-all-label {
+  color: rgba(var(--v-theme-on-surface), 0.7);
+  font-weight: 500;
+}
+
+.selected-count {
+  color: rgba(var(--v-theme-primary), 1);
+  font-weight: 600;
+}
+
 .git-file-row {
   display: flex;
   align-items: center;
   gap: 6px;
   padding: 4px 10px;
   font-size: 0.75rem;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
 }
 
 .git-file-row:hover {
   background: rgba(var(--v-theme-on-surface), 0.04);
 }
 
+.git-file-row.selected {
+  background: rgba(var(--v-theme-primary), 0.12);
+  border-left: 2px solid rgb(var(--v-theme-primary));
+  padding-left: 8px;
+}
+
 .git-file-row.deleted {
   opacity: 0.7;
+}
+
+.file-checkbox {
+  flex-shrink: 0;
 }
 
 .file-info {

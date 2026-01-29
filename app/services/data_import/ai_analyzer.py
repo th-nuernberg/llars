@@ -3,6 +3,11 @@ AI Analyzer Service for LLM-assisted data analysis and transformation.
 
 Uses LLM to analyze unknown data formats and generate transformation scripts.
 Supports streaming responses for real-time configuration extraction.
+
+IMPORTANT: Structure-based detection (SchemaDetector) is used FIRST.
+AI is only used for:
+1. Configuration details (dimensions, labels, presets) when type is known
+2. Full analysis when structure is ambiguous (uncertain confidence)
 """
 
 from typing import Any, Generator
@@ -12,6 +17,8 @@ import re
 
 from llm.litellm_client import LiteLLMClient
 from db.models.llm_model import LLMModel
+from services.evaluation.schema_export_service import SchemaExportService
+from services.data_import.schema_detector import SchemaDetector, DetectionResult, EvaluationType
 
 logger = logging.getLogger(__name__)
 
@@ -19,20 +26,31 @@ logger = logging.getLogger(__name__)
 DEFAULT_LABEL_COLORS = ["#98d4bb", "#e8a087", "#D1BC8A", "#88c4c8", "#b0ca97"]
 DEFAULT_BUCKET_COLORS = ["#98d4bb", "#D1BC8A", "#e8a087"]
 
+# Preset mappings for each evaluation type
+DEFAULT_PRESETS = {
+    'authenticity': 'binary-authentic',
+    'comparison': 'pairwise',
+    'ranking': 'buckets-3',
+    'labeling': 'multi-label',
+    'mail_rating': 'response-quality',
+    'rating': 'llm-judge-standard',
+}
+
 
 class AIAnalyzer:
     """
     AI-powered data analysis and transformation.
 
+    Uses SchemaDetector FIRST for deterministic type detection.
     Uses LLM to:
-    - Analyze unknown data structures
-    - Suggest field mappings
-    - Generate Python transformation scripts
+    - Generate configuration details (dimensions, labels, presets)
+    - Full analysis only when structure is ambiguous
     """
 
     def __init__(self):
         """Initialize the AI analyzer."""
         self._client = LiteLLMClient()
+        self._schema_detector = SchemaDetector()
 
     def _get_default_model(self) -> str:
         """Get the default LLM model ID."""
@@ -41,6 +59,36 @@ class AIAnalyzer:
             return model.model_id
         return "gpt-4o-mini"  # Fallback
 
+    def detect_type_from_structure(
+        self,
+        data: Any,
+        filename: str | None = None
+    ) -> dict[str, Any]:
+        """
+        Detect evaluation type using deterministic schema detection.
+
+        This is the PRIMARY method for type detection.
+        Returns immediately if type is definite, no AI needed.
+
+        Args:
+            data: The data to analyze (parsed JSON/list/dict)
+            filename: Original filename for context
+
+        Returns:
+            Detection result with eval_type, confidence, and matched fields
+        """
+        result = self._schema_detector.detect(data, filename)
+
+        return {
+            "detected": result.eval_type is not None,
+            "eval_type": result.eval_type.value if result.eval_type else None,
+            "confidence": result.confidence,
+            "matched_fields": result.matched_fields,
+            "reason": result.reason,
+            "all_fields": result.all_fields,
+            "source": "schema_detection"  # Indicates this was structure-based
+        }
+
     def analyze_structure(
         self,
         data: Any,
@@ -48,7 +96,7 @@ class AIAnalyzer:
         max_sample_items: int = 3
     ) -> dict[str, Any]:
         """
-        Analyze data structure using LLM.
+        Analyze data structure - uses SchemaDetector FIRST, AI as fallback.
 
         Args:
             data: The data to analyze (parsed JSON/list/dict)
@@ -58,6 +106,28 @@ class AIAnalyzer:
         Returns:
             Analysis result with detected format and mapping suggestions
         """
+        # STEP 1: Try deterministic schema detection FIRST
+        schema_result = self._schema_detector.detect(data, filename)
+
+        if schema_result.confidence == 'definite':
+            # Type is certain - return immediately without AI
+            logger.info(f"SchemaDetector definitively detected: {schema_result.eval_type.value}")
+            return {
+                "ai_analyzed": False,
+                "schema_detected": True,
+                "detection_source": "schema_detection",
+                "detected_format": "custom",
+                "confidence": 1.0,
+                "suggested_task_type": schema_result.eval_type.value,
+                "matched_fields": schema_result.matched_fields,
+                "reasoning": schema_result.reason,
+                "field_mapping": self._infer_field_mapping(data, schema_result),
+                "warnings": []
+            }
+
+        # STEP 2: Structure unclear - fall back to AI
+        logger.info(f"SchemaDetector uncertain, falling back to AI analysis")
+
         # Prepare sample data
         if isinstance(data, list):
             sample = data[:max_sample_items]
@@ -75,14 +145,29 @@ class AIAnalyzer:
         if len(sample_json) > 4000:
             sample_json = sample_json[:4000] + "\n... (truncated)"
 
+        # Get evaluation types and input examples from central schema
+        eval_types_info = SchemaExportService.get_evaluation_types_description()
+        input_examples = SchemaExportService.get_input_data_examples()
+
         prompt = f"""Analyze this data structure and determine the best way to import it into an LLM evaluation system.
 
-Filename: {filename or 'unknown'}
+**NOTE:** The automatic schema detector could not determine the type definitively.
+Available fields: {schema_result.all_fields}
+
+**FILENAME: {filename or 'unknown'}** ← IMPORTANT! The filename often indicates the evaluation type!
+- "authenticity" in name → authenticity
+- "ranking" in name → ranking
+- "rating" in name → rating
+- "comparison" in name → comparison
 
 Data sample:
 ```json
 {sample_json}
 ```
+
+{eval_types_info}
+
+{input_examples}
 
 Analyze and return a JSON object with:
 1. "detected_format": The format type (one of: "openai", "lmsys", "csv", "custom")
@@ -93,11 +178,19 @@ Analyze and return a JSON object with:
    - "role_field": Field for message role (user/assistant)
    - "content_field": Field for message content
    - "subject_field": Field for conversation subject (optional)
-4. "suggested_task_type": Best evaluation type ("rating", "ranking", "comparison", "mail_rating", "authenticity", "labeling")
-5. "reasoning": Brief explanation of your analysis
+4. "suggested_task_type": Best evaluation type (use INPUT DATA EXAMPLES above to match patterns!)
+5. "reasoning": Brief explanation - which input example matched best?
 6. "warnings": List of any issues or concerns
 
+**MOST IMPORTANT:** Analyze the STRUCTURE of the data!
+Look at EVERY FIELD (id, is_human, is_fake, messages, source_text, summary_a, etc.)
+and compare with the LLARS INPUT DATA EXAMPLES above to find the matching type!
+
 Return ONLY valid JSON, no markdown formatting."""
+
+        # Log prompt for debugging
+        logger.info(f"AI Analyzer Structure Prompt Length: {len(prompt)} chars")
+        logger.debug(f"AI Analyzer Structure Prompt (first 2000 chars):\n{prompt[:2000]}...")
 
         try:
             content = self._client.complete(
@@ -108,6 +201,7 @@ Return ONLY valid JSON, no markdown formatting."""
             if not content:
                 return {
                     "ai_analyzed": False,
+                    "detection_source": "failed",
                     "error": "No response from LLM",
                 }
 
@@ -121,12 +215,15 @@ Return ONLY valid JSON, no markdown formatting."""
 
                 result = json.loads(content.strip())
                 result["ai_analyzed"] = True
+                result["schema_detected"] = False
+                result["detection_source"] = "ai_analysis"
                 return result
 
             except json.JSONDecodeError:
                 logger.warning(f"Could not parse AI response as JSON: {content[:200]}")
                 return {
                     "ai_analyzed": False,
+                    "detection_source": "failed",
                     "error": "Could not parse AI response",
                     "raw_response": content[:500],
                 }
@@ -135,8 +232,52 @@ Return ONLY valid JSON, no markdown formatting."""
             logger.exception(f"AI analysis failed: {e}")
             return {
                 "ai_analyzed": False,
+                "detection_source": "failed",
                 "error": str(e),
             }
+
+    def _infer_field_mapping(self, data: Any, detection: DetectionResult) -> dict:
+        """Infer field mapping based on detected type and data structure."""
+        sample = data[0] if isinstance(data, list) and data else data
+        if isinstance(sample, dict):
+            fields = set(sample.keys())
+        else:
+            fields = set()
+
+        mapping = {}
+
+        # ID field
+        for id_field in ['id', 'item_id', 'uuid', 'index']:
+            if id_field in fields:
+                mapping['id_field'] = id_field
+                break
+
+        # Messages/content field based on type
+        if detection.eval_type == EvaluationType.MAIL_RATING:
+            if 'messages' in fields:
+                mapping['messages_field'] = 'messages'
+            if 'subject' in fields:
+                mapping['subject_field'] = 'subject'
+        elif detection.eval_type == EvaluationType.RATING:
+            for q_field in ['question', 'prompt', 'input', 'query']:
+                if q_field in fields:
+                    mapping['question_field'] = q_field
+                    break
+            for r_field in ['response', 'answer', 'output', 'completion']:
+                if r_field in fields:
+                    mapping['response_field'] = r_field
+                    break
+        elif detection.eval_type == EvaluationType.AUTHENTICITY:
+            for auth_field in ['is_human', 'is_fake', 'synthetic', 'is_ai']:
+                if auth_field in fields:
+                    mapping['authenticity_field'] = auth_field
+                    break
+            for content_field in ['text', 'content', 'messages']:
+                if content_field in fields:
+                    mapping['content_field'] = content_field
+                    break
+
+        return mapping
 
     def generate_transform_script(
         self,
@@ -172,6 +313,9 @@ Return ONLY valid JSON, no markdown formatting."""
         if field_hints:
             hints_text = f"\nField hints from user:\n{json.dumps(field_hints, indent=2)}\n"
 
+        # Get file format examples from central schema
+        format_examples = SchemaExportService.get_file_format_examples()
+
         target_schema = """
 {
   "id": "unique-string-id",
@@ -180,11 +324,16 @@ Return ONLY valid JSON, no markdown formatting."""
     {"role": "assistant", "content": "response text"}
   ],
   "subject": "optional subject/title",
-  "metadata": {}
+  "metadata": {},
+  "features": [
+    {"type": "Summary", "content": "...", "generated_by": "Model_A"}
+  ]
 }
 """
 
         prompt = f"""Generate a Python function to transform this data format into the LLARS import format.
+
+{format_examples}
 
 Input data sample:
 ```json
@@ -261,11 +410,8 @@ Return ONLY the Python code, no markdown formatting or explanations."""
         """
         Analyze user intent together with data structure.
 
-        This is the main method for the "conversational" import wizard.
-        It takes natural language input from the user and determines:
-        - What task type they want (rating, ranking, comparison, etc.)
-        - How to map their data fields to LLARS fields
-        - What evaluation criteria to use
+        IMPORTANT: Uses SchemaDetector FIRST to determine type.
+        AI is then used ONLY for configuration details (dimensions, labels, presets).
 
         Args:
             data: Sample data from uploaded files
@@ -277,7 +423,10 @@ Return ONLY the Python code, no markdown formatting or explanations."""
         Returns:
             Analysis result with task type, field mapping, and criteria
         """
-        # Prepare sample data
+        # STEP 1: Deterministic schema detection FIRST
+        schema_result = self._schema_detector.detect(data, filename)
+
+        # Prepare sample data for AI config generation
         if isinstance(data, list):
             sample = data[:3]
         elif isinstance(data, dict) and "items" in data:
@@ -289,6 +438,20 @@ Return ONLY the Python code, no markdown formatting or explanations."""
         if len(sample_json) > 3500:
             sample_json = sample_json[:3500] + "\n... (truncated)"
 
+        # If type is definite, use AI only for config details
+        if schema_result.confidence == 'definite':
+            logger.info(f"SchemaDetector definite: {schema_result.eval_type.value} - AI for config only")
+            return self._generate_config_for_detected_type(
+                data=data,
+                sample_json=sample_json,
+                schema_result=schema_result,
+                user_intent=user_intent,
+                filename=filename
+            )
+
+        # STEP 2: Structure unclear - full AI analysis (legacy behavior)
+        logger.info(f"SchemaDetector uncertain - falling back to full AI analysis")
+
         structure_info = ""
         if detected_structure:
             structure_info = f"""
@@ -298,50 +461,47 @@ Bereits erkannte Struktur:
 - Einträge: {detected_structure.get('item_count', '?')}
 """
 
-        prompt = f"""Du bist ein Assistent für das LLARS Evaluations-System. Analysiere die Benutzeranfrage und die Datenstruktur.
+        # Get complete schema documentation from central service
+        schema_documentation = SchemaExportService.get_schema_for_ai_prompt()
 
-BENUTZERANFRAGE:
+        prompt = f"""Du bist ein Experte für das LLARS Evaluations-System. Analysiere die hochgeladenen Daten und bestimme den RICHTIGEN Evaluationstyp.
+
+=== BENUTZERANFRAGE ===
 "{user_intent}"
 
-KONTEXT:
+=== KONTEXT ===
 - {file_count} Datei(en) hochgeladen
-- Dateiname: {filename or 'unbekannt'}
+- **DATEINAME: {filename or 'unbekannt'}** ← WICHTIG! Der Dateiname gibt oft einen Hinweis auf den Evaluationstyp!
+  - "authenticity" im Namen → authenticity
+  - "ranking" im Namen → ranking
+  - "rating" im Namen → rating
+  - "comparison" im Namen → comparison
 {structure_info}
 
-DATENBEISPIEL:
+=== HOCHGELADENE DATEN (SAMPLE) ===
 ```json
 {sample_json}
 ```
 
-EVALUATIONSTYPEN (function_type_id):
-| Typ | ID | Beschreibung |
-|-----|----| -------------|
-| ranking | 1 | Items sortieren/kategorisieren (Gut/Mittel/Schlecht) |
-| rating | 2 | Multi-dimensionales Rating (Kohärenz, Flüssigkeit, Relevanz, Konsistenz) |
-| mail_rating | 3 | E-Mail-Beratungsverläufe bewerten (LLARS-spezifisch) |
-| comparison | 4 | A vs B Vergleich - welches ist besser? |
-| authenticity | 5 | Echt/Fake erkennen (Mensch vs KI) |
-| labeling | 7 | Kategorien zuweisen (binär, multi-class) |
+{schema_documentation}
 
-ENTSCHEIDUNGSBAUM:
-1. Zwei Antwort-Versionen (answer_a/answer_b, text_a/text_b)? → comparison
-2. Label-Felder (is_fake, is_human, sentiment)? → authenticity (binär) oder labeling (mehrklassig)
-3. Items sortieren/kategorisieren? → ranking
-4. E-Mail/Chat-Konversationen mit Beratungskontext? → mail_rating
-5. Einzelne Texte bewerten? → rating
+=== DEINE AUFGABE ===
 
-ZIELFORMAT pro Item:
-- conversation: {{"id":"id-1","conversation":[{{"role":"user","content":"..."}},{{"role":"assistant","content":"..."}}],"subject":"..."}}
-- single_text: {{"id":"id-2","content":"...","subject":"..."}}
-- comparison: {{"id":"id-3","text_a":"...","text_b":"...","label_a":"A","label_b":"B"}}
-- labeling/authenticity: {{"id":"id-4","content":"...","label":"optional-ground-truth"}}
+**DAS WICHTIGSTE: Analysiere die STRUKTUR der hochgeladenen Daten!**
+Schau dir JEDES EINZELNE FELD an (id, is_human, messages, source_text, summary_a, etc.)
+und vergleiche es mit den LLARS-Beispielen oben.
+
+1. **VERGLEICHE** die hochgeladenen Daten mit den EINGABEDATEN-BEISPIELEN oben
+2. **ERKENNE** das Muster: Welche FELDER existieren? Welchem LLARS-Beispiel entspricht das?
+3. **WÄHLE** den passenden Evaluationstyp basierend auf den GEFUNDENEN FELDERN
 
 Analysiere und gib ein JSON-Objekt zurück mit:
 
 {{
-  "task_type": "<einer der obigen Task-Typen>",
+  "task_type": "<einer der Evaluationstypen: ranking, rating, comparison, mail_rating, authenticity, labeling>",
   "task_description": "<kurze deutsche Beschreibung was gemacht werden soll>",
   "confidence": <0.0-1.0>,
+  "recommended_preset": "<passendes Preset aus den Empfehlungen oben>",
   "field_mapping": {{
     "<quell-feld>": "<ziel-feld>",
     "messages": "conversation",
@@ -352,16 +512,37 @@ Analysiere und gib ein JSON-Objekt zurück mit:
     "assistant": "Berater"
   }},
   "evaluation_criteria": ["Kriterium1", "Kriterium2"],
-  "reasoning": "<Begründung für die Entscheidungen>"
+  "reasoning": "<Begründung: Welches Eingabedaten-Beispiel hat am besten gepasst und warum?>"
 }}
 
-WICHTIG:
-- evaluation_criteria nur bei rating/mail_rating relevant
-- role_mapping für Konversationen (wer ist user, wer assistant)
-- field_mapping: Pfade wie "messages[].content" sind erlaubt
-- task_type muss einer der obigen Werte sein (nutze "labeling", nicht "classification")
+=== WICHTIGSTE REGEL ===
+
+**VERGLEICHE DIE DATENSTRUKTUR MIT DEN LLARS-BEISPIELEN OBEN!**
+Schau dir JEDES FELD in den hochgeladenen Daten an und finde das passende LLARS-Beispiel.
+Die Feldnamen sind der Schlüssel zur Erkennung des richtigen Evaluationstyps!
+
+=== ENTSCHEIDUNGSHILFE (PRÜFE IN DIESER REIHENFOLGE!) ===
+
+1. AUTHENTICITY wenn: is_human ODER is_fake Feld existiert (HÖCHSTE PRIORITÄT!)
+   → Auch wenn messages[] existiert! is_human/is_fake = IMMER authenticity!
+
+2. COMPARISON wenn: answer_a + answer_b oder text_a + text_b (zwei Versionen)
+
+3. LABELING wenn: sentiment/category/topic Labels (mehrklassig, NICHT is_human)
+
+4. RANKING wenn: source_text + summary_a/b/c oder reference + mehrere Varianten
+
+5. MAIL_RATING wenn: messages[] Array OHNE is_human/is_fake Feld
+
+6. RATING wenn: Einzelne Texte/Antworten ohne Vergleiche
+
+**KRITISCH:** Wenn is_human oder is_fake existiert → IMMER authenticity wählen!
 
 Gib NUR valides JSON zurück, keine Markdown-Formatierung."""
+
+        # Log prompt for debugging
+        logger.info(f"AI Analyzer Intent Prompt Length: {len(prompt)} chars")
+        logger.debug(f"AI Analyzer Intent Prompt:\n{prompt[:2000]}...")
 
         try:
             content = self._client.complete(
@@ -372,6 +553,7 @@ Gib NUR valides JSON zurück, keine Markdown-Formatierung."""
             if not content:
                 return {
                     "success": False,
+                    "detection_source": "ai_failed",
                     "error": "No response from LLM",
                     "task_type": "mail_rating",  # Fallback
                     "field_mapping": {},
@@ -387,6 +569,8 @@ Gib NUR valides JSON zurück, keine Markdown-Formatierung."""
             result = json.loads(content.strip())
             result["success"] = True
             result["ai_analyzed"] = True
+            result["schema_detected"] = False
+            result["detection_source"] = "ai_analysis"
 
             # Ensure required fields exist
             result.setdefault("task_type", "mail_rating")
@@ -402,6 +586,7 @@ Gib NUR valides JSON zurück, keine Markdown-Formatierung."""
             logger.warning(f"Could not parse AI response as JSON: {content[:200] if content else 'empty'}")
             return {
                 "success": False,
+                "detection_source": "ai_failed",
                 "error": "Could not parse AI response",
                 "task_type": "mail_rating",
                 "field_mapping": {},
@@ -411,11 +596,110 @@ Gib NUR valides JSON zurück, keine Markdown-Formatierung."""
             logger.exception(f"Intent analysis failed: {e}")
             return {
                 "success": False,
+                "detection_source": "ai_failed",
                 "error": str(e),
                 "task_type": "mail_rating",
                 "field_mapping": {},
                 "evaluation_criteria": []
             }
+
+    def _generate_config_for_detected_type(
+        self,
+        data: Any,
+        sample_json: str,
+        schema_result: DetectionResult,
+        user_intent: str,
+        filename: str | None = None
+    ) -> dict[str, Any]:
+        """
+        Generate configuration details for a definitively detected type.
+
+        AI is used ONLY for config (dimensions, labels, presets) - NOT for type.
+
+        Args:
+            data: Sample data
+            sample_json: JSON string of sample
+            schema_result: Detection result from SchemaDetector
+            user_intent: User's description
+            filename: Original filename
+
+        Returns:
+            Complete analysis result with fixed type and AI-generated config
+        """
+        eval_type = schema_result.eval_type.value
+        default_preset = DEFAULT_PRESETS.get(eval_type, 'llm-judge-standard')
+
+        # Get preset recommendations from schema service
+        preset_recommendations = SchemaExportService.get_preset_recommendations()
+
+        # Build a focused prompt for config generation only
+        prompt = f"""Du bist ein LLARS Konfigurationsexperte.
+
+Der Evaluationstyp wurde BEREITS AUTOMATISCH ERKANNT als: **{eval_type}**
+(Basierend auf Feldern: {schema_result.matched_fields})
+
+ÄNDERE DEN EVALUATIONSTYP NICHT! Er steht fest.
+
+Benutzeranfrage: "{user_intent}"
+Dateiname: {filename or 'unbekannt'}
+
+Datenbeispiel:
+```json
+{sample_json}
+```
+
+{preset_recommendations}
+
+Generiere KONFIGURATIONSDETAILS für diesen {eval_type}-Typ:
+
+{{
+  "task_description": "<kurze deutsche Beschreibung>",
+  "recommended_preset": "<passendes Preset für {eval_type}>",
+  "field_mapping": {{}},
+  "role_mapping": {{"user": "Klient", "assistant": "Berater"}},
+  "evaluation_criteria": ["Kriterium1", "Kriterium2"],
+  "reasoning": "<Warum dieses Preset?>"
+}}
+
+Gib NUR valides JSON zurück."""
+
+        try:
+            content = self._client.complete(
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.2,
+            )
+
+            if content:
+                if "```json" in content:
+                    content = content.split("```json")[1].split("```")[0]
+                elif "```" in content:
+                    content = content.split("```")[1].split("```")[0]
+
+                config = json.loads(content.strip())
+            else:
+                config = {}
+
+        except (json.JSONDecodeError, Exception) as e:
+            logger.warning(f"AI config generation failed: {e}, using defaults")
+            config = {}
+
+        # Build final result - type is FIXED from schema detection
+        return {
+            "success": True,
+            "task_type": eval_type,  # Fixed from schema detection
+            "task_description": config.get("task_description", f"{eval_type.capitalize()} Evaluation"),
+            "confidence": 1.0,  # 100% confident because schema detected
+            "recommended_preset": config.get("recommended_preset", default_preset),
+            "field_mapping": config.get("field_mapping", self._infer_field_mapping(data, schema_result)),
+            "role_mapping": config.get("role_mapping", {"user": "Klient", "assistant": "Berater"}),
+            "evaluation_criteria": config.get("evaluation_criteria", []),
+            "reasoning": f"Typ automatisch erkannt anhand von: {schema_result.matched_fields}. {config.get('reasoning', '')}",
+            # Metadata
+            "ai_analyzed": True,
+            "schema_detected": True,
+            "detection_source": "schema_detection",
+            "matched_fields": schema_result.matched_fields,
+        }
 
     def suggest_improvements(
         self,
@@ -518,60 +802,54 @@ Return ONLY valid JSON."""
         config_json = json.dumps(current_config, indent=2, ensure_ascii=False)
 
         # Build system prompt for config extraction
-        # Schema information aligned with central evaluation_data_schemas.py
-        system_prompt = """Du bist ein Assistent für das LLARS Evaluations-System.
+        # Get schema documentation from central service
+        eval_types = SchemaExportService.get_evaluation_types_description()
+        preset_recommendations = SchemaExportService.get_preset_recommendations()
+        input_examples = SchemaExportService.get_input_data_examples()
+
+        system_prompt = f"""Du bist ein Experte für das LLARS Evaluations-System.
 Du hilfst Benutzern, ihre Daten für Evaluationen zu konfigurieren.
 
 DEINE AUFGABE:
 1. Verstehe was der Benutzer möchte
-2. Extrahiere Konfigurationswerte aus dem Gespräch
-3. Gib strukturierte Updates und freundliche Antworten
+2. Erkenne den richtigen Evaluationstyp basierend auf den Datenmustern
+3. Extrahiere Konfigurationswerte aus dem Gespräch
+4. Gib strukturierte Updates und freundliche Antworten
 
-EVALUATIONSTYPEN (function_type_id):
-| Typ | ID | Beschreibung |
-|-----|----| -------------|
-| ranking | 1 | Items sortieren/kategorisieren (Gut/Mittel/Schlecht) |
-| rating | 2 | Multi-dimensionales Rating (Kohärenz, Flüssigkeit, Relevanz, Konsistenz) |
-| mail_rating | 3 | E-Mail-Beratungsverläufe bewerten (LLARS-spezifisch) |
-| comparison | 4 | A vs B Vergleich - welches ist besser? |
-| authenticity | 5 | Echt/Fake erkennen (Mensch vs KI) |
-| labeling | 7 | Kategorien zuweisen (binär, multi-class) |
+{eval_types}
 
-PRESET-EMPFEHLUNGEN:
-- rating: "llm-judge-standard" (4 Dimensionen) oder "response-quality", "news-article"
-- ranking: "buckets-3" (Gut/Mittel/Schlecht) oder "buckets-5"
-- labeling: "binary-authentic" oder "sentiment-3"
-- comparison: "pairwise" oder "multicriteria"
-- authenticity: "nachricht-echtheit" oder "ki-generiert"
+{input_examples}
+
+{preset_recommendations}
 
 KONFIGURATIONSSTRUKTUR:
 
 Labels (für authenticity/labeling):
-[{"name": "echt", "color": "#98d4bb", "description": "Von Menschen"}, ...]
+[{{"name": "echt", "color": "#98d4bb", "description": "Von Menschen"}}, ...]
 
 Buckets (für ranking):
-[{"name": "gut", "order": 1, "color": "#98d4bb"}, {"name": "mittel", "order": 2, "color": "#D1BC8A"}, {"name": "schlecht", "order": 3, "color": "#e8a087"}]
+[{{"name": "gut", "order": 1, "color": "#98d4bb"}}, {{"name": "mittel", "order": 2, "color": "#D1BC8A"}}, {{"name": "schlecht", "order": 3, "color": "#e8a087"}}]
 
 Dimensions (für rating/mail_rating):
-[{"id": "coherence", "name": "Kohärenz", "weight": 0.25}, {"id": "fluency", "name": "Flüssigkeit", "weight": 0.25}]
+[{{"id": "coherence", "name": "Kohärenz", "weight": 0.25}}, {{"id": "fluency", "name": "Flüssigkeit", "weight": 0.25}}]
 
 Scales (für rating/mail_rating):
-{"min": 1, "max": 5, "labels": {"1": "Sehr schlecht", "5": "Sehr gut"}}
+{{"min": 1, "max": 5, "labels": {{"1": "Sehr schlecht", "5": "Sehr gut"}}}}
 
 ANTWORTFORMAT:
 Antworte mit einem JSON-Block am ANFANG deiner Nachricht, gefolgt von deiner Erklärung:
 
 ```config
-{
+{{
   "task_type": "...",
   "recommended_preset": "preset-id",
   "labels": [...],
   "buckets": [...],
   "dimensions": [...],
-  "scales": {...},
-  "field_mapping": {...},
-  "role_mapping": {...}
-}
+  "scales": {{}},
+  "field_mapping": {{}},
+  "role_mapping": {{}}
+}}
 ```
 
 Dann deine freundliche Erklärung auf Deutsch.
@@ -580,13 +858,14 @@ WICHTIG:
 - Gib nur Felder im config-Block an, die du ändern möchtest
 - Lass Felder weg, die unverändert bleiben
 - Wenn nichts geändert werden soll, lass den config-Block weg
-- task_type muss einer der obigen Werte sein (nutze "labeling", nicht "classification")
+- task_type muss einer der Werte aus der Evaluationstypen-Tabelle sein (nutze "labeling", nicht "classification")
 - Empfehle immer ein passendes Preset mit recommended_preset
 - Antworte immer auf Deutsch und freundlich"""
 
         # Build user context
         context_msg = f"""KONTEXT:
-Dateiname: {filename or 'unbekannt'}
+**DATEINAME: {filename or 'unbekannt'}** ← WICHTIG! Nutze den Dateinamen als Hinweis!
+(authenticity/ranking/rating/comparison im Namen = entsprechender Typ)
 
 Datenbeispiel:
 ```json
@@ -610,6 +889,10 @@ Aktuelle Konfiguration:
                 "role": msg.get("role", "user"),
                 "content": msg.get("content", "")
             })
+
+        # Log prompt for debugging
+        logger.info(f"AI Chat Refine System Prompt Length: {len(system_prompt)} chars")
+        logger.debug(f"AI Chat Refine System Prompt:\n{system_prompt[:3000]}...")
 
         try:
             # Emit thinking event

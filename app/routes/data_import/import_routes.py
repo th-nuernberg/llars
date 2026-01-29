@@ -318,19 +318,21 @@ def import_from_data():
         filename=source_name
     )
 
-    # Transform the data with field mappings if provided
-    transform_options = {}
-    if field_mapping:
-        # Convert AI field_mapping format to adapter mappings format
-        transform_options['mappings'] = {
-            'id': field_mapping.get('id_field'),
-            'text': field_mapping.get('content_field'),
-            'title': field_mapping.get('label_field'),
-            'question': field_mapping.get('reference_field'),
-        }
-        logger.info(f"Using AI-provided field mappings: {transform_options['mappings']}")
+    # Build AI analysis object for UniversalTransformer
+    # This ensures ranking feature detection works correctly
+    ai_analysis = {
+        'task_type': task_type.value if task_type else 'mail_rating',
+        'field_mapping': field_mapping or {},
+        'role_mapping': {'user': 'Klient', 'assistant': 'Berater'},
+        'evaluation_criteria': []
+    }
 
-    session = import_service.transform(session.session_id, options=transform_options)
+    if field_mapping:
+        logger.info(f"Using AI-provided field mappings: {field_mapping}")
+
+    # Use transform_with_ai to leverage UniversalTransformer
+    # This enables ranking feature detection (source_text + summary_a/b/c)
+    session = import_service.transform_with_ai(session.session_id, ai_analysis=ai_analysis)
 
     if session.status == "error":
         raise ValidationError(f"Transform failed: {session.errors}")

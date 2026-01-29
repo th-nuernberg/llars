@@ -97,13 +97,16 @@
                       v-for="file in changedFiles"
                       :key="file.id"
                       class="file-item"
-                      :class="{ selected: selectedFiles.includes(file.id) }"
-                      @click="toggleFile(file.id)"
+                      :class="{
+                        selected: selectedFiles.includes(file.id),
+                        'diff-active': selectedDiffFileId === file.id
+                      }"
+                      @click="selectFileForDiff(file)"
                     >
-                      <v-checkbox
+                      <LCheckbox
                         :model-value="selectedFiles.includes(file.id)"
-                        density="compact"
-                        hide-details
+                        size="small"
+                        class="file-checkbox"
                         @click.stop
                         @update:model-value="toggleFile(file.id)"
                       />
@@ -348,7 +351,7 @@
               </div>
               <div class="card-content diff-content">
                 <!-- No document selected (Workspace Mode Only) -->
-                <div v-if="entityMode === 'workspace' && !selectedDocumentId" class="no-document">
+                <div v-if="entityMode === 'workspace' && !selectedDiffFileId && !selectedDocumentId" class="no-document">
                   <LIcon size="40" color="grey-lighten-1" class="mb-2">mdi-file-document-outline</LIcon>
                   <span>{{ $t('workspaceGit.diff.selectFile') }}</span>
                 </div>
@@ -558,6 +561,8 @@ const baselineSnapshot = ref('')
 const baselineCommitId = ref(null)
 const baselineCommitMessage = ref('')
 const commitSnapshotCache = new Map()
+const selectedDiffFileId = ref(null)
+const currentFileDiff = ref(null)
 
 // Computed
 const commitOptions = computed(() => recentCommits.value.map((c) => ({
@@ -715,6 +720,55 @@ function selectCommitForDiff(commitId) {
     const selectedIndex = recentCommits.value.findIndex((c) => c.id === commitId)
     const previous = selectedIndex >= 0 ? recentCommits.value[selectedIndex + 1] : null
     baseCommitId.value = previous ? previous.id : INITIAL_BASE
+  }
+}
+
+function selectFileForDiff(file) {
+  selectedDiffFileId.value = file.id
+  // Also toggle selection for commit
+  if (!selectedFiles.value.includes(file.id)) {
+    toggleFile(file.id)
+  }
+  // Refresh diff for this file
+  refreshDiffForFile(file.id)
+}
+
+async function refreshDiffForFile(fileId) {
+  if (!fileId) return
+
+  loadingDiff.value = true
+  diffError.value = ''
+
+  try {
+    // Use the diff endpoint which returns baseline_text and current_text
+    const diffRes = await axios.get(
+      `${API_BASE}${props.apiPrefix}/documents/${fileId}/diff`,
+      { headers: authHeaders() }
+    )
+
+    const file = changedFiles.value.find(f => f.id === fileId)
+    const data = diffRes.data
+
+    diffBaseLabel.value = data?.baseline_commit_id
+      ? `#${data.baseline_commit_id}`
+      : t('workspaceGit.diff.initial')
+    diffCompareLabel.value = t('workspaceGit.diff.workingTree') + (file ? ` (${data?.path || file.path})` : '')
+
+    // Use the text content from the diff endpoint
+    diffBaseText.value = data?.baseline_text || ''
+    diffCompareText.value = data?.current_text || ''
+
+    // Store for reference
+    currentFileDiff.value = {
+      file,
+      baseline: diffBaseText.value,
+      current: diffCompareText.value,
+      diffData: data
+    }
+  } catch (e) {
+    diffError.value = e?.response?.data?.error || e?.message || t('workspaceGit.errors.diffFailed')
+  } finally {
+    loadingDiff.value = false
   }
 }
 
@@ -921,6 +975,24 @@ watch([baseCommitId, compareCommitId], async () => {
 
 .file-item.selected {
   background: rgba(var(--v-theme-primary), 0.12);
+}
+
+.file-item.diff-active {
+  border-left: 3px solid rgb(var(--v-theme-accent, var(--v-theme-primary)));
+  background: rgba(var(--v-theme-accent, var(--v-theme-primary)), 0.15);
+}
+
+.file-checkbox {
+  flex-shrink: 0;
+}
+
+.file-checkbox :deep(.v-selection-control) {
+  min-height: unset;
+}
+
+.file-checkbox :deep(.v-selection-control__wrapper) {
+  width: 16px;
+  height: 16px;
 }
 
 .file-details {

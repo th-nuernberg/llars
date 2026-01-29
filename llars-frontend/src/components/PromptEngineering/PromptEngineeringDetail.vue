@@ -197,16 +197,32 @@
           </div>
         </div>
 
-        <!-- Git Panel -->
-        <div v-if="showGitPanel" ref="gitPanelRef" class="mt-4">
-          <PromptGitPanel
-            :prompt-id="Number(promptId)"
-            :summary="gitSummary"
+        <!-- Git Panel (using common Git components) -->
+        <div v-if="showGitPanel" ref="gitPanelRef" class="mt-4 git-widget-container">
+          <GitStatusWidget
+            :entity-id="Number(promptId)"
+            entity-mode="single"
+            api-prefix="/api/prompts"
+            :collapsed="false"
             :can-commit="true"
+            :summary="gitSummary"
             :get-content="getContentSnapshot"
             @committed="onGitCommitted"
+            @open-detail="gitDetailDialogOpen = true"
           />
         </div>
+
+        <!-- Git Detail Dialog -->
+        <GitDetailDialog
+          v-model="gitDetailDialogOpen"
+          :entity-id="Number(promptId)"
+          entity-mode="single"
+          api-prefix="/api/prompts"
+          :can-commit="true"
+          :summary="gitSummary"
+          :get-content="getContentSnapshot"
+          @committed="onGitCommitted"
+        />
 
         <!-- Debug Info (Development only) -->
         <div v-if="isDevelopment" class="debug-info">
@@ -463,7 +479,7 @@ Quill.register(UserHighlightBlot);
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import TestPromptDialog from './TestPromptDialog.vue';
 import VariableManagerDialog from './VariableManagerDialog.vue';
-import PromptGitPanel from './PromptGitPanel.vue';
+import { GitStatusWidget, GitDetailDialog } from '@/components/common/Git';
 import { useRoute, useRouter } from 'vue-router';
 import 'quill/dist/quill.snow.css';
 import draggable from 'vuedraggable';
@@ -648,6 +664,7 @@ const {
 
 // Git versioning - declare early so editors can reference showGitPanel
 const showGitPanel = ref(true); // Stored in localStorage
+const gitDetailDialogOpen = ref(false);
 const gitDiff = usePromptGitDiff(promptId, users);
 
 const getCurrentUserColor = () => {

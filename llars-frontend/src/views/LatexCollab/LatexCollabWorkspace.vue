@@ -627,7 +627,7 @@ import { useActiveDuration, useVisibilityTracker, useScrollDepth } from '@/compo
 import MarkdownTreePanel from '@/components/MarkdownCollab/MarkdownTreePanel.vue'
 import LatexEditorPane from '@/components/LatexCollab/LatexEditorPane.vue'
 import LatexPdfViewer from '@/components/LatexCollab/LatexPdfViewer.vue'
-import GitDetailDialog from '@/components/LatexCollab/Git/GitDetailDialog.vue'
+import { GitDetailDialog } from '@/components/common/Git'
 import ZoteroPanel from '@/components/LatexCollab/Zotero/ZoteroPanel.vue'
 import { AUTH_STORAGE_KEYS, getAuthStorageItem } from '@/utils/authStorage'
 import { getAvatarUrl, formatDisplayName, formatRelativeDate } from '@/utils/userUtils'

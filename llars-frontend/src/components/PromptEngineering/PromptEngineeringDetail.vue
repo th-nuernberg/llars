@@ -856,7 +856,8 @@ watch(
         editor._gitListenerAttached = true;
       }
     }
-  }
+  },
+  { immediate: true }
 );
 
 // Lifecycle hooks

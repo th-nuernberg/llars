@@ -400,7 +400,7 @@ import { useGitStatus } from '@/composables/useGitStatus'
 import MarkdownDiffViewer from '@/components/MarkdownCollab/MarkdownDiffViewer.vue'
 import { AUTH_STORAGE_KEYS, getAuthStorageItem } from '@/utils/authStorage'
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:55080'
+const API_BASE = import.meta.env.VITE_API_BASE_URL || ''
 const INITIAL_BASE = '__initial__'
 
 const props = defineProps({

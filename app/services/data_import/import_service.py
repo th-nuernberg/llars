@@ -496,7 +496,18 @@ class ImportService:
         ).first()
 
         if existing:
-            logger.debug(f"Thread already exists: {item.id}")
+            # Thread exists - check if it has messages
+            existing_messages = DBMessage.query.filter_by(
+                thread_id=existing.thread_id
+            ).count()
+
+            if existing_messages == 0:
+                # Thread exists but has no messages - create them now
+                logger.info(f"Thread exists without messages, creating: {item.id}")
+                self._create_messages_for_item(existing, item, source)
+            else:
+                logger.debug(f"Thread already exists with messages: {item.id}")
+
             return existing
 
         # Determine subject based on item type

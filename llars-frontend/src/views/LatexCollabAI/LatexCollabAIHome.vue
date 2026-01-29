@@ -342,7 +342,7 @@ const { isLoading, withLoading } = useSkeletonLoading(['workspaces'])
 const { isMobile, isTablet } = useMobile()
 
 // Uses the same API as LatexCollab (shares workspaces)
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:55080'
+const API_BASE = import.meta.env.VITE_API_BASE_URL || ''
 
 const workspaces = ref([])
 const newWorkspaceIds = ref(new Set())

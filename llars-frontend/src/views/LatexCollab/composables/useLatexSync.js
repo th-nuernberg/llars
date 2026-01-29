@@ -9,7 +9,7 @@ import { ref, watch, onUnmounted } from 'vue'
 import axios from 'axios'
 import { AUTH_STORAGE_KEYS, getAuthStorageItem } from '@/utils/authStorage'
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:55080'
+const API_BASE = import.meta.env.VITE_API_BASE_URL || ''
 const SYNC_KEY = 'latex-collab-sync-enabled'
 
 function authHeaders() {

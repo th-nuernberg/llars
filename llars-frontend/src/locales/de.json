@@ -1030,6 +1030,68 @@
     },
     "common": {
       "childFallback": "Kind"
+    },
+    "export": {
+      "title": "Fall exportieren",
+      "description": "Exportiert den Fall als JSON-Datei für Backup oder Import in andere Instanzen.",
+      "button": "Exportieren",
+      "success": "Fall erfolgreich exportiert",
+      "error": "Export fehlgeschlagen"
+    },
+    "import": {
+      "title": "Fall importieren",
+      "description": "Importiert einen Fall aus einer JSON-Datei. Fälle können aus anderen LLARS-Instanzen exportiert und hier importiert werden.",
+      "button": "Importieren",
+      "fileLabel": "JSON-Datei auswählen",
+      "nameOverride": "Name überschreiben (optional)",
+      "nameOverrideHint": "Leer lassen um den Namen aus der Exportdatei zu verwenden",
+      "publishImmediately": "Sofort veröffentlichen",
+      "success": "Fall \"{name}\" erfolgreich importiert",
+      "error": "Import fehlgeschlagen",
+      "invalidFormat": "Ungültiges Dateiformat. Erwartet wird eine KAIMO-Export-JSON.",
+      "parseError": "Die Datei konnte nicht gelesen werden. Bitte prüfen Sie das JSON-Format.",
+      "preview": "{docs} Dokumente, {hints} Hinweise"
+    },
+    "results": {
+      "title": "Ergebnisse",
+      "subtitle": "Aggregierte Bewertungen aller Fachkräfte",
+      "noAssessments": "Noch keine Bewertungen vorhanden",
+      "assessmentCount": "{count} Bewertung(en)",
+      "hintAnalysis": "Hinweis-Analyse",
+      "categoryDistribution": "Kategorie-Verteilung",
+      "ratingDistribution": "Rating-Verteilung",
+      "agreementRate": "Übereinstimmung",
+      "expectedCategory": "Erwartete Kategorie",
+      "assignedCategories": "Zugewiesene Kategorien",
+      "verdictDistribution": "Urteil-Verteilung",
+      "verdicts": {
+        "endangered": "Gefährdet",
+        "notEndangered": "Nicht gefährdet",
+        "inconclusive": "Keine Einschätzung möglich"
+      }
+    },
+    "categories": {
+      "grundversorgung": "Grundversorgung des jungen Menschen",
+      "entwicklungssituation": "Entwicklungssituation des jungen Menschen",
+      "familiensituation": "Familiensituation",
+      "eltern_erziehungsberechtigte": "Eltern / Erziehungsberechtigte"
+    },
+    "subcategories": {
+      "koerperliche_gesundheit_kind": "Körperliche Gesundheit des Kindes",
+      "psychische_gesundheit_kind": "Psychische Gesundheit des Kindes",
+      "substanzen_kind": "Medikamenten- und Substanzkonsum des Kindes",
+      "aufsicht_betreuung": "Aufsicht / Betreuungssituation des Kindes",
+      "biografie_kind": "Biografie des Kindes",
+      "sozialverhalten_kind": "Sozialverhalten / Sozialkontakte des Kindes",
+      "sexualentwicklung": "Sexualentwicklung des Kindes",
+      "bildung_leistung": "Bildung- und Leistungsbereich des Kindes",
+      "wohnsituation": "Wohnsituation",
+      "wirtschaftliche_situation": "Wirtschaftliche Situation",
+      "familiaere_beziehungen": "Familiäre Beziehungen",
+      "biografie_eltern": "Biografie der Erziehungsberechtigten",
+      "gesundheit_eltern": "Gesundheit der Erziehungsberechtigten",
+      "wohlbefinden_eltern": "Wohlbefinden der Erziehungsberechtigten",
+      "sozialverhalten_eltern": "Sozialverhalten der Erziehungsberechtigten"
     }
   },
   "oncoco": {
@@ -2906,10 +2968,13 @@
       "add": "Hinzufügen",
       "removeTitle": "Nutzer entfernen",
       "removeConfirm": "Möchten Sie {name} wirklich aus diesem Szenario entfernen?",
+      "changeRoleFor": "Rolle ändern für {name}:",
+      "newRole": "Neue Rolle",
+      "viewerHint": "Viewer haben nur Lesezugriff und können keine Bewertungen abgeben.",
       "roles": {
         "owner": "Besitzer",
         "evaluator": "Evaluator",
-        "rater": "Rater"
+        "viewer": "Betrachter"
       }
     },
     "settings": {
@@ -4430,7 +4495,12 @@
       "aiProcessing": "KI verarbeitet...",
       "aiSuccess": "KI hat die Änderung umgesetzt",
       "aiError": "KI konnte die Änderung nicht umsetzen: {error}",
-      "aiDisabled": "KI-Assistent ist deaktiviert"
+      "aiDisabled": "KI-Assistent ist deaktiviert",
+      "aiStreaming": "KI generiert...",
+      "aiWaiting": "Warte auf KI-Antwort...",
+      "aiCompleted": "Fertig",
+      "aiChars": "Zeichen",
+      "aiStreamToggle": "Stream-Fenster ein-/ausblenden"
     },
     "ai": {
       "rewrite": "Umformulieren",

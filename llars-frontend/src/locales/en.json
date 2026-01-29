@@ -1030,6 +1030,68 @@
     },
     "common": {
       "childFallback": "Child"
+    },
+    "export": {
+      "title": "Export case",
+      "description": "Exports the case as JSON file for backup or import into other instances.",
+      "button": "Export",
+      "success": "Case exported successfully",
+      "error": "Export failed"
+    },
+    "import": {
+      "title": "Import case",
+      "description": "Imports a case from a JSON file. Cases can be exported from other LLARS instances and imported here.",
+      "button": "Import",
+      "fileLabel": "Select JSON file",
+      "nameOverride": "Override name (optional)",
+      "nameOverrideHint": "Leave empty to use the name from the export file",
+      "publishImmediately": "Publish immediately",
+      "success": "Case \"{name}\" imported successfully",
+      "error": "Import failed",
+      "invalidFormat": "Invalid file format. Expected a KAIMO export JSON.",
+      "parseError": "Could not read the file. Please check the JSON format.",
+      "preview": "{docs} documents, {hints} hints"
+    },
+    "results": {
+      "title": "Results",
+      "subtitle": "Aggregated assessments from all professionals",
+      "noAssessments": "No assessments yet",
+      "assessmentCount": "{count} assessment(s)",
+      "hintAnalysis": "Hint Analysis",
+      "categoryDistribution": "Category Distribution",
+      "ratingDistribution": "Rating Distribution",
+      "agreementRate": "Agreement Rate",
+      "expectedCategory": "Expected Category",
+      "assignedCategories": "Assigned Categories",
+      "verdictDistribution": "Verdict Distribution",
+      "verdicts": {
+        "endangered": "Endangered",
+        "notEndangered": "Not endangered",
+        "inconclusive": "Inconclusive"
+      }
+    },
+    "categories": {
+      "grundversorgung": "Basic care for the young person",
+      "entwicklungssituation": "Development situation of the young person",
+      "familiensituation": "Family situation",
+      "eltern_erziehungsberechtigte": "Parents / Legal guardians"
+    },
+    "subcategories": {
+      "koerperliche_gesundheit_kind": "Physical health of the child",
+      "psychische_gesundheit_kind": "Mental health of the child",
+      "substanzen_kind": "Medication and substance use of the child",
+      "aufsicht_betreuung": "Supervision / Care situation of the child",
+      "biografie_kind": "Biography of the child",
+      "sozialverhalten_kind": "Social behavior / Social contacts of the child",
+      "sexualentwicklung": "Sexual development of the child",
+      "bildung_leistung": "Education and performance area of the child",
+      "wohnsituation": "Housing situation",
+      "wirtschaftliche_situation": "Economic situation",
+      "familiaere_beziehungen": "Family relationships",
+      "biografie_eltern": "Biography of the legal guardians",
+      "gesundheit_eltern": "Health of the legal guardians",
+      "wohlbefinden_eltern": "Well-being of the legal guardians",
+      "sozialverhalten_eltern": "Social behavior of the legal guardians"
     }
   },
   "oncoco": {
@@ -2906,10 +2968,13 @@
       "add": "Add",
       "removeTitle": "Remove User",
       "removeConfirm": "Are you sure you want to remove {name} from this scenario?",
+      "changeRoleFor": "Change role for {name}:",
+      "newRole": "New role",
+      "viewerHint": "Viewers have read-only access and cannot submit ratings.",
       "roles": {
         "owner": "Owner",
         "evaluator": "Evaluator",
-        "rater": "Rater"
+        "viewer": "Viewer"
       }
     },
     "settings": {
@@ -4583,7 +4648,12 @@
       "aiProcessing": "AI is processing...",
       "aiSuccess": "AI has implemented the change",
       "aiError": "AI could not implement the change: {error}",
-      "aiDisabled": "AI assistant is disabled"
+      "aiDisabled": "AI assistant is disabled",
+      "aiStreaming": "AI is generating...",
+      "aiWaiting": "Waiting for AI response...",
+      "aiCompleted": "Completed",
+      "aiChars": "characters",
+      "aiStreamToggle": "Toggle stream window"
     },
     "ai": {
       "rewrite": "Rewrite",

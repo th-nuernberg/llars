@@ -3,11 +3,13 @@ LaTeX Collab Comment AI Service.
 
 Provides AI-assisted comment resolution for LaTeX documents.
 Uses LLM to analyze comments and suggest document changes.
+Supports streaming for real-time token display.
 """
 
 import logging
+import threading
 from dataclasses import dataclass
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Callable, Dict, Any
 
 from db.database import db
 from db.tables import LatexComment, LatexDocument
@@ -16,6 +18,11 @@ from services.system_settings_service import get_setting
 from llm.openai_utils import extract_message_text
 
 logger = logging.getLogger(__name__)
+
+# In-memory storage for active AI resolve streams (for reconnection support)
+# Key: comment_id, Value: {"content": str, "status": str, "result": dict}
+_active_streams: Dict[int, Dict[str, Any]] = {}
+_streams_lock = threading.Lock()
 
 
 @dataclass
@@ -239,3 +246,167 @@ Bitte setze die Anmerkung um und gib das Ergebnis im JSON-Format zurück."""
             raise ValueError("LLM returned empty new_text")
 
         return new_text, ai_reply
+
+    # =========================================================================
+    # Streaming Support
+    # =========================================================================
+
+    @staticmethod
+    def get_active_stream(comment_id: int) -> Optional[Dict[str, Any]]:
+        """Get the current state of an active AI resolve stream for reconnection."""
+        with _streams_lock:
+            return _active_streams.get(comment_id)
+
+    @staticmethod
+    def clear_stream(comment_id: int):
+        """Clear a finished stream from memory."""
+        with _streams_lock:
+            _active_streams.pop(comment_id, None)
+
+    @staticmethod
+    def resolve_comment_streaming(
+        comment: LatexComment,
+        document: LatexDocument,
+        on_token: Callable[[str], None],
+        on_complete: Callable[[str, str], None],
+        on_error: Callable[[str], None],
+        model_id: Optional[str] = None,
+    ) -> bool:
+        """
+        Use AI to resolve a comment with streaming support.
+        Runs in a background thread and calls callbacks for each token.
+
+        Args:
+            comment: The comment to resolve
+            document: The document containing the comment
+            on_token: Callback for each streamed token
+            on_complete: Callback when complete with (new_text, ai_reply)
+            on_error: Callback on error with error message
+            model_id: Optional specific model to use
+
+        Returns:
+            True if streaming started, False if error
+        """
+        ai_settings = CommentAIService.get_ai_settings()
+        if not ai_settings['enabled']:
+            on_error("AI assistant is disabled")
+            return False
+
+        # Get document content
+        content = document.content_text if isinstance(document.content_text, str) else ""
+        if not content and isinstance(document.content, str):
+            content = document.content
+        if not content:
+            on_error("Document has no content")
+            return False
+
+        # Extract selected text and context
+        range_start = comment.range_start
+        range_end = comment.range_end
+
+        if range_start is None or range_end is None:
+            on_error("Comment has no text range")
+            return False
+
+        range_start = max(0, min(range_start, len(content)))
+        range_end = max(range_start, min(range_end, len(content)))
+
+        selected_text = content[range_start:range_end]
+        if not selected_text.strip():
+            on_error("Selected text range is empty")
+            return False
+
+        context_start = max(0, range_start - CommentAIService.CONTEXT_CHARS)
+        context_end = min(len(content), range_end + CommentAIService.CONTEXT_CHARS)
+
+        context_before = content[context_start:range_start]
+        context_after = content[range_end:context_end]
+
+        # Build prompts
+        system_prompt = CommentAIService._build_system_prompt()
+        user_prompt = CommentAIService._build_user_prompt(
+            comment_body=comment.body,
+            selected_text=selected_text,
+            context_before=context_before,
+            context_after=context_after,
+        )
+
+        # Initialize stream state
+        with _streams_lock:
+            _active_streams[comment.id] = {
+                "content": "",
+                "status": "streaming",
+                "result": None,
+                "old_text": selected_text
+            }
+
+        def stream_worker():
+            import json
+            try:
+                client = LLMClientFactory.get_client_for_model(model_id)
+                actual_model_id = model_id or LLMClientFactory.get_default_model_id()
+
+                if not client or not actual_model_id:
+                    raise ValueError("No LLM client available")
+
+                # Stream the response
+                stream = client.chat.completions.create(
+                    model=actual_model_id,
+                    messages=[
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": user_prompt},
+                    ],
+                    temperature=0.3,
+                    max_tokens=2000,
+                    stream=True,
+                )
+
+                full_content = ""
+                for chunk in stream:
+                    if chunk.choices and chunk.choices[0].delta.content:
+                        token = chunk.choices[0].delta.content
+                        full_content += token
+
+                        # Update stream state
+                        with _streams_lock:
+                            if comment.id in _active_streams:
+                                _active_streams[comment.id]["content"] = full_content
+
+                        # Emit token
+                        on_token(token)
+
+                # Parse the complete response
+                raw = full_content.strip()
+                if raw.startswith("```"):
+                    raw = raw.replace("```json", "").replace("```", "").strip()
+
+                parsed = json.loads(raw)
+                new_text = parsed.get("new_text", "")
+                ai_reply = parsed.get("reply", "Änderung wurde umgesetzt.")
+
+                if not new_text:
+                    raise ValueError("LLM returned empty new_text")
+
+                # Update stream state
+                with _streams_lock:
+                    if comment.id in _active_streams:
+                        _active_streams[comment.id]["status"] = "completed"
+                        _active_streams[comment.id]["result"] = {
+                            "new_text": new_text,
+                            "ai_reply": ai_reply
+                        }
+
+                on_complete(new_text, ai_reply)
+
+            except Exception as e:
+                logger.exception(f"AI streaming failed for comment {comment.id}: {e}")
+                with _streams_lock:
+                    if comment.id in _active_streams:
+                        _active_streams[comment.id]["status"] = "error"
+                        _active_streams[comment.id]["error"] = str(e)
+                on_error(str(e))
+
+        # Start streaming in background thread
+        thread = threading.Thread(target=stream_worker, daemon=True)
+        thread.start()
+        return True

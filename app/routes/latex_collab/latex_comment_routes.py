@@ -325,12 +325,43 @@ def delete_comment(comment_id: int):
     return jsonify({"success": True}), 200
 
 
+@latex_comment_bp.route("/comments/<int:comment_id>/ai-resolve/status", methods=["GET"])
+@require_permission("feature:latex_collab:edit")
+@handle_api_errors(logger_name="latex_collab")
+def get_ai_resolve_status(comment_id: int):
+    """
+    Get the current status of an AI resolve stream (for reconnection support).
+
+    Response:
+        {
+            "active": true,
+            "content": "streamed content so far...",
+            "status": "streaming|completed|error",
+            "result": { ... } // only if completed
+        }
+    """
+    from services.latex_collab.comment_ai_service import CommentAIService
+
+    stream_state = CommentAIService.get_active_stream(comment_id)
+    if not stream_state:
+        return jsonify({"active": False}), 200
+
+    return jsonify({
+        "active": True,
+        "content": stream_state.get("content", ""),
+        "status": stream_state.get("status", "streaming"),
+        "result": stream_state.get("result"),
+        "old_text": stream_state.get("old_text", ""),
+    }), 200
+
+
 @latex_comment_bp.route("/comments/<int:comment_id>/ai-resolve", methods=["POST"])
 @require_permission("feature:latex_collab:edit")
 @handle_api_errors(logger_name="latex_collab")
 def ai_resolve_comment(comment_id: int):
     """
     Use AI to resolve a comment by suggesting document changes.
+    Now supports streaming via Socket.IO for real-time token display.
 
     The AI will analyze the comment and the marked text, then suggest
     a replacement and automatically create a reply from the AI assistant.
@@ -338,27 +369,32 @@ def ai_resolve_comment(comment_id: int):
     Request body:
         {
             "model_id": "optional - specific LLM model to use",
-            "auto_resolve": true  // Whether to mark comment as resolved
+            "auto_resolve": true,  // Whether to mark comment as resolved
+            "streaming": true      // Whether to stream tokens via Socket.IO
         }
 
-    Response:
+    Response (streaming=true):
         {
             "success": true,
-            "changes": {
-                "range_start": 150,
-                "range_end": 200,
-                "old_text": "...",
-                "new_text": "..."
-            },
-            "reply": {
-                "id": 42,
-                "author_username": "LLARS KI",
-                "author_color": "#9B59B6",
-                "body": "..."
-            }
+            "streaming": true,
+            "comment_id": 3,
+            "document_id": 5,
+            "workspace_id": 1
+        }
+        // Tokens are sent via Socket.IO events:
+        // - latex_collab:ai_resolve:token
+        // - latex_collab:ai_resolve:completed
+        // - latex_collab:ai_resolve:error
+
+    Response (streaming=false, legacy):
+        {
+            "success": true,
+            "changes": { ... },
+            "reply": { ... }
         }
     """
     from services.latex_collab.comment_ai_service import CommentAIService
+    from main import socketio
 
     username = AuthUtils.extract_username_without_validation()
     if not username:
@@ -380,64 +416,192 @@ def ai_resolve_comment(comment_id: int):
     data = request.get_json() or {}
     model_id = data.get("model_id")
     auto_resolve = data.get("auto_resolve", True)
+    use_streaming = data.get("streaming", True)  # Default to streaming
 
     # Get AI settings
     ai_settings = CommentAIService.get_ai_settings()
     if not ai_settings['enabled']:
         raise ValidationError("AI assistant is currently disabled")
 
-    # Call AI service
-    result = CommentAIService.resolve_comment(
-        comment=comment,
-        document=doc,
-        model_id=model_id,
-    )
-
-    if not result.success:
-        raise ValidationError(result.error or "AI resolution failed")
-
-    # Create AI reply
-    ai_reply = LatexComment(
-        document_id=comment.document_id,
-        parent_id=comment_id,
-        author_username=ai_settings['username'],
-        author_color=ai_settings['color'],
-        range_start=None,
-        range_end=None,
-        body=result.ai_reply,
-        created_at=datetime.utcnow(),
-    )
-    db.session.add(ai_reply)
-
-    # Optionally mark original comment as resolved
-    if auto_resolve:
-        comment.resolved_at = datetime.utcnow()
-
-    db.session.commit()
-
-    reply_dict = comment_to_dict(ai_reply, include_replies=False)
-    # Add document info for workspace-level display
-    reply_dict["document"] = {"id": doc.id, "title": doc.title, "node_type": doc.node_type.value}
-
-    # Emit events
-    reply_event_payload = {'parent_id': comment_id, 'reply': reply_dict}
-    _emit_comment_event(comment.document_id, 'reply_created', reply_event_payload)
-    _emit_workspace_comment_event(doc.workspace_id, 'reply_created', reply_event_payload)
-
-    if auto_resolve:
-        comment_dict = comment_to_dict(comment)
-        comment_dict["document"] = {"id": doc.id, "title": doc.title, "node_type": doc.node_type.value}
-        _emit_comment_event(comment.document_id, 'updated', comment_dict)
-        _emit_workspace_comment_event(doc.workspace_id, 'updated', comment_dict)
-
-    return jsonify({
-        "success": True,
-        "changes": {
+    # Check if there's already an active stream for this comment
+    existing_stream = CommentAIService.get_active_stream(comment_id)
+    if existing_stream and existing_stream.get("status") == "streaming":
+        return jsonify({
+            "success": True,
+            "streaming": True,
+            "already_active": True,
+            "comment_id": comment_id,
             "document_id": doc.id,
-            "range_start": comment.range_start,
-            "range_end": comment.range_end,
-            "old_text": result.old_text,
-            "new_text": result.new_text,
-        },
-        "reply": reply_dict,
-    }), 200
+            "workspace_id": doc.workspace_id,
+        }), 200
+
+    if use_streaming:
+        # Streaming mode: start background thread and return immediately
+        workspace_id = doc.workspace_id
+        document_id = doc.id
+        range_start = comment.range_start
+        range_end = comment.range_end
+
+        def on_token(token: str):
+            """Emit token via Socket.IO"""
+            socketio.emit('latex_collab:ai_resolve:token', {
+                'comment_id': comment_id,
+                'workspace_id': workspace_id,
+                'document_id': document_id,
+                'token': token,
+            })
+
+        def on_complete(new_text: str, ai_reply_text: str):
+            """Handle completion: create reply, emit events"""
+            from flask import current_app
+            with current_app.app_context():
+                # Re-fetch comment and doc in new context
+                _comment = LatexComment.query.get(comment_id)
+                _doc = LatexDocument.query.get(document_id)
+                if not _comment or not _doc:
+                    return
+
+                # Get the old text from stream state
+                stream_state = CommentAIService.get_active_stream(comment_id)
+                old_text = stream_state.get("old_text", "") if stream_state else ""
+
+                # Create AI reply
+                _ai_reply = LatexComment(
+                    document_id=_comment.document_id,
+                    parent_id=comment_id,
+                    author_username=ai_settings['username'],
+                    author_color=ai_settings['color'],
+                    range_start=None,
+                    range_end=None,
+                    body=ai_reply_text,
+                    created_at=datetime.utcnow(),
+                )
+                db.session.add(_ai_reply)
+
+                # Optionally mark original comment as resolved
+                if auto_resolve:
+                    _comment.resolved_at = datetime.utcnow()
+
+                db.session.commit()
+
+                reply_dict = comment_to_dict(_ai_reply, include_replies=False)
+                reply_dict["document"] = {"id": _doc.id, "title": _doc.title, "node_type": _doc.node_type.value}
+
+                # Emit comment events
+                reply_event_payload = {'parent_id': comment_id, 'reply': reply_dict}
+                _emit_comment_event(_comment.document_id, 'reply_created', reply_event_payload)
+                _emit_workspace_comment_event(_doc.workspace_id, 'reply_created', reply_event_payload)
+
+                if auto_resolve:
+                    comment_dict = comment_to_dict(_comment)
+                    comment_dict["document"] = {"id": _doc.id, "title": _doc.title, "node_type": _doc.node_type.value}
+                    _emit_comment_event(_comment.document_id, 'updated', comment_dict)
+                    _emit_workspace_comment_event(_doc.workspace_id, 'updated', comment_dict)
+
+                # Emit completion event
+                socketio.emit('latex_collab:ai_resolve:completed', {
+                    'comment_id': comment_id,
+                    'workspace_id': workspace_id,
+                    'document_id': document_id,
+                    'changes': {
+                        'range_start': range_start,
+                        'range_end': range_end,
+                        'old_text': old_text,
+                        'new_text': new_text,
+                    },
+                    'reply': reply_dict,
+                })
+
+                # Clear stream state after a delay (allow reconnecting clients to fetch result)
+                import threading
+                def clear_later():
+                    import time
+                    time.sleep(30)  # Keep result available for 30 seconds
+                    CommentAIService.clear_stream(comment_id)
+                threading.Thread(target=clear_later, daemon=True).start()
+
+        def on_error(error_msg: str):
+            """Emit error via Socket.IO"""
+            socketio.emit('latex_collab:ai_resolve:error', {
+                'comment_id': comment_id,
+                'workspace_id': workspace_id,
+                'document_id': document_id,
+                'error': error_msg,
+            })
+            # Clear stream state
+            CommentAIService.clear_stream(comment_id)
+
+        # Start streaming
+        started = CommentAIService.resolve_comment_streaming(
+            comment=comment,
+            document=doc,
+            on_token=on_token,
+            on_complete=on_complete,
+            on_error=on_error,
+            model_id=model_id,
+        )
+
+        if not started:
+            raise ValidationError("Failed to start AI streaming")
+
+        return jsonify({
+            "success": True,
+            "streaming": True,
+            "comment_id": comment_id,
+            "document_id": doc.id,
+            "workspace_id": doc.workspace_id,
+        }), 200
+
+    else:
+        # Legacy non-streaming mode
+        result = CommentAIService.resolve_comment(
+            comment=comment,
+            document=doc,
+            model_id=model_id,
+        )
+
+        if not result.success:
+            raise ValidationError(result.error or "AI resolution failed")
+
+        # Create AI reply
+        ai_reply = LatexComment(
+            document_id=comment.document_id,
+            parent_id=comment_id,
+            author_username=ai_settings['username'],
+            author_color=ai_settings['color'],
+            range_start=None,
+            range_end=None,
+            body=result.ai_reply,
+            created_at=datetime.utcnow(),
+        )
+        db.session.add(ai_reply)
+
+        if auto_resolve:
+            comment.resolved_at = datetime.utcnow()
+
+        db.session.commit()
+
+        reply_dict = comment_to_dict(ai_reply, include_replies=False)
+        reply_dict["document"] = {"id": doc.id, "title": doc.title, "node_type": doc.node_type.value}
+
+        reply_event_payload = {'parent_id': comment_id, 'reply': reply_dict}
+        _emit_comment_event(comment.document_id, 'reply_created', reply_event_payload)
+        _emit_workspace_comment_event(doc.workspace_id, 'reply_created', reply_event_payload)
+
+        if auto_resolve:
+            comment_dict = comment_to_dict(comment)
+            comment_dict["document"] = {"id": doc.id, "title": doc.title, "node_type": doc.node_type.value}
+            _emit_comment_event(comment.document_id, 'updated', comment_dict)
+            _emit_workspace_comment_event(doc.workspace_id, 'updated', comment_dict)
+
+        return jsonify({
+            "success": True,
+            "changes": {
+                "document_id": doc.id,
+                "range_start": comment.range_start,
+                "range_end": comment.range_end,
+                "old_text": result.old_text,
+                "new_text": result.new_text,
+            },
+            "reply": reply_dict,
+        }), 200

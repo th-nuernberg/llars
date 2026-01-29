@@ -28,12 +28,16 @@
         :show-git-panel="showGitPanel"
         :extracted-variables="extractedVariables"
         :user-variables="userVariables"
+        :git-summary="gitSummary"
+        :get-content="getContentSnapshot"
         @showAddBlockDialog="showAddBlockDialog = true; mobileSidebarOpen = false"
         @refreshPromptDetails="fetchPromptDetails()"
         @uploadJsonFileSelected="onJsonFileSelected"
         @triggerTestPrompt="openTestPromptDialog(); mobileSidebarOpen = false"
         @openVariableManager="openVariableManager(); mobileSidebarOpen = false"
         @toggleGitPanel="toggleGitPanel"
+        @gitCommitted="onGitCommitted"
+        @openGitDetail="gitDetailDialogOpen = true; mobileSidebarOpen = false"
       />
       <template #append>
         <v-divider />
@@ -60,12 +64,16 @@
         :show-git-panel="showGitPanel"
         :extracted-variables="extractedVariables"
         :user-variables="userVariables"
+        :git-summary="gitSummary"
+        :get-content="getContentSnapshot"
         @showAddBlockDialog="showAddBlockDialog = true"
         @refreshPromptDetails="fetchPromptDetails()"
         @uploadJsonFileSelected="onJsonFileSelected"
         @triggerTestPrompt="openTestPromptDialog"
         @openVariableManager="openVariableManager"
         @toggleGitPanel="toggleGitPanel"
+        @gitCommitted="onGitCommitted"
+        @openGitDetail="gitDetailDialogOpen = true"
       />
     </div>
 
@@ -197,22 +205,7 @@
           </div>
         </div>
 
-        <!-- Git Panel (using common Git components) -->
-        <div v-if="showGitPanel" ref="gitPanelRef" class="mt-4 git-widget-container">
-          <GitStatusWidget
-            :entity-id="Number(promptId)"
-            entity-mode="single"
-            api-prefix="/api/prompts"
-            :collapsed="false"
-            :can-commit="true"
-            :summary="gitSummary"
-            :get-content="getContentSnapshot"
-            @committed="onGitCommitted"
-            @open-detail="gitDetailDialogOpen = true"
-          />
-        </div>
-
-        <!-- Git Detail Dialog -->
+        <!-- Git Detail Dialog (opened from sidebar) -->
         <GitDetailDialog
           v-model="gitDetailDialogOpen"
           :entity-id="Number(promptId)"
@@ -479,7 +472,7 @@ Quill.register(UserHighlightBlot);
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import TestPromptDialog from './TestPromptDialog.vue';
 import VariableManagerDialog from './VariableManagerDialog.vue';
-import { GitStatusWidget, GitDetailDialog } from '@/components/common/Git';
+import { GitDetailDialog } from '@/components/common/Git';
 import { useRoute, useRouter } from 'vue-router';
 import 'quill/dist/quill.snow.css';
 import draggable from 'vuedraggable';

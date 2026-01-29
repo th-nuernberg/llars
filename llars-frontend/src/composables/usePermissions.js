@@ -41,7 +41,7 @@ export function usePermissions() {
 
     inflightRequest = (async () => {
       try {
-        const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:80'
+        const baseUrl = import.meta.env.VITE_API_BASE_URL || ''
         // Authorization header is injected globally via axios interceptor (main.js).
         const response = await axios.get(`${baseUrl}/api/permissions/my-permissions`)
 

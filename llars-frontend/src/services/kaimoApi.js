@@ -1,7 +1,7 @@
 import axios from 'axios'
 import { AUTH_STORAGE_KEYS, getAuthStorageItem } from '@/utils/authStorage'
 
-const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:80'
+const baseUrl = import.meta.env.VITE_API_BASE_URL || ''
 
 const getToken = () => getAuthStorageItem(AUTH_STORAGE_KEYS.token)
 

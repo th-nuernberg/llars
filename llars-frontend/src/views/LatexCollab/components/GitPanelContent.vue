@@ -150,6 +150,9 @@ async function handleQuickCommit() {
     emit('committed')
   }
 }
+
+// Expose refresh function for parent components
+defineExpose({ refresh })
 </script>
 
 <style scoped>

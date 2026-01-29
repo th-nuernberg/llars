@@ -331,6 +331,14 @@ Bitte setze die Anmerkung um und gib das Ergebnis im JSON-Format zurück."""
             context_after=context_after,
         )
 
+        # Get LLM client BEFORE starting background thread (requires app context)
+        client = LLMClientFactory.get_client_for_model(model_id)
+        actual_model_id = model_id or LLMClientFactory.get_default_model_id()
+
+        if not client or not actual_model_id:
+            on_error("No LLM client available")
+            return False
+
         # Initialize stream state
         with _streams_lock:
             _active_streams[comment.id] = {
@@ -343,11 +351,6 @@ Bitte setze die Anmerkung um und gib das Ergebnis im JSON-Format zurück."""
         def stream_worker():
             import json
             try:
-                client = LLMClientFactory.get_client_for_model(model_id)
-                actual_model_id = model_id or LLMClientFactory.get_default_model_id()
-
-                if not client or not actual_model_id:
-                    raise ValueError("No LLM client available")
 
                 # Stream the response
                 stream = client.chat.completions.create(

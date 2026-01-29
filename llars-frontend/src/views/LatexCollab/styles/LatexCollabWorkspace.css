@@ -781,6 +781,65 @@
   margin-top: 6px;
 }
 
+/* Floating Comment Card (inline beside text, no overlay) */
+.floating-comment-card {
+  position: fixed;
+  z-index: 9999;
+  width: 320px;
+  max-width: calc(100vw - 20px);
+  background: rgb(var(--v-theme-surface));
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.12);
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15), 0 2px 8px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+.floating-comment-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 12px;
+  background: rgba(var(--v-theme-on-surface), 0.03);
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  cursor: grab;
+  user-select: none;
+}
+
+.floating-comment-header:active {
+  cursor: grabbing;
+}
+
+.floating-comment-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: rgb(var(--v-theme-on-surface));
+}
+
+.floating-comment-body {
+  padding: 12px;
+}
+
+.floating-comment-body :deep(.v-textarea) {
+  font-size: 13px;
+}
+
+.floating-comment-body :deep(.v-field__input) {
+  min-height: 60px;
+}
+
+.floating-comment-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 8px 12px 12px;
+  border-top: 1px solid rgba(var(--v-theme-on-surface), 0.06);
+}
+
+/* Dark mode adjustments */
+.v-theme--dark .floating-comment-card {
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
 /* ============================================
    13. ZOTERO READ-ONLY NOTICE
    ============================================ */

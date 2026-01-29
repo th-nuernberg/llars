@@ -62,6 +62,7 @@
           </v-btn>
         </template>
         <GitPanelContent
+          ref="gitPanelMobileRef"
           :workspace-id="workspaceId"
           :can-commit="canCommit"
           :api-prefix="apiPrefix"
@@ -185,6 +186,7 @@
             </v-btn>
           </template>
           <GitPanelContent
+            ref="gitPanelDesktopRef"
             :workspace-id="workspaceId"
             :can-commit="canCommit"
             :api-prefix="apiPrefix"
@@ -306,6 +308,18 @@ const localOutlineCollapsed = computed({
 // Git changes badge
 const gitTotalChanges = ref(0)
 
+// Git panel refs for external refresh
+const gitPanelMobileRef = ref(null)
+const gitPanelDesktopRef = ref(null)
+
+/**
+ * Refresh the Git panel from external trigger
+ */
+function refreshGit() {
+  gitPanelMobileRef.value?.refresh?.()
+  gitPanelDesktopRef.value?.refresh?.()
+}
+
 // Panel heights for resize (percentages, 0-100 for each panel)
 const treeStackRef = ref(null)
 const panelHeights = ref([50, 25, 25]) // Default: 50% files, 25% git, 25% outline
@@ -382,6 +396,9 @@ function handleMobileSelect(id) {
   emit('select', id)
   emit('update:mobileOpen', false)
 }
+
+// Expose functions for parent components
+defineExpose({ refreshGit })
 </script>
 
 <style scoped>

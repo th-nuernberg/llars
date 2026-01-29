@@ -16,6 +16,7 @@
     />
     <!-- Tree Panel (Mobile Drawer + Desktop Sidebar) -->
     <LatexTreePanel
+      ref="treePanelRef"
       :is-mobile="isMobile"
       v-model:mobile-open="mobileSidebarOpen"
       v-model:tree-collapsed="treeCollapsed"
@@ -766,6 +767,7 @@ const nodesFlat = ref([])
 
 const currentText = ref('')
 const gitSummary = ref({ users: [], totalChangedLines: 0 })
+const treePanelRef = ref(null)
 const editorRef = ref(null)
 const pdfViewerRef = ref(null)
 const pendingDocId = ref(null)
@@ -1209,7 +1211,7 @@ async function aiResolveComment(comment) {
   aiStreamContent.value = ''
   aiStreamStatus.value = 'streaming'
   aiStreamResult.value = null
-  aiStreamWindowOpen.value = false  // Start closed, user can open by clicking loading button
+  aiStreamWindowOpen.value = true  // Open stream window automatically
 
   // Position the stream window near the comment
   const commentEl = document.querySelector(`.comment-thread[data-comment-id="${comment.id}"]`)
@@ -1297,6 +1299,10 @@ function handleAiStreamCompleted(data) {
           collabUser: aiAssistantUsername.value
         }
       )
+      // Refresh Git panel after AI changes
+      setTimeout(() => {
+        treePanelRef.value?.refreshGit?.()
+      }, 500)
     }
   }
 

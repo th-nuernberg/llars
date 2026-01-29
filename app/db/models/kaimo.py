@@ -31,6 +31,7 @@ class KaimoCase(db.Model):
     assessments = relationship('KaimoUserAssessment', back_populates='case', cascade='all, delete-orphan')
     permissions = relationship('KaimoCasePermission', back_populates='case', cascade='all, delete-orphan')
     ai_content = relationship('KaimoAIContent', back_populates='case', cascade='all, delete-orphan')
+    shares = relationship('KaimoCaseShare', back_populates='case', cascade='all, delete-orphan')
 
 
 class KaimoDocument(db.Model):
@@ -211,4 +212,20 @@ class KaimoCasePermission(db.Model):
     granted_at: Mapped[datetime] = mapped_column(db.DateTime, default=datetime.utcnow)
 
     case = relationship('KaimoCase', back_populates='permissions')
+
+
+class KaimoCaseShare(db.Model):
+    """Sharing junction table for KAIMO cases - similar to UserPromptShare."""
+    __tablename__ = 'kaimo_case_shares'
+
+    id: Mapped[int] = mapped_column(db.Integer, primary_key=True, autoincrement=True)
+    case_id: Mapped[int] = mapped_column(db.Integer, db.ForeignKey('kaimo_cases.id', ondelete='CASCADE'), nullable=False, index=True)
+    shared_with_username: Mapped[str] = mapped_column(db.String(255), nullable=False, index=True)
+    created_at: Mapped[datetime] = mapped_column(db.DateTime, default=datetime.utcnow)
+
+    case = relationship('KaimoCase', back_populates='shares')
+
+    __table_args__ = (
+        db.UniqueConstraint('case_id', 'shared_with_username', name='uq_kaimo_case_share'),
+    )
 

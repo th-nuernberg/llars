@@ -23,6 +23,8 @@ from db.models import (
     KaimoSubcategory,
     KaimoUserAssessment,
     KaimoHintAssignment,
+    KaimoCaseShare,
+    User,
 )
 from sqlalchemy import func
 from auth.auth_utils import AuthUtils
@@ -48,29 +50,61 @@ def _get_case_categories(case_id: int):
 @require_permission('feature:kaimo:view')
 @handle_api_errors(logger_name='kaimo.user')
 def list_cases_user():
-    """List published KAIMO cases for users."""
-    cases = (
-        KaimoCase.query.filter(KaimoCase.status != 'archived')
+    """List KAIMO cases for users - owned and shared separately."""
+    username = AuthUtils.extract_username_without_validation()
+    if not username:
+        raise UnauthorizedError("User not authenticated")
+
+    # Get owned cases
+    owned_cases = (
+        KaimoCase.query.filter(
+            KaimoCase.created_by == username,
+            KaimoCase.status != 'archived'
+        )
         .order_by(KaimoCase.created_at.desc())
         .all()
     )
 
-    doc_counts = dict(
-        db.session.query(KaimoDocument.case_id, func.count(KaimoDocument.id))
-        .group_by(KaimoDocument.case_id)
-        .all()
-    )
-    hint_counts = dict(
-        db.session.query(KaimoHint.case_id, func.count(KaimoHint.id))
-        .group_by(KaimoHint.case_id)
+    # Get shared cases (shared with current user)
+    shared_case_ids = db.session.query(KaimoCaseShare.case_id).filter(
+        KaimoCaseShare.shared_with_username == username
+    ).subquery()
+
+    shared_cases = (
+        KaimoCase.query.filter(
+            KaimoCase.id.in_(shared_case_ids),
+            KaimoCase.status != 'archived'
+        )
+        .order_by(KaimoCase.created_at.desc())
         .all()
     )
 
-    payload = []
-    for c in cases:
-        if c.status not in ('published', 'draft'):
-            continue
-        payload.append({
+    # Get counts
+    all_case_ids = [c.id for c in owned_cases + shared_cases]
+    doc_counts = dict(
+        db.session.query(KaimoDocument.case_id, func.count(KaimoDocument.id))
+        .filter(KaimoDocument.case_id.in_(all_case_ids))
+        .group_by(KaimoDocument.case_id)
+        .all()
+    ) if all_case_ids else {}
+
+    hint_counts = dict(
+        db.session.query(KaimoHint.case_id, func.count(KaimoHint.id))
+        .filter(KaimoHint.case_id.in_(all_case_ids))
+        .group_by(KaimoHint.case_id)
+        .all()
+    ) if all_case_ids else {}
+
+    # Get share info for owned cases
+    share_counts = dict(
+        db.session.query(KaimoCaseShare.case_id, func.count(KaimoCaseShare.id))
+        .filter(KaimoCaseShare.case_id.in_([c.id for c in owned_cases]))
+        .group_by(KaimoCaseShare.case_id)
+        .all()
+    ) if owned_cases else {}
+
+    def case_to_dict(c, is_owner=True):
+        data = {
             "id": c.id,
             "display_name": c.display_name,
             "description": c.description,
@@ -79,10 +113,23 @@ def list_cases_user():
             "status": c.status,
             "document_count": doc_counts.get(c.id, 0),
             "hint_count": hint_counts.get(c.id, 0),
-            "estimated_duration_minutes": 30,  # placeholder until durations are tracked
-        })
+            "estimated_duration_minutes": 30,
+            "is_owner": is_owner,
+            "owner": c.created_by,
+        }
+        if is_owner:
+            data["share_count"] = share_counts.get(c.id, 0)
+        return data
 
-    return jsonify({"success": True, "cases": payload}), 200
+    owned_payload = [case_to_dict(c, is_owner=True) for c in owned_cases]
+    shared_payload = [case_to_dict(c, is_owner=False) for c in shared_cases]
+
+    return jsonify({
+        "success": True,
+        "owned_cases": owned_payload,
+        "shared_cases": shared_payload,
+        "total": len(owned_payload) + len(shared_payload)
+    }), 200
 
 
 @kaimo_user_bp.route('/cases/<int:case_id>', methods=['GET'])
@@ -90,9 +137,27 @@ def list_cases_user():
 @handle_api_errors(logger_name='kaimo.user')
 def get_case_detail(case_id: int):
     """Get KAIMO case detail with documents, categories, hints."""
+    username = AuthUtils.extract_username_without_validation()
+    if not username:
+        raise UnauthorizedError("User not authenticated")
+
     case = KaimoCase.query.get(case_id)
     if not case:
         raise NotFoundError("Case not found")
+
+    # Check access: owner or shared with
+    is_owner = case.created_by == username
+    is_shared = KaimoCaseShare.query.filter_by(
+        case_id=case_id,
+        shared_with_username=username
+    ).first() is not None
+
+    if not is_owner and not is_shared:
+        raise ForbiddenError("Access denied - you don't have access to this case")
+
+    # Get sharing info
+    shares = KaimoCaseShare.query.filter_by(case_id=case_id).all()
+    shared_with = [s.shared_with_username for s in shares]
 
     categories = _get_case_categories(case.id)
     subcategories = KaimoSubcategory.query.filter(
@@ -157,6 +222,9 @@ def get_case_detail(case_id: int):
                     "sort_order": h.sort_order,
                 } for h in hints
             ],
+            "owner": case.created_by,
+            "is_owner": is_owner,
+            "shared_with": shared_with if is_owner else [],
         },
         "my_assessment": None,  # placeholder until assessment endpoints are implemented
     }), 200
@@ -425,3 +493,136 @@ def get_categories_user():
         })
 
     return jsonify({"success": True, "categories": payload}), 200
+
+
+# =============================================================================
+# Sharing Endpoints
+# =============================================================================
+
+@kaimo_user_bp.route('/cases/<int:case_id>/share', methods=['POST'])
+@require_permission('feature:kaimo:edit')
+@handle_api_errors(logger_name='kaimo.user')
+def share_case(case_id: int):
+    """Share a KAIMO case with another user. Owner only."""
+    username = AuthUtils.extract_username_without_validation()
+    if not username:
+        raise UnauthorizedError("User not authenticated")
+
+    case = KaimoCase.query.get(case_id)
+    if not case:
+        raise NotFoundError("Case not found")
+
+    # Only owner can share
+    if case.created_by != username:
+        raise ForbiddenError("Only the owner can share this case")
+
+    data = request.get_json() or {}
+    share_with = data.get('shared_with')
+
+    if not share_with:
+        raise ValidationError("'shared_with' username is required")
+
+    if share_with == username:
+        raise ValidationError("Cannot share with yourself")
+
+    # Check if target user exists
+    target_user = User.query.filter_by(username=share_with, is_deleted=False).first()
+    if not target_user:
+        raise NotFoundError(f"User '{share_with}' not found")
+
+    # Check if already shared
+    existing = KaimoCaseShare.query.filter_by(
+        case_id=case_id,
+        shared_with_username=share_with
+    ).first()
+
+    if existing:
+        raise ValidationError(f"Case already shared with '{share_with}'")
+
+    # Create share
+    share = KaimoCaseShare(
+        case_id=case_id,
+        shared_with_username=share_with
+    )
+    db.session.add(share)
+    db.session.commit()
+
+    return jsonify({
+        "success": True,
+        "message": f"Case shared with '{share_with}' successfully"
+    }), 201
+
+
+@kaimo_user_bp.route('/cases/<int:case_id>/unshare', methods=['POST'])
+@require_permission('feature:kaimo:edit')
+@handle_api_errors(logger_name='kaimo.user')
+def unshare_case(case_id: int):
+    """Remove sharing of a KAIMO case with a user. Owner only."""
+    username = AuthUtils.extract_username_without_validation()
+    if not username:
+        raise UnauthorizedError("User not authenticated")
+
+    case = KaimoCase.query.get(case_id)
+    if not case:
+        raise NotFoundError("Case not found")
+
+    # Only owner can unshare
+    if case.created_by != username:
+        raise ForbiddenError("Only the owner can unshare this case")
+
+    data = request.get_json() or {}
+    unshare_with = data.get('unshare_with')
+
+    if not unshare_with:
+        raise ValidationError("'unshare_with' username is required")
+
+    # Find and delete share
+    share = KaimoCaseShare.query.filter_by(
+        case_id=case_id,
+        shared_with_username=unshare_with
+    ).first()
+
+    if not share:
+        raise NotFoundError(f"Case not shared with '{unshare_with}'")
+
+    db.session.delete(share)
+    db.session.commit()
+
+    return jsonify({
+        "success": True,
+        "message": f"Case sharing removed for '{unshare_with}'"
+    }), 200
+
+
+@kaimo_user_bp.route('/cases/<int:case_id>/shares', methods=['GET'])
+@require_permission('feature:kaimo:view')
+@handle_api_errors(logger_name='kaimo.user')
+def get_case_shares(case_id: int):
+    """Get list of users a case is shared with."""
+    username = AuthUtils.extract_username_without_validation()
+    if not username:
+        raise UnauthorizedError("User not authenticated")
+
+    case = KaimoCase.query.get(case_id)
+    if not case:
+        raise NotFoundError("Case not found")
+
+    # Check access (owner or shared with)
+    is_owner = case.created_by == username
+    is_shared = KaimoCaseShare.query.filter_by(
+        case_id=case_id,
+        shared_with_username=username
+    ).first() is not None
+
+    if not is_owner and not is_shared:
+        raise ForbiddenError("Access denied")
+
+    # Get all shares
+    shares = KaimoCaseShare.query.filter_by(case_id=case_id).all()
+
+    return jsonify({
+        "success": True,
+        "owner": case.created_by,
+        "is_owner": is_owner,
+        "shared_with": [s.shared_with_username for s in shares]
+    }), 200

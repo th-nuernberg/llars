@@ -212,3 +212,33 @@ export async function getKaimoUserCategories() {
   })
   return res.data
 }
+
+// ============ User API - Sharing ============
+
+export async function shareKaimoCase(caseId, username) {
+  const token = getToken()
+  const res = await axios.post(`${baseUrl}/api/kaimo/cases/${caseId}/share`, {
+    shared_with: username
+  }, {
+    headers: { Authorization: `Bearer ${token}` }
+  })
+  return res.data
+}
+
+export async function unshareKaimoCase(caseId, username) {
+  const token = getToken()
+  const res = await axios.post(`${baseUrl}/api/kaimo/cases/${caseId}/unshare`, {
+    unshare_with: username
+  }, {
+    headers: { Authorization: `Bearer ${token}` }
+  })
+  return res.data
+}
+
+export async function getKaimoCaseShares(caseId) {
+  const token = getToken()
+  const res = await axios.get(`${baseUrl}/api/kaimo/cases/${caseId}/shares`, {
+    headers: { Authorization: `Bearer ${token}` }
+  })
+  return res.data
+}

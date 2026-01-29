@@ -747,6 +747,10 @@
       "alerts": {
         "noAccess": "You need {permission} to open the KAIMO panel."
       },
+      "sections": {
+        "myCases": "My Cases",
+        "sharedWithMe": "Shared With Me"
+      },
       "table": {
         "title": "Cases",
         "headers": {
@@ -755,16 +759,21 @@
           "docs": "Docs",
           "hints": "Hints",
           "assessments": "Assessments",
-          "actions": "Actions"
+          "actions": "Actions",
+          "shared": "Shared",
+          "owner": "Owner"
         },
         "noDescription": "No description",
         "empty": "No KAIMO cases available.",
+        "emptyOwned": "You don't have any cases yet.",
+        "emptyShared": "No cases shared with you yet.",
         "emptyCta": "Create first case"
       },
       "tooltips": {
         "openCase": "Open case (user view)",
         "editCase": "Edit case",
-        "publish": "Publish"
+        "publish": "Publish",
+        "shareCase": "Share case"
       },
       "sidebar": {
         "title": "Hints",
@@ -788,8 +797,21 @@
         "deleteSuccess": "Case \"{name}\" was deleted.",
         "deleteError": "Error deleting the case.",
         "publishSuccess": "Case \"{name}\" was published.",
-        "publishError": "Error publishing the case."
+        "publishError": "Error publishing the case.",
+        "shareSuccess": "Case was shared successfully.",
+        "shareError": "Error sharing the case.",
+        "unshareSuccess": "Access was removed.",
+        "unshareError": "Error removing access."
       }
+    },
+    "share": {
+      "title": "Share Case",
+      "description": "Share \"{name}\" with other users so they can edit the case.",
+      "usernameLabel": "Username",
+      "usernamePlaceholder": "e.g. john.doe",
+      "sharedWith": "Shared with",
+      "noShares": "This case is not shared with anyone yet.",
+      "remove": "Remove access"
     },
     "newCase": {
       "title": "Create KAIMO case",
@@ -4640,11 +4662,15 @@
     },
     "comments": {
       "title": "Comments",
+      "archiveTitle": "Archive",
       "add": "Add comment",
       "addLabel": "Comment",
       "comment": "Comment",
       "addToSelection": "Comment on selected text",
       "empty": "No comments yet",
+      "archiveEmpty": "No archived comments",
+      "showArchive": "Show archive",
+      "showActive": "Show active comments",
       "resolved": "Resolved",
       "reopen": "Reopen",
       "resolve": "Resolve",
@@ -5093,6 +5119,12 @@
       "synced": "Synced",
       "noChanges": "No changes"
     },
+    "status": {
+      "deleted": "Deleted",
+      "modified": "Modified",
+      "added": "Added",
+      "renamed": "Renamed"
+    },
     "actions": {
       "refresh": "Refresh",
       "fullscreen": "Fullscreen",
@@ -5144,7 +5176,10 @@
       "initial": "Initial (no commit)",
       "workingTree": "Working tree",
       "emptyLabel": "—",
-      "noDocument": "No document selected"
+      "noDocument": "No document selected",
+      "loading": "Loading diff...",
+      "baseline": "Baseline",
+      "noChanges": "No changes"
     },
     "relative": {
       "justNow": "Just now",

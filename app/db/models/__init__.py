@@ -125,6 +125,7 @@ from db.models.kaimo import (
     KaimoUserAssessment,
     KaimoHintAssignment,
     KaimoCasePermission,
+    KaimoCaseShare,
 )
 
 # Scenario and Rating models
@@ -296,6 +297,7 @@ __all__ = [
     'KaimoUserAssessment',
     'KaimoHintAssignment',
     'KaimoCasePermission',
+    'KaimoCaseShare',
     # Scenario
     'ScenarioRoles',
     'InvitationStatus',

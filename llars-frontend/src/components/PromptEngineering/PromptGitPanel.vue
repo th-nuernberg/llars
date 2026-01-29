@@ -175,7 +175,7 @@ const props = defineProps({
 
 const emit = defineEmits(['committed'])
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:55080'
+const API_BASE = import.meta.env.VITE_API_BASE_URL || ''
 const { isLoading, withLoading } = useSkeletonLoading(['commits'])
 const { t, locale } = useI18n()
 

@@ -678,7 +678,7 @@ const props = defineProps({
 const emit = defineEmits(['committed', 'rollback', 'restored'])
 const { t, locale } = useI18n()
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:55080'
+const API_BASE = import.meta.env.VITE_API_BASE_URL || ''
 const { isLoading, withLoading } = useSkeletonLoading(['commits', 'diff'])
 
 const expanded = ref(false)

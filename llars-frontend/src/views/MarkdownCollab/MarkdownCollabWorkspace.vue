@@ -366,7 +366,7 @@ const { isMobile, isTablet } = useMobile()
 // Mobile sidebar state
 const mobileSidebarOpen = ref(false)
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:55080'
+const API_BASE = import.meta.env.VITE_API_BASE_URL || ''
 const VIEWMODE_KEY = 'markdown-collab-view-mode'
 const TREE_COLLAPSED_KEY = 'markdown-collab-tree-collapsed'
 const TREE_WIDTH_KEY = 'markdown-collab-tree-width'

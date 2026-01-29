@@ -72,7 +72,7 @@ const props = defineProps({
 const emit = defineEmits(['pdf-click', 'no-pdf'])
 const { t } = useI18n()
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:55080'
+const API_BASE = import.meta.env.VITE_API_BASE_URL || ''
 
 const loading = ref(false)
 const pendingPdf = ref(false)

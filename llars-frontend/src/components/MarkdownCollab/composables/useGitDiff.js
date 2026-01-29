@@ -13,7 +13,7 @@ import axios from 'axios'
 import { Decoration } from '@codemirror/view'
 import { AUTH_STORAGE_KEYS, getAuthStorageItem } from '@/utils/authStorage'
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:55080'
+const API_BASE = import.meta.env.VITE_API_BASE_URL || ''
 
 // Diff operation constants from diff-match-patch
 const DIFF_DELETE = -1

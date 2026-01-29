@@ -220,7 +220,7 @@ const availableRolesToAssign = computed(() => {
 // Methods
 async function loadAllRoles() {
   try {
-    const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:80'
+    const baseUrl = import.meta.env.VITE_API_BASE_URL || ''
     const token = sessionStorage.getItem('keycloak_token')
 
     const response = await axios.get(`${baseUrl}/api/permissions/roles`, {
@@ -238,7 +238,7 @@ async function loadAllRoles() {
 
 async function loadAllPermissions() {
   try {
-    const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:80'
+    const baseUrl = import.meta.env.VITE_API_BASE_URL || ''
     const token = sessionStorage.getItem('keycloak_token')
 
     const response = await axios.get(`${baseUrl}/api/permissions`, {
@@ -263,7 +263,7 @@ async function loadUserPermissions() {
   loadingUser.value = true
 
   try {
-    const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:80'
+    const baseUrl = import.meta.env.VITE_API_BASE_URL || ''
     const token = sessionStorage.getItem('keycloak_token')
 
     const response = await axios.get(
@@ -296,7 +296,7 @@ async function assignRole(username, roleName) {
   if (!roleName) return
 
   try {
-    const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:80'
+    const baseUrl = import.meta.env.VITE_API_BASE_URL || ''
     const token = sessionStorage.getItem('keycloak_token')
 
     await axios.post(
@@ -316,7 +316,7 @@ async function assignRole(username, roleName) {
 
 async function unassignRole(username, roleName) {
   try {
-    const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:80'
+    const baseUrl = import.meta.env.VITE_API_BASE_URL || ''
     const token = sessionStorage.getItem('keycloak_token')
 
     await axios.post(

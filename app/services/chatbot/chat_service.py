@@ -390,6 +390,8 @@ class ChatService:
                 if not delta_text:
                     continue
 
+                # Replace URL placeholders in streaming chunks
+                delta_text = self._replace_url_placeholders(delta_text)
                 accumulated += delta_text
                 yield {"delta": delta_text}
 
@@ -397,7 +399,7 @@ class ChatService:
 
             yield {
                 "done": True,
-                "full_response": accumulated,
+                "full_response": self._replace_url_placeholders(accumulated),
                 "sources": sources if self.chatbot.rag_include_sources else [],
                 "tokens": None,
                 "response_time_ms": response_time_ms,
@@ -410,6 +412,10 @@ class ChatService:
 
     # ========== Message Building ==========
 
+    def _get_project_url(self) -> str:
+        """Get the PROJECT_URL from environment."""
+        return os.environ.get('PROJECT_URL', 'http://localhost:55080')
+
     def _get_system_prompt_with_urls(self) -> str:
         """
         Get system prompt with PROJECT_URL placeholder replaced.
@@ -419,8 +425,26 @@ class ChatService:
         actual project URL from environment.
         """
         prompt = self.chatbot.system_prompt or ""
-        project_url = os.environ.get('PROJECT_URL', 'http://localhost:55080')
-        return prompt.replace('{PROJECT_URL}', project_url)
+        return prompt.replace('{PROJECT_URL}', self._get_project_url())
+
+    def _replace_url_placeholders(self, text: str) -> str:
+        """
+        Replace any PROJECT_URL placeholders in LLM response.
+
+        The LLM might output {PROJECT_URL} or ${PROJECT_URL} if it sees
+        these patterns in the RAG context (e.g., from documentation about
+        environment variables). This method ensures all such placeholders
+        are replaced with the actual URL.
+        """
+        if not text:
+            return text
+        project_url = self._get_project_url()
+        # Replace various placeholder formats (order matters - longer patterns first)
+        text = text.replace('${PROJECT_URL}', project_url)  # Shell-style
+        text = text.replace('{PROJECT_URL}', project_url)   # Simple placeholder
+        text = text.replace('%24%7BPROJECT_URL%7D', project_url)  # URL-encoded ${...}
+        text = text.replace('%7BPROJECT_URL%7D', project_url)  # URL-encoded {...}
+        return text
 
     def _build_messages(
         self,

@@ -45,6 +45,26 @@ from sqlalchemy.exc import OperationalError
 logger = logging.getLogger(__name__)
 
 
+def _replace_url_placeholders(text: str) -> str:
+    """
+    Replace PROJECT_URL placeholders in LLM response.
+
+    The LLM might output {PROJECT_URL} or ${PROJECT_URL} if it sees
+    these patterns in RAG context (e.g., from documentation about
+    environment variables). This ensures all such placeholders are
+    replaced with the actual URL.
+    """
+    if not text:
+        return text
+    project_url = os.environ.get('PROJECT_URL', 'http://localhost:55080')
+    # Replace various placeholder formats (order matters - longer patterns first)
+    text = text.replace('${PROJECT_URL}', project_url)  # Shell-style
+    text = text.replace('{PROJECT_URL}', project_url)   # Simple placeholder
+    text = text.replace('%24%7BPROJECT_URL%7D', project_url)  # URL-encoded ${...}
+    text = text.replace('%7BPROJECT_URL%7D', project_url)  # URL-encoded {...}
+    return text
+
+
 def _commit_with_retry(max_retries: int = 3, delay: float = 0.1):
     """
     Commit database session with retry logic for deadlocks.
@@ -464,13 +484,14 @@ def _handle_agent_stream(socketio, agent_service, chatbot, user_message, session
                 })
 
             elif "delta" in event:
-                # Streaming response chunk
+                # Streaming response chunk - replace URL placeholders
+                delta_content = _replace_url_placeholders(event["delta"])
                 emit("chatbot:response", {
-                    "content": event["delta"],
+                    "content": delta_content,
                     "complete": False
                 }, room=client_id)
                 socketio.sleep(0)
-                final_response += event["delta"]
+                final_response += delta_content
 
             elif "error" in event:
                 emit("chatbot:error", {
@@ -787,6 +808,8 @@ def register_chatbot_events(socketio):
                     )
 
                 if content:
+                    # Replace URL placeholders before sending
+                    content = _replace_url_placeholders(content)
                     assistant_message += content
                     emit("chatbot:response", {
                         "content": content,

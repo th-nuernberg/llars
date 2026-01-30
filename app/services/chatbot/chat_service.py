@@ -68,7 +68,9 @@ class ChatService:
 
     def _build_numbered_context(self, sources: List[Dict[str, Any]]) -> str:
         """Build numbered context string from sources."""
-        return self.prompt_builder.build_numbered_context(sources)
+        context = self.prompt_builder.build_numbered_context(sources)
+        # Replace URL placeholders to prevent LLM from copying them
+        return self._replace_url_placeholders(context)
 
     def _get_prompt_settings(self):
         """Get prompt settings from chatbot."""
@@ -88,7 +90,10 @@ class ChatService:
 
     def _get_multi_collection_context(self, query: str) -> Tuple[str, List[Dict]]:
         """Retrieve context from multiple collections using semantic search."""
-        return self.rag_retrieval.get_multi_collection_context(query)
+        context, sources = self.rag_retrieval.get_multi_collection_context(query)
+        # Replace URL placeholders in context to prevent LLM from copying them
+        context = self._replace_url_placeholders(context)
+        return context, sources
 
     def _search_collection(self, collection, query: str, k: int = 4) -> List[Dict]:
         """Search a specific collection using ChromaDB."""

@@ -11,6 +11,7 @@ This is the main orchestration service that coordinates:
 """
 
 import logging
+import os
 import time
 from datetime import datetime
 from typing import List, Optional, Dict, Any, Tuple
@@ -296,7 +297,7 @@ class ChatService:
             }
 
         # Build messages (no history in test mode)
-        system_prompt = self.chatbot.system_prompt
+        system_prompt = self._get_system_prompt_with_urls()
         require_citations = self.prompt_builder.get_require_citations()
         if sources and require_citations:
             system_prompt += self._build_citation_instructions()
@@ -354,7 +355,7 @@ class ChatService:
             return
 
         # Build messages (no history in test mode)
-        system_prompt = self.chatbot.system_prompt
+        system_prompt = self._get_system_prompt_with_urls()
         require_citations = self.prompt_builder.get_require_citations()
         if sources and require_citations:
             system_prompt += self._build_citation_instructions()
@@ -409,6 +410,18 @@ class ChatService:
 
     # ========== Message Building ==========
 
+    def _get_system_prompt_with_urls(self) -> str:
+        """
+        Get system prompt with PROJECT_URL placeholder replaced.
+
+        The system prompt may contain {PROJECT_URL} placeholders for
+        documentation links that need to be substituted with the
+        actual project URL from environment.
+        """
+        prompt = self.chatbot.system_prompt or ""
+        project_url = os.environ.get('PROJECT_URL', 'http://localhost:55080')
+        return prompt.replace('{PROJECT_URL}', project_url)
+
     def _build_messages(
         self,
         conversation: ChatbotConversation,
@@ -424,8 +437,8 @@ class ChatService:
         """
         messages = []
 
-        # System prompt
-        system_prompt = self.chatbot.system_prompt
+        # System prompt with PROJECT_URL substitution
+        system_prompt = self._get_system_prompt_with_urls()
         require_citations = self.prompt_builder.get_require_citations()
         if sources and require_citations:
             system_prompt += self._build_citation_instructions()

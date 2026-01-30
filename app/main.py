@@ -394,6 +394,37 @@ def start_pending_llm_evaluations():
 start_pending_llm_evaluations()
 
 
+# Sync LLARS documentation to RAG collection for the chatbot
+def sync_documentation_collection():
+    """
+    Synchronize MkDocs documentation with the LLARS-Documentation RAG collection.
+
+    This enables the LLARS chatbot to answer questions about the system
+    and provide direct links to relevant documentation pages.
+    """
+    if _skip_startup_tasks():
+        print("[Startup] Skipping documentation sync (LLARS_SKIP_STARTUP_TASKS=true)")
+        return
+
+    from services.docs import MkDocsLoaderService
+
+    with app.app_context():
+        try:
+            print("[Startup] Syncing LLARS documentation...")
+            loader = MkDocsLoaderService()
+            result = loader.sync_llars_documentation()
+
+            if result.get('success'):
+                print(f"[Startup] {result.get('message')}")
+            else:
+                print(f"[Startup] Documentation sync failed: {result.get('error')}")
+        except Exception as e:
+            print(f"[Startup] Error syncing documentation: {e}")
+
+
+sync_documentation_collection()
+
+
 if __name__ == '__main__':
     # Debug mode nur in development aktivieren
     debug_mode = os.environ.get('FLASK_ENV', 'production') == 'development'

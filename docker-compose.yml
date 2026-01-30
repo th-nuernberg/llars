@@ -141,6 +141,8 @@ services:
     # Mount application code for hot-reloading in development
     volumes:
       - ./app:/app
+      # MkDocs documentation for RAG chatbot
+      - ./docs:/app/docs:ro
       # Offline Anonymize Ressourcen (großes NER-Modell bleibt in docs/, wird hier nur gemountet)
       - ./docs/docs/projekte/anonymize/models/ner-german-large:/app/models/anonymize/ner-german-large:ro
       - ./docs/docs/projekte/anonymize/database:/app/data/anonymize:ro

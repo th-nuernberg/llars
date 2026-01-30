@@ -5,10 +5,25 @@ Agent Prompt Builder Module.
 Provides system prompt builders for agent chat modes (ACT, ReAct, ReflAct).
 """
 
+import os
 from typing import List, Dict, Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from db.models.chatbot import Chatbot, ChatbotPromptSettings, ChatbotConversation
+
+
+def _substitute_project_url(prompt: str) -> str:
+    """
+    Substitute {PROJECT_URL} placeholder in prompt with actual URL.
+
+    Args:
+        prompt: Prompt text that may contain {PROJECT_URL} placeholder
+
+    Returns:
+        Prompt with placeholder replaced by actual PROJECT_URL
+    """
+    project_url = os.environ.get('PROJECT_URL', 'http://localhost:55080')
+    return prompt.replace('{PROJECT_URL}', project_url)
 
 
 def get_act_system_prompt(
@@ -25,7 +40,7 @@ def get_act_system_prompt(
     Returns:
         Complete ACT system prompt
     """
-    base_prompt = (chatbot.system_prompt or "").strip()
+    base_prompt = _substitute_project_url((chatbot.system_prompt or "").strip())
 
     if prompt_settings and hasattr(prompt_settings, 'act_system_prompt'):
         custom = prompt_settings.act_system_prompt
@@ -59,7 +74,7 @@ def get_react_system_prompt(
     Returns:
         Complete ReAct system prompt
     """
-    base_prompt = (chatbot.system_prompt or "").strip()
+    base_prompt = _substitute_project_url((chatbot.system_prompt or "").strip())
 
     if prompt_settings and hasattr(prompt_settings, 'react_system_prompt'):
         custom = prompt_settings.react_system_prompt
@@ -93,7 +108,7 @@ def get_reflact_system_prompt(
     Returns:
         Complete ReflAct system prompt
     """
-    base_prompt = (chatbot.system_prompt or "").strip()
+    base_prompt = _substitute_project_url((chatbot.system_prompt or "").strip())
 
     if prompt_settings and hasattr(prompt_settings, 'reflact_system_prompt'):
         custom = prompt_settings.reflact_system_prompt

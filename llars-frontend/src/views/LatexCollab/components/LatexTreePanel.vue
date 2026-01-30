@@ -22,14 +22,15 @@
         v-model:collapsed="localFilesCollapsed"
       >
         <template #actions>
-          <v-btn icon variant="text" size="x-small" :disabled="!canEdit" @click="$emit('create', { type: 'file' })">
+          <v-btn icon variant="text" size="x-small" :disabled="!canEdit" @click="openCreate('file')">
             <LIcon size="16">mdi-file-plus</LIcon>
           </v-btn>
-          <v-btn icon variant="text" size="x-small" :disabled="!canEdit" @click="$emit('create', { type: 'folder' })">
+          <v-btn icon variant="text" size="x-small" :disabled="!canEdit" @click="openCreate('folder')">
             <LIcon size="16">mdi-folder-plus</LIcon>
           </v-btn>
         </template>
         <MarkdownTreePanel
+          ref="treePanelMobileRef"
           :workspace-id="workspaceId"
           :nodes="nodes"
           :selected-id="selectedId"
@@ -131,10 +132,10 @@
           :style="getPanelStyle(0)"
         >
           <template #actions>
-            <v-btn icon variant="text" size="x-small" :disabled="!canEdit" :title="$t('markdownCollab.tree.actions.newFile')" @click="$emit('create', { type: 'file' })">
+            <v-btn icon variant="text" size="x-small" :disabled="!canEdit" :title="$t('markdownCollab.tree.actions.newFile')" @click="openCreate('file')">
               <LIcon size="16">mdi-file-plus</LIcon>
             </v-btn>
-            <v-btn icon variant="text" size="x-small" :disabled="!canEdit" :title="$t('markdownCollab.tree.actions.newFolder')" @click="$emit('create', { type: 'folder' })">
+            <v-btn icon variant="text" size="x-small" :disabled="!canEdit" :title="$t('markdownCollab.tree.actions.newFolder')" @click="openCreate('folder')">
               <LIcon size="16">mdi-folder-plus</LIcon>
             </v-btn>
             <v-btn icon variant="text" size="x-small" :title="$t('latexCollab.tree.uploadAsset')" @click.stop="$emit('open-asset-picker')">
@@ -145,6 +146,7 @@
             </v-btn>
           </template>
           <MarkdownTreePanel
+            ref="treePanelDesktopRef"
             :workspace-id="workspaceId"
             :nodes="nodes"
             :selected-id="selectedId"
@@ -308,9 +310,21 @@ const localOutlineCollapsed = computed({
 // Git changes badge
 const gitTotalChanges = ref(0)
 
+// Tree panel refs for dialog access
+const treePanelMobileRef = ref(null)
+const treePanelDesktopRef = ref(null)
+
 // Git panel refs for external refresh
 const gitPanelMobileRef = ref(null)
 const gitPanelDesktopRef = ref(null)
+
+/**
+ * Open the create dialog in MarkdownTreePanel
+ */
+function openCreate(type) {
+  treePanelMobileRef.value?.openCreateDialog?.(type)
+  treePanelDesktopRef.value?.openCreateDialog?.(type)
+}
 
 /**
  * Refresh the Git panel from external trigger

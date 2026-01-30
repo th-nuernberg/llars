@@ -364,24 +364,25 @@ class ChatRAGRetrieval:
             filename = metadata.get('filename') or metadata.get('source')
             title = result.get('title') or filename or 'Unbekannt'
 
+            source_url = None
+            screenshot_url = None
+
             if doc_id:
                 doc = RAGDocument.query.get(doc_id)
                 if doc:
                     filename = doc.filename or filename
                     title = doc.title or doc.original_filename or filename or title
+                    source_url = doc.source_url
                     screenshot_url = doc.screenshot_url or (
                         f"/api/rag/documents/{doc_id}/screenshot" if doc.screenshot_path else None
                     )
-                else:
-                    screenshot_url = None
-            else:
-                screenshot_url = None
 
             sources.append({
                 'footnote_id': i + 1,
                 'document_id': result.get('document_id'),
                 'title': title,
                 'filename': filename,
+                'url': source_url,
                 'collection_name': result.get('collection_name'),
                 'relevance': round(result['score'], 3),
                 'chunk_index': result.get('chunk_index') if result.get('chunk_index') is not None else metadata.get('chunk_index'),

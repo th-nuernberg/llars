@@ -239,21 +239,36 @@ class SchemaExportService:
 
     INPUT_DATA_EXAMPLES: Dict[str, Dict[str, Any]] = {
         "ranking": {
-            "description_de": "Mehrere Items (z.B. Zusammenfassungen) sollen nach Qualität sortiert werden",
-            "description_en": "Multiple items (e.g. summaries) should be sorted by quality",
+            "description_de": "Mehrere Items (z.B. Zusammenfassungen, LLM-Outputs) sollen nach Qualität sortiert werden",
+            "description_en": "Multiple items (e.g. summaries, LLM outputs) should be sorted by quality",
             "pattern_detection": [
-                "source_text + summary_a/b/c (Referenztext + mehrere Zusammenfassungen)",
-                "reference + item_a/item_b/item_c (Original + Varianten)",
-                "Mehrere Felder die verglichen werden sollen"
+                "WIDE FORMAT: source_text + summary_a/b/c (Referenztext + mehrere Zusammenfassungen in SPALTEN)",
+                "LONG FORMAT: chat_id + llm_name + feature_value (gleiche ID mehrfach, Varianten in ZEILEN)",
+                "Mehrere LLM-Outputs für denselben Input vergleichen",
+                "model/llm_name Spalte identifiziert verschiedene Generatoren"
             ],
-            "example_input": {
+            "example_input_wide": {
+                "_comment": "WIDE FORMAT - Varianten als Spalten",
                 "id": "article_1",
                 "source_text": "Die Europäische Union hat heute neue Klimaziele beschlossen...",
                 "summary_a": "EU beschließt ambitionierte Klimaziele mit CO2-Reduktion um 55%...",
                 "summary_b": "EU macht was mit Klima. Ist wichtig für alle.",
                 "summary_c": "Die Europäische Union hat auf ihrem Gipfeltreffen..."
             },
-            "why_ranking": "Es gibt EINEN Referenztext und MEHRERE Items (summary_a/b/c) die verglichen und sortiert werden sollen",
+            "example_input_long": {
+                "_comment": "LONG FORMAT - Varianten als Zeilen (gleiche chat_id, verschiedene llm_name)",
+                "_note": "Diese 3 Zeilen gehören zusammen (gleiche chat_id=8):",
+                "rows": [
+                    {"chat_id": 8, "llm_name": "gpt-4o", "feature_type": "generated_subject", "feature_value": "{'Betreff': 'Professionelle Beratungsanfrage'}", "mails": "[{...}]"},
+                    {"chat_id": 8, "llm_name": "gpt-3.5-turbo", "feature_type": "generated_subject", "feature_value": "{'Betreff': 'Anfrage zur Beratung'}", "mails": "[{...}]"},
+                    {"chat_id": 8, "llm_name": "mixtral-8x7b", "feature_type": "generated_subject", "feature_value": "{'Betreff': 'Hilfe benötigt'}", "mails": "[{...}]"}
+                ]
+            },
+            "why_ranking": """RANKING wenn:
+- WIDE FORMAT: summary_a/b/c Spalten (Varianten nebeneinander)
+- LONG FORMAT: Gleiche ID (chat_id) erscheint MEHRFACH mit verschiedenen llm_name/model
+- Ziel: Mehrere LLM-Outputs für denselben Input vergleichen und sortieren
+- Erkennbar an: llm_name, model, model_name, generator Spalte die verschiedene Modelle identifiziert""",
             "default_config": {
                 "type": "buckets",
                 "buckets": [
@@ -723,30 +738,64 @@ Die folgenden Schema-Informationen stammen direkt aus dem zentralen LLARS-Schema
 │  │
 │  └─ JA → comparison
 │
-├─ SCHRITT 3: Gibt es sentiment/category/topic/label Felder?
-│  │  (NICHT is_human/is_fake - die sind authenticity!)
-│  │
-│  └─ JA → labeling
-│
-├─ SCHRITT 4: Gibt es source_text + summary_a/b/c Muster?
-│  │  (Referenztext + mehrere Varianten)
+├─ SCHRITT 3: Gibt es summary_a/b/c Muster? (WIDE FORMAT RANKING)
+│  │  (Referenztext + mehrere Varianten als SPALTEN)
 │  │
 │  └─ JA → ranking
+│
+├─ SCHRITT 4: Gibt es llm_name/model + gleiche ID mehrfach? (LONG FORMAT RANKING)
+│  │  (Gleiche chat_id/item_id erscheint MEHRFACH mit verschiedenen model/llm_name)
+│  │  (z.B. chat_id=8 kommt 11x vor, jeweils mit anderem llm_name)
+│  │
+│  └─ JA → ranking (Long Format - Varianten als ZEILEN)
 │
 ├─ SCHRITT 5: Gibt es messages[] Array OHNE is_human/is_fake?
 │  │  (Konversationen zur Qualitätsbewertung)
 │  │
 │  └─ JA → mail_rating
 │
-└─ SCHRITT 6: Einzelne Texte/Antworten
+├─ SCHRITT 6: Gibt es question + response Paare?
+│  │  (Einzelne Q&A zur Qualitätsbewertung)
+│  │
+│  └─ JA → rating
+│
+├─ SCHRITT 7: Gibt es sentiment/category/topic/label Felder?
+│  │  (NICHT is_human/is_fake - die sind authenticity!)
+│  │
+│  └─ JA → labeling
+│
+└─ SCHRITT 8: Einzelne Texte/Antworten
    │
-   └─ → rating
+   └─ → rating (Fallback)
 ```
 
-**KRITISCHE REGEL:**
+**KRITISCHE REGELN:**
 - is_human/is_fake Feld = IMMER authenticity (egal ob messages[] existiert!)
 - messages[] OHNE is_human = mail_rating
-- messages[] MIT is_human = authenticity"""
+- messages[] MIT is_human = authenticity
+- llm_name/model Spalte + gleiche ID mehrfach = ranking (Long Format)
+
+## LONG FORMAT RANKING ERKENNUNG
+
+**Wichtig:** Manchmal kommen Ranking-Daten im "Long Format" statt mit _a/_b/_c Spalten:
+
+Beispiel df.csv:
+```csv
+chat_id,llm_name,feature_type,feature_value,mails
+8,gpt-3.5-turbo,generated_subject,{...},[conversation]
+8,gpt-4o,generated_subject,{...},[conversation]
+8,mixtral-8x7b,generated_subject,{...},[conversation]
+9,gpt-3.5-turbo,generated_subject,{...},[conversation]
+...
+```
+
+**Erkennungsmerkmale Long Format:**
+- Gleiche ID (chat_id, item_id, source_id) erscheint MEHRFACH
+- Eine Spalte identifiziert die Variante (llm_name, model, model_name, generator)
+- Eine Spalte enthält den generierten Output (feature_value, output, response)
+- Optional: Referenz/Quelle (mails, source, input, reference)
+
+→ Das ist **ranking** weil verschiedene LLM-Outputs für denselben Input verglichen werden sollen!"""
 
     @classmethod
     def _get_target_format(cls) -> str:

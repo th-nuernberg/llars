@@ -250,6 +250,7 @@ def analyze_scenario_data_stream():
         thinking: AI is processing the data
         chunk: Streaming token from LLM
         suggestions: Parsed AI suggestions (eval_type, name, description)
+        field_mapping: Field mapping for data transformation (especially for long-format)
         data_quality: Data quality assessment
         done: Analysis complete
         error: Error occurred
@@ -262,6 +263,7 @@ def analyze_scenario_data_stream():
     """
     from services.llm.llm_client_factory import LLMClientFactory
     from db.models.llm_model import LLMModel
+    from services.data_import.ai_analyzer import AIAnalyzer
 
     data = request.get_json(silent=True) or {}
 
@@ -331,6 +333,9 @@ def analyze_scenario_data_stream():
     matched_fields = schema_detection.matched_fields
 
     logger.info(f"SchemaDetector result: {detected_eval_type} (confidence: {schema_detection.confidence}, fields: {matched_fields})")
+
+    # Pre-create AIAnalyzer for field mapping (requires Flask context)
+    ai_analyzer = AIAnalyzer()
 
     def generate():
         """
@@ -407,6 +412,22 @@ def analyze_scenario_data_stream():
                 yield f"event: suggestions\ndata: {json.dumps(suggestions)}\n\n"
                 yield f"event: data_quality\ndata: {json.dumps(data_quality)}\n\n"
 
+                # STEP 5: Generate field mapping for ranking or detected long-format
+                final_eval_type = suggestions.get('evaluation_type') or suggestions.get('eval_type')
+                if final_eval_type == 'ranking':
+                    yield f"event: thinking\ndata: {json.dumps({'status': 'mapping', 'message': 'Generiere Feld-Mapping...'})}\n\n"
+                    try:
+                        field_mapping_result = ai_analyzer.generate_field_mapping(
+                            data=items,
+                            detected_type='ranking',
+                            detected_format='unknown',
+                            filename=filename
+                        )
+                        yield f"event: field_mapping\ndata: {json.dumps(field_mapping_result)}\n\n"
+                    except Exception as mapping_error:
+                        print(f"Field mapping generation failed: {mapping_error}")
+                        yield f"event: field_mapping\ndata: {json.dumps({'success': False, 'error': str(mapping_error)})}\n\n"
+
             except json.JSONDecodeError as e:
                 # Log without Flask context (use print as fallback)
                 print(f"Failed to parse LLM response as JSON: {e}")
@@ -442,6 +463,74 @@ def analyze_scenario_data_stream():
             'Connection': 'keep-alive'
         }
     )
+
+
+@data_bp.post("/ai-assist/transform-long-format")
+@api_key_or_token_required
+@require_permission('data:import')
+@handle_api_errors(logger_name='ai_assist')
+def transform_long_format():
+    """
+    Transform long-format data to LLARS ranking format.
+
+    This endpoint takes raw data and a field mapping (from generate_field_mapping)
+    and transforms it to the LLARS ranking format where each group becomes
+    a ranking item with multiple variants to compare.
+
+    Body:
+        data: List of data items in long format (required)
+        field_mapping: Mapping from generate_field_mapping (required)
+            - grouping_field: Field that groups rows (e.g., chat_id)
+            - variant_field: Field identifying variants (e.g., llm_name)
+            - output_field: Field with content (e.g., feature_value)
+            - reference_field: Field with source (e.g., mails)
+
+    Returns:
+        transformed_data: List of LLARS ranking items
+        stats: Transformation statistics
+    """
+    from services.data_import.ai_analyzer import AIAnalyzer
+
+    request_data = request.get_json(silent=True) or {}
+
+    data = request_data.get('data', [])
+    field_mapping = request_data.get('field_mapping', {})
+
+    if not data:
+        raise ValidationError("Missing required field: data")
+    if not isinstance(data, list):
+        raise ValidationError("Field 'data' must be an array")
+    if not field_mapping:
+        raise ValidationError("Missing required field: field_mapping")
+
+    # Validate field_mapping has required fields
+    required_fields = ['grouping_field', 'variant_field', 'output_field']
+    missing = [f for f in required_fields if not field_mapping.get(f)]
+    if missing:
+        raise ValidationError(f"field_mapping missing required fields: {missing}")
+
+    ai_analyzer = AIAnalyzer()
+
+    # Transform data
+    transformed = ai_analyzer.transform_long_format_to_ranking(data, field_mapping)
+
+    # Calculate stats
+    num_groups = len(transformed)
+    variants_per_group = len(transformed[0]['items']) if transformed else 0
+
+    logger.info(f"Transformed long-format data: {len(data)} rows -> {num_groups} ranking items")
+
+    return jsonify({
+        'success': True,
+        'transformed_data': transformed,
+        'stats': {
+            'original_rows': len(data),
+            'ranking_items': num_groups,
+            'variants_per_item': variants_per_group,
+            'grouping_field': field_mapping.get('grouping_field'),
+            'variant_field': field_mapping.get('variant_field')
+        }
+    })
 
 
 @data_bp.post("/ai-assist/scenario-chat/stream")

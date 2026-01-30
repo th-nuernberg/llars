@@ -758,6 +758,216 @@ Return ONLY valid JSON."""
             logger.exception(f"Improvement suggestions failed: {e}")
             return {"error": str(e)}
 
+    def generate_field_mapping(
+        self,
+        data: Any,
+        detected_type: str,
+        detected_format: str = "unknown",
+        filename: str | None = None
+    ) -> dict[str, Any]:
+        """
+        Generate field mapping for detected data format.
+
+        This is the SECOND LLM call after type detection.
+        Used especially for Long-Format Ranking where we need to identify:
+        - grouping_field: Which field groups rows together (e.g., chat_id)
+        - variant_field: Which field identifies variants (e.g., llm_name)
+        - output_field: Which field contains the content to evaluate
+        - reference_field: Which field contains the source/reference
+
+        Args:
+            data: Sample data from uploaded files
+            detected_type: The detected evaluation type (e.g., "ranking")
+            detected_format: The format ("wide", "long", "unknown")
+            filename: Original filename for context
+
+        Returns:
+            Mapping configuration for data transformation
+        """
+        # Prepare sample data
+        if isinstance(data, list):
+            sample = data[:10]  # More samples for better pattern detection
+        elif isinstance(data, dict) and "items" in data:
+            sample = data["items"][:10]
+        else:
+            sample = data
+
+        # Get field names
+        if isinstance(sample, list) and sample:
+            fields = list(sample[0].keys()) if isinstance(sample[0], dict) else []
+        elif isinstance(sample, dict):
+            fields = list(sample.keys())
+        else:
+            fields = []
+
+        sample_json = json.dumps(sample, indent=2, ensure_ascii=False, default=str)
+        if len(sample_json) > 3000:
+            sample_json = sample_json[:3000] + "\n... (truncated)"
+
+        # Analyze data to detect if it's long format (same ID appears multiple times)
+        is_long_format = self._detect_long_format(data)
+
+        prompt = f"""Du analysierst Daten für ein {detected_type.upper()}-Szenario.
+{"Das Format ist LONG FORMAT (gleiche ID erscheint mehrfach mit verschiedenen Varianten)." if is_long_format else ""}
+
+DATEINAME: {filename or 'unbekannt'}
+
+VERFÜGBARE FELDER: {fields}
+
+SAMPLE-DATEN (erste 10 Zeilen):
+```json
+{sample_json}
+```
+
+{"LONG FORMAT ERKENNUNG:" if is_long_format else ""}
+{self._analyze_long_format_stats(data) if is_long_format else ""}
+
+ERSTELLE EIN FELD-MAPPING als JSON:
+
+{{
+  "format": "long" oder "wide",
+  "grouping_field": "<Feld das Items gruppiert, z.B. chat_id, item_id, source_id - NUR bei long format>",
+  "variant_field": "<Feld das die Variante identifiziert, z.B. llm_name, model, model_name - NUR bei long format>",
+  "output_field": "<Feld mit dem generierten Output/Content, z.B. feature_value, output, response, summary_a>",
+  "reference_field": "<Feld mit der Referenz/Quelle, z.B. mails, source, input, source_text> oder null",
+  "content_type": "text" oder "json" oder "conversation",
+  "metadata_fields": ["<zusätzliche Felder die als Metadaten behalten werden sollen>"],
+  "id_template": "<Template für unique ID, z.B. {{chat_id}}_{{llm_name}} bei long format>",
+  "unique_groups": <Anzahl der eindeutigen Gruppen bei long format>,
+  "variants_per_group": <Anzahl Varianten pro Gruppe bei long format>,
+  "reasoning": "<Kurze Begründung für das Mapping>"
+}}
+
+REGELN FÜR LONG FORMAT:
+- grouping_field: Welches Feld gruppiert zusammengehörige Zeilen? (gleiche Werte = gleiche Gruppe)
+- variant_field: Welches Feld identifiziert die verschiedenen Versionen? (oft LLM/Model-Namen)
+- Prüfe ob eine ID mehrfach vorkommt mit verschiedenen variant-Werten
+
+REGELN FÜR WIDE FORMAT:
+- grouping_field und variant_field sind null
+- output_field kann mehrere sein (summary_a, summary_b, summary_c)
+
+Gib NUR das JSON zurück, keine Erklärungen."""
+
+        logger.info(f"Generating field mapping for {detected_type} ({detected_format})")
+
+        try:
+            content = self._client.complete(
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.1,
+            )
+
+            if not content:
+                return {
+                    "success": False,
+                    "error": "No response from LLM",
+                    "format": "unknown"
+                }
+
+            # Extract JSON
+            if "```json" in content:
+                content = content.split("```json")[1].split("```")[0]
+            elif "```" in content:
+                content = content.split("```")[1].split("```")[0]
+
+            result = json.loads(content.strip())
+            result["success"] = True
+
+            # Validate required fields for long format
+            if result.get("format") == "long":
+                required = ["grouping_field", "variant_field", "output_field"]
+                missing = [f for f in required if not result.get(f)]
+                if missing:
+                    result["warnings"] = [f"Missing required fields for long format: {missing}"]
+
+            logger.info(f"Field mapping generated: format={result.get('format')}, "
+                       f"grouping={result.get('grouping_field')}, variant={result.get('variant_field')}")
+
+            return result
+
+        except json.JSONDecodeError as e:
+            logger.warning(f"Could not parse mapping response as JSON: {e}")
+            return {
+                "success": False,
+                "error": "Could not parse LLM response",
+                "format": "unknown"
+            }
+        except Exception as e:
+            logger.exception(f"Field mapping generation failed: {e}")
+            return {
+                "success": False,
+                "error": str(e),
+                "format": "unknown"
+            }
+
+    def _detect_long_format(self, data: Any) -> bool:
+        """
+        Detect if data is in long format (same ID appears multiple times).
+
+        Returns True if a potential grouping field has duplicate values.
+        """
+        if not isinstance(data, list) or len(data) < 2:
+            return False
+
+        sample = data[0] if data else {}
+        if not isinstance(sample, dict):
+            return False
+
+        # Potential grouping fields
+        grouping_candidates = ['chat_id', 'id', 'item_id', 'source_id', 'reference_id',
+                               'conversation_id', 'thread_id', 'doc_id', 'document_id']
+
+        for field in grouping_candidates:
+            if field in sample:
+                # Check if this field has duplicates
+                values = [row.get(field) for row in data[:100] if isinstance(row, dict)]
+                unique_count = len(set(v for v in values if v is not None))
+                total_count = len([v for v in values if v is not None])
+
+                # If significantly fewer unique values than total rows, it's long format
+                if unique_count > 0 and total_count > unique_count * 1.5:
+                    return True
+
+        # Also check for model/llm_name fields which indicate variants
+        variant_indicators = ['llm_name', 'model', 'model_name', 'model_id', 'generator', 'variant']
+        has_variant_field = any(v in sample for v in variant_indicators)
+
+        return has_variant_field
+
+    def _analyze_long_format_stats(self, data: Any) -> str:
+        """
+        Analyze long format data and return statistics string.
+        """
+        if not isinstance(data, list) or not data:
+            return ""
+
+        sample = data[0]
+        if not isinstance(sample, dict):
+            return ""
+
+        stats_lines = []
+
+        # Find grouping field
+        grouping_candidates = ['chat_id', 'id', 'item_id', 'source_id', 'reference_id']
+        for field in grouping_candidates:
+            if field in sample:
+                values = [row.get(field) for row in data if isinstance(row, dict)]
+                unique_values = set(v for v in values if v is not None)
+                if len(unique_values) < len(values):
+                    stats_lines.append(f"- {field}: {len(unique_values)} eindeutige Werte, {len(values)} Zeilen")
+                    stats_lines.append(f"  → Vermutlich Gruppierungs-Feld (gleiche {field} = zusammengehörige Items)")
+
+        # Find variant field
+        variant_candidates = ['llm_name', 'model', 'model_name', 'model_id', 'generator', 'variant']
+        for field in variant_candidates:
+            if field in sample:
+                values = [row.get(field) for row in data if isinstance(row, dict)]
+                unique_values = set(v for v in values if v is not None)
+                stats_lines.append(f"- {field}: {len(unique_values)} verschiedene Werte: {list(unique_values)[:5]}...")
+                stats_lines.append(f"  → Vermutlich Varianten-Feld (identifiziert verschiedene LLMs/Modelle)")
+
+        return "\n".join(stats_lines) if stats_lines else ""
+
     def chat_refine_streaming(
         self,
         data: Any,
@@ -977,4 +1187,116 @@ Aktuelle Konfiguration:
                 if "order" not in bucket:
                     bucket["order"] = i + 1
             result.append(bucket)
+        return result
+
+    def transform_long_format_to_ranking(
+        self,
+        data: list[dict],
+        field_mapping: dict[str, Any]
+    ) -> list[dict]:
+        """
+        Transform long-format data to LLARS ranking format.
+
+        Long-format: Each row is one variant (same grouping_field appears multiple times)
+        LLARS ranking: Each item has a reference + multiple items to rank
+
+        Args:
+            data: List of rows in long format
+            field_mapping: Mapping from generate_field_mapping(), containing:
+                - grouping_field: Field that groups rows (e.g., chat_id)
+                - variant_field: Field identifying variants (e.g., llm_name)
+                - output_field: Field with generated content (e.g., feature_value)
+                - reference_field: Field with source/reference (e.g., mails)
+
+        Returns:
+            List of LLARS ranking items, each with:
+                - id: Unique identifier
+                - reference: The source/input text
+                - items: Array of {id, label, content, source} for ranking
+        """
+        if not field_mapping.get('success'):
+            logger.warning("Cannot transform: field mapping was not successful")
+            return data
+
+        grouping_field = field_mapping.get('grouping_field')
+        variant_field = field_mapping.get('variant_field')
+        output_field = field_mapping.get('output_field')
+        reference_field = field_mapping.get('reference_field')
+        metadata_fields = field_mapping.get('metadata_fields', [])
+
+        if not all([grouping_field, variant_field, output_field]):
+            logger.warning(f"Missing required fields for transformation: "
+                          f"grouping={grouping_field}, variant={variant_field}, output={output_field}")
+            return data
+
+        # Group rows by grouping_field
+        groups: dict[str, list[dict]] = {}
+        for row in data:
+            group_key = str(row.get(grouping_field, 'unknown'))
+            if group_key not in groups:
+                groups[group_key] = []
+            groups[group_key].append(row)
+
+        logger.info(f"Transforming long-format: {len(groups)} groups, {len(data)} total rows")
+
+        # Transform each group to LLARS ranking format
+        result = []
+        for group_id, rows in groups.items():
+            # Get reference from first row (should be same across group)
+            first_row = rows[0]
+            reference_content = first_row.get(reference_field, '') if reference_field else ''
+
+            # Parse reference if it's JSON string (e.g., messages array)
+            if isinstance(reference_content, str) and reference_content.startswith('['):
+                try:
+                    reference_content = json.loads(reference_content)
+                except json.JSONDecodeError:
+                    pass
+
+            # Build items array from variants
+            items = []
+            for i, row in enumerate(rows):
+                variant_name = row.get(variant_field, f'variant_{i}')
+                output_content = row.get(output_field, '')
+
+                # Parse output if it's JSON string
+                if isinstance(output_content, str) and output_content.startswith('{'):
+                    try:
+                        output_content = json.loads(output_content)
+                    except json.JSONDecodeError:
+                        pass
+
+                item = {
+                    'id': f'item_{i+1}',
+                    'label': str(variant_name),
+                    'content': output_content,
+                    'source': {
+                        'type': 'llm',
+                        'model': str(variant_name)
+                    }
+                }
+
+                # Add metadata
+                for meta_field in metadata_fields:
+                    if meta_field in row and meta_field not in [grouping_field, variant_field, output_field, reference_field]:
+                        if 'metadata' not in item:
+                            item['metadata'] = {}
+                        item['metadata'][meta_field] = row.get(meta_field)
+
+                items.append(item)
+
+            # Build LLARS ranking item
+            ranking_item = {
+                'id': f'group_{group_id}',
+                'reference': {
+                    'type': 'conversation' if isinstance(reference_content, list) else 'text',
+                    'label': f'Source {group_id}',
+                    'content': reference_content
+                },
+                'items': items
+            }
+
+            result.append(ranking_item)
+
+        logger.info(f"Transformation complete: {len(result)} ranking items with {len(result[0]['items']) if result else 0} variants each")
         return result

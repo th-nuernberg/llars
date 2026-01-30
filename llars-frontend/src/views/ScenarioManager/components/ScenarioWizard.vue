@@ -868,6 +868,7 @@ const aiSuggestions = ref(null) // AI-generated suggestions
 const aiThinking = ref(false)
 const streamedJsonContent = ref('') // Raw JSON being streamed from LLM
 const streamingPhase = ref(null) // 'parsing' | 'thinking' | 'streaming' | 'done'
+const transformingData = ref(false) // Long-format transformation in progress
 
 // Team/User state
 const availableUsers = ref([])
@@ -1444,6 +1445,27 @@ async function analyzeData() {
                   }
                   break
 
+                case 'field_mapping':
+                  // Store field mapping for long-format data transformation
+                  if (analysisResult.value) {
+                    analysisResult.value.fieldMapping = parsed
+                  }
+                  console.log('Field mapping received:', parsed)
+
+                  // Auto-transform long-format data to LLARS format
+                  if (parsed.format === 'long' && parsed.success) {
+                    // Call transformation (async, but don't await in the loop)
+                    transformLongFormatData(parsed).then(() => {
+                      console.log('Long-format data transformation complete')
+                    })
+                  }
+
+                  // Forward to panel if it supports it
+                  if (analysisPanel.value?.processFieldMapping) {
+                    analysisPanel.value.processFieldMapping(parsed)
+                  }
+                  break
+
                 case 'done':
                   tokensUsed = parsed.tokens_used || 0
                   if (analysisResult.value) {
@@ -1540,6 +1562,53 @@ function performLocalAnalysis(allData, fileResults, totalErrors) {
 
   // Auto-select suggested type
   formData.value.evalType = suggestedType
+}
+
+// Transform long-format data to LLARS ranking format
+async function transformLongFormatData(fieldMapping) {
+  if (!fieldMapping?.success || fieldMapping.format !== 'long') {
+    console.log('Skipping transformation: not long format or mapping failed')
+    return
+  }
+
+  console.log('Transforming long-format data...', fieldMapping)
+  transformingData.value = true
+
+  try {
+    const response = await fetch('/api/ai-assist/transform-long-format', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        data: analyzedData.value,
+        field_mapping: fieldMapping
+      })
+    })
+
+    if (!response.ok) {
+      throw new Error(`Transform API failed: ${response.status}`)
+    }
+
+    const result = await response.json()
+
+    if (result.success && result.transformed_data) {
+      // Replace analyzed data with transformed data
+      analyzedData.value = result.transformed_data
+
+      // Update analysis result
+      if (analysisResult.value) {
+        analysisResult.value.itemCount = result.stats.ranking_items
+        analysisResult.value.transformed = true
+        analysisResult.value.transformStats = result.stats
+      }
+
+      console.log('Data transformed successfully:', result.stats)
+    }
+  } catch (error) {
+    console.error('Long-format transformation failed:', error)
+    // Don't fail the whole analysis, just log the error
+  } finally {
+    transformingData.value = false
+  }
 }
 
 // Handle config updates from StreamingAnalysisPanel

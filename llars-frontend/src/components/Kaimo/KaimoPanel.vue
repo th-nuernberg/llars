@@ -513,6 +513,10 @@ const canManageKaimo = computed(() => {
   return isResearcher.value || hasPermission('admin:kaimo:manage')
 })
 
+const isKaimoAdmin = computed(() => {
+  return hasPermission('admin:kaimo:manage')
+})
+
 const ownedCases = ref([])
 const sharedCases = ref([])
 const loadError = ref(null)
@@ -575,8 +579,8 @@ const getStatusLabel = (status) => {
 
 const loadCases = async () => {
   loadError.value = null
-  if (canManageKaimo.value) {
-    // Admin API returns flat list
+  if (isKaimoAdmin.value) {
+    // Admin API returns flat list (all cases)
     const data = await getKaimoAdminCases()
     ownedCases.value = data?.cases || []
     sharedCases.value = []

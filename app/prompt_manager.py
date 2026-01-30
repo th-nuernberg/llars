@@ -105,7 +105,9 @@ class PromptManager:
             logging.info("Chat history was truncated to fit context window")
 
         # Replace placeholders in system prompt
-        enriched_system_prompt = self.system_prompt.replace('###RAGPIPELINEKONTEXT###', rag_context)
+        project_url = os.environ.get('PROJECT_URL', 'http://localhost:55080')
+        enriched_system_prompt = self.system_prompt.replace('{PROJECT_URL}', project_url)
+        enriched_system_prompt = enriched_system_prompt.replace('###RAGPIPELINEKONTEXT###', rag_context)
         enriched_system_prompt = enriched_system_prompt.replace('###CHATVERLAUF###', formatted_history)
 
         # Build the instruction

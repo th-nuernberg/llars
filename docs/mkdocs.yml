@@ -35,6 +35,14 @@ nav:
       - Konfiguration: getting-started/configuration.md
   - Anleitungen:
       - Übersicht: guides/index.md
+      - Szenario Wizard: guides/scenario-wizard.md
+      - Szenario Manager: guides/scenario-manager.md
+      - Evaluation: guides/evaluation.md
+      - Prompt Engineering: guides/prompt-engineering.md
+      - Batch Generation: guides/batch-generation.md
+      - Chatbot Wizard: guides/chatbot-wizard.md
+      - LaTeX Collaboration: guides/latex-collaboration.md
+      - Admin Dashboard: guides/admin-dashboard.md
       - Schnellstart: guides/quick-start.md
       - Authentik Setup: guides/authentik-setup.md
       - Login Anleitung: guides/login-anleitung.md
@@ -92,6 +100,12 @@ nav:
       - Production Deployment: entwickler/production-deployment.md
   - Archiv:
       - Übersicht: archive/index.md
+      - Legacy-Konzepte:
+          - Evaluationsassistent: archive/legacy-concepts/EvaluationsassistentKonzept.md
+          - LLM Evaluator: archive/legacy-concepts/LLMEvaluatorKonzept.md
+          - Ranking Redesign: archive/legacy-concepts/ranking-redesign-concept.md
+          - Scenario Wizard (Legacy): archive/legacy-concepts/scenario-wizard.md
+      - AI Writing Assistant: archive/AI_WRITING_ASSISTANT_KONZEPT.md
       - Refactoring (Complete): archive/refactoring-complete.md
       - Refactoring (Scenarios): archive/refactoring-scenarios.md
       - Session 2025-11-20: archive/session-2025-11-20.md

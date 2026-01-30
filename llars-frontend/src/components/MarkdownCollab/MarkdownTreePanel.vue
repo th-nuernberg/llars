@@ -386,6 +386,9 @@ function submitDelete() {
   emit('remove', { id: pendingDelete.value.id })
   deleteDialog.value = false
 }
+
+// Expose functions for parent components
+defineExpose({ openCreateDialog })
 </script>
 
 <style scoped>

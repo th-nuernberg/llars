@@ -15,13 +15,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libgomp1 \
     default-mysql-client \
     latexmk \
-    texlive-latex-base \
-    texlive-latex-recommended \
-    texlive-latex-extra \
-    texlive-fonts-recommended \
-    texlive-lang-german \
-    texlive-bibtex-extra \
-    biber \
+    texlive-full \
     # Playwright dependencies
     libnss3 \
     libnspr4 \

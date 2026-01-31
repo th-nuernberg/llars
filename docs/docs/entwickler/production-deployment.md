@@ -407,12 +407,84 @@ ls -la /var/llars/app/storage/chroma/
 
 ---
 
-## 11. Performance-Tuning
+## 11. WSGI Server (Gunicorn + Gevent)
+
+LLARS verwendet in Production **Gunicorn mit gevent-websocket** für:
+
+- Echte WebSocket-Unterstützung (kein Polling-Fallback)
+- Bessere Docker DNS-Kompatibilität als eventlet
+- Geringer Ressourcenverbrauch im Idle (~0.04% CPU, ~380 MB RAM)
+
+### Development vs Production Mode
+
+Die Umgebungsvariable `PROJECT_STATE` steuert den Modus:
+
+| Modus | Server | WebSocket | Auto-Reload |
+|-------|--------|-----------|-------------|
+| `development` | Flask Dev Server | Polling (threading) | ✓ |
+| `production` | Gunicorn + gevent | Echte WebSockets | ✗ |
+
+```bash
+# In .env
+PROJECT_STATE=production  # oder development
+```
+
+### Gunicorn-Konfiguration
+
+Die Konfiguration liegt in `docker/flask/gunicorn.conf.py`:
+
+```python
+# Server
+bind = '0.0.0.0:8081'
+workers = 1  # Bei gevent: 1 Worker, Greenlets übernehmen Concurrency
+
+# Worker-Klasse für echte WebSocket-Unterstützung
+worker_class = 'geventwebsocket.gunicorn.workers.GeventWebSocketWorker'
+
+# Timeouts für lange LLM-Requests
+timeout = 300  # 5 Minuten
+graceful_timeout = 30
+
+# Memory-Leak-Prävention
+max_requests = 1000
+max_requests_jitter = 50
+```
+
+### WSGI Entry Points
+
+| Datei | Verwendung |
+|-------|------------|
+| `wsgi_gevent.py` | Production (Gunicorn + gevent) |
+| `wsgi.py` | Eventlet (nicht empfohlen für Docker) |
+
+**Wichtig:** `gevent.monkey.patch_all()` MUSS vor allen anderen Imports aufgerufen werden!
+
+```python
+# wsgi_gevent.py
+from gevent import monkey
+monkey.patch_all()
+
+from main import app, socketio
+```
+
+### Async Mode
+
+Flask-SocketIO erkennt den async_mode automatisch via Umgebungsvariable:
+
+```bash
+# Wird in start_flask.sh gesetzt
+export SOCKETIO_ASYNC_MODE="gevent"    # Production
+export SOCKETIO_ASYNC_MODE="threading" # Development
+```
+
+---
+
+## 12. Performance-Tuning
 
 ### Gunicorn-Worker
 
 ```bash
-# In .env
+# In .env (für sync workers, nicht bei gevent)
 GUNICORN_WORKERS=4        # CPU-Cores * 2 + 1
 GUNICORN_THREADS=4        # Pro Worker
 GUNICORN_TIMEOUT=120      # Für lange Requests
@@ -432,6 +504,118 @@ max_connections = 200
 ```bash
 # Für große Collections
 CHROMA_PERSIST_DIRECTORY=/fast-ssd/chroma
+```
+
+---
+
+## 13. Load Testing
+
+LLARS enthält ein integriertes Load-Test-Skript unter `scripts/load_test.py`.
+
+### Quick Test
+
+```bash
+# Lokal
+python scripts/load_test.py --quick --host localhost --port 8081
+
+# Im Docker-Container
+docker exec llars_flask_service python3 /app/scripts/load_test.py --quick
+```
+
+### Heavy Load Test
+
+```bash
+# 100 gleichzeitige User, 20 Requests pro User, 50 WebSocket-Verbindungen
+python scripts/load_test.py \
+  --users 100 \
+  --requests 20 \
+  --ws-connections 50 \
+  --duration 60
+```
+
+### Test-Arten
+
+| Parameter | Beschreibung |
+|-----------|--------------|
+| `--test http` | Nur HTTP API-Endpunkte |
+| `--test websocket` | Nur WebSocket-Verbindungen |
+| `--test sustained` | Dauerlast über Zeit |
+| `--test all` | Alle Tests (Standard) |
+
+### Benchmark-Ergebnisse (Stand: Januar 2026)
+
+**Server:** Production mit Gunicorn + gevent-websocket
+
+| Metrik | Wert |
+|--------|------|
+| **HTTP Response Time (avg)** | 8-80 ms |
+| **HTTP Response Time (p95)** | 164 ms |
+| **HTTP Response Time (p99)** | 349 ms |
+| **Throughput** | ~100 req/s |
+| **WebSocket Connect Time** | 135-272 ms |
+| **WebSocket Success Rate** | 100% |
+
+**Ressourcen nach Heavy Load (9.600 Requests):**
+
+| Container | CPU | RAM |
+|-----------|-----|-----|
+| Flask | 0.04% | 380 MB |
+| MariaDB | 0.02% | 112 MB |
+| nginx | 0.00% | 8 MB |
+| Redis | 0.63% | 7 MB |
+
+### Rate-Limiting
+
+Flask-Limiter schützt die API automatisch:
+
+- **Standard:** 1000 Requests/Stunde pro Endpoint
+- **Status-Code:** `429 Too Many Requests`
+- **Log:** `ratelimit exceeded at endpoint: ...`
+
+---
+
+## 14. Troubleshooting Production
+
+### Eventlet DNS-Probleme
+
+**Problem:** Mit eventlet in Docker:
+```
+Can't connect to MySQL server on 'db-maria-service' ([Errno -3] Lookup timed out)
+```
+
+**Lösung:** Gevent statt eventlet verwenden (bereits Standard):
+```bash
+# In .env
+PROJECT_STATE=production
+# Verwendet automatisch wsgi_gevent.py
+```
+
+### WebSocket-Fallback auf Polling
+
+**Problem:** Browser nutzt Polling statt WebSocket.
+
+**Prüfen:**
+```python
+# Im Container
+docker exec llars_flask_service python3 -c "
+import socketio
+sio = socketio.Client()
+sio.connect('http://localhost:8081', transports=['websocket'])
+print('Transport:', sio.transport())  # Sollte 'websocket' sein
+sio.disconnect()
+"
+```
+
+**Lösung:** Sicherstellen dass `PROJECT_STATE=production` und Gunicorn mit gevent läuft.
+
+### Container startet nicht nach Update
+
+**Problem:** Permission denied bei start_flask.sh.
+
+**Lösung:**
+```bash
+docker compose build --no-cache llars_flask_service
+docker compose up -d llars_flask_service
 ```
 
 ---

@@ -33,6 +33,9 @@ export { default as LConfusionMatrix } from './LConfusionMatrix.vue'
 export { default as LRatingDistribution } from './LRatingDistribution.vue'
 export { default as LAgreementHeatmap } from './LAgreementHeatmap.vue'
 
+// Layout Components
+export { default as LFloatingWindow } from './LFloatingWindow.vue'
+
 // Other Common Components
 export { default as KatexFormula } from './KatexFormula.vue'
 export { default as LCardSkeleton } from './LCardSkeleton.vue'
@@ -61,6 +64,7 @@ export const LlarsComponents = {
     app.component('LAgreementHeatmap', () => import('./LAgreementHeatmap.vue'))
     app.component('KatexFormula', () => import('./KatexFormula.vue'))
     app.component('LCardSkeleton', () => import('./LCardSkeleton.vue'))
+    app.component('LFloatingWindow', () => import('./LFloatingWindow.vue'))
   }
 }
 

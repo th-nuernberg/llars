@@ -99,6 +99,16 @@ function selectTab(value) {
   margin-bottom: 16px;
 }
 
+/* Dark mode: use a darker, more subtle version */
+.v-theme--dark .l-tabs {
+  background: color-mix(in srgb, var(--llars-primary) 35%, #1e1e1e);
+}
+
+.v-theme--dark .l-tabs--outlined {
+  background: transparent;
+  border-color: color-mix(in srgb, var(--llars-primary) 60%, #1e1e1e);
+}
+
 .l-tabs--grow {
   gap: 0;
 }
@@ -183,6 +193,11 @@ function selectTab(value) {
   background: rgba(255, 255, 255, 0.25);
   color: white;
   font-weight: 600;
+}
+
+/* Dark mode: brighter active state for better contrast */
+.v-theme--dark .l-tab--active {
+  background: color-mix(in srgb, var(--llars-primary) 50%, transparent);
 }
 
 /* Tab Icon */

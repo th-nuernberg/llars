@@ -42,8 +42,28 @@ else
   echo "Skipping migration (mysql client or file missing)"
 fi
 
-# Starte die Flask-App
-# Note: Using threading async_mode for SocketIO, which works with flask run
-# WebSocket will use long-polling fallback but is fully functional
-echo "Starting Flask app on port 8081..."
-python -m flask --app main run --host=0.0.0.0 --port=8081 --reload
+# Determine environment: development or production
+# PROJECT_STATE is set in docker-compose.yml from .env
+PROJECT_STATE="${PROJECT_STATE:-development}"
+
+echo "Starting Flask app on port 8081 (mode: $PROJECT_STATE)..."
+
+if [ "$PROJECT_STATE" = "production" ]; then
+    # Production: Use Gunicorn with eventlet for real WebSocket support
+    # - No auto-reload (code changes require restart)
+    # - Eventlet worker for async/WebSocket handling
+    # - Lower CPU usage, better performance
+    echo "Production mode: Starting with Gunicorn + eventlet..."
+    export SOCKETIO_ASYNC_MODE="eventlet"
+    exec gunicorn \
+        --config /usr/local/bin/gunicorn.conf.py \
+        "main:app"
+else
+    # Development: Use Flask dev server with auto-reload
+    # - Auto-reload on code changes
+    # - Threading mode (polling fallback for WebSocket)
+    # - Higher CPU usage due to file watching
+    echo "Development mode: Starting with Flask dev server + auto-reload..."
+    export SOCKETIO_ASYNC_MODE="threading"
+    exec python -m flask --app main run --host=0.0.0.0 --port=8081 --reload
+fi

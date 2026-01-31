@@ -37,6 +37,11 @@ DEFAULT_PRESETS = {
 }
 
 
+def _safe_unique_set(values: list) -> set:
+    """Create a set from values, filtering out unhashable types (lists, dicts)."""
+    return set(v for v in values if v is not None and isinstance(v, (str, int, float, bool)))
+
+
 class AIAnalyzer:
     """
     AI-powered data analysis and transformation.
@@ -531,12 +536,17 @@ Die Feldnamen sind der Schlüssel zur Erkennung des richtigen Evaluationstyps!
 3. LABELING wenn: sentiment/category/topic Labels (mehrklassig, NICHT is_human)
 
 4. RANKING wenn: source_text + summary_a/b/c oder reference + mehrere Varianten
+   **ODER Long-Format:** Gleiche ID erscheint mehrfach mit verschiedenen Outputs
+   → 1 Referenz + N Outputs = IMMER Ranking!
 
 5. MAIL_RATING wenn: messages[] Array OHNE is_human/is_fake Feld
 
 6. RATING wenn: Einzelne Texte/Antworten ohne Vergleiche
+   → 1 Referenz + 1 Output = Rating (Qualität bewerten)
 
-**KRITISCH:** Wenn is_human oder is_fake existiert → IMMER authenticity wählen!
+**KRITISCH:**
+- Wenn is_human oder is_fake existiert → IMMER authenticity wählen!
+- Wenn gleiche ID mehrfach vorkommt mit verschiedenen Outputs → IMMER ranking wählen!
 
 Gib NUR valides JSON zurück, keine Markdown-Formatierung."""
 
@@ -807,8 +817,27 @@ Return ONLY valid JSON."""
         # Analyze data to detect if it's long format (same ID appears multiple times)
         is_long_format = self._detect_long_format(data)
 
+        # Calculate Long-Format statistics for the prompt
+        long_format_stats = ""
+        unique_groups = 0
+        variants_per_group = 0
+
+        if is_long_format:
+            # Find grouping field and calculate stats
+            for field in fields:
+                if field.lower().endswith('_id') or field.lower().endswith('id') or field in ['id', 'src_id', 'source_id']:
+                    if field in sample:
+                        values = [row.get(field) for row in data if isinstance(row, dict)]
+                        unique_values = _safe_unique_set(values)
+                        if len(unique_values) < len(values):
+                            unique_groups = len(unique_values)
+                            variants_per_group = len(values) // unique_groups if unique_groups > 0 else 0
+                            long_format_stats = f"Gruppierungsfeld '{field}': {unique_groups} Gruppen, ~{variants_per_group} Varianten pro Gruppe"
+                            break
+
         prompt = f"""Du analysierst Daten für ein {detected_type.upper()}-Szenario.
 {"Das Format ist LONG FORMAT (gleiche ID erscheint mehrfach mit verschiedenen Varianten)." if is_long_format else ""}
+{f"STATISTIK: {long_format_stats}" if long_format_stats else ""}
 
 DATEINAME: {filename or 'unbekannt'}
 
@@ -833,8 +862,8 @@ ERSTELLE EIN FELD-MAPPING als JSON:
   "content_type": "text" oder "json" oder "conversation",
   "metadata_fields": ["<zusätzliche Felder die als Metadaten behalten werden sollen>"],
   "id_template": "<Template für unique ID, z.B. {{chat_id}}_{{llm_name}} bei long format>",
-  "unique_groups": <Anzahl der eindeutigen Gruppen bei long format>,
-  "variants_per_group": <Anzahl Varianten pro Gruppe bei long format>,
+  "unique_groups": {unique_groups if unique_groups > 0 else "<Anzahl der eindeutigen Gruppen bei long format>"},
+  "variants_per_group": {variants_per_group if variants_per_group > 0 else "<Anzahl Varianten pro Gruppe bei long format>"},
   "reasoning": "<Kurze Begründung für das Mapping>"
 }}
 
@@ -905,6 +934,10 @@ Gib NUR das JSON zurück, keine Erklärungen."""
         Detect if data is in long format (same ID appears multiple times).
 
         Returns True if a potential grouping field has duplicate values.
+
+        Handles cryptic/abbreviated column names like:
+        - src_id, s_id, sid → source/item ID
+        - mdl, mod, m → model/variant
         """
         if not isinstance(data, list) or len(data) < 2:
             return False
@@ -913,9 +946,23 @@ Gib NUR das JSON zurück, keine Erklärungen."""
         if not isinstance(sample, dict):
             return False
 
-        # Potential grouping fields
-        grouping_candidates = ['chat_id', 'id', 'item_id', 'source_id', 'reference_id',
-                               'conversation_id', 'thread_id', 'doc_id', 'document_id']
+        fields = list(sample.keys())
+
+        # Potential grouping fields - includes cryptic abbreviations
+        grouping_candidates = [
+            'chat_id', 'id', 'item_id', 'source_id', 'reference_id',
+            'conversation_id', 'thread_id', 'doc_id', 'document_id',
+            # Cryptic/abbreviated versions
+            'src_id', 's_id', 'sid', 'cid', 'tid', 'ref_id', 'rid',
+            'grp_id', 'group_id', 'gid', 'sample_id', 'idx', 'index'
+        ]
+
+        # Also check for any field ending with '_id' or containing 'id'
+        for field in fields:
+            lower_field = field.lower()
+            if lower_field.endswith('_id') or lower_field.endswith('id'):
+                if field not in grouping_candidates:
+                    grouping_candidates.append(field)
 
         for field in grouping_candidates:
             if field in sample:
@@ -926,17 +973,42 @@ Gib NUR das JSON zurück, keine Erklärungen."""
 
                 # If significantly fewer unique values than total rows, it's long format
                 if unique_count > 0 and total_count > unique_count * 1.5:
+                    logger.info(f"Long-Format detected: {field} has {unique_count} unique / {total_count} total")
                     return True
 
-        # Also check for model/llm_name fields which indicate variants
-        variant_indicators = ['llm_name', 'model', 'model_name', 'model_id', 'generator', 'variant']
+        # Check for model/llm_name fields which indicate variants
+        # Includes cryptic abbreviations
+        variant_indicators = [
+            'llm_name', 'model', 'model_name', 'model_id', 'generator', 'variant',
+            # Cryptic/abbreviated versions
+            'mdl', 'mod', 'm', 'llm', 'gen', 'var', 'version', 'ver', 'v',
+            'source', 'src', 'type', 'kind', 'system', 'sys'
+        ]
+
+        # Also check if any field has a small number of unique values (likely a variant field)
+        for field in fields:
+            if field not in grouping_candidates:
+                values = [row.get(field) for row in data[:100] if isinstance(row, dict)]
+                unique_values = _safe_unique_set(values)
+
+                # If field has 2-10 unique values and appears in most rows, it's likely a variant field
+                if 2 <= len(unique_values) <= 10 and len(values) > len(unique_values) * 2:
+                    # Check if values look like model names (alphanumeric, no long sentences)
+                    if all(isinstance(v, str) and len(v) < 50 for v in unique_values):
+                        logger.info(f"Potential variant field detected: {field} with values {list(unique_values)[:5]}")
+                        return True
+
         has_variant_field = any(v in sample for v in variant_indicators)
+        if has_variant_field:
+            logger.info(f"Variant indicator field found in: {[v for v in variant_indicators if v in sample]}")
 
         return has_variant_field
 
     def _analyze_long_format_stats(self, data: Any) -> str:
         """
         Analyze long format data and return statistics string.
+
+        Handles cryptic/abbreviated column names.
         """
         if not isinstance(data, list) or not data:
             return ""
@@ -945,26 +1017,57 @@ Gib NUR das JSON zurück, keine Erklärungen."""
         if not isinstance(sample, dict):
             return ""
 
+        fields = list(sample.keys())
         stats_lines = []
 
-        # Find grouping field
-        grouping_candidates = ['chat_id', 'id', 'item_id', 'source_id', 'reference_id']
+        # Find grouping field - includes cryptic names
+        grouping_candidates = [
+            'chat_id', 'id', 'item_id', 'source_id', 'reference_id',
+            'src_id', 's_id', 'sid', 'cid', 'tid', 'ref_id', 'rid',
+            'grp_id', 'group_id', 'gid', 'sample_id', 'idx', 'index'
+        ]
+
+        # Also include any field ending with _id
+        for field in fields:
+            if field.lower().endswith('_id') or field.lower().endswith('id'):
+                if field not in grouping_candidates:
+                    grouping_candidates.append(field)
+
         for field in grouping_candidates:
             if field in sample:
                 values = [row.get(field) for row in data if isinstance(row, dict)]
-                unique_values = set(v for v in values if v is not None)
+                unique_values = _safe_unique_set(values)
                 if len(unique_values) < len(values):
                     stats_lines.append(f"- {field}: {len(unique_values)} eindeutige Werte, {len(values)} Zeilen")
                     stats_lines.append(f"  → Vermutlich Gruppierungs-Feld (gleiche {field} = zusammengehörige Items)")
 
-        # Find variant field
-        variant_candidates = ['llm_name', 'model', 'model_name', 'model_id', 'generator', 'variant']
+        # Find variant field - includes cryptic names
+        variant_candidates = [
+            'llm_name', 'model', 'model_name', 'model_id', 'generator', 'variant',
+            'mdl', 'mod', 'm', 'llm', 'gen', 'var', 'version', 'ver',
+            'source', 'src', 'type', 'kind', 'system', 'sys'
+        ]
+
         for field in variant_candidates:
             if field in sample:
                 values = [row.get(field) for row in data if isinstance(row, dict)]
-                unique_values = set(v for v in values if v is not None)
+                unique_values = _safe_unique_set(values)
                 stats_lines.append(f"- {field}: {len(unique_values)} verschiedene Werte: {list(unique_values)[:5]}...")
                 stats_lines.append(f"  → Vermutlich Varianten-Feld (identifiziert verschiedene LLMs/Modelle)")
+
+        # Also check all fields for potential variant patterns
+        for field in fields:
+            if field not in grouping_candidates and field not in variant_candidates:
+                values = [row.get(field) for row in data[:100] if isinstance(row, dict)]
+                unique_values = _safe_unique_set(values)
+                if not unique_values:
+                    continue
+
+                # If field has 2-10 unique values, might be a variant
+                if 2 <= len(unique_values) <= 10 and len(values) > len(unique_values) * 2:
+                    if all(isinstance(v, str) and len(v) < 50 for v in unique_values):
+                        stats_lines.append(f"- {field}: {len(unique_values)} verschiedene kurze Werte: {list(unique_values)[:5]}")
+                        stats_lines.append(f"  → Möglicherweise Varianten-Feld")
 
         return "\n".join(stats_lines) if stats_lines else ""
 
@@ -1195,24 +1298,31 @@ Aktuelle Konfiguration:
         field_mapping: dict[str, Any]
     ) -> list[dict]:
         """
-        Transform long-format data to LLARS ranking format.
+        Transform long-format data to LLARS ranking format (Wide-Format).
 
         Long-format: Each row is one variant (same grouping_field appears multiple times)
-        LLARS ranking: Each item has a reference + multiple items to rank
+        Example input:
+            src_id,mdl,out,inp
+            S001,gpt4,output1,input1
+            S001,claude,output2,input1
+            S001,llama,output3,input1
+
+        Wide-format output (for UniversalTransformer):
+            {
+                'id': 'S001',
+                'source_text': 'input1',
+                'summary_a': 'output1',  # gpt4
+                'summary_b': 'output2',  # claude
+                'summary_c': 'output3',  # llama
+                'metadata': {'model_a': 'gpt4', 'model_b': 'claude', 'model_c': 'llama'}
+            }
 
         Args:
             data: List of rows in long format
-            field_mapping: Mapping from generate_field_mapping(), containing:
-                - grouping_field: Field that groups rows (e.g., chat_id)
-                - variant_field: Field identifying variants (e.g., llm_name)
-                - output_field: Field with generated content (e.g., feature_value)
-                - reference_field: Field with source/reference (e.g., mails)
+            field_mapping: Mapping from generate_field_mapping()
 
         Returns:
-            List of LLARS ranking items, each with:
-                - id: Unique identifier
-                - reference: The source/input text
-                - items: Array of {id, label, content, source} for ranking
+            List of Wide-Format items for UniversalTransformer
         """
         if not field_mapping.get('success'):
             logger.warning("Cannot transform: field mapping was not successful")
@@ -1239,7 +1349,10 @@ Aktuelle Konfiguration:
 
         logger.info(f"Transforming long-format: {len(groups)} groups, {len(data)} total rows")
 
-        # Transform each group to LLARS ranking format
+        # Suffix letters for Wide-Format (a, b, c, d, e, ...)
+        suffix_letters = 'abcdefghijklmnopqrstuvwxyz'
+
+        # Transform each group to Wide-Format
         result = []
         for group_id, rows in groups.items():
             # Get reference from first row (should be same across group)
@@ -1253,9 +1366,20 @@ Aktuelle Konfiguration:
                 except json.JSONDecodeError:
                     pass
 
-            # Build items array from variants
-            items = []
+            # Build Wide-Format item
+            wide_item = {
+                'id': group_id,
+                'source_text': reference_content,
+            }
+
+            # Add each variant as summary_a, summary_b, summary_c, etc.
+            metadata = {}
             for i, row in enumerate(rows):
+                if i >= len(suffix_letters):
+                    logger.warning(f"Too many variants ({len(rows)}) for group {group_id}, truncating")
+                    break
+
+                suffix = suffix_letters[i]
                 variant_name = row.get(variant_field, f'variant_{i}')
                 output_content = row.get(output_field, '')
 
@@ -1266,37 +1390,22 @@ Aktuelle Konfiguration:
                     except json.JSONDecodeError:
                         pass
 
-                item = {
-                    'id': f'item_{i+1}',
-                    'label': str(variant_name),
-                    'content': output_content,
-                    'source': {
-                        'type': 'llm',
-                        'model': str(variant_name)
-                    }
-                }
+                # Add as summary_a, summary_b, etc.
+                wide_item[f'summary_{suffix}'] = output_content
 
-                # Add metadata
+                # Track model names in metadata
+                metadata[f'model_{suffix}'] = str(variant_name)
+
+                # Add other metadata fields
                 for meta_field in metadata_fields:
                     if meta_field in row and meta_field not in [grouping_field, variant_field, output_field, reference_field]:
-                        if 'metadata' not in item:
-                            item['metadata'] = {}
-                        item['metadata'][meta_field] = row.get(meta_field)
+                        metadata[f'{meta_field}_{suffix}'] = row.get(meta_field)
 
-                items.append(item)
+            if metadata:
+                wide_item['metadata'] = metadata
 
-            # Build LLARS ranking item
-            ranking_item = {
-                'id': f'group_{group_id}',
-                'reference': {
-                    'type': 'conversation' if isinstance(reference_content, list) else 'text',
-                    'label': f'Source {group_id}',
-                    'content': reference_content
-                },
-                'items': items
-            }
+            result.append(wide_item)
 
-            result.append(ranking_item)
-
-        logger.info(f"Transformation complete: {len(result)} ranking items with {len(result[0]['items']) if result else 0} variants each")
+        logger.info(f"Transformation complete: {len(result)} wide-format items with "
+                   f"{len([k for k in result[0].keys() if k.startswith('summary_')]) if result else 0} variants each")
         return result

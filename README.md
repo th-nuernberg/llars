@@ -22,7 +22,7 @@
 | Kategorie | Features |
 |-----------|----------|
 | **Evaluation** | Ranking, Rating, Mail Rating, Fake/Echt-Erkennung |
-| **LLM-as-Judge** | Automatisierte paarweise Vergleiche mit Live-Streaming |
+| **LLM Evaluator** | Automatisierte paarweise Vergleiche mit Live-Streaming |
 | **RAG-Pipeline** | Dokumenten-basierte Antworten mit ChromaDB + Hybrid Search |
 | **Chatbot Builder** | Chatbots mit RAG-Integration und Web-Crawler |
 | **Collaboration** | Echtzeit-Zusammenarbeit mit YJS CRDT (Prompt Engineering, Markdown, LaTeX) |

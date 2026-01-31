@@ -1,9 +1,10 @@
 """User-related database models."""
 
 import secrets
-from typing import Optional
+import hashlib
+from typing import Optional, List
 from datetime import datetime, date
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from werkzeug.security import generate_password_hash, check_password_hash
 from db import db
 
@@ -68,3 +69,95 @@ class User(db.Model):
         if not self.avatar_seed:
             self.avatar_seed = generate_avatar_seed()
         return self.avatar_seed
+
+    # Relationship to API keys
+    api_keys: Mapped[List["UserApiKey"]] = relationship(
+        "UserApiKey",
+        back_populates="user",
+        cascade="all, delete-orphan",
+        lazy="dynamic"
+    )
+
+
+class UserApiKey(db.Model):
+    """
+    API Key model for programmatic access.
+
+    Each user can have multiple API keys with labels for different purposes.
+    Admin users can have a fixed key from .env that's never deleted.
+    """
+    __tablename__ = 'user_api_keys'
+
+    id: Mapped[int] = mapped_column(db.Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+
+    # Key details
+    name: Mapped[str] = mapped_column(db.String(100), nullable=False)
+    key_hash: Mapped[str] = mapped_column(db.String(64), unique=True, nullable=False)
+    key_prefix: Mapped[str] = mapped_column(db.String(12), nullable=False)  # First 8 chars for display
+
+    # Metadata
+    created_at: Mapped[datetime] = mapped_column(db.DateTime, default=datetime.utcnow)
+    last_used_at: Mapped[Optional[datetime]] = mapped_column(db.DateTime, nullable=True)
+    expires_at: Mapped[Optional[datetime]] = mapped_column(db.DateTime, nullable=True)
+
+    # Flags
+    is_active: Mapped[bool] = mapped_column(db.Boolean, default=True, nullable=False)
+    is_system_key: Mapped[bool] = mapped_column(db.Boolean, default=False, nullable=False)
+
+    # Permissions/Scopes (for future use)
+    scopes: Mapped[Optional[str]] = mapped_column(db.String(500), nullable=True)
+
+    # Relationship
+    user: Mapped["User"] = relationship("User", back_populates="api_keys")
+
+    @staticmethod
+    def generate_key() -> tuple[str, str, str]:
+        """
+        Generate a new API key.
+
+        Returns:
+            Tuple of (full_key, key_hash, key_prefix)
+        """
+        key = f"llars_{secrets.token_urlsafe(32)}"
+        key_hash = hashlib.sha256(key.encode()).hexdigest()
+        key_prefix = key[:12]
+        return key, key_hash, key_prefix
+
+    @staticmethod
+    def hash_key(key: str) -> str:
+        """Hash a key for comparison."""
+        return hashlib.sha256(key.encode()).hexdigest()
+
+    @classmethod
+    def find_by_key(cls, key: str) -> Optional["UserApiKey"]:
+        """Find an API key by its value."""
+        key_hash = cls.hash_key(key)
+        return cls.query.filter_by(key_hash=key_hash, is_active=True).first()
+
+    def update_last_used(self):
+        """Update the last used timestamp."""
+        self.last_used_at = datetime.utcnow()
+
+    def to_dict(self, include_key: bool = False, full_key: str = None) -> dict:
+        """
+        Convert to dictionary for API response.
+
+        Args:
+            include_key: If True and full_key provided, include the full key
+            full_key: The full key (only available at creation time)
+        """
+        result = {
+            "id": self.id,
+            "name": self.name,
+            "key_prefix": self.key_prefix,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "last_used_at": self.last_used_at.isoformat() if self.last_used_at else None,
+            "expires_at": self.expires_at.isoformat() if self.expires_at else None,
+            "is_active": self.is_active,
+            "is_system_key": self.is_system_key,
+            "scopes": self.scopes.split(",") if self.scopes else [],
+        }
+        if include_key and full_key:
+            result["key"] = full_key
+        return result

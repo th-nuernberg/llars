@@ -6,7 +6,7 @@ Import: from db.models import User, Permission, JudgeSession
 """
 
 # User models
-from db.models.user import User, UserGroup
+from db.models.user import User, UserGroup, UserApiKey
 
 # Permission models
 from db.models.permission import (
@@ -208,6 +208,7 @@ __all__ = [
     # User
     'User',
     'UserGroup',
+    'UserApiKey',
     # Permission
     'Permission',
     'Role',

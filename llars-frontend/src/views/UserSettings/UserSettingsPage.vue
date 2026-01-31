@@ -115,6 +115,10 @@
             key="personal"
             @save-status="handleSaveStatus"
           />
+          <ApiKeysTab
+            v-else-if="activeTab === 'apikeys'"
+            key="apikeys"
+          />
           <LLMProvidersTab
             v-else-if="activeTab === 'providers'"
             key="providers"
@@ -135,6 +139,7 @@ import { useI18n } from 'vue-i18n'
 import LIcon from '@/components/common/LIcon.vue'
 import LAvatar from '@/components/common/LAvatar.vue'
 import PersonalSettingsTab from './components/PersonalSettingsTab.vue'
+import ApiKeysTab from './components/ApiKeysTab.vue'
 import LLMProvidersTab from './components/LLMProvidersTab.vue'
 import ReferralLinksTab from './components/ReferralLinksTab.vue'
 import axios from 'axios'
@@ -157,6 +162,7 @@ const username = computed(() => tokenParsed.value?.preferred_username || '')
 const availableTabs = computed(() => {
   const tabs = [
     { value: 'personal', label: t('userSettings.tabs.personal'), icon: 'mdi-account-cog' },
+    { value: 'apikeys', label: t('userSettings.tabs.apikeys'), icon: 'mdi-key' },
     { value: 'providers', label: t('userSettings.tabs.providers'), icon: 'mdi-api' }
   ]
 
@@ -176,6 +182,7 @@ const currentTab = computed(() => availableTabs.value.find(t => t.value === acti
 function getTabDescription(tab) {
   const descriptions = {
     personal: t('userSettings.personal.description', 'Passen Sie Ihr Profil und Ihre Präferenzen an'),
+    apikeys: t('userSettings.apiKeys.description', 'Erstellen und verwalten Sie API-Schlüssel für den programmatischen Zugriff'),
     providers: t('userSettings.providers.description', 'Verwalten Sie Ihre LLM-API-Keys'),
     referrals: t('userSettings.referrals.description', 'Erstellen und verwalten Sie Einladungslinks')
   }

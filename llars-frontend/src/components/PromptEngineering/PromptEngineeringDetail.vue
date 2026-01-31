@@ -37,7 +37,7 @@
         @openVariableManager="openVariableManager(); mobileSidebarOpen = false"
         @toggleGitPanel="toggleGitPanel"
         @gitCommitted="onGitCommitted"
-        @openGitDetail="gitDetailDialogOpen = true; mobileSidebarOpen = false"
+        @openFloatingGitPanel="showFloatingGitPanel = true; mobileSidebarOpen = false"
       />
       <template #append>
         <v-divider />
@@ -73,7 +73,7 @@
         @openVariableManager="openVariableManager"
         @toggleGitPanel="toggleGitPanel"
         @gitCommitted="onGitCommitted"
-        @openGitDetail="gitDetailDialogOpen = true"
+        @openFloatingGitPanel="showFloatingGitPanel = true"
       />
     </div>
 
@@ -205,16 +205,14 @@
           </div>
         </div>
 
-        <!-- Git Detail Dialog (opened from sidebar) -->
-        <GitDetailDialog
-          v-model="gitDetailDialogOpen"
-          :entity-id="Number(promptId)"
-          entity-mode="single"
-          api-prefix="/api/prompts"
-          :can-commit="true"
+        <!-- Floating Git Panel -->
+        <PromptFloatingGitPanel
+          v-model="showFloatingGitPanel"
+          :prompt-id="Number(promptId)"
           :summary="gitSummary"
           :get-content="getContentSnapshot"
           @committed="onGitCommitted"
+          @rollback="onGitRollback"
         />
 
         <!-- Debug Info (Development only) -->
@@ -472,7 +470,7 @@ Quill.register(UserHighlightBlot);
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import TestPromptDialog from './TestPromptDialog.vue';
 import VariableManagerDialog from './VariableManagerDialog.vue';
-import { GitDetailDialog } from '@/components/common/Git';
+import PromptFloatingGitPanel from './PromptFloatingGitPanel.vue';
 import { useRoute, useRouter } from 'vue-router';
 import 'quill/dist/quill.snow.css';
 import draggable from 'vuedraggable';
@@ -657,7 +655,7 @@ const {
 
 // Git versioning - declare early so editors can reference showGitPanel
 const showGitPanel = ref(true); // Stored in localStorage
-const gitDetailDialogOpen = ref(false);
+const showFloatingGitPanel = ref(false);
 const gitDiff = usePromptGitDiff(promptId, users);
 
 const getCurrentUserColor = () => {
@@ -766,6 +764,20 @@ const onGitCommitted = () => {
   gitDiff.updateBaseline(getContentSnapshot());
   clearUserHighlights(); // Clear text highlighting after commit
   updateGitSummary();
+};
+
+// Handle rollback from floating panel
+const onGitRollback = async ({ blockId }) => {
+  // Reload prompt details to get the updated content after rollback
+  await fetchPromptDetails();
+  // Reload baseline
+  await gitDiff.loadBaseline();
+  updateGitSummary();
+};
+
+// Toggle floating git panel
+const toggleFloatingGitPanel = () => {
+  showFloatingGitPanel.value = !showFloatingGitPanel.value;
 };
 
 // Event handlers

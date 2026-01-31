@@ -86,6 +86,16 @@
         <div class="section-label">
           <LIcon size="14" class="mr-1">mdi-source-branch</LIcon>
           {{ $t('promptEngineering.sidebar.gitPanel') }}
+          <v-spacer />
+          <v-btn
+            icon
+            variant="text"
+            size="x-small"
+            :title="$t('promptEngineering.sidebar.openFloatingPanel')"
+            @click="$emit('openFloatingGitPanel')"
+          >
+            <LIcon size="14">mdi-open-in-new</LIcon>
+          </v-btn>
         </div>
         <GitStatusWidget
           :entity-id="promptId"
@@ -96,7 +106,7 @@
           :summary="gitSummary"
           :get-content="getContent"
           @committed="$emit('gitCommitted')"
-          @open-detail="$emit('openGitDetail')"
+          @open-detail="$emit('openFloatingGitPanel')"
         />
       </div>
 
@@ -255,7 +265,7 @@ const props = defineProps({
   getContent: { type: Function, default: null }
 });
 
-const emit = defineEmits(['showAddBlockDialog', 'refreshPromptDetails', 'uploadJsonFileSelected', 'triggerTestPrompt', 'toggleGitPanel', 'openVariableManager', 'gitCommitted', 'openGitDetail']);
+const emit = defineEmits(['showAddBlockDialog', 'refreshPromptDetails', 'uploadJsonFileSelected', 'triggerTestPrompt', 'toggleGitPanel', 'openVariableManager', 'gitCommitted', 'openFloatingGitPanel']);
 
 const router = useRouter();
 const { t } = useI18n();

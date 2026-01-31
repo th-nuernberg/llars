@@ -216,7 +216,9 @@ def format_scenario_for_api(scenario, user, invitation_map=None, include_detaile
     ).count()
 
     # Compute status based on dates if not explicitly set
-    status = getattr(scenario, 'status', None)
+    # Status can be in config_json or as direct attribute
+    config = scenario.config_json or {}
+    status = config.get('status') or getattr(scenario, 'status', None)
     if not status:
         current_time = datetime.utcnow()
         if scenario.begin and scenario.end:

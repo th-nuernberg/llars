@@ -163,6 +163,7 @@
                   @ai-command="(cmd) => emit('ai-command', cmd)"
                   @ai-action="(e) => emit('ai-action', e)"
                   @request-completion="(req) => emit('request-completion', req)"
+                  @selection-change="(sel) => emit('selection-change', sel)"
                   @update:ghost-text-enabled="(val) => emit('update:ghostTextEnabled', val)"
                   @document-saved="handleDocumentSaved"
                   @document-updated="handleDocumentUpdated"
@@ -196,6 +197,8 @@
                     >
                       {{ $t('latexCollab.compile.actions.compile') }}
                     </LBtn>
+                    <!-- Slot for additional toolbar buttons (e.g., AI Assistant) -->
+                    <slot name="toolbar-actions" />
                     <v-select
                       v-model="compileCommitId"
                       :items="compileCommitOptions"
@@ -752,7 +755,7 @@ const props = defineProps({
 })
 
 // Emits for parent communication (used by AI wrapper)
-const emit = defineEmits(['document-change', 'ai-command', 'ai-action', 'request-completion', 'update:ghostTextEnabled'])
+const emit = defineEmits(['document-change', 'ai-command', 'ai-action', 'request-completion', 'update:ghostTextEnabled', 'selection-change'])
 
 const route = useRoute()
 const router = useRouter()
@@ -2460,7 +2463,8 @@ watch(
 )
 
 defineExpose({
-  getAiChatContext
+  getAiChatContext,
+  editorRef
 })
 </script>
 

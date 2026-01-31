@@ -19,7 +19,7 @@
     <!-- Invited By -->
     <div class="invited-by">
       <LIcon size="14" color="grey">mdi-account-outline</LIcon>
-      <span>{{ $t('scenarioManager.invitation.invitedBy', { name: scenario.owner_name || 'Unknown' }) }}</span>
+      <span>{{ $t('scenarioManager.invitation.invitedBy', { name: invitedByName }) }}</span>
     </div>
 
     <!-- Your Progress (only if accepted) -->
@@ -45,8 +45,12 @@
         </LBtn>
       </template>
 
-      <!-- Accepted: Go to evaluation -->
+      <!-- Accepted: Go to evaluation + Leave option -->
       <template v-else-if="isAccepted">
+        <LBtn variant="text" size="small" color="error" @click.stop="$emit('leave', scenario)">
+          <LIcon start size="16">mdi-exit-run</LIcon>
+          {{ $t('scenarioManager.invitation.leave') }}
+        </LBtn>
         <LBtn variant="primary" size="small" @click.stop="$emit('evaluate', scenario)">
           <LIcon start size="16">mdi-clipboard-edit-outline</LIcon>
           {{ $t('scenarioManager.card.goToEvaluation') }}
@@ -81,7 +85,7 @@ const props = defineProps({
   }
 })
 
-defineEmits(['accept', 'reject', 'evaluate'])
+defineEmits(['accept', 'reject', 'evaluate', 'leave'])
 
 const { t } = useI18n()
 
@@ -103,6 +107,11 @@ const typeConfig = computed(() => {
 const isPending = computed(() => props.scenario.invitation?.status === 'pending')
 const isAccepted = computed(() => props.scenario.invitation?.status === 'accepted')
 const isRejected = computed(() => props.scenario.invitation?.status === 'rejected')
+
+// Invited by name (from invitation.invited_by or fallback to owner_name)
+const invitedByName = computed(() => {
+  return props.scenario.invitation?.invited_by || props.scenario.owner_name || 'System'
+})
 
 const invitationStatus = computed(() => {
   if (isPending.value) return { variant: 'warning', label: t('scenarioManager.invitation.pending') }

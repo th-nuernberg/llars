@@ -63,6 +63,7 @@
             @accept="acceptInvitation"
             @reject="rejectInvitation"
             @evaluate="goToEvaluation"
+            @leave="leaveScenario"
           />
         </div>
         <div v-else class="empty-state">
@@ -113,7 +114,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter, useRoute } from 'vue-router'
 import { useScenarioManager } from './composables/useScenarioManager'
@@ -137,8 +138,29 @@ const {
 } = useScenarioManager()
 
 // UI State
-const activeTab = ref('own')
+// Read initial tab from URL query parameter
+// Map URL tab values to internal tab values
+const tabMapping = {
+  'scenarios': 'own',
+  'own': 'own',
+  'invitations': 'invitations'
+}
+const urlTab = route.query.tab
+const initialTab = tabMapping[urlTab] || 'own'
+const activeTab = ref(initialTab)
 const showWizard = ref(false)
+
+// Sync tab with URL
+watch(activeTab, (newTab) => {
+  const query = { ...route.query }
+  // Use user-friendly URL names
+  if (newTab === 'own') {
+    query.tab = 'scenarios'
+  } else {
+    query.tab = newTab
+  }
+  router.replace({ query })
+})
 const showDeleteDialog = ref(false)
 const scenarioToDelete = ref(null)
 const deleting = ref(false)
@@ -226,12 +248,18 @@ async function deleteScenario() {
 }
 
 async function acceptInvitation(scenario) {
-  await respondToInvitation(scenario.id, 'accepted')
+  await respondToInvitation(scenario.id, 'accept')
   await fetchScenarios('all')
 }
 
 async function rejectInvitation(scenario) {
-  await respondToInvitation(scenario.id, 'rejected')
+  await respondToInvitation(scenario.id, 'reject')
+  await fetchScenarios('all')
+}
+
+async function leaveScenario(scenario) {
+  // Leaving a scenario = rejecting the invitation (hides it from evaluation list)
+  await respondToInvitation(scenario.id, 'reject')
   await fetchScenarios('all')
 }
 

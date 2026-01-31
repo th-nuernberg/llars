@@ -134,6 +134,10 @@ def register_all_blueprints(app: Flask) -> None:
     from routes.data_import import bp as import_bp
     app.register_blueprint(import_bp)
 
+    # Wizard API (Programmatic Scenario Wizard for Claude Code)
+    from routes.wizard import bp as wizard_bp
+    app.register_blueprint(wizard_bp)
+
     # ============================================================
     # Project-Specific Features
     # ============================================================
@@ -205,6 +209,7 @@ def get_blueprint_info() -> dict:
             {'name': 'zotero', 'prefix': '/api/zotero', 'description': 'Zotero reference manager integration'},
             {'name': 'anonymize', 'prefix': '/api/anonymize', 'description': 'Offline pseudonymization (Anonymize tool)'},
             {'name': 'import', 'prefix': '/api/import', 'description': 'Universal data import with AI assistance'},
+            {'name': 'wizard', 'prefix': '/api/wizard', 'description': 'Scenario Wizard API for programmatic access (Claude Code)'},
         ],
         'projects': [
             {'name': 'kaimo', 'prefix': '/api/kaimo', 'description': 'KAIMO project routes'},

@@ -107,20 +107,21 @@ function getTypeConfig(scenario) {
 }
 
 // Available scenarios: All scenarios where user is owner OR invited
-// Filter by status: only active scenarios
+// Filter by status: exclude archived/draft, allow null status (legacy/wizard scenarios)
 const availableScenarios = computed(() => {
   return allScenarios.value
     .filter(s => {
-      // Show scenarios where user is owner OR has accepted/pending invitation
+      // Show scenarios where user is owner OR has accepted invitation
       const isOwner = s.is_owner
       const isInvited = s.invitation?.status === 'accepted'
-      const isPending = s.invitation?.status === 'pending'
 
-      // Only show active scenarios (not archived/draft for non-owners)
-      const isActive = ['evaluating', 'data_collection', 'active'].includes(s.status)
-      const showForOwner = isOwner && s.status !== 'archived'
+      // Exclude archived and draft scenarios
+      const isExcluded = s.status === 'archived' || s.status === 'draft'
 
-      return (showForOwner || ((isInvited || isPending) && isActive))
+      // Include: active statuses OR null/undefined status (legacy/wizard scenarios)
+      const isActive = !s.status || ['evaluating', 'data_collection', 'active'].includes(s.status)
+
+      return (isOwner || isInvited) && !isExcluded && isActive
     })
     .sort((a, b) => {
       // Owner scenarios first, then by progress, then by date

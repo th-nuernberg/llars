@@ -188,10 +188,10 @@ export const RATING_PRESETS = {
     }
   },
 
-  // ===== LLM-as-Judge Multi-Dimensional Presets =====
+  // ===== LLM Evaluator Multi-Dimensional Presets =====
   'llm-judge-standard': {
     id: 'llm-judge-standard',
-    name: 'LLM-as-Judge Standard',
+    name: 'LLM Evaluator Standard',
     description: 'Standard-Metriken für Text-Evaluation (Coherence, Fluency, Relevance, Consistency)',
     config: {
       type: 'multi-dimensional',
@@ -1012,7 +1012,7 @@ export const PRESETS_BY_TYPE = {
 
 // ===== Default Config by Type =====
 export const DEFAULT_CONFIG_BY_TYPE = {
-  // General types - RATING now uses multi-dimensional as default (LLM-as-Judge standard)
+  // General types - RATING now uses multi-dimensional as default (LLM Evaluator standard)
   [EVAL_TYPES.RATING]: RATING_PRESETS['llm-judge-standard'].config,
   [EVAL_TYPES.RANKING]: RANKING_PRESETS['buckets-3'].config,
   [EVAL_TYPES.LABELING]: LABELING_PRESETS['binary-authentic'].config,

@@ -220,7 +220,7 @@ const evaluationTypes = [
     name: 'Rating',
     icon: 'mdi-star-half-full',
     color: '#D1BC8A',
-    description: 'Multi-dimensionale Bewertung auf Likert-Skala (LLM-as-Judge Metriken).',
+    description: 'Multi-dimensionale Bewertung auf Likert-Skala (LLM Evaluator Metriken).',
     layout: 'Links: Dimensionen mit Likert-Skalen | Rechts: Zu bewertender Text',
     minimalExample: {
       schema_version: SchemaVersion.V1_0,

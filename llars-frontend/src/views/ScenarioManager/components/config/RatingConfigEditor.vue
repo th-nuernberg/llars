@@ -265,7 +265,7 @@ const emit = defineEmits(['update:modelValue'])
 const { t, locale } = useI18n()
 
 const scaleTypes = [
-  { title: 'Multi-Dimensional (LLM-as-Judge)', value: 'multi-dimensional' },
+  { title: 'Multi-Dimensional (LLM Evaluator)', value: 'multi-dimensional' },
   { title: 'Likert', value: 'likert' },
   { title: 'Sterne', value: 'stars' },
   { title: 'Numerisch', value: 'numeric' },

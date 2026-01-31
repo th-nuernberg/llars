@@ -1,12 +1,12 @@
 # LLARS - LLM Assisted Research System
 
-**Version:** 3.0 | **Stand:** 28. Januar 2026
+**Version:** 3.0 | **Stand:** 31. Januar 2026
 
 ## Projekt-Übersicht
 
 LLARS ist ein System zur kollaborativen Bewertung von E-Mails und Szenarien mit LLMs.
 
-**Features:** Rating/Ranking-System | LLM Evaluator | RAG-Pipeline (ChromaDB) | Multi-User Collaboration (YJS) | Authentik Auth | RBAC Permissions | Offline Anonymize Tool
+**Features:** Rating/Ranking-System | LLM Evaluator | RAG-Pipeline (ChromaDB) | Multi-User Collaboration (YJS) | Authentik Auth | RBAC Permissions | Offline Anonymize Tool | Production-Ready (Gunicorn + gevent)
 
 **Quick Reference:** Dieses Dokument enthält alle wichtigen Informationen für die Entwicklung.
 
@@ -51,6 +51,54 @@ Databases: MariaDB (:3306 - LLARS), PostgreSQL (:5432 - Authentik)
 
 **Backend:** Flask 3.0 + MariaDB 11.2 + ChromaDB
 **Frontend:** Vue 3.4 + Vuetify 3.5 + Vite 5.1 + Socket.IO
+
+---
+
+## Production Server (Gunicorn + Gevent)
+
+LLARS verwendet in Production **Gunicorn mit gevent-websocket** für echte WebSocket-Unterstützung.
+
+### Development vs Production
+
+| Modus | `PROJECT_STATE` | Server | WebSocket | Auto-Reload |
+|-------|-----------------|--------|-----------|-------------|
+| Development | `development` | Flask Dev Server | Polling | ✓ |
+| Production | `production` | Gunicorn + gevent | Echte WS | ✗ |
+
+### Wichtige Dateien
+
+```
+docker/flask/start_flask.sh     # Dev/Prod Mode Switch
+docker/flask/gunicorn.conf.py   # Gunicorn Konfiguration
+app/wsgi_gevent.py              # WSGI Entry Point (gevent)
+app/wsgi.py                     # WSGI Entry Point (eventlet, nicht empfohlen)
+scripts/load_test.py            # Load-Test-Skript
+```
+
+### Performance-Benchmarks (Production)
+
+| Metrik | Wert |
+|--------|------|
+| HTTP Response Time (avg) | 8-80 ms |
+| HTTP Throughput | ~100 req/s |
+| WebSocket Success Rate | 100% |
+| Idle CPU (Flask) | 0.04% |
+| Idle RAM (Flask) | ~380 MB |
+
+### Load Testing
+
+```bash
+# Quick Test
+docker exec llars_flask_service python3 /app/scripts/load_test.py --quick
+
+# Heavy Load
+python scripts/load_test.py --users 100 --requests 20 --ws-connections 50
+```
+
+### Eventlet vs Gevent
+
+**Eventlet:** DNS-Timeout-Probleme in Docker (`Lookup timed out`)
+**Gevent:** Empfohlen - Bessere Docker DNS-Kompatibilität
 
 ---
 
@@ -620,6 +668,9 @@ EOF
 | Crawler findet nichts | exclude_patterns prüfen |
 | Status "Ausstehend" obwohl bewertet | OWNER-Rolle in ScenarioUsers prüfen, Container neu starten |
 | Items-Status inkonsistent | Dimensions-Config Lokationen prüfen (siehe Evaluation Status) |
+| Eventlet DNS Timeout | Gevent verwenden: `PROJECT_STATE=production` |
+| WebSocket nur Polling | Prüfen: `PROJECT_STATE=production` + Gunicorn mit gevent |
+| 429 Too Many Requests | Rate-Limiting aktiv (1000 req/h) - normal bei Load-Tests |
 
 ---
 
@@ -707,4 +758,4 @@ L-Komponenten: 35 (Design System)
 
 ---
 
-**Stand:** 27. Januar 2026
+**Stand:** 31. Januar 2026

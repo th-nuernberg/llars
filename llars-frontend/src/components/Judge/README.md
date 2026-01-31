@@ -1,6 +1,6 @@
-# LLM-as-Judge Components
+# LLM Evaluator Components
 
-Vue 3 Frontend-Komponenten für das LLM-as-Judge System in LLARS.
+Vue 3 Frontend-Komponenten für das LLM Evaluator System in LLARS.
 
 ## Übersicht
 

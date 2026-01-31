@@ -157,27 +157,98 @@
       </div>
 
       <!-- History Tab -->
-      <div v-if="activeTab === 'history'" class="tab-content history-tab">
-        <v-skeleton-loader v-if="loadingCommits" type="list-item@6" />
-        <div v-else-if="commits.length === 0" class="empty-state">
-          <LIcon size="36" class="mb-2">mdi-source-commit</LIcon>
-          <span>{{ $t('promptEngineering.floatingGit.noCommits') }}</span>
-        </div>
-        <div v-else class="history-list">
-          <div
-            v-for="c in commits"
-            :key="c.id"
-            class="history-item"
-          >
-            <div class="commit-indicator" />
-            <div class="commit-details">
-              <div class="commit-message">{{ c.message }}</div>
-              <div class="commit-meta">
-                <span class="author">{{ c.author }}</span>
-                <span class="date">{{ formatDate(c.created_at) }}</span>
+      <div v-if="activeTab === 'history'" class="tab-content">
+        <div class="content-grid">
+          <!-- Left: Commit List -->
+          <div class="block-list-section">
+            <div class="section-header">
+              <LIcon size="16" class="mr-1">mdi-source-commit</LIcon>
+              {{ $t('promptEngineering.floatingGit.commits') }}
+              <v-spacer />
+              <span class="block-count">{{ commits.length }}</span>
+            </div>
+
+            <v-skeleton-loader v-if="loadingCommits" type="list-item@6" />
+            <div v-else-if="commits.length === 0" class="empty-state">
+              <LIcon size="36" class="mb-2">mdi-source-commit</LIcon>
+              <span>{{ $t('promptEngineering.floatingGit.noCommits') }}</span>
+            </div>
+            <div v-else class="history-list">
+              <div
+                v-for="(c, idx) in commits"
+                :key="c.id"
+                class="history-item"
+                :class="{ 'diff-active': selectedCommit?.id === c.id }"
+                @click="selectCommitForDiff(c, idx)"
+              >
+                <div class="commit-indicator" />
+                <div class="commit-details">
+                  <div class="commit-message">{{ c.message }}</div>
+                  <div class="commit-meta">
+                    <span class="author">{{ c.author }}</span>
+                    <span class="date">{{ formatDate(c.created_at) }}</span>
+                  </div>
+                </div>
+                <LTag variant="gray" size="small">#{{ c.id }}</LTag>
               </div>
             </div>
-            <LTag variant="gray" size="small">#{{ c.id }}</LTag>
+          </div>
+
+          <!-- Right: Commit Diff View -->
+          <div class="diff-section">
+            <div class="section-header">
+              <LIcon size="16" class="mr-1">mdi-file-compare</LIcon>
+              {{ $t('promptEngineering.floatingGit.commitChanges') }}
+              <span v-if="selectedCommit" class="diff-file-name">#{{ selectedCommit.id }}</span>
+            </div>
+
+            <div v-if="!selectedCommit" class="empty-state">
+              <LIcon size="36" class="mb-2">mdi-source-commit</LIcon>
+              <span>{{ $t('promptEngineering.floatingGit.selectCommit') }}</span>
+            </div>
+            <v-skeleton-loader v-else-if="loadingCommitDiff" type="table" height="200" />
+            <v-alert v-else-if="commitDiffError" type="error" variant="tonal" density="compact">
+              {{ commitDiffError }}
+            </v-alert>
+            <div v-else class="commit-diff-content">
+              <!-- Block changes in this commit -->
+              <div v-if="commitDiffBlocks.length === 0" class="empty-state">
+                <LIcon size="36" class="mb-2">mdi-check-circle</LIcon>
+                <span>{{ $t('promptEngineering.floatingGit.noBlockChanges') }}</span>
+              </div>
+              <div v-else class="commit-blocks-list">
+                <div
+                  v-for="block in commitDiffBlocks"
+                  :key="block.title"
+                  class="commit-block-item"
+                  :class="{ 'diff-active': selectedCommitBlock === block.title }"
+                  @click="selectCommitBlock(block)"
+                >
+                  <span class="status-badge" :class="getStatusClass(block.status)">
+                    {{ block.status }}
+                  </span>
+                  <span class="block-title">{{ block.title }}</span>
+                  <span class="block-stats">
+                    <span class="stat-badge success">+{{ block.insertions }}</span>
+                    <span class="stat-badge error">-{{ block.deletions }}</span>
+                  </span>
+                </div>
+              </div>
+              <!-- Diff Viewer for selected block -->
+              <div v-if="selectedCommitBlock" class="commit-block-diff">
+                <div class="diff-header">
+                  <LIcon size="14">mdi-file-document</LIcon>
+                  {{ selectedCommitBlock }}
+                </div>
+                <DiffViewer
+                  :base-text="commitBlockDiffBase"
+                  :compare-text="commitBlockDiffCompare"
+                  :base-label="commitBlockDiffBaseLabel"
+                  :compare-label="commitBlockDiffCompareLabel"
+                  class="diff-viewer"
+                />
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -317,6 +388,18 @@ const commitError = ref('')
 const showRollbackConfirm = ref(false)
 const rollbackTarget = ref(null)
 const rollingBackBlock = ref(null)
+
+// Commit history diff state
+const selectedCommit = ref(null)
+const selectedCommitIndex = ref(-1)
+const loadingCommitDiff = ref(false)
+const commitDiffError = ref('')
+const commitDiffBlocks = ref([])
+const selectedCommitBlock = ref(null)
+const commitBlockDiffBase = ref('')
+const commitBlockDiffCompare = ref('')
+const commitBlockDiffBaseLabel = ref('')
+const commitBlockDiffCompareLabel = ref('')
 
 // Computed
 const hasChanges = computed(() =>
@@ -551,6 +634,53 @@ async function executeBlockRollback() {
   }
 }
 
+// Commit history diff functions
+async function selectCommitForDiff(commit, index) {
+  selectedCommit.value = commit
+  selectedCommitIndex.value = index
+  selectedCommitBlock.value = null
+  commitBlockDiffBase.value = ''
+  commitBlockDiffCompare.value = ''
+  await loadCommitDiff(commit.id, index)
+}
+
+async function loadCommitDiff(commitId, index) {
+  loadingCommitDiff.value = true
+  commitDiffError.value = ''
+  commitDiffBlocks.value = []
+
+  try {
+    const res = await axios.get(
+      `${API_BASE}/api/prompts/${props.promptId}/commits/${commitId}/diff`,
+      { headers: authHeaders() }
+    )
+    commitDiffBlocks.value = res.data.changed_blocks || []
+
+    // Auto-select first block if available
+    if (commitDiffBlocks.value.length > 0) {
+      selectCommitBlock(commitDiffBlocks.value[0])
+    }
+  } catch (e) {
+    commitDiffError.value = e?.response?.data?.error || e?.message || t('promptEngineering.floatingGit.diffError')
+    commitDiffBlocks.value = []
+  } finally {
+    loadingCommitDiff.value = false
+  }
+}
+
+function selectCommitBlock(block) {
+  selectedCommitBlock.value = block.title
+  commitBlockDiffBase.value = block.before || ''
+  commitBlockDiffCompare.value = block.after || ''
+
+  // Set labels based on commit context
+  const prevCommit = commits.value[selectedCommitIndex.value + 1]
+  commitBlockDiffBaseLabel.value = prevCommit
+    ? `#${prevCommit.id}`
+    : t('promptEngineering.floatingGit.initial')
+  commitBlockDiffCompareLabel.value = `#${selectedCommit.value.id}`
+}
+
 async function refresh() {
   await Promise.all([loadChanges(), loadCommits()])
   if (selectedDiffBlock.value) {
@@ -746,6 +876,9 @@ watch(() => props.promptId, async (newId, oldId) => {
   display: flex;
   flex-direction: column;
   gap: 2px;
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px;
 }
 
 .history-item {
@@ -755,10 +888,16 @@ watch(() => props.promptId, async (newId, oldId) => {
   padding: 8px 10px;
   border-radius: 4px;
   transition: background 0.15s;
+  cursor: pointer;
 }
 
 .history-item:hover {
   background: rgba(var(--v-theme-on-surface), 0.05);
+}
+
+.history-item.diff-active {
+  background: rgba(var(--v-theme-primary), 0.12);
+  border-left: 3px solid var(--llars-accent, #88c4c8);
 }
 
 .commit-indicator {
@@ -816,5 +955,80 @@ watch(() => props.promptId, async (newId, oldId) => {
 
 .w-100 {
   width: 100%;
+}
+
+/* Commit Diff Content */
+.commit-diff-content {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.commit-blocks-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px;
+  max-height: 120px;
+  overflow-y: auto;
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+}
+
+.commit-block-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: background 0.15s;
+}
+
+.commit-block-item:hover {
+  background: rgba(var(--v-theme-on-surface), 0.05);
+}
+
+.commit-block-item.diff-active {
+  background: rgba(var(--v-theme-primary), 0.12);
+  border-left: 3px solid var(--llars-accent, #88c4c8);
+}
+
+.commit-block-item .block-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.commit-block-item .block-stats {
+  display: flex;
+  gap: 4px;
+}
+
+.commit-block-diff {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.commit-block-diff .diff-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  font-size: 11px;
+  font-weight: 600;
+  background: rgba(var(--v-theme-on-surface), 0.03);
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.06);
+}
+
+.commit-block-diff .diff-viewer {
+  flex: 1;
+  min-height: 0;
 }
 </style>

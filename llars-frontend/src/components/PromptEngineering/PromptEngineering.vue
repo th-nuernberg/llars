@@ -55,9 +55,9 @@
             @click="navigateToPromptDetail(prompt.id)"
           >
             <template #status>
-              <v-chip size="x-small" variant="tonal" color="info">
+              <LTag variant="info" size="small">
                 #{{ prompt.id }}
-              </v-chip>
+              </LTag>
             </template>
 
             <div class="prompt-meta">
@@ -94,7 +94,7 @@
         </transition-group>
 
         <div v-else class="empty-state">
-          <LIcon size="48" color="grey-lighten-1">mdi-file-document-plus-outline</LIcon>
+          <LIcon size="48" class="empty-icon">mdi-file-document-plus-outline</LIcon>
           <div class="text-subtitle-1 mt-3">{{ $t('promptEngineering.empty.title') }}</div>
           <div class="text-body-2 text-medium-emphasis mb-4">
             {{ $t('promptEngineering.empty.description') }}
@@ -150,7 +150,7 @@
         </transition-group>
 
         <div v-else class="empty-state-small">
-          <LIcon size="32" color="grey-lighten-1">mdi-account-group-outline</LIcon>
+          <LIcon size="32" class="empty-icon">mdi-account-group-outline</LIcon>
           <span class="text-body-2 text-medium-emphasis ml-3">
             {{ $t('promptEngineering.empty.shared') }}
           </span>
@@ -772,6 +772,10 @@ onUnmounted(() => {
   background: rgb(var(--v-theme-surface));
   border-radius: 12px 4px 12px 4px;
   border: 1px dashed rgba(var(--v-theme-on-surface), 0.12);
+}
+
+.empty-icon :deep(.v-icon) {
+  color: rgba(var(--v-theme-on-surface), 0.4) !important;
 }
 
 .section-label {

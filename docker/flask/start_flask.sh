@@ -51,14 +51,16 @@ PROJECT_STATE="${PROJECT_STATE:-development}"
 echo "Starting Flask app on port 8081 (mode: $PROJECT_STATE)..."
 
 if [ "$PROJECT_STATE" = "production" ]; then
-    # Production: Use Flask without reload for stability
+    # Production: Use Gunicorn with gevent-websocket for real WebSocket support
     # - No auto-reload (code changes require restart)
-    # - Threading mode (polling fallback for WebSocket)
-    # - Lower CPU usage than dev mode (no file watching)
-    # NOTE: Gunicorn+eventlet has DNS issues in Docker, using Flask for now
-    echo "Production mode: Starting with Flask (no reload)..."
-    export SOCKETIO_ASYNC_MODE="threading"
-    exec python -m flask --app main run --host=0.0.0.0 --port=8081
+    # - Gevent worker for async/WebSocket handling (better Docker DNS than eventlet)
+    # - Lower CPU usage, better performance, real WebSockets
+    # - wsgi_gevent.py handles gevent monkey-patching before app import
+    echo "Production mode: Starting with Gunicorn + gevent-websocket..."
+    export SOCKETIO_ASYNC_MODE="gevent"
+    exec gunicorn \
+        --config /usr/local/bin/gunicorn.conf.py \
+        "wsgi_gevent:app"
 else
     # Development: Use Flask dev server with auto-reload
     # - Auto-reload on code changes

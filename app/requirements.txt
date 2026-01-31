@@ -9,7 +9,9 @@ Flask-JWT-Extended==4.6.0  # Legacy auth routes - TODO: migrate fully to Authent
 Flask-Migrate
 flask-socketio==5.3.6
 eventlet==0.33.3
-gunicorn==21.2.0  # Production WSGI server with eventlet worker
+gevent==24.2.1  # Production async worker (alternative to eventlet)
+gevent-websocket==0.10.1  # WebSocket support for gevent
+gunicorn==21.2.0  # Production WSGI server
 openai==1.75.0
 requests==2.31.0
 

@@ -2,17 +2,19 @@
 # https://docs.gunicorn.org/en/stable/settings.html
 
 import os
-import multiprocessing
 
 # Server socket
 bind = '0.0.0.0:8081'
 backlog = 2048
 
 # Worker processes
-# For eventlet, use 1 worker (eventlet handles concurrency via greenlets)
+# For gevent/eventlet, use 1 worker (greenlets handle concurrency)
 # For sync workers, use: (2 * CPU cores) + 1
 workers = 1
-worker_class = 'eventlet'
+
+# Worker class: gevent-websocket for real WebSocket support
+# This provides better Docker DNS compatibility than eventlet
+worker_class = 'geventwebsocket.gunicorn.workers.GeventWebSocketWorker'
 
 # Worker timeout (seconds) - increased for long LLM operations
 timeout = 300  # 5 minutes for long-running LLM requests

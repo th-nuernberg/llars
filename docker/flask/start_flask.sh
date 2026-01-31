@@ -5,6 +5,8 @@ sleep 2
 
 export PYTHONPATH="/app${PYTHONPATH:+:$PYTHONPATH}"
 export FLASK_APP="main"
+# Add local pip bin to PATH for gunicorn
+export PATH="$PATH:/home/flaskuser/.local/bin"
 
 echo "App directory listing:"
 ls -la /app || true

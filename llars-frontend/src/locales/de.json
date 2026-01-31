@@ -3,6 +3,9 @@
     "save": "Speichern",
     "cancel": "Abbrechen",
     "close": "Schließen",
+    "minimize": "Minimieren",
+    "maximize": "Maximieren",
+    "restore": "Wiederherstellen",
     "done": "Fertig",
     "loading": "Laden...",
     "error": "Fehler",
@@ -23,7 +26,9 @@
     "more": "Mehr",
     "less": "Weniger",
     "all": "Alle",
-    "retry": "Erneut versuchen"
+    "retry": "Erneut versuchen",
+    "dismiss": "Schließen",
+    "copy": "Kopieren"
   },
   "auth": {
     "login": "Anmelden",
@@ -2412,6 +2417,7 @@
       "accept": "Einladung annehmen",
       "acceptAgain": "Wieder annehmen",
       "reinvite": "Erneut einladen",
+      "leave": "Austreten",
       "invitedBy": "Eingeladen von {name}",
       "invitedAt": "Eingeladen am {date}"
     },
@@ -3256,6 +3262,7 @@
       "import": "Importieren",
       "options": "Optionen",
       "gitPanel": "Git-Panel",
+      "openFloatingPanel": "Block-Diff Panel öffnen",
       "shares": "Freigaben",
       "owner": "Besitzer",
       "notSharedYet": "Noch mit niemandem geteilt",
@@ -3289,6 +3296,39 @@
         "hoursAgo": "vor {count} Std.",
         "daysAgo": "vor {count} Tagen"
       }
+    },
+    "floatingGit": {
+      "title": "Block-Diff Panel",
+      "synced": "Synchron",
+      "tabChanges": "Änderungen",
+      "tabHistory": "History",
+      "blocks": "Geänderte Blöcke",
+      "noChanges": "Keine Änderungen",
+      "selectAll": "Alle",
+      "selectNone": "Keine",
+      "selectBlock": "Block auswählen für Diff-Ansicht",
+      "diff": "Diff",
+      "initial": "Initial",
+      "current": "Aktuell",
+      "commit": "Commit",
+      "commitPlaceholder": "Commit-Nachricht eingeben...",
+      "loadError": "Änderungen konnten nicht geladen werden",
+      "diffError": "Diff konnte nicht geladen werden",
+      "commitError": "Commit fehlgeschlagen",
+      "noCommits": "Noch keine Commits",
+      "discardChanges": "Änderungen verwerfen",
+      "rollbackTitle": "Block zurücksetzen",
+      "rollbackConfirm": "Möchten Sie den Block \"{name}\" auf die letzte Version zurücksetzen?",
+      "rollbackHint": "Diese Aktion kann nicht rückgängig gemacht werden.",
+      "rollbackAction": "Zurücksetzen",
+      "rollbackError": "Rollback fehlgeschlagen",
+      "statusAdded": "Neu hinzugefügt",
+      "statusDeleted": "Gelöscht",
+      "statusModified": "Geändert",
+      "justNow": "Gerade eben",
+      "minutesAgo": "vor {count} Min.",
+      "hoursAgo": "vor {count} Std.",
+      "daysAgo": "vor {count} Tagen"
     },
     "testPrompt": {
       "title": "Prompt testen",
@@ -4849,6 +4889,7 @@
     },
     "shortcuts": {
       "title": "Tastenkürzel",
+      "toggleFloatingAi": "KI-Assistent ein-/ausblenden",
       "toggleSidebar": "KI-Seitenleiste umschalten",
       "toggleGhostText": "Ghost Text umschalten",
       "requestCompletion": "Vervollständigung anfordern",
@@ -4950,6 +4991,58 @@
       "cite": "Sucht passende Quellen für die Aussage.",
       "abstract": "Generiert ein Abstract für das Dokument.",
       "titles": "Schlägt Titel für das Dokument vor."
+    }
+  },
+  "floatingAi": {
+    "title": "KI-Assistent",
+    "minimize": "Minimieren",
+    "close": "Schließen",
+    "selection": "Auswahl",
+    "openAssistant": "KI-Assistent öffnen",
+    "thinking": "Denke nach...",
+    "welcome": {
+      "title": "Hallo! Ich bin dein KI-Assistent.",
+      "subtitle": "Ich kenne dein Dokument und kann direkt Änderungen einsetzen.",
+      "features": {
+        "context": "Automatische Dokumenterkennung",
+        "insert": "Direkt einsetzen mit einem Klick",
+        "quick": "Schnellaktionen für häufige Aufgaben"
+      }
+    },
+    "quickActions": {
+      "title": "Titel vorschlagen",
+      "abstract": "Abstract",
+      "rewrite": "Umformulieren",
+      "expand": "Erweitern",
+      "fix": "LaTeX prüfen",
+      "selectFirst": "Zuerst Text markieren"
+    },
+    "input": {
+      "placeholder": "Frage stellen oder Anweisung geben...",
+      "placeholderSelection": "Frage zur markierten Stelle...",
+      "contextHint": "Kontext: {section}"
+    },
+    "actions": {
+      "insert": "Einsetzen",
+      "copy": "Kopieren",
+      "applied": "Änderung wurde eingesetzt.",
+      "failed": "Konnte nicht eingesetzt werden: {error}"
+    },
+    "suggestions": {
+      "titleIntro": "Hier sind Titel-Vorschläge für dein Dokument:",
+      "abstractIntro": "Hier ist ein Abstract basierend auf deinem Dokument:",
+      "rewriteIntro": "Hier ist der umformulierte Text:",
+      "expandIntro": "Hier ist der erweiterte Text:",
+      "noErrors": "Keine LaTeX-Fehler gefunden."
+    },
+    "fix": {
+      "errorsFound": "{count} Fehler gefunden",
+      "suggestions": "Vorschläge"
+    },
+    "errors": {
+      "noSelection": "Bitte markiere zuerst einen Text im Editor.",
+      "noContent": "Kein Dokumentinhalt verfügbar. Bitte öffne zuerst ein Dokument.",
+      "actionFailed": "Aktion fehlgeschlagen. Bitte versuche es erneut."
     }
   },
   "workspaceGit": {
@@ -5069,8 +5162,29 @@
     "subtitle": "Verwalten Sie Ihre persönlichen Einstellungen und Präferenzen",
     "tabs": {
       "personal": "Persönlich",
+      "apikeys": "API-Schlüssel",
       "providers": "LLM-Provider",
       "referrals": "Einladungen"
+    },
+    "apiKeys": {
+      "description": "Erstellen und verwalten Sie API-Schlüssel für den programmatischen Zugriff",
+      "infoTitle": "API-Schlüssel Verwendung",
+      "infoText": "API-Schlüssel ermöglichen den programmatischen Zugriff auf LLARS ohne Browser-Login. Sie können mehrere Schlüssel für verschiedene Anwendungen erstellen.",
+      "createTitle": "Neuen Schlüssel erstellen",
+      "keyName": "Schlüssel-Name",
+      "keyNamePlaceholder": "z.B. Claude Code Integration",
+      "createButton": "Schlüssel erstellen",
+      "keyCreated": "Schlüssel erfolgreich erstellt!",
+      "keyWarning": "Speichern Sie diesen Schlüssel jetzt - er wird nur einmal angezeigt!",
+      "listTitle": "Ihre API-Schlüssel",
+      "noKeys": "Sie haben noch keine API-Schlüssel erstellt.",
+      "systemKey": "System",
+      "inactive": "Inaktiv",
+      "lastUsed": "Zuletzt verwendet",
+      "activate": "Aktivieren",
+      "deactivate": "Deaktivieren",
+      "deleteTitle": "Schlüssel löschen",
+      "deleteConfirm": "Möchten Sie den Schlüssel \"{name}\" wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden."
     },
     "personal": {
       "avatar": {

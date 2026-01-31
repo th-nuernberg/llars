@@ -142,7 +142,7 @@ const props = defineProps({
   ghostTextDelay: { type: Number, default: 800 }
 })
 
-const emit = defineEmits(['content-change', 'git-summary', 'cursor-change', 'sync-request', 'ai-command', 'request-completion', 'update:ghostTextEnabled', 'document-saved', 'document-updated', 'diff-calculated', 'request-comment', 'ai-action'])
+const emit = defineEmits(['content-change', 'git-summary', 'cursor-change', 'selection-change', 'sync-request', 'ai-command', 'request-completion', 'update:ghostTextEnabled', 'document-saved', 'document-updated', 'diff-calculated', 'request-comment', 'ai-action'])
 
 const { t, locale } = useI18n()
 
@@ -1082,6 +1082,15 @@ function updateSelectionToolbar() {
 
     const sel = view.value.state.selection.main
     const hasSelection = sel.from !== sel.to
+    const selectedText = hasSelection ? view.value.state.doc.sliceString(sel.from, sel.to) : ''
+
+    // Emit selection change for AI assistant
+    emit('selection-change', {
+      text: selectedText,
+      from: sel.from,
+      to: sel.to,
+      hasSelection
+    })
 
     if (!hasSelection) {
       hideSelectionToolbar()
@@ -1322,7 +1331,12 @@ function initEditorIfNeeded() {
       },
       '.cm-content': {
         fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
-        fontSize: '13px'
+        fontSize: '13px',
+        caretColor: 'rgb(var(--v-theme-on-surface))'
+      },
+      '.cm-cursor, .cm-dropCursor': {
+        borderLeftColor: 'rgb(var(--v-theme-on-surface))',
+        borderLeftWidth: '2px'
       },
       '.cm-gutters': {
         backgroundColor: 'transparent',

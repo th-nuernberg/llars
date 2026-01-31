@@ -2,7 +2,6 @@
   <div class="workspace-ai-container">
     <!-- Main Workspace (Original) -->
     <div class="workspace-main" :style="{ width: aiSidebarOpen ? 'calc(100% - 320px)' : '100%' }">
-      <!-- Embed Original Workspace with AI base path and AI features enabled -->
       <LatexCollabWorkspaceOriginal
         ref="workspaceRef"
         base-path="/LatexCollab"
@@ -10,10 +9,31 @@
         v-model:ghost-text-enabled="ghostTextEnabled"
         :ghost-text-delay="800"
         @document-change="handleDocumentChange"
+        @selection-change="handleSelectionChange"
         @ai-command="handleAICommand"
         @ai-action="handleAIAction"
         @request-completion="handleRequestCompletion"
-      />
+      >
+        <!-- AI Assistant Button next to Compile -->
+        <template #toolbar-actions>
+          <LBtn
+            v-if="floatingAssistantRef?.isMinimized?.value !== false"
+            variant="secondary"
+            size="small"
+            class="ai-assistant-btn"
+            @click="floatingAssistantRef?.maximize()"
+          >
+            <LIcon size="16" class="mr-1">mdi-robot-happy</LIcon>
+            {{ $t('floatingAi.title') }}
+            <v-badge
+              v-if="floatingAssistantRef?.unreadCount?.value > 0"
+              :content="floatingAssistantRef?.unreadCount?.value"
+              color="error"
+              floating
+            />
+          </LBtn>
+        </template>
+      </LatexCollabWorkspaceOriginal>
     </div>
 
     <!-- AI Sidebar -->
@@ -26,23 +46,6 @@
         @insert-artifact="insertTextAtCursor"
       />
     </transition>
-
-    <!-- Floating AI Toggle Button (when sidebar closed) -->
-    <transition name="fade">
-      <v-btn
-        v-if="!aiSidebarOpen"
-        class="ai-toggle-fab"
-        color="primary"
-        icon
-        size="large"
-        elevation="4"
-        :title="$t('latexCollabAi.workspace.actions.openAssistant')"
-        @click="aiSidebarOpen = true"
-      >
-        <LIcon>llars:latex-collab-ai</LIcon>
-      </v-btn>
-    </transition>
-
 
     <!-- Citation Finder Dialog -->
     <v-dialog v-model="citationDialog" max-width="700">
@@ -153,6 +156,18 @@
     <v-snackbar v-model="snackbar.show" :timeout="3000" :color="snackbar.color">
       {{ snackbar.text }}
     </v-snackbar>
+
+    <!-- Floating AI Assistant -->
+    <FloatingAIAssistant
+      v-if="showFloatingAssistant"
+      ref="floatingAssistantRef"
+      :editor-ref="editorRefValue"
+      :document-content="currentDocumentContent"
+      :file-name="currentFileName"
+      :cursor-line="currentCursorLine"
+      :selection-text="currentSelectionText"
+      :selection-range="currentSelectionRange"
+    />
   </div>
 </template>
 
@@ -162,6 +177,7 @@ import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import LatexCollabWorkspaceOriginal from '@/views/LatexCollab/LatexCollabWorkspace.vue'
 import AISidebar from '@/components/LatexCollabAI/ai/AISidebar.vue'
+import FloatingAIAssistant from '@/components/LatexCollabAI/FloatingAIAssistant/FloatingAIAssistant.vue'
 import aiWritingService from '@/services/aiWritingService'
 import { AUTH_STORAGE_KEYS, getAuthStorageItem } from '@/utils/authStorage'
 import { logI18n } from '@/utils/logI18n'
@@ -175,6 +191,14 @@ const workspaceRef = ref(null)
 
 // AI Sidebar state
 const aiSidebarOpen = ref(false)
+
+// Floating AI Assistant state
+const floatingAssistantRef = ref(null)
+const showFloatingAssistant = ref(true)
+const currentCursorLine = ref(0)
+const currentSelectionText = ref('')
+const currentSelectionRange = ref({ from: 0, to: 0 })
+const currentFileName = ref('')
 
 // Ghost text (inline AI completion) state
 const ghostTextEnabled = ref(true)
@@ -203,6 +227,7 @@ const snackbar = ref({
 
 // Keyboard shortcuts
 const shortcuts = computed(() => ([
+  { keys: 'Ctrl+J', description: t('latexCollabAi.shortcuts.toggleFloatingAi') },
   { keys: 'Ctrl+Shift+A', description: t('latexCollabAi.shortcuts.toggleSidebar') },
   { keys: 'Ctrl+Shift+G', description: t('latexCollabAi.shortcuts.toggleGhostText') },
   { keys: 'Ctrl+Space', description: t('latexCollabAi.shortcuts.requestCompletion') },
@@ -215,9 +240,27 @@ const shortcuts = computed(() => ([
   { keys: 'Ctrl+Shift+/', description: t('latexCollabAi.shortcuts.showShortcuts') }
 ]))
 
+// Computed for reactive editor access
+const editorRefValue = computed(() => {
+  // editorRef is exposed as a ref, so access .value to get the actual editor component
+  return workspaceRef.value?.editorRef?.value || null
+})
+
 // Methods
+
 function handleDocumentChange(content) {
   currentDocumentContent.value = content
+
+  // Update file name from workspace
+  const fileName = workspaceRef.value?.currentFileName
+  if (fileName) {
+    currentFileName.value = fileName
+  }
+}
+
+function handleSelectionChange(selection) {
+  currentSelectionText.value = selection.text || ''
+  currentSelectionRange.value = { from: selection.from, to: selection.to }
 }
 
 async function getChatContext() {
@@ -525,6 +568,16 @@ function insertCitation(citation) {
 
 // Keyboard event handler
 function handleKeydown(e) {
+  // Ctrl+J: Toggle Floating AI Assistant
+  if (e.ctrlKey && !e.shiftKey && e.key === 'j') {
+    e.preventDefault()
+    if (floatingAssistantRef.value?.isMinimized?.value) {
+      floatingAssistantRef.value?.maximize()
+    } else {
+      floatingAssistantRef.value?.minimize()
+    }
+  }
+
   // Ctrl+Shift+A: Toggle AI Sidebar
   if (e.ctrlKey && e.shiftKey && e.key === 'A') {
     e.preventDefault()
@@ -603,12 +656,9 @@ onUnmounted(() => {
   overflow: hidden;
 }
 
-/* Floating AI Toggle Button */
-.ai-toggle-fab {
-  position: fixed;
-  bottom: 80px;
-  right: 24px;
-  z-index: 100;
+/* AI Assistant Button styling */
+.ai-assistant-btn {
+  border-radius: 12px 4px 12px 4px;
 }
 
 /* Transitions */

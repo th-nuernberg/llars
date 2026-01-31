@@ -157,6 +157,7 @@ services:
       - .env
     environment:
       - TZ=Europe/Berlin
+      - PROJECT_STATE=${PROJECT_STATE:-development}
       - FLASK_ENV=${FLASK_ENV:-development}
       - FLASK_APP=main
       # MariaDB (defaults are for development; override via .env for production)

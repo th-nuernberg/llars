@@ -64,6 +64,7 @@ COPY app /app/
 # Kopiert das Start-Skript außerhalb des Anwendungs-Verzeichnisses, damit es durch Volumes nicht überschrieben wird
 COPY docker/flask/start_flask.sh /usr/local/bin/start_flask.sh
 COPY docker/flask/healthcheck.sh /usr/local/bin/healthcheck.sh
+COPY docker/flask/gunicorn.conf.py /usr/local/bin/gunicorn.conf.py
 RUN chmod +x /usr/local/bin/start_flask.sh
 RUN chmod +x /usr/local/bin/healthcheck.sh
 

@@ -3,6 +3,9 @@
     "save": "Save",
     "cancel": "Cancel",
     "close": "Close",
+    "minimize": "Minimize",
+    "maximize": "Maximize",
+    "restore": "Restore",
     "done": "Done",
     "loading": "Loading...",
     "error": "Error",
@@ -23,7 +26,9 @@
     "more": "More",
     "less": "Less",
     "all": "All",
-    "retry": "Retry"
+    "retry": "Retry",
+    "dismiss": "Dismiss",
+    "copy": "Copy"
   },
   "auth": {
     "login": "Login",
@@ -2412,6 +2417,7 @@
       "accept": "Accept invitation",
       "acceptAgain": "Accept again",
       "reinvite": "Reinvite",
+      "leave": "Leave",
       "invitedBy": "Invited by {name}",
       "invitedAt": "Invited on {date}"
     },
@@ -3251,6 +3257,7 @@
       "import": "Import",
       "options": "Options",
       "gitPanel": "Git panel",
+      "openFloatingPanel": "Open block diff panel",
       "shares": "Sharing",
       "owner": "Owner",
       "notSharedYet": "Not shared with anyone yet",
@@ -3284,6 +3291,39 @@
         "hoursAgo": "{count} hr ago",
         "daysAgo": "{count} days ago"
       }
+    },
+    "floatingGit": {
+      "title": "Block Diff Panel",
+      "synced": "Synced",
+      "tabChanges": "Changes",
+      "tabHistory": "History",
+      "blocks": "Changed Blocks",
+      "noChanges": "No changes",
+      "selectAll": "All",
+      "selectNone": "None",
+      "selectBlock": "Select a block to view diff",
+      "diff": "Diff",
+      "initial": "Initial",
+      "current": "Current",
+      "commit": "Commit",
+      "commitPlaceholder": "Enter commit message...",
+      "loadError": "Failed to load changes",
+      "diffError": "Failed to load diff",
+      "commitError": "Commit failed",
+      "noCommits": "No commits yet",
+      "discardChanges": "Discard changes",
+      "rollbackTitle": "Reset Block",
+      "rollbackConfirm": "Do you want to reset the block \"{name}\" to its last committed version?",
+      "rollbackHint": "This action cannot be undone.",
+      "rollbackAction": "Reset",
+      "rollbackError": "Rollback failed",
+      "statusAdded": "Added",
+      "statusDeleted": "Deleted",
+      "statusModified": "Modified",
+      "justNow": "Just now",
+      "minutesAgo": "{count} min ago",
+      "hoursAgo": "{count} hr ago",
+      "daysAgo": "{count} days ago"
     },
     "testPrompt": {
       "title": "Test prompt",
@@ -5002,6 +5042,7 @@
     },
     "shortcuts": {
       "title": "Keyboard shortcuts",
+      "toggleFloatingAi": "Toggle AI assistant",
       "toggleSidebar": "Toggle AI sidebar",
       "toggleGhostText": "Toggle ghost text",
       "requestCompletion": "Request completion",
@@ -5103,6 +5144,58 @@
       "cite": "Find suitable sources for the statement.",
       "abstract": "Generate an abstract for the document.",
       "titles": "Suggest titles for the document."
+    }
+  },
+  "floatingAi": {
+    "title": "AI Assistant",
+    "minimize": "Minimize",
+    "close": "Close",
+    "selection": "Selection",
+    "openAssistant": "Open AI Assistant",
+    "thinking": "Thinking...",
+    "welcome": {
+      "title": "Hello! I'm your AI assistant.",
+      "subtitle": "I understand your document and can insert changes directly.",
+      "features": {
+        "context": "Automatic document awareness",
+        "insert": "Insert directly with one click",
+        "quick": "Quick actions for common tasks"
+      }
+    },
+    "quickActions": {
+      "title": "Suggest titles",
+      "abstract": "Abstract",
+      "rewrite": "Rewrite",
+      "expand": "Expand",
+      "fix": "Check LaTeX",
+      "selectFirst": "Select text first"
+    },
+    "input": {
+      "placeholder": "Ask a question or give an instruction...",
+      "placeholderSelection": "Ask about the selected text...",
+      "contextHint": "Context: {section}"
+    },
+    "actions": {
+      "insert": "Insert",
+      "copy": "Copy",
+      "applied": "Change has been applied.",
+      "failed": "Could not apply: {error}"
+    },
+    "suggestions": {
+      "titleIntro": "Here are title suggestions for your document:",
+      "abstractIntro": "Here is an abstract based on your document:",
+      "rewriteIntro": "Here is the rewritten text:",
+      "expandIntro": "Here is the expanded text:",
+      "noErrors": "No LaTeX errors found."
+    },
+    "fix": {
+      "errorsFound": "{count} errors found",
+      "suggestions": "Suggestions"
+    },
+    "errors": {
+      "noSelection": "Please select text in the editor first.",
+      "noContent": "No document content available. Please open a document first.",
+      "actionFailed": "Action failed. Please try again."
     }
   },
   "workspaceGit": {
@@ -5222,8 +5315,29 @@
     "subtitle": "Manage your personal settings and preferences",
     "tabs": {
       "personal": "Personal",
+      "apikeys": "API Keys",
       "providers": "LLM Providers",
       "referrals": "Invitations"
+    },
+    "apiKeys": {
+      "description": "Create and manage API keys for programmatic access",
+      "infoTitle": "API Key Usage",
+      "infoText": "API keys allow programmatic access to LLARS without browser login. You can create multiple keys for different applications.",
+      "createTitle": "Create New Key",
+      "keyName": "Key Name",
+      "keyNamePlaceholder": "e.g., Claude Code Integration",
+      "createButton": "Create Key",
+      "keyCreated": "Key created successfully!",
+      "keyWarning": "Save this key now - it will only be shown once!",
+      "listTitle": "Your API Keys",
+      "noKeys": "You haven't created any API keys yet.",
+      "systemKey": "System",
+      "inactive": "Inactive",
+      "lastUsed": "Last used",
+      "activate": "Activate",
+      "deactivate": "Deactivate",
+      "deleteTitle": "Delete Key",
+      "deleteConfirm": "Are you sure you want to delete the key \"{name}\"? This action cannot be undone."
     },
     "personal": {
       "avatar": {

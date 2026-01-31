@@ -55,11 +55,12 @@ if [ "$PROJECT_STATE" = "production" ]; then
     # - No auto-reload (code changes require restart)
     # - Eventlet worker for async/WebSocket handling
     # - Lower CPU usage, better performance
+    # - wsgi.py handles eventlet monkey-patching before app import
     echo "Production mode: Starting with Gunicorn + eventlet..."
     export SOCKETIO_ASYNC_MODE="eventlet"
     exec gunicorn \
         --config /usr/local/bin/gunicorn.conf.py \
-        "main:app"
+        "wsgi:app"
 else
     # Development: Use Flask dev server with auto-reload
     # - Auto-reload on code changes

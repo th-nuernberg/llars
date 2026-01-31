@@ -103,6 +103,7 @@ class ChatPromptBuilder:
                 "chunk_index": source.get("chunk_index") if source.get("chunk_index") is not None else "",
                 "relevance": source.get("relevance") if source.get("relevance") is not None else "",
                 "document_id": source.get("document_id") or "",
+                "url": source.get("url") or "",
                 "excerpt": excerpt,
             }
 
@@ -115,6 +116,8 @@ class ChatPromptBuilder:
     def _render_placeholders(template: str, mapping: Dict[str, Any]) -> str:
         """Render template placeholders with values from mapping."""
         rendered = template or ""
+        # Convert literal \n to actual newlines (from DB storage)
+        rendered = rendered.replace('\\n', '\n')
         for key, value in mapping.items():
             placeholder = f"{{{{{key}}}}}"
             rendered = rendered.replace(placeholder, "" if value is None else str(value))

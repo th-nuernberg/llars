@@ -154,7 +154,8 @@ def _build_messages_with_footnotes(chat_service, conversation, user_message, rag
 Du hast auch Bilder aus den Dokumenten erhalten. Analysiere diese Bilder sorgfältig, wenn sie für die Beantwortung der Frage relevant sind.
 """
 
-    system_prompt = chatbot.system_prompt + footnote_instruction
+    # Replace {PROJECT_URL} placeholders in system prompt before sending to LLM
+    system_prompt = _replace_url_placeholders(chatbot.system_prompt) + footnote_instruction
     messages.append({"role": "system", "content": system_prompt})
 
     # RAG context with numbered documents
@@ -499,8 +500,9 @@ def _handle_agent_stream(socketio, agent_service, chatbot, user_message, session
                 }, room=client_id)
 
             elif event.get("done"):
-                # Final response
-                final_response = event.get("full_response", final_response)
+                # Final response - apply URL placeholder replacement
+                raw_response = event.get("full_response", final_response)
+                final_response = _replace_url_placeholders(raw_response)
                 all_sources = event.get("sources", [])
                 reasoning_steps = event.get("reasoning_steps", reasoning_steps)
                 conversation_id_result = event.get("conversation_id") or conversation_id

@@ -116,8 +116,8 @@ Bei Fakten aus dem Kontext: Verweise mit [1], [2] etc. auf die Quelle.
 Bei Gespräch, Smalltalk oder Rückfragen: Antworte einfach natürlich.
 """.strip()
 
-DEFAULT_RAG_CONTEXT_PREFIX = "Kontext:"
-DEFAULT_RAG_CONTEXT_ITEM_TEMPLATE = "[{{id}}] {{title}}:\n{{excerpt}}"
+DEFAULT_RAG_CONTEXT_PREFIX = "Kontext aus der Dokumentation:"
+DEFAULT_RAG_CONTEXT_ITEM_TEMPLATE = "[{{id}}] {{title}}\nLink: {{url}}\n{{excerpt}}"
 
 # Agent mode prompts
 DEFAULT_REFLECTION_PROMPT = """

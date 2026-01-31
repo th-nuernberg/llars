@@ -185,7 +185,7 @@ Nachher: 3 Ranking-Items (je 10 Varianten)
 
 === "Rating"
 
-    **Multi-dimensionale Bewertung (LLM-as-Judge)**
+    **Multi-dimensionale Bewertung (LLM Evaluator)**
 
     - Likert-Skalen pro Dimension
     - Gewichtete Gesamtbewertung
@@ -266,7 +266,7 @@ Jeder Evaluationstyp hat vorkonfigurierte Presets:
 
 | Preset | Dimensionen/Typ | Skala | Beschreibung |
 |--------|-----------------|-------|--------------|
-| `llm-judge-standard` | Kohärenz, Flüssigkeit, Relevanz, Konsistenz | 1-5 | Standard für LLM-as-Judge |
+| `llm-judge-standard` | Kohärenz, Flüssigkeit, Relevanz, Konsistenz | 1-5 | Standard für LLM Evaluator |
 | `summeval` | 7 Dimensionen (Mixed Scales) | variabel | Demo mit unterschiedlichen Skalengrößen |
 | `response-quality` | Hilfsbereitschaft, Genauigkeit, Vollständigkeit, Klarheit | 1-5 | Chat-Antworten |
 | `news-article` | Genauigkeit, Objektivität, Vollständigkeit, Lesbarkeit | 1-5 | Nachrichtenartikel |

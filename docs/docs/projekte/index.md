@@ -8,7 +8,7 @@ Dieser Bereich dokumentiert alle größeren Entwicklungsprojekte in LLARS.
 
 | Projekt | Status | Beschreibung |
 |---------|--------|--------------|
-| [LLM-as-Judge](llm-as-judge/index.md) | Fertig | Automatisierte paarweise E-Mail-Bewertung |
+| [LLM Evaluator](llm-as-judge/index.md) | Fertig | Automatisierte paarweise E-Mail-Bewertung |
 | [OnCoCo Analyse](oncoco/index.md) | Fertig | 68-Klassen Konversations-Klassifizierung |
 | [Authentik](authentik/index.md) | Fertig | OAuth2/OIDC Identity Provider |
 | [Chatbot Builder](chatbot-builder/index.md) | Fertig | Integrierter Chatbot-Wizard mit Web Crawler RAG |

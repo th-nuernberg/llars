@@ -1,4 +1,4 @@
-# LLM-as-Judge Konzept für LLARS
+# LLM Evaluator Konzept für LLARS
 ## Automatisierte Mailverläufe-Gegenüberstellung mit KIA-Säulen-Vergleich
 
 **Version:** 1.0
@@ -25,7 +25,7 @@
 ## 1. Zusammenfassung
 
 ### Ziel
-Implementierung eines automatisierten **LLM-as-Judge** Systems in LLARS, das:
+Implementierung eines automatisierten **LLM Evaluator** Systems in LLARS, das:
 - Mailverläufe verschiedener KIA-Säulen paarweise vergleicht
 - Live-Visualisierung der LLM-Evaluation ermöglicht
 - Strukturierte JSON-Bewertungen mittels Pydantic-Schema generiert
@@ -64,7 +64,8 @@ overall_rating               # Binary - Authentizität/Gesamtbewertung
 feedback                     # TEXT - Freitextfeedback
 ```
 
-Diese Metriken werden als **Bewertungskriterien für den LLM-Judge** übernommen.
+Diese Metriken werden als **Bewertungskriterien für den LLM Evaluator** übernommen.
+
 
 #### Bestehende Comparison-Infrastruktur
 ```python
@@ -74,7 +75,7 @@ ComparisonMessage     # Nachrichtenverläufe
 ComparisonEvaluation  # AI/User Selection + Reasoning
 ```
 
-### 2.2 LLM-as-Judge Best Practices (Web-Recherche)
+### 2.2 LLM Evaluator Best Practices (Web-Recherche)
 
 #### Pairwise Comparison Vorteile
 > "Pairwise evaluation closely mirrors human decision-making processes by focusing on relative preferences rather than assigning absolute scores."
@@ -191,7 +192,7 @@ class PillarThread(db.Model):
 
 
 class JudgeSession(db.Model):
-    """Eine LLM-as-Judge Evaluierungs-Session"""
+    """Eine LLM Evaluator Evaluierungs-Session"""
     __tablename__ = 'judge_sessions'
 
     id = Column(Integer, primary_key=True)
@@ -280,7 +281,7 @@ class PillarStatistics(db.Model):
 
 #### 1.2 Migration erstellen
 ```bash
-flask db migrate -m "Add LLM-as-Judge tables"
+flask db migrate -m "Add LLM Evaluator tables"
 flask db upgrade
 ```
 
@@ -409,7 +410,7 @@ from app.llm.litellm_client import get_litellm_client
 import json
 
 class JudgeService:
-    """Service für LLM-as-Judge Evaluationen"""
+    """Service für LLM Evaluator Evaluationen"""
 
     SYSTEM_PROMPT = """Du bist ein Experte für die Bewertung von Beratungsgesprächen
 im Kontext psychologischer Online-Beratung.
@@ -676,7 +677,7 @@ emit judge:session_complete
     <v-card>
       <v-card-title>
         <v-icon left>mdi-scale-balance</v-icon>
-        LLM-as-Judge Konfiguration
+        LLM Evaluator Konfiguration
       </v-card-title>
 
       <v-card-text>

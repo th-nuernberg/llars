@@ -1,4 +1,4 @@
-# LLM-as-Judge: Erweiterte Vergleichs-Modi & Multi-Worker
+# LLM Evaluator: Erweiterte Vergleichs-Modi & Multi-Worker
 
 **Version:** 1.0
 **Datum:** 26. November 2025
@@ -22,7 +22,7 @@
 
 ### Aktueller Stand
 
-Das LLM-as-Judge System unterstützt mehrere Vergleichs-Modi (`pillar_sample`, `round_robin`, `free_for_all`)
+Das LLM Evaluator System unterstützt mehrere Vergleichs-Modi (`pillar_sample`, `round_robin`, `free_for_all`)
 inkl. optionalem Position-Swap. Die Verarbeitung läuft über einen **JudgeWorkerPool** mit konfigurierbarer
 Parallelisierung (`worker_count`).
 

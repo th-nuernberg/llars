@@ -65,7 +65,7 @@ Der LLARS Data Importer macht das System für jeden nutzbar - unabhängig vom Da
 | **Mail Rating** | 3 | Bewertung ganzer Konversationen | Konversation |
 | **Comparison** | 4 | Paarweiser Vergleich (Model A vs B) | 2 Responses zum gleichen Prompt |
 | **Authenticity** | 5 | Fake/Real Unterscheidung | Konversation + is_fake Flag |
-| **LLM-as-Judge** | 7 | Automatische + Human Evaluation | Konversation + Judge Config |
+| **LLM Evaluator** | 7 | Automatische + Human Evaluation | Konversation + Judge Config |
 
 ### Konkrete Use Cases
 
@@ -76,7 +76,7 @@ Der LLARS Data Importer macht das System für jeden nutzbar - unabhängig vom Da
 1. Upload: JSON/CSV mit Konversationen
 2. KI: Erkennt Konversationsstruktur, schlägt Mapping vor
 3. Transform: Optional - KI generiert Features aus Konversationen
-4. Szenario: "Ranking" auswählen, LLM-Judge aktivieren
+4. Szenario: "Ranking" auswählen, LLM Evaluator aktivieren
 5. Benutzer: 5 RATER zuweisen
 6. Deploy: Parallel Human + Machine Evaluation starten
 

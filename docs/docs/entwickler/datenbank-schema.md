@@ -224,7 +224,7 @@ LLM-generierte Features für E-Mails.
 
 ---
 
-## LLM-as-Judge
+## LLM Evaluator
 
 ### JudgeSession
 

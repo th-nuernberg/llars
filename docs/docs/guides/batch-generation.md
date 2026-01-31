@@ -96,7 +96,7 @@ Der 5-Schritte-Wizard führt durch die Konfiguration:
 │  Quelle wählen:                                                             │
 │                                                                             │
 │  ◉ Aus Szenario                                                             │
-│    [LLM-as-Judge Studie          ▼]  ·  150 Items                          │
+│    [LLM Evaluator Studie         ▼]  ·  150 Items                          │
 │                                                                             │
 │  ○ Manuelle Eingabe                                                         │
 │    JSON/CSV hochladen oder Text einfügen                                    │
@@ -217,7 +217,7 @@ Der Generator erkennt verschiedene Feld-Namen automatisch:
 │                                                                             │
 │  Konfiguration:                                                             │
 │  ┌──────────────────────────────────────────────────────────────────────┐  │
-│  │  Eingabedaten:   150 Items aus "LLM-as-Judge Studie"                 │  │
+│  │  Eingabedaten:   150 Items aus "LLM Evaluator Studie"                │  │
 │  │  Prompts:        2 Templates                                          │  │
 │  │  Modelle:        GPT-4o, Claude 3.5 Sonnet                           │  │
 │  │  ───────────────────────────────────────────────────────────         │  │

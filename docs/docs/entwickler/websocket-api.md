@@ -53,7 +53,7 @@ LLARS verwendet verschiedene Namespaces für unterschiedliche Funktionen:
 | `/chat` | Chat-Streaming | ✅ |
 | `/rag` | RAG-Dokument-Updates | ✅ |
 | `/collab` | LaTeX/Markdown Collaboration | ✅ |
-| `/judge` | LLM-as-Judge Updates | ✅ |
+| `/judge` | LLM Evaluator Updates | ✅ |
 | `/admin` | Docker Monitor, DB Explorer | ✅ (Admin) |
 | `/oncoco` | OnCoCo Analyse | ✅ |
 

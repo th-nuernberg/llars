@@ -27,7 +27,7 @@ Das Admin Dashboard ist die zentrale Verwaltungsoberfläche für LLARS. Administ
 │  ⚙️ Settings │                                                              │
 │              │  Aktive Szenarien                                            │
 │              │  ┌────────────────────────────────────────────────────────┐ │
-│              │  │  LLM-as-Judge Studie     75%  ████████████░░░░        │ │
+│              │  │  LLM Evaluator Studie    75%  ████████████░░░░        │ │
 │              │  │  Summary Evaluation      100% ████████████████   ✓    │ │
 │              │  └────────────────────────────────────────────────────────┘ │
 │              │                                                              │
@@ -136,7 +136,7 @@ Das Dashboard zeigt Kennzahlen auf einen Blick:
 │  ┌────────────────────────────────────────────────────────────────────────┐│
 │  │ Name                    │ Typ      │ Beginn     │ Status    │ Aktion   ││
 │  ├────────────────────────────────────────────────────────────────────────┤│
-│  │ LLM-as-Judge Studie     │ Rating   │ 15.01.2026 │ 🟢 Aktiv  │ [👁] [🗑]││
+│  │ LLM Evaluator Studie    │ Rating   │ 15.01.2026 │ 🟢 Aktiv  │ [👁] [🗑]││
 │  │ Summary Evaluation      │ Ranking  │ 10.01.2026 │ ✓ Fertig  │ [👁] [🗑]││
 │  │ Chatbot Bewertung       │ Rating   │ 20.01.2026 │ 🟡 Offen  │ [👁] [🗑]││
 │  └────────────────────────────────────────────────────────────────────────┘│

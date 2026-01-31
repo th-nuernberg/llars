@@ -1,4 +1,4 @@
-# LLM-as-Judge System
+# LLM Evaluator System
 
 !!! success "✅ Status: Abgeschlossen"
     Das Basis-System ist **vollständig implementiert**.
@@ -6,7 +6,7 @@
 
 ## Übersicht
 
-Das LLM-as-Judge System ermöglicht automatisierte paarweise Vergleiche von E-Mail-Konversationen. Ein LLM bewertet, welche Antwort qualitativ besser ist.
+Das LLM Evaluator System ermöglicht automatisierte paarweise Vergleiche von E-Mail-Konversationen. Ein LLM bewertet, welche Antwort qualitativ besser ist.
 
 ## Dokumentation
 

@@ -398,7 +398,7 @@ Zeige die verfügbare Thread-Anzahl pro Säule an:
 
 ### 9.1 Hintergrund
 
-Position-Swap Konsistenz ist ein kritisches Qualitätsmaß für LLM-as-Judge Evaluationen. Basierend auf:
+Position-Swap Konsistenz ist ein kritisches Qualitätsmaß für LLM Evaluator Evaluationen. Basierend auf:
 - [Zheng et al. (2023): "Judging LLM-as-a-Judge with MT-Bench and Chatbot Arena"](https://arxiv.org/abs/2306.05685)
 - [arXiv:2406.07791: "Judging the Judges: Position Bias in Pairwise Assessments"](https://arxiv.org/abs/2406.07791)
 

@@ -109,7 +109,7 @@ Das Interface ist in drei Hauptbereiche unterteilt:
 
 #### Dimensionen
 
-Standard-Dimensionen für LLM-as-Judge:
+Standard-Dimensionen für LLM Evaluator:
 
 | Dimension | Beschreibung | Skala |
 |-----------|--------------|-------|

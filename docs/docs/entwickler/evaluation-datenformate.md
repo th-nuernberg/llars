@@ -11,7 +11,7 @@ Diese Dokumentation beschreibt die JSON-Schemas für alle 6 Evaluationstypen in 
 | Typ | function_type_id | Verwendung |
 |-----|------------------|------------|
 | **Ranking** | 1 | Items in Qualitätsbuckets sortieren |
-| **Rating** | 2 | Multi-dimensionale Bewertung (LLM-as-Judge) |
+| **Rating** | 2 | Multi-dimensionale Bewertung (LLM Evaluator) |
 | **Mail Rating** | 3 | E-Mail-Verläufe bewerten |
 | **Comparison** | 4 | Paarweiser A/B-Vergleich |
 | **Authenticity** | 5 | Echt/Fake-Klassifikation |
@@ -285,7 +285,7 @@ Für paralleles Ranken mehrerer Kategorien:
 
 ## 2. Rating (function_type_id = 2)
 
-**Zweck:** Multi-dimensionale Bewertung auf Likert-Skala (LLM-as-Judge Metriken).
+**Zweck:** Multi-dimensionale Bewertung auf Likert-Skala (LLM Evaluator Metriken).
 
 **UI-Layout:**
 

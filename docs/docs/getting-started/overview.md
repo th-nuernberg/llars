@@ -30,7 +30,7 @@ Das Kernsystem ermöglicht die strukturierte Bewertung von E-Mail-Threads aus Be
 | **Ranking-System** | Vergleichende Einordnung von Beratungsqualität |
 | **Multi-Rater Support** | Mehrere Bewerter können parallel arbeiten |
 
-### 2.2 LLM-as-Judge System
+### 2.2 LLM Evaluator System
 
 Automatisierte paarweise Vergleiche von E-Mail-Konversationen durch LLMs:
 
@@ -127,7 +127,7 @@ LLARS eignet sich besonders für Forschungsarbeiten zu:
 |---------|---------------|--------|
 | **Quantitative Inhaltsanalyse** | OnCoCo-Klassifikation | Label-Verteilungen, Häufigkeiten |
 | **Sequenzanalyse** | Transition-Matrizen | Gesprächsmuster, Übergänge |
-| **Vergleichsstudie** | LLM-as-Judge | Paarweise Bewertungen, Rankings |
+| **Vergleichsstudie** | LLM Evaluator | Paarweise Bewertungen, Rankings |
 | **Inter-Rater-Analyse** | Multi-User-Rating | Übereinstimmungsmaße |
 | **Qualitative Exploration** | Prompt Engineering | Strukturierte LLM-Analyse |
 
@@ -145,7 +145,7 @@ LLARS eignet sich besonders für Forschungsarbeiten zu:
 
 3. Automatisierte Analyse
    └── OnCoCo-Klassifikation ausführen
-   └── LLM-as-Judge Sessions erstellen
+   └── LLM Evaluator Sessions erstellen
    └── Transition-Matrizen berechnen
 
 4. Vergleich & Evaluation
@@ -168,7 +168,7 @@ Forschungsfrage: "Unterscheidet sich die Beratungsqualität zwischen
 
 LLARS-Ansatz:
 1. Säule 1 (Rollenspiele) und Säule 3 (echte Daten) laden
-2. LLM-as-Judge: Paarweise Vergleiche durchführen
+2. LLM Evaluator: Paarweise Vergleiche durchführen
 3. OnCoCo: Label-Verteilungen vergleichen
 4. Statistische Auswertung der Unterschiede
 ```
@@ -192,7 +192,7 @@ Forschungsfrage: "Kann ein LLM menschliche Bewertungen
 
 LLARS-Ansatz:
 1. Menschliche Rater bewerten Stichprobe
-2. LLM-as-Judge bewertet dieselbe Stichprobe
+2. LLM Evaluator bewertet dieselbe Stichprobe
 3. Inter-Rater-Reliabilität berechnen (Cohen's Kappa)
 4. Diskrepanz-Analyse durchführen
 ```
@@ -274,7 +274,7 @@ Das Kategoriesystem basiert auf etablierter Beratungsforschung:
 - **Motivational Interviewing (MI)**: Spezifische Labels für MI-Techniken
 - **Dialog Act Classification**: Hierarchisches Kategoriesystem
 - **Process Mining**: Transition-Matrizen, Sankey-Diagramme
-- **Human-AI Collaboration**: LLM-as-Judge Paradigma
+- **Human-AI Collaboration**: LLM Evaluator Paradigma
 
 ---
 
@@ -304,7 +304,7 @@ pillar,label,count,percentage
 - KL-Divergenz zwischen Säulen
 - Chi-Quadrat-Tests für Signifikanz
 - Cohen's Kappa für Inter-Rater-Reliabilität
-- ELO-Scores aus LLM-as-Judge
+- ELO-Scores aus LLM Evaluator
 
 ---
 
@@ -337,7 +337,7 @@ pillar,label,count,percentage
 LLARS ist eine spezialisierte Forschungsplattform, die drei zentrale Funktionen für die wissenschaftliche Analyse von Online-Beratung vereint:
 
 1. **Strukturierte Bewertung**: Multi-Rater-System für manuelle Evaluation
-2. **Automatisierte Analyse**: OnCoCo-Klassifikation und LLM-as-Judge
+2. **Automatisierte Analyse**: OnCoCo-Klassifikation und LLM Evaluator
 3. **Visualisierung & Export**: Publikationsreife Outputs
 
 Für Dissertationen im Bereich E-Beratung, KI-gestützte Kommunikationsanalyse oder Human-AI-Collaboration bietet LLARS:

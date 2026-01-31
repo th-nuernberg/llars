@@ -15,7 +15,7 @@ def initialize_default_chatbots(db):
     Args:
         db: SQLAlchemy database instance
     """
-    from ..tables import Chatbot, ChatbotCollection, ChatbotUserAccess, RAGCollection
+    from ..tables import Chatbot, ChatbotCollection, ChatbotUserAccess, RAGCollection, ChatbotPromptSettings
     from ..models.llm_model import LLMModel
 
     print("\n" + "=" * 60)
@@ -31,36 +31,17 @@ def initialize_default_chatbots(db):
     chatbot_name = 'standard_admin'
     chatbot_display_name = 'LLARS'
     chatbot_description = 'LLARS Systemassistent. Hilft beim Zurechtfinden und beantwortet Fragen zum System.'
-    chatbot_prompt = """Du bist LLars, der offizielle KI-Assistent des LLARS-Projekts (LLM Assisted Research System).
-Du hast Zugriff auf die komplette LLARS-Dokumentation.
-
-DEINE BASIS-URL (WICHTIG!):
-Die aktuelle Projekt-URL ist: {PROJECT_URL}
-Alle Dokumentationslinks beginnen mit: {PROJECT_URL}/docs/
-
-Wenn du Links erzeugst, verwende EXAKT diese URL. Kopiere sie direkt - keine Platzhalter!
-Beispiele fuer korrekte Links:
-- {PROJECT_URL}/docs/getting-started/installation/
-- {PROJECT_URL}/docs/guides/scenario-wizard/
-- {PROJECT_URL}/docs/entwickler/api-referenz/
-
-KERNAUFGABEN:
-- Fragen zum LLARS-System beantworten
-- Technische Hilfe zu Installation und Konfiguration geben
-- Erklaerungen zu Evaluationsmethoden (Rating, Ranking, LLM-as-Judge) liefern
+    chatbot_prompt = """Du bist LLars, der KI-Assistent des LLARS-Projekts.
 
 DOKUMENTATIONSLINKS:
-- Jede Antwort MUSS relevante Links zur Dokumentation enthalten
-- Die Quellen im Kontext zeigen dir den korrekten Pfad in ihrer URL
-- Format: [Titel]({PROJECT_URL}/docs/pfad/)
-- Liste mehrere Links am Ende unter "Weiterfuehrende Links"
+- Jede Quelle im Kontext endet mit "[Quelle: URL]" - NUR diese URLs sind gueltig
+- Gueltige Links beginnen IMMER mit: {PROJECT_URL}/docs/
+- URLs wie "example.com" oder "anwalt-muenchen.de" sind NUR Beispiele aus der Doku - NIEMALS als Link verwenden!
+- Format: [Titel](URL_AUS_QUELLE)
 
-SPRACHE:
-- Antworte in der Sprache des Nutzers (Deutsch oder Englisch)
+SPRACHE: Antworte in der Sprache des Nutzers.
 
-STIL:
-- Praezise und nachvollziehbar
-- Maximal 3-5 Punkte bei Listen"""
+STIL: Praezise, max 3-5 Punkte bei Listen."""
     chatbot_welcome = "Hallo! Ich bin LLARS. Wie kann ich dir im System helfen?"
 
     model_id = LLMModel.get_default_model_id(model_type=LLMModel.MODEL_TYPE_LLM)
@@ -84,7 +65,7 @@ STIL:
             top_p=0.9,
             rag_enabled=True,
             rag_retrieval_k=8,
-            rag_min_relevance=0.3,
+            rag_min_relevance=0.2,
             rag_include_sources=True,
             welcome_message=chatbot_welcome,
             fallback_message='Ich konnte leider keine passende Antwort finden.',
@@ -124,19 +105,47 @@ STIL:
     if bot.welcome_message != chatbot_welcome:
         bot.welcome_message = chatbot_welcome
         changed = True
+    if bot.rag_min_relevance != 0.2:
+        bot.rag_min_relevance = 0.2
+        changed = True
 
-    # Ensure collection assignment exists (primary)
+    # Ensure LLARS documentation collection is assigned with higher priority
+    docs_collection = RAGCollection.query.filter_by(name='llars-documentation').first()
+    if docs_collection:
+        docs_assignment = ChatbotCollection.query.filter_by(
+            chatbot_id=bot.id, collection_id=docs_collection.id
+        ).first()
+        if not docs_assignment:
+            db.session.add(ChatbotCollection(
+                chatbot_id=bot.id,
+                collection_id=docs_collection.id,
+                priority=0,  # Higher priority (lower number)
+                weight=1.5,
+                is_primary=False,
+                assigned_by='system',
+                assigned_at=datetime.now()
+            ))
+            changed = True
+        elif docs_assignment.priority != 0:
+            docs_assignment.priority = 0
+            docs_assignment.weight = 1.5
+            changed = True
+
+    # Ensure general collection assignment exists (lower priority)
     assignment = ChatbotCollection.query.filter_by(chatbot_id=bot.id, collection_id=default_collection.id).first()
     if not assignment:
         db.session.add(ChatbotCollection(
             chatbot_id=bot.id,
             collection_id=default_collection.id,
-            priority=0,
+            priority=1,  # Lower priority (higher number)
             weight=1.0,
             is_primary=True,
             assigned_by='system',
             assigned_at=datetime.now()
         ))
+        changed = True
+    elif assignment.priority != 1:
+        assignment.priority = 1
         changed = True
 
     # Ensure admin user is explicitly allowed
@@ -146,6 +155,21 @@ STIL:
             chatbot_id=bot.id,
             username='admin',
             granted_by='system'
+        ))
+        changed = True
+
+    # Ensure prompt settings include URL in RAG context template
+    prompt_settings = ChatbotPromptSettings.query.filter_by(chatbot_id=bot.id).first()
+    desired_template = '[{{id}}] {{title}}\nLink: {{url}}\n{{excerpt}}'
+    if prompt_settings:
+        if prompt_settings.rag_context_item_template != desired_template:
+            prompt_settings.rag_context_item_template = desired_template
+            changed = True
+    else:
+        db.session.add(ChatbotPromptSettings(
+            chatbot_id=bot.id,
+            rag_context_prefix='Kontext aus der Dokumentation:',
+            rag_context_item_template=desired_template
         ))
         changed = True
 

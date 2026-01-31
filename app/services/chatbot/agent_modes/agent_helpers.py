@@ -272,12 +272,14 @@ def generate_adaptive_response_stream(
     from services.chatbot.agent_prompts import (
         get_act_system_prompt,
         build_adaptive_response_prompt,
+        _substitute_project_url,
     )
 
     yield {"status": "adaptive_response", "reason": "high_confidence_results"}
 
     system_prompt = get_act_system_prompt(chatbot, prompt_settings)
-    base_prompt = (chatbot.system_prompt or "").strip()
+    # Replace {PROJECT_URL} placeholders before using in prompts
+    base_prompt = _substitute_project_url((chatbot.system_prompt or "").strip())
 
     answer_prompt = build_adaptive_response_prompt(message, observation, base_prompt)
 
@@ -326,12 +328,14 @@ def generate_final_response(
     Returns:
         Final response text
     """
-    from services.chatbot.agent_prompts import build_final_response_prompt
+    from services.chatbot.agent_prompts import build_final_response_prompt, _substitute_project_url
 
+    # Replace {PROJECT_URL} placeholders before using in prompts
+    system_prompt = _substitute_project_url(chatbot.system_prompt or "")
     messages = build_final_response_prompt(
         question,
         steps,
-        chatbot.system_prompt or "",
+        system_prompt,
         citation_instructions
     )
     return call_llm_sync(llm_client, chatbot, messages)

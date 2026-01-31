@@ -409,6 +409,12 @@ async function selectChatbot(bot, createNewChat = false) {
   saveDraft()
 
   selectedChatbot.value = bot
+
+  // Update URL with chatbot name for sharing/bookmarking
+  const chatbotParam = bot.name?.toLowerCase() || bot.display_name?.toLowerCase()
+  if (chatbotParam && route.query.chatbot !== chatbotParam) {
+    router.replace({ query: { ...route.query, chatbot: chatbotParam } })
+  }
   messages.value = []
   sessionId.value = null
   selectedConversation.value = null
@@ -850,16 +856,35 @@ function handleSelectConversation(bot, conv) {
 }
 
 async function maybeAutoSelectFromRoute() {
-  const raw = route.query.chatbot_id || route.query.bot
-  const id = raw ? parseInt(String(raw), 10) : null
-  if (!id || Number.isNaN(id)) return
-  if (selectedChatbot.value?.id === id) return
+  // Support both ID-based (?chatbot_id=1 or ?bot=1) and name-based (?chatbot=llars) selection
+  const rawId = route.query.chatbot_id || route.query.bot
+  const rawName = route.query.chatbot
 
-  const bot = chatbots.value.find(b => b.id === id)
+  let bot = null
+
+  if (rawName) {
+    // Name-based lookup (case-insensitive match on name or display_name)
+    const searchName = String(rawName).toLowerCase()
+    bot = chatbots.value.find(b =>
+      b.name?.toLowerCase() === searchName ||
+      b.display_name?.toLowerCase() === searchName
+    )
+  } else if (rawId) {
+    // ID-based lookup
+    const id = parseInt(String(rawId), 10)
+    if (!Number.isNaN(id)) {
+      bot = chatbots.value.find(b => b.id === id)
+    }
+  }
+
   if (!bot) {
-    showSnackbar(t('chat.chatbotNotAvailable'), 'warning')
+    if (rawName || rawId) {
+      showSnackbar(t('chat.chatbotNotAvailable'), 'warning')
+    }
     return
   }
+
+  if (selectedChatbot.value?.id === bot.id) return
   await selectChatbot(bot)
 }
 
@@ -945,6 +970,19 @@ function setupSocketHandlers() {
 }
 
 // ==================== LIFECYCLE ====================
+
+// Watch for URL query parameter changes (browser back/forward navigation)
+watch(() => route.query.chatbot, async (newChatbot) => {
+  if (!newChatbot || !chatbots.value.length) return
+  const searchName = String(newChatbot).toLowerCase()
+  const bot = chatbots.value.find(b =>
+    b.name?.toLowerCase() === searchName ||
+    b.display_name?.toLowerCase() === searchName
+  )
+  if (bot && bot.id !== selectedChatbot.value?.id) {
+    await selectChatbot(bot)
+  }
+})
 
 /**
  * Handle browser/tab close - save draft

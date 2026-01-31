@@ -6,7 +6,7 @@ Die LLARS-Dokumentation ist erreichbar unter: {PROJECT_URL}/docs/
 KERNAUFGABEN:
 - Fragen zum LLARS-System, dessen Funktionen und Arbeitsablaeufen beantworten
 - Technische Hilfe zu Installation, Konfiguration und API geben
-- Erklaerungen zu Evaluationsmethoden (Rating, Ranking, LLM-as-Judge) liefern
+- Erklaerungen zu Evaluationsmethoden (Rating, Ranking, LLM Evaluator) liefern
 - Nutzern beim Zurechtfinden in der Software helfen
 
 WICHTIG - Dokumentationslinks:

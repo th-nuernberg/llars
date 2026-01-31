@@ -25,7 +25,7 @@ src/
 │   ├── common/             # LLARS Design System (LBtn, LTag, LCard, etc.)
 │   ├── comparison/         # Feature-Vergleiche
 │   ├── Home.vue            # Dashboard mit Feature-Kacheln
-│   ├── Judge/              # LLM-as-Judge Sessions
+│   ├── Judge/              # LLM Evaluator Sessions
 │   ├── MarkdownCollab/     # Kollaboratives Markdown
 │   ├── OnCoCo/             # Counselor-Kondition Analyse
 │   ├── PromptEngineering/  # Prompt-Entwicklung
@@ -71,7 +71,7 @@ npm run build
 | `/Ranker` | Feature-Ranking |
 | `/PromptEngineering` | Prompt-Entwicklung |
 | `/MarkdownCollab` | Kollaboratives Markdown |
-| `/Judge` | LLM-as-Judge |
+| `/Judge` | LLM Evaluator |
 | `/OnCoCo` | Counselor-Kondition Analyse |
 | `/Chatbots` | Chatbot-Verwaltung |
 | `/Chat/:id` | Chat mit Chatbot |

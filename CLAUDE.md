@@ -6,7 +6,7 @@
 
 LLARS ist ein System zur kollaborativen Bewertung von E-Mails und Szenarien mit LLMs.
 
-**Features:** Rating/Ranking-System | LLM-as-Judge | RAG-Pipeline (ChromaDB) | Multi-User Collaboration (YJS) | Authentik Auth | RBAC Permissions | Offline Anonymize Tool
+**Features:** Rating/Ranking-System | LLM Evaluator | RAG-Pipeline (ChromaDB) | Multi-User Collaboration (YJS) | Authentik Auth | RBAC Permissions | Offline Anonymize Tool
 
 **Quick Reference:** Dieses Dokument enthält alle wichtigen Informationen für die Entwicklung.
 
@@ -382,7 +382,7 @@ Scenario
 | function_type_id | Name | Beschreibung |
 |------------------|------|--------------|
 | 1 | ranking | Items sortieren oder kategorisieren |
-| 2 | rating | Multi-dimensionales Rating (LLM-as-Judge Metriken) |
+| 2 | rating | Multi-dimensionales Rating (LLM Evaluator Metriken) |
 | 3 | mail_rating | E-Mail-Verläufe bewerten (LLARS-spezifisch) |
 | 4 | comparison | Items paarweise vergleichen (A vs B) |
 | 5 | authenticity | Fake/Echt Bewertung (LLARS-spezifisch) |
@@ -414,7 +414,7 @@ Dokumentation:       .claude/plans/evaluation-data-schemas.md
 - `item.label` = UI-Anzeigename (generische Labels)
 - `item.source.type` = "human" | "llm" | "unknown"
 
-### Multi-Dimensionales Rating (LLM-as-Judge)
+### Multi-Dimensionales Rating (LLM Evaluator)
 
 Rating verwendet jetzt standardmäßig das multi-dimensionale Format:
 - **Layout:** Links Text, rechts mehrere Likert-Skalen pro Dimension

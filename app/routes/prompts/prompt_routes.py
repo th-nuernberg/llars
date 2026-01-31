@@ -960,6 +960,117 @@ def get_prompt_block_diff(prompt_id, block_id):
     }), 200
 
 
+@data_blueprint.route('/prompts/<int:prompt_id>/commits/<int:commit_id>/diff', methods=['GET'])
+@authentik_required
+@handle_api_errors(logger_name='prompts')
+def get_commit_diff(prompt_id, commit_id):
+    """
+    Get the diff for a specific commit.
+    Shows what changed between this commit and the previous commit (or initial state).
+    Returns block-level changes with before/after content.
+    """
+    import difflib
+
+    user = g.authentik_user
+    prompt = _check_prompt_access(prompt_id, user)
+
+    if not prompt:
+        raise NotFoundError('Prompt not found or access denied')
+
+    # Get the specified commit
+    target_commit = PromptCommit.query.filter_by(
+        prompt_id=prompt_id,
+        id=commit_id
+    ).first()
+
+    if not target_commit:
+        raise NotFoundError('Commit not found')
+
+    # Get the previous commit (the one before target_commit)
+    previous_commit = PromptCommit.query.filter(
+        PromptCommit.prompt_id == prompt_id,
+        PromptCommit.created_at < target_commit.created_at
+    ).order_by(PromptCommit.created_at.desc()).first()
+
+    # Parse target commit content (the "after" state)
+    after_blocks = {}
+    if target_commit.content_snapshot:
+        try:
+            if isinstance(target_commit.content_snapshot, str):
+                after_blocks = json.loads(target_commit.content_snapshot)
+            else:
+                after_blocks = target_commit.content_snapshot
+        except (json.JSONDecodeError, TypeError):
+            after_blocks = {}
+
+    # Parse previous commit content (the "before" state)
+    before_blocks = {}
+    if previous_commit and previous_commit.content_snapshot:
+        try:
+            if isinstance(previous_commit.content_snapshot, str):
+                before_blocks = json.loads(previous_commit.content_snapshot)
+            else:
+                before_blocks = previous_commit.content_snapshot
+        except (json.JSONDecodeError, TypeError):
+            before_blocks = {}
+
+    # Compare blocks
+    changed_blocks = []
+    all_block_titles = set(before_blocks.keys()) | set(after_blocks.keys())
+
+    for title in sorted(all_block_titles):
+        before_content = before_blocks.get(title, None)
+        after_content = after_blocks.get(title, None)
+
+        if before_content is None and after_content is not None:
+            # New block (Added)
+            insertions = len(after_content.split('\n')) if after_content else 0
+            changed_blocks.append({
+                'title': title,
+                'status': 'A',
+                'insertions': insertions,
+                'deletions': 0,
+                'before': '',
+                'after': after_content or ''
+            })
+        elif before_content is not None and after_content is None:
+            # Deleted block
+            deletions = len(before_content.split('\n')) if before_content else 0
+            changed_blocks.append({
+                'title': title,
+                'status': 'D',
+                'insertions': 0,
+                'deletions': deletions,
+                'before': before_content or '',
+                'after': ''
+            })
+        elif before_content != after_content:
+            # Modified block
+            before_lines = (before_content or '').split('\n')
+            after_lines = (after_content or '').split('\n')
+
+            diff = list(difflib.unified_diff(before_lines, after_lines, lineterm=''))
+            insertions = sum(1 for line in diff if line.startswith('+') and not line.startswith('+++'))
+            deletions = sum(1 for line in diff if line.startswith('-') and not line.startswith('---'))
+
+            changed_blocks.append({
+                'title': title,
+                'status': 'M',
+                'insertions': insertions,
+                'deletions': deletions,
+                'before': before_content or '',
+                'after': after_content or ''
+            })
+
+    return jsonify({
+        'success': True,
+        'commit_id': commit_id,
+        'previous_commit_id': previous_commit.id if previous_commit else None,
+        'changed_blocks': changed_blocks,
+        'total_changes': len(changed_blocks)
+    }), 200
+
+
 @data_blueprint.route('/prompts/<int:prompt_id>/rollback', methods=['POST'])
 @authentik_required
 @handle_api_errors(logger_name='prompts')

@@ -4,7 +4,7 @@ Rating Preset Service.
 Manages rating presets for multi-dimensional evaluation.
 Provides preset configurations for various evaluation use cases:
 - Standard Likert scales
-- LLM-as-Judge metrics
+- LLM Evaluator metrics
 - Mail/Counseling evaluation (LLARS-specific)
 - Custom presets
 
@@ -165,13 +165,13 @@ STANDARD_PRESETS = {
 
 
 # =============================================================================
-# LLM-as-Judge Presets (Multi-Dimensional)
+# LLM Evaluator Presets (Multi-Dimensional)
 # =============================================================================
 
 LLM_JUDGE_PRESETS = {
     'llm-judge-standard': {
         'id': 'llm-judge-standard',
-        'name': {'de': 'LLM-as-Judge Standard', 'en': 'LLM-as-Judge Standard'},
+        'name': {'de': 'LLM Evaluator Standard', 'en': 'LLM Evaluator Standard'},
         'description': {
             'de': 'Standard-Metriken für Text-Evaluation (Coherence, Fluency, Relevance, Consistency)',
             'en': 'Standard metrics for text evaluation (Coherence, Fluency, Relevance, Consistency)'
@@ -537,7 +537,7 @@ CATEGORIES = {
     },
     'llm-judge': {
         'id': 'llm-judge',
-        'name': {'de': 'LLM-as-Judge', 'en': 'LLM-as-Judge'},
+        'name': {'de': 'LLM Evaluator', 'en': 'LLM Evaluator'},
         'description': {'de': 'Multi-dimensionale Metriken für LLM-Evaluation', 'en': 'Multi-dimensional metrics for LLM evaluation'},
         'icon': 'mdi-robot'
     },

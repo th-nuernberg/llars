@@ -311,7 +311,59 @@ def import_from_data():
     # Get AI-suggested field mappings (optional)
     field_mapping = data.get('field_mapping')
 
-    # Create session from data
+    # Get filename for context (helps AI detect Long-Format patterns)
+    filename = data.get('filename', source_name)
+
+    # =========================================================================
+    # Long-Format Detection & Transformation
+    # =========================================================================
+    # Long-Format: Same ID appears multiple times with different variants
+    # Example: CSV with rows [S001,gpt4,output1], [S001,claude,output2], etc.
+    # This needs to be transformed to LLARS ranking format before import.
+    #
+    # KEY HEURISTIC:
+    # - 1 Reference → N Outputs = RANKING (compare/sort outputs)
+    # - 1 Reference → 1 Output = RATING (rate single output quality)
+    # =========================================================================
+    ai_analyzer = get_ai_analyzer()
+
+    if ai_analyzer._detect_long_format(items):
+        logger.info(f"Long-Format detected for {filename}, generating field mapping...")
+
+        # Generate field mapping for Long-Format data
+        long_format_mapping = ai_analyzer.generate_field_mapping(
+            data=items,
+            detected_type=task_type.value if task_type else 'ranking',
+            detected_format='long',
+            filename=filename
+        )
+
+        if long_format_mapping.get('success') and long_format_mapping.get('format') == 'long':
+            logger.info(f"Long-Format mapping: grouping={long_format_mapping.get('grouping_field')}, "
+                       f"variant={long_format_mapping.get('variant_field')}, "
+                       f"output={long_format_mapping.get('output_field')}")
+
+            # KEY HEURISTIC: Long-Format with multiple outputs per reference = RANKING
+            # This overrides any previous task_type detection because:
+            # - Multiple outputs for same input = comparison task = ranking
+            variants_per_group = long_format_mapping.get('variants_per_group', 0)
+            if variants_per_group > 1:
+                logger.info(f"Long-Format has {variants_per_group} variants per group -> forcing RANKING type")
+                task_type = TaskType.RANKING
+
+            # Transform Long-Format to LLARS ranking format
+            items = ai_analyzer.transform_long_format_to_ranking(items, long_format_mapping)
+            logger.info(f"Long-Format transformation complete: {len(items)} ranking items")
+
+            # Update field mapping with Long-Format info
+            if not field_mapping:
+                field_mapping = {}
+            field_mapping['long_format'] = True
+            field_mapping['original_mapping'] = long_format_mapping
+        else:
+            logger.warning(f"Long-Format mapping failed: {long_format_mapping.get('error', 'unknown')}")
+
+    # Create session from (potentially transformed) data
     session = import_service.create_session_from_data(
         data=items,
         task_type=task_type,

@@ -1,16 +1,7 @@
 {
-  "_comment": "LLARS Demo Video - DREHBUCH / GROUND TRUTH",
-  "_instructions": [
-    "Zwei Sprecher: 'host' (Alex) und 'narrator' (David, Attenborough-Stil)",
-    "",
-    "SYNC - Wartet auf Narrations-Zeitpunkt:",
-    "  {'do': 'sync', 'after': 'Wort'}  → Wartet bis TTS 'Wort' gesagt hat",
-    "",
-    "HIGHLIGHT VOR KLICK:",
-    "  {'do': 'click', 'highlight_before': 2}  → Highlightet 2s, dann klickt",
-    "",
-    "Starte mit: python run.py"
-  ],
+  "_comment": "LLARS Demo Video - IJCAI 2026 Demo Track",
+  "_version": "2.1 - Fokussiert auf funktionierende Features",
+  "_duration_target": "3-4 Minuten",
 
   "config": {
     "url": "http://localhost:55080",
@@ -36,45 +27,40 @@
 
   "steps": [
     {
+      "_section": "=== INTRO (30s) ===",
       "id": "intro_1",
       "speaker": "narrator",
-      "narration": "In the vast landscape of artificial intelligence, a new challenge has emerged. Evaluating the outputs of Large Language Models requires two distinct groups with complementary expertise.",
+      "narration": "In the evolving landscape of artificial intelligence, a fascinating challenge has emerged. How do we evaluate the outputs of Large Language Models? This requires two distinct groups: domain experts who understand quality, and developers who craft effective prompts.",
       "actions": [
-        {"do": "show_title", "title": "LLARS", "subtitle": "A Platform for Evaluating LLM Outputs"}
+        {"do": "show_title", "title": "LLARS", "subtitle": "LLM Assisted Rating System"}
       ]
     },
 
     {
       "id": "intro_2",
       "speaker": "host",
-      "narration": "That's right. Domain experts understand what constitutes quality, while AI developers know how to structure effective prompts. Current tools force these groups to work in isolation.",
+      "narration": "That's exactly right, David. Current tools force these groups to work in isolation. Let me show you how LLARS brings them together.",
       "actions": []
     },
 
     {
-      "id": "intro_3",
-      "speaker": "narrator",
-      "narration": "But here, we observe something remarkable. LLARS bridges this gap with three integrated modules. Let us explore this fascinating ecosystem.",
-      "actions": []
-    },
-
-    {
+      "_section": "=== PROMPT ENGINEERING (60s) ===",
       "id": "prompt_eng_1",
       "speaker": "host",
-      "narration": "Let's start with Collaborative Prompt Engineering. Here, domain experts and AI developers work together in real-time.",
+      "narration": "We start with Collaborative Prompt Engineering. Here, domain experts and developers work together in real-time, with every change tracked at the character level.",
       "actions": [
         {"do": "sync", "after": "Prompt Engineering"},
-        {"do": "click", "target": "Prompt Engineering", "highlight_before": 2}
+        {"do": "click", "target": "Prompt Engineering", "highlight_before": 2.5}
       ]
     },
 
     {
       "id": "prompt_eng_2",
       "speaker": "host",
-      "narration": "I'll create a new prompt for news article summarization. Watch how changes are tracked at the character level.",
+      "narration": "I'll create a prompt for summarizing news articles. Notice how changes are instantly visible to all collaborators.",
       "actions": [
-        {"do": "sync", "after": "new prompt"},
-        {"do": "click", "target": "Create Prompt", "highlight_before": 1.5},
+        {"do": "sync", "after": "news articles"},
+        {"do": "click", "target": "Create Prompt", "highlight_before": 2},
         {"do": "wait_for_modal"},
         {"do": "type", "target": "Name Input", "text": "News Summary Prompt"},
         {"do": "click", "target": "Dialog Create Button"},
@@ -85,122 +71,193 @@
     {
       "id": "prompt_eng_3",
       "speaker": "host",
-      "narration": "I'll add a system block to define the LLM's role. As a journalist, I specify that summaries must be exactly two sentences, factually accurate, and written in neutral tone.",
+      "narration": "First, a system block defines the LLM's behavior. I specify that summaries must be exactly two sentences, factually accurate, and written in neutral tone.",
       "actions": [
         {"do": "sync", "after": "system block"},
-        {"do": "click", "target": "New Block", "highlight_before": 1.5},
+        {"do": "click", "target": "New Block", "highlight_before": 2},
         {"do": "wait_for_modal"},
         {"do": "type", "target": "Block Name Input", "text": "System"},
         {"do": "click", "target": "Block Create Button"},
         {"do": "wait", "seconds": 1.5},
         {"do": "sync", "after": "neutral tone"},
-        {"do": "type", "target": "First Block Editor", "text": "You are an expert news editor creating concise summaries.\nYour summaries must be:\n- Exactly 2 sentences long\n- Factually accurate\n- Written in neutral tone", "speed": "slow"}
+        {"do": "type", "target": "First Block Editor", "text": "You are an expert news editor.\n\nCreate summaries that are:\n- Exactly 2 sentences\n- Factually accurate\n- Neutral in tone", "speed": "slow"}
       ]
     },
 
     {
       "id": "prompt_eng_4",
       "speaker": "narrator",
-      "narration": "And here we witness the remarkable flexibility of the system. Variables in double curly braces become placeholders, ready to be filled with data during batch generation.",
-      "actions": [
-        {"do": "sync", "after": "flexibility"},
-        {"do": "click", "target": "New Block", "highlight_before": 1.5},
-        {"do": "wait_for_modal"},
-        {"do": "type", "target": "Block Name Input", "text": "User"},
-        {"do": "click", "target": "Block Create Button"},
-        {"do": "wait", "seconds": 1.5},
-        {"do": "sync", "after": "batch generation"},
-        {"do": "type", "target": "Last Block Editor", "text": "Summarize this article:\n\nTitle: {{title}}\n\n{{content}}", "speed": "medium"}
-      ]
+      "narration": "And how does one incorporate the actual article content?",
+      "actions": []
     },
 
     {
       "id": "prompt_eng_5",
       "speaker": "host",
-      "narration": "Each user can test the prompt independently. The test dialog lets us select a model and generate a response.",
+      "narration": "With variables! These placeholders in curly braces get filled automatically during batch processing. The system even validates that all variables are defined.",
       "actions": [
-        {"do": "sync", "after": "test the prompt"},
-        {"do": "click", "target": "Test", "highlight_before": 1.5},
+        {"do": "sync", "after": "variables"},
+        {"do": "click", "target": "New Block", "highlight_before": 2},
         {"do": "wait_for_modal"},
-        {"do": "sync", "after": "select a model"},
+        {"do": "type", "target": "Block Name Input", "text": "User"},
+        {"do": "click", "target": "Block Create Button"},
+        {"do": "wait", "seconds": 1.5},
+        {"do": "sync", "after": "batch processing"},
+        {"do": "type", "target": "Last Block Editor", "text": "Summarize this article:\n\nTitle: {{title}}\n\n{{content}}", "speed": "medium"}
+      ]
+    },
+
+    {
+      "id": "prompt_eng_6",
+      "speaker": "narrator",
+      "narration": "The variables are elegantly highlighted. Can we test this immediately?",
+      "actions": []
+    },
+
+    {
+      "id": "prompt_eng_7",
+      "speaker": "host",
+      "narration": "Absolutely! Each team member can test independently. The dialog shows model selection and generates responses using sample data.",
+      "actions": [
+        {"do": "sync", "after": "test independently"},
+        {"do": "click", "target": "Test", "highlight_before": 2},
+        {"do": "wait_for_modal"},
+        {"do": "wait", "seconds": 1.5},
         {"do": "highlight", "target": "Model Select", "duration": 2.5},
+        {"do": "wait", "seconds": 1},
         {"do": "click", "target": "Close"}
       ]
     },
 
     {
+      "_section": "=== BATCH GENERATION (45s) ===",
       "id": "batch_gen_1",
       "speaker": "narrator",
-      "narration": "With the prompt refined, we now venture into the realm of Batch Generation. This module automates output creation at an impressive scale.",
-      "actions": [
-        {"do": "goto", "url": "/Home"},
-        {"do": "sync", "after": "Batch Generation"},
-        {"do": "click", "target": "Batch Generation", "highlight_before": 2}
-      ]
+      "narration": "Impressive! But what about processing thousands of articles?",
+      "actions": []
     },
 
     {
       "id": "batch_gen_2",
       "speaker": "host",
-      "narration": "The wizard guides you through source selection. Upload data, link existing scenarios, or use prompt-only mode for quick tests.",
+      "narration": "That's where Batch Generation comes in. This module processes entire datasets automatically.",
       "actions": [
-        {"do": "sync", "after": "source selection"},
-        {"do": "click", "target": "New Job", "highlight_before": 1.5},
-        {"do": "wait_for_modal"},
-        {"do": "sync", "after": "Upload data"},
-        {"do": "highlight", "target": "Source Upload", "duration": 2.5},
-        {"do": "sync", "after": "existing scenarios"},
-        {"do": "highlight", "target": "Source Scenario", "duration": 2}
+        {"do": "goto", "url": "/Home"},
+        {"do": "sync", "after": "Batch Generation"},
+        {"do": "click", "target": "Batch Generation", "highlight_before": 2.5}
       ]
     },
 
     {
       "id": "batch_gen_3",
-      "speaker": "narrator",
-      "narration": "The system calculates all possible combinations and estimates costs before execution. A prudent approach to resource management.",
+      "speaker": "host",
+      "narration": "The wizard guides you step by step. First, select your data source. You can upload files, link existing evaluation scenarios, or run prompt-only tests.",
       "actions": [
-        {"do": "click", "target": "Close"},
+        {"do": "sync", "after": "step by step"},
+        {"do": "click", "target": "New Job", "highlight_before": 2},
+        {"do": "wait_for_modal"},
+        {"do": "wait", "seconds": 1.5},
+        {"do": "sync", "after": "upload files"},
+        {"do": "highlight", "target": "Source Upload", "duration": 2.5},
+        {"do": "sync", "after": "evaluation scenarios"},
+        {"do": "highlight", "target": "Source Scenario", "duration": 2.5}
+      ]
+    },
+
+    {
+      "id": "batch_gen_4",
+      "speaker": "narrator",
+      "narration": "And I notice multiple models can be selected for comparison?",
+      "actions": []
+    },
+
+    {
+      "id": "batch_gen_5",
+      "speaker": "host",
+      "narration": "Exactly! Run the same prompts through GPT-4, Claude, Mistral, any model you have access to. LLARS calculates all combinations and estimates costs before execution.",
+      "actions": [
+        {"do": "wait", "seconds": 2},
+        {"do": "click", "target": "Close"}
+      ]
+    },
+
+    {
+      "_section": "=== SCENARIO MANAGER (45s) ===",
+      "id": "scenario_1",
+      "speaker": "host",
+      "narration": "Now let's look at the Scenario Manager. This is where all evaluation projects come together.",
+      "actions": [
+        {"do": "goto", "url": "/Home"},
+        {"do": "sync", "after": "Scenario Manager"},
+        {"do": "click", "target": "Scenario Manager", "highlight_before": 2.5}
+      ]
+    },
+
+    {
+      "id": "scenario_2",
+      "speaker": "host",
+      "narration": "Each scenario shows its evaluation type, progress, and status. You can see ranking, rating, and comparison scenarios all in one place.",
+      "actions": [
+        {"do": "wait", "seconds": 2},
+        {"do": "highlight", "target": "Scenario List", "duration": 3}
+      ]
+    },
+
+    {
+      "id": "scenario_3",
+      "speaker": "narrator",
+      "narration": "And both humans and AI models can serve as evaluators. How does one create a new scenario?",
+      "actions": [
         {"do": "wait", "seconds": 1}
       ]
     },
 
     {
-      "id": "eval_1",
+      "id": "scenario_4",
       "speaker": "host",
-      "narration": "Now let's explore the Evaluation Hub. This is where human evaluators and LLM judges assess the generated outputs.",
+      "narration": "You can click New Scenario, or use the AI-powered Scenario Wizard. The wizard analyzes your data and recommends the best evaluation approach automatically.",
+      "actions": [
+        {"do": "sync", "after": "New Scenario"},
+        {"do": "highlight", "target": "New Scenario", "duration": 2.5},
+        {"do": "wait", "seconds": 2}
+      ]
+    },
+
+    {
+      "id": "scenario_5",
+      "speaker": "narrator",
+      "narration": "Guiding researchers toward valid evaluation methodologies. That's remarkably thoughtful design.",
+      "actions": [
+        {"do": "wait", "seconds": 2}
+      ]
+    },
+
+    {
+      "_section": "=== CONCLUSION (20s) ===",
+      "id": "conclusion_1",
+      "speaker": "narrator",
+      "narration": "Alex, this has been a remarkable demonstration. The seamless integration between prompt engineering, batch processing, and collaborative evaluation is quite extraordinary.",
       "actions": [
         {"do": "goto", "url": "/Home"},
-        {"do": "sync", "after": "Evaluation Hub"},
-        {"do": "click", "target": "Evaluation Hub", "highlight_before": 2}
+        {"do": "wait", "seconds": 2}
       ]
     },
 
     {
-      "id": "eval_2",
+      "id": "conclusion_2",
       "speaker": "host",
-      "narration": "The Scenario Manager lets you create evaluation scenarios with different types. Ranking, rating, comparison, and more.",
-      "actions": [
-        {"do": "goto", "url": "/Home"},
-        {"do": "sync", "after": "Scenario Manager"},
-        {"do": "click", "target": "Scenario Manager", "highlight_before": 2}
-      ]
-    },
-
-    {
-      "id": "eval_3",
-      "speaker": "narrator",
-      "narration": "LLARS supports multiple evaluation methodologies. Ranking for relative comparison. Rating for absolute scores. And pairwise comparison for rigorous A B testing.",
-      "actions": [
-        {"do": "wait", "seconds": 3}
-      ]
-    },
-
-    {
-      "id": "conclusion",
-      "speaker": "narrator",
-      "narration": "And so we conclude our journey through LLARS. Open-source under MIT license. Requiring Docker and 16 gigabytes of RAM. Visit the repository to begin your own exploration. Thank you for watching.",
+      "narration": "Thank you, David! LLARS is open-source under the MIT license. It runs on Docker and needs about 16 gigabytes of RAM.",
       "actions": [
         {"do": "show_title", "title": "Try LLARS", "subtitle": "github.com/llars-project/llars"}
+      ]
+    },
+
+    {
+      "id": "conclusion_3",
+      "speaker": "narrator",
+      "narration": "In the world of AI evaluation, collaboration between humans and machines opens extraordinary possibilities. Thank you for watching.",
+      "actions": [
+        {"do": "wait", "seconds": 3}
       ]
     }
   ]

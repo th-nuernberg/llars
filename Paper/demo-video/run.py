@@ -1252,6 +1252,7 @@ class ScriptRunner:
         self.browser = None
         self.tts = None
         self.recorder = None
+        self.force_consistent_voices = False  # Für 100% konsistente Stimmen (macOS)
 
     def load_script(self):
         """Lädt Skript"""
@@ -1347,13 +1348,22 @@ class ScriptRunner:
         self.load_script()
 
         config = self.script.get('config', {})
-        tts_model = config.get('tts_model', 'small')
         speakers_config = config.get('speakers', {})
+
+        # Konsistente Stimmen: macOS TTS statt Qwen3
+        if self.force_consistent_voices:
+            tts_model = 'fallback'
+            print("🎯 Verwende macOS TTS für konsistente Stimmen")
+            print("   Host (Alex): Fred (US)")
+            print("   Narrator (David): Daniel (UK)")
+        else:
+            tts_model = config.get('tts_model', 'small')
 
         self.tts = TTS(model_size=tts_model, speakers=speakers_config)
 
-        # Modell laden
-        self.tts.preload()
+        # Modell laden (bei fallback kein Laden nötig)
+        if tts_model != 'fallback':
+            self.tts.preload()
 
         # Steps filtern
         if only_steps:
@@ -1883,9 +1893,16 @@ Quick Test:             python run.py --test --from prompt_eng_1
     # === SONSTIGES ===
     parser.add_argument('--script', default=SCRIPT_FILE,
                         help='Alternatives Skript verwenden')
+    parser.add_argument('--consistent', '-c', action='store_true',
+                        help='Konsistente Stimmen (macOS TTS statt Qwen3)')
 
     args = parser.parse_args()
     runner = ScriptRunner(args.script)
+
+    # Konsistente Stimmen: Überschreibe TTS-Modell
+    if args.consistent:
+        runner.force_consistent_voices = True
+        print("🎯 Konsistente Stimmen aktiviert (macOS TTS)")
 
     # === MODUS-AUSWAHL ===
 

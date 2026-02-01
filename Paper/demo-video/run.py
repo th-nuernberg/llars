@@ -219,6 +219,69 @@ ELEMENT_MAP = {
     "Import Dialog": ".v-dialog, .v-card.import",
     "Recommended: Ranking": ".recommendation, .v-chip:contains('Ranking')",
     "News Summary Evaluation": ".v-card:contains('News'), .scenario-card:contains('News')",
+
+    # =============================================
+    # ADDITIONAL ELEMENTS FOR DEMO VIDEO
+    # =============================================
+
+    # Prompt Engineering - Variable Management
+    "Variables Button": ".v-btn:contains('Variables'), .actions-grid .v-btn:contains('Variables')",
+    "Variable Dialog": ".v-dialog:contains('Variable'), .variables-dialog",
+    "Add Variable": ".v-btn:contains('Add'), .v-dialog .v-btn:contains('Add')",
+    "Variable Name Input": ".variable-input input, .v-text-field input",
+    "Variable Save": ".v-btn:contains('Save'), .v-btn:contains('Done')",
+
+    # Test Prompt Dialog - Enhanced
+    "Run Test Button": ".v-btn:contains('Run'), .test-dialog .v-btn:contains('Generate'), .v-btn:contains('Generate')",
+    "Test Response": ".response-content, .test-response, .response-text, .v-card-text",
+    "Test Loading": ".v-progress-circular, .loading",
+
+    # Batch Generation - Job List
+    "Completed Job": ".job-card:contains('completed'), .job-card.status-completed, .job-item:contains('100%')",
+    "Demo Job": ".job-card:contains('Demo'), .job-card:contains('News')",
+    "Job Status": ".job-status, .status-chip",
+    "Job Progress": ".job-progress, .progress-bar",
+    "View Results": ".v-btn:contains('Results'), .v-btn:contains('View')",
+    "Export Results": ".v-btn:contains('Export')",
+
+    # Batch to Scenario
+    "Create Scenario Button": ".v-btn:contains('Create Scenario'), .v-btn:contains('To Scenario'), .header-actions .v-btn:contains('Scenario')",
+    "Scenario Type Select": ".v-select:contains('Type'), .scenario-type-select",
+    "Ranking Type": ".v-list-item:contains('Ranking'), .v-menu .v-list-item:contains('Ranking')",
+    "Rating Type": ".v-list-item:contains('Rating'), .v-menu .v-list-item:contains('Rating')",
+
+    # Evaluator Selection
+    "Add Evaluator": ".v-btn:contains('Add Evaluator'), .v-btn:contains('Add')",
+    "Evaluator Select": ".v-select:contains('Evaluator'), .evaluator-select",
+    "Human Evaluator": ".v-list-item:contains('admin'), .v-list-item:contains('human')",
+    "LLM Evaluator": ".v-list-item:contains('LLM'), .v-checkbox:contains('LLM')",
+    "GPT-4 Evaluator": ".v-list-item:contains('GPT-4'), .v-checkbox:contains('GPT')",
+    "Claude Evaluator": ".v-list-item:contains('Claude'), .v-checkbox:contains('Claude')",
+
+    # Scenario Manager
+    "New Scenario": ".v-btn:contains('New Scenario'), .header-actions .v-btn:contains('New')",
+    "Scenario List": ".scenario-list, .scenarios-grid, .scenario-cards, .v-list",
+    "Scenario Card": ".scenario-card, .v-card.scenario",
+    "Completed Scenario": ".scenario-card:contains('Complete'), .scenario-card.completed",
+    "Demo Scenario": ".scenario-card:contains('Demo'), .scenario-card:contains('News')",
+    "Scenario Stats": ".scenario-stats, .stats-card",
+    "Open Scenario": ".v-btn:contains('Open'), .scenario-card .v-btn",
+
+    # Scenario Wizard (Button text is "Scenario Wizard")
+    "Wizard Button": ".v-btn:contains('Scenario Wizard'), .v-btn:contains('Wizard')",
+    "Scenario Wizard": ".v-btn:contains('Scenario Wizard')",
+    "Wizard Dialog": ".wizard-dialog, .scenario-wizard, .v-dialog",
+    "Wizard Upload": ".wizard-upload, .upload-zone",
+    "Wizard Analysis": ".wizard-analysis, .ai-analysis",
+    "Wizard Recommendation": ".wizard-recommendation, .ai-recommendation, .recommendation-card",
+    "Wizard Create": ".v-btn:contains('Create'), .wizard-actions .v-btn",
+
+    # Evaluation View
+    "Evaluation Items": ".evaluation-items, .items-list",
+    "Rating Scale": ".rating-scale, .v-rating",
+    "Submit Rating": ".v-btn:contains('Submit'), .v-btn:contains('Next')",
+    "Results Tab": ".v-tab:contains('Results'), .v-tab:contains('Statistics')",
+    "Agreement Chart": ".agreement-chart, .chart-container",
 }
 
 

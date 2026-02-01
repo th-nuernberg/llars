@@ -1,0 +1,11 @@
+{
+  "name": "demo-video",
+  "description": "Create and manage the LLARS demo video for IJCAI 2026 Demo Track",
+  "version": "1.0.0",
+  "triggers": [
+    "demo video",
+    "IJCAI video",
+    "video aufnahme",
+    "demo aufnehmen"
+  ]
+}

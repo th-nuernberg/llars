@@ -227,13 +227,32 @@ ELEMENT_MAP = {
 # =============================================================================
 
 class TTS:
-    """Einfacher TTS-Wrapper"""
+    """TTS-Wrapper mit Sprecher-Unterstützung"""
 
-    def __init__(self, model_size: str = "small"):
+    # Default Sprecher-Konfigurationen
+    DEFAULT_SPEAKERS = {
+        "host": {"name": "Alex", "macos_voice": "Daniel", "macos_rate": 175},
+        "narrator": {"name": "David", "macos_voice": "Daniel", "macos_rate": 155},
+        "default": {"name": "Default", "macos_voice": "Daniel", "macos_rate": 180},
+    }
+
+    def __init__(self, model_size: str = "small", speakers: dict = None):
         self.model_size = model_size
+        self.speakers = {**self.DEFAULT_SPEAKERS}
+        if speakers:
+            for speaker_id, config in speakers.items():
+                if speaker_id in self.speakers:
+                    self.speakers[speaker_id].update(config)
+                else:
+                    self.speakers[speaker_id] = config
+
         self._engine = None
         self._loaded = False
         Path(AUDIO_DIR).mkdir(parents=True, exist_ok=True)
+
+    def get_speaker_config(self, speaker_id: str) -> dict:
+        """Gibt Sprecher-Konfiguration zurück"""
+        return self.speakers.get(speaker_id, self.speakers.get("default", {}))
 
     def preload(self):
         """Lädt das TTS-Modell vorab (blocking)"""
@@ -244,6 +263,7 @@ class TTS:
         print("🎤 TTS-MODELL WIRD GELADEN")
         print("="*60)
         print(f"   Modell: {self.model_size}")
+        print(f"   Sprecher: {', '.join(self.speakers.keys())}")
         print("   Dies kann beim ersten Mal mehrere Minuten dauern...")
         print("="*60 + "\n")
 
@@ -260,32 +280,40 @@ class TTS:
         if self._engine is None:
             try:
                 from src.tts import QwenTTS
-                self._engine = QwenTTS(model_size=self.model_size, cache_dir=AUDIO_DIR)
+                self._engine = QwenTTS(
+                    model_size=self.model_size,
+                    cache_dir=AUDIO_DIR,
+                    speakers=self.speakers
+                )
             except Exception as e:
                 print(f"⚠️ TTS Fehler: {e}")
                 self._engine = "fallback"
         return self._engine
 
-    def speak(self, text: str, step_id: str):
+    def speak(self, text: str, step_id: str, speaker: str = "default"):
         """Spricht Text (blockierend)"""
         audio_file = f"{AUDIO_DIR}/{step_id}.wav"
 
         if not os.path.exists(audio_file):
             engine = self._get_engine()
             if engine == "fallback":
-                self._speak_fallback(text, audio_file)
+                self._generate_fallback(text, audio_file, speaker)
             else:
-                engine.generate(text, audio_file)
+                engine.generate(text, audio_file, speaker=speaker)
 
         # Abspielen
         self._play(audio_file)
 
-    def _speak_fallback(self, text: str, output_path: str):
-        """macOS say als Fallback"""
+    def _generate_fallback(self, text: str, output_path: str, speaker: str = "default"):
+        """macOS say als Fallback mit Sprecher-Unterstützung"""
         import platform
         if platform.system() == 'Darwin':
+            config = self.get_speaker_config(speaker)
+            voice = config.get('macos_voice', 'Daniel')
+            rate = config.get('macos_rate', 180)
+
             temp = output_path.replace('.wav', '.aiff')
-            subprocess.run(['say', '-v', 'Samantha', '-o', temp, text], capture_output=True)
+            subprocess.run(['say', '-v', voice, '-r', str(rate), '-o', temp, text], capture_output=True)
             subprocess.run(['ffmpeg', '-y', '-i', temp, '-ar', '24000', output_path], capture_output=True)
             if os.path.exists(temp):
                 os.remove(temp)
@@ -1252,11 +1280,14 @@ class ScriptRunner:
                 print(f"⚠️ {sid}: Keine Audio-Datei vorhanden")
 
     def generate_audio(self, force: bool = False, only_steps: list = None):
-        """Generiert Audio-Dateien"""
+        """Generiert Audio-Dateien mit Sprecher-Unterstützung"""
         self.load_script()
 
-        tts_model = self.script.get('config', {}).get('tts_model', 'small')
-        self.tts = TTS(model_size=tts_model)
+        config = self.script.get('config', {})
+        tts_model = config.get('tts_model', 'small')
+        speakers_config = config.get('speakers', {})
+
+        self.tts = TTS(model_size=tts_model, speakers=speakers_config)
 
         # Modell laden
         self.tts.preload()
@@ -1282,20 +1313,24 @@ class ScriptRunner:
         for i, step in enumerate(steps):
             step_id = step['id']
             narration = step['narration']
+            speaker = step.get('speaker', 'default')
             audio_file = f"{AUDIO_DIR}/{step_id}.wav"
 
+            # Sprecher-Name für Ausgabe
+            speaker_name = self.tts.get_speaker_config(speaker).get('name', speaker)
+
             if os.path.exists(audio_file) and not force:
-                print(f"   [{i+1}/{total}] ♻️  {step_id} (cached)")
+                print(f"   [{i+1}/{total}] ♻️  {step_id} [{speaker_name}] (cached)")
                 cached += 1
             else:
                 if force and os.path.exists(audio_file):
                     os.remove(audio_file)
-                print(f"   [{i+1}/{total}] 🎤 {step_id}")
+                print(f"   [{i+1}/{total}] 🎤 {step_id} [{speaker_name}]")
                 engine = self.tts._get_engine()
                 if engine != "fallback":
-                    engine.generate(narration, audio_file)
+                    engine.generate(narration, audio_file, speaker=speaker)
                 else:
-                    self.tts._speak_fallback(narration, audio_file)
+                    self.tts._generate_fallback(narration, audio_file, speaker)
                 generated += 1
 
         print("="*60)

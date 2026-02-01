@@ -36,17 +36,19 @@ warnings.filterwarnings("ignore", message=".*Flash attention.*")
 # =============================================================================
 
 SPEAKERS = {
-    # Standard Host - freundlich, klar, professionell
+    # Standard Host - freundlich, amerikanisch, professionell
+    # Fred ist eine klare US-Stimme, perfekt für Tech-Demos
     "host": {
         "name": "Alex",
         "description": "A friendly professional male voice, clear and articulate, with a warm tone. "
                       "Natural pacing, enthusiastic but not over the top. "
                       "Suitable for software demonstrations and tutorials.",
-        "macos_voice": "Daniel",
+        "macos_voice": "Fred",  # Amerikanische Stimme für Kontrast zu David
         "macos_rate": 175,
     },
 
-    # Sir David Attenborough Stil - ruhig, weise, fesselnd
+    # Sir David Attenborough Stil - britisch, ruhig, weise
+    # Daniel ist die beste britische Stimme auf macOS
     "narrator": {
         "name": "David",
         "description": "A distinguished elderly British male voice, deep and resonant, "
@@ -54,8 +56,8 @@ SPEAKERS = {
                       "Thoughtful pauses, gentle intonation, warm and wise. "
                       "Speaking as if revealing the wonders of the natural world. "
                       "Similar to Sir David Attenborough's iconic narration style.",
-        "macos_voice": "Daniel",  # Beste britische Stimme auf macOS
-        "macos_rate": 155,  # Langsamer für den Attenborough-Effekt
+        "macos_voice": "Daniel",  # Britische Stimme für Attenborough-Effekt
+        "macos_rate": 150,  # Langsamer für würdevolles Sprechen
     },
 
     # Technischer Experte - präzise, sachlich

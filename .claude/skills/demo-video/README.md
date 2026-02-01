@@ -231,10 +231,44 @@ python run.py
 - **Recording:** ffmpeg
 - **Audio-Sync:** Post-Processing mit Timestamps
 
+## Stimmen-Konsistenz
+
+Qwen3-TTS VoiceDesign kann bei jeder Generierung leicht unterschiedliche Stimmen erzeugen.
+
+**Für 100% konsistente Stimmen:**
+```bash
+python run.py --audio --consistent --force
+```
+
+Dies nutzt macOS TTS:
+- **Alex/Host:** Fred (US) - rate 175
+- **David/Narrator:** Daniel (UK) - rate 150
+
+## Demo-Daten Vorbereitung
+
+Für das vollständige Demo (mit fertiger Batch Generation) benötigst du:
+
+```bash
+# Anleitung anzeigen
+./setup_demo_data.sh
+
+# Prüfen ob Daten existieren
+./setup_demo_data.sh --check
+
+# Demo-Daten löschen
+./setup_demo_data.sh --clean
+```
+
+**Manuelle Schritte:**
+1. Batch Generation mit 2 Modellen erstellen und durchlaufen lassen
+2. Szenario aus fertiger Batch erstellen
+3. Einige Bewertungen durchführen
+
 ## TODO
 
-- [ ] Zwei-Sprecher-Dialog implementieren
-- [ ] Sir Attenborough Stimme konfigurieren
+- [x] Zwei-Sprecher-Dialog implementieren
+- [x] Sir Attenborough Stimme konfigurieren
+- [x] Konsistente Stimmen Option
+- [ ] Demo-Daten vorbereiten
 - [ ] Skript finalisieren
 - [ ] Finale Aufnahme erstellen
-- [ ] Video auf 3-5 Minuten kürzen

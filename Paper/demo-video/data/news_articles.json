@@ -1,0 +1,32 @@
+[
+  {
+    "id": "news_001",
+    "title": "Breakthrough in Quantum Computing",
+    "content": "Scientists at MIT announced a major breakthrough in quantum computing yesterday. The team successfully demonstrated a 1000-qubit processor that maintains coherence for over 10 minutes, a significant improvement over previous records. Dr. Jane Chen, lead researcher, stated that this development could accelerate drug discovery and climate modeling. The processor uses a novel error-correction technique that reduces noise by 99%. Industry experts predict commercial applications within five years.",
+    "category": "Technology"
+  },
+  {
+    "id": "news_002",
+    "title": "Global Climate Summit Reaches Historic Agreement",
+    "content": "World leaders at the 2026 Global Climate Summit in Berlin have agreed to reduce carbon emissions by 60% by 2035. The agreement, signed by 195 countries, includes binding commitments and financial penalties for non-compliance. Developing nations will receive $500 billion in green technology funding. Environmental groups praised the deal as 'a turning point for humanity,' while some industry representatives expressed concerns about economic impacts.",
+    "category": "Environment"
+  },
+  {
+    "id": "news_003",
+    "title": "AI System Passes Medical Licensing Exam",
+    "content": "An artificial intelligence system developed by Stanford researchers has passed the US Medical Licensing Examination with a score in the 90th percentile. The system, named MedAssist, demonstrated diagnostic accuracy comparable to experienced physicians across multiple specialties. However, researchers emphasize that the AI is designed to assist, not replace, human doctors. The FDA is currently reviewing the system for potential clinical use.",
+    "category": "Healthcare"
+  },
+  {
+    "id": "news_004",
+    "title": "Electric Vehicle Sales Surpass Traditional Cars",
+    "content": "For the first time in history, electric vehicle sales have exceeded traditional combustion engine cars globally. Data from the International Energy Agency shows that EVs accounted for 52% of new car sales in Q1 2026. Tesla, BYD, and Volkswagen lead the market. Analysts attribute the shift to falling battery costs, expanded charging infrastructure, and stricter emission regulations. The milestone was reached two years ahead of most predictions.",
+    "category": "Automotive"
+  },
+  {
+    "id": "news_005",
+    "title": "New Study Links Social Media to Teen Mental Health",
+    "content": "A comprehensive study involving 50,000 teenagers across 12 countries has found strong correlations between social media usage and mental health issues. Researchers at Oxford University report that teens spending more than 4 hours daily on social platforms show 40% higher rates of anxiety and depression. The study controlled for socioeconomic factors and pre-existing conditions. Experts are calling for age verification requirements and usage limits.",
+    "category": "Society"
+  }
+]

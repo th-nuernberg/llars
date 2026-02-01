@@ -1,12 +1,10 @@
 {
   "_comment": "LLARS Demo Video - DREHBUCH / GROUND TRUTH",
   "_instructions": [
-    "Aktionen laufen SEQUENTIELL - genau in der angegebenen Reihenfolge.",
+    "Zwei Sprecher: 'host' (Alex) und 'narrator' (David, Attenborough-Stil)",
     "",
     "SYNC - Wartet auf Narrations-Zeitpunkt:",
     "  {'do': 'sync', 'after': 'Wort'}  → Wartet bis TTS 'Wort' gesagt hat",
-    "  {'do': 'sync', 'at': 3.5}        → Wartet bis Sekunde 3.5",
-    "  {'do': 'sync', 'at': '50%'}      → Wartet bis 50% der Narration",
     "",
     "HIGHLIGHT VOR KLICK:",
     "  {'do': 'click', 'highlight_before': 2}  → Highlightet 2s, dann klickt",
@@ -23,13 +21,24 @@
     "login": {
       "username": "admin",
       "password": "admin123"
+    },
+    "speakers": {
+      "host": {
+        "name": "Alex",
+        "description": "A friendly professional male voice, clear and articulate, with a warm tone. Natural pacing, enthusiastic but not over the top. Suitable for software demonstrations."
+      },
+      "narrator": {
+        "name": "David",
+        "description": "A distinguished elderly British male voice, deep and resonant, with the calm authority of a nature documentary narrator. Thoughtful pauses, gentle intonation, warm and wise. Speaking as if revealing the wonders of the natural world. Similar to Sir David Attenborough's iconic narration style."
+      }
     }
   },
 
   "steps": [
     {
       "id": "intro_1",
-      "narration": "Evaluating Large Language Model outputs requires two groups with complementary expertise. Domain experts who understand what constitutes quality, and AI developers who know how to structure effective prompts.",
+      "speaker": "narrator",
+      "narration": "In the vast landscape of artificial intelligence, a new challenge has emerged. Evaluating the outputs of Large Language Models requires two distinct groups with complementary expertise.",
       "actions": [
         {"do": "show_title", "title": "LLARS", "subtitle": "A Platform for Evaluating LLM Outputs"}
       ]
@@ -37,12 +46,21 @@
 
     {
       "id": "intro_2",
-      "narration": "Current tools force these groups to work in isolation. LLARS bridges this gap with three integrated modules. Let me show you.",
+      "speaker": "host",
+      "narration": "That's right. Domain experts understand what constitutes quality, while AI developers know how to structure effective prompts. Current tools force these groups to work in isolation.",
+      "actions": []
+    },
+
+    {
+      "id": "intro_3",
+      "speaker": "narrator",
+      "narration": "But here, we observe something remarkable. LLARS bridges this gap with three integrated modules. Let us explore this fascinating ecosystem.",
       "actions": []
     },
 
     {
       "id": "prompt_eng_1",
+      "speaker": "host",
       "narration": "Let's start with Collaborative Prompt Engineering. Here, domain experts and AI developers work together in real-time.",
       "actions": [
         {"do": "sync", "after": "Prompt Engineering"},
@@ -52,6 +70,7 @@
 
     {
       "id": "prompt_eng_2",
+      "speaker": "host",
       "narration": "I'll create a new prompt for news article summarization. Watch how changes are tracked at the character level.",
       "actions": [
         {"do": "sync", "after": "new prompt"},
@@ -65,6 +84,7 @@
 
     {
       "id": "prompt_eng_3",
+      "speaker": "host",
       "narration": "I'll add a system block to define the LLM's role. As a journalist, I specify that summaries must be exactly two sentences, factually accurate, and written in neutral tone.",
       "actions": [
         {"do": "sync", "after": "system block"},
@@ -80,9 +100,10 @@
 
     {
       "id": "prompt_eng_4",
-      "narration": "Now I add a user block with variables in double curly braces. These placeholders will be filled with actual data during batch generation.",
+      "speaker": "narrator",
+      "narration": "And here we witness the remarkable flexibility of the system. Variables in double curly braces become placeholders, ready to be filled with data during batch generation.",
       "actions": [
-        {"do": "sync", "after": "user block"},
+        {"do": "sync", "after": "flexibility"},
         {"do": "click", "target": "New Block", "highlight_before": 1.5},
         {"do": "wait_for_modal"},
         {"do": "type", "target": "Block Name Input", "text": "User"},
@@ -95,22 +116,22 @@
 
     {
       "id": "prompt_eng_5",
-      "narration": "Each user can test the prompt independently. The test dialog lets us select a model and generate a response using our prompt with sample variables.",
+      "speaker": "host",
+      "narration": "Each user can test the prompt independently. The test dialog lets us select a model and generate a response.",
       "actions": [
         {"do": "sync", "after": "test the prompt"},
         {"do": "click", "target": "Test", "highlight_before": 1.5},
         {"do": "wait_for_modal"},
         {"do": "sync", "after": "select a model"},
         {"do": "highlight", "target": "Model Select", "duration": 2.5},
-        {"do": "sync", "after": "sample variables"},
-        {"do": "highlight", "target": "Response Output", "duration": 2},
         {"do": "click", "target": "Close"}
       ]
     },
 
     {
       "id": "batch_gen_1",
-      "narration": "With our prompt refined, let's move to Batch Generation. This module automates output creation at scale.",
+      "speaker": "narrator",
+      "narration": "With the prompt refined, we now venture into the realm of Batch Generation. This module automates output creation at an impressive scale.",
       "actions": [
         {"do": "goto", "url": "/Home"},
         {"do": "sync", "after": "Batch Generation"},
@@ -120,6 +141,7 @@
 
     {
       "id": "batch_gen_2",
+      "speaker": "host",
       "narration": "The wizard guides you through source selection. Upload data, link existing scenarios, or use prompt-only mode for quick tests.",
       "actions": [
         {"do": "sync", "after": "source selection"},
@@ -134,7 +156,8 @@
 
     {
       "id": "batch_gen_3",
-      "narration": "After selecting prompts and models, LLARS calculates all combinations and estimates costs before execution. Jobs can be paused and resumed.",
+      "speaker": "narrator",
+      "narration": "The system calculates all possible combinations and estimates costs before execution. A prudent approach to resource management.",
       "actions": [
         {"do": "click", "target": "Close"},
         {"do": "wait", "seconds": 1}
@@ -143,6 +166,7 @@
 
     {
       "id": "eval_1",
+      "speaker": "host",
       "narration": "Now let's explore the Evaluation Hub. This is where human evaluators and LLM judges assess the generated outputs.",
       "actions": [
         {"do": "goto", "url": "/Home"},
@@ -153,6 +177,7 @@
 
     {
       "id": "eval_2",
+      "speaker": "host",
       "narration": "The Scenario Manager lets you create evaluation scenarios with different types. Ranking, rating, comparison, and more.",
       "actions": [
         {"do": "goto", "url": "/Home"},
@@ -163,7 +188,8 @@
 
     {
       "id": "eval_3",
-      "narration": "LLARS supports multiple evaluation types. Ranking for relative comparison, rating for absolute scores, and pairwise comparison for A B testing.",
+      "speaker": "narrator",
+      "narration": "LLARS supports multiple evaluation methodologies. Ranking for relative comparison. Rating for absolute scores. And pairwise comparison for rigorous A B testing.",
       "actions": [
         {"do": "wait", "seconds": 3}
       ]
@@ -171,7 +197,8 @@
 
     {
       "id": "conclusion",
-      "narration": "LLARS is open-source under MIT license. It requires Docker and 16 gigabytes of RAM. Visit our repository to get started. Thank you for watching.",
+      "speaker": "narrator",
+      "narration": "And so we conclude our journey through LLARS. Open-source under MIT license. Requiring Docker and 16 gigabytes of RAM. Visit the repository to begin your own exploration. Thank you for watching.",
       "actions": [
         {"do": "show_title", "title": "Try LLARS", "subtitle": "github.com/llars-project/llars"}
       ]

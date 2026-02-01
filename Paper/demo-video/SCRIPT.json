@@ -1,0 +1,180 @@
+{
+  "_comment": "LLARS Demo Video - DREHBUCH / GROUND TRUTH",
+  "_instructions": [
+    "Aktionen laufen SEQUENTIELL - genau in der angegebenen Reihenfolge.",
+    "",
+    "SYNC - Wartet auf Narrations-Zeitpunkt:",
+    "  {'do': 'sync', 'after': 'Wort'}  → Wartet bis TTS 'Wort' gesagt hat",
+    "  {'do': 'sync', 'at': 3.5}        → Wartet bis Sekunde 3.5",
+    "  {'do': 'sync', 'at': '50%'}      → Wartet bis 50% der Narration",
+    "",
+    "HIGHLIGHT VOR KLICK:",
+    "  {'do': 'click', 'highlight_before': 2}  → Highlightet 2s, dann klickt",
+    "",
+    "Starte mit: python run.py"
+  ],
+
+  "config": {
+    "url": "http://localhost:55080",
+    "resolution": [1920, 1080],
+    "tts_model": "large",
+    "output_file": "llars_demo.mp4",
+    "language": "en",
+    "login": {
+      "username": "admin",
+      "password": "admin123"
+    }
+  },
+
+  "steps": [
+    {
+      "id": "intro_1",
+      "narration": "Evaluating Large Language Model outputs requires two groups with complementary expertise. Domain experts who understand what constitutes quality, and AI developers who know how to structure effective prompts.",
+      "actions": [
+        {"do": "show_title", "title": "LLARS", "subtitle": "A Platform for Evaluating LLM Outputs"}
+      ]
+    },
+
+    {
+      "id": "intro_2",
+      "narration": "Current tools force these groups to work in isolation. LLARS bridges this gap with three integrated modules. Let me show you.",
+      "actions": []
+    },
+
+    {
+      "id": "prompt_eng_1",
+      "narration": "Let's start with Collaborative Prompt Engineering. Here, domain experts and AI developers work together in real-time.",
+      "actions": [
+        {"do": "sync", "after": "Prompt Engineering"},
+        {"do": "click", "target": "Prompt Engineering", "highlight_before": 2}
+      ]
+    },
+
+    {
+      "id": "prompt_eng_2",
+      "narration": "I'll create a new prompt for news article summarization. Watch how changes are tracked at the character level.",
+      "actions": [
+        {"do": "sync", "after": "new prompt"},
+        {"do": "click", "target": "Create Prompt", "highlight_before": 1.5},
+        {"do": "wait_for_modal"},
+        {"do": "type", "target": "Name Input", "text": "News Summary Prompt"},
+        {"do": "click", "target": "Dialog Create Button"},
+        {"do": "wait", "seconds": 2}
+      ]
+    },
+
+    {
+      "id": "prompt_eng_3",
+      "narration": "I'll add a system block to define the LLM's role. As a journalist, I specify that summaries must be exactly two sentences, factually accurate, and written in neutral tone.",
+      "actions": [
+        {"do": "sync", "after": "system block"},
+        {"do": "click", "target": "New Block", "highlight_before": 1.5},
+        {"do": "wait_for_modal"},
+        {"do": "type", "target": "Block Name Input", "text": "System"},
+        {"do": "click", "target": "Block Create Button"},
+        {"do": "wait", "seconds": 1.5},
+        {"do": "sync", "after": "neutral tone"},
+        {"do": "type", "target": "First Block Editor", "text": "You are an expert news editor creating concise summaries.\nYour summaries must be:\n- Exactly 2 sentences long\n- Factually accurate\n- Written in neutral tone", "speed": "slow"}
+      ]
+    },
+
+    {
+      "id": "prompt_eng_4",
+      "narration": "Now I add a user block with variables in double curly braces. These placeholders will be filled with actual data during batch generation.",
+      "actions": [
+        {"do": "sync", "after": "user block"},
+        {"do": "click", "target": "New Block", "highlight_before": 1.5},
+        {"do": "wait_for_modal"},
+        {"do": "type", "target": "Block Name Input", "text": "User"},
+        {"do": "click", "target": "Block Create Button"},
+        {"do": "wait", "seconds": 1.5},
+        {"do": "sync", "after": "batch generation"},
+        {"do": "type", "target": "Last Block Editor", "text": "Summarize this article:\n\nTitle: {{title}}\n\n{{content}}", "speed": "medium"}
+      ]
+    },
+
+    {
+      "id": "prompt_eng_5",
+      "narration": "Each user can test the prompt independently. The test dialog lets us select a model and generate a response using our prompt with sample variables.",
+      "actions": [
+        {"do": "sync", "after": "test the prompt"},
+        {"do": "click", "target": "Test", "highlight_before": 1.5},
+        {"do": "wait_for_modal"},
+        {"do": "sync", "after": "select a model"},
+        {"do": "highlight", "target": "Model Select", "duration": 2.5},
+        {"do": "sync", "after": "sample variables"},
+        {"do": "highlight", "target": "Response Output", "duration": 2},
+        {"do": "click", "target": "Close"}
+      ]
+    },
+
+    {
+      "id": "batch_gen_1",
+      "narration": "With our prompt refined, let's move to Batch Generation. This module automates output creation at scale.",
+      "actions": [
+        {"do": "goto", "url": "/Home"},
+        {"do": "sync", "after": "Batch Generation"},
+        {"do": "click", "target": "Batch Generation", "highlight_before": 2}
+      ]
+    },
+
+    {
+      "id": "batch_gen_2",
+      "narration": "The wizard guides you through source selection. Upload data, link existing scenarios, or use prompt-only mode for quick tests.",
+      "actions": [
+        {"do": "sync", "after": "source selection"},
+        {"do": "click", "target": "New Job", "highlight_before": 1.5},
+        {"do": "wait_for_modal"},
+        {"do": "sync", "after": "Upload data"},
+        {"do": "highlight", "target": "Source Upload", "duration": 2.5},
+        {"do": "sync", "after": "existing scenarios"},
+        {"do": "highlight", "target": "Source Scenario", "duration": 2}
+      ]
+    },
+
+    {
+      "id": "batch_gen_3",
+      "narration": "After selecting prompts and models, LLARS calculates all combinations and estimates costs before execution. Jobs can be paused and resumed.",
+      "actions": [
+        {"do": "click", "target": "Close"},
+        {"do": "wait", "seconds": 1}
+      ]
+    },
+
+    {
+      "id": "eval_1",
+      "narration": "Now let's explore the Evaluation Hub. This is where human evaluators and LLM judges assess the generated outputs.",
+      "actions": [
+        {"do": "goto", "url": "/Home"},
+        {"do": "sync", "after": "Evaluation Hub"},
+        {"do": "click", "target": "Evaluation Hub", "highlight_before": 2}
+      ]
+    },
+
+    {
+      "id": "eval_2",
+      "narration": "The Scenario Manager lets you create evaluation scenarios with different types. Ranking, rating, comparison, and more.",
+      "actions": [
+        {"do": "goto", "url": "/Home"},
+        {"do": "sync", "after": "Scenario Manager"},
+        {"do": "click", "target": "Scenario Manager", "highlight_before": 2}
+      ]
+    },
+
+    {
+      "id": "eval_3",
+      "narration": "LLARS supports multiple evaluation types. Ranking for relative comparison, rating for absolute scores, and pairwise comparison for A B testing.",
+      "actions": [
+        {"do": "wait", "seconds": 3}
+      ]
+    },
+
+    {
+      "id": "conclusion",
+      "narration": "LLARS is open-source under MIT license. It requires Docker and 16 gigabytes of RAM. Visit our repository to get started. Thank you for watching.",
+      "actions": [
+        {"do": "show_title", "title": "Try LLARS", "subtitle": "github.com/llars-project/llars"}
+      ]
+    }
+  ]
+}

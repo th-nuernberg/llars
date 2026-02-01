@@ -1,0 +1,13 @@
+# Generated audio files (regenerate with: python run.py --audio)
+audio/*.wav
+
+# Output videos (regenerate with: python run.py)
+output/*.mp4
+output/*.wav
+
+# Python cache
+__pycache__/
+*.pyc
+
+# TTS model cache
+models/

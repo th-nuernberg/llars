@@ -5,7 +5,7 @@
       <v-col cols="12" md="4">
         <v-text-field
           v-model="searchQuery"
-          label="Benutzer suchen"
+          :label="$t('admin.users.searchPlaceholder')"
           prepend-inner-icon="mdi-magnify"
           variant="outlined"
           density="comfortable"
@@ -18,7 +18,7 @@
         <v-select
           v-model="roleFilter"
           :items="roleFilterOptions"
-          label="Nach Rolle filtern"
+          :label="$t('admin.users.filterByRole')"
           variant="outlined"
           density="comfortable"
           hide-details
@@ -27,12 +27,12 @@
       </v-col>
       <v-col cols="12" md="2">
         <LBtn variant="primary" @click="searchUser" :loading="loadingSearch" block prepend-icon="mdi-magnify">
-          Suchen
+          {{ $t('common.search') }}
         </LBtn>
       </v-col>
       <v-col cols="12" md="3">
         <LBtn variant="primary" @click="openCreateDialog" block prepend-icon="mdi-account-plus">
-          Neuer Benutzer
+          {{ $t('admin.users.newUser') }}
         </LBtn>
       </v-col>
     </v-row>
@@ -50,7 +50,7 @@
           />
           <div>
             <div class="text-h6">{{ selectedUser.username }}</div>
-            <div class="text-caption text-medium-emphasis">Benutzerdetails</div>
+            <div class="text-caption text-medium-emphasis">{{ $t('admin.users.userDetails') }}</div>
           </div>
           <v-spacer></v-spacer>
           <LTag
@@ -64,7 +64,7 @@
           <LIconBtn
             v-if="selectedUser.db_record_exists"
             :icon="selectedUser.is_active ? 'mdi-lock-open-variant' : 'mdi-lock'"
-            :tooltip="selectedUser.is_active ? 'Sperren' : 'Entsperren'"
+            :tooltip="selectedUser.is_active ? $t('admin.users.actions.lock') : $t('admin.users.actions.unlock')"
             :loading="togglingUser === selectedUser.username"
             :disabled="selectedUser.username === 'admin' || selectedUser.deleted_at"
             @click="toggleUserLock(selectedUser)"
@@ -72,7 +72,7 @@
           <LIconBtn
             v-if="selectedUser.db_record_exists"
             icon="mdi-delete"
-            tooltip="Löschen"
+            :tooltip="$t('admin.users.actions.delete')"
             variant="error"
             :disabled="selectedUser.username === 'admin'"
             @click="confirmDelete(selectedUser)"
@@ -89,8 +89,7 @@
             variant="tonal"
             class="mb-4"
           >
-            Dieser Benutzer ist noch nicht in der LLARS-Datenbank angelegt. Rollen können bereits verwaltet werden,
-            aber Sperren/Löschen ist erst nach dem Anlegen möglich.
+            {{ $t('admin.users.notInDbWarning') }}
             <div class="mt-3">
               <LBtn
                 variant="primary"
@@ -98,7 +97,7 @@
                 prepend-icon="mdi-account-plus"
                 @click="openCreateDialog(selectedUser.username)"
               >
-                In DB anlegen
+                {{ $t('admin.users.createInDb') }}
               </LBtn>
             </div>
           </v-alert>
@@ -108,7 +107,7 @@
             <v-col cols="12" md="6">
               <h4 class="text-subtitle-1 font-weight-bold mb-3">
                 <LIcon class="mr-1">mdi-shield-account</LIcon>
-                Zugewiesene Rollen
+                {{ $t('admin.users.assignedRoles') }}
               </h4>
               <div class="d-flex flex-wrap gap-2 mb-3">
                 <LTag
@@ -122,7 +121,7 @@
                   {{ role.display_name }}
                 </LTag>
                 <LTag v-if="selectedUser.roles.length === 0" variant="gray" size="sm">
-                  Keine Rollen zugewiesen
+                  {{ $t('admin.users.noRolesAssigned') }}
                 </LTag>
               </div>
 
@@ -133,7 +132,7 @@
                   :items="availableRoles"
                   item-title="display_name"
                   item-value="role_name"
-                  label="Rolle hinzufügen"
+                  :label="$t('admin.users.addRole')"
                   variant="outlined"
                   density="compact"
                   hide-details
@@ -154,7 +153,7 @@
             <v-col cols="12" md="6">
               <h4 class="text-subtitle-1 font-weight-bold mb-3">
                 <LIcon class="mr-1">mdi-key</LIcon>
-                Effektive Berechtigungen ({{ selectedUser.permissions.length }})
+                {{ $t('admin.users.effectivePermissions', { count: selectedUser.permissions.length }) }}
               </h4>
               <div class="permissions-list">
                 <LTag
@@ -172,7 +171,7 @@
                   size="small"
                   @click="showAllPermissions = !showAllPermissions"
                 >
-                  {{ showAllPermissions ? 'Weniger anzeigen' : `+${selectedUser.permissions.length - 8} mehr` }}
+                  {{ showAllPermissions ? $t('admin.users.showLess') : $t('admin.users.showMore', { count: selectedUser.permissions.length - 8 }) }}
                 </LBtn>
               </div>
             </v-col>
@@ -185,10 +184,10 @@
     <v-card>
       <v-card-title class="d-flex align-center">
         <LIcon class="mr-2">mdi-account-group</LIcon>
-        Benutzer
+        {{ $t('admin.users.title') }}
         <v-spacer></v-spacer>
         <LBtn variant="text" @click="loadUsers" :loading="loadingUsers" prepend-icon="mdi-refresh">
-          Aktualisieren
+          {{ $t('common.refresh') }}
         </LBtn>
       </v-card-title>
       <v-divider></v-divider>
@@ -264,7 +263,7 @@
             <div class="text-center py-8">
               <LIcon size="48" class="mb-2 text-medium-emphasis">mdi-account-search</LIcon>
               <div class="text-medium-emphasis">
-                {{ searchQuery ? 'Keine Benutzer gefunden' : 'Suchen Sie nach einem Benutzer oder laden Sie alle Benutzer mit Rollen' }}
+                {{ searchQuery ? $t('admin.users.empty.noResults') : $t('admin.users.empty.searchHint') }}
               </div>
             </div>
           </template>
@@ -277,7 +276,7 @@
       <v-card>
         <v-card-title class="d-flex align-center">
           <LIcon class="mr-2">mdi-account-plus</LIcon>
-          Benutzer anlegen
+          {{ $t('admin.users.createDialog.title') }}
           <v-spacer></v-spacer>
           <LIconBtn icon="mdi-close" @click="createDialog = false" />
         </v-card-title>
@@ -292,11 +291,11 @@
             closable
             @click:close="createWarning = ''; createDialog = false"
           >
-            <div class="font-weight-bold mb-1">Benutzer teilweise erstellt</div>
+            <div class="font-weight-bold mb-1">{{ $t('admin.users.createDialog.partialWarningTitle') }}</div>
             {{ createWarning }}
             <div class="mt-2">
               <LBtn variant="secondary" size="small" @click="createWarning = ''; createDialog = false">
-                Schließen
+                {{ $t('common.close') }}
               </LBtn>
             </div>
           </v-alert>
@@ -308,38 +307,37 @@
             density="compact"
             class="mb-4"
           >
-            Erstellt einen vollwertigen Benutzer in Authentik und LLARS.
-            Der Benutzer kann sich danach sofort einloggen.
+            {{ $t('admin.users.createDialog.info') }}
           </v-alert>
 
           <v-text-field
             v-model="newUserUsername"
-            label="Username *"
+            :label="$t('admin.users.createDialog.username') + ' *'"
             variant="outlined"
             density="comfortable"
             prepend-inner-icon="mdi-account"
             :disabled="creatingUser"
-            hint="Login-Name des Benutzers"
+            :hint="$t('admin.users.createDialog.usernameHint')"
             persistent-hint
             class="mb-2"
           />
 
           <v-text-field
             v-model="newUserEmail"
-            label="E-Mail *"
+            :label="$t('admin.users.createDialog.email') + ' *'"
             variant="outlined"
             density="comfortable"
             prepend-inner-icon="mdi-email"
             type="email"
             :disabled="creatingUser"
-            hint="Wird für Authentik benötigt"
+            :hint="$t('admin.users.createDialog.emailHint')"
             persistent-hint
             class="mb-2"
           />
 
           <v-text-field
             v-model="newUserPassword"
-            :label="'Passwort *'"
+            :label="$t('admin.users.createDialog.password') + ' *'"
             variant="outlined"
             density="comfortable"
             prepend-inner-icon="mdi-lock"
@@ -347,31 +345,31 @@
             :type="showPassword ? 'text' : 'password'"
             @click:append-inner="showPassword = !showPassword"
             :disabled="creatingUser"
-            hint="Mindestens 8 Zeichen"
+            :hint="$t('admin.users.createDialog.passwordHint')"
             persistent-hint
             class="mb-2"
           />
 
           <v-text-field
             v-model="newUserDisplayName"
-            label="Anzeigename"
+            :label="$t('admin.users.createDialog.displayName')"
             variant="outlined"
             density="comfortable"
             prepend-inner-icon="mdi-card-account-details"
             :disabled="creatingUser"
-            hint="Optional - wird sonst der Username verwendet"
+            :hint="$t('admin.users.createDialog.displayNameHint')"
             persistent-hint
             class="mb-2"
           />
 
           <div class="mb-2">
-            <div class="text-body-2 text-medium-emphasis mb-2">Kollaborationsfarbe (optional)</div>
+            <div class="text-body-2 text-medium-emphasis mb-2">{{ $t('admin.users.createDialog.collabColor') }}</div>
             <div class="d-flex align-center gap-2 mb-2">
               <div
                 class="collab-color-preview"
                 :style="{ backgroundColor: newUserCollabColor || '#9e9e9e' }"
               ></div>
-              <span class="text-caption">{{ newUserCollabColor || 'Automatisch' }}</span>
+              <span class="text-caption">{{ newUserCollabColor || $t('admin.users.createDialog.collabColorAuto') }}</span>
               <LBtn
                 variant="text"
                 size="x-small"
@@ -396,12 +394,12 @@
 
           <v-text-field
             v-model="newUserAvatarSeed"
-            label="Profilbild-Seed (optional)"
+            :label="$t('admin.users.createDialog.avatarSeed')"
             variant="outlined"
             density="comfortable"
             prepend-inner-icon="mdi-image-filter-vintage"
             :disabled="creatingUser"
-            hint="Leer lassen = automatisch"
+            :hint="$t('admin.users.createDialog.avatarSeedHint')"
             persistent-hint
             class="mb-2"
           />
@@ -411,7 +409,7 @@
             :items="allRoles"
             item-title="display_name"
             item-value="role_name"
-            label="Initiale Rollen"
+            :label="$t('admin.users.createDialog.initialRoles')"
             variant="outlined"
             density="comfortable"
             multiple
@@ -425,12 +423,12 @@
             v-model="newUserActive"
             color="success"
             inset
-            label="Account aktiv"
+            :label="$t('admin.users.createDialog.accountActive')"
             :disabled="creatingUser"
           />
         </v-card-text>
         <v-card-actions class="justify-end">
-          <LBtn variant="text" @click="createDialog = false" :disabled="creatingUser">Abbrechen</LBtn>
+          <LBtn variant="text" @click="createDialog = false" :disabled="creatingUser">{{ $t('common.cancel') }}</LBtn>
           <LBtn
             variant="primary"
             prepend-icon="mdi-check"
@@ -438,7 +436,7 @@
             :loading="creatingUser"
             :disabled="!newUserUsername || !newUserEmail || !newUserPassword || newUserPassword.length < 8"
           >
-            Anlegen
+            {{ $t('admin.users.createDialog.create') }}
           </LBtn>
         </v-card-actions>
       </v-card>
@@ -449,19 +447,19 @@
       <v-card>
         <v-card-title class="d-flex align-center">
           <LIcon class="mr-2" color="error">mdi-alert</LIcon>
-          Benutzer löschen
+          {{ $t('admin.users.deleteDialog.title') }}
           <v-spacer></v-spacer>
           <LIconBtn icon="mdi-close" @click="deleteDialog = false" />
         </v-card-title>
         <v-divider></v-divider>
         <v-card-text>
-          Möchtest du den Benutzer <strong>{{ userToDelete?.username }}</strong> wirklich löschen?
+          <span v-html="$t('admin.users.deleteDialog.confirm', { username: userToDelete?.username })"></span>
           <div class="text-caption text-medium-emphasis mt-2">
-            Der Account wird in LLARS deaktiviert und aus Rollen/Berechtigungen entfernt.
+            {{ $t('admin.users.deleteDialog.info') }}
           </div>
         </v-card-text>
         <v-card-actions class="justify-end">
-          <LBtn variant="text" @click="deleteDialog = false" :disabled="deletingUser">Abbrechen</LBtn>
+          <LBtn variant="text" @click="deleteDialog = false" :disabled="deletingUser">{{ $t('common.cancel') }}</LBtn>
           <LBtn
             variant="error"
             prepend-icon="mdi-delete"
@@ -469,7 +467,7 @@
             :loading="deletingUser"
             :disabled="!userToDelete"
           >
-            Löschen
+            {{ $t('common.delete') }}
           </LBtn>
         </v-card-actions>
       </v-card>
@@ -479,12 +477,14 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue';
+import { useI18n } from 'vue-i18n';
 import axios from 'axios';
 import { useSkeletonLoading } from '@/composables/useSkeletonLoading';
 import { useMobile } from '@/composables/useMobile';
 import { logI18n } from '@/utils/logI18n';
 import { COLLAB_COLOR_PRESETS, isColorInAiReservedRange } from '@/constants/colors';
 
+const { t } = useI18n();
 const { isMobile } = useMobile();
 
 // State
@@ -523,15 +523,15 @@ const { isLoading, withLoading } = useSkeletonLoading(['table']);
 const headers = computed(() => {
   if (isMobile.value) {
     return [
-      { title: 'Benutzer', key: 'username', sortable: true },
+      { title: t('admin.users.table.user'), key: 'username', sortable: true },
       { title: '', key: 'actions', sortable: false, align: 'end', width: '80px' },
     ];
   }
   return [
-    { title: 'Benutzer', key: 'username', sortable: true },
-    { title: 'Status', key: 'status', sortable: false },
-    { title: 'Rollen', key: 'roles', sortable: false },
-    { title: 'Aktionen', key: 'actions', sortable: false, align: 'end' },
+    { title: t('admin.users.table.user'), key: 'username', sortable: true },
+    { title: t('admin.users.table.status'), key: 'status', sortable: false },
+    { title: t('admin.users.table.roles'), key: 'roles', sortable: false },
+    { title: t('admin.users.table.actions'), key: 'actions', sortable: false, align: 'end' },
   ];
 });
 
@@ -540,7 +540,7 @@ const collabColorPresets = COLLAB_COLOR_PRESETS.filter(c => !isColorInAiReserved
 
 // Role filter options
 const roleFilterOptions = computed(() => {
-  return ['Alle', ...allRoles.value.map(r => r.display_name)];
+  return [t('common.all'), ...allRoles.value.map(r => r.display_name)];
 });
 
 // Available roles for assignment (exclude already assigned)
@@ -552,7 +552,7 @@ const availableRoles = computed(() => {
 
 // Filtered users based on role filter
 const filteredUsers = computed(() => {
-  if (!roleFilter.value || roleFilter.value === 'Alle') return users.value;
+  if (!roleFilter.value || roleFilter.value === t('common.all')) return users.value;
   return users.value.filter(u =>
     u.roles.some(r => r.display_name === roleFilter.value)
   );
@@ -580,8 +580,8 @@ const getRoleVariant = (roleName) => {
 };
 
 const getStatusLabel = (user) => {
-  if (user.deleted_at) return 'Gelöscht';
-  return user.is_active ? 'Aktiv' : 'Gesperrt';
+  if (user.deleted_at) return t('admin.users.status.deleted');
+  return user.is_active ? t('admin.users.status.active') : t('admin.users.status.locked');
 };
 
 const getStatusColor = (user) => {
@@ -596,7 +596,7 @@ const getStatusVariant = (user) => {
 
 const selectedUserStatus = computed(() => {
   if (!selectedUser.value) return null;
-  if (!selectedUser.value.db_record_exists) return { label: 'Nicht angelegt', variant: 'warning' };
+  if (!selectedUser.value.db_record_exists) return { label: t('admin.users.notInDb'), variant: 'warning' };
   return {
     label: getStatusLabel(selectedUser.value),
     variant: getStatusVariant(selectedUser.value),
@@ -611,7 +611,7 @@ const getUserActions = (user) => {
       {
         key: 'edit',
         icon: 'mdi-chevron-right',
-        tooltip: 'Details',
+        tooltip: t('admin.users.actions.details'),
         loading: loadingUser.value === user.username
       }
     ];
@@ -620,13 +620,13 @@ const getUserActions = (user) => {
     {
       key: 'edit',
       icon: 'mdi-pencil',
-      tooltip: 'Bearbeiten',
+      tooltip: t('admin.users.actions.edit'),
       loading: loadingUser.value === user.username
     },
     {
       key: 'toggle-lock',
       icon: user.is_active ? 'mdi-lock-open-variant' : 'mdi-lock',
-      tooltip: user.is_active ? 'Sperren' : 'Entsperren',
+      tooltip: user.is_active ? t('admin.users.actions.lock') : t('admin.users.actions.unlock'),
       variant: user.is_active ? 'success' : 'warning',
       loading: togglingUser.value === user.username,
       disabled: user.username === 'admin' || user.deleted_at
@@ -634,7 +634,7 @@ const getUserActions = (user) => {
     {
       key: 'delete',
       icon: 'mdi-delete',
-      tooltip: 'Löschen',
+      tooltip: t('admin.users.actions.delete'),
       variant: 'danger',
       disabled: user.username === 'admin'
     }

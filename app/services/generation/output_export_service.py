@@ -720,22 +720,74 @@ class OutputExportService:
                 db.session.add(message)
         else:
             # No messages array - try to create from plain text variables
-            source_text = (
+            source_data = (
                 variables.get("input") or
                 variables.get("content") or
                 variables.get("text") or
                 variables.get("source")
             )
-            if source_text:
-                source_msg = Message(
-                    item_id=item.item_id,
-                    sender="Source",
-                    content=source_text,
-                    timestamp=datetime.utcnow(),
-                    generated_by="Human",
-                )
-                db.session.add(source_msg)
-                collected_roles.add("Source")
+
+            # Handle different source data formats
+            if source_data:
+                if isinstance(source_data, dict):
+                    # Dict format: {"subject": "...", "content": "..."} or {"messages": [...]}
+                    if "messages" in source_data:
+                        # Nested messages - process them
+                        for msg_data in source_data.get("messages", []):
+                            role = msg_data.get("role") or msg_data.get("sender") or "Source"
+                            content = msg_data.get("content", "")
+                            collected_roles.add(role)
+                            message = Message(
+                                item_id=item.item_id,
+                                sender=role,
+                                content=str(content),
+                                timestamp=cls._parse_timestamp(msg_data.get("timestamp")),
+                                generated_by=msg_data.get("generated_by", "Human"),
+                            )
+                            db.session.add(message)
+                    else:
+                        # Simple dict with subject/content - combine into text
+                        subject = source_data.get("subject", "")
+                        content = source_data.get("content", "")
+                        combined_text = f"{subject}\n\n{content}".strip() if subject else str(content)
+                        source_msg = Message(
+                            item_id=item.item_id,
+                            sender="Source",
+                            content=combined_text,
+                            timestamp=datetime.utcnow(),
+                            generated_by="Human",
+                        )
+                        db.session.add(source_msg)
+                        collected_roles.add("Source")
+                elif isinstance(source_data, list):
+                    # List of messages - process each
+                    for msg_data in source_data:
+                        if isinstance(msg_data, dict):
+                            role = msg_data.get("role") or msg_data.get("sender") or "Source"
+                            content = msg_data.get("content", "")
+                        else:
+                            role = "Source"
+                            content = str(msg_data)
+                        collected_roles.add(role)
+                        message = Message(
+                            item_id=item.item_id,
+                            sender=role,
+                            content=str(content),
+                            timestamp=datetime.utcnow(),
+                            generated_by="Human",
+                        )
+                        db.session.add(message)
+                else:
+                    # Plain string
+                    source_msg = Message(
+                        item_id=item.item_id,
+                        sender="Source",
+                        content=str(source_data),
+                        timestamp=datetime.utcnow(),
+                        generated_by="Human",
+                    )
+                    db.session.add(source_msg)
+                    collected_roles.add("Source")
 
         # 2. Determine role for generated response
         if response_role:

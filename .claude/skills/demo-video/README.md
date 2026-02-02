@@ -231,18 +231,52 @@ python run.py
 - **Recording:** ffmpeg
 - **Audio-Sync:** Post-Processing mit Timestamps
 
-## Stimmen-Konsistenz
+## Stimmen-Konsistenz (Voice Cloning)
 
-Qwen3-TTS VoiceDesign kann bei jeder Generierung leicht unterschiedliche Stimmen erzeugen.
+Für 100% konsistente Stimmen verwendet LLARS **Voice Cloning** mit Referenz-Audio:
 
-**Für 100% konsistente Stimmen:**
+### Setup
+
 ```bash
-python run.py --audio --consistent --force
+cd Paper/demo-video
+
+# 1. Referenz-Audio erstellen (einmalig)
+python src/tts.py --create-refs
+
+# 2. Audio generieren (Voice Cloning)
+python run.py --audio --force
 ```
 
-Dies nutzt macOS TTS:
-- **Alex/Host:** Fred (US) - rate 175
-- **David/Narrator:** Daniel (UK) - rate 150
+### Wie es funktioniert
+
+1. Jeder Sprecher hat eine **Referenz-Audio** (3-15 Sek.) in `voices/`
+2. Qwen3-TTS extrahiert das **Speaker-Embedding** einmalig
+3. Alle Generierungen nutzen dasselbe Embedding → **identische Stimme**
+
+### Referenz-Dateien
+
+```
+voices/
+├── alex_reference.wav    # Host (amerikanisch)
+├── david_reference.wav   # Narrator (britisch, Attenborough)
+└── chen_reference.wav    # Expert (optional)
+```
+
+**Tipp:** Ersetze die Dateien durch echte Sprachaufnahmen für noch bessere Qualität!
+
+## Dialog-Stil
+
+Das Video nutzt einen natürlichen Dialog-Stil:
+- **David (Narrator)** stellt clevere Fragen und beobachtet
+- **Alex (Host)** zeigt Features und erklärt
+
+Beispiel-Dialog:
+```
+David: "Ah, I see. But how do you handle the actual article content?"
+Alex:  "That's where variables come in! These placeholders get automatically filled..."
+```
+
+Der Dialog sollte sich wie ein echtes Gespräch anfühlen, nicht wie zwei Monologe.
 
 ## Demo-Daten Vorbereitung
 

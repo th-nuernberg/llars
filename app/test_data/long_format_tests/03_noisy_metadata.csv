@@ -1,0 +1,10 @@
+experiment_run_id,batch_number,iteration,system_under_test,hyperparameter_config,response_text,ground_truth_input,latency_ms,token_count,cost_usd,gpu_memory_mb,temperature,top_p,max_tokens,seed,eval_timestamp
+EXP_2024_001,1,1,openai/gpt-4-0125-preview,"{""temp"":0.7}","Paris is the capital of France. It is known for the Eiffel Tower.","What is the capital of France?",234,45,0.0023,0,0.7,1.0,100,42,2024-01-20T10:00:00
+EXP_2024_001,1,1,anthropic/claude-3-opus,"{""temp"":0.7}","The capital of France is Paris, famous for its art and culture.","What is the capital of France?",456,52,0.0045,0,0.7,1.0,100,42,2024-01-20T10:00:01
+EXP_2024_001,1,1,meta/llama-3-70b-instruct,"{""temp"":0.7}","France's capital is Paris. It's a major European city.","What is the capital of France?",789,38,0.0012,45000,0.7,1.0,100,42,2024-01-20T10:00:02
+EXP_2024_002,1,1,openai/gpt-4-0125-preview,"{""temp"":0.7}","Machine learning is a subset of AI that enables computers to learn from data.","Explain machine learning briefly",345,67,0.0034,0,0.7,1.0,100,42,2024-01-20T11:00:00
+EXP_2024_002,1,1,anthropic/claude-3-opus,"{""temp"":0.7}","ML allows systems to automatically learn and improve from experience without explicit programming.","Explain machine learning briefly",567,73,0.0056,0,0.7,1.0,100,42,2024-01-20T11:00:01
+EXP_2024_002,1,1,meta/llama-3-70b-instruct,"{""temp"":0.7}","Machine learning: computers learning patterns from data to make predictions.","Explain machine learning briefly",890,41,0.0015,45000,0.7,1.0,100,42,2024-01-20T11:00:02
+EXP_2024_003,1,1,openai/gpt-4-0125-preview,"{""temp"":0.7}","Python is versatile, readable, and has extensive libraries for various applications.","Why use Python?",267,54,0.0027,0,0.7,1.0,100,42,2024-01-20T12:00:00
+EXP_2024_003,1,1,anthropic/claude-3-opus,"{""temp"":0.7}","Python excels in readability, vast ecosystem, and cross-domain applicability.","Why use Python?",489,61,0.0048,0,0.7,1.0,100,42,2024-01-20T12:00:01
+EXP_2024_003,1,1,meta/llama-3-70b-instruct,"{""temp"":0.7}","Python: easy to learn, powerful libraries, great community support.","Why use Python?",734,47,0.0014,45000,0.7,1.0,100,42,2024-01-20T12:00:02

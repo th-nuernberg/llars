@@ -1,0 +1,10 @@
+ref_nr,ki_modell,ausgabe,eingabetext,erstellungsdatum,bearbeiter
+REF001,GPT-4-Turbo,"Das ist eine sehr gute Zusammenfassung des Artikels über Klimawandel.","Der Artikel behandelt die Auswirkungen des Klimawandels auf die Landwirtschaft in Europa...",2024-01-15,Mueller
+REF001,Claude-3-Opus,"Eine prägnante Zusammenfassung: Der Klimawandel beeinflusst die europäische Landwirtschaft erheblich.","Der Artikel behandelt die Auswirkungen des Klimawandels auf die Landwirtschaft in Europa...",2024-01-15,Mueller
+REF001,Llama-3-70B,"Zusammenfassung: Europas Landwirtschaft leidet unter dem Klimawandel.","Der Artikel behandelt die Auswirkungen des Klimawandels auf die Landwirtschaft in Europa...",2024-01-15,Mueller
+REF002,GPT-4-Turbo,"Die KI-Entwicklung schreitet rasant voran, besonders im Bereich NLP.","Künstliche Intelligenz hat in den letzten Jahren enorme Fortschritte gemacht...",2024-01-16,Schmidt
+REF002,Claude-3-Opus,"KI-Fortschritt: NLP-Systeme werden immer leistungsfähiger.","Künstliche Intelligenz hat in den letzten Jahren enorme Fortschritte gemacht...",2024-01-16,Schmidt
+REF002,Llama-3-70B,"Fortschritte in KI: Natürliche Sprachverarbeitung verbessert sich stetig.","Künstliche Intelligenz hat in den letzten Jahren enorme Fortschritte gemacht...",2024-01-16,Schmidt
+REF003,GPT-4-Turbo,"Quantencomputer könnten die Kryptographie revolutionieren.","Quantencomputing verspricht, viele Probleme zu lösen, die für klassische Computer unlösbar sind...",2024-01-17,Weber
+REF003,Claude-3-Opus,"Quantencomputing: Potenzial zur Disruption der Verschlüsselung.","Quantencomputing verspricht, viele Probleme zu lösen, die für klassische Computer unlösbar sind...",2024-01-17,Weber
+REF003,Llama-3-70B,"Quanten-Revolution: Auswirkungen auf Kryptographie erwartet.","Quantencomputing verspricht, viele Probleme zu lösen, die für klassische Computer unlösbar sind...",2024-01-17,Weber

@@ -153,28 +153,30 @@ ELEMENT_MAP = {
     "Upload Zone": ".upload-zone",
     "File Input": ".upload-zone input[type='file'], input[type='file']",
 
-    # Step 2: Prompt Templates (click to select, inside wizard/dialog)
-    "Prompt Item": ".v-dialog .selection-item, .generation-wizard .selection-item",
-    "First Prompt": ".v-dialog .prompts-selection .selection-item:first-child, .prompts-selection .selection-item:first-child",
-    "News Summary Prompt Item": ".v-dialog .selection-item:contains('News Summary'), .selection-item:contains('News Summary')",
+    # Step 2: Prompt Templates (click to select)
+    "Prompt Item": ".prompts-selection .selection-item, .selection-item",
+    "First Prompt": ".prompts-selection .selection-item:first-child",
+    "News Summary Prompt Item": ".prompts-selection .selection-item:contains('News'), .selection-item:contains('News Summary'), .item-name:contains('News')",
 
-    # Step 3: Models (click to select, inside wizard/dialog)
-    "Model Item": ".v-dialog .selection-item, .generation-wizard .selection-item",
-    "First Model": ".v-dialog .models-selection .selection-item:first-child, .models-selection .selection-item:first-child",
-    "Mistral Model": ".v-dialog .selection-item:contains('mistral'), .selection-item:contains('Mistral')",
-    "GPT-4 Model": ".v-dialog .selection-item:contains('gpt-4'), .selection-item:contains('GPT')",
-    "Claude Model": ".v-dialog .selection-item:contains('claude'), .selection-item:contains('Claude')",
+    # Step 3: Models (click to select) - use item-name for text matching
+    "Model Item": ".models-selection .selection-item",
+    "First Model": ".models-selection .selection-item:first-child",
+    "Mistral Model": ".models-selection .selection-item:contains('mistral'), .models-selection .selection-item:contains('Mistral'), .item-name:contains('mistral')",
+    "GPT-4 Model": ".models-selection .selection-item:contains('gpt-4'), .models-selection .selection-item:contains('gpt4'), .item-name:contains('gpt')",
+    "Claude Model": ".models-selection .selection-item:contains('claude'), .models-selection .selection-item:contains('Claude'), .item-name:contains('claude')",
 
-    # Step 4: Configuration (inside wizard/dialog)
-    "Job Name Field": ".v-dialog .config-form .v-text-field input, .config-form .v-text-field input",
-    "Temperature Slider": ".v-dialog .config-form .v-slider, .config-form .v-slider",
-    "Max Tokens Field": ".v-dialog .config-form input[type='number']",
-    "Budget Field": ".v-dialog .config-form .v-text-field input",
+    # Step 4: Configuration
+    "Job Name Field": ".config-form .v-text-field input, .config-form input",
+    "Temperature Slider": ".config-form .v-slider",
+    "Max Tokens Field": ".config-form input[type='number']",
+    "Budget Field": ".config-form .v-text-field input",
 
-    # Step 5: Review (inside wizard/dialog)
-    "Matrix Preview": ".v-dialog .matrix-preview, .matrix-preview",
-    "Cost Estimate": ".v-dialog .cost-estimate, .v-dialog .cost-value, .cost-estimate",
-    "Review Summary": ".v-dialog .review-summary, .review-summary",
+    # Step 5: Review (use actual class names from GenerationWizard.vue)
+    "Matrix Preview": ".matrix-preview, .review-section:contains('Matrix')",
+    "Cost Estimate": ".cost-estimate, .cost-value, .review-section:contains('Cost')",
+    "Review Summary": ".review-summary",
+    "Matrix Value": ".matrix-value",
+    "Matrix Total": ".matrix-item.total",
 
     # Job Detail View
     "Start Job": ".header-actions .v-btn:contains('Start'), .v-btn:contains('Start')",
@@ -293,10 +295,12 @@ class TTS:
     """TTS-Wrapper mit Sprecher-Unterstützung"""
 
     # Default Sprecher-Konfigurationen
+    # WICHTIG: Verschiedene Stimmen für Unterscheidbarkeit!
+    # Fred = US-amerikanisch (Host/Erklärer), Daniel = Britisch (Attenborough-Stil)
     DEFAULT_SPEAKERS = {
-        "host": {"name": "Alex", "macos_voice": "Daniel", "macos_rate": 175},
-        "narrator": {"name": "David", "macos_voice": "Daniel", "macos_rate": 155},
-        "default": {"name": "Default", "macos_voice": "Daniel", "macos_rate": 180},
+        "host": {"name": "Alex", "macos_voice": "Fred", "macos_rate": 175},
+        "narrator": {"name": "David", "macos_voice": "Daniel", "macos_rate": 150},
+        "default": {"name": "Default", "macos_voice": "Fred", "macos_rate": 180},
     }
 
     def __init__(self, model_size: str = "small", speakers: dict = None):
@@ -499,7 +503,14 @@ class Timeline:
 class Recorder:
     """Screen Recorder mit Audio-Sync Post-Processing"""
 
-    def __init__(self, output_file: str):
+    # Ziel-Auflösung für das Video
+    TARGET_WIDTH = 1920
+    TARGET_HEIGHT = 1080
+
+    # Audio-Verstärkung (1.0 = normal, 2.0 = doppelt so laut)
+    AUDIO_VOLUME = 3.0
+
+    def __init__(self, output_file: str, window_bounds: tuple = None):
         # Verhindere doppeltes output/
         if output_file.startswith('output/'):
             output_file = output_file[7:]
@@ -507,10 +518,15 @@ class Recorder:
         self.process = None
         self.start_time = None
         self.timestamps = []  # [(relative_time, audio_file), ...]
+        self.window_bounds = window_bounds  # (x, y, width, height) für Crop
         Path(OUTPUT_DIR).mkdir(parents=True, exist_ok=True)
 
     def start(self):
-        """Startet Aufnahme (ohne Audio)"""
+        """Startet Aufnahme (ohne Audio)
+
+        Wenn window_bounds gesetzt ist, wird nur dieser Bereich aufgenommen.
+        Ansonsten wird der gesamte Bildschirm aufgenommen und auf Zielgröße skaliert.
+        """
         import platform
 
         # Raw video (ohne Audio)
@@ -518,31 +534,59 @@ class Recorder:
         self.final_output = os.path.join(OUTPUT_DIR, self.output_file)
 
         if platform.system() == 'Darwin':
+            # macOS: avfoundation unterstützt kein direktes Fenster-Capture
+            # Lösung: Gesamten Bildschirm aufnehmen und dann croppen
+
+            if self.window_bounds:
+                x, y, w, h = self.window_bounds
+                # Crop-Filter: crop=width:height:x:y, dann scale auf Zielgröße
+                video_filter = f"crop={w}:{h}:{x}:{y},scale={self.TARGET_WIDTH}:{self.TARGET_HEIGHT}"
+                print(f"   📐 Crop: {w}x{h} at ({x},{y})")
+            else:
+                video_filter = f"scale={self.TARGET_WIDTH}:{self.TARGET_HEIGHT}"
+
             cmd = [
                 'ffmpeg', '-y',
                 '-f', 'avfoundation',
                 '-framerate', '30',
                 '-capture_cursor', '1',
-                '-i', '1:none',
-                '-vf', 'scale=1920:1080',
+                '-i', '1:none',  # Screen capture (device 1)
+                '-vf', video_filter,
                 '-c:v', 'libx264',
                 '-preset', 'ultrafast',
-                '-crf', '18',  # Bessere Qualität
+                '-crf', '18',  # Gute Qualität
                 '-pix_fmt', 'yuv420p',
                 self.raw_video
             ]
         else:
-            cmd = [
-                'ffmpeg', '-y',
-                '-f', 'x11grab',
-                '-framerate', '30',
-                '-video_size', '1920x1080',
-                '-i', ':0.0',
-                '-c:v', 'libx264',
-                '-preset', 'ultrafast',
-                '-crf', '18',
-                self.raw_video
-            ]
+            # Linux: x11grab
+            if self.window_bounds:
+                x, y, w, h = self.window_bounds
+                video_filter = f"scale={self.TARGET_WIDTH}:{self.TARGET_HEIGHT}"
+                cmd = [
+                    'ffmpeg', '-y',
+                    '-f', 'x11grab',
+                    '-framerate', '30',
+                    '-video_size', f'{w}x{h}',
+                    '-i', f':0.0+{x},{y}',  # x11grab mit Offset
+                    '-vf', video_filter,
+                    '-c:v', 'libx264',
+                    '-preset', 'ultrafast',
+                    '-crf', '18',
+                    self.raw_video
+                ]
+            else:
+                cmd = [
+                    'ffmpeg', '-y',
+                    '-f', 'x11grab',
+                    '-framerate', '30',
+                    '-video_size', f'{self.TARGET_WIDTH}x{self.TARGET_HEIGHT}',
+                    '-i', ':0.0',
+                    '-c:v', 'libx264',
+                    '-preset', 'ultrafast',
+                    '-crf', '18',
+                    self.raw_video
+                ]
 
         self.process = subprocess.Popen(
             cmd,
@@ -604,11 +648,13 @@ class Recorder:
             os.rename(self.raw_video, self.final_output)
             return
 
-        # Alle Audio-Streams mixen
+        # Alle Audio-Streams mixen und verstärken
         mix_inputs = ''.join([f'[a{i}]' for i in range(len(self.timestamps))])
-        filter_parts.append(f"{mix_inputs}amix=inputs={len(self.timestamps)}:duration=longest[aout]")
+        # amix + volume Filter für lautere Audio
+        filter_parts.append(f"{mix_inputs}amix=inputs={len(self.timestamps)}:duration=longest,volume={self.AUDIO_VOLUME}[aout]")
 
         filter_complex = ';'.join(filter_parts)
+        print(f"   🔊 Audio-Verstärkung: {self.AUDIO_VOLUME}x")
 
         # Audio zusammenfügen
         cmd_audio = [
@@ -692,6 +738,10 @@ class Recorder:
 class Browser:
     """Kontrolliert Chrome mit Selenium"""
 
+    # Ziel-Fenstergröße (innere Größe des Browser-Viewports)
+    TARGET_WIDTH = 1920
+    TARGET_HEIGHT = 1080
+
     # Highlight CSS
     HIGHLIGHT_CSS = """
     .llars-highlight {
@@ -708,17 +758,45 @@ class Browser:
     def __init__(self, url: str = "http://localhost:55080"):
         self.base_url = url
         self.driver = None
+        self.window_bounds = None  # (x, y, width, height)
 
     def open(self, username: str = "admin", password: str = "admin123", language: str = "en"):
-        """Öffnet Chrome"""
+        """Öffnet Chrome mit exakter Fenstergröße und Position"""
         options = Options()
-        options.add_argument('--window-size=1920,1080')
-        options.add_argument('--start-maximized')
+        # Starte mit kleinem Fenster, setzen die exakte Größe danach
+        options.add_argument('--window-size=1280,800')
         options.add_experimental_option('excludeSwitches', ['enable-automation'])
+        # Kiosk-Modus entfernt UI-Elemente für saubere Aufnahme
+        # options.add_argument('--kiosk')
 
         service = Service(ChromeDriverManager().install())
         self.driver = webdriver.Chrome(service=service, options=options)
-        print(f"🌐 Chrome geöffnet")
+
+        # Fenster an Position (0,0) setzen und exakte Größe einstellen
+        self.driver.set_window_position(0, 0)
+
+        # Berechne Fenster-Dekoration (Titelleiste etc.)
+        # Chrome hat typisch ~74px Toolbar oben (Tab-Bar + Adressleiste)
+        # Wir wollen dass der VIEWPORT 1920x1080 ist
+        self.driver.set_window_size(self.TARGET_WIDTH, self.TARGET_HEIGHT + 100)
+
+        # Warte kurz und hole exakte Position/Größe
+        time.sleep(0.5)
+        pos = self.driver.get_window_position()
+        size = self.driver.get_window_size()
+
+        # Speichere Fenster-Bounds für Recorder
+        self.window_bounds = (pos['x'], pos['y'], size['width'], size['height'])
+
+        print(f"🌐 Chrome geöffnet: {size['width']}x{size['height']} at ({pos['x']},{pos['y']})")
+
+    def get_window_bounds(self) -> tuple:
+        """Gibt Fenster-Bounds zurück (x, y, width, height)"""
+        if self.driver:
+            pos = self.driver.get_window_position()
+            size = self.driver.get_window_size()
+            return (pos['x'], pos['y'], size['width'], size['height'])
+        return self.window_bounds
 
     def setup(self, username: str = "admin", password: str = "admin123", language: str = "en"):
         """
@@ -1181,19 +1259,23 @@ class Browser:
         """Hebt Element hervor"""
         element = self._find_element(target)
         if element:
-            self.driver.execute_script(
-                "arguments[0].scrollIntoView({behavior: 'smooth', block: 'center'})",
-                element
-            )
-            self.driver.execute_script(
-                "arguments[0].classList.add('llars-highlight')",
-                element
-            )
-            time.sleep(duration)
-            self.driver.execute_script(
-                "arguments[0].classList.remove('llars-highlight')",
-                element
-            )
+            try:
+                self.driver.execute_script(
+                    "arguments[0].scrollIntoView({behavior: 'smooth', block: 'center'})",
+                    element
+                )
+                self.driver.execute_script(
+                    "arguments[0].classList.add('llars-highlight')",
+                    element
+                )
+                time.sleep(duration)
+                self.driver.execute_script(
+                    "arguments[0].classList.remove('llars-highlight')",
+                    element
+                )
+            except Exception as e:
+                # Stale element or page changed - just continue
+                print(f"   ⚠️ Highlight fehlgeschlagen: {str(e)[:50]}")
 
     def drag(self, source: str, target: str):
         """Drag & Drop"""
@@ -1361,6 +1443,18 @@ class ScriptRunner:
 
         self.tts = TTS(model_size=tts_model, speakers=speakers_config)
 
+        # Bei --force: Lösche GESAMTEN Cache (inkl. QwenTTS Hash-Cache)
+        if force:
+            cache_dir = os.path.join(AUDIO_DIR, 'cache')
+            if os.path.exists(cache_dir):
+                import shutil
+                shutil.rmtree(cache_dir)
+                print(f"🗑️ Cache-Verzeichnis gelöscht: {cache_dir}")
+            # Auch alle .wav Dateien im audio/ Ordner löschen
+            for f in Path(AUDIO_DIR).glob("*.wav"):
+                f.unlink()
+            print(f"🗑️ Alle Audio-Dateien gelöscht")
+
         # Modell laden (bei fallback kein Laden nötig)
         if tts_model != 'fallback':
             self.tts.preload()
@@ -1375,7 +1469,7 @@ class ScriptRunner:
         total = len(steps)
 
         if force:
-            print(f"\n🎤 Generiere {total} Audio-Dateien NEU (Cache wird ignoriert)...")
+            print(f"\n🎤 Generiere {total} Audio-Dateien NEU...")
         else:
             print(f"\n🎤 Generiere {total} Audio-Dateien...")
         print("="*60)
@@ -1396,8 +1490,6 @@ class ScriptRunner:
                 print(f"   [{i+1}/{total}] ♻️  {step_id} [{speaker_name}] (cached)")
                 cached += 1
             else:
-                if force and os.path.exists(audio_file):
-                    os.remove(audio_file)
                 print(f"   [{i+1}/{total}] 🎤 {step_id} [{speaker_name}]")
                 engine = self.tts._get_engine()
                 if engine != "fallback":
@@ -1555,7 +1647,13 @@ class ScriptRunner:
 
             # === PHASE 3: AUFNAHME STARTEN ===
             if self.recorder and not test_mode:
-                print("\n🎬 Starte Aufnahme in 3 Sekunden...")
+                # Hole Fenster-Bounds für Crop
+                window_bounds = self.browser.get_window_bounds()
+                if window_bounds:
+                    self.recorder.window_bounds = window_bounds
+                    print(f"\n🎬 Recording-Bereich: {window_bounds[2]}x{window_bounds[3]}")
+
+                print("🎬 Starte Aufnahme in 3 Sekunden...")
                 time.sleep(3)
                 self.recorder.start()
                 time.sleep(1)
@@ -1784,9 +1882,9 @@ class ScriptRunner:
 
         elif do == 'wait':
             seconds = action.get('seconds', 1)
-            # Im Test-Modus kürzere Wartezeiten
+            # Im Test-Modus kürzere Wartezeiten, aber mindestens 1s für async content
             if test_mode:
-                seconds = min(seconds, 0.5)
+                seconds = max(min(seconds, 1.5), 0.5)
             time.sleep(seconds)
             print(f"   ✓ wait: {seconds}s")
             return True

@@ -1,32 +1,42 @@
 [
   {
-    "id": "news_001",
-    "title": "Breakthrough in Quantum Computing",
-    "content": "Scientists at MIT announced a major breakthrough in quantum computing yesterday. The team successfully demonstrated a 1000-qubit processor that maintains coherence for over 10 minutes, a significant improvement over previous records. Dr. Jane Chen, lead researcher, stated that this development could accelerate drug discovery and climate modeling. The processor uses a novel error-correction technique that reduces noise by 99%. Industry experts predict commercial applications within five years.",
-    "category": "Technology"
+    "title": "OpenAI Announces GPT-5 with Revolutionary Reasoning Capabilities",
+    "content": "OpenAI unveiled GPT-5 today, marking a significant leap in artificial intelligence. The new model demonstrates unprecedented reasoning abilities, solving complex mathematical proofs and showing improved factual accuracy. CEO Sam Altman stated that GPT-5 represents 'a new paradigm in AI capabilities.' The model will be available to enterprise customers starting next month, with consumer access planned for Q2 2026."
   },
   {
-    "id": "news_002",
-    "title": "Global Climate Summit Reaches Historic Agreement",
-    "content": "World leaders at the 2026 Global Climate Summit in Berlin have agreed to reduce carbon emissions by 60% by 2035. The agreement, signed by 195 countries, includes binding commitments and financial penalties for non-compliance. Developing nations will receive $500 billion in green technology funding. Environmental groups praised the deal as 'a turning point for humanity,' while some industry representatives expressed concerns about economic impacts.",
-    "category": "Environment"
+    "title": "European Union Passes Comprehensive AI Regulation Framework",
+    "content": "The European Parliament has approved the AI Act, the world's most comprehensive artificial intelligence regulation. The legislation categorizes AI systems by risk level and imposes strict requirements on high-risk applications including hiring tools and credit scoring systems. Companies face fines up to 7% of global revenue for violations. Tech industry leaders expressed mixed reactions, with some praising clarity while others warned of innovation barriers."
   },
   {
-    "id": "news_003",
-    "title": "AI System Passes Medical Licensing Exam",
-    "content": "An artificial intelligence system developed by Stanford researchers has passed the US Medical Licensing Examination with a score in the 90th percentile. The system, named MedAssist, demonstrated diagnostic accuracy comparable to experienced physicians across multiple specialties. However, researchers emphasize that the AI is designed to assist, not replace, human doctors. The FDA is currently reviewing the system for potential clinical use.",
-    "category": "Healthcare"
+    "title": "Breakthrough in Quantum Computing Achieves New Milestone",
+    "content": "Researchers at MIT have demonstrated a quantum computer maintaining coherence for over 10 minutes, shattering previous records. This breakthrough addresses one of quantum computing's fundamental challenges: qubit stability. The team used a novel error-correction technique combining hardware and software approaches. Industry experts suggest this could accelerate practical quantum computing applications by several years."
   },
   {
-    "id": "news_004",
-    "title": "Electric Vehicle Sales Surpass Traditional Cars",
-    "content": "For the first time in history, electric vehicle sales have exceeded traditional combustion engine cars globally. Data from the International Energy Agency shows that EVs accounted for 52% of new car sales in Q1 2026. Tesla, BYD, and Volkswagen lead the market. Analysts attribute the shift to falling battery costs, expanded charging infrastructure, and stricter emission regulations. The milestone was reached two years ahead of most predictions.",
-    "category": "Automotive"
+    "title": "Global Tech Giants Report Record AI Infrastructure Spending",
+    "content": "Microsoft, Google, and Amazon collectively invested over $150 billion in AI infrastructure during 2025, according to new financial reports. The spending primarily targeted data centers, specialized chips, and cooling systems. Analysts note this represents a 340% increase from 2023 levels. Despite concerns about profitability, executives maintain that AI infrastructure is essential for long-term competitiveness."
   },
   {
-    "id": "news_005",
-    "title": "New Study Links Social Media to Teen Mental Health",
-    "content": "A comprehensive study involving 50,000 teenagers across 12 countries has found strong correlations between social media usage and mental health issues. Researchers at Oxford University report that teens spending more than 4 hours daily on social platforms show 40% higher rates of anxiety and depression. The study controlled for socioeconomic factors and pre-existing conditions. Experts are calling for age verification requirements and usage limits.",
-    "category": "Society"
+    "title": "Scientists Develop AI System for Early Cancer Detection",
+    "content": "A collaborative team from Stanford and Johns Hopkins has created an AI diagnostic tool detecting early-stage cancers with 94% accuracy from routine blood tests. The system analyzes over 2,000 biomarkers simultaneously, identifying patterns invisible to traditional methods. Clinical trials involving 50,000 patients showed the AI caught cancers an average of 18 months earlier than conventional screening. FDA fast-track approval is expected within six months."
+  },
+  {
+    "title": "Major Cybersecurity Breach Affects 200 Million Users",
+    "content": "A sophisticated cyberattack on cloud provider CloudSecure has exposed personal data of approximately 200 million users worldwide. The breach, discovered last week, exploited a zero-day vulnerability in authentication systems. Affected data includes email addresses, encrypted passwords, and billing information. Security experts recommend immediate password changes and enabling two-factor authentication across all accounts."
+  },
+  {
+    "title": "Autonomous Vehicle Industry Reaches Safety Milestone",
+    "content": "Waymo announced that its autonomous vehicles have completed 50 million miles without a single at-fault accident resulting in serious injury. The achievement comes after eight years of public road testing across 25 US cities. Independent safety auditors verified the data, noting that human drivers average one serious accident per 1.5 million miles. Several states are now considering expanded autonomous vehicle permissions."
+  },
+  {
+    "title": "New Programming Language Designed for AI Development Gains Traction",
+    "content": "Mojo, a programming language specifically designed for AI and machine learning development, has surpassed 500,000 active developers. Created by Chris Lattner, the language combines Python's ease of use with performance rivaling C++. Major tech companies including NVIDIA and AMD have announced native Mojo support in their development tools. The language's ability to run Python code while offering 35,000x speed improvements for compute-intensive tasks has driven rapid adoption."
+  },
+  {
+    "title": "Climate Scientists Use AI to Predict Extreme Weather Events",
+    "content": "The National Oceanic and Atmospheric Administration has deployed an AI system that predicts extreme weather events seven days in advance with 85% accuracy, doubling previous forecasting capabilities. The system processes satellite imagery, ocean temperature data, and atmospheric readings in real-time. Early warnings for hurricanes, floods, and heat waves could save thousands of lives annually. The technology will be shared with meteorological agencies worldwide."
+  },
+  {
+    "title": "Tech Industry Faces Global Chip Shortage Recovery Challenges",
+    "content": "Despite $500 billion in new semiconductor manufacturing investments, industry analysts predict chip shortages will persist through 2027. The complexity of modern chip fabrication, requiring over 1,000 production steps, limits rapid capacity expansion. Geopolitical tensions between major chip-producing nations add supply chain uncertainty. Automotive and consumer electronics sectors continue experiencing delivery delays averaging 12-18 weeks."
   }
 ]

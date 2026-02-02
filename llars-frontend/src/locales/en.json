@@ -5641,5 +5641,253 @@
       "evaluationType": "Evaluation Type",
       "info": "{count} completed outputs will be used to create evaluation items."
     }
+  },
+  "admin": {
+    "systemSettings": {
+      "title": "System Settings",
+      "subtitle": "Configurable parameters for crawler, RAG, and system behavior. Changes are saved automatically.",
+      "lastUpdated": "Last updated: {date}",
+      "errors": {
+        "saveFailed": "Error saving: {error}",
+        "loadFailed": "Error loading settings",
+        "zoteroSaveFailed": "Error saving Zotero settings"
+      },
+      "crawlerTimeouts": {
+        "title": "Crawler Timeouts",
+        "crawlTimeout": "Crawl Timeout (seconds)",
+        "crawlTimeoutHint": "Default: 3600 (1 hour). Increase for large websites.",
+        "embeddingTimeout": "Embedding Timeout (seconds)",
+        "embeddingTimeoutHint": "Default: 7200 (2 hours). Increase for large collections."
+      },
+      "crawlerDefaults": {
+        "title": "Crawler Defaults",
+        "maxPages": "Default Max Pages",
+        "maxPagesHint": "Default: 500. Maximum pages per crawl in Chatbot Wizard.",
+        "maxDepth": "Default Crawl Depth",
+        "maxDepthHint": "Default: 3. How many link levels to follow."
+      },
+      "ragChunking": {
+        "title": "RAG Chunking",
+        "chunkSize": "Default Chunk Size",
+        "chunkSizeHint": "Default: 1000 characters per chunk.",
+        "chunkOverlap": "Default Chunk Overlap",
+        "chunkOverlapHint": "Default: 200 characters overlap between chunks."
+      },
+      "llmLogging": {
+        "title": "LLM Logging",
+        "logResponses": "Log responses",
+        "logPrompts": "Log prompts",
+        "tasks": "Tasks (comma-separated)",
+        "tasksHint": "e.g. authenticity, ranking, rating – empty = all",
+        "maxResponseChars": "Max characters (responses)",
+        "maxPromptChars": "Max characters (prompts)",
+        "defaultCharsHint": "Default: 800",
+        "privacyWarning": "Prompt logging contains conversations. Please use in compliance with privacy policies."
+      },
+      "referral": {
+        "title": "Referral System",
+        "info": "The referral system enables self-registration via invitation links. Manage campaigns and links in the <strong>Referrals</strong> tab.",
+        "enable": "Enable referral system",
+        "enableHint": "Enables management of referral campaigns and links.",
+        "selfRegistration": "Enable self-registration",
+        "selfRegistrationHint": "Shows the \"Register\" button and allows registration via valid referral links.",
+        "defaultRole": "Default role for new users",
+        "defaultRoleHint": "Role assigned to new users during registration (unless link-specific override).",
+        "activeAlert": "Self-registration is active. The \"Register\" button is shown on the login page."
+      },
+      "aiAssistant": {
+        "title": "AI Assistant (LaTeX Collab)",
+        "info": "The AI assistant can automatically resolve comments in LaTeX Collab. The AI color is exclusively reserved for the assistant and cannot be chosen by users.",
+        "enable": "Enable AI assistant",
+        "enableHint": "Enables the AI button for comments for automatic resolution.",
+        "username": "AI display name",
+        "usernameHint": "Name displayed as author for AI responses.",
+        "color": "AI color (Hex)",
+        "colorHint": "Reserved color for AI changes. Default: #9B59B6 (Purple)",
+        "preview": "Preview:"
+      },
+      "zotero": {
+        "title": "Zotero Integration",
+        "statusEnv": "Active (.env)",
+        "statusDb": "Active (DB)",
+        "statusNone": "Not configured",
+        "info": "Zotero OAuth allows users to sync their libraries with LaTeX workspaces.",
+        "registerApp": "Register an app at",
+        "priority": "Priority: .env variables → Database fallback",
+        "envVariables": "Environment Variables (.env)",
+        "active": "ACTIVE",
+        "notSet": "(not set)",
+        "databaseFallback": "Database Fallback",
+        "enableFallback": "Enable database fallback",
+        "clientKey": "Client Key",
+        "clientSecret": "Client Secret (empty = unchanged)",
+        "newSecretPlaceholder": "Enter new secret..."
+      }
+    },
+    "users": {
+      "title": "Users",
+      "searchPlaceholder": "Search users",
+      "filterByRole": "Filter by role",
+      "newUser": "New User",
+      "userDetails": "User details",
+      "notInDb": "Not created",
+      "notInDbWarning": "This user is not yet in the LLARS database. Roles can already be managed, but locking/deleting is only possible after creation.",
+      "createInDb": "Create in DB",
+      "assignedRoles": "Assigned Roles",
+      "noRolesAssigned": "No roles assigned",
+      "addRole": "Add role",
+      "effectivePermissions": "Effective Permissions ({count})",
+      "showLess": "Show less",
+      "showMore": "+{count} more",
+      "table": {
+        "user": "User",
+        "status": "Status",
+        "roles": "Roles",
+        "actions": "Actions"
+      },
+      "status": {
+        "active": "Active",
+        "locked": "Locked",
+        "deleted": "Deleted"
+      },
+      "actions": {
+        "edit": "Edit",
+        "details": "Details",
+        "lock": "Lock",
+        "unlock": "Unlock",
+        "delete": "Delete"
+      },
+      "empty": {
+        "noResults": "No users found",
+        "searchHint": "Search for a user or load all users with roles"
+      },
+      "createDialog": {
+        "title": "Create User",
+        "partialWarningTitle": "User partially created",
+        "info": "Creates a full user in Authentik and LLARS. The user can log in immediately after.",
+        "username": "Username",
+        "usernameHint": "Login name of the user",
+        "email": "Email",
+        "emailHint": "Required for Authentik",
+        "password": "Password",
+        "passwordHint": "At least 8 characters",
+        "displayName": "Display Name",
+        "displayNameHint": "Optional - username will be used otherwise",
+        "collabColor": "Collaboration color (optional)",
+        "collabColorAuto": "Automatic",
+        "avatarSeed": "Profile picture seed (optional)",
+        "avatarSeedHint": "Leave empty = automatic",
+        "initialRoles": "Initial Roles",
+        "accountActive": "Account active",
+        "create": "Create"
+      },
+      "deleteDialog": {
+        "title": "Delete User",
+        "confirm": "Do you really want to delete user <strong>{username}</strong>?",
+        "info": "The account will be deactivated in LLARS and removed from roles/permissions."
+      }
+    },
+    "rag": {
+      "stats": {
+        "documents": "Documents",
+        "processed": "Processed",
+        "collections": "Collections",
+        "totalSize": "Total Size"
+      },
+      "embedding": {
+        "title": "Embedding Model",
+        "litellmProxy": "LiteLLM Proxy",
+        "fallbackLocal": "Fallback (Local)",
+        "activeModel": "Active Model",
+        "dimensions": "Dimensions",
+        "litellmStatus": "LiteLLM Status",
+        "configured": "Configured",
+        "notConfigured": "Not configured",
+        "litellmUrl": "LiteLLM URL"
+      },
+      "tabs": {
+        "documents": "Documents",
+        "collections": "Collections",
+        "upload": "Upload"
+      },
+      "documents": {
+        "search": "Search document",
+        "collectionFilter": "Collection Filter",
+        "table": {
+          "title": "Title",
+          "size": "Size",
+          "status": "Status",
+          "uploaded": "Uploaded",
+          "actions": "Actions"
+        },
+        "actions": {
+          "view": "View",
+          "details": "Details",
+          "download": "Download",
+          "delete": "Delete"
+        }
+      },
+      "collections": {
+        "createNew": "Create new collection",
+        "namePlaceholder": "Enter collection name",
+        "create": "Create Collection",
+        "table": {
+          "name": "Name",
+          "createdBy": "Created by",
+          "documentCount": "Documents",
+          "createdAt": "Created at",
+          "actions": "Actions"
+        },
+        "unknown": "Unknown",
+        "documentsCount": "{count} documents",
+        "actions": {
+          "view": "View details",
+          "reindex": "Reindex",
+          "share": "Share access",
+          "delete": "Delete"
+        }
+      },
+      "upload": {
+        "targetCollection": "Target Collection",
+        "selectFiles": "Select files",
+        "supportedFormats": "Supported formats:",
+        "formatList": "PDF, TXT, MD, DOCX, DOC",
+        "maxFileSize": "Maximum file size:",
+        "maxFileSizeValue": "50 MB per file",
+        "uploadButton": "Upload {count} file(s)"
+      },
+      "deleteDocDialog": {
+        "title": "Delete document?",
+        "confirm": "Do you really want to delete \"{filename}\"?"
+      },
+      "deleteCollDialog": {
+        "title": "Delete collection?",
+        "confirm": "Do you want to delete the collection \"<strong>{name}</strong>\"?",
+        "warning": "<strong>Warning:</strong> This collection contains {count} document(s).",
+        "includeDocuments": "Delete including documents"
+      },
+      "collectionDetail": {
+        "description": "Description",
+        "noDescription": "No description",
+        "chunkSettings": "Chunk: {size} characters, {overlap} overlap",
+        "embeddingProgress": {
+          "title": "Embedding Processing",
+          "pending": "pending",
+          "progress": "Progress:",
+          "waiting": "waiting",
+          "processing": "processing",
+          "done": "done",
+          "failed": "failed"
+        },
+        "documentsTitle": "Documents in this collection",
+        "webcrawl": "Webcrawl",
+        "linked": "linked",
+        "chunks": "{count} Chunks",
+        "empty": {
+          "title": "No documents in this collection",
+          "hint": "Upload documents or start a crawl job."
+        }
+      }
+    }
   }
 }

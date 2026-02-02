@@ -9,7 +9,7 @@
             <LIcon size="32" class="mr-3">mdi-file-document-multiple</LIcon>
             <div>
               <div class="text-h5 font-weight-bold">{{ stats.total_documents }}</div>
-              <div class="text-caption">Dokumente</div>
+              <div class="text-caption">{{ $t('admin.rag.stats.documents') }}</div>
             </div>
           </v-card-text>
         </v-card>
@@ -21,7 +21,7 @@
             <LIcon size="32" class="mr-3">mdi-check-circle</LIcon>
             <div>
               <div class="text-h5 font-weight-bold">{{ stats.processed }}</div>
-              <div class="text-caption">Verarbeitet</div>
+              <div class="text-caption">{{ $t('admin.rag.stats.processed') }}</div>
             </div>
           </v-card-text>
         </v-card>
@@ -33,7 +33,7 @@
             <LIcon size="32" class="mr-3">mdi-folder-multiple</LIcon>
             <div>
               <div class="text-h5 font-weight-bold">{{ stats.total_collections }}</div>
-              <div class="text-caption">Collections</div>
+              <div class="text-caption">{{ $t('admin.rag.stats.collections') }}</div>
             </div>
           </v-card-text>
         </v-card>
@@ -45,7 +45,7 @@
             <LIcon size="32" class="mr-3">mdi-harddisk</LIcon>
             <div>
               <div class="text-h5 font-weight-bold">{{ formatFileSize(stats.total_size) }}</div>
-              <div class="text-caption">Gesamtgröße</div>
+              <div class="text-caption">{{ $t('admin.rag.stats.totalSize') }}</div>
             </div>
           </v-card-text>
         </v-card>
@@ -57,14 +57,14 @@
     <v-card v-else class="mb-4 flex-grow-0 flex-shrink-0" variant="outlined">
       <v-card-title class="d-flex align-center py-2">
         <LIcon start color="primary">mdi-brain</LIcon>
-        Embedding Model
+        {{ $t('admin.rag.embedding.title') }}
         <v-spacer></v-spacer>
         <v-chip
           :color="embeddingInfo.is_primary ? 'success' : 'warning'"
           size="small"
           variant="flat"
         >
-          {{ embeddingInfo.is_primary ? 'LiteLLM Proxy' : 'Fallback (Local)' }}
+          {{ embeddingInfo.is_primary ? $t('admin.rag.embedding.litellmProxy') : $t('admin.rag.embedding.fallbackLocal') }}
         </v-chip>
       </v-card-title>
       <v-card-text class="py-2">
@@ -75,14 +75,14 @@
                 <template v-slot:prepend>
                   <LIcon color="primary" size="small">mdi-cube-outline</LIcon>
                 </template>
-                <v-list-item-title class="text-caption text-medium-emphasis">Aktives Model</v-list-item-title>
+                <v-list-item-title class="text-caption text-medium-emphasis">{{ $t('admin.rag.embedding.activeModel') }}</v-list-item-title>
                 <v-list-item-subtitle class="font-weight-bold">{{ embeddingInfo.model_name }}</v-list-item-subtitle>
               </v-list-item>
               <v-list-item density="compact" class="px-0">
                 <template v-slot:prepend>
                   <LIcon color="primary" size="small">mdi-vector-line</LIcon>
                 </template>
-                <v-list-item-title class="text-caption text-medium-emphasis">Dimensionen</v-list-item-title>
+                <v-list-item-title class="text-caption text-medium-emphasis">{{ $t('admin.rag.embedding.dimensions') }}</v-list-item-title>
                 <v-list-item-subtitle class="font-weight-bold">{{ embeddingInfo.dimensions }}</v-list-item-subtitle>
               </v-list-item>
             </v-list>
@@ -95,16 +95,16 @@
                     {{ embeddingInfo.litellm_configured ? 'mdi-check-circle' : 'mdi-alert-circle' }}
                   </LIcon>
                 </template>
-                <v-list-item-title class="text-caption text-medium-emphasis">LiteLLM Status</v-list-item-title>
+                <v-list-item-title class="text-caption text-medium-emphasis">{{ $t('admin.rag.embedding.litellmStatus') }}</v-list-item-title>
                 <v-list-item-subtitle class="font-weight-bold">
-                  {{ embeddingInfo.litellm_configured ? 'Konfiguriert' : 'Nicht konfiguriert' }}
+                  {{ embeddingInfo.litellm_configured ? $t('admin.rag.embedding.configured') : $t('admin.rag.embedding.notConfigured') }}
                 </v-list-item-subtitle>
               </v-list-item>
               <v-list-item v-if="embeddingInfo.litellm_configured" density="compact" class="px-0">
                 <template v-slot:prepend>
                   <LIcon color="primary" size="small">mdi-link</LIcon>
                 </template>
-                <v-list-item-title class="text-caption text-medium-emphasis">LiteLLM URL</v-list-item-title>
+                <v-list-item-title class="text-caption text-medium-emphasis">{{ $t('admin.rag.embedding.litellmUrl') }}</v-list-item-title>
                 <v-list-item-subtitle class="font-weight-bold text-truncate" style="max-width: 300px;">
                   {{ embeddingInfo.litellm_base_url }}
                 </v-list-item-subtitle>
@@ -120,15 +120,15 @@
       <v-tabs v-model="activeTab" bg-color="primary">
         <v-tab value="documents">
           <LIcon start>mdi-file-document</LIcon>
-          Dokumente
+          {{ $t('admin.rag.tabs.documents') }}
         </v-tab>
         <v-tab value="collections">
           <LIcon start>mdi-folder</LIcon>
-          Collections
+          {{ $t('admin.rag.tabs.collections') }}
         </v-tab>
         <v-tab value="upload">
           <LIcon start>mdi-upload</LIcon>
-          Hochladen
+          {{ $t('admin.rag.tabs.upload') }}
         </v-tab>
       </v-tabs>
 
@@ -141,7 +141,7 @@
               <v-col cols="12" md="4">
                 <v-text-field
                   v-model="documentSearch"
-                  label="Dokument suchen"
+                  :label="$t('admin.rag.documents.search')"
                   prepend-inner-icon="mdi-magnify"
                   variant="outlined"
                   density="comfortable"
@@ -153,7 +153,7 @@
                 <v-select
                   v-model="collectionFilter"
                   :items="collectionOptions"
-                  label="Collection Filter"
+                  :label="$t('admin.rag.documents.collectionFilter')"
                   variant="outlined"
                   density="comfortable"
                   hide-details
@@ -162,7 +162,7 @@
               </v-col>
               <v-col cols="12" md="4" class="d-flex justify-end">
                 <LBtn variant="primary" @click="fetchDocuments" :loading="loadingDocuments" prepend-icon="mdi-refresh">
-                  Aktualisieren
+                  {{ $t('common.refresh') }}
                 </LBtn>
               </v-col>
             </v-row>
@@ -204,26 +204,26 @@
               <template v-slot:item.actions="{ item }">
                 <LIconBtn
                   icon="mdi-eye"
-                  tooltip="Ansehen"
+                  :tooltip="$t('admin.rag.documents.actions.view')"
                   class="mr-1"
                   @click.stop="openDocumentViewer(item)"
                 />
                 <LIconBtn
                   icon="mdi-information-outline"
-                  tooltip="Details"
+                  :tooltip="$t('admin.rag.documents.actions.details')"
                   class="mr-1"
                   @click.stop="openDocumentPreview(item)"
                 />
                 <LIconBtn
                   icon="mdi-download"
-                  tooltip="Herunterladen"
+                  :tooltip="$t('admin.rag.documents.actions.download')"
                   class="mr-1"
                   @click.stop="downloadDocument(item)"
                 />
                 <LIconBtn
                   icon="mdi-delete"
                   variant="danger"
-                  tooltip="Loeschen"
+                  :tooltip="$t('admin.rag.documents.actions.delete')"
                   @click.stop="confirmDeleteDocument(item)"
                 />
               </template>
@@ -239,11 +239,11 @@
               <v-col cols="12" md="8">
                 <v-text-field
                   v-model="newCollectionName"
-                  label="Neue Collection erstellen"
+                  :label="$t('admin.rag.collections.createNew')"
                   variant="outlined"
                   density="comfortable"
                   hide-details
-                  placeholder="Collection-Name eingeben"
+                  :placeholder="$t('admin.rag.collections.namePlaceholder')"
                 ></v-text-field>
               </v-col>
               <v-col cols="12" md="4">
@@ -255,7 +255,7 @@
                   block
                   prepend-icon="mdi-plus"
                 >
-                  Collection erstellen
+                  {{ $t('admin.rag.collections.create') }}
                 </LBtn>
               </v-col>
             </v-row>
@@ -281,13 +281,13 @@
               <template v-slot:item.created_by="{ item }">
                 <v-chip size="small" variant="tonal" color="grey">
                   <LIcon start size="small">mdi-account</LIcon>
-                  {{ item.created_by || 'Unbekannt' }}
+                  {{ item.created_by || $t('admin.rag.collections.unknown') }}
                 </v-chip>
               </template>
 
               <template v-slot:item.document_count="{ item }">
                 <v-chip size="small" variant="tonal" :color="item.document_count > 0 ? 'success' : 'grey'">
-                  {{ item.document_count }} Dokumente
+                  {{ $t('admin.rag.collections.documentsCount', { count: item.document_count }) }}
                 </v-chip>
               </template>
 
@@ -315,7 +315,7 @@
                   :items="uploadCollectionOptions"
                   item-title="title"
                   item-value="value"
-                  label="Ziel-Collection"
+                  :label="$t('admin.rag.upload.targetCollection')"
                   variant="outlined"
                   prepend-inner-icon="mdi-folder"
                   clearable
@@ -325,7 +325,7 @@
 
             <v-file-input
               v-model="filesToUpload"
-              label="Dateien auswählen"
+              :label="$t('admin.rag.upload.selectFiles')"
               variant="outlined"
               prepend-icon="mdi-paperclip"
               multiple
@@ -347,9 +347,9 @@
             </v-file-input>
 
             <v-alert type="info" variant="tonal" class="mb-4">
-              <strong>Unterstützte Formate:</strong> PDF, TXT, MD, DOCX, DOC
+              <strong>{{ $t('admin.rag.upload.supportedFormats') }}</strong> {{ $t('admin.rag.upload.formatList') }}
               <br>
-              <strong>Maximale Dateigröße:</strong> 50 MB pro Datei
+              <strong>{{ $t('admin.rag.upload.maxFileSize') }}</strong> {{ $t('admin.rag.upload.maxFileSizeValue') }}
             </v-alert>
 
             <LBtn
@@ -360,7 +360,7 @@
               :disabled="!filesToUpload || filesToUpload.length === 0"
               prepend-icon="mdi-upload"
             >
-              {{ filesToUpload?.length || 0 }} Datei(en) hochladen
+              {{ $t('admin.rag.upload.uploadButton', { count: filesToUpload?.length || 0 }) }}
             </LBtn>
 
             <!-- Upload Progress -->
@@ -408,14 +408,14 @@
     <!-- Delete Document Dialog -->
     <v-dialog v-model="deleteDocDialog" max-width="400">
       <v-card>
-        <v-card-title>Dokument löschen?</v-card-title>
+        <v-card-title>{{ $t('admin.rag.deleteDocDialog.title') }}</v-card-title>
         <v-card-text>
-          Möchten Sie "{{ documentToDelete?.filename }}" wirklich löschen?
+          {{ $t('admin.rag.deleteDocDialog.confirm', { filename: documentToDelete?.filename }) }}
         </v-card-text>
         <v-card-actions>
           <v-spacer></v-spacer>
-          <LBtn variant="text" @click="deleteDocDialog = false">Abbrechen</LBtn>
-          <LBtn variant="danger" @click="deleteDocument" :loading="deletingDocument">Löschen</LBtn>
+          <LBtn variant="text" @click="deleteDocDialog = false">{{ $t('common.cancel') }}</LBtn>
+          <LBtn variant="danger" @click="deleteDocument" :loading="deletingDocument">{{ $t('common.delete') }}</LBtn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -425,10 +425,10 @@
       <v-card>
         <v-card-title class="d-flex align-center">
           <LIcon color="error" class="mr-2">mdi-delete-alert</LIcon>
-          Collection löschen?
+          {{ $t('admin.rag.deleteCollDialog.title') }}
         </v-card-title>
         <v-card-text>
-          <p>Möchten Sie die Collection "<strong>{{ collectionToDelete?.display_name || collectionToDelete?.name }}</strong>" löschen?</p>
+          <p><span v-html="$t('admin.rag.deleteCollDialog.confirm', { name: collectionToDelete?.display_name || collectionToDelete?.name })"></span></p>
           <v-alert
             v-if="collectionToDelete?.document_count > 0"
             type="warning"
@@ -436,19 +436,19 @@
             class="mt-3"
             density="compact"
           >
-            <strong>Achtung:</strong> Diese Collection enthält {{ collectionToDelete?.document_count }} Dokument(e).
+            <span v-html="$t('admin.rag.deleteCollDialog.warning', { count: collectionToDelete?.document_count })"></span>
           </v-alert>
         </v-card-text>
         <v-card-actions>
           <v-spacer></v-spacer>
-          <LBtn variant="text" @click="deleteCollDialog = false">Abbrechen</LBtn>
+          <LBtn variant="text" @click="deleteCollDialog = false">{{ $t('common.cancel') }}</LBtn>
           <LBtn
             v-if="collectionToDelete?.document_count > 0"
             variant="tonal"
             @click="deleteCollection(true)"
             :loading="deletingCollection"
           >
-            Inkl. Dokumente löschen
+            {{ $t('admin.rag.deleteCollDialog.includeDocuments') }}
           </LBtn>
           <LBtn
             variant="danger"
@@ -456,7 +456,7 @@
             :loading="deletingCollection"
             :disabled="collectionToDelete?.document_count > 0"
           >
-            Löschen
+            {{ $t('common.delete') }}
           </LBtn>
         </v-card-actions>
       </v-card>
@@ -664,19 +664,19 @@
               <template v-slot:item.actions="{ item }">
                 <LIconBtn
                   icon="mdi-eye"
-                  tooltip="Ansehen"
+                  :tooltip="$t('admin.rag.documents.actions.view')"
                   class="mr-1"
                   @click.stop="openFilePreview(item)"
                 />
                 <LIconBtn
                   icon="mdi-information-outline"
-                  tooltip="Details"
+                  :tooltip="$t('admin.rag.documents.actions.details')"
                   class="mr-1"
                   @click.stop="openDocumentPreview(item)"
                 />
                 <LIconBtn
                   icon="mdi-download"
-                  tooltip="Herunterladen"
+                  :tooltip="$t('admin.rag.documents.actions.download')"
                   @click.stop="downloadDocument(item)"
                 />
               </template>

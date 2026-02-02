@@ -3,10 +3,10 @@
     <v-card>
       <v-card-title class="d-flex align-center">
         <LIcon class="mr-2">mdi-cog</LIcon>
-        System-Einstellungen
+        {{ $t('admin.systemSettings.title') }}
       </v-card-title>
       <v-card-subtitle>
-        Konfigurierbare Parameter für Crawler, RAG und System-Verhalten. Änderungen werden automatisch gespeichert.
+        {{ $t('admin.systemSettings.subtitle') }}
       </v-card-subtitle>
 
       <v-card-text>
@@ -17,7 +17,7 @@
           <v-card variant="outlined" class="mb-4">
             <v-card-title class="text-subtitle-1 d-flex align-center">
               <LIcon class="mr-2" size="small">mdi-timer-outline</LIcon>
-              Crawler Timeouts
+              {{ $t('admin.systemSettings.crawlerTimeouts.title') }}
               <v-spacer />
               <LStatusChip :state="sectionStates.crawler" />
             </v-card-title>
@@ -26,13 +26,13 @@
                 <v-col cols="12" md="6">
                   <v-text-field
                     v-model.number="settings.crawl_timeout_seconds"
-                    label="Crawl Timeout (Sekunden)"
+                    :label="$t('admin.systemSettings.crawlerTimeouts.crawlTimeout')"
                     type="number"
                     :min="60"
                     :max="86400"
                     variant="outlined"
                     density="comfortable"
-                    hint="Standard: 3600 (1 Stunde). Für große Websites erhöhen."
+                    :hint="$t('admin.systemSettings.crawlerTimeouts.crawlTimeoutHint')"
                     persistent-hint
                   >
                     <template #append-inner>
@@ -45,13 +45,13 @@
                 <v-col cols="12" md="6">
                   <v-text-field
                     v-model.number="settings.embedding_timeout_seconds"
-                    label="Embedding Timeout (Sekunden)"
+                    :label="$t('admin.systemSettings.crawlerTimeouts.embeddingTimeout')"
                     type="number"
                     :min="60"
                     :max="86400"
                     variant="outlined"
                     density="comfortable"
-                    hint="Standard: 7200 (2 Stunden). Für große Collections erhöhen."
+                    :hint="$t('admin.systemSettings.crawlerTimeouts.embeddingTimeoutHint')"
                     persistent-hint
                   >
                     <template #append-inner>
@@ -69,7 +69,7 @@
           <v-card variant="outlined" class="mb-4">
             <v-card-title class="text-subtitle-1 d-flex align-center">
               <LIcon class="mr-2" size="small">mdi-spider-web</LIcon>
-              Crawler Defaults
+              {{ $t('admin.systemSettings.crawlerDefaults.title') }}
               <v-spacer />
               <LStatusChip :state="sectionStates.crawlerDefaults" />
             </v-card-title>
@@ -78,26 +78,26 @@
                 <v-col cols="12" md="6">
                   <v-text-field
                     v-model.number="settings.crawler_default_max_pages"
-                    label="Standard Max-Seiten"
+                    :label="$t('admin.systemSettings.crawlerDefaults.maxPages')"
                     type="number"
                     :min="1"
                     :max="10000"
                     variant="outlined"
                     density="comfortable"
-                    hint="Standard: 500. Maximale Seiten pro Crawl im Chatbot Wizard."
+                    :hint="$t('admin.systemSettings.crawlerDefaults.maxPagesHint')"
                     persistent-hint
                   />
                 </v-col>
                 <v-col cols="12" md="6">
                   <v-text-field
                     v-model.number="settings.crawler_default_max_depth"
-                    label="Standard Crawl-Tiefe"
+                    :label="$t('admin.systemSettings.crawlerDefaults.maxDepth')"
                     type="number"
                     :min="1"
                     :max="10"
                     variant="outlined"
                     density="comfortable"
-                    hint="Standard: 3. Wie viele Link-Ebenen verfolgt werden."
+                    :hint="$t('admin.systemSettings.crawlerDefaults.maxDepthHint')"
                     persistent-hint
                   />
                 </v-col>
@@ -109,7 +109,7 @@
           <v-card variant="outlined" class="mb-4">
             <v-card-title class="text-subtitle-1 d-flex align-center">
               <LIcon class="mr-2" size="small">mdi-file-document-multiple</LIcon>
-              RAG Chunking
+              {{ $t('admin.systemSettings.ragChunking.title') }}
               <v-spacer />
               <LStatusChip :state="sectionStates.rag" />
             </v-card-title>
@@ -118,26 +118,26 @@
                 <v-col cols="12" md="6">
                   <v-text-field
                     v-model.number="settings.rag_default_chunk_size"
-                    label="Standard Chunk-Größe"
+                    :label="$t('admin.systemSettings.ragChunking.chunkSize')"
                     type="number"
                     :min="100"
                     :max="10000"
                     variant="outlined"
                     density="comfortable"
-                    hint="Standard: 1000 Zeichen pro Chunk."
+                    :hint="$t('admin.systemSettings.ragChunking.chunkSizeHint')"
                     persistent-hint
                   />
                 </v-col>
                 <v-col cols="12" md="6">
                   <v-text-field
                     v-model.number="settings.rag_default_chunk_overlap"
-                    label="Standard Chunk-Überlappung"
+                    :label="$t('admin.systemSettings.ragChunking.chunkOverlap')"
                     type="number"
                     :min="0"
                     :max="5000"
                     variant="outlined"
                     density="comfortable"
-                    hint="Standard: 200 Zeichen Überlappung zwischen Chunks."
+                    :hint="$t('admin.systemSettings.ragChunking.chunkOverlapHint')"
                     persistent-hint
                   />
                 </v-col>
@@ -149,7 +149,7 @@
           <v-card variant="outlined" class="mb-4">
             <v-card-title class="text-subtitle-1 d-flex align-center">
               <LIcon class="mr-2" size="small">mdi-robot-outline</LIcon>
-              LLM Logging
+              {{ $t('admin.systemSettings.llmLogging.title') }}
               <v-spacer />
               <LStatusChip :state="sectionStates.llmLogging" />
             </v-card-title>
@@ -158,7 +158,7 @@
                 <v-col cols="12" md="6">
                   <v-switch
                     v-model="settings.llm_ai_log_responses"
-                    label="Antworten loggen"
+                    :label="$t('admin.systemSettings.llmLogging.logResponses')"
                     color="primary"
                     hide-details
                     density="compact"
@@ -167,7 +167,7 @@
                 <v-col cols="12" md="6">
                   <v-switch
                     v-model="settings.llm_ai_log_prompts"
-                    label="Prompts loggen"
+                    :label="$t('admin.systemSettings.llmLogging.logPrompts')"
                     color="warning"
                     hide-details
                     density="compact"
@@ -179,36 +179,36 @@
                 <v-col cols="12" md="6">
                   <v-text-field
                     v-model="settings.llm_ai_log_tasks"
-                    label="Tasks (Komma-getrennt)"
+                    :label="$t('admin.systemSettings.llmLogging.tasks')"
                     variant="outlined"
                     density="comfortable"
-                    hint="z.B. authenticity, ranking, rating – leer = alle"
+                    :hint="$t('admin.systemSettings.llmLogging.tasksHint')"
                     persistent-hint
                   />
                 </v-col>
                 <v-col cols="12" md="6">
                   <v-text-field
                     v-model.number="settings.llm_ai_log_response_max"
-                    label="Max Zeichen (Antworten)"
+                    :label="$t('admin.systemSettings.llmLogging.maxResponseChars')"
                     type="number"
                     :min="0"
                     :max="10000"
                     variant="outlined"
                     density="comfortable"
-                    hint="Standard: 800"
+                    :hint="$t('admin.systemSettings.llmLogging.defaultCharsHint')"
                     persistent-hint
                   />
                 </v-col>
                 <v-col cols="12" md="6">
                   <v-text-field
                     v-model.number="settings.llm_ai_log_prompt_max"
-                    label="Max Zeichen (Prompts)"
+                    :label="$t('admin.systemSettings.llmLogging.maxPromptChars')"
                     type="number"
                     :min="0"
                     :max="10000"
                     variant="outlined"
                     density="comfortable"
-                    hint="Standard: 800"
+                    :hint="$t('admin.systemSettings.llmLogging.defaultCharsHint')"
                     persistent-hint
                   />
                 </v-col>
@@ -221,7 +221,7 @@
                 density="compact"
                 class="mt-2"
               >
-                Prompt-Logging enthält Konversationen. Bitte datenschutzkonform verwenden.
+                {{ $t('admin.systemSettings.llmLogging.privacyWarning') }}
               </v-alert>
             </v-card-text>
           </v-card>
@@ -230,7 +230,7 @@
           <v-card variant="outlined" class="mb-4">
             <v-card-title class="text-subtitle-1 d-flex align-center">
               <LIcon class="mr-2" size="small">mdi-account-multiple-plus</LIcon>
-              Referral-System
+              {{ $t('admin.systemSettings.referral.title') }}
               <v-spacer />
               <LStatusChip :state="sectionStates.referral" />
             </v-card-title>
@@ -241,28 +241,27 @@
                 density="compact"
                 class="mb-4"
               >
-                Das Referral-System ermöglicht die Selbst-Registrierung über Einladungslinks.
-                Verwalte Kampagnen und Links im <strong>Referrals</strong>-Tab.
+                <span v-html="$t('admin.systemSettings.referral.info')"></span>
               </v-alert>
 
               <v-row>
                 <v-col cols="12" md="6">
                   <v-switch
                     v-model="settings.referral_system_enabled"
-                    label="Referral-System aktivieren"
+                    :label="$t('admin.systemSettings.referral.enable')"
                     color="primary"
                     hide-details
                     density="compact"
                     class="mb-2"
                   />
                   <div class="text-caption text-medium-emphasis ml-10">
-                    Aktiviert die Verwaltung von Referral-Kampagnen und Links.
+                    {{ $t('admin.systemSettings.referral.enableHint') }}
                   </div>
                 </v-col>
                 <v-col cols="12" md="6">
                   <v-switch
                     v-model="settings.self_registration_enabled"
-                    label="Selbst-Registrierung aktivieren"
+                    :label="$t('admin.systemSettings.referral.selfRegistration')"
                     color="success"
                     hide-details
                     density="compact"
@@ -270,7 +269,7 @@
                     :disabled="!settings.referral_system_enabled"
                   />
                   <div class="text-caption text-medium-emphasis ml-10">
-                    Zeigt den "Registrieren"-Button an und erlaubt die Registrierung über gültige Referral-Links.
+                    {{ $t('admin.systemSettings.referral.selfRegistrationHint') }}
                   </div>
                 </v-col>
               </v-row>
@@ -282,10 +281,10 @@
                     :items="availableRoles"
                     item-title="label"
                     item-value="value"
-                    label="Standard-Rolle für neue Benutzer"
+                    :label="$t('admin.systemSettings.referral.defaultRole')"
                     variant="outlined"
                     density="comfortable"
-                    hint="Rolle, die neuen Benutzern bei der Registrierung zugewiesen wird (falls kein Link-spezifischer Override)."
+                    :hint="$t('admin.systemSettings.referral.defaultRoleHint')"
                     persistent-hint
                     :disabled="!settings.referral_system_enabled"
                   />
@@ -300,7 +299,7 @@
                 class="mt-4"
               >
                 <LIcon start size="small">mdi-check-circle</LIcon>
-                Selbst-Registrierung ist aktiv. Der "Registrieren"-Button wird auf der Login-Seite angezeigt.
+                {{ $t('admin.systemSettings.referral.activeAlert') }}
               </v-alert>
             </v-card-text>
           </v-card>
@@ -309,7 +308,7 @@
           <v-card variant="outlined" class="mb-4">
             <v-card-title class="text-subtitle-1 d-flex align-center">
               <LIcon class="mr-2" size="small">mdi-robot</LIcon>
-              KI-Assistent (LaTeX Collab)
+              {{ $t('admin.systemSettings.aiAssistant.title') }}
               <v-spacer />
               <LStatusChip :state="sectionStates.aiAssistant" />
             </v-card-title>
@@ -320,31 +319,30 @@
                 density="compact"
                 class="mb-4"
               >
-                Der KI-Assistent kann in LaTeX Collab Kommentare automatisch auflösen.
-                Die KI-Farbe ist exklusiv für den Assistenten reserviert und kann nicht von Nutzern gewählt werden.
+                {{ $t('admin.systemSettings.aiAssistant.info') }}
               </v-alert>
 
               <v-row>
                 <v-col cols="12" md="6">
                   <v-switch
                     v-model="settings.ai_assistant_enabled"
-                    label="KI-Assistent aktivieren"
+                    :label="$t('admin.systemSettings.aiAssistant.enable')"
                     color="primary"
                     hide-details
                     density="compact"
                     class="mb-2"
                   />
                   <div class="text-caption text-medium-emphasis ml-10">
-                    Aktiviert den KI-Button bei Kommentaren für automatische Auflösung.
+                    {{ $t('admin.systemSettings.aiAssistant.enableHint') }}
                   </div>
                 </v-col>
                 <v-col cols="12" md="6">
                   <v-text-field
                     v-model="settings.ai_assistant_username"
-                    label="KI-Anzeigename"
+                    :label="$t('admin.systemSettings.aiAssistant.username')"
                     variant="outlined"
                     density="comfortable"
-                    hint="Name, der als Autor bei KI-Antworten angezeigt wird."
+                    :hint="$t('admin.systemSettings.aiAssistant.usernameHint')"
                     persistent-hint
                     maxlength="50"
                   />
@@ -376,10 +374,10 @@
                     </v-menu>
                     <v-text-field
                       v-model="settings.ai_assistant_color"
-                      label="KI-Farbe (Hex)"
+                      :label="$t('admin.systemSettings.aiAssistant.color')"
                       variant="outlined"
                       density="comfortable"
-                      hint="Reservierte Farbe für KI-Änderungen. Standard: #9B59B6 (Lila)"
+                      :hint="$t('admin.systemSettings.aiAssistant.colorHint')"
                       persistent-hint
                       maxlength="7"
                       style="max-width: 200px;"
@@ -388,7 +386,7 @@
                 </v-col>
                 <v-col cols="12" md="6" class="d-flex align-center">
                   <div class="ai-preview-card pa-3 rounded">
-                    <div class="text-caption text-medium-emphasis mb-1">Vorschau:</div>
+                    <div class="text-caption text-medium-emphasis mb-1">{{ $t('admin.systemSettings.aiAssistant.preview') }}</div>
                     <div class="d-flex align-center">
                       <div
                         class="ai-avatar mr-2"
@@ -408,7 +406,7 @@
           <v-card variant="outlined">
             <v-card-title class="text-subtitle-1 d-flex align-center">
               <LIcon class="mr-2" size="small">zotero</LIcon>
-              Zotero Integration
+              {{ $t('admin.systemSettings.zotero.title') }}
               <v-spacer />
               <v-chip
                 :color="zoteroStatus.oauth_available ? 'success' : 'warning'"
@@ -430,13 +428,13 @@
                 class="mb-4"
               >
                 <div class="text-body-2">
-                  Zotero OAuth ermöglicht Usern, ihre Bibliotheken mit LaTeX-Workspaces zu synchronisieren.
-                  Registriere eine App unter
+                  {{ $t('admin.systemSettings.zotero.info') }}
+                  {{ $t('admin.systemSettings.zotero.registerApp') }}
                   <a href="https://www.zotero.org/oauth/apps" target="_blank" rel="noopener">
                     zotero.org/oauth/apps
                   </a>.
                   <br>
-                  <strong>Priorität:</strong> .env-Variablen → Datenbank-Fallback
+                  <strong>{{ $t('admin.systemSettings.zotero.priority') }}</strong>
                 </div>
               </v-alert>
 
@@ -444,7 +442,7 @@
               <div class="mb-4">
                 <div class="text-subtitle-2 mb-2 d-flex align-center">
                   <LIcon size="small" class="mr-1">mdi-file-cog</LIcon>
-                  Umgebungsvariablen (.env)
+                  {{ $t('admin.systemSettings.zotero.envVariables') }}
                   <v-chip
                     v-if="zoteroStatus.active_source === 'env'"
                     color="primary"
@@ -452,13 +450,13 @@
                     size="x-small"
                     class="ml-2"
                   >
-                    AKTIV
+                    {{ $t('admin.systemSettings.zotero.active') }}
                   </v-chip>
                 </div>
                 <v-row>
                   <v-col cols="12" md="6">
                     <v-text-field
-                      :model-value="zoteroStatus.env?.client_key || '(nicht gesetzt)'"
+                      :model-value="zoteroStatus.env?.client_key || $t('admin.systemSettings.zotero.notSet')"
                       label="ZOTERO_CLIENT_KEY"
                       variant="outlined"
                       density="compact"
@@ -468,7 +466,7 @@
                   </v-col>
                   <v-col cols="12" md="6">
                     <v-text-field
-                      :model-value="zoteroStatus.env?.client_secret_set ? '••••••••' : '(nicht gesetzt)'"
+                      :model-value="zoteroStatus.env?.client_secret_set ? '••••••••' : $t('admin.systemSettings.zotero.notSet')"
                       label="ZOTERO_CLIENT_SECRET"
                       variant="outlined"
                       density="compact"
@@ -485,7 +483,7 @@
               <div>
                 <div class="text-subtitle-2 mb-2 d-flex align-center">
                   <LIcon size="small" class="mr-1">mdi-database</LIcon>
-                  Datenbank-Fallback
+                  {{ $t('admin.systemSettings.zotero.databaseFallback') }}
                   <v-chip
                     v-if="zoteroStatus.active_source === 'database'"
                     color="primary"
@@ -493,7 +491,7 @@
                     size="x-small"
                     class="ml-2"
                   >
-                    AKTIV
+                    {{ $t('admin.systemSettings.zotero.active') }}
                   </v-chip>
                   <v-spacer />
                   <LStatusChip :state="sectionStates.zotero" />
@@ -502,7 +500,7 @@
                   <v-col cols="12">
                     <v-switch
                       v-model="zoteroDb.enabled"
-                      label="Datenbank-Fallback aktivieren"
+                      :label="$t('admin.systemSettings.zotero.enableFallback')"
                       color="primary"
                       hide-details
                       density="compact"
@@ -511,7 +509,7 @@
                   <v-col cols="12" md="6">
                     <v-text-field
                       v-model="zoteroDb.client_key"
-                      label="Client Key"
+                      :label="$t('admin.systemSettings.zotero.clientKey')"
                       variant="outlined"
                       density="compact"
                       :disabled="!zoteroDb.enabled"
@@ -521,11 +519,11 @@
                     <v-text-field
                       v-model="zoteroDb.client_secret"
                       :type="showSecret ? 'text' : 'password'"
-                      label="Client Secret (leer = unverändert)"
+                      :label="$t('admin.systemSettings.zotero.clientSecret')"
                       variant="outlined"
                       density="compact"
                       :disabled="!zoteroDb.enabled"
-                      placeholder="Neues Secret eingeben..."
+                      :placeholder="$t('admin.systemSettings.zotero.newSecretPlaceholder')"
                     >
                       <template #append-inner>
                         <v-btn
@@ -545,7 +543,7 @@
 
           <!-- Last updated info -->
           <div v-if="settings.updated_at" class="text-caption text-medium-emphasis mt-4">
-            Zuletzt aktualisiert: {{ formatDate(settings.updated_at) }}
+            {{ $t('admin.systemSettings.lastUpdated', { date: formatDate(settings.updated_at) }) }}
           </div>
         </template>
       </v-card-text>
@@ -560,10 +558,13 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import axios from 'axios'
 import { logI18n, logI18nParams } from '@/utils/logI18n'
 import { useReferralSystem } from '@/composables/useReferralSystem'
 import LStatusChip from '@/components/common/LStatusChip.vue'
+
+const { t } = useI18n()
 
 const { refreshRegistrationStatus } = useReferralSystem()
 
@@ -645,9 +646,9 @@ const zoteroDb = reactive({
 const originalZoteroDb = ref({})
 
 const zoteroStatusLabel = computed(() => {
-  if (zoteroStatus.active_source === 'env') return 'Aktiv (.env)'
-  if (zoteroStatus.active_source === 'database') return 'Aktiv (DB)'
-  return 'Nicht konfiguriert'
+  if (zoteroStatus.active_source === 'env') return t('admin.systemSettings.zotero.statusEnv')
+  if (zoteroStatus.active_source === 'database') return t('admin.systemSettings.zotero.statusDb')
+  return t('admin.systemSettings.zotero.statusNone')
 })
 
 // Generic auto-save function for settings
@@ -685,7 +686,7 @@ async function saveSettingsSection(sectionKey, fields) {
   } catch (error) {
     logI18nParams('error', 'logs.admin.systemSettings.saveSectionFailed', { section: sectionKey }, error)
     sectionStates[sectionKey] = 'error'
-    snackbar.text = `Fehler beim Speichern: ${error.response?.data?.error || error.message}`
+    snackbar.text = t('admin.systemSettings.errors.saveFailed', { error: error.response?.data?.error || error.message })
     snackbar.show = true
 
     // Clear error state after 5 seconds
@@ -845,7 +846,7 @@ async function saveZoteroSettings() {
   } catch (error) {
     logI18n('error', 'logs.admin.systemSettings.saveZoteroOauthFailed', error)
     sectionStates.zotero = 'error'
-    snackbar.text = 'Fehler beim Speichern der Zotero-Einstellungen'
+    snackbar.text = t('admin.systemSettings.errors.zoteroSaveFailed')
     snackbar.show = true
 
     setTimeout(() => {
@@ -886,7 +887,7 @@ async function loadSettings() {
     initialLoadDone.value = true
   } catch (error) {
     logI18n('error', 'logs.admin.systemSettings.loadSettingsFailed', error)
-    snackbar.text = 'Fehler beim Laden der Einstellungen'
+    snackbar.text = t('admin.systemSettings.errors.loadFailed')
     snackbar.show = true
   } finally {
     loading.value = false

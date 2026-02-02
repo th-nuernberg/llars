@@ -5488,5 +5488,253 @@
       "evaluationType": "Evaluationstyp",
       "info": "{count} abgeschlossene Ausgaben werden verwendet um Evaluations-Items zu erstellen."
     }
+  },
+  "admin": {
+    "systemSettings": {
+      "title": "System-Einstellungen",
+      "subtitle": "Konfigurierbare Parameter für Crawler, RAG und System-Verhalten. Änderungen werden automatisch gespeichert.",
+      "lastUpdated": "Zuletzt aktualisiert: {date}",
+      "errors": {
+        "saveFailed": "Fehler beim Speichern: {error}",
+        "loadFailed": "Fehler beim Laden der Einstellungen",
+        "zoteroSaveFailed": "Fehler beim Speichern der Zotero-Einstellungen"
+      },
+      "crawlerTimeouts": {
+        "title": "Crawler Timeouts",
+        "crawlTimeout": "Crawl Timeout (Sekunden)",
+        "crawlTimeoutHint": "Standard: 3600 (1 Stunde). Für große Websites erhöhen.",
+        "embeddingTimeout": "Embedding Timeout (Sekunden)",
+        "embeddingTimeoutHint": "Standard: 7200 (2 Stunden). Für große Collections erhöhen."
+      },
+      "crawlerDefaults": {
+        "title": "Crawler Defaults",
+        "maxPages": "Standard Max-Seiten",
+        "maxPagesHint": "Standard: 500. Maximale Seiten pro Crawl im Chatbot Wizard.",
+        "maxDepth": "Standard Crawl-Tiefe",
+        "maxDepthHint": "Standard: 3. Wie viele Link-Ebenen verfolgt werden."
+      },
+      "ragChunking": {
+        "title": "RAG Chunking",
+        "chunkSize": "Standard Chunk-Größe",
+        "chunkSizeHint": "Standard: 1000 Zeichen pro Chunk.",
+        "chunkOverlap": "Standard Chunk-Überlappung",
+        "chunkOverlapHint": "Standard: 200 Zeichen Überlappung zwischen Chunks."
+      },
+      "llmLogging": {
+        "title": "LLM Logging",
+        "logResponses": "Antworten loggen",
+        "logPrompts": "Prompts loggen",
+        "tasks": "Tasks (Komma-getrennt)",
+        "tasksHint": "z.B. authenticity, ranking, rating – leer = alle",
+        "maxResponseChars": "Max Zeichen (Antworten)",
+        "maxPromptChars": "Max Zeichen (Prompts)",
+        "defaultCharsHint": "Standard: 800",
+        "privacyWarning": "Prompt-Logging enthält Konversationen. Bitte datenschutzkonform verwenden."
+      },
+      "referral": {
+        "title": "Referral-System",
+        "info": "Das Referral-System ermöglicht die Selbst-Registrierung über Einladungslinks. Verwalte Kampagnen und Links im <strong>Referrals</strong>-Tab.",
+        "enable": "Referral-System aktivieren",
+        "enableHint": "Aktiviert die Verwaltung von Referral-Kampagnen und Links.",
+        "selfRegistration": "Selbst-Registrierung aktivieren",
+        "selfRegistrationHint": "Zeigt den \"Registrieren\"-Button an und erlaubt die Registrierung über gültige Referral-Links.",
+        "defaultRole": "Standard-Rolle für neue Benutzer",
+        "defaultRoleHint": "Rolle, die neuen Benutzern bei der Registrierung zugewiesen wird (falls kein Link-spezifischer Override).",
+        "activeAlert": "Selbst-Registrierung ist aktiv. Der \"Registrieren\"-Button wird auf der Login-Seite angezeigt."
+      },
+      "aiAssistant": {
+        "title": "KI-Assistent (LaTeX Collab)",
+        "info": "Der KI-Assistent kann in LaTeX Collab Kommentare automatisch auflösen. Die KI-Farbe ist exklusiv für den Assistenten reserviert und kann nicht von Nutzern gewählt werden.",
+        "enable": "KI-Assistent aktivieren",
+        "enableHint": "Aktiviert den KI-Button bei Kommentaren für automatische Auflösung.",
+        "username": "KI-Anzeigename",
+        "usernameHint": "Name, der als Autor bei KI-Antworten angezeigt wird.",
+        "color": "KI-Farbe (Hex)",
+        "colorHint": "Reservierte Farbe für KI-Änderungen. Standard: #9B59B6 (Lila)",
+        "preview": "Vorschau:"
+      },
+      "zotero": {
+        "title": "Zotero Integration",
+        "statusEnv": "Aktiv (.env)",
+        "statusDb": "Aktiv (DB)",
+        "statusNone": "Nicht konfiguriert",
+        "info": "Zotero OAuth ermöglicht Usern, ihre Bibliotheken mit LaTeX-Workspaces zu synchronisieren.",
+        "registerApp": "Registriere eine App unter",
+        "priority": "Priorität: .env-Variablen → Datenbank-Fallback",
+        "envVariables": "Umgebungsvariablen (.env)",
+        "active": "AKTIV",
+        "notSet": "(nicht gesetzt)",
+        "databaseFallback": "Datenbank-Fallback",
+        "enableFallback": "Datenbank-Fallback aktivieren",
+        "clientKey": "Client Key",
+        "clientSecret": "Client Secret (leer = unverändert)",
+        "newSecretPlaceholder": "Neues Secret eingeben..."
+      }
+    },
+    "users": {
+      "title": "Benutzer",
+      "searchPlaceholder": "Benutzer suchen",
+      "filterByRole": "Nach Rolle filtern",
+      "newUser": "Neuer Benutzer",
+      "userDetails": "Benutzerdetails",
+      "notInDb": "Nicht angelegt",
+      "notInDbWarning": "Dieser Benutzer ist noch nicht in der LLARS-Datenbank angelegt. Rollen können bereits verwaltet werden, aber Sperren/Löschen ist erst nach dem Anlegen möglich.",
+      "createInDb": "In DB anlegen",
+      "assignedRoles": "Zugewiesene Rollen",
+      "noRolesAssigned": "Keine Rollen zugewiesen",
+      "addRole": "Rolle hinzufügen",
+      "effectivePermissions": "Effektive Berechtigungen ({count})",
+      "showLess": "Weniger anzeigen",
+      "showMore": "+{count} mehr",
+      "table": {
+        "user": "Benutzer",
+        "status": "Status",
+        "roles": "Rollen",
+        "actions": "Aktionen"
+      },
+      "status": {
+        "active": "Aktiv",
+        "locked": "Gesperrt",
+        "deleted": "Gelöscht"
+      },
+      "actions": {
+        "edit": "Bearbeiten",
+        "details": "Details",
+        "lock": "Sperren",
+        "unlock": "Entsperren",
+        "delete": "Löschen"
+      },
+      "empty": {
+        "noResults": "Keine Benutzer gefunden",
+        "searchHint": "Suchen Sie nach einem Benutzer oder laden Sie alle Benutzer mit Rollen"
+      },
+      "createDialog": {
+        "title": "Benutzer anlegen",
+        "partialWarningTitle": "Benutzer teilweise erstellt",
+        "info": "Erstellt einen vollwertigen Benutzer in Authentik und LLARS. Der Benutzer kann sich danach sofort einloggen.",
+        "username": "Username",
+        "usernameHint": "Login-Name des Benutzers",
+        "email": "E-Mail",
+        "emailHint": "Wird für Authentik benötigt",
+        "password": "Passwort",
+        "passwordHint": "Mindestens 8 Zeichen",
+        "displayName": "Anzeigename",
+        "displayNameHint": "Optional - wird sonst der Username verwendet",
+        "collabColor": "Kollaborationsfarbe (optional)",
+        "collabColorAuto": "Automatisch",
+        "avatarSeed": "Profilbild-Seed (optional)",
+        "avatarSeedHint": "Leer lassen = automatisch",
+        "initialRoles": "Initiale Rollen",
+        "accountActive": "Account aktiv",
+        "create": "Anlegen"
+      },
+      "deleteDialog": {
+        "title": "Benutzer löschen",
+        "confirm": "Möchtest du den Benutzer <strong>{username}</strong> wirklich löschen?",
+        "info": "Der Account wird in LLARS deaktiviert und aus Rollen/Berechtigungen entfernt."
+      }
+    },
+    "rag": {
+      "stats": {
+        "documents": "Dokumente",
+        "processed": "Verarbeitet",
+        "collections": "Collections",
+        "totalSize": "Gesamtgröße"
+      },
+      "embedding": {
+        "title": "Embedding Model",
+        "litellmProxy": "LiteLLM Proxy",
+        "fallbackLocal": "Fallback (Local)",
+        "activeModel": "Aktives Model",
+        "dimensions": "Dimensionen",
+        "litellmStatus": "LiteLLM Status",
+        "configured": "Konfiguriert",
+        "notConfigured": "Nicht konfiguriert",
+        "litellmUrl": "LiteLLM URL"
+      },
+      "tabs": {
+        "documents": "Dokumente",
+        "collections": "Collections",
+        "upload": "Hochladen"
+      },
+      "documents": {
+        "search": "Dokument suchen",
+        "collectionFilter": "Collection Filter",
+        "table": {
+          "title": "Titel",
+          "size": "Größe",
+          "status": "Status",
+          "uploaded": "Hochgeladen",
+          "actions": "Aktionen"
+        },
+        "actions": {
+          "view": "Ansehen",
+          "details": "Details",
+          "download": "Herunterladen",
+          "delete": "Löschen"
+        }
+      },
+      "collections": {
+        "createNew": "Neue Collection erstellen",
+        "namePlaceholder": "Collection-Name eingeben",
+        "create": "Collection erstellen",
+        "table": {
+          "name": "Name",
+          "createdBy": "Erstellt von",
+          "documentCount": "Dokumente",
+          "createdAt": "Erstellt am",
+          "actions": "Aktionen"
+        },
+        "unknown": "Unbekannt",
+        "documentsCount": "{count} Dokumente",
+        "actions": {
+          "view": "Details anzeigen",
+          "reindex": "Neu indexieren",
+          "share": "Zugriff teilen",
+          "delete": "Löschen"
+        }
+      },
+      "upload": {
+        "targetCollection": "Ziel-Collection",
+        "selectFiles": "Dateien auswählen",
+        "supportedFormats": "Unterstützte Formate:",
+        "formatList": "PDF, TXT, MD, DOCX, DOC",
+        "maxFileSize": "Maximale Dateigröße:",
+        "maxFileSizeValue": "50 MB pro Datei",
+        "uploadButton": "{count} Datei(en) hochladen"
+      },
+      "deleteDocDialog": {
+        "title": "Dokument löschen?",
+        "confirm": "Möchten Sie \"{filename}\" wirklich löschen?"
+      },
+      "deleteCollDialog": {
+        "title": "Collection löschen?",
+        "confirm": "Möchten Sie die Collection \"<strong>{name}</strong>\" löschen?",
+        "warning": "<strong>Achtung:</strong> Diese Collection enthält {count} Dokument(e).",
+        "includeDocuments": "Inkl. Dokumente löschen"
+      },
+      "collectionDetail": {
+        "description": "Beschreibung",
+        "noDescription": "Keine Beschreibung",
+        "chunkSettings": "Chunk: {size} Zeichen, {overlap} Overlap",
+        "embeddingProgress": {
+          "title": "Embedding-Verarbeitung",
+          "pending": "ausstehend",
+          "progress": "Fortschritt:",
+          "waiting": "warten",
+          "processing": "verarbeiten",
+          "done": "fertig",
+          "failed": "fehlgeschlagen"
+        },
+        "documentsTitle": "Dokumente in dieser Collection",
+        "webcrawl": "Webcrawl",
+        "linked": "verlinkt",
+        "chunks": "{count} Chunks",
+        "empty": {
+          "title": "Keine Dokumente in dieser Collection",
+          "hint": "Laden Sie Dokumente hoch oder starten Sie einen Crawl-Job."
+        }
+      }
+    }
   }
 }

@@ -8,7 +8,7 @@
     <v-card>
       <v-card-title class="text-h5 pa-4">
         <LIcon icon="mdi-upload" class="mr-2"></LIcon>
-        Dokumente hochladen
+        {{ $t('rag.documentUpload.title') }}
       </v-card-title>
 
       <v-divider></v-divider>
@@ -17,11 +17,11 @@
         <!-- Collection auswählen -->
         <v-select
           v-model="selectedCollection"
-          label="Collection auswählen *"
+          :label="$t('rag.documentUpload.selectCollection')"
           :items="collectionItems"
           variant="outlined"
           density="comfortable"
-          :rules="[v => !!v || 'Bitte wählen Sie eine Collection']"
+          :rules="[v => !!v || $t('rag.documentUpload.selectCollectionError')]"
           class="mb-4"
         >
           <template v-slot:selection="{ item }">
@@ -56,17 +56,17 @@
             ></LIcon>
 
             <div class="text-h6 mb-2">
-              {{ isDragging ? 'Dateien hier ablegen' : 'Dateien hierher ziehen' }}
+              {{ isDragging ? $t('rag.documentUpload.dropFiles') : $t('rag.documentUpload.dragFiles') }}
             </div>
 
-            <div class="text-medium-emphasis mb-4">oder</div>
+            <div class="text-medium-emphasis mb-4">{{ $t('rag.documentUpload.or') }}</div>
 
             <LBtn
               variant="primary"
               prepend-icon="mdi-file-plus"
               @click="$refs.fileInput.click()"
             >
-              Dateien auswählen
+              {{ $t('rag.documentUpload.selectFiles') }}
             </LBtn>
 
             <input
@@ -79,7 +79,7 @@
             />
 
             <div class="text-caption text-medium-emphasis mt-4">
-              Erlaubte Formate: PDF, TXT, MD (Markdown)
+              {{ $t('rag.documentUpload.allowedFormats') }}
             </div>
           </v-card-text>
         </v-card>
@@ -87,7 +87,7 @@
         <!-- Dateiliste -->
         <v-card v-if="files.length > 0" variant="outlined" class="mt-4">
           <v-card-title class="text-subtitle-1 pa-3">
-            Ausgewählte Dateien ({{ files.length }})
+            {{ $t('rag.documentUpload.selectedFiles', { count: files.length }) }}
           </v-card-title>
           <v-divider></v-divider>
 
@@ -145,7 +145,7 @@
           <!-- Gesamtfortschritt -->
           <v-card-text v-if="isUploading" class="pa-3">
             <div class="d-flex align-center mb-2">
-              <span class="text-caption text-medium-emphasis">Gesamtfortschritt</span>
+              <span class="text-caption text-medium-emphasis">{{ $t('rag.documentUpload.overallProgress') }}</span>
               <v-spacer></v-spacer>
               <span class="text-caption font-weight-medium">{{ overallProgress }}%</span>
             </div>
@@ -166,7 +166,7 @@
           density="compact"
           class="mt-4"
         >
-          {{ successCount }} von {{ files.length }} Datei(en) erfolgreich hochgeladen
+          {{ $t('rag.documentUpload.uploadSuccess', { success: successCount, total: files.length }) }}
         </v-alert>
 
         <v-alert
@@ -176,7 +176,7 @@
           density="compact"
           class="mt-2"
         >
-          {{ errorCount }} Datei(en) konnten nicht hochgeladen werden
+          {{ $t('rag.documentUpload.uploadError', { count: errorCount }) }}
         </v-alert>
       </v-card-text>
 
@@ -189,7 +189,7 @@
           @click="handleClose"
           :disabled="isUploading"
         >
-          {{ uploadComplete ? 'Schließen' : 'Abbrechen' }}
+          {{ uploadComplete ? $t('common.close') : $t('common.cancel') }}
         </LBtn>
         <LBtn
           variant="primary"
@@ -197,7 +197,7 @@
           :disabled="!canUpload"
           :loading="isUploading"
         >
-          Hochladen
+          {{ $t('rag.documentUpload.upload') }}
         </LBtn>
       </v-card-actions>
     </v-card>
@@ -207,6 +207,9 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
 import axios from 'axios'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 const props = defineProps({
   modelValue: {
@@ -366,7 +369,7 @@ const handleUpload = async () => {
         if (result.success) {
           uploadProgress.value[index] = 100
         } else {
-          uploadErrors.value[index] = result.error || 'Unbekannter Fehler'
+          uploadErrors.value[index] = result.error || t('rag.documentUpload.unknownError')
           uploadProgress.value[index] = 0
         }
       })
@@ -386,7 +389,7 @@ const handleUpload = async () => {
 
     // Markiere alle Dateien als fehlgeschlagen
     files.value.forEach((_, index) => {
-      uploadErrors.value[index] = error.response?.data?.message || 'Upload fehlgeschlagen'
+      uploadErrors.value[index] = error.response?.data?.message || t('rag.documentUpload.uploadFailed')
       uploadProgress.value[index] = 0
     })
 

@@ -325,7 +325,132 @@
         "body": "Von Upload bis Evaluation in einem Flow"
       }
     },
-    "success": "Import erfolgreich! {count} Einträge importiert."
+    "success": "Import erfolgreich! {count} Einträge importiert.",
+    "stepScenario": {
+      "aiSuggestion": {
+        "title": "KI-Empfehlung basierend auf deinen Daten",
+        "apply": "Vorschlag anwenden",
+        "manual": "Manuell konfigurieren"
+      },
+      "mode": {
+        "new": "Neues Szenario erstellen",
+        "existing": "Zu bestehendem Szenario hinzufügen"
+      },
+      "existingScenario": {
+        "title": "Bestehendes Szenario auswählen",
+        "select": "Szenario auswählen",
+        "searchPlaceholder": "Szenario suchen...",
+        "newEntries": "{count} neue Einträge werden zu diesem Szenario hinzugefügt."
+      },
+      "scenarioInfo": {
+        "title": "Szenario-Informationen",
+        "aiName": "KI-Name",
+        "aiNameTooltip": "KI generiert einen passenden Namen",
+        "name": "Szenario-Name *",
+        "namePlaceholder": "z.B. Beratungsqualität Evaluation Q1",
+        "nameRequired": "Name ist erforderlich",
+        "taskType": "Aufgabentyp *",
+        "sourceName": "Quellname",
+        "sourceNamePlaceholder": "z.B. KIA Säule 3",
+        "sourceNameHint": "Wird bei importierten Threads angezeigt",
+        "description": "Beschreibung",
+        "descriptionPlaceholder": "Optionale Beschreibung des Szenarios..."
+      },
+      "dates": {
+        "title": "Zeitraum",
+        "startDate": "Startdatum",
+        "endDate": "Enddatum",
+        "endDateHint": "Leer lassen für unbegrenzt",
+        "presets": {
+          "1week": "1 Woche",
+          "2weeks": "2 Wochen",
+          "1month": "1 Monat",
+          "3months": "3 Monate"
+        }
+      },
+      "distribution": {
+        "title": "Verteilung & Reihenfolge",
+        "mode": "Verteilungsmodus",
+        "order": "Reihenfolge",
+        "modes": {
+          "all": "Alle sehen alles",
+          "allDesc": "Jeder Rater sieht alle Threads",
+          "roundRobin": "Round Robin",
+          "roundRobinDesc": "Threads werden gleichmäßig auf Rater verteilt"
+        },
+        "orderModes": {
+          "original": "Original",
+          "originalDesc": "Reihenfolge wie in den Daten",
+          "shuffleAll": "Zufällig (alle gleich)",
+          "shuffleAllDesc": "Zufällige Reihenfolge, für alle Rater gleich",
+          "shufflePerUser": "Zufällig (pro Nutzer)",
+          "shufflePerUserDesc": "Jeder Rater sieht andere Reihenfolge"
+        }
+      },
+      "summary": {
+        "newScenario": "{count} Einträge werden in das neue Szenario \"{name}\" importiert.",
+        "existingScenario": "{count} Einträge werden zum bestehenden Szenario hinzugefügt.",
+        "unnamed": "(Unbenannt)"
+      },
+      "taskTypes": {
+        "rating": "Rating",
+        "ratingDesc": "Bewertung von Features (1-5 Sterne)",
+        "ranking": "Ranking",
+        "rankingDesc": "Sortierung von Features (Drag & Drop)",
+        "mailRating": "Mail Rating",
+        "mailRatingDesc": "Bewertung ganzer Konversationen",
+        "comparison": "Comparison",
+        "comparisonDesc": "Paarweiser Vergleich (A vs B)",
+        "authenticity": "Authenticity",
+        "authenticityDesc": "Fake/Real Unterscheidung",
+        "judge": "Chatbot Arena",
+        "judgeDesc": "Paarweise Vergleiche im Arena-Modus",
+        "labeling": "Labeling",
+        "labelingDesc": "Texte in Kategorien einordnen"
+      }
+    },
+    "stepReview": {
+      "stats": {
+        "entries": "Einträge",
+        "messages": "Nachrichten",
+        "raters": "Rater",
+        "evaluators": "Evaluator"
+      },
+      "config": {
+        "title": "Konfiguration",
+        "scenarioName": "Szenario-Name",
+        "taskType": "Aufgabentyp",
+        "sourceFormat": "Quell-Format",
+        "period": "Zeitraum",
+        "unlimited": "unbegrenzt",
+        "distribution": "Verteilung",
+        "order": "Reihenfolge"
+      },
+      "warnings": {
+        "title": "Hinweise:",
+        "noEntries": "Keine Einträge zum Importieren gefunden.",
+        "noRaters": "Keine Rater ausgewählt. Das Szenario kann nicht bewertet werden.",
+        "noEndDate": "Kein Enddatum gesetzt. Das Szenario bleibt unbegrenzt aktiv."
+      },
+      "ready": {
+        "title": "Bereit zum Import",
+        "body": "Alle Einstellungen wurden geprüft. Klicke auf \"Import starten\" um die Daten zu importieren und das Szenario zu erstellen.",
+        "confirm": "Ich habe die Konfiguration überprüft"
+      },
+      "progress": {
+        "title": "Import läuft...",
+        "body": "Bitte warte, während die Daten importiert werden."
+      },
+      "formats": {
+        "openai": "OpenAI/ChatML",
+        "lmsys": "LMSYS Pairwise",
+        "jsonl": "JSONL",
+        "csv": "CSV/Tabular",
+        "llars": "LLARS Native",
+        "generic": "Generic Text Data",
+        "unknown": "Unbekannt"
+      }
+    }
   },
   "docs": {
     "hero": {
@@ -5733,6 +5858,65 @@
         "empty": {
           "title": "Keine Dokumente in dieser Collection",
           "hint": "Laden Sie Dokumente hoch oder starten Sie einen Crawl-Job."
+        }
+      },
+      "documentUpload": {
+        "title": "Dokumente hochladen",
+        "selectCollection": "Collection auswählen *",
+        "selectCollectionError": "Bitte wählen Sie eine Collection",
+        "dropFiles": "Dateien hier ablegen",
+        "dragFiles": "Dateien hierher ziehen",
+        "or": "oder",
+        "selectFiles": "Dateien auswählen",
+        "allowedFormats": "Erlaubte Formate: PDF, TXT, MD (Markdown)",
+        "selectedFiles": "Ausgewählte Dateien ({count})",
+        "overallProgress": "Gesamtfortschritt",
+        "uploadSuccess": "{success} von {total} Datei(en) erfolgreich hochgeladen",
+        "uploadError": "{count} Datei(en) konnten nicht hochgeladen werden",
+        "unknownError": "Unbekannter Fehler",
+        "uploadFailed": "Upload fehlgeschlagen",
+        "upload": "Hochladen"
+      },
+      "collectionManager": {
+        "createNew": "Neue Collection erstellen",
+        "noDescription": "Keine Beschreibung vorhanden",
+        "documents": "Dokumente",
+        "size": "Größe",
+        "empty": {
+          "title": "Keine Collections vorhanden",
+          "hint": "Erstellen Sie Ihre erste Collection, um Dokumente zu organisieren.",
+          "createFirst": "Erste Collection erstellen"
+        }
+      },
+      "documentManager": {
+        "title": "Dokumente",
+        "upload": "Hochladen",
+        "filterCollection": "Collection filtern",
+        "filterStatus": "Status filtern",
+        "search": "Suche",
+        "selectedCount": "{count} Dokument(e) ausgewählt",
+        "deleteSelected": "Ausgewählte löschen",
+        "headers": {
+          "filename": "Dateiname",
+          "collection": "Collection",
+          "size": "Größe",
+          "status": "Status",
+          "chunks": "Chunks",
+          "retrievals": "Abrufe",
+          "uploaded": "Hochgeladen",
+          "actions": "Aktionen"
+        },
+        "status": {
+          "pending": "Ausstehend",
+          "processing": "Verarbeitung",
+          "indexed": "Indexiert",
+          "failed": "Fehler"
+        },
+        "empty": {
+          "title": "Keine Dokumente gefunden",
+          "hintFilter": "Versuchen Sie, Ihre Filter anzupassen.",
+          "hintUpload": "Laden Sie Ihr erstes Dokument hoch.",
+          "uploadFirst": "Dokument hochladen"
         }
       }
     }

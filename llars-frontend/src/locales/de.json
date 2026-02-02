@@ -67,7 +67,8 @@
     },
     "messages": {
       "registrationSuccess": "Registrierung erfolgreich! Du wirst zur Anmeldung weitergeleitet..."
-    }
+    },
+    "logoutConfirmation": "Es gibt ungesicherte Änderungen. Möchten Sie wirklich ausloggen?"
   },
   "appbar": {
     "platform": "LLars Plattform",
@@ -80,6 +81,13 @@
     "imprint": "Impressum",
     "privacy": "Datenschutz",
     "contact": "Kontakt"
+  },
+  "consent": {
+    "title": "Analytics & Datenschutz",
+    "body": "Wir nutzen Matomo, um die Nutzung der Plattform zu verbessern. Sie können zustimmen oder ablehnen. Details finden Sie in der Datenschutzerklärung.",
+    "privacy": "Datenschutz",
+    "decline": "Ablehnen",
+    "accept": "Zustimmen"
   },
   "settings": {
     "title": "Profil & Einstellungen",

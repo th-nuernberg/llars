@@ -49,11 +49,11 @@
 
             <v-list density="compact" class="user-menu-list">
               <v-list-item @click="openSettings" prepend-icon="mdi-account-cog">
-                <v-list-item-title>Profil & Einstellungen</v-list-item-title>
+                <v-list-item-title>{{ $t('settings.title') }}</v-list-item-title>
               </v-list-item>
               <v-divider class="my-1" />
               <v-list-item @click="logout" prepend-icon="mdi-logout" class="text-error">
-                <v-list-item-title>Abmelden</v-list-item-title>
+                <v-list-item-title>{{ $t('auth.logout') }}</v-list-item-title>
               </v-list-item>
             </v-list>
           </v-menu>
@@ -80,10 +80,10 @@
             prepend-icon="mdi-account-plus"
             class="mr-1"
           >
-            {{ isMobile ? '' : 'Registrieren' }}
+            {{ isMobile ? '' : $t('auth.register') }}
           </LBtn>
           <LBtn variant="secondary" size="small" @click="goToLogin" prepend-icon="mdi-login">
-            Anmelden
+            {{ $t('auth.login') }}
           </LBtn>
         </Motion>
       </AnimatePresence>
@@ -115,7 +115,7 @@
       </div>
       <template v-slot:actions>
         <v-btn variant="text" size="small" @click="snackbarModel.show = false">
-          Schließen
+          {{ $t('common.close') }}
         </v-btn>
       </template>
     </v-snackbar>
@@ -130,12 +130,12 @@
 
         <v-col v-if="!isMobile" cols="auto">
           <span
-            v-for="(link, index) in links"
-            :key="link"
+            v-for="link in footerLinks"
+            :key="link.key"
             class="footer-link"
-            @click="navigateTo(link)"
+            @click="navigateTo(link.route)"
           >
-            {{ link }}
+            {{ $t(`footer.${link.key}`) }}
           </span>
         </v-col>
       </v-row>
@@ -146,6 +146,7 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
+import { useI18n } from 'vue-i18n';
 import { Motion, AnimatePresence } from 'motion-v';
 import { useAuth } from '@/composables/useAuth';
 import { useAppTheme } from '@/composables/useAppTheme';
@@ -158,6 +159,8 @@ import UserSettingsDialog from './components/UserSettingsDialog.vue';
 import AnalyticsConsentBanner from './components/common/AnalyticsConsentBanner.vue';
 import { useReferralSystem } from '@/composables/useReferralSystem';
 import { logI18n } from '@/utils/logI18n';
+
+const { t } = useI18n();
 
 // Global Snackbar
 const { snackbarModel } = useSnackbar();
@@ -219,7 +222,12 @@ watch(
   { immediate: true }
 );
 const isAdminUser = computed(() => auth.isAdmin.value);
-const links = ref(['Dokumentation', 'Impressum', 'Datenschutz', 'Kontakt']);
+const footerLinks = [
+  { key: 'documentation', route: '/docs' },
+  { key: 'imprint', route: '/impressum' },
+  { key: 'privacy', route: '/datenschutz' },
+  { key: 'contact', route: '/kontakt' }
+];
 const settingsDialogOpen = ref(false);
 
 // Avatar seed from auth composable
@@ -261,9 +269,7 @@ onMounted(() => {
 function logout() {
   // Prüfen, ob es unsichere Änderungen gibt
   if (containsLocalStorageItemWithString('hasUnsaved_ratingChanges_')) {
-    const confirmLogout = window.confirm(
-      'Es gibt ungesicherte Änderungen. Möchten Sie wirklich ausloggen?'
-    );
+    const confirmLogout = window.confirm(t('auth.logoutConfirmation'));
 
     if (!confirmLogout) {
       // Abbrechen, wenn der Benutzer das Logout ablehnt
@@ -330,22 +336,8 @@ function goToRegister() {
   router.push('/register');
 }
 
-function navigateTo(link) {
-  switch (link) {
-    case 'Dokumentation':
-      // Navigate to internal documentation page
-      router.push('/docs');
-      break;
-    case 'Impressum':
-      router.push('/impressum');
-      break;
-    case 'Datenschutz':
-      router.push('/datenschutz');
-      break;
-    case 'Kontakt':
-      router.push('/kontakt');
-      break;
-  }
+function navigateTo(route) {
+  router.push(route);
 }
 
 function openSettings() {

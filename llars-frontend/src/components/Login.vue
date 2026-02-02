@@ -6,6 +6,12 @@
 
     <div class="login-container">
       <div class="login-card">
+        <!-- Settings Bar (Theme + Language) -->
+        <div class="login-settings-bar" data-testid="login-settings-bar">
+          <LThemeToggle data-testid="theme-toggle" />
+          <LLanguageToggle data-testid="language-toggle" />
+        </div>
+
         <!-- Header with Logo -->
         <div class="login-header">
           <img src="@/assets/logo/llars-logo.png" alt="LLARS Logo" class="login-logo" />
@@ -283,6 +289,17 @@ async function quickLogin(user) {
   border-radius: var(--llars-radius);
   box-shadow: var(--llars-shadow-lg, 0 8px 32px rgba(0, 0, 0, 0.12));
   overflow: hidden;
+}
+
+/* Settings Bar (Theme + Language Toggle) */
+.login-settings-bar {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: rgba(var(--v-theme-surface-variant), 0.3);
+  border-bottom: 1px solid rgba(var(--v-border-color), 0.1);
 }
 
 /* Header Section */

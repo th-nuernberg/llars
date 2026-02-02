@@ -1,21 +1,19 @@
 #!/usr/bin/env python3
 """
-LLARS Demo Video - Text-to-Speech mit Qwen3-TTS
-================================================
+LLARS Demo Video - Text-to-Speech mit Qwen3-TTS Voice Cloning
+==============================================================
 Lokales TTS mit Qwen3-TTS (Alibaba Cloud, Januar 2026).
 
-Features:
-- Mehrere Sprecher mit unterschiedlichen Stimmen
-- VoiceDesign für Stimm-Beschreibung
-- Voice Cloning für Referenz-Audio
+WICHTIG: Für konsistente Stimmen wird VOICE CLONING verwendet!
+- Jeder Sprecher hat eine Referenz-Audio-Datei (3-15 Sekunden)
+- Alle Generierungen für diesen Sprecher klingen identisch
 
 Modelle:
-- Qwen3-TTS-12Hz-1.7B-VoiceDesign: Beste Qualität, Voice Design
-- Qwen3-TTS-12Hz-0.6B-Base: Leichtgewicht
+- Qwen3-TTS-12Hz-1.7B-Base: Beste Qualität, Voice Cloning
+- Qwen3-TTS-12Hz-0.6B-Base: Leichtgewicht, Voice Cloning
 
 Installation:
-    pip install qwen-tts
-    brew install sox  # macOS
+    pip install qwen-tts soundfile
 """
 
 import os
@@ -23,7 +21,7 @@ import hashlib
 import subprocess
 import warnings
 from pathlib import Path
-from typing import Optional, Dict
+from typing import Optional, Dict, Tuple, Any
 
 # Flash Attention Warnung unterdrücken (nicht verfügbar auf Mac/MPS)
 os.environ["TRANSFORMERS_NO_FLASH_ATTENTION"] = "1"
@@ -32,40 +30,36 @@ warnings.filterwarnings("ignore", message=".*Flash attention.*")
 
 
 # =============================================================================
-# SPRECHER-DEFINITIONEN
+# SPRECHER-DEFINITIONEN MIT REFERENZ-AUDIO
 # =============================================================================
 
 SPEAKERS = {
-    # Standard Host - freundlich, amerikanisch, professionell
-    # Fred ist eine klare US-Stimme, perfekt für Tech-Demos
+    # Host - freundlich, amerikanisch, professionell
     "host": {
         "name": "Alex",
-        "description": "A friendly professional male voice, clear and articulate, with a warm tone. "
-                      "Natural pacing, enthusiastic but not over the top. "
-                      "Suitable for software demonstrations and tutorials.",
-        "macos_voice": "Fred",  # Amerikanische Stimme für Kontrast zu David
+        "ref_audio": "voices/alex_reference.wav",
+        "ref_text": "Hello, I'm Alex. Welcome to this demonstration of LLARS, the LLM Assisted Rating System.",
+        "description": "A friendly professional American male voice, clear and articulate.",
+        "macos_voice": "Fred",
         "macos_rate": 175,
     },
 
-    # Sir David Attenborough Stil - britisch, ruhig, weise
-    # Daniel ist die beste britische Stimme auf macOS
+    # Narrator - britisch, Attenborough-Stil
     "narrator": {
         "name": "David",
-        "description": "A distinguished elderly British male voice, deep and resonant, "
-                      "with the calm authority of a nature documentary narrator. "
-                      "Thoughtful pauses, gentle intonation, warm and wise. "
-                      "Speaking as if revealing the wonders of the natural world. "
-                      "Similar to Sir David Attenborough's iconic narration style.",
-        "macos_voice": "Daniel",  # Britische Stimme für Attenborough-Effekt
-        "macos_rate": 150,  # Langsamer für würdevolles Sprechen
+        "ref_audio": "voices/david_reference.wav",
+        "ref_text": "In the world of artificial intelligence, we observe remarkable developments. Let me guide you through this fascinating journey.",
+        "description": "A distinguished elderly British male voice, calm and authoritative, like a documentary narrator.",
+        "macos_voice": "Daniel",
+        "macos_rate": 150,
     },
 
-    # Technischer Experte - präzise, sachlich
+    # Technischer Experte
     "expert": {
         "name": "Dr. Chen",
-        "description": "A clear, precise female voice with a slight technical accent. "
-                      "Confident and knowledgeable, speaking with authority on technical matters. "
-                      "Well-paced for explaining complex concepts.",
+        "ref_audio": "voices/chen_reference.wav",
+        "ref_text": "From a technical perspective, this architecture demonstrates several key innovations.",
+        "description": "A clear, precise female voice with technical expertise.",
         "macos_voice": "Samantha",
         "macos_rate": 170,
     },
@@ -73,8 +67,9 @@ SPEAKERS = {
     # Default fallback
     "default": {
         "name": "Default",
-        "description": "A calm professional male voice, clear and articulate, "
-                      "suitable for technical presentations.",
+        "ref_audio": None,
+        "ref_text": None,
+        "description": "A calm professional male voice, clear and articulate.",
         "macos_voice": "Daniel",
         "macos_rate": 180,
     }
@@ -83,32 +78,35 @@ SPEAKERS = {
 
 class QwenTTS:
     """
-    Text-to-Speech mit Qwen3-TTS (lokal).
+    Text-to-Speech mit Qwen3-TTS Voice Cloning.
 
-    Unterstützt mehrere Sprecher mit unterschiedlichen Stimm-Charakteristiken.
+    Verwendet Referenz-Audio für 100% konsistente Stimmen!
     """
 
     MODELS = {
-        'large': 'Qwen/Qwen3-TTS-12Hz-1.7B-VoiceDesign',
-        'small': 'Qwen/Qwen3-TTS-12Hz-0.6B-Base',
-        'fallback': None,  # Nur macOS say verwenden
+        'large': 'Qwen/Qwen3-TTS-12Hz-1.7B-Base',  # Voice Cloning
+        'small': 'Qwen/Qwen3-TTS-12Hz-0.6B-Base',  # Voice Cloning (leichter)
+        'design': 'Qwen/Qwen3-TTS-12Hz-1.7B-VoiceDesign',  # Voice Design (inkonsistent!)
+        'fallback': None,  # macOS say
     }
 
     def __init__(
         self,
-        model_size: str = "small",
+        model_size: str = "large",
         cache_dir: str = "audio/cache",
         device: str = "auto",
         language: str = "English",
-        speakers: Optional[Dict] = None
+        speakers: Optional[Dict] = None,
+        voices_dir: str = "voices"
     ):
         self.model_size = model_size
-        self.model_id = self.MODELS.get(model_size, self.MODELS['small'])
+        self.model_id = self.MODELS.get(model_size, self.MODELS['large'])
         self.cache_dir = cache_dir
         self.device = device
         self.language = language
+        self.voices_dir = voices_dir
 
-        # Sprecher-Konfiguration (kann von SCRIPT.json überschrieben werden)
+        # Sprecher-Konfiguration
         self.speakers = {**SPEAKERS}
         if speakers:
             for speaker_id, config in speakers.items():
@@ -118,11 +116,16 @@ class QwenTTS:
                     self.speakers[speaker_id] = config
 
         self._model = None
+        self._voice_prompts = {}  # Cache für Voice Clone Prompts
         self._current_speaker = "default"
 
         Path(cache_dir).mkdir(parents=True, exist_ok=True)
+        Path(voices_dir).mkdir(parents=True, exist_ok=True)
+
         print(f"🎤 Qwen3-TTS initialisiert (Model: {model_size})")
         print(f"   Sprecher: {', '.join(self.speakers.keys())}")
+        if model_size != 'fallback' and model_size != 'design':
+            print(f"   Modus: Voice Cloning (konsistente Stimmen)")
 
     def set_speaker(self, speaker_id: str):
         """Setzt den aktiven Sprecher"""
@@ -144,7 +147,7 @@ class QwenTTS:
         if self._model is not None:
             return
 
-        # Fallback-Modus: Kein Modell laden, direkt macOS say nutzen
+        # Fallback-Modus
         if self.model_id is None:
             print("🎤 Verwende macOS TTS (say) als Fallback")
             self._model = "fallback"
@@ -164,7 +167,7 @@ class QwenTTS:
                     dtype = torch.bfloat16
                 elif hasattr(torch.backends, 'mps') and torch.backends.mps.is_available():
                     device = "mps"
-                    dtype = torch.float32  # MPS braucht float32
+                    dtype = torch.float32
                 else:
                     device = "cpu"
                     dtype = torch.float32
@@ -186,10 +189,57 @@ class QwenTTS:
             print("   Fallback zu macOS TTS...")
             self._model = "fallback"
 
+    def _get_voice_prompt(self, speaker_id: str):
+        """
+        Erstellt oder cached einen Voice Clone Prompt für einen Sprecher.
+
+        Der Voice Prompt enthält die Speaker-Embedding aus der Referenz-Audio
+        und wird für alle Generierungen dieses Sprechers wiederverwendet.
+        """
+        if speaker_id in self._voice_prompts:
+            return self._voice_prompts[speaker_id]
+
+        config = self.get_speaker_config(speaker_id)
+        ref_audio = config.get('ref_audio')
+        ref_text = config.get('ref_text')
+
+        if not ref_audio or not ref_text:
+            print(f"   ⚠️ Keine Referenz-Audio für {speaker_id}, verwende Voice Design")
+            return None
+
+        # Pfad zur Referenz-Audio
+        ref_path = os.path.join(self.voices_dir, os.path.basename(ref_audio))
+        if not os.path.exists(ref_path):
+            # Versuche relativen Pfad
+            ref_path = ref_audio
+            if not os.path.exists(ref_path):
+                print(f"   ⚠️ Referenz-Audio nicht gefunden: {ref_audio}")
+                print(f"      Bitte erstelle: {ref_path}")
+                return None
+
+        print(f"   🎯 Lade Voice Prompt für {config.get('name', speaker_id)}...")
+        print(f"      Referenz: {ref_path}")
+
+        try:
+            # Voice Clone Prompt erstellen
+            prompt = self._model.create_voice_clone_prompt(
+                ref_audio=ref_path,
+                ref_text=ref_text,
+            )
+            self._voice_prompts[speaker_id] = prompt
+            print(f"   ✓ Voice Prompt gecached")
+            return prompt
+
+        except Exception as e:
+            print(f"   ⚠️ Voice Prompt Fehler: {e}")
+            return None
+
     def _cache_key(self, text: str, speaker_id: str) -> str:
-        """Generiert Cache-Key (inkl. Sprecher)"""
-        speaker_config = self.get_speaker_config(speaker_id)
-        content = f"{text}|{self.model_id}|{self.language}|{speaker_config.get('description', '')}"
+        """Generiert Cache-Key"""
+        config = self.get_speaker_config(speaker_id)
+        # Inkludiere Referenz-Audio im Key für Konsistenz
+        ref_audio = config.get('ref_audio', '')
+        content = f"{text}|{self.model_id}|{self.language}|{ref_audio}"
         return hashlib.md5(content.encode()).hexdigest()
 
     def _get_cache_path(self, text: str, speaker_id: str) -> str:
@@ -204,12 +254,12 @@ class QwenTTS:
         speaker: Optional[str] = None
     ) -> str:
         """
-        Generiert Audio für Text mit optionalem Sprecher.
+        Generiert Audio mit Voice Cloning für konsistente Stimmen.
 
         Args:
             text: Zu sprechender Text
             output_path: Optionaler Ausgabepfad
-            speaker: Sprecher-ID (default: aktueller Sprecher)
+            speaker: Sprecher-ID
 
         Returns:
             Pfad zur Audio-Datei
@@ -239,25 +289,35 @@ class QwenTTS:
             return self._generate_qwen(text, final_path, speaker_id)
 
     def _generate_qwen(self, text: str, output_path: str, speaker_id: str) -> str:
-        """Generiert mit Qwen3-TTS"""
-        speaker_config = self.get_speaker_config(speaker_id)
-        speaker_name = speaker_config.get('name', speaker_id)
-        voice_description = speaker_config.get('description', SPEAKERS['default']['description'])
+        """Generiert mit Qwen3-TTS Voice Cloning"""
+        config = self.get_speaker_config(speaker_id)
+        speaker_name = config.get('name', speaker_id)
 
         print(f"🎤 Generiere [{speaker_name}]: {text[:50]}...")
 
         try:
             import soundfile as sf
 
-            # Voice Design für konsistente Stimme pro Sprecher
-            if 'VoiceDesign' in self.model_id:
+            # Voice Prompt für konsistente Stimme holen
+            voice_prompt = self._get_voice_prompt(speaker_id)
+
+            if voice_prompt is not None:
+                # Voice Cloning (konsistent!)
+                wavs, sr = self._model.generate_voice_clone(
+                    text=text,
+                    language=self.language,
+                    voice_clone_prompt=voice_prompt,
+                )
+            elif 'VoiceDesign' in (self.model_id or ''):
+                # Fallback zu Voice Design (inkonsistent)
+                voice_desc = config.get('description', SPEAKERS['default']['description'])
                 wavs, sr = self._model.generate_voice_design(
                     text=text,
                     language=self.language,
-                    instruct=voice_description,
+                    instruct=voice_desc,
                 )
             else:
-                # Base model - einfache Generierung (keine Stimm-Kontrolle)
+                # Base Model ohne Voice Prompt - einfache Generierung
                 wavs, sr = self._model.generate(
                     text=text,
                     language=self.language,
@@ -279,11 +339,11 @@ class QwenTTS:
             return self._generate_fallback(text, output_path, speaker_id)
 
     def _generate_fallback(self, text: str, output_path: str, speaker_id: str) -> str:
-        """Fallback: macOS say mit sprecher-spezifischer Stimme"""
-        speaker_config = self.get_speaker_config(speaker_id)
-        speaker_name = speaker_config.get('name', speaker_id)
-        voice = speaker_config.get('macos_voice', 'Daniel')
-        rate = speaker_config.get('macos_rate', 180)
+        """Fallback: macOS say"""
+        config = self.get_speaker_config(speaker_id)
+        speaker_name = config.get('name', speaker_id)
+        voice = config.get('macos_voice', 'Daniel')
+        rate = config.get('macos_rate', 180)
 
         print(f"🎤 macOS TTS [{speaker_name}]: {text[:50]}...")
 
@@ -354,41 +414,124 @@ class QwenTTS:
     def list_speakers(self):
         """Zeigt verfügbare Sprecher"""
         print("\n🎭 Verfügbare Sprecher:")
-        print("="*60)
+        print("="*70)
         for speaker_id, config in self.speakers.items():
             name = config.get('name', speaker_id)
-            desc = config.get('description', '')[:60]
-            print(f"  {speaker_id:12} | {name:15} | {desc}...")
-        print("="*60)
+            ref = config.get('ref_audio', 'keine')
+            has_ref = "✓" if ref and os.path.exists(os.path.join(self.voices_dir, os.path.basename(ref))) else "✗"
+            print(f"  {speaker_id:12} | {name:15} | Ref: {has_ref} {ref or '-'}")
+        print("="*70)
 
 
 # Alias
 TTSEngine = QwenTTS
 
 
+def create_reference_audio():
+    """
+    Hilfsfunktion zum Erstellen von Referenz-Audio-Dateien.
+
+    Nutzt macOS TTS um initiale Referenz-Dateien zu erstellen,
+    die dann für Voice Cloning verwendet werden.
+    """
+    import platform
+    if platform.system() != 'Darwin':
+        print("Diese Funktion ist nur auf macOS verfügbar")
+        return
+
+    voices_dir = Path("voices")
+    voices_dir.mkdir(exist_ok=True)
+
+    references = {
+        "alex_reference.wav": {
+            "voice": "Fred",
+            "rate": 175,
+            "text": "Hello, I'm Alex. Welcome to this demonstration of LLARS, "
+                   "the LLM Assisted Rating System. Let me show you how it works."
+        },
+        "david_reference.wav": {
+            "voice": "Daniel",
+            "rate": 150,
+            "text": "In the world of artificial intelligence, we observe remarkable developments. "
+                   "Let me guide you through this fascinating journey of discovery."
+        },
+        "chen_reference.wav": {
+            "voice": "Samantha",
+            "rate": 170,
+            "text": "From a technical perspective, this architecture demonstrates several key innovations "
+                   "that enable scalable and efficient processing."
+        }
+    }
+
+    print("\n🎙️ Erstelle Referenz-Audio-Dateien...")
+    print("="*60)
+
+    for filename, config in references.items():
+        output_path = voices_dir / filename
+        temp_aiff = str(output_path).replace('.wav', '.aiff')
+
+        print(f"   Erstelle: {filename}")
+        print(f"   Stimme: {config['voice']}, Rate: {config['rate']}")
+
+        subprocess.run([
+            'say',
+            '-v', config['voice'],
+            '-r', str(config['rate']),
+            '-o', temp_aiff,
+            config['text']
+        ], capture_output=True)
+
+        subprocess.run([
+            'ffmpeg', '-y', '-i', temp_aiff,
+            '-ar', '24000',
+            '-ac', '1',
+            str(output_path)
+        ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+        if os.path.exists(temp_aiff):
+            os.remove(temp_aiff)
+
+        print(f"   ✓ {output_path}")
+
+    print("="*60)
+    print("\n✓ Referenz-Dateien erstellt!")
+    print("  Du kannst diese durch eigene Aufnahmen ersetzen für bessere Qualität.")
+    print("  Jede Datei sollte 3-15 Sekunden lang sein.")
+
+
 if __name__ == '__main__':
-    print("Testing Qwen3-TTS Multi-Speaker...")
-    tts = QwenTTS(model_size="fallback")  # Fallback für schnellen Test
+    import sys
 
-    tts.list_speakers()
+    if len(sys.argv) > 1 and sys.argv[1] == '--create-refs':
+        create_reference_audio()
+    else:
+        print("Testing Qwen3-TTS Voice Cloning...")
 
-    # Test Host
-    print("\n--- Host ---")
-    tts.generate(
-        "Welcome to LLARS, a platform for evaluating LLM outputs.",
-        "test_host.wav",
-        speaker="host"
-    )
-    tts.play("test_host.wav")
+        # Erst Referenz-Dateien erstellen falls nicht vorhanden
+        if not os.path.exists("voices/alex_reference.wav"):
+            print("\n⚠️ Keine Referenz-Dateien gefunden!")
+            print("   Erstelle mit: python src/tts.py --create-refs")
+            create_reference_audio()
 
-    # Test Narrator (Attenborough-Stil)
-    print("\n--- Narrator (Attenborough) ---")
-    tts.generate(
-        "And here we observe... the remarkable process of prompt engineering. "
-        "A delicate dance between human expertise and artificial intelligence.",
-        "test_narrator.wav",
-        speaker="narrator"
-    )
-    tts.play("test_narrator.wav")
+        tts = QwenTTS(model_size="large")
+        tts.list_speakers()
 
-    print("\n✓ Test abgeschlossen")
+        # Test Host
+        print("\n--- Host (Alex) ---")
+        tts.generate(
+            "Welcome to LLARS, a platform for evaluating LLM outputs.",
+            "test_host.wav",
+            speaker="host"
+        )
+        tts.play("test_host.wav")
+
+        # Test Narrator
+        print("\n--- Narrator (David) ---")
+        tts.generate(
+            "And here we observe the remarkable process of prompt engineering.",
+            "test_narrator.wav",
+            speaker="narrator"
+        )
+        tts.play("test_narrator.wav")
+
+        print("\n✓ Test abgeschlossen")

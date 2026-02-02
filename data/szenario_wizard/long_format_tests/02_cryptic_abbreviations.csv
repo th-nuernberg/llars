@@ -1,0 +1,13 @@
+src_id,mdl,out,inp,ts,v
+S001,gpt4,"The quick brown fox jumps over the lazy dog. This is a test response.","Write a pangram sentence.",1706000000,1.0
+S001,claude,"A swift auburn fox leaps above an idle hound. Testing complete.","Write a pangram sentence.",1706000001,1.0
+S001,llama,"Pack my box with five dozen liquor jugs. Response generated.","Write a pangram sentence.",1706000002,1.0
+S001,mistral,"How vexingly quick daft zebras jump! Here's my take.","Write a pangram sentence.",1706000003,1.0
+S002,gpt4,"def fibonacci(n): return n if n <= 1 else fibonacci(n-1) + fibonacci(n-2)","Write a fibonacci function",1706100000,1.0
+S002,claude,"def fib(n): return [0,1][n] if n<2 else fib(n-1)+fib(n-2)","Write a fibonacci function",1706100001,1.0
+S002,llama,"def fibonacci(n):\n  if n <= 1: return n\n  return fibonacci(n-1) + fibonacci(n-2)","Write a fibonacci function",1706100002,1.0
+S002,mistral,"fibonacci = lambda n: n if n < 2 else fibonacci(n-1) + fibonacci(n-2)","Write a fibonacci function",1706100003,1.0
+S003,gpt4,"SELECT * FROM users WHERE created_at > '2024-01-01' ORDER BY name;","Write SQL to get new users",1706200000,1.0
+S003,claude,"SELECT id, name, email FROM users WHERE created_at >= '2024-01-01';","Write SQL to get new users",1706200001,1.0
+S003,llama,"SELECT * FROM users WHERE YEAR(created_at) = 2024 ORDER BY created_at DESC;","Write SQL to get new users",1706200002,1.0
+S003,mistral,"SELECT user_id, username FROM users WHERE created_at BETWEEN '2024-01-01' AND NOW();","Write SQL to get new users",1706200003,1.0

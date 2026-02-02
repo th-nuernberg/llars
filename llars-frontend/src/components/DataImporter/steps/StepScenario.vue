@@ -12,7 +12,7 @@
           <LIcon class="mr-3 mt-1" color="purple">mdi-robot</LIcon>
           <div class="flex-grow-1">
             <div class="text-subtitle-2 font-weight-bold mb-1">
-              KI-Empfehlung basierend auf deinen Daten
+              {{ $t('dataImporter.stepScenario.aiSuggestion.title') }}
             </div>
             <div class="text-body-2 mb-3">
               {{ aiSuggestion.reasoning }}
@@ -24,14 +24,14 @@
                 prepend-icon="mdi-check"
                 @click="applyAiSuggestion"
               >
-                Vorschlag anwenden
+                {{ $t('dataImporter.stepScenario.aiSuggestion.apply') }}
               </LBtn>
               <LBtn
                 size="small"
                 variant="text"
                 @click="aiSuggestionDismissed = true"
               >
-                Manuell konfigurieren
+                {{ $t('dataImporter.stepScenario.aiSuggestion.manual') }}
               </LBtn>
             </div>
           </div>
@@ -53,7 +53,7 @@
             <template #label>
               <div class="d-flex align-center">
                 <LIcon class="mr-2" size="small">mdi-plus-circle</LIcon>
-                <span>Neues Szenario erstellen</span>
+                <span>{{ $t('dataImporter.stepScenario.mode.new') }}</span>
               </div>
             </template>
           </v-radio>
@@ -61,7 +61,7 @@
             <template #label>
               <div class="d-flex align-center">
                 <LIcon class="mr-2" size="small">mdi-folder-open</LIcon>
-                <span>Zu bestehendem Szenario hinzufügen</span>
+                <span>{{ $t('dataImporter.stepScenario.mode.existing') }}</span>
               </div>
             </template>
           </v-radio>
@@ -73,20 +73,20 @@
     <v-card v-if="scenarioMode === 'existing'" variant="outlined" class="mb-4">
       <v-card-title>
         <LIcon class="mr-2">mdi-folder-open</LIcon>
-        Bestehendes Szenario auswählen
+        {{ $t('dataImporter.stepScenario.existingScenario.title') }}
       </v-card-title>
 
       <v-card-text>
         <v-autocomplete
           v-model="localConfig.existingScenarioId"
-          label="Szenario auswählen"
+          :label="$t('dataImporter.stepScenario.existingScenario.select')"
           variant="outlined"
           density="comfortable"
           :items="existingScenarios"
           :item-title="scenario => `${scenario.name} (${scenario.thread_count || 0} Threads)`"
           item-value="scenario_id"
           :loading="loadingScenarios"
-          placeholder="Szenario suchen..."
+          :placeholder="$t('dataImporter.stepScenario.existingScenario.searchPlaceholder')"
           clearable
         >
           <template #item="{ item, props }">
@@ -105,7 +105,7 @@
         </v-autocomplete>
 
         <v-alert v-if="localConfig.existingScenarioId" type="info" variant="tonal" class="mt-3">
-          <strong>{{ itemCount }} neue Einträge</strong> werden zu diesem Szenario hinzugefügt.
+          {{ $t('dataImporter.stepScenario.existingScenario.newEntries', { count: itemCount }) }}
         </v-alert>
       </v-card-text>
     </v-card>
@@ -116,7 +116,7 @@
       <v-card variant="outlined" class="mb-4">
         <v-card-title>
           <LIcon class="mr-2">mdi-information</LIcon>
-          Szenario-Informationen
+          {{ $t('dataImporter.stepScenario.scenarioInfo.title') }}
           <v-spacer />
           <v-btn
             v-if="!aiGeneratingName"
@@ -126,7 +126,7 @@
             prepend-icon="mdi-robot"
             @click="generateAiName"
           >
-            KI-Name
+            {{ $t('dataImporter.stepScenario.scenarioInfo.aiName') }}
           </v-btn>
           <v-progress-circular v-else size="20" width="2" indeterminate color="purple" />
         </v-card-title>
@@ -136,14 +136,14 @@
             <v-col cols="12">
               <v-text-field
                 v-model="localConfig.name"
-                label="Szenario-Name *"
+                :label="$t('dataImporter.stepScenario.scenarioInfo.name')"
                 variant="outlined"
                 density="comfortable"
-                placeholder="z.B. Beratungsqualität Evaluation Q1"
-                :rules="[v => !!v || 'Name ist erforderlich']"
+                :placeholder="$t('dataImporter.stepScenario.scenarioInfo.namePlaceholder')"
+                :rules="[v => !!v || $t('dataImporter.stepScenario.scenarioInfo.nameRequired')]"
               >
                 <template #append-inner>
-                  <v-tooltip text="KI generiert einen passenden Namen">
+                  <v-tooltip :text="$t('dataImporter.stepScenario.scenarioInfo.aiNameTooltip')">
                     <template #activator="{ props }">
                       <v-btn
                         v-bind="props"
@@ -165,7 +165,7 @@
             <v-col cols="12" sm="6">
               <v-select
                 v-model="localConfig.taskType"
-                label="Aufgabentyp *"
+                :label="$t('dataImporter.stepScenario.scenarioInfo.taskType')"
                 variant="outlined"
                 density="comfortable"
                 :items="taskTypes"
@@ -191,11 +191,11 @@
             <v-col cols="12" sm="6">
               <v-text-field
                 v-model="localConfig.sourceName"
-                label="Quellname"
+                :label="$t('dataImporter.stepScenario.scenarioInfo.sourceName')"
                 variant="outlined"
                 density="comfortable"
-                placeholder="z.B. KIA Säule 3"
-                hint="Wird bei importierten Threads angezeigt"
+                :placeholder="$t('dataImporter.stepScenario.scenarioInfo.sourceNamePlaceholder')"
+                :hint="$t('dataImporter.stepScenario.scenarioInfo.sourceNameHint')"
                 persistent-hint
               />
             </v-col>
@@ -203,11 +203,11 @@
             <v-col cols="12">
               <v-textarea
                 v-model="localConfig.description"
-                label="Beschreibung"
+                :label="$t('dataImporter.stepScenario.scenarioInfo.description')"
                 variant="outlined"
                 density="comfortable"
                 rows="2"
-                placeholder="Optionale Beschreibung des Szenarios..."
+                :placeholder="$t('dataImporter.stepScenario.scenarioInfo.descriptionPlaceholder')"
               />
             </v-col>
           </v-row>
@@ -218,7 +218,7 @@
       <v-card variant="outlined" class="mb-4">
         <v-card-title>
           <LIcon class="mr-2">mdi-calendar</LIcon>
-          Zeitraum
+          {{ $t('dataImporter.stepScenario.dates.title') }}
         </v-card-title>
 
         <v-card-text>
@@ -226,7 +226,7 @@
             <v-col cols="12" sm="6">
               <v-text-field
                 v-model="localConfig.beginDate"
-                label="Startdatum"
+                :label="$t('dataImporter.stepScenario.dates.startDate')"
                 type="date"
                 variant="outlined"
                 density="comfortable"
@@ -235,11 +235,11 @@
             <v-col cols="12" sm="6">
               <v-text-field
                 v-model="localConfig.endDate"
-                label="Enddatum"
+                :label="$t('dataImporter.stepScenario.dates.endDate')"
                 type="date"
                 variant="outlined"
                 density="comfortable"
-                hint="Leer lassen für unbegrenzt"
+                :hint="$t('dataImporter.stepScenario.dates.endDateHint')"
                 persistent-hint
               />
             </v-col>
@@ -264,7 +264,7 @@
       <v-card variant="outlined" class="mb-4">
         <v-card-title>
           <LIcon class="mr-2">mdi-account-switch</LIcon>
-          Verteilung & Reihenfolge
+          {{ $t('dataImporter.stepScenario.distribution.title') }}
         </v-card-title>
 
         <v-card-text>
@@ -272,7 +272,7 @@
             <v-col cols="12" sm="6">
               <v-select
                 v-model="localConfig.distributionMode"
-                label="Verteilungsmodus"
+                :label="$t('dataImporter.stepScenario.distribution.mode')"
                 variant="outlined"
                 density="comfortable"
                 :items="distributionModes"
@@ -290,7 +290,7 @@
             <v-col cols="12" sm="6">
               <v-select
                 v-model="localConfig.orderMode"
-                label="Reihenfolge"
+                :label="$t('dataImporter.stepScenario.distribution.order')"
                 variant="outlined"
                 density="comfortable"
                 :items="orderModes"
@@ -316,13 +316,11 @@
           {{ scenarioMode === 'existing' ? 'mdi-alert' : 'mdi-information' }}
         </LIcon>
         <div>
-          <strong>{{ itemCount }} Einträge</strong>
           <template v-if="scenarioMode === 'new'">
-            werden in das neue Szenario
-            <strong>"{{ localConfig.name || '(Unbenannt)' }}"</strong> importiert.
+            {{ $t('dataImporter.stepScenario.summary.newScenario', { count: itemCount, name: localConfig.name || $t('dataImporter.stepScenario.summary.unnamed') }) }}
           </template>
           <template v-else>
-            werden zum bestehenden Szenario hinzugefügt.
+            {{ $t('dataImporter.stepScenario.summary.existingScenario', { count: itemCount }) }}
           </template>
         </div>
       </div>
@@ -333,6 +331,9 @@
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue'
 import axios from 'axios'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 const props = defineProps({
   scenarioConfig: {
@@ -503,48 +504,48 @@ onMounted(() => {
 })
 
 // Task type helpers
-const taskTypes = [
-  { value: 'rating', name: 'Rating', icon: 'mdi-star', color: 'amber', description: 'Bewertung von Features (1-5 Sterne)' },
-  { value: 'ranking', name: 'Ranking', icon: 'mdi-sort', color: 'blue', description: 'Sortierung von Features (Drag & Drop)' },
-  { value: 'mail_rating', name: 'Mail Rating', icon: 'mdi-email-check', color: 'green', description: 'Bewertung ganzer Konversationen' },
-  { value: 'comparison', name: 'Comparison', icon: 'mdi-compare', color: 'purple', description: 'Paarweiser Vergleich (A vs B)' },
-  { value: 'authenticity', name: 'Authenticity', icon: 'mdi-shield-check', color: 'orange', description: 'Fake/Real Unterscheidung' },
-  { value: 'judge', name: 'Chatbot Arena', icon: 'mdi-sword-cross', color: 'teal', description: 'Paarweise Vergleiche im Arena-Modus' },
-  { value: 'labeling', name: 'Labeling', icon: 'mdi-label-multiple', color: 'indigo', description: 'Texte in Kategorien einordnen' }
-]
+const taskTypes = computed(() => [
+  { value: 'rating', name: t('dataImporter.stepScenario.taskTypes.rating'), icon: 'mdi-star', color: 'amber', description: t('dataImporter.stepScenario.taskTypes.ratingDesc') },
+  { value: 'ranking', name: t('dataImporter.stepScenario.taskTypes.ranking'), icon: 'mdi-sort', color: 'blue', description: t('dataImporter.stepScenario.taskTypes.rankingDesc') },
+  { value: 'mail_rating', name: t('dataImporter.stepScenario.taskTypes.mailRating'), icon: 'mdi-email-check', color: 'green', description: t('dataImporter.stepScenario.taskTypes.mailRatingDesc') },
+  { value: 'comparison', name: t('dataImporter.stepScenario.taskTypes.comparison'), icon: 'mdi-compare', color: 'purple', description: t('dataImporter.stepScenario.taskTypes.comparisonDesc') },
+  { value: 'authenticity', name: t('dataImporter.stepScenario.taskTypes.authenticity'), icon: 'mdi-shield-check', color: 'orange', description: t('dataImporter.stepScenario.taskTypes.authenticityDesc') },
+  { value: 'judge', name: t('dataImporter.stepScenario.taskTypes.judge'), icon: 'mdi-sword-cross', color: 'teal', description: t('dataImporter.stepScenario.taskTypes.judgeDesc') },
+  { value: 'labeling', name: t('dataImporter.stepScenario.taskTypes.labeling'), icon: 'mdi-label-multiple', color: 'indigo', description: t('dataImporter.stepScenario.taskTypes.labelingDesc') }
+])
 
 const getTaskTypeIcon = (type) => {
   const normalizedType = normalizeTaskType(type)
-  return taskTypes.find(t => t.value === normalizedType)?.icon || 'mdi-help-circle'
+  return taskTypes.value.find(t => t.value === normalizedType)?.icon || 'mdi-help-circle'
 }
 
 const getTaskTypeColor = (type) => {
   const normalizedType = normalizeTaskType(type)
-  return taskTypes.find(t => t.value === normalizedType)?.color || 'grey'
+  return taskTypes.value.find(t => t.value === normalizedType)?.color || 'grey'
 }
 
 const getTaskTypeName = (type) => {
   const normalizedType = normalizeTaskType(type)
-  return taskTypes.find(t => t.value === normalizedType)?.name || normalizedType
+  return taskTypes.value.find(t => t.value === normalizedType)?.name || normalizedType
 }
 
-const distributionModes = [
-  { value: 'all', name: 'Alle sehen alles', description: 'Jeder Rater sieht alle Threads' },
-  { value: 'round_robin', name: 'Round Robin', description: 'Threads werden gleichmäßig auf Rater verteilt' }
-]
+const distributionModes = computed(() => [
+  { value: 'all', name: t('dataImporter.stepScenario.distribution.modes.all'), description: t('dataImporter.stepScenario.distribution.modes.allDesc') },
+  { value: 'round_robin', name: t('dataImporter.stepScenario.distribution.modes.roundRobin'), description: t('dataImporter.stepScenario.distribution.modes.roundRobinDesc') }
+])
 
-const orderModes = [
-  { value: 'original', name: 'Original', description: 'Reihenfolge wie in den Daten' },
-  { value: 'shuffle_all', name: 'Zufällig (alle gleich)', description: 'Zufällige Reihenfolge, für alle Rater gleich' },
-  { value: 'shuffle_per_user', name: 'Zufällig (pro Nutzer)', description: 'Jeder Rater sieht andere Reihenfolge' }
-]
+const orderModes = computed(() => [
+  { value: 'original', name: t('dataImporter.stepScenario.distribution.orderModes.original'), description: t('dataImporter.stepScenario.distribution.orderModes.originalDesc') },
+  { value: 'shuffle_all', name: t('dataImporter.stepScenario.distribution.orderModes.shuffleAll'), description: t('dataImporter.stepScenario.distribution.orderModes.shuffleAllDesc') },
+  { value: 'shuffle_per_user', name: t('dataImporter.stepScenario.distribution.orderModes.shufflePerUser'), description: t('dataImporter.stepScenario.distribution.orderModes.shufflePerUserDesc') }
+])
 
-const datePresets = [
-  { label: '1 Woche', days: 7 },
-  { label: '2 Wochen', days: 14 },
-  { label: '1 Monat', days: 30 },
-  { label: '3 Monate', days: 90 }
-]
+const datePresets = computed(() => [
+  { label: t('dataImporter.stepScenario.dates.presets.1week'), days: 7 },
+  { label: t('dataImporter.stepScenario.dates.presets.2weeks'), days: 14 },
+  { label: t('dataImporter.stepScenario.dates.presets.1month'), days: 30 },
+  { label: t('dataImporter.stepScenario.dates.presets.3months'), days: 90 }
+])
 
 const applyDatePreset = (preset) => {
   const today = new Date()

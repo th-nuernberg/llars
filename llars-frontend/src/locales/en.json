@@ -325,7 +325,132 @@
         "body": "From upload to evaluation in one flow"
       }
     },
-    "success": "Import successful! {count} entries imported."
+    "success": "Import successful! {count} entries imported.",
+    "stepScenario": {
+      "aiSuggestion": {
+        "title": "AI recommendation based on your data",
+        "apply": "Apply suggestion",
+        "manual": "Configure manually"
+      },
+      "mode": {
+        "new": "Create new scenario",
+        "existing": "Add to existing scenario"
+      },
+      "existingScenario": {
+        "title": "Select existing scenario",
+        "select": "Select scenario",
+        "searchPlaceholder": "Search scenario...",
+        "newEntries": "{count} new entries will be added to this scenario."
+      },
+      "scenarioInfo": {
+        "title": "Scenario information",
+        "aiName": "AI name",
+        "aiNameTooltip": "AI generates a suitable name",
+        "name": "Scenario name *",
+        "namePlaceholder": "e.g. Counseling Quality Evaluation Q1",
+        "nameRequired": "Name is required",
+        "taskType": "Task type *",
+        "sourceName": "Source name",
+        "sourceNamePlaceholder": "e.g. KIA Pillar 3",
+        "sourceNameHint": "Displayed for imported threads",
+        "description": "Description",
+        "descriptionPlaceholder": "Optional scenario description..."
+      },
+      "dates": {
+        "title": "Time period",
+        "startDate": "Start date",
+        "endDate": "End date",
+        "endDateHint": "Leave empty for unlimited",
+        "presets": {
+          "1week": "1 week",
+          "2weeks": "2 weeks",
+          "1month": "1 month",
+          "3months": "3 months"
+        }
+      },
+      "distribution": {
+        "title": "Distribution & Order",
+        "mode": "Distribution mode",
+        "order": "Order",
+        "modes": {
+          "all": "Everyone sees everything",
+          "allDesc": "Every rater sees all threads",
+          "roundRobin": "Round Robin",
+          "roundRobinDesc": "Threads are distributed evenly among raters"
+        },
+        "orderModes": {
+          "original": "Original",
+          "originalDesc": "Order as in data",
+          "shuffleAll": "Random (same for all)",
+          "shuffleAllDesc": "Random order, same for all raters",
+          "shufflePerUser": "Random (per user)",
+          "shufflePerUserDesc": "Each rater sees different order"
+        }
+      },
+      "summary": {
+        "newScenario": "{count} entries will be imported into the new scenario \"{name}\".",
+        "existingScenario": "{count} entries will be added to the existing scenario.",
+        "unnamed": "(Unnamed)"
+      },
+      "taskTypes": {
+        "rating": "Rating",
+        "ratingDesc": "Rate features (1-5 stars)",
+        "ranking": "Ranking",
+        "rankingDesc": "Sort features (drag & drop)",
+        "mailRating": "Mail Rating",
+        "mailRatingDesc": "Rate entire conversations",
+        "comparison": "Comparison",
+        "comparisonDesc": "Pairwise comparison (A vs B)",
+        "authenticity": "Authenticity",
+        "authenticityDesc": "Fake/Real distinction",
+        "judge": "Chatbot Arena",
+        "judgeDesc": "Pairwise comparisons in arena mode",
+        "labeling": "Labeling",
+        "labelingDesc": "Categorize texts"
+      }
+    },
+    "stepReview": {
+      "stats": {
+        "entries": "Entries",
+        "messages": "Messages",
+        "raters": "Raters",
+        "evaluators": "Evaluators"
+      },
+      "config": {
+        "title": "Configuration",
+        "scenarioName": "Scenario name",
+        "taskType": "Task type",
+        "sourceFormat": "Source format",
+        "period": "Period",
+        "unlimited": "unlimited",
+        "distribution": "Distribution",
+        "order": "Order"
+      },
+      "warnings": {
+        "title": "Notes:",
+        "noEntries": "No entries found to import.",
+        "noRaters": "No raters selected. The scenario cannot be evaluated.",
+        "noEndDate": "No end date set. The scenario remains active indefinitely."
+      },
+      "ready": {
+        "title": "Ready to import",
+        "body": "All settings have been checked. Click \"Start import\" to import the data and create the scenario.",
+        "confirm": "I have reviewed the configuration"
+      },
+      "progress": {
+        "title": "Import in progress...",
+        "body": "Please wait while the data is being imported."
+      },
+      "formats": {
+        "openai": "OpenAI/ChatML",
+        "lmsys": "LMSYS Pairwise",
+        "jsonl": "JSONL",
+        "csv": "CSV/Tabular",
+        "llars": "LLARS Native",
+        "generic": "Generic Text Data",
+        "unknown": "Unknown"
+      }
+    }
   },
   "docs": {
     "hero": {
@@ -5886,6 +6011,65 @@
         "empty": {
           "title": "No documents in this collection",
           "hint": "Upload documents or start a crawl job."
+        }
+      },
+      "documentUpload": {
+        "title": "Upload documents",
+        "selectCollection": "Select collection *",
+        "selectCollectionError": "Please select a collection",
+        "dropFiles": "Drop files here",
+        "dragFiles": "Drag files here",
+        "or": "or",
+        "selectFiles": "Select files",
+        "allowedFormats": "Allowed formats: PDF, TXT, MD (Markdown)",
+        "selectedFiles": "Selected files ({count})",
+        "overallProgress": "Overall progress",
+        "uploadSuccess": "{success} of {total} file(s) uploaded successfully",
+        "uploadError": "{count} file(s) could not be uploaded",
+        "unknownError": "Unknown error",
+        "uploadFailed": "Upload failed",
+        "upload": "Upload"
+      },
+      "collectionManager": {
+        "createNew": "Create new collection",
+        "noDescription": "No description available",
+        "documents": "Documents",
+        "size": "Size",
+        "empty": {
+          "title": "No collections available",
+          "hint": "Create your first collection to organize documents.",
+          "createFirst": "Create first collection"
+        }
+      },
+      "documentManager": {
+        "title": "Documents",
+        "upload": "Upload",
+        "filterCollection": "Filter by collection",
+        "filterStatus": "Filter by status",
+        "search": "Search",
+        "selectedCount": "{count} document(s) selected",
+        "deleteSelected": "Delete selected",
+        "headers": {
+          "filename": "Filename",
+          "collection": "Collection",
+          "size": "Size",
+          "status": "Status",
+          "chunks": "Chunks",
+          "retrievals": "Retrievals",
+          "uploaded": "Uploaded",
+          "actions": "Actions"
+        },
+        "status": {
+          "pending": "Pending",
+          "processing": "Processing",
+          "indexed": "Indexed",
+          "failed": "Failed"
+        },
+        "empty": {
+          "title": "No documents found",
+          "hintFilter": "Try adjusting your filters.",
+          "hintUpload": "Upload your first document.",
+          "uploadFirst": "Upload document"
         }
       }
     }

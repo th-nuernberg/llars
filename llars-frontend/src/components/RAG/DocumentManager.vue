@@ -2,14 +2,14 @@
   <v-card>
     <v-card-title class="d-flex align-center pa-4">
       <LIcon icon="mdi-file-document-multiple" class="mr-2"></LIcon>
-      Dokumente
+      {{ $t('rag.documentManager.title') }}
       <v-spacer></v-spacer>
       <LBtn
         variant="primary"
         prepend-icon="mdi-upload"
         @click="$emit('upload')"
       >
-        Hochladen
+        {{ $t('rag.documentManager.upload') }}
       </LBtn>
     </v-card-title>
 
@@ -21,7 +21,7 @@
         <v-col cols="12" md="4">
           <v-select
             v-model="selectedCollection"
-            label="Collection filtern"
+            :label="$t('rag.documentManager.filterCollection')"
             :items="collectionItems"
             variant="outlined"
             density="comfortable"
@@ -32,7 +32,7 @@
         <v-col cols="12" md="4">
           <v-select
             v-model="selectedStatus"
-            label="Status filtern"
+            :label="$t('rag.documentManager.filterStatus')"
             :items="statusItems"
             variant="outlined"
             density="comfortable"
@@ -54,7 +54,7 @@
         <v-col cols="12" md="4">
           <v-text-field
             v-model="search"
-            label="Suche"
+            :label="$t('rag.documentManager.search')"
             prepend-inner-icon="mdi-magnify"
             variant="outlined"
             density="comfortable"
@@ -68,7 +68,7 @@
         <v-col cols="12">
           <v-alert type="info" variant="tonal" density="compact">
             <div class="d-flex align-center">
-              <span>{{ selected.length }} Dokument(e) ausgewählt</span>
+              <span>{{ $t('rag.documentManager.selectedCount', { count: selected.length }) }}</span>
               <v-spacer></v-spacer>
               <LBtn
                 variant="danger"
@@ -76,7 +76,7 @@
                 prepend-icon="mdi-delete"
                 @click="handleBulkDelete"
               >
-                Ausgewählte löschen
+                {{ $t('rag.documentManager.deleteSelected') }}
               </LBtn>
             </div>
           </v-alert>
@@ -165,9 +165,9 @@
       <template v-slot:no-data>
         <div class="text-center pa-8">
           <LIcon size="64" color="grey-lighten-1" class="mb-4">mdi-file-document-multiple-outline</LIcon>
-          <div class="text-h6 mb-2">Keine Dokumente gefunden</div>
+          <div class="text-h6 mb-2">{{ $t('rag.documentManager.empty.title') }}</div>
           <div class="text-medium-emphasis mb-4">
-            {{ search || selectedCollection || selectedStatus ? 'Versuchen Sie, Ihre Filter anzupassen.' : 'Laden Sie Ihr erstes Dokument hoch.' }}
+            {{ search || selectedCollection || selectedStatus ? $t('rag.documentManager.empty.hintFilter') : $t('rag.documentManager.empty.hintUpload') }}
           </div>
           <LBtn
             v-if="!search && !selectedCollection && !selectedStatus"
@@ -175,7 +175,7 @@
             prepend-icon="mdi-upload"
             @click="$emit('upload')"
           >
-            Dokument hochladen
+            {{ $t('rag.documentManager.empty.uploadFirst') }}
           </LBtn>
         </div>
       </template>
@@ -184,7 +184,10 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 const props = defineProps({
   documents: {
@@ -212,16 +215,16 @@ const search = ref('')
 const selectedCollection = ref(null)
 const selectedStatus = ref(null)
 
-const headers = [
-  { title: 'Dateiname', key: 'filename', sortable: true },
-  { title: 'Collection', key: 'collection', sortable: true },
-  { title: 'Größe', key: 'file_size', sortable: true },
-  { title: 'Status', key: 'status', sortable: true },
-  { title: 'Chunks', key: 'chunk_count', sortable: true },
-  { title: 'Abrufe', key: 'retrieval_count', sortable: true },
-  { title: 'Hochgeladen', key: 'uploaded_at', sortable: true },
-  { title: 'Aktionen', key: 'actions', sortable: false, align: 'end' }
-]
+const headers = computed(() => [
+  { title: t('rag.documentManager.headers.filename'), key: 'filename', sortable: true },
+  { title: t('rag.documentManager.headers.collection'), key: 'collection', sortable: true },
+  { title: t('rag.documentManager.headers.size'), key: 'file_size', sortable: true },
+  { title: t('rag.documentManager.headers.status'), key: 'status', sortable: true },
+  { title: t('rag.documentManager.headers.chunks'), key: 'chunk_count', sortable: true },
+  { title: t('rag.documentManager.headers.retrievals'), key: 'retrieval_count', sortable: true },
+  { title: t('rag.documentManager.headers.uploaded'), key: 'uploaded_at', sortable: true },
+  { title: t('rag.documentManager.headers.actions'), key: 'actions', sortable: false, align: 'end' }
+])
 
 const collectionItems = computed(() => {
   return props.collections.map(c => ({
@@ -230,12 +233,12 @@ const collectionItems = computed(() => {
   }))
 })
 
-const statusItems = [
-  { value: 'pending', title: 'Ausstehend', color: 'warning' },
-  { value: 'processing', title: 'Verarbeitung', color: 'info' },
-  { value: 'indexed', title: 'Indexiert', color: 'success' },
-  { value: 'failed', title: 'Fehler', color: 'error' }
-]
+const statusItems = computed(() => [
+  { value: 'pending', title: t('rag.documentManager.status.pending'), color: 'warning' },
+  { value: 'processing', title: t('rag.documentManager.status.processing'), color: 'info' },
+  { value: 'indexed', title: t('rag.documentManager.status.indexed'), color: 'success' },
+  { value: 'failed', title: t('rag.documentManager.status.failed'), color: 'error' }
+])
 
 const filteredDocuments = computed(() => {
   let filtered = [...props.documents]
@@ -310,10 +313,10 @@ const getCollectionVariant = (collectionName) => {
 
 const getStatusText = (status) => {
   const textMap = {
-    'pending': 'Ausstehend',
-    'processing': 'Verarbeitung',
-    'indexed': 'Indexiert',
-    'failed': 'Fehler'
+    'pending': t('rag.documentManager.status.pending'),
+    'processing': t('rag.documentManager.status.processing'),
+    'indexed': t('rag.documentManager.status.indexed'),
+    'failed': t('rag.documentManager.status.failed')
   }
   return textMap[status] || status
 }

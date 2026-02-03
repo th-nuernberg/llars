@@ -51,13 +51,16 @@ ignore =
     F824,
     # F403: star import (used intentionally in some modules)
     F403,
-    # E114/E122/E124/E126/E129/E131: indentation issues (style only)
+    # E114/E122/E124/E126/E127/E129/E131: indentation issues (style only)
     E114,
     E122,
     E124,
     E126,
+    E127,
     E129,
     E131,
+    # E306: expected blank line before nested definition (style only)
+    E306,
     # E203/E225/E231/E241: whitespace issues (style only)
     E203,
     E225,
@@ -79,7 +82,9 @@ exclude =
     node_modules,
     dist,
     build,
-    *.egg-info
+    *.egg-info,
+    datasets,
+    10kGNAD-master
 
 # Per-file ignores for test files
 per-file-ignores =

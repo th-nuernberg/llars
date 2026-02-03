@@ -5,9 +5,9 @@
       <v-card-title class="d-flex align-center pa-4">
         <LIcon class="mr-2" color="primary">llars:evaluation-assistant</LIcon>
         <div>
-          <div class="text-h6">Data Importer</div>
+          <div class="text-h6">{{ $t('dataImporter.title') }}</div>
           <div class="text-caption text-medium-emphasis">
-            Daten hochladen und Evaluation starten
+            {{ $t('dataImporter.wizard.subtitle') }}
           </div>
         </div>
         <v-spacer />
@@ -34,7 +34,7 @@
           prepend-icon="mdi-close"
           @click="handleClose"
         >
-          Schließen
+          {{ $t('dataImporter.wizard.close') }}
         </LBtn>
       </v-card-title>
 
@@ -123,27 +123,27 @@
         <div v-else-if="currentStep === 5" class="step-execute pa-6">
           <div class="execute-summary">
             <LIcon size="64" color="primary" class="mb-4">mdi-rocket-launch</LIcon>
-            <h2 class="text-h5 mb-2">Bereit zum Import</h2>
+            <h2 class="text-h5 mb-2">{{ $t('dataImporter.wizard.execute.ready') }}</h2>
             <p class="text-body-1 text-medium-emphasis mb-6">
-              {{ sessions.length }} Dateien werden als "{{ scenarioConfig.name }}" importiert.
+              {{ $t('dataImporter.wizard.execute.filesWillBeImported', { count: sessions.length, name: scenarioConfig.name }) }}
             </p>
 
             <div class="summary-cards">
               <div class="summary-card">
                 <div class="summary-value">{{ sessions.length }}</div>
-                <div class="summary-label">Dateien</div>
+                <div class="summary-label">{{ $t('dataImporter.wizard.execute.files') }}</div>
               </div>
               <div class="summary-card">
                 <div class="summary-value">{{ totalItemCount.toLocaleString() }}</div>
-                <div class="summary-label">Einträge</div>
+                <div class="summary-label">{{ $t('dataImporter.wizard.execute.entries') }}</div>
               </div>
               <div class="summary-card">
                 <div class="summary-value">{{ getTaskTypeLabel(scenarioConfig.taskType) }}</div>
-                <div class="summary-label">Task-Typ</div>
+                <div class="summary-label">{{ $t('dataImporter.wizard.execute.taskType') }}</div>
               </div>
               <div class="summary-card">
                 <div class="summary-value">{{ totalUsersCount }}</div>
-                <div class="summary-label">Benutzer</div>
+                <div class="summary-label">{{ $t('dataImporter.wizard.execute.users') }}</div>
               </div>
             </div>
 
@@ -156,7 +156,7 @@
               class="mt-6"
               @click="handleExecuteImport"
             >
-              Import starten
+              {{ $t('dataImporter.wizard.execute.startImport') }}
             </LBtn>
 
             <!-- Import Progress -->
@@ -180,7 +180,7 @@
               class="mt-6"
             >
               <div class="text-body-1 font-weight-medium">
-                {{ importResult?.imported_count || 0 }} Einträge erfolgreich importiert!
+                {{ $t('dataImporter.wizard.execute.successMessage', { count: importResult?.imported_count || 0 }) }}
               </div>
             </v-alert>
           </div>
@@ -198,7 +198,7 @@
           :disabled="loading || importing"
           @click="previousStep"
         >
-          Zurück
+          {{ $t('dataImporter.wizard.back') }}
         </LBtn>
 
         <v-spacer />
@@ -220,7 +220,7 @@
           prepend-icon="mdi-check"
           @click="handleComplete"
         >
-          Fertig
+          {{ $t('dataImporter.wizard.done') }}
         </LBtn>
       </v-card-actions>
     </v-card>
@@ -230,7 +230,10 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { useSnackbar } from '@/composables/useSnackbar'
+
+const { t } = useI18n()
 
 import StepUpload from './steps/StepUpload.vue'
 import StepDescribe from './steps/StepDescribe.vue'
@@ -279,24 +282,24 @@ const userConfig = ref({
 })
 
 // Step definitions (5 steps with user invitation)
-const steps = [
-  { value: 1, title: 'Upload', icon: 'mdi-upload' },
-  { value: 2, title: 'Beschreiben', icon: 'mdi-chat-question' },
-  { value: 3, title: 'Konfigurieren', icon: 'mdi-cog' },
-  { value: 4, title: 'Benutzer', icon: 'mdi-account-group' },
-  { value: 5, title: 'Import', icon: 'mdi-rocket-launch' }
-]
+const steps = computed(() => [
+  { value: 1, title: t('dataImporter.wizard.steps.upload'), icon: 'mdi-upload' },
+  { value: 2, title: t('dataImporter.wizard.steps.describe'), icon: 'mdi-chat-question' },
+  { value: 3, title: t('dataImporter.wizard.steps.configure'), icon: 'mdi-cog' },
+  { value: 4, title: t('dataImporter.wizard.steps.users'), icon: 'mdi-account-group' },
+  { value: 5, title: t('dataImporter.wizard.steps.import'), icon: 'mdi-rocket-launch' }
+])
 
-const taskTypeLabels = {
-  rating: 'Rating',
-  ranking: 'Ranking',
-  comparison: 'Vergleich',
-  mail_rating: 'Mail Rating',
-  authenticity: 'Echt/Fake',
-  labeling: 'Klassifikation',
-  classification: 'Klassifikation',
-  text_classification: 'Klassifikation'
-}
+const taskTypeLabels = computed(() => ({
+  rating: t('dataImporter.wizard.taskTypes.rating'),
+  ranking: t('dataImporter.wizard.taskTypes.ranking'),
+  comparison: t('dataImporter.wizard.taskTypes.comparison'),
+  mail_rating: t('dataImporter.wizard.taskTypes.mail_rating'),
+  authenticity: t('dataImporter.wizard.taskTypes.authenticity'),
+  labeling: t('dataImporter.wizard.taskTypes.labeling'),
+  classification: t('dataImporter.wizard.taskTypes.labeling'),
+  text_classification: t('dataImporter.wizard.taskTypes.labeling')
+}))
 
 const normalizeTaskType = (taskType) => {
   if (!taskType) return taskType
@@ -335,15 +338,15 @@ const canProceed = computed(() => {
 const nextButtonText = computed(() => {
   switch (currentStep.value) {
     case 1:
-      return 'Weiter'
+      return t('dataImporter.wizard.nextButtons.continue')
     case 2:
-      return 'Konfigurieren'
+      return t('dataImporter.wizard.nextButtons.configure')
     case 3:
-      return 'Benutzer einladen'
+      return t('dataImporter.wizard.nextButtons.inviteUsers')
     case 4:
-      return 'Import vorbereiten'
+      return t('dataImporter.wizard.nextButtons.prepareImport')
     default:
-      return 'Weiter'
+      return t('dataImporter.wizard.nextButtons.continue')
   }
 })
 
@@ -374,7 +377,7 @@ const previousStep = () => {
 
 // Helper
 function getTaskTypeLabel(type) {
-  return taskTypeLabels[type] || type
+  return taskTypeLabels.value[type] || type
 }
 
 // Event handlers
@@ -390,7 +393,7 @@ const handleFilesUploaded = (uploadedSessions) => {
       if (resultArray.length === 1 && firstResult.filename) {
         scenarioConfig.value.name = firstResult.filename.replace(/\.[^/.]+$/, '')
       } else {
-        scenarioConfig.value.name = `Import ${resultArray.length} Dateien`
+        scenarioConfig.value.name = t('dataImporter.wizard.autoName', { count: resultArray.length })
       }
     }
 
@@ -417,7 +420,7 @@ const handleIntentAnalyzed = (result) => {
 const handleExecuteImport = async () => {
   importing.value = true
   importProgress.value = 0
-  importStatus.value = 'Bereite Import vor...'
+  importStatus.value = t('dataImporter.wizard.execute.preparing')
 
   try {
     // Simulate progress for better UX
@@ -427,7 +430,7 @@ const handleExecuteImport = async () => {
       }
     }, 500)
 
-    importStatus.value = 'Transformiere Daten...'
+    importStatus.value = t('dataImporter.wizard.execute.transforming')
     importProgress.value = 20
 
     // Execute with AI analysis for transformation
@@ -442,19 +445,19 @@ const handleExecuteImport = async () => {
       aiAnalysis: normalizedAnalysis
     })
 
-    importStatus.value = 'Importiere Daten...'
+    importStatus.value = t('dataImporter.wizard.execute.importing')
 
     clearInterval(progressInterval)
     importProgress.value = 100
-    importStatus.value = 'Import abgeschlossen!'
+    importStatus.value = t('dataImporter.wizard.execute.complete')
 
     importResult.value = result
     importComplete.value = true
 
-    showSuccess(`${result?.imported_count || 0} Einträge erfolgreich importiert!`)
+    showSuccess(t('dataImporter.wizard.execute.successMessage', { count: result?.imported_count || 0 }))
 
   } catch (err) {
-    showError('Import fehlgeschlagen: ' + (err.message || 'Unbekannter Fehler'))
+    showError(t('dataImporter.wizard.execute.errorMessage', { error: err.message || t('dataImporter.wizard.execute.unknownError') }))
   } finally {
     importing.value = false
   }

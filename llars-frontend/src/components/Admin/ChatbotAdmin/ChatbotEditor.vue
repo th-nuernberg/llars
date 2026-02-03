@@ -34,7 +34,7 @@
       <v-card-title class="d-flex align-center justify-space-between bg-primary">
         <div class="d-flex align-center">
           <LIcon class="mr-2">{{ isEdit ? 'mdi-pencil' : 'mdi-plus' }}</LIcon>
-          <span>{{ isEdit ? 'Chatbot bearbeiten' : 'Neuer Chatbot' }}</span>
+          <span>{{ isEdit ? $t('admin.chatbotEditor.titleEdit') : $t('admin.chatbotEditor.titleCreate') }}</span>
         </div>
         <v-btn
           icon="mdi-close"
@@ -47,28 +47,28 @@
       <v-tabs v-model="activeTab" bg-color="surface">
         <v-tab value="general">
           <LIcon start>mdi-information</LIcon>
-          Allgemein
+          {{ $t('admin.chatbotEditor.tabs.general') }}
         </v-tab>
         <v-tab value="llm">
           <LIcon start>mdi-brain</LIcon>
-          LLM-Einstellungen
+          {{ $t('admin.chatbotEditor.tabs.llm') }}
         </v-tab>
         <v-tab value="rag">
           <LIcon start>mdi-magnify</LIcon>
-          RAG
+          {{ $t('admin.chatbotEditor.tabs.rag') }}
         </v-tab>
         <v-tab v-if="canUseAdvancedModes" value="agent">
           <LIcon start>mdi-robot-outline</LIcon>
-          Agent
+          {{ $t('admin.chatbotEditor.tabs.agent') }}
           <LTag variant="warning" size="sm" class="ml-2">PRO</LTag>
         </v-tab>
         <v-tab value="collections">
           <LIcon start>mdi-folder-multiple</LIcon>
-          Collections
+          {{ $t('admin.chatbotEditor.tabs.collections') }}
         </v-tab>
         <v-tab value="webcrawler">
           <LIcon start>mdi-spider-web</LIcon>
-          Web Crawler
+          {{ $t('admin.chatbotEditor.tabs.webcrawler') }}
         </v-tab>
       </v-tabs>
 
@@ -149,10 +149,10 @@
       <v-card-actions>
         <v-spacer />
         <LBtn variant="cancel" @click="closeDialog">
-          Abbrechen
+          {{ $t('admin.chatbotEditor.cancel') }}
         </LBtn>
         <LBtn variant="primary" @click="saveChanges">
-          {{ isEdit ? 'Speichern' : 'Erstellen' }}
+          {{ isEdit ? $t('admin.chatbotEditor.save') : $t('admin.chatbotEditor.create') }}
         </LBtn>
       </v-card-actions>
     </v-card>
@@ -172,8 +172,11 @@
  * @description Main chatbot configuration dialog with tabbed interface.
  */
 import { computed, ref, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
 import axios from 'axios';
 import { logI18n } from '@/utils/logI18n';
+
+const { t } = useI18n();
 import DocumentUploadDialog from '@/components/RAG/DocumentUploadDialog.vue';
 import { usePermissions } from '@/composables/usePermissions';
 import {
@@ -257,14 +260,16 @@ const rerankerModelItems = computed(() => {
   const items = Array.isArray(rerankerModels.value) ? [...rerankerModels.value] : [];
 
   const defaultModel = items.find(m => m.is_default);
-  const defaultLabel = defaultModel ? `System-Standard (${defaultModel.display_name})` : 'System-Standard';
+  const defaultLabel = defaultModel
+    ? t('admin.chatbotEditor.reranker.systemDefaultWithModel', { model: defaultModel.display_name })
+    : t('admin.chatbotEditor.reranker.systemDefault');
   const defaultParams = defaultModel?.max_output_tokens || null;
 
   return [
     {
       title: defaultLabel,
       value: null,
-      description: 'Verwendet das systemweite Standard-Reranker-Modell',
+      description: t('admin.chatbotEditor.reranker.systemDefaultHint'),
       is_default: true,
       params: defaultParams
     },

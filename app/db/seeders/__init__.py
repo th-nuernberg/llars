@@ -18,6 +18,7 @@ from .markdown_collab import initialize_markdown_collab_defaults
 from .latex_collab import initialize_latex_collab_defaults
 from .scenarios import seed_demo_scenarios
 from .prompts import seed_demo_prompts
+from .demo_video_data import seed_demo_video_data
 from .legal_assistant import initialize_legal_assistant
 from .analytics_settings import initialize_analytics_settings
 from db.models.llm_model import seed_default_models
@@ -95,6 +96,8 @@ def run_all_seeders(db):
         seed_demo_scenarios(db)
         seed_demo_prompts()
         seed_kaimo_demo_cases(db)
+        # Seed demo video data (IJCAI 2026 demo)
+        seed_demo_video_data(db)
     else:
         print(f"Demo-Daten übersprungen (PROJECT_STATE={project_state})")
 
@@ -121,4 +124,5 @@ __all__ = [
     'initialize_analytics_settings',
     'seed_demo_scenarios',
     'seed_demo_prompts',
+    'seed_demo_video_data',
 ]

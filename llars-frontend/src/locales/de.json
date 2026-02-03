@@ -300,6 +300,30 @@
         "confirm": "Verstanden"
       },
       "ratedMessages": "{rated} / {total} Nachrichten bewertet"
+    },
+    "chat": {
+      "model1": "Modell 1",
+      "model2": "Modell 2",
+      "selected": "Gewählt",
+      "typing": "Schreibt",
+      "model1Better": "Modell 1 ist besser",
+      "bothEqual": "Beide gleich gut",
+      "model2Better": "Modell 2 ist besser",
+      "ratingHint": "Bitte bewerten Sie die Antworten, bevor Sie fortfahren...",
+      "placeholder": "Schreiben Sie eine Nachricht...",
+      "rateFirst": "Bitte bewerten Sie zuerst die vorherigen Antworten, bevor Sie eine neue Nachricht senden.",
+      "generating": "Antworten werden generiert...",
+      "justification": {
+        "title": "Bewertungsabweichung",
+        "info": "Wir führen automatisch auch eine Bewertung der Konversation durch künstliche Intelligenz durch. Diesmal hat diese sich anders entschieden, als Sie es haben. Um das besser zu verstehen, würden wir uns freuen, wenn Sie hierfür eine Begründung angeben könnten. Vielen Dank!",
+        "yourRating": "Ihre Bewertung:",
+        "aiRating": "KI-Bewertung:",
+        "aiReason": "Begründung der KI:",
+        "yourReason": "Ihre Begründung (optional):",
+        "yourReasonPlaceholder": "Warum sind Sie anderer Meinung als die KI? (Optional)",
+        "skipButton": "Ohne Begründung fortfahren",
+        "saveButton": "Begründung speichern"
+      }
     }
   },
   "dataImporter": {
@@ -450,6 +474,51 @@
         "generic": "Generic Text Data",
         "unknown": "Unbekannt"
       }
+    },
+    "wizard": {
+      "subtitle": "Daten hochladen und Evaluation starten",
+      "close": "Schließen",
+      "back": "Zurück",
+      "next": "Weiter",
+      "done": "Fertig",
+      "steps": {
+        "upload": "Upload",
+        "describe": "Beschreiben",
+        "configure": "Konfigurieren",
+        "users": "Benutzer",
+        "import": "Import"
+      },
+      "taskTypes": {
+        "rating": "Rating",
+        "ranking": "Ranking",
+        "comparison": "Vergleich",
+        "mail_rating": "Mail Rating",
+        "authenticity": "Echt/Fake",
+        "labeling": "Klassifikation"
+      },
+      "execute": {
+        "ready": "Bereit zum Import",
+        "filesWillBeImported": "{count} Dateien werden als \"{name}\" importiert.",
+        "files": "Dateien",
+        "entries": "Einträge",
+        "taskType": "Task-Typ",
+        "users": "Benutzer",
+        "startImport": "Import starten",
+        "preparing": "Bereite Import vor...",
+        "transforming": "Transformiere Daten...",
+        "importing": "Importiere Daten...",
+        "complete": "Import abgeschlossen!",
+        "successMessage": "{count} Einträge erfolgreich importiert!",
+        "errorMessage": "Import fehlgeschlagen: {error}",
+        "unknownError": "Unbekannter Fehler"
+      },
+      "nextButtons": {
+        "continue": "Weiter",
+        "configure": "Konfigurieren",
+        "inviteUsers": "Benutzer einladen",
+        "prepareImport": "Import vorbereiten"
+      },
+      "autoName": "Import {count} Dateien"
     }
   },
   "docs": {
@@ -4366,7 +4435,49 @@
     "responseTimeout": "Zeitüberschreitung bei der Antwort",
     "responseTimeoutMessage": "Die Antwort hat zu lange gedauert. Bitte versuchen Sie es erneut.",
     "errorOccurred": "Ein Fehler ist aufgetreten.",
-    "chatbotNotAvailable": "Chatbot nicht verfügbar oder keine Berechtigung"
+    "chatbotNotAvailable": "Chatbot nicht verfügbar oder keine Berechtigung",
+    "agentReasoning": {
+      "step": "Schritt {iteration}",
+      "thinking": "Agent denkt nach...",
+      "showMore": "mehr",
+      "stepLabels": {
+        "goal": "ZIEL",
+        "reflection": "REFLEXION",
+        "thought": "GEDANKE",
+        "action": "AKTION",
+        "observation": "BEOBACHTUNG",
+        "search": "SUCHE",
+        "respond": "ANTWORT",
+        "adaptive": "ADAPTIV",
+        "error": "FEHLER"
+      },
+      "status": {
+        "initializing": "Initialisiere...",
+        "starting": "Starte...",
+        "iteration": "Iteration {n}",
+        "sources": "{count} Quellen",
+        "definingGoal": "Definiere Ziel...",
+        "goalDefined": "Ziel definiert",
+        "reflecting": "Reflektiere...",
+        "reflection": "Reflexion",
+        "thinking": "Denke nach...",
+        "thought": "Gedanke",
+        "choosingAction": "Wähle Aktion...",
+        "observation": "Beobachtung",
+        "generating": "Generiere...",
+        "complete": "Fertig",
+        "maxIterations": "Max. Iterationen",
+        "definingGoalStream": "Ziel definieren...",
+        "reflectingStream": "Reflektiere...",
+        "thinkingStream": "Denke nach...",
+        "actionStream": "Aktion...",
+        "highConfidence": "Hohe Konfidenz",
+        "highConfidenceMessage": "Hohe Konfidenz erreicht - generiere finale Antwort",
+        "generatingResponse": "Generiere Antwort...",
+        "error": "Fehler",
+        "genericError": "Ein Fehler ist aufgetreten"
+      }
+    }
   },
   "scenario": {
     "title": "Szenario",
@@ -5759,6 +5870,183 @@
         "info": "Der Account wird in LLARS deaktiviert und aus Rollen/Berechtigungen entfernt."
       }
     },
+    "chatbotEditor": {
+      "titleEdit": "Chatbot bearbeiten",
+      "titleCreate": "Neuer Chatbot",
+      "tabs": {
+        "general": "Allgemein",
+        "llm": "LLM-Einstellungen",
+        "rag": "RAG",
+        "agent": "Agent",
+        "collections": "Collections",
+        "webcrawler": "Web Crawler"
+      },
+      "cancel": "Abbrechen",
+      "save": "Speichern",
+      "create": "Erstellen",
+      "reranker": {
+        "systemDefault": "System-Standard",
+        "systemDefaultWithModel": "System-Standard ({model})",
+        "systemDefaultHint": "Verwendet das systemweite Standard-Reranker-Modell"
+      }
+    },
+    "chatbotBuilder": {
+      "title": "Chatbot Builder",
+      "subtitle": "Website crawlen, Chunks erstellen und Chatbot konfigurieren",
+      "back": "Zurück",
+      "steps": {
+        "url": "URL",
+        "crawling": "Crawling",
+        "embedding": "Embedding",
+        "configuration": "Konfiguration",
+        "complete": "Fertig"
+      },
+      "status": {
+        "phase1": "Phase 1: URL-Erkundung",
+        "phase2": "Phase 2: Inhalte erfassen",
+        "crawlingComplete": "Crawling abgeschlossen",
+        "crawling": "Crawling",
+        "embedding": "Embedding",
+        "processing": "Verarbeitung"
+      },
+      "progress": {
+        "urlsFound": "{count} URLs gefunden",
+        "searchingUrls": "Suche URLs...",
+        "startingCapture": "{count} URLs, starte Erfassung...",
+        "urlsAndDocs": "{urls} URLs, {docs} Dokumente",
+        "urlProgress": "{completed}/{total} URLs, {docs} Docs",
+        "documentsCount": "{count} Dokumente",
+        "starting": "Wird gestartet..."
+      },
+      "actions": {
+        "startCrawling": "Crawling starten",
+        "pause": "Pausieren",
+        "toConfiguration": "Zur Konfiguration",
+        "waitingForCrawling": "Warte auf Crawling...",
+        "createWithEmbedding": "Chatbot erstellen (Embedding läuft weiter)",
+        "createChatbot": "Chatbot erstellen"
+      },
+      "errors": {
+        "urlRequired": "URL ist erforderlich",
+        "urlProtocol": "URL muss mit http:// oder https:// beginnen",
+        "invalidUrl": "Ungültige URL",
+        "startWizardFailed": "Fehler beim Starten des Wizards",
+        "startCrawlFailed": "Fehler beim Starten des Crawlings",
+        "urlExplorationStarting": "URL-Erkundung startet...",
+        "crawlFailed": "Fehler beim Crawlen",
+        "pauseFailed": "Fehler beim Pausieren",
+        "socketUnavailable": "Live-Updates nicht verfügbar (Socket.IO)",
+        "crawlingFailed": "Crawling fehlgeschlagen",
+        "sessionUnavailable": "Crawler-Session nicht mehr verfügbar (Backend neu gestartet oder Crawl beendet). Live-Updates sind nicht verfügbar.",
+        "embeddingFailed": "Embedding fehlgeschlagen",
+        "createFailed": "Fehler beim Erstellen"
+      }
+    },
+    "referral": {
+      "title": "Referral-System",
+      "newCampaign": "Neue Kampagne",
+      "stats": {
+        "campaigns": "Kampagnen",
+        "active": "Aktiv",
+        "links": "Links",
+        "registrations": "Registrierungen"
+      },
+      "systemStatus": {
+        "referralEnabled": "Referral-System: Aktiviert",
+        "referralDisabled": "Referral-System: Deaktiviert",
+        "selfRegEnabled": "Selbst-Registrierung: Aktiviert",
+        "selfRegDisabled": "Selbst-Registrierung: Deaktiviert"
+      },
+      "campaigns": {
+        "title": "Kampagnen",
+        "showArchived": "Archivierte anzeigen",
+        "newLink": "Neuer Link",
+        "close": "Schließen",
+        "description": "Beschreibung",
+        "noDescription": "Keine Beschreibung",
+        "status": "Status",
+        "maxRegistrations": "Max. Registrierungen",
+        "unlimited": "Unbegrenzt"
+      },
+      "recentRegistrations": {
+        "title": "Letzte Registrierungen",
+        "filterOnly": "Nur {name}",
+        "clearFilter": "Filter zurücksetzen",
+        "loadMore": "Mehr laden ({count} weitere)"
+      },
+      "createCampaignDialog": {
+        "title": "Neue Kampagne erstellen",
+        "name": "Name",
+        "nameRequired": "Name ist erforderlich",
+        "description": "Beschreibung (optional)",
+        "startDate": "Startdatum (optional)",
+        "endDate": "Enddatum (optional)",
+        "maxRegistrations": "Max. Registrierungen (optional)",
+        "unlimitedHint": "Leer lassen für unbegrenzt",
+        "cancel": "Abbrechen",
+        "create": "Erstellen"
+      },
+      "createLinkDialog": {
+        "title": "Neuen Link erstellen",
+        "customSlug": "Custom Slug (optional)",
+        "slugHint": "z.B. ki-konferenz-2026 (nur Kleinbuchstaben, Zahlen, -)",
+        "label": "Label/Beschreibung (optional)",
+        "roleForNewUsers": "Rolle für neue User",
+        "maxUses": "Max. Verwendungen (optional)",
+        "expiresAt": "Ablaufdatum (optional)"
+      },
+      "deleteDialog": {
+        "deleteCampaign": "Kampagne löschen?",
+        "deleteCampaignText": "Die Kampagne \"{name}\" und alle zugehörigen Links werden unwiderruflich gelöscht.",
+        "deleteLink": "Link löschen?",
+        "deleteLinkText": "Der Link \"{code}\" wird unwiderruflich gelöscht.",
+        "cancel": "Abbrechen",
+        "delete": "Löschen"
+      },
+      "table": {
+        "headers": {
+          "name": "Name",
+          "status": "Status",
+          "links": "Links",
+          "period": "Zeitraum",
+          "createdBy": "Erstellt von",
+          "actions": "Aktionen",
+          "codeSlug": "Code/Slug",
+          "role": "Rolle",
+          "registrations": "Registrierungen",
+          "active": "Aktiv",
+          "user": "Benutzer",
+          "source": "Quelle",
+          "registeredAt": "Registriert am"
+        }
+      },
+      "statusOptions": {
+        "draft": "Entwurf",
+        "active": "Aktiv",
+        "paused": "Pausiert",
+        "expired": "Abgelaufen",
+        "archived": "Archiviert"
+      },
+      "validation": {
+        "slugFormat": "Nur Kleinbuchstaben, Zahlen und Bindestriche erlaubt"
+      },
+      "dateRange": {
+        "noPeriod": "Kein Zeitraum",
+        "from": "Ab {date}",
+        "until": "Bis {date}"
+      },
+      "messages": {
+        "campaignCreated": "Kampagne erstellt",
+        "statusUpdated": "Status aktualisiert",
+        "linkCreated": "Link erstellt: {url}",
+        "linkActivated": "Link aktiviert",
+        "linkDeactivated": "Link deaktiviert",
+        "linkCopied": "Link kopiert",
+        "copyFailed": "Kopieren fehlgeschlagen",
+        "campaignDeleted": "Kampagne gelöscht",
+        "linkDeleted": "Link gelöscht"
+      }
+    },
     "rag": {
       "stats": {
         "documents": "Dokumente",
@@ -5855,10 +6143,16 @@
         "webcrawl": "Webcrawl",
         "linked": "verlinkt",
         "chunks": "{count} Chunks",
+        "refresh": "Aktualisieren",
+        "reindex": "Neu indexieren",
         "empty": {
           "title": "Keine Dokumente in dieser Collection",
           "hint": "Laden Sie Dokumente hoch oder starten Sie einen Crawl-Job."
         }
+      },
+      "errors": {
+        "shareAccessFailed": "Fehler beim Speichern der Zugriffsrechte",
+        "reindexFailed": "Reindexierung fehlgeschlagen"
       },
       "documentUpload": {
         "title": "Dokumente hochladen",
@@ -5917,6 +6211,43 @@
           "hintFilter": "Versuchen Sie, Ihre Filter anzupassen.",
           "hintUpload": "Laden Sie Ihr erstes Dokument hoch.",
           "uploadFirst": "Dokument hochladen"
+        }
+      },
+      "collectionEditor": {
+        "titleCreate": "Neue Collection erstellen",
+        "titleEdit": "Collection bearbeiten",
+        "basicInfo": "Basis-Informationen",
+        "technicalName": "Technischer Name *",
+        "technicalNameHint": "Eindeutiger Bezeichner (z.B. 'faq-collection')",
+        "displayName": "Anzeigename *",
+        "displayNameHint": "Sichtbarer Name in der Oberfläche",
+        "description": "Beschreibung",
+        "descriptionHint": "Optionale Beschreibung der Collection",
+        "icon": "Icon",
+        "color": "Farbe",
+        "advancedSettings": "Erweiterte Einstellungen",
+        "chunkSize": "Chunk-Größe",
+        "chunkSizeHint": "Anzahl der Zeichen pro Text-Chunk (Standard: 1000)",
+        "chunkOverlap": "Chunk-Überlappung",
+        "chunkOverlapHint": "Überlappung zwischen Chunks in Zeichen (Standard: 200)",
+        "retrievalK": "Retrieval-K",
+        "retrievalKHint": "Anzahl der abzurufenden Top-Dokumente (Standard: 5)",
+        "cancel": "Abbrechen",
+        "save": "Speichern",
+        "create": "Erstellen",
+        "icons": {
+          "book": "Buch",
+          "folder": "Ordner",
+          "faq": "FAQ",
+          "database": "Datenbank",
+          "text": "Text",
+          "email": "E-Mail",
+          "archive": "Archiv"
+        },
+        "validation": {
+          "required": "Pflichtfeld",
+          "nameFormat": "Nur Kleinbuchstaben, Zahlen, - und _",
+          "positiveNumber": "Muss größer als 0 sein"
         }
       }
     }

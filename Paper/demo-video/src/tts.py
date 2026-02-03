@@ -40,8 +40,7 @@ SPEAKERS = {
         "ref_audio": "voices/alex_reference.wav",
         "ref_text": "Hello, I'm Alex. Welcome to this demonstration of LLARS, the LLM Assisted Rating System.",
         "description": "A friendly professional American male voice, clear and articulate.",
-        "macos_voice": "Fred",
-        "macos_rate": 175,
+        "custom_voice": "Aiden",  # Für CustomVoice-Modell: Sunny American male
     },
 
     # Narrator - britisch, Attenborough-Stil
@@ -50,8 +49,7 @@ SPEAKERS = {
         "ref_audio": "voices/david_reference.wav",
         "ref_text": "In the world of artificial intelligence, we observe remarkable developments. Let me guide you through this fascinating journey.",
         "description": "A distinguished elderly British male voice, calm and authoritative, like a documentary narrator.",
-        "macos_voice": "Daniel",
-        "macos_rate": 150,
+        "custom_voice": "Ryan",  # Für CustomVoice-Modell: Dynamic male with rhythmic drive
     },
 
     # Technischer Experte
@@ -60,18 +58,16 @@ SPEAKERS = {
         "ref_audio": "voices/chen_reference.wav",
         "ref_text": "From a technical perspective, this architecture demonstrates several key innovations.",
         "description": "A clear, precise female voice with technical expertise.",
-        "macos_voice": "Samantha",
-        "macos_rate": 170,
+        "custom_voice": "Vivian",  # Für CustomVoice-Modell: Bright young female
     },
 
-    # Default fallback
+    # Default
     "default": {
         "name": "Default",
         "ref_audio": None,
         "ref_text": None,
         "description": "A calm professional male voice, clear and articulate.",
-        "macos_voice": "Daniel",
-        "macos_rate": 180,
+        "custom_voice": "Ryan",  # Fallback
     }
 }
 
@@ -84,10 +80,19 @@ class QwenTTS:
     """
 
     MODELS = {
-        'large': 'Qwen/Qwen3-TTS-12Hz-1.7B-Base',  # Voice Cloning
-        'small': 'Qwen/Qwen3-TTS-12Hz-0.6B-Base',  # Voice Cloning (leichter)
-        'design': 'Qwen/Qwen3-TTS-12Hz-1.7B-VoiceDesign',  # Voice Design (inkonsistent!)
-        'fallback': None,  # macOS say
+        'large': 'Qwen/Qwen3-TTS-12Hz-1.7B-Base',  # Voice Cloning - beste Qualität
+        'small': 'Qwen/Qwen3-TTS-12Hz-0.6B-Base',  # Voice Cloning - schneller
+        'design': 'Qwen/Qwen3-TTS-12Hz-1.7B-VoiceDesign',  # Voice Design (weniger konsistent)
+        'custom': 'Qwen/Qwen3-TTS-12Hz-1.7B-CustomVoice',  # Vordefinierte Stimmen (Ryan, Aiden)
+        'custom-small': 'Qwen/Qwen3-TTS-12Hz-0.6B-CustomVoice',  # Vordefinierte Stimmen (kleiner)
+    }
+
+    # Vordefinierte Sprecher für CustomVoice Modelle
+    CUSTOM_SPEAKERS = {
+        'Ryan': 'Dynamic male voice with strong rhythmic drive (English)',
+        'Aiden': 'Sunny American male voice with clear midrange (English)',
+        'Vivian': 'Bright, slightly edgy young female voice (Chinese)',
+        'Serena': 'Warm, gentle young female voice (Chinese)',
     }
 
     def __init__(
@@ -97,7 +102,8 @@ class QwenTTS:
         device: str = "auto",
         language: str = "English",
         speakers: Optional[Dict] = None,
-        voices_dir: str = "voices"
+        voices_dir: str = "voices",
+        use_voice_cloning: bool = False  # Voice Cloning ist SEHR langsam auf CPU!
     ):
         self.model_size = model_size
         self.model_id = self.MODELS.get(model_size, self.MODELS['large'])
@@ -105,6 +111,7 @@ class QwenTTS:
         self.device = device
         self.language = language
         self.voices_dir = voices_dir
+        self.use_voice_cloning = use_voice_cloning
 
         # Sprecher-Konfiguration
         self.speakers = {**SPEAKERS}
@@ -124,8 +131,10 @@ class QwenTTS:
 
         print(f"🎤 Qwen3-TTS initialisiert (Model: {model_size})")
         print(f"   Sprecher: {', '.join(self.speakers.keys())}")
-        if model_size != 'fallback' and model_size != 'design':
-            print(f"   Modus: Voice Cloning (konsistente Stimmen)")
+        if use_voice_cloning:
+            print(f"   Modus: Voice Cloning (konsistent, LANGSAM)")
+        else:
+            print(f"   Modus: Voice Design (schnell, weniger konsistent)")
 
     def set_speaker(self, speaker_id: str):
         """Setzt den aktiven Sprecher"""
@@ -143,51 +152,42 @@ class QwenTTS:
         return self.speakers.get(sid, self.speakers["default"])
 
     def _load_model(self):
-        """Lädt das Modell (lazy loading)"""
+        """Lädt das Qwen3-TTS Modell (lazy loading)"""
         if self._model is not None:
             return
 
-        # Fallback-Modus
-        if self.model_id is None:
-            print("🎤 Verwende macOS TTS (say) als Fallback")
-            self._model = "fallback"
-            return
+        import sys
+        print(f"⏳ Lade Qwen3-TTS: {self.model_id}", flush=True)
+        print("   (Erster Start kann einige Minuten dauern...)", flush=True)
 
-        print(f"⏳ Lade Qwen3-TTS: {self.model_id}")
-        print("   (Erster Start kann einige Minuten dauern...)")
+        import torch
+        from qwen_tts import Qwen3TTSModel
 
-        try:
-            import torch
-            from qwen_tts import Qwen3TTSModel
-
-            # Device bestimmen
-            if self.device == "auto":
-                if torch.cuda.is_available():
-                    device = "cuda:0"
-                    dtype = torch.bfloat16
-                elif hasattr(torch.backends, 'mps') and torch.backends.mps.is_available():
-                    device = "mps"
-                    dtype = torch.float32
-                else:
-                    device = "cpu"
-                    dtype = torch.float32
+        # Device bestimmen
+        # HINWEIS: MPS (Apple Silicon) hängt bei generate_voice_clone()
+        # Daher wird CPU verwendet bis Qwen3-TTS MPS-Support verbessert
+        if self.device == "auto":
+            if torch.cuda.is_available():
+                device = "cuda:0"
+                dtype = torch.bfloat16
             else:
-                device = self.device
-                dtype = torch.float32 if device == "mps" else torch.bfloat16
+                device = "cpu"
+                dtype = torch.float32
+        else:
+            device = self.device
+            dtype = torch.float32 if device == "cpu" else torch.bfloat16
 
-            self._model = Qwen3TTSModel.from_pretrained(
-                self.model_id,
-                device_map=device,
-                dtype=dtype,
-            )
-            self._device = device
+        print(f"   Device: {device}, dtype: {dtype}", flush=True)
 
-            print(f"✓ Modell geladen auf {device}")
+        self._model = Qwen3TTSModel.from_pretrained(
+            self.model_id,
+            device_map=device,
+            dtype=dtype,
+        )
+        self._device = device
 
-        except Exception as e:
-            print(f"⚠️ Fehler beim Laden: {e}")
-            print("   Fallback zu macOS TTS...")
-            self._model = "fallback"
+        print(f"✓ Modell geladen auf {device}", flush=True)
+        sys.stdout.flush()
 
     def _get_voice_prompt(self, speaker_id: str):
         """
@@ -217,21 +217,25 @@ class QwenTTS:
                 print(f"      Bitte erstelle: {ref_path}")
                 return None
 
-        print(f"   🎯 Lade Voice Prompt für {config.get('name', speaker_id)}...")
-        print(f"      Referenz: {ref_path}")
+        print(f"   🎯 Lade Voice Prompt für {config.get('name', speaker_id)}...", flush=True)
+        print(f"      Referenz: {ref_path}", flush=True)
 
         try:
             # Voice Clone Prompt erstellen
+            import time
+            start = time.time()
+            print(f"      Starte create_voice_clone_prompt()...", flush=True)
             prompt = self._model.create_voice_clone_prompt(
                 ref_audio=ref_path,
                 ref_text=ref_text,
             )
+            print(f"      create_voice_clone_prompt() fertig in {time.time()-start:.1f}s", flush=True)
             self._voice_prompts[speaker_id] = prompt
-            print(f"   ✓ Voice Prompt gecached")
+            print(f"   ✓ Voice Prompt gecached", flush=True)
             return prompt
 
         except Exception as e:
-            print(f"   ⚠️ Voice Prompt Fehler: {e}")
+            print(f"   ⚠️ Voice Prompt Fehler: {e}", flush=True)
             return None
 
     def _cache_key(self, text: str, speaker_id: str) -> str:
@@ -282,46 +286,65 @@ class QwenTTS:
 
         final_path = output_path or cache_path
 
-        # Generieren
-        if self._model == "fallback":
-            return self._generate_fallback(text, final_path, speaker_id)
-        else:
-            return self._generate_qwen(text, final_path, speaker_id)
+        # Generieren mit Qwen3-TTS
+        return self._generate_qwen(text, final_path, speaker_id)
 
     def _generate_qwen(self, text: str, output_path: str, speaker_id: str) -> str:
         """Generiert mit Qwen3-TTS Voice Cloning"""
+        import sys
         config = self.get_speaker_config(speaker_id)
         speaker_name = config.get('name', speaker_id)
 
-        print(f"🎤 Generiere [{speaker_name}]: {text[:50]}...")
+        print(f"🎤 Generiere [{speaker_name}]: {text[:50]}...", flush=True)
 
         try:
             import soundfile as sf
 
             # Voice Prompt für konsistente Stimme holen
+            print(f"   Hole Voice Prompt für {speaker_id}...", flush=True)
             voice_prompt = self._get_voice_prompt(speaker_id)
+            print(f"   Voice Prompt: {'vorhanden' if voice_prompt else 'nicht vorhanden'}", flush=True)
 
-            if voice_prompt is not None:
-                # Voice Cloning (konsistent!)
+            import time
+            start = time.time()
+
+            if 'CustomVoice' in (self.model_id or ''):
+                # CustomVoice Model - vordefinierte Stimmen (Ryan, Aiden, etc.)
+                custom_speaker = config.get('custom_voice', 'Ryan')
+                print(f"   Starte CustomVoice [{custom_speaker}]...", flush=True)
+                wavs, sr = self._model.generate_custom_voice(
+                    text=text,
+                    language=self.language,
+                    speaker=custom_speaker,
+                )
+            elif voice_prompt is not None and self.use_voice_cloning:
+                # Voice Cloning (konsistent aber SEHR langsam auf CPU!)
+                print(f"   Starte Voice Cloning...", flush=True)
                 wavs, sr = self._model.generate_voice_clone(
                     text=text,
                     language=self.language,
                     voice_clone_prompt=voice_prompt,
                 )
             elif 'VoiceDesign' in (self.model_id or ''):
-                # Fallback zu Voice Design (inkonsistent)
+                # VoiceDesign Model - nutze generate_voice_design
                 voice_desc = config.get('description', SPEAKERS['default']['description'])
+                print(f"   Starte Voice Design...", flush=True)
                 wavs, sr = self._model.generate_voice_design(
                     text=text,
                     language=self.language,
                     instruct=voice_desc,
                 )
             else:
-                # Base Model ohne Voice Prompt - einfache Generierung
-                wavs, sr = self._model.generate(
+                # Fallback für Base Model ohne Voice Cloning
+                print(f"   ⚠️ Base Model ohne Voice Cloning - nutze Voice Design Fallback", flush=True)
+                voice_desc = config.get('description', SPEAKERS['default']['description'])
+                wavs, sr = self._model.generate_voice_design(
                     text=text,
                     language=self.language,
+                    instruct=voice_desc,
                 )
+
+            print(f"   Generierung abgeschlossen! ({time.time()-start:.1f}s)", flush=True)
 
             # Speichern
             sf.write(output_path, wavs[0], sr)
@@ -335,53 +358,8 @@ class QwenTTS:
             return output_path
 
         except Exception as e:
-            print(f"⚠️ Qwen Fehler: {e}")
-            return self._generate_fallback(text, output_path, speaker_id)
-
-    def _generate_fallback(self, text: str, output_path: str, speaker_id: str) -> str:
-        """Fallback: macOS say"""
-        config = self.get_speaker_config(speaker_id)
-        speaker_name = config.get('name', speaker_id)
-        voice = config.get('macos_voice', 'Daniel')
-        rate = config.get('macos_rate', 180)
-
-        print(f"🎤 macOS TTS [{speaker_name}]: {text[:50]}...")
-
-        import platform
-        if platform.system() != 'Darwin':
-            print("⚠️ Fallback nur auf macOS verfügbar")
-            Path(output_path).touch()
-            return output_path
-
-        # macOS say -> AIFF -> WAV
-        temp_aiff = output_path.replace('.wav', '.aiff')
-
-        subprocess.run([
-            'say',
-            '-v', voice,
-            '-r', str(rate),
-            '-o', temp_aiff,
-            text
-        ], capture_output=True)
-
-        # Konvertieren zu WAV
-        subprocess.run([
-            'ffmpeg', '-y', '-i', temp_aiff,
-            '-ar', '24000',
-            '-ac', '1',
-            output_path
-        ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-
-        if os.path.exists(temp_aiff):
-            os.remove(temp_aiff)
-
-        # Cache
-        cache_path = self._get_cache_path(text, speaker_id)
-        if output_path != cache_path and os.path.exists(output_path):
-            import shutil
-            shutil.copy(output_path, cache_path)
-
-        return output_path
+            print(f"⚠️ Qwen TTS Fehler: {e}")
+            raise RuntimeError(f"Audio-Generierung fehlgeschlagen: {e}")
 
     def speak(self, text: str, speaker: Optional[str] = None):
         """Spricht Text (blockierend)"""

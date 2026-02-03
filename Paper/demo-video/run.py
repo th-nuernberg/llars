@@ -26,6 +26,7 @@ import subprocess
 import threading
 import os
 import sys
+import hashlib
 from pathlib import Path
 from dataclasses import dataclass
 from typing import Optional, List, Dict, Any
@@ -141,10 +142,10 @@ ELEMENT_MAP = {
     "New Job": ".header-actions .v-btn:contains('New Job'), .v-btn:contains('New Job')",
     "Create First Job": ".empty-state .v-btn:contains('Create')",
 
-    # Wizard Navigation (inside dialog)
-    "Next": ".generation-wizard .v-btn:contains('Next'), .v-dialog .v-btn:contains('Next')",
-    "Back": ".generation-wizard .v-btn:contains('Back'), .v-dialog .v-btn:contains('Back')",
-    "Create Job": ".generation-wizard .v-btn:contains('Create'), .v-dialog .v-btn:contains('Create Job')",
+    # Wizard Navigation (inside wizard-actions footer - more specific)
+    "Next": ".wizard-actions .l-btn:contains('Next'), .generation-wizard .wizard-actions .l-btn, .v-card-actions .l-btn:contains('Next')",
+    "Back": ".wizard-actions .l-btn:contains('Back'), .generation-wizard .wizard-actions .l-btn:contains('Back')",
+    "Create Job": ".wizard-actions .l-btn:contains('Create'), .generation-wizard .wizard-actions .l-btn:contains('Create')",
 
     # Step 1: Source Selection (inside wizard)
     "Source Scenario": ".generation-wizard .source-card:contains('Scenario'), .source-card:contains('Scenario')",
@@ -153,14 +154,14 @@ ELEMENT_MAP = {
     "Upload Zone": ".upload-zone",
     "File Input": ".upload-zone input[type='file'], input[type='file']",
 
-    # Step 2: Prompt Templates (click to select)
-    "Prompt Item": ".prompts-selection .selection-item, .selection-item",
-    "First Prompt": ".prompts-selection .selection-item:first-child",
-    "News Summary Prompt Item": ".prompts-selection .selection-item:contains('News'), .selection-item:contains('News Summary'), .item-name:contains('News')",
+    # Step 2: Prompt Templates (click to select) - in wizard overlay
+    "Prompt Item": ".v-overlay--active .selection-item, .prompts-selection .selection-item, .selection-item",
+    "First Prompt": ".v-overlay--active .selection-item:first-child, .v-overlay--active .selectable-card:first-child, .prompts-selection .selection-item:first-child",
+    "News Summary Prompt Item": ".v-overlay--active .selection-item:contains('News'), .prompts-selection .selection-item:contains('News'), .selection-item:contains('News Summary'), .item-name:contains('News')",
 
-    # Step 3: Models (click to select) - use item-name for text matching
-    "Model Item": ".models-selection .selection-item",
-    "First Model": ".models-selection .selection-item:first-child",
+    # Step 3: Models (click to select) - in wizard overlay
+    "Model Item": ".v-overlay--active .selection-item, .models-selection .selection-item",
+    "First Model": ".v-overlay--active .selection-item:first-child, .v-overlay--active .selectable-card:first-child, .models-selection .selection-item:first-child",
     "Mistral Model": ".models-selection .selection-item:contains('mistral'), .models-selection .selection-item:contains('Mistral'), .item-name:contains('mistral')",
     "GPT-4 Model": ".models-selection .selection-item:contains('gpt-4'), .models-selection .selection-item:contains('gpt4'), .item-name:contains('gpt')",
     "Claude Model": ".models-selection .selection-item:contains('claude'), .models-selection .selection-item:contains('Claude'), .item-name:contains('claude')",
@@ -284,6 +285,31 @@ ELEMENT_MAP = {
     "Submit Rating": ".v-btn:contains('Submit'), .v-btn:contains('Next')",
     "Results Tab": ".v-tab:contains('Results'), .v-tab:contains('Statistics')",
     "Agreement Chart": ".agreement-chart, .chart-container",
+
+    # =============================================
+    # DEMO VIDEO - Pre-seeded Data Selectors
+    # =============================================
+
+    # Home Page - Feature Cards
+    "Feature Cards": ".feature-cards, .home-features, .v-row .v-col .v-card",
+
+    # Prompt Engineering - Existing Prompts (seeded by seed_demo_video_data)
+    "News Summary Prompt": ".prompt-card:contains('News Summary'), .v-card:contains('News Summary Prompt'), .prompt-list-item:contains('News Summary')",
+    "Detailed Summary Prompt": ".prompt-card:contains('Detailed Summary'), .v-card:contains('Detailed Summary')",
+
+    # Prompt Engineering - Collaboration
+    "Collab Indicator": ".collab-indicator, .user-presence, .collaboration-status, .yjs-status, .online-users",
+
+    # Batch Generation - Existing Jobs (seeded by seed_demo_video_data)
+    "News Summary Demo Job": ".job-card:contains('News Summary Demo'), .job-row:contains('News Summary Demo'), .v-list-item:contains('News Summary Demo')",
+    "Job Summary": ".job-summary, .job-stats, .stats-card, .v-card .stats, .job-info",
+    "Job Details": ".job-details, .job-detail-view, .v-card:contains('Details')",
+    "Job Outputs": ".outputs-list, .output-cards, .generated-outputs",
+    "Cost Display": ".cost-display, .total-cost, .v-chip:contains('$'), .cost-info",
+
+    # Scenario Manager
+    "First Scenario Card": ".scenario-card:first-child, .scenarios-grid .v-card:first-child, .scenario-list > *:first-child",
+    "Scenario Wizard Button": ".v-btn:contains('Wizard'), .v-btn:contains('Scenario Wizard'), .wizard-btn",
 }
 
 
@@ -294,17 +320,16 @@ ELEMENT_MAP = {
 class TTS:
     """TTS-Wrapper mit Sprecher-Unterstützung"""
 
-    # Default Sprecher-Konfigurationen
-    # WICHTIG: Verschiedene Stimmen für Unterscheidbarkeit!
-    # Fred = US-amerikanisch (Host/Erklärer), Daniel = Britisch (Attenborough-Stil)
+    # Default Sprecher-Konfigurationen für Qwen3-TTS Voice Cloning
     DEFAULT_SPEAKERS = {
-        "host": {"name": "Alex", "macos_voice": "Fred", "macos_rate": 175},
-        "narrator": {"name": "David", "macos_voice": "Daniel", "macos_rate": 150},
-        "default": {"name": "Default", "macos_voice": "Fred", "macos_rate": 180},
+        "host": {"name": "Alex", "ref_audio": "voices/alex_reference.wav"},
+        "narrator": {"name": "David", "ref_audio": "voices/david_reference.wav"},
+        "default": {"name": "Default", "ref_audio": None},
     }
 
-    def __init__(self, model_size: str = "small", speakers: dict = None):
+    def __init__(self, model_size: str = "small", speakers: dict = None, use_voice_cloning: bool = False):
         self.model_size = model_size
+        self.use_voice_cloning = use_voice_cloning
         self.speakers = {**self.DEFAULT_SPEAKERS}
         if speakers:
             for speaker_id, config in speakers.items():
@@ -337,24 +362,20 @@ class TTS:
         engine = self._get_engine()
 
         # Modell wirklich laden (nicht nur Engine initialisieren)
-        if engine != "fallback":
-            engine._load_model()
+        engine._load_model()
 
         self._loaded = True
         print("\n✓ TTS-Modell geladen und bereit!\n")
 
     def _get_engine(self):
         if self._engine is None:
-            try:
-                from src.tts import QwenTTS
-                self._engine = QwenTTS(
-                    model_size=self.model_size,
-                    cache_dir=AUDIO_DIR,
-                    speakers=self.speakers
-                )
-            except Exception as e:
-                print(f"⚠️ TTS Fehler: {e}")
-                self._engine = "fallback"
+            from src.tts import QwenTTS
+            self._engine = QwenTTS(
+                model_size=self.model_size,
+                cache_dir=AUDIO_DIR,
+                speakers=self.speakers,
+                use_voice_cloning=self.use_voice_cloning
+            )
         return self._engine
 
     def speak(self, text: str, step_id: str, speaker: str = "default"):
@@ -363,27 +384,15 @@ class TTS:
 
         if not os.path.exists(audio_file):
             engine = self._get_engine()
-            if engine == "fallback":
-                self._generate_fallback(text, audio_file, speaker)
-            else:
-                engine.generate(text, audio_file, speaker=speaker)
+            engine.generate(text, audio_file, speaker=speaker)
 
         # Abspielen
         self._play(audio_file)
 
-    def _generate_fallback(self, text: str, output_path: str, speaker: str = "default"):
-        """macOS say als Fallback mit Sprecher-Unterstützung"""
-        import platform
-        if platform.system() == 'Darwin':
-            config = self.get_speaker_config(speaker)
-            voice = config.get('macos_voice', 'Daniel')
-            rate = config.get('macos_rate', 180)
-
-            temp = output_path.replace('.wav', '.aiff')
-            subprocess.run(['say', '-v', voice, '-r', str(rate), '-o', temp, text], capture_output=True)
-            subprocess.run(['ffmpeg', '-y', '-i', temp, '-ar', '24000', output_path], capture_output=True)
-            if os.path.exists(temp):
-                os.remove(temp)
+    def _generate_qwen(self, text: str, output_path: str, speaker: str = "default"):
+        """Generiert Audio mit Qwen3-TTS"""
+        engine = self._get_engine()
+        engine.generate(text, output_path, speaker=speaker)
 
     def _play(self, audio_file: str):
         """Spielt Audio ab"""
@@ -759,6 +768,7 @@ class Browser:
         self.base_url = url
         self.driver = None
         self.window_bounds = None  # (x, y, width, height)
+        self.collab_driver = None  # Zweiter Browser für Collab-Demo
 
     def open(self, username: str = "admin", password: str = "admin123", language: str = "en"):
         """Öffnet Chrome mit exakter Fenstergröße und Position"""
@@ -825,9 +835,16 @@ class Browser:
             # 2. Login durchführen
             self._do_login_on_login_page(username, password)
 
-            # 3. Warten und prüfen
-            time.sleep(3)
-            page = self._detect_page()
+            # 3. Warten und prüfen ob Login erfolgreich
+            for attempt in range(5):
+                time.sleep(1)
+                page = self._detect_page()
+                if page != "login":
+                    print(f"   ✓ Login erfolgreich! (Seite: {page})")
+                    break
+                print(f"   ⏳ Warte auf Login... (Versuch {attempt + 1}/5)")
+            else:
+                print("   ⚠️ Login scheint nicht erfolgreich zu sein!")
 
         if page == "home":
             print("   ✓ Auf Home-Seite")
@@ -860,18 +877,16 @@ class Browser:
         """Löscht alte Demo-Daten via Docker/MariaDB"""
         print("   🧹 Räume alte Demo-Daten auf...")
 
-        # SQL zum Löschen von Demo-Daten (News Summary)
+        # SQL zum Löschen von Demo-Daten (nur Scenarios, NICHT die geseedeten Prompts/Jobs!)
+        # Der "News Summary Demo Job" und die Prompts werden vom Seeder erstellt und sollen bleiben
         cleanup_sql = """
-        -- Prompts löschen
-        DELETE FROM user_prompts WHERE name LIKE '%News Summary%';
-        -- Scenarios löschen (mit Foreign Keys)
-        DELETE FROM scenario_users WHERE scenario_id IN (SELECT id FROM scenarios WHERE name LIKE '%News Summary%');
-        DELETE FROM scenario_threads WHERE scenario_id IN (SELECT id FROM scenarios WHERE name LIKE '%News Summary%');
-        DELETE FROM item_dimension_ratings WHERE scenario_id IN (SELECT id FROM scenarios WHERE name LIKE '%News Summary%');
-        DELETE FROM scenarios WHERE name LIKE '%News Summary%';
-        -- Generation Jobs löschen
-        DELETE FROM generation_outputs WHERE job_id IN (SELECT id FROM generation_jobs WHERE name LIKE '%News Summary%');
-        DELETE FROM generation_jobs WHERE name LIKE '%News Summary%';
+        -- Scenarios löschen (mit Foreign Keys) - Diese werden während der Aufnahme erstellt
+        DELETE FROM scenario_users WHERE scenario_id IN (SELECT id FROM scenarios WHERE name LIKE '%News Summary%' OR name LIKE '%Demo%Evaluation%');
+        DELETE FROM scenario_threads WHERE scenario_id IN (SELECT id FROM scenarios WHERE name LIKE '%News Summary%' OR name LIKE '%Demo%Evaluation%');
+        DELETE FROM item_dimension_ratings WHERE scenario_id IN (SELECT id FROM scenarios WHERE name LIKE '%News Summary%' OR name LIKE '%Demo%Evaluation%');
+        DELETE FROM scenarios WHERE name LIKE '%News Summary%' OR name LIKE '%Demo%Evaluation%';
+        -- HINWEIS: Prompts und Generation Jobs werden NICHT gelöscht!
+        -- Diese werden vom Seeder (seed_demo_video_data) erstellt und müssen erhalten bleiben.
         """
 
         try:
@@ -1001,9 +1016,48 @@ class Browser:
         print(f"   🔐 Login als: {username}")
 
         try:
-            # Username eingeben
-            username_field = self.driver.find_element(By.CSS_SELECTOR,
-                "[data-testid='username-input'] input, #username, input[name='username']")
+            # Warte auf Login-Formular
+            WebDriverWait(self.driver, 10).until(
+                EC.presence_of_element_located((By.CSS_SELECTOR, ".login-form, [data-testid='login-form']"))
+            )
+            time.sleep(0.5)
+
+            # METHODE 1: Dev Quick Login Button (zuverlässiger für Selenium)
+            # Diese Buttons haben data-testid="dev-login-btn-{username}"
+            dev_btn_selector = f"[data-testid='dev-login-btn-{username}']"
+            try:
+                dev_btn = self.driver.find_element(By.CSS_SELECTOR, dev_btn_selector)
+                if dev_btn and dev_btn.is_displayed():
+                    print(f"   🚀 Nutze Dev Quick Login Button")
+                    # JavaScript click ist zuverlässiger für Vue-Komponenten
+                    self.driver.execute_script("arguments[0].click()", dev_btn)
+                    print("   ✓ Dev-Login-Button geklickt")
+                    time.sleep(3)
+                    return
+            except Exception:
+                print(f"   ℹ️ Dev-Button nicht gefunden, nutze Formular-Login")
+
+            # METHODE 2: Formular-Login (Fallback)
+            # Username eingeben - Vuetify 3 v-text-field hat input tief verschachtelt
+            username_selectors = [
+                "[data-testid='username-input'] input",
+                ".login-form input[name='username']",
+                ".login-form .v-text-field:first-of-type input",
+                "input#username",
+            ]
+            username_field = None
+            for selector in username_selectors:
+                try:
+                    username_field = self.driver.find_element(By.CSS_SELECTOR, selector)
+                    if username_field and username_field.is_displayed():
+                        break
+                except Exception:
+                    continue
+
+            if not username_field:
+                print("   ⚠️ Username-Feld nicht gefunden!")
+                return
+
             username_field.clear()
             username_field.send_keys(username)
             print("   ✓ Username eingegeben")
@@ -1011,21 +1065,56 @@ class Browser:
             time.sleep(0.3)
 
             # Password eingeben
-            password_field = self.driver.find_element(By.CSS_SELECTOR,
-                "[data-testid='password-input'] input, #password, input[name='password'], input[type='password']")
+            password_selectors = [
+                "[data-testid='password-input'] input",
+                ".login-form input[name='password']",
+                ".login-form input[type='password']",
+                "input#password",
+            ]
+            password_field = None
+            for selector in password_selectors:
+                try:
+                    password_field = self.driver.find_element(By.CSS_SELECTOR, selector)
+                    if password_field and password_field.is_displayed():
+                        break
+                except Exception:
+                    continue
+
+            if not password_field:
+                print("   ⚠️ Password-Feld nicht gefunden!")
+                return
+
             password_field.clear()
             password_field.send_keys(password)
             print("   ✓ Passwort eingegeben")
 
             time.sleep(0.3)
 
-            # Login Button klicken
-            login_btn = self.driver.find_element(By.CSS_SELECTOR,
-                "[data-testid='login-btn'], button[type='submit'], .login-button")
-            login_btn.click()
+            # Login Button klicken - JavaScript click für Vue-Komponenten
+            login_selectors = [
+                "[data-testid='login-btn']",
+                ".login-button",
+                ".login-form button[type='submit']",
+                ".login-form .l-btn",
+            ]
+            login_btn = None
+            for selector in login_selectors:
+                try:
+                    login_btn = self.driver.find_element(By.CSS_SELECTOR, selector)
+                    if login_btn and login_btn.is_displayed():
+                        break
+                except Exception:
+                    continue
+
+            if not login_btn:
+                print("   ⚠️ Login-Button nicht gefunden!")
+                return
+
+            # JavaScript click ist zuverlässiger für Vue-Komponenten
+            self.driver.execute_script("arguments[0].click()", login_btn)
             print("   ✓ Login-Button geklickt")
 
-            time.sleep(2)
+            time.sleep(3)
 
         except Exception as e:
             print(f"   ⚠️ Login-Fehler: {e}")
@@ -1287,11 +1376,42 @@ class Browser:
             time.sleep(0.3)
 
     def upload(self, file_path: str):
-        """Lädt Datei hoch"""
+        """Lädt Datei hoch und wartet auf Verarbeitung"""
         abs_path = str(Path(file_path).resolve())
+
+        # Finde File Input (kann hidden sein)
         file_input = self.driver.find_element(By.CSS_SELECTOR, "input[type='file']")
         file_input.send_keys(abs_path)
         print(f"   📁 Upload: {file_path}")
+
+        # Warte auf File-Verarbeitung (Vue parst die Datei async)
+        time.sleep(1)
+
+        # Prüfe ob Daten geladen wurden
+        for attempt in range(10):
+            try:
+                # Methode 1: Suche nach LTag mit "items parsed" Text
+                tags = self.driver.find_elements(By.CSS_SELECTOR, ".source-config .l-tag, .upload-zone + * .l-tag")
+                for tag in tags:
+                    if 'parsed' in tag.text.lower() or 'items' in tag.text.lower():
+                        print(f"   ✓ Datei verarbeitet: {tag.text}")
+                        time.sleep(0.5)
+                        return
+
+                # Methode 2: Prüfe ob Next-Button enabled ist
+                next_btns = self.driver.find_elements(By.CSS_SELECTOR,
+                    ".wizard-actions .l-btn:not([disabled]), .generation-wizard .v-btn:not([disabled])")
+                for btn in next_btns:
+                    if 'next' in btn.text.lower() and btn.is_enabled():
+                        print(f"   ✓ Wizard bereit (Next Button aktiv)")
+                        time.sleep(0.5)
+                        return
+
+            except Exception as e:
+                pass
+            time.sleep(0.5)
+
+        print(f"   ⚠️ Timeout beim Warten auf Datei-Verarbeitung")
         time.sleep(1)
 
     def wait_for(self, target: str, timeout: float = 10):
@@ -1315,8 +1435,170 @@ class Browser:
             pass
         time.sleep(0.3)
 
+    # =========================================================================
+    # COLLAB BROWSER - Zweiter Browser für Echtzeit-Kollaboration Demo
+    # =========================================================================
+
+    def collab_open(self, username: str = "researcher", password: str = "admin123"):
+        """
+        Öffnet einen zweiten Browser für die Kollaborations-Demo.
+        Der zweite Browser wird kleiner und außerhalb des sichtbaren Bereichs positioniert,
+        sodass nur der Hauptbrowser aufgenommen wird, aber der Collab-Cursor im Editor sichtbar ist.
+        """
+        print(f"   👥 Öffne Collab-Browser als '{username}'...")
+
+        options = Options()
+        options.add_argument('--window-size=800,600')
+        options.add_experimental_option('excludeSwitches', ['enable-automation'])
+
+        service = Service(ChromeDriverManager().install())
+        self.collab_driver = webdriver.Chrome(service=service, options=options)
+
+        # Fenster außerhalb des sichtbaren Bereichs positionieren (rechts vom Hauptfenster)
+        self.collab_driver.set_window_position(2000, 100)
+        self.collab_driver.set_window_size(800, 600)
+
+        # Zur Login-Seite navigieren
+        self.collab_driver.get(self.base_url)
+        time.sleep(2)
+
+        # Login mit Dev Quick Login Button
+        try:
+            dev_btn_selector = f"[data-testid='dev-login-btn-{username}']"
+            dev_btn = self.collab_driver.find_element(By.CSS_SELECTOR, dev_btn_selector)
+            if dev_btn and dev_btn.is_displayed():
+                self.collab_driver.execute_script("arguments[0].click()", dev_btn)
+                print(f"   ✓ Collab-User '{username}' eingeloggt")
+                time.sleep(2)
+            else:
+                print(f"   ⚠️ Dev-Login-Button für '{username}' nicht gefunden")
+        except Exception as e:
+            print(f"   ⚠️ Collab-Login fehlgeschlagen: {e}")
+
+    def collab_goto(self, path: str):
+        """Navigiert den Collab-Browser zu einer URL"""
+        if not self.collab_driver:
+            print("   ⚠️ Collab-Browser nicht geöffnet!")
+            return
+
+        url = f"{self.base_url}{path}" if path.startswith('/') else path
+        print(f"   👥 Collab navigiert zu: {path}")
+        self.collab_driver.get(url)
+        time.sleep(2)
+
+    def _find_element_in_driver(self, driver, target: str):
+        """Findet Element in einem beliebigen WebDriver (für Collab-Support)"""
+        selectors = ELEMENT_MAP.get(target, target)
+
+        for selector in selectors.split(', '):
+            selector = selector.strip()
+            try:
+                if ':contains(' in selector:
+                    base, text = selector.split(':contains(')
+                    text = text.rstrip(')').strip("'\"")
+                    elements = driver.find_elements(By.CSS_SELECTOR, base or '*')
+                    for el in elements:
+                        if text.lower() in el.text.lower():
+                            return el
+                else:
+                    el = driver.find_element(By.CSS_SELECTOR, selector)
+                    if el:
+                        return el
+            except Exception:
+                continue
+
+        # Fallback: Text-Suche in klickbaren Elementen
+        try:
+            clickables = driver.find_elements(
+                By.CSS_SELECTOR,
+                'a, button, [role="button"], .v-btn, .v-list-item, .v-card, .prompt-card'
+            )
+            target_lower = target.lower()
+            for el in clickables:
+                try:
+                    if target_lower in el.text.lower():
+                        return el
+                except Exception:
+                    continue
+        except Exception:
+            pass
+
+        return None
+
+    def collab_click(self, target: str):
+        """Klickt auf ein Element im Collab-Browser"""
+        if not self.collab_driver:
+            return
+
+        element = self._find_element_in_driver(self.collab_driver, target)
+        if element:
+            self.collab_driver.execute_script("arguments[0].click()", element)
+            print(f"   👥 Collab klickt: {target}")
+        else:
+            print(f"   ⚠️ Collab konnte '{target}' nicht finden")
+
+    def collab_type(self, target: str, text: str, delay: float = 0.08):
+        """
+        Tippt Text in ein Element im Collab-Browser.
+        Der Text erscheint mit dem Cursor des Collab-Users im Hauptbrowser.
+        """
+        if not self.collab_driver:
+            print("   ⚠️ Collab-Browser nicht geöffnet!")
+            return
+
+        element = self._find_element_in_driver(self.collab_driver, target)
+        if element:
+            # Klicke erst in das Element um Fokus zu setzen
+            self.collab_driver.execute_script("arguments[0].click()", element)
+            time.sleep(0.3)
+
+            # Tippe jeden Buchstaben einzeln für sichtbaren Effekt
+            print(f"   👥 Collab tippt in '{target}': {text[:30]}...")
+            for char in text:
+                element.send_keys(char)
+                time.sleep(delay)
+            print(f"   ✓ Collab-Eingabe abgeschlossen")
+        else:
+            print(f"   ⚠️ Collab konnte '{target}' nicht finden")
+
+    def collab_focus_editor(self):
+        """Fokussiert den Editor im Collab-Browser (für Cursor-Anzeige)"""
+        if not self.collab_driver:
+            return
+
+        try:
+            # Finde den Quill-Editor
+            editor = self.collab_driver.find_element(By.CSS_SELECTOR, ".ql-editor")
+            # Klicke hinein und bewege den Cursor
+            self.collab_driver.execute_script("""
+                arguments[0].click();
+                arguments[0].focus();
+                // Cursor ans Ende setzen
+                var range = document.createRange();
+                range.selectNodeContents(arguments[0]);
+                range.collapse(false);
+                var sel = window.getSelection();
+                sel.removeAllRanges();
+                sel.addRange(range);
+            """, editor)
+            print(f"   👥 Collab-Cursor im Editor aktiv")
+            time.sleep(0.5)
+        except Exception as e:
+            print(f"   ⚠️ Collab-Editor-Fokus fehlgeschlagen: {e}")
+
+    def collab_close(self):
+        """Schließt den Collab-Browser"""
+        if self.collab_driver:
+            print("   👥 Collab-Browser geschlossen")
+            self.collab_driver.quit()
+            self.collab_driver = None
+
     def close(self):
         """Schließt Browser"""
+        # Collab-Browser auch schließen
+        if self.collab_driver:
+            self.collab_driver.quit()
+            self.collab_driver = None
         if self.driver:
             self.driver.quit()
 
@@ -1328,19 +1610,182 @@ class Browser:
 class ScriptRunner:
     """Führt SCRIPT.json aus"""
 
+    SECTION_HASHES_FILE = f"{AUDIO_DIR}/.section_hashes.json"
+
     def __init__(self, script_path: str = SCRIPT_FILE):
         self.script_path = script_path
         self.script = None
         self.browser = None
         self.tts = None
         self.recorder = None
-        self.force_consistent_voices = False  # Für 100% konsistente Stimmen (macOS)
+        self.tts_model_override = None  # Überschreibt tts_model aus SCRIPT.json
+        self.use_voice_cloning = False  # Voice Cloning ist SEHR langsam auf CPU!
 
     def load_script(self):
         """Lädt Skript"""
         with open(self.script_path) as f:
             self.script = json.load(f)
         print(f"✓ Skript geladen: {len(self.script['steps'])} Schritte")
+
+    # =========================================================================
+    # SECTION-BASIERTES AUDIO-CACHING
+    # =========================================================================
+
+    def _get_sections(self) -> dict:
+        """
+        Gruppiert Steps nach Sections.
+
+        Gibt zurück: {section_name: [step1, step2, ...]}
+        """
+        self.load_script()
+
+        sections = {}
+        current_section = "INTRO"
+
+        for step in self.script['steps']:
+            # Neue Section beginnt
+            if '_section' in step:
+                # Extrahiere Section-Name aus "=== NAME (30s) ==="
+                section_marker = step['_section']
+                # Parse: "=== INTRO (25s) ===" → "INTRO"
+                import re
+                match = re.search(r'===\s*([A-Z\s]+)', section_marker)
+                if match:
+                    current_section = match.group(1).strip()
+
+            if current_section not in sections:
+                sections[current_section] = []
+            sections[current_section].append(step)
+
+        return sections
+
+    def _compute_section_hash(self, steps: list) -> str:
+        """
+        Berechnet Hash für eine Section basierend auf allen Narrations.
+
+        Inkludiert: narration + speaker für jeden Step
+        """
+        content_parts = []
+        for step in steps:
+            narration = step.get('narration', '')
+            speaker = step.get('speaker', 'default')
+            step_id = step.get('id', '')
+            content_parts.append(f"{step_id}|{speaker}|{narration}")
+
+        content = "\n".join(content_parts)
+        return hashlib.md5(content.encode()).hexdigest()[:12]
+
+    def _load_section_hashes(self) -> dict:
+        """Lädt gespeicherte Section-Hashes"""
+        if os.path.exists(self.SECTION_HASHES_FILE):
+            with open(self.SECTION_HASHES_FILE) as f:
+                return json.load(f)
+        return {}
+
+    def _save_section_hashes(self, hashes: dict):
+        """Speichert Section-Hashes"""
+        with open(self.SECTION_HASHES_FILE, 'w') as f:
+            json.dump(hashes, f, indent=2)
+
+    def check_sections(self) -> dict:
+        """
+        Prüft welche Sections Audio-Regenerierung brauchen.
+
+        Gibt zurück: {section_name: {"changed": bool, "steps": [...], "hash": str}}
+        """
+        sections = self._get_sections()
+        stored_hashes = self._load_section_hashes()
+
+        result = {}
+        for section_name, steps in sections.items():
+            current_hash = self._compute_section_hash(steps)
+            stored_hash = stored_hashes.get(section_name)
+
+            result[section_name] = {
+                "changed": current_hash != stored_hash,
+                "steps": steps,
+                "hash": current_hash,
+                "old_hash": stored_hash
+            }
+
+        return result
+
+    def generate_audio_smart(self, force_sections: list = None):
+        """
+        Generiert Audio nur für geänderte Sections.
+
+        Args:
+            force_sections: Liste von Section-Namen die erzwungen werden sollen
+        """
+        self.load_script()
+
+        tts_model = self.tts_model_override or self.script.get('config', {}).get('tts_model', 'custom-small')
+        self.tts = TTS(model_size=tts_model, use_voice_cloning=self.use_voice_cloning)
+
+        section_status = self.check_sections()
+        stored_hashes = self._load_section_hashes()
+
+        print("\n" + "="*60)
+        print("📚 SECTION-BASIERTE AUDIO-GENERIERUNG")
+        print("="*60)
+
+        # Zeige Section-Status
+        for section_name, info in section_status.items():
+            steps_with_narration = [s for s in info['steps'] if s.get('narration')]
+            status = "🔄 GEÄNDERT" if info['changed'] else "✓ unverändert"
+            force_marker = " [FORCE]" if force_sections and section_name in force_sections else ""
+            print(f"   {section_name}: {len(steps_with_narration)} Audio-Dateien - {status}{force_marker}")
+
+        print("="*60 + "\n")
+
+        # Modell laden falls nötig
+        needs_generation = any(
+            info['changed'] or (force_sections and section_name in force_sections)
+            for section_name, info in section_status.items()
+            if any(s.get('narration') for s in info['steps'])
+        )
+
+        if needs_generation:
+            self.tts.preload()
+
+        total_generated = 0
+        total_cached = 0
+
+        for section_name, info in section_status.items():
+            steps_with_narration = [s for s in info['steps'] if s.get('narration')]
+            if not steps_with_narration:
+                continue
+
+            should_regenerate = info['changed'] or (force_sections and section_name in force_sections)
+
+            if should_regenerate:
+                print(f"\n🎤 {section_name} ({len(steps_with_narration)} Dateien)")
+                print("-" * 40)
+
+                for step in steps_with_narration:
+                    step_id = step['id']
+                    narration = step['narration']
+                    speaker = step.get('speaker', 'default')
+                    audio_file = f"{AUDIO_DIR}/{step_id}.wav"
+
+                    speaker_name = self.tts.get_speaker_config(speaker).get('name', speaker)
+                    print(f"   🎤 {step_id} [{speaker_name}]")
+
+                    engine = self.tts._get_engine()
+                    engine.generate(narration, audio_file, speaker=speaker)
+                    total_generated += 1
+
+                # Hash speichern nach erfolgreicher Generierung
+                stored_hashes[section_name] = info['hash']
+            else:
+                total_cached += len(steps_with_narration)
+
+        # Hashes speichern
+        self._save_section_hashes(stored_hashes)
+
+        print("\n" + "="*60)
+        print(f"✓ Fertig: {total_generated} neu generiert, {total_cached} aus Cache")
+        print("="*60 + "\n")
 
     def list_steps(self):
         """Kurze Liste aller Schritte"""
@@ -1426,22 +1871,18 @@ class ScriptRunner:
                 print(f"⚠️ {sid}: Keine Audio-Datei vorhanden")
 
     def generate_audio(self, force: bool = False, only_steps: list = None):
-        """Generiert Audio-Dateien mit Sprecher-Unterstützung"""
+        """Generiert Audio-Dateien mit Qwen3-TTS Voice Cloning"""
         self.load_script()
 
         config = self.script.get('config', {})
         speakers_config = config.get('speakers', {})
 
-        # Konsistente Stimmen: macOS TTS statt Qwen3
-        if self.force_consistent_voices:
-            tts_model = 'fallback'
-            print("🎯 Verwende macOS TTS für konsistente Stimmen")
-            print("   Host (Alex): Fred (US)")
-            print("   Narrator (David): Daniel (UK)")
-        else:
-            tts_model = config.get('tts_model', 'small')
+        # TTS-Modell: Override > Config > Default
+        tts_model = self.tts_model_override or config.get('tts_model', 'large')
+        print(f"🎤 TTS-Modell: {tts_model} ({'--model Flag' if self.tts_model_override else 'SCRIPT.json'})")
+        print(f"🎤 Voice Cloning: {'AN (langsam!)' if self.use_voice_cloning else 'AUS (schnell)'}")
 
-        self.tts = TTS(model_size=tts_model, speakers=speakers_config)
+        self.tts = TTS(model_size=tts_model, speakers=speakers_config, use_voice_cloning=self.use_voice_cloning)
 
         # Bei --force: Lösche GESAMTEN Cache (inkl. QwenTTS Hash-Cache)
         if force:
@@ -1455,9 +1896,8 @@ class ScriptRunner:
                 f.unlink()
             print(f"🗑️ Alle Audio-Dateien gelöscht")
 
-        # Modell laden (bei fallback kein Laden nötig)
-        if tts_model != 'fallback':
-            self.tts.preload()
+        # Modell laden
+        self.tts.preload()
 
         # Steps filtern
         if only_steps:
@@ -1469,9 +1909,9 @@ class ScriptRunner:
         total = len(steps)
 
         if force:
-            print(f"\n🎤 Generiere {total} Audio-Dateien NEU...")
+            print(f"\n🎤 Generiere {total} Audio-Dateien NEU mit Qwen3-TTS...")
         else:
-            print(f"\n🎤 Generiere {total} Audio-Dateien...")
+            print(f"\n🎤 Generiere {total} Audio-Dateien mit Qwen3-TTS...")
         print("="*60)
 
         generated = 0
@@ -1492,10 +1932,7 @@ class ScriptRunner:
             else:
                 print(f"   [{i+1}/{total}] 🎤 {step_id} [{speaker_name}]")
                 engine = self.tts._get_engine()
-                if engine != "fallback":
-                    engine.generate(narration, audio_file, speaker=speaker)
-                else:
-                    self.tts._generate_fallback(narration, audio_file, speaker)
+                engine.generate(narration, audio_file, speaker=speaker)
                 generated += 1
 
         print("="*60)
@@ -1548,10 +1985,7 @@ class ScriptRunner:
             else:
                 print(f"   [{i+1}/{total}] 🎤 Generiere: {step_id}")
                 engine = self.tts._get_engine()
-                if engine != "fallback":
-                    engine.generate(narration, audio_file)
-                else:
-                    self.tts._speak_fallback(narration, audio_file)
+                engine.generate(narration, audio_file)
 
         print("="*60)
         print(f"✓ Alle {total} Audio-Dateien bereit!\n")
@@ -1613,10 +2047,7 @@ class ScriptRunner:
                         else:
                             print(f"   [{i+1}/{total}] 🎤 {step_id}")
                             engine = self.tts._get_engine()
-                            if engine != "fallback":
-                                engine.generate(narration, audio_file)
-                            else:
-                                self.tts._speak_fallback(narration, audio_file)
+                            engine.generate(narration, audio_file)
                 else:
                     print(f"\n✓ Alle {total} Audio-Dateien bereits vorhanden (TTS nicht benötigt)")
 
@@ -1907,6 +2338,68 @@ class ScriptRunner:
                 time.sleep(2)
             return True
 
+        elif do == 'scroll_to':
+            element = self.browser._find_element(target)
+            if element:
+                self.browser.driver.execute_script("arguments[0].scrollIntoView({behavior: 'smooth', block: 'center'});", element)
+                print(f"   ✓ scroll_to: {target}")
+                time.sleep(0.5)
+                return True
+            else:
+                print(f"   ✗ scroll_to: {target} (NICHT GEFUNDEN)")
+                return False
+
+        # =====================================================================
+        # COLLAB-AKTIONEN - Zweiter Browser für Echtzeit-Kollaboration
+        # =====================================================================
+
+        elif do == 'collab_open':
+            username = action.get('user', 'researcher')
+            password = action.get('password', 'admin123')
+            if test_mode:
+                print(f"   ✓ collab_open: {username} (skip in test)")
+            else:
+                self.browser.collab_open(username, password)
+            return True
+
+        elif do == 'collab_goto':
+            path = action.get('url', action.get('path', '/'))
+            if test_mode:
+                print(f"   ✓ collab_goto: {path} (skip in test)")
+            else:
+                self.browser.collab_goto(path)
+            return True
+
+        elif do == 'collab_click':
+            if test_mode:
+                print(f"   ✓ collab_click: {target} (skip in test)")
+            else:
+                self.browser.collab_click(target)
+            return True
+
+        elif do == 'collab_type':
+            text = action.get('text', '')
+            delay = action.get('delay', 0.08)
+            if test_mode:
+                print(f"   ✓ collab_type: {target} (skip in test)")
+            else:
+                self.browser.collab_type(target, text, delay)
+            return True
+
+        elif do == 'collab_focus':
+            if test_mode:
+                print(f"   ✓ collab_focus (skip in test)")
+            else:
+                self.browser.collab_focus_editor()
+            return True
+
+        elif do == 'collab_close':
+            if test_mode:
+                print(f"   ✓ collab_close (skip in test)")
+            else:
+                self.browser.collab_close()
+            return True
+
         else:
             print(f"   ? Unbekannte Aktion: {do}")
             return True
@@ -1932,6 +2425,8 @@ def main():
    python run.py --preview                 # Detaillierte Vorschau
 
 2. AUDIO GENERIEREN
+   python run.py --smart                   # Nur geänderte Sections neu generieren (EMPFOHLEN)
+   python run.py --smart --sections INTRO  # Nur bestimmte Sections
    python run.py --audio                   # Alle Audio-Dateien generieren
    python run.py --audio --force           # Audio NEU generieren (Cache ignorieren)
    python run.py --audio --only intro_1    # Nur bestimmte Steps
@@ -1953,7 +2448,8 @@ def main():
                          TYPISCHE WORKFLOWS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Narration geändert:     python run.py --audio --force && python run.py
+Narration geändert:     python run.py --smart && python run.py  # EMPFOHLEN
+Section geändert:       python run.py --smart --sections INTRO  # Nur bestimmte Section
 Actions geändert:       python run.py --test && python run.py
 Alles neu:              python run.py --audio --force && python run.py
 Quick Test:             python run.py --test --from prompt_eng_1
@@ -1969,10 +2465,14 @@ Quick Test:             python run.py --test --from prompt_eng_1
     # === AUDIO ===
     parser.add_argument('--audio', '-a', action='store_true',
                         help='Nur Audio generieren (kein Browser/Video)')
+    parser.add_argument('--smart', action='store_true',
+                        help='Intelligente Audio-Generierung: Nur geänderte Sections neu generieren')
     parser.add_argument('--force', '-f', action='store_true',
                         help='Audio-Cache ignorieren, alles neu generieren')
     parser.add_argument('--only', nargs='+', metavar='STEP_ID',
                         help='Nur bestimmte Steps (mit --audio)')
+    parser.add_argument('--sections', nargs='+', metavar='SECTION',
+                        help='Nur bestimmte Sections neu generieren (mit --smart)')
     parser.add_argument('--play', nargs='?', const='all', metavar='STEP_ID',
                         help='Audio abspielen (einzeln oder "all")')
 
@@ -1991,16 +2491,19 @@ Quick Test:             python run.py --test --from prompt_eng_1
     # === SONSTIGES ===
     parser.add_argument('--script', default=SCRIPT_FILE,
                         help='Alternatives Skript verwenden')
-    parser.add_argument('--consistent', '-c', action='store_true',
-                        help='Konsistente Stimmen (macOS TTS statt Qwen3)')
+    parser.add_argument('--model', '-m', choices=['small', 'large', 'design', 'custom', 'custom-small'],
+                        help='TTS-Modell: custom/custom-small (vordefinierte Stimmen, EMPFOHLEN), design (Voice Design), small/large (Voice Cloning)')
+    parser.add_argument('--voice-clone', action='store_true',
+                        help='Voice Cloning aktivieren (SEHR langsam auf CPU! Nur für finale Produktion)')
 
     args = parser.parse_args()
     runner = ScriptRunner(args.script)
 
-    # Konsistente Stimmen: Überschreibe TTS-Modell
-    if args.consistent:
-        runner.force_consistent_voices = True
-        print("🎯 Konsistente Stimmen aktiviert (macOS TTS)")
+    # TTS-Modell überschreiben wenn Flag gesetzt
+    if args.model:
+        runner.tts_model_override = args.model
+    if args.voice_clone:
+        runner.use_voice_cloning = True
 
     # === MODUS-AUSWAHL ===
 
@@ -2015,6 +2518,10 @@ Quick Test:             python run.py --test --from prompt_eng_1
     elif args.play:
         # Audio abspielen
         runner.play_audio(args.play)
+
+    elif args.smart:
+        # Intelligente Audio-Generierung (nur geänderte Sections)
+        runner.generate_audio_smart(force_sections=args.sections)
 
     elif args.audio:
         # Audio generieren

@@ -484,15 +484,15 @@
           <v-sheet class="pa-4 bg-grey-lighten-4">
             <v-row>
               <v-col cols="12" md="8">
-                <div class="text-body-2 text-medium-emphasis mb-1">Beschreibung</div>
-                <div class="text-body-1">{{ selectedCollection.description || 'Keine Beschreibung' }}</div>
+                <div class="text-body-2 text-medium-emphasis mb-1">{{ $t('admin.rag.collectionDetail.description') }}</div>
+                <div class="text-body-1">{{ selectedCollection.description || $t('admin.rag.collectionDetail.noDescription') }}</div>
               </v-col>
               <v-col cols="12" md="4">
                 <v-row dense>
                   <v-col cols="6">
                     <v-chip color="primary" variant="flat" size="small" class="mr-1">
                       <LIcon start size="small">mdi-file-document-multiple</LIcon>
-                      {{ selectedCollection.document_count }} Dokumente
+                      {{ $t('admin.rag.collections.documentsCount', { count: selectedCollection.document_count }) }}
                     </v-chip>
                   </v-col>
                   <v-col cols="6">
@@ -506,7 +506,7 @@
                   <v-col cols="12">
                     <div class="text-caption text-medium-emphasis">
                       <LIcon size="x-small" class="mr-1">mdi-puzzle</LIcon>
-                      Chunk: {{ selectedCollection.chunk_size || 1000 }} Zeichen, {{ selectedCollection.chunk_overlap || 200 }} Overlap
+                      {{ $t('admin.rag.collectionDetail.chunkSettings', { size: selectedCollection.chunk_size || 1000, overlap: selectedCollection.chunk_overlap || 200 }) }}
                     </div>
                   </v-col>
                 </v-row>
@@ -525,15 +525,15 @@
           >
             <v-card-title class="d-flex align-center py-2">
               <LIcon start color="warning" size="small">mdi-progress-clock</LIcon>
-              <span class="text-body-1">Embedding-Verarbeitung</span>
+              <span class="text-body-1">{{ $t('admin.rag.collectionDetail.embeddingProgress.title') }}</span>
               <v-spacer></v-spacer>
               <v-chip color="warning" size="x-small" variant="flat">
-                {{ collectionEmbeddingProgress.pending + collectionEmbeddingProgress.processing }} ausstehend
+                {{ collectionEmbeddingProgress.pending + collectionEmbeddingProgress.processing }} {{ $t('admin.rag.collectionDetail.embeddingProgress.pending') }}
               </v-chip>
             </v-card-title>
             <v-card-text class="pt-0">
               <div class="d-flex align-center mb-2">
-                <span class="text-body-2 mr-3">Fortschritt:</span>
+                <span class="text-body-2 mr-3">{{ $t('admin.rag.collectionDetail.embeddingProgress.progress') }}</span>
                 <v-progress-linear
                   :model-value="collectionEmbeddingProgressPercent"
                   color="primary"
@@ -549,19 +549,19 @@
               <div class="d-flex gap-2 flex-wrap">
                 <v-chip size="x-small" color="warning" variant="tonal">
                   <LIcon start size="x-small">mdi-clock-outline</LIcon>
-                  {{ collectionEmbeddingProgress.pending }} warten
+                  {{ collectionEmbeddingProgress.pending }} {{ $t('admin.rag.collectionDetail.embeddingProgress.waiting') }}
                 </v-chip>
                 <v-chip size="x-small" color="info" variant="tonal">
                   <LIcon start size="x-small">mdi-cog</LIcon>
-                  {{ collectionEmbeddingProgress.processing }} verarbeiten
+                  {{ collectionEmbeddingProgress.processing }} {{ $t('admin.rag.collectionDetail.embeddingProgress.processing') }}
                 </v-chip>
                 <v-chip size="x-small" color="success" variant="tonal">
                   <LIcon start size="x-small">mdi-check</LIcon>
-                  {{ collectionEmbeddingProgress.indexed }} fertig
+                  {{ collectionEmbeddingProgress.indexed }} {{ $t('admin.rag.collectionDetail.embeddingProgress.done') }}
                 </v-chip>
                 <v-chip v-if="collectionEmbeddingProgress.failed > 0" size="x-small" color="error" variant="tonal">
                   <LIcon start size="x-small">mdi-alert</LIcon>
-                  {{ collectionEmbeddingProgress.failed }} fehlgeschlagen
+                  {{ collectionEmbeddingProgress.failed }} {{ $t('admin.rag.collectionDetail.embeddingProgress.failed') }}
                 </v-chip>
               </div>
             </v-card-text>
@@ -570,7 +570,7 @@
           <!-- Documents List -->
           <div class="pa-4">
             <div class="d-flex align-center mb-3">
-              <h3 class="text-h6">Dokumente in dieser Collection</h3>
+              <h3 class="text-h6">{{ $t('admin.rag.collectionDetail.documentsTitle') }}</h3>
               <v-spacer></v-spacer>
               <LBtn
                 size="small"
@@ -579,7 +579,7 @@
                 :loading="loadingCollectionDocs"
                 prepend-icon="mdi-refresh"
               >
-                Aktualisieren
+                {{ $t('admin.rag.collectionDetail.refresh') }}
               </LBtn>
               <LBtn
                 v-if="canReindexCollection(selectedCollection)"
@@ -591,7 +591,7 @@
                 :disabled="collectionDocuments.length === 0"
                 prepend-icon="mdi-refresh-circle"
               >
-                Neu indexieren
+                {{ $t('admin.rag.collectionDetail.reindex') }}
               </LBtn>
             </div>
 
@@ -619,7 +619,7 @@
                         variant="tonal"
                         class="ml-2"
                       >
-                        Webcrawl
+                        {{ $t('admin.rag.collectionDetail.webcrawl') }}
                       </v-chip>
                       <v-chip
                         v-if="item.link_type === 'linked'"
@@ -628,7 +628,7 @@
                         variant="tonal"
                         class="ml-2"
                       >
-                        verlinkt
+                        {{ $t('admin.rag.collectionDetail.linked') }}
                       </v-chip>
                     </div>
                     <div class="text-caption text-medium-emphasis">
@@ -657,7 +657,7 @@
 
               <template v-slot:item.chunk_count="{ item }">
                 <v-chip size="small" variant="tonal" color="info">
-                  {{ item.chunk_count || 0 }} Chunks
+                  {{ $t('admin.rag.collectionDetail.chunks', { count: item.chunk_count || 0 }) }}
                 </v-chip>
               </template>
 
@@ -684,9 +684,9 @@
               <template v-slot:no-data>
                 <div class="text-center pa-8">
                   <LIcon size="64" color="grey-lighten-1" class="mb-4">mdi-folder-open-outline</LIcon>
-                  <div class="text-h6 text-grey">Keine Dokumente in dieser Collection</div>
+                  <div class="text-h6 text-grey">{{ $t('admin.rag.collectionDetail.empty.title') }}</div>
                   <div class="text-body-2 text-grey-darken-1">
-                    Laden Sie Dokumente hoch oder starten Sie einen Crawl-Job.
+                    {{ $t('admin.rag.collectionDetail.empty.hint') }}
                   </div>
                 </div>
               </template>
@@ -716,8 +716,11 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
 import axios from 'axios';
 import { logI18n, logI18nParams } from '@/utils/logI18n';
+
+const { t } = useI18n();
 import { useSkeletonLoading } from '@/composables/useSkeletonLoading';
 import { usePermissions } from '@/composables/usePermissions';
 import { useAuth } from '@/composables/useAuth';
@@ -970,7 +973,7 @@ const handleCollectionShareSaved = () => {
 };
 
 const handleCollectionShareError = (message) => {
-  alert(message || 'Fehler beim Speichern der Zugriffsrechte');
+  alert(message || t('admin.rag.errors.shareAccessFailed'));
 };
 
 // Track which collection is being reindexed
@@ -985,7 +988,7 @@ const reindexCollectionById = async (collectionId) => {
     await fetchStats();
   } catch (error) {
     logI18n('error', 'logs.admin.ragSection.reindexCollectionFailed', error);
-    const errorMsg = error.response?.data?.error || 'Reindexierung fehlgeschlagen';
+    const errorMsg = error.response?.data?.error || t('admin.rag.errors.reindexFailed');
     alert(errorMsg);
   }
   reindexingCollectionId.value = null;
@@ -994,7 +997,7 @@ const reindexCollectionById = async (collectionId) => {
 // Get actions for collection row
 const getCollectionActions = (item) => {
   const actions = [
-    { key: 'view', icon: 'mdi-eye', tooltip: 'Details anzeigen', variant: 'primary' }
+    { key: 'view', icon: 'mdi-eye', tooltip: t('admin.rag.collections.actions.view'), variant: 'primary' }
   ];
 
   // Only show reindex button if user can reindex this collection
@@ -1002,7 +1005,7 @@ const getCollectionActions = (item) => {
     actions.push({
       key: 'reindex',
       icon: 'mdi-refresh-circle',
-      tooltip: 'Neu indexieren',
+      tooltip: t('admin.rag.collections.actions.reindex'),
       variant: 'warning',
       disabled: item.document_count === 0,
       loading: reindexingCollectionId.value === item.id
@@ -1013,7 +1016,7 @@ const getCollectionActions = (item) => {
     actions.push({
       key: 'share',
       icon: 'mdi-account-multiple-plus',
-      tooltip: 'Zugriff teilen',
+      tooltip: t('admin.rag.collections.actions.share'),
       variant: 'primary'
     });
   }
@@ -1021,7 +1024,7 @@ const getCollectionActions = (item) => {
   actions.push({
     key: 'delete',
     icon: 'mdi-delete',
-    tooltip: 'Löschen',
+    tooltip: t('admin.rag.collections.actions.delete'),
     variant: 'danger',
     disabled: item.can_delete === false || item.name === 'default' || item.name === 'general'
   });

@@ -14,7 +14,7 @@
 
       <div class="header-right">
         <span v-if="currentStatus" class="status-pill">{{ currentStatus }}</span>
-        <span v-if="iteration" class="iter-pill">Schritt {{ iteration }}</span>
+        <span v-if="iteration" class="iter-pill">{{ $t('chat.agentReasoning.step', { iteration }) }}</span>
         <LIcon size="18" class="chevron">{{ expanded ? 'mdi-chevron-up' : 'mdi-chevron-down' }}</LIcon>
       </div>
     </div>
@@ -56,7 +56,7 @@
                 </template>
                 <template v-else>
                   {{ step.content.substring(0, 200) }}...
-                  <button class="show-more" @click.stop="step.expanded = true">mehr</button>
+                  <button class="show-more" @click.stop="step.expanded = true">{{ $t('chat.agentReasoning.showMore') }}</button>
                 </template>
               </div>
             </div>
@@ -68,7 +68,7 @@
           <div class="loading-dots">
             <span></span><span></span><span></span>
           </div>
-          <span>Agent denkt nach...</span>
+          <span>{{ $t('chat.agentReasoning.thinking') }}</span>
         </div>
       </div>
     </v-expand-transition>
@@ -77,6 +77,9 @@
 
 <script setup>
 import { ref, computed, watch, nextTick } from 'vue';
+import { useI18n } from 'vue-i18n';
+
+const { t } = useI18n();
 
 const props = defineProps({
   agentStatus: {
@@ -202,15 +205,15 @@ function getStepIcon(type) {
 
 function getStepLabel(type) {
   const labels = {
-    'goal': 'GOAL',
-    'reflection': 'REFLECT',
-    'thought': 'THOUGHT',
-    'action': 'ACTION',
-    'observation': 'OBSERVATION',
-    'search': 'SEARCH',
-    'respond': 'RESPOND',
-    'adaptive': 'ADAPTIVE',
-    'error': 'FEHLER'
+    'goal': t('chat.agentReasoning.stepLabels.goal'),
+    'reflection': t('chat.agentReasoning.stepLabels.reflection'),
+    'thought': t('chat.agentReasoning.stepLabels.thought'),
+    'action': t('chat.agentReasoning.stepLabels.action'),
+    'observation': t('chat.agentReasoning.stepLabels.observation'),
+    'search': t('chat.agentReasoning.stepLabels.search'),
+    'respond': t('chat.agentReasoning.stepLabels.respond'),
+    'adaptive': t('chat.agentReasoning.stepLabels.adaptive'),
+    'error': t('chat.agentReasoning.stepLabels.error')
   };
   return labels[type] || type?.toUpperCase();
 }
@@ -235,57 +238,57 @@ watch(() => props.agentStatus, (status) => {
       taskType.value = status.task_type;
       maxIterations.value = status.max_iterations;
       steps.value = [];
-      currentStatus.value = 'Initialisiere...';
+      currentStatus.value = t('chat.agentReasoning.status.initializing');
       expanded.value = true;
       break;
 
     case 'starting':
       mode.value = status.mode;
-      currentStatus.value = 'Starte...';
+      currentStatus.value = t('chat.agentReasoning.status.starting');
       expanded.value = true;
       break;
 
     case 'iteration':
       iteration.value = status.iteration;
       maxIterations.value = status.max || maxIterations.value;
-      currentStatus.value = `Iteration ${status.iteration}`;
+      currentStatus.value = t('chat.agentReasoning.status.iteration', { n: status.iteration });
       break;
 
     case 'context':
-      currentStatus.value = `${status.sources_count} Quellen`;
+      currentStatus.value = t('chat.agentReasoning.status.sources', { count: status.sources_count });
       break;
 
     case 'defining_goal':
-      currentStatus.value = 'Definiere Ziel...';
+      currentStatus.value = t('chat.agentReasoning.status.definingGoal');
       break;
 
     case 'goal':
       finalizeStep('goal', status.goal);
-      currentStatus.value = 'Ziel definiert';
+      currentStatus.value = t('chat.agentReasoning.status.goalDefined');
       break;
 
     case 'reflecting':
-      currentStatus.value = 'Reflektiere...';
+      currentStatus.value = t('chat.agentReasoning.status.reflecting');
       break;
 
     case 'reflection':
       // Backend sends 'reflection' field, not 'content'
       finalizeStep('reflection', status.reflection || status.content);
-      currentStatus.value = 'Reflexion';
+      currentStatus.value = t('chat.agentReasoning.status.reflection');
       break;
 
     case 'thinking':
-      currentStatus.value = 'Denke nach...';
+      currentStatus.value = t('chat.agentReasoning.status.thinking');
       break;
 
     case 'thought':
       // Backend sends 'thought' field, not 'content'
       finalizeStep('thought', status.thought || status.content);
-      currentStatus.value = 'Gedanke';
+      currentStatus.value = t('chat.agentReasoning.status.thought');
       break;
 
     case 'getting_action':
-      currentStatus.value = 'Wähle Aktion...';
+      currentStatus.value = t('chat.agentReasoning.status.choosingAction');
       break;
 
     case 'action': {
@@ -316,20 +319,20 @@ watch(() => props.agentStatus, (status) => {
     case 'observation':
       // Backend sends 'result_preview' field, not 'content'
       finalizeStep('observation', status.result_preview || status.content);
-      currentStatus.value = 'Beobachtung';
+      currentStatus.value = t('chat.agentReasoning.status.observation');
       break;
 
     case 'generating':
-      currentStatus.value = 'Generiere...';
+      currentStatus.value = t('chat.agentReasoning.status.generating');
       break;
 
     case 'final_answer':
-      currentStatus.value = 'Fertig';
+      currentStatus.value = t('chat.agentReasoning.status.complete');
       // Keep expanded - let user close manually
       break;
 
     case 'max_iterations':
-      currentStatus.value = 'Max. Iterationen';
+      currentStatus.value = t('chat.agentReasoning.status.maxIterations');
       break;
 
     case 'complete':
@@ -340,60 +343,60 @@ watch(() => props.agentStatus, (status) => {
         taskType.value = status.task_type;
       }
       steps.value = normalizeSteps(status.reasoning_steps);
-      currentStatus.value = 'Fertig';
+      currentStatus.value = t('chat.agentReasoning.status.complete');
       expanded.value = true;
       scrollToBottom();
       break;
 
     case 'goal_delta':
       appendStepDelta('goal', status.delta);
-      currentStatus.value = 'Ziel definieren...';
+      currentStatus.value = t('chat.agentReasoning.status.definingGoalStream');
       break;
 
     case 'reflection_delta':
       appendStepDelta('reflection', status.delta);
-      currentStatus.value = 'Reflektiere...';
+      currentStatus.value = t('chat.agentReasoning.status.reflectingStream');
       break;
 
     case 'thought_delta':
       appendStepDelta('thought', status.delta);
-      currentStatus.value = 'Denke nach...';
+      currentStatus.value = t('chat.agentReasoning.status.thinkingStream');
       break;
 
     case 'observation_delta':
       appendStepDelta('observation', status.delta);
-      currentStatus.value = 'Beobachtung';
+      currentStatus.value = t('chat.agentReasoning.status.observation');
       break;
 
     case 'action_delta':
       appendStepDelta('action', status.delta);
-      currentStatus.value = 'Aktion...';
+      currentStatus.value = t('chat.agentReasoning.status.actionStream');
       iteration.value = status.iteration || iteration.value;
       break;
 
     case 'adaptive_iteration':
       // High confidence results found - generating response early
-      currentStatus.value = 'Hohe Konfidenz';
+      currentStatus.value = t('chat.agentReasoning.status.highConfidence');
       steps.value.push({
         type: 'adaptive',
-        content: 'Hohe Konfidenz erreicht - generiere finale Antwort',
+        content: t('chat.agentReasoning.status.highConfidenceMessage'),
         expanded: false
       });
       scrollToBottom();
       break;
 
     case 'adaptive_response':
-      currentStatus.value = 'Generiere Antwort...';
+      currentStatus.value = t('chat.agentReasoning.status.generatingResponse');
       break;
 
     case 'error':
       // Display error as a step
       steps.value.push({
         type: 'error',
-        content: status.message || 'Ein Fehler ist aufgetreten',
+        content: status.message || t('chat.agentReasoning.status.genericError'),
         expanded: true
       });
-      currentStatus.value = 'Fehler';
+      currentStatus.value = t('chat.agentReasoning.status.error');
       scrollToBottom();
       break;
   }

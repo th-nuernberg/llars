@@ -300,6 +300,30 @@
         "confirm": "Got it"
       },
       "ratedMessages": "{rated} / {total} messages rated"
+    },
+    "chat": {
+      "model1": "Model 1",
+      "model2": "Model 2",
+      "selected": "Selected",
+      "typing": "Typing",
+      "model1Better": "Model 1 is better",
+      "bothEqual": "Both equal",
+      "model2Better": "Model 2 is better",
+      "ratingHint": "Please rate the responses before continuing...",
+      "placeholder": "Type a message...",
+      "rateFirst": "Please rate the previous responses before sending a new message.",
+      "generating": "Generating responses...",
+      "justification": {
+        "title": "Rating Discrepancy",
+        "info": "We also automatically evaluate the conversation using artificial intelligence. This time it made a different decision than you. To understand this better, we would appreciate it if you could provide a reason. Thank you!",
+        "yourRating": "Your rating:",
+        "aiRating": "AI rating:",
+        "aiReason": "AI's reasoning:",
+        "yourReason": "Your reason (optional):",
+        "yourReasonPlaceholder": "Why do you disagree with the AI? (Optional)",
+        "skipButton": "Continue without reason",
+        "saveButton": "Save reason"
+      }
     }
   },
   "dataImporter": {
@@ -450,6 +474,51 @@
         "generic": "Generic Text Data",
         "unknown": "Unknown"
       }
+    },
+    "wizard": {
+      "subtitle": "Upload data and start evaluation",
+      "close": "Close",
+      "back": "Back",
+      "next": "Next",
+      "done": "Done",
+      "steps": {
+        "upload": "Upload",
+        "describe": "Describe",
+        "configure": "Configure",
+        "users": "Users",
+        "import": "Import"
+      },
+      "taskTypes": {
+        "rating": "Rating",
+        "ranking": "Ranking",
+        "comparison": "Comparison",
+        "mail_rating": "Mail Rating",
+        "authenticity": "Real/Fake",
+        "labeling": "Classification"
+      },
+      "execute": {
+        "ready": "Ready to import",
+        "filesWillBeImported": "{count} files will be imported as \"{name}\".",
+        "files": "Files",
+        "entries": "Entries",
+        "taskType": "Task Type",
+        "users": "Users",
+        "startImport": "Start Import",
+        "preparing": "Preparing import...",
+        "transforming": "Transforming data...",
+        "importing": "Importing data...",
+        "complete": "Import complete!",
+        "successMessage": "{count} entries successfully imported!",
+        "errorMessage": "Import failed: {error}",
+        "unknownError": "Unknown error"
+      },
+      "nextButtons": {
+        "continue": "Continue",
+        "configure": "Configure",
+        "inviteUsers": "Invite users",
+        "prepareImport": "Prepare import"
+      },
+      "autoName": "Import {count} files"
     }
   },
   "docs": {
@@ -4519,7 +4588,49 @@
     "responseTimeout": "Response timeout",
     "responseTimeoutMessage": "The response took too long. Please try again.",
     "errorOccurred": "An error occurred.",
-    "chatbotNotAvailable": "Chatbot not available or no permission"
+    "chatbotNotAvailable": "Chatbot not available or no permission",
+    "agentReasoning": {
+      "step": "Step {iteration}",
+      "thinking": "Agent is thinking...",
+      "showMore": "more",
+      "stepLabels": {
+        "goal": "GOAL",
+        "reflection": "REFLECT",
+        "thought": "THOUGHT",
+        "action": "ACTION",
+        "observation": "OBSERVATION",
+        "search": "SEARCH",
+        "respond": "RESPOND",
+        "adaptive": "ADAPTIVE",
+        "error": "ERROR"
+      },
+      "status": {
+        "initializing": "Initializing...",
+        "starting": "Starting...",
+        "iteration": "Iteration {n}",
+        "sources": "{count} sources",
+        "definingGoal": "Defining goal...",
+        "goalDefined": "Goal defined",
+        "reflecting": "Reflecting...",
+        "reflection": "Reflection",
+        "thinking": "Thinking...",
+        "thought": "Thought",
+        "choosingAction": "Choosing action...",
+        "observation": "Observation",
+        "generating": "Generating...",
+        "complete": "Complete",
+        "maxIterations": "Max iterations",
+        "definingGoalStream": "Defining goal...",
+        "reflectingStream": "Reflecting...",
+        "thinkingStream": "Thinking...",
+        "actionStream": "Action...",
+        "highConfidence": "High confidence",
+        "highConfidenceMessage": "High confidence reached - generating final response",
+        "generatingResponse": "Generating response...",
+        "error": "Error",
+        "genericError": "An error occurred"
+      }
+    }
   },
   "scenario": {
     "title": "Scenario",
@@ -5912,6 +6023,183 @@
         "info": "The account will be deactivated in LLARS and removed from roles/permissions."
       }
     },
+    "chatbotEditor": {
+      "titleEdit": "Edit Chatbot",
+      "titleCreate": "New Chatbot",
+      "tabs": {
+        "general": "General",
+        "llm": "LLM Settings",
+        "rag": "RAG",
+        "agent": "Agent",
+        "collections": "Collections",
+        "webcrawler": "Web Crawler"
+      },
+      "cancel": "Cancel",
+      "save": "Save",
+      "create": "Create",
+      "reranker": {
+        "systemDefault": "System Default",
+        "systemDefaultWithModel": "System Default ({model})",
+        "systemDefaultHint": "Uses the system-wide default reranker model"
+      }
+    },
+    "chatbotBuilder": {
+      "title": "Chatbot Builder",
+      "subtitle": "Crawl website, create chunks, and configure chatbot",
+      "back": "Back",
+      "steps": {
+        "url": "URL",
+        "crawling": "Crawling",
+        "embedding": "Embedding",
+        "configuration": "Configuration",
+        "complete": "Complete"
+      },
+      "status": {
+        "phase1": "Phase 1: URL Discovery",
+        "phase2": "Phase 2: Content Capture",
+        "crawlingComplete": "Crawling complete",
+        "crawling": "Crawling",
+        "embedding": "Embedding",
+        "processing": "Processing"
+      },
+      "progress": {
+        "urlsFound": "{count} URLs found",
+        "searchingUrls": "Searching URLs...",
+        "startingCapture": "{count} URLs, starting capture...",
+        "urlsAndDocs": "{urls} URLs, {docs} documents",
+        "urlProgress": "{completed}/{total} URLs, {docs} Docs",
+        "documentsCount": "{count} documents",
+        "starting": "Starting..."
+      },
+      "actions": {
+        "startCrawling": "Start Crawling",
+        "pause": "Pause",
+        "toConfiguration": "To Configuration",
+        "waitingForCrawling": "Waiting for crawling...",
+        "createWithEmbedding": "Create Chatbot (Embedding continues)",
+        "createChatbot": "Create Chatbot"
+      },
+      "errors": {
+        "urlRequired": "URL is required",
+        "urlProtocol": "URL must start with http:// or https://",
+        "invalidUrl": "Invalid URL",
+        "startWizardFailed": "Error starting wizard",
+        "startCrawlFailed": "Error starting crawling",
+        "urlExplorationStarting": "URL exploration starting...",
+        "crawlFailed": "Error crawling",
+        "pauseFailed": "Error pausing",
+        "socketUnavailable": "Live updates unavailable (Socket.IO)",
+        "crawlingFailed": "Crawling failed",
+        "sessionUnavailable": "Crawler session no longer available (backend restarted or crawl finished). Live updates are unavailable.",
+        "embeddingFailed": "Embedding failed",
+        "createFailed": "Error creating"
+      }
+    },
+    "referral": {
+      "title": "Referral System",
+      "newCampaign": "New Campaign",
+      "stats": {
+        "campaigns": "Campaigns",
+        "active": "Active",
+        "links": "Links",
+        "registrations": "Registrations"
+      },
+      "systemStatus": {
+        "referralEnabled": "Referral System: Enabled",
+        "referralDisabled": "Referral System: Disabled",
+        "selfRegEnabled": "Self-Registration: Enabled",
+        "selfRegDisabled": "Self-Registration: Disabled"
+      },
+      "campaigns": {
+        "title": "Campaigns",
+        "showArchived": "Show archived",
+        "newLink": "New Link",
+        "close": "Close",
+        "description": "Description",
+        "noDescription": "No description",
+        "status": "Status",
+        "maxRegistrations": "Max. Registrations",
+        "unlimited": "Unlimited"
+      },
+      "recentRegistrations": {
+        "title": "Recent Registrations",
+        "filterOnly": "Only {name}",
+        "clearFilter": "Clear filter",
+        "loadMore": "Load more ({count} more)"
+      },
+      "createCampaignDialog": {
+        "title": "Create New Campaign",
+        "name": "Name",
+        "nameRequired": "Name is required",
+        "description": "Description (optional)",
+        "startDate": "Start date (optional)",
+        "endDate": "End date (optional)",
+        "maxRegistrations": "Max. registrations (optional)",
+        "unlimitedHint": "Leave empty for unlimited",
+        "cancel": "Cancel",
+        "create": "Create"
+      },
+      "createLinkDialog": {
+        "title": "Create New Link",
+        "customSlug": "Custom Slug (optional)",
+        "slugHint": "e.g. ai-conference-2026 (only lowercase letters, numbers, -)",
+        "label": "Label/Description (optional)",
+        "roleForNewUsers": "Role for new users",
+        "maxUses": "Max. uses (optional)",
+        "expiresAt": "Expiration date (optional)"
+      },
+      "deleteDialog": {
+        "deleteCampaign": "Delete campaign?",
+        "deleteCampaignText": "The campaign \"{name}\" and all associated links will be permanently deleted.",
+        "deleteLink": "Delete link?",
+        "deleteLinkText": "The link \"{code}\" will be permanently deleted.",
+        "cancel": "Cancel",
+        "delete": "Delete"
+      },
+      "table": {
+        "headers": {
+          "name": "Name",
+          "status": "Status",
+          "links": "Links",
+          "period": "Period",
+          "createdBy": "Created by",
+          "actions": "Actions",
+          "codeSlug": "Code/Slug",
+          "role": "Role",
+          "registrations": "Registrations",
+          "active": "Active",
+          "user": "User",
+          "source": "Source",
+          "registeredAt": "Registered at"
+        }
+      },
+      "statusOptions": {
+        "draft": "Draft",
+        "active": "Active",
+        "paused": "Paused",
+        "expired": "Expired",
+        "archived": "Archived"
+      },
+      "validation": {
+        "slugFormat": "Only lowercase letters, numbers, and hyphens allowed"
+      },
+      "dateRange": {
+        "noPeriod": "No period",
+        "from": "From {date}",
+        "until": "Until {date}"
+      },
+      "messages": {
+        "campaignCreated": "Campaign created",
+        "statusUpdated": "Status updated",
+        "linkCreated": "Link created: {url}",
+        "linkActivated": "Link activated",
+        "linkDeactivated": "Link deactivated",
+        "linkCopied": "Link copied",
+        "copyFailed": "Copy failed",
+        "campaignDeleted": "Campaign deleted",
+        "linkDeleted": "Link deleted"
+      }
+    },
     "rag": {
       "stats": {
         "documents": "Documents",
@@ -6008,10 +6296,16 @@
         "webcrawl": "Webcrawl",
         "linked": "linked",
         "chunks": "{count} Chunks",
+        "refresh": "Refresh",
+        "reindex": "Reindex",
         "empty": {
           "title": "No documents in this collection",
           "hint": "Upload documents or start a crawl job."
         }
+      },
+      "errors": {
+        "shareAccessFailed": "Error saving access rights",
+        "reindexFailed": "Reindexing failed"
       },
       "documentUpload": {
         "title": "Upload documents",
@@ -6070,6 +6364,43 @@
           "hintFilter": "Try adjusting your filters.",
           "hintUpload": "Upload your first document.",
           "uploadFirst": "Upload document"
+        }
+      },
+      "collectionEditor": {
+        "titleCreate": "Create new collection",
+        "titleEdit": "Edit collection",
+        "basicInfo": "Basic information",
+        "technicalName": "Technical name *",
+        "technicalNameHint": "Unique identifier (e.g. 'faq-collection')",
+        "displayName": "Display name *",
+        "displayNameHint": "Visible name in the interface",
+        "description": "Description",
+        "descriptionHint": "Optional description of the collection",
+        "icon": "Icon",
+        "color": "Color",
+        "advancedSettings": "Advanced settings",
+        "chunkSize": "Chunk size",
+        "chunkSizeHint": "Number of characters per text chunk (default: 1000)",
+        "chunkOverlap": "Chunk overlap",
+        "chunkOverlapHint": "Overlap between chunks in characters (default: 200)",
+        "retrievalK": "Retrieval-K",
+        "retrievalKHint": "Number of top documents to retrieve (default: 5)",
+        "cancel": "Cancel",
+        "save": "Save",
+        "create": "Create",
+        "icons": {
+          "book": "Book",
+          "folder": "Folder",
+          "faq": "FAQ",
+          "database": "Database",
+          "text": "Text",
+          "email": "E-Mail",
+          "archive": "Archive"
+        },
+        "validation": {
+          "required": "Required field",
+          "nameFormat": "Only lowercase letters, numbers, - and _",
+          "positiveNumber": "Must be greater than 0"
         }
       }
     }

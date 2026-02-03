@@ -1,7 +1,7 @@
 <template>
   <div class="admin-referral-section">
     <!-- Header with Analytics Overview -->
-    <LCard title="Referral-System" icon="mdi-account-group" class="mb-4">
+    <LCard :title="$t('admin.referral.title')" icon="mdi-account-group" class="mb-4">
       <template #actions>
         <LBtn
           variant="primary"
@@ -9,7 +9,7 @@
           prepend-icon="mdi-plus"
           @click="showCreateCampaignDialog = true"
         >
-          Neue Kampagne
+          {{ $t('admin.referral.newCampaign') }}
         </LBtn>
       </template>
 
@@ -19,25 +19,25 @@
           <v-col cols="6" sm="3">
             <div class="stat-card">
               <div class="stat-value">{{ overview.total_campaigns }}</div>
-              <div class="stat-label">Kampagnen</div>
+              <div class="stat-label">{{ $t('admin.referral.stats.campaigns') }}</div>
             </div>
           </v-col>
           <v-col cols="6" sm="3">
             <div class="stat-card">
               <div class="stat-value text-success">{{ overview.active_campaigns }}</div>
-              <div class="stat-label">Aktiv</div>
+              <div class="stat-label">{{ $t('admin.referral.stats.active') }}</div>
             </div>
           </v-col>
           <v-col cols="6" sm="3">
             <div class="stat-card">
               <div class="stat-value">{{ overview.total_links }}</div>
-              <div class="stat-label">Links</div>
+              <div class="stat-label">{{ $t('admin.referral.stats.links') }}</div>
             </div>
           </v-col>
           <v-col cols="6" sm="3">
             <div class="stat-card">
               <div class="stat-value text-primary">{{ overview.total_registrations }}</div>
-              <div class="stat-label">Registrierungen</div>
+              <div class="stat-label">{{ $t('admin.referral.stats.registrations') }}</div>
             </div>
           </v-col>
         </v-row>
@@ -52,7 +52,7 @@
               <template #prepend>
                 <v-icon>{{ overview.referral_enabled ? 'mdi-check-circle' : 'mdi-alert-circle' }}</v-icon>
               </template>
-              Referral-System: {{ overview.referral_enabled ? 'Aktiviert' : 'Deaktiviert' }}
+              {{ overview.referral_enabled ? $t('admin.referral.systemStatus.referralEnabled') : $t('admin.referral.systemStatus.referralDisabled') }}
             </v-alert>
           </v-col>
           <v-col cols="12" sm="6">
@@ -64,7 +64,7 @@
               <template #prepend>
                 <v-icon>{{ overview.self_registration_enabled ? 'mdi-check-circle' : 'mdi-alert-circle' }}</v-icon>
               </template>
-              Selbst-Registrierung: {{ overview.self_registration_enabled ? 'Aktiviert' : 'Deaktiviert' }}
+              {{ overview.self_registration_enabled ? $t('admin.referral.systemStatus.selfRegEnabled') : $t('admin.referral.systemStatus.selfRegDisabled') }}
             </v-alert>
           </v-col>
         </v-row>
@@ -74,11 +74,11 @@
     </LCard>
 
     <!-- Campaigns List -->
-    <LCard title="Kampagnen" icon="mdi-bullhorn" class="mb-4">
+    <LCard :title="$t('admin.referral.campaigns.title')" icon="mdi-bullhorn" class="mb-4">
       <template #actions>
         <v-checkbox
           v-model="showArchived"
-          label="Archivierte anzeigen"
+          :label="$t('admin.referral.campaigns.showArchived')"
           density="compact"
           hide-details
           class="mr-2"
@@ -127,7 +127,7 @@
     <!-- Selected Campaign Details -->
     <LCard
       v-if="selectedCampaign"
-      :title="`Kampagne: ${selectedCampaign.name}`"
+      :title="`${selectedCampaign.name}`"
       icon="mdi-link-variant"
       class="mb-4"
     >
@@ -138,7 +138,7 @@
           prepend-icon="mdi-plus"
           @click="showCreateLinkDialog = true"
         >
-          Neuer Link
+          {{ $t('admin.referral.campaigns.newLink') }}
         </LBtn>
         <LBtn
           variant="text"
@@ -147,18 +147,18 @@
           @click="selectedCampaign = null"
           class="ml-2"
         >
-          Schließen
+          {{ $t('admin.referral.campaigns.close') }}
         </LBtn>
       </template>
 
       <!-- Campaign Info -->
       <v-row dense class="mb-4">
         <v-col cols="12" md="6">
-          <div class="text-subtitle-2 mb-1">Beschreibung</div>
-          <div class="text-body-2">{{ selectedCampaign.description || 'Keine Beschreibung' }}</div>
+          <div class="text-subtitle-2 mb-1">{{ $t('admin.referral.campaigns.description') }}</div>
+          <div class="text-body-2">{{ selectedCampaign.description || $t('admin.referral.campaigns.noDescription') }}</div>
         </v-col>
         <v-col cols="12" md="3">
-          <div class="text-subtitle-2 mb-1">Status</div>
+          <div class="text-subtitle-2 mb-1">{{ $t('admin.referral.campaigns.status') }}</div>
           <v-select
             v-model="selectedCampaign.status"
             :items="statusOptions"
@@ -171,8 +171,8 @@
           />
         </v-col>
         <v-col cols="12" md="3">
-          <div class="text-subtitle-2 mb-1">Max. Registrierungen</div>
-          <div class="text-body-2">{{ selectedCampaign.max_registrations || 'Unbegrenzt' }}</div>
+          <div class="text-subtitle-2 mb-1">{{ $t('admin.referral.campaigns.maxRegistrations') }}</div>
+          <div class="text-body-2">{{ selectedCampaign.max_registrations || $t('admin.referral.campaigns.unlimited') }}</div>
         </v-col>
       </v-row>
 
@@ -241,7 +241,7 @@
     </LCard>
 
     <!-- Recent Registrations -->
-    <LCard title="Letzte Registrierungen" icon="mdi-account-check" class="mb-4">
+    <LCard :title="$t('admin.referral.recentRegistrations.title')" icon="mdi-account-check" class="mb-4">
       <template #actions>
         <v-btn
           v-if="selectedCampaign"
@@ -249,7 +249,7 @@
           size="small"
           @click="filterRegistrationsByCampaign"
         >
-          Nur {{ selectedCampaign.name }}
+          {{ $t('admin.referral.recentRegistrations.filterOnly', { name: selectedCampaign.name }) }}
         </v-btn>
         <v-btn
           v-if="registrationFilter"
@@ -258,7 +258,7 @@
           color="error"
           @click="clearRegistrationFilter"
         >
-          Filter zurücksetzen
+          {{ $t('admin.referral.recentRegistrations.clearFilter') }}
         </v-btn>
       </template>
 
@@ -305,7 +305,7 @@
 
       <div v-if="registrationTotal > registrations.length" class="text-center mt-2">
         <v-btn variant="text" size="small" @click="loadMoreRegistrations">
-          Mehr laden ({{ registrationTotal - registrations.length }} weitere)
+          {{ $t('admin.referral.recentRegistrations.loadMore', { count: registrationTotal - registrations.length }) }}
         </v-btn>
       </div>
     </LCard>
@@ -315,21 +315,21 @@
       <v-card>
         <v-card-title class="d-flex align-center">
           <v-icon class="mr-2">mdi-bullhorn-variant</v-icon>
-          Neue Kampagne erstellen
+          {{ $t('admin.referral.createCampaignDialog.title') }}
         </v-card-title>
         <v-card-text>
           <v-form ref="campaignForm" v-model="campaignFormValid">
             <v-text-field
               v-model="newCampaign.name"
-              label="Name"
-              :rules="[v => !!v || 'Name ist erforderlich']"
+              :label="$t('admin.referral.createCampaignDialog.name')"
+              :rules="[v => !!v || $t('admin.referral.createCampaignDialog.nameRequired')]"
               variant="outlined"
               density="comfortable"
               class="mb-3"
             />
             <v-textarea
               v-model="newCampaign.description"
-              label="Beschreibung (optional)"
+              :label="$t('admin.referral.createCampaignDialog.description')"
               variant="outlined"
               density="comfortable"
               rows="2"
@@ -339,7 +339,7 @@
               <v-col cols="6">
                 <v-text-field
                   v-model="newCampaign.start_date"
-                  label="Startdatum (optional)"
+                  :label="$t('admin.referral.createCampaignDialog.startDate')"
                   type="datetime-local"
                   variant="outlined"
                   density="comfortable"
@@ -348,7 +348,7 @@
               <v-col cols="6">
                 <v-text-field
                   v-model="newCampaign.end_date"
-                  label="Enddatum (optional)"
+                  :label="$t('admin.referral.createCampaignDialog.endDate')"
                   type="datetime-local"
                   variant="outlined"
                   density="comfortable"
@@ -357,24 +357,24 @@
             </v-row>
             <v-text-field
               v-model.number="newCampaign.max_registrations"
-              label="Max. Registrierungen (optional)"
+              :label="$t('admin.referral.createCampaignDialog.maxRegistrations')"
               type="number"
               variant="outlined"
               density="comfortable"
-              hint="Leer lassen für unbegrenzt"
+              :hint="$t('admin.referral.createCampaignDialog.unlimitedHint')"
             />
           </v-form>
         </v-card-text>
         <v-card-actions>
           <v-spacer />
-          <LBtn variant="cancel" @click="showCreateCampaignDialog = false">Abbrechen</LBtn>
+          <LBtn variant="cancel" @click="showCreateCampaignDialog = false">{{ $t('admin.referral.createCampaignDialog.cancel') }}</LBtn>
           <LBtn
             variant="primary"
             @click="createCampaign"
             :loading="creating"
             :disabled="!campaignFormValid"
           >
-            Erstellen
+            {{ $t('admin.referral.createCampaignDialog.create') }}
           </LBtn>
         </v-card-actions>
       </v-card>
@@ -385,23 +385,23 @@
       <v-card>
         <v-card-title class="d-flex align-center">
           <v-icon class="mr-2">mdi-link-plus</v-icon>
-          Neuen Link erstellen
+          {{ $t('admin.referral.createLinkDialog.title') }}
         </v-card-title>
         <v-card-text>
           <v-form ref="linkForm" v-model="linkFormValid">
             <v-text-field
               v-model="newLink.slug"
-              label="Custom Slug (optional)"
+              :label="$t('admin.referral.createLinkDialog.customSlug')"
               variant="outlined"
               density="comfortable"
-              hint="z.B. ki-konferenz-2026 (nur Kleinbuchstaben, Zahlen, -)"
+              :hint="$t('admin.referral.createLinkDialog.slugHint')"
               persistent-hint
               class="mb-3"
               :rules="slugRules"
             />
             <v-text-field
               v-model="newLink.label"
-              label="Label/Beschreibung (optional)"
+              :label="$t('admin.referral.createLinkDialog.label')"
               variant="outlined"
               density="comfortable"
               class="mb-3"
@@ -409,23 +409,23 @@
             <v-select
               v-model="newLink.role_name"
               :items="availableRoles"
-              label="Rolle für neue User"
+              :label="$t('admin.referral.createLinkDialog.roleForNewUsers')"
               variant="outlined"
               density="comfortable"
               class="mb-3"
             />
             <v-text-field
               v-model.number="newLink.max_uses"
-              label="Max. Verwendungen (optional)"
+              :label="$t('admin.referral.createLinkDialog.maxUses')"
               type="number"
               variant="outlined"
               density="comfortable"
-              hint="Leer lassen für unbegrenzt"
+              :hint="$t('admin.referral.createCampaignDialog.unlimitedHint')"
               class="mb-3"
             />
             <v-text-field
               v-model="newLink.expires_at"
-              label="Ablaufdatum (optional)"
+              :label="$t('admin.referral.createLinkDialog.expiresAt')"
               type="datetime-local"
               variant="outlined"
               density="comfortable"
@@ -434,14 +434,14 @@
         </v-card-text>
         <v-card-actions>
           <v-spacer />
-          <LBtn variant="cancel" @click="showCreateLinkDialog = false">Abbrechen</LBtn>
+          <LBtn variant="cancel" @click="showCreateLinkDialog = false">{{ $t('admin.referral.deleteDialog.cancel') }}</LBtn>
           <LBtn
             variant="primary"
             @click="createLink"
             :loading="creatingLink"
             :disabled="!linkFormValid"
           >
-            Erstellen
+            {{ $t('admin.referral.createCampaignDialog.create') }}
           </LBtn>
         </v-card-actions>
       </v-card>
@@ -457,8 +457,8 @@
         <v-card-text>{{ deleteDialogText }}</v-card-text>
         <v-card-actions>
           <v-spacer />
-          <LBtn variant="cancel" @click="showDeleteDialog = false">Abbrechen</LBtn>
-          <LBtn variant="danger" @click="executeDelete" :loading="deleting">Löschen</LBtn>
+          <LBtn variant="cancel" @click="showDeleteDialog = false">{{ $t('admin.referral.deleteDialog.cancel') }}</LBtn>
+          <LBtn variant="danger" @click="executeDelete" :loading="deleting">{{ $t('admin.referral.deleteDialog.delete') }}</LBtn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -467,9 +467,11 @@
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useReferralSystem } from '@/composables/useReferralSystem'
 import { useSnackbar } from '@/composables/useSnackbar'
 
+const { t } = useI18n()
 const referral = useReferralSystem()
 const { showSnackbar } = useSnackbar()
 
@@ -519,42 +521,42 @@ const newLink = ref({
 
 const availableRoles = ['admin', 'researcher', 'evaluator', 'chatbot_manager']
 
-const slugRules = [
-  v => !v || /^[a-z0-9-]+$/.test(v) || 'Nur Kleinbuchstaben, Zahlen und Bindestriche erlaubt'
-]
+const slugRules = computed(() => [
+  v => !v || /^[a-z0-9-]+$/.test(v) || t('admin.referral.validation.slugFormat')
+])
 
-const statusOptions = [
-  { label: 'Entwurf', value: 'draft' },
-  { label: 'Aktiv', value: 'active' },
-  { label: 'Pausiert', value: 'paused' },
-  { label: 'Abgelaufen', value: 'expired' },
-  { label: 'Archiviert', value: 'archived' }
-]
+const statusOptions = computed(() => [
+  { label: t('admin.referral.statusOptions.draft'), value: 'draft' },
+  { label: t('admin.referral.statusOptions.active'), value: 'active' },
+  { label: t('admin.referral.statusOptions.paused'), value: 'paused' },
+  { label: t('admin.referral.statusOptions.expired'), value: 'expired' },
+  { label: t('admin.referral.statusOptions.archived'), value: 'archived' }
+])
 
 // Table headers
-const campaignHeaders = [
-  { title: 'Name', key: 'name', sortable: true },
-  { title: 'Status', key: 'status', sortable: true },
-  { title: 'Links', key: 'link_count', sortable: true },
-  { title: 'Zeitraum', key: 'dates', sortable: false },
-  { title: 'Erstellt von', key: 'created_by', sortable: true },
-  { title: 'Aktionen', key: 'actions', sortable: false, align: 'end' }
-]
+const campaignHeaders = computed(() => [
+  { title: t('admin.referral.table.headers.name'), key: 'name', sortable: true },
+  { title: t('admin.referral.table.headers.status'), key: 'status', sortable: true },
+  { title: t('admin.referral.table.headers.links'), key: 'link_count', sortable: true },
+  { title: t('admin.referral.table.headers.period'), key: 'dates', sortable: false },
+  { title: t('admin.referral.table.headers.createdBy'), key: 'created_by', sortable: true },
+  { title: t('admin.referral.table.headers.actions'), key: 'actions', sortable: false, align: 'end' }
+])
 
-const linkHeaders = [
-  { title: 'Code/Slug', key: 'identifier', sortable: false },
-  { title: 'Rolle', key: 'role_name', sortable: true },
-  { title: 'Registrierungen', key: 'stats', sortable: false },
-  { title: 'Aktiv', key: 'is_active', sortable: true },
+const linkHeaders = computed(() => [
+  { title: t('admin.referral.table.headers.codeSlug'), key: 'identifier', sortable: false },
+  { title: t('admin.referral.table.headers.role'), key: 'role_name', sortable: true },
+  { title: t('admin.referral.table.headers.registrations'), key: 'stats', sortable: false },
+  { title: t('admin.referral.table.headers.active'), key: 'is_active', sortable: true },
   { title: '', key: 'actions', sortable: false, align: 'end' }
-]
+])
 
-const registrationHeaders = [
-  { title: 'Benutzer', key: 'username', sortable: true },
-  { title: 'Quelle', key: 'source', sortable: false },
-  { title: 'Rolle', key: 'role_assigned', sortable: true },
-  { title: 'Registriert am', key: 'registered_at', sortable: true }
-]
+const registrationHeaders = computed(() => [
+  { title: t('admin.referral.table.headers.user'), key: 'username', sortable: true },
+  { title: t('admin.referral.table.headers.source'), key: 'source', sortable: false },
+  { title: t('admin.referral.table.headers.role'), key: 'role_assigned', sortable: true },
+  { title: t('admin.referral.table.headers.registeredAt'), key: 'registered_at', sortable: true }
+])
 
 // Registrations state
 const registrations = ref([])
@@ -671,11 +673,11 @@ function getStatusLabel(status) {
 
 // Date formatting
 function formatDateRange(start, end) {
-  if (!start && !end) return 'Kein Zeitraum'
+  if (!start && !end) return t('admin.referral.dateRange.noPeriod')
   const formatDate = (d) => new Date(d).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: '2-digit' })
   if (start && end) return `${formatDate(start)} - ${formatDate(end)}`
-  if (start) return `Ab ${formatDate(start)}`
-  return `Bis ${formatDate(end)}`
+  if (start) return t('admin.referral.dateRange.from', { date: formatDate(start) })
+  return t('admin.referral.dateRange.until', { date: formatDate(end) })
 }
 
 // Campaign actions
@@ -712,7 +714,7 @@ async function createCampaign() {
     if (!data.max_registrations) data.max_registrations = null
 
     await referral.createCampaign(data)
-    showSnackbar('Kampagne erstellt', 'success')
+    showSnackbar(t('admin.referral.messages.campaignCreated'), 'success')
     showCreateCampaignDialog.value = false
     resetCampaignForm()
     await loadCampaigns()
@@ -740,7 +742,7 @@ async function updateCampaignStatus() {
 
   try {
     await referral.updateCampaignStatus(selectedCampaign.value.id, selectedCampaign.value.status)
-    showSnackbar('Status aktualisiert', 'success')
+    showSnackbar(t('admin.referral.messages.statusUpdated'), 'success')
     await loadCampaigns()
     await loadOverview()
   } catch (e) {
@@ -762,7 +764,7 @@ async function createLink() {
     if (!data.expires_at) data.expires_at = null
 
     const link = await referral.createLink(selectedCampaign.value.id, data)
-    showSnackbar(`Link erstellt: ${link.url}`, 'success')
+    showSnackbar(t('admin.referral.messages.linkCreated', { url: link.url }), 'success')
     showCreateLinkDialog.value = false
     resetLinkForm()
     await loadCampaignLinks(selectedCampaign.value.id)
@@ -790,7 +792,7 @@ async function toggleLinkActive(link, active) {
   try {
     await referral.updateLink(link.id, { is_active: active })
     link.is_active = active
-    showSnackbar(active ? 'Link aktiviert' : 'Link deaktiviert', 'success')
+    showSnackbar(active ? t('admin.referral.messages.linkActivated') : t('admin.referral.messages.linkDeactivated'), 'success')
   } catch (e) {
     showSnackbar(e.message, 'error')
   }
@@ -800,9 +802,9 @@ async function toggleLinkActive(link, active) {
 async function copyLink(link) {
   const success = await referral.copyLinkToClipboard(link)
   if (success) {
-    showSnackbar('Link kopiert', 'success')
+    showSnackbar(t('admin.referral.messages.linkCopied'), 'success')
   } else {
-    showSnackbar('Kopieren fehlgeschlagen', 'error')
+    showSnackbar(t('admin.referral.messages.copyFailed'), 'error')
   }
 }
 
@@ -810,16 +812,16 @@ async function copyLink(link) {
 function confirmDeleteCampaign(campaign) {
   deleteTarget.value = campaign
   deleteType.value = 'campaign'
-  deleteDialogTitle.value = 'Kampagne löschen?'
-  deleteDialogText.value = `Die Kampagne "${campaign.name}" und alle zugehörigen Links werden unwiderruflich gelöscht.`
+  deleteDialogTitle.value = t('admin.referral.deleteDialog.deleteCampaign')
+  deleteDialogText.value = t('admin.referral.deleteDialog.deleteCampaignText', { name: campaign.name })
   showDeleteDialog.value = true
 }
 
 function confirmDeleteLink(link) {
   deleteTarget.value = link
   deleteType.value = 'link'
-  deleteDialogTitle.value = 'Link löschen?'
-  deleteDialogText.value = `Der Link "${link.slug || link.code}" wird unwiderruflich gelöscht.`
+  deleteDialogTitle.value = t('admin.referral.deleteDialog.deleteLink')
+  deleteDialogText.value = t('admin.referral.deleteDialog.deleteLinkText', { code: link.slug || link.code })
   showDeleteDialog.value = true
 }
 
@@ -828,7 +830,7 @@ async function executeDelete() {
   try {
     if (deleteType.value === 'campaign') {
       await referral.deleteCampaign(deleteTarget.value.id)
-      showSnackbar('Kampagne gelöscht', 'success')
+      showSnackbar(t('admin.referral.messages.campaignDeleted'), 'success')
       if (selectedCampaign.value?.id === deleteTarget.value.id) {
         selectedCampaign.value = null
         campaignLinks.value = []
@@ -836,7 +838,7 @@ async function executeDelete() {
       await loadCampaigns()
     } else {
       await referral.deleteLink(deleteTarget.value.id)
-      showSnackbar('Link gelöscht', 'success')
+      showSnackbar(t('admin.referral.messages.linkDeleted'), 'success')
       if (selectedCampaign.value) {
         await loadCampaignLinks(selectedCampaign.value.id)
       }

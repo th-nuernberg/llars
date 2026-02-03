@@ -5,9 +5,9 @@
       <v-card-title class="d-flex align-center pa-4">
         <LIcon class="mr-2" color="primary">wand</LIcon>
         <div>
-          <div class="text-h6">Chatbot Builder</div>
+          <div class="text-h6">{{ $t('admin.chatbotBuilder.title') }}</div>
           <div class="text-caption text-medium-emphasis">
-            Website crawlen, Chunks erstellen und Chatbot konfigurieren
+            {{ $t('admin.chatbotBuilder.subtitle') }}
           </div>
         </div>
         <v-spacer />
@@ -46,7 +46,7 @@
           prepend-icon="mdi-arrow-left"
           @click="handleClose"
         >
-          Zurück
+          {{ $t('admin.chatbotBuilder.back') }}
         </LBtn>
       </v-card-title>
 
@@ -184,7 +184,7 @@
           size="small"
           @click="handlePreviousStep"
         >
-          Zurück
+          {{ $t('admin.chatbotBuilder.back') }}
         </LBtn>
         <v-spacer />
 
@@ -197,7 +197,7 @@
           prepend-icon="mdi-rocket-launch"
           @click="handleStartWizard"
         >
-          Crawling starten
+          {{ $t('admin.chatbotBuilder.actions.startCrawling') }}
         </LBtn>
 
         <!-- Step 2/3: Progress Actions -->
@@ -210,7 +210,7 @@
             class="mr-2"
             @click="handlePauseBuild"
           >
-            Pausieren
+            {{ $t('admin.chatbotBuilder.actions.pause') }}
           </LBtn>
           <LBtn
             variant="primary"
@@ -218,7 +218,7 @@
             prepend-icon="mdi-skip-forward"
             @click="handleSkipToConfig"
           >
-            Zur Konfiguration
+            {{ $t('admin.chatbotBuilder.actions.toConfiguration') }}
           </LBtn>
         </template>
 
@@ -232,9 +232,9 @@
           prepend-icon="mdi-check"
           @click="handleFinalizeChatbot"
         >
-          <template v-if="isCrawling">Warte auf Crawling...</template>
-          <template v-else-if="isEmbedding">Chatbot erstellen (Embedding läuft weiter)</template>
-          <template v-else>Chatbot erstellen</template>
+          <template v-if="isCrawling">{{ $t('admin.chatbotBuilder.actions.waitingForCrawling') }}</template>
+          <template v-else-if="isEmbedding">{{ $t('admin.chatbotBuilder.actions.createWithEmbedding') }}</template>
+          <template v-else>{{ $t('admin.chatbotBuilder.actions.createChatbot') }}</template>
         </LBtn>
       </v-card-actions>
 
@@ -255,8 +255,11 @@
 
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import axios from 'axios'
 import { logI18n, logI18nParams } from '@/utils/logI18n'
+
+const { t } = useI18n()
 import { getSocket, useSocketState } from '@/services/socketService'
 import { useBuilderState, BUILD_STATUS, WIZARD_STEPS } from '@/composables/useBuilderState'
 import { fieldGenerationService } from '@/composables/useFieldGenerationService'
@@ -331,13 +334,13 @@ const {
 } = useBuilderState()
 
 // ===== Stepper Config =====
-const stepItems = [
-  { title: 'URL', value: WIZARD_STEPS.URL_INPUT },
-  { title: 'Crawling', value: WIZARD_STEPS.CRAWLING },
-  { title: 'Embedding', value: WIZARD_STEPS.EMBEDDING },
-  { title: 'Konfiguration', value: WIZARD_STEPS.CONFIGURATION },
-  { title: 'Fertig', value: WIZARD_STEPS.COMPLETE }
-]
+const stepItems = computed(() => [
+  { title: t('admin.chatbotBuilder.steps.url'), value: WIZARD_STEPS.URL_INPUT },
+  { title: t('admin.chatbotBuilder.steps.crawling'), value: WIZARD_STEPS.CRAWLING },
+  { title: t('admin.chatbotBuilder.steps.embedding'), value: WIZARD_STEPS.EMBEDDING },
+  { title: t('admin.chatbotBuilder.steps.configuration'), value: WIZARD_STEPS.CONFIGURATION },
+  { title: t('admin.chatbotBuilder.steps.complete'), value: WIZARD_STEPS.COMPLETE }
+])
 
 // ===== Computed =====
 const canFinalize = computed(() => {
@@ -370,16 +373,16 @@ const overallProgressPercent = computed(() => {
 const headerStatusText = computed(() => {
   if (isCrawling.value) {
     const stage = crawlProgress.value.stage
-    if (stage === 'planning') return 'Phase 1: URL-Erkundung'
-    if (stage === 'planning_done') return 'Phase 2: Inhalte erfassen'
-    if (stage === 'crawling') return 'Phase 2: Inhalte erfassen'
-    if (stage === 'completed') return 'Crawling abgeschlossen'
-    return 'Crawling'
+    if (stage === 'planning') return t('admin.chatbotBuilder.status.phase1')
+    if (stage === 'planning_done') return t('admin.chatbotBuilder.status.phase2')
+    if (stage === 'crawling') return t('admin.chatbotBuilder.status.phase2')
+    if (stage === 'completed') return t('admin.chatbotBuilder.status.crawlingComplete')
+    return t('admin.chatbotBuilder.status.crawling')
   }
   if (isEmbedding.value) {
-    return 'Embedding'
+    return t('admin.chatbotBuilder.status.embedding')
   }
-  return 'Verarbeitung'
+  return t('admin.chatbotBuilder.status.processing')
 })
 
 const currentProgressText = computed(() => {
@@ -391,27 +394,27 @@ const currentProgressText = computed(() => {
 
     // During planning phase, show discovered URLs
     if (p.stage === 'planning') {
-      return total > 0 ? `${total} URLs gefunden` : 'Suche URLs...'
+      return total > 0 ? t('admin.chatbotBuilder.progress.urlsFound', { count: total }) : t('admin.chatbotBuilder.progress.searchingUrls')
     }
 
     // Transition from planning to crawling
     if (p.stage === 'planning_done') {
-      return `${total} URLs, starte Erfassung...`
+      return t('admin.chatbotBuilder.progress.startingCapture', { count: total })
     }
 
     // Crawling completed
     if (p.stage === 'completed') {
-      return `${total} URLs, ${docs} Dokumente`
+      return t('admin.chatbotBuilder.progress.urlsAndDocs', { urls: total, docs })
     }
 
     // During crawling phase
     if (total > 0) {
-      return `${completed}/${total} URLs, ${docs} Docs`
+      return t('admin.chatbotBuilder.progress.urlProgress', { completed, total, docs })
     }
     if (docs > 0) {
-      return `${docs} Dokumente`
+      return t('admin.chatbotBuilder.progress.documentsCount', { count: docs })
     }
-    return 'Wird gestartet...'
+    return t('admin.chatbotBuilder.progress.starting')
   }
   if (isEmbedding.value) {
     return `${embeddingProgressPercent.value}%`
@@ -470,7 +473,7 @@ const getEffectiveWizardUrl = (value) => {
 async function handleStartWizard() {
   const rawUrl = wizardData.value.url
   if (!rawUrl || !rawUrl.trim()) {
-    setError('url', 'URL ist erforderlich')
+    setError('url', t('admin.chatbotBuilder.errors.urlRequired'))
     return
   }
 
@@ -480,11 +483,11 @@ async function handleStartWizard() {
   try {
     const parsedUrl = new URL(effectiveUrl)
     if (!['http:', 'https:'].includes(parsedUrl.protocol)) {
-      setError('url', 'URL muss mit http:// oder https:// beginnen')
+      setError('url', t('admin.chatbotBuilder.errors.urlProtocol'))
       return
     }
   } catch {
-    setError('url', 'Ungültige URL')
+    setError('url', t('admin.chatbotBuilder.errors.invalidUrl'))
     return
   }
 
@@ -518,11 +521,11 @@ async function handleStartWizard() {
       // Initial document fetch
       requestCollectionDocuments({ force: true })
     } else {
-      setError('general', response.data.error || 'Fehler beim Starten des Wizards')
+      setError('general', response.data.error || t('admin.chatbotBuilder.errors.startWizardFailed'))
     }
   } catch (error) {
     logI18n('error', 'logs.admin.chatbotWizard.startWizardFailed', error)
-    setError('general', error.response?.data?.error || 'Fehler beim Starten des Wizards')
+    setError('general', error.response?.data?.error || t('admin.chatbotBuilder.errors.startWizardFailed'))
   } finally {
     setLoading(false)
   }
@@ -552,19 +555,19 @@ async function startCrawl() {
         stage: 'planning',
         urlsTotal: 0,
         urlsCompleted: 0,
-        message: 'URL-Erkundung startet...',
+        message: t('admin.chatbotBuilder.errors.urlExplorationStarting'),
         crawlerType: crawlerConfig.value.usePlaywright ? 'Playwright' : 'Basic'
       })
 
       return response.data // Return the result so caller can use job_id
     } else {
-      setError('crawl', response.data.error || 'Fehler beim Starten des Crawlings')
+      setError('crawl', response.data.error || t('admin.chatbotBuilder.errors.startCrawlFailed'))
       setStatus(BUILD_STATUS.ERROR)
       return null
     }
   } catch (error) {
     logI18n('error', 'logs.admin.chatbotWizard.startCrawlFailed', error)
-    setError('crawl', error.response?.data?.error || 'Fehler beim Crawlen')
+    setError('crawl', error.response?.data?.error || t('admin.chatbotBuilder.errors.crawlFailed'))
     setStatus(BUILD_STATUS.ERROR)
     return null
   }
@@ -579,7 +582,7 @@ async function handlePauseBuild() {
     stopElapsedTimeUpdates()
   } catch (error) {
     logI18n('error', 'logs.admin.chatbotWizard.pauseBuildFailed', error)
-    setError('general', 'Fehler beim Pausieren')
+    setError('general', t('admin.chatbotBuilder.errors.pauseFailed'))
   }
 }
 
@@ -588,7 +591,7 @@ function subscribeToProgress(jobId = null) {
   socket.value = getSocket()
   if (!socket.value) {
     logI18n('warn', 'logs.admin.chatbotWizard.socketUnavailableSubscribe')
-    setError('general', 'Live-Updates nicht verfügbar (Socket.IO)')
+    setError('general', t('admin.chatbotBuilder.errors.socketUnavailable'))
     return
   }
 
@@ -884,7 +887,7 @@ function handleCrawlerError(data) {
     return // Event is for a different crawler job
   }
 
-  const message = data?.error || 'Crawling fehlgeschlagen'
+  const message = data?.error || t('admin.chatbotBuilder.errors.crawlingFailed')
   logI18n('error', 'logs.admin.chatbotWizard.crawlerError', data)
 
   if (typeof message === 'string' && message.toLowerCase().includes('session not found')) {
@@ -896,7 +899,7 @@ function handleCrawlerError(data) {
       }).catch(() => {})
     }
 
-    setError('crawl', 'Crawler-Session nicht mehr verfügbar (Backend neu gestartet oder Crawl beendet). Live-Updates sind nicht verfügbar.')
+    setError('crawl', t('admin.chatbotBuilder.errors.sessionUnavailable'))
     return
   }
 
@@ -1025,7 +1028,7 @@ function handleEmbeddingError(data) {
   logI18n('error', 'logs.admin.chatbotWizard.embeddingError', data)
   if (collectionId.value && data?.collection_id && data.collection_id !== collectionId.value) return
 
-  setError('embedding', data.error || 'Embedding fehlgeschlagen')
+  setError('embedding', data.error || t('admin.chatbotBuilder.errors.embeddingFailed'))
   setStatus(BUILD_STATUS.ERROR)
 }
 
@@ -1275,11 +1278,11 @@ async function handleFinalizeChatbot() {
         })
       }
     } else {
-      setError('general', response.data.error || 'Fehler beim Erstellen')
+      setError('general', response.data.error || t('admin.chatbotBuilder.errors.createFailed'))
     }
   } catch (error) {
     logI18n('error', 'logs.admin.chatbotWizard.finalizeError', error)
-    setError('general', error.response?.data?.error || 'Fehler beim Erstellen')
+    setError('general', error.response?.data?.error || t('admin.chatbotBuilder.errors.createFailed'))
   } finally {
     setLoading(false)
   }

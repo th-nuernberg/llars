@@ -8,7 +8,7 @@
     <v-card>
       <v-card-title class="text-h5 pa-4">
         <LIcon :icon="isEdit ? 'mdi-pencil' : 'mdi-plus'" class="mr-2"></LIcon>
-        {{ isEdit ? 'Collection bearbeiten' : 'Neue Collection erstellen' }}
+        {{ isEdit ? $t('rag.collectionEditor.titleEdit') : $t('rag.collectionEditor.titleCreate') }}
       </v-card-title>
 
       <v-divider></v-divider>
@@ -17,12 +17,12 @@
         <v-form ref="formRef" v-model="isValid">
           <!-- Basis-Informationen -->
           <div class="mb-4">
-            <div class="text-subtitle-1 font-weight-medium mb-3">Basis-Informationen</div>
+            <div class="text-subtitle-1 font-weight-medium mb-3">{{ $t('rag.collectionEditor.basicInfo') }}</div>
 
             <v-text-field
               v-model="formData.name"
-              label="Technischer Name *"
-              hint="Eindeutiger Bezeichner (z.B. 'faq-collection')"
+              :label="$t('rag.collectionEditor.technicalName')"
+              :hint="$t('rag.collectionEditor.technicalNameHint')"
               persistent-hint
               :rules="[rules.required, rules.nameFormat]"
               variant="outlined"
@@ -33,8 +33,8 @@
 
             <v-text-field
               v-model="formData.display_name"
-              label="Anzeigename *"
-              hint="Sichtbarer Name in der Oberfläche"
+              :label="$t('rag.collectionEditor.displayName')"
+              :hint="$t('rag.collectionEditor.displayNameHint')"
               persistent-hint
               :rules="[rules.required]"
               variant="outlined"
@@ -44,8 +44,8 @@
 
             <v-textarea
               v-model="formData.description"
-              label="Beschreibung"
-              hint="Optionale Beschreibung der Collection"
+              :label="$t('rag.collectionEditor.description')"
+              :hint="$t('rag.collectionEditor.descriptionHint')"
               persistent-hint
               variant="outlined"
               density="comfortable"
@@ -58,7 +58,7 @@
               <v-col cols="12" sm="6">
                 <v-select
                   v-model="formData.icon"
-                  label="Icon"
+                  :label="$t('rag.collectionEditor.icon')"
                   :items="iconOptions"
                   variant="outlined"
                   density="comfortable"
@@ -82,7 +82,7 @@
                   <template v-slot:activator="{ props }">
                     <v-text-field
                       v-model="formData.color"
-                      label="Farbe"
+                      :label="$t('rag.collectionEditor.color')"
                       variant="outlined"
                       density="comfortable"
                       readonly
@@ -119,13 +119,13 @@
             <v-expansion-panel>
               <v-expansion-panel-title>
                 <LIcon icon="mdi-cog" class="mr-2"></LIcon>
-                Erweiterte Einstellungen
+                {{ $t('rag.collectionEditor.advancedSettings') }}
               </v-expansion-panel-title>
               <v-expansion-panel-text>
                 <v-text-field
                   v-model.number="formData.chunk_size"
-                  label="Chunk-Größe"
-                  hint="Anzahl der Zeichen pro Text-Chunk (Standard: 1000)"
+                  :label="$t('rag.collectionEditor.chunkSize')"
+                  :hint="$t('rag.collectionEditor.chunkSizeHint')"
                   persistent-hint
                   type="number"
                   :rules="[rules.positiveNumber]"
@@ -136,8 +136,8 @@
 
                 <v-text-field
                   v-model.number="formData.chunk_overlap"
-                  label="Chunk-Überlappung"
-                  hint="Überlappung zwischen Chunks in Zeichen (Standard: 200)"
+                  :label="$t('rag.collectionEditor.chunkOverlap')"
+                  :hint="$t('rag.collectionEditor.chunkOverlapHint')"
                   persistent-hint
                   type="number"
                   :rules="[rules.positiveNumber]"
@@ -148,8 +148,8 @@
 
                 <v-text-field
                   v-model.number="formData.retrieval_k"
-                  label="Retrieval-K"
-                  hint="Anzahl der abzurufenden Top-Dokumente (Standard: 5)"
+                  :label="$t('rag.collectionEditor.retrievalK')"
+                  :hint="$t('rag.collectionEditor.retrievalKHint')"
                   persistent-hint
                   type="number"
                   :rules="[rules.positiveNumber]"
@@ -170,7 +170,7 @@
           variant="text"
           @click="$emit('update:modelValue', false)"
         >
-          Abbrechen
+          {{ $t('rag.collectionEditor.cancel') }}
         </v-btn>
         <v-btn
           color="primary"
@@ -178,7 +178,7 @@
           @click="handleSave"
           :disabled="!isValid"
         >
-          {{ isEdit ? 'Speichern' : 'Erstellen' }}
+          {{ isEdit ? $t('rag.collectionEditor.save') : $t('rag.collectionEditor.create') }}
         </v-btn>
       </v-card-actions>
     </v-card>
@@ -186,7 +186,10 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+import { ref, watch, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 const props = defineProps({
   modelValue: {
@@ -219,15 +222,15 @@ const formData = ref({
   retrieval_k: 5
 })
 
-const iconOptions = [
-  { value: 'book', title: 'Buch', icon: 'mdi-book' },
-  { value: 'folder', title: 'Ordner', icon: 'mdi-folder' },
-  { value: 'faq', title: 'FAQ', icon: 'mdi-comment-question' },
-  { value: 'database', title: 'Datenbank', icon: 'mdi-database' },
-  { value: 'text', title: 'Text', icon: 'mdi-text-box' },
-  { value: 'email', title: 'E-Mail', icon: 'mdi-email' },
-  { value: 'archive', title: 'Archiv', icon: 'mdi-archive' }
-]
+const iconOptions = computed(() => [
+  { value: 'book', title: t('rag.collectionEditor.icons.book'), icon: 'mdi-book' },
+  { value: 'folder', title: t('rag.collectionEditor.icons.folder'), icon: 'mdi-folder' },
+  { value: 'faq', title: t('rag.collectionEditor.icons.faq'), icon: 'mdi-comment-question' },
+  { value: 'database', title: t('rag.collectionEditor.icons.database'), icon: 'mdi-database' },
+  { value: 'text', title: t('rag.collectionEditor.icons.text'), icon: 'mdi-text-box' },
+  { value: 'email', title: t('rag.collectionEditor.icons.email'), icon: 'mdi-email' },
+  { value: 'archive', title: t('rag.collectionEditor.icons.archive'), icon: 'mdi-archive' }
+])
 
 const colorSwatches = [
   ['#1976D2', '#2196F3', '#03A9F4', '#00BCD4'],
@@ -236,11 +239,11 @@ const colorSwatches = [
   ['#9C27B0', '#673AB7', '#3F51B5', '#607D8B']
 ]
 
-const rules = {
-  required: v => !!v || 'Pflichtfeld',
-  nameFormat: v => /^[a-z0-9-_]+$/.test(v) || 'Nur Kleinbuchstaben, Zahlen, - und _',
-  positiveNumber: v => v > 0 || 'Muss größer als 0 sein'
-}
+const rules = computed(() => ({
+  required: v => !!v || t('rag.collectionEditor.validation.required'),
+  nameFormat: v => /^[a-z0-9-_]+$/.test(v) || t('rag.collectionEditor.validation.nameFormat'),
+  positiveNumber: v => v > 0 || t('rag.collectionEditor.validation.positiveNumber')
+}))
 
 watch(() => props.collection, (newVal) => {
   if (newVal && props.isEdit) {

@@ -37,25 +37,34 @@
 </template>
 
 <script setup>
-  const links = [
+  import { computed } from 'vue'
+  import { useI18n } from 'vue-i18n'
+
+  const { locale, t } = useI18n()
+
+  const docsUrl = computed(() => {
+    return locale.value === 'en' ? '/docs/en/' : '/docs/'
+  })
+
+  const links = computed(() => [
     {
-      title: 'Dokumentation',
-      to: '/docs/',
+      title: t('footer.documentation'),
+      to: docsUrl.value,
       external: true,
     },
     {
-      title: 'Impressum',
+      title: t('footer.imprint'),
       to: '/Impressum',
     },
     {
-      title: 'Datenschutz',
+      title: t('footer.privacy'),
       to: '/Datenschutz',
     },
     {
-      title: 'Kontakt',
+      title: t('footer.contact'),
       to: '/Kontakt',
     },
-  ]
+  ])
 </script>
 
 <style scoped lang="sass">

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-LLARS Demo Video - Autoclicker
+Lars Demo Video - Autoclicker
 ==============================
 Automatisiert Browser-Interaktionen mit visuellen Highlights.
 

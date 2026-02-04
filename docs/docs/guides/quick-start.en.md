@@ -1,4 +1,4 @@
-# 🚀 LLARS Quick Start (Development)
+# LLARS Quick Start (Development)
 
 ## 1) Start
 
@@ -7,15 +7,15 @@ cp .env.template.development .env
 ./start_llars.sh
 ```
 
-## 2) Öffnen
+## 2) Open
 
 - LLARS: `http://localhost:55080`
-- Authentik UI (optional direkt): `http://localhost:55095`
+- Authentik UI (optional direct): `http://localhost:55095`
 - Docs (via nginx, dev): `http://localhost:55080/mkdocs/`
 
 ## 3) Login (LLARS)
 
-| Username | Passwort |
+| Username | Password |
 |----------|----------|
 | admin | admin123 |
 | researcher | admin123 |
@@ -23,7 +23,7 @@ cp .env.template.development .env
 
 ## 4) Matomo (Admin)
 
-Admin → **Analytics** → **Matomo öffnen** (SSO).
+Admin -> **Analytics** -> **Open Matomo** (SSO).
 
 ## Troubleshooting
 

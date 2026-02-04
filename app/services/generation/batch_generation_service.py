@@ -353,29 +353,40 @@ class BatchGenerationService:
             custom_texts = []
             manual_structured_data = []  # Store structured data for later
             for item in manual_items:
-                text = ""
+                # Preserve all original fields to pass as prompt variables
                 item_data = {"subject": "", "messages": []}
-                # Try simple input/content fields first
-                if item.get("input"):
-                    text = item["input"]
-                elif item.get("content"):
-                    text = item["content"]
-                # Handle structured messages format (email-style data)
-                elif item.get("messages"):
-                    messages = item["messages"]
-                    item_data["messages"] = messages
-                    item_data["subject"] = item.get("subject", "")
-                    parts = []
-                    if item.get("subject"):
-                        parts.append(f"Betreff: {item['subject']}")
-                    for msg in messages:
-                        role = msg.get("role", "")
-                        content = msg.get("content", "")
-                        if role and content:
-                            parts.append(f"{role}: {content}")
-                        elif content:
-                            parts.append(content)
-                    text = "\n\n".join(parts)
+                if isinstance(item, dict):
+                    item_data.update(item)
+                text = ""
+                if isinstance(item, dict):
+                    # Try simple input/content fields first
+                    if item.get("input"):
+                        text = item["input"]
+                    elif item.get("content"):
+                        text = item["content"]
+                    # Handle structured messages format (email-style data)
+                    elif item.get("messages"):
+                        messages = item["messages"]
+                        item_data["messages"] = messages
+                        item_data["subject"] = item.get("subject", "")
+                        parts = []
+                        if item.get("subject"):
+                            parts.append(f"Betreff: {item['subject']}")
+                        for msg in messages:
+                            role = msg.get("role", "")
+                            content = msg.get("content", "")
+                            if role and content:
+                                parts.append(f"{role}: {content}")
+                            elif content:
+                                parts.append(content)
+                        text = "\n\n".join(parts)
+                else:
+                    # Fallback for plain strings
+                    text = str(item)
+
+                # If no explicit subject, reuse title as subject for compatibility
+                if not item_data.get("subject") and item_data.get("title"):
+                    item_data["subject"] = item_data["title"]
                 custom_texts.append(text)
                 manual_structured_data.append(item_data)
             source_items = [None] * len(custom_texts)
@@ -463,6 +474,13 @@ class BatchGenerationService:
                 variables["subject"] = structured["subject"]
             if structured.get("messages"):
                 variables["messages"] = structured["messages"]
+            # Include all other structured fields as prompt variables
+            if structured:
+                for key, value in structured.items():
+                    if key in ("subject", "messages"):
+                        continue
+                    if key not in variables:
+                        variables[key] = value
             if user_prompt:
                 variables["_user_prompt_id"] = template_id
             # Store source index for later retrieval during export

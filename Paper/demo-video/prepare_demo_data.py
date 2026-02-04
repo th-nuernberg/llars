@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-LLARS Demo Video - Daten-Vorbereitung
+Lars Demo Video - Daten-Vorbereitung
 =====================================
 
 Erstellt die benötigten Demo-Daten in der Datenbank:
@@ -12,7 +12,7 @@ Nutzung:
     python prepare_demo_data.py --clean  # Löscht Demo-Daten
     python prepare_demo_data.py --check  # Prüft ob Daten existieren
 
-Voraussetzung: LLARS muss laufen (docker compose up)
+Voraussetzung: Lars muss laufen (docker compose up)
 """
 
 import requests
@@ -61,7 +61,7 @@ class DemoDataPreparer:
         """Login und Token holen"""
         print(f"🔐 Login als {username}...")
 
-        # LLARS verwendet Authentik OAuth, aber wir können direkt die Session nutzen
+        # Lars verwendet Authentik OAuth, aber wir können direkt die Session nutzen
         # Für API-Zugriff brauchen wir einen gültigen Token
 
         # Versuche direkt die API zu nutzen (wenn bereits eingeloggt)
@@ -275,7 +275,7 @@ class DemoDataPreparer:
 
 
 def main():
-    parser = argparse.ArgumentParser(description="LLARS Demo-Daten vorbereiten")
+    parser = argparse.ArgumentParser(description="Lars Demo-Daten vorbereiten")
     parser.add_argument('--clean', action='store_true', help='Demo-Daten löschen')
     parser.add_argument('--check', action='store_true', help='Demo-Daten prüfen')
     args = parser.parse_args()
@@ -288,12 +288,12 @@ def main():
         preparer.check_data()
     else:
         print("="*60)
-        print("LLARS Demo-Daten Vorbereitung")
+        print("Lars Demo-Daten Vorbereitung")
         print("="*60)
 
         if not preparer.check_api():
-            print("\n❌ LLARS API nicht erreichbar!")
-            print("   Starte LLARS mit: ./start_llars.sh")
+            print("\n❌ Lars API nicht erreichbar!")
+            print("   Starte Lars mit: ./start_llars.sh")
             return
 
         # Login

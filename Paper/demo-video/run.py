@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """
-LLARS Demo Video - Runner
+Lars Demo Video - Runner
 =========================
 
 Führt SCRIPT.json automatisch aus:
 - Öffnet Chrome
-- Navigiert zu LLARS
+- Navigiert zu Lars
 - Führt alle Aktionen aus
 - Spricht Narration (Qwen3-TTS)
 - Nimmt Bildschirm auf
@@ -27,6 +27,7 @@ import threading
 import os
 import sys
 import hashlib
+import random
 from pathlib import Path
 from dataclasses import dataclass
 from typing import Optional, List, Dict, Any
@@ -69,7 +70,7 @@ AUDIO_DIR = "audio"
 OUTPUT_DIR = "output"
 
 # Element-Mapping: Lesbare Namen → CSS Selektoren
-# LLARS nutzt eine Home-Seite mit Feature-Karten, keine Sidebar
+# Lars nutzt eine Home-Seite mit Feature-Karten, keine Sidebar
 ELEMENT_MAP = {
     # Home Page Feature Cards (klickbare Karten auf /Home)
     "Prompt Engineering": ".feature-card:contains('Prompt'), .feature-title:contains('Prompt')",
@@ -98,8 +99,8 @@ ELEMENT_MAP = {
     # Note: Uses lowercase "block" as per en.json translation "New block"
     "New Block": ".actions-grid .l-btn, .sidebar .l-btn:first-child, .v-btn:contains('block'), .v-btn:contains('Block')",
     "Preview": ".v-btn:contains('Preview')",
-    "Test": ".v-btn:contains('Test'), .sidebar .v-btn:contains('Test')",
-    "Manage Variables": ".v-btn:contains('Variables')",
+    "Test": ".l-btn:contains('Test'), .v-btn:contains('Test'), .sidebar .l-btn:contains('Test'), .sidebar .v-btn:contains('Test')",
+    "Manage Variables": ".l-btn:contains('Manage Variables'), .v-btn:contains('Manage Variables'), .l-btn:contains('Variables'), .v-btn:contains('Variables')",
 
     # Inputs (Vuetify Text Fields) - In Dialogs
     "Name Input": ".v-dialog .v-text-field input, .v-dialog input[type='text']",
@@ -109,7 +110,7 @@ ELEMENT_MAP = {
     "Scenario Name": ".v-text-field input, input[placeholder*='Name']",
     "Budget Limit": "input[type='number'], .v-text-field input",
 
-    # Prompt Editor Blocks (LLARS uses generic blocks + Quill editor)
+    # Prompt Editor Blocks (Lars uses generic blocks + Quill editor)
     "System Block": ".editor-block:contains('System'), .block-title:contains('System')",
     "User Block": ".editor-block:contains('User'), .block-title:contains('User')",
     # Quill editor - direkt den contenteditable div finden
@@ -126,13 +127,30 @@ ELEMENT_MAP = {
     # Test Prompt Dialog
     "Test Prompt Dialog": ".test-prompt-card, .v-dialog:contains('Test')",
     "Model Select": ".config-select, .llm-model-select, .v-select",
-    "Regenerate": ".v-btn:contains('Regenerate'), .dialog-actions .v-btn:contains('Regenerate')",
+    "Regenerate": ".l-btn:contains('Regenerate'), .v-btn:contains('Regenerate'), .dialog-actions .l-btn:contains('Regenerate'), .dialog-actions .v-btn:contains('Regenerate')",
     "Response Output": ".response-content, .response-text",
-    "Close": ".v-dialog .v-btn:contains('Close'), .wizard-header .v-btn, .v-btn:contains('Close'), button:contains('Close')",
+    "Close": ".v-dialog .l-btn:contains('Close'), .v-dialog .v-btn:contains('Close'), .wizard-header .v-btn, .l-btn:contains('Close'), .v-btn:contains('Close'), button:contains('Close')",
     "Cancel": ".v-btn:contains('Cancel'), button:contains('Cancel')",
     "Dialog Create Button": ".v-dialog .l-btn:contains('Create'), .v-dialog .v-btn:contains('Create'), .v-dialog button:contains('Create')",
     "Block Create Button": ".v-dialog--active .l-btn:contains('Create'), .v-overlay--active .l-btn:contains('Create')",
     "Prompt Card": ".prompt-card, .v-card:contains('News Summary')",
+    "Collab Color Preset": ".color-presets .color-preset",
+
+    # Generation Wizard (Batch Generation)
+    "Generation Wizard": ".generation-wizard, .v-dialog:contains('New Generation Job')",
+    "First Model": ".generation-wizard .models-selection .selection-item:first-child, .models-selection .selection-item:first-child",
+    "Second Model": ".generation-wizard .models-selection .selection-item:nth-child(2), .models-selection .selection-item:nth-child(2)",
+    "Job Name Input": ".generation-wizard .v-text-field input",
+
+    # Scenario Wizard
+    "Scenario Wizard": ".l-btn:contains('Scenario Wizard'), button.l-btn:contains('Scenario Wizard'), .header-actions .l-btn:contains('Scenario Wizard'), .v-btn:contains('Scenario Wizard')",
+    "Ranking": ".type-card:contains('Ranking'), .type-name:contains('Ranking'), .v-list-item:contains('Ranking'), .v-radio:contains('Ranking'), label:contains('Ranking')",
+    "LLM List": ".llm-category .llm-item, .llm-list .llm-item",
+    "First LLM Evaluator": ".llm-category .llm-item, .llm-list .llm-item, .llm-item",
+    "Second LLM Evaluator": ".llm-category .llm-item:nth-child(2), .llm-list .llm-item:nth-child(2), .llm-item:nth-child(2)",
+    "User List": ".user-list, .team-section .user-item",
+    "Admin User": ".user-item:contains('admin'), .user-item:contains('Admin'), .user-name:contains('admin'), .user-name:contains('Admin')",
+    "Create Scenario": ".wizard-actions .v-btn:contains('Create Scenario'), .wizard-actions .l-btn:contains('Create Scenario')",
 
     # =============================================
     # BATCH GENERATION - Wizard Steps
@@ -143,7 +161,7 @@ ELEMENT_MAP = {
     "Create First Job": ".empty-state .v-btn:contains('Create')",
 
     # Wizard Navigation (inside wizard-actions footer - more specific)
-    "Next": ".wizard-actions .l-btn:contains('Next'), .generation-wizard .wizard-actions .l-btn, .v-card-actions .l-btn:contains('Next')",
+    "Next": ".wizard-actions .l-btn:contains('Next'), .wizard-actions button.l-btn:contains('Next'), .generation-wizard .wizard-actions .l-btn, .v-card-actions .l-btn:contains('Next'), button:contains('Next')",
     "Back": ".wizard-actions .l-btn:contains('Back'), .generation-wizard .wizard-actions .l-btn:contains('Back')",
     "Create Job": ".wizard-actions .l-btn:contains('Create'), .generation-wizard .wizard-actions .l-btn:contains('Create')",
 
@@ -153,15 +171,18 @@ ELEMENT_MAP = {
     "Source Prompt Only": ".generation-wizard .source-card:contains('Prompt'), .source-card:contains('Prompt')",
     "Upload Zone": ".upload-zone",
     "File Input": ".upload-zone input[type='file'], input[type='file']",
+    "Manual Data Textarea": ".generation-wizard .source-config textarea, .generation-wizard textarea",
 
     # Step 2: Prompt Templates (click to select) - in wizard overlay
     "Prompt Item": ".v-overlay--active .selection-item, .prompts-selection .selection-item, .selection-item",
     "First Prompt": ".v-overlay--active .selection-item:first-child, .v-overlay--active .selectable-card:first-child, .prompts-selection .selection-item:first-child",
     "News Summary Prompt Item": ".v-overlay--active .selection-item:contains('News'), .prompts-selection .selection-item:contains('News'), .selection-item:contains('News Summary'), .item-name:contains('News')",
+    "Analyst Summary Prompt Item": ".v-overlay--active .selection-item:contains('Analyst Summary'), .prompts-selection .selection-item:contains('Analyst Summary'), .selection-item:contains('Analyst Summary'), .item-name:contains('Analyst')",
 
     # Step 3: Models (click to select) - in wizard overlay
     "Model Item": ".v-overlay--active .selection-item, .models-selection .selection-item",
     "First Model": ".v-overlay--active .selection-item:first-child, .v-overlay--active .selectable-card:first-child, .models-selection .selection-item:first-child",
+    "Second Model": ".v-overlay--active .selection-item:nth-child(2), .v-overlay--active .selectable-card:nth-child(2), .models-selection .selection-item:nth-child(2)",
     "Mistral Model": ".models-selection .selection-item:contains('mistral'), .models-selection .selection-item:contains('Mistral'), .item-name:contains('mistral')",
     "GPT-4 Model": ".models-selection .selection-item:contains('gpt-4'), .models-selection .selection-item:contains('gpt4'), .item-name:contains('gpt')",
     "Claude Model": ".models-selection .selection-item:contains('claude'), .models-selection .selection-item:contains('Claude'), .item-name:contains('claude')",
@@ -193,7 +214,7 @@ ELEMENT_MAP = {
     "News Summary Prompt": ".v-list-item:contains('News'), .prompt-item:contains('News')",
 
     # Evaluation Types
-    "Ranking": ".v-list-item:contains('Ranking'), .v-radio:contains('Ranking'), label:contains('Ranking')",
+    "Ranking": ".type-card:contains('Ranking'), .type-name:contains('Ranking'), .v-list-item:contains('Ranking'), .v-radio:contains('Ranking'), label:contains('Ranking')",
     "Bucket Config": ".v-btn:contains('Bucket'), button:contains('Bucket')",
     "3 Buckets": ".v-list-item:contains('3'), .v-radio:contains('3')",
     "Enable LLM Evaluation": ".v-checkbox:contains('LLM'), .v-switch:contains('LLM'), input[type='checkbox']",
@@ -231,7 +252,10 @@ ELEMENT_MAP = {
     "Variables Button": ".v-btn:contains('Variables'), .actions-grid .v-btn:contains('Variables')",
     "Variable Dialog": ".v-dialog:contains('Variable'), .variables-dialog",
     "Add Variable": ".v-btn:contains('Add'), .v-dialog .v-btn:contains('Add')",
-    "Variable Name Input": ".variable-input input, .v-text-field input",
+    "Variable Name Input": ".variable-manager-card .name-input input, .variable-input input, .v-text-field input",
+    "Variable Content Input": ".variable-manager-card .content-input textarea, .variable-manager-card textarea",
+    "Create Variable": ".variable-manager-card .l-btn:contains('Create Variable'), .variable-manager-card .v-btn:contains('Create Variable')",
+    "Variable Dialog Close": ".variable-manager-card .dialog-header .v-btn",
     "Variable Save": ".v-btn:contains('Save'), .v-btn:contains('Done')",
 
     # Test Prompt Dialog - Enhanced
@@ -265,15 +289,38 @@ ELEMENT_MAP = {
     "New Scenario": ".v-btn:contains('New Scenario'), .header-actions .v-btn:contains('New')",
     "Scenario List": ".scenario-list, .scenarios-grid, .scenario-cards, .v-list",
     "Scenario Card": ".scenario-card, .v-card.scenario",
+    "News Summary Demo Scenario": ".scenario-card:contains('News Summary Demo Job'), .scenario-card:contains('News Summary')",
     "Completed Scenario": ".scenario-card:contains('Complete'), .scenario-card.completed",
     "Demo Scenario": ".scenario-card:contains('Demo'), .scenario-card:contains('News')",
     "Scenario Stats": ".scenario-stats, .stats-card",
     "Open Scenario": ".v-btn:contains('Open'), .scenario-card .v-btn",
+    "Scenario Workspace": ".scenario-workspace",
+    "Scenario Workspace Back": ".scenario-workspace .back-btn, .scenario-workspace .v-btn.back-btn",
+    "Scenario Manager Title": ".scenario-manager .title, .page-header .title:contains('Scenario Manager'), h1.title:contains('Scenario Manager')",
+    "Scenario Tabs": ".scenario-workspace .tab-navigation, .tab-navigation",
+    "Scenario Tab Overview": ".tab-navigation .v-btn:contains('Overview'), .tab-navigation button:contains('Overview')",
+    "Scenario Tab Data": ".tab-navigation .v-btn:contains('Data'), .tab-navigation button:contains('Data')",
+    "Scenario Tab Evaluation": ".tab-navigation .v-btn:contains('Evaluation'), .tab-navigation button:contains('Evaluation')",
+    "Scenario Tab Team": ".tab-navigation .v-btn:contains('Team'), .tab-navigation button:contains('Team')",
+    "Scenario Live Badge": ".stats-bar .live-dot, .overview-tab .live-badge .live-dot, .overview-tab .live-dot",
+    "Scenario LLM Progress": ".overview-tab .progress-fill.llm, .stats-bar .progress-mini, .progress-mini .progress-fill",
+    "Evaluation Summary": ".evaluation-tab .summary-grid, .evaluation-tab .summary-card",
+    "Evaluation Progress": ".evaluation-tab .progress-bar-track, .evaluation-tab .progress-bar-fill, .evaluation-tab .total-progress-section",
+    "Evaluation Export": ".evaluation-tab .l-btn:contains('Export'), .evaluation-tab .v-btn:contains('Export')",
+    "Export JSON": ".v-list-item:contains('JSON')",
+    "Scenario Wizard Close": ".scenario-wizard .wizard-header .v-btn",
+    # Human Evaluation (Evaluation Hub + Ranking UI)
+    "Evaluation Scenario Card": ".scenarios-grid .scenario-card:contains('News Summary'), .scenario-card:contains('News Summary'), .scenarios-grid .scenario-card:first-child, .scenario-card:first-child",
+    "Evaluation Items Grid": ".items-grid, .items-content",
+    "Evaluation Item Card": ".items-grid .item-card:first-child, .item-card:first-child",
+    "Ranking Interface": ".ranking-interface",
+    "Ranking Buckets": ".ranking-interface .buckets-row, .ranking-interface .bucket, .ranking-interface .neutral-bucket",
+    "Ranking Content": ".ranking-interface .right-panel, .ranking-interface .content-text, .ranking-interface .message-list",
 
     # Scenario Wizard (Button text is "Scenario Wizard")
-    "Wizard Button": ".v-btn:contains('Scenario Wizard'), .v-btn:contains('Wizard')",
-    "Scenario Wizard": ".v-btn:contains('Scenario Wizard')",
-    "Wizard Dialog": ".wizard-dialog, .scenario-wizard, .v-dialog",
+    "Wizard Button": ".l-btn:contains('Scenario Wizard'), .l-btn:contains('Wizard'), .v-btn:contains('Scenario Wizard'), .v-btn:contains('Wizard')",
+    "Scenario Wizard": ".l-btn:contains('Scenario Wizard'), button.l-btn:contains('Scenario Wizard'), .header-actions .l-btn:contains('Scenario Wizard'), .v-btn:contains('Scenario Wizard')",
+    "Wizard Dialog": ".scenario-wizard, .wizard-dialog, .v-dialog",
     "Wizard Upload": ".wizard-upload, .upload-zone",
     "Wizard Analysis": ".wizard-analysis, .ai-analysis",
     "Wizard Recommendation": ".wizard-recommendation, .ai-recommendation, .recommendation-card",
@@ -295,7 +342,7 @@ ELEMENT_MAP = {
 
     # Prompt Engineering - Existing Prompts (seeded by seed_demo_video_data)
     "News Summary Prompt": ".prompt-card:contains('News Summary'), .v-card:contains('News Summary Prompt'), .prompt-list-item:contains('News Summary')",
-    "Detailed Summary Prompt": ".prompt-card:contains('Detailed Summary'), .v-card:contains('Detailed Summary')",
+    "Analyst Summary Prompt": ".prompt-card:contains('Analyst Summary'), .v-card:contains('Analyst Summary')",
 
     # Prompt Engineering - Collaboration
     "Collab Indicator": ".collab-indicator, .user-presence, .collaboration-status, .yjs-status, .online-users",
@@ -309,7 +356,18 @@ ELEMENT_MAP = {
 
     # Scenario Manager
     "First Scenario Card": ".scenario-card:first-child, .scenarios-grid .v-card:first-child, .scenario-list > *:first-child",
-    "Scenario Wizard Button": ".v-btn:contains('Wizard'), .v-btn:contains('Scenario Wizard'), .wizard-btn",
+    "Scenario Wizard Button": ".l-btn:contains('Wizard'), .l-btn:contains('Scenario Wizard'), .v-btn:contains('Wizard'), .v-btn:contains('Scenario Wizard'), .wizard-btn",
+    # User Settings - LLM Providers
+    "User Settings Providers Tab": ".settings-sidebar .nav-item:contains('LLM Providers'), .settings-sidebar .nav-item:contains('Providers')",
+    "Providers Info": ".llm-providers .v-alert, .llm-providers .v-alert__content",
+    "Add Provider": ".llm-providers .l-btn:contains('Add Provider'), .llm-providers .v-btn:contains('Add Provider')",
+    "Provider Dialog": ".v-overlay--active .v-dialog, .v-dialog",
+    "Provider Type Select": ".v-dialog .v-select",
+    "Provider Type Options": ".v-overlay--active .v-list-item",
+    # Documentation
+    "Docs Hero": ".docs-hero, .docs-page .hero-title",
+    "Docs Technical Section": ".docs-section.highlight",
+    "Docs MkDocs Link": ".mkdocs-link, .mkdocs-link-container",
 }
 
 
@@ -322,8 +380,8 @@ class TTS:
 
     # Default Sprecher-Konfigurationen für Qwen3-TTS Voice Cloning
     DEFAULT_SPEAKERS = {
-        "host": {"name": "Alex", "ref_audio": "voices/alex_reference.wav"},
-        "narrator": {"name": "David", "ref_audio": "voices/david_reference.wav"},
+        "moderator": {"name": "Alex", "ref_audio": "voices/alex_reference.wav"},
+        "guest": {"name": "David", "ref_audio": "voices/david_reference.wav"},
         "default": {"name": "Default", "ref_audio": None},
     }
 
@@ -881,12 +939,59 @@ class Browser:
         # Der "News Summary Demo Job" und die Prompts werden vom Seeder erstellt und sollen bleiben
         cleanup_sql = """
         -- Scenarios löschen (mit Foreign Keys) - Diese werden während der Aufnahme erstellt
-        DELETE FROM scenario_users WHERE scenario_id IN (SELECT id FROM scenarios WHERE name LIKE '%News Summary%' OR name LIKE '%Demo%Evaluation%');
-        DELETE FROM scenario_threads WHERE scenario_id IN (SELECT id FROM scenarios WHERE name LIKE '%News Summary%' OR name LIKE '%Demo%Evaluation%');
-        DELETE FROM item_dimension_ratings WHERE scenario_id IN (SELECT id FROM scenarios WHERE name LIKE '%News Summary%' OR name LIKE '%Demo%Evaluation%');
-        DELETE FROM scenarios WHERE name LIKE '%News Summary%' OR name LIKE '%Demo%Evaluation%';
-        -- HINWEIS: Prompts und Generation Jobs werden NICHT gelöscht!
-        -- Diese werden vom Seeder (seed_demo_video_data) erstellt und müssen erhalten bleiben.
+        DELETE FROM scenario_item_distribution WHERE scenario_id IN (
+            SELECT id FROM rating_scenarios WHERE scenario_name LIKE '%News Summary%' OR scenario_name LIKE '%Demo%Evaluation%'
+        );
+        DELETE FROM scenario_items WHERE scenario_id IN (
+            SELECT id FROM rating_scenarios WHERE scenario_name LIKE '%News Summary%' OR scenario_name LIKE '%Demo%Evaluation%'
+        );
+        DELETE FROM scenario_users WHERE scenario_id IN (
+            SELECT id FROM rating_scenarios WHERE scenario_name LIKE '%News Summary%' OR scenario_name LIKE '%Demo%Evaluation%'
+        );
+        DELETE FROM item_dimension_ratings WHERE scenario_id IN (
+            SELECT id FROM rating_scenarios WHERE scenario_name LIKE '%News Summary%' OR scenario_name LIKE '%Demo%Evaluation%'
+        );
+        DELETE FROM item_labeling_evaluations WHERE scenario_id IN (
+            SELECT id FROM rating_scenarios WHERE scenario_name LIKE '%News Summary%' OR scenario_name LIKE '%Demo%Evaluation%'
+        );
+        DELETE FROM comparison_evaluations WHERE message_id IN (
+            SELECT id FROM comparison_messages WHERE session_id IN (
+                SELECT id FROM comparison_sessions WHERE scenario_id IN (
+                    SELECT id FROM rating_scenarios WHERE scenario_name LIKE '%News Summary%' OR scenario_name LIKE '%Demo%Evaluation%'
+                )
+            )
+        );
+        DELETE FROM comparison_messages WHERE session_id IN (
+            SELECT id FROM comparison_sessions WHERE scenario_id IN (
+                SELECT id FROM rating_scenarios WHERE scenario_name LIKE '%News Summary%' OR scenario_name LIKE '%Demo%Evaluation%'
+            )
+        );
+        DELETE FROM comparison_sessions WHERE scenario_id IN (
+            SELECT id FROM rating_scenarios WHERE scenario_name LIKE '%News Summary%' OR scenario_name LIKE '%Demo%Evaluation%'
+        );
+        DELETE FROM rating_scenarios WHERE scenario_name LIKE '%News Summary%' OR scenario_name LIKE '%Demo%Evaluation%';
+        -- Alte Generation Jobs aus der Video-Entwicklung entfernen (Seeded Demo Job bleibt)
+        DELETE FROM generated_outputs WHERE job_id IN (
+            SELECT id FROM generation_jobs WHERE created_by = 'admin' AND name <> 'News Summary Demo Job'
+        );
+        DELETE FROM generation_jobs WHERE created_by = 'admin' AND name <> 'News Summary Demo Job';
+        -- Prompt aus der Live-Demo entfernen (wird im Skript neu erstellt)
+        DELETE FROM prompt_commits WHERE prompt_id IN (
+            SELECT prompt_id FROM user_prompts
+            WHERE LOWER(TRIM(name)) LIKE 'analyst summary prompt%'
+               OR LOWER(TRIM(name)) LIKE 'live collab prompt%'
+        );
+        DELETE FROM user_prompt_shares WHERE prompt_id IN (
+            SELECT prompt_id FROM user_prompts
+            WHERE LOWER(TRIM(name)) LIKE 'analyst summary prompt%'
+               OR LOWER(TRIM(name)) LIKE 'live collab prompt%'
+        );
+        DELETE FROM user_prompts
+        WHERE LOWER(TRIM(name)) LIKE 'analyst summary prompt%'
+           OR LOWER(TRIM(name)) LIKE 'live collab prompt%';
+        -- HINWEIS: Seeder-Daten (Prompts + Demo-Job) bleiben erhalten.
+        -- Nur der im Skript neu erstellte Job "Live Collab Batch Job" und der Prompt
+        -- "Analyst Summary Prompt" werden entfernt.
         """
 
         try:
@@ -1012,7 +1117,7 @@ class Browser:
                 pass
 
     def _do_login_on_login_page(self, username: str, password: str):
-        """Login auf der LLARS /login Seite"""
+        """Login auf der Lars /login Seite"""
         print(f"   🔐 Login als: {username}")
 
         try:
@@ -1267,6 +1372,42 @@ class Browser:
         print(f"⚠️ Element nicht gefunden: {target}")
         return None
 
+    def _find_elements(self, target: str):
+        """Findet mehrere Elemente anhand des Namens aus ELEMENT_MAP oder per CSS"""
+        selectors = ELEMENT_MAP.get(target, target)
+        collected = []
+
+        for selector in selectors.split(', '):
+            try:
+                if ':contains(' in selector:
+                    base, text = selector.split(':contains(')
+                    text = text.rstrip(')').strip("'\"")
+                    candidates = self.driver.find_elements(By.CSS_SELECTOR, base or '*')
+                    for el in candidates:
+                        if text.lower() in el.text.lower():
+                            collected.append(el)
+                else:
+                    collected.extend(self.driver.find_elements(By.CSS_SELECTOR, selector))
+            except Exception:
+                continue
+
+        # Filter duplicates + only visible elements
+        unique = []
+        seen = set()
+        for el in collected:
+            try:
+                if not el.is_displayed():
+                    continue
+                el_id = el.id
+                if el_id in seen:
+                    continue
+                seen.add(el_id)
+                unique.append(el)
+            except Exception:
+                continue
+
+        return unique
+
     def goto(self, url: str):
         """Navigiert zu URL"""
         full_url = url if url.startswith('http') else f"{self.base_url}{url}"
@@ -1375,14 +1516,18 @@ class Browser:
             print(f"   ↔️ Drag: {source} → {target}")
             time.sleep(0.3)
 
-    def upload(self, file_path: str):
-        """Lädt Datei hoch und wartet auf Verarbeitung"""
+    def upload(self, file_path: str, wait_for_processing: bool = True):
+        """Lädt Datei hoch und wartet optional auf Verarbeitung"""
         abs_path = str(Path(file_path).resolve())
 
         # Finde File Input (kann hidden sein)
         file_input = self.driver.find_element(By.CSS_SELECTOR, "input[type='file']")
         file_input.send_keys(abs_path)
         print(f"   📁 Upload: {file_path}")
+
+        if not wait_for_processing:
+            time.sleep(0.5)
+            return
 
         # Warte auf File-Verarbeitung (Vue parst die Datei async)
         time.sleep(1)
@@ -1413,6 +1558,79 @@ class Browser:
 
         print(f"   ⚠️ Timeout beim Warten auf Datei-Verarbeitung")
         time.sleep(1)
+
+    def set_text_from_file(self, target: str, file_path: str):
+        """Setzt Textfeld-Inhalt direkt aus Datei (ohne File-Dialog)"""
+        abs_path = Path(file_path).resolve()
+        if not abs_path.exists():
+            print(f"   ⚠️ Datei nicht gefunden: {file_path}")
+            return False
+        try:
+            content = abs_path.read_text(encoding='utf-8')
+        except Exception as e:
+            print(f"   ⚠️ Datei lesen fehlgeschlagen: {str(e)[:50]}")
+            return False
+
+        element = self._find_element(target)
+        if not element:
+            print(f"   ✗ set_text_from_file: {target} (NICHT GEFUNDEN)")
+            return False
+
+        try:
+            self.driver.execute_script(
+                "arguments[0].value = arguments[1];"
+                "arguments[0].dispatchEvent(new Event('input', {bubbles:true}));"
+                "arguments[0].dispatchEvent(new Event('change', {bubbles:true}));",
+                element,
+                content
+            )
+            print(f"   ✓ set_text_from_file: {file_path}")
+            return True
+        except Exception as e:
+            print(f"   ⚠️ set_text_from_file Fehler: {str(e)[:50]}")
+            return False
+
+    def close_file_dialog(self):
+        """Schließt das native Datei-Dialogfenster (z.B. macOS Finder)"""
+        import platform
+        try:
+            if platform.system() == 'Darwin':
+                time.sleep(0.2)
+                # Mehrere Fallbacks: ESC, Cmd+W, Cmd+., Klick auf Cancel/Abbrechen
+                scripts = [
+                    'tell application "System Events" to key code 53',  # ESC
+                    'tell application "System Events" to keystroke "w" using {command down}',  # Cmd+W
+                    'tell application "System Events" to keystroke "." using {command down}',  # Cmd+.
+                    # Frontmost app sheet cancel (best-effort)
+                    'tell application "System Events" to set frontApp to name of first process whose frontmost is true\n'
+                    'tell application "System Events" to tell process frontApp to if (exists sheet 1 of window 1) then\n'
+                    'try\n'
+                    'click button "Cancel" of sheet 1 of window 1\n'
+                    'end try\n'
+                    'try\n'
+                    'click button "Abbrechen" of sheet 1 of window 1\n'
+                    'end try\n'
+                    'end if',
+                    # Try clicking Cancel/Abbrechen on common browser processes
+                    'tell application "System Events" to tell process "Google Chrome" to if (exists sheet 1 of window 1) then click button "Cancel" of sheet 1 of window 1',
+                    'tell application "System Events" to tell process "Google Chrome" to if (exists sheet 1 of window 1) then click button "Abbrechen" of sheet 1 of window 1',
+                    'tell application "System Events" to tell process "Chromium" to if (exists sheet 1 of window 1) then click button "Cancel" of sheet 1 of window 1',
+                    'tell application "System Events" to tell process "Chromium" to if (exists sheet 1 of window 1) then click button "Abbrechen" of sheet 1 of window 1'
+                ]
+                for script in scripts:
+                    subprocess.run(['osascript', '-e', script], capture_output=True)
+                    time.sleep(0.15)
+                print("   ✓ Datei-Dialog schließen versucht (macOS)")
+            else:
+                # Fallback: ESC an die Seite senden
+                try:
+                    body = self.driver.find_element(By.TAG_NAME, "body")
+                    body.send_keys(Keys.ESCAPE)
+                except Exception:
+                    pass
+                print("   ✓ Datei-Dialog geschlossen (fallback)")
+        except Exception as e:
+            print(f"   ⚠️ Datei-Dialog schließen fehlgeschlagen: {str(e)[:50]}")
 
     def wait_for(self, target: str, timeout: float = 10):
         """Wartet auf Element"""
@@ -1611,6 +1829,7 @@ class ScriptRunner:
     """Führt SCRIPT.json aus"""
 
     SECTION_HASHES_FILE = f"{AUDIO_DIR}/.section_hashes.json"
+    AUDIO_HASHES_FILE = f"{AUDIO_DIR}/.audio_hashes.json"
 
     def __init__(self, script_path: str = SCRIPT_FILE):
         self.script_path = script_path
@@ -1687,6 +1906,37 @@ class ScriptRunner:
         with open(self.SECTION_HASHES_FILE, 'w') as f:
             json.dump(hashes, f, indent=2)
 
+    def _load_audio_hashes(self) -> dict:
+        """Lädt gespeicherte Audio-Hashes (pro Step)"""
+        if os.path.exists(self.AUDIO_HASHES_FILE):
+            with open(self.AUDIO_HASHES_FILE) as f:
+                return json.load(f)
+        return {}
+
+    def _save_audio_hashes(self, hashes: dict):
+        """Speichert Audio-Hashes (pro Step)"""
+        with open(self.AUDIO_HASHES_FILE, 'w') as f:
+            json.dump(hashes, f, indent=2)
+
+    def _compute_step_hash(self, step: dict, tts_model: str, language: str) -> str:
+        """Berechnet Hash für einen Step basierend auf Narration + Sprecher + TTS-Setup"""
+        step_id = step.get('id', '')
+        narration = step.get('narration', '')
+        speaker = step.get('speaker', 'default')
+        speaker_cfg = {}
+        if self.tts:
+            speaker_cfg = self.tts.get_speaker_config(speaker) or {}
+
+        payload = {
+            "id": step_id,
+            "speaker": speaker,
+            "narration": narration,
+            "tts_model": tts_model,
+            "language": language,
+            "speaker_cfg": speaker_cfg,
+        }
+        return hashlib.md5(json.dumps(payload, sort_keys=True).encode()).hexdigest()[:12]
+
     def check_sections(self) -> dict:
         """
         Prüft welche Sections Audio-Regenerierung brauchen.
@@ -1719,8 +1969,10 @@ class ScriptRunner:
         """
         self.load_script()
 
-        tts_model = self.tts_model_override or self.script.get('config', {}).get('tts_model', 'custom-small')
-        self.tts = TTS(model_size=tts_model, use_voice_cloning=self.use_voice_cloning)
+        config = self.script.get('config', {})
+        speakers_config = config.get('speakers', {})
+        tts_model = self.tts_model_override or config.get('tts_model', 'custom-small')
+        self.tts = TTS(model_size=tts_model, speakers=speakers_config, use_voice_cloning=self.use_voice_cloning)
 
         section_status = self.check_sections()
         stored_hashes = self._load_section_hashes()
@@ -1780,8 +2032,17 @@ class ScriptRunner:
             else:
                 total_cached += len(steps_with_narration)
 
-        # Hashes speichern
+        # Hashes speichern (Sections + Audio)
         self._save_section_hashes(stored_hashes)
+
+        # Audio-Hashes aktualisieren
+        language = config.get('language', 'en')
+        new_audio_hashes = {}
+        for section_name, info in section_status.items():
+            for step in info['steps']:
+                if step.get('narration'):
+                    new_audio_hashes[step['id']] = self._compute_step_hash(step, tts_model, language)
+        self._save_audio_hashes(new_audio_hashes)
 
         print("\n" + "="*60)
         print(f"✓ Fertig: {total_generated} neu generiert, {total_cached} aus Cache")
@@ -1878,7 +2139,7 @@ class ScriptRunner:
         speakers_config = config.get('speakers', {})
 
         # TTS-Modell: Override > Config > Default
-        tts_model = self.tts_model_override or config.get('tts_model', 'large')
+        tts_model = self.tts_model_override or config.get('tts_model', 'custom-small')
         print(f"🎤 TTS-Modell: {tts_model} ({'--model Flag' if self.tts_model_override else 'SCRIPT.json'})")
         print(f"🎤 Voice Cloning: {'AN (langsam!)' if self.use_voice_cloning else 'AUS (schnell)'}")
 
@@ -1935,6 +2196,13 @@ class ScriptRunner:
                 engine.generate(narration, audio_file, speaker=speaker)
                 generated += 1
 
+        # Audio-Hashes aktualisieren
+        language = config.get('language', 'en')
+        new_audio_hashes = {}
+        for step in steps:
+            new_audio_hashes[step['id']] = self._compute_step_hash(step, tts_model, language)
+        self._save_audio_hashes(new_audio_hashes)
+
         print("="*60)
         print(f"✓ Fertig: {generated} generiert, {cached} aus Cache\n")
 
@@ -1962,8 +2230,10 @@ class ScriptRunner:
         """Generiert alle Audio-Dateien vorab"""
         self.load_script()
 
-        tts_model = self.script.get('config', {}).get('tts_model', 'small')
-        self.tts = TTS(model_size=tts_model)
+        config = self.script.get('config', {})
+        speakers_config = config.get('speakers', {})
+        tts_model = self.tts_model_override or config.get('tts_model', 'custom-small')
+        self.tts = TTS(model_size=tts_model, speakers=speakers_config, use_voice_cloning=self.use_voice_cloning)
 
         # Modell laden
         self.tts.preload()
@@ -1978,6 +2248,7 @@ class ScriptRunner:
         for i, step in enumerate(steps_with_narration):
             step_id = step['id']
             narration = step['narration']
+            speaker = step.get('speaker', 'default')
             audio_file = f"{AUDIO_DIR}/{step_id}.wav"
 
             if os.path.exists(audio_file):
@@ -1985,10 +2256,17 @@ class ScriptRunner:
             else:
                 print(f"   [{i+1}/{total}] 🎤 Generiere: {step_id}")
                 engine = self.tts._get_engine()
-                engine.generate(narration, audio_file)
+                engine.generate(narration, audio_file, speaker=speaker)
 
         print("="*60)
         print(f"✓ Alle {total} Audio-Dateien bereit!\n")
+
+        # Audio-Hashes aktualisieren
+        language = config.get('language', 'en')
+        new_audio_hashes = {}
+        for step in steps_with_narration:
+            new_audio_hashes[step['id']] = self._compute_step_hash(step, tts_model, language)
+        self._save_audio_hashes(new_audio_hashes)
 
     def run(self, start_step: int = 0, record: bool = True, pregenerate: bool = True,
             silent: bool = False, test_mode: bool = False):
@@ -1998,7 +2276,8 @@ class ScriptRunner:
         config = self.script.get('config', {})
         url = config.get('url', 'http://localhost:55080')
         output_file = config.get('output_file', 'demo.mp4')
-        tts_model = config.get('tts_model', 'small')
+        speakers_config = config.get('speakers', {})
+        tts_model = self.tts_model_override or config.get('tts_model', 'custom-small')
         language = config.get('language', 'en')
 
         # Login-Daten aus Config
@@ -2014,7 +2293,7 @@ class ScriptRunner:
 
         # Komponenten initialisieren
         self.browser = Browser(url)
-        self.tts = TTS(model_size=tts_model)
+        self.tts = TTS(model_size=tts_model, speakers=speakers_config, use_voice_cloning=self.use_voice_cloning)
 
         if record:
             self.recorder = Recorder(output_file)
@@ -2025,32 +2304,44 @@ class ScriptRunner:
                 steps_with_narration = [s for s in self.script['steps'] if s.get('narration')]
                 total = len(steps_with_narration)
 
-                # Prüfe welche Audio-Dateien fehlen
+                # Audio-Hashes prüfen (Narration/Sprecher/Model/Config)
+                stored_hashes = self._load_audio_hashes()
+                new_hashes = {}
                 missing_audio = []
+                missing_ids = set()
+
                 for step in steps_with_narration:
-                    audio_file = f"{AUDIO_DIR}/{step['id']}.wav"
-                    if not os.path.exists(audio_file):
+                    step_id = step['id']
+                    audio_file = f"{AUDIO_DIR}/{step_id}.wav"
+                    step_hash = self._compute_step_hash(step, tts_model, language)
+                    new_hashes[step_id] = step_hash
+
+                    if (not os.path.exists(audio_file)) or stored_hashes.get(step_id) != step_hash:
                         missing_audio.append(step)
+                        missing_ids.add(step_id)
 
                 if missing_audio:
-                    # Nur TTS laden wenn Audio fehlt
-                    print(f"\n🎤 {len(missing_audio)} Audio-Dateien müssen generiert werden...")
+                    print(f"\n🎤 {len(missing_audio)} Audio-Dateien sind veraltet/fehlend – regeneriere...")
                     self.tts.preload()
 
                     for i, step in enumerate(steps_with_narration):
                         step_id = step['id']
                         narration = step['narration']
+                        speaker = step.get('speaker', 'default')
                         audio_file = f"{AUDIO_DIR}/{step_id}.wav"
 
-                        if os.path.exists(audio_file):
+                        if step_id not in missing_ids:
                             print(f"   [{i+1}/{total}] ♻️ {step_id} (cached)")
                         else:
-                            print(f"   [{i+1}/{total}] 🎤 {step_id}")
+                            speaker_name = self.tts.get_speaker_config(speaker).get('name', speaker)
+                            print(f"   [{i+1}/{total}] 🎤 {step_id} [{speaker_name}]")
                             engine = self.tts._get_engine()
-                            engine.generate(narration, audio_file)
+                            engine.generate(narration, audio_file, speaker=speaker)
                 else:
-                    print(f"\n✓ Alle {total} Audio-Dateien bereits vorhanden (TTS nicht benötigt)")
+                    print(f"\n✓ Alle {total} Audio-Dateien aktuell (TTS nicht benötigt)")
 
+                # Hashes persistieren
+                self._save_audio_hashes(new_hashes)
                 print(f"✓ Alle Audio-Dateien bereit!\n")
 
             # === STATUS ANZEIGE ===
@@ -2266,6 +2557,110 @@ class ScriptRunner:
                 print(f"   ✗ click: {target} (NICHT GEFUNDEN)")
                 return False
 
+        elif do == 'click_if_present':
+            element = self.browser._find_element(target)
+            if element:
+                self.browser.click(target)
+                print(f"   ✓ click_if_present: {target}")
+                return True
+            print(f"   ↷ click_if_present: {target} (nicht vorhanden)")
+            return True
+
+        elif do == 'click_random':
+            elements = self.browser._find_elements(target)
+            if not elements:
+                print(f"   ✗ click_random: {target} (NICHT GEFUNDEN)")
+                return False
+
+            if action.get('exclude_selected'):
+                filtered = []
+                for el in elements:
+                    try:
+                        cls = (el.get_attribute('class') or '').lower()
+                        if 'selected' in cls:
+                            continue
+                    except Exception:
+                        continue
+                    filtered.append(el)
+                if filtered:
+                    elements = filtered
+
+            element = random.choice(elements)
+            try:
+                self.browser.driver.execute_script(
+                    "arguments[0].scrollIntoView({behavior: 'smooth', block: 'center'})",
+                    element
+                )
+                time.sleep(0.2)
+                self.browser.driver.execute_script(
+                    "arguments[0].classList.add('llars-highlight')",
+                    element
+                )
+                time.sleep(0.2)
+                try:
+                    element.click()
+                except Exception:
+                    self.browser.driver.execute_script("arguments[0].click()", element)
+                time.sleep(0.2)
+                self.browser.driver.execute_script(
+                    "arguments[0].classList.remove('llars-highlight')",
+                    element
+                )
+            except Exception:
+                try:
+                    self.browser.driver.execute_script("arguments[0].click()", element)
+                except Exception:
+                    pass
+
+            print(f"   ✓ click_random: {target}")
+            return True
+
+        elif do == 'click_index':
+            elements = self.browser._find_elements(target)
+            if not elements:
+                print(f"   ✗ click_index: {target} (NICHT GEFUNDEN)")
+                return False
+
+            index = action.get('index', 0)
+            try:
+                index = int(index)
+            except Exception:
+                index = 0
+
+            if index < 0 or index >= len(elements):
+                print(f"   ✗ click_index: {target} (Index {index} außerhalb von {len(elements)})")
+                return False
+
+            element = elements[index]
+            try:
+                self.browser.driver.execute_script(
+                    "arguments[0].scrollIntoView({behavior: 'smooth', block: 'center'})",
+                    element
+                )
+                time.sleep(0.2)
+                self.browser.driver.execute_script(
+                    "arguments[0].classList.add('llars-highlight')",
+                    element
+                )
+                time.sleep(0.2)
+                try:
+                    element.click()
+                except Exception:
+                    self.browser.driver.execute_script("arguments[0].click()", element)
+                time.sleep(0.2)
+                self.browser.driver.execute_script(
+                    "arguments[0].classList.remove('llars-highlight')",
+                    element
+                )
+            except Exception:
+                try:
+                    self.browser.driver.execute_script("arguments[0].click()", element)
+                except Exception:
+                    pass
+
+            print(f"   ✓ click_index: {target} [{index}]")
+            return True
+
         elif do == 'type':
             element = self.browser._find_element(target)
             if element:
@@ -2276,6 +2671,38 @@ class ScriptRunner:
                 return True
             else:
                 print(f"   ✗ type: {target} (NICHT GEFUNDEN)")
+                return False
+
+        elif do == 'clear':
+            element = self.browser._find_element(target)
+            if element:
+                # Robust clear for Vuetify inputs: clear(), select-all+backspace, JS value reset + input event
+                try:
+                    element.clear()
+                except Exception:
+                    pass
+                try:
+                    element.send_keys(Keys.COMMAND + 'a')
+                except Exception:
+                    try:
+                        element.send_keys(Keys.CONTROL + 'a')
+                    except Exception:
+                        pass
+                try:
+                    element.send_keys(Keys.BACKSPACE)
+                except Exception:
+                    pass
+                try:
+                    self.browser.driver.execute_script(
+                        "arguments[0].value = ''; arguments[0].dispatchEvent(new Event('input', {bubbles:true})); arguments[0].dispatchEvent(new Event('change', {bubbles:true}));",
+                        element
+                    )
+                except Exception:
+                    pass
+                print(f"   ✓ clear: {target}")
+                return True
+            else:
+                print(f"   ✗ clear: {target} (NICHT GEFUNDEN)")
                 return False
 
         elif do == 'highlight':
@@ -2307,9 +2734,18 @@ class ScriptRunner:
                 return False
 
         elif do == 'upload':
-            self.browser.upload(action.get('file'))
+            self.browser.upload(
+                action.get('file'),
+                wait_for_processing=action.get('wait_for_processing', True)
+            )
             print(f"   ✓ upload: {action.get('file')}")
             return True
+        elif do == 'set_text_from_file':
+            result = self.browser.set_text_from_file(
+                target,
+                action.get('file')
+            )
+            return result
 
         elif do == 'wait':
             seconds = action.get('seconds', 1)
@@ -2348,6 +2784,30 @@ class ScriptRunner:
             else:
                 print(f"   ✗ scroll_to: {target} (NICHT GEFUNDEN)")
                 return False
+
+        elif do == 'scroll':
+            element = self.browser._find_element(target)
+            if element:
+                amount = action.get('amount', 200)
+                try:
+                    amount = int(amount)
+                except Exception:
+                    amount = 200
+                self.browser.driver.execute_script(
+                    "arguments[0].scrollTop = arguments[0].scrollTop + arguments[1];",
+                    element,
+                    amount
+                )
+                print(f"   ✓ scroll: {target} ({amount}px)")
+                time.sleep(0.3)
+                return True
+            else:
+                print(f"   ✗ scroll: {target} (NICHT GEFUNDEN)")
+                return False
+
+        elif do == 'close_file_dialog':
+            self.browser.close_file_dialog()
+            return True
 
         # =====================================================================
         # COLLAB-AKTIONEN - Zweiter Browser für Echtzeit-Kollaboration
@@ -2413,7 +2873,7 @@ def main():
     import argparse
 
     parser = argparse.ArgumentParser(
-        description='LLARS Demo Video Runner - Produktionssystem',
+        description='Lars Demo Video Runner - Produktionssystem',
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

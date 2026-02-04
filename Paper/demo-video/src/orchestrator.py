@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-LLARS Demo Video Orchestrator
+Lars Demo Video Orchestrator
 =============================
 Koordiniert Autoclicker, Screen Recording und TTS für automatisierte Demo-Videos.
 
@@ -429,7 +429,7 @@ class DemoOrchestrator:
 def main():
     import argparse
 
-    parser = argparse.ArgumentParser(description='LLARS Demo Video Orchestrator')
+    parser = argparse.ArgumentParser(description='Lars Demo Video Orchestrator')
     parser.add_argument('--script', default='scripts/full_script.json',
                         help='Pfad zum Skript')
     parser.add_argument('--output', default='output',
@@ -438,7 +438,7 @@ def main():
     parser.add_argument('--preview', action='store_true',
                         help='Nur Vorschau zeigen')
     parser.add_argument('--url', default='http://localhost:55080',
-                        help='LLARS URL')
+                        help='Lars URL')
 
     args = parser.parse_args()
 

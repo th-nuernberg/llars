@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-LLARS Demo Video - Screen Recorder
+Lars Demo Video - Screen Recorder
 ===================================
 Nimmt den Bildschirm auf mit separatem Audio-Track.
 

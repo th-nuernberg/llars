@@ -1,6 +1,6 @@
-# LLARS Demo Video - IJCAI 2026 Demo Track
+# Lars Demo Video - IJCAI 2026 Demo Track
 
-Automatisiertes Demo-Video-System für die LLARS-Plattform.
+Automatisiertes Demo-Video-System für die Lars-Plattform.
 
 ## Quick Start
 
@@ -109,18 +109,18 @@ python run.py --smart --model custom        # Bessere Qualität
     "url": "http://localhost:55080",
     "tts_model": "custom-small",
     "speakers": {
-      "host": {"name": "Alex", "macos_voice": "Fred"},
-      "narrator": {"name": "David", "macos_voice": "Daniel"}
+      "moderator": {"name": "Alex", "macos_voice": "Fred"},
+      "guest": {"name": "David", "macos_voice": "Daniel"}
     }
   },
   "steps": [
     {
       "_section": "=== INTRO (25s) ===",
       "id": "intro_1",
-      "speaker": "narrator",
-      "narration": "Alex, I've been hearing about this LLARS system...",
+      "speaker": "guest",
+      "narration": "Alex, I've been hearing about this Lars system...",
       "actions": [
-        {"do": "show_title", "title": "LLARS", "subtitle": "LLM Assisted Rating System"}
+        {"do": "show_title", "title": "Lars", "subtitle": "LLM Assisted Research System"}
       ]
     }
   ]
@@ -190,7 +190,7 @@ SONSTIGES:
 
 Das Backend enthält einen Seeder für vorbereitete Demo-Daten:
 
-- **2 News-Summarization Prompts** (News Summary Prompt, Detailed Summary Prompt)
+- **2 News-Summarization Prompts** (News Summary Prompt, Analyst Summary Prompt)
 - **1 abgeschlossener Batch-Generation Job** mit 40 Outputs
 - **10 News-Artikel** mit generierten Zusammenfassungen (2 Modelle x 2 Prompts)
 
@@ -243,7 +243,7 @@ ELEMENT_MAP = {
 ```
 
 ### Selektor finden:
-1. LLARS öffnen in Chrome
+1. Lars öffnen in Chrome
 2. Rechtsklick → Untersuchen auf das Element
 3. Selektor kopieren oder `data-testid` suchen
 4. In ELEMENT_MAP eintragen
@@ -256,7 +256,7 @@ ELEMENT_MAP = {
 |---------|--------|
 | TTS-Modell lädt nicht | `pip install qwen3-tts torch` |
 | Browser findet Element nicht | Element-Map in run.py erweitern |
-| Collab-Cursor nicht sichtbar | LLARS muss mit YJS-Server laufen |
+| Collab-Cursor nicht sichtbar | Lars muss mit YJS-Server laufen |
 | Audio zu langsam | `--model custom-small` nutzen |
 | "does not support create_voice_clone_prompt" | Normal - Modell nutzt vordefinierte Stimmen |
 | Section-Hash nicht gespeichert | Prüfe `audio/.section_hashes.json` |

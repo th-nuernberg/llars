@@ -67,7 +67,7 @@ Nach 2–3 Minuten (erstes Starten lädt Images):
 | Backend API | http://localhost:55080/api |
 | Authentik | http://localhost:55095 |
 | Docs (direkt) | http://localhost:55800 |
-| Docs (via nginx, dev) | http://localhost:55080/docs/ |
+| Docs (via nginx, dev) | http://localhost:55080/mkdocs/ |
 
 ### 5. Installation prüfen
 

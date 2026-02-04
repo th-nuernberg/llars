@@ -1,9 +1,9 @@
-# LLARS Demo Video - Gesamtkonzept
+# Lars Demo Video - Gesamtkonzept
 
 ## Übersicht
 
 **Ziel:** 10-minütiges Demo-Video für IJCAI-ECAI 2026 Demo Track
-**Kernbotschaft:** LLARS bringt Domain-Experten und AI-Entwickler zusammen für die komplette Pipeline: Prompt Engineering → Batch Generation → Hybride Evaluation
+**Kernbotschaft:** Lars bringt Domain-Experten und AI-Entwickler zusammen für die komplette Pipeline: Prompt Engineering → Batch Generation → Hybride Evaluation
 
 ---
 
@@ -300,7 +300,7 @@ mss
 opencv-python
 ```
 
-### LLARS Setup
+### Lars Setup
 - Lokale Instanz unter localhost:55080
 - Admin-User eingeloggt
 - Testdaten vorgeladen

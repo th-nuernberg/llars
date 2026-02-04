@@ -78,8 +78,8 @@ SAMPLE_SUMMARIES = {
         "NOAA deployed an AI system predicting extreme weather events seven days ahead with 85% accuracy. The technology will be shared with meteorological agencies worldwide.",
         "Despite $500 billion in semiconductor investments, chip shortages will persist through 2027. Automotive and electronics sectors face delivery delays averaging 12-18 weeks.",
     ],
-    # Detailed summaries (3-4 sentences)
-    "detailed": [
+    # Analyst summaries (3-4 sentences)
+    "analyst": [
         "OpenAI has announced GPT-5, representing what CEO Sam Altman calls 'a new paradigm in AI capabilities.' The model demonstrates unprecedented reasoning abilities, including solving complex mathematical proofs with improved factual accuracy. Enterprise customers will gain access starting next month, while general consumer availability is planned for the second quarter of 2026.",
         "The European Parliament has passed the AI Act, establishing the world's first comprehensive artificial intelligence regulatory framework. The legislation categorizes AI systems by risk level, imposing strict requirements on high-risk applications such as hiring tools and credit scoring systems. Violations can result in fines of up to 7% of global revenue. Industry reactions have been mixed, with some praising the regulatory clarity while others express concerns about potential innovation barriers.",
         "Researchers at MIT have achieved a significant quantum computing breakthrough, demonstrating coherence for over 10 minutes—far exceeding previous records. The team employed a novel error-correction technique combining both hardware and software approaches to address qubit stability challenges. Industry experts suggest this advancement could accelerate practical quantum computing applications by several years.",
@@ -96,7 +96,7 @@ SAMPLE_SUMMARIES = {
 
 def seed_demo_video_prompts():
     """
-    Creates the two news summarization prompts for the demo video.
+    Creates the news summarization prompt for the demo video.
     """
     logger.info("Seeding demo video prompts...")
 
@@ -125,34 +125,6 @@ Create summaries that are:
 Title: {{title}}
 
 {{content}}""",
-                        "position": 1
-                    }
-                }
-            }
-        },
-        {
-            "name": "Detailed Summary Prompt",
-            "content": {
-                "blocks": {
-                    "system": {
-                        "content": """You are a senior journalist creating article summaries for a news digest.
-
-Your summaries should:
-- Be 3-4 sentences long
-- Capture the key facts and implications
-- Use professional journalistic language
-- Remain objective and factual""",
-                        "position": 0
-                    },
-                    "user": {
-                        "content": """Create a detailed summary of this news article:
-
-Headline: {{title}}
-
-Full Article:
-{{content}}
-
-Provide a comprehensive summary:""",
                         "position": 1
                     }
                 }
@@ -221,18 +193,30 @@ def seed_demo_video_generation_job():
         user_id=admin_user.id,
         name="News Summary Prompt"
     ).first()
-    prompt_detailed = UserPrompt.query.filter_by(
-        user_id=admin_user.id,
-        name="Detailed Summary Prompt"
-    ).first()
-
-    if not prompt_concise or not prompt_detailed:
-        logger.warning("Demo prompts not found, creating them first...")
+    if not prompt_concise:
+        logger.warning("Demo prompt not found, creating it first...")
         prompts = seed_demo_video_prompts()
-        if len(prompts) < 2:
-            logger.error("Failed to create demo prompts")
+        if len(prompts) < 1:
+            logger.error("Failed to create demo prompt")
             return None
-        prompt_concise, prompt_detailed = prompts[0], prompts[1]
+        prompt_concise = prompts[0]
+
+    analyst_system_prompt = """You are a senior journalist creating article summaries for a news digest.
+
+Your summaries should:
+- Be 3-4 sentences long
+- Capture the key facts and implications
+- Use professional journalistic language
+- Remain objective and factual"""
+
+    analyst_user_prompt = """Create a detailed summary of this news article:
+
+Headline: {{title}}
+
+Full Article:
+{{content}}
+
+Provide a comprehensive summary:"""
 
     # Use embedded news articles
     news_articles = NEWS_ARTICLES
@@ -253,7 +237,7 @@ def seed_demo_video_generation_job():
             },
             "prompts": [
                 {"template_name": prompt_concise.name},
-                {"template_name": prompt_detailed.name}
+                {"template_name": "Analyst Summary Prompt"}
             ],
             "llm_models": [mistral_small.model_id, magistral_small.model_id],
             "generation_params": {
@@ -277,7 +261,7 @@ def seed_demo_video_generation_job():
     # Create outputs for each combination
     output_id = 0
     for article_idx, article in enumerate(news_articles):
-        for prompt_type, prompt in [("concise", prompt_concise), ("detailed", prompt_detailed)]:
+        for prompt_type, prompt in [("concise", prompt_concise), ("analyst", None)]:
             for model in [mistral_small, magistral_small]:
                 summary = SAMPLE_SUMMARIES[prompt_type][article_idx]
 
@@ -286,10 +270,16 @@ def seed_demo_video_generation_job():
                     prompt_template_id=None,  # user_prompts != prompt_templates
                     llm_model_id=model.id,
                     llm_model_name=model.model_id,
-                    prompt_variant_name=prompt.name,
+                    prompt_variant_name=prompt.name if prompt else "Analyst Summary Prompt",
                     generated_content=summary,
-                    rendered_system_prompt=prompt.content.get('blocks', {}).get('system', {}).get('content', ''),
-                    rendered_user_prompt=f"Title: {article['title']}\n\n{article['content']}",
+                    rendered_system_prompt=(
+                        prompt.content.get('blocks', {}).get('system', {}).get('content', '')
+                        if prompt else analyst_system_prompt
+                    ),
+                    rendered_user_prompt=(
+                        f"Title: {article['title']}\n\n{article['content']}"
+                        if prompt else f"Headline: {article['title']}\n\nFull Article:\n{article['content']}"
+                    ),
                     status=GeneratedOutputStatus.COMPLETED,
                     input_tokens=len(article['content'].split()) + 50,  # Rough estimate
                     output_tokens=len(summary.split()),

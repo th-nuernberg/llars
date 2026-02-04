@@ -38,7 +38,7 @@ flowchart LR
 - 55080 → nginx (Frontend + API + Matomo + Docs Proxy)
 - 55095 → Authentik (optional direkt; zusätzlich via nginx `/authentik/`)
 - 55306 → MariaDB (optional direkt; nur Debugging)
-- 55800 → Docs (MkDocs, optional direkt; zusätzlich via nginx `/docs/` in Dev, `/docs/` in Prod)
+- 55800 → Docs (MkDocs, optional direkt; zusätzlich via nginx `/mkdocs/` in Dev, `/mkdocs/` in Prod)
 
 In Production werden nur 80/443 nach außen exponiert.
 

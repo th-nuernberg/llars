@@ -1,1 +1,1 @@
-# LLARS Demo Video Production System
+# Lars Demo Video Production System

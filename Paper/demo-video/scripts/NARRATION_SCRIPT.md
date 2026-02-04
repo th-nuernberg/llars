@@ -1,4 +1,4 @@
-# LLARS Demo Video - Narration Script
+# Lars Demo Video - Narration Script
 
 **Gesamtdauer:** 10 Minuten | **Sprache:** Englisch | **Stimme:** OpenAI alloy
 
@@ -8,7 +8,7 @@
 
 ### 01_01 | Title Slide (0:00 - 0:15)
 
-**[VISUAL: Titelfolie mit LLARS Logo, Autoren, Affiliation]**
+**[VISUAL: Titelfolie mit Lars Logo, Autoren, Affiliation]**
 
 > "Evaluating Large Language Model outputs requires two groups with complementary expertise: Domain experts who understand what constitutes quality, and AI developers who know how to structure effective prompts."
 
@@ -22,11 +22,11 @@
 
 ---
 
-### 01_03 | LLARS Overview (0:30 - 0:45)
+### 01_03 | Lars Overview (0:30 - 0:45)
 
-**[VISUAL: Browser öffnet sich, LLARS Dashboard erscheint]**
+**[VISUAL: Browser öffnet sich, Lars Dashboard erscheint]**
 
-> "LLARS bridges this gap with three integrated modules: Collaborative Prompt Engineering, Batch Generation, and Large-Scale Evaluation. Let me show you how they work together."
+> "Lars bridges this gap with three integrated modules: Collaborative Prompt Engineering, Batch Generation, and Large-Scale Evaluation. Let me show you how they work together."
 
 ---
 
@@ -126,7 +126,7 @@
 
 **[VISUAL: Kostenübersicht wird hervorgehoben, Budget-Limit eingeben]**
 
-> "Before execution, LLARS estimates the total cost based on token counts and model pricing. I can set budget limits - jobs automatically pause if costs exceed thresholds."
+> "Before execution, Lars estimates the total cost based on token counts and model pricing. I can set budget limits - jobs automatically pause if costs exceed thresholds."
 
 ---
 
@@ -176,7 +176,7 @@
 
 **[VISUAL: Settings öffnen, LLM Evaluator aktivieren, GPT-4 auswählen]**
 
-> "Human evaluation is the gold standard, but domain experts' time is limited. That's why LLARS supports LLM evaluators running in parallel. I'll add GPT-4 as an LLM judge using the same ranking criteria. Watch how both human and machine evaluations proceed simultaneously."
+> "Human evaluation is the gold standard, but domain experts' time is limited. That's why Lars supports LLM evaluators running in parallel. I'll add GPT-4 as an LLM judge using the same ranking criteria. Watch how both human and machine evaluations proceed simultaneously."
 
 ---
 
@@ -184,7 +184,7 @@
 
 **[VISUAL: Dashboard zeigt Agreement-Matrix, Metriken werden hervorgehoben]**
 
-> "The real power is in the live agreement dashboard. LLARS computes agreement across all evaluator combinations in real-time: human-human for inter-annotator reliability, LLM-LLM for model consistency, and critically, human-LLM alignment. Here we see Krippendorff's alpha, Cohen's kappa, and correlation coefficients updating as evaluations come in."
+> "The real power is in the live agreement dashboard. Lars computes agreement across all evaluator combinations in real-time: human-human for inter-annotator reliability, LLM-LLM for model consistency, and critically, human-LLM alignment. Here we see Krippendorff's alpha, Cohen's kappa, and correlation coefficients updating as evaluations come in."
 
 ---
 
@@ -226,7 +226,7 @@
 
 **[VISUAL: Diagramm zeigt modulare Adoption]**
 
-> "The modular design means teams can adopt LLARS incrementally. Start with evaluation for an existing project, add batch generation when you need scale, and bring in collaborative prompt engineering when domain experts join the team."
+> "The modular design means teams can adopt Lars incrementally. Start with evaluation for an existing project, add batch generation when you need scale, and bring in collaborative prompt engineering when domain experts join the team."
 
 ---
 
@@ -244,7 +244,7 @@
 
 **[VISUAL: Diagramm zeigt Domain Expert + AI Developer = Better Prompts]**
 
-> "The key insight: domain experts know what matters but struggle to express it in prompts. AI developers can write effective prompts but lack domain knowledge. LLARS brings both groups into a shared environment where they iterate together until criteria are properly captured and validated at scale."
+> "The key insight: domain experts know what matters but struggle to express it in prompts. AI developers can write effective prompts but lack domain knowledge. Lars brings both groups into a shared environment where they iterate together until criteria are properly captured and validated at scale."
 
 ---
 
@@ -254,7 +254,7 @@
 
 **[VISUAL: Abschluss-Folie mit Links und Requirements]**
 
-> "LLARS is open-source under MIT license. It requires Docker, 16 gigabytes of RAM, and supports over 100 LLM providers through LiteLLM. Visit our repository to get started, and find us at the demo booth to try it yourself. Thank you for watching."
+> "Lars is open-source under MIT license. It requires Docker, 16 gigabytes of RAM, and supports over 100 LLM providers through LiteLLM. Visit our repository to get started, and find us at the demo booth to try it yourself. Thank you for watching."
 
 ---
 

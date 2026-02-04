@@ -139,12 +139,12 @@ markdown_extensions:
 plugins:
   - search
   - i18n:
-      default_language: de
       languages:
-        de:
+        - locale: de
+          default: true
           name: Deutsch
           build: true
-        en:
+        - locale: en
           name: English
           build: true
       nav_translations:

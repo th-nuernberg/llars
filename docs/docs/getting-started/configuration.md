@@ -49,8 +49,8 @@ AUTHENTIK_EXTERNAL_PORT=55095
 
 ## Docs (MkDocs)
 
-- Dev via nginx: `${PROJECT_URL}/docs/`
-- Prod via nginx: `${PROJECT_URL}/docs/`
+- Dev via nginx: `${PROJECT_URL}/mkdocs/`
+- Prod via nginx: `${PROJECT_URL}/mkdocs/`
 - Direkt (Host-Port): `http://localhost:${MKDOCS_EXTERNAL_PORT:-55800}`
 
 ### Datenschutz-Check (Code-Stand, keine Rechtsberatung)
@@ -69,7 +69,7 @@ AUTHENTIK_EXTERNAL_PORT=55095
 NGINX_EXTERNAL_PORT=55080      # Haupt-Einstieg (Frontend + API + Matomo + Docs Proxy)
 AUTHENTIK_EXTERNAL_PORT=55095  # Optional direkt; zusätzlich via nginx `/authentik/`
 DB_EXTERNAL_PORT=55306         # Optional direkt (nur Debugging)
-MKDOCS_EXTERNAL_PORT=55800     # Optional direkt; via nginx `/docs/` (Dev) / `/docs/` (Prod)
+MKDOCS_EXTERNAL_PORT=55800     # Optional direkt; via nginx `/mkdocs/` (Dev) / `/mkdocs/` (Prod)
 ```
 
 ## CORS

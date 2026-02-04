@@ -218,6 +218,18 @@ def _restore_variable_placeholders(text: str, variables: List[str]) -> str:
 
     result = text
 
+    def _ensure_placeholder(var_name: str, patterns: List[Tuple[str, str]]) -> None:
+        """Insert {{var_name}} using the first matching pattern if missing."""
+        nonlocal result
+        placeholder = f"{{{{{var_name}}}}}"
+        if placeholder in result:
+            return
+        for pattern, repl in patterns:
+            new_result = re.sub(pattern, repl, result, count=1)
+            if new_result != result:
+                result = new_result
+                return
+
     # Handle 'subject' variable - typically after "Betreff: "
     if 'subject' in variables:
         # Look for "Betreff: " followed by newlines (empty subject)
@@ -246,6 +258,26 @@ def _restore_variable_placeholders(text: str, variables: List[str]) -> str:
                 result,
                 count=1  # Only replace first occurrence
             )
+
+    # Handle 'title' variable (news/article templates)
+    if 'title' in variables:
+        _ensure_placeholder('title', [
+            (r'(Title:[ \t]*)(?=\n)', r'\1{{title}}'),
+            (r'(Headline:[ \t]*)(?=\n)', r'\1{{title}}'),
+            (r'(Titel:[ \t]*)(?=\n)', r'\1{{title}}'),
+        ])
+
+    # Handle 'content' variable (news/article templates)
+    if 'content' in variables:
+        _ensure_placeholder('content', [
+            (r'(Full Article:\s*)\n', r'\1\n{{content}}\n'),
+            (r'(Article:\s*)\n', r'\1\n{{content}}\n'),
+            (r'(Content:\s*)\n', r'\1\n{{content}}\n'),
+            (r'(Inhalt:\s*)\n', r'\1\n{{content}}\n'),
+            # Fallback: insert after Title/Headline block
+            (r'(Title:[^\n]*\n)(\s*\n)', r'\1{{content}}\n\n'),
+            (r'(Headline:[^\n]*\n)(\s*\n)', r'\1{{content}}\n\n'),
+        ])
 
     return result
 

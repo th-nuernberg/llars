@@ -4,14 +4,25 @@
       <v-row align="center" justify="space-between">
         <!-- Left Section: Links -->
         <v-col cols="12" md="6" class="text-center text-md-left">
-          <router-link
-            v-for="item in links"
-            :key="item.title"
-            :to="item.to"
-            class="footer-link mx-2"
-          >
-            {{ item.title }}
-          </router-link>
+          <template v-for="item in links" :key="item.title">
+            <!-- External links (like mkdocs) -->
+            <a
+              v-if="item.external"
+              :href="item.to"
+              class="footer-link mx-2"
+              target="_blank"
+            >
+              {{ item.title }}
+            </a>
+            <!-- Internal Vue routes -->
+            <router-link
+              v-else
+              :to="item.to"
+              class="footer-link mx-2"
+            >
+              {{ item.title }}
+            </router-link>
+          </template>
         </v-col>
 
         <!-- Right Section: Copyright -->
@@ -29,7 +40,8 @@
   const links = [
     {
       title: 'Dokumentation',
-      to: '/docs',
+      to: '/docs/',
+      external: true,
     },
     {
       title: 'Impressum',

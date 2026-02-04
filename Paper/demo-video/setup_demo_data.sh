@@ -1,11 +1,11 @@
 #!/bin/bash
 # =============================================================================
-# LLARS Demo Video - Demo-Daten Setup
+# Lars Demo Video - Demo-Daten Setup
 # =============================================================================
 #
 # Dieses Skript bereitet die Demo-Daten für das IJCAI Video vor.
 #
-# VORAUSSETZUNG: LLARS muss laufen (./start_llars.sh)
+# VORAUSSETZUNG: Lars muss laufen (./start_llars.sh)
 #
 # NUTZUNG:
 #   ./setup_demo_data.sh          # Erstellt Demo-Daten
@@ -90,7 +90,7 @@ clean_data() {
 show_help() {
     echo "
 ╔════════════════════════════════════════════════════════════════╗
-║           LLARS Demo Video - Daten-Vorbereitung                ║
+║           Lars Demo Video - Daten-Vorbereitung                ║
 ╠════════════════════════════════════════════════════════════════╣
 ║                                                                ║
 ║  Für das Demo-Video benötigen wir:                             ║
@@ -101,7 +101,7 @@ show_help() {
 ║  MANUELLE SCHRITTE:                                            ║
 ║  ──────────────────                                            ║
 ║                                                                ║
-║  1. Öffne LLARS: http://localhost:55080                        ║
+║  1. Öffne Lars: http://localhost:55080                        ║
 ║                                                                ║
 ║  2. Erstelle Batch Generation:                                 ║
 ║     - Batch Generation → New Job                               ║

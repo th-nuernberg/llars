@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-LLARS Demo Video - Text-to-Speech mit Qwen3-TTS Voice Cloning
+Lars Demo Video - Text-to-Speech mit Qwen3-TTS Voice Cloning
 ==============================================================
 Lokales TTS mit Qwen3-TTS (Alibaba Cloud, Januar 2026).
 
@@ -34,17 +34,17 @@ warnings.filterwarnings("ignore", message=".*Flash attention.*")
 # =============================================================================
 
 SPEAKERS = {
-    # Host - freundlich, amerikanisch, professionell
-    "host": {
+    # Moderator - freundlich, amerikanisch, professionell
+    "moderator": {
         "name": "Alex",
         "ref_audio": "voices/alex_reference.wav",
-        "ref_text": "Hello, I'm Alex. Welcome to this demonstration of LLARS, the LLM Assisted Rating System.",
+        "ref_text": "Hello, I'm Alex. Welcome to this demonstration of Lars, the LLM Assisted Research System.",
         "description": "A friendly professional American male voice, clear and articulate.",
         "custom_voice": "Aiden",  # Für CustomVoice-Modell: Sunny American male
     },
 
-    # Narrator - britisch, Attenborough-Stil
-    "narrator": {
+    # Guest - britisch, Attenborough-Stil
+    "guest": {
         "name": "David",
         "ref_audio": "voices/david_reference.wav",
         "ref_text": "In the world of artificial intelligence, we observe remarkable developments. Let me guide you through this fascinating journey.",
@@ -196,6 +196,12 @@ class QwenTTS:
         Der Voice Prompt enthält die Speaker-Embedding aus der Referenz-Audio
         und wird für alle Generierungen dieses Sprechers wiederverwendet.
         """
+        # Nur für Voice Cloning mit Base-Modellen
+        if not self.use_voice_cloning:
+            return None
+        if self.model_id and ('CustomVoice' in self.model_id or 'VoiceDesign' in self.model_id):
+            return None
+
         if speaker_id in self._voice_prompts:
             return self._voice_prompts[speaker_id]
 
@@ -300,10 +306,12 @@ class QwenTTS:
         try:
             import soundfile as sf
 
-            # Voice Prompt für konsistente Stimme holen
-            print(f"   Hole Voice Prompt für {speaker_id}...", flush=True)
-            voice_prompt = self._get_voice_prompt(speaker_id)
-            print(f"   Voice Prompt: {'vorhanden' if voice_prompt else 'nicht vorhanden'}", flush=True)
+            # Voice Prompt nur bei Voice Cloning + Base Model
+            voice_prompt = None
+            if self.use_voice_cloning and not (self.model_id and ('CustomVoice' in self.model_id or 'VoiceDesign' in self.model_id)):
+                print(f"   Hole Voice Prompt für {speaker_id}...", flush=True)
+                voice_prompt = self._get_voice_prompt(speaker_id)
+                print(f"   Voice Prompt: {'vorhanden' if voice_prompt else 'nicht vorhanden'}", flush=True)
 
             import time
             start = time.time()
@@ -424,8 +432,8 @@ def create_reference_audio():
         "alex_reference.wav": {
             "voice": "Fred",
             "rate": 175,
-            "text": "Hello, I'm Alex. Welcome to this demonstration of LLARS, "
-                   "the LLM Assisted Rating System. Let me show you how it works."
+            "text": "Hello, I'm Alex. Welcome to this demonstration of Lars, "
+                   "the LLM Assisted Research System. Let me show you how it works."
         },
         "david_reference.wav": {
             "voice": "Daniel",
@@ -494,21 +502,21 @@ if __name__ == '__main__':
         tts = QwenTTS(model_size="large")
         tts.list_speakers()
 
-        # Test Host
-        print("\n--- Host (Alex) ---")
+        # Test Moderator
+        print("\n--- Moderator (Alex) ---")
         tts.generate(
-            "Welcome to LLARS, a platform for evaluating LLM outputs.",
+            "Welcome to Lars, a platform for evaluating LLM outputs.",
             "test_host.wav",
-            speaker="host"
+            speaker="moderator"
         )
         tts.play("test_host.wav")
 
-        # Test Narrator
-        print("\n--- Narrator (David) ---")
+        # Test Guest
+        print("\n--- Guest (David) ---")
         tts.generate(
             "And here we observe the remarkable process of prompt engineering.",
             "test_narrator.wav",
-            speaker="narrator"
+            speaker="guest"
         )
         tts.play("test_narrator.wav")
 

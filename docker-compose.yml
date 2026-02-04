@@ -208,7 +208,7 @@ services:
       # Use VITE_API_BASE_URL if set (even if empty for relative URLs), else PROJECT_URL
       - VITE_API_BASE_URL=${VITE_API_BASE_URL-${PROJECT_URL:-http://localhost:55080}}
       - VITE_PROJECT_STATE=${PROJECT_STATE:-development}
-      - VITE_MKDOCS_URL=${PROJECT_URL:-http://localhost:55080}/docs
+      - VITE_MKDOCS_URL=${PROJECT_URL:-http://localhost:55080}/mkdocs
       - VITE_KEYCLOAK_URL=${PROJECT_URL:-http://localhost:55080}/authentik
       - VITE_KEYCLOAK_REALM=llars   # legacy variable; Authentik uses apps, not realms
       - VITE_KEYCLOAK_CLIENT_ID=${AUTHENTIK_FRONTEND_CLIENT_ID:-llars-frontend}

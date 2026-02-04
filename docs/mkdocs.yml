@@ -138,6 +138,34 @@ markdown_extensions:
 
 plugins:
   - search
+  - i18n:
+      default_language: de
+      languages:
+        de:
+          name: Deutsch
+          build: true
+        en:
+          name: English
+          build: true
+      nav_translations:
+        en:
+          Startseite: Home
+          Einstieg: Getting Started
+          Anleitungen: Guides
+          Schnellstart: Quick Start
+          Login Anleitung: Login Guide
+          Konfiguration: Configuration
+          Installation: Installation
+          Übersicht: Overview
+          Projektstatus: Project State
+          Berechtigungssystem: Permission System
+          Szenario Wizard: Scenario Wizard
+          Szenario Manager: Scenario Manager
+          Authentik Setup: Authentik Setup
+          Projekte: Projects
+          Entwickler: Developer
+          Archiv: Archive
+          Agentic AI & RAG: Agentic AI & RAG
 
 extra_javascript:
   - https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.min.js

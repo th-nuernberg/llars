@@ -133,7 +133,7 @@
             v-for="link in footerLinks"
             :key="link.key"
             class="footer-link"
-            @click="navigateTo(link.route)"
+            @click="navigateTo(link)"
           >
             {{ $t(`footer.${link.key}`) }}
           </span>
@@ -223,7 +223,7 @@ watch(
 );
 const isAdminUser = computed(() => auth.isAdmin.value);
 const footerLinks = [
-  { key: 'documentation', route: '/docs' },
+  { key: 'documentation', route: '/docs/', external: true },
   { key: 'imprint', route: '/impressum' },
   { key: 'privacy', route: '/datenschutz' },
   { key: 'contact', route: '/kontakt' }
@@ -336,8 +336,16 @@ function goToRegister() {
   router.push('/register');
 }
 
-function navigateTo(route) {
-  router.push(route);
+function navigateTo(link) {
+  if (typeof link === 'string') {
+    // Legacy support: if just a string route is passed
+    router.push(link);
+  } else if (link.external) {
+    // External links: open in new tab
+    window.open(link.route, '_blank');
+  } else {
+    router.push(link.route);
+  }
 }
 
 function openSettings() {

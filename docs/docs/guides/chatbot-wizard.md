@@ -98,9 +98,9 @@ Der Crawler sammelt Inhalte von der angegebenen Website:
 │                                                                             │
 │  Zuletzt verarbeitet:                                                       │
 │  ┌──────────────────────────────────────────────────────────────────────┐  │
-│  │  ✓ /docs/getting-started                                             │  │
-│  │  ✓ /docs/api-reference                                               │  │
-│  │  🔄 /docs/tutorials/basics                                           │  │
+│  │  ✓ /mkdocs/getting-started                                             │  │
+│  │  ✓ /mkdocs/api-reference                                               │  │
+│  │  🔄 /mkdocs/tutorials/basics                                           │  │
 │  └──────────────────────────────────────────────────────────────────────┘  │
 │                                                                             │
 └─────────────────────────────────────────────────────────────────────────────┘

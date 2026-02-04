@@ -1881,7 +1881,7 @@ async function loadFromGenerationJob() {
   try {
     // Fetch all completed outputs from the generation job
     const response = await axios.get(`/api/generation/jobs/${props.generationJobId}/outputs`, {
-      params: { status: 'completed', per_page: 1000 }
+      params: { status: 'completed', per_page: 1000, include_prompts: true }
     })
 
     const outputs = response.data.items || []
@@ -1894,36 +1894,63 @@ async function loadFromGenerationJob() {
     const jobResponse = await axios.get(`/api/generation/jobs/${props.generationJobId}`)
     generationJobName.value = jobResponse.data.job?.name || `Generation Job #${props.generationJobId}`
 
+    const hashString = (value) => {
+      if (!value) return null
+      let hash = 0
+      for (let i = 0; i < value.length; i++) {
+        hash = ((hash << 5) - hash) + value.charCodeAt(i)
+        hash |= 0
+      }
+      return `h${Math.abs(hash)}`
+    }
+
+    const parseRenderedPrompt = (promptText) => {
+      if (!promptText) return { title: null, content: null }
+      const titleMatch = promptText.match(/^(Title|Headline|Titel):\s*(.*)$/m)
+      const title = titleMatch ? titleMatch[2].trim() : null
+      const parts = promptText.split(/\n\s*\n/)
+      const content = parts.length > 1 ? parts.slice(1).join('\n\n').trim() : null
+      return { title, content }
+    }
+
     // Transform outputs into items for the wizard
     // Combine original input data with generated response as a complete conversation
     const items = outputs.map((output) => {
       const promptVars = output.prompt_variables || {}
       const generatedContent = output.generated_content || ''
 
-      // Build the combined content structure
+      // Stable source grouping (manual uploads use _source_index)
+      const renderedPrompt = output.rendered_user_prompt || ''
+      const parsed = parseRenderedPrompt(renderedPrompt)
+      const sourceIndex = promptVars._source_index ?? output.source_item_id ?? hashString(renderedPrompt) ?? output.id
+      const promptKey = output.prompt_template_id ?? promptVars._user_prompt_id ?? output.prompt_variant_name ?? 'prompt'
+      const groupId = `${sourceIndex}`
+
+      // Build a readable source text (title + content if available)
+      const sourceTitle = promptVars.title || parsed.title || ''
+      const sourceBody = promptVars.content || promptVars.input || parsed.content || ''
+      const sourceText = sourceTitle
+        ? `Title: ${sourceTitle}\n\n${sourceBody}`
+        : (sourceBody || promptVars.input || renderedPrompt || '')
+
+      // Build the combined content structure (for non-ranking use cases)
       let messages = []
       let text = ''
 
-      // Check if there are original messages (conversation history)
       if (promptVars.messages && Array.isArray(promptVars.messages)) {
-        // Copy original messages
         messages = [...promptVars.messages]
-        // Add the generated response as a new assistant message
         messages.push({
           role: 'assistant',
           content: generatedContent
         })
-        // For text field, create a summary
         text = messages.map(m => `${m.role}: ${m.content}`).join('\n\n')
       } else if (promptVars.input) {
-        // Single input text - create a Q&A pair
         messages = [
           { role: 'user', content: promptVars.input },
           { role: 'assistant', content: generatedContent }
         ]
         text = `User: ${promptVars.input}\n\nAssistant: ${generatedContent}`
       } else {
-        // No original input, just the generated content
         text = generatedContent
       }
 
@@ -1931,13 +1958,23 @@ async function loadFromGenerationJob() {
         id: output.id.toString(),
         text: text,
         content: generatedContent,
+        output: generatedContent,
         messages: messages.length > 0 ? messages : undefined,
         subject: promptVars.subject || undefined,
+        source_id: groupId,
+        source_text: sourceText,
+        llm_name: output.llm_model_name,
+        prompt_id: promptKey,
+        prompt_variant: output.prompt_variant_name || null,
+        variant: `${output.llm_model_name} / ${promptKey}${output.prompt_variant_name && output.prompt_variant_name !== promptKey ? ` / ${output.prompt_variant_name}` : ''}`,
+        title: promptVars.title || null,
+        input: promptVars.input || null,
         // Include metadata for context
         _source: 'generation',
         _model: output.llm_model_name,
         _prompt_variant: output.prompt_variant_name,
         _source_item_id: output.source_item_id,
+        _source_index: promptVars._source_index ?? null,
         _original_input: promptVars.input || null
       }
     })

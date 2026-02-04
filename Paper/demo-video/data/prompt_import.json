@@ -1,0 +1,4 @@
+{
+  "Imported Guardrails": "Use only information present in the input. If unsure, say so.",
+  "Imported Style": "Keep it under 60 words and maintain a neutral tone."
+}

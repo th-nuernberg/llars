@@ -1,6 +1,6 @@
 {
   "metadata": {
-    "title": "LLARS Demo Video - IJCAI-ECAI 2026",
+    "title": "Lars Demo Video - IJCAI-ECAI 2026",
     "version": "1.0",
     "total_duration_seconds": 600,
     "resolution": "1920x1080",
@@ -21,7 +21,7 @@
           "visual": {
             "type": "title_slide",
             "content": {
-              "title": "LLARS",
+              "title": "Lars",
               "subtitle": "A Platform for Evaluating LLM Outputs with Human and Machine Evaluators",
               "authors": "Philipp Steigerwald, Jens Albrecht",
               "affiliation": "Technische Hochschule Nürnberg"
@@ -44,7 +44,7 @@
           "id": "01_03",
           "start_time": 30,
           "duration": 15,
-          "narration": "LLARS bridges this gap with three integrated modules: Collaborative Prompt Engineering, Batch Generation, and Large-Scale Evaluation. Let me show you how they work together.",
+          "narration": "Lars bridges this gap with three integrated modules: Collaborative Prompt Engineering, Batch Generation, and Large-Scale Evaluation. Let me show you how they work together.",
           "visual": {
             "type": "browser",
             "url": "http://localhost:55080"
@@ -243,7 +243,7 @@
           "id": "03_05",
           "start_time": 240,
           "duration": 15,
-          "narration": "Before execution, LLARS estimates the total cost based on token counts and model pricing. I can set budget limits - jobs automatically pause if costs exceed thresholds.",
+          "narration": "Before execution, Lars estimates the total cost based on token counts and model pricing. I can set budget limits - jobs automatically pause if costs exceed thresholds.",
           "visual": {
             "type": "browser",
             "highlight": "cost_estimation"
@@ -342,7 +342,7 @@
           "id": "04_05_llm_judge",
           "start_time": 340,
           "duration": 25,
-          "narration": "Human evaluation is the gold standard, but domain experts' time is limited. That's why LLARS supports LLM evaluators running in parallel. I'll add GPT-4 as an LLM judge using the same ranking criteria. Watch how both human and machine evaluations proceed simultaneously.",
+          "narration": "Human evaluation is the gold standard, but domain experts' time is limited. That's why Lars supports LLM evaluators running in parallel. I'll add GPT-4 as an LLM judge using the same ranking criteria. Watch how both human and machine evaluations proceed simultaneously.",
           "visual": {
             "type": "browser",
             "highlight": "llm_evaluator_panel"
@@ -360,7 +360,7 @@
           "id": "04_06_agreement",
           "start_time": 365,
           "duration": 25,
-          "narration": "The real power is in the live agreement dashboard. LLARS computes agreement across all evaluator combinations in real-time: human-human for inter-annotator reliability, LLM-LLM for model consistency, and critically, human-LLM alignment. Here we see Krippendorff's alpha, Cohen's kappa, and correlation coefficients updating as evaluations come in.",
+          "narration": "The real power is in the live agreement dashboard. Lars computes agreement across all evaluator combinations in real-time: human-human for inter-annotator reliability, LLM-LLM for model consistency, and critically, human-LLM alignment. Here we see Krippendorff's alpha, Cohen's kappa, and correlation coefficients updating as evaluations come in.",
           "visual": {
             "type": "browser",
             "highlight": "agreement_dashboard"
@@ -449,7 +449,7 @@
           "id": "05_04",
           "start_time": 475,
           "duration": 35,
-          "narration": "The modular design means teams can adopt LLARS incrementally. Start with evaluation for an existing project, add batch generation when you need scale, and bring in collaborative prompt engineering when domain experts join the team.",
+          "narration": "The modular design means teams can adopt Lars incrementally. Start with evaluation for an existing project, add batch generation when you need scale, and bring in collaborative prompt engineering when domain experts join the team.",
           "visual": {
             "type": "diagram",
             "content": "modular_adoption_diagram"
@@ -482,7 +482,7 @@
           "id": "06_02",
           "start_time": 540,
           "duration": 30,
-          "narration": "The key insight: domain experts know what matters but struggle to express it in prompts. AI developers can write effective prompts but lack domain knowledge. LLARS brings both groups into a shared environment where they iterate together until criteria are properly captured and validated at scale.",
+          "narration": "The key insight: domain experts know what matters but struggle to express it in prompts. AI developers can write effective prompts but lack domain knowledge. Lars brings both groups into a shared environment where they iterate together until criteria are properly captured and validated at scale.",
           "visual": {
             "type": "diagram",
             "content": "collaboration_impact"
@@ -500,11 +500,11 @@
           "id": "07_01",
           "start_time": 570,
           "duration": 30,
-          "narration": "LLARS is open-source under MIT license. It requires Docker, 16 gigabytes of RAM, and supports over 100 LLM providers through LiteLLM. Visit our repository to get started, and find us at the demo booth to try it yourself. Thank you for watching.",
+          "narration": "Lars is open-source under MIT license. It requires Docker, 16 gigabytes of RAM, and supports over 100 LLM providers through LiteLLM. Visit our repository to get started, and find us at the demo booth to try it yourself. Thank you for watching.",
           "visual": {
             "type": "end_slide",
             "content": {
-              "title": "Try LLARS",
+              "title": "Try Lars",
               "repository": "github.com/llars-project/llars",
               "documentation": "llars-project.github.io",
               "requirements": ["Docker 20.10+", "16GB RAM", "4+ CPU cores"],

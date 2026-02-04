@@ -104,7 +104,7 @@
     <div class="docs-link">
       <LIcon size="18" class="mr-1">mdi-book-open-variant</LIcon>
       <span>Vollständige Dokumentation: </span>
-      <a href="/docs/entwickler/evaluation-datenformate/" target="_blank">
+      <a href="/mkdocs/entwickler/evaluation-datenformate/" target="_blank">
         MkDocs → Entwickler → Evaluation Datenformate
       </a>
     </div>

@@ -1,4 +1,4 @@
-# LLARS Demo Video - Dependencies
+# Lars Demo Video - Dependencies
 # ================================
 
 # Browser Automation

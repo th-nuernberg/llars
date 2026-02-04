@@ -15,6 +15,7 @@ RUN apk add --no-cache wget \
     && pip install --no-cache-dir \
         mkdocs==1.6.1 \
         mkdocs-material==9.5.44 \
+        mkdocs-static-i18n==1.2.0 \
         pymdown-extensions==10.12 \
         mkdocs-mermaid2-plugin==1.1.1 \
         watchdog==4.0.1 \

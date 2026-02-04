@@ -90,17 +90,30 @@ class MkDocsLoaderService:
             Full URL to the documentation page
         """
         # Remove .md extension
-        path_without_ext = relative_path.replace('.md', '')
+        path_without_ext = relative_path[:-3] if relative_path.endswith('.md') else relative_path
+
+        # Detect language suffixes like ".en" or ".de" (mkdocs-static-i18n)
+        language = None
+        lang_match = re.match(r'^(.*)\.([a-z]{2})$', path_without_ext)
+        if lang_match:
+            path_without_ext = lang_match.group(1)
+            language = lang_match.group(2)
+
+        # Default language (matches mkdocs i18n default_language)
+        default_language = 'de'
+        lang_prefix = ''
+        if language and language != default_language:
+            lang_prefix = f"/{language}"
 
         # Handle index.md specially
         if path_without_ext == 'index':
-            return f"{self.project_url}/docs/"
+            return f"{self.project_url}/docs{lang_prefix}/"
 
         # Handle nested index.md
         if path_without_ext.endswith('/index'):
             path_without_ext = path_without_ext[:-6]  # Remove '/index'
 
-        return f"{self.project_url}/docs/{path_without_ext}/"
+        return f"{self.project_url}/docs{lang_prefix}/{path_without_ext}/"
 
     def get_file_hash(self, file_path: Path) -> str:
         """Calculate MD5 hash of file content."""

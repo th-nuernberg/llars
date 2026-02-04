@@ -1,6 +1,6 @@
 #!/bin/bash
 # ============================================
-# LLARS Demo Video - Recording Script
+# Lars Demo Video - Recording Script
 # ============================================
 #
 # Nutzung:
@@ -10,7 +10,7 @@
 #   ./run_demo.sh --resume     # Fortsetzen von Checkpoint
 #
 # Voraussetzungen:
-#   - LLARS läuft unter http://localhost:55080
+#   - Lars läuft unter http://localhost:55080
 #   - ffmpeg installiert
 #   - OPENAI_API_KEY gesetzt (für TTS)
 #
@@ -36,7 +36,7 @@ NC='\033[0m' # No Color
 
 echo -e "${BLUE}"
 echo "╔═══════════════════════════════════════════════════════════╗"
-echo "║         LLARS Demo Video Recording System                  ║"
+echo "║         Lars Demo Video Recording System                  ║"
 echo "╚═══════════════════════════════════════════════════════════╝"
 echo -e "${NC}"
 
@@ -66,13 +66,13 @@ check_requirements() {
         echo -e "${GREEN}✓ Chrome${NC}"
     fi
 
-    # LLARS
+    # Lars
     if ! curl -s http://localhost:55080 > /dev/null 2>&1; then
-        echo -e "${RED}❌ LLARS nicht erreichbar unter http://localhost:55080${NC}"
-        echo "  Starte LLARS mit: ./start_llars.sh"
+        echo -e "${RED}❌ Lars nicht erreichbar unter http://localhost:55080${NC}"
+        echo "  Starte Lars mit: ./start_llars.sh"
         exit 1
     fi
-    echo -e "${GREEN}✓ LLARS erreichbar${NC}"
+    echo -e "${GREEN}✓ Lars erreichbar${NC}"
 
     # OpenAI API Key
     if [ -z "$OPENAI_API_KEY" ]; then

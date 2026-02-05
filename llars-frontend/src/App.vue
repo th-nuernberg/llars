@@ -160,7 +160,7 @@ import AnalyticsConsentBanner from './components/common/AnalyticsConsentBanner.v
 import { useReferralSystem } from '@/composables/useReferralSystem';
 import { logI18n } from '@/utils/logI18n';
 
-const { t } = useI18n();
+const { t, locale } = useI18n();
 
 // Global Snackbar
 const { snackbarModel } = useSnackbar();
@@ -222,12 +222,12 @@ watch(
   { immediate: true }
 );
 const isAdminUser = computed(() => auth.isAdmin.value);
-const footerLinks = [
-  { key: 'documentation', route: '/docs/', external: true },
+const footerLinks = computed(() => [
+  { key: 'documentation', route: locale.value === 'en' ? '/docs/en/' : '/docs/', external: true },
   { key: 'imprint', route: '/impressum' },
   { key: 'privacy', route: '/datenschutz' },
   { key: 'contact', route: '/kontakt' }
-];
+]);
 const settingsDialogOpen = ref(false);
 
 // Avatar seed from auth composable

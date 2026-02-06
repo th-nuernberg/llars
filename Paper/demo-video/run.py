@@ -42,6 +42,7 @@ try:
     from selenium.webdriver.common.keys import Keys
     from selenium.webdriver.chrome.options import Options
     from selenium.webdriver.chrome.service import Service
+    from selenium.common.exceptions import StaleElementReferenceException
 except ImportError:
     print("📦 Installiere selenium...")
     subprocess.check_call(['pip', 'install', 'selenium', 'webdriver-manager', '-q'])
@@ -53,6 +54,7 @@ except ImportError:
     from selenium.webdriver.common.keys import Keys
     from selenium.webdriver.chrome.options import Options
     from selenium.webdriver.chrome.service import Service
+    from selenium.common.exceptions import StaleElementReferenceException
 
 try:
     from webdriver_manager.chrome import ChromeDriverManager
@@ -94,6 +96,9 @@ ELEMENT_MAP = {
     "Settings": ".v-btn:contains('Settings'), .v-icon.mdi-cog, button:contains('Settings')",
     "Export CSV": ".v-btn:contains('Export'), .v-btn:contains('CSV')",
     "Import External": ".v-btn:contains('Import'), button:contains('Import')",
+    "Language Toggle": "[data-testid='language-toggle'] .language-toggle-btn, .language-toggle-wrapper .language-toggle-btn, .language-toggle-btn",
+    "Language Option English": ".language-option:contains('English'), .v-list-item:contains('English'), button:contains('English')",
+    "Language Option German": ".language-option:contains('Deutsch'), .v-list-item:contains('Deutsch'), button:contains('Deutsch')",
 
     # Prompt Engineering - Sidebar Actions (in .sidebar .actions-grid)
     # Note: Uses lowercase "block" as per en.json translation "New block"
@@ -207,6 +212,13 @@ ELEMENT_MAP = {
     "Progress Bar": ".v-progress-linear, .progress-fill, .card-progress-bar",
     "Outputs List": ".outputs-list",
     "Output Item": ".output-item",
+    "Output Detail Dialog": ".v-dialog .output-detail, .v-dialog:has(.output-detail)",
+    "Output Detail Meta": ".output-detail .output-detail-meta, .output-detail-meta",
+    "Output Prompt": ".output-detail .prompt-pre, .output-detail .prompt-section",
+    "Output System Prompt": ".output-detail .prompt-section:contains('System'), .prompt-section:contains('System')",
+    "Output User Prompt": ".output-detail .prompt-section:contains('User'), .prompt-section:contains('User')",
+    "Output Content": ".output-detail .content-pre, .output-detail .output-full-content",
+    "Output Close": ".v-dialog .l-btn:contains('Close'), .v-dialog .v-btn:contains('Close'), .v-dialog button:contains('Close')",
 
     # Job Cards
     "Job Card": ".job-card",
@@ -232,9 +244,9 @@ ELEMENT_MAP = {
     "Summary 1": ".eval-item:nth-child(1), .v-card:nth-child(1)",
     "Summary 2": ".eval-item:nth-child(2), .v-card:nth-child(2)",
     "Summary 3": ".eval-item:nth-child(3), .v-card:nth-child(3)",
-    "Best Bucket": ".bucket-best, .bucket:contains('Best'), .v-card:contains('Best')",
-    "Acceptable Bucket": ".bucket-acceptable, .bucket:contains('Accept')",
-    "Poor Bucket": ".bucket-poor, .bucket:contains('Poor')",
+    "Best Bucket": ".ranking-interface .good-bucket, .bucket.good-bucket",
+    "Acceptable Bucket": ".ranking-interface .moderate-bucket, .bucket.moderate-bucket",
+    "Poor Bucket": ".ranking-interface .bad-bucket, .bucket.bad-bucket",
 
     # Misc
     "Test Output": ".test-result, .v-card:contains('Result'), .output",
@@ -308,6 +320,15 @@ ELEMENT_MAP = {
     "Evaluation Progress": ".evaluation-tab .progress-bar-track, .evaluation-tab .progress-bar-fill, .evaluation-tab .total-progress-section",
     "Evaluation Export": ".evaluation-tab .l-btn:contains('Export'), .evaluation-tab .v-btn:contains('Export')",
     "Export JSON": ".v-list-item:contains('JSON')",
+    # Scenario Data Tab
+    "Data Stats": ".data-tab .data-stats, .data-stats",
+    "Data Threads Table": ".data-tab .threads-table, .threads-table, .threads-section",
+    "Data Status Legend": ".data-tab .status-legend, .status-legend",
+    # Scenario Team Tab
+    "Team Members List": ".team-tab .members-list, .members-list",
+    "Team Invite Button": ".team-tab .l-btn:contains('Invite'), .team-tab .l-btn:contains('Add'), .team-tab .v-btn:contains('Invite')",
+    "Team Add LLM Button": ".team-tab .l-btn:contains('Add LLM'), .team-tab .l-btn:contains('LLM'), .team-tab .v-btn:contains('LLM')",
+    "Team Member Menu": ".team-tab .member-actions .v-btn, .team-tab .member-actions button",
     "Scenario Wizard Close": ".scenario-wizard .wizard-header .v-btn",
     # Human Evaluation (Evaluation Hub + Ranking UI)
     "Evaluation Scenario Card": ".scenarios-grid .scenario-card:contains('News Summary'), .scenario-card:contains('News Summary'), .scenarios-grid .scenario-card:first-child, .scenario-card:first-child",
@@ -316,6 +337,7 @@ ELEMENT_MAP = {
     "Ranking Interface": ".ranking-interface",
     "Ranking Buckets": ".ranking-interface .buckets-row, .ranking-interface .bucket, .ranking-interface .neutral-bucket",
     "Ranking Content": ".ranking-interface .right-panel, .ranking-interface .content-text, .ranking-interface .message-list",
+    "Ranking Item": ".ranking-interface .neutral-bucket .bucket-item:first-child, .ranking-interface .bucket-item:first-child",
 
     # Scenario Wizard (Button text is "Scenario Wizard")
     "Wizard Button": ".l-btn:contains('Scenario Wizard'), .l-btn:contains('Wizard'), .v-btn:contains('Scenario Wizard'), .v-btn:contains('Wizard')",
@@ -359,6 +381,8 @@ ELEMENT_MAP = {
     "Scenario Wizard Button": ".l-btn:contains('Wizard'), .l-btn:contains('Scenario Wizard'), .v-btn:contains('Wizard'), .v-btn:contains('Scenario Wizard'), .wizard-btn",
     # User Settings - LLM Providers
     "User Settings Providers Tab": ".settings-sidebar .nav-item:contains('LLM Providers'), .settings-sidebar .nav-item:contains('Providers')",
+    "User Settings Personal Tab": ".settings-sidebar .nav-item:contains('Personal'), .settings-sidebar .nav-item:contains('Profil'), .settings-sidebar .nav-item:contains('Profile')",
+    "Language Options": ".language-options, .settings-panel:contains('Language'), .settings-panel:contains('Sprache')",
     "Providers Info": ".llm-providers .v-alert, .llm-providers .v-alert__content",
     "Add Provider": ".llm-providers .l-btn:contains('Add Provider'), .llm-providers .v-btn:contains('Add Provider')",
     "Provider Dialog": ".v-overlay--active .v-dialog, .v-dialog",
@@ -368,6 +392,8 @@ ELEMENT_MAP = {
     "Docs Hero": ".docs-hero, .docs-page .hero-title",
     "Docs Technical Section": ".docs-section.highlight",
     "Docs MkDocs Link": ".mkdocs-link, .mkdocs-link-container",
+    "MkDocs Header": "header.md-header, .md-header",
+    "MkDocs Sidebar": ".md-sidebar, .md-nav, .md-nav__list",
 }
 
 
@@ -1083,13 +1109,17 @@ class Browser:
     def _set_language(self, language: str):
         """Stellt die Sprache auf der Login-Seite ein"""
         print(f"   🌐 Setze Sprache auf: {language.upper()}")
+        self._set_language_for_driver(self.driver, language)
 
+    def _set_language_for_driver(self, driver, language: str):
+        """Setzt Sprache für einen beliebigen WebDriver (Login-Screen)."""
         try:
-            # Finde Language Toggle Button (innerhalb des Wrappers)
-            toggle = self.driver.find_element(By.CSS_SELECTOR,
+            toggle = driver.find_element(
+                By.CSS_SELECTOR,
                 "[data-testid='language-toggle'] .language-toggle-btn, "
                 ".language-toggle-wrapper .language-toggle-btn, "
-                ".language-toggle-btn")
+                ".language-toggle-btn"
+            )
 
             # Klicke um Dropdown zu öffnen
             toggle.click()
@@ -1099,22 +1129,24 @@ class Browser:
             lang_text = "English" if language == "en" else "Deutsch"
 
             # Suche in der Sprachauswahl-Liste
-            lang_option = self.driver.find_element(By.XPATH,
+            lang_option = driver.find_element(By.XPATH,
                 f"//button[contains(@class, 'language-option') and contains(., '{lang_text}')]")
             lang_option.click()
             time.sleep(0.5)
 
             print(f"   ✓ Sprache auf {lang_text} gesetzt")
+            return
         except Exception as e:
             print(f"   ⚠️ Sprache konnte nicht über UI gesetzt werden: {e}")
-            # Fallback: Direkt localStorage setzen (zuverlässiger)
-            try:
-                self.driver.execute_script(f"localStorage.setItem('llars-language', '{language}')")
-                self.driver.refresh()
-                time.sleep(1)
-                print(f"   ✓ Sprache via localStorage gesetzt")
-            except Exception:
-                pass
+
+        # Fallback: Direkt localStorage setzen (zuverlässiger)
+        try:
+            driver.execute_script(f"localStorage.setItem('llars-language', '{language}')")
+            driver.refresh()
+            time.sleep(1)
+            print(f"   ✓ Sprache via localStorage gesetzt")
+        except Exception:
+            pass
 
     def _do_login_on_login_page(self, username: str, password: str):
         """Login auf der Lars /login Seite"""
@@ -1436,6 +1468,14 @@ class Browser:
             # Click
             try:
                 element.click()
+            except StaleElementReferenceException:
+                # Re-find and retry once if DOM changed
+                element = self._find_element(target)
+                if element:
+                    try:
+                        element.click()
+                    except Exception:
+                        self.driver.execute_script("arguments[0].click()", element)
             except Exception:
                 self.driver.execute_script("arguments[0].click()", element)
 
@@ -1466,8 +1506,27 @@ class Browser:
             # Check if it's a contenteditable element (Quill editor)
             is_contenteditable = element.get_attribute('contenteditable') == 'true'
 
+            # Instant fill for normal inputs (faster for variable dialogs)
+            if speed == "instant" and not is_contenteditable:
+                try:
+                    element.clear()
+                except Exception:
+                    pass
+                try:
+                    self.driver.execute_script(
+                        "arguments[0].value = arguments[1];"
+                        "arguments[0].dispatchEvent(new Event('input', {bubbles: true}));"
+                        "arguments[0].dispatchEvent(new Event('change', {bubbles: true}));",
+                        element,
+                        text
+                    )
+                except Exception:
+                    element.send_keys(text)
+                print(f"   ⌨️ Type: {text[:30]}...")
+                return
+
             # Geschwindigkeit
-            delay = {"slow": 0.08, "medium": 0.04, "fast": 0.02}[speed]
+            delay = {"slow": 0.08, "medium": 0.04, "fast": 0.02}.get(speed, 0.02)
 
             if is_contenteditable:
                 # For Quill/contenteditable: type character by character
@@ -1679,6 +1738,9 @@ class Browser:
         # Zur Login-Seite navigieren
         self.collab_driver.get(self.base_url)
         time.sleep(2)
+
+        # Sprache für Collab-User auf Englisch setzen
+        self._set_language_for_driver(self.collab_driver, "en")
 
         # Login mit Dev Quick Login Button
         try:

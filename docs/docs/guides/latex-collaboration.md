@@ -78,9 +78,9 @@ LaTeX Collaboration ist ein Echtzeit-Kollaborationstool für wissenschaftliche D
 
 ---
 
-## Dateibaum
+## Dateibaum & Panels
 
-Der linke Bereich zeigt die Projektstruktur:
+Der linke Bereich kombiniert **Dateibaum**, **Git-Status** und **Gliederung**:
 
 ```
 ┌─────────────────────────────┐
@@ -124,6 +124,11 @@ Bilder und PDFs können hochgeladen werden:
 - **Rechtsklick** → Asset hochladen
 - Unterstützte Formate: PNG, JPG, PDF, EPS
 
+### Gliederung (Outline)
+
+Die Gliederung zeigt die Struktur des aktuellen Dokuments (Parts/Chapter/Section).
+Ein Klick springt direkt zur entsprechenden Stelle im Editor.
+
 ---
 
 ## Editor
@@ -139,6 +144,8 @@ Der Monaco-Editor bietet professionelle LaTeX-Bearbeitung:
 | **Klammer-Matching** | Passende Klammern markiert |
 | **Zeilennummern** | Für Fehler-Navigation |
 | **Mehrere Cursor** | Ctrl+Klick für paralleles Bearbeiten |
+| **Review‑Modus** | Kommentare fokussiert anzeigen |
+| **Ghost Text (optional)** | KI‑Vorschläge als dezente Einblendung |
 
 ### Echtzeit-Kollaboration
 
@@ -248,6 +255,9 @@ Die KI kann Kommentare automatisch umsetzen:
     Die KI berücksichtigt 1000 Zeichen vor und nach dem markierten Text
     für besseres Verständnis.
 
+**Streaming:** Während der KI‑Bearbeitung werden Tokens live gestreamt und am Ende
+als Vorschlag zur Übernahme angezeigt.
+
 ---
 
 ## Git-Versionierung
@@ -313,6 +323,11 @@ Klick auf geänderte Datei zeigt Unterschiede:
     Wiederherstellen überschreibt den aktuellen Inhalt. Erstellen Sie vorher
     einen Commit um Änderungen zu sichern.
 
+### Versions‑Kompilierung
+
+Die PDF‑Vorschau kann für **aktuelle Dateien** oder **einen Commit** erstellt werden.
+Auswahl im Compile‑Toolbar.
+
 ---
 
 ## PDF-Kompilierung
@@ -320,7 +335,7 @@ Klick auf geänderte Datei zeigt Unterschiede:
 ### Kompilieren
 
 1. **Kompilieren-Button** klicken (oder `Ctrl+S`)
-2. **pdflatex** wird ausgeführt
+2. **latexmk** wird ausgeführt
 3. **PDF** wird im Viewer angezeigt
 
 ### Kompilierungs-Log
@@ -343,6 +358,14 @@ Bei Fehlern wird der Log angezeigt:
 │                                                                             │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
+
+### Auto‑Kompilieren
+
+Im Toolbar‑Menü können Sie Auto‑Compile aktivieren:
+
+- **Auto‑Kompilieren** an/aus
+- **Delay** (ms)
+- **Sync aktivieren** (für SyncTeX)
 
 ### SyncTeX-Navigation
 
@@ -386,6 +409,16 @@ Bidirektionale Synchronisation zwischen Editor und PDF:
 
 ---
 
+## Zotero (optional)
+
+Zotero‑Bibliotheken können eingebunden werden:
+
+- BibTeX‑Dateien werden automatisch synchronisiert
+- Zotero‑Dateien sind **schreibgeschützt**
+- Verbindung über OAuth oder API‑Key
+
+---
+
 ## Import/Export
 
 ### ZIP-Export
@@ -413,14 +446,18 @@ Bidirektionale Synchronisation zwischen Editor und PDF:
 | `/api/latex-collab/workspaces/:id` | GET | Workspace-Details |
 | `/api/latex-collab/workspaces/:id` | PATCH | Workspace aktualisieren |
 | `/api/latex-collab/workspaces/:id` | DELETE | Workspace löschen |
+| `/api/latex-collab/workspaces/:id/leave` | POST | Workspace verlassen |
 | `/api/latex-collab/workspaces/:id/members` | GET/POST | Mitglieder verwalten |
+| `/api/latex-collab/workspaces/:id/members/:username` | DELETE | Mitglied entfernen |
 
 ### Dokumente
 
 | Endpunkt | Methode | Beschreibung |
 |----------|---------|--------------|
 | `/api/latex-collab/workspaces/:id/tree` | GET | Dateibaum abrufen |
-| `/api/latex-collab/workspaces/:id/documents` | POST | Datei/Ordner erstellen |
+| `/api/latex-collab/documents/content` | POST | Dokumentinhalt laden |
+| `/api/latex-collab/documents` | POST | Datei/Ordner erstellen |
+| `/api/latex-collab/workspaces/:id/main` | PATCH | Haupt‑Dokument setzen |
 | `/api/latex-collab/documents/:id` | PATCH | Umbenennen, verschieben |
 | `/api/latex-collab/documents/:id` | DELETE | Löschen |
 
@@ -428,18 +465,66 @@ Bidirektionale Synchronisation zwischen Editor und PDF:
 
 | Endpunkt | Methode | Beschreibung |
 |----------|---------|--------------|
+| `/api/latex-collab/workspaces/:id/comments` | GET | Workspace‑Kommentare |
 | `/api/latex-collab/documents/:id/comments` | GET/POST | Kommentare |
+| `/api/latex-collab/comments/:id` | PATCH/DELETE | Kommentar ändern/löschen |
 | `/api/latex-collab/comments/:id/replies` | POST | Antworten |
+| `/api/latex-collab/comments/:id/ai-resolve/status` | GET | KI‑Status |
 | `/api/latex-collab/comments/:id/ai-resolve` | POST | KI-Auflösung |
+
+### Git / Commits
+
+| Endpunkt | Methode | Beschreibung |
+|----------|---------|--------------|
+| `/api/latex-collab/workspaces/:id/changes` | GET | Workspace‑Änderungen |
+| `/api/latex-collab/workspaces/:id/commit` | POST | Workspace committen |
+| `/api/latex-collab/documents/:id/commits` | GET | Commit‑Liste |
+| `/api/latex-collab/documents/:id/commits/:commit_id` | GET | Commit‑Details |
+| `/api/latex-collab/documents/:id/commit` | POST | Dokument committen |
+| `/api/latex-collab/documents/:id/baseline` | GET | Baseline abrufen |
+| `/api/latex-collab/documents/:id/diff` | GET | Diff abrufen |
+| `/api/latex-collab/documents/:id/rollback` | POST | Rollback |
+| `/api/latex-collab/documents/:id/restore` | POST | Restore |
 
 ### Kompilierung
 
 | Endpunkt | Methode | Beschreibung |
 |----------|---------|--------------|
 | `/api/latex-collab/workspaces/:id/compile` | POST | Kompilierung starten |
-| `/api/latex-collab/compile/:id/pdf` | GET | PDF herunterladen |
+| `/api/latex-collab/compile/:id` | GET | Compile‑Status |
+| `/api/latex-collab/workspaces/:id/pdf` | GET | PDF herunterladen |
 | `/api/latex-collab/compile/:id/synctex/forward` | POST | SyncTeX vorwärts |
 | `/api/latex-collab/compile/:id/synctex/inverse` | POST | SyncTeX rückwärts |
+
+### Assets
+
+| Endpunkt | Methode | Beschreibung |
+|----------|---------|--------------|
+| `/api/latex-collab/workspaces/:id/assets` | POST | Asset hochladen |
+| `/api/latex-collab/assets/:id` | GET | Asset herunterladen |
+
+### ZIP
+
+| Endpunkt | Methode | Beschreibung |
+|----------|---------|--------------|
+| `/api/latex-collab/workspaces/:id/export` | GET | Workspace als ZIP |
+| `/api/latex-collab/workspaces/import` | POST | ZIP → neuer Workspace |
+| `/api/latex-collab/workspaces/:id/import` | POST | ZIP → bestehender Workspace |
+
+---
+
+## Socket.IO Events (Realtime)
+
+| Event | Beschreibung |
+|-------|--------------|
+| `latex_collab:workspace_shared` | Workspace wurde geteilt |
+| `latex_collab:commit_created` | Neuer Commit erstellt |
+| `latex_collab:comment_changed` | Kommentar geändert |
+| `latex_collab:workspace_comment_changed` | Workspace‑Kommentare geändert |
+| `latex_collab:compile_status` | Compile‑Status Update |
+| `latex_collab:ai_resolve:token` | KI‑Token stream |
+| `latex_collab:ai_resolve:completed` | KI‑Vorschlag fertig |
+| `latex_collab:ai_resolve:error` | KI‑Fehler |
 
 ---
 

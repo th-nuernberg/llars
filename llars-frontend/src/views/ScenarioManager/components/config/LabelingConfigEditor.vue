@@ -196,11 +196,11 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue'])
 const { t } = useI18n()
 
-const labelingTypes = [
-  { title: 'Binär (2 Klassen)', value: 'binary' },
-  { title: 'Multi-Klasse', value: 'multiclass' },
-  { title: 'Multi-Label', value: 'multilabel' }
-]
+const labelingTypes = computed(() => [
+  { title: t('scenarioManager.evalConfig.labeling.typeOptions.binary'), value: 'binary' },
+  { title: t('scenarioManager.evalConfig.labeling.typeOptions.multiclass'), value: 'multiclass' },
+  { title: t('scenarioManager.evalConfig.labeling.typeOptions.multilabel'), value: 'multilabel' }
+])
 
 const availableIcons = [
   { title: 'Check', value: 'mdi-check-circle' },

@@ -37,12 +37,12 @@ Zeigt alle Szenarien, die Sie erstellt haben.
 ```
 ┌────────────────────────────────────────┐
 │  [⭐] Summary-Qualität Studie   [Menu]  │
-│  Rating · Aktiv                         │
+│  Rating · Evaluierung läuft             │
 │                                         │
 │  ████████████░░░░  75%                  │
 │                                         │
 │  👥 5 Evaluatoren  ·  🤖 2 LLMs         │
-│  Erstellt: 15.01.2026                   │
+│  Erstellt: 15.01.2026  ·  150 Threads   │
 └────────────────────────────────────────┘
 ```
 
@@ -54,6 +54,7 @@ Zeigt alle Szenarien, die Sie erstellt haben.
 | **Fortschritt** | Gesamtfortschritt aller Evaluatoren |
 | **Team** | Anzahl menschliche Evaluatoren + LLMs |
 | **Datum** | Erstellungsdatum |
+| **Threads** | Anzahl Threads/Items |
 | **Menu** | Aktionen (3-Punkte-Menü) |
 
 ### Status-Badges
@@ -63,7 +64,7 @@ Zeigt alle Szenarien, die Sie erstellt haben.
 | **Entwurf** | Grau | Noch nicht gestartet |
 | **Daten sammeln** | Blau | Items werden importiert |
 | **Evaluierung läuft** | Blau | Bewertungen werden gesammelt |
-| **Analyse** | Blau | Ergebnisse werden analysiert |
+| **Analyse** | Gelb | Ergebnisse werden analysiert |
 | **Abgeschlossen** | Grün | Alle Bewertungen fertig |
 | **Archiviert** | Grau | Inaktiv |
 
@@ -93,12 +94,14 @@ Zeigt Szenarien, zu denen Sie als Evaluator eingeladen wurden.
 │  Dein Fortschritt: 12/20 (60%)          │
 │  ████████████░░░░░░░░                   │
 │                                         │
-│  [Zur Evaluation →]                     │
+│  [Ablehnen] [Annehmen]                  │
+│  (nach Annahme: [Zur Evaluation]        │
+│   + Option "Verlassen")                 │
 └────────────────────────────────────────┘
 ```
 
 !!! warning "Eingeschränkte Sicht"
-    Als eingeladener Evaluator sehen Sie **nur Ihren eigenen Fortschritt**, nicht den Gesamtfortschritt oder Ergebnisse anderer.
+    Eingeladene Evaluatoren werden zur **Evaluation-Übersicht** geleitet und sehen **nur den eigenen Fortschritt**, nicht den Gesamtfortschritt oder Ergebnisse anderer.
 
 ### Einladungs-Status
 
@@ -130,7 +133,8 @@ Nach Klick auf eine Szenario-Karte öffnet sich der **Workspace** mit mehreren T
 | **Team** | Evaluatoren und LLMs verwalten |
 
 !!! note "Einstellungen"
-    Das Zahnrad-Icon (⚙️) oben rechts öffnet einen Dialog zur Szenario-Konfiguration.
+    Das Zahnrad-Icon (⚙️) oben rechts öffnet den Einstellungen-Dialog für das Szenario.
+    Eingeladene Evaluatoren sehen diesen Workspace nicht.
 
 ---
 
@@ -155,6 +159,11 @@ Schneller Überblick über das Szenario:
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
+Zusätzlich gibt es Quick Actions für:
+- Daten importieren
+- LLM-Evaluation starten
+- Ergebnisse anzeigen
+
 ---
 
 ### Tab: Evaluation
@@ -170,25 +179,25 @@ Live-Statistiken zur laufenden Evaluation:
 │  admin        ████████████████  100%   │
 │  researcher   ████████████░░░░   75%   │
 │  evaluator1   ████████░░░░░░░░   50%   │
-│  GPT-4o       ████████████████  100%   │
-│  Claude-3.5   ████████████████  100%   │
+│  LLM-A        ████████████████  100%   │
+│  LLM-B        ████████████████  100%   │
 └────────────────────────────────────────┘
 ```
 
-#### Inter-Rater Agreement Heatmap
+#### Agreement-Metriken & Heatmaps
 
-Zeigt die Übereinstimmung zwischen Evaluatoren:
+Zeigt Übereinstimmung und Konsistenz zwischen Evaluatoren (z.B. Kappa/Alpha/ICC) sowie Heatmaps:
 
 ```
 ┌────────────────────────────────────────────────────────┐
 │  Inter-Rater Agreement                                 │
 ├────────────────────────────────────────────────────────┤
-│               admin  researcher  eval1  GPT-4  Claude  │
+│               admin  researcher  eval1  LLM-A  LLM-B  │
 │  admin         -       0.82      0.75   0.88   0.85   │
 │  researcher   0.82      -        0.78   0.84   0.81   │
 │  evaluator1   0.75     0.78       -     0.79   0.77   │
-│  GPT-4o       0.88     0.84      0.79    -     0.91   │
-│  Claude-3.5   0.85     0.81      0.77   0.91    -     │
+│  LLM-A        0.88     0.84      0.79    -     0.91   │
+│  LLM-B        0.85     0.81      0.77   0.91    -     │
 └────────────────────────────────────────────────────────┘
 ```
 
@@ -226,11 +235,8 @@ Verwalten Sie die Evaluatoren:
 │  👤 admin           Owner        100%  ████████████████             │
 │  👤 researcher      Evaluator     75%  ████████████░░░░             │
 │  👤 evaluator1      Evaluator     50%  ████████░░░░░░░░             │
-│  🤖 GPT-4o          LLM          100%  ████████████████             │
-│  🤖 Claude-3.5      LLM          100%  ████████████████             │
-├─────────────────────────────────────────────────────────────────────┤
-│  Ausstehende Einladungen                                            │
-│  📧 max@example.com    Gesendet: 15.01.2026    [Erneut senden]     │
+│  🤖 LLM-Modell A     LLM          100%  ████████████████            │
+│  🤖 LLM-Modell B     LLM          100%  ████████████████            │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -239,13 +245,17 @@ Verwalten Sie die Evaluatoren:
 | Rolle | Beschreibung |
 |-------|--------------|
 | **Owner** | Szenario-Ersteller, volle Rechte |
-| **Evaluator** | Bewertet alle zugewiesenen Items |
-| **Rater** | Bewertet einen Teil der Items |
+| **Evaluator** | Bewertet Items und kann interagieren |
+| **Viewer** | Nur lesend, keine Bewertungen |
 
 #### LLM-Evaluation
 
 !!! tip "LLM-Modelle hinzufügen"
-    Klicken Sie auf "+ Einladen" und wählen Sie den Tab "LLM-Modelle" um KI-Evaluatoren hinzuzufügen.
+    Klicken Sie im LLM-Bereich auf **"LLM hinzufügen"**, um KI-Evaluatoren hinzuzufügen.
+
+#### Einladungs-Status
+
+Einladungen werden als Status-Badges an den Team-Karten angezeigt (ausstehend, akzeptiert, abgelehnt). Abgelehnte Einladungen können erneut versendet werden.
 
 #### Export-Funktionen
 
@@ -271,8 +281,8 @@ Toggle zwischen:
 Verwalten Sie die zu bewertenden Items:
 
 - Items hochladen (JSON, CSV, Excel)
-- Vorhandene Items ansehen
-- Items bearbeiten oder löschen
+- Vorhandene Threads/Items ansehen
+- Threads/Items löschen
 
 ---
 
@@ -281,12 +291,11 @@ Verwalten Sie die zu bewertenden Items:
 Über das Zahnrad-Icon (⚙️) erreichbar:
 
 - **Name & Beschreibung** bearbeiten
-- **Dimensionen** anpassen (nur wenn noch keine Bewertungen)
-- **Skala** ändern
+- **Zeitraum** (Start/Ende)
 - **Verteilung** konfigurieren
-
-!!! warning "Vorsicht bei Änderungen"
-    Änderungen an Dimensionen oder Skala können nur vorgenommen werden, wenn noch keine Bewertungen existieren.
+- **Reihenfolge** (fixed/random)
+- **Sichtbarkeit** und **Status**
+- **Szenario löschen**
 
 ---
 
@@ -318,10 +327,20 @@ Verwalten Sie die zu bewertenden Items:
 |--------|---------|
 | Evaluation durchführen | ✅ |
 | Eigenen Fortschritt sehen | ✅ |
+| Evaluation-Übersicht öffnen | ✅ |
 | Workspace öffnen | ❌ |
 | Gesamtfortschritt sehen | ❌ |
 | Team sehen | ❌ |
 | Ergebnisse sehen | ❌ |
+
+### Viewer (Eingeladen, read-only)
+
+| Aktion | Erlaubt |
+|--------|---------|
+| Evaluation ansehen | ✅ |
+| Bewertungen abgeben | ❌ |
+| Eigenen Fortschritt sehen | ✅ |
+| Workspace öffnen | ❌ |
 
 ---
 
@@ -335,7 +354,7 @@ Verwalten Sie die zu bewertenden Items:
 | `/api/scenarios/:id` | PUT | Szenario aktualisieren |
 | `/api/scenarios/:id` | DELETE | Szenario löschen |
 | `/api/scenarios/:id/stats` | GET | Live-Statistiken |
-| `/api/scenarios/:id/results` | GET | Ergebnisse exportieren |
+| `/api/scenarios/:id/export` | GET | Ergebnisse exportieren |
 
 ---
 

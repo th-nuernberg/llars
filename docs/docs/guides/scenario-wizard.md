@@ -319,24 +319,22 @@ Je nach Typ können angepasst werden:
 
 ### Menschliche Evaluatoren
 
-Benutzer können per E-Mail oder Username eingeladen werden:
+Benutzer können über die Nutzersuche eingeladen werden (Name/Username + E-Mail):
 
 | Rolle | Beschreibung |
 |-------|--------------|
-| **EVALUATOR** | Bewertet alle zugewiesenen Items |
-| **RATER** | Bewertet einen Teil der Items |
+| **EVALUATOR** | Bewertet Items und kann interagieren |
+| **VIEWER** | Nur lesend, keine Bewertungen |
 
 ### LLM-Modelle
 
-Verfügbare Modelle können als automatische Evaluatoren hinzugefügt werden:
+Verfügbare LLMs werden dynamisch aus der Systemkonfiguration geladen:
 
-- GPT-4, GPT-4o
-- Claude 3 Opus, Claude 3.5 Sonnet
-- Mistral, Llama 3
-- Custom-Modelle (Admin-konfiguriert)
+- **System-Modelle** (admin-konfiguriert)
+- **Eigene/geteilte Provider** (vom Nutzer oder Team bereitgestellt)
 
 !!! info "LLM-Evaluation"
-    LLMs bewerten nach Szenario-Erstellung automatisch alle Items basierend auf den konfigurierten Dimensionen.
+    Wenn LLM-Evaluation aktiviert ist, bewerten ausgewählte LLMs nach der Szenario-Erstellung automatisch alle Items basierend auf den konfigurierten Dimensionen.
 
 ---
 

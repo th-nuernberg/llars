@@ -32,7 +32,8 @@ Diese Anleitung erklärt, wie Sie Bewertungen in LLARS durchführen. Je nach Eva
 
 1. Öffnen Sie den **Szenario Manager**
 2. Wechseln Sie zum Tab **"Einladungen"**
-3. Klicken Sie auf **"Zur Evaluation →"** bei der gewünschten Einladung
+3. **Einladung annehmen**
+4. Danach auf **"Zur Evaluation"** klicken
 
 ```
 ┌────────────────────────────────────────┐
@@ -42,7 +43,8 @@ Diese Anleitung erklärt, wie Sie Bewertungen in LLARS durchführen. Je nach Eva
 │  Dein Fortschritt: 0/20 (0%)            │
 │  ░░░░░░░░░░░░░░░░░░░░                   │
 │                                         │
-│  [Zur Evaluation →]                     │
+│  [Ablehnen] [Annehmen]                  │
+│  (nach Annahme: [Zur Evaluation])       │
 └────────────────────────────────────────┘
 ```
 
@@ -51,16 +53,33 @@ Diese Anleitung erklärt, wie Sie Bewertungen in LLARS durchführen. Je nach Eva
 
 ### Als Owner (Szenario-Ersteller)
 
-1. Öffnen Sie den **Szenario Manager**
-2. Klicken Sie auf die **Szenario-Karte** unter "Meine Szenarien"
-3. Im Workspace: Klicken Sie auf **"Zur Evaluation"** im Übersicht-Tab
+1. Öffnen Sie **Evaluation** (Evaluation Hub) im Hauptmenü
+2. Wählen Sie das gewünschte Szenario
+3. Öffnen Sie die **Item-Übersicht** und starten Sie die Bewertung
 
 !!! tip "Testen vor dem Einladen"
     Als Owner können Sie das Szenario selbst durcharbeiten, bevor Sie andere Evaluatoren einladen. Ihre Bewertungen werden ebenfalls gespeichert.
 
 ---
 
+## Evaluation-Übersicht (Items)
+
+Nach dem Öffnen gelangen Sie zuerst zur **Item-Übersicht**. Dort sehen Sie alle Items als Karten, inklusive Status und Filter (Ausstehend, In Bearbeitung, Abgeschlossen). Ein Klick auf ein Item öffnet die Evaluations-Session.
+
+```
+┌────────────────────────────────────────┐
+│  Filter: Alle | Ausstehend | In Arbeit │
+│                                         │
+│  [Item-Karte]  [Item-Karte]  [Item...]  │
+│  Status-Badge  Status-Badge  Status...  │
+└────────────────────────────────────────┘
+```
+
+---
+
 ## Evaluations-Interface
+
+Die Evaluations-Session öffnet sich nach Klick auf ein Item in der Übersicht.
 
 ### Layout
 
@@ -280,6 +299,9 @@ Standard-Dimensionen für LLM Evaluator:
 !!! warning "Keine Garantie"
     Diese Merkmale sind Tendenzen, keine sicheren Indikatoren. Moderne LLMs können sehr menschlich klingen.
 
+!!! info "Optionen konfigurierbar"
+    Die Auswahloptionen (z.B. Mensch/KI oder Echt/Fake) werden pro Szenario festgelegt.
+
 ---
 
 ### Mail Rating (E-Mail-Bewertung)
@@ -331,11 +353,12 @@ Standard-Dimensionen für LLM Evaluator:
 
 ### Item-Status
 
-| Symbol | Status | Bedeutung |
-|--------|--------|-----------|
-| ⚪ | Ausstehend | Noch nicht bewertet |
-| 🟡 | Teilweise | Nicht alle Dimensionen bewertet |
-| ✅ | Abgeschlossen | Vollständig bewertet |
+| Status | Bedeutung |
+|--------|-----------|
+| **Ausstehend** | Noch nicht bewertet |
+| **In Bearbeitung** | Bewertung läuft oder teilweise abgeschlossen |
+| **Abgeschlossen** | Vollständig bewertet |
+| **Speichern** | Bewertung wird gerade gespeichert |
 
 ---
 
@@ -357,7 +380,6 @@ Standard-Dimensionen für LLM Evaluator:
 
 !!! warning "Wichtige Hinweise"
     - Bewerten Sie **unvoreingenommen** - ignorieren Sie, welches Modell den Text erzeugt hat
-    - Bei **Long-Format Daten** sind die Varianten-Labels anonymisiert
     - **Nehmen Sie sich Zeit** - Qualität vor Geschwindigkeit
 
 ---
@@ -379,9 +401,9 @@ Alle bisherigen Bewertungen sind gespeichert. Sie können jederzeit fortsetzen.
 
 ### Wie viele Items muss ich bewerten?
 
-Das hängt von Ihrer Rolle ab:
-- **EVALUATOR:** Alle Items des Szenarios
-- **RATER:** Ein zugewiesener Teil (vom Owner konfiguriert)
+Das hängt von Ihrer Rolle und der Verteilung ab:
+- **EVALUATOR:** Items gemäß Verteilung (z.B. alle, zufällig, sequenziell)
+- **VIEWER:** Keine Bewertungen (read-only)
 
 ---
 
@@ -391,21 +413,16 @@ Zusätzlich zu menschlichen Evaluatoren können **LLM-Modelle** als automatische
 
 ### Verfügbare Modelle
 
-- GPT-4, GPT-4o
-- Claude 3 Opus, Claude 3.5 Sonnet
-- Mistral, Llama 3
-- Custom-Modelle (Admin-konfiguriert)
+- **System-Modelle** (admin-konfiguriert)
+- **Eigene/geteilte Provider** (vom Nutzer oder Team bereitgestellt)
 
-### LLM-Evaluation starten
+### LLM-Evaluation konfigurieren
 
-1. Öffnen Sie den **Workspace** des Szenarios
-2. Gehen Sie zum Tab **"Team"**
-3. Klicken Sie auf **"+ Einladen"** → Tab **"LLM-Modelle"**
-4. Wählen Sie die gewünschten Modelle
-5. Klicken Sie auf **"LLM-Evaluation starten"**
+1. Im **Szenario Wizard** (Schritt „Team“) LLMs auswählen
+2. **LLM-Evaluation aktivieren**
 
 !!! info "Automatische Bewertung"
-    LLMs bewerten alle Items automatisch basierend auf den konfigurierten Dimensionen. Die Ergebnisse erscheinen in den Statistiken.
+    Wenn LLM-Evaluation aktiviert ist, bewerten die ausgewählten Modelle automatisch alle Items basierend auf den konfigurierten Dimensionen. Die Ergebnisse erscheinen im Evaluation-Tab.
 
 ---
 
@@ -413,12 +430,11 @@ Zusätzlich zu menschlichen Evaluatoren können **LLM-Modelle** als automatische
 
 | Endpunkt | Methode | Beschreibung |
 |----------|---------|--------------|
+| `/api/scenarios/:scenarioId` | GET | Szenario-Details (für Übersicht) |
 | `/api/evaluation/session/:scenarioId` | GET | Session-Daten abrufen |
-| `/api/evaluation/rating/:scenarioId/config` | GET | Rating-Konfiguration |
-| `/api/evaluation/rating/:scenarioId/items` | GET | Items für Bewertung |
-| `/api/evaluation/rating/:scenarioId/items/:itemId/rate` | POST | Bewertung speichern |
-| `/api/evaluation/rating/:scenarioId/progress` | GET | Fortschritt abrufen |
-| `/api/evaluation/:scenarioId/agreement-metrics` | GET | Agreement-Metriken |
+| `/api/evaluation/session/:scenarioId/items/:itemId/evaluate` | POST | Bewertung speichern |
+| `/api/evaluation/llm/:scenarioId/start` | POST | LLM-Evaluation starten |
+| `/api/evaluation/llm/:scenarioId/stop` | POST | LLM-Evaluation stoppen |
 
 ---
 

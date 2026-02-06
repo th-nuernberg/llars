@@ -171,17 +171,17 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue'])
 const { t } = useI18n()
 
-const comparisonTypes = [
-  { title: 'Paarweiser Vergleich', value: 'pairwise' },
-  { title: 'Turnier-Format', value: 'tournament' }
-]
+const comparisonTypes = computed(() => [
+  { title: t('scenarioManager.evalConfig.comparison.typeOptions.pairwise'), value: 'pairwise' },
+  { title: t('scenarioManager.evalConfig.comparison.typeOptions.tournament'), value: 'tournament' }
+])
 
-const roundOptions = [
-  { title: 'Automatisch', value: 'auto' },
-  { title: '1 Runde', value: 1 },
-  { title: '2 Runden', value: 2 },
-  { title: '3 Runden', value: 3 }
-]
+const roundOptions = computed(() => [
+  { title: t('scenarioManager.evalConfig.comparison.roundOptions.auto'), value: 'auto' },
+  { title: t('scenarioManager.evalConfig.comparison.roundOptions.round1'), value: 1 },
+  { title: t('scenarioManager.evalConfig.comparison.roundOptions.round2'), value: 2 },
+  { title: t('scenarioManager.evalConfig.comparison.roundOptions.round3'), value: 3 }
+])
 
 const localConfig = ref({
   type: 'pairwise',

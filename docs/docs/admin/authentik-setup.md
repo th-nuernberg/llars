@@ -2,16 +2,18 @@
 
 ## Übersicht
 
-LLARS verwendet Authentik als OIDC-Provider für die Authentifizierung. Die Konfiguration erfolgt automatisch beim Start basierend auf dem `PROJECT_STATE`.
+LLARS verwendet Authentik als OIDC-Provider für die Authentifizierung. Die Konfiguration erfolgt automatisch beim Start über den `authentik-init` Container (Script: `docker/authentik/init-authentik.sh`).
 
 ## Automatische Konfiguration
 
 Der `authentik-init` Container läuft bei jedem `docker compose up` und konfiguriert:
 
 1. **Authentication Flow** (`llars-api-authentication`)
-2. **OAuth2 Provider** (`llars-backend`, `llars-matomo`)
-3. **Applications** (`llars-backend`, `llars-matomo`)
-4. **Admin API Token** für User-Management
+2. **Provider Authorization Flow** (Default oder `llars-provider-authorization`)
+3. **OAuth2 Provider** (`llars-backend`, `llars-matomo` inkl. Matomo-Redirects)
+4. **Applications** (`llars-backend`, `AUTHENTIK_MATOMO_APP_SLUG`)
+5. **User** (admin immer, `researcher`/`evaluator`/`chatbot_manager` nur in Development)
+6. **Admin API Token** (`llars-admin-api-token`) für User-Management
 
 ## User-Erstellung nach Environment
 
@@ -22,6 +24,7 @@ Der `authentik-init` Container läuft bei jedem `docker compose up` und konfigur
 | admin | `LLARS_ADMIN_PASSWORD` | ✅ |
 | researcher | - | ❌ |
 | evaluator | - | ❌ |
+| chatbot_manager | - | ❌ |
 
 ### Development (`PROJECT_STATE=development`)
 
@@ -30,15 +33,28 @@ Der `authentik-init` Container läuft bei jedem `docker compose up` und konfigur
 | admin | `LLARS_ADMIN_PASSWORD` | ✅ |
 | researcher | `LLARS_ADMIN_PASSWORD` | ✅ |
 | evaluator | `LLARS_ADMIN_PASSWORD` | ✅ |
+| chatbot_manager | `LLARS_ADMIN_PASSWORD` | ✅ |
+
+**Hinweis:** Das Admin‑Passwort wird bei jedem Start gesetzt. Development‑User werden nur angelegt, falls sie fehlen.
 
 ## Environment-Variablen
 
 | Variable | Beschreibung | Default |
 |----------|--------------|---------|
 | `PROJECT_STATE` | `production` oder `development` | `development` |
-| `LLARS_ADMIN_PASSWORD` | Passwort für LLARS-User | `admin123` |
-| `AUTHENTIK_BACKEND_CLIENT_SECRET` | OAuth2 Client Secret | (generiert) |
-| `AUTHENTIK_BOOTSTRAP_PASSWORD` | Authentik akadmin Passwort | `admin123` |
+| `PROJECT_URL` | Explizite Base‑URL (überschreibt Host/Port) | (leer) |
+| `PROJECT_HOST` | Hostname für Base‑URL‑Berechnung | `localhost` |
+| `NGINX_EXTERNAL_PORT` | Port für Base‑URL in Development | `80` |
+| `LLARS_ADMIN_PASSWORD` | Passwort für LLARS‑User | `admin123` |
+| `AUTHENTIK_BOOTSTRAP_PASSWORD` | Authentik `akadmin` Passwort (Fallback) | `admin123` |
+| `AUTHENTIK_BACKEND_CLIENT_ID` | Backend Client ID (nicht ändern) | `llars-backend` |
+| `AUTHENTIK_BACKEND_CLIENT_SECRET` | Backend OAuth2 Client Secret | `llars-backend-secret-change-in-production` |
+| `AUTHENTIK_MATOMO_CLIENT_ID` | Matomo Client ID | `llars-matomo` |
+| `AUTHENTIK_MATOMO_CLIENT_SECRET` | Matomo Client Secret | `llars-matomo-secret-change-in-production` |
+| `AUTHENTIK_MATOMO_APP_SLUG` | Matomo App Slug | `llars-matomo` |
+| `AUTHENTIK_API_TOKEN` | Fixer Admin API Token (optional) | (generiert) |
+
+**Base‑URL Logik:** Wenn `PROJECT_URL` gesetzt ist, wird es verwendet. Sonst `https://$PROJECT_HOST` in Production und `http://$PROJECT_HOST:$NGINX_EXTERNAL_PORT` in Development.
 
 ## Passwort-Priorität
 
@@ -50,9 +66,13 @@ LLARS_ADMIN_PASSWORD → AUTHENTIK_BOOTSTRAP_PASSWORD → "admin123"
 
 ## Verhalten bei Neustart
 
-- **Passwörter werden bei jedem Start aus `.env` geladen** und auf die User angewendet
+- **Admin‑Passwort wird bei jedem Start gesetzt** (aus `.env`)
+- **Development‑User werden nur angelegt, falls sie fehlen** (Passwörter bleiben unverändert)
 - **User werden nicht gelöscht** - existierende User bleiben erhalten
-- **OAuth Provider werden nur erstellt wenn sie fehlen** - existierende Provider werden nicht überschrieben
+- **Backend‑Provider wird nur erstellt wenn er fehlt** - existierende Provider bleiben unverändert
+- **Matomo‑Provider wird aktualisiert** (z.B. Redirect URIs, Secret)
+- **Applications werden erstellt oder neu verknüpft** falls nötig
+- **Admin API Token wird ersetzt** (stabile Tokens via `AUTHENTIK_API_TOKEN`)
 
 ## Manuelles Setup
 
@@ -62,27 +82,14 @@ Falls das automatische Setup nicht funktioniert, kann das manuelle Setup-Skript 
 ./scripts/setup_authentik.sh
 ```
 
-Dieses Skript ist ebenfalls environment-aware und verwendet `PROJECT_STATE` sowie `LLARS_ADMIN_PASSWORD`.
+Dieses Skript ist ebenfalls environment-aware und verwendet u.a. `PROJECT_STATE`, `PROJECT_URL`, `LLARS_ADMIN_PASSWORD` und `AUTHENTIK_BACKEND_CLIENT_SECRET`.
+Es richtet **Backend + Frontend Provider** (Legacy‑Flow) ein, aber **keine Matomo‑OIDC** Konfiguration.
+Details: `scripts/README_AUTHENTIK_SETUP.md`.
 
 ## Zusätzliche User anlegen
 
-Für zusätzliche User (z.B. Projektmitarbeiter) das Provisionierungsskript verwenden:
-
-```bash
-# Lokal (Development)
-./scripts/provision_users.sh
-
-# Auf dem Server (Production)
-ssh llars "cd /var/llars && ./scripts/provision_users.sh"
-```
-
-Das Skript:
-- Loggt sich als Admin ein
-- Erstellt User in LLARS und Authentik
-- Überspringt bereits existierende User
-- Zeigt am Ende eine Übersicht aller Zugangsdaten
-
-**Voraussetzung:** `AUTHENTIK_API_TOKEN` muss in `.env` gesetzt sein (wird beim ersten Start automatisch generiert).
+- **Admin Dashboard → Users** verwenden (Recht: `admin:users:manage`).
+- Alternativ User direkt in Authentik anlegen. Beim ersten Login erstellt LLARS den lokalen User automatisch.
 
 ## Troubleshooting
 
@@ -90,7 +97,7 @@ Das Skript:
 
 1. Prüfen ob Authentik läuft: `docker compose ps | grep authentik`
 2. Logs prüfen: `docker compose logs authentik-server`
-3. Client Secret prüfen: `.env` vs. Authentik Provider
+3. Client Secret prüfen: `.env` vs. Authentik Provider (`llars-backend`, `llars-matomo`)
 
 ### User existiert nicht
 

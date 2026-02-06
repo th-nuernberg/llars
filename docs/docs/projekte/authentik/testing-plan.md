@@ -68,10 +68,10 @@ Diese Punkte traten in frühen Iterationen auf und sind heute durch den
 
 | Test | Endpoint | Erwartetes Ergebnis |
 |------|----------|---------------------|
-| Health Check | `GET /auth/health_check` | `{"message": "Server is running"}` |
+| Health Check | `GET /auth/authentik/health_check` | `{"message": "Server is running with Authentik authentication"}` |
 | Login Valid | `POST /auth/authentik/login` | RS256 Token zurück |
-| Login Invalid | `POST /auth/authentik/login` (wrong pw) | `401 Invalid credentials` |
-| Login Missing | `POST /auth/authentik/login` (no data) | `400 Username and password required` |
+| Login Invalid | `POST /auth/authentik/login` (wrong pw) | `401` mit `{"success": false, "error": "Invalid credentials", "error_type": "unauthorized"}` |
+| Login Missing | `POST /auth/authentik/login` (no data) | `400` mit `{"success": false, "error": "Username and password required", "error_type": "validation_error"}` |
 | Token Validate | `GET /auth/authentik/validate` | `{"valid": true, ...}` |
 | User Info | `GET /auth/authentik/me` | User-Daten |
 
@@ -80,11 +80,11 @@ Diese Punkte traten in frühen Iterationen auf und sind heute durch den
 | Test | URL | Erwartetes Ergebnis |
 |------|-----|---------------------|
 | Login Page | `http://localhost:55080/login` | Login-Formular wird angezeigt |
-| Login Submit | Form submit | Redirect zu `/` mit Token |
-| Protected Route | `http://localhost:55080/` | Zeigt Home wenn eingeloggt |
+| Login Submit | Form submit | Redirect zu `/Home` oder `redirect`-Query |
+| Protected Route | `http://localhost:55080/Home` | Zeigt Home wenn eingeloggt |
 | Token Persistence | Refresh Page | Bleibt eingeloggt |
 
-### 3.3 LLM-as-Judge Auth Tests
+### 3.3 LLM Evaluators (LLM-as-Judge) Auth Tests
 
 | Test | Endpoint | Erwartetes Ergebnis |
 |------|----------|---------------------|
@@ -223,7 +223,7 @@ Das Auto-Setup ist im Container `authentik-init` implementiert und nutzt
 
 ### Phase 1: Backend API (Priorität: HOCH) - ABGESCHLOSSEN
 
-- [x] Health Check funktioniert (`GET /auth/health_check` -> `{"message": "Server is running"}`)
+- [x] Health Check funktioniert (`GET /auth/authentik/health_check` -> `{"message": "Server is running with Authentik authentication"}`)
 - [x] Login mit gültigen Credentials gibt RS256 Token (Token-Länge: 1676 Zeichen)
 - [x] Login mit ungültigen Credentials wird abgelehnt (401)
 - [x] Token-Validierung funktioniert (`GET /auth/authentik/validate`)
@@ -241,7 +241,7 @@ Das Auto-Setup ist im Container `authentik-init` implementiert und nutzt
 - `useAuth.js`: Nutzt jetzt `llars_roles` aus Backend-Response statt `realm_access.roles` (Keycloak-spezifisch)
 - `router.js`: Router Guard prüft jetzt `auth_llars_roles` aus sessionStorage
 
-### Phase 3: LLM-as-Judge (Priorität: MITTEL) - ABGESCHLOSSEN
+### Phase 3: LLM Evaluators (LLM-as-Judge) (Priorität: MITTEL) - ABGESCHLOSSEN
 
 - [x] Sessions-Liste erfordert Auth (ohne Auth: `{"error":"Missing authorization token"}`)
 - [x] Mit Auth: 3 Sessions gefunden

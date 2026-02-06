@@ -122,13 +122,13 @@ flowchart TB
     end
 
     subgraph Aggregation["Aggregation & Filtering"]
-        W1 --> AGG[Alle Ergebnisse<br/>kombinieren]
+        W1 --> AGG[Alle Ergebnisse kombinieren]
         W2 --> AGG
         W3 --> AGG
         AGG --> SORT[Nach Score sortieren]
-        SORT --> RERANK[Optional: Reranking]
-        RERANK --> FILTER[Min. Relevance Filter]
-        FILTER --> TOPK["Top-K auswählen"]
+        SORT --> MINR[Min. Relevance Filter]
+        MINR --> RERANK[Optional: Reranking]
+        RERANK --> TOPK["Top-K auswählen"]
     end
 
     subgraph ContextBuilding["Context Building"]
@@ -146,17 +146,15 @@ flowchart TB
 
 !!! info "Nur Semantic Search im Standard-RAG"
     Die Standard-RAG-Pipeline verwendet **ausschließlich semantische Suche** (Vektor-Ähnlichkeit).
-    Lexical Search (BM25/FTS5) ist nur in den [Agent-Modi](act.md) (ACT, ReAct, ReflAct) als Tool verfügbar.
+    Lexical Search (FTS5/Trigram) ist nur in den [Agent-Modi](act.md) (ACT, ReAct, ReflAct) als Tool verfügbar.
 
 ### Komponenten
 
 #### 1. Embedding Models
 
-| Modell | Dimensionen | Quelle | Priorität |
-|--------|-------------|--------|-----------|
-| VDR-2B-Multi-V1 | 1024 | LiteLLM (KIZ) | Primär |
-| VDR-2B-Multi-V1 | 1024 | HuggingFace (lokal) | Fallback |
-| all-MiniLM-L6-v2 | 384 | HuggingFace (lokal) | Notfall |
+- Auswahl erfolgt **datenbankbasiert** über `llm_models` (model_type = embedding).
+- Primär über **LiteLLM** (z.B. `llamaindex/vdr-2b-multi-v1`), Fallback über **HuggingFace** lokal.
+- Wenn keine DB-Modelle vorhanden sind, wird `LLARS_EMBEDDING_MODEL` versucht, ansonsten `LLARS_FALLBACK_EMBEDDING_MODEL`.
 
 !!! warning "Embedding-Konsistenz"
     Query-Embedding **muss** zum Document-Embedding passen (gleiche Dimensionen).
@@ -165,8 +163,8 @@ flowchart TB
 #### 2. Vector Store
 
 - **Technologie:** ChromaDB
-- **Persistenz:** `/app/storage/vectorstore/`
-- **Metadaten:** document_id, chunk_index, has_image, page_number
+- **Persistenz:** `/app/storage/vectorstore/<model_name>/`
+- **Metadaten:** document_id, chunk_index, has_image, page_number, start_char, end_char, vector_id
 - **Distanzmetrik:** Cosine Distance (`hnsw:space: cosine`)
 - **Score-Konvertierung:** `similarity = 1 - cosine_distance`
 
@@ -179,69 +177,59 @@ Chatbots können mehrere RAG-Collections nutzen. Jede Collection hat:
 | `weight` | Multiplikator für Chunk-Scores | 1.0 |
 | `priority` | Reihenfolge der Suche (höher = zuerst) | 0 |
 
-```mermaid
-flowchart LR
-    subgraph "Collection A (weight: 1.0)"
-        A1["Chunk 1: 0.85"] --> AW1["0.85 × 1.0 = 0.85"]
-        A2["Chunk 2: 0.72"] --> AW2["0.72 × 1.0 = 0.72"]
-    end
+**Ablauf:**
+- Pro Collection wird semantisch gesucht.
+- Scores werden mit `weight` multipliziert.
+- Ergebnisse werden kombiniert und sortiert.
+- `candidate_k = max(final_k * 8, 32)` und danach auf `final_k` reduziert.
 
-    subgraph "Collection B (weight: 0.5)"
-        B1["Chunk 1: 0.90"] --> BW1["0.90 × 0.5 = 0.45"]
-        B2["Chunk 2: 0.80"] --> BW2["0.80 × 0.5 = 0.40"]
-    end
+#### 4. Relevance-Filter
 
-    AW1 --> SORT[Sortiert nach Score]
-    AW2 --> SORT
-    BW1 --> SORT
-    BW2 --> SORT
+- Mindestschwelle: `rag_min_relevance`
+- Falls nichts die Schwelle erfüllt, werden die Top-K Kandidaten genutzt.
 
-    SORT --> RESULT["1. Chunk A1: 0.85<br/>2. Chunk A2: 0.72<br/>3. Chunk B1: 0.45<br/>4. Chunk B2: 0.40"]
-```
+#### 5. Reranking (Optional)
 
-**Anwendungsfälle:**
+Das Reranking läuft über `services/rag/reranker.py`:
 
-- **Primäre Wissensbasis** (weight: 1.0): Hauptdokumente
-- **Ergänzende Quellen** (weight: 0.5-0.8): Zusatzmaterial, FAQs
-- **Hintergrundwissen** (weight: 0.3): Allgemeine Informationen
+- **Modi:** `lexical` (Default), `cross-encoder`, `off`
+- **Steuerung:** `RAG_RERANK_MODE` (Env)
+- **Lexical:** Overlap-Score mit `RAG_RERANK_ALPHA` (Default 0.15)
+- **Cross-Encoder:** Sentence-Transformers, optional über `rag_reranker_model`
+- **Fallback:** Wenn Cross-Encoder fehlschlägt → lexical
 
-#### 4. Reranking (Optional)
+#### 6. Lexical Search (Nur Agent-Modi)
 
-Nach der initialen Suche kann optional ein Reranking durchgeführt werden:
+- **Technologie:** SQLite FTS5 (Trigram)
+- **Index:** `app/data/rag/indexes/lexical_index.sqlite` (override via `LEXICAL_INDEX_PATH`)
+- **Query-Expansion:** Stopword-Filtering, Synonyme, Compound-Splitting
+- **Fallback:** SQL LIKE Search
 
-| Modus | Beschreibung |
-|-------|--------------|
-| **Cross-Encoder** | Semantisches Re-Scoring mit Sentence-Transformers |
-| **Lexical Blending** | `(1-α) × vector_score + α × lexical_overlap` (α=0.15) |
+#### 7. Vision-Filter
 
-#### 5. Lexical Search (Nur Agent-Modi)
-
-!!! note "Verfügbarkeit"
-    Lexical Search ist **nicht** Teil der Standard-RAG-Pipeline, sondern nur als Tool in [ACT](act.md), [ReAct](react.md) und [ReflAct](reflact.md) verfügbar.
-
-- **Technologie:** SQLite FTS5 mit Trigram-Tokenizer
-- **Index:** `app/data/rag/indexes/lexical_index.sqlite`
-- **Features:** Stopword-Filtering, Compound-Word-Expansion
+- Bei **Non‑Vision** Modellen werden Chunks mit Bildern herausgefiltert.
 
 ### Dateien
 
 | Datei | Funktion |
 |-------|----------|
-| `app/services/chatbot/chat_service.py` | Multi-Collection Search + Context Building |
+| `app/services/chatbot/chat_service.py` | RAG Orchestrierung + Prompt Builder |
+| `app/services/chatbot/chat_rag_retrieval.py` | Semantic Search + Aggregation + Filter |
 | `app/services/rag/embedding_model_service.py` | Model-Fallback-Chain |
-| `app/services/rag/reranker.py` | Optional Reranking (Cross-Encoder/Lexical) |
-| `app/services/chatbot/lexical_index.py` | FTS5 Index (nur Agent-Modi) |
-| `app/rag_pipeline.py` | Legacy RAG für System-Dokumentation |
+| `app/services/rag/reranker.py` | Reranking (Lexical/Cross-Encoder) |
+| `app/services/chatbot/lexical_index.py` | FTS5 Index (Agent-Modi) |
+| `app/rag_pipeline.py` | Legacy RAG Pipeline (System-Dokumentation) |
 
 ### Konfiguration
 
 ```python
-# Chatbot-Einstellungen (db/models/chatbot.py)
+# Chatbot (db/models/chatbot.py)
 rag_enabled: bool = True
-rag_retrieval_k: int = 4        # Anzahl Dokumente im Kontext
-rag_min_relevance: float = 0.3  # Minimum Score (0-1)
+rag_retrieval_k: int = 8        # Anzahl Dokumente im Kontext
+rag_min_relevance: float = 0.05 # Minimum Score (0-1)
 rag_include_sources: bool = True
-rag_require_citations: bool = True
+rag_reranker_model: Optional[str] = None
+rag_use_cross_encoder: bool = False
 
 # ChatbotCollection (pro Collection)
 weight: float = 1.0    # Score-Multiplikator
@@ -251,7 +239,7 @@ priority: int = 0      # Suchreihenfolge
 ### API
 
 ```python
-# ChatService - Multi-Collection RAG
+# Multi-Collection RAG
 context, sources = chat_service._get_multi_collection_context(query)
 # → context: "[Dokument 1]\n...\n---\n\n[Dokument 2]\n..."
 # → sources: [{"footnote_id": 1, "title": "...", "relevance": 0.85, ...}, ...]
@@ -264,8 +252,7 @@ results = chat_service._search_collection(collection, query, k=12)
 ### Logs
 
 ```
-[ChatService] Semantic search: 24 results for chatbot 5
-[ChatService] Vision check: model=mistralai/Magistral-Small-2509, use_vision=True
-[ChatService] Results before filter: total=24, images=2
-[ChatService] After image filter (non-vision): 22 results
+[ChatRAGRetrieval] Semantic search: 24 results for chatbot 5
+[ChatRAGRetrieval] Top 24 candidates before relevance filter:
+[ChatRAGRetrieval] Reranking 12 results
 ```

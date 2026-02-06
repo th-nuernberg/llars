@@ -83,8 +83,8 @@ export function getBaseType(evalType) {
 export const RATING_PRESETS = {
   'likert-5': {
     id: 'likert-5',
-    name: 'Likert-5',
-    description: '5-Punkte Likert-Skala (Standard)',
+    name: { de: 'Likert-5', en: 'Likert-5' },
+    description: { de: '5-Punkte Likert-Skala (Standard)', en: '5-point Likert scale (standard)' },
     config: {
       type: 'likert',
       min: 1,
@@ -103,8 +103,8 @@ export const RATING_PRESETS = {
   },
   'likert-7': {
     id: 'likert-7',
-    name: 'Likert-7',
-    description: '7-Punkte Likert-Skala (feinere Abstufung)',
+    name: { de: 'Likert-7', en: 'Likert-7' },
+    description: { de: '7-Punkte Likert-Skala (feinere Abstufung)', en: '7-point Likert scale (finer granularity)' },
     config: {
       type: 'likert',
       min: 1,
@@ -125,8 +125,8 @@ export const RATING_PRESETS = {
   },
   'stars-5': {
     id: 'stars-5',
-    name: '5-Sterne',
-    description: 'Klassische 5-Sterne Bewertung',
+    name: { de: '5-Sterne', en: '5 Stars' },
+    description: { de: 'Klassische 5-Sterne Bewertung', en: 'Classic 5-star rating' },
     config: {
       type: 'stars',
       min: 1,
@@ -139,8 +139,8 @@ export const RATING_PRESETS = {
   },
   'stars-10': {
     id: 'stars-10',
-    name: '10-Punkte',
-    description: '10-Punkte Skala für detaillierte Bewertung',
+    name: { de: '10-Punkte', en: '10-Point' },
+    description: { de: '10-Punkte Skala für detaillierte Bewertung', en: '10-point scale for detailed ratings' },
     config: {
       type: 'numeric',
       min: 1,
@@ -157,8 +157,8 @@ export const RATING_PRESETS = {
   },
   'percentage': {
     id: 'percentage',
-    name: 'Prozent',
-    description: 'Bewertung in Prozent (0-100)',
+    name: { de: 'Prozent', en: 'Percentage' },
+    description: { de: 'Bewertung in Prozent (0-100)', en: 'Rating in percent (0-100)' },
     config: {
       type: 'slider',
       min: 0,
@@ -175,8 +175,8 @@ export const RATING_PRESETS = {
   },
   'custom': {
     id: 'custom',
-    name: 'Benutzerdefiniert',
-    description: 'Eigene Skala definieren',
+    name: { de: 'Benutzerdefiniert', en: 'Custom' },
+    description: { de: 'Eigene Skala definieren', en: 'Define your own scale' },
     config: {
       type: 'likert',
       min: 1,
@@ -191,8 +191,8 @@ export const RATING_PRESETS = {
   // ===== LLM Evaluator Multi-Dimensional Presets =====
   'llm-judge-standard': {
     id: 'llm-judge-standard',
-    name: 'LLM Evaluator Standard',
-    description: 'Standard-Metriken für Text-Evaluation (Coherence, Fluency, Relevance, Consistency)',
+    name: { de: 'LLM Evaluator Standard', en: 'LLM Evaluator Standard' },
+    description: { de: 'Standard-Metriken für Text-Evaluation (Coherence, Fluency, Relevance, Consistency)', en: 'Standard metrics for text evaluation (coherence, fluency, relevance, consistency)' },
     config: {
       type: 'multi-dimensional',
       min: 1,
@@ -237,8 +237,8 @@ export const RATING_PRESETS = {
   },
   'summeval': {
     id: 'summeval',
-    name: 'SummEval Demo (Mixed Scales)',
-    description: 'Demo-Preset mit 7 Dimensionen und unterschiedlichen Skalengrößen',
+    name: { de: 'SummEval Demo (Mixed Scales)', en: 'SummEval Demo (Mixed Scales)' },
+    description: { de: 'Demo-Preset mit 7 Dimensionen und unterschiedlichen Skalengrößen', en: 'Demo preset with 7 dimensions and mixed scale sizes' },
     config: {
       type: 'multi-dimensional',
       min: 1,
@@ -370,8 +370,8 @@ export const RATING_PRESETS = {
   },
   'response-quality': {
     id: 'response-quality',
-    name: 'Antwort-Qualität',
-    description: 'Bewertung von LLM-generierten Antworten auf Nutzerfragen',
+    name: { de: 'Antwort-Qualität', en: 'Response Quality' },
+    description: { de: 'Bewertung von LLM-generierten Antworten auf Nutzerfragen', en: 'Evaluate LLM-generated answers to user questions' },
     config: {
       type: 'multi-dimensional',
       min: 1,
@@ -416,8 +416,8 @@ export const RATING_PRESETS = {
   },
   'text-quality-3dim': {
     id: 'text-quality-3dim',
-    name: 'Textqualität (3 Dimensionen)',
-    description: 'Kompakte Bewertung mit 3 Kerndimensionen',
+    name: { de: 'Textqualität (3 Dimensionen)', en: 'Text Quality (3 Dimensions)' },
+    description: { de: 'Kompakte Bewertung mit 3 Kerndimensionen', en: 'Compact evaluation with 3 core dimensions' },
     config: {
       type: 'multi-dimensional',
       min: 1,
@@ -456,8 +456,8 @@ export const RATING_PRESETS = {
   },
   'news-article': {
     id: 'news-article',
-    name: 'Nachrichtenartikel',
-    description: 'Bewertung von Nachrichtenartikeln nach journalistischen Standards',
+    name: { de: 'Nachrichtenartikel', en: 'News Article' },
+    description: { de: 'Bewertung von Nachrichtenartikeln nach journalistischen Standards', en: 'Evaluate news articles by journalistic standards' },
     config: {
       type: 'multi-dimensional',
       min: 1,
@@ -502,8 +502,8 @@ export const RATING_PRESETS = {
   },
   'multi-dimensional-custom': {
     id: 'multi-dimensional-custom',
-    name: 'Multi-Dimensional (Benutzerdefiniert)',
-    description: 'Eigene Dimensionen definieren für mehrdimensionales Rating',
+    name: { de: 'Multi-Dimensional (Benutzerdefiniert)', en: 'Multi-Dimensional (Custom)' },
+    description: { de: 'Eigene Dimensionen definieren für mehrdimensionales Rating', en: 'Define your own dimensions for multi-dimensional ratings' },
     config: {
       type: 'multi-dimensional',
       min: 1,
@@ -527,8 +527,8 @@ export const RATING_PRESETS = {
 export const RANKING_PRESETS = {
   'buckets-3': {
     id: 'buckets-3',
-    name: '3 Kategorien',
-    description: 'Gut / Mittel / Schlecht',
+    name: { de: '3 Kategorien', en: '3 Categories' },
+    description: { de: 'Gut / Mittel / Schlecht', en: 'Good / Medium / Poor' },
     config: {
       type: 'buckets',
       buckets: [
@@ -542,8 +542,8 @@ export const RANKING_PRESETS = {
   },
   'buckets-5': {
     id: 'buckets-5',
-    name: '5 Kategorien',
-    description: 'Sehr gut bis Sehr schlecht',
+    name: { de: '5 Kategorien', en: '5 Categories' },
+    description: { de: 'Sehr gut bis Sehr schlecht', en: 'Very good to very poor' },
     config: {
       type: 'buckets',
       buckets: [
@@ -559,8 +559,8 @@ export const RANKING_PRESETS = {
   },
   'priority': {
     id: 'priority',
-    name: 'Prioritäts-Ranking',
-    description: 'Items nach Priorität sortieren',
+    name: { de: 'Prioritäts-Ranking', en: 'Priority Ranking' },
+    description: { de: 'Items nach Priorität sortieren', en: 'Sort items by priority' },
     config: {
       type: 'ordered',
       showPosition: true,
@@ -574,8 +574,8 @@ export const RANKING_PRESETS = {
   },
   'relevance': {
     id: 'relevance',
-    name: 'Relevanz-Ranking',
-    description: 'Nach Relevanz sortieren',
+    name: { de: 'Relevanz-Ranking', en: 'Relevance Ranking' },
+    description: { de: 'Nach Relevanz sortieren', en: 'Sort by relevance' },
     config: {
       type: 'ordered',
       showPosition: true,
@@ -589,8 +589,8 @@ export const RANKING_PRESETS = {
   },
   'custom': {
     id: 'custom',
-    name: 'Benutzerdefiniert',
-    description: 'Eigene Kategorien definieren',
+    name: { de: 'Benutzerdefiniert', en: 'Custom' },
+    description: { de: 'Eigene Kategorien definieren', en: 'Define your own categories' },
     config: {
       type: 'buckets',
       buckets: [],
@@ -604,8 +604,8 @@ export const RANKING_PRESETS = {
 export const LABELING_PRESETS = {
   'binary-authentic': {
     id: 'binary-authentic',
-    name: 'Fake/Echt',
-    description: 'Binäre Authentizitätsprüfung',
+    name: { de: 'Fake/Echt', en: 'Fake/Authentic' },
+    description: { de: 'Binäre Authentizitätsprüfung', en: 'Binary authenticity check' },
     config: {
       type: 'binary',
       multiLabel: false,
@@ -619,8 +619,8 @@ export const LABELING_PRESETS = {
   },
   'binary-sentiment': {
     id: 'binary-sentiment',
-    name: 'Positiv/Negativ',
-    description: 'Sentiment-Analyse',
+    name: { de: 'Positiv/Negativ', en: 'Positive/Negative' },
+    description: { de: 'Sentiment-Analyse', en: 'Sentiment analysis' },
     config: {
       type: 'binary',
       multiLabel: false,
@@ -634,8 +634,8 @@ export const LABELING_PRESETS = {
   },
   'sentiment-3': {
     id: 'sentiment-3',
-    name: '3-Klassen Sentiment',
-    description: 'Positiv / Neutral / Negativ',
+    name: { de: '3-Klassen Sentiment', en: '3-Class Sentiment' },
+    description: { de: 'Positiv / Neutral / Negativ', en: 'Positive / Neutral / Negative' },
     config: {
       type: 'multiclass',
       multiLabel: false,
@@ -649,8 +649,8 @@ export const LABELING_PRESETS = {
   },
   'topic-multilabel': {
     id: 'topic-multilabel',
-    name: 'Themen-Tags',
-    description: 'Mehrere Themen pro Item auswählen',
+    name: { de: 'Themen-Tags', en: 'Topic Tags' },
+    description: { de: 'Mehrere Themen pro Item auswählen', en: 'Select multiple topics per item' },
     config: {
       type: 'multilabel',
       multiLabel: true,
@@ -662,8 +662,8 @@ export const LABELING_PRESETS = {
   },
   'custom': {
     id: 'custom',
-    name: 'Benutzerdefiniert',
-    description: 'Eigene Kategorien definieren',
+    name: { de: 'Benutzerdefiniert', en: 'Custom' },
+    description: { de: 'Eigene Kategorien definieren', en: 'Define your own categories' },
     config: {
       type: 'multiclass',
       multiLabel: false,
@@ -678,8 +678,8 @@ export const LABELING_PRESETS = {
 export const COMPARISON_PRESETS = {
   'pairwise': {
     id: 'pairwise',
-    name: 'Paarweiser Vergleich',
-    description: 'A vs B - welches ist besser?',
+    name: { de: 'Paarweiser Vergleich', en: 'Pairwise Comparison' },
+    description: { de: 'A vs B - welches ist besser?', en: 'A vs B - which is better?' },
     config: {
       type: 'pairwise',
       itemsPerComparison: 2,
@@ -692,8 +692,8 @@ export const COMPARISON_PRESETS = {
   },
   'pairwise-confidence': {
     id: 'pairwise-confidence',
-    name: 'Paarweise mit Konfidenz',
-    description: 'A vs B mit Konfidenzbewertung',
+    name: { de: 'Paarweise mit Konfidenz', en: 'Pairwise with Confidence' },
+    description: { de: 'A vs B mit Konfidenzbewertung', en: 'A vs B with confidence rating' },
     config: {
       type: 'pairwise',
       itemsPerComparison: 2,
@@ -707,8 +707,8 @@ export const COMPARISON_PRESETS = {
   },
   'multicriteria': {
     id: 'multicriteria',
-    name: 'Multi-Kriterien',
-    description: 'Vergleich nach mehreren Kriterien',
+    name: { de: 'Multi-Kriterien', en: 'Multi-Criteria' },
+    description: { de: 'Vergleich nach mehreren Kriterien', en: 'Compare by multiple criteria' },
     config: {
       type: 'pairwise',
       itemsPerComparison: 2,
@@ -723,8 +723,8 @@ export const COMPARISON_PRESETS = {
   },
   'tournament': {
     id: 'tournament',
-    name: 'Turnier',
-    description: 'Eliminierungs-Turnier Format',
+    name: { de: 'Turnier', en: 'Tournament' },
+    description: { de: 'Eliminierungs-Turnier Format', en: 'Single-elimination tournament format' },
     config: {
       type: 'tournament',
       itemsPerComparison: 2,
@@ -737,8 +737,8 @@ export const COMPARISON_PRESETS = {
   },
   'custom': {
     id: 'custom',
-    name: 'Benutzerdefiniert',
-    description: 'Eigene Vergleichskriterien definieren',
+    name: { de: 'Benutzerdefiniert', en: 'Custom' },
+    description: { de: 'Eigene Vergleichskriterien definieren', en: 'Define your own comparison criteria' },
     config: {
       type: 'pairwise',
       itemsPerComparison: 2,
@@ -761,8 +761,8 @@ export const COMPARISON_PRESETS = {
 export const MAIL_RATING_PRESETS = {
   'mail-verlauf-bewertung': {
     id: 'mail-verlauf-bewertung',
-    name: 'Mail-Verlauf Bewertung',
-    description: 'Bewertung von E-Mail-Beratungsverläufen mit Kohärenz, Beratungsqualität und Gesamteignung',
+    name: { de: 'Mail-Verlauf Bewertung', en: 'Mail Thread Rating' },
+    description: { de: 'Bewertung von E-Mail-Beratungsverläufen mit Kohärenz, Beratungsqualität und Gesamteignung', en: 'Rate email counseling threads for coherence, counseling quality, and overall suitability' },
     llarsSpecific: true,
     isDefault: true,
     config: {
@@ -843,8 +843,8 @@ export const MAIL_RATING_PRESETS = {
   },
   'custom': {
     id: 'custom',
-    name: 'Benutzerdefiniert',
-    description: 'Eigene Bewertungsdimensionen definieren',
+    name: { de: 'Benutzerdefiniert', en: 'Custom' },
+    description: { de: 'Eigene Bewertungsdimensionen definieren', en: 'Define your own rating dimensions' },
     llarsSpecific: true,
     config: {
       type: 'multi-dimensional',
@@ -868,8 +868,8 @@ export const MAIL_RATING_PRESETS = {
 export const AUTHENTICITY_PRESETS = {
   'nachricht-echtheit': {
     id: 'nachricht-echtheit',
-    name: 'Nachrichten-Echtheit',
-    description: 'Erkennung von echten vs. gefälschten Beratungsnachrichten',
+    name: { de: 'Nachrichten-Echtheit', en: 'Message Authenticity' },
+    description: { de: 'Erkennung von echten vs. gefälschten Beratungsnachrichten', en: 'Detect authentic vs. fake counseling messages' },
     llarsSpecific: true,
     config: {
       type: 'binary',
@@ -905,8 +905,8 @@ export const AUTHENTICITY_PRESETS = {
   },
   'ki-generiert': {
     id: 'ki-generiert',
-    name: 'KI-Erkennung',
-    description: 'Erkennung von KI-generierten vs. menschlichen Texten',
+    name: { de: 'KI-Erkennung', en: 'AI Detection' },
+    description: { de: 'Erkennung von KI-generierten vs. menschlichen Texten', en: 'Detect AI-generated vs. human-written texts' },
     llarsSpecific: true,
     config: {
       type: 'binary',
@@ -940,8 +940,8 @@ export const AUTHENTICITY_PRESETS = {
   },
   'dringlichkeit': {
     id: 'dringlichkeit',
-    name: 'Dringlichkeits-Einschätzung',
-    description: 'Einschätzung der Dringlichkeit einer Beratungsanfrage',
+    name: { de: 'Dringlichkeits-Einschätzung', en: 'Urgency Assessment' },
+    description: { de: 'Einschätzung der Dringlichkeit einer Beratungsanfrage', en: 'Assess the urgency of a counseling request' },
     llarsSpecific: true,
     config: {
       type: 'multiclass',
@@ -983,8 +983,8 @@ export const AUTHENTICITY_PRESETS = {
   },
   'custom': {
     id: 'custom',
-    name: 'Benutzerdefiniert',
-    description: 'Eigene Kategorien definieren',
+    name: { de: 'Benutzerdefiniert', en: 'Custom' },
+    description: { de: 'Eigene Kategorien definieren', en: 'Define your own categories' },
     llarsSpecific: true,
     config: {
       type: 'binary',

@@ -144,7 +144,7 @@
 </template>
 
 <script setup>
-import { ref, watch, onMounted } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import draggable from 'vuedraggable'
 
@@ -158,10 +158,10 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue'])
 const { t } = useI18n()
 
-const rankingTypes = [
-  { title: 'Kategorien (Buckets)', value: 'buckets' },
-  { title: 'Geordnete Liste', value: 'ordered' }
-]
+const rankingTypes = computed(() => [
+  { title: t('scenarioManager.evalConfig.ranking.typeOptions.buckets'), value: 'buckets' },
+  { title: t('scenarioManager.evalConfig.ranking.typeOptions.ordered'), value: 'ordered' }
+])
 
 const colorSwatches = [
   ['#98d4bb', '#6bc48f', '#4a9d6e'],
@@ -173,7 +173,11 @@ const colorSwatches = [
 
 const localConfig = ref({
   type: 'buckets',
-  buckets: [],
+  buckets: [
+    { id: 1, name: { de: 'Gut', en: 'Good' }, color: '#98d4bb' },
+    { id: 2, name: { de: 'Mittel', en: 'Medium' }, color: '#D1BC8A' },
+    { id: 3, name: { de: 'Schlecht', en: 'Poor' }, color: '#e8a087' }
+  ],
   allowTies: false,
   dragDrop: true,
   showPosition: true,
@@ -227,10 +231,11 @@ function emitUpdate() {
 
 function initFromProps() {
   if (props.modelValue) {
+    const hasBuckets = Object.prototype.hasOwnProperty.call(props.modelValue, 'buckets')
     localConfig.value = {
       ...localConfig.value,
       ...props.modelValue,
-      buckets: props.modelValue.buckets ? [...props.modelValue.buckets] : [],
+      buckets: hasBuckets ? [...(props.modelValue.buckets || [])] : localConfig.value.buckets,
       labels: props.modelValue.labels || { first: '', last: '' }
     }
   }

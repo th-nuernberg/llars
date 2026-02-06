@@ -1,43 +1,43 @@
-# LLM Evaluator System
+# LLM Evaluators (Konfiguration)
 
 !!! success "✅ Status: Abgeschlossen"
-    Das Basis-System ist **vollständig implementiert**.
-    Erweiterungen (Comparison Modes, Sampling) sind in Planung.
+    LLM-Evaluatoren sind als **Konfiguration im Szenario-Manager** vollständig implementiert.
 
 ## Übersicht
 
-Das LLM Evaluator System ermöglicht automatisierte paarweise Vergleiche von E-Mail-Konversationen. Ein LLM bewertet, welche Antwort qualitativ besser ist.
+LLM Evaluators sind keine separate Anwendung in LLARS. Sie werden pro Szenario konfiguriert und laufen als automatische Evaluatoren neben menschlichen Bewertungen.
+
+Typischer Ablauf:
+- Im Scenario Wizard LLM-Evaluation aktivieren und Modelle auswählen
+- Evaluierung startet automatisch nach dem Erstellen (oder manuell über den Scenario Manager)
+- Fortschritt und Ergebnisse sind in den Evaluation/Results-Tabs sichtbar
 
 ## Dokumentation
 
 | Dokument | Beschreibung | Status |
 |----------|--------------|--------|
-| [Konzept](konzept.md) | Ursprüngliches Konzept mit 8 Phasen | ✅ Implementiert |
-| [Comparison Modes](comparison-modes-konzept.md) | Vergleichsmodi (Pillar Sample, Round-Robin, Free-for-All) | ✅ Implementiert |
-| [Sampling Strategien](sampling-strategien.md) | Sampling-Methoden für unterschiedliche Säulengrößen | 🟡 Teilweise |
+| [Konzept](konzept.md) | Historisches Konzept aus der LLM-as-Judge-Phase | 🟡 Hintergrund |
+| [Comparison Modes](comparison-modes-konzept.md) | Vergleichsmodi (Pillar Sample, Round-Robin, Free-for-All) | 🟡 Hintergrund |
+| [Sampling Strategien](sampling-strategien.md) | Sampling-Methoden für unterschiedliche Säulengrößen | 🟡 Hintergrund |
 
-## Features
+## Features (aktuell in LLARS)
 
-- Paarweise Vergleiche von E-Mail-Threads
-- Live-Streaming der LLM-Bewertung
-- Multi-Worker-Architektur
-- ELO-Rating System
-- Socket.IO Live-Updates
+- LLM-Evaluation als Szenario-Konfiguration
+- Auswahl von System- und eigenen Provider-Modellen
+- Automatischer Start nach Szenario-Erstellung (optional)
+- Live-Status und Ergebnisübersicht im Scenario Manager
 
 ## Relevante Dateien
 
 ```
 app/
-├── routes/judge/              # Session-, Comparison-, Stats-, Pillar- & Sync-Routen
-├── services/judge/
-│   ├── judge_service.py
-│   ├── kia_sync_service.py
-│   └── comparison_generator.py
-└── workers/judge_worker.py
+├── routes/llm/llm_evaluation_routes.py       # Start/Stop/Progress der LLM-Evaluation
+├── routes/scenarios/scenario_manager_api.py  # LLM-Evaluatoren im Szenario-Config
+├── services/llm/llm_ai_task_runner.py        # LLM-Evaluation Runner
+└── services/evaluation/                      # Bewertungslogik und Aggregationen
 
-llars-frontend/src/components/Judge/
-├── JudgeOverview.vue
-├── JudgeConfig.vue
-├── JudgeSession.vue
-└── JudgeResults.vue
+llars-frontend/src/views/ScenarioManager/
+├── components/ScenarioWizard.vue             # LLM-Evaluation konfigurieren
+├── components/tabs/ScenarioEvaluationTab.vue # LLM-Status/Ergebnisse
+└── composables/useScenarioManager.js         # Start/Stop LLM-Evaluation
 ```

@@ -19,19 +19,19 @@ Der LLARS Data Importer ist ein universeller Import-Wizard, der Benutzer durch d
 
 | Aspekt | Details |
 |--------|---------|
-| **Status** | Konzeptphase |
+| **Status** | Implementiert (aktiv) |
 | **Priorität** | Hoch |
 | **Hauptfeature** | KI-gestützte Daten-Transformation |
 | **Zielgruppe** | Forscher ohne technische Vorkenntnisse |
 
 ## Unterstützte Formate
 
+- LLARS Native Format
 - OpenAI/ChatML (messages Array)
 - LMSYS Pairwise Comparison
-- JSONL (eine Konversation pro Zeile)
-- CSV/Excel
-- HuggingFace Datasets
-- KIA Legacy Format
+- JSONL/NDJSON
+- CSV/TSV
+- Generische JSON-Listen (Fallback)
 - Custom (via KI-Transformation)
 
 ## Evaluationstypen
@@ -41,4 +41,4 @@ Der LLARS Data Importer ist ein universeller Import-Wizard, der Benutzer durch d
 - Mail Rating (Konversations-Bewertung)
 - Comparison (A vs B)
 - Authenticity (Fake/Real)
-- LLM-as-Judge
+- Labeling (Klassifikation)

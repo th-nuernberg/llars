@@ -17,8 +17,10 @@
 
 ```mermaid
 flowchart LR
-    query([Query]) --> thought[THOUGHT<br/>Was muss ich tun?]
-    thought --> action[ACTION<br/>Tool wählen]
+    query([Query]) --> service[AgentChatService]
+    service --> react[ReAct Mode]
+    react --> thought[THOUGHT]
+    thought --> action[ACTION]
     action --> tool[[Tool Execute]]
     tool --> obs[/OBSERVATION/]
     obs --> decide{Genug Info?}
@@ -26,6 +28,8 @@ flowchart LR
     decide -->|Ja| final([FINAL ANSWER])
 
     style query fill:#98d4bb,stroke:#6bbf9a,color:#000
+    style service fill:#a8c5e2,stroke:#7ba3c9,color:#000
+    style react fill:#D1BC8A,stroke:#b8a06a,color:#000
     style thought fill:#b0ca97,stroke:#8fb077,color:#000
     style action fill:#D1BC8A,stroke:#b8a06a,color:#000
     style tool fill:#b0ca97,stroke:#8fb077,color:#000
@@ -34,7 +38,7 @@ flowchart LR
     style final fill:#e8c87a,stroke:#d4a84b,color:#000
 ```
 
-**ReACT Loop:** Query → THOUGHT (vorwärts denken) → ACTION → Tool → OBSERVATION → (Wiederholung oder Antwort)
+**ReAct Loop:** Query → THOUGHT (vorwärts denken) → ACTION → Tool → OBSERVATION → (Wiederholung oder Antwort)
 
 ### Kernkonzept
 
@@ -73,7 +77,7 @@ THOUGHT: Ich habe jetzt alle benötigten Informationen und kann antworten.
 "Wann hat die DG Agentur geöffnet und wie erreiche ich sie?"
 ```
 
-### ReACT Trace
+### ReAct Trace
 
 ```
 [Iteration 1]
@@ -95,13 +99,13 @@ OBSERVATION:
 [Iteration 3]
 THOUGHT: Ich habe jetzt alle Informationen: Öffnungszeiten und
          vollständige Kontaktdaten. Ich kann die Frage beantworten.
-ACTION: respond("Die DG Agentur hat Montag bis Freitag von 9-18 Uhr
-                 geöffnet, Samstag nach Vereinbarung. [1]
+FINAL ANSWER: Die DG Agentur hat Montag bis Freitag von 9-18 Uhr
+              geöffnet, Samstag nach Vereinbarung. [1]
 
-                 Kontakt:
-                 - Telefon: +49 911 97554990
-                 - Email: office@dg-agentur.de
-                 - Adresse: Bahnhofstraße 2, 90402 Nürnberg [2]")
+              Kontakt:
+              - Telefon: +49 911 97554990
+              - Email: office@dg-agentur.de
+              - Adresse: Bahnhofstraße 2, 90402 Nürnberg [2]
 ```
 
 ### Response
@@ -130,17 +134,17 @@ Quellen:
 
 ```mermaid
 flowchart TB
-    subgraph main[_chat_react Loop]
+    subgraph main[chat_react Loop]
         direction TB
         start([Start]) --> thought[Generate THOUGHT]
         thought --> action[Generate ACTION]
         action --> parse[Parse Response]
         parse --> check{FINAL ANSWER?}
         check -->|Nein| exec[Execute Tool]
-        exec --> history[Add to History]
+        exec --> history[Add to Steps]
         history --> thought
     end
-    check -->|Ja| done([Complete])
+    check -->|Ja| done([Finalize])
 
     style start fill:#98d4bb,stroke:#6bbf9a
     style thought fill:#b0ca97,stroke:#8fb077,color:#000
@@ -156,80 +160,79 @@ flowchart TB
 ### System Prompt
 
 ```python
-# DEFAULT_REACT_SYSTEM_PROMPT (chatbot.py)
+# DEFAULT_REACT_SYSTEM_PROMPT (db/models/chatbot.py)
 """
-Du bist ein hilfreicher Assistent mit Zugang zu Werkzeugen.
-Denke Schritt für Schritt und nutze das folgende Format:
+Du bist ein ReAct-Agent. Du denkst Schritt für Schritt und führst Aktionen aus.
 
-THOUGHT: [Deine Überlegung was als nächstes zu tun ist]
-ACTION: werkzeug_name("parameter")
+## Zyklus (wiederhole bis fertig):
+1. THOUGHT: Analysiere was du als nächstes tun musst
+2. ACTION: Führe GENAU EINE Aktion aus
+3. Warte auf OBSERVATION
 
-Nach Erhalt einer OBSERVATION, fahre mit dem nächsten THOUGHT fort.
+## Verfügbare Aktionen (NUR diese!):
+- rag_search("suchbegriff") - Semantische Dokumentensuche
+- lexical_search("suchbegriff") - Keyword-Suche
+- respond("antwort") - Finale Antwort (beendet Prozess)
 
-Wenn du genug Informationen hast, antworte mit:
-FINAL ANSWER: [Deine vollständige Antwort]
+## Format (EXAKT einhalten!):
+THOUGHT: [deine Überlegung]
+ACTION: rag_search("suchbegriff")
 
-Verfügbare Werkzeuge:
-- rag_search("suchbegriffe"): Semantische Suche in Dokumenten
-- lexical_search("suchbegriffe"): Keyword-basierte Suche
-- web_search("suchbegriffe"): Web-Suche (falls aktiviert)
+Wenn fertig:
+THOUGHT: [deine Überlegung]
+FINAL ANSWER: [vollständige Antwort mit Quellen]
+
+## WICHTIG:
+- IMMER erst THOUGHT, dann ACTION oder FINAL ANSWER
+- Aktionen GENAU so schreiben: rag_search("text")
+- KEINE anderen Aktionen erfinden!
+- Wenn keine Treffer: Query reformulieren, Komposita zerlegen und Synonyme testen.
 """
 ```
+
+**Zusätzlich:**
+- `chatbot.system_prompt` wird **vorangestellt**.
+- `build_tool_availability_prompt()` ergänzt dynamisch die **freigeschalteten Tools**.
+- `{PROJECT_URL}` Platzhalter werden vor Nutzung ersetzt.
 
 ### Dateien
 
 | Datei | Funktion |
 |-------|----------|
-| `app/services/chatbot/agent_chat_service.py` | `_chat_react()` (Zeilen 465-733) |
-| `app/db/models/chatbot.py` | `DEFAULT_REACT_SYSTEM_PROMPT` |
+| `app/services/chatbot/agent_chat_service.py` | Routing auf ACT/ReAct/ReflAct |
+| `app/services/chatbot/agent_modes/mode_react.py` | `chat_react()` Loop + Streaming |
+| `app/services/chatbot/agent_parsers.py` | `parse_react_response()` |
+| `app/services/chatbot/agent_tools.py` | Tool-Ausführung + Confidence-Check |
+| `app/db/models/chatbot.py` | DEFAULT_REACT_SYSTEM_PROMPT + Prompt Settings |
 
 ### Code-Auszug
 
 ```python
-# agent_chat_service.py - _chat_react()
+# mode_react.py - chat_react()
+for iteration in range(max_iterations):
+    yield {"status": "iteration", "iteration": iteration + 1, "max": max_iterations}
 
-def _chat_react(self, message: str, ...) -> Generator[Dict, None, None]:
-    """ReACT agent loop - Reasoning + Acting."""
+    # Stream THOUGHT + ACTION
+    response_text, thought, action, final_answer = yield from _stream_react_response(...)
 
-    for iteration in range(max_iterations):
-        yield {"status": "iteration", "iteration": iteration + 1}
+    # Final answer
+    if final_answer:
+        yield {"status": "final_answer"}
+        ...
+        return
 
-        # Generate THOUGHT + ACTION (streaming)
-        full_response = ""
-        for chunk in self._stream_llm_response(messages):
-            full_response += chunk
-            yield {"status": "thinking", "delta": chunk}
-
-        # Parse response
-        thought, action, argument, final_answer = \
-            self._parse_react_response(full_response)
-
-        if final_answer:
-            yield {"status": "complete", "response": final_answer}
-            return
-
-        # Execute tool
-        observation = self._execute_tool(action, argument)
-
-        # Add to history
-        messages.append({
-            "role": "assistant",
-            "content": f"THOUGHT: {thought}\nACTION: {action}(\"{argument}\")"
-        })
-        messages.append({
-            "role": "user",
-            "content": f"OBSERVATION: {observation}"
-        })
+    # Execute tool
+    result, sources = service._tool_executor.execute_tool(action_name, action_param, message, enabled_tools)
+    yield {"status": "observation", "result_preview": result[:300], "iteration": iteration + 1}
 ```
 
 ### Parsing
 
 ```python
-# _parse_react_response()
-
+# agent_parsers.py - parse_react_response()
 THOUGHT_PATTERN = r"THOUGHT:\s*(.+?)(?=ACTION:|FINAL ANSWER:|$)"
-ACTION_PATTERN = r"ACTION:\s*(\w+)\s*\(\s*[\"'](.+?)[\"']\s*\)"
-FINAL_PATTERN = r"FINAL ANSWER:\s*(.+)"
+ACTION_PATTERN = r"ACTION:\s*(.+?)(?=OBSERVATION:|FINAL ANSWER:|$)"
+FINAL_PATTERN = r"FINAL ANSWER:\s*(.+?)$"
 ```
 
 ### Konfiguration
@@ -237,46 +240,62 @@ FINAL_PATTERN = r"FINAL ANSWER:\s*(.+)"
 ```python
 # ChatbotPromptSettings
 agent_mode: str = "react"
-task_type: str = "multihop"  # Mehr Iterationen erlaubt
-agent_max_iterations: int = 7
-tools_enabled: List[str] = ["rag_search", "lexical_search", "web_search", "respond"]
+task_type: str = "lookup" | "multihop"
+agent_max_iterations: int = 5
 
-# Custom System Prompt (optional)
-react_system_prompt: str = "..."
+# Multihop: max_iterations = min(agent_max_iterations + 2, 10)
+
+tools_enabled: List[str] = ["rag_search", "lexical_search", "respond"]
+web_search_enabled: bool = False
+web_search_max_results: int = 5
+
+react_system_prompt: str = "..."  # Custom Prompt (optional)
 ```
 
-### Events (WebSocket)
+### Adaptive Iteration (High Confidence)
+
+Wenn die Suche **hohe Konfidenz** liefert, beendet ReAct die Iteration frühzeitig und generiert direkt eine finale Antwort.
+Die Konfidenz wird aus den Source‑Scores abgeleitet (`check_high_confidence`).
+
+### Fallback Search
+
+Wenn keine ACTION generiert wurde, aber Quellen erforderlich sind, führt ReAct eine automatische Suche aus (z.B. `rag_search`), um nicht zu „stallen“.
+
+---
+
+## Events (WebSocket)
 
 ```python
-# Streaming Events
-yield {"status": "iteration", "iteration": 1, "max": 7}
-yield {"status": "thinking", "delta": "Ich muss..."}  # Streaming THOUGHT
-yield {"status": "thought", "content": "Ich muss nach..."}  # Complete THOUGHT
-yield {"status": "action", "action": "rag_search", "argument": "..."}
-yield {"status": "observation", "content": "..."}
-yield {"status": "complete", "response": "...", "sources": [...]}
+# Streaming Events (Auszug)
+yield {"status": "starting", "mode": "react"}
+yield {"status": "iteration", "iteration": 1, "max": 7, "steps": [...]}
+yield {"status": "thinking", "iteration": 1}
+yield {"status": "thought_delta", "delta": "...", "iteration": 1}
+yield {"status": "thought", "thought": "...", "iteration": 1}
+yield {"status": "action_delta", "delta": "...", "iteration": 1}
+yield {"status": "action", "action": "rag_search", "param": "...", "iteration": 1}
+yield {"status": "observation_delta", "delta": "...", "iteration": 1}
+yield {"status": "observation", "result_preview": "...", "iteration": 1}
+yield {"status": "adaptive_iteration", "iteration": 1, "reason": "high_confidence"}
+yield {"status": "adaptive_response", "reason": "high_confidence_results"}
+yield {"status": "max_iterations_reached"}
+yield {"status": "final_answer"}
+yield {"delta": "..."}
+yield {"done": True, "full_response": "...", "sources": [...]} 
 ```
 
 ### Logs
 
 ```
-[AgentChatService] ReACT iteration 1/7
-[AgentChatService] THOUGHT: Ich muss nach Öffnungszeiten suchen...
-[AgentChatService] ACTION: rag_search("Öffnungszeiten")
-[AgentChatService] Tool executed: rag_search (3 results)
-[AgentChatService] ReACT iteration 2/7
-[AgentChatService] THOUGHT: Ich habe die Öffnungszeiten gefunden...
-[AgentChatService] FINAL ANSWER detected
-[AgentChatService] ReACT completed in 2 iterations
+[AgentChatService] ReAct adaptive iteration: high confidence on iteration 2
 ```
 
 ### Vergleich: ACT vs ReACT in LLARS
 
 | Aspekt | ACT | ReACT |
 |--------|-----|-------|
-| Methode | `_chat_act()` | `_chat_react()` |
-| System Prompt | `DEFAULT_ACT_SYSTEM_PROMPT` | `DEFAULT_REACT_SYSTEM_PROMPT` |
+| Methode | `chat_act()` | `chat_react()` |
+| Ort | `mode_act.py` | `mode_react.py` |
 | THOUGHT-Schritt | Nein | Ja (streaming) |
-| Parsing | `_parse_act_response()` | `_parse_react_response()` |
-| Token/Iteration | ~50-100 | ~150-300 |
+| Adaptive Iteration | Ja | Ja |
 | Typische Iterationen | 1-3 | 2-5 |

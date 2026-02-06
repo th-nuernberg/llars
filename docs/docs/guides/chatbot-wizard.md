@@ -52,11 +52,11 @@ Der Chatbot Wizard ist ein 5-Schritte-Assistent zur Erstellung von RAG-basierten
 │                                                                             │
 │  Crawler-Einstellungen:                                                     │
 │  ┌──────────────────────────────────────────────────────────────────────┐  │
-│  │  Max. Seiten:       [100_______]                                     │  │
+│  │  Max. Seiten:       [50________]                                     │  │
 │  │  Max. Tiefe:        [3_________]                                     │  │
 │  │                                                                      │  │
 │  │  ☑ JavaScript ausführen (Playwright)                                 │  │
-│  │  ☐ Screenshots erstellen                                             │  │
+│  │  ☑ Screenshots erstellen                                             │  │
 │  │  ☐ Vision-LLM für Bildanalyse                                        │  │
 │  └──────────────────────────────────────────────────────────────────────┘  │
 │                                                                             │
@@ -69,10 +69,10 @@ Der Chatbot Wizard ist ein 5-Schritte-Assistent zur Erstellung von RAG-basierten
 
 | Option | Beschreibung | Standard |
 |--------|--------------|----------|
-| **Max. Seiten** | Maximale Anzahl zu crawlender Seiten | 100 |
+| **Max. Seiten** | Maximale Anzahl zu crawlender Seiten | 50 |
 | **Max. Tiefe** | Rekursionstiefe für Links | 3 |
-| **Playwright** | JavaScript-Rendering für dynamische Seiten | Aus |
-| **Screenshots** | Seitenbilder für Vision-Analyse | Aus |
+| **Playwright** | JavaScript-Rendering für dynamische Seiten | Ein |
+| **Screenshots** | Seitenbilder für Vision-Analyse | Ein |
 | **Vision-LLM** | KI-gestützte Bildanalyse für Inhalte | Aus |
 
 !!! info "URL-Format"
@@ -91,10 +91,11 @@ Der Crawler sammelt Inhalte von der angegebenen Website:
 │                                                                             │
 │  ████████████████████████░░░░░░░░░░  65%                                   │
 │                                                                             │
-│  Phase: Seiten crawlen                                                      │
-│  URLs entdeckt: 87                                                          │
-│  URLs verarbeitet: 56                                                       │
-│  Dokumente erstellt: 48                                                     │
+│  Phase: Exploration → Crawling                                              │
+│  Seiten: 056/087                                                            │
+│  Dokumente (Embeddings): 0048/0048                                          │
+│  Medien (Bilder/Screenshots): 0120/0234                                     │
+│  Laufzeit: 03m 12s                                                          │
 │                                                                             │
 │  Zuletzt verarbeitet:                                                       │
 │  ┌──────────────────────────────────────────────────────────────────────┐  │
@@ -110,14 +111,12 @@ Der Crawler sammelt Inhalte von der angegebenen Website:
 
 | Phase | Beschreibung |
 |-------|--------------|
-| **Planung** | URL-Struktur analysieren, Sitemap prüfen |
-| **Planung fertig** | Link-Graph erstellt |
+| **Exploration** | Link‑Graph/Sitemap aufbauen |
 | **Crawling** | Seiten herunterladen und verarbeiten |
-| **Abgeschlossen** | Alle erreichbaren Seiten verarbeitet |
 
 !!! warning "Echtzeit-Updates"
-    Der Fortschritt wird live über Socket.IO aktualisiert. Bei Verbindungsabbruch
-    kann der Wizard fortgesetzt werden.
+    Der Fortschritt wird live über Socket.IO aktualisiert (Wizard/Crawler/RAG).
+    Bei Verbindungsabbruch kann der Wizard fortgesetzt werden.
 
 ---
 
@@ -167,6 +166,7 @@ KI-generierte Felder können angepasst werden:
 │  ┌──────────────────────────────────────────────────────────────────────┐  │
 │  │  Name:          [docs_assistant_______________]  [🔄 Generieren]     │  │
 │  │  Anzeigename:   [Docs Assistant_______________]  [🔄 Generieren]     │  │
+│  │  LLM Modell:    [gpt-4o______________________]  [↻ Sync]            │  │
 │  │  Icon:          [📚 mdi-book-open_____________]  [🔄 Generieren]     │  │
 │  │  Farbe:         [#3498db__] ████                 [🔄 Generieren]     │  │
 │  └──────────────────────────────────────────────────────────────────────┘  │
@@ -202,6 +202,8 @@ KI-generierte Felder können angepasst werden:
 !!! info "Felder regenerieren"
     Klicken Sie auf 🔄 um ein Feld neu zu generieren. Text-Felder werden
     mit Streaming angezeigt.
+
+**Hinweis:** Das **LLM‑Modell** wird manuell ausgewählt (inkl. Sync‑Button).
 
 ### Icon-Kategorien
 
@@ -281,13 +283,17 @@ Nach der Erstellung können erweiterte RAG-Einstellungen angepasst werden:
 |--------|--------------|
 | **Zitate erfordern** | Antworten müssen Quellen zitieren |
 | **Unbekannte Antwort** | Text wenn Antwort nicht in Quellen |
-| **Zitat-Template** | Format für Quellenangaben |
+| **Antwort-Instruktionen** | Steuerung des Antwortformats (Prompt) |
+| **Kontext-Prefix** | Überschrift vor den Quellen |
+| **Kontext-Template** | Format der Quellenblöcke |
 
 **Template-Platzhalter:**
 - `{{id}}` - Dokument-ID
 - `{{title}}` - Dokumenttitel
 - `{{excerpt}}` - Relevanter Textauszug
 - `{{page_number}}` - Seitennummer (bei PDFs)
+- `{{chunk_index}}` - Chunk-Index
+- `{{collection_name}}` - Collection-Name
 
 ---
 
@@ -361,11 +367,16 @@ Unterbrochene Wizard-Sessions können fortgesetzt werden:
 | `/api/chatbots/:id/wizard/finalize` | POST | Wizard abschließen |
 | `/api/chatbots/:id/wizard/pause` | POST | Wizard pausieren |
 | `/api/chatbots/:id/cancel-build` | POST | Wizard abbrechen |
+| `/api/chatbots/:id/resume-build` | POST | Wizard fortsetzen |
+| `/api/chatbots/:id/admin-test` | GET | Testdaten für Admin |
+| `/api/chatbots/:id/tweak` | PATCH | Chatbot‑Tweaks speichern |
+| `/api/chatbots/:id/wizard/collection-documents` | GET | Dokument‑Preview |
 
 ### Session-Management
 
 | Endpunkt | Methode | Beschreibung |
 |----------|---------|--------------|
+| `/api/chatbots/wizard/sessions` | GET | Aktive Sessions |
 | `/api/chatbots/wizard/sessions/:id/join` | POST | Session fortsetzen |
 | `/api/chatbots/wizard/sessions/:id/data` | PATCH | Daten aktualisieren |
 
@@ -373,22 +384,37 @@ Unterbrochene Wizard-Sessions können fortgesetzt werden:
 
 ## Socket.IO Events
 
-### Crawler-Events
+### Wizard‑Events
 
 | Event | Beschreibung |
 |-------|--------------|
-| `crawler:progress` | Fortschritts-Update |
+| `wizard:state` | Vollständiger Session‑Snapshot |
+| `wizard:progress` | Fortschritts‑Update (Crawl/Embed) |
+| `wizard:status_changed` | Status‑Übergang |
+| `wizard:elapsed_time` | Server‑berechnete Laufzeit |
+| `wizard:error` | Fehler |
+
+### Crawler‑Events
+
+| Event | Beschreibung |
+|-------|--------------|
+| `crawler:progress` | Fortschritts‑Update |
+| `crawler:status` | Aktueller Status |
 | `crawler:page_crawled` | Seite verarbeitet |
 | `crawler:complete` | Crawling abgeschlossen |
 | `crawler:error` | Fehler aufgetreten |
 
-### RAG-Events
+### RAG‑Events
 
 | Event | Beschreibung |
 |-------|--------------|
-| `rag:collection_progress` | Embedding-Fortschritt |
+| `rag:collection_status` | Aktueller Collection‑Status |
+| `rag:collection_progress` | Embedding‑Fortschritt |
 | `rag:collection_completed` | Embedding abgeschlossen |
+| `rag:collection_error` | Embedding fehlgeschlagen |
+| `rag:collection_documents` | Dokument‑Preview |
 | `rag:document_processed` | Dokument verarbeitet |
+| `rag:error` | Fehler |
 
 ---
 

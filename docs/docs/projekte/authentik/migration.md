@@ -13,6 +13,7 @@ Die Authentik-Integration wurde erfolgreich implementiert:
 - **Token:** RS256-signiert, validierbar über JWKS
 - **Validierung:** Korrekte Token-Prüfung im Backend
 - **Dev/Prod Parity:** Gleiche Authentifizierungslogik in beiden Modi
+- **SSO-Session:** Authentik-Session-Cookie wird optional an den Browser weitergereicht (z. B. für Matomo)
 
 ---
 
@@ -133,6 +134,13 @@ def login():
         'client_secret': client_secret
     })
 ```
+
+### 4. SSO-Session Cookie Forwarding (optional)
+
+Wenn eine Authentik-Session im Flow erzeugt wurde, wird das
+`authentik_session`-Cookie serverseitig an den Browser weitergereicht.
+So können andere OIDC-geschützte Apps (z. B. Matomo) die Session
+ohne erneuten Login nutzen.
 
 ### 4. Token-Validierung (nur RS256)
 

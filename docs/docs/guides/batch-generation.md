@@ -147,8 +147,8 @@ Der Generator erkennt verschiedene Feld-Namen automatisch:
 
 | Alias | Beschreibung |
 |-------|--------------|
-| `{{content}}`, `{{input}}`, `{{text}}` | Hauptinhalt |
-| `{{messages}}`, `{{email_content}}` | E-Mail-Verlauf |
+| `{{content}}`, `{{input}}`, `{{text_content}}`, `{{thread_content}}`, `{{thread}}` | Hauptinhalt |
+| `{{messages}}`, `{{email_thread}}`, `{{email_content}}` | E-Mail-Verlauf / Nachrichten |
 | `{{subject}}`, `{{betreff}}` | Betreff |
 
 ---
@@ -179,16 +179,17 @@ Der Generator erkennt verschiedene Feld-Namen automatisch:
 │  Schritt 4: Parameter                                                       │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                             │
+│  Job-Name:                                                                  │
+│  [LLM Vergleich Studie_____________________________]                        │
+│                                                                             │
 │  Generierungsparameter:                                                     │
 │  ┌──────────────────────────────────────────────────────────────────────┐  │
-│  │  Temperatur:     [0.7_______]  (0.0 - 1.0)                           │  │
-│  │  Max Tokens:     [1000______]                                        │  │
-│  │  Top P:          [1.0_______]                                        │  │
+│  │  Temperatur:     [0.7_______]  (0.0 - 2.0)                           │  │
+│  │  Max Tokens:     [1000______]  (optional)                            │  │
 │  └──────────────────────────────────────────────────────────────────────┘  │
 │                                                                             │
 │  Limits:                                                                    │
 │  ┌──────────────────────────────────────────────────────────────────────┐  │
-│  │  Max parallele Anfragen:  [5_________]                               │  │
 │  │  Budget-Limit (USD):      [10.00_____]                               │  │
 │  │  Max Wiederholungen:      [3_________]                               │  │
 │  └──────────────────────────────────────────────────────────────────────┘  │
@@ -198,9 +199,8 @@ Der Generator erkennt verschiedene Feld-Namen automatisch:
 
 | Parameter | Beschreibung | Standard |
 |-----------|--------------|----------|
-| **Temperatur** | Kreativität (0 = deterministisch, 1 = kreativ) | 0.7 |
-| **Max Tokens** | Maximale Ausgabelänge | 1000 |
-| **Top P** | Nucleus Sampling | 1.0 |
+| **Temperatur** | Kreativität (0 = deterministisch, 2 = kreativ) | 0.7 |
+| **Max Tokens** | Maximale Ausgabelänge (optional) | - |
 | **Budget-Limit** | Pausiert Job bei Überschreitung | - |
 | **Max Wiederholungen** | Retries bei Fehlern | 3 |
 
@@ -277,14 +277,15 @@ Nach dem Start zeigt die Detailansicht Echtzeit-Fortschritt:
 
 | Event | Beschreibung |
 |-------|--------------|
-| `job:started` | Job wurde gestartet |
-| `job:progress` | Fortschritts-Update |
-| `item:started` | Einzelnes Item wird verarbeitet |
-| `item:token` | Streaming-Token empfangen |
-| `item:completed` | Item erfolgreich generiert |
-| `item:failed` | Item fehlgeschlagen |
-| `job:completed` | Job abgeschlossen |
-| `job:budget_exceeded` | Budget-Limit erreicht |
+| `generation:job:started` | Job wurde gestartet |
+| `generation:job:progress` | Fortschritts-Update |
+| `generation:item:started` | Einzelnes Item wird verarbeitet |
+| `generation:item:token` | Streaming-Token empfangen |
+| `generation:item:completed` | Item erfolgreich generiert |
+| `generation:item:failed` | Item fehlgeschlagen |
+| `generation:job:completed` | Job abgeschlossen |
+| `generation:job:failed` | Job fehlgeschlagen |
+| `generation:job:budget_exceeded` | Budget-Limit erreicht |
 
 ---
 

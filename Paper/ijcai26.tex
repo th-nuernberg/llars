@@ -45,14 +45,13 @@ $^1$Technische Hochschule N\"urnberg Georg Simon Ohm, Germany\\
 \begin{abstract}
 We demonstrate LLARS, an open-source platform that bridges the gap between domain experts and AI developers for systematic evaluation of LLM outputs.
 The platform provides three integrated modules that can be used together or independently:
-\textbf{Collaborative Prompt Engineering} enables real-time co-editing with character-level change tracking---useful for prompt optimization or compliance training under regulations like the EU AI Act~\cite{euaiact2024}.
+\textbf{Collaborative Prompt Engineering} enables real-time co-editing with character-level tracking---useful for prompt optimization or compliance training under regulations like the EU AI Act~\cite{euaiact2024}.
 \textbf{Batch Generation} scales output creation across multiple LLMs with cost tracking---enabling synthetic data generation or systematic model comparison.
 \textbf{Large-Scale Evaluation} supports human and LLM evaluators with live agreement metrics---applicable to outputs from any source.
 When combined, these modules form a complete pipeline from prompt development through rigorous assessment.
-In a deployment evaluating counseling responses, this workflow improved human-LLM agreement by 12\%.
 
 \vspace{0.3em}
-\noindent\textbf{Demo:} \url{https://llars-project.github.io/demo}
+\noindent\textbf{Demo:} \url{https://llars-project.github.io/demo} % TODO: Set up GitHub Pages demo site before submission
 \end{abstract}
 
 \section{Introduction}
@@ -60,13 +59,17 @@ In a deployment evaluating counseling responses, this workflow improved human-LL
 Evaluating Large Language Model (LLM) outputs requires collaboration between two groups with complementary expertise~\cite{chang2024survey}.
 Domain experts---psychologists assessing counseling responses, physicians reviewing medical summaries, lawyers evaluating contract analysis---understand \emph{what} constitutes quality in their field.
 AI developers understand \emph{how} to structure effective prompts and integrate LLM evaluators into production systems.
-Yet current tools force these groups to work in isolation: annotation platforms like Label Studio~\cite{labelstudio2024} and Argilla~\cite{argilla2024} serve human annotators but lack LLM integration, while LLM-as-Judge frameworks like MT-Bench~\cite{zheng2024judging} require technical expertise and support only pairwise comparison.
+Yet existing tools address only parts of this workflow.
+Annotation platforms like Label Studio~\cite{labelstudio2024} and Argilla~\cite{argilla2024} provide human annotation interfaces with some LLM integration, but lack collaborative prompt development and integrated batch generation capabilities.
+LLM-as-Judge frameworks like MT-Bench~\cite{zheng2024judging} automate evaluation through single-answer grading and pairwise comparison, but require technical expertise and do not integrate human evaluators within the same workflow.
+None of these tools offer a unified, GUI-driven pipeline from collaborative prompt development through batch generation to hybrid human-LLM evaluation.
 
-LLARS bridges this gap by providing three integrated modules---\textbf{Prompt Engineering}, \textbf{Batch Generation}, and \textbf{Evaluation}---that form a complete pipeline when used together, yet each module can also operate independently for specific use cases.
+LLARS bridges this gap with an open-source, GUI-driven platform providing three integrated modules---\textbf{Prompt Engineering}, \textbf{Batch Generation}, and \textbf{Evaluation}---that form a complete pipeline when used together, yet each module can also operate independently.
+The platform is extensible: teams can add custom evaluation types and connect their own LLM endpoints, with support for over 100 providers including local deployments via Ollama.
 
 \textbf{Collaborative Prompt Engineering.}
 Domain experts and AI developers work together in a real-time collaborative workspace with full synchronization.
-Character-level change tracking shows precisely who wrote or modified each part of the prompt, providing complete transparency over the evolution of evaluation criteria.
+Change tracking provides transparency over the evolution of evaluation criteria, showing how prompts develop across collaborators.
 Each user can test the current prompt at any time in their own independent session---uploading real evaluation data and immediately observing how the production LLM interprets their criteria---without blocking other collaborators.
 A full versioning system tracks prompt evolution, allowing teams to compare versions, identify which changes improved results, and roll back if needed.
 When satisfied, domain experts export the finalized prompt as JSON, which AI developers download directly and integrate into their applications.
@@ -89,14 +92,14 @@ LLM evaluators provide a cost-effective alternative for initial assessment; the 
 LLARS computes agreement across all evaluator combinations in real-time: human-human, LLM-LLM, and human-LLM, with metrics including Krippendorff's $\alpha$, Cohen's $\kappa$, and correlation coefficients.
 \emph{Standalone use:} Teams can import existing outputs---from production systems, competitor analyses, or research datasets---directly into the evaluation module without using LLARS's other components.
 
-An AI-assisted \textbf{Scenario Wizard} supports transitions between modules by analyzing uploaded datasets, suggesting appropriate evaluation types (rating, ranking, labeling), and proposing field mappings to LLARS's internal format.
+An AI-assisted \textbf{Scenario Wizard} supports transitions between modules by analyzing uploaded datasets, suggesting appropriate evaluation types (rating, ranking, comparison, labeling), and proposing field mappings to LLARS's internal format.
 
 This modular design addresses a fundamental challenge: domain experts know what matters but struggle to express it in prompts that LLMs interpret correctly, while AI developers can write effective prompts but lack the domain knowledge to capture subtle quality distinctions.
 LLARS brings both groups into a shared environment where they iterate together---from initial prompt development through batch generation to rigorous evaluation---until criteria are properly captured and validated at scale.
 
 \section{System Overview}
 
-LLARS follows a microservices architecture (Figure~\ref{fig:architecture}) designed for real-time collaboration and scalable LLM evaluation.
+LLARS follows a containerized multi-service architecture (Figure~\ref{fig:architecture}) designed for real-time collaboration and scalable LLM evaluation.
 
 \begin{figure}[t]
 \centering
@@ -127,7 +130,7 @@ LLARS follows a microservices architecture (Figure~\ref{fig:architecture}) desig
 \label{fig:architecture}
 \end{figure}
 
-The Vue.js frontend provides evaluation interfaces, while a Yjs server~\cite{shapiro2011crdt} enables real-time collaborative editing with conflict-free synchronization.
+The Vue.js frontend provides evaluation interfaces, while a Yjs server~\cite{jahns2023yjs,shapiro2011crdt} enables real-time collaborative editing with conflict-free synchronization.
 The Flask backend orchestrates workflows and integrates with 100+ models via LiteLLM---GPT-4, Claude, Gemini, and local deployments via Ollama.
 
 \section{Collaborative Prompt Engineering}
@@ -149,13 +152,13 @@ The first module provides a collaborative prompt engineering workspace (Figure~\
 \end{minipage}
 };
 \end{tikzpicture}
-\caption{Collaborative workspace with character-level change tracking. Each user can test independently while others continue editing.}
+\caption{Collaborative workspace with real-time editing and character-level tracking. Each user can test independently while others continue editing.}
 \label{fig:collab}
 \end{figure}
 
 \textbf{Real-Time Collaboration:} Multiple users edit prompts simultaneously with CRDT-based synchronization.
-Character-level change tracking shows exactly who wrote or modified each part---providing full attribution over the evolution of prompt criteria.
-This transparency is valuable not only for iterative refinement but also for compliance documentation: organizations can demonstrate who contributed which evaluation criteria and when changes were made.
+Change tracking provides transparency over how evaluation criteria evolve, showing each collaborator's contributions.
+This is valuable not only for iterative refinement but also for compliance documentation: organizations can demonstrate who contributed which evaluation criteria and when changes were made.
 
 \textbf{Independent Testing:} Each user can test the current prompt at any time in their own session without blocking others.
 Domain experts upload real data directly in the workspace and immediately see how the production LLM interprets their criteria.
@@ -193,9 +196,9 @@ The third module enables systematic evaluation of LLM outputs---whether generate
 \textbf{Model Comparison:} Teams evaluate outputs across different LLMs, comparing GPT-4 against Claude or testing whether smaller models perform adequately.
 This is particularly relevant when switching production LLMs or evaluating open-source alternatives to commercial APIs.
 
-\textbf{Rating and Ranking:} LLARS supports multiple evaluation paradigms.
-Ranking outputs is often more informative than absolute rating, as relative comparison is easier for humans to judge consistently~\cite{steigerwald2025subjectline}.
-Rating provides absolute scores useful for threshold-based decisions.
+\textbf{Evaluation Paradigms:} LLARS supports rating, ranking, pairwise comparison, and labeling.
+Ranking is often more informative than absolute rating, as relative comparison is easier for humans to judge consistently~\cite{steigerwald2025subjectline}.
+Rating provides multi-dimensional scores, comparison enables direct A/B assessment, and labeling supports categorical classification.
 
 \textbf{Human and LLM Evaluators:} Human evaluation remains the gold standard, but domain experts' time is scarce.
 LLM evaluators provide a cost-effective alternative for initial assessment; the ideal configuration combines both, with human evaluators establishing ground truth while LLM evaluators scale assessment.
@@ -209,19 +212,17 @@ Use cases include: (1) \emph{Production monitoring}, evaluating outputs from dep
 
 \section{Application: Counseling Evaluation}
 
-We deployed LLARS to evaluate LLM-generated responses for online mental health counseling~\cite{steigerwald2025caia}, demonstrating the complete pipeline.
+We are deploying LLARS in an ongoing project to evaluate LLM-generated responses for online mental health counseling~\cite{steigerwald2025caia}, demonstrating the complete pipeline.
 
-\textbf{Prompt Engineering:} Psychology students and AI developers collaborated in the prompt workspace to define evaluation criteria for empathy, clarity, professionalism, and helpfulness.
-Students uploaded real counseling exchanges and tested iteratively until the LLM's interpretations matched their expert judgment.
-The character-level attribution documented each student's contributions---useful for academic credit and methodology documentation.
+\textbf{Prompt Engineering:} Psychology students and AI developers collaborate in the prompt workspace to define evaluation criteria for empathy, clarity, professionalism, and helpfulness.
+Students upload real counseling exchanges and test iteratively until the LLM's interpretations align with their expert judgment.
 
-\textbf{Batch Generation:} Using the refined prompts, we generated evaluation outputs across GPT-4 and Claude-3 for 600 counseling responses, with real-time cost tracking ensuring budget compliance.
+\textbf{Batch Generation:} Using the refined prompts, the team generates responses across multiple LLMs to systematically compare output quality, with cost tracking ensuring budget compliance.
 
-\textbf{Large-Scale Evaluation:} Five psychology students and the two LLM evaluators then rated the generated outputs.
-Over four weeks, we collected 2,400 ratings.
-Human agreement ranged from $\alpha = 0.61$ to $0.78$.
-Initial human-LLM correlation was $r = 0.47$---LLMs rated empathy higher.
-After three collaborative refinement iterations (returning to prompt engineering with insights from evaluation), agreement improved to $r = 0.54$ (12\% increase).
+\textbf{Evaluation:} Human evaluators and LLM evaluators rate the generated outputs in parallel.
+LLARS's live agreement metrics enable the team to identify where human and machine judgment diverge---for instance, whether LLMs consistently overrate empathy---and to iteratively refine prompts based on these insights.
+
+This iterative cycle---from prompt refinement through generation to evaluation and back---exemplifies how LLARS supports collaboration between domain expertise and technical capability.
 
 \section{Demonstration}
 
@@ -235,11 +236,11 @@ Our demonstration covers the complete workflow:
 \end{enumerate}
 
 Attendees can evaluate provided examples or upload their own data.
-LLARS is open-source (MIT), requiring Docker, 16GB RAM, 4+ CPU cores.
+LLARS is open-source (MIT), requiring Docker, 16GB RAM, 4+ CPU cores. % TODO: Add MIT LICENSE file to repo before submission
 
 \vspace{0.3em}
-\noindent\textbf{Repository:} \url{https://github.com/llars-project/llars}\\
-\textbf{Documentation:} \url{https://llars-project.github.io}
+\noindent\textbf{Repository:} \url{https://github.com/llars-project/llars}\\ % TODO: Create GitHub repo, add MIT LICENSE file
+\textbf{Documentation:} \url{https://llars-project.github.io} % TODO: Set up GitHub Pages documentation site
 
 \bibliographystyle{named}
 \bibliography{llars}

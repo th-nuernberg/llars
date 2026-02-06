@@ -2,6 +2,11 @@
 
 Automatisiertes Demo-Video-System für die Lars-Plattform.
 
+Dieses Verzeichnis dient der Produktion eines **Demo-Videos für den IJCAI‑ECAI 2026 Demonstrations Track**. IJCAI ist eine internationale, gemeinnützige Organisation und richtet eine der führenden AI-Konferenzen aus; IJCAI‑ECAI 2026 findet in Bremen vom 15.–21. August 2026 statt. Nützliche Einstiegslinks:
+- [IJCAI-ECAI 2026 (Offizielle Konferenzseite)](https://2026.ijcai.org/)
+- [IJCAI-ECAI 2026 Demonstrations Track (Call for Papers)](https://2026.ijcai.org/ijcai-ecai-2026-call-for-papers-demos/)
+- [IJCAI Organisation (Hauptseite)](https://www.ijcai.org/home)
+
 ## Quick Start
 
 ```bash
@@ -27,14 +32,16 @@ python run.py
 
 ```
 Paper/demo-video/
-├── run.py              # Hauptskript (Browser-Automation + TTS)
-├── SCRIPT.json         # Einzige Wahrheitsquelle für alle Schritte
+├── run.py                    # Hauptskript (Browser-Automation + TTS + Recording)
+├── SCRIPT.json               # Einzige Wahrheitsquelle für alle Schritte
+├── data/                     # Demo-Inputs (z.B. news_articles.json)
 ├── src/
-│   └── tts.py          # Qwen3-TTS Integration
-├── audio/              # Generierte Audio-Dateien
-│   └── .section_hashes.json  # Hashes für Section-Caching
-├── voices/             # Voice-Referenzen (optional)
-└── output/             # Fertige Videos
+│   └── tts.py                # Qwen3-TTS Integration (qwen-tts)
+├── audio/                    # Generierte Audio-Dateien
+│   ├── .section_hashes.json  # Hashes für Section-Caching
+│   └── .audio_hashes.json    # Hashes pro Step (Text + TTS-Setup)
+├── voices/                   # Voice-Referenzen (optional, für Voice Cloning)
+└── output/                   # Fertige Videos
 ```
 
 ---
@@ -45,10 +52,10 @@ Paper/demo-video/
 
 | Sprecher | Name | Rolle | Stimme |
 |----------|------|-------|--------|
-| `host` | Alex | Amerikanischer Tech-Presenter | Aiden (Qwen3) |
-| `narrator` | David | Britischer Beobachter | Ryan (Qwen3) |
+| `moderator` | Alex | Amerikanischer Tech-Presenter | Aiden (Qwen3 CustomVoice) |
+| `guest` | David | Britischer Beobachter | Ryan (Qwen3 CustomVoice) |
 
-**Dialog-Stil:** Host erklärt Features, Narrator stellt Fragen.
+**Dialog-Stil:** Moderator erklärt Features, Guest stellt Fragen.
 
 ### Real-Time Collaboration Demo
 
@@ -58,7 +65,7 @@ Das Video zeigt Live-Kollaboration mit **zwei Browser-Fenstern**:
 
 ```json
 {"do": "collab_open", "user": "researcher"},
-{"do": "collab_goto", "url": "/PromptEngineering/3"},
+{"do": "collab_goto", "url": "/promptengineering"},
 {"do": "collab_type", "target": "First Block Editor", "text": "\n# Added by researcher"}
 ```
 
@@ -71,15 +78,21 @@ python run.py --smart                   # Nur geänderte Sections
 python run.py --smart --sections INTRO  # Nur bestimmte Section erzwingen
 ```
 
-**Sections im Skript (27 Schritte total):**
+**Sections im Skript (Stand: `SCRIPT.json`, 65 Schritte / 65 Audio-Dateien):**
 
 | Section | Audio-Dateien | Beschreibung |
 |---------|---------------|--------------|
-| INTRO | 2 | Einführung und Problemstellung |
-| PROMPT ENGINEERING | 11 | Prompt-Editor + Live-Collab Demo |
-| BATCH GENERATION | 5 | Batch-Processing zeigen |
-| SCENARIO MANAGER | 6 | Evaluations-System |
-| CONCLUSION | 3 | Zusammenfassung + GitHub Link |
+| INTRO | 4 | Einführung und Problemstellung |
+| PROMPT ENGINEERING | 16 | Prompt-Editor + Live-Collab Demo |
+| BRING YOUR OWN MODELS | 3 | Provider-Setup |
+| BATCH GENERATION | 12 | Batch-Processing zeigen |
+| SCENARIO FROM BATCH | 6 | Szenario-Wizard aus Batch |
+| SCENARIO MANAGER | 9 | Workspace + Tabs |
+| HUMAN EVALUATION | 5 | Ranking UI |
+| DOCUMENTATION | 7 | Docs Hub + MkDocs |
+| CONCLUSION | 3 | Zusammenfassung + Link |
+
+Hinweis: Sections für `--sections` sind die Großbuchstaben-Namen (z.B. `PROMPT ENGINEERING`).
 
 ---
 
@@ -88,16 +101,17 @@ python run.py --smart --sections INTRO  # Nur bestimmte Section erzwingen
 | Modell | Beschreibung | Empfohlen |
 |--------|--------------|-----------|
 | `custom-small` | Vordefinierte Stimmen (Ryan, Aiden) - schnell | **Ja** |
-| `custom` | Größeres Modell mit vordefinierten Stimmen | Für Qualität |
+| `custom` | Größeres CustomVoice-Modell | Für Qualität |
 | `design` | Voice Design (Text-basierte Parameter) | Nein |
-| `small/large` | Voice Cloning (benötigt Referenz-Audio) | Nur finale Produktion |
+| `small/large` | Base-Modelle für Voice Cloning (mit `--voice-clone`) | Nur finale Produktion |
 
 ```bash
 python run.py --smart --model custom-small  # Standard (schnell)
 python run.py --smart --model custom        # Bessere Qualität
+python run.py --smart --model small --voice-clone  # Voice Cloning (langsam)
 ```
 
-**Hinweis:** Die Warnung `does not support create_voice_clone_prompt` ist normal - das custom-small Modell nutzt vordefinierte Stimmen statt Voice Cloning.
+**Hinweis:** Die Warnung `does not support create_voice_clone_prompt` ist normal - die CustomVoice-Modelle nutzen vordefinierte Stimmen statt Voice Cloning.
 
 ---
 
@@ -133,20 +147,33 @@ python run.py --smart --model custom        # Bessere Qualität
 
 | Action | Beschreibung | Beispiel |
 |--------|--------------|----------|
-| `click` | Element klicken | `{"do": "click", "target": "Prompt Engineering"}` |
 | `goto` | URL navigieren | `{"do": "goto", "url": "/Home"}` |
-| `wait` | Pause | `{"do": "wait", "seconds": 1.5}` |
+| `login` | Login erzwingen | `{"do": "login"}` |
+| `click` | Element klicken | `{"do": "click", "target": "Prompt Engineering"}` |
+| `click_if_present` | Klick nur wenn vorhanden | `{"do": "click_if_present", "target": "Close"}` |
+| `click_random` | Zufälliges Element klicken | `{"do": "click_random", "target": "Collab Color Preset"}` |
+| `click_index` | Element via Index klicken | `{"do": "click_index", "target": "LLM List", "index": 0}` |
+| `type` | Text tippen | `{"do": "type", "target": "Input", "text": "..."}` |
+| `clear` | Input leeren | `{"do": "clear", "target": "Name Input"}` |
 | `highlight` | Element hervorheben | `{"do": "highlight", "target": "...", "duration": 2}` |
+| `drag` | Drag & Drop | `{"do": "drag", "from": "Ranking Item", "to": "Best Bucket"}` |
+| `upload` | Datei hochladen | `{"do": "upload", "target": "File Input", "file": "data/news_articles.json"}` |
+| `set_text_from_file` | Textarea mit Datei füllen | `{"do": "set_text_from_file", "target": "Manual Data Textarea", "file": "data/news_articles.json"}` |
+| `wait` | Pause | `{"do": "wait", "seconds": 1.5}` |
+| `wait_for` | Warten auf Element | `{"do": "wait_for", "target": "Test Prompt Dialog", "timeout": 10}` |
+| `wait_for_modal` | Warten auf Dialog | `{"do": "wait_for_modal"}` |
 | `sync` | Warten bis Narration erreicht | `{"do": "sync", "after": "Variables"}` |
 | `show_title` | Titel-Overlay anzeigen | `{"do": "show_title", "title": "...", "subtitle": "..."}` |
-| `type` | Text tippen | `{"do": "type", "target": "Input", "text": "..."}` |
+| `scroll` | Scrollen | `{"do": "scroll", "target": "Manual Data Textarea", "amount": 260}` |
+| `scroll_to` | Element scrollen | `{"do": "scroll_to", "target": "Matrix Preview"}` |
+| `close_file_dialog` | File-Dialog schließen | `{"do": "close_file_dialog"}` |
 
 ### Collaboration Actions
 
 | Action | Beschreibung | Beispiel |
 |--------|--------------|----------|
 | `collab_open` | Zweiten Browser öffnen | `{"do": "collab_open", "user": "researcher"}` |
-| `collab_goto` | Collab-Browser navigieren | `{"do": "collab_goto", "url": "/PromptEngineering/3"}` |
+| `collab_goto` | Collab-Browser navigieren | `{"do": "collab_goto", "url": "/promptengineering"}` |
 | `collab_type` | Text im Collab-Browser tippen | `{"do": "collab_type", "target": "First Block Editor", "text": "..."}` |
 | `collab_focus` | Editor im Collab-Browser fokussieren | `{"do": "collab_focus"}` |
 | `collab_click` | Element im Collab-Browser klicken | `{"do": "collab_click", "target": "..."}` |
@@ -176,11 +203,12 @@ TEST:
 
 AUFNAHME:
   --silent, -s            Ohne Audio-Wiedergabe
-  --from STEP_ID          Ab bestimmtem Step starten
+  --from STEP_ID          Ab bestimmtem Step starten (ID oder Nummer)
   --no-record             Ohne Video-Aufnahme
 
 SONSTIGES:
-  --model MODEL           TTS-Modell (custom-small, custom, design, small, large)
+  --script PATH           Alternatives Skript verwenden
+  --model, -m MODEL        TTS-Modell (custom-small, custom, design, small, large)
   --voice-clone           Voice Cloning aktivieren (sehr langsam)
 ```
 
@@ -190,9 +218,11 @@ SONSTIGES:
 
 Das Backend enthält einen Seeder für vorbereitete Demo-Daten:
 
-- **2 News-Summarization Prompts** (News Summary Prompt, Analyst Summary Prompt)
-- **1 abgeschlossener Batch-Generation Job** mit 40 Outputs
-- **10 News-Artikel** mit generierten Zusammenfassungen (2 Modelle x 2 Prompts)
+- **1 Prompt:** News Summary Prompt
+- **1 abgeschlossener Batch-Generation Job** mit 40 Outputs (10 Artikel x 2 Prompt-Varianten x 2 Modelle)
+- **10 News-Artikel** mit generierten Zusammenfassungen
+
+**Wichtig:** Das zweite benötigte Prompt **"Analyst Summary Prompt"** wird **live im Video** angelegt und ist **nicht** vorab geseedet.
 
 ```bash
 # Seeder läuft automatisch bei PROJECT_STATE=development
@@ -234,10 +264,10 @@ In `run.py` gibt es `ELEMENT_MAP` - eine Zuordnung von lesbaren Namen zu CSS-Sel
 
 ```python
 ELEMENT_MAP = {
-    "Prompt Engineering": ".feature-card:contains('Prompt')",
-    "Batch Generation": ".feature-card:contains('Generation')",
+    "Prompt Engineering": ".feature-card:contains('Prompt'), .feature-title:contains('Prompt')",
+    "Batch Generation": ".feature-card:contains('Generation'), .feature-title:contains('Generation')",
     "News Summary Prompt": ".prompt-card:contains('News Summary')",
-    "First Block Editor": ".block-editor:first-of-type .ql-editor",
+    "First Block Editor": ".editor-block:first-child .ql-editor",
     ...
 }
 ```
@@ -254,12 +284,12 @@ ELEMENT_MAP = {
 
 | Problem | Lösung |
 |---------|--------|
-| TTS-Modell lädt nicht | `pip install qwen3-tts torch` |
+| TTS-Modell lädt nicht | `pip install -r requirements.txt` und ggf. `pip install torch` (platform-spezifisch) |
 | Browser findet Element nicht | Element-Map in run.py erweitern |
 | Collab-Cursor nicht sichtbar | Lars muss mit YJS-Server laufen |
 | Audio zu langsam | `--model custom-small` nutzen |
 | "does not support create_voice_clone_prompt" | Normal - Modell nutzt vordefinierte Stimmen |
-| Section-Hash nicht gespeichert | Prüfe `audio/.section_hashes.json` |
+| Section/Audio-Hash nicht gespeichert | Prüfe `audio/.section_hashes.json` und `audio/.audio_hashes.json` |
 | ffmpeg fehlt | `brew install ffmpeg` (macOS) |
 
 ---
@@ -276,7 +306,7 @@ ELEMENT_MAP = {
 ## Abhängigkeiten
 
 ```bash
-pip install selenium webdriver-manager qwen3-tts torch soundfile
+pip install -r requirements.txt
 ```
 
 ---
@@ -290,5 +320,5 @@ pip install selenium webdriver-manager qwen3-tts torch soundfile
 - [x] Real-Time Collaboration Demo (zwei Browser)
 - [x] Demo-Daten Seeder
 - [x] Element-Test Mode
-- [ ] Bildschirmaufnahme (ffmpeg)
+- [x] Bildschirmaufnahme (ffmpeg)
 - [ ] Finale Video-Produktion

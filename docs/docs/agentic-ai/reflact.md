@@ -11,39 +11,30 @@
     **EMNLP 2025 (Main Conference)**
 
 !!! info "Konzept"
-    **ReflAct** erweitert ReACT durch zustandsbasierte Reflexion. Statt vorwärtsgerichtet zu planen ("Was soll ich als nächstes tun?"), reflektiert der Agent seinen aktuellen Zustand relativ zum Ziel ("Wo stehe ich im Verhältnis zum Ziel?"). Dies ermöglicht systematische Selbstkorrektur und bessere Ziel-Fokussierung.
+    **ReflAct** erweitert ReAct durch zustandsbasierte Reflexion. Statt vorwärtsgerichtet zu planen ("Was soll ich als nächstes tun?"), reflektiert der Agent seinen aktuellen Zustand relativ zum Ziel ("Wo stehe ich im Verhältnis zum Ziel?"). Dies ermöglicht systematische Selbstkorrektur und bessere Ziel-Fokussierung.
 
 ### Architektur
 
 ```mermaid
-flowchart TB
-    subgraph iter1[Iteration 1]
-        direction LR
-        r1[REFLECTION<br/>Wo stehe ich?] --> a1[ACTION<br/>rag_search]
-        a1 --> tool1[[Tool Execute]]
-        tool1 --> o1[/OBSERVATION/]
-    end
+flowchart LR
+    query([Query]) --> service[AgentChatService]
+    service --> reflact[ReflAct Mode]
+    reflact --> refl[REFLECTION]
+    refl --> action[ACTION]
+    action --> tool[[Tool Execute]]
+    tool --> obs[/OBSERVATION/]
+    obs --> decide{Ziel erreicht?}
+    decide -->|Nein| refl
+    decide -->|Ja| final([FINAL ANSWER])
 
-    subgraph iter2[Iteration 2]
-        direction LR
-        r2[REFLECTION<br/>Ziel erreicht?] --> a2[ACTION<br/>respond]
-        a2 --> tool2[[Tool Execute]]
-        tool2 --> o2[/OBSERVATION/]
-    end
-
-    iter1 --> iter2
-    iter2 --> final([FINAL ANSWER])
-
-    style r1 fill:#88c4c8,stroke:#5fa8ad,color:#000
-    style a1 fill:#D1BC8A,stroke:#b8a06a,color:#000
-    style tool1 fill:#b0ca97,stroke:#8fb077,color:#000
-    style o1 fill:#a8c5e2,stroke:#7ba3c9,color:#000
-    style r2 fill:#88c4c8,stroke:#5fa8ad,color:#000
-    style a2 fill:#D1BC8A,stroke:#b8a06a,color:#000
-    style tool2 fill:#b0ca97,stroke:#8fb077,color:#000
-    style o2 fill:#a8c5e2,stroke:#7ba3c9,color:#000
-    style iter1 fill:#f5f5f5,stroke:#88c4c8
-    style iter2 fill:#f5f5f5,stroke:#88c4c8
+    style query fill:#98d4bb,stroke:#6bbf9a,color:#000
+    style service fill:#a8c5e2,stroke:#7ba3c9,color:#000
+    style reflact fill:#88c4c8,stroke:#5fa8ad,color:#000
+    style refl fill:#88c4c8,stroke:#5fa8ad,color:#000
+    style action fill:#D1BC8A,stroke:#b8a06a,color:#000
+    style tool fill:#b0ca97,stroke:#8fb077,color:#000
+    style obs fill:#a8c5e2,stroke:#7ba3c9,color:#000
+    style decide fill:#9e9e9e,stroke:#757575,color:#fff
     style final fill:#e8c87a,stroke:#d4a84b,color:#000
 ```
 
@@ -118,7 +109,7 @@ OBSERVATION:
 REFLECTION:
   Aktueller Zustand: Ich habe Öffnungszeiten (Mo-Fr 9-18, Sa Vereinbarung)
                      und eine Telefonnummer (+49 911 97554990).
-  Letzte Entdeckung: Dokument [1] enthält bereits Öffnungszeiten,
+  Letzte Entdeckung: Dokument [1] enthält Öffnungszeiten,
                      [2] liefert Telefonnummer.
   Ziel-Relation: Öffnungszeiten: ✓ vollständig
                  Kontaktdaten: teilweise (Telefon ✓, Email fehlt, Adresse fehlt)
@@ -171,17 +162,17 @@ Quellen:
 
 ```mermaid
 flowchart TB
-    subgraph main[_chat_reflact Loop]
+    subgraph main[chat_reflact Loop]
         direction TB
         start([Start]) --> refl[Generate REFLECTION]
         refl --> action[Generate ACTION]
         action --> parse[Parse Response]
         parse --> check{FINAL ANSWER?}
         check -->|Nein| exec[Execute Tool]
-        exec --> history[Add to History]
+        exec --> history[Add to Steps]
         history --> refl
     end
-    check -->|Ja| done([Complete])
+    check -->|Ja| done([Finalize])
 
     style start fill:#98d4bb,stroke:#6bbf9a
     style refl fill:#88c4c8,stroke:#5fa8ad,color:#000
@@ -197,10 +188,10 @@ flowchart TB
 ### System Prompt
 
 ```python
-# DEFAULT_REFLACT_SYSTEM_PROMPT (chatbot.py)
+# DEFAULT_REFLACT_SYSTEM_PROMPT (db/models/chatbot.py)
 """
-Du bist ein ReflAct-Agent. Bei jedem Schritt reflektierst du deinen
-aktuellen Zustand RELATIV zum Aufgabenziel, dann wählst du die nächste Aktion.
+Du bist ein ReflAct-Agent. Bei jedem Schritt reflektierst du deinen aktuellen Zustand
+RELATIV zum Aufgabenziel, dann wählst du die nächste Aktion.
 
 ## ReflAct-Prinzip (basierend auf arxiv.org/abs/2505.15182):
 - Nicht "Was soll ich als nächstes tun?" (vorausschauend)
@@ -211,85 +202,66 @@ aktuellen Zustand RELATIV zum Aufgabenziel, dann wählst du die nächste Aktion.
 2. Letzte Entdeckung: Was hast du gerade erfahren?
 3. Ziel-Relation: Wie nah bist du dem Ziel? Was fehlt noch?
 
-## Format:
-REFLECTION: [Strukturierte Reflexion mit den 3 Punkten]
-ACTION: werkzeug_name("parameter")
+## Verfügbare Aktionen:
+- rag_search("suchbegriff") - Semantische Dokumentensuche
+- lexical_search("suchbegriff") - Keyword-Suche
 
-Wenn du genug Informationen hast:
-REFLECTION: [Finale Reflexion - Ziel erreicht]
-FINAL ANSWER: [Vollständige Antwort mit Quellenangaben]
+## Format (STRIKT einhalten!):
 
-Verfügbare Werkzeuge:
-- rag_search("suchbegriffe"): Semantische Suche in Dokumenten
-- lexical_search("suchbegriffe"): Keyword-basierte Suche
-- web_search("suchbegriffe"): Web-Suche (falls aktiviert)
+REFLECTION: Aktuell weiß ich [Zustand]. Die letzte Suche ergab [Ergebnis]. Dies bringt mich [näher/nicht näher] zum Ziel [X], weil [Begründung].
+ACTION: rag_search("suchbegriff")
+
+Wenn das Ziel erreicht ist:
+REFLECTION: Ich habe alle nötigen Informationen: [Zusammenfassung]. Das Ziel ist erreicht.
+FINAL ANSWER: [Vollständige Antwort basierend auf den gefundenen Informationen]
 """
 ```
+
+**Zusätzlich:**
+- `chatbot.system_prompt` wird **vorangestellt**.
+- `build_tool_availability_prompt()` ergänzt dynamisch die **freigeschalteten Tools**.
+- `{PROJECT_URL}` Platzhalter werden vor Nutzung ersetzt.
 
 ### Dateien
 
 | Datei | Funktion |
 |-------|----------|
-| `app/services/chatbot/agent_chat_service.py` | `_chat_reflact()` (Zeilen 735-920) |
-| `app/db/models/chatbot.py` | `DEFAULT_REFLACT_SYSTEM_PROMPT` |
+| `app/services/chatbot/agent_chat_service.py` | Routing auf ACT/ReAct/ReflAct |
+| `app/services/chatbot/agent_modes/mode_reflact.py` | `chat_reflact()` Loop + Streaming |
+| `app/services/chatbot/agent_parsers.py` | `parse_reflact_response_v2()` |
+| `app/services/chatbot/agent_tools.py` | Tool-Ausführung + Confidence-Check |
+| `app/db/models/chatbot.py` | DEFAULT_REFLACT_SYSTEM_PROMPT + Prompt Settings |
 
 ### Code-Auszug
 
 ```python
-# agent_chat_service.py - _chat_reflact()
+# mode_reflact.py - chat_reflact()
+for iteration in range(max_iterations):
+    yield {"status": "iteration", "iteration": iteration + 1, "max": max_iterations, "goal": goal}
 
-def _chat_reflact(self, message: str, ...) -> Generator[Dict, None, None]:
-    """
-    ReflAct mode - World-Grounded Decision Making via Goal-State Reflection.
+    # Stream REFLECTION + ACTION
+    response_text, reflection, action, final_answer = yield from _stream_reflact_response(...)
 
-    Based on the ReflAct paper (arxiv.org/abs/2505.15182):
-    - At each step, reflect on the agent's state RELATIVE to the task goal
-    - Then decide on the next action based on that reflection
-    - Cycle: REFLECTION → ACTION → OBSERVATION (repeat until done)
+    if final_answer:
+        yield {"status": "final_answer"}
+        ...
+        return
 
-    Key difference from ReAct:
-    - ReAct: "Think about what to do next" (forward-looking planning)
-    - ReflAct: "Reflect on current state relative to goal" (state-grounded evaluation)
-    """
-
-    for iteration in range(max_iterations):
-        yield {"status": "reflecting", "iteration": iteration + 1}
-
-        # Generate REFLECTION + ACTION (streaming)
-        response_text = ""
-        for chunk in self._stream_llm_response(messages):
-            response_text += chunk
-            yield {"status": "reflection_delta", "delta": chunk}
-
-        # Parse response (NO separate THOUGHT step in ReflAct!)
-        reflection, action, final_answer = \
-            self._parse_reflact_response_v2(response_text)
-
-        if final_answer:
-            yield {"status": "complete", "response": final_answer}
-            return
-
-        # Execute tool
-        observation = self._execute_tool(action)
-
-        # Add to history
-        steps.append({"type": "reflection", "content": reflection})
-        steps.append({"type": "action", "content": action})
-        steps.append({"type": "observation", "content": observation})
+    # Execute tool
+    result, sources = service._tool_executor.execute_tool(action_name, action_param, message, enabled_tools)
+    yield {"status": "observation", "result_preview": result[:300], "iteration": iteration + 1}
 ```
 
 ### Parsing
 
 ```python
-# _parse_reflact_response_v2()
-# Basierend auf dem Paper - KEIN separater THOUGHT-Schritt!
+# agent_parsers.py - parse_reflact_response_v2()
+REFLECTION_PATTERN = r"REFLECTION:\s*(.+?)(?=ACTION:|FINAL ANSWER:|THOUGHT:|GOAL:|$)"
+ACTION_PATTERN = r"ACTION:\s*(.+?)(?=OBSERVATION:|REFLECTION:|FINAL ANSWER:|THOUGHT:|GOAL:|$)"
+FINAL_PATTERN = r"FINAL ANSWER:\s*(.+?)(?=ACTION:|REFLECTION:|THOUGHT:|GOAL:|$)"
 
-REFLECTION_PATTERN = r"REFLECTION:\s*(.+?)(?=ACTION:|FINAL ANSWER:|$)"
-ACTION_PATTERN = r"ACTION:\s*(.+?)(?=OBSERVATION:|REFLECTION:|FINAL ANSWER:|$)"
-FINAL_PATTERN = r"FINAL ANSWER:\s*(.+?)(?=ACTION:|REFLECTION:|$)"
-
-# Rückwärtskompatibilität: THOUGHT wird als REFLECTION interpretiert
-THOUGHT_AS_REFLECTION = r"THOUGHT:\s*(.+?)(?=ACTION:|FINAL ANSWER:|REFLECTION:|$)"
+# Rückwärtskompatibel: THOUGHT wird als REFLECTION interpretiert
+THOUGHT_AS_REFLECTION = r"THOUGHT:\s*(.+?)(?=ACTION:|FINAL ANSWER:|REFLECTION:|GOAL:|$)"
 ```
 
 ### Konfiguration
@@ -297,50 +269,60 @@ THOUGHT_AS_REFLECTION = r"THOUGHT:\s*(.+?)(?=ACTION:|FINAL ANSWER:|REFLECTION:|$
 ```python
 # ChatbotPromptSettings
 agent_mode: str = "reflact"
-task_type: str = "multihop"  # Mehr Iterationen erlaubt
-agent_max_iterations: int = 7
-tools_enabled: List[str] = ["rag_search", "lexical_search", "web_search", "respond"]
+task_type: str = "lookup" | "multihop"
+agent_max_iterations: int = 5
 
-# Custom System Prompt (optional)
-reflact_system_prompt: str = "..."
+# Multihop: max_iterations = min(agent_max_iterations + 2, 10)
+
+tools_enabled: List[str] = ["rag_search", "lexical_search", "respond"]
+web_search_enabled: bool = False
+web_search_max_results: int = 5
+
+reflact_system_prompt: str = "..."  # Custom Prompt (optional)
 ```
 
-### Events (WebSocket)
+### Adaptive Iteration (High Confidence)
+
+Wenn die Suche **hohe Konfidenz** liefert, beendet ReflAct die Iteration frühzeitig und generiert direkt eine finale Antwort.
+Die Konfidenz wird aus den Source‑Scores abgeleitet (`check_high_confidence`).
+
+---
+
+## Events (WebSocket)
 
 ```python
-# Streaming Events
-yield {"status": "iteration", "iteration": 1, "max": 7}
-yield {"status": "reflecting", "iteration": 1}  # Start Reflection
-yield {"status": "reflection_delta", "delta": "Aktueller Zustand..."}  # Streaming
-yield {"status": "reflection", "content": "..."}  # Complete REFLECTION
-yield {"status": "action", "action": "rag_search", "argument": "..."}
-yield {"status": "observation", "content": "..."}
-yield {"status": "complete", "response": "...", "sources": [...]}
+# Streaming Events (Auszug)
+yield {"status": "starting", "mode": "reflact"}
+yield {"status": "iteration", "iteration": 1, "max": 7, "goal": "...", "steps": [...]}
+yield {"status": "reflecting", "iteration": 1}
+yield {"status": "reflection_delta", "delta": "...", "iteration": 1}
+yield {"status": "reflection", "reflection": "...", "iteration": 1}
+yield {"status": "action_delta", "delta": "...", "iteration": 1}
+yield {"status": "action", "action": "rag_search", "param": "...", "iteration": 1}
+yield {"status": "observation_delta", "delta": "...", "iteration": 1}
+yield {"status": "observation", "result_preview": "...", "iteration": 1}
+yield {"status": "adaptive_iteration", "iteration": 1, "reason": "high_confidence"}
+yield {"status": "adaptive_response", "reason": "high_confidence_results"}
+yield {"status": "max_iterations_reached"}
+yield {"status": "final_answer"}
+yield {"delta": "..."}
+yield {"done": True, "full_response": "...", "sources": [...], "goal": "..."} 
 ```
 
 ### Logs
 
 ```
-[AgentChatService] ReflAct iteration 1/7
-[ReflAct] Starting iteration 1, messages count: 3
-[AgentChatService] REFLECTION: Aktueller Zustand: Der Benutzer fragt...
-[AgentChatService] ACTION: rag_search("Öffnungszeiten")
-[AgentChatService] Tool executed: rag_search (3 results)
-[AgentChatService] ReflAct iteration 2/7
-[ReflAct] Starting iteration 2, messages count: 6
-[AgentChatService] REFLECTION: Aktueller Zustand: Ich habe Öffnungszeiten...
-[AgentChatService] FINAL ANSWER detected
-[AgentChatService] ReflAct completed in 2 iterations
+[AgentChatService] ReflAct adaptive iteration: high confidence on iteration 2
 ```
 
 ### Vergleich: ReACT vs ReflAct in LLARS
 
 | Aspekt | ReACT | ReflAct |
 |--------|-------|---------|
-| Methode | `_chat_react()` | `_chat_reflact()` |
-| System Prompt | `DEFAULT_REACT_SYSTEM_PROMPT` | `DEFAULT_REFLACT_SYSTEM_PROMPT` |
+| Methode | `chat_react()` | `chat_reflact()` |
+| Ort | `mode_react.py` | `mode_reflact.py` |
 | Reasoning-Schritt | THOUGHT (vorwärts) | REFLECTION (zustandsbasiert) |
-| Parsing | `_parse_react_response()` | `_parse_reflact_response_v2()` |
+| Parsing | `parse_react_response()` | `parse_reflact_response_v2()` |
 | State-Tracking | Implizit | Explizit (3-Punkte-Struktur) |
 | Ziel-Evaluation | Nein | Ja (Ziel-Relation) |
 | Token/Iteration | ~150-300 | ~200-400 |

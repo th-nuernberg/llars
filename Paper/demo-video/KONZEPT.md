@@ -134,106 +134,47 @@ Article:
 
 ---
 
-## 4. Technische Architektur
+## 4. Technische Architektur (aktuell)
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                    DEMO VIDEO PIPELINE                          │
+│                     DEMO VIDEO PIPELINE                         │
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                 │
-│  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐         │
-│  │   SKRIPT    │───▶│ AUTOCLICKER │───▶│   SCREEN    │         │
-│  │   (JSON)    │    │  (Python)   │    │  RECORDER   │         │
-│  └─────────────┘    └─────────────┘    └─────────────┘         │
-│        │                  │                   │                 │
-│        ▼                  ▼                   ▼                 │
-│  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐         │
-│  │    TTS      │    │   TIMING    │    │   VIDEO     │         │
-│  │  (OpenAI)   │    │   SYNC      │    │   OUTPUT    │         │
-│  └─────────────┘    └─────────────┘    └─────────────┘         │
-│        │                  │                   │                 │
-│        └──────────────────┴───────────────────┘                 │
-│                           │                                     │
-│                           ▼                                     │
-│                  ┌─────────────────┐                            │
-│                  │  FINAL VIDEO    │                            │
-│                  │  (Audio+Screen) │                            │
-│                  └─────────────────┘                            │
+│  SCRIPT.json ──▶ run.py (Selenium + TTS + Timeline + Recorder)  │
 │                                                                 │
-│  INTERAKTIV: Live Preview + Pause/Edit bei jedem Schritt       │
+│  Audio-Cache: audio/        Video-Output: output/               │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
 ### Komponenten
 
-1. **Skript-Engine** (`script.json`)
-   - Timing für jeden Schritt
-   - Gesprochener Text
-   - UI-Aktionen (Klicks, Eingaben)
-   - Pause-Punkte für manuelle Überprüfung
+1. **Skript** (`SCRIPT.json`)
+   - Schritte, Narration, Actions, Sections
+   - Einzige Wahrheitsquelle für den Ablauf
 
-2. **Autoclicker** (`autoclicker.py`)
-   - PyAutoGUI für Maus/Keyboard
-   - Selenium für präzise Web-Interaktion
-   - Wartet auf UI-Elemente (nicht nur Zeit)
-   - Highlight-Effekte für Cursor
+2. **Runner** (`run.py`)
+   - Selenium-Automation inkl. Element-Mapping
+   - Timeline-Sync für Actions
+   - Collab-Browser für Live-Demo
+   - ffmpeg-Recording und Audio-Merge
 
-3. **Screen Recorder** (`recorder.py`)
-   - OBS Studio CLI oder ffmpeg
-   - 1920x1080, 30fps
-   - Separater Audio-Track
+3. **TTS Engine** (`src/tts.py`)
+   - Qwen3-TTS (CustomVoice: Ryan/Aiden)
+   - Optional Voice Cloning mit Referenzen in `voices/`
 
-4. **TTS Engine** (`tts.py`)
-   - OpenAI TTS API (alloy/onyx voice)
-   - Pre-generierte Audio-Dateien
-   - Synchronisiert mit Aktionen
-
-5. **Orchestrator** (`orchestrator.py`)
-   - Startet alle Komponenten
-   - Live-Preview Fenster
-   - Pause/Resume/Edit Interface
-   - Checkpoint-System
+4. **Outputs**
+   - Audio-Dateien in `audio/` (inkl. Hashes)
+   - Finale Videos in `output/`
 
 ---
 
-## 5. Interaktiver Workflow
+## 5. Workflow (run.py)
 
-```
-┌────────────────────────────────────────────────────────────────┐
-│                     RECORDING SESSION                          │
-├────────────────────────────────────────────────────────────────┤
-│                                                                │
-│  [START]──▶ Scene 1 ──▶ [CHECKPOINT] ──▶ Scene 2 ──▶ ...     │
-│                              │                                 │
-│                              ▼                                 │
-│                    ┌─────────────────┐                         │
-│                    │ Preview Window  │                         │
-│                    │                 │                         │
-│                    │  [✓ OK]         │                         │
-│                    │  [✗ Redo]       │                         │
-│                    │  [✎ Edit]       │                         │
-│                    └─────────────────┘                         │
-│                              │                                 │
-│                    ┌─────────┼─────────┐                       │
-│                    ▼         ▼         ▼                       │
-│               Continue    Redo     Edit Script                 │
-│                              │         │                       │
-│                              └────▶ Claude ◀──┘               │
-│                                   Assistance                   │
-│                                                                │
-└────────────────────────────────────────────────────────────────┘
-```
-
-### Steuerung während Aufnahme
-
-| Taste | Aktion |
-|-------|--------|
-| `Space` | Pause/Resume |
-| `R` | Aktuelle Szene wiederholen |
-| `E` | Skript im Editor öffnen |
-| `S` | Snapshot speichern |
-| `Q` | Beenden (mit Checkpoint) |
-| `N` | Nächste Szene überspringen |
+1. Skript prüfen: `python run.py --list` oder `python run.py --preview`
+2. Audio generieren: `python run.py --smart`
+3. UI-Test: `python run.py --test`
+4. Aufnahme: `python run.py`
 
 ---
 
@@ -242,66 +183,17 @@ Article:
 ```
 Paper/demo-video/
 ├── KONZEPT.md                 # Dieses Dokument
+├── run.py                     # Hauptskript
+├── SCRIPT.json                # Skript (Steps + Actions)
 ├── data/
 │   ├── news_articles.json     # Testdaten
-│   └── reference_summaries.json
-├── scripts/
-│   ├── full_script.json       # Komplettes Skript
-│   ├── scene_01_intro.json
-│   ├── scene_02_prompt_eng.json
-│   ├── scene_03_batch_gen.json
-│   ├── scene_04_evaluation.json
-│   └── scene_05_outro.json
+│   └── prompt_import.json     # Prompt-Import JSON
 ├── audio/
-│   └── (generierte TTS-Dateien)
+│   └── (generierte TTS-Dateien + Hashes)
 ├── src/
-│   ├── orchestrator.py        # Hauptsteuerung
-│   ├── autoclicker.py         # UI-Automatisierung
-│   ├── recorder.py            # Screen Recording
-│   ├── tts.py                 # Text-to-Speech
-│   └── utils.py               # Hilfsfunktionen
+│   └── tts.py                 # Qwen3-TTS Integration
+├── voices/
+│   └── (Referenz-Audio für Voice Cloning)
 ├── output/
-│   └── (aufgenommene Videos)
-└── requirements.txt
+│   └── (fertige Videos)
 ```
-
----
-
-## 7. Nächste Schritte
-
-1. **[ ] Testdaten erstellen** - news_articles.json mit 5 Artikeln
-2. **[ ] Skript schreiben** - Detailliert für jede Szene
-3. **[ ] Autoclicker implementieren** - Mit Selenium + PyAutoGUI
-4. **[ ] TTS generieren** - OpenAI API für alle Texte
-5. **[ ] Orchestrator bauen** - Mit interaktiver Steuerung
-6. **[ ] Testlauf** - Erste Aufnahme, Fehler identifizieren
-7. **[ ] Iteration** - Skript/Timing anpassen
-8. **[ ] Finale Aufnahme** - Sauberer Durchlauf
-
----
-
-## 8. Technische Anforderungen
-
-### Software
-- Python 3.10+
-- OBS Studio (für Recording)
-- Chrome Browser (für Selenium)
-- ffmpeg (für Audio/Video Merge)
-
-### Python Packages
-```
-pyautogui
-selenium
-webdriver-manager
-openai
-pydub
-keyboard
-mss
-opencv-python
-```
-
-### Lars Setup
-- Lokale Instanz unter localhost:55080
-- Admin-User eingeloggt
-- Testdaten vorgeladen
-- 2 Browser-Fenster (für Collaboration Demo)

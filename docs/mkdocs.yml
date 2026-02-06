@@ -51,7 +51,7 @@ nav:
   - Projekte:
       - Übersicht: projekte/index.md
       - How-To: projekte/how-to-project.md
-      - LLM Evaluator:
+      - LLM Evaluators:
           - Übersicht: projekte/llm-as-judge/index.md
           - Konzept: projekte/llm-as-judge/konzept.md
           - Comparison Modes: projekte/llm-as-judge/comparison-modes-konzept.md

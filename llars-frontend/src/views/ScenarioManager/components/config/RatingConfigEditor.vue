@@ -264,19 +264,19 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue'])
 const { t, locale } = useI18n()
 
-const scaleTypes = [
-  { title: 'Multi-Dimensional (LLM Evaluator)', value: 'multi-dimensional' },
-  { title: 'Likert', value: 'likert' },
-  { title: 'Sterne', value: 'stars' },
-  { title: 'Numerisch', value: 'numeric' },
-  { title: 'Slider', value: 'slider' }
-]
+const scaleTypes = computed(() => [
+  { title: t('scenarioManager.evalConfig.rating.scaleTypeOptions.multiDimensional'), value: 'multi-dimensional' },
+  { title: t('scenarioManager.evalConfig.rating.scaleTypeOptions.likert'), value: 'likert' },
+  { title: t('scenarioManager.evalConfig.rating.scaleTypeOptions.stars'), value: 'stars' },
+  { title: t('scenarioManager.evalConfig.rating.scaleTypeOptions.numeric'), value: 'numeric' },
+  { title: t('scenarioManager.evalConfig.rating.scaleTypeOptions.slider'), value: 'slider' }
+])
 
 // Scale types available for individual dimensions
-const dimensionScaleTypes = [
-  { title: 'Likert (Standard)', value: 'likert' },
-  { title: 'Binär (Ja/Nein)', value: 'binary' }
-]
+const dimensionScaleTypes = computed(() => [
+  { title: t('scenarioManager.evalConfig.rating.dimensionScaleTypeOptions.likert'), value: 'likert' },
+  { title: t('scenarioManager.evalConfig.rating.dimensionScaleTypeOptions.binary'), value: 'binary' }
+])
 
 const localConfig = ref({
   type: 'likert',

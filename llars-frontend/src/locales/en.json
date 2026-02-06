@@ -2868,6 +2868,17 @@
       "customizeConfig": "Customize Configuration",
       "rating": {
         "scaleType": "Scale Type",
+        "scaleTypeOptions": {
+          "multiDimensional": "Multi-dimensional (LLM Evaluator)",
+          "likert": "Likert",
+          "stars": "Stars",
+          "numeric": "Numeric",
+          "slider": "Slider"
+        },
+        "dimensionScaleTypeOptions": {
+          "likert": "Likert (Standard)",
+          "binary": "Binary (Yes/No)"
+        },
         "minValue": "Minimum Value",
         "maxValue": "Maximum Value",
         "stepSize": "Step Size",
@@ -2889,6 +2900,10 @@
       },
       "ranking": {
         "rankingType": "Ranking Type",
+        "typeOptions": {
+          "buckets": "Categories (Buckets)",
+          "ordered": "Ordered list"
+        },
         "allowTies": "Allow Ties",
         "enableDragDrop": "Enable Drag & Drop",
         "showPositions": "Show Positions",
@@ -2905,6 +2920,11 @@
       },
       "labeling": {
         "labelingType": "Labeling Type",
+        "typeOptions": {
+          "binary": "Binary (2 classes)",
+          "multiclass": "Multi-class",
+          "multilabel": "Multi-label"
+        },
         "multiLabel": "Allow Multi-Label",
         "multiLabelHint": "Multiple labels per item selectable",
         "allowUnsure": "Allow Unsure Option",
@@ -2922,6 +2942,10 @@
       },
       "comparison": {
         "comparisonType": "Comparison Type",
+        "typeOptions": {
+          "pairwise": "Pairwise comparison",
+          "tournament": "Tournament format"
+        },
         "allowTie": "Allow Tie",
         "showConfidence": "Show Confidence",
         "itemsPerComparison": "Items per Comparison",
@@ -2936,7 +2960,13 @@
         "shouldBeOne": "should be 1.0",
         "minCriteriaHint": "At least 1 criterion required",
         "tournamentOptions": "Tournament Options",
-        "rounds": "Rounds"
+        "rounds": "Rounds",
+        "roundOptions": {
+          "auto": "Automatic",
+          "round1": "1 round",
+          "round2": "2 rounds",
+          "round3": "3 rounds"
+        }
       },
       "preview": {
         "title": "Preview",
@@ -3088,6 +3118,7 @@
       },
       "metricsResults": "Metrics & Results",
       "noResultsYet": "No results yet. Start an evaluation to see metrics and results here.",
+      "needMoreEvaluators": "Need at least 2 evaluators to compare.",
       "filter": {
         "all": "All",
         "human": "Human",
@@ -3280,6 +3311,11 @@
         "substantial": "Substantial agreement",
         "high": "High agreement",
         "veryHigh": "Very high agreement"
+      },
+      "kendallTau": {
+        "name": "Kendall's Tau",
+        "description": "Measures ordinal association between rankings. More robust than Spearman for small sample sizes.",
+        "range": "-1 to 1 (|τ| > 0.5 = strong)"
       },
       "mae": {
         "title": "MAE (Mean Absolute Error)",

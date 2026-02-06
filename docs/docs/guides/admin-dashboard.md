@@ -1,8 +1,8 @@
 # Admin Dashboard
 
-**Version:** 1.0 | **Stand:** Januar 2026
+**Version:** 1.1 | **Stand:** Januar 2026
 
-Das Admin Dashboard ist die zentrale Verwaltungsoberfläche für LLARS. Administratoren können hier Benutzer, Szenarien, LLM-Modelle, RAG-Collections und Systemeinstellungen verwalten.
+Das Admin Dashboard ist die zentrale Verwaltungsoberfläche für LLARS. Administratoren verwalten hier Nutzer, Szenarien, Chatbots, RAG‑Daten, LLM‑Provider, Systemeinstellungen und Live‑Monitoring.
 
 ---
 
@@ -16,21 +16,17 @@ Das Admin Dashboard ist die zentrale Verwaltungsoberfläche für LLARS. Administ
 │  ──────────  │  ─────────────────────────────────────────────────────────   │
 │              │                                                              │
 │  📊 Übersicht│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐       │
-│  📈 Analytics│  │ Benutzer │ │ Szenarien│ │RAG Docs  │ │ Complet. │       │
-│  👥 Benutzer │  │    42    │ │    15    │ │   234    │ │   78%    │       │
-│  📋 Szenarien│  └──────────┘ └──────────┘ └──────────┘ └──────────┘       │
-│  🤖 Chatbots │                                                              │
-│  📄 RAG      │  System Health                                               │
-│  🔐 Rechte   │  ┌────────────────────────────────────────────────────────┐ │
-│  🔧 LLM      │  │ CPU: ███████░░░  68%  │  RAM: █████████░  85%         │ │
-│  📊 Monitor  │  └────────────────────────────────────────────────────────┘ │
+│  📈 Analytics│  │ Benutzer │ │ Szenarien│ │RAG Docs  │ │Completion│       │
+│  🫀 Health   │  │    42    │ │    15    │ │   234    │ │   78%    │       │
+│  🖥 System   │  └──────────┘ └──────────┘ └──────────┘ └──────────┘       │
+│  👥 Benutzer │                                                              │
+│  📋 Szenarien│  Letzte Aktivitäten                                          │
+│  🤖 Chatbots │  Schnellaktionen                                              │
+│  📄 RAG      │  Aktive Szenarien                                             │
+│  🔐 Rechte   │                                                              │
+│  🔧 LLM      │  System Health                                               │
 │  ⚙️ Settings │                                                              │
-│              │  Aktive Szenarien                                            │
-│              │  ┌────────────────────────────────────────────────────────┐ │
-│              │  │  LLM Evaluator Studie    75%  ████████████░░░░        │ │
-│              │  │  Summary Evaluation      100% ████████████████   ✓    │ │
-│              │  └────────────────────────────────────────────────────────┘ │
-│              │                                                              │
+│  …           │  (weitere Tabs: Presence, Chatbot Activity, Docker, DB, …)   │
 └──────────────┴──────────────────────────────────────────────────────────────┘
 ```
 
@@ -38,11 +34,12 @@ Das Admin Dashboard ist die zentrale Verwaltungsoberfläche für LLARS. Administ
 
 ## Schnellstart
 
-!!! tip "Wichtigste Admin-Aufgaben"
-    1. **Benutzer verwalten** → Rollen zuweisen, Accounts sperren
-    2. **LLM-Modelle konfigurieren** → Provider einrichten, Kosten tracken
-    3. **Szenarien überwachen** → Fortschritt prüfen, Probleme lösen
-    4. **System-Health prüfen** → CPU, RAM, API-Fehler im Blick behalten
+!!! tip "Wichtigste Admin‑Aufgaben"
+    1. **Nutzer verwalten** → Rollen zuweisen, Accounts sperren
+    2. **Szenarien überwachen** → Fortschritt prüfen, Engpässe erkennen
+    3. **LLM‑Provider & Modelle** → Provider konfigurieren, Kosten prüfen
+    4. **System‑Health** → CPU/RAM, Events und Fehlermeldungen im Blick
+    5. **RAG & Crawler** → Collections und Dokumente aktuell halten
 
 ---
 
@@ -50,75 +47,49 @@ Das Admin Dashboard ist die zentrale Verwaltungsoberfläche für LLARS. Administ
 
 ### Übersicht
 
-Das Dashboard zeigt Kennzahlen auf einen Blick:
+Das Overview‑Tab zeigt:
 
-| Karte | Beschreibung |
-|-------|--------------|
-| **Benutzer** | Gesamtzahl registrierter Nutzer |
-| **Szenarien** | Aktive Evaluations-Szenarien |
-| **RAG Docs** | Dokumente in RAG-Collections |
-| **Completion** | Durchschnittliche Abschlussrate |
+- **KPI‑Karten** (Benutzer, aktive Szenarien, RAG‑Dokumente, Abschlussrate)
+- **System‑Health‑Bar** (Kurzstatus)
+- **Letzte Aktivitäten** (mit Event‑Detaildialog)
+- **Schnellaktionen** (z.B. Matomo öffnen, neues Szenario)
+- **Aktive Szenarien** (Tabelle mit Fortschritt)
 
-**Quick Actions:**
-- Analytics öffnen
-- Szenario erstellen
-- Benutzer verwalten
-- Debug Tools
+---
+
+### Analytics (Matomo)
+
+Konfiguration des Matomo‑Trackings:
+
+- Tracking aktivieren/deaktivieren
+- User‑ID, Klick‑/Hover‑Tracking, Heartbeat
+- Privacy‑Optionen (z.B. Cookie‑Verzicht)
+- **Matomo öffnen** Button
 
 ---
 
 ### Benutzer
 
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│  Benutzer                                             [+ Neuer Benutzer]    │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                             │
-│  Suche: [researcher___________]     Rolle: [Alle         ▼]               │
-│                                                                             │
-│  ┌──────────────────────────────────────────────────────────────────────┐  │
-│  │  👤 admin        [Admin]     Aktiv      Letzter Login: Heute          │  │
-│  │  👤 researcher   [Researcher] Aktiv      Letzter Login: Gestern       │  │
-│  │  👤 evaluator    [Evaluator]  Aktiv      Letzter Login: vor 3 Tagen   │  │
-│  │  👤 test_user    [Evaluator]  Gesperrt   Letzter Login: vor 1 Monat   │  │
-│  └──────────────────────────────────────────────────────────────────────┘  │
-│                                                                             │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
+Nutzerverwaltung mit Suche und Rollenfilter:
 
-#### Benutzer-Status
+- Benutzer anlegen, sperren/entsperren, löschen
+- Rollen zuweisen/entfernen
+- Effektive Berechtigungen einsehen
+
+**Benutzer‑Status**
 
 | Status | Beschreibung |
 |--------|--------------|
 | **Aktiv** | Normaler Account |
 | **Gesperrt** | Login deaktiviert |
-| **Gelöscht** | Soft-Delete (Daten erhalten) |
+| **Gelöscht** | Soft‑Delete (Daten erhalten) |
 
-#### Benutzer bearbeiten
-
-```
-┌─────────────────────────────────────────┐
-│  Benutzer: researcher                   │
-├─────────────────────────────────────────┤
-│                                         │
-│  Rollen:                                │
-│  [Researcher] ✕  [Evaluator] ✕         │
-│                                         │
-│  Rolle hinzufügen:                      │
-│  [Admin          ▼] [+ Hinzufügen]     │
-│                                         │
-│  Aktionen:                              │
-│  [🔒 Sperren]  [🗑️ Löschen]            │
-│                                         │
-└─────────────────────────────────────────┘
-```
-
-#### Rollen
+**Rollen (Beispiele)**
 
 | Rolle | Berechtigungen |
 |-------|----------------|
-| **Admin** | Vollzugriff auf alle Funktionen |
-| **Researcher** | Szenarien erstellen, Prompt Engineering, Collaboration |
+| **Admin** | Vollzugriff |
+| **Researcher** | Szenarien + Prompt Engineering |
 | **Evaluator** | An Evaluationen teilnehmen |
 | **Chatbot Manager** | Chatbots und RAG verwalten |
 
@@ -126,32 +97,10 @@ Das Dashboard zeigt Kennzahlen auf einen Blick:
 
 ### Szenarien
 
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│  Szenarien                                           [+ Neues Szenario]     │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                             │
-│  Suche: [_______________]              Status: [Alle         ▼]            │
-│                                                                             │
-│  ┌────────────────────────────────────────────────────────────────────────┐│
-│  │ Name                    │ Typ      │ Beginn     │ Status    │ Aktion   ││
-│  ├────────────────────────────────────────────────────────────────────────┤│
-│  │ LLM Evaluator Studie    │ Rating   │ 15.01.2026 │ 🟢 Aktiv  │ [👁] [🗑]││
-│  │ Summary Evaluation      │ Ranking  │ 10.01.2026 │ ✓ Fertig  │ [👁] [🗑]││
-│  │ Chatbot Bewertung       │ Rating   │ 20.01.2026 │ 🟡 Offen  │ [👁] [🗑]││
-│  └────────────────────────────────────────────────────────────────────────┘│
-│                                                                             │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
+Admin‑Übersicht aller Szenarien:
 
-#### Szenario-Statistiken
-
-Klick auf ein Szenario zeigt detaillierte Statistiken:
-
-- **Evaluator-Fortschritt**: Pro Nutzer
-- **Items-Status**: Bewertet vs. Offen
-- **Inter-Rater-Agreement**: Übereinstimmungsmatrix
-- **Zeitverlauf**: Bewertungen über Zeit
+- Liste mit Typ, Start, Status
+- Detail‑Statistiken (Progress, Items, Agreement)
 
 ---
 
@@ -159,235 +108,129 @@ Klick auf ein Szenario zeigt detaillierte Statistiken:
 
 Zentrale Verwaltung aller Chatbots:
 
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│  Chatbots                                              [+ Neuer Chatbot]    │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                             │
-│  ┌───────────────────────┐  ┌───────────────────────┐                      │
-│  │ 📚 Docs Assistant     │  │ 🛠️ Support Bot        │                      │
-│  │ Status: Aktiv         │  │ Status: Inaktiv       │                      │
-│  │ Collections: 3        │  │ Collections: 1        │                      │
-│  │ [Bearbeiten] [Test]   │  │ [Bearbeiten] [Test]   │                      │
-│  └───────────────────────┘  └───────────────────────┘                      │
-│                                                                             │
-│  In Bearbeitung:                                                            │
-│  ┌───────────────────────────────────────────────────────────────────────┐ │
-│  │ 🔄 Website Crawler     ·  Embedding: 65%  ·  [Wizard fortsetzen]      │ │
-│  └───────────────────────────────────────────────────────────────────────┘ │
-│                                                                             │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
+- Chatbot‑Wizard starten
+- Settings, Collections, Tests
+- Zugriff über Rollen/Benutzer steuern
 
-Siehe [Chatbot Wizard](chatbot-wizard.md) für Details zur Erstellung.
+---
+
+### Chatbot Activity
+
+Monitoring von Chatbot‑bezogenen Events:
+
+- Chats, Wizard‑Status, Dokumente, Collections
+- Filter nach Zeitraum, Benutzer, Typ
 
 ---
 
 ### RAG
 
-RAG-Collections und Dokumente verwalten:
+RAG‑Admin mit Statistiken und Embedding‑Info:
 
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│  RAG Management                                                             │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                             │
-│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐                       │
-│  │Dokumente │ │Verarbeitet│ │Collections│ │Speicher │                       │
-│  │   234    │ │   228    │ │    12    │ │  1.2 GB │                       │
-│  └──────────┘ └──────────┘ └──────────┘ └──────────┘                       │
-│                                                                             │
-│  Embedding-Modell: llamaindex/vdr-2b-multi-v1 (1024 dims)                   │
-│                                                                             │
-│  Collections:                                                               │
-│  ┌────────────────────────────────────────────────────────────────────────┐│
-│  │ Name                │ Dokumente │ Status        │ Aktionen              ││
-│  ├────────────────────────────────────────────────────────────────────────┤│
-│  │ docs.example.com    │ 48        │ ✓ Fertig      │ [👁] [📤] [🗑]        ││
-│  │ support-articles    │ 156       │ ✓ Fertig      │ [👁] [📤] [🗑]        ││
-│  │ internal-wiki       │ 30        │ 🔄 Embedding  │ [👁] [⏸]             ││
-│  └────────────────────────────────────────────────────────────────────────┘│
-│                                                                             │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
+- **Stats**: Dokumente, verarbeitet, Collections, Gesamtgröße
+- **Embedding‑Modell**: aktives Modell, Dimensionen, Provider‑Status
+- **Tabs**: Dokumente, Collections, Upload
 
-#### Processing Queue
+---
 
-Überwachung der Embedding-Verarbeitung:
+### Crawler
 
-| Status | Beschreibung |
-|--------|--------------|
-| **Queued** | Wartet auf Verarbeitung |
-| **Processing** | Embedding wird erstellt |
-| **Completed** | Erfolgreich abgeschlossen |
-| **Failed** | Fehler, Retry möglich |
+Web‑Crawler für RAG‑Ingestion:
+
+- Quellen hinzufügen
+- Crawl‑Status und Fehler einsehen
+- Defaults über System Settings (Pages/Depth/Timeouts)
+
+---
+
+### Field Prompts (AI Assist)
+
+Prompt‑Vorlagen für KI‑Feldassistenz:
+
+- Defaults seeden
+- Prompts erstellen, testen, aktivieren/deaktivieren
 
 ---
 
 ### Berechtigungen
 
-Multi-Tab-Interface für Rechteverwaltung:
+Mehrtab‑Interface:
 
-#### Rollen-Tab
-
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│  Rollen                                                  [+ Neue Rolle]     │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                             │
-│  ┌─────────────────────┐  ┌─────────────────────┐  ┌─────────────────────┐ │
-│  │ Admin               │  │ Researcher          │  │ Evaluator           │ │
-│  │ ─────────────────   │  │ ─────────────────   │  │ ─────────────────   │ │
-│  │ Vollzugriff         │  │ Szenarien erstellen │  │ Evaluationen        │ │
-│  │                     │  │ Prompt Engineering  │  │ durchführen         │ │
-│  │ 45 Berechtigungen   │  │ 23 Berechtigungen   │  │ 8 Berechtigungen    │ │
-│  └─────────────────────┘  └─────────────────────┘  └─────────────────────┘ │
-│                                                                             │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
-
-#### Berechtigungen-Tab
-
-Suche und Filterung aller System-Berechtigungen:
-
-| Kategorie | Beispiele |
-|-----------|-----------|
-| **Admin** | `admin:users:manage`, `admin:system:configure` |
-| **Feature** | `feature:llm:view`, `feature:rag:edit` |
-| **Data** | `data:scenarios:manage`, `data:import` |
-
-#### LLM-Modelle-Tab
-
-Zugriffssteuerung für LLM-Modelle:
-
-!!! info "Allowlist-System"
-    - **Keine Zuweisung** = Öffentlich (alle Nutzer)
-    - **Mit Zuweisung** = Nur zugewiesene Nutzer/Rollen
+- **Rollen** (anzeigen/erstellen)
+- **Berechtigungen** (kategorisiert)
+- **Chatbots** (Zugriffs‑Allowlist)
+- **LLM Modelle** (Zugriffs‑Allowlist)
+- **Audit Log** (Änderungen nachvollziehen)
 
 ---
 
 ### LLM Provider
 
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│  LLM Provider                                           [+ Neuer Provider]  │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                             │
-│  Quick Connect:                                                             │
-│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐                    │
-│  │ OpenAI   │  │Anthropic │  │ LiteLLM  │  │ Ollama   │                    │
-│  │   ✓      │  │   ✓      │  │   ○      │  │   ○      │                    │
-│  └──────────┘  └──────────┘  └──────────┘  └──────────┘                    │
-│                                                                             │
-│  Konfigurierte Provider:                                                    │
-│  ┌────────────────────────────────────────────────────────────────────────┐│
-│  │ Provider    │ Typ       │ Modelle │ Status  │ Aktionen                 ││
-│  ├────────────────────────────────────────────────────────────────────────┤│
-│  │ OpenAI      │ OpenAI    │ 12      │ ✓ Aktiv │ [Test] [Sync] [⚙️]       ││
-│  │ Anthropic   │ Anthropic │ 5       │ ✓ Aktiv │ [Test] [Sync] [⚙️]       ││
-│  └────────────────────────────────────────────────────────────────────────┘│
-│                                                                             │
-│  Modelle:                                                                   │
-│  ┌────────────────────────────────────────────────────────────────────────┐│
-│  │ Modell            │ Typ      │ Kosten ($/1M)    │ Default │ Aktionen   ││
-│  ├────────────────────────────────────────────────────────────────────────┤│
-│  │ gpt-4o            │ LLM      │ $5.00 / $15.00   │   ⭐    │ [⚙️]       ││
-│  │ claude-3.5-sonnet │ LLM      │ $3.00 / $15.00   │         │ [⚙️]       ││
-│  │ vdr-2b-multi-v1   │ Embedding│ $0.02 / -        │   ⭐    │ [⚙️]       ││
-│  └────────────────────────────────────────────────────────────────────────┘│
-│                                                                             │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
+Provider‑ und Modellverwaltung:
 
-#### Provider hinzufügen
+- Quick Connect (OpenAI, Anthropic, LiteLLM, Ollama)
+- Provider testen, synchronisieren
+- Modelle konfigurieren (Kosten, Kontextfenster, Capabilities)
 
-1. **Quick Connect** oder **+ Neuer Provider**
-2. **Typ auswählen** (OpenAI, Anthropic, LiteLLM, Custom)
-3. **API-Key eingeben**
-4. **Verbindung testen**
-5. **Modelle synchronisieren**
+---
 
-#### Modell-Einstellungen
+### Referrals
 
-| Einstellung | Beschreibung |
-|-------------|--------------|
-| **Typ** | LLM, Embedding, Reranker |
-| **Input/Output Kosten** | Preis pro Million Tokens |
-| **Kontext-Fenster** | Max. Token-Anzahl |
-| **Capabilities** | Vision, Reasoning, Function Calling |
-| **Default** | Standard-Modell für Typ |
+Referral‑System für Einladungen:
+
+- Kampagnen und Links verwalten
+- Registrierungen auswerten
+- Status: aktiv, archiviert, deaktiviert
+
+---
+
+### Presence
+
+Live‑Nutzer‑Presence:
+
+- Online/Active/Offline‑Status
+- Suche und Filter
+- Letzte Aktivität und letzter Zugriff
+
+---
+
+### Docker Monitor
+
+Live‑Monitoring der Container:
+
+- Status, Health, CPU/RAM
+- Netzwerk‑Traffic (RX/TX)
+- Containerliste mit Live‑Updates
+
+---
+
+### DB Explorer
+
+Direkter Blick in DB‑Tabellen (read‑only):
+
+- Tabellenliste mit Suche
+- Limit/Filter
+- Vorschau der Daten
 
 ---
 
 ### System Health
 
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│  System Health                                            🟢 Online         │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                             │
-│  ┌──────────┐ ┌──────────┐ ┌──────────┐                                    │
-│  │   CPU    │ │   RAM    │ │API Errors│                                    │
-│  │   68%    │ │   85%    │ │   0.2%   │                                    │
-│  │ ████████ │ │█████████ │ │ █        │                                    │
-│  └──────────┘ └──────────┘ └──────────┘                                    │
-│                                                                             │
-│  [Host Metrics] [API Performance] [WebSocket]                               │
-│                                                                             │
-│  Host Metrics:                                                              │
-│  ┌────────────────────────────────────────────────────────────────────────┐│
-│  │ CPU Last 1h:          Memory:            Disk:                         ││
-│  │ ▁▂▃▄▅▆▇█▇▆▅▄▃▂▁      ████████████░░     ███████░░░░░                  ││
-│  │ Avg: 45%              85% / 16 GB        65% / 500 GB                  ││
-│  └────────────────────────────────────────────────────────────────────────┘│
-│                                                                             │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
+Systemstatus mit Metriken:
 
-#### Health-Status
-
-| Status | Bedeutung |
-|--------|-----------|
-| 🟢 **Good** | Alle Systeme normal |
-| 🟡 **Degraded** | Erhöhte Last oder Fehler |
-| 🔴 **Critical** | Sofortige Aufmerksamkeit erforderlich |
+- Host Metrics (CPU/RAM/Disk)
+- API‑Performance
+- WebSocket‑Status
 
 ---
 
 ### System Events
 
-Live-Monitoring von System-Ereignissen:
+Live‑Event‑Stream mit Filterung:
 
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│  System Events                                    [⏸ Pause] [🗑 Clear]     │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                             │
-│  Filter: [Auth ▼] [Alle Severity ▼] [Suche...___________]                  │
-│                                                                             │
-│  ┌────────────────────────────────────────────────────────────────────────┐│
-│  │ 14:32:05  ℹ️ INFO   auth.login        admin logged in                   ││
-│  │ 14:31:22  ⚠️ WARN   rag.processing    Retry processing doc #234         ││
-│  │ 14:30:45  ℹ️ INFO   scenario.progress evaluator completed item #45      ││
-│  │ 14:29:18  ❌ ERROR  llm.request       Rate limit exceeded (GPT-4o)      ││
-│  │ 14:28:03  ℹ️ INFO   chatbot.message   User started chat with bot #3     ││
-│  └────────────────────────────────────────────────────────────────────────┘│
-│                                                                             │
-│  Total: 1,234  |  Errors: 12  |  Warnings: 45                               │
-│                                                                             │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
-
-#### Event-Kategorien
-
-| Kategorie | Icon | Beschreibung |
-|-----------|------|--------------|
-| Auth | 🔑 | Login, Logout, Token-Events |
-| Scenario | 📋 | Szenario-Aktivitäten |
-| Chatbot | 🤖 | Chat-Interaktionen |
-| RAG | 📄 | Embedding, Processing |
-| System | ⚙️ | Konfigurationsänderungen |
-| Error | ❌ | Fehler aller Arten |
+- Severity‑Filter (info/warn/error)
+- Suche nach Typ/Message/User
+- Event‑Detaildialog (Entity, ID, JSON‑Copy)
 
 ---
 
@@ -395,40 +238,17 @@ Live-Monitoring von System-Ereignissen:
 
 Globale Konfiguration:
 
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│  Systemeinstellungen                                                        │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                             │
-│  Crawler                                                                    │
-│  ┌──────────────────────────────────────────────────────────────────────┐  │
-│  │  Timeout:           [300___] Sekunden                                │  │
-│  │  Max Seiten:        [100___]                                         │  │
-│  │  Max Tiefe:         [3_____]                                         │  │
-│  └──────────────────────────────────────────────────────────────────────┘  │
-│                                                                             │
-│  RAG                                                                        │
-│  ┌──────────────────────────────────────────────────────────────────────┐  │
-│  │  Chunk Size:        [512___] Zeichen                                 │  │
-│  │  Chunk Overlap:     [50____] Zeichen                                 │  │
-│  │  Embedding Timeout: [60____] Sekunden                                │  │
-│  └──────────────────────────────────────────────────────────────────────┘  │
-│                                                                             │
-│  Logging                                                                    │
-│  ┌──────────────────────────────────────────────────────────────────────┐  │
-│  │  ☑ LLM-Prompts loggen                                                │  │
-│  │  ☑ LLM-Responses loggen                                              │  │
-│  │  ☐ Debug-Modus aktivieren                                            │  │
-│  └──────────────────────────────────────────────────────────────────────┘  │
-│                                                                             │
-│                                                     [Speichern]            │
-│                                                                             │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
+- **Crawler Timeouts** (Crawl + Embedding)
+- **Crawler Defaults** (Max Pages/Depth)
+- **RAG Chunking** (Chunk Size/Overlap)
+- **LLM Logging** (Prompts/Responses, Tasks, Max‑Chars)
+- **Referral System** (Enable, Self‑Registration, Default‑Role)
+- **AI Assistant** (Enable, Username, Farbe)
+- **Zotero OAuth** (Env vs DB Fallback)
 
 ---
 
-## API-Endpunkte
+## API‑Endpunkte
 
 ### Benutzer
 
@@ -444,7 +264,21 @@ Globale Konfiguration:
 | Endpunkt | Methode | Beschreibung |
 |----------|---------|--------------|
 | `/api/admin/scenarios` | GET | Szenarien auflisten |
-| `/api/admin/scenario_progress_stats/:id` | GET | Statistiken |
+| `/api/admin/scenario_progress_stats/:id` | GET | Fortschritts‑Statistiken |
+
+### Berechtigungen
+
+| Endpunkt | Methode | Beschreibung |
+|----------|---------|--------------|
+| `/api/permissions` | GET | Alle Berechtigungen |
+| `/api/permissions/roles` | GET/POST | Rollen listen/erstellen |
+| `/api/permissions/roles/:role/permissions` | PUT | Rollen‑Berechtigungen setzen |
+| `/api/permissions/user/:username` | GET | User‑Permissions + Rollen |
+| `/api/permissions/grant` | POST | Permission vergeben |
+| `/api/permissions/revoke` | POST | Permission entziehen |
+| `/api/permissions/assign-role` | POST | Rolle zuweisen |
+| `/api/permissions/unassign-role` | POST | Rolle entfernen |
+| `/api/permissions/audit-log` | GET | Audit‑Log |
 
 ### LLM
 
@@ -456,12 +290,30 @@ Globale Konfiguration:
 | `/api/llm/models` | GET/POST | Modelle verwalten |
 | `/api/llm/models/:id/set-default` | POST | Default setzen |
 
+### Analytics
+
+| Endpunkt | Methode | Beschreibung |
+|----------|---------|--------------|
+| `/api/admin/analytics/settings` | GET/PATCH | Matomo‑Settings |
+
 ### System
 
 | Endpunkt | Methode | Beschreibung |
 |----------|---------|--------------|
-| `/api/admin/system/settings` | GET/PATCH | Einstellungen |
-| `/api/admin/system/events/stream` | GET | Event-Stream (SSE) |
+| `/api/admin/system/settings` | GET/PATCH | Systemeinstellungen |
+| `/api/admin/system/events` | GET | Event‑Liste (Filter/Limit) |
+| `/api/admin/system/events/stream` | GET | Event‑Stream (SSE) |
+
+### Referrals
+
+| Endpunkt | Methode | Beschreibung |
+|----------|---------|--------------|
+| `/api/referral/admin/campaigns` | GET/POST | Kampagnen verwalten |
+| `/api/referral/admin/campaigns/:id` | GET/PUT/DELETE | Kampagne lesen/ändern/löschen |
+| `/api/referral/admin/campaigns/:id/links` | GET/POST | Links einer Kampagne |
+| `/api/referral/admin/links/:id` | GET/PUT/DELETE | Link verwalten |
+| `/api/referral/admin/analytics/overview` | GET | Referral‑Overview |
+| `/api/referral/admin/registrations` | GET | Registrierungen |
 
 ---
 
@@ -471,14 +323,16 @@ Globale Konfiguration:
 |------------|--------------|
 | `admin:users:manage` | Benutzer verwalten |
 | `admin:system:configure` | System konfigurieren |
-| `admin:field_prompts:manage` | KI-Prompts verwalten |
-| `feature:llm:edit` | LLM-Modelle bearbeiten |
-| `feature:rag:edit` | RAG-Collections bearbeiten |
+| `admin:permissions:manage` | Berechtigungen verwalten |
+| `admin:roles:manage` | Rollen verwalten |
+| `admin:field_prompts:manage` | KI‑Prompts verwalten |
+| `feature:llm:edit` | LLM‑Modelle bearbeiten |
+| `feature:rag:edit` | RAG‑Collections bearbeiten |
 
 ---
 
 ## Siehe auch
 
-- [Berechtigungssystem](permission-system.md) - Detaillierte Rechte-Dokumentation
-- [Chatbot Wizard](chatbot-wizard.md) - Chatbots erstellen
-- [Authentik Setup](authentik-setup.md) - Auth-Konfiguration
+- [Berechtigungssystem](permission-system.md) – Detaillierte Rechte‑Dokumentation
+- [Chatbot Wizard](chatbot-wizard.md) – Chatbots erstellen
+- [Authentik Setup](authentik-setup.md) – Auth‑Konfiguration

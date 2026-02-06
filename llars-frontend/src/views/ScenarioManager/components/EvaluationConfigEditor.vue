@@ -18,8 +18,8 @@
             <LIcon color="grey" size="24">mdi-cog-outline</LIcon>
           </div>
           <div class="preset-info">
-            <span class="preset-name">{{ preset.name }}</span>
-            <span class="preset-desc">{{ preset.description }}</span>
+            <span class="preset-name">{{ getPresetName(preset) }}</span>
+            <span class="preset-desc">{{ getPresetDescription(preset) }}</span>
           </div>
           <LIcon v-if="selectedPresetId === preset.id" color="primary" class="preset-check">
             mdi-check-circle
@@ -139,7 +139,45 @@ const props = defineProps({
 
 const emit = defineEmits(['update:modelValue'])
 
-const { t } = useI18n()
+const { locale } = useI18n()
+
+function getLocalizedText(value) {
+  if (!value) return ''
+  if (typeof value === 'string') return value
+  return value[locale.value] || value.de || value.en || ''
+}
+
+function getPresetName(preset) {
+  return getLocalizedText(preset?.name)
+}
+
+function getPresetDescription(preset) {
+  return getLocalizedText(preset?.description)
+}
+
+function normalizeConfig(value) {
+  if (Array.isArray(value)) {
+    return value.map(normalizeConfig)
+  }
+  if (value && typeof value === 'object') {
+    const normalized = {}
+    for (const key of Object.keys(value).sort()) {
+      if (value[key] === undefined) continue
+      normalized[key] = normalizeConfig(value[key])
+    }
+    return normalized
+  }
+  return value
+}
+
+function configsEqual(a, b) {
+  return JSON.stringify(normalizeConfig(a)) === JSON.stringify(normalizeConfig(b))
+}
+
+function findMatchingPreset(config) {
+  const presets = availablePresets.value
+  return presets.find((preset) => configsEqual(preset.config, config)) || null
+}
 
 // Local state
 const selectedPresetId = ref(null)
@@ -192,7 +230,15 @@ function emitUpdate() {
 function initFromValue() {
   if (props.modelValue?.config) {
     localConfig.value = cloneConfig(props.modelValue.config)
-    selectedPresetId.value = props.modelValue.presetId || 'custom'
+    if (props.modelValue.presetId) {
+      selectedPresetId.value = props.modelValue.presetId
+    } else {
+      const match = findMatchingPreset(localConfig.value)
+      selectedPresetId.value = match?.id || 'custom'
+      if (match) {
+        emitUpdate()
+      }
+    }
   } else {
     // Set default preset
     const presets = availablePresets.value

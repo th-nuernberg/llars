@@ -1,16 +1,18 @@
 {
   "_comment": "Lars Demo Video - IJCAI 2026 Demo Track",
-  "_version": "8.0 - With live collaboration demo (two browsers)",
+  "_version": "9.0 - Cleaned up flow, removed detours, added podcast moments",
   "_duration_target": "4-5 minutes",
   "_design_principles": [
     "Someone is always speaking",
     "Live collab with a real second browser",
     "Dialogue style: moderator explains, guest asks questions"
   ],
-
   "config": {
     "url": "http://localhost:55080",
-    "resolution": [1920, 1080],
+    "resolution": [
+      1920,
+      1080
+    ],
     "tts_model": "custom-small",
     "output_file": "llars_demo.mp4",
     "language": "en",
@@ -33,765 +35,1648 @@
       }
     }
   },
-
   "steps": [
     {
-      "_section": "=== INTRO (25s) ===",
+      "_section": "=== INTRO (30s) ===",
       "id": "intro_1",
       "speaker": "moderator",
-      "narration": "Hi everyone, I'm Alex.",
+      "narration": "Hi, I'm Alex — welcome to the Lars demo.",
       "actions": [
-        {"do": "show_title", "title": "Lars", "subtitle": "LLM Assisted Research System"}
+        {
+          "do": "show_title",
+          "title": "Lars",
+          "subtitle": "LLM Assisted Research System"
+        }
       ]
     },
-
     {
       "id": "intro_2",
       "speaker": "guest",
-      "narration": "Hey, I'm David.",
+      "narration": "And I'm David. I've read the paper and I'm curious to see how this works in practice.",
       "actions": [
-        {"do": "wait", "seconds": 0.5}
+        {
+          "do": "wait",
+          "seconds": 0.3
+        }
       ]
     },
-
     {
       "id": "intro_3",
       "speaker": "moderator",
-      "narration": "Today I'm giving David a quick tour of Lars, our LLM Assisted Research System.",
+      "narration": "Alright, let me show you. The problem Lars solves: when you're building an LLM assistant — whether for medical documentation, legal analysis, or counseling — you need to find the right model, align it to your domain, and prove it works. Standard benchmarks don't help with application-specific criteria.",
       "actions": [
-        {"do": "wait", "seconds": 1}
+        {
+          "do": "wait",
+          "seconds": 0.5
+        }
       ]
     },
-
     {
       "id": "intro_4",
       "speaker": "guest",
-      "narration": "Great. If I'm building an application, how do I choose the right model, evaluate what I use today, and prove that a smaller, cheaper option can replace it?",
+      "narration": "Right — and if you're migrating to a cheaper model, users notice behavioral shifts. You need systematic methods to compare outputs.",
       "actions": [
-        {"do": "wait", "seconds": 1}
+        {
+          "do": "wait",
+          "seconds": 0.3
+        }
       ]
     },
-
+    {
+      "id": "intro_5",
+      "speaker": "moderator",
+      "narration": "Exactly. Lars brings domain experts and AI developers together to evaluate LLM outputs — from prompt development through batch generation to rigorous human and machine evaluation.",
+      "actions": [
+        {
+          "do": "goto",
+          "url": "/Home"
+        },
+        {
+          "do": "wait",
+          "seconds": 1
+        },
+        {
+          "do": "highlight",
+          "target": "Prompt Engineering",
+          "duration": 1.0
+        },
+        {
+          "do": "highlight",
+          "target": "Batch Generation",
+          "duration": 1.0
+        },
+        {
+          "do": "highlight",
+          "target": "Evaluation",
+          "duration": 1.0
+        }
+      ]
+    },
     {
       "_section": "=== PROMPT ENGINEERING (120s) ===",
       "id": "prompt_eng_1",
       "speaker": "moderator",
       "narration": "We start with Prompt Engineering. This is where teams build and refine their prompts together.",
       "actions": [
-        {"do": "sync", "after": "Prompt Engineering"},
-        {"do": "highlight", "target": "Prompt Engineering", "duration": 1.5},
-        {"do": "click", "target": "Prompt Engineering"}
+        {
+          "do": "sync",
+          "after": "Prompt Engineering"
+        },
+        {
+          "do": "highlight",
+          "target": "Prompt Engineering",
+          "duration": 1.5
+        },
+        {
+          "do": "click",
+          "target": "Prompt Engineering"
+        }
       ]
     },
-
     {
       "id": "prompt_eng_2",
       "speaker": "moderator",
-      "narration": "Let's create a fresh prompt and share it with our researcher so they can jump in immediately.",
+      "narration": "Let's create a fresh prompt. You can add collaborators here \u2014 and we'll add the researcher now.",
       "actions": [
-        {"do": "wait", "seconds": 0.5},
-        {"do": "highlight", "target": "New Prompt", "duration": 1.5},
-        {"do": "click", "target": "New Prompt"},
-        {"do": "wait_for_modal"}
+        {
+          "do": "wait",
+          "seconds": 0.5
+        },
+        {
+          "do": "highlight",
+          "target": "New Prompt",
+          "duration": 1.5
+        },
+        {
+          "do": "click",
+          "target": "New Prompt"
+        },
+        {
+          "do": "wait_for_modal"
+        }
       ]
     },
-
     {
       "id": "prompt_eng_3",
       "speaker": "moderator",
-      "narration": "I give it a name, add the researcher, and create the prompt.",
+      "narration": "I'll name it, add a collaborator, and create.",
       "actions": [
-        {"do": "type", "target": "Prompt Name Input", "text": "Analyst Summary Prompt", "speed": "fast"},
-        {"do": "type", "target": "input[placeholder='Search and add users...']", "text": "researcher", "speed": "fast"},
-        {"do": "wait", "seconds": 1},
-        {"do": "click", "target": "researcher"},
-        {"do": "click", "target": "Dialog Create Button"},
-        {"do": "wait", "seconds": 1.5}
+        {
+          "do": "type",
+          "target": "Prompt Name Input",
+          "text": "News Summary Eval",
+          "speed": "fast"
+        },
+        {
+          "do": "type",
+          "target": "input[placeholder='Search and add users...']",
+          "text": "researcher",
+          "speed": "fast"
+        },
+        {
+          "do": "wait",
+          "seconds": 1
+        },
+        {
+          "do": "click",
+          "target": "researcher"
+        },
+        {
+          "do": "click",
+          "target": "Dialog Create Button"
+        },
+        {
+          "do": "wait",
+          "seconds": 1.5
+        }
       ]
     },
-
     {
       "id": "prompt_eng_3b",
       "speaker": "moderator",
-      "narration": "Now we open it and start structuring the blocks.",
+      "narration": "Now let's open it and structure the prompt.",
       "actions": [
-        {"do": "goto", "url": "/promptengineering"},
-        {"do": "wait", "seconds": 1},
-        {"do": "highlight", "target": "Analyst Summary Prompt", "duration": 1.5},
-        {"do": "click", "target": "Analyst Summary Prompt"},
-        {"do": "wait", "seconds": 1}
+        {
+          "do": "wait",
+          "seconds": 0.5
+        },
+        {
+          "do": "highlight",
+          "target": "News Summary Eval",
+          "duration": 1.5
+        },
+        {
+          "do": "click",
+          "target": "News Summary Eval"
+        },
+        {
+          "do": "wait",
+          "seconds": 0.5
+        }
       ]
     },
-
     {
       "id": "prompt_eng_4",
       "speaker": "moderator",
-      "narration": "Prompts are built from blocks. I'll add a System block and a User block.",
+      "narration": "Prompts are built from blocks. The simplest setup is a System block for behavior and a User block for the actual input. But you can add more — role definition, output format, task description — whatever structure helps your domain experts work systematically.",
       "actions": [
-        {"do": "wait", "seconds": 0.5},
-        {"do": "click", "target": "New Block"},
-        {"do": "wait_for_modal"},
-        {"do": "type", "target": "Block Name Input", "text": "System", "speed": "fast"},
-        {"do": "click", "target": "Block Create Button"},
-        {"do": "wait", "seconds": 0.5},
-        {"do": "click", "target": "New Block"},
-        {"do": "wait_for_modal"},
-        {"do": "type", "target": "Block Name Input", "text": "User", "speed": "fast"},
-        {"do": "click", "target": "Block Create Button"},
-        {"do": "wait", "seconds": 0.5}
+        {
+          "do": "wait",
+          "seconds": 0.5
+        },
+        {
+          "do": "click",
+          "target": "New Block"
+        },
+        {
+          "do": "wait_for_modal"
+        },
+        {
+          "do": "type",
+          "target": "Block Name Input",
+          "text": "System",
+          "speed": "fast"
+        },
+        {
+          "do": "click",
+          "target": "Block Create Button"
+        },
+        {
+          "do": "wait",
+          "seconds": 0.5
+        },
+        {
+          "do": "click",
+          "target": "New Block"
+        },
+        {
+          "do": "wait_for_modal"
+        },
+        {
+          "do": "type",
+          "target": "Block Name Input",
+          "text": "User",
+          "speed": "fast"
+        },
+        {
+          "do": "click",
+          "target": "Block Create Button"
+        },
+        {
+          "do": "wait",
+          "seconds": 0.5
+        }
       ]
     },
-
+    {
+      "id": "prompt_eng_4b",
+      "speaker": "guest",
+      "narration": "So the blocks give structure — domain experts know where to put what, and developers can enforce a consistent format.",
+      "actions": [
+        {
+          "do": "highlight",
+          "target": "First Block Editor",
+          "duration": 1.2
+        },
+        {
+          "do": "highlight",
+          "target": "Last Block Editor",
+          "duration": 1.2
+        }
+      ]
+    },
     {
       "id": "prompt_eng_5",
       "speaker": "moderator",
-      "narration": "Now we start writing. The system block defines behavior, the user block carries variables.",
+      "narration": "Exactly. Now I'll write the system instructions and the user template with placeholders for our variables.",
       "actions": [
-        {"do": "wait", "seconds": 0.5},
-        {"do": "type", "target": "First Block Editor", "text": "You are a careful evaluator. Keep outputs concise and factual.", "speed": "fast"},
-        {"do": "type", "target": "Last Block Editor", "text": "\n\nSummarize:\nTitle: {{title}}\nContent: {{content}}", "speed": "fast"}
+        {
+          "do": "wait",
+          "seconds": 0.3
+        },
+        {
+          "do": "type",
+          "target": "First Block Editor",
+          "text": "You are a professional news editor. Summarize articles in 2-3 sentences. Be factual and avoid speculation.",
+          "speed": "fast"
+        },
+        {
+          "do": "type",
+          "target": "Last Block Editor",
+          "text": "Title: {{title}}\n\nArticle:\n{{content}}\n\nSummary:",
+          "speed": "fast"
+        }
       ]
     },
-
     {
       "id": "prompt_eng_5a",
       "speaker": "moderator",
-      "narration": "Before testing, I'll add reusable variables with example values.",
+      "narration": "Now I define the variables with example values for testing.",
       "actions": [
-        {"do": "wait", "seconds": 0.5},
-        {"do": "click", "target": "Manage Variables"},
-        {"do": "wait_for_modal"},
-        {"do": "type", "target": "Variable Name Input", "text": "title", "speed": "fast"},
-        {"do": "type", "target": "Variable Content Input", "text": "New AI model breaks summarization benchmarks.", "speed": "fast"},
-        {"do": "click", "target": "Create Variable"},
-        {"do": "wait", "seconds": 0.5},
-        {"do": "clear", "target": "Variable Name Input"},
-        {"do": "clear", "target": "Variable Content Input"},
-        {"do": "type", "target": "Variable Name Input", "text": "content", "speed": "fast"},
-        {"do": "type", "target": "Variable Content Input", "text": "Researchers released a smaller model that matches larger systems on key tasks.", "speed": "fast"},
-        {"do": "click", "target": "Create Variable"},
-        {"do": "wait", "seconds": 0.5},
-        {"do": "click", "target": "Variable Dialog Close"},
-        {"do": "wait", "seconds": 0.5}
+        {
+          "do": "wait",
+          "seconds": 0.5
+        },
+        {
+          "do": "click",
+          "target": "Manage Variables"
+        },
+        {
+          "do": "wait_for_modal"
+        },
+        {
+          "do": "type",
+          "target": "Variable Name Input",
+          "text": "title",
+          "speed": "fast"
+        },
+        {
+          "do": "type",
+          "target": "Variable Content Input",
+          "text": "Tech Giants Race to Deploy Smaller AI Models",
+          "speed": "instant"
+        },
+        {
+          "do": "click",
+          "target": "Create Variable"
+        },
+        {
+          "do": "wait",
+          "seconds": 0.5
+        },
+        {
+          "do": "clear",
+          "target": "Variable Name Input"
+        },
+        {
+          "do": "clear",
+          "target": "Variable Content Input"
+        },
+        {
+          "do": "type",
+          "target": "Variable Name Input",
+          "text": "content",
+          "speed": "fast"
+        },
+        {
+          "do": "type",
+          "target": "Variable Content Input",
+          "text": "Major technology companies are shifting focus from ever-larger language models to smaller, efficient alternatives. Industry analysts report that compact models now match flagship systems on common benchmarks while cutting inference costs by up to 80 percent. Early enterprise adopters cite faster deployment and reduced operational complexity as key benefits.",
+          "speed": "instant"
+        },
+        {
+          "do": "click",
+          "target": "Create Variable"
+        },
+        {
+          "do": "wait",
+          "seconds": 0.5
+        },
+        {
+          "do": "click",
+          "target": "Variable Dialog Close"
+        },
+        {
+          "do": "wait",
+          "seconds": 0.5
+        }
       ]
     },
-
     {
       "id": "prompt_eng_5b",
       "speaker": "moderator",
-      "narration": "Now we can test the prompt instantly.",
+      "narration": "Now let's test it. I click Test — and the variables we just defined are automatically inserted.",
       "actions": [
-        {"do": "click", "target": "Test"},
-        {"do": "wait_for", "target": "Test Prompt Dialog", "timeout": 10},
-        {"do": "wait", "seconds": 2},
-        {"do": "highlight", "target": "Response Output", "duration": 2},
-        {"do": "click", "target": "Close"},
-        {"do": "wait", "seconds": 0.5}
+        {
+          "do": "click",
+          "target": "Test"
+        },
+        {
+          "do": "wait_for",
+          "target": "Test Prompt Dialog",
+          "timeout": 10
+        },
+        {
+          "do": "wait",
+          "seconds": 1
+        },
+        {
+          "do": "highlight",
+          "target": "Test Variables Preview",
+          "duration": 1.5
+        }
       ]
     },
-
+    {
+      "id": "prompt_eng_5c",
+      "speaker": "moderator",
+      "narration": "And here's the output. See, David — we can immediately check how this LLM interprets our prompt. If the summary is too long or misses the point, we tweak the instructions and test again with the same data.",
+      "actions": [
+        {
+          "do": "wait",
+          "seconds": 1.5
+        },
+        {
+          "do": "highlight",
+          "target": "Response Output",
+          "duration": 2.5
+        }
+      ]
+    },
+    {
+      "id": "prompt_eng_5d",
+      "speaker": "guest",
+      "narration": "That's a tight feedback loop — edit, test, repeat. No need to switch tools or re-upload data every time.",
+      "actions": [
+        {
+          "do": "highlight",
+          "target": "Response Output",
+          "duration": 1.5
+        },
+        {
+          "do": "click",
+          "target": "Close"
+        },
+        {
+          "do": "wait",
+          "seconds": 0.5
+        }
+      ]
+    },
     {
       "id": "prompt_eng_6",
       "speaker": "guest",
-      "narration": "Can multiple people edit this at the same time?",
+      "narration": "And can multiple people edit the same prompt at the same time?",
       "actions": [
-        {"do": "wait", "seconds": 0.5}
+        {
+          "do": "wait",
+          "seconds": 0.2
+        }
       ]
     },
-
     {
       "_comment": "=== LIVE COLLAB DEMO (NEW PROMPT) ===",
       "id": "collab_1",
       "speaker": "moderator",
-      "narration": "Absolutely. I'm opening a second browser as our researcher colleague.",
+      "narration": "Yes they can. I'm opening a second browser as a researcher colleague.",
       "actions": [
-        {"do": "sync", "after": "second browser"},
-        {"do": "collab_open", "user": "researcher"},
-        {"do": "wait", "seconds": 1}
+        {
+          "do": "sync",
+          "after": "second browser"
+        },
+        {
+          "do": "collab_open",
+          "user": "researcher"
+        },
+        {
+          "do": "wait",
+          "seconds": 1
+        }
       ]
     },
-
     {
       "id": "collab_2",
       "speaker": "moderator",
       "narration": "They open the prompt we just created. Watch the editor.",
       "actions": [
-        {"do": "collab_goto", "url": "/promptengineering"},
-        {"do": "wait", "seconds": 1},
-        {"do": "collab_click", "target": "Analyst Summary Prompt"},
-        {"do": "wait", "seconds": 1}
+        {
+          "do": "collab_goto",
+          "url": "/promptengineering"
+        },
+        {
+          "do": "wait",
+          "seconds": 1
+        },
+        {
+          "do": "collab_click",
+          "target": "News Summary Eval"
+        },
+        {
+          "do": "wait",
+          "seconds": 1
+        }
       ]
     },
-
     {
       "id": "collab_3",
       "speaker": "moderator",
-      "narration": "A second cursor appears, and edits sync instantly.",
+      "narration": "A second cursor appears — and every edit is tracked per user. You always know who wrote what.",
       "actions": [
-        {"do": "collab_focus"},
-        {"do": "wait", "seconds": 0.5},
-        {"do": "collab_type", "target": "First Block Editor", "text": "\n\n# Added by researcher", "delay": 0.1},
-        {"do": "wait", "seconds": 0.5},
-        {"do": "highlight", "target": "First Block Editor", "duration": 1.5}
+        {
+          "do": "collab_focus"
+        },
+        {
+          "do": "wait",
+          "seconds": 0.5
+        },
+        {
+          "do": "collab_type",
+          "target": "First Block Editor",
+          "text": "\n\nBe strict about factual accuracy and avoid speculation. If uncertain, say so.",
+          "delay": 0.1
+        },
+        {
+          "do": "wait",
+          "seconds": 0.5
+        },
+        {
+          "do": "highlight",
+          "target": "First Block Editor",
+          "duration": 1.5
+        }
       ]
     },
-
     {
       "id": "collab_4",
       "speaker": "guest",
-      "narration": "Like Google Docs for prompts. That's genuinely useful for distributed research teams.",
+      "narration": "That's like Google Docs for prompts. And the different colors — is that how you tell who wrote what?",
       "actions": [
-        {"do": "wait", "seconds": 0.5}
+        {
+          "do": "highlight",
+          "target": "First Block Editor",
+          "duration": 2
+        }
       ]
     },
-
     {
-      "id": "prompt_eng_12",
+      "id": "collab_5",
       "speaker": "moderator",
-      "narration": "While we collaborate, I can even change my collaboration color right from the app bar.",
+      "narration": "Exactly — each collaborator gets a distinct color. You can pick yours right here in the app bar.",
       "actions": [
-        {"do": "click", "target": ".user-menu-trigger"},
-        {"do": "click", "target": "Settings"},
-        {"do": "wait", "seconds": 0.5},
-        {"do": "highlight", "target": "Collaboration Color", "duration": 1.5},
-        {"do": "click_random", "target": "Collab Color Preset", "exclude_selected": true},
-        {"do": "wait", "seconds": 0.5},
-        {"do": "click", "target": ".v-dialog .v-card-title .v-btn"},
-        {"do": "wait", "seconds": 0.5}
+        {
+          "do": "click",
+          "target": ".user-menu-trigger"
+        },
+        {
+          "do": "wait",
+          "seconds": 0.5
+        },
+        {
+          "do": "highlight",
+          "target": "Collaboration Color",
+          "duration": 1.5
+        },
+        {
+          "do": "click_random",
+          "target": "Collab Color Preset",
+          "exclude_selected": true
+        },
+        {
+          "do": "wait",
+          "seconds": 0.5
+        },
+        {
+          "do": "click",
+          "target": ".user-menu-trigger"
+        }
       ]
     },
-
     {
       "id": "prompt_eng_7",
       "speaker": "moderator",
-      "narration": "Now let's switch to a prepared prompt seeded by our demo seeder.",
+      "narration": "Good. Now we have two prompts — the one we just built together, and a pre-seeded one with slightly different instructions. We'll compare both in Batch Generation.",
       "actions": [
-        {"do": "goto", "url": "/promptengineering"},
-        {"do": "wait", "seconds": 1},
-        {"do": "highlight", "target": "News Summary Prompt", "duration": 1.5},
-        {"do": "click", "target": "News Summary Prompt"},
-        {"do": "wait", "seconds": 1}
+        {
+          "do": "collab_close"
+        },
+        {
+          "do": "goto",
+          "url": "/promptengineering"
+        },
+        {
+          "do": "wait",
+          "seconds": 1
+        },
+        {
+          "do": "highlight",
+          "target": "News Summary Eval",
+          "duration": 1.2
+        },
+        {
+          "do": "highlight",
+          "target": "News Summary Prompt",
+          "duration": 1.2
+        },
+        {
+          "do": "click",
+          "target": "News Summary Prompt"
+        },
+        {
+          "do": "wait",
+          "seconds": 0.5
+        }
       ]
     },
-
-    {
-      "id": "prompt_eng_8",
-      "speaker": "moderator",
-      "narration": "The system block defines the AI's role. Two sentences, factual, neutral tone. Very specific instructions.",
-      "actions": [
-        {"do": "sync", "after": "system block"},
-        {"do": "highlight", "target": "First Block Editor", "duration": 3}
-      ]
-    },
-
-    {
-      "id": "prompt_eng_9",
-      "speaker": "guest",
-      "narration": "And those curly braces in the user block?",
-      "actions": [
-        {"do": "wait", "seconds": 0.5}
-      ]
-    },
-
-    {
-      "id": "prompt_eng_10",
-      "speaker": "moderator",
-      "narration": "Variables! Title and content get automatically filled from your data during batch processing. The editor highlights them clearly.",
-      "actions": [
-        {"do": "sync", "after": "Variables"},
-        {"do": "highlight", "target": "Last Block Editor", "duration": 3}
-      ]
-    },
-
-    {
-      "id": "prompt_eng_11",
-      "speaker": "moderator",
-      "narration": "The researcher can jump in here too.",
-      "actions": [
-        {"do": "collab_goto", "url": "/promptengineering"},
-        {"do": "wait", "seconds": 1},
-        {"do": "collab_click", "target": "News Summary Prompt"},
-        {"do": "wait", "seconds": 1},
-        {"do": "collab_focus"},
-        {"do": "collab_type", "target": "Last Block Editor", "text": "\n\n# Reviewer note: keep it under 60 words.", "delay": 0.1},
-        {"do": "wait", "seconds": 0.5}
-      ]
-    },
-
     {
       "id": "prompt_eng_13",
       "speaker": "moderator",
-      "narration": "Prompts are portable too. You can download them or import blocks from JSON.",
+      "narration": "Prompts are portable — you can download them as JSON or import blocks from other prompts.",
       "actions": [
-        {"do": "highlight", "target": "Download", "duration": 1.5},
-        {"do": "wait", "seconds": 0.5},
-        {"do": "highlight", "target": "Import", "duration": 1.5},
-        {"do": "collab_close"}
+        {
+          "do": "highlight",
+          "target": "Download",
+          "duration": 1.5
+        },
+        {
+          "do": "highlight",
+          "target": "Import",
+          "duration": 1.5
+        }
       ]
     },
-
     {
       "_section": "=== BRING YOUR OWN MODELS (20s) ===",
       "id": "providers_1",
       "speaker": "moderator",
       "narration": "Before generation, you can add your own LLM providers in Settings.",
       "actions": [
-        {"do": "goto", "url": "/settings"},
-        {"do": "wait", "seconds": 1},
-        {"do": "highlight", "target": "User Settings Providers Tab", "duration": 1.5},
-        {"do": "click", "target": "User Settings Providers Tab"},
-        {"do": "wait", "seconds": 0.5}
+        {
+          "do": "goto",
+          "url": "/settings"
+        },
+        {
+          "do": "wait",
+          "seconds": 1
+        },
+        {
+          "do": "highlight",
+          "target": "User Settings Providers Tab",
+          "duration": 1.5
+        },
+        {
+          "do": "click",
+          "target": "User Settings Providers Tab"
+        },
+        {
+          "do": "wait",
+          "seconds": 0.5
+        }
       ]
     },
-
     {
       "id": "providers_2",
       "speaker": "guest",
-      "narration": "Does that include OpenAI, Gemini, Claude, and self-hosted endpoints?",
+      "narration": "What if my team uses a different provider — say a local Ollama instance or a custom API?",
       "actions": [
-        {"do": "highlight", "target": "Providers Info", "duration": 1.5}
+        {
+          "do": "highlight",
+          "target": "Providers Info",
+          "duration": 1.5
+        }
       ]
     },
-
     {
       "id": "providers_3",
       "speaker": "moderator",
-      "narration": "Yes. OpenAI, Google Gemini, Anthropic Claude, and any OpenAI-compatible endpoint like vLLM or LiteLLM.",
+      "narration": "Lars supports over a hundred providers through LiteLLM — OpenAI, Anthropic, local Ollama, any OpenAI-compatible endpoint. You add them right here.",
       "actions": [
-        {"do": "click", "target": "Add Provider"},
-        {"do": "wait_for", "target": "Provider Type Select", "timeout": 10},
-        {"do": "click", "target": "Provider Type Select"},
-        {"do": "wait", "seconds": 0.5},
-        {"do": "highlight", "target": "Provider Type Options", "duration": 2},
-        {"do": "click", "target": "Cancel"},
-        {"do": "wait", "seconds": 0.5}
+        {
+          "do": "click",
+          "target": "Add Provider"
+        },
+        {
+          "do": "wait_for",
+          "target": "Provider Type Select",
+          "timeout": 10
+        },
+        {
+          "do": "click",
+          "target": "Provider Type Select"
+        },
+        {
+          "do": "wait",
+          "seconds": 0.5
+        },
+        {
+          "do": "highlight",
+          "target": "Provider Type Options",
+          "duration": 2
+        },
+        {
+          "do": "click",
+          "target": "Cancel"
+        },
+        {
+          "do": "wait",
+          "seconds": 0.5
+        }
       ]
     },
-
     {
       "_section": "=== BATCH GENERATION (90s) ===",
       "id": "batch_gen_1",
       "speaker": "moderator",
       "narration": "Once the prompt is ready, we move to Batch Generation. Let's create a new job from our data.",
       "actions": [
-        {"do": "goto", "url": "/Home"},
-        {"do": "wait", "seconds": 1},
-        {"do": "highlight", "target": "Batch Generation", "duration": 1.5},
-        {"do": "click", "target": "Batch Generation"}
+        {
+          "do": "goto",
+          "url": "/Home"
+        },
+        {
+          "do": "wait",
+          "seconds": 1
+        },
+        {
+          "do": "highlight",
+          "target": "Batch Generation",
+          "duration": 1.5
+        },
+        {
+          "do": "click",
+          "target": "Batch Generation"
+        }
       ]
     },
-
     {
       "id": "batch_gen_2",
       "speaker": "moderator",
       "narration": "We start a new generation job.",
       "actions": [
-        {"do": "wait", "seconds": 1},
-        {"do": "highlight", "target": "New Job", "duration": 1.5},
-        {"do": "click", "target": "New Job"},
-        {"do": "wait_for", "target": "Generation Wizard", "timeout": 10}
+        {
+          "do": "wait",
+          "seconds": 1
+        },
+        {
+          "do": "highlight",
+          "target": "New Job",
+          "duration": 1.5
+        },
+        {
+          "do": "click",
+          "target": "New Job"
+        },
+        {
+          "do": "wait_for",
+          "target": "Generation Wizard",
+          "timeout": 10
+        }
       ]
     },
-
     {
       "id": "batch_gen_3",
       "speaker": "moderator",
       "narration": "Lars accepts JSON upload or a quick paste. I'll paste the JSON and scroll the raw data.",
       "actions": [
-        {"do": "highlight", "target": "Source Upload", "duration": 1.5},
-        {"do": "click", "target": "Source Upload"},
-        {"do": "wait", "seconds": 0.5},
-        {"do": "wait_for", "target": "Manual Data Textarea", "timeout": 10},
-        {"do": "highlight", "target": "Manual Data Textarea", "duration": 1.5},
-        {"do": "set_text_from_file", "target": "Manual Data Textarea", "file": "data/news_articles.json"},
-        {"do": "scroll", "target": "Manual Data Textarea", "amount": 260},
-        {"do": "wait", "seconds": 0.3},
-        {"do": "scroll", "target": "Manual Data Textarea", "amount": 260},
-        {"do": "wait", "seconds": 1},
-        {"do": "click", "target": "Next"}
+        {
+          "do": "highlight",
+          "target": "Source Upload",
+          "duration": 1.5
+        },
+        {
+          "do": "click",
+          "target": "Source Upload"
+        },
+        {
+          "do": "wait",
+          "seconds": 0.5
+        },
+        {
+          "do": "wait_for",
+          "target": "Manual Data Textarea",
+          "timeout": 10
+        },
+        {
+          "do": "highlight",
+          "target": "Manual Data Textarea",
+          "duration": 1.5
+        },
+        {
+          "do": "set_text_from_file",
+          "target": "Manual Data Textarea",
+          "file": "data/news_articles.json"
+        },
+        {
+          "do": "scroll",
+          "target": "Manual Data Textarea",
+          "amount": 260
+        },
+        {
+          "do": "wait",
+          "seconds": 0.3
+        },
+        {
+          "do": "scroll",
+          "target": "Manual Data Textarea",
+          "amount": 260
+        },
+        {
+          "do": "wait",
+          "seconds": 1
+        },
+        {
+          "do": "click",
+          "target": "Next"
+        }
       ]
     },
-
     {
       "id": "batch_gen_4",
       "speaker": "moderator",
       "narration": "Then we pick two prepared prompts for comparison.",
       "actions": [
-        {"do": "wait", "seconds": 1},
-        {"do": "highlight", "target": "News Summary Prompt Item", "duration": 1.5},
-        {"do": "click", "target": "News Summary Prompt Item"},
-        {"do": "wait", "seconds": 0.5},
-        {"do": "highlight", "target": "Analyst Summary Prompt Item", "duration": 1.5},
-        {"do": "click", "target": "Analyst Summary Prompt Item"},
-        {"do": "click", "target": "Next"}
+        {
+          "do": "wait",
+          "seconds": 1
+        },
+        {
+          "do": "highlight",
+          "target": "News Summary Prompt Item",
+          "duration": 1.5
+        },
+        {
+          "do": "click",
+          "target": "News Summary Prompt Item"
+        },
+        {
+          "do": "wait",
+          "seconds": 0.5
+        },
+        {
+          "do": "highlight",
+          "target": "News Summary Eval Item",
+          "duration": 1.5
+        },
+        {
+          "do": "click",
+          "target": "News Summary Eval Item"
+        },
+        {
+          "do": "click",
+          "target": "Next"
+        }
       ]
     },
-
     {
       "id": "batch_gen_5",
       "speaker": "moderator",
       "narration": "Now we choose two models to compare, for example Mistral and Magistral.",
       "actions": [
-        {"do": "wait", "seconds": 1},
-        {"do": "click", "target": "First Model"},
-        {"do": "wait", "seconds": 0.5},
-        {"do": "click", "target": "Second Model"},
-        {"do": "click", "target": "Next"}
+        {
+          "do": "wait",
+          "seconds": 1
+        },
+        {
+          "do": "click",
+          "target": "First Model"
+        },
+        {
+          "do": "wait",
+          "seconds": 0.5
+        },
+        {
+          "do": "click",
+          "target": "Second Model"
+        },
+        {
+          "do": "click",
+          "target": "Next"
+        }
       ]
     },
-
     {
       "id": "batch_gen_6",
       "speaker": "moderator",
       "narration": "Give the job a name and review the configuration.",
       "actions": [
-        {"do": "clear", "target": "Job Name Input"},
-        {"do": "type", "target": "Job Name Input", "text": "Live Collab Batch Job", "speed": "fast"},
-        {"do": "click", "target": "Next"}
+        {
+          "do": "clear",
+          "target": "Job Name Input"
+        },
+        {
+          "do": "type",
+          "target": "Job Name Input",
+          "text": "Live Collab Batch Job",
+          "speed": "fast"
+        },
+        {
+          "do": "click",
+          "target": "Next"
+        }
       ]
     },
-
     {
       "id": "batch_gen_7",
       "speaker": "moderator",
-      "narration": "We create the job, and it starts right away.",
+      "narration": "The generation matrix shows the full plan: ten articles times two prompts times two models \u2014 forty outputs. And notice the cost estimate up top \u2014 Lars calculates expected token usage and cost before you run anything.",
       "actions": [
-        {"do": "click", "target": "Create Job"},
-        {"do": "wait", "seconds": 2}
+        {
+          "do": "wait_for",
+          "target": "Matrix Preview",
+          "timeout": 10
+        },
+        {
+          "do": "highlight",
+          "target": "Matrix Preview",
+          "duration": 1.2
+        },
+        {
+          "do": "highlight",
+          "target": "Matrix Total",
+          "duration": 1.2
+        },
+        {
+          "do": "click",
+          "target": "Create Job"
+        },
+        {
+          "do": "wait",
+          "seconds": 1.0
+        }
       ]
     },
-
     {
       "id": "batch_gen_8",
       "speaker": "moderator",
-      "narration": "While that runs, here's a completed job for comparison.",
+      "narration": "While that runs, I'll open a completed batch to preview the details.",
       "actions": [
-        {"do": "goto", "url": "/generation"},
-        {"do": "wait", "seconds": 1},
-        {"do": "highlight", "target": "News Summary Demo Job", "duration": 2},
-        {"do": "click", "target": "News Summary Demo Job"},
-        {"do": "wait", "seconds": 1.5}
+        {
+          "do": "goto",
+          "url": "/generation"
+        },
+        {
+          "do": "wait",
+          "seconds": 1
+        },
+        {
+          "do": "highlight",
+          "target": "News Summary Demo Job",
+          "duration": 2
+        },
+        {
+          "do": "click",
+          "target": "News Summary Demo Job"
+        },
+        {
+          "do": "wait",
+          "seconds": 1.0
+        },
+        {
+          "do": "highlight",
+          "target": "Scenario Wizard",
+          "duration": 1.2
+        }
       ]
     },
-
+    {
+      "id": "batch_gen_output_1",
+      "speaker": "moderator",
+      "narration": "Let's open one output. You can see the system and user blocks on the left, and the generated result on the right, plus model, tokens, and cost.",
+      "actions": [
+        {
+          "do": "highlight",
+          "target": "Outputs List",
+          "duration": 1.2
+        },
+        {
+          "do": "click",
+          "target": "Output Item"
+        },
+        {
+          "do": "wait_for",
+          "target": "Output Detail Dialog",
+          "timeout": 10
+        },
+        {
+          "do": "highlight",
+          "target": "Output Detail Meta",
+          "duration": 1.2
+        },
+        {
+          "do": "highlight",
+          "target": "Output System Prompt",
+          "duration": 1.2
+        },
+        {
+          "do": "highlight",
+          "target": "Output User Prompt",
+          "duration": 1.2
+        },
+        {
+          "do": "highlight",
+          "target": "Output Content",
+          "duration": 1.2
+        },
+        {
+          "do": "click",
+          "target": "Output Close"
+        },
+        {
+          "do": "wait",
+          "seconds": 0.5
+        }
+      ]
+    },
     {
       "id": "batch_gen_9",
       "speaker": "guest",
-      "narration": "Ten articles, two prompts, two models. That's forty outputs?",
+      "narration": "Nice \u2014 so the provenance is fully tracked. You always know which prompt and model produced each output.",
       "actions": [
-        {"do": "wait", "seconds": 0.5}
+        {
+          "do": "wait",
+          "seconds": 0.2
+        }
       ]
     },
-
     {
       "id": "batch_gen_10",
       "speaker": "moderator",
-      "narration": "Exactly! Lars creates all combinations automatically. You can compare how different models perform with identical prompts. The cost is calculated upfront.",
+      "narration": "Exactly. And you can set budget limits \u2014 the job pauses automatically if costs exceed your threshold. Useful when you're running large-scale comparisons.",
       "actions": [
-        {"do": "sync", "after": "combinations"},
-        {"do": "wait", "seconds": 2}
+        {
+          "do": "sync",
+          "after": "combinations"
+        },
+        {
+          "do": "wait",
+          "seconds": 0.6
+        }
       ]
     },
-
     {
       "id": "batch_gen_11",
       "speaker": "guest",
       "narration": "How do you decide which model did better?",
       "actions": [
-        {"do": "wait", "seconds": 0.5}
+        {
+          "do": "wait",
+          "seconds": 0.2
+        }
       ]
     },
-
     {
       "_section": "=== SCENARIO FROM BATCH (60s) ===",
       "id": "scenario_wizard_1",
       "speaker": "moderator",
       "narration": "From a completed batch, we can open the Scenario Wizard right away.",
       "actions": [
-        {"do": "highlight", "target": "Scenario Wizard", "duration": 1.5},
-        {"do": "click", "target": "Scenario Wizard"},
-        {"do": "wait_for", "target": "Wizard Dialog", "timeout": 10},
-        {"do": "wait", "seconds": 1.5}
+        {
+          "do": "highlight",
+          "target": "Scenario Wizard",
+          "duration": 1.5
+        },
+        {
+          "do": "click",
+          "target": "Scenario Wizard"
+        },
+        {
+          "do": "wait_for",
+          "target": "Wizard Dialog",
+          "timeout": 10
+        },
+        {
+          "do": "wait",
+          "seconds": 1.5
+        }
       ]
     },
-
     {
       "id": "scenario_wizard_2",
       "speaker": "moderator",
       "narration": "We choose Ranking to compare all four summaries: two prompts by two models.",
       "actions": [
-        {"do": "wait", "seconds": 1},
-        {"do": "highlight", "target": "Ranking", "duration": 1.5},
-        {"do": "click", "target": "Ranking"},
-        {"do": "wait", "seconds": 0.5}
+        {
+          "do": "wait",
+          "seconds": 1
+        },
+        {
+          "do": "highlight",
+          "target": "Ranking",
+          "duration": 1.5
+        },
+        {
+          "do": "click",
+          "target": "Ranking"
+        },
+        {
+          "do": "wait",
+          "seconds": 0.5
+        }
       ]
     },
-
     {
       "id": "scenario_wizard_3",
       "speaker": "moderator",
       "narration": "The name is prefilled from the batch. We move to configuration.",
       "actions": [
-        {"do": "wait", "seconds": 0.5},
-        {"do": "click", "target": "Next"}
+        {
+          "do": "wait",
+          "seconds": 0.5
+        },
+        {
+          "do": "click",
+          "target": "Next"
+        }
       ]
     },
-
     {
       "id": "scenario_wizard_4",
       "speaker": "moderator",
-      "narration": "Default ranking buckets are fine for this demo.",
+      "narration": "The wizard previews the ranking buckets, so you know what the evaluation will look like.",
       "actions": [
-        {"do": "wait", "seconds": 0.5},
-        {"do": "click", "target": "Next"}
+        {
+          "do": "wait",
+          "seconds": 0.5
+        },
+        {
+          "do": "scroll",
+          "amount": 240
+        },
+        {
+          "do": "highlight",
+          "target": "Ranking Buckets",
+          "duration": 1.2
+        },
+        {
+          "do": "click",
+          "target": "Next"
+        }
       ]
     },
-
     {
       "id": "scenario_wizard_5",
       "speaker": "moderator",
       "narration": "We add an admin as a human evaluator, and two LLM evaluators: Mistral and Magistral.",
       "actions": [
-        {"do": "wait", "seconds": 0.5},
-        {"do": "wait_for", "target": "User List", "timeout": 10},
-        {"do": "highlight", "target": "Admin User", "duration": 1.5},
-        {"do": "click", "target": "Admin User"},
-        {"do": "wait", "seconds": 0.5},
-        {"do": "wait_for", "target": "LLM List", "timeout": 10},
-        {"do": "click_index", "target": "LLM List", "index": 0},
-        {"do": "wait", "seconds": 0.5},
-        {"do": "click_index", "target": "LLM List", "index": 1},
-        {"do": "wait", "seconds": 0.5},
-        {"do": "click", "target": "Next"}
+        {
+          "do": "wait",
+          "seconds": 0.5
+        },
+        {
+          "do": "wait_for",
+          "target": "User List",
+          "timeout": 10
+        },
+        {
+          "do": "highlight",
+          "target": "Admin User",
+          "duration": 1.5
+        },
+        {
+          "do": "click",
+          "target": "Admin User"
+        },
+        {
+          "do": "wait",
+          "seconds": 0.5
+        },
+        {
+          "do": "wait_for",
+          "target": "LLM List",
+          "timeout": 10
+        },
+        {
+          "do": "click_index",
+          "target": "LLM List",
+          "index": 0
+        },
+        {
+          "do": "wait",
+          "seconds": 0.5
+        },
+        {
+          "do": "click_index",
+          "target": "LLM List",
+          "index": 1
+        },
+        {
+          "do": "wait",
+          "seconds": 0.5
+        },
+        {
+          "do": "click",
+          "target": "Next"
+        }
       ]
     },
-
     {
       "id": "scenario_wizard_6",
       "speaker": "moderator",
       "narration": "And we create the scenario.",
       "actions": [
-        {"do": "wait", "seconds": 0.5},
-        {"do": "click", "target": "Create Scenario"},
-        {"do": "wait_for", "target": "Scenario Workspace", "timeout": 60},
-        {"do": "wait", "seconds": 2}
+        {
+          "do": "wait",
+          "seconds": 0.5
+        },
+        {
+          "do": "click",
+          "target": "Create Scenario"
+        },
+        {
+          "do": "wait_for",
+          "target": "Scenario Workspace",
+          "timeout": 60
+        },
+        {
+          "do": "wait",
+          "seconds": 2
+        }
       ]
     },
-
     {
       "_section": "=== SCENARIO MANAGER (45s) ===",
       "id": "scenario_1",
       "speaker": "moderator",
       "narration": "We land directly in the Scenario Workspace for the batch we just turned into a scenario.",
       "actions": [
-        {"do": "wait", "seconds": 0.5},
-        {"do": "highlight", "target": "Scenario Tabs", "duration": 1.5}
+        {
+          "do": "wait",
+          "seconds": 0.5
+        },
+        {
+          "do": "highlight",
+          "target": "Scenario Tabs",
+          "duration": 1.2
+        }
       ]
     },
-
     {
       "id": "scenario_2",
       "speaker": "moderator",
       "narration": "Overview gives you progress, evaluators, and live status at a glance.",
       "actions": [
-        {"do": "wait", "seconds": 1},
-        {"do": "click", "target": "Scenario Tab Overview"},
-        {"do": "wait", "seconds": 0.5}
+        {
+          "do": "click",
+          "target": "Scenario Tab Overview"
+        },
+        {
+          "do": "wait",
+          "seconds": 0.5
+        },
+        {
+          "do": "highlight",
+          "target": "Scenario Live Badge",
+          "duration": 1.0
+        },
+        {
+          "do": "highlight",
+          "target": "Scenario LLM Progress",
+          "duration": 1.0
+        }
       ]
     },
-
     {
       "id": "scenario_3",
       "speaker": "guest",
-      "narration": "Rating, ranking, comparison. Quite a variety.",
+      "narration": "Interesting \u2014 so the human has ten items to rank, and there are twenty LLM rankings. That's because each of the two LLM evaluators also ranks all ten, right?",
       "actions": [
-        {"do": "wait", "seconds": 0.5}
+        {
+          "do": "highlight",
+          "target": "Scenario LLM Progress",
+          "duration": 1.2
+        }
       ]
     },
-
     {
       "id": "scenario_4",
       "speaker": "moderator",
-      "narration": "Tabs keep data, evaluation, and team settings organized in one place.",
+      "narration": "Each article has four summaries \u2014 two prompts times two models \u2014 so you get 10 rankings with four items each. Two LLM evaluators means 20 total LLM rankings.",
       "actions": [
-        {"do": "sync", "after": "paradigms"},
-        {"do": "highlight", "target": "Scenario Tabs", "duration": 2}
+        {
+          "do": "highlight",
+          "target": "Scenario LLM Progress",
+          "duration": 1.2
+        }
       ]
     },
-
     {
       "id": "scenario_5",
-      "speaker": "guest",
-      "narration": "And the evaluators? All human experts?",
+      "speaker": "moderator",
+      "narration": "Next, the Data tab shows all data points and their status \u2014 you can see what's pending, in progress, or done.",
       "actions": [
-        {"do": "wait", "seconds": 0.5}
+        {
+          "do": "click",
+          "target": "Scenario Tab Data"
+        },
+        {
+          "do": "wait",
+          "seconds": 0.5
+        },
+        {
+          "do": "highlight",
+          "target": "Data Stats",
+          "duration": 1.0
+        },
+        {
+          "do": "highlight",
+          "target": "Data Threads Table",
+          "duration": 1.2
+        },
+        {
+          "do": "highlight",
+          "target": "Data Status Legend",
+          "duration": 1.0
+        }
       ]
     },
-
     {
       "id": "scenario_6",
       "speaker": "moderator",
-      "narration": "That's the beauty! You can use human experts, LLM evaluators, or both. Compare human ratings against AI evaluations to validate your approach.",
+      "narration": "The Evaluation tab is where it gets interesting. You get live agreement metrics — Krippendorff's alpha, Cohen's kappa, Spearman correlation. These update as evaluators submit rankings.",
       "actions": [
-        {"do": "sync", "after": "evaluators"},
-        {"do": "highlight", "target": "Scenario LLM Progress", "duration": 2}
+        {
+          "do": "click",
+          "target": "Scenario Tab Evaluation"
+        },
+        {
+          "do": "wait",
+          "seconds": 0.8
+        },
+        {
+          "do": "highlight",
+          "target": "Agreement Matrix",
+          "duration": 1.5
+        },
+        {
+          "do": "highlight",
+          "target": "Evaluation Summary",
+          "duration": 1.5
+        }
       ]
     },
-
+    {
+      "id": "scenario_6b",
+      "speaker": "guest",
+      "narration": "So you can immediately see where humans and LLMs disagree — and whether that disagreement is systematic?",
+      "actions": [
+        {
+          "do": "highlight",
+          "target": "Agreement Matrix",
+          "duration": 2
+        }
+      ]
+    },
+    {
+      "id": "scenario_6c",
+      "speaker": "moderator",
+      "narration": "Exactly. And if it is, you go back to Prompt Engineering, refine the criteria, and re-evaluate. That's the iterative loop. You can also export everything as JSON or CSV.",
+      "actions": [
+        {
+          "do": "highlight",
+          "target": "Evaluation Export",
+          "duration": 1.0
+        },
+        {
+          "do": "click",
+          "target": "Evaluation Export"
+        },
+        {
+          "do": "wait",
+          "seconds": 0.4
+        },
+        {
+          "do": "click",
+          "target": "Export JSON"
+        },
+        {
+          "do": "wait",
+          "seconds": 0.3
+        }
+      ]
+    },
     {
       "id": "scenario_7",
       "speaker": "moderator",
-      "narration": "Let's continue right here with the scenario that came from the batch.",
+      "narration": "Finally, the Team tab shows who is involved and how many rankings each evaluator has completed.",
       "actions": [
-        {"do": "wait", "seconds": 0.5},
-        {"do": "highlight", "target": "Scenario Tabs", "duration": 1.5}
+        {
+          "do": "click",
+          "target": "Scenario Tab Team"
+        },
+        {
+          "do": "wait",
+          "seconds": 0.5
+        },
+        {
+          "do": "highlight",
+          "target": "Team Members List",
+          "duration": 1.0
+        },
+        {
+          "do": "highlight",
+          "target": "Team Invite Button",
+          "duration": 1.0
+        },
+        {
+          "do": "highlight",
+          "target": "Team Add LLM Button",
+          "duration": 1.0
+        }
       ]
     },
-
     {
       "id": "scenario_8",
-      "speaker": "moderator",
-      "narration": "Inside the workspace, we can move across the tabs: Overview, Data, Evaluation, and Team.",
+      "speaker": "guest",
+      "narration": "That's flexible. Can you add more evaluators mid-evaluation, or swap out an LLM that isn't performing well?",
       "actions": [
-        {"do": "highlight", "target": "Scenario Tabs", "duration": 1.5},
-        {"do": "click", "target": "Scenario Tab Data"},
-        {"do": "wait", "seconds": 0.5},
-        {"do": "click", "target": "Scenario Tab Evaluation"},
-        {"do": "wait", "seconds": 0.5},
-        {"do": "click", "target": "Scenario Tab Team"},
-        {"do": "wait", "seconds": 0.5},
-        {"do": "click", "target": "Scenario Tab Overview"},
-        {"do": "wait", "seconds": 0.5}
+        {
+          "do": "highlight",
+          "target": "Team Member Menu",
+          "duration": 1.0
+        }
       ]
     },
-
     {
       "id": "scenario_9",
       "speaker": "moderator",
-      "narration": "The live badge and progress bars show LLM evaluators working in real time.",
+      "narration": "Yes \u2014 you can remove or invite humans, and add LLM evaluators at any time.",
       "actions": [
-        {"do": "highlight", "target": "Scenario Live Badge", "duration": 1.5},
-        {"do": "highlight", "target": "Scenario LLM Progress", "duration": 1.5}
+        {
+          "do": "highlight",
+          "target": "Team Invite Button",
+          "duration": 1.0
+        },
+        {
+          "do": "highlight",
+          "target": "Team Add LLM Button",
+          "duration": 1.0
+        }
       ]
     },
-
-    {
-      "id": "scenario_10",
-      "speaker": "moderator",
-      "narration": "On Evaluation, metrics and results update as soon as new ratings arrive.",
-      "actions": [
-        {"do": "click", "target": "Scenario Tab Evaluation"},
-        {"do": "wait", "seconds": 1},
-        {"do": "highlight", "target": "Evaluation Summary", "duration": 1.5},
-        {"do": "highlight", "target": "Evaluation Progress", "duration": 1.5}
-      ]
-    },
-
-    {
-      "id": "scenario_11",
-      "speaker": "moderator",
-      "narration": "And exporting the results is one click away.",
-      "actions": [
-        {"do": "highlight", "target": "Evaluation Export", "duration": 1.5},
-        {"do": "click", "target": "Evaluation Export"},
-        {"do": "wait", "seconds": 0.5},
-        {"do": "click", "target": "Export JSON"},
-        {"do": "wait", "seconds": 0.5}
-      ]
-    },
-
     {
       "_section": "=== HUMAN EVALUATION (20s) ===",
       "id": "human_eval_1",
       "speaker": "moderator",
       "narration": "Now let's see how the ranking looks for a human evaluator.",
       "actions": [
-        {"do": "goto", "url": "/evaluation"},
-        {"do": "wait", "seconds": 1},
-        {"do": "highlight", "target": "Evaluation Scenario Card", "duration": 1.5},
-        {"do": "click", "target": "Evaluation Scenario Card"},
-        {"do": "wait_for", "target": "Evaluation Items Grid", "timeout": 10}
+        {
+          "do": "goto",
+          "url": "/evaluation"
+        },
+        {
+          "do": "wait",
+          "seconds": 1
+        },
+        {
+          "do": "highlight",
+          "target": "Evaluation Scenario Card",
+          "duration": 1.5
+        },
+        {
+          "do": "click",
+          "target": "Evaluation Scenario Card"
+        },
+        {
+          "do": "wait_for",
+          "target": "Evaluation Items Grid",
+          "timeout": 10
+        }
       ]
     },
-
     {
       "id": "human_eval_2",
       "speaker": "guest",
-      "narration": "So this is the view for a person doing the ranking?",
+      "narration": "Ah, so this is what the evaluator actually sees. Clean interface.",
       "actions": [
-        {"do": "highlight", "target": "Evaluation Item Card", "duration": 1.5},
-        {"do": "click", "target": "Evaluation Item Card"},
-        {"do": "wait_for", "target": "Ranking Interface", "timeout": 10},
-        {"do": "wait", "seconds": 0.5}
+        {
+          "do": "highlight",
+          "target": "Evaluation Item Card",
+          "duration": 1.5
+        },
+        {
+          "do": "click",
+          "target": "Evaluation Item Card"
+        },
+        {
+          "do": "wait_for",
+          "target": "Ranking Interface",
+          "timeout": 10
+        },
+        {
+          "do": "wait",
+          "seconds": 0.5
+        }
       ]
     },
-
     {
       "id": "human_eval_3",
       "speaker": "moderator",
-      "narration": "Exactly. You drag the four summaries into buckets while the source text stays on the right.",
+      "narration": "You can drag summaries into buckets to rank them.",
       "actions": [
-        {"do": "highlight", "target": "Ranking Buckets", "duration": 1.5},
-        {"do": "highlight", "target": "Ranking Content", "duration": 1.5}
+        {
+          "do": "highlight",
+          "target": "Ranking Buckets",
+          "duration": 1.2
+        },
+        {
+          "do": "highlight",
+          "target": "Ranking Content",
+          "duration": 1.2
+        },
+        {
+          "do": "drag",
+          "from": "Ranking Item",
+          "to": "Best Bucket"
+        },
+        {
+          "do": "wait",
+          "seconds": 0.3
+        },
+        {
+          "do": "drag",
+          "from": "Ranking Item",
+          "to": "Acceptable Bucket"
+        },
+        {
+          "do": "wait",
+          "seconds": 0.3
+        },
+        {
+          "do": "drag",
+          "from": "Ranking Item",
+          "to": "Poor Bucket"
+        }
       ]
     },
-
+    {
+      "id": "human_eval_4",
+      "speaker": "guest",
+      "narration": "Are the labels blinded? Does the evaluator know which model produced which summary?",
+      "actions": [
+        {
+          "do": "highlight",
+          "target": "Ranking Content",
+          "duration": 1.5
+        }
+      ]
+    },
+    {
+      "id": "human_eval_5",
+      "speaker": "moderator",
+      "narration": "No — the items use generic labels. The evaluator sees the content but not the source. That keeps the assessment unbiased.",
+      "actions": [
+        {
+          "do": "highlight",
+          "target": "Ranking Buckets",
+          "duration": 1.5
+        }
+      ]
+    },
     {
       "_section": "=== DOCUMENTATION (15s) ===",
       "id": "docs_1",
       "speaker": "moderator",
       "narration": "Everything is documented. Here is the built-in documentation hub.",
       "actions": [
-        {"do": "goto", "url": "/docs"},
-        {"do": "wait", "seconds": 1},
-        {"do": "highlight", "target": "Docs Hero", "duration": 1.5}
+        {
+          "do": "goto",
+          "url": "/docs"
+        },
+        {
+          "do": "wait",
+          "seconds": 1
+        },
+        {
+          "do": "highlight",
+          "target": "Docs Hero",
+          "duration": 1.5
+        }
       ]
     },
-
     {
       "id": "docs_2",
       "speaker": "guest",
-      "narration": "So extending the system is well covered?",
+      "narration": "Good to see. Is there API documentation for teams that want to integrate Lars into their own pipelines?",
       "actions": [
-        {"do": "highlight", "target": "Docs Technical Section", "duration": 1.5}
+        {
+          "do": "highlight",
+          "target": "Docs Technical Section",
+          "duration": 1.5
+        }
       ]
     },
-
     {
       "id": "docs_3",
       "speaker": "moderator",
       "narration": "Yes, the technical docs link out to full MkDocs with API references and extension points.",
       "actions": [
-        {"do": "highlight", "target": "Docs MkDocs Link", "duration": 1.5}
+        {
+          "do": "highlight",
+          "target": "Docs MkDocs Link",
+          "duration": 1.5
+        }
       ]
     },
-
     {
-      "_section": "=== CONCLUSION (20s) ===",
-      "id": "conclusion_1",
-      "speaker": "guest",
-      "narration": "From collaborative prompt design to automated generation to structured evaluation. A complete pipeline.",
+      "id": "docs_4",
+      "speaker": "moderator",
+      "narration": "And here are the full technical docs in MkDocs.",
       "actions": [
-        {"do": "goto", "url": "/Home"},
-        {"do": "wait", "seconds": 1.5}
+        {
+          "do": "goto",
+          "url": "/mkdocs"
+        },
+        {
+          "do": "wait",
+          "seconds": 1
+        },
+        {
+          "do": "highlight",
+          "target": "MkDocs Header",
+          "duration": 1.2
+        },
+        {
+          "do": "highlight",
+          "target": "MkDocs Sidebar",
+          "duration": 1.2
+        }
       ]
     },
-
+    {
+      "_section": "=== CONCLUSION (25s) ===",
+      "id": "conclusion_1",
+      "speaker": "moderator",
+      "narration": "That was a news-article example to keep things compact. In our research, we use this same workflow for evaluating counseling responses — psychologists and AI developers collaborating on prompts, then comparing human and LLM assessments. But the modules aren't tied to any domain.",
+      "actions": [
+        {
+          "do": "goto",
+          "url": "/Home"
+        },
+        {
+          "do": "wait",
+          "seconds": 1
+        },
+        {
+          "do": "highlight",
+          "target": "Prompt Engineering",
+          "duration": 1.0
+        },
+        {
+          "do": "highlight",
+          "target": "Batch Generation",
+          "duration": 1.0
+        },
+        {
+          "do": "highlight",
+          "target": "Evaluation",
+          "duration": 1.0
+        }
+      ]
+    },
     {
       "id": "conclusion_2",
-      "speaker": "moderator",
-      "narration": "All open source, MIT licensed. Runs on Docker with about sixteen gigs of RAM. Give it a try!",
+      "speaker": "guest",
+      "narration": "Right — medical summaries, legal documents, anything that needs structured evaluation. And each module works standalone too. Nice workflow, Alex.",
       "actions": [
-        {"do": "show_title", "title": "Try Lars", "subtitle": "github.com/llars-project/llars"}
+        {
+          "do": "wait",
+          "seconds": 0.5
+        }
       ]
     },
-
     {
       "id": "conclusion_3",
-      "speaker": "guest",
-      "narration": "A platform where humans and AI collaborate to evaluate AI. Quite extraordinary. Thank you, Alex.",
+      "speaker": "moderator",
+      "narration": "Thanks David. Lars is open-source — check the repo, try the demo, and let us know what you think.",
       "actions": [
-        {"do": "wait", "seconds": 2}
+        {
+          "do": "show_title",
+          "title": "Try Lars",
+          "subtitle": "github.com/llars-project/llars"
+        },
+        {
+          "do": "wait",
+          "seconds": 2.0
+        }
       ]
     }
   ]

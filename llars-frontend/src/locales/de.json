@@ -2868,6 +2868,17 @@
       "customizeConfig": "Konfiguration anpassen",
       "rating": {
         "scaleType": "Skalen-Typ",
+        "scaleTypeOptions": {
+          "multiDimensional": "Multi-Dimensional (LLM Evaluator)",
+          "likert": "Likert",
+          "stars": "Sterne",
+          "numeric": "Numerisch",
+          "slider": "Slider"
+        },
+        "dimensionScaleTypeOptions": {
+          "likert": "Likert (Standard)",
+          "binary": "Binär (Ja/Nein)"
+        },
         "minValue": "Minimalwert",
         "maxValue": "Maximalwert",
         "stepSize": "Schrittweite",
@@ -2889,6 +2900,10 @@
       },
       "ranking": {
         "rankingType": "Ranking-Typ",
+        "typeOptions": {
+          "buckets": "Kategorien (Buckets)",
+          "ordered": "Geordnete Liste"
+        },
         "allowTies": "Gleichstände erlauben",
         "enableDragDrop": "Drag & Drop aktivieren",
         "showPositions": "Positionen anzeigen",
@@ -2905,6 +2920,11 @@
       },
       "labeling": {
         "labelingType": "Labeling-Typ",
+        "typeOptions": {
+          "binary": "Binär (2 Klassen)",
+          "multiclass": "Multi-Klasse",
+          "multilabel": "Multi-Label"
+        },
         "multiLabel": "Multi-Label erlauben",
         "multiLabelHint": "Mehrere Labels pro Item auswählbar",
         "allowUnsure": "Unsicher-Option erlauben",
@@ -2922,6 +2942,10 @@
       },
       "comparison": {
         "comparisonType": "Vergleichs-Typ",
+        "typeOptions": {
+          "pairwise": "Paarweiser Vergleich",
+          "tournament": "Turnier-Format"
+        },
         "allowTie": "Unentschieden erlauben",
         "showConfidence": "Konfidenz abfragen",
         "itemsPerComparison": "Items pro Vergleich",
@@ -2936,7 +2960,13 @@
         "shouldBeOne": "sollte 1.0 sein",
         "minCriteriaHint": "Mindestens 1 Kriterium erforderlich",
         "tournamentOptions": "Turnier-Optionen",
-        "rounds": "Runden"
+        "rounds": "Runden",
+        "roundOptions": {
+          "auto": "Automatisch",
+          "round1": "1 Runde",
+          "round2": "2 Runden",
+          "round3": "3 Runden"
+        }
       },
       "preview": {
         "title": "Vorschau",
@@ -3088,6 +3118,7 @@
       },
       "metricsResults": "Metriken & Ergebnisse",
       "noResultsYet": "Noch keine Ergebnisse. Starten Sie eine Evaluierung um Metriken und Ergebnisse zu sehen.",
+      "needMoreEvaluators": "Mindestens 2 Evaluatoren erforderlich, um zu vergleichen.",
       "filter": {
         "all": "Alle",
         "human": "Mensch",

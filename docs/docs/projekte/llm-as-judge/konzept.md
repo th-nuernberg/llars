@@ -1,5 +1,10 @@
-# LLM Evaluator Konzept für LLARS
+# LLM Evaluators Konzept (Legacy) für LLARS
 ## Automatisierte Mailverläufe-Gegenüberstellung mit KIA-Säulen-Vergleich
+
+!!! warning "Legacy-Konzept (Stand 2025)"
+    Dieses Dokument beschreibt das historische LLM-as-Judge Konzept mit eigener Judge-UI und Sessions.
+    In LLARS (Stand 2026-02-05) ist LLM-Evaluation eine **Konfiguration im Scenario Manager** (Wizard + Evaluation/Results Tabs).
+    Die Inhalte unten dienen als Hintergrund und Design-Historie.
 
 **Version:** 1.0
 **Datum:** 25. November 2025
@@ -24,13 +29,19 @@
 
 ## 1. Zusammenfassung
 
-### Ziel
+### Historisches Ziel (2025)
 Implementierung eines automatisierten **LLM Evaluator** Systems in LLARS, das:
 - Mailverläufe verschiedener KIA-Säulen paarweise vergleicht
 - Live-Visualisierung der LLM-Evaluation ermöglicht
 - Strukturierte JSON-Bewertungen mittels Pydantic-Schema generiert
 - Session-basiertes Arbeiten ohne aktiven Browser unterstützt
 - Statistische Auswertung über Säulen-Performance liefert
+
+### Aktueller Stand in LLARS
+- LLM-Evaluation wird pro Szenario konfiguriert (Scenario Wizard).
+- Auswahl von System- und eigenen Provider-Modellen.
+- Optionaler Auto-Start nach Szenario-Erstellung.
+- Live-Status und Ergebnisse im Scenario Manager (Evaluation/Results Tabs).
 
 ### KIA-Säulen (aus Bild)
 | Säule | Beschreibung | Verläufe |

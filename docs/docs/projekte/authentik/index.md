@@ -41,5 +41,6 @@ LLARS verwendet Authentik als Identity Provider mit OAuth2/OIDC für die Benutze
 | User | Passwort | Rolle |
 |------|----------|-------|
 | admin | admin123 | admin |
+| akadmin | admin123 | admin |
 | researcher | admin123 | researcher |
 | evaluator | admin123 | evaluator |

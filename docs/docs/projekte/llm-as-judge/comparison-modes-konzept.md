@@ -1,8 +1,13 @@
-# LLM Evaluator: Erweiterte Vergleichs-Modi & Multi-Worker
+# LLM Evaluators: Erweiterte Vergleichs-Modi & Multi-Worker (Legacy)
+
+!!! warning "Legacy-Konzept (Stand 2025)"
+    Diese Erweiterungen beziehen sich auf die historische Judge-UI mit Sessions.
+    In LLARS (Stand 2026-02-05) werden LLM-Evaluatoren primär als **Konfiguration im Scenario Manager** genutzt.
+    Die Inhalte dienen als Hintergrund und Design-Historie.
 
 **Version:** 1.0
 **Datum:** 26. November 2025
-**Status:** Implementiert
+**Status:** Legacy (historisch implementiert)
 
 ---
 
@@ -20,11 +25,18 @@
 
 ## Übersicht
 
-### Aktueller Stand
+### Historischer Stand (2025)
 
-Das LLM Evaluator System unterstützt mehrere Vergleichs-Modi (`pillar_sample`, `round_robin`, `free_for_all`)
-inkl. optionalem Position-Swap. Die Verarbeitung läuft über einen **JudgeWorkerPool** mit konfigurierbarer
+Das LLM Evaluator System unterstützte mehrere Vergleichs-Modi (`pillar_sample`, `round_robin`, `free_for_all`)
+inkl. optionalem Position-Swap. Die Verarbeitung lief über einen **JudgeWorkerPool** mit konfigurierbarer
 Parallelisierung (`worker_count`).
+
+### Aktueller Stand in LLARS
+
+- LLM-Evaluation wird pro Szenario konfiguriert (Scenario Wizard).
+- Auswahl von System- und eigenen Provider-Modellen.
+- Optionaler Auto-Start nach Szenario-Erstellung.
+- Live-Status und Ergebnisse im Scenario Manager (Evaluation/Results Tabs).
 
 ### Umgesetzte Erweiterungen
 

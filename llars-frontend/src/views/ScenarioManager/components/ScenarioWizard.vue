@@ -498,7 +498,7 @@
                     v-for="provider in userProviders"
                     :key="'provider-' + provider.id"
                     class="llm-item llm-item--user"
-                    :class="{ selected: isProviderSelected(provider) }"
+                    :class="{ selected: isProviderSelected(provider), disabled: !isProviderSelectable(provider) }"
                     @click="toggleProvider(provider)"
                   >
                     <div class="llm-icon">
@@ -508,6 +508,7 @@
                       <span class="llm-name">{{ provider.name }}</span>
                       <span class="llm-provider">
                         {{ getProviderTypeLabel(provider.provider_type) }}
+                        <span v-if="provider.config?.model_id" class="llm-model-id">· {{ provider.config.model_id }}</span>
                         <span v-if="provider.source !== 'own'" class="llm-shared-badge">
                           <LIcon size="12">mdi-share-variant</LIcon>
                           {{ provider.shared_by }}
@@ -693,6 +694,7 @@
                   >
                     <LIcon size="14" class="mr-1">{{ getProviderIcon(provider) }}</LIcon>
                     {{ provider.name }}
+                    <span v-if="provider.config?.model_id" class="ml-1">({{ provider.config.model_id }})</span>
                   </v-chip>
                 </div>
               </span>
@@ -1185,6 +1187,7 @@ function isLLMSelected(llm) {
 
 // Toggle user provider selection
 function toggleProvider(provider) {
+  if (!isProviderSelectable(provider)) return
   const index = selectedProviders.value.findIndex(p => p.id === provider.id)
   if (index >= 0) {
     selectedProviders.value.splice(index, 1)
@@ -1196,6 +1199,20 @@ function toggleProvider(provider) {
 // Check if user provider is selected
 function isProviderSelected(provider) {
   return selectedProviders.value.some(p => p.id === provider.id)
+}
+
+function getProviderModelId(provider) {
+  return (provider?.config?.model_id || '').trim()
+}
+
+function isProviderSelectable(provider) {
+  return !!getProviderModelId(provider)
+}
+
+function buildProviderEvaluatorId(provider) {
+  const modelId = getProviderModelId(provider)
+  if (!modelId) return null
+  return `user-provider:${provider.id}:${modelId}`
 }
 
 // Get provider icon based on type
@@ -1794,6 +1811,12 @@ async function createScenario() {
       ? selectedLLMs.value.map(l => l.model_id).filter(Boolean)
       : []
 
+    const providerEvaluators = formData.value.config.enable_llm_evaluation
+      ? selectedProviders.value.map(p => buildProviderEvaluatorId(p)).filter(Boolean)
+      : []
+
+    const combinedEvaluators = [...llmEvaluators, ...providerEvaluators]
+
     const scenarioPayload = {
       scenario_name: formData.value.scenario_name,
       function_type_id: functionTypeId,
@@ -1802,11 +1825,11 @@ async function createScenario() {
         ...formData.value.config,
         eval_type: formData.value.evalType,
         eval_config: formData.value.evalConfig,
-        llm_evaluators: llmEvaluators
+        llm_evaluators: combinedEvaluators
       }
     }
 
-    if (!llmEvaluators.length) {
+    if (!combinedEvaluators.length) {
       delete scenarioPayload.config_json.llm_evaluators
     }
 
@@ -2756,6 +2779,16 @@ onMounted(() => {
   border-color: rgb(var(--v-theme-accent));
 }
 
+.llm-item.disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.llm-item.disabled:hover {
+  background-color: rgba(var(--v-theme-surface), 1);
+  border-color: rgba(var(--v-theme-on-surface), 0.08);
+}
+
 .llm-icon {
   display: flex;
   align-items: center;
@@ -2785,6 +2818,11 @@ onMounted(() => {
 .llm-provider {
   font-size: 0.75rem;
   color: rgba(var(--v-theme-on-surface), 0.5);
+}
+
+.llm-model-id {
+  margin-left: 4px;
+  color: rgba(var(--v-theme-on-surface), 0.6);
 }
 
 /* LLM Category Sections */

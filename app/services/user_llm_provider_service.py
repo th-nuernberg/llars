@@ -9,11 +9,9 @@ and optionally share them with other users.
 import logging
 from typing import Optional, List, Dict, Any, Tuple
 from datetime import datetime
-from cryptography.fernet import Fernet
-
 from db.database import db
 from db.models.user_llm_provider import UserLLMProvider, UserLLMProviderShare
-from services.system_settings_service import get_setting
+from services.llm.secret_encryption import encrypt_api_key, decrypt_api_key
 
 logger = logging.getLogger(__name__)
 
@@ -21,26 +19,12 @@ logger = logging.getLogger(__name__)
 class UserLLMProviderService:
     """Service for managing user-owned LLM providers."""
 
-    # ==================== Encryption ====================
-
-    @staticmethod
-    def _get_encryption_key() -> bytes:
-        """Get or generate the encryption key for API keys."""
-        key = get_setting('encryption_key', None)
-        if not key:
-            # Generate and store a new key if not exists
-            key = Fernet.generate_key().decode('utf-8')
-            from services.system_settings_service import set_setting
-            set_setting('encryption_key', key)
-        return key.encode('utf-8') if isinstance(key, str) else key
-
     @staticmethod
     def _encrypt_api_key(api_key: str) -> str:
         """Encrypt an API key for storage."""
         if not api_key:
             return None
-        fernet = Fernet(UserLLMProviderService._get_encryption_key())
-        return fernet.encrypt(api_key.encode('utf-8')).decode('utf-8')
+        return encrypt_api_key(api_key)
 
     @staticmethod
     def _decrypt_api_key(encrypted_key: str) -> str:
@@ -48,8 +32,7 @@ class UserLLMProviderService:
         if not encrypted_key:
             return None
         try:
-            fernet = Fernet(UserLLMProviderService._get_encryption_key())
-            return fernet.decrypt(encrypted_key.encode('utf-8')).decode('utf-8')
+            return decrypt_api_key(encrypted_key)
         except Exception as e:
             logger.error(f"Failed to decrypt API key: {e}")
             return None
@@ -118,6 +101,15 @@ class UserLLMProviderService:
     def get_provider(provider_id: int) -> Optional[UserLLMProvider]:
         """Get a provider by ID."""
         return UserLLMProvider.query.get(provider_id)
+
+    @staticmethod
+    def get_provider_with_key(provider_id: int) -> Tuple[Optional[UserLLMProvider], Optional[str]]:
+        """Get a provider and decrypted API key (if any)."""
+        provider = UserLLMProvider.query.get(provider_id)
+        if not provider or not provider.is_active:
+            return None, None
+        api_key = UserLLMProviderService._decrypt_api_key(provider.api_key_encrypted)
+        return provider, api_key
 
     @staticmethod
     def get_user_providers(

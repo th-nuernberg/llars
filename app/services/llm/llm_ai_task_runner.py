@@ -353,7 +353,7 @@ class LLMAITaskRunner:
         For each session, evaluate all bot_pair messages where the LLM
         compares the two responses and picks a winner.
         """
-        client = LLMClientFactory.get_client_for_model(model_id)
+        client, api_model_id = LLMClientFactory.resolve_client_and_model_id(model_id)
 
         for session_id in session_ids:
             try:
@@ -427,7 +427,7 @@ class LLMAITaskRunner:
                     raw_response = None
                     payload, raw_response = LLMAITaskRunner._request_json(
                         client,
-                        model_id,
+                        api_model_id,
                         system_prompt,
                         user_prompt,
                         max_tokens=500,
@@ -601,7 +601,7 @@ class LLMAITaskRunner:
 
     @staticmethod
     def _run_ranking(model_id: str, thread_ids: Iterable[int], scenario_id: int) -> None:
-        client = LLMClientFactory.get_client_for_model(model_id)
+        client, api_model_id = LLMClientFactory.resolve_client_and_model_id(model_id)
 
         # Load scenario to get bucket configuration
         scenario = RatingScenarios.query.get(scenario_id)
@@ -722,7 +722,7 @@ Antworte im JSON-Format (verwende die numerischen Feature-IDs, nicht die Buchsta
                 raw_response = None
                 payload, raw_response = LLMAITaskRunner._request_json(
                     client,
-                    model_id,
+                    api_model_id,
                     system_prompt,
                     user_prompt,
                     max_tokens=1200,
@@ -905,7 +905,7 @@ Antworte im JSON-Format:
             raw_response = None
             payload, raw_response = LLMAITaskRunner._request_json(
                 client,
-                model_id,
+                api_model_id,
                 system_prompt,
                 user_prompt,
                 max_tokens=500,
@@ -1004,7 +1004,7 @@ Antworte im JSON-Format:
 
     @staticmethod
     def _run_rating(model_id: str, thread_ids: Iterable[int], scenario_id: int) -> None:
-        client = LLMClientFactory.get_client_for_model(model_id)
+        client, api_model_id = LLMClientFactory.resolve_client_and_model_id(model_id)
         scenario = RatingScenarios.query.get(scenario_id)
 
         for thread_id in thread_ids:
@@ -1069,7 +1069,7 @@ Antworte im JSON-Format:
                     raw_response = None
                     payload, raw_response = LLMAITaskRunner._request_json(
                         client,
-                        model_id,
+                        api_model_id,
                         system_prompt,
                         user_prompt,
                         max_tokens=1500,
@@ -1131,7 +1131,7 @@ Antworte im JSON-Format:
                     raw_response = None
                     payload, raw_response = LLMAITaskRunner._request_json(
                         client,
-                        model_id,
+                        api_model_id,
                         system_prompt,
                         user_prompt,
                         max_tokens=1200,
@@ -1211,7 +1211,7 @@ Antworte im JSON-Format:
 
     @staticmethod
     def _run_authenticity(model_id: str, thread_ids: Iterable[int], scenario_id: int) -> None:
-        client = LLMClientFactory.get_client_for_model(model_id)
+        client, api_model_id = LLMClientFactory.resolve_client_and_model_id(model_id)
 
         for thread_id in thread_ids:
             try:
@@ -1246,7 +1246,7 @@ Antworte im JSON-Format:
                 raw_response = None
                 payload, raw_response = LLMAITaskRunner._request_json(
                     client,
-                    model_id,
+                    api_model_id,
                     system_prompt,
                     user_prompt,
                     max_tokens=300,
@@ -1320,7 +1320,7 @@ Antworte im JSON-Format:
     @staticmethod
     def _run_mail_rating(model_id: str, thread_ids: Iterable[int], scenario_id: int) -> None:
         """Rate entire email conversations using configured dimensions."""
-        client = LLMClientFactory.get_client_for_model(model_id)
+        client, api_model_id = LLMClientFactory.resolve_client_and_model_id(model_id)
 
         # Load scenario config to get dimensions
         scenario = RatingScenarios.query.get(scenario_id)
@@ -1423,7 +1423,7 @@ Antworte im JSON-Format:
                 raw_response = None
                 payload, raw_response = LLMAITaskRunner._request_json(
                     client,
-                    model_id,
+                    api_model_id,
                     system_prompt,
                     user_prompt,
                     max_tokens=1500,  # More tokens for dimensional response
@@ -1503,7 +1503,7 @@ Antworte im JSON-Format:
         task_type: str = "text_classification",
     ) -> None:
         """Classify texts into custom labels defined in scenario config."""
-        client = LLMClientFactory.get_client_for_model(model_id)
+        client, api_model_id = LLMClientFactory.resolve_client_and_model_id(model_id)
 
         # Get custom labels from scenario config
         config = scenario.config_json
@@ -1616,7 +1616,7 @@ Antworte im JSON-Format:
                 raw_response = None
                 payload, raw_response = LLMAITaskRunner._request_json(
                     client,
-                    model_id,
+                    api_model_id,
                     system_prompt,
                     user_prompt,
                     max_tokens=500,
@@ -1690,7 +1690,7 @@ Antworte im JSON-Format:
     @staticmethod
     def _run_comparison(model_id: str, thread_ids: Iterable[int], scenario_id: int) -> None:
         """Compare two responses/texts and choose the better one."""
-        client = LLMClientFactory.get_client_for_model(model_id)
+        client, api_model_id = LLMClientFactory.resolve_client_and_model_id(model_id)
 
         for thread_id in thread_ids:
             try:
@@ -1736,7 +1736,7 @@ Antworte im JSON-Format:
                 raw_response = None
                 payload, raw_response = LLMAITaskRunner._request_json(
                     client,
-                    model_id,
+                    api_model_id,
                     system_prompt,
                     user_prompt,
                     max_tokens=500,

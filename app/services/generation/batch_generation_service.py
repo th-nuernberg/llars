@@ -707,9 +707,19 @@ class BatchGenerationService:
         ).first()
 
         if processing_output:
+            model_color = None
+            if processing_output.llm_model and getattr(processing_output.llm_model, "color", None):
+                model_color = processing_output.llm_model.color
+            else:
+                try:
+                    from db.models.llm_model import LLMModel
+                    model_color = LLMModel.generate_color(processing_output.llm_model_name)
+                except Exception:
+                    model_color = None
             result["currently_processing"] = {
                 "output_id": processing_output.id,
                 "model_name": processing_output.llm_model_name,
+                "model_color": model_color,
                 "source_item_id": processing_output.source_item_id,
                 "prompt_variant": processing_output.prompt_variant_name,
                 "item_name": f"{processing_output.prompt_variant_name} (Item #{processing_output.source_item_id or processing_output.id})"
@@ -770,7 +780,9 @@ class BatchGenerationService:
         """
         cls._get_job_or_raise(job_id)  # Verify job exists
 
-        query = GeneratedOutput.query.filter_by(job_id=job_id)
+        from sqlalchemy.orm import joinedload
+
+        query = GeneratedOutput.query.options(joinedload(GeneratedOutput.llm_model)).filter_by(job_id=job_id)
         if status:
             query = query.filter_by(status=status)
 

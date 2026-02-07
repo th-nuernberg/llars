@@ -28,6 +28,7 @@ import os
 import sys
 import hashlib
 import random
+import re
 from pathlib import Path
 from dataclasses import dataclass
 from typing import Optional, List, Dict, Any
@@ -71,6 +72,66 @@ SCRIPT_FILE = "SCRIPT.json"
 AUDIO_DIR = "audio"
 OUTPUT_DIR = "output"
 
+ENV_VAR_PATTERN = re.compile(r"\$\{([A-Z0-9_]+)\}")
+_ENV_CACHE: Optional[Dict[str, str]] = None
+
+
+def _load_env_vars() -> Dict[str, str]:
+    """Load environment variables with fallback to a .env file."""
+    global _ENV_CACHE
+    if _ENV_CACHE is not None:
+        return _ENV_CACHE
+
+    env = dict(os.environ)
+
+    # Prefer .env from repo root or current working directory
+    env_file = None
+    search_roots = [Path.cwd(), *Path(__file__).resolve().parents]
+    for root in search_roots:
+        candidate = root / ".env"
+        if candidate.exists():
+            env_file = candidate
+            break
+
+    if env_file:
+        try:
+            for line in env_file.read_text(encoding="utf-8").splitlines():
+                line = line.strip()
+                if not line or line.startswith("#"):
+                    continue
+                if line.startswith("export "):
+                    line = line[len("export "):]
+                if "=" not in line:
+                    continue
+                key, value = line.split("=", 1)
+                key = key.strip()
+                value = value.strip().strip('"').strip("'")
+                if key and key not in env:
+                    env[key] = value
+        except Exception:
+            pass
+
+    _ENV_CACHE = env
+    return env
+
+
+def _resolve_env_placeholders(text: str) -> str:
+    """Replace ${VARNAME} placeholders using env/.env."""
+    if not text or "${" not in text:
+        return text
+
+    env = _load_env_vars()
+
+    def repl(match: re.Match) -> str:
+        key = match.group(1)
+        value = env.get(key)
+        if value is None:
+            print(f"   ⚠️ Env var not found: {key}")
+            return ""
+        return value
+
+    return ENV_VAR_PATTERN.sub(repl, text)
+
 # Element-Mapping: Lesbare Namen → CSS Selektoren
 # Lars nutzt eine Home-Seite mit Feature-Karten, keine Sidebar
 ELEMENT_MAP = {
@@ -111,6 +172,10 @@ ELEMENT_MAP = {
     "Name Input": ".v-dialog .v-text-field input, .v-dialog input[type='text']",
     "Prompt Name Input": ".v-dialog .v-text-field input",
     "Block Name Input": ".v-dialog .v-text-field input",
+    "Provider Name Input": ".v-dialog input[placeholder*='OpenAI'], .v-dialog input[aria-label='Name'], .v-dialog .v-text-field input[type='text']",
+    "Provider API Key Input": ".v-dialog input[type='password'], .v-dialog input[aria-label='API Key']",
+    "Provider Base URL Input": ".v-dialog input[placeholder*='Base URL'], .v-dialog input[aria-label*='Base URL']",
+    "Provider Model Input": ".v-dialog .v-combobox input, .v-dialog .v-autocomplete input",
     "Job Name": ".v-text-field input, input[placeholder*='Name']",
     "Scenario Name": ".v-text-field input, input[placeholder*='Name']",
     "Budget Limit": "input[type='number'], .v-text-field input",
@@ -153,6 +218,7 @@ ELEMENT_MAP = {
     "LLM List": ".llm-category .llm-item, .llm-list .llm-item",
     "First LLM Evaluator": ".llm-category .llm-item, .llm-list .llm-item, .llm-item",
     "Second LLM Evaluator": ".llm-category .llm-item:nth-child(2), .llm-list .llm-item:nth-child(2), .llm-item:nth-child(2)",
+    "OpenAI Provider": ".llm-item--user:contains('OpenAI'), .llm-category .llm-item:contains('OpenAI')",
     "User List": ".user-list, .team-section .user-item",
     "Admin User": ".user-item:contains('admin'), .user-item:contains('Admin'), .user-name:contains('admin'), .user-name:contains('Admin')",
     "Create Scenario": ".wizard-actions .v-btn:contains('Create Scenario'), .wizard-actions .l-btn:contains('Create Scenario')",
@@ -189,6 +255,7 @@ ELEMENT_MAP = {
     "First Model": ".v-overlay--active .selection-item:first-child, .v-overlay--active .selectable-card:first-child, .models-selection .selection-item:first-child",
     "Second Model": ".v-overlay--active .selection-item:nth-child(2), .v-overlay--active .selectable-card:nth-child(2), .models-selection .selection-item:nth-child(2)",
     "Mistral Model": ".models-selection .selection-item:contains('mistral'), .models-selection .selection-item:contains('Mistral'), .item-name:contains('mistral')",
+    "Magistral Model": ".models-selection .selection-item:contains('Magistral'), .models-selection .selection-item:contains('magistral'), .item-name:contains('Magistral')",
     "GPT-4 Model": ".models-selection .selection-item:contains('gpt-4'), .models-selection .selection-item:contains('gpt4'), .item-name:contains('gpt')",
     "Claude Model": ".models-selection .selection-item:contains('claude'), .models-selection .selection-item:contains('Claude'), .item-name:contains('claude')",
 
@@ -388,6 +455,8 @@ ELEMENT_MAP = {
     "Provider Dialog": ".v-overlay--active .v-dialog, .v-dialog",
     "Provider Type Select": ".v-dialog .v-select",
     "Provider Type Options": ".v-overlay--active .v-list-item",
+    "Provider Type OpenAI": ".v-overlay--active .v-list-item:contains('OpenAI'), .v-overlay--active .v-list-item:contains('openai')",
+    "OpenAI Provider Card": ".provider-card:contains('OpenAI'), .provider-name:contains('OpenAI')",
     # Documentation
     "Docs Hero": ".docs-hero, .docs-page .hero-title",
     "Docs Technical Section": ".docs-section.highlight",
@@ -2728,7 +2797,8 @@ class ScriptRunner:
             if element:
                 # Im Test-Modus schneller tippen
                 speed = 'fast' if test_mode else action.get('speed', 'fast')
-                self.browser.type(target, action.get('text', ''), speed)
+                text = _resolve_env_placeholders(action.get('text', ''))
+                self.browser.type(target, text, speed)
                 print(f"   ✓ type: {target}")
                 return True
             else:

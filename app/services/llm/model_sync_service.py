@@ -78,6 +78,8 @@ class LLMModelSyncService:
                     if synced_by:
                         existing.updated_by = synced_by
                     updated += 1
+                if not existing.color:
+                    existing.color = LLMModel.generate_color(existing.model_id)
                 else:
                     skipped += 1
                 continue
@@ -89,6 +91,7 @@ class LLMModelSyncService:
                 provider=inferred["provider"],
                 description=None,
                 model_type=inferred["model_type"],
+                color=LLMModel.generate_color(model_id),
                 supports_vision=inferred["supports_vision"],
                 supports_reasoning=inferred["supports_reasoning"],
                 supports_function_calling=True,
@@ -169,6 +172,8 @@ class LLMModelSyncService:
                     if synced_by:
                         existing.updated_by = synced_by
                     updated += 1
+                if not existing.color:
+                    existing.color = LLMModel.generate_color(existing.model_id)
                 if existing.provider_id != provider.id:
                     existing.provider_id = provider.id
                     if synced_by:
@@ -184,6 +189,7 @@ class LLMModelSyncService:
                 provider=inferred["provider"],
                 description=None,
                 model_type=inferred["model_type"],
+                color=LLMModel.generate_color(model_id),
                 supports_vision=inferred["supports_vision"],
                 supports_reasoning=inferred["supports_reasoning"],
                 supports_function_calling=True,

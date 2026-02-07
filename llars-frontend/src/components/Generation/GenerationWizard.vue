@@ -237,7 +237,9 @@
           >
             <LIcon class="item-icon" size="20" color="accent">mdi-robot-outline</LIcon>
             <div class="item-info">
-              <span class="item-name">{{ model.model_id }}</span>
+              <span class="item-name">
+                {{ model.is_user_provider ? (model.label || model.model_id) : model.model_id }}
+              </span>
               <span v-if="model.cost_per_1k_tokens" class="item-detail">
                 ${{ model.cost_per_1k_tokens }}/1K tokens
               </span>
@@ -720,11 +722,36 @@ function toggleVariantSelection(templateId, variantName) {
 async function loadModels() {
   loadingModels.value = true
   try {
-    // Only load LLM models (not embeddings or rerankers)
-    const response = await axios.get('/api/llm/models/available', {
-      params: { model_type: 'llm' }
-    })
-    availableModels.value = response.data.models || []
+    const [modelsResult, providersResult] = await Promise.allSettled([
+      axios.get('/api/llm/models/available', { params: { model_type: 'llm' } }),
+      axios.get('/api/user/providers/available')
+    ])
+
+    const baseModels = modelsResult.status === 'fulfilled'
+      ? (modelsResult.value.data.models || [])
+      : []
+
+    let providerModels = []
+    if (providersResult.status === 'fulfilled') {
+      const providers = providersResult.value.data.providers || []
+      providerModels = providers
+        .map((provider) => {
+          const config = provider?.config || {}
+          const modelId = (config.model_id || '').trim()
+          if (!modelId || !provider.api_key_set || provider.is_active === false) return null
+          return {
+            id: `user-provider:${provider.id}:${modelId}`,
+            model_id: modelId,
+            label: `${provider.name || 'Provider'} • ${modelId}`,
+            provider_type: provider.provider_type,
+            provider_name: provider.name,
+            is_user_provider: true
+          }
+        })
+        .filter(Boolean)
+    }
+
+    availableModels.value = [...baseModels, ...providerModels]
   } catch (error) {
     console.error('Failed to load models:', error)
   } finally {

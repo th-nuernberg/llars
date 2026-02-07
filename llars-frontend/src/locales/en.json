@@ -3770,14 +3770,12 @@
       "notesPlaceholder": "Optional notes..."
     },
     "comparison": {
-      "title": "Comparison",
-      "emptyTitle": "No comparisons available",
-      "noContent": "No content available",
-      "selectA": "Select Option A",
-      "selectB": "Select Option B",
-      "tie": "Tie",
-      "notesLabel": "Notes",
-      "notesPlaceholder": "Optional notes..."
+      "pageTitle": "Comparison",
+      "pageSubtitle": "Select a persona to enter the comparison chat.",
+      "emptyTitle": "No sessions available",
+      "emptyHint": "No comparison sessions have been created yet.",
+      "scenarioLabel": "Scenario {id}",
+      "ratedMessages": "{count} messages rated"
     },
     "rating": {
       "pageTitle": "Rating",
@@ -3785,7 +3783,16 @@
       "emptyTitle": "No rating cases available",
       "context": "Context",
       "content": "Content",
-      "dimensions": "Rating Dimensions",
+      "dimensions": {
+        "coherence": "Coherence",
+        "coherenceDesc": "Logical structure and flow",
+        "fluency": "Fluency",
+        "fluencyDesc": "Language quality and readability",
+        "relevance": "Relevance",
+        "relevanceDesc": "Topic and context relevance",
+        "consistency": "Consistency",
+        "consistencyDesc": "Factual consistency"
+      },
       "features": "Rate Features",
       "rated": "rated",
       "noFeatures": "No features available",
@@ -3818,16 +3825,6 @@
         "acceptable": "Acceptable",
         "good": "Good",
         "veryGood": "Very good"
-      },
-      "dimensions": {
-        "coherence": "Coherence",
-        "coherenceDesc": "Logical structure and flow",
-        "fluency": "Fluency",
-        "fluencyDesc": "Language quality and readability",
-        "relevance": "Relevance",
-        "relevanceDesc": "Topic and context relevance",
-        "consistency": "Consistency",
-        "consistencyDesc": "Factual consistency"
       }
     },
     "labeling": {
@@ -3871,14 +3868,6 @@
       "emptyTitle": "No threads available",
       "real": "Real",
       "fake": "Fake"
-    },
-    "comparison": {
-      "pageTitle": "Comparison",
-      "pageSubtitle": "Select a persona to enter the comparison chat.",
-      "emptyTitle": "No sessions available",
-      "emptyHint": "No comparison sessions have been created yet.",
-      "scenarioLabel": "Scenario {id}",
-      "ratedMessages": "{count} messages rated"
     }
   },
   "evaluationAssistant": {
@@ -5501,9 +5490,11 @@
     },
     "status": {
       "deleted": "Deleted",
-      "modified": "Modified",
       "added": "Added",
-      "renamed": "Renamed"
+      "modified": "Modified",
+      "renamed": "Renamed",
+      "moved": "Moved",
+      "renamedMoved": "Renamed & moved"
     },
     "actions": {
       "refresh": "Refresh",
@@ -5574,14 +5565,6 @@
       "diffFailed": "Failed to load diff",
       "loadCommitsFailed": "Failed to load history",
       "commitFailed": "Commit failed"
-    },
-    "status": {
-      "deleted": "Deleted",
-      "added": "Added",
-      "modified": "Modified",
-      "renamed": "Renamed",
-      "moved": "Moved",
-      "renamedMoved": "Renamed & moved"
     },
     "rollback": {
       "title": "Discard changes?",
@@ -5685,7 +5668,9 @@
         "apiKey": "API Key",
         "apiKeyUnchanged": "Leave unchanged",
         "baseUrl": "Base URL (optional)",
-        "setAsDefault": "Use as default provider"
+        "setAsDefault": "Use as default provider",
+        "modelId": "OpenAI Model",
+        "modelIdHint": "Select or enter a model ID"
       }
     },
     "referrals": {

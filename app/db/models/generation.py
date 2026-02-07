@@ -764,6 +764,16 @@ class GeneratedOutput(db.Model):
         Returns:
             Dictionary representation
         """
+        llm_model_color = None
+        if self.llm_model and getattr(self.llm_model, "color", None):
+            llm_model_color = self.llm_model.color
+        else:
+            try:
+                from db.models.llm_model import LLMModel
+                llm_model_color = LLMModel.generate_color(self.llm_model_name)
+            except Exception:
+                llm_model_color = None
+
         result = {
             'id': self.id,
             'job_id': self.job_id,
@@ -771,6 +781,7 @@ class GeneratedOutput(db.Model):
             'prompt_template_id': self.prompt_template_id,
             'llm_model_id': self.llm_model_id,
             'llm_model_name': self.llm_model_name,
+            'llm_model_color': llm_model_color,
             'prompt_variant_name': self.prompt_variant_name,
             'prompt_variables': self.prompt_variables_json,
             'generated_content': self.generated_content,
@@ -797,10 +808,20 @@ class GeneratedOutput(db.Model):
 
     def to_summary_dict(self) -> Dict[str, Any]:
         """Convert to lightweight summary for list views."""
+        llm_model_color = None
+        if self.llm_model and getattr(self.llm_model, "color", None):
+            llm_model_color = self.llm_model.color
+        else:
+            try:
+                from db.models.llm_model import LLMModel
+                llm_model_color = LLMModel.generate_color(self.llm_model_name)
+            except Exception:
+                llm_model_color = None
         return {
             'id': self.id,
             'source_item_id': self.source_item_id,
             'llm_model_name': self.llm_model_name,
+            'llm_model_color': llm_model_color,
             'prompt_variant_name': self.prompt_variant_name,
             'status': self.status.value if self.status else None,
             'content_preview': self.content_preview,

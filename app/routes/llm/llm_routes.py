@@ -203,6 +203,12 @@ def create_model():
     if not isinstance(model_type, str) or not model_type.strip():
         raise ValidationError('model_type must be a non-empty string')
 
+    color = LLMModel.normalize_color(data.get('color'))
+    if data.get('color') and not color:
+        raise ValidationError('color must be a hex string like #RRGGBB')
+    if not color:
+        color = LLMModel.generate_color(data['model_id'])
+
     provider_id = data.get('provider_id')
     if provider_id is not None:
         try:
@@ -218,6 +224,7 @@ def create_model():
         description=data.get('description'),
         provider_id=provider_id,
         model_type=model_type.strip(),
+        color=color,
         supports_vision=data.get('supports_vision', False),
         supports_reasoning=data.get('supports_reasoning', False),
         supports_function_calling=data.get('supports_function_calling', True),
@@ -272,7 +279,7 @@ def update_model(model_id):
         'display_name', 'description', 'model_type', 'supports_vision', 'supports_reasoning',
         'supports_function_calling', 'supports_streaming', 'context_window',
         'max_output_tokens', 'input_cost_per_million', 'output_cost_per_million',
-        'is_active'
+        'is_active', 'color'
     ]
 
     for field in updatable_fields:
@@ -281,6 +288,11 @@ def update_model(model_id):
                 if not isinstance(data[field], str) or not data[field].strip():
                     raise ValidationError('model_type must be a non-empty string')
                 setattr(model, field, data[field].strip())
+            elif field == "color":
+                normalized = LLMModel.normalize_color(data[field])
+                if data[field] and not normalized:
+                    raise ValidationError('color must be a hex string like #RRGGBB')
+                model.color = normalized
             else:
                 setattr(model, field, data[field])
 

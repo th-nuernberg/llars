@@ -54,6 +54,7 @@
             <div class="provider-meta">
               <span class="provider-type">{{ getProviderTypeName(provider.provider_type) }}</span>
               <span v-if="provider.base_url" class="provider-url">{{ truncateUrl(provider.base_url) }}</span>
+              <span v-if="provider.config?.model_id" class="provider-model">{{ provider.config.model_id }}</span>
             </div>
             <div class="provider-stats">
               <span v-if="provider.total_requests > 0">
@@ -127,6 +128,7 @@
             </div>
             <div class="provider-meta">
               <span class="provider-type">{{ getProviderTypeName(provider.provider_type) }}</span>
+              <span v-if="provider.config?.model_id" class="provider-model">{{ provider.config.model_id }}</span>
             </div>
           </div>
         </div>
@@ -182,6 +184,18 @@
               :placeholder="editingProvider ? $t('userSettings.providers.form.apiKeyUnchanged') : ''"
               :append-inner-icon="showApiKey ? 'mdi-eye-off' : 'mdi-eye'"
               @click:append-inner="showApiKey = !showApiKey"
+            />
+
+            <v-combobox
+              v-if="form.provider_type === 'openai'"
+              v-model="form.model_id"
+              :items="openaiModelOptions"
+              :label="$t('userSettings.providers.form.modelId', 'OpenAI Model')"
+              :hint="$t('userSettings.providers.form.modelIdHint', 'Select or enter a model ID')"
+              variant="outlined"
+              density="comfortable"
+              clearable
+              persistent-hint
             />
 
             <v-text-field
@@ -309,9 +323,18 @@ const form = ref({
   provider_type: '',
   name: '',
   api_key: '',
+  model_id: '',
   base_url: '',
   is_default: false
 })
+
+const openaiModelOptions = [
+  'gpt-4.1',
+  'gpt-4.1-mini',
+  'gpt-4.1-nano',
+  'gpt-4o',
+  'gpt-4o-mini'
+]
 
 const showShareDialog = ref(false)
 const sharingProvider = ref(null)
@@ -357,6 +380,7 @@ function openCreateDialog() {
     provider_type: '',
     name: '',
     api_key: '',
+    model_id: '',
     base_url: '',
     is_default: false
   }
@@ -370,6 +394,7 @@ function editProvider(provider) {
     provider_type: provider.provider_type,
     name: provider.name,
     api_key: '',
+    model_id: provider.config?.model_id || '',
     base_url: provider.base_url || '',
     is_default: provider.is_default
   }
@@ -396,6 +421,10 @@ async function saveProvider() {
 
     if (form.value.api_key) {
       payload.api_key = form.value.api_key
+    }
+
+    if (form.value.provider_type === 'openai') {
+      payload.config = { model_id: form.value.model_id || null }
     }
 
     if (editingProvider.value) {

@@ -40,7 +40,7 @@
       "_section": "=== INTRO (30s) ===",
       "id": "intro_1",
       "speaker": "moderator",
-      "narration": "Hi, I'm Alex — welcome to the Lars demo.",
+      "narration": "Hi, I'm Alex. This is a short Lars demo.",
       "actions": [
         {
           "do": "show_title",
@@ -52,7 +52,7 @@
     {
       "id": "intro_2",
       "speaker": "guest",
-      "narration": "And I'm David. I've read the paper and I'm curious to see how this works in practice.",
+      "narration": "I'm David. We'll walk through what Lars does and how it works.",
       "actions": [
         {
           "do": "wait",
@@ -63,7 +63,7 @@
     {
       "id": "intro_3",
       "speaker": "moderator",
-      "narration": "Alright, let me show you. The problem Lars solves: when you're building an LLM assistant — whether for medical documentation, legal analysis, or counseling — you need to find the right model, align it to your domain, and prove it works. Standard benchmarks don't help with application-specific criteria.",
+      "narration": "We'll build a prompt, run a batch, and review results. Lars helps teams compare LLM outputs against domain criteria, which standard benchmarks don't capture.",
       "actions": [
         {
           "do": "wait",
@@ -74,7 +74,7 @@
     {
       "id": "intro_4",
       "speaker": "guest",
-      "narration": "Right — and if you're migrating to a cheaper model, users notice behavioral shifts. You need systematic methods to compare outputs.",
+      "narration": "That matters when you change models or settings and need to see what shifted.",
       "actions": [
         {
           "do": "wait",
@@ -85,7 +85,7 @@
     {
       "id": "intro_5",
       "speaker": "moderator",
-      "narration": "Exactly. Lars brings domain experts and AI developers together to evaluate LLM outputs — from prompt development through batch generation to rigorous human and machine evaluation.",
+      "narration": "Lars brings domain experts and AI developers together to evaluate LLM outputs \u2014 from prompt development through batch generation to human and machine evaluation.",
       "actions": [
         {
           "do": "goto",
@@ -136,7 +136,7 @@
     {
       "id": "prompt_eng_2",
       "speaker": "moderator",
-      "narration": "Let's create a fresh prompt. You can add collaborators here \u2014 and we'll add the researcher now.",
+      "narration": "Let's create a new prompt. You can add collaborators here \u2014 and we'll add the researcher now.",
       "actions": [
         {
           "do": "wait",
@@ -218,7 +218,7 @@
     {
       "id": "prompt_eng_4",
       "speaker": "moderator",
-      "narration": "Prompts are built from blocks. The simplest setup is a System block for behavior and a User block for the actual input. But you can add more — role definition, output format, task description — whatever structure helps your domain experts work systematically.",
+      "narration": "Prompts are built from blocks. The simplest setup is a System block for behavior and a User block for the actual input. But you can add more \u2014 role definition, output format, task description \u2014 whatever structure helps your domain experts work systematically.",
       "actions": [
         {
           "do": "wait",
@@ -271,7 +271,7 @@
     {
       "id": "prompt_eng_4b",
       "speaker": "guest",
-      "narration": "So the blocks give structure — domain experts know where to put what, and developers can enforce a consistent format.",
+      "narration": "So the blocks give structure \u2014 domain experts know where to put what, and developers can enforce a consistent format.",
       "actions": [
         {
           "do": "highlight",
@@ -385,7 +385,7 @@
     {
       "id": "prompt_eng_5b",
       "speaker": "moderator",
-      "narration": "Now let's test it. I click Test — and the variables we just defined are automatically inserted.",
+      "narration": "Now let's test it. I click Test \u2014 and the variables we just defined are automatically inserted.",
       "actions": [
         {
           "do": "click",
@@ -410,7 +410,7 @@
     {
       "id": "prompt_eng_5c",
       "speaker": "moderator",
-      "narration": "And here's the output. See, David — we can immediately check how this LLM interprets our prompt. If the summary is too long or misses the point, we tweak the instructions and test again with the same data.",
+      "narration": "And here's the output. See, David \u2014 we can immediately check how this LLM interprets our prompt. If the summary is too long or misses the point, we tweak the instructions and test again with the same data.",
       "actions": [
         {
           "do": "wait",
@@ -426,7 +426,7 @@
     {
       "id": "prompt_eng_5d",
       "speaker": "guest",
-      "narration": "That's a tight feedback loop — edit, test, repeat. No need to switch tools or re-upload data every time.",
+      "narration": "That's a short feedback loop \u2014 edit, test, repeat. No need to switch tools or re-upload data every time.",
       "actions": [
         {
           "do": "highlight",
@@ -500,7 +500,7 @@
     {
       "id": "collab_3",
       "speaker": "moderator",
-      "narration": "A second cursor appears — and every edit is tracked per user. You always know who wrote what.",
+      "narration": "A second cursor appears \u2014 and every edit is tracked per user. You always know who wrote what.",
       "actions": [
         {
           "do": "collab_focus"
@@ -529,7 +529,7 @@
     {
       "id": "collab_4",
       "speaker": "guest",
-      "narration": "That's like Google Docs for prompts. And the different colors — is that how you tell who wrote what?",
+      "narration": "That's like Google Docs for prompts. And the different colors \u2014 is that how you tell who wrote what?",
       "actions": [
         {
           "do": "highlight",
@@ -541,7 +541,7 @@
     {
       "id": "collab_5",
       "speaker": "moderator",
-      "narration": "Exactly — each collaborator gets a distinct color. You can pick yours right here in the app bar.",
+      "narration": "Exactly \u2014 each collaborator gets a different color. You can pick yours right here in the app bar.",
       "actions": [
         {
           "do": "click",
@@ -574,7 +574,7 @@
     {
       "id": "prompt_eng_7",
       "speaker": "moderator",
-      "narration": "Good. Now we have two prompts — the one we just built together, and a pre-seeded one with slightly different instructions. We'll compare both in Batch Generation.",
+      "narration": "Good. Now we have two prompts \u2014 the one we just built together, and a pre-seeded one with slightly different instructions. We'll compare both in Batch Generation.",
       "actions": [
         {
           "do": "collab_close"
@@ -610,7 +610,7 @@
     {
       "id": "prompt_eng_13",
       "speaker": "moderator",
-      "narration": "Prompts are portable — you can download them as JSON or import blocks from other prompts.",
+      "narration": "Prompts are portable \u2014 you can download them as JSON or import blocks from other prompts.",
       "actions": [
         {
           "do": "highlight",
@@ -628,7 +628,7 @@
       "_section": "=== BRING YOUR OWN MODELS (20s) ===",
       "id": "providers_1",
       "speaker": "moderator",
-      "narration": "Before generation, you can add your own LLM providers in Settings.",
+      "narration": "Before generation, we add an OpenAI provider in Settings.",
       "actions": [
         {
           "do": "goto",
@@ -656,19 +656,7 @@
     {
       "id": "providers_2",
       "speaker": "guest",
-      "narration": "What if my team uses a different provider — say a local Ollama instance or a custom API?",
-      "actions": [
-        {
-          "do": "highlight",
-          "target": "Providers Info",
-          "duration": 1.5
-        }
-      ]
-    },
-    {
-      "id": "providers_3",
-      "speaker": "moderator",
-      "narration": "Lars supports over a hundred providers through LiteLLM — OpenAI, Anthropic, local Ollama, any OpenAI-compatible endpoint. You add them right here.",
+      "narration": "I'll add the OpenAI key and pick a model.",
       "actions": [
         {
           "do": "click",
@@ -685,20 +673,73 @@
         },
         {
           "do": "wait",
-          "seconds": 0.5
-        },
-        {
-          "do": "highlight",
-          "target": "Provider Type Options",
-          "duration": 2
+          "seconds": 0.3
         },
         {
           "do": "click",
-          "target": "Cancel"
+          "target": "Provider Type OpenAI"
         },
         {
           "do": "wait",
-          "seconds": 0.5
+          "seconds": 0.3
+        },
+        {
+          "do": "clear",
+          "target": "Provider Name Input"
+        },
+        {
+          "do": "type",
+          "target": "Provider Name Input",
+          "text": "OpenAI",
+          "speed": "fast"
+        },
+        {
+          "do": "clear",
+          "target": "Provider API Key Input"
+        },
+        {
+          "do": "type",
+          "target": "Provider API Key Input",
+          "text": "${OPENAI_API_KEY}",
+          "speed": "fast"
+        },
+        {
+          "do": "click",
+          "target": "Provider Model Input"
+        },
+        {
+          "do": "type",
+          "target": "Provider Model Input",
+          "text": "gpt-4o-mini",
+          "speed": "fast"
+        },
+        {
+          "do": "wait",
+          "seconds": 0.2
+        },
+        {
+          "do": "click",
+          "target": "Dialog Create Button"
+        },
+        {
+          "do": "wait",
+          "seconds": 0.8
+        }
+      ]
+    },
+    {
+      "id": "providers_3",
+      "speaker": "moderator",
+      "narration": "Now OpenAI is available for evaluation in the Scenario Wizard.",
+      "actions": [
+        {
+          "do": "highlight",
+          "target": "OpenAI Provider Card",
+          "duration": 1.5
+        },
+        {
+          "do": "wait",
+          "seconds": 0.3
         }
       ]
     },
@@ -755,7 +796,7 @@
     {
       "id": "batch_gen_3",
       "speaker": "moderator",
-      "narration": "Lars accepts JSON upload or a quick paste. I'll paste the JSON and scroll the raw data.",
+      "narration": "Lars accepts JSON upload or a paste. I'll paste the JSON and scroll the raw data.",
       "actions": [
         {
           "do": "highlight",
@@ -849,23 +890,33 @@
     {
       "id": "batch_gen_5",
       "speaker": "moderator",
-      "narration": "Now we choose two models to compare, for example Mistral and Magistral.",
+      "narration": "Now we choose two Mistral models: Mistral Small and Magistral.",
       "actions": [
         {
           "do": "wait",
           "seconds": 1
         },
         {
+          "do": "highlight",
+          "target": "Mistral Model",
+          "duration": 1.2
+        },
+        {
           "do": "click",
-          "target": "First Model"
+          "target": "Mistral Model"
         },
         {
           "do": "wait",
-          "seconds": 0.5
+          "seconds": 0.3
+        },
+        {
+          "do": "highlight",
+          "target": "Magistral Model",
+          "duration": 1.2
         },
         {
           "do": "click",
-          "target": "Second Model"
+          "target": "Magistral Model"
         },
         {
           "do": "click",
@@ -897,7 +948,7 @@
     {
       "id": "batch_gen_7",
       "speaker": "moderator",
-      "narration": "The generation matrix shows the full plan: ten articles times two prompts times two models \u2014 forty outputs. And notice the cost estimate up top \u2014 Lars calculates expected token usage and cost before you run anything.",
+      "narration": "The generation matrix shows the plan: ten articles times two prompts times two models \u2014 forty outputs. And notice the cost estimate up top \u2014 Lars calculates expected token usage and cost before you run anything.",
       "actions": [
         {
           "do": "wait_for",
@@ -1009,7 +1060,7 @@
     {
       "id": "batch_gen_9",
       "speaker": "guest",
-      "narration": "Nice \u2014 so the provenance is fully tracked. You always know which prompt and model produced each output.",
+      "narration": "So the provenance is tracked. You always know which prompt and model produced each output.",
       "actions": [
         {
           "do": "wait",
@@ -1135,7 +1186,7 @@
     {
       "id": "scenario_wizard_5",
       "speaker": "moderator",
-      "narration": "We add an admin as a human evaluator, and two LLM evaluators: Mistral and Magistral.",
+      "narration": "We add an admin as a human evaluator and select the OpenAI model for LLM evaluation.",
       "actions": [
         {
           "do": "wait",
@@ -1165,18 +1216,13 @@
           "timeout": 10
         },
         {
-          "do": "click_index",
-          "target": "LLM List",
-          "index": 0
+          "do": "highlight",
+          "target": "OpenAI Provider",
+          "duration": 1.2
         },
         {
-          "do": "wait",
-          "seconds": 0.5
-        },
-        {
-          "do": "click_index",
-          "target": "LLM List",
-          "index": 1
+          "do": "click",
+          "target": "OpenAI Provider"
         },
         {
           "do": "wait",
@@ -1311,7 +1357,7 @@
     {
       "id": "scenario_6",
       "speaker": "moderator",
-      "narration": "The Evaluation tab is where it gets interesting. You get live agreement metrics — Krippendorff's alpha, Cohen's kappa, Spearman correlation. These update as evaluators submit rankings.",
+      "narration": "The Evaluation tab is where it gets interesting. You get live agreement metrics \u2014 Krippendorff's alpha, Cohen's kappa, Spearman correlation. These update as evaluators submit rankings.",
       "actions": [
         {
           "do": "click",
@@ -1336,7 +1382,7 @@
     {
       "id": "scenario_6b",
       "speaker": "guest",
-      "narration": "So you can immediately see where humans and LLMs disagree — and whether that disagreement is systematic?",
+      "narration": "So you can immediately see where humans and LLMs disagree \u2014 and whether that disagreement is systematic?",
       "actions": [
         {
           "do": "highlight",
@@ -1465,7 +1511,7 @@
     {
       "id": "human_eval_2",
       "speaker": "guest",
-      "narration": "Ah, so this is what the evaluator actually sees. Clean interface.",
+      "narration": "Ah, so this is what the evaluator actually sees.",
       "actions": [
         {
           "do": "highlight",
@@ -1542,7 +1588,7 @@
     {
       "id": "human_eval_5",
       "speaker": "moderator",
-      "narration": "No — the items use generic labels. The evaluator sees the content but not the source. That keeps the assessment unbiased.",
+      "narration": "No \u2014 the items use generic labels. The evaluator sees the content but not the source. That keeps the assessment unbiased.",
       "actions": [
         {
           "do": "highlight",
@@ -1587,7 +1633,7 @@
     {
       "id": "docs_3",
       "speaker": "moderator",
-      "narration": "Yes, the technical docs link out to full MkDocs with API references and extension points.",
+      "narration": "Yes, the technical docs link out to MkDocs with API references and extension points.",
       "actions": [
         {
           "do": "highlight",
@@ -1599,7 +1645,7 @@
     {
       "id": "docs_4",
       "speaker": "moderator",
-      "narration": "And here are the full technical docs in MkDocs.",
+      "narration": "And here are the technical docs in MkDocs.",
       "actions": [
         {
           "do": "goto",
@@ -1625,7 +1671,7 @@
       "_section": "=== CONCLUSION (25s) ===",
       "id": "conclusion_1",
       "speaker": "moderator",
-      "narration": "That was a news-article example to keep things compact. In our research, we use this same workflow for evaluating counseling responses — psychologists and AI developers collaborating on prompts, then comparing human and LLM assessments. But the modules aren't tied to any domain.",
+      "narration": "That was a news-article example to keep things compact. In our research, we use this same workflow for evaluating counseling responses \u2014 psychologists and AI developers collaborating on prompts, then comparing human and LLM assessments. But the modules aren't tied to any domain.",
       "actions": [
         {
           "do": "goto",
@@ -1655,7 +1701,7 @@
     {
       "id": "conclusion_2",
       "speaker": "guest",
-      "narration": "Right — medical summaries, legal documents, anything that needs structured evaluation. And each module works standalone too. Nice workflow, Alex.",
+      "narration": "Right \u2014 medical summaries, legal documents, anything that needs structured evaluation. And each module works standalone too. Thanks, Alex.",
       "actions": [
         {
           "do": "wait",
@@ -1666,7 +1712,7 @@
     {
       "id": "conclusion_3",
       "speaker": "moderator",
-      "narration": "Thanks David. Lars is open-source — check the repo, try the demo, and let us know what you think.",
+      "narration": "Thanks David. Lars is open-source \u2014 check the repo, try the demo, and let us know what you think.",
       "actions": [
         {
           "do": "show_title",

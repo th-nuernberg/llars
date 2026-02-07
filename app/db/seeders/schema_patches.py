@@ -468,6 +468,12 @@ def apply_schema_patches(db) -> None:
             column_name="updated_by",
             column_definition_sql="`updated_by` VARCHAR(255) NULL",
         )
+        changed |= _ensure_column(
+            db,
+            table_name="llm_models",
+            column_name="color",
+            column_definition_sql="`color` VARCHAR(32) NULL",
+        )
 
         # LLM providers registry table
         changed |= _ensure_table(

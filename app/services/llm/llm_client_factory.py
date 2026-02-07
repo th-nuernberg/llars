@@ -27,10 +27,45 @@ from db.models.llm_model import LLMModel
 from db.models.llm_provider import LLMProvider
 from services.llm.llm_provider_service import LLMProviderService
 from services.llm.secret_encryption import decrypt_api_key
+from services.user_llm_provider_service import UserLLMProviderService
+
+USER_PROVIDER_PREFIX = "user-provider:"
 
 
 class LLMClientFactory:
     """Create LLM clients routed by model or provider."""
+
+    @staticmethod
+    def _parse_user_provider_model_id(model_id: Optional[str]) -> tuple[Optional[int], Optional[str]]:
+        if not model_id or not isinstance(model_id, str):
+            return None, None
+        if not model_id.startswith(USER_PROVIDER_PREFIX):
+            return None, None
+        rest = model_id[len(USER_PROVIDER_PREFIX):]
+        if ":" not in rest:
+            return None, None
+        provider_part, actual_model = rest.split(":", 1)
+        try:
+            provider_id = int(provider_part)
+        except (TypeError, ValueError):
+            return None, None
+        return provider_id, actual_model.strip() or None
+
+    @staticmethod
+    def resolve_client_and_model_id(model_id: Optional[str]):
+        """
+        Resolve a client + effective model_id for API calls.
+        Supports user-provider model IDs in the form:
+        user-provider:<provider_id>:<model_id>
+        """
+        provider_id, actual_model_id = LLMClientFactory._parse_user_provider_model_id(model_id)
+        if provider_id and actual_model_id:
+            provider, api_key = UserLLMProviderService.get_provider_with_key(provider_id)
+            if provider and provider.provider_type in {"openai", "litellm", "ollama", "custom"}:
+                base_url = (provider.base_url or "").strip() or None
+                client = OpenAI(api_key=api_key or "EMPTY", base_url=base_url, timeout=LLM_TIMEOUT)
+                return client, actual_model_id
+        return LLMClientFactory.get_client_for_model(model_id), model_id
 
     @staticmethod
     def get_default_model_id() -> Optional[str]:

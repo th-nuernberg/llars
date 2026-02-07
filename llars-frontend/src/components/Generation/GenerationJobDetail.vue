@@ -184,8 +184,9 @@
               <LTag
                 v-for="model in jobConfig?.llm_models || []"
                 :key="model"
-                variant="accent"
+                variant="default"
                 size="small"
+                :style="getModelTagStyle(resolveModelColor(model), model)"
               >
                 {{ model }}
               </LTag>
@@ -244,7 +245,13 @@
           <div v-if="currentlyProcessing" class="streaming-preview">
             <div class="streaming-header">
               <v-progress-circular indeterminate size="14" width="2" color="primary" class="mr-2" />
-              <LTag variant="accent" size="small">{{ currentlyProcessing.model }}</LTag>
+              <LTag
+                variant="default"
+                size="small"
+                :style="getModelTagStyle(currentlyProcessing.modelColor, currentlyProcessing.model)"
+              >
+                {{ currentlyProcessing.model }}
+              </LTag>
               <span class="streaming-item-name">{{ currentlyProcessing.itemName }}</span>
             </div>
             <div ref="streamingContentRef" class="streaming-content">
@@ -273,7 +280,13 @@
               </div>
               <div class="output-content">
                 <div class="output-meta">
-                  <LTag variant="secondary" size="x-small">{{ output.llm_model_name }}</LTag>
+                  <LTag
+                    variant="default"
+                    size="x-small"
+                    :style="getModelTagStyle(output.llm_model_color, output.llm_model_name)"
+                  >
+                    {{ output.llm_model_name }}
+                  </LTag>
                   <span class="output-item-name">
                     {{ output.prompt_variant_name || `Item #${output.source_item_id || output.id}` }}
                   </span>
@@ -326,7 +339,12 @@
             <div class="output-detail-meta">
               <div class="meta-item">
                 <span class="meta-label">Model:</span>
-                <LTag variant="accent">{{ selectedOutput.llm_model_name }}</LTag>
+                <LTag
+                  variant="default"
+                  :style="getModelTagStyle(selectedOutput.llm_model_color, selectedOutput.llm_model_name)"
+                >
+                  {{ selectedOutput.llm_model_name }}
+                </LTag>
               </div>
               <div class="meta-item">
                 <span class="meta-label">Status:</span>
@@ -446,6 +464,138 @@ const streamingContent = ref('')  // Current streaming content
 // Auto-scroll refs
 const streamingContentRef = ref(null)
 const outputsListRef = ref(null)
+
+// Model color helpers (seeded in DB, neutral fallback if missing)
+const NEUTRAL_HUE_RANGES = [
+  { start: 25, end: 80 },   // warm amber/orange
+  { start: 160, end: 240 }, // teal/blue
+  { start: 260, end: 320 }  // purple/magenta
+]
+const NEUTRAL_SAT_RANGE = { min: 38, max: 56 }
+const NEUTRAL_LIGHT_RANGE = { min: 42, max: 56 }
+const NEUTRAL_HUE_RANGE_SIZE = NEUTRAL_HUE_RANGES.reduce((sum, range) => (
+  sum + (range.end - range.start)
+), 0)
+
+const normalizeHex = (value) => {
+  if (!value || typeof value !== 'string') return null
+  const v = value.trim()
+  if (!/^#?[0-9A-Fa-f]{6}$/.test(v)) return null
+  return v.startsWith('#') ? v : `#${v}`
+}
+
+const hashString = (value) => {
+  if (!value) return 0
+  let hash = 0x811c9dc5
+  for (let i = 0; i < value.length; i += 1) {
+    hash ^= value.charCodeAt(i)
+    hash = Math.imul(hash, 0x01000193) >>> 0
+  }
+  return hash
+}
+
+const pickNeutralHue = (seed) => {
+  let offset = seed % NEUTRAL_HUE_RANGE_SIZE
+  for (const range of NEUTRAL_HUE_RANGES) {
+    const span = range.end - range.start
+    if (offset < span) return range.start + offset
+    offset -= span
+  }
+  return NEUTRAL_HUE_RANGES[0].start
+}
+
+const hslToHex = (h, s, l) => {
+  const sat = Math.max(0, Math.min(1, s / 100))
+  const light = Math.max(0, Math.min(1, l / 100))
+  const c = (1 - Math.abs(2 * light - 1)) * sat
+  const hh = (h % 360) / 60
+  const x = c * (1 - Math.abs((hh % 2) - 1))
+  let r1 = 0
+  let g1 = 0
+  let b1 = 0
+  if (hh >= 0 && hh < 1) {
+    r1 = c; g1 = x; b1 = 0
+  } else if (hh >= 1 && hh < 2) {
+    r1 = x; g1 = c; b1 = 0
+  } else if (hh >= 2 && hh < 3) {
+    r1 = 0; g1 = c; b1 = x
+  } else if (hh >= 3 && hh < 4) {
+    r1 = 0; g1 = x; b1 = c
+  } else if (hh >= 4 && hh < 5) {
+    r1 = x; g1 = 0; b1 = c
+  } else if (hh >= 5 && hh < 6) {
+    r1 = c; g1 = 0; b1 = x
+  }
+  const m = light - c / 2
+  const r = Math.round((r1 + m) * 255)
+  const g = Math.round((g1 + m) * 255)
+  const b = Math.round((b1 + m) * 255)
+  return `#${[r, g, b].map(v => v.toString(16).padStart(2, '0')).join('')}`
+}
+
+const seedColor = (modelName) => {
+  const seed = hashString(modelName || '')
+  const hue = pickNeutralHue(seed)
+  const satSpan = NEUTRAL_SAT_RANGE.max - NEUTRAL_SAT_RANGE.min
+  const lightSpan = NEUTRAL_LIGHT_RANGE.max - NEUTRAL_LIGHT_RANGE.min
+  const saturation = NEUTRAL_SAT_RANGE.min + ((seed >>> 8) % (satSpan + 1))
+  const lightness = NEUTRAL_LIGHT_RANGE.min + ((seed >>> 16) % (lightSpan + 1))
+  return hslToHex(hue, saturation, lightness)
+}
+
+const modelColorMap = computed(() => {
+  const map = {}
+  outputs.value.forEach(o => {
+    if (o?.llm_model_name && o?.llm_model_color) {
+      const normalized = normalizeHex(o.llm_model_color)
+      if (normalized) map[o.llm_model_name] = normalized
+    }
+  })
+  const cp = currentJob.value?.currently_processing
+  if (cp?.model_name && cp?.model_color) {
+    const normalized = normalizeHex(cp.model_color)
+    if (normalized) map[cp.model_name] = normalized
+  }
+  if (currentlyProcessing.value?.model && currentlyProcessing.value?.modelColor) {
+    const normalized = normalizeHex(currentlyProcessing.value.modelColor)
+    if (normalized) map[currentlyProcessing.value.model] = normalized
+  }
+  return map
+})
+
+const resolveModelColor = (modelName, explicitColor = null) => {
+  const normalized = normalizeHex(explicitColor)
+  if (normalized) return normalized
+  if (modelName && modelColorMap.value[modelName]) return modelColorMap.value[modelName]
+  return seedColor(modelName || '')
+}
+
+const hexToRgb = (hex) => {
+  const normalized = normalizeHex(hex)
+  if (!normalized) return null
+  const value = normalized.replace('#', '')
+  const r = parseInt(value.substring(0, 2), 16)
+  const g = parseInt(value.substring(2, 4), 16)
+  const b = parseInt(value.substring(4, 6), 16)
+  return { r, g, b }
+}
+
+const getReadableTextColor = ({ r, g, b }) => {
+  const luminance = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255
+  return luminance > 0.6 ? '#1f2937' : '#ffffff'
+}
+
+const getModelTagStyle = (color, modelName) => {
+  const resolved = resolveModelColor(modelName, color)
+  const rgb = hexToRgb(resolved)
+  if (!rgb) return {}
+  const textColor = getReadableTextColor(rgb)
+  return {
+    background: `linear-gradient(135deg, rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.7) 0%, rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.5) 100%)`,
+    border: `1px solid rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.8)`,
+    color: textColor
+  }
+}
 
 // Computed
 const jobId = computed(() => Number(route.params.jobId))
@@ -708,6 +858,7 @@ function setupSocketListeners() {
         : `Item #${data.source_item_id || data.output_id}`
       currentlyProcessing.value = {
         model: data.model_name,
+        modelColor: data.model_color,
         outputId: data.output_id,
         itemName: itemLabel
       }
@@ -739,6 +890,9 @@ function setupSocketListeners() {
         output.input_tokens = data.tokens?.input || 0
         output.output_tokens = data.tokens?.output || 0
         output.total_cost_usd = data.cost_usd || 0
+        if (data.model_color) {
+          output.llm_model_color = data.model_color
+        }
       }
       // Don't reload - just update locally to avoid page refresh
     }
@@ -756,6 +910,9 @@ function setupSocketListeners() {
       if (output) {
         output.status = 'FAILED'
         output.error_message = data.error || 'Unknown error'
+        if (data.model_color) {
+          output.llm_model_color = data.model_color
+        }
       }
       // Don't reload - just update locally to avoid page refresh
     }
@@ -821,6 +978,7 @@ onMounted(async () => {
     const cp = currentJob.value.currently_processing
     currentlyProcessing.value = {
       model: cp.model_name,
+      modelColor: cp.model_color,
       outputId: cp.output_id,
       itemName: cp.item_name
     }

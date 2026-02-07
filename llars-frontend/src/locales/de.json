@@ -3770,14 +3770,12 @@
       "notesPlaceholder": "Optionale Anmerkungen..."
     },
     "comparison": {
-      "title": "Vergleich",
-      "emptyTitle": "Keine Vergleiche verfügbar",
-      "noContent": "Kein Inhalt vorhanden",
-      "selectA": "Option A wählen",
-      "selectB": "Option B wählen",
-      "tie": "Unentschieden",
-      "notesLabel": "Anmerkungen",
-      "notesPlaceholder": "Optionale Anmerkungen..."
+      "pageTitle": "Gegenüberstellung",
+      "pageSubtitle": "Wähle eine Persona, um den Vergleichs-Chat zu betreten.",
+      "emptyTitle": "Keine Sessions verfügbar",
+      "emptyHint": "Es wurden noch keine Gegenüberstellungs-Sessions erstellt.",
+      "scenarioLabel": "Szenario {id}",
+      "ratedMessages": "{count} Nachrichten bewertet"
     },
     "rating": {
       "pageTitle": "Rating",
@@ -3785,7 +3783,16 @@
       "emptyTitle": "Keine Rating-Fälle verfügbar",
       "context": "Kontext",
       "content": "Inhalt",
-      "dimensions": "Bewertungsdimensionen",
+      "dimensions": {
+        "coherence": "Kohärenz",
+        "coherenceDesc": "Logischer Aufbau und Zusammenhang",
+        "fluency": "Flüssigkeit",
+        "fluencyDesc": "Sprachliche Qualität und Lesbarkeit",
+        "relevance": "Relevanz",
+        "relevanceDesc": "Bezug zum Thema/Kontext",
+        "consistency": "Konsistenz",
+        "consistencyDesc": "Widerspruchsfreiheit und Faktentreue"
+      },
       "features": "Features bewerten",
       "rated": "bewertet",
       "noFeatures": "Keine Features vorhanden",
@@ -3818,16 +3825,6 @@
         "acceptable": "Akzeptabel",
         "good": "Gut",
         "veryGood": "Sehr gut"
-      },
-      "dimensions": {
-        "coherence": "Kohärenz",
-        "coherenceDesc": "Logischer Aufbau und Zusammenhang",
-        "fluency": "Flüssigkeit",
-        "fluencyDesc": "Sprachliche Qualität und Lesbarkeit",
-        "relevance": "Relevanz",
-        "relevanceDesc": "Bezug zum Thema/Kontext",
-        "consistency": "Konsistenz",
-        "consistencyDesc": "Widerspruchsfreiheit und Faktentreue"
       }
     },
     "labeling": {
@@ -3871,14 +3868,6 @@
       "emptyTitle": "Keine Threads verfügbar",
       "real": "Echt",
       "fake": "Fake"
-    },
-    "comparison": {
-      "pageTitle": "Gegenüberstellung",
-      "pageSubtitle": "Wähle eine Persona, um den Vergleichs-Chat zu betreten.",
-      "emptyTitle": "Keine Sessions verfügbar",
-      "emptyHint": "Es wurden noch keine Gegenüberstellungs-Sessions erstellt.",
-      "scenarioLabel": "Szenario {id}",
-      "ratedMessages": "{count} Nachrichten bewertet"
     }
   },
   "judge": {
@@ -5343,9 +5332,11 @@
     },
     "status": {
       "deleted": "Gelöscht",
-      "modified": "Geändert",
       "added": "Hinzugefügt",
-      "renamed": "Umbenannt"
+      "modified": "Geändert",
+      "renamed": "Umbenannt",
+      "moved": "Verschoben",
+      "renamedMoved": "Umbenannt & verschoben"
     },
     "actions": {
       "refresh": "Aktualisieren",
@@ -5416,14 +5407,6 @@
       "diffFailed": "Diff konnte nicht geladen werden",
       "loadCommitsFailed": "History konnte nicht geladen werden",
       "commitFailed": "Commit fehlgeschlagen"
-    },
-    "status": {
-      "deleted": "Gelöscht",
-      "added": "Hinzugefügt",
-      "modified": "Geändert",
-      "renamed": "Umbenannt",
-      "moved": "Verschoben",
-      "renamedMoved": "Umbenannt & verschoben"
     },
     "rollback": {
       "title": "Änderungen verwerfen?",
@@ -5527,7 +5510,9 @@
         "apiKey": "API-Schlüssel",
         "apiKeyUnchanged": "Unverändert lassen",
         "baseUrl": "Basis-URL (optional)",
-        "setAsDefault": "Als Standard-Provider verwenden"
+        "setAsDefault": "Als Standard-Provider verwenden",
+        "modelId": "OpenAI-Modell",
+        "modelIdHint": "Modell-ID auswählen oder eingeben"
       }
     },
     "referrals": {

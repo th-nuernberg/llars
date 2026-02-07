@@ -418,9 +418,18 @@ const llmEvaluators = computed(() => {
       return modelId
     }
     // Otherwise, parse the model ID string
-    const parts = modelId.split('/')
-    const provider = parts.length > 1 ? parts[0] : 'Unknown'
-    const modelName = parts.length > 1 ? parts.slice(1).join('/') : modelId
+    let provider = 'Unknown'
+    let modelName = modelId
+    if (modelId.startsWith('user-provider:')) {
+      const rest = modelId.replace('user-provider:', '')
+      const [providerId, rawModel] = rest.split(':', 2)
+      provider = providerId ? `User Provider ${providerId}` : 'User Provider'
+      modelName = rawModel || modelId
+    } else {
+      const parts = modelId.split('/')
+      provider = parts.length > 1 ? parts[0] : 'Unknown'
+      modelName = parts.length > 1 ? parts.slice(1).join('/') : modelId
+    }
 
     // Find matching live stats (name or id contains the model_id for LLMs)
     const liveData = llmLiveStats.find(s =>

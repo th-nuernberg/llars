@@ -513,11 +513,22 @@ class GenerationWorker:
             output.mark_processing()
             db.session.commit()
 
+            model_color = None
+            if output.llm_model and getattr(output.llm_model, "color", None):
+                model_color = output.llm_model.color
+            else:
+                try:
+                    from db.models.llm_model import LLMModel
+                    model_color = LLMModel.generate_color(output.llm_model_name)
+                except Exception:
+                    model_color = None
+
             # Emit started event for real-time UI updates
             self._emit_event("generation:item:started", {
                 "job_id": self.job_id,
                 "output_id": output.id,
                 "model_name": output.llm_model_name,
+                "model_color": model_color,
                 "source_item_id": output.source_item_id,
                 "prompt_variant": output.prompt_variant_name,
             })
@@ -568,6 +579,7 @@ class GenerationWorker:
                 "content_preview": output.content_preview,
                 "tokens": tokens,
                 "cost_usd": cost,
+                "model_color": model_color,
             })
 
             logger.debug("[GenWorker] Output %d completed (job %d)", output.id, self.job_id)
@@ -604,6 +616,7 @@ class GenerationWorker:
                     "output_id": output.id,
                     "error": str(e),
                     "attempts": output.attempt_count,
+                    "model_color": model_color,
                 })
 
     def _render_prompts(
@@ -925,8 +938,8 @@ class GenerationWorker:
         Raises:
             Exception: If LLM call fails
         """
-        # Get client
-        client = LLMClientFactory.get_client_for_model(model_id)
+        # Get client (supports user-provider model IDs)
+        client, api_model_id = LLMClientFactory.resolve_client_and_model_id(model_id)
 
         # Get generation params from job config
         job = GenerationJob.query.get(self.job_id)
@@ -954,7 +967,7 @@ class GenerationWorker:
             try:
                 # Build API call params - only include max_tokens if explicitly set
                 stream_params = {
-                    "model": model_id,
+                    "model": api_model_id,
                     "messages": messages,
                     "temperature": gen_params.get("temperature", 0.7),
                     "top_p": gen_params.get("top_p", 1.0),
@@ -1015,7 +1028,7 @@ class GenerationWorker:
         if not enable_streaming:
             # Non-streaming call - build params without max_tokens if not specified
             call_params = {
-                "model": model_id,
+                "model": api_model_id,
                 "messages": messages,
                 "temperature": gen_params.get("temperature", 0.7),
                 "top_p": gen_params.get("top_p", 1.0),

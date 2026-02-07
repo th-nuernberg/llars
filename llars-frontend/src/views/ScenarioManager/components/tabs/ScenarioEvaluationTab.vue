@@ -1159,10 +1159,17 @@ const llmEvaluators = computed(() => {
 
   return configList.map(item => {
     const modelId = typeof item === 'string' ? item : (item.model_id || item.modelId || item.id)
+    let displayName = modelId
+    if (typeof modelId === 'string' && modelId.startsWith('user-provider:')) {
+      const rest = modelId.replace('user-provider:', '')
+      const [providerId, rawModel] = rest.split(':', 2)
+      const providerLabel = providerId ? `User Provider ${providerId}` : 'User Provider'
+      displayName = rawModel ? `${providerLabel} · ${rawModel}` : providerLabel
+    }
     return {
       id: modelId,
       modelId: modelId,
-      name: modelId,
+      name: displayName,
       isLLM: true,
       completed: 0,
       total: props.scenario?.thread_count || 0,

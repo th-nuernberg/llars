@@ -56,191 +56,132 @@ When combined, these modules form a complete pipeline from prompt development th
 
 \section{Introduction}
 
-Evaluating Large Language Model (LLM) outputs requires collaboration between two groups with complementary expertise~\cite{chang2024survey}.
-Domain experts---psychologists assessing counseling responses, physicians reviewing medical summaries, lawyers evaluating contract analysis---understand \emph{what} constitutes quality in their field.
-AI developers understand \emph{how} to structure effective prompts and integrate LLM evaluators into production systems.
-Yet existing tools address only parts of this workflow.
-Annotation platforms like Label Studio~\cite{labelstudio2024} and Argilla~\cite{argilla2024} provide human annotation interfaces with some LLM integration, but lack collaborative prompt development and integrated batch generation capabilities.
-LLM-as-Judge frameworks like MT-Bench~\cite{zheng2024judging} automate evaluation through single-answer grading and pairwise comparison, but require technical expertise and do not integrate human evaluators within the same workflow.
-None of these tools offer a unified, GUI-driven pipeline from collaborative prompt development through batch generation to hybrid human-LLM evaluation.
+Organizations increasingly build LLM-based systems for sensitive domains such as medical documentation, legal analysis, educational tutoring, and psychosocial counseling.
+Developing these systems requires writing effective prompts, selecting suitable models, and rigorously evaluating outputs---tasks that demand both domain expertise and technical skill.
+Domain experts understand \emph{what} constitutes quality in their field, while AI developers know \emph{how} to structure prompts and integrate LLM evaluators.
+Yet existing tools force these groups into separate workflows:
+annotation platforms like Label Studio~\cite{labelstudio2024} and Argilla~\cite{argilla2024} provide human evaluation interfaces but lack collaborative prompt development;
+LLM-as-Judge frameworks like MT-Bench~\cite{zheng2024judging} automate assessment but require technical expertise and exclude human evaluators from the same workflow.
+No existing tool offers a unified, GUI-driven pipeline from collaborative prompt development through systematic output generation to hybrid human-LLM evaluation.
 
-LLARS bridges this gap with an open-source, GUI-driven platform providing three integrated modules---\textbf{Prompt Engineering}, \textbf{Batch Generation}, and \textbf{Evaluation}---that form a complete pipeline when used together, yet each module can also operate independently.
-The platform is extensible: teams can add custom evaluation types and connect their own LLM endpoints, with support for over 100 providers including local deployments via Ollama.
+We present LLARS (LLM Assisted Rating System), an open-source platform that integrates three modules---usable together as a pipeline or independently.
 
 \textbf{Collaborative Prompt Engineering.}
-Domain experts and AI developers work together in a real-time collaborative workspace with full synchronization.
-Change tracking provides transparency over the evolution of evaluation criteria, showing how prompts develop across collaborators.
-Each user can test the current prompt at any time in their own independent session---uploading real evaluation data and immediately observing how the production LLM interprets their criteria---without blocking other collaborators.
-A full versioning system tracks prompt evolution, allowing teams to compare versions, identify which changes improved results, and roll back if needed.
-When satisfied, domain experts export the finalized prompt as JSON, which AI developers download directly and integrate into their applications.
-\emph{Standalone use:} Beyond prompt optimization, the collaborative workspace serves as a training environment where organizations document prompt engineering decisions with full attribution---relevant for compliance under the EU AI Act~\cite{euaiact2024}, which requires transparency in AI system development.
+Domain experts and AI developers co-edit prompts in a real-time collaborative workspace with CRDT-based synchronization and full version history.
+Users define template variables (e.g., \texttt{\{\{content\}\}}, \texttt{\{\{title\}\}}) that serve as placeholders for evaluation data.
+Each collaborator can independently test the current prompt at any time---variables are filled with uploaded data, the prompt is sent to the selected LLM, and the response is streamed back---without interrupting others.
+Finalized prompts can be exported as JSON for direct integration into production systems.
 
 \textbf{Batch Generation.}
-With prompts refined, teams use Batch Generation to create outputs at scale.
-This module bridges prompt engineering and evaluation by automatically generating all combinations of evaluation items, prompt templates, and LLM models---a matrix approach that enables systematic comparison.
-Users select data sources (existing scenarios, uploaded files, or custom inputs), choose one or more prompts, and specify which LLMs to test.
-The system estimates costs before execution, tracks progress in real-time via WebSocket updates, and enforces optional budget limits.
-Generated outputs can be exported as CSV or JSON, or directly converted into evaluation scenarios.
-\emph{Standalone use:} Teams with existing prompts can use Batch Generation independently to create synthetic training data for model fine-tuning, generate test datasets for quality assurance, or produce content at scale for downstream applications.
+Teams systematically generate outputs across all combinations of prompts, LLMs, and datasets.
+A guided wizard lets users configure the generation matrix, estimate costs before execution, and enforce budget limits.
+This enables rapid model screening---testing whether smaller, cheaper models produce acceptable outputs---as well as synthetic data generation for fine-tuning or quality assurance.
+Generated outputs maintain full provenance and can be exported or passed directly into evaluation.
 
-\textbf{Large-Scale Evaluation.}
-With outputs generated---or imported from external sources---teams conduct systematic evaluation.
-This module enables comparison across different LLMs or parameter settings, testing whether smaller, cheaper models perform adequately.
-For evaluation tasks, ranking outputs often provides more informative results than absolute rating, as relative comparison is easier for humans to judge consistently~\cite{steigerwald2025subjectline}.
-Human evaluation remains the gold standard, but domain experts' time is limited.
-LLM evaluators provide a cost-effective alternative for initial assessment; the ideal configuration combines both.
-LLARS computes agreement across all evaluator combinations in real-time: human-human, LLM-LLM, and human-LLM, with metrics including Krippendorff's $\alpha$, Cohen's $\kappa$, and correlation coefficients.
-\emph{Standalone use:} Teams can import existing outputs---from production systems, competitor analyses, or research datasets---directly into the evaluation module without using LLARS's other components.
+\textbf{Evaluation.}
+Human evaluators and LLM evaluators assess outputs within the same framework, supporting rating, ranking, pairwise comparison, and labeling.
+Scenario owners configure how items are distributed across evaluators---all items to everyone for full inter-rater analysis, or subsets for faster throughput.
+LLARS computes agreement metrics (Krippendorff's $\alpha$, Cohen's $\kappa$, Fleiss' $\kappa$, Kendall's $\tau$, among others) in real-time across all evaluator combinations: human--human, LLM--LLM, and human--LLM.
+An AI-assisted Scenario Wizard analyzes uploaded data and recommends the appropriate evaluation type based on data structure.
 
-An AI-assisted \textbf{Scenario Wizard} supports transitions between modules by analyzing uploaded datasets, suggesting appropriate evaluation types (rating, ranking, comparison, labeling), and proposing field mappings to LLARS's internal format.
+Each module can operate standalone: the prompt editor doubles as a training and compliance documentation environment, batch generation serves independent synthetic data creation, and the evaluation module accepts externally produced outputs.
+Together, the modules form a complete pipeline where domain experts and AI developers iterate from prompt development through generation to rigorous assessment.
+The platform supports over 100 LLM providers---including local deployments via Ollama---and is fully open-source.
 
-This modular design addresses a fundamental challenge: domain experts know what matters but struggle to express it in prompts that LLMs interpret correctly, while AI developers can write effective prompts but lack the domain knowledge to capture subtle quality distinctions.
-LLARS brings both groups into a shared environment where they iterate together---from initial prompt development through batch generation to rigorous evaluation---until criteria are properly captured and validated at scale.
 
-\section{System Overview}
+%%% ===================================================================
+%%% SECTION OUTLINE for 3 pages content + 2 pages references
+%%% ===================================================================
+%%%
+%%% Page 1:
+%%%   Section 1: Introduction                     (~1 column = text above)
+%%%   Section 2: System Architecture              (~0.5 column)
+%%%              - Architecture diagram (Figure 1)
+%%%              - Tech stack: Vue.js, Flask, Yjs, LiteLLM, MariaDB
+%%%
+%%% Page 2:
+%%%   Section 3: Platform Modules                 (~1.5 columns)
+%%%     3.1 Collaborative Prompt Engineering
+%%%              - Screenshot (Figure 2): prompt editor with variables
+%%%              - Real-time CRDT sync, independent testing, version control
+%%%     3.2 Batch Generation
+%%%              - Matrix generation, cost control, provenance
+%%%     3.3 Evaluation
+%%%              - Screenshot (Figure 3): Scenario Wizard OR metrics dashboard
+%%%              - Evaluation types, distribution settings, agreement metrics
+%%%
+%%% Page 3:
+%%%   Section 4: Application: Counseling Evaluation (~0.5 column)
+%%%              - Domain-specific types: Mail Rating, Authenticity
+%%%              - Screenshot (Figure 4): Fake/Real labeling interface
+%%%   Section 5: Demonstration                    (~0.3 column)
+%%%              - What attendees will see, system requirements
+%%%              - Repository + documentation links
+%%%
+%%% Pages 4--5:
+%%%   References
+%%%
+%%% ===================================================================
+%%% Total Figures: 3--4 (architecture, prompt editor, wizard/metrics,
+%%%                       optional: labeling interface)
+%%% ===================================================================
 
-LLARS follows a containerized multi-service architecture (Figure~\ref{fig:architecture}) designed for real-time collaboration and scalable LLM evaluation.
+
+%% --- Section stubs below for reference ---
+
+\section{System Architecture}
+% Figure 1: Architecture diagram (existing TikZ figure)
+% Brief description of tech stack
+
+\section{Platform Modules}
+
+LLARS provides three modules that can be used independently or combined into a pipeline from prompt development through output generation to evaluation.
+Prompts created in the collaborative editor feed into batch generation, which produces outputs that are than assessed in the evaluation module.
+At each stage, results can be exported as JSON or CSV for external use.
+The following subsections detail each module.
+
+\subsection{Collaborative Prompt Engineering}
+
+Developing effective prompts for domain-specific LLM systems requires iterative refinement by those who understand the domain and those who understand prompt design.
+The prompt engineering module (Figure~\ref{fig:prompt-editor}) addresses this through a real-time collaborative editor built on Yjs~\cite{jahns2023yjs}, a CRDT framework that synchronizes edits at character granularity, merging concurrent changes without conflicts.
+
+Users compose prompts as reorderable message blocks (e.g., system instructions, user templates) and define template variables using \texttt{\{\{variable\}\}} syntax.
+Variables are automatically extracted and displayed in a shared palette; during testing and batch generation, they are substituted with domain-specific data.
+Any collaborator can test the current prompt independently: clicking \emph{Test} captures an atomic snapshot, fills variables with sample data, sends the prompt to a user-selected LLM, and streams the response---without interrupting concurrent editing.
+Multiple users can test against different models or data in parallel, enabling rapid exploration of prompt behavior across configurations.
+
+A git-inspired version control system records each commit with multi-author attribution, tracking per-user contributions at character level.
+Teams can compare versions, inspect individual contributions, and roll back to previous states.
+Finalized prompts are exported as JSON for integration into production systems or passed directly to the batch generation module.
 
 \begin{figure}[t]
 \centering
-\resizebox{0.95\linewidth}{!}{%
-\begin{tikzpicture}[
-    node distance=0.35cm and 0.25cm,
-    box/.style={rectangle, draw, rounded corners=2pt, minimum height=0.5cm, minimum width=1.3cm, font=\scriptsize\sffamily, align=center, fill=white},
-    dbbox/.style={box, fill=gray!15},
-    extbox/.style={box, fill=blue!8, draw=blue!40},
-    biarrow/.style={{Stealth[length=1.5mm]}-{Stealth[length=1.5mm]}, thick, gray!70},
-]
-\node[box, fill=green!10] (human) {Domain Experts\\(Web UI)};
-\node[box, fill=blue!10, right=1.2cm of human] (ai) {AI Developers\\(Web UI)};
-\node[box, fill=cyan!12, below=0.5cm of human] (vue) {Vue.js Frontend};
-\node[box, fill=purple!12, below=0.5cm of ai] (yjs) {Yjs Collab\\Server};
-\node[box, fill=yellow!15, below right=0.5cm and -0.3cm of vue, minimum width=1.8cm] (flask) {Flask Backend};
-\node[dbbox, below left=0.4cm and 0cm of flask] (db) {MariaDB};
-\node[extbox, below right=0.4cm and 0cm of flask] (llm) {LiteLLM\\(100+ Models)};
-\draw[biarrow] (human) -- (vue);
-\draw[biarrow] (ai) -- (yjs);
-\draw[biarrow] (vue) -- (flask);
-\draw[biarrow] (yjs) -- (flask);
-\draw[biarrow] (flask) -- (db);
-\draw[biarrow] (flask) -- (llm);
-\end{tikzpicture}%
-}
-\caption{LLARS architecture. Domain experts and AI developers collaborate via Vue.js frontend and Yjs real-time synchronization. LiteLLM enables testing with 100+ LLM providers.}
-\label{fig:architecture}
+\includegraphics[width=\linewidth]{figures/prompt-editor.png}
+\caption{Collaborative prompt editor showing a news summarization prompt with two message blocks, template variables in the shared palette (left), and online presence. The sidebar provides testing, variable management, and JSON import/export.}
+\label{fig:prompt-editor}
 \end{figure}
 
-The Vue.js frontend provides evaluation interfaces, while a Yjs server~\cite{jahns2023yjs,shapiro2011crdt} enables real-time collaborative editing with conflict-free synchronization.
-The Flask backend orchestrates workflows and integrates with 100+ models via LiteLLM---GPT-4, Claude, Gemini, and local deployments via Ollama.
+\subsection{Batch Generation}
+% Matrix: N items × M prompts × K models
+% Wizard configuration, cost estimation, budget limits
+% Provenance tracking, export (CSV/JSON), direct handoff to evaluation
 
-\section{Collaborative Prompt Engineering}
-
-The first module provides a collaborative prompt engineering workspace (Figure~\ref{fig:collab}) where domain experts and AI developers jointly develop prompts with full real-time synchronization.
-
-\begin{figure}[t]
-\centering
-\begin{tikzpicture}
-\node[draw, rounded corners, fill=gray!5, minimum width=0.93\linewidth, minimum height=3.5cm, align=center] {
-\begin{minipage}{0.85\linewidth}
-\centering
-\scriptsize\sffamily
-\textbf{[Screenshot: Collaborative Prompt Engineering]}\\[0.3em]
-\textit{Real-time editing with character-level tracking}\\[0.2em]
-\textcolor{blue!70}{$\blacktriangleright$ Dr.\ Smith (Psychologist)} \quad \textcolor{green!70}{$\blacktriangleright$ J.\ Dev (Engineer)}\\[0.2em]
-\textcolor{gray}{``Rate empathy on 1-5, where 5 means...''}\\
-\textcolor{gray}{[Test Now] [Upload Data] [Export JSON] [History]}
-\end{minipage}
-};
-\end{tikzpicture}
-\caption{Collaborative workspace with real-time editing and character-level tracking. Each user can test independently while others continue editing.}
-\label{fig:collab}
-\end{figure}
-
-\textbf{Real-Time Collaboration:} Multiple users edit prompts simultaneously with CRDT-based synchronization.
-Change tracking provides transparency over how evaluation criteria evolve, showing each collaborator's contributions.
-This is valuable not only for iterative refinement but also for compliance documentation: organizations can demonstrate who contributed which evaluation criteria and when changes were made.
-
-\textbf{Independent Testing:} Each user can test the current prompt at any time in their own session without blocking others.
-Domain experts upload real data directly in the workspace and immediately see how the production LLM interprets their criteria.
-This tight feedback loop enables rapid iteration until alignment is achieved.
-
-\textbf{Version Control \& Export:} A full versioning system tracks prompt evolution, allowing teams to compare versions and roll back if needed.
-Finalized prompts are exported as JSON for direct integration into applications---or archived as documentation for audit purposes.
-
-\textbf{Standalone Use:} Beyond the evaluation pipeline, this module serves as a training environment where organizations teach prompt engineering practices.
-The EU AI Act~\cite{euaiact2024} emphasizes transparency and human oversight in AI systems; LLARS's attribution tracking and version history support compliance by documenting how evaluation criteria were developed and by whom.
-
-\section{Batch Generation}
-
-The second module bridges prompt engineering and evaluation by automating output creation at scale.
-Rather than manually testing individual prompts, teams define a generation matrix: all combinations of evaluation items, prompt templates, and LLM models are processed automatically.
-
-\textbf{Matrix Generation:} Users configure jobs through a guided wizard, selecting data sources (scenarios, uploaded files, or custom inputs), prompt templates, and target LLMs.
-The system generates outputs for every combination: $N$ items $\times$ $M$ prompts $\times$ $K$ models.
-An AI-assisted Scenario Wizard analyzes uploaded datasets, suggests appropriate configurations, and maps fields to LLARS's internal format.
-
-\textbf{Cost Control:} Before execution, LLARS estimates total cost based on token counts and model pricing.
-Users can set budget limits; jobs automatically pause if costs exceed thresholds.
-Real-time tracking via WebSocket shows progress, token usage, and accumulated costs.
-
-\textbf{Pipeline Integration:} Generated outputs maintain full provenance---source item, prompt template, and model for each result.
-Outputs transition seamlessly to evaluation: a team can generate 500 outputs across 3 models in the morning and have human evaluators rating them by afternoon.
-
-\textbf{Standalone Use:} Teams with existing prompts can use Batch Generation independently.
-Key use cases include: (1) \emph{Synthetic data generation} for model fine-tuning, where domain-specific prompts produce training examples at scale; (2) \emph{Test dataset creation} for QA pipelines, generating edge cases and regression tests; (3) \emph{Model screening} to quickly compare whether smaller, cheaper models produce acceptable outputs before investing in dedicated prompt optimization.
-
-\section{Large-Scale Evaluation}
-
-The third module enables systematic evaluation of LLM outputs---whether generated through Batch Generation or imported from external sources.
-
-\textbf{Model Comparison:} Teams evaluate outputs across different LLMs, comparing GPT-4 against Claude or testing whether smaller models perform adequately.
-This is particularly relevant when switching production LLMs or evaluating open-source alternatives to commercial APIs.
-
-\textbf{Evaluation Paradigms:} LLARS supports rating, ranking, pairwise comparison, and labeling.
-Ranking is often more informative than absolute rating, as relative comparison is easier for humans to judge consistently~\cite{steigerwald2025subjectline}.
-Rating provides multi-dimensional scores, comparison enables direct A/B assessment, and labeling supports categorical classification.
-
-\textbf{Human and LLM Evaluators:} Human evaluation remains the gold standard, but domain experts' time is scarce.
-LLM evaluators provide a cost-effective alternative for initial assessment; the ideal configuration combines both, with human evaluators establishing ground truth while LLM evaluators scale assessment.
-
-\textbf{Live Agreement Metrics:} LLARS computes agreement across all evaluator combinations in real-time: human-human (inter-annotator reliability), LLM-LLM (model consistency), and human-LLM (alignment between machine and human judgment).
-Metrics include Krippendorff's $\alpha$, Cohen's $\kappa$, Fleiss' $\kappa$, Spearman's $\rho$, Kendall's $\tau$, and ICC.
-Scenario owners see these metrics live, immediately identifying where human-machine disagreement reveals systematic biases.
-
-\textbf{Standalone Use:} Teams can import existing outputs directly into the evaluation module without using LLARS's other components.
-Use cases include: (1) \emph{Production monitoring}, evaluating outputs from deployed systems; (2) \emph{Competitor analysis}, systematically comparing outputs from different vendors; (3) \emph{Research datasets}, applying consistent evaluation criteria to existing corpora from prior studies.
+\subsection{Evaluation}
+% Figure 3: Scenario Wizard (evaluation type selection) OR agreement metrics dashboard
+% Four types: rating, ranking, labeling, comparison
+% Distribution settings: all-to-everyone, random, sequential
+% Human + LLM evaluators, live agreement metrics
+% Configurable rating dimensions with custom Likert scales
 
 \section{Application: Counseling Evaluation}
-
-We are deploying LLARS in an ongoing project to evaluate LLM-generated responses for online mental health counseling~\cite{steigerwald2025caia}, demonstrating the complete pipeline.
-
-\textbf{Prompt Engineering:} Psychology students and AI developers collaborate in the prompt workspace to define evaluation criteria for empathy, clarity, professionalism, and helpfulness.
-Students upload real counseling exchanges and test iteratively until the LLM's interpretations align with their expert judgment.
-
-\textbf{Batch Generation:} Using the refined prompts, the team generates responses across multiple LLMs to systematically compare output quality, with cost tracking ensuring budget compliance.
-
-\textbf{Evaluation:} Human evaluators and LLM evaluators rate the generated outputs in parallel.
-LLARS's live agreement metrics enable the team to identify where human and machine judgment diverge---for instance, whether LLMs consistently overrate empathy---and to iteratively refine prompts based on these insights.
-
-This iterative cycle---from prompt refinement through generation to evaluation and back---exemplifies how LLARS supports collaboration between domain expertise and technical capability.
+% Figure 4: Fake/Real labeling interface (Authenticity scenario)
+% Domain-specific types: Mail Rating, Authenticity
+% Ongoing deployment in psychosocial online counseling project
 
 \section{Demonstration}
-
-Our demonstration covers the complete workflow:
-\begin{enumerate}
-    \item \textbf{Prompt Engineering:} Collaboratively develop evaluation criteria with real-time editing and character-level tracking
-    \item \textbf{Scenario Setup:} Use the AI-assisted wizard to configure evaluation type and map data fields
-    \item \textbf{Batch Generation:} Generate outputs across multiple LLMs with real-time cost tracking
-    \item \textbf{Evaluation:} Rate or rank outputs through human interface and parallel LLM assessment
-    \item \textbf{Agreement Analysis:} Compare human-human, human-LLM, and LLM-LLM metrics live
-\end{enumerate}
-
-Attendees can evaluate provided examples or upload their own data.
-LLARS is open-source (MIT), requiring Docker, 16GB RAM, 4+ CPU cores. % TODO: Add MIT LICENSE file to repo before submission
-
-\vspace{0.3em}
-\noindent\textbf{Repository:} \url{https://github.com/llars-project/llars}\\ % TODO: Create GitHub repo, add MIT LICENSE file
-\textbf{Documentation:} \url{https://llars-project.github.io} % TODO: Set up GitHub Pages documentation site
+% Workflow walkthrough
+% System requirements: Docker, 16GB RAM, 4+ cores
+% Links: repo, documentation, demo
 
 \bibliographystyle{named}
 \bibliography{llars}

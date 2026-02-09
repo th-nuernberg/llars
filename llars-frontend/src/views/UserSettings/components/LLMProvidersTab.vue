@@ -191,9 +191,10 @@
               v-model="form.model_id"
               :items="openaiModelOptions"
               :label="$t('userSettings.providers.form.modelId', 'OpenAI Model')"
-              :hint="$t('userSettings.providers.form.modelIdHint', 'Select or enter a model ID')"
+              :hint="openaiModelsError || $t('userSettings.providers.form.modelIdHint', 'Select or enter a model ID')"
               variant="outlined"
               density="comfortable"
+              :loading="openaiModelsLoading"
               clearable
               persistent-hint
             />
@@ -298,7 +299,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import LCard from '@/components/common/LCard.vue'
 import LBtn from '@/components/common/LBtn.vue'
@@ -328,13 +329,10 @@ const form = ref({
   is_default: false
 })
 
-const openaiModelOptions = [
-  'gpt-4.1',
-  'gpt-4.1-mini',
-  'gpt-4.1-nano',
-  'gpt-4o',
-  'gpt-4o-mini'
-]
+const openaiModelOptions = ref([])
+const openaiModelsLoading = ref(false)
+const openaiModelsError = ref('')
+let openaiFetchTimer = null
 
 const showShareDialog = ref(false)
 const sharingProvider = ref(null)
@@ -374,6 +372,51 @@ async function loadProviderTypes() {
   }
 }
 
+function resetOpenaiModels() {
+  openaiModelOptions.value = []
+  openaiModelsError.value = ''
+}
+
+async function fetchOpenaiModels({ providerId = null } = {}) {
+  if (form.value.provider_type !== 'openai') return
+
+  const apiKey = (form.value.api_key || '').trim()
+  if (!providerId && !apiKey) {
+    resetOpenaiModels()
+    return
+  }
+
+  openaiModelsLoading.value = true
+  openaiModelsError.value = ''
+  try {
+    const payload = { provider_type: 'openai' }
+    if (providerId) {
+      payload.provider_id = providerId
+    } else {
+      payload.api_key = apiKey
+    }
+    if (form.value.base_url) {
+      payload.base_url = form.value.base_url
+    }
+    const response = await axios.post('/api/user/providers/models', payload)
+    openaiModelOptions.value = response.data?.models || []
+  } catch (error) {
+    openaiModelOptions.value = []
+    openaiModelsError.value = error.response?.data?.message
+      || error.response?.data?.error
+      || error.message
+  } finally {
+    openaiModelsLoading.value = false
+  }
+}
+
+function scheduleOpenaiModelFetch() {
+  if (openaiFetchTimer) clearTimeout(openaiFetchTimer)
+  openaiFetchTimer = setTimeout(() => {
+    fetchOpenaiModels()
+  }, 400)
+}
+
 function openCreateDialog() {
   editingProvider.value = null
   form.value = {
@@ -384,6 +427,7 @@ function openCreateDialog() {
     base_url: '',
     is_default: false
   }
+  resetOpenaiModels()
   showApiKey.value = false
   showDialog.value = true
 }
@@ -398,6 +442,10 @@ function editProvider(provider) {
     base_url: provider.base_url || '',
     is_default: provider.is_default
   }
+  resetOpenaiModels()
+  if (provider.provider_type === 'openai') {
+    fetchOpenaiModels({ providerId: provider.id })
+  }
   showApiKey.value = false
   showDialog.value = true
 }
@@ -406,6 +454,18 @@ function closeDialog() {
   showDialog.value = false
   editingProvider.value = null
 }
+
+watch(
+  () => [form.value.provider_type, form.value.api_key, form.value.base_url],
+  ([providerType, apiKey]) => {
+    if (providerType !== 'openai') {
+      resetOpenaiModels()
+      return
+    }
+    if (!apiKey) return
+    scheduleOpenaiModelFetch()
+  }
+)
 
 async function saveProvider() {
   if (!formRef.value?.validate()) return

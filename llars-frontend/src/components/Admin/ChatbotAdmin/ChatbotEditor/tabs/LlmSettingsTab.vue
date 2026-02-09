@@ -17,6 +17,7 @@
             :clearable="true"
             :hide-details="true"
             :allow-sync="true"
+            :include-user-providers="true"
           />
         </v-col>
 

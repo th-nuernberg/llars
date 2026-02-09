@@ -222,8 +222,12 @@ watch(
   { immediate: true }
 );
 const isAdminUser = computed(() => auth.isAdmin.value);
+const mkdocsUrl = computed(() => {
+  const origin = typeof window !== 'undefined' ? window.location.origin : '';
+  return `${origin}/mkdocs/en/`;
+});
 const footerLinks = computed(() => [
-  { key: 'documentation', route: locale.value === 'en' ? '/docs/en/' : '/docs/', external: true },
+  { key: 'documentation', route: mkdocsUrl.value, external: true },
   { key: 'imprint', route: '/impressum' },
   { key: 'privacy', route: '/datenschutz' },
   { key: 'contact', route: '/kontakt' }

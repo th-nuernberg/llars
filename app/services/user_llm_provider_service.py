@@ -9,6 +9,9 @@ and optionally share them with other users.
 import logging
 from typing import Optional, List, Dict, Any, Tuple
 from datetime import datetime
+
+import requests
+
 from db.database import db
 from db.models.user_llm_provider import UserLLMProvider, UserLLMProviderShare
 from services.llm.secret_encryption import encrypt_api_key, decrypt_api_key
@@ -18,6 +21,13 @@ logger = logging.getLogger(__name__)
 
 class UserLLMProviderService:
     """Service for managing user-owned LLM providers."""
+
+    DEFAULT_BASE_URLS = {
+        "openai": "https://api.openai.com/v1",
+        "ollama": "http://localhost:11434",
+        "anthropic": "https://api.anthropic.com",
+        "gemini": "https://generativelanguage.googleapis.com",
+    }
 
     @staticmethod
     def _encrypt_api_key(api_key: str) -> str:
@@ -36,6 +46,12 @@ class UserLLMProviderService:
         except Exception as e:
             logger.error(f"Failed to decrypt API key: {e}")
             return None
+
+    @staticmethod
+    def _default_base_url(provider_type: Optional[str]) -> Optional[str]:
+        if not provider_type:
+            return None
+        return UserLLMProviderService.DEFAULT_BASE_URLS.get(provider_type.lower().strip())
 
     # ==================== Provider CRUD ====================
 
@@ -260,13 +276,15 @@ class UserLLMProviderService:
             return False, "Kein API-Key konfiguriert"
 
         try:
-            from services.llm.llm_service import LLMService
+            from services.llm.llm_provider_service import LLMProviderService
+
+            base_url = provider.base_url or UserLLMProviderService._default_base_url(provider.provider_type)
 
             # Test with a simple request
-            test_result = LLMService.test_provider_connection(
+            test_result = LLMProviderService.test_connection(
                 provider_type=provider.provider_type,
                 api_key=api_key,
-                base_url=provider.base_url,
+                base_url=base_url,
                 config=provider.config_json
             )
 
@@ -286,6 +304,76 @@ class UserLLMProviderService:
             db.session.commit()
             logger.error(f"Provider test failed for {provider_id}: {e}")
             return False, error
+
+    @staticmethod
+    def fetch_models(
+        provider_type: str,
+        api_key: Optional[str] = None,
+        base_url: Optional[str] = None,
+        config: Optional[Dict[str, Any]] = None
+    ) -> List[str]:
+        """
+        Fetch available model IDs for a provider.
+
+        Currently supports OpenAI and OpenAI-compatible endpoints that expose GET /models.
+        """
+        provider_type = (provider_type or "").lower().strip()
+        if not provider_type:
+            raise ValueError("provider_type is required")
+
+        config = config or {}
+
+        if provider_type not in {"openai", "litellm", "custom"}:
+            raise ValueError("Provider type not supported for model listing")
+
+        if provider_type == "openai" and not api_key:
+            raise ValueError("API-Key ist erforderlich")
+
+        resolved_base_url = (base_url or UserLLMProviderService._default_base_url(provider_type) or "").rstrip("/")
+        if not resolved_base_url:
+            raise ValueError("base_url ist erforderlich")
+
+        headers = {}
+        if api_key:
+            headers["Authorization"] = f"Bearer {api_key}"
+        organization = (config.get("organization") or "").strip()
+        project = (config.get("project") or "").strip()
+        if organization:
+            headers["OpenAI-Organization"] = organization
+        if project:
+            headers["OpenAI-Project"] = project
+
+        response = requests.get(
+            f"{resolved_base_url}/models",
+            headers=headers,
+            timeout=15
+        )
+        if response.status_code >= 400:
+            raise ValueError(f"HTTP {response.status_code}: {response.text[:200]}")
+
+        payload = response.json() or {}
+        items = payload.get("data") or []
+        if not isinstance(items, list):
+            return []
+
+        created_by_id: Dict[str, int] = {}
+        for item in items:
+            if not isinstance(item, dict):
+                continue
+            model_id = (item.get("id") or "").strip()
+            if not model_id:
+                continue
+            created = item.get("created")
+            created_ts = int(created) if isinstance(created, (int, float)) else 0
+            if model_id not in created_by_id or created_ts > created_by_id[model_id]:
+                created_by_id[model_id] = created_ts
+
+        # Prefer newest by created timestamp, then alphabetically
+        sorted_models = sorted(
+            created_by_id.items(),
+            key=lambda pair: (-pair[1], pair[0])
+        )
+        return [model_id for model_id, _ in sorted_models]
 
     # ==================== Provider Sharing ====================
 

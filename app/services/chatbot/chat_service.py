@@ -45,8 +45,10 @@ class ChatService:
 
         self.rag_pipeline = RAGPipeline() if self.chatbot.rag_enabled else None
 
-        # Initialize LLM client
-        self.llm_client = LLMClientFactory.get_client_for_model(self.chatbot.model_name)
+        # Initialize LLM client (supports user-provider models)
+        client, api_model_id = LLMClientFactory.resolve_client_and_model_id(self.chatbot.model_name)
+        self.llm_client = client
+        self.api_model_id = api_model_id or self.chatbot.model_name
 
         # Initialize helper services
         self.prompt_builder = ChatPromptBuilder(self.chatbot)
@@ -376,7 +378,7 @@ class ChatService:
 
         try:
             completion_kwargs = {
-                "model": self.chatbot.model_name,
+                "model": self.api_model_id,
                 "messages": messages,
                 "temperature": self.chatbot.temperature,
                 "top_p": self.chatbot.top_p,
@@ -593,7 +595,7 @@ class ChatService:
         """
         try:
             completion_kwargs = {
-                "model": self.chatbot.model_name,
+                "model": self.api_model_id,
                 "messages": messages,
                 "temperature": self.chatbot.temperature,
                 "top_p": self.chatbot.top_p

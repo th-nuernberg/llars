@@ -774,8 +774,9 @@ def register_chatbot_events(socketio):
                 chat_service, conversation, user_message, rag_context, sources_with_ids, rag_images
             )
 
-            # Initialize LLM client (provider-aware)
-            llm_client = LLMClientFactory.get_client_for_model(chatbot.model_name)
+            # Initialize LLM client (provider-aware, including user-provider models)
+            llm_client, api_model_id = LLMClientFactory.resolve_client_and_model_id(chatbot.model_name)
+            api_model_id = api_model_id or chatbot.model_name
 
             # Stream response
             assistant_message = ""
@@ -783,7 +784,7 @@ def register_chatbot_events(socketio):
             tokens_output = 0
 
             stream = llm_client.chat.completions.create(
-                model=chatbot.model_name,
+                model=api_model_id,
                 messages=messages,
                 temperature=chatbot.temperature,
                 max_tokens=chatbot.max_tokens,

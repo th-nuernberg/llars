@@ -21,10 +21,24 @@ logger = logging.getLogger(__name__)
 class ChatbotService:
     """Service for chatbot management operations"""
 
+    USER_PROVIDER_PREFIX = "user-provider:"
+
     @staticmethod
     def _resolve_llm_model_id(model_name: Optional[str]) -> Optional[str]:
         if not model_name:
             return None
+        if isinstance(model_name, str) and model_name.startswith(ChatbotService.USER_PROVIDER_PREFIX):
+            rest = model_name[len(ChatbotService.USER_PROVIDER_PREFIX):]
+            if ':' not in rest:
+                raise ValueError("Invalid user-provider model id")
+            provider_part, actual_model = rest.split(':', 1)
+            if not actual_model.strip():
+                raise ValueError("Invalid user-provider model id")
+            try:
+                int(provider_part)
+            except (TypeError, ValueError):
+                raise ValueError("Invalid user-provider model id")
+            return model_name
         model = LLMModel.get_by_model_id(model_name)
         if not model or not model.is_active or model.model_type != LLMModel.MODEL_TYPE_LLM:
             raise ValueError(f"Model '{model_name}' is not an active LLM model")

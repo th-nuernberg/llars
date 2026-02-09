@@ -218,7 +218,7 @@
     {
       "id": "prompt_eng_4",
       "speaker": "moderator",
-      "narration": "Prompts are built from blocks. The simplest setup is a System block for behavior and a User block for the actual input. But you can add more \u2014 role definition, output format, task description \u2014 whatever structure helps your domain experts work systematically.",
+      "narration": "Prompts are built from blocks. Instead of just System and User, we'll use a clearer structure: Role Definition, Task Explanation, and a combined Data Format Explanation.",
       "actions": [
         {
           "do": "wait",
@@ -234,7 +234,7 @@
         {
           "do": "type",
           "target": "Block Name Input",
-          "text": "System",
+          "text": "Role Definition",
           "speed": "fast"
         },
         {
@@ -243,7 +243,7 @@
         },
         {
           "do": "wait",
-          "seconds": 0.5
+          "seconds": 0.6
         },
         {
           "do": "click",
@@ -255,7 +255,7 @@
         {
           "do": "type",
           "target": "Block Name Input",
-          "text": "User",
+          "text": "Task Explanation",
           "speed": "fast"
         },
         {
@@ -264,7 +264,28 @@
         },
         {
           "do": "wait",
-          "seconds": 0.5
+          "seconds": 0.6
+        },
+        {
+          "do": "click",
+          "target": "New Block"
+        },
+        {
+          "do": "wait_for_modal"
+        },
+        {
+          "do": "type",
+          "target": "Block Name Input",
+          "text": "Data Format Explanation",
+          "speed": "fast"
+        },
+        {
+          "do": "click",
+          "target": "Block Create Button"
+        },
+        {
+          "do": "wait",
+          "seconds": 0.6
         }
       ]
     },
@@ -288,7 +309,7 @@
     {
       "id": "prompt_eng_5",
       "speaker": "moderator",
-      "narration": "Exactly. Now I'll write the system instructions and the user template with placeholders for our variables.",
+      "narration": "Exactly. Now I'll fill each block: role definition, task explanation, and a data format explanation with input placeholders and output requirements.",
       "actions": [
         {
           "do": "wait",
@@ -296,14 +317,20 @@
         },
         {
           "do": "type",
-          "target": "First Block Editor",
-          "text": "You are a professional news editor. Summarize articles in 2-3 sentences. Be factual and avoid speculation.",
+          "target": ".editor-block:nth-child(1) .ql-editor",
+          "text": "Role definition: You are a professional news editor. Write concise, factual summaries.",
           "speed": "fast"
         },
         {
           "do": "type",
-          "target": "Last Block Editor",
-          "text": "Title: {{title}}\n\nArticle:\n{{content}}\n\nSummary:",
+          "target": ".editor-block:nth-child(2) .ql-editor",
+          "text": "Task explanation: Summarize the article in 2-3 sentences. Preserve key facts, avoid speculation, and do not add new information.",
+          "speed": "fast"
+        },
+        {
+          "do": "type",
+          "target": ".editor-block:nth-child(3) .ql-editor",
+          "text": "Data format explanation:\nInput:\nTitle: {{title}}\n\nArticle:\n{{content}}\n\nOutput:\n2-3 sentences in plain text. No bullet points. No extra commentary.",
           "speed": "fast"
         }
       ]
@@ -552,6 +579,13 @@
           "seconds": 0.5
         },
         {
+          "do": "click",
+          "target": "Settings"
+        },
+        {
+          "do": "wait_for_modal"
+        },
+        {
           "do": "highlight",
           "target": "Collaboration Color",
           "duration": 1.5
@@ -567,14 +601,14 @@
         },
         {
           "do": "click",
-          "target": ".user-menu-trigger"
+          "target": "Settings Dialog Close"
         }
       ]
     },
     {
       "id": "prompt_eng_7",
       "speaker": "moderator",
-      "narration": "Good. Now we have two prompts \u2014 the one we just built together, and a pre-seeded one with slightly different instructions. We'll compare both in Batch Generation.",
+      "narration": "Good. Now we have two prompts \u2014 the one we just built together, and a second one created during setup with slightly different instructions. We'll compare both in Batch Generation.",
       "actions": [
         {
           "do": "collab_close"
@@ -586,6 +620,11 @@
         {
           "do": "wait",
           "seconds": 1
+        },
+        {
+          "do": "wait_for",
+          "target": "News Summary Prompt",
+          "timeout": 10
         },
         {
           "do": "highlight",
@@ -628,7 +667,7 @@
       "_section": "=== BRING YOUR OWN MODELS (20s) ===",
       "id": "providers_1",
       "speaker": "moderator",
-      "narration": "Before generation, we add an OpenAI provider in Settings.",
+      "narration": "LLARS ships with built-in Mistral models, so we can skip provider setup. Providers are optional and managed here in Settings.",
       "actions": [
         {
           "do": "goto",
@@ -656,90 +695,27 @@
     {
       "id": "providers_2",
       "speaker": "guest",
-      "narration": "I'll add the OpenAI key and pick a model.",
+      "narration": "You could add external providers here, but for this demo we'll stick to the built-in Mistral and Magistral models.",
       "actions": [
         {
-          "do": "click",
-          "target": "Add Provider"
-        },
-        {
-          "do": "wait_for",
-          "target": "Provider Type Select",
-          "timeout": 10
-        },
-        {
-          "do": "click",
-          "target": "Provider Type Select"
+          "do": "highlight",
+          "target": "Add Provider",
+          "duration": 1.5
         },
         {
           "do": "wait",
-          "seconds": 0.3
-        },
-        {
-          "do": "click",
-          "target": "Provider Type OpenAI"
-        },
-        {
-          "do": "wait",
-          "seconds": 0.3
-        },
-        {
-          "do": "clear",
-          "target": "Provider Name Input"
-        },
-        {
-          "do": "type",
-          "target": "Provider Name Input",
-          "text": "OpenAI",
-          "speed": "fast"
-        },
-        {
-          "do": "clear",
-          "target": "Provider API Key Input"
-        },
-        {
-          "do": "type",
-          "target": "Provider API Key Input",
-          "text": "${OPENAI_API_KEY}",
-          "speed": "fast"
-        },
-        {
-          "do": "click",
-          "target": "Provider Model Input"
-        },
-        {
-          "do": "type",
-          "target": "Provider Model Input",
-          "text": "gpt-4o-mini",
-          "speed": "fast"
-        },
-        {
-          "do": "wait",
-          "seconds": 0.2
-        },
-        {
-          "do": "click",
-          "target": "Dialog Create Button"
-        },
-        {
-          "do": "wait",
-          "seconds": 0.8
+          "seconds": 0.5
         }
       ]
     },
     {
       "id": "providers_3",
       "speaker": "moderator",
-      "narration": "Now OpenAI is available for evaluation in the Scenario Wizard.",
+      "narration": "We'll proceed with the built-in models for both batch generation and evaluation.",
       "actions": [
         {
-          "do": "highlight",
-          "target": "OpenAI Provider Card",
-          "duration": 1.5
-        },
-        {
           "do": "wait",
-          "seconds": 0.3
+          "seconds": 0.6
         }
       ]
     },
@@ -860,6 +836,11 @@
           "seconds": 1
         },
         {
+          "do": "wait_for",
+          "target": "Prompt Item",
+          "timeout": 10
+        },
+        {
           "do": "highlight",
           "target": "News Summary Prompt Item",
           "duration": 1.5
@@ -890,11 +871,16 @@
     {
       "id": "batch_gen_5",
       "speaker": "moderator",
-      "narration": "Now we choose two Mistral models: Mistral Small and Magistral.",
+      "narration": "Now we choose two models from the list for comparison.",
       "actions": [
         {
           "do": "wait",
           "seconds": 1
+        },
+        {
+          "do": "wait_for",
+          "target": "Model Item",
+          "timeout": 10
         },
         {
           "do": "highlight",
@@ -1011,7 +997,7 @@
     {
       "id": "batch_gen_output_1",
       "speaker": "moderator",
-      "narration": "Let's open one output. You can see the system and user blocks on the left, and the generated result on the right, plus model, tokens, and cost.",
+      "narration": "Let's open one output. You can see the prompt blocks on the left, and the generated result on the right, plus model, tokens, and cost.",
       "actions": [
         {
           "do": "highlight",
@@ -1186,7 +1172,7 @@
     {
       "id": "scenario_wizard_5",
       "speaker": "moderator",
-      "narration": "We add an admin as a human evaluator and select the OpenAI model for LLM evaluation.",
+      "narration": "We add an admin as a human evaluator and select Mistral and Magistral for LLM evaluation.",
       "actions": [
         {
           "do": "wait",
@@ -1217,12 +1203,25 @@
         },
         {
           "do": "highlight",
-          "target": "OpenAI Provider",
+          "target": "Mistral LLM",
           "duration": 1.2
         },
         {
           "do": "click",
-          "target": "OpenAI Provider"
+          "target": "Mistral LLM"
+        },
+        {
+          "do": "wait",
+          "seconds": 0.4
+        },
+        {
+          "do": "highlight",
+          "target": "Magistral LLM",
+          "duration": 1.2
+        },
+        {
+          "do": "click",
+          "target": "Magistral LLM"
         },
         {
           "do": "wait",
@@ -1246,6 +1245,15 @@
         {
           "do": "click",
           "target": "Create Scenario"
+        },
+        {
+          "do": "wait_for",
+          "target": "Scenario Card",
+          "timeout": 20
+        },
+        {
+          "do": "click_if_present",
+          "target": "Scenario Card"
         },
         {
           "do": "wait_for",

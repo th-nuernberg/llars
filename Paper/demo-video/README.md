@@ -222,7 +222,9 @@ Das Backend enthält einen Seeder für vorbereitete Demo-Daten:
 - **1 abgeschlossener Batch-Generation Job** mit 40 Outputs (10 Artikel x 2 Prompt-Varianten x 2 Modelle)
 - **10 News-Artikel** mit generierten Zusammenfassungen
 
-**Wichtig:** Das zweite benötigte Prompt **"Analyst Summary Prompt"** wird **live im Video** angelegt und ist **nicht** vorab geseedet.
+**Wichtig:** Vor jedem Start löscht das Skript die beiden Demo-Prompts und legt sie neu an:
+- **Setup-Prompt:** `News Summary Prompt` (wird im Setup automatisch erstellt)
+- **Live-Prompt:** `News Summary Eval` (wird im Video live angelegt)
 
 ```bash
 # Seeder läuft automatisch bei PROJECT_STATE=development

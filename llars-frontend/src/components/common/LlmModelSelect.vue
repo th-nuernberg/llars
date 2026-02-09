@@ -137,6 +137,10 @@ const props = defineProps({
   allowSync: {
     type: Boolean,
     default: false
+  },
+  includeUserProviders: {
+    type: Boolean,
+    default: false
   }
 })
 
@@ -211,19 +215,51 @@ const applyDefaultSelection = () => {
 const loadModels = async () => {
   loading.value = true
   try {
-    const response = await axios.get('/api/llm/models/available', {
-      params: {
-        active_only: props.activeOnly,
-        model_type: props.modelType,
-        vision_only: props.visionOnly,
-        reasoning_only: props.reasoningOnly
-      }
-    })
-    if (response.data?.success) {
-      models.value = response.data.models || []
-    } else {
-      models.value = []
+    const requests = [
+      axios.get('/api/llm/models/available', {
+        params: {
+          active_only: props.activeOnly,
+          model_type: props.modelType,
+          vision_only: props.visionOnly,
+          reasoning_only: props.reasoningOnly
+        }
+      })
+    ]
+    if (props.includeUserProviders) {
+      requests.push(axios.get('/api/user/providers/available'))
     }
+
+    const results = await Promise.allSettled(requests)
+    const modelsResult = results[0]
+    const providersResult = results[1]
+
+    const baseModels = modelsResult?.status === 'fulfilled'
+      ? (modelsResult.value.data.models || [])
+      : []
+
+    let providerModels = []
+    if (props.includeUserProviders && providersResult?.status === 'fulfilled') {
+      const providers = providersResult.value.data?.providers || []
+      providerModels = providers
+        .map((provider) => {
+          const config = provider?.config || {}
+          const modelId = (config.model_id || '').trim()
+          if (!modelId || !provider.api_key_set || provider.is_active === false) return null
+          return {
+            model_id: `user-provider:${provider.id}:${modelId}`,
+            display_name: `${provider.name || 'Provider'} • ${modelId}`,
+            provider: provider.name || provider.provider_type || 'User Provider',
+            supports_vision: false,
+            supports_reasoning: false,
+            context_window: 0,
+            max_output_tokens: 0,
+            is_user_provider: true
+          }
+        })
+        .filter(Boolean)
+    }
+
+    models.value = [...baseModels, ...providerModels]
   } catch (error) {
     console.error('[LlmModelSelect] Error loading models:', error)
     models.value = []
@@ -247,7 +283,7 @@ const syncModels = async () => {
 }
 
 watch(
-  () => [props.modelType, props.activeOnly, props.visionOnly, props.reasoningOnly],
+  () => [props.modelType, props.activeOnly, props.visionOnly, props.reasoningOnly, props.includeUserProviders],
   () => loadModels()
 )
 

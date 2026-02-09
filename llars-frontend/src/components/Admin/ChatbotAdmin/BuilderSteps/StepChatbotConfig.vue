@@ -112,6 +112,7 @@
       :rules="[rules.required]"
       :clearable="true"
       :allow-sync="true"
+      :include-user-providers="true"
       @update:model-value="updateConfig"
     />
 

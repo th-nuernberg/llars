@@ -68,9 +68,10 @@ except ImportError:
 # KONFIGURATION
 # =============================================================================
 
-SCRIPT_FILE = "SCRIPT.json"
-AUDIO_DIR = "audio"
-OUTPUT_DIR = "output"
+BASE_DIR = Path(__file__).resolve().parent
+SCRIPT_FILE = str(BASE_DIR / "SCRIPT.json")
+AUDIO_DIR = str(BASE_DIR / "audio")
+OUTPUT_DIR = str(BASE_DIR / "output")
 
 ENV_VAR_PATTERN = re.compile(r"\$\{([A-Z0-9_]+)\}")
 _ENV_CACHE: Optional[Dict[str, str]] = None
@@ -131,6 +132,22 @@ def _resolve_env_placeholders(text: str) -> str:
         return value
 
     return ENV_VAR_PATTERN.sub(repl, text)
+
+
+def _resolve_local_path(path_str: str) -> Path:
+    """Resolve a relative path against CWD or the script directory."""
+    if not path_str:
+        return Path(path_str)
+    path = Path(path_str)
+    if path.is_absolute():
+        return path
+    cwd_candidate = (Path.cwd() / path)
+    if cwd_candidate.exists():
+        return cwd_candidate
+    base_candidate = (BASE_DIR / path)
+    if base_candidate.exists():
+        return base_candidate
+    return base_candidate
 
 # Element-Mapping: Lesbare Namen → CSS Selektoren
 # Lars nutzt eine Home-Seite mit Feature-Karten, keine Sidebar
@@ -207,6 +224,7 @@ ELEMENT_MAP = {
     "Dialog Create Button": ".v-dialog .l-btn:contains('Create'), .v-dialog .v-btn:contains('Create'), .v-dialog button:contains('Create')",
     "Block Create Button": ".v-dialog--active .l-btn:contains('Create'), .v-overlay--active .l-btn:contains('Create')",
     "Prompt Card": ".prompt-card, .v-card:contains('News Summary')",
+    "Prompt Workspace": ".prompt-workspace, .blocks-container",
     "Collaboration Color": ".v-dialog .color-presets, .v-dialog .color-preview, .color-presets, .color-preview",
     "Collab Color Preset": ".v-dialog .color-presets .color-preset, .color-presets .color-preset",
     "Settings Dialog Close": ".v-dialog .v-card-title .v-btn, .v-dialog .v-card-title button",
@@ -309,7 +327,7 @@ ELEMENT_MAP = {
     "Start LLM Evaluation": ".v-btn:contains('Start'), button:contains('Start')",
 
     # Dashboard Elements
-    "Agreement Matrix": ".ranking-agreement-matrix, .agreement-heatmap-section, .agreement-matrix, .v-card:contains('Agreement')",
+    "Agreement Matrix": ".ranking-agreement-matrix, .agreement-heatmap-section, .agreement-matrix, .summary-grid, .summary-card, .v-card:contains('Agreement')",
     "Krippendorff Alpha": ".metric:contains('Alpha'), .v-card:contains('Krippendorff')",
     "Disagreement Tab": ".v-tab:contains('Disagreement'), button:contains('Disagreement')",
     "Disagreement Chart": ".chart, .v-card:contains('Disagreement')",
@@ -390,15 +408,17 @@ ELEMENT_MAP = {
     "Scenario Tab Evaluation": ".tab-navigation .l-tab:contains('Evaluation'), .l-tab:contains('Evaluation'), .l-tab__label:contains('Evaluation')",
     "Scenario Tab Team": ".tab-navigation .l-tab:contains('Team'), .l-tab:contains('Team'), .l-tab__label:contains('Team')",
     "Scenario Live Badge": ".live-badge .live-dot, .live-dot, .stat-item.live-indicator .live-dot",
-    "Scenario LLM Progress": ".progress-fill.llm, .progress-fill.is-llm, .progress-mini .progress-fill",
+    "Scenario Progress Cards": ".progress-cards, .progress-card",
+    "Scenario Evaluator List": ".evaluators-list, .evaluator-row",
+    "Scenario LLM Progress": ".progress-fill.llm, .progress-fill.is-llm, .progress-bar-large .progress-fill, .progress-card .progress-fill, .progress-mini .progress-fill",
     "Evaluation Summary": ".evaluation-tab .summary-grid, .evaluation-tab .summary-card",
     "Evaluation Progress": ".evaluation-tab .progress-bar-container, .evaluation-tab .progress-bar-fill, .evaluation-tab .total-progress-section",
     "Evaluation Export": ".evaluation-tab .header-actions .l-btn, .evaluation-tab .header-actions .v-btn, .evaluation-tab .l-btn:contains('Export')",
     "Export JSON": ".v-list-item:contains('JSON')",
     # Scenario Data Tab
     "Data Stats": ".data-tab .data-stats, .data-stats",
-    "Data Threads Table": ".data-tab .threads-table, .threads-table, .threads-section",
-    "Data Status Legend": ".data-tab .status-legend, .status-legend",
+    "Data Threads Table": ".data-tab .threads-table, .data-tab .threads-section, .data-tab .empty-state, .threads-table, .threads-section",
+    "Data Status Legend": ".data-tab .status-legend, .data-tab .empty-state, .status-legend",
     # Scenario Team Tab
     "Team Members List": ".team-tab .members-list, .members-list",
     "Team Invite Button": ".team-tab .tab-header .l-btn, .team-tab .l-btn:contains('Invite'), .team-tab .l-btn:contains('Add')",
@@ -472,6 +492,8 @@ ELEMENT_MAP = {
     "Docs MkDocs Link": ".mkdocs-link, .mkdocs-link-container",
     "MkDocs Header": "header.md-header, .md-header",
     "MkDocs Sidebar": ".md-sidebar, .md-nav, .md-nav__list",
+    "MkDocs Search": ".md-search__input, .md-search__button, .md-search",
+    "MkDocs Content": ".md-content, .md-content__inner",
 }
 
 
@@ -484,8 +506,8 @@ class TTS:
 
     # Default Sprecher-Konfigurationen für Qwen3-TTS Voice Cloning
     DEFAULT_SPEAKERS = {
-        "moderator": {"name": "Alex", "ref_audio": "voices/alex_reference.wav"},
-        "guest": {"name": "David", "ref_audio": "voices/david_reference.wav"},
+        "moderator": {"name": "Alex", "ref_audio": str(BASE_DIR / "voices" / "alex_reference.wav")},
+        "guest": {"name": "David", "ref_audio": str(BASE_DIR / "voices" / "david_reference.wav")},
         "default": {"name": "Default", "ref_audio": None},
     }
 
@@ -1105,7 +1127,7 @@ class Browser:
         INSERT INTO user_prompts (user_id, name, content, created_at, updated_at)
         SELECT id,
                'News Summary Prompt',
-               '{\"blocks\":{\"Role Definition\":{\"content\":\"Role definition: You are a professional news editor. Write concise, factual summaries.\",\"position\":0},\"Task Explanation\":{\"content\":\"Task explanation: Summarize the article in 2-3 sentences. Preserve key facts, avoid speculation, and do not add new information.\",\"position\":1},\"Data Format Explanation\":{\"content\":\"Data format explanation: Input: Title: {{title}} | Article: {{content}} | Output: 2-3 sentences in plain text. No bullet points. No extra commentary.\",\"position\":2}}}',
+               '{\"blocks\":{\"Role Definition\":{\"content\":\"Role definition: You are a professional news editor. Write concise, factual summaries.\",\"position\":0},\"Task Explanation\":{\"content\":\"Task explanation: Summarize the article in exactly 2 sentences. Preserve key facts, avoid speculation, and do not add new information.\",\"position\":1},\"Data Format Explanation\":{\"content\":\"Data format explanation: Input: Title: {{title}} | Article: {{content}} | Output: Exactly 2 sentences in plain text. No bullet points. No extra commentary.\",\"position\":2}}}',
                NOW(),
                NOW()
         FROM users
@@ -1711,7 +1733,8 @@ class Browser:
 
     def upload(self, file_path: str, wait_for_processing: bool = True):
         """Lädt Datei hoch und wartet optional auf Verarbeitung"""
-        abs_path = str(Path(file_path).resolve())
+        resolved_path = _resolve_local_path(file_path)
+        abs_path = str(resolved_path.resolve())
 
         # Finde File Input (kann hidden sein)
         file_input = self.driver.find_element(By.CSS_SELECTOR, "input[type='file']")
@@ -1754,7 +1777,7 @@ class Browser:
 
     def set_text_from_file(self, target: str, file_path: str):
         """Setzt Textfeld-Inhalt direkt aus Datei (ohne File-Dialog)"""
-        abs_path = Path(file_path).resolve()
+        abs_path = _resolve_local_path(file_path).resolve()
         if not abs_path.exists():
             print(f"   ⚠️ Datei nicht gefunden: {file_path}")
             return False
@@ -2047,7 +2070,9 @@ class ScriptRunner:
 
     def load_script(self):
         """Lädt Skript"""
-        with open(self.script_path) as f:
+        script_path = _resolve_local_path(self.script_path)
+        self.script_path = str(script_path)
+        with open(self.script_path, encoding="utf-8") as f:
             self.script = json.load(f)
         print(f"✓ Skript geladen: {len(self.script['steps'])} Schritte")
 

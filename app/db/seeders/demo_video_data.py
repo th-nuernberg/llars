@@ -105,29 +105,57 @@ def seed_demo_video_prompts():
         logger.warning("Admin user not found, skipping demo video prompt seeding")
         return []
 
+    def build_blocks(role_text: str, task_text: str, data_text: str):
+        return {
+            "Role Definition": {
+                "content": role_text,
+                "position": 0
+            },
+            "Task Explanation": {
+                "content": task_text,
+                "position": 1
+            },
+            "Data Format Explanation": {
+                "content": data_text,
+                "position": 2
+            }
+        }
+
     prompts_data = [
         {
             "name": "News Summary Prompt",
             "content": {
-                "blocks": {
-                    "system": {
-                        "content": """You are an expert news editor.
-
-Create summaries that are:
-- Exactly 2 sentences
-- Factually accurate
-- Neutral in tone""",
-                        "position": 0
-                    },
-                    "user": {
-                        "content": """Summarize this article:
-
-Title: {{title}}
-
-{{content}}""",
-                        "position": 1
-                    }
-                }
+                "blocks": build_blocks(
+                    role_text="Role definition: You are a professional news editor. Write concise, factual summaries.",
+                    task_text="Task explanation: Summarize the article in exactly 2 sentences. Preserve key facts, avoid speculation, and do not add new information.",
+                    data_text=(
+                        "Data format explanation:\n"
+                        "Input:\n"
+                        "Title: {{title}}\n\n"
+                        "Article:\n"
+                        "{{content}}\n\n"
+                        "Output:\n"
+                        "Exactly 2 sentences in plain text. No bullet points. No extra commentary."
+                    )
+                )
+            }
+        },
+        {
+            "name": "News Summary Eval",
+            "content": {
+                "blocks": build_blocks(
+                    role_text="Role definition: You are a senior journalist drafting a short news digest.",
+                    task_text="Task explanation: Summarize the article in 3-4 sentences. Highlight key facts and implications while staying neutral and factual.",
+                    data_text=(
+                        "Data format explanation:\n"
+                        "Input:\n"
+                        "Title: {{title}}\n\n"
+                        "Article:\n"
+                        "{{content}}\n\n"
+                        "Output:\n"
+                        "3-4 sentences in plain text. No bullet points. No extra commentary."
+                    )
+                )
             }
         }
     ]
@@ -193,30 +221,19 @@ def seed_demo_video_generation_job():
         user_id=admin_user.id,
         name="News Summary Prompt"
     ).first()
-    if not prompt_concise:
-        logger.warning("Demo prompt not found, creating it first...")
+    prompt_eval = UserPrompt.query.filter_by(
+        user_id=admin_user.id,
+        name="News Summary Eval"
+    ).first()
+    if not prompt_concise or not prompt_eval:
+        logger.warning("Demo prompts not found, creating them first...")
         prompts = seed_demo_video_prompts()
-        if len(prompts) < 1:
-            logger.error("Failed to create demo prompt")
+        prompts_by_name = {p.name: p for p in prompts}
+        prompt_concise = prompt_concise or prompts_by_name.get("News Summary Prompt")
+        prompt_eval = prompt_eval or prompts_by_name.get("News Summary Eval")
+        if not prompt_concise or not prompt_eval:
+            logger.error("Failed to create demo prompts")
             return None
-        prompt_concise = prompts[0]
-
-    analyst_system_prompt = """You are a senior journalist creating article summaries for a news digest.
-
-Your summaries should:
-- Be 3-4 sentences long
-- Capture the key facts and implications
-- Use professional journalistic language
-- Remain objective and factual"""
-
-    analyst_user_prompt = """Create a detailed summary of this news article:
-
-Headline: {{title}}
-
-Full Article:
-{{content}}
-
-Provide a comprehensive summary:"""
 
     # Use embedded news articles
     news_articles = NEWS_ARTICLES
@@ -237,7 +254,7 @@ Provide a comprehensive summary:"""
             },
             "prompts": [
                 {"template_name": prompt_concise.name},
-                {"template_name": "Analyst Summary Prompt"}
+                {"template_name": prompt_eval.name}
             ],
             "llm_models": [mistral_small.model_id, magistral_small.model_id],
             "generation_params": {
@@ -260,26 +277,45 @@ Provide a comprehensive summary:"""
 
     # Create outputs for each combination
     output_id = 0
+    def get_block_content(prompt, block_name):
+        blocks = (prompt.content or {}).get('blocks', {})
+        block = blocks.get(block_name, {})
+        return block.get('content', '') if isinstance(block, dict) else ''
+
+    def render_system_prompt(prompt):
+        parts = [
+            get_block_content(prompt, "Role Definition"),
+            get_block_content(prompt, "Task Explanation")
+        ]
+        return "\n\n".join([p for p in parts if p])
+
+    def render_user_prompt(prompt, article):
+        template = get_block_content(prompt, "Data Format Explanation")
+        if not template:
+            return f"Title: {article['title']}\n\n{article['content']}"
+        return (
+            template
+            .replace("{{title}}", article["title"])
+            .replace("{{content}}", article["content"])
+        )
+
     for article_idx, article in enumerate(news_articles):
-        for prompt_type, prompt in [("concise", prompt_concise), ("analyst", None)]:
+        for prompt_type, prompt, summary_key in [
+            ("concise", prompt_concise, "concise"),
+            ("analyst", prompt_eval, "analyst"),
+        ]:
             for model in [mistral_small, magistral_small]:
-                summary = SAMPLE_SUMMARIES[prompt_type][article_idx]
+                summary = SAMPLE_SUMMARIES[summary_key][article_idx]
 
                 output = GeneratedOutput(
                     job_id=job.id,
                     prompt_template_id=None,  # user_prompts != prompt_templates
                     llm_model_id=model.id,
                     llm_model_name=model.model_id,
-                    prompt_variant_name=prompt.name if prompt else "Analyst Summary Prompt",
+                    prompt_variant_name=prompt.name,
                     generated_content=summary,
-                    rendered_system_prompt=(
-                        prompt.content.get('blocks', {}).get('system', {}).get('content', '')
-                        if prompt else analyst_system_prompt
-                    ),
-                    rendered_user_prompt=(
-                        f"Title: {article['title']}\n\n{article['content']}"
-                        if prompt else f"Headline: {article['title']}\n\nFull Article:\n{article['content']}"
-                    ),
+                    rendered_system_prompt=render_system_prompt(prompt),
+                    rendered_user_prompt=render_user_prompt(prompt, article),
                     status=GeneratedOutputStatus.COMPLETED,
                     input_tokens=len(article['content'].split()) + 50,  # Rough estimate
                     output_tokens=len(summary.split()),

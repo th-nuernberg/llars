@@ -48,6 +48,8 @@ def seed_demo_scenarios(db):
     # Get or create users for demo scenarios
     evaluator_user = User.query.filter_by(username='evaluator').first()
     researcher_user = User.query.filter_by(username='researcher').first()
+    ijcai_reviewer_1 = User.query.filter_by(username='ijcai_reviewer_1').first()
+    ijcai_reviewer_2 = User.query.filter_by(username='ijcai_reviewer_2').first()
     admin_user = User.query.filter_by(username='admin').first()
 
     # Get default user group
@@ -77,11 +79,39 @@ def seed_demo_scenarios(db):
         db.session.add(researcher_user)
         print("  Created user: researcher")
 
+    if not ijcai_reviewer_1:
+        ijcai_reviewer_1 = User(
+            username='ijcai_reviewer_1',
+            password_hash='',  # Auth via Authentik, no local password
+            api_key=str(uuid.uuid4()),
+            group_id=default_group.id
+        )
+        db.session.add(ijcai_reviewer_1)
+        print("  Created user: ijcai_reviewer_1")
+
+    if not ijcai_reviewer_2:
+        ijcai_reviewer_2 = User(
+            username='ijcai_reviewer_2',
+            password_hash='',  # Auth via Authentik, no local password
+            api_key=str(uuid.uuid4()),
+            group_id=default_group.id
+        )
+        db.session.add(ijcai_reviewer_2)
+        print("  Created user: ijcai_reviewer_2")
+
     db.session.flush()
     if admin_user:
-        print(f"  Users ready: evaluator (id={evaluator_user.id}), researcher (id={researcher_user.id}), admin (id={admin_user.id})")
+        print(
+            "  Users ready: evaluator (id=%s), researcher (id=%s), "
+            "ijcai_reviewer_1 (id=%s), ijcai_reviewer_2 (id=%s), admin (id=%s)"
+            % (evaluator_user.id, researcher_user.id, ijcai_reviewer_1.id, ijcai_reviewer_2.id, admin_user.id)
+        )
     else:
-        print(f"  Users ready: evaluator (id={evaluator_user.id}), researcher (id={researcher_user.id})")
+        print(
+            "  Users ready: evaluator (id=%s), researcher (id=%s), "
+            "ijcai_reviewer_1 (id=%s), ijcai_reviewer_2 (id=%s)"
+            % (evaluator_user.id, researcher_user.id, ijcai_reviewer_1.id, ijcai_reviewer_2.id)
+        )
 
     # Get function types
     rating_type = FeatureFunctionType.query.filter_by(name='rating').first()

@@ -494,6 +494,38 @@ def initialize_permissions(db):
                 'feature:kaimo:edit',
             ]
         },
+        {
+            'role_name': 'ijcai_reviewer',
+            'display_name': 'IJCAI Reviewer',
+            'description': 'Minimaler Zugriff für IJCAI-Demo (Prompt Engineering, Batch Generation, Evaluation)',
+            'permissions': [
+                # Prompt Engineering (kollaboratives Prompting)
+                'feature:prompt_engineering:view',
+                'feature:prompt_engineering:edit',
+                # Batch Generation (inkl. Start/Export/Übergabe an Szenario)
+                'feature:generation:view',
+                'feature:generation:create',
+                'feature:generation:manage',
+                'feature:generation:export',
+                'feature:generation:to_scenario',
+                # LLM-Auswahl (Modelle in Prompt/Generation/Evaluator)
+                'feature:llm:view',
+                # Chatbots (nur ansehen/nutzen)
+                'feature:chatbots:view',
+                # Szenarien & Evaluation (Scenario Wizard + Aufgaben)
+                'data:manage_scenarios',
+                'feature:ranking:view',
+                'feature:ranking:edit',
+                'feature:rating:view',
+                'feature:rating:edit',
+                'feature:comparison:view',
+                'feature:comparison:edit',
+                'feature:authenticity:view',
+                'feature:authenticity:edit',
+                'feature:mail_rating:view',
+                'feature:mail_rating:edit',
+            ]
+        },
     ]
 
     role_permissions_map = {
@@ -670,6 +702,8 @@ def assign_default_demo_roles(db):
         'researcher': 'researcher',
         'evaluator': 'evaluator',
         'chatbot_manager': 'chatbot_manager',
+        'ijcai_reviewer_1': 'ijcai_reviewer',
+        'ijcai_reviewer_2': 'ijcai_reviewer',
     }
 
     for username, role_name in role_map.items():

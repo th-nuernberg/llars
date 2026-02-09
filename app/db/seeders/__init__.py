@@ -9,7 +9,12 @@ from .feature_types import initialize_feature_function_types
 from .categories import initialize_consulting_category_types
 from .kaimo import initialize_kaimo_defaults, seed_kaimo_demo_cases
 from .schema_patches import apply_schema_patches
-from .users import seed_user_groups, seed_bootstrap_admin, seed_avatar_seeds, seed_collab_colors
+from .users import (
+    seed_user_groups,
+    seed_bootstrap_admin,
+    seed_avatar_seeds,
+    seed_collab_colors,
+)
 from .permissions import initialize_permissions
 from .rag import initialize_rag_system
 from .chatbots import initialize_default_chatbots

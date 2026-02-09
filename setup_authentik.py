@@ -315,6 +315,20 @@ class AuthentikSetup:
                 name="Chatbot Manager"
             )
 
+            self.create_test_user(
+                username="ijcai_reviewer_1",
+                email="ijcai_reviewer_1@llars.local",
+                password="ijcai_reviewer_123",
+                name="IJCAI Reviewer 1"
+            )
+
+            self.create_test_user(
+                username="ijcai_reviewer_2",
+                email="ijcai_reviewer_2@llars.local",
+                password="ijcai_reviewer_123",
+                name="IJCAI Reviewer 2"
+            )
+
         print("\n" + "=" * 60)
         print("✅ Setup completed!")
         print("=" * 60)
@@ -324,6 +338,8 @@ class AuthentikSetup:
             print("   Researcher: researcher / researcher123")
             print("   Evaluator:  evaluator / evaluator123")
             print("   Chatbot:    chatbot_manager / chatbot_manager123")
+            print("   IJCAI #1:   ijcai_reviewer_1 / ijcai_reviewer_123")
+            print("   IJCAI #2:   ijcai_reviewer_2 / ijcai_reviewer_123")
         else:
             print("   (Production mode: only admin user created)")
         print("\n🌐 URLs:")

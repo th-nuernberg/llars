@@ -360,7 +360,7 @@ print("  - Username: admin")
 print("  - Password: (from LLARS_ADMIN_PASSWORD)")
 EOF
 else
-    print_info "Development mode: Creating test users (admin, researcher, evaluator, chatbot_manager)"
+    print_info "Development mode: Creating test users (admin, researcher, evaluator, chatbot_manager, ijcai_reviewer_1, ijcai_reviewer_2)"
 
     $COMPOSE_CMD exec -T authentik-server ak shell <<EOF
 import os
@@ -368,7 +368,7 @@ from authentik.core.models import User, Group
 
 admin_password = "$LLARS_ADMIN_PASSWORD"
 
-print(f"Creating test users with password from LLARS_ADMIN_PASSWORD...")
+print("Creating test users (LLARS_ADMIN_PASSWORD for standard users, ijcai_reviewer_123 for IJCAI reviewers)...")
 
 # Get or create authentik Admins group
 admin_group, _ = Group.objects.get_or_create(
@@ -400,6 +400,20 @@ users_data = [
         'name': 'Chatbot Manager',
         'email': 'chatbot_manager@localhost',
         'is_admin': False
+    },
+    {
+        'username': 'ijcai_reviewer_1',
+        'name': 'IJCAI Reviewer 1',
+        'email': 'ijcai_reviewer_1@localhost',
+        'is_admin': False,
+        'password': 'ijcai_reviewer_123'
+    },
+    {
+        'username': 'ijcai_reviewer_2',
+        'name': 'IJCAI Reviewer 2',
+        'email': 'ijcai_reviewer_2@localhost',
+        'is_admin': False,
+        'password': 'ijcai_reviewer_123'
     }
 ]
 
@@ -413,8 +427,9 @@ for user_data in users_data:
         }
     )
 
-    # Set password
-    user.set_password(admin_password)
+    # Set password (allow per-user overrides)
+    user_password = user_data.get('password') or admin_password
+    user.set_password(user_password)
     user.save()
 
     # Add admin users to admin group
@@ -437,6 +452,8 @@ print(f"  - admin / {admin_password[:3]}*** (admin)")
 print(f"  - researcher / {admin_password[:3]}*** (researcher)")
 print(f"  - evaluator / {admin_password[:3]}*** (evaluator)")
 print(f"  - chatbot_manager / {admin_password[:3]}*** (chatbot manager)")
+print("  - ijcai_reviewer_1 / ijcai_reviewer_123 (ijcai reviewer)")
+print("  - ijcai_reviewer_2 / ijcai_reviewer_123 (ijcai reviewer)")
 EOF
 fi
 
@@ -545,6 +562,8 @@ else
     echo "  • researcher / (LLARS_ADMIN_PASSWORD) - Researcher"
     echo "  • evaluator / (LLARS_ADMIN_PASSWORD) - Evaluator"
     echo "  • chatbot_manager / (LLARS_ADMIN_PASSWORD) - Chatbot Manager"
+    echo "  • ijcai_reviewer_1 / ijcai_reviewer_123 - IJCAI Reviewer"
+    echo "  • ijcai_reviewer_2 / ijcai_reviewer_123 - IJCAI Reviewer"
     echo ""
     echo -e "${YELLOW}Development Mode Active:${NC}"
     echo "  • All test users created with same password"

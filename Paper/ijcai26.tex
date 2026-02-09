@@ -27,15 +27,20 @@
 /TemplateVersion (IJCAI.2026.0)
 }
 
-\title{LLARS: A Platform for Evaluating LLM Outputs\\with Human and Machine Evaluators}
+\title{LLARS: An End-to-End Pipeline for Collaborative Prompting, Batch Generation, and Hybrid Evaluation}
 
 \author{
 Philipp Steigerwald$^1$\and
+Mara Stieler$2$\and
+Jennifer Burghardt$2$\and
+Eric Rudolph$^1$\and
 Jens Albrecht$^1$\\
 \affiliations
-$^1$Technische Hochschule N\"urnberg Georg Simon Ohm, Germany\\
+Technische Hochschule Nürnberg Georg Simon Ohm, Nürnberg, Germany\\
+$^1$Faculty of Computer Science, Center for Artificial Intelligence (KIZ)\\
+$^2$Faculty of Social Sciences, Institute for E-Counselling
 \emails
-\{philipp.steigerwald, jens.albrecht\}@th-nuernberg.de
+\{philipp.steigerwald, mara.stieler, jennifer.burghardt, eric.rudolph, jens.albrecht\}@th-nuernberg.de
 }
 
 \begin{document}
@@ -45,8 +50,8 @@ $^1$Technische Hochschule N\"urnberg Georg Simon Ohm, Germany\\
 \begin{abstract}
 We demonstrate LLARS, an open-source platform that bridges the gap between domain experts and developers for systematic evaluation of LLM outputs.
 The platform provides three integrated modules that can be used together or independently:
-\textbf{Collaborative Prompt Engineering} enables real-time co-editing with character-level tracking---useful for prompt optimization or compliance training under regulations like the EU AI Act~\cite{euaiact2024}.
-\textbf{Batch Generation} scales output creation across multiple LLMs with cost tracking---enabling synthetic data generation or systematic model comparison.
+\textbf{Collaborative Prompt Engineering} lets domain experts and developers co-author prompts in a shared real-time workspace with version control and instant LLM testing.
+\textbf{Batch Generation} systematically produces outputs for all combinations of prompts, LLMs, and data items with built-in cost tracking.
 \textbf{Large-Scale Evaluation} supports human and LLM evaluators with live agreement metrics---applicable to outputs from any source.
 When combined, these modules form a complete pipeline from prompt development through rigorous assessment.
 
@@ -56,97 +61,117 @@ When combined, these modules form a complete pipeline from prompt development th
 
 \section{Introduction}
 
-\begin{figure*}[t]
+\definecolor{clrPrompt}{HTML}{B0CA97}
+\definecolor{clrBatch}{HTML}{88C4C8}
+\definecolor{clrEval}{HTML}{D1BC8A}
+\definecolor{clrOutcome}{HTML}{E8A087}
+
+\begin{figure}[t]
 \centering
 \begin{tikzpicture}[
-    % Node styles
     module/.style={
-        rectangle, draw=black!70, fill=white,
-        minimum width=3.4cm, minimum height=1.1cm,
-        align=center, font=\small\bfseries,
-        rounded corners=2pt, line width=0.8pt
+        rectangle, minimum width=3.2cm, minimum height=1.0cm,
+        align=center, font=\footnotesize\bfseries,
+        rounded corners=3pt, line width=0.9pt
     },
     actor/.style={
-        font=\small, align=center
+        rectangle, draw=black!50, fill=black!6,
+        minimum width=2.2cm, minimum height=0.7cm,
+        align=center, font=\fontsize{6.5}{8}\selectfont,
+        line width=0.5pt
     },
     export/.style={
-        rectangle, draw=black!40, fill=black!5,
-        minimum width=2.2cm, minimum height=0.6cm,
-        align=center, font=\scriptsize,
+        rectangle, draw=black!25, fill=black!4,
+        minimum width=1.5cm, minimum height=0.45cm,
+        align=center, font=\fontsize{6}{7.5}\selectfont,
         rounded corners=1pt
     },
     outcome/.style={
-        rectangle, draw=black!70, fill=black!8,
-        minimum width=3.2cm, minimum height=1.1cm,
-        align=center, font=\small,
-        rounded corners=2pt, line width=0.8pt
+        rectangle, draw=clrOutcome!70!black, fill=clrOutcome!20,
+        minimum width=3.2cm, minimum height=1.0cm,
+        align=center, font=\footnotesize\bfseries,
+        rounded corners=3pt, line width=0.9pt
     },
-    arrow/.style={-{Stealth[length=5pt]}, line width=0.8pt, black!70},
-    dasharrow/.style={-{Stealth[length=5pt]}, line width=0.8pt, black!50, dashed},
+    arrow/.style={-{Stealth[length=4.5pt]}, line width=0.7pt, black!55},
+    pipearrow/.style={-{Stealth[length=5pt, width=4pt]}, line width=1.0pt, black!65},
+    dasharrow/.style={-{Stealth[length=3.5pt]}, line width=0.5pt, black!30, dashed},
+    lbl/.style={font=\fontsize{6}{7.5}\selectfont, text=black!55},
 ]
 
-% === LLARS Modules ===
-\node[module] (prompt) {Collaborative\\Prompt Editor};
-\node[module, right=1.8cm of prompt] (batch) {Batch\\Generation};
-\node[module, right=1.8cm of batch] (eval) {Evaluation};
+% === Module 1: Prompt Engineering ===
+\node[module, draw=clrPrompt!70!black, fill=clrPrompt!25] (pe) at (0, 0)
+    {Collaborative\\[-1pt]Prompt Engineering};
 
-% === Actors above ===
-\node[actor, above=1.3cm of prompt] (experts1) {Domain Experts\\+ Developers};
-\node[actor, above=1.3cm of eval] (experts2) {Domain Experts\\+ LLM Evaluators};
+% === Module 2: Batch Generation ===
+\node[module, draw=clrBatch!70!black, fill=clrBatch!25] (bg) at (0, -1.65)
+    {Batch\\[-1pt]Generation};
 
-% === Arrows from actors into modules ===
-\draw[arrow] (experts1) -- (prompt);
-\draw[arrow] (experts2) -- (eval);
+% === Module 3: Evaluation ===
+\node[module, draw=clrEval!70!black, fill=clrEval!25] (ev) at (0, -3.3)
+    {Evaluation};
 
-% === Pipeline arrows between modules ===
-\draw[arrow] (prompt) -- node[above, font=\scriptsize] {Prompts} (batch);
-\draw[arrow] (batch) -- node[above, font=\scriptsize] {Outputs} (eval);
+% === Actors (left side, more spacing from LLARS box) ===
+\node[actor] (dev) at (-3.7, 0) {Domain Experts\\[-1pt]\& Developers};
+\node[actor] (data) at (-3.7, -1.65) {Domain\\[-1pt]Data};
+\node[actor] (llmeval) at (-3.7, -3.3) {Human \&\\[-1pt]LLM Evaluators};
 
-% === Export arrows (downward) ===
-\node[export, below=0.9cm of prompt] (exp1) {Export JSON};
-\node[export, below=0.9cm of batch] (exp2) {Export CSV/JSON};
-\node[export, below=0.9cm of eval] (exp3) {Export CSV/JSON};
+% === Actor arrows ===
+\draw[arrow] (dev.east) -- (pe.west);
+\draw[arrow] (data.east) -- (bg.west);
+\draw[arrow] (llmeval.east) -- (ev.west);
 
-\draw[dasharrow] (prompt) -- (exp1);
-\draw[dasharrow] (batch) -- (exp2);
-\draw[dasharrow] (eval) -- (exp3);
+% === Pipeline arrows ===
+\draw[pipearrow] (pe.south) -- node[lbl, right, xshift=1pt] {Prompts} (bg.north);
+\draw[pipearrow] (bg.south) -- node[lbl, right, xshift=1pt] {Outputs} (ev.north);
 
-% === Outcome arrow ===
-\node[outcome, right=1.8cm of eval] (outcome) {Selected Model\\+ Prompt};
+% === Export arrows (to the right, with more spacing) ===
+\node[export] (exp1) at (3.4, 0) {Prompt};
+\node[export] (exp2) at (3.4, -1.65) {LLM Outputs};
+\node[export] (exp3) at (3.4, -3.3) {Evaluation\\[-1pt]Results};
+\draw[dasharrow] (pe.east) -- (exp1);
+\draw[dasharrow] (bg.east) -- (exp2);
+\draw[dasharrow] (ev.east) -- (exp3);
 
-\draw[arrow] (eval) -- (outcome);
+% === Outcome (bottom, more spacing from LLARS box) ===
+\node[outcome] (outcome) at (0, -5.05) {Best LLM \\[-1pt]\& Prompt Pair};
+\draw[pipearrow] (ev.south) -- (outcome.north);
 
-% === LLARS bounding box ===
+% === LLARS bounding box (light green tint) ===
 \begin{scope}[on background layer]
-\node[draw=black!40, dashed, rounded corners=6pt, line width=1pt,
-      fill=black!3,
-      fit=(prompt)(batch)(eval),
-      inner xsep=12pt, inner ysep=14pt,
-      label={[font=\small\bfseries, anchor=north west, xshift=6pt, yshift=-2pt]north west:LLARS}
+\node[draw=clrPrompt!60!black!40, dashed, rounded corners=6pt, line width=0.9pt,
+      fill=clrPrompt!5,
+      fit=(pe)(bg)(ev),
+      inner xsep=10pt, inner ysep=10pt,
      ] (llarsbox) {};
+\node[font=\fontsize{7}{9}\selectfont\bfseries, text=clrPrompt!60!black!50,
+      anchor=south east] at ([xshift=-5pt, yshift=-1pt]llarsbox.south east) {LLARS};
 \end{scope}
 
 \end{tikzpicture}
-\caption{LLARS pipeline: domain experts and developers collaboratively develop prompts, generate outputs across multiple LLMs, and evaluate results with human and LLM evaluators. Each stage supports independent export. The pipeline yields a validated model--prompt combination for deployment.}
+\caption{LLARS pipeline: domain experts and developers collaboratively develop prompts, generate outputs across LLMs, and evaluate results with human and LLM evaluators. Each stage supports export; the pipeline yields a validated model--prompt combination.}
 \label{fig:pipeline}
-\end{figure*}
+\end{figure}
 
-Organizations increasingly build LLM-based systems for sensitive domains such as medical documentation, legal analysis, educational tutoring, and psychosocial counseling.
+Organizations increasingly build LLM-based systems for sensitive domains such as legal analysis, medical documentation, and psychosocial counseling.
 Developing these systems requires writing effective prompts, selecting suitable models, and rigorously evaluating outputs---tasks that demand both domain expertise and technical skill.
 Domain experts understand \emph{what} constitutes quality in their field, while developers know \emph{how} to structure prompts and configure LLM pipelines.
-Yet existing tools force these groups into separate workflows:
-annotation platforms like Label Studio~\cite{labelstudio2024} and Argilla~\cite{argilla2024} provide human evaluation interfaces but lack collaborative prompt development;
-LLM-as-Judge frameworks like MT-Bench~\cite{zheng2024judging} automate assessment but require technical expertise and exclude human evaluators from the same workflow.
-No existing tool offers a unified, GUI-driven pipeline from collaborative prompt development through systematic output generation to hybrid human--LLM evaluation.
+Yet in practice, prompts are revised through multiple rounds of feedback in shared documents without version control or a common testing environment, leaving teams unsure which version was tested against which model.
+At the same time, organizations need to determine the right model for their use case---comparing open-source alternatives for privacy-preserving on-premise deployment or finding the most cost-effective proprietary option---but lack tools for systematic, collaborative comparison.
+Existing platforms address only fragments of this workflow:
+annotation tools like Label Studio~\cite{labelstudio2024} and Argilla~\cite{argilla2024} provide evaluation interfaces but no collaborative prompt development;
+LLM-as-Judge frameworks like MT-Bench~\cite{zheng2024judging} automate assessment but exclude human evaluators.
+No existing tool offers a unified pipeline from collaborative prompt engineering through systematic output generation to hybrid human--LLM evaluation.
 
 We present LLARS (LLM Assisted Rating System), an open-source platform that closes this gap with an integrated three-stage pipeline (Figure~\ref{fig:pipeline}).
-In the first stage, domain experts and developers \emph{collaboratively author prompts} in a real-time editor, defining template variables as placeholders for domain-specific data and testing against live LLMs---all without leaving the shared workspace.
-In the second stage, \emph{batch generation} produces outputs at scale by computing the Cartesian product of data items, prompts, and models, with built-in cost estimation and budget control.
-In the third stage, both human evaluators and LLM evaluators \emph{assess the outputs} within the same framework---rating, ranking, comparing, or labeling---while the platform computes inter-rater agreement metrics in real time across all evaluator combinations (human--human, LLM--LLM, and human--LLM).
+In the first stage, domain experts and developers \emph{collaboratively engineer prompts} in a shared real-time editor with built-in version control, testing candidate prompts against live LLMs without leaving the workspace.
+Prompts can be exported for external use or passed directly into the second stage, where \emph{batch generation} produces outputs for all combinations of data items, prompts, and models with built-in cost estimation.
+In the third stage, both human and LLM evaluators \emph{assess the outputs} within the same framework---rating, ranking, comparing, or labeling---while real-time agreement metrics reveal where human and machine judgment converge or diverge.
 
-Each stage can also operate independently: the prompt editor serves standalone prompt development and export, batch generation supports independent synthetic data creation, and the evaluation module accepts outputs from any external source.
-At every stage, results are exportable as JSON or CSV for integration into external workflows.
-The platform connects to any OpenAI-compatible LLM provider---including locally hosted models via Ollama---and is fully open-source.
+For example, a legal team building an information extraction system can use the collaborative editor to refine prompts with legal experts, then run batch generation across candidate models---from large proprietary to small open-source alternatives---over hundreds of documents, and finally have legal experts and LLM evaluators jointly assess whether each model reliably identifies relevant clauses rather than hallucinating when information is absent.
+This end-to-end workflow directly informs which model--prompt combination to deploy.
+
+Each stage also operates independently, and results are exportable as JSON or CSV at every point.
+The platform connects to any OpenAI-compatible LLM provider---including locally hosted models via Ollama or vLLM---and is fully open-source.
 
 
 \section{Platform Overview}

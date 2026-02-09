@@ -5717,6 +5717,10 @@
       "started": "Gestartet",
       "completed": "Abgeschlossen",
       "totalCost": "Gesamtkosten",
+      "matrixItems": "Items",
+      "matrixPrompts": "Prompts",
+      "matrixModels": "Modelle",
+      "matrixOutputs": "Outputs",
       "configuration": "Konfiguration",
       "source": "Datenquelle",
       "prompts": "Prompt-Templates",
@@ -5733,7 +5737,8 @@
       "reconnecting": "Verbinde zum laufenden Stream...",
       "inputPrompt": "Eingabe-Prompt",
       "noPromptData": "Prompt-Daten nicht verfügbar",
-      "noContent": "Kein Inhalt generiert"
+      "noContent": "Kein Inhalt generiert",
+      "sourceData": "Eingabedaten"
     },
     "scenario": {
       "name": "Szenario-Name",

@@ -128,6 +128,23 @@
             </div>
           </div>
 
+          <!-- Generation Matrix -->
+          <div v-if="generationMatrix" class="generation-matrix">
+            <div class="matrix-formula">
+              <span class="matrix-value">{{ generationMatrix.items }}</span>
+              <span class="matrix-label">{{ $t('generation.detail.matrixItems') }}</span>
+              <span class="matrix-operator">&times;</span>
+              <span class="matrix-value">{{ generationMatrix.prompts }}</span>
+              <span class="matrix-label">{{ $t('generation.detail.matrixPrompts') }}</span>
+              <span class="matrix-operator">&times;</span>
+              <span class="matrix-value">{{ generationMatrix.models }}</span>
+              <span class="matrix-label">{{ $t('generation.detail.matrixModels') }}</span>
+              <span class="matrix-operator">=</span>
+              <span class="matrix-value matrix-total">{{ generationMatrix.total }}</span>
+              <span class="matrix-label">{{ $t('generation.detail.matrixOutputs') }}</span>
+            </div>
+          </div>
+
           <!-- Stats Grid -->
           <div class="stats-grid">
             <div class="stat-item">
@@ -170,8 +187,9 @@
               <LTag
                 v-for="prompt in jobConfig?.prompts || []"
                 :key="prompt.template_id"
-                variant="info"
+                variant="default"
                 size="small"
+                :style="getPromptTagStyle(prompt.template_name || `Template #${prompt.template_id}`)"
               >
                 {{ prompt.template_name || `Template #${prompt.template_id}` }}
               </LTag>
@@ -287,8 +305,17 @@
                   >
                     {{ output.llm_model_name }}
                   </LTag>
-                  <span class="output-item-name">
-                    {{ output.prompt_variant_name || `Item #${output.source_item_id || output.id}` }}
+                  <LTag
+                    v-if="output.prompt_variant_name"
+                    variant="default"
+                    size="x-small"
+                    :style="getPromptTagStyle(output.prompt_variant_name)"
+                  >
+                    {{ output.prompt_variant_name }}
+                  </LTag>
+                  <span class="output-item-name" :title="output.source_item_label || ''">
+                    <LIcon size="12" class="mr-1">mdi-database-outline</LIcon>
+                    {{ output.source_item_label || `Item #${output.source_item_id || output.id}` }}
                   </span>
                 </div>
                 <p class="output-preview">
@@ -346,6 +373,15 @@
                   {{ selectedOutput.llm_model_name }}
                 </LTag>
               </div>
+              <div v-if="selectedOutput.prompt_variant_name" class="meta-item">
+                <span class="meta-label">Prompt:</span>
+                <LTag
+                  variant="default"
+                  :style="getPromptTagStyle(selectedOutput.prompt_variant_name)"
+                >
+                  {{ selectedOutput.prompt_variant_name }}
+                </LTag>
+              </div>
               <div class="meta-item">
                 <span class="meta-label">Status:</span>
                 <LTag :variant="getOutputStatusVariant(selectedOutput.status)">
@@ -360,6 +396,15 @@
                 <span class="meta-label">Cost:</span>
                 <span>${{ selectedOutput.cost_usd.toFixed(6) }}</span>
               </div>
+            </div>
+
+            <!-- Source Input Data -->
+            <div v-if="selectedOutput.source_item_content" class="source-data-section">
+              <h4 class="source-data-title">
+                <LIcon size="16" class="mr-1">mdi-database-outline</LIcon>
+                {{ $t('generation.detail.sourceData') }}
+              </h4>
+              <pre class="source-data-pre">{{ selectedOutput.source_item_content }}</pre>
             </div>
 
             <v-divider class="my-4" />
@@ -589,11 +634,24 @@ const getModelTagStyle = (color, modelName) => {
   const resolved = resolveModelColor(modelName, color)
   const rgb = hexToRgb(resolved)
   if (!rgb) return {}
-  const textColor = getReadableTextColor(rgb)
   return {
-    background: `linear-gradient(135deg, rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.7) 0%, rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.5) 100%)`,
-    border: `1px solid rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.8)`,
-    color: textColor
+    background: `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.1)`,
+    borderBottom: `2px solid rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.6)`,
+    color: resolved
+  }
+}
+
+// Prompt colors - distinct palette for prompt variants
+const PROMPT_COLORS = ['#8B6DB0', '#C77D4F', '#4A90A4', '#7B9E3A', '#C45B72', '#5C7CBF', '#A6843E', '#3E967A']
+
+const getPromptTagStyle = (promptName) => {
+  const color = promptColorMap.value[promptName] || PROMPT_COLORS[0]
+  const rgb = hexToRgb(color)
+  if (!rgb) return {}
+  return {
+    background: `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.1)`,
+    borderBottom: `2px solid rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.6)`,
+    color: color
   }
 }
 
@@ -601,6 +659,25 @@ const getModelTagStyle = (color, modelName) => {
 const jobId = computed(() => Number(route.params.jobId))
 
 const jobConfig = computed(() => currentJob.value?.config || {})
+
+const promptColorMap = computed(() => {
+  const map = {}
+  const prompts = jobConfig.value?.prompts || []
+  prompts.forEach((p, i) => {
+    const name = p.template_name || `Template #${p.template_id}`
+    map[name] = PROMPT_COLORS[i % PROMPT_COLORS.length]
+  })
+  return map
+})
+
+const generationMatrix = computed(() => {
+  const total = currentJob.value?.progress?.total
+  const prompts = jobConfig.value?.prompts?.length
+  const models = jobConfig.value?.llm_models?.length
+  if (!total || !prompts || !models) return null
+  const items = Math.round(total / (prompts * models))
+  return { items, prompts, models, total }
+})
 
 const progressPercent = computed(() => {
   if (!currentJob.value?.progress?.total) return 0
@@ -1165,6 +1242,48 @@ onUnmounted(() => {
   50% { opacity: 0; }
 }
 
+.generation-matrix {
+  margin-top: 16px;
+  padding: 12px 14px;
+  background: rgba(var(--v-theme-primary), 0.06);
+  border-radius: 8px 3px 8px 3px;
+  border: 1px solid rgba(var(--v-theme-primary), 0.15);
+}
+
+.matrix-formula {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px;
+  justify-content: center;
+}
+
+.matrix-value {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--llars-primary, #b0ca97);
+}
+
+.matrix-value.matrix-total {
+  font-size: 1.25rem;
+  color: var(--llars-accent, #88c4c8);
+}
+
+.matrix-label {
+  font-size: 0.7rem;
+  color: rgba(var(--v-theme-on-surface), 0.5);
+  margin-right: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.matrix-operator {
+  font-size: 1rem;
+  font-weight: 600;
+  color: rgba(var(--v-theme-on-surface), 0.4);
+  margin: 0 2px;
+}
+
 .stats-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -1304,11 +1423,14 @@ onUnmounted(() => {
 }
 
 .output-item-name {
-  font-size: 0.8rem;
-  color: rgba(var(--v-theme-on-surface), 0.6);
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.75rem;
+  color: rgba(var(--v-theme-on-surface), 0.5);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  max-width: 200px;
 }
 
 .output-preview {
@@ -1371,6 +1493,38 @@ onUnmounted(() => {
 .meta-label {
   font-size: 0.85rem;
   color: rgba(var(--v-theme-on-surface), 0.6);
+}
+
+/* Source Data Section */
+.source-data-section {
+  margin-top: 16px;
+  padding: 12px;
+  background: rgba(var(--v-theme-secondary), 0.06);
+  border-radius: 8px 3px 8px 3px;
+  border-left: 3px solid var(--llars-secondary, #D1BC8A);
+}
+
+.source-data-title {
+  display: flex;
+  align-items: center;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: rgba(var(--v-theme-on-surface), 0.6);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin: 0 0 8px 0;
+}
+
+.source-data-pre {
+  padding: 10px;
+  background: rgba(var(--v-theme-on-surface), 0.03);
+  border-radius: 6px 2px 6px 2px;
+  font-size: 0.8rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 150px;
+  overflow-y: auto;
+  margin: 0;
 }
 
 .output-full-content,

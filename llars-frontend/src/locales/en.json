@@ -5875,6 +5875,10 @@
       "started": "Started",
       "completed": "Completed",
       "totalCost": "Total Cost",
+      "matrixItems": "Items",
+      "matrixPrompts": "Prompts",
+      "matrixModels": "Models",
+      "matrixOutputs": "Outputs",
       "configuration": "Configuration",
       "source": "Data Source",
       "prompts": "Prompt Templates",
@@ -5891,7 +5895,8 @@
       "reconnecting": "Reconnecting to running stream...",
       "inputPrompt": "Input Prompt",
       "noPromptData": "Prompt data not available",
-      "noContent": "No content generated"
+      "noContent": "No content generated",
+      "sourceData": "Input Data"
     },
     "scenario": {
       "name": "Scenario Name",

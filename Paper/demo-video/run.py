@@ -195,6 +195,7 @@ ELEMENT_MAP = {
     "Last Block Editor": ".editor-block:last-child .ql-editor",
 
     # Test Prompt Dialog
+    "Test Variables Preview": ".variables-panel, .variables-list, .variable-item",
     "Test Prompt Dialog": ".test-prompt-card, .v-dialog:contains('Test')",
     "Model Select": ".config-select, .llm-model-select, .v-select",
     "Regenerate": ".l-btn:contains('Regenerate'), .v-btn:contains('Regenerate'), .dialog-actions .l-btn:contains('Regenerate'), .dialog-actions .v-btn:contains('Regenerate')",
@@ -204,6 +205,7 @@ ELEMENT_MAP = {
     "Dialog Create Button": ".v-dialog .l-btn:contains('Create'), .v-dialog .v-btn:contains('Create'), .v-dialog button:contains('Create')",
     "Block Create Button": ".v-dialog--active .l-btn:contains('Create'), .v-overlay--active .l-btn:contains('Create')",
     "Prompt Card": ".prompt-card, .v-card:contains('News Summary')",
+    "Collaboration Color": ".color-presets, .color-preview",
     "Collab Color Preset": ".color-presets .color-preset",
 
     # Generation Wizard (Batch Generation)
@@ -249,6 +251,7 @@ ELEMENT_MAP = {
     "First Prompt": ".v-overlay--active .selection-item:first-child, .v-overlay--active .selectable-card:first-child, .prompts-selection .selection-item:first-child",
     "News Summary Prompt Item": ".v-overlay--active .selection-item:contains('News'), .prompts-selection .selection-item:contains('News'), .selection-item:contains('News Summary'), .item-name:contains('News')",
     "Analyst Summary Prompt Item": ".v-overlay--active .selection-item:contains('Analyst Summary'), .prompts-selection .selection-item:contains('Analyst Summary'), .selection-item:contains('Analyst Summary'), .item-name:contains('Analyst')",
+    "News Summary Eval Item": ".v-overlay--active .selection-item:contains('News Summary Eval'), .prompts-selection .selection-item:contains('News Summary Eval'), .selection-item:contains('News Summary Eval'), .item-name:contains('News Summary Eval')",
 
     # Step 3: Models (click to select) - in wizard overlay
     "Model Item": ".v-overlay--active .selection-item, .models-selection .selection-item",

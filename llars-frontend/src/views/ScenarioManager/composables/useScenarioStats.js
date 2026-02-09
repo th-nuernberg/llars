@@ -39,6 +39,12 @@ export function useScenarioStats(scenarioIdRef) {
   let socket = null
   let currentScenarioId = null
 
+  // ===== Polling Fallback =====
+  // Periodic REST API refresh to catch missed socket events
+  let pollingInterval = null
+  const POLLING_INTERVAL_MS = 15000 // 15 seconds
+  let lastSocketUpdate = 0 // Timestamp of last socket-based update
+
   // ===== Computed =====
 
   /**
@@ -205,6 +211,7 @@ export function useScenarioStats(scenarioIdRef) {
       console.warn('[ScenarioStats] Initial stats - Scenario ID mismatch, ignoring')
       return
     }
+    lastSocketUpdate = Date.now()
     processStatsPayload(data)
   }
 
@@ -221,6 +228,7 @@ export function useScenarioStats(scenarioIdRef) {
       return
     }
     console.log('[ScenarioStats] Processing payload with evaluator_stats:', data.stats?.evaluator_stats?.length || 0)
+    lastSocketUpdate = Date.now()
     processStatsPayload(data)
   }
 
@@ -295,6 +303,56 @@ export function useScenarioStats(scenarioIdRef) {
     console.error('[ScenarioStats] Socket error:', data)
   }
 
+  // ===== Polling Fallback Functions =====
+
+  function startPolling() {
+    stopPolling()
+    pollingInterval = setInterval(async () => {
+      if (!currentScenarioId) return
+      // Only poll if we haven't received a socket update recently
+      const timeSinceLastSocket = Date.now() - lastSocketUpdate
+      if (timeSinceLastSocket > POLLING_INTERVAL_MS) {
+        console.log('[ScenarioStats] Polling fallback - no socket update for', Math.round(timeSinceLastSocket / 1000), 's, refreshing via REST')
+        await fetchStats(currentScenarioId)
+      }
+    }, POLLING_INTERVAL_MS)
+  }
+
+  function stopPolling() {
+    if (pollingInterval) {
+      clearInterval(pollingInterval)
+      pollingInterval = null
+    }
+  }
+
+  // ===== Tab Visibility Handler =====
+  // Re-subscribe to socket room when browser tab becomes visible again.
+  // Browsers throttle/disconnect sockets in hidden tabs, losing room membership.
+  let visibilityHandler = null
+
+  function setupVisibilityHandler() {
+    if (typeof document === 'undefined') return
+    visibilityHandler = () => {
+      if (document.visibilityState === 'visible' && currentScenarioId) {
+        console.log('[ScenarioStats] Tab visible - re-subscribing and refreshing stats')
+        // Re-subscribe to room (may have been lost during tab suspension)
+        if (socket?.connected) {
+          socket.emit('scenario:subscribe', { scenario_id: currentScenarioId })
+        }
+        // Always fetch fresh stats via REST as immediate catch-up
+        fetchStats(currentScenarioId)
+      }
+    }
+    document.addEventListener('visibilitychange', visibilityHandler)
+  }
+
+  function cleanupVisibilityHandler() {
+    if (visibilityHandler && typeof document !== 'undefined') {
+      document.removeEventListener('visibilitychange', visibilityHandler)
+      visibilityHandler = null
+    }
+  }
+
   // ===== Socket Connection =====
 
   // Store handler references for proper cleanup
@@ -348,9 +406,18 @@ export function useScenarioStats(scenarioIdRef) {
     } else {
       console.log('[ScenarioStats] Socket not connected yet, will subscribe on connect for scenario:', scenarioId)
     }
+
+    // Start polling fallback to catch missed socket events
+    startPolling()
+
+    // Re-subscribe when tab becomes visible again
+    setupVisibilityHandler()
   }
 
   function disconnect() {
+    stopPolling()
+    cleanupVisibilityHandler()
+
     if (!socket) return
 
     // Unsubscribe from scenario stats
@@ -459,6 +526,8 @@ export function useScenarioStats(scenarioIdRef) {
   )
 
   onUnmounted(() => {
+    stopPolling()
+    cleanupVisibilityHandler()
     disconnect()
   })
 

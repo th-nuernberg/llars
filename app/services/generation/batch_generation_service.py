@@ -782,7 +782,10 @@ class BatchGenerationService:
 
         from sqlalchemy.orm import joinedload
 
-        query = GeneratedOutput.query.options(joinedload(GeneratedOutput.llm_model)).filter_by(job_id=job_id)
+        query = GeneratedOutput.query.options(
+            joinedload(GeneratedOutput.llm_model),
+            joinedload(GeneratedOutput.source_item)
+        ).filter_by(job_id=job_id)
         if status:
             query = query.filter_by(status=status)
 
@@ -817,7 +820,10 @@ class BatchGenerationService:
         Raises:
             NotFoundError: If output not found
         """
-        output = GeneratedOutput.query.get(output_id)
+        from sqlalchemy.orm import joinedload
+        output = GeneratedOutput.query.options(
+            joinedload(GeneratedOutput.source_item)
+        ).get(output_id)
         if not output:
             raise NotFoundError(f"Output {output_id} not found")
         return output.to_dict(include_prompts=True)

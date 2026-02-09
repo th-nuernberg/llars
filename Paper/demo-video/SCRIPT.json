@@ -136,7 +136,7 @@
     {
       "id": "prompt_eng_2",
       "speaker": "moderator",
-      "narration": "Let's create a new prompt. You can add collaborators here \u2014 and we'll add the researcher now.",
+      "narration": "Let's create a new prompt. You can add collaborators here \u2014 and we'll add an IJCAI reviewer now.",
       "actions": [
         {
           "do": "wait",
@@ -170,7 +170,7 @@
         {
           "do": "type",
           "target": "input[placeholder='Search and add users...']",
-          "text": "researcher",
+          "text": "ijcai_reviewer_1",
           "speed": "fast"
         },
         {
@@ -179,7 +179,7 @@
         },
         {
           "do": "click",
-          "target": "researcher"
+          "target": "ijcai_reviewer_1"
         },
         {
           "do": "click",
@@ -210,6 +210,11 @@
           "target": "News Summary Eval"
         },
         {
+          "do": "wait_for",
+          "target": "Prompt Workspace",
+          "timeout": 10
+        },
+        {
           "do": "wait",
           "seconds": 0.5
         }
@@ -223,6 +228,11 @@
         {
           "do": "wait",
           "seconds": 0.5
+        },
+        {
+          "do": "wait_for",
+          "target": "Prompt Workspace",
+          "timeout": 10
         },
         {
           "do": "click",
@@ -324,13 +334,13 @@
         {
           "do": "type",
           "target": ".editor-block:nth-child(2) .ql-editor",
-          "text": "Task explanation: Summarize the article in 2-3 sentences. Preserve key facts, avoid speculation, and do not add new information.",
+          "text": "Task explanation: Summarize the article in 3-4 sentences. Highlight key facts and implications while staying neutral and factual.",
           "speed": "fast"
         },
         {
           "do": "type",
           "target": ".editor-block:nth-child(3) .ql-editor",
-          "text": "Data format explanation:\nInput:\nTitle: {{title}}\n\nArticle:\n{{content}}\n\nOutput:\n2-3 sentences in plain text. No bullet points. No extra commentary.",
+          "text": "Data format explanation:\nInput:\nTitle: {{title}}\n\nArticle:\n{{content}}\n\nOutput:\n3-4 sentences in plain text. No bullet points. No extra commentary.",
           "speed": "fast"
         }
       ]
@@ -485,7 +495,7 @@
       "_comment": "=== LIVE COLLAB DEMO (NEW PROMPT) ===",
       "id": "collab_1",
       "speaker": "moderator",
-      "narration": "Yes they can. I'm opening a second browser as a researcher colleague.",
+      "narration": "Yes they can. I'm opening a second browser as another IJCAI reviewer.",
       "actions": [
         {
           "do": "sync",
@@ -493,7 +503,8 @@
         },
         {
           "do": "collab_open",
-          "user": "researcher"
+          "user": "ijcai_reviewer_2",
+          "password": "ijcai_reviewer_123"
         },
         {
           "do": "wait",
@@ -1303,7 +1314,7 @@
         },
         {
           "do": "highlight",
-          "target": "Scenario LLM Progress",
+          "target": "Scenario Progress Cards",
           "duration": 1.0
         }
       ]
@@ -1311,11 +1322,11 @@
     {
       "id": "scenario_3",
       "speaker": "guest",
-      "narration": "Interesting \u2014 so the human has ten items to rank, and there are twenty LLM rankings. That's because each of the two LLM evaluators also ranks all ten, right?",
+      "narration": "Interesting \u2014 so the evaluator list shows humans and LLMs side by side, along with how much they've completed.",
       "actions": [
         {
           "do": "highlight",
-          "target": "Scenario LLM Progress",
+          "target": "Scenario Evaluator List",
           "duration": 1.2
         }
       ]
@@ -1323,11 +1334,11 @@
     {
       "id": "scenario_4",
       "speaker": "moderator",
-      "narration": "Each article has four summaries \u2014 two prompts times two models \u2014 so you get 10 rankings with four items each. Two LLM evaluators means 20 total LLM rankings.",
+      "narration": "Each article has four summaries \u2014 two prompts times two models \u2014 so you get 10 rankings with four items each.",
       "actions": [
         {
           "do": "highlight",
-          "target": "Scenario LLM Progress",
+          "target": "Scenario Progress Cards",
           "duration": 1.2
         }
       ]
@@ -1609,11 +1620,11 @@
       "_section": "=== DOCUMENTATION (15s) ===",
       "id": "docs_1",
       "speaker": "moderator",
-      "narration": "Everything is documented. Here is the built-in documentation hub.",
+      "narration": "Everything is documented. The documentation link now opens MkDocs directly.",
       "actions": [
         {
           "do": "goto",
-          "url": "/docs"
+          "url": "/mkdocs/en"
         },
         {
           "do": "wait",
@@ -1621,7 +1632,7 @@
         },
         {
           "do": "highlight",
-          "target": "Docs Hero",
+          "target": "MkDocs Header",
           "duration": 1.5
         }
       ]
@@ -1633,7 +1644,7 @@
       "actions": [
         {
           "do": "highlight",
-          "target": "Docs Technical Section",
+          "target": "MkDocs Sidebar",
           "duration": 1.5
         }
       ]
@@ -1641,11 +1652,11 @@
     {
       "id": "docs_3",
       "speaker": "moderator",
-      "narration": "Yes, the technical docs link out to MkDocs with API references and extension points.",
+      "narration": "Yes, and the MkDocs site includes API references, extension points, and built-in search.",
       "actions": [
         {
           "do": "highlight",
-          "target": "Docs MkDocs Link",
+          "target": "MkDocs Search",
           "duration": 1.5
         }
       ]
@@ -1653,25 +1664,12 @@
     {
       "id": "docs_4",
       "speaker": "moderator",
-      "narration": "And here are the technical docs in MkDocs.",
+      "narration": "Everything stays organized in one place, so teams can onboard quickly.",
       "actions": [
         {
-          "do": "goto",
-          "url": "/mkdocs"
-        },
-        {
-          "do": "wait",
-          "seconds": 1
-        },
-        {
           "do": "highlight",
-          "target": "MkDocs Header",
-          "duration": 1.2
-        },
-        {
-          "do": "highlight",
-          "target": "MkDocs Sidebar",
-          "duration": 1.2
+          "target": "MkDocs Content",
+          "duration": 1.5
         }
       ]
     },

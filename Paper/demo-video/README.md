@@ -61,12 +61,12 @@ Paper/demo-video/
 
 Das Video zeigt Live-Kollaboration mit **zwei Browser-Fenstern**:
 1. **Haupt-Browser:** Admin-User bearbeitet Prompt
-2. **Collab-Browser:** Researcher-User tippt gleichzeitig
+2. **Collab-Browser:** IJCAI-Reviewer tippt gleichzeitig
 
 ```json
-{"do": "collab_open", "user": "researcher"},
+{"do": "collab_open", "user": "ijcai_reviewer_2", "password": "ijcai_reviewer_123"},
 {"do": "collab_goto", "url": "/promptengineering"},
-{"do": "collab_type", "target": "First Block Editor", "text": "\n# Added by researcher"}
+{"do": "collab_type", "target": "First Block Editor", "text": "\n# Added by reviewer"}
 ```
 
 ### Section-basiertes Audio-Caching
@@ -78,7 +78,7 @@ python run.py --smart                   # Nur geänderte Sections
 python run.py --smart --sections INTRO  # Nur bestimmte Section erzwingen
 ```
 
-**Sections im Skript (Stand: `SCRIPT.json`, 65 Schritte / 65 Audio-Dateien):**
+**Sections im Skript (Stand: `SCRIPT.json`, 68 Schritte / 68 Audio-Dateien):**
 
 | Section | Audio-Dateien | Beschreibung |
 |---------|---------------|--------------|
@@ -89,7 +89,7 @@ python run.py --smart --sections INTRO  # Nur bestimmte Section erzwingen
 | SCENARIO FROM BATCH | 6 | Szenario-Wizard aus Batch |
 | SCENARIO MANAGER | 9 | Workspace + Tabs |
 | HUMAN EVALUATION | 5 | Ranking UI |
-| DOCUMENTATION | 7 | Docs Hub + MkDocs |
+| DOCUMENTATION | 7 | MkDocs Documentation |
 | CONCLUSION | 3 | Zusammenfassung + Link |
 
 Hinweis: Sections für `--sections` sind die Großbuchstaben-Namen (z.B. `PROMPT ENGINEERING`).
@@ -172,7 +172,7 @@ python run.py --smart --model small --voice-clone  # Voice Cloning (langsam)
 
 | Action | Beschreibung | Beispiel |
 |--------|--------------|----------|
-| `collab_open` | Zweiten Browser öffnen | `{"do": "collab_open", "user": "researcher"}` |
+| `collab_open` | Zweiten Browser öffnen | `{"do": "collab_open", "user": "ijcai_reviewer_2", "password": "ijcai_reviewer_123"}` |
 | `collab_goto` | Collab-Browser navigieren | `{"do": "collab_goto", "url": "/promptengineering"}` |
 | `collab_type` | Text im Collab-Browser tippen | `{"do": "collab_type", "target": "First Block Editor", "text": "..."}` |
 | `collab_focus` | Editor im Collab-Browser fokussieren | `{"do": "collab_focus"}` |
@@ -218,7 +218,7 @@ SONSTIGES:
 
 Das Backend enthält einen Seeder für vorbereitete Demo-Daten:
 
-- **1 Prompt:** News Summary Prompt
+- **2 Prompts:** News Summary Prompt, News Summary Eval
 - **1 abgeschlossener Batch-Generation Job** mit 40 Outputs (10 Artikel x 2 Prompt-Varianten x 2 Modelle)
 - **10 News-Artikel** mit generierten Zusammenfassungen
 

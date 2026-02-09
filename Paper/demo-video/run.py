@@ -154,7 +154,7 @@ ELEMENT_MAP = {
     "Test Prompt": ".v-btn:contains('Test'), button:contains('Test')",
     "Run Test": ".v-btn:contains('Run'), button:contains('Run')",
     "To Scenario": ".v-btn:contains('Scenario')",
-    "Settings": ".v-btn:contains('Settings'), .v-icon.mdi-cog, button:contains('Settings')",
+    "Settings": ".user-menu-list .v-list-item:contains('Settings'), .v-btn:contains('Settings'), .v-icon.mdi-cog, button:contains('Settings')",
     "Export CSV": ".v-btn:contains('Export'), .v-btn:contains('CSV')",
     "Import External": ".v-btn:contains('Import'), button:contains('Import')",
     "Language Toggle": "[data-testid='language-toggle'] .language-toggle-btn, .language-toggle-wrapper .language-toggle-btn, .language-toggle-btn",
@@ -167,6 +167,8 @@ ELEMENT_MAP = {
     "Preview": ".v-btn:contains('Preview')",
     "Test": ".l-btn:contains('Test'), .v-btn:contains('Test'), .sidebar .l-btn:contains('Test'), .sidebar .v-btn:contains('Test')",
     "Manage Variables": ".l-btn:contains('Manage Variables'), .v-btn:contains('Manage Variables'), .l-btn:contains('Variables'), .v-btn:contains('Variables')",
+    "Download": ".sidebar .l-btn:contains('Download'), .sidebar .v-btn:contains('Download'), .actions-grid .l-btn:contains('Download'), .actions-grid .v-btn:contains('Download')",
+    "Import": ".sidebar .l-btn:contains('Import'), .sidebar .v-btn:contains('Import'), .actions-grid .l-btn:contains('Import'), .actions-grid .v-btn:contains('Import')",
 
     # Inputs (Vuetify Text Fields) - In Dialogs
     "Name Input": ".v-dialog .v-text-field input, .v-dialog input[type='text']",
@@ -175,7 +177,7 @@ ELEMENT_MAP = {
     "Provider Name Input": ".v-dialog input[placeholder*='OpenAI'], .v-dialog input[aria-label='Name'], .v-dialog .v-text-field input[type='text']",
     "Provider API Key Input": ".v-dialog input[type='password'], .v-dialog input[aria-label='API Key']",
     "Provider Base URL Input": ".v-dialog input[placeholder*='Base URL'], .v-dialog input[aria-label*='Base URL']",
-    "Provider Model Input": ".v-dialog .v-combobox input, .v-dialog .v-autocomplete input",
+    "Provider Model Input": ".v-dialog .v-combobox input, .v-dialog .v-autocomplete input, .v-dialog .v-combobox, .v-dialog .v-autocomplete, .v-dialog .v-input:contains('Model'), .v-dialog .v-field:contains('Model'), .v-dialog input[aria-label*='Model'], .v-dialog input[placeholder*='Model'], .v-dialog input[placeholder*='model']",
     "Job Name": ".v-text-field input, input[placeholder*='Name']",
     "Scenario Name": ".v-text-field input, input[placeholder*='Name']",
     "Budget Limit": "input[type='number'], .v-text-field input",
@@ -205,14 +207,15 @@ ELEMENT_MAP = {
     "Dialog Create Button": ".v-dialog .l-btn:contains('Create'), .v-dialog .v-btn:contains('Create'), .v-dialog button:contains('Create')",
     "Block Create Button": ".v-dialog--active .l-btn:contains('Create'), .v-overlay--active .l-btn:contains('Create')",
     "Prompt Card": ".prompt-card, .v-card:contains('News Summary')",
-    "Collaboration Color": ".color-presets, .color-preview",
-    "Collab Color Preset": ".color-presets .color-preset",
+    "Collaboration Color": ".v-dialog .color-presets, .v-dialog .color-preview, .color-presets, .color-preview",
+    "Collab Color Preset": ".v-dialog .color-presets .color-preset, .color-presets .color-preset",
+    "Settings Dialog Close": ".v-dialog .v-card-title .v-btn, .v-dialog .v-card-title button",
 
     # Generation Wizard (Batch Generation)
     "Generation Wizard": ".generation-wizard, .v-dialog:contains('New Generation Job')",
     "First Model": ".generation-wizard .models-selection .selection-item:first-child, .models-selection .selection-item:first-child",
     "Second Model": ".generation-wizard .models-selection .selection-item:nth-child(2), .models-selection .selection-item:nth-child(2)",
-    "Job Name Input": ".generation-wizard .v-text-field input",
+    "Job Name Input": ".generation-wizard .config-form .v-text-field input, .generation-wizard .v-text-field input",
 
     # Scenario Wizard
     "Scenario Wizard": ".l-btn:contains('Scenario Wizard'), button.l-btn:contains('Scenario Wizard'), .header-actions .l-btn:contains('Scenario Wizard'), .v-btn:contains('Scenario Wizard')",
@@ -221,6 +224,8 @@ ELEMENT_MAP = {
     "First LLM Evaluator": ".llm-category .llm-item, .llm-list .llm-item, .llm-item",
     "Second LLM Evaluator": ".llm-category .llm-item:nth-child(2), .llm-list .llm-item:nth-child(2), .llm-item:nth-child(2)",
     "OpenAI Provider": ".llm-item--user:contains('OpenAI'), .llm-category .llm-item:contains('OpenAI')",
+    "Mistral LLM": ".llm-list .llm-item:contains('Mistral'), .llm-category .llm-item:contains('Mistral'), .llm-item:contains('Mistral')",
+    "Magistral LLM": ".llm-list .llm-item:contains('Magistral'), .llm-category .llm-item:contains('Magistral'), .llm-item:contains('Magistral')",
     "User List": ".user-list, .team-section .user-item",
     "Admin User": ".user-item:contains('admin'), .user-item:contains('Admin'), .user-name:contains('admin'), .user-name:contains('Admin')",
     "Create Scenario": ".wizard-actions .v-btn:contains('Create Scenario'), .wizard-actions .l-btn:contains('Create Scenario')",
@@ -247,18 +252,18 @@ ELEMENT_MAP = {
     "Manual Data Textarea": ".generation-wizard .source-config textarea, .generation-wizard textarea",
 
     # Step 2: Prompt Templates (click to select) - in wizard overlay
-    "Prompt Item": ".v-overlay--active .selection-item, .prompts-selection .selection-item, .selection-item",
-    "First Prompt": ".v-overlay--active .selection-item:first-child, .v-overlay--active .selectable-card:first-child, .prompts-selection .selection-item:first-child",
-    "News Summary Prompt Item": ".v-overlay--active .selection-item:contains('News'), .prompts-selection .selection-item:contains('News'), .selection-item:contains('News Summary'), .item-name:contains('News')",
+    "Prompt Item": ".prompts-selection .selection-item",
+    "First Prompt": ".prompts-selection .selection-item:first-child",
+    "News Summary Prompt Item": ".prompts-selection .selection-item:contains('News Summary Prompt'), .selection-item:contains('News Summary Prompt'), .item-name:contains('News Summary Prompt'), .prompts-selection .selection-item:first-child",
     "Analyst Summary Prompt Item": ".v-overlay--active .selection-item:contains('Analyst Summary'), .prompts-selection .selection-item:contains('Analyst Summary'), .selection-item:contains('Analyst Summary'), .item-name:contains('Analyst')",
-    "News Summary Eval Item": ".v-overlay--active .selection-item:contains('News Summary Eval'), .prompts-selection .selection-item:contains('News Summary Eval'), .selection-item:contains('News Summary Eval'), .item-name:contains('News Summary Eval')",
+    "News Summary Eval Item": ".prompts-selection .selection-item:contains('News Summary Eval'), .selection-item:contains('News Summary Eval'), .item-name:contains('News Summary Eval'), .prompts-selection .selection-item:nth-child(2)",
 
     # Step 3: Models (click to select) - in wizard overlay
-    "Model Item": ".v-overlay--active .selection-item, .models-selection .selection-item",
-    "First Model": ".v-overlay--active .selection-item:first-child, .v-overlay--active .selectable-card:first-child, .models-selection .selection-item:first-child",
-    "Second Model": ".v-overlay--active .selection-item:nth-child(2), .v-overlay--active .selectable-card:nth-child(2), .models-selection .selection-item:nth-child(2)",
-    "Mistral Model": ".models-selection .selection-item:contains('mistral'), .models-selection .selection-item:contains('Mistral'), .item-name:contains('mistral')",
-    "Magistral Model": ".models-selection .selection-item:contains('Magistral'), .models-selection .selection-item:contains('magistral'), .item-name:contains('Magistral')",
+    "Model Item": ".models-selection .selection-item",
+    "First Model": ".models-selection .selection-item:first-child, .v-overlay--active .selection-item:first-child, .v-overlay--active .selectable-card:first-child",
+    "Second Model": ".models-selection .selection-item:nth-child(2), .v-overlay--active .selection-item:nth-child(2), .v-overlay--active .selectable-card:nth-child(2)",
+    "Mistral Model": ".models-selection .selection-item:contains('mistral'), .models-selection .selection-item:contains('Mistral'), .item-name:contains('mistral'), .models-selection .selection-item:first-child",
+    "Magistral Model": ".models-selection .selection-item:contains('Magistral'), .models-selection .selection-item:contains('magistral'), .item-name:contains('Magistral'), .models-selection .selection-item:nth-child(2)",
     "GPT-4 Model": ".models-selection .selection-item:contains('gpt-4'), .models-selection .selection-item:contains('gpt4'), .item-name:contains('gpt')",
     "Claude Model": ".models-selection .selection-item:contains('claude'), .models-selection .selection-item:contains('Claude'), .item-name:contains('claude')",
 
@@ -273,7 +278,7 @@ ELEMENT_MAP = {
     "Cost Estimate": ".cost-estimate, .cost-value, .review-section:contains('Cost')",
     "Review Summary": ".review-summary",
     "Matrix Value": ".matrix-value",
-    "Matrix Total": ".matrix-item.total",
+    "Matrix Total": ".matrix-item.total .matrix-value, .matrix-item.total",
 
     # Job Detail View
     "Start Job": ".header-actions .v-btn:contains('Start'), .v-btn:contains('Start')",
@@ -304,7 +309,7 @@ ELEMENT_MAP = {
     "Start LLM Evaluation": ".v-btn:contains('Start'), button:contains('Start')",
 
     # Dashboard Elements
-    "Agreement Matrix": ".agreement-matrix, .v-card:contains('Agreement')",
+    "Agreement Matrix": ".ranking-agreement-matrix, .agreement-heatmap-section, .agreement-matrix, .v-card:contains('Agreement')",
     "Krippendorff Alpha": ".metric:contains('Alpha'), .v-card:contains('Krippendorff')",
     "Disagreement Tab": ".v-tab:contains('Disagreement'), button:contains('Disagreement')",
     "Disagreement Chart": ".chart, .v-card:contains('Disagreement')",
@@ -379,16 +384,16 @@ ELEMENT_MAP = {
     "Scenario Workspace": ".scenario-workspace",
     "Scenario Workspace Back": ".scenario-workspace .back-btn, .scenario-workspace .v-btn.back-btn",
     "Scenario Manager Title": ".scenario-manager .title, .page-header .title:contains('Scenario Manager'), h1.title:contains('Scenario Manager')",
-    "Scenario Tabs": ".scenario-workspace .tab-navigation, .tab-navigation",
-    "Scenario Tab Overview": ".tab-navigation .v-btn:contains('Overview'), .tab-navigation button:contains('Overview')",
-    "Scenario Tab Data": ".tab-navigation .v-btn:contains('Data'), .tab-navigation button:contains('Data')",
-    "Scenario Tab Evaluation": ".tab-navigation .v-btn:contains('Evaluation'), .tab-navigation button:contains('Evaluation')",
-    "Scenario Tab Team": ".tab-navigation .v-btn:contains('Team'), .tab-navigation button:contains('Team')",
-    "Scenario Live Badge": ".stats-bar .live-dot, .overview-tab .live-badge .live-dot, .overview-tab .live-dot",
-    "Scenario LLM Progress": ".overview-tab .progress-fill.llm, .stats-bar .progress-mini, .progress-mini .progress-fill",
+    "Scenario Tabs": ".scenario-workspace .l-tabs, .tab-navigation .l-tabs, .l-tabs",
+    "Scenario Tab Overview": ".tab-navigation .l-tab:contains('Overview'), .l-tab:contains('Overview'), .l-tab__label:contains('Overview')",
+    "Scenario Tab Data": ".tab-navigation .l-tab:contains('Data'), .l-tab:contains('Data'), .l-tab__label:contains('Data')",
+    "Scenario Tab Evaluation": ".tab-navigation .l-tab:contains('Evaluation'), .l-tab:contains('Evaluation'), .l-tab__label:contains('Evaluation')",
+    "Scenario Tab Team": ".tab-navigation .l-tab:contains('Team'), .l-tab:contains('Team'), .l-tab__label:contains('Team')",
+    "Scenario Live Badge": ".live-badge .live-dot, .live-dot, .stat-item.live-indicator .live-dot",
+    "Scenario LLM Progress": ".progress-fill.llm, .progress-fill.is-llm, .progress-mini .progress-fill",
     "Evaluation Summary": ".evaluation-tab .summary-grid, .evaluation-tab .summary-card",
-    "Evaluation Progress": ".evaluation-tab .progress-bar-track, .evaluation-tab .progress-bar-fill, .evaluation-tab .total-progress-section",
-    "Evaluation Export": ".evaluation-tab .l-btn:contains('Export'), .evaluation-tab .v-btn:contains('Export')",
+    "Evaluation Progress": ".evaluation-tab .progress-bar-container, .evaluation-tab .progress-bar-fill, .evaluation-tab .total-progress-section",
+    "Evaluation Export": ".evaluation-tab .header-actions .l-btn, .evaluation-tab .header-actions .v-btn, .evaluation-tab .l-btn:contains('Export')",
     "Export JSON": ".v-list-item:contains('JSON')",
     # Scenario Data Tab
     "Data Stats": ".data-tab .data-stats, .data-stats",
@@ -396,18 +401,18 @@ ELEMENT_MAP = {
     "Data Status Legend": ".data-tab .status-legend, .status-legend",
     # Scenario Team Tab
     "Team Members List": ".team-tab .members-list, .members-list",
-    "Team Invite Button": ".team-tab .l-btn:contains('Invite'), .team-tab .l-btn:contains('Add'), .team-tab .v-btn:contains('Invite')",
-    "Team Add LLM Button": ".team-tab .l-btn:contains('Add LLM'), .team-tab .l-btn:contains('LLM'), .team-tab .v-btn:contains('LLM')",
+    "Team Invite Button": ".team-tab .tab-header .l-btn, .team-tab .l-btn:contains('Invite'), .team-tab .l-btn:contains('Add')",
+    "Team Add LLM Button": ".team-tab .section-header .l-btn, .team-tab .l-btn:contains('Add LLM'), .team-tab .l-btn:contains('LLM')",
     "Team Member Menu": ".team-tab .member-actions .v-btn, .team-tab .member-actions button",
     "Scenario Wizard Close": ".scenario-wizard .wizard-header .v-btn",
     # Human Evaluation (Evaluation Hub + Ranking UI)
-    "Evaluation Scenario Card": ".scenarios-grid .scenario-card:contains('News Summary'), .scenario-card:contains('News Summary'), .scenarios-grid .scenario-card:first-child, .scenario-card:first-child",
+    "Evaluation Scenario Card": ".overview-content .scenario-card:first-child, .scenarios-grid .scenario-card:first-child, .scenario-card:first-child",
     "Evaluation Items Grid": ".items-grid, .items-content",
     "Evaluation Item Card": ".items-grid .item-card:first-child, .item-card:first-child",
     "Ranking Interface": ".ranking-interface",
-    "Ranking Buckets": ".ranking-interface .buckets-row, .ranking-interface .bucket, .ranking-interface .neutral-bucket",
-    "Ranking Content": ".ranking-interface .right-panel, .ranking-interface .content-text, .ranking-interface .message-list",
-    "Ranking Item": ".ranking-interface .neutral-bucket .bucket-item:first-child, .ranking-interface .bucket-item:first-child",
+    "Ranking Buckets": ".ranking-interface .buckets-row, .ranking-interface .bucket, .ranking-interface .neutral-bucket, .preview-ranking .buckets-preview, .buckets-preview .bucket-box",
+    "Ranking Content": ".ranking-interface .right-panel, .ranking-interface .panel-content, .ranking-interface .content-text",
+    "Ranking Item": ".ranking-interface .bucket-item:first-child, .ranking-interface .neutral-bucket .bucket-item:first-child",
 
     # Scenario Wizard (Button text is "Scenario Wizard")
     "Wizard Button": ".l-btn:contains('Scenario Wizard'), .l-btn:contains('Wizard'), .v-btn:contains('Scenario Wizard'), .v-btn:contains('Wizard')",
@@ -433,7 +438,8 @@ ELEMENT_MAP = {
     "Feature Cards": ".feature-cards, .home-features, .v-row .v-col .v-card",
 
     # Prompt Engineering - Existing Prompts (seeded by seed_demo_video_data)
-    "News Summary Prompt": ".prompt-card:contains('News Summary'), .v-card:contains('News Summary Prompt'), .prompt-list-item:contains('News Summary')",
+    "News Summary Prompt": ".prompt-card:contains('News Summary Prompt'), .v-card:contains('News Summary Prompt'), .prompt-list-item:contains('News Summary Prompt')",
+    "News Summary Eval": ".prompt-card:contains('News Summary Eval'), .v-card:contains('News Summary Eval'), .prompt-list-item:contains('News Summary Eval')",
     "Analyst Summary Prompt": ".prompt-card:contains('Analyst Summary'), .v-card:contains('Analyst Summary')",
 
     # Prompt Engineering - Collaboration
@@ -1033,8 +1039,7 @@ class Browser:
         """Löscht alte Demo-Daten via Docker/MariaDB"""
         print("   🧹 Räume alte Demo-Daten auf...")
 
-        # SQL zum Löschen von Demo-Daten (nur Scenarios, NICHT die geseedeten Prompts/Jobs!)
-        # Der "News Summary Demo Job" und die Prompts werden vom Seeder erstellt und sollen bleiben
+        # SQL zum Löschen von Demo-Daten (Szenarien + Jobs)
         cleanup_sql = """
         -- Scenarios löschen (mit Foreign Keys) - Diese werden während der Aufnahme erstellt
         DELETE FROM scenario_item_distribution WHERE scenario_id IN (
@@ -1073,23 +1078,40 @@ class Browser:
             SELECT id FROM generation_jobs WHERE created_by = 'admin' AND name <> 'News Summary Demo Job'
         );
         DELETE FROM generation_jobs WHERE created_by = 'admin' AND name <> 'News Summary Demo Job';
-        -- Prompt aus der Live-Demo entfernen (wird im Skript neu erstellt)
+        """
+
+        # Prompts aus Setup/Live-Demo entfernen (werden jedes Mal neu erstellt)
+        prompt_reset_sql = """
         DELETE FROM prompt_commits WHERE prompt_id IN (
             SELECT prompt_id FROM user_prompts
-            WHERE LOWER(TRIM(name)) LIKE 'analyst summary prompt%'
+            WHERE LOWER(TRIM(name)) LIKE 'news summary prompt%'
+               OR LOWER(TRIM(name)) LIKE 'news summary eval%'
+               OR LOWER(TRIM(name)) LIKE 'analyst summary prompt%'
                OR LOWER(TRIM(name)) LIKE 'live collab prompt%'
         );
         DELETE FROM user_prompt_shares WHERE prompt_id IN (
             SELECT prompt_id FROM user_prompts
-            WHERE LOWER(TRIM(name)) LIKE 'analyst summary prompt%'
+            WHERE LOWER(TRIM(name)) LIKE 'news summary prompt%'
+               OR LOWER(TRIM(name)) LIKE 'news summary eval%'
+               OR LOWER(TRIM(name)) LIKE 'analyst summary prompt%'
                OR LOWER(TRIM(name)) LIKE 'live collab prompt%'
         );
         DELETE FROM user_prompts
-        WHERE LOWER(TRIM(name)) LIKE 'analyst summary prompt%'
+        WHERE LOWER(TRIM(name)) LIKE 'news summary prompt%'
+           OR LOWER(TRIM(name)) LIKE 'news summary eval%'
+           OR LOWER(TRIM(name)) LIKE 'analyst summary prompt%'
            OR LOWER(TRIM(name)) LIKE 'live collab prompt%';
-        -- HINWEIS: Seeder-Daten (Prompts + Demo-Job) bleiben erhalten.
-        -- Nur der im Skript neu erstellte Job "Live Collab Batch Job" und der Prompt
-        -- "Analyst Summary Prompt" werden entfernt.
+        -- Setup-Prompt neu anlegen (damit er im Video als vorbereiteter Vergleich da ist)
+        INSERT INTO user_prompts (user_id, name, content, created_at, updated_at)
+        SELECT id,
+               'News Summary Prompt',
+               '{\"blocks\":{\"Role Definition\":{\"content\":\"Role definition: You are a professional news editor. Write concise, factual summaries.\",\"position\":0},\"Task Explanation\":{\"content\":\"Task explanation: Summarize the article in 2-3 sentences. Preserve key facts, avoid speculation, and do not add new information.\",\"position\":1},\"Data Format Explanation\":{\"content\":\"Data format explanation: Input: Title: {{title}} | Article: {{content}} | Output: 2-3 sentences in plain text. No bullet points. No extra commentary.\",\"position\":2}}}',
+               NOW(),
+               NOW()
+        FROM users
+        WHERE username = 'admin'
+        LIMIT 1;
+        -- HINWEIS: Demo-Job bleibt erhalten. Prompts werden vor jedem Lauf bereinigt und neu erstellt.
         """
 
         try:
@@ -1104,7 +1126,27 @@ class Browser:
                 print(f"   ✓ Demo-Daten gelöscht")
             else:
                 # Fallback: Ignoriere Fehler (z.B. wenn Tabellen nicht existieren)
-                print(f"   ✓ Cleanup abgeschlossen")
+                print(f"   ⚠️ Cleanup abgeschlossen (mit Warnungen)")
+
+            prompt_result = subprocess.run(
+                [
+                    'docker', 'exec', '-i', 'llars_db_service',
+                    'mariadb', '-u', 'dev_user', '-pdev_password_change_me', 'database_llars'
+                ],
+                input=prompt_reset_sql,
+                capture_output=True,
+                text=True,
+                timeout=10
+            )
+
+            if prompt_result.returncode == 0:
+                print(f"   ✓ Demo-Prompts zurückgesetzt")
+            else:
+                details = (prompt_result.stderr or prompt_result.stdout or '').strip()
+                if details:
+                    print(f"   ⚠️ Prompt-Reset fehlgeschlagen: {details}")
+                else:
+                    print(f"   ⚠️ Prompt-Reset fehlgeschlagen (ignoriert)")
         except subprocess.TimeoutExpired:
             print(f"   ⚠️ Cleanup Timeout (ignoriert)")
         except FileNotFoundError:
@@ -1393,10 +1435,20 @@ class Browser:
                     elements = self.driver.find_elements(By.CSS_SELECTOR, base or '*')
                     for el in elements:
                         if text.lower() in el.text.lower():
+                            try:
+                                if not el.is_displayed():
+                                    continue
+                            except Exception:
+                                continue
                             return el
                 else:
                     el = self.driver.find_element(By.CSS_SELECTOR, selector)
                     if el:
+                        try:
+                            if not el.is_displayed():
+                                continue
+                        except Exception:
+                            continue
                         return el
             except Exception:
                 continue
@@ -1568,6 +1620,16 @@ class Browser:
         """Tippt Text in Element (inkl. contenteditable für Quill Editor)"""
         element = self._find_element(target)
         if element:
+            # If a container was targeted, try to drill down to an actual input
+            try:
+                tag = (element.tag_name or '').lower()
+                if tag not in ('input', 'textarea') and element.get_attribute('contenteditable') != 'true':
+                    nested = element.find_element(By.CSS_SELECTOR, 'input, textarea, [contenteditable=\"true\"]')
+                    if nested:
+                        element = nested
+            except Exception:
+                pass
+
             # Click to focus
             try:
                 element.click()
@@ -1765,13 +1827,12 @@ class Browser:
 
     def wait_for(self, target: str, timeout: float = 10):
         """Wartet auf Element"""
-        selectors = ELEMENT_MAP.get(target, target).split(', ')[0]
-        try:
-            WebDriverWait(self.driver, timeout).until(
-                EC.presence_of_element_located((By.CSS_SELECTOR, selectors))
-            )
-        except Exception:
-            print(f"⚠️ Timeout: {target}")
+        deadline = time.time() + timeout
+        while time.time() < deadline:
+            if self._find_element_in_driver(self.driver, target):
+                return
+            time.sleep(0.2)
+        print(f"⚠️ Timeout: {target}")
 
     def wait_for_modal(self):
         """Wartet auf Modal-Dialog"""
@@ -1851,10 +1912,20 @@ class Browser:
                     elements = driver.find_elements(By.CSS_SELECTOR, base or '*')
                     for el in elements:
                         if text.lower() in el.text.lower():
+                            try:
+                                if not el.is_displayed():
+                                    continue
+                            except Exception:
+                                continue
                             return el
                 else:
                     el = driver.find_element(By.CSS_SELECTOR, selector)
                     if el:
+                        try:
+                            if not el.is_displayed():
+                                continue
+                        except Exception:
+                            continue
                         return el
             except Exception:
                 continue

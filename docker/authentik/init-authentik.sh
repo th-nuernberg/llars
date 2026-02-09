@@ -12,6 +12,8 @@ BACKEND_CLIENT_SECRET="${AUTHENTIK_BACKEND_CLIENT_SECRET:-llars-backend-secret-c
 # Use LLARS_ADMIN_PASSWORD for LLARS users (admin, researcher, evaluator)
 # Falls back to AUTHENTIK_BOOTSTRAP_PASSWORD for backwards compatibility
 ADMIN_PASSWORD="${LLARS_ADMIN_PASSWORD:-${AUTHENTIK_BOOTSTRAP_PASSWORD:-admin123}}"
+# IJCAI reviewer password (dev-only users)
+IJCAI_REVIEWER_PASSWORD="${IJCAI_REVIEWER_PASSWORD:-ijcai_reviewer_123}"
 
 MATOMO_CLIENT_ID="${AUTHENTIK_MATOMO_CLIENT_ID:-llars-matomo}"
 MATOMO_CLIENT_SECRET="${AUTHENTIK_MATOMO_CLIENT_SECRET:-llars-matomo-secret-change-in-production}"
@@ -363,7 +365,7 @@ else:
 "
 
 if [ "$PROJECT_STATE" = "development" ]; then
-    echo "[6/7] Creating additional users (researcher, evaluator, chatbot_manager) - DEVELOPMENT MODE..."
+    echo "[6/7] Creating additional users (researcher, evaluator, chatbot_manager, ijcai_reviewer_1, ijcai_reviewer_2) - DEVELOPMENT MODE..."
 
     ak_shell "
 from authentik.core.models import User
@@ -415,9 +417,41 @@ if created:
     print('  Created chatbot_manager user')
 else:
     print('  Chatbot Manager user already exists')
+
+# IJCAI Reviewer 1
+ijcai_reviewer_1, created = User.objects.get_or_create(
+    username='ijcai_reviewer_1',
+    defaults={
+        'name': 'IJCAI Reviewer 1',
+        'email': 'ijcai_reviewer_1@localhost',
+        'is_active': True
+    }
+)
+ijcai_reviewer_1.set_password('$IJCAI_REVIEWER_PASSWORD')
+ijcai_reviewer_1.save()
+if created:
+    print('  Created ijcai_reviewer_1 user')
+else:
+    print('  Updated ijcai_reviewer_1 password')
+
+# IJCAI Reviewer 2
+ijcai_reviewer_2, created = User.objects.get_or_create(
+    username='ijcai_reviewer_2',
+    defaults={
+        'name': 'IJCAI Reviewer 2',
+        'email': 'ijcai_reviewer_2@localhost',
+        'is_active': True
+    }
+)
+ijcai_reviewer_2.set_password('$IJCAI_REVIEWER_PASSWORD')
+ijcai_reviewer_2.save()
+if created:
+    print('  Created ijcai_reviewer_2 user')
+else:
+    print('  Updated ijcai_reviewer_2 password')
 "
 else
-    echo "[6/7] Skipping dev users (researcher, evaluator, chatbot_manager) - PRODUCTION MODE"
+    echo "[6/7] Skipping dev users (researcher, evaluator, chatbot_manager, ijcai_reviewer_1, ijcai_reviewer_2) - PRODUCTION MODE"
 fi
 
 echo "[7/8] Creating Admin API Token for LLARS..."
@@ -518,6 +552,12 @@ echo "  Password: $ADMIN_PASSWORD"
 echo ""
 echo "  Username: chatbot_manager"
 echo "  Password: $ADMIN_PASSWORD"
+echo ""
+echo "  Username: ijcai_reviewer_1"
+echo "  Password: $IJCAI_REVIEWER_PASSWORD"
+echo ""
+echo "  Username: ijcai_reviewer_2"
+echo "  Password: $IJCAI_REVIEWER_PASSWORD"
 fi
 echo ""
 echo "Authentik Admin UI: http://localhost:55095"

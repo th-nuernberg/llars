@@ -804,6 +804,13 @@ class GeneratedOutput(db.Model):
             result['rendered_system_prompt'] = self.rendered_system_prompt
             result['rendered_user_prompt'] = self.rendered_user_prompt
 
+        # Include source item info when available
+        if self.source_item:
+            subject = (self.source_item.subject or '').strip()
+            result['source_item_label'] = (subject[:80] + '...') if len(subject) > 80 else subject
+            if include_prompts:
+                result['source_item_content'] = subject
+
         return result
 
     def to_summary_dict(self) -> Dict[str, Any]:
@@ -817,9 +824,15 @@ class GeneratedOutput(db.Model):
                 llm_model_color = LLMModel.generate_color(self.llm_model_name)
             except Exception:
                 llm_model_color = None
+        source_item_label = None
+        if self.source_item and self.source_item.subject:
+            subject = self.source_item.subject.strip()
+            source_item_label = (subject[:80] + '...') if len(subject) > 80 else subject
+
         return {
             'id': self.id,
             'source_item_id': self.source_item_id,
+            'source_item_label': source_item_label,
             'llm_model_name': self.llm_model_name,
             'llm_model_color': llm_model_color,
             'prompt_variant_name': self.prompt_variant_name,

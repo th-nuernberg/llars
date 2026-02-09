@@ -320,21 +320,25 @@ class SchemaAdapter:
         """
         Checks if user has access to an item via scenario membership.
 
+        An item can belong to multiple scenarios. Checks all of them and
+        returns the first scenario where the user has membership.
+
         Returns:
             RatingScenarios if access granted, None otherwise
         """
-        scenario_item = ScenarioItems.query.filter_by(item_id=item_id).first()
-        if not scenario_item:
+        scenario_items = ScenarioItems.query.filter_by(item_id=item_id).all()
+        if not scenario_items:
             return None
 
-        scenario_user = ScenarioUsers.query.filter_by(
-            scenario_id=scenario_item.scenario_id,
-            user_id=user_id
-        ).first()
-        if not scenario_user:
-            return None
+        for scenario_item in scenario_items:
+            scenario_user = ScenarioUsers.query.filter_by(
+                scenario_id=scenario_item.scenario_id,
+                user_id=user_id
+            ).first()
+            if scenario_user:
+                return RatingScenarios.query.get(scenario_item.scenario_id)
 
-        return RatingScenarios.query.get(scenario_item.scenario_id)
+        return None
 
     @staticmethod
     def get_scenario_for_item(item_id: int) -> Optional[RatingScenarios]:

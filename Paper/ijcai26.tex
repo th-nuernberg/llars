@@ -19,7 +19,18 @@
 \usepackage{booktabs}
 \usepackage{xcolor}
 \usepackage{tikz}
+
+\usepackage{tabularx}
+\usepackage{threeparttable}
+\usepackage{pifont}
+
+
+
 \usetikzlibrary{shapes.geometric, arrows.meta, positioning, fit, backgrounds, calc}
+
+\newcommand{\yes}{\ding{51}}              % ✓
+\newcommand{\partialc}{\textasciitilde}   % ~
+\newcommand{\noo}{--}                    % –
 
 \urlstyle{same}
 
@@ -265,6 +276,76 @@ These projects also motivated two domain-specific evaluation types (Figure~\ref{
 \label{fig:fake-real}
 \end{figure}
 
+
+% -----------------------------------------
+% Two-column-wide table (table*)
+% -----------------------------------------
+\begin{table*}[t]
+\centering
+\begin{threeparttable}
+\caption{Comparison of GUI-first tools for prompt engineering, batch generation, and hybrid LLM output evaluation. Legend: \yes\ = native first-class support in the GUI; \partialc\ = partial support (limited scope, requires workarounds/external steps, or not a first-class GUI workflow); \noo\ = not supported / not a primary feature. ``Process chain like LLARS'' denotes a single-GUI workflow from prompt live-testing $\rightarrow$ batch runs over prompts$\times$models$\times$data $\rightarrow$ evaluation involving human raters and LLM/judge components.}
+\label{tab:llars_pipeline_comparison}
+\small
+\setlength{\tabcolsep}{5pt}
+\begin{tabularx}{\textwidth}{l c c c c c X}
+\toprule
+\textbf{Tool} & \textbf{Open} & \textbf{Process} & \textbf{Prompt} & \textbf{Batch} & \textbf{Eval (H+LLM)} & \textbf{Primary URLs} \\
+\midrule
+\textbf{LLARS} & \yes & \yes & \yes & \yes & \yes &
+\url{https://llars-project.github.io/demo} \\
+
+Agenta & \yes & \partialc & \yes & \partialc & \yes &
+\url{https://agenta.ai/docs/}; \url{https://github.com/Agenta-AI/agenta} \\
+
+Arize Phoenix & \yes & \partialc & \yes & \partialc & \partialc &
+\url{https://arize.com/docs/phoenix/prompt-engineering/overview-prompts/prompt-playground};
+\url{https://arize.com/docs/phoenix/prompt-engineering/how-to-prompts/using-the-playground};
+\url{https://arize.com/docs/phoenix/evaluation/concepts-evals/llm-as-a-judge};
+\url{https://github.com/Arize-ai/phoenix} \\
+
+Langfuse & \yes & \partialc & \partialc & \yes & \partialc &
+\url{https://langfuse.com/docs/prompt-management/overview};
+\url{https://langfuse.com/docs/evaluation/experiments/experiments-via-ui};
+\url{https://langfuse.com/docs/evaluation/evaluation-methods/llm-as-a-judge};
+\url{https://github.com/langfuse/langfuse} \\
+
+LangSmith & \noo & \partialc & \yes & \yes & \partialc &
+\url{https://docs.langchain.com/langsmith/run-evaluation-from-prompt-playground};
+\url{https://docs.langchain.com/langsmith/evaluation-quickstart} \\
+
+W\&B Weave & \yes & \partialc & \yes & \yes & \partialc &
+\url{https://docs.wandb.ai/weave/guides/tools/playground};
+\url{https://docs.wandb.ai/weave/guides/tools/evaluation_playground};
+\url{https://github.com/wandb/weave} \\
+
+ChainForge & \yes & \partialc & \yes & \yes & \partialc &
+\url{https://www.chainforge.ai/docs/};
+\url{https://github.com/ianarawjo/ChainForge} \\
+
+Label Studio & \yes & \partialc & \partialc & \partialc & \partialc &
+\url{https://labelstud.io/blog/how-to-evaluate-and-compare-llms-using-prompts-in-label-studio/};
+\url{https://labelstud.io/blog/new-llm-evaluation-templates-for-label-studio/};
+\url{https://github.com/HumanSignal/label-studio} \\
+
+Argilla & \yes & \noo & \noo & \noo & \partialc &
+\url{https://argilla.io/blog/argilla-for-llms/};
+\url{https://github.com/argilla-io/argilla} \\
+
+Braintrust & \noo & \partialc & \partialc & \partialc & \partialc &
+\url{https://www.braintrust.dev/docs/evaluate};
+\url{https://www.braintrust.dev/docs/best-practices/scorers} \\
+
+Maxim AI & \noo & \partialc & \yes & \yes & \partialc &
+\url{https://www.getmaxim.ai/docs/offline-evals/via-ui/prompts/quickstart};
+\url{https://www.getmaxim.ai/docs/offline-evals/via-ui/prompts/prompt-evals} \\
+
+Vellum & \noo & \partialc & \yes & \partialc & \partialc &
+\url{https://www.vellum.ai/products/prompt-engineering};
+\url{https://www.vellum.ai/blog/introducing-vellum-evaluations} \\
+\bottomrule
+\end{tabularx}
+\end{threeparttable}
+\end{table*}
 \section{Demonstration and Conclusion}
 
 Our live demonstration walks attendees through the complete pipeline: collaboratively editing a prompt, generating outputs across multiple LLMs with real-time cost tracking, and evaluating results with both human and LLM evaluators while observing agreement metrics update live.

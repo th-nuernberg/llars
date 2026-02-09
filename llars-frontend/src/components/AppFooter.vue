@@ -40,10 +40,11 @@
   import { computed } from 'vue'
   import { useI18n } from 'vue-i18n'
 
-  const { locale, t } = useI18n()
+  const { t } = useI18n()
 
   const docsUrl = computed(() => {
-    return locale.value === 'en' ? '/docs/en/' : '/docs/'
+    const origin = typeof window !== 'undefined' ? window.location.origin : ''
+    return `${origin}/mkdocs/en/`
   })
 
   const links = computed(() => [

@@ -17,7 +17,6 @@ import HistoryGenerationDetail from "@/components/HistoryGenerator/HistoryGenera
 import Impressum from "@/components/Orga/Impressum.vue";
 import Datenschutz from "@/components/Orga/Datenschutz.vue";
 import Kontakt from "@/components/Orga/Kontakt.vue";
-import Documentation from "@/components/Orga/Documentation.vue";
 import { useAuth } from "@/composables/useAuth";
 import { logI18n } from "@/utils/logI18n";
 
@@ -97,7 +96,31 @@ const routes = [
     { path: '/Impressum', component: Impressum, meta: { requiresAuth: false } },
     { path: '/Datenschutz', component: Datenschutz, meta: { requiresAuth: false } },
     { path: '/Kontakt', component: Kontakt, meta: { requiresAuth: false } },
-    { path: '/docs', component: Documentation, meta: { requiresAuth: false } },
+    // Redirect legacy docs hub to MkDocs (force full reload)
+    {
+      path: '/docs',
+      beforeEnter: () => {
+        if (typeof window !== 'undefined') {
+          window.location.href = `${window.location.origin}/mkdocs/en/`;
+        }
+        return false;
+      },
+      meta: { requiresAuth: false }
+    },
+    {
+      path: '/docs/:lang(en|de)?/:pathMatch(.*)*',
+      beforeEnter: (to) => {
+        if (typeof window !== 'undefined') {
+          const rest = Array.isArray(to.params.pathMatch)
+            ? to.params.pathMatch.join('/')
+            : (to.params.pathMatch || '');
+          const suffix = rest ? `/mkdocs/en/${rest}` : '/mkdocs/en/';
+          window.location.href = `${window.location.origin}${suffix}`;
+        }
+        return false;
+      },
+      meta: { requiresAuth: false }
+    },
 
     { path: '/Home', component: Home, meta: { requiresAuth: true } },
     { path: '/settings', name: 'UserSettings', component: UserSettingsPage, meta: { requiresAuth: true } },

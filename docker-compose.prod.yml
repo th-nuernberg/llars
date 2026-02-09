@@ -68,7 +68,7 @@ services:
       args:
         - VITE_API_BASE_URL=${PROJECT_URL:-https://llars.e-beratungsinstitut.de}
         - VITE_PROJECT_STATE=production
-      - VITE_MKDOCS_URL=${PROJECT_URL:-https://llars.e-beratungsinstitut.de}/mkdocs
+        - VITE_MKDOCS_URL=${PROJECT_URL:-https://llars.e-beratungsinstitut.de}/mkdocs
         - VITE_KEYCLOAK_URL=${PROJECT_URL:-https://llars.e-beratungsinstitut.de}/authentik
         - VITE_KEYCLOAK_CLIENT_ID=${AUTHENTIK_FRONTEND_CLIENT_ID:-llars-frontend}
         - VITE_KEYCLOAK_REALM=llars

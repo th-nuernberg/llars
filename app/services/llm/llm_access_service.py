@@ -16,6 +16,7 @@ class LLMAccessService:
     """Business logic for LLM model visibility."""
 
     ADMIN_PERMISSION = 'admin:system:configure'
+    USER_PROVIDER_PREFIX = 'user-provider:'
 
     @staticmethod
     def _normalize_strings(values: Any) -> List[str]:
@@ -63,6 +64,35 @@ class LLMAccessService:
     def user_can_access_model(username: Optional[str], model_id: Optional[str]) -> bool:
         if not username or not model_id:
             return False
+        if isinstance(model_id, str) and model_id.startswith(LLMAccessService.USER_PROVIDER_PREFIX):
+            rest = model_id[len(LLMAccessService.USER_PROVIDER_PREFIX):]
+            if ':' not in rest:
+                return False
+            provider_part, actual_model = rest.split(':', 1)
+            if not actual_model.strip():
+                return False
+            try:
+                provider_id = int(provider_part)
+            except (TypeError, ValueError):
+                return False
+
+            from db.models.user import User
+            from services.user_llm_provider_service import UserLLMProviderService
+
+            user = User.query.filter_by(username=username).first()
+            if not user:
+                return False
+
+            roles_data = PermissionService.get_user_roles(username)
+            role_names = [r.get('role_name') for r in roles_data or [] if isinstance(r, dict) and r.get('role_name')]
+
+            provider, _ = UserLLMProviderService.get_provider_for_use(
+                provider_id=provider_id,
+                user_id=user.id,
+                username=username,
+                user_roles=role_names
+            )
+            return provider is not None
         model = LLMModel.get_by_model_id(model_id)
         if not model or not model.is_active:
             return False

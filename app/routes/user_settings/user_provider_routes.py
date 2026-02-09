@@ -183,6 +183,46 @@ def test_provider(provider_id: int):
     })
 
 
+@user_provider_bp.route('/models', methods=['POST'])
+@authentik_required
+@handle_api_errors(logger_name='user_providers')
+def fetch_provider_models():
+    """Fetch available models for a provider (OpenAI + OpenAI-compatible)."""
+    user = g.authentik_user
+    data = request.get_json() or {}
+
+    provider_id = data.get('provider_id')
+    provider_type = (data.get('provider_type') or '').strip().lower()
+    api_key = data.get('api_key')
+    base_url = data.get('base_url')
+    config = data.get('config')
+
+    if provider_id:
+        provider = UserLLMProviderService.get_provider(int(provider_id))
+        if not provider or provider.user_id != user.id:
+            raise NotFoundError("Provider nicht gefunden")
+        provider_type = provider.provider_type
+        base_url = base_url or provider.base_url
+        config = config or provider.config_json
+        if not api_key:
+            api_key = UserLLMProviderService._decrypt_api_key(provider.api_key_encrypted)
+
+    if not provider_type:
+        raise ValidationError("Provider-Typ ist erforderlich")
+
+    models = UserLLMProviderService.fetch_models(
+        provider_type=provider_type,
+        api_key=api_key,
+        base_url=base_url,
+        config=config
+    )
+
+    return jsonify({
+        'success': True,
+        'models': models
+    })
+
+
 # ============================================================================
 # Provider Sharing
 # ============================================================================

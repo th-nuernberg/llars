@@ -167,11 +167,11 @@ LLARS is actively used for developing AI-assisted systems in psychosocial counse
 Organizations building LLM-based systems for sensitive domains---psychosocial counseling, legal analysis, medical documentation---must write effective prompts, select suitable models, and rigorously evaluate outputs, requiring both domain expertise (understanding \emph{what} constitutes quality) and technical skill (structuring prompts and configuring LLM pipelines).
 Yet these two groups typically work in isolation: prompts are iterated in shared documents without version control, and no single tool supports the full cycle from collaborative prompt development through systematic evaluation.
 
-We present LLARS (LLM Assisted Research System), an open-source platform that bridges this gap with three integrated modules (Figure~\ref{fig:pipeline}).
-\emph{Collaborative Prompt Engineering} lets domain experts and developers co-author prompts in a real-time CRDT-based editor with version control and instant LLM testing.
-\emph{Batch Generation} systematically produces the Cartesian product of prompts\,$\times$\,models\,$\times$\,data items with cost tracking.
-\emph{Evaluation} lets human and LLM evaluators assess outputs side by side---via rating, ranking, labeling, or comparison---with live agreement metrics (Krippendorff's~$\alpha$, Cohen's~$\kappa$, and others).
-Each module operates independently with JSON/CSV export, and the platform connects to any OpenAI-compatible provider including local models via Ollama.
+We present LLARS (LLM Assisted Research System), an open-source platform that closes this gap with three integrated modules (Figure~\ref{fig:pipeline}).
+\emph{Collaborative Prompt Engineering} lets domain experts and developers co-author prompts in a shared real-time editor with version control and instant LLM testing.
+\emph{Batch Generation} systematically produces the Cartesian product of prompts\,$\times$\,models\,$\times$\,data items with cost estimation and budget control.
+\emph{Evaluation} lets human and LLM evaluators assess outputs side by side---via rating, ranking, labeling, or pairwise comparison---with live agreement metrics (Krippendorff's~$\alpha$, Cohen's~$\kappa$, and others).
+Each module can be used independently with JSON/CSV export, and the platform connects to any OpenAI-compatible provider including locally hosted models.
 
 % --- Table floats to top of page 2 ---
 \begin{table*}[t]
@@ -220,15 +220,16 @@ LLARS is the first open-source platform to unify collaborative prompt engineerin
 
 \section{Platform Overview}
 
-LLARS is a containerized web application (Vue.js, Flask, MariaDB) with real-time collaboration via a Yjs~\cite{jahns2023yjs} server and WebSocket-synchronized interactions.
-LLM access follows the OpenAI-compatible API structure, supporting commercial providers and locally hosted models via Ollama.
+LLARS runs as a containerized web application and connects to any OpenAI-compatible LLM provider, including commercial services (OpenAI, Anthropic, Google) and locally hosted models via Ollama.
+Teams register providers with their own API keys; registered models then appear throughout the platform---in prompt testing, batch generation, and as LLM evaluators.
 
 \subsection{Collaborative Prompt Engineering}
 
-The prompt engineering module (Figure~\ref{fig:prompt-editor}) provides a real-time collaborative editor built on Yjs~\cite{jahns2023yjs}, a CRDT framework that synchronizes edits at character granularity without conflicts.
-Users compose prompts as reorderable message blocks (system instructions, user templates) with \texttt{\{\{variable\}\}} placeholders that are automatically extracted into a shared palette and substituted with domain data during testing and generation.
-Any collaborator can independently test the current prompt against a selected LLM without interrupting concurrent editing, enabling rapid parallel exploration across models and data.
-A git-inspired version control system records commits with multi-author attribution; finalized prompts are exported as JSON or passed directly to batch generation.
+The prompt engineering module (Figure~\ref{fig:prompt-editor}) lets multiple users edit the same prompt simultaneously in a real-time collaborative editor built on Yjs~\cite{jahns2023yjs}.
+Prompts are structured as reorderable message blocks---system instructions, few-shot examples, user templates---with \texttt{\{\{variable\}\}} placeholders that the platform extracts into a shared palette for the team.
+While editing continues, any collaborator can test the current prompt against a selected LLM: the response streams back instantly, and multiple team members can test different models or sample data in parallel.
+A version control system tracks every saved revision with multi-author attribution, supporting comparison and rollback.
+Finalized prompts are exported as JSON or passed directly to batch generation.
 
 \begin{figure}[t]
 \centering
@@ -239,13 +240,13 @@ A git-inspired version control system records commits with multi-author attribut
 
 \subsection{Batch Generation}
 
-The batch generation module (Figure~\ref{fig:batch-generation}) scales output creation across combinations of data, prompts, and models.
-A guided wizard walks users through source selection (existing scenarios, uploaded CSV/JSON, or no source for self-contained prompts), prompt and model configuration, and budget limits.
-The system generates the full Cartesian product: $N$~data items $\times$ $M$~prompts $\times$ $K$~models, automatically matching template variables to data columns by name.
-Users can register custom LLM providers with their own API keys; these models then appear throughout the platform.
-Before execution, LLARS estimates costs; optional budget caps pause jobs that exceed thresholds.
-Generation progress---including token-level streaming---is broadcast via WebSocket for real-time monitoring.
-Each output retains full provenance (source item, prompt, model, tokens, cost) exportable as CSV/JSON, and completed batches transfer directly into evaluation via the Scenario Wizard, preserving model attribution.
+Once prompts are ready, the batch generation module (Figure~\ref{fig:batch-generation}) produces outputs at scale.
+A guided wizard walks users through three steps: selecting a data source (an existing evaluation scenario, an uploaded CSV/JSON file, or no source for self-contained prompts), choosing which prompts and models to combine, and setting budget limits.
+LLARS then generates the full Cartesian product---$N$~data items $\times$ $M$~prompts $\times$ $K$~models---matching template variables to data columns automatically.
+Before execution begins, the platform estimates costs based on model pricing and token projections; optional budget caps pause jobs that exceed thresholds.
+Team members can monitor progress in real time as outputs stream in.
+Every result records its full provenance---source item, prompt, model, token count, and cost---and is exportable as CSV or JSON.
+Completed batches transfer directly into evaluation through the Scenario Wizard, preserving model attribution for cross-model comparison.
 
 \begin{figure}[t]
 \centering
@@ -256,14 +257,16 @@ Each output retains full provenance (source item, prompt, model, tokens, cost) e
 
 \subsection{Evaluation}
 
-The evaluation module lets human and LLM evaluators assess outputs within a unified framework, supporting four general types (Figure~\ref{fig:scenario-wizard}): \emph{rating} with configurable multi-dimensional Likert scales, \emph{ranking} into ordered buckets, \emph{labeling} (binary or multi-class), and pairwise \emph{comparison}.
-The framework is extensible; LLARS includes two domain-specific types for psychosocial counseling (Section~\ref{sec:counseling}).
-An AI-assisted Scenario Wizard guides creation through five steps---analyzing uploaded data to recommend the most suitable type---or scenarios are created directly from batch generation outputs.
+The evaluation module brings human evaluators and LLM evaluators together in a single framework.
+Four general evaluation types are available (Figure~\ref{fig:scenario-wizard}): \emph{rating} with configurable multi-dimensional Likert scales and weighted dimensions, \emph{ranking} where evaluators sort items into ordered buckets, \emph{labeling} for binary or multi-class classification, and pairwise \emph{comparison}.
+The type system is extensible; LLARS ships with two additional domain-specific types for psychosocial counseling (Section~\ref{sec:counseling}).
+An AI-assisted Scenario Wizard guides users through scenario creation in five steps, analyzing uploaded data to recommend the most suitable evaluation type.
+Alternatively, scenarios can be created directly from batch generation outputs, preserving model attribution for systematic cross-model comparison.
 
-Beyond the established LLM-as-judge paradigm~\cite{zheng2024judging} of pairwise comparison and single-dimension scoring, LLARS treats LLMs as full evaluation participants that rate, rank, label, and compare using customizable type-specific prompts.
-Scenario owners control item distribution (all items per evaluator or configurable subsets) and can filter agreement metrics by evaluator type (human--human, LLM--LLM, or human--LLM).
-LLARS computes metrics in real time---Krippendorff's~$\alpha$, Cohen's and Fleiss'~$\kappa$, Kendall's~$\tau$, and ICC---enabling live analysis of where machine and human judgment diverge.
-All data, metrics, and configurations are exportable as JSON/CSV.
+Scenario owners control how items are distributed---all items to every evaluator for full inter-rater analysis, or configurable subsets for faster throughput.
+Where most tools limit LLMs to pairwise judging~\cite{zheng2024judging}, LLARS treats them as full evaluation participants that rate, rank, label, and compare alongside humans using customizable type-specific prompts.
+As evaluations come in, agreement metrics update live---Krippendorff's~$\alpha$, Cohen's and Fleiss'~$\kappa$, Kendall's~$\tau$, and ICC---filterable by evaluator pairing (human--human, LLM--LLM, or human--LLM) to pinpoint where judgments diverge.
+All data, metrics, and configurations are exportable as JSON or CSV.
 
 \begin{figure}[t]
 \centering
@@ -275,24 +278,24 @@ All data, metrics, and configurations are exportable as JSON/CSV.
 \section{Application: Online Counselling}
 \label{sec:counseling}
 
-LLARS is deployed in ongoing research on CAIA~\cite{steigerwald2025caia}, an AI-assisted support system for text-based psychosocial counselling with seven LLM-driven functionalities.
-Counselling researchers and developers jointly developed prompts in the collaborative editor, iterating against real data until outputs met professional standards.
-For automated subject line generation~\cite{steigerwald2025subjectline}, the complete pipeline was exercised: batch generation produced 253~subject lines across 11~LLMs, and five professionals together with an AI evaluator rated them (1,518~assessments), directly informing the selection of a privacy-preserving open-source model.
+LLARS is actively used in the development of CAIA~\cite{steigerwald2025caia}, an AI-assisted support system for text-based psychosocial counselling that provides counsellors with seven LLM-driven functionalities.
+Counselling researchers and developers collaboratively refined the underlying prompts in LLARS, iterating against real counselling data until outputs met professional standards.
+For one functionality---automated subject line generation~\cite{steigerwald2025subjectline}---the complete pipeline was exercised: batch generation produced 253~subject lines across 11~LLMs, five counselling professionals and an LLM evaluator rated them (1,518~assessments in total), and the resulting cross-model comparison directly informed the selection of a privacy-preserving open-source model for deployment.
 
-These projects motivated two domain-specific evaluation types (Figure~\ref{fig:scenario-wizard}):
-\emph{Mail Rating} for assessing AI-generated counsellor responses on dimensions such as coherence and quality, and \emph{Authenticity} for classifying threads as real or AI-generated with ground truth labels.
+This work also motivated two domain-specific evaluation types (Figure~\ref{fig:scenario-wizard}):
+\emph{Mail Rating} for assessing AI-generated counsellor responses on dimensions such as coherence and empathy, and \emph{Authenticity} for classifying counselling threads as real or AI-generated with ground truth labels.
 
 
 \section{Preliminary Evaluation and Conclusion}
 
 % TODO: Fill in actual interview details
-Semi-structured interviews with $N$~practitioners ($X$~counselling researchers, $Y$~developers) revealed three themes:
-(1)~the collaborative editor eliminated version confusion;
-(2)~batch generation with cost tracking enabled systematic model comparison previously infeasible; and
-(3)~domain experts could conduct evaluations independently.
+Semi-structured interviews with $N$~practitioners ($X$~counselling researchers, $Y$~developers) revealed three recurring themes:
+(1)~the collaborative editor eliminated the version confusion that arose from iterating prompts in shared documents;
+(2)~batch generation with cost tracking made systematic cross-model comparison feasible for the first time; and
+(3)~domain experts could set up and conduct evaluations without developer assistance.
 
-Our live demo walks attendees through the complete pipeline: co-editing a prompt, generating outputs across LLMs, and evaluating with human and LLM evaluators while agreement metrics update live.
-LLARS is open-source and runs via Docker.
+Our live demonstration walks attendees through the complete pipeline: co-editing a prompt, generating outputs across multiple LLMs, and evaluating results while agreement metrics update in real time.
+LLARS is open-source and deployable via Docker.
 % TODO: Uncomment and update URLs before submission
 %\noindent\textbf{Repository:} \url{https://github.com/llars-project/llars}\\
 %\textbf{Documentation:} \url{https://llars-project.github.io}

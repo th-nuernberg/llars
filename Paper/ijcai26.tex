@@ -23,14 +23,13 @@
 \usepackage{tabularx}
 \usepackage{threeparttable}
 \usepackage{pifont}
-
-
+\usepackage[nointegrals]{wasysym}
 
 \usetikzlibrary{shapes.geometric, arrows.meta, positioning, fit, backgrounds, calc}
 
-\newcommand{\yes}{\ding{51}}              % ✓
-\newcommand{\partialc}{\textasciitilde}   % ~
-\newcommand{\noo}{--}                    % –
+\newcommand{\yes}{\CIRCLE}               % ● full support
+\newcommand{\partialc}{\LEFTcircle}      % ◐ partial support
+\newcommand{\noo}{\Circle}               % ○ not supported
 
 \urlstyle{same}
 
@@ -42,8 +41,8 @@
 
 \author{
 Philipp Steigerwald$^1$\and
-Mara Stieler$2$\and
-Jennifer Burghardt$2$\and
+Mara Stieler$^2$\and
+Jennifer Burghardt$^2$\and
 Eric Rudolph$^1$\and
 Jens Albrecht$^1$\\
 \affiliations
@@ -163,26 +162,64 @@ When combined, these modules form a complete pipeline from prompt development th
 \label{fig:pipeline}
 \end{figure}
 
-Organizations increasingly build LLM-based systems for sensitive domains such as legal analysis, medical documentation, and psychosocial counseling.
+Organizations increasingly build LLM-based systems for sensitive domains such as psychosocial counseling, legal analysis, and medical documentation.
 Developing these systems requires writing effective prompts, selecting suitable models, and rigorously evaluating outputs---tasks that demand both domain expertise and technical skill.
 Domain experts understand \emph{what} constitutes quality in their field, while developers know \emph{how} to structure prompts and configure LLM pipelines.
-Yet in practice, prompts are revised through multiple rounds of feedback in shared documents without version control or a common testing environment, leaving teams unsure which version was tested against which model.
-At the same time, organizations need to determine the right model for their use case---comparing open-source alternatives for privacy-preserving on-premise deployment or finding the most cost-effective proprietary option---but lack tools for systematic, collaborative comparison.
-Existing platforms address only fragments of this workflow:
-annotation tools like Label Studio~\cite{labelstudio2024} and Argilla~\cite{argilla2024} provide evaluation interfaces but no collaborative prompt development;
-LLM-as-Judge frameworks like MT-Bench~\cite{zheng2024judging} automate assessment but exclude human evaluators.
-No existing tool offers a unified pipeline from collaborative prompt engineering through systematic output generation to hybrid human--LLM evaluation.
+Yet these two groups typically work in isolation: prompts are iterated in shared documents without version control, model outputs are evaluated ad hoc, and no single tool supports the full cycle from collaborative prompt development through systematic evaluation.
 
-We present LLARS (LLM Assisted Rating System), an open-source platform that closes this gap with an integrated three-stage pipeline (Figure~\ref{fig:pipeline}).
-In the first stage, domain experts and developers \emph{collaboratively engineer prompts} in a shared real-time editor with built-in version control, testing candidate prompts against live LLMs without leaving the workspace.
-Prompts can be exported for external use or passed directly into the second stage, where \emph{batch generation} produces outputs for all combinations of data items, prompts, and models with built-in cost estimation.
-In the third stage, both human and LLM evaluators \emph{assess the outputs} within the same framework---rating, ranking, comparing, or labeling---while real-time agreement metrics reveal where human and machine judgment converge or diverge.
+We present LLARS (LLM Assisted Research System), an open-source platform that bridges this gap with three integrated modules (Figure~\ref{fig:pipeline}).
+\emph{Collaborative Prompt Engineering} lets domain experts and developers co-author prompts in a real-time CRDT-based editor with version control and instant LLM testing---so both groups iterate in one workspace rather than exchanging documents.
+\emph{Batch Generation} then systematically produces outputs for all combinations of prompts, models, and data items with cost tracking, enabling rigorous cross-model comparison.
+\emph{Evaluation} lets human evaluators and LLM judges assess these outputs side by side---via rating, ranking, labeling, or pairwise comparison---while live inter-rater agreement metrics (Krippendorff's~$\alpha$, Cohen's~$\kappa$, and others) reveal where human and machine judgment converge or diverge.
+Each module also operates independently with JSON/CSV export, and the platform connects to any OpenAI-compatible LLM provider including locally hosted models via Ollama.
 
-For example, a legal team building an information extraction system can use the collaborative editor to refine prompts with legal experts, then run batch generation across candidate models---from large proprietary to small open-source alternatives---over hundreds of documents, and finally have legal experts and LLM evaluators jointly assess whether each model reliably identifies relevant clauses rather than hallucinating when information is absent.
-This end-to-end workflow directly informs which model--prompt combination to deploy.
+% --- Table floats to top of page 2 ---
+\begin{table*}[t]
+\centering
+\caption{Comparison of GUI-first tools for prompt engineering, batch generation, and hybrid LLM output evaluation.
+\yes~=~native support;\enspace \partialc~=~partial;\enspace \noo~=~not supported.\enspace
+\textbf{Collab.}~=~real-time collaborative prompt co-editing;\enspace
+\textbf{Batch}~=~systematic generation over prompts\,$\times$\,models\,$\times$\,data;\enspace
+\textbf{H-Eval}~=~structured human evaluation campaigns;\enspace
+\textbf{LLM-J}~=~LLM-as-judge;\enspace
+\textbf{IRR}~=~inter-rater reliability metrics;\enspace
+\textbf{E2E}~=~integrated end-to-end pipeline.}
+\label{tab:comparison}
+\small
+\renewcommand{\arraystretch}{1.1}
+\setlength{\tabcolsep}{0pt}
+\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}} l c c c c c c c}
+\toprule
+\textbf{Tool} & \textbf{OSS} & \textbf{Collab.} & \textbf{Batch} & \textbf{H-Eval} & \textbf{LLM-J} & \textbf{IRR} & \textbf{E2E} \\
+\midrule
+\textbf{LLARS}                         & \yes & \yes      & \yes      & \yes      & \yes      & \yes      & \yes \\
+\addlinespace[2pt]
+Agenta~\cite{agenta2024}               & \yes & \partialc & \partialc & \partialc & \yes      & \noo      & \partialc \\
+ChainForge~\cite{arawjo2024chainforge} & \yes & \noo      & \yes      & \noo      & \partialc & \noo      & \partialc \\
+\addlinespace[2pt]
+Phoenix~\cite{phoenix2024}             & \yes & \noo      & \partialc & \partialc & \yes      & \noo      & \noo \\
+Langfuse~\cite{langfuse2024}           & \yes & \noo      & \partialc & \partialc & \yes      & \noo      & \noo \\
+W\&B~Weave~\cite{weave2024}            & \yes & \noo      & \partialc & \partialc & \yes      & \noo      & \noo \\
+\addlinespace[2pt]
+Label Studio~\cite{labelstudio2024}    & \yes & \noo      & \noo      & \yes      & \partialc & \partialc & \noo \\
+Argilla~\cite{argilla2024}             & \yes & \noo      & \noo      & \yes      & \partialc & \noo      & \noo \\
+\addlinespace[2pt]
+LangSmith~\cite{langsmith2024}         & \noo & \noo      & \partialc & \partialc & \yes      & \noo      & \partialc \\
+Braintrust~\cite{braintrust2024}       & \noo & \noo      & \partialc & \partialc & \yes      & \noo      & \partialc \\
+Maxim~\cite{maxim2024}                 & \noo & \noo      & \partialc & \partialc & \yes      & \noo      & \partialc \\
+Vellum~\cite{vellum2024}               & \noo & \noo      & \partialc & \partialc & \yes      & \noo      & \partialc \\
+\bottomrule
+\end{tabular*}
+\end{table*}
 
-Each stage also operates independently, and results are exportable as JSON or CSV at every point.
-The platform connects to any OpenAI-compatible LLM provider---including locally hosted models via Ollama or vLLM---and is fully open-source.
+Table~\ref{tab:comparison} surveys twelve existing platforms along these dimensions.
+Agenta~\cite{agenta2024} combines prompt management with LLM-as-judge scoring but does not offer real-time co-editing---essential when domain experts and developers jointly refine prompts---and lacks structured human evaluation campaigns with agreement metrics.
+The observability platforms Phoenix~\cite{phoenix2024}, Langfuse~\cite{langfuse2024}, and W\&B~Weave~\cite{weave2024} provide dataset experiments and per-output feedback but focus on tracing and debugging rather than systematic batch generation or structured multi-evaluator campaigns.
+ChainForge~\cite{arawjo2024chainforge} supports visual multi-prompt comparison across models but does not include human evaluation and relies on custom metric functions instead of dedicated LLM judge prompts.
+The annotation platforms Label~Studio~\cite{labelstudio2024} and Argilla~\cite{argilla2024} offer structured human assessment workflows---Label~Studio also computes basic annotator agreement---but both require outputs to be generated externally, disconnecting evaluation from the prompt development process.
+The commercial platforms LangSmith~\cite{langsmith2024}, Braintrust~\cite{braintrust2024}, Maxim~\cite{maxim2024}, and Vellum~\cite{vellum2024} link prompt editing to evaluation with strong LLM-as-judge capabilities but are closed-source, lack collaborative editing, and do not include batch generation as an explicit pipeline stage.
+
+By unifying collaborative prompt engineering, Cartesian-product batch generation, and hybrid human--LLM evaluation with comprehensive agreement analytics, LLARS enables a workflow where developers handle LLM integration, prompt versioning, and batch configuration while domain experts contribute quality criteria and evaluation judgments---both working in the same shared environment from prompt development through rigorous assessment.
 
 
 \section{Platform Overview}
@@ -190,10 +227,6 @@ The platform connects to any OpenAI-compatible LLM provider---including locally 
 LLARS is a containerized web application built with Vue.js (frontend), Flask (backend), and MariaDB (storage).
 Real-time collaboration is provided by a dedicated Yjs~\cite{jahns2023yjs} server, and LLM access follows the OpenAI-compatible API structure, allowing teams to connect commercial providers (OpenAI, Anthropic, Google) as well as locally hosted models via Ollama.
 All interactions---prompt editing, generation progress, and evaluation updates---are synchronized via WebSocket.
-
-The platform provides three modules that can be used independently or combined into a pipeline.
-Prompts created in the collaborative editor feed into batch generation, which produces outputs that are then assessed in the evaluation module.
-At each stage, results can be exported as JSON or CSV for external use.
 
 \subsection{Collaborative Prompt Engineering}
 
@@ -205,9 +238,8 @@ Variables are automatically extracted and displayed in a shared palette; during 
 Any collaborator can test the current prompt independently: clicking \emph{Test} captures an atomic snapshot, fills variables with sample data, sends the prompt to a user-selected LLM, and streams the response---without interrupting concurrent editing.
 Multiple users can test against different models or data in parallel, enabling rapid exploration of prompt behavior across configurations.
 
-A git-inspired version control system records each commit with multi-author attribution, tracking per-user contributions at character level.
-Teams can compare versions, inspect individual contributions, and roll back to previous states.
-Finalized prompts are exported as JSON for integration into production systems or passed directly to the batch generation module.
+A git-inspired version control system records each commit with multi-author attribution, enabling version comparison and rollback.
+Finalized prompts are exported as JSON or passed directly to batch generation.
 
 \begin{figure}[t]
 \centering
@@ -267,99 +299,27 @@ For one of these functionalities---automated subject line generation~\cite{steig
 LLARS's cross-model comparison directly informed the selection of a privacy-preserving open-source model for local deployment.
 
 These projects also motivated two domain-specific evaluation types (Figure~\ref{fig:scenario-wizard}):
-\emph{Mail Rating} for assessing AI-generated counsellor responses on dimensions such as coherence and quality, and \emph{Authenticity} (Figure~\ref{fig:fake-real}) for classifying counselling threads as real or AI-generated, with ground truth labels enabling classification accuracy alongside inter-rater agreement.
-
-\begin{figure}[t]
-\centering
-\includegraphics[width=\linewidth]{figures/fake-real-interface.png}
-\caption{Authenticity evaluation: evaluators read a counselling conversation and classify it as written by humans or containing AI-generated parts, with optional confidence and reasoning.}
-\label{fig:fake-real}
-\end{figure}
+\emph{Mail Rating} for assessing AI-generated counsellor responses on dimensions such as coherence and quality, and \emph{Authenticity} for classifying counselling threads as real or AI-generated, with ground truth labels enabling classification accuracy alongside inter-rater agreement.
 
 
-% -----------------------------------------
-% Two-column-wide table (table*)
-% -----------------------------------------
-\begin{table*}[t]
-\centering
-\begin{threeparttable}
-\caption{Comparison of GUI-first tools for prompt engineering, batch generation, and hybrid LLM output evaluation. Legend: \yes\ = native first-class support in the GUI; \partialc\ = partial support (limited scope, requires workarounds/external steps, or not a first-class GUI workflow); \noo\ = not supported / not a primary feature. ``Process chain like LLARS'' denotes a single-GUI workflow from prompt live-testing $\rightarrow$ batch runs over prompts$\times$models$\times$data $\rightarrow$ evaluation involving human raters and LLM/judge components.}
-\label{tab:llars_pipeline_comparison}
-\small
-\setlength{\tabcolsep}{5pt}
-\begin{tabularx}{\textwidth}{l c c c c c X}
-\toprule
-\textbf{Tool} & \textbf{Open} & \textbf{Process} & \textbf{Prompt} & \textbf{Batch} & \textbf{Eval (H+LLM)} & \textbf{Primary URLs} \\
-\midrule
-\textbf{LLARS} & \yes & \yes & \yes & \yes & \yes &
-\url{https://llars-project.github.io/demo} \\
+\section{Preliminary Evaluation and Conclusion}
 
-Agenta & \yes & \partialc & \yes & \partialc & \yes &
-\url{https://agenta.ai/docs/}; \url{https://github.com/Agenta-AI/agenta} \\
+% TODO: Fill in actual interview details
+Semi-structured interviews with $N$~practitioners ($X$~counselling researchers, $Y$~developers) who used LLARS over six months revealed three recurring themes:
+(1)~the collaborative editor eliminated version confusion from iterating in shared documents;
+(2)~batch generation with cost tracking enabled systematic model comparison previously infeasible; and
+(3)~domain experts could conduct evaluations without developer assistance.
 
-Arize Phoenix & \yes & \partialc & \yes & \partialc & \partialc &
-\url{https://arize.com/docs/phoenix/prompt-engineering/overview-prompts/prompt-playground};
-\url{https://arize.com/docs/phoenix/prompt-engineering/how-to-prompts/using-the-playground};
-\url{https://arize.com/docs/phoenix/evaluation/concepts-evals/llm-as-a-judge};
-\url{https://github.com/Arize-ai/phoenix} \\
-
-Langfuse & \yes & \partialc & \partialc & \yes & \partialc &
-\url{https://langfuse.com/docs/prompt-management/overview};
-\url{https://langfuse.com/docs/evaluation/experiments/experiments-via-ui};
-\url{https://langfuse.com/docs/evaluation/evaluation-methods/llm-as-a-judge};
-\url{https://github.com/langfuse/langfuse} \\
-
-LangSmith & \noo & \partialc & \yes & \yes & \partialc &
-\url{https://docs.langchain.com/langsmith/run-evaluation-from-prompt-playground};
-\url{https://docs.langchain.com/langsmith/evaluation-quickstart} \\
-
-W\&B Weave & \yes & \partialc & \yes & \yes & \partialc &
-\url{https://docs.wandb.ai/weave/guides/tools/playground};
-\url{https://docs.wandb.ai/weave/guides/tools/evaluation_playground};
-\url{https://github.com/wandb/weave} \\
-
-ChainForge & \yes & \partialc & \yes & \yes & \partialc &
-\url{https://www.chainforge.ai/docs/};
-\url{https://github.com/ianarawjo/ChainForge} \\
-
-Label Studio & \yes & \partialc & \partialc & \partialc & \partialc &
-\url{https://labelstud.io/blog/how-to-evaluate-and-compare-llms-using-prompts-in-label-studio/};
-\url{https://labelstud.io/blog/new-llm-evaluation-templates-for-label-studio/};
-\url{https://github.com/HumanSignal/label-studio} \\
-
-Argilla & \yes & \noo & \noo & \noo & \partialc &
-\url{https://argilla.io/blog/argilla-for-llms/};
-\url{https://github.com/argilla-io/argilla} \\
-
-Braintrust & \noo & \partialc & \partialc & \partialc & \partialc &
-\url{https://www.braintrust.dev/docs/evaluate};
-\url{https://www.braintrust.dev/docs/best-practices/scorers} \\
-
-Maxim AI & \noo & \partialc & \yes & \yes & \partialc &
-\url{https://www.getmaxim.ai/docs/offline-evals/via-ui/prompts/quickstart};
-\url{https://www.getmaxim.ai/docs/offline-evals/via-ui/prompts/prompt-evals} \\
-
-Vellum & \noo & \partialc & \yes & \partialc & \partialc &
-\url{https://www.vellum.ai/products/prompt-engineering};
-\url{https://www.vellum.ai/blog/introducing-vellum-evaluations} \\
-\bottomrule
-\end{tabularx}
-\end{threeparttable}
-\end{table*}
-\section{Demonstration and Conclusion}
-
-Our live demonstration walks attendees through the complete pipeline: collaboratively editing a prompt, generating outputs across multiple LLMs with real-time cost tracking, and evaluating results with both human and LLM evaluators while observing agreement metrics update live.
-Attendees can bring their own data or use provided examples.
-LLARS is open-source and runs via Docker (16\,GB RAM, 4+ CPU cores recommended).
+Our live demonstration walks attendees through the complete pipeline: co-editing a prompt, generating outputs across LLMs with cost tracking, and evaluating with human and LLM evaluators while agreement metrics update live.
+LLARS is open-source and runs via Docker (16\,GB RAM recommended).
 
 % TODO: Uncomment and update URLs before submission
 %\vspace{0.3em}
 %\noindent\textbf{Repository:} \url{https://github.com/llars-project/llars}\\
 %\textbf{Documentation:} \url{https://llars-project.github.io}
 
-By integrating collaborative prompt engineering, systematic batch generation, and hybrid human--LLM evaluation into a single GUI-driven platform, LLARS addresses a gap in existing tooling: no prior system offers domain experts and developers a shared environment spanning the full cycle from prompt development to rigorous assessment.
-Ongoing deployments in psychosocial online counselling demonstrate that this integrated pipeline supports real-world research workflows.
-Future work includes a formal user study and extending the platform with fine-tuning integration and automated prompt optimization.
+By unifying collaborative prompting, batch generation, and hybrid evaluation in a single platform, LLARS provides domain experts and developers a shared environment from prompt development to rigorous assessment.
+Future work includes a controlled user study and automated prompt optimization.
 
 \bibliographystyle{named}
 \bibliography{llars}

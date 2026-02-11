@@ -38,32 +38,10 @@
   "steps": [
     {
       "_section": "=== INTRO (40s) ===",
-      "id": "intro_access_1",
-      "speaker": "moderator",
-      "narration": "Before we start, here are the IJCAI demo logins. Account one is ijcai_reviewer_1 with password ijcai_reviewer_123.",
-      "actions": [
-        {
-          "do": "show_title",
-          "title": "Lars Demo Access",
-          "subtitle": "ijcai_reviewer_1 / ijcai_reviewer_123 | ijcai_reviewer_2 / ijcai_reviewer_123"
-        }
-      ]
-    },
-    {
-      "id": "intro_access_2",
-      "speaker": "guest",
-      "narration": "And account two is ijcai_reviewer_2 with the same password: ijcai_reviewer_123.",
-      "actions": [
-        {
-          "do": "wait",
-          "seconds": 0.3
-        }
-      ]
-    },
-    {
+      "_note": "Login credentials are shown as post-production overlay, not spoken",
       "id": "intro_1",
       "speaker": "moderator",
-      "narration": "Hi, I'm Alex. This is a short Lars demo.",
+      "narration": "Welcome to the Lars demo. I'm Alex, and with me is David.",
       "actions": [
         {
           "do": "show_title",
@@ -75,7 +53,7 @@
     {
       "id": "intro_2",
       "speaker": "guest",
-      "narration": "I'm David. We'll walk through what Lars does and how it works.",
+      "narration": "Hi everyone. Today we'll walk through a complete evaluation workflow in Lars \u2014 from writing a prompt to comparing LLM outputs side by side.",
       "actions": [
         {
           "do": "wait",
@@ -86,7 +64,7 @@
     {
       "id": "intro_3",
       "speaker": "moderator",
-      "narration": "We'll build a prompt, run a batch, and review results. Lars helps teams compare LLM outputs against domain criteria, which standard benchmarks don't capture.",
+      "narration": "Lars helps teams compare LLM outputs against domain criteria, which standard benchmarks don't capture. We'll build a prompt, run a batch, and review the results.",
       "actions": [
         {
           "do": "wait",
@@ -97,7 +75,7 @@
     {
       "id": "intro_4",
       "speaker": "guest",
-      "narration": "That matters when you change models or settings and need to see what shifted.",
+      "narration": "That matters when you change models or settings and need to see what actually shifted.",
       "actions": [
         {
           "do": "wait",
@@ -108,7 +86,7 @@
     {
       "id": "intro_5",
       "speaker": "moderator",
-      "narration": "Lars brings domain experts and AI developers together to evaluate LLM outputs \u2014 from prompt development through batch generation to human and machine evaluation.",
+      "narration": "Lars brings domain experts and AI developers together \u2014 from prompt development through batch generation to human and machine evaluation.",
       "actions": [
         {
           "do": "goto",
@@ -351,19 +329,19 @@
         {
           "do": "type",
           "target": ".editor-block:nth-child(1) .ql-editor",
-          "text": "Role definition: You are a professional news editor. Write concise, factual summaries.",
+          "text": "Role definition: You are an analytical journalist who provides thorough context alongside factual reporting.",
           "speed": "fast"
         },
         {
           "do": "type",
           "target": ".editor-block:nth-child(2) .ql-editor",
-          "text": "Task explanation: Summarize the article in 3-4 sentences. Highlight key facts and implications while staying neutral and factual.",
+          "text": "Task explanation: Write a 3-sentence summary of the article. Include relevant background, mention key stakeholders, and explain broader implications beyond the headline.",
           "speed": "fast"
         },
         {
           "do": "type",
           "target": ".editor-block:nth-child(3) .ql-editor",
-          "text": "Data format explanation:\nInput:\nTitle: {{title}}\n\nArticle:\n{{content}}\n\nOutput:\n3-4 sentences in plain text. No bullet points. No extra commentary.",
+          "text": "Data format explanation:\nInput:\nTitle: {{title}}\n\nArticle:\n{{content}}\n\nOutput:\nExactly 3 sentences in plain text. No bullet points. No extra commentary.",
           "speed": "fast"
         }
       ]
@@ -1755,29 +1733,18 @@
       ]
     },
     {
-      "id": "outro_access_1",
+      "id": "outro_1",
       "speaker": "guest",
-      "narration": "Before we close, the IJCAI demo logins again: ijcai_reviewer_1 with password ijcai_reviewer_123.",
+      "narration": "You can try Lars yourself \u2014 the demo login credentials are shown on screen.",
       "actions": [
         {
           "do": "show_title",
-          "title": "Lars Demo Access",
-          "subtitle": "ijcai_reviewer_1 / ijcai_reviewer_123 | ijcai_reviewer_2 / ijcai_reviewer_123"
+          "title": "Try Lars",
+          "subtitle": "Demo access credentials on screen"
         },
         {
           "do": "wait",
-          "seconds": 0.6
-        }
-      ]
-    },
-    {
-      "id": "outro_access_2",
-      "speaker": "moderator",
-      "narration": "And account two is ijcai_reviewer_2, password ijcai_reviewer_123.",
-      "actions": [
-        {
-          "do": "wait",
-          "seconds": 0.5
+          "seconds": 1.5
         }
       ]
     }

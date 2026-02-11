@@ -513,6 +513,7 @@ def initialize_permissions(db):
                 # Chatbots (nur ansehen/nutzen)
                 'feature:chatbots:view',
                 # Szenarien & Evaluation (Scenario Wizard + Aufgaben)
+                'data:import',
                 'data:manage_scenarios',
                 'feature:ranking:view',
                 'feature:ranking:edit',

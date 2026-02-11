@@ -1618,63 +1618,6 @@
       ]
     },
     {
-      "_section": "=== DOCUMENTATION (15s) ===",
-      "id": "docs_1",
-      "speaker": "moderator",
-      "narration": "Everything is documented. The documentation link now opens MkDocs directly.",
-      "actions": [
-        {
-          "do": "goto",
-          "url": "/mkdocs/en"
-        },
-        {
-          "do": "wait",
-          "seconds": 1
-        },
-        {
-          "do": "highlight",
-          "target": "MkDocs Header",
-          "duration": 1.5
-        }
-      ]
-    },
-    {
-      "id": "docs_2",
-      "speaker": "guest",
-      "narration": "Good to see. Is there API documentation for teams that want to integrate Lars into their own pipelines?",
-      "actions": [
-        {
-          "do": "highlight",
-          "target": "MkDocs Sidebar",
-          "duration": 1.5
-        }
-      ]
-    },
-    {
-      "id": "docs_3",
-      "speaker": "moderator",
-      "narration": "Yes, and the MkDocs site includes API references, extension points, and built-in search.",
-      "actions": [
-        {
-          "do": "highlight",
-          "target": "MkDocs Search",
-          "duration": 1.5
-        }
-      ]
-    },
-    {
-      "id": "docs_4",
-      "speaker": "moderator",
-      "narration": "Everything stays organized in one place, so teams can onboard quickly.",
-      "actions": [
-        {
-          "do": "highlight",
-          "target": "MkDocs Content",
-          "duration": 1.5
-        }
-      ]
-    },
-    {
       "_section": "=== CONCLUSION (25s) ===",
       "id": "conclusion_1",
       "speaker": "moderator",

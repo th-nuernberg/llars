@@ -217,8 +217,8 @@ def seed():
     return {'success': True, 'actions': actions}
 
 
-def cleanup():
-    """Delete live-recorded data. Returns dict with results."""
+def cleanup(include_preseed=False):
+    """Delete live-recorded data. If include_preseed=True, also delete pre-seed data."""
     from db import db as _db
     from db.tables import UserPrompt
     from db.models.generation import GenerationJob, GeneratedOutput
@@ -242,7 +242,23 @@ def cleanup():
         _db.session.delete(live_job)
         deleted.append(f"Job '{LIVE_JOB_NAME}' (+{outputs_deleted} outputs)")
 
-    # --- 3. Delete demo-created scenarios ---
+    # --- 3. Delete pre-seed data (prompt + job + outputs) ---
+    if include_preseed:
+        preseed_job = GenerationJob.query.filter_by(name=PRESEED_JOB_NAME).first()
+        if preseed_job:
+            outputs_deleted = GeneratedOutput.query.filter_by(job_id=preseed_job.id).delete()
+            _db.session.delete(preseed_job)
+            deleted.append(f"Job '{PRESEED_JOB_NAME}' (+{outputs_deleted} outputs)")
+
+        preseed_prompts = UserPrompt.query.filter_by(name=PRESEED_PROMPT_NAME).all()
+        for pp in preseed_prompts:
+            shares_deleted = UserPromptShare.query.filter_by(
+                prompt_id=pp.prompt_id
+            ).delete()
+            _db.session.delete(pp)
+            deleted.append(f"Prompt '{PRESEED_PROMPT_NAME}' owner_id={pp.user_id} (+{shares_deleted} shares)")
+
+    # --- 4. Delete demo-created scenarios ---
     preseed_job = GenerationJob.query.filter_by(name=PRESEED_JOB_NAME).first()
     preseed_target_id = preseed_job.target_scenario_id if preseed_job else None
 
@@ -251,7 +267,7 @@ def cleanup():
     ).all()
 
     for scenario in demo_scenarios:
-        if preseed_target_id and scenario.id == preseed_target_id:
+        if not include_preseed and preseed_target_id and scenario.id == preseed_target_id:
             continue
         _db.session.delete(scenario)
         deleted.append(f"Scenario '{scenario.scenario_name}' (id={scenario.id})")
@@ -262,8 +278,8 @@ def cleanup():
 
 
 def reset():
-    """Full reset: cleanup + seed."""
-    cleanup_result = cleanup()
+    """Full reset: cleanup (including pre-seed) + seed."""
+    cleanup_result = cleanup(include_preseed=True)
     seed_result = seed()
     return {
         'success': seed_result.get('success', False),

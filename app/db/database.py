@@ -31,6 +31,16 @@ def configure_database(app):
     # Datenbank-URI konfigurieren (use MYSQL_USER instead of root for better security)
     app.config['SQLALCHEMY_DATABASE_URI'] = f'mysql+pymysql://{db_user}:{db_user_password}@db-maria-service:3306/{db_database_name}'
 
+    # Connection pool: sized for concurrent LLM evaluator threads + HTTP requests.
+    # Default (5+10=15) is too small when multiple scenarios run LLM evals simultaneously.
+    app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+        'pool_size': 10,
+        'max_overflow': 20,       # total max: 30 connections
+        'pool_timeout': 60,       # wait up to 60s for a connection (default 30)
+        'pool_recycle': 1800,     # recycle connections every 30min (MariaDB wait_timeout)
+        'pool_pre_ping': True,    # verify connection is alive before using
+    }
+
     # Initialisiere SQLAlchemy mit der App
     db_instance.init_app(app)
 

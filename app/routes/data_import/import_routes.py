@@ -325,9 +325,16 @@ def import_from_data():
     # - 1 Reference → N Outputs = RANKING (compare/sort outputs)
     # - 1 Reference → 1 Output = RATING (rate single output quality)
     # =========================================================================
+    # Skip long-format detection if data was already transformed by frontend
+    # (e.g., generation data transformed to wide-format for ranking)
+    skip_long_format = (
+        field_mapping
+        and field_mapping.get('from_generation')
+    )
+
     ai_analyzer = get_ai_analyzer()
 
-    if ai_analyzer._detect_long_format(items):
+    if not skip_long_format and ai_analyzer._detect_long_format(items):
         logger.info(f"Long-Format detected for {filename}, generating field mapping...")
 
         # Generate field mapping for Long-Format data
@@ -390,12 +397,15 @@ def import_from_data():
         raise ValidationError(f"Transform failed: {session.errors}")
 
     # Execute import into existing scenario
+    # force_new_threads: generation data uses generic IDs ("0","1","2") that
+    # would collide with existing threads via chat_id hash dedup.
     session = import_service.execute_import(
         session_id=session.session_id,
         task_type=task_type,
         source_name=source_name,
         create_scenario=False,
-        scenario_id=scenario_id
+        scenario_id=scenario_id,
+        force_new_threads=skip_long_format  # True when from_generation
     )
 
     if session.status == "error":

@@ -631,7 +631,7 @@ class OutputExportService:
             subject = variables.get("subject", "")
 
             # Try to find source item by index or ID
-            source_idx = variables.get("_source_index")
+            source_idx = variables.get("source_index") or variables.get("_source_index")
             if source_idx is not None and source_idx < len(source_items):
                 source_item = list(source_items.values())[source_idx]
                 if not messages_data:

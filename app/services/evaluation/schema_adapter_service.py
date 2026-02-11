@@ -23,8 +23,9 @@ from typing import Optional, List, Dict, Any
 
 from db.models import (
     RatingScenarios, EvaluationItem, Message, Feature,
-    ScenarioItems, ScenarioUsers
+    ScenarioItems, ScenarioUsers, User
 )
+from services.permission_service import PermissionService
 from services.evaluation.schema_transformer_service import SchemaTransformer
 from schemas.evaluation_data_schemas import (
     EvaluationData,
@@ -318,10 +319,16 @@ class SchemaAdapter:
     @staticmethod
     def check_scenario_access(item_id: int, user_id: int) -> Optional[RatingScenarios]:
         """
-        Checks if user has access to an item via scenario membership.
+        Checks if user has access to an item via scenario membership,
+        ownership, or admin role.
 
         An item can belong to multiple scenarios. Checks all of them and
-        returns the first scenario where the user has membership.
+        returns the first scenario where the user has access.
+
+        Access is granted if any of:
+        - User has a ScenarioUsers entry (OWNER/EVALUATOR/RATER)
+        - User is the scenario creator (created_by matches username)
+        - User has admin permissions
 
         Returns:
             RatingScenarios if access granted, None otherwise
@@ -330,13 +337,28 @@ class SchemaAdapter:
         if not scenario_items:
             return None
 
+        # Look up user once for owner/admin checks
+        user = User.query.get(user_id)
+
         for scenario_item in scenario_items:
+            # Check ScenarioUsers membership
             scenario_user = ScenarioUsers.query.filter_by(
                 scenario_id=scenario_item.scenario_id,
                 user_id=user_id
             ).first()
             if scenario_user:
                 return RatingScenarios.query.get(scenario_item.scenario_id)
+
+        # If no direct membership, check owner/admin for first scenario
+        if user and scenario_items:
+            scenario = RatingScenarios.query.get(scenario_items[0].scenario_id)
+            if scenario:
+                # Owner check
+                if scenario.created_by and user.username == scenario.created_by:
+                    return scenario
+                # Admin check
+                if PermissionService.check_permission(user.username, 'admin:permissions:manage'):
+                    return scenario
 
         return None
 

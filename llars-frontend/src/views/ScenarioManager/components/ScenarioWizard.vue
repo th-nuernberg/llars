@@ -1787,6 +1787,49 @@ function selectEvalType(typeId) {
   }
 }
 
+/**
+ * Transform generation data from long-format (1 row per model output) to
+ * wide-format (1 row per reference with summary_a/b/c) for ranking import.
+ *
+ * The UniversalTransformer expects wide-format: { source_text, summary_a, summary_b, ... }
+ * But generation items come as individual outputs: each item = 1 model output.
+ */
+function transformGenerationDataForRanking(items) {
+  const suffixes = 'abcdefghijklmnopqrstuvwxyz'
+  const groups = new Map()
+
+  // Group by source_id (same input text → multiple model outputs)
+  items.forEach(item => {
+    const groupId = item.source_id || item.id
+    if (!groups.has(groupId)) groups.set(groupId, [])
+    groups.get(groupId).push(item)
+  })
+
+  return Array.from(groups.entries()).map(([groupId, groupItems]) => {
+    const first = groupItems[0]
+    const wideItem = {
+      id: groupId,
+      source_text: first.source_text || first.input || first.text || '',
+      subject: first.subject || first.title || null,
+    }
+    const metadata = {}
+
+    groupItems.forEach((item, i) => {
+      if (i >= suffixes.length) return
+      const suffix = suffixes[i]
+      wideItem[`summary_${suffix}`] = item.output || item.content || ''
+      // Include prompt variant in model label so features stay unique when
+      // same model is used with different prompts (e.g., Mistral/Summary vs Mistral/Rewrite)
+      const model = item.llm_name || item._model || `Model_${suffix.toUpperCase()}`
+      const variant = item._prompt_variant || ''
+      metadata[`model_${suffix}`] = variant ? `${model} (${variant})` : model
+    })
+
+    wideItem.metadata = metadata
+    return wideItem
+  })
+}
+
 // Map eval type string to backend task_type string
 function getTaskType(evalType) {
   const taskTypeMapping = {
@@ -1853,12 +1896,26 @@ async function createScenario() {
     if (analyzedData.value.length > 0 && scenario?.id) {
       try {
         const taskType = getTaskType(formData.value.evalType)
+        const isFromGeneration = analyzedData.value.some(i => i._source === 'generation')
 
-        // Get AI-suggested field mapping if available
-        const fieldMapping = aiSuggestions.value?.field_mapping || null
+        // For ranking from generation: transform long-format → wide-format
+        let importData = analyzedData.value
+        let fieldMapping = aiSuggestions.value?.field_mapping || null
+
+        if (taskType === 'ranking' && isFromGeneration) {
+          importData = transformGenerationDataForRanking(analyzedData.value)
+          console.log('[ScenarioWizard] Ranking from generation:', {
+            inputItems: analyzedData.value.length,
+            groups: importData.length,
+            featuresPerGroup: importData.map(g =>
+              Object.keys(g).filter(k => k.startsWith('summary_')).length
+            )
+          })
+          fieldMapping = { from_generation: true }
+        }
 
         const importResult = await importService.importFromData(
-          analyzedData.value,
+          importData,
           scenario.id,
           taskType,
           formData.value.scenario_name,
@@ -1942,10 +1999,10 @@ async function loadFromGenerationJob() {
       const promptVars = output.prompt_variables || {}
       const generatedContent = output.generated_content || ''
 
-      // Stable source grouping (manual uploads use _source_index)
+      // Stable source grouping (source_index is canonical, _source_index for backwards compat)
       const renderedPrompt = output.rendered_user_prompt || ''
       const parsed = parseRenderedPrompt(renderedPrompt)
-      const sourceIndex = promptVars._source_index ?? output.source_item_id ?? hashString(renderedPrompt) ?? output.id
+      const sourceIndex = promptVars.source_index ?? promptVars._source_index ?? output.source_group_key ?? output.source_item_id ?? hashString(renderedPrompt) ?? output.id
       const promptKey = output.prompt_template_id ?? promptVars._user_prompt_id ?? output.prompt_variant_name ?? 'prompt'
       const groupId = `${sourceIndex}`
 
@@ -1997,7 +2054,7 @@ async function loadFromGenerationJob() {
         _model: output.llm_model_name,
         _prompt_variant: output.prompt_variant_name,
         _source_item_id: output.source_item_id,
-        _source_index: promptVars._source_index ?? null,
+        _source_index: promptVars.source_index ?? promptVars._source_index ?? null,
         _original_input: promptVars.input || null
       }
     })

@@ -663,6 +663,20 @@ class UniversalTransformer:
                             generated_by=generated_by
                         ))
 
+        # Enrich with actual model names from metadata if available
+        if "metadata" in data and isinstance(data["metadata"], dict):
+            metadata = data["metadata"]
+            for i, feature in enumerate(features):
+                suffix = chr(97 + i)  # a, b, c, d, ...
+                model_key = f"model_{suffix}"
+                if model_key in metadata and metadata[model_key]:
+                    feature.generated_by = metadata[model_key]
+
+        logger.info(
+            f"Ranking features detected: {len(features)} features, "
+            f"keys={list(found_keys)}, reference={'found' if reference_text else 'missing'}"
+        )
+
         return reference_text, features
 
     def _is_ranking_with_features(self, data: dict[str, Any], config: TransformConfig) -> bool:

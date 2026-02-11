@@ -374,6 +374,9 @@ class ImportService:
         logger.info(f"Created session from data: {len(data)} items, task_type={task_type}")
         return session
 
+    # Batch size for DB operations during import
+    IMPORT_BATCH_SIZE = 50
+
     def execute_import(
         self,
         session_id: str,
@@ -382,10 +385,16 @@ class ImportService:
         create_scenario: bool = True,
         scenario_id: int | None = None,
         created_by: str | None = None,
-        ai_analysis: dict | None = None
+        ai_analysis: dict | None = None,
+        force_new_threads: bool = False
     ) -> ImportSession:
         """
         Execute the import and create database records.
+
+        Uses batch processing to minimize DB roundtrips:
+        - Pre-caches FeatureTypes and LLMs
+        - Creates threads in batches with single flush per batch
+        - Creates messages + features in bulk after thread IDs are assigned
 
         Args:
             session_id: Session ID
@@ -395,6 +404,8 @@ class ImportService:
             scenario_id: Existing scenario ID to import into (if not creating new)
             created_by: Username of creator (for scenario)
             ai_analysis: AI analysis result with evaluation criteria etc.
+            force_new_threads: If True, always create new threads (skip dedup).
+                Used for generation imports where items have generic IDs like "0","1","2".
 
         Returns:
             Updated session with import results
@@ -412,21 +423,65 @@ class ImportService:
         # Use provided task type or session default
         final_task_type = task_type or session.task_type or TaskType.MAIL_RATING
         source = source_name or f"Import-{session.session_id[:8]}"
+        function_type_id = self._get_function_type_id(final_task_type)
 
         try:
             imported = 0
             imported_threads = []
 
-            for item in session.transformed_items:
-                try:
-                    thread = self._create_thread(item, final_task_type, source)
-                    if thread:
-                        imported += 1
-                        imported_threads.append(thread)
-                except Exception as e:
-                    session.warnings.append(f"Failed to import item {item.id}: {str(e)}")
+            # Pre-cache FeatureTypes and LLMs to avoid per-item DB lookups
+            type_cache, llm_cache = self._ensure_feature_types_and_llms(
+                session.transformed_items
+            )
 
-            db.session.flush()
+            items_list = session.transformed_items
+            for batch_start in range(0, len(items_list), self.IMPORT_BATCH_SIZE):
+                batch = items_list[batch_start:batch_start + self.IMPORT_BATCH_SIZE]
+                batch_new_threads = []  # (thread, item) tuples for new threads
+
+                for item in batch:
+                    try:
+                        # Check for existing thread (skip when force_new_threads)
+                        if not force_new_threads:
+                            existing = self._find_existing_thread(item, function_type_id)
+                            if existing:
+                                self._handle_existing_thread(
+                                    existing, item, final_task_type, source,
+                                    type_cache, llm_cache
+                                )
+                                imported += 1
+                                imported_threads.append(existing)
+                                continue
+
+                        # Create new thread object (without flush)
+                        thread = self._create_thread_object(
+                            item, function_type_id, source,
+                            unique_chat_id=force_new_threads
+                        )
+                        db.session.add(thread)
+                        batch_new_threads.append((thread, item))
+                    except Exception as e:
+                        session.warnings.append(
+                            f"Failed to import item {item.id}: {str(e)}"
+                        )
+
+                # One flush for all new threads in this batch → IDs assigned
+                if batch_new_threads:
+                    db.session.flush()
+
+                # Create messages + features for the batch
+                for thread, item in batch_new_threads:
+                    self._create_messages_for_item(thread, item, source)
+                    if item.features and final_task_type == TaskType.RANKING:
+                        self._create_features_cached(
+                            thread, item, source, type_cache, llm_cache
+                        )
+                    imported += 1
+                    imported_threads.append(thread)
+
+                # One flush for messages + features of this batch
+                if batch_new_threads:
+                    db.session.flush()
 
             # Create scenario and link threads OR link to existing scenario
             scenario = None
@@ -467,14 +522,9 @@ class ImportService:
 
         return session
 
-    def _create_thread(
-        self,
-        item: ImportItem,
-        task_type: TaskType,
-        source: str
-    ) -> EmailThread | None:
-        """Create a database thread from an ImportItem."""
-        # Map task type to function_type_id
+    @staticmethod
+    def _get_function_type_id(task_type: TaskType) -> int:
+        """Map TaskType to function_type_id."""
         task_type_mapping = {
             TaskType.RANKING: 1,
             TaskType.RATING: 2,
@@ -482,67 +532,206 @@ class ImportService:
             TaskType.COMPARISON: 4,
             TaskType.AUTHENTICITY: 5,
             TaskType.LABELING: 7,
-            TaskType.TEXT_CLASSIFICATION: 7,  # legacy alias
-            TaskType.TEXT_RATING: 2,  # legacy alias
-            TaskType.JUDGE: 4,  # fallback to comparison for legacy imports
+            TaskType.TEXT_CLASSIFICATION: 7,
+            TaskType.TEXT_RATING: 2,
+            TaskType.JUDGE: 4,
         }
-        function_type_id = task_type_mapping.get(task_type, 3)
+        return task_type_mapping.get(task_type, 3)
 
-        # Generate unique chat_id (must fit in signed INT: max 2,147,483,647)
-        hash_value = int(hashlib.md5(item.id.encode()).hexdigest()[:8], 16)
-        chat_id = hash_value % 2147483647  # Ensure within signed INT range
+    @staticmethod
+    def _generate_chat_id(item_id: str) -> int:
+        """Generate unique chat_id from item ID (fits signed INT)."""
+        hash_value = int(hashlib.md5(item_id.encode()).hexdigest()[:8], 16)
+        return hash_value % 2147483647
 
-        # Check for existing thread
-        existing = EmailThread.query.filter_by(
+    def _find_existing_thread(
+        self,
+        item: ImportItem,
+        function_type_id: int
+    ) -> EmailThread | None:
+        """Find an existing thread for the given item, or None."""
+        chat_id = self._generate_chat_id(item.id)
+        return EmailThread.query.filter_by(
             chat_id=chat_id,
             function_type_id=function_type_id
         ).first()
 
-        if existing:
-            # Thread exists - check if it has messages
-            existing_messages = DBMessage.query.filter_by(
-                thread_id=existing.thread_id
+    def _handle_existing_thread(
+        self,
+        existing: EmailThread,
+        item: ImportItem,
+        task_type: TaskType,
+        source: str,
+        type_cache: dict | None = None,
+        llm_cache: dict | None = None
+    ) -> None:
+        """Handle an existing thread: create messages/features if missing."""
+        existing_messages = DBMessage.query.filter_by(
+            thread_id=existing.thread_id
+        ).count()
+
+        if existing_messages == 0:
+            logger.info(f"Thread exists without messages, creating: {item.id}")
+            self._create_messages_for_item(existing, item, source)
+        else:
+            logger.debug(f"Thread already exists with messages: {item.id}")
+
+        if item.features and task_type == TaskType.RANKING:
+            existing_features = DBFeature.query.filter_by(
+                item_id=existing.thread_id
             ).count()
-
-            if existing_messages == 0:
-                # Thread exists but has no messages - create them now
-                logger.info(f"Thread exists without messages, creating: {item.id}")
-                self._create_messages_for_item(existing, item, source)
-            else:
-                logger.debug(f"Thread already exists with messages: {item.id}")
-
-            # Check if ranking features need to be created
-            if item.features and task_type == TaskType.RANKING:
-                existing_features = DBFeature.query.filter_by(
-                    item_id=existing.thread_id
-                ).count()
-                if existing_features == 0:
-                    logger.info(f"Thread exists without features, creating: {item.id}")
+            if existing_features == 0:
+                logger.info(f"Thread exists without features, creating: {item.id}")
+                if type_cache is not None and llm_cache is not None:
+                    self._create_features_cached(
+                        existing, item, source, type_cache, llm_cache
+                    )
+                else:
                     self._create_features_for_item(existing, item, source)
 
-            return existing
-
-        # Determine subject based on item type
+    def _create_thread_object(
+        self,
+        item: ImportItem,
+        function_type_id: int,
+        source: str,
+        unique_chat_id: bool = False
+    ) -> EmailThread:
+        """Create an EmailThread object without flushing to DB."""
+        if unique_chat_id:
+            # Add random suffix to avoid chat_id collisions with existing threads
+            import random
+            chat_id = self._generate_chat_id(f"{item.id}_{random.randint(0, 999999)}")
+        else:
+            chat_id = self._generate_chat_id(item.id)
         subject = item.subject or item.title or f"Imported: {item.id}"
-
-        # Create thread
-        thread = EmailThread(
+        return EmailThread(
             chat_id=chat_id,
             subject=subject,
             sender=source,
             function_type_id=function_type_id,
         )
-        db.session.add(thread)
-        db.session.flush()  # Get thread_id
 
-        # Create messages based on ItemType
+    def _create_thread(
+        self,
+        item: ImportItem,
+        task_type: TaskType,
+        source: str
+    ) -> EmailThread | None:
+        """Create a database thread from an ImportItem (backward-compatible wrapper)."""
+        function_type_id = self._get_function_type_id(task_type)
+
+        existing = self._find_existing_thread(item, function_type_id)
+        if existing:
+            self._handle_existing_thread(existing, item, task_type, source)
+            return existing
+
+        thread = self._create_thread_object(item, function_type_id, source)
+        db.session.add(thread)
+        db.session.flush()
+
         self._create_messages_for_item(thread, item, source)
 
-        # Create features for ranking items
         if item.features and task_type == TaskType.RANKING:
             self._create_features_for_item(thread, item, source)
 
         return thread
+
+    def _ensure_feature_types_and_llms(
+        self,
+        items: list[ImportItem]
+    ) -> tuple[dict[str, FeatureType], dict[str, LLM]]:
+        """Pre-create all needed FeatureTypes and LLMs in a single flush."""
+        needed_types = set()
+        needed_llms = set()
+
+        for item in items:
+            if item.features:
+                for f in item.features:
+                    needed_types.add(f.type or "Summary")
+                    needed_llms.add(f.generated_by or "Imported")
+
+        if not needed_types and not needed_llms:
+            return {}, {}
+
+        # Load existing from DB
+        type_cache = {}
+        if needed_types:
+            type_cache = {
+                ft.name: ft for ft in FeatureType.query.filter(
+                    FeatureType.name.in_(needed_types)
+                ).all()
+            }
+
+        llm_cache = {}
+        if needed_llms:
+            llm_cache = {
+                llm_obj.name: llm_obj for llm_obj in LLM.query.filter(
+                    LLM.name.in_(needed_llms)
+                ).all()
+            }
+
+        # Create missing entries
+        new_entries = False
+        for name in needed_types - set(type_cache.keys()):
+            ft = FeatureType(name=name)
+            db.session.add(ft)
+            type_cache[name] = ft
+            new_entries = True
+            logger.info(f"Created FeatureType: {name}")
+
+        for name in needed_llms - set(llm_cache.keys()):
+            llm_obj = LLM(name=name)
+            db.session.add(llm_obj)
+            llm_cache[name] = llm_obj
+            new_entries = True
+            logger.info(f"Created LLM: {name}")
+
+        if new_entries:
+            db.session.flush()  # Single flush for all new types/LLMs
+
+        return type_cache, llm_cache
+
+    def _create_features_cached(
+        self,
+        thread: EmailThread,
+        item: ImportItem,
+        source: str,
+        type_cache: dict[str, FeatureType],
+        llm_cache: dict[str, LLM]
+    ) -> None:
+        """Create features using pre-cached FeatureTypes and LLMs (no per-item DB lookups)."""
+        if not item.features:
+            return
+
+        for feature in item.features:
+            feature_type_name = feature.type or "Summary"
+            llm_name = feature.generated_by or source or "Imported"
+
+            feature_type = type_cache.get(feature_type_name)
+            llm = llm_cache.get(llm_name)
+
+            if not feature_type or not llm:
+                # Fallback to DB lookup if cache miss
+                logger.warning(f"Cache miss for feature_type={feature_type_name} or llm={llm_name}")
+                self._create_features_for_item(thread, item, source)
+                return
+
+            existing = DBFeature.query.filter_by(
+                item_id=thread.thread_id,
+                type_id=feature_type.type_id,
+                llm_id=llm.llm_id
+            ).first()
+
+            if not existing:
+                db_feature = DBFeature(
+                    item_id=thread.thread_id,
+                    type_id=feature_type.type_id,
+                    llm_id=llm.llm_id,
+                    content=feature.content
+                )
+                db.session.add(db_feature)
+
+        logger.debug(f"Created {len(item.features)} features for item {thread.thread_id}")
 
     def _create_messages_for_item(
         self,
@@ -830,27 +1019,34 @@ class ImportService:
         threads: list[EmailThread]
     ) -> None:
         """
-        Link threads to an existing scenario.
+        Link threads to an existing scenario using batch operations.
 
         Args:
             scenario_id: ID of existing scenario
             threads: List of EmailThread objects to link
         """
-        for thread in threads:
-            # Check if link already exists
-            existing = ScenarioThreads.query.filter_by(
-                scenario_id=scenario_id,
-                thread_id=thread.thread_id
-            ).first()
+        thread_ids = [t.thread_id for t in threads]
 
-            if not existing:
-                scenario_thread = ScenarioThreads(
-                    scenario_id=scenario_id,
-                    thread_id=thread.thread_id,
-                )
-                db.session.add(scenario_thread)
+        # Batch-check existing links
+        existing_ids = set(
+            r[0] for r in ScenarioThreads.query.filter(
+                ScenarioThreads.scenario_id == scenario_id,
+                ScenarioThreads.thread_id.in_(thread_ids)
+            ).with_entities(ScenarioThreads.thread_id).all()
+        )
 
-        logger.info(f"Linked {len(threads)} threads to scenario_id={scenario_id}")
+        # Bulk-create missing links
+        new_links = [
+            ScenarioThreads(scenario_id=scenario_id, thread_id=tid)
+            for tid in thread_ids if tid not in existing_ids
+        ]
+        if new_links:
+            db.session.add_all(new_links)
+
+        logger.info(
+            f"Linked {len(new_links)} new threads to scenario_id={scenario_id} "
+            f"({len(existing_ids)} already linked)"
+        )
 
     def get_available_formats(self) -> list[dict[str, Any]]:
         """Get list of all supported formats."""

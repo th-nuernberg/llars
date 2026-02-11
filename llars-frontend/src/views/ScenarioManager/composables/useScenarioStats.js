@@ -14,6 +14,11 @@ import axios from 'axios'
 import { getSocket } from '@/services/socketService'
 import { useAuth } from '@/composables/useAuth'
 
+// Module-level subscription generation counter.
+// Prevents race condition where old composable's onUnmounted fires AFTER
+// new composable's connect(), canceling the new subscription on the shared socket.
+let subscriptionGeneration = 0
+
 /**
  * Scenario stats composable for real-time progress monitoring.
  *
@@ -38,6 +43,7 @@ export function useScenarioStats(scenarioIdRef) {
   // ===== Socket Reference =====
   let socket = null
   let currentScenarioId = null
+  let mySubscriptionGeneration = 0
 
   // ===== Polling Fallback =====
   // Periodic REST API refresh to catch missed socket events
@@ -368,6 +374,8 @@ export function useScenarioStats(scenarioIdRef) {
     }
 
     currentScenarioId = scenarioId
+    mySubscriptionGeneration = ++subscriptionGeneration
+    lastSocketUpdate = Date.now() // Grace period before first poll
     socket = getSocket()
 
     if (!socket) {
@@ -420,13 +428,20 @@ export function useScenarioStats(scenarioIdRef) {
 
     if (!socket) return
 
-    // Unsubscribe from scenario stats
-    if (socket.connected && currentScenarioId) {
+    // Only emit unsubscribe if no newer composable instance has connected.
+    // When navigating between scenarios, Vue mounts the new component BEFORE
+    // unmounting the old one. Both share the singleton socket, so the old
+    // instance's onUnmounted must not cancel the new instance's subscription.
+    const isStillActiveSubscriber = mySubscriptionGeneration === subscriptionGeneration
+
+    if (socket.connected && currentScenarioId && isStillActiveSubscriber) {
       console.log('[ScenarioStats] Unsubscribing from scenario:', currentScenarioId)
       socket.emit('scenario:unsubscribe', { scenario_id: currentScenarioId })
+    } else if (!isStillActiveSubscriber && currentScenarioId) {
+      console.log('[ScenarioStats] Skipping unsubscribe - newer subscriber active for scenario:', currentScenarioId)
     }
 
-    // Remove ALL event handlers including connect/disconnect
+    // Always clean up this instance's event handlers
     if (connectHandler) {
       socket.off('connect', connectHandler)
       connectHandler = null

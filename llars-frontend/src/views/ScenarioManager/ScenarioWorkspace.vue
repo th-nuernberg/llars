@@ -452,6 +452,11 @@ watch(activeTab, (newTab) => {
   if (newTab && newTab !== route.query.tab) {
     router.replace({ query: { ...route.query, tab: newTab } })
   }
+  // Refresh stats immediately when switching back to overview tab
+  // so user sees the latest data without waiting for next socket event
+  if (newTab === 'overview') {
+    refreshStats()
+  }
 })
 
 // Redirect non-owners to the dedicated evaluation interface

@@ -485,7 +485,7 @@ class BatchGenerationService:
                 variables["_user_prompt_id"] = template_id
             # Store source index for later retrieval during export
             if entry.get("source_index") is not None:
-                variables["_source_index"] = entry["source_index"]
+                variables["source_index"] = entry["source_index"]
 
             output = GeneratedOutput(
                 job_id=job_id,

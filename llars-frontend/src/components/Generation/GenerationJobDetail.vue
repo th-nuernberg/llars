@@ -182,32 +182,45 @@
           </div>
 
           <div class="config-section">
-            <h4>{{ $t('generation.detail.prompts') }}</h4>
+            <h4>{{ $t('generation.detail.models') }}</h4>
             <div class="config-tags">
-              <LTag
-                v-for="prompt in jobConfig?.prompts || []"
-                :key="prompt.template_id"
-                variant="default"
-                size="small"
-                :style="getPromptTagStyle(prompt.template_name || `Template #${prompt.template_id}`)"
+              <span
+                v-for="model in jobConfig?.llm_models || []"
+                :key="model"
+                class="legend-entry"
               >
-                {{ prompt.template_name || `Template #${prompt.template_id}` }}
-              </LTag>
+                <span class="dot dot--model" :style="{ background: resolveModelColor(model) }"></span>
+                <LTag
+                  variant="default"
+                  size="small"
+                  :style="getModelTagStyle(resolveModelColor(model), model)"
+                >
+                  {{ model }}
+                </LTag>
+              </span>
             </div>
           </div>
 
           <div class="config-section">
-            <h4>{{ $t('generation.detail.models') }}</h4>
+            <h4>{{ $t('generation.detail.prompts') }}</h4>
             <div class="config-tags">
-              <LTag
-                v-for="model in jobConfig?.llm_models || []"
-                :key="model"
-                variant="default"
-                size="small"
-                :style="getModelTagStyle(resolveModelColor(model), model)"
+              <span
+                v-for="prompt in jobConfig?.prompts || []"
+                :key="prompt.template_id"
+                class="legend-entry"
               >
-                {{ model }}
-              </LTag>
+                <span
+                  class="dot dot--prompt"
+                  :style="{ background: promptColorMap[prompt.template_name || `Template #${prompt.template_id}`] || PROMPT_COLORS[0] }"
+                ></span>
+                <LTag
+                  variant="default"
+                  size="small"
+                  :style="getPromptTagStyle(prompt.template_name || `Template #${prompt.template_id}`)"
+                >
+                  {{ prompt.template_name || `Template #${prompt.template_id}` }}
+                </LTag>
+              </span>
             </div>
           </div>
 
@@ -285,45 +298,39 @@
 
           <div v-else-if="outputs.length > 0 || currentlyProcessing" ref="outputsListRef" class="outputs-list">
             <div
-              v-for="output in outputs"
-              :key="output.id"
-              class="output-item"
-              :class="{ 'is-failed': output.status === 'failed' }"
-              @click="selectOutput(output)"
+              v-for="group in groupedOutputs"
+              :key="group.key"
+              class="output-group"
             >
-              <div class="output-status">
-                <LIcon :color="getOutputStatusColor(output.status)" size="18">
+              <div class="output-group-header">
+                <span class="output-group-label">{{ group.label }}</span>
+                <span class="output-group-count">{{ group.items.length }}</span>
+              </div>
+              <div
+                v-for="output in group.items"
+                :key="output.id"
+                class="output-item"
+                :class="{ 'is-failed': output.status === 'failed' }"
+                @click="selectOutput(output)"
+              >
+                <LIcon :color="getOutputStatusColor(output.status)" size="16">
                   {{ getOutputStatusIcon(output.status) }}
                 </LIcon>
-              </div>
-              <div class="output-content">
-                <div class="output-meta">
-                  <LTag
-                    variant="default"
-                    size="x-small"
-                    :style="getModelTagStyle(output.llm_model_color, output.llm_model_name)"
-                  >
-                    {{ output.llm_model_name }}
-                  </LTag>
-                  <LTag
-                    v-if="output.prompt_variant_name"
-                    variant="default"
-                    size="x-small"
-                    :style="getPromptTagStyle(output.prompt_variant_name)"
-                  >
-                    {{ output.prompt_variant_name }}
-                  </LTag>
-                  <span class="output-item-name" :title="output.source_item_label || ''">
-                    <LIcon size="12" class="mr-1">mdi-database-outline</LIcon>
-                    {{ output.source_item_label || `Item #${output.source_item_id || output.id}` }}
-                  </span>
-                </div>
-                <p class="output-preview">
+                <span
+                  class="dot dot--model"
+                  :style="{ background: resolveModelColor(output.llm_model_name, output.llm_model_color) }"
+                ></span>
+                <span
+                  v-if="output.prompt_variant_name"
+                  class="dot dot--prompt"
+                  :style="{ background: promptColorMap[output.prompt_variant_name] || PROMPT_COLORS[0] }"
+                ></span>
+                <span class="output-preview">
                   {{ output.content_preview || output.error_message || '-' }}
-                </p>
-              </div>
-              <div class="output-tokens">
-                <span v-if="output.tokens?.output">{{ output.tokens.output }} tok</span>
+                </span>
+                <span v-if="output.tokens?.output" class="output-tokens">
+                  {{ output.tokens.output }} tok
+                </span>
               </div>
             </div>
           </div>
@@ -668,6 +675,22 @@ const promptColorMap = computed(() => {
     map[name] = PROMPT_COLORS[i % PROMPT_COLORS.length]
   })
   return map
+})
+
+const groupedOutputs = computed(() => {
+  const groups = new Map()
+  for (const output of outputs.value) {
+    const key = output.source_group_key || output.source_item_id || output.id
+    if (!groups.has(key)) {
+      groups.set(key, {
+        key,
+        label: output.source_item_label || `Item #${output.source_item_id || output.id}`,
+        items: []
+      })
+    }
+    groups.get(key).items.push(output)
+  }
+  return Array.from(groups.values())
 })
 
 const generationMatrix = computed(() => {
@@ -1378,76 +1401,111 @@ onUnmounted(() => {
 .outputs-list {
   flex: 1;
   overflow-y: auto;
-  padding: 0 16px;
+  padding: 8px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
+/* Output Group (per source item / Datenpunkt) */
+.output-group {
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.09);
+  border-radius: 12px 4px 12px 4px;
+  flex-shrink: 0;
+}
+
+.output-group-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 14px;
+  background: rgba(var(--v-theme-on-surface), 0.03);
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.06);
+}
+
+.output-group-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: rgba(var(--v-theme-on-surface), 0.7);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.output-group-count {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: rgba(var(--v-theme-on-surface), 0.4);
+  background: rgba(var(--v-theme-on-surface), 0.06);
+  border-radius: 6px 2px 6px 2px;
+  padding: 2px 8px;
+  flex-shrink: 0;
+}
+
+/* Output Item (single generation inside a group) */
 .output-item {
   display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  padding: 12px 0;
-  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.06);
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
   cursor: pointer;
-  transition: background 0.2s ease;
+  transition: background 0.15s ease;
+}
+
+.output-item + .output-item {
+  border-top: 1px solid rgba(var(--v-theme-on-surface), 0.04);
 }
 
 .output-item:hover {
-  background: rgba(var(--v-theme-on-surface), 0.02);
-  margin: 0 -8px;
-  padding: 12px 8px;
-}
-
-.output-item:last-child {
-  border-bottom: none;
+  background: rgba(var(--v-theme-on-surface), 0.04);
 }
 
 .output-item.is-failed {
   background: rgba(var(--v-theme-error), 0.05);
 }
 
-.output-status {
+/* Color Dots (used in legend + output items) */
+.dot {
+  display: inline-block;
   flex-shrink: 0;
-  padding-top: 2px;
 }
 
-.output-content {
-  flex: 1;
-  min-width: 0;
+.dot--model {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
 }
 
-.output-meta {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 4px;
+.dot--prompt {
+  width: 9px;
+  height: 9px;
+  border-radius: 2px;
 }
 
-.output-item-name {
+/* Legend entries in config card */
+.legend-entry {
   display: inline-flex;
   align-items: center;
-  font-size: 0.75rem;
-  color: rgba(var(--v-theme-on-surface), 0.5);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  max-width: 200px;
+  gap: 4px;
 }
 
 .output-preview {
-  font-size: 0.85rem;
+  flex: 1;
+  min-width: 0;
+  font-size: 0.82rem;
   margin: 0;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
   overflow: hidden;
-  color: rgba(var(--v-theme-on-surface), 0.8);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: rgba(var(--v-theme-on-surface), 0.75);
 }
 
 .output-tokens {
   flex-shrink: 0;
-  font-size: 0.75rem;
-  color: rgba(var(--v-theme-on-surface), 0.5);
+  font-size: 0.72rem;
+  color: rgba(var(--v-theme-on-surface), 0.4);
   font-family: monospace;
+  white-space: nowrap;
 }
 
 .empty-outputs {

@@ -275,31 +275,28 @@ All data, metrics, and configurations are exportable as JSON or CSV.
 \label{fig:scenario-wizard}
 \end{figure}
 
-\section{Application: Online Counselling}
+\section{Application and Preliminary Evaluation}
 \label{sec:counseling}
 
-LLARS is actively used in the development of CAIA~\cite{steigerwald2025caia}, an AI-assisted support system for text-based psychosocial counselling that provides counsellors with seven LLM-driven functionalities.
-Counselling researchers and developers collaboratively refined the underlying prompts in LLARS, iterating against real counselling data until outputs met professional standards.
-For one functionality---automated subject line generation~\cite{steigerwald2025subjectline}---the complete pipeline was exercised: batch generation produced 253~subject lines across 11~LLMs, five counselling professionals and an LLM evaluator rated them (1,518~assessments in total), and the resulting cross-model comparison directly informed the selection of a privacy-preserving open-source model for deployment.
-
+LLARS is actively used in the development of CAIA~\cite{steigerwald2025caia}, an AI-assisted support system for text-based psychosocial counselling.
+Counselling researchers and developers collaboratively refined prompts for seven LLM-driven functionalities, iterating against real data until outputs met professional standards.
+For automated subject line generation~\cite{steigerwald2025subjectline}, the complete pipeline was exercised: batch generation produced 253~subject lines across 11~LLMs, five professionals and an LLM evaluator rated them (1,518~assessments), and cross-model comparison directly informed the selection of a privacy-preserving open-source model.
 This work also motivated two domain-specific evaluation types (Figure~\ref{fig:scenario-wizard}):
-\emph{Mail Rating} for assessing AI-generated counsellor responses on dimensions such as coherence and empathy, and \emph{Authenticity} for classifying counselling threads as real or AI-generated with ground truth labels.
-
-
-\section{Preliminary Evaluation and Conclusion}
+\emph{Mail Rating} for assessing AI-generated responses on counselling-specific dimensions, and \emph{Authenticity} for classifying threads as real or AI-generated with ground truth labels.
 
 % TODO: Fill in actual interview details
-Semi-structured interviews with $N$~practitioners ($X$~counselling researchers, $Y$~developers) revealed three recurring themes:
-(1)~the collaborative editor eliminated the version confusion that arose from iterating prompts in shared documents;
-(2)~batch generation with cost tracking made systematic cross-model comparison feasible for the first time; and
-(3)~domain experts could set up and conduct evaluations without developer assistance.
+Semi-structured interviews with $N$~practitioners ($X$~counselling researchers, $Y$~developers) highlighted that the collaborative editor eliminated version confusion from iterating prompts in shared documents, batch generation with cost tracking made systematic cross-model comparison feasible, and domain experts could set up and conduct evaluations independently.
 
-Our live demonstration walks attendees through the complete pipeline: co-editing a prompt, generating outputs across multiple LLMs, and evaluating results while agreement metrics update in real time.
-LLARS is open-source and deployable via Docker.
+\section{Limitations, Demo, and Future Work}
+
+LLARS has so far been deployed in a single domain with a small user base, so broader studies are needed to assess generalisability.
+The quality of LLM evaluator judgments depends on careful prompt design, and the current evaluation relies on qualitative interviews rather than a controlled study.
+
+Our live demo walks attendees through the full pipeline, from collaborative prompt editing through batch generation to evaluation with live metrics.
 % TODO: Uncomment and update URLs before submission
 %\noindent\textbf{Repository:} \url{https://github.com/llars-project/llars}\\
 %\textbf{Documentation:} \url{https://llars-project.github.io}
-Future work includes a controlled user study and automated prompt optimization.
+LLARS is open-source; future work targets a controlled study and cross-domain validation.
 
 \bibliographystyle{named}
 \bibliography{llars}

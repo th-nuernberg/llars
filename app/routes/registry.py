@@ -157,6 +157,10 @@ def register_all_blueprints(app: Flask) -> None:
     from routes.auth.api_key_routes import api_key_bp
     app.register_blueprint(api_key_bp)
 
+    # Demo Video Admin API (IJCAI 2026)
+    from routes.demo_video import demo_video_bp
+    app.register_blueprint(demo_video_bp)
+
     # ============================================================
     # Development-Only Routes (hidden in production)
     # ============================================================

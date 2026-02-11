@@ -8,7 +8,7 @@
     "Dialogue style: moderator explains, guest asks questions"
   ],
   "config": {
-    "url": "http://localhost:55080",
+    "url": "https://llars.e-beratungsinstitut.de",
     "resolution": [
       1920,
       1080
@@ -17,8 +17,8 @@
     "output_file": "llars_demo.mp4",
     "language": "en",
     "login": {
-      "username": "admin",
-      "password": "admin123"
+      "username": "ijcai_reviewer_1",
+      "password": "ijcai_reviewer_123"
     },
     "speakers": {
       "moderator": {
@@ -193,7 +193,7 @@
         {
           "do": "type",
           "target": "input[placeholder='Search and add users...']",
-          "text": "ijcai_reviewer_1",
+          "text": "ijcai_reviewer_2",
           "speed": "fast"
         },
         {
@@ -202,7 +202,7 @@
         },
         {
           "do": "click",
-          "target": "ijcai_reviewer_1"
+          "target": "ijcai_reviewer_2"
         },
         {
           "do": "click",
@@ -1206,7 +1206,7 @@
     {
       "id": "scenario_wizard_5",
       "speaker": "moderator",
-      "narration": "We add an admin as a human evaluator and select Mistral and Magistral for LLM evaluation.",
+      "narration": "We add ourselves as a human evaluator and select Mistral and Magistral for LLM evaluation.",
       "actions": [
         {
           "do": "wait",
@@ -1219,12 +1219,12 @@
         },
         {
           "do": "highlight",
-          "target": "Admin User",
+          "target": "IJCAI Reviewer 1 User",
           "duration": 1.5
         },
         {
           "do": "click",
-          "target": "Admin User"
+          "target": "IJCAI Reviewer 1 User"
         },
         {
           "do": "wait",

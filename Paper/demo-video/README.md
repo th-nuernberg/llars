@@ -60,8 +60,8 @@ Paper/demo-video/
 ### Real-Time Collaboration Demo
 
 Das Video zeigt Live-Kollaboration mit **zwei Browser-Fenstern**:
-1. **Haupt-Browser:** Admin-User bearbeitet Prompt
-2. **Collab-Browser:** IJCAI-Reviewer tippt gleichzeitig
+1. **Haupt-Browser:** `ijcai_reviewer_1` bearbeitet Prompt
+2. **Collab-Browser:** `ijcai_reviewer_2` tippt gleichzeitig
 
 ```json
 {"do": "collab_open", "user": "ijcai_reviewer_2", "password": "ijcai_reviewer_123"},
@@ -120,7 +120,8 @@ python run.py --smart --model small --voice-clone  # Voice Cloning (langsam)
 ```json
 {
   "config": {
-    "url": "http://localhost:55080",
+    "url": "https://llars.e-beratungsinstitut.de",
+    "login": {"username": "ijcai_reviewer_1", "password": "ijcai_reviewer_123"},
     "tts_model": "custom-small",
     "speakers": {
       "moderator": {"name": "Alex", "macos_voice": "Fred"},
@@ -214,24 +215,97 @@ SONSTIGES:
 
 ---
 
-## Demo-Daten (Seeder)
+## Production Setup
 
-Das Backend enthält einen Seeder für vorbereitete Demo-Daten:
+Das Demo-Video läuft gegen die Production-Instanz `https://llars.e-beratungsinstitut.de`.
 
-- **2 Prompts:** News Summary Prompt, News Summary Eval
-- **1 abgeschlossener Batch-Generation Job** mit 40 Outputs (10 Artikel x 2 Prompt-Varianten x 2 Modelle)
-- **10 News-Artikel** mit generierten Zusammenfassungen
+### User-Accounts
 
-**Wichtig:** Vor jedem Start löscht das Skript die beiden Demo-Prompts und legt sie neu an:
-- **Setup-Prompt:** `News Summary Prompt` (wird im Setup automatisch erstellt)
-- **Live-Prompt:** `News Summary Eval` (wird im Video live angelegt)
+Die Demo verwendet dedizierte IJCAI-Reviewer-Accounts:
+
+| User | Rolle | Funktion im Video |
+|------|-------|--------------------|
+| `ijcai_reviewer_1` | ijcai_reviewer | Hauptakteur (Login, Prompt erstellen, Batch starten) |
+| `ijcai_reviewer_2` | ijcai_reviewer | Collab-Partner (zweiter Browser) |
+
+Die User werden mit dem **llars-seeder** Repo provisioniert:
 
 ```bash
-# Seeder läuft automatisch bei PROJECT_STATE=development
-docker compose restart llars_flask_service
+# Im llars-seeder Repo:
+cd /path/to/llars-seeder
+./provision_users.sh          # Erstellt alle User via Admin-API
 ```
 
-**Seeder-Datei:** `app/db/seeders/demo_video_data.py`
+Credentials: siehe `llars-seeder/users.yaml`
+
+### Demo-Daten Management
+
+Das Script `app/scripts/demo_video_manage.py` verwaltet die Demo-Daten auf dem Server. Es läuft im Flask-Container mit App-Context.
+
+**Daten-Aufteilung:**
+
+| Daten | Typ | Besitzer |
+|-------|-----|----------|
+| "News Summary Prompt" | Pre-Seed (vor Aufnahme) | ijcai_reviewer_1 |
+| "News Summary Demo Job" (40 Outputs) | Pre-Seed (vor Aufnahme) | ijcai_reviewer_1 |
+| "News Summary Eval" | Live (während Aufnahme) | ijcai_reviewer_1 |
+| "Live Collab Batch Job" | Live (während Aufnahme) | ijcai_reviewer_1 |
+| Ranking Scenario | Live (während Aufnahme) | ijcai_reviewer_1 |
+
+**Befehle:**
+
+```bash
+# Status anzeigen
+docker exec llars_flask_service python3 /app/scripts/demo_video_manage.py status
+
+# Pre-Seed-Daten erstellen (idempotent)
+docker exec llars_flask_service python3 /app/scripts/demo_video_manage.py seed
+
+# Live-Daten löschen (für erneute Aufnahme)
+docker exec llars_flask_service python3 /app/scripts/demo_video_manage.py cleanup
+
+# Komplett-Reset (cleanup + seed)
+docker exec llars_flask_service python3 /app/scripts/demo_video_manage.py reset
+```
+
+**Auf Production (SSH):**
+
+```bash
+ssh user@llars-server
+docker exec llars_flask_service python3 /app/scripts/demo_video_manage.py reset
+```
+
+### Aufnahme-Workflow
+
+```bash
+# 1. Auf Production: Demo-Daten vorbereiten
+docker exec llars_flask_service python3 /app/scripts/demo_video_manage.py reset
+
+# 2. Lokal: Audio generieren (falls Narration geändert)
+cd Paper/demo-video
+python run.py --smart
+
+# 3. Lokal: Element-Test (prüft ob alle Selektoren funktionieren)
+python run.py --test
+
+# 4. Lokal: Video aufnehmen
+python run.py
+
+# --- Für erneute Aufnahme: ---
+# 5. Auf Production: Live-Daten löschen
+docker exec llars_flask_service python3 /app/scripts/demo_video_manage.py cleanup
+# 6. Lokal: Erneut aufnehmen
+python run.py
+```
+
+**Hinweis:** `run.py` läuft lokal (steuert Chrome via Selenium), `demo_video_manage.py` läuft auf dem Server (Flask ORM).
+
+### Lokale Entwicklung (optional)
+
+Für lokales Testen (`http://localhost:55080`):
+- SCRIPT.json `config.url` auf `http://localhost:55080` setzen
+- `PROJECT_STATE=development` aktiviert den automatischen Demo-Seeder
+- `demo_video_manage.py` funktioniert auch im lokalen Container
 
 ---
 

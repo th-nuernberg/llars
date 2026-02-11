@@ -246,6 +246,8 @@ ELEMENT_MAP = {
     "Magistral LLM": ".llm-list .llm-item:contains('Magistral'), .llm-category .llm-item:contains('Magistral'), .llm-item:contains('Magistral')",
     "User List": ".user-list, .team-section .user-item",
     "Admin User": ".user-item:contains('admin'), .user-item:contains('Admin'), .user-name:contains('admin'), .user-name:contains('Admin')",
+    "IJCAI Reviewer 1 User": ".user-item:contains('ijcai_reviewer_1'), .user-item:contains('IJCAI Reviewer 1'), .user-name:contains('ijcai_reviewer_1'), .user-name:contains('IJCAI Reviewer 1')",
+    "IJCAI Reviewer 2 User": ".user-item:contains('ijcai_reviewer_2'), .user-item:contains('IJCAI Reviewer 2'), .user-name:contains('ijcai_reviewer_2'), .user-name:contains('IJCAI Reviewer 2')",
     "Create Scenario": ".wizard-actions .v-btn:contains('Create Scenario'), .wizard-actions .l-btn:contains('Create Scenario')",
 
     # =============================================
@@ -1058,12 +1060,26 @@ class Browser:
         print("="*60 + "\n")
 
     def _cleanup_demo_data(self):
-        """Löscht alte Demo-Daten via Docker/MariaDB"""
-        print("   🧹 Räume alte Demo-Daten auf...")
+        """
+        Cleanup demo data before recording.
 
-        # SQL zum Löschen von Demo-Daten (Szenarien + Jobs)
-        cleanup_sql = """
-        -- Scenarios löschen (mit Foreign Keys) - Diese werden während der Aufnahme erstellt
+        - Local (localhost): Uses docker exec to reset DB directly
+        - Production: Skips - must run demo_video_manage.py on the server first
+        """
+        is_production = 'localhost' not in self.base_url and '127.0.0.1' not in self.base_url
+
+        if is_production:
+            print("   ℹ️  Production-Modus erkannt - DB-Cleanup wird übersprungen")
+            print("   ℹ️  Stelle sicher, dass auf dem Server 'demo_video_manage.py reset' gelaufen ist:")
+            print(f"      ssh server 'docker exec llars_flask_service python3 /app/scripts/demo_video_manage.py reset'")
+            return
+
+        print("   🧹 Räume alte Demo-Daten auf (lokaler Docker)...")
+
+        login_user = self._get_login_username()
+
+        # SQL: Delete scenarios and jobs created during previous recordings
+        cleanup_sql = f"""
         DELETE FROM scenario_item_distribution WHERE scenario_id IN (
             SELECT id FROM rating_scenarios WHERE scenario_name LIKE '%News Summary%' OR scenario_name LIKE '%Demo%Evaluation%'
         );
@@ -1095,15 +1111,14 @@ class Browser:
             SELECT id FROM rating_scenarios WHERE scenario_name LIKE '%News Summary%' OR scenario_name LIKE '%Demo%Evaluation%'
         );
         DELETE FROM rating_scenarios WHERE scenario_name LIKE '%News Summary%' OR scenario_name LIKE '%Demo%Evaluation%';
-        -- Alte Generation Jobs aus der Video-Entwicklung entfernen (Seeded Demo Job bleibt)
         DELETE FROM generated_outputs WHERE job_id IN (
-            SELECT id FROM generation_jobs WHERE created_by = 'admin' AND name <> 'News Summary Demo Job'
+            SELECT id FROM generation_jobs WHERE created_by = '{login_user}' AND name <> 'News Summary Demo Job'
         );
-        DELETE FROM generation_jobs WHERE created_by = 'admin' AND name <> 'News Summary Demo Job';
+        DELETE FROM generation_jobs WHERE created_by = '{login_user}' AND name <> 'News Summary Demo Job';
         """
 
-        # Prompts aus Setup/Live-Demo entfernen (werden jedes Mal neu erstellt)
-        prompt_reset_sql = """
+        # SQL: Reset prompts (delete + re-create setup prompt)
+        prompt_reset_sql = f"""
         DELETE FROM prompt_commits WHERE prompt_id IN (
             SELECT prompt_id FROM user_prompts
             WHERE LOWER(TRIM(name)) LIKE 'news summary prompt%'
@@ -1123,21 +1138,18 @@ class Browser:
            OR LOWER(TRIM(name)) LIKE 'news summary eval%'
            OR LOWER(TRIM(name)) LIKE 'analyst summary prompt%'
            OR LOWER(TRIM(name)) LIKE 'live collab prompt%';
-        -- Setup-Prompt neu anlegen (damit er im Video als vorbereiteter Vergleich da ist)
         INSERT INTO user_prompts (user_id, name, content, created_at, updated_at)
         SELECT id,
                'News Summary Prompt',
-               '{\"blocks\":{\"Role Definition\":{\"content\":\"Role definition: You are a professional news editor. Write concise, factual summaries.\",\"position\":0},\"Task Explanation\":{\"content\":\"Task explanation: Summarize the article in exactly 2 sentences. Preserve key facts, avoid speculation, and do not add new information.\",\"position\":1},\"Data Format Explanation\":{\"content\":\"Data format explanation: Input: Title: {{title}} | Article: {{content}} | Output: Exactly 2 sentences in plain text. No bullet points. No extra commentary.\",\"position\":2}}}',
+               '{{"blocks":{{"Role Definition":{{"content":"Role definition: You are a professional news editor. Write concise, factual summaries.","position":0}},"Task Explanation":{{"content":"Task explanation: Summarize the article in exactly 2 sentences. Preserve key facts, avoid speculation, and do not add new information.","position":1}},"Data Format Explanation":{{"content":"Data format explanation: Input: Title: {{{{title}}}} | Article: {{{{content}}}} | Output: Exactly 2 sentences in plain text. No bullet points. No extra commentary.","position":2}}}}}}',
                NOW(),
                NOW()
         FROM users
-        WHERE username = 'admin'
+        WHERE username = '{login_user}'
         LIMIT 1;
-        -- HINWEIS: Demo-Job bleibt erhalten. Prompts werden vor jedem Lauf bereinigt und neu erstellt.
         """
 
         try:
-            # Via Docker exec MariaDB aufrufen
             result = subprocess.run([
                 'docker', 'exec', 'llars_db_service',
                 'mariadb', '-u', 'dev_user', '-pdev_password_change_me', 'database_llars',
@@ -1147,7 +1159,6 @@ class Browser:
             if result.returncode == 0:
                 print(f"   ✓ Demo-Daten gelöscht")
             else:
-                # Fallback: Ignoriere Fehler (z.B. wenn Tabellen nicht existieren)
                 print(f"   ⚠️ Cleanup abgeschlossen (mit Warnungen)")
 
             prompt_result = subprocess.run(
@@ -1175,6 +1186,15 @@ class Browser:
             print(f"   ⚠️ Docker nicht verfügbar (ignoriert)")
         except Exception as e:
             print(f"   ⚠️ Cleanup-Fehler (ignoriert): {str(e)[:50]}")
+
+    def _get_login_username(self) -> str:
+        """Get the login username from SCRIPT.json config."""
+        try:
+            with open(SCRIPT_FILE, 'r') as f:
+                script = json.load(f)
+            return script.get('config', {}).get('login', {}).get('username', 'admin')
+        except Exception:
+            return 'admin'
 
     def _dismiss_cookie_banner(self):
         """Schließt Cookie-Banner falls vorhanden"""

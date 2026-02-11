@@ -341,9 +341,9 @@ ELEMENT_MAP = {
     "Summary 1": ".eval-item:nth-child(1), .v-card:nth-child(1)",
     "Summary 2": ".eval-item:nth-child(2), .v-card:nth-child(2)",
     "Summary 3": ".eval-item:nth-child(3), .v-card:nth-child(3)",
-    "Best Bucket": ".ranking-interface .good-bucket, .bucket.good-bucket",
-    "Acceptable Bucket": ".ranking-interface .moderate-bucket, .bucket.moderate-bucket",
-    "Poor Bucket": ".ranking-interface .bad-bucket, .bucket.bad-bucket",
+    "Best Bucket": ".ranking-interface .buckets-row .bucket:nth-child(1), .ranking-interface .good-bucket",
+    "Acceptable Bucket": ".ranking-interface .buckets-row .bucket:nth-child(2), .ranking-interface .moderate-bucket",
+    "Poor Bucket": ".ranking-interface .buckets-row .bucket:nth-child(3), .ranking-interface .bad-bucket",
 
     # Misc
     "Test Output": ".test-result, .v-card:contains('Result'), .output",
@@ -436,7 +436,7 @@ ELEMENT_MAP = {
     "Ranking Interface": ".ranking-interface",
     "Ranking Buckets": ".ranking-interface .buckets-row, .ranking-interface .bucket, .ranking-interface .neutral-bucket, .preview-ranking .buckets-preview, .buckets-preview .bucket-box",
     "Ranking Content": ".ranking-interface .right-panel, .ranking-interface .panel-content, .ranking-interface .content-text",
-    "Ranking Item": ".ranking-interface .bucket-item:first-child, .ranking-interface .neutral-bucket .bucket-item:first-child",
+    "Ranking Item": ".ranking-interface .neutral-bucket .bucket-item:first-child, .ranking-interface .neutral-content .bucket-item:first-child, .ranking-interface .bucket-item:first-child",
 
     # Scenario Wizard (Button text is "Scenario Wizard")
     "Wizard Button": ".l-btn:contains('Scenario Wizard'), .l-btn:contains('Wizard'), .v-btn:contains('Scenario Wizard'), .v-btn:contains('Wizard')",
@@ -1801,12 +1801,49 @@ class Browser:
                 print(f"   ⚠️ Highlight fehlgeschlagen: {str(e)[:50]}")
 
     def drag(self, source: str, target: str):
-        """Drag & Drop"""
+        """Drag & Drop via JS mouse events (works with SortableJS/vuedraggable)"""
         src = self._find_element(source)
         tgt = self._find_element(target)
-        if src and tgt:
-            ActionChains(self.driver).drag_and_drop(src, tgt).perform()
+        if not src or not tgt:
+            print(f"   ✗ drag: {source if not src else target} (NICHT GEFUNDEN)")
+            return
+        try:
+            # Use JS-based drag simulation for SortableJS compatibility
+            self.driver.execute_script("""
+                function simulateDrag(src, tgt) {
+                    var srcRect = src.getBoundingClientRect();
+                    var tgtRect = tgt.getBoundingClientRect();
+                    var sx = srcRect.left + srcRect.width / 2;
+                    var sy = srcRect.top + srcRect.height / 2;
+                    var tx = tgtRect.left + tgtRect.width / 2;
+                    var ty = tgtRect.top + tgtRect.height / 2;
+
+                    function fire(el, type, x, y) {
+                        el.dispatchEvent(new PointerEvent(type, {
+                            bubbles: true, cancelable: true,
+                            clientX: x, clientY: y, pointerId: 1
+                        }));
+                    }
+                    fire(src, 'pointerdown', sx, sy);
+                    // Small movement to trigger SortableJS drag detection
+                    setTimeout(function() {
+                        fire(src, 'pointermove', sx + 5, sy + 5);
+                        setTimeout(function() {
+                            fire(tgt, 'pointermove', tx, ty);
+                            setTimeout(function() {
+                                fire(tgt, 'pointerup', tx, ty);
+                            }, 50);
+                        }, 100);
+                    }, 100);
+                }
+                simulateDrag(arguments[0], arguments[1]);
+            """, src, tgt)
             print(f"   ↔️ Drag: {source} → {target}")
+            time.sleep(0.5)
+        except Exception:
+            # Fallback to ActionChains
+            ActionChains(self.driver).drag_and_drop(src, tgt).perform()
+            print(f"   ↔️ Drag (fallback): {source} → {target}")
             time.sleep(0.3)
 
     def upload(self, file_path: str, wait_for_processing: bool = True):

@@ -487,72 +487,26 @@
         </div>
       </div>
 
-      <!-- Ranking Agreement Matrix -->
-      <div class="ranking-agreement-section" v-if="hasRankingAgreement">
+      <!-- Ranking Agreement Heatmap (reuses LAgreementHeatmap) -->
+      <div class="agreement-heatmap-section" v-if="hasRankingAgreement">
         <h4 class="subsection-title">
           {{ $t('scenarioManager.results.rankingAgreement') }}
           <LTooltip :text="$t('scenarioManager.tooltips.rankingAgreement')" location="top">
             <v-icon size="16" class="help-icon">mdi-help-circle-outline</v-icon>
           </LTooltip>
         </h4>
-        <div class="ranking-agreement-matrix">
-          <!-- Header row -->
-          <div class="matrix-row header-row">
-            <div class="matrix-cell corner-cell"></div>
-            <div
-              v-for="evaluator in rankingAgreement.evaluators"
-              :key="'header-' + evaluator.id"
-              class="matrix-cell header-cell"
-            >
-              <LTooltip :text="evaluator.name" location="top">
-                <span class="evaluator-name">{{ getShortEvaluatorName(evaluator) }}</span>
-              </LTooltip>
-              <LIcon v-if="evaluator.isLLM" size="12" color="#c4a0d4" class="llm-badge">mdi-robot</LIcon>
-            </div>
-          </div>
-
-          <!-- Data rows -->
-          <div
-            v-for="(rowEvaluator, rowIndex) in rankingAgreement.evaluators"
-            :key="'row-' + rowEvaluator.id"
-            class="matrix-row"
-          >
-            <div class="matrix-cell row-header-cell">
-              <LTooltip :text="rowEvaluator.name" location="left">
-                <span class="evaluator-name">{{ getShortEvaluatorName(rowEvaluator) }}</span>
-              </LTooltip>
-              <LIcon v-if="rowEvaluator.isLLM" size="12" color="#c4a0d4" class="llm-badge">mdi-robot</LIcon>
-            </div>
-            <div
-              v-for="(colEvaluator, colIndex) in rankingAgreement.evaluators"
-              :key="'cell-' + rowEvaluator.id + '-' + colEvaluator.id"
-              class="matrix-cell data-cell"
-              :class="{
-                'diagonal-cell': rowIndex === colIndex,
-                'above-diagonal': rowIndex < colIndex,
-                'below-diagonal': rowIndex > colIndex
-              }"
-              :style="getCellStyle(rowEvaluator.id, colEvaluator.id, rowIndex, colIndex)"
-            >
-              <span v-if="rowIndex === colIndex">-</span>
-              <span v-else-if="rowIndex < colIndex">
-                {{ getRankingAgreementValue(rowEvaluator.id, colEvaluator.id) }}
-              </span>
-              <span v-else class="mirror-value">
-                {{ getRankingAgreementValue(colEvaluator.id, rowEvaluator.id) }}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Agreement Legend -->
-        <div class="agreement-legend">
-          <div class="legend-gradient">
-            <span class="legend-min">0%</span>
-            <div class="gradient-bar"></div>
-            <span class="legend-max">100%</span>
-          </div>
-          <span class="legend-label">{{ $t('scenarioManager.results.agreementLevel') }}</span>
+        <div class="heatmap-container">
+          <LAgreementHeatmap
+            :evaluators="pairwiseEvaluators"
+            :agreements="pairwiseAgreements"
+            :show-values="true"
+            :show-hover-info="true"
+            :show-legend="true"
+            :show-evaluator-type-legend="true"
+            :low-label="$t('scenarioManager.results.lowAgreement')"
+            :high-label="$t('scenarioManager.results.highAgreement')"
+            @cell-click="openAgreementDetail"
+          />
         </div>
       </div>
 

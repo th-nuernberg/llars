@@ -964,8 +964,12 @@ class Browser:
         # Starte mit kleinem Fenster, setzen die exakte Größe danach
         options.add_argument('--window-size=1280,800')
         options.add_experimental_option('excludeSwitches', ['enable-automation'])
-        # Kiosk-Modus entfernt UI-Elemente für saubere Aufnahme
-        # options.add_argument('--kiosk')
+        # Disable password save prompts and other infobars
+        options.add_experimental_option('prefs', {
+            'credentials_enable_service': False,
+            'profile.password_manager_enabled': False,
+            'profile.password_manager_leak_detection': False,
+        })
 
         service = Service(ChromeDriverManager().install())
         self.driver = webdriver.Chrome(service=service, options=options)
@@ -1190,7 +1194,7 @@ class Browser:
     def _cleanup_via_api(self):
         """Reset demo data on production via the admin API endpoint."""
         env = _load_env_vars()
-        api_key = env.get('SYSTEM_ADMIN_API_KEY', '')
+        api_key = env.get('PRODUCTION_ADMIN_API_KEY') or env.get('SYSTEM_ADMIN_API_KEY', '')
         if not api_key:
             print("   ⚠️ SYSTEM_ADMIN_API_KEY nicht in .env gefunden!")
             print("   ℹ️  Manuell: ssh llars 'docker exec llars_flask_service python3 /app/scripts/demo_video_manage.py reset'")
@@ -1957,6 +1961,11 @@ class Browser:
         options = Options()
         options.add_argument('--window-size=800,600')
         options.add_experimental_option('excludeSwitches', ['enable-automation'])
+        options.add_experimental_option('prefs', {
+            'credentials_enable_service': False,
+            'profile.password_manager_enabled': False,
+            'profile.password_manager_leak_detection': False,
+        })
 
         service = Service(ChromeDriverManager().install())
         self.collab_driver = webdriver.Chrome(service=service, options=options)

@@ -1,5 +1,22 @@
 # Manual Deployment for LLARS
 
+## WICHTIG: Immer manuell deployen!
+
+**CI/CD Pipeline wird NICHT fuer Deployments verwendet.** Deployments erfolgen immer manuell via SSH.
+Nach `git push origin main` muss immer manuell deployed werden:
+
+```bash
+# Standard-Deployment (empfohlen):
+ssh llars "cd /var/llars && git pull origin main && docker compose -f docker-compose.yml -f docker-compose.prod.yml build backend-flask-service && docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d backend-flask-service"
+
+# Oder bei groesseren Aenderungen (alle Services):
+ssh llars "cd /var/llars && git pull origin main && ./start_llars.sh"
+```
+
+**Service-Name im docker-compose:** `backend-flask-service` (Container: `llars_flask_service`)
+
+---
+
 ## WICHTIG: Docker Cleanup Regeln
 
 **Was IMMER geloescht werden darf:**

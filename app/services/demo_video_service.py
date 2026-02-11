@@ -277,14 +277,42 @@ def reset():
 # ---------------------------------------------------------------------------
 
 def _build_preseed_prompt_content():
+    """Pre-seed prompt: detailed, verbose prompt with few-shot examples.
+    Deliberately much longer and more prescriptive than the live prompt
+    to show that different prompt styles produce visibly different outputs."""
     return {
         "blocks": {
             "Role Definition": {
-                "content": "Role definition: You are a professional news editor. Write concise, factual summaries.",
+                "content": (
+                    "Role definition: You are a senior news analyst working for an international press agency. "
+                    "Your summaries are used by editors who need to decide whether a story deserves front-page coverage. "
+                    "You have deep expertise in technology, science, and policy reporting. "
+                    "Your writing style is precise, uses active voice, and avoids hedging language."
+                ),
                 "position": 0
             },
             "Task Explanation": {
-                "content": "Task explanation: Summarize the article in exactly 2 sentences. Preserve key facts, avoid speculation, and do not add new information.",
+                "content": (
+                    "Task explanation: Analyze the article and produce a structured 3-sentence summary.\n\n"
+                    "Sentence 1 — Lead: State the core news event with the most important fact or figure.\n"
+                    "Sentence 2 — Context: Provide essential background that helps the reader understand why this matters.\n"
+                    "Sentence 3 — Outlook: Mention next steps, open questions, or broader implications.\n\n"
+                    "Guidelines:\n"
+                    "- Use specific numbers and names from the article when available.\n"
+                    "- Do not speculate beyond what the article states.\n"
+                    "- Keep each sentence under 30 words.\n"
+                    "- Write in present tense for the lead, past tense for background, and future tense for outlook.\n\n"
+                    "Few-shot examples:\n\n"
+                    "Example input: 'SpaceX Successfully Lands Starship After Orbital Flight'\n"
+                    "Example output: SpaceX lands its Starship rocket after a full orbital flight, achieving a key milestone "
+                    "for the program. The company spent three years and an estimated $2 billion developing the reusable "
+                    "heavy-lift vehicle. NASA now considers Starship the leading candidate for its Artemis lunar cargo missions.\n\n"
+                    "Example input: 'Japan Approves First Gene-Edited Food for Consumer Sale'\n"
+                    "Example output: Japan becomes the first country to approve a gene-edited tomato for direct sale to "
+                    "consumers. Regulators determined that CRISPR-based edits carry no additional risk compared to conventional "
+                    "breeding. The decision is expected to accelerate gene-editing approvals across Asia and influence ongoing "
+                    "EU regulatory debates."
+                ),
                 "position": 1
             },
             "Data Format Explanation": {
@@ -295,7 +323,8 @@ def _build_preseed_prompt_content():
                     "Article:\n"
                     "{{content}}\n\n"
                     "Output:\n"
-                    "Exactly 2 sentences in plain text. No bullet points. No extra commentary."
+                    "Exactly 3 sentences in plain text following the Lead-Context-Outlook structure above. "
+                    "No bullet points. No headings. No extra commentary."
                 ),
                 "position": 2
             }
@@ -304,15 +333,16 @@ def _build_preseed_prompt_content():
 
 
 def _build_eval_prompt_content():
-    """Content matches what is typed live in SCRIPT.json prompt_eng_5."""
+    """Eval prompt: 3-sentence detailed summary with more context. Matches
+    the block structure of the live-typed prompt but provides richer output."""
     return {
         "blocks": {
             "Role Definition": {
-                "content": "Role definition: You are a professional news editor. Write concise, factual summaries.",
+                "content": "Role definition: You are an analytical journalist who provides thorough context alongside factual reporting.",
                 "position": 0
             },
             "Task Explanation": {
-                "content": "Task explanation: Summarize the article in 3-4 sentences. Highlight key facts and implications while staying neutral and factual.",
+                "content": "Task explanation: Write a 3-sentence summary of the article. Include relevant background, mention key stakeholders, and explain broader implications beyond the headline.",
                 "position": 1
             },
             "Data Format Explanation": {
@@ -323,7 +353,7 @@ def _build_eval_prompt_content():
                     "Article:\n"
                     "{{content}}\n\n"
                     "Output:\n"
-                    "3-4 sentences in plain text. No bullet points. No extra commentary."
+                    "Exactly 3 sentences in plain text. No bullet points. No extra commentary."
                 ),
                 "position": 2
             }

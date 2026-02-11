@@ -1,8 +1,8 @@
 # Chatbot Builder mit Web Crawler RAG Pipeline - Konzept
 
-!!! warning "Status: Konzept"
-    Dieses Projekt befindet sich in der **Konzeptphase**.
-    Das Design wird erarbeitet und ersetzt das bisherige chatbot-rag Konzept.
+!!! success "Status: Implementiert (Stand Februar 2026)"
+    Der Chatbot Builder ist produktiv nutzbar und ersetzt das frühere `chatbot-rag` Konzept.
+    Dieses Dokument dient als Living Spec; historische Planungsabschnitte sind entsprechend markiert.
 
 **Erstellt:** 2025-11-28
 **Autor:** Claude (AI Assistant)
@@ -254,13 +254,13 @@ Diese Tabellen bleiben wie sie sind:
 
 ### Chatbot API (erweitert)
 
-#### `POST /api/chatbots` (erweitert für Wizard-Modus)
+#### `POST /api/chatbots` (Standard)
 
-**Beschreibung:** Erstellt einen Chatbot. Mit `mode=wizard` wird der Builder-Workflow gestartet.
+**Beschreibung:** Erstellt einen Chatbot ohne Wizard.
 
 **Permission:** `feature:chatbots:edit`
 
-**Request (Standard):**
+**Request:**
 ```json
 {
   "name": "support-bot",
@@ -270,36 +270,45 @@ Diese Tabellen bleiben wie sie sind:
 }
 ```
 
-**Request (Wizard-Modus):**
+---
+
+#### `POST /api/chatbots/wizard`
+
+**Beschreibung:** Startet den Builder-Workflow und erstellt einen Draft-Chatbot.
+
+**Permission:** `feature:chatbots:edit`
+
+**Request:**
 ```json
 {
-  "mode": "wizard",
-  "source_url": "https://example.com",
-  "name": "example-support",
-  "display_name": "Example Support Bot",
+  "url": "https://example.com",
   "crawler_config": {
     "max_pages": 50,
     "max_depth": 3,
-    "respect_robots_txt": true,
-    "use_sitemap": true
-  },
-  "auto_generate": true
+    "use_playwright": true,
+    "use_vision_llm": false,
+    "take_screenshots": true
+  }
 }
 ```
 
-**Response (Wizard-Modus):**
+**Response (Beispiel):**
 ```json
 {
-  "id": 1,
-  "name": "example-support",
-  "build_status": "crawling",
-  "collection_id": 123,
-  "crawl_job_id": "uuid-string",
-  "websocket_room": "chatbot_build_1"
+  "success": true,
+  "chatbot_id": 1,
+  "session_id": 1,
+  "chatbot": {
+    "id": 1,
+    "name": "bot_example_com",
+    "display_name": "Chatbot for example.com",
+    "build_status": "draft",
+    "source_url": "https://example.com"
+  }
 }
 ```
 
-**Fehler:**
+**Fehler (Wizard):**
 
 | Code | Error | Beschreibung |
 |------|-------|--------------|
@@ -312,41 +321,53 @@ Diese Tabellen bleiben wie sie sind:
 
 ---
 
-#### `GET /api/chatbots/<id>/build-status`
+#### `POST /api/chatbots/<id>/wizard/crawl`
 
-**Beschreibung:** Build-Status eines Chatbots im Wizard-Modus.
+**Beschreibung:** Startet den Crawl‑Prozess für den Wizard‑Chatbot.
+
+**Permission:** `feature:chatbots:edit`
+
+**Request (Beispiel):**
+```json
+{
+  "max_pages": 50,
+  "max_depth": 3,
+  "use_playwright": true,
+  "use_vision_llm": false,
+  "take_screenshots": true
+}
+```
+
+---
+
+#### `POST /api/chatbots/<id>/wizard/finalize`
+
+**Beschreibung:** Finalisiert die Konfiguration und aktiviert den Chatbot.
+
+**Permission:** `feature:chatbots:edit`
+
+#### `GET /api/chatbots/<id>/wizard/status`
+
+**Beschreibung:** Status und Fortschritt des Wizard‑Chatbots. Bevorzugt Redis‑Session, mit DB‑Fallback.
 
 **Permission:** `feature:chatbots:view`
 
-**Response:**
+**Response (Beispiel):**
 ```json
 {
-  "chatbot_id": 1,
-  "build_status": "embedding",
-  "stages": {
-    "crawling": {
-      "status": "completed",
-      "started_at": "2025-11-28T10:00:00Z",
-      "completed_at": "2025-11-28T10:05:00Z",
-      "pages_crawled": 50,
-      "documents_created": 48,
-      "documents_linked": 2
-    },
-    "embedding": {
-      "status": "processing",
-      "started_at": "2025-11-28T10:05:01Z",
-      "progress_percent": 45,
-      "chunks_completed": 220,
-      "chunks_total": 480,
-      "current_document": "leistungen.md"
-    },
-    "configuration": {
-      "status": "pending"
-    }
+  "success": true,
+  "session": {
+    "chatbot_id": 1,
+    "status": "embedding",
+    "step": 3,
+    "source_url": "https://example.com"
   },
-  "error": null,
-  "can_cancel": true,
-  "estimated_completion_seconds": 180
+  "progress": {
+    "crawl_progress": 100,
+    "embedding_progress": 45
+  },
+  "elapsed_time": 312,
+  "server_time": "2026-02-10T12:34:56Z"
 }
 ```
 
@@ -391,9 +412,9 @@ Diese Tabellen bleiben wie sie sind:
 
 ---
 
-#### `POST /api/chatbots/generate-field`
+#### `POST /api/chatbots/<id>/wizard/generate-field`
 
-**Beschreibung:** Generiert ein einzelnes Feld basierend auf Kontext.
+**Beschreibung:** Generiert ein einzelnes Feld basierend auf Kontext. Optional als SSE‑Stream.
 
 **Permission:** `feature:chatbots:edit`
 
@@ -404,26 +425,26 @@ Diese Tabellen bleiben wie sie sind:
   "context": {
     "source_url": "https://anwalt-muenchen.de",
     "name": "anwalt-helper",
-    "display_name": "Anwaltshelfer",
-    "crawled_pages_sample": ["Startseite", "Leistungen", "Kontakt"],
-    "existing_fields": {
-      "description": "Chatbot für Anwaltskanzlei"
-    }
-  }
+    "display_name": "Anwaltshelfer"
+  },
+  "stream": false,
+  "force_llm": false
 }
 ```
 
-**Response:**
+**Response (non‑streaming):**
 ```json
 {
+  "success": true,
   "field": "system_prompt",
-  "value": "Du bist der freundliche Assistent für die Anwaltskanzlei in München...",
-  "confidence": 0.92,
-  "alternatives": [
-    "Du bist ein professioneller Rechtsberater-Assistent...",
-    "Als virtueller Assistent der Kanzlei..."
-  ]
+  "value": "Du bist der freundliche Assistent für die Anwaltskanzlei in München..."
 }
+```
+
+**Response (streaming):**
+```
+Content-Type: text/event-stream
+data: {"delta":"Du bist..."}
 ```
 
 **Unterstützte Felder:**
@@ -565,7 +586,7 @@ Diese Tabellen bleiben wie sie sind:
 
 ---
 
-#### `GET /api/rag/collections/<id>/embedding-status`
+#### `GET /api/rag/collections/<id>/embed/status`
 
 **Beschreibung:** Aktueller Embedding-Status einer Collection.
 
@@ -600,9 +621,9 @@ Diese Tabellen bleiben wie sie sind:
 
 ---
 
-#### `POST /api/rag/collections/<id>/cancel-embedding`
+#### `DELETE /api/rag/collections/<id>/embed`
 
-**Beschreibung:** Bricht Embedding-Prozess ab.
+**Beschreibung:** Pausiert/stoppt den Embedding-Prozess.
 
 **Permission:** `feature:rag:edit`
 
@@ -632,15 +653,13 @@ Diese Tabellen bleiben wie sie sind:
 {
   "urls": ["https://example.com"],
   "collection_name": "example-docs",
-  "collection_display_name": "Example Docs",
-  "description": "Dokumentation von example.com",
-  "max_pages": 50,
+  "collection_description": "Dokumentation von example.com",
+  "max_pages_per_site": 50,
   "max_depth": 3,
   "existing_collection_id": null,
-  "respect_robots_txt": true,
-  "use_sitemap": true,
-  "auto_embed": true,
-  "chatbot_id": null
+  "use_playwright": true,
+  "use_vision_llm": true,
+  "take_screenshots": true
 }
 ```
 
@@ -1102,12 +1121,12 @@ Eine vollständige Seite unter `/admin/chatbots/:id/test`:
 
 ### Rate Limiting
 
-| Endpoint | Limit | Scope |
-|----------|-------|-------|
-| `POST /api/chatbots/generate-field` | 30/Minute | Per User |
-| `POST /api/crawler/start` | 5/Minute | Per User |
-| `POST /api/chatbots/:id/chat` | 60/Minute | Per User |
-| `POST /api/rag/collections/:id/embed` | 3/Minute | Per User |
+LLARS nutzt einen globalen Flask‑Limiter mit Default‑Limits:
+
+- Development: `10000/day`, `1000/hour`
+- Production: `200/day`, `50/hour`
+
+Ausnahmen (exempt) sind u.a. Wizard‑Endpoints (`/api/chatbots/*/wizard/*`) und Crawler‑Job‑Status (`/api/crawler/jobs*`).
 
 ### URL-Blacklist
 
@@ -1127,7 +1146,10 @@ BLOCKED_PATTERNS = [
 
 ---
 
-## Implementierungsplan
+## Historischer Implementierungsplan (Stand 2025-11-28)
+
+!!! note "Historisch"
+    Der folgende Plan dient der Nachvollziehbarkeit und entspricht dem Stand der Konzeptphase.
 
 ### Phase 1: Datenbank-Migration (Priorität: Hoch)
 
@@ -1280,11 +1302,11 @@ UPDATE chatbots SET build_status = 'ready' WHERE build_status IS NULL;
 
 ---
 
-## Abnahme
+## Abnahme (historisch)
 
 | Reviewer | Datum | Status |
 |----------|-------|--------|
-| Philipp Steigerwald | 2025-11-28 | Ausstehend |
+| Philipp Steigerwald | 2025-11-28 | Historisch (keine formale Abnahme dokumentiert) |
 
 ---
 

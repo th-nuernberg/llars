@@ -2,6 +2,9 @@
 
 Danke fur die Anfrage! Ich habe mir den Demonstrator und die technische Umsetzung angeschaut. Hier meine Einschatzung:
 
+!!! note "Status (2026-02)"
+    Variante B (LLARS-Integration) wurde umgesetzt. Dieser Text bleibt als historische Einschaetzung erhalten.
+
 ---
 
 ## Kurze Antwort

@@ -149,14 +149,67 @@ export function useRankerFeatures() {
     return featureMap;
   }
 
-  // Apply server ranking to feature map
+  // Apply server ranking to feature map (supports new details[] format)
   function applyServerRanking(featureMap, serverRanking) {
     serverRanking.forEach(serverGroup => {
       if (featureMap.has(serverGroup.type)) {
-        featureMap.get(serverGroup.type).goodList = serverGroup.goodList || [];
-        featureMap.get(serverGroup.type).averageList = serverGroup.averageList || [];
-        featureMap.get(serverGroup.type).badList = serverGroup.badList || [];
-        featureMap.get(serverGroup.type).neutralList = serverGroup.neutralList || [];
+        const group = featureMap.get(serverGroup.type);
+
+        // New format: details array with bucket field
+        if (serverGroup.details && Array.isArray(serverGroup.details)) {
+          const allFeatures = [
+            ...group.goodList,
+            ...group.averageList,
+            ...group.badList,
+            ...group.neutralList
+          ];
+
+          group.goodList = [];
+          group.averageList = [];
+          group.badList = [];
+          group.neutralList = [];
+
+          serverGroup.details.forEach(detail => {
+            const feature = allFeatures.find(f =>
+              f.feature_id === detail.feature_id ||
+              f.content === detail.content
+            ) || { ...detail, minimized: true };
+
+            if (detail.bucket === 'Gut') {
+              group.goodList.push(feature);
+            } else if (detail.bucket === 'Mittel') {
+              group.averageList.push(feature);
+            } else if (detail.bucket === 'Schlecht') {
+              group.badList.push(feature);
+            } else {
+              group.neutralList.push(feature);
+            }
+          });
+
+          // Add remaining unplaced features to neutral
+          allFeatures.forEach(f => {
+            const isPlaced =
+              group.goodList.some(g => g.feature_id === f.feature_id) ||
+              group.averageList.some(g => g.feature_id === f.feature_id) ||
+              group.badList.some(g => g.feature_id === f.feature_id) ||
+              group.neutralList.some(g => g.feature_id === f.feature_id);
+            if (!isPlaced) group.neutralList.push(f);
+          });
+
+          // Add server neutralList items not yet placed
+          if (serverGroup.neutralList) {
+            serverGroup.neutralList.forEach(item => {
+              const isPlaced = group.neutralList.some(g => g.feature_id === item.feature_id);
+              if (!isPlaced) group.neutralList.push(item);
+            });
+          }
+        } else {
+          // Legacy format fallback (goodList/averageList/badList keys)
+          group.goodList = serverGroup.goodList || [];
+          group.averageList = serverGroup.averageList || [];
+          group.badList = serverGroup.badList || [];
+          group.neutralList = serverGroup.neutralList || [];
+        }
       }
     });
     return featureMap;

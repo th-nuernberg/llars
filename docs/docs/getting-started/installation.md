@@ -51,11 +51,15 @@ chmod +x start_llars.sh
 4. Baut und startet alle Services
 
 **Volumes, die betroffen sind**
-- `llars_llarsdb` (MariaDB)
-- `llars_model_volume` (Modelle/Embeddings)
-- `llars_authentikdb` (PostgreSQL für Authentik)
+`REMOVE_LLARS_VOLUMES=True` entfernt **alle** Docker-Volumes mit dem Präfix `llars_`, z. B.:
 
-Andere Projekt-Volumes bleiben unberührt.
+- `llars_llarsdb` (MariaDB)
+- `llars_rag_storage` / `llars_rag_docs` (RAG Daten)
+- `llars_authentikdb` / `llars_authentik_media` (Authentik)
+- `llars_matomo_data` / `llars_matomodb` (Analytics)
+- `llars_redis_data` (Redis)
+
+Andere Projekt-Volumes ohne `llars_`‑Präfix bleiben unberührt.
 
 ### 4. Dienste aufrufen
 

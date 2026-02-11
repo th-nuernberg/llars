@@ -37,7 +37,30 @@
   },
   "steps": [
     {
-      "_section": "=== INTRO (30s) ===",
+      "_section": "=== INTRO (40s) ===",
+      "id": "intro_access_1",
+      "speaker": "moderator",
+      "narration": "Before we start, here are the IJCAI demo logins. Account one is ijcai_reviewer_1 with password ijcai_reviewer_123.",
+      "actions": [
+        {
+          "do": "show_title",
+          "title": "Lars Demo Access",
+          "subtitle": "ijcai_reviewer_1 / ijcai_reviewer_123 | ijcai_reviewer_2 / ijcai_reviewer_123"
+        }
+      ]
+    },
+    {
+      "id": "intro_access_2",
+      "speaker": "guest",
+      "narration": "And account two is ijcai_reviewer_2 with the same password: ijcai_reviewer_123.",
+      "actions": [
+        {
+          "do": "wait",
+          "seconds": 0.3
+        }
+      ]
+    },
+    {
       "id": "intro_1",
       "speaker": "moderator",
       "narration": "Hi, I'm Alex. This is a short Lars demo.",
@@ -1728,6 +1751,33 @@
         {
           "do": "wait",
           "seconds": 2.0
+        }
+      ]
+    },
+    {
+      "id": "outro_access_1",
+      "speaker": "guest",
+      "narration": "Before we close, the IJCAI demo logins again: ijcai_reviewer_1 with password ijcai_reviewer_123.",
+      "actions": [
+        {
+          "do": "show_title",
+          "title": "Lars Demo Access",
+          "subtitle": "ijcai_reviewer_1 / ijcai_reviewer_123 | ijcai_reviewer_2 / ijcai_reviewer_123"
+        },
+        {
+          "do": "wait",
+          "seconds": 0.6
+        }
+      ]
+    },
+    {
+      "id": "outro_access_2",
+      "speaker": "moderator",
+      "narration": "And account two is ijcai_reviewer_2, password ijcai_reviewer_123.",
+      "actions": [
+        {
+          "do": "wait",
+          "seconds": 0.5
         }
       ]
     }

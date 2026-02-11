@@ -1,7 +1,7 @@
 # Berechtigungssystem – Status ✅
 
 **Status:** Voll funktionsfähig  
-**Datum:** 28.11.2025  
+**Datum:** 10.02.2026  
 **LLARS Version:** Production
 
 ---
@@ -13,6 +13,7 @@ RBAC mit „deny by default“ über Frontend und Backend:
 - Direkte User-Permissions überschreiben Rollen
 - Explizites Deny schlägt Grant
 - Vollständiges Audit-Log aller Änderungen
+- System Admin API Key (`X-API-Key`) kann Permission-Checks für Integrationen umgehen
 
 ---
 
@@ -24,8 +25,9 @@ RBAC mit „deny by default“ über Frontend und Backend:
 - `permission_audit_log` (Änderungsverlauf)
 
 **Seed-Daten:**
-- 40 Permissions (feature, admin, data)
-- 4 Rollen: `admin` (40), `researcher` (19), `chatbot_manager` (14), `evaluator` (13)
+- 53 Permissions (41 feature, 8 admin, 4 data)
+- 5 Rollen: `admin` (53), `researcher` (31), `chatbot_manager` (21), `evaluator` (20), `ijcai_reviewer` (20)
+- Optional: Legacy-Rolle `viewer` wird bei Bedarf automatisch mit `evaluator` synchronisiert
 
 ---
 
@@ -34,9 +36,9 @@ RBAC mit „deny by default“ über Frontend und Backend:
 - **Service:** `app/services/permission_service.py`  
   `check_permission()`, `grant_permission()`, `assign_role()` u. a., inkl. Audit-Logging.
 - **Decorator:** `app/decorators/permission_decorator.py`  
-  `@require_permission`, `@require_any_permission`, `@require_all_permissions`; liest OIDC-Token (Authentik) aus dem `Authorization`-Header und liefert 401/403 bei Verstößen.
+  `@require_permission`, `@require_any_permission`, `@require_all_permissions`; nutzt `Authorization: Bearer` (OIDC JWT via Authentik), prüft gesperrte/gelöschte Accounts und liefert 401/403 bei Verstößen. `X-API-Key` kann die Prüfung für System-Integrationen umgehen.
 - **Routen:** `app/routes/permissions/permission_routes.py` (plus Legacy: `app/routes/PermissionRoutes.py`)  
-  `/api/permissions/*` Endpoints (u. a. `my-permissions`, `users-with-roles`, `audit-log`, Rollenverwaltung) geschützt via `admin:*`.
+  `/api/permissions/*` Endpoints (u. a. `my-permissions`, `users-with-roles`, `audit-log`, Rollenverwaltung). Admin-Endpunkte sind über `admin:*` geschützt, `my-permissions` nutzt nur `@authentik_required`.
 
 ---
 
@@ -51,10 +53,12 @@ RBAC mit „deny by default“ über Frontend und Backend:
 
 ---
 
-## Verfügbare Permissions (38)
+## Verfügbare Permissions (53)
 
-**Feature (28):**
+**Feature (41):**
 ```
+feature:mail_rating:view
+feature:mail_rating:edit
 feature:ranking:view
 feature:ranking:edit
 feature:rating:view
@@ -68,6 +72,10 @@ feature:prompt_engineering:edit
 feature:markdown_collab:view
 feature:markdown_collab:edit
 feature:markdown_collab:share
+feature:latex_collab:view
+feature:latex_collab:edit
+feature:latex_collab:share
+feature:latex_collab:ai
 feature:rag:view
 feature:rag:edit
 feature:rag:delete
@@ -77,6 +85,7 @@ feature:chatbots:edit
 feature:chatbots:delete
 feature:chatbots:advanced
 feature:chatbots:share
+feature:llm:view
 feature:anonymize:view
 feature:judge:view
 feature:judge:edit
@@ -84,22 +93,30 @@ feature:oncoco:view
 feature:oncoco:edit
 feature:kaimo:view
 feature:kaimo:edit
+feature:generation:view
+feature:generation:create
+feature:generation:manage
+feature:generation:export
+feature:generation:to_scenario
 ```
 
-**Admin (6):**
+**Admin (8):**
 ```
 admin:permissions:manage
 admin:users:manage
 admin:roles:manage
 admin:system:configure
+admin:referral:manage
+admin:field_prompts:manage
 admin:kaimo:manage
 admin:kaimo:results
 ```
 
-**Data (3):**
+**Data (4):**
 ```
 data:export
 data:import
+data:manage_scenarios
 data:delete
 ```
 
@@ -107,16 +124,18 @@ data:delete
 
 ## Rollen
 
-- **admin:** alle 40 Permissions – Plattform- und Benutzerverwaltung  
-- **researcher:** 19 Permissions – Evaluierung + Prompt Engineering + Markdown Collab + Anonymisierung + KAIMO  
-- **chatbot_manager:** 14 Permissions – Chatbots + RAG + Prompt Engineering + Markdown Collab  
-- **evaluator:** 13 Permissions – Lesezugriff + ausgewählte Edit-Rechte
+- **admin:** alle Permissions (aktuell 53) – Plattform- und Benutzerverwaltung  
+- **researcher:** 31 Permissions – Evaluierung, Prompt Engineering, Batch Generation, Markdown/LaTeX Collab, Anonymisierung, KAIMO, Szenarien-Import  
+- **chatbot_manager:** 21 Permissions – Chatbots, RAG, Prompt Engineering, Batch Generation (view/create), Markdown/LaTeX Collab  
+- **evaluator:** 20 Permissions – Evaluierung, Lesen, ausgewählte Edit-Rechte, RAG/Chatbots read-only, KAIMO bearbeiten  
+- **ijcai_reviewer:** 20 Permissions – IJCAI-Demo: Prompting, Batch Generation, Szenarien, Evaluation
+- **viewer (legacy):** wird bei Existenz automatisch mit `evaluator` synchronisiert
 
 ---
 
 ## Tests ✅
 
-- 40 Permissions und 4 Rollen in der DB vorhanden
+- 53 Permissions und 5 Rollen in der DB vorhanden (plus optional `viewer`)
 - API-Routen registriert; 401 ohne Token, 403 ohne Berechtigung
 - Frontend-Guards aktiv; Admin-Dashboard nur für Admins sichtbar
 
@@ -140,7 +159,7 @@ data:delete
   </div>
 </template>
 ```
-- Neue Permission: in `app/db/db.py` (initialize_permissions) ergänzen, Rollen zuweisen, Backend neu starten.
+- Neue Permission: in `app/db/seeders/permissions.py` ergänzen, Rollen zuweisen, Backend neu starten.
 
 ---
 

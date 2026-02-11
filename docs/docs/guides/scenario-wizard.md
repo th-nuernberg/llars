@@ -31,9 +31,10 @@ Der Szenario Wizard ist ein mehrstufiger Assistent zur Erstellung von Evaluation
 
 | Format | Beschreibung | Beispiel |
 |--------|--------------|----------|
-| **CSV** | Komma-getrennte Werte | `data.csv` |
+| **CSV/TSV** | Komma- oder Tab-getrennte Werte | `data.csv` / `data.tsv` |
 | **JSON** | Array von Objekten | `[{...}, {...}]` |
-| **XLSX/XLS** | Excel-Dateien | `data.xlsx` |
+| **JSONL/NDJSON** | Ein Objekt pro Zeile | `data.jsonl` |
+| **XLSX** | Excel-Datei | `data.xlsx` |
 
 ### Datenformate
 
@@ -68,7 +69,8 @@ chat_id,llm_name,output,source
 ┌─────────────────────────────────────────────┐
 │  📁 Dateien hier ablegen oder auswählen     │
 │                                             │
-│  Unterstützte Formate: JSON, CSV, Excel     │
+│  Unterstützte Formate: JSON, JSONL, CSV/TSV, │
+│  XLSX                                       │
 └─────────────────────────────────────────────┘
 ```
 

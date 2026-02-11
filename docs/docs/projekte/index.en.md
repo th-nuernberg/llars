@@ -11,7 +11,7 @@ This section documents all major development projects in LLARS.
 | [LLM Evaluators](llm-as-judge/index.md) | Complete | LLM evaluators as a configuration in Scenario Manager |
 | [OnCoCo Analysis](oncoco/index.md) | Complete | 68-class conversation classification |
 | [Authentik](authentik/index.md) | Complete | OAuth2/OIDC identity provider |
-| [Data Importer](data-importer/index.md) | Concept | AI-assisted import wizard for data formats |
+| [Data Importer](data-importer/index.md) | Complete | AI-assisted import wizard for data formats |
 | [Chatbot Builder](chatbot-builder/index.md) | Complete | Integrated chatbot wizard with web crawler RAG |
 | [KAIMo](kaimo/index.md) | Complete | AI-assisted case handling and analysis |
 | [Splitting & Refactoring](splitting-refactoring/konzept.md) | Concept | Reduce large files to under 500 lines |

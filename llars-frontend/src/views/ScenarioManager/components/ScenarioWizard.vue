@@ -429,7 +429,7 @@
                   :class="{ selected: isUserSelected(user) }"
                   @click="toggleUser(user)"
                 >
-                  <LAvatar :user="user" size="sm" class="mr-2" />
+                  <LAvatar :seed="user.avatar_seed" :src="user.avatar_url" :username="user.username" size="sm" class="mr-2" />
                   <div class="user-info">
                     <span class="user-name">{{ user.display_name || user.username }}</span>
                     <span class="user-email">{{ user.email }}</span>

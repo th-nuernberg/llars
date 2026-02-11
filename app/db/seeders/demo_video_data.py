@@ -313,6 +313,10 @@ def seed_demo_video_generation_job():
                     llm_model_id=model.id,
                     llm_model_name=model.model_id,
                     prompt_variant_name=prompt.name,
+                    prompt_variables_json={
+                        'source_index': article_idx,
+                        'source_title': article['title']
+                    },
                     generated_content=summary,
                     rendered_system_prompt=render_system_prompt(prompt),
                     rendered_user_prompt=render_user_prompt(prompt, article),

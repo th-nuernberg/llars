@@ -810,6 +810,17 @@ class GeneratedOutput(db.Model):
             result['source_item_label'] = (subject[:80] + '...') if len(subject) > 80 else subject
             if include_prompts:
                 result['source_item_content'] = subject
+        elif isinstance(self.prompt_variables_json, dict):
+            pvars = self.prompt_variables_json
+            source_index = pvars.get('source_index')
+            # Try known label fields, fall back to generic index
+            label = pvars.get('source_title') or pvars.get('source_label') or pvars.get('title')
+            if label:
+                result['source_item_label'] = (label[:80] + '...') if len(label) > 80 else label
+            elif source_index is not None:
+                result['source_item_label'] = f'Item #{source_index + 1}'
+            if source_index is not None:
+                result['source_group_key'] = f'manual_{source_index}'
 
         return result
 
@@ -825,14 +836,26 @@ class GeneratedOutput(db.Model):
             except Exception:
                 llm_model_color = None
         source_item_label = None
+        source_group_key = None
         if self.source_item and self.source_item.subject:
             subject = self.source_item.subject.strip()
             source_item_label = (subject[:80] + '...') if len(subject) > 80 else subject
+        elif isinstance(self.prompt_variables_json, dict):
+            pvars = self.prompt_variables_json
+            source_index = pvars.get('source_index')
+            label = pvars.get('source_title') or pvars.get('source_label') or pvars.get('title')
+            if label:
+                source_item_label = (label[:80] + '...') if len(label) > 80 else label
+            elif source_index is not None:
+                source_item_label = f'Item #{source_index + 1}'
+            if source_index is not None:
+                source_group_key = f'manual_{source_index}'
 
         return {
             'id': self.id,
             'source_item_id': self.source_item_id,
             'source_item_label': source_item_label,
+            'source_group_key': source_group_key,
             'llm_model_name': self.llm_model_name,
             'llm_model_color': llm_model_color,
             'prompt_variant_name': self.prompt_variant_name,

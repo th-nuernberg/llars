@@ -374,14 +374,14 @@ class OutputExportService:
             )
             db.session.add(scenario_item)
 
-        # Add creator as owner
+        # Add creator as viewer (ownership is determined by created_by field)
         from db.models import User
         user = User.query.filter_by(username=created_by).first()
         if user:
             scenario_user = ScenarioUsers(
                 scenario_id=scenario.id,
                 user_id=user.id,
-                role=ScenarioRoles.OWNER
+                role=ScenarioRoles.VIEWER
             )
             db.session.add(scenario_user)
 
@@ -564,14 +564,14 @@ class OutputExportService:
             )
             db.session.add(scenario_item)
 
-        # Add creator as owner
+        # Add creator as viewer (ownership is determined by created_by field)
         from db.models import User
         user = User.query.filter_by(username=created_by).first()
         if user:
             scenario_user = ScenarioUsers(
                 scenario_id=scenario.id,
                 user_id=user.id,
-                role=ScenarioRoles.OWNER
+                role=ScenarioRoles.VIEWER
             )
             db.session.add(scenario_user)
 

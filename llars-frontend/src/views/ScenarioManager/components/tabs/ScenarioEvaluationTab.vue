@@ -12,7 +12,7 @@
         </div>
       </div>
 
-      <div class="summary-card">
+      <div class="summary-card" v-if="hasHumans">
         <div class="summary-icon" style="background-color: rgba(136, 196, 200, 0.15);">
           <LIcon color="#88c4c8" size="24">mdi-account-multiple-outline</LIcon>
         </div>
@@ -22,7 +22,7 @@
         </div>
       </div>
 
-      <div class="summary-card">
+      <div class="summary-card" v-if="hasLLMs">
         <div class="summary-icon" style="background-color: rgba(196, 160, 212, 0.15);">
           <LIcon color="#c4a0d4" size="24">mdi-robot-outline</LIcon>
         </div>
@@ -53,6 +53,7 @@
         <div class="header-actions">
           <!-- Evaluator Type Filter Toggle -->
           <v-btn-toggle
+            v-if="hasHumans && hasLLMs"
             v-model="evaluatorTypeFilter"
             mandatory
             density="compact"
@@ -128,7 +129,7 @@
         </div>
 
         <!-- Progress Legend (when filter is "all") -->
-        <div class="progress-legend" v-if="evaluatorTypeFilter === 'all'">
+        <div class="progress-legend" v-if="evaluatorTypeFilter === 'all' && hasHumans && hasLLMs">
           <div class="legend-item human">
             <LIcon size="14">mdi-account</LIcon>
             <span class="legend-label">{{ $t('scenarioManager.evaluation.filter.human') }}</span>
@@ -1139,6 +1140,23 @@ const promptTemplates = ref([
 const evaluatorStatsList = computed(() => {
   return props.liveStats?.userStatsList || []
 })
+
+// ===== Computed: Evaluator Type Flags =====
+
+const hasHumans = computed(() => {
+  return evaluatorStatsList.value.some(u => !u.isLLM)
+})
+
+const hasLLMs = computed(() => {
+  return evaluatorStatsList.value.some(u => u.isLLM)
+})
+
+// Auto-set filter when only one type exists
+watch([hasHumans, hasLLMs], ([h, l]) => {
+  if (h && !l) evaluatorTypeFilter.value = 'human'
+  else if (!h && l) evaluatorTypeFilter.value = 'llm'
+  else evaluatorTypeFilter.value = 'all'
+}, { immediate: true })
 
 const humanEvaluators = computed(() => {
   return evaluatorStatsList.value.filter(u => !u.isLLM)
@@ -2775,6 +2793,7 @@ watch(
   border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.06);
 }
 
+
 .metrics-section:last-child,
 .confusion-matrix-section:last-child,
 .distribution-section:last-child,
@@ -2849,6 +2868,7 @@ watch(
   flex-direction: column;
   gap: 2px;
   overflow-x: auto;
+  margin: 0 auto;
 }
 
 .matrix-row {
@@ -2910,6 +2930,7 @@ watch(
 .agreement-legend {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 12px;
   margin-top: 16px;
   padding: 12px;

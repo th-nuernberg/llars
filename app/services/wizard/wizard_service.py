@@ -774,12 +774,12 @@ class WizardService:
 
         assigned_user_ids = set()
 
-        # Add owner
+        # Add owner as VIEWER (ownership is determined by created_by field)
         if actual_owner_id:
             owner_assignment = ScenarioUsers(
                 scenario_id=scenario_id,
                 user_id=actual_owner_id,
-                role=ScenarioRoles.OWNER,
+                role=ScenarioRoles.VIEWER,
                 invitation_status=InvitationStatus.ACCEPTED,
                 membership_status=MembershipStatus.ACTIVE,
                 invited_at=datetime.utcnow(),
@@ -787,7 +787,7 @@ class WizardService:
             )
             db.session.add(owner_assignment)
             assigned_user_ids.add(actual_owner_id)
-            logger.info(f"Assigned owner (user_id={actual_owner_id}) to scenario {scenario_id}")
+            logger.info(f"Assigned owner as viewer (user_id={actual_owner_id}) to scenario {scenario_id}")
 
         # Add evaluators
         for evaluator_id in evaluator_ids:

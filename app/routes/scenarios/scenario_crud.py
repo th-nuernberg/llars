@@ -304,10 +304,10 @@ def create_scenario():
     new_scenario_users = []
     seen_user = set()
 
-    # Add the creating user as OWNER
+    # Add the creating user as VIEWER (ownership is determined by created_by field)
     creating_user = User.query.filter_by(username=creating_username).first()
     if creating_user:
-        new_scenario_users.append({"id": creating_user.id, "role": ScenarioRoles.OWNER})
+        new_scenario_users.append({"id": creating_user.id, "role": ScenarioRoles.VIEWER})
         seen_user.add(creating_user.id)
 
     # Auto-add admin as VIEWER if not the creating user

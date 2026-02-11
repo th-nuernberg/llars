@@ -1,12 +1,11 @@
 # KAIMo Integration
 
-!!! warning "Status: Konzept"
-    Dieses Projekt befindet sich in der **Planungsphase**.
-    Das Panel-Konzept mit Rollentrennung wurde erstellt.
+!!! success "Status: Implementiert (Beta, Stand Februar 2026)"
+    KAIMo ist in LLARS integriert und produktiv nutzbar. Admin- und User-Panel sind verfügbar.
 
 ## Übersicht
 
-KAIMo (KI-gestützte Analyse und Modellierung) ist ein Lerntool zur Schulung von Fachkräften in der Kindeswohlgefährdung. Das System wird in LLARS mit zwei unterschiedlichen Panels integriert:
+KAIMo (KI-gestützte Analyse und Modellierung) ist ein Lerntool zur Schulung von Fachkräften in der Kindeswohlgefährdung. Das System ist in LLARS mit zwei Panels umgesetzt:
 
 - **KAIMO Admin Panel** (für Researcher): Fälle anlegen, Dokumente/Hinweise verwalten, Ergebnisse auswerten
 - **KAIMO Panel** (für Evaluator): Fälle durcharbeiten, Hinweise zuordnen, Bewertungen abgeben
@@ -15,9 +14,9 @@ KAIMo (KI-gestützte Analyse und Modellierung) ist ein Lerntool zur Schulung von
 
 | Dokument | Beschreibung | Status |
 |----------|--------------|--------|
-| [Panel-Konzept](konzept.md) | **NEU:** Detailliertes Konzept mit Admin/Evaluator-Trennung | In Review |
-| [Anfrage-Einschätzung](anfrage-einschaetzung.md) | Strategische Bewertung der 3 Varianten | Entscheidung offen |
-| [Integration Konzept](integration-konzept.md) | Technische Analyse mit Aufwandsschätzung | Fertig |
+| [Panel-Konzept](konzept.md) | Detailliertes Konzept mit Admin/Evaluator-Trennung | Referenz |
+| [Anfrage-Einschätzung](anfrage-einschaetzung.md) | Historische Bewertung der Varianten | Archiv |
+| [Integration Konzept](integration-konzept.md) | Technische Analyse + Architektur | Aktualisiert |
 
 ## Rollen und Berechtigungen
 
@@ -35,24 +34,31 @@ admin:kaimo:manage       # Fälle verwalten (Admin)
 admin:kaimo:results      # Ergebnisse einsehen (Admin)
 ```
 
-## Kernfunktionen
+## Kernfunktionen (aktuell)
 
 ### Admin Panel (Researcher)
 
-1. **Fälle anlegen** - Neue Fallvignetten erstellen
+1. **Fälle anlegen** - Neue Fallvignetten erstellen (Draft/Published)
 2. **Dokumente verwalten** - Aktenvermerke, Berichte, Protokolle
-3. **Hinweise definieren** - Hinweise aus Dokumenten extrahieren und Kategorien zuordnen
-4. **Musterlösung hinterlegen** - Erwartete Zuordnungen für Auswertung
-5. **Ergebnisse analysieren** - Aggregierte Bewertungen aller Fachkräfte
+3. **Hinweise definieren** - Hinweise + erwartete Kategorie/Rating
+4. **Kategorien verwalten** - Standard-Kategorien + Subkategorien
+5. **Ergebnisse analysieren** - Aggregierte Bewertungen & Exporte
+6. **Teilen/Import/Export** - Fälle teilen und als JSON exportieren/importieren
 
 ### User Panel (Evaluator)
 
 1. **Fälle durcharbeiten** - Dokumente lesen, Hinweise analysieren
-2. **Hinweise zuordnen** - Drag & Drop in Kategorien
-3. **Bewertung abgeben** - Risiko/Ressource/Unklar für jeden Hinweis
-4. **Fallbeurteilung** - Finale Einschätzung mit Begründung
+2. **Hinweise zuordnen** - Kategorien + Rating (Risiko/Ressource/Unklar)
+3. **Fallbeurteilung** - Finale Einschätzung mit Begründung
+4. **Fortschritt** - Status und Überblick pro Fall
 
-## Geschätzter Aufwand
+## Umsetzung (Stand Februar 2026)
+
+- Backend: `/api/kaimo` Admin- und User‑Routes, Services, Modelle, Seeder
+- Frontend: `/kaimo` Hub, Panel, Case‑Editor, Assessment‑View
+- Berechtigungen: `feature:kaimo:*`, `admin:kaimo:*` (siehe Permissions)
+
+## Historische Aufwandsschätzung
 
 | Komponente | Aufwand |
 |------------|---------|
@@ -66,7 +72,7 @@ admin:kaimo:results      # Ergebnisse einsehen (Admin)
     Die Infrastruktur (DB-Schema, API) ist für spätere KI-Integration vorbereitet.
     Zusatzaufwand bei Bedarf: 16-24h
 
-## Nächste Schritte
+## Historische nächste Schritte (Konzeptphase)
 
 1. Konzept-Review durch Philipp Steigerwald
 2. Implementierung Phase 1 (Datenbank & Basis-API)

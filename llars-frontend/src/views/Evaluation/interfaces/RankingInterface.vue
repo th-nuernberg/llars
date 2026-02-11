@@ -31,49 +31,17 @@
               </div>
             </v-expansion-panel-title>
             <v-expansion-panel-text>
-              <!-- Buckets Container -->
+              <!-- Dynamic Buckets Container -->
               <div class="buckets-row">
-                <!-- Good Bucket -->
-                <div class="bucket good-bucket">
-                  <h4>{{ $t('ranker.detail.buckets.good') }}</h4>
+                <div
+                  v-for="(bucket, bIdx) in bucketConfig"
+                  :key="bucket.id"
+                  class="bucket"
+                  :style="bucketStyle(bucket.color)"
+                >
+                  <h4 :style="{ color: bucket.color }">{{ bucketLabel(bucket) }}</h4>
                   <draggable
-                    v-model="feature.goodList"
-                    class="bucket-content"
-                    :group="'featureGroup-' + feature.type"
-                    item-key="feature_id"
-                    @end="handleRankingChanged"
-                  >
-                    <template #item="{ element }">
-                      <div class="bucket-item">
-                        <div v-html="formatFeatureContent(feature.type, element.content)"></div>
-                      </div>
-                    </template>
-                  </draggable>
-                </div>
-
-                <!-- Moderate Bucket -->
-                <div class="bucket moderate-bucket">
-                  <h4>{{ $t('ranker.detail.buckets.average') }}</h4>
-                  <draggable
-                    v-model="feature.averageList"
-                    class="bucket-content"
-                    :group="'featureGroup-' + feature.type"
-                    item-key="feature_id"
-                    @end="handleRankingChanged"
-                  >
-                    <template #item="{ element }">
-                      <div class="bucket-item">
-                        <div v-html="formatFeatureContent(feature.type, element.content)"></div>
-                      </div>
-                    </template>
-                  </draggable>
-                </div>
-
-                <!-- Bad Bucket -->
-                <div class="bucket bad-bucket">
-                  <h4>{{ $t('ranker.detail.buckets.bad') }}</h4>
-                  <draggable
-                    v-model="feature.badList"
+                    v-model="feature.bucketLists[bIdx]"
                     class="bucket-content"
                     :group="'featureGroup-' + feature.type"
                     item-key="feature_id"
@@ -185,8 +153,8 @@
  * RankingInterface.vue - Feature-Based Drag & Drop Ranking Interface
  *
  * Provides the UI for ranking evaluation where users sort features
- * (e.g., summaries, analyses) into predefined buckets (Good, Moderate, Bad).
- * Features can be dragged between buckets using vuedraggable.
+ * into configurable buckets. Supports dynamic N-bucket configs from
+ * props.config (e.g. 3 or 5 buckets) with legacy 3-bucket fallback.
  */
 import { ref, computed, watch, onMounted, toRef } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -222,7 +190,7 @@ const emit = defineEmits(['item-completed', 'all-completed', 'status-change', 's
 // Computed prop for hideNavigation to use in template
 const hideNavigation = computed(() => props.hideNavigation)
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 
 // Panel resize composable
 const { containerRef, leftPanelStyle, rightPanelStyle, startResize } = usePanelResize({
@@ -231,6 +199,35 @@ const { containerRef, leftPanelStyle, rightPanelStyle, startResize } = usePanelR
   maxLeftPercent: 75,
   storageKey: 'llars-ranking-panel-width'
 })
+
+// --- Dynamic bucket config from props.config ---
+const LEGACY_BUCKETS = [
+  { id: 1, name: { de: 'Gut', en: 'Good' }, color: '#98d4bb' },
+  { id: 2, name: { de: 'Mittel', en: 'Medium' }, color: '#D1BC8A' },
+  { id: 3, name: { de: 'Schlecht', en: 'Poor' }, color: '#e8a087' }
+]
+
+const bucketConfig = computed(() => {
+  const cfg = props.config || {}
+  const buckets = cfg.buckets
+    || cfg.eval_config?.buckets
+    || cfg.eval_config?.config?.buckets
+
+  if (buckets && buckets.length >= 2) return buckets
+  return LEGACY_BUCKETS
+})
+
+function bucketStyle(color) {
+  return {
+    backgroundColor: `${color}19`,
+    border: `2px solid ${color}66`
+  }
+}
+
+function bucketLabel(bucket) {
+  const loc = locale.value || 'de'
+  return bucket.name?.[loc] || bucket.name?.de || bucket.name || `Bucket ${bucket.id}`
+}
 
 // State
 const items = ref([])
@@ -261,9 +258,8 @@ const currentItemStatus = computed(() => {
   if (!currentItem.value) return 'pending'
   if (ranked.value) return 'done'
 
-  // Check if any features are ranked
   const hasRankedFeatures = groupedFeatures.value.some(
-    g => g.goodList.length > 0 || g.averageList.length > 0 || g.badList.length > 0
+    g => g.bucketLists.some(list => list.length > 0)
   )
   return hasRankedFeatures ? 'in_progress' : 'pending'
 })
@@ -298,7 +294,6 @@ function translateFeatureType(type) {
 // Format feature content (sanitize HTML if needed)
 function formatFeatureContent(type, content) {
   if (!content) return ''
-  // Basic HTML escaping for safety
   return content
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
@@ -318,30 +313,27 @@ function toggleMinimize(element) {
 
 // Get progress for a feature group
 function getFeatureProgress(feature) {
-  const total = feature.goodList.length + feature.averageList.length +
-                feature.badList.length + feature.neutralList.length
-  const ranked = feature.goodList.length + feature.averageList.length + feature.badList.length
+  const rankedCount = feature.bucketLists.reduce((acc, list) => acc + list.length, 0)
+  const total = rankedCount + feature.neutralList.length
   if (total === 0) return null
-  return `${ranked}/${total}`
+  return `${rankedCount}/${total}`
 }
 
-// Group features by type
+// Group features by type — creates dynamic bucketLists array
 function groupFeaturesByType(featureList) {
   const featureMap = new Map()
+  const numBuckets = bucketConfig.value.length
 
   featureList.forEach((f, index) => {
     const type = f.type || 'Allgemein'
     if (!featureMap.has(type)) {
       featureMap.set(type, {
         type,
-        goodList: [],
-        averageList: [],
-        badList: [],
+        bucketLists: Array.from({ length: numBuckets }, () => []),
         neutralList: []
       })
     }
 
-    // Place feature initially in neutral list
     featureMap.get(type).neutralList.push({
       model_name: f.model_name,
       content: f.content,
@@ -354,28 +346,26 @@ function groupFeaturesByType(featureList) {
   return featureMap
 }
 
-// Apply server ranking to feature map
+// Apply server ranking to feature map (new format: details array with bucket field)
 function applyServerRanking(featureMap, serverRanking) {
   if (!serverRanking || !Array.isArray(serverRanking)) return featureMap
 
   serverRanking.forEach(serverGroup => {
     if (featureMap.has(serverGroup.type)) {
       const group = featureMap.get(serverGroup.type)
+      const numBuckets = bucketConfig.value.length
 
-      // Clear existing lists
+      // Collect all features
       const allFeatures = [
-        ...group.goodList,
-        ...group.averageList,
-        ...group.badList,
+        ...group.bucketLists.flat(),
         ...group.neutralList
       ]
 
-      group.goodList = []
-      group.averageList = []
-      group.badList = []
+      // Reset lists
+      group.bucketLists = Array.from({ length: numBuckets }, () => [])
       group.neutralList = []
 
-      // Apply server ranking
+      // Apply server ranking using details array
       if (serverGroup.details && Array.isArray(serverGroup.details)) {
         serverGroup.details.forEach(detail => {
           const feature = allFeatures.find(f =>
@@ -386,12 +376,10 @@ function applyServerRanking(featureMap, serverRanking) {
             minimized: true
           }
 
-          if (detail.bucket === 'Gut') {
-            group.goodList.push(feature)
-          } else if (detail.bucket === 'Mittel') {
-            group.averageList.push(feature)
-          } else if (detail.bucket === 'Schlecht') {
-            group.badList.push(feature)
+          // Find matching bucket by German name
+          const bIdx = bucketConfig.value.findIndex(b => b.name.de === detail.bucket)
+          if (bIdx >= 0) {
+            group.bucketLists[bIdx].push(feature)
           } else {
             group.neutralList.push(feature)
           }
@@ -400,13 +388,11 @@ function applyServerRanking(featureMap, serverRanking) {
 
       // Put remaining unranked features in neutral
       allFeatures.forEach(f => {
-        const isRanked =
-          group.goodList.some(g => g.feature_id === f.feature_id) ||
-          group.averageList.some(g => g.feature_id === f.feature_id) ||
-          group.badList.some(g => g.feature_id === f.feature_id) ||
+        const isPlaced =
+          group.bucketLists.some(list => list.some(g => g.feature_id === f.feature_id)) ||
           group.neutralList.some(g => g.feature_id === f.feature_id)
 
-        if (!isRanked) {
+        if (!isPlaced) {
           group.neutralList.push(f)
         }
       })
@@ -420,26 +406,14 @@ function applyServerRanking(featureMap, serverRanking) {
 function prepareForServerSave() {
   return groupedFeatures.value.map(group => ({
     type: group.type,
-    details: [
-      ...group.goodList.map((detail, index) => ({
+    details: group.bucketLists.flatMap((list, bIdx) =>
+      list.map((detail, position) => ({
         model_name: detail.model_name,
         content: detail.content,
-        position: index,
-        bucket: 'Gut'
-      })),
-      ...group.averageList.map((detail, index) => ({
-        model_name: detail.model_name,
-        content: detail.content,
-        position: index,
-        bucket: 'Mittel'
-      })),
-      ...group.badList.map((detail, index) => ({
-        model_name: detail.model_name,
-        content: detail.content,
-        position: index,
-        bucket: 'Schlecht'
+        position,
+        bucket: bucketConfig.value[bIdx].name.de
       }))
-    ]
+    )
   }))
 }
 
@@ -449,7 +423,7 @@ function isFullyRanked() {
   if (total === 0) return false
 
   const rankedCount = groupedFeatures.value.reduce((acc, g) =>
-    acc + g.goodList.length + g.averageList.length + g.badList.length, 0
+    acc + g.bucketLists.reduce((sum, list) => sum + list.length, 0), 0
   )
 
   return rankedCount === total
@@ -465,28 +439,22 @@ function handleRankingChanged() {
   const threadId = currentItem.value?.thread_id
   if (!threadId) return
 
-  // Save to localStorage for persistence
   saveToLocalStorage(threadId)
 
-  // Enqueue auto-save to server
   const orderedFeatures = deepClone(prepareForServerSave())
   enqueueAutoSave(threadId, orderedFeatures)
 }
 
-// Save bucket assignments to localStorage
+// Save bucket assignments to localStorage (uses bucket index)
 function saveToLocalStorage(threadId) {
   const key = `ranking_buckets_${threadId}`
   const bucketAssignments = {}
 
   groupedFeatures.value.forEach(group => {
-    group.goodList.forEach((f, idx) => {
-      bucketAssignments[f.feature_id] = { bucket: 'good', position: idx }
-    })
-    group.averageList.forEach((f, idx) => {
-      bucketAssignments[f.feature_id] = { bucket: 'average', position: idx }
-    })
-    group.badList.forEach((f, idx) => {
-      bucketAssignments[f.feature_id] = { bucket: 'bad', position: idx }
+    group.bucketLists.forEach((list, bIdx) => {
+      list.forEach((f, idx) => {
+        bucketAssignments[f.feature_id] = { bucket: bIdx, position: idx }
+      })
     })
   })
 
@@ -533,7 +501,6 @@ async function processSaveQueue() {
           if (ranked.value) {
             emit('item-completed', task.threadId)
 
-            // Check if all items completed
             const itemIndex = items.value.findIndex(
               item => (item.thread_id || item.id) === task.threadId
             )
@@ -549,7 +516,7 @@ async function processSaveQueue() {
         }
       } catch (err) {
         console.error('Failed to save ranking:', err)
-        saveQueue.unshift(task) // Re-add to queue on failure
+        saveQueue.unshift(task)
         break
       } finally {
         saving.value = false
@@ -567,12 +534,10 @@ async function loadItems() {
   error.value = null
 
   try {
-    // Load items via evaluation session endpoint
     const response = await axios.get(`/api/evaluation/session/${props.scenarioId}`)
     items.value = response.data.items || []
 
     if (items.value.length > 0) {
-      // Use initialItemId if provided, otherwise use first item
       let targetThreadId = null
 
       if (props.initialItemId) {
@@ -585,7 +550,6 @@ async function loadItems() {
         }
       }
 
-      // Fallback to first item if initialItemId not found
       if (!targetThreadId) {
         const firstItem = items.value[0]
         targetThreadId = firstItem.thread_id || firstItem.id || firstItem.item_id
@@ -607,7 +571,6 @@ async function loadItem(threadId) {
   error.value = null
 
   try {
-    // Load thread details with features
     const response = await axios.get(`/api/email_threads/rankings/${threadId}`)
 
     currentItem.value = {
@@ -628,8 +591,6 @@ async function loadItem(threadId) {
       const rankingResponse = await axios.get(`/api/email_threads/${threadId}/current_ranking`)
       if (rankingResponse.data && rankingResponse.data.length > 0) {
         applyServerRanking(featureMap, rankingResponse.data)
-        // Don't override ranked.value here - it was correctly set from response.data.ranked
-        // which is calculated server-side via has_user_fully_ranked_thread()
       }
     } catch {
       // No existing ranking - check localStorage
@@ -656,7 +617,7 @@ async function loadItem(threadId) {
   }
 }
 
-// Apply localStorage bucket assignments
+// Apply localStorage bucket assignments (uses bucket index)
 function applyLocalStorageBuckets(featureMap, threadId) {
   const key = `ranking_buckets_${threadId}`
   const savedData = localStorage.getItem(key)
@@ -665,35 +626,26 @@ function applyLocalStorageBuckets(featureMap, threadId) {
 
   try {
     const bucketAssignments = JSON.parse(savedData)
+    const numBuckets = bucketConfig.value.length
 
     featureMap.forEach((group) => {
       const allFeatures = [...group.neutralList]
-      group.goodList = []
-      group.averageList = []
-      group.badList = []
+      group.bucketLists = Array.from({ length: numBuckets }, () => [])
       group.neutralList = []
 
       allFeatures.forEach(feature => {
         const assignment = bucketAssignments[feature.feature_id]
-        if (assignment) {
-          if (assignment.bucket === 'good') {
-            group.goodList.push({ ...feature, position: assignment.position })
-          } else if (assignment.bucket === 'average') {
-            group.averageList.push({ ...feature, position: assignment.position })
-          } else if (assignment.bucket === 'bad') {
-            group.badList.push({ ...feature, position: assignment.position })
-          } else {
-            group.neutralList.push(feature)
-          }
+        if (assignment && typeof assignment.bucket === 'number' && assignment.bucket < numBuckets) {
+          group.bucketLists[assignment.bucket].push({ ...feature, position: assignment.position })
         } else {
           group.neutralList.push(feature)
         }
       })
 
-      // Sort by position
-      group.goodList.sort((a, b) => (a.position || 0) - (b.position || 0))
-      group.averageList.sort((a, b) => (a.position || 0) - (b.position || 0))
-      group.badList.sort((a, b) => (a.position || 0) - (b.position || 0))
+      // Sort each bucket by position
+      group.bucketLists.forEach(list => {
+        list.sort((a, b) => (a.position || 0) - (b.position || 0))
+      })
     })
   } catch (e) {
     console.warn('Failed to parse localStorage bucket assignments:', e)
@@ -724,7 +676,6 @@ async function goPrev() {
 // Initialize on mount
 onMounted(async () => {
   await loadItems()
-  // Navigate to initial item if specified
   if (props.initialItemId && items.value.length > 0) {
     const targetId = Number(props.initialItemId)
     const targetIndex = items.value.findIndex(item =>
@@ -748,9 +699,8 @@ watch(() => props.scenarioId, (newId) => {
 watch(() => props.initialItemId, (newItemId) => {
   if (newItemId && items.value.length > 0) {
     const targetId = Number(newItemId)
-    // Check if this item is already the current item
     const currentId = currentItem.value?.thread_id || currentItem.value?.id || currentItem.value?.item_id
-    if (currentId === targetId) return // Already on this item
+    if (currentId === targetId) return
 
     const targetItem = items.value.find(item =>
       (item.thread_id || item.id || item.item_id) === targetId
@@ -876,36 +826,6 @@ watch(() => props.initialItemId, (newItemId) => {
 .bucket-content {
   flex: 1;
   min-height: 80px;
-}
-
-/* Good Bucket - LLARS Success */
-.good-bucket {
-  background-color: rgba(152, 212, 187, 0.1);
-  border: 2px solid rgba(152, 212, 187, 0.4);
-}
-
-.good-bucket h4 {
-  color: var(--llars-success, #98d4bb);
-}
-
-/* Moderate Bucket - LLARS Secondary */
-.moderate-bucket {
-  background-color: rgba(209, 188, 138, 0.1);
-  border: 2px solid rgba(209, 188, 138, 0.4);
-}
-
-.moderate-bucket h4 {
-  color: var(--llars-secondary, #D1BC8A);
-}
-
-/* Bad Bucket - LLARS Danger */
-.bad-bucket {
-  background-color: rgba(232, 160, 135, 0.1);
-  border: 2px solid rgba(232, 160, 135, 0.4);
-}
-
-.bad-bucket h4 {
-  color: var(--llars-danger, #e8a087);
 }
 
 /* Neutral Bucket */

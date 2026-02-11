@@ -6,28 +6,22 @@ Diese Seite dokumentiert die aktuelle Code-Qualität, Docstring-Coverage und Ref
 
 !!! info "Stand: Januar 2026"
     Die Statistiken werden regelmäßig aktualisiert.
+    Quelle: `docs/metrics/*.json`, aktualisieren mit `scripts/metrics/update_docs.py`.
 
 ### Backend (Python)
 
-!!! info "Automatisch aktualisiert: 03.01.2026 08:44"
+!!! info "Automatisch aktualisiert: 04.01.2026 13:03"
 
 | Bereich | Funktionen | Mit Docstring | Coverage |
 |---------|------------|---------------|----------|
 | **Services** | 920 | 775 | ✅ 84.2% |
-| **Routes** | 493 | 392 | ✅ 79.5% |
+| **Routes** | 498 | 398 | ✅ 79.9% |
 | **Workers** | 119 | 118 | ✅ 99.2% |
-| **Models** | 52 | 32 | ⚠️ 61.5% |
+| **Models** | 53 | 31 | ⚠️ 58.5% |
 | **Auth** | 30 | 22 | ✅ 73.3% |
 | **Decorators** | 26 | 8 | ❌ 30.8% |
 
 **Gesamt:** ✅ 82.1% Funktionen, 74.8% Klassen, 93.0% Module
-
----------|----------|--------|
-| **Services** | ~65% | ⚠️ Verbesserungsbedarf |
-| **Routes** | ~70% | ✅ Gut |
-| **Workers** | ~80% | ✅ Gut (nach Refactoring) |
-| **Models** | ~60% | ⚠️ Verbesserungsbedarf |
-| **Decorators** | ~90% | ✅ Excellent |
 
 ### Frontend (Vue.js)
 
@@ -41,11 +35,6 @@ Diese Seite dokumentiert die aktuelle Code-Qualität, Docstring-Coverage und Ref
 | **Services** | 6 | 3 | ⚠️ 50% |
 
 **Gesamt:** ❌ 35% der Dateien haben JSDoc-Header
-
----------|----------|--------|
-| **Komponenten mit JSDoc** | ~54% | ⚠️ Verbesserungsbedarf |
-| **Composables mit JSDoc** | ~46% | ❌ Niedrig |
-| **Services** | ~40% | ❌ Niedrig |
 
 ### Kritische Bereiche ohne ausreichende Dokumentation
 
@@ -137,8 +126,8 @@ Diese Seite dokumentiert die aktuelle Code-Qualität, Docstring-Coverage und Ref
 ### Aktuelle Werte
 
 ```
-Große Dateien (>1000 Zeilen Backend): 0 ✓
-Große Komponenten (>1500 Zeilen Frontend): 5 ⚠️
+Große Dateien (>1000 Zeilen Backend): 10 ⚠️
+Große Komponenten (>1500 Zeilen Frontend): 10 ⚠️
 Security Issues behoben: 3/3 ✓
 ```
 

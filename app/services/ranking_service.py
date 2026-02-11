@@ -86,14 +86,12 @@ class RankingService:
     @staticmethod
     def get_current_rankings_by_type(user_id: int, thread_id: int) -> Dict[str, Dict[str, List[Dict]]]:
         """
-        Get current rankings organized by feature type and bucket.
+        Get current rankings organized by feature type.
 
         Returns a structure like:
         {
             "situation_summary": {
-                "goodList": [...],
-                "averageList": [...],
-                "badList": [...],
+                "details": [{ ..., "bucket": "Gut" }, ...],
                 "neutralList": [...]
             }
         }
@@ -103,7 +101,7 @@ class RankingService:
             thread_id: The thread ID
 
         Returns:
-            Dictionary of rankings organized by type and bucket
+            Dictionary of rankings organized by type with details and neutralList
         """
         from db.models import UserFeatureRanking, Feature, FeatureType
 
@@ -116,9 +114,7 @@ class RankingService:
         # Initialize structure
         rankings_data = {
             feature_type.name: {
-                "goodList": [],
-                "averageList": [],
-                "badList": [],
+                "details": [],
                 "neutralList": []
             }
             for feature_type in feature_types
@@ -131,20 +127,14 @@ class RankingService:
                 'content': ranking.feature.content,
                 'feature_id': ranking.feature_id,
                 'position': int(ranking.ranking_content),
+                'bucket': ranking.bucket,
                 'minimized': True
             }
 
             feature_type = ranking.feature_type.name
 
             if feature_type in rankings_data:
-                if ranking.bucket == 'Gut':
-                    rankings_data[feature_type]['goodList'].append(feature_data)
-                elif ranking.bucket == 'Mittel':
-                    rankings_data[feature_type]['averageList'].append(feature_data)
-                elif ranking.bucket == 'Schlecht':
-                    rankings_data[feature_type]['badList'].append(feature_data)
-                else:
-                    rankings_data[feature_type]['neutralList'].append(feature_data)
+                rankings_data[feature_type]['details'].append(feature_data)
 
         # Add unranked features to neutralList
         ranked_feature_ids = [ranking.feature_id for ranking in rankings]
@@ -164,13 +154,16 @@ class RankingService:
                 if feature_type in rankings_data:
                     rankings_data[feature_type]['neutralList'].append(feature_data)
 
-        # Sort lists by position
+        # Sort details by position, neutralList by feature_id
         for feature_type, data in rankings_data.items():
-            for bucket in ['goodList', 'averageList', 'badList', 'neutralList']:
-                data[bucket] = sorted(
-                    data[bucket],
-                    key=lambda x: x['position'] if x['position'] is not None else float('inf')
-                )
+            data['details'] = sorted(
+                data['details'],
+                key=lambda x: x['position'] if x['position'] is not None else float('inf')
+            )
+            data['neutralList'] = sorted(
+                data['neutralList'],
+                key=lambda x: x['position'] if x['position'] is not None else float('inf')
+            )
 
         return rankings_data
 

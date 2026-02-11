@@ -90,6 +90,8 @@ nav:
       - ReACT: agentic-ai/react.md
       - ReflAct: agentic-ai/reflact.md
   - Entwickler:
+      - Rating/Ranking Checklist: entwickler/rating-ranking-checklist.md
+      - Rating/Ranking Übersicht: entwickler/rating-ranking-overview.md
       - API-Referenz: entwickler/api-referenz.md
       - Frontend-Komponenten: entwickler/frontend-komponenten.md
       - Evaluation Datenformate: entwickler/evaluation-datenformate.md
@@ -166,6 +168,17 @@ plugins:
           Entwickler: Developer
           Archiv: Archive
           Agentic AI & RAG: Agentic AI & RAG
+          Rating/Ranking Checklist: Rating/Ranking Checklist
+          Rating/Ranking Übersicht: Rating/Ranking Overview
+          API-Referenz: API Reference
+          Frontend-Komponenten: Frontend Components
+          Evaluation Datenformate: Evaluation Data Formats
+          WebSocket API: WebSocket API
+          Collaboration System: Collaboration System
+          Datenbank-Schema: Database Schema
+          Admin-Panel: Admin Panel
+          Code-Qualität: Code Quality
+          Production Deployment: Production Deployment
 
 extra_javascript:
   - https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.min.js

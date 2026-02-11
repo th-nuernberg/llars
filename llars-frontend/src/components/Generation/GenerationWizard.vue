@@ -240,8 +240,8 @@
               <span class="item-name">
                 {{ model.is_user_provider ? (model.label || model.model_id) : model.model_id }}
               </span>
-              <span v-if="model.cost_per_1k_tokens" class="item-detail">
-                ${{ model.cost_per_1k_tokens }}/1K tokens
+              <span v-if="model.input_cost_per_million != null || model.output_cost_per_million != null" class="item-detail">
+                ${{ model.input_cost_per_million || 0 }} in / ${{ model.output_cost_per_million || 0 }} out per 1M tokens
               </span>
             </div>
             <LIcon v-if="formData.llmModels.includes(model.id)" color="primary">mdi-check-circle</LIcon>
@@ -412,9 +412,24 @@
               {{ $t('generation.wizard.step5.costEstimate') }}
             </h4>
             <div class="cost-estimate">
-              <div class="cost-value">${{ costEstimate.total_cost?.toFixed(4) || '0.00' }}</div>
+              <div class="cost-value">${{ costEstimate.estimated_cost_usd?.toFixed(4) || '0.00' }}</div>
               <div class="cost-breakdown">
-                <span>{{ costEstimate.estimated_tokens?.toLocaleString() || 0 }} Tokens</span>
+                <span>{{ costEstimate.total_outputs?.toLocaleString() || 0 }} Outputs</span>
+                <span class="cost-note">{{ costEstimate.note }}</span>
+              </div>
+              <!-- Per-Model Breakdown -->
+              <div v-if="costEstimate.cost_breakdown" class="cost-model-breakdown">
+                <div
+                  v-for="(breakdown, modelId) in costEstimate.cost_breakdown"
+                  :key="modelId"
+                  class="cost-model-item"
+                >
+                  <span class="cost-model-name">{{ modelId }}</span>
+                  <span class="cost-model-value">
+                    {{ breakdown.estimated_cost_usd != null ? `$${breakdown.estimated_cost_usd.toFixed(4)}` : '?' }}
+                  </span>
+                  <span class="cost-model-outputs">{{ breakdown.outputs }} Outputs</span>
+                </div>
               </div>
             </div>
           </div>
@@ -1194,6 +1209,55 @@ watch(() => formData.value.scenarioId, (newVal) => {
   font-size: 0.85rem;
   color: rgba(var(--v-theme-on-surface), 0.6);
   margin-top: 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.cost-note {
+  font-size: 0.75rem;
+  font-style: italic;
+  color: rgba(var(--v-theme-on-surface), 0.4);
+}
+
+.cost-model-breakdown {
+  margin-top: 12px;
+  width: 100%;
+  max-width: 400px;
+}
+
+.cost-model-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.06);
+  font-size: 0.8rem;
+}
+
+.cost-model-item:last-child {
+  border-bottom: none;
+}
+
+.cost-model-name {
+  flex: 1;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: rgba(var(--v-theme-on-surface), 0.8);
+}
+
+.cost-model-value {
+  font-family: monospace;
+  font-weight: 600;
+  color: var(--llars-secondary, #d1bc8a);
+}
+
+.cost-model-outputs {
+  font-size: 0.75rem;
+  color: rgba(var(--v-theme-on-surface), 0.5);
 }
 
 /* Actions */

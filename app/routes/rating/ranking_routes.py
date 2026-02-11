@@ -280,9 +280,7 @@ def get_current_ranking(thread_id):
     formatted_rankings = [
         {
             "type": feature_type,
-            "goodList": data["goodList"],
-            "averageList": data["averageList"],
-            "badList": data["badList"],
+            "details": data["details"],
             "neutralList": data["neutralList"]
         }
         for feature_type, data in rankings_data.items()

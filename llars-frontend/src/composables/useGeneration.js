@@ -466,7 +466,8 @@ export function useGeneration(options = {}) {
     // Job progress
     socket.on('generation:job:progress', (data) => {
       if (data.job_id === currentJob.value?.id) {
-        currentJob.value.total_cost_usd = data.cost_usd
+        if (!currentJob.value.cost) currentJob.value.cost = {}
+        currentJob.value.cost.total_cost_usd = data.cost_usd
         if (currentJob.value.progress) {
           currentJob.value.progress.total = data.total
           currentJob.value.progress.completed = data.completed

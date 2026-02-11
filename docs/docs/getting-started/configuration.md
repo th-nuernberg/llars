@@ -96,10 +96,10 @@ Standardmodelle werden aus der DB (`llm_models`) geladen und beim Start gesät (
 
 - Embeddings: Default aus `llm_models` (aktuell `llamaindex/vdr-2b-multi-v1`), Fallback `sentence-transformers/all-MiniLM-L6-v2`
 - Vector Store: ChromaDB
-- Chunk Size: 1000 Zeichen, Overlap: 200 Zeichen
+- Chunking: `app/rag_pipeline.py` nutzt 1500/300, `app/services/rag/embedding/collection_embedding_service.py` nutzt default 1000/200 (pro Collection konfigurierbar)
 - Speicherpfad: `/app/storage/vectorstore`
 
-Einstellungen: `app/rag_pipeline.py`
+Einstellungen: `app/rag_pipeline.py` und `app/services/rag/embedding/collection_embedding_service.py`
 
 ## Volumes
 
@@ -107,9 +107,13 @@ Einstellungen: `app/rag_pipeline.py`
 REMOVE_LLARS_VOLUMES=False   # True löscht Daten beim nächsten Start
 ```
 
+`REMOVE_LLARS_VOLUMES=True` entfernt **alle** Volumes mit `llars_`‑Präfix, z. B.:
+
 - `llars_llarsdb` – MariaDB-Daten
-- `llars_model_volume` – Modelle/Embeddings
-- `llars_authentikdb` – Authentik-PostgreSQL
+- `llars_rag_storage` / `llars_rag_docs` – RAG Daten
+- `llars_authentikdb` / `llars_authentik_media` – Authentik
+- `llars_matomo_data` / `llars_matomodb` – Analytics
+- `llars_redis_data` – Redis
 
 ## Development vs Production
 

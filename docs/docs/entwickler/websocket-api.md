@@ -1,10 +1,11 @@
 # WebSocket API
 
-Diese Seite dokumentiert alle Socket.IO WebSocket-Endpunkte und Events.
+Diese Seite dokumentiert die wichtigsten Socket.IO WebSocket-Endpunkte und Events.
 
 !!! info "Verbindung"
-    WebSocket-Verbindungen erfolgen über Socket.IO auf Port 55080
-    mit dem Pfad `/socket.io/`.
+    LLARS nutzt zwei Socket.IO-Endpunkte:
+    - Backend: `http://localhost:55080` mit Pfad `/socket.io/`
+    - Collaboration (YJS): `http://localhost:55080/collab` mit Pfad `/collab/socket.io/` (nginx → Port 8082)
 
 ---
 
@@ -52,10 +53,13 @@ LLARS verwendet verschiedene Namespaces für unterschiedliche Funktionen:
 | `/` | Default (Health Check) | ❌ |
 | `/chat` | Chat-Streaming | ✅ |
 | `/rag` | RAG-Dokument-Updates | ✅ |
-| `/collab` | LaTeX/Markdown Collaboration | ✅ |
+| `/collab` | LaTeX/Markdown Collaboration (separater Socket-Server) | ✅ |
 | `/judge` | LLM Evaluator Updates | ✅ |
 | `/admin` | Docker Monitor, DB Explorer | ✅ (Admin) |
 | `/oncoco` | OnCoCo Analyse | ✅ |
+
+**Hinweis:** Die Collaboration-WebSockets laufen über einen separaten Socket.IO-Server hinter `/collab`.
+Dadurch ist es ein eigener Endpoint mit eigenem Event-Set, nicht nur ein Namespace.
 
 ---
 

@@ -31,9 +31,10 @@ The Scenario Wizard is a multi-step assistant for creating evaluation scenarios 
 
 | Format | Description | Example |
 |--------|-------------|---------|
-| **CSV** | Comma-separated values | `data.csv` |
+| **CSV/TSV** | Comma- or tab-separated values | `data.csv` / `data.tsv` |
 | **JSON** | Array of objects | `[{...}, {...}]` |
-| **XLSX/XLS** | Excel files | `data.xlsx` |
+| **JSONL/NDJSON** | One object per line | `data.jsonl` |
+| **XLSX** | Excel file | `data.xlsx` |
 
 ### Data Formats
 
@@ -68,7 +69,8 @@ chat_id,llm_name,output,source
 ┌─────────────────────────────────────────────┐
 │  Drop files here or select                 │
 │                                             │
-│  Supported formats: JSON, CSV, Excel       │
+│  Supported formats: JSON, JSONL, CSV/TSV,  │
+│  XLSX                                      │
 └─────────────────────────────────────────────┘
 ```
 

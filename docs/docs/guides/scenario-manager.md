@@ -251,7 +251,7 @@ Verwalten Sie die Evaluatoren:
 #### LLM-Evaluation
 
 !!! tip "LLM-Modelle hinzufügen"
-    Klicken Sie im LLM-Bereich auf **"LLM hinzufügen"**, um KI-Evaluatoren hinzuzufügen.
+    LLM-Evaluatoren werden aktuell beim Erstellen des Szenarios im Wizard ausgewählt. Der Team-Tab zeigt sie an; Add/Remove im Team-Tab ist noch nicht vollständig umgesetzt.
 
 #### Einladungs-Status
 
@@ -265,7 +265,6 @@ Im Evaluation-Tab können Ergebnisse direkt exportiert werden:
 |--------|--------------|
 | **CSV** | Alle Bewertungen als Tabelle |
 | **JSON** | Strukturierte Daten |
-| **Excel** | Mit Formatierung |
 
 #### Evaluator-Filter
 
@@ -280,7 +279,7 @@ Toggle zwischen:
 
 Verwalten Sie die zu bewertenden Items:
 
-- Items hochladen (JSON, CSV, Excel)
+- Items hochladen (JSON, JSONL, CSV/TSV, XLSX)
 - Vorhandene Threads/Items ansehen
 - Threads/Items löschen
 

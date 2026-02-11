@@ -8,6 +8,10 @@
 
 **Integration:** KAIMo wird als **Kachel in LLARS** eingebaut - analog zu den bestehenden Features wie Mail-Rating, LLM-as-Judge, RAG-Pipeline etc.
 
+!!! success "Status (2026-02)"
+    Variante B (LLARS-Integration) ist umgesetzt. Admin- und User-Panel sind produktiv nutzbar.
+    Die folgenden Varianten-Abschnitte bleiben als historische Aufwandseinschaetzung erhalten.
+
 ---
 
 ## KAIMo Funktionsumfang (aktueller Prototyp)
@@ -152,54 +156,61 @@ Wie Fall 2, aber zusatzlich werden die KI-Texte (Hinweiszusammenfassung, Folgena
 
 ---
 
-## LLARS-Architektur fur KAIMo
+## LLARS-Architektur fur KAIMo (Stand 2026-02)
 
-### Geplante Einbindung
+### Aktuelle Einbindung
 
 ```
 LLARS Home Dashboard
-├── Mail-Rating (bestehend)
-├── Ranking (bestehend)
-├── LLM-as-Judge (bestehend)
-├── RAG-Pipeline (bestehend)
-└── KAIMo (neu)           ◄── Neue Kachel
-    ├── /kaimo            - Fallubersicht
-    ├── /kaimo/:id        - Fallbearbeitung
-    └── /kaimo/admin      - Fallverwaltung (Admin)
+└── KAIMo
+    ├── /kaimo            - Hub / Einstieg
+    ├── /kaimo/panel      - Fallubersicht
+    ├── /kaimo/new        - Neuer Fall (Admin)
+    ├── /kaimo/edit/:id   - Fall bearbeiten (Admin)
+    └── /kaimo/:id        - Fallbearbeitung (Evaluator)
 ```
 
-### Technische Integration
+### Technische Integration (aktuell)
 
 **Backend (Flask):**
 ```
 app/routes/kaimo/
-├── kaimo_routes.py       # REST API
+├── kaimo_admin_routes.py     # Admin-API
+├── kaimo_user_routes.py      # User-API
 └── __init__.py
 
 app/services/kaimo/
-├── kaimo_service.py      # Business Logic
-└── kaimo_ai_service.py   # LLM-Integration (Fall 3)
+├── kaimo_case_service.py
+├── kaimo_document_service.py
+├── kaimo_hint_service.py
+├── kaimo_category_service.py
+└── kaimo_export_service.py
 ```
 
 **Frontend (Vue 3):**
 ```
-llars-frontend/src/components/KAIMo/
-├── KAIMoOverview.vue     # Startseite mit Fallen
-├── KAIMoCase.vue         # Fall-Ansicht
-├── KAIMoHints.vue        # Hinweiszuordnung
-├── KAIMoAssessment.vue   # Fallbeurteilung
-└── KAIMoAdmin.vue        # Fall-Editor (Admin)
+llars-frontend/src/components/Kaimo/
+├── KaimoHub.vue
+├── KaimoPanel.vue
+├── KaimoNewCase.vue
+├── KaimoCaseEditor.vue
+├── KaimoCase.vue
+├── KaimoAssessmentView.vue
+└── KaimoDocumentsView.vue
 ```
 
 **Datenbank (MariaDB):**
 ```sql
--- Neue Tabellen
-kaimo_cases              -- Fallvignetten
-kaimo_documents          -- Aktenvermerke
-kaimo_hints              -- Extrahierte Hinweise
-kaimo_categories         -- Bewertungskategorien
-kaimo_user_assessments   -- User-Bewertungen
-kaimo_ai_content         -- KI-generierte Texte
+kaimo_cases
+kaimo_documents
+kaimo_hints
+kaimo_categories
+kaimo_subcategories
+kaimo_case_categories
+kaimo_user_assessments
+kaimo_hint_assignments
+kaimo_case_shares
+kaimo_ai_content
 ```
 
 **Permissions:**
@@ -207,6 +218,7 @@ kaimo_ai_content         -- KI-generierte Texte
 feature:kaimo:view       -- Fall ansehen
 feature:kaimo:edit       -- Bewertungen abgeben
 admin:kaimo:manage       -- Falle anlegen/bearbeiten
+admin:kaimo:results      -- Ergebnisse einsehen
 ```
 
 ---

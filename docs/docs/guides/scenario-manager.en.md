@@ -251,7 +251,7 @@ Manage evaluators:
 #### LLM Evaluation
 
 !!! tip "Add LLM models"
-    Click **"Add LLM"** in the LLM section to add AI evaluators.
+    LLM evaluators are currently selected during scenario creation in the Wizard. The Team tab shows them; add/remove in the Team tab is not fully implemented yet.
 
 #### Invitation Status
 
@@ -265,7 +265,6 @@ In the Evaluation tab, results can be exported directly:
 |--------|-------------|
 | **CSV** | All ratings as a table |
 | **JSON** | Structured data |
-| **Excel** | With formatting |
 
 #### Evaluator Filter
 
@@ -280,7 +279,7 @@ Toggle between:
 
 Manage items to be evaluated:
 
-- Upload items (JSON, CSV, Excel)
+- Upload items (JSON, JSONL, CSV/TSV, XLSX)
 - View existing threads/items
 - Delete threads/items
 

@@ -23,15 +23,17 @@ erDiagram
     RAGDocument ||--o{ RAGDocumentChunk : has
 
     RatingScenario ||--o{ ScenarioUser : has
-    RatingScenario ||--o{ ScenarioThread : contains
-    RatingScenario ||--o{ ScenarioThreadDistribution : distributes
+    RatingScenario ||--o{ ScenarioItem : contains
+    RatingScenario ||--o{ ScenarioItemDistribution : distributes
 
-    EmailThread ||--o{ ScenarioThread : in_scenario
-    EmailThread ||--o{ Feature : has
-    EmailThread ||--o{ Message : contains
+    EvaluationItem ||--o{ ScenarioItem : in_scenario
+    EvaluationItem ||--o{ Feature : has
+    EvaluationItem ||--o{ Message : contains
 
-    JudgeSession ||--o{ ComparisonEvaluation : generates
-    JudgeSession }o--|| JudgePillar : uses
+    JudgeSession ||--o{ JudgeComparison : has
+    JudgeComparison ||--o{ JudgeEvaluation : results
+    JudgeSession ||--o{ PillarStatistics : aggregates
+    EvaluationItem ||--o{ PillarThread : assigned
 
     LatexWorkspace ||--o{ LatexDocument : contains
     LatexWorkspace ||--o{ WorkspaceUser : has_access
@@ -171,6 +173,9 @@ N:M Beziehung zwischen Collections und Dokumenten.
 
 ## Rating & Ranking
 
+**Hinweis:** Legacy-Bezeichnungen wie `EmailThread` und `ScenarioThreads` existieren in der Codebasis als Aliases.
+In der Datenbank sind die aktuellen Tabellen `evaluation_items` und `scenario_items`.
+
 ### RatingScenario
 
 Bewertungs-Szenarien.
@@ -178,13 +183,14 @@ Bewertungs-Szenarien.
 | Spalte | Typ | Beschreibung |
 |--------|-----|--------------|
 | `id` | INT | Primary Key |
-| `name` | VARCHAR(255) | Szenario-Name |
-| `description` | TEXT | Beschreibung |
+| `scenario_name` | VARCHAR(255) | Szenario-Name |
+| `function_type_id` | INT | 1=ranking, 2=rating, 3=mail_rating, 4=comparison, 5=authenticity, 7=labeling |
 | `begin` | DATETIME | Startdatum |
 | `end` | DATETIME | Enddatum |
-| `function_type_id` | INT | 1=ranking, 2=rating, 3=mail_rating, 4=comparison, 5=authenticity, 7=labeling |
-| `distribution_mode` | ENUM | all, round_robin |
-| `order_mode` | ENUM | none, shuffle_same, shuffle_per_user |
+| `timestamp` | DATETIME | Erstellzeitpunkt |
+| `created_by` | VARCHAR(255) | Ersteller (Username aus Authentik) |
+| `llm1_model` | VARCHAR(255) | Vergleichsmodell A (optional) |
+| `llm2_model` | VARCHAR(255) | Vergleichsmodell B (optional) |
 | `config_json` | JSON | Erweiterte Konfiguration |
 
 ### ScenarioUser
@@ -196,79 +202,136 @@ Benutzer-Zuordnung zu Szenarien.
 | `id` | INT | Primary Key |
 | `scenario_id` | INT | FK → RatingScenario |
 | `user_id` | INT | FK → User |
-| `role` | ENUM | EVALUATOR, RATER |
+| `role` | ENUM | OWNER, EVALUATOR, VIEWER |
+| `invitation_status` | ENUM | accepted, rejected, pending |
+| `invited_at` | DATETIME | Einladung versendet |
+| `responded_at` | DATETIME | Antwortzeitpunkt |
+| `invited_by` | VARCHAR(255) | Einladender (Username) |
+| `membership_status` | ENUM | active, archived |
 
-### EmailThread
+### ScenarioItems (früher ScenarioThreads)
 
-E-Mail-Konversationen zur Bewertung.
+Verknüpft EvaluationItems mit Szenarien.
 
 | Spalte | Typ | Beschreibung |
 |--------|-----|--------------|
 | `id` | INT | Primary Key |
-| `subject` | VARCHAR(500) | Betreff |
+| `scenario_id` | INT | FK → RatingScenario |
+| `item_id` | INT | FK → EvaluationItem |
+
+### ScenarioItemDistribution (früher ScenarioThreadDistribution)
+
+Verteilt Items auf Szenario-Benutzer.
+
+| Spalte | Typ | Beschreibung |
+|--------|-----|--------------|
+| `id` | INT | Primary Key |
+| `scenario_id` | INT | FK → RatingScenario |
+| `scenario_user_id` | INT | FK → ScenarioUser |
+| `scenario_item_id` | INT | FK → ScenarioItems |
+
+### EvaluationItem (früher EmailThread)
+
+Generisches Bewertungselement (Text, Konversation, etc.).
+
+| Spalte | Typ | Beschreibung |
+|--------|-----|--------------|
+| `item_id` | INT | Primary Key |
+| `chat_id` | INT | Chat/Thread ID |
+| `institut_id` | INT | Institut/Quelle |
+| `subject` | TEXT | Betreff oder Kurzbeschreibung |
+| `sender` | TEXT | Absender/Quelle |
 | `function_type_id` | INT | 1=ranking, 2=rating, 3=mail_rating, 4=comparison, 5=authenticity, 7=labeling |
-| `created_at` | DATETIME | Erstellzeitpunkt |
+| `ground_truth_label` | TEXT | Optionales Ground Truth Label |
 
 ### Feature
 
-LLM-generierte Features für E-Mails.
+LLM-generierte Features für EvaluationItems.
 
 | Spalte | Typ | Beschreibung |
 |--------|-----|--------------|
-| `id` | INT | Primary Key |
-| `thread_id` | INT | FK → EmailThread |
+| `feature_id` | INT | Primary Key |
+| `item_id` | INT | FK → EvaluationItem |
 | `type_id` | INT | FK → FeatureType |
-| `llm_id` | INT | FK → LLMModel |
+| `llm_id` | INT | FK → LLM |
 | `content` | TEXT | Feature-Inhalt |
-| `created_at` | DATETIME | Erstellzeitpunkt |
 
 ---
 
-## LLM Evaluator
+## LLM Evaluator (LLM-as-Judge)
 
 ### JudgeSession
 
-Automatisierte Vergleichs-Sessions.
+Orchestriert LLM‑Vergleichs-Sessions.
 
 | Spalte | Typ | Beschreibung |
 |--------|-----|--------------|
 | `id` | INT | Primary Key |
+| `user_id` | VARCHAR(255) | Besitzer (User-ID) |
 | `name` | VARCHAR(255) | Session-Name |
-| `status` | ENUM | created, running, paused, completed |
-| `sampling_strategy` | VARCHAR(50) | random, stratified, all |
-| `sample_size` | INT | Anzahl Vergleiche |
-| `completed_count` | INT | Abgeschlossene Vergleiche |
-| `created_by` | INT | FK → User |
+| `config_json` | JSON | Session-Konfiguration |
+| `status` | ENUM | created, queued, running, paused, completed, failed |
+| `total_comparisons` | INT | Anzahl Vergleiche |
+| `completed_comparisons` | INT | Abgeschlossen |
 | `created_at` | DATETIME | Erstellzeitpunkt |
 
-### JudgePillar
+### JudgeComparison
 
-Bewertungskriterien.
-
-| Spalte | Typ | Beschreibung |
-|--------|-----|--------------|
-| `id` | INT | Primary Key |
-| `name` | VARCHAR(100) | Kriterium-Name |
-| `description` | TEXT | Beschreibung |
-| `weight` | FLOAT | Gewichtung |
-| `prompt_template` | TEXT | Prompt für LLM-Judge |
-
-### ComparisonEvaluation
-
-Einzelne Vergleichsergebnisse.
+Paarweiser Vergleich zweier Items innerhalb einer Session.
 
 | Spalte | Typ | Beschreibung |
 |--------|-----|--------------|
 | `id` | INT | Primary Key |
 | `session_id` | INT | FK → JudgeSession |
-| `pillar_id` | INT | FK → JudgePillar |
-| `thread_id` | INT | FK → EmailThread |
-| `feature_a_id` | INT | FK → Feature |
-| `feature_b_id` | INT | FK → Feature |
-| `winner` | ENUM | A, B, TIE |
-| `confidence` | FLOAT | Konfidenz (0-1) |
-| `reasoning` | TEXT | LLM-Begründung |
+| `item_a_id` | INT | FK → EvaluationItem |
+| `item_b_id` | INT | FK → EvaluationItem |
+| `pillar_a` | INT | Pillar 1‑5 |
+| `pillar_b` | INT | Pillar 1‑5 |
+| `position_order` | INT | 1 oder 2 |
+| `status` | ENUM | pending, running, completed, failed |
 | `created_at` | DATETIME | Erstellzeitpunkt |
+
+### JudgeEvaluation
+
+LLM‑Ergebnis eines Vergleichs.
+
+| Spalte | Typ | Beschreibung |
+|--------|-----|--------------|
+| `id` | INT | Primary Key |
+| `comparison_id` | INT | FK → JudgeComparison |
+| `winner` | ENUM | A, B, TIE |
+| `evaluation_json` | JSON | Strukturierte Bewertung |
+| `reasoning` | TEXT | Begründung |
+| `confidence` | FLOAT | Konfidenz (0‑1) |
+| `created_at` | DATETIME | Erstellzeitpunkt |
+
+### PillarThread
+
+Zuordnung von Items zu Pillars.
+
+| Spalte | Typ | Beschreibung |
+|--------|-----|--------------|
+| `id` | INT | Primary Key |
+| `item_id` | INT | FK → EvaluationItem |
+| `pillar_number` | INT | 1‑5 |
+| `pillar_name` | VARCHAR(255) | Name |
+| `created_at` | DATETIME | Erstellzeitpunkt |
+
+### PillarStatistics
+
+Aggregierte Statistik pro Pillar‑Paar.
+
+| Spalte | Typ | Beschreibung |
+|--------|-----|--------------|
+| `id` | INT | Primary Key |
+| `session_id` | INT | FK → JudgeSession |
+| `pillar_a` | INT | 1‑5 |
+| `pillar_b` | INT | 1‑5 |
+| `wins_a` | INT | Anzahl Wins A |
+| `wins_b` | INT | Anzahl Wins B |
+| `ties` | INT | Anzahl Ties |
+| `avg_confidence` | FLOAT | Ø Konfidenz |
+| `updated_at` | DATETIME | Letztes Update |
 
 ---
 

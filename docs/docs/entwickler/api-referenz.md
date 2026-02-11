@@ -1,6 +1,7 @@
 # API-Referenz
 
-Diese Seite dokumentiert alle REST-API-Endpunkte des LLARS-Backends.
+Diese Seite dokumentiert ausgewählte REST-API-Endpunkte des LLARS-Backends.
+Die vollständige Liste findest du in `app/routes/` sowie `app/routes/registry.py`.
 
 !!! info "Base URL"
     Alle Endpunkte sind relativ zur Base URL: `http://localhost:55080/api`

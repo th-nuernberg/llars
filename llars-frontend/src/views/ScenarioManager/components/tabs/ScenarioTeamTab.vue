@@ -46,6 +46,10 @@
               <LTag :variant="getRoleVariant(member.role)" size="sm">
                 {{ $t(`scenarioManager.team.roles.${member.role?.toLowerCase() || 'evaluator'}`) }}
               </LTag>
+              <!-- Owner indicator -->
+              <LTag v-if="isOwner(member)" variant="primary" size="sm">
+                {{ $t('scenarioManager.team.roles.owner') }}
+              </LTag>
               <!-- Invitation Status Badge -->
               <LTag
                 v-if="member.invitation_status && member.invitation_status !== 'accepted' && member.role !== 'OWNER'"
@@ -449,6 +453,10 @@ const llmEvaluators = computed(() => {
 })
 
 // Methods
+function isOwner(member) {
+  return member.username === props.scenario?.created_by
+}
+
 function getRoleVariant(role) {
   const map = {
     'OWNER': 'primary',

@@ -50,7 +50,7 @@
       </div>
       <div class="progress-cards">
         <!-- Human Evaluators Progress -->
-        <div class="progress-card">
+        <div class="progress-card" v-if="hasHumans">
           <div class="progress-header">
             <LIcon color="primary">mdi-account-multiple-outline</LIcon>
             <span>{{ $t('scenarioManager.overview.humanEvaluators') }}</span>
@@ -68,7 +68,7 @@
         </div>
 
         <!-- LLM Evaluators Progress -->
-        <div class="progress-card" v-if="scenario?.llm_evaluator_count > 0 || llmTotal > 0">
+        <div class="progress-card" v-if="hasLLMs">
           <div class="progress-header">
             <LIcon color="accent">mdi-robot-outline</LIcon>
             <span>{{ $t('scenarioManager.overview.llmEvaluators') }}</span>
@@ -241,6 +241,9 @@ const typeConfig = {
   4: { name: 'comparison' },
   5: { name: 'authenticity' }
 }
+
+const hasHumans = computed(() => props.liveStats?.hasHumans !== false)
+const hasLLMs = computed(() => props.liveStats?.hasLLMs === true)
 
 const typeName = computed(() => {
   const key = typeConfig[props.scenario?.function_type_id]?.name || 'unknown'

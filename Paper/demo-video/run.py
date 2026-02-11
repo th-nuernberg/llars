@@ -300,6 +300,9 @@ ELEMENT_MAP = {
     "Cost Estimate": ".cost-estimate, .cost-value, .review-section:contains('Cost')",
     "Review Summary": ".review-summary",
     "Matrix Value": ".matrix-value",
+    "Matrix Items Count": ".matrix-preview .matrix-item:nth-child(1)",
+    "Matrix Prompts Count": ".matrix-preview .matrix-item:nth-child(3)",
+    "Matrix Models Count": ".matrix-preview .matrix-item:nth-child(5)",
     "Matrix Total": ".matrix-item.total .matrix-value, .matrix-item.total",
 
     # Job Detail View

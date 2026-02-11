@@ -84,7 +84,7 @@
             <LTag variant="info" size="sm">{{ $t('scenarioManager.data.status.in_progress') }}</LTag>
             <span class="legend-desc">{{ $t('scenarioManager.data.legend.in_progress') }}</span>
           </div>
-          <div class="legend-item">
+          <div class="legend-item" v-if="hasHumans && hasLLMs">
             <LTag variant="accent" size="sm">{{ $t('scenarioManager.data.status.llm_done') }}</LTag>
             <span class="legend-desc">{{ $t('scenarioManager.data.legend.llm_done') }}</span>
           </div>
@@ -115,7 +115,7 @@
 
         <template #item.status="{ item }">
           <LTag :variant="getStatusVariant(item.status)" size="sm">
-            {{ $t(`scenarioManager.data.status.${item.status || 'pending'}`) }}
+            {{ $t(`scenarioManager.data.status.${getDisplayStatus(item.status)}`) }}
           </LTag>
         </template>
 
@@ -321,6 +321,10 @@ const props = defineProps({
   scenario: {
     type: Object,
     default: null
+  },
+  liveStats: {
+    type: Object,
+    default: () => ({})
   }
 })
 
@@ -419,8 +423,19 @@ const filteredThreads = computed(() => {
   return result
 })
 
+// Evaluator type flags from liveStats
+const hasHumans = computed(() => props.liveStats?.hasHumans !== false)
+const hasLLMs = computed(() => props.liveStats?.hasLLMs === true)
+
 // Methods
+function getDisplayStatus(status) {
+  // When only LLMs exist, show llm_done as done
+  if (status === 'llm_done' && !hasHumans.value) return 'done'
+  return status || 'pending'
+}
+
 function getStatusVariant(status) {
+  const effectiveStatus = getDisplayStatus(status)
   const map = {
     pending: 'default',
     evaluated: 'success',
@@ -428,7 +443,7 @@ function getStatusVariant(status) {
     llm_done: 'accent',
     in_progress: 'info'
   }
-  return map[status] || 'default'
+  return map[effectiveStatus] || 'default'
 }
 
 async function viewThread(thread) {

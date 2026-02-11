@@ -109,6 +109,7 @@
       <ScenarioDataTab
         v-else-if="activeTab === 'data'"
         :scenario="scenario"
+        :live-stats="liveStats"
         @data-imported="refreshScenario"
       />
 
@@ -263,6 +264,8 @@ const {
   agreementMetrics: liveAgreementMetrics,
   connected: statsConnected,
   functionType: liveFunctionType,
+  hasHumans,
+  hasLLMs,
   refresh: refreshStats
 } = useScenarioStats(scenarioIdRef)
 
@@ -363,7 +366,9 @@ const liveStats = computed(() => ({
   pairwiseAgreement: stats.value?.pairwise_agreement || stats.value?.ranking_agreement,
   functionType: liveFunctionType.value,
   bucket_distribution: stats.value?.bucket_distribution,
-  ranking_agreement: stats.value?.ranking_agreement  // Deprecated, kept for backwards compatibility
+  ranking_agreement: stats.value?.ranking_agreement,  // Deprecated, kept for backwards compatibility
+  hasHumans: hasHumans.value,
+  hasLLMs: hasLLMs.value
 }))
 
 // Methods

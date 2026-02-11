@@ -137,7 +137,7 @@
     {
       "id": "prompt_eng_2",
       "speaker": "moderator",
-      "narration": "Let's create a new prompt. You can add collaborators here \u2014 and we'll add an IJCAI reviewer now.",
+      "narration": "Let's create a new prompt. I can add collaborators right away \u2014 so I'll invite an IJCAI reviewer to work on this with us.",
       "actions": [
         {
           "do": "wait",
@@ -158,9 +158,9 @@
       ]
     },
     {
-      "id": "prompt_eng_3",
-      "speaker": "moderator",
-      "narration": "I'll name it, add a collaborator, and create.",
+      "id": "prompt_eng_2b",
+      "speaker": "guest",
+      "narration": "So collaboration is built in from the start \u2014 you don't share a file later, the other person is part of the prompt from day one.",
       "actions": [
         {
           "do": "type",
@@ -181,7 +181,14 @@
         {
           "do": "click",
           "target": "ijcai_reviewer_2"
-        },
+        }
+      ]
+    },
+    {
+      "id": "prompt_eng_3",
+      "speaker": "moderator",
+      "narration": "Exactly. And they'll see changes in real time. Let me create this.",
+      "actions": [
         {
           "do": "click",
           "target": "Dialog Create Button"
@@ -189,26 +196,6 @@
         {
           "do": "wait",
           "seconds": 1.5
-        }
-      ]
-    },
-    {
-      "id": "prompt_eng_3b",
-      "speaker": "moderator",
-      "narration": "Now let's open it and structure the prompt.",
-      "actions": [
-        {
-          "do": "wait",
-          "seconds": 0.5
-        },
-        {
-          "do": "highlight",
-          "target": "News Summary Eval",
-          "duration": 1.5
-        },
-        {
-          "do": "click",
-          "target": "News Summary Eval"
         },
         {
           "do": "wait_for",
@@ -224,17 +211,8 @@
     {
       "id": "prompt_eng_4",
       "speaker": "moderator",
-      "narration": "Prompts are built from blocks. Instead of just System and User, we'll use a clearer structure: Role Definition, Task Explanation, and a combined Data Format Explanation.",
+      "narration": "Now, prompts in Lars are built from named blocks. I'll create three: Role Definition, Task Explanation, and Data Format.",
       "actions": [
-        {
-          "do": "wait",
-          "seconds": 0.5
-        },
-        {
-          "do": "wait_for",
-          "target": "Prompt Workspace",
-          "timeout": 10
-        },
         {
           "do": "click",
           "target": "New Block"
@@ -303,7 +281,7 @@
     {
       "id": "prompt_eng_4b",
       "speaker": "guest",
-      "narration": "So the blocks give structure \u2014 domain experts know where to put what, and developers can enforce a consistent format.",
+      "narration": "I like that \u2014 instead of one big text box, domain experts see exactly where their instructions go. That makes it much easier to iterate on specific parts.",
       "actions": [
         {
           "do": "highlight",
@@ -320,12 +298,8 @@
     {
       "id": "prompt_eng_5",
       "speaker": "moderator",
-      "narration": "Exactly. Now I'll fill each block: role definition, task explanation, and a data format explanation with input placeholders and output requirements.",
+      "narration": "Right. Let me fill these in now \u2014 a journalist role, the summarization task, and the data format with placeholders.",
       "actions": [
-        {
-          "do": "wait",
-          "seconds": 0.3
-        },
         {
           "do": "type",
           "target": ".editor-block:nth-child(1) .ql-editor",
@@ -347,14 +321,22 @@
       ]
     },
     {
-      "id": "prompt_eng_5a",
-      "speaker": "moderator",
-      "narration": "Now I define the variables with example values for testing.",
+      "id": "prompt_eng_5_react",
+      "speaker": "guest",
+      "narration": "Ah \u2014 those double curly braces, title and content \u2014 those are variables that get filled with actual data later?",
       "actions": [
         {
-          "do": "wait",
-          "seconds": 0.5
-        },
+          "do": "highlight",
+          "target": "Last Block Editor",
+          "duration": 1.5
+        }
+      ]
+    },
+    {
+      "id": "prompt_eng_5a",
+      "speaker": "moderator",
+      "narration": "Yes, exactly. I can define them here with example values for testing. Let me add a title and an article.",
+      "actions": [
         {
           "do": "click",
           "target": "Manage Variables"
@@ -421,9 +403,20 @@
       ]
     },
     {
+      "id": "prompt_eng_5a_react",
+      "speaker": "guest",
+      "narration": "So during batch generation, the system plugs in the real articles automatically. And these test values let you try it right now.",
+      "actions": [
+        {
+          "do": "wait",
+          "seconds": 0.3
+        }
+      ]
+    },
+    {
       "id": "prompt_eng_5b",
       "speaker": "moderator",
-      "narration": "Now let's test it. I click Test \u2014 and the variables we just defined are automatically inserted.",
+      "narration": "Exactly. Let me hit Test \u2014 the variables get inserted and the LLM generates a response right here.",
       "actions": [
         {
           "do": "click",
@@ -447,8 +440,8 @@
     },
     {
       "id": "prompt_eng_5c",
-      "speaker": "moderator",
-      "narration": "And here's the output. See, David \u2014 we can immediately check how this LLM interprets our prompt. If the summary is too long or misses the point, we tweak the instructions and test again with the same data.",
+      "speaker": "guest",
+      "narration": "That's really convenient. You can see the rendered prompt with the actual data and immediately check the output quality.",
       "actions": [
         {
           "do": "wait",
@@ -463,8 +456,8 @@
     },
     {
       "id": "prompt_eng_5d",
-      "speaker": "guest",
-      "narration": "That's a short feedback loop \u2014 edit, test, repeat. No need to switch tools or re-upload data every time.",
+      "speaker": "moderator",
+      "narration": "And if the summary is too long or misses the point, I just tweak the instructions and test again. No context switching, no re-uploading data.",
       "actions": [
         {
           "do": "highlight",
@@ -484,7 +477,7 @@
     {
       "id": "prompt_eng_6",
       "speaker": "guest",
-      "narration": "And can multiple people edit the same prompt at the same time?",
+      "narration": "Nice feedback loop. And can multiple people edit the same prompt at the same time?",
       "actions": [
         {
           "do": "wait",
@@ -734,8 +727,8 @@
     {
       "_section": "=== BATCH GENERATION (90s) ===",
       "id": "batch_gen_1",
-      "speaker": "moderator",
-      "narration": "Once the prompt is ready, we move to Batch Generation. Let's create a new job from our data.",
+      "speaker": "guest",
+      "narration": "So we have two prompts now. What's the next step \u2014 how do we actually run them against data?",
       "actions": [
         {
           "do": "goto",
@@ -749,18 +742,18 @@
           "do": "highlight",
           "target": "Batch Generation",
           "duration": 1.5
-        },
-        {
-          "do": "click",
-          "target": "Batch Generation"
         }
       ]
     },
     {
       "id": "batch_gen_2",
       "speaker": "moderator",
-      "narration": "We start a new generation job.",
+      "narration": "That's where Batch Generation comes in. We create a job that runs our prompts against a dataset with multiple models at once.",
       "actions": [
+        {
+          "do": "click",
+          "target": "Batch Generation"
+        },
         {
           "do": "wait",
           "seconds": 1
@@ -784,7 +777,7 @@
     {
       "id": "batch_gen_3",
       "speaker": "moderator",
-      "narration": "Lars accepts JSON upload or a paste. I'll paste the JSON and scroll the raw data.",
+      "narration": "First, the data. I'll paste ten news articles as JSON \u2014 Lars also supports file upload and CSV.",
       "actions": [
         {
           "do": "highlight",
@@ -840,8 +833,8 @@
     },
     {
       "id": "batch_gen_4",
-      "speaker": "moderator",
-      "narration": "Then we pick two prepared prompts for comparison.",
+      "speaker": "guest",
+      "narration": "And now we pick which prompts to use? I see both our prompts listed here.",
       "actions": [
         {
           "do": "wait",
@@ -883,7 +876,7 @@
     {
       "id": "batch_gen_5",
       "speaker": "moderator",
-      "narration": "Now we choose two models from the list for comparison.",
+      "narration": "Exactly \u2014 both selected. Next we pick models. I'll take Mistral and Magistral so we can compare two architectures side by side.",
       "actions": [
         {
           "do": "wait",
@@ -925,7 +918,7 @@
     {
       "id": "batch_gen_6",
       "speaker": "moderator",
-      "narration": "Give the job a name and review the configuration.",
+      "narration": "I'll name this job and we can review the full configuration.",
       "actions": [
         {
           "do": "clear",
@@ -945,8 +938,8 @@
     },
     {
       "id": "batch_gen_7",
-      "speaker": "moderator",
-      "narration": "The generation matrix shows the plan: ten articles times two prompts times two models \u2014 forty outputs. And notice the cost estimate up top \u2014 Lars calculates expected token usage and cost before you run anything.",
+      "speaker": "guest",
+      "narration": "Oh nice, a generation matrix. So that's ten items\u2026",
       "actions": [
         {
           "do": "wait_for",
@@ -955,13 +948,35 @@
         },
         {
           "do": "highlight",
-          "target": "Matrix Preview",
+          "target": "Matrix Items Count",
           "duration": 1.2
+        }
+      ]
+    },
+    {
+      "id": "batch_gen_7b",
+      "speaker": "moderator",
+      "narration": "\u2026times two prompts, times two models \u2014 forty outputs total. And notice the cost estimate \u2014 Lars calculates expected tokens and cost before you run anything.",
+      "actions": [
+        {
+          "do": "highlight",
+          "target": "Matrix Prompts Count",
+          "duration": 1.0
+        },
+        {
+          "do": "highlight",
+          "target": "Matrix Models Count",
+          "duration": 1.0
         },
         {
           "do": "highlight",
           "target": "Matrix Total",
           "duration": 1.2
+        },
+        {
+          "do": "highlight",
+          "target": "Cost Estimate",
+          "duration": 1.0
         },
         {
           "do": "click",
@@ -976,7 +991,7 @@
     {
       "id": "batch_gen_8",
       "speaker": "moderator",
-      "narration": "While that runs, I'll open a completed batch to preview the details.",
+      "narration": "While that job runs in the background, let me open a completed batch so we can look at the actual outputs.",
       "actions": [
         {
           "do": "goto",
@@ -1008,8 +1023,8 @@
     },
     {
       "id": "batch_gen_output_1",
-      "speaker": "moderator",
-      "narration": "Let's open one output. You can see the prompt blocks on the left, and the generated result on the right, plus model, tokens, and cost.",
+      "speaker": "guest",
+      "narration": "Can we look inside one of these outputs?",
       "actions": [
         {
           "do": "highlight",
@@ -1024,7 +1039,14 @@
           "do": "wait_for",
           "target": "Output Detail Dialog",
           "timeout": 10
-        },
+        }
+      ]
+    },
+    {
+      "id": "batch_gen_output_2",
+      "speaker": "moderator",
+      "narration": "Sure. Here's the full trace \u2014 the rendered prompt on the left, the model's output on the right, plus metadata like model name, tokens, and cost.",
+      "actions": [
         {
           "do": "highlight",
           "target": "Output Detail Meta",
@@ -1058,7 +1080,7 @@
     {
       "id": "batch_gen_9",
       "speaker": "guest",
-      "narration": "So the provenance is tracked. You always know which prompt and model produced each output.",
+      "narration": "So the provenance is fully tracked \u2014 you always know which prompt and model produced which output. That's important for reproducibility.",
       "actions": [
         {
           "do": "wait",
@@ -1069,12 +1091,8 @@
     {
       "id": "batch_gen_10",
       "speaker": "moderator",
-      "narration": "Exactly. And you can set budget limits \u2014 the job pauses automatically if costs exceed your threshold. Useful when you're running large-scale comparisons.",
+      "narration": "Right. And you can set budget limits \u2014 the job pauses automatically if costs exceed your threshold.",
       "actions": [
-        {
-          "do": "sync",
-          "after": "combinations"
-        },
         {
           "do": "wait",
           "seconds": 0.6
@@ -1084,7 +1102,7 @@
     {
       "id": "batch_gen_11",
       "speaker": "guest",
-      "narration": "How do you decide which model did better?",
+      "narration": "OK, so we have forty outputs from two prompts and two models. How do you decide which combination actually did better?",
       "actions": [
         {
           "do": "wait",

@@ -111,6 +111,21 @@ export function useScenarioStats(scenarioIdRef) {
   })
 
   /**
+   * Whether there are any human evaluators
+   */
+  const hasHumans = computed(() => {
+    const human = [...raterStats.value, ...evaluatorStats.value.filter(e => !e.is_llm)]
+    return human.length > 0
+  })
+
+  /**
+   * Whether there are any LLM evaluators
+   */
+  const hasLLMs = computed(() => {
+    return evaluatorStats.value.some(e => e.is_llm)
+  })
+
+  /**
    * User stats formatted for display
    */
   const userStatsList = computed(() => {
@@ -562,6 +577,8 @@ export function useScenarioStats(scenarioIdRef) {
     humanProgress,
     llmProgress,
     userStatsList,
+    hasHumans,
+    hasLLMs,
 
     // State
     connected: readonly(connected),

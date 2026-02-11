@@ -29,6 +29,8 @@ import sys
 import hashlib
 import random
 import re
+import urllib.request
+import urllib.error
 from pathlib import Path
 from dataclasses import dataclass
 from typing import Optional, List, Dict, Any
@@ -1063,15 +1065,13 @@ class Browser:
         """
         Cleanup demo data before recording.
 
+        - Production: Calls /api/demo-video/reset via SYSTEM_ADMIN_API_KEY
         - Local (localhost): Uses docker exec to reset DB directly
-        - Production: Skips - must run demo_video_manage.py on the server first
         """
         is_production = 'localhost' not in self.base_url and '127.0.0.1' not in self.base_url
 
         if is_production:
-            print("   ℹ️  Production-Modus erkannt - DB-Cleanup wird übersprungen")
-            print("   ℹ️  Stelle sicher, dass auf dem Server 'demo_video_manage.py reset' gelaufen ist:")
-            print(f"      ssh server 'docker exec llars_flask_service python3 /app/scripts/demo_video_manage.py reset'")
+            self._cleanup_via_api()
             return
 
         print("   🧹 Räume alte Demo-Daten auf (lokaler Docker)...")
@@ -1186,6 +1186,47 @@ class Browser:
             print(f"   ⚠️ Docker nicht verfügbar (ignoriert)")
         except Exception as e:
             print(f"   ⚠️ Cleanup-Fehler (ignoriert): {str(e)[:50]}")
+
+    def _cleanup_via_api(self):
+        """Reset demo data on production via the admin API endpoint."""
+        env = _load_env_vars()
+        api_key = env.get('SYSTEM_ADMIN_API_KEY', '')
+        if not api_key:
+            print("   ⚠️ SYSTEM_ADMIN_API_KEY nicht in .env gefunden!")
+            print("   ℹ️  Manuell: ssh llars 'docker exec llars_flask_service python3 /app/scripts/demo_video_manage.py reset'")
+            return
+
+        api_url = f"{self.base_url}/api/demo-video/reset"
+        print(f"   🔄 Demo-Daten Reset via API: {api_url}")
+
+        try:
+            req = urllib.request.Request(
+                api_url,
+                method='POST',
+                headers={'X-API-Key': api_key, 'Content-Type': 'application/json'},
+                data=b'{}'
+            )
+            with urllib.request.urlopen(req, timeout=30) as resp:
+                result = json.loads(resp.read().decode())
+
+            if result.get('success'):
+                cleanup = result.get('cleanup', {})
+                seed = result.get('seed', {})
+                deleted = cleanup.get('deleted', [])
+                actions = seed.get('actions', [])
+                if deleted:
+                    for d in deleted:
+                        print(f"      🗑️ {d}")
+                for a in actions:
+                    print(f"      ✓ {a}")
+                print("   ✓ Demo-Daten erfolgreich zurückgesetzt")
+            else:
+                print(f"   ⚠️ API Reset fehlgeschlagen: {result}")
+        except urllib.error.HTTPError as e:
+            body = e.read().decode() if e.fp else ''
+            print(f"   ⚠️ API-Fehler {e.code}: {body[:200]}")
+        except Exception as e:
+            print(f"   ⚠️ API-Aufruf fehlgeschlagen: {e}")
 
     def _get_login_username(self) -> str:
         """Get the login username from SCRIPT.json config."""
@@ -1614,49 +1655,62 @@ class Browser:
         time.sleep(0.5)
 
     def click(self, target: str):
-        """Klickt auf Element"""
-        element = self._find_element(target)
-        if element:
-            # Scroll to element
-            self.driver.execute_script(
-                "arguments[0].scrollIntoView({behavior: 'smooth', block: 'center'})",
-                element
-            )
-            time.sleep(0.3)
-
-            # Highlight
-            self.driver.execute_script(
-                "arguments[0].classList.add('llars-highlight')",
-                element
-            )
-            time.sleep(0.2)
-
-            # Click
+        """Klickt auf Element mit Retry bei StaleElementReferenceException"""
+        for attempt in range(3):
+            element = self._find_element(target)
+            if not element:
+                if attempt == 0:
+                    return
+                time.sleep(0.5)
+                continue
             try:
-                element.click()
+                # Scroll to element
+                self.driver.execute_script(
+                    "arguments[0].scrollIntoView({behavior: 'smooth', block: 'center'})",
+                    element
+                )
+                time.sleep(0.3)
+
+                # Highlight
+                self.driver.execute_script(
+                    "arguments[0].classList.add('llars-highlight')",
+                    element
+                )
+                time.sleep(0.2)
+
+                # Click
+                try:
+                    element.click()
+                except Exception:
+                    self.driver.execute_script("arguments[0].click()", element)
+
+                time.sleep(0.2)
+
+                # Remove highlight
+                try:
+                    self.driver.execute_script(
+                        "arguments[0].classList.remove('llars-highlight')",
+                        element
+                    )
+                except Exception:
+                    pass
+
+                print(f"   🖱️ Click: {target}")
+                return
             except StaleElementReferenceException:
-                # Re-find and retry once if DOM changed
+                print(f"   ↻ Stale element, retry {attempt + 1}/3: {target}")
+                time.sleep(0.5)
+                continue
+            except Exception as e:
+                # Last resort: JS click on re-found element
                 element = self._find_element(target)
                 if element:
                     try:
-                        element.click()
-                    except Exception:
                         self.driver.execute_script("arguments[0].click()", element)
-            except Exception:
-                self.driver.execute_script("arguments[0].click()", element)
-
-            time.sleep(0.2)
-
-            # Remove highlight
-            try:
-                self.driver.execute_script(
-                    "arguments[0].classList.remove('llars-highlight')",
-                    element
-                )
-            except Exception:
-                pass
-
-            print(f"   🖱️ Click: {target}")
+                        print(f"   🖱️ Click (JS fallback): {target}")
+                    except Exception:
+                        print(f"   ⚠️ Click fehlgeschlagen: {target} ({e})")
+                return
 
     def type(self, target: str, text: str, speed: str = "fast"):
         """Tippt Text in Element (inkl. contenteditable für Quill Editor)"""
@@ -1918,18 +1972,138 @@ class Browser:
         # Sprache für Collab-User auf Englisch setzen
         self._set_language_for_driver(self.collab_driver, "en")
 
-        # Login mit Dev Quick Login Button
+        # Login - try dev button first, then form/Authentik login
+        self._collab_login(username, password)
+
+    def _collab_login(self, username: str, password: str):
+        """Login for the collab browser. Handles dev buttons, form login, and Authentik."""
+        driver = self.collab_driver
+
+        # Method 1: Dev Quick Login Button (development only)
         try:
             dev_btn_selector = f"[data-testid='dev-login-btn-{username}']"
-            dev_btn = self.collab_driver.find_element(By.CSS_SELECTOR, dev_btn_selector)
+            dev_btn = driver.find_element(By.CSS_SELECTOR, dev_btn_selector)
             if dev_btn and dev_btn.is_displayed():
-                self.collab_driver.execute_script("arguments[0].click()", dev_btn)
-                print(f"   ✓ Collab-User '{username}' eingeloggt")
+                driver.execute_script("arguments[0].click()", dev_btn)
+                print(f"   ✓ Collab-User '{username}' via Dev-Button eingeloggt")
                 time.sleep(2)
-            else:
-                print(f"   ⚠️ Dev-Login-Button für '{username}' nicht gefunden")
+                return
+        except Exception:
+            pass
+
+        # Detect page state
+        current_url = driver.current_url.lower()
+        is_authentik = 'authentik' in current_url or '/auth/' in current_url
+
+        if is_authentik:
+            self._collab_authentik_login(driver, username, password)
+        else:
+            # Method 2: LLARS form login (clicks through to Authentik on production)
+            self._collab_form_login(driver, username, password)
+
+        # Verify login succeeded
+        for attempt in range(8):
+            time.sleep(1)
+            url = driver.current_url.lower()
+            if '/home' in url or '/promptengineering' in url or '/generation' in url:
+                print(f"   ✓ Collab-User '{username}' eingeloggt")
+                return
+            elif 'authentik' in url or '/auth/' in url:
+                # Landed on Authentik - do 2-step login
+                self._collab_authentik_login(driver, username, password)
+            elif '/login' in url:
+                # Still on LLARS login - try form
+                self._collab_form_login(driver, username, password)
+        print(f"   ⚠️ Collab-Login Status unklar (URL: {driver.current_url})")
+
+    def _collab_form_login(self, driver, username: str, password: str):
+        """Form-based login on LLARS login page for collab browser."""
+        print(f"   🔐 Collab Formular-Login als: {username}")
+        try:
+            WebDriverWait(driver, 5).until(
+                EC.presence_of_element_located((By.CSS_SELECTOR,
+                    ".login-form, [data-testid='login-form'], .login-card"))
+            )
+            time.sleep(0.5)
+
+            # Enter username
+            for sel in ["[data-testid='username-input'] input",
+                        ".login-form input[name='username']",
+                        ".login-form .v-text-field:first-of-type input",
+                        "input#username"]:
+                try:
+                    field = driver.find_element(By.CSS_SELECTOR, sel)
+                    if field and field.is_displayed():
+                        field.clear()
+                        field.send_keys(username)
+                        break
+                except Exception:
+                    continue
+
+            time.sleep(0.3)
+
+            # Enter password
+            for sel in ["[data-testid='password-input'] input",
+                        ".login-form input[name='password']",
+                        ".login-form input[type='password']",
+                        "input#password"]:
+                try:
+                    field = driver.find_element(By.CSS_SELECTOR, sel)
+                    if field and field.is_displayed():
+                        field.clear()
+                        field.send_keys(password)
+                        break
+                except Exception:
+                    continue
+
+            time.sleep(0.3)
+
+            # Click login button
+            for sel in ["[data-testid='login-btn']", ".login-button",
+                        ".login-form button[type='submit']", ".login-form .l-btn"]:
+                try:
+                    btn = driver.find_element(By.CSS_SELECTOR, sel)
+                    if btn and btn.is_displayed():
+                        driver.execute_script("arguments[0].click()", btn)
+                        break
+                except Exception:
+                    continue
+
+            time.sleep(3)
         except Exception as e:
-            print(f"   ⚠️ Collab-Login fehlgeschlagen: {e}")
+            print(f"   ⚠️ Collab Formular-Login Fehler: {e}")
+
+    def _collab_authentik_login(self, driver, username: str, password: str):
+        """Authentik 2-step login for collab browser."""
+        print(f"   🔐 Collab Authentik-Login als: {username}")
+        try:
+            # Step 1: Username
+            username_field = WebDriverWait(driver, 10).until(
+                EC.presence_of_element_located((By.CSS_SELECTOR,
+                    "input[name='uidField'], input[name='username'], input[type='text']"))
+            )
+            username_field.clear()
+            username_field.send_keys(username)
+
+            submit_btn = driver.find_element(By.CSS_SELECTOR,
+                "button[type='submit'], .pf-c-button.pf-m-primary")
+            submit_btn.click()
+            time.sleep(2)
+
+            # Step 2: Password
+            password_field = WebDriverWait(driver, 10).until(
+                EC.presence_of_element_located((By.CSS_SELECTOR,
+                    "input[name='password'], input[type='password']"))
+            )
+            password_field.clear()
+            password_field.send_keys(password)
+
+            submit_btn = driver.find_element(By.CSS_SELECTOR,
+                "button[type='submit'], .pf-c-button.pf-m-primary")
+            submit_btn.click()
+            time.sleep(3)
+        except Exception as e:
+            print(f"   ⚠️ Collab Authentik-Login Fehler: {e}")
 
     def collab_goto(self, path: str):
         """Navigiert den Collab-Browser zu einer URL"""

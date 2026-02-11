@@ -304,10 +304,11 @@ def _build_preseed_prompt_content():
 
 
 def _build_eval_prompt_content():
+    """Content matches what is typed live in SCRIPT.json prompt_eng_5."""
     return {
         "blocks": {
             "Role Definition": {
-                "content": "Role definition: You are a senior journalist drafting a short news digest.",
+                "content": "Role definition: You are a professional news editor. Write concise, factual summaries.",
                 "position": 0
             },
             "Task Explanation": {

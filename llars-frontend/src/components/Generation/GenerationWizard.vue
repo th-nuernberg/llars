@@ -232,8 +232,8 @@
             v-for="model in availableModels"
             :key="model.id"
             class="selection-item"
-            :class="{ selected: formData.llmModels.includes(model.id) }"
-            @click="toggleModelSelection(model.id)"
+            :class="{ selected: formData.llmModels.includes(model.model_id) }"
+            @click="toggleModelSelection(model.model_id)"
           >
             <LIcon class="item-icon" size="20" color="accent">mdi-robot-outline</LIcon>
             <div class="item-info">
@@ -244,7 +244,7 @@
                 ${{ model.input_cost_per_million || 0 }} in / ${{ model.output_cost_per_million || 0 }} out per 1M tokens
               </span>
             </div>
-            <LIcon v-if="formData.llmModels.includes(model.id)" color="primary">mdi-check-circle</LIcon>
+            <LIcon v-if="formData.llmModels.includes(model.model_id)" color="primary">mdi-check-circle</LIcon>
           </div>
 
           <div v-if="availableModels.length === 0" class="empty-models">

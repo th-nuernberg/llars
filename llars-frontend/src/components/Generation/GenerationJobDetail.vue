@@ -185,7 +185,7 @@
             <h4>{{ $t('generation.detail.models') }}</h4>
             <div class="config-tags">
               <span
-                v-for="model in jobConfig?.llm_models || []"
+                v-for="model in resolvedModelNames"
                 :key="model"
                 class="legend-entry"
               >
@@ -666,6 +666,23 @@ const getPromptTagStyle = (promptName) => {
 const jobId = computed(() => Number(route.params.jobId))
 
 const jobConfig = computed(() => currentJob.value?.config || {})
+
+// Resolve model names from config (handles both string model_ids and legacy integer IDs)
+const resolvedModelNames = computed(() => {
+  const configModels = jobConfig.value?.llm_models || []
+  // If models are already strings, return as-is
+  if (configModels.length > 0 && typeof configModels[0] === 'string') {
+    return configModels
+  }
+  // For integer IDs, resolve from outputs' llm_model_name
+  const idToName = {}
+  for (const output of outputs.value) {
+    if (output?.llm_model_id && output?.llm_model_name) {
+      idToName[output.llm_model_id] = output.llm_model_name
+    }
+  }
+  return configModels.map(id => idToName[id] || `Model #${id}`)
+})
 
 const promptColorMap = computed(() => {
   const map = {}

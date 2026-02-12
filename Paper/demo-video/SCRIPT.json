@@ -38,20 +38,43 @@
   "_tts_naming": "TTS models say 'Lars' (without the leading L) because they mispronounce 'LLARS'. In all written text, overlays, and UI, the correct name is 'LLARS'.",
   "steps": [
     {
-      "_section": "=== INTRO (25s) — Login live on camera, then title card ===",
+      "_section": "=== INTRO (35s) — Warm welcome, introductions, login, title card, roadmap ===",
       "id": "intro_1",
       "speaker": "moderator",
-      "narration": "Welcome to the Lars demo — an LLM Assisted Research System. Let's log in and jump right in.",
+      "narration": "Hey everyone, I'm Alex — and welcome to this demo of Lars, the LLM Assisted Research System. I'm here with my colleague David, and together we'll walk you through the platform live.",
       "actions": [
         {
-          "do": "login"
+          "do": "show_title",
+          "title": "LLARS",
+          "subtitle": "LLM Assisted Research System"
+        },
+        {
+          "do": "wait",
+          "seconds": 2.0
         }
       ]
     },
     {
       "id": "intro_2",
       "speaker": "guest",
-      "narration": "Hi, I'm David. Lars helps teams compare LLM outputs against domain-specific criteria — something standard benchmarks don't capture.",
+      "narration": "Thanks, Alex. Hi everyone — I'm David. Most benchmarks give you a single score, but they miss what actually matters for your domain. Lars lets research teams define their own evaluation criteria and compare LLM outputs side by side. Let me log us in so we can show you.",
+      "actions": [
+        {
+          "do": "hide_title"
+        },
+        {
+          "do": "wait",
+          "seconds": 0.5
+        },
+        {
+          "do": "login"
+        }
+      ]
+    },
+    {
+      "id": "intro_3",
+      "speaker": "moderator",
+      "narration": "Great. So here's the plan for today: we'll build a prompt together, run it as a batch across multiple models, and then evaluate the results — all inside Lars.",
       "actions": [
         {
           "do": "show_title",
@@ -65,14 +88,14 @@
         },
         {
           "do": "wait",
-          "seconds": 1.5
+          "seconds": 2.0
         }
       ]
     },
     {
-      "id": "intro_3",
-      "speaker": "moderator",
-      "narration": "Today we'll build a prompt, run a batch across multiple models, and review the results — all inside Lars.",
+      "id": "intro_4",
+      "speaker": "guest",
+      "narration": "I've read the paper and I'm really curious to see this in action. The credentials are on screen if you want to follow along — let's dive in!",
       "actions": [
         {
           "do": "hide_title"
@@ -145,19 +168,24 @@
     {
       "id": "prompt_eng_2b",
       "speaker": "guest",
-      "narration": "So collaboration is built in from the start — you don't share a file later, the other person is part of the prompt from day one.",
+      "narration": "Oh interesting — so you're adding me as a collaborator right now? That means I'll see everything live as you build the prompt?",
       "actions": [
         {
           "do": "type",
           "target": "Prompt Name Input",
           "text": "News Summary Eval",
-          "speed": "fast"
+          "speed": "medium"
+        },
+        {
+          "do": "highlight",
+          "target": "input[placeholder='Search and add users...']",
+          "duration": 0.8
         },
         {
           "do": "type",
           "target": "input[placeholder='Search and add users...']",
           "text": "ijcai_reviewer_2",
-          "speed": "fast"
+          "speed": "medium"
         },
         {
           "do": "wait",
@@ -172,7 +200,7 @@
     {
       "id": "prompt_eng_3",
       "speaker": "moderator",
-      "narration": "Exactly. And they'll see changes in real time. Let me create this.",
+      "narration": "Exactly — every edit, every new block, you'll see it appear in real time. Let me create this and show you.",
       "actions": [
         {
           "do": "click",
@@ -474,7 +502,7 @@
       "_comment": "=== LIVE COLLAB DEMO (NEW PROMPT) ===",
       "id": "collab_1",
       "speaker": "moderator",
-      "narration": "Yes they can. I'm opening a second browser as another IJCAI reviewer.",
+      "narration": "Yes they can. I'm opening a second browser now and logging in as a second reviewer. I'll switch the interface to English — Lars is fully available in both German and English.",
       "actions": [
         {
           "do": "sync",
@@ -493,8 +521,8 @@
     },
     {
       "id": "collab_2",
-      "speaker": "moderator",
-      "narration": "They open the prompt we just created. Watch the editor.",
+      "speaker": "guest",
+      "narration": "So that's me on the right side — I can already see the prompt list. Let me open our News Summary Eval.",
       "actions": [
         {
           "do": "collab_goto",
@@ -568,14 +596,14 @@
       ]
     },
     {
-      "_section": "=== VERSION CONTROL (10s) ===",
+      "_section": "=== VERSION CONTROL (15s) ===",
       "id": "version_1",
       "speaker": "guest",
-      "narration": "I notice the sidebar has version control — is that tracking every edit?",
+      "narration": "Wait — is that version control in the sidebar? It's tracking our edits?",
       "actions": [
         {
           "do": "highlight",
-          "target": "Git Panel",
+          "target": "Version Control Panel",
           "duration": 1.2
         }
       ]
@@ -583,17 +611,24 @@
     {
       "id": "version_2",
       "speaker": "moderator",
-      "narration": "Yes — every change is tracked per block and per user. You can commit snapshots, see diffs, and roll back. And this button opens the full version history.",
+      "narration": "Exactly — every change is tracked per block and per user. You can commit snapshots, see diffs, and roll back. Let me open the full version history.",
       "actions": [
         {
           "do": "highlight",
-          "target": "Git Widget Status",
-          "duration": 1.2
+          "target": "Version Control Status",
+          "duration": 1.0
         },
         {
-          "do": "highlight",
-          "target": "Git Fullscreen Button",
-          "duration": 1.0
+          "do": "click",
+          "target": "Version Control Fullscreen",
+          "highlight_before": 1.0
+        },
+        {
+          "do": "wait",
+          "seconds": 1.5
+        },
+        {
+          "do": "close_file_dialog"
         }
       ]
     },
@@ -656,10 +691,10 @@
       ]
     },
     {
-      "_section": "=== BRING YOUR OWN MODELS (20s) ===",
+      "_section": "=== BRING YOUR OWN MODELS (30s) ===",
       "id": "providers_1",
       "speaker": "moderator",
-      "narration": "LLARS ships with built-in Mistral models, so we can skip provider setup. Providers are optional and managed here in Settings.",
+      "narration": "Lars ships with built-in Mistral models, but you can bring your own. Let me add OpenAI — we'll need it later for LLM-as-evaluator.",
       "actions": [
         {
           "do": "goto",
@@ -672,7 +707,7 @@
         {
           "do": "highlight",
           "target": "User Settings Providers Tab",
-          "duration": 1.0
+          "duration": 0.8
         },
         {
           "do": "click",
@@ -680,23 +715,65 @@
         },
         {
           "do": "wait",
-          "seconds": 0.2
+          "seconds": 0.3
+        },
+        {
+          "do": "click",
+          "target": "Add Provider",
+          "highlight_before": 0.8
+        },
+        {
+          "do": "wait_for_modal"
         }
       ]
     },
     {
       "id": "providers_2",
       "speaker": "guest",
-      "narration": "You could add external providers here — OpenAI, Anthropic, or any OpenAI-compatible endpoint. For this demo we'll use the built-in Mistral and Magistral models.",
+      "narration": "So each user can connect their own API keys? That's nice — no shared credentials.",
       "actions": [
         {
-          "do": "highlight",
-          "target": "Add Provider",
-          "duration": 1.0
+          "do": "click",
+          "target": "Provider Type Select"
         },
         {
           "do": "wait",
-          "seconds": 0.2
+          "seconds": 0.3
+        },
+        {
+          "do": "click",
+          "target": "Provider Type OpenAI"
+        },
+        {
+          "do": "wait",
+          "seconds": 0.3
+        },
+        {
+          "do": "type",
+          "target": "Provider Name Input",
+          "text": "OpenAI",
+          "speed": "medium"
+        },
+        {
+          "do": "type",
+          "target": "Provider API Key Input",
+          "text": "${OPENAI_API_KEY}",
+          "speed": "fast"
+        }
+      ]
+    },
+    {
+      "id": "providers_3",
+      "speaker": "moderator",
+      "narration": "Exactly — credentials stay with the user who added them. Let me save this.",
+      "actions": [
+        {
+          "do": "click",
+          "target": "Dialog Create Button"
+        },
+        {
+          "do": "wait",
+          "seconds": 1.0
         }
       ]
     },

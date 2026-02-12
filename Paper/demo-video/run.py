@@ -493,14 +493,59 @@ ELEMENT_MAP = {
     "Provider Type Options": ".v-overlay--active .v-list-item",
     "Provider Type OpenAI": ".v-overlay--active .v-list-item:contains('OpenAI'), .v-overlay--active .v-list-item:contains('openai')",
     "OpenAI Provider Card": ".provider-card:contains('OpenAI'), .provider-name:contains('OpenAI')",
-    # Documentation
-    "Docs Hero": ".docs-hero, .docs-page .hero-title",
-    "Docs Technical Section": ".docs-section.highlight",
-    "Docs MkDocs Link": ".mkdocs-link, .mkdocs-link-container",
-    "MkDocs Header": "header.md-header, .md-header",
-    "MkDocs Sidebar": ".md-sidebar, .md-nav, .md-nav__list",
-    "MkDocs Search": ".md-search__input, .md-search__button, .md-search",
-    "MkDocs Content": ".md-content, .md-content__inner",
+    # =============================================
+    # VERSION CONTROL (Git Panel in Prompt Engineering)
+    # =============================================
+
+    # Sidebar Git Widget (GitStatusWidget.vue in sidebar)
+    "Git Panel Section": ".sidebar-section:has(.git-widget-expanded), .sidebar-section:has(.git-widget-collapsed), .git-widget-expanded",
+    "Git Panel": ".git-widget-expanded, .git-panel-wrapper, .git-panel-expanded",
+    "Git Widget Header": ".git-widget-expanded .widget-header, .widget-header",
+    "Git Widget Status": ".git-widget-expanded .widget-status, .widget-status",
+    "Git Commit Section": ".widget-commit, .commit-section",
+    "Git Commit Input": ".widget-commit .commit-input input, .commit-input input, .git-panel-wrapper .commit-input input",
+    "Git Commit Button": ".widget-commit .l-btn, .widget-commit .l-btn:contains('Commit'), .commit-actions .l-btn",
+    "Git User Changes": ".widget-users .user-change-item, .user-change-item, .widget-users",
+    "Git Change Stats": ".git-widget-expanded .l-tag:contains('+'), .widget-status .l-tag",
+    # Floating Git Panel (PromptFloatingGitPanel.vue)
+    "Git Open Floating": ".sidebar-section .v-btn:has(.mdi-open-in-new), .widget-header .l-icon-btn",
+    "Git Fullscreen Button": ".widget-header .l-icon-btn:has(.mdi-open-in-new), .sidebar-section .v-btn:has(.mdi-open-in-new)",
+    "Git Floating Panel": ".git-panel-content, .l-floating-window",
+    "Git History Section": ".history-section, .history-list, .git-panel-content .history-list",
+    "Git History Item": ".history-item, .history-list .history-item:first-child",
+    "Git Commit Message": ".commit-message",
+    "Git Commit Indicator": ".commit-indicator",
+    "Git Block Item": ".block-item, .block-list .block-item:first-child",
+    "Git Rollback Button": ".block-item .v-btn:has(.mdi-undo)",
+    "Git Diff Viewer": ".diff-viewer, .commit-diff-content",
+
+    # =============================================
+    # AGREEMENT METRICS (ScenarioEvaluationTab.vue)
+    # =============================================
+
+    "Metrics Section": ".metrics-section, .metrics-grid",
+    "Metrics Grid": ".metrics-grid",
+    "Metric Item": ".metric-item",
+    "Metric Value": ".metric-value",
+    "Metric Label": ".metric-label",
+    "Cohen Kappa Metric": ".metrics-grid .metric-item:nth-child(1)",
+    "Krippendorff Alpha Metric": ".metrics-grid .metric-item:nth-child(2)",
+    "Fleiss Kappa Metric": ".metrics-grid .metric-item:nth-child(3)",
+    "Accuracy Metric": ".metrics-grid .metric-item:nth-child(4)",
+    "ICC Metric": ".metrics-grid .metric-item:nth-child(5)",
+    "Kendall W Metric": ".metrics-grid .metric-item:nth-child(6)",
+    "Agreement Heatmap": ".l-agreement-heatmap, .agreement-heatmap-section",
+    "Heatmap Cell": ".heatmap-cell",
+    "Heatmap Grid": ".heatmap-container",
+
+    # =============================================
+    # ITEM DISTRIBUTION (ScenarioWizard.vue Step 3)
+    # =============================================
+
+    "Distribution Settings": ".distribution-settings",
+    "Distribution Mode": ".distribution-settings .config-section:first-of-type, .distribution-settings .config-section:nth-of-type(1)",
+    "Order Mode": ".distribution-settings .config-section:nth-of-type(2)",
+    "LLM Evaluation Toggle": ".distribution-settings .config-section:nth-of-type(3)",
 }
 
 
@@ -721,11 +766,61 @@ class Recorder:
         self.window_bounds = window_bounds  # (x, y, width, height) für Crop
         Path(OUTPUT_DIR).mkdir(parents=True, exist_ok=True)
 
+    @staticmethod
+    def _find_screen_device() -> str:
+        """Find the correct avfoundation screen capture device index.
+
+        Device indices change when iPhones/iPads are connected.
+        We search for 'Capture screen 0' in the device list.
+        """
+        try:
+            result = subprocess.run(
+                ['ffmpeg', '-f', 'avfoundation', '-list_devices', 'true', '-i', ''],
+                capture_output=True, text=True, timeout=10
+            )
+            # Parse: [AVFoundation indev @ ...] [3] Capture screen 0
+            for line in result.stderr.split('\n'):
+                if 'Capture screen 0' in line:
+                    match = re.search(r'\[(\d+)\]', line)
+                    if match:
+                        idx = match.group(1)
+                        print(f"   🖥️ Screen capture device: [{idx}] Capture screen 0")
+                        return idx
+        except Exception:
+            pass
+        print("   ⚠️ Screen device not found, falling back to '3'")
+        return '3'
+
+    @staticmethod
+    def _probe_capture_resolution(device_idx: str) -> tuple:
+        """Probe actual ffmpeg avfoundation capture resolution.
+
+        On Retina Macs, capture resolution = 2x the "Looks like" logical resolution.
+        This may differ from the native panel resolution.
+        """
+        try:
+            result = subprocess.run(
+                ['ffmpeg', '-f', 'avfoundation', '-framerate', '1',
+                 '-i', f'{device_idx}:none', '-frames:v', '1', '-y', '/dev/null'],
+                capture_output=True, text=True, timeout=10
+            )
+            match = re.search(r'(\d{3,5})x(\d{3,5})', result.stderr)
+            if match:
+                w, h = int(match.group(1)), int(match.group(2))
+                print(f"   🖥️ Capture resolution: {w}x{h}")
+                return w, h
+        except Exception:
+            pass
+        return None, None
+
     def start(self):
         """Startet Aufnahme (ohne Audio)
 
-        Wenn window_bounds gesetzt ist, wird nur dieser Bereich aufgenommen.
-        Ansonsten wird der gesamte Bildschirm aufgenommen und auf Zielgröße skaliert.
+        Handles macOS Retina displays correctly:
+        1. Finds the correct screen capture device (not iPhone camera)
+        2. Probes actual capture resolution (e.g. 3600x2338 on scaled Retina)
+        3. Clamps crop to actual capture bounds (Chrome may extend off-screen)
+        4. Scales final output to 1920x1080
         """
         import platform
 
@@ -734,14 +829,41 @@ class Recorder:
         self.final_output = os.path.join(OUTPUT_DIR, self.output_file)
 
         if platform.system() == 'Darwin':
-            # macOS: avfoundation unterstützt kein direktes Fenster-Capture
-            # Lösung: Gesamten Bildschirm aufnehmen und dann croppen
+            # Find correct screen capture device
+            screen_device = self._find_screen_device()
 
             if self.window_bounds:
                 x, y, w, h = self.window_bounds
-                # Crop-Filter: crop=width:height:x:y, dann scale auf Zielgröße
-                video_filter = f"crop={w}:{h}:{x}:{y},scale={self.TARGET_WIDTH}:{self.TARGET_HEIGHT}"
-                print(f"   📐 Crop: {w}x{h} at ({x},{y})")
+
+                # Probe actual capture resolution
+                cap_w, cap_h = self._probe_capture_resolution(screen_device)
+                if cap_w and cap_h:
+                    # Calculate scale from capture vs logical screen
+                    # macOS always renders at 2x logical for Retina
+                    logical_screen_w = cap_w // 2
+                    logical_screen_h = cap_h // 2
+                    scale = 2  # Always 2x on Retina
+
+                    # Scale logical window bounds → physical
+                    px, py = x * scale, y * scale
+                    pw, ph = w * scale, h * scale
+
+                    # Clamp to actual capture bounds (Chrome may extend off-screen)
+                    pw = min(pw, cap_w - px)
+                    ph = min(ph, cap_h - py)
+
+                    # Ensure even dimensions (required by libx264)
+                    pw = pw - (pw % 2)
+                    ph = ph - (ph % 2)
+
+                    video_filter = f"crop={pw}:{ph}:{px}:{py},scale={self.TARGET_WIDTH}:{self.TARGET_HEIGHT}"
+                    print(f"   📐 Logical window: {w}x{h} at ({x},{y})")
+                    print(f"   📐 Logical screen: {logical_screen_w}x{logical_screen_h}")
+                    print(f"   📐 Physical crop:  {pw}x{ph} at ({px},{py}) [clamped to {cap_w}x{cap_h}]")
+                else:
+                    # Fallback: no crop, just scale
+                    video_filter = f"scale={self.TARGET_WIDTH}:{self.TARGET_HEIGHT}"
+                    print(f"   ⚠️ Could not probe capture resolution, using full screen")
             else:
                 video_filter = f"scale={self.TARGET_WIDTH}:{self.TARGET_HEIGHT}"
 
@@ -750,7 +872,7 @@ class Recorder:
                 '-f', 'avfoundation',
                 '-framerate', '30',
                 '-capture_cursor', '1',
-                '-i', '1:none',  # Screen capture (device 1)
+                '-i', f'{screen_device}:none',
                 '-vf', video_filter,
                 '-c:v', 'libx264',
                 '-preset', 'ultrafast',
@@ -788,14 +910,17 @@ class Recorder:
                     self.raw_video
                 ]
 
+        self.ffmpeg_log = os.path.join(OUTPUT_DIR, "ffmpeg.log")
+        self._ffmpeg_log_fh = open(self.ffmpeg_log, 'w')
         self.process = subprocess.Popen(
             cmd,
-            stdin=subprocess.PIPE,
+            stdin=subprocess.DEVNULL,
             stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL
+            stderr=self._ffmpeg_log_fh
         )
         self.start_time = time.time()
         print(f"🎬 Aufnahme gestartet: {self.raw_video}")
+        print(f"   📝 ffmpeg log: {self.ffmpeg_log}")
 
     def mark_audio(self, audio_file: str):
         """Markiert Zeitpunkt für Audio-Einfügung"""
@@ -806,17 +931,44 @@ class Recorder:
     def stop(self):
         """Stoppt Aufnahme"""
         if self.process:
+            import signal
             try:
-                self.process.stdin.write(b'q')
-                self.process.stdin.flush()
-                self.process.wait(timeout=10)
-            except (BrokenPipeError, OSError):
+                # SIGINT (Ctrl+C) is the proper way to stop ffmpeg on macOS
+                # Writing 'q' to stdin doesn't work reliably with avfoundation
+                self.process.send_signal(signal.SIGINT)
+                self.process.wait(timeout=30)
+            except subprocess.TimeoutExpired:
+                print("   ⚠️ ffmpeg SIGINT timeout, trying terminate...")
                 try:
                     self.process.terminate()
+                    self.process.wait(timeout=15)
+                except subprocess.TimeoutExpired:
+                    print("   ⚠️ ffmpeg terminate timeout, killing...")
+                    self.process.kill()
                     self.process.wait(timeout=5)
+            except (BrokenPipeError, OSError) as e:
+                print(f"   ⚠️ Stop error: {e}")
+                try:
+                    self.process.terminate()
+                    self.process.wait(timeout=10)
                 except Exception:
-                    pass
-            print("⏹️ Aufnahme gestoppt")
+                    self.process.kill()
+            # Close log file handle
+            if hasattr(self, '_ffmpeg_log_fh') and self._ffmpeg_log_fh:
+                self._ffmpeg_log_fh.close()
+
+            # Check if recording was saved
+            if os.path.exists(self.raw_video):
+                size = os.path.getsize(self.raw_video)
+                print(f"⏹️ Aufnahme gestoppt ({size / (1024*1024):.1f} MB)")
+                if size < 1000:
+                    print(f"   ⚠️ Raw video ist nur {size} bytes - Aufnahme fehlgeschlagen!")
+                    if hasattr(self, 'ffmpeg_log') and os.path.exists(self.ffmpeg_log):
+                        with open(self.ffmpeg_log) as f:
+                            log = f.read()[-500:]
+                        print(f"   📝 ffmpeg log (letzte 500 Zeichen):\n{log}")
+            else:
+                print("⏹️ Aufnahme gestoppt (keine Datei)")
 
     def merge_audio(self):
         """Fügt alle Audio-Dateien zum Video hinzu"""
@@ -953,6 +1105,50 @@ class Browser:
         from { box-shadow: 0 0 10px #FF5722; }
         to { box-shadow: 0 0 25px #FFC107; }
     }
+    .llars-overlay {
+        position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+        display: flex; flex-direction: column;
+        align-items: center; justify-content: center;
+        background: rgba(0,0,0,0.85);
+        z-index: 999999;
+        opacity: 0;
+        transition: opacity 0.5s ease;
+        pointer-events: none;
+    }
+    .llars-overlay.visible { opacity: 1; }
+    .llars-overlay-title {
+        font-family: 'Segoe UI', system-ui, sans-serif;
+        font-size: 64px; font-weight: 700;
+        color: #fff; letter-spacing: 2px; margin-bottom: 16px;
+    }
+    .llars-overlay-subtitle {
+        font-family: 'Segoe UI', system-ui, sans-serif;
+        font-size: 28px; font-weight: 400;
+        color: #b0ca97; letter-spacing: 1px;
+    }
+    .llars-overlay-text {
+        font-family: 'SF Mono', Monaco, Consolas, monospace;
+        font-size: 20px; color: #e0e0e0;
+        margin-top: 24px; text-align: center;
+        line-height: 1.8; white-space: pre-line;
+    }
+    .llars-overlay-columns {
+        display: flex; gap: 64px;
+        margin-top: 40px;
+    }
+    .llars-overlay-column {
+        display: flex; flex-direction: column; gap: 20px;
+    }
+    .llars-overlay-cred-label {
+        font-family: 'Segoe UI', system-ui, sans-serif;
+        font-size: 14px; color: #888;
+        text-transform: uppercase; letter-spacing: 2px;
+        margin-bottom: 2px;
+    }
+    .llars-overlay-cred-value {
+        font-family: 'SF Mono', Monaco, Consolas, monospace;
+        font-size: 22px; color: #e0e0e0;
+    }
     """
 
     def __init__(self, url: str = "http://localhost:55080"):
@@ -961,8 +1157,44 @@ class Browser:
         self.window_bounds = None  # (x, y, width, height)
         self.collab_driver = None  # Zweiter Browser für Collab-Demo
 
+    @staticmethod
+    def _get_logical_screen_size() -> tuple:
+        """Get logical screen resolution.
+
+        On macOS Retina, the "Looks like" resolution determines the logical space.
+        Chrome windows should not exceed this, or they'll extend off-screen.
+        """
+        try:
+            # Probe ffmpeg capture resolution (physical) → divide by 2 for logical
+            result = subprocess.run(
+                ['ffmpeg', '-f', 'avfoundation', '-list_devices', 'true', '-i', ''],
+                capture_output=True, text=True, timeout=5
+            )
+            # Find screen device
+            screen_idx = '3'
+            for line in result.stderr.split('\n'):
+                if 'Capture screen 0' in line:
+                    match = re.search(r'\[(\d+)\]', line)
+                    if match:
+                        screen_idx = match.group(1)
+                    break
+
+            result = subprocess.run(
+                ['ffmpeg', '-f', 'avfoundation', '-framerate', '1',
+                 '-i', f'{screen_idx}:none', '-frames:v', '1', '-y', '/dev/null'],
+                capture_output=True, text=True, timeout=10
+            )
+            match = re.search(r'(\d{3,5})x(\d{3,5})', result.stderr)
+            if match:
+                cap_w, cap_h = int(match.group(1)), int(match.group(2))
+                # macOS Retina always renders at 2x logical
+                return cap_w // 2, cap_h // 2
+        except Exception:
+            pass
+        return 1920, 1080  # Fallback
+
     def open(self, username: str = "admin", password: str = "admin123", language: str = "en"):
-        """Öffnet Chrome mit exakter Fenstergröße und Position"""
+        """Öffnet Chrome mit exakter Fenstergröße, angepasst an die Bildschirmgröße"""
         options = Options()
         # Starte mit kleinem Fenster, setzen die exakte Größe danach
         options.add_argument('--window-size=1280,800')
@@ -977,13 +1209,18 @@ class Browser:
         service = Service(ChromeDriverManager().install())
         self.driver = webdriver.Chrome(service=service, options=options)
 
-        # Fenster an Position (0,0) setzen und exakte Größe einstellen
+        # Fenster an Position (0,0) setzen
         self.driver.set_window_position(0, 0)
 
-        # Berechne Fenster-Dekoration (Titelleiste etc.)
-        # Chrome hat typisch ~74px Toolbar oben (Tab-Bar + Adressleiste)
-        # Wir wollen dass der VIEWPORT 1920x1080 ist
-        self.driver.set_window_size(self.TARGET_WIDTH, self.TARGET_HEIGHT + 100)
+        # Detect logical screen size and clamp Chrome to fit
+        screen_w, screen_h = self._get_logical_screen_size()
+        target_w = min(self.TARGET_WIDTH, screen_w)
+        target_h = min(self.TARGET_HEIGHT, screen_h - 39)  # Reserve space for menu bar
+        print(f"   🖥️ Logical screen: {screen_w}x{screen_h}")
+        print(f"   🖥️ Chrome target: {target_w}x{target_h}")
+
+        # Chrome Fenster-Dekoration (~74px Toolbar oben)
+        self.driver.set_window_size(target_w, target_h + 100)
 
         # Warte kurz und hole exakte Position/Größe
         time.sleep(0.5)
@@ -1003,13 +1240,14 @@ class Browser:
             return (pos['x'], pos['y'], size['width'], size['height'])
         return self.window_bounds
 
-    def setup(self, username: str = "admin", password: str = "admin123", language: str = "en"):
+    def setup(self, username: str = "admin", password: str = "admin123", language: str = "en",
+              skip_login: bool = False):
         """
         SETUP PHASE - Vor der Aufnahme:
         1. Prüft ob auf /login oder /Home
         2. Stellt Sprache auf Englisch
-        3. Führt Login durch falls nötig
-        4. Navigiert zu /Home
+        3. Führt Login durch falls nötig (skip_login=True: bleibt auf Login-Seite)
+        4. Navigiert zu /Home (unless skip_login)
         """
         print("\n" + "="*60)
         print("🔧 SETUP PHASE")
@@ -1027,33 +1265,35 @@ class Browser:
             # 1. Sprache auf Englisch stellen (vor Login)
             self._set_language(language)
 
-            # 2. Login durchführen
-            self._do_login_on_login_page(username, password)
-
-            # 3. Warten und prüfen ob Login erfolgreich
-            for attempt in range(5):
-                time.sleep(1)
-                page = self._detect_page()
-                if page != "login":
-                    print(f"   ✓ Login erfolgreich! (Seite: {page})")
-                    break
-                print(f"   ⏳ Warte auf Login... (Versuch {attempt + 1}/5)")
+            if skip_login:
+                print("   ⏭️ Login übersprungen (wird während Aufnahme durchgeführt)")
             else:
-                print("   ⚠️ Login scheint nicht erfolgreich zu sein!")
+                # 2. Login durchführen
+                self._do_login_on_login_page(username, password)
+
+                # 3. Warten und prüfen ob Login erfolgreich
+                for attempt in range(5):
+                    time.sleep(1)
+                    page = self._detect_page()
+                    if page != "login":
+                        print(f"   ✓ Login erfolgreich! (Seite: {page})")
+                        break
+                    print(f"   ⏳ Warte auf Login... (Versuch {attempt + 1}/5)")
+                else:
+                    print("   ⚠️ Login scheint nicht erfolgreich zu sein!")
 
         if page == "home":
             print("   ✓ Auf Home-Seite")
-            # Sprache prüfen und ggf. ändern (für eingeloggte User)
-            # self._ensure_language(language)
 
         elif page == "authentik":
             # Authentik 2-Step Login
             self._do_authentik_login(username, password)
             time.sleep(3)
 
-        # Final check
-        self.driver.get(f"{self.base_url}/Home")
-        time.sleep(2)
+        if not skip_login:
+            # Final check
+            self.driver.get(f"{self.base_url}/Home")
+            time.sleep(2)
 
         # Dismiss cookie consent banner if present
         self._dismiss_cookie_banner()
@@ -1678,12 +1918,17 @@ class Browser:
                 )
                 time.sleep(0.3)
 
-                # Highlight
-                self.driver.execute_script(
-                    "arguments[0].classList.add('llars-highlight')",
+                # Only add highlight if not already highlighted (smooth transition from prior highlight)
+                already_highlighted = self.driver.execute_script(
+                    "return arguments[0].classList.contains('llars-highlight')",
                     element
                 )
-                time.sleep(0.2)
+                if not already_highlighted:
+                    self.driver.execute_script(
+                        "arguments[0].classList.add('llars-highlight')",
+                        element
+                    )
+                    time.sleep(0.2)
 
                 # Click
                 try:
@@ -1763,7 +2008,7 @@ class Browser:
                 return
 
             # Geschwindigkeit
-            delay = {"slow": 0.08, "medium": 0.04, "fast": 0.02}.get(speed, 0.02)
+            delay = {"slow": 0.08, "medium": 0.04, "fast": 0.02, "turbo": 0.005}.get(speed, 0.02)
 
             if is_contenteditable:
                 # For Quill/contenteditable: type character by character
@@ -1781,8 +2026,8 @@ class Browser:
 
             print(f"   ⌨️ Type: {text[:30]}...")
 
-    def highlight(self, target: str, duration: float = 2):
-        """Hebt Element hervor"""
+    def highlight(self, target: str, duration: float = 2, keep: bool = False):
+        """Hebt Element hervor. Bei keep=True bleibt Highlight aktiv (für anschließenden Klick)."""
         element = self._find_element(target)
         if element:
             try:
@@ -1795,13 +2040,194 @@ class Browser:
                     element
                 )
                 time.sleep(duration)
-                self.driver.execute_script(
-                    "arguments[0].classList.remove('llars-highlight')",
-                    element
-                )
+                if not keep:
+                    self.driver.execute_script(
+                        "arguments[0].classList.remove('llars-highlight')",
+                        element
+                    )
             except Exception as e:
                 # Stale element or page changed - just continue
                 print(f"   ⚠️ Highlight fehlgeschlagen: {str(e)[:50]}")
+
+    def show_title(self, title: str = "", subtitle: str = "", text: str = "",
+                   columns: list = None):
+        """Shows a fullscreen overlay with title, subtitle, optional text, and optional columns.
+
+        columns: list of lists of {label, value} dicts — each inner list is one column.
+        Example: [
+            [{"label": "URL", "value": "https://..."}],
+            [{"label": "Username", "value": "user"}, {"label": "Password", "value": "pass"}]
+        ]
+        """
+        self._inject_styles()
+        # Escape strings for JS
+        title_js = title.replace("\\", "\\\\").replace("`", "\\`").replace("$", "\\$")
+        subtitle_js = subtitle.replace("\\", "\\\\").replace("`", "\\`").replace("$", "\\$")
+        text_js = text.replace("\\", "\\\\").replace("`", "\\`").replace("$", "\\$").replace("\n", "\\n")
+
+        # Build columns JS snippet
+        columns_js = ""
+        if columns:
+            import json
+            columns_js = f"var cols = {json.dumps(columns)};"
+            columns_js += """
+                var cWrap = document.createElement('div');
+                cWrap.className = 'llars-overlay-columns';
+                cols.forEach(function(col) {
+                    var cDiv = document.createElement('div');
+                    cDiv.className = 'llars-overlay-column';
+                    col.forEach(function(item) {
+                        var lbl = document.createElement('div');
+                        lbl.className = 'llars-overlay-cred-label';
+                        lbl.textContent = item.label;
+                        cDiv.appendChild(lbl);
+                        var val = document.createElement('div');
+                        val.className = 'llars-overlay-cred-value';
+                        val.textContent = item.value;
+                        cDiv.appendChild(val);
+                    });
+                    cWrap.appendChild(cDiv);
+                });
+                overlay.appendChild(cWrap);
+            """
+
+        self.driver.execute_script(f"""
+            var old = document.getElementById('llars-overlay');
+            if (old) old.remove();
+            var overlay = document.createElement('div');
+            overlay.id = 'llars-overlay';
+            overlay.className = 'llars-overlay';
+            if (`{title_js}`) {{
+                var t = document.createElement('div');
+                t.className = 'llars-overlay-title';
+                t.textContent = `{title_js}`;
+                overlay.appendChild(t);
+            }}
+            if (`{subtitle_js}`) {{
+                var s = document.createElement('div');
+                s.className = 'llars-overlay-subtitle';
+                s.textContent = `{subtitle_js}`;
+                overlay.appendChild(s);
+            }}
+            if (`{text_js}`) {{
+                var x = document.createElement('div');
+                x.className = 'llars-overlay-text';
+                x.textContent = `{text_js}`;
+                overlay.appendChild(x);
+            }}
+            {columns_js}
+            document.body.appendChild(overlay);
+            requestAnimationFrame(function() {{
+                requestAnimationFrame(function() {{
+                    overlay.classList.add('visible');
+                }});
+            }});
+        """)
+        print(f"   🎬 show_title: {title} - {subtitle}")
+
+    def hide_title(self):
+        """Fades out and removes the fullscreen overlay."""
+        self.driver.execute_script("""
+            var overlay = document.getElementById('llars-overlay');
+            if (overlay) {
+                overlay.classList.remove('visible');
+                setTimeout(function() { overlay.remove(); }, 600);
+            }
+        """)
+        print(f"   🎬 hide_title")
+
+    def do_visible_login(self, username: str, password: str):
+        """Performs login visibly with typed credentials (for recording)."""
+        try:
+            WebDriverWait(self.driver, 10).until(
+                EC.presence_of_element_located((By.CSS_SELECTOR, ".login-form, [data-testid='login-form']"))
+            )
+            time.sleep(0.3)
+
+            # Type username
+            username_field = None
+            for selector in [
+                "[data-testid='username-input'] input",
+                ".login-form input[name='username']",
+                ".login-form .v-text-field:first-of-type input",
+                "input#username",
+            ]:
+                try:
+                    username_field = self.driver.find_element(By.CSS_SELECTOR, selector)
+                    if username_field and username_field.is_displayed():
+                        break
+                except Exception:
+                    continue
+
+            if username_field:
+                username_field.click()
+                time.sleep(0.2)
+                username_field.clear()
+                for char in username:
+                    username_field.send_keys(char)
+                    time.sleep(0.03)
+                print(f"   ⌨️ Username: {username}")
+            time.sleep(0.3)
+
+            # Type password
+            password_field = None
+            for selector in [
+                "[data-testid='password-input'] input",
+                ".login-form input[name='password']",
+                ".login-form input[type='password']",
+                "input#password",
+            ]:
+                try:
+                    password_field = self.driver.find_element(By.CSS_SELECTOR, selector)
+                    if password_field and password_field.is_displayed():
+                        break
+                except Exception:
+                    continue
+
+            if password_field:
+                password_field.click()
+                time.sleep(0.2)
+                password_field.clear()
+                for char in password:
+                    password_field.send_keys(char)
+                    time.sleep(0.03)
+                print(f"   ⌨️ Password: {'*' * len(password)}")
+            time.sleep(0.3)
+
+            # Click login button
+            login_btn = None
+            for selector in [
+                "[data-testid='login-btn']",
+                ".login-button",
+                ".login-form button[type='submit']",
+                ".login-form .l-btn",
+            ]:
+                try:
+                    login_btn = self.driver.find_element(By.CSS_SELECTOR, selector)
+                    if login_btn and login_btn.is_displayed():
+                        break
+                except Exception:
+                    continue
+
+            if login_btn:
+                self.driver.execute_script("arguments[0].click()", login_btn)
+                print(f"   🔐 Login button clicked")
+
+            # Wait for redirect
+            for attempt in range(10):
+                time.sleep(1)
+                if '/login' not in self.driver.current_url.lower():
+                    print(f"   ✓ Login erfolgreich!")
+                    break
+            else:
+                print(f"   ⚠️ Login redirect timeout")
+
+            time.sleep(1)
+            self._inject_styles()
+            self._dismiss_cookie_banner()
+
+        except Exception as e:
+            print(f"   ⚠️ Visible login error: {e}")
 
     def drag(self, source: str, target: str):
         """Drag & Drop via JS mouse events (works with SortableJS/vuedraggable)"""
@@ -1990,16 +2416,21 @@ class Browser:
     # COLLAB BROWSER - Zweiter Browser für Echtzeit-Kollaboration Demo
     # =========================================================================
 
+    # Collab PiP window settings
+    COLLAB_PIP_WIDTH = 580
+    COLLAB_PIP_HEIGHT = 440
+    COLLAB_PIP_MARGIN = 20  # Abstand vom Rand des Hauptfensters
+
     def collab_open(self, username: str = "researcher", password: str = "admin123"):
         """
         Öffnet einen zweiten Browser für die Kollaborations-Demo.
-        Der zweite Browser wird kleiner und außerhalb des sichtbaren Bereichs positioniert,
-        sodass nur der Hauptbrowser aufgenommen wird, aber der Collab-Cursor im Editor sichtbar ist.
+        Der zweite Browser wird als PiP-Overlay im unteren rechten Bereich
+        des Hauptbrowsers positioniert und ist direkt im Screen-Recording sichtbar.
         """
         print(f"   👥 Öffne Collab-Browser als '{username}'...")
 
         options = Options()
-        options.add_argument('--window-size=800,600')
+        options.add_argument(f'--window-size={self.COLLAB_PIP_WIDTH},{self.COLLAB_PIP_HEIGHT}')
         options.add_experimental_option('excludeSwitches', ['enable-automation'])
         options.add_experimental_option('prefs', {
             'credentials_enable_service': False,
@@ -2010,9 +2441,20 @@ class Browser:
         service = Service(ChromeDriverManager().install())
         self.collab_driver = webdriver.Chrome(service=service, options=options)
 
-        # Fenster außerhalb des sichtbaren Bereichs positionieren (rechts vom Hauptfenster)
-        self.collab_driver.set_window_position(2000, 100)
-        self.collab_driver.set_window_size(800, 600)
+        # Positioniere als PiP-Overlay: unten-rechts im Hauptbrowser-Bereich
+        main_bounds = self.get_window_bounds()
+        if main_bounds:
+            mx, my, mw, mh = main_bounds
+            pip_x = mx + mw - self.COLLAB_PIP_WIDTH - self.COLLAB_PIP_MARGIN
+            pip_y = my + mh - self.COLLAB_PIP_HEIGHT - self.COLLAB_PIP_MARGIN
+        else:
+            # Fallback: feste Position für 1920x1080
+            pip_x = 1920 - self.COLLAB_PIP_WIDTH - self.COLLAB_PIP_MARGIN
+            pip_y = 1080 - self.COLLAB_PIP_HEIGHT - self.COLLAB_PIP_MARGIN
+
+        self.collab_driver.set_window_position(pip_x, pip_y)
+        self.collab_driver.set_window_size(self.COLLAB_PIP_WIDTH, self.COLLAB_PIP_HEIGHT)
+        print(f"   👥 PiP-Position: ({pip_x},{pip_y}) {self.COLLAB_PIP_WIDTH}x{self.COLLAB_PIP_HEIGHT}")
 
         # Zur Login-Seite navigieren
         self.collab_driver.get(self.base_url)
@@ -2274,6 +2716,36 @@ class Browser:
             time.sleep(0.5)
         except Exception as e:
             print(f"   ⚠️ Collab-Editor-Fokus fehlgeschlagen: {e}")
+
+    def ensure_pip_on_top(self):
+        """Bring PiP (collab) Chrome window to front on macOS.
+
+        After main browser actions (clicks, scrolls), macOS may bring
+        the main window to the front, hiding the PiP overlay. This uses
+        AppleScript to raise the smaller Chrome window back on top.
+        """
+        if not self.collab_driver:
+            return
+        import platform
+        if platform.system() != 'Darwin':
+            return
+        try:
+            # Identify PiP window by its smaller size and raise it
+            subprocess.run(['osascript', '-e', f'''
+                tell application "System Events"
+                    tell process "Google Chrome"
+                        repeat with w in windows
+                            set winSize to size of w
+                            if (item 1 of winSize) < {self.COLLAB_PIP_WIDTH + 50} then
+                                perform action "AXRaise" of w
+                                exit repeat
+                            end if
+                        end repeat
+                    end tell
+                end tell
+            '''], capture_output=True, timeout=2)
+        except Exception:
+            pass
 
     def collab_close(self):
         """Schließt den Collab-Browser"""
@@ -2838,7 +3310,8 @@ class ScriptRunner:
 
             # === PHASE 2: BROWSER ÖFFNEN + SETUP ===
             self.browser.open()
-            self.browser.setup(username=username, password=password, language=language)
+            # skip_login=True: Login happens live during recording (intro steps)
+            self.browser.setup(username=username, password=password, language=language, skip_login=True)
 
             # === PHASE 3: AUFNAHME STARTEN ===
             if self.recorder and not test_mode:
@@ -2905,7 +3378,7 @@ class ScriptRunner:
                     if timeline:
                         print(f"   ⏱️ Audio: {audio_duration:.1f}s | {len(actions)} Aktionen")
 
-                    for action in actions:
+                    for action_idx, action in enumerate(actions):
                         do = action.get('do')
 
                         # SYNC: Warte auf Narrations-Zeitpunkt
@@ -2923,11 +3396,31 @@ class ScriptRunner:
                         highlight_before = action.get('highlight_before', 0)
                         if highlight_before > 0 and do == 'click':
                             target = action.get('target', '')
-                            self.browser.highlight(target, highlight_before)
+                            self.browser.highlight(target, highlight_before, keep=True)
                             print(f"   ✨ highlight: {target} ({highlight_before}s)")
+
+                        # SMOOTH TRANSITION: highlight → click on same target
+                        if do == 'highlight':
+                            # Look ahead: if next non-sync action is click on same target, keep highlight
+                            keep = False
+                            hl_target = action.get('target', '')
+                            for next_action in actions[action_idx + 1:]:
+                                next_do = next_action.get('do')
+                                if next_do == 'sync':
+                                    continue
+                                if next_do == 'click' and next_action.get('target', '') == hl_target:
+                                    keep = True
+                                break
+                            if keep:
+                                self.browser.highlight(hl_target, action.get('duration', 2), keep=True)
+                                print(f"   ✨ highlight (→click): {hl_target}")
+                                continue
 
                         # Aktion ausführen
                         self._execute_action(action, test_mode=False)
+
+                    # After all actions in this step: keep PiP on top
+                    self.browser.ensure_pip_on_top()
 
                 # Auf Audio warten
                 if audio_thread:
@@ -2939,7 +3432,7 @@ class ScriptRunner:
                     if remaining > 0:
                         time.sleep(remaining)
 
-                time.sleep(0.1 if test_mode else 0.5)
+                time.sleep(0.1 if test_mode else 0.2)
 
             # Ergebnis
             if test_mode:
@@ -3007,11 +3500,13 @@ class ScriptRunner:
             return True
 
         elif do == 'login':
-            username = action.get('username', 'admin')
-            password = action.get('password', 'admin123')
-            if self.browser._needs_login():
-                self.browser._do_login(username, password)
-            print(f"   ✓ login")
+            if not test_mode:
+                login_config = self.script.get('config', {}).get('login', {})
+                username = action.get('username', login_config.get('username', 'admin'))
+                password = action.get('password', login_config.get('password', 'admin123'))
+                self.browser.do_visible_login(username, password)
+            else:
+                print(f"   ✓ login (test mode)")
             return True
 
         elif do == 'goto':
@@ -3243,9 +3738,26 @@ class ScriptRunner:
         elif do == 'show_title':
             title = action.get('title', '')
             subtitle = action.get('subtitle', '')
-            print(f"   ✓ show_title: {title} - {subtitle}")
+            text = action.get('text', '')
+            columns = action.get('columns', None)
+            duration = action.get('duration', 0)
             if not test_mode:
-                time.sleep(2)
+                self.browser.show_title(title, subtitle, text, columns=columns)
+                time.sleep(0.5)  # Wait for fade-in
+                if duration > 0:
+                    time.sleep(duration)
+                    self.browser.hide_title()
+                    time.sleep(0.6)  # Wait for fade-out
+            else:
+                print(f"   ✓ show_title: {title} - {subtitle}")
+            return True
+
+        elif do == 'hide_title':
+            if not test_mode:
+                self.browser.hide_title()
+                time.sleep(0.6)  # Wait for fade-out
+            else:
+                print(f"   ✓ hide_title")
             return True
 
         elif do == 'scroll_to':

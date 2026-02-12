@@ -218,6 +218,26 @@ watch(selectedCategory, () => {
 // All available features with their required permissions
 const allItems = computed(() => ([
   {
+    title: t('home.features.promptEngineering.title'),
+    description: t('home.features.promptEngineering.description'),
+    route: '/PromptEngineering',
+    icon: 'llars:prompt-engineering',
+    permission: 'feature:prompt_engineering:view',
+    category: 'research',
+    badge: t('home.badges.beta'),
+    badgeColor: 'info'
+  },
+  {
+    title: t('home.features.batchGeneration.title'),
+    description: t('home.features.batchGeneration.description'),
+    route: '/generation',
+    icon: 'llars:batch-generation',
+    permission: 'feature:generation:view',
+    category: 'research',
+    badge: t('home.badges.beta'),
+    badgeColor: 'info'
+  },
+  {
     title: t('home.features.evaluation.title'),
     description: t('home.features.evaluation.description'),
     route: '/evaluation',
@@ -251,26 +271,6 @@ const allItems = computed(() => ([
     category: 'ai',
     badge: t('home.badges.alpha'),
     badgeColor: 'warning'
-  },
-  {
-    title: t('home.features.promptEngineering.title'),
-    description: t('home.features.promptEngineering.description'),
-    route: '/PromptEngineering',
-    icon: 'llars:prompt-engineering',
-    permission: 'feature:prompt_engineering:view',
-    category: 'research',
-    badge: t('home.badges.beta'),
-    badgeColor: 'info'
-  },
-  {
-    title: t('home.features.batchGeneration.title'),
-    description: t('home.features.batchGeneration.description'),
-    route: '/generation',
-    icon: 'llars:batch-generation',
-    permission: 'feature:generation:view',
-    category: 'research',
-    badge: t('home.badges.beta'),
-    badgeColor: 'info'
   },
   {
     title: t('home.features.markdownCollab.title'),

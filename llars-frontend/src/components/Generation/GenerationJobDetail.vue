@@ -161,7 +161,7 @@
             </div>
             <div class="stat-item">
               <span class="stat-label">{{ $t('generation.detail.totalCost') }}</span>
-              <span class="stat-value cost">${{ (currentJob?.total_cost_usd || 0).toFixed(4) }}</span>
+              <span class="stat-value cost">${{ (currentJob?.cost?.total_cost_usd || 0).toFixed(4) }}</span>
             </div>
           </div>
         </LCard>

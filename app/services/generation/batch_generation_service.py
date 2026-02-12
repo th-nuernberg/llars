@@ -493,7 +493,7 @@ class BatchGenerationService:
                 prompt_template_id=prompt_template_id,
                 llm_model_id=llm_model_id,
                 llm_model_name=llm_model_name or str(model_ref),
-                prompt_variant_name=prompt_cfg.get("variant_name"),
+                prompt_variant_name=prompt_cfg.get("variant_name") or prompt_cfg.get("template_name"),
                 prompt_variables_json=variables if variables else None,
                 status=GeneratedOutputStatus.PENDING,
             )

@@ -20,7 +20,7 @@ os.chdir('/app')
 
 import argparse
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime
 
 logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
 logger = logging.getLogger('demo_video_manage')
@@ -29,7 +29,6 @@ logger = logging.getLogger('demo_video_manage')
 # Configuration
 # ---------------------------------------------------------------------------
 PRESEED_PROMPT_NAME = "News Summary Prompt"
-PRESEED_JOB_NAME = "News Summary Demo Job"
 LIVE_PROMPT_NAME = "News Summary Eval"
 LIVE_JOB_NAME = "Live Collab Batch Job"
 
@@ -81,18 +80,13 @@ def cmd_status():
 
         # Generation Jobs
         print(f"\n--- Generation Jobs ({DEMO_USER}) ---")
-        for name in [PRESEED_JOB_NAME, LIVE_JOB_NAME]:
-            j = GenerationJob.query.filter_by(name=name, created_by=DEMO_USER).first()
-            if j:
-                output_count = GeneratedOutput.query.filter_by(job_id=j.id).count()
-                print(f"  [EXISTS] {name} (id={j.id}, status={j.status.value}, "
-                      f"created_by={j.created_by}, outputs={output_count})")
-            else:
-                print(f"  [MISSING] {name}")
-            # Also show admin-owned jobs for info
-            admin_j = GenerationJob.query.filter_by(name=name, created_by='admin').first()
-            if admin_j:
-                print(f"  [INFO] {name} also exists for admin (id={admin_j.id})")
+        j = GenerationJob.query.filter_by(name=LIVE_JOB_NAME, created_by=DEMO_USER).first()
+        if j:
+            output_count = GeneratedOutput.query.filter_by(job_id=j.id).count()
+            print(f"  [EXISTS] {LIVE_JOB_NAME} (id={j.id}, status={j.status.value}, "
+                  f"created_by={j.created_by}, outputs={output_count})")
+        else:
+            print(f"  [MISSING] {LIVE_JOB_NAME}")
 
         # Scenarios
         print("\n--- Scenarios containing 'News Summary' ---")
@@ -113,17 +107,11 @@ def cmd_status():
 # ===================================================================
 
 def cmd_seed():
-    """Seed pre-recording data owned by DEMO_USER."""
+    """Seed pre-recording data owned by DEMO_USER (prompts only, batch job is created live)."""
     from main import app
     from db import db as _db
     from db.tables import User, UserPrompt
-    from db.models.generation import (
-        GenerationJob, GeneratedOutput,
-        GenerationJobStatus, GeneratedOutputStatus,
-    )
-    from db.models.llm_model import LLMModel
     from db.models.scenario import UserPromptShare
-    from db.seeders.demo_video_data import NEWS_ARTICLES, SAMPLE_SUMMARIES
 
     with app.app_context():
         demo_user = User.query.filter_by(username=DEMO_USER).first()
@@ -165,106 +153,6 @@ def cmd_seed():
 
         _db.session.commit()
 
-        # --- 2. Create completed generation job ---
-        existing_job = GenerationJob.query.filter_by(
-            name=PRESEED_JOB_NAME, created_by=DEMO_USER
-        ).first()
-        if existing_job:
-            logger.info(f"Job '{PRESEED_JOB_NAME}' already exists (id={existing_job.id})")
-        else:
-            # Need models
-            mistral = LLMModel.query.filter_by(
-                model_id='mistralai/Mistral-Small-3.2-24B-Instruct-2506'
-            ).first()
-            magistral = LLMModel.query.filter_by(
-                model_id='mistralai/Magistral-Small-2509'
-            ).first()
-
-            if not mistral or not magistral:
-                logger.warning("Required LLM models not found, skipping job seeding")
-                print("\n[SEED COMPLETE] (without generation job)")
-                return True
-
-            # Temporarily create eval prompt for rendering
-            eval_content = _build_eval_prompt_content()
-            temp_eval = UserPrompt(
-                user_id=demo_user.id,
-                name="_temp_eval_prompt",
-                content=eval_content
-            )
-            _db.session.add(temp_eval)
-            _db.session.flush()
-
-            now = datetime.utcnow()
-            total_outputs = len(NEWS_ARTICLES) * 2 * 2  # 10 x 2 prompts x 2 models
-
-            job = GenerationJob(
-                name=PRESEED_JOB_NAME,
-                description="Demo batch: two prompts x two models x 10 news articles.",
-                status=GenerationJobStatus.COMPLETED,
-                config_json={
-                    "mode": "matrix",
-                    "sources": {"type": "manual", "items": NEWS_ARTICLES},
-                    "prompts": [
-                        {"template_name": PRESEED_PROMPT_NAME},
-                        {"template_name": LIVE_PROMPT_NAME}
-                    ],
-                    "llm_models": [mistral.model_id, magistral.model_id],
-                    "generation_params": {"temperature": 0.7, "max_tokens": 500}
-                },
-                total_items=total_outputs,
-                completed_items=total_outputs,
-                failed_items=0,
-                total_tokens=total_outputs * 800,
-                total_cost_usd=0.05,
-                created_by=DEMO_USER,
-                created_at=now - timedelta(hours=2),
-                started_at=now - timedelta(hours=2),
-                completed_at=now - timedelta(hours=1, minutes=45)
-            )
-            _db.session.add(job)
-            _db.session.flush()
-
-            # Create outputs
-            output_idx = 0
-            for article_idx, article in enumerate(NEWS_ARTICLES):
-                for summary_key, prompt_obj, prompt_name in [
-                    ("concise", preseed, PRESEED_PROMPT_NAME),
-                    ("analyst", temp_eval, LIVE_PROMPT_NAME),
-                ]:
-                    for model in [mistral, magistral]:
-                        summary = SAMPLE_SUMMARIES[summary_key][article_idx]
-                        sys_prompt = _render_system(prompt_obj)
-                        usr_prompt = _render_user(prompt_obj, article)
-
-                        _db.session.add(GeneratedOutput(
-                            job_id=job.id,
-                            llm_model_id=model.id,
-                            llm_model_name=model.model_id,
-                            prompt_variant_name=prompt_name,
-                            prompt_variables_json={
-                                'source_index': article_idx,
-                                'source_title': article['title']
-                            },
-                            generated_content=summary,
-                            rendered_system_prompt=sys_prompt,
-                            rendered_user_prompt=usr_prompt,
-                            status=GeneratedOutputStatus.COMPLETED,
-                            input_tokens=len(article['content'].split()) + 50,
-                            output_tokens=len(summary.split()),
-                            total_cost_usd=0.001,
-                            processing_time_ms=1500 + (output_idx * 50),
-                            attempt_count=1,
-                            created_at=now - timedelta(hours=2),
-                            completed_at=now - timedelta(hours=1, minutes=50 - output_idx)
-                        ))
-                        output_idx += 1
-
-            # Remove temp prompt
-            _db.session.delete(temp_eval)
-            _db.session.commit()
-            logger.info(f"Created job '{PRESEED_JOB_NAME}' (id={job.id}) with {total_outputs} outputs")
-
         print("\n[SEED COMPLETE]")
         return True
 
@@ -301,16 +189,11 @@ def cmd_cleanup():
             deleted.append(f"Job '{LIVE_JOB_NAME}' (+ {outputs_deleted} outputs)")
 
         # --- 3. Delete demo-created scenarios ---
-        preseed_job = GenerationJob.query.filter_by(name=PRESEED_JOB_NAME).first()
-        preseed_target_id = preseed_job.target_scenario_id if preseed_job else None
-
         demo_scenarios = RatingScenarios.query.filter(
             RatingScenarios.scenario_name.contains("News Summary")
         ).all()
 
         for scenario in demo_scenarios:
-            if preseed_target_id and scenario.id == preseed_target_id:
-                continue
             _db.session.delete(scenario)
             deleted.append(f"Scenario '{scenario.scenario_name}' (id={scenario.id})")
 
@@ -368,51 +251,6 @@ def _build_preseed_prompt_content():
             }
         }
     }
-
-
-def _build_eval_prompt_content():
-    return {
-        "blocks": {
-            "Role Definition": {
-                "content": "Role definition: You are a senior journalist drafting a short news digest.",
-                "position": 0
-            },
-            "Task Explanation": {
-                "content": "Task explanation: Summarize the article in 3-4 sentences. Highlight key facts and implications while staying neutral and factual.",
-                "position": 1
-            },
-            "Data Format Explanation": {
-                "content": (
-                    "Data format explanation:\n"
-                    "Input:\n"
-                    "Title: {{title}}\n\n"
-                    "Article:\n"
-                    "{{content}}\n\n"
-                    "Output:\n"
-                    "3-4 sentences in plain text. No bullet points. No extra commentary."
-                ),
-                "position": 2
-            }
-        }
-    }
-
-
-def _get_block(prompt, name):
-    blocks = (prompt.content or {}).get('blocks', {})
-    block = blocks.get(name, {})
-    return block.get('content', '') if isinstance(block, dict) else ''
-
-
-def _render_system(prompt):
-    parts = [_get_block(prompt, "Role Definition"), _get_block(prompt, "Task Explanation")]
-    return "\n\n".join(p for p in parts if p)
-
-
-def _render_user(prompt, article):
-    tpl = _get_block(prompt, "Data Format Explanation")
-    if not tpl:
-        return f"Title: {article['title']}\n\n{article['content']}"
-    return tpl.replace("{{title}}", article["title"]).replace("{{content}}", article["content"])
 
 
 # ===================================================================

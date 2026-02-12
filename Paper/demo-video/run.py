@@ -2416,21 +2416,34 @@ class Browser:
     # COLLAB BROWSER - Zweiter Browser für Echtzeit-Kollaboration Demo
     # =========================================================================
 
-    # Collab PiP window settings
-    COLLAB_PIP_WIDTH = 580
-    COLLAB_PIP_HEIGHT = 440
-    COLLAB_PIP_MARGIN = 20  # Abstand vom Rand des Hauptfensters
-
     def collab_open(self, username: str = "researcher", password: str = "admin123"):
         """
         Öffnet einen zweiten Browser für die Kollaborations-Demo.
-        Der zweite Browser wird als PiP-Overlay im unteren rechten Bereich
-        des Hauptbrowsers positioniert und ist direkt im Screen-Recording sichtbar.
+        Side-by-Side Layout: Hauptbrowser links (50%), Collab-Browser rechts (50%).
+        Beide Fenster liegen im Recorder-Crop-Bereich.
         """
-        print(f"   👥 Öffne Collab-Browser als '{username}'...")
+        print(f"   👥 Öffne Collab-Browser als '{username}' (Side-by-Side)...")
 
+        # 1. Originale Bounds speichern für späteres Restore
+        self._original_window_bounds = self.get_window_bounds()
+        mx, my, mw, mh = self._original_window_bounds
+
+        # 2. Hauptbrowser auf linke Hälfte resizen
+        half_w = mw // 2
+        self.driver.set_window_size(half_w, mh)
+        self.driver.set_window_position(mx, my)
+        time.sleep(0.3)
+
+        # Viewport-Override: Seite denkt sie hat volle Breite → kein Responsive-Umbruch
+        self.driver.execute_cdp_cmd('Emulation.setDeviceMetricsOverride', {
+            'width': mw, 'height': mh,
+            'deviceScaleFactor': 1, 'mobile': False,
+        })
+        print(f"   👥 Hauptbrowser → links: ({mx},{my}) {half_w}x{mh} (viewport emuliert {mw}x{mh})")
+
+        # 3. Collab-Browser erstellen
         options = Options()
-        options.add_argument(f'--window-size={self.COLLAB_PIP_WIDTH},{self.COLLAB_PIP_HEIGHT}')
+        options.add_argument(f'--window-size={half_w},{mh}')
         options.add_experimental_option('excludeSwitches', ['enable-automation'])
         options.add_experimental_option('prefs', {
             'credentials_enable_service': False,
@@ -2441,20 +2454,16 @@ class Browser:
         service = Service(ChromeDriverManager().install())
         self.collab_driver = webdriver.Chrome(service=service, options=options)
 
-        # Positioniere als PiP-Overlay: unten-rechts im Hauptbrowser-Bereich
-        main_bounds = self.get_window_bounds()
-        if main_bounds:
-            mx, my, mw, mh = main_bounds
-            pip_x = mx + mw - self.COLLAB_PIP_WIDTH - self.COLLAB_PIP_MARGIN
-            pip_y = my + mh - self.COLLAB_PIP_HEIGHT - self.COLLAB_PIP_MARGIN
-        else:
-            # Fallback: feste Position für 1920x1080
-            pip_x = 1920 - self.COLLAB_PIP_WIDTH - self.COLLAB_PIP_MARGIN
-            pip_y = 1080 - self.COLLAB_PIP_HEIGHT - self.COLLAB_PIP_MARGIN
+        # 4. Collab-Browser auf rechte Hälfte setzen
+        self.collab_driver.set_window_position(mx + half_w, my)
+        self.collab_driver.set_window_size(half_w, mh)
 
-        self.collab_driver.set_window_position(pip_x, pip_y)
-        self.collab_driver.set_window_size(self.COLLAB_PIP_WIDTH, self.COLLAB_PIP_HEIGHT)
-        print(f"   👥 PiP-Position: ({pip_x},{pip_y}) {self.COLLAB_PIP_WIDTH}x{self.COLLAB_PIP_HEIGHT}")
+        # Viewport-Override auch für Collab-Browser
+        self.collab_driver.execute_cdp_cmd('Emulation.setDeviceMetricsOverride', {
+            'width': mw, 'height': mh,
+            'deviceScaleFactor': 1, 'mobile': False,
+        })
+        print(f"   👥 Collab-Browser → rechts: ({mx + half_w},{my}) {half_w}x{mh} (viewport emuliert {mw}x{mh})")
 
         # Zur Login-Seite navigieren
         self.collab_driver.get(self.base_url)
@@ -2717,42 +2726,23 @@ class Browser:
         except Exception as e:
             print(f"   ⚠️ Collab-Editor-Fokus fehlgeschlagen: {e}")
 
-    def ensure_pip_on_top(self):
-        """Bring PiP (collab) Chrome window to front on macOS.
-
-        After main browser actions (clicks, scrolls), macOS may bring
-        the main window to the front, hiding the PiP overlay. This uses
-        AppleScript to raise the smaller Chrome window back on top.
-        """
-        if not self.collab_driver:
-            return
-        import platform
-        if platform.system() != 'Darwin':
-            return
-        try:
-            # Identify PiP window by its smaller size and raise it
-            subprocess.run(['osascript', '-e', f'''
-                tell application "System Events"
-                    tell process "Google Chrome"
-                        repeat with w in windows
-                            set winSize to size of w
-                            if (item 1 of winSize) < {self.COLLAB_PIP_WIDTH + 50} then
-                                perform action "AXRaise" of w
-                                exit repeat
-                            end if
-                        end repeat
-                    end tell
-                end tell
-            '''], capture_output=True, timeout=2)
-        except Exception:
-            pass
-
     def collab_close(self):
-        """Schließt den Collab-Browser"""
+        """Schließt den Collab-Browser und stellt Hauptbrowser auf volle Breite zurück."""
         if self.collab_driver:
-            print("   👥 Collab-Browser geschlossen")
             self.collab_driver.quit()
             self.collab_driver = None
+            print("   👥 Collab-Browser geschlossen")
+
+        # Hauptbrowser auf volle Breite zurücksetzen
+        if hasattr(self, '_original_window_bounds') and self._original_window_bounds:
+            mx, my, mw, mh = self._original_window_bounds
+            # Viewport-Override aufheben bevor Resize
+            self.driver.execute_cdp_cmd('Emulation.clearDeviceMetricsOverride', {})
+            self.driver.set_window_position(mx, my)
+            self.driver.set_window_size(mw, mh)
+            print(f"   👥 Hauptbrowser → volle Breite: ({mx},{my}) {mw}x{mh}")
+            self._original_window_bounds = None
+            time.sleep(0.3)
 
     def close(self):
         """Schließt Browser"""
@@ -3419,9 +3409,6 @@ class ScriptRunner:
                         # Aktion ausführen
                         self._execute_action(action, test_mode=False)
 
-                    # After all actions in this step: keep PiP on top
-                    self.browser.ensure_pip_on_top()
-
                 # Auf Audio warten
                 if audio_thread:
                     audio_thread.join()
@@ -3500,13 +3487,11 @@ class ScriptRunner:
             return True
 
         elif do == 'login':
-            if not test_mode:
-                login_config = self.script.get('config', {}).get('login', {})
-                username = action.get('username', login_config.get('username', 'admin'))
-                password = action.get('password', login_config.get('password', 'admin123'))
-                self.browser.do_visible_login(username, password)
-            else:
-                print(f"   ✓ login (test mode)")
+            login_config = self.script.get('config', {}).get('login', {})
+            username = action.get('username', login_config.get('username', 'admin'))
+            password = action.get('password', login_config.get('password', 'admin123'))
+            self.browser.do_visible_login(username, password)
+            print(f"   ✓ login: {username}")
             return True
 
         elif do == 'goto':
@@ -3741,23 +3726,26 @@ class ScriptRunner:
             text = action.get('text', '')
             columns = action.get('columns', None)
             duration = action.get('duration', 0)
-            if not test_mode:
-                self.browser.show_title(title, subtitle, text, columns=columns)
+            self.browser.show_title(title, subtitle, text, columns=columns)
+            if test_mode:
+                time.sleep(0.3)  # Kurz anzeigen im Test
+                if duration > 0:
+                    time.sleep(0.5)
+                    self.browser.hide_title()
+                    time.sleep(0.3)
+            else:
                 time.sleep(0.5)  # Wait for fade-in
                 if duration > 0:
                     time.sleep(duration)
                     self.browser.hide_title()
                     time.sleep(0.6)  # Wait for fade-out
-            else:
-                print(f"   ✓ show_title: {title} - {subtitle}")
+            print(f"   ✓ show_title: {title}")
             return True
 
         elif do == 'hide_title':
-            if not test_mode:
-                self.browser.hide_title()
-                time.sleep(0.6)  # Wait for fade-out
-            else:
-                print(f"   ✓ hide_title")
+            self.browser.hide_title()
+            time.sleep(0.3 if test_mode else 0.6)  # Wait for fade-out
+            print(f"   ✓ hide_title")
             return True
 
         elif do == 'scroll_to':
@@ -3802,48 +3790,38 @@ class ScriptRunner:
         elif do == 'collab_open':
             username = action.get('user', 'researcher')
             password = action.get('password', 'admin123')
-            if test_mode:
-                print(f"   ✓ collab_open: {username} (skip in test)")
-            else:
-                self.browser.collab_open(username, password)
+            self.browser.collab_open(username, password)
+            print(f"   ✓ collab_open: {username}")
             return True
 
         elif do == 'collab_goto':
             path = action.get('url', action.get('path', '/'))
-            if test_mode:
-                print(f"   ✓ collab_goto: {path} (skip in test)")
-            else:
-                self.browser.collab_goto(path)
+            self.browser.collab_goto(path)
+            print(f"   ✓ collab_goto: {path}")
             return True
 
         elif do == 'collab_click':
-            if test_mode:
-                print(f"   ✓ collab_click: {target} (skip in test)")
-            else:
-                self.browser.collab_click(target)
+            self.browser.collab_click(target)
+            print(f"   ✓ collab_click: {target}")
             return True
 
         elif do == 'collab_type':
             text = action.get('text', '')
             delay = action.get('delay', 0.08)
             if test_mode:
-                print(f"   ✓ collab_type: {target} (skip in test)")
-            else:
-                self.browser.collab_type(target, text, delay)
+                delay = 0.02  # Schneller tippen im Test
+            self.browser.collab_type(target, text, delay)
+            print(f"   ✓ collab_type: {target}")
             return True
 
         elif do == 'collab_focus':
-            if test_mode:
-                print(f"   ✓ collab_focus (skip in test)")
-            else:
-                self.browser.collab_focus_editor()
+            self.browser.collab_focus_editor()
+            print(f"   ✓ collab_focus")
             return True
 
         elif do == 'collab_close':
-            if test_mode:
-                print(f"   ✓ collab_close (skip in test)")
-            else:
-                self.browser.collab_close()
+            self.browser.collab_close()
+            print(f"   ✓ collab_close")
             return True
 
         else:

@@ -85,6 +85,18 @@ class LLMProviderService:
     @staticmethod
     def ensure_env_providers() -> int:
         configs = LLMProviderService._collect_litellm_env_configs()
+
+        # Also collect OpenAI provider from OPENAI_API_KEY env var
+        openai_key = (os.environ.get("OPENAI_API_KEY") or "").strip()
+        if openai_key:
+            configs.append({
+                "provider_type": "openai",
+                "name": "OpenAI",
+                "base_url": "https://api.openai.com/v1",
+                "api_key": openai_key,
+                "is_primary": False,
+            })
+
         if not configs:
             return 0
 
@@ -93,12 +105,14 @@ class LLMProviderService:
         default_exists = any(p.is_default and p.is_active for p in existing)
 
         created = 0
+        new_providers = []
         for cfg in sorted(configs, key=lambda c: not c.get("is_primary", False)):
             base_url = (cfg.get("base_url") or "").rstrip("/")
             if not base_url or base_url in existing_urls:
                 continue
+            provider_type = cfg.get("provider_type", "litellm")
             provider = LLMProvider(
-                provider_type="litellm",
+                provider_type=provider_type,
                 name=cfg["name"],
                 base_url=base_url,
                 api_key_encrypted=encrypt_api_key(cfg["api_key"]) if cfg.get("api_key") else None,
@@ -111,12 +125,32 @@ class LLMProviderService:
                 provider.is_default = True
                 default_exists = True
             db.session.add(provider)
+            new_providers.append(provider)
             existing_urls.add(base_url)
             created += 1
 
         if created:
             db.session.commit()
+            # Link orphaned models to the newly created default provider
+            LLMProviderService._link_orphaned_models()
+
         return created
+
+    @staticmethod
+    def _link_orphaned_models():
+        """Link models without provider_id to the default provider."""
+        default_provider = LLMProviderService.get_default_provider()
+        if not default_provider:
+            return
+        orphaned = LLMModel.query.filter(
+            LLMModel.provider_id.is_(None),
+            LLMModel.is_active.is_(True),
+        ).all()
+        for model in orphaned:
+            model.provider_id = default_provider.id
+            logger.info("Linked model '%s' to provider '%s'", model.model_id, default_provider.name)
+        if orphaned:
+            db.session.commit()
 
     @staticmethod
     def create_provider(data: Dict[str, Any]) -> LLMProvider:

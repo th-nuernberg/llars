@@ -234,6 +234,29 @@ def seed_llm_models():
 seed_llm_models()
 
 
+# Ensure LLM providers from environment variables (LiteLLM, OpenAI)
+def ensure_llm_providers():
+    """Create providers from env vars and link orphaned models."""
+    if _skip_startup_tasks():
+        print("[Startup] Skipping LLM provider setup (LLARS_SKIP_STARTUP_TASKS=true)")
+        return
+    from services.llm.llm_provider_service import LLMProviderService
+
+    with app.app_context():
+        try:
+            created = LLMProviderService.ensure_env_providers()
+            if created:
+                print(f"[Startup] Created {created} LLM provider(s) from environment")
+            else:
+                # Even if no new providers created, link orphaned models
+                LLMProviderService._link_orphaned_models()
+                print("[Startup] LLM providers already configured")
+        except Exception as e:
+            print(f"[Startup] Error setting up LLM providers: {e}")
+
+ensure_llm_providers()
+
+
 # Seed default field prompts for AI-assist features
 def seed_field_prompts():
     """Seed default field prompts on startup."""

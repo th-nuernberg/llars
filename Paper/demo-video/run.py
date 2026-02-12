@@ -500,8 +500,10 @@ ELEMENT_MAP = {
     # Sidebar Git Widget (GitStatusWidget.vue in sidebar)
     "Git Panel Section": ".sidebar-section:has(.git-widget-expanded), .sidebar-section:has(.git-widget-collapsed), .git-widget-expanded",
     "Git Panel": ".git-widget-expanded, .git-panel-wrapper, .git-panel-expanded",
+    "Version Control Panel": ".git-widget-expanded, .git-panel-wrapper, .git-panel-expanded",
     "Git Widget Header": ".git-widget-expanded .widget-header, .widget-header",
     "Git Widget Status": ".git-widget-expanded .widget-status, .widget-status",
+    "Version Control Status": ".git-widget-expanded .widget-status, .widget-status",
     "Git Commit Section": ".widget-commit, .commit-section",
     "Git Commit Input": ".widget-commit .commit-input input, .commit-input input, .git-panel-wrapper .commit-input input",
     "Git Commit Button": ".widget-commit .l-btn, .widget-commit .l-btn:contains('Commit'), .commit-actions .l-btn",
@@ -510,6 +512,7 @@ ELEMENT_MAP = {
     # Floating Git Panel (PromptFloatingGitPanel.vue)
     "Git Open Floating": ".sidebar-section .v-btn:has(.mdi-open-in-new), .widget-header .l-icon-btn",
     "Git Fullscreen Button": ".widget-header .l-icon-btn:has(.mdi-open-in-new), .sidebar-section .v-btn:has(.mdi-open-in-new)",
+    "Version Control Fullscreen": ".widget-header .l-icon-btn:has(.mdi-open-in-new), .sidebar-section .v-btn:has(.mdi-open-in-new)",
     "Git Floating Panel": ".git-panel-content, .l-floating-window",
     "Git History Section": ".history-section, .history-list, .git-panel-content .history-list",
     "Git History Item": ".history-item, .history-list .history-item:first-child",

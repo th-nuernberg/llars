@@ -3494,7 +3494,7 @@
       "copy": "Copy",
       "import": "Import",
       "options": "Options",
-      "gitPanel": "Git panel",
+      "gitPanel": "Version Control",
       "openFloatingPanel": "Open block diff panel",
       "shares": "Sharing",
       "owner": "Owner",
@@ -3508,9 +3508,9 @@
       "copied": "Prompt copied to clipboard!"
     },
     "gitPanel": {
-      "label": "Git",
+      "label": "Version Control",
       "noChanges": "No changes",
-      "title": "Git panel",
+      "title": "Version Control",
       "synced": "Synced",
       "refresh": "Refresh",
       "collapse": "Collapse",

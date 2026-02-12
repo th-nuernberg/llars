@@ -3494,7 +3494,7 @@
       "copy": "Kopieren",
       "import": "Importieren",
       "options": "Optionen",
-      "gitPanel": "Git-Panel",
+      "gitPanel": "Versionskontrolle",
       "openFloatingPanel": "Block-Diff Panel öffnen",
       "shares": "Freigaben",
       "owner": "Besitzer",
@@ -3508,9 +3508,9 @@
       "copied": "Prompt in Zwischenablage kopiert!"
     },
     "gitPanel": {
-      "label": "Git",
+      "label": "Versionskontrolle",
       "noChanges": "Keine Änderungen",
-      "title": "Git-Panel",
+      "title": "Versionskontrolle",
       "synced": "Synchron",
       "refresh": "Aktualisieren",
       "collapse": "Einklappen",

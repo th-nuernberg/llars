@@ -252,6 +252,22 @@ _RERANKER_HINTS = (
     "cross-encoder",
 )
 
+_IMAGE_HINTS = (
+    "dall-e",
+    "dalle",
+)
+
+_AUDIO_HINTS = (
+    "tts-",
+    "whisper",
+)
+
+# Legacy completion-only models (not chat-compatible)
+_LEGACY_COMPLETION_HINTS = (
+    "babbage",
+    "davinci",
+)
+
 
 def _infer_model_defaults(model_id: str) -> Dict[str, Any]:
     mid = (model_id or "").strip()
@@ -263,11 +279,20 @@ def _infer_model_defaults(model_id: str) -> Dict[str, Any]:
     supports_reasoning = any(h in lower for h in _REASONING_HINTS)
     is_embedding = any(h in lower for h in _EMBEDDING_HINTS)
     is_reranker = any(h in lower for h in _RERANKER_HINTS)
+    is_image = any(h in lower for h in _IMAGE_HINTS)
+    is_audio = any(h in lower for h in _AUDIO_HINTS)
+    is_legacy = any(h in lower for h in _LEGACY_COMPLETION_HINTS) and not lower.startswith("gpt")
 
     if is_reranker:
         model_type = LLMModel.MODEL_TYPE_RERANKER
     elif is_embedding:
         model_type = LLMModel.MODEL_TYPE_EMBEDDING
+    elif is_image:
+        model_type = LLMModel.MODEL_TYPE_IMAGE
+    elif is_audio:
+        model_type = LLMModel.MODEL_TYPE_AUDIO
+    elif is_legacy:
+        model_type = "legacy"  # Completion-only models, not usable for chat evaluation
     else:
         model_type = LLMModel.MODEL_TYPE_LLM
 

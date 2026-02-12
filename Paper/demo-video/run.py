@@ -511,8 +511,8 @@ ELEMENT_MAP = {
     "Git Change Stats": ".git-widget-expanded .l-tag:contains('+'), .widget-status .l-tag",
     # Floating Git Panel (PromptFloatingGitPanel.vue)
     "Git Open Floating": ".sidebar-section .v-btn:has(.mdi-open-in-new), .widget-header .l-icon-btn",
-    "Git Fullscreen Button": ".widget-header .l-icon-btn:has(.mdi-open-in-new), .sidebar-section .v-btn:has(.mdi-open-in-new)",
-    "Version Control Fullscreen": ".widget-header .l-icon-btn:has(.mdi-open-in-new), .sidebar-section .v-btn:has(.mdi-open-in-new)",
+    "Git Fullscreen Button": "button:has(.mdi-open-in-new), .section-label .v-btn, .sidebar-section button:has(i.mdi-open-in-new)",
+    "Version Control Fullscreen": "button:has(.mdi-open-in-new), .section-label .v-btn, .sidebar-section button:has(i.mdi-open-in-new)",
     "Git Floating Panel": ".git-panel-content, .l-floating-window",
     "Git History Section": ".history-section, .history-list, .git-panel-content .history-list",
     "Git History Item": ".history-item, .history-list .history-item:first-child",
@@ -2514,8 +2514,7 @@ class Browser:
         """
         print(f"   👥 Öffne Collab-Browser als '{username}' (Side-by-Side)...")
 
-        # 0. Stage Manager deaktivieren (sonst geht zweites Fenster in separate Stage)
-        self._disable_stage_manager()
+        # Stage Manager wurde bereits in ScriptRunner.run() deaktiviert
 
         # 1. Originale Bounds speichern für späteres Restore
         self._original_window_bounds = self.get_window_bounds()
@@ -2835,8 +2834,7 @@ class Browser:
             self._original_window_bounds = None
             time.sleep(0.3)
 
-        # Stage Manager wiederherstellen
-        self._restore_stage_manager()
+        # Stage Manager bleibt deaktiviert bis Aufnahme-Ende (ScriptRunner.run() stellt wieder her)
 
     def close(self):
         """Schließt Browser"""
@@ -3392,7 +3390,11 @@ class ScriptRunner:
 
             time.sleep(1 if test_mode else 2)
 
-            # === PHASE 2: BROWSER ÖFFNEN + SETUP ===
+            # === PHASE 2: DESKTOP VORBEREITEN + BROWSER ÖFFNEN ===
+            # Stage Manager deaktivieren und andere Fenster ausblenden VOR Chrome-Start
+            self.browser._disable_stage_manager()
+            self.browser._hide_other_windows()
+
             self.browser.open()
             # skip_login=True: Login happens live during recording (intro steps)
             self.browser.setup(username=username, password=password, language=language, skip_login=True)
@@ -3539,6 +3541,8 @@ class ScriptRunner:
                 # Audio ins Video einfügen
                 self.recorder.merge_audio()
             if self.browser:
+                # Stage Manager wiederherstellen bevor Browser geschlossen wird
+                self.browser._restore_stage_manager()
                 self.browser.close()
 
     def _get_audio_duration(self, audio_path: str) -> float:

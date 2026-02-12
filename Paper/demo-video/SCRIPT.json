@@ -758,7 +758,7 @@
           "do": "type",
           "target": "Provider API Key Input",
           "text": "${OPENAI_API_KEY}",
-          "speed": "fast"
+          "speed": "instant"
         }
       ]
     },

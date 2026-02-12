@@ -9,53 +9,48 @@
 ## Einleitung (1 Min.)
 
 - Begrüßung, Einverständnis zur Aufzeichnung
-- *"Wir möchten verstehen, wie Sie als Entwickler:in LLARS in Ihrer Arbeit erleben. Das Gespräch dauert ca. 15 Minuten — es gibt keine richtigen oder falschen Antworten."*
+- *"Du kennst LLARS ja schon länger. Wir möchten für unser Paper verstehen, wie du LLARS als Entwickler erlebst. Erzähl einfach frei."*
 
 ---
 
-## 1. Einstieg und Baseline (2 Min.)
+## 1. Einstieg (2 Min.)
 
-1. **Wie lange nutzen Sie LLARS und welche Bereiche nutzen Sie am meisten?**
-
-2. **Wie haben Sie vorher Prompts entwickelt und LLM-Outputs systematisch verglichen?**
-   - Nachfragen: Eigene Skripte? API-Calls? Notebooks? Wie kamen fachliche Anforderungen zu Ihnen?
+1. **Erzähl mal — wie sieht deine typische Arbeit mit LLARS aus?**
 
 ---
 
-## 2. Prompt Engineering und Batch Generation (4 Min.)
+## 2. Prompt Engineering & Batch Generation (3 Min.)
 
-3. **Wie läuft die gemeinsame Prompt-Entwicklung mit den Beratungsforscher:innen ab — können Sie einen typischen Ablauf beschreiben?**
-   - Nachfragen: Arbeiten die Fachleute direkt im Editor mit, oder liefern sie Input auf anderem Weg?
-
-4. **Wie nutzen Sie die Batch-Generierung? Hat die Kostenübersicht und das Budget-Limit Ihr Vorgehen beeinflusst?**
-
-5. **Hätten Sie diesen systematischen Vergleich (Kartesisches Produkt über Prompts, Modelle, Daten) auch ohne LLARS durchführen können?**
-   - Nachfragen: Wenn ja, mit welchem Aufwand?
+2. **Wie erlebst du das Prompt Engineering und die Batch Generation in LLARS — was funktioniert gut, was nicht?**
+   - Nachfragen falls nötig: Zusammenarbeit mit Fachleuten im Editor? Kostenübersicht? Systematischer Vergleich?
 
 ---
 
-## 3. Evaluation und LLM-Evaluatoren (4 Min.)
+## 3. Evaluation (3 Min.)
 
-6. **Haben Sie LLM-Evaluatoren eingerichtet? Wie war die Ergebnisqualität im Vergleich zu menschlichen Bewertern?**
-
-7. **Wie nützlich sind die Übereinstimmungsmetriken für Sie — nutzen Sie die Filterung nach Evaluator-Typ (Mensch–Mensch, LLM–LLM, Mensch–LLM)?**
-
-8. **Können die Beratungsforscher:innen Evaluationen eigenständig einrichten, oder werden Sie regelmäßig um Hilfe gebeten?**
+3. **Wie erlebst du das Evaluieren — können die Fachleute das eigenständig oder brauchst du oft Hilfe geben?**
+   - Nachfragen falls nötig: LLM-Evaluatoren? Metriken? Filterung Mensch vs. LLM?
 
 ---
 
-## 4. Zusammenarbeit und Gesamteindruck (3 Min.)
+## 4. Zeitersparnis und Motivation (3 Min.)
 
-9. **Wie hat LLARS die Zusammenarbeit mit den Beratungsforscher:innen verändert — gibt es weniger Hin-und-Her als vorher?**
-    - Nachfragen: Weniger Versionskonflikte? Weniger manuelle Zuarbeit?
+4. **Wo spart LLARS dir Zeit und was motiviert dich damit zu arbeiten?**
+   - Nachfragen falls nötig: Was wäre ohne LLARS nicht möglich gewesen? Was macht LLARS besonders?
 
-10. **Was sind für Sie die größten Stärken und die größten Schwächen von LLARS?**
+---
+
+## 5. Gesamteindruck (3 Min.)
+
+5. **Was sind die größten Stärken und Schwächen von LLARS?**
+
+6. **Wie hat LLARS die Zusammenarbeit mit den Beratungsforscher:innen verändert?**
 
 ---
 
 ## Abschluss (1 Min.)
 
-11. **Gibt es etwas Wichtiges, das wir nicht angesprochen haben?**
+7. **Gibt es noch etwas Wichtiges, das wir nicht angesprochen haben?**
 
 - Dank und Verabschiedung
 
@@ -65,9 +60,11 @@
 
 | Code | Thema | Paper-Bezug |
 |------|-------|-------------|
-| **COLLAB** | Kollaboratives Editing, gemeinsame Prompt-Arbeit | Sec. 2.1, Theme 1 |
-| **BATCH** | Systematischer Vergleich, Kosten, Aufwand | Sec. 2.2, Theme 2 |
+| **COLLAB** | Kollaboratives Editing, gemeinsame Prompt-Arbeit | Sec. 2.1 |
+| **BATCH** | Systematischer Vergleich, Kosten, Aufwand | Sec. 2.2 |
 | **EVAL-LLM** | LLM-Evaluatoren, Mensch-Maschine-Vergleich | Sec. 2.3 |
+| **TIME** | Zeitersparnis, "ohne LLARS nicht machbar" | Sec. 3 |
+| **MOTIV** | Motivation, Nutzungsfreude, Besonderes | Sec. 3 |
 | **BRIDGE** | Zusammenarbeit mit Domain-Experten, Entlastung | Zentrale These |
-| **LIMIT** | Einschränkungen, technische Hürden | Sec. 4 |
-| **BEFORE** | Arbeitsweise vor LLARS (Baseline) | Kontrast |
+| **LIMIT** | Schwächen, technische Hürden | Sec. 4 |
+| **BEFORE** | Kontrast zur Arbeitsweise vor LLARS | Kontrast |

@@ -2416,34 +2416,103 @@ class Browser:
     # COLLAB BROWSER - Zweiter Browser für Echtzeit-Kollaboration Demo
     # =========================================================================
 
+    def _disable_stage_manager(self):
+        """Deaktiviert macOS Stage Manager damit zwei Fenster nebeneinander funktionieren."""
+        import platform
+        if platform.system() != 'Darwin':
+            return
+        try:
+            result = subprocess.run(
+                ['defaults', 'read', 'com.apple.WindowManager', 'GloballyEnabled'],
+                capture_output=True, text=True, timeout=5
+            )
+            self._stage_manager_was_enabled = result.stdout.strip() == '1'
+            if self._stage_manager_was_enabled:
+                subprocess.run(
+                    ['defaults', 'write', 'com.apple.WindowManager', 'GloballyEnabled', '-bool', 'false'],
+                    check=True, timeout=5
+                )
+                subprocess.run(['killall', 'Dock'], timeout=5)
+                time.sleep(2)
+                print("   👥 Stage Manager temporär deaktiviert")
+        except Exception as e:
+            print(f"   ⚠️ Stage Manager Prüfung fehlgeschlagen: {e}")
+            self._stage_manager_was_enabled = False
+
+    def _restore_stage_manager(self):
+        """Stellt den vorherigen Stage Manager Zustand wieder her."""
+        import platform
+        if platform.system() != 'Darwin':
+            return
+        if getattr(self, '_stage_manager_was_enabled', False):
+            try:
+                subprocess.run(
+                    ['defaults', 'write', 'com.apple.WindowManager', 'GloballyEnabled', '-bool', 'true'],
+                    check=True, timeout=5
+                )
+                subprocess.run(['killall', 'Dock'], timeout=5)
+                print("   👥 Stage Manager wiederhergestellt")
+            except Exception:
+                pass
+            self._stage_manager_was_enabled = False
+
+    def _tile_chrome_windows(self, left_bounds, right_bounds):
+        """Positioniert Chrome-Fenster per AppleScript (Fallback wenn Selenium nicht reicht)."""
+        import platform
+        if platform.system() != 'Darwin':
+            return
+        lx, ly, lw, lh = left_bounds
+        rx, ry, rw, rh = right_bounds
+        try:
+            subprocess.run(['osascript', '-e', f'''
+                tell application "System Events"
+                    set chromeProcs to every process whose name is "Google Chrome"
+                    set allWins to {{}}
+                    repeat with proc in chromeProcs
+                        repeat with w in windows of proc
+                            set end of allWins to w
+                        end repeat
+                    end repeat
+                    if (count of allWins) >= 2 then
+                        set position of item 1 of allWins to {{{lx}, {ly}}}
+                        set size of item 1 of allWins to {{{lw}, {lh}}}
+                        set position of item 2 of allWins to {{{rx}, {ry}}}
+                        set size of item 2 of allWins to {{{rw}, {rh}}}
+                    end if
+                end tell
+            '''], capture_output=True, timeout=5)
+        except Exception as e:
+            print(f"   ⚠️ AppleScript Fenster-Tiling fehlgeschlagen: {e}")
+
     def collab_open(self, username: str = "researcher", password: str = "admin123"):
         """
         Öffnet einen zweiten Browser für die Kollaborations-Demo.
         Side-by-Side Layout: Hauptbrowser links (50%), Collab-Browser rechts (50%).
-        Beide Fenster liegen im Recorder-Crop-Bereich.
+        Deaktiviert macOS Stage Manager falls nötig.
         """
         print(f"   👥 Öffne Collab-Browser als '{username}' (Side-by-Side)...")
+
+        # 0. Stage Manager deaktivieren (sonst geht zweites Fenster in separate Stage)
+        self._disable_stage_manager()
 
         # 1. Originale Bounds speichern für späteres Restore
         self._original_window_bounds = self.get_window_bounds()
         mx, my, mw, mh = self._original_window_bounds
-
-        # 2. Hauptbrowser auf linke Hälfte resizen
         half_w = mw // 2
-        self.driver.set_window_size(half_w, mh)
+
+        # 2. Hauptbrowser auf linke Hälfte — Position ZUERST (macOS Window-Manager)
         self.driver.set_window_position(mx, my)
-        time.sleep(0.3)
+        time.sleep(0.2)
+        self.driver.set_window_size(half_w, mh)
+        time.sleep(0.5)
+        print(f"   👥 Hauptbrowser → links: ({mx},{my}) {half_w}x{mh}")
 
-        # Viewport-Override: Seite denkt sie hat volle Breite → kein Responsive-Umbruch
-        self.driver.execute_cdp_cmd('Emulation.setDeviceMetricsOverride', {
-            'width': mw, 'height': mh,
-            'deviceScaleFactor': 1, 'mobile': False,
-        })
-        print(f"   👥 Hauptbrowser → links: ({mx},{my}) {half_w}x{mh} (viewport emuliert {mw}x{mh})")
-
-        # 3. Collab-Browser erstellen
+        # 3. Collab-Browser erstellen — Position/Size als Launch-Flags
         options = Options()
+        options.add_argument(f'--window-position={mx + half_w},{my}')
         options.add_argument(f'--window-size={half_w},{mh}')
+        options.add_argument('--no-first-run')
+        options.add_argument('--no-default-browser-check')
         options.add_experimental_option('excludeSwitches', ['enable-automation'])
         options.add_experimental_option('prefs', {
             'credentials_enable_service': False,
@@ -2453,17 +2522,20 @@ class Browser:
 
         service = Service(ChromeDriverManager().install())
         self.collab_driver = webdriver.Chrome(service=service, options=options)
+        time.sleep(1.0)
 
-        # 4. Collab-Browser auf rechte Hälfte setzen
+        # 4. Positionen reinforcen (Focus-Steal kann Fenster verschieben)
         self.collab_driver.set_window_position(mx + half_w, my)
         self.collab_driver.set_window_size(half_w, mh)
+        self.driver.set_window_position(mx, my)
+        self.driver.set_window_size(half_w, mh)
 
-        # Viewport-Override auch für Collab-Browser
-        self.collab_driver.execute_cdp_cmd('Emulation.setDeviceMetricsOverride', {
-            'width': mw, 'height': mh,
-            'deviceScaleFactor': 1, 'mobile': False,
-        })
-        print(f"   👥 Collab-Browser → rechts: ({mx + half_w},{my}) {half_w}x{mh} (viewport emuliert {mw}x{mh})")
+        # 5. AppleScript Fallback: Fenster nochmal explizit positionieren
+        self._tile_chrome_windows(
+            (mx, my, half_w, mh),
+            (mx + half_w, my, half_w, mh)
+        )
+        print(f"   👥 Collab-Browser → rechts: ({mx + half_w},{my}) {half_w}x{mh}")
 
         # Zur Login-Seite navigieren
         self.collab_driver.get(self.base_url)
@@ -2736,13 +2808,14 @@ class Browser:
         # Hauptbrowser auf volle Breite zurücksetzen
         if hasattr(self, '_original_window_bounds') and self._original_window_bounds:
             mx, my, mw, mh = self._original_window_bounds
-            # Viewport-Override aufheben bevor Resize
-            self.driver.execute_cdp_cmd('Emulation.clearDeviceMetricsOverride', {})
             self.driver.set_window_position(mx, my)
             self.driver.set_window_size(mw, mh)
             print(f"   👥 Hauptbrowser → volle Breite: ({mx},{my}) {mw}x{mh}")
             self._original_window_bounds = None
             time.sleep(0.3)
+
+        # Stage Manager wiederherstellen
+        self._restore_stage_manager()
 
     def close(self):
         """Schließt Browser"""

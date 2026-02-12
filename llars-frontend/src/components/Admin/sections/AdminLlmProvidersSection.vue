@@ -157,6 +157,12 @@
         <v-chip size="small" variant="tonal" class="ml-2">
           {{ llmModelsFiltered.length }}
         </v-chip>
+        <v-spacer />
+        <v-chip-group v-model="modelTypeFilter" selected-class="text-primary" mandatory density="compact">
+          <v-chip size="small" value="llm" variant="outlined" class="llars-chip">Chat</v-chip>
+          <v-chip size="small" value="embedding" variant="outlined" class="llars-chip">Embedding</v-chip>
+          <v-chip size="small" value="all" variant="outlined" class="llars-chip">Alle</v-chip>
+        </v-chip-group>
       </v-card-title>
       <v-card-text>
         <v-skeleton-loader v-if="llmLoading" type="table" />
@@ -649,6 +655,7 @@ const savingLlmAccess = ref(false)
 const roles = ref([])
 const allUsernames = ref([])
 const llmIsPublic = ref(true)
+const modelTypeFilter = ref('llm')
 
 const quickDialog = ref(false)
 const editDialog = ref(false)
@@ -822,7 +829,10 @@ const providerTypeOptions = [
 ]
 
 const llmModelsFiltered = computed(() => {
-  return (llmModels.value || []).filter(model => model.model_type === 'llm')
+  if (modelTypeFilter.value === 'all') {
+    return llmModels.value || []
+  }
+  return (llmModels.value || []).filter(model => model.model_type === modelTypeFilter.value)
 })
 
 async function fetchProviders() {

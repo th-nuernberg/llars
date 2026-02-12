@@ -823,6 +823,48 @@ class TestModelTypeHints:
 
         assert "cross-encoder" in _RERANKER_HINTS
 
+    def test_LLM_096_image_model_dalle(self):
+        """LLM-096: DALL-E wird als Image-Modell erkannt."""
+        from services.llm.model_sync_service import _infer_model_defaults
+
+        result = _infer_model_defaults("dall-e-3")
+        assert result['model_type'] == 'image'
+
+    def test_LLM_097_audio_model_tts(self):
+        """LLM-097: TTS wird als Audio-Modell erkannt."""
+        from services.llm.model_sync_service import _infer_model_defaults
+
+        result = _infer_model_defaults("tts-1-hd")
+        assert result['model_type'] == 'audio'
+
+    def test_LLM_098_audio_model_whisper(self):
+        """LLM-098: Whisper wird als Audio-Modell erkannt."""
+        from services.llm.model_sync_service import _infer_model_defaults
+
+        result = _infer_model_defaults("whisper-1")
+        assert result['model_type'] == 'audio'
+
+    def test_LLM_099_legacy_model_babbage(self):
+        """LLM-099: Babbage wird als Legacy erkannt (nicht als LLM)."""
+        from services.llm.model_sync_service import _infer_model_defaults
+
+        result = _infer_model_defaults("babbage-002")
+        assert result['model_type'] != 'llm'
+
+    def test_LLM_099b_legacy_model_davinci(self):
+        """LLM-099b: Davinci wird als Legacy erkannt (nicht als LLM)."""
+        from services.llm.model_sync_service import _infer_model_defaults
+
+        result = _infer_model_defaults("davinci-002")
+        assert result['model_type'] != 'llm'
+
+    def test_LLM_099c_gpt_not_legacy(self):
+        """LLM-099c: GPT-Modelle werden nicht als Legacy erkannt."""
+        from services.llm.model_sync_service import _infer_model_defaults
+
+        result = _infer_model_defaults("gpt-4")
+        assert result['model_type'] == 'llm'
+
 
 # =============================================================================
 # Edge Cases and Integration Tests

@@ -156,6 +156,8 @@ class LLMModel(db.Model):
     MODEL_TYPE_LLM = "llm"
     MODEL_TYPE_EMBEDDING = "embedding"
     MODEL_TYPE_RERANKER = "reranker"
+    MODEL_TYPE_IMAGE = "image"
+    MODEL_TYPE_AUDIO = "audio"
 
     # Model identification
     model_id: Mapped[str] = mapped_column(db.String(255), unique=True, nullable=False, index=True)

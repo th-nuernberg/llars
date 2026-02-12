@@ -9,53 +9,48 @@
 ## Einleitung (1 Min.)
 
 - Begrüßung, Einverständnis zur Aufzeichnung
-- *"Wir möchten verstehen, wie Sie als Beratungsforscher:in LLARS in Ihrer Arbeit erleben. Das Gespräch dauert ca. 15 Minuten — es gibt keine richtigen oder falschen Antworten."*
+- *"Du kennst LLARS ja schon länger. Wir möchten für unser Paper verstehen, wie du LLARS als Beratungsforscherin erlebst. Erzähl einfach frei."*
 
 ---
 
-## 1. Einstieg und Baseline (2 Min.)
+## 1. Einstieg (2 Min.)
 
-1. **Wie lange nutzen Sie LLARS und welche Bereiche nutzen Sie am meisten?**
-
-2. **Wie haben Sie vorher an Prompts mitgearbeitet oder LLM-Outputs beurteilt?**
-   - Nachfragen: Shared Documents? Tabellen? Mündliches Feedback an Entwickler?
+1. **Erzähl mal — wie sieht deine typische Arbeit mit LLARS aus?**
 
 ---
 
-## 2. Prompt-Entwicklung aus Fachsicht (4 Min.)
+## 2. Prompt Engineering (3 Min.)
 
-3. **Wie bringen Sie Ihr Fachwissen in die Prompt-Entwicklung ein — können Sie einen typischen Ablauf beschreiben?**
-   - Nachfragen: Arbeiten Sie direkt im Editor oder geben Sie Feedback auf anderem Weg?
-
-4. **Können Sie die Ergebnisse eines Prompts selbst testen, oder brauchen Sie dafür Hilfe vom Entwicklungsteam?**
-
-5. **Hilft Ihnen die Versionierung? Gab es Situationen, in denen unklar war, welche Prompt-Version aktuell ist?**
+2. **Wie erlebst du das Prompt Engineering in LLARS — was funktioniert gut, was nicht?**
+   - Nachfragen falls nötig: Direkt im Editor? Test-Funktion? Zusammenarbeit mit Entwicklern?
 
 ---
 
-## 3. Evaluation und Ergebnisse (4 Min.)
+## 3. Evaluation (3 Min.)
 
-6. **Konnten Sie Evaluationen eigenständig einrichten und durchführen?**
-   - Nachfragen: War der Scenario Wizard verständlich? Was war schwierig?
-
-7. **Wie nützlich sind die Übereinstimmungsmetriken (z.B. Krippendorff's Alpha) für Sie — verstehen Sie, was sie aussagen?**
-
-8. **Hat der systematische Modellvergleich (Batch Generation) Ihre Arbeit verändert? Wäre das ohne LLARS möglich gewesen?**
+3. **Wie erlebst du das Evaluieren — konntest du das eigenständig machen?**
+   - Nachfragen falls nötig: Scenario Wizard? Metriken? Was war schwierig?
 
 ---
 
-## 4. Zusammenarbeit und Gesamteindruck (3 Min.)
+## 4. Zeitersparnis und Motivation (3 Min.)
 
-9. **Wie erleben Sie die Zusammenarbeit mit dem Entwicklungsteam in LLARS — fühlen Sie sich als gleichberechtigte:r Partner:in?**
-    - Nachfragen: Gibt es Hürden? Fehlende Funktionen?
+4. **Wo spart LLARS dir Zeit und was motiviert dich damit zu arbeiten?**
+   - Nachfragen falls nötig: Was wäre ohne LLARS nicht möglich gewesen? Was macht LLARS besonders?
 
-10. **Was sind für Sie die größten Stärken und die größten Schwächen von LLARS?**
+---
+
+## 5. Gesamteindruck (3 Min.)
+
+5. **Was sind die größten Stärken und Schwächen von LLARS?**
+
+6. **Wie erlebst du die Zusammenarbeit mit dem Entwicklungsteam — fühlst du dich als gleichberechtigte Partnerin?**
 
 ---
 
 ## Abschluss (1 Min.)
 
-11. **Gibt es etwas Wichtiges, das wir nicht angesprochen haben?**
+7. **Gibt es noch etwas Wichtiges, das wir nicht angesprochen haben?**
 
 - Dank und Verabschiedung
 
@@ -65,9 +60,11 @@
 
 | Code | Thema | Paper-Bezug |
 |------|-------|-------------|
-| **COLLAB** | Kollaboratives Editing, Versionierung | Sec. 2.1, Theme 1 |
-| **EVAL-SELF** | Eigenständige Evaluation ohne Entwicklerhilfe | Sec. 2.3, Theme 3 |
+| **COLLAB** | Kollaboratives Editing, Versionierung | Sec. 2.1 |
+| **EVAL-SELF** | Eigenständige Evaluation ohne Entwicklerhilfe | Sec. 2.3 |
+| **TIME** | Zeitersparnis, "ohne LLARS nicht machbar" | Sec. 3 |
+| **MOTIV** | Motivation, Nutzungsfreude, Besonderes | Sec. 3 |
 | **BRIDGE** | Zusammenarbeit mit Entwicklern, Gleichberechtigung | Zentrale These |
-| **BATCH** | Nutzen des systematischen Vergleichs | Sec. 2.2, Theme 2 |
-| **LIMIT** | Einschränkungen, Hürden, fehlende Features | Sec. 4 |
-| **BEFORE** | Arbeitsweise vor LLARS (Baseline) | Kontrast |
+| **BATCH** | Nutzen des systematischen Vergleichs | Sec. 2.2 |
+| **LIMIT** | Schwächen, Hürden, fehlende Features | Sec. 4 |
+| **BEFORE** | Kontrast zur Arbeitsweise vor LLARS | Kontrast |

@@ -129,8 +129,8 @@
                 </div>
               </div>
 
-              <!-- Mode Toggles -->
-              <div class="mode-toggles">
+              <!-- Mode Toggles (hidden for cleaner UI) -->
+              <div v-if="false" class="mode-toggles">
                 <v-chip
                   :color="jsonMode ? 'success' : 'default'"
                   :variant="jsonMode ? 'flat' : 'outlined'"
@@ -363,7 +363,7 @@ const resolvedPrompt = computed(() => {
 const selectedModel = ref(localStorage.getItem(STORAGE_KEY_MODEL) || '')
 const temperature = ref(parseFloat(localStorage.getItem(STORAGE_KEY_TEMP)) || 0.15)
 const maxTokens = ref(parseInt(localStorage.getItem(STORAGE_KEY_TOKENS)) || 4096)
-const jsonMode = ref(true)
+const jsonMode = ref(false)
 const jsonSchemaInput = ref('{}')
 
 // Prompt display state
@@ -844,7 +844,7 @@ onUnmounted(() => {
   border-radius: 8px;
   padding: 16px;
   flex: 1;
-  max-height: 300px;
+  max-height: 500px;
   overflow-y: auto;
 }
 

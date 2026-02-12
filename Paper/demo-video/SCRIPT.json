@@ -1,6 +1,6 @@
 {
-  "_comment": "Lars Demo Video - IJCAI 2026 Demo Track",
-  "_version": "9.0 - Cleaned up flow, removed detours, added podcast moments",
+  "_comment": "LLARS Demo Video - IJCAI 2026 Demo Track",
+  "_version": "10.0 - Compact intro with live login, in-browser overlays",
   "_duration_target": "4-5 minutes",
   "_design_principles": [
     "Someone is always speaking",
@@ -35,66 +35,51 @@
       }
     }
   },
+  "_tts_naming": "TTS models say 'Lars' (without the leading L) because they mispronounce 'LLARS'. In all written text, overlays, and UI, the correct name is 'LLARS'.",
   "steps": [
     {
-      "_section": "=== INTRO (40s) ===",
-      "_note": "Login credentials are shown as post-production overlay, not spoken",
+      "_section": "=== INTRO (25s) — Login live on camera, then title card ===",
       "id": "intro_1",
       "speaker": "moderator",
-      "narration": "Welcome to the Lars demo. I'm Alex, and with me is David.",
+      "narration": "Welcome to the Lars demo — an LLM Assisted Research System. Let's log in and jump right in.",
       "actions": [
         {
-          "do": "show_title",
-          "title": "Lars",
-          "subtitle": "LLM Assisted Research System"
+          "do": "login"
         }
       ]
     },
     {
       "id": "intro_2",
       "speaker": "guest",
-      "narration": "Hi everyone. Today we'll walk through a complete evaluation workflow in Lars \u2014 from writing a prompt to comparing LLM outputs side by side.",
+      "narration": "Hi, I'm David. Lars helps teams compare LLM outputs against domain-specific criteria — something standard benchmarks don't capture.",
       "actions": [
         {
+          "do": "show_title",
+          "title": "LLARS",
+          "subtitle": "LLM Assisted Research System",
+          "columns": [
+            [{"label": "URL", "value": "https://llars.e-beratungsinstitut.de"}],
+            [{"label": "Reviewer 1", "value": "ijcai_reviewer_1"}, {"label": "Password", "value": "ijcai_reviewer_123"}],
+            [{"label": "Reviewer 2", "value": "ijcai_reviewer_2"}, {"label": "Password", "value": "ijcai_reviewer_123"}]
+          ]
+        },
+        {
           "do": "wait",
-          "seconds": 0.3
+          "seconds": 1.5
         }
       ]
     },
     {
       "id": "intro_3",
       "speaker": "moderator",
-      "narration": "Lars helps teams compare LLM outputs against domain criteria, which standard benchmarks don't capture. We'll build a prompt, run a batch, and review the results.",
+      "narration": "Today we'll build a prompt, run a batch across multiple models, and review the results — all inside Lars.",
       "actions": [
         {
-          "do": "wait",
-          "seconds": 0.5
-        }
-      ]
-    },
-    {
-      "id": "intro_4",
-      "speaker": "guest",
-      "narration": "That matters when you change models or settings and need to see what actually shifted.",
-      "actions": [
-        {
-          "do": "wait",
-          "seconds": 0.3
-        }
-      ]
-    },
-    {
-      "id": "intro_5",
-      "speaker": "moderator",
-      "narration": "Lars brings domain experts and AI developers together \u2014 from prompt development through batch generation to human and machine evaluation.",
-      "actions": [
-        {
-          "do": "goto",
-          "url": "/Home"
+          "do": "hide_title"
         },
         {
           "do": "wait",
-          "seconds": 1
+          "seconds": 0.3
         },
         {
           "do": "highlight",
@@ -126,7 +111,7 @@
         {
           "do": "highlight",
           "target": "Prompt Engineering",
-          "duration": 1.5
+          "duration": 1.0
         },
         {
           "do": "click",
@@ -137,16 +122,16 @@
     {
       "id": "prompt_eng_2",
       "speaker": "moderator",
-      "narration": "Let's create a new prompt. I can add collaborators right away \u2014 so I'll invite an IJCAI reviewer to work on this with us.",
+      "narration": "Let's create a new prompt. I can add collaborators right away — so I'll invite an IJCAI reviewer to work on this with us.",
       "actions": [
         {
           "do": "wait",
-          "seconds": 0.5
+          "seconds": 0.2
         },
         {
           "do": "highlight",
           "target": "New Prompt",
-          "duration": 1.5
+          "duration": 1.0
         },
         {
           "do": "click",
@@ -160,7 +145,7 @@
     {
       "id": "prompt_eng_2b",
       "speaker": "guest",
-      "narration": "So collaboration is built in from the start \u2014 you don't share a file later, the other person is part of the prompt from day one.",
+      "narration": "So collaboration is built in from the start — you don't share a file later, the other person is part of the prompt from day one.",
       "actions": [
         {
           "do": "type",
@@ -176,7 +161,7 @@
         },
         {
           "do": "wait",
-          "seconds": 1
+          "seconds": 0.5
         },
         {
           "do": "click",
@@ -195,7 +180,7 @@
         },
         {
           "do": "wait",
-          "seconds": 1.5
+          "seconds": 0.8
         },
         {
           "do": "wait_for",
@@ -204,7 +189,7 @@
         },
         {
           "do": "wait",
-          "seconds": 0.5
+          "seconds": 0.2
         }
       ]
     },
@@ -232,7 +217,7 @@
         },
         {
           "do": "wait",
-          "seconds": 0.6
+          "seconds": 0.3
         },
         {
           "do": "click",
@@ -253,7 +238,7 @@
         },
         {
           "do": "wait",
-          "seconds": 0.6
+          "seconds": 0.3
         },
         {
           "do": "click",
@@ -274,14 +259,14 @@
         },
         {
           "do": "wait",
-          "seconds": 0.6
+          "seconds": 0.3
         }
       ]
     },
     {
       "id": "prompt_eng_4b",
       "speaker": "guest",
-      "narration": "I like that \u2014 instead of one big text box, domain experts see exactly where their instructions go. That makes it much easier to iterate on specific parts.",
+      "narration": "I like that — instead of one big text box, domain experts see exactly where their instructions go. That makes it much easier to iterate on specific parts.",
       "actions": [
         {
           "do": "highlight",
@@ -298,37 +283,37 @@
     {
       "id": "prompt_eng_5",
       "speaker": "moderator",
-      "narration": "Right. Let me fill these in now \u2014 a journalist role, the summarization task, and the data format with placeholders.",
+      "narration": "Right. Let me fill these in now — a journalist role, the summarization task, and the data format with placeholders.",
       "actions": [
         {
           "do": "type",
           "target": ".editor-block:nth-child(1) .ql-editor",
           "text": "Role definition: You are an analytical journalist who provides thorough context alongside factual reporting.",
-          "speed": "fast"
+          "speed": "turbo"
         },
         {
           "do": "type",
           "target": ".editor-block:nth-child(2) .ql-editor",
           "text": "Task explanation: Write a 3-sentence summary of the article. Include relevant background, mention key stakeholders, and explain broader implications beyond the headline.",
-          "speed": "fast"
+          "speed": "turbo"
         },
         {
           "do": "type",
           "target": ".editor-block:nth-child(3) .ql-editor",
-          "text": "Data format explanation:\nInput:\nTitle: {{title}}\n\nArticle:\n{{content}}\n\nOutput:\nExactly 3 sentences in plain text. No bullet points. No extra commentary.",
-          "speed": "fast"
+          "text": "The article data will be provided as follows:\n\nTitle: {{title}}\nArticle: {{content}}\n\nWrite exactly 3 sentences in plain text. No bullet points, no extra commentary.",
+          "speed": "turbo"
         }
       ]
     },
     {
       "id": "prompt_eng_5_react",
       "speaker": "guest",
-      "narration": "Ah \u2014 those double curly braces, title and content \u2014 those are variables that get filled with actual data later?",
+      "narration": "Ah — those double curly braces, title and content — those are variables that get filled with actual data later?",
       "actions": [
         {
           "do": "highlight",
           "target": "Last Block Editor",
-          "duration": 1.5
+          "duration": 1.0
         }
       ]
     },
@@ -362,7 +347,7 @@
         },
         {
           "do": "wait",
-          "seconds": 0.5
+          "seconds": 0.2
         },
         {
           "do": "clear",
@@ -390,7 +375,7 @@
         },
         {
           "do": "wait",
-          "seconds": 0.5
+          "seconds": 0.2
         },
         {
           "do": "click",
@@ -398,25 +383,25 @@
         },
         {
           "do": "wait",
-          "seconds": 0.5
+          "seconds": 0.2
         }
       ]
     },
     {
       "id": "prompt_eng_5a_react",
       "speaker": "guest",
-      "narration": "So during batch generation, the system plugs in the real articles automatically. And these test values let you try it right now.",
+      "narration": "So during batch generation, you upload a JSON or CSV where the column names match these variable names — title and content. The system fills them in automatically.",
       "actions": [
         {
           "do": "wait",
-          "seconds": 0.3
+          "seconds": 0.1
         }
       ]
     },
     {
       "id": "prompt_eng_5b",
       "speaker": "moderator",
-      "narration": "Exactly. Let me hit Test \u2014 the variables get inserted and the LLM generates a response right here.",
+      "narration": "Exactly. Let me hit Test — the variables get inserted and the LLM generates a response right here.",
       "actions": [
         {
           "do": "click",
@@ -429,12 +414,12 @@
         },
         {
           "do": "wait",
-          "seconds": 1
+          "seconds": 0.5
         },
         {
           "do": "highlight",
           "target": "Test Variables Preview",
-          "duration": 1.5
+          "duration": 1.0
         }
       ]
     },
@@ -445,12 +430,12 @@
       "actions": [
         {
           "do": "wait",
-          "seconds": 1.5
+          "seconds": 0.8
         },
         {
           "do": "highlight",
           "target": "Response Output",
-          "duration": 2.5
+          "duration": 1.5
         }
       ]
     },
@@ -462,7 +447,7 @@
         {
           "do": "highlight",
           "target": "Response Output",
-          "duration": 1.5
+          "duration": 1.0
         },
         {
           "do": "click",
@@ -470,7 +455,7 @@
         },
         {
           "do": "wait",
-          "seconds": 0.5
+          "seconds": 0.2
         }
       ]
     },
@@ -502,7 +487,7 @@
         },
         {
           "do": "wait",
-          "seconds": 1
+          "seconds": 0.5
         }
       ]
     },
@@ -517,7 +502,7 @@
         },
         {
           "do": "wait",
-          "seconds": 1
+          "seconds": 0.5
         },
         {
           "do": "collab_click",
@@ -525,21 +510,21 @@
         },
         {
           "do": "wait",
-          "seconds": 1
+          "seconds": 0.5
         }
       ]
     },
     {
       "id": "collab_3",
       "speaker": "moderator",
-      "narration": "A second cursor appears \u2014 and every edit is tracked per user. You always know who wrote what.",
+      "narration": "A second cursor appears — and every edit is tracked per user. You always know who wrote what.",
       "actions": [
         {
           "do": "collab_focus"
         },
         {
           "do": "wait",
-          "seconds": 0.5
+          "seconds": 0.2
         },
         {
           "do": "collab_type",
@@ -549,71 +534,73 @@
         },
         {
           "do": "wait",
-          "seconds": 0.5
+          "seconds": 0.2
         },
         {
           "do": "highlight",
           "target": "First Block Editor",
-          "duration": 1.5
+          "duration": 1.0
         }
       ]
     },
     {
       "id": "collab_4",
       "speaker": "guest",
-      "narration": "That's like Google Docs for prompts. And the different colors \u2014 is that how you tell who wrote what?",
+      "narration": "That's like Google Docs for prompts. And the different colors — is that how you tell who wrote what?",
       "actions": [
         {
           "do": "highlight",
           "target": "First Block Editor",
-          "duration": 2
+          "duration": 1.2
         }
       ]
     },
     {
       "id": "collab_5",
       "speaker": "moderator",
-      "narration": "Exactly \u2014 each collaborator gets a different color. You can pick yours right here in the app bar.",
+      "narration": "Exactly — each collaborator gets a unique color. You can customize it in your profile settings.",
       "actions": [
         {
-          "do": "click",
-          "target": ".user-menu-trigger"
-        },
+          "do": "highlight",
+          "target": "First Block Editor",
+          "duration": 1.0
+        }
+      ]
+    },
+    {
+      "_section": "=== VERSION CONTROL (10s) ===",
+      "id": "version_1",
+      "speaker": "guest",
+      "narration": "I notice the sidebar has version control — is that tracking every edit?",
+      "actions": [
         {
-          "do": "wait",
-          "seconds": 0.5
-        },
+          "do": "highlight",
+          "target": "Git Panel",
+          "duration": 1.2
+        }
+      ]
+    },
+    {
+      "id": "version_2",
+      "speaker": "moderator",
+      "narration": "Yes — every change is tracked per block and per user. You can commit snapshots, see diffs, and roll back. And this button opens the full version history.",
+      "actions": [
         {
-          "do": "click",
-          "target": "Settings"
-        },
-        {
-          "do": "wait_for_modal"
+          "do": "highlight",
+          "target": "Git Widget Status",
+          "duration": 1.2
         },
         {
           "do": "highlight",
-          "target": "Collaboration Color",
-          "duration": 1.5
-        },
-        {
-          "do": "click_random",
-          "target": "Collab Color Preset",
-          "exclude_selected": true
-        },
-        {
-          "do": "wait",
-          "seconds": 0.5
-        },
-        {
-          "do": "click",
-          "target": "Settings Dialog Close"
+          "target": "Git Fullscreen Button",
+          "duration": 1.0
         }
       ]
     },
     {
       "id": "prompt_eng_7",
       "speaker": "moderator",
-      "narration": "Good. Now we have two prompts \u2014 the one we just built together, and a second one created during setup with slightly different instructions. We'll compare both in Batch Generation.",
+      "narration": "Good. Now we have two prompts — the one we just built together, and a second one created during setup with slightly different instructions. We'll compare both in Batch Generation.",
       "actions": [
         {
           "do": "collab_close"
@@ -624,7 +611,7 @@
         },
         {
           "do": "wait",
-          "seconds": 1
+          "seconds": 0.5
         },
         {
           "do": "wait_for",
@@ -647,24 +634,24 @@
         },
         {
           "do": "wait",
-          "seconds": 0.5
+          "seconds": 0.2
         }
       ]
     },
     {
       "id": "prompt_eng_13",
       "speaker": "moderator",
-      "narration": "Prompts are portable \u2014 you can download them as JSON or import blocks from other prompts.",
+      "narration": "Prompts are portable — you can download them as JSON or import blocks from other prompts.",
       "actions": [
         {
           "do": "highlight",
           "target": "Download",
-          "duration": 1.5
+          "duration": 1.0
         },
         {
           "do": "highlight",
           "target": "Import",
-          "duration": 1.5
+          "duration": 1.0
         }
       ]
     },
@@ -680,12 +667,12 @@
         },
         {
           "do": "wait",
-          "seconds": 1
+          "seconds": 0.5
         },
         {
           "do": "highlight",
           "target": "User Settings Providers Tab",
-          "duration": 1.5
+          "duration": 1.0
         },
         {
           "do": "click",
@@ -693,34 +680,23 @@
         },
         {
           "do": "wait",
-          "seconds": 0.5
+          "seconds": 0.2
         }
       ]
     },
     {
       "id": "providers_2",
       "speaker": "guest",
-      "narration": "You could add external providers here, but for this demo we'll stick to the built-in Mistral and Magistral models.",
+      "narration": "You could add external providers here — OpenAI, Anthropic, or any OpenAI-compatible endpoint. For this demo we'll use the built-in Mistral and Magistral models.",
       "actions": [
         {
           "do": "highlight",
           "target": "Add Provider",
-          "duration": 1.5
+          "duration": 1.0
         },
         {
           "do": "wait",
-          "seconds": 0.5
-        }
-      ]
-    },
-    {
-      "id": "providers_3",
-      "speaker": "moderator",
-      "narration": "We'll proceed with the built-in models for both batch generation and evaluation.",
-      "actions": [
-        {
-          "do": "wait",
-          "seconds": 0.6
+          "seconds": 0.2
         }
       ]
     },
@@ -728,7 +704,7 @@
       "_section": "=== BATCH GENERATION (90s) ===",
       "id": "batch_gen_1",
       "speaker": "guest",
-      "narration": "So we have two prompts now. What's the next step \u2014 how do we actually run them against data?",
+      "narration": "So we have two prompts now. What's the next step — how do we actually run them against data?",
       "actions": [
         {
           "do": "goto",
@@ -736,12 +712,12 @@
         },
         {
           "do": "wait",
-          "seconds": 1
+          "seconds": 0.5
         },
         {
           "do": "highlight",
           "target": "Batch Generation",
-          "duration": 1.5
+          "duration": 1.0
         }
       ]
     },
@@ -756,12 +732,12 @@
         },
         {
           "do": "wait",
-          "seconds": 1
+          "seconds": 0.5
         },
         {
           "do": "highlight",
           "target": "New Job",
-          "duration": 1.5
+          "duration": 1.0
         },
         {
           "do": "click",
@@ -777,12 +753,12 @@
     {
       "id": "batch_gen_3",
       "speaker": "moderator",
-      "narration": "First, the data. I'll paste ten news articles as JSON \u2014 Lars also supports file upload and CSV.",
+      "narration": "First, the data. I'll paste ten news articles as JSON — Lars also supports file upload and CSV.",
       "actions": [
         {
           "do": "highlight",
           "target": "Source Upload",
-          "duration": 1.5
+          "duration": 1.0
         },
         {
           "do": "click",
@@ -790,7 +766,7 @@
         },
         {
           "do": "wait",
-          "seconds": 0.5
+          "seconds": 0.2
         },
         {
           "do": "wait_for",
@@ -800,7 +776,7 @@
         {
           "do": "highlight",
           "target": "Manual Data Textarea",
-          "duration": 1.5
+          "duration": 1.0
         },
         {
           "do": "set_text_from_file",
@@ -814,7 +790,7 @@
         },
         {
           "do": "wait",
-          "seconds": 0.3
+          "seconds": 0.1
         },
         {
           "do": "scroll",
@@ -823,7 +799,7 @@
         },
         {
           "do": "wait",
-          "seconds": 1
+          "seconds": 0.5
         },
         {
           "do": "click",
@@ -838,7 +814,7 @@
       "actions": [
         {
           "do": "wait",
-          "seconds": 1
+          "seconds": 0.5
         },
         {
           "do": "wait_for",
@@ -848,7 +824,7 @@
         {
           "do": "highlight",
           "target": "News Summary Prompt Item",
-          "duration": 1.5
+          "duration": 1.0
         },
         {
           "do": "click",
@@ -856,12 +832,12 @@
         },
         {
           "do": "wait",
-          "seconds": 0.5
+          "seconds": 0.2
         },
         {
           "do": "highlight",
           "target": "News Summary Eval Item",
-          "duration": 1.5
+          "duration": 1.0
         },
         {
           "do": "click",
@@ -876,11 +852,11 @@
     {
       "id": "batch_gen_5",
       "speaker": "moderator",
-      "narration": "Exactly \u2014 both selected. Next we pick models. I'll take Mistral and Magistral so we can compare two architectures side by side.",
+      "narration": "Exactly — both selected. Next we pick models. I'll take Mistral and Magistral so we can compare two architectures side by side.",
       "actions": [
         {
           "do": "wait",
-          "seconds": 1
+          "seconds": 0.5
         },
         {
           "do": "wait_for",
@@ -898,7 +874,7 @@
         },
         {
           "do": "wait",
-          "seconds": 0.3
+          "seconds": 0.1
         },
         {
           "do": "highlight",
@@ -939,7 +915,7 @@
     {
       "id": "batch_gen_7",
       "speaker": "guest",
-      "narration": "Oh nice, a generation matrix. So that's ten items\u2026",
+      "narration": "Oh nice, a generation matrix. So that's ten items…",
       "actions": [
         {
           "do": "wait_for",
@@ -956,7 +932,7 @@
     {
       "id": "batch_gen_7b",
       "speaker": "moderator",
-      "narration": "\u2026times two prompts, times two models \u2014 forty outputs total. And notice the cost estimate \u2014 Lars calculates expected tokens and cost before you run anything.",
+      "narration": "…times two prompts, times two models — forty outputs total. And notice the cost estimate — Lars calculates expected tokens and cost before you run anything.",
       "actions": [
         {
           "do": "highlight",
@@ -984,7 +960,7 @@
         },
         {
           "do": "wait",
-          "seconds": 1.0
+          "seconds": 0.5
         }
       ]
     },
@@ -999,12 +975,12 @@
         },
         {
           "do": "wait",
-          "seconds": 1
+          "seconds": 0.5
         },
         {
           "do": "highlight",
           "target": "News Summary Demo Job",
-          "duration": 2
+          "duration": 1.2
         },
         {
           "do": "click",
@@ -1012,7 +988,7 @@
         },
         {
           "do": "wait",
-          "seconds": 1.0
+          "seconds": 0.5
         },
         {
           "do": "highlight",
@@ -1045,7 +1021,7 @@
     {
       "id": "batch_gen_output_2",
       "speaker": "moderator",
-      "narration": "Sure. Here's the full trace \u2014 the rendered prompt on the left, the model's output on the right, plus metadata like model name, tokens, and cost.",
+      "narration": "Here's the full trace — rendered prompt on the left, model output on the right, plus metadata. The provenance is fully tracked — you always know which prompt and model produced each output.",
       "actions": [
         {
           "do": "highlight",
@@ -1073,29 +1049,7 @@
         },
         {
           "do": "wait",
-          "seconds": 0.5
-        }
-      ]
-    },
-    {
-      "id": "batch_gen_9",
-      "speaker": "guest",
-      "narration": "So the provenance is fully tracked \u2014 you always know which prompt and model produced which output. That's important for reproducibility.",
-      "actions": [
-        {
-          "do": "wait",
           "seconds": 0.2
-        }
-      ]
-    },
-    {
-      "id": "batch_gen_10",
-      "speaker": "moderator",
-      "narration": "Right. And you can set budget limits \u2014 the job pauses automatically if costs exceed your threshold.",
-      "actions": [
-        {
-          "do": "wait",
-          "seconds": 0.6
         }
       ]
     },
@@ -1119,7 +1073,7 @@
         {
           "do": "highlight",
           "target": "Scenario Wizard",
-          "duration": 1.5
+          "duration": 1.0
         },
         {
           "do": "click",
@@ -1132,7 +1086,7 @@
         },
         {
           "do": "wait",
-          "seconds": 1.5
+          "seconds": 0.8
         }
       ]
     },
@@ -1143,12 +1097,12 @@
       "actions": [
         {
           "do": "wait",
-          "seconds": 1
+          "seconds": 0.5
         },
         {
           "do": "highlight",
           "target": "Ranking",
-          "duration": 1.5
+          "duration": 1.0
         },
         {
           "do": "click",
@@ -1156,7 +1110,7 @@
         },
         {
           "do": "wait",
-          "seconds": 0.5
+          "seconds": 0.2
         }
       ]
     },
@@ -1167,7 +1121,7 @@
       "actions": [
         {
           "do": "wait",
-          "seconds": 0.5
+          "seconds": 0.2
         },
         {
           "do": "click",
@@ -1178,11 +1132,11 @@
     {
       "id": "scenario_wizard_4",
       "speaker": "moderator",
-      "narration": "The wizard previews the ranking buckets, so you know what the evaluation will look like.",
+      "narration": "The wizard previews the ranking buckets and lets you configure how items are distributed across evaluators.",
       "actions": [
         {
           "do": "wait",
-          "seconds": 0.5
+          "seconds": 0.2
         },
         {
           "do": "scroll",
@@ -1194,6 +1148,28 @@
           "duration": 1.2
         },
         {
+          "do": "highlight",
+          "target": "Distribution Settings",
+          "duration": 1.0
+        }
+      ]
+    },
+    {
+      "id": "scenario_wizard_4b",
+      "speaker": "guest",
+      "narration": "So you can choose whether everyone evaluates everything, or split items across evaluators — and randomize the order to reduce bias?",
+      "actions": [
+        {
+          "do": "highlight",
+          "target": "Distribution Mode",
+          "duration": 1.2
+        },
+        {
+          "do": "highlight",
+          "target": "Order Mode",
+          "duration": 1.2
+        },
+        {
           "do": "click",
           "target": "Next"
         }
@@ -1202,11 +1178,11 @@
     {
       "id": "scenario_wizard_5",
       "speaker": "moderator",
-      "narration": "We add ourselves as a human evaluator and select Mistral and Magistral for LLM evaluation.",
+      "narration": "Exactly. We add ourselves as a human evaluator and select Mistral and Magistral for LLM evaluation.",
       "actions": [
         {
           "do": "wait",
-          "seconds": 0.5
+          "seconds": 0.2
         },
         {
           "do": "wait_for",
@@ -1216,7 +1192,7 @@
         {
           "do": "highlight",
           "target": "IJCAI Reviewer 1 User",
-          "duration": 1.5
+          "duration": 1.0
         },
         {
           "do": "click",
@@ -1224,7 +1200,7 @@
         },
         {
           "do": "wait",
-          "seconds": 0.5
+          "seconds": 0.2
         },
         {
           "do": "wait_for",
@@ -1255,7 +1231,7 @@
         },
         {
           "do": "wait",
-          "seconds": 0.5
+          "seconds": 0.2
         },
         {
           "do": "click",
@@ -1270,7 +1246,7 @@
       "actions": [
         {
           "do": "wait",
-          "seconds": 0.5
+          "seconds": 0.2
         },
         {
           "do": "click",
@@ -1292,7 +1268,7 @@
         },
         {
           "do": "wait",
-          "seconds": 2
+          "seconds": 1.0
         }
       ]
     },
@@ -1304,7 +1280,7 @@
       "actions": [
         {
           "do": "wait",
-          "seconds": 0.5
+          "seconds": 0.2
         },
         {
           "do": "highlight",
@@ -1324,7 +1300,7 @@
         },
         {
           "do": "wait",
-          "seconds": 0.5
+          "seconds": 0.2
         },
         {
           "do": "highlight",
@@ -1341,7 +1317,7 @@
     {
       "id": "scenario_3",
       "speaker": "guest",
-      "narration": "Interesting \u2014 so the evaluator list shows humans and LLMs side by side, along with how much they've completed.",
+      "narration": "Interesting — so the evaluator list shows humans and LLMs side by side, along with how much they've completed.",
       "actions": [
         {
           "do": "highlight",
@@ -1353,7 +1329,7 @@
     {
       "id": "scenario_4",
       "speaker": "moderator",
-      "narration": "Each article has four summaries \u2014 two prompts times two models \u2014 so you get 10 rankings with four items each.",
+      "narration": "Each article has four summaries — two prompts times two models — so you get 10 rankings with four items each.",
       "actions": [
         {
           "do": "highlight",
@@ -1365,7 +1341,7 @@
     {
       "id": "scenario_5",
       "speaker": "moderator",
-      "narration": "Next, the Data tab shows all data points and their status \u2014 you can see what's pending, in progress, or done.",
+      "narration": "Next, the Data tab shows all data points and their status — you can see what's pending, in progress, or done.",
       "actions": [
         {
           "do": "click",
@@ -1373,7 +1349,7 @@
         },
         {
           "do": "wait",
-          "seconds": 0.5
+          "seconds": 0.2
         },
         {
           "do": "highlight",
@@ -1395,7 +1371,7 @@
     {
       "id": "scenario_6",
       "speaker": "moderator",
-      "narration": "The Evaluation tab is where it gets interesting. You get live agreement metrics \u2014 Krippendorff's alpha, Cohen's kappa, Spearman correlation. These update as evaluators submit rankings.",
+      "narration": "The Evaluation tab shows live agreement metrics — Cohen's kappa, Krippendorff's alpha, Kendall's tau. These update as evaluators submit rankings.",
       "actions": [
         {
           "do": "click",
@@ -1403,29 +1379,41 @@
         },
         {
           "do": "wait",
-          "seconds": 0.8
+          "seconds": 0.4
         },
         {
           "do": "highlight",
-          "target": "Agreement Matrix",
-          "duration": 1.5
+          "target": "Agreement Heatmap",
+          "duration": 1.0
         },
         {
           "do": "highlight",
           "target": "Evaluation Summary",
-          "duration": 1.5
+          "duration": 1.0
+        }
+      ]
+    },
+    {
+      "id": "scenario_6a",
+      "speaker": "guest",
+      "narration": "The heatmap shows pairwise agreement between every evaluator — human and LLM side by side. You can see exactly who agrees with whom.",
+      "actions": [
+        {
+          "do": "highlight",
+          "target": "Agreement Heatmap",
+          "duration": 1.2
         }
       ]
     },
     {
       "id": "scenario_6b",
-      "speaker": "guest",
-      "narration": "So you can immediately see where humans and LLMs disagree \u2014 and whether that disagreement is systematic?",
+      "speaker": "moderator",
+      "narration": "Exactly — you can immediately see where humans and LLMs disagree, and whether it's systematic. These metrics update live as rankings come in.",
       "actions": [
         {
           "do": "highlight",
           "target": "Agreement Matrix",
-          "duration": 2
+          "duration": 1.2
         }
       ]
     },
@@ -1453,7 +1441,7 @@
         },
         {
           "do": "wait",
-          "seconds": 0.3
+          "seconds": 0.1
         }
       ]
     },
@@ -1468,7 +1456,7 @@
         },
         {
           "do": "wait",
-          "seconds": 0.5
+          "seconds": 0.2
         },
         {
           "do": "highlight",
@@ -1490,19 +1478,7 @@
     {
       "id": "scenario_8",
       "speaker": "guest",
-      "narration": "That's flexible. Can you add more evaluators mid-evaluation, or swap out an LLM that isn't performing well?",
-      "actions": [
-        {
-          "do": "highlight",
-          "target": "Team Member Menu",
-          "duration": 1.0
-        }
-      ]
-    },
-    {
-      "id": "scenario_9",
-      "speaker": "moderator",
-      "narration": "Yes \u2014 you can remove or invite humans, and add LLM evaluators at any time.",
+      "narration": "Absolutely — you can add or remove humans and LLM evaluators at any point, even mid-evaluation.",
       "actions": [
         {
           "do": "highlight",
@@ -1528,12 +1504,12 @@
         },
         {
           "do": "wait",
-          "seconds": 1
+          "seconds": 0.5
         },
         {
           "do": "highlight",
           "target": "Evaluation Scenario Card",
-          "duration": 1.5
+          "duration": 1.0
         },
         {
           "do": "click",
@@ -1554,7 +1530,7 @@
         {
           "do": "highlight",
           "target": "Evaluation Item Card",
-          "duration": 1.5
+          "duration": 1.0
         },
         {
           "do": "click",
@@ -1567,14 +1543,14 @@
         },
         {
           "do": "wait",
-          "seconds": 0.5
+          "seconds": 0.2
         }
       ]
     },
     {
       "id": "human_eval_3",
       "speaker": "moderator",
-      "narration": "You can drag summaries into buckets to rank them.",
+      "narration": "Notice the generic labels — Item A, B, C. The evaluator never sees model names. And the order is randomized for each evaluator to prevent position bias. You drag summaries into buckets to rank them.",
       "actions": [
         {
           "do": "highlight",
@@ -1593,7 +1569,7 @@
         },
         {
           "do": "wait",
-          "seconds": 0.3
+          "seconds": 0.1
         },
         {
           "do": "drag",
@@ -1602,7 +1578,7 @@
         },
         {
           "do": "wait",
-          "seconds": 0.3
+          "seconds": 0.1
         },
         {
           "do": "drag",
@@ -1614,24 +1590,24 @@
     {
       "id": "human_eval_4",
       "speaker": "guest",
-      "narration": "Are the labels blinded? Does the evaluator know which model produced which summary?",
+      "narration": "So it's fully blinded. No model names, no prompt labels, and a different order for everyone. That's solid methodology.",
       "actions": [
         {
           "do": "highlight",
           "target": "Ranking Content",
-          "duration": 1.5
+          "duration": 1.0
         }
       ]
     },
     {
       "id": "human_eval_5",
       "speaker": "moderator",
-      "narration": "No \u2014 the items use generic labels. The evaluator sees the content but not the source. That keeps the assessment unbiased.",
+      "narration": "Exactly — unbiased by design.",
       "actions": [
         {
           "do": "highlight",
           "target": "Ranking Buckets",
-          "duration": 1.5
+          "duration": 1.0
         }
       ]
     },
@@ -1639,7 +1615,7 @@
       "_section": "=== CONCLUSION (25s) ===",
       "id": "conclusion_1",
       "speaker": "moderator",
-      "narration": "That was a news-article example to keep things compact. In our research, we use this same workflow for evaluating counseling responses \u2014 psychologists and AI developers collaborating on prompts, then comparing human and LLM assessments. But the modules aren't tied to any domain.",
+      "narration": "That was a news-article example. In our research, we use Lars for psychosocial counselling — psychologists craft prompts for case summaries, then rate LLM outputs on coherence, empathy, and factual accuracy using multi-dimensional scales. The same three modules apply to any domain.",
       "actions": [
         {
           "do": "goto",
@@ -1647,7 +1623,7 @@
         },
         {
           "do": "wait",
-          "seconds": 1
+          "seconds": 0.5
         },
         {
           "do": "highlight",
@@ -1669,43 +1645,48 @@
     {
       "id": "conclusion_2",
       "speaker": "guest",
-      "narration": "Right \u2014 medical summaries, legal documents, anything that needs structured evaluation. And each module works standalone too. Thanks, Alex.",
+      "narration": "Right — medical summaries, legal documents, anything that needs structured evaluation. And each module works standalone too. Thanks, Alex.",
       "actions": [
         {
           "do": "wait",
-          "seconds": 0.5
+          "seconds": 0.2
         }
       ]
     },
     {
       "id": "conclusion_3",
       "speaker": "moderator",
-      "narration": "Thanks David. Lars is open-source \u2014 check the repo, try the demo, and let us know what you think.",
+      "narration": "Thanks David. Lars is open-source — check the repo, try the demo, and let us know what you think.",
       "actions": [
         {
           "do": "show_title",
-          "title": "Try Lars",
+          "title": "Try LLARS",
           "subtitle": "github.com/llars-project/llars"
         },
         {
           "do": "wait",
-          "seconds": 2.0
+          "seconds": 1.0
         }
       ]
     },
     {
       "id": "outro_1",
       "speaker": "guest",
-      "narration": "You can try Lars yourself \u2014 the demo login credentials are shown on screen.",
+      "narration": "You can try Lars yourself — the demo login credentials are shown on screen.",
       "actions": [
         {
           "do": "show_title",
-          "title": "Try Lars",
-          "subtitle": "Demo access credentials on screen"
+          "title": "Try LLARS",
+          "subtitle": "Demo access credentials on screen",
+          "columns": [
+            [{"label": "URL", "value": "https://llars.e-beratungsinstitut.de"}],
+            [{"label": "Reviewer 1", "value": "ijcai_reviewer_1"}, {"label": "Password", "value": "ijcai_reviewer_123"}],
+            [{"label": "Reviewer 2", "value": "ijcai_reviewer_2"}, {"label": "Password", "value": "ijcai_reviewer_123"}]
+          ]
         },
         {
           "do": "wait",
-          "seconds": 1.5
+          "seconds": 0.8
         }
       ]
     }

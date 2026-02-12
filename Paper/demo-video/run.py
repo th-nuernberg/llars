@@ -2417,7 +2417,7 @@ class Browser:
     # =========================================================================
 
     def _disable_stage_manager(self):
-        """Deaktiviert macOS Stage Manager damit zwei Fenster nebeneinander funktionieren."""
+        """Deaktiviert macOS Stage Manager für Side-by-Side."""
         import platform
         if platform.system() != 'Darwin':
             return
@@ -2438,6 +2438,25 @@ class Browser:
         except Exception as e:
             print(f"   ⚠️ Stage Manager Prüfung fehlgeschlagen: {e}")
             self._stage_manager_was_enabled = False
+
+    def _hide_other_windows(self):
+        """Blendet alle Fenster außer Chrome aus (nach Positionierung aufrufen!)."""
+        import platform
+        if platform.system() != 'Darwin':
+            return
+        try:
+            subprocess.run(['osascript', '-e', '''
+                tell application "System Events"
+                    set visible of every process whose name is not "Google Chrome" ¬
+                        and name is not "Dock" ¬
+                        and name is not "SystemUIServer" ¬
+                        and name is not "Window Manager" ¬
+                        and name is not "WindowManager" to false
+                end tell
+            '''], capture_output=True, timeout=5)
+            print("   👥 Alle anderen Fenster ausgeblendet")
+        except Exception:
+            pass
 
     def _restore_stage_manager(self):
         """Stellt den vorherigen Stage Manager Zustand wieder her."""
@@ -2524,17 +2543,16 @@ class Browser:
         self.collab_driver = webdriver.Chrome(service=service, options=options)
         time.sleep(1.0)
 
-        # 4. Positionen reinforcen (Focus-Steal kann Fenster verschieben)
+        # 4. Positionen reinforcen — Collab zuerst, dann Hauptbrowser
         self.collab_driver.set_window_position(mx + half_w, my)
         self.collab_driver.set_window_size(half_w, mh)
+        time.sleep(0.3)
         self.driver.set_window_position(mx, my)
         self.driver.set_window_size(half_w, mh)
+        time.sleep(0.5)
 
-        # 5. AppleScript Fallback: Fenster nochmal explizit positionieren
-        self._tile_chrome_windows(
-            (mx, my, half_w, mh),
-            (mx + half_w, my, half_w, mh)
-        )
+        # 5. JETZT andere Fenster ausblenden (NACH Positionierung, sonst verschiebt macOS die Chrome-Fenster)
+        self._hide_other_windows()
         print(f"   👥 Collab-Browser → rechts: ({mx + half_w},{my}) {half_w}x{mh}")
 
         # Zur Login-Seite navigieren

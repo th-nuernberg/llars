@@ -164,10 +164,10 @@ LLARS is actively used for developing AI-assisted systems in psychosocial counse
 \label{fig:pipeline}
 \end{figure}
 
-Organizations building LLM-based systems for sensitive domains---psychosocial counseling, legal analysis, medical documentation---must write effective prompts, select suitable models, and rigorously evaluate outputs, requiring both domain expertise (understanding \emph{what} constitutes quality) and technical skill (structuring prompts and configuring LLM pipelines).
+Organizations building LLM-based systems for sensitive domains~\cite{chen2024critical,ling2025domain}---psychosocial counseling~\cite{stade2024behavioral}, legal analysis~\cite{katz2024bar}, medical documentation~\cite{vanveen2024clinical}---must write effective prompts, select suitable models, and rigorously evaluate outputs, requiring both domain expertise (understanding \emph{what} constitutes quality) and technical skill (structuring prompts and configuring LLM pipelines)~\cite{zamfirescu2023johnny,schulhoff2024prompt}.
 Yet these two groups typically work in isolation: prompts are iterated in shared documents without version control, and no single tool supports the full cycle from collaborative prompt development through systematic evaluation.
 
-We present LLARS (LLM Assisted Research System), an open-source platform that closes this gap with three integrated modules (Figure~\ref{fig:pipeline}).
+We present LLARS (LLM Assisted Research System), an open-source co-designed platform that closes this gap with three integrated modules (Figure~\ref{fig:pipeline}).
 \emph{Collaborative Prompt Engineering} lets domain experts and developers co-author prompts in a shared real-time editor with version control and instant LLM testing.
 \emph{Batch Generation} systematically produces the Cartesian product of prompts\,$\times$\,models\,$\times$\,data items with cost estimation and budget control.
 \emph{Evaluation} lets human and LLM evaluators assess outputs side by side---via rating, ranking, labeling, or pairwise comparison---with live agreement metrics (Krippendorff's~$\alpha$, Cohen's~$\kappa$, and others).
@@ -220,7 +220,7 @@ LLARS is the first open-source platform to unify collaborative prompt engineerin
 
 \section{Platform Overview}
 
-LLARS runs as a containerized web application and connects to any OpenAI-compatible LLM provider, including commercial services (OpenAI, Anthropic, Google) and locally hosted models via Ollama.
+LLARS runs as a containerized web application and connects to any OpenAI-compatible LLM provider, including commercial services and locally hosted models.
 Teams register providers with their own API keys; registered models then appear throughout the platform---in prompt testing, batch generation, and as LLM evaluators.
 
 \subsection{Collaborative Prompt Engineering}

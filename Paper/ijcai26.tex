@@ -164,7 +164,7 @@ LLARS is actively used for developing AI-assisted systems in psychosocial counse
 \label{fig:pipeline}
 \end{figure}
 
-Organizations building LLM-based systems for sensitive domains~\cite{chen2024critical,ling2025domain}---psychosocial counseling~\cite{stade2024behavioral}, legal analysis~\cite{katz2024bar}, medical documentation~\cite{vanveen2024clinical}---must write effective prompts, select suitable models, and rigorously evaluate outputs, requiring both domain expertise (understanding \emph{what} constitutes quality) and technical skill (structuring prompts and configuring LLM pipelines)~\cite{zamfirescu2023johnny,schulhoff2024prompt}.
+Organizations building LLM-based assistants for sensitive domains~\cite{chen2024critical,ling2025domain}---psychosocial counseling~\cite{stade2024behavioral}, legal analysis~\cite{katz2024bar}, medical documentation~\cite{vanveen2024clinical}---must write effective prompts, select suitable models, and rigorously evaluate outputs, requiring both domain expertise (understanding \emph{what} constitutes quality) and technical skill (structuring prompts and configuring LLM pipelines)~\cite{zamfirescu2023johnny,schulhoff2024prompt}.
 Yet these two groups typically work in isolation: prompts are iterated in shared documents without version control, and no single tool supports the full cycle from collaborative prompt development through systematic evaluation.
 
 We present LLARS (LLM Assisted Research System), an open-source co-designed platform that closes this gap with three integrated modules (Figure~\ref{fig:pipeline}).
@@ -227,6 +227,8 @@ Teams register providers with their own API keys; registered models then appear 
 
 The prompt engineering module (Figure~\ref{fig:prompt-editor}) lets multiple users edit the same prompt simultaneously in a real-time collaborative editor built on Yjs~\cite{jahns2023yjs}.
 Prompts are structured as reorderable message blocks---system instructions, few-shot examples, user templates---with \texttt{\{\{variable\}\}} placeholders that the platform extracts into a shared palette for the team.
+Variables keep domain data separate from prompt logic: rather than pasting raw text into the prompt for testing, users assign sample data to each variable and can swap between different inputs (e.g.\ two counselling conversation threads) to verify that the prompt generalises instead of overfitting to a single example.
+When the prompt is ready, variables map directly to data columns in batch generation, so the same template processes an entire dataset without modification.
 While editing continues, any collaborator can test the current prompt against a selected LLM: the response streams back instantly, and multiple team members can test different models or sample data in parallel.
 A version control system tracks every saved revision with multi-author attribution, supporting comparison and rollback.
 Finalized prompts are exported as JSON or passed directly to batch generation.
@@ -278,14 +280,15 @@ All data, metrics, and configurations are exportable as JSON or CSV.
 \section{Application and Preliminary Evaluation}
 \label{sec:counseling}
 
-LLARS is actively used in the development of CAIA~\cite{steigerwald2025caia}, an AI-assisted support system for text-based psychosocial counselling.
-Counselling researchers and developers collaboratively refined prompts for seven LLM-driven functionalities, iterating against real data until outputs met professional standards.
-For automated subject line generation~\cite{steigerwald2025subjectline}, the complete pipeline was exercised: batch generation produced 253~subject lines across 11~LLMs, five professionals and an LLM evaluator rated them (1,518~assessments), and cross-model comparison directly informed the selection of a privacy-preserving open-source model.
-This work also motivated two domain-specific evaluation types (Figure~\ref{fig:scenario-wizard}):
-\emph{Mail Rating} for assessing AI-generated responses on counselling-specific dimensions, and \emph{Authenticity} for classifying threads as real or AI-generated with ground truth labels.
+LLARS is actively used in the development of CAIA~\cite{steigerwald2025caia}, an AI-assisted system for text-based psychosocial counselling where LLM prompts transform unstructured conversations into structured outputs such as subject lines, case summaries, or response suggestions.
+Counselling researchers and developers collaboratively refined prompts for seven functionalities using LLARS, and the platform also motivated two domain-specific evaluation types (Figure~\ref{fig:scenario-wizard}): \emph{Mail Rating} and \emph{Authenticity}.
+For automated subject line generation~\cite{steigerwald2025subjectline}, the full pipeline was exercised end-to-end: batch generation produced 253~subject lines across 11~LLMs, and five professionals together with an LLM evaluator rated them in LLARS (1,518~assessments), directly informing model selection.
 
-% TODO: Fill in actual interview details
-Semi-structured interviews with $N$~practitioners ($X$~counselling researchers, $Y$~developers) highlighted that the collaborative editor eliminated version confusion from iterating prompts in shared documents, batch generation with cost tracking made systematic cross-model comparison feasible, and domain experts could set up and conduct evaluations independently.
+Semi-structured interviews with six domain experts (counselling researchers and practitioners) and three developers highlighted that the central benefit of LLARS is bridging the gap between disciplines.
+Domain experts reported that the collaborative editor eliminated the ``translation work'' previously required---formulating requirements in shared documents, exchanging them via e-mail, and having the development team convert them into technical formats.
+Instead, they could directly co-author and adjust prompts without needing to understand technical details, creating the experience of ``truly working together on the same task.''
+Developers valued the shared access point with version control.
+All domain experts rated the evaluation module as intuitive and a clear improvement over their previous Excel-based workflow.
 
 \section{Limitations, Demo, and Future Work}
 
@@ -296,7 +299,7 @@ Our live demo walks attendees through the full pipeline, from collaborative prom
 % TODO: Uncomment and update URLs before submission
 %\noindent\textbf{Repository:} \url{https://github.com/llars-project/llars}\\
 %\textbf{Documentation:} \url{https://llars-project.github.io}
-LLARS is open-source; future work targets a controlled study and cross-domain validation.
+LLARS is open-source and under active development; it continues to be deployed in ongoing projects to bring domain experts and developers together so that diverse fields beyond counselling can benefit from the current advances in AI.
 
 \bibliographystyle{named}
 \bibliography{llars}

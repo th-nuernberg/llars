@@ -3153,7 +3153,8 @@
       "average": "Durchschnitt",
       "interRaterAgreement": "Übereinstimmung zwischen Bewertern",
       "bucketDistribution": "Bucket-Verteilung",
-      "rankingAgreement": "Ranking-Übereinstimmung",
+      "rankingAgreement": "Bucket-Übereinstimmung",
+      "rankingMetricsDescription": "Pro Zusammenfassung (Feature): Haben beide Evaluatoren diese Zusammenfassung in denselben Bucket einsortiert? Ordinal berechnet (Bucket-Krippendorff: gut=3 > mittel=2 > neutral=1 > schlecht=0).",
       "agreementLevel": "Übereinstimmungs-Level",
       "lowAgreement": "Niedrig",
       "highAgreement": "Hoch",
@@ -3358,7 +3359,7 @@
       "spiderChart": "Vergleicht Durchschnittsbewertungen zwischen Menschen und LLMs über alle Dimensionen. Größere Flächen = höhere Durchschnittswerte.",
       "interRaterAgreement": "Zeigt die paarweise Übereinstimmung zwischen allen Bewertern. Grün = hohe Übereinstimmung, Rot = niedrige Übereinstimmung. Berechnet als Anteil der exakt übereinstimmenden Bewertungen (gerundet auf ganze Zahlen).",
       "bucketDistribution": "Zeigt wie viele Items in welchen Bucket (Gut/Mittel/Schlecht) einsortiert wurden. Aggregiert über alle menschlichen und LLM-Evaluatoren.",
-      "rankingAgreement": "Paarweise Übereinstimmung zwischen Evaluatoren für Ranking-Zuweisungen. Zeigt den Prozentsatz der Items, die gleich eingeordnet wurden."
+      "rankingAgreement": "Pro Zusammenfassung: Haben beide Evaluatoren sie in denselben Bucket sortiert? Gezählt als: Übereinstimmende Zusammenfassungen / Gemeinsam bewertete Zusammenfassungen. Metriken ordinal berechnet (Bucket-Krippendorff)."
     },
     "session": {
       "title": "Evaluierung",
@@ -3731,6 +3732,8 @@
     "noItemsInFilter": "Keine Einträge mit diesem Status",
     "showAll": "Alle anzeigen",
     "clickToView": "Klicken zum Öffnen",
+    "viewerBanner": "Sie sind Betrachter. Wechseln Sie im Team-Tab zur Evaluator-Rolle, um teilzunehmen.",
+    "viewerReadOnly": "Nur-Lese-Modus",
     "item": "Eintrag #{num}",
     "tools": {
       "ranking": {

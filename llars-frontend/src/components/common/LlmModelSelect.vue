@@ -68,6 +68,7 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import axios from 'axios'
 import { usePermissions } from '@/composables/usePermissions'
+import { parseUserProviderModelId } from '@/utils/formatters'
 
 const props = defineProps({
   modelValue: {
@@ -240,23 +241,48 @@ const loadModels = async () => {
     let providerModels = []
     if (props.includeUserProviders && providersResult?.status === 'fulfilled') {
       const providers = providersResult.value.data?.providers || []
-      providerModels = providers
-        .map((provider) => {
-          const config = provider?.config || {}
-          const modelId = (config.model_id || '').trim()
-          if (!modelId || !provider.api_key_set || provider.is_active === false) return null
-          return {
-            model_id: `user-provider:${provider.id}:${modelId}`,
-            display_name: `${provider.name || 'Provider'} • ${modelId}`,
-            provider: provider.name || provider.provider_type || 'User Provider',
-            supports_vision: false,
-            supports_reasoning: false,
-            context_window: 0,
-            max_output_tokens: 0,
-            is_user_provider: true
+      for (const provider of providers) {
+        if (!provider.api_key_set || provider.is_active === false) continue
+        const config = provider?.config || {}
+
+        // Support multiple selected models (OpenAI style)
+        const selectedModels = Array.isArray(config.selected_models) ? config.selected_models : []
+        if (selectedModels.length > 0) {
+          for (const modelId of selectedModels) {
+            const mid = (modelId || '').trim()
+            if (!mid) continue
+            const fullId = `user-provider:${provider.id}:${mid}`
+            const parsed = parseUserProviderModelId(fullId)
+            providerModels.push({
+              model_id: fullId,
+              display_name: parsed?.displayName || `${provider.name || 'Provider'} / ${mid}`,
+              provider: parsed?.providerLabel || provider.name || provider.provider_type || 'User Provider',
+              supports_vision: false,
+              supports_reasoning: false,
+              context_window: 0,
+              max_output_tokens: 0,
+              is_user_provider: true
+            })
           }
+          continue
+        }
+
+        // Fallback: single model_id
+        const modelId = (config.model_id || '').trim()
+        if (!modelId) continue
+        const fullId = `user-provider:${provider.id}:${modelId}`
+        const parsed = parseUserProviderModelId(fullId)
+        providerModels.push({
+          model_id: fullId,
+          display_name: parsed?.displayName || `${provider.name || 'Provider'} / ${modelId}`,
+          provider: parsed?.providerLabel || provider.name || provider.provider_type || 'User Provider',
+          supports_vision: false,
+          supports_reasoning: false,
+          context_window: 0,
+          max_output_tokens: 0,
+          is_user_provider: true
         })
-        .filter(Boolean)
+      }
     }
 
     models.value = [...baseModels, ...providerModels]

@@ -294,9 +294,10 @@ def get_progress_stats(scenario_id: int) -> Dict[str, Any]:
         if scenario_user.role == ScenarioRoles.EVALUATOR:
             # EVALUATOR can interact (rate/evaluate)
             rater_stats.append(new_data)
-        elif scenario_user.role in (ScenarioRoles.VIEWER, ScenarioRoles.OWNER):
-            # OWNER also counts as evaluator for stats purposes, VIEWER is read-only
+        elif scenario_user.role == ScenarioRoles.OWNER:
+            # OWNER shown in stats for overview purposes
             evaluator_stats.append(new_data)
+        # VIEWER: excluded from stats entirely (read-only, no evaluation)
 
     if function_type.name in {"ranking", "rating", "mail_rating", "authenticity", "labeling"}:
         scenario_thread_ids = [
@@ -527,9 +528,10 @@ def _get_comparison_progress_stats(scenario_id: int) -> Dict[str, Any]:
         if scenario_user.role == ScenarioRoles.EVALUATOR:
             # EVALUATOR can interact (rate/evaluate)
             rater_stats.append(new_data)
-        elif scenario_user.role in (ScenarioRoles.VIEWER, ScenarioRoles.OWNER):
-            # OWNER also counts as evaluator for stats purposes, VIEWER is read-only
+        elif scenario_user.role == ScenarioRoles.OWNER:
+            # OWNER shown in stats for overview purposes
             evaluator_stats.append(new_data)
+        # VIEWER: excluded from stats entirely (read-only, no evaluation)
 
     # Add LLM evaluator stats (comparison sessions)
     config = scenario.config_json or {}
@@ -1487,9 +1489,13 @@ def _calculate_bucket_distribution(scenario_id: int) -> List[Dict[str, Any]]:
 
 def _calculate_ranking_agreement_heatmap(scenario_id: int) -> Dict[str, Any]:
     """
-    Calculate pairwise agreement between evaluators for ranking scenarios.
+    Calculate pairwise bucket agreement between evaluators for ranking scenarios.
 
-    Agreement is measured by how often evaluators assign the same bucket to an item.
+    Each feature (Zusammenfassung) is placed into exactly one bucket by each evaluator.
+    Agreement = number of features where both evaluators chose the same bucket,
+    divided by the total number of co-rated features.
+
+    Example: 2 evaluators rated 40 features, agree on bucket for 23 → 57.5%
     """
     from db.models import UserFeatureRanking, Feature, ScenarioItems
     from collections import defaultdict
@@ -1501,35 +1507,38 @@ def _calculate_ranking_agreement_heatmap(scenario_id: int) -> Dict[str, Any]:
     if not item_ids:
         return {"evaluators": [], "agreements": {}}
 
-    # item_id -> {evaluator_id: bucket}
-    item_buckets = defaultdict(dict)
+    # feature_id -> {evaluator_id: bucket}
+    feature_buckets = defaultdict(dict)
     users_set = set()
     user_info = {}
 
-    # 1. Get human rankings
+    # Bucket name normalization map
+    bucket_normalize = {
+        "gut": "gut", "good": "gut",
+        "mittel": "mittel", "medium": "mittel", "middle": "mittel",
+        "neutral": "neutral",
+        "schlecht": "schlecht", "bad": "schlecht", "poor": "schlecht",
+    }
+    valid_buckets = {"gut", "mittel", "neutral", "schlecht"}
+
+    # 1. Get human rankings - each row is one feature → one bucket
     human_rankings = (
         UserFeatureRanking.query
         .join(Feature, UserFeatureRanking.feature_id == Feature.feature_id)
-        .filter(Feature.thread_id.in_(item_ids))
+        .filter(Feature.item_id.in_(item_ids))
         .filter(UserFeatureRanking.bucket.isnot(None))
         .all()
     )
 
     for ranking in human_rankings:
-        item_id = ranking.feature.thread_id if ranking.feature else None
+        feature_id = ranking.feature_id
         user_id = ranking.user_id
-        bucket = ranking.bucket.lower() if ranking.bucket else None
-
-        if not item_id or not bucket:
+        raw_bucket = ranking.bucket.lower() if ranking.bucket else None
+        if not raw_bucket:
             continue
-
-        # Normalize bucket names
-        if bucket in ("good",):
-            bucket = "gut"
-        elif bucket in ("medium", "middle"):
-            bucket = "mittel"
-        elif bucket in ("bad", "poor"):
-            bucket = "schlecht"
+        bucket = bucket_normalize.get(raw_bucket, raw_bucket)
+        if bucket not in valid_buckets:
+            continue
 
         users_set.add(user_id)
         if user_id not in user_info:
@@ -1537,9 +1546,9 @@ def _calculate_ranking_agreement_heatmap(scenario_id: int) -> Dict[str, Any]:
             name = user.username if user else f"User {user_id}"
             user_info[user_id] = {"id": user_id, "name": name, "isLLM": False}
 
-        item_buckets[item_id][user_id] = bucket
+        feature_buckets[feature_id][user_id] = bucket
 
-    # 2. Get LLM rankings
+    # 2. Get LLM rankings - payload maps bucket → [feature_ids]
     llm_results = LLMTaskResult.query.filter_by(
         scenario_id=scenario_id,
         task_type="ranking"
@@ -1564,50 +1573,37 @@ def _calculate_ranking_agreement_heatmap(scenario_id: int) -> Dict[str, Any]:
             name = llm_model.display_name if llm_model else model_id.split("/")[-1]
             user_info[llm_user_id] = {"id": llm_user_id, "name": name, "isLLM": True}
 
-        # The payload contains feature_ids in buckets, but result.item_id tells us
-        # which item this ranking is for. We need to determine the "dominant" bucket
-        # for the item based on where most features were placed.
-        bucket_map = {
-            "gut": ["gut", "good"],
-            "mittel": ["mittel", "medium", "middle"],
-            "schlecht": ["schlecht", "bad", "poor"]
-        }
-
-        # Count features per bucket for this item
-        bucket_counts = {"gut": 0, "mittel": 0, "schlecht": 0}
-        for normalized_bucket, keys in bucket_map.items():
-            for key in keys:
-                features = payload.get(key, [])
-                if isinstance(features, list):
-                    bucket_counts[normalized_bucket] += len(features)
-
-        # Assign item to the bucket with most features (if any)
-        total_features = sum(bucket_counts.values())
-        if total_features > 0:
-            dominant_bucket = max(bucket_counts, key=bucket_counts.get)
-            item_buckets[result.item_id][llm_user_id] = dominant_bucket
+        # Unpack: each feature_id gets its bucket directly
+        for bucket_key, feature_ids in payload.items():
+            normalized = bucket_normalize.get(bucket_key.lower() if isinstance(bucket_key, str) else "", None)
+            if normalized is None or normalized not in valid_buckets:
+                continue
+            if isinstance(feature_ids, list):
+                for fid in feature_ids:
+                    feature_buckets[fid][llm_user_id] = normalized
 
     if not users_set:
         return {"evaluators": [], "agreements": {}}
 
     evaluators = list(user_info.values())
 
-    # Calculate pairwise agreement (percentage of items with same bucket)
+    # Calculate pairwise agreement at feature level
+    # For each pair: % of features where both assigned the same bucket
     agreements = {}
     user_list = list(users_set)
 
     for i, user1 in enumerate(user_list):
-        for user2 in user_list[i+1:]:
-            common_items = []
-            for item_id, user_buckets in item_buckets.items():
-                if user1 in user_buckets and user2 in user_buckets:
-                    common_items.append((user_buckets[user1], user_buckets[user2]))
+        for user2 in user_list[i + 1:]:
+            shared_count = 0
+            agree_count = 0
+            for feature_id, evaluator_buckets in feature_buckets.items():
+                if user1 in evaluator_buckets and user2 in evaluator_buckets:
+                    shared_count += 1
+                    if evaluator_buckets[user1] == evaluator_buckets[user2]:
+                        agree_count += 1
 
-            if len(common_items) >= 1:
-                # Calculate agreement (percentage with same bucket)
-                agreements_count = sum(1 for b1, b2 in common_items if b1 == b2)
-                agreement = agreements_count / len(common_items)
-
+            if shared_count >= 1:
+                agreement = agree_count / shared_count
                 key = f"{min(str(user1), str(user2))}-{max(str(user1), str(user2))}"
                 agreements[key] = round(agreement, 3)
 

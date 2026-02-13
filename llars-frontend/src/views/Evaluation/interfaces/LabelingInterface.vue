@@ -190,6 +190,7 @@ const emit = defineEmits(['item-completed', 'all-completed', 'status-change', 's
 
 // Computed prop for hideNavigation to use in template
 const hideNavigation = computed(() => props.hideNavigation)
+const canEvaluate = computed(() => props.scenario?.can_evaluate !== false)
 
 const route = useRoute()
 const router = useRouter()
@@ -290,6 +291,7 @@ function getCategoryStyle(cat) {
 }
 
 function selectCategory(categoryId) {
+  if (!canEvaluate.value) return
   if (selectedCategory.value === categoryId) {
     selectedCategory.value = null
   } else {

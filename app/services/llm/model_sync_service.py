@@ -224,6 +224,7 @@ _VISION_HINTS = (
     "gpt-4o",
     "gpt-4-turbo",
     "gpt-4.1",
+    "gpt-5",
     "pixtral",
     "magistral",
     "claude-3",
@@ -233,6 +234,7 @@ _REASONING_HINTS = (
     "reasoning",
     "o1",
     "o3",
+    "o4",
     "magistral",
 )
 
@@ -318,7 +320,7 @@ def _infer_provider(model_id: str) -> str:
         return model_id.split("/", 1)[0].lower()
 
     lower = model_id.lower()
-    if lower.startswith(("gpt-", "o1", "o3")):
+    if lower.startswith(("gpt-", "o1", "o3", "o4")):
         return "openai"
     if lower.startswith("claude"):
         return "anthropic"

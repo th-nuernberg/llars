@@ -308,6 +308,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useScenarioManager } from '../../composables/useScenarioManager'
+import { parseUserProviderModelId } from '@/utils/formatters'
 import LAvatar from '@/components/common/LAvatar.vue'
 import LUserSearch from '@/components/common/LUserSearch.vue'
 
@@ -424,11 +425,10 @@ const llmEvaluators = computed(() => {
     // Otherwise, parse the model ID string
     let provider = 'Unknown'
     let modelName = modelId
-    if (modelId.startsWith('user-provider:')) {
-      const rest = modelId.replace('user-provider:', '')
-      const [providerId, rawModel] = rest.split(':', 2)
-      provider = providerId ? `User Provider ${providerId}` : 'User Provider'
-      modelName = rawModel || modelId
+    const parsed = parseUserProviderModelId(modelId)
+    if (parsed) {
+      provider = parsed.providerLabel
+      modelName = parsed.modelName
     } else {
       const parts = modelId.split('/')
       provider = parts.length > 1 ? parts[0] : 'Unknown'

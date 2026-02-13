@@ -36,6 +36,13 @@
       </div>
     </div>
 
+    <!-- Viewer Banner -->
+    <div v-if="!canEvaluate && !loading" class="viewer-banner">
+      <LIcon size="18" color="#D1BC8A">mdi-eye-outline</LIcon>
+      <span>{{ $t('evaluation.viewerBanner') }}</span>
+      <LTag variant="warning">{{ $t('evaluation.viewerReadOnly') }}</LTag>
+    </div>
+
     <!-- Filter Bar -->
     <div class="filter-bar">
       <div class="filter-chips">
@@ -103,7 +110,7 @@
           v-for="(item, index) in filteredItems"
           :key="item.id || item.thread_id || index"
           class="item-card"
-          :class="getItemStatusClass(item)"
+          :class="[getItemStatusClass(item), { 'viewer-disabled': !canEvaluate }]"
           @click="goToItem(item, index)"
         >
           <!-- Status Badge -->
@@ -169,6 +176,7 @@ const items = ref([])
 const loading = ref(true)
 const error = ref(null)
 const activeFilter = ref('all')
+const canEvaluate = ref(true)
 
 // Type configuration
 const typeConfigs = {
@@ -286,6 +294,7 @@ async function loadData() {
     // Load items via evaluation session endpoint
     const sessionResponse = await axios.get(`/api/evaluation/session/${props.scenarioId}`)
     items.value = sessionResponse.data.items || []
+    canEvaluate.value = sessionResponse.data.scenario?.can_evaluate !== false
   } catch (err) {
     console.error('Failed to load data:', err)
     error.value = err.response?.data?.error || err.response?.data?.message || t('common.error')
@@ -300,6 +309,8 @@ function goBack() {
 }
 
 function goToItem(item, index) {
+  if (!canEvaluate.value) return
+
   // Navigate to the evaluation session with the specific item
   router.push({
     name: 'EvaluationSessionItem',
@@ -409,6 +420,29 @@ watch(() => props.scenarioId, (newId) => {
   font-weight: 600;
   color: rgb(var(--v-theme-on-surface));
   min-width: 35px;
+}
+
+/* Viewer Banner */
+.viewer-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 24px;
+  background: rgba(209, 188, 138, 0.12);
+  border-bottom: 1px solid rgba(209, 188, 138, 0.3);
+  font-size: 0.85rem;
+  color: rgba(var(--v-theme-on-surface), 0.8);
+  flex-shrink: 0;
+}
+
+.item-card.viewer-disabled {
+  cursor: default;
+  opacity: 0.7;
+}
+
+.item-card.viewer-disabled:hover {
+  transform: none;
+  box-shadow: none;
 }
 
 /* Filter Bar */

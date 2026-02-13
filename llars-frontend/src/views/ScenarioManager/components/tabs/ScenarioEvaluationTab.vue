@@ -167,6 +167,9 @@
             <v-icon size="16" class="help-icon">mdi-help-circle-outline</v-icon>
           </LTooltip>
         </h4>
+        <p v-if="isRankingScenario" class="subsection-description text-medium-emphasis text-caption mb-2">
+          {{ $t('scenarioManager.results.rankingMetricsDescription') }}
+        </p>
         <div class="metrics-grid">
           <!-- Cohen's Kappa (Rating, Classification) -->
           <div class="metric-item" v-if="showKappa && liveAgreementMetrics?.kappa !== null && liveAgreementMetrics?.kappa !== undefined">
@@ -901,7 +904,7 @@
     </v-dialog>
 
     <!-- Agreement Detail Dialog -->
-    <v-dialog v-model="showAgreementDialog" max-width="500">
+    <v-dialog v-model="showAgreementDialog" max-width="640">
       <v-card class="agreement-detail-card">
         <v-card-title class="d-flex align-center justify-space-between">
           <div class="d-flex align-center">
@@ -1011,6 +1014,7 @@ import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { useLLMEvaluation } from '@/composables/useLLMEvaluation'
 import { useLLMModels } from '@/composables/useLLMModels'
+import { parseUserProviderModelId } from '@/utils/formatters'
 import { useScenarioManager } from '../../composables/useScenarioManager'
 import LAvatar from '@/components/common/LAvatar.vue'
 
@@ -1131,13 +1135,8 @@ const llmEvaluators = computed(() => {
 
   return configList.map(item => {
     const modelId = typeof item === 'string' ? item : (item.model_id || item.modelId || item.id)
-    let displayName = modelId
-    if (typeof modelId === 'string' && modelId.startsWith('user-provider:')) {
-      const rest = modelId.replace('user-provider:', '')
-      const [providerId, rawModel] = rest.split(':', 2)
-      const providerLabel = providerId ? `User Provider ${providerId}` : 'User Provider'
-      displayName = rawModel ? `${providerLabel} · ${rawModel}` : providerLabel
-    }
+    const parsed = parseUserProviderModelId(modelId)
+    let displayName = parsed ? parsed.displayName : modelId
     return {
       id: modelId,
       modelId: modelId,
@@ -3560,7 +3559,8 @@ watch(
 
 .evaluator-name {
   font-weight: 600;
-  font-size: 0.95rem;
+  font-size: 1rem;
+  word-break: break-word;
 }
 
 .evaluator-type {
@@ -3585,7 +3585,7 @@ watch(
 .agreement-score-section {
   display: flex;
   justify-content: center;
-  padding: 20px 0;
+  padding: 28px 0;
 }
 
 .score-circle {
@@ -3593,21 +3593,21 @@ watch(
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  width: 100px;
-  height: 100px;
+  width: 130px;
+  height: 130px;
   border-radius: 50%;
-  border: 4px solid #b0ca97;
+  border: 5px solid #b0ca97;
   background-color: rgba(var(--v-theme-surface), 1);
 }
 
 .score-value {
-  font-size: 1.5rem;
+  font-size: 2rem;
   font-weight: 700;
   color: rgb(var(--v-theme-on-surface));
 }
 
 .score-label {
-  font-size: 0.7rem;
+  font-size: 0.75rem;
   color: rgba(var(--v-theme-on-surface), 0.6);
   text-transform: uppercase;
   letter-spacing: 0.5px;

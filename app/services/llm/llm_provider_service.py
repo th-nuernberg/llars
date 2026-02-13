@@ -358,6 +358,7 @@ class LLMProviderService:
         provider: LLMProvider,
         *,
         model_ids: Optional[List[str]] = None,
+        model_metadata: Optional[Dict[str, Any]] = None,
         activate_existing: bool = True,
         synced_by: Optional[str] = None,
     ) -> Dict[str, Any]:
@@ -368,6 +369,7 @@ class LLMProviderService:
             return LLMProviderService.register_models(
                 provider,
                 model_ids,
+                model_metadata=model_metadata,
                 activate_existing=activate_existing,
                 synced_by=synced_by,
             )
@@ -389,6 +391,7 @@ class LLMProviderService:
         provider: LLMProvider,
         model_ids: List[str],
         *,
+        model_metadata: Optional[Dict[str, Any]] = None,
         activate_existing: bool = True,
         synced_by: Optional[str] = None,
     ) -> Dict[str, Any]:
@@ -399,6 +402,7 @@ class LLMProviderService:
         if not clean_ids:
             return {"success": False, "error": "No model_ids provided"}
 
+        metadata = model_metadata or {}
         inserted = 0
         updated = 0
         skipped = 0
@@ -419,20 +423,22 @@ class LLMProviderService:
                         existing.updated_by = synced_by
                 continue
 
+            # Use frontend-provided metadata if available, otherwise infer
+            meta = metadata.get(model_id) or {}
             inferred = LLMModelSyncService.infer_model_defaults(model_id)
             model = LLMModel(
                 model_id=model_id,
-                display_name=inferred["display_name"],
+                display_name=meta.get("display_name") or inferred["display_name"],
                 provider=inferred["provider"],
                 description=None,
                 model_type=inferred["model_type"],
                 color=LLMModel.generate_color(model_id),
-                supports_vision=inferred["supports_vision"],
-                supports_reasoning=inferred["supports_reasoning"],
+                supports_vision=meta.get("supports_vision", inferred["supports_vision"]),
+                supports_reasoning=meta.get("supports_reasoning", inferred["supports_reasoning"]),
                 supports_function_calling=True,
                 supports_streaming=True,
-                context_window=inferred["context_window"],
-                max_output_tokens=inferred["max_output_tokens"],
+                context_window=meta.get("context_window") or inferred["context_window"],
+                max_output_tokens=meta.get("max_output_tokens") or inferred["max_output_tokens"],
                 input_cost_per_million=0.0,
                 output_cost_per_million=0.0,
                 is_default=False,

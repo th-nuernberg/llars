@@ -395,12 +395,14 @@ def create_provider():
 
     sync_models_flag = bool(data.get('sync_models'))
     model_ids = data.get('model_ids') or []
+    model_metadata = data.get('model_metadata') or {}
     sync_result = None
     if sync_models_flag or model_ids:
         admin_username = AuthUtils.extract_username_without_validation()
         sync_result = LLMProviderService.sync_models(
             provider,
             model_ids=model_ids or None,
+            model_metadata=model_metadata or None,
             synced_by=admin_username,
         )
 

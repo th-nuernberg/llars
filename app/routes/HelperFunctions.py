@@ -385,8 +385,8 @@ def user_can_evaluate(user_id: int, scenario_id: int) -> bool:
     """
     Check if a user can submit evaluations for a scenario.
 
-    VIEWER role cannot submit evaluations (read-only access).
-    OWNER and EVALUATOR roles can submit evaluations.
+    Only EVALUATOR role can submit evaluations.
+    OWNER and VIEWER roles are read-only.
 
     Args:
         user_id: The user ID to check
@@ -403,8 +403,25 @@ def user_can_evaluate(user_id: int, scenario_id: int) -> bool:
     if not scenario_user:
         return False
 
-    # VIEWER cannot submit evaluations
-    return scenario_user.role in (ScenarioRoles.OWNER, ScenarioRoles.EVALUATOR)
+    # Only EVALUATOR role can submit evaluations (OWNER/VIEWER are read-only)
+    return scenario_user.role == ScenarioRoles.EVALUATOR
+
+
+def user_can_evaluate_thread(user_id: int, thread_id: int) -> bool:
+    """
+    Check if a user can submit evaluations for any scenario containing this thread.
+
+    Args:
+        user_id: The user ID to check
+        thread_id: The thread/item ID to check
+
+    Returns:
+        True if the user has EVALUATOR role in any scenario containing this thread
+    """
+    from services.scenario_stats_service import get_scenario_ids_for_thread
+
+    scenario_ids = get_scenario_ids_for_thread(thread_id)
+    return any(user_can_evaluate(user_id, sid) for sid in scenario_ids)
 
 
 def get_thread_progression_state(thread: EmailThread, user_id: int, function_type_id: int) -> ProgressionStatus:

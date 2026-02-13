@@ -55,7 +55,7 @@
             :min="getDimensionMin(dim)"
             :max="getDimensionMax(dim)"
             :step="getDimensionStep(dim)"
-            :disabled="submitting"
+            :disabled="submitting || !canEvaluate"
             @update:model-value="handleDimensionRating(dim.id, $event)"
           />
         </div>
@@ -82,7 +82,7 @@
             rows="2"
             auto-grow
             hide-details
-            :disabled="submitting"
+            :disabled="submitting || !canEvaluate"
           />
         </div>
       </div>
@@ -183,6 +183,7 @@ const emit = defineEmits(['item-completed', 'all-completed', 'status-change', 's
 
 // Computed prop for hideNavigation to use in template
 const hideNavigation = computed(() => props.hideNavigation)
+const canEvaluate = computed(() => props.scenario?.can_evaluate !== false)
 
 // Panel resize composable
 const { containerRef, leftPanelStyle, rightPanelStyle, startResize } = usePanelResize({
@@ -280,6 +281,7 @@ function getDimensionLabels(dim) {
 
 // Handle dimension rating change (auto-saves via composable)
 function handleDimensionRating(dimensionId, value) {
+  if (!canEvaluate.value) return
   setDimensionRating(dimensionId, value)
 
   // Emit item-completed when all dimensions are rated

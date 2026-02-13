@@ -7,7 +7,7 @@ import logging
 from flask import jsonify, request, g, current_app
 from sqlalchemy import func
 from auth.decorators import authentik_required
-from decorators.error_handler import handle_api_errors, NotFoundError, ValidationError
+from decorators.error_handler import handle_api_errors, NotFoundError, ValidationError, ForbiddenError
 from db.database import db
 from db.tables import UserMessageRating
 from services.scenario_stats_service import get_scenario_ids_for_thread
@@ -63,11 +63,16 @@ def get_email_thread_message_ratings(thread_id):
 @handle_api_errors(logger_name='rating')
 def save_message_ratings(thread_id):
     """Save ratings for individual messages (thumbs up/down)"""
+    from routes.HelperFunctions import user_can_evaluate_thread
+
     user = g.authentik_user
 
     # check if user can access thread
     if not can_access_thread(user.id, thread_id, 3):
         raise ValidationError('Access denied')
+
+    if not user_can_evaluate_thread(user.id, thread_id):
+        raise ForbiddenError('VIEWER role cannot submit evaluations')
 
     # retrieve data send from user
     data = request.get_json()

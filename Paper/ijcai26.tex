@@ -58,14 +58,12 @@ $^2$Faculty of Social Sciences, Institute for E-Counselling
 \maketitle
 
 \begin{abstract}
-We demonstrate LLARS, an open-source platform that enables domain experts and developers to collaboratively build, test, and evaluate LLM-based systems.
-Developing such systems for sensitive domains requires both domain knowledge---understanding what constitutes quality---and technical skill for prompt design and model configuration, yet these groups typically lack a shared environment.
-LLARS addresses this with three integrated modules:
-\textbf{Collaborative Prompt Engineering} lets both groups co-author prompts in a real-time editor with version control and instant LLM testing.
-\textbf{Batch Generation} systematically produces the Cartesian product of prompts\,$\times$\,models\,$\times$\,data items with cost tracking.
-\textbf{Evaluation} supports human and LLM evaluators assessing outputs via rating, ranking, labeling, or comparison with live inter-rater agreement metrics.
-Each module operates independently or as part of an end-to-end pipeline.
-LLARS is actively used for developing AI-assisted systems in psychosocial counselling, where domain experts and developers jointly engineer prompts, compare models, and evaluate outputs.
+We demonstrate LLARS, an open-source platform that bridges the gap between domain experts and developers for building LLM-based assistants.
+LLARS integrates three modules into an end-to-end pipeline:
+\textbf{Collaborative Prompt Engineering} for real-time co-authoring with version control and instant LLM testing,
+\textbf{Batch Generation} for systematic output production across prompts\,$\times$\,models\,$\times$\,data with cost control, and
+\textbf{Evaluation} for human and LLM assessors to rate, rank, label, or compare outputs with live inter-rater agreement metrics.
+Interviews with six domain experts and three developers in psychosocial counselling confirmed that LLARS eliminates the ``translation work'' between disciplines and enables domain experts to directly co-author prompts and conduct evaluations independently.
 
 \vspace{0.3em}
 \noindent\textbf{Demo:} \url{https://llars-project.github.io/demo} % TODO: Set up GitHub Pages demo site before submission
@@ -270,7 +268,7 @@ Where most tools limit LLMs to pairwise judging~\cite{zheng2024judging}, LLARS t
 As evaluations come in, agreement metrics update live---Krippendorff's~$\alpha$, Cohen's and Fleiss'~$\kappa$, Kendall's~$\tau$, and ICC---filterable by evaluator pairing (human--human, LLM--LLM, or human--LLM) to pinpoint where judgments diverge.
 All data, metrics, and configurations are exportable as JSON or CSV.
 
-\begin{figure}[t]
+\begin{figure}[htb]
 \centering
 \includegraphics[width=\linewidth]{figures/szenario-wizard.png}
 \caption{AI-assisted Scenario Wizard showing the task selection step with four general evaluation types and two domain-specific types for psychosocial counseling. The five-step wizard analyzes uploaded data and recommends the most suitable evaluation type.}

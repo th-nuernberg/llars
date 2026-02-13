@@ -13,9 +13,9 @@ logger = logging.getLogger('demo_video_service')
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
-PRESEED_PROMPT_NAME = "News Summary Prompt"
-PRESEED_JOB_NAME = "News Summary Demo Job"
-LIVE_PROMPT_NAME = "News Summary Eval"
+PRESEED_PROMPT_NAME = "Structured Situation Analysis"
+PRESEED_JOB_NAME = "Counselling Situation Extraction"
+LIVE_PROMPT_NAME = "Situation Summary"
 LIVE_JOB_NAME = "Live Collab Batch Job"
 
 DEMO_USER = "ijcai_reviewer_1"
@@ -57,7 +57,7 @@ def get_status():
             result['jobs'][name] = {'exists': False}
 
     scenarios = RatingScenarios.query.filter(
-        RatingScenarios.scenario_name.contains("News Summary")
+        RatingScenarios.scenario_name.contains("Situation")
     ).all()
     result['scenarios'] = [
         {'name': s.scenario_name, 'id': s.id, 'created_by': s.created_by}
@@ -77,7 +77,7 @@ def seed():
     )
     from db.models.llm_model import LLMModel
     from db.models.scenario import UserPromptShare
-    from db.seeders.demo_video_data import NEWS_ARTICLES, SAMPLE_SUMMARIES
+    from db.seeders.demo_video_data import COUNSELLING_CASES, SAMPLE_OUTPUTS
 
     actions = []
 
@@ -147,15 +147,15 @@ def seed():
         _db.session.flush()
 
         now = datetime.utcnow()
-        total_outputs = len(NEWS_ARTICLES) * 2 * 2
+        total_outputs = len(COUNSELLING_CASES) * 2 * 2
 
         job = GenerationJob(
             name=PRESEED_JOB_NAME,
-            description="Demo batch: two prompts x two models x 10 news articles.",
+            description="Demo batch: two prompts x two models x 10 counselling cases.",
             status=GenerationJobStatus.COMPLETED,
             config_json={
                 "mode": "matrix",
-                "sources": {"type": "manual", "items": NEWS_ARTICLES},
+                "sources": {"type": "manual", "items": COUNSELLING_CASES},
                 "prompts": [
                     {"template_name": PRESEED_PROMPT_NAME},
                     {"template_name": LIVE_PROMPT_NAME}
@@ -177,15 +177,15 @@ def seed():
         _db.session.flush()
 
         output_idx = 0
-        for article_idx, article in enumerate(NEWS_ARTICLES):
+        for case_idx, case in enumerate(COUNSELLING_CASES):
             for summary_key, prompt_obj, prompt_name in [
-                ("concise", preseed, PRESEED_PROMPT_NAME),
-                ("analyst", temp_eval, LIVE_PROMPT_NAME),
+                ("structured", preseed, PRESEED_PROMPT_NAME),
+                ("narrative", temp_eval, LIVE_PROMPT_NAME),
             ]:
                 for model in [mistral, magistral]:
-                    summary = SAMPLE_SUMMARIES[summary_key][article_idx]
+                    output_text = SAMPLE_OUTPUTS[summary_key][case_idx]
                     sys_prompt = _render_system(prompt_obj)
-                    usr_prompt = _render_user(prompt_obj, article)
+                    usr_prompt = _render_user(prompt_obj, case)
 
                     _db.session.add(GeneratedOutput(
                         job_id=job.id,
@@ -193,15 +193,15 @@ def seed():
                         llm_model_name=model.model_id,
                         prompt_variant_name=prompt_name,
                         prompt_variables_json={
-                            'source_index': article_idx,
-                            'source_title': article['title']
+                            'source_index': case_idx,
+                            'source_subject': case['subject']
                         },
-                        generated_content=summary,
+                        generated_content=output_text,
                         rendered_system_prompt=sys_prompt,
                         rendered_user_prompt=usr_prompt,
                         status=GeneratedOutputStatus.COMPLETED,
-                        input_tokens=len(article['content'].split()) + 50,
-                        output_tokens=len(summary.split()),
+                        input_tokens=len(case['content'].split()) + 50,
+                        output_tokens=len(output_text.split()),
                         total_cost_usd=0.001,
                         processing_time_ms=1500 + (output_idx * 50),
                         attempt_count=1,
@@ -226,7 +226,7 @@ def cleanup(include_preseed=False):
 
     deleted = []
 
-    # --- 1. Delete live prompt "News Summary Eval" (any owner) ---
+    # --- 1. Delete live prompt "Situation Summary" (any owner) ---
     live_prompts = UserPrompt.query.filter_by(name=LIVE_PROMPT_NAME).all()
     for lp in live_prompts:
         shares_deleted = UserPromptShare.query.filter_by(
@@ -263,7 +263,7 @@ def cleanup(include_preseed=False):
     preseed_target_id = preseed_job.target_scenario_id if preseed_job else None
 
     demo_scenarios = RatingScenarios.query.filter(
-        RatingScenarios.scenario_name.contains("News Summary")
+        RatingScenarios.scenario_name.contains("Situation")
     ).all()
 
     for scenario in demo_scenarios:
@@ -293,54 +293,50 @@ def reset():
 # ---------------------------------------------------------------------------
 
 def _build_preseed_prompt_content():
-    """Pre-seed prompt: detailed, verbose prompt with few-shot examples.
-    Deliberately much longer and more prescriptive than the live prompt
-    to show that different prompt styles produce visibly different outputs."""
+    """Pre-seed prompt: structured situation analysis with JSON output and references.
+    Deliberately more prescriptive than the live prompt to produce visibly different outputs."""
     return {
         "blocks": {
             "Role Definition": {
                 "content": (
-                    "Role definition: You are a senior news analyst working for an international press agency. "
-                    "Your summaries are used by editors who need to decide whether a story deserves front-page coverage. "
-                    "You have deep expertise in technology, science, and policy reporting. "
-                    "Your writing style is precise, uses active voice, and avoids hedging language."
+                    "You are an assistant for professionals in psychosocial online counselling. "
+                    "You support counsellors in systematically capturing the current life situation of help-seeking clients. "
+                    "You analyze email threads between clients and counsellors and extract factual information about the client's circumstances."
                 ),
                 "position": 0
             },
             "Task Explanation": {
                 "content": (
-                    "Task explanation: Analyze the article and produce a structured 3-sentence summary.\n\n"
-                    "Sentence 1 — Lead: State the core news event with the most important fact or figure.\n"
-                    "Sentence 2 — Context: Provide essential background that helps the reader understand why this matters.\n"
-                    "Sentence 3 — Outlook: Mention next steps, open questions, or broader implications.\n\n"
-                    "Guidelines:\n"
-                    "- Use specific numbers and names from the article when available.\n"
-                    "- Do not speculate beyond what the article states.\n"
-                    "- Keep each sentence under 30 words.\n"
-                    "- Write in present tense for the lead, past tense for background, and future tense for outlook.\n\n"
-                    "Few-shot examples:\n\n"
-                    "Example input: 'SpaceX Successfully Lands Starship After Orbital Flight'\n"
-                    "Example output: SpaceX lands its Starship rocket after a full orbital flight, achieving a key milestone "
-                    "for the program. The company spent three years and an estimated $2 billion developing the reusable "
-                    "heavy-lift vehicle. NASA now considers Starship the leading candidate for its Artemis lunar cargo missions.\n\n"
-                    "Example input: 'Japan Approves First Gene-Edited Food for Consumer Sale'\n"
-                    "Example output: Japan becomes the first country to approve a gene-edited tomato for direct sale to "
-                    "consumers. Regulators determined that CRISPR-based edits carry no additional risk compared to conventional "
-                    "breeding. The decision is expected to accelerate gene-editing approvals across Asia and influence ongoing "
-                    "EU regulatory debates."
+                    "Analyze the email thread and produce a structured situation description of the client's current life circumstances in up to 3 bullet points.\n\n"
+                    "Each bullet point must contain:\n"
+                    "- **Text**: A concise description of one aspect of the life situation (max 2 sentences, max 160 characters)\n"
+                    "- **Reference**: Direct quotes from the email thread as evidence\n\n"
+                    "Focus on: housing situation, family relationships, children (age, development, health), professional/educational situation, health status, social conflicts.\n\n"
+                    'Return the result as JSON:\n'
+                    '```json\n'
+                    '{"situation_descriptions": [{"text": "...", "reference": ["quote 1", "quote 2"]}]}\n'
+                    '```\n\n'
+                    "Rules:\n"
+                    "- Use only facts from the thread, no speculation\n"
+                    "- Avoid introductory phrases, present information directly\n"
+                    "- When counselling parents, also include information about their children\n\n"
+                    "Few-shot example:\n\n"
+                    "Input: A single mother reports that her 8-year-old son has been refusing to attend school for two weeks, "
+                    "complaining of stomach aches. The pediatrician found no physical cause. She works part-time and cannot stay home every day.\n\n"
+                    "Output:\n"
+                    '{"situation_descriptions": [{"text": "Single mother working part-time, unable to provide daily supervision due to work obligations.", '
+                    '"reference": ["I work part-time and cannot stay home every day"]}, '
+                    '{"text": "8-year-old son refusing school attendance for two weeks with psychosomatic symptoms.", '
+                    '"reference": ["my son has been refusing to go to school for two weeks", "he complains of stomach aches but the pediatrician found nothing"]}]}'
                 ),
                 "position": 1
             },
             "Data Format Explanation": {
                 "content": (
-                    "Data format explanation:\n"
-                    "Input:\n"
-                    "Title: {{title}}\n\n"
-                    "Article:\n"
+                    "Subject: {{subject}}\n\n"
+                    "Email thread:\n"
                     "{{content}}\n\n"
-                    "Output:\n"
-                    "Exactly 3 sentences in plain text following the Lead-Context-Outlook structure above. "
-                    "No bullet points. No headings. No extra commentary."
+                    'Return only the JSON object with the "situation_descriptions" array. No additional explanations.'
                 ),
                 "position": 2
             }
@@ -349,27 +345,24 @@ def _build_preseed_prompt_content():
 
 
 def _build_eval_prompt_content():
-    """Eval prompt: 3-sentence detailed summary with more context. Matches
-    the block structure of the live-typed prompt but provides richer output."""
+    """Live prompt: brief narrative situation summary. Matches
+    the block structure of the live-typed prompt but produces shorter, narrative output."""
     return {
         "blocks": {
             "Role Definition": {
-                "content": "Role definition: You are an analytical journalist who provides thorough context alongside factual reporting.",
+                "content": "You are a counselling assistant who helps professionals extract key facts from client communications in online psychosocial counselling.",
                 "position": 0
             },
             "Task Explanation": {
-                "content": "Task explanation: Write a 3-sentence summary of the article. Include relevant background, mention key stakeholders, and explain broader implications beyond the headline.",
+                "content": "Read the email thread and write a brief situation overview in 2-3 sentences. Focus on the client's living situation, family, health, and main concerns. Write in third person, present tense.",
                 "position": 1
             },
             "Data Format Explanation": {
                 "content": (
-                    "Data format explanation:\n"
-                    "Input:\n"
-                    "Title: {{title}}\n\n"
-                    "Article:\n"
+                    "Subject: {{subject}}\n\n"
+                    "Email thread:\n"
                     "{{content}}\n\n"
-                    "Output:\n"
-                    "Exactly 3 sentences in plain text. No bullet points. No extra commentary."
+                    "Write a plain text paragraph. No JSON, no bullet points."
                 ),
                 "position": 2
             }
@@ -388,8 +381,8 @@ def _render_system(prompt):
     return "\n\n".join(p for p in parts if p)
 
 
-def _render_user(prompt, article):
+def _render_user(prompt, case):
     tpl = _get_block(prompt, "Data Format Explanation")
     if not tpl:
-        return f"Title: {article['title']}\n\n{article['content']}"
-    return tpl.replace("{{title}}", article["title"]).replace("{{content}}", article["content"])
+        return f"Subject: {case['subject']}\n\n{case['content']}"
+    return tpl.replace("{{subject}}", case["subject"]).replace("{{content}}", case["content"])

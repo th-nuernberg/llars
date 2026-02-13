@@ -173,7 +173,7 @@
         {
           "do": "type",
           "target": "Prompt Name Input",
-          "text": "News Summary Eval",
+          "text": "Situation Summary",
           "speed": "medium"
         },
         {
@@ -311,24 +311,24 @@
     {
       "id": "prompt_eng_5",
       "speaker": "moderator",
-      "narration": "Right. Let me fill these in now — a journalist role, the summarization task, and the data format with placeholders.",
+      "narration": "Right. Let me fill these in now — a counselling assistant role, the extraction task, and the data format with placeholders.",
       "actions": [
         {
           "do": "type",
           "target": ".editor-block:nth-child(1) .ql-editor",
-          "text": "Role definition: You are an analytical journalist who provides thorough context alongside factual reporting.",
+          "text": "You are a counselling assistant who helps professionals extract key facts from client communications in online psychosocial counselling.",
           "speed": "turbo"
         },
         {
           "do": "type",
           "target": ".editor-block:nth-child(2) .ql-editor",
-          "text": "Task explanation: Write a 3-sentence summary of the article. Include relevant background, mention key stakeholders, and explain broader implications beyond the headline.",
+          "text": "Read the email thread and write a brief situation overview in 2-3 sentences. Focus on the client's living situation, family, health, and main concerns. Write in third person, present tense.",
           "speed": "turbo"
         },
         {
           "do": "type",
           "target": ".editor-block:nth-child(3) .ql-editor",
-          "text": "The article data will be provided as follows:\n\nTitle: {{title}}\nArticle: {{content}}\n\nWrite exactly 3 sentences in plain text. No bullet points, no extra commentary.",
+          "text": "Subject: {{subject}}\n\nEmail thread:\n{{content}}\n\nWrite a plain text paragraph. No JSON, no bullet points.",
           "speed": "turbo"
         }
       ]
@@ -336,7 +336,7 @@
     {
       "id": "prompt_eng_5_react",
       "speaker": "guest",
-      "narration": "Ah — those double curly braces, title and content — those are variables that get filled with actual data later?",
+      "narration": "Ah — those double curly braces, subject and content — the email subject and the full thread — those are variables that get filled with actual data later?",
       "actions": [
         {
           "do": "highlight",
@@ -348,7 +348,7 @@
     {
       "id": "prompt_eng_5a",
       "speaker": "moderator",
-      "narration": "Yes, exactly. I can define them here with example values for testing. Let me add a title and an article.",
+      "narration": "Yes, exactly. I can define them here with example values for testing. Let me add a subject and an email thread.",
       "actions": [
         {
           "do": "click",
@@ -360,13 +360,13 @@
         {
           "do": "type",
           "target": "Variable Name Input",
-          "text": "title",
+          "text": "subject",
           "speed": "fast"
         },
         {
           "do": "type",
           "target": "Variable Content Input",
-          "text": "Tech Giants Race to Deploy Smaller AI Models",
+          "text": "School problems with my son",
           "speed": "instant"
         },
         {
@@ -394,7 +394,7 @@
         {
           "do": "type",
           "target": "Variable Content Input",
-          "text": "Major technology companies are shifting focus from ever-larger language models to smaller, efficient alternatives. Industry analysts report that compact models now match flagship systems on common benchmarks while cutting inference costs by up to 80 percent. Early enterprise adopters cite faster deployment and reduced operational complexity as key benefits.",
+          "text": "Client wrote on 10/01/2026 at 2:30 PM:\nMy son (13) has been refusing to go to school for two weeks. He complains of stomach aches, but the paediatrician found nothing. I am a single parent and cannot stay home every day.\n\nCounsellor wrote on 11/01/2026 at 9:00 AM:\nThank you for your message. School refusal can have various causes...",
           "speed": "instant"
         },
         {
@@ -418,7 +418,7 @@
     {
       "id": "prompt_eng_5a_react",
       "speaker": "guest",
-      "narration": "So during batch generation, you upload a JSON or CSV where the column names match these variable names — title and content. The system fills them in automatically.",
+      "narration": "So during batch generation, you upload a JSON or CSV where the column names match — subject and content. The system fills in each email case automatically.",
       "actions": [
         {
           "do": "wait",
@@ -470,7 +470,7 @@
     {
       "id": "prompt_eng_5d",
       "speaker": "moderator",
-      "narration": "And if the summary is too long or misses the point, I just tweak the instructions and test again. No context switching, no re-uploading data.",
+      "narration": "And if the output misses key facts or includes speculation, I just tweak the instructions and test again. No context switching, no re-uploading data.",
       "actions": [
         {
           "do": "highlight",
@@ -522,7 +522,7 @@
     {
       "id": "collab_2",
       "speaker": "guest",
-      "narration": "So that's me on the right side — I can already see the prompt list. Let me open our News Summary Eval.",
+      "narration": "So that's me on the right side — I can already see the prompt list. Let me open our Situation Summary.",
       "actions": [
         {
           "do": "collab_goto",
@@ -534,7 +534,7 @@
         },
         {
           "do": "collab_click",
-          "target": "News Summary Eval"
+          "target": "Situation Summary"
         },
         {
           "do": "wait",
@@ -557,7 +557,7 @@
         {
           "do": "collab_type",
           "target": "First Block Editor",
-          "text": "\n\nBe strict about factual accuracy and avoid speculation. If uncertain, say so.",
+          "text": "\n\nAlways protect client anonymity. Never include real names — refer to family members by role only (e.g. 'the client', 'the son', 'the partner').",
           "delay": 0.1
         },
         {
@@ -650,22 +650,22 @@
         },
         {
           "do": "wait_for",
-          "target": "News Summary Prompt",
+          "target": "Structured Situation Analysis",
           "timeout": 10
         },
         {
           "do": "highlight",
-          "target": "News Summary Eval",
+          "target": "Situation Summary",
           "duration": 1.2
         },
         {
           "do": "highlight",
-          "target": "News Summary Prompt",
+          "target": "Structured Situation Analysis",
           "duration": 1.2
         },
         {
           "do": "click",
-          "target": "News Summary Prompt"
+          "target": "Structured Situation Analysis"
         },
         {
           "do": "wait",
@@ -830,7 +830,7 @@
     {
       "id": "batch_gen_3",
       "speaker": "moderator",
-      "narration": "First, the data. I'll paste ten news articles as JSON — Lars also supports file upload and CSV.",
+      "narration": "First, the data. I'll paste ten counselling cases as JSON — real anonymized email threads from psychosocial counselling. Lars also supports file upload and CSV.",
       "actions": [
         {
           "do": "highlight",
@@ -858,7 +858,7 @@
         {
           "do": "set_text_from_file",
           "target": "Manual Data Textarea",
-          "file": "data/news_articles.json"
+          "file": "data/counselling_cases.json"
         },
         {
           "do": "scroll",
@@ -900,12 +900,12 @@
         },
         {
           "do": "highlight",
-          "target": "News Summary Prompt Item",
+          "target": "Structured Situation Analysis Item",
           "duration": 1.0
         },
         {
           "do": "click",
-          "target": "News Summary Prompt Item"
+          "target": "Structured Situation Analysis Item"
         },
         {
           "do": "wait",
@@ -913,12 +913,12 @@
         },
         {
           "do": "highlight",
-          "target": "News Summary Eval Item",
+          "target": "Situation Summary Item",
           "duration": 1.0
         },
         {
           "do": "click",
-          "target": "News Summary Eval Item"
+          "target": "Situation Summary Item"
         },
         {
           "do": "click",
@@ -929,7 +929,7 @@
     {
       "id": "batch_gen_5",
       "speaker": "moderator",
-      "narration": "Exactly — both selected. Next we pick models. I'll take Mistral and Magistral so we can compare two architectures side by side.",
+      "narration": "Exactly — both selected. Next we pick models. I'll take Mistral and Magistral so we can compare how two models handle counselling case extraction.",
       "actions": [
         {
           "do": "wait",
@@ -1009,7 +1009,7 @@
     {
       "id": "batch_gen_7b",
       "speaker": "moderator",
-      "narration": "…times two prompts, times two models — forty outputs total. And notice the cost estimate — Lars calculates expected tokens and cost before you run anything.",
+      "narration": "…times two prompts, times two models — forty situation descriptions total. And notice the cost estimate — Lars calculates expected tokens and cost before you run anything.",
       "actions": [
         {
           "do": "highlight",
@@ -1056,12 +1056,12 @@
         },
         {
           "do": "highlight",
-          "target": "News Summary Demo Job",
+          "target": "Counselling Situation Extraction",
           "duration": 1.2
         },
         {
           "do": "click",
-          "target": "News Summary Demo Job"
+          "target": "Counselling Situation Extraction"
         },
         {
           "do": "wait",
@@ -1133,7 +1133,7 @@
     {
       "id": "batch_gen_11",
       "speaker": "guest",
-      "narration": "OK, so we have forty outputs from two prompts and two models. How do you decide which combination actually did better?",
+      "narration": "OK, so we have forty situation descriptions from two prompts and two models. How do you decide which combination actually did better?",
       "actions": [
         {
           "do": "wait",
@@ -1170,7 +1170,7 @@
     {
       "id": "scenario_wizard_2",
       "speaker": "moderator",
-      "narration": "We choose Ranking to compare all four summaries: two prompts by two models.",
+      "narration": "We choose Ranking to compare all four situation descriptions: two prompts by two models.",
       "actions": [
         {
           "do": "wait",
@@ -1406,7 +1406,7 @@
     {
       "id": "scenario_4",
       "speaker": "moderator",
-      "narration": "Each article has four summaries — two prompts times two models — so you get 10 rankings with four items each.",
+      "narration": "Each case has four situation descriptions — two prompts times two models — so you get 10 rankings with four items each.",
       "actions": [
         {
           "do": "highlight",
@@ -1627,7 +1627,7 @@
     {
       "id": "human_eval_3",
       "speaker": "moderator",
-      "narration": "Notice the generic labels — Item A, B, C. The evaluator never sees model names. And the order is randomized for each evaluator to prevent position bias. You drag summaries into buckets to rank them.",
+      "narration": "Notice the generic labels — Item A, B, C. The evaluator never sees model names. And the order is randomized for each evaluator to prevent position bias. You drag situation descriptions into buckets to rank them.",
       "actions": [
         {
           "do": "highlight",
@@ -1692,7 +1692,7 @@
       "_section": "=== CONCLUSION (25s) ===",
       "id": "conclusion_1",
       "speaker": "moderator",
-      "narration": "That was a news-article example. In our research, we use Lars for psychosocial counselling — psychologists craft prompts for case summaries, then rate LLM outputs on coherence, empathy, and factual accuracy using multi-dimensional scales. The same three modules apply to any domain.",
+      "narration": "We showed this with counselling data because that's our research domain — psychologists and social workers use Lars to craft prompts for extracting situation descriptions from client communications. But the platform is domain-agnostic. The same three modules — Prompt Engineering, Batch Generation, and Evaluation — work for medical summaries, legal documents, or any text that needs structured LLM processing and human evaluation.",
       "actions": [
         {
           "do": "goto",
@@ -1722,7 +1722,7 @@
     {
       "id": "conclusion_2",
       "speaker": "guest",
-      "narration": "Right — medical summaries, legal documents, anything that needs structured evaluation. And each module works standalone too. Thanks, Alex.",
+      "narration": "Exactly — swap the email threads for radiology reports or contract clauses, and the workflow stays the same. Thanks, Alex.",
       "actions": [
         {
           "do": "wait",

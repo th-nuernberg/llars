@@ -225,7 +225,7 @@ ELEMENT_MAP = {
     "Cancel": ".v-btn:contains('Cancel'), button:contains('Cancel')",
     "Dialog Create Button": ".v-dialog .l-btn:contains('Create'), .v-dialog .v-btn:contains('Create'), .v-dialog button:contains('Create')",
     "Block Create Button": ".v-dialog--active .l-btn:contains('Create'), .v-overlay--active .l-btn:contains('Create')",
-    "Prompt Card": ".prompt-card, .v-card:contains('News Summary')",
+    "Prompt Card": ".prompt-card, .v-card:contains('Situation')",
     "Prompt Workspace": ".prompt-workspace, .blocks-container",
     "Collaboration Color": ".v-dialog .color-presets, .v-dialog .color-preview, .color-presets, .color-preview",
     "Collab Color Preset": ".v-dialog .color-presets .color-preset, .color-presets .color-preset",
@@ -276,9 +276,8 @@ ELEMENT_MAP = {
     # Step 2: Prompt Templates (click to select) - in wizard overlay
     "Prompt Item": ".prompts-selection .selection-item",
     "First Prompt": ".prompts-selection .selection-item:first-child",
-    "News Summary Prompt Item": ".prompts-selection .selection-item:contains('News Summary Prompt'), .selection-item:contains('News Summary Prompt'), .item-name:contains('News Summary Prompt'), .prompts-selection .selection-item:first-child",
-    "Analyst Summary Prompt Item": ".v-overlay--active .selection-item:contains('Analyst Summary'), .prompts-selection .selection-item:contains('Analyst Summary'), .selection-item:contains('Analyst Summary'), .item-name:contains('Analyst')",
-    "News Summary Eval Item": ".prompts-selection .selection-item:contains('News Summary Eval'), .selection-item:contains('News Summary Eval'), .item-name:contains('News Summary Eval'), .prompts-selection .selection-item:nth-child(2)",
+    "Structured Situation Analysis Item": ".prompts-selection .selection-item:contains('Structured Situation Analysis'), .selection-item:contains('Structured Situation Analysis'), .item-name:contains('Structured Situation Analysis'), .prompts-selection .selection-item:first-child",
+    "Situation Summary Item": ".prompts-selection .selection-item:contains('Situation Summary'), .selection-item:contains('Situation Summary'), .item-name:contains('Situation Summary'), .prompts-selection .selection-item:nth-child(2)",
 
     # Step 3: Models (click to select) - in wizard overlay
     "Model Item": ".models-selection .selection-item",
@@ -323,7 +322,7 @@ ELEMENT_MAP = {
     # Job Cards
     "Job Card": ".job-card",
     "Active Job Card": ".job-card.is-active",
-    "News Summary Prompt": ".v-list-item:contains('News'), .prompt-item:contains('News')",
+    "Counselling Prompt": ".v-list-item:contains('Situation'), .prompt-item:contains('Situation')",
 
     # Evaluation Types
     "Ranking": ".type-card:contains('Ranking'), .type-name:contains('Ranking'), .v-list-item:contains('Ranking'), .v-radio:contains('Ranking'), label:contains('Ranking')",
@@ -351,10 +350,10 @@ ELEMENT_MAP = {
     # Misc
     "Test Output": ".test-result, .v-card:contains('Result'), .output",
     "Progress Bar": ".v-progress-linear, .progress-bar, .v-progress-circular",
-    "Cost Estimate": ".cost-display, .v-card:contains('Cost')",
+    "Cost Estimate": ".cost-estimate, .cost-value, .review-section:contains('Cost')",
     "Import Dialog": ".v-dialog, .v-card.import",
     "Recommended: Ranking": ".recommendation, .v-chip:contains('Ranking')",
-    "News Summary Evaluation": ".v-card:contains('News'), .scenario-card:contains('News')",
+    "Counselling Situation Evaluation": ".v-card:contains('Situation'), .scenario-card:contains('Situation')",
 
     # =============================================
     # ADDITIONAL ELEMENTS FOR DEMO VIDEO
@@ -377,7 +376,7 @@ ELEMENT_MAP = {
 
     # Batch Generation - Job List
     "Completed Job": ".job-card:contains('completed'), .job-card.status-completed, .job-item:contains('100%')",
-    "Demo Job": ".job-card:contains('Demo'), .job-card:contains('News')",
+    "Demo Job": ".job-card:contains('Counselling'), .job-card:contains('Situation')",
     "Job Status": ".job-status, .status-chip",
     "Job Progress": ".job-progress, .progress-bar",
     "View Results": ".v-btn:contains('Results'), .v-btn:contains('View')",
@@ -401,9 +400,9 @@ ELEMENT_MAP = {
     "New Scenario": ".v-btn:contains('New Scenario'), .header-actions .v-btn:contains('New')",
     "Scenario List": ".scenario-list, .scenarios-grid, .scenario-cards, .v-list",
     "Scenario Card": ".scenario-card, .v-card.scenario",
-    "News Summary Demo Scenario": ".scenario-card:contains('News Summary Demo Job'), .scenario-card:contains('News Summary')",
+    "Counselling Demo Scenario": ".scenario-card:contains('Counselling Situation'), .scenario-card:contains('Situation')",
     "Completed Scenario": ".scenario-card:contains('Complete'), .scenario-card.completed",
-    "Demo Scenario": ".scenario-card:contains('Demo'), .scenario-card:contains('News')",
+    "Demo Scenario": ".scenario-card:contains('Counselling'), .scenario-card:contains('Situation')",
     "Scenario Stats": ".scenario-stats, .stats-card",
     "Open Scenario": ".v-btn:contains('Open'), .scenario-card .v-btn",
     "Scenario Workspace": ".scenario-workspace",
@@ -465,15 +464,14 @@ ELEMENT_MAP = {
     "Feature Cards": ".feature-cards, .home-features, .v-row .v-col .v-card",
 
     # Prompt Engineering - Existing Prompts (seeded by seed_demo_video_data)
-    "News Summary Prompt": ".prompt-card:contains('News Summary Prompt'), .v-card:contains('News Summary Prompt'), .prompt-list-item:contains('News Summary Prompt')",
-    "News Summary Eval": ".prompt-card:contains('News Summary Eval'), .v-card:contains('News Summary Eval'), .prompt-list-item:contains('News Summary Eval')",
-    "Analyst Summary Prompt": ".prompt-card:contains('Analyst Summary'), .v-card:contains('Analyst Summary')",
+    "Structured Situation Analysis": ".prompt-card:contains('Structured Situation Analysis'), .v-card:contains('Structured Situation Analysis'), .prompt-list-item:contains('Structured Situation Analysis')",
+    "Situation Summary": ".prompt-card:contains('Situation Summary'), .v-card:contains('Situation Summary'), .prompt-list-item:contains('Situation Summary')",
 
     # Prompt Engineering - Collaboration
     "Collab Indicator": ".collab-indicator, .user-presence, .collaboration-status, .yjs-status, .online-users",
 
     # Batch Generation - Existing Jobs (seeded by seed_demo_video_data)
-    "News Summary Demo Job": ".job-card:contains('News Summary Demo'), .job-row:contains('News Summary Demo'), .v-list-item:contains('News Summary Demo')",
+    "Counselling Situation Extraction": ".job-card:contains('Counselling Situation Extraction'), .job-row:contains('Counselling Situation'), .v-list-item:contains('Counselling Situation')",
     "Job Summary": ".job-summary, .job-stats, .stats-card, .v-card .stats, .job-info",
     "Job Details": ".job-details, .job-detail-view, .v-card:contains('Details')",
     "Job Outputs": ".outputs-list, .output-cards, .generated-outputs",
@@ -1331,72 +1329,60 @@ class Browser:
         # SQL: Delete scenarios and jobs created during previous recordings
         cleanup_sql = f"""
         DELETE FROM scenario_item_distribution WHERE scenario_id IN (
-            SELECT id FROM rating_scenarios WHERE scenario_name LIKE '%News Summary%' OR scenario_name LIKE '%Demo%Evaluation%'
+            SELECT id FROM rating_scenarios WHERE scenario_name LIKE '%Situation%' OR scenario_name LIKE '%Counselling%'
         );
         DELETE FROM scenario_items WHERE scenario_id IN (
-            SELECT id FROM rating_scenarios WHERE scenario_name LIKE '%News Summary%' OR scenario_name LIKE '%Demo%Evaluation%'
+            SELECT id FROM rating_scenarios WHERE scenario_name LIKE '%Situation%' OR scenario_name LIKE '%Counselling%'
         );
         DELETE FROM scenario_users WHERE scenario_id IN (
-            SELECT id FROM rating_scenarios WHERE scenario_name LIKE '%News Summary%' OR scenario_name LIKE '%Demo%Evaluation%'
+            SELECT id FROM rating_scenarios WHERE scenario_name LIKE '%Situation%' OR scenario_name LIKE '%Counselling%'
         );
         DELETE FROM item_dimension_ratings WHERE scenario_id IN (
-            SELECT id FROM rating_scenarios WHERE scenario_name LIKE '%News Summary%' OR scenario_name LIKE '%Demo%Evaluation%'
+            SELECT id FROM rating_scenarios WHERE scenario_name LIKE '%Situation%' OR scenario_name LIKE '%Counselling%'
         );
         DELETE FROM item_labeling_evaluations WHERE scenario_id IN (
-            SELECT id FROM rating_scenarios WHERE scenario_name LIKE '%News Summary%' OR scenario_name LIKE '%Demo%Evaluation%'
+            SELECT id FROM rating_scenarios WHERE scenario_name LIKE '%Situation%' OR scenario_name LIKE '%Counselling%'
         );
         DELETE FROM comparison_evaluations WHERE message_id IN (
             SELECT id FROM comparison_messages WHERE session_id IN (
                 SELECT id FROM comparison_sessions WHERE scenario_id IN (
-                    SELECT id FROM rating_scenarios WHERE scenario_name LIKE '%News Summary%' OR scenario_name LIKE '%Demo%Evaluation%'
+                    SELECT id FROM rating_scenarios WHERE scenario_name LIKE '%Situation%' OR scenario_name LIKE '%Counselling%'
                 )
             )
         );
         DELETE FROM comparison_messages WHERE session_id IN (
             SELECT id FROM comparison_sessions WHERE scenario_id IN (
-                SELECT id FROM rating_scenarios WHERE scenario_name LIKE '%News Summary%' OR scenario_name LIKE '%Demo%Evaluation%'
+                SELECT id FROM rating_scenarios WHERE scenario_name LIKE '%Situation%' OR scenario_name LIKE '%Counselling%'
             )
         );
         DELETE FROM comparison_sessions WHERE scenario_id IN (
-            SELECT id FROM rating_scenarios WHERE scenario_name LIKE '%News Summary%' OR scenario_name LIKE '%Demo%Evaluation%'
+            SELECT id FROM rating_scenarios WHERE scenario_name LIKE '%Situation%' OR scenario_name LIKE '%Counselling%'
         );
-        DELETE FROM rating_scenarios WHERE scenario_name LIKE '%News Summary%' OR scenario_name LIKE '%Demo%Evaluation%';
+        DELETE FROM rating_scenarios WHERE scenario_name LIKE '%Situation%' OR scenario_name LIKE '%Counselling%';
         DELETE FROM generated_outputs WHERE job_id IN (
-            SELECT id FROM generation_jobs WHERE created_by = '{login_user}' AND name <> 'News Summary Demo Job'
+            SELECT id FROM generation_jobs WHERE created_by = '{login_user}' AND name <> 'Counselling Situation Extraction'
         );
-        DELETE FROM generation_jobs WHERE created_by = '{login_user}' AND name <> 'News Summary Demo Job';
+        DELETE FROM generation_jobs WHERE created_by = '{login_user}' AND name <> 'Counselling Situation Extraction';
         """
 
         # SQL: Reset prompts (delete + re-create setup prompt)
         prompt_reset_sql = f"""
         DELETE FROM prompt_commits WHERE prompt_id IN (
             SELECT prompt_id FROM user_prompts
-            WHERE LOWER(TRIM(name)) LIKE 'news summary prompt%'
-               OR LOWER(TRIM(name)) LIKE 'news summary eval%'
-               OR LOWER(TRIM(name)) LIKE 'analyst summary prompt%'
-               OR LOWER(TRIM(name)) LIKE 'live collab prompt%'
+            WHERE LOWER(TRIM(name)) LIKE 'structured situation analysis%'
+               OR LOWER(TRIM(name)) LIKE 'situation summary%'
+               OR LOWER(TRIM(name)) LIKE 'live collab%'
         );
         DELETE FROM user_prompt_shares WHERE prompt_id IN (
             SELECT prompt_id FROM user_prompts
-            WHERE LOWER(TRIM(name)) LIKE 'news summary prompt%'
-               OR LOWER(TRIM(name)) LIKE 'news summary eval%'
-               OR LOWER(TRIM(name)) LIKE 'analyst summary prompt%'
-               OR LOWER(TRIM(name)) LIKE 'live collab prompt%'
+            WHERE LOWER(TRIM(name)) LIKE 'structured situation analysis%'
+               OR LOWER(TRIM(name)) LIKE 'situation summary%'
+               OR LOWER(TRIM(name)) LIKE 'live collab%'
         );
         DELETE FROM user_prompts
-        WHERE LOWER(TRIM(name)) LIKE 'news summary prompt%'
-           OR LOWER(TRIM(name)) LIKE 'news summary eval%'
-           OR LOWER(TRIM(name)) LIKE 'analyst summary prompt%'
-           OR LOWER(TRIM(name)) LIKE 'live collab prompt%';
-        INSERT INTO user_prompts (user_id, name, content, created_at, updated_at)
-        SELECT id,
-               'News Summary Prompt',
-               '{{"blocks":{{"Role Definition":{{"content":"Role definition: You are a professional news editor. Write concise, factual summaries.","position":0}},"Task Explanation":{{"content":"Task explanation: Summarize the article in exactly 2 sentences. Preserve key facts, avoid speculation, and do not add new information.","position":1}},"Data Format Explanation":{{"content":"Data format explanation: Input: Title: {{{{title}}}} | Article: {{{{content}}}} | Output: Exactly 2 sentences in plain text. No bullet points. No extra commentary.","position":2}}}}}}',
-               NOW(),
-               NOW()
-        FROM users
-        WHERE username = '{login_user}'
-        LIMIT 1;
+        WHERE LOWER(TRIM(name)) LIKE 'structured situation analysis%'
+           OR LOWER(TRIM(name)) LIKE 'situation summary%'
+           OR LOWER(TRIM(name)) LIKE 'live collab%';
         """
 
         try:

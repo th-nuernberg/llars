@@ -214,6 +214,10 @@ def seed():
         _db.session.commit()
         actions.append(f"Created job '{PRESEED_JOB_NAME}' (id={job.id}) with {total_outputs} outputs")
 
+    # --- 3. Seed demo scenarios (same as development) and add IJCAI reviewers ---
+    scenario_actions = _seed_demo_scenarios_for_ijcai(_db, demo_user, collab_user)
+    actions.extend(scenario_actions)
+
     return {'success': True, 'actions': actions}
 
 
@@ -373,6 +377,75 @@ def _build_eval_prompt_content():
             }
         }
     }
+
+
+DEMO_SCENARIO_NAMES = [
+    'Demo Ranking Szenario',
+    'Demo Verlauf Bewerter Szenario',
+    'Demo Fake/Echt Szenario',
+    'Demo Labeling Szenario',
+    'LLM-as-Judge Demo',
+    'SummEval Demo - Summarization',
+]
+
+
+def _seed_demo_scenarios_for_ijcai(db_session, demo_user, collab_user):
+    """Seed the standard demo scenarios and add IJCAI reviewers as evaluators."""
+    from db.seeders.scenarios import seed_demo_scenarios
+    from db.models.scenario import (
+        RatingScenarios, ScenarioUsers, ScenarioItems,
+        ScenarioItemDistribution, ScenarioRoles,
+    )
+
+    actions = []
+
+    # Call the standard demo scenario seeder (idempotent)
+    try:
+        seed_demo_scenarios(db_session)
+        actions.append("Demo scenarios seeded (or already existed)")
+    except Exception as e:
+        logger.warning(f"Failed to seed demo scenarios: {e}")
+        actions.append(f"Demo scenario seeding failed: {e}")
+        return actions
+
+    # Add IJCAI reviewers to all demo scenarios
+    for scenario_name in DEMO_SCENARIO_NAMES:
+        scenario = RatingScenarios.query.filter_by(scenario_name=scenario_name).first()
+        if not scenario:
+            continue
+
+        for user in [demo_user, collab_user]:
+            if not user:
+                continue
+
+            # Add as EVALUATOR if not already a member
+            existing = ScenarioUsers.query.filter_by(
+                scenario_id=scenario.id, user_id=user.id
+            ).first()
+            if existing:
+                continue
+
+            su = ScenarioUsers(
+                scenario_id=scenario.id,
+                user_id=user.id,
+                role=ScenarioRoles.EVALUATOR,
+            )
+            db_session.session.add(su)
+            db_session.session.flush()
+
+            # Create item distributions for this user
+            scenario_items = ScenarioItems.query.filter_by(scenario_id=scenario.id).all()
+            for si in scenario_items:
+                db_session.session.add(ScenarioItemDistribution(
+                    scenario_id=scenario.id,
+                    scenario_user_id=su.id,
+                    scenario_item_id=si.id,
+                ))
+
+            actions.append(f"Added {user.username} to '{scenario_name}' ({len(scenario_items)} items)")
+
+    db_session.session.commit()
+    return actions
 
 
 def _get_block(prompt, name):

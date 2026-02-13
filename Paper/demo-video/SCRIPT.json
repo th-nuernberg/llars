@@ -746,13 +746,7 @@
         },
         {
           "do": "wait",
-          "seconds": 0.3
-        },
-        {
-          "do": "type",
-          "target": "Provider Name Input",
-          "text": "OpenAI",
-          "speed": "medium"
+          "seconds": 0.5
         },
         {
           "do": "type",

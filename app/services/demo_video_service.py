@@ -220,11 +220,20 @@ def seed():
 def cleanup(include_preseed=False):
     """Delete live-recorded data. If include_preseed=True, also delete pre-seed data."""
     from db import db as _db
-    from db.tables import UserPrompt
+    from db.tables import User, UserPrompt
     from db.models.generation import GenerationJob, GeneratedOutput
     from db.models.scenario import RatingScenarios, UserPromptShare
+    from db.models.user_llm_provider import UserLLMProvider
 
     deleted = []
+
+    # --- 0. Delete demo user's LLM providers (so they can be recreated during recording) ---
+    demo_user = User.query.filter_by(username=DEMO_USER).first()
+    if demo_user:
+        user_providers = UserLLMProvider.query.filter_by(user_id=demo_user.id).all()
+        for up in user_providers:
+            _db.session.delete(up)
+            deleted.append(f"User provider '{up.name}' (type={up.provider_type})")
 
     # --- 1. Delete live prompt "Situation Summary" (any owner) ---
     live_prompts = UserPrompt.query.filter_by(name=LIVE_PROMPT_NAME).all()

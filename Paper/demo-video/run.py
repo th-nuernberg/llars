@@ -512,6 +512,7 @@ ELEMENT_MAP = {
     "Git Fullscreen Button": "button:has(.mdi-open-in-new), .section-label .v-btn, .sidebar-section button:has(i.mdi-open-in-new)",
     "Version Control Fullscreen": "button:has(.mdi-open-in-new), .section-label .v-btn, .sidebar-section button:has(i.mdi-open-in-new)",
     "Git Floating Panel": ".git-panel-content, .l-floating-window",
+    "Git Floating Panel Close": ".l-floating-window .window-actions .l-icon-btn:has(.mdi-close), .l-floating-window .l-icon-btn[aria-label*='Close'], .l-floating-window button:has(.mdi-close)",
     "Git History Section": ".history-section, .history-list, .git-panel-content .history-list",
     "Git History Item": ".history-item, .history-list .history-item:first-child",
     "Git Commit Message": ".commit-message",
@@ -3784,6 +3785,33 @@ class ScriptRunner:
                 action.get('file')
             )
             return result
+
+        elif do == 'paste':
+            element = self.browser._find_element(target)
+            if element:
+                text = _resolve_env_placeholders(action.get('text', ''))
+                # Click to focus
+                try:
+                    element.click()
+                except Exception:
+                    self.browser.driver.execute_script("arguments[0].click()", element)
+                time.sleep(0.1)
+                # Set value via JS (simulates paste)
+                try:
+                    self.browser.driver.execute_script(
+                        "arguments[0].value = arguments[1];"
+                        "arguments[0].dispatchEvent(new Event('input', {bubbles: true}));"
+                        "arguments[0].dispatchEvent(new Event('change', {bubbles: true}));",
+                        element, text
+                    )
+                except Exception:
+                    element.send_keys(text)
+                masked = text[:4] + '...' if len(text) > 4 else text
+                print(f"   ✓ paste: {target} ({masked})")
+                return True
+            else:
+                print(f"   ✗ paste: {target} (NICHT GEFUNDEN)")
+                return False
 
         elif do == 'wait':
             seconds = action.get('seconds', 1)

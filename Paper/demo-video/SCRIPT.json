@@ -629,6 +629,14 @@
         },
         {
           "do": "close_file_dialog"
+        },
+        {
+          "do": "click",
+          "target": "Git Floating Panel Close"
+        },
+        {
+          "do": "wait",
+          "seconds": 0.5
         }
       ]
     },
@@ -749,10 +757,9 @@
           "seconds": 0.5
         },
         {
-          "do": "type",
+          "do": "paste",
           "target": "Provider API Key Input",
-          "text": "${OPENAI_API_KEY}",
-          "speed": "instant"
+          "text": "${OPENAI_API_KEY}"
         }
       ]
     },

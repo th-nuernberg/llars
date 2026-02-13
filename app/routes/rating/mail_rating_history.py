@@ -8,7 +8,7 @@ import traceback
 from datetime import datetime
 from flask import jsonify, request, g, current_app
 from auth.decorators import authentik_required
-from decorators.error_handler import handle_api_errors, NotFoundError, ValidationError
+from decorators.error_handler import handle_api_errors, NotFoundError, ValidationError, ForbiddenError
 from db.database import db
 from db.tables import (UserMailHistoryRating, ConsultingCategoryType,
                        UserConsultingCategorySelection, ProgressionStatus)
@@ -76,11 +76,16 @@ def get_mail_rating(thread_id):
 @handle_api_errors(logger_name='rating')
 def save_mail_rating(thread_id):
     """Save mail history rating with consulting category selection"""
+    from routes.HelperFunctions import user_can_evaluate_thread
+
     user = g.authentik_user
 
     # check if user can access thread
     if not can_access_thread(user.id, thread_id, 3):
         raise ValidationError('Access denied')
+
+    if not user_can_evaluate_thread(user.id, thread_id):
+        raise ForbiddenError('VIEWER role cannot submit evaluations')
 
     data = request.get_json()
 

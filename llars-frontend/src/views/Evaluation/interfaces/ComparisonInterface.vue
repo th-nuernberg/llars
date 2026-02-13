@@ -183,6 +183,7 @@ const emit = defineEmits(['item-completed', 'all-completed', 'status-change', 's
 
 // Computed prop for hideNavigation to use in template
 const hideNavigation = computed(() => props.hideNavigation)
+const canEvaluate = computed(() => props.scenario?.can_evaluate !== false)
 
 // Comparison evaluation composable
 const scenarioIdRef = toRef(props, 'scenarioId')
@@ -222,6 +223,7 @@ watch(saving, (isSaving) => {
 
 // Select option (auto-saves)
 async function selectOption(option) {
+  if (!canEvaluate.value) return
   const result = await doSelectOption(option)
   if (result.success) {
     emit('item-completed', currentItem.value?.item_id)

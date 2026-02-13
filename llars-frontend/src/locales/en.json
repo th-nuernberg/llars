@@ -3153,7 +3153,8 @@
       "average": "Average",
       "interRaterAgreement": "Inter-Rater Agreement",
       "bucketDistribution": "Bucket Distribution",
-      "rankingAgreement": "Ranking Agreement",
+      "rankingAgreement": "Bucket Agreement",
+      "rankingMetricsDescription": "Per feature (summary): Did both evaluators place this summary in the same bucket? Ordinal calculation (Bucket-Krippendorff: good=3 > medium=2 > neutral=1 > bad=0).",
       "agreementLevel": "Agreement Level",
       "lowAgreement": "Low",
       "highAgreement": "High",
@@ -3358,7 +3359,7 @@
       "spiderChart": "Compares average ratings between humans and LLMs across all dimensions. Larger areas = higher average values.",
       "interRaterAgreement": "Shows pairwise agreement between all raters. Green = high agreement, Red = low agreement. Calculated as the proportion of exactly matching ratings (rounded to integers).",
       "bucketDistribution": "Shows how many items were assigned to each bucket (Good/Medium/Bad). Aggregated across all human and LLM evaluators.",
-      "rankingAgreement": "Pairwise agreement between evaluators for ranking assignments. Shows the percentage of items that were assigned to the same bucket."
+      "rankingAgreement": "Per summary: Did both evaluators place it in the same bucket? Counted as: Matching summaries / Co-rated summaries. Metrics use ordinal calculation (Bucket-Krippendorff)."
     },
     "session": {
       "title": "Evaluation",
@@ -3731,6 +3732,8 @@
     "noItemsInFilter": "No items with this status",
     "showAll": "Show all",
     "clickToView": "Click to open",
+    "viewerBanner": "You are a viewer. Switch to the Evaluator role in the Team tab to participate.",
+    "viewerReadOnly": "Read-only mode",
     "item": "Item #{num}",
     "tools": {
       "ranking": {

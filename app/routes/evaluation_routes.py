@@ -14,7 +14,7 @@ import logging
 from flask import Blueprint, jsonify, request, g
 
 from auth.decorators import authentik_required
-from decorators.error_handler import handle_api_errors, NotFoundError, ValidationError
+from decorators.error_handler import handle_api_errors, NotFoundError, ValidationError, ForbiddenError
 
 logger = logging.getLogger(__name__)
 
@@ -237,8 +237,13 @@ def submit_evaluation(scenario_id, item_id):
     )
     from db.models.scenario import ItemLabelingEvaluation
     from db import db
+    from routes.HelperFunctions import user_can_evaluate
 
     user = g.authentik_user
+
+    if not user_can_evaluate(user.id, scenario_id):
+        raise ForbiddenError('VIEWER role cannot submit evaluations')
+
     data = request.get_json() or {}
     function_type = data.get('function_type')
 
@@ -404,9 +409,14 @@ def submit_dimensional_rating(scenario_id, item_id):
     """
     from services.evaluation.dimensional_rating_service import DimensionalRatingService
     from services.scenario_stats_service import get_scenario_ids_for_thread
+    from routes.HelperFunctions import user_can_evaluate
     from flask import current_app
 
     user = g.authentik_user
+
+    if not user_can_evaluate(user.id, scenario_id):
+        raise ForbiddenError('VIEWER role cannot submit evaluations')
+
     data = request.get_json()
 
     if not data:

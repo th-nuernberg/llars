@@ -26,6 +26,7 @@ from db.models import (
     EmailThread, Feature, UserFeatureRating, Message,
     FeatureFunctionType, User
 )
+from db.models.scenario import ScenarioRoles
 from schemas.evaluation_data_schemas import EvaluationType
 
 logger = logging.getLogger(__name__)
@@ -84,6 +85,12 @@ class EvaluationSessionService:
         if isinstance(config, dict):
             description = config.get('description')
 
+        # Determine if user can evaluate (only EVALUATOR role)
+        can_evaluate = (
+            scenario_user is not None
+            and scenario_user.role == ScenarioRoles.EVALUATOR
+        )
+
         return {
             'scenario': {
                 'id': scenario.id,
@@ -92,7 +99,8 @@ class EvaluationSessionService:
                 'function_type': function_type_name,
                 'function_type_id': scenario.function_type_id,
                 'created_at': scenario.timestamp.isoformat() if scenario.timestamp else None,
-                'is_owner': EvaluationSessionService._is_owner(scenario, user_id)
+                'is_owner': EvaluationSessionService._is_owner(scenario, user_id),
+                'can_evaluate': can_evaluate
             },
             'config': config or {},
             'items': items

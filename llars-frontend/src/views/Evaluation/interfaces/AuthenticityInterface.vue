@@ -176,6 +176,7 @@ const emit = defineEmits(['item-completed', 'all-completed', 'status-change', 's
 
 // Computed prop for hideNavigation to use in template
 const hideNavigation = computed(() => props.hideNavigation)
+const canEvaluate = computed(() => props.scenario?.can_evaluate !== false)
 
 // Panel resize composable
 const { containerRef, leftPanelStyle, rightPanelStyle, startResize } = usePanelResize({
@@ -224,6 +225,7 @@ watch(saving, (isSaving) => {
 
 // Submit vote (auto-saves)
 async function submitVote(voteValue) {
+  if (!canEvaluate.value) return
   const result = await doSubmitVote(voteValue)
   if (result.success) {
     emit('item-completed', currentItem.value?.item_id)

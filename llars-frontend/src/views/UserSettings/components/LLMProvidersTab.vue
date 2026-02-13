@@ -54,7 +54,10 @@
             <div class="provider-meta">
               <span class="provider-type">{{ getProviderTypeName(provider.provider_type) }}</span>
               <span v-if="provider.base_url" class="provider-url">{{ truncateUrl(provider.base_url) }}</span>
-              <span v-if="provider.config?.model_id" class="provider-model">{{ provider.config.model_id }}</span>
+              <span v-if="provider.config?.selected_models?.length" class="provider-model">
+                {{ provider.config.selected_models.join(', ') }}
+              </span>
+              <span v-else-if="provider.config?.model_id" class="provider-model">{{ provider.config.model_id }}</span>
             </div>
             <div class="provider-stats">
               <span v-if="provider.total_requests > 0">
@@ -128,7 +131,10 @@
             </div>
             <div class="provider-meta">
               <span class="provider-type">{{ getProviderTypeName(provider.provider_type) }}</span>
-              <span v-if="provider.config?.model_id" class="provider-model">{{ provider.config.model_id }}</span>
+              <span v-if="provider.config?.selected_models?.length" class="provider-model">
+                {{ provider.config.selected_models.join(', ') }}
+              </span>
+              <span v-else-if="provider.config?.model_id" class="provider-model">{{ provider.config.model_id }}</span>
             </div>
           </div>
         </div>
@@ -166,7 +172,9 @@
               </template>
             </v-select>
 
+            <!-- Name field: hidden for OpenAI (auto-generated) -->
             <v-text-field
+              v-if="form.provider_type !== 'openai'"
               v-model="form.name"
               :label="$t('userSettings.providers.form.name')"
               :rules="[v => !!v || $t('userSettings.providers.form.nameRequired')]"
@@ -181,26 +189,38 @@
               :type="showApiKey ? 'text' : 'password'"
               variant="outlined"
               density="comfortable"
-              :placeholder="editingProvider ? $t('userSettings.providers.form.apiKeyUnchanged') : ''"
+              :placeholder="editingProvider ? $t('userSettings.providers.form.apiKeyUnchanged') : 'sk-...'"
               :append-inner-icon="showApiKey ? 'mdi-eye-off' : 'mdi-eye'"
               @click:append-inner="showApiKey = !showApiKey"
             />
 
-            <v-combobox
+            <!-- OpenAI: Multi-select dropdown with predefined models -->
+            <v-select
               v-if="form.provider_type === 'openai'"
-              v-model="form.model_id"
-              :items="openaiModelOptions"
-              :label="$t('userSettings.providers.form.modelId', 'OpenAI Model')"
-              :hint="openaiModelsError || $t('userSettings.providers.form.modelIdHint', 'Select or enter a model ID')"
+              v-model="form.selected_models"
+              :items="openaiModelCatalog"
+              item-title="title"
+              item-value="id"
+              label="OpenAI Modelle"
               variant="outlined"
               density="comfortable"
-              :loading="openaiModelsLoading"
-              clearable
+              multiple
+              chips
+              closable-chips
+              hint="Modelle auswählen die verfügbar sein sollen"
               persistent-hint
-            />
+            >
+              <template #item="{ item, props }">
+                <v-list-item v-bind="props">
+                  <template #append>
+                    <span class="text-caption text-medium-emphasis">{{ item.raw.meta }}</span>
+                  </template>
+                </v-list-item>
+              </template>
+            </v-select>
 
             <v-text-field
-              v-if="selectedProviderType?.supports_base_url"
+              v-if="selectedProviderType?.supports_base_url && form.provider_type !== 'openai'"
               v-model="form.base_url"
               :label="$t('userSettings.providers.form.baseUrl')"
               variant="outlined"
@@ -299,7 +319,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import LCard from '@/components/common/LCard.vue'
 import LBtn from '@/components/common/LBtn.vue'
@@ -324,15 +344,25 @@ const form = ref({
   provider_type: '',
   name: '',
   api_key: '',
-  model_id: '',
   base_url: '',
-  is_default: false
+  is_default: false,
+  selected_models: []
 })
 
-const openaiModelOptions = ref([])
-const openaiModelsLoading = ref(false)
-const openaiModelsError = ref('')
-let openaiFetchTimer = null
+const openaiModelCatalog = [
+  { id: 'gpt-5.2', title: 'GPT-5.2', meta: '400K ctx · 128K out', context_window: 400000, max_output_tokens: 128000, supports_vision: true, supports_reasoning: true },
+  { id: 'gpt-5.1', title: 'GPT-5.1', meta: '400K ctx · 128K out', context_window: 400000, max_output_tokens: 128000, supports_vision: true, supports_reasoning: true },
+  { id: 'gpt-5', title: 'GPT-5', meta: '400K ctx · 128K out', context_window: 400000, max_output_tokens: 128000, supports_vision: true, supports_reasoning: true },
+  { id: 'gpt-5-mini', title: 'GPT-5 Mini', meta: '400K ctx · 128K out', context_window: 400000, max_output_tokens: 128000, supports_vision: true, supports_reasoning: false },
+  { id: 'gpt-4.1', title: 'GPT-4.1', meta: '1M ctx · 32K out', context_window: 1047576, max_output_tokens: 32768, supports_vision: true, supports_reasoning: false },
+  { id: 'gpt-4.1-mini', title: 'GPT-4.1 Mini', meta: '1M ctx · 32K out', context_window: 1047576, max_output_tokens: 32768, supports_vision: true, supports_reasoning: false },
+  { id: 'gpt-4.1-nano', title: 'GPT-4.1 Nano', meta: '1M ctx · 32K out', context_window: 1047576, max_output_tokens: 32768, supports_vision: true, supports_reasoning: false },
+  { id: 'gpt-4o', title: 'GPT-4o', meta: '128K ctx · 16K out', context_window: 128000, max_output_tokens: 16384, supports_vision: true, supports_reasoning: false },
+  { id: 'gpt-4o-mini', title: 'GPT-4o Mini', meta: '128K ctx · 16K out', context_window: 128000, max_output_tokens: 16384, supports_vision: true, supports_reasoning: false },
+  { id: 'o3', title: 'o3', meta: '200K ctx · 100K out', context_window: 200000, max_output_tokens: 100000, supports_vision: true, supports_reasoning: true },
+  { id: 'o3-mini', title: 'o3 Mini', meta: '200K ctx · 100K out', context_window: 200000, max_output_tokens: 100000, supports_vision: false, supports_reasoning: true },
+  { id: 'o4-mini', title: 'o4 Mini', meta: '200K ctx · 100K out', context_window: 200000, max_output_tokens: 100000, supports_vision: true, supports_reasoning: true },
+]
 
 const showShareDialog = ref(false)
 const sharingProvider = ref(null)
@@ -372,50 +402,6 @@ async function loadProviderTypes() {
   }
 }
 
-function resetOpenaiModels() {
-  openaiModelOptions.value = []
-  openaiModelsError.value = ''
-}
-
-async function fetchOpenaiModels({ providerId = null } = {}) {
-  if (form.value.provider_type !== 'openai') return
-
-  const apiKey = (form.value.api_key || '').trim()
-  if (!providerId && !apiKey) {
-    resetOpenaiModels()
-    return
-  }
-
-  openaiModelsLoading.value = true
-  openaiModelsError.value = ''
-  try {
-    const payload = { provider_type: 'openai' }
-    if (providerId) {
-      payload.provider_id = providerId
-    } else {
-      payload.api_key = apiKey
-    }
-    if (form.value.base_url) {
-      payload.base_url = form.value.base_url
-    }
-    const response = await axios.post('/api/user/providers/models', payload)
-    openaiModelOptions.value = response.data?.models || []
-  } catch (error) {
-    openaiModelOptions.value = []
-    openaiModelsError.value = error.response?.data?.message
-      || error.response?.data?.error
-      || error.message
-  } finally {
-    openaiModelsLoading.value = false
-  }
-}
-
-function scheduleOpenaiModelFetch() {
-  if (openaiFetchTimer) clearTimeout(openaiFetchTimer)
-  openaiFetchTimer = setTimeout(() => {
-    fetchOpenaiModels()
-  }, 400)
-}
 
 function openCreateDialog() {
   editingProvider.value = null
@@ -423,11 +409,10 @@ function openCreateDialog() {
     provider_type: '',
     name: '',
     api_key: '',
-    model_id: '',
     base_url: '',
-    is_default: false
+    is_default: false,
+    selected_models: []
   }
-  resetOpenaiModels()
   showApiKey.value = false
   showDialog.value = true
 }
@@ -438,13 +423,9 @@ function editProvider(provider) {
     provider_type: provider.provider_type,
     name: provider.name,
     api_key: '',
-    model_id: provider.config?.model_id || '',
     base_url: provider.base_url || '',
-    is_default: provider.is_default
-  }
-  resetOpenaiModels()
-  if (provider.provider_type === 'openai') {
-    fetchOpenaiModels({ providerId: provider.id })
+    is_default: provider.is_default,
+    selected_models: provider.config?.selected_models || []
   }
   showApiKey.value = false
   showDialog.value = true
@@ -455,27 +436,17 @@ function closeDialog() {
   editingProvider.value = null
 }
 
-watch(
-  () => [form.value.provider_type, form.value.api_key, form.value.base_url],
-  ([providerType, apiKey]) => {
-    if (providerType !== 'openai') {
-      resetOpenaiModels()
-      return
-    }
-    if (!apiKey) return
-    scheduleOpenaiModelFetch()
-  }
-)
-
 async function saveProvider() {
   if (!formRef.value?.validate()) return
 
   saving.value = true
   try {
+    const isOpenai = form.value.provider_type === 'openai'
+
     const payload = {
       provider_type: form.value.provider_type,
-      name: form.value.name,
-      base_url: form.value.base_url || null,
+      name: isOpenai ? 'OpenAI' : form.value.name,
+      base_url: isOpenai ? null : (form.value.base_url || null),
       is_default: form.value.is_default
     }
 
@@ -483,8 +454,8 @@ async function saveProvider() {
       payload.api_key = form.value.api_key
     }
 
-    if (form.value.provider_type === 'openai') {
-      payload.config = { model_id: form.value.model_id || null }
+    if (isOpenai) {
+      payload.config = { selected_models: form.value.selected_models || [] }
     }
 
     if (editingProvider.value) {

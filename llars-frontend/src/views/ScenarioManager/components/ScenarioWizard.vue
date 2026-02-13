@@ -496,7 +496,7 @@
                   </div>
                   <div
                     v-for="provider in userProviders"
-                    :key="'provider-' + provider.id"
+                    :key="'provider-' + provider._key"
                     class="llm-item llm-item--user"
                     :class="{ selected: isProviderSelected(provider), disabled: !isProviderSelectable(provider) }"
                     @click="toggleProvider(provider)"
@@ -505,10 +505,9 @@
                       <LIcon size="24" :color="getProviderIconColor(provider)">{{ getProviderIcon(provider) }}</LIcon>
                     </div>
                     <div class="llm-info">
-                      <span class="llm-name">{{ provider.name }}</span>
+                      <span class="llm-name">{{ provider._display_name || provider.name }}</span>
                       <span class="llm-provider">
                         {{ getProviderTypeLabel(provider.provider_type) }}
-                        <span v-if="provider.config?.model_id" class="llm-model-id">· {{ provider.config.model_id }}</span>
                         <span v-if="provider.source !== 'own'" class="llm-shared-badge">
                           <LIcon size="12">mdi-share-variant</LIcon>
                           {{ provider.shared_by }}
@@ -559,14 +558,14 @@
             </v-chip>
             <v-chip
               v-for="provider in selectedProviders"
-              :key="'provider-' + provider.id"
+              :key="'provider-' + provider._key"
               closable
               size="small"
               color="secondary"
               @click:close="toggleProvider(provider)"
             >
               <LIcon size="16" class="mr-1">{{ getProviderIcon(provider) }}</LIcon>
-              {{ provider.name }}
+              {{ provider._display_name || provider.name }}
             </v-chip>
           </div>
         </div>
@@ -687,14 +686,13 @@
                 <div class="d-flex flex-wrap gap-1">
                   <v-chip
                     v-for="provider in selectedProviders"
-                    :key="provider.id"
+                    :key="provider._key"
                     size="small"
                     variant="tonal"
                     color="secondary"
                   >
                     <LIcon size="14" class="mr-1">{{ getProviderIcon(provider) }}</LIcon>
-                    {{ provider.name }}
-                    <span v-if="provider.config?.model_id" class="ml-1">({{ provider.config.model_id }})</span>
+                    {{ provider._display_name || provider.name }}
                   </v-chip>
                 </div>
               </span>
@@ -806,6 +804,7 @@
 import { ref, computed, watch, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import axios from 'axios'
+import { parseUserProviderModelId } from '@/utils/formatters'
 import { useAuth } from '@/composables/useAuth'
 import { useScenarioManager } from '../composables/useScenarioManager'
 import importService from '@/services/importService'
@@ -1146,7 +1145,40 @@ async function fetchUserProviders() {
   loadingUserProviders.value = true
   try {
     const response = await axios.get('/api/user/providers/available')
-    userProviders.value = (response.data.providers || []).filter(p => p.is_active)
+    const raw = (response.data.providers || []).filter(p => p.is_active)
+
+    // Expand providers with selected_models into individual entries
+    const expanded = []
+    for (const provider of raw) {
+      const selectedModels = Array.isArray(provider.config?.selected_models)
+        ? provider.config.selected_models
+        : []
+      if (selectedModels.length > 0) {
+        for (const modelId of selectedModels) {
+          const mid = (modelId || '').trim()
+          if (!mid) continue
+          const parsed = parseUserProviderModelId(`user-provider:${provider.id}:${mid}`)
+          expanded.push({
+            ...provider,
+            _key: `${provider.id}:${mid}`,
+            _model_id: mid,
+            _display_name: parsed?.displayName || `${provider.name} / ${mid}`,
+          })
+        }
+      } else {
+        const singleModel = (provider.config?.model_id || '').trim()
+        const parsed = singleModel
+          ? parseUserProviderModelId(`user-provider:${provider.id}:${singleModel}`)
+          : null
+        expanded.push({
+          ...provider,
+          _key: String(provider.id),
+          _model_id: singleModel,
+          _display_name: parsed?.displayName || provider.name,
+        })
+      }
+    }
+    userProviders.value = expanded
   } catch (error) {
     console.error('Failed to fetch user providers:', error)
     userProviders.value = []
@@ -1188,7 +1220,8 @@ function isLLMSelected(llm) {
 // Toggle user provider selection
 function toggleProvider(provider) {
   if (!isProviderSelectable(provider)) return
-  const index = selectedProviders.value.findIndex(p => p.id === provider.id)
+  const key = provider._key || String(provider.id)
+  const index = selectedProviders.value.findIndex(p => (p._key || String(p.id)) === key)
   if (index >= 0) {
     selectedProviders.value.splice(index, 1)
   } else {
@@ -1198,11 +1231,12 @@ function toggleProvider(provider) {
 
 // Check if user provider is selected
 function isProviderSelected(provider) {
-  return selectedProviders.value.some(p => p.id === provider.id)
+  const key = provider._key || String(provider.id)
+  return selectedProviders.value.some(p => (p._key || String(p.id)) === key)
 }
 
 function getProviderModelId(provider) {
-  return (provider?.config?.model_id || '').trim()
+  return (provider?._model_id || provider?.config?.model_id || '').trim()
 }
 
 function isProviderSelectable(provider) {

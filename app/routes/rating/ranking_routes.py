@@ -14,7 +14,7 @@ import logging
 from flask import jsonify, request, g, current_app
 
 from auth.decorators import authentik_required, admin_required
-from decorators.error_handler import handle_api_errors, NotFoundError, ValidationError
+from decorators.error_handler import handle_api_errors, NotFoundError, ValidationError, ForbiddenError
 from db.database import db
 from db.models import EvaluationItem, ScenarioItems, ScenarioUsers
 from routes.auth import data_bp
@@ -294,11 +294,16 @@ def get_current_ranking(thread_id):
 @handle_api_errors(logger_name='ranking')
 def save_ranking(thread_id):
     """Save rankings for a thread."""
+    from routes.HelperFunctions import user_can_evaluate_thread
+
     user = g.authentik_user
 
     # Check access
     if not _check_item_access(thread_id, user.id):
         raise ValidationError('Access denied')
+
+    if not user_can_evaluate_thread(user.id, thread_id):
+        raise ForbiddenError('VIEWER role cannot submit evaluations')
 
     try:
         data = request.get_json() or []

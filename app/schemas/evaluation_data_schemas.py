@@ -19,6 +19,14 @@ ALLE Module die Evaluation-Daten verarbeiten MÜSSEN diese Schemas nutzen:
 - Schema API: app/routes/scenarios/scenario_schema_api.py
 - Frontend: llars-frontend/src/schemas/evaluationSchemas.js
 
+TERMINOLOGIE:
+- Item (EvaluationItem): Eltern-Entität, gruppiert zusammengehörige Features
+  (z.B. ein E-Mail-Thread, ein Quelltext).
+- Feature: Eine generierte Alternative/Antwort FÜR ein Item (z.B. eine Zusammenfassung).
+  Jedes Feature wird in genau EINEN Bucket einsortiert. Das Feature ist die
+  UNIT OF ANALYSIS für Ranking-IRR ("Bucket-Krippendorff").
+  Buckets: gut(3) > mittel(2) > neutral(1) > schlecht(0) - ordinal.
+
 WICHTIGE KONVENTIONEN:
 - Item.id: Technische ID (z.B. "item_1") - NIEMALS LLM-Namen!
 - Item.label: UI-Anzeigename (generische Labels)

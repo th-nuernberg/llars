@@ -415,6 +415,22 @@ embeddings, model_id, chroma_name, dims = get_best_embedding_for_collection(coll
 
 ## Rating/Ranking System
 
+### Terminologie (Item vs Feature)
+
+| Begriff | Definition | DB-Model | IRR-Rolle |
+|---------|-----------|----------|-----------|
+| **Item** | Eltern-Entität, gruppiert zusammengehörige Features (z.B. E-Mail-Thread, Quelltext) | `EvaluationItem` | Gruppierung |
+| **Feature** | Eine generierte Alternative/Antwort FÜR ein Item (z.B. eine Zusammenfassung) | `Feature` | **Unit of analysis** (Zeile in der Rater-Matrix) |
+
+**Hierarchie:** Item → hat N Features → jedes Feature wird in genau EINEN Bucket einsortiert
+
+**IRR-Berechnung ("Bucket-Krippendorff"):**
+- Unit of analysis = Feature (jede Zusammenfassung)
+- Jeder Evaluator ordnet jedes Feature einem Bucket zu
+- Buckets sind ordinal: gut(3) > mittel(2) > neutral(1) > schlecht(0)
+- Ordinales Krippendorff's Alpha (vgl. Steigerwald & Albrecht 2025, Section 3.4)
+- Heatmap: Einfache Prozent-Übereinstimmung (gleicher Bucket ja/nein)
+
 ```
 EvaluationItem (früher EmailThread)
 ├── Messages[] (Klient ↔ Berater)

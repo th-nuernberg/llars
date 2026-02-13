@@ -12,7 +12,7 @@ import logging
 from flask import jsonify, request, g, current_app
 
 from auth.decorators import authentik_required
-from decorators.error_handler import handle_api_errors, NotFoundError, ValidationError
+from decorators.error_handler import handle_api_errors, NotFoundError, ValidationError, ForbiddenError
 from routes.auth import data_bp
 from db.database import db
 from db.models import (
@@ -299,10 +299,15 @@ def get_feature_type(identifier):
 @handle_api_errors(logger_name='rating')
 def save_rating(thread_id, feature_id):
     """Save a rating for a feature."""
+    from routes.HelperFunctions import user_can_evaluate_thread
+
     user = g.authentik_user
 
     if not _check_rating_access(thread_id, user.id):
         raise ValidationError('Access denied')
+
+    if not user_can_evaluate_thread(user.id, thread_id):
+        raise ForbiddenError('VIEWER role cannot submit evaluations')
 
     data = request.get_json()
     rating_content = data.get('rating_content')

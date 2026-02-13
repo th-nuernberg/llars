@@ -335,78 +335,138 @@
         </v-card-title>
         <v-divider />
         <v-card-text class="pa-4">
-          <v-text-field
-            v-model="providerForm.name"
-            label="Name"
-            variant="outlined"
-            density="comfortable"
-            hide-details
-            class="mb-3"
-          />
-          <v-text-field
-            v-model="providerForm.base_url"
-            label="Base URL"
-            variant="outlined"
-            density="comfortable"
-            hide-details
-            class="mb-3"
-          />
-          <v-text-field
-            v-if="activeQuick?.requires_key"
-            v-model="providerForm.api_key"
-            label="API Key"
-            type="password"
-            variant="outlined"
-            density="comfortable"
-            hide-details
-            class="mb-3"
-          />
-          <v-text-field
-            v-if="activeQuick?.supports_version"
-            v-model="providerForm.api_version"
-            label="API Version"
-            variant="outlined"
-            density="comfortable"
-            hide-details
-            class="mb-3"
-          />
-          <v-textarea
-            v-if="activeQuick?.requires_models"
-            v-model="providerForm.model_ids"
-            label="Model IDs (kommagetrennt)"
-            variant="outlined"
-            density="comfortable"
-            rows="2"
-            auto-grow
-            hide-details
-            class="mb-3"
-            placeholder="z.B. claude-3-opus-20240229, claude-3-sonnet-20240229"
-          />
-          <div class="d-flex flex-column ga-1">
+          <!-- OpenAI: Model selection list -->
+          <template v-if="activeQuick?.type === 'openai'">
+            <v-text-field
+              v-model="providerForm.api_key"
+              label="API Key"
+              type="password"
+              variant="outlined"
+              density="comfortable"
+              hide-details
+              class="mb-4"
+              placeholder="sk-..."
+            />
+
+            <div class="text-subtitle-2 mb-2">Modelle auswählen</div>
+
+            <div v-for="group in openaiModelGroups" :key="group.label" class="mb-3">
+              <div class="d-flex align-center mb-1">
+                <span class="text-caption font-weight-bold text-medium-emphasis text-uppercase" style="letter-spacing: 0.5px">
+                  {{ group.label }}
+                </span>
+                <v-divider class="ml-2" />
+              </div>
+              <div class="openai-model-grid">
+                <div
+                  v-for="model in group.models"
+                  :key="model.id"
+                  class="openai-model-chip"
+                  :class="{ 'openai-model-chip--selected': isOpenaiModelSelected(model.id) }"
+                  @click="toggleOpenaiModel(model.id)"
+                >
+                  <LIcon size="16" class="mr-1">{{ isOpenaiModelSelected(model.id) ? 'mdi-checkbox-marked' : 'mdi-checkbox-blank-outline' }}</LIcon>
+                  <div class="d-flex flex-column">
+                    <span class="openai-model-chip__name">{{ model.name }}</span>
+                    <span class="openai-model-chip__meta">{{ model.meta }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <v-alert v-if="selectedOpenaiModels.length === 0" type="info" variant="tonal" density="compact" class="mt-2">
+              Bitte mindestens ein Modell auswählen.
+            </v-alert>
+
             <v-switch
               v-model="providerForm.is_default"
               label="Als Default Provider setzen"
               color="primary"
               hide-details
               density="compact"
+              class="mt-2"
             />
-            <v-switch
-              v-if="activeQuick?.supports_sync"
-              v-model="providerForm.sync_models"
-              label="Modelle automatisch synchronisieren"
-              color="primary"
+          </template>
+
+          <!-- Other providers: Standard form -->
+          <template v-else>
+            <v-text-field
+              v-model="providerForm.name"
+              label="Name"
+              variant="outlined"
+              density="comfortable"
               hide-details
-              density="compact"
+              class="mb-3"
             />
-          </div>
+            <v-text-field
+              v-model="providerForm.base_url"
+              label="Base URL"
+              variant="outlined"
+              density="comfortable"
+              hide-details
+              class="mb-3"
+            />
+            <v-text-field
+              v-if="activeQuick?.requires_key"
+              v-model="providerForm.api_key"
+              label="API Key"
+              type="password"
+              variant="outlined"
+              density="comfortable"
+              hide-details
+              class="mb-3"
+            />
+            <v-text-field
+              v-if="activeQuick?.supports_version"
+              v-model="providerForm.api_version"
+              label="API Version"
+              variant="outlined"
+              density="comfortable"
+              hide-details
+              class="mb-3"
+            />
+            <v-textarea
+              v-if="activeQuick?.requires_models"
+              v-model="providerForm.model_ids"
+              label="Model IDs (kommagetrennt)"
+              variant="outlined"
+              density="comfortable"
+              rows="2"
+              auto-grow
+              hide-details
+              class="mb-3"
+              placeholder="z.B. claude-3-opus-20240229, claude-3-sonnet-20240229"
+            />
+            <div class="d-flex flex-column ga-1">
+              <v-switch
+                v-model="providerForm.is_default"
+                label="Als Default Provider setzen"
+                color="primary"
+                hide-details
+                density="compact"
+              />
+              <v-switch
+                v-if="activeQuick?.supports_sync"
+                v-model="providerForm.sync_models"
+                label="Modelle automatisch synchronisieren"
+                color="primary"
+                hide-details
+                density="compact"
+              />
+            </div>
+          </template>
         </v-card-text>
         <v-divider />
         <v-card-actions class="pa-4">
+          <span v-if="activeQuick?.type === 'openai' && selectedOpenaiModels.length > 0" class="text-caption text-medium-emphasis">
+            {{ selectedOpenaiModels.length }} Modell{{ selectedOpenaiModels.length !== 1 ? 'e' : '' }}
+          </span>
           <v-spacer />
           <LBtn variant="text" @click="quickDialog = false">Abbrechen</LBtn>
           <LBtn
             variant="primary"
             :loading="saving"
+            :disabled="activeQuick?.type === 'openai' && (selectedOpenaiModels.length === 0 || !providerForm.api_key)"
             @click="submitQuickConnect"
             :style="{ backgroundColor: activeQuick?.colorVar ? `var(--llars-provider-${activeQuick.colorVar})` : undefined }"
           >
@@ -700,12 +760,12 @@ const quickProviders = [
   {
     type: 'openai',
     title: 'OpenAI',
-    subtitle: 'GPT-4o, o1, o3',
+    subtitle: 'GPT-5, GPT-4, o3, o4',
     base_url: 'https://api.openai.com/v1',
     icon: 'openai',
     colorVar: 'openai',
     requires_key: true,
-    supports_sync: true
+    supports_sync: false
   },
   {
     type: 'anthropic',
@@ -828,6 +888,49 @@ const providerTypeOptions = [
   { title: 'Custom', value: 'custom' }
 ]
 
+// ── OpenAI Model Catalog ────────────────────────────────────────────────
+const OPENAI_MODELS = [
+  // GPT-5 Series
+  { id: 'gpt-5.2', name: 'GPT-5.2', group: 'GPT-5', meta: '400K ctx · 128K out', context_window: 400000, max_output_tokens: 128000, supports_vision: true, supports_reasoning: true },
+  { id: 'gpt-5.1', name: 'GPT-5.1', group: 'GPT-5', meta: '400K ctx · 128K out', context_window: 400000, max_output_tokens: 128000, supports_vision: true, supports_reasoning: true },
+  { id: 'gpt-5', name: 'GPT-5', group: 'GPT-5', meta: '400K ctx · 128K out', context_window: 400000, max_output_tokens: 128000, supports_vision: true, supports_reasoning: true },
+  { id: 'gpt-5-mini', name: 'GPT-5 Mini', group: 'GPT-5', meta: '400K ctx · 128K out · schnell', context_window: 400000, max_output_tokens: 128000, supports_vision: true, supports_reasoning: false },
+  // GPT-4 Series
+  { id: 'gpt-4.1', name: 'GPT-4.1', group: 'GPT-4', meta: '1M ctx · 32K out', context_window: 1047576, max_output_tokens: 32768, supports_vision: true, supports_reasoning: false },
+  { id: 'gpt-4.1-mini', name: 'GPT-4.1 Mini', group: 'GPT-4', meta: '1M ctx · 32K out · schnell', context_window: 1047576, max_output_tokens: 32768, supports_vision: true, supports_reasoning: false },
+  { id: 'gpt-4.1-nano', name: 'GPT-4.1 Nano', group: 'GPT-4', meta: '1M ctx · 32K out · ultra-schnell', context_window: 1047576, max_output_tokens: 32768, supports_vision: true, supports_reasoning: false },
+  { id: 'gpt-4o', name: 'GPT-4o', group: 'GPT-4', meta: '128K ctx · 16K out', context_window: 128000, max_output_tokens: 16384, supports_vision: true, supports_reasoning: false },
+  { id: 'gpt-4o-mini', name: 'GPT-4o Mini', group: 'GPT-4', meta: '128K ctx · 16K out · schnell', context_window: 128000, max_output_tokens: 16384, supports_vision: true, supports_reasoning: false },
+  // Reasoning (o-Series)
+  { id: 'o3', name: 'o3', group: 'Reasoning', meta: '200K ctx · 100K out', context_window: 200000, max_output_tokens: 100000, supports_vision: true, supports_reasoning: true },
+  { id: 'o3-mini', name: 'o3 Mini', group: 'Reasoning', meta: '200K ctx · 100K out · schnell', context_window: 200000, max_output_tokens: 100000, supports_vision: false, supports_reasoning: true },
+  { id: 'o4-mini', name: 'o4 Mini', group: 'Reasoning', meta: '200K ctx · 100K out · schnell', context_window: 200000, max_output_tokens: 100000, supports_vision: true, supports_reasoning: true },
+]
+
+const selectedOpenaiModels = ref([])
+
+const openaiModelGroups = computed(() => {
+  const groups = {}
+  for (const m of OPENAI_MODELS) {
+    if (!groups[m.group]) groups[m.group] = { label: m.group, models: [] }
+    groups[m.group].models.push(m)
+  }
+  return Object.values(groups)
+})
+
+function isOpenaiModelSelected(modelId) {
+  return selectedOpenaiModels.value.includes(modelId)
+}
+
+function toggleOpenaiModel(modelId) {
+  const idx = selectedOpenaiModels.value.indexOf(modelId)
+  if (idx >= 0) {
+    selectedOpenaiModels.value.splice(idx, 1)
+  } else {
+    selectedOpenaiModels.value.push(modelId)
+  }
+}
+
 const llmModelsFiltered = computed(() => {
   if (modelTypeFilter.value === 'all') {
     return llmModels.value || []
@@ -861,6 +964,8 @@ function openQuickDialog(template) {
   if (template.supports_version) {
     providerForm.value.api_version = template.type === 'anthropic' ? '2023-06-01' : 'v1beta'
   }
+  // Reset OpenAI model selection
+  selectedOpenaiModels.value = []
   quickDialog.value = true
 }
 
@@ -893,18 +998,33 @@ function parseModelIds(input) {
 async function submitQuickConnect() {
   saving.value = true
   try {
+    const isOpenai = activeQuick.value?.type === 'openai'
+
+    // For OpenAI: auto-generate name and use selected models
+    const modelIds = isOpenai
+      ? selectedOpenaiModels.value
+      : parseModelIds(providerForm.value.model_ids)
+
+    const providerName = isOpenai
+      ? 'OpenAI'
+      : providerForm.value.name
+
     const payload = {
       provider_type: providerForm.value.provider_type,
-      name: providerForm.value.name,
+      name: providerName,
       base_url: providerForm.value.base_url,
       is_default: providerForm.value.is_default,
       is_active: providerForm.value.is_active,
       is_openai_compatible: providerForm.value.is_openai_compatible,
-      sync_models: providerForm.value.sync_models,
-      model_ids: parseModelIds(providerForm.value.model_ids),
+      sync_models: false,
+      model_ids: modelIds,
       config: providerForm.value.api_version
         ? { api_version: providerForm.value.api_version }
-        : {}
+        : {},
+      // Pass OpenAI model metadata for proper registration
+      model_metadata: isOpenai
+        ? buildOpenaiModelMetadata()
+        : undefined
     }
     if (providerForm.value.api_key) {
       payload.api_key = providerForm.value.api_key
@@ -926,7 +1046,8 @@ async function submitQuickConnect() {
 
     // Connection successful, now save
     await axios.post('/api/llm/providers', payload)
-    showMessage('Provider verbunden', 'success')
+    const modelCount = modelIds.length
+    showMessage(`OpenAI verbunden · ${modelCount} Modell${modelCount !== 1 ? 'e' : ''} hinzugefügt`, 'success')
     quickDialog.value = false
     await fetchProviders()
     await fetchLlmAccessOverview()
@@ -937,6 +1058,23 @@ async function submitQuickConnect() {
   } finally {
     saving.value = false
   }
+}
+
+function buildOpenaiModelMetadata() {
+  const meta = {}
+  for (const modelId of selectedOpenaiModels.value) {
+    const model = OPENAI_MODELS.find(m => m.id === modelId)
+    if (model) {
+      meta[modelId] = {
+        display_name: model.name,
+        context_window: model.context_window,
+        max_output_tokens: model.max_output_tokens,
+        supports_vision: model.supports_vision,
+        supports_reasoning: model.supports_reasoning,
+      }
+    }
+  }
+  return meta
 }
 
 async function saveProvider() {
@@ -1152,5 +1290,45 @@ onMounted(() => {
   font-size: 11px !important;
   letter-spacing: 0.5px;
   color: rgba(var(--v-theme-on-surface), 0.6) !important;
+}
+
+/* OpenAI Model Selection */
+.openai-model-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.openai-model-chip {
+  display: flex;
+  align-items: center;
+  padding: 8px 10px;
+  border-radius: var(--llars-radius-xs);
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.12);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.openai-model-chip:hover {
+  border-color: var(--llars-provider-openai);
+  background: rgba(0, 0, 0, 0.02);
+}
+
+.openai-model-chip--selected {
+  border-color: var(--llars-provider-openai);
+  background: var(--llars-provider-openai-light);
+}
+
+.openai-model-chip__name {
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+.openai-model-chip__meta {
+  font-size: 10px;
+  color: rgba(var(--v-theme-on-surface), 0.5);
+  line-height: 1.2;
 }
 </style>

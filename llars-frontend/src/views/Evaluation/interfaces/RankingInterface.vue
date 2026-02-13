@@ -45,6 +45,7 @@
                     class="bucket-content"
                     :group="'featureGroup-' + feature.type"
                     item-key="feature_id"
+                    :disabled="!canEvaluate"
                     @end="handleRankingChanged"
                   >
                     <template #item="{ element }">
@@ -64,6 +65,7 @@
                   class="neutral-content"
                   :group="'featureGroup-' + feature.type"
                   item-key="feature_id"
+                  :disabled="!canEvaluate"
                   @end="handleRankingChanged"
                 >
                   <template #item="{ element }">
@@ -189,6 +191,7 @@ const emit = defineEmits(['item-completed', 'all-completed', 'status-change', 's
 
 // Computed prop for hideNavigation to use in template
 const hideNavigation = computed(() => props.hideNavigation)
+const canEvaluate = computed(() => props.scenario?.can_evaluate !== false)
 
 const { t, locale } = useI18n()
 
@@ -436,6 +439,8 @@ function deepClone(value) {
 
 // Handle ranking changed (drag & drop)
 function handleRankingChanged() {
+  if (!canEvaluate.value) return
+
   const threadId = currentItem.value?.thread_id
   if (!threadId) return
 

@@ -68,6 +68,13 @@
 
     <!-- Main Content - Interface Component + Unified Footer -->
     <template v-else>
+      <!-- Viewer Banner -->
+      <div v-if="!canEvaluate" class="viewer-banner">
+        <LIcon size="18" color="#D1BC8A">mdi-eye-outline</LIcon>
+        <span>{{ $t('evaluation.viewerBanner') }}</span>
+        <LTag variant="warning">{{ $t('evaluation.viewerReadOnly') }}</LTag>
+      </div>
+
       <div class="session-content">
         <router-view
           v-slot="{ Component }"
@@ -233,6 +240,7 @@ const functionType = computed(() => {
 })
 
 // Computed
+const canEvaluate = computed(() => scenario.value?.can_evaluate !== false)
 const isLoading = computed(() => status.value === SESSION_STATUS.LOADING)
 
 // Default interface based on function type
@@ -397,6 +405,19 @@ function handleItemCompleted(itemId) {
   color: rgba(var(--v-theme-on-surface), 0.7);
   min-width: 60px;
   text-align: center;
+}
+
+/* Viewer Banner */
+.viewer-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 24px;
+  background: rgba(209, 188, 138, 0.12);
+  border-bottom: 1px solid rgba(209, 188, 138, 0.3);
+  font-size: 0.85rem;
+  color: rgba(var(--v-theme-on-surface), 0.8);
+  flex-shrink: 0;
 }
 
 /* Content Area */

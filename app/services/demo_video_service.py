@@ -293,7 +293,7 @@ def reset():
 # ---------------------------------------------------------------------------
 
 def _build_preseed_prompt_content():
-    """Pre-seed prompt: structured situation analysis with JSON output and references.
+    """Pre-seed prompt: structured situation analysis with numbered list and references.
     Deliberately more prescriptive than the live prompt to produce visibly different outputs."""
     return {
         "blocks": {
@@ -307,15 +307,11 @@ def _build_preseed_prompt_content():
             },
             "Task Explanation": {
                 "content": (
-                    "Analyze the email thread and produce a structured situation description of the client's current life circumstances in up to 3 bullet points.\n\n"
-                    "Each bullet point must contain:\n"
-                    "- **Text**: A concise description of one aspect of the life situation (max 2 sentences, max 160 characters)\n"
-                    "- **Reference**: Direct quotes from the email thread as evidence\n\n"
+                    "Analyze the email thread and produce a structured situation description of the client's current life circumstances as a numbered list of up to 3 points.\n\n"
+                    "Each point must contain:\n"
+                    "- A concise description of one aspect of the life situation (max 2 sentences)\n"
+                    "- Direct quotes from the email thread as evidence, placed after a dash\n\n"
                     "Focus on: housing situation, family relationships, children (age, development, health), professional/educational situation, health status, social conflicts.\n\n"
-                    'Return the result as JSON:\n'
-                    '```json\n'
-                    '{"situation_descriptions": [{"text": "...", "reference": ["quote 1", "quote 2"]}]}\n'
-                    '```\n\n'
                     "Rules:\n"
                     "- Use only facts from the thread, no speculation\n"
                     "- Avoid introductory phrases, present information directly\n"
@@ -324,10 +320,10 @@ def _build_preseed_prompt_content():
                     "Input: A single mother reports that her 8-year-old son has been refusing to attend school for two weeks, "
                     "complaining of stomach aches. The pediatrician found no physical cause. She works part-time and cannot stay home every day.\n\n"
                     "Output:\n"
-                    '{"situation_descriptions": [{"text": "Single mother working part-time, unable to provide daily supervision due to work obligations.", '
-                    '"reference": ["I work part-time and cannot stay home every day"]}, '
-                    '{"text": "8-year-old son refusing school attendance for two weeks with psychosomatic symptoms.", '
-                    '"reference": ["my son has been refusing to go to school for two weeks", "he complains of stomach aches but the pediatrician found nothing"]}]}'
+                    '1. Single mother working part-time, unable to provide daily supervision due to work obligations. '
+                    '— "I work part-time and cannot stay home every day"\n'
+                    '2. 8-year-old son refusing school attendance for two weeks with psychosomatic symptoms. '
+                    '— "my son has been refusing to go to school for two weeks", "he complains of stomach aches but the pediatrician found nothing"'
                 ),
                 "position": 1
             },
@@ -336,7 +332,7 @@ def _build_preseed_prompt_content():
                     "Subject: {{subject}}\n\n"
                     "Email thread:\n"
                     "{{content}}\n\n"
-                    'Return only the JSON object with the "situation_descriptions" array. No additional explanations.'
+                    "Return only the numbered list. No additional explanations."
                 ),
                 "position": 2
             }
@@ -362,7 +358,7 @@ def _build_eval_prompt_content():
                     "Subject: {{subject}}\n\n"
                     "Email thread:\n"
                     "{{content}}\n\n"
-                    "Write a plain text paragraph. No JSON, no bullet points."
+                    "Write a plain text paragraph, no bullet points."
                 ),
                 "position": 2
             }

@@ -328,7 +328,7 @@
         {
           "do": "type",
           "target": ".editor-block:nth-child(3) .ql-editor",
-          "text": "Subject: {{subject}}\n\nEmail thread:\n{{content}}\n\nWrite a plain text paragraph. No JSON, no bullet points.",
+          "text": "Subject: {{subject}}\n\nEmail thread:\n{{content}}\n\nWrite a plain text paragraph, no bullet points.",
           "speed": "turbo"
         }
       ]

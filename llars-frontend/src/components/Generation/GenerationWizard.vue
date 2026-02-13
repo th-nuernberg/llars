@@ -764,7 +764,7 @@ async function loadModels() {
             const parsed = parseUserProviderModelId(fullId)
             providerModels.push({
               id: fullId,
-              model_id: modelId,
+              model_id: fullId,
               label: parsed?.displayName || `${provider.name || 'Provider'} / ${modelId}`,
               provider_type: provider.provider_type,
               provider_name: parsed?.providerLabel || provider.name,
@@ -781,7 +781,7 @@ async function loadModels() {
         const parsed = parseUserProviderModelId(fullId)
         providerModels.push({
           id: fullId,
-          model_id: modelId,
+          model_id: fullId,
           label: parsed?.displayName || `${provider.name || 'Provider'} / ${modelId}`,
           provider_type: provider.provider_type,
           provider_name: parsed?.providerLabel || provider.name,

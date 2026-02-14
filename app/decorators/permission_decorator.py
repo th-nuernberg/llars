@@ -112,8 +112,12 @@ def require_permission(permission_key: str):
                 g.is_system_api_key = True
                 return f(*args, **kwargs)
 
-            # Extract username from token using centralized AuthUtils
-            username = AuthUtils.extract_username_from_token()
+            # If already authenticated via API key (g.authentik_user set by api_key_or_token_required)
+            if hasattr(g, 'authentik_user') and g.authentik_user is not None:
+                username = g.authentik_user.username if hasattr(g.authentik_user, 'username') else str(g.authentik_user)
+            else:
+                # Extract username from token using centralized AuthUtils
+                username = AuthUtils.extract_username_from_token()
 
             if not username:
                 return jsonify({
@@ -169,8 +173,11 @@ def require_any_permission(*permission_keys):
     def decorator(f):
         @wraps(f)
         def decorated_function(*args, **kwargs):
-            # Extract username from token using centralized AuthUtils
-            username = AuthUtils.extract_username_from_token()
+            # If already authenticated via API key
+            if hasattr(g, 'authentik_user') and g.authentik_user is not None:
+                username = g.authentik_user.username if hasattr(g.authentik_user, 'username') else str(g.authentik_user)
+            else:
+                username = AuthUtils.extract_username_from_token()
 
             if not username:
                 return jsonify({
@@ -243,8 +250,11 @@ def require_all_permissions(*permission_keys):
     def decorator(f):
         @wraps(f)
         def decorated_function(*args, **kwargs):
-            # Extract username from token using centralized AuthUtils
-            username = AuthUtils.extract_username_from_token()
+            # If already authenticated via API key
+            if hasattr(g, 'authentik_user') and g.authentik_user is not None:
+                username = g.authentik_user.username if hasattr(g.authentik_user, 'username') else str(g.authentik_user)
+            else:
+                username = AuthUtils.extract_username_from_token()
 
             if not username:
                 return jsonify({

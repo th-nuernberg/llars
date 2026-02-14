@@ -2,7 +2,7 @@
   GenerationWizard.vue - Batch Generation Job Wizard
 
   5-step wizard for creating batch generation jobs:
-  1. Source Selection (Scenario, Manual Data, Prompt Template)
+  1. Source Selection (Previous Generation, Manual Data, Prompt Only)
   2. Prompt Selection (Templates with variants)
   3. Model Selection (LLM models)
   4. Configuration (Parameters, budget limits)
@@ -53,76 +53,86 @@
         <p class="step-description">{{ $t('generation.wizard.step1.description') }}</p>
 
         <div class="source-options">
-          <!-- Scenario Source -->
-          <div
-            class="source-card"
-            :class="{ selected: formData.sourceType === 'scenario' }"
-            @click="selectSourceType('scenario')"
-          >
-            <div class="source-icon" style="background-color: rgba(176, 202, 151, 0.2);">
-              <LIcon color="primary" size="32">mdi-clipboard-text-outline</LIcon>
+          <!-- Previous Generation Source -->
+          <LTooltip :text="$t('generation.wizard.step1.fromJobTooltip')" location="bottom">
+            <div
+              class="source-card"
+              :class="{ selected: formData.sourceType === 'from_job' }"
+              @click="selectSourceType('from_job')"
+            >
+              <div class="source-icon" style="background-color: rgba(176, 202, 151, 0.2);">
+                <LIcon color="primary" size="32">mdi-history</LIcon>
+              </div>
+              <h4>{{ $t('generation.wizard.step1.fromJobSource') }}</h4>
+              <p>{{ $t('generation.wizard.step1.fromJobSourceDesc') }}</p>
             </div>
-            <h4>{{ $t('generation.wizard.step1.scenarioSource') }}</h4>
-            <p>{{ $t('generation.wizard.step1.scenarioSourceDesc') }}</p>
-          </div>
+          </LTooltip>
 
           <!-- Manual Data Source -->
-          <div
-            class="source-card"
-            :class="{ selected: formData.sourceType === 'manual' }"
-            @click="selectSourceType('manual')"
-          >
-            <div class="source-icon" style="background-color: rgba(136, 196, 200, 0.2);">
-              <LIcon color="accent" size="32">mdi-file-upload-outline</LIcon>
+          <LTooltip :text="$t('generation.wizard.step1.manualTooltip')" location="bottom">
+            <div
+              class="source-card"
+              :class="{ selected: formData.sourceType === 'manual' }"
+              @click="selectSourceType('manual')"
+            >
+              <div class="source-icon" style="background-color: rgba(136, 196, 200, 0.2);">
+                <LIcon color="accent" size="32">mdi-file-upload-outline</LIcon>
+              </div>
+              <h4>{{ $t('generation.wizard.step1.manualSource') }}</h4>
+              <p>{{ $t('generation.wizard.step1.manualSourceDesc') }}</p>
             </div>
-            <h4>{{ $t('generation.wizard.step1.manualSource') }}</h4>
-            <p>{{ $t('generation.wizard.step1.manualSourceDesc') }}</p>
-          </div>
+          </LTooltip>
 
           <!-- Prompt Template Source -->
-          <div
-            class="source-card"
-            :class="{ selected: formData.sourceType === 'prompt_only' }"
-            @click="selectSourceType('prompt_only')"
-          >
-            <div class="source-icon" style="background-color: rgba(209, 188, 138, 0.2);">
-              <LIcon color="secondary" size="32">mdi-text-box-multiple-outline</LIcon>
+          <LTooltip :text="$t('generation.wizard.step1.promptOnlyTooltip')" location="bottom">
+            <div
+              class="source-card"
+              :class="{ selected: formData.sourceType === 'prompt_only' }"
+              @click="selectSourceType('prompt_only')"
+            >
+              <div class="source-icon" style="background-color: rgba(209, 188, 138, 0.2);">
+                <LIcon color="secondary" size="32">mdi-text-box-multiple-outline</LIcon>
+              </div>
+              <h4>{{ $t('generation.wizard.step1.promptOnlySource') }}</h4>
+              <p>{{ $t('generation.wizard.step1.promptOnlySourceDesc') }}</p>
             </div>
-            <h4>{{ $t('generation.wizard.step1.promptOnlySource') }}</h4>
-            <p>{{ $t('generation.wizard.step1.promptOnlySourceDesc') }}</p>
-          </div>
+          </LTooltip>
         </div>
 
-        <!-- Scenario Selection -->
-        <div v-if="formData.sourceType === 'scenario'" class="source-config mt-6">
+        <!-- Job Selection -->
+        <div v-if="formData.sourceType === 'from_job'" class="source-config mt-6">
           <v-autocomplete
-            v-model="formData.scenarioId"
-            :items="scenarios"
-            :loading="loadingScenarios"
-            item-title="scenario_name"
+            v-model="formData.sourceJobId"
+            :items="completedJobs"
+            :loading="loadingJobs"
+            item-title="name"
             item-value="id"
-            :label="$t('generation.wizard.step1.selectScenario')"
+            :label="$t('generation.wizard.step1.selectJob')"
             variant="outlined"
             clearable
-            @update:model-value="onScenarioSelected"
+            @update:model-value="onJobSelected"
           >
             <template v-slot:item="{ props, item }">
               <v-list-item v-bind="props">
                 <template v-slot:prepend>
-                  <LIcon size="20" class="mr-2">mdi-clipboard-text</LIcon>
+                  <LIcon size="20" class="mr-2">mdi-auto-fix</LIcon>
                 </template>
                 <template v-slot:subtitle>
-                  {{ item.raw.item_count || 0 }} {{ $t('auto.9dea4016db') }} </template>
+                  {{ item.raw.total_items }} Outputs · {{ item.raw.created_at_formatted }}
+                </template>
               </v-list-item>
             </template>
           </v-autocomplete>
 
-          <v-alert v-if="selectedScenarioInfo" type="info" variant="tonal" class="mt-4">
-            <div class="scenario-info">
-              <strong>{{ selectedScenarioInfo.scenario_name }}</strong>
+          <v-alert v-if="selectedJobInfo" type="info" variant="tonal" class="mt-4">
+            <div class="job-info">
+              <strong>{{ selectedJobInfo.name }}</strong>
               <div class="mt-2">
                 <LTag variant="info" size="small" class="mr-2">
-                  {{ selectedScenarioInfo.item_count }} Items
+                  {{ selectedJobItemCount }} Items
+                </LTag>
+                <LTag variant="success" size="small">
+                  {{ selectedJobInfo.completed_items }}/{{ selectedJobInfo.total_items }} Outputs
                 </LTag>
               </div>
             </div>
@@ -473,7 +483,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import axios from 'axios'
 import { useGeneration } from '@/composables/useGeneration'
@@ -499,22 +509,22 @@ const isCreating = ref(false)
 const isDragging = ref(false)
 
 // Loading states
-const loadingScenarios = ref(false)
+const loadingJobs = ref(false)
 const loadingPrompts = ref(false)
 const loadingModels = ref(false)
 
 // Data
-const scenarios = ref([])
+const completedJobs = ref([])
 const promptTemplates = ref([])
 const availableModels = ref([])
-const selectedScenarioInfo = ref(null)
+const selectedJobInfo = ref(null)
 const costEstimate = ref(null)
 
 // Form data
 const formData = ref({
   name: '',
-  sourceType: 'scenario',
-  scenarioId: null,
+  sourceType: 'from_job',
+  sourceJobId: null,
   manualData: '',
   prompts: [],
   llmModels: [],
@@ -542,9 +552,19 @@ const parsedManualItems = computed(() => {
   }
 })
 
+const selectedJobItemCount = computed(() => {
+  if (!selectedJobInfo.value) return 0
+  const sources = selectedJobInfo.value.config_json?.sources || {}
+  if (sources.item_count != null) return sources.item_count
+  // Fallback: total_items / (prompts × models)
+  const prompts = selectedJobInfo.value.config_json?.prompts?.length || 1
+  const models = selectedJobInfo.value.config_json?.llm_models?.length || 1
+  return Math.ceil(selectedJobInfo.value.total_items / (prompts * models))
+})
+
 const totalItemCount = computed(() => {
-  if (formData.value.sourceType === 'scenario') {
-    return selectedScenarioInfo.value?.item_count || 0
+  if (formData.value.sourceType === 'from_job') {
+    return selectedJobItemCount.value
   }
   if (formData.value.sourceType === 'manual') {
     return parsedManualItems.value.length
@@ -559,8 +579,8 @@ const totalOutputs = computed(() => {
 const canProceed = computed(() => {
   switch (currentStep.value) {
     case 0: // Source
-      if (formData.value.sourceType === 'scenario') {
-        return !!formData.value.scenarioId
+      if (formData.value.sourceType === 'from_job') {
+        return !!formData.value.sourceJobId
       }
       if (formData.value.sourceType === 'manual') {
         return parsedManualItems.value.length > 0
@@ -621,8 +641,8 @@ function generateJobName() {
   }
 
   // Add source info
-  if (formData.value.sourceType === 'scenario' && selectedScenarioInfo.value) {
-    parts.push(`[${selectedScenarioInfo.value.scenario_name}]`)
+  if (formData.value.sourceType === 'from_job' && selectedJobInfo.value) {
+    parts.push(`[from: ${selectedJobInfo.value.name}]`)
   } else if (formData.value.sourceType === 'manual') {
     parts.push(`[${parsedManualItems.value.length} Items]`)
   } else if (formData.value.sourceType === 'prompt_only') {
@@ -644,20 +664,23 @@ function previousStep() {
 }
 
 // Source methods
-async function loadScenarios() {
-  loadingScenarios.value = true
+async function loadJobs() {
+  loadingJobs.value = true
   try {
-    const response = await axios.get('/api/scenarios')
-    scenarios.value = response.data.scenarios || []
+    const response = await axios.get('/api/generation/jobs', { params: { status: 'completed' } })
+    completedJobs.value = (response.data.jobs || []).map(j => ({
+      ...j,
+      created_at_formatted: new Date(j.created_at).toLocaleDateString()
+    }))
   } catch (error) {
-    console.error('Failed to load scenarios:', error)
+    console.error('Failed to load jobs:', error)
   } finally {
-    loadingScenarios.value = false
+    loadingJobs.value = false
   }
 }
 
-function onScenarioSelected(scenarioId) {
-  selectedScenarioInfo.value = scenarios.value.find(s => s.id === scenarioId) || null
+function onJobSelected(jobId) {
+  selectedJobInfo.value = completedJobs.value.find(j => j.id === jobId) || null
 }
 
 function handleFileDrop(event) {
@@ -816,7 +839,7 @@ async function loadCostEstimate() {
 // Helper methods
 function getSourceTypeLabel(type) {
   const labels = {
-    scenario: t('generation.wizard.step1.scenarioSource'),
+    from_job: t('generation.wizard.step1.fromJobSource'),
     manual: t('generation.wizard.step1.manualSource'),
     prompt_only: t('generation.wizard.step1.promptOnlySource')
   }
@@ -826,9 +849,9 @@ function getSourceTypeLabel(type) {
 function buildJobConfig() {
   const sources = {}
 
-  if (formData.value.sourceType === 'scenario') {
-    sources.type = 'scenario'
-    sources.scenario_id = formData.value.scenarioId
+  if (formData.value.sourceType === 'from_job') {
+    sources.type = 'from_job'
+    sources.job_id = formData.value.sourceJobId
   } else if (formData.value.sourceType === 'manual') {
     sources.type = 'manual'
     sources.items = parsedManualItems.value
@@ -865,14 +888,7 @@ async function createJob() {
 
 // Lifecycle
 onMounted(() => {
-  loadScenarios()
-})
-
-// Watch scenario changes
-watch(() => formData.value.scenarioId, (newVal) => {
-  if (newVal) {
-    onScenarioSelected(newVal)
-  }
+  loadJobs()
 })
 </script>
 

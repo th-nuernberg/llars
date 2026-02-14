@@ -526,7 +526,7 @@ def _seed_evaluation_scenario(db_session, demo_user, collab_user):
     - 4 features per item (2 prompts × 2 models)
     - Both IJCAI reviewers as human evaluators
     - LLM evaluator rankings (Magistral + GPT-5 Mini)
-    - Pre-filled rankings: reviewer_1 has 8/10 done, reviewer_2 has 7/10 done
+    - Pre-filled rankings: reviewer_1 has 8/10 done, reviewer_2 has 10/10 done
     - Last items left for live demo (shows pending/in_progress/done states)
     """
     from db.models.scenario import (
@@ -794,10 +794,10 @@ def _seed_evaluation_scenario(db_session, demo_user, collab_user):
             r1_count += 1
     actions.append(f"Added {r1_count} rankings for {DEMO_USER} (8 done + item 9 in_progress)")
 
-    # Reviewer 2 (collab_user): 7 of 10 items ranked
+    # Reviewer 2 (collab_user): all 10 items ranked (fully done)
     if collab_user:
-        r2_count = _add_rankings(collab_user.id, ranking_patterns_r2, 7)
-        actions.append(f"Added {r2_count} rankings for {COLLAB_USER} (7/10 items)")
+        r2_count = _add_rankings(collab_user.id, ranking_patterns_r2, 10)
+        actions.append(f"Added {r2_count} rankings for {COLLAB_USER} (10/10 items)")
 
     # LLM evaluators: stored in LLMTaskResult (not UserFeatureRanking)
     def _add_llm_rankings(model_id, patterns, num_items):

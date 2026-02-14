@@ -364,7 +364,7 @@
         {
           "do": "type",
           "target": ".editor-block:nth-child(3) .ql-editor",
-          "text": "Subject: {{subject}}\n\nEmail thread:\n{{content}}\n\nWrite a plain text paragraph, no bullet points.",
+          "text": "Subject:\n{{subject}}\n\nContent:\n{{content}}",
           "speed": "turbo"
         }
       ]
@@ -406,12 +406,16 @@
           "speed": "instant"
         },
         {
+          "do": "wait",
+          "seconds": 0.3
+        },
+        {
           "do": "click",
           "target": "Create Variable"
         },
         {
           "do": "wait",
-          "seconds": 0.2
+          "seconds": 0.5
         },
         {
           "do": "clear",
@@ -434,12 +438,16 @@
           "speed": "instant"
         },
         {
+          "do": "wait",
+          "seconds": 0.3
+        },
+        {
           "do": "click",
           "target": "Create Variable"
         },
         {
           "do": "wait",
-          "seconds": 0.2
+          "seconds": 0.5
         },
         {
           "do": "click",
@@ -593,7 +601,17 @@
         {
           "do": "collab_type",
           "target": "First Block Editor",
-          "text": "\n\nAlways protect client anonymity. Never include real names — refer to family members by role only (e.g. 'the client', 'the son', 'the partner').",
+          "text": "\n\nFocus on the objective facts stated in the correspondence. Avoid adding assumptions beyond what is written.",
+          "delay": 0.1
+        },
+        {
+          "do": "wait",
+          "seconds": 0.3
+        },
+        {
+          "do": "collab_type",
+          "target": "Last Block Editor",
+          "text": "\n\nThe data below is provided as a subject line followed by the email thread content from a counselling session.",
           "delay": 0.1
         },
         {

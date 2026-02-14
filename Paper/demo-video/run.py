@@ -375,7 +375,7 @@ ELEMENT_MAP = {
     "Add Variable": ".v-btn:contains('Add'), .v-dialog .v-btn:contains('Add')",
     "Variable Name Input": ".variable-manager-card .name-input input, .variable-input input, .v-text-field input",
     "Variable Content Input": ".variable-manager-card .content-input textarea, .variable-manager-card textarea",
-    "Create Variable": ".variable-manager-card .l-btn:contains('Create Variable'), .variable-manager-card .v-btn:contains('Create Variable')",
+    "Create Variable": ".variable-manager-card .create-btn, .variable-manager-card .l-btn:contains('Add Variable'), .variable-manager-card .l-btn:contains('Variable'), .variable-manager-card .v-btn:contains('Add Variable')",
     "Variable Dialog Close": ".variable-manager-card .dialog-header .v-btn",
     "Variable Save": ".v-btn:contains('Save'), .v-btn:contains('Done')",
 
@@ -3946,14 +3946,25 @@ class ScriptRunner:
                 except Exception:
                     self.browser.driver.execute_script("arguments[0].click()", element)
                 time.sleep(0.1)
-                # Set value via JS (simulates paste)
+                # Set value via JS using native setter (works with Vue/Vuetify reactivity)
                 try:
-                    self.browser.driver.execute_script(
-                        "arguments[0].value = arguments[1];"
-                        "arguments[0].dispatchEvent(new Event('input', {bubbles: true}));"
-                        "arguments[0].dispatchEvent(new Event('change', {bubbles: true}));",
-                        element, text
-                    )
+                    self.browser.driver.execute_script("""
+                        var el = arguments[0];
+                        var val = arguments[1];
+                        // Use native setter to properly trigger Vue/Vuetify reactivity
+                        var nativeSetter = Object.getOwnPropertyDescriptor(
+                            window.HTMLInputElement.prototype, 'value'
+                        )?.set || Object.getOwnPropertyDescriptor(
+                            window.HTMLTextAreaElement.prototype, 'value'
+                        )?.set;
+                        if (nativeSetter) {
+                            nativeSetter.call(el, val);
+                        } else {
+                            el.value = val;
+                        }
+                        el.dispatchEvent(new Event('input', {bubbles: true}));
+                        el.dispatchEvent(new Event('change', {bubbles: true}));
+                    """, element, text)
                 except Exception:
                     element.send_keys(text)
                 masked = text[:4] + '...' if len(text) > 4 else text

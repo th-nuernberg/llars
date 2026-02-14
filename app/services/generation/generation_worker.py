@@ -1020,6 +1020,12 @@ class GenerationWorker:
                 tokens["input"] = max(1, (len(system_prompt) + len(user_prompt)) // 4)
                 tokens["total"] = tokens["input"] + tokens["output"]
 
+                # Some models (e.g. GPT-5-nano) return 200 OK for streaming but
+                # send no content tokens. Fall back to non-streaming in that case.
+                if not content.strip():
+                    logger.warning("[GenWorker] Streaming returned empty content, falling back to non-streaming")
+                    enable_streaming = False
+
             except Exception as e:
                 logger.warning("[GenWorker] Streaming failed, falling back to non-streaming: %s", e)
                 # Fall back to non-streaming on error

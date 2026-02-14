@@ -14,7 +14,7 @@ from typing import Optional
 
 from flask import Blueprint, g, jsonify, request, send_file
 
-from auth.decorators import authentik_required
+from auth.decorators import authentik_required, api_key_or_token_required
 from db.models import GeneratedOutputStatus, GenerationJobStatus
 from decorators.error_handler import handle_api_errors, ValidationError
 from decorators.permission_decorator import require_permission
@@ -35,7 +35,7 @@ generation_bp = Blueprint('generation', __name__, url_prefix='/api/generation')
 
 
 @generation_bp.route('/jobs', methods=['POST'])
-@authentik_required
+@api_key_or_token_required
 @require_permission('feature:generation:create')
 @handle_api_errors(logger_name='generation')
 def create_job():
@@ -99,7 +99,7 @@ def create_job():
 
 
 @generation_bp.route('/jobs', methods=['GET'])
-@authentik_required
+@api_key_or_token_required
 @require_permission('feature:generation:view')
 @handle_api_errors(logger_name='generation')
 def list_jobs():
@@ -137,7 +137,7 @@ def list_jobs():
 
 
 @generation_bp.route('/jobs/<int:job_id>', methods=['GET'])
-@authentik_required
+@api_key_or_token_required
 @require_permission('feature:generation:view')
 @handle_api_errors(logger_name='generation')
 def get_job(job_id: int):
@@ -188,7 +188,7 @@ def delete_job(job_id: int):
 
 
 @generation_bp.route('/jobs/<int:job_id>/start', methods=['POST'])
-@authentik_required
+@api_key_or_token_required
 @require_permission('feature:generation:manage')
 @handle_api_errors(logger_name='generation')
 def start_job(job_id: int):

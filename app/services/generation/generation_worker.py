@@ -977,15 +977,7 @@ class GenerationWorker:
                 if gen_params.get("max_tokens"):
                     stream_params["max_tokens"] = gen_params["max_tokens"]
 
-                try:
-                    stream = client.chat.completions.create(**stream_params)
-                except Exception as temp_err:
-                    if "temperature" in str(temp_err).lower():
-                        logger.info("[GenWorker] Model doesn't support custom temperature, retrying with default")
-                        stream_params.pop("temperature", None)
-                        stream = client.chat.completions.create(**stream_params)
-                    else:
-                        raise
+                stream = self._api_call_with_param_fix(client, stream_params)
 
                 # Collect streamed content and emit tokens
                 used_reasoning_field = False  # Track if we're using reasoning_content
@@ -1045,15 +1037,7 @@ class GenerationWorker:
             if gen_params.get("max_tokens"):
                 call_params["max_tokens"] = gen_params["max_tokens"]
 
-            try:
-                response = client.chat.completions.create(**call_params)
-            except Exception as temp_err:
-                if "temperature" in str(temp_err).lower():
-                    logger.info("[GenWorker] Model doesn't support custom temperature, retrying with default")
-                    call_params.pop("temperature", None)
-                    response = client.chat.completions.create(**call_params)
-                else:
-                    raise
+            response = self._api_call_with_param_fix(client, call_params)
 
             # Extract content
             content = ""
@@ -1068,6 +1052,40 @@ class GenerationWorker:
                 tokens["total"] = tokens["input"] + tokens["output"]
 
         return content, tokens
+
+    @staticmethod
+    def _api_call_with_param_fix(client, params: dict):
+        """
+        Call the chat completions API, automatically fixing unsupported params.
+
+        Some models (e.g. OpenAI gpt-5-nano) reject custom temperature or
+        require max_completion_tokens instead of max_tokens. This method
+        catches 400 errors and retries with fixed parameters (up to 3 times).
+        """
+        max_fixes = 3
+        for _ in range(max_fixes):
+            try:
+                return client.chat.completions.create(**params)
+            except Exception as e:
+                err_msg = str(e).lower()
+                fixed = False
+                if "temperature" in err_msg and "temperature" in params:
+                    logger.info("[GenWorker] Model doesn't support custom temperature, removing")
+                    params.pop("temperature")
+                    fixed = True
+                elif "max_tokens" in err_msg and "max_completion_tokens" in err_msg:
+                    logger.info("[GenWorker] Model requires max_completion_tokens instead of max_tokens")
+                    val = params.pop("max_tokens", None)
+                    if val:
+                        params["max_completion_tokens"] = val
+                    fixed = True
+                elif "top_p" in err_msg and "top_p" in params:
+                    logger.info("[GenWorker] Model doesn't support custom top_p, removing")
+                    params.pop("top_p")
+                    fixed = True
+                if not fixed:
+                    raise
+        return client.chat.completions.create(**params)
 
     def _calculate_cost(self, model_id: str, tokens: Dict[str, int]) -> float:
         """

@@ -385,8 +385,8 @@ def user_can_evaluate(user_id: int, scenario_id: int) -> bool:
     """
     Check if a user can submit evaluations for a scenario.
 
-    Only EVALUATOR role can submit evaluations.
-    OWNER and VIEWER roles are read-only.
+    OWNER and EVALUATOR roles can submit evaluations.
+    VIEWER role is read-only.
 
     Args:
         user_id: The user ID to check
@@ -403,8 +403,7 @@ def user_can_evaluate(user_id: int, scenario_id: int) -> bool:
     if not scenario_user:
         return False
 
-    # Only EVALUATOR role can submit evaluations (OWNER/VIEWER are read-only)
-    return scenario_user.role == ScenarioRoles.EVALUATOR
+    return scenario_user.role in (ScenarioRoles.EVALUATOR, ScenarioRoles.OWNER)
 
 
 def user_can_evaluate_thread(user_id: int, thread_id: int) -> bool:

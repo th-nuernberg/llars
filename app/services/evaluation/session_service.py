@@ -85,10 +85,10 @@ class EvaluationSessionService:
         if isinstance(config, dict):
             description = config.get('description')
 
-        # Determine if user can evaluate (only EVALUATOR role)
+        # Determine if user can evaluate (OWNER and EVALUATOR roles)
         can_evaluate = (
             scenario_user is not None
-            and scenario_user.role == ScenarioRoles.EVALUATOR
+            and scenario_user.role in (ScenarioRoles.EVALUATOR, ScenarioRoles.OWNER)
         )
 
         return {

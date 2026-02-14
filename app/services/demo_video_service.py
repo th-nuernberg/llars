@@ -128,10 +128,10 @@ def seed():
         actions.append(f"Job '{PRESEED_JOB_NAME}' already exists (id={existing_job.id})")
     else:
         mistral = LLMModel.query.filter_by(
-            model_id='mistralai/Mistral-Small-3.2-24B-Instruct-2506'
+            model_id='LiteLLM/mistralai/Mistral-Small-3.2-24B-Instruct-2506'
         ).first()
         gpt5_nano = LLMModel.query.filter_by(
-            model_id='gpt-5-nano'
+            model_id='OpenAI/gpt-5-nano'
         ).first()
 
         if not mistral or not gpt5_nano:
@@ -595,8 +595,8 @@ def _seed_evaluation_scenario(db_session, demo_user, collab_user):
             "evaluation": "ranking",
             "enable_llm_evaluation": True,
             "llm_evaluators": [
-                "mistralai/Magistral-Small-2509",
-                "gpt-5-mini",
+                "LiteLLM/mistralai/Magistral-Small-2509",
+                "OpenAI/gpt-5-mini",
             ],
         }
     )
@@ -827,12 +827,12 @@ def _seed_evaluation_scenario(db_session, demo_user, collab_user):
         return count
 
     magistral_count = _add_llm_rankings(
-        "mistralai/Magistral-Small-2509", ranking_patterns_magistral, 10
+        "LiteLLM/mistralai/Magistral-Small-2509", ranking_patterns_magistral, 10
     )
     actions.append(f"Added {magistral_count} Magistral LLM rankings (10/10 items)")
 
     gpt5mini_count = _add_llm_rankings(
-        "gpt-5-mini", ranking_patterns_gpt5mini, 10
+        "OpenAI/gpt-5-mini", ranking_patterns_gpt5mini, 10
     )
     actions.append(f"Added {gpt5mini_count} GPT-5 Mini LLM rankings (10/10 items)")
 

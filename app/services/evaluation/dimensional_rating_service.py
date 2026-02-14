@@ -756,9 +756,9 @@ class DimensionalRatingService:
 
         try:
             # Get LLM client and make request
-            client = LLMClientFactory.get_client_for_model(model_id)
+            client, api_model_id = LLMClientFactory.resolve_client_and_model_id(model_id)
             completion = client.chat.completions.create(
-                model=model_id,
+                model=api_model_id,
                 messages=[
                     {'role': 'system', 'content': prompts['system_prompt']},
                     {'role': 'user', 'content': prompts['user_prompt']}

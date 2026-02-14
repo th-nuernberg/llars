@@ -31,6 +31,9 @@ from services.user_llm_provider_service import UserLLMProviderService
 
 USER_PROVIDER_PREFIX = "user-provider:"
 
+# Known provider prefixes for model ID routing (e.g. "OpenAI/gpt-5-nano")
+KNOWN_PROVIDER_PREFIXES = {"openai", "litellm", "anthropic", "gemini", "ollama", "custom"}
+
 
 class LLMClientFactory:
     """Create LLM clients routed by model or provider."""
@@ -52,12 +55,36 @@ class LLMClientFactory:
         return provider_id, actual_model.strip() or None
 
     @staticmethod
+    def _parse_provider_prefix(model_id: Optional[str]) -> tuple[Optional[str], Optional[str]]:
+        """
+        Parse a provider prefix from a model ID.
+
+        'OpenAI/gpt-5-nano' -> ('openai', 'gpt-5-nano')
+        'LiteLLM/mistralai/Mistral-Small-3.2' -> ('litellm', 'mistralai/Mistral-Small-3.2')
+        'llamaindex/vdr-2b-multi-v1' -> (None, None)  # Not a known provider prefix
+        """
+        if not model_id or not isinstance(model_id, str) or '/' not in model_id:
+            return None, None
+        first_slash = model_id.index('/')
+        prefix = model_id[:first_slash].strip().lower()
+        if prefix not in KNOWN_PROVIDER_PREFIXES:
+            return None, None
+        rest = model_id[first_slash + 1:].strip()
+        if not rest:
+            return None, None
+        return prefix, rest
+
+    @staticmethod
     def resolve_client_and_model_id(model_id: Optional[str]):
         """
         Resolve a client + effective model_id for API calls.
-        Supports user-provider model IDs in the form:
-        user-provider:<provider_id>:<model_id>
+
+        Routing priority:
+        1. user-provider:<provider_id>:<model_id> → user's personal provider
+        2. Provider prefix (e.g. OpenAI/gpt-5-nano) → find admin provider by type, strip prefix
+        3. Legacy FK-based routing via llm_models.provider_id
         """
+        # 1. User-provider prefix
         provider_id, actual_model_id = LLMClientFactory._parse_user_provider_model_id(model_id)
         if provider_id and actual_model_id:
             provider, api_key = UserLLMProviderService.get_provider_with_key(provider_id)
@@ -65,7 +92,18 @@ class LLMClientFactory:
                 base_url = (provider.base_url or "").strip() or None
                 client = OpenAI(api_key=api_key or "EMPTY", base_url=base_url, timeout=LLM_TIMEOUT)
                 return client, actual_model_id
-        return LLMClientFactory.get_client_for_model(model_id), model_id
+
+        # 2. Provider prefix routing (e.g. "OpenAI/gpt-5-nano" → OpenAI provider + "gpt-5-nano")
+        prefix, stripped_model_id = LLMClientFactory._parse_provider_prefix(model_id)
+        if prefix and stripped_model_id:
+            provider = LLMProviderService.get_provider_by_type(prefix)
+            if provider and provider.is_active:
+                client = LLMClientFactory.get_client_for_provider(provider)
+                return client, stripped_model_id
+
+        # 3. Legacy FK-based routing (still strip prefix for API calls)
+        effective_id = stripped_model_id if (prefix and stripped_model_id) else model_id
+        return LLMClientFactory.get_client_for_model(model_id), effective_id
 
     @staticmethod
     def get_default_model_id() -> Optional[str]:

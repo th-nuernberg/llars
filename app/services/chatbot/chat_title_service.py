@@ -86,12 +86,12 @@ class ChatTitleService:
 
         try:
             # Always use fast model for title generation
-            model = 'mistralai/Mistral-Small-3.2-24B-Instruct-2506'
+            model = 'LiteLLM/mistralai/Mistral-Small-3.2-24B-Instruct-2506'
             if not LLMModel.get_by_model_id(model):
                 default_model_id = LLMModel.get_default_model_id(model_type=LLMModel.MODEL_TYPE_LLM)
                 if default_model_id:
                     model = default_model_id
-            llm_client = LLMClientFactory.get_client_for_model(model)
+            client, effective_model = LLMClientFactory.resolve_client_and_model_id(model)
 
             messages = [
                 {
@@ -111,8 +111,8 @@ class ChatTitleService:
             # Stream if callback provided
             if stream_callback:
                 title = ""
-                stream = llm_client.chat.completions.create(
-                    model=model,
+                stream = client.chat.completions.create(
+                    model=effective_model,
                     messages=messages,
                     max_tokens=20,
                     temperature=0.3,
@@ -127,8 +127,8 @@ class ChatTitleService:
                         title += delta_text
                         stream_callback(delta_text)
             else:
-                response = llm_client.chat.completions.create(
-                    model=model,
+                response = client.chat.completions.create(
+                    model=effective_model,
                     messages=messages,
                     max_tokens=20,
                     temperature=0.3,

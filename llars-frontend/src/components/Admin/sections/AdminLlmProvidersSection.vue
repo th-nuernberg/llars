@@ -895,6 +895,7 @@ const OPENAI_MODELS = [
   { id: 'gpt-5.1', name: 'GPT-5.1', group: 'GPT-5', meta: '400K ctx · 128K out', context_window: 400000, max_output_tokens: 128000, supports_vision: true, supports_reasoning: true },
   { id: 'gpt-5', name: 'GPT-5', group: 'GPT-5', meta: '400K ctx · 128K out', context_window: 400000, max_output_tokens: 128000, supports_vision: true, supports_reasoning: true },
   { id: 'gpt-5-mini', name: 'GPT-5 Mini', group: 'GPT-5', meta: '400K ctx · 128K out · schnell', context_window: 400000, max_output_tokens: 128000, supports_vision: true, supports_reasoning: false },
+  { id: 'gpt-5-nano', name: 'GPT-5 Nano', group: 'GPT-5', meta: '400K ctx · 16K out · ultra-schnell', context_window: 400000, max_output_tokens: 16384, supports_vision: false, supports_reasoning: false },
   // GPT-4 Series
   { id: 'gpt-4.1', name: 'GPT-4.1', group: 'GPT-4', meta: '1M ctx · 32K out', context_window: 1047576, max_output_tokens: 32768, supports_vision: true, supports_reasoning: false },
   { id: 'gpt-4.1-mini', name: 'GPT-4.1 Mini', group: 'GPT-4', meta: '1M ctx · 32K out · schnell', context_window: 1047576, max_output_tokens: 32768, supports_vision: true, supports_reasoning: false },

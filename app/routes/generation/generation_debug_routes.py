@@ -412,7 +412,7 @@ def add_llm_evaluators():
     Request body:
     {
         "scenario_id": 7,
-        "llm_evaluators": ["mistralai/Mistral-Small-3.2-24B-Instruct-2506"],
+        "llm_evaluators": ["LiteLLM/mistralai/Mistral-Small-3.2-24B-Instruct-2506"],
         "run_evaluation": true
     }
     """
@@ -668,7 +668,7 @@ def start_test_job():
     {
         "name": "Test Job",
         "prompt_template": "Summarize: {{content}}",
-        "llm_models": ["mistralai/Mistral-Small-3.2-24B-Instruct-2506"],
+        "llm_models": ["LiteLLM/mistralai/Mistral-Small-3.2-24B-Instruct-2506"],
         "items": [
             {"content": "Text to summarize 1"},
             {"content": "Text to summarize 2"}
@@ -723,7 +723,7 @@ Antworte einfühlsam und hilfreich."""
         config = {
             "name": "Mail Rating Demo Job",
             "prompts": [{"template_id": prompt_id, "variant_name": "Standard"}],
-            "llm_models": ["mistralai/Mistral-Small-3.2-24B-Instruct-2506"],
+            "llm_models": ["LiteLLM/mistralai/Mistral-Small-3.2-24B-Instruct-2506"],
             "sources": {
                 "type": "manual",
                 "items": [
@@ -771,8 +771,8 @@ Schreibe eine ansprechende Produktbeschreibung (150-200 Wörter), die:
             "name": "Product Description Generator",
             "prompts": [{"template_id": prompt_id, "variant_name": "Marketing"}],
             "llm_models": [
-                "mistralai/Mistral-Small-3.2-24B-Instruct-2506",
-                "mistralai/Magistral-Small-2509"
+                "LiteLLM/mistralai/Mistral-Small-3.2-24B-Instruct-2506",
+                "LiteLLM/mistralai/Magistral-Small-2509"
             ],
             "sources": {
                 "type": "manual",
@@ -839,7 +839,7 @@ Schreibe eine hilfreiche, lösungsorientierte Antwort."""
         config = {
             "name": "Customer Support Response Generator",
             "prompts": [{"template_id": prompt_id, "variant_name": "Friendly"}],
-            "llm_models": ["mistralai/Mistral-Small-3.2-24B-Instruct-2506"],
+            "llm_models": ["LiteLLM/mistralai/Mistral-Small-3.2-24B-Instruct-2506"],
             "sources": {
                 "type": "manual",
                 "items": [
@@ -879,7 +879,7 @@ Schreibe eine hilfreiche, lösungsorientierte Antwort."""
         config = {
             "name": data.get("name", "Test Job"),
             "prompts": [{"template_id": prompt_id, "variant_name": "Standard"}],
-            "llm_models": data.get("llm_models", ["mistralai/Mistral-Small-3.2-24B-Instruct-2506"]),
+            "llm_models": data.get("llm_models", ["LiteLLM/mistralai/Mistral-Small-3.2-24B-Instruct-2506"]),
             "sources": {
                 "type": "manual",
                 "items": [{"id": i + 1, **item} for i, item in enumerate(items)]

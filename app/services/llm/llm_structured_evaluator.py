@@ -169,7 +169,7 @@ class LLMStructuredEvaluator:
         template: Optional[PromptTemplate],
     ) -> Dict[str, Any]:
         """Run evaluations for a single model across all threads."""
-        client = LLMClientFactory.get_client_for_model(model_id)
+        client, api_model_id = LLMClientFactory.resolve_client_and_model_id(model_id)
         schema_class = get_schema_for_task_type(task_type)
 
         results = {
@@ -428,7 +428,7 @@ class LLMStructuredEvaluator:
 
             try:
                 response = client.chat.completions.create(
-                    model=model_id,
+                    model=api_model_id,
                     messages=messages,
                     temperature=0.2,
                     max_tokens=2000,

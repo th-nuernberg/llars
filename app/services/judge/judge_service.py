@@ -129,7 +129,7 @@ Antworte NUR mit einem validen JSON-Objekt gemäß dem Schema."""
             )
             logger.info(f"[JudgeService] Initialized override client with model={self.model}")
         else:
-            self.client = LLMClientFactory.get_client_for_model(self.model)
+            self.client, self.model = LLMClientFactory.resolve_client_and_model_id(self.model)
             logger.info(f"[JudgeService] Initialized provider client with model={self.model}")
 
     def format_thread_for_prompt(self, messages: List[Dict[str, Any]]) -> str:

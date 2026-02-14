@@ -593,10 +593,10 @@ Antworte NUR mit dem HEX-Farbcode (z.B. #3498db)."""
         temperature: float = 0.2
     ) -> str:
         model_id = ChatbotFieldGenerator._get_default_vision_model_id()
-        client = LLMClientFactory.get_client_for_model(model_id)
+        client, api_model_id = LLMClientFactory.resolve_client_and_model_id(model_id)
 
         response = client.chat.completions.create(
-            model=model_id,
+            model=api_model_id,
             messages=[
                 {"role": "system", "content": system_prompt},
                 {
@@ -788,9 +788,9 @@ Antworte NUR mit dem HEX-Farbcode (z.B. #3498db)."""
             Exception: If LLM request fails
         """
         model_id = ChatbotFieldGenerator._get_default_llm_model_id()
-        client = LLMClientFactory.get_client_for_model(model_id)
+        client, api_model_id = LLMClientFactory.resolve_client_and_model_id(model_id)
         response = client.chat.completions.create(
-            model=model_id,
+            model=api_model_id,
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt}
@@ -835,9 +835,9 @@ Antworte NUR mit dem HEX-Farbcode (z.B. #3498db)."""
         )
 
         model_id = ChatbotFieldGenerator._get_default_llm_model_id()
-        client = LLMClientFactory.get_client_for_model(model_id)
+        client, api_model_id = LLMClientFactory.resolve_client_and_model_id(model_id)
         stream = client.chat.completions.create(
-            model=model_id,
+            model=api_model_id,
             messages=[
                 {"role": "system", "content": prompt_config['system']},
                 {"role": "user", "content": user_prompt}

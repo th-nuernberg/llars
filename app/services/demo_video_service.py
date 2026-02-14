@@ -233,7 +233,10 @@ def cleanup(include_preseed=False):
     from db.models.generation import GenerationJob, GeneratedOutput
     from db.models.scenario import (
         RatingScenarios, UserPromptShare, UserFeatureRanking,
-        Feature, EvaluationItem, ScenarioItems,
+        Feature, EvaluationItem, ScenarioItems, Message,
+        UserConsultingCategorySelection, UserMailHistoryRating,
+        ItemDimensionRating, ItemLabelingEvaluation, UserMessageRating,
+        ScenarioItemDistribution,
     )
     from db.models.llm_task_result import LLMTaskResult
     from db.models.user_llm_provider import UserLLMProvider
@@ -313,13 +316,27 @@ def cleanup(include_preseed=False):
                 ).delete(synchronize_session=False)
                 deleted.append(f"Deleted {features_deleted} features")
 
+        # Delete scenario first (cascades ScenarioUsers, ScenarioItems, ScenarioItemDistribution)
+        _db.session.delete(eval_scenario)
+        _db.session.flush()
+        deleted.append(f"Scenario '{EVAL_SCENARIO_NAME}' (id={eval_scenario.id})")
+
+        # Now delete orphaned evaluation items and their FK-dependents
+        if scenario_item_ids:
+            for model_cls in [
+                Message, UserMessageRating, UserConsultingCategorySelection,
+                UserMailHistoryRating, ItemDimensionRating, ItemLabelingEvaluation,
+            ]:
+                count = model_cls.query.filter(
+                    model_cls.item_id.in_(scenario_item_ids)
+                ).delete(synchronize_session=False)
+                if count:
+                    deleted.append(f"Deleted {count} {model_cls.__tablename__}")
+
             items_deleted = EvaluationItem.query.filter(
                 EvaluationItem.item_id.in_(scenario_item_ids)
             ).delete(synchronize_session=False)
             deleted.append(f"Deleted {items_deleted} evaluation items")
-
-        _db.session.delete(eval_scenario)
-        deleted.append(f"Scenario '{EVAL_SCENARIO_NAME}' (id={eval_scenario.id})")
 
     # --- 5. Delete other demo-created scenarios ---
     preseed_job = GenerationJob.query.filter_by(name=PRESEED_JOB_NAME).first()

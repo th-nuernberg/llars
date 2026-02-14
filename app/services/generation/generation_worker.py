@@ -977,7 +977,15 @@ class GenerationWorker:
                 if gen_params.get("max_tokens"):
                     stream_params["max_tokens"] = gen_params["max_tokens"]
 
-                stream = client.chat.completions.create(**stream_params)
+                try:
+                    stream = client.chat.completions.create(**stream_params)
+                except Exception as temp_err:
+                    if "temperature" in str(temp_err).lower():
+                        logger.info("[GenWorker] Model doesn't support custom temperature, retrying with default")
+                        stream_params.pop("temperature", None)
+                        stream = client.chat.completions.create(**stream_params)
+                    else:
+                        raise
 
                 # Collect streamed content and emit tokens
                 used_reasoning_field = False  # Track if we're using reasoning_content
@@ -1037,7 +1045,15 @@ class GenerationWorker:
             if gen_params.get("max_tokens"):
                 call_params["max_tokens"] = gen_params["max_tokens"]
 
-            response = client.chat.completions.create(**call_params)
+            try:
+                response = client.chat.completions.create(**call_params)
+            except Exception as temp_err:
+                if "temperature" in str(temp_err).lower():
+                    logger.info("[GenWorker] Model doesn't support custom temperature, retrying with default")
+                    call_params.pop("temperature", None)
+                    response = client.chat.completions.create(**call_params)
+                else:
+                    raise
 
             # Extract content
             content = ""

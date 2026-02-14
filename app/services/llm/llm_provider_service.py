@@ -148,7 +148,9 @@ class LLMProviderService:
 
     @staticmethod
     def _link_orphaned_models():
-        """Link models without provider_id to the default provider."""
+        """Link models without provider_id to the appropriate provider based on prefix."""
+        from services.llm.llm_client_factory import LLMClientFactory
+
         default_provider = LLMProviderService.get_default_provider()
         if not default_provider:
             return
@@ -157,8 +159,15 @@ class LLMProviderService:
             LLMModel.is_active.is_(True),
         ).all()
         for model in orphaned:
-            model.provider_id = default_provider.id
-            logger.info("Linked model '%s' to provider '%s'", model.model_id, default_provider.name)
+            # Use prefix routing to find the correct provider
+            prefix, _ = LLMClientFactory._parse_provider_prefix(model.model_id)
+            target_provider = None
+            if prefix:
+                target_provider = LLMProviderService.get_provider_by_type(prefix)
+            if not target_provider:
+                target_provider = default_provider
+            model.provider_id = target_provider.id
+            logger.info("Linked model '%s' to provider '%s'", model.model_id, target_provider.name)
         if orphaned:
             db.session.commit()
 

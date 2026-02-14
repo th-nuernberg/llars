@@ -403,7 +403,7 @@
           "do": "type",
           "target": "Variable Content Input",
           "text": "School problems with my son",
-          "speed": "instant"
+          "speed": "fast"
         },
         {
           "do": "wait",
@@ -415,15 +415,14 @@
         },
         {
           "do": "wait",
-          "seconds": 0.5
+          "seconds": 1.5
         },
         {
-          "do": "clear",
-          "target": "Variable Name Input"
+          "do": "click",
+          "target": "Manage Variables"
         },
         {
-          "do": "clear",
-          "target": "Variable Content Input"
+          "do": "wait_for_modal"
         },
         {
           "do": "type",
@@ -435,7 +434,7 @@
           "do": "type",
           "target": "Variable Content Input",
           "text": "Client wrote on 10/01/2026 at 2:30 PM:\nMy son (13) has been refusing to go to school for two weeks. He complains of stomach aches, but the paediatrician found nothing. I am a single parent and cannot stay home every day.\n\nCounsellor wrote on 11/01/2026 at 9:00 AM:\nThank you for your message. School refusal can have various causes...",
-          "speed": "instant"
+          "speed": "fast"
         },
         {
           "do": "wait",
@@ -447,15 +446,7 @@
         },
         {
           "do": "wait",
-          "seconds": 0.5
-        },
-        {
-          "do": "click",
-          "target": "Variable Dialog Close"
-        },
-        {
-          "do": "wait",
-          "seconds": 0.2
+          "seconds": 1.5
         }
       ]
     },
@@ -466,7 +457,7 @@
       "actions": [
         {
           "do": "wait",
-          "seconds": 0.1
+          "seconds": 0.5
         }
       ]
     },
@@ -475,6 +466,10 @@
       "speaker": "moderator",
       "narration": "Exactly — quick iteration. Let me hit Test — the variables get inserted and the LLM generates a response right here.",
       "actions": [
+        {
+          "do": "wait",
+          "seconds": 0.5
+        },
         {
           "do": "click",
           "target": "Test"
@@ -523,11 +518,11 @@
         },
         {
           "do": "click",
-          "target": "Close"
+          "target": "Test Prompt Close"
         },
         {
           "do": "wait",
-          "seconds": 0.2
+          "seconds": 0.5
         }
       ]
     },
@@ -682,9 +677,6 @@
           "seconds": 1.5
         },
         {
-          "do": "close_file_dialog"
-        },
-        {
           "do": "click",
           "target": "Git Floating Panel Close"
         },
@@ -814,6 +806,34 @@
           "do": "paste",
           "target": "Provider API Key Input",
           "text": "${OPENAI_API_KEY}"
+        },
+        {
+          "do": "wait",
+          "seconds": 0.3
+        },
+        {
+          "do": "click",
+          "target": "Provider Model Select"
+        },
+        {
+          "do": "wait",
+          "seconds": 0.5
+        },
+        {
+          "do": "click",
+          "target": "GPT-5 Nano Select Option"
+        },
+        {
+          "do": "wait",
+          "seconds": 0.3
+        },
+        {
+          "do": "click",
+          "target": "GPT-5 Mini Select Option"
+        },
+        {
+          "do": "wait",
+          "seconds": 0.3
         }
       ]
     },
@@ -828,16 +848,12 @@
         },
         {
           "do": "wait",
-          "seconds": 1.0
+          "seconds": 1.5
         },
         {
-          "do": "click",
-          "target": "Sync Models Button",
-          "highlight_before": 0.8
-        },
-        {
-          "do": "wait",
-          "seconds": 2.0
+          "do": "highlight",
+          "target": "OpenAI Provider Card",
+          "duration": 1.5
         }
       ]
     },
@@ -848,24 +864,12 @@
       "actions": [
         {
           "do": "highlight",
-          "target": "Model List",
-          "duration": 1.2
-        },
-        {
-          "do": "click",
-          "target": "GPT-5 Nano Model"
+          "target": "OpenAI Provider Card",
+          "duration": 1.5
         },
         {
           "do": "wait",
-          "seconds": 0.3
-        },
-        {
-          "do": "click",
-          "target": "GPT-5 Model"
-        },
-        {
-          "do": "wait",
-          "seconds": 0.3
+          "seconds": 0.5
         }
       ]
     },
@@ -1427,20 +1431,25 @@
         },
         {
           "do": "goto",
-          "url": "/evaluation"
+          "url": "/scenarios"
         },
         {
           "do": "wait",
-          "seconds": 0.8
+          "seconds": 3.0
+        },
+        {
+          "do": "wait_for",
+          "target": "Counselling Demo Scenario",
+          "timeout": 15
         },
         {
           "do": "highlight",
-          "target": "Evaluation Scenario Card",
+          "target": "Counselling Demo Scenario",
           "duration": 1.0
         },
         {
           "do": "click",
-          "target": "Evaluation Scenario Card"
+          "target": "Counselling Demo Scenario"
         },
         {
           "do": "wait_for",
@@ -1560,7 +1569,7 @@
         },
         {
           "do": "wait",
-          "seconds": 0.4
+          "seconds": 2.0
         },
         {
           "do": "highlight",
@@ -1685,7 +1694,12 @@
         },
         {
           "do": "wait",
-          "seconds": 0.5
+          "seconds": 3.0
+        },
+        {
+          "do": "wait_for",
+          "target": "Evaluation Scenario Card",
+          "timeout": 15
         },
         {
           "do": "highlight",
@@ -1699,7 +1713,7 @@
         {
           "do": "wait_for",
           "target": "Evaluation Items Grid",
-          "timeout": 10
+          "timeout": 15
         }
       ]
     },

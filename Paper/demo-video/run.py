@@ -226,7 +226,8 @@ ELEMENT_MAP = {
     "Test Prompt Dialog": ".test-prompt-card, .v-dialog:contains('Test')",
     "Model Select": ".config-select, .llm-model-select, .v-select",
     "Regenerate": ".l-btn:contains('Regenerate'), .v-btn:contains('Regenerate'), .dialog-actions .l-btn:contains('Regenerate'), .dialog-actions .v-btn:contains('Regenerate')",
-    "Response Output": ".response-content, .response-text",
+    "Response Output": ".response-section, .response-container, .response-text, .test-prompt-card .response-section",
+    "Test Prompt Close": ".test-prompt-card .l-btn:contains('Close'), .test-prompt-card button:has(.mdi-close), .test-prompt-card .v-btn:has(.mdi-close)",
     "Close": ".v-dialog .l-btn:contains('Close'), .v-dialog .v-btn:contains('Close'), .wizard-header .v-btn, .l-btn:contains('Close'), .v-btn:contains('Close'), button:contains('Close')",
     "Cancel": ".v-btn:contains('Cancel'), button:contains('Cancel')",
     "Dialog Create Button": ".v-dialog .l-btn:contains('Create'), .v-dialog .v-btn:contains('Create'), .v-dialog button:contains('Create')",
@@ -373,7 +374,7 @@ ELEMENT_MAP = {
     "Variables Button": ".v-btn:contains('Variables'), .actions-grid .v-btn:contains('Variables')",
     "Variable Dialog": ".v-dialog:contains('Variable'), .variables-dialog",
     "Add Variable": ".v-btn:contains('Add'), .v-dialog .v-btn:contains('Add')",
-    "Variable Name Input": ".variable-manager-card .name-input input, .variable-input input, .v-text-field input",
+    "Variable Name Input": ".variable-manager-card .name-input input, .variable-manager-card .new-variable-form input, .variable-input input",
     "Variable Content Input": ".variable-manager-card .content-input textarea, .variable-manager-card textarea",
     "Create Variable": ".variable-manager-card .create-btn, .variable-manager-card .l-btn:contains('Add Variable'), .variable-manager-card .l-btn:contains('Variable'), .variable-manager-card .v-btn:contains('Add Variable')",
     "Variable Dialog Close": ".variable-manager-card .dialog-header .v-btn",
@@ -381,7 +382,7 @@ ELEMENT_MAP = {
 
     # Test Prompt Dialog - Enhanced
     "Run Test Button": ".v-btn:contains('Run'), .test-dialog .v-btn:contains('Generate'), .v-btn:contains('Generate')",
-    "Test Response": ".response-content, .test-response, .response-text, .v-card-text",
+    "Test Response": ".response-section, .response-container, .response-text, .test-response, .v-card-text",
     "Test Loading": ".v-progress-circular, .loading",
 
     # Batch Generation - Job List
@@ -410,7 +411,7 @@ ELEMENT_MAP = {
     "New Scenario": ".v-btn:contains('New Scenario'), .header-actions .v-btn:contains('New')",
     "Scenario List": ".scenario-list, .scenarios-grid, .scenario-cards, .v-list",
     "Scenario Card": ".scenario-card, .v-card.scenario",
-    "Counselling Demo Scenario": ".scenario-card:contains('Counselling Situation'), .scenario-card:contains('Situation')",
+    "Counselling Demo Scenario": ".scenario-card:contains('IJCAI Counselling'), .scenario-card:contains('IJCAI')",
     "Completed Scenario": ".scenario-card:contains('Complete'), .scenario-card.completed",
     "Demo Scenario": ".scenario-card:contains('Counselling'), .scenario-card:contains('Situation')",
     "Scenario Stats": ".scenario-stats, .stats-card",
@@ -501,6 +502,9 @@ ELEMENT_MAP = {
     "Provider Type Options": ".v-overlay--active .v-list-item",
     "Provider Type OpenAI": ".v-overlay--active .v-list-item:contains('OpenAI'), .v-overlay--active .v-list-item:contains('openai')",
     "OpenAI Provider Card": ".provider-card:contains('OpenAI'), .provider-name:contains('OpenAI')",
+    "Provider Model Select": ".v-dialog .v-select:contains('Modelle'), .v-dialog .v-select:contains('OpenAI')",
+    "GPT-5 Nano Select Option": ".v-overlay--active .v-list-item:contains('GPT-5 Nano')",
+    "GPT-5 Mini Select Option": ".v-overlay--active .v-list-item:contains('GPT-5 Mini')",
     "Sync Models Button": ".l-btn:contains('Sync'), .v-btn:contains('Sync'), .l-btn:contains('sync')",
     "Model List": ".model-list, .v-list:has(.v-list-item)",
     "GPT-5 Nano Model": ".v-list-item:contains('gpt-5-nano'), .v-list-item:contains('GPT-5 Nano'), .model-item:contains('gpt-5-nano')",
@@ -509,24 +513,24 @@ ELEMENT_MAP = {
     # VERSION CONTROL (Git Panel in Prompt Engineering)
     # =============================================
 
-    # Sidebar Git Widget (GitStatusWidget.vue in sidebar)
-    "Git Panel Section": ".sidebar-section:has(.git-widget-expanded), .sidebar-section:has(.git-widget-collapsed), .git-widget-expanded",
-    "Git Panel": ".git-widget-expanded, .git-panel-wrapper, .git-panel-expanded",
-    "Version Control Panel": ".git-widget-expanded, .git-panel-wrapper, .git-panel-expanded",
-    "Git Widget Header": ".git-widget-expanded .widget-header, .widget-header",
-    "Git Widget Status": ".git-widget-expanded .widget-status, .widget-status",
-    "Version Control Status": ".git-widget-expanded .widget-status, .widget-status",
-    "Git Commit Section": ".widget-commit, .commit-section",
-    "Git Commit Input": ".widget-commit .commit-input input, .commit-input input, .git-panel-wrapper .commit-input input",
-    "Git Commit Button": ".widget-commit .l-btn, .widget-commit .l-btn:contains('Commit'), .commit-actions .l-btn",
-    "Git User Changes": ".widget-users .user-change-item, .user-change-item, .widget-users",
-    "Git Change Stats": ".git-widget-expanded .l-tag:contains('+'), .widget-status .l-tag",
+    # Sidebar Git Widget (PromptGitPanel.vue in sidebar)
+    "Git Panel Section": ".sidebar-section:has(.vc-block-list), .sidebar-section:has(.git-panel-expanded), .sidebar-section:has(.git-panel-collapsed)",
+    "Git Panel": ".git-panel-expanded, .git-panel-wrapper, .git-panel-collapsed",
+    "Version Control Panel": ".git-panel-expanded, .git-panel-wrapper, .vc-block-list, .git-panel-collapsed, .sidebar-section:has(.vc-block-list)",
+    "Git Widget Header": ".git-panel-expanded .panel-header, .panel-header",
+    "Git Widget Status": ".git-panel-expanded .panel-content, .vc-block-list",
+    "Version Control Status": ".vc-block-list, .vc-commit-section, .git-panel-expanded .commit-section, .change-indicator",
+    "Git Commit Section": ".vc-commit-section, .commit-section",
+    "Git Commit Input": ".vc-commit-input input, .commit-input input, .vc-commit-section input",
+    "Git Commit Button": ".vc-commit-section .l-btn, .commit-actions .l-btn:contains('Commit'), .commit-actions .l-btn",
+    "Git User Changes": ".user-changes .user-change-item, .user-change-item",
+    "Git Change Stats": ".change-indicator, .vc-stat, .stat-badge",
     # Floating Git Panel (PromptFloatingGitPanel.vue)
-    "Git Open Floating": ".sidebar-section .v-btn:has(.mdi-open-in-new), .widget-header .l-icon-btn",
+    "Git Open Floating": ".sidebar-section .v-btn:has(.mdi-open-in-new), .section-label .v-btn",
     "Git Fullscreen Button": "button:has(.mdi-open-in-new), .section-label .v-btn, .sidebar-section button:has(i.mdi-open-in-new)",
     "Version Control Fullscreen": "button:has(.mdi-open-in-new), .section-label .v-btn, .sidebar-section button:has(i.mdi-open-in-new)",
-    "Git Floating Panel": ".git-panel-content, .l-floating-window",
-    "Git Floating Panel Close": ".l-floating-window .window-actions .l-icon-btn:has(.mdi-close), .l-floating-window .l-icon-btn[aria-label*='Close'], .l-floating-window button:has(.mdi-close)",
+    "Git Floating Panel": ".l-floating-window, .git-panel-content",
+    "Git Floating Panel Close": ".l-floating-window button:has(.mdi-close), .l-floating-window .l-icon-btn[aria-label='Close'], .l-floating-window button[aria-label='Close'], .l-floating-window .header-actions .l-icon-btn:last-child, .l-floating-window .header-actions button:last-child",
     "Git History Section": ".history-section, .history-list, .git-panel-content .history-list",
     "Git History Item": ".history-item, .history-list .history-item:first-child",
     "Git Commit Message": ".commit-message",
@@ -550,7 +554,7 @@ ELEMENT_MAP = {
     "Accuracy Metric": ".metrics-grid .metric-item:nth-child(4)",
     "ICC Metric": ".metrics-grid .metric-item:nth-child(5)",
     "Kendall W Metric": ".metrics-grid .metric-item:nth-child(6)",
-    "Agreement Heatmap": ".l-agreement-heatmap, .agreement-heatmap-section",
+    "Agreement Heatmap": ".l-agreement-heatmap, .agreement-heatmap-section, .heatmap-container, .visualization-panel",
     "Heatmap Cell": ".heatmap-cell",
     "Heatmap Grid": ".heatmap-container",
 
@@ -2541,6 +2545,33 @@ class Browser:
             time.sleep(0.2)
         print(f"⚠️ Timeout: {target}")
 
+    def dismiss_dialog(self):
+        """Schließt offenes Dialog/Modal via Overlay-Klick und ESC"""
+        try:
+            # Methode 1: Klick auf Vuetify v-overlay (schließt non-persistent Dialoge)
+            overlays = self.driver.find_elements(By.CSS_SELECTOR, ".v-overlay--active .v-overlay__scrim")
+            for overlay in overlays:
+                try:
+                    if overlay.is_displayed():
+                        overlay.click()
+                        time.sleep(0.3)
+                except Exception:
+                    pass
+            # Methode 2: ESC-Taste als Fallback
+            body = self.driver.find_element(By.TAG_NAME, "body")
+            body.send_keys(Keys.ESCAPE)
+            time.sleep(0.5)
+            # Methode 3: Vue-Zustand zurücksetzen via JS
+            self.driver.execute_script("""
+                // Force-close any open v-dialogs by resetting their model
+                document.querySelectorAll('.v-overlay--active').forEach(el => {
+                    el.style.display = 'none';
+                });
+            """)
+            time.sleep(0.3)
+        except Exception:
+            pass
+
     def wait_for_modal(self):
         """Wartet auf Modal-Dialog"""
         time.sleep(0.5)
@@ -3991,6 +4022,11 @@ class ScriptRunner:
         elif do == 'wait_for_modal':
             self.browser.wait_for_modal()
             print(f"   ✓ wait_for_modal")
+            return True
+
+        elif do == 'dismiss_dialog':
+            self.browser.dismiss_dialog()
+            print(f"   ✓ dismiss_dialog")
             return True
 
         elif do == 'show_title':

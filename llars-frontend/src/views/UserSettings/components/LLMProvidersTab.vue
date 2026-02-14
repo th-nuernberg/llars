@@ -354,6 +354,7 @@ const openaiModelCatalog = [
   { id: 'gpt-5.1', title: 'GPT-5.1', meta: '400K ctx · 128K out', context_window: 400000, max_output_tokens: 128000, supports_vision: true, supports_reasoning: true },
   { id: 'gpt-5', title: 'GPT-5', meta: '400K ctx · 128K out', context_window: 400000, max_output_tokens: 128000, supports_vision: true, supports_reasoning: true },
   { id: 'gpt-5-mini', title: 'GPT-5 Mini', meta: '400K ctx · 128K out', context_window: 400000, max_output_tokens: 128000, supports_vision: true, supports_reasoning: false },
+  { id: 'gpt-5-nano', title: 'GPT-5 Nano', meta: '400K ctx · 128K out', context_window: 400000, max_output_tokens: 128000, supports_vision: false, supports_reasoning: false },
   { id: 'gpt-4.1', title: 'GPT-4.1', meta: '1M ctx · 32K out', context_window: 1047576, max_output_tokens: 32768, supports_vision: true, supports_reasoning: false },
   { id: 'gpt-4.1-mini', title: 'GPT-4.1 Mini', meta: '1M ctx · 32K out', context_window: 1047576, max_output_tokens: 32768, supports_vision: true, supports_reasoning: false },
   { id: 'gpt-4.1-nano', title: 'GPT-4.1 Nano', meta: '1M ctx · 32K out', context_window: 1047576, max_output_tokens: 32768, supports_vision: true, supports_reasoning: false },

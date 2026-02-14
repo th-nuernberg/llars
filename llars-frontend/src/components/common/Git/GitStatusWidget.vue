@@ -35,7 +35,7 @@
     <!-- Header -->
     <div class="widget-header">
       <LIcon size="16">mdi-source-branch</LIcon>
-      <span class="header-title">{{ t('workspaceGit.title') }}</span>
+      <span class="header-title">{{ title || t('workspaceGit.title') }}</span>
       <v-spacer />
       <LIconBtn
         icon="mdi-open-in-new"
@@ -198,7 +198,9 @@ const props = defineProps({
   // For single mode: reactive summary object
   summary: { type: Object, default: () => ({ users: [], totalChangedLines: 0, hasChanges: false, insertions: 0, deletions: 0 }) },
   // For single mode: function to get current content
-  getContent: { type: Function, default: null }
+  getContent: { type: Function, default: null },
+  // Optional custom title (overrides default "Git")
+  title: { type: String, default: '' }
 })
 
 const emit = defineEmits(['update:collapsed', 'open-detail', 'committed'])

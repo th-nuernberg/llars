@@ -1,19 +1,15 @@
 <template>
   <div class="l-tabs-container">
-    <div
-      class="l-tabs"
-      :class="[tabsClasses, { 'l-tabs--no-animate': !pillAnimating }]"
-      ref="tabsRef"
-    >
+    <div class="l-tabs" :class="tabsClasses" ref="tabsRef">
       <!-- Sliding pill indicator for pill variant -->
       <div
         v-if="variant === 'pill'"
+        ref="pillRef"
         class="l-tabs__pill"
       />
       <button
         v-for="(tab, index) in tabs"
         :key="tab.value || index"
-        :ref="el => setTabRef(el, index)"
         class="l-tab"
         :class="{ 'l-tab--active': modelValue === (tab.value || index) }"
         @click="selectTab(tab.value || index)"
@@ -33,28 +29,8 @@
 /**
  * LTabs - LLARS Global Tabs Component
  *
- * A modern tab navigation component with the signature LLARS styling.
- * Features the primary color background with white text and smooth transitions.
- *
- * Props:
- *   - modelValue: Current active tab value (v-model)
- *   - tabs: Array of tab definitions { value, label, icon?, badge? }
- *   - variant: 'filled' (default) | 'outlined' | 'underlined' | 'pill'
- *   - grow: Boolean - tabs take equal width
- *
- * Events:
- *   - update:modelValue: Emitted when tab changes
- *
- * Usage:
- *   <LTabs
- *     v-model="activeTab"
- *     :tabs="[
- *       { value: 'chatbots', label: 'Chatbots', icon: 'mdi-robot' },
- *       { value: 'collections', label: 'Collections', icon: 'mdi-folder-multiple' },
- *       { value: 'documents', label: 'Dokumente', icon: 'mdi-file-document-multiple' }
- *     ]"
- *     variant="pill"
- *   />
+ * Variants: 'filled' (default) | 'outlined' | 'underlined' | 'pill'
+ * The 'pill' variant features an animated sliding indicator.
  */
 import { computed, ref, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 
@@ -82,8 +58,7 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue'])
 
 const tabsRef = ref(null)
-const tabElements = ref([])
-const pillAnimating = ref(false)
+const pillRef = ref(null)
 let resizeObserver = null
 
 const tabsClasses = computed(() => ({
@@ -91,41 +66,50 @@ const tabsClasses = computed(() => ({
   'l-tabs--grow': props.grow
 }))
 
-function setTabRef(el, index) {
-  if (el) tabElements.value[index] = el
-}
-
 function selectTab(value) {
   emit('update:modelValue', value)
 }
 
-// Pill positioning via CSS custom properties on the container
-function movePill() {
-  if (props.variant !== 'pill' || !tabsRef.value) return
-  const activeIndex = props.tabs.findIndex(
-    (tab, i) => (tab.value || i) === props.modelValue
-  )
-  const el = tabElements.value[activeIndex]
-  if (!el) return
-
-  tabsRef.value.style.setProperty('--pill-x', `${el.offsetLeft}px`)
-  tabsRef.value.style.setProperty('--pill-w', `${el.offsetWidth}px`)
+// Find active tab button via direct DOM query (bypasses Vue ref issues)
+function getActiveTabButton() {
+  if (!tabsRef.value) return null
+  const buttons = tabsRef.value.querySelectorAll('.l-tab')
+  const idx = props.tabs.findIndex((tab, i) => (tab.value || i) === props.modelValue)
+  return idx >= 0 ? buttons[idx] : null
 }
 
-// Track changes - enable animation after first render
+// Move pill via direct inline styles - no CSS custom properties, no scoped style transition
+function movePill(animate) {
+  const pill = pillRef.value
+  const tabEl = getActiveTabButton()
+  if (!pill || !tabEl) return
+
+  // Transition is set INLINE to avoid any scoped-style interference
+  pill.style.transition = animate
+    ? 'transform 0.35s cubic-bezier(0.4, 0, 0.15, 1), width 0.3s cubic-bezier(0.4, 0, 0.15, 1)'
+    : 'none'
+
+  pill.style.transform = `translateX(${tabEl.offsetLeft}px)`
+  pill.style.width = `${tabEl.offsetWidth}px`
+}
+
+// Animate on tab change
 watch(() => props.modelValue, () => {
-  pillAnimating.value = true
-  nextTick(movePill)
+  nextTick(() => movePill(true))
 })
-watch(() => props.tabs, () => nextTick(movePill), { deep: true })
+
+// Reposition (no animation) when tabs change
+watch(() => props.tabs, () => {
+  nextTick(() => movePill(false))
+}, { deep: true })
 
 onMounted(() => {
-  // Double nextTick to ensure DOM is fully rendered including fonts
+  // Double nextTick: first for Vue DOM update, second for browser layout (fonts etc.)
   nextTick(() => {
     nextTick(() => {
-      movePill()
+      movePill(false)
       if (tabsRef.value && props.variant === 'pill') {
-        resizeObserver = new ResizeObserver(() => movePill())
+        resizeObserver = new ResizeObserver(() => movePill(false))
         resizeObserver.observe(tabsRef.value)
       }
     })
@@ -188,26 +172,18 @@ onBeforeUnmount(() => {
   background: rgba(255, 255, 255, 0.08);
 }
 
-/* The sliding pill - reads position from CSS custom properties on parent */
+/* The sliding pill - transition is set via inline style in JS */
 .l-tabs__pill {
   position: absolute;
   top: 4px;
   bottom: 4px;
   left: 0;
-  transform: translateX(var(--pill-x, 0));
-  width: var(--pill-w, 0px);
+  width: 0;
   background: var(--llars-primary);
   border-radius: 12px 3px 12px 3px;
   z-index: 0;
   pointer-events: none;
-  transition: transform 0.35s cubic-bezier(0.4, 0, 0.15, 1),
-              width 0.3s cubic-bezier(0.4, 0, 0.15, 1);
   will-change: transform, width;
-}
-
-/* Disable animation on initial render */
-.l-tabs--no-animate .l-tabs__pill {
-  transition: none;
 }
 
 .v-theme--dark .l-tabs__pill {

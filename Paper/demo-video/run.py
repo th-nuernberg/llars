@@ -154,6 +154,12 @@ def _resolve_local_path(path_str: str) -> Path:
 # Element-Mapping: Lesbare Namen → CSS Selektoren
 # Lars nutzt eine Home-Seite mit Feature-Karten, keine Sidebar
 ELEMENT_MAP = {
+    # Pipeline Overlay Modules (for highlighting during intro)
+    "Pipeline Prompt Engineering": "#pipeline-prompt",
+    "Pipeline Batch Generation": "#pipeline-batch",
+    "Pipeline Evaluation": "#pipeline-eval",
+    "Pipeline Outcome": "#pipeline-outcome",
+
     # Home Page Feature Cards (klickbare Karten auf /Home)
     "Prompt Engineering": ".feature-card:contains('Prompt'), .feature-title:contains('Prompt')",
     "Batch Generation": ".feature-card:contains('Generation'), .feature-card:contains('Batch'), .feature-title:contains('Generation')",
@@ -246,6 +252,8 @@ ELEMENT_MAP = {
     "OpenAI Provider": ".llm-item--user:contains('OpenAI'), .llm-category .llm-item:contains('OpenAI')",
     "Mistral LLM": ".llm-list .llm-item:contains('Mistral'), .llm-category .llm-item:contains('Mistral'), .llm-item:contains('Mistral')",
     "Magistral LLM": ".llm-list .llm-item:contains('Magistral'), .llm-category .llm-item:contains('Magistral'), .llm-item:contains('Magistral')",
+    "GPT-5 LLM": ".llm-list .llm-item:contains('GPT-5'):not(:contains('Nano')):not(:contains('Mini')), .llm-category .llm-item:contains('GPT-5'):not(:contains('Nano')):not(:contains('Mini')), .llm-item:contains('gpt-5'):not(:contains('nano')):not(:contains('mini'))",
+    "GPT-5 Mini LLM": ".llm-list .llm-item:contains('GPT-5 Mini'), .llm-category .llm-item:contains('GPT-5 Mini'), .llm-item:contains('gpt-5-mini')",
     "User List": ".user-list, .team-section .user-item",
     "Admin User": ".user-item:contains('admin'), .user-item:contains('Admin'), .user-name:contains('admin'), .user-name:contains('Admin')",
     "IJCAI Reviewer 1 User": ".user-item:contains('ijcai_reviewer_1'), .user-item:contains('IJCAI Reviewer 1'), .user-name:contains('ijcai_reviewer_1'), .user-name:contains('IJCAI Reviewer 1')",
@@ -283,8 +291,10 @@ ELEMENT_MAP = {
     "Model Item": ".models-selection .selection-item",
     "First Model": ".models-selection .selection-item:first-child, .v-overlay--active .selection-item:first-child, .v-overlay--active .selectable-card:first-child",
     "Second Model": ".models-selection .selection-item:nth-child(2), .v-overlay--active .selection-item:nth-child(2), .v-overlay--active .selectable-card:nth-child(2)",
-    "Mistral Model": ".models-selection .selection-item:contains('mistral'), .models-selection .selection-item:contains('Mistral'), .item-name:contains('mistral'), .models-selection .selection-item:first-child",
-    "Magistral Model": ".models-selection .selection-item:contains('Magistral'), .models-selection .selection-item:contains('magistral'), .item-name:contains('Magistral'), .models-selection .selection-item:nth-child(2)",
+    "Mistral Model": ".models-selection .selection-item:contains('Mistral Small'), .models-selection .selection-item:contains('mistral'), .item-name:contains('mistral'), .models-selection .selection-item:first-child",
+    "Magistral Model": ".models-selection .selection-item:contains('Magistral'), .models-selection .selection-item:contains('magistral'), .item-name:contains('Magistral')",
+    "GPT-5 Nano Batch Model": ".models-selection .selection-item:contains('GPT-5 Nano'), .models-selection .selection-item:contains('gpt-5-nano'), .item-name:contains('gpt-5-nano')",
+    "GPT-5 Batch Model": ".models-selection .selection-item:contains('GPT-5'):not(:contains('Nano')):not(:contains('nano')):not(:contains('Mini')):not(:contains('mini')), .models-selection .selection-item:contains('gpt-5'):not(:contains('nano')):not(:contains('mini'))",
     "GPT-4 Model": ".models-selection .selection-item:contains('gpt-4'), .models-selection .selection-item:contains('gpt4'), .item-name:contains('gpt')",
     "Claude Model": ".models-selection .selection-item:contains('claude'), .models-selection .selection-item:contains('Claude'), .item-name:contains('claude')",
 
@@ -491,6 +501,10 @@ ELEMENT_MAP = {
     "Provider Type Options": ".v-overlay--active .v-list-item",
     "Provider Type OpenAI": ".v-overlay--active .v-list-item:contains('OpenAI'), .v-overlay--active .v-list-item:contains('openai')",
     "OpenAI Provider Card": ".provider-card:contains('OpenAI'), .provider-name:contains('OpenAI')",
+    "Sync Models Button": ".l-btn:contains('Sync'), .v-btn:contains('Sync'), .l-btn:contains('sync')",
+    "Model List": ".model-list, .v-list:has(.v-list-item)",
+    "GPT-5 Nano Model": ".v-list-item:contains('gpt-5-nano'), .v-list-item:contains('GPT-5 Nano'), .model-item:contains('gpt-5-nano')",
+    "GPT-5 Model": ".v-list-item:contains('gpt-5'):not(:contains('nano')):not(:contains('mini')):not(:contains('5.')), .model-item:contains('gpt-5'):not(:contains('nano'))",
     # =============================================
     # VERSION CONTROL (Git Panel in Prompt Engineering)
     # =============================================
@@ -1150,6 +1164,76 @@ class Browser:
     .llars-overlay-cred-value {
         font-family: 'SF Mono', Monaco, Consolas, monospace;
         font-size: 22px; color: #e0e0e0;
+    }
+    .pipeline-container {
+        display: flex; flex-direction: column;
+        align-items: center; gap: 10px;
+    }
+    .pipeline-row {
+        display: flex; align-items: center; gap: 20px;
+    }
+    .pipeline-actor {
+        width: 170px; padding: 14px 16px;
+        background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.2);
+        border-radius: 4px; text-align: center;
+        font-family: 'Segoe UI', system-ui, sans-serif;
+        font-size: 14px; color: #aaa; line-height: 1.4;
+    }
+    .pipeline-arrow {
+        font-size: 22px; color: rgba(255,255,255,0.4);
+        font-family: 'Segoe UI', system-ui, sans-serif;
+    }
+    .pipeline-arrow-dash {
+        font-size: 18px; color: rgba(255,255,255,0.2);
+        font-family: 'Segoe UI', system-ui, sans-serif;
+    }
+    .pipeline-module {
+        width: 280px; padding: 22px 24px;
+        border-radius: 6px; text-align: center;
+        font-family: 'Segoe UI', system-ui, sans-serif;
+        font-size: 18px; font-weight: 700; color: #222;
+        line-height: 1.3;
+        transition: transform 0.4s ease, box-shadow 0.4s ease;
+    }
+    .pipeline-prompt { background: #B0CA97; border: 2px solid #8aaa6e; }
+    .pipeline-batch { background: #88C4C8; border: 2px solid #6aa0a4; }
+    .pipeline-eval { background: #D1BC8A; border: 2px solid #b09a60; }
+    .pipeline-module.llars-highlight {
+        outline: none !important;
+        transform: scale(1.1);
+        box-shadow: 0 0 40px rgba(255,255,255,0.5) !important;
+        animation: pipeline-pulse 0.6s ease infinite alternate !important;
+    }
+    @keyframes pipeline-pulse {
+        from { box-shadow: 0 0 25px rgba(255,255,255,0.3); }
+        to { box-shadow: 0 0 45px rgba(255,255,255,0.6); }
+    }
+    .pipeline-export {
+        width: 130px; padding: 10px 12px;
+        background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);
+        border-radius: 4px; text-align: center;
+        font-family: 'Segoe UI', system-ui, sans-serif;
+        font-size: 13px; color: #777; line-height: 1.4;
+    }
+    .pipeline-flow {
+        font-family: 'Segoe UI', system-ui, sans-serif;
+        font-size: 14px; color: rgba(255,255,255,0.35);
+        letter-spacing: 1px;
+    }
+    .pipeline-outcome {
+        margin-top: 16px; padding: 22px 36px;
+        background: rgba(232,160,135,0.2); border: 2px solid #E8A087;
+        border-radius: 6px; text-align: center;
+        font-family: 'Segoe UI', system-ui, sans-serif;
+        font-size: 18px; font-weight: 700; color: #E8A087;
+        transition: transform 0.4s ease, box-shadow 0.4s ease;
+    }
+    .pipeline-llars-label {
+        margin-top: 8px;
+        font-family: 'Segoe UI', system-ui, sans-serif;
+        font-size: 13px; font-weight: 600;
+        color: rgba(176,202,151,0.4); letter-spacing: 3px;
+        text-transform: uppercase;
     }
     """
 
@@ -2125,6 +2209,72 @@ class Browser:
             }
         """)
         print(f"   🎬 hide_title")
+
+    def show_pipeline(self):
+        """Shows an HTML pipeline diagram as overlay, matching the paper's Figure 1.
+
+        Uses LLARS design colors: Prompt=#B0CA97, Batch=#88C4C8, Eval=#D1BC8A, Outcome=#E8A087.
+        Each module has an ID (pipeline-prompt, pipeline-batch, pipeline-eval, pipeline-outcome)
+        that can be targeted by the highlight action via ELEMENT_MAP.
+        """
+        self._inject_styles()
+        self.driver.execute_script("""
+            var old = document.getElementById('llars-overlay');
+            if (old) old.remove();
+
+            var overlay = document.createElement('div');
+            overlay.id = 'llars-overlay';
+            overlay.className = 'llars-overlay';
+
+            var pipeline = document.createElement('div');
+            pipeline.className = 'pipeline-container';
+            pipeline.innerHTML = `
+                <div class="pipeline-row">
+                    <div class="pipeline-actor">Domain Experts<br>&amp; Developers</div>
+                    <div class="pipeline-arrow">\u2192</div>
+                    <div class="pipeline-module pipeline-prompt" id="pipeline-prompt">
+                        Collaborative<br>Prompt Engineering
+                    </div>
+                    <div class="pipeline-arrow-dash">\u27F6</div>
+                    <div class="pipeline-export">Prompt</div>
+                </div>
+                <div class="pipeline-flow">\u2193 Prompts</div>
+                <div class="pipeline-row">
+                    <div class="pipeline-actor">Domain<br>Data</div>
+                    <div class="pipeline-arrow">\u2192</div>
+                    <div class="pipeline-module pipeline-batch" id="pipeline-batch">
+                        Batch<br>Generation
+                    </div>
+                    <div class="pipeline-arrow-dash">\u27F6</div>
+                    <div class="pipeline-export">LLM Outputs</div>
+                </div>
+                <div class="pipeline-flow">\u2193 Outputs</div>
+                <div class="pipeline-row">
+                    <div class="pipeline-actor">Human &amp;<br>LLM Evaluators</div>
+                    <div class="pipeline-arrow">\u2192</div>
+                    <div class="pipeline-module pipeline-eval" id="pipeline-eval">
+                        Evaluation
+                    </div>
+                    <div class="pipeline-arrow-dash">\u27F6</div>
+                    <div class="pipeline-export">Evaluation<br>Results</div>
+                </div>
+                <div class="pipeline-flow">\u2193</div>
+                <div class="pipeline-outcome" id="pipeline-outcome">
+                    Best LLM &amp; Prompt Pair
+                </div>
+                <div class="pipeline-llars-label">LLARS</div>
+            `;
+
+            overlay.appendChild(pipeline);
+            document.body.appendChild(overlay);
+
+            requestAnimationFrame(function() {
+                requestAnimationFrame(function() {
+                    overlay.classList.add('visible');
+                });
+            });
+        """)
+        print(f"   🎬 show_pipeline")
 
     def do_visible_login(self, username: str, password: str):
         """Performs login visibly with typed credentials (for recording)."""
@@ -3858,6 +4008,15 @@ class ScriptRunner:
             self.browser.hide_title()
             time.sleep(0.3 if test_mode else 0.6)  # Wait for fade-out
             print(f"   ✓ hide_title")
+            return True
+
+        elif do == 'show_pipeline':
+            self.browser.show_pipeline()
+            if test_mode:
+                time.sleep(0.3)
+            else:
+                time.sleep(0.5)  # Wait for fade-in
+            print(f"   ✓ show_pipeline")
             return True
 
         elif do == 'scroll_to':

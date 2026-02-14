@@ -28,7 +28,8 @@
     "all": "All",
     "retry": "Retry",
     "dismiss": "Dismiss",
-    "copy": "Copy"
+    "copy": "Copy",
+    "create": "Create"
   },
   "auth": {
     "login": "Login",

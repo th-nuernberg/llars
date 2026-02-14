@@ -36,12 +36,24 @@ class BudgetExceededError(Exception):
 
 # Approximate costs per 1M tokens (in USD)
 MODEL_COSTS: Dict[str, Dict[str, float]] = {
-    # OpenAI
+    # OpenAI GPT-5 family
+    "gpt-5.2": {"input": 1.75, "output": 14.00},
+    "gpt-5": {"input": 1.25, "output": 10.00},
+    "gpt-5-mini": {"input": 0.25, "output": 2.00},
+    "gpt-5-nano": {"input": 0.05, "output": 0.40},
+    # OpenAI GPT-4 family
+    "gpt-4.1": {"input": 2.00, "output": 8.00},
+    "gpt-4.1-mini": {"input": 0.40, "output": 1.60},
+    "gpt-4.1-nano": {"input": 0.10, "output": 0.40},
     "gpt-4o": {"input": 2.50, "output": 10.00},
     "gpt-4o-mini": {"input": 0.15, "output": 0.60},
     "gpt-4-turbo": {"input": 10.00, "output": 30.00},
     "gpt-4": {"input": 30.00, "output": 60.00},
     "gpt-3.5-turbo": {"input": 0.50, "output": 1.50},
+    # OpenAI o-series
+    "o3": {"input": 2.00, "output": 8.00},
+    "o3-mini": {"input": 1.10, "output": 4.40},
+    "o4-mini": {"input": 1.10, "output": 4.40},
     # Anthropic
     "claude-3-5-sonnet-20241022": {"input": 3.00, "output": 15.00},
     "claude-3-opus-20240229": {"input": 15.00, "output": 75.00},

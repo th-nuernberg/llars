@@ -17,6 +17,7 @@ PRESEED_PROMPT_NAME = "Structured Situation Analysis"
 PRESEED_JOB_NAME = "Counselling Situation Extraction"
 LIVE_PROMPT_NAME = "Situation Summary"
 LIVE_JOB_NAME = "Live Collab Batch Job"
+EVAL_SCENARIO_NAME = "Counselling Situation Extraction"
 
 DEMO_USER = "ijcai_reviewer_1"
 COLLAB_USER = "ijcai_reviewer_2"
@@ -129,11 +130,11 @@ def seed():
         mistral = LLMModel.query.filter_by(
             model_id='mistralai/Mistral-Small-3.2-24B-Instruct-2506'
         ).first()
-        magistral = LLMModel.query.filter_by(
-            model_id='mistralai/Magistral-Small-2509'
+        gpt5_nano = LLMModel.query.filter_by(
+            model_id='gpt-5-nano'
         ).first()
 
-        if not mistral or not magistral:
+        if not mistral or not gpt5_nano:
             actions.append("Required LLM models not found, skipping job seeding")
             return {'success': True, 'actions': actions, 'warning': 'no_models'}
 
@@ -160,7 +161,7 @@ def seed():
                     {"template_name": PRESEED_PROMPT_NAME},
                     {"template_name": LIVE_PROMPT_NAME}
                 ],
-                "llm_models": [mistral.model_id, magistral.model_id],
+                "llm_models": [mistral.model_id, gpt5_nano.model_id],
                 "generation_params": {"temperature": 0.7, "max_tokens": 500}
             },
             total_items=total_outputs,
@@ -182,7 +183,7 @@ def seed():
                 ("structured", preseed, PRESEED_PROMPT_NAME),
                 ("narrative", temp_eval, LIVE_PROMPT_NAME),
             ]:
-                for model in [mistral, magistral]:
+                for model in [mistral, gpt5_nano]:
                     output_text = SAMPLE_OUTPUTS[summary_key][case_idx]
                     sys_prompt = _render_system(prompt_obj)
                     usr_prompt = _render_user(prompt_obj, case)
@@ -218,6 +219,10 @@ def seed():
     scenario_actions = _seed_demo_scenarios_for_ijcai(_db, demo_user, collab_user)
     actions.extend(scenario_actions)
 
+    # --- 4. Seed evaluation scenario from batch generation ---
+    eval_actions = _seed_evaluation_scenario(_db, demo_user, collab_user)
+    actions.extend(eval_actions)
+
     return {'success': True, 'actions': actions}
 
 
@@ -226,7 +231,11 @@ def cleanup(include_preseed=False):
     from db import db as _db
     from db.tables import User, UserPrompt
     from db.models.generation import GenerationJob, GeneratedOutput
-    from db.models.scenario import RatingScenarios, UserPromptShare
+    from db.models.scenario import (
+        RatingScenarios, UserPromptShare, UserFeatureRanking,
+        Feature, EvaluationItem, ScenarioItems,
+    )
+    from db.models.llm_task_result import LLMTaskResult
     from db.models.user_llm_provider import UserLLMProvider
 
     deleted = []
@@ -271,7 +280,48 @@ def cleanup(include_preseed=False):
             _db.session.delete(pp)
             deleted.append(f"Prompt '{PRESEED_PROMPT_NAME}' owner_id={pp.user_id} (+{shares_deleted} shares)")
 
-    # --- 4. Delete demo-created scenarios ---
+    # --- 4. Delete evaluation scenario and its items/features/rankings ---
+    eval_scenario = RatingScenarios.query.filter_by(
+        scenario_name=EVAL_SCENARIO_NAME
+    ).first()
+    if eval_scenario:
+        # Delete LLM task results for this scenario
+        llm_results_deleted = LLMTaskResult.query.filter_by(
+            scenario_id=eval_scenario.id
+        ).delete(synchronize_session=False)
+        if llm_results_deleted:
+            deleted.append(f"Deleted {llm_results_deleted} LLM task results")
+
+        # Delete rankings for items in this scenario
+        scenario_item_ids = [
+            si.thread_id for si in
+            ScenarioItems.query.filter_by(scenario_id=eval_scenario.id).all()
+        ]
+        if scenario_item_ids:
+            feature_ids = [
+                f.feature_id for f in
+                Feature.query.filter(Feature.item_id.in_(scenario_item_ids)).all()
+            ]
+            if feature_ids:
+                rankings_deleted = UserFeatureRanking.query.filter(
+                    UserFeatureRanking.feature_id.in_(feature_ids)
+                ).delete(synchronize_session=False)
+                deleted.append(f"Deleted {rankings_deleted} rankings")
+
+                features_deleted = Feature.query.filter(
+                    Feature.feature_id.in_(feature_ids)
+                ).delete(synchronize_session=False)
+                deleted.append(f"Deleted {features_deleted} features")
+
+            items_deleted = EvaluationItem.query.filter(
+                EvaluationItem.item_id.in_(scenario_item_ids)
+            ).delete(synchronize_session=False)
+            deleted.append(f"Deleted {items_deleted} evaluation items")
+
+        _db.session.delete(eval_scenario)
+        deleted.append(f"Scenario '{EVAL_SCENARIO_NAME}' (id={eval_scenario.id})")
+
+    # --- 5. Delete other demo-created scenarios ---
     preseed_job = GenerationJob.query.filter_by(name=PRESEED_JOB_NAME).first()
     preseed_target_id = preseed_job.target_scenario_id if preseed_job else None
 
@@ -282,6 +332,8 @@ def cleanup(include_preseed=False):
     for scenario in demo_scenarios:
         if not include_preseed and preseed_target_id and scenario.id == preseed_target_id:
             continue
+        if eval_scenario and scenario.id == eval_scenario.id:
+            continue  # Already deleted above
         _db.session.delete(scenario)
         deleted.append(f"Scenario '{scenario.scenario_name}' (id={scenario.id})")
 
@@ -443,6 +495,313 @@ def _seed_demo_scenarios_for_ijcai(db_session, demo_user, collab_user):
                 ))
 
             actions.append(f"Added {user.username} to '{scenario_name}' ({len(scenario_items)} items)")
+
+    db_session.session.commit()
+    return actions
+
+
+def _seed_evaluation_scenario(db_session, demo_user, collab_user):
+    """
+    Seed a ranking evaluation scenario from the pre-seeded batch generation.
+
+    Creates:
+    - A ranking scenario with 10 items (one per counselling case)
+    - 4 features per item (2 prompts × 2 models)
+    - Both IJCAI reviewers as human evaluators
+    - LLM evaluator rankings (Magistral + GPT-5 Mini)
+    - Pre-filled rankings: reviewer_1 has 8/10 done, reviewer_2 has 7/10 done
+    - Last items left for live demo (shows pending/in_progress/done states)
+    """
+    from db.models.scenario import (
+        RatingScenarios, ScenarioUsers, ScenarioItems,
+        ScenarioItemDistribution, ScenarioRoles,
+        EvaluationItem, Feature, FeatureType, FeatureFunctionType,
+        LLM, UserFeatureRanking,
+    )
+    from db.models.llm_task_result import LLMTaskResult
+    from db.models.generation import GenerationJob, GeneratedOutput
+    from db.seeders.demo_video_data import COUNSELLING_CASES
+
+    actions = []
+
+    # Check if scenario already exists
+    existing = RatingScenarios.query.filter_by(
+        scenario_name=EVAL_SCENARIO_NAME
+    ).first()
+    if existing:
+        actions.append(f"Eval scenario '{EVAL_SCENARIO_NAME}' already exists (id={existing.id})")
+        return actions
+
+    # Get the pre-seeded batch job
+    preseed_job = GenerationJob.query.filter_by(
+        name=PRESEED_JOB_NAME, created_by=DEMO_USER
+    ).first()
+    if not preseed_job:
+        actions.append("Pre-seed job not found, skipping eval scenario")
+        return actions
+
+    # Get or create ranking function type
+    ranking_type = FeatureFunctionType.query.filter_by(name='ranking').first()
+    if not ranking_type:
+        ranking_type = FeatureFunctionType(name='ranking')
+        db_session.session.add(ranking_type)
+        db_session.session.flush()
+
+    # Get or create feature type for situation descriptions
+    ft = FeatureType.query.filter_by(name='Situation Summary').first()
+    if not ft:
+        ft = FeatureType(name='Situation Summary')
+        db_session.session.add(ft)
+        db_session.session.flush()
+
+    # Get or create LLM entries (legacy llms table, not llm_models)
+    def _get_or_create_llm(name):
+        llm = LLM.query.filter_by(name=name).first()
+        if not llm:
+            llm = LLM(name=name)
+            db_session.session.add(llm)
+            db_session.session.flush()
+        return llm
+
+    llm_mistral = _get_or_create_llm('Mistral Small')
+    llm_gpt5_nano = _get_or_create_llm('GPT-5 Nano')
+
+    # --- Create the ranking scenario ---
+    scenario = RatingScenarios(
+        scenario_name=EVAL_SCENARIO_NAME,
+        function_type_id=ranking_type.function_type_id,
+        begin=datetime.utcnow() - timedelta(days=1),
+        end=datetime.utcnow() + timedelta(days=30),
+        timestamp=datetime.utcnow(),
+        created_by=DEMO_USER,
+        config_json={
+            "evaluation": "ranking",
+            "enable_llm_evaluation": True,
+            "llm_evaluators": [
+                "mistralai/Magistral-Small-2509",
+                "gpt-5-mini",
+            ],
+        }
+    )
+    db_session.session.add(scenario)
+    db_session.session.flush()
+    actions.append(f"Created eval scenario '{EVAL_SCENARIO_NAME}' (id={scenario.id})")
+
+    # --- Add users ---
+    reviewer_1_su = ScenarioUsers(
+        scenario_id=scenario.id,
+        user_id=demo_user.id,
+        role=ScenarioRoles.OWNER,
+    )
+    db_session.session.add(reviewer_1_su)
+    db_session.session.flush()
+
+    reviewer_2_su = None
+    if collab_user:
+        reviewer_2_su = ScenarioUsers(
+            scenario_id=scenario.id,
+            user_id=collab_user.id,
+            role=ScenarioRoles.EVALUATOR,
+        )
+        db_session.session.add(reviewer_2_su)
+        db_session.session.flush()
+
+    # --- Create evaluation items + features from batch outputs ---
+    # Group outputs by case (source_index)
+    outputs = GeneratedOutput.query.filter_by(job_id=preseed_job.id).all()
+
+    # Group by source_index
+    outputs_by_case = {}
+    for out in outputs:
+        case_idx = (out.prompt_variables_json or {}).get('source_index', 0)
+        outputs_by_case.setdefault(case_idx, []).append(out)
+
+    items = []
+    item_features = {}  # item_id -> list of features
+
+    for case_idx in sorted(outputs_by_case.keys()):
+        case = COUNSELLING_CASES[case_idx] if case_idx < len(COUNSELLING_CASES) else None
+        case_outputs = outputs_by_case[case_idx]
+
+        # Create evaluation item
+        item = EvaluationItem(
+            chat_id=20000 + case_idx,
+            institut_id=99,
+            subject=case['subject'] if case else f"Case {case_idx}",
+            sender='demo',
+            function_type_id=ranking_type.function_type_id,
+        )
+        db_session.session.add(item)
+        db_session.session.flush()
+        items.append(item)
+
+        # Link item to scenario
+        si = ScenarioItems(
+            scenario_id=scenario.id,
+            thread_id=item.item_id,
+        )
+        db_session.session.add(si)
+        db_session.session.flush()
+
+        # Create distributions for evaluators
+        for su in [reviewer_1_su, reviewer_2_su]:
+            if su:
+                db_session.session.add(ScenarioItemDistribution(
+                    scenario_id=scenario.id,
+                    scenario_user_id=su.id,
+                    scenario_item_id=si.id,
+                ))
+
+        # Create features from outputs (4 per item: 2 prompts × 2 models)
+        features = []
+        for out in case_outputs:
+            model_name = out.llm_model_name or ''
+            if 'Mistral' in model_name or 'mistral' in model_name:
+                llm_ref = llm_mistral
+            elif 'gpt-5' in model_name or 'GPT-5' in model_name:
+                llm_ref = llm_gpt5_nano
+            else:
+                llm_ref = llm_mistral
+
+            feature = Feature(
+                item_id=item.item_id,
+                type_id=ft.type_id,
+                llm_id=llm_ref.llm_id,
+                content=out.generated_content,
+            )
+            db_session.session.add(feature)
+            db_session.session.flush()
+            features.append(feature)
+
+        item_features[item.item_id] = features
+
+    actions.append(f"Created {len(items)} evaluation items with features")
+
+    # --- Pre-fill rankings ---
+    # Buckets: Gut (best), Mittel (acceptable), Schlecht (poor), Neutral
+    # Ranking patterns for different evaluators (to create realistic disagreement)
+    # Each pattern assigns 4 features to buckets: [feature_0_bucket, feature_1_bucket, ...]
+    ranking_patterns = [
+        ['Gut', 'Mittel', 'Gut', 'Schlecht'],       # Case 0
+        ['Gut', 'Schlecht', 'Mittel', 'Mittel'],     # Case 1
+        ['Mittel', 'Gut', 'Gut', 'Schlecht'],        # Case 2
+        ['Gut', 'Mittel', 'Schlecht', 'Gut'],        # Case 3
+        ['Mittel', 'Gut', 'Mittel', 'Schlecht'],     # Case 4
+        ['Gut', 'Gut', 'Schlecht', 'Mittel'],        # Case 5
+        ['Schlecht', 'Mittel', 'Gut', 'Gut'],        # Case 6
+        ['Gut', 'Mittel', 'Gut', 'Mittel'],          # Case 7
+        ['Mittel', 'Gut', 'Schlecht', 'Gut'],        # Case 8
+        ['Gut', 'Schlecht', 'Gut', 'Mittel'],        # Case 9
+    ]
+
+    # Slightly different patterns for reviewer_2 (to create IRR variation)
+    ranking_patterns_r2 = [
+        ['Gut', 'Mittel', 'Mittel', 'Schlecht'],     # Case 0 (one disagreement)
+        ['Gut', 'Schlecht', 'Mittel', 'Mittel'],     # Case 1 (same)
+        ['Gut', 'Gut', 'Mittel', 'Schlecht'],        # Case 2 (one disagreement)
+        ['Gut', 'Mittel', 'Schlecht', 'Mittel'],     # Case 3 (one disagreement)
+        ['Mittel', 'Gut', 'Mittel', 'Schlecht'],     # Case 4 (same)
+        ['Gut', 'Gut', 'Schlecht', 'Mittel'],        # Case 5 (same)
+        ['Schlecht', 'Gut', 'Gut', 'Mittel'],        # Case 6 (one disagreement)
+        ['Mittel', 'Mittel', 'Gut', 'Mittel'],       # Case 7 (two disagreements)
+        ['Mittel', 'Gut', 'Schlecht', 'Gut'],        # Case 8 (same)
+        ['Gut', 'Mittel', 'Gut', 'Schlecht'],        # Case 9 (two disagreements)
+    ]
+
+    # LLM evaluator patterns (more consistent between each other)
+    ranking_patterns_magistral = [
+        ['Gut', 'Mittel', 'Gut', 'Schlecht'],
+        ['Gut', 'Mittel', 'Mittel', 'Schlecht'],
+        ['Mittel', 'Gut', 'Gut', 'Schlecht'],
+        ['Gut', 'Mittel', 'Schlecht', 'Mittel'],
+        ['Mittel', 'Gut', 'Mittel', 'Schlecht'],
+        ['Gut', 'Gut', 'Schlecht', 'Mittel'],
+        ['Schlecht', 'Mittel', 'Gut', 'Gut'],
+        ['Gut', 'Mittel', 'Gut', 'Schlecht'],
+        ['Mittel', 'Gut', 'Schlecht', 'Gut'],
+        ['Gut', 'Schlecht', 'Gut', 'Mittel'],
+    ]
+
+    ranking_patterns_gpt5mini = [
+        ['Gut', 'Mittel', 'Mittel', 'Schlecht'],
+        ['Gut', 'Schlecht', 'Gut', 'Mittel'],
+        ['Gut', 'Gut', 'Mittel', 'Schlecht'],
+        ['Gut', 'Mittel', 'Schlecht', 'Gut'],
+        ['Mittel', 'Gut', 'Schlecht', 'Mittel'],
+        ['Gut', 'Mittel', 'Schlecht', 'Mittel'],
+        ['Schlecht', 'Gut', 'Gut', 'Mittel'],
+        ['Gut', 'Gut', 'Mittel', 'Schlecht'],
+        ['Mittel', 'Gut', 'Schlecht', 'Gut'],
+        ['Gut', 'Mittel', 'Gut', 'Schlecht'],
+    ]
+
+    def _add_rankings(user_id, patterns, num_items, llm_id=None):
+        """Add ranking entries for a user/LLM for the first num_items items."""
+        count = 0
+        for case_idx in range(min(num_items, len(items))):
+            item = items[case_idx]
+            features = item_features.get(item.item_id, [])
+            pattern = patterns[case_idx] if case_idx < len(patterns) else ['Neutral'] * 4
+
+            for feat_idx, feature in enumerate(features):
+                bucket = pattern[feat_idx] if feat_idx < len(pattern) else 'Neutral'
+                ranking = UserFeatureRanking(
+                    user_id=user_id,
+                    feature_id=feature.feature_id,
+                    ranking_content=float(feat_idx + 1),
+                    type_id=ft.type_id,
+                    llm_id=llm_id or feature.llm_id,
+                    bucket=bucket,
+                )
+                db_session.session.add(ranking)
+                count += 1
+        return count
+
+    # Reviewer 1 (demo_user): 8 of 10 items ranked (leaves 2 for live demo)
+    r1_count = _add_rankings(demo_user.id, ranking_patterns, 8)
+    actions.append(f"Added {r1_count} rankings for {DEMO_USER} (8/10 items)")
+
+    # Reviewer 2 (collab_user): 7 of 10 items ranked
+    if collab_user:
+        r2_count = _add_rankings(collab_user.id, ranking_patterns_r2, 7)
+        actions.append(f"Added {r2_count} rankings for {COLLAB_USER} (7/10 items)")
+
+    # LLM evaluators: stored in LLMTaskResult (not UserFeatureRanking)
+    def _add_llm_rankings(model_id, patterns, num_items):
+        """Add LLMTaskResult entries for an LLM evaluator."""
+        count = 0
+        for case_idx in range(min(num_items, len(items))):
+            item = items[case_idx]
+            features = item_features.get(item.item_id, [])
+            pattern = patterns[case_idx] if case_idx < len(patterns) else ['neutral'] * 4
+
+            # Build payload_json: { "gut": [fid1, ...], "mittel": [...], ... }
+            bucket_map = {}
+            for feat_idx, feature in enumerate(features):
+                bucket = pattern[feat_idx].lower() if feat_idx < len(pattern) else 'neutral'
+                bucket_map.setdefault(bucket, []).append(feature.feature_id)
+
+            db_session.session.add(LLMTaskResult(
+                scenario_id=scenario.id,
+                item_id=item.item_id,
+                model_id=model_id,
+                task_type="ranking",
+                payload_json=bucket_map,
+                raw_response=None,
+                error=None,
+            ))
+            count += 1
+        return count
+
+    magistral_count = _add_llm_rankings(
+        "mistralai/Magistral-Small-2509", ranking_patterns_magistral, 10
+    )
+    actions.append(f"Added {magistral_count} Magistral LLM rankings (10/10 items)")
+
+    gpt5mini_count = _add_llm_rankings(
+        "gpt-5-mini", ranking_patterns_gpt5mini, 10
+    )
+    actions.append(f"Added {gpt5mini_count} GPT-5 Mini LLM rankings (10/10 items)")
 
     db_session.session.commit()
     return actions

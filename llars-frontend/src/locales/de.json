@@ -28,7 +28,8 @@
     "all": "Alle",
     "retry": "Erneut versuchen",
     "dismiss": "Schließen",
-    "copy": "Kopieren"
+    "copy": "Kopieren",
+    "create": "Erstellen"
   },
   "auth": {
     "login": "Anmelden",

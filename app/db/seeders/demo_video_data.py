@@ -220,11 +220,11 @@ def seed_demo_video_generation_job():
     mistral_small = LLMModel.query.filter_by(
         model_id='mistralai/Mistral-Small-3.2-24B-Instruct-2506'
     ).first()
-    magistral_small = LLMModel.query.filter_by(
-        model_id='mistralai/Magistral-Small-2509'
+    gpt5_nano = LLMModel.query.filter_by(
+        model_id='gpt-5-nano'
     ).first()
 
-    if not mistral_small or not magistral_small:
+    if not mistral_small or not gpt5_nano:
         logger.warning("Required LLM models not found, skipping demo job seeding")
         return None
 
@@ -273,7 +273,7 @@ def seed_demo_video_generation_job():
                 {"template_name": prompt_structured.name},
                 {"template_name": prompt_summary.name}
             ],
-            "llm_models": [mistral_small.model_id, magistral_small.model_id],
+            "llm_models": [mistral_small.model_id, gpt5_nano.model_id],
             "generation_params": {
                 "temperature": 0.7,
                 "max_tokens": 500
@@ -321,7 +321,7 @@ def seed_demo_video_generation_job():
             ("structured", prompt_structured, "structured"),
             ("narrative", prompt_summary, "narrative"),
         ]:
-            for model in [mistral_small, magistral_small]:
+            for model in [mistral_small, gpt5_nano]:
                 output_text = SAMPLE_OUTPUTS[summary_key][case_idx]
 
                 output = GeneratedOutput(

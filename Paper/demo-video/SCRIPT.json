@@ -1,6 +1,6 @@
 {
   "_comment": "LLARS Demo Video - IJCAI 2026 Demo Track",
-  "_version": "10.0 - Compact intro with live login, in-browser overlays",
+  "_version": "12.0 - GPT-5 Mini eval, pre-seeded evaluation scenario with progress states, IRR data",
   "_duration_target": "4-5 minutes",
   "_design_principles": [
     "Someone is always speaking",
@@ -38,7 +38,7 @@
   "_tts_naming": "TTS models say 'Lars' (without the leading L) because they mispronounce 'LLARS'. In all written text, overlays, and UI, the correct name is 'LLARS'.",
   "steps": [
     {
-      "_section": "=== INTRO (35s) — Warm welcome, introductions, login, title card, roadmap ===",
+      "_section": "=== INTRO (40s) — Welcome, pipeline overview with highlights, credentials, login ===",
       "id": "intro_1",
       "speaker": "moderator",
       "narration": "Hey everyone, I'm Alex — and welcome to this demo of Lars, the LLM Assisted Research System. I'm here with my colleague David, and together we'll walk you through the platform live.",
@@ -50,32 +50,61 @@
         },
         {
           "do": "wait",
-          "seconds": 2.0
+          "seconds": 1.5
         }
       ]
     },
     {
       "id": "intro_2",
       "speaker": "guest",
-      "narration": "Thanks, Alex. Hi everyone — I'm David. Most benchmarks give you a single score, but they miss what actually matters for your domain. Lars lets research teams define their own evaluation criteria and compare LLM outputs side by side. Let me log us in so we can show you.",
+      "narration": "Thanks, Alex. Hi everyone — I'm David. The big challenge we see is that domain experts know what quality means, but developers know how to build the pipelines. These two groups usually work in isolation — passing prompts back and forth in shared documents. Lars bridges that gap.",
       "actions": [
         {
           "do": "hide_title"
         },
         {
           "do": "wait",
-          "seconds": 0.5
+          "seconds": 0.3
         },
         {
-          "do": "login"
+          "do": "show_pipeline"
+        }
+      ]
+    },
+    {
+      "id": "intro_2b",
+      "speaker": "moderator",
+      "narration": "Here's the pipeline. Teams start in Prompt Engineering, where domain experts and developers co-author prompts together in real time. Those prompts feed into Batch Generation, which runs them across multiple models and datasets. And everything flows into Evaluation, where humans and LLMs assess the outputs side by side — with live agreement metrics.",
+      "actions": [
+        {
+          "do": "highlight",
+          "target": "Pipeline Prompt Engineering",
+          "duration": 3.0
+        },
+        {
+          "do": "highlight",
+          "target": "Pipeline Batch Generation",
+          "duration": 3.0
+        },
+        {
+          "do": "highlight",
+          "target": "Pipeline Evaluation",
+          "duration": 3.0
         }
       ]
     },
     {
       "id": "intro_3",
       "speaker": "moderator",
-      "narration": "Great. So here's the plan for today: we'll build a prompt together, run it as a batch across multiple models, and then evaluate the results — all inside Lars.",
+      "narration": "The credentials are on screen if you'd like to follow along. Let me log us in.",
       "actions": [
+        {
+          "do": "hide_title"
+        },
+        {
+          "do": "wait",
+          "seconds": 0.3
+        },
         {
           "do": "show_title",
           "title": "LLARS",
@@ -89,17 +118,24 @@
         {
           "do": "wait",
           "seconds": 2.0
+        },
+        {
+          "do": "hide_title"
+        },
+        {
+          "do": "wait",
+          "seconds": 0.3
+        },
+        {
+          "do": "login"
         }
       ]
     },
     {
       "id": "intro_4",
       "speaker": "guest",
-      "narration": "I've read the paper and I'm really curious to see this in action. The credentials are on screen if you want to follow along — let's dive in!",
+      "narration": "I've read the paper and I'm curious to see this in action — let's dive in!",
       "actions": [
-        {
-          "do": "hide_title"
-        },
         {
           "do": "wait",
           "seconds": 0.3
@@ -336,7 +372,7 @@
     {
       "id": "prompt_eng_5_react",
       "speaker": "guest",
-      "narration": "Ah — those double curly braces, subject and content — the email subject and the full thread — those are variables that get filled with actual data later?",
+      "narration": "Ah — those double curly braces, subject and content — those are placeholders?",
       "actions": [
         {
           "do": "highlight",
@@ -348,7 +384,7 @@
     {
       "id": "prompt_eng_5a",
       "speaker": "moderator",
-      "narration": "Yes, exactly. I can define them here with example values for testing. Let me add a subject and an email thread.",
+      "narration": "Yes — those are template variables. I can fill them with sample data right here to test the prompt. Let me add an email subject and a thread.",
       "actions": [
         {
           "do": "click",
@@ -418,7 +454,7 @@
     {
       "id": "prompt_eng_5a_react",
       "speaker": "guest",
-      "narration": "So during batch generation, you upload a JSON or CSV where the column names match — subject and content. The system fills in each email case automatically.",
+      "narration": "So you define sample values here to try different inputs and make sure the prompt works — without switching to another tool.",
       "actions": [
         {
           "do": "wait",
@@ -429,7 +465,7 @@
     {
       "id": "prompt_eng_5b",
       "speaker": "moderator",
-      "narration": "Exactly. Let me hit Test — the variables get inserted and the LLM generates a response right here.",
+      "narration": "Exactly — quick iteration. Let me hit Test — the variables get inserted and the LLM generates a response right here.",
       "actions": [
         {
           "do": "click",
@@ -502,7 +538,7 @@
       "_comment": "=== LIVE COLLAB DEMO (NEW PROMPT) ===",
       "id": "collab_1",
       "speaker": "moderator",
-      "narration": "Yes they can. I'm opening a second browser now and logging in as a second reviewer. I'll switch the interface to English — Lars is fully available in both German and English.",
+      "narration": "Yes — remember, I added you as a collaborator when we created the prompt. David, go ahead and log in on the right side — you should see it shared with you.",
       "actions": [
         {
           "do": "sync",
@@ -522,7 +558,7 @@
     {
       "id": "collab_2",
       "speaker": "guest",
-      "narration": "So that's me on the right side — I can already see the prompt list. Let me open our Situation Summary.",
+      "narration": "Alright, I'm logged in. And yes — I can see the Situation Summary prompt right here. Let me open it.",
       "actions": [
         {
           "do": "collab_goto",
@@ -545,7 +581,7 @@
     {
       "id": "collab_3",
       "speaker": "moderator",
-      "narration": "A second cursor appears — and every edit is tracked per user. You always know who wrote what.",
+      "narration": "There you go — your cursor appears on my screen. Every edit is tracked per user, so you always know who wrote what.",
       "actions": [
         {
           "do": "collab_focus"
@@ -574,7 +610,7 @@
     {
       "id": "collab_4",
       "speaker": "guest",
-      "narration": "That's like Google Docs for prompts. And the different colors — is that how you tell who wrote what?",
+      "narration": "That's like Google Docs for prompts — no more translation work between disciplines. And the different colors — is that how you tell who wrote what?",
       "actions": [
         {
           "do": "highlight",
@@ -766,7 +802,7 @@
     {
       "id": "providers_3",
       "speaker": "moderator",
-      "narration": "Exactly — credentials stay with the user who added them. Let me save this.",
+      "narration": "Exactly — credentials stay with the user who added them. Let me save and sync the available models.",
       "actions": [
         {
           "do": "click",
@@ -775,6 +811,43 @@
         {
           "do": "wait",
           "seconds": 1.0
+        },
+        {
+          "do": "click",
+          "target": "Sync Models Button",
+          "highlight_before": 0.8
+        },
+        {
+          "do": "wait",
+          "seconds": 2.0
+        }
+      ]
+    },
+    {
+      "id": "providers_4",
+      "speaker": "guest",
+      "narration": "And now you pick which models to enable? I see GPT-5 Nano and GPT-5 in the list.",
+      "actions": [
+        {
+          "do": "highlight",
+          "target": "Model List",
+          "duration": 1.2
+        },
+        {
+          "do": "click",
+          "target": "GPT-5 Nano Model"
+        },
+        {
+          "do": "wait",
+          "seconds": 0.3
+        },
+        {
+          "do": "click",
+          "target": "GPT-5 Model"
+        },
+        {
+          "do": "wait",
+          "seconds": 0.3
         }
       ]
     },
@@ -831,7 +904,7 @@
     {
       "id": "batch_gen_3",
       "speaker": "moderator",
-      "narration": "First, the data. I'll paste ten counselling cases as JSON — real anonymized email threads from psychosocial counselling. Lars also supports file upload and CSV.",
+      "narration": "First, the data. Remember those template variables — subject and content? This is where they come in. I'll paste ten counselling cases as JSON — each entry has a subject and content field that matches our variables. Lars fills them in automatically for every case.",
       "actions": [
         {
           "do": "highlight",
@@ -930,7 +1003,7 @@
     {
       "id": "batch_gen_5",
       "speaker": "moderator",
-      "narration": "Exactly — both selected. Next we pick models. I'll take Mistral and Magistral so we can compare how two models handle counselling case extraction.",
+      "narration": "Exactly — both selected. Next we pick models. I'll take Mistral Small and GPT-5 Nano — one open-source, one commercial — so we can compare how they handle counselling case extraction.",
       "actions": [
         {
           "do": "wait",
@@ -956,12 +1029,12 @@
         },
         {
           "do": "highlight",
-          "target": "Magistral Model",
+          "target": "GPT-5 Nano Batch Model",
           "duration": 1.2
         },
         {
           "do": "click",
-          "target": "Magistral Model"
+          "target": "GPT-5 Nano Batch Model"
         },
         {
           "do": "click",
@@ -1134,7 +1207,7 @@
     {
       "id": "batch_gen_11",
       "speaker": "guest",
-      "narration": "OK, so we have forty situation descriptions from two prompts and two models. How do you decide which combination actually did better?",
+      "narration": "OK, so we have forty situation descriptions — Mistral versus GPT-5 Nano, each with two different prompts. How do you decide which combination actually did better?",
       "actions": [
         {
           "do": "wait",
@@ -1171,7 +1244,7 @@
     {
       "id": "scenario_wizard_2",
       "speaker": "moderator",
-      "narration": "We choose Ranking to compare all four situation descriptions: two prompts by two models.",
+      "narration": "Lars supports Rating with multi-dimensional Likert scales, Labeling, and pairwise Comparison — but for comparing outputs across models, Ranking is the best fit. Let's pick that.",
       "actions": [
         {
           "do": "wait",
@@ -1256,7 +1329,7 @@
     {
       "id": "scenario_wizard_5",
       "speaker": "moderator",
-      "narration": "Exactly. We add ourselves as a human evaluator and select Mistral and Magistral for LLM evaluation.",
+      "narration": "Exactly. We add ourselves as a human evaluator. And for LLM evaluation, I'll pick Magistral — our reasoning model — and GPT-5 Mini, so we get cross-provider comparison without breaking the budget.",
       "actions": [
         {
           "do": "wait",
@@ -1287,12 +1360,12 @@
         },
         {
           "do": "highlight",
-          "target": "Mistral LLM",
+          "target": "Magistral LLM",
           "duration": 1.2
         },
         {
           "do": "click",
-          "target": "Mistral LLM"
+          "target": "Magistral LLM"
         },
         {
           "do": "wait",
@@ -1300,12 +1373,12 @@
         },
         {
           "do": "highlight",
-          "target": "Magistral LLM",
+          "target": "GPT-5 Mini LLM",
           "duration": 1.2
         },
         {
           "do": "click",
-          "target": "Magistral LLM"
+          "target": "GPT-5 Mini LLM"
         },
         {
           "do": "wait",
@@ -1320,7 +1393,7 @@
     {
       "id": "scenario_wizard_6",
       "speaker": "moderator",
-      "narration": "And we create the scenario.",
+      "narration": "And we create the scenario. Now, we actually set one up earlier and both reviewers have been ranking — let me show you the progress.",
       "actions": [
         {
           "do": "wait",
@@ -1331,13 +1404,25 @@
           "target": "Create Scenario"
         },
         {
-          "do": "wait_for",
-          "target": "Scenario Card",
-          "timeout": 20
+          "do": "wait",
+          "seconds": 2.0
         },
         {
-          "do": "click_if_present",
-          "target": "Scenario Card"
+          "do": "goto",
+          "url": "/evaluation"
+        },
+        {
+          "do": "wait",
+          "seconds": 0.8
+        },
+        {
+          "do": "highlight",
+          "target": "Evaluation Scenario Card",
+          "duration": 1.0
+        },
+        {
+          "do": "click",
+          "target": "Evaluation Scenario Card"
         },
         {
           "do": "wait_for",
@@ -1354,7 +1439,7 @@
       "_section": "=== SCENARIO MANAGER (45s) ===",
       "id": "scenario_1",
       "speaker": "moderator",
-      "narration": "We land directly in the Scenario Workspace for the batch we just turned into a scenario.",
+      "narration": "This is the Scenario Workspace. Both IJCAI reviewers have been evaluating, and Magistral and GPT-5 Mini ran as LLM judges.",
       "actions": [
         {
           "do": "wait",
@@ -1370,7 +1455,7 @@
     {
       "id": "scenario_2",
       "speaker": "moderator",
-      "narration": "Overview gives you progress, evaluators, and live status at a glance.",
+      "narration": "Overview shows live progress — you can see how many rankings each evaluator has completed.",
       "actions": [
         {
           "do": "click",
@@ -1395,7 +1480,7 @@
     {
       "id": "scenario_3",
       "speaker": "guest",
-      "narration": "Interesting — so the evaluator list shows humans and LLMs side by side, along with how much they've completed.",
+      "narration": "So the evaluator list shows both reviewers and both LLM judges, along with how far each one has progressed.",
       "actions": [
         {
           "do": "highlight",
@@ -1407,7 +1492,7 @@
     {
       "id": "scenario_4",
       "speaker": "moderator",
-      "narration": "Each case has four situation descriptions — two prompts times two models — so you get 10 rankings with four items each.",
+      "narration": "Each of the ten counselling cases has four situation descriptions — two prompts times two models. Reviewer one has finished eight, reviewer two finished seven — and the LLM evaluators are already done.",
       "actions": [
         {
           "do": "highlight",
@@ -1419,7 +1504,7 @@
     {
       "id": "scenario_5",
       "speaker": "moderator",
-      "narration": "Next, the Data tab shows all data points and their status — you can see what's pending, in progress, or done.",
+      "narration": "The Data tab shows every item's evaluation status. Green means done, yellow means in progress, and grey means not started yet — the evaluator can pick up where they left off at any time.",
       "actions": [
         {
           "do": "click",
@@ -1449,7 +1534,7 @@
     {
       "id": "scenario_6",
       "speaker": "moderator",
-      "narration": "The Evaluation tab shows live agreement metrics — Cohen's kappa, Krippendorff's alpha, Kendall's tau. These update as evaluators submit rankings.",
+      "narration": "The Evaluation tab shows live agreement metrics — Krippendorff's alpha and pairwise agreement. Since both reviewers and both LLMs have been ranking, we already have data.",
       "actions": [
         {
           "do": "click",
@@ -1474,7 +1559,7 @@
     {
       "id": "scenario_6a",
       "speaker": "guest",
-      "narration": "The heatmap shows pairwise agreement between every evaluator — human and LLM side by side. You can see exactly who agrees with whom.",
+      "narration": "The heatmap shows pairwise agreement — reviewer one, reviewer two, Magistral, and GPT-5 Mini, all side by side. You can see exactly where humans and LLMs agree or disagree.",
       "actions": [
         {
           "do": "highlight",
@@ -1574,7 +1659,7 @@
       "_section": "=== HUMAN EVALUATION (20s) ===",
       "id": "human_eval_1",
       "speaker": "moderator",
-      "narration": "Now let's see how the ranking looks for a human evaluator.",
+      "narration": "Now let's see the evaluator's perspective. As reviewer one, I have two rankings left to finish.",
       "actions": [
         {
           "do": "goto",
@@ -1603,7 +1688,7 @@
     {
       "id": "human_eval_2",
       "speaker": "guest",
-      "narration": "Ah, so this is what the evaluator actually sees.",
+      "narration": "I can see which items are done in green, and which are still pending. Let me open one of the remaining ones.",
       "actions": [
         {
           "do": "highlight",
@@ -1693,7 +1778,7 @@
       "_section": "=== CONCLUSION (25s) ===",
       "id": "conclusion_1",
       "speaker": "moderator",
-      "narration": "We showed this with counselling data because that's our research domain — psychologists and social workers use Lars to craft prompts for extracting situation descriptions from client communications. But the platform is domain-agnostic. The same three modules — Prompt Engineering, Batch Generation, and Evaluation — work for medical summaries, legal documents, or any text that needs structured LLM processing and human evaluation.",
+      "narration": "We showed this with counselling data because that's our research domain — psychologists and social workers use Lars to craft prompts for extracting situation descriptions from client communications. In interviews, domain experts told us Lars eliminates the translation work between disciplines — they can directly co-author prompts and run evaluations without needing technical skills. But the platform is domain-agnostic — swap the email threads for medical reports or legal documents, and the workflow stays the same.",
       "actions": [
         {
           "do": "goto",
@@ -1723,7 +1808,7 @@
     {
       "id": "conclusion_2",
       "speaker": "guest",
-      "narration": "Exactly — swap the email threads for radiology reports or contract clauses, and the workflow stays the same. Thanks, Alex.",
+      "narration": "Bridging the gap between domain experts and developers — that's the core idea. Thanks, Alex.",
       "actions": [
         {
           "do": "wait",
@@ -1734,28 +1819,12 @@
     {
       "id": "conclusion_3",
       "speaker": "moderator",
-      "narration": "Thanks David. Lars is open-source — check the repo, try the demo, and let us know what you think.",
+      "narration": "Thanks David. Lars is open-source — the credentials are on screen if you want to try it yourself. Check the repo and let us know what you think!",
       "actions": [
         {
           "do": "show_title",
           "title": "Try LLARS",
-          "subtitle": "github.com/llars-project/llars"
-        },
-        {
-          "do": "wait",
-          "seconds": 1.0
-        }
-      ]
-    },
-    {
-      "id": "outro_1",
-      "speaker": "guest",
-      "narration": "You can try Lars yourself — the demo login credentials are shown on screen.",
-      "actions": [
-        {
-          "do": "show_title",
-          "title": "Try LLARS",
-          "subtitle": "Demo access credentials on screen",
+          "subtitle": "Open-Source · github.com/llars-project/llars",
           "columns": [
             [{"label": "URL", "value": "https://llars.e-beratungsinstitut.de"}],
             [{"label": "Reviewer 1", "value": "ijcai_reviewer_1"}, {"label": "Password", "value": "ijcai_reviewer_123"}],
@@ -1764,7 +1833,7 @@
         },
         {
           "do": "wait",
-          "seconds": 0.8
+          "seconds": 3.0
         }
       ]
     }

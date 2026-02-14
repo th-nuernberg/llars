@@ -82,6 +82,19 @@ def seed():
 
     actions = []
 
+    # --- 0. Deactivate OpenAI models (they should only be via user provider) ---
+    openai_models = LLMModel.query.filter(
+        LLMModel.model_id.like('OpenAI/%')
+    ).all()
+    deactivated = 0
+    for m in openai_models:
+        if m.is_active:
+            m.is_active = False
+            deactivated += 1
+    if deactivated:
+        _db.session.commit()
+        actions.append(f"Deactivated {deactivated} OpenAI model(s)")
+
     demo_user = User.query.filter_by(username=DEMO_USER).first()
     if not demo_user:
         return {'success': False, 'error': f"User '{DEMO_USER}' not found"}

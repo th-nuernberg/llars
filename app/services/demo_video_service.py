@@ -58,7 +58,8 @@ def get_status():
             result['jobs'][name] = {'exists': False}
 
     scenarios = RatingScenarios.query.filter(
-        RatingScenarios.scenario_name.contains("Situation")
+        (RatingScenarios.scenario_name.contains("Situation"))
+        | (RatingScenarios.scenario_name.contains("IJCAI"))
     ).all()
     result['scenarios'] = [
         {'name': s.scenario_name, 'id': s.id, 'created_by': s.created_by}
@@ -297,10 +298,17 @@ def cleanup(include_preseed=False):
             deleted.append(f"Prompt '{PRESEED_PROMPT_NAME}' owner_id={pp.user_id} (+{shares_deleted} shares)")
 
     # --- 4. Delete evaluation scenario and its items/features/rankings ---
-    eval_scenario = RatingScenarios.query.filter_by(
-        scenario_name=EVAL_SCENARIO_NAME
-    ).first()
-    if eval_scenario:
+    # Search by current name AND legacy name (in case of rename between deployments)
+    eval_scenarios = RatingScenarios.query.filter(
+        RatingScenarios.scenario_name.in_([
+            EVAL_SCENARIO_NAME,
+            "Counselling Situation Extraction",  # legacy name
+        ])
+    ).all()
+
+    all_eval_item_ids = []
+
+    for eval_scenario in eval_scenarios:
         # Delete LLM task results for this scenario
         llm_results_deleted = LLMTaskResult.query.filter_by(
             scenario_id=eval_scenario.id
@@ -313,6 +321,8 @@ def cleanup(include_preseed=False):
             si.thread_id for si in
             ScenarioItems.query.filter_by(scenario_id=eval_scenario.id).all()
         ]
+        all_eval_item_ids.extend(scenario_item_ids)
+
         if scenario_item_ids:
             feature_ids = [
                 f.feature_id for f in
@@ -329,32 +339,68 @@ def cleanup(include_preseed=False):
                 ).delete(synchronize_session=False)
                 deleted.append(f"Deleted {features_deleted} features")
 
-        # Delete scenario first (cascades ScenarioUsers, ScenarioItems, ScenarioItemDistribution)
+        # Delete scenario (cascades ScenarioUsers, ScenarioItems, ScenarioItemDistribution)
         _db.session.delete(eval_scenario)
         _db.session.flush()
-        deleted.append(f"Scenario '{EVAL_SCENARIO_NAME}' (id={eval_scenario.id})")
+        deleted.append(f"Scenario '{eval_scenario.scenario_name}' (id={eval_scenario.id})")
 
-        # Now delete orphaned evaluation items and their FK-dependents
-        if scenario_item_ids:
-            for model_cls in [
-                Message, UserMessageRating, UserConsultingCategorySelection,
-                UserMailHistoryRating, ItemDimensionRating, ItemLabelingEvaluation,
-            ]:
-                count = model_cls.query.filter(
-                    model_cls.item_id.in_(scenario_item_ids)
-                ).delete(synchronize_session=False)
-                if count:
-                    deleted.append(f"Deleted {count} {model_cls.__tablename__}")
-
-            items_deleted = EvaluationItem.query.filter(
-                EvaluationItem.item_id.in_(scenario_item_ids)
+    # Delete orphaned evaluation items and their FK-dependents
+    if all_eval_item_ids:
+        for model_cls in [
+            Message, UserMessageRating, UserConsultingCategorySelection,
+            UserMailHistoryRating, ItemDimensionRating, ItemLabelingEvaluation,
+        ]:
+            count = model_cls.query.filter(
+                model_cls.item_id.in_(all_eval_item_ids)
             ).delete(synchronize_session=False)
-            deleted.append(f"Deleted {items_deleted} evaluation items")
+            if count:
+                deleted.append(f"Deleted {count} {model_cls.__tablename__}")
+
+        items_deleted = EvaluationItem.query.filter(
+            EvaluationItem.item_id.in_(all_eval_item_ids)
+        ).delete(synchronize_session=False)
+        deleted.append(f"Deleted {items_deleted} evaluation items")
+
+    # Also clean up any demo evaluation items by known chat_id range (safety net)
+    demo_items = EvaluationItem.query.filter(
+        EvaluationItem.chat_id.between(20000, 20099),
+        EvaluationItem.institut_id == 99,
+    ).all()
+    if demo_items:
+        demo_item_ids = [i.item_id for i in demo_items]
+        # Clean FK references first
+        for model_cls in [
+            Message, UserMessageRating, UserConsultingCategorySelection,
+            UserMailHistoryRating, ItemDimensionRating, ItemLabelingEvaluation,
+        ]:
+            model_cls.query.filter(
+                model_cls.item_id.in_(demo_item_ids)
+            ).delete(synchronize_session=False)
+        demo_feature_ids = [
+            f.feature_id for f in
+            Feature.query.filter(Feature.item_id.in_(demo_item_ids)).all()
+        ]
+        if demo_feature_ids:
+            UserFeatureRanking.query.filter(
+                UserFeatureRanking.feature_id.in_(demo_feature_ids)
+            ).delete(synchronize_session=False)
+            Feature.query.filter(
+                Feature.feature_id.in_(demo_feature_ids)
+            ).delete(synchronize_session=False)
+        # Delete ScenarioItems references
+        ScenarioItems.query.filter(
+            ScenarioItems.thread_id.in_(demo_item_ids)
+        ).delete(synchronize_session=False)
+        EvaluationItem.query.filter(
+            EvaluationItem.item_id.in_(demo_item_ids)
+        ).delete(synchronize_session=False)
+        deleted.append(f"Safety-net: deleted {len(demo_items)} demo evaluation items (chat_id 20000-20099)")
 
     # --- 5. Delete other demo-created scenarios ---
     preseed_job = GenerationJob.query.filter_by(name=PRESEED_JOB_NAME).first()
     preseed_target_id = preseed_job.target_scenario_id if preseed_job else None
 
+    deleted_scenario_ids = {s.id for s in eval_scenarios}
     demo_scenarios = RatingScenarios.query.filter(
         RatingScenarios.scenario_name.contains("Situation")
     ).all()
@@ -362,7 +408,7 @@ def cleanup(include_preseed=False):
     for scenario in demo_scenarios:
         if not include_preseed and preseed_target_id and scenario.id == preseed_target_id:
             continue
-        if eval_scenario and scenario.id == eval_scenario.id:
+        if scenario.id in deleted_scenario_ids:
             continue  # Already deleted above
         _db.session.delete(scenario)
         deleted.append(f"Scenario '{scenario.scenario_name}' (id={scenario.id})")

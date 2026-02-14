@@ -84,7 +84,7 @@
 
     <!-- Tab Navigation -->
     <div class="tab-navigation">
-      <LTabs v-model="activeTab" :tabs="tabs" />
+      <LTabs v-model="activeTab" :tabs="tabs" variant="pill" />
     </div>
 
     <!-- Tab Content -->
@@ -556,7 +556,6 @@ onMounted(async () => {
   gap: 24px;
   padding: 12px 24px;
   background-color: rgb(var(--v-theme-surface));
-  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.08);
 }
 
 .stat-item {
@@ -624,16 +623,19 @@ onMounted(async () => {
 /* Tab Navigation */
 .tab-navigation {
   flex-shrink: 0;
-  padding: 0 24px;
+  padding: 8px 24px 12px;
   background-color: rgb(var(--v-theme-surface));
-  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+}
+
+.tab-navigation :deep(.l-tabs) {
+  margin-bottom: 0;
 }
 
 /* Tab Content */
 .tab-content {
   flex: 1;
   overflow-y: auto;
-  padding: 24px;
+  padding: 20px 24px;
 }
 
 /* Loading State */

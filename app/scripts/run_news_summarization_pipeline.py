@@ -152,8 +152,8 @@ def main():
             },
             "prompts": [{"template_id": prompt.prompt_id, "variant_name": "Standard", "variables": {}}],
             "llm_models": [
-                "mistralai/Mistral-Small-3.2-24B-Instruct-2506",
-                "mistralai/Magistral-Small-2509"
+                "LiteLLM/mistralai/Mistral-Small-3.2-24B-Instruct-2506",
+                "LiteLLM/mistralai/Magistral-Small-2509"
             ],
             "generation_params": {"temperature": 0.3, "max_tokens": 250},
             "limits": {"max_parallel": 2, "max_cost_usd": 5.0, "max_retries": 2}
@@ -194,8 +194,8 @@ def main():
 
         # LLM Assessors - die Modelle die die Zusammenfassungen generiert haben
         llm_assessors = [
-            "mistralai/Mistral-Small-3.2-24B-Instruct-2506",
-            "mistralai/Magistral-Small-2509"
+            "LiteLLM/mistralai/Mistral-Small-3.2-24B-Instruct-2506",
+            "LiteLLM/mistralai/Magistral-Small-2509"
         ]
 
         ranking_config = {

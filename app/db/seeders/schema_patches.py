@@ -1060,9 +1060,131 @@ def apply_schema_patches(db) -> None:
             ),
         )
 
+        # =========================================================================
+        # Provider-Prefix Routing: Migrate model IDs to prefixed format
+        # =========================================================================
+        changed |= _migrate_model_id_prefixes(db)
+
         if changed:
             print("✅ Applied schema patches")
     except Exception as exc:
         db.session.rollback()
         print(f"⚠️  Schema patch failed: {exc}")
         raise
+
+
+def _migrate_model_id_prefixes(db) -> bool:
+    """
+    Idempotent migration: add provider prefixes to LLM model IDs.
+
+    Maps:
+      gpt-5-nano → OpenAI/gpt-5-nano
+      gpt-5      → OpenAI/gpt-5
+      gpt-5.2    → OpenAI/gpt-5.2
+      mistralai/Mistral-Small-3.2-24B-Instruct-2506 → LiteLLM/mistralai/...
+      mistralai/Magistral-Small-2509                 → LiteLLM/mistralai/...
+
+    Skips rows that already have the prefix (idempotent).
+    Does NOT touch embedding/reranker model IDs.
+    """
+    PREFIX_MAP = {
+        'gpt-5-nano': 'OpenAI/gpt-5-nano',
+        'gpt-5': 'OpenAI/gpt-5',
+        'gpt-5.2': 'OpenAI/gpt-5.2',
+        'mistralai/Mistral-Small-3.2-24B-Instruct-2506': 'LiteLLM/mistralai/Mistral-Small-3.2-24B-Instruct-2506',
+        'mistralai/Magistral-Small-2509': 'LiteLLM/mistralai/Magistral-Small-2509',
+    }
+
+    changed = False
+    try:
+        for old_id, new_id in PREFIX_MAP.items():
+            # 1. llm_models.model_id
+            result = db.session.execute(
+                text("UPDATE llm_models SET model_id = :new WHERE model_id = :old"),
+                {"old": old_id, "new": new_id},
+            )
+            if result.rowcount > 0:
+                changed = True
+                print(f"  [Prefix Migration] llm_models: {old_id} → {new_id}")
+
+            # 2. generated_outputs.llm_model_name
+            if _column_exists(db, 'generated_outputs', 'llm_model_name'):
+                result = db.session.execute(
+                    text("UPDATE generated_outputs SET llm_model_name = :new WHERE llm_model_name = :old"),
+                    {"old": old_id, "new": new_id},
+                )
+                if result.rowcount > 0:
+                    changed = True
+
+            # 3. llm_usage_tracking.model_id
+            if _table_exists(db, 'llm_usage_tracking'):
+                result = db.session.execute(
+                    text("UPDATE llm_usage_tracking SET model_id = :new WHERE model_id = :old"),
+                    {"old": old_id, "new": new_id},
+                )
+                if result.rowcount > 0:
+                    changed = True
+
+            # 4. users.llm_model_id
+            if _column_exists(db, 'users', 'llm_model_id'):
+                result = db.session.execute(
+                    text("UPDATE users SET llm_model_id = :new WHERE llm_model_id = :old"),
+                    {"old": old_id, "new": new_id},
+                )
+                if result.rowcount > 0:
+                    changed = True
+
+            # 5. chatbots.model_name
+            if _column_exists(db, 'chatbots', 'model_name'):
+                result = db.session.execute(
+                    text("UPDATE chatbots SET model_name = :new WHERE model_name = :old"),
+                    {"old": old_id, "new": new_id},
+                )
+                if result.rowcount > 0:
+                    changed = True
+
+            # 6. llm_task_results.model_id
+            if _table_exists(db, 'llm_task_results'):
+                result = db.session.execute(
+                    text("UPDATE llm_task_results SET model_id = :new WHERE model_id = :old"),
+                    {"old": old_id, "new": new_id},
+                )
+                if result.rowcount > 0:
+                    changed = True
+
+        # 7. generation_jobs.config_json["llm_models"] (JSON array)
+        if _table_exists(db, 'generation_jobs') and _column_exists(db, 'generation_jobs', 'config_json'):
+            for old_id, new_id in PREFIX_MAP.items():
+                # Use JSON_SEARCH to find and replace within llm_models arrays
+                result = db.session.execute(
+                    text(
+                        """
+                        UPDATE generation_jobs
+                        SET config_json = JSON_REPLACE(
+                            config_json,
+                            REPLACE(
+                                JSON_UNQUOTE(JSON_SEARCH(config_json, 'one', :old, NULL, '$.llm_models')),
+                                '"', ''
+                            ),
+                            :new
+                        )
+                        WHERE JSON_SEARCH(config_json, 'one', :old2, NULL, '$.llm_models') IS NOT NULL
+                        """
+                    ),
+                    {"old": old_id, "new": new_id, "old2": old_id},
+                )
+                if result.rowcount > 0:
+                    changed = True
+                    print(f"  [Prefix Migration] generation_jobs config_json: {old_id} → {new_id}")
+
+        if changed:
+            db.session.commit()
+            print("  [Prefix Migration] Model ID prefix migration completed")
+        else:
+            print("  [Prefix Migration] No model IDs to migrate (already prefixed or empty)")
+
+    except Exception as exc:
+        db.session.rollback()
+        print(f"  ⚠️ Prefix migration failed (non-fatal): {exc}")
+
+    return changed

@@ -146,7 +146,10 @@ class LLMResponseGenerator:
                 model_name = model_mapping.get(llm_type)
 
                 model_entry = LLMModel.get_by_model_id(model_name) if model_name else None
-                client = LLMClientFactory.get_client_for_model(model_name) if model_entry else None
+                if model_entry:
+                    client, api_model_name = LLMClientFactory.resolve_client_and_model_id(model_name)
+                else:
+                    client, api_model_name = None, model_name
 
             if client is None:
                 client = OpenAI(
@@ -155,7 +158,7 @@ class LLMResponseGenerator:
                 )
 
             stream = client.chat.completions.create(
-                model=model_name,
+                model=api_model_name,
                 messages=[{
                     'role': 'system',
                     'content': message

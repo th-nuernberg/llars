@@ -113,7 +113,7 @@ Wichtig:
             if provider and not provider.is_openai_compatible:
                 raise RuntimeError("Vision-LLM requires an OpenAI-compatible provider for image inputs")
 
-            self.client = LLMClientFactory.get_client_for_model(self.model)
+            self.client, self.model = LLMClientFactory.resolve_client_and_model_id(self.model)
 
     async def extract_structured_data(
         self,

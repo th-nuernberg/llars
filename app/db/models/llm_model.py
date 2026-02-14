@@ -294,7 +294,7 @@ class LLMModel(db.Model):
 # Default models to seed into the database
 DEFAULT_LLM_MODELS = [
     {
-        'model_id': 'mistralai/Mistral-Small-3.2-24B-Instruct-2506',
+        'model_id': 'LiteLLM/mistralai/Mistral-Small-3.2-24B-Instruct-2506',
         'display_name': 'Mistral Small 3.2 (24B)',
         'provider': 'mistral',
         'description': 'Schnelles und effizientes Modell für allgemeine Chat- und RAG-Anwendungen. Gute Balance zwischen Geschwindigkeit und Qualität.',
@@ -311,7 +311,7 @@ DEFAULT_LLM_MODELS = [
         'is_active': True,
     },
     {
-        'model_id': 'mistralai/Magistral-Small-2509',
+        'model_id': 'LiteLLM/mistralai/Magistral-Small-2509',
         'display_name': 'Magistral Small (Vision + Reasoning)',
         'provider': 'mistral',
         'description': 'Multimodales Modell mit Vision- und Reasoning-Fähigkeiten. Ideal für Bildanalyse und komplexe Schlussfolgerungen.',
@@ -329,7 +329,7 @@ DEFAULT_LLM_MODELS = [
     },
     # === OpenAI GPT-5 Models ===
     {
-        'model_id': 'gpt-5-nano',
+        'model_id': 'OpenAI/gpt-5-nano',
         'display_name': 'GPT-5 Nano',
         'provider': 'openai',
         'description': 'OpenAI fastest and cheapest GPT-5 variant. Great for summarization and classification.',
@@ -346,7 +346,7 @@ DEFAULT_LLM_MODELS = [
         'is_active': True,
     },
     {
-        'model_id': 'gpt-5',
+        'model_id': 'OpenAI/gpt-5',
         'display_name': 'GPT-5',
         'provider': 'openai',
         'description': 'OpenAI flagship model with strong reasoning and instruction following.',
@@ -363,7 +363,7 @@ DEFAULT_LLM_MODELS = [
         'is_active': True,
     },
     {
-        'model_id': 'gpt-5.2',
+        'model_id': 'OpenAI/gpt-5.2',
         'display_name': 'GPT-5.2',
         'provider': 'openai',
         'description': 'Latest OpenAI model with improved reasoning and coding capabilities.',

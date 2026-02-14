@@ -123,10 +123,10 @@ def find_llm_entities(text: str, model: Optional[str] = None, max_entities: int 
         raise RuntimeError("LLM is not configured (missing API key/base URL)")
 
     model_id = _resolve_llm_model_id(model)
-    client = LLMClientFactory.get_client_for_model(model_id)
+    client, api_model_id = LLMClientFactory.resolve_client_and_model_id(model_id)
 
     response = client.chat.completions.create(
-        model=model_id,
+        model=api_model_id,
         messages=[
             {"role": "system", "content": LLM_DETECTION_PROMPT},
             {"role": "user", "content": f"ORIGINALTEXT:\n{text}"},

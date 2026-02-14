@@ -211,14 +211,13 @@ Bitte setze die Anmerkung um und gib das Ergebnis im JSON-Format zurück."""
         import json
 
         # Get a client (will use default model if model_id is None)
-        client = LLMClientFactory.get_client_for_model(model_id)
-        actual_model_id = model_id or LLMClientFactory.get_default_model_id()
-
-        if not client or not actual_model_id:
+        effective_id = model_id or LLMClientFactory.get_default_model_id()
+        if not effective_id:
             raise ValueError("No LLM client available")
+        client, api_model_id = LLMClientFactory.resolve_client_and_model_id(effective_id)
 
         response = client.chat.completions.create(
-            model=actual_model_id,
+            model=api_model_id,
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt},
@@ -373,12 +372,11 @@ Bitte setze die Anmerkung um und gib das Ergebnis im JSON-Format zurück."""
         )
 
         # Get LLM client BEFORE starting background thread (requires app context)
-        client = LLMClientFactory.get_client_for_model(model_id)
-        actual_model_id = model_id or LLMClientFactory.get_default_model_id()
-
-        if not client or not actual_model_id:
+        effective_id = model_id or LLMClientFactory.get_default_model_id()
+        if not effective_id:
             on_error("No LLM client available")
             return False
+        client, api_model_id = LLMClientFactory.resolve_client_and_model_id(effective_id)
 
         # Initialize stream state
         with _streams_lock:
@@ -395,7 +393,7 @@ Bitte setze die Anmerkung um und gib das Ergebnis im JSON-Format zurück."""
 
                 # Stream the response
                 stream = client.chat.completions.create(
-                    model=actual_model_id,
+                    model=api_model_id,
                     messages=[
                         {"role": "system", "content": system_prompt},
                         {"role": "user", "content": user_prompt},

@@ -45,6 +45,16 @@ class LLMProviderService:
         )
 
     @staticmethod
+    def get_provider_by_type(provider_type: str) -> Optional[LLMProvider]:
+        """Get the first active provider matching the given type."""
+        return (
+            LLMProvider.query
+            .filter_by(provider_type=provider_type, is_active=True)
+            .order_by(LLMProvider.is_default.desc(), LLMProvider.id.asc())
+            .first()
+        )
+
+    @staticmethod
     def list_providers(include_inactive: bool = True) -> List[LLMProvider]:
         LLMProviderService.ensure_env_providers()
         query = LLMProvider.query

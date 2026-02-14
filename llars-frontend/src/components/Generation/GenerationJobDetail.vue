@@ -747,7 +747,8 @@ const sourceType = computed(() => jobConfig.value?.sources?.type || 'unknown')
 
 const sourceLabel = computed(() => {
   const labels = {
-    scenario: t('generation.wizard.step1.scenarioSource'),
+    from_job: t('generation.wizard.step1.fromJobSource'),
+    scenario: 'Scenario',
     manual: t('generation.wizard.step1.manualSource'),
     prompt_only: t('generation.wizard.step1.promptOnlySource')
   }

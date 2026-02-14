@@ -411,6 +411,7 @@ class GenerationJob(db.Model):
     def to_summary_dict(self) -> Dict[str, Any]:
         """Convert to lightweight summary for list views."""
         config = self.config_json or {}
+        sources = config.get('sources', {})
         return {
             'id': self.id,
             'name': self.name,
@@ -426,6 +427,10 @@ class GenerationJob(db.Model):
             'config_json': {
                 'prompts': config.get('prompts', []),
                 'llm_models': config.get('llm_models', []),
+                'sources': {
+                    'type': sources.get('type'),
+                    'item_count': len(sources.get('items', [])) if sources.get('type') == 'manual' else None,
+                },
             },
         }
 

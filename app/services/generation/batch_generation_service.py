@@ -243,7 +243,7 @@ class BatchGenerationService:
         # Validate sources
         sources = config["sources"]
         source_type = sources.get("type")
-        if source_type not in ("scenario", "items", "custom", "manual", "prompt_only"):
+        if source_type not in ("scenario", "items", "custom", "manual", "prompt_only", "from_job"):
             raise ValidationError(f"Invalid source type: {source_type}")
 
         if source_type == "scenario" and not sources.get("scenario_id"):
@@ -257,6 +257,9 @@ class BatchGenerationService:
 
         if source_type == "manual" and not sources.get("items"):
             raise ValidationError("Source type 'manual' requires 'items'")
+
+        if source_type == "from_job" and not sources.get("job_id"):
+            raise ValidationError("Source type 'from_job' requires 'job_id'")
 
         # Validate prompts
         for i, prompt_cfg in enumerate(config["prompts"]):
@@ -391,6 +394,73 @@ class BatchGenerationService:
                 manual_structured_data.append(item_data)
             source_items = [None] * len(custom_texts)
             logger.debug("[BatchGen] Using %d manual items", len(custom_texts))
+
+        elif source_type == "from_job":
+            source_job_id = sources["job_id"]
+            source_job = GenerationJob.query.get(source_job_id)
+            if not source_job:
+                raise ValidationError(f"Source job {source_job_id} not found")
+
+            source_config = source_job.config_json or {}
+            source_sources = source_config.get("sources", {})
+            original_type = source_sources.get("type")
+
+            if original_type == "from_job":
+                raise ValidationError("Cannot chain from_job sources. Reference the original job instead.")
+
+            if original_type == "scenario":
+                scenario_id = source_sources["scenario_id"]
+                scenario_items = ScenarioItems.query.filter_by(scenario_id=scenario_id).all()
+                source_items = [si.item_id for si in scenario_items]
+                custom_texts = [None] * len(source_items)
+            elif original_type == "manual":
+                manual_items = source_sources.get("items", [])
+                for item in manual_items:
+                    item_data = {"subject": "", "messages": []}
+                    if isinstance(item, dict):
+                        item_data.update(item)
+                    text = ""
+                    if isinstance(item, dict):
+                        if item.get("input"):
+                            text = item["input"]
+                        elif item.get("content"):
+                            text = item["content"]
+                        elif item.get("messages"):
+                            messages = item["messages"]
+                            item_data["messages"] = messages
+                            item_data["subject"] = item.get("subject", "")
+                            parts = []
+                            if item.get("subject"):
+                                parts.append(f"Betreff: {item['subject']}")
+                            for msg in messages:
+                                role = msg.get("role", "")
+                                content = msg.get("content", "")
+                                if role and content:
+                                    parts.append(f"{role}: {content}")
+                                elif content:
+                                    parts.append(content)
+                            text = "\n\n".join(parts)
+                    else:
+                        text = str(item)
+                    if not item_data.get("subject") and item_data.get("title"):
+                        item_data["subject"] = item_data["title"]
+                    custom_texts.append(text)
+                    manual_structured_data.append(item_data)
+                source_items = [None] * len(custom_texts)
+            elif original_type == "prompt_only":
+                custom_texts = [""]
+                source_items = [None]
+            elif original_type == "items":
+                source_items = source_sources.get("item_ids", [])
+                custom_texts = [None] * len(source_items)
+            elif original_type == "custom":
+                custom_texts = source_sources.get("custom_texts", [])
+                source_items = [None] * len(custom_texts)
+            else:
+                raise ValidationError(f"Unknown original source type '{original_type}' in job {source_job_id}")
+
+            logger.debug("[BatchGen] Resolved %d items from source job %d (original type: %s)",
+                         len(source_items), source_job_id, original_type)
 
         elif source_type == "prompt_only":
             # No input data - just run prompt directly

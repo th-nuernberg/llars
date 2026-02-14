@@ -17,7 +17,7 @@ PRESEED_PROMPT_NAME = "Structured Situation Analysis"
 PRESEED_JOB_NAME = "Counselling Situation Extraction"
 LIVE_PROMPT_NAME = "Situation Summary"
 LIVE_JOB_NAME = "Live Collab Batch Job"
-EVAL_SCENARIO_NAME = "Counselling Situation Extraction"
+EVAL_SCENARIO_NAME = "IJCAI Counselling Evaluation"
 
 DEMO_USER = "ijcai_reviewer_1"
 COLLAB_USER = "ijcai_reviewer_2"

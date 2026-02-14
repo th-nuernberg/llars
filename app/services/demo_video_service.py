@@ -774,9 +774,25 @@ def _seed_evaluation_scenario(db_session, demo_user, collab_user):
                 count += 1
         return count
 
-    # Reviewer 1 (demo_user): 8 of 10 items ranked (leaves 2 for live demo)
+    # Reviewer 1 (demo_user): 8 fully ranked + item 9 partially (2/4 features)
     r1_count = _add_rankings(demo_user.id, ranking_patterns, 8)
-    actions.append(f"Added {r1_count} rankings for {DEMO_USER} (8/10 items)")
+    # Add 2 partial rankings for item 9 (case_idx=8) → in_progress
+    item_9 = items[8] if len(items) > 8 else None
+    if item_9:
+        item_9_features = item_features.get(item_9.item_id, [])
+        pattern_9 = ranking_patterns[8]
+        for feat_idx in range(min(2, len(item_9_features))):
+            ranking = UserFeatureRanking(
+                user_id=demo_user.id,
+                feature_id=item_9_features[feat_idx].feature_id,
+                ranking_content=float(feat_idx + 1),
+                type_id=ft.type_id,
+                llm_id=item_9_features[feat_idx].llm_id,
+                bucket=pattern_9[feat_idx],
+            )
+            db_session.session.add(ranking)
+            r1_count += 1
+    actions.append(f"Added {r1_count} rankings for {DEMO_USER} (8 done + item 9 in_progress)")
 
     # Reviewer 2 (collab_user): 7 of 10 items ranked
     if collab_user:

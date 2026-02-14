@@ -162,6 +162,52 @@ export function usePromptGitDiff(promptId, users = {}) {
     userChanges.value = {}
   }
 
+  /**
+   * Compute per-block character diffs between baseline and current content.
+   * Returns { blockTitle: { insertions: N, deletions: N, isNew?: bool, isDeleted?: bool } }
+   */
+  function computeBlockCharDiffs(currentContentJson) {
+    let baselineObj, currentObj
+    try {
+      baselineObj = baseline.value ? JSON.parse(baseline.value) : {}
+      currentObj = JSON.parse(currentContentJson || '{}')
+    } catch {
+      return {}
+    }
+
+    const result = {}
+    const allKeys = new Set([...Object.keys(baselineObj), ...Object.keys(currentObj)])
+
+    for (const title of allKeys) {
+      const inBaseline = title in baselineObj
+      const inCurrent = title in currentObj
+      const oldText = baselineObj[title] || ''
+      const newText = currentObj[title] || ''
+
+      const isNew = !inBaseline && inCurrent
+      const isDeleted = inBaseline && !inCurrent
+
+      if (oldText === newText && !isNew && !isDeleted) {
+        result[title] = { insertions: 0, deletions: 0 }
+        continue
+      }
+
+      const diffs = dmp.diff_main(oldText, newText)
+      dmp.diff_cleanupSemantic(diffs)
+
+      let ins = 0
+      let del = 0
+      for (const [op, text] of diffs) {
+        if (op === DIFF_INSERT) ins += text.length
+        else if (op === DIFF_DELETE) del += text.length
+      }
+
+      result[title] = { insertions: ins, deletions: del, ...(isNew && { isNew: true }), ...(isDeleted && { isDeleted: true }) }
+    }
+
+    return result
+  }
+
   return {
     baseline,
     baselineCommitId,
@@ -170,6 +216,7 @@ export function usePromptGitDiff(promptId, users = {}) {
     userChanges,
     loadBaseline,
     computeDiffSummary,
+    computeBlockCharDiffs,
     trackUserChange,
     getChangeSummary,
     hasChanges,

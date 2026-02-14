@@ -11,6 +11,9 @@
           <div class="header-left">
             <LIcon size="24" color="primary" class="mr-2">mdi-variable</LIcon>
             <span class="header-title">{{ $t('promptEngineering.variables.title') }}</span>
+            <LTooltip :text="$t('promptEngineering.tooltips.variableManager')">
+              <LIcon size="16" class="ml-1" color="grey">mdi-information-outline</LIcon>
+            </LTooltip>
             <LTag v-if="variablesList.length > 0" variant="info" size="small" class="ml-2">
               {{ variablesList.length }}
             </LTag>
@@ -22,11 +25,85 @@
       </template>
 
       <div class="dialog-body">
-        <!-- New Variable Form -->
+        <!-- Existing Variables List (TOP) -->
+        <div class="variables-list-section">
+          <div v-if="variablesList.length === 0" class="empty-state">
+            <LIcon size="48" color="grey-lighten-1">mdi-variable-box</LIcon>
+            <p>{{ $t('promptEngineering.variables.noVariables') }}</p>
+            <p class="hint">{{ $t('promptEngineering.variables.noVariablesHint') }}</p>
+          </div>
+
+          <div v-else class="variables-list">
+            <div
+              v-for="variable in variablesList"
+              :key="variable.name"
+              class="variable-item"
+              :class="{ 'is-editing': editingVar === variable.name }"
+            >
+              <!-- View Mode -->
+              <template v-if="editingVar !== variable.name">
+                <div class="variable-header">
+                  <div class="variable-tag">
+                    <span class="tag-name">{{ formatTag(variable.name) }}</span>
+                    <LTooltip :text="$t('promptEngineering.tooltips.variableUsage')">
+                      <LIcon size="12" class="ml-1" color="grey">mdi-information-outline</LIcon>
+                    </LTooltip>
+                  </div>
+                  <v-spacer />
+                  <div class="variable-actions">
+                    <v-btn icon size="x-small" variant="text" @click="startEdit(variable)">
+                      <LIcon size="16">mdi-pencil</LIcon>
+                    </v-btn>
+                    <v-btn icon size="x-small" variant="text" color="error" @click="handleDelete(variable.name)">
+                      <LIcon size="16">mdi-delete</LIcon>
+                    </v-btn>
+                  </div>
+                </div>
+                <div class="variable-content-preview">
+                  {{ truncate(variable.content, 150) }}
+                </div>
+              </template>
+
+              <!-- Edit Mode -->
+              <template v-else>
+                <div class="variable-header">
+                  <div class="variable-tag">
+                    <span class="tag-name">{{ formatTag(variable.name) }}</span>
+                  </div>
+                </div>
+                <div class="edit-form">
+                  <v-textarea
+                    v-model="editContent"
+                    :label="$t('promptEngineering.variables.content')"
+                    density="compact"
+                    variant="outlined"
+                    rows="3"
+                    auto-grow
+                    hide-details
+                  />
+                  <div class="edit-actions">
+                    <LBtn variant="primary" size="small" @click="saveEdit(variable.name)">
+                      <LIcon start size="14">mdi-check</LIcon>
+                      {{ $t('common.save') }}
+                    </LBtn>
+                    <LBtn variant="text" size="small" @click="cancelEdit">
+                      {{ $t('common.cancel') }}
+                    </LBtn>
+                  </div>
+                </div>
+              </template>
+            </div>
+          </div>
+        </div>
+
+        <!-- New Variable Form (BOTTOM, dashed border) -->
         <div class="new-variable-section">
           <div class="section-title">
             <LIcon size="16" class="mr-1">mdi-plus-circle</LIcon>
-            {{ $t('promptEngineering.variables.createNew') }}
+            {{ $t('promptEngineering.variables.newVariable') }}
+            <LTooltip :text="$t('promptEngineering.tooltips.newVariable')">
+              <LIcon size="16" class="ml-1" color="grey">mdi-information-outline</LIcon>
+            </LTooltip>
           </div>
 
           <div class="new-variable-form">
@@ -52,11 +129,11 @@
             <v-textarea
               ref="contentInput"
               v-model="newVarContent"
-              :label="$t('promptEngineering.variables.content')"
-              :placeholder="$t('promptEngineering.variables.contentPlaceholder')"
+              :label="$t('promptEngineering.variables.defaultContent')"
+              :placeholder="$t('promptEngineering.variables.defaultContentPlaceholder')"
               density="compact"
               variant="outlined"
-              rows="3"
+              rows="2"
               auto-grow
               hide-details
               class="content-input"
@@ -71,77 +148,8 @@
               class="create-btn"
             >
               <LIcon start>mdi-plus</LIcon>
-              {{ $t('promptEngineering.variables.create') }}
+              {{ $t('promptEngineering.variables.addVariable') }}
             </LBtn>
-          </div>
-        </div>
-
-        <!-- Variables List -->
-        <div class="variables-list-section">
-          <div class="section-title">
-            <LIcon size="16" class="mr-1">mdi-format-list-bulleted</LIcon>
-            {{ $t('promptEngineering.variables.existing') }}
-          </div>
-
-          <div v-if="variablesList.length === 0" class="empty-state">
-            <LIcon size="48" color="grey-lighten-1">mdi-variable-box</LIcon>
-            <p>{{ $t('promptEngineering.variables.noVariables') }}</p>
-            <p class="hint">{{ $t('promptEngineering.variables.noVariablesHint') }}</p>
-          </div>
-
-          <div v-else class="variables-list">
-            <div
-              v-for="variable in variablesList"
-              :key="variable.name"
-              class="variable-item"
-              :class="{ 'is-editing': editingVar === variable.name }"
-            >
-              <!-- View Mode -->
-              <template v-if="editingVar !== variable.name">
-                <div class="variable-header">
-                  <div class="variable-tag">
-                    <LIcon size="14" class="drag-icon">mdi-drag-vertical</LIcon>
-                    <span class="tag-name">{{ formatTag(variable.name) }}</span>
-                  </div>
-                  <v-spacer />
-                  <div class="variable-actions">
-                    <v-btn icon size="x-small" variant="text" @click="startEdit(variable)">
-                      <LIcon size="16">mdi-pencil</LIcon>
-                    </v-btn>
-                    <v-btn icon size="x-small" variant="text" color="error" @click="handleDelete(variable.name)">
-                      <LIcon size="16">mdi-delete</LIcon>
-                    </v-btn>
-                  </div>
-                </div>
-                <div class="variable-content-preview">
-                  {{ truncate(variable.content, 150) }}
-                </div>
-              </template>
-
-              <!-- Edit Mode -->
-              <template v-else>
-                <div class="edit-form">
-                  <v-textarea
-                    v-model="editContent"
-                    :label="$t('promptEngineering.variables.content')"
-                    density="compact"
-                    variant="outlined"
-                    rows="3"
-                    auto-grow
-                    hide-details
-                  />
-                  <div class="edit-actions">
-                    <LBtn variant="primary" size="small" @click="saveEdit(variable.name)">
-                      <LIcon start size="14">mdi-check</LIcon>
-                      {{ $t('common.save') }}
-                    </LBtn>
-                    <LBtn variant="text" size="small" @click="cancelEdit">
-                      {{ $t('common.cancel') }}
-                    </LBtn>
-                  </div>
-                </div>
-              </template>
-            </div>
           </div>
         </div>
 
@@ -371,49 +379,7 @@ watch(() => props.modelValue, (isOpen) => {
   margin-bottom: 12px;
 }
 
-/* New Variable Section */
-.new-variable-section {
-  background: rgba(var(--v-theme-primary), 0.05);
-  border: 1px solid rgba(var(--v-theme-primary), 0.2);
-  border-radius: 12px;
-  padding: 16px;
-}
-
-.new-variable-form {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.name-input {
-  max-width: 300px;
-}
-
-.name-input :deep(.v-field) {
-  border-radius: 8px 3px 8px 3px;
-}
-
-.tag-preview {
-  font-family: 'Roboto Mono', monospace;
-  font-weight: 600;
-  color: rgb(var(--v-theme-primary));
-  font-size: 0.9rem;
-}
-
-.content-input :deep(.v-field) {
-  border-radius: 8px;
-}
-
-.error-message {
-  font-size: 0.75rem;
-  color: rgb(var(--v-theme-error));
-}
-
-.create-btn {
-  align-self: flex-start;
-}
-
-/* Variables List */
+/* Variables List (TOP) */
 .variables-list-section {
   flex: 1;
 }
@@ -475,14 +441,10 @@ watch(() => props.modelValue, (isOpen) => {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  padding: 4px 10px 4px 6px;
+  padding: 4px 10px;
   background: linear-gradient(135deg, rgba(var(--v-theme-primary), 0.15), rgba(var(--v-theme-primary), 0.08));
   border: 1px solid rgba(var(--v-theme-primary), 0.3);
   border-radius: 6px 2px 6px 2px;
-}
-
-.drag-icon {
-  color: rgba(var(--v-theme-on-surface), 0.4);
 }
 
 .tag-name {
@@ -524,6 +486,48 @@ watch(() => props.modelValue, (isOpen) => {
 .edit-actions {
   display: flex;
   gap: 8px;
+}
+
+/* New Variable Section (BOTTOM, dashed border) */
+.new-variable-section {
+  background: rgba(var(--v-theme-on-surface), 0.02);
+  border: 2px dashed rgba(var(--v-theme-on-surface), 0.15);
+  border-radius: 12px;
+  padding: 16px;
+}
+
+.new-variable-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.name-input {
+  max-width: 300px;
+}
+
+.name-input :deep(.v-field) {
+  border-radius: 8px 3px 8px 3px;
+}
+
+.tag-preview {
+  font-family: 'Roboto Mono', monospace;
+  font-weight: 600;
+  color: rgb(var(--v-theme-primary));
+  font-size: 0.9rem;
+}
+
+.content-input :deep(.v-field) {
+  border-radius: 8px;
+}
+
+.error-message {
+  font-size: 0.75rem;
+  color: rgb(var(--v-theme-error));
+}
+
+.create-btn {
+  align-self: flex-start;
 }
 
 /* Usage Hint */

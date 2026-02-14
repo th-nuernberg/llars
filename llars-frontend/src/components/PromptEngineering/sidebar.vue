@@ -81,12 +81,22 @@
         <input ref="jsonFileInput" type="file" accept=".json" style="display: none" @change="handleJsonFileUpload" />
       </div>
 
-      <!-- Git Version Control -->
+      <!-- Version Control: Block Changes -->
       <div v-if="showGitPanel" class="sidebar-section">
         <div class="section-label">
           <LIcon size="14" class="mr-1">mdi-source-branch</LIcon>
           {{ $t('promptEngineering.sidebar.gitPanel') }}
           <v-spacer />
+          <v-btn
+            icon
+            variant="text"
+            size="x-small"
+            :title="$t('common.refresh')"
+            :loading="refreshingChanges"
+            @click="$emit('refreshGitSummary')"
+          >
+            <LIcon size="14">mdi-refresh</LIcon>
+          </v-btn>
           <v-btn
             icon
             variant="text"
@@ -97,17 +107,53 @@
             <LIcon size="14">mdi-open-in-new</LIcon>
           </v-btn>
         </div>
-        <GitStatusWidget
-          :entity-id="promptId"
-          entity-mode="single"
-          api-prefix="/api/prompts"
-          :collapsed="false"
-          :can-commit="true"
-          :summary="gitSummary"
-          :get-content="getContent"
-          @committed="$emit('gitCommitted')"
-          @open-detail="$emit('openFloatingGitPanel')"
-        />
+
+        <!-- Block change list -->
+        <div class="vc-block-list">
+          <template v-if="changedBlocksList.length > 0">
+            <div
+              v-for="cb in changedBlocksList"
+              :key="cb.title"
+              class="vc-block-item"
+            >
+              <LIcon size="14" class="mr-1" :color="cb.isNew ? 'info' : cb.isDeleted ? 'error' : 'grey'">
+                {{ cb.isNew ? 'mdi-plus-circle-outline' : cb.isDeleted ? 'mdi-minus-circle-outline' : 'mdi-text-box-outline' }}
+              </LIcon>
+              <span class="vc-block-name">{{ cb.title }}</span>
+              <span v-if="cb.isNew && cb.insertions === 0 && cb.deletions === 0" class="vc-stat vc-new">{{ $t('promptEngineering.gitPanel.new') }}</span>
+              <template v-else>
+                <span class="vc-stat vc-ins">+{{ cb.insertions }}</span>
+                <span class="vc-stat vc-del">-{{ cb.deletions }}</span>
+              </template>
+            </div>
+          </template>
+          <div v-else class="vc-synced">
+            <LIcon size="14" color="success" class="mr-1">mdi-check-circle</LIcon>
+            <span>{{ $t('promptEngineering.gitPanel.synced') }}</span>
+          </div>
+        </div>
+
+        <!-- Commit section -->
+        <div v-if="changedBlocksList.length > 0" class="vc-commit-section">
+          <v-text-field
+            v-model="commitMessage"
+            :placeholder="$t('promptEngineering.floatingGit.commitPlaceholder')"
+            variant="outlined"
+            density="compact"
+            hide-details
+            class="vc-commit-input"
+            @keyup.enter="handleCommit"
+          />
+          <LBtn
+            variant="primary"
+            size="small"
+            :disabled="!commitMessage.trim()"
+            :loading="committing"
+            @click="handleCommit"
+          >
+            {{ $t('promptEngineering.floatingGit.commit') }}
+          </LBtn>
+        </div>
       </div>
 
       <!-- Options Section -->
@@ -248,7 +294,9 @@ import { getDiceBearUrl } from '@/utils/userUtils';
 import axios from 'axios';
 import { useI18n } from 'vue-i18n';
 import PlaceholderPalette from './testing/PlaceholderPalette.vue';
-import { GitStatusWidget } from '@/components/common/Git';
+import { AUTH_STORAGE_KEYS, getAuthStorageItem } from '@/utils/authStorage';
+
+const API_BASE = import.meta.env.VITE_API_BASE_URL || '';
 
 const props = defineProps({
   users: { type: Object, required: true },
@@ -262,10 +310,11 @@ const props = defineProps({
   extractedVariables: { type: Array, default: () => [] },
   userVariables: { type: Array, default: () => [] },
   gitSummary: { type: Object, default: () => ({ users: [], totalChangedLines: 0, hasChanges: false, insertions: 0, deletions: 0 }) },
-  getContent: { type: Function, default: null }
+  getContent: { type: Function, default: null },
+  blockCharDiffs: { type: Object, default: () => ({}) }
 });
 
-const emit = defineEmits(['showAddBlockDialog', 'refreshPromptDetails', 'uploadJsonFileSelected', 'triggerTestPrompt', 'toggleGitPanel', 'openVariableManager', 'gitCommitted', 'openFloatingGitPanel']);
+const emit = defineEmits(['showAddBlockDialog', 'refreshPromptDetails', 'uploadJsonFileSelected', 'triggerTestPrompt', 'toggleGitPanel', 'openVariableManager', 'gitCommitted', 'openFloatingGitPanel', 'refreshGitSummary']);
 
 const router = useRouter();
 const { t } = useI18n();
@@ -275,6 +324,48 @@ const showPreview = ref(false);
 const showCopySnackbar = ref(false);
 const shareError = ref('');
 const previewMode = ref('placeholder'); // 'placeholder' or 'resolved'
+
+// Version control state
+const commitMessage = ref('');
+const committing = ref(false);
+const refreshingChanges = ref(false);
+
+// Changed blocks derived from blockCharDiffs (includes new/deleted blocks even if empty)
+const changedBlocksList = computed(() => {
+  const diffs = props.blockCharDiffs || {};
+  return Object.entries(diffs)
+    .filter(([, d]) => d.insertions > 0 || d.deletions > 0 || d.isNew || d.isDeleted)
+    .map(([title, d]) => ({ title, insertions: d.insertions, deletions: d.deletions, isNew: d.isNew, isDeleted: d.isDeleted }));
+});
+
+function authHeaders() {
+  const token = getAuthStorageItem(AUTH_STORAGE_KEYS.token);
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
+const handleCommit = async () => {
+  const msg = commitMessage.value.trim();
+  if (!msg) return;
+  committing.value = true;
+  try {
+    const contentSnapshot = props.getContent ? props.getContent() : null;
+    await axios.post(
+      `${API_BASE}/api/prompts/${props.promptId}/commit`,
+      {
+        message: msg,
+        diff_summary: props.gitSummary || null,
+        content_snapshot: contentSnapshot
+      },
+      { headers: authHeaders() }
+    );
+    commitMessage.value = '';
+    emit('gitCommitted');
+  } catch (error) {
+    console.error('Commit failed:', error);
+  } finally {
+    committing.value = false;
+  }
+};
 
 const sortedBlocks = computed(() => {
   return [...props.blocks].sort((a, b) => (a.position || 0) - (b.position || 0));
@@ -721,6 +812,85 @@ const unsharePromptWithUser = async (username) => {
   flex-direction: column;
   align-items: center;
   padding: 32px;
+}
+
+/* Version Control Block List */
+.vc-block-list {
+  background: rgba(var(--v-theme-on-surface), 0.02);
+  border-radius: 8px;
+  padding: 6px;
+}
+
+.vc-block-item {
+  display: flex;
+  align-items: center;
+  padding: 5px 8px;
+  border-radius: 4px;
+  gap: 4px;
+}
+
+.vc-block-item:hover {
+  background: rgba(var(--v-theme-on-surface), 0.04);
+}
+
+.vc-block-name {
+  flex: 1;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: rgb(var(--v-theme-on-surface));
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.vc-stat {
+  font-size: 10px;
+  font-family: 'Roboto Mono', monospace;
+  font-weight: 600;
+  padding: 1px 5px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.vc-stat.vc-ins {
+  background: rgba(152, 212, 187, 0.2);
+  color: #2e7d32;
+}
+
+.vc-stat.vc-del {
+  background: rgba(232, 160, 135, 0.2);
+  color: #c62828;
+}
+
+.vc-stat.vc-new {
+  background: rgba(136, 196, 200, 0.2);
+  color: #0288d1;
+}
+
+.vc-synced {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px;
+  font-size: 0.8rem;
+  color: rgba(var(--v-theme-on-surface), 0.6);
+}
+
+.vc-commit-section {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin-top: 8px;
+}
+
+.vc-commit-input {
+  flex: 1;
+}
+
+.vc-commit-input :deep(.v-field) {
+  border-radius: 8px 2px 8px 2px !important;
+  font-size: 0.8rem;
 }
 
 .w-100 {

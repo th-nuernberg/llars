@@ -30,6 +30,7 @@
         :user-variables="userVariables"
         :git-summary="gitSummary"
         :get-content="getContentSnapshot"
+        :block-char-diffs="blockCharDiffs"
         @showAddBlockDialog="showAddBlockDialog = true; mobileSidebarOpen = false"
         @refreshPromptDetails="fetchPromptDetails()"
         @uploadJsonFileSelected="onJsonFileSelected"
@@ -37,6 +38,7 @@
         @openVariableManager="openVariableManager(); mobileSidebarOpen = false"
         @toggleGitPanel="toggleGitPanel"
         @gitCommitted="onGitCommitted"
+        @refreshGitSummary="updateGitSummary"
         @openFloatingGitPanel="showFloatingGitPanel = true; mobileSidebarOpen = false"
       />
       <template #append>
@@ -66,6 +68,7 @@
         :user-variables="userVariables"
         :git-summary="gitSummary"
         :get-content="getContentSnapshot"
+        :block-char-diffs="blockCharDiffs"
         @showAddBlockDialog="showAddBlockDialog = true"
         @refreshPromptDetails="fetchPromptDetails()"
         @uploadJsonFileSelected="onJsonFileSelected"
@@ -73,6 +76,7 @@
         @openVariableManager="openVariableManager"
         @toggleGitPanel="toggleGitPanel"
         @gitCommitted="onGitCommitted"
+        @refreshGitSummary="updateGitSummary"
         @openFloatingGitPanel="showFloatingGitPanel = true"
       />
     </div>
@@ -162,6 +166,15 @@
                   </template>
 
                   <v-spacer />
+
+                  <!-- Live block char diff -->
+                  <div v-if="getBlockDiff(block)" class="block-diff-stats">
+                    <span v-if="getBlockDiff(block).isNew && getBlockDiff(block).insertions === 0" class="diff-badge diff-new">{{ $t('promptEngineering.gitPanel.new') }}</span>
+                    <template v-else>
+                      <span class="diff-badge diff-ins">+{{ getBlockDiff(block).insertions }}</span>
+                      <span class="diff-badge diff-del">-{{ getBlockDiff(block).deletions }}</span>
+                    </template>
+                  </div>
 
                   <div class="header-actions">
                     <v-btn
@@ -338,6 +351,7 @@
       :prompt="assemblePrompt()"
       :prompt-id="promptId"
       :variables="userVariables"
+      :update-variable="updateVariable"
     />
 
     <!-- Variable Manager Dialog -->
@@ -699,6 +713,8 @@ const {
   editors
 } = editorManager;
 const gitSummary = ref({ users: [], insertions: 0, deletions: 0, hasChanges: false, totalChangedLines: 0 });
+// Per-block character diffs: { blockTitle: { insertions: N, deletions: N } }
+const blockCharDiffs = ref({});
 
 // Load git panel visibility from localStorage
 const loadGitPanelVisibility = () => {
@@ -739,6 +755,15 @@ const getContentSnapshot = () => {
   return JSON.stringify(result, null, 2);
 };
 
+// Get block diff for a specific block (also shows new/deleted blocks even with 0 chars)
+const getBlockDiff = (block) => {
+  if (!showGitPanel.value) return null;
+  const diff = blockCharDiffs.value[block.title];
+  if (!diff) return null;
+  if (diff.insertions === 0 && diff.deletions === 0 && !diff.isNew && !diff.isDeleted) return null;
+  return diff;
+};
+
 // Update git summary when content changes
 const updateGitSummary = () => {
   const currentContent = getContentSnapshot();
@@ -757,6 +782,9 @@ const updateGitSummary = () => {
   }
 
   gitSummary.value = summary;
+
+  // Compute per-block character diffs
+  blockCharDiffs.value = gitDiff.computeBlockCharDiffs(currentContent);
 };
 
 // Handle commit completed
@@ -1099,6 +1127,38 @@ watch(users, (newUsers, oldUsers) => {
 
 .editor-block:hover .header-actions {
   opacity: 1;
+}
+
+/* Block Diff Stats */
+.block-diff-stats {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  margin-right: 4px;
+}
+
+.diff-badge {
+  font-size: 11px;
+  font-family: 'Roboto Mono', monospace;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 4px;
+  line-height: 1.4;
+}
+
+.diff-badge.diff-ins {
+  background: rgba(152, 212, 187, 0.2);
+  color: #2e7d32;
+}
+
+.diff-badge.diff-del {
+  background: rgba(232, 160, 135, 0.2);
+  color: #c62828;
+}
+
+.diff-badge.diff-new {
+  background: rgba(136, 196, 200, 0.2);
+  color: #0288d1;
 }
 
 .editor-content {

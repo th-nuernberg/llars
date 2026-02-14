@@ -24,6 +24,17 @@
     @refresh="refresh"
     @close="$emit('update:modelValue', false)"
   >
+    <!-- Header info tooltip -->
+    <template #header-actions>
+      <v-tooltip location="bottom" max-width="320">
+        <template #activator="{ props: tp }">
+          <v-btn v-bind="tp" icon variant="text" size="small">
+            <LIcon size="16">mdi-information-outline</LIcon>
+          </v-btn>
+        </template>
+        <span>{{ $t('promptEngineering.floatingGit.tooltipHeader') }}</span>
+      </v-tooltip>
+    </template>
     <!-- Status Tags -->
     <template #tags>
       <LTag v-if="hasChanges" variant="warning" size="small">
@@ -40,8 +51,22 @@
         {{ loadError }}
       </v-alert>
 
-      <!-- Tabs -->
-      <LTabs v-model="activeTab" :tabs="tabs" class="mb-3" />
+      <!-- Tabs with tooltips -->
+      <div class="vc-tabs mb-3">
+        <v-tooltip v-for="tab in tabs" :key="tab.value" location="bottom" max-width="280">
+          <template #activator="{ props: tp }">
+            <button
+              v-bind="tp"
+              class="vc-tab"
+              :class="{ 'vc-tab--active': activeTab === tab.value }"
+              @click="activeTab = tab.value"
+            >
+              {{ tab.label }}
+            </button>
+          </template>
+          <span>{{ tab.tooltip }}</span>
+        </v-tooltip>
+      </div>
 
       <!-- Changes Tab -->
       <div v-if="activeTab === 'changes'" class="tab-content">
@@ -358,8 +383,8 @@ const { t, locale } = useI18n()
 // Tab state
 const activeTab = ref('changes')
 const tabs = computed(() => [
-  { value: 'changes', label: t('promptEngineering.floatingGit.tabChanges') },
-  { value: 'history', label: t('promptEngineering.floatingGit.tabHistory') }
+  { value: 'changes', label: t('promptEngineering.floatingGit.tabChanges'), tooltip: t('promptEngineering.floatingGit.tooltipChanges') },
+  { value: 'history', label: t('promptEngineering.floatingGit.tabHistory'), tooltip: t('promptEngineering.floatingGit.tooltipHistory') }
 ])
 
 // Changes state
@@ -703,6 +728,43 @@ watch(() => props.promptId, async (newId, oldId) => {
 </script>
 
 <style scoped>
+/* Custom Tabs with Tooltips */
+.vc-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  background: rgba(var(--v-theme-on-surface), 0.06);
+  border-radius: 16px 4px 16px 4px;
+}
+
+.vc-tab {
+  flex: 1;
+  padding: 8px 16px;
+  border: none;
+  background: transparent;
+  color: rgba(var(--v-theme-on-surface), 0.55);
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  border-radius: 12px 3px 12px 3px;
+  transition: all 0.2s ease;
+}
+
+.vc-tab:hover:not(.vc-tab--active) {
+  color: rgba(var(--v-theme-on-surface), 0.8);
+  background: rgba(var(--v-theme-on-surface), 0.04);
+}
+
+.vc-tab--active {
+  color: white;
+  background: var(--llars-primary);
+  font-weight: 600;
+}
+
+.v-theme--dark .vc-tab--active {
+  background: color-mix(in srgb, var(--llars-primary) 65%, #2a2a2a);
+}
+
 /* Content Layout */
 .git-panel-content {
   padding: 12px;

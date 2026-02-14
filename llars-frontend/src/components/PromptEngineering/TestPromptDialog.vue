@@ -25,11 +25,14 @@
 
       <div class="dialog-body">
         <div class="main-layout">
-          <!-- Left Panel: Variables Overview -->
+          <!-- Left Panel: Variables (Editable) -->
           <div class="variables-panel">
             <div class="panel-header">
               <LIcon size="18" class="mr-2">mdi-variable</LIcon>
               <span class="panel-title">{{ $t('promptEngineering.testing.variables') }}</span>
+              <LTooltip :text="$t('promptEngineering.tooltips.variablesPanel')">
+                <LIcon size="16" class="ml-1" color="grey">mdi-information-outline</LIcon>
+              </LTooltip>
             </div>
 
             <div class="variables-content">
@@ -40,7 +43,7 @@
                 <p class="no-variables-hint">{{ $t('promptEngineering.testing.noVariablesHint') }}</p>
               </div>
 
-              <!-- Variables List -->
+              <!-- Editable Variables List -->
               <div v-else class="variables-list">
                 <div
                   v-for="v in displayVariables"
@@ -57,9 +60,17 @@
                       {{ $t('promptEngineering.testing.empty') }}
                     </LTag>
                   </div>
-                  <div v-if="v.content" class="variable-value">
-                    {{ truncate(v.content, 100) }}
-                  </div>
+                  <v-textarea
+                    :model-value="v.content"
+                    @update:model-value="updateVariableContent(v.name, $event)"
+                    :placeholder="$t('promptEngineering.testing.enterValue')"
+                    density="compact"
+                    variant="outlined"
+                    rows="2"
+                    auto-grow
+                    hide-details
+                    class="variable-input"
+                  />
                 </div>
               </div>
 
@@ -75,12 +86,22 @@
           <div class="response-panel">
             <!-- Configuration Section -->
             <div class="config-section">
+              <div class="config-section-header">
+                <LIcon size="16" class="mr-1">mdi-cog</LIcon>
+                <span class="section-title">{{ $t('promptEngineering.testing.configuration') }}</span>
+                <LTooltip :text="$t('promptEngineering.tooltips.configSection')">
+                  <LIcon size="16" class="ml-1" color="grey">mdi-information-outline</LIcon>
+                </LTooltip>
+              </div>
               <div class="config-grid">
                 <!-- Model Selection -->
                 <div class="config-item">
                   <label class="config-label">
                     <LIcon size="14" class="mr-1">mdi-brain</LIcon>
                     {{ $t('promptEngineering.testPrompt.model') }}
+                    <LTooltip :text="$t('promptEngineering.tooltips.modelSelect')">
+                      <LIcon size="12" class="ml-1" color="grey">mdi-information-outline</LIcon>
+                    </LTooltip>
                   </label>
                   <LlmModelSelect
                     v-model="selectedModel"
@@ -98,6 +119,9 @@
                   <label class="config-label">
                     <LIcon size="14" class="mr-1">mdi-thermometer</LIcon>
                     {{ $t('promptEngineering.testPrompt.temperature') }}: {{ temperature.toFixed(2) }}
+                    <LTooltip :text="$t('promptEngineering.tooltips.temperature')">
+                      <LIcon size="12" class="ml-1" color="grey">mdi-information-outline</LIcon>
+                    </LTooltip>
                   </label>
                   <v-slider
                     v-model="temperature"
@@ -115,6 +139,9 @@
                   <label class="config-label">
                     <LIcon size="14" class="mr-1">mdi-counter</LIcon>
                     {{ $t('promptEngineering.testPrompt.maxTokens') }}
+                    <LTooltip :text="$t('promptEngineering.tooltips.maxTokens')">
+                      <LIcon size="12" class="ml-1" color="grey">mdi-information-outline</LIcon>
+                    </LTooltip>
                   </label>
                   <v-text-field
                     v-model.number="maxTokens"
@@ -167,6 +194,9 @@
               <div class="section-header">
                 <LIcon size="16" class="mr-1">mdi-message-text</LIcon>
                 <span class="section-title">{{ $t('promptEngineering.testPrompt.sentPrompt') }}</span>
+                <LTooltip :text="$t('promptEngineering.tooltips.sentPrompt')">
+                  <LIcon size="16" class="ml-1" color="grey">mdi-information-outline</LIcon>
+                </LTooltip>
                 <v-spacer />
                 <LBtn
                   variant="text"
@@ -185,6 +215,9 @@
               <div class="section-header">
                 <LIcon size="16" class="mr-1">mdi-robot</LIcon>
                 <span class="section-title">{{ $t('promptEngineering.testPrompt.response') }}</span>
+                <LTooltip :text="$t('promptEngineering.tooltips.responseSection')">
+                  <LIcon size="16" class="ml-1" color="grey">mdi-information-outline</LIcon>
+                </LTooltip>
                 <v-spacer />
                 <LTag v-if="isStreaming" variant="info" size="small">
                   <v-progress-circular
@@ -281,6 +314,11 @@ const props = defineProps({
   variables: {
     type: Array,
     default: () => []
+  },
+  // Callback to update a variable's content (synced via Yjs)
+  updateVariable: {
+    type: Function,
+    default: null
   }
 })
 
@@ -368,6 +406,13 @@ const jsonSchemaInput = ref('{}')
 
 // Prompt display state
 const promptCollapsed = ref(true)
+
+// Variable editing
+function updateVariableContent(name, value) {
+  if (props.updateVariable) {
+    props.updateVariable(name, value)
+  }
+}
 
 // Helpers
 const formatTag = (name) => `{{${name}}}`
@@ -709,12 +754,13 @@ onUnmounted(() => {
   border-radius: 4px;
 }
 
-.variable-value {
-  font-size: 0.8rem;
-  color: rgba(var(--v-theme-on-surface), 0.7);
-  line-height: 1.4;
-  white-space: pre-wrap;
-  word-break: break-word;
+.variable-input {
+  margin-top: 6px;
+}
+
+.variable-input :deep(.v-field) {
+  font-size: 0.85rem;
+  border-radius: 6px;
 }
 
 .missing-warning {
@@ -740,6 +786,12 @@ onUnmounted(() => {
   background: rgba(var(--v-theme-on-surface), 0.02);
   border-radius: 12px;
   padding: 16px;
+}
+
+.config-section-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 12px;
 }
 
 .config-grid {

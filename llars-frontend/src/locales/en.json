@@ -565,7 +565,7 @@
     },
     "contact": {
       "title": "Contact",
-      "email": "info@e-beratungsinstitut.de",
+      "email": "info{'@'}e-beratungsinstitut.de",
       "website": "e-beratungsinstitut.de"
     },
     "footer": "As of {date} | Version 3.0 | TH Nuremberg"
@@ -1742,9 +1742,9 @@
         "title": "Model & technology",
         "baseModel": "Base model",
         "baseModelValue": "XLM-RoBERTa-Large (561M parameters)",
-        "accuracy": "Accuracy @1",
-        "f1Macro1": "F1 Macro @1",
-        "f1Macro2": "F1 Macro @2",
+        "accuracy": "Accuracy {'@'}1",
+        "f1Macro1": "F1 Macro {'@'}1",
+        "f1Macro2": "F1 Macro {'@'}2",
         "f1Macro2Value": "~0.87 (considering top-2)",
         "kappa": "Cohen's Kappa",
         "kappaValue": "~0.88 (comparable to humans)",

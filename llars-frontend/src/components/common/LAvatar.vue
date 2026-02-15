@@ -108,13 +108,18 @@ const sizeMap = {
 // Use global LLARS color palette for backgrounds
 const llarsColors = LLARS_COLORS;
 
-// Generate a consistent color index from seed/username
-const colorFromSeed = computed(() => {
-  const str = props.seed || props.username || 'default';
+const hashFromString = (value) => {
+  const str = value || 'default';
   let hash = 0;
   for (let i = 0; i < str.length; i++) {
     hash = str.charCodeAt(i) + ((hash << 5) - hash);
   }
+  return Math.abs(hash);
+};
+
+// Generate a consistent color index from seed/username
+const colorFromSeed = computed(() => {
+  const hash = hashFromString(props.seed || props.username);
   const index = Math.abs(hash) % llarsColors.length;
   return llarsColors[index];
 });
@@ -154,14 +159,17 @@ const fallbackInitial = computed(() => {
 
 // Generate gradient colors based on seed (two colors for gradient)
 const gradientColors = computed(() => {
-  const str = props.seed || props.username || 'default';
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    hash = str.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  const index1 = Math.abs(hash) % llarsColors.length;
-  const index2 = Math.abs(hash * 7) % llarsColors.length;
-  return [llarsColors[index1], llarsColors[index2 === index1 ? (index2 + 1) % llarsColors.length : index2]];
+  const hash = hashFromString(props.seed || props.username);
+  const hue1 = hash % 360;
+  const hue2 = (hue1 + 47 + (hash % 29)) % 360;
+  const sat1 = 58 + (hash % 17); // 58-74
+  const sat2 = 54 + ((hash >> 3) % 19); // 54-72
+  const light1 = 44 + ((hash >> 5) % 12); // 44-55
+  const light2 = 35 + ((hash >> 7) % 12); // 35-46
+  return [
+    `hsl(${hue1} ${sat1}% ${light1}%)`,
+    `hsl(${hue2} ${sat2}% ${light2}%)`
+  ];
 });
 
 // Check if using custom uploaded image (not DiceBear generated)
@@ -188,7 +196,7 @@ const avatarStyle = computed(() => {
     return {
       width: `${size}px`,
       height: `${size}px`,
-      background: `linear-gradient(135deg, #${color1} 0%, #${color2} 100%)`
+      background: `linear-gradient(135deg, ${color1} 0%, ${color2} 100%)`
     };
   }
 

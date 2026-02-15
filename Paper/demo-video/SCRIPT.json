@@ -1553,7 +1553,7 @@
     {
       "id": "scenario_4",
       "speaker": "moderator",
-      "narration": "Each of the ten counselling cases has four situation descriptions — two prompts times two models. Reviewer one has finished eight, reviewer two finished seven — and the LLM evaluators are already done.",
+      "narration": "Each of the ten counselling cases has four situation descriptions — two prompts times two models. Reviewer one has finished eight, item nine is in progress, and item ten is still open. Reviewer two and both LLM evaluators are already done.",
       "actions": [
         {
           "do": "highlight",
@@ -1757,13 +1757,21 @@
       "narration": "I can see which items are done in green, and which are still pending. Let me open one of the remaining ones.",
       "actions": [
         {
+          "do": "click",
+          "target": "Evaluation In Progress Filter"
+        },
+        {
+          "do": "wait",
+          "seconds": 0.2
+        },
+        {
           "do": "highlight",
-          "target": "Evaluation Item Card",
+          "target": "Evaluation In Progress Item Card",
           "duration": 1.0
         },
         {
           "do": "click",
-          "target": "Evaluation Item Card"
+          "target": "Evaluation In Progress Item Card"
         },
         {
           "do": "wait_for",
@@ -1813,6 +1821,19 @@
           "do": "drag",
           "from": "Ranking Item",
           "to": "Poor Bucket"
+        },
+        {
+          "do": "wait",
+          "seconds": 0.1
+        },
+        {
+          "do": "drag",
+          "from": "Ranking Item",
+          "to": "Acceptable Bucket"
+        },
+        {
+          "do": "wait",
+          "seconds": 0.8
         }
       ]
     },

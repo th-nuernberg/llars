@@ -208,10 +208,10 @@ Vellum~\cite{vellum2024}               & \noo & \noo      & \partialc & \partial
 
 Table~\ref{tab:comparison} surveys twelve existing platforms along these dimensions.
 Agenta~\cite{agenta2024} combines prompt versioning with LLM-as-judge scoring and provides A/B deployment testing, but lacks real-time co-editing and structured human evaluation with inter-rater agreement metrics.
-Phoenix~\cite{phoenix2024}, Langfuse~\cite{langfuse2024}, and W\&B~Weave~\cite{weave2024} provide observability dashboards with dataset experiments and per-output feedback but focus on tracing and debugging rather than systematic batch generation or coordinated multi-evaluator campaigns.
-ChainForge~\cite{arawjo2024chainforge} offers a visual node-based interface for multi-model comparison with template variables but omits human evaluation entirely.
-Label~Studio~\cite{labelstudio2024} and Argilla~\cite{argilla2024} offer structured human annotation---Label~Studio computes Krippendorff's~$\alpha$, Argilla provides agreement analytics via its API---but require externally generated outputs, disconnecting evaluation from prompt development.
-LangSmith~\cite{langsmith2024}, Braintrust~\cite{braintrust2024}, Maxim~\cite{maxim2024}, and Vellum~\cite{vellum2024} link prompt management to evaluation with dataset-level scoring but are closed-source, lack collaborative editing, and omit batch generation as a pipeline stage.
+Phoenix~\cite{phoenix2024}, Langfuse~\cite{langfuse2024}, and W\&B~Weave~\cite{weave2024} provide observability dashboards with dataset experiments and per-output feedback but focus on tracing and debugging production systems rather than systematic batch generation or coordinated multi-evaluator campaigns.
+ChainForge~\cite{arawjo2024chainforge} offers a visual node-based interface for multi-model comparison with template variables and supports programmatic evaluation via custom code nodes, but omits structured human evaluation entirely.
+Label~Studio~\cite{labelstudio2024} and Argilla~\cite{argilla2024} offer dedicated human annotation workflows---Label~Studio computes Krippendorff's~$\alpha$ across annotators, Argilla provides agreement analytics via its API---but both require externally generated outputs, disconnecting evaluation from prompt development.
+LangSmith~\cite{langsmith2024}, Braintrust~\cite{braintrust2024}, Maxim~\cite{maxim2024}, and Vellum~\cite{vellum2024} provide playground-style testing with dataset-level scoring but are closed-source, lack collaborative editing, and omit batch generation.
 LLARS is an open-source platform to unify collaborative prompt engineering, Cartesian-product batch generation, and hybrid human--LLM evaluation with agreement analytics, enabling developers and domain experts to work together from prompt development through rigorous assessment.
 
 

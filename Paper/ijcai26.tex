@@ -241,7 +241,7 @@ Once a prompt is finalized, it passes directly into batch generation, where the 
 \subsection{Batch Generation}
 
 While the prompt editor allows rapid testing with sample values, a single example cannot validate whether a prompt generalizes across diverse inputs.
-Batch generation addresses this by combining all prompts available to the user---either self-authored or shared by collaborators---with any registered model and a full dataset, producing the Cartesian product of prompts\,$\times$\,models\,$\times$\,data items.
+Batch generation addresses this: users select from all available prompts---self-authored or shared by collaborators---and any registered model to apply to their data, producing the Cartesian product of prompts\,$\times$\,models\,$\times$\,data items.
 A generation matrix previews this combination and estimates cost based on model pricing and projected token counts; optional budget caps pause jobs that exceed a threshold.
 A wizard offers three data source modes, each suited to a different stage of development.
 

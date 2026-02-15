@@ -7,7 +7,7 @@
         <span class="live-label">{{ $t('evaluationAssistant.live.evaluating') }}</span>
       </div>
       <LTag variant="info" size="sm">
-        {{ evaluation.model_id }}
+        {{ displayModelName }}
       </LTag>
     </div>
 
@@ -69,6 +69,7 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { parseUserProviderModelId } from '@/utils/formatters'
 
 const { t } = useI18n()
 
@@ -91,6 +92,11 @@ const progressSteps = computed(() => {
     t('evaluationAssistant.live.steps.analyzing'),
     t('evaluationAssistant.live.steps.completing')
   ]
+})
+
+const displayModelName = computed(() => {
+  const parsed = parseUserProviderModelId(props.evaluation?.model_id)
+  return parsed?.displayName || props.evaluation?.model_id || 'LLM'
 })
 
 function formatElapsed(startTime) {

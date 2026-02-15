@@ -38,7 +38,7 @@
           :class="{ 'is-rejected': member.invitation_status === 'rejected' }"
         >
           <div class="member-avatar">
-            <LAvatar :username="member.display_name || member.username" :seed="member.username" size="md" />
+            <LAvatar :username="member.username" size="md" />
           </div>
           <div class="member-info">
             <span class="member-name">{{ member.display_name || member.username }}</span>
@@ -427,7 +427,9 @@ const llmEvaluators = computed(() => {
     let modelName = modelId
     const parsed = parseUserProviderModelId(modelId)
     if (parsed) {
-      provider = parsed.providerLabel
+      provider = parsed.username
+        ? `${parsed.username}/${parsed.providerLabel}`
+        : parsed.providerLabel
       modelName = parsed.modelName
     } else {
       const parts = modelId.split('/')

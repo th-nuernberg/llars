@@ -24,6 +24,7 @@
         :is-owner="promptOwner === username"
         :shared-with="sharedWithUsers"
         :owner="promptOwner"
+        :owner-avatar="promptOwnerAvatar"
         :promptName="promptName"
         :show-git-panel="showGitPanel"
         :extracted-variables="extractedVariables"
@@ -62,6 +63,7 @@
         :is-owner="promptOwner === username"
         :shared-with="sharedWithUsers"
         :owner="promptOwner"
+        :owner-avatar="promptOwnerAvatar"
         :promptName="promptName"
         :show-git-panel="showGitPanel"
         :extracted-variables="extractedVariables"
@@ -595,7 +597,7 @@ const {
   openVariableManager
 } = useDialogs();
 
-const { promptName, promptOwner, sharedWithUsers, fetchPromptDetails } = usePromptDetails(promptId);
+const { promptName, promptOwner, promptOwnerAvatar, sharedWithUsers, fetchPromptDetails } = usePromptDetails(promptId);
 const auth = useAuth();
 const typingMetrics = useTypingMetrics({
   category: 'prompt',

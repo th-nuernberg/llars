@@ -29,14 +29,17 @@ class ChatbotService:
             return None
         if isinstance(model_name, str) and model_name.startswith(ChatbotService.USER_PROVIDER_PREFIX):
             rest = model_name[len(ChatbotService.USER_PROVIDER_PREFIX):]
-            if ':' not in rest:
-                raise ValueError("Invalid user-provider model id")
-            provider_part, actual_model = rest.split(':', 1)
-            if not actual_model.strip():
+            parts = rest.split(':', 2)
+            if len(parts) < 2:
                 raise ValueError("Invalid user-provider model id")
             try:
-                int(provider_part)
+                int(parts[0])
             except (TypeError, ValueError):
+                raise ValueError("Invalid user-provider model id")
+            # New format: provider_id:username:model (3 parts)
+            # Old format: provider_id:model (2 parts)
+            actual_model = parts[2] if len(parts) == 3 else parts[1]
+            if not actual_model.strip():
                 raise ValueError("Invalid user-provider model id")
             return model_name
         model = LLMModel.get_by_model_id(model_name)

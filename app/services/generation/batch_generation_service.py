@@ -957,6 +957,15 @@ class BatchGenerationService:
                 model = LLMModel.get_by_model_id(model_ref)
                 model_id = model_ref
 
+                # For user-provider models, try to find a matching Global model for pricing
+                if not model and isinstance(model_ref, str) and model_ref.startswith("user-provider:"):
+                    parts = model_ref.split(":")
+                    actual_model_name = parts[-1] if len(parts) >= 3 else None
+                    if actual_model_name:
+                        model = LLMModel.query.filter(
+                            LLMModel.model_id.like(f"%/{actual_model_name}")
+                        ).first()
+
             if model:
                 outputs_for_model = item_count * prompt_count
                 input_cost = (avg_input_tokens * outputs_for_model / 1_000_000) * model.input_cost_per_million

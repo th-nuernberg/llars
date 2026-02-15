@@ -252,6 +252,9 @@ class LLMProviderService:
             provider.config_json = data.get("config") or {}
 
         db.session.commit()
+        # Invalidate cached clients so new config takes effect
+        from services.llm.llm_client_factory import LLMClientFactory
+        LLMClientFactory.clear_cache()
         return provider
 
     @staticmethod

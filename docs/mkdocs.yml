@@ -43,6 +43,7 @@ nav:
       - Chatbot Wizard: guides/chatbot-wizard.md
       - LaTeX Collaboration: guides/latex-collaboration.md
       - Admin Dashboard: guides/admin-dashboard.md
+      - LLM Provider Settings: guides/llm-provider-settings.md
       - Schnellstart: guides/quick-start.md
       - Authentik Setup: guides/authentik-setup.md
       - Login Anleitung: guides/login-anleitung.md
@@ -159,6 +160,7 @@ plugins:
           Konfiguration: Configuration
           Installation: Installation
           Übersicht: Overview
+          LLM Provider Settings: LLM Provider Settings
           Projektstatus: Project State
           Berechtigungssystem: Permission System
           Szenario Wizard: Scenario Wizard

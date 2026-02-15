@@ -286,18 +286,35 @@
 
           <!-- Add Share -->
           <div class="text-subtitle-2 mb-2">{{ $t('userSettings.providers.addShare') }}</div>
-          <div class="d-flex gap-2">
-            <v-select
-              v-model="newShare.type"
-              :items="[{ value: 'user', title: $t('userSettings.providers.shareTypeUser') }, { value: 'role', title: $t('userSettings.providers.shareTypeRole') }]"
-              variant="outlined"
-              density="compact"
-              style="max-width: 120px"
-              hide-details
-            />
+          <v-btn-toggle v-model="newShare.type" mandatory density="compact" class="mb-3" color="primary">
+            <v-btn value="user" size="small">
+              <v-icon start size="small">mdi-account</v-icon>
+              {{ $t('userSettings.providers.shareTypeUser') }}
+            </v-btn>
+            <v-btn value="role" size="small">
+              <v-icon start size="small">mdi-account-group</v-icon>
+              {{ $t('userSettings.providers.shareTypeRole') }}
+            </v-btn>
+          </v-btn-toggle>
+
+          <!-- User search (with autocomplete) -->
+          <LUserSearch
+            v-if="newShare.type === 'user'"
+            ref="userSearchRef"
+            :exclude-usernames="existingShareUsernames"
+            :placeholder="$t('userSettings.providers.username')"
+            density="compact"
+            :show-add-button="true"
+            :add-button-text="$t('userSettings.providers.share')"
+            button-size="small"
+            @add="addUserShare"
+          />
+
+          <!-- Role input (free text) -->
+          <div v-else class="d-flex gap-2">
             <v-text-field
               v-model="newShare.target"
-              :label="newShare.type === 'user' ? $t('userSettings.providers.username') : $t('userSettings.providers.roleName')"
+              :label="$t('userSettings.providers.roleName')"
               variant="outlined"
               density="compact"
               hide-details
@@ -324,6 +341,7 @@ import { useI18n } from 'vue-i18n'
 import LCard from '@/components/common/LCard.vue'
 import LBtn from '@/components/common/LBtn.vue'
 import LTag from '@/components/common/LTag.vue'
+import LUserSearch from '@/components/common/LUserSearch.vue'
 import axios from 'axios'
 
 const { t } = useI18n()
@@ -368,6 +386,14 @@ const openaiModelCatalog = [
 const showShareDialog = ref(false)
 const sharingProvider = ref(null)
 const newShare = ref({ type: 'user', target: '' })
+const userSearchRef = ref(null)
+
+const existingShareUsernames = computed(() => {
+  const shares = sharingProvider.value?.shares || []
+  return shares
+    .filter(s => s.share_type === 'user')
+    .map(s => s.target_identifier)
+})
 
 const selectedProviderType = computed(() => {
   return providerTypes.value.find(t => t.id === form.value.provider_type)
@@ -528,6 +554,27 @@ async function addShare() {
     if (updated) sharingProvider.value = { ...updated }
   } catch (error) {
     console.error('Failed to add share:', error)
+    alert(error.response?.data?.message || t('common.error'))
+  }
+}
+
+async function addUserShare(user) {
+  if (!user?.username) return
+
+  try {
+    await axios.post(`/api/user/providers/${sharingProvider.value.id}/shares`, {
+      share_type: 'user',
+      target_identifier: user.username
+    })
+
+    userSearchRef.value?.reset()
+    await loadProviders()
+
+    const updated = providers.value.find(p => p.id === sharingProvider.value.id)
+    if (updated) sharingProvider.value = { ...updated }
+  } catch (error) {
+    console.error('Failed to add user share:', error)
+    userSearchRef.value?.setAdding(false)
     alert(error.response?.data?.message || t('common.error'))
   }
 }

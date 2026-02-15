@@ -225,6 +225,9 @@ class UserLLMProviderService:
             provider.priority = priority
 
         db.session.commit()
+        # Invalidate cached clients so new config takes effect
+        from services.llm.llm_client_factory import LLMClientFactory
+        LLMClientFactory.clear_cache()
         logger.info(f"Updated user LLM provider {provider_id}")
         return provider
 
@@ -249,6 +252,8 @@ class UserLLMProviderService:
 
         db.session.delete(provider)
         db.session.commit()
+        from services.llm.llm_client_factory import LLMClientFactory
+        LLMClientFactory.clear_cache()
         logger.info(f"Deleted user LLM provider {provider_id}")
         return True
 

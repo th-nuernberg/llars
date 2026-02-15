@@ -86,7 +86,7 @@ class ChatTitleService:
 
         try:
             # Always use fast model for title generation
-            model = 'LiteLLM/mistralai/Mistral-Small-3.2-24B-Instruct-2506'
+            model = 'Global/Mistral/Mistral-Small-3.2-24B-Instruct-2506'
             if not LLMModel.get_by_model_id(model):
                 default_model_id = LLMModel.get_default_model_id(model_type=LLMModel.MODEL_TYPE_LLM)
                 if default_model_id:

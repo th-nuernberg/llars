@@ -67,6 +67,7 @@
                     density="compact"
                     variant="outlined"
                     rows="2"
+                    max-rows="6"
                     auto-grow
                     hide-details
                     class="variable-input"
@@ -328,8 +329,7 @@ const { t } = useI18n()
 // Socket connection
 let socket = null
 
-// Storage keys for configuration (not variables)
-const STORAGE_KEY_MODEL = 'llars_test_prompt_model'
+// Storage keys for configuration (temperature/maxTokens only - model uses server default)
 const STORAGE_KEY_TEMP = 'llars_test_prompt_temperature'
 const STORAGE_KEY_TOKENS = 'llars_test_prompt_max_tokens'
 
@@ -397,8 +397,8 @@ const resolvedPrompt = computed(() => {
   return result
 })
 
-// Configuration state
-const selectedModel = ref(localStorage.getItem(STORAGE_KEY_MODEL) || '')
+// Configuration state (model not persisted - depends on server availability)
+const selectedModel = ref('')
 const temperature = ref(parseFloat(localStorage.getItem(STORAGE_KEY_TEMP)) || 0.15)
 const maxTokens = ref(parseInt(localStorage.getItem(STORAGE_KEY_TOKENS)) || 4096)
 const jsonMode = ref(false)
@@ -597,11 +597,7 @@ watch(() => props.modelValue, (newVal) => {
   }
 })
 
-// Persist configuration to localStorage
-watch(selectedModel, (val) => {
-  if (val) localStorage.setItem(STORAGE_KEY_MODEL, val)
-})
-
+// Persist configuration to localStorage (only temperature/maxTokens - model uses server default)
 watch(temperature, (val) => {
   localStorage.setItem(STORAGE_KEY_TEMP, String(val))
 })
@@ -761,6 +757,11 @@ onUnmounted(() => {
 .variable-input :deep(.v-field) {
   font-size: 0.85rem;
   border-radius: 6px;
+}
+
+.variable-input :deep(.v-field__input) {
+  max-height: 150px;
+  overflow-y: auto;
 }
 
 .missing-warning {

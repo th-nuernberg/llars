@@ -141,7 +141,7 @@ const props = defineProps({
   },
   includeUserProviders: {
     type: Boolean,
-    default: false
+    default: true
   }
 })
 
@@ -182,14 +182,16 @@ const modelItems = computed(() => {
     .filter(Boolean)
     .forEach((current) => {
       if (!items.some(m => m.model_id === current)) {
+        const parsed = parseUserProviderModelId(current)
         items.unshift({
           model_id: current,
-          display_name: current,
-          provider: 'custom',
+          display_name: parsed?.displayName || current,
+          provider: parsed?.providerLabel || 'custom',
           supports_vision: false,
           supports_reasoning: false,
           context_window: 0,
-          max_output_tokens: 0
+          max_output_tokens: 0,
+          is_user_provider: !!parsed
         })
       }
     })
@@ -246,12 +248,15 @@ const loadModels = async () => {
         const config = provider?.config || {}
 
         // Support multiple selected models (OpenAI style)
+        const ownerName = provider.owner_username || provider.shared_by || ''
         const selectedModels = Array.isArray(config.selected_models) ? config.selected_models : []
         if (selectedModels.length > 0) {
           for (const modelId of selectedModels) {
             const mid = (modelId || '').trim()
             if (!mid) continue
-            const fullId = `user-provider:${provider.id}:${mid}`
+            const fullId = ownerName
+              ? `user-provider:${provider.id}:${ownerName}:${mid}`
+              : `user-provider:${provider.id}:${mid}`
             const parsed = parseUserProviderModelId(fullId)
             providerModels.push({
               model_id: fullId,
@@ -270,7 +275,9 @@ const loadModels = async () => {
         // Fallback: single model_id
         const modelId = (config.model_id || '').trim()
         if (!modelId) continue
-        const fullId = `user-provider:${provider.id}:${modelId}`
+        const fullId = ownerName
+          ? `user-provider:${provider.id}:${ownerName}:${modelId}`
+          : `user-provider:${provider.id}:${modelId}`
         const parsed = parseUserProviderModelId(fullId)
         providerModels.push({
           model_id: fullId,

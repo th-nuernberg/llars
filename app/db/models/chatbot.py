@@ -46,7 +46,7 @@ class Chatbot(db.Model):
 
     # LLM Configuration
     system_prompt: Mapped[str] = mapped_column(db.Text, nullable=False)
-    model_name: Mapped[str] = mapped_column(db.String(100), default='LiteLLM/mistralai/Mistral-Small-3.2-24B-Instruct-2506')
+    model_name: Mapped[str] = mapped_column(db.String(100), default='Global/Mistral/Mistral-Small-3.2-24B-Instruct-2506')
     temperature: Mapped[float] = mapped_column(db.Float, default=0.7)
     # max_tokens: None = use model's default/maximum
     max_tokens: Mapped[Optional[int]] = mapped_column(db.Integer, nullable=True, default=None)

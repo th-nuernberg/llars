@@ -165,11 +165,11 @@ Yet these two groups typically work in isolation: prompts are iterated in shared
 \label{fig:pipeline}
 \end{figure}
 
-We present LLARS (LLM Assisted Research System), an open-source platform co-designed with domain experts and developers and iteratively refined through multiple feedback cycles to close this gap with three integrated modules (Figure~\ref{fig:pipeline}).
+We present LLARS (LLM Assisted Research System), an open-source platform that closes this gap with three integrated modules (Figure~\ref{fig:pipeline}).
 \emph{Collaborative Prompt Engineering} lets domain experts and developers co-author prompts in a shared real-time editor with version control and instant LLM testing.
 \emph{Batch Generation} systematically produces the Cartesian product of prompts\,$\times$\,models\,$\times$\,data items with cost estimation and budget control.
-\emph{Evaluation} lets human and LLM evaluators assess outputs side by side---via rating, ranking, labeling, or pairwise comparison---with live agreement metrics (Krippendorff's~$\alpha$, Cohen's~$\kappa$, and others).
-Each module can be used independently with JSON/CSV export, and the platform connects to any OpenAI-compatible provider, whether commercial or self-hosted.
+\emph{Evaluation} lets human and LLM evaluators rate, rank, label, or compare outputs with live agreement metrics.
+Each module supports JSON/CSV export and connects to any OpenAI-compatible provider.
 
 % --- Table floats to top of page 2 ---
 \begin{table*}[t]
@@ -206,11 +206,7 @@ Vellum~\cite{vellum2024}               & \noo & \noo      & \partialc & \partial
 \end{tabular*}
 \end{table*}
 
-Table~\ref{tab:comparison} surveys twelve existing platforms along these dimensions.
-Tracing-oriented tools (Phoenix~\cite{phoenix2024}, Langfuse~\cite{langfuse2024}, W\&B~Weave~\cite{weave2024}) and prompt managers (Agenta~\cite{agenta2024}, ChainForge~\cite{arawjo2024chainforge}) provide per-output feedback but lack structured human evaluation with agreement metrics.
-Annotation platforms (Label~Studio~\cite{labelstudio2024}, Argilla~\cite{argilla2024}) offer structured assessment---Label~Studio also computes basic agreement---but require externally generated outputs, disconnecting evaluation from prompt development.
-Closed-source tools (LangSmith~\cite{langsmith2024}, Braintrust~\cite{braintrust2024}, Maxim~\cite{maxim2024}, Vellum~\cite{vellum2024}) link prompting to evaluation but omit collaborative editing and batch generation as a pipeline stage.
-LLARS closes this gap as an open-source platform that unifies collaborative prompt engineering, Cartesian-product batch generation, and hybrid human--LLM evaluation with agreement analytics---bringing domain experts and developers together in one end-to-end workflow.
+As Table~\ref{tab:comparison} shows, existing tools address parts of this pipeline---prompt feedback and tracing, structured annotation, or prompting-to-evaluation---but none unifies collaborative editing, batch generation, and hybrid evaluation with agreement metrics in a single open-source platform.
 
 
 \section{Platform Overview}
@@ -230,7 +226,7 @@ Any collaborator can test the current prompt against a selected LLM while editin
 A version control system tracks every revision with multi-author attribution, supporting comparison and rollback.
 Finalized prompts are exported as JSON or passed directly to batch generation.
 
-\begin{figure}[t]
+\begin{figure}[ht]
 \centering
 \includegraphics[width=\linewidth]{figures/prompt-editor.png}
 \caption{Collaborative prompt editor showing a news summarization prompt with two message blocks, template variables in the shared palette (left), and online presence. The sidebar provides testing, variable management, and JSON import/export.}

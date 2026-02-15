@@ -294,7 +294,7 @@ class LLMModel(db.Model):
 # Default models to seed into the database
 DEFAULT_LLM_MODELS = [
     {
-        'model_id': 'LiteLLM/mistralai/Mistral-Small-3.2-24B-Instruct-2506',
+        'model_id': 'Global/Mistral/Mistral-Small-3.2-24B-Instruct-2506',
         'display_name': 'Mistral Small 3.2 (24B)',
         'provider': 'mistral',
         'description': 'Schnelles und effizientes Modell für allgemeine Chat- und RAG-Anwendungen. Gute Balance zwischen Geschwindigkeit und Qualität.',
@@ -311,7 +311,7 @@ DEFAULT_LLM_MODELS = [
         'is_active': True,
     },
     {
-        'model_id': 'LiteLLM/mistralai/Magistral-Small-2509',
+        'model_id': 'Global/Mistral/Magistral-Small-2509',
         'display_name': 'Magistral Small (Vision + Reasoning)',
         'provider': 'mistral',
         'description': 'Multimodales Modell mit Vision- und Reasoning-Fähigkeiten. Ideal für Bildanalyse und komplexe Schlussfolgerungen.',
@@ -329,7 +329,7 @@ DEFAULT_LLM_MODELS = [
     },
     # === OpenAI GPT-5 Models ===
     {
-        'model_id': 'OpenAI/gpt-5-nano',
+        'model_id': 'Global/OpenAI/gpt-5-nano',
         'display_name': 'GPT-5 Nano',
         'provider': 'openai',
         'description': 'OpenAI fastest and cheapest GPT-5 variant. Great for summarization and classification.',
@@ -346,7 +346,7 @@ DEFAULT_LLM_MODELS = [
         'is_active': True,
     },
     {
-        'model_id': 'OpenAI/gpt-5-mini',
+        'model_id': 'Global/OpenAI/gpt-5-mini',
         'display_name': 'GPT-5 Mini',
         'provider': 'openai',
         'description': 'OpenAI compact GPT-5 variant with vision support. Good balance of speed and capability.',
@@ -363,7 +363,7 @@ DEFAULT_LLM_MODELS = [
         'is_active': True,
     },
     {
-        'model_id': 'OpenAI/gpt-5',
+        'model_id': 'Global/OpenAI/gpt-5',
         'display_name': 'GPT-5',
         'provider': 'openai',
         'description': 'OpenAI flagship model with strong reasoning and instruction following.',
@@ -380,7 +380,7 @@ DEFAULT_LLM_MODELS = [
         'is_active': True,
     },
     {
-        'model_id': 'OpenAI/gpt-5.2',
+        'model_id': 'Global/OpenAI/gpt-5.2',
         'display_name': 'GPT-5.2',
         'provider': 'openai',
         'description': 'Latest OpenAI model with improved reasoning and coding capabilities.',
@@ -507,6 +507,26 @@ DEFAULT_LLM_MODELS = [
 ]
 
 
+def _restrict_openai_models_to_admin():
+    """Restrict all OpenAI models to admin role only (idempotent)."""
+    from db.database import db
+    from db.models.llm_model_permission import LLMModelPermission
+
+    openai_models = LLMModel.query.filter_by(provider='openai', model_type=LLMModel.MODEL_TYPE_LLM).all()
+    for model in openai_models:
+        existing = LLMModelPermission.query.filter_by(llm_model_id=model.id).first()
+        if existing:
+            continue
+        db.session.add(LLMModelPermission(
+            llm_model_id=model.id,
+            permission_type='role',
+            target_identifier='admin',
+            granted_by='system'
+        ))
+        print(f"  [LLM Models] Restricted to admin: {model.model_id}")
+    db.session.commit()
+
+
 def seed_default_models():
     """
     Seed default LLM models into the database.
@@ -555,3 +575,6 @@ def seed_default_models():
         db.session.rollback()
 
     db.session.commit()
+
+    # Auto-restrict OpenAI models to admin role (idempotent)
+    _restrict_openai_models_to_admin()

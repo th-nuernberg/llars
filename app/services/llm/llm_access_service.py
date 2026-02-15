@@ -66,14 +66,17 @@ class LLMAccessService:
             return False
         if isinstance(model_id, str) and model_id.startswith(LLMAccessService.USER_PROVIDER_PREFIX):
             rest = model_id[len(LLMAccessService.USER_PROVIDER_PREFIX):]
-            if ':' not in rest:
-                return False
-            provider_part, actual_model = rest.split(':', 1)
-            if not actual_model.strip():
+            parts = rest.split(':', 2)
+            if len(parts) < 2:
                 return False
             try:
-                provider_id = int(provider_part)
+                provider_id = int(parts[0])
             except (TypeError, ValueError):
+                return False
+            # New format: provider_id:username:model (3 parts)
+            # Old format: provider_id:model (2 parts)
+            actual_model = parts[2] if len(parts) == 3 else parts[1]
+            if not actual_model.strip():
                 return False
 
             from db.models.user import User

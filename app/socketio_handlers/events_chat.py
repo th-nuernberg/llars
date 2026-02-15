@@ -27,6 +27,14 @@ from db.models.llm_model import LLMModel
 from services.llm.llm_client_factory import LLMClientFactory
 
 
+def _is_openai_model(model_id: str, api_model_id: str) -> bool:
+    """Check if a model is an OpenAI model (requires max_completion_tokens)."""
+    if not model_id:
+        return False
+    mid = model_id.lower()
+    return 'openai' in mid or api_model_id.lower().startswith('gpt-') or api_model_id.lower().startswith('o')
+
+
 def register_chat_events(socketio, chat_manager):
     """
     Register chat-related SocketIO events.
@@ -160,16 +168,20 @@ def register_chat_events(socketio, chat_manager):
             model_id = LLMModel.get_default_model_id(model_type=LLMModel.MODEL_TYPE_LLM)
             if not model_id:
                 raise RuntimeError("No default LLM model configured in llm_models")
-            client = LLMClientFactory.get_client_for_model(model_id)
+            client, api_model = LLMClientFactory.resolve_client_and_model_id(model_id)
+
+            # OpenAI models require max_completion_tokens instead of max_tokens
+            token_param = ("max_completion_tokens" if _is_openai_model(model_id, api_model)
+                           else "max_tokens")
 
             assistant_message = ""
             # Stream chat completion from LiteLLM Proxy
             metadata = {"tags": ["Technische Hochschule Nürnberg", "KIA"]}
             stream = client.chat.completions.create(
-                model=model_id,
+                model=api_model,
                 messages=[{"role": "user", "content": formatted_input}],
                 temperature=temperature,
-                max_tokens=chat_manager.prompt_manager.max_new_tokens,
+                **{token_param: chat_manager.prompt_manager.max_new_tokens},
                 stream=True,
                 extra_body={"metadata": metadata}
             )
@@ -238,9 +250,9 @@ def register_chat_events(socketio, chat_manager):
         temperature = max(0.0, min(1.0, float(temperature)))
         max_tokens = max(100, min(8192, int(max_tokens)))
 
-        logging.info(f"handle_test_prompt_stream: model={model}, temp={temperature}, max_tokens={max_tokens}")
-
-        client = LLMClientFactory.get_client_for_model(model)
+        # Resolve client + effective API model ID (strips Global/ prefix, resolves user-provider)
+        client, api_model_id = LLMClientFactory.resolve_client_and_model_id(model)
+        logging.info(f"handle_test_prompt_stream: model={model}, api_model={api_model_id}, temp={temperature}, max_tokens={max_tokens}")
 
         try:
             messages = [{"role": "user", "content": user_prompt}]
@@ -249,35 +261,38 @@ def register_chat_events(socketio, chat_manager):
             json_mode = data.get('jsonMode', True)
             logging.info(f"handle_test_prompt_stream: JSON Mode = {json_mode}")
 
-            # Metadata für TH Nürnberg / KIA
-            metadata = {"tags": ["Technische Hochschule Nürnberg", "KIA"]}
+            is_openai = _is_openai_model(model, api_model_id)
 
-            # Bereite extra_body vor mit Metadata
-            extra_body = {"metadata": metadata}
+            # Build extra_body only with compatible params
+            extra_body = {}
+
+            # Metadata only for LiteLLM proxy (OpenAI API rejects array-typed tags)
+            if not is_openai:
+                extra_body["metadata"] = {"tags": ["Technische Hochschule Nürnberg", "KIA"]}
 
             if json_mode:
-                # JSON Mode: use provided schema for guided_json
                 schema = data.get('schema', {}) or {}
-                # Only add guided_json if schema is not empty and has keys
                 if schema and len(schema) > 0:
                     extra_body["guided_json"] = schema
                     logging.info(f"handle_test_prompt_stream: JSON Mode with schema: {schema}")
                 else:
-                    # Basic JSON mode - just request JSON output without guided schema
-                    # Note: response_format may not be supported by all models
                     logging.info(f"handle_test_prompt_stream: JSON Mode (basic, no schema)")
             else:
                 logging.info("handle_test_prompt_stream: JSON Mode disabled")
 
-            extra_kwargs = {"extra_body": extra_body}
+            extra_kwargs = {"extra_body": extra_body} if extra_body else {}
 
             logging.info(f"handle_test_prompt_stream: Starting stream with extra_body keys: {list(extra_body.keys())}")
 
-            # Stream test completion from LiteLLM Proxy
+            # OpenAI models require max_completion_tokens instead of max_tokens
+            token_param = ("max_completion_tokens" if _is_openai_model(model, api_model_id)
+                           else "max_tokens")
+
+            # Stream test completion
             stream = client.chat.completions.create(
-                model=model,
+                model=api_model_id,
                 messages=messages,
-                max_tokens=max_tokens,
+                **{token_param: max_tokens},
                 n=1,
                 timeout=360.0,
                 frequency_penalty=0.3,

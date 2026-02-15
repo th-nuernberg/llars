@@ -47,6 +47,16 @@ Werkzeuge für gemeinsames Arbeiten:
 
 ---
 
+## Einstellungen
+
+Persönliche Konfiguration:
+
+| Guide | Beschreibung |
+|-------|--------------|
+| [LLM Provider Settings](llm-provider-settings.md) | Eigene LLM-API-Keys hinzufügen, testen und teilen |
+
+---
+
 ## Administration
 
 Systemverwaltung und Konfiguration:

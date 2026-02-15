@@ -152,9 +152,17 @@ class UserLLMProvider(db.Model):
 
     def to_dict(self, include_shares: bool = False) -> dict:
         """Convert to dictionary for API responses."""
+        owner = self.user
         result = {
             "id": self.id,
             "user_id": self.user_id,
+            "owner_username": owner.username if owner else None,
+            "owner_avatar_seed": getattr(owner, 'avatar_seed', None) if owner else None,
+            "owner_avatar_url": (
+                f"/api/users/avatar/{owner.avatar_public_id}"
+                if owner and getattr(owner, 'avatar_public_id', None) and getattr(owner, 'avatar_file', None)
+                else None
+            ),
             "provider_type": self.provider_type,
             "name": self.name,
             "base_url": self.base_url,

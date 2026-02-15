@@ -714,7 +714,7 @@ import LatexPdfViewer from '@/components/LatexCollab/LatexPdfViewer.vue'
 import FloatingGitPanel from './components/FloatingGitPanel.vue'
 import ZoteroPanel from '@/components/LatexCollab/Zotero/ZoteroPanel.vue'
 import { AUTH_STORAGE_KEYS, getAuthStorageItem } from '@/utils/authStorage'
-import { getAvatarUrl, formatDisplayName, formatRelativeDate } from '@/utils/userUtils'
+import { formatDisplayName, formatRelativeDate } from '@/utils/userUtils'
 import { getSocket } from '@/services/socketService'
 
 // Local composables - now actually used!

@@ -11,6 +11,7 @@ from auth.decorators import authentik_required
 from decorators.error_handler import (
     handle_api_errors, ValidationError, NotFoundError
 )
+from decorators.permission_decorator import require_permission
 from services.user_llm_provider_service import UserLLMProviderService
 
 user_provider_bp = Blueprint('providers', __name__, url_prefix='/providers')
@@ -60,6 +61,22 @@ def list_available_providers():
     return jsonify({
         'success': True,
         'providers': providers
+    })
+
+
+@user_provider_bp.route('/admin/all', methods=['GET'])
+@authentik_required
+@require_permission('admin:system:configure')
+@handle_api_errors(logger_name='user_providers')
+def list_all_providers_admin():
+    """List all user LLM providers in the system (admin only)."""
+    from db.models.user_llm_provider import UserLLMProvider
+    providers = UserLLMProvider.query.order_by(
+        UserLLMProvider.created_at.desc()
+    ).all()
+    return jsonify({
+        'success': True,
+        'providers': [p.to_dict(include_shares=True) for p in providers]
     })
 
 

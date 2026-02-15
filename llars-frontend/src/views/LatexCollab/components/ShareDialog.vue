@@ -26,7 +26,7 @@
         <!-- Owner Section -->
         <div class="section-label">{{ $t('latexCollab.share.ownerLabel') }}</div>
         <div class="user-card owner-card">
-          <img class="user-avatar" :src="getAvatarUrl(ownerInfo)" alt="" />
+          <LAvatar :username="ownerInfo.username" :seed="ownerInfo.avatar_seed" :src="ownerInfo.avatar_url" size="sm" />
           <div class="user-info">
             <div class="user-name">{{ formatDisplayName(ownerInfo.username) }}</div>
             <div class="user-meta">@{{ ownerInfo.username }}</div>
@@ -60,7 +60,7 @@
 
         <div v-else class="members-list">
           <div v-for="m in members" :key="m.username" class="user-card">
-            <img class="user-avatar" :src="getAvatarUrl(m)" alt="" />
+            <LAvatar :username="m.username" :seed="m.avatar_seed" :src="m.avatar_url" size="sm" />
             <div class="user-info">
               <div class="user-name">{{ formatDisplayName(m.username) }}</div>
               <div class="user-meta">{{ formatRelativeDate(m.added_at) }}</div>
@@ -86,7 +86,7 @@
 
 <script setup>
 import { ref } from 'vue'
-import { getAvatarUrl, formatDisplayName, formatRelativeDate } from '@/utils/userUtils'
+import { formatDisplayName, formatRelativeDate } from '@/utils/userUtils'
 
 const props = defineProps({
   modelValue: {

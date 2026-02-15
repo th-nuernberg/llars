@@ -252,7 +252,7 @@ Combined with two prompts and two models, LLARS produces 50\,$\times$\,2\,$\time
 
 Previous-generation mode works identically but reuses the data from a completed batch job, so that new prompts or additional models can be tested on exactly the same dataset without re-uploading.
 
-Prompt-only mode generates outputs without any source data: multiple prompts are sent to multiple models directly---for instance, a structured versus a narrative system prompt across three candidate models, yielding six responses to compare style and quality before investing in data preparation.
+Prompt-only mode sends selected prompts to selected models without uploading data; if the prompt contains variables, the sample values from prompt engineering are used.
 
 Results stream in real time, and every output records its full provenance---source item, prompt version, model, parameters, token count, and cost---exportable as CSV or JSON.
 This provenance is central to the pipeline: when outputs reach evaluation, assessors see only the generated text without any indication of which model or prompt produced it, and the platform maps their judgments back to specific model--prompt combinations, directly informing selection.

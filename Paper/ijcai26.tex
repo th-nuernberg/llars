@@ -230,15 +230,14 @@ The prompt engineering module (Figure~\ref{fig:prompt-editor}) provides a shared
 \label{fig:prompt-editor}
 \end{figure}
 
-A prompt is composed of ordered blocks---each representing one part of the prompt, such as a data format description or an instruction for the desired output style---that can be freely added, reordered, or removed.
+A prompt is composed of ordered blocks---each representing one part of the prompt, such as a data format description or an output instruction---that can be freely added, reordered, or removed.
 One block may optionally be marked as a system block, which becomes the LLM's system prompt; all remaining blocks are concatenated into the user prompt.
 Each block maintains an independent version history that tracks insertions and deletions per save (visible as \texttt{+130\,/\,{-}0} in Figure~\ref{fig:prompt-editor}), enabling diff comparison and rollback to any prior revision without affecting other blocks.
-
 Blocks may contain template variables written as \texttt{\{\{variable\_name\}\}}, which act as placeholders for external data that would otherwise clutter the prompt---an entire email thread, for instance, can be captured in a single \texttt{\{\{content\}\}} variable, keeping the surrounding instructions concise and letting authors focus on prompt design rather than data formatting.
-The platform automatically extracts all variables into a shared Variable Palette (Figure~\ref{fig:prompt-editor}, bottom-left), where each variable can be annotated with a sample value (e.g.\ \texttt{\{\{subject\}\}}\,=\,\textit{``School problems at home''}).
-These samples let collaborators preview the assembled prompt and serve as test inputs: while editing continues, any team member can send the current prompt---with samples substituted---to a selected LLM and receive a streamed response, enabling one collaborator to test a self-hosted model while another simultaneously queries a commercial API.
-Although designed as the first pipeline stage, the editor also functions standalone: prompts can be exported as JSON (including blocks, variables, and version metadata) for external use, and existing prompts can be imported to continue editing collaboratively.
-Once a prompt is finalized, it passes directly into batch generation, where the same template variables are systematically filled from dataset columns, scaling a single prompt to hundreds of outputs.
+The platform extracts all variables into a shared Variable Palette (Figure~\ref{fig:prompt-editor}, bottom-left), where each can be annotated with a sample value (e.g.\ \texttt{\{\{subject\}\}}\,=\,\textit{``School problems at home''}).
+These samples let collaborators preview the assembled prompt and serve as test inputs: any team member can send the current prompt---with samples substituted---to a selected LLM and receive a streamed response, enabling parallel testing across different models.
+The editor also functions standalone: prompts can be exported and imported as JSON for use in external systems.
+Once finalized, a prompt passes directly into batch generation, where the same template variables are systematically filled from dataset columns, scaling a single prompt to hundreds of outputs.
 
 \subsection{Batch Generation}
 
@@ -278,19 +277,20 @@ All data, metrics, and configurations are exportable as JSON or CSV.
 \section{Deployment and User Study}
 \label{sec:counseling}
 
-LLARS is deployed in psychosocial counselling research, including the Virtual Client project~\cite{rudolph2024virtualclient} for simulated client interactions and CAIA~\cite{steigerwald2025caia}, an AI assistant for online counselling.
-A full end-to-end case study~\cite{steigerwald2025subjectline} refined prompts collaboratively, produced 253~subject lines across 11~LLMs, and had five professionals together with an LLM evaluator rate them (1,518~assessments).
+LLARS is actively used in psychosocial counselling research: the Virtual Client project~\cite{rudolph2024virtualclient} uses it to develop prompts for simulated client interactions, and CAIA~\cite{steigerwald2025caia}, a co-designed AI assistant for online counselling, relies on it for prompt development and evaluation.
+A full end-to-end case study on automated subject line generation~\cite{steigerwald2025subjectline} refined prompts collaboratively, produced 253~subject lines across 11~LLMs via batch generation, and had five professionals together with an LLM evaluator rate them (1,518~assessments)---determining how small a model could be while still producing meaningful results.
 
-Semi-structured interviews with six domain experts and three developers confirmed that consolidating the pipeline in one platform saves considerable time---particularly for self-hosted models where no external playground exists.
-Developers valued that prompts, data, and outputs remain in one place, and domain experts found the evaluation interface immediately understandable.
-Both groups emphasised that co-locating the workflow removed the ``translation work'' between disciplines.
+Semi-structured interviews with six domain experts and three developers confirmed that consolidating the pipeline in a single platform saves considerable time.
+Regarding prompt engineering, domain experts found that the collaborative editor made prompt authoring straightforward---particularly when working with self-hosted models, where no external tooling or playground exists.
+For batch generation, developers valued that prompts, data, and outputs remain in one place, eliminating manual export--import cycles between separate tools.
+The evaluation module was rated as immediately understandable by all domain experts: clear progress indicators show which items have been assessed and which remain, letting evaluators resume across sessions.
+Across all three modules, both groups emphasised that co-locating the entire workflow removed the ``translation work'' between disciplines and created the experience of ``truly working together on the same task.''
 
 \section{Limitations, Demo, and Future Work}
 
-Current limitations include deployment in a single domain with a small user base, reliance on qualitative interviews rather than a controlled study, and the inherent risk that prompts optimised on test cases underperform on unseen data.
+Current limitations include deployment in a single domain with a small user base and reliance on qualitative interviews rather than a controlled study.
 Our live demo walks attendees through the full pipeline.
-Future work targets a controlled user study against baseline workflows and cross-domain validation in legal and medical settings.
-LLARS is open-source and under active development.
+LLARS is open-source and under active development; future work aims to extend it for more efficient interdisciplinary collaboration and to validate it across further domains.
 % TODO: Uncomment and update URLs before submission
 %\noindent\textbf{Repository:} \url{https://github.com/llars-project/llars}\\
 %\textbf{Documentation:} \url{https://llars-project.github.io}

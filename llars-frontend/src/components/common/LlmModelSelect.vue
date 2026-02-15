@@ -42,7 +42,7 @@
         </template>
         <v-list-item-title>{{ item.raw.display_name || item.raw.model_id }}</v-list-item-title>
         <v-list-item-subtitle class="text-caption">
-          {{ item.raw.provider }} · {{ item.raw.model_id }}
+          {{ item.raw.provider }} · {{ item.raw.subtitle || item.raw.model_id }}
         </v-list-item-subtitle>
       </v-list-item>
     </template>
@@ -199,6 +199,9 @@ const modelItems = computed(() => {
   return items.map(m => ({
     title: m.display_name || m.model_id,
     value: m.model_id,
+    subtitle: m.is_user_provider
+      ? (parseUserProviderModelId(m.model_id)?.displayName || (m.display_name || m.model_id))
+      : m.model_id,
     ...m
   }))
 })

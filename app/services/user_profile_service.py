@@ -6,7 +6,7 @@ Shared helpers for collab colors and avatar URLs.
 
 import random
 import re
-from typing import Optional, Set
+from typing import Optional, Set, Dict, Any
 
 from db import db
 from db.models.user import DEFAULT_COLLAB_COLORS
@@ -39,3 +39,15 @@ def build_avatar_url(user) -> Optional[str]:
     if not public_id or not avatar_file:
         return None
     return f"/api/users/avatar/{public_id}"
+
+
+def serialize_user_brief(user) -> Dict[str, Any]:
+    """Canonical avatar payload for frontend user badges/avatars."""
+    if not user:
+        return {"username": None, "avatar_seed": None, "avatar_url": None}
+
+    return {
+        "username": getattr(user, "username", None),
+        "avatar_seed": getattr(user, "avatar_seed", None),
+        "avatar_url": build_avatar_url(user),
+    }

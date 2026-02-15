@@ -38,6 +38,7 @@ from db.models.authenticity import UserAuthenticityVote
 from db.models.llm_task_result import LLMTaskResult
 from schemas.evaluation_data_schemas import EvaluationType
 from services.scenario_stats_service import get_progress_stats, get_authenticity_stats, get_scenario_stats_payload
+from services.user_profile_service import serialize_user_brief
 from .. import data_blueprint
 from .scenario_utils import is_scenario_owner, check_scenario_ownership
 
@@ -505,11 +506,14 @@ def get_scenario_detail(scenario_id):
         db_user = User.query.get(su.user_id)
         if db_user:
             user_progress = user_stats_map.get(db_user.username, {})
+            avatar = serialize_user_brief(db_user)
             users_list.append({
                 'user_id': su.user_id,
                 'username': db_user.username,
                 'display_name': getattr(db_user, 'display_name', db_user.username),
                 'role': su.role.value if hasattr(su.role, 'value') else str(su.role),
+                'avatar_seed': avatar.get('avatar_seed'),
+                'avatar_url': avatar.get('avatar_url'),
                 'completed': user_progress.get('done', 0),
                 'total': user_progress.get('total', result['thread_count'])
             })
@@ -2488,6 +2492,7 @@ def get_scenario_team(scenario_id):
     for su in scenario_users:
         db_user = User.query.get(su.user_id)
         if db_user:
+            avatar = serialize_user_brief(db_user)
             team.append({
                 'user_id': su.user_id,
                 'username': db_user.username,
@@ -2498,7 +2503,8 @@ def get_scenario_team(scenario_id):
                 'invited_by': su.invited_by,
                 'responded_at': su.responded_at.isoformat() if su.responded_at else None,
                 'is_ai': getattr(db_user, 'is_ai', False),
-                'avatar_seed': getattr(db_user, 'avatar_seed', None),
+                'avatar_seed': avatar.get('avatar_seed'),
+                'avatar_url': avatar.get('avatar_url'),
                 'collab_color': getattr(db_user, 'collab_color', None)
             })
 

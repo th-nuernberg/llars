@@ -45,13 +45,13 @@
               <tr v-for="user in users" :key="user.id">
                 <td>
                   <div class="d-flex align-center">
-                    <v-avatar
-                      size="32"
-                      color="primary"
+                    <LAvatar
+                      :username="getDisplayName(user)"
+                      :seed="user.avatar_seed"
+                      :src="user.avatar_url"
+                      size="sm"
                       class="mr-2"
-                    >
-                      <span class="text-caption">{{ getInitials(getDisplayName(user)) }}</span>
-                    </v-avatar>
+                    />
                     <div>
                       <div class="font-weight-medium">{{ getDisplayName(user) }}</div>
                       <div v-if="user.email" class="text-caption text-medium-emphasis">
@@ -110,9 +110,13 @@
         <v-row>
           <v-col v-for="evaluatorId in localConfig.evaluators" :key="evaluatorId" cols="6" sm="4" md="3">
             <v-card variant="tonal" class="pa-3 text-center">
-              <v-avatar size="40" color="primary" class="mb-2">
-                <span>{{ getInitials(getUserName(evaluatorId)) }}</span>
-              </v-avatar>
+              <LAvatar
+                :username="getUserName(evaluatorId)"
+                :seed="getUserAvatarSeed(evaluatorId)"
+                :src="getUserAvatarUrl(evaluatorId)"
+                size="md"
+                class="mb-2"
+              />
               <div class="text-body-2 font-weight-medium text-truncate">
                 {{ getUserName(evaluatorId) }}
               </div>
@@ -166,6 +170,7 @@
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue'
 import axios from 'axios'
+import LAvatar from '@/components/common/LAvatar.vue'
 
 const props = defineProps({
   userConfig: {
@@ -228,11 +233,6 @@ const threadsPerEvaluator = computed(() => {
   return Math.ceil(itemCount.value / localConfig.value.evaluators.length)
 })
 
-const getInitials = (name) => {
-  if (!name) return '?'
-  return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
-}
-
 const getDisplayName = (user) => {
   if (!user) return 'Unbekannt'
   return user.username || 'Unbekannt'
@@ -241,6 +241,16 @@ const getDisplayName = (user) => {
 const getUserName = (userId) => {
   const user = users.value.find(u => u.id === userId)
   return getDisplayName(user)
+}
+
+const getUserAvatarSeed = (userId) => {
+  const user = users.value.find(u => u.id === userId)
+  return user?.avatar_seed || null
+}
+
+const getUserAvatarUrl = (userId) => {
+  const user = users.value.find(u => u.id === userId)
+  return user?.avatar_url || null
 }
 
 const toggleEvaluator = (userId, isSelected) => {
@@ -311,6 +321,8 @@ const loadUsers = async () => {
       users.value = (response.data.users || response.data || []).map(u => ({
         id: u.id,
         username: u.username || u.name,
+        avatar_seed: u.avatar_seed || null,
+        avatar_url: u.avatar_url || null,
         email: u.email,
         in_scenario: false
       }))

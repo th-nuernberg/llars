@@ -244,7 +244,13 @@
                 </td>
                 <td>
                   <div class="owner-info">
-                    <LAvatar :name="c.owner" size="24" class="mr-1" />
+                    <LAvatar
+                      :username="c.owner"
+                      :seed="c.owner_avatar_seed"
+                      :src="c.owner_avatar_url"
+                      size="xs"
+                      class="mr-1"
+                    />
                     <span class="owner-name">{{ c.owner }}</span>
                   </div>
                 </td>
@@ -458,18 +464,24 @@
             </div>
             <div
               v-for="user in sharedWithUsers"
-              :key="user"
+              :key="sharedUserName(user)"
               class="shared-user-item"
             >
-              <LAvatar :name="user" size="28" class="mr-2" />
-              <span class="shared-user-name">{{ user }}</span>
+              <LAvatar
+                :username="sharedUserName(user)"
+                :seed="user?.avatar_seed || null"
+                :src="user?.avatar_url || null"
+                size="sm"
+                class="mr-2"
+              />
+              <span class="shared-user-name">{{ sharedUserName(user) }}</span>
               <v-spacer />
               <LIconBtn
                 icon="mdi-close"
                 size="x-small"
                 :tooltip="$t('kaimo.share.remove')"
                 color="danger"
-                @click="executeUnshare(user)"
+                @click="executeUnshare(sharedUserName(user))"
               />
             </div>
           </div>
@@ -556,6 +568,31 @@ const snackbar = ref({ show: false, text: '', color: 'success' })
 
 const showSnackbar = (text, color = 'success') => {
   snackbar.value = { show: true, text, color }
+}
+
+const sharedUserName = (entry) => {
+  if (!entry) return ''
+  if (typeof entry === 'string') return entry
+  return entry.username || ''
+}
+
+const normalizeSharedUsers = (entries) => {
+  if (!Array.isArray(entries)) return []
+  return entries
+    .map((entry) => {
+      if (typeof entry === 'string') {
+        return { username: entry, avatar_seed: null, avatar_url: null }
+      }
+      if (entry && typeof entry === 'object' && entry.username) {
+        return {
+          username: entry.username,
+          avatar_seed: entry.avatar_seed || null,
+          avatar_url: entry.avatar_url || null,
+        }
+      }
+      return null
+    })
+    .filter(Boolean)
 }
 
 const getStatusVariant = (status) => {
@@ -663,7 +700,7 @@ const openShareDialog = async (c) => {
   // Load current shares
   try {
     const data = await getKaimoCaseShares(c.id)
-    sharedWithUsers.value = data?.shared_with || []
+    sharedWithUsers.value = normalizeSharedUsers(data?.shared_with_users || data?.shared_with || [])
   } catch (err) {
     console.error('Error loading shares:', err)
     sharedWithUsers.value = []
@@ -678,8 +715,9 @@ const executeShare = async () => {
   shareError.value = ''
 
   try {
-    await shareKaimoCase(caseToShare.value.id, shareUsername.value.trim())
-    sharedWithUsers.value.push(shareUsername.value.trim())
+    const username = shareUsername.value.trim()
+    await shareKaimoCase(caseToShare.value.id, username)
+    sharedWithUsers.value.push({ username, avatar_seed: null, avatar_url: null })
     shareUsername.value = ''
     showSnackbar(t('kaimo.panel.snackbar.shareSuccess'), 'success')
     await loadCases()
@@ -696,7 +734,7 @@ const executeUnshare = async (username) => {
 
   try {
     await unshareKaimoCase(caseToShare.value.id, username)
-    sharedWithUsers.value = sharedWithUsers.value.filter(u => u !== username)
+    sharedWithUsers.value = sharedWithUsers.value.filter(u => sharedUserName(u) !== username)
     showSnackbar(t('kaimo.panel.snackbar.unshareSuccess'), 'success')
     await loadCases()
   } catch (err) {

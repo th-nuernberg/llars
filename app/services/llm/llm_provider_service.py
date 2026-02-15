@@ -428,6 +428,7 @@ class LLMProviderService:
         inserted = 0
         updated = 0
         skipped = 0
+        assigned_colors = LLMModel.get_assigned_colors()
 
         for model_id in clean_ids:
             existing = LLMModel.get_by_model_id(model_id)
@@ -438,7 +439,8 @@ class LLMProviderService:
                         existing.updated_by = synced_by
                     updated += 1
                 if not existing.color:
-                    existing.color = LLMModel.generate_color(existing.model_id)
+                    existing.color = LLMModel.generate_color(existing.model_id, existing_colors=assigned_colors)
+                    assigned_colors.append(existing.color)
                 if existing.provider_id != provider.id:
                     existing.provider_id = provider.id
                     if synced_by:
@@ -454,7 +456,7 @@ class LLMProviderService:
                 provider=inferred["provider"],
                 description=None,
                 model_type=inferred["model_type"],
-                color=LLMModel.generate_color(model_id),
+                color=LLMModel.generate_color(model_id, existing_colors=assigned_colors),
                 supports_vision=meta.get("supports_vision", inferred["supports_vision"]),
                 supports_reasoning=meta.get("supports_reasoning", inferred["supports_reasoning"]),
                 supports_function_calling=True,
@@ -470,6 +472,7 @@ class LLMProviderService:
                 updated_by=synced_by,
             )
             db.session.add(model)
+            assigned_colors.append(model.color)
             inserted += 1
 
         db.session.commit()

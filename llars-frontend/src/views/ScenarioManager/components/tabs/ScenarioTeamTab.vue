@@ -38,7 +38,12 @@
           :class="{ 'is-rejected': member.invitation_status === 'rejected' }"
         >
           <div class="member-avatar">
-            <LAvatar :username="member.username" size="md" />
+            <LAvatar
+              :username="member.username"
+              :seed="member.avatar_seed"
+              :src="member.avatar_url"
+              size="md"
+            />
           </div>
           <div class="member-info">
             <span class="member-name">{{ member.display_name || member.username }}</span>

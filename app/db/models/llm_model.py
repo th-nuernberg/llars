@@ -5,7 +5,7 @@ Stores available LLM models with their capabilities and pricing.
 Used for model selection in chatbots and other LLM-powered features.
 """
 
-from typing import Optional
+from typing import Iterable, Optional, Tuple
 import colorsys
 import re
 from datetime import datetime
@@ -21,6 +21,9 @@ NEUTRAL_HUE_RANGES = [
 ]
 NEUTRAL_SAT_RANGE = (38, 56)    # %
 NEUTRAL_LIGHT_RANGE = (42, 56)  # %
+COLOR_SEARCH_HUE_STEP = 3       # degrees
+COLOR_SEARCH_SAT_STEP = 3       # %
+COLOR_SEARCH_LIGHT_STEP = 3     # %
 
 # Legacy palette (kept for automatic migration of existing colors)
 LEGACY_MODEL_COLOR_PALETTE = [
@@ -141,6 +144,110 @@ def _color_key(color: Optional[str]) -> Optional[str]:
     return normalized.upper() if normalized else None
 
 
+def _hex_to_rgb(color: str) -> Optional[Tuple[int, int, int]]:
+    normalized = _color_key(color)
+    if not normalized:
+        return None
+    value = normalized[1:]
+    return (
+        int(value[0:2], 16),
+        int(value[2:4], 16),
+        int(value[4:6], 16),
+    )
+
+
+def _rgb_distance_sq(a: Tuple[int, int, int], b: Tuple[int, int, int]) -> int:
+    dr = a[0] - b[0]
+    dg = a[1] - b[1]
+    dbv = a[2] - b[2]
+    return dr * dr + dg * dg + dbv * dbv
+
+
+def _build_neutral_color_candidates() -> list[str]:
+    """
+    Build a finite neutral candidate palette used for max-distance search.
+
+    Keeps model colors in LLARS' neutral bands while giving enough combinations
+    to spread many models apart visually.
+    """
+    candidates: list[str] = []
+    seen: set[str] = set()
+    for start, end in NEUTRAL_HUE_RANGES:
+        for hue in range(start, end, COLOR_SEARCH_HUE_STEP):
+            for sat in range(NEUTRAL_SAT_RANGE[0], NEUTRAL_SAT_RANGE[1] + 1, COLOR_SEARCH_SAT_STEP):
+                for light in range(NEUTRAL_LIGHT_RANGE[0], NEUTRAL_LIGHT_RANGE[1] + 1, COLOR_SEARCH_LIGHT_STEP):
+                    color = _hsl_to_hex(hue, sat, light).upper()
+                    if color not in seen:
+                        seen.add(color)
+                        candidates.append(color)
+    return candidates
+
+
+NEUTRAL_COLOR_CANDIDATES = _build_neutral_color_candidates()
+_NEUTRAL_COLOR_CANDIDATE_SET = set(NEUTRAL_COLOR_CANDIDATES)
+
+
+def _pick_distinct_color(model_id: str, existing_colors: Iterable[str]) -> str:
+    """
+    Pick a neutral color that maximizes the minimum RGB distance to existing colors.
+
+    Falls back to deterministic hash-based seed color when no existing palette
+    context is available.
+    """
+    seed_value = (model_id or "").strip()
+    seed_color = _seed_color(seed_value).upper()
+
+    normalized_existing = sorted({
+        key for key in (_color_key(c) for c in existing_colors) if key
+    })
+    if not normalized_existing:
+        return seed_color
+
+    existing_rgbs = [rgb for rgb in (_hex_to_rgb(c) for c in normalized_existing) if rgb]
+    if not existing_rgbs:
+        return seed_color
+
+    candidate_pool = list(NEUTRAL_COLOR_CANDIDATES)
+    if seed_color not in candidate_pool:
+        candidate_pool.append(seed_color)
+
+    seed_hash = _hash_string(seed_value)
+    best_color = seed_color
+    best_score = (-1, -1.0, -1)
+    for candidate in candidate_pool:
+        candidate_rgb = _hex_to_rgb(candidate)
+        if not candidate_rgb:
+            continue
+        distances = [_rgb_distance_sq(candidate_rgb, existing_rgb) for existing_rgb in existing_rgbs]
+        min_dist_sq = min(distances)
+        avg_dist_sq = sum(distances) / len(distances)
+        tie_breaker = _hash_string(f"{seed_hash}:{candidate}")
+        score = (min_dist_sq, avg_dist_sq, tie_breaker)
+        if score > best_score:
+            best_color = candidate
+            best_score = score
+
+    return best_color
+
+
+def _is_auto_managed_color(model_id: str, color: Optional[str]) -> bool:
+    """
+    Detect colors that are safe to auto-rebalance.
+
+    We treat legacy palette colors and previously hash-seeded neutral colors as
+    auto-managed. Custom/manual colors remain untouched.
+    """
+    key = _color_key(color)
+    if not key:
+        return True
+    if key in _LEGACY_COLOR_SET:
+        return True
+    if key in _NEUTRAL_COLOR_CANDIDATE_SET:
+        return True
+    old_seed_key = _color_key(_seed_color(model_id))
+    return key == old_seed_key
+
+
 class LLMModel(db.Model):
     """
     Configuration for available LLM models.
@@ -236,10 +343,99 @@ class LLMModel(db.Model):
             'updated_by': self.updated_by,
         }
 
-    @staticmethod
-    def generate_color(model_id: str) -> str:
-        """Generate a stable palette color for a model_id."""
-        return _seed_color(model_id)
+    @classmethod
+    def get_assigned_colors(
+        cls,
+        *,
+        exclude_model_id: Optional[str] = None
+    ) -> list[str]:
+        """
+        Return normalized model colors already present in DB.
+
+        Intended for distance-aware color assignment when inserting new models.
+        """
+        try:
+            query = cls.query.with_entities(cls.model_id, cls.color)
+            if exclude_model_id:
+                query = query.filter(cls.model_id != exclude_model_id)
+            colors: list[str] = []
+            for model_id, color in query.all():
+                if exclude_model_id and model_id == exclude_model_id:
+                    continue
+                normalized = _color_key(color)
+                if normalized:
+                    colors.append(normalized)
+            return colors
+        except Exception:
+            # Fallback for contexts without active app/db session.
+            return []
+
+    @classmethod
+    def generate_color(
+        cls,
+        model_id: str,
+        existing_colors: Optional[Iterable[str]] = None
+    ) -> str:
+        """
+        Generate a stable, distance-aware neutral color for a model_id.
+
+        If existing colors are provided (or can be read from DB), the returned
+        color maximizes visual distance from those colors.
+        """
+        if isinstance(existing_colors, str):
+            palette = [existing_colors]
+        elif existing_colors is None:
+            palette = cls.get_assigned_colors(exclude_model_id=model_id)
+        else:
+            palette = list(existing_colors)
+        return _pick_distinct_color(model_id, palette)
+
+    @classmethod
+    def rebalance_auto_generated_colors(
+        cls,
+        *,
+        model_types: Optional[Iterable[str]] = None
+    ) -> int:
+        """
+        Recompute colors for auto-managed models to maximize pairwise distance.
+
+        Keeps explicitly customized colors stable and only reassigns colors that
+        are missing, legacy, or match historical hash-seeded values.
+        Returns the number of updated models.
+        """
+        query = cls.query
+        if model_types:
+            model_types_list = [m for m in model_types if isinstance(m, str) and m.strip()]
+            if model_types_list:
+                query = query.filter(cls.model_type.in_(model_types_list))
+
+        models = query.order_by(cls.model_id.asc()).all()
+        if not models:
+            return 0
+
+        fixed_palette: list[str] = []
+        managed_models: list['LLMModel'] = []
+        for model in models:
+            if _is_auto_managed_color(model.model_id, model.color):
+                managed_models.append(model)
+            else:
+                key = _color_key(model.color)
+                if key:
+                    fixed_palette.append(key)
+
+        palette = list(dict.fromkeys(fixed_palette))
+        changed = 0
+        for model in managed_models:
+            new_color = cls.generate_color(model.model_id, existing_colors=palette)
+            new_key = _color_key(new_color)
+            if not new_key:
+                continue
+            if _color_key(model.color) != new_key:
+                model.color = new_key
+                changed += 1
+            palette.append(new_key)
+
+        return changed
 
     @staticmethod
     def normalize_color(color: Optional[str]) -> Optional[str]:
@@ -535,9 +731,14 @@ def seed_default_models():
     from db.database import db
     from sqlalchemy import or_
 
+    assigned_colors = LLMModel.get_assigned_colors()
+
     for model_data in DEFAULT_LLM_MODELS:
         model_type = model_data.get("model_type") or LLMModel.MODEL_TYPE_LLM
-        color = LLMModel.normalize_color(model_data.get("color")) or LLMModel.generate_color(model_data.get("model_id", ""))
+        color = (
+            LLMModel.normalize_color(model_data.get("color"))
+            or LLMModel.generate_color(model_data.get("model_id", ""), existing_colors=assigned_colors)
+        )
         if model_data.get("is_default"):
             existing_default = LLMModel.query.filter_by(
                 model_type=model_type, is_default=True
@@ -552,6 +753,8 @@ def seed_default_models():
         if not existing:
             model = LLMModel(**model_data)
             db.session.add(model)
+            if model.color:
+                assigned_colors.append(model.color)
             print(f"  [LLM Models] Added: {model_data['display_name']}")
         else:
             # Update existing model with new data (except is_default if already set)
@@ -560,17 +763,17 @@ def seed_default_models():
                     existing_key = _color_key(existing.color)
                     if (not existing.color and value) or (existing_key in _LEGACY_COLOR_SET):
                         existing.color = value
+                    if existing.color:
+                        assigned_colors.append(existing.color)
                     continue
                 if key != 'is_default' or not existing.is_default:
                     setattr(existing, key, value)
 
-    # Backfill missing colors and migrate legacy palette colors
+    # Rebalance auto-managed colors (missing/legacy/old hash-seeded) to maximize distance.
     try:
-        all_models = LLMModel.query.all()
-        for model in all_models:
-            color_key = _color_key(model.color)
-            if not color_key or color_key in _LEGACY_COLOR_SET:
-                model.color = LLMModel.generate_color(model.model_id)
+        changed = LLMModel.rebalance_auto_generated_colors()
+        if changed:
+            print(f"  [LLM Models] Rebalanced colors for {changed} model(s)")
     except Exception:
         db.session.rollback()
 

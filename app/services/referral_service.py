@@ -20,7 +20,9 @@ from db.models.referral import (
     ReferralLink,
     ReferralRegistration,
 )
+from db.models import User
 from services.system_settings_service import get_setting
+from services.user_profile_service import serialize_user_brief
 
 logger = logging.getLogger(__name__)
 
@@ -624,14 +626,22 @@ class ReferralService:
             ReferralRegistration.registered_at.desc()
         ).offset(offset).limit(limit).all()
 
+        usernames = sorted({reg.username for reg in registrations if reg.username})
+        user_lookup = {}
+        if usernames:
+            user_lookup = {u.username: u for u in User.query.filter(User.username.in_(usernames)).all()}
+
         # Build response with link/campaign info
         result = []
         for reg in registrations:
             link = reg.link
             campaign = link.campaign if link else None
+            avatar = serialize_user_brief(user_lookup.get(reg.username))
             result.append({
                 'id': reg.id,
                 'username': reg.username,
+                'avatar_seed': avatar.get('avatar_seed'),
+                'avatar_url': avatar.get('avatar_url'),
                 'registered_at': reg.registered_at.isoformat() if reg.registered_at else None,
                 'ip_address': reg.ip_address,
                 'user_agent': reg.user_agent,

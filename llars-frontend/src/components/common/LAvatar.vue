@@ -119,9 +119,18 @@ const colorFromSeed = computed(() => {
   return llarsColors[index];
 });
 
+// Keep initials tied to username so letter rendering stays consistent.
+// Seed still influences colors/background via separate computations.
+const generatedSeedValue = computed(() => {
+  if (props.variant === 'initials' && props.username) {
+    return props.username;
+  }
+  return props.seed || props.username || 'anonymous';
+});
+
 // Build the DiceBear avatar URL
 const generatedAvatarUrl = computed(() => {
-  const seedValue = props.seed || props.username || 'anonymous';
+  const seedValue = generatedSeedValue.value;
   const size = sizeMap[props.size] * 2; // 2x for retina
 
   // Use transparent background when gradient is enabled, otherwise use solid color

@@ -157,18 +157,15 @@ const fallbackInitial = computed(() => {
   return props.username.charAt(0).toUpperCase();
 });
 
-// Generate gradient colors based on seed (two colors for gradient)
+// Generate soft pastel gradient colors based on seed.
 const gradientColors = computed(() => {
   const hash = hashFromString(props.seed || props.username);
-  const hue1 = hash % 360;
-  const hue2 = (hue1 + 47 + (hash % 29)) % 360;
-  const sat1 = 58 + (hash % 17); // 58-74
-  const sat2 = 54 + ((hash >> 3) % 19); // 54-72
-  const light1 = 44 + ((hash >> 5) % 12); // 44-55
-  const light2 = 35 + ((hash >> 7) % 12); // 35-46
+  const baseIndex = hash % llarsColors.length;
+  const offset = 2 + (hash % 3); // 2-4 ensures distinct but harmonious colors
+  const nextIndex = (baseIndex + offset) % llarsColors.length;
   return [
-    `hsl(${hue1} ${sat1}% ${light1}%)`,
-    `hsl(${hue2} ${sat2}% ${light2}%)`
+    `#${llarsColors[baseIndex]}`,
+    `#${llarsColors[nextIndex]}`
   ];
 });
 

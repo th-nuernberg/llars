@@ -45,7 +45,7 @@
                 <div class="variable-header">
                   <div class="variable-tag">
                     <span class="tag-name">{{ formatTag(variable.name) }}</span>
-                    <LTooltip :text="$t('promptEngineering.tooltips.variableUsage')">
+                    <LTooltip :text="t('promptEngineering.tooltips.variableUsage', { placeholderExample: '{{name}}' })">
                       <LIcon size="12" class="ml-1" color="grey">mdi-information-outline</LIcon>
                     </LTooltip>
                   </div>

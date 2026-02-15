@@ -30,7 +30,7 @@
             <div class="panel-header">
               <LIcon size="18" class="mr-2">mdi-variable</LIcon>
               <span class="panel-title">{{ $t('promptEngineering.testing.variables') }}</span>
-              <LTooltip :text="$t('promptEngineering.tooltips.variablesPanel')">
+              <LTooltip :text="t('promptEngineering.tooltips.variablesPanel', { placeholderExample: '{{name}}' })">
                 <LIcon size="16" class="ml-1" color="grey">mdi-information-outline</LIcon>
               </LTooltip>
             </div>

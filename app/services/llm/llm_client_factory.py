@@ -6,6 +6,7 @@ Builds OpenAI-compatible clients for configured providers and routes per model.
 
 from __future__ import annotations
 
+import logging
 import os
 from types import SimpleNamespace
 from typing import Any, Dict, List, Optional
@@ -28,6 +29,8 @@ from db.models.llm_provider import LLMProvider
 from services.llm.llm_provider_service import LLMProviderService
 from services.llm.secret_encryption import decrypt_api_key
 from services.user_llm_provider_service import UserLLMProviderService
+
+logger = logging.getLogger(__name__)
 
 USER_PROVIDER_PREFIX = "user-provider:"
 
@@ -79,7 +82,9 @@ class LLMClientFactory:
         cls._validated_model_cache.clear()
 
     @staticmethod
-    def _parse_user_provider_model_id(model_id: Optional[str]) -> tuple[Optional[int], Optional[str]]:
+    def _parse_user_provider_model_id(
+        model_id: Optional[str]
+    ) -> tuple[Optional[int], Optional[str], Optional[str]]:
         """Parse user-provider model IDs.
 
         Supports two formats:
@@ -87,24 +92,26 @@ class LLMClientFactory:
         - Old: user-provider:<providerId>:<model>
         """
         if not model_id or not isinstance(model_id, str):
-            return None, None
+            return None, None, None
         if not model_id.startswith(USER_PROVIDER_PREFIX):
-            return None, None
+            return None, None, None
         rest = model_id[len(USER_PROVIDER_PREFIX):]
         parts = rest.split(":", 2)
         if len(parts) < 2:
-            return None, None
+            return None, None, None
         try:
             provider_id = int(parts[0])
         except (TypeError, ValueError):
-            return None, None
+            return None, None, None
         # New format: provider_id:username:model (3 parts)
         # Old format: provider_id:model (2 parts)
+        owner_username = None
         if len(parts) == 3:
+            owner_username = parts[1].strip() or None
             actual_model = parts[2]
         else:
             actual_model = parts[1]
-        return provider_id, actual_model.strip() or None
+        return provider_id, owner_username, actual_model.strip() or None
 
     @staticmethod
     def _parse_provider_prefix(model_id: Optional[str]) -> tuple[Optional[str], Optional[str]]:
@@ -157,12 +164,22 @@ class LLMClientFactory:
         3. Legacy FK-based routing via llm_models.provider_id
         """
         # 1. User-provider prefix
-        provider_id, actual_model_id = LLMClientFactory._parse_user_provider_model_id(model_id)
+        provider_id, owner_username, actual_model_id = LLMClientFactory._parse_user_provider_model_id(model_id)
         if provider_id and actual_model_id:
             cache_key = f"user-provider:{provider_id}"
             client = LLMClientFactory._client_cache.get(cache_key)
             if client is None:
                 provider, api_key = UserLLMProviderService.get_provider_with_key(provider_id)
+                # If username-hint is present (new format), enforce owner match.
+                if provider and owner_username:
+                    owner = getattr(getattr(provider, "user", None), "username", None)
+                    if owner and owner != owner_username:
+                        logger.warning(
+                            "[LLMClientFactory] user-provider owner mismatch: provider_id=%s owner=%s hint=%s",
+                            provider_id, owner, owner_username
+                        )
+                        provider = None
+                        api_key = None
                 if provider and provider.provider_type in {"openai", "litellm", "ollama", "custom"}:
                     base_url = (provider.base_url or "").strip() or None
                     client = OpenAI(api_key=api_key or "EMPTY", base_url=base_url, timeout=LLM_TIMEOUT)

@@ -44,9 +44,35 @@
       "narration": "Hey everyone, I'm Alex — and welcome to this demo of Lars, the LLM Assisted Research System. I'm here with my colleague David, and together we'll walk you through the platform live.",
       "actions": [
         {
-          "do": "show_title",
-          "title": "LLARS",
-          "subtitle": "LLM Assisted Research System"
+          "do": "show_pipeline",
+          "columns": [
+            [
+              {
+                "label": "URL",
+                "value": "https://llars.e-beratungsinstitut.de"
+              }
+            ],
+            [
+              {
+                "label": "Reviewer 1",
+                "value": "ijcai_reviewer_1"
+              },
+              {
+                "label": "Password",
+                "value": "ijcai_reviewer_123"
+              }
+            ],
+            [
+              {
+                "label": "Reviewer 2",
+                "value": "ijcai_reviewer_2"
+              },
+              {
+                "label": "Password",
+                "value": "ijcai_reviewer_123"
+              }
+            ]
+          ]
         },
         {
           "do": "wait",
@@ -60,14 +86,8 @@
       "narration": "Thanks, Alex. Hi everyone — I'm David. The big challenge we see is that domain experts know what quality means, but developers know how to build the pipelines. These two groups usually work in isolation — passing prompts back and forth in shared documents. Lars bridges that gap.",
       "actions": [
         {
-          "do": "hide_title"
-        },
-        {
           "do": "wait",
           "seconds": 0.3
-        },
-        {
-          "do": "show_pipeline"
         }
       ]
     },
@@ -98,27 +118,6 @@
       "speaker": "moderator",
       "narration": "The credentials are on screen if you'd like to follow along. Let me log us in.",
       "actions": [
-        {
-          "do": "hide_title"
-        },
-        {
-          "do": "wait",
-          "seconds": 0.3
-        },
-        {
-          "do": "show_title",
-          "title": "LLARS",
-          "subtitle": "LLM Assisted Research System",
-          "columns": [
-            [{"label": "URL", "value": "https://llars.e-beratungsinstitut.de"}],
-            [{"label": "Reviewer 1", "value": "ijcai_reviewer_1"}, {"label": "Password", "value": "ijcai_reviewer_123"}],
-            [{"label": "Reviewer 2", "value": "ijcai_reviewer_2"}, {"label": "Password", "value": "ijcai_reviewer_123"}]
-          ]
-        },
-        {
-          "do": "wait",
-          "seconds": 2.0
-        },
         {
           "do": "hide_title"
         },
@@ -365,8 +364,8 @@
         {
           "do": "type",
           "target": ".editor-block:nth-child(3) .ql-editor",
-          "text": "Subject:{{subject}}\n\nContent:{{content}}",
-          "speed": "turbo"
+          "text": "Subject: {{subject}} Content: {{content}}",
+          "speed": "instant"
         }
       ]
     },
@@ -405,10 +404,9 @@
           "speed": "fast"
         },
         {
-          "do": "type",
+          "do": "paste",
           "target": "Variable Content Input",
-          "text": "School problems with my son",
-          "speed": "fast"
+          "text": "School problems with my son"
         },
         {
           "do": "wait",
@@ -450,10 +448,9 @@
           "speed": "fast"
         },
         {
-          "do": "type",
+          "do": "paste",
           "target": "Variable Content Input",
-          "text": "Client wrote on 10/01/2026 at 2:30 PM:\nMy son (13) has been refusing to go to school for two weeks. He complains of stomach aches, but the paediatrician found nothing. I am a single parent and cannot stay home every day.\n\nCounsellor wrote on 11/01/2026 at 9:00 AM:\nThank you for your message. School refusal can have various causes...",
-          "speed": "fast"
+          "text": "Client wrote on 05/01/2026 at 6:12 PM:\nI am writing because my 14-year-old son has refused to go to school for the past three weeks. Every morning he complains of headaches and stomach aches, but our paediatrician found nothing physically wrong. Before this started, he was an average student and had a small group of friends. My son will not tell me what happened. His form teacher called and said he has 15 unexcused absences now. I am a single father and I have already used all my remaining leave days from work to stay home with him. I am worried about his grades and whether the school will involve the youth welfare office.\n\nCounsellor wrote on 06/01/2026 at 10:00 AM:\nThank you for writing. School refusal at this age often signals that something significant has changed in the social environment. The physical symptoms your son reports are real — they are a stress response, even without an organic cause. It may help to gently explore whether there has been conflict with peers. Sometimes children at this age experience social exclusion or bullying but feel ashamed to talk about it. I would suggest requesting a meeting with the school counsellor, ideally without your son present at first, to understand what the school has observed. The youth welfare office is usually involved only in prolonged cases and their role is supportive, not punitive.\n\nClient wrote on 08/01/2026 at 9:30 PM:\nI spoke with his form teacher again today. She mentioned that a group of boys in his class has been making comments about his clothes and his phone being old. She was not sure if it counts as bullying. When I carefully asked my son about it tonight, he started crying and said everyone hates him and he never wants to go back. He also said he has been eating lunch alone for two months. I feel terrible that I did not notice earlier."
         },
         {
           "do": "wait",
@@ -622,6 +619,11 @@
           "seconds": 0.2
         },
         {
+          "do": "highlight",
+          "target": "Version Control Panel",
+          "duration": 1.0
+        },
+        {
           "do": "collab_type",
           "target": "First Block Editor",
           "text": "\n\nFocus on the objective facts stated in the correspondence. Avoid adding assumptions beyond what is written.",
@@ -632,9 +634,15 @@
           "seconds": 0.3
         },
         {
+          "do": "highlight",
+          "target": "Version Control Panel",
+          "duration": 1.0
+        },
+        {
           "do": "collab_type",
           "target": "Last Block Editor",
-          "text": "\n\nThe data below is provided as a subject line followed by the email thread content from a counselling session.",
+          "text": "The data below is provided as a subject line followed by the email thread content from a counselling session.\n",
+          "cursor": "start",
           "delay": 0.1
         },
         {
@@ -676,7 +684,7 @@
       "_section": "=== VERSION CONTROL (15s) ===",
       "id": "version_1",
       "speaker": "guest",
-      "narration": "Wait — is that version control in the sidebar? It's tracking our edits?",
+      "narration": "Ah, now I see it: when you type, Alex, version control tracks it.",
       "actions": [
         {
           "do": "highlight",
@@ -1185,17 +1193,28 @@
           "seconds": 0.5
         },
         {
+          "do": "wait_for",
+          "target": "Completed Job",
+          "timeout": 10
+        },
+        {
           "do": "highlight",
-          "target": "Counselling Situation Extraction",
+          "target": "Completed Job",
           "duration": 1.2
         },
         {
           "do": "click",
-          "target": "Counselling Situation Extraction"
+          "target": "Completed Job"
         },
         {
-          "do": "wait",
-          "seconds": 0.5
+          "do": "wait_for",
+          "target": "Scenario Wizard",
+          "timeout": 10
+        },
+        {
+          "do": "wait_for",
+          "target": "Outputs List",
+          "timeout": 10
         },
         {
           "do": "highlight",

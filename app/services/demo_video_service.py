@@ -6,6 +6,7 @@ Used by both CLI script (scripts/demo_video_manage.py) and API routes.
 """
 
 import logging
+from collections import Counter
 from datetime import datetime, timedelta
 
 logger = logging.getLogger('demo_video_service')
@@ -131,37 +132,52 @@ def seed():
 
     collab_user = User.query.filter_by(username=COLLAB_USER).first()
 
-    # --- 1. Create pre-seed prompt ---
-    preseed = UserPrompt.query.filter_by(
-        user_id=demo_user.id, name=PRESEED_PROMPT_NAME
-    ).first()
+    # --- 1. Ensure demo prompts exist (pre-seed + live/collab) ---
+    prompts_by_name = {}
+    prompt_specs = [
+        (PRESEED_PROMPT_NAME, _build_preseed_prompt_content),
+        (LIVE_PROMPT_NAME, _build_eval_prompt_content),
+    ]
 
-    if not preseed:
-        preseed = UserPrompt(
+    for prompt_name, prompt_builder in prompt_specs:
+        target_content = prompt_builder()
+        prompt = UserPrompt.query.filter_by(
             user_id=demo_user.id,
-            name=PRESEED_PROMPT_NAME,
-            content=_build_preseed_prompt_content()
-        )
-        _db.session.add(preseed)
-        _db.session.flush()
-        actions.append(f"Created prompt '{PRESEED_PROMPT_NAME}' (id={preseed.prompt_id})")
-    else:
-        actions.append(f"Prompt '{PRESEED_PROMPT_NAME}' already exists (id={preseed.prompt_id})")
-
-    # Share with collab user
-    if collab_user:
-        existing_share = UserPromptShare.query.filter_by(
-            prompt_id=preseed.prompt_id,
-            shared_with_user_id=collab_user.id
+            name=prompt_name
         ).first()
-        if not existing_share:
-            _db.session.add(UserPromptShare(
-                prompt_id=preseed.prompt_id,
+        if not prompt:
+            prompt = UserPrompt(
+                user_id=demo_user.id,
+                name=prompt_name,
+                content=target_content
+            )
+            _db.session.add(prompt)
+            _db.session.flush()
+            actions.append(f"Created prompt '{prompt_name}' (id={prompt.prompt_id})")
+        elif (prompt.content or {}) != target_content:
+            prompt.content = target_content
+            actions.append(f"Updated prompt '{prompt_name}' (id={prompt.prompt_id}) to current demo template")
+        else:
+            actions.append(f"Prompt '{prompt_name}' already exists (id={prompt.prompt_id})")
+
+        prompts_by_name[prompt_name] = prompt
+
+        if collab_user:
+            existing_share = UserPromptShare.query.filter_by(
+                prompt_id=prompt.prompt_id,
                 shared_with_user_id=collab_user.id
-            ))
-            actions.append(f"Shared '{PRESEED_PROMPT_NAME}' with {COLLAB_USER}")
+            ).first()
+            if not existing_share:
+                _db.session.add(UserPromptShare(
+                    prompt_id=prompt.prompt_id,
+                    shared_with_user_id=collab_user.id
+                ))
+                actions.append(f"Shared '{prompt_name}' with {COLLAB_USER}")
 
     _db.session.commit()
+
+    preseed = prompts_by_name[PRESEED_PROMPT_NAME]
+    live_prompt = prompts_by_name[LIVE_PROMPT_NAME]
 
     # --- 2. Create completed generation job ---
     existing_job = GenerationJob.query.filter_by(
@@ -180,15 +196,6 @@ def seed():
         if not mistral or not gpt5_nano:
             actions.append("Required LLM models not found, skipping job seeding")
             return {'success': True, 'actions': actions, 'warning': 'no_models'}
-
-        # Temporarily create eval prompt for rendering
-        temp_eval = UserPrompt(
-            user_id=demo_user.id,
-            name="_temp_eval_prompt",
-            content=_build_eval_prompt_content()
-        )
-        _db.session.add(temp_eval)
-        _db.session.flush()
 
         now = datetime.utcnow()
         total_outputs = len(COUNSELLING_CASES) * 2 * 2
@@ -224,7 +231,7 @@ def seed():
         for case_idx, case in enumerate(COUNSELLING_CASES):
             for summary_key, prompt_obj, prompt_name in [
                 ("structured", preseed, PRESEED_PROMPT_NAME),
-                ("narrative", temp_eval, LIVE_PROMPT_NAME),
+                ("narrative", live_prompt, LIVE_PROMPT_NAME),
             ]:
                 for model, model_key in [(mistral, 'mistral'), (gpt5_nano, 'gpt5_nano')]:
                     output_text = SAMPLE_OUTPUTS[summary_key][model_key][case_idx]
@@ -255,7 +262,6 @@ def seed():
                     ))
                     output_idx += 1
 
-        _db.session.delete(temp_eval)
         _db.session.commit()
         actions.append(f"Created job '{PRESEED_JOB_NAME}' (id={job.id}) with {total_outputs} outputs")
 
@@ -467,6 +473,11 @@ def _build_preseed_prompt_content():
     """Pre-seed prompt: structured situation analysis with numbered list and references.
     Deliberately more prescriptive than the live prompt to produce visibly different outputs."""
     return {
+        "collaboration_attribution": {
+            "owner": DEMO_USER,
+            "shared_with": [COLLAB_USER],
+            "note": "Prompt seeded with explicit block-level authorship for demo traceability."
+        },
         "blocks": {
             "Role Definition": {
                 "content": (
@@ -474,7 +485,8 @@ def _build_preseed_prompt_content():
                     "You support counsellors in systematically capturing the current life situation of help-seeking clients. "
                     "You analyze email threads between clients and counsellors and extract factual information about the client's circumstances."
                 ),
-                "position": 0
+                "position": 0,
+                "author": DEMO_USER
             },
             "Task Explanation": {
                 "content": (
@@ -496,7 +508,8 @@ def _build_preseed_prompt_content():
                     '2. 8-year-old son refusing school attendance for two weeks with psychosomatic symptoms. '
                     '— "my son has been refusing to go to school for two weeks", "he complains of stomach aches but the pediatrician found nothing"'
                 ),
-                "position": 1
+                "position": 1,
+                "author": COLLAB_USER
             },
             "Data Format Explanation": {
                 "content": (
@@ -505,7 +518,8 @@ def _build_preseed_prompt_content():
                     "{{content}}\n\n"
                     "Return only the numbered list. No additional explanations."
                 ),
-                "position": 2
+                "position": 2,
+                "author": DEMO_USER
             }
         }
     }
@@ -515,23 +529,40 @@ def _build_eval_prompt_content():
     """Live prompt: brief narrative situation summary. Matches
     the block structure of the live-typed prompt but produces shorter, narrative output."""
     return {
+        "collaboration_attribution": {
+            "owner": DEMO_USER,
+            "shared_with": [COLLAB_USER],
+            "note": "Live prompt seeded for collab demo; block authorship is explicit."
+        },
         "blocks": {
             "Role Definition": {
                 "content": "You are a counselling assistant who helps professionals extract key facts from client communications in online psychosocial counselling.",
-                "position": 0
+                "position": 0,
+                "author": COLLAB_USER
             },
             "Task Explanation": {
                 "content": "Read the email thread and write a brief situation overview in 2-3 sentences. Focus on the client's living situation, family, health, and main concerns. Write in third person, present tense.",
-                "position": 1
+                "position": 1,
+                "author": DEMO_USER
             },
             "Data Format Explanation": {
                 "content": (
-                    "Subject: {{subject}}\n\n"
-                    "Email thread:\n"
-                    "{{content}}\n\n"
-                    "Write a plain text paragraph, no bullet points."
+                    "The data below is provided as a subject line followed by the email thread content from a counselling session.\n\n"
+                    "Subject: {{subject}}\n"
+                    "Content: {{content}}"
                 ),
-                "position": 2
+                "position": 2,
+                "author": COLLAB_USER,
+                "contributors": [
+                    {
+                        "author": DEMO_USER,
+                        "text": "The data below is provided as a subject line followed by the email thread content from a counselling session."
+                    },
+                    {
+                        "author": COLLAB_USER,
+                        "text": "Subject: {{subject}}  Content: {{content}}"
+                    }
+                ]
             }
         }
     }
@@ -786,6 +817,260 @@ def _ensure_eval_scenario_reference_messages(db_session, scenario, counselling_c
     return added
 
 
+def _output_prompt_priority(prompt_name):
+    normalized = str(prompt_name or "").strip().lower()
+    if normalized == PRESEED_PROMPT_NAME.lower():
+        return 0
+    if normalized == LIVE_PROMPT_NAME.lower():
+        return 1
+    return 2
+
+
+def _output_model_priority(model_name):
+    normalized = str(model_name or "").strip().lower()
+    if "mistral" in normalized:
+        return 0
+    if "gpt-5" in normalized or "gpt5" in normalized:
+        return 1
+    return 2
+
+
+def _sort_outputs_for_case(outputs):
+    return sorted(
+        outputs,
+        key=lambda out: (
+            _output_prompt_priority(getattr(out, "prompt_variant_name", None)),
+            _output_model_priority(getattr(out, "llm_model_name", None)),
+            str(getattr(out, "prompt_variant_name", "") or "").lower(),
+            str(getattr(out, "llm_model_name", "") or "").lower(),
+            int(getattr(out, "id", 0) or 0),
+        )
+    )
+
+
+def _resolve_eval_llm_for_output(output, llm_mistral, llm_gpt5_nano):
+    model_name = str(getattr(output, "llm_model_name", "") or "").lower()
+    if "gpt-5" in model_name or "gpt5" in model_name:
+        return llm_gpt5_nano
+    if "mistral" in model_name:
+        return llm_mistral
+    return llm_mistral
+
+
+def _ensure_eval_scenario_integrity(
+    db_session,
+    scenario,
+    counselling_cases,
+    ranking_type,
+    feature_type,
+    llm_mistral,
+    llm_gpt5_nano,
+    preseed_job=None,
+):
+    """
+    Ensure seeded evaluation scenario is complete and demo-ready.
+
+    Repairs missing:
+    - evaluation items / scenario links
+    - scenario item distributions for current scenario users
+    - source/reference messages
+    - feature texts derived from pre-seeded outputs
+    """
+    from db.models.scenario import (
+        ScenarioItems,
+        EvaluationItem,
+        Message,
+        Feature,
+        ScenarioUsers,
+        ScenarioItemDistribution,
+    )
+    from db.models.generation import GeneratedOutput
+
+    counters = {
+        "items_created": 0,
+        "scenario_links_created": 0,
+        "distributions_created": 0,
+        "messages_added": 0,
+        "features_added": 0,
+    }
+
+    scenario_users = ScenarioUsers.query.filter_by(scenario_id=scenario.id).all()
+    scenario_items = ScenarioItems.query.filter_by(scenario_id=scenario.id).order_by(ScenarioItems.id.asc()).all()
+    existing_distributions = {
+        (row.scenario_user_id, row.scenario_item_id)
+        for row in ScenarioItemDistribution.query.filter_by(scenario_id=scenario.id).all()
+    }
+
+    outputs_by_case = {}
+    if preseed_job:
+        outputs = GeneratedOutput.query.filter_by(job_id=preseed_job.id).order_by(GeneratedOutput.id.asc()).all()
+        for out in outputs:
+            try:
+                case_idx = int((out.prompt_variables_json or {}).get("source_index", -1))
+            except (TypeError, ValueError):
+                case_idx = -1
+            if 0 <= case_idx < len(counselling_cases):
+                outputs_by_case.setdefault(case_idx, []).append(out)
+        for case_idx in list(outputs_by_case.keys()):
+            outputs_by_case[case_idx] = _sort_outputs_for_case(outputs_by_case[case_idx])
+
+    case_to_item = {}
+    case_to_scenario_item = {}
+    used_case_indices = set()
+
+    for idx, scenario_item in enumerate(scenario_items):
+        item_id = scenario_item.thread_id or scenario_item.item_id
+        if not item_id:
+            continue
+        eval_item = EvaluationItem.query.get(item_id)
+        if not eval_item:
+            continue
+
+        case_idx = None
+        if eval_item.chat_id is not None:
+            try:
+                candidate = int(eval_item.chat_id) - 20000
+                if 0 <= candidate < len(counselling_cases):
+                    case_idx = candidate
+            except (TypeError, ValueError):
+                case_idx = None
+
+        if case_idx is None:
+            subject = (eval_item.subject or "").strip()
+            if subject:
+                for i, case in enumerate(counselling_cases):
+                    if i in used_case_indices:
+                        continue
+                    if (case.get("subject") or "").strip() == subject:
+                        case_idx = i
+                        break
+
+        if case_idx is None and idx < len(counselling_cases) and idx not in used_case_indices:
+            case_idx = idx
+
+        if case_idx is None or case_idx in case_to_item:
+            continue
+
+        case_to_item[case_idx] = eval_item
+        case_to_scenario_item[case_idx] = scenario_item
+        used_case_indices.add(case_idx)
+
+    for case_idx, case in enumerate(counselling_cases):
+        eval_item = case_to_item.get(case_idx)
+        scenario_item = case_to_scenario_item.get(case_idx)
+
+        if not eval_item:
+            eval_item = EvaluationItem.query.filter_by(
+                chat_id=20000 + case_idx,
+                institut_id=99,
+                function_type_id=ranking_type.function_type_id,
+            ).first()
+            if not eval_item:
+                eval_item = EvaluationItem(
+                    chat_id=20000 + case_idx,
+                    institut_id=99,
+                    subject=case.get("subject") or f"Case {case_idx}",
+                    sender="demo",
+                    function_type_id=ranking_type.function_type_id,
+                )
+                db_session.session.add(eval_item)
+                db_session.session.flush()
+                counters["items_created"] += 1
+            case_to_item[case_idx] = eval_item
+
+        if not scenario_item:
+            scenario_item = ScenarioItems.query.filter_by(
+                scenario_id=scenario.id,
+                item_id=eval_item.item_id,
+            ).first()
+            if not scenario_item:
+                scenario_item = ScenarioItems(
+                    scenario_id=scenario.id,
+                    thread_id=eval_item.item_id,
+                )
+                db_session.session.add(scenario_item)
+                db_session.session.flush()
+                counters["scenario_links_created"] += 1
+            case_to_scenario_item[case_idx] = scenario_item
+
+        for scenario_user in scenario_users:
+            key = (scenario_user.id, scenario_item.id)
+            if key in existing_distributions:
+                continue
+            db_session.session.add(ScenarioItemDistribution(
+                scenario_id=scenario.id,
+                scenario_user_id=scenario_user.id,
+                scenario_item_id=scenario_item.id,
+            ))
+            existing_distributions.add(key)
+            counters["distributions_created"] += 1
+
+        if Message.query.filter_by(item_id=eval_item.item_id).first() is None and case.get("content"):
+            db_session.session.add(Message(
+                item_id=eval_item.item_id,
+                sender="source",
+                content=case["content"],
+                timestamp=datetime.utcnow() - timedelta(hours=2),
+                generated_by="Human",
+            ))
+            counters["messages_added"] += 1
+
+        case_outputs = outputs_by_case.get(case_idx, [])
+        if not case_outputs:
+            continue
+
+        existing_features = Feature.query.filter_by(
+            item_id=eval_item.item_id,
+            type_id=feature_type.type_id,
+        ).all()
+        existing_counter = Counter(
+            (feature.llm_id, str(feature.content or "").strip())
+            for feature in existing_features
+            if str(feature.content or "").strip()
+        )
+
+        target_counter = Counter()
+        for output in case_outputs:
+            rendered_content = str(output.generated_content or "").strip()
+            if not rendered_content:
+                continue
+            llm_ref = _resolve_eval_llm_for_output(output, llm_mistral, llm_gpt5_nano)
+            target_counter[(llm_ref.llm_id, rendered_content)] += 1
+
+        for signature, expected_count in target_counter.items():
+            existing_count = existing_counter.get(signature, 0)
+            missing_count = expected_count - existing_count
+            if missing_count <= 0:
+                continue
+            llm_id, content = signature
+            for _ in range(missing_count):
+                db_session.session.add(Feature(
+                    item_id=eval_item.item_id,
+                    type_id=feature_type.type_id,
+                    llm_id=llm_id,
+                    content=content,
+                ))
+                counters["features_added"] += 1
+
+    if any(counters.values()):
+        db_session.session.commit()
+
+    actions = []
+    if counters["items_created"] or counters["scenario_links_created"]:
+        actions.append(
+            f"Repaired eval items: +{counters['items_created']} items, "
+            f"+{counters['scenario_links_created']} scenario links"
+        )
+    if counters["distributions_created"]:
+        actions.append(f"Repaired scenario distributions: +{counters['distributions_created']}")
+    if counters["messages_added"]:
+        actions.append(f"Backfilled reference messages: +{counters['messages_added']}")
+    if counters["features_added"]:
+        actions.append(f"Backfilled ranking features: +{counters['features_added']}")
+
+    return actions
+
+
 def _seed_evaluation_scenario(db_session, demo_user, collab_user):
     """
     Seed a ranking evaluation scenario from the pre-seeded batch generation.
@@ -810,26 +1095,10 @@ def _seed_evaluation_scenario(db_session, demo_user, collab_user):
 
     actions = []
 
-    # Check if scenario already exists
-    existing = RatingScenarios.query.filter_by(
-        scenario_name=EVAL_SCENARIO_NAME
-    ).first()
-    if existing:
-        repaired_count = _ensure_eval_scenario_reference_messages(db_session, existing, COUNSELLING_CASES)
-        if repaired_count:
-            actions.append(
-                f"Backfilled {repaired_count} missing reference message(s) for '{EVAL_SCENARIO_NAME}' (id={existing.id})"
-            )
-        actions.append(f"Eval scenario '{EVAL_SCENARIO_NAME}' already exists (id={existing.id})")
-        return actions
-
     # Get the pre-seeded batch job
     preseed_job = GenerationJob.query.filter_by(
         name=PRESEED_JOB_NAME, created_by=DEMO_USER
     ).first()
-    if not preseed_job:
-        actions.append("Pre-seed job not found, skipping eval scenario")
-        return actions
 
     # Get or create ranking function type
     ranking_type = FeatureFunctionType.query.filter_by(name='ranking').first()
@@ -856,6 +1125,28 @@ def _seed_evaluation_scenario(db_session, demo_user, collab_user):
 
     llm_mistral = _get_or_create_llm('Mistral Small')
     llm_gpt5_nano = _get_or_create_llm('GPT-5 Nano')
+
+    # Check if scenario already exists. If yes, repair missing demo integrity and keep it.
+    existing = RatingScenarios.query.filter_by(
+        scenario_name=EVAL_SCENARIO_NAME
+    ).first()
+    if existing:
+        actions.extend(_ensure_eval_scenario_integrity(
+            db_session=db_session,
+            scenario=existing,
+            counselling_cases=COUNSELLING_CASES,
+            ranking_type=ranking_type,
+            feature_type=ft,
+            llm_mistral=llm_mistral,
+            llm_gpt5_nano=llm_gpt5_nano,
+            preseed_job=preseed_job,
+        ))
+        actions.append(f"Eval scenario '{EVAL_SCENARIO_NAME}' already exists (id={existing.id})")
+        return actions
+
+    if not preseed_job:
+        actions.append("Pre-seed job not found, skipping eval scenario")
+        return actions
 
     # --- Create the ranking scenario ---
     scenario = RatingScenarios(
@@ -899,20 +1190,25 @@ def _seed_evaluation_scenario(db_session, demo_user, collab_user):
 
     # --- Create evaluation items + features from batch outputs ---
     # Group outputs by case (source_index)
-    outputs = GeneratedOutput.query.filter_by(job_id=preseed_job.id).all()
+    outputs = GeneratedOutput.query.filter_by(job_id=preseed_job.id).order_by(GeneratedOutput.id.asc()).all()
 
     # Group by source_index
     outputs_by_case = {}
     for out in outputs:
-        case_idx = (out.prompt_variables_json or {}).get('source_index', 0)
+        try:
+            case_idx = int((out.prompt_variables_json or {}).get('source_index', -1))
+        except (TypeError, ValueError):
+            case_idx = -1
+        if case_idx < 0:
+            continue
         outputs_by_case.setdefault(case_idx, []).append(out)
 
     items = []
     item_features = {}  # item_id -> list of features
 
-    for case_idx in sorted(outputs_by_case.keys()):
+    for case_idx in range(len(COUNSELLING_CASES)):
         case = COUNSELLING_CASES[case_idx] if case_idx < len(COUNSELLING_CASES) else None
-        case_outputs = outputs_by_case[case_idx]
+        case_outputs = _sort_outputs_for_case(outputs_by_case.get(case_idx, []))
 
         # Create evaluation item
         item = EvaluationItem(
@@ -956,13 +1252,7 @@ def _seed_evaluation_scenario(db_session, demo_user, collab_user):
         # Create features from outputs (4 per item: 2 prompts × 2 models)
         features = []
         for out in case_outputs:
-            model_name = out.llm_model_name or ''
-            if 'Mistral' in model_name or 'mistral' in model_name:
-                llm_ref = llm_mistral
-            elif 'gpt-5' in model_name or 'GPT-5' in model_name:
-                llm_ref = llm_gpt5_nano
-            else:
-                llm_ref = llm_mistral
+            llm_ref = _resolve_eval_llm_for_output(out, llm_mistral, llm_gpt5_nano)
 
             feature = Feature(
                 item_id=item.item_id,

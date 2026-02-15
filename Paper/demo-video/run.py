@@ -387,7 +387,7 @@ ELEMENT_MAP = {
     "Test Loading": ".v-progress-circular, .loading",
 
     # Batch Generation - Job List
-    "Completed Job": ".job-card:contains('completed'), .job-card.status-completed, .job-item:contains('100%')",
+    "Completed Job": ".job-card.is-completed, .job-card.status-completed, .job-card:contains('Completed'), .job-card:contains('Abgeschlossen'), .job-item:contains('100%')",
     "Demo Job": ".job-card:contains('Counselling'), .job-card:contains('Situation')",
     "Job Status": ".job-status, .status-chip",
     "Job Progress": ".job-progress, .progress-bar",
@@ -485,7 +485,7 @@ ELEMENT_MAP = {
     "Collab Indicator": ".collab-indicator, .user-presence, .collaboration-status, .yjs-status, .online-users",
 
     # Batch Generation - Existing Jobs (seeded by seed_demo_video_data)
-    "Counselling Situation Extraction": ".job-card:contains('Counselling Situation Extraction'), .job-row:contains('Counselling Situation'), .v-list-item:contains('Counselling Situation')",
+    "Counselling Situation Extraction": ".job-card.is-completed:contains('Counselling Situation Extraction'), .job-card:contains('Counselling Situation Extraction'), .job-row:contains('Counselling Situation'), .v-list-item:contains('Counselling Situation')",
     "Job Summary": ".job-summary, .job-stats, .stats-card, .v-card .stats, .job-info",
     "Job Details": ".job-details, .job-detail-view, .v-card:contains('Details')",
     "Job Outputs": ".outputs-list, .output-cards, .generated-outputs",
@@ -2120,6 +2120,72 @@ class Browser:
             # Check if it's a contenteditable element (Quill editor)
             is_contenteditable = element.get_attribute('contenteditable') == 'true'
 
+            # Instant fill for Quill/contenteditable (avoids race conditions while typing placeholders)
+            if speed == "instant" and is_contenteditable:
+                try:
+                    set_ok = self.driver.execute_script("""
+                        const editorEl = arguments[0];
+                        const text = arguments[1];
+                        let quill = null;
+
+                        try {
+                            const container = editorEl.closest('.ql-container');
+                            if (container && container.__quill) {
+                                quill = container.__quill;
+                            }
+                        } catch (e) {}
+
+                        if (!quill && window.Quill) {
+                            try {
+                                const found = window.Quill.find(editorEl.closest('.ql-container') || editorEl);
+                                if (found && typeof found.setText === 'function') {
+                                    quill = found;
+                                }
+                            } catch (e) {}
+                        }
+
+                        if (quill && typeof quill.setText === 'function') {
+                            quill.setText(text, 'api');
+                            return true;
+                        }
+
+                        editorEl.textContent = text;
+                        editorEl.dispatchEvent(new Event('input', { bubbles: true }));
+                        editorEl.dispatchEvent(new Event('change', { bubbles: true }));
+                        return false;
+                    """, element, text)
+
+                    if not set_ok:
+                        # Fallback when no Quill instance was found
+                        try:
+                            element.send_keys(Keys.COMMAND + 'a')
+                        except Exception:
+                            try:
+                                element.send_keys(Keys.CONTROL + 'a')
+                            except Exception:
+                                pass
+                        try:
+                            element.send_keys(Keys.BACKSPACE)
+                        except Exception:
+                            pass
+                        element.send_keys(text)
+                except Exception:
+                    # Last-resort fallback
+                    try:
+                        element.send_keys(Keys.COMMAND + 'a')
+                    except Exception:
+                        try:
+                            element.send_keys(Keys.CONTROL + 'a')
+                        except Exception:
+                            pass
+                    try:
+                        element.send_keys(Keys.BACKSPACE)
+                    except Exception:
+                        pass
+                    element.send_keys(text)
+                print(f"   ⌨️ Type: {text[:30]}...")
+                return
+
             # Instant fill for normal inputs (faster for variable dialogs)
             if speed == "instant" and not is_contenteditable:
                 try:
@@ -2268,7 +2334,7 @@ class Browser:
         """)
         print(f"   🎬 hide_title")
 
-    def show_pipeline(self):
+    def show_pipeline(self, title: str = "", subtitle: str = "", columns: list = None):
         """Shows an HTML pipeline diagram as overlay, matching the paper's Figure 1.
 
         Uses LLARS design colors: Prompt=#B0CA97, Batch=#88C4C8, Eval=#D1BC8A, Outcome=#E8A087.
@@ -2276,13 +2342,56 @@ class Browser:
         that can be targeted by the highlight action via ELEMENT_MAP.
         """
         self._inject_styles()
-        self.driver.execute_script("""
+        title_js = title.replace("\\", "\\\\").replace("`", "\\`").replace("$", "\\$")
+        subtitle_js = subtitle.replace("\\", "\\\\").replace("`", "\\`").replace("$", "\\$")
+
+        columns_js = ""
+        if columns:
+            import json
+            columns_js = f"var cols = {json.dumps(columns)};"
+            columns_js += """
+            if (cols && cols.length) {
+                var cWrap = document.createElement('div');
+                cWrap.className = 'llars-overlay-columns';
+                cols.forEach(function(col){
+                    var c = document.createElement('div');
+                    c.className = 'llars-overlay-column';
+                    (col || []).forEach(function(item){
+                        var l = document.createElement('div');
+                        l.className = 'llars-overlay-cred-label';
+                        l.textContent = item.label || '';
+                        var v = document.createElement('div');
+                        v.className = 'llars-overlay-cred-value';
+                        v.textContent = item.value || '';
+                        c.appendChild(l);
+                        c.appendChild(v);
+                    });
+                    cWrap.appendChild(c);
+                });
+                overlay.appendChild(cWrap);
+            }
+            """
+
+        self.driver.execute_script(f"""
             var old = document.getElementById('llars-overlay');
             if (old) old.remove();
 
             var overlay = document.createElement('div');
             overlay.id = 'llars-overlay';
             overlay.className = 'llars-overlay';
+
+            if (`{title_js}`) {{
+                var t = document.createElement('div');
+                t.className = 'llars-overlay-title';
+                t.textContent = `{title_js}`;
+                overlay.appendChild(t);
+            }}
+            if (`{subtitle_js}`) {{
+                var s = document.createElement('div');
+                s.className = 'llars-overlay-subtitle';
+                s.textContent = `{subtitle_js}`;
+                overlay.appendChild(s);
+            }}
 
             var pipeline = document.createElement('div');
             pipeline.className = 'pipeline-container';
@@ -2324,13 +2433,14 @@ class Browser:
             `;
 
             overlay.appendChild(pipeline);
+            {columns_js}
             document.body.appendChild(overlay);
 
-            requestAnimationFrame(function() {
-                requestAnimationFrame(function() {
+            requestAnimationFrame(function() {{
+                requestAnimationFrame(function() {{
                     overlay.classList.add('visible');
-                });
-            });
+                }});
+            }});
         """)
         print(f"   🎬 show_pipeline")
 
@@ -2991,7 +3101,7 @@ class Browser:
         else:
             print(f"   ⚠️ Collab konnte '{target}' nicht finden")
 
-    def collab_type(self, target: str, text: str, delay: float = 0.08):
+    def collab_type(self, target: str, text: str, delay: float = 0.08, cursor: str = "end"):
         """
         Tippt Text in ein Element im Collab-Browser.
         Der Text erscheint mit dem Cursor des Collab-Users im Hauptbrowser.
@@ -3003,11 +3113,30 @@ class Browser:
         element = self._find_element_in_driver(self.collab_driver, target)
         if element:
             # Klicke erst in das Element um Fokus zu setzen
-            self.collab_driver.execute_script("arguments[0].click()", element)
+            self.collab_driver.execute_script("arguments[0].click(); arguments[0].focus();", element)
             time.sleep(0.3)
 
+            # Optional: Cursor gezielt an den Anfang/ans Ende setzen (z.B. für "oben drüber" schreiben)
+            cursor_mode = (cursor or "end").lower()
+            if cursor_mode in ("start", "end"):
+                self.collab_driver.execute_script(
+                    """
+                    const el = arguments[0];
+                    const atStart = arguments[1];
+                    const sel = window.getSelection();
+                    const range = document.createRange();
+                    range.selectNodeContents(el);
+                    range.collapse(atStart);
+                    sel.removeAllRanges();
+                    sel.addRange(range);
+                    """,
+                    element,
+                    cursor_mode == "start"
+                )
+                time.sleep(0.1)
+
             # Tippe jeden Buchstaben einzeln für sichtbaren Effekt
-            print(f"   👥 Collab tippt in '{target}': {text[:30]}...")
+            print(f"   👥 Collab tippt in '{target}' ({cursor_mode}): {text[:30]}...")
             for char in text:
                 element.send_keys(char)
                 time.sleep(delay)
@@ -4112,7 +4241,10 @@ class ScriptRunner:
             return True
 
         elif do == 'show_pipeline':
-            self.browser.show_pipeline()
+            title = action.get('title', '')
+            subtitle = action.get('subtitle', '')
+            columns = action.get('columns', None)
+            self.browser.show_pipeline(title=title, subtitle=subtitle, columns=columns)
             if test_mode:
                 time.sleep(0.3)
             else:
@@ -4228,9 +4360,10 @@ class ScriptRunner:
         elif do == 'collab_type':
             text = action.get('text', '')
             delay = action.get('delay', 0.08)
+            cursor = action.get('cursor', 'end')
             if test_mode:
                 delay = 0.02  # Schneller tippen im Test
-            self.browser.collab_type(target, text, delay)
+            self.browser.collab_type(target, text, delay, cursor=cursor)
             print(f"   ✓ collab_type: {target}")
             return True
 

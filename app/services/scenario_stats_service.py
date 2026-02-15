@@ -1511,7 +1511,7 @@ def _calculate_ranking_agreement_heatmap(scenario_id: int) -> Dict[str, Any]:
     item_ids = [si.item_id for si in scenario_items]
 
     if not item_ids:
-        return {"evaluators": [], "agreements": {}}
+        return {"evaluators": [], "agreements": {}, "pair_details": {}}
 
     # feature_id -> {evaluator_id: bucket}
     feature_buckets = defaultdict(dict)
@@ -1526,6 +1526,42 @@ def _calculate_ranking_agreement_heatmap(scenario_id: int) -> Dict[str, Any]:
         "schlecht": "schlecht", "bad": "schlecht", "poor": "schlecht",
     }
     valid_buckets = {"gut", "mittel", "neutral", "schlecht"}
+    detail_item_limit = 250
+
+    def _to_preview(value: Any, max_length: int = 220) -> str:
+        if value is None:
+            return ""
+        text = " ".join(str(value).split())
+        if not text:
+            return ""
+        if len(text) <= max_length:
+            return text
+        return f"{text[:max_length - 3]}..."
+
+    def _to_short_label(preview: str, fallback: str) -> str:
+        if not preview:
+            return fallback
+        max_label = 90
+        if len(preview) <= max_label:
+            return preview
+        return f"{preview[:max_label - 3]}..."
+
+    def _normalize_id(value: Any) -> Any:
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            return value
+
+    feature_meta: Dict[Any, Dict[str, Any]] = {}
+    ranking_features = Feature.query.filter(Feature.item_id.in_(item_ids)).all()
+    for feature in ranking_features:
+        preview = _to_preview(feature.content)
+        feature_meta[feature.feature_id] = {
+            "feature_id": _normalize_id(feature.feature_id),
+            "item_id": _normalize_id(feature.item_id),
+            "label": _to_short_label(preview, f"Feature {feature.feature_id}"),
+            "preview": preview,
+        }
 
     # 1. Get human rankings - each row is one feature → one bucket
     human_rankings = (
@@ -1589,33 +1625,77 @@ def _calculate_ranking_agreement_heatmap(scenario_id: int) -> Dict[str, Any]:
                     feature_buckets[fid][llm_user_id] = normalized
 
     if not users_set:
-        return {"evaluators": [], "agreements": {}}
+        return {"evaluators": [], "agreements": {}, "pair_details": {}}
 
     evaluators = list(user_info.values())
 
     # Calculate pairwise agreement at feature level
     # For each pair: % of features where both assigned the same bucket
     agreements = {}
+    pair_details = {}
     user_list = list(users_set)
 
     for i, user1 in enumerate(user_list):
         for user2 in user_list[i + 1:]:
             shared_count = 0
             agree_count = 0
+            agreed_items = []
+            disagreed_items = []
+            agreed_omitted_count = 0
+            disagreed_omitted_count = 0
             for feature_id, evaluator_buckets in feature_buckets.items():
                 if user1 in evaluator_buckets and user2 in evaluator_buckets:
                     shared_count += 1
-                    if evaluator_buckets[user1] == evaluator_buckets[user2]:
+                    bucket_1 = evaluator_buckets[user1]
+                    bucket_2 = evaluator_buckets[user2]
+                    same_bucket = bucket_1 == bucket_2
+
+                    if same_bucket:
                         agree_count += 1
+
+                    normalized_feature_id = _normalize_id(feature_id)
+                    metadata = feature_meta.get(feature_id) or feature_meta.get(normalized_feature_id, {})
+                    detail_entry = {
+                        "feature_id": metadata.get("feature_id", normalized_feature_id),
+                        "item_id": metadata.get("item_id"),
+                        "label": metadata.get("label", f"Feature {feature_id}"),
+                        "preview": metadata.get("preview", ""),
+                        "values": {
+                            str(user1): bucket_1,
+                            str(user2): bucket_2,
+                        }
+                    }
+
+                    if same_bucket:
+                        if len(agreed_items) < detail_item_limit:
+                            agreed_items.append(detail_entry)
+                        else:
+                            agreed_omitted_count += 1
+                    else:
+                        if len(disagreed_items) < detail_item_limit:
+                            disagreed_items.append(detail_entry)
+                        else:
+                            disagreed_omitted_count += 1
 
             if shared_count >= 1:
                 agreement = agree_count / shared_count
                 key = f"{min(str(user1), str(user2))}-{max(str(user1), str(user2))}"
                 agreements[key] = round(agreement, 3)
+                pair_details[key] = {
+                    "shared_count": shared_count,
+                    "agreed_count": agree_count,
+                    "disagreed_count": shared_count - agree_count,
+                    "agreed_items": agreed_items,
+                    "disagreed_items": disagreed_items,
+                    "agreed_omitted_count": agreed_omitted_count,
+                    "disagreed_omitted_count": disagreed_omitted_count,
+                    "truncated": (agreed_omitted_count + disagreed_omitted_count) > 0,
+                }
 
     return {
         "evaluators": evaluators,
-        "agreements": agreements
+        "agreements": agreements,
+        "pair_details": pair_details,
     }
 
 

@@ -1,7 +1,19 @@
 """Unit tests for demo video data service."""
 
+from types import SimpleNamespace
+
 from db.models.llm_model import LLMModel
-from services.demo_video_service import _color_distance_sq, _ensure_demo_model_color_contrast
+from services.demo_video_service import (
+    COLLAB_USER,
+    DEMO_USER,
+    LIVE_PROMPT_NAME,
+    PRESEED_PROMPT_NAME,
+    _build_eval_prompt_content,
+    _build_preseed_prompt_content,
+    _color_distance_sq,
+    _ensure_demo_model_color_contrast,
+    _sort_outputs_for_case,
+)
 
 
 def _build_llm_model(model_id: str, color: str, provider: str = "test") -> LLMModel:
@@ -38,3 +50,46 @@ def test_DEMO_COLOR_001_ensure_demo_models_get_clear_color_distance(app, db, app
     assert changed >= 1
     assert mistral.color != gpt5_nano.color
     assert _color_distance_sq(mistral.color, gpt5_nano.color) >= 12000
+
+
+def test_DEMO_PROMPT_001_preseed_prompt_contains_block_authorship():
+    """Pre-seed prompt should include explicit collaboration attribution metadata."""
+    content = _build_preseed_prompt_content()
+    attribution = content.get("collaboration_attribution", {})
+    blocks = content.get("blocks", {})
+
+    assert attribution.get("owner") == DEMO_USER
+    assert COLLAB_USER in attribution.get("shared_with", [])
+    assert blocks["Role Definition"]["author"] == DEMO_USER
+    assert blocks["Task Explanation"]["author"] == COLLAB_USER
+    assert blocks["Data Format Explanation"]["author"] == DEMO_USER
+
+
+def test_DEMO_PROMPT_002_live_prompt_contains_block_authorship():
+    """Live prompt should include explicit collaboration attribution metadata."""
+    content = _build_eval_prompt_content()
+    attribution = content.get("collaboration_attribution", {})
+    blocks = content.get("blocks", {})
+    data_block_content = blocks["Data Format Explanation"]["content"]
+
+    assert attribution.get("owner") == DEMO_USER
+    assert COLLAB_USER in attribution.get("shared_with", [])
+    assert blocks["Role Definition"]["author"] == COLLAB_USER
+    assert blocks["Task Explanation"]["author"] == DEMO_USER
+    assert blocks["Data Format Explanation"]["author"] == COLLAB_USER
+    assert "The data below is provided as a subject line followed by the email thread content from a counselling session." in data_block_content
+    assert "Subject: {{subject}}" in data_block_content
+    assert "Content: {{content}}" in data_block_content
+
+
+def test_DEMO_SORT_001_outputs_are_sorted_by_prompt_then_model_then_id():
+    """Output sorting should be deterministic for seeded ranking feature order."""
+    outputs = [
+        SimpleNamespace(id=9, prompt_variant_name=LIVE_PROMPT_NAME, llm_model_name="Global/OpenAI/gpt-5-nano"),
+        SimpleNamespace(id=7, prompt_variant_name=PRESEED_PROMPT_NAME, llm_model_name="Global/OpenAI/gpt-5-nano"),
+        SimpleNamespace(id=8, prompt_variant_name=LIVE_PROMPT_NAME, llm_model_name="Global/Mistral/Mistral-Small-3.2"),
+        SimpleNamespace(id=6, prompt_variant_name=PRESEED_PROMPT_NAME, llm_model_name="Global/Mistral/Mistral-Small-3.2"),
+    ]
+
+    sorted_outputs = _sort_outputs_for_case(outputs)
+    assert [out.id for out in sorted_outputs] == [6, 7, 8, 9]

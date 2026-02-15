@@ -226,6 +226,33 @@
             </v-card-text>
           </v-card>
 
+          <!-- Batch Generation Settings -->
+          <v-card variant="outlined" class="mb-4">
+            <v-card-title class="text-subtitle-1 d-flex align-center">
+              <LIcon class="mr-2" size="small">mdi-layers-triple-outline</LIcon>
+              {{ $t('admin.systemSettings.batchGeneration.title') }}
+              <v-spacer />
+              <LStatusChip :state="sectionStates.batchGeneration" />
+            </v-card-title>
+            <v-card-text>
+              <v-row>
+                <v-col cols="12" md="6">
+                  <v-text-field
+                    v-model.number="settings.batch_generation_max_parallel"
+                    :label="$t('admin.systemSettings.batchGeneration.maxParallel')"
+                    type="number"
+                    :min="1"
+                    :max="16"
+                    variant="outlined"
+                    density="comfortable"
+                    :hint="$t('admin.systemSettings.batchGeneration.maxParallelHint')"
+                    persistent-hint
+                  />
+                </v-col>
+              </v-row>
+            </v-card-text>
+          </v-card>
+
           <!-- Referral System Settings -->
           <v-card variant="outlined" class="mb-4">
             <v-card-title class="text-subtitle-1 d-flex align-center">
@@ -578,6 +605,7 @@ const sectionStates = reactive({
   crawlerDefaults: 'idle',
   rag: 'idle',
   llmLogging: 'idle',
+  batchGeneration: 'idle',
   referral: 'idle',
   aiAssistant: 'idle',
   zotero: 'idle'
@@ -604,6 +632,7 @@ const settings = reactive({
   llm_ai_log_response_max: 800,
   llm_ai_log_prompts: false,
   llm_ai_log_prompt_max: 800,
+  batch_generation_max_parallel: 1,
   referral_system_enabled: false,
   self_registration_enabled: false,
   default_referral_role: 'evaluator',
@@ -753,6 +782,15 @@ watch(
       'llm_ai_log_response_max',
       'llm_ai_log_prompt_max'
     ])
+  }
+)
+
+// Watch Batch Generation Settings
+watch(
+  () => [settings.batch_generation_max_parallel],
+  () => {
+    if (!initialLoadDone.value) return
+    debouncedSave('batchGeneration', ['batch_generation_max_parallel'])
   }
 )
 

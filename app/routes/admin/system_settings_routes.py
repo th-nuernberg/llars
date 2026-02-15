@@ -75,6 +75,7 @@ def update_system_settings():
         'rag_default_chunk_overlap': (int, 0, 5000),     # 0 - 5000 chars
         'llm_ai_log_response_max': (int, 0, 10000),      # 0 - 10000 chars
         'llm_ai_log_prompt_max': (int, 0, 10000),        # 0 - 10000 chars
+        'batch_generation_max_parallel': (int, 1, 16),   # 1 - 16 parallel outputs
     }
 
     bool_fields = {

@@ -95,6 +95,10 @@ Prompts consist of multiple blocks that can be edited individually:
 !!! info "Block structure"
     Typical blocks: `System Instruction`, `Context`, `Examples`, `User Query`, `Output Format`
 
+!!! tip "System block for batch generation"
+    If a block has the title `System`, Batch Generation uses that content as the **system prompt**.
+    All remaining blocks are concatenated in order into one **user prompt**.
+
 ---
 
 ### Variable System

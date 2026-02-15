@@ -208,7 +208,18 @@
                   {{ promptCollapsed ? $t('promptEngineering.testPrompt.showMore') : $t('promptEngineering.testPrompt.showLess') }}
                 </LBtn>
               </div>
-              <div class="prompt-content" v-html="promptHighlighted"></div>
+              <div class="prompt-routing-hint">
+                <LIcon size="14" color="info" class="mr-1">mdi-information-outline</LIcon>
+                <span>{{ $t('promptEngineering.testPrompt.promptRoutingHint') }}</span>
+              </div>
+              <div class="prompt-role-block">
+                <div class="prompt-role-title">{{ $t('promptEngineering.testPrompt.systemPromptLabel') }}</div>
+                <div class="prompt-content" v-html="systemPromptHighlighted"></div>
+              </div>
+              <div class="prompt-role-block">
+                <div class="prompt-role-title">{{ $t('promptEngineering.testPrompt.userPromptLabel') }}</div>
+                <div class="prompt-content" v-html="userPromptHighlighted"></div>
+              </div>
             </div>
 
             <!-- Response Section -->
@@ -307,6 +318,10 @@ const props = defineProps({
     type: String,
     required: true
   },
+  promptBlocks: {
+    type: Array,
+    default: () => []
+  },
   promptId: {
     type: [String, Number],
     default: null
@@ -383,18 +398,46 @@ const variableStats = computed(() => ({
   filled: displayVariables.value.filter(v => v.hasValue).length
 }))
 
-// Resolve prompt by replacing variables
-const resolvedPrompt = computed(() => {
-  let result = props.prompt
+const normalizeBlockName = (value) => String(value || '').trim().toLowerCase()
+const isSystemBlock = (block) => (
+  normalizeBlockName(block?.id) === 'system' || normalizeBlockName(block?.title) === 'system'
+)
 
+// Resolve text by replacing variables
+const resolveText = (text) => {
+  let result = String(text || '')
   for (const userVar of userVariables.value) {
     if (userVar.name && userVar.content) {
       const placeholder = new RegExp(`\\{\\{${userVar.name}\\}\\}`, 'g')
       result = result.replace(placeholder, userVar.content)
     }
   }
-
   return result
+}
+
+const sortedPromptBlocks = computed(() => {
+  const blocks = Array.isArray(props.promptBlocks) ? props.promptBlocks : []
+  return [...blocks].sort((a, b) => (a?.position ?? 0) - (b?.position ?? 0))
+})
+
+const resolvedSystemPrompt = computed(() => {
+  if (sortedPromptBlocks.value.length === 0) return ''
+  return sortedPromptBlocks.value
+    .filter(isSystemBlock)
+    .map(block => resolveText(block?.content || ''))
+    .filter(Boolean)
+    .join('\n\n')
+})
+
+const resolvedUserPrompt = computed(() => {
+  if (sortedPromptBlocks.value.length === 0) {
+    return resolveText(props.prompt)
+  }
+  return sortedPromptBlocks.value
+    .filter(block => !isSystemBlock(block))
+    .map(block => resolveText(block?.content || ''))
+    .filter(Boolean)
+    .join('\n\n')
 })
 
 // Configuration state (model not persisted - depends on server availability)
@@ -417,23 +460,16 @@ function updateVariableContent(name, value) {
 // Helpers
 const formatTag = (name) => `{{${name}}}`
 
-const truncate = (text, maxLength) => {
-  if (!text) return ''
-  if (text.length <= maxLength) return text
-  return text.slice(0, maxLength) + '...'
+const collapsedText = (text) => {
+  const safeText = String(text || '')
+  if (safeText.length <= 200) return safeText
+  const firstPart = safeText.slice(0, 100)
+  const lastPart = safeText.slice(-100)
+  const hiddenSummary = t('promptEngineering.testPrompt.hiddenSummary', { count: safeText.length - 200 })
+  return `${firstPart}\n\n${hiddenSummary}\n\n${lastPart}`
 }
 
-const collapsedPrompt = computed(() => {
-  const text = resolvedPrompt.value
-  if (text.length <= 200) return text
-  const firstPart = text.slice(0, 100)
-  const lastPart = text.slice(-100)
-  const hiddenSummary = t('promptEngineering.testPrompt.hiddenSummary', { count: text.length - 200 })
-  return `${firstPart}\n\n${hiddenSummary}\n\n${lastPart}`
-})
-
-const promptHighlighted = computed(() => {
-  const text = promptCollapsed.value ? collapsedPrompt.value : resolvedPrompt.value
+const highlightResolvedText = (text) => {
   let htmlText = (text || '').replace(/\n/g, '<br/>')
 
   // Highlight replaced variable values
@@ -446,7 +482,20 @@ const promptHighlighted = computed(() => {
   }
 
   return sanitizeHtml(htmlText)
+}
+
+const displayedSystemPrompt = computed(() => {
+  const systemText = resolvedSystemPrompt.value || t('promptEngineering.testPrompt.noSystemPrompt')
+  return promptCollapsed.value ? collapsedText(systemText) : systemText
 })
+
+const displayedUserPrompt = computed(() => {
+  const userText = resolvedUserPrompt.value
+  return promptCollapsed.value ? collapsedText(userText) : userText
+})
+
+const systemPromptHighlighted = computed(() => highlightResolvedText(displayedSystemPrompt.value))
+const userPromptHighlighted = computed(() => highlightResolvedText(displayedUserPrompt.value))
 
 // Response state
 const response = ref('')
@@ -527,7 +576,8 @@ function sendTestPrompt() {
     return
   }
 
-  const promptString = resolvedPrompt.value
+  const systemPromptString = resolvedSystemPrompt.value
+  const userPromptString = resolvedUserPrompt.value
 
   let schemaObj = {}
   if (jsonMode.value) {
@@ -539,7 +589,9 @@ function sendTestPrompt() {
   }
 
   const payload = {
-    prompt: promptString,
+    prompt: userPromptString, // legacy key (user prompt)
+    systemPrompt: systemPromptString,
+    userPrompt: userPromptString,
     jsonMode: jsonMode.value,
     schema: schemaObj,
     sngMode: false,
@@ -862,6 +914,28 @@ onUnmounted(() => {
   background: rgba(var(--v-theme-on-surface), 0.02);
   border-radius: 12px;
   padding: 16px;
+}
+
+.prompt-routing-hint {
+  display: flex;
+  align-items: flex-start;
+  font-size: 0.8rem;
+  line-height: 1.45;
+  color: rgba(var(--v-theme-on-surface), 0.75);
+  margin-bottom: 10px;
+}
+
+.prompt-role-block + .prompt-role-block {
+  margin-top: 10px;
+}
+
+.prompt-role-title {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: rgba(var(--v-theme-on-surface), 0.65);
+  margin-bottom: 6px;
 }
 
 .prompt-content {

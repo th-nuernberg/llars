@@ -53,6 +53,7 @@ Usage:
 from __future__ import annotations
 
 import logging
+import re
 import threading
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
@@ -127,7 +128,7 @@ Job Configuration Schema (config_json):
     },
 
     "limits": {
-        "max_parallel": 5,          # Max parallel LLM requests
+        "max_parallel": 1,          # Optional per-job cap (global admin cap applies)
         "max_cost_usd": 10.0,       # Budget limit (optional)
         "max_retries": 3            # Retries per item
     }
@@ -185,6 +186,19 @@ class BatchGenerationService:
         # Validate configuration
         cls._validate_config(config)
 
+        normalized_name = (name or "").strip()
+        if not normalized_name:
+            raise ValidationError("Job name is required")
+
+        resolved_name = cls._resolve_available_job_name(created_by, normalized_name)
+        if resolved_name != normalized_name:
+            logger.info(
+                "[BatchGen] Job name '%s' already used by %s, auto-renamed to '%s'",
+                normalized_name,
+                created_by,
+                resolved_name,
+            )
+
         # Resolve source scenario if specified
         source_scenario_id = None
         sources_config = config.get("sources", {})
@@ -193,7 +207,7 @@ class BatchGenerationService:
 
         # Create the job
         job = GenerationJob(
-            name=name,
+            name=resolved_name,
             description=description,
             status=GenerationJobStatus.CREATED,
             config_json=config,
@@ -222,6 +236,34 @@ class BatchGenerationService:
         )
 
         return job
+
+    @classmethod
+    def _resolve_available_job_name(cls, created_by: str, requested_name: str) -> str:
+        """
+        Ensure job names are unique per user by auto-appending a version suffix.
+
+        Examples:
+        - "My Job" (exists) -> "My Job v2"
+        - "My Job v2" (exists) -> "My Job v3"
+        """
+        def _exists(candidate: str) -> bool:
+            return GenerationJob.query.filter(
+                GenerationJob.created_by == created_by,
+                db.func.lower(GenerationJob.name) == candidate.lower()
+            ).first() is not None
+
+        if not _exists(requested_name):
+            return requested_name
+
+        match = re.match(r"^(?P<base>.*?)(?:\s+v(?P<version>\d+))?$", requested_name, flags=re.IGNORECASE)
+        base_name = (match.group("base") if match else requested_name).strip() or requested_name
+        next_version = int(match.group("version")) + 1 if match and match.group("version") else 2
+
+        while True:
+            candidate = f"{base_name} v{next_version}"
+            if not _exists(candidate):
+                return candidate
+            next_version += 1
 
     @classmethod
     def _validate_config(cls, config: Dict[str, Any]) -> None:
@@ -725,6 +767,44 @@ class BatchGenerationService:
         """Mark a job as failed with an error message."""
         job = GenerationJob.query.get(job_id)
         if job:
+            # Guard against late worker exceptions after outputs are already terminal.
+            active_count = GeneratedOutput.query.filter(
+                GeneratedOutput.job_id == job_id,
+                GeneratedOutput.status.in_([
+                    GeneratedOutputStatus.PENDING,
+                    GeneratedOutputStatus.PROCESSING,
+                    GeneratedOutputStatus.RETRYING,
+                ])
+            ).count()
+            if active_count == 0:
+                completed_count = GeneratedOutput.query.filter_by(
+                    job_id=job_id,
+                    status=GeneratedOutputStatus.COMPLETED
+                ).count()
+                failed_count = GeneratedOutput.query.filter_by(
+                    job_id=job_id,
+                    status=GeneratedOutputStatus.FAILED
+                ).count()
+                skipped_count = GeneratedOutput.query.filter_by(
+                    job_id=job_id,
+                    status=GeneratedOutputStatus.SKIPPED
+                ).count()
+                expected_total = job.total_items or (completed_count + failed_count + skipped_count)
+                if (completed_count + failed_count + skipped_count) >= expected_total:
+                    job.completed_items = completed_count
+                    job.failed_items = failed_count
+                    job.status = GenerationJobStatus.COMPLETED
+                    job.error_message = None
+                    if not job.completed_at:
+                        job.completed_at = datetime.utcnow()
+                    db.session.commit()
+                    logger.warning(
+                        "[BatchGen] Ignored late failure for terminal job %d and kept COMPLETED (%s)",
+                        job_id,
+                        error,
+                    )
+                    return
+
             job.status = GenerationJobStatus.FAILED
             job.error_message = error
             job.completed_at = datetime.utcnow()
@@ -743,6 +823,80 @@ class BatchGenerationService:
     # -------------------------------------------------------------------------
     # Status and Queries
     # -------------------------------------------------------------------------
+
+    @classmethod
+    def _reconcile_terminal_job_status(cls, job: GenerationJob) -> GenerationJob:
+        """
+        Repair stale RUNNING/QUEUED/FAILED jobs that are already terminal at output level.
+
+        This guards against edge cases where a worker thread terminates after all
+        outputs were written but before the final job-status update was committed.
+        """
+        if not job or job.status not in (
+            GenerationJobStatus.RUNNING,
+            GenerationJobStatus.QUEUED,
+            GenerationJobStatus.FAILED,
+        ):
+            return job
+
+        rows = db.session.query(
+            GeneratedOutput.status,
+            db.func.count(GeneratedOutput.id)
+        ).filter_by(job_id=job.id).group_by(GeneratedOutput.status).all()
+        counts = {status: int(count) for status, count in rows}
+
+        active_count = (
+            counts.get(GeneratedOutputStatus.PENDING, 0) +
+            counts.get(GeneratedOutputStatus.PROCESSING, 0) +
+            counts.get(GeneratedOutputStatus.RETRYING, 0)
+        )
+        if active_count > 0:
+            return job
+
+        completed_count = counts.get(GeneratedOutputStatus.COMPLETED, 0)
+        failed_count = counts.get(GeneratedOutputStatus.FAILED, 0)
+        skipped_count = counts.get(GeneratedOutputStatus.SKIPPED, 0)
+        observed_total = sum(counts.values())
+        expected_total = job.total_items or observed_total
+        terminal_count = completed_count + failed_count + skipped_count
+
+        if expected_total == 0 and observed_total == 0:
+            job.status = GenerationJobStatus.COMPLETED
+            job.error_message = None
+            if not job.completed_at:
+                job.completed_at = datetime.utcnow()
+            db.session.commit()
+            logger.warning("[BatchGen] Reconciled empty job %d to COMPLETED", job.id)
+            return job
+
+        if terminal_count >= expected_total:
+            changed = False
+            if job.completed_items != completed_count:
+                job.completed_items = completed_count
+                changed = True
+            if job.failed_items != failed_count:
+                job.failed_items = failed_count
+                changed = True
+            if job.status != GenerationJobStatus.COMPLETED:
+                job.status = GenerationJobStatus.COMPLETED
+                changed = True
+            if job.error_message:
+                job.error_message = None
+                changed = True
+            if not job.completed_at:
+                job.completed_at = datetime.utcnow()
+                changed = True
+            if changed:
+                db.session.commit()
+                logger.warning(
+                    "[BatchGen] Reconciled stale job %d to COMPLETED (completed=%d failed=%d total=%d)",
+                    job.id,
+                    completed_count,
+                    failed_count,
+                    expected_total,
+                )
+
+        return job
 
     @classmethod
     def get_job(cls, job_id: int) -> GenerationJob:
@@ -769,6 +923,7 @@ class BatchGenerationService:
             Dict with job status, progress, and statistics
         """
         job = cls._get_job_or_raise(job_id)
+        job = cls._reconcile_terminal_job_status(job)
         result = job.to_dict(include_outputs=True)
 
         # Include currently processing output for reconnection support
@@ -828,6 +983,8 @@ class BatchGenerationService:
             List of job summary dicts
         """
         jobs = GenerationJob.get_jobs_for_user(username, status=status, limit=limit)
+        for job in jobs:
+            cls._reconcile_terminal_job_status(job)
         return [job.to_summary_dict() for job in jobs]
 
     @classmethod
@@ -908,6 +1065,60 @@ class BatchGenerationService:
     # -------------------------------------------------------------------------
 
     @classmethod
+    def _count_items_for_source(cls, sources: Dict[str, Any]) -> int:
+        """Count source items for cost estimation."""
+        source_type = sources.get("type")
+
+        if source_type == "scenario":
+            scenario_id = sources["scenario_id"]
+            return ScenarioItems.query.filter_by(scenario_id=scenario_id).count()
+        if source_type == "items":
+            return len(sources["item_ids"])
+        if source_type == "manual":
+            return len(sources.get("items", []))
+        if source_type == "prompt_only":
+            return 1
+        if source_type == "custom":
+            return len(sources.get("custom_texts", []))
+        if source_type == "from_job":
+            return cls._count_items_for_from_job_source(sources["job_id"])
+
+        raise ValidationError(f"Invalid source type: {source_type}")
+
+    @classmethod
+    def _count_items_for_from_job_source(cls, source_job_id: int) -> int:
+        """Resolve source item count when using sources.type=from_job."""
+        source_job = GenerationJob.query.get(source_job_id)
+        if not source_job:
+            raise ValidationError(f"Source job {source_job_id} not found")
+
+        source_config = source_job.config_json or {}
+        source_sources = source_config.get("sources", {})
+        original_type = source_sources.get("type")
+
+        if original_type == "from_job":
+            raise ValidationError("Cannot chain from_job sources. Reference the original job instead.")
+        if original_type == "scenario":
+            scenario_id = source_sources["scenario_id"]
+            return ScenarioItems.query.filter_by(scenario_id=scenario_id).count()
+        if original_type == "manual":
+            return len(source_sources.get("items", []))
+        if original_type == "prompt_only":
+            return 1
+        if original_type == "items":
+            return len(source_sources.get("item_ids", []))
+        if original_type == "custom":
+            return len(source_sources.get("custom_texts", []))
+
+        # Backward compatibility for legacy jobs without explicit source config.
+        prompts = len(source_config.get("prompts") or [])
+        models = len(source_config.get("llm_models") or [])
+        if prompts > 0 and models > 0 and source_job.total_items > 0:
+            return (source_job.total_items + (prompts * models) - 1) // (prompts * models)
+
+        raise ValidationError(f"Unknown original source type '{original_type}' in job {source_job_id}")
+
+    @classmethod
     def estimate_cost(cls, config: Dict[str, Any]) -> Dict[str, Any]:
         """
         Estimate cost for a job configuration before creating it.
@@ -927,19 +1138,7 @@ class BatchGenerationService:
 
         # Count items
         sources = config["sources"]
-        source_type = sources.get("type")
-
-        if source_type == "scenario":
-            scenario_id = sources["scenario_id"]
-            item_count = ScenarioItems.query.filter_by(scenario_id=scenario_id).count()
-        elif source_type == "items":
-            item_count = len(sources["item_ids"])
-        elif source_type == "manual":
-            item_count = len(sources.get("items", []))
-        elif source_type == "prompt_only":
-            item_count = 1  # Single generation per prompt×model
-        else:  # custom
-            item_count = len(sources.get("custom_texts", []))
+        item_count = cls._count_items_for_source(sources)
 
         prompt_count = len(config["prompts"])
         model_count = len(config["llm_models"])

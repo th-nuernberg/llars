@@ -79,7 +79,10 @@ def seed():
     )
     from db.models.llm_model import LLMModel
     from db.models.scenario import UserPromptShare
-    from db.seeders.demo_video_data import COUNSELLING_CASES, SAMPLE_OUTPUTS
+    from db.seeders.demo_video_data import (
+        COUNSELLING_CASES, SAMPLE_OUTPUTS, OUTPUT_METADATA,
+        JOB_TOTAL_TOKENS, JOB_TOTAL_COST_USD,
+    )
 
     actions = []
 
@@ -181,8 +184,8 @@ def seed():
             total_items=total_outputs,
             completed_items=total_outputs,
             failed_items=0,
-            total_tokens=total_outputs * 800,
-            total_cost_usd=0.05,
+            total_tokens=JOB_TOTAL_TOKENS,
+            total_cost_usd=JOB_TOTAL_COST_USD,
             created_by=DEMO_USER,
             created_at=now - timedelta(hours=2),
             started_at=now - timedelta(hours=2),
@@ -197,8 +200,9 @@ def seed():
                 ("structured", preseed, PRESEED_PROMPT_NAME),
                 ("narrative", temp_eval, LIVE_PROMPT_NAME),
             ]:
-                for model in [mistral, gpt5_nano]:
-                    output_text = SAMPLE_OUTPUTS[summary_key][case_idx]
+                for model, model_key in [(mistral, 'mistral'), (gpt5_nano, 'gpt5_nano')]:
+                    output_text = SAMPLE_OUTPUTS[summary_key][model_key][case_idx]
+                    meta = OUTPUT_METADATA[summary_key][model_key][case_idx]
                     sys_prompt = _render_system(prompt_obj)
                     usr_prompt = _render_user(prompt_obj, case)
 
@@ -215,10 +219,10 @@ def seed():
                         rendered_system_prompt=sys_prompt,
                         rendered_user_prompt=usr_prompt,
                         status=GeneratedOutputStatus.COMPLETED,
-                        input_tokens=len(case['content'].split()) + 50,
-                        output_tokens=len(output_text.split()),
-                        total_cost_usd=0.001,
-                        processing_time_ms=1500 + (output_idx * 50),
+                        input_tokens=meta['input_tokens'],
+                        output_tokens=meta['output_tokens'],
+                        total_cost_usd=meta['cost_usd'],
+                        processing_time_ms=meta['processing_time_ms'],
                         attempt_count=1,
                         created_at=now - timedelta(hours=2),
                         completed_at=now - timedelta(hours=1, minutes=50 - output_idx)

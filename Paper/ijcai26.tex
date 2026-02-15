@@ -194,10 +194,10 @@ Each module supports JSON/CSV export and connects to any OpenAI-compatible provi
 Agenta~\cite{agenta2024}               & \yes & \partialc & \partialc & \partialc & \yes      & \noo      & \partialc \\
 ChainForge~\cite{arawjo2024chainforge} & \yes & \noo      & \yes      & \noo      & \partialc & \noo      & \partialc \\
 Phoenix~\cite{phoenix2024}             & \yes & \noo      & \partialc & \partialc & \yes      & \noo      & \noo \\
-Langfuse~\cite{langfuse2024}           & \yes & \noo      & \partialc & \partialc & \yes      & \noo      & \noo \\
+Langfuse~\cite{langfuse2024}           & \yes & \noo      & \partialc & \partialc & \yes      & \partialc & \noo \\
 W\&B~Weave~\cite{weave2024}            & \yes & \noo      & \partialc & \partialc & \yes      & \noo      & \noo \\
 Label Studio~\cite{labelstudio2024}    & \yes & \noo      & \noo      & \yes      & \partialc & \partialc & \noo \\
-Argilla~\cite{argilla2024}             & \yes & \noo      & \noo      & \yes      & \partialc & \noo      & \noo \\
+Argilla~\cite{argilla2024}             & \yes & \noo      & \noo      & \yes      & \partialc & \partialc & \noo \\
 LangSmith~\cite{langsmith2024}         & \noo & \noo      & \partialc & \partialc & \yes      & \noo      & \partialc \\
 Braintrust~\cite{braintrust2024}       & \noo & \noo      & \partialc & \partialc & \yes      & \noo      & \partialc \\
 Maxim~\cite{maxim2024}                 & \noo & \noo      & \partialc & \partialc & \yes      & \noo      & \partialc \\
@@ -206,7 +206,13 @@ Vellum~\cite{vellum2024}               & \noo & \noo      & \partialc & \partial
 \end{tabular*}
 \end{table*}
 
-As Table~\ref{tab:comparison} shows, existing tools address parts of this pipeline---prompt feedback and tracing, structured annotation, or prompting-to-evaluation---but none unifies collaborative editing, batch generation, and hybrid evaluation with agreement metrics in a single open-source platform.
+Table~\ref{tab:comparison} surveys twelve existing platforms along these dimensions.
+Agenta~\cite{agenta2024} combines prompt management with LLM-as-judge scoring but lacks real-time co-editing and structured human evaluation with agreement metrics.
+Phoenix~\cite{phoenix2024}, Langfuse~\cite{langfuse2024}, and W\&B~Weave~\cite{weave2024} provide dataset experiments and per-output feedback but focus on tracing rather than systematic batch generation or multi-evaluator campaigns.
+ChainForge~\cite{arawjo2024chainforge} supports visual multi-model comparison but omits human evaluation.
+Label~Studio~\cite{labelstudio2024} and Argilla~\cite{argilla2024} offer structured human assessment---Label~Studio computes Krippendorff's~$\alpha$, Argilla provides agreement analytics via its API---but require externally generated outputs, disconnecting evaluation from prompt development.
+LangSmith~\cite{langsmith2024}, Braintrust~\cite{braintrust2024}, Maxim~\cite{maxim2024}, and Vellum~\cite{vellum2024} link prompting to evaluation but are closed-source, lack collaborative editing, and omit batch generation as a pipeline stage.
+LLARS is an open-source platform to unify collaborative prompt engineering, Cartesian-product batch generation, and hybrid human--LLM evaluation with agreement analytics, enabling developers and domain experts to work together from prompt development through rigorous assessment.
 
 
 \section{Platform Overview}
@@ -218,12 +224,9 @@ Teams register providers with their own API keys; models then appear throughout 
 \subsection{Collaborative Prompt Engineering}
 
 The prompt engineering module (Figure~\ref{fig:prompt-editor}) lets multiple users edit the same prompt simultaneously in a real-time collaborative editor built on Yjs~\cite{jahns2023yjs}.
-Prompts are structured as reorderable message blocks---system instructions, few-shot examples, user templates---with \texttt{\{\{variable\}\}} placeholders that the platform extracts into a shared palette.
-For example, a counselling summarisation prompt might contain an instruction block (``Write a situation overview in 2--3 sentences''), a format specification, and a data block with \texttt{\{\{subject\}\}} and \texttt{\{\{content\}\}} placeholders marking exactly where client data will be inserted.
-This separation keeps the prompt logic readable---domain experts see the instruction structure at a glance rather than buried in pasted text---and allows team members to assign different sample values to each variable (e.g.\ swapping a custody dispute for a school-refusal case) to verify that the prompt generalises rather than overfitting to a single example.
-The same variable names carry over to batch generation, where \texttt{\{\{subject\}\}} and \texttt{\{\{content\}\}} map to identically named columns in the uploaded dataset; the prompt developed during engineering thus processes an entire corpus without modification, keeping the development workflow close to production use.
-Any collaborator can test the current prompt against a selected LLM while editing continues, and multiple team members can test different models or sample data in parallel.
-A version control system tracks every revision with multi-author attribution, supporting comparison and rollback.
+Prompts are structured as reorderable message blocks (system instructions, few-shot examples, user templates) with \texttt{\{\{variable\}\}} placeholders that the platform extracts into a shared palette for the team.
+While editing continues, any collaborator can test the current prompt against a selected LLM: the response streams back instantly, and multiple team members can test different models or sample data in parallel.
+A version control system tracks every saved revision with multi-author attribution, supporting comparison and rollback.
 Finalized prompts are exported as JSON or passed directly to batch generation.
 
 \begin{figure}[ht]

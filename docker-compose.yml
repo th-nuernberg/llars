@@ -357,7 +357,7 @@ services:
 
   authentik-server:
     container_name: llars_authentik_server
-    image: ghcr.io/goauthentik/server:latest
+    image: ghcr.io/goauthentik/server:${AUTHENTIK_IMAGE_TAG:-2025.2.4}
     command: server
     environment:
       - AUTHENTIK_SECRET_KEY=${AUTHENTIK_SECRET_KEY:-dev-authentik-secret-key-change-me-please-64-chars-minimum-xxxxxxxx}
@@ -389,7 +389,7 @@ services:
 
   authentik-worker:
     container_name: llars_authentik_worker
-    image: ghcr.io/goauthentik/server:latest
+    image: ghcr.io/goauthentik/server:${AUTHENTIK_IMAGE_TAG:-2025.2.4}
     command: worker
     environment:
       - AUTHENTIK_SECRET_KEY=${AUTHENTIK_SECRET_KEY:-dev-authentik-secret-key-change-me-please-64-chars-minimum-xxxxxxxx}
@@ -451,7 +451,7 @@ services:
 
   authentik-init:
     container_name: llars_authentik_init
-    image: ghcr.io/goauthentik/server:latest
+    image: ghcr.io/goauthentik/server:${AUTHENTIK_IMAGE_TAG:-2025.2.4}
     environment:
       - AUTHENTIK_SECRET_KEY=${AUTHENTIK_SECRET_KEY:-dev-authentik-secret-key-change-me-please-64-chars-minimum-xxxxxxxx}
       - AUTHENTIK_POSTGRESql__HOST=authentik-db

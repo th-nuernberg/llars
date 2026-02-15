@@ -223,6 +223,7 @@ LLARS runs as a containerized web application for textual data where teams regis
 
 The prompt engineering module (Figure~\ref{fig:prompt-editor}) provides a shared workspace where domain experts and developers co-author prompts in real time using a collaborative editor built on Yjs~\cite{jahns2023yjs}; every keystroke is instantly visible to all connected users, and online presence indicators show who is currently editing.
 A prompt is composed of ordered blocks---each representing one part of the prompt, such as a data format description or an instruction for the desired output style---that can be freely added, reordered, or removed.
+One block may optionally be marked as a system block, which becomes the LLM's system prompt; all remaining blocks are concatenated into the user prompt.
 Each block maintains an independent version history that tracks insertions and deletions per save (visible as \texttt{+130\,/\,{-}0} in Figure~\ref{fig:prompt-editor}), enabling diff comparison and rollback to any prior revision without affecting other blocks.
 
 Blocks may contain template variables written as \texttt{\{\{variable\_name\}\}}, which act as placeholders for external data that would otherwise clutter the prompt---an entire email thread, for instance, can be captured in a single \texttt{\{\{content\}\}} variable, keeping the surrounding instructions concise and letting authors focus on prompt design rather than data formatting.

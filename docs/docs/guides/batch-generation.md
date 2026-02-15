@@ -111,7 +111,7 @@ Der 5-Schritte-Wizard führt durch die Konfiguration:
 |------------|--------------|-----------|
 | **Szenario** | Items aus bestehendem Evaluation-Szenario | Bestehende Daten verarbeiten |
 | **Manuell** | JSON, CSV oder Plaintext hochladen | Neue Daten testen |
-| **Nur Prompt** | Keine Eingabedaten benötigt | Prompt-Templates testen |
+| **Nur Prompt** | Verschiedene Prompts über mehrere Modelle testen; Prompt-Engineering-Variablen werden automatisch eingesetzt | Prompt-Templates schnell vergleichen |
 
 ---
 
@@ -141,6 +141,8 @@ Der 5-Schritte-Wizard führt durch die Konfiguration:
 !!! info "Prompt-Integration"
     Prompts werden aus dem [Prompt Engineering](prompt-engineering.md) Modul geladen.
     Variablen werden automatisch durch Eingabedaten ersetzt.
+    Wenn ein Block den Titel `System` trägt, wird er als System-Prompt verwendet.
+    Alle anderen Blöcke werden in Reihenfolge zu einem User-Prompt zusammengeführt.
 
 **Variable-Aliase:**
 Der Generator erkennt verschiedene Feld-Namen automatisch:

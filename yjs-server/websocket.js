@@ -262,14 +262,14 @@ async function canAccessLatexDocument(documentId, username, isAdmin) {
  * // Emits to 'workspace_latex_5' if doc belongs to workspace 5
  */
 /**
- * Extract rendered blocks from a Yjs document with {{variable}} placeholders as text.
+ * Extract rendered prompt content from a Yjs document.
  *
  * Yjs stores Quill embeds (VariableBlot) as embedded objects in Y.Text deltas.
  * Python's y-py library loses these embeds when converting to string.
  * This function reads the delta ops and converts {variable: "name"} → {{name}}.
  *
  * @param {Y.Doc} doc - The Yjs document
- * @returns {Object|null} - {blocks: {blockId: {title, position, content}}} or null
+ * @returns {Object|null} - {blocks: {...}, variables: {...}} or null
  */
 function extractRenderedBlocks(doc) {
   const blocksMap = doc.getMap('blocks');
@@ -299,7 +299,33 @@ function extractRenderedBlocks(doc) {
 
     result[blockId] = { title, position, content: textContent };
   });
-  return { blocks: result };
+
+  // Optional variables map from Prompt Engineering variable manager
+  const variables = {};
+  try {
+    const variablesMap = doc.getMap('variables');
+    if (variablesMap && variablesMap.size > 0) {
+      variablesMap.forEach((varValue, varName) => {
+        const key = String(varName || '').trim();
+        if (!key) return;
+
+        if (varValue && typeof varValue.get === 'function') {
+          variables[key] = {
+            content: String(varValue.get('content') || '')
+          };
+        } else {
+          variables[key] = {
+            content: String(varValue || '')
+          };
+        }
+      });
+    }
+  } catch (e) {
+    // Keep blocks even if variables extraction fails
+    console.warn('[extractRenderedBlocks] Failed to extract variables map:', e?.message || e);
+  }
+
+  return { blocks: result, variables };
 }
 
 async function saveYdocToDB(roomName, doc, name, userId, username = null) {

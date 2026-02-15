@@ -71,6 +71,12 @@ class SystemSettings(db.Model):
         comment="Max characters for logged LLM prompts"
     )
 
+    # Batch Generation Settings
+    batch_generation_max_parallel: Mapped[int] = mapped_column(
+        db.Integer, default=1, nullable=False,
+        comment="Maximum number of parallel outputs processed in batch generation"
+    )
+
     # Zotero OAuth Settings
     # Admin registers ONE app at zotero.org/oauth/apps and enters credentials here.
     # All users then use "Connect with Zotero" button to authorize their accounts.
@@ -132,6 +138,7 @@ class SystemSettings(db.Model):
             'llm_ai_log_response_max': self.llm_ai_log_response_max,
             'llm_ai_log_prompts': self.llm_ai_log_prompts,
             'llm_ai_log_prompt_max': self.llm_ai_log_prompt_max,
+            'batch_generation_max_parallel': self.batch_generation_max_parallel,
             'zotero_oauth_enabled': self.zotero_oauth_enabled,
             'zotero_client_key': self.zotero_client_key,
             'zotero_oauth_configured': bool(self.zotero_client_key and self.zotero_client_secret_encrypted),

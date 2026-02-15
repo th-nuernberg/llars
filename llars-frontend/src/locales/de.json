@@ -3450,6 +3450,8 @@
       "blockCreateTitle": "Neuen Block erstellen",
       "blockNameLabel": "Blockname",
       "blockNamePlaceholder": "z. B. Systemanweisung, Kontext, ...",
+      "blockUsageTooltipTitle": "System- und User-Blöcke",
+      "blockUsageTooltipText": "Batch-Generation-Verhalten:\n- Ein Block mit Titel \"System\" wird als System-Prompt verwendet.\n- Alle anderen Blöcke werden in Reihenfolge zu einem User-Prompt zusammengeführt.\nTipp: Nutze genau einen \"System\"-Block und benenne die restlichen Blöcke frei (z. B. Kontext, Aufgabe, Ausgabeformat).",
       "blockDeleteTitle": "Block löschen",
       "blockDeleteConfirm": "Möchten Sie den Block \"{name}\" wirklich löschen?",
       "blockDeleteHint": "Diese Aktion kann nicht rückgängig gemacht werden.",
@@ -3585,6 +3587,10 @@
       "showExample": "Beispiel anzeigen",
       "jsonSchema": "JSON Schema",
       "sentPrompt": "Gesendetes Prompt",
+      "systemPromptLabel": "System Prompt",
+      "userPromptLabel": "User Prompt",
+      "noSystemPrompt": "(kein System-Block erkannt)",
+      "promptRoutingHint": "Beim Testen wird ein Block mit Titel \"System\" als System-Prompt gesendet. Alle anderen Blöcke werden in Reihenfolge zu einem User-Prompt zusammengefasst.",
       "showMore": "Mehr anzeigen",
       "showLess": "Weniger",
       "response": "Antwort",
@@ -3697,7 +3703,7 @@
       "modelSelect": "Das LLM-Modell für den Test. Ändert nicht den gespeicherten Prompt.",
       "temperature": "Steuert Zufälligkeit. Niedriger = deterministischer, höher = kreativer.",
       "maxTokens": "Maximale Anzahl an Tokens in der Antwort.",
-      "sentPrompt": "Der finale Prompt mit allen Variablen durch ihre Werte ersetzt.",
+      "sentPrompt": "System- und User-Prompt mit ersetzten Variablenwerten. Ein Block mit Titel \"System\" wird als System-Prompt gesendet, alle übrigen Blöcke als User-Prompt.",
       "responseSection": "Die Antwort des Modells. Klicke 'Neu generieren' für eine neue Antwort.",
       "variableManager": "Definiere wiederverwendbare Variablen für deinen Prompt. Variablen werden mit Kollaborateuren geteilt.",
       "variableUsage": "Verwende {placeholderExample} in deinem Prompt, um den Wert dieser Variable einzufügen.",
@@ -5693,14 +5699,14 @@
         "manualSourceDesc": "Lade JSON oder CSV mit deinen Daten hoch.",
         "manualTooltip": "Lade eine JSON- oder CSV-Datei mit eigenen Daten hoch oder füge sie direkt ein. Jede Zeile/Eintrag wird zu einem Eingabe-Item für die Generierung.",
         "promptOnlySource": "Nur Prompt",
-        "promptOnlySourceDesc": "Generiere Ausgaben ohne Quelldaten.",
-        "promptOnlyTooltip": "Führe ein Prompt-Template direkt ohne Eingabedaten aus. Nützlich für offene Generierungsaufgaben wie Brainstorming oder Texterstellung.",
+        "promptOnlySourceDesc": "Probiere verschiedene Prompts über mehrere Modelle aus; vorhandene Prompt-Engineering-Variablen werden automatisch eingesetzt.",
+        "promptOnlyTooltip": "Probiere verschiedene Prompts über mehrere Modelle aus; vorhandene Prompt-Engineering-Variablen werden automatisch eingesetzt.",
         "selectJob": "Generation Job auswählen",
         "dropFiles": "Dateien hier ablegen oder klicken zum Hochladen",
         "pasteData": "Oder Daten direkt einfügen",
         "pasteDataPlaceholder": "JSON-Array oder CSV-Daten einfügen...",
         "itemsParsed": "Items erkannt",
-        "promptOnlyInfo": "Im Nur-Prompt-Modus werden Ausgaben direkt aus Prompt-Templates ohne Eingabedaten generiert."
+        "promptOnlyInfo": "Probiere verschiedene Prompts über mehrere Modelle aus; vorhandene Prompt-Engineering-Variablen werden automatisch eingesetzt."
       },
       "step2": {
         "title": "Prompt-Templates",
@@ -5815,6 +5821,11 @@
         "maxPromptChars": "Max Zeichen (Prompts)",
         "defaultCharsHint": "Standard: 800",
         "privacyWarning": "Prompt-Logging enthält Konversationen. Bitte datenschutzkonform verwenden."
+      },
+      "batchGeneration": {
+        "title": "Batch-Generierung",
+        "maxParallel": "Maximale parallele Outputs",
+        "maxParallelHint": "Globales Limit für gleichzeitig verarbeitete Outputs in der Batch-Generierung (Standard: 1)."
       },
       "referral": {
         "title": "Referral-System",

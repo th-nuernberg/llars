@@ -574,6 +574,12 @@ def apply_schema_patches(db) -> None:
             column_name="llm_ai_log_prompt_max",
             column_definition_sql="`llm_ai_log_prompt_max` INT NOT NULL DEFAULT 800",
         )
+        changed |= _ensure_column(
+            db,
+            table_name="system_settings",
+            column_name="batch_generation_max_parallel",
+            column_definition_sql="`batch_generation_max_parallel` INT NOT NULL DEFAULT 1",
+        )
 
         # Analytics settings: custom dimensions
         changed |= _ensure_column(

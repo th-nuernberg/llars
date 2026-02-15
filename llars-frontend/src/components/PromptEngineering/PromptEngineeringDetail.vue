@@ -124,7 +124,7 @@
             <LTag variant="primary" size="small">
               {{ blocks.length }} {{ blocks.length === 1 ? $t('promptEngineering.editor.block') : $t('promptEngineering.editor.blocks') }}
             </LTag>
-            <span v-if="sharedWithUsers.length && !isMobile" class="text-caption text-medium-emphasis ml-2">
+            <span v-if="sharedWithUsers.length && !isMobile" class="prompt-meta-users text-caption text-medium-emphasis">
               <LIcon size="14" class="mr-1">mdi-share-variant</LIcon>
               {{ $t('promptEngineering.editor.usersCount', { count: sharedWithUsers.length }) }}
             </span>
@@ -274,6 +274,13 @@
           <div class="d-flex align-center w-100">
             <LIcon class="mr-2" color="accent">mdi-plus-circle</LIcon>
             <span class="text-h6">{{ $t('promptEngineering.dialogs.blockCreateTitle') }}</span>
+            <LInfoTooltip
+              class="ml-2"
+              :title="$t('promptEngineering.dialogs.blockUsageTooltipTitle')"
+              :text="$t('promptEngineering.dialogs.blockUsageTooltipText')"
+              :aria-label="$t('promptEngineering.dialogs.blockUsageTooltipTitle')"
+              :max-width="440"
+            />
           </div>
         </template>
 
@@ -351,6 +358,7 @@
     <TestPromptDialog
       v-model="showTestPromptDialog"
       :prompt="assemblePrompt()"
+      :prompt-blocks="assemblePromptBlocks()"
       :prompt-id="promptId"
       :variables="userVariables"
       :update-variable="updateVariable"
@@ -651,7 +659,7 @@ const { ydoc, socket, users, updateColor } = collaboration;
 
 // Blocks management
 const blocksManager = usePromptBlocks(ydoc, roomId, socket, showMessage, t);
-const { blocks, sortedBlocks, processYDoc, createBlock, deleteBlock, saveBlockTitle, handleJsonUpload, assemblePrompt } = blocksManager;
+const { blocks, sortedBlocks, processYDoc, createBlock, deleteBlock, saveBlockTitle, handleJsonUpload, assemblePrompt, assemblePromptBlocks } = blocksManager;
 
 // Extract variables from the assembled prompt for PlaceholderPalette
 const assembledPromptText = computed(() => assemblePrompt())
@@ -977,6 +985,7 @@ watch(users, (newUsers, oldUsers) => {
 
 <style scoped>
 .prompt-workspace {
+  --prompt-detail-header-height: 68px;
   height: calc(100vh - 94px);
   display: flex;
   overflow: hidden;
@@ -986,29 +995,48 @@ watch(users, (newUsers, oldUsers) => {
 .left-panel {
   flex-shrink: 0;
   height: 100%;
+  min-height: 0;
+  min-width: 0;
   overflow: hidden;
 }
 
 .resize-divider {
-  width: 4px;
+  flex: 0 0 2px;
+  width: 2px;
+  margin-left: -1px;
+  margin-right: -1px;
   background: transparent;
   cursor: col-resize;
   display: flex;
   align-items: center;
   justify-content: center;
   transition: background-color 0.15s ease;
+  position: relative;
   z-index: 10;
 }
 
-.resize-divider:hover,
-.resize-divider.resizing {
-  background: rgba(var(--v-theme-primary), 0.2);
+.resize-divider::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 0;
+  transform: translateX(-50%);
+  width: 1px;
+  height: 100%;
+  background: rgba(var(--v-theme-on-surface), 0.08);
+  transition: background-color 0.15s ease;
+  pointer-events: none;
+}
+
+.resize-divider:hover::before,
+.resize-divider.resizing::before {
+  background: rgba(var(--v-theme-primary), 0.28);
 }
 
 .resize-handle {
-  width: 2px;
-  height: 40px;
-  background: rgba(var(--v-theme-on-surface), 0.2);
+  width: 1px;
+  height: 30px;
+  background: rgba(var(--v-theme-on-surface), 0.18);
   border-radius: 2px;
   transition: all 0.15s ease;
 }
@@ -1016,12 +1044,14 @@ watch(users, (newUsers, oldUsers) => {
 .resize-divider:hover .resize-handle,
 .resize-divider.resizing .resize-handle {
   background: rgb(var(--v-theme-primary));
-  height: 60px;
+  height: 40px;
 }
 
 .right-panel {
   flex: 1;
   height: 100%;
+  min-height: 0;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -1033,7 +1063,9 @@ watch(users, (newUsers, oldUsers) => {
 
 .prompt-header {
   flex-shrink: 0;
-  padding: 20px 24px;
+  min-height: var(--prompt-detail-header-height);
+  box-sizing: border-box;
+  padding: 12px 20px;
   background: rgb(var(--v-theme-surface));
   border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.08);
   display: flex;
@@ -1051,11 +1083,21 @@ watch(users, (newUsers, oldUsers) => {
 .prompt-meta {
   display: flex;
   align-items: center;
+  gap: 10px;
+}
+
+.prompt-meta-users {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 0 !important;
 }
 
 .blocks-container {
   flex: 1;
+  min-height: 0;
+  min-width: 0;
   overflow-y: auto;
+  overflow-x: hidden;
   padding: 24px;
 }
 
@@ -1164,7 +1206,7 @@ watch(users, (newUsers, oldUsers) => {
 }
 
 .editor-content {
-  min-height: 180px;
+  min-height: 120px;
   background: rgb(var(--v-theme-surface));
 }
 
@@ -1174,9 +1216,15 @@ watch(users, (newUsers, oldUsers) => {
 }
 
 :deep(.ql-editor) {
-  min-height: 150px;
+  min-height: 90px;
   padding: 16px;
   line-height: 1.6;
+  color: rgb(var(--v-theme-on-surface));
+  caret-color: rgb(var(--v-theme-primary));
+}
+
+:deep(.ql-editor.ql-blank)::before {
+  color: rgba(var(--v-theme-on-surface), 0.55);
 }
 
 /* Placeholder drop target visual feedback */
@@ -1461,6 +1509,7 @@ watch(users, (newUsers, oldUsers) => {
    MOBILE RESPONSIVE STYLES
    ============================================ */
 .prompt-workspace.is-mobile {
+  --prompt-detail-header-height: 56px;
   /* 64px AppBar + 24px Footer = 88px */
   height: calc(100vh - 88px);
   height: calc(100dvh - 88px);
@@ -1522,11 +1571,11 @@ watch(users, (newUsers, oldUsers) => {
 }
 
 .prompt-workspace.is-mobile .editor-content {
-  min-height: 120px;
+  min-height: 100px;
 }
 
 .prompt-workspace.is-mobile :deep(.ql-editor) {
-  min-height: 100px;
+  min-height: 80px;
   padding: 12px;
   font-size: 14px;
 }

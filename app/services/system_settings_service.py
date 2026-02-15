@@ -50,6 +50,7 @@ def _load_settings_to_cache() -> dict:
         'llm_ai_log_response_max': settings.llm_ai_log_response_max,
         'llm_ai_log_prompts': settings.llm_ai_log_prompts,
         'llm_ai_log_prompt_max': settings.llm_ai_log_prompt_max,
+        'batch_generation_max_parallel': settings.batch_generation_max_parallel,
         # Referral System
         'referral_system_enabled': settings.referral_system_enabled,
         'self_registration_enabled': settings.self_registration_enabled,
@@ -132,3 +133,8 @@ def get_default_chunk_size() -> int:
 def get_default_chunk_overlap() -> int:
     """Get default chunk overlap for RAG (default: 200)."""
     return get_setting('rag_default_chunk_overlap', 200)
+
+
+def get_batch_generation_max_parallel() -> int:
+    """Get max parallel outputs for batch generation (default: 1)."""
+    return get_setting('batch_generation_max_parallel', 1)

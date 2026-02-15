@@ -519,6 +519,106 @@ const streamingContent = ref('')  // Current streaming content
 const streamingContentRef = ref(null)
 const outputsListRef = ref(null)
 
+// Keep per-output stream buffers so rejoin + parallel processing remains stable.
+const streamBuffers = new Map()
+const streamMeta = new Map()
+const streamLastTokenAt = new Map()
+const activeStreamOutputId = ref(null)
+const STREAM_SWITCH_INACTIVITY_MS = 1500
+
+function normalizeNumericId(value) {
+  const parsed = Number(value)
+  return Number.isInteger(parsed) ? parsed : null
+}
+
+function idsMatch(left, right) {
+  if (left == null || right == null) return left === right
+  const leftNormalized = normalizeNumericId(left)
+  const rightNormalized = normalizeNumericId(right)
+  if (leftNormalized !== null && rightNormalized !== null) {
+    return leftNormalized === rightNormalized
+  }
+  return String(left) === String(right)
+}
+
+function streamKey(outputId) {
+  const normalized = normalizeNumericId(outputId)
+  return normalized !== null ? String(normalized) : String(outputId)
+}
+
+function setStreamMetaForOutput(outputId, meta) {
+  const key = streamKey(outputId)
+  const existing = streamMeta.get(key) || {}
+  streamMeta.set(key, { ...existing, ...meta, outputId })
+}
+
+function setStreamBufferForOutput(outputId, content, { markActive = false } = {}) {
+  const key = streamKey(outputId)
+  streamBuffers.set(key, content || '')
+  if (markActive) {
+    streamLastTokenAt.set(key, Date.now())
+  }
+}
+
+function appendTokenToStream(outputId, token) {
+  if (!token) return
+  const key = streamKey(outputId)
+  const previous = streamBuffers.get(key) || ''
+  streamBuffers.set(key, `${previous}${token}`)
+  streamLastTokenAt.set(key, Date.now())
+}
+
+function getStreamBufferForOutput(outputId) {
+  return streamBuffers.get(streamKey(outputId)) || ''
+}
+
+function clearStreamState() {
+  streamBuffers.clear()
+  streamMeta.clear()
+  streamLastTokenAt.clear()
+  activeStreamOutputId.value = null
+  currentlyProcessing.value = null
+  streamingContent.value = ''
+}
+
+function activateStreamOutput(outputId, fallbackMeta = null) {
+  if (outputId == null) return
+  const key = streamKey(outputId)
+  activeStreamOutputId.value = outputId
+  const metadata = streamMeta.get(key) || fallbackMeta || {}
+  currentlyProcessing.value = {
+    model: metadata.model || 'Model',
+    modelColor: metadata.modelColor || null,
+    outputId,
+    itemName: metadata.itemName || `Item #${outputId}`
+  }
+  streamingContent.value = getStreamBufferForOutput(outputId)
+}
+
+function removeStreamOutput(outputId) {
+  const key = streamKey(outputId)
+  streamBuffers.delete(key)
+  streamMeta.delete(key)
+  streamLastTokenAt.delete(key)
+}
+
+function setOutputStatus(outputId, status) {
+  const output = outputs.value.find(o => idsMatch(o.id, outputId))
+  if (output) {
+    output.status = status
+  }
+  return output
+}
+
+function shouldActivateOutputStream(outputId) {
+  const activeOutputId = activeStreamOutputId.value
+  if (!activeOutputId) return true
+  if (idsMatch(activeOutputId, outputId)) return true
+
+  const activeLastToken = streamLastTokenAt.get(streamKey(activeOutputId)) || 0
+  return (Date.now() - activeLastToken) > STREAM_SWITCH_INACTIVITY_MS
+}
+
 // Model color helpers (seeded in DB, neutral fallback if missing)
 const NEUTRAL_HUE_RANGES = [
   { start: 25, end: 80 },   // warm amber/orange
@@ -672,6 +772,10 @@ const getPromptTagStyle = (promptName) => {
 
 // Computed
 const jobId = computed(() => Number(route.params.jobId))
+
+function isCurrentJobEvent(data) {
+  return idsMatch(data?.job_id, jobId.value)
+}
 
 const jobConfig = computed(() => currentJob.value?.config || {})
 
@@ -939,21 +1043,28 @@ watch(outputs, () => {
 // =============================================================================
 
 function applyStreamSnapshot(currentlyProcessingState) {
-  if (!currentlyProcessingState) return
-  currentlyProcessing.value = {
+  if (!currentlyProcessingState) {
+    clearStreamState()
+    return
+  }
+  const outputId = normalizeNumericId(currentlyProcessingState.output_id) ?? currentlyProcessingState.output_id
+  const snapshotMeta = {
     model: currentlyProcessingState.model_name,
     modelColor: currentlyProcessingState.model_color,
-    outputId: currentlyProcessingState.output_id,
     itemName: currentlyProcessingState.item_name
   }
+  setStreamMetaForOutput(outputId, snapshotMeta)
 
   // Load partial content that was streamed before (re)join.
   // New tokens will be appended via Socket.IO.
   // Fallback to outputs payload in case state snapshot is slightly behind.
   const fromState = currentlyProcessingState.partial_content || ''
-  const processingOutput = outputs.value.find(o => o.id === currentlyProcessingState.output_id)
+  const processingOutput = outputs.value.find(o => idsMatch(o.id, outputId))
   const fromOutputs = processingOutput?.generated_content || ''
-  streamingContent.value = (fromOutputs.length > fromState.length ? fromOutputs : fromState)
+  const snapshotContent = (fromOutputs.length > fromState.length ? fromOutputs : fromState)
+  setStreamBufferForOutput(outputId, snapshotContent)
+  streamLastTokenAt.set(streamKey(outputId), 0) // Unknown freshness; allow quick handover on incoming tokens.
+  activateStreamOutput(outputId, snapshotMeta)
 }
 
 function setupSocketListeners() {
@@ -977,14 +1088,14 @@ function setupSocketListeners() {
   }
 
   socket.on('generation:state', (data) => {
-    if (data.job_id !== jobId.value) return
+    if (!isCurrentJobEvent(data)) return
     applyStreamSnapshot(data.currently_processing)
   })
 
   // Job started
   socket.on('generation:job:started', (data) => {
     console.log('[Generation] job:started', data)
-    if (data.job_id === jobId.value) {
+    if (isCurrentJobEvent(data)) {
       loadJob(jobId.value)
     }
   })
@@ -992,7 +1103,7 @@ function setupSocketListeners() {
   // Progress update (no full reload, just update progress values)
   socket.on('generation:job:progress', (data) => {
     console.log('[Generation] job:progress', data)
-    if (data.job_id === jobId.value && currentJob.value) {
+    if (isCurrentJobEvent(data) && currentJob.value) {
       // Update progress without full reload
       currentJob.value.progress = {
         total: data.total,
@@ -1010,64 +1121,105 @@ function setupSocketListeners() {
   // Item started processing
   socket.on('generation:item:started', (data) => {
     console.log('[Generation] item:started', data)
-    if (data.job_id === jobId.value) {
+    if (isCurrentJobEvent(data)) {
+      const outputId = normalizeNumericId(data.output_id) ?? data.output_id
       const itemLabel = data.prompt_variant
-        ? `${data.prompt_variant} (Item #${data.source_item_id || data.output_id})`
-        : `Item #${data.source_item_id || data.output_id}`
-      currentlyProcessing.value = {
+        ? `${data.prompt_variant} (Item #${data.source_item_id || outputId})`
+        : `Item #${data.source_item_id || outputId}`
+      const metadata = {
         model: data.model_name,
         modelColor: data.model_color,
-        outputId: data.output_id,
         itemName: itemLabel
       }
-      streamingContent.value = ''
+      setStreamMetaForOutput(outputId, metadata)
+      setStreamBufferForOutput(outputId, '')
+      setOutputStatus(outputId, OUTPUT_STATUS.PROCESSING)
+
+      const shouldActivate = (
+        !activeStreamOutputId.value ||
+        idsMatch(activeStreamOutputId.value, outputId) ||
+        !getStreamBufferForOutput(activeStreamOutputId.value)
+      )
+      if (shouldActivate) {
+        activateStreamOutput(outputId, metadata)
+      }
     }
   })
 
   const ensureProcessingStateFromToken = (data) => {
-    if (currentlyProcessing.value?.outputId === data.output_id) {
-      return
-    }
-
+    const outputId = normalizeNumericId(data.output_id) ?? data.output_id
     const cp = currentJob.value?.currently_processing
-    const fallbackModel = cp?.output_id === data.output_id ? cp.model_name : (currentlyProcessing.value?.model || 'Model')
-    const fallbackModelColor = cp?.output_id === data.output_id ? cp.model_color : (currentlyProcessing.value?.modelColor || null)
-    const fallbackItemName = cp?.output_id === data.output_id
+    const fallbackModel = idsMatch(cp?.output_id, outputId) ? cp.model_name : (currentlyProcessing.value?.model || 'Model')
+    const fallbackModelColor = idsMatch(cp?.output_id, outputId) ? cp.model_color : (currentlyProcessing.value?.modelColor || null)
+    const fallbackItemName = idsMatch(cp?.output_id, outputId)
       ? cp.item_name
-      : `Item #${data.output_id}`
-
-    // If we detect token stream for a different output, reset the preview to avoid mixed streams.
-    if (currentlyProcessing.value && currentlyProcessing.value.outputId !== data.output_id) {
-      streamingContent.value = ''
-    }
-
-    currentlyProcessing.value = {
+      : `Item #${outputId}`
+    const metadata = {
       model: fallbackModel,
       modelColor: fallbackModelColor,
-      outputId: data.output_id,
       itemName: fallbackItemName
+    }
+    setStreamMetaForOutput(outputId, metadata)
+
+    appendTokenToStream(outputId, data.token)
+    setOutputStatus(outputId, OUTPUT_STATUS.PROCESSING)
+
+    if (shouldActivateOutputStream(outputId)) {
+      activateStreamOutput(outputId, metadata)
+    } else if (idsMatch(activeStreamOutputId.value, outputId)) {
+      streamingContent.value = getStreamBufferForOutput(outputId)
     }
   }
 
   // Streaming token received
   socket.on('generation:item:token', (data) => {
-    if (data.job_id !== jobId.value) return
+    if (!isCurrentJobEvent(data)) return
     ensureProcessingStateFromToken(data)
-    streamingContent.value += data.token
+  })
+
+  // Aggregated partial update (fallback for reconnect/missed token chunks)
+  socket.on('generation:item:partial', (data) => {
+    if (!isCurrentJobEvent(data)) return
+
+    const outputId = normalizeNumericId(data.output_id) ?? data.output_id
+    const partialContent = String(data.partial_content || '')
+    if (!partialContent) return
+
+    const cp = currentJob.value?.currently_processing
+    const fallbackModel = idsMatch(cp?.output_id, outputId) ? cp.model_name : (currentlyProcessing.value?.model || 'Model')
+    const fallbackModelColor = idsMatch(cp?.output_id, outputId) ? cp.model_color : (currentlyProcessing.value?.modelColor || null)
+    const fallbackItemName = idsMatch(cp?.output_id, outputId)
+      ? cp.item_name
+      : `Item #${outputId}`
+    const metadata = {
+      model: fallbackModel,
+      modelColor: fallbackModelColor,
+      itemName: fallbackItemName
+    }
+    setStreamMetaForOutput(outputId, metadata)
+
+    const existing = getStreamBufferForOutput(outputId)
+    if (partialContent.length >= existing.length) {
+      setStreamBufferForOutput(outputId, partialContent, { markActive: true })
+    }
+    setOutputStatus(outputId, OUTPUT_STATUS.PROCESSING)
+
+    if (shouldActivateOutputStream(outputId)) {
+      activateStreamOutput(outputId, metadata)
+    } else if (idsMatch(activeStreamOutputId.value, outputId)) {
+      streamingContent.value = getStreamBufferForOutput(outputId)
+    }
   })
 
   // Item completed
   socket.on('generation:item:completed', (data) => {
-    if (data.job_id === jobId.value) {
+    if (isCurrentJobEvent(data)) {
       // Clear processing state if this was the current item
-      if (currentlyProcessing.value?.outputId === data.output_id) {
-        currentlyProcessing.value = null
-        streamingContent.value = ''
-      }
+      const wasActiveStream = idsMatch(activeStreamOutputId.value, data.output_id)
+      removeStreamOutput(data.output_id)
       // Update the output locally if it exists in the list
-      const output = outputs.value.find(o => o.id === data.output_id)
+      const output = setOutputStatus(data.output_id, OUTPUT_STATUS.COMPLETED)
       if (output) {
-        output.status = 'COMPLETED'
         output.generated_content = data.content_preview
         output.input_tokens = data.tokens?.input || 0
         output.output_tokens = data.tokens?.output || 0
@@ -1076,24 +1228,51 @@ function setupSocketListeners() {
           output.llm_model_color = data.model_color
         }
       }
+      if (wasActiveStream) {
+        const nextProcessingOutput = outputs.value.find(o => o.status === OUTPUT_STATUS.PROCESSING)
+        if (nextProcessingOutput) {
+          const nextOutputId = normalizeNumericId(nextProcessingOutput.id) ?? nextProcessingOutput.id
+          activateStreamOutput(nextOutputId, {
+            model: nextProcessingOutput.llm_model_name || 'Model',
+            modelColor: nextProcessingOutput.llm_model_color || null,
+            itemName: nextProcessingOutput.prompt_variant_name
+              ? `${nextProcessingOutput.prompt_variant_name} (Item #${nextProcessingOutput.source_item_id || nextOutputId})`
+              : `Item #${nextProcessingOutput.source_item_id || nextOutputId}`
+          })
+        } else {
+          clearStreamState()
+        }
+      }
       // Don't reload - just update locally to avoid page refresh
     }
   })
 
   // Item failed
   socket.on('generation:item:failed', (data) => {
-    if (data.job_id === jobId.value) {
-      if (currentlyProcessing.value?.outputId === data.output_id) {
-        currentlyProcessing.value = null
-        streamingContent.value = ''
-      }
+    if (isCurrentJobEvent(data)) {
+      const wasActiveStream = idsMatch(activeStreamOutputId.value, data.output_id)
+      removeStreamOutput(data.output_id)
       // Update the output locally if it exists in the list
-      const output = outputs.value.find(o => o.id === data.output_id)
+      const output = setOutputStatus(data.output_id, OUTPUT_STATUS.FAILED)
       if (output) {
-        output.status = 'FAILED'
         output.error_message = data.error || 'Unknown error'
         if (data.model_color) {
           output.llm_model_color = data.model_color
+        }
+      }
+      if (wasActiveStream) {
+        const nextProcessingOutput = outputs.value.find(o => o.status === OUTPUT_STATUS.PROCESSING)
+        if (nextProcessingOutput) {
+          const nextOutputId = normalizeNumericId(nextProcessingOutput.id) ?? nextProcessingOutput.id
+          activateStreamOutput(nextOutputId, {
+            model: nextProcessingOutput.llm_model_name || 'Model',
+            modelColor: nextProcessingOutput.llm_model_color || null,
+            itemName: nextProcessingOutput.prompt_variant_name
+              ? `${nextProcessingOutput.prompt_variant_name} (Item #${nextProcessingOutput.source_item_id || nextOutputId})`
+              : `Item #${nextProcessingOutput.source_item_id || nextOutputId}`
+          })
+        } else {
+          clearStreamState()
         }
       }
       // Don't reload - just update locally to avoid page refresh
@@ -1102,9 +1281,8 @@ function setupSocketListeners() {
 
   // Job completed
   socket.on('generation:job:completed', (data) => {
-    if (data.job_id === jobId.value) {
-      currentlyProcessing.value = null
-      streamingContent.value = ''
+    if (isCurrentJobEvent(data)) {
+      clearStreamState()
       loadJob(jobId.value)
       loadOutputs(jobId.value)
     }
@@ -1112,17 +1290,16 @@ function setupSocketListeners() {
 
   // Job failed
   socket.on('generation:job:failed', (data) => {
-    if (data.job_id === jobId.value) {
-      currentlyProcessing.value = null
-      streamingContent.value = ''
+    if (isCurrentJobEvent(data)) {
+      clearStreamState()
       loadJob(jobId.value)
     }
   })
 
   // Budget exceeded
   socket.on('generation:job:budget_exceeded', (data) => {
-    if (data.job_id === jobId.value) {
-      currentlyProcessing.value = null
+    if (isCurrentJobEvent(data)) {
+      clearStreamState()
       loadJob(jobId.value)
     }
   })
@@ -1141,6 +1318,7 @@ function cleanupSocketListeners() {
     socket.off('generation:job:progress')
     socket.off('generation:item:started')
     socket.off('generation:item:token')
+    socket.off('generation:item:partial')
     socket.off('generation:item:completed')
     socket.off('generation:item:failed')
     socket.off('generation:job:completed')

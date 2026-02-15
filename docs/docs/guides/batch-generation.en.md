@@ -111,7 +111,7 @@ The 5-step wizard guides you through configuration:
 |------------|-------------|----------|
 | **Scenario** | Items from an existing evaluation scenario | Process existing data |
 | **Manual** | Upload JSON, CSV or plaintext | Test new data |
-| **Prompt Only** | No input data required | Test prompt templates |
+| **Prompt Only** | Try different prompts across multiple models; Prompt Engineering variables are applied automatically | Quickly compare prompt templates |
 
 ---
 
@@ -141,6 +141,8 @@ The 5-step wizard guides you through configuration:
 !!! info "Prompt Integration"
     Prompts are loaded from the [Prompt Engineering](prompt-engineering.md) module.
     Variables are automatically replaced by input data.
+    If a block is titled `System`, it is used as the system prompt.
+    All other blocks are merged in order into a single user prompt.
 
 **Variable aliases:**
 The generator recognizes common field names automatically:

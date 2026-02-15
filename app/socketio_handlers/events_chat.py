@@ -233,7 +233,11 @@ def register_chat_events(socketio, chat_manager):
         """Handle test prompt streaming with optional JSON mode and configurable parameters"""
         client_id = request.sid
         logging.info(f"handle_test_prompt_stream called. SID={client_id}")
-        user_prompt = data.get('prompt', '')
+        # Prompt Engineering test mode supports separate system/user prompts.
+        # Fallback to legacy single `prompt` payload for backward compatibility.
+        legacy_prompt = str(data.get('prompt', '') or '')
+        user_prompt = str(data.get('userPrompt', legacy_prompt) or '')
+        system_prompt = str(data.get('systemPrompt', '') or '')
 
         # Get configurable parameters from frontend
         model = data.get('model')
@@ -262,7 +266,10 @@ def register_chat_events(socketio, chat_manager):
         logging.info(f"handle_test_prompt_stream: model={model}, api_model={api_model_id}, temp={temperature}, max_tokens={max_tokens}")
 
         try:
-            messages = [{"role": "user", "content": user_prompt}]
+            messages = []
+            if system_prompt.strip():
+                messages.append({"role": "system", "content": system_prompt})
+            messages.append({"role": "user", "content": user_prompt})
 
             # Optionaler JSON Mode: erzwungenes strukturierte JSON-Antworten
             json_mode = data.get('jsonMode', True)

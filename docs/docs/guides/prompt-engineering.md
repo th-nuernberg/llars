@@ -95,6 +95,10 @@ Prompts bestehen aus mehreren Blöcken, die einzeln bearbeitet werden können:
 !!! info "Block-Struktur"
     Typische Blöcke: `System Instruction`, `Context`, `Examples`, `User Query`, `Output Format`
 
+!!! tip "System-Block für Batch Generation"
+    Wenn ein Block den Titel `System` trägt, verwendet Batch Generation diesen Inhalt als **System-Prompt**.
+    Alle übrigen Blöcke werden in ihrer Reihenfolge zu einem gemeinsamen **User-Prompt** zusammengeführt.
+
 ---
 
 ### Variablen-System

@@ -230,6 +230,16 @@ export function usePromptBlocks(ydoc, roomId, socket, showMessage, t) {
     return sortedBlocks.value.map(b => deltaToText(b.content)).join('\n\n')
   }
 
+  // Prompt-Blöcke als Klartext für UIs (z. B. Test-Dialog)
+  const assemblePromptBlocks = () => {
+    return sortedBlocks.value.map(b => ({
+      id: b.id,
+      title: b.title,
+      position: b.position,
+      content: deltaToText(b.content)
+    }))
+  }
+
   return {
     blocks,
     sortedBlocks,
@@ -238,6 +248,7 @@ export function usePromptBlocks(ydoc, roomId, socket, showMessage, t) {
     deleteBlock,
     saveBlockTitle,
     handleJsonUpload,
-    assemblePrompt
+    assemblePrompt,
+    assemblePromptBlocks
   }
 }

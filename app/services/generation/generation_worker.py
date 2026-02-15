@@ -25,11 +25,14 @@ Usage:
 
 from __future__ import annotations
 
+import concurrent.futures as cf
 import logging
 import re
 import time
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Set, Tuple
+
+from flask import current_app
 
 from db import db
 from db.models import (
@@ -52,6 +55,7 @@ from services.generation.socket_rooms import (
 )
 from services.generation.stream_state import clear_partial_content, set_partial_content
 from services.llm.llm_client_factory import LLMClientFactory
+from services.system_settings_service import get_batch_generation_max_parallel
 
 # YJS decoding for UserPrompt content
 logger = logging.getLogger(__name__)
@@ -70,7 +74,7 @@ except ImportError:
 # =============================================================================
 
 # Default limits
-DEFAULT_MAX_PARALLEL = 5
+DEFAULT_MAX_PARALLEL = 1
 DEFAULT_MAX_RETRIES = 3
 DEFAULT_BATCH_SIZE = 10
 
@@ -148,7 +152,9 @@ def _decode_yjs_with_ypy(content: list) -> Dict[str, Any]:
             txn.apply_v1(update_bytes)
 
         blocks_map = doc.get_map('blocks')
+        variables_map = doc.get_map('variables')
         result_blocks = {}
+        result_variables = {}
 
         for block_id in blocks_map:
             block_value = blocks_map.get(block_id)
@@ -172,9 +178,25 @@ def _decode_yjs_with_ypy(content: list) -> Dict[str, Any]:
 
             result_blocks[block_id] = block_data
 
+        if variables_map is not None:
+            for var_name in variables_map:
+                var_value = variables_map.get(var_name)
+                if var_value is None:
+                    continue
+
+                if hasattr(var_value, 'get'):
+                    content_value = var_value.get('content')
+                    result_variables[str(var_name)] = {
+                        'content': str(content_value) if content_value is not None else ''
+                    }
+                else:
+                    result_variables[str(var_name)] = {
+                        'content': str(var_value)
+                    }
+
         if result_blocks:
             logger.debug(f"Decoded YJS content with y-py: {len(result_blocks)} blocks found")
-            return {'blocks': result_blocks}
+            return {'blocks': result_blocks, 'variables': result_variables}
 
     except Exception as e:
         logger.debug(f"y-py decoding failed: {e}")
@@ -459,6 +481,7 @@ class GenerationWorker:
         self._model_cache: Dict[str, LLMModel] = {}
         self._source_data_cache: Dict[int, Dict[str, Any]] = {}
         self._param_fix_hints: Dict[str, Set[str]] = {}
+        self._app = None
 
     # -------------------------------------------------------------------------
     # Main Entry Point
@@ -485,6 +508,34 @@ class GenerationWorker:
         limits = config.get("limits", {})
         max_retries = limits.get("max_retries", DEFAULT_MAX_RETRIES)
         max_cost = limits.get("max_cost_usd")
+        self._app = current_app._get_current_object()
+
+        # Resolve effective parallelism:
+        # - Global admin setting in SystemSettings is the upper bound
+        # - Optional per-job limits.max_parallel can request a lower value
+        try:
+            admin_max_parallel = int(get_batch_generation_max_parallel() or DEFAULT_MAX_PARALLEL)
+        except (TypeError, ValueError):
+            admin_max_parallel = DEFAULT_MAX_PARALLEL
+        admin_max_parallel = max(1, min(admin_max_parallel, 16))
+
+        requested_max_parallel = limits.get("max_parallel")
+        if requested_max_parallel is not None:
+            try:
+                requested_max_parallel = int(requested_max_parallel)
+            except (TypeError, ValueError):
+                requested_max_parallel = admin_max_parallel
+            max_parallel = max(1, min(requested_max_parallel, admin_max_parallel))
+        else:
+            max_parallel = admin_max_parallel
+
+        logger.info(
+            "[GenWorker] Job %d parallelism: effective=%d (admin=%d, job_request=%s)",
+            self.job_id,
+            max_parallel,
+            admin_max_parallel,
+            limits.get("max_parallel"),
+        )
 
         # Emit start event
         self._emit_event("generation:job:started", {
@@ -515,18 +566,18 @@ class GenerationWorker:
                     break
 
                 # Fetch pending outputs
-                pending = get_pending_outputs_for_job(self.job_id, limit=DEFAULT_BATCH_SIZE)
+                fetch_limit = max(DEFAULT_BATCH_SIZE, max_parallel)
+                pending = get_pending_outputs_for_job(self.job_id, limit=fetch_limit)
                 if not pending:
                     # No more pending outputs, job is complete
                     logger.info("[GenWorker] Job %d has no more pending outputs", self.job_id)
                     break
 
-                # Process batch
-                for output in pending:
-                    if self.should_stop:
-                        break
-
-                    self._process_output(output, max_retries=max_retries)
+                self._process_pending_batch(
+                    pending=pending,
+                    max_retries=max_retries,
+                    max_parallel=max_parallel,
+                )
 
             # Determine final status
             job = GenerationJob.query.get(self.job_id)
@@ -564,6 +615,56 @@ class GenerationWorker:
         """Signal the worker to stop after the current item."""
         self.should_stop = True
         logger.info("[GenWorker] Stop signal received for job %d", self.job_id)
+
+    def _process_pending_batch(
+        self,
+        pending: List[GeneratedOutput],
+        *,
+        max_retries: int,
+        max_parallel: int,
+    ) -> None:
+        """Process one fetched pending batch, optionally in parallel."""
+        if max_parallel <= 1 or len(pending) <= 1:
+            for output in pending:
+                if self.should_stop:
+                    break
+                self._process_output(output, max_retries=max_retries)
+            return
+
+        output_ids = [output.id for output in pending]
+        with cf.ThreadPoolExecutor(max_workers=max_parallel) as executor:
+            futures = [
+                executor.submit(self._process_output_in_thread, output_id, max_retries)
+                for output_id in output_ids
+            ]
+            for future in cf.as_completed(futures):
+                try:
+                    future.result()
+                except Exception as e:
+                    logger.exception("[GenWorker] Parallel output processing failed: %s", e)
+
+    def _process_output_in_thread(self, output_id: int, max_retries: int) -> None:
+        """
+        Process a single output in a worker thread with its own app/session context.
+        """
+        app = self._app
+        if app is None:
+            from main import app as main_app
+            app = main_app
+
+        with app.app_context():
+            thread_worker = GenerationWorker(self.job_id, socketio=self.socketio)
+            try:
+                output = GeneratedOutput.query.get(output_id)
+                if not output:
+                    logger.warning("[GenWorker] Output %d not found for parallel processing", output_id)
+                    return
+                if output.status != GeneratedOutputStatus.PENDING:
+                    return
+
+                thread_worker._process_output(output, max_retries=max_retries)
+            finally:
+                db.session.remove()
 
     # -------------------------------------------------------------------------
     # Output Processing
@@ -801,6 +902,29 @@ class GenerationWorker:
             logger.warning("[GenWorker] No blocks found in decoded content")
             return "", ""
 
+        # Optional prompt-level defaults from Prompt Engineering variable manager.
+        # These defaults are applied when runtime variables are missing/empty.
+        prompt_variable_defaults = self._extract_prompt_variable_defaults(content)
+        if not prompt_variable_defaults:
+            # Backward compatibility:
+            # Older rendered_content may contain blocks only; try raw prompt content.
+            raw_content_defaults: Dict[str, Any] = {}
+            raw_content = user_prompt.content
+            if isinstance(raw_content, dict):
+                raw_content_defaults = self._extract_prompt_variable_defaults(raw_content)
+            elif isinstance(raw_content, list):
+                decoded_raw = decode_yjs_content(raw_content)
+                raw_content_defaults = self._extract_prompt_variable_defaults(decoded_raw)
+
+            if raw_content_defaults:
+                prompt_variable_defaults = raw_content_defaults
+
+        effective_variables = dict(prompt_variable_defaults)
+        for key, value in variables.items():
+            # Keep explicit runtime values; only fall back to prompt defaults when empty.
+            if key not in effective_variables or not self._is_empty_prompt_variable_value(value):
+                effective_variables[key] = value
+
         # Log block details
         for block_id, block_data in blocks.items():
             if isinstance(block_data, dict):
@@ -816,8 +940,8 @@ class GenerationWorker:
             key=lambda x: x[1].get('position', 0) if isinstance(x[1], dict) else 0
         )
 
-        # Extract system prompt (if exists) and build user prompt
-        system_prompt = ""
+        # Extract system prompt blocks and build user prompt from all remaining blocks
+        system_prompt_parts = []
         user_prompt_parts = []
 
         for block_id, block_data in sorted_blocks:
@@ -825,14 +949,79 @@ class GenerationWorker:
                 block_content = block_data.get('content', '')
                 if block_content:
                     # Substitute variables ({{variable_name}})
-                    rendered = self._substitute_variables(block_content, variables)
+                    rendered = self._substitute_variables(str(block_content), effective_variables)
 
-                    if block_id.lower() == 'system':
-                        system_prompt = rendered
+                    if self._is_system_block(block_id, block_data):
+                        system_prompt_parts.append(rendered)
                     else:
                         user_prompt_parts.append(rendered)
 
-        return system_prompt, '\n\n'.join(user_prompt_parts)
+        return '\n\n'.join(system_prompt_parts), '\n\n'.join(user_prompt_parts)
+
+    @staticmethod
+    def _normalize_block_name(name: Any) -> str:
+        """Normalize block name values for robust block type detection."""
+        if name is None:
+            return ""
+        return str(name).strip().casefold()
+
+    @classmethod
+    def _is_system_block(cls, block_id: Any, block_data: Dict[str, Any]) -> bool:
+        """
+        Detect system blocks from Prompt Engineering content.
+
+        A block is treated as system prompt when either:
+        - the block key/id is "system" (legacy behavior), or
+        - the visible block title is "system" (after renaming in editor).
+        """
+        normalized_block_id = cls._normalize_block_name(block_id)
+        normalized_title = cls._normalize_block_name(block_data.get('title'))
+        return normalized_block_id == "system" or normalized_title == "system"
+
+    @staticmethod
+    def _is_empty_prompt_variable_value(value: Any) -> bool:
+        """Treat common empty runtime values as missing so prompt defaults can apply."""
+        if value is None:
+            return True
+        if isinstance(value, str):
+            return value == ""
+        if isinstance(value, (list, dict, tuple, set)):
+            return len(value) == 0
+        return False
+
+    @staticmethod
+    def _extract_prompt_variable_defaults(content: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Extract default variable values from Prompt Engineering rendered content.
+
+        Expected structure (when available):
+            {
+              "blocks": {...},
+              "variables": {
+                "name": {"content": "value", ...}
+                // or "name": "value"
+              }
+            }
+        """
+        if not isinstance(content, dict):
+            return {}
+
+        raw_variables = content.get('variables')
+        if not isinstance(raw_variables, dict):
+            return {}
+
+        defaults: Dict[str, Any] = {}
+        for raw_name, raw_value in raw_variables.items():
+            var_name = str(raw_name).strip()
+            if not var_name:
+                continue
+
+            if isinstance(raw_value, dict):
+                defaults[var_name] = raw_value.get('content', '')
+            else:
+                defaults[var_name] = raw_value
+
+        return defaults
 
     def _substitute_variables(self, text: str, variables: Dict[str, Any]) -> str:
         """Substitute {{variable}} placeholders in text."""
@@ -1082,6 +1271,8 @@ class GenerationWorker:
             tokens = {"input": 0, "output": 0, "total": 0}
             last_save_time = time.time()
             SAVE_INTERVAL = 2.0  # Save partial content every 2 seconds for reconnection support
+            last_partial_emit_time = time.time()
+            PARTIAL_EMIT_INTERVAL = 0.7  # Emit aggregated partial text for reconnect/live fallback
 
             try:
                 # Build API call params - only include max_tokens if explicitly set
@@ -1132,8 +1323,18 @@ class GenerationWorker:
                                 "token": token,
                             })
 
-                            # Periodically save partial content for reconnection support
+                            # Periodically emit aggregated partial text as robust fallback
+                            # (helps clients that joined mid-stream or missed token chunks).
                             current_time = time.time()
+                            if output_id is not None and (current_time - last_partial_emit_time) >= PARTIAL_EMIT_INTERVAL:
+                                self._emit_event("generation:item:partial", {
+                                    "job_id": self.job_id,
+                                    "output_id": output_id,
+                                    "partial_content": content,
+                                })
+                                last_partial_emit_time = current_time
+
+                            # Periodically save partial content for reconnection support
                             if current_time - last_save_time >= SAVE_INTERVAL:
                                 self._save_partial_content(output_id, content)
                                 last_save_time = current_time
@@ -1149,6 +1350,13 @@ class GenerationWorker:
                 if not content.strip():
                     logger.warning("[GenWorker] Streaming returned empty content, falling back to non-streaming")
                     enable_streaming = False
+                elif output_id is not None:
+                    # Ensure at least one full partial update is sent for clients that joined late.
+                    self._emit_event("generation:item:partial", {
+                        "job_id": self.job_id,
+                        "output_id": output_id,
+                        "partial_content": content,
+                    })
 
             except Exception as e:
                 logger.warning("[GenWorker] Streaming failed, falling back to non-streaming: %s", e)
@@ -1183,6 +1391,15 @@ class GenerationWorker:
                 tokens["input"] = getattr(response.usage, "prompt_tokens", 0)
                 tokens["output"] = getattr(response.usage, "completion_tokens", 0)
                 tokens["total"] = tokens["input"] + tokens["output"]
+
+            # Non-streaming fallback still publishes one partial event so the UI
+            # can switch from snapshot to the latest known content.
+            if output_id is not None and content:
+                self._emit_event("generation:item:partial", {
+                    "job_id": self.job_id,
+                    "output_id": output_id,
+                    "partial_content": content,
+                })
 
         return content, tokens
 
@@ -1356,16 +1573,23 @@ class GenerationWorker:
         cost_delta: float = 0.0
     ) -> None:
         """Update job progress counters."""
+        updates = {}
+        if completed_delta:
+            updates[GenerationJob.completed_items] = GenerationJob.completed_items + completed_delta
+        if failed_delta:
+            updates[GenerationJob.failed_items] = GenerationJob.failed_items + failed_delta
+        if tokens_delta:
+            updates[GenerationJob.total_tokens] = GenerationJob.total_tokens + tokens_delta
+        if cost_delta:
+            updates[GenerationJob.total_cost_usd] = GenerationJob.total_cost_usd + cost_delta
+
+        if updates:
+            GenerationJob.query.filter_by(id=self.job_id).update(updates, synchronize_session=False)
+            db.session.commit()
+
         job = GenerationJob.query.get(self.job_id)
         if not job:
             return
-
-        job.completed_items += completed_delta
-        job.failed_items += failed_delta
-        job.total_tokens += tokens_delta
-        job.total_cost_usd += cost_delta
-
-        db.session.commit()
 
         # Emit progress event
         self._emit_event("generation:job:progress", {
@@ -1376,6 +1600,26 @@ class GenerationWorker:
             "percent": job.progress_percent,
             "cost_usd": job.total_cost_usd,
         })
+
+        # Mark terminal completion as soon as all outputs are accounted for.
+        # This avoids stale RUNNING jobs when the worker exits before the final
+        # post-loop completion check.
+        processed_count = (job.completed_items or 0) + (job.failed_items or 0)
+        if (
+            job.status in (GenerationJobStatus.RUNNING, GenerationJobStatus.QUEUED)
+            and job.total_items > 0
+            and processed_count >= job.total_items
+        ):
+            job.status = GenerationJobStatus.COMPLETED
+            if not job.completed_at:
+                job.completed_at = datetime.utcnow()
+            db.session.commit()
+            self._emit_event("generation:job:completed", {
+                "job_id": self.job_id,
+                "completed": job.completed_items,
+                "failed": job.failed_items,
+                "total_cost_usd": job.total_cost_usd,
+            })
 
     # -------------------------------------------------------------------------
     # Partial Content Storage (for reconnection support)
@@ -1421,7 +1665,7 @@ class GenerationWorker:
                 if event.startswith("generation:job:"):
                     self.socketio.emit(event, data, namespace='/', room=GENERATION_OVERVIEW_ROOM)
 
-                if 'token' in event:
+                if 'token' in event or event.endswith(':partial'):
                     logger.debug("[GenWorker] Emitted %s to %s", event, room or "none")
                 else:
                     logger.info(

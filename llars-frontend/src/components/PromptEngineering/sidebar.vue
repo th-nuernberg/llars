@@ -550,15 +550,17 @@ const unsharePromptWithUser = async (username) => {
   display: flex;
   flex-direction: column;
   background: rgb(var(--v-theme-surface));
-  border-right: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  border-right: none;
   overflow: hidden;
 }
 
 .sidebar-header {
   flex-shrink: 0;
+  min-height: var(--prompt-detail-header-height, 68px);
+  box-sizing: border-box;
   display: flex;
   align-items: center;
-  padding: 12px 16px;
+  padding: 10px 14px;
   background: linear-gradient(135deg, rgba(var(--v-theme-primary), 0.08), rgba(var(--v-theme-primary), 0.02));
   border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.08);
 }
@@ -571,7 +573,9 @@ const unsharePromptWithUser = async (username) => {
 
 .sidebar-content {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
+  overflow-x: hidden;
   padding: 12px;
 }
 

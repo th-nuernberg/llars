@@ -281,16 +281,16 @@ LLARS is actively used in psychosocial counselling research: the Virtual Client 
 A full end-to-end case study on automated subject line generation~\cite{steigerwald2025subjectline} refined prompts collaboratively, produced 253~subject lines across 11~LLMs via batch generation, and had five professionals together with an LLM evaluator rate them (1,518~assessments)---determining how small a model could be while still producing meaningful results.
 
 Semi-structured interviews with six domain experts and three developers confirmed that consolidating the pipeline in a single platform saves considerable time.
-Regarding prompt engineering, domain experts found that the collaborative editor made prompt authoring straightforward---particularly when working with self-hosted models, where no external tooling or playground exists.
-For batch generation, developers valued that prompts, data, and outputs remain in one place, eliminating manual export--import cycles between separate tools.
-The evaluation module was rated as immediately understandable by all domain experts: clear progress indicators show which items have been assessed and which remain, letting evaluators resume across sessions.
-Across all three modules, both groups emphasised that co-locating the entire workflow removed the ``translation work'' between disciplines and created the experience of ``truly working together on the same task.''
+Domain experts found prompt authoring straightforward---particularly for self-hosted models lacking external playgrounds---and rated the evaluation interface as immediately understandable.
+Developers valued that prompts, data, and outputs remain in one place, eliminating manual export--import cycles.
+Both groups emphasised that co-locating the workflow removed the ``translation work'' between disciplines and created the experience of ``truly working together on the same task.''
 
-\section{Limitations, Demo, and Future Work}
+\section{Demo and Conclusion}
 
-Current limitations include deployment in a single domain with a small user base and reliance on qualitative interviews rather than a controlled study.
-Our live demo walks attendees through the full pipeline.
-LLARS is open-source and under active development; future work aims to extend it for more efficient interdisciplinary collaboration and to validate it across further domains.
+Our live demo presents a complete workflow from prompt editing through batch generation to evaluation with live metrics.
+Pre-built example prompts, generation jobs, and evaluation scenarios let attendees explore and test every stage hands-on.
+LLARS unifies collaborative prompt engineering, systematic batch generation, and hybrid human--LLM evaluation in a single open-source platform, so far validated in psychosocial counselling and under active development to generalize across further domains.
+By giving domain experts direct access to prompt authoring, data-driven generation, and structured evaluation, LLARS bridges the gap between disciplines---enabling researchers and developers to collaborate on equal footing.
 % TODO: Uncomment and update URLs before submission
 %\noindent\textbf{Repository:} \url{https://github.com/llars-project/llars}\\
 %\textbf{Documentation:} \url{https://llars-project.github.io}

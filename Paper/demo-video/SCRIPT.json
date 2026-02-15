@@ -137,8 +137,9 @@
       "narration": "I've read the paper and I'm curious to see this in action — let's dive in!",
       "actions": [
         {
-          "do": "wait",
-          "seconds": 0.3
+          "do": "wait_for",
+          "target": "Prompt Engineering",
+          "timeout": 15
         },
         {
           "do": "highlight",
@@ -394,6 +395,10 @@
           "do": "wait_for_modal"
         },
         {
+          "do": "wait",
+          "seconds": 0.5
+        },
+        {
           "do": "type",
           "target": "Variable Name Input",
           "text": "subject",
@@ -418,11 +423,25 @@
           "seconds": 1.5
         },
         {
+          "do": "dismiss_dialog"
+        },
+        {
+          "do": "dismiss_overlays"
+        },
+        {
+          "do": "wait",
+          "seconds": 0.5
+        },
+        {
           "do": "click",
           "target": "Manage Variables"
         },
         {
           "do": "wait_for_modal"
+        },
+        {
+          "do": "wait",
+          "seconds": 0.5
         },
         {
           "do": "type",
@@ -447,6 +466,12 @@
         {
           "do": "wait",
           "seconds": 1.5
+        },
+        {
+          "do": "dismiss_dialog"
+        },
+        {
+          "do": "dismiss_overlays"
         }
       ]
     },
@@ -466,6 +491,9 @@
       "speaker": "moderator",
       "narration": "Exactly — quick iteration. Let me hit Test — the variables get inserted and the LLM generates a response right here.",
       "actions": [
+        {
+          "do": "dismiss_overlays"
+        },
         {
           "do": "wait",
           "seconds": 0.5
@@ -673,8 +701,13 @@
           "highlight_before": 1.0
         },
         {
+          "do": "wait_for",
+          "target": "Git Floating Panel",
+          "timeout": 5
+        },
+        {
           "do": "wait",
-          "seconds": 1.5
+          "seconds": 0.5
         },
         {
           "do": "click",
@@ -884,8 +917,9 @@
           "url": "/Home"
         },
         {
-          "do": "wait",
-          "seconds": 0.5
+          "do": "wait_for",
+          "target": "Batch Generation",
+          "timeout": 10
         },
         {
           "do": "highlight",
@@ -1817,8 +1851,9 @@
           "url": "/Home"
         },
         {
-          "do": "wait",
-          "seconds": 0.5
+          "do": "wait_for",
+          "target": "Prompt Engineering",
+          "timeout": 10
         },
         {
           "do": "highlight",

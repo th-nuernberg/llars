@@ -22,15 +22,15 @@ export const COLLAB_COLOR_PRESETS = [
 
 // LLARS brand colors (hex without #)
 export const LLARS_COLORS = [
-  'b0ca97', // primary - sage green
-  '98d4bb', // success - soft mint
-  'a8c5e2', // info - soft blue
-  'e8c87a', // warning - soft gold
-  '88c4c8', // accent - soft teal
-  'D1BC8A', // secondary - golden beige
-  'e8a087', // danger - soft coral
-  'c5b4e3', // purple - soft lavender (for generated avatars only)
-  'f0b6c2'  // pink - soft rose
+  'c7dcc0', // pastel green
+  'c4e3d5', // pastel mint
+  'c5d9eb', // pastel blue
+  'e8d8ab', // pastel gold
+  'b8dddf', // pastel teal
+  'ddccad', // pastel beige
+  'e7bfae', // pastel coral
+  'cfbfdc', // pastel lavender (for generated avatars only)
+  'e7c2cb'  // pastel rose
 ]
 
 // AI Reserved color range (purple/violet spectrum)

@@ -2,18 +2,7 @@
  * User display utilities for avatars and name formatting
  */
 
-// LLARS color palette for DiceBear backgrounds
-const LLARS_COLORS = [
-  'b0ca97', // primary - sage green
-  '98d4bb', // success - soft mint
-  'a8c5e2', // info - soft blue
-  'e8c87a', // warning - soft gold
-  '88c4c8', // accent - soft teal
-  'D1BC8A', // secondary - golden beige
-  'e8a087', // danger - soft coral
-  'c5b4e3', // purple - soft lavender
-  'f0b6c2', // pink - soft rose
-]
+import { LLARS_COLORS } from '@/constants/colors'
 
 /**
  * Generate a consistent color from a seed string

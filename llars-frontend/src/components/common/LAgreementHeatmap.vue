@@ -16,10 +16,10 @@
             'is-llm': evaluator.isLLM,
             'highlighted': highlightedCell?.col === evaluator.id
           }"
-          :title="evaluator.name"
+          :title="getEvaluatorTooltip(evaluator)"
         >
           <LIcon v-if="evaluator.isLLM" size="10" class="llm-icon">mdi-robot</LIcon>
-          <span>{{ getShortName(evaluator.name) }}</span>
+          <span>{{ getAxisLabel(evaluator, 'x') }}</span>
         </div>
       </div>
 
@@ -33,10 +33,10 @@
             'is-llm': evaluator.isLLM,
             'highlighted': highlightedCell?.row === evaluator.id
           }"
-          :title="evaluator.name"
+          :title="getEvaluatorTooltip(evaluator)"
         >
           <LIcon v-if="evaluator.isLLM" size="12" class="mr-1">mdi-robot</LIcon>
-          <span>{{ getShortName(evaluator.name) }}</span>
+          <span>{{ getAxisLabel(evaluator, 'y') }}</span>
         </div>
       </div>
 
@@ -217,14 +217,42 @@ const hasLLMEvaluators = computed(() => {
   return props.evaluators.some(e => e.isLLM)
 })
 
-function getShortName(name) {
-  if (!name) return '?'
-  // For LLM model names, extract the model part
-  if (name.includes('/')) {
-    name = name.split('/').pop()
+function truncateMiddle(text, maxLength) {
+  const value = String(text || '')
+  if (value.length <= maxLength) return value
+  const visible = maxLength - 3
+  const head = Math.ceil(visible / 2)
+  const tail = Math.floor(visible / 2)
+  return `${value.slice(0, head)}...${value.slice(-tail)}`
+}
+
+function normalizeEvaluatorName(evaluator) {
+  if (!evaluator) return '?'
+  const fallback = evaluator.name || evaluator.model_name || evaluator.username || evaluator.id || '?'
+  const raw = String(fallback).replace(/^llm:/, '')
+
+  if (!evaluator.isLLM) {
+    return raw
   }
-  if (name.length <= 8) return name
-  return name.substring(0, 7) + '...'
+
+  // Prefer readable model names (e.g. provider/model-name -> model-name)
+  const modelPart = raw.includes('/') ? raw.split('/').pop() : raw
+  return modelPart || raw
+}
+
+function getAxisLabel(evaluator, axis = 'y') {
+  const normalized = normalizeEvaluatorName(evaluator)
+  const maxLength = axis === 'x' ? 18 : 30
+  return truncateMiddle(normalized, maxLength)
+}
+
+function getEvaluatorTooltip(evaluator) {
+  const displayName = normalizeEvaluatorName(evaluator)
+  const rawId = evaluator?.id ? String(evaluator.id).replace(/^llm:/, '') : ''
+  if (evaluator?.isLLM && rawId && rawId !== displayName) {
+    return `${displayName} (${rawId})`
+  }
+  return displayName
 }
 
 function getAgreementKey(id1, id2) {
@@ -245,6 +273,44 @@ function formatValue(value) {
   return Math.round(value * 100) + '%'
 }
 
+const HEATMAP_COLOR_STOPS = [
+  { value: 0, color: { r: 210, g: 99, b: 79 } },   // low: deeper coral
+  { value: 0.5, color: { r: 209, g: 188, b: 138 } }, // mid: LLARS beige
+  { value: 1, color: { r: 86, g: 165, b: 137 } }     // high: deeper mint
+]
+
+function interpolateColor(start, end, t) {
+  return {
+    r: Math.round(start.r + (end.r - start.r) * t),
+    g: Math.round(start.g + (end.g - start.g) * t),
+    b: Math.round(start.b + (end.b - start.b) * t)
+  }
+}
+
+function getInterpolatedHeatmapColor(intensity) {
+  if (intensity <= HEATMAP_COLOR_STOPS[0].value) return HEATMAP_COLOR_STOPS[0].color
+  if (intensity >= HEATMAP_COLOR_STOPS[HEATMAP_COLOR_STOPS.length - 1].value) {
+    return HEATMAP_COLOR_STOPS[HEATMAP_COLOR_STOPS.length - 1].color
+  }
+
+  for (let i = 0; i < HEATMAP_COLOR_STOPS.length - 1; i++) {
+    const start = HEATMAP_COLOR_STOPS[i]
+    const end = HEATMAP_COLOR_STOPS[i + 1]
+    if (intensity >= start.value && intensity <= end.value) {
+      const t = (intensity - start.value) / (end.value - start.value)
+      return interpolateColor(start.color, end.color, t)
+    }
+  }
+
+  return HEATMAP_COLOR_STOPS[1].color
+}
+
+function getReadableTextColor({ r, g, b }) {
+  // YIQ contrast check for readable foreground on varying backgrounds
+  const yiq = ((r * 299) + (g * 587) + (b * 114)) / 1000
+  return yiq >= 150 ? 'rgba(var(--v-theme-on-surface), 0.92)' : 'rgba(255, 255, 255, 0.96)'
+}
+
 function getCellStyle(rowId, colId) {
   if (rowId === colId) {
     return {
@@ -259,28 +325,14 @@ function getCellStyle(rowId, colId) {
     }
   }
 
-  // Color gradient using LLARS Design System colors:
-  // low (red #e8a087) -> medium (yellow #D1BC8A) -> high (green #98d4bb)
+  // Stronger gradient for clearer agreement differences:
+  // low (deeper coral) -> medium (beige) -> high (deeper mint)
   const intensity = Math.max(0, Math.min(1, value))
-
-  let r, g, b
-  if (intensity < 0.5) {
-    // Red to yellow
-    const t = intensity * 2
-    r = 232 // e8
-    g = Math.round(160 + t * 40) // a0 -> c8
-    b = Math.round(135 - t * 35) // 87 -> 52
-  } else {
-    // Yellow to green
-    const t = (intensity - 0.5) * 2
-    r = Math.round(232 - t * 80) // e8 -> 98
-    g = Math.round(200 + t * 12) // c8 -> d4
-    b = Math.round(100 + t * 87) // 64 -> bb
-  }
+  const { r, g, b } = getInterpolatedHeatmapColor(intensity)
 
   return {
     backgroundColor: `rgb(${r}, ${g}, ${b})`,
-    color: intensity > 0.6 ? 'white' : 'inherit'
+    color: getReadableTextColor({ r, g, b })
   }
 }
 
@@ -288,8 +340,8 @@ function onCellHover(rowEval, colEval) {
   highlightedCell.value = {
     row: rowEval.id,
     col: colEval.id,
-    rowName: rowEval.name,
-    colName: colEval.name,
+    rowName: getEvaluatorTooltip(rowEval),
+    colName: getEvaluatorTooltip(colEval),
     value: getAgreement(rowEval.id, colEval.id)
   }
   emit('cell-hover', {
@@ -336,7 +388,7 @@ function onCellClick(rowEval, colEval) {
 
 .heatmap-container {
   display: grid;
-  grid-template-columns: minmax(60px, auto) auto;
+  grid-template-columns: minmax(120px, auto) auto;
   grid-template-rows: auto auto;
   justify-content: center;
   align-content: center;
@@ -356,13 +408,13 @@ function onCellClick(rowEval, colEval) {
 .corner-cell {
   grid-column: 1;
   grid-row: 1;
-  min-width: 60px;
-  height: 80px;
+  min-width: 120px;
+  height: 90px;
 }
 
 .y-label {
-  height: 56px;
-  max-width: 120px;
+  height: 60px;
+  max-width: 220px;
   display: flex;
   align-items: center;
   justify-content: flex-end;
@@ -389,13 +441,13 @@ function onCellClick(rowEval, colEval) {
   display: flex;
   grid-column: 2;
   grid-row: 1;
-  height: 80px;
+  height: 90px;
   align-items: flex-end;
 }
 
 .x-label {
-  width: 56px;
-  height: 80px;
+  width: 60px;
+  height: 90px;
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
@@ -432,12 +484,12 @@ function onCellClick(rowEval, colEval) {
 
 .heatmap-row {
   display: flex;
-  height: 56px;
+  height: 60px;
 }
 
 .heatmap-cell {
-  width: 56px;
-  height: 56px;
+  width: 60px;
+  height: 60px;
   flex-shrink: 0;
   display: flex;
   align-items: center;
@@ -544,7 +596,7 @@ function onCellClick(rowEval, colEval) {
 .legend-gradient {
   width: 100px;
   height: 10px;
-  background: linear-gradient(to right, #e8a087, #D1BC8A, #98d4bb);
+  background: linear-gradient(to right, #d2634f, #D1BC8A, #56a589);
   border-radius: 4px;
 }
 
@@ -581,21 +633,30 @@ function onCellClick(rowEval, colEval) {
     padding: 12px;
   }
 
+  .heatmap-container {
+    grid-template-columns: minmax(90px, auto) auto;
+  }
+
   .y-label, .x-label {
     font-size: 0.65rem;
   }
 
   .heatmap-cell, .y-label, .heatmap-row, .x-label {
-    width: 44px;
-    height: 44px;
+    width: 48px;
+    height: 48px;
   }
 
   .x-label {
-    height: 60px;
+    height: 64px;
   }
 
   .corner-cell {
-    height: 60px;
+    min-width: 90px;
+    height: 64px;
+  }
+
+  .y-label {
+    max-width: 150px;
   }
 
   .cell-value {

@@ -904,7 +904,7 @@
     </v-dialog>
 
     <!-- Agreement Detail Dialog -->
-    <v-dialog v-model="showAgreementDialog" max-width="640">
+    <v-dialog v-model="showAgreementDialog" max-width="1380" scrollable class="agreement-detail-dialog">
       <v-card class="agreement-detail-card">
         <v-card-title class="d-flex align-center justify-space-between">
           <div class="d-flex align-center">
@@ -916,20 +916,23 @@
           </v-btn>
         </v-card-title>
 
-        <v-card-text v-if="selectedAgreement">
+        <v-card-text v-if="selectedAgreement" class="agreement-detail-body">
           <!-- Evaluator Comparison Header -->
           <div class="agreement-comparison">
             <!-- Evaluator 1 -->
-            <div class="evaluator-info" :class="{ 'is-llm': selectedAgreement.eval1?.isLLM }">
-              <div class="evaluator-avatar">
+            <div class="agreement-evaluator" :class="{ 'is-llm': selectedAgreement.eval1?.isLLM }">
+              <div class="agreement-evaluator-avatar">
                 <LIcon :color="selectedAgreement.eval1?.isLLM ? '#c4a0d4' : '#88c4c8'" size="24">
                   {{ selectedAgreement.eval1?.isLLM ? 'mdi-robot' : 'mdi-account' }}
                 </LIcon>
               </div>
-              <div class="evaluator-details">
-                <span class="evaluator-name">{{ selectedAgreement.eval1?.name }}</span>
-                <span class="evaluator-type">
+              <div class="agreement-evaluator-details">
+                <span class="agreement-evaluator-name">{{ formatAgreementEvaluatorName(selectedAgreement.eval1) }}</span>
+                <span class="agreement-evaluator-type">
                   {{ selectedAgreement.eval1?.isLLM ? $t('scenarioManager.evaluation.filter.llm') : $t('scenarioManager.evaluation.filter.human') }}
+                </span>
+                <span v-if="getAgreementEvaluatorMeta(selectedAgreement.eval1)" class="agreement-evaluator-meta">
+                  {{ getAgreementEvaluatorMeta(selectedAgreement.eval1) }}
                 </span>
               </div>
             </div>
@@ -940,16 +943,19 @@
             </div>
 
             <!-- Evaluator 2 -->
-            <div class="evaluator-info" :class="{ 'is-llm': selectedAgreement.eval2?.isLLM }">
-              <div class="evaluator-avatar">
+            <div class="agreement-evaluator" :class="{ 'is-llm': selectedAgreement.eval2?.isLLM }">
+              <div class="agreement-evaluator-avatar">
                 <LIcon :color="selectedAgreement.eval2?.isLLM ? '#c4a0d4' : '#88c4c8'" size="24">
                   {{ selectedAgreement.eval2?.isLLM ? 'mdi-robot' : 'mdi-account' }}
                 </LIcon>
               </div>
-              <div class="evaluator-details">
-                <span class="evaluator-name">{{ selectedAgreement.eval2?.name }}</span>
-                <span class="evaluator-type">
+              <div class="agreement-evaluator-details">
+                <span class="agreement-evaluator-name">{{ formatAgreementEvaluatorName(selectedAgreement.eval2) }}</span>
+                <span class="agreement-evaluator-type">
                   {{ selectedAgreement.eval2?.isLLM ? $t('scenarioManager.evaluation.filter.llm') : $t('scenarioManager.evaluation.filter.human') }}
+                </span>
+                <span v-if="getAgreementEvaluatorMeta(selectedAgreement.eval2)" class="agreement-evaluator-meta">
+                  {{ getAgreementEvaluatorMeta(selectedAgreement.eval2) }}
                 </span>
               </div>
             </div>
@@ -995,12 +1001,121 @@
               <span class="detail-label">{{ $t('scenarioManager.results.rawScore') }}</span>
               <span class="detail-value">{{ selectedAgreement.value?.toFixed(4) || '-' }}</span>
             </div>
+
+            <div class="detail-item" v-if="selectedAgreementDetail">
+              <span class="detail-label">{{ $t('scenarioManager.results.comparedDataPoints') }}</span>
+              <span class="detail-value">{{ comparedItemsCount }}</span>
+            </div>
           </div>
 
           <!-- Explanation -->
           <div class="agreement-explanation">
             <LIcon size="16" class="mr-2">mdi-information-outline</LIcon>
             <span>{{ getAgreementExplanation(selectedAgreement.value) }}</span>
+          </div>
+
+          <!-- Item-Level Breakdown -->
+          <div v-if="selectedAgreementDetail" class="agreement-breakdown">
+            <div class="breakdown-header">
+              <h5 class="breakdown-title">{{ $t('scenarioManager.results.itemBreakdown') }}</h5>
+              <span v-if="isAgreementDetailTruncated" class="breakdown-note">
+                {{ $t('scenarioManager.results.itemBreakdownTruncated') }}
+              </span>
+            </div>
+
+            <v-expansion-panels v-model="expandedAgreementPanels" multiple variant="accordion" class="breakdown-panels">
+              <v-expansion-panel>
+                <v-expansion-panel-title>
+                  <div class="panel-title-row">
+                    <span>{{ $t('scenarioManager.results.disagreedDataPoints') }}</span>
+                    <span class="panel-count panel-count-disagreed">{{ disagreedItems.length }}</span>
+                  </div>
+                </v-expansion-panel-title>
+                <v-expansion-panel-text>
+                  <div v-if="disagreedItems.length === 0" class="panel-empty">
+                    {{ $t('scenarioManager.results.noDisagreedDataPoints') }}
+                  </div>
+                  <div v-else class="agreement-point-list">
+                    <details
+                      v-for="item in disagreedItems"
+                      :key="getAgreementItemKey(item, 'disagreed')"
+                      class="agreement-point-item disagreement"
+                    >
+                      <summary class="agreement-point-summary">
+                        <span class="point-label">{{ getAgreementItemLabel(item) }}</span>
+                        <span class="point-value-preview">
+                          {{ formatAgreementEvaluatorName(selectedAgreement.eval1) }}:
+                          {{ formatAgreementItemValue(getAgreementItemValue(item, selectedAgreement.eval1?.id)) }}
+                          ·
+                          {{ formatAgreementEvaluatorName(selectedAgreement.eval2) }}:
+                          {{ formatAgreementItemValue(getAgreementItemValue(item, selectedAgreement.eval2?.id)) }}
+                        </span>
+                      </summary>
+                      <div class="agreement-point-body">
+                        <div class="agreement-point-row">
+                          <span class="point-rater">{{ formatAgreementEvaluatorName(selectedAgreement.eval1) }}</span>
+                          <strong>{{ formatAgreementItemValue(getAgreementItemValue(item, selectedAgreement.eval1?.id)) }}</strong>
+                        </div>
+                        <div class="agreement-point-row">
+                          <span class="point-rater">{{ formatAgreementEvaluatorName(selectedAgreement.eval2) }}</span>
+                          <strong>{{ formatAgreementItemValue(getAgreementItemValue(item, selectedAgreement.eval2?.id)) }}</strong>
+                        </div>
+                        <p v-if="item.preview" class="point-preview">{{ item.preview }}</p>
+                      </div>
+                    </details>
+                  </div>
+                  <div v-if="selectedAgreementDetail.disagreed_omitted_count > 0" class="panel-omitted">
+                    {{ $t('scenarioManager.results.omittedDataPoints', { count: selectedAgreementDetail.disagreed_omitted_count }) }}
+                  </div>
+                </v-expansion-panel-text>
+              </v-expansion-panel>
+
+              <v-expansion-panel>
+                <v-expansion-panel-title>
+                  <div class="panel-title-row">
+                    <span>{{ $t('scenarioManager.results.agreedDataPoints') }}</span>
+                    <span class="panel-count panel-count-agreed">{{ agreedItems.length }}</span>
+                  </div>
+                </v-expansion-panel-title>
+                <v-expansion-panel-text>
+                  <div v-if="agreedItems.length === 0" class="panel-empty">
+                    {{ $t('scenarioManager.results.noAgreedDataPoints') }}
+                  </div>
+                  <div v-else class="agreement-point-list">
+                    <details
+                      v-for="item in agreedItems"
+                      :key="getAgreementItemKey(item, 'agreed')"
+                      class="agreement-point-item agreement"
+                    >
+                      <summary class="agreement-point-summary">
+                        <span class="point-label">{{ getAgreementItemLabel(item) }}</span>
+                        <span class="point-value-preview">
+                          {{ formatAgreementItemValue(getAgreementItemValue(item, selectedAgreement.eval1?.id)) }}
+                        </span>
+                      </summary>
+                      <div class="agreement-point-body">
+                        <div class="agreement-point-row">
+                          <span class="point-rater">{{ formatAgreementEvaluatorName(selectedAgreement.eval1) }}</span>
+                          <strong>{{ formatAgreementItemValue(getAgreementItemValue(item, selectedAgreement.eval1?.id)) }}</strong>
+                        </div>
+                        <div class="agreement-point-row">
+                          <span class="point-rater">{{ formatAgreementEvaluatorName(selectedAgreement.eval2) }}</span>
+                          <strong>{{ formatAgreementItemValue(getAgreementItemValue(item, selectedAgreement.eval2?.id)) }}</strong>
+                        </div>
+                        <p v-if="item.preview" class="point-preview">{{ item.preview }}</p>
+                      </div>
+                    </details>
+                  </div>
+                  <div v-if="selectedAgreementDetail.agreed_omitted_count > 0" class="panel-omitted">
+                    {{ $t('scenarioManager.results.omittedDataPoints', { count: selectedAgreementDetail.agreed_omitted_count }) }}
+                  </div>
+                </v-expansion-panel-text>
+              </v-expansion-panel>
+            </v-expansion-panels>
+          </div>
+          <div v-else class="agreement-breakdown-unavailable">
+            <LIcon size="16" class="mr-2">mdi-information-outline</LIcon>
+            <span>{{ $t('scenarioManager.results.itemBreakdownUnavailable') }}</span>
           </div>
         </v-card-text>
       </v-card>
@@ -1067,6 +1182,7 @@ const selectedDimension = ref(null)
 // Agreement detail dialog state
 const showAgreementDialog = ref(false)
 const selectedAgreement = ref(null)
+const expandedAgreementPanels = ref([0])
 
 // Spider chart constants - increased size for longer labels
 const spiderSize = 360
@@ -1918,6 +2034,51 @@ const pairwiseAgreements = computed(() => {
   return pairwise?.agreements || {}
 })
 
+const selectedAgreementDetail = computed(() => {
+  if (!selectedAgreement.value) return null
+  const pairwise = pairwiseData.value
+  if (!pairwise) return null
+
+  const eval1Id = selectedAgreement.value.eval1?.id
+  const eval2Id = selectedAgreement.value.eval2?.id
+  if (eval1Id === undefined || eval2Id === undefined) return null
+
+  const key = getAgreementKey(eval1Id, eval2Id)
+  return pairwise?.pair_details?.[key] || pairwise?.pairDetails?.[key] || null
+})
+
+const agreedItems = computed(() => {
+  const rawItems = selectedAgreementDetail.value?.agreed_items || selectedAgreementDetail.value?.agreedItems || []
+  return [...rawItems].sort((a, b) => {
+    const aId = Number(a?.item_id ?? a?.feature_id ?? 0)
+    const bId = Number(b?.item_id ?? b?.feature_id ?? 0)
+    return aId - bId
+  })
+})
+
+const disagreedItems = computed(() => {
+  const rawItems = selectedAgreementDetail.value?.disagreed_items || selectedAgreementDetail.value?.disagreedItems || []
+  return [...rawItems].sort((a, b) => {
+    const aId = Number(a?.item_id ?? a?.feature_id ?? 0)
+    const bId = Number(b?.item_id ?? b?.feature_id ?? 0)
+    return aId - bId
+  })
+})
+
+const comparedItemsCount = computed(() => {
+  const detail = selectedAgreementDetail.value
+  if (!detail) return 0
+  return detail.shared_count ?? detail.sharedCount ?? (agreedItems.value.length + disagreedItems.value.length)
+})
+
+const isAgreementDetailTruncated = computed(() => {
+  const detail = selectedAgreementDetail.value
+  if (!detail) return false
+  const omittedAgreed = detail.agreed_omitted_count || 0
+  const omittedDisagreed = detail.disagreed_omitted_count || 0
+  return Boolean(detail.truncated) || (omittedAgreed + omittedDisagreed > 0)
+})
+
 function getAgreementKey(id1, id2) {
   // Keys are stored as "min-max" for consistency
   const str1 = String(id1)
@@ -1939,7 +2100,76 @@ function openAgreementDetail(eventData) {
     value: value,
     percentage: value !== undefined && value !== null ? Math.round(value * 100) : null
   }
+  const key = getAgreementKey(eval1.id, eval2.id)
+  const detail = pairwiseData.value?.pair_details?.[key] || pairwiseData.value?.pairDetails?.[key]
+  const hasDisagreedItems = (detail?.disagreed_items?.length || detail?.disagreedItems?.length || 0) > 0
+  expandedAgreementPanels.value = hasDisagreedItems ? [0] : [1]
   showAgreementDialog.value = true
+}
+
+function getAgreementItemKey(item, prefix = 'item') {
+  const primaryId = item?.item_id ?? item?.feature_id ?? item?.id ?? item?.label ?? 'unknown'
+  return `${prefix}-${String(primaryId)}`
+}
+
+function getAgreementItemLabel(item) {
+  if (!item) return '-'
+  if (item.label) return item.label
+  const itemId = item.item_id ?? item.feature_id
+  if (itemId !== undefined && itemId !== null) {
+    return `${t('scenarioManager.results.dataPoint')} #${itemId}`
+  }
+  return t('scenarioManager.results.dataPoint')
+}
+
+function getAgreementItemValue(item, evaluatorId) {
+  if (!item || evaluatorId === undefined || evaluatorId === null) return null
+  return item.values?.[String(evaluatorId)] ?? null
+}
+
+function formatAgreementItemValue(value) {
+  if (value === undefined || value === null || value === '') return '-'
+  if (typeof value === 'number') {
+    return Number.isInteger(value) ? String(value) : value.toFixed(2)
+  }
+  const text = String(value).trim()
+  if (!text) return '-'
+  return text.charAt(0).toUpperCase() + text.slice(1)
+}
+
+function formatAgreementEvaluatorName(evaluator) {
+  if (!evaluator) return '-'
+  const rawId = String(evaluator.id || evaluator.model_id || '').replace(/^llm:/, '')
+  const rawName = String(evaluator.name || evaluator.username || evaluator.model_name || '').trim()
+
+  // Keep human names as provided; fallback to id only if missing.
+  if (!evaluator.isLLM) {
+    return rawName || rawId || '-'
+  }
+
+  // For LLMs prefer full model id when available to avoid truncated labels like "...".
+  if (rawName && !rawName.includes('...')) {
+    // If backend sends only model short name but id has provider/model, show full id.
+    if (rawId && rawId.includes('/') && !rawName.includes('/')) {
+      const shortFromId = rawId.split('/').pop()
+      if (shortFromId && shortFromId.toLowerCase() === rawName.toLowerCase()) {
+        return rawId
+      }
+    }
+    return rawName
+  }
+
+  return rawId || rawName || '-'
+}
+
+function getAgreementEvaluatorMeta(evaluator) {
+  if (!evaluator || !evaluator.isLLM) return ''
+  const rawId = String(evaluator.id || evaluator.model_id || evaluator.name || '').replace(/^llm:/, '')
+  if (!rawId) return ''
+  const displayName = formatAgreementEvaluatorName(evaluator)
+  // Show raw id only if it differs from displayed name.
+  if (rawId !== displayName) return rawId
+  return ''
 }
 
 function getAgreementScoreColor(value) {
@@ -2863,7 +3093,7 @@ watch(
   color: rgba(var(--v-theme-on-surface), 0.4);
 }
 
-.evaluator-name {
+.matrix-cell .evaluator-name {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -3515,14 +3745,24 @@ watch(
 }
 
 /* Agreement Detail Dialog */
+.agreement-detail-dialog :deep(.v-overlay__content) {
+  width: min(1380px, 97vw);
+}
+
 .agreement-detail-card {
   border-radius: 16px 4px 16px 4px;
 }
 
+.agreement-detail-body {
+  max-height: min(84vh, 980px);
+  overflow-y: auto;
+  padding-right: 12px;
+}
+
 .agreement-comparison {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
-  justify-content: space-between;
   gap: 16px;
   padding: 16px;
   background-color: rgba(var(--v-theme-on-surface), 0.03);
@@ -3530,14 +3770,14 @@ watch(
   margin-bottom: 20px;
 }
 
-.evaluator-info {
+.agreement-evaluator {
   display: flex;
   align-items: center;
-  gap: 12px;
-  flex: 1;
+  gap: 14px;
+  min-width: 0;
 }
 
-.evaluator-avatar {
+.agreement-evaluator-avatar {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -3547,25 +3787,34 @@ watch(
   background-color: rgba(136, 196, 200, 0.15);
 }
 
-.evaluator-info.is-llm .evaluator-avatar {
+.agreement-evaluator.is-llm .agreement-evaluator-avatar {
   background-color: rgba(196, 160, 212, 0.15);
 }
 
-.evaluator-details {
+.agreement-evaluator-details {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 3px;
+  min-width: 0;
 }
 
-.evaluator-name {
+.agreement-evaluator-name {
   font-weight: 600;
-  font-size: 1rem;
+  font-size: 1.02rem;
+  line-height: 1.25;
   word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
-.evaluator-type {
+.agreement-evaluator-type {
   font-size: 0.75rem;
   color: rgba(var(--v-theme-on-surface), 0.6);
+}
+
+.agreement-evaluator-meta {
+  font-size: 0.72rem;
+  color: rgba(var(--v-theme-on-surface), 0.5);
+  word-break: break-all;
 }
 
 .vs-indicator {
@@ -3656,7 +3905,7 @@ watch(
 
 .agreement-details-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 12px;
   margin-bottom: 16px;
 }
@@ -3699,6 +3948,178 @@ watch(
   flex-shrink: 0;
   margin-top: 2px;
   color: rgb(var(--v-theme-primary));
+}
+
+.agreement-breakdown {
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+}
+
+.breakdown-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.breakdown-title {
+  margin: 0;
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: rgba(var(--v-theme-on-surface), 0.88);
+}
+
+.breakdown-note {
+  font-size: 0.75rem;
+  color: rgba(var(--v-theme-on-surface), 0.55);
+}
+
+.panel-title-row {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.panel-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.panel-count-disagreed {
+  background-color: rgba(232, 160, 135, 0.22);
+  color: #aa4f33;
+}
+
+.panel-count-agreed {
+  background-color: rgba(152, 212, 187, 0.28);
+  color: #3d8c6b;
+}
+
+.panel-empty {
+  font-size: 0.85rem;
+  color: rgba(var(--v-theme-on-surface), 0.6);
+}
+
+.agreement-point-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.agreement-point-item {
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  border-radius: 10px;
+  background-color: rgba(var(--v-theme-surface), 1);
+  overflow: hidden;
+}
+
+.agreement-point-item.agreement {
+  border-left: 4px solid rgba(152, 212, 187, 0.9);
+}
+
+.agreement-point-item.disagreement {
+  border-left: 4px solid rgba(232, 160, 135, 0.95);
+}
+
+.agreement-point-summary {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.agreement-point-item summary::-webkit-details-marker {
+  display: none;
+}
+
+.agreement-point-item summary::marker {
+  content: '';
+}
+
+.agreement-point-item[open] .agreement-point-summary {
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+}
+
+.point-label {
+  flex: 1;
+  font-size: 0.88rem;
+  font-weight: 600;
+  line-height: 1.35;
+  color: rgba(var(--v-theme-on-surface), 0.88);
+  word-break: break-word;
+}
+
+.point-value-preview {
+  font-size: 0.78rem;
+  color: rgba(var(--v-theme-on-surface), 0.62);
+  text-align: right;
+  max-width: 45%;
+  word-break: break-word;
+}
+
+.agreement-point-body {
+  padding: 10px 12px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.agreement-point-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+}
+
+.point-rater {
+  font-weight: 500;
+  color: rgba(var(--v-theme-on-surface), 0.7);
+  word-break: break-word;
+}
+
+.point-preview {
+  margin: 2px 0 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background-color: rgba(var(--v-theme-on-surface), 0.04);
+  font-size: 0.8rem;
+  color: rgba(var(--v-theme-on-surface), 0.72);
+  line-height: 1.35;
+}
+
+.panel-omitted {
+  margin-top: 8px;
+  font-size: 0.75rem;
+  color: rgba(var(--v-theme-on-surface), 0.6);
+}
+
+.agreement-breakdown-unavailable {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 16px;
+  padding: 12px;
+  border-radius: 8px;
+  background-color: rgba(var(--v-theme-on-surface), 0.03);
+  font-size: 0.83rem;
+  color: rgba(var(--v-theme-on-surface), 0.68);
 }
 
 /* Responsive */
@@ -3786,6 +4207,27 @@ watch(
   .dimension-bar-scale {
     text-align: left;
     margin-top: 4px;
+  }
+
+  .agreement-detail-dialog :deep(.v-overlay__content) {
+    width: min(1380px, 99vw);
+  }
+
+  .agreement-comparison {
+    grid-template-columns: 1fr;
+  }
+
+  .vs-indicator {
+    justify-self: center;
+  }
+
+  .point-value-preview {
+    max-width: 100%;
+    text-align: left;
+  }
+
+  .agreement-point-summary {
+    flex-direction: column;
   }
 }
 </style>

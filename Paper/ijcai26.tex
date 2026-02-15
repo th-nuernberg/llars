@@ -241,17 +241,17 @@ Once a prompt is finalized, it passes directly into batch generation, where the 
 \subsection{Batch Generation}
 
 While the prompt editor allows rapid testing with sample values, a single example cannot validate whether a prompt generalizes across diverse inputs.
-Batch generation addresses this: users select from all available prompts---self-authored or shared by collaborators---and any registered model to apply to their data, producing the Cartesian product of prompts\,$\times$\,models\,$\times$\,data items.
+Batch generation addresses this: users select from available prompts---self-authored or shared by collaborators---and any registered model to apply to their data, producing the Cartesian product of prompts\,$\times$\,models\,$\times$\,data items.
 A generation matrix previews this combination and estimates cost based on model pricing and projected token counts; optional budget caps pause jobs that exceed a threshold.
-A wizard offers three data source modes, each suited to a different stage of development.
+A wizard offers three data source modes, each suited to a different stage of development: upload data (provide new CSV or JSON input), previous generation (reuse data from a completed batch job), and prompt only (generate without source data).
 
-In \emph{upload-data mode}, users provide a CSV or JSON file whose columns map to the prompt's template variables---for example, 50~counselling email threads as JSON, each entry containing \texttt{subject} and \texttt{content} fields matching the variables defined during prompt engineering.
+In upload-data mode, users provide a CSV or JSON file whose columns map to the prompt's template variables---for example, 50~counselling email threads as JSON, each entry containing \texttt{subject} and \texttt{content} fields matching the variables defined during prompt engineering.
 Combined with two prompts and two models, LLARS produces 50\,$\times$\,2\,$\times$\,2\,=\,200~outputs.
 
-\emph{Previous-generation mode} reuses the input data from a completed batch job, so that new prompts or additional models can be tested on exactly the same dataset without re-uploading.
+Previous-generation mode reuses the input data from a completed batch job, so that new prompts or additional models can be tested on exactly the same dataset without re-uploading.
 If the team revises a prompt after reviewing initial results or wants to add a third model, a single click applies the change to the original 50~threads---ensuring that differences in output quality stem from the prompt or model, not from different input data.
 
-\emph{Prompt-only mode} generates outputs without any source data: multiple prompts are sent to multiple models directly---for instance, a structured versus a narrative system prompt across three candidate models, yielding six responses to compare style and quality before investing in data preparation.
+Prompt-only mode generates outputs without any source data: multiple prompts are sent to multiple models directly---for instance, a structured versus a narrative system prompt across three candidate models, yielding six responses to compare style and quality before investing in data preparation.
 
 Results stream in real time, and every output records its full provenance---source item, prompt version, model, parameters, token count, and cost---exportable as CSV or JSON.
 This provenance is central to the pipeline: when outputs reach evaluation, assessors see only blinded labels, and the platform maps their judgments back to specific model--prompt combinations, directly informing selection.

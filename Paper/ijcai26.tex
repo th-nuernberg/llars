@@ -249,9 +249,7 @@ A wizard offers three data source modes, each suited to a different stage of dev
 
 In upload-data mode, users provide a CSV or JSON file whose columns map to the prompt's template variables---for example, 50~counselling email threads as JSON, each entry containing \texttt{subject} and \texttt{content} fields matching the variables defined during prompt engineering.
 Combined with two prompts and two models, LLARS produces 50\,$\times$\,2\,$\times$\,2\,=\,200~outputs.
-
 Previous-generation mode works identically but reuses the data from a completed batch job, so that new prompts or additional models can be tested on exactly the same dataset without re-uploading.
-
 Prompt-only mode sends selected prompts to selected models without uploading data; if the prompt contains variables, the sample values from prompt engineering are used.
 
 Results stream in real time, and every output records its full provenance---source item, prompt version, model, parameters, token count, and cost---exportable as CSV or JSON.
@@ -272,35 +270,30 @@ All data, metrics, and configurations are exportable as JSON or CSV.
 
 \begin{figure}[htb]
 \centering
-\includegraphics[width=\linewidth]{figures/szenario-wizard.png}
-\caption{AI-assisted Scenario Wizard showing the task selection step with four general evaluation types and two domain-specific types for psychosocial counseling. The five-step wizard analyzes uploaded data and recommends the most suitable evaluation type.}
+\includegraphics[width=0.85\linewidth]{figures/szenario-wizard.png}
+\caption{AI-assisted Scenario Wizard: task selection step with four general and two domain-specific evaluation types. The wizard analyzes uploaded data and recommends a suitable type.}
 \label{fig:scenario-wizard}
 \end{figure}
 
 \section{Deployment and User Study}
 \label{sec:counseling}
 
-LLARS is actively used in psychosocial counselling research: the Virtual Client project~\cite{rudolph2024virtualclient} uses it to develop prompts for simulated client interactions, and CAIA~\cite{steigerwald2025caia}, a co-designed AI assistant for online counselling, relies on it for prompt development and evaluation.
-A full end-to-end case study on automated subject line generation~\cite{steigerwald2025subjectline} refined prompts collaboratively, produced 253~subject lines across 11~LLMs via batch generation, and had five professionals together with an LLM evaluator rate them (1,518~assessments)---determining how small a model could be while still producing meaningful results.
+LLARS is deployed in psychosocial counselling research, including the Virtual Client project~\cite{rudolph2024virtualclient} for simulated client interactions and CAIA~\cite{steigerwald2025caia}, an AI assistant for online counselling.
+A full end-to-end case study~\cite{steigerwald2025subjectline} refined prompts collaboratively, produced 253~subject lines across 11~LLMs, and had five professionals together with an LLM evaluator rate them (1,518~assessments).
 
-Semi-structured interviews with six domain experts and three developers confirmed that consolidating the full pipeline in a single platform saves considerable time.
-Regarding \emph{prompt engineering}, domain experts found that the collaborative editor made prompt authoring straightforward---particularly when working with self-hosted models, where no external tooling or playground exists.
-For \emph{batch generation}, developers valued that prompts, data, and outputs remain in one place, eliminating the manual export--import cycles between separate tools that previously slowed iteration.
-The \emph{evaluation} module was rated as immediately understandable by all domain experts: clear progress indicators show which items have been assessed and which remain, letting evaluators resume across sessions without losing context.
-Across all three modules, both groups emphasised that co-locating the entire workflow removed the ``translation work'' between disciplines and created the experience of ``truly working together on the same task.''
+Semi-structured interviews with six domain experts and three developers confirmed that consolidating the pipeline in one platform saves considerable time---particularly for self-hosted models where no external playground exists.
+Developers valued that prompts, data, and outputs remain in one place, and domain experts found the evaluation interface immediately understandable.
+Both groups emphasised that co-locating the workflow removed the ``translation work'' between disciplines.
 
 \section{Limitations, Demo, and Future Work}
 
-LLARS has so far been deployed in a single domain with a small user base, so broader studies are needed to assess generalisability.
-The quality of LLM evaluator judgments depends on careful prompt design, and the current evaluation relies on qualitative interviews rather than a controlled study.
-While the variable system helps prevent overfitting during prompt development, practitioners noted that prompts optimised on test cases can still underperform on unseen real-world data---a limitation inherent to any iterative prompt engineering process.
-
-Our live demo walks attendees through the full pipeline, from collaborative prompt editing through batch generation to evaluation with live metrics.
-Future work targets a controlled user study comparing LLARS against baseline workflows (shared documents and spreadsheets) and cross-domain validation in legal and medical settings.
+Current limitations include deployment in a single domain with a small user base, reliance on qualitative interviews rather than a controlled study, and the inherent risk that prompts optimised on test cases underperform on unseen data.
+Our live demo walks attendees through the full pipeline.
+Future work targets a controlled user study against baseline workflows and cross-domain validation in legal and medical settings.
+LLARS is open-source and under active development.
 % TODO: Uncomment and update URLs before submission
 %\noindent\textbf{Repository:} \url{https://github.com/llars-project/llars}\\
 %\textbf{Documentation:} \url{https://llars-project.github.io}
-LLARS is open-source and under active development; it continues to be deployed in ongoing projects to bring domain experts and developers together so that diverse fields beyond counselling can benefit from the current advances in AI.
 
 \bibliographystyle{named}
 \bibliography{llars}

@@ -421,25 +421,16 @@
           "seconds": 1.5
         },
         {
-          "do": "dismiss_dialog"
+          "do": "clear",
+          "target": "Variable Name Input"
         },
         {
-          "do": "dismiss_overlays"
-        },
-        {
-          "do": "wait",
-          "seconds": 0.5
-        },
-        {
-          "do": "click",
-          "target": "Manage Variables"
-        },
-        {
-          "do": "wait_for_modal"
+          "do": "clear",
+          "target": "Variable Content Input"
         },
         {
           "do": "wait",
-          "seconds": 0.5
+          "seconds": 0.3
         },
         {
           "do": "type",
@@ -624,10 +615,16 @@
           "duration": 1.0
         },
         {
-          "do": "collab_type",
-          "target": "First Block Editor",
-          "text": "\n\nFocus on the objective facts stated in the correspondence. Avoid adding assumptions beyond what is written.",
-          "delay": 0.1
+          "do": "type",
+          "target": "Last Block Editor",
+          "text": "",
+          "speed": "instant"
+        },
+        {
+          "do": "type",
+          "target": "Last Block Editor",
+          "text": "Subject: {{subject}}",
+          "speed": "instant"
         },
         {
           "do": "wait",
@@ -637,6 +634,17 @@
           "do": "highlight",
           "target": "Version Control Panel",
           "duration": 1.0
+        },
+        {
+          "do": "collab_type",
+          "target": "Last Block Editor",
+          "text": " Content: {{content}}",
+          "cursor": "end",
+          "delay": 0.1
+        },
+        {
+          "do": "wait",
+          "seconds": 0.2
         },
         {
           "do": "collab_type",
@@ -651,7 +659,7 @@
         },
         {
           "do": "highlight",
-          "target": "First Block Editor",
+          "target": "Last Block Editor",
           "duration": 1.0
         }
       ]
@@ -663,7 +671,7 @@
       "actions": [
         {
           "do": "highlight",
-          "target": "First Block Editor",
+          "target": "Last Block Editor",
           "duration": 1.2
         }
       ]
@@ -675,7 +683,7 @@
       "actions": [
         {
           "do": "highlight",
-          "target": "First Block Editor",
+          "target": "Last Block Editor",
           "duration": 1.0
         }
       ]

@@ -217,7 +217,7 @@ LLARS is an open-source platform to unify collaborative prompt engineering, Cart
 
 \section{Platform Overview}
 
-LLARS runs as a containerized web application where teams register their own commercial or self-hosted OpenAI-compatible LLM providers; registered models then appear across all three modules: collaborative prompt engineering, batch generation, and evaluation.
+LLARS runs as a containerized web application for textual data where teams register their own commercial or self-hosted OpenAI-compatible LLM providers; registered models then appear across all three modules: collaborative prompt engineering, batch generation, and evaluation.
 
 \subsection{Collaborative Prompt Engineering}
 
@@ -254,7 +254,7 @@ If the team revises a prompt after reviewing initial results or wants to add a t
 Prompt-only mode generates outputs without any source data: multiple prompts are sent to multiple models directly---for instance, a structured versus a narrative system prompt across three candidate models, yielding six responses to compare style and quality before investing in data preparation.
 
 Results stream in real time, and every output records its full provenance---source item, prompt version, model, parameters, token count, and cost---exportable as CSV or JSON.
-This provenance is central to the pipeline: when outputs reach evaluation, assessors see only blinded labels, and the platform maps their judgments back to specific model--prompt combinations, directly informing selection.
+This provenance is central to the pipeline: when outputs reach evaluation, assessors see only the generated text without any indication of which model or prompt produced it, and the platform maps their judgments back to specific model--prompt combinations, directly informing selection.
 Completed batches transfer into evaluation with a single click, preserving all attribution.
 
 \subsection{Evaluation}

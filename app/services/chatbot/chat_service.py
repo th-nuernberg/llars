@@ -45,8 +45,11 @@ class ChatService:
 
         self.rag_pipeline = RAGPipeline() if self.chatbot.rag_enabled else None
 
-        # Initialize LLM client (supports user-provider models)
-        client, api_model_id = LLMClientFactory.resolve_client_and_model_id(self.chatbot.model_name)
+        # Initialize LLM client with cached validation/default fallback.
+        # Keeps user-provider routing intact while reducing repeated model DB lookups.
+        client, api_model_id = LLMClientFactory.resolve_for_chat(self.chatbot.model_name)
+        if not client:
+            client, api_model_id = LLMClientFactory.resolve_client_and_model_id(self.chatbot.model_name)
         self.llm_client = client
         self.api_model_id = api_model_id or self.chatbot.model_name
 

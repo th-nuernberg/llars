@@ -20,19 +20,19 @@ Integration:
 import logging
 import random
 import requests
+import time
+from typing import Optional
 from flask import request
 from flask_socketio import emit
 from llm.openai_utils import extract_delta_text
-from db.models.llm_model import LLMModel
 from services.llm.llm_client_factory import LLMClientFactory
 
 
-def _is_openai_model(model_id: str, api_model_id: str) -> bool:
+def _is_openai_model(model_id: Optional[str], api_model_id: Optional[str]) -> bool:
     """Check if a model is an OpenAI model (requires max_completion_tokens)."""
-    if not model_id:
-        return False
-    mid = model_id.lower()
-    return 'openai' in mid or api_model_id.lower().startswith('gpt-') or api_model_id.lower().startswith('o')
+    mid = (model_id or "").lower()
+    api_mid = (api_model_id or "").lower()
+    return 'openai' in mid or api_mid.startswith('gpt-') or api_mid.startswith('o')
 
 
 def register_chat_events(socketio, chat_manager):
@@ -165,18 +165,21 @@ def register_chat_events(socketio, chat_manager):
                 chat_history=chat_history
             )
 
-            model_id = LLMModel.get_default_model_id(model_type=LLMModel.MODEL_TYPE_LLM)
-            if not model_id:
+            resolve_start = time.perf_counter()
+            client, api_model = LLMClientFactory.resolve_for_chat(None)
+            resolve_ms = (time.perf_counter() - resolve_start) * 1000
+            if not client:
                 raise RuntimeError("No default LLM model configured in llm_models")
-            client, api_model = LLMClientFactory.resolve_client_and_model_id(model_id)
+            logging.info(f"chat_stream: resolve_for_chat took {resolve_ms:.1f}ms, api_model={api_model}")
 
             # OpenAI models require max_completion_tokens instead of max_tokens
-            token_param = ("max_completion_tokens" if _is_openai_model(model_id, api_model)
+            token_param = ("max_completion_tokens" if _is_openai_model(api_model, api_model)
                            else "max_tokens")
 
             assistant_message = ""
             # Stream chat completion from LiteLLM Proxy
             metadata = {"tags": ["Technische Hochschule Nürnberg", "KIA"]}
+            create_start = time.perf_counter()
             stream = client.chat.completions.create(
                 model=api_model,
                 messages=[{"role": "user", "content": formatted_input}],
@@ -185,12 +188,19 @@ def register_chat_events(socketio, chat_manager):
                 stream=True,
                 extra_body={"metadata": metadata}
             )
+            create_ms = (time.perf_counter() - create_start) * 1000
+            logging.info(f"chat_stream: create() returned after {create_ms:.1f}ms")
 
+            first_token_logged = False
             for chunk in stream:
                 choice = chunk.choices[0]
                 delta = choice.delta
                 content = extract_delta_text(delta)
                 if content:
+                    if not first_token_logged:
+                        ttfb_ms = (time.perf_counter() - create_start) * 1000
+                        logging.info(f"chat_stream: first token after {ttfb_ms:.1f}ms")
+                        first_token_logged = True
                     assistant_message += content
                     emit("chat_response", {
                         "content": content,
@@ -237,7 +247,9 @@ def register_chat_events(socketio, chat_manager):
         # Single cached call: validates model, falls back to default, resolves client.
         # Avoids 4-6 redundant DB queries that previously ran on every request.
         # User-provider models (user-provider:<id>:...) keep their unique API keys.
+        resolve_start = time.perf_counter()
         client, api_model_id = LLMClientFactory.resolve_for_chat(model)
+        resolve_ms = (time.perf_counter() - resolve_start) * 1000
         if not client:
             logging.error("No default LLM model configured in llm_models")
             emit(
@@ -246,6 +258,7 @@ def register_chat_events(socketio, chat_manager):
                 room=client_id
             )
             return
+        logging.info(f"handle_test_prompt_stream: resolve_for_chat took {resolve_ms:.1f}ms")
         logging.info(f"handle_test_prompt_stream: model={model}, api_model={api_model_id}, temp={temperature}, max_tokens={max_tokens}")
 
         try:
@@ -283,6 +296,7 @@ def register_chat_events(socketio, chat_manager):
                            else "max_tokens")
 
             # Stream test completion
+            create_start = time.perf_counter()
             stream = client.chat.completions.create(
                 model=api_model_id,
                 messages=messages,
@@ -294,15 +308,22 @@ def register_chat_events(socketio, chat_manager):
                 stream=True,
                 **extra_kwargs
             )
+            create_ms = (time.perf_counter() - create_start) * 1000
+            logging.info(f"handle_test_prompt_stream: create() returned after {create_ms:.1f}ms")
 
             logging.info("handle_test_prompt_stream: Stream created, starting iteration")
             chunk_count = 0
+            first_token_logged = False
 
             for chunk in stream:
                 choice = chunk.choices[0]
                 delta = choice.delta
                 content = extract_delta_text(delta)
                 if content:
+                    if not first_token_logged:
+                        ttfb_ms = (time.perf_counter() - create_start) * 1000
+                        logging.info(f"handle_test_prompt_stream: first token after {ttfb_ms:.1f}ms")
+                        first_token_logged = True
                     chunk_count += 1
                     if chunk_count <= 3:
                         logging.info(f"handle_test_prompt_stream: Emitting chunk {chunk_count}: {content[:50]}...")

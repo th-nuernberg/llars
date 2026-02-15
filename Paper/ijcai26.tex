@@ -222,6 +222,14 @@ LLARS runs as a containerized web application for textual data where teams regis
 \subsection{Collaborative Prompt Engineering}
 
 The prompt engineering module (Figure~\ref{fig:prompt-editor}) provides a shared workspace where domain experts and developers co-author prompts in real time using a collaborative editor built on Yjs~\cite{jahns2023yjs}; every keystroke is instantly visible to all connected users, and online presence indicators show who is currently editing.
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=\linewidth]{figures/prompt-editor.png}
+\caption{Collaborative prompt editor with a data-format explanation block containing template variables \texttt{\{\{subject\}\}} and \texttt{\{\{content\}\}}. The sidebar (left) shows actions for block management, variable management, preview, and LLM testing; the Variable Palette lists all extracted variables with sample values.}
+\label{fig:prompt-editor}
+\end{figure}
+
 A prompt is composed of ordered blocks---each representing one part of the prompt, such as a data format description or an instruction for the desired output style---that can be freely added, reordered, or removed.
 One block may optionally be marked as a system block, which becomes the LLM's system prompt; all remaining blocks are concatenated into the user prompt.
 Each block maintains an independent version history that tracks insertions and deletions per save (visible as \texttt{+130\,/\,{-}0} in Figure~\ref{fig:prompt-editor}), enabling diff comparison and rollback to any prior revision without affecting other blocks.
@@ -231,13 +239,6 @@ The platform automatically extracts all variables into a shared Variable Palette
 These samples let collaborators preview the assembled prompt and serve as test inputs: while editing continues, any team member can send the current prompt---with samples substituted---to a selected LLM and receive a streamed response, enabling one collaborator to test a self-hosted model while another simultaneously queries a commercial API.
 Although designed as the first pipeline stage, the editor also functions standalone: prompts can be exported as JSON (including blocks, variables, and version metadata) for external use, and existing prompts can be imported to continue editing collaboratively.
 Once a prompt is finalized, it passes directly into batch generation, where the same template variables are systematically filled from dataset columns, scaling a single prompt to hundreds of outputs.
-
-\begin{figure}[ht]
-\centering
-\includegraphics[width=\linewidth]{figures/prompt-editor.png}
-\caption{Collaborative prompt editor with a data-format explanation block containing template variables \texttt{\{\{subject\}\}} and \texttt{\{\{content\}\}}. The sidebar (left) shows actions for block management, variable management, preview, and LLM testing; the Variable Palette lists all extracted variables with sample values.}
-\label{fig:prompt-editor}
-\end{figure}
 
 \subsection{Batch Generation}
 
@@ -249,8 +250,7 @@ A wizard offers three data source modes, each suited to a different stage of dev
 In upload-data mode, users provide a CSV or JSON file whose columns map to the prompt's template variables---for example, 50~counselling email threads as JSON, each entry containing \texttt{subject} and \texttt{content} fields matching the variables defined during prompt engineering.
 Combined with two prompts and two models, LLARS produces 50\,$\times$\,2\,$\times$\,2\,=\,200~outputs.
 
-Previous-generation mode reuses the input data from a completed batch job, so that new prompts or additional models can be tested on exactly the same dataset without re-uploading.
-If the team revises a prompt after reviewing initial results or wants to add a third model, a single click applies the change to the original 50~threads---ensuring that differences in output quality stem from the prompt or model, not from different input data.
+Previous-generation mode works identically but reuses the data from a completed batch job, so that new prompts or additional models can be tested on exactly the same dataset without re-uploading.
 
 Prompt-only mode generates outputs without any source data: multiple prompts are sent to multiple models directly---for instance, a structured versus a narrative system prompt across three candidate models, yielding six responses to compare style and quality before investing in data preparation.
 

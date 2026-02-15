@@ -72,6 +72,7 @@ from db.models import (
     get_pending_outputs_for_job,
 )
 from decorators.error_handler import NotFoundError, ValidationError
+from services.generation.stream_state import get_partial_content
 from schemas.evaluation_data_schemas import (
     EvaluationType,
     SourceType,
@@ -786,6 +787,10 @@ class BatchGenerationService:
                     model_color = LLMModel.generate_color(processing_output.llm_model_name)
                 except Exception:
                     model_color = None
+            partial_content = processing_output.generated_content or ""
+            live_partial = get_partial_content(processing_output.id)
+            if live_partial and len(live_partial) > len(partial_content):
+                partial_content = live_partial
             result["currently_processing"] = {
                 "output_id": processing_output.id,
                 "model_name": processing_output.llm_model_name,
@@ -796,7 +801,7 @@ class BatchGenerationService:
                     if processing_output.prompt_variant_name
                     else f"Item #{processing_output.source_item_id or processing_output.id}",
                 # Include partial content for reconnection support
-                "partial_content": processing_output.generated_content or ""
+                "partial_content": partial_content
             }
         else:
             result["currently_processing"] = None

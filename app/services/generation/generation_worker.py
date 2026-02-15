@@ -29,7 +29,7 @@ import logging
 import re
 import time
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 from db import db
 from db.models import (
@@ -46,6 +46,7 @@ from db.models import (
 )
 from llm.openai_utils import extract_message_text
 from services.evaluation import PromptTemplateService
+from services.generation.stream_state import clear_partial_content, set_partial_content
 from services.llm.llm_client_factory import LLMClientFactory
 
 # YJS decoding for UserPrompt content
@@ -452,6 +453,8 @@ class GenerationWorker:
         # Cache for templates and models (LLM clients are cached centrally in LLMClientFactory)
         self._template_cache: Dict[int, PromptTemplate] = {}
         self._model_cache: Dict[str, LLMModel] = {}
+        self._source_data_cache: Dict[int, Dict[str, Any]] = {}
+        self._param_fix_hints: Dict[str, Set[str]] = {}
 
     # -------------------------------------------------------------------------
     # Main Entry Point
@@ -579,6 +582,8 @@ class GenerationWorker:
             # Mark as processing
             output.mark_processing()
             db.session.commit()
+            clear_partial_content(output.id)
+            set_partial_content(output.id, "")
 
             model_color = None
             if output.llm_model and getattr(output.llm_model, "color", None):
@@ -648,6 +653,7 @@ class GenerationWorker:
                 "cost_usd": cost,
                 "model_color": model_color,
             })
+            clear_partial_content(output.id)
 
             logger.debug("[GenWorker] Output %d completed (job %d)", output.id, self.job_id)
 
@@ -661,6 +667,7 @@ class GenerationWorker:
                 output.status = GeneratedOutputStatus.RETRYING
                 output.error_message = str(e)
                 db.session.commit()
+                clear_partial_content(output.id)
 
                 # Wait before retry (exponential backoff)
                 delay = RETRY_DELAYS[min(output.attempt_count - 1, len(RETRY_DELAYS) - 1)]
@@ -673,6 +680,7 @@ class GenerationWorker:
                 # Max retries exceeded, mark as failed
                 output.mark_failed(str(e))
                 db.session.commit()
+                clear_partial_content(output.id)
 
                 # Update job progress
                 self._update_job_progress(failed_delta=1)
@@ -938,6 +946,14 @@ class GenerationWorker:
                 return result
 
         if output.source_item_id:
+            cached = self._source_data_cache.get(output.source_item_id)
+            if cached is not None:
+                return {
+                    "content": cached.get("content", ""),
+                    "subject": cached.get("subject", ""),
+                    "messages": cached.get("messages", []),
+                }
+
             # Get content from EvaluationItem
             item = EvaluationItem.query.get(output.source_item_id)
             if item:
@@ -962,7 +978,12 @@ class GenerationWorker:
                     # Fallback to subject if no messages
                     result["content"] = item.subject or ""
 
-                return result
+            self._source_data_cache[output.source_item_id] = {
+                "content": result.get("content", ""),
+                "subject": result.get("subject", ""),
+                "messages": result.get("messages", []),
+            }
+            return result
 
         # Check for custom text in job config
         job = GenerationJob.query.get(output.job_id)
@@ -1012,6 +1033,7 @@ class GenerationWorker:
         """
         # Get client (cached centrally in LLMClientFactory)
         client, api_model_id = LLMClientFactory.resolve_client_and_model_id(model_id)
+        model_key = model_id or api_model_id
 
         # Get generation params from job config (cached)
         if not hasattr(self, '_gen_params_cache'):
@@ -1024,6 +1046,9 @@ class GenerationWorker:
         is_openai = ('openai' in (model_id or '').lower()
                      or api_model_id.lower().startswith('gpt-')
                      or api_model_id.lower().startswith('o'))
+        supports_sampling = self._supports_sampling_params(api_model_id)
+        temperature = gen_params.get("temperature", 0.7) if supports_sampling else None
+        top_p = gen_params.get("top_p", 1.0) if supports_sampling else None
 
         # Build messages
         messages = [
@@ -1048,16 +1073,18 @@ class GenerationWorker:
                 stream_params = {
                     "model": api_model_id,
                     "messages": messages,
-                    "temperature": gen_params.get("temperature", 0.7),
-                    "top_p": gen_params.get("top_p", 1.0),
                     "stream": True,
                 }
+                if temperature is not None:
+                    stream_params["temperature"] = temperature
+                if top_p is not None:
+                    stream_params["top_p"] = top_p
                 # Only add max_tokens if explicitly specified (allows unlimited for reasoning models)
                 if gen_params.get("max_tokens"):
                     key = "max_completion_tokens" if is_openai else "max_tokens"
                     stream_params[key] = gen_params["max_tokens"]
 
-                stream = self._api_call_with_param_fix(client, stream_params)
+                stream = self._api_call_with_param_fix(client, stream_params, model_key=model_key)
 
                 # Collect streamed content and emit tokens
                 used_reasoning_field = False  # Track if we're using reasoning_content
@@ -1081,6 +1108,8 @@ class GenerationWorker:
 
                         if token:
                             content += token
+                            if output_id is not None:
+                                set_partial_content(output_id, content)
                             # Emit token for real-time streaming
                             self._emit_event("generation:item:token", {
                                 "job_id": self.job_id,
@@ -1116,15 +1145,17 @@ class GenerationWorker:
             call_params = {
                 "model": api_model_id,
                 "messages": messages,
-                "temperature": gen_params.get("temperature", 0.7),
-                "top_p": gen_params.get("top_p", 1.0),
             }
+            if temperature is not None:
+                call_params["temperature"] = temperature
+            if top_p is not None:
+                call_params["top_p"] = top_p
             # Only add max_tokens if explicitly specified (allows unlimited for reasoning models)
             if gen_params.get("max_tokens"):
                 key = "max_completion_tokens" if is_openai else "max_tokens"
                 call_params[key] = gen_params["max_tokens"]
 
-            response = self._api_call_with_param_fix(client, call_params)
+            response = self._api_call_with_param_fix(client, call_params, model_key=model_key)
 
             # Extract content
             content = ""
@@ -1141,7 +1172,41 @@ class GenerationWorker:
         return content, tokens
 
     @staticmethod
-    def _api_call_with_param_fix(client, params: dict):
+    def _supports_sampling_params(api_model_id: str) -> bool:
+        """
+        Heuristic for models that reject temperature/top_p.
+
+        GPT-5 and OpenAI o-series typically reject custom sampling params.
+        Skipping those fields avoids a first failing request + retry.
+        """
+        model = (api_model_id or "").strip().lower()
+        return not (
+            model.startswith("gpt-5")
+            or model.startswith("o1")
+            or model.startswith("o3")
+            or model.startswith("o4")
+        )
+
+    def _apply_known_param_fixes(self, model_key: Optional[str], params: dict) -> None:
+        if not model_key:
+            return
+        hints = self._param_fix_hints.get(model_key)
+        if not hints:
+            return
+        if "drop_temperature" in hints:
+            params.pop("temperature", None)
+        if "drop_top_p" in hints:
+            params.pop("top_p", None)
+        if "use_max_completion_tokens" in hints and "max_tokens" in params:
+            params["max_completion_tokens"] = params.pop("max_tokens")
+
+    def _remember_param_fix(self, model_key: Optional[str], fix_name: str) -> None:
+        if not model_key:
+            return
+        hints = self._param_fix_hints.setdefault(model_key, set())
+        hints.add(fix_name)
+
+    def _api_call_with_param_fix(self, client, params: dict, *, model_key: Optional[str] = None):
         """
         Call the chat completions API, automatically fixing unsupported params.
 
@@ -1149,6 +1214,7 @@ class GenerationWorker:
         require max_completion_tokens instead of max_tokens. This method
         catches 400 errors and retries with fixed parameters (up to 3 times).
         """
+        self._apply_known_param_fixes(model_key, params)
         max_fixes = 3
         for _ in range(max_fixes):
             try:
@@ -1159,16 +1225,19 @@ class GenerationWorker:
                 if "temperature" in err_msg and "temperature" in params:
                     logger.info("[GenWorker] Model doesn't support custom temperature, removing")
                     params.pop("temperature")
+                    self._remember_param_fix(model_key, "drop_temperature")
                     fixed = True
                 elif "max_tokens" in err_msg and "max_completion_tokens" in err_msg:
                     logger.info("[GenWorker] Model requires max_completion_tokens instead of max_tokens")
                     val = params.pop("max_tokens", None)
                     if val:
                         params["max_completion_tokens"] = val
+                    self._remember_param_fix(model_key, "use_max_completion_tokens")
                     fixed = True
                 elif "top_p" in err_msg and "top_p" in params:
                     logger.info("[GenWorker] Model doesn't support custom top_p, removing")
                     params.pop("top_p")
+                    self._remember_param_fix(model_key, "drop_top_p")
                     fixed = True
                 if not fixed:
                     raise
@@ -1305,6 +1374,7 @@ class GenerationWorker:
         generated so far.
         """
         try:
+            set_partial_content(output_id, content)
             output = GeneratedOutput.query.get(output_id)
             if output and output.status == GeneratedOutputStatus.PROCESSING:
                 output.generated_content = content

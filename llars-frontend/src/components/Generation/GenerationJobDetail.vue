@@ -1108,8 +1108,12 @@ onMounted(async () => {
       itemName: cp.item_name
     }
     // Load partial content that was streamed before reconnection
-    // New tokens will be appended via Socket.IO
-    streamingContent.value = cp.partial_content || ''
+    // New tokens will be appended via Socket.IO.
+    // Fallback to outputs payload in case job status response is slightly behind.
+    const fromStatus = cp.partial_content || ''
+    const processingOutput = outputs.value.find(o => o.id === cp.output_id)
+    const fromOutputs = processingOutput?.generated_content || ''
+    streamingContent.value = (fromOutputs.length > fromStatus.length ? fromOutputs : fromStatus)
   }
 })
 

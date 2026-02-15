@@ -141,6 +141,7 @@
  *   />
  */
 import { ref, computed } from 'vue'
+import { useTheme } from 'vuetify'
 
 const props = defineProps({
   /** List of evaluators with id, name, isLLM */
@@ -203,6 +204,8 @@ const props = defineProps({
 const emit = defineEmits(['cell-click', 'cell-hover', 'cell-leave'])
 
 const highlightedCell = ref(null)
+const theme = useTheme()
+const isDarkTheme = computed(() => theme.global.current.value.dark)
 
 // Sort evaluators: humans first, then LLMs (alphabetically within each group)
 const sortedEvaluators = computed(() => {
@@ -306,6 +309,11 @@ function getInterpolatedHeatmapColor(intensity) {
 }
 
 function getReadableTextColor({ r, g, b }) {
+  if (isDarkTheme.value) {
+    // Requested UX: use black text on heatmap cells in dark mode
+    return 'rgba(0, 0, 0, 0.96)'
+  }
+
   // YIQ contrast check for readable foreground on varying backgrounds
   const yiq = ((r * 299) + (g * 587) + (b * 114)) / 1000
   return yiq >= 150 ? 'rgba(var(--v-theme-on-surface), 0.92)' : 'rgba(255, 255, 255, 0.96)'
@@ -499,6 +507,11 @@ function onCellClick(rowEval, colEval) {
   transition: box-shadow 0.15s, outline 0.15s;
   border-radius: 4px;
   box-sizing: border-box;
+}
+
+/* Dark mode: clear black separators between cells */
+:deep(.v-theme--dark) .heatmap-cell {
+  border-color: rgba(0, 0, 0, 0.9);
 }
 
 .heatmap-cell.clickable {

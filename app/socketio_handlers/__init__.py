@@ -19,6 +19,7 @@ Event Namespaces:
     - wizard:*    - Chatbot Builder Wizard sessions (server-authoritative)
     - presence:*  - Live user presence (admin)
     - llm_eval:*  - LLM evaluator progress and results
+    - generation:* - Batch generation rooms and stream state
     - (default)   - Chat streaming, connection events
 """
 
@@ -42,6 +43,7 @@ from .events_prompt_collab import register_prompt_collab_events
 from .events_wizard import register_wizard_events
 from .events_presence import register_presence_events
 from .events_llm_evaluation import register_llm_evaluation_events
+from .events_generation import register_generation_events
 
 # Enhanced logging format
 logging.basicConfig(
@@ -123,6 +125,7 @@ def configure_socket_routes(socketio, verbose=True):
     register_wizard_events(socketio)
     register_presence_events(socketio)
     register_llm_evaluation_events(socketio)
+    register_generation_events(socketio)
 
     logging.info("SocketIO routes configured successfully")
 

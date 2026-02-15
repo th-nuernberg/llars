@@ -485,6 +485,7 @@ const { isMobile } = useMobile()
 
 // Socket.IO instance
 let socket = null
+let jobRoomReconnectHandler = null
 
 // Generation composable
 const {
@@ -937,6 +938,24 @@ watch(outputs, () => {
 // Socket.IO Event Handlers
 // =============================================================================
 
+function applyStreamSnapshot(currentlyProcessingState) {
+  if (!currentlyProcessingState) return
+  currentlyProcessing.value = {
+    model: currentlyProcessingState.model_name,
+    modelColor: currentlyProcessingState.model_color,
+    outputId: currentlyProcessingState.output_id,
+    itemName: currentlyProcessingState.item_name
+  }
+
+  // Load partial content that was streamed before (re)join.
+  // New tokens will be appended via Socket.IO.
+  // Fallback to outputs payload in case state snapshot is slightly behind.
+  const fromState = currentlyProcessingState.partial_content || ''
+  const processingOutput = outputs.value.find(o => o.id === currentlyProcessingState.output_id)
+  const fromOutputs = processingOutput?.generated_content || ''
+  streamingContent.value = (fromOutputs.length > fromState.length ? fromOutputs : fromState)
+}
+
 function setupSocketListeners() {
   socket = getSocket()
   console.log('[Generation] Setting up socket listeners for job', jobId.value, 'socket connected:', socket.connected)
@@ -946,6 +965,20 @@ function setupSocketListeners() {
     if (eventName.startsWith('generation:')) {
       console.log('[Generation] Received event:', eventName, args)
     }
+  })
+
+  const joinJobRoom = () => {
+    socket.emit('generation:join_job', { job_id: jobId.value })
+  }
+  jobRoomReconnectHandler = joinJobRoom
+  socket.on('connect', joinJobRoom)
+  if (socket.connected) {
+    joinJobRoom()
+  }
+
+  socket.on('generation:state', (data) => {
+    if (data.job_id !== jobId.value) return
+    applyStreamSnapshot(data.currently_processing)
   })
 
   // Job started
@@ -991,12 +1024,36 @@ function setupSocketListeners() {
     }
   })
 
+  const ensureProcessingStateFromToken = (data) => {
+    if (currentlyProcessing.value?.outputId === data.output_id) {
+      return
+    }
+
+    const cp = currentJob.value?.currently_processing
+    const fallbackModel = cp?.output_id === data.output_id ? cp.model_name : (currentlyProcessing.value?.model || 'Model')
+    const fallbackModelColor = cp?.output_id === data.output_id ? cp.model_color : (currentlyProcessing.value?.modelColor || null)
+    const fallbackItemName = cp?.output_id === data.output_id
+      ? cp.item_name
+      : `Item #${data.output_id}`
+
+    // If we detect token stream for a different output, reset the preview to avoid mixed streams.
+    if (currentlyProcessing.value && currentlyProcessing.value.outputId !== data.output_id) {
+      streamingContent.value = ''
+    }
+
+    currentlyProcessing.value = {
+      model: fallbackModel,
+      modelColor: fallbackModelColor,
+      outputId: data.output_id,
+      itemName: fallbackItemName
+    }
+  }
+
   // Streaming token received
   socket.on('generation:item:token', (data) => {
-    // Don't log every token, just append
-    if (data.job_id === jobId.value && data.output_id === currentlyProcessing.value?.outputId) {
-      streamingContent.value += data.token
-    }
+    if (data.job_id !== jobId.value) return
+    ensureProcessingStateFromToken(data)
+    streamingContent.value += data.token
   })
 
   // Item completed
@@ -1073,7 +1130,13 @@ function setupSocketListeners() {
 
 function cleanupSocketListeners() {
   if (socket) {
+    socket.emit('generation:leave_job', { job_id: jobId.value })
+    if (jobRoomReconnectHandler) {
+      socket.off('connect', jobRoomReconnectHandler)
+      jobRoomReconnectHandler = null
+    }
     socket.offAny()  // Remove the debug listener
+    socket.off('generation:state')
     socket.off('generation:job:started')
     socket.off('generation:job:progress')
     socket.off('generation:item:started')
@@ -1100,20 +1163,7 @@ onMounted(async () => {
 
   // Check if there's a currently processing item (for reconnection support)
   if (currentJob.value?.currently_processing) {
-    const cp = currentJob.value.currently_processing
-    currentlyProcessing.value = {
-      model: cp.model_name,
-      modelColor: cp.model_color,
-      outputId: cp.output_id,
-      itemName: cp.item_name
-    }
-    // Load partial content that was streamed before reconnection
-    // New tokens will be appended via Socket.IO.
-    // Fallback to outputs payload in case job status response is slightly behind.
-    const fromStatus = cp.partial_content || ''
-    const processingOutput = outputs.value.find(o => o.id === cp.output_id)
-    const fromOutputs = processingOutput?.generated_content || ''
-    streamingContent.value = (fromOutputs.length > fromStatus.length ? fromOutputs : fromStatus)
+    applyStreamSnapshot(currentJob.value.currently_processing)
   }
 })
 

@@ -28,6 +28,7 @@ from db.models import (
 )
 from sqlalchemy import func
 from auth.auth_utils import AuthUtils
+from services.user_profile_service import serialize_user_brief
 
 kaimo_user_bp = Blueprint('kaimo_user', __name__)
 
@@ -103,7 +104,16 @@ def list_cases_user():
         .all()
     ) if owned_cases else {}
 
+    owner_usernames = sorted({c.created_by for c in owned_cases + shared_cases if c.created_by})
+    owner_lookup = {}
+    if owner_usernames:
+        owner_lookup = {
+            u.username: serialize_user_brief(u)
+            for u in User.query.filter(User.username.in_(owner_usernames)).all()
+        }
+
     def case_to_dict(c, is_owner=True):
+        owner_avatar = owner_lookup.get(c.created_by, {})
         data = {
             "id": c.id,
             "display_name": c.display_name,
@@ -116,6 +126,8 @@ def list_cases_user():
             "estimated_duration_minutes": 30,
             "is_owner": is_owner,
             "owner": c.created_by,
+            "owner_avatar_seed": owner_avatar.get("avatar_seed"),
+            "owner_avatar_url": owner_avatar.get("avatar_url"),
         }
         if is_owner:
             data["share_count"] = share_counts.get(c.id, 0)
@@ -160,6 +172,9 @@ def get_case_detail(case_id: int):
     # Get sharing info
     shares = KaimoCaseShare.query.filter_by(case_id=case_id).all()
     shared_with = [s.shared_with_username for s in shares]
+    shared_users = User.query.filter(User.username.in_(shared_with)).all() if shared_with else []
+    shared_lookup = {u.username: serialize_user_brief(u) for u in shared_users}
+    owner_avatar = serialize_user_brief(User.query.filter_by(username=case.created_by).first())
 
     categories = _get_case_categories(case.id)
     subcategories = KaimoSubcategory.query.filter(
@@ -225,8 +240,18 @@ def get_case_detail(case_id: int):
                 } for h in hints
             ],
             "owner": case.created_by,
+            "owner_avatar_seed": owner_avatar.get("avatar_seed"),
+            "owner_avatar_url": owner_avatar.get("avatar_url"),
             "is_owner": is_owner,
             "shared_with": shared_with if is_owner else [],
+            "shared_with_users": [
+                {
+                    "username": uname,
+                    "avatar_seed": shared_lookup.get(uname, {}).get("avatar_seed"),
+                    "avatar_url": shared_lookup.get(uname, {}).get("avatar_url"),
+                }
+                for uname in shared_with
+            ] if is_owner else [],
         },
         "my_assessment": None,  # placeholder until assessment endpoints are implemented
     }), 200
@@ -621,10 +646,24 @@ def get_case_shares(case_id: int):
 
     # Get all shares
     shares = KaimoCaseShare.query.filter_by(case_id=case_id).all()
+    shared_with_usernames = [s.shared_with_username for s in shares]
+    shared_users = User.query.filter(User.username.in_(shared_with_usernames)).all() if shared_with_usernames else []
+    shared_lookup = {u.username: serialize_user_brief(u) for u in shared_users}
+    owner_avatar = serialize_user_brief(User.query.filter_by(username=case.created_by).first())
 
     return jsonify({
         "success": True,
         "owner": case.created_by,
+        "owner_avatar_seed": owner_avatar.get("avatar_seed"),
+        "owner_avatar_url": owner_avatar.get("avatar_url"),
         "is_owner": is_owner,
-        "shared_with": [s.shared_with_username for s in shares]
+        "shared_with": shared_with_usernames,
+        "shared_with_users": [
+            {
+                "username": uname,
+                "avatar_seed": shared_lookup.get(uname, {}).get("avatar_seed"),
+                "avatar_url": shared_lookup.get(uname, {}).get("avatar_url"),
+            }
+            for uname in shared_with_usernames
+        ]
     }), 200

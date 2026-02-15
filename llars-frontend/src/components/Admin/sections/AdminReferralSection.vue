@@ -272,9 +272,13 @@
         <!-- Username Column -->
         <template #item.username="{ item }">
           <div class="d-flex align-center">
-            <v-avatar size="28" color="primary" class="mr-2">
-              <span class="text-caption text-uppercase">{{ item.username?.charAt(0) }}</span>
-            </v-avatar>
+            <LAvatar
+              :username="item.username"
+              :seed="item.avatar_seed"
+              :src="item.avatar_url"
+              size="sm"
+              class="mr-2"
+            />
             <span class="font-weight-medium">{{ item.username }}</span>
           </div>
         </template>
@@ -470,6 +474,7 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useReferralSystem } from '@/composables/useReferralSystem'
 import { useSnackbar } from '@/composables/useSnackbar'
+import LAvatar from '@/components/common/LAvatar.vue'
 
 const { t } = useI18n()
 const referral = useReferralSystem()

@@ -50,7 +50,24 @@
                   >
                     <template #item="{ element }">
                       <div class="bucket-item">
-                        <div v-html="formatFeatureContent(feature.type, element.content)"></div>
+                        <div
+                          class="bucket-item__text"
+                          :class="{ 'bucket-item__text--clamped': element.minimized && isLongContent(element.content) }"
+                          v-html="formatFeatureContent(feature.type, element.content)"
+                        ></div>
+                        <div v-if="isLongContent(element.content)" class="bucket-item__actions">
+                          <LBtn
+                            variant="tonal"
+                            size="small"
+                            class="toggle-more-btn"
+                            :prepend-icon="element.minimized ? 'mdi-chevron-down' : 'mdi-chevron-up'"
+                            @mousedown.stop
+                            @touchstart.stop
+                            @click.stop="toggleMinimize(element)"
+                          >
+                            {{ element.minimized ? $t('common.more') : $t('common.less') }}
+                          </LBtn>
+                        </div>
                       </div>
                     </template>
                   </draggable>
@@ -70,16 +87,24 @@
                 >
                   <template #item="{ element }">
                     <div class="bucket-item">
-                      <div :class="{ 'clamped-text': element.minimized }" v-html="formatFeatureContent(feature.type, element.content)"></div>
-                      <v-btn
-                        v-if="isLongContent(element.content)"
-                        size="x-small"
-                        variant="text"
-                        class="toggle-btn"
-                        @click.stop="toggleMinimize(element)"
-                      >
-                        {{ element.minimized ? $t('common.more') : $t('common.less') }}
-                      </v-btn>
+                      <div
+                        class="bucket-item__text"
+                        :class="{ 'bucket-item__text--clamped': element.minimized && isLongContent(element.content) }"
+                        v-html="formatFeatureContent(feature.type, element.content)"
+                      ></div>
+                      <div v-if="isLongContent(element.content)" class="bucket-item__actions">
+                        <LBtn
+                          variant="tonal"
+                          size="small"
+                          class="toggle-more-btn"
+                          :prepend-icon="element.minimized ? 'mdi-chevron-down' : 'mdi-chevron-up'"
+                          @mousedown.stop
+                          @touchstart.stop
+                          @click.stop="toggleMinimize(element)"
+                        >
+                          {{ element.minimized ? $t('common.more') : $t('common.less') }}
+                        </LBtn>
+                      </div>
                     </div>
                   </template>
                 </draggable>
@@ -305,8 +330,10 @@ function formatFeatureContent(type, content) {
 }
 
 // Check if content is long enough to show toggle
+const CONTENT_EXPAND_THRESHOLD = 220
+
 function isLongContent(content) {
-  return content && content.length > 200
+  return content && content.length > CONTENT_EXPAND_THRESHOLD
 }
 
 // Toggle minimize state
@@ -585,6 +612,7 @@ async function loadItem(threadId) {
       ranked: response.data.ranked
     }
     messages.value = response.data.messages || []
+    content.value = response.data.content || response.data.reference_content || ''
     features.value = response.data.features || []
     ranked.value = response.data.ranked || false
 
@@ -879,18 +907,37 @@ watch(() => props.initialItemId, (newItemId) => {
   cursor: grabbing;
 }
 
-.clamped-text {
+.bucket-item__text {
+  word-break: break-word;
+}
+
+.bucket-item__text--clamped {
   display: -webkit-box;
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
 
-.toggle-btn {
-  position: absolute;
-  top: 4px;
-  right: 4px;
-  font-size: 0.625rem;
+.bucket-item__actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 8px;
+}
+
+.toggle-more-btn {
+  min-height: 24px !important;
+  padding: 3px 9px !important;
+  font-size: 0.72rem;
+  border-radius: 12px 3px 12px 3px;
+  color: rgb(var(--v-theme-primary));
+  border: 1px solid rgba(var(--v-theme-primary), 0.25);
+  background: rgba(var(--v-theme-primary), 0.08);
+}
+
+.toggle-more-btn:hover:not(:disabled) {
+  background: rgba(var(--v-theme-primary), 0.16);
+  border-color: rgba(var(--v-theme-primary), 0.35);
+  transform: none;
 }
 
 /* Drag & Drop States */

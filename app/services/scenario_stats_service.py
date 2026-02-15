@@ -40,6 +40,7 @@ from routes.HelperFunctions import (
     get_scenario_distribution_mode,
     DISTRIBUTION_MODE_ALL,
 )
+from services.user_profile_service import serialize_user_brief
 
 
 def _get_scenario_or_raise(scenario_id: int) -> RatingScenarios:
@@ -279,8 +280,11 @@ def get_progress_stats(scenario_id: int) -> Dict[str, Any]:
                         }
                     )
 
+        avatar_data = serialize_user_brief(scenario_user.user)
         new_data = {
-            "username": scenario_user.user.username,
+            "username": avatar_data.get("username") or scenario_user.user.username,
+            "avatar_seed": avatar_data.get("avatar_seed"),
+            "avatar_url": avatar_data.get("avatar_url"),
             "is_llm": False,  # Explicit flag for human evaluators
             "total_threads": len(user_threads),
             "done_threads": total_done_threads,
@@ -436,6 +440,8 @@ def _build_llm_progress_entries(
             "username": display_name,
             "model_id": model_id,
             "is_llm": True,
+            "avatar_seed": None,
+            "avatar_url": None,
             "total_threads": len(thread_ids),
             "done_threads": total_done_threads,
             "not_started_threads": len(thread_ids) - total_done_threads,
@@ -2101,10 +2107,13 @@ def get_authenticity_stats(scenario_id: int) -> Dict[str, Any]:
             else:
                 pending_threads.append(thread_info)
 
+        avatar_data = serialize_user_brief(user)
         user_stats.append(
             {
                 "user_id": user_id,
-                "username": user.username,
+                "username": avatar_data.get("username") or user.username,
+                "avatar_seed": avatar_data.get("avatar_seed"),
+                "avatar_url": avatar_data.get("avatar_url"),
                 "role": su.role.value if su.role else "unknown",
                 "is_llm": False,  # Explicit flag for human evaluators
                 "total_threads": total_assigned,
@@ -2397,6 +2406,8 @@ def _build_llm_authenticity_stats(
             "username": display_name,
             "role": "evaluator",
             "is_llm": True,
+            "avatar_seed": None,
+            "avatar_url": None,
             "model_id": model_id,
             "total_threads": total_assigned,
             "voted_count": voted_count,

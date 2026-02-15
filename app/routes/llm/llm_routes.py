@@ -207,7 +207,10 @@ def create_model():
     if data.get('color') and not color:
         raise ValidationError('color must be a hex string like #RRGGBB')
     if not color:
-        color = LLMModel.generate_color(data['model_id'])
+        color = LLMModel.generate_color(
+            data['model_id'],
+            existing_colors=LLMModel.get_assigned_colors()
+        )
 
     provider_id = data.get('provider_id')
     if provider_id is not None:

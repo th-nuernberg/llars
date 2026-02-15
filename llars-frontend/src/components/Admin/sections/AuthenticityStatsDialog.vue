@@ -238,10 +238,13 @@
                 >
                   <td class="td-user">
                     <div class="user-info">
-                      <div class="user-avatar" :style="{ backgroundColor: getAvatarColor(user.username) }">
-                        <v-icon v-if="user.is_llm" size="16">mdi-robot-outline</v-icon>
-                        <span v-else>{{ user.username.charAt(0).toUpperCase() }}</span>
-                      </div>
+                      <LAvatar
+                        :username="user.username"
+                        :seed="user.is_llm ? (user.model_id || user.username) : user.avatar_seed"
+                        :src="user.is_llm ? null : user.avatar_url"
+                        :variant="user.is_llm ? 'bottts-neutral' : 'initials'"
+                        size="sm"
+                      />
                       <div class="user-details">
                         <span class="user-name">{{ user.username }}</span>
                         <div class="user-tags">
@@ -315,10 +318,13 @@
         <!-- User Detail Panel (Fullscreen) -->
         <div v-if="isFullscreen && selectedUser" class="section-card user-detail-panel">
           <div class="section-header">
-            <div class="user-avatar large" :style="{ backgroundColor: getAvatarColor(selectedUser.username) }">
-              <v-icon v-if="selectedUser.is_llm" size="20">mdi-robot-outline</v-icon>
-              <span v-else>{{ selectedUser.username.charAt(0).toUpperCase() }}</span>
-            </div>
+            <LAvatar
+              :username="selectedUser.username"
+              :seed="selectedUser.is_llm ? (selectedUser.model_id || selectedUser.username) : selectedUser.avatar_seed"
+              :src="selectedUser.is_llm ? null : selectedUser.avatar_url"
+              :variant="selectedUser.is_llm ? 'bottts-neutral' : 'initials'"
+              size="md"
+            />
             <div class="detail-user-info">
               <h3 class="section-title">{{ selectedUser.username }}</h3>
               <div class="user-tags">
@@ -463,10 +469,13 @@
   <v-dialog v-model="userDetailsDialog" max-width="650">
     <v-card v-if="selectedUser" class="user-detail-dialog">
       <div class="detail-dialog-header">
-        <div class="user-avatar large" :style="{ backgroundColor: getAvatarColor(selectedUser.username) }">
-          <v-icon v-if="selectedUser.is_llm" size="20">mdi-robot-outline</v-icon>
-          <span v-else>{{ selectedUser.username.charAt(0).toUpperCase() }}</span>
-        </div>
+        <LAvatar
+          :username="selectedUser.username"
+          :seed="selectedUser.is_llm ? (selectedUser.model_id || selectedUser.username) : selectedUser.avatar_seed"
+          :src="selectedUser.is_llm ? null : selectedUser.avatar_url"
+          :variant="selectedUser.is_llm ? 'bottts-neutral' : 'initials'"
+          size="md"
+        />
         <div class="detail-user-info">
           <h3>{{ selectedUser.username }}</h3>
           <div class="user-tags">
@@ -598,6 +607,7 @@ import { ref, computed, watch, onUnmounted } from 'vue'
 import axios from 'axios'
 import { getSocket } from '@/services/socketService'
 import { logI18n } from '@/utils/logI18n'
+import LAvatar from '@/components/common/LAvatar.vue'
 
 const props = defineProps({
   modelValue: {
@@ -786,12 +796,6 @@ function getF1Class(percent) {
   if (percent >= 70) return 'f1-good'
   if (percent >= 50) return 'f1-moderate'
   return 'f1-poor'
-}
-
-function getAvatarColor(username) {
-  const colors = ['#b0ca97', '#D1BC8A', '#88c4c8', '#98d4bb', '#a8c5e2', '#e8c87a']
-  const index = username.charCodeAt(0) % colors.length
-  return colors[index]
 }
 
 function getFakeAccuracy(user) {

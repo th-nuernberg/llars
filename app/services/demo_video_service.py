@@ -99,6 +99,32 @@ def seed():
         _db.session.commit()
         actions.append(f"Deactivated {deactivated} OpenAI model(s)")
 
+    # Rebalance auto-generated LLM model colors so demo tags remain distinguishable.
+    try:
+        rebalanced_colors = LLMModel.rebalance_auto_generated_colors(
+            model_types=[LLMModel.MODEL_TYPE_LLM]
+        )
+        if rebalanced_colors:
+            _db.session.commit()
+            actions.append(f"Rebalanced LLM model colors ({rebalanced_colors} model(s))")
+    except Exception as e:
+        _db.session.rollback()
+        logger.warning(f"Failed to rebalance LLM model colors: {e}")
+
+    # Hard guard for the two demo models used side-by-side in the video.
+    # This ensures they remain visually distinct even if legacy/custom colors exist.
+    try:
+        forced_contrast_updates = _ensure_demo_model_color_contrast()
+        if forced_contrast_updates:
+            _db.session.commit()
+            actions.append(
+                "Adjusted demo model colors for contrast "
+                f"({forced_contrast_updates} model(s))"
+            )
+    except Exception as e:
+        _db.session.rollback()
+        logger.warning(f"Failed to enforce demo model color contrast: {e}")
+
     demo_user = User.query.filter_by(username=DEMO_USER).first()
     if not demo_user:
         return {'success': False, 'error': f"User '{DEMO_USER}' not found"}
@@ -580,6 +606,186 @@ def _seed_demo_scenarios_for_ijcai(db_session, demo_user, collab_user):
     return actions
 
 
+def _resolve_counselling_case_content(item, counselling_cases, fallback_index=None):
+    """
+    Resolve the original counselling case content for an evaluation item.
+
+    Uses deterministic mapping by chat_id first (20000 + case_idx), then subject,
+    then optional fallback by scenario item order.
+    """
+    if item and item.chat_id is not None:
+        try:
+            case_idx = int(item.chat_id) - 20000
+            if 0 <= case_idx < len(counselling_cases):
+                content = counselling_cases[case_idx].get("content")
+                if content:
+                    return content
+        except Exception:
+            pass
+
+    subject = (item.subject or "").strip() if item else ""
+    if subject:
+        for case in counselling_cases:
+            if (case.get("subject") or "").strip() == subject and case.get("content"):
+                return case["content"]
+
+    if fallback_index is not None and 0 <= fallback_index < len(counselling_cases):
+        return counselling_cases[fallback_index].get("content")
+
+    return None
+
+
+def _normalize_hex_color(color: str | None) -> str | None:
+    if not color or not isinstance(color, str):
+        return None
+    value = color.strip().upper()
+    if value.startswith('#') and len(value) == 7:
+        return value
+    return None
+
+
+def _hex_to_rgb_tuple(color: str | None):
+    normalized = _normalize_hex_color(color)
+    if not normalized:
+        return None
+    value = normalized[1:]
+    return (
+        int(value[0:2], 16),
+        int(value[2:4], 16),
+        int(value[4:6], 16),
+    )
+
+
+def _color_distance_sq(color_a: str | None, color_b: str | None) -> int:
+    rgb_a = _hex_to_rgb_tuple(color_a)
+    rgb_b = _hex_to_rgb_tuple(color_b)
+    if not rgb_a or not rgb_b:
+        return 0
+    dr = rgb_a[0] - rgb_b[0]
+    dg = rgb_a[1] - rgb_b[1]
+    db = rgb_a[2] - rgb_b[2]
+    return dr * dr + dg * dg + db * db
+
+
+def _ensure_demo_model_color_contrast():
+    """
+    Ensure the two key demo models have clearly distinguishable colors.
+
+    Returns number of changed model colors.
+    """
+    from db.models.llm_model import LLMModel, NEUTRAL_COLOR_CANDIDATES
+
+    mistral_id = 'Global/Mistral/Mistral-Small-3.2-24B-Instruct-2506'
+    gpt5_nano_id = 'Global/OpenAI/gpt-5-nano'
+    min_pair_distance_sq = 12000  # ~109 RGB euclidean distance
+
+    target_ids = [mistral_id, gpt5_nano_id]
+    target_models = LLMModel.query.filter(LLMModel.model_id.in_(target_ids)).all()
+    if len(target_models) < 2:
+        return 0
+
+    models_by_id = {m.model_id: m for m in target_models}
+    mistral = models_by_id.get(mistral_id)
+    gpt5_nano = models_by_id.get(gpt5_nano_id)
+    if not mistral or not gpt5_nano:
+        return 0
+
+    # Build base palette from all other model colors.
+    base_palette = []
+    for model_id, color in LLMModel.query.with_entities(LLMModel.model_id, LLMModel.color).all():
+        if model_id in target_ids:
+            continue
+        normalized = _normalize_hex_color(color)
+        if normalized:
+            base_palette.append(normalized)
+
+    changed = 0
+
+    # Reassign mistral first using distance-aware generator.
+    mistral_new = _normalize_hex_color(
+        LLMModel.generate_color(mistral.model_id, existing_colors=base_palette)
+    )
+    if mistral_new and _normalize_hex_color(mistral.color) != mistral_new:
+        mistral.color = mistral_new
+        changed += 1
+
+    palette_with_mistral = [*base_palette]
+    if mistral_new:
+        palette_with_mistral.append(mistral_new)
+
+    # Initial OpenAI candidate from generator.
+    gpt_new = _normalize_hex_color(
+        LLMModel.generate_color(gpt5_nano.model_id, existing_colors=palette_with_mistral)
+    )
+
+    # Enforce minimum pair distance if needed.
+    if _color_distance_sq(gpt_new, mistral_new) < min_pair_distance_sq:
+        best_color = gpt_new
+        best_score = (-1, -1)
+        for candidate in NEUTRAL_COLOR_CANDIDATES:
+            candidate_norm = _normalize_hex_color(candidate)
+            if not candidate_norm:
+                continue
+            pair_dist = _color_distance_sq(candidate_norm, mistral_new)
+            min_dist_to_others = pair_dist
+            for existing_color in palette_with_mistral:
+                dist = _color_distance_sq(candidate_norm, existing_color)
+                if dist < min_dist_to_others:
+                    min_dist_to_others = dist
+
+            # Prefer satisfying threshold first, then maximize pair distance, then global min distance.
+            score = (1 if pair_dist >= min_pair_distance_sq else 0, pair_dist + min_dist_to_others)
+            if score > best_score:
+                best_score = score
+                best_color = candidate_norm
+        gpt_new = best_color
+
+    if gpt_new and _normalize_hex_color(gpt5_nano.color) != gpt_new:
+        gpt5_nano.color = gpt_new
+        changed += 1
+
+    return changed
+
+
+def _ensure_eval_scenario_reference_messages(db_session, scenario, counselling_cases):
+    """Backfill missing reference messages for demo evaluation scenario items."""
+    from db.models.scenario import ScenarioItems, EvaluationItem, Message
+
+    added = 0
+    scenario_items = ScenarioItems.query.filter_by(scenario_id=scenario.id).order_by(ScenarioItems.id.asc()).all()
+
+    for idx, scenario_item in enumerate(scenario_items):
+        item_id = scenario_item.thread_id or scenario_item.item_id
+        if not item_id:
+            continue
+
+        eval_item = EvaluationItem.query.get(item_id)
+        if not eval_item:
+            continue
+
+        has_messages = Message.query.filter_by(item_id=eval_item.item_id).first() is not None
+        if has_messages:
+            continue
+
+        source_content = _resolve_counselling_case_content(eval_item, counselling_cases, fallback_index=idx)
+        if not source_content:
+            continue
+
+        db_session.session.add(Message(
+            item_id=eval_item.item_id,
+            sender='source',
+            content=source_content,
+            timestamp=datetime.utcnow() - timedelta(hours=2),
+            generated_by='Human',
+        ))
+        added += 1
+
+    if added > 0:
+        db_session.session.commit()
+
+    return added
+
+
 def _seed_evaluation_scenario(db_session, demo_user, collab_user):
     """
     Seed a ranking evaluation scenario from the pre-seeded batch generation.
@@ -596,7 +802,7 @@ def _seed_evaluation_scenario(db_session, demo_user, collab_user):
         RatingScenarios, ScenarioUsers, ScenarioItems,
         ScenarioItemDistribution, ScenarioRoles,
         EvaluationItem, Feature, FeatureType, FeatureFunctionType,
-        LLM, UserFeatureRanking,
+        LLM, Message, UserFeatureRanking,
     )
     from db.models.llm_task_result import LLMTaskResult
     from db.models.generation import GenerationJob, GeneratedOutput
@@ -609,6 +815,11 @@ def _seed_evaluation_scenario(db_session, demo_user, collab_user):
         scenario_name=EVAL_SCENARIO_NAME
     ).first()
     if existing:
+        repaired_count = _ensure_eval_scenario_reference_messages(db_session, existing, COUNSELLING_CASES)
+        if repaired_count:
+            actions.append(
+                f"Backfilled {repaired_count} missing reference message(s) for '{EVAL_SCENARIO_NAME}' (id={existing.id})"
+            )
         actions.append(f"Eval scenario '{EVAL_SCENARIO_NAME}' already exists (id={existing.id})")
         return actions
 
@@ -714,6 +925,16 @@ def _seed_evaluation_scenario(db_session, demo_user, collab_user):
         db_session.session.add(item)
         db_session.session.flush()
         items.append(item)
+
+        # Add source/reference text for right-side panel in ranking UI.
+        if case and case.get('content'):
+            db_session.session.add(Message(
+                item_id=item.item_id,
+                sender='source',
+                content=case['content'],
+                timestamp=datetime.utcnow() - timedelta(hours=2),
+                generated_by='Human',
+            ))
 
         # Link item to scenario
         si = ScenarioItems(

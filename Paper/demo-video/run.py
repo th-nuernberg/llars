@@ -527,9 +527,9 @@ ELEMENT_MAP = {
     "Git User Changes": ".user-changes .user-change-item, .user-change-item",
     "Git Change Stats": ".change-indicator, .vc-stat, .stat-badge",
     # Floating Git Panel (PromptFloatingGitPanel.vue)
-    "Git Open Floating": ".sidebar-section .v-btn:has(.mdi-open-in-new), .section-label .v-btn",
-    "Git Fullscreen Button": "button:has(.mdi-open-in-new), .section-label .v-btn, .sidebar-section button:has(i.mdi-open-in-new)",
-    "Version Control Fullscreen": "button:has(.mdi-open-in-new), .section-label .v-btn, .sidebar-section button:has(i.mdi-open-in-new)",
+    "Git Open Floating": ".sidebar-section .section-label .v-btn:contains('mdi-open-in-new'), .sidebar-section .section-label .v-btn[title*='Versionskontrolle'], .sidebar-section .section-label .v-btn[title*='version control'], .sidebar-section .section-label .v-btn:last-of-type",
+    "Git Fullscreen Button": ".sidebar-section .section-label .v-btn:contains('mdi-open-in-new'), .sidebar-section .section-label .v-btn[title*='Versionskontrolle'], .sidebar-section .section-label .v-btn[title*='version control'], .sidebar-section .section-label .v-btn:last-of-type",
+    "Version Control Fullscreen": ".sidebar-section .section-label .v-btn:contains('mdi-open-in-new'), .sidebar-section .section-label .v-btn[title*='Versionskontrolle'], .sidebar-section .section-label .v-btn[title*='version control'], .sidebar-section .section-label .v-btn:last-of-type",
     "Git Floating Panel": ".l-floating-window, .git-panel-content",
     "Git Floating Panel Close": ".l-floating-window button[aria-label='Close'], .l-floating-window .header-actions button.l-icon-btn:last-of-type, .l-floating-window .header-actions .v-btn:last-of-type",
     "Git History Section": ".history-section, .history-list, .git-panel-content .history-list",

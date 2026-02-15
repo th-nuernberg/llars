@@ -30,6 +30,7 @@ from ..HelperFunctions import (
 )
 from services.llm.llm_access_service import LLMAccessService
 from services.llm.llm_ai_task_runner import LLMAITaskRunner
+from services.user_profile_service import serialize_user_brief
 
 logger = logging.getLogger(__name__)
 
@@ -56,6 +57,14 @@ def get_scenario_list():
 
     if not scenarios:
         return jsonify({'scenarios': []}), 200
+
+    creator_usernames = sorted({s.created_by for s in scenarios if s.created_by})
+    creator_lookup = {}
+    if creator_usernames:
+        creator_lookup = {
+            u.username: serialize_user_brief(u)
+            for u in User.query.filter(User.username.in_(creator_usernames)).all()
+        }
 
     formatted_scenarios = {
         'scenarios': []
@@ -90,6 +99,8 @@ def get_scenario_list():
             'end_date': scenario.end,
             'status': status,
             'created_by': scenario.created_by,
+            'created_by_avatar_seed': creator_lookup.get(scenario.created_by, {}).get('avatar_seed'),
+            'created_by_avatar_url': creator_lookup.get(scenario.created_by, {}).get('avatar_url'),
             'user_count': user_count,
         }
         formatted_scenarios['scenarios'].append(formatted_scenario)

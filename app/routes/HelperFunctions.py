@@ -20,6 +20,7 @@ import hashlib
 
 from db.tables import ProgressionStatus
 from db.models.scenario import InvitationStatus
+from services.user_profile_service import serialize_user_brief as _serialize_user_profile_brief
 
 def serialize_user_brief(user) -> dict:
     """
@@ -33,16 +34,7 @@ def serialize_user_brief(user) -> dict:
         data = serialize_user_brief(user)
         # → {"username": "admin", "avatar_seed": "abc123", "avatar_url": "/api/users/avatar/..."}
     """
-    if not user:
-        return {"username": None, "avatar_seed": None, "avatar_url": None}
-    result = {
-        "username": user.username,
-        "avatar_seed": getattr(user, 'avatar_seed', None),
-        "avatar_url": None,
-    }
-    if getattr(user, 'avatar_public_id', None) and getattr(user, 'avatar_file', None):
-        result["avatar_url"] = f"/api/users/avatar/{user.avatar_public_id}"
-    return result
+    return _serialize_user_profile_brief(user)
 
 
 MAIL_RATING_FUNCTION_TYPE_ID = 3

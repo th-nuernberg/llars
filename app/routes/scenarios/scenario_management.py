@@ -22,6 +22,7 @@ from .. import data_blueprint
 from ..HelperFunctions import get_scenario_distribution_mode, DISTRIBUTION_MODE_ALL
 from .scenario_utils import check_scenario_ownership, distribute_threads_to_users
 from services.llm.llm_ai_task_runner import LLMAITaskRunner
+from services.user_profile_service import serialize_user_brief
 
 logger = logging.getLogger(__name__)
 
@@ -329,9 +330,12 @@ def get_available_users_for_scenario():
 
     result = []
     for user in users:
+        avatar = serialize_user_brief(user)
         user_data = {
             'id': user.id,
             'username': user.username,
+            'avatar_seed': avatar.get('avatar_seed'),
+            'avatar_url': avatar.get('avatar_url'),
         }
 
         # If scenario_id provided, check if user is already in scenario

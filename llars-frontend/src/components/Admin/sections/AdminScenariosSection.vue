@@ -125,9 +125,13 @@
 
           <template v-slot:item.created_by="{ item }">
             <div v-if="item.created_by" class="d-flex align-center">
-              <v-avatar size="24" color="secondary" class="mr-2">
-                <span class="text-caption">{{ item.created_by.charAt(0).toUpperCase() }}</span>
-              </v-avatar>
+              <LAvatar
+                :username="item.created_by"
+                :seed="item.created_by_avatar_seed"
+                :src="item.created_by_avatar_url"
+                size="xs"
+                class="mr-2"
+              />
               <span class="text-body-2">{{ item.created_by }}</span>
             </div>
             <span v-else class="text-medium-emphasis text-caption">System</span>
@@ -218,6 +222,7 @@ import CreateScenarioDialog from '@/components/parts/CreateScenarioDialog.vue';
 import ScenarioDetailDialog from '@/components/parts/ScenarioDetailsDialog.vue';
 import AuthenticityStatsDialog from '@/components/Admin/sections/AuthenticityStatsDialog.vue';
 import ScenarioStatsDialog from '@/components/Admin/sections/ScenarioStatsDialog.vue';
+import LAvatar from '@/components/common/LAvatar.vue';
 import { useSkeletonLoading } from '@/composables/useSkeletonLoading';
 
 // State

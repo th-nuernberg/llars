@@ -246,55 +246,107 @@ export const getBiasLabel = (bias) => {
 /**
  * Parse a user-provider model ID into readable parts.
  *
- * Supports two formats:
+ * Supports formats:
  * - New: "user-provider:<providerId>:<username>:<model>" → "username/ProviderLabel/model"
  * - Old: "user-provider:<providerId>:<model>" → "ProviderLabel/model"
+ * - Legacy: "user-provider:<username>/<provider>/<model>" → "username/ProviderLabel/model"
+ * - Legacy: "user-provider:<username>:<provider>/<model>" → "username/ProviderLabel/model"
  *
  * @param {string} modelId - The full model ID string
  * @returns {{ providerId: string, username: string|null, modelName: string, providerLabel: string, displayName: string } | null}
  */
 export const parseUserProviderModelId = (modelId) => {
-  if (!modelId || typeof modelId !== 'string' || !modelId.startsWith('user-provider:')) return null;
-  const rest = modelId.slice('user-provider:'.length);
-  const parts = rest.split(':');
-  if (parts.length < 2) return null;
+  if (!modelId || typeof modelId !== 'string' || !modelId.startsWith('user-provider:')) return null
 
-  const providerId = parts[0];
-  let username = null;
-  let modelName;
+  const rest = modelId.slice('user-provider:'.length).trim()
+  if (!rest) return null
 
-  if (parts.length >= 3) {
-    // New format: providerId:username:model (model may contain colons)
-    username = parts[1];
-    modelName = parts.slice(2).join(':');
-  } else {
-    // Old format: providerId:model
-    modelName = parts[1];
+  let providerId = null
+  let username = null
+  let modelName = ''
+  let providerHint = null
+
+  const numericPrefix = (value) => /^\d+$/.test(value || '')
+
+  if (rest.includes(':')) {
+    const parts = rest.split(':')
+    if (numericPrefix(parts[0])) {
+      providerId = parts[0]
+      if (parts.length >= 3) {
+        username = (parts[1] || '').trim() || null
+        modelName = parts.slice(2).join(':').trim()
+      } else {
+        modelName = (parts.slice(1).join(':') || '').trim()
+      }
+    } else if (parts.length >= 2) {
+      username = (parts[0] || '').trim() || null
+      modelName = parts.slice(1).join(':').trim()
+    }
   }
 
-  if (!modelName) modelName = modelId;
+  if (!modelName && rest.includes('/')) {
+    const parts = rest.split('/')
+    if (parts.length >= 3) {
+      username = (parts[0] || '').trim() || null
+      providerHint = (parts[1] || '').trim() || null
+      modelName = parts.slice(2).join('/').trim()
+    } else if (parts.length >= 2) {
+      providerHint = (parts[0] || '').trim() || null
+      modelName = parts.slice(1).join('/').trim()
+    }
+  }
 
-  const lower = modelName.toLowerCase();
-  let providerLabel = 'Provider';
-  if (lower.startsWith('gpt-') || lower.startsWith('o1') || lower.startsWith('o3') || lower.startsWith('o4')) {
-    providerLabel = 'OpenAI';
+  if (!modelName) modelName = rest
+
+  const normalizeProviderLabel = (value) => {
+    const v = (value || '').toLowerCase().trim()
+    if (!v) return null
+    if (v === 'openai') return 'OpenAI'
+    if (v === 'anthropic' || v === 'claude') return 'Anthropic'
+    if (v === 'gemini' || v === 'google') return 'Google'
+    if (v === 'mistral' || v === 'mistralai' || v === 'magistral') return 'Mistral'
+    if (v === 'ollama') return 'Ollama'
+    if (v === 'litellm') return 'LiteLLM'
+    if (v === 'custom') return 'Custom'
+    return null
+  }
+
+  let normalizedModelName = modelName
+  let providerLabel = normalizeProviderLabel(providerHint) || 'Provider'
+  const lower = modelName.toLowerCase()
+
+  if (modelName.includes('/')) {
+    const idx = modelName.indexOf('/')
+    const prefix = modelName.slice(0, idx).trim()
+    const remainder = modelName.slice(idx + 1).trim()
+    const prefixLabel = normalizeProviderLabel(prefix)
+    if (prefixLabel && remainder) {
+      providerLabel = prefixLabel
+      normalizedModelName = remainder
+    } else if (prefixLabel) {
+      providerLabel = prefixLabel
+      normalizedModelName = modelName
+    }
+  } else if (lower.startsWith('gpt-') || lower.startsWith('o1') || lower.startsWith('o3') || lower.startsWith('o4')) {
+    providerLabel = 'OpenAI'
   } else if (lower.startsWith('claude')) {
-    providerLabel = 'Anthropic';
+    providerLabel = 'Anthropic'
   } else if (lower.startsWith('gemini')) {
-    providerLabel = 'Google';
+    providerLabel = 'Google'
   } else if (lower.startsWith('mistral') || lower.startsWith('magistral')) {
-    providerLabel = 'Mistral';
+    providerLabel = 'Mistral'
   }
 
+  const safeModelName = normalizedModelName || modelName || modelId
   const displayName = username
-    ? `${username}/${providerLabel}/${modelName}`
-    : `${providerLabel} / ${modelName}`;
+    ? `${username}/${providerLabel}/${safeModelName}`
+    : `${providerLabel}/${safeModelName}`
 
   return {
     providerId,
     username,
-    modelName,
+    modelName: safeModelName,
     providerLabel,
-    displayName,
-  };
+    displayName
+  }
 };

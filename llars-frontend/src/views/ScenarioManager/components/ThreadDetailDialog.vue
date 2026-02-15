@@ -122,7 +122,7 @@
                 <div v-for="vote in llmVotes" :key="'llm-' + vote.model_id" class="vote-card llm">
                   <div class="vote-header">
                     <LIcon size="16" class="mr-1">mdi-robot-outline</LIcon>
-                    <span class="voter-name">{{ vote.model_id }}</span>
+                    <span class="voter-name">{{ formatLlmModelName(vote.model_id) }}</span>
                   </div>
                   <div class="vote-content">
                     <!-- Authenticity vote -->
@@ -206,6 +206,7 @@
 
 <script setup>
 import { computed } from 'vue'
+import { parseUserProviderModelId } from '@/utils/formatters'
 
 const props = defineProps({
   modelValue: {
@@ -227,6 +228,14 @@ const humanVotes = computed(() => {
 const llmVotes = computed(() => {
   return (props.thread?.votes || []).filter(v => v.type === 'llm')
 })
+
+function formatLlmModelName(modelId) {
+  const parsed = parseUserProviderModelId(modelId)
+  if (parsed?.displayName) {
+    return parsed.displayName
+  }
+  return modelId || 'LLM'
+}
 
 function getMessageClass(message) {
   const role = message.role?.toLowerCase() || message.sender?.toLowerCase() || ''

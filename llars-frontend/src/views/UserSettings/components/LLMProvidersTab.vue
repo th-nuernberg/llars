@@ -55,9 +55,11 @@
               <span class="provider-type">{{ getProviderTypeName(provider.provider_type) }}</span>
               <span v-if="provider.base_url" class="provider-url">{{ truncateUrl(provider.base_url) }}</span>
               <span v-if="provider.config?.selected_models?.length" class="provider-model">
-                {{ provider.config.selected_models.join(', ') }}
+                {{ formatProviderModelList(provider, provider.config.selected_models) }}
               </span>
-              <span v-else-if="provider.config?.model_id" class="provider-model">{{ provider.config.model_id }}</span>
+              <span v-else-if="provider.config?.model_id" class="provider-model">
+                {{ formatProviderModel(provider, provider.config.model_id) }}
+              </span>
             </div>
             <div class="provider-stats">
               <span v-if="provider.total_requests > 0">
@@ -132,9 +134,11 @@
             <div class="provider-meta">
               <span class="provider-type">{{ getProviderTypeName(provider.provider_type) }}</span>
               <span v-if="provider.config?.selected_models?.length" class="provider-model">
-                {{ provider.config.selected_models.join(', ') }}
+                {{ formatProviderModelList(provider, provider.config.selected_models) }}
               </span>
-              <span v-else-if="provider.config?.model_id" class="provider-model">{{ provider.config.model_id }}</span>
+              <span v-else-if="provider.config?.model_id" class="provider-model">
+                {{ formatProviderModel(provider, provider.config.model_id) }}
+              </span>
             </div>
           </div>
         </div>
@@ -342,6 +346,7 @@ import LCard from '@/components/common/LCard.vue'
 import LBtn from '@/components/common/LBtn.vue'
 import LTag from '@/components/common/LTag.vue'
 import LUserSearch from '@/components/common/LUserSearch.vue'
+import { parseUserProviderModelId } from '@/utils/formatters'
 import axios from 'axios'
 
 const { t } = useI18n()
@@ -649,6 +654,36 @@ function truncateUrl(url) {
   } catch {
     return url.substring(0, 30) + '...'
   }
+}
+
+function formatProviderModel(provider, modelId) {
+  const mid = (modelId || '').trim()
+  if (!mid) return ''
+
+  const directParsed = parseUserProviderModelId(mid)
+  if (directParsed?.displayName) {
+    return directParsed.displayName
+  }
+
+  const owner = (provider?.owner_username || provider?.shared_by || '').trim()
+  const providerKey = provider?.id
+  if (owner && providerKey) {
+    const syntheticId = `user-provider:${providerKey}:${owner}:${mid}`
+    const parsed = parseUserProviderModelId(syntheticId)
+    if (parsed?.displayName) {
+      return parsed.displayName
+    }
+  }
+
+  return mid
+}
+
+function formatProviderModelList(provider, modelIds) {
+  if (!Array.isArray(modelIds) || modelIds.length === 0) return ''
+  return modelIds
+    .map(mid => formatProviderModel(provider, mid))
+    .filter(Boolean)
+    .join(', ')
 }
 
 function formatDate(dateStr) {

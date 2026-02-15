@@ -1931,6 +1931,12 @@ def sm_update_user_role(scenario_id, user_id):
         raise NotFoundError(f'Scenario {scenario_id} not found')
 
     check_scenario_ownership(scenario, user)  # Verifies user is owner or admin, raises ForbiddenError if not
+    target_user = User.query.get(user_id)
+    is_target_owner = bool(
+        target_user
+        and scenario.created_by
+        and target_user.username == scenario.created_by
+    )
 
     su = ScenarioUsers.query.filter_by(
         scenario_id=scenario_id,
@@ -1938,10 +1944,24 @@ def sm_update_user_role(scenario_id, user_id):
     ).first()
 
     if not su:
-        raise NotFoundError('User not found in scenario')
+        # Owner fallback: older/generated scenarios can miss owner membership rows.
+        # Create a baseline VIEWER row so the owner can self-switch to EVALUATOR.
+        if not is_target_owner:
+            raise NotFoundError('User not found in scenario')
 
-    # Cannot change OWNER role
-    if su.role == ScenarioRoles.OWNER:
+        su = ScenarioUsers(
+            scenario_id=scenario_id,
+            user_id=user_id,
+            role=ScenarioRoles.VIEWER,
+            invitation_status=InvitationStatus.ACCEPTED,
+            membership_status=MembershipStatus.ACTIVE,
+            invited_by=scenario.created_by
+        )
+        db.session.add(su)
+        db.session.flush()
+
+    # Legacy safety: OWNER rows can only be changed for the actual scenario owner.
+    if su.role == ScenarioRoles.OWNER and not is_target_owner:
         raise ValidationError('Cannot change the role of the scenario owner')
 
     data = request.get_json()
@@ -1957,6 +1977,14 @@ def sm_update_user_role(scenario_id, user_id):
 
     old_role = su.role.value
     su.role = role_enum
+
+    # Role changes should always reactivate membership for active collaboration.
+    su.membership_status = MembershipStatus.ACTIVE
+    su.archived_at = None
+    su.archived_by = None
+    su.invitation_status = InvitationStatus.ACCEPTED
+    su.responded_at = None
+
     db.session.commit()
 
     logger.info(f"User {username} changed role of user {user_id} from {old_role} to {role_enum.value} in scenario {scenario_id}")
@@ -2489,24 +2517,51 @@ def get_scenario_team(scenario_id):
     ).all()
 
     team = []
+    existing_user_ids = set()
+
     for su in scenario_users:
         db_user = User.query.get(su.user_id)
-        if db_user:
-            avatar = serialize_user_brief(db_user)
-            team.append({
-                'user_id': su.user_id,
-                'username': db_user.username,
-                'display_name': getattr(db_user, 'display_name', db_user.username),
-                'role': su.role.value if su.role else 'EVALUATOR',
-                'invitation_status': su.invitation_status.value if su.invitation_status else 'accepted',
-                'invited_at': su.invited_at.isoformat() if su.invited_at else None,
-                'invited_by': su.invited_by,
-                'responded_at': su.responded_at.isoformat() if su.responded_at else None,
-                'is_ai': getattr(db_user, 'is_ai', False),
-                'avatar_seed': avatar.get('avatar_seed'),
-                'avatar_url': avatar.get('avatar_url'),
-                'collab_color': getattr(db_user, 'collab_color', None)
-            })
+        if not db_user:
+            continue
+
+        existing_user_ids.add(db_user.id)
+        avatar = serialize_user_brief(db_user)
+        team.append({
+            'user_id': su.user_id,
+            'username': db_user.username,
+            'display_name': getattr(db_user, 'display_name', db_user.username),
+            'role': su.role.value if su.role else 'EVALUATOR',
+            'invitation_status': su.invitation_status.value if su.invitation_status else 'accepted',
+            'invited_at': su.invited_at.isoformat() if su.invited_at else None,
+            'invited_by': su.invited_by,
+            'responded_at': su.responded_at.isoformat() if su.responded_at else None,
+            'is_ai': getattr(db_user, 'is_ai', False),
+            'avatar_seed': avatar.get('avatar_seed'),
+            'avatar_url': avatar.get('avatar_url'),
+            'collab_color': getattr(db_user, 'collab_color', None)
+        })
+
+    # Owner fallback for legacy/generated scenarios without a ScenarioUsers row.
+    owner_user = None
+    if scenario.created_by:
+        owner_user = User.query.filter_by(username=scenario.created_by).first()
+
+    if owner_user and owner_user.id not in existing_user_ids:
+        avatar = serialize_user_brief(owner_user)
+        team.append({
+            'user_id': owner_user.id,
+            'username': owner_user.username,
+            'display_name': getattr(owner_user, 'display_name', owner_user.username),
+            'role': ScenarioRoles.VIEWER.value,
+            'invitation_status': InvitationStatus.ACCEPTED.value,
+            'invited_at': None,
+            'invited_by': scenario.created_by,
+            'responded_at': None,
+            'is_ai': getattr(owner_user, 'is_ai', False),
+            'avatar_seed': avatar.get('avatar_seed'),
+            'avatar_url': avatar.get('avatar_url'),
+            'collab_color': getattr(owner_user, 'collab_color', None)
+        })
 
     # Count by status
     status_counts = {

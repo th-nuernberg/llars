@@ -412,7 +412,7 @@ ELEMENT_MAP = {
     "New Scenario": ".v-btn:contains('New Scenario'), .header-actions .v-btn:contains('New')",
     "Scenario List": ".scenario-list, .scenarios-grid, .scenario-cards, .v-list",
     "Scenario Card": ".scenario-card, .v-card.scenario",
-    "Counselling Demo Scenario": ".scenario-card:contains('IJCAI Counselling'), .scenario-card:contains('IJCAI')",
+    "Counselling Demo Scenario": ".scenario-card:contains('IJCAI Counselling Evaluation'), .v-card:contains('IJCAI Counselling Evaluation'), .scenario-name:contains('IJCAI Counselling Evaluation')",
     "Completed Scenario": ".scenario-card:contains('Complete'), .scenario-card.completed",
     "Demo Scenario": ".scenario-card:contains('Counselling'), .scenario-card:contains('Situation')",
     "Scenario Stats": ".scenario-stats, .stats-card",
@@ -444,9 +444,11 @@ ELEMENT_MAP = {
     "Team Member Menu": ".team-tab .member-actions .v-btn, .team-tab .member-actions button",
     "Scenario Wizard Close": ".scenario-wizard .wizard-header .v-btn",
     # Human Evaluation (Evaluation Hub + Ranking UI)
-    "Evaluation Scenario Card": ".overview-content .scenario-card:first-child, .scenarios-grid .scenario-card:first-child, .scenario-card:first-child",
+    "Evaluation Scenario Card": ".overview-content .scenario-card:contains('IJCAI Counselling Evaluation'), .scenarios-grid .scenario-card:contains('IJCAI Counselling Evaluation'), .scenario-card:contains('IJCAI Counselling Evaluation')",
     "Evaluation Items Grid": ".items-grid, .items-content",
     "Evaluation Item Card": ".items-grid .item-card:first-child, .item-card:first-child",
+    "Evaluation In Progress Filter": ".filter-chip.in-progress:contains('In progress'), .filter-chip.in-progress:contains('In Progress'), .filter-chip.in-progress:contains('In Arbeit')",
+    "Evaluation In Progress Item Card": ".items-grid .item-card.status-in_progress, .item-card.status-in_progress, .items-grid .item-card:first-child, .item-card:first-child",
     "Ranking Interface": ".ranking-interface",
     "Ranking Buckets": ".ranking-interface .buckets-row, .ranking-interface .bucket, .ranking-interface .neutral-bucket, .preview-ranking .buckets-preview, .buckets-preview .bucket-box",
     "Ranking Content": ".ranking-interface .right-panel, .ranking-interface .panel-content, .ranking-interface .content-text",
@@ -1404,7 +1406,7 @@ class Browser:
         Cleanup demo data before recording.
 
         - Production: Calls /api/demo-video/reset via SYSTEM_ADMIN_API_KEY
-        - Local (localhost): Uses docker exec to reset DB directly
+        - Local (localhost): Tries API reset / service reset, falls back to SQL cleanup
         """
         is_production = 'localhost' not in self.base_url and '127.0.0.1' not in self.base_url
 
@@ -1412,43 +1414,89 @@ class Browser:
             self._cleanup_via_api()
             return
 
-        print("   🧹 Räume alte Demo-Daten auf (lokaler Docker)...")
+        # Preferred path on local too: API reset (if SYSTEM_ADMIN_API_KEY is configured)
+        if self._cleanup_via_api(silent_missing_key=True):
+            return
+
+        # Fallback path 1: call demo reset service directly inside Flask container
+        print("   🔄 Versuche Demo-Reset via Flask-Container-Service...")
+        try:
+            reset_result = subprocess.run(
+                [
+                    'docker', 'exec', 'llars_flask_service', 'python3', '-c',
+                    (
+                        "import json; "
+                        "from main import app; "
+                        "from services.demo_video_service import reset; "
+                        "app.app_context().push(); "
+                        "print(json.dumps(reset()))"
+                    )
+                ],
+                capture_output=True,
+                text=True,
+                timeout=45
+            )
+
+            if reset_result.returncode == 0:
+                lines = (reset_result.stdout or '').strip().splitlines()
+                payload_line = next(
+                    (line for line in reversed(lines) if line.strip().startswith('{') and line.strip().endswith('}')),
+                    ''
+                )
+                if payload_line:
+                    payload = json.loads(payload_line)
+                    if payload.get('success'):
+                        print("   ✓ Demo-Daten erfolgreich zurückgesetzt (Service)")
+                        return
+                print("   ⚠️ Service-Reset lieferte kein erfolgreiches Ergebnis, nutze SQL-Fallback")
+            else:
+                details = (reset_result.stderr or reset_result.stdout or '').strip()
+                print(f"   ⚠️ Service-Reset fehlgeschlagen: {details[:200]}")
+        except Exception as e:
+            print(f"   ⚠️ Service-Reset nicht verfügbar: {str(e)[:200]}")
+
+        print("   🧹 Räume alte Demo-Daten auf (lokaler Docker, SQL-Fallback)...")
 
         login_user = self._get_login_username()
+        protected_scenario_name = "IJCAI Counselling Evaluation"
+        scenario_filter = (
+            f"(scenario_name LIKE '%Situation%' OR scenario_name LIKE '%Counselling%') "
+            f"AND scenario_name <> '{protected_scenario_name}'"
+        )
 
         # SQL: Delete scenarios and jobs created during previous recordings
         cleanup_sql = f"""
         DELETE FROM scenario_item_distribution WHERE scenario_id IN (
-            SELECT id FROM rating_scenarios WHERE scenario_name LIKE '%Situation%' OR scenario_name LIKE '%Counselling%'
+            SELECT id FROM rating_scenarios WHERE {scenario_filter}
         );
         DELETE FROM scenario_items WHERE scenario_id IN (
-            SELECT id FROM rating_scenarios WHERE scenario_name LIKE '%Situation%' OR scenario_name LIKE '%Counselling%'
+            SELECT id FROM rating_scenarios WHERE {scenario_filter}
         );
         DELETE FROM scenario_users WHERE scenario_id IN (
-            SELECT id FROM rating_scenarios WHERE scenario_name LIKE '%Situation%' OR scenario_name LIKE '%Counselling%'
+            SELECT id FROM rating_scenarios WHERE {scenario_filter}
         );
         DELETE FROM item_dimension_ratings WHERE scenario_id IN (
-            SELECT id FROM rating_scenarios WHERE scenario_name LIKE '%Situation%' OR scenario_name LIKE '%Counselling%'
+            SELECT id FROM rating_scenarios WHERE {scenario_filter}
         );
         DELETE FROM item_labeling_evaluations WHERE scenario_id IN (
-            SELECT id FROM rating_scenarios WHERE scenario_name LIKE '%Situation%' OR scenario_name LIKE '%Counselling%'
+            SELECT id FROM rating_scenarios WHERE {scenario_filter}
         );
         DELETE FROM comparison_evaluations WHERE message_id IN (
             SELECT id FROM comparison_messages WHERE session_id IN (
                 SELECT id FROM comparison_sessions WHERE scenario_id IN (
-                    SELECT id FROM rating_scenarios WHERE scenario_name LIKE '%Situation%' OR scenario_name LIKE '%Counselling%'
+                    SELECT id FROM rating_scenarios WHERE {scenario_filter}
                 )
             )
         );
         DELETE FROM comparison_messages WHERE session_id IN (
             SELECT id FROM comparison_sessions WHERE scenario_id IN (
-                SELECT id FROM rating_scenarios WHERE scenario_name LIKE '%Situation%' OR scenario_name LIKE '%Counselling%'
+                SELECT id FROM rating_scenarios WHERE {scenario_filter}
             )
         );
         DELETE FROM comparison_sessions WHERE scenario_id IN (
-            SELECT id FROM rating_scenarios WHERE scenario_name LIKE '%Situation%' OR scenario_name LIKE '%Counselling%'
+            SELECT id FROM rating_scenarios WHERE {scenario_filter}
         );
-        DELETE FROM rating_scenarios WHERE scenario_name LIKE '%Situation%' OR scenario_name LIKE '%Counselling%';
+        DELETE FROM rating_scenarios WHERE {scenario_filter};
         DELETE FROM generated_outputs WHERE job_id IN (
             SELECT id FROM generation_jobs WHERE created_by = '{login_user}' AND name <> 'Counselling Situation Extraction'
         );
@@ -1513,14 +1561,15 @@ class Browser:
         except Exception as e:
             print(f"   ⚠️ Cleanup-Fehler (ignoriert): {str(e)[:50]}")
 
-    def _cleanup_via_api(self):
+    def _cleanup_via_api(self, silent_missing_key: bool = False) -> bool:
         """Reset demo data on production via the admin API endpoint."""
         env = _load_env_vars()
         api_key = env.get('PRODUCTION_ADMIN_API_KEY') or env.get('SYSTEM_ADMIN_API_KEY', '')
         if not api_key:
-            print("   ⚠️ SYSTEM_ADMIN_API_KEY nicht in .env gefunden!")
-            print("   ℹ️  Manuell: ssh llars 'docker exec llars_flask_service python3 /app/scripts/demo_video_manage.py reset'")
-            return
+            if not silent_missing_key:
+                print("   ⚠️ SYSTEM_ADMIN_API_KEY nicht in .env gefunden!")
+                print("   ℹ️  Manuell: ssh llars 'docker exec llars_flask_service python3 /app/scripts/demo_video_manage.py reset'")
+            return False
 
         api_url = f"{self.base_url}/api/demo-video/reset"
         print(f"   🔄 Demo-Daten Reset via API: {api_url}")
@@ -1546,13 +1595,17 @@ class Browser:
                 for a in actions:
                     print(f"      ✓ {a}")
                 print("   ✓ Demo-Daten erfolgreich zurückgesetzt")
+                return True
             else:
                 print(f"   ⚠️ API Reset fehlgeschlagen: {result}")
+                return False
         except urllib.error.HTTPError as e:
             body = e.read().decode() if e.fp else ''
             print(f"   ⚠️ API-Fehler {e.code}: {body[:200]}")
+            return False
         except Exception as e:
             print(f"   ⚠️ API-Aufruf fehlgeschlagen: {e}")
+            return False
 
     def _get_login_username(self) -> str:
         """Get the login username from SCRIPT.json config."""

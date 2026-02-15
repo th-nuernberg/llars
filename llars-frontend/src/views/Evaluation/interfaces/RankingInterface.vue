@@ -19,7 +19,11 @@
       </div>
 
       <!-- Features Panel -->
-      <div v-else-if="groupedFeatures.length > 0" class="panel-content">
+      <div
+        v-else-if="groupedFeatures.length > 0"
+        class="panel-content"
+        :class="{ 'panel-content--readonly': !canEvaluate }"
+      >
         <v-expansion-panels v-model="expandedPanels" multiple>
           <v-expansion-panel v-for="feature in groupedFeatures" :key="feature.type">
             <v-expansion-panel-title>
@@ -49,7 +53,7 @@
                     @end="handleRankingChanged"
                   >
                     <template #item="{ element }">
-                      <div class="bucket-item">
+                      <div class="bucket-item" :class="{ 'bucket-item--readonly': !canEvaluate }">
                         <div
                           class="bucket-item__text"
                           :class="{ 'bucket-item__text--clamped': element.minimized && isLongContent(element.content) }"
@@ -86,7 +90,7 @@
                   @end="handleRankingChanged"
                 >
                   <template #item="{ element }">
-                    <div class="bucket-item">
+                    <div class="bucket-item" :class="{ 'bucket-item--readonly': !canEvaluate }">
                       <div
                         class="bucket-item__text"
                         :class="{ 'bucket-item__text--clamped': element.minimized && isLongContent(element.content) }"
@@ -861,6 +865,11 @@ watch(() => props.initialItemId, (newItemId) => {
   min-height: 80px;
 }
 
+.panel-content--readonly .bucket,
+.panel-content--readonly .neutral-bucket {
+  opacity: 0.6;
+}
+
 /* Neutral Bucket */
 .neutral-bucket {
   background-color: rgba(var(--v-theme-surface-variant), 0.5);
@@ -905,6 +914,19 @@ watch(() => props.initialItemId, (newItemId) => {
 
 .bucket-item:active {
   cursor: grabbing;
+}
+
+.bucket-item--readonly {
+  cursor: default;
+}
+
+.bucket-item--readonly:active {
+  cursor: default;
+}
+
+.bucket-item--readonly:hover {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  transform: none;
 }
 
 .bucket-item__text {

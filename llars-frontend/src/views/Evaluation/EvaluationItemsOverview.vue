@@ -110,7 +110,7 @@
           v-for="(item, index) in filteredItems"
           :key="item.id || item.thread_id || index"
           class="item-card"
-          :class="[getItemStatusClass(item), { 'viewer-disabled': !canEvaluate }]"
+          :class="getItemStatusClass(item)"
           @click="goToItem(item, index)"
         >
           <!-- Status Badge -->
@@ -309,8 +309,6 @@ function goBack() {
 }
 
 function goToItem(item, index) {
-  if (!canEvaluate.value) return
-
   // Navigate to the evaluation session with the specific item
   router.push({
     name: 'EvaluationSessionItem',
@@ -433,16 +431,6 @@ watch(() => props.scenarioId, (newId) => {
   font-size: 0.85rem;
   color: rgba(var(--v-theme-on-surface), 0.8);
   flex-shrink: 0;
-}
-
-.item-card.viewer-disabled {
-  cursor: default;
-  opacity: 0.7;
-}
-
-.item-card.viewer-disabled:hover {
-  transform: none;
-  box-shadow: none;
 }
 
 /* Filter Bar */

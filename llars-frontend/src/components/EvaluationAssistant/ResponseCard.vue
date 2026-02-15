@@ -11,7 +11,7 @@
         <!-- Basic Info -->
         <div class="header-info">
           <div class="evaluator-name">
-            {{ result.evaluator_name || (result.is_llm_evaluation ? result.model_id : `User #${result.user_id}`) }}
+            {{ displayEvaluatorName }}
           </div>
           <div class="thread-name text-caption text-medium-emphasis">
             {{ result.thread_name || `Thread #${result.thread_id}` }}
@@ -240,6 +240,7 @@
 
 <script setup>
 import { computed } from 'vue'
+import { parseUserProviderModelId } from '@/utils/formatters'
 import ResultBadge from './ResultBadge.vue'
 
 const props = defineProps({
@@ -257,6 +258,13 @@ defineEmits(['toggle', 'view-details'])
 
 const evaluatorClass = computed(() => {
   return props.result.is_llm_evaluation ? 'evaluator-llm' : 'evaluator-human'
+})
+
+const displayEvaluatorName = computed(() => {
+  if (props.result.evaluator_name) return props.result.evaluator_name
+  if (!props.result.is_llm_evaluation) return `User #${props.result.user_id}`
+  const parsed = parseUserProviderModelId(props.result.model_id)
+  return parsed?.displayName || props.result.model_id || 'LLM'
 })
 
 function formatTime(timestamp) {

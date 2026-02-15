@@ -9,7 +9,7 @@
           </div>
           <div>
             <div class="evaluator-name">
-              {{ result.evaluator_name || (result.is_llm_evaluation ? result.model_id : `User #${result.user_id}`) }}
+              {{ displayEvaluatorName }}
             </div>
             <div class="evaluation-meta">
               {{ $t(`evaluationAssistant.taskTypes.${result.task_type}`) }} |
@@ -83,7 +83,7 @@
         <div class="meta-grid">
           <div class="meta-item">
             <span class="meta-label">{{ $t('evaluationAssistant.detail.model') }}</span>
-            <span class="meta-value">{{ result.model_id }}</span>
+            <span class="meta-value">{{ displayModelName }}</span>
           </div>
           <div v-if="result.prompt_template_id" class="meta-item">
             <span class="meta-label">{{ $t('evaluationAssistant.detail.template') }}</span>
@@ -133,6 +133,7 @@
 
 <script setup>
 import { computed, defineAsyncComponent } from 'vue'
+import { parseUserProviderModelId } from '@/utils/formatters'
 
 const props = defineProps({
   result: {
@@ -164,6 +165,17 @@ const resultComponent = computed(() => {
     case 'mail_rating': return MailRatingResult
     default: return GenericResult
   }
+})
+
+const displayModelName = computed(() => {
+  const parsed = parseUserProviderModelId(props.result?.model_id)
+  return parsed?.displayName || props.result?.model_id || 'LLM'
+})
+
+const displayEvaluatorName = computed(() => {
+  if (props.result?.evaluator_name) return props.result.evaluator_name
+  if (!props.result?.is_llm_evaluation) return `User #${props.result?.user_id}`
+  return displayModelName.value
 })
 
 function formatDate(timestamp) {

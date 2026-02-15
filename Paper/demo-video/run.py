@@ -377,7 +377,8 @@ ELEMENT_MAP = {
     "Variable Name Input": ".variable-manager-card .name-input input, .variable-manager-card .new-variable-form input, .variable-input input",
     "Variable Content Input": ".variable-manager-card .content-input textarea, .variable-manager-card textarea",
     "Create Variable": ".variable-manager-card .create-btn, .variable-manager-card .l-btn:contains('Add Variable'), .variable-manager-card .l-btn:contains('Variable'), .variable-manager-card .v-btn:contains('Add Variable')",
-    "Variable Dialog Close": ".variable-manager-card .dialog-header .v-btn",
+    "Variable Dialog Body": ".variable-manager-card .dialog-body",
+    "Variable Dialog Close": ".variable-manager-card .dialog-header .v-btn, .variable-manager-card .l-btn:contains('Close')",
     "Variable Save": ".v-btn:contains('Save'), .v-btn:contains('Done')",
 
     # Test Prompt Dialog - Enhanced
@@ -530,7 +531,7 @@ ELEMENT_MAP = {
     "Git Fullscreen Button": "button:has(.mdi-open-in-new), .section-label .v-btn, .sidebar-section button:has(i.mdi-open-in-new)",
     "Version Control Fullscreen": "button:has(.mdi-open-in-new), .section-label .v-btn, .sidebar-section button:has(i.mdi-open-in-new)",
     "Git Floating Panel": ".l-floating-window, .git-panel-content",
-    "Git Floating Panel Close": ".l-floating-window button:has(.mdi-close), .l-floating-window .l-icon-btn[aria-label='Close'], .l-floating-window button[aria-label='Close'], .l-floating-window .header-actions .l-icon-btn:last-child, .l-floating-window .header-actions button:last-child",
+    "Git Floating Panel Close": ".l-floating-window button[aria-label='Close'], .l-floating-window .header-actions button.l-icon-btn:last-of-type, .l-floating-window .header-actions .v-btn:last-of-type",
     "Git History Section": ".history-section, .history-list, .git-panel-content .history-list",
     "Git History Item": ".history-item, .history-list .history-item:first-child",
     "Git Commit Message": ".commit-message",
@@ -4095,6 +4096,54 @@ class ScriptRunner:
                 return True
             else:
                 print(f"   ✗ scroll: {target} (NICHT GEFUNDEN)")
+                return False
+
+        elif do == 'js_exec':
+            # Execute JavaScript and print result
+            js_code = action.get('code', '')
+            try:
+                result = self.browser.driver.execute_script(js_code)
+                print(f"   🔍 js_exec: {result}")
+            except Exception as e:
+                print(f"   ⚠️ js_exec error: {e}")
+            return True
+
+        elif do == 'dismiss_overlays':
+            # Remove stale Vuetify overlays from the DOM entirely
+            try:
+                result = self.browser.driver.execute_script("""
+                    var removed = 0;
+                    document.querySelectorAll('.v-overlay--active').forEach(function(overlay) {
+                        var hasContent = overlay.querySelector('.v-card, .v-dialog__content, .l-floating-window');
+                        if (!hasContent) {
+                            overlay.remove();
+                            removed++;
+                        }
+                    });
+                    return removed;
+                """)
+                print(f"   🧹 Cleaned {result} stale overlay(s)")
+                time.sleep(0.3)
+            except Exception as e:
+                print(f"   ⚠️ dismiss_overlays error: {e}")
+            return True
+
+        elif do == 'js_click':
+            # Click element via JavaScript, bypassing overlay interception
+            js_selector = action.get('selector', '')
+            try:
+                result = self.browser.driver.execute_script(f"""
+                    var el = document.querySelector('{js_selector}');
+                    if (el) {{ el.click(); return true; }}
+                    return false;
+                """)
+                if result:
+                    print(f"   ✓ js_click: {js_selector}")
+                else:
+                    print(f"   ✗ js_click: {js_selector} (NICHT GEFUNDEN)")
+                return result
+            except Exception as e:
+                print(f"   ⚠️ js_click error: {e}")
                 return False
 
         elif do == 'close_file_dialog':

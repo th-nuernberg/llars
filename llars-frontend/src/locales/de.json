@@ -3692,7 +3692,7 @@
       "newVariable": "Neue Variable"
     },
     "tooltips": {
-      "variablesPanel": "Fülle Werte für Template-Variablen ein. Diese ersetzen {{Platzhalter}} beim Senden des Prompts.",
+      "variablesPanel": "Fülle Werte für Template-Variablen ein. Diese ersetzen {placeholderExample} beim Senden des Prompts.",
       "configSection": "Konfiguriere LLM-Parameter für diesen Testlauf. Einstellungen werden automatisch gespeichert.",
       "modelSelect": "Das LLM-Modell für den Test. Ändert nicht den gespeicherten Prompt.",
       "temperature": "Steuert Zufälligkeit. Niedriger = deterministischer, höher = kreativer.",
@@ -3700,7 +3700,7 @@
       "sentPrompt": "Der finale Prompt mit allen Variablen durch ihre Werte ersetzt.",
       "responseSection": "Die Antwort des Modells. Klicke 'Neu generieren' für eine neue Antwort.",
       "variableManager": "Definiere wiederverwendbare Variablen für deinen Prompt. Variablen werden mit Kollaborateuren geteilt.",
-      "variableUsage": "Verwende {{name}} in deinem Prompt, um den Wert dieser Variable einzufügen.",
+      "variableUsage": "Verwende {placeholderExample} in deinem Prompt, um den Wert dieser Variable einzufügen.",
       "newVariable": "Erstelle eine neue Variable. Verwende nur Buchstaben, Zahlen und Unterstriche.",
       "enterValue": "Gib den Wert ein, der diese Variable beim Testen ersetzt."
     },

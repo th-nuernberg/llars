@@ -3692,7 +3692,7 @@
       "newVariable": "New Variable"
     },
     "tooltips": {
-      "variablesPanel": "Fill in values for template variables. These replace {{placeholders}} when the prompt is sent.",
+      "variablesPanel": "Fill in values for template variables. These replace {placeholderExample} when the prompt is sent.",
       "configSection": "Configure LLM parameters for this test run. Settings are saved automatically.",
       "modelSelect": "The LLM model to use for testing. Does not affect the saved prompt.",
       "temperature": "Controls randomness. Lower = more deterministic, higher = more creative.",
@@ -3700,7 +3700,7 @@
       "sentPrompt": "The final prompt with all variables replaced by their values.",
       "responseSection": "The model's response. Click 'Regenerate' for a new response.",
       "variableManager": "Define reusable variables for your prompt. Variables are shared with collaborators.",
-      "variableUsage": "Use {{name}} in your prompt to insert this variable's value.",
+      "variableUsage": "Use {placeholderExample} in your prompt to insert this variable's value.",
       "newVariable": "Create a new variable. Use only letters, numbers, and underscores.",
       "enterValue": "Enter the value to replace this variable when testing."
     },

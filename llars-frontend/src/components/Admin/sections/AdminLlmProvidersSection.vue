@@ -149,6 +149,136 @@
       </v-card-text>
     </v-card>
 
+    <!-- User Providers (admin overview) -->
+    <v-card class="llars-card mb-4">
+      <v-card-title class="d-flex align-center">
+        <LIcon class="mr-2">mdi-account-key</LIcon>
+        User Provider
+        <v-chip size="small" variant="tonal" class="ml-2">
+          {{ userProviders.length }}
+        </v-chip>
+      </v-card-title>
+      <v-card-text>
+        <v-skeleton-loader v-if="userProvidersLoading" type="table" />
+
+        <v-data-table
+          v-else
+          :headers="userProviderHeaders"
+          :items="userProviders"
+          :items-per-page="10"
+          class="llars-table"
+        >
+          <template v-slot:item.owner_username="{ item }">
+            <div class="d-flex align-center">
+              <LAvatar :username="item.owner_username" :seed="item.owner_avatar_seed" :src="item.owner_avatar_url" size="sm" class="mr-2" />
+              <span class="font-weight-medium">{{ item.owner_username }}</span>
+            </div>
+          </template>
+
+          <template v-slot:item.name="{ item }">
+            <div class="d-flex align-center">
+              <div
+                class="provider-icon-badge provider-icon-badge--small mr-2"
+                :style="{ backgroundColor: getProviderColorLight(item.provider_type) }"
+              >
+                <LIcon
+                  :name="getProviderIcon(item.provider_type)"
+                  size="14"
+                  :style="{ color: getProviderColor(item.provider_type) }"
+                />
+              </div>
+              <div class="d-flex flex-column">
+                <span class="font-weight-medium">{{ item.name }}</span>
+                <span class="text-caption text-medium-emphasis">{{ item.provider_type }}</span>
+              </div>
+            </div>
+          </template>
+
+          <template v-slot:item.models="{ item }">
+            <div class="d-flex flex-wrap gap-1">
+              <v-chip
+                v-for="model in (item.config?.selected_models || []).slice(0, 3)"
+                :key="model"
+                size="x-small"
+                variant="tonal"
+                class="llars-chip"
+              >
+                {{ model }}
+              </v-chip>
+              <v-chip
+                v-if="(item.config?.selected_models || []).length > 3"
+                size="x-small"
+                variant="text"
+              >
+                +{{ (item.config?.selected_models || []).length - 3 }}
+              </v-chip>
+              <span
+                v-if="!(item.config?.selected_models || []).length"
+                class="text-caption text-medium-emphasis"
+              >
+                —
+              </span>
+            </div>
+          </template>
+
+          <template v-slot:item.sharing="{ item }">
+            <div class="d-flex flex-wrap gap-1">
+              <v-chip
+                v-if="item.share_with_all"
+                size="x-small"
+                variant="tonal"
+                color="success"
+                class="llars-chip"
+              >
+                <LIcon start size="x-small">mdi-earth</LIcon>
+                Alle
+              </v-chip>
+              <template v-else-if="item.shares && item.shares.length">
+                <v-chip
+                  v-for="share in item.shares.slice(0, 3)"
+                  :key="share.id"
+                  size="x-small"
+                  variant="tonal"
+                  :color="share.share_type === 'role' ? 'secondary' : 'primary'"
+                  class="llars-chip"
+                >
+                  <LIcon start size="x-small">{{ share.share_type === 'role' ? 'mdi-account-group' : 'mdi-account' }}</LIcon>
+                  {{ share.target_identifier }}
+                </v-chip>
+                <v-chip
+                  v-if="item.shares.length > 3"
+                  size="x-small"
+                  variant="text"
+                >
+                  +{{ item.shares.length - 3 }}
+                </v-chip>
+              </template>
+              <span v-else class="text-caption text-medium-emphasis">Privat</span>
+            </div>
+          </template>
+
+          <template v-slot:item.is_active="{ item }">
+            <v-chip
+              :color="item.is_active ? 'success' : 'warning'"
+              size="small"
+              variant="tonal"
+              class="llars-chip"
+            >
+              {{ item.is_active ? 'Aktiv' : 'Inaktiv' }}
+            </v-chip>
+          </template>
+
+          <template v-slot:no-data>
+            <div class="text-center py-8 text-medium-emphasis">
+              <LIcon size="48" class="mb-2" style="opacity: 0.5">mdi-account-key-outline</LIcon>
+              <div>Keine User Provider vorhanden</div>
+              <p class="text-caption mt-1">User können eigene Provider unter Settings anlegen</p>
+            </div>
+          </template>
+        </v-data-table>
+      </v-card-text>
+    </v-card>
+
     <!-- LLM Models -->
     <v-card class="llars-card">
       <v-card-title class="d-flex align-center">
@@ -705,6 +835,9 @@ const providers = ref([])
 const loading = ref(false)
 const saving = ref(false)
 
+const userProviders = ref([])
+const userProvidersLoading = ref(false)
+
 const llmModels = ref([])
 const llmLoading = ref(false)
 const llmAccessDialog = ref(false)
@@ -743,6 +876,14 @@ const headers = [
   { title: 'Default', key: 'is_default', sortable: true },
   { title: 'Status', key: 'is_active', sortable: true },
   { title: '', key: 'actions', sortable: false, align: 'end' }
+]
+
+const userProviderHeaders = [
+  { title: 'Owner', key: 'owner_username', sortable: true },
+  { title: 'Provider', key: 'name', sortable: true },
+  { title: 'Modelle', key: 'models', sortable: false },
+  { title: 'Geteilt mit', key: 'sharing', sortable: false },
+  { title: 'Status', key: 'is_active', sortable: true }
 ]
 
 const llmHeaders = [
@@ -949,6 +1090,19 @@ async function fetchProviders() {
     providers.value = []
   } finally {
     loading.value = false
+  }
+}
+
+async function fetchUserProviders() {
+  userProvidersLoading.value = true
+  try {
+    const response = await axios.get('/api/user/providers/admin/all')
+    userProviders.value = response.data.providers || []
+  } catch (error) {
+    logI18n('error', 'logs.admin.llmProviders.loadUserProvidersFailed', error)
+    userProviders.value = []
+  } finally {
+    userProvidersLoading.value = false
   }
 }
 
@@ -1222,6 +1376,7 @@ async function saveLlmAccess() {
 
 onMounted(() => {
   fetchProviders()
+  fetchUserProviders()
   fetchLlmAccessOverview()
 })
 </script>

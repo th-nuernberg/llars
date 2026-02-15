@@ -187,7 +187,7 @@
 
         <!-- Owner Info (if not owner) -->
         <div v-if="!isOwner && owner" class="owner-card mb-3">
-          <img :src="getDiceBearUrl(owner, 32)" class="owner-avatar" alt="" />
+          <LAvatar :username="owner" :seed="ownerAvatar?.avatar_seed" :src="ownerAvatar?.avatar_url" size="sm" class="owner-avatar" />
           <div class="owner-info">
             <span class="owner-label">{{ $t('promptEngineering.sidebar.owner') }}</span>
             <span class="owner-name">{{ owner }}</span>
@@ -196,16 +196,16 @@
 
         <!-- Shared Users List -->
         <div v-if="sharedWith.length > 0" class="shared-list mb-3">
-          <div v-for="user in sharedWith" :key="user" class="shared-item">
-            <img :src="getDiceBearUrl(user, 28)" class="shared-avatar" alt="" />
-            <span class="shared-name text-truncate">{{ user }}</span>
+          <div v-for="user in sharedWith" :key="user.username || user" class="shared-item">
+            <LAvatar :username="user.username || user" :seed="user.avatar_seed" :src="user.avatar_url" size="sm" class="shared-avatar" />
+            <span class="shared-name text-truncate">{{ user.username || user }}</span>
             <v-btn
               v-if="isOwner"
               icon
               variant="text"
               size="x-small"
               color="error"
-              @click="unsharePromptWithUser(user)"
+              @click="unsharePromptWithUser(user.username || user)"
             >
               <LIcon size="14">mdi-close</LIcon>
             </v-btn>
@@ -220,7 +220,7 @@
         <div v-if="isOwner" class="share-input-section">
           <LUserSearch
             ref="userSearchRef"
-            :exclude-usernames="[...sharedWith, owner]"
+            :exclude-usernames="[...sharedWith.map(u => u.username || u), owner]"
             :placeholder="$t('promptEngineering.sidebar.addUserPlaceholder')"
             density="compact"
             :show-add-button="true"
@@ -290,7 +290,6 @@
 <script setup>
 import { ref, computed } from 'vue';
 import { useRouter } from 'vue-router';
-import { getDiceBearUrl } from '@/utils/userUtils';
 import axios from 'axios';
 import { useI18n } from 'vue-i18n';
 import PlaceholderPalette from './testing/PlaceholderPalette.vue';
@@ -305,6 +304,7 @@ const props = defineProps({
   isOwner: { type: Boolean, default: false },
   sharedWith: { type: Array, default: () => [] },
   owner: { type: String, required: true },
+  ownerAvatar: { type: Object, default: null },
   promptName: { type: String, required: true },
   showGitPanel: { type: Boolean, default: true },
   extractedVariables: { type: Array, default: () => [] },

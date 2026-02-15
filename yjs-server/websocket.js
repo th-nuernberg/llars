@@ -261,6 +261,47 @@ async function canAccessLatexDocument(documentId, username, isAdmin) {
  * await saveYdocToDB('latex_42', doc, 'Room latex_42', userId, 'alice')
  * // Emits to 'workspace_latex_5' if doc belongs to workspace 5
  */
+/**
+ * Extract rendered blocks from a Yjs document with {{variable}} placeholders as text.
+ *
+ * Yjs stores Quill embeds (VariableBlot) as embedded objects in Y.Text deltas.
+ * Python's y-py library loses these embeds when converting to string.
+ * This function reads the delta ops and converts {variable: "name"} → {{name}}.
+ *
+ * @param {Y.Doc} doc - The Yjs document
+ * @returns {Object|null} - {blocks: {blockId: {title, position, content}}} or null
+ */
+function extractRenderedBlocks(doc) {
+  const blocksMap = doc.getMap('blocks');
+  if (!blocksMap || blocksMap.size === 0) return null;
+
+  const result = {};
+  blocksMap.forEach((blockValue, blockId) => {
+    if (!blockValue || typeof blockValue.get !== 'function') return;
+    const title = blockValue.get('title') || blockId;
+    const position = blockValue.get('position') || 0;
+    const ytext = blockValue.get('content');
+
+    let textContent = '';
+    if (ytext && typeof ytext.toDelta === 'function') {
+      for (const op of ytext.toDelta()) {
+        if (typeof op.insert === 'string') {
+          textContent += op.insert;
+        } else if (op.insert && typeof op.insert === 'object') {
+          if (op.insert.variable) {
+            textContent += `{{${op.insert.variable}}}`;
+          }
+        }
+      }
+    } else if (ytext) {
+      textContent = ytext.toString();
+    }
+
+    result[blockId] = { title, position, content: textContent };
+  });
+  return { blocks: result };
+}
+
 async function saveYdocToDB(roomName, doc, name, userId, username = null) {
   const parsed = parseRoom(roomName);
   if (!parsed) return;
@@ -299,6 +340,15 @@ async function saveYdocToDB(roomName, doc, name, userId, username = null) {
           `INSERT INTO user_prompts (prompt_id, user_id, name, content, created_at, updated_at)
            VALUES (?, ?, ?, ?, NOW(), NOW())`,
           [roomId, userId, name || 'Untitled', jsonString]
+        );
+      }
+
+      // Extract rendered content with {{variables}} as text for reliable generation
+      const rendered = extractRenderedBlocks(doc);
+      if (rendered) {
+        await pool.query(
+          'UPDATE user_prompts SET rendered_content = ? WHERE prompt_id = ?',
+          [JSON.stringify(rendered), roomId]
         );
       }
 

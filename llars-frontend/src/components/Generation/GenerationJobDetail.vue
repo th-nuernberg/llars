@@ -122,7 +122,7 @@
               </div>
               <div class="processing-item">
                 <LIcon size="14" class="mr-1">mdi-robot</LIcon>
-                <span class="model-name">{{ currentlyProcessing.model }}</span>
+                <span class="model-name">{{ formatModelDisplayName(currentlyProcessing.model) }}</span>
                 <span class="item-name">{{ currentlyProcessing.itemName }}</span>
               </div>
             </div>
@@ -195,7 +195,7 @@
                   size="small"
                   :style="getModelTagStyle(resolveModelColor(model), model)"
                 >
-                  {{ model }}
+                  {{ formatModelDisplayName(model) }}
                 </LTag>
               </span>
             </div>
@@ -281,7 +281,7 @@
                 size="small"
                 :style="getModelTagStyle(currentlyProcessing.modelColor, currentlyProcessing.model)"
               >
-                {{ currentlyProcessing.model }}
+                {{ formatModelDisplayName(currentlyProcessing.model) }}
               </LTag>
               <span class="streaming-item-name">{{ currentlyProcessing.itemName }}</span>
             </div>
@@ -377,7 +377,7 @@
                   variant="default"
                   :style="getModelTagStyle(selectedOutput.llm_model_color, selectedOutput.llm_model_name)"
                 >
-                  {{ selectedOutput.llm_model_name }}
+                  {{ formatModelDisplayName(selectedOutput.llm_model_name) }}
                 </LTag>
               </div>
               <div v-if="selectedOutput.prompt_variant_name" class="meta-item">
@@ -476,6 +476,7 @@ import { useI18n } from 'vue-i18n'
 import { useMobile } from '@/composables/useMobile'
 import { useGeneration, JOB_STATUS, OUTPUT_STATUS } from '@/composables/useGeneration'
 import { getSocket } from '@/services/socketService'
+import { parseUserProviderModelId } from '@/utils/formatters'
 
 const route = useRoute()
 const router = useRouter()
@@ -620,6 +621,12 @@ const resolveModelColor = (modelName, explicitColor = null) => {
   if (normalized) return normalized
   if (modelName && modelColorMap.value[modelName]) return modelColorMap.value[modelName]
   return seedColor(modelName || '')
+}
+
+function formatModelDisplayName(modelId) {
+  const parsed = parseUserProviderModelId(modelId)
+  if (parsed) return parsed.displayName
+  return modelId
 }
 
 const hexToRgb = (hex) => {

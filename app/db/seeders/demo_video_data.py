@@ -153,8 +153,7 @@ def seed_demo_video_prompts():
                     ),
                     data_text=(
                         "Subject: {{subject}}\n\n"
-                        "Email thread:\n"
-                        "{{content}}\n\n"
+                        "Email thread: {{content}}\n\n"
                         "Return only the numbered list. No additional explanations."
                     )
                 )
@@ -218,10 +217,10 @@ def seed_demo_video_generation_job():
 
     # Get LLM models
     mistral_small = LLMModel.query.filter_by(
-        model_id='LiteLLM/mistralai/Mistral-Small-3.2-24B-Instruct-2506'
+        model_id='Global/Mistral/Mistral-Small-3.2-24B-Instruct-2506'
     ).first()
     gpt5_nano = LLMModel.query.filter_by(
-        model_id='OpenAI/gpt-5-nano'
+        model_id='Global/OpenAI/gpt-5-nano'
     ).first()
 
     if not mistral_small or not gpt5_nano:

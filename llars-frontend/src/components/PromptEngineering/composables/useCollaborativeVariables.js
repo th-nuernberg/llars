@@ -111,7 +111,7 @@ export function useCollaborativeVariables(ydoc, showMessage, t) {
   }
 
   /**
-   * Update a variable's content
+   * Update a variable's content (upsert: creates if not exists)
    */
   const updateVariable = (name, content) => {
     if (!ydoc.value) {
@@ -123,18 +123,21 @@ export function useCollaborativeVariables(ydoc, showMessage, t) {
 
     ydoc.value.transact(() => {
       const variablesMap = ydoc.value.getMap('variables')
-      const varMap = variablesMap.get(name)
+      let varMap = variablesMap.get(name)
 
       if (varMap) {
         varMap.set('content', content)
         varMap.set('updatedAt', new Date().toISOString())
         success = true
+      } else {
+        // Auto-create variable if it doesn't exist yet (e.g. extracted from prompt text)
+        varMap = new Y.Map()
+        varMap.set('content', content)
+        varMap.set('createdAt', new Date().toISOString())
+        variablesMap.set(name, varMap)
+        success = true
       }
     })
-
-    if (success && showMessage) {
-      showMessage(translate('promptEngineering.variables.updated', { name }))
-    }
 
     return success
   }

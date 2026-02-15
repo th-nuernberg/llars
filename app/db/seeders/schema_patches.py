@@ -1065,6 +1065,31 @@ def apply_schema_patches(db) -> None:
         # =========================================================================
         changed |= _migrate_model_id_prefixes(db)
 
+        # =========================================================================
+        # Prompt rendered_content: reliable text with {{variables}} for generation
+        # =========================================================================
+        changed |= _ensure_column(
+            db,
+            table_name="user_prompts",
+            column_name="rendered_content",
+            column_definition_sql="`rendered_content` JSON NULL",
+        )
+        # Backfill: copy content → rendered_content for prompts that already have JSON blocks
+        if _column_exists(db, "user_prompts", "rendered_content"):
+            result = db.session.execute(
+                text("""
+                    UPDATE user_prompts
+                    SET rendered_content = content
+                    WHERE rendered_content IS NULL
+                      AND JSON_TYPE(content) = 'OBJECT'
+                      AND JSON_CONTAINS_PATH(content, 'one', '$.blocks')
+                """)
+            )
+            if result.rowcount > 0:
+                db.session.commit()
+                changed = True
+                print(f"  [Backfill] Set rendered_content for {result.rowcount} prompts with JSON blocks")
+
         if changed:
             print("✅ Applied schema patches")
     except Exception as exc:
@@ -1078,21 +1103,31 @@ def _migrate_model_id_prefixes(db) -> bool:
     Idempotent migration: add provider prefixes to LLM model IDs.
 
     Maps:
-      gpt-5-nano → OpenAI/gpt-5-nano
-      gpt-5      → OpenAI/gpt-5
-      gpt-5.2    → OpenAI/gpt-5.2
-      mistralai/Mistral-Small-3.2-24B-Instruct-2506 → LiteLLM/mistralai/...
-      mistralai/Magistral-Small-2509                 → LiteLLM/mistralai/...
+      gpt-5-nano → Global/OpenAI/gpt-5-nano
+      gpt-5      → Global/OpenAI/gpt-5
+      gpt-5.2    → Global/OpenAI/gpt-5.2
+      mistralai/Mistral-Small-3.2-24B-Instruct-2506 → Global/Mistral/...
+      mistralai/Magistral-Small-2509                 → Global/Mistral/...
+      OpenAI/gpt-5-nano → Global/OpenAI/gpt-5-nano  (intermediate format)
+      LiteLLM/mistralai/... → Global/Mistral/...     (intermediate format)
 
     Skips rows that already have the prefix (idempotent).
     Does NOT touch embedding/reranker model IDs.
     """
     PREFIX_MAP = {
-        'gpt-5-nano': 'OpenAI/gpt-5-nano',
-        'gpt-5': 'OpenAI/gpt-5',
-        'gpt-5.2': 'OpenAI/gpt-5.2',
-        'mistralai/Mistral-Small-3.2-24B-Instruct-2506': 'LiteLLM/mistralai/Mistral-Small-3.2-24B-Instruct-2506',
-        'mistralai/Magistral-Small-2509': 'LiteLLM/mistralai/Magistral-Small-2509',
+        'gpt-5-nano': 'Global/OpenAI/gpt-5-nano',
+        'gpt-5': 'Global/OpenAI/gpt-5',
+        'gpt-5.2': 'Global/OpenAI/gpt-5.2',
+        'gpt-5-mini': 'Global/OpenAI/gpt-5-mini',
+        'mistralai/Mistral-Small-3.2-24B-Instruct-2506': 'Global/Mistral/Mistral-Small-3.2-24B-Instruct-2506',
+        'mistralai/Magistral-Small-2509': 'Global/Mistral/Magistral-Small-2509',
+        # Migrate intermediate format (OpenAI/... and LiteLLM/...) to Global/...
+        'OpenAI/gpt-5-nano': 'Global/OpenAI/gpt-5-nano',
+        'OpenAI/gpt-5-mini': 'Global/OpenAI/gpt-5-mini',
+        'OpenAI/gpt-5': 'Global/OpenAI/gpt-5',
+        'OpenAI/gpt-5.2': 'Global/OpenAI/gpt-5.2',
+        'LiteLLM/mistralai/Mistral-Small-3.2-24B-Instruct-2506': 'Global/Mistral/Mistral-Small-3.2-24B-Instruct-2506',
+        'LiteLLM/mistralai/Magistral-Small-2509': 'Global/Mistral/Magistral-Small-2509',
     }
 
     changed = False

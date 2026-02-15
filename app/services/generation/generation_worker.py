@@ -204,80 +204,147 @@ def _extract_embedded_variables(data: bytes) -> List[str]:
 
 def _restore_variable_placeholders(text: str, variables: List[str]) -> str:
     """
-    Restore variable placeholders in text.
+    Restore variable placeholders in text after YJS decoding.
 
-    When Y.Text is converted to string, embedded objects are lost.
-    This function inserts {{variable}} placeholders at common patterns.
+    When Y.Text is converted to string via str(), embedded objects
+    (variable chips like {{subject}}) are dropped, leaving gaps.
+    For example: "Subject: {{subject}}\\n" becomes "Subject: \\n"
 
-    Supported patterns:
-    - "Betreff: " followed by nothing -> insert {{subject}}
-    - Empty lines where {{messages}} should be -> insert {{messages}}
+    This function detects gaps and restores {{variable}} placeholders
+    using a two-phase approach:
+    1. Label-based matching: "Subject: \\n" -> "Subject: {{subject}}\\n"
+    2. Contextual gap detection: consecutive newlines where variables were
     """
     if not variables:
         return text
 
     result = text
+    remaining_vars = list(variables)
 
-    def _ensure_placeholder(var_name: str, patterns: List[Tuple[str, str]]) -> None:
-        """Insert {{var_name}} using the first matching pattern if missing."""
-        nonlocal result
+    # ---- Phase 1: Label-based matching ----
+    # Map labels (case-insensitive) to variable names they likely precede
+    LABEL_TO_VARIABLE = {
+        # subject
+        'subject': 'subject', 'betreff': 'subject', 'topic': 'subject',
+        'theme': 'subject', 'thema': 'subject',
+        # messages / content (email/conversation style)
+        'email thread': 'messages', 'email-thread': 'messages',
+        'thread': 'messages', 'conversation': 'messages',
+        'messages': 'messages', 'dialog': 'messages', 'dialogue': 'messages',
+        'chat': 'messages', 'email': 'messages', 'nachrichten': 'messages',
+        'konversation': 'messages', 'verlauf': 'messages',
+        'case': 'messages', 'beratungsverlauf': 'messages',
+        'counselling thread': 'messages', 'counseling thread': 'messages',
+        # content
+        'content': 'content', 'text': 'content', 'input': 'content',
+        'inhalt': 'content', 'article': 'content', 'full article': 'content',
+        'artikel': 'content', 'nachricht': 'content', 'body': 'content',
+        'data': 'content',
+        # title
+        'title': 'title', 'titel': 'title', 'headline': 'title',
+        'heading': 'title', 'überschrift': 'title',
+    }
+
+    # Find all "Label:" patterns followed by optional horizontal whitespace then newline
+    # Use [ \t]* instead of \s* to avoid matching newlines in the label group
+    label_pattern = re.compile(r'((?:^|\n)([\w][\w \t-]*?):[ \t]*)\n', re.IGNORECASE)
+
+    for match in label_pattern.finditer(result):
+        label_text = match.group(2).strip().lower()
+        full_match = match.group(0)
+
+        # Look up which variable this label maps to
+        var_name = LABEL_TO_VARIABLE.get(label_text)
+
+        # Direct match: label name == variable name (with space->underscore)
+        if not var_name and label_text.replace(' ', '_') in remaining_vars:
+            var_name = label_text.replace(' ', '_')
+        if not var_name and label_text.replace(' ', '') in remaining_vars:
+            var_name = label_text.replace(' ', '')
+
+        if var_name and var_name in remaining_vars:
+            placeholder = f"{{{{{var_name}}}}}"
+            if placeholder not in result:
+                replacement = f"{match.group(1)}{placeholder}\n"
+                result = result.replace(full_match, replacement, 1)
+                remaining_vars.remove(var_name)
+
+    # ---- Phase 1b: messages/content alias matching ----
+    # messages and content are often interchangeable in templates
+    for var_name in list(remaining_vars):
         placeholder = f"{{{{{var_name}}}}}"
         if placeholder in result:
-            return
-        for pattern, repl in patterns:
-            new_result = re.sub(pattern, repl, result, count=1)
+            remaining_vars.remove(var_name)
+            continue
+
+        if var_name in ('messages', 'content'):
+            alt_labels = {
+                'messages': ['email thread', 'thread', 'conversation', 'messages',
+                             'email', 'chat', 'dialog', 'verlauf', 'case'],
+                'content': ['content', 'text', 'input', 'inhalt', 'article',
+                            'full article', 'body', 'data'],
+            }
+            for alt_label in alt_labels.get(var_name, []):
+                gap_pat = re.compile(
+                    rf'({re.escape(alt_label)}:[ \t]*)\n',
+                    re.IGNORECASE
+                )
+                new_result = gap_pat.sub(rf'\g<1>{placeholder}\n', result, count=1)
+                if new_result != result:
+                    result = new_result
+                    remaining_vars.remove(var_name)
+                    break
+
+    # ---- Phase 2: Contextual gap detection ----
+    for var_name in list(remaining_vars):
+        placeholder = f"{{{{{var_name}}}}}"
+        if placeholder in result:
+            remaining_vars.remove(var_name)
+            continue
+
+        if var_name in ('messages', 'content'):
+            # After {{subject}} and before ---
+            new_result = re.sub(
+                r'(\{\{subject\}\}\s*\n)(\n*)(---)',
+                rf'\1{placeholder}\n\n\3',
+                result
+            )
             if new_result != result:
                 result = new_result
-                return
+                remaining_vars.remove(var_name)
+                continue
 
-    # Handle 'subject' variable - typically after "Betreff: "
-    if 'subject' in variables:
-        # Look for "Betreff: " followed by newlines (empty subject)
-        result = re.sub(r'(Betreff:\s*)\n', r'\1{{subject}}\n', result)
+            # Before --- separator
+            if '---' in result:
+                new_result = re.sub(
+                    r'(\n\n)(\n*)(---)',
+                    rf'\1{placeholder}\n\n\3',
+                    result, count=1
+                )
+                if new_result != result:
+                    result = new_result
+                    remaining_vars.remove(var_name)
+                    continue
 
-    # Handle 'messages' variable - typically the main content area
-    if 'messages' in variables:
-        # Look for patterns where messages should be inserted:
-        # 1. After {{subject}} and before ---
-        result = re.sub(
-            r'(\{\{subject\}\}\s*\n)(\n*)(---)',
-            r'\1{{messages}}\n\n\3',
-            result
-        )
-        # 2. If no subject, after "Betreff:" line and before ---
-        result = re.sub(
-            r'(Betreff:[^\n]*\n\n)(\n*)(---)',
-            r'\1{{messages}}\n\n\3',
-            result
-        )
-        # 3. If the text has a pattern like "\n\n\n\n---", insert before ---
-        if '{{messages}}' not in result and '---' in result:
-            result = re.sub(
-                r'(\n\n)(\n*)(---)',
-                r'\1{{messages}}\n\n\3',
-                result,
-                count=1  # Only replace first occurrence
+            # Triple+ newline = likely a gap where variable was dropped
+            new_result = re.sub(
+                r'(\n)\n\n(\n*)',
+                rf'\1\n{placeholder}\n\2',
+                result, count=1
             )
+            if new_result != result:
+                result = new_result
+                remaining_vars.remove(var_name)
+                continue
 
-    # Handle 'title' variable (news/article templates)
-    if 'title' in variables:
-        _ensure_placeholder('title', [
-            (r'(Title:[ \t]*)(?=\n)', r'\1{{title}}'),
-            (r'(Headline:[ \t]*)(?=\n)', r'\1{{title}}'),
-            (r'(Titel:[ \t]*)(?=\n)', r'\1{{title}}'),
-        ])
-
-    # Handle 'content' variable (news/article templates)
-    if 'content' in variables:
-        _ensure_placeholder('content', [
-            (r'(Full Article:\s*)\n', r'\1\n{{content}}\n'),
-            (r'(Article:\s*)\n', r'\1\n{{content}}\n'),
-            (r'(Content:\s*)\n', r'\1\n{{content}}\n'),
-            (r'(Inhalt:\s*)\n', r'\1\n{{content}}\n'),
-            # Fallback: insert after Title/Headline block
-            (r'(Title:[^\n]*\n)(\s*\n)', r'\1{{content}}\n\n'),
-            (r'(Headline:[^\n]*\n)(\s*\n)', r'\1{{content}}\n\n'),
-        ])
+    # Log unplaced variables for debugging
+    for var_name in remaining_vars:
+        placeholder = f"{{{{{var_name}}}}}"
+        if placeholder not in result:
+            logger.warning(
+                "[YJS] Could not restore {{%s}} in decoded text: %s...",
+                var_name, result[:100]
+            )
 
     return result
 
@@ -382,7 +449,7 @@ class GenerationWorker:
         self.socketio = socketio
         self.should_stop = False
 
-        # Cache for templates and models
+        # Cache for templates and models (LLM clients are cached centrally in LLMClientFactory)
         self._template_cache: Dict[int, PromptTemplate] = {}
         self._model_cache: Dict[str, LLMModel] = {}
 
@@ -698,9 +765,14 @@ class GenerationWorker:
 
         This method handles both formats automatically.
         """
-        content = user_prompt.content
+        # Prefer rendered_content (reliable text with {{variables}} from YJS server)
+        if user_prompt.rendered_content and isinstance(user_prompt.rendered_content, dict):
+            content = user_prompt.rendered_content
+            logger.info(f"[GenWorker] Using rendered_content for UserPrompt {user_prompt.prompt_id}")
+        else:
+            content = user_prompt.content
 
-        # Handle YJS binary format (list of numbers)
+        # Handle YJS binary format (list of numbers) - fallback for prompts without rendered_content
         if isinstance(content, list):
             logger.info(f"Decoding YJS binary content for UserPrompt {user_prompt.prompt_id}")
             content = decode_yjs_content(content)
@@ -938,13 +1010,20 @@ class GenerationWorker:
         Raises:
             Exception: If LLM call fails
         """
-        # Get client (supports user-provider model IDs)
+        # Get client (cached centrally in LLMClientFactory)
         client, api_model_id = LLMClientFactory.resolve_client_and_model_id(model_id)
 
-        # Get generation params from job config
-        job = GenerationJob.query.get(self.job_id)
-        config = job.config_json if job else {}
-        gen_params = config.get("generation_params", {})
+        # Get generation params from job config (cached)
+        if not hasattr(self, '_gen_params_cache'):
+            job = GenerationJob.query.get(self.job_id)
+            config = job.config_json if job else {}
+            self._gen_params_cache = config.get("generation_params", {})
+        gen_params = self._gen_params_cache
+
+        # Detect OpenAI models (require max_completion_tokens instead of max_tokens)
+        is_openai = ('openai' in (model_id or '').lower()
+                     or api_model_id.lower().startswith('gpt-')
+                     or api_model_id.lower().startswith('o'))
 
         # Build messages
         messages = [
@@ -975,7 +1054,8 @@ class GenerationWorker:
                 }
                 # Only add max_tokens if explicitly specified (allows unlimited for reasoning models)
                 if gen_params.get("max_tokens"):
-                    stream_params["max_tokens"] = gen_params["max_tokens"]
+                    key = "max_completion_tokens" if is_openai else "max_tokens"
+                    stream_params[key] = gen_params["max_tokens"]
 
                 stream = self._api_call_with_param_fix(client, stream_params)
 
@@ -1041,7 +1121,8 @@ class GenerationWorker:
             }
             # Only add max_tokens if explicitly specified (allows unlimited for reasoning models)
             if gen_params.get("max_tokens"):
-                call_params["max_tokens"] = gen_params["max_tokens"]
+                key = "max_completion_tokens" if is_openai else "max_tokens"
+                call_params[key] = gen_params["max_tokens"]
 
             response = self._api_call_with_param_fix(client, call_params)
 

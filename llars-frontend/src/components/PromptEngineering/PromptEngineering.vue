@@ -69,12 +69,14 @@
                 <LIcon size="14" color="warning" class="mr-1">mdi-share-variant</LIcon>
                 <span class="text-caption">{{ $t('promptEngineering.shared.users', { count: prompt.shared_with.length }) }}</span>
                 <div class="shared-avatars ml-2">
-                  <img
-                    v-for="username in prompt.shared_with.slice(0, 3)"
-                    :key="username"
-                    :src="getDiceBearUrl(username, 24)"
+                  <LAvatar
+                    v-for="user in prompt.shared_with.slice(0, 3)"
+                    :key="user.username || user"
+                    :username="user.username || user"
+                    :seed="user.avatar_seed"
+                    :src="user.avatar_url"
+                    size="xs"
                     class="shared-avatar"
-                    :title="username"
                   />
                   <span v-if="prompt.shared_with.length > 3" class="more-badge">
                     +{{ prompt.shared_with.length - 3 }}
@@ -291,8 +293,6 @@ import axios from 'axios';
 import { getSocket } from '@/services/socketService';
 import { useSkeletonLoading } from '@/composables/useSkeletonLoading';
 import { useMobile } from '@/composables/useMobile';
-import { getDiceBearUrl } from '@/utils/userUtils';
-
 const router = useRouter();
 const { t, locale } = useI18n();
 const { isLoading, withLoading } = useSkeletonLoading(['prompts', 'sharedPrompts']);

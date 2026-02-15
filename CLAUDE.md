@@ -104,18 +104,76 @@ python scripts/load_test.py --users 100 --requests 20 --ws-connections 50
 
 ## LLM Modelle & Sichtbarkeit
 
+### Model-ID Naming Convention
+
+Globale (geseedete) Modelle verwenden das Format `Global/{Hersteller}/{Modell}`:
+
+| Model-ID | Provider-Type | API-Model |
+|----------|---------------|-----------|
+| `Global/Mistral/Mistral-Small-3.2-24B-Instruct-2506` | litellm | `mistralai/Mistral-Small-3.2-24B-Instruct-2506` |
+| `Global/Mistral/Magistral-Small-2509` | litellm | `mistralai/Magistral-Small-2509` |
+| `Global/OpenAI/gpt-5-nano` | openai | `gpt-5-nano` |
+| `Global/OpenAI/gpt-5-mini` | openai | `gpt-5-mini` |
+
+User-Provider-Modelle: `user-provider:{id}:{username}:{model}`
+
+**Routing** (`LLMClientFactory._parse_provider_prefix()`):
+- `Global/` → strip prefix → lookup manufacturer in `MANUFACTURER_TO_PROVIDER` → resolve provider-type + API-model
+- `MANUFACTURER_API_PREFIX` fügt ggf. Prefix hinzu (z.B. Mistral → `mistralai/`)
+- Legacy-Prefixe (`OpenAI/`, `LiteLLM/`) werden weiterhin unterstützt
+
+**Embedding/Reranker model_ids** bleiben unverändert (`llamaindex/...`, `sentence-transformers/...`) da hardcoded in RAG-Pipeline.
+
+### Sichtbarkeit & Allowlist
+
 - Verfügbare Modelle für Nutzer: `GET /api/llm/models/available` (Permission: `feature:llm:view`)
 - Admin-Übersicht/Allowlist: `GET /api/llm/models/access/overview`, `PUT /api/llm/models/<id>/access`
-- Standard: Keine Zuweisung = öffentlich; sobald Nutzer/Rollen gesetzt sind, gilt die Allowlist.
+- Standard: Keine Zuweisung = öffentlich; sobald Nutzer/Rollen gesetzt sind, gilt die Allowlist
+- **OpenAI-Modelle** sind automatisch auf `role=admin` beschränkt (via `_restrict_openai_models_to_admin()`)
+- Admin kann einzelnen Usern Zugriff geben: `PUT /api/llm/models/<id>/access` mit `{"usernames": ["evaluator"]}`
 - DB-Tabelle: `llm_model_permissions`
 
 ---
 
-## LLM Provider Registry
+## LLM Provider Registry (Admin)
 
 - Admin Endpoints: `GET/POST /api/llm/providers`, `PUT/DELETE /api/llm/providers/<id>`, `POST /api/llm/providers/<id>/test`, `POST /api/llm/providers/<id>/sync-models`
 - Routing: `llm_models.provider_id` → Provider-Config; Fallback = Default-Provider oder `LITELLM_*`/`OPENAI_API_KEY`
 - DB-Tabelle: `llm_providers`
+
+---
+
+## User LLM Provider (Settings)
+
+User können eigene LLM-Provider unter Settings anlegen und mit anderen teilen.
+
+### Endpoints
+
+| Method | Endpoint | Beschreibung |
+|--------|----------|-------------|
+| GET | `/api/user/providers` | Eigene Provider |
+| GET | `/api/user/providers/available` | Eigene + geteilte Provider |
+| POST | `/api/user/providers` | Provider anlegen |
+| PUT | `/api/user/providers/<id>` | Provider bearbeiten |
+| DELETE | `/api/user/providers/<id>` | Provider löschen |
+| POST | `/api/user/providers/<id>/test` | Verbindung testen |
+| POST | `/api/user/providers/<id>/shares` | Mit User/Rolle teilen |
+| DELETE | `/api/user/providers/<id>/shares/<share_id>` | Freigabe entfernen |
+| POST | `/api/user/providers/<id>/share-all` | Mit allen teilen (Toggle) |
+
+### Sharing-Modell
+
+- **User-Share:** `share_type='user'`, `target_identifier=username` → Einzelne User
+- **Role-Share:** `share_type='role'`, `target_identifier=role_name` → Ganze Rolle
+- **Share-All:** `share_with_all=True` → Alle User
+- Optional: Token-Limits (`usage_limit_tokens`), Ablaufdatum (`expires_at`)
+- DB-Tabellen: `user_llm_providers`, `user_llm_provider_shares`
+
+### Frontend
+
+- `LlmModelSelect` zeigt automatisch eigene + geteilte Provider-Modelle (`includeUserProviders` default: `true`)
+- Settings → LLM Provider Tab: Anlegen, Testen, Teilen (Share-Dialog)
+- Geteilte Provider erscheinen als "Shared With Me" (read-only)
 
 ---
 

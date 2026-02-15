@@ -100,16 +100,18 @@ def get_user_prompts():
     # Alle Prompts des Benutzers abrufen inkl. Sharing-Informationen
     user_prompts = UserPrompt.query.filter_by(user_id=user.id).all()
 
+    from routes.HelperFunctions import serialize_user_brief
+
     # Rückgabe der Prompts als JSON mit Sharing-Informationen
     prompts_data = []
     for prompt in user_prompts:
-        # Sharing-Informationen abrufen
-        shared_users = db.session.query(User.username) \
+        # Sharing-Informationen abrufen (mit Avatar-Daten)
+        shared_users = db.session.query(User) \
             .join(UserPromptShare, User.id == UserPromptShare.shared_with_user_id) \
             .filter(UserPromptShare.prompt_id == prompt.prompt_id) \
             .all()
 
-        shared_with = [user[0] for user in shared_users]
+        shared_with = [serialize_user_brief(u) for u in shared_users]
 
         prompt_data = {
             'id': prompt.prompt_id,
@@ -117,7 +119,7 @@ def get_user_prompts():
             'content': prompt.content,
             'created_at': prompt.created_at.isoformat(),
             'updated_at': prompt.updated_at.isoformat(),
-            'shared_with': shared_with  # Liste der Benutzernamen
+            'shared_with': shared_with
         }
         prompts_data.append(prompt_data)
 
@@ -147,21 +149,24 @@ def get_user_prompt(prompt_id):
     if not prompt:
         raise NotFoundError('Prompt not found or you do not have permission to view it')
 
+    from routes.HelperFunctions import serialize_user_brief
+
     # Überprüfen, ob es ein geteiltes Prompt ist
     is_shared = prompt.user_id != user.id
 
-    # Besitzer-Informationen hinzufügen
-    owner = prompt.user.username
+    # Besitzer-Informationen hinzufügen (mit Avatar-Daten)
+    owner_data = serialize_user_brief(prompt.user)
 
     # Hole alle User mit denen das Prompt geteilt wurde
-    shared_users = db.session.query(User.username)\
+    shared_users_list = db.session.query(User)\
         .join(UserPromptShare, User.id == UserPromptShare.shared_with_user_id)\
         .filter(UserPromptShare.prompt_id == prompt_id)\
         .all()
-    shared_with = [user[0] for user in shared_users]
+    shared_with = [serialize_user_brief(u) for u in shared_users_list]
+    shared_usernames = [u.username for u in shared_users_list]
 
     # Bestimme ob der aktuelle User Zugriff auf die shared_with Liste haben soll
-    should_see_shared_with = (prompt.user_id == user.id) or (user.username in shared_with)
+    should_see_shared_with = (prompt.user_id == user.id) or (user.username in shared_usernames)
 
     return jsonify({
         'success': True,
@@ -172,8 +177,9 @@ def get_user_prompt(prompt_id):
             'created_at': prompt.created_at.isoformat(),
             'updated_at': prompt.updated_at.isoformat(),
             'is_shared': is_shared,
-            'owner': owner,
-            'shared_with': shared_with if should_see_shared_with else []  # Nur ausgeben wenn berechtigt
+            'owner': owner_data.get('username'),
+            'owner_avatar': owner_data,
+            'shared_with': shared_with if should_see_shared_with else []
         }
     }), 200
 
@@ -208,6 +214,9 @@ def update_user_prompt(prompt_id):
 
     # Prompt-Inhalt aktualisieren
     prompt.content = content
+    # Set rendered_content for reliable variable substitution in generation
+    if isinstance(content, dict) and content.get('blocks'):
+        prompt.rendered_content = content
     prompt.updated_at = datetime.utcnow()
     db.session.commit()
 
@@ -412,17 +421,20 @@ def get_shared_prompts():
         UserPromptShare.shared_with_user_id == user.id
     ).all()
 
+    from routes.HelperFunctions import serialize_user_brief
+
     # Freigegebene Prompts formatieren
-    prompts_data = [
-        {
+    prompts_data = []
+    for prompt, shared_at in shared_prompts:
+        owner_data = serialize_user_brief(prompt.user)
+        prompts_data.append({
             'id': prompt.prompt_id,
             'name': prompt.name,
             'content': prompt.content,
-            'owner': prompt.user.username,
+            'owner': owner_data.get('username'),
+            'owner_avatar': owner_data,
             'shared_at': shared_at.isoformat() if shared_at else None
-        }
-        for prompt, shared_at in shared_prompts
-    ]
+        })
 
     return jsonify({'success': True, 'data': prompts_data}), 200
 

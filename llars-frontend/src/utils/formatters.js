@@ -246,19 +246,33 @@ export const getBiasLabel = (bias) => {
 /**
  * Parse a user-provider model ID into readable parts.
  *
- * Input:  "user-provider:2:gpt-4.1-nano"
- * Output: { providerId: "2", modelName: "gpt-4.1-nano", providerLabel: "OpenAI" }
+ * Supports two formats:
+ * - New: "user-provider:<providerId>:<username>:<model>" → "username/ProviderLabel/model"
+ * - Old: "user-provider:<providerId>:<model>" → "ProviderLabel/model"
  *
  * @param {string} modelId - The full model ID string
- * @returns {{ providerId: string, modelName: string, providerLabel: string, displayName: string } | null}
+ * @returns {{ providerId: string, username: string|null, modelName: string, providerLabel: string, displayName: string } | null}
  */
 export const parseUserProviderModelId = (modelId) => {
   if (!modelId || typeof modelId !== 'string' || !modelId.startsWith('user-provider:')) return null;
   const rest = modelId.slice('user-provider:'.length);
-  const colonIdx = rest.indexOf(':');
-  if (colonIdx < 0) return null;
-  const providerId = rest.slice(0, colonIdx);
-  const modelName = rest.slice(colonIdx + 1) || modelId;
+  const parts = rest.split(':');
+  if (parts.length < 2) return null;
+
+  const providerId = parts[0];
+  let username = null;
+  let modelName;
+
+  if (parts.length >= 3) {
+    // New format: providerId:username:model (model may contain colons)
+    username = parts[1];
+    modelName = parts.slice(2).join(':');
+  } else {
+    // Old format: providerId:model
+    modelName = parts[1];
+  }
+
+  if (!modelName) modelName = modelId;
 
   const lower = modelName.toLowerCase();
   let providerLabel = 'Provider';
@@ -272,10 +286,15 @@ export const parseUserProviderModelId = (modelId) => {
     providerLabel = 'Mistral';
   }
 
+  const displayName = username
+    ? `${username}/${providerLabel}/${modelName}`
+    : `${providerLabel} / ${modelName}`;
+
   return {
     providerId,
+    username,
     modelName,
     providerLabel,
-    displayName: `${providerLabel} / ${modelName}`,
+    displayName,
   };
 };

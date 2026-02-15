@@ -401,8 +401,8 @@ def _get_llm_judge_config():
         "type": "multi-dimensional",
         "enable_llm_evaluation": True,
         "llm_evaluators": [
-            "LiteLLM/mistralai/Mistral-Small-3.2-24B-Instruct-2506",
-            "LiteLLM/mistralai/Magistral-Small-2509"
+            "Global/Mistral/Mistral-Small-3.2-24B-Instruct-2506",
+            "Global/Mistral/Magistral-Small-2509"
         ],
         "min": 1,
         "max": 5,

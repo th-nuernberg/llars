@@ -365,7 +365,7 @@
         {
           "do": "type",
           "target": ".editor-block:nth-child(3) .ql-editor",
-          "text": "Subject:\n{{subject}}\n\nContent:\n{{content}}",
+          "text": "Subject:{{subject}}\n\nContent:{{content}}",
           "speed": "turbo"
         }
       ]

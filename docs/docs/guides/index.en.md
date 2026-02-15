@@ -47,6 +47,16 @@ Tools for working together:
 
 ---
 
+## Settings
+
+Personal configuration:
+
+| Guide | Description |
+|-------|-------------|
+| [LLM Provider Settings](llm-provider-settings.md) | Add, test, and share your own LLM API keys |
+
+---
+
 ## Administration
 
 System administration and configuration:

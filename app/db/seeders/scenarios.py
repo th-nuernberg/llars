@@ -710,8 +710,8 @@ def seed_demo_scenarios(db):
 
     # Default LLM evaluators for demo scenarios
     demo_llm_evaluators = [
-        "LiteLLM/mistralai/Mistral-Small-3.2-24B-Instruct-2506",
-        "LiteLLM/mistralai/Magistral-Small-2509"
+        "Global/Mistral/Mistral-Small-3.2-24B-Instruct-2506",
+        "Global/Mistral/Magistral-Small-2509"
     ]
 
     # Create Ranking Scenario

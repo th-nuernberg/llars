@@ -21,6 +21,30 @@ import hashlib
 from db.tables import ProgressionStatus
 from db.models.scenario import InvitationStatus
 
+def serialize_user_brief(user) -> dict:
+    """
+    Single source of truth for user avatar serialization.
+
+    Returns a dict with username, avatar_seed, and avatar_url
+    that the frontend LAvatar component needs for consistent rendering.
+
+    Usage:
+        user = User.query.filter_by(username='admin').first()
+        data = serialize_user_brief(user)
+        # → {"username": "admin", "avatar_seed": "abc123", "avatar_url": "/api/users/avatar/..."}
+    """
+    if not user:
+        return {"username": None, "avatar_seed": None, "avatar_url": None}
+    result = {
+        "username": user.username,
+        "avatar_seed": getattr(user, 'avatar_seed', None),
+        "avatar_url": None,
+    }
+    if getattr(user, 'avatar_public_id', None) and getattr(user, 'avatar_file', None):
+        result["avatar_url"] = f"/api/users/avatar/{user.avatar_public_id}"
+    return result
+
+
 MAIL_RATING_FUNCTION_TYPE_ID = 3
 
 DISTRIBUTION_MODE_ALL = "all"

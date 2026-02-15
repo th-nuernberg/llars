@@ -459,8 +459,8 @@ def _get_summeval_config():
         "preset": "summeval-mixed-scales",
         "enable_llm_evaluation": True,
         "llm_evaluators": [
-            "LiteLLM/mistralai/Mistral-Small-3.2-24B-Instruct-2506",
-            "LiteLLM/mistralai/Magistral-Small-2509"
+            "Global/Mistral/Mistral-Small-3.2-24B-Instruct-2506",
+            "Global/Mistral/Magistral-Small-2509"
         ],
         # Global/default scale (used when dimension has no custom scale)
         "min": 1,

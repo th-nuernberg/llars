@@ -434,7 +434,7 @@
                   :key="modelId"
                   class="cost-model-item"
                 >
-                  <span class="cost-model-name">{{ modelId }}</span>
+                  <span class="cost-model-name">{{ formatCostModelName(modelId) }}</span>
                   <span class="cost-model-value">
                     {{ breakdown.estimated_cost_usd != null ? `$${breakdown.estimated_cost_usd.toFixed(4)}` : '?' }}
                   </span>
@@ -778,12 +778,15 @@ async function loadModels() {
         const config = provider?.config || {}
 
         // Support multiple selected models (OpenAI style)
+        const ownerName = provider.owner_username || provider.shared_by || ''
         const selectedModels = Array.isArray(config.selected_models) ? config.selected_models : []
         if (selectedModels.length > 0) {
           for (const mid of selectedModels) {
             const modelId = (mid || '').trim()
             if (!modelId) continue
-            const fullId = `user-provider:${provider.id}:${modelId}`
+            const fullId = ownerName
+              ? `user-provider:${provider.id}:${ownerName}:${modelId}`
+              : `user-provider:${provider.id}:${modelId}`
             const parsed = parseUserProviderModelId(fullId)
             providerModels.push({
               id: fullId,
@@ -800,7 +803,9 @@ async function loadModels() {
         // Fallback: single model_id
         const modelId = (config.model_id || '').trim()
         if (!modelId) continue
-        const fullId = `user-provider:${provider.id}:${modelId}`
+        const fullId = ownerName
+          ? `user-provider:${provider.id}:${ownerName}:${modelId}`
+          : `user-provider:${provider.id}:${modelId}`
         const parsed = parseUserProviderModelId(fullId)
         providerModels.push({
           id: fullId,
@@ -844,6 +849,12 @@ function getSourceTypeLabel(type) {
     prompt_only: t('generation.wizard.step1.promptOnlySource')
   }
   return labels[type] || type
+}
+
+function formatCostModelName(modelId) {
+  const parsed = parseUserProviderModelId(modelId)
+  if (parsed) return parsed.displayName
+  return modelId
 }
 
 function buildJobConfig() {

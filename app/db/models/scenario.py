@@ -491,6 +491,7 @@ class UserPrompt(db.Model):
     user_id = mapped_column(db.Integer, db.ForeignKey('users.id'))  # Verknüpfung mit einem User
     name = mapped_column(db.String(255), nullable=False)  # Name des Prompts, vom User festgelegt
     content = mapped_column(db.JSON, nullable=False)  # Prompt-Inhalt im JSON-Format
+    rendered_content = mapped_column(db.JSON, nullable=True)  # Blocks with {{var}} as text (reliable for variable substitution)
     created_at = mapped_column(db.DateTime, default=datetime.utcnow)  # Zeitpunkt der Erstellung
     updated_at = mapped_column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)  # Zeitpunkt der letzten Aktualisierung
 

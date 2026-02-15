@@ -1150,6 +1150,7 @@ async function fetchUserProviders() {
     // Expand providers with selected_models into individual entries
     const expanded = []
     for (const provider of raw) {
+      const ownerName = provider.owner_username || provider.shared_by || ''
       const selectedModels = Array.isArray(provider.config?.selected_models)
         ? provider.config.selected_models
         : []
@@ -1157,7 +1158,10 @@ async function fetchUserProviders() {
         for (const modelId of selectedModels) {
           const mid = (modelId || '').trim()
           if (!mid) continue
-          const parsed = parseUserProviderModelId(`user-provider:${provider.id}:${mid}`)
+          const fullId = ownerName
+            ? `user-provider:${provider.id}:${ownerName}:${mid}`
+            : `user-provider:${provider.id}:${mid}`
+          const parsed = parseUserProviderModelId(fullId)
           expanded.push({
             ...provider,
             _key: `${provider.id}:${mid}`,
@@ -1167,9 +1171,12 @@ async function fetchUserProviders() {
         }
       } else {
         const singleModel = (provider.config?.model_id || '').trim()
-        const parsed = singleModel
-          ? parseUserProviderModelId(`user-provider:${provider.id}:${singleModel}`)
+        const fullId = singleModel
+          ? (ownerName
+            ? `user-provider:${provider.id}:${ownerName}:${singleModel}`
+            : `user-provider:${provider.id}:${singleModel}`)
           : null
+        const parsed = fullId ? parseUserProviderModelId(fullId) : null
         expanded.push({
           ...provider,
           _key: String(provider.id),
@@ -1246,7 +1253,10 @@ function isProviderSelectable(provider) {
 function buildProviderEvaluatorId(provider) {
   const modelId = getProviderModelId(provider)
   if (!modelId) return null
-  return `user-provider:${provider.id}:${modelId}`
+  const ownerName = provider.owner_username || provider.shared_by || ''
+  return ownerName
+    ? `user-provider:${provider.id}:${ownerName}:${modelId}`
+    : `user-provider:${provider.id}:${modelId}`
 }
 
 // Get provider icon based on type

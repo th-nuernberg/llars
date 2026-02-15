@@ -92,6 +92,7 @@ export function useGeneration(options = {}) {
 
   /** @type {import('vue').Ref<Object|null>} Cost estimate */
   const costEstimate = ref(null)
+  let socketConnectHandler = null
 
   // Snackbar notifications
   const { showSuccess, showError } = useSnackbar()
@@ -456,6 +457,17 @@ export function useGeneration(options = {}) {
     const socket = getSocket()
     if (!socket) return
 
+    const shouldJoinOverview = autoLoadJobs || watchJobId !== null
+    if (shouldJoinOverview) {
+      socketConnectHandler = () => {
+        socket.emit('generation:join_overview')
+      }
+      if (socket.connected) {
+        socketConnectHandler()
+      }
+      socket.on('connect', socketConnectHandler)
+    }
+
     // Job started
     socket.on('generation:job:started', (data) => {
       if (data.job_id === currentJob.value?.id) {
@@ -539,6 +551,12 @@ export function useGeneration(options = {}) {
   function removeSocketListeners() {
     const socket = getSocket()
     if (!socket) return
+
+    if (socketConnectHandler) {
+      socket.emit('generation:leave_overview')
+      socket.off('connect', socketConnectHandler)
+      socketConnectHandler = null
+    }
 
     socket.off('generation:job:started')
     socket.off('generation:job:progress')

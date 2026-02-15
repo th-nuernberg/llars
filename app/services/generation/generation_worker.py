@@ -46,6 +46,10 @@ from db.models import (
 )
 from llm.openai_utils import extract_message_text
 from services.evaluation import PromptTemplateService
+from services.generation.socket_rooms import (
+    GENERATION_OVERVIEW_ROOM,
+    generation_job_room,
+)
 from services.generation.stream_state import clear_partial_content, set_partial_content
 from services.llm.llm_client_factory import LLMClientFactory
 
@@ -169,7 +173,7 @@ def _decode_yjs_with_ypy(content: list) -> Dict[str, Any]:
             result_blocks[block_id] = block_data
 
         if result_blocks:
-            logger.info(f"Decoded YJS content with y-py: {len(result_blocks)} blocks found")
+            logger.debug(f"Decoded YJS content with y-py: {len(result_blocks)} blocks found")
             return {'blocks': result_blocks}
 
     except Exception as e:
@@ -399,7 +403,7 @@ def _extract_text_from_yjs_binary(content: list) -> Dict[str, Any]:
         if filtered_sequences:
             # Combine all text sequences
             full_text = '\n'.join(filtered_sequences)
-            logger.info(f"Extracted text from YJS binary: {len(full_text)} chars from {len(filtered_sequences)} sequences")
+            logger.debug(f"Extracted text from YJS binary: {len(full_text)} chars from {len(filtered_sequences)} sequences")
             return {
                 'blocks': {
                     'default': {
@@ -776,18 +780,18 @@ class GenerationWorker:
         # Prefer rendered_content (reliable text with {{variables}} from YJS server)
         if user_prompt.rendered_content and isinstance(user_prompt.rendered_content, dict):
             content = user_prompt.rendered_content
-            logger.info(f"[GenWorker] Using rendered_content for UserPrompt {user_prompt.prompt_id}")
+            logger.debug(f"[GenWorker] Using rendered_content for UserPrompt {user_prompt.prompt_id}")
         else:
             content = user_prompt.content
 
         # Handle YJS binary format (list of numbers) - fallback for prompts without rendered_content
         if isinstance(content, list):
-            logger.info(f"Decoding YJS binary content for UserPrompt {user_prompt.prompt_id}")
+            logger.debug(f"Decoding YJS binary content for UserPrompt {user_prompt.prompt_id}")
             content = decode_yjs_content(content)
             if not content:
                 logger.warning(f"Failed to decode YJS content for UserPrompt {user_prompt.prompt_id}")
                 return "", ""
-            logger.info(f"[GenWorker] Decoded YJS content: {list(content.keys()) if isinstance(content, dict) else type(content)}")
+            logger.debug(f"[GenWorker] Decoded YJS content: {list(content.keys()) if isinstance(content, dict) else type(content)}")
 
         if not isinstance(content, dict):
             return "", str(content) if content else ""
@@ -801,7 +805,10 @@ class GenerationWorker:
         for block_id, block_data in blocks.items():
             if isinstance(block_data, dict):
                 block_content = block_data.get('content', '')
-                logger.info(f"[GenWorker] Block '{block_id}': content_len={len(block_content) if block_content else 0}, has_messages={{'{{messages}}' in block_content if block_content else False}}")
+                logger.debug(
+                    f"[GenWorker] Block '{block_id}': content_len={len(block_content) if block_content else 0}, "
+                    "has_messages={{'{{messages}}' in block_content if block_content else False}}"
+                )
 
         # Sort blocks by position
         sorted_blocks = sorted(
@@ -836,8 +843,12 @@ class GenerationWorker:
             var_name = match.group(1)
             value = variables.get(var_name, match.group(0))
             formatted = self._format_variable_value(value)
-            logger.info("[GenWorker] Substituting {{%s}}: value_type=%s, result_len=%d",
-                        var_name, type(value).__name__, len(formatted) if formatted else 0)
+            logger.debug(
+                "[GenWorker] Substituting {{%s}}: value_type=%s, result_len=%d",
+                var_name,
+                type(value).__name__,
+                len(formatted) if formatted else 0,
+            )
             return formatted
 
         return re.sub(pattern, replace, text)
@@ -930,7 +941,7 @@ class GenerationWorker:
             logger.debug("[GenWorker] prompt_variables_json keys: %s", list(output.prompt_variables_json.keys()))
             input_text = output.prompt_variables_json.get('input')
             if input_text:
-                logger.info("[GenWorker] Found input in prompt_variables_json, length=%d", len(input_text))
+                logger.debug("[GenWorker] Found input in prompt_variables_json, length=%d", len(input_text))
                 result["content"] = input_text
 
             # Also extract subject and messages if present (from manual items)
@@ -1058,8 +1069,12 @@ class GenerationWorker:
 
         # Check if streaming is enabled (default: True for real-time updates)
         enable_streaming = self.socketio is not None and output_id is not None
-        logger.info("[GenWorker] Streaming check: socketio=%s, output_id=%s, enabled=%s",
-                   "present" if self.socketio else "None", output_id, enable_streaming)
+        logger.debug(
+            "[GenWorker] Streaming check: socketio=%s, output_id=%s, enabled=%s",
+            "present" if self.socketio else "None",
+            output_id,
+            enable_streaming,
+        )
 
         if enable_streaming:
             # Streaming call
@@ -1098,12 +1113,12 @@ class GenerationWorker:
                         elif hasattr(delta, "reasoning_content") and delta.reasoning_content:
                             token = delta.reasoning_content
                             if not used_reasoning_field:
-                                logger.info("[GenWorker] Using reasoning_content field (reasoning model detected)")
+                                logger.debug("[GenWorker] Using reasoning_content field (reasoning model detected)")
                                 used_reasoning_field = True
                         elif hasattr(delta, "reasoning") and delta.reasoning:
                             token = delta.reasoning
                             if not used_reasoning_field:
-                                logger.info("[GenWorker] Using reasoning field (reasoning model detected)")
+                                logger.debug("[GenWorker] Using reasoning field (reasoning model detected)")
                                 used_reasoning_field = True
 
                         if token:
@@ -1395,14 +1410,26 @@ class GenerationWorker:
         """Emit a Socket.IO event if socketio is available."""
         if self.socketio:
             try:
-                # Emit to all connected clients on default namespace
-                # namespace='/' ensures broadcast to default namespace
-                self.socketio.emit(event, data, namespace='/')
-                # Log token events at debug level to avoid spam, others at info
+                job_id = data.get("job_id") or self.job_id
+                room = generation_job_room(job_id) if job_id else None
+
+                # Stream events to the job room so clients can join in-progress streams.
+                if room:
+                    self.socketio.emit(event, data, namespace='/', room=room)
+
+                # Mirror only job-level events to overview room for list/overview views.
+                if event.startswith("generation:job:"):
+                    self.socketio.emit(event, data, namespace='/', room=GENERATION_OVERVIEW_ROOM)
+
                 if 'token' in event:
-                    logger.debug("[GenWorker] Emitted %s", event)
+                    logger.debug("[GenWorker] Emitted %s to %s", event, room or "none")
                 else:
-                    logger.info("[GenWorker] Emitted event %s: %s", event, data)
+                    logger.info(
+                        "[GenWorker] Emitted event %s to room=%s%s",
+                        event,
+                        room or "none",
+                        " + overview" if event.startswith("generation:job:") else "",
+                    )
             except Exception as e:
                 logger.warning("[GenWorker] Failed to emit event %s: %s", event, e)
         else:

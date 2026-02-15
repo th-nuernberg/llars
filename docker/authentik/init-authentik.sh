@@ -109,82 +109,6 @@ else:
     print('  Stage bindings created')
 "
 
-echo "[2b/7] Ensuring provider authorization flow..."
-
-ak_shell "
-from authentik.flows.models import Flow, FlowStageBinding, FlowDesignation
-from django.db.models.fields import NOT_PROVIDED
-try:
-    from authentik.stages.consent.models import ConsentStage
-except Exception:
-    ConsentStage = None
-
-def ensure_authorization_flow():
-    flow = Flow.objects.filter(slug='default-provider-authorization-implicit-consent').first()
-    if not flow:
-        flow = Flow.objects.filter(slug='default-provider-authorization-explicit-consent').first()
-    if flow:
-        print(f'  Found default authorization flow: {flow.slug}')
-        return flow
-
-    flow = Flow.objects.filter(slug='llars-provider-authorization').first()
-    if flow:
-        print('  Using existing LLARS authorization flow')
-        return flow
-
-    flow = Flow.objects.filter(designation=FlowDesignation.AUTHORIZATION).first()
-    if flow:
-        print(f'  Using existing authorization flow: {flow.slug}')
-        return flow
-
-    flow = Flow.objects.create(
-        slug='llars-provider-authorization',
-        name='LLARS Provider Authorization',
-        designation=FlowDesignation.AUTHORIZATION,
-        title='LLARS Authorization'
-    )
-    print('  Created LLARS authorization flow')
-
-    consent_stage = None
-    if ConsentStage:
-        consent_stage = ConsentStage.objects.filter(name='llars-provider-consent').first()
-        if not consent_stage:
-            kwargs = {'name': 'llars-provider-consent'}
-            try:
-                mode_field = ConsentStage._meta.get_field('mode')
-                mode_value = mode_field.default
-                if mode_value is NOT_PROVIDED:
-                    mode_value = None
-                if callable(mode_value):
-                    mode_value = mode_value()
-                if mode_value is None and getattr(mode_field, 'choices', None):
-                    mode_value = mode_field.choices[0][0]
-                if mode_value is not None:
-                    kwargs['mode'] = mode_value
-            except Exception as exc:
-                print(f'  Could not determine consent stage mode: {exc}')
-            try:
-                consent_stage = ConsentStage.objects.create(**kwargs)
-                print('  Created consent stage')
-            except Exception as exc:
-                print(f'  Failed to create consent stage: {exc}')
-                consent_stage = None
-
-    if consent_stage:
-        FlowStageBinding.objects.get_or_create(
-            target=flow,
-            stage=consent_stage,
-            defaults={'order': 10}
-        )
-        print('  Bound consent stage to authorization flow')
-    else:
-        print('  Authorization flow has no consent stage bound')
-
-    return flow
-
-ensure_authorization_flow()
-"
-
 echo "[3/7] Creating OAuth2 provider 'llars-backend'..."
 
 ak_shell "
@@ -192,68 +116,95 @@ from authentik.providers.oauth2.models import OAuth2Provider, ScopeMapping
 from authentik.crypto.models import CertificateKeyPair
 from authentik.flows.models import Flow, FlowDesignation
 from authentik.core.models import Application
+import time
 
-# Check if provider already exists
-existing = OAuth2Provider.objects.filter(name='llars-backend').first()
-if existing:
-    print('  OAuth2 provider already exists, skipping creation')
+def get_backend_auth_flow():
+    # Backend login is server-to-server and cannot click consent.
+    # Always prefer an implicit/non-interactive authorization flow.
+    flow = Flow.objects.filter(slug='default-provider-authorization-implicit-consent').first()
+    if flow:
+        return flow
+
+    flow = Flow.objects.filter(slug='llars-provider-authorization-implicit').first()
+    if flow:
+        return flow
+
+    flow = Flow.objects.create(
+        slug='llars-provider-authorization-implicit',
+        name='LLARS Provider Authorization (Implicit)',
+        designation=FlowDesignation.AUTHORIZATION,
+        title='LLARS Authorization'
+    )
+    return flow
+
+def get_default_scopes():
+    scopes = ScopeMapping.objects.none()
+    # Scope mappings may not be immediately available after Authentik bootstrap.
+    for _ in range(15):
+        scopes = ScopeMapping.objects.filter(managed__startswith='goauthentik.io/providers/oauth2/scope-')
+        if scopes.exists():
+            return scopes
+        time.sleep(1)
+    return scopes
+
+cert = CertificateKeyPair.objects.filter(name__icontains='Self-signed').first()
+if not cert:
+    cert = CertificateKeyPair.objects.first()
+if cert:
+    print(f'  Using certificate: {cert.name}')
 else:
-    # Get signing certificate (self-signed)
-    cert = CertificateKeyPair.objects.filter(name__icontains='Self-signed').first()
-    if not cert:
-        cert = CertificateKeyPair.objects.first()
-    if cert:
-        print(f'  Using certificate: {cert.name}')
-    else:
-        print('  Warning: No certificate found!')
+    print('  Warning: No certificate found!')
 
-    # Get authorization flow (implicit consent = no extra click)
-    auth_flow = Flow.objects.filter(slug='default-provider-authorization-implicit-consent').first()
-    if not auth_flow:
-        auth_flow = Flow.objects.filter(slug='default-provider-authorization-explicit-consent').first()
-    if not auth_flow:
-        auth_flow = Flow.objects.filter(slug='llars-provider-authorization').first()
-    if not auth_flow:
-        auth_flow = Flow.objects.filter(designation=FlowDesignation.AUTHORIZATION).first()
-    if auth_flow:
-        print(f'  Using authorization flow: {auth_flow.slug}')
+auth_flow = get_backend_auth_flow()
+print(f'  Using backend authorization flow: {auth_flow.slug}')
 
-    # Create provider with authorization flow
-    if not auth_flow:
-        print('  ERROR: No authorization flow found! Login will not work.')
-        raise Exception('No authorization flow found')
+scopes = get_default_scopes()
+if not scopes.exists():
+    raise Exception('No OAuth2 scope mappings found for llars-backend')
 
+desired_redirects = [
+    {'matching_mode': 'strict', 'url': 'http://authentik-server:9000/'},
+]
+
+provider = OAuth2Provider.objects.filter(name='llars-backend').first()
+if provider:
+    provider.client_id = '$BACKEND_CLIENT_ID'
+    provider.client_secret = '$BACKEND_CLIENT_SECRET'
+    provider.client_type = 'confidential'
+    provider.authorization_flow = auth_flow
+    provider.signing_key = cert
+    provider._redirect_uris = desired_redirects
+    provider.save()
+    print('  OAuth2 provider already exists, updated configuration')
+else:
     provider = OAuth2Provider.objects.create(
         name='llars-backend',
         client_id='$BACKEND_CLIENT_ID',
         client_secret='$BACKEND_CLIENT_SECRET',
         client_type='confidential',
         authorization_flow=auth_flow,
-        signing_key=cert
+        signing_key=cert,
+        _redirect_uris=desired_redirects
     )
     print(f'  Created provider: {provider.name}')
 
-    # Add scope mappings
-    scopes = ScopeMapping.objects.filter(managed__startswith='goauthentik.io/providers/oauth2/scope-')
-    provider.property_mappings.set(scopes)
-    provider.save()
-    print(f'  Added {scopes.count()} scope mappings')
+provider.property_mappings.set(scopes)
+provider.save()
+print(f'  Added {scopes.count()} scope mappings')
 
-    # Create application linked to provider
-    app, created = Application.objects.get_or_create(
-        slug='llars-backend',
-        defaults={
-            'name': 'LLARS Backend',
-            'provider': provider
-        }
-    )
-    if created:
-        print(f'  Created application: {app.slug}')
-    else:
-        # Link existing app to new provider
-        app.provider = provider
-        app.save()
-        print(f'  Updated application: {app.slug}')
+app, created = Application.objects.get_or_create(
+    slug='llars-backend',
+    defaults={
+        'name': 'LLARS Backend',
+        'provider': provider
+    }
+)
+if created:
+    print(f'  Created application: {app.slug}')
+else:
+    app.provider = provider
+    app.save()
+    print(f'  Updated application: {app.slug}')
 "
 
 echo "[4/7] Creating OAuth2 provider 'llars-matomo'..."
@@ -274,8 +225,6 @@ if cert:
 auth_flow = Flow.objects.filter(slug='default-provider-authorization-implicit-consent').first()
 if not auth_flow:
     auth_flow = Flow.objects.filter(slug='default-provider-authorization-explicit-consent').first()
-if not auth_flow:
-    auth_flow = Flow.objects.filter(slug='llars-provider-authorization').first()
 if not auth_flow:
     auth_flow = Flow.objects.filter(designation=FlowDesignation.AUTHORIZATION).first()
 if not auth_flow:
@@ -539,25 +488,19 @@ echo "  Authentik Configuration Complete!"
 echo "  Mode: $PROJECT_STATE"
 echo "======================================="
 echo ""
-echo "Login credentials:"
-echo "  Username: admin"
-echo "  Password: $ADMIN_PASSWORD"
+echo "Seeded login accounts:"
+echo "  Username: admin (password from LLARS_ADMIN_PASSWORD env var)"
 if [ "$PROJECT_STATE" = "development" ]; then
 echo ""
-echo "  Username: researcher"
-echo "  Password: $ADMIN_PASSWORD"
+echo "  Username: researcher (password from LLARS_ADMIN_PASSWORD env var)"
 echo ""
-echo "  Username: evaluator"
-echo "  Password: $ADMIN_PASSWORD"
+echo "  Username: evaluator (password from LLARS_ADMIN_PASSWORD env var)"
 echo ""
-echo "  Username: chatbot_manager"
-echo "  Password: $ADMIN_PASSWORD"
+echo "  Username: chatbot_manager (password from LLARS_ADMIN_PASSWORD env var)"
 echo ""
-echo "  Username: ijcai_reviewer_1"
-echo "  Password: $IJCAI_REVIEWER_PASSWORD"
+echo "  Username: ijcai_reviewer_1 (password from IJCAI_REVIEWER_PASSWORD env var)"
 echo ""
-echo "  Username: ijcai_reviewer_2"
-echo "  Password: $IJCAI_REVIEWER_PASSWORD"
+echo "  Username: ijcai_reviewer_2 (password from IJCAI_REVIEWER_PASSWORD env var)"
 fi
 echo ""
 echo "Authentik Admin UI: http://localhost:55095"

@@ -230,28 +230,22 @@ def register_chat_events(socketio, chat_manager):
         temperature = data.get('temperature', 0.15)
         max_tokens = data.get('maxTokens', 4096)
 
-        if model:
-            db_model = LLMModel.get_by_model_id(str(model).strip())
-            if not db_model or not db_model.is_active or db_model.model_type != LLMModel.MODEL_TYPE_LLM:
-                model = None
-
-        if not model:
-            model = LLMModel.get_default_model_id(model_type=LLMModel.MODEL_TYPE_LLM)
-            if not model:
-                logging.error("No default LLM model configured in llm_models")
-                emit(
-                    "test_prompt_response",
-                    {"content": "Fehler: Kein Standard-LLM-Modell konfiguriert. Bitte kontaktieren Sie den Administrator.", "complete": True},
-                    room=client_id
-                )
-                return
-
         # Validate parameters
         temperature = max(0.0, min(1.0, float(temperature)))
         max_tokens = max(100, min(8192, int(max_tokens)))
 
-        # Resolve client + effective API model ID (strips Global/ prefix, resolves user-provider)
-        client, api_model_id = LLMClientFactory.resolve_client_and_model_id(model)
+        # Single cached call: validates model, falls back to default, resolves client.
+        # Avoids 4-6 redundant DB queries that previously ran on every request.
+        # User-provider models (user-provider:<id>:...) keep their unique API keys.
+        client, api_model_id = LLMClientFactory.resolve_for_chat(model)
+        if not client:
+            logging.error("No default LLM model configured in llm_models")
+            emit(
+                "test_prompt_response",
+                {"content": "Fehler: Kein Standard-LLM-Modell konfiguriert. Bitte kontaktieren Sie den Administrator.", "complete": True},
+                room=client_id
+            )
+            return
         logging.info(f"handle_test_prompt_stream: model={model}, api_model={api_model_id}, temp={temperature}, max_tokens={max_tokens}")
 
         try:

@@ -58,6 +58,11 @@ class LLMClientFactory:
     # and TCP connection setup. Keyed by a stable identifier per provider.
     _client_cache: dict[str, OpenAI] = {}
 
+    # Model validation cache: avoids repeated DB queries for model
+    # validation (is_active, model_type) and default model fallback.
+    # Cleared together with _client_cache via clear_cache().
+    _validated_model_cache: dict[str, Optional[str]] = {}
+
     @classmethod
     def _get_or_create_client(cls, cache_key: str, factory_fn) -> OpenAI:
         """Get a cached client or create one via factory_fn."""
@@ -69,8 +74,9 @@ class LLMClientFactory:
 
     @classmethod
     def clear_cache(cls):
-        """Clear the client cache (e.g. after provider config changes)."""
+        """Clear all caches (e.g. after provider config changes)."""
         cls._client_cache.clear()
+        cls._validated_model_cache.clear()
 
     @staticmethod
     def _parse_user_provider_model_id(model_id: Optional[str]) -> tuple[Optional[int], Optional[str]]:
@@ -185,6 +191,58 @@ class LLMClientFactory:
             client = LLMClientFactory.get_client_for_model(model_id)
             LLMClientFactory._client_cache[cache_key] = client
         return client, effective_id
+
+    @classmethod
+    def resolve_for_chat(cls, model_id: Optional[str]):
+        """
+        Validate model for chat, fall back to default, and resolve client.
+
+        Combines model validation, default fallback, and client resolution
+        in a single cached call.  Avoids the 4-6 redundant DB queries that
+        previously happened on every prompt-test or chat request.
+
+        User-provider models (user-provider:<id>:...) are passed through
+        without DB validation — they carry a unique provider_id so different
+        users' API keys are never mixed.
+
+        Returns:
+            (client, api_model_id) or (None, None) if no model available.
+        """
+        validated = cls._get_validated_chat_model(model_id)
+        if not validated:
+            return None, None
+        return cls.resolve_client_and_model_id(validated)
+
+    @classmethod
+    def _get_validated_chat_model(cls, model_id: Optional[str]) -> Optional[str]:
+        """Validate model_id for chat/generation use. Falls back to default. Cached."""
+        # User-provider models: unique per provider_id, skip DB validation
+        if model_id and isinstance(model_id, str) and model_id.startswith(USER_PROVIDER_PREFIX):
+            return model_id
+
+        # Check validation cache for this specific model
+        if model_id:
+            cache_key = f"v:{model_id}"
+            if cache_key in cls._validated_model_cache:
+                cached = cls._validated_model_cache[cache_key]
+                if cached is not None:
+                    return cached
+                # cached is None → invalid model, fall through to default
+            else:
+                db_model = LLMModel.get_by_model_id(str(model_id).strip())
+                if db_model and db_model.is_active and db_model.model_type == LLMModel.MODEL_TYPE_LLM:
+                    cls._validated_model_cache[cache_key] = model_id
+                    return model_id
+                cls._validated_model_cache[cache_key] = None  # mark invalid
+
+        # Fall back to default LLM model (cached)
+        default_key = "_default_chat"
+        if default_key in cls._validated_model_cache:
+            return cls._validated_model_cache[default_key]
+
+        default_id = LLMModel.get_default_model_id(model_type=LLMModel.MODEL_TYPE_LLM)
+        cls._validated_model_cache[default_key] = default_id
+        return default_id
 
     @staticmethod
     def get_default_model_id() -> Optional[str]:

@@ -1,5 +1,6 @@
 # Build output directory
 out/
+.DS_Store
 
 # LaTeX auxiliary files (in case they end up in root)
 *.aux

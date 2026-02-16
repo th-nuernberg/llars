@@ -240,12 +240,13 @@ Prompts are exportable as JSON and directly available in batch generation, where
 
 \subsection{Batch Generation}
 
-While the prompt editor supports rapid single-example testing, batch generation validates whether a prompt generalizes across diverse inputs: users select prompts, models and a data source to produce the full combination matrix.
-A generation matrix previews all resulting combinations with cost estimates; optional budget caps pause jobs that exceed a threshold.
-A wizard offers three data-source modes: upload (CSV/JSON columns map to template variables), previous generation (reuse data from a completed batch to test new prompts or models on the same dataset) and prompt only (generate without source data, filling variables from sample values).
-For example, 50~counselling threads\,$\times$\,two prompts\,$\times$\,two models yield 200~outputs.
+While the prompt editor supports rapid single-example testing, a single example cannot validate whether a prompt generalizes across diverse inputs.
+Batch generation addresses this: users select from available prompts---self-authored or shared by collaborators---and any registered model to apply to their data, producing the Cartesian product of prompts\,$\times$\,models\,$\times$\,data items.
+A generation matrix previews all resulting combinations and estimates cost based on model pricing and projected token counts; optional budget caps pause jobs that exceed a threshold.
+A wizard offers three data-source modes: upload (CSV/JSON columns map to the prompt's template variables), previous generation (reuse data from a completed batch to test new prompts or models on the same dataset) and prompt only (generate without source data, filling variables from sample values).
+For example, 50~counselling email threads combined with two prompts and two models produce 50\,$\times$\,2\,$\times$\,2\,=\,200~outputs.
 
-Every output records its full provenance---source item, prompt version, model, parameters, token count and cost---exportable as CSV or JSON.
+Results stream in real time and every output records its full provenance---source item, prompt version, model, parameters, token count and cost---exportable as CSV or JSON.
 Evaluators see only the generated text without any indication of which model or prompt produced it; completed batches transfer into evaluation with a single click, preserving all attribution for downstream provenance analysis.
 
 \subsection{Evaluation}
@@ -286,7 +287,6 @@ By unifying prompt engineering, batch generation and evaluation in a single open
 While our current deployments focus on online counselling, the platform is domain-agnostic and applicable to any text-based LLM evaluation task.
 Unlike existing tools that address individual stages (Table~\ref{tab:comparison}), LLARS lets prompts flow into generation, outputs into evaluation, and provenance traces results back to their source---all within a shared workspace accessible to domain experts and developers alike.
 Interviews confirmed that this integration eliminates the ``translation work'' between disciplines and enables domain experts to contribute directly at every stage.
-Future work targets three directions: extending the pipeline to multimodal data, evaluator skill modelling that weights agreement metrics by demonstrated expertise, and integrating retrieval-augmented generation so that RAG pipelines can be developed and evaluated end-to-end.
 % TODO: Uncomment and update URLs before submission
 %\noindent\textbf{Repository:} \url{https://github.com/llars-project/llars}\\
 %\textbf{Documentation:} \url{https://llars-project.github.io}

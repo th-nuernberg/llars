@@ -3838,7 +3838,7 @@ class Browser:
             if existing_text and text_to_type:
                 duplicate_markers = [
                     "Content: {{content}}",
-                    "The data below is provided as a subject line followed by the email thread content from a counselling session."
+                    "The data above is provided as a subject line followed by the email thread content from a counselling session."
                 ]
                 for marker in duplicate_markers:
                     if marker in existing_text and marker in text_to_type:

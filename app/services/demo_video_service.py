@@ -8,6 +8,7 @@ Used by both CLI script (scripts/demo_video_manage.py) and API routes.
 import logging
 from collections import Counter
 from datetime import datetime, timedelta
+from types import SimpleNamespace
 
 logger = logging.getLogger('demo_video_service')
 
@@ -16,7 +17,7 @@ logger = logging.getLogger('demo_video_service')
 # ---------------------------------------------------------------------------
 PRESEED_PROMPT_NAME = "Structured Situation Analysis"
 PRESEED_JOB_NAME = "Counselling Situation Extraction"
-LIVE_PROMPT_NAME = "Situation Summary"
+LIVE_PROMPT_NAME = "Live Situation Summary"
 LIVE_JOB_NAME = "Live Collab Batch Job"
 EVAL_SCENARIO_NAME = "IJCAI Counselling Evaluation"
 
@@ -132,52 +133,48 @@ def seed():
 
     collab_user = User.query.filter_by(username=COLLAB_USER).first()
 
-    # --- 1. Ensure demo prompts exist (pre-seed + live/collab) ---
-    prompts_by_name = {}
-    prompt_specs = [
-        (PRESEED_PROMPT_NAME, _build_preseed_prompt_content),
-        (LIVE_PROMPT_NAME, _build_eval_prompt_content),
-    ]
-
-    for prompt_name, prompt_builder in prompt_specs:
-        target_content = prompt_builder()
-        prompt = UserPrompt.query.filter_by(
+    # --- 1. Ensure setup prompt exists (live prompt is intentionally created during recording) ---
+    preseed_content = _build_preseed_prompt_content()
+    preseed = UserPrompt.query.filter_by(
+        user_id=demo_user.id,
+        name=PRESEED_PROMPT_NAME
+    ).first()
+    if not preseed:
+        preseed = UserPrompt(
             user_id=demo_user.id,
-            name=prompt_name
+            name=PRESEED_PROMPT_NAME,
+            content=preseed_content
+        )
+        _db.session.add(preseed)
+        _db.session.flush()
+        actions.append(f"Created prompt '{PRESEED_PROMPT_NAME}' (id={preseed.prompt_id})")
+    elif (preseed.content or {}) != preseed_content:
+        preseed.content = preseed_content
+        actions.append(
+            f"Updated prompt '{PRESEED_PROMPT_NAME}' (id={preseed.prompt_id}) to current demo template"
+        )
+    else:
+        actions.append(f"Prompt '{PRESEED_PROMPT_NAME}' already exists (id={preseed.prompt_id})")
+
+    if collab_user:
+        existing_share = UserPromptShare.query.filter_by(
+            prompt_id=preseed.prompt_id,
+            shared_with_user_id=collab_user.id
         ).first()
-        if not prompt:
-            prompt = UserPrompt(
-                user_id=demo_user.id,
-                name=prompt_name,
-                content=target_content
-            )
-            _db.session.add(prompt)
-            _db.session.flush()
-            actions.append(f"Created prompt '{prompt_name}' (id={prompt.prompt_id})")
-        elif (prompt.content or {}) != target_content:
-            prompt.content = target_content
-            actions.append(f"Updated prompt '{prompt_name}' (id={prompt.prompt_id}) to current demo template")
-        else:
-            actions.append(f"Prompt '{prompt_name}' already exists (id={prompt.prompt_id})")
-
-        prompts_by_name[prompt_name] = prompt
-
-        if collab_user:
-            existing_share = UserPromptShare.query.filter_by(
-                prompt_id=prompt.prompt_id,
+        if not existing_share:
+            _db.session.add(UserPromptShare(
+                prompt_id=preseed.prompt_id,
                 shared_with_user_id=collab_user.id
-            ).first()
-            if not existing_share:
-                _db.session.add(UserPromptShare(
-                    prompt_id=prompt.prompt_id,
-                    shared_with_user_id=collab_user.id
-                ))
-                actions.append(f"Shared '{prompt_name}' with {COLLAB_USER}")
+            ))
+            actions.append(f"Shared '{PRESEED_PROMPT_NAME}' with {COLLAB_USER}")
 
     _db.session.commit()
 
-    preseed = prompts_by_name[PRESEED_PROMPT_NAME]
-    live_prompt = prompts_by_name[LIVE_PROMPT_NAME]
+    # Keep the live prompt template in-memory for seeded outputs only.
+    live_prompt = SimpleNamespace(content=_build_eval_prompt_content())
+    actions.append(
+        f"Skipped pre-seeding prompt '{LIVE_PROMPT_NAME}' (created live during recording)"
+    )
 
     # --- 2. Create completed generation job ---
     existing_job = GenerationJob.query.filter_by(
@@ -279,10 +276,10 @@ def seed():
 def cleanup(include_preseed=False):
     """Delete live-recorded data. If include_preseed=True, also delete pre-seed data."""
     from db import db as _db
-    from db.tables import User, UserPrompt
+    from db.tables import User
     from db.models.generation import GenerationJob, GeneratedOutput
     from db.models.scenario import (
-        RatingScenarios, UserPromptShare, UserFeatureRanking,
+        RatingScenarios, UserFeatureRanking,
         Feature, EvaluationItem, ScenarioItems, Message,
         UserConsultingCategorySelection, UserMailHistoryRating,
         ItemDimensionRating, ItemLabelingEvaluation, UserMessageRating,
@@ -301,14 +298,11 @@ def cleanup(include_preseed=False):
             _db.session.delete(up)
             deleted.append(f"User provider '{up.name}' (type={up.provider_type})")
 
-    # --- 1. Delete live prompt "Situation Summary" (any owner) ---
-    live_prompts = UserPrompt.query.filter_by(name=LIVE_PROMPT_NAME).all()
-    for lp in live_prompts:
-        shares_deleted = UserPromptShare.query.filter_by(
-            prompt_id=lp.prompt_id
-        ).delete()
-        _db.session.delete(lp)
-        deleted.append(f"Prompt '{LIVE_PROMPT_NAME}' owner_id={lp.user_id} (+{shares_deleted} shares)")
+    # --- 1. Delete live prompt (any owner, normalized/prefix) ---
+    for info in _delete_prompts_by_name_prefix(_db, LIVE_PROMPT_NAME):
+        deleted.append(
+            f"Prompt '{info['name']}' owner_id={info['owner_id']} (+{info['shares_deleted']} shares)"
+        )
 
     # --- 2. Delete live job ---
     live_job = GenerationJob.query.filter_by(name=LIVE_JOB_NAME).first()
@@ -325,13 +319,10 @@ def cleanup(include_preseed=False):
             _db.session.delete(preseed_job)
             deleted.append(f"Job '{PRESEED_JOB_NAME}' (+{outputs_deleted} outputs)")
 
-        preseed_prompts = UserPrompt.query.filter_by(name=PRESEED_PROMPT_NAME).all()
-        for pp in preseed_prompts:
-            shares_deleted = UserPromptShare.query.filter_by(
-                prompt_id=pp.prompt_id
-            ).delete()
-            _db.session.delete(pp)
-            deleted.append(f"Prompt '{PRESEED_PROMPT_NAME}' owner_id={pp.user_id} (+{shares_deleted} shares)")
+        for info in _delete_prompts_by_name_prefix(_db, PRESEED_PROMPT_NAME):
+            deleted.append(
+                f"Prompt '{info['name']}' owner_id={info['owner_id']} (+{info['shares_deleted']} shares)"
+            )
 
     # --- 4. Delete evaluation scenario and its items/features/rankings ---
     # Search by current name AND legacy name (in case of rename between deployments)
@@ -458,6 +449,12 @@ def reset():
     """Full reset: cleanup (including pre-seed) + seed."""
     cleanup_result = cleanup(include_preseed=True)
     seed_result = seed()
+    # Final safeguard: ensure the live prompt is absent after reset so it can be
+    # created during recording.
+    live_prompt_cleanup = cleanup_live_prompt_only()
+    if live_prompt_cleanup.get('deleted'):
+        for entry in live_prompt_cleanup['deleted']:
+            seed_result.setdefault('actions', []).append(f"Post-seed cleanup: {entry}")
     return {
         'success': seed_result.get('success', False),
         'cleanup': cleanup_result,
@@ -465,9 +462,56 @@ def reset():
     }
 
 
+def cleanup_live_prompt_only():
+    """Delete only live prompt variants, keeping all seeded baseline data."""
+    from db import db as _db
+
+    deleted = []
+    for info in _delete_prompts_by_name_prefix(_db, LIVE_PROMPT_NAME):
+        deleted.append(
+            f"Prompt '{info['name']}' owner_id={info['owner_id']} (+{info['shares_deleted']} shares)"
+        )
+
+    _db.session.commit()
+    return {'success': True, 'deleted': deleted}
+
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
+def _delete_prompts_by_name_prefix(db_handle, prompt_name_prefix):
+    """
+    Delete prompts by normalized name-prefix match, including shares.
+
+    Uses LOWER(TRIM(name)) LIKE '<prefix>%' to catch case/whitespace variants.
+    """
+    from sqlalchemy import func
+    from db.tables import UserPrompt
+    from db.models.scenario import UserPromptShare
+
+    normalized_prefix = str(prompt_name_prefix or "").strip().lower()
+    if not normalized_prefix:
+        return []
+
+    prompts = UserPrompt.query.filter(
+        func.lower(func.trim(UserPrompt.name)).like(f"{normalized_prefix}%")
+    ).all()
+
+    deleted = []
+    for prompt in prompts:
+        shares_deleted = UserPromptShare.query.filter_by(
+            prompt_id=prompt.prompt_id
+        ).delete()
+        deleted.append({
+            'name': prompt.name,
+            'owner_id': prompt.user_id,
+            'shares_deleted': shares_deleted,
+        })
+        db_handle.session.delete(prompt)
+
+    return deleted
+
 
 def _build_preseed_prompt_content():
     """Pre-seed prompt: structured situation analysis with numbered list and references.

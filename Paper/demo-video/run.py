@@ -294,7 +294,7 @@ ELEMENT_MAP = {
     "Prompt Item": ".prompts-selection .selection-item",
     "First Prompt": ".prompts-selection .selection-item:first-child",
     "Structured Situation Analysis Item": ".prompts-selection .selection-item:contains('Structured Situation Analysis'), .selection-item:contains('Structured Situation Analysis'), .item-name:contains('Structured Situation Analysis'), .prompts-selection .selection-item:first-child",
-    "Situation Summary Item": ".prompts-selection .selection-item:contains('Situation Summary'), .selection-item:contains('Situation Summary'), .item-name:contains('Situation Summary'), .prompts-selection .selection-item:nth-child(2)",
+    "Situation Summary Item": ".prompts-selection .selection-item:contains('Live Situation Summary'), .selection-item:contains('Live Situation Summary'), .item-name:contains('Live Situation Summary'), .prompts-selection .selection-item:nth-child(2)",
 
     # Step 3: Models (click to select) - in wizard overlay
     "Model Item": ".models-selection .selection-item",
@@ -487,7 +487,7 @@ ELEMENT_MAP = {
 
     # Prompt Engineering - Existing Prompts (seeded by seed_demo_video_data)
     "Structured Situation Analysis": ".prompt-card:contains('Structured Situation Analysis'), .v-card:contains('Structured Situation Analysis'), .prompt-list-item:contains('Structured Situation Analysis')",
-    "Situation Summary": ".prompt-card:contains('Situation Summary'), .v-card:contains('Situation Summary'), .prompt-list-item:contains('Situation Summary')",
+    "Situation Summary": ".prompt-card:contains('Live Situation Summary'), .v-card:contains('Live Situation Summary'), .prompt-list-item:contains('Live Situation Summary')",
 
     # Prompt Engineering - Collaboration
     "Collab Indicator": ".collab-indicator, .user-presence, .collaboration-status, .yjs-status, .online-users",
@@ -1843,7 +1843,7 @@ class Browser:
                 deleted = cleanup.get('deleted', [])
                 actions = seed.get('actions', [])
                 legacy_live_prompt_seeded = any(
-                    ("Situation Summary" in str(a)) and (
+                    ("Live Situation Summary" in str(a) or "Situation Summary" in str(a)) and (
                         "Created prompt" in str(a)
                         or "Updated prompt" in str(a)
                         or "already exists" in str(a)
@@ -1885,7 +1885,7 @@ class Browser:
 
                 if legacy_live_prompt_seeded and not cleanup_live_supported:
                     print("      ❌ Backend verwendet alte Demo-Reset-Logik:")
-                    print("         'Situation Summary' wird bereits im Setup erzeugt.")
+                    print("         'Live Situation Summary' wird bereits im Setup erzeugt.")
                     print("         Bitte Backend deployen/restarten, damit Live-Anlage wieder funktioniert.")
 
                 print("   ✓ Demo-Daten erfolgreich zurückgesetzt")

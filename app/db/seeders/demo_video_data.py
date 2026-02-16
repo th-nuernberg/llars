@@ -11,6 +11,7 @@ for actual LLM generation during recording.
 """
 import logging
 from datetime import datetime, timedelta
+from types import SimpleNamespace
 
 from db.database import db
 from db.tables import User, UserPrompt
@@ -188,6 +189,37 @@ JOB_TOTAL_TOKENS = 41162
 JOB_TOTAL_COST_USD = 0.0027
 
 
+def _build_live_prompt_content():
+    """Build content for the live-created prompt without persisting it."""
+    return {
+        "blocks": {
+            "Role Definition": {
+                "content": (
+                    "You are a counselling assistant who helps professionals extract key facts "
+                    "from client communications in online psychosocial counselling."
+                ),
+                "position": 0
+            },
+            "Task Explanation": {
+                "content": (
+                    "Read the email thread and write a brief situation overview in 2-3 sentences. "
+                    "Focus on the client's living situation, family, health, and main concerns. "
+                    "Write in third person, present tense."
+                ),
+                "position": 1
+            },
+            "Data Format Explanation": {
+                "content": (
+                    "Subject: {{subject}}\n\n"
+                    "Email thread:\n"
+                    "{{content}}\n\n"
+                    "Write a plain text paragraph, no bullet points."
+                ),
+                "position": 2
+            }
+        }
+    }
+
 
 def seed_demo_video_prompts():
     """
@@ -249,21 +281,6 @@ def seed_demo_video_prompts():
                         "Subject: {{subject}}\n\n"
                         "Email thread: {{content}}\n\n"
                         "Return only the numbered list. No additional explanations."
-                    )
-                )
-            }
-        },
-        {
-            "name": "Situation Summary",
-            "content": {
-                "blocks": build_blocks(
-                    role_text="You are a counselling assistant who helps professionals extract key facts from client communications in online psychosocial counselling.",
-                    task_text="Read the email thread and write a brief situation overview in 2-3 sentences. Focus on the client's living situation, family, health, and main concerns. Write in third person, present tense.",
-                    data_text=(
-                        "Subject: {{subject}}\n\n"
-                        "Email thread:\n"
-                        "{{content}}\n\n"
-                        "Write a plain text paragraph, no bullet points."
                     )
                 )
             }
@@ -331,19 +348,20 @@ def seed_demo_video_generation_job():
         user_id=admin_user.id,
         name="Structured Situation Analysis"
     ).first()
-    prompt_summary = UserPrompt.query.filter_by(
-        user_id=admin_user.id,
-        name="Situation Summary"
-    ).first()
-    if not prompt_structured or not prompt_summary:
-        logger.warning("Demo prompts not found, creating them first...")
+    if not prompt_structured:
+        logger.warning("Structured demo prompt not found, creating it first...")
         prompts = seed_demo_video_prompts()
         prompts_by_name = {p.name: p for p in prompts}
         prompt_structured = prompt_structured or prompts_by_name.get("Structured Situation Analysis")
-        prompt_summary = prompt_summary or prompts_by_name.get("Situation Summary")
-        if not prompt_structured or not prompt_summary:
-            logger.error("Failed to create demo prompts")
+        if not prompt_structured:
+            logger.error("Failed to create structured demo prompt")
             return None
+
+    # Keep Live Situation Summary as a live-only prompt (do not persist in user_prompts).
+    prompt_summary = SimpleNamespace(
+        name="Live Situation Summary",
+        content=_build_live_prompt_content()
+    )
 
     # Use embedded counselling cases
     cases = COUNSELLING_CASES

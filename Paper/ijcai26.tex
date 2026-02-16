@@ -24,6 +24,7 @@
 \usepackage{threeparttable}
 \usepackage{pifont}
 \usepackage[nointegrals]{wasysym}
+\usepackage[shortcuts]{extdash}
 
 \usetikzlibrary{shapes.geometric, arrows.meta, positioning, fit, backgrounds, calc}
 
@@ -77,8 +78,8 @@ Interviews with six domain experts and three developers in online counselling co
 \definecolor{clrEval}{HTML}{D1BC8A}
 \definecolor{clrOutcome}{HTML}{E8A087}
 
-Organizations building LLM-based assistants for sensitive domains~\cite{chen2024critical,ling2025domain}---online counselling~\cite{stade2024behavioral}, legal analysis~\cite{katz2024bar}, medical documentation~\cite{vanveen2024clinical}---must write effective prompts, select suitable models and rigorously evaluate outputs, requiring both domain expertise and technical skill~\cite{zamfirescu2023johnny,schulhoff2024prompt}.
-Public benchmarks rarely transfer to domain-specific tasks; practitioners must test models on their own data to find the smallest---and most cost-effective---option that still meets quality requirements, especially when replacing a model in a running system.
+Organizations building LLM-based assistants for sensitive domains~\cite{chen2024critical,ling2025domain}\--online counselling~\cite{stade2024behavioral}, legal analysis~\cite{katz2024bar}, medical documentation~\cite{vanveen2024clinical}\--must write effective prompts, select suitable models and rigorously evaluate outputs, requiring both domain expertise and technical skill~\cite{zamfirescu2023johnny,schulhoff2024prompt}.
+Public benchmarks rarely transfer to domain-specific tasks; practitioners must test models on their own data to find the smallest\--and most cost-effective\--option that still meets quality requirements, especially when replacing a model in a running system.
 Yet domain experts and developers typically work in isolation: prompts are iterated in shared documents without version control and no single tool covers the full cycle from prompt development through systematic evaluation.
 
 \begin{figure}[t]
@@ -173,7 +174,7 @@ We present LLARS (LLM Assisted Research System), an open-source platform that cl
 \emph{Evaluation} lets human and LLM evaluators rate, rank, label or compare outputs with live agreement metrics.
 New prompts and models automatically appear in batch generation and completed batches become evaluation scenarios with a single click; each module also supports standalone JSON/CSV export and connects to any OpenAI-compatible provider.
 
-% --- Table floats to top of page 2 ---
+% \-- Table floats to top of page 2 \--
 \begin{table*}[t]
 \centering
 \caption{Comparison of GUI-first tools for prompt engineering, batch generation and hybrid LLM output evaluation.
@@ -212,7 +213,7 @@ Table~\ref{tab:comparison} surveys twelve existing platforms along these dimensi
 Agenta~\cite{agenta2024} combines prompt versioning with LLM-as-judge scoring and provides A/B deployment testing, but lacks real-time co-editing and structured human evaluation with inter-rater agreement metrics.
 Phoenix~\cite{phoenix2024}, Langfuse~\cite{langfuse2024} and W\&B~Weave~\cite{weave2024} provide observability dashboards with dataset experiments and per-output feedback but focus on tracing and debugging production systems rather than systematic batch generation or coordinated multi-evaluator campaigns.
 ChainForge~\cite{arawjo2024chainforge} offers a visual node-based interface for multi-model comparison with template variables and supports programmatic evaluation via custom code nodes, but omits structured human evaluation entirely.
-Label~Studio~\cite{labelstudio2024} and Argilla~\cite{argilla2024} offer dedicated human annotation workflows---Label~Studio computes Krippendorff's~$\alpha$ across annotators, Argilla provides agreement analytics via its API---but both require externally generated outputs, disconnecting evaluation from prompt development.
+Label~Studio~\cite{labelstudio2024} and Argilla~\cite{argilla2024} offer dedicated human annotation workflows\--Label~Studio computes Krippendorff's~$\alpha$ across annotators, Argilla provides agreement analytics via its API\--but both require externally generated outputs, disconnecting evaluation from prompt development.
 LangSmith~\cite{langsmith2024}, Braintrust~\cite{braintrust2024}, Maxim~\cite{maxim2024} and Vellum~\cite{vellum2024} provide playground-style testing with dataset-level scoring but are closed-source, lack collaborative editing and omit batch generation.
 LLARS is an open-source platform to unify collaborative prompt engineering, Cartesian-product batch generation and hybrid human--LLM evaluation with agreement analytics, enabling developers and domain experts to work together from prompt development through rigorous assessment.
 
@@ -225,7 +226,7 @@ Teams register proprietary or self-hosted OpenAI-compatible LLM providers; regis
 \subsection{Collaborative Prompt Engineering}
 
 The collaborative prompt editor (Figure~\ref{fig:prompt-editor}), built on Yjs~\cite{jahns2023yjs}, lets every keystroke appear instantly for all connected users.
-A prompt is composed of ordered blocks---one optionally designated as system prompt, the rest concatenated into the user prompt---each maintaining its own version history that tracks insertions and deletions per save (visible as \texttt{+130\,/\,{-}0} in Figure~\ref{fig:prompt-editor}), enabling diff comparison and rollback without affecting other blocks.
+A prompt is composed of ordered blocks\--one optionally designated as system prompt, the rest concatenated into the user prompt\--each maintaining its own version history that tracks insertions and deletions (visible as \texttt{+128\,/\,{-}0} in Figure~\ref{fig:prompt-editor}), enabling diff comparison and rollback without affecting other blocks.
 
 \begin{figure}[ht]
 \centering
@@ -234,33 +235,33 @@ A prompt is composed of ordered blocks---one optionally designated as system pro
 \label{fig:prompt-editor}
 \end{figure}
 
-Blocks may contain template variables (\texttt{\{\{variable\_name\}\}}) as placeholders for external data---an entire email thread, for instance, can be captured in a single \texttt{\{\{content\}\}} variable, keeping the surrounding instructions concise.
+Blocks may contain template variables (\texttt{\{\{variable\_name\}\}}) as placeholders for external data\--an entire email thread, for instance, can be captured in a single \texttt{\{\{content\}\}} variable, keeping the surrounding instructions concise.
 All variables are collected in the shared Variable Palette (Figure~\ref{fig:prompt-editor}, bottom-left) and annotated with sample values (e.g.\ \texttt{\{\{subject\}\}}\,=\,\textit{``School problems at home''}) that are substituted when testing against a selected LLM, with responses streamed in real time so that multiple team members can test different models in parallel.
 Prompts are exportable as JSON and directly available in batch generation, where template variables are filled from dataset columns to scale a single prompt to hundreds of outputs.
 
 \subsection{Batch Generation}
 
 While the prompt editor supports rapid single-example testing, a single example cannot validate whether a prompt generalizes across diverse inputs.
-Batch generation addresses this: users select from available prompts---self-authored or shared by collaborators---and any registered model to apply to their data, producing the Cartesian product of prompts\,$\times$\,models\,$\times$\,data items.
+Batch generation addresses this: users select from available prompts\--self-authored or shared by collaborators\--and any registered model to apply to their data, producing the Cartesian product of prompts\,$\times$\,models\,$\times$\,data items.
 A generation matrix previews all resulting combinations and estimates cost based on model pricing and projected token counts; optional budget caps pause jobs that exceed a threshold.
-A wizard offers three data-source modes: upload (CSV/JSON columns map to the prompt's template variables), previous generation (reuse data from a completed batch to test new prompts or models on the same dataset) and prompt only (generate without source data, filling variables from sample values).
+A wizard offers three data-source modes: upload (CSV/JSON columns map to the prompt's template variables), previous generation (reuse data from a completed batch) and prompt only (generate without source data; template variables are substituted with their sample values when present).
 For example, 50~counselling email threads combined with two prompts and two models produce 50\,$\times$\,2\,$\times$\,2\,=\,200~outputs.
 
-Results stream in real time and every output records its full provenance---source item, prompt version, model, parameters, token count and cost---exportable as CSV or JSON.
+Results stream in real time and every output records its full provenance\--source item, prompt version, model, parameters, token count and cost\--exportable as CSV or JSON.
 Evaluators see only the generated text without any indication of which model or prompt produced it; completed batches transfer into evaluation with a single click, preserving all attribution for downstream provenance analysis.
 
 \subsection{Evaluation}
 
-Each evaluation is organized as a \emph{scenario}---a self-contained campaign that defines the type, assigns evaluators and distributes items---supporting six types: rating, ranking, labeling, comparison, mail rating and authenticity.
+Each evaluation is organized as a \emph{scenario}\--a self-contained campaign that defines the type, assigns evaluators and distributes items\--supporting six types: rating, ranking, labeling, comparison, mail rating and authenticity.
 Scenarios are created from batch outputs with a single click or via an AI-assisted Scenario Wizard; owners control whether all items go to every evaluator or configurable subsets are distributed for faster throughput.
 
 Where most tools limit LLMs to pairwise judging~\cite{zheng2024judging}, LLARS treats LLM evaluators as full participants alongside humans: they receive the same items, use the same interface and their judgments enter the same agreement analysis.
 
-The default evaluation mode is \emph{bucket ranking}: evaluators sort items into ordinal categories (e.g.\ \emph{Good}, \emph{Medium}, \emph{Bad}) and rank within each bucket---reducing cognitive load~\cite{miller1956magical} and yielding more reliable judgments than total ordering~\cite{kiritchenko2017bws}, as confirmed by domain expert interviews.
+The default evaluation mode is \emph{bucket ranking}: evaluators sort items into ordinal categories (e.g.\ \emph{Good}, \emph{Medium}, \emph{Bad}) and rank within each bucket\--reducing cognitive load~\cite{miller1956magical} and yielding more reliable judgments than total ordering~\cite{kiritchenko2017bws}, as confirmed by domain expert interviews.
 Traditional ranking remains available.
 
-Once assessments are submitted, scenario owners inspect aggregated results live, including automatically computed inter-rater reliability (e.g.\ Krippendorff's~$\alpha$).
-The central outcome is the \emph{provenance analysis} (Figure~\ref{fig:provenance}): since every item carries its generating model and prompt from batch generation, LLARS ranks each combination by top-bucket hit rate---directly answering \emph{which pair should we deploy?}
+Scenario owners can inspect aggregated results at any time as assessments come in, including automatically computed inter-rater reliability (e.g.\ Krippendorff's~$\alpha$).
+The central outcome is the \emph{provenance analysis} (Figure~\ref{fig:provenance}): since every item carries its generating model and prompt from batch generation, LLARS ranks each combination by top-bucket hit rate\--directly answering \emph{which pair should we deploy?}
 
 \begin{figure}[htb]
 \centering
@@ -281,12 +282,13 @@ Both groups emphasised that co-locating the workflow removed the ``translation w
 
 \section{Demo and Conclusion}
 
-Our demo walks attendees through the complete workflow---from collaborative prompt authoring through batch generation to evaluation with live agreement metrics and provenance analysis---using pre-built counselling scenarios that let attendees author prompts, trigger batch runs and evaluate outputs hands-on.
+Our demo walks attendees through the complete workflow\--from collaborative prompt authoring through batch generation to evaluation with live agreement metrics and provenance analysis\--using pre-built counselling scenarios that let attendees author prompts, trigger batch runs and evaluate outputs hands-on.
 
 By unifying prompt engineering, batch generation and evaluation in a single open-source platform, LLARS closes the loop from prompt development to rigorous assessment.
 While our current deployments focus on online counselling, the platform is domain-agnostic and applicable to any text-based LLM evaluation task.
-Unlike existing tools that address individual stages (Table~\ref{tab:comparison}), LLARS lets prompts flow into generation, outputs into evaluation, and provenance traces results back to their source---all within a shared workspace accessible to domain experts and developers alike.
+LLARS lets prompts flow into generation, outputs into evaluation, and provenance traces results back to their source\--all within a shared workspace accessible to domain experts and developers alike.
 Interviews confirmed that this integration eliminates the ``translation work'' between disciplines and enables domain experts to contribute directly at every stage.
+Current limitations include the requirement that uploaded data formats conform to the expected schema for template variable mapping, the focus on single-turn text generation rather than multi-turn conversational interactions, and the dependence of LLM-based evaluators on the underlying model's reasoning capability, which may introduce systematic biases for complex judgment tasks.
 % TODO: Uncomment and update URLs before submission
 %\noindent\textbf{Repository:} \url{https://github.com/llars-project/llars}\\
 %\textbf{Documentation:} \url{https://llars-project.github.io}

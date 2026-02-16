@@ -20,7 +20,7 @@
     </div>
 
     <!-- Content -->
-    <div class="content">
+    <div ref="contentContainer" class="content">
       <!-- Loading State -->
       <div v-if="loading" class="scenarios-grid">
         <div v-for="n in 3" :key="n" class="skeleton-card">
@@ -172,10 +172,14 @@ const loadingScenarioIds = new Set()
 const resolvedScenarioIds = new Set()
 const cachedScenarioStats = new Map()
 const cachedUserProgress = new Map()
+const statsRetryCounts = new Map()
 const MAX_CONCURRENT_STATS_REQUESTS = 3
+const MAX_STATS_REQUEST_RETRIES = 2
+const INITIAL_STATS_PREFETCH_COUNT = 6
 
 let scenarioCardObserver = null
 let activeStatsRequests = 0
+const contentContainer = ref(null)
 
 // UI State
 // Read initial tab from URL query parameter
@@ -357,7 +361,7 @@ async function loadScenarioStats(scenarioId) {
     const statsData = await fetchScenarioStats(scenarioId)
     const scenarioIndex = scenarios.value.findIndex(scenario => scenario.id === scenarioId)
     if (scenarioIndex < 0) {
-      return
+      return true
     }
 
     const scenario = scenarios.value[scenarioIndex]
@@ -374,8 +378,10 @@ async function loadScenarioStats(scenarioId) {
       stats,
       user_progress: userProgress || scenario.user_progress
     }
+    return true
   } catch (error) {
     console.warn(`Error loading stats for scenario ${scenarioId}:`, error)
+    return false
   }
 }
 
@@ -392,10 +398,27 @@ function processStatsQueue() {
     loadingScenarioIds.add(scenarioId)
 
     loadScenarioStats(scenarioId)
+      .then(success => {
+        if (success) {
+          resolvedScenarioIds.add(scenarioId)
+          statsRetryCounts.delete(scenarioId)
+          return
+        }
+
+        const retryCount = (statsRetryCounts.get(scenarioId) || 0) + 1
+        if (retryCount <= MAX_STATS_REQUEST_RETRIES) {
+          statsRetryCounts.set(scenarioId, retryCount)
+          queuedScenarioIds.add(scenarioId)
+          pendingScenarioStats.push(scenarioId)
+          return
+        }
+
+        statsRetryCounts.delete(scenarioId)
+        resolvedScenarioIds.add(scenarioId)
+      })
       .finally(() => {
         activeStatsRequests -= 1
         loadingScenarioIds.delete(scenarioId)
-        resolvedScenarioIds.add(scenarioId)
         processStatsQueue()
       })
   }
@@ -415,8 +438,10 @@ function queueScenarioStatsLoad(scenarioId) {
   processStatsQueue()
 }
 
-function queueVisibleScenarioStatsLoad() {
-  visibleScenarioIds.value.forEach(scenarioId => queueScenarioStatsLoad(scenarioId))
+function queueInitialVisibleScenarioStatsLoad() {
+  visibleScenarioIds.value
+    .slice(0, INITIAL_STATS_PREFETCH_COUNT)
+    .forEach(scenarioId => queueScenarioStatsLoad(scenarioId))
 }
 
 function observeScenarioCards() {
@@ -434,7 +459,7 @@ function setupScenarioCardObserver() {
   }
 
   if (typeof window === 'undefined' || typeof window.IntersectionObserver !== 'function') {
-    queueVisibleScenarioStatsLoad()
+    queueInitialVisibleScenarioStatsLoad()
     return
   }
 
@@ -455,7 +480,7 @@ function setupScenarioCardObserver() {
       })
     },
     {
-      root: null,
+      root: contentContainer.value || null,
       rootMargin: '160px 0px',
       threshold: 0.1
     }
@@ -500,6 +525,12 @@ function pruneStatsCaches() {
   for (const scenarioId of cachedUserProgress.keys()) {
     if (!activeIds.has(scenarioId)) {
       cachedUserProgress.delete(scenarioId)
+    }
+  }
+
+  for (const scenarioId of statsRetryCounts.keys()) {
+    if (!activeIds.has(scenarioId)) {
+      statsRetryCounts.delete(scenarioId)
     }
   }
 }
@@ -607,6 +638,7 @@ onMounted(async () => {
   await refreshScenarios()
   await nextTick()
   setupScenarioCardObserver()
+  queueInitialVisibleScenarioStatsLoad()
 
   // Check if we should open wizard with data from a generation job
   const fromGeneration = route.query.fromGeneration
@@ -621,7 +653,7 @@ watch(
   async () => {
     await nextTick()
     observeScenarioCards()
-    queueVisibleScenarioStatsLoad()
+    queueInitialVisibleScenarioStatsLoad()
   }
 )
 

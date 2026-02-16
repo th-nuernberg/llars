@@ -89,6 +89,50 @@ def _emit_scenario_stats_update(scenario_id: int) -> None:
         logger.warning(f"Failed to emit scenario stats update: {e}")
 
 
+def _extract_current_user_progress_from_stats(stats_data, user, fallback_total=0):
+    """
+    Extract current authenticated user's progress from scenario stats payload.
+
+    This avoids fragile frontend-side identity matching (token username/sub can differ
+    from local DB identifiers) by resolving the user directly on the backend.
+    """
+    user_id = getattr(user, 'id', None)
+    username = (getattr(user, 'username', '') or '').strip().lower()
+
+    rater_stats = stats_data.get('rater_stats', []) if isinstance(stats_data, dict) else []
+    evaluator_stats = stats_data.get('evaluator_stats', []) if isinstance(stats_data, dict) else []
+    human_evaluator_stats = [entry for entry in evaluator_stats if not entry.get('is_llm')]
+    all_human_stats = [*rater_stats, *human_evaluator_stats]
+
+    user_stat = None
+    for entry in all_human_stats:
+        entry_username = (str(entry.get('username', '')) or '').strip().lower()
+        entry_user_id = entry.get('user_id')
+        if (
+            (user_id is not None and entry_user_id is not None and str(entry_user_id) == str(user_id)) or
+            (username and entry_username == username)
+        ):
+            user_stat = entry
+            break
+
+    if not user_stat:
+        return {
+            'completed': 0,
+            'progressing': 0,
+            'total': int(fallback_total or 0)
+        }
+
+    completed = int(user_stat.get('done_threads', user_stat.get('voted_count', 0)) or 0)
+    progressing = int(user_stat.get('progressing_threads', 0) or 0)
+    total = int(user_stat.get('total_threads', fallback_total) or fallback_total or 0)
+
+    return {
+        'completed': completed,
+        'progressing': progressing,
+        'total': total
+    }
+
+
 def get_user_scenarios(user, invitation_filter=None):
     """
     Get all scenarios a user has access to.
@@ -1769,6 +1813,12 @@ def get_scenario_stats(scenario_id):
                 'fleiss': None
             }
         }
+
+    response['current_user_progress'] = _extract_current_user_progress_from_stats(
+        response,
+        user,
+        fallback_total=thread_count
+    )
 
     return jsonify(response), 200
 

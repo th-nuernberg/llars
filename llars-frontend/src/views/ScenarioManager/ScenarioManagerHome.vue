@@ -274,6 +274,18 @@ function registerScenarioCard(scenarioId, element) {
 }
 
 function buildUserProgressFromStats(statsData, fallbackTotal = 0) {
+  const backendResolvedProgress = statsData?.current_user_progress
+  if (backendResolvedProgress && typeof backendResolvedProgress === 'object') {
+    const completed = Number(backendResolvedProgress.completed ?? 0)
+    const progressing = Number(backendResolvedProgress.progressing ?? 0)
+    const total = Number(backendResolvedProgress.total ?? fallbackTotal)
+    return {
+      completed: Number.isFinite(completed) ? completed : 0,
+      progressing: Number.isFinite(progressing) ? progressing : 0,
+      total: Number.isFinite(total) ? total : fallbackTotal
+    }
+  }
+
   const userId = currentUserId.value
   const username = currentUsername.value
   if (!userId && !username) {

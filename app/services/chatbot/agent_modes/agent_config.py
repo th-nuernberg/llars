@@ -27,6 +27,8 @@ import logging
 import os
 from typing import List, Dict, Any, Optional, TYPE_CHECKING
 
+from services.llm.llm_execution_service import LLMExecutionService
+
 if TYPE_CHECKING:
     from db.models.chatbot import Chatbot, ChatbotPromptSettings
 
@@ -235,7 +237,8 @@ def get_tavily_api_key(prompt_settings: Optional['ChatbotPromptSettings']) -> Op
 def build_completion_kwargs(
     chatbot: 'Chatbot',
     messages: List[Dict],
-    stream: bool = True
+    stream: bool = True,
+    model_id: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     Build kwargs for LLM completion.
@@ -255,16 +258,11 @@ def build_completion_kwargs(
         >>> kwargs = build_completion_kwargs(chatbot, messages, stream=True)
         >>> response = llm_client.chat.completions.create(**kwargs)
     """
-    kwargs = {
-        "model": chatbot.model_name,
-        "messages": messages,
-        "temperature": chatbot.temperature,
-        "top_p": chatbot.top_p,
-        "stream": stream
-    }
-
-    # Only include max_tokens if explicitly set
-    if chatbot.max_tokens:
-        kwargs["max_tokens"] = chatbot.max_tokens
-
-    return kwargs
+    return LLMExecutionService.build_chat_completion_params(
+        model=model_id or chatbot.model_name,
+        messages=messages,
+        stream=stream,
+        temperature=chatbot.temperature,
+        top_p=chatbot.top_p,
+        max_tokens=chatbot.max_tokens,
+    )

@@ -10,6 +10,7 @@ from typing import Optional, Callable
 
 from llm.openai_utils import extract_delta_text, extract_message_text
 from services.llm.llm_client_factory import LLMClientFactory
+from services.llm.llm_execution_service import LLMExecutionService
 from db.models.llm_model import LLMModel
 
 logger = logging.getLogger(__name__)
@@ -111,13 +112,15 @@ class ChatTitleService:
             # Stream if callback provided
             if stream_callback:
                 title = ""
-                stream = client.chat.completions.create(
+                stream = LLMExecutionService.execute_chat_completion(
+                    client,
                     model=effective_model,
                     messages=messages,
                     max_tokens=20,
                     temperature=0.3,
-                    timeout=10.0,
-                    stream=True
+                    stream=True,
+                    request_kwargs={"timeout": 10.0},
+                    model_key=effective_model,
                 )
                 for chunk in stream:
                     choice = chunk.choices[0] if chunk.choices else None
@@ -127,12 +130,14 @@ class ChatTitleService:
                         title += delta_text
                         stream_callback(delta_text)
             else:
-                response = client.chat.completions.create(
+                response = LLMExecutionService.execute_chat_completion(
+                    client,
                     model=effective_model,
                     messages=messages,
                     max_tokens=20,
                     temperature=0.3,
-                    timeout=10.0
+                    request_kwargs={"timeout": 10.0},
+                    model_key=effective_model,
                 )
                 title = extract_message_text(response.choices[0].message).strip()
 

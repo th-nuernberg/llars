@@ -170,7 +170,12 @@ class AgentChatService(ChatService):
         Returns:
             Kwargs dict for llm_client.chat.completions.create()
         """
-        return build_completion_kwargs(self.chatbot, messages, stream)
+        return build_completion_kwargs(
+            self.chatbot,
+            messages,
+            stream,
+            model_id=self.api_model_id,
+        )
 
     # =========================================================================
     # MAIN AGENT METHODS

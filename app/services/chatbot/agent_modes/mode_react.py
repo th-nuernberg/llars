@@ -33,6 +33,7 @@ import logging
 from typing import List, Dict, Any, Optional, Generator, TYPE_CHECKING
 
 from llm.openai_utils import extract_delta_text
+from services.llm.llm_execution_service import LLMExecutionService
 
 from services.chatbot.agent_parsers import (
     parse_action,
@@ -255,8 +256,17 @@ def _stream_react_response(
     thought_finalized = False
 
     try:
-        kwargs = build_completion_kwargs(service.chatbot, messages, stream=True)
-        stream = service.llm_client.chat.completions.create(**kwargs)
+        kwargs = build_completion_kwargs(
+            service.chatbot,
+            messages,
+            stream=True,
+            model_id=service.api_model_id,
+        )
+        stream = LLMExecutionService.execute_with_param_fixes(
+            service.llm_client,
+            kwargs,
+            model_key=service.api_model_id,
+        )
 
         for chunk in stream:
             choice = chunk.choices[0] if chunk.choices else None
@@ -287,7 +297,12 @@ def _stream_react_response(
 
     except Exception as e:
         logger.error(f"[AgentChatService] ReAct streaming failed: {e}")
-        response_text = call_llm_sync(service.llm_client, service.chatbot, messages)
+        response_text = call_llm_sync(
+            service.llm_client,
+            service.chatbot,
+            messages,
+            api_model_id=service.api_model_id,
+        )
 
     # Parse final response
     thought, action, final_answer = parse_react_response(response_text)
@@ -527,7 +542,8 @@ def _handle_adaptive_exit(
         service._prompt_settings,
         message,
         sources,
-        observation
+        observation,
+        api_model_id=service.api_model_id,
     )
     for event in response_gen:
         if "delta" in event:
@@ -541,7 +557,8 @@ def _handle_adaptive_exit(
             service.chatbot,
             message,
             steps,
-            service._build_citation_instructions()
+            service._build_citation_instructions(),
+            api_model_id=service.api_model_id,
         )
 
     # Finalize conversation
@@ -592,7 +609,8 @@ def _handle_max_iterations(
         service.chatbot,
         message,
         steps,
-        service._build_citation_instructions()
+        service._build_citation_instructions(),
+        api_model_id=service.api_model_id,
     )
 
     conv_info = finalize_conversation(

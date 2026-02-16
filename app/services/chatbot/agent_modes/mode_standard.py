@@ -26,6 +26,7 @@ import time
 from typing import List, Dict, Any, Optional, Generator, TYPE_CHECKING
 
 from llm.openai_utils import extract_delta_text
+from services.llm.llm_execution_service import LLMExecutionService
 
 from .agent_config import build_completion_kwargs
 from .agent_helpers import finalize_conversation, build_done_event
@@ -97,8 +98,17 @@ def chat_standard_stream(
 
     accumulated = ""
     try:
-        kwargs = build_completion_kwargs(service.chatbot, messages, stream=True)
-        stream = service.llm_client.chat.completions.create(**kwargs)
+        kwargs = build_completion_kwargs(
+            service.chatbot,
+            messages,
+            stream=True,
+            model_id=service.api_model_id,
+        )
+        stream = LLMExecutionService.execute_with_param_fixes(
+            service.llm_client,
+            kwargs,
+            model_key=service.api_model_id,
+        )
 
         for chunk in stream:
             choice = chunk.choices[0] if chunk.choices else None

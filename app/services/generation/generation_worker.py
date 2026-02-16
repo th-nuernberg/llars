@@ -30,7 +30,7 @@ import logging
 import re
 import time
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from flask import current_app
 
@@ -55,6 +55,7 @@ from services.generation.socket_rooms import (
 )
 from services.generation.stream_state import clear_partial_content, set_partial_content
 from services.llm.llm_client_factory import LLMClientFactory
+from services.llm.llm_execution_service import LLMExecutionService
 from services.system_settings_service import get_batch_generation_max_parallel
 
 # YJS decoding for UserPrompt content
@@ -480,7 +481,6 @@ class GenerationWorker:
         self._template_cache: Dict[int, PromptTemplate] = {}
         self._model_cache: Dict[str, LLMModel] = {}
         self._source_data_cache: Dict[int, Dict[str, Any]] = {}
-        self._param_fix_hints: Dict[str, Set[str]] = {}
         self._app = None
 
     # -------------------------------------------------------------------------
@@ -1243,11 +1243,8 @@ class GenerationWorker:
             self._gen_params_cache = config.get("generation_params", {})
         gen_params = self._gen_params_cache
 
-        # Detect OpenAI models (require max_completion_tokens instead of max_tokens)
-        is_openai = ('openai' in (model_id or '').lower()
-                     or api_model_id.lower().startswith('gpt-')
-                     or api_model_id.lower().startswith('o'))
-        supports_sampling = self._supports_sampling_params(api_model_id)
+        # Provider-specific sampling support is handled centrally.
+        supports_sampling = LLMExecutionService.supports_sampling_params(api_model_id)
         temperature = gen_params.get("temperature", 0.7) if supports_sampling else None
         top_p = gen_params.get("top_p", 1.0) if supports_sampling else None
 
@@ -1276,7 +1273,8 @@ class GenerationWorker:
             PARTIAL_EMIT_INTERVAL = 0.7  # Emit aggregated partial text for reconnect/live fallback
 
             try:
-                # Build API call params - only include max_tokens if explicitly set
+                # Build API call params - only include max_tokens if explicitly set.
+                # Provider-specific incompatibilities are handled in LLMExecutionService.
                 stream_params = {
                     "model": api_model_id,
                     "messages": messages,
@@ -1288,10 +1286,13 @@ class GenerationWorker:
                     stream_params["top_p"] = top_p
                 # Only add max_tokens if explicitly specified (allows unlimited for reasoning models)
                 if gen_params.get("max_tokens"):
-                    key = "max_completion_tokens" if is_openai else "max_tokens"
-                    stream_params[key] = gen_params["max_tokens"]
+                    stream_params["max_tokens"] = gen_params["max_tokens"]
 
-                stream = self._api_call_with_param_fix(client, stream_params, model_key=model_key)
+                stream = LLMExecutionService.execute_with_param_fixes(
+                    client,
+                    stream_params,
+                    model_key=model_key,
+                )
 
                 # Collect streamed content and emit tokens
                 used_reasoning_field = False  # Track if we're using reasoning_content
@@ -1376,10 +1377,13 @@ class GenerationWorker:
                 call_params["top_p"] = top_p
             # Only add max_tokens if explicitly specified (allows unlimited for reasoning models)
             if gen_params.get("max_tokens"):
-                key = "max_completion_tokens" if is_openai else "max_tokens"
-                call_params[key] = gen_params["max_tokens"]
+                call_params["max_tokens"] = gen_params["max_tokens"]
 
-            response = self._api_call_with_param_fix(client, call_params, model_key=model_key)
+            response = LLMExecutionService.execute_with_param_fixes(
+                client,
+                call_params,
+                model_key=model_key,
+            )
 
             # Extract content
             content = ""
@@ -1403,78 +1407,6 @@ class GenerationWorker:
                 })
 
         return content, tokens
-
-    @staticmethod
-    def _supports_sampling_params(api_model_id: str) -> bool:
-        """
-        Heuristic for models that reject temperature/top_p.
-
-        GPT-5 and OpenAI o-series typically reject custom sampling params.
-        Skipping those fields avoids a first failing request + retry.
-        """
-        model = (api_model_id or "").strip().lower()
-        return not (
-            model.startswith("gpt-5")
-            or model.startswith("o1")
-            or model.startswith("o3")
-            or model.startswith("o4")
-        )
-
-    def _apply_known_param_fixes(self, model_key: Optional[str], params: dict) -> None:
-        if not model_key:
-            return
-        hints = self._param_fix_hints.get(model_key)
-        if not hints:
-            return
-        if "drop_temperature" in hints:
-            params.pop("temperature", None)
-        if "drop_top_p" in hints:
-            params.pop("top_p", None)
-        if "use_max_completion_tokens" in hints and "max_tokens" in params:
-            params["max_completion_tokens"] = params.pop("max_tokens")
-
-    def _remember_param_fix(self, model_key: Optional[str], fix_name: str) -> None:
-        if not model_key:
-            return
-        hints = self._param_fix_hints.setdefault(model_key, set())
-        hints.add(fix_name)
-
-    def _api_call_with_param_fix(self, client, params: dict, *, model_key: Optional[str] = None):
-        """
-        Call the chat completions API, automatically fixing unsupported params.
-
-        Some models (e.g. OpenAI gpt-5-nano) reject custom temperature or
-        require max_completion_tokens instead of max_tokens. This method
-        catches 400 errors and retries with fixed parameters (up to 3 times).
-        """
-        self._apply_known_param_fixes(model_key, params)
-        max_fixes = 3
-        for _ in range(max_fixes):
-            try:
-                return client.chat.completions.create(**params)
-            except Exception as e:
-                err_msg = str(e).lower()
-                fixed = False
-                if "temperature" in err_msg and "temperature" in params:
-                    logger.info("[GenWorker] Model doesn't support custom temperature, removing")
-                    params.pop("temperature")
-                    self._remember_param_fix(model_key, "drop_temperature")
-                    fixed = True
-                elif "max_tokens" in err_msg and "max_completion_tokens" in err_msg:
-                    logger.info("[GenWorker] Model requires max_completion_tokens instead of max_tokens")
-                    val = params.pop("max_tokens", None)
-                    if val:
-                        params["max_completion_tokens"] = val
-                    self._remember_param_fix(model_key, "use_max_completion_tokens")
-                    fixed = True
-                elif "top_p" in err_msg and "top_p" in params:
-                    logger.info("[GenWorker] Model doesn't support custom top_p, removing")
-                    params.pop("top_p")
-                    self._remember_param_fix(model_key, "drop_top_p")
-                    fixed = True
-                if not fixed:
-                    raise
-        return client.chat.completions.create(**params)
 
     def _calculate_cost(self, model_id: str, tokens: Dict[str, int]) -> float:
         """

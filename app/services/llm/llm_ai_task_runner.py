@@ -30,6 +30,7 @@ from db.models import (
 )
 from llm.openai_utils import extract_message_text
 from services.llm.llm_client_factory import LLMClientFactory
+from services.llm.llm_execution_service import LLMExecutionService
 from services.system_settings_service import get_setting
 
 logger = logging.getLogger(__name__)
@@ -430,7 +431,6 @@ class LLMAITaskRunner:
                         api_model_id,
                         system_prompt,
                         user_prompt,
-                        max_tokens=500,
                         trace={
                             "task": "comparison",
                             "scenario_id": scenario_id,
@@ -725,7 +725,6 @@ Antworte im JSON-Format (verwende die numerischen Feature-IDs, nicht die Buchsta
                     api_model_id,
                     system_prompt,
                     user_prompt,
-                    max_tokens=1200,
                     trace={
                         "task": "ranking",
                         "scenario_id": scenario_id,
@@ -908,7 +907,6 @@ Antworte im JSON-Format:
                 api_model_id,
                 system_prompt,
                 user_prompt,
-                max_tokens=500,
                 trace={
                     "task": "ranking",
                     "scenario_id": scenario_id,
@@ -1072,7 +1070,6 @@ Antworte im JSON-Format:
                         api_model_id,
                         system_prompt,
                         user_prompt,
-                        max_tokens=1500,
                         trace={
                             "task": "rating",
                             "scenario_id": scenario_id,
@@ -1134,7 +1131,6 @@ Antworte im JSON-Format:
                         api_model_id,
                         system_prompt,
                         user_prompt,
-                        max_tokens=1200,
                         trace={
                             "task": "rating",
                             "scenario_id": scenario_id,
@@ -1249,7 +1245,6 @@ Antworte im JSON-Format:
                     api_model_id,
                     system_prompt,
                     user_prompt,
-                    max_tokens=300,
                     trace={
                         "task": "authenticity",
                         "scenario_id": scenario_id,
@@ -1426,7 +1421,6 @@ Antworte im JSON-Format:
                     api_model_id,
                     system_prompt,
                     user_prompt,
-                    max_tokens=1500,  # More tokens for dimensional response
                     trace={
                         "task": "mail_rating",
                         "scenario_id": scenario_id,
@@ -1619,7 +1613,6 @@ Antworte im JSON-Format:
                     api_model_id,
                     system_prompt,
                     user_prompt,
-                    max_tokens=500,
                     trace={
                         "task": task_type,
                         "scenario_id": scenario_id,
@@ -1739,7 +1732,6 @@ Antworte im JSON-Format:
                     api_model_id,
                     system_prompt,
                     user_prompt,
-                    max_tokens=500,
                     trace={
                         "task": "comparison",
                         "scenario_id": scenario_id,
@@ -1814,7 +1806,6 @@ Antworte im JSON-Format:
         system_prompt: str,
         user_prompt: str,
         *,
-        max_tokens: int,
         trace: Optional[Dict[str, Any]] = None,
     ) -> Tuple[Dict[str, Any], str]:
         base_messages = [
@@ -1854,12 +1845,12 @@ Antworte im JSON-Format:
                     _truncate(user_prompt, log_prompt_max),
                 )
 
-            response = client.chat.completions.create(
+            response = LLMExecutionService.execute_chat_completion(
+                client,
                 model=model_id,
                 messages=messages,
-                temperature=0.2,
-                max_tokens=max_tokens,
                 extra_body={"response_format": {"type": "json_object"}},
+                model_key=model_id,
             )
             content = extract_message_text(response.choices[0].message) if response.choices else ""
             last_raw = content or ""

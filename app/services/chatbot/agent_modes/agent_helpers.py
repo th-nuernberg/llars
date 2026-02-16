@@ -22,6 +22,7 @@ from datetime import datetime
 from typing import List, Dict, Any, Optional, Generator, TYPE_CHECKING
 
 from llm.openai_utils import extract_delta_text, extract_message_text
+from services.llm.llm_execution_service import LLMExecutionService
 
 from .agent_config import build_completion_kwargs
 
@@ -38,7 +39,8 @@ logger = logging.getLogger(__name__)
 def call_llm_sync(
     llm_client,
     chatbot: 'Chatbot',
-    messages: List[Dict]
+    messages: List[Dict],
+    api_model_id: Optional[str] = None,
 ) -> str:
     """
     Synchronous LLM call.
@@ -52,8 +54,17 @@ def call_llm_sync(
         Response text string, empty string on error
     """
     try:
-        kwargs = build_completion_kwargs(chatbot, messages, stream=False)
-        response = llm_client.chat.completions.create(**kwargs)
+        kwargs = build_completion_kwargs(
+            chatbot,
+            messages,
+            stream=False,
+            model_id=api_model_id,
+        )
+        response = LLMExecutionService.execute_with_param_fixes(
+            llm_client,
+            kwargs,
+            model_key=api_model_id or chatbot.model_name,
+        )
 
         if response.choices:
             return extract_message_text(response.choices[0].message)
@@ -67,7 +78,8 @@ def call_llm_sync(
 def stream_llm_response(
     llm_client,
     chatbot: 'Chatbot',
-    messages: List[Dict]
+    messages: List[Dict],
+    api_model_id: Optional[str] = None,
 ) -> Generator[str, None, str]:
     """
     Stream LLM response, yielding delta text.
@@ -86,8 +98,17 @@ def stream_llm_response(
     accumulated = ""
 
     try:
-        kwargs = build_completion_kwargs(chatbot, messages, stream=True)
-        stream = llm_client.chat.completions.create(**kwargs)
+        kwargs = build_completion_kwargs(
+            chatbot,
+            messages,
+            stream=True,
+            model_id=api_model_id,
+        )
+        stream = LLMExecutionService.execute_with_param_fixes(
+            llm_client,
+            kwargs,
+            model_key=api_model_id or chatbot.model_name,
+        )
 
         for chunk in stream:
             choice = chunk.choices[0] if chunk.choices else None
@@ -248,7 +269,8 @@ def generate_adaptive_response_stream(
     prompt_settings,
     message: str,
     sources: List[Dict],
-    observation: str
+    observation: str,
+    api_model_id: Optional[str] = None,
 ) -> Generator[Dict[str, Any], None, str]:
     """
     Generate a final answer when adaptive iteration triggers early completion.
@@ -288,8 +310,17 @@ def generate_adaptive_response_stream(
 
     final_response = ""
     try:
-        kwargs = build_completion_kwargs(chatbot, messages, stream=True)
-        stream = llm_client.chat.completions.create(**kwargs)
+        kwargs = build_completion_kwargs(
+            chatbot,
+            messages,
+            stream=True,
+            model_id=api_model_id,
+        )
+        stream = LLMExecutionService.execute_with_param_fixes(
+            llm_client,
+            kwargs,
+            model_key=api_model_id or chatbot.model_name,
+        )
 
         for chunk in stream:
             choice = chunk.choices[0] if chunk.choices else None
@@ -301,7 +332,12 @@ def generate_adaptive_response_stream(
 
     except Exception as e:
         logger.error(f"[AgentChatService] Adaptive response streaming failed: {e}")
-        final_response = call_llm_sync(llm_client, chatbot, messages)
+        final_response = call_llm_sync(
+            llm_client,
+            chatbot,
+            messages,
+            api_model_id=api_model_id,
+        )
 
     return final_response
 
@@ -311,7 +347,8 @@ def generate_final_response(
     chatbot: 'Chatbot',
     question: str,
     steps: List[Dict],
-    citation_instructions: str
+    citation_instructions: str,
+    api_model_id: Optional[str] = None,
 ) -> str:
     """
     Generate final response based on collected information.
@@ -338,7 +375,12 @@ def generate_final_response(
         system_prompt,
         citation_instructions
     )
-    return call_llm_sync(llm_client, chatbot, messages)
+    return call_llm_sync(
+        llm_client,
+        chatbot,
+        messages,
+        api_model_id=api_model_id,
+    )
 
 
 # =============================================================================

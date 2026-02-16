@@ -33,6 +33,7 @@ from schemas.evaluation_data_schemas import (
     create_default_rating_dimensions,
     create_default_scale,
 )
+from services.llm.llm_execution_service import LLMExecutionService
 
 logger = logging.getLogger(__name__)
 
@@ -757,14 +758,16 @@ class DimensionalRatingService:
         try:
             # Get LLM client and make request
             client, api_model_id = LLMClientFactory.resolve_client_and_model_id(model_id)
-            completion = client.chat.completions.create(
+            completion = LLMExecutionService.execute_chat_completion(
+                client,
                 model=api_model_id,
                 messages=[
                     {'role': 'system', 'content': prompts['system_prompt']},
                     {'role': 'user', 'content': prompts['user_prompt']}
                 ],
                 temperature=0.3,  # Lower temperature for consistent ratings
-                max_tokens=2000
+                max_tokens=2000,
+                model_key=api_model_id,
             )
 
             # Extract response content

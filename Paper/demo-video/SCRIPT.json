@@ -881,7 +881,7 @@
       "_section": "=== BRING YOUR OWN MODELS (30s) ===",
       "id": "providers_1",
       "speaker": "moderator",
-      "narration": "Lars ships with built-in Mistral models, but you can bring your own. Let me add OpenAI — we'll need it later for LLM-as-evaluator.",
+      "narration": "We've already connected our own Mistral and Magistral models to this instance. But the great thing is — any user can bring their own provider. Let me add OpenAI — we'll need it later for LLM-as-Evaluator.",
       "actions": [
         {
           "do": "goto",
@@ -917,7 +917,7 @@
     {
       "id": "providers_2",
       "speaker": "guest",
-      "narration": "So each user can connect their own API keys? That's nice — no shared credentials.",
+      "narration": "Wait — so each user can connect their own API keys? I wouldn't have to share my credentials with the team?",
       "actions": [
         {
           "do": "click",
@@ -993,7 +993,7 @@
     {
       "id": "providers_4",
       "speaker": "guest",
-      "narration": "And now you pick which models to enable? I see GPT-5 Nano and GPT-5 in the list.",
+      "narration": "And I see GPT-5 Nano and GPT-5 Mini right there — so the models sync automatically after connecting?",
       "actions": [
         {
           "do": "highlight",
@@ -1180,7 +1180,7 @@
     {
       "id": "batch_gen_5",
       "speaker": "moderator",
-      "narration": "Exactly — both selected. Next we pick models. I'll take Mistral Small and GPT-5 Nano — one open-source, one commercial — so we can compare how they handle counselling case extraction.",
+      "narration": "Exactly — both selected. Next we pick models. I'll take Mistral Small — that's one of the models we connected — and GPT-5 Nano from the OpenAI provider you just saw. One open-source, one commercial, so we can compare.",
       "actions": [
         {
           "do": "wait",
@@ -1395,7 +1395,7 @@
     {
       "id": "batch_gen_11",
       "speaker": "guest",
-      "narration": "OK, so we have forty situation descriptions — Mistral versus GPT-5 Nano, each with two different prompts. How do you decide which combination actually did better?",
+      "narration": "OK — so we have forty situation descriptions now. Mistral versus GPT-5 Nano, each with two prompts. But how do I as a researcher decide which combination actually works best?",
       "actions": [
         {
           "do": "wait",
@@ -1432,7 +1432,7 @@
     {
       "id": "scenario_wizard_2",
       "speaker": "moderator",
-      "narration": "Lars supports Rating with multi-dimensional Likert scales, Labeling, and pairwise Comparison — but for comparing outputs across models, Ranking is the best fit. Let's pick that.",
+      "narration": "Lars supports Rating with multi-dimensional Likert scales, Labeling, and pairwise Comparison — but for comparing outputs across models, Ranking is the best fit. And specifically, we use Bucket Ranking.",
       "actions": [
         {
           "do": "wait",
@@ -1454,9 +1454,20 @@
       ]
     },
     {
+      "id": "scenario_wizard_2b",
+      "speaker": "guest",
+      "narration": "Bucket Ranking — so instead of sorting all four items into one long list, I just drop them into categories like Best, Acceptable, and Poor?",
+      "actions": [
+        {
+          "do": "wait",
+          "seconds": 0.3
+        }
+      ]
+    },
+    {
       "id": "scenario_wizard_3",
       "speaker": "moderator",
-      "narration": "The name is prefilled from the batch. We move to configuration.",
+      "narration": "Exactly! It's much easier for evaluators to sort items into buckets than to decide precise positions in a long ranking. Especially with four items per case — just drag them into the right bucket and you're done. The name is prefilled from the batch, let's move on.",
       "actions": [
         {
           "do": "wait",
@@ -1471,7 +1482,7 @@
     {
       "id": "scenario_wizard_4",
       "speaker": "moderator",
-      "narration": "The wizard previews the ranking buckets and lets you configure how items are distributed across evaluators.",
+      "narration": "Here you can see the bucket configuration and how items get distributed across evaluators.",
       "actions": [
         {
           "do": "wait",
@@ -1496,7 +1507,7 @@
     {
       "id": "scenario_wizard_4b",
       "speaker": "guest",
-      "narration": "So you can choose whether everyone evaluates everything, or split items across evaluators — and randomize the order to reduce bias?",
+      "narration": "And I can choose whether everyone evaluates everything, or split items across evaluators? Does it also randomize the order to prevent bias?",
       "actions": [
         {
           "do": "highlight",
@@ -1517,7 +1528,7 @@
     {
       "id": "scenario_wizard_5",
       "speaker": "moderator",
-      "narration": "Exactly. We add ourselves as a human evaluator. And for LLM evaluation, I'll pick Magistral — our reasoning model — and GPT-5 Mini, so we get cross-provider comparison without breaking the budget.",
+      "narration": "Exactly. We add ourselves as human evaluators. And for LLM-as-Evaluator, I'll pick Magistral — a reasoning model we connected — and GPT-5 Mini from OpenAI, so we get cross-provider comparison.",
       "actions": [
         {
           "do": "wait",

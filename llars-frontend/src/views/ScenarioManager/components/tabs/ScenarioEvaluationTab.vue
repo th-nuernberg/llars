@@ -593,6 +593,12 @@
             v-for="panel in provenanceBucketChartPanels"
             :key="`prov-figure-${panel.key}`"
             class="provenance-figure-card"
+            :class="{ 'is-clickable': panel.entries?.length }"
+            :tabindex="panel.entries?.length ? 0 : -1"
+            :role="panel.entries?.length ? 'button' : undefined"
+            @click="openProvenanceFigureDialog(panel.key)"
+            @keydown.enter.prevent="openProvenanceFigureDialog(panel.key)"
+            @keydown.space.prevent="openProvenanceFigureDialog(panel.key)"
           >
             <div class="provenance-figure-header">
               <span>{{ panel.title }}</span>
@@ -605,7 +611,7 @@
                   class="provenance-figure-expand-btn"
                   :disabled="!panel.entries?.length"
                   title="Expand chart"
-                  @click="openProvenanceFigureDialog(panel.key)"
+                  @click.stop="openProvenanceFigureDialog(panel.key)"
                 >
                   <v-icon size="16">mdi-fullscreen</v-icon>
                 </v-btn>
@@ -4580,6 +4586,22 @@ watch(
   border-radius: 12px;
   padding: 12px;
   box-shadow: 0 1px 1px rgba(0, 0, 0, 0.03), 0 6px 16px rgba(0, 0, 0, 0.04);
+}
+
+.provenance-figure-card.is-clickable {
+  cursor: pointer;
+  transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.provenance-figure-card.is-clickable:hover {
+  transform: translateY(-1px);
+  border-color: rgba(var(--v-theme-primary), 0.35);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.07), 0 10px 24px rgba(0, 0, 0, 0.08);
+}
+
+.provenance-figure-card.is-clickable:focus-visible {
+  outline: 2px solid rgba(var(--v-theme-primary), 0.5);
+  outline-offset: 2px;
 }
 
 .provenance-figure-header {

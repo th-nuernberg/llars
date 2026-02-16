@@ -58,6 +58,48 @@ import { logI18n } from '@/utils/logI18n'
 import { createApp } from 'vue'
 
 const app = createApp(App)
+const CHUNK_RELOAD_STORAGE_KEY = 'llars:chunk-reload-at'
+const CHUNK_RELOAD_COOLDOWN_MS = 30_000
+
+function isDynamicImportLoadError(error) {
+  const message = String(error?.message || error || '').toLowerCase()
+  return (
+    message.includes('failed to fetch dynamically imported module') ||
+    message.includes('importing a module script failed') ||
+    message.includes('failed to load module script') ||
+    message.includes('loading chunk')
+  )
+}
+
+function reloadForChunkMismatch(reason = 'unknown') {
+  if (typeof window === 'undefined') {
+    return false
+  }
+
+  const now = Date.now()
+  const lastReloadAt = Number(window.sessionStorage.getItem(CHUNK_RELOAD_STORAGE_KEY) || '0')
+  if (Number.isFinite(lastReloadAt) && now - lastReloadAt < CHUNK_RELOAD_COOLDOWN_MS) {
+    return false
+  }
+
+  window.sessionStorage.setItem(CHUNK_RELOAD_STORAGE_KEY, String(now))
+  console.warn('[LLARS] Reloading app after dynamic import mismatch:', reason)
+  const currentUrl = `${window.location.pathname}${window.location.search}${window.location.hash}`
+  window.location.replace(currentUrl)
+  return true
+}
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('vite:preloadError', event => {
+    const preloadError = event?.payload || event?.error || event
+    if (!isDynamicImportLoadError(preloadError)) {
+      return
+    }
+
+    event?.preventDefault?.()
+    reloadForChunkMismatch('vite:preloadError')
+  })
+}
 
 // Register Vuetify and other plugins
 registerPlugins(app)
@@ -148,6 +190,17 @@ axios.interceptors.response.use(
 
 // Use router
 app.use(router)
+
+router.onError((error) => {
+  if (!isDynamicImportLoadError(error)) {
+    return
+  }
+
+  const recovered = reloadForChunkMismatch('router:onError')
+  if (!recovered) {
+    console.error('[LLARS] Dynamic import failed and auto-reload cooldown is active:', error)
+  }
+})
 
 // Matomo (Analytics)
 initMatomo({ router })

@@ -993,7 +993,7 @@
     {
       "id": "providers_4",
       "speaker": "guest",
-      "narration": "And I see GPT-5 Nano and GPT-5 Mini right there — so the models sync automatically after connecting?",
+      "narration": "And I see GPT-5 Nano and GPT-5 Mini right there — so the models sync automatically? But what if I want my colleague to use these models too — do they have to set up their own provider?",
       "actions": [
         {
           "do": "highlight",
@@ -1003,6 +1003,89 @@
         {
           "do": "wait",
           "seconds": 0.5
+        }
+      ]
+    },
+    {
+      "id": "providers_5",
+      "speaker": "moderator",
+      "narration": "No — you can share your provider with other users. Let me show you. I'll share this OpenAI provider with IJCAI Reviewer 2.",
+      "actions": [
+        {
+          "do": "click",
+          "target": "Provider Actions Menu"
+        },
+        {
+          "do": "wait",
+          "seconds": 0.5
+        },
+        {
+          "do": "click",
+          "target": "Provider Share Option"
+        },
+        {
+          "do": "wait_for_modal"
+        },
+        {
+          "do": "wait",
+          "seconds": 0.3
+        }
+      ]
+    },
+    {
+      "id": "providers_6",
+      "speaker": "moderator",
+      "narration": "I search for the user, add them — and done. Now IJCAI Reviewer 2 can use these OpenAI models too, for example when testing prompts in Prompt Engineering.",
+      "actions": [
+        {
+          "do": "paste",
+          "target": "Share User Search",
+          "text": "ijcai_reviewer_2"
+        },
+        {
+          "do": "wait",
+          "seconds": 1.0
+        },
+        {
+          "do": "click",
+          "target": "Share User Suggestion"
+        },
+        {
+          "do": "wait",
+          "seconds": 0.5
+        },
+        {
+          "do": "click",
+          "target": "Share Add Button"
+        },
+        {
+          "do": "wait",
+          "seconds": 0.5
+        },
+        {
+          "do": "highlight",
+          "target": "Share Chip",
+          "duration": 1.5
+        },
+        {
+          "do": "click",
+          "target": "Share Dialog Close"
+        },
+        {
+          "do": "wait",
+          "seconds": 0.3
+        }
+      ]
+    },
+    {
+      "id": "providers_7",
+      "speaker": "guest",
+      "narration": "That's really practical — so I keep control of my API key, but my team can use the models. No credential sharing needed.",
+      "actions": [
+        {
+          "do": "highlight",
+          "target": "OpenAI Provider Card",
+          "duration": 1.5
         }
       ]
     },
@@ -2055,34 +2138,22 @@
       ]
     },
     {
-      "_section": "=== CONCLUSION (25s) ===",
+      "_section": "=== CONCLUSION (30s) ===",
       "id": "conclusion_1",
       "speaker": "moderator",
-      "narration": "We showed this with counselling data because that's our research domain — psychologists and social workers use Lars to craft prompts for extracting situation descriptions from client communications. In interviews, domain experts told us Lars eliminates the translation work between disciplines — they can directly co-author prompts and run evaluations without needing technical skills. But the platform is domain-agnostic — swap the email threads for medical reports or legal documents, and the workflow stays the same.",
+      "narration": "We showed this with counselling data because that's our research domain — psychologists and social workers use Lars to craft prompts for extracting situation descriptions from client communications. In interviews, domain experts told us Lars eliminates the translation work between disciplines. But the platform is domain-agnostic — swap the email threads for medical reports or legal documents, and the workflow stays the same.",
       "actions": [
         {
-          "do": "goto",
-          "url": "/Home"
+          "do": "show_summary",
+          "columns": [
+            [{"label": "URL", "value": "https://llars.e-beratungsinstitut.de"}],
+            [{"label": "Reviewer 1", "value": "ijcai_reviewer_1"}, {"label": "Password", "value": "ijcai_reviewer_123"}],
+            [{"label": "Reviewer 2", "value": "ijcai_reviewer_2"}, {"label": "Password", "value": "ijcai_reviewer_123"}]
+          ]
         },
         {
-          "do": "wait_for",
-          "target": "Prompt Engineering",
-          "timeout": 10
-        },
-        {
-          "do": "highlight",
-          "target": "Prompt Engineering",
-          "duration": 1.0
-        },
-        {
-          "do": "highlight",
-          "target": "Batch Generation",
-          "duration": 1.0
-        },
-        {
-          "do": "highlight",
-          "target": "Evaluation",
-          "duration": 1.0
+          "do": "wait",
+          "seconds": 2.0
         }
       ]
     },
@@ -2093,7 +2164,7 @@
       "actions": [
         {
           "do": "wait",
-          "seconds": 0.2
+          "seconds": 0.3
         }
       ]
     },
@@ -2102,16 +2173,6 @@
       "speaker": "moderator",
       "narration": "Thanks David. Lars is open-source — the credentials are on screen if you want to try it yourself. Check the repo and let us know what you think!",
       "actions": [
-        {
-          "do": "show_title",
-          "title": "Try LLARS",
-          "subtitle": "Open-Source · github.com/llars-project/llars",
-          "columns": [
-            [{"label": "URL", "value": "https://llars.e-beratungsinstitut.de"}],
-            [{"label": "Reviewer 1", "value": "ijcai_reviewer_1"}, {"label": "Password", "value": "ijcai_reviewer_123"}],
-            [{"label": "Reviewer 2", "value": "ijcai_reviewer_2"}, {"label": "Password", "value": "ijcai_reviewer_123"}]
-          ]
-        },
         {
           "do": "wait",
           "seconds": 3.0

@@ -1586,7 +1586,7 @@
       "_section": "=== SCENARIO MANAGER (45s) ===",
       "id": "scenario_1",
       "speaker": "moderator",
-      "narration": "This is the Scenario Workspace. Both IJCAI reviewers have been evaluating, and Magistral and GPT-5 Mini ran as LLM judges.",
+      "narration": "This is the Scenario Workspace. Both IJCAI reviewers have been evaluating, and Magistral and GPT-5 Mini participated as LLM-as-Evaluators — in LLARS, LLMs evaluate exactly like human evaluators.",
       "actions": [
         {
           "do": "wait",
@@ -1627,7 +1627,7 @@
     {
       "id": "scenario_3",
       "speaker": "guest",
-      "narration": "So the evaluator list shows both reviewers and both LLM judges, along with how far each one has progressed.",
+      "narration": "Wait — I can see all evaluators here side by side? The human reviewers and the LLMs together in one list?",
       "actions": [
         {
           "do": "highlight",
@@ -1639,7 +1639,7 @@
     {
       "id": "scenario_4",
       "speaker": "moderator",
-      "narration": "Each of the ten counselling cases has four situation descriptions — two prompts times two models. Reviewer one has finished eight, item nine is in progress, and item ten is still open. Reviewer two and both LLM evaluators are already done.",
+      "narration": "Exactly! Each of the ten counselling cases has four situation descriptions — two prompts times two models. See, David — IJCAI Reviewer 1 has already finished eight rankings, still has one in progress and one not yet started. Reviewer 2 and both LLM-as-Evaluators are already done.",
       "actions": [
         {
           "do": "highlight",
@@ -1651,7 +1651,7 @@
     {
       "id": "scenario_5",
       "speaker": "moderator",
-      "narration": "The Data tab shows every item's evaluation status. Green means done, yellow means in progress, and grey means not started yet — the evaluator can pick up where they left off at any time.",
+      "narration": "The Data tab shows every item's evaluation status. Green with a checkmark means done, gold with a clock icon means in progress, and grey with an empty circle means not yet started — the evaluator can pick up where they left off at any time.",
       "actions": [
         {
           "do": "click",
@@ -1706,7 +1706,7 @@
     {
       "id": "scenario_6a",
       "speaker": "guest",
-      "narration": "The heatmap shows pairwise agreement — reviewer one, reviewer two, Magistral, and GPT-5 Mini, all side by side. You can see exactly where humans and LLMs agree or disagree.",
+      "narration": "Interesting — what do the colors in the heatmap mean? I see green and red cells.",
       "actions": [
         {
           "do": "highlight",
@@ -1718,20 +1718,58 @@
     {
       "id": "scenario_6b",
       "speaker": "moderator",
-      "narration": "Exactly — you can immediately see where humans and LLMs disagree, and whether it's systematic. These metrics update live as rankings come in.",
+      "narration": "Green means high agreement, red means low agreement, and the beige tones are in between. The gradient goes from red through beige to green. You can immediately spot where humans and LLMs disagree. Let me click on a cell to show you more.",
       "actions": [
         {
           "do": "highlight",
-          "target": "Agreement Matrix",
+          "target": "Agreement Heatmap",
+          "duration": 1.0
+        },
+        {
+          "do": "click",
+          "target": "Heatmap Cell"
+        },
+        {
+          "do": "wait",
+          "seconds": 2.0
+        },
+        {
+          "do": "highlight",
+          "target": "Agreement Detail Score",
+          "duration": 1.2
+        },
+        {
+          "do": "highlight",
+          "target": "Agreement Detail Breakdown",
           "duration": 1.2
         }
       ]
     },
     {
       "id": "scenario_6c",
-      "speaker": "moderator",
-      "narration": "Exactly. And if it is, you go back to Prompt Engineering, refine the criteria, and re-evaluate. That's the iterative loop. You can also export everything as JSON or CSV.",
+      "speaker": "guest",
+      "narration": "So you get a detailed breakdown per item — which ones they agreed on and which ones they didn't?",
       "actions": [
+        {
+          "do": "highlight",
+          "target": "Agreement Detail Breakdown",
+          "duration": 1.0
+        }
+      ]
+    },
+    {
+      "id": "scenario_6d",
+      "speaker": "moderator",
+      "narration": "Exactly! And if the disagreement is systematic, you go back to Prompt Engineering, refine the criteria, and re-evaluate — that's the iterative loop. You can also export everything as JSON or CSV.",
+      "actions": [
+        {
+          "do": "click",
+          "target": "Close"
+        },
+        {
+          "do": "wait",
+          "seconds": 0.3
+        },
         {
           "do": "highlight",
           "target": "Evaluation Export",
@@ -1788,7 +1826,7 @@
     {
       "id": "scenario_8",
       "speaker": "guest",
-      "narration": "Absolutely — you can add or remove humans and LLM evaluators at any point, even mid-evaluation.",
+      "narration": "Can you add more evaluators even after the evaluation has already started?",
       "actions": [
         {
           "do": "highlight",
@@ -1798,6 +1836,18 @@
         {
           "do": "highlight",
           "target": "Team Add LLM Button",
+          "duration": 1.0
+        }
+      ]
+    },
+    {
+      "id": "scenario_8a",
+      "speaker": "moderator",
+      "narration": "Absolutely — you can add or remove humans and LLM-as-Evaluators at any point, even mid-evaluation.",
+      "actions": [
+        {
+          "do": "highlight",
+          "target": "Team Members List",
           "duration": 1.0
         }
       ]
@@ -1840,7 +1890,7 @@
     {
       "id": "human_eval_2",
       "speaker": "guest",
-      "narration": "I can see which items are done in green, and which are still pending. Let me open one of the remaining ones.",
+      "narration": "So these are the ten counselling cases? And I can see the status for each one — can I just click on one to start ranking?",
       "actions": [
         {
           "do": "click",
@@ -1926,7 +1976,7 @@
     {
       "id": "human_eval_4",
       "speaker": "guest",
-      "narration": "So it's fully blinded. No model names, no prompt labels, and a different order for everyone. That's solid methodology.",
+      "narration": "Wait — can the evaluator see which model generated which text? Or is it completely blinded?",
       "actions": [
         {
           "do": "highlight",
@@ -1938,7 +1988,7 @@
     {
       "id": "human_eval_5",
       "speaker": "moderator",
-      "narration": "Exactly — unbiased by design.",
+      "narration": "Completely blinded! No model names, no prompt labels, and a different order for every evaluator — unbiased by design.",
       "actions": [
         {
           "do": "highlight",

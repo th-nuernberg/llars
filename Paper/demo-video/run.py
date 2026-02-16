@@ -561,6 +561,9 @@ ELEMENT_MAP = {
     "Agreement Heatmap": ".l-agreement-heatmap, .agreement-heatmap-section, .heatmap-container, .visualization-panel",
     "Heatmap Cell": ".heatmap-cell",
     "Heatmap Grid": ".heatmap-container",
+    "Agreement Detail Dialog": ".agreement-detail-dialog .agreement-detail-card, .agreement-detail-card",
+    "Agreement Detail Score": ".agreement-detail-card .score-circle, .agreement-detail-body .score-circle",
+    "Agreement Detail Breakdown": ".agreement-detail-card .agreement-breakdown, .agreement-breakdown",
 
     # =============================================
     # ITEM DISTRIBUTION (ScenarioWizard.vue Step 3)
@@ -1771,6 +1774,15 @@ class Browser:
                 seed = result.get('seed', {})
                 deleted = cleanup.get('deleted', [])
                 actions = seed.get('actions', [])
+                legacy_live_prompt_seeded = any(
+                    ("Situation Summary" in str(a)) and (
+                        "Created prompt" in str(a)
+                        or "Updated prompt" in str(a)
+                        or "already exists" in str(a)
+                    )
+                    for a in actions
+                )
+                cleanup_live_supported = True
                 if deleted:
                     for d in deleted:
                         print(f"      🗑️ {d}")
@@ -1798,8 +1810,15 @@ class Browser:
                     if e.code not in (404, 405):
                         body = e.read().decode() if e.fp else ''
                         print(f"      ⚠️ cleanup-live-prompt API-Fehler {e.code}: {body[:200]}")
+                    else:
+                        cleanup_live_supported = False
                 except Exception as e:
                     print(f"      ⚠️ cleanup-live-prompt Aufruf fehlgeschlagen: {e}")
+
+                if legacy_live_prompt_seeded and not cleanup_live_supported:
+                    print("      ❌ Backend verwendet alte Demo-Reset-Logik:")
+                    print("         'Situation Summary' wird bereits im Setup erzeugt.")
+                    print("         Bitte Backend deployen/restarten, damit Live-Anlage wieder funktioniert.")
 
                 print("   ✓ Demo-Daten erfolgreich zurückgesetzt")
                 return True

@@ -38,11 +38,43 @@
   "_tts_naming": "TTS models say 'Lars' (without the leading L) because they mispronounce 'LLARS'. In all written text, overlays, and UI, the correct name is 'LLARS'.",
   "steps": [
     {
-      "_section": "=== INTRO (40s) — Welcome, pipeline overview with highlights, credentials, login ===",
+      "_section": "=== INTRO (50s) — Problem animation, pipeline overview with highlights, credentials, login ===",
       "id": "intro_1",
       "speaker": "moderator",
-      "narration": "Hey everyone, I'm Alex — and welcome to this demo of Lars, the LLM Assisted Research System. I'm here with my colleague David, and together we'll walk you through the platform live.",
+      "narration": "Hey everyone, I'm Alex — and welcome to this demo of Lars, the LLM Assisted Research System. I'm here with my colleague David, and together we'll walk you through the platform. But first — the problem we're solving.",
       "actions": [
+        {
+          "do": "show_problem"
+        },
+        {
+          "do": "wait",
+          "seconds": 1.5
+        }
+      ]
+    },
+    {
+      "id": "intro_2",
+      "speaker": "guest",
+      "narration": "Thanks, Alex. The challenge is clear: domain experts know what quality means, but developers know how to build the pipelines. These two groups usually work in isolation — passing prompts back and forth in shared documents, with no version control and no systematic evaluation.",
+      "actions": [
+        {
+          "do": "wait",
+          "seconds": 0.3
+        }
+      ]
+    },
+    {
+      "id": "intro_2a",
+      "speaker": "moderator",
+      "narration": "Exactly — a lot of translation work between disciplines. That's what LLARS solves. Here's the pipeline.",
+      "actions": [
+        {
+          "do": "hide_title"
+        },
+        {
+          "do": "wait",
+          "seconds": 0.5
+        },
         {
           "do": "show_pipeline",
           "title": "LLARS - LLM Assisted Research System",
@@ -78,17 +110,6 @@
         {
           "do": "wait",
           "seconds": 1.5
-        }
-      ]
-    },
-    {
-      "id": "intro_2",
-      "speaker": "guest",
-      "narration": "Thanks, Alex. Hi everyone — I'm David. The big challenge we see is that domain experts know what quality means, but developers know how to build the pipelines. These two groups usually work in isolation — passing prompts back and forth in shared documents. Lars bridges that gap.",
-      "actions": [
-        {
-          "do": "wait",
-          "seconds": 0.3
         }
       ]
     },

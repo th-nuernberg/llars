@@ -1,11 +1,11 @@
 {
-  "_comment": "LLARS Demo Video - IJCAI 2026 Demo Track",
-  "_version": "12.0 - GPT-5 Mini eval, pre-seeded evaluation scenario with progress states, IRR data",
-  "_duration_target": "4-5 minutes",
+  "_comment": "Lars Demo Video - IJCAI 2026 Demo Track",
+  "_version": "13.0 - IJCAI timing cut: fast intro + compressed prompt engineering",
+  "_duration_target": "max 10 minutes (target 9-9.5 minutes)",
   "_design_principles": [
     "Someone is always speaking",
     "Live collab with a real second browser",
-    "Dialogue style: Alex (LLARS expert) explains, David (domain expert perspective) asks smart questions — viewer should identify with David"
+    "Dialogue style: Alex (Lars expert) explains, David (reviewer perspective) asks smart questions — viewer should identify with David"
   ],
   "config": {
     "url": "https://llars.e-beratungsinstitut.de",
@@ -31,81 +31,89 @@
         "name": "David",
         "macos_voice": "Daniel",
         "macos_rate": 150,
-        "description": "A domain expert who asks smart questions — the audience should identify with him"
+        "description": "A reviewer persona who has read the paper and asks practical questions — the audience should identify with him"
       }
     }
   },
-  "_tts_naming": "TTS models say 'Lars' (without the leading L) because they mispronounce 'LLARS'. In all written text, overlays, and UI, the correct name is 'LLARS'.",
+  "_tts_naming": "TTS models say 'Lars' (without the leading L) because they mispronounce 'Lars'. In all written text, overlays, and UI, the correct name is 'Lars'.",
   "steps": [
     {
-      "_section": "=== INTRO (55s) — Phased problem animation, login behind scenes, pipeline overview ===",
-      "_concept": "Phase 1: boxes slide in (auto). Phase 2: painpoints appear (on cue). Phase 3: merge. No highlights — the animation phases ARE the visual.",
+      "_section": "=== INTRO (35s) — Fast problem framing and login ===",
+      "_concept": "Alex and David introduce themselves. Alex states the core problem and triggers the merge animation exactly when saying Lars.",
       "id": "intro_1",
       "speaker": "moderator",
-      "narration": "Hey everyone, I'm Alex — and welcome to this demo of Lars, the LLM Assisted Research System. I'm here with David, a domain expert in psychosocial counselling. David, you've worked with LLM pipelines before — what's the biggest challenge?",
+      "narration": "Hi, I'm Alex. Today I'm joined by my colleague David.",
       "actions": [
         {
-          "do": "show_problem"
-        },
-        {
           "do": "wait",
-          "seconds": 1.5
+          "seconds": 0.4
         }
       ]
     },
     {
       "id": "intro_1a",
       "speaker": "guest",
-      "narration": "As a domain expert, I know exactly what a good counselling summary should look like. But I can't control the prompts or choose the models — I describe my quality criteria, and then I have to hope the developer implements them correctly.",
+      "narration": "Hi, I'm David. I read the paper and I'm curious what you'll show me today.",
       "actions": [
         {
           "do": "wait",
-          "seconds": 0.3
+          "seconds": 0.2
         }
       ]
     },
     {
       "id": "intro_1b",
       "speaker": "moderator",
-      "narration": "And that's the gap. Both sides end up passing prompts back and forth in shared documents — no version control, no systematic evaluation.",
+      "narration": "There is still a gap between quality goals and technical implementation in LLM projects. LARS solves this gap by bringing everyone into one shared workflow.",
       "actions": [
+        {
+          "do": "show_problem"
+        },
+        {
+          "do": "sync",
+          "after": "there is still a gap"
+        },
         {
           "do": "problem_show_painpoints"
         },
         {
+          "do": "sync",
+          "after": "Lars solves this gap"
+        },
+        {
+          "do": "merge_problem"
+        },
+        {
           "do": "wait",
-          "seconds": 0.5
+          "seconds": 0.2
         }
       ]
     },
     {
       "id": "intro_1c",
       "speaker": "guest",
-      "narration": "Exactly — just translation work between disciplines. So how does LLARS change this? How do I as a domain expert get into the driver's seat?",
+      "narration": "Makes sense, I understand.",
       "actions": [
         {
           "do": "wait",
-          "seconds": 0.3
+          "seconds": 0.2
         }
       ]
     },
     {
-      "id": "intro_2a",
-      "speaker": "moderator",
-      "narration": "LLARS brings both sides together into one platform — let me show you.",
+      "id": "intro_1d",
+      "speaker": "guest",
+      "narration": "Sounds good, Alex. While you log in, I'm following along.",
       "actions": [
-        {
-          "do": "merge_problem"
-        },
-        {
-          "do": "wait",
-          "seconds": 3.0
-        },
         {
           "do": "hide_title"
         },
         {
           "do": "login"
+        },
+        {
+          "do": "wait",
+          "seconds": 0.3
         }
       ]
     },
@@ -121,7 +129,7 @@
         },
         {
           "do": "show_pipeline",
-          "title": "LLARS - LLM Assisted Research System",
+          "title": "Lars - LLM Assisted Research System",
           "columns": [
             [
               {
@@ -169,60 +177,21 @@
           "do": "highlight",
           "target": "Pipeline Evaluation",
           "duration": 6.0
-        }
-      ]
-    },
-    {
-      "id": "intro_3",
-      "speaker": "guest",
-      "narration": "That sounds like exactly what I need as a domain expert. Can I try it myself?",
-      "actions": [
-        {
-          "do": "highlight",
-          "target": "Pipeline Credentials",
-          "duration": 3.0
-        }
-      ]
-    },
-    {
-      "id": "intro_3a",
-      "speaker": "moderator",
-      "narration": "Absolutely — the credentials are on screen. We're already logged in, so let's dive right in!",
-      "actions": [
-        {
-          "do": "highlight",
-          "target": "Pipeline Credentials",
-          "duration": 2.0
         },
         {
           "do": "hide_title"
         },
         {
           "do": "wait",
-          "seconds": 0.5
-        },
-        {
-          "do": "highlight",
-          "target": "Prompt Engineering",
-          "duration": 1.0
-        },
-        {
-          "do": "highlight",
-          "target": "Batch Generation",
-          "duration": 1.0
-        },
-        {
-          "do": "highlight",
-          "target": "Evaluation",
-          "duration": 1.0
+          "seconds": 0.2
         }
       ]
     },
     {
-      "_section": "=== PROMPT ENGINEERING (120s) ===",
+      "_section": "=== PROMPT ENGINEERING (65s) ===",
       "id": "prompt_eng_1",
       "speaker": "moderator",
-      "narration": "We start with Prompt Engineering. This is where teams build and refine their prompts together.",
+      "narration": "We start in Prompt Engineering, where domain and technical experts work on one shared prompt.",
       "actions": [
         {
           "do": "sync",
@@ -242,7 +211,7 @@
     {
       "id": "prompt_eng_2",
       "speaker": "moderator",
-      "narration": "Let's create a new prompt. I can add collaborators right away — so I'll invite an IJCAI reviewer to work on this with us.",
+      "narration": "I'll create a fresh prompt and share it with a second reviewer account so we can edit it live together.",
       "actions": [
         {
           "do": "wait",
@@ -264,29 +233,29 @@
     },
     {
       "id": "prompt_eng_2b",
-      "speaker": "guest",
-      "narration": "So you're adding me as a collaborator — does that mean we can both edit this prompt live at the same time?",
+      "speaker": "moderator",
+      "narration": "First I name the prompt, then I add ijcai_reviewer_2 as collaborator in the share field.",
       "actions": [
         {
           "do": "type",
           "target": "Prompt Name Input",
           "text": "Live Situation Summary",
-          "speed": "medium"
+          "speed": "fast"
         },
         {
           "do": "highlight",
           "target": "input[placeholder='Search and add users...']",
-          "duration": 0.8
+          "duration": 0.6
         },
         {
           "do": "type",
           "target": "input[placeholder='Search and add users...']",
           "text": "ijcai_reviewer_2",
-          "speed": "medium"
+          "speed": "fast"
         },
         {
           "do": "wait",
-          "seconds": 0.5
+          "seconds": 0.2
         },
         {
           "do": "click",
@@ -297,20 +266,37 @@
     {
       "id": "prompt_eng_3",
       "speaker": "moderator",
-      "narration": "Exactly — every edit, every new block, you'll see it appear in real time. Let me create this and show you.",
+      "narration": "Great, the prompt is shared now. David, open the collaboration browser, sign in as reviewer two, and open the shared prompt.",
       "actions": [
         {
           "do": "click",
           "target": "Dialog Create Button"
         },
         {
-          "do": "wait",
-          "seconds": 0.8
-        },
-        {
           "do": "wait_for",
           "target": "Prompt Workspace",
           "timeout": 10
+        },
+        {
+          "do": "sync",
+          "after": "log in"
+        },
+        {
+          "do": "collab_open",
+          "user": "ijcai_reviewer_2",
+          "password": "ijcai_reviewer_123"
+        },
+        {
+          "do": "collab_goto",
+          "url": "/promptengineering"
+        },
+        {
+          "do": "wait",
+          "seconds": 0.3
+        },
+        {
+          "do": "collab_click",
+          "target": "Situation Summary"
         },
         {
           "do": "wait",
@@ -320,8 +306,8 @@
     },
     {
       "id": "prompt_eng_4",
-      "speaker": "moderator",
-      "narration": "Prompts in LLARS are built from named blocks. The first block I'll name System Prompt — LLARS automatically recognizes it as the system message. The remaining blocks become the user prompt. Let me create three.",
+      "speaker": "guest",
+      "narration": "Ah, I see. So we can really work on the same prompt in real time while you set up the blocks.",
       "actions": [
         {
           "do": "click",
@@ -342,7 +328,7 @@
         },
         {
           "do": "wait",
-          "seconds": 0.3
+          "seconds": 0.1
         },
         {
           "do": "click",
@@ -363,7 +349,7 @@
         },
         {
           "do": "wait",
-          "seconds": 0.3
+          "seconds": 0.1
         },
         {
           "do": "click",
@@ -384,68 +370,39 @@
         },
         {
           "do": "wait",
-          "seconds": 0.3
-        }
-      ]
-    },
-    {
-      "id": "prompt_eng_4b",
-      "speaker": "guest",
-      "narration": "I see — the first block has a green border, so LLARS recognized it as the system prompt. And the other two blocks become the user message?",
-      "actions": [
-        {
-          "do": "highlight",
-          "target": "First Block Editor",
-          "duration": 1.5
-        },
-        {
-          "do": "highlight",
-          "target": "Last Block Editor",
-          "duration": 1.2
+          "seconds": 0.1
         }
       ]
     },
     {
       "id": "prompt_eng_5",
       "speaker": "moderator",
-      "narration": "Exactly — the System Prompt block sets the role, and everything else gets merged into the user message. Let me fill these in.",
+      "narration": "Exactly. Now I fill the blocks and insert variables for subject and content.",
       "actions": [
         {
           "do": "type",
           "target": ".editor-block:nth-child(1) .ql-editor",
-          "text": "You are a counselling assistant who helps professionals extract key facts from client communications in online psychosocial counselling.",
+          "text": "You are a counselling assistant that extracts key facts from psychosocial counselling communication.",
           "speed": "turbo"
         },
         {
           "do": "type",
           "target": ".editor-block:nth-child(2) .ql-editor",
-          "text": "Read the email thread and write a brief situation overview in 2-3 sentences. Focus on the client's living situation, family, health, and main concerns. Write in third person, present tense.",
+          "text": "Read the email thread and write a short situation summary in 2 to 3 sentences. Focus on family situation, health, and main concerns.",
           "speed": "turbo"
         },
         {
           "do": "type",
           "target": ".editor-block:nth-child(3) .ql-editor",
-          "text": "Subject: {{subject}}",
+          "text": "Subject: {{subject}}\nContent: {{content}}",
           "speed": "instant"
-        }
-      ]
-    },
-    {
-      "id": "prompt_eng_5_react",
-      "speaker": "guest",
-      "narration": "Ah — I see those green highlighted blocks in the text. Are those variables? Subject and Content?",
-      "actions": [
-        {
-          "do": "highlight",
-          "target": "Last Block Editor",
-          "duration": 1.0
         }
       ]
     },
     {
       "id": "prompt_eng_5a",
       "speaker": "moderator",
-      "narration": "Yes, exactly! Those are template variables — double curly braces. They'll be replaced with real data during batch generation. Let me set up sample values so we can test the prompt.",
+      "narration": "These braces are template variables. I add sample values so we can test immediately.",
       "actions": [
         {
           "do": "click",
@@ -456,7 +413,7 @@
         },
         {
           "do": "wait",
-          "seconds": 0.5
+          "seconds": 0.2
         },
         {
           "do": "type",
@@ -467,11 +424,11 @@
         {
           "do": "paste",
           "target": "Variable Content Input",
-          "text": "School problems with my son"
+          "text": "School refusal and social exclusion"
         },
         {
           "do": "wait",
-          "seconds": 0.3
+          "seconds": 0.2
         },
         {
           "do": "click",
@@ -479,7 +436,7 @@
         },
         {
           "do": "wait",
-          "seconds": 1.5
+          "seconds": 0.5
         },
         {
           "do": "clear",
@@ -491,7 +448,7 @@
         },
         {
           "do": "wait",
-          "seconds": 0.3
+          "seconds": 0.2
         },
         {
           "do": "type",
@@ -502,11 +459,11 @@
         {
           "do": "paste",
           "target": "Variable Content Input",
-          "text": "Client wrote on 05/01/2026 at 6:12 PM:\nI am writing because my 14-year-old son has refused to go to school for the past three weeks. Every morning he complains of headaches and stomach aches, but our paediatrician found nothing physically wrong. Before this started, he was an average student and had a small group of friends. My son will not tell me what happened. His form teacher called and said he has 15 unexcused absences now. I am a single father and I have already used all my remaining leave days from work to stay home with him. I am worried about his grades and whether the school will involve the youth welfare office.\n\nCounsellor wrote on 06/01/2026 at 10:00 AM:\nThank you for writing. School refusal at this age often signals that something significant has changed in the social environment. The physical symptoms your son reports are real — they are a stress response, even without an organic cause. It may help to gently explore whether there has been conflict with peers. Sometimes children at this age experience social exclusion or bullying but feel ashamed to talk about it. I would suggest requesting a meeting with the school counsellor, ideally without your son present at first, to understand what the school has observed. The youth welfare office is usually involved only in prolonged cases and their role is supportive, not punitive.\n\nClient wrote on 08/01/2026 at 9:30 PM:\nI spoke with his form teacher again today. She mentioned that a group of boys in his class has been making comments about his clothes and his phone being old. She was not sure if it counts as bullying. When I carefully asked my son about it tonight, he started crying and said everyone hates him and he never wants to go back. He also said he has been eating lunch alone for two months. I feel terrible that I did not notice earlier."
+          "text": "Client wrote:\nMy 14-year-old son has refused school for three weeks and reports headaches. The teacher mentioned social exclusion.\n\nCounsellor wrote:\nSchool refusal can indicate stress and possible bullying. Arrange a meeting with the school counsellor and define next support steps."
         },
         {
           "do": "wait",
-          "seconds": 0.3
+          "seconds": 0.2
         },
         {
           "do": "click",
@@ -514,7 +471,7 @@
         },
         {
           "do": "wait",
-          "seconds": 1.5
+          "seconds": 0.5
         },
         {
           "do": "dismiss_dialog"
@@ -525,26 +482,17 @@
       ]
     },
     {
-      "id": "prompt_eng_5a_try",
-      "speaker": "moderator",
-      "narration": "Now David, log in with your account and add context for the data format — describe what subject and content actually contain.",
+      "id": "prompt_eng_5a_david",
+      "speaker": "guest",
+      "narration": "I'm logged in. I'll add one clarification about the data format from my side.",
       "actions": [
-        {
-          "do": "collab_open",
-          "user": "ijcai_reviewer_2",
-          "password": "ijcai_reviewer_123"
-        },
-        {
-          "do": "wait",
-          "seconds": 0.5
-        },
         {
           "do": "collab_goto",
           "url": "/promptengineering"
         },
         {
           "do": "wait",
-          "seconds": 0.5
+          "seconds": 0.3
         },
         {
           "do": "collab_click",
@@ -552,50 +500,32 @@
         },
         {
           "do": "wait",
-          "seconds": 0.5
-        }
-      ]
-    },
-    {
-      "id": "prompt_eng_5a_david",
-      "speaker": "guest",
-      "narration": "Sure — the data is a subject line followed by a counselling email thread. Let me add that.",
-      "actions": [
+          "seconds": 0.3
+        },
         {
           "do": "collab_type",
           "target": "Last Block Editor",
-          "text": "\nContent: {{content}} \nThe data above is provided as a subject line followed by the email thread content from a counselling session.",
+          "text": "\nThe fields come from one counselling case: subject line and full message thread.",
           "cursor": "end",
-          "delay": 0.03
+          "delay": 0.02
         },
         {
           "do": "wait",
-          "seconds": 0.5
-        }
-      ]
-    },
-    {
-      "id": "prompt_eng_5a_react",
-      "speaker": "guest",
-      "narration": "And I can see it appearing on your screen in real time — that's actual live collaboration! Can I test the prompt right away?",
-      "actions": [
-        {
-          "do": "wait",
-          "seconds": 0.5
+          "seconds": 0.3
         }
       ]
     },
     {
       "id": "prompt_eng_5b",
       "speaker": "moderator",
-      "narration": "Exactly — quick iteration. Let me hit Test — the variables get inserted and the LLM generates a response right here.",
+      "narration": "Great. One click on Test, variables are injected, and we immediately review the output.",
       "actions": [
         {
           "do": "dismiss_overlays"
         },
         {
           "do": "wait",
-          "seconds": 0.5
+          "seconds": 0.3
         },
         {
           "do": "click",
@@ -608,36 +538,13 @@
         },
         {
           "do": "wait",
-          "seconds": 0.5
+          "seconds": 0.3
         },
         {
           "do": "highlight",
           "target": "Test Variables Preview",
-          "duration": 1.0
-        }
-      ]
-    },
-    {
-      "id": "prompt_eng_5c",
-      "speaker": "guest",
-      "narration": "Wait — so I can see the rendered prompt with my actual data and check the output quality right here? That's exactly what I'd want as a domain expert.",
-      "actions": [
-        {
-          "do": "wait",
-          "seconds": 0.8
+          "duration": 0.8
         },
-        {
-          "do": "highlight",
-          "target": "Response Output",
-          "duration": 1.5
-        }
-      ]
-    },
-    {
-      "id": "prompt_eng_5d",
-      "speaker": "moderator",
-      "narration": "And if the output misses key facts or includes speculation, I just tweak the instructions and test again. No context switching, no re-uploading data.",
-      "actions": [
         {
           "do": "highlight",
           "target": "Response Output",
@@ -649,133 +556,39 @@
         },
         {
           "do": "wait",
-          "seconds": 0.5
+          "seconds": 0.3
         }
       ]
     },
     {
-      "id": "prompt_eng_6",
-      "speaker": "guest",
-      "narration": "Nice feedback loop. And we're already editing the same prompt together — that's real-time collaboration?",
-      "actions": [
-        {
-          "do": "wait",
-          "seconds": 0.2
-        }
-      ]
-    },
-    {
-      "_comment": "=== LIVE COLLAB DEMO (BROWSER ALREADY OPEN) ===",
+      "_comment": "=== LIVE COLLAB DEMO (BROWSER OPENED EARLY) ===",
       "id": "collab_1",
       "speaker": "moderator",
-      "narration": "Exactly — you're already logged in side by side. Every edit, every new block, you see it appear in real time. Your cursor appears on my screen with your color.",
+      "narration": "David is editing in the second browser now, and changes appear live on my screen. The version panel tracks who changed what.",
       "actions": [
         {
           "do": "collab_focus"
         },
         {
           "do": "wait",
-          "seconds": 0.3
+          "seconds": 0.2
         },
         {
           "do": "highlight",
           "target": "Last Block Editor",
-          "duration": 1.0
-        }
-      ]
-    },
-    {
-      "id": "collab_3",
-      "speaker": "moderator",
-      "narration": "Notice the version control panel — every change is tracked per user. The different colors show who wrote what, and you can commit snapshots at any time.",
-      "actions": [
+          "duration": 0.8
+        },
         {
           "do": "highlight",
           "target": "Version Control Panel",
-          "duration": 1.2
-        },
-        {
-          "do": "highlight",
-          "target": "Last Block Editor",
-          "duration": 1.2
-        }
-      ]
-    },
-    {
-      "id": "collab_4",
-      "speaker": "guest",
-      "narration": "This feels like Google Docs — but for prompts? And the different colors — is that how I can tell who wrote what?",
-      "actions": [
-        {
-          "do": "highlight",
-          "target": "Last Block Editor",
-          "duration": 1.2
-        }
-      ]
-    },
-    {
-      "id": "collab_5",
-      "speaker": "moderator",
-      "narration": "Exactly — each collaborator gets a unique color. You can customize it in your profile settings.",
-      "actions": [
-        {
-          "do": "highlight",
-          "target": "Last Block Editor",
-          "duration": 1.0
-        }
-      ]
-    },
-    {
-      "_section": "=== VERSION CONTROL (15s) ===",
-      "id": "version_1",
-      "speaker": "guest",
-      "narration": "Wait — does it also track version history? Like who changed what and when?",
-      "actions": [
-        {
-          "do": "highlight",
-          "target": "Version Control Panel",
-          "duration": 1.2
-        }
-      ]
-    },
-    {
-      "id": "version_2",
-      "speaker": "moderator",
-      "narration": "Exactly — every change is tracked per block and per user. You can commit snapshots, see diffs, and roll back. Let me open the full version history.",
-      "actions": [
-        {
-          "do": "highlight",
-          "target": "Version Control Status",
-          "duration": 1.0
-        },
-        {
-          "do": "click",
-          "target": "Version Control Fullscreen",
-          "highlight_before": 1.0
-        },
-        {
-          "do": "wait_for",
-          "target": "Git Floating Panel",
-          "timeout": 5
-        },
-        {
-          "do": "wait",
-          "seconds": 0.5
-        },
-        {
-          "do": "click",
-          "target": "Git Floating Panel Close"
-        },
-        {
-          "do": "wait",
-          "seconds": 0.5
+          "duration": 0.8
         }
       ]
     },
     {
       "id": "prompt_eng_7",
       "speaker": "moderator",
-      "narration": "Good. Now we have two prompts — the one we just built together, and a second one created during setup with slightly different instructions. We'll compare both in Batch Generation.",
+      "narration": "Perfect. We now have the live co-authored prompt and a second pre-seeded prompt. We'll compare both in Batch Generation.",
       "actions": [
         {
           "do": "collab_close"
@@ -786,7 +599,7 @@
         },
         {
           "do": "wait",
-          "seconds": 0.5
+          "seconds": 0.3
         },
         {
           "do": "wait_for",
@@ -796,12 +609,12 @@
         {
           "do": "highlight",
           "target": "Situation Summary",
-          "duration": 1.2
+          "duration": 0.8
         },
         {
           "do": "highlight",
           "target": "Structured Situation Analysis",
-          "duration": 1.2
+          "duration": 0.8
         },
         {
           "do": "click",
@@ -810,23 +623,6 @@
         {
           "do": "wait",
           "seconds": 0.2
-        }
-      ]
-    },
-    {
-      "id": "prompt_eng_13",
-      "speaker": "moderator",
-      "narration": "Prompts are portable — you can download them as JSON or import blocks from other prompts.",
-      "actions": [
-        {
-          "do": "highlight",
-          "target": "Download",
-          "duration": 1.0
-        },
-        {
-          "do": "highlight",
-          "target": "Import",
-          "duration": 1.0
         }
       ]
     },
@@ -1069,50 +865,62 @@
     {
       "id": "batch_gen_2b",
       "speaker": "moderator",
-      "narration": "First, the data. Here are our ten counselling cases in JSON format — each entry has a subject field and a content field, matching the template variables we defined in the prompt.",
+      "narration": "First, the data: ten counselling cases in JSON. Lets look at the JSON structure, here ist the subject, and the corresponding content.",
       "actions": [
         {
           "do": "show_data_preview"
         },
         {
-          "do": "wait",
-          "seconds": 0.5
+          "do": "sync",
+          "after": "json"
         },
         {
           "do": "highlight",
           "target": "Data Preview Code",
-          "duration": 1.2
+          "duration": 0.7
+        },
+        {
+          "do": "sync",
+          "after": "subject"
         },
         {
           "do": "highlight",
-          "target": "Data Preview Count",
-          "duration": 1.2
+          "target": ".data-preview-code .dp-key:contains(subject)",
+          "duration": 0.6
+        },
+        {
+          "do": "sync",
+          "after": "content"
+        },
+        {
+          "do": "highlight",
+          "target": ".data-preview-code .dp-key:contains(content)",
+          "duration": 0.6
         }
       ]
     },
     {
       "id": "batch_gen_2c",
       "speaker": "guest",
-      "narration": "So these JSON keys map directly to the curly-brace variables in the prompt? Subject maps to subject, content maps to content?",
+      "narration": "I understand. Let's set it up.",
       "actions": [
         {
-          "do": "highlight",
-          "target": "Data Preview Code",
-          "duration": 1.5
+          "do": "wait",
+          "seconds": 0.1
         }
       ]
     },
     {
       "id": "batch_gen_3",
       "speaker": "moderator",
-      "narration": "Exactly — Lars maps them automatically. Let me paste them into the wizard.",
+      "narration": "Lars maps those fields automatically. I'll paste the JSON into the wizard.",
       "actions": [
         {
           "do": "hide_title"
         },
         {
           "do": "wait",
-          "seconds": 0.3
+          "seconds": 0.1
         },
         {
           "do": "highlight",
@@ -1143,22 +951,8 @@
           "file": "data/counselling_cases.json"
         },
         {
-          "do": "scroll",
-          "target": "Manual Data Textarea",
-          "amount": 260
-        },
-        {
           "do": "wait",
-          "seconds": 0.1
-        },
-        {
-          "do": "scroll",
-          "target": "Manual Data Textarea",
-          "amount": 260
-        },
-        {
-          "do": "wait",
-          "seconds": 0.5
+          "seconds": 0.2
         },
         {
           "do": "click",
@@ -1211,7 +1005,7 @@
     {
       "id": "batch_gen_5",
       "speaker": "moderator",
-      "narration": "Exactly — both selected. Next we pick models. I'll take Mistral Small — that's one of the models we connected — and GPT-5 Nano from the OpenAI provider you just saw. One open-source, one commercial, so we can compare.",
+      "narration": "Yes you are right, I selected both. Next we pick models. I'll take Mistral Small — one of our connected open-source models — and GPT-5 Nano from OpenAI, so we can compare providers directly.",
       "actions": [
         {
           "do": "wait",
@@ -1274,7 +1068,7 @@
     {
       "id": "batch_gen_7",
       "speaker": "guest",
-      "narration": "A generation matrix — so that's ten items times two prompts times two models?",
+      "narration": "Ah, here I see the generation matrix, this is a Cartesian Product, right?",
       "actions": [
         {
           "do": "wait_for",
@@ -1291,7 +1085,7 @@
     {
       "id": "batch_gen_7b",
       "speaker": "moderator",
-      "narration": "…times two prompts, times two models — forty situation descriptions total. And notice the cost estimate — Lars calculates expected tokens and cost before you run anything.",
+      "narration": "Yes, ten data points, times two prompts, times two models — forty situation descriptions total. And notice the cost estimate — Lars calculates expected tokens and cost before you run anything.",
       "actions": [
         {
           "do": "highlight",
@@ -1370,7 +1164,7 @@
     {
       "id": "batch_gen_output_1",
       "speaker": "guest",
-      "narration": "Can we look inside one of these outputs?",
+      "narration": "Ah, here I see how it looks after the Batch Generation is done. Can we look at one of these outputs in Detail?",
       "actions": [
         {
           "do": "highlight",
@@ -1391,7 +1185,7 @@
     {
       "id": "batch_gen_output_2",
       "speaker": "moderator",
-      "narration": "Here's the full trace — rendered prompt on the left, model output on the right, plus metadata. The provenance is fully tracked — you always know which prompt and model produced each output.",
+      "narration": "Yes of course. Here's the full trace — rendered prompt on the left, model output on the right, plus metadata. The provenance is fully tracked — you always know which prompt and model produced each output.",
       "actions": [
         {
           "do": "highlight",
@@ -1426,7 +1220,7 @@
     {
       "id": "batch_gen_11",
       "speaker": "guest",
-      "narration": "OK — so we have forty situation descriptions now. Mistral versus GPT-5 Nano, each with two prompts. But how do I as a domain expert decide which combination actually works best?",
+      "narration": "OK — so we have forty situation descriptions now. Mistral versus GPT-5 Nano, each with two prompts. But how do I as a reviewer decide which combination actually works best?",
       "actions": [
         {
           "do": "wait",
@@ -1463,7 +1257,7 @@
     {
       "id": "scenario_wizard_2",
       "speaker": "moderator",
-      "narration": "Lars supports Rating with multi-dimensional Likert scales, Labeling, and pairwise Comparison — but for comparing outputs across models, Ranking is the best fit. And specifically, we use Bucket Ranking.",
+      "narration": "For cross-model comparison, we choose Ranking — specifically Bucket Ranking.",
       "actions": [
         {
           "do": "wait",
@@ -1487,18 +1281,7 @@
     {
       "id": "scenario_wizard_2b",
       "speaker": "guest",
-      "narration": "Bucket Ranking — so instead of sorting all four items into one long list, I just drop them into categories like Best, Acceptable, and Poor?",
-      "actions": [
-        {
-          "do": "wait",
-          "seconds": 0.3
-        }
-      ]
-    },
-    {
-      "id": "scenario_wizard_3",
-      "speaker": "moderator",
-      "narration": "Exactly! It's much easier for evaluators to sort items into buckets than to decide precise positions in a long ranking. Especially with four items per case — just drag them into the right bucket and you're done. The name is prefilled from the batch, let's move on.",
+      "narration": "Bucket Ranking — so instead of sorting all four items into one long list, I just drop them into categories like Good, Medium, and Poor?",
       "actions": [
         {
           "do": "wait",
@@ -1511,9 +1294,9 @@
       ]
     },
     {
-      "id": "scenario_wizard_4",
+      "id": "scenario_wizard_3",
       "speaker": "moderator",
-      "narration": "Here you can see the bucket configuration and how items get distributed across evaluators.",
+      "narration": "Yes you do. Evaluators place each item into one bucket, so they avoid forced full ordering.",
       "actions": [
         {
           "do": "wait",
@@ -1527,10 +1310,31 @@
           "do": "highlight",
           "target": "Ranking Buckets",
           "duration": 1.2
+        }
+      ]
+    },
+    {
+      "id": "scenario_wizard_4",
+      "speaker": "moderator",
+      "narration": "And below that, we configure assignment and randomization.",
+      "actions": [
+        {
+          "do": "wait",
+          "seconds": 0.2
         },
         {
           "do": "highlight",
           "target": "Distribution Settings",
+          "duration": 1.0
+        },
+        {
+          "do": "highlight",
+          "target": "Distribution Mode",
+          "duration": 1.0
+        },
+        {
+          "do": "highlight",
+          "target": "Order Mode",
           "duration": 1.0
         }
       ]
@@ -1538,7 +1342,7 @@
     {
       "id": "scenario_wizard_4b",
       "speaker": "guest",
-      "narration": "And I can choose whether everyone evaluates everything, or split items across evaluators? Does it also randomize the order to prevent bias?",
+      "narration": "Great. So I can choose full overlap or split items across evaluators, and still keep random order?",
       "actions": [
         {
           "do": "highlight",
@@ -1559,7 +1363,7 @@
     {
       "id": "scenario_wizard_5",
       "speaker": "moderator",
-      "narration": "Exactly. We add ourselves as human evaluators. And for LLM-as-Evaluator, I'll pick Magistral — a reasoning model we connected — and GPT-5 Mini from OpenAI, so we get cross-provider comparison.",
+      "narration": "Yes, as you want. Next we add ourselves as human evaluators. For LLM-as-Evaluator, I'll pick Magistral and GPT-5 Mini.",
       "actions": [
         {
           "do": "wait",
@@ -1643,15 +1447,33 @@
       "_section": "=== HUMAN EVALUATION (30s) — Show bucket ranking from evaluator perspective ===",
       "id": "human_eval_1",
       "speaker": "moderator",
-      "narration": "This is the evaluator's view — each assigned scenario appears here. Let me open our counselling scenario.",
+      "narration": "From the scenario workspace, I'll go back to Home via the Lars logo and open the Evaluation module. In this evaluator view, each assigned scenario appears as a card.",
       "actions": [
         {
-          "do": "goto",
-          "url": "/evaluation"
+          "do": "click_if_present",
+          "target": "App Bar Logo Home"
         },
         {
           "do": "wait",
-          "seconds": 3.0
+          "seconds": 0.4
+        },
+        {
+          "do": "wait_for",
+          "target": "Evaluation",
+          "timeout": 10
+        },
+        {
+          "do": "highlight",
+          "target": "Evaluation",
+          "duration": 1.0
+        },
+        {
+          "do": "click",
+          "target": "Evaluation"
+        },
+        {
+          "do": "wait",
+          "seconds": 2.0
         },
         {
           "do": "wait_for",
@@ -1677,7 +1499,7 @@
     {
       "id": "human_eval_2",
       "speaker": "guest",
-      "narration": "These are the ten counselling cases? Each with four situation descriptions to rank — from the two prompts and two models?",
+      "narration": "These are the ten counselling cases? Each with four situation descriptions to rank. Ah, I see those are the situation descriptions we just generated with the Batch Generation.",
       "actions": [
         {
           "do": "click",
@@ -1710,7 +1532,7 @@
     {
       "id": "human_eval_3",
       "speaker": "moderator",
-      "narration": "Exactly. And this is bucket ranking — the default evaluation method in LLARS. Instead of creating a total ordering, the evaluator sorts items into quality categories by dragging them. Notice the generic labels — Item A, B, C — the evaluator never sees which model or prompt produced the text.",
+      "narration": "Here you see bucket ranking, the default evaluation mode in Lars. Instead of a full ordering, evaluators drag items into quality categories. Notice the generic labels — Item A, B, C — so model and prompt identity stay hidden.",
       "actions": [
         {
           "do": "highlight",
@@ -1775,7 +1597,7 @@
     {
       "id": "human_eval_5",
       "speaker": "moderator",
-      "narration": "Completely blinded — no model names, no prompt labels, and every evaluator sees items in a different random order. Unbiased by design. Now let's switch to the scenario owner's perspective and look at the aggregated results.",
+      "narration": "Yes, no model names, no prompt labels, and every evaluator sees items in a different random order. Unbiased by design. Now let's switch to the scenario owner's perspective and look at the aggregated results.",
       "actions": [
         {
           "do": "highlight",
@@ -1788,7 +1610,7 @@
       "_section": "=== SCENARIO MANAGER (60s) — Overview, Data, Team briefly, then Evaluation with provenance focus ===",
       "id": "scenario_1",
       "speaker": "moderator",
-      "narration": "In the Scenario Manager, here's our pre-built scenario where both IJCAI reviewers and two LLM evaluators have been ranking.",
+      "narration": "In the Scenario Manager, here's is the pre-built scenario at which we just look. Here both IJCAI reviewers and two LLM evaluators have been ranking.",
       "actions": [
         {
           "do": "goto",
@@ -1856,7 +1678,7 @@
     {
       "id": "scenario_3",
       "speaker": "moderator",
-      "narration": "The Data tab shows every item's evaluation status — green means done, gold means in progress, grey means not yet started.",
+      "narration": "In the Data tab, we can open each individual data point. I click the eye icon on one thread, and now we see the full item with its messages and how it was evaluated.",
       "actions": [
         {
           "do": "click",
@@ -1868,13 +1690,27 @@
         },
         {
           "do": "highlight",
-          "target": "Data Stats",
+          "target": "Data Threads Table",
           "duration": 1.0
         },
         {
+          "do": "click",
+          "target": "Data Thread View Button"
+        },
+        {
+          "do": "wait_for",
+          "target": "Thread Detail Dialog",
+          "timeout": 4
+        },
+        {
           "do": "highlight",
-          "target": "Data Threads Table",
-          "duration": 1.2
+          "target": "Thread Detail Subject",
+          "duration": 0.9
+        },
+        {
+          "do": "highlight",
+          "target": "Thread Detail Votes Panel",
+          "duration": 1.1
         }
       ]
     },
@@ -1883,6 +1719,14 @@
       "speaker": "moderator",
       "narration": "And the Team tab — you can add or remove human evaluators and LLM-as-Evaluators at any point, even mid-evaluation.",
       "actions": [
+        {
+          "do": "click_if_present",
+          "target": "Thread Detail Close"
+        },
+        {
+          "do": "wait",
+          "seconds": 0.15
+        },
         {
           "do": "click",
           "target": "Scenario Tab Team"
@@ -1923,7 +1767,7 @@
     {
       "id": "scenario_6",
       "speaker": "moderator",
-      "narration": "The Evaluation tab. Up top we see agreement metrics — Krippendorff's alpha and others — filterable by evaluator type so you can compare human-human, LLM-LLM, and cross agreement.",
+      "narration": "In the Evaluation tab. Up top we see agreement metrics — Krippendorff's alpha and others. Here, this All-Human-LLM toggle lets you switch between All, Human only, and LLM only evaluation views.",
       "actions": [
         {
           "do": "click",
@@ -1935,8 +1779,13 @@
         },
         {
           "do": "highlight",
+          "target": "Evaluation Type Toggle",
+          "duration": 1.2
+        },
+        {
+          "do": "highlight",
           "target": "Evaluation Summary",
-          "duration": 1.5
+          "duration": 1.2
         }
       ]
     },
@@ -1968,7 +1817,7 @@
     {
       "id": "scenario_6_provenance_q",
       "speaker": "guest",
-      "narration": "So this directly tells me which model and prompt pair to deploy? That's exactly the question I started with!",
+      "narration": "So this directly tells me which model and prompt pair to deploy? That's exactly the question you started with!",
       "actions": [
         {
           "do": "highlight",
@@ -1980,7 +1829,7 @@
     {
       "id": "scenario_6_provenance_a",
       "speaker": "moderator",
-      "narration": "Exactly — and there are separate views per model and per prompt as well, plus a full bucket distribution for each combination.",
+      "narration": "Yes — and there are separate views per model and per prompt, plus a full bucket distribution for each combination.",
       "actions": [
         {
           "do": "wait",
@@ -2039,9 +1888,9 @@
       ]
     },
     {
-      "id": "scenario_6_heatmap_close",
+      "id": "scenario_6_export",
       "speaker": "moderator",
-      "narration": "Exactly. I'll close the agreement detail dialog and continue.",
+      "narration": "And if disagreement is systematic, you refine the prompt and run another evaluation. That's the iterative loop. Everything is exportable as JSON or CSV.",
       "actions": [
         {
           "do": "click_if_present",
@@ -2057,14 +1906,7 @@
         {
           "do": "wait",
           "seconds": 0.2
-        }
-      ]
-    },
-    {
-      "id": "scenario_6_export",
-      "speaker": "moderator",
-      "narration": "Exactly — and if the disagreement is systematic, you refine the prompt and re-evaluate. That's the iterative loop. Everything is exportable as JSON or CSV.",
-      "actions": [
+        },
         {
           "do": "highlight",
           "target": "Evaluation Export",
@@ -2089,121 +1931,6 @@
       ]
     },
     {
-      "id": "scenario_6_provenance_end_1",
-      "speaker": "moderator",
-      "narration": "Before we wrap up, let's look at provenance again from top to bottom. This is where evaluation becomes directly actionable.",
-      "actions": [
-        {
-          "do": "dismiss_overlays"
-        },
-        {
-          "do": "wait",
-          "seconds": 0.2
-        },
-        {
-          "do": "scroll_to",
-          "target": "Provenance Section"
-        },
-        {
-          "do": "wait",
-          "seconds": 0.4
-        },
-        {
-          "do": "highlight",
-          "target": "Provenance Section",
-          "duration": 1.2
-        },
-        {
-          "do": "highlight",
-          "target": "Provenance Best Grid",
-          "duration": 1.2
-        },
-        {
-          "do": "highlight",
-          "target": "Best LLM Card",
-          "duration": 1.0
-        },
-        {
-          "do": "highlight",
-          "target": "Best Prompt Card",
-          "duration": 1.0
-        },
-        {
-          "do": "highlight",
-          "target": "Best Combination Card",
-          "duration": 1.0
-        }
-      ]
-    },
-    {
-      "id": "scenario_6_provenance_end_2",
-      "speaker": "guest",
-      "narration": "Now I can see the complete ranking by model, by prompt, and by model-prompt combination — not just the top winner.",
-      "actions": [
-        {
-          "do": "highlight",
-          "target": "Provenance Lists Grid",
-          "duration": 1.2
-        },
-        {
-          "do": "highlight",
-          "target": "Provenance LLM List Card",
-          "duration": 1.0
-        },
-        {
-          "do": "highlight",
-          "target": "Provenance Prompt List Card",
-          "duration": 1.0
-        },
-        {
-          "do": "highlight",
-          "target": "Provenance Combination List Card",
-          "duration": 1.2
-        }
-      ]
-    },
-    {
-      "id": "scenario_6_provenance_end_3",
-      "speaker": "moderator",
-      "narration": "Exactly. And down here we also get the full bucket distribution per model, per prompt, and per combination — so you can inspect not only who wins, but how consistently.",
-      "actions": [
-        {
-          "do": "scroll_to",
-          "target": "Provenance Figures Grid"
-        },
-        {
-          "do": "wait",
-          "seconds": 0.3
-        },
-        {
-          "do": "highlight",
-          "target": "Provenance Figures Grid",
-          "duration": 1.3
-        },
-        {
-          "do": "highlight",
-          "target": "Provenance Figure Card",
-          "duration": 1.1
-        },
-        {
-          "do": "click_if_present",
-          "target": "Provenance Figure Expand"
-        },
-        {
-          "do": "wait",
-          "seconds": 0.6
-        },
-        {
-          "do": "click_if_present",
-          "target": "Provenance Figure Dialog Close"
-        },
-        {
-          "do": "wait",
-          "seconds": 0.3
-        }
-      ]
-    },
-    {
       "_section": "=== CONCLUSION (30s) ===",
       "id": "conclusion_1",
       "speaker": "moderator",
@@ -2212,7 +1939,7 @@
         {
           "do": "show_summary",
           "columns": [
-            [{"label": "URL", "value": "https://llars.e-beratungsinstitut.de"}],
+            [{"label": "URL", "value": "https://llars.e-beratungsinstitut.de"}, {"label": "Repository", "value": "https://github.com/th-nuernberg/Lars"}],
             [{"label": "Reviewer 1", "value": "ijcai_reviewer_1"}, {"label": "Password", "value": "ijcai_reviewer_123"}],
             [{"label": "Reviewer 2", "value": "ijcai_reviewer_2"}, {"label": "Password", "value": "ijcai_reviewer_123"}]
           ]
@@ -2226,7 +1953,7 @@
     {
       "id": "conclusion_2",
       "speaker": "guest",
-      "narration": "As a domain expert, this is exactly what I've been missing — one platform where I can co-author prompts, run experiments, and evaluate results alongside LLMs. Thanks, Alex.",
+      "narration": "That walkthrough was excellent. I'll log in again and go through everything once more on my own.",
       "actions": [
         {
           "do": "wait",

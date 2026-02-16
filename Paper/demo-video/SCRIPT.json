@@ -5,7 +5,7 @@
   "_design_principles": [
     "Someone is always speaking",
     "Live collab with a real second browser",
-    "Dialogue style: moderator explains, guest asks questions"
+    "Dialogue style: Alex (LLARS expert) explains, David (reviewer perspective) asks smart questions — viewer should identify with David"
   ],
   "config": {
     "url": "https://llars.e-beratungsinstitut.de",
@@ -31,31 +31,80 @@
         "name": "David",
         "macos_voice": "Daniel",
         "macos_rate": 150,
-        "description": "A distinguished British observer"
+        "description": "A reviewer who asks smart questions — the audience should identify with him"
       }
     }
   },
   "_tts_naming": "TTS models say 'Lars' (without the leading L) because they mispronounce 'LLARS'. In all written text, overlays, and UI, the correct name is 'LLARS'.",
   "steps": [
     {
-      "_section": "=== INTRO (50s) — Problem animation, pipeline overview with highlights, credentials, login ===",
+      "_section": "=== INTRO (55s) — Problem animation with highlights, login behind scenes, pipeline overview ===",
       "id": "intro_1",
       "speaker": "moderator",
-      "narration": "Hey everyone, I'm Alex — and welcome to this demo of Lars, the LLM Assisted Research System. I'm here with my colleague David, and together we'll walk you through the platform. But first — the problem we're solving.",
+      "narration": "Hey everyone, I'm Alex — and welcome to this demo of Lars, the LLM Assisted Research System. I'm here with David, who will be reviewing the platform from a researcher's perspective. But first — the problem we're solving.",
       "actions": [
         {
           "do": "show_problem"
         },
         {
           "do": "wait",
-          "seconds": 1.5
+          "seconds": 2.0
+        },
+        {
+          "do": "highlight",
+          "target": "Problem Expert",
+          "duration": 2.0
+        },
+        {
+          "do": "highlight",
+          "target": "Problem Developer",
+          "duration": 2.0
         }
       ]
     },
     {
-      "id": "intro_2",
+      "id": "intro_1a",
       "speaker": "guest",
-      "narration": "Thanks, Alex. The challenge is clear: domain experts know what quality means, but developers know how to build the pipelines. These two groups usually work in isolation — passing prompts back and forth in shared documents, with no version control and no systematic evaluation.",
+      "narration": "Right — as a researcher, I've been on both sides of this. I know what a good output should look like, but I have no control over the prompts or models. And the developers don't fully understand my quality criteria.",
+      "actions": [
+        {
+          "do": "highlight",
+          "target": "Problem Expert",
+          "duration": 3.0
+        },
+        {
+          "do": "highlight",
+          "target": "Problem Gap",
+          "duration": 2.0
+        },
+        {
+          "do": "highlight",
+          "target": "Problem Developer",
+          "duration": 2.0
+        }
+      ]
+    },
+    {
+      "id": "intro_1b",
+      "speaker": "moderator",
+      "narration": "Exactly. And that usually means passing prompts back and forth in shared documents, no version control, no systematic evaluation — just translation work between disciplines.",
+      "actions": [
+        {
+          "do": "highlight",
+          "target": "Problem Painpoints",
+          "duration": 3.0
+        },
+        {
+          "do": "highlight",
+          "target": "Problem Quote",
+          "duration": 2.5
+        }
+      ]
+    },
+    {
+      "id": "intro_1c",
+      "speaker": "guest",
+      "narration": "So how does LLARS solve this? How do I as a researcher get more control?",
       "actions": [
         {
           "do": "wait",
@@ -66,7 +115,7 @@
     {
       "id": "intro_2a",
       "speaker": "moderator",
-      "narration": "Exactly — and that's where LLARS comes in. It brings both sides together into one platform. Here's the pipeline.",
+      "narration": "LLARS brings both sides together into one platform — let me show you.",
       "actions": [
         {
           "do": "merge_problem"
@@ -79,8 +128,19 @@
           "do": "hide_title"
         },
         {
-          "do": "wait",
-          "seconds": 0.5
+          "do": "login"
+        }
+      ]
+    },
+    {
+      "id": "intro_2b",
+      "speaker": "moderator",
+      "narration": "Here's the pipeline. Teams start in Prompt Engineering, where domain experts and developers co-author prompts together in real time. Those prompts feed into Batch Generation, which runs them across multiple models and datasets. And everything flows into Evaluation, where humans and LLMs assess the outputs side by side — with live agreement metrics.",
+      "actions": [
+        {
+          "do": "wait_for",
+          "target": "Prompt Engineering",
+          "timeout": 15
         },
         {
           "do": "show_pipeline",
@@ -117,17 +177,6 @@
         {
           "do": "wait",
           "seconds": 1.5
-        }
-      ]
-    },
-    {
-      "id": "intro_2b",
-      "speaker": "moderator",
-      "narration": "Here's the pipeline. Teams start in Prompt Engineering, where domain experts and developers co-author prompts together in real time. Those prompts feed into Batch Generation, which runs them across multiple models and datasets. And everything flows into Evaluation, where humans and LLMs assess the outputs side by side — with live agreement metrics.",
-      "actions": [
-        {
-          "do": "wait",
-          "seconds": 1.5
         },
         {
           "do": "highlight",
@@ -148,35 +197,32 @@
     },
     {
       "id": "intro_3",
-      "speaker": "moderator",
-      "narration": "The credentials are on screen if you'd like to follow along live. Let me log us in.",
+      "speaker": "guest",
+      "narration": "That sounds like exactly what I need. Can I try it myself?",
       "actions": [
         {
           "do": "highlight",
           "target": "Pipeline Credentials",
-          "duration": 4.0
+          "duration": 3.0
+        }
+      ]
+    },
+    {
+      "id": "intro_3a",
+      "speaker": "moderator",
+      "narration": "Absolutely — the credentials are on screen. We're already logged in, so let's dive right in!",
+      "actions": [
+        {
+          "do": "highlight",
+          "target": "Pipeline Credentials",
+          "duration": 2.0
         },
         {
           "do": "hide_title"
         },
         {
           "do": "wait",
-          "seconds": 0.3
-        },
-        {
-          "do": "login"
-        }
-      ]
-    },
-    {
-      "id": "intro_4",
-      "speaker": "guest",
-      "narration": "I've read the paper and I'm curious to see this in action — let's dive in!",
-      "actions": [
-        {
-          "do": "wait_for",
-          "target": "Prompt Engineering",
-          "timeout": 15
+          "seconds": 0.5
         },
         {
           "do": "highlight",
@@ -368,7 +414,7 @@
     {
       "id": "prompt_eng_4b",
       "speaker": "guest",
-      "narration": "I like that — instead of one big text box, domain experts see exactly where their instructions go. That makes it much easier to iterate on specific parts.",
+      "narration": "So instead of one big text box, I'd see exactly where my instructions go? That would make it much easier for me to iterate on specific parts.",
       "actions": [
         {
           "do": "highlight",
@@ -504,7 +550,7 @@
     {
       "id": "prompt_eng_5a_react",
       "speaker": "guest",
-      "narration": "So you define sample values here to try different inputs and make sure the prompt works — without switching to another tool.",
+      "narration": "Can I define sample values here to try different inputs? Without switching to another tool?",
       "actions": [
         {
           "do": "wait",
@@ -547,7 +593,7 @@
     {
       "id": "prompt_eng_5c",
       "speaker": "guest",
-      "narration": "That's really convenient. You can see the rendered prompt with the actual data and immediately check the output quality.",
+      "narration": "Wait — so I can see the rendered prompt with my actual data and check the output quality right here? That's exactly what I'd want as a researcher.",
       "actions": [
         {
           "do": "wait",
@@ -705,7 +751,7 @@
     {
       "id": "collab_4",
       "speaker": "guest",
-      "narration": "That's like Google Docs for prompts — no more translation work between disciplines. And the different colors — is that how you tell who wrote what?",
+      "narration": "This feels like Google Docs — but for prompts? And the different colors — is that how I can tell who wrote what?",
       "actions": [
         {
           "do": "highlight",
@@ -730,7 +776,7 @@
       "_section": "=== VERSION CONTROL (15s) ===",
       "id": "version_1",
       "speaker": "guest",
-      "narration": "Ah, now I see it: when you type, Alex, version control tracks it.",
+      "narration": "Wait — does it also track version history? Like who changed what and when?",
       "actions": [
         {
           "do": "highlight",
@@ -1197,7 +1243,7 @@
     {
       "id": "batch_gen_7",
       "speaker": "guest",
-      "narration": "Oh nice, a generation matrix. So that's ten items…",
+      "narration": "A generation matrix — so that's ten items times two prompts times two models?",
       "actions": [
         {
           "do": "wait_for",
@@ -2032,7 +2078,7 @@
     {
       "id": "conclusion_2",
       "speaker": "guest",
-      "narration": "Bridging the gap between domain experts and developers — that's the core idea. Thanks, Alex.",
+      "narration": "As a researcher, this is exactly what I've been missing — one platform where I can co-author prompts, run experiments, and evaluate results alongside LLMs. Thanks, Alex.",
       "actions": [
         {
           "do": "wait",

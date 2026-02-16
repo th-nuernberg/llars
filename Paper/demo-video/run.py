@@ -154,6 +154,13 @@ def _resolve_local_path(path_str: str) -> Path:
 # Element-Mapping: Lesbare Namen → CSS Selektoren
 # Lars nutzt eine Home-Seite mit Feature-Karten, keine Sidebar
 ELEMENT_MAP = {
+    # Problem Overlay (for highlighting during intro)
+    "Problem Expert": "#problem-expert",
+    "Problem Developer": "#problem-developer",
+    "Problem Gap": "#problem-gap",
+    "Problem Painpoints": "#problem-painpoints",
+    "Problem Quote": "#problem-quote",
+
     # Pipeline Overlay Modules (for highlighting during intro)
     "Pipeline Prompt Engineering": "#pipeline-prompt",
     "Pipeline Batch Generation": "#pipeline-batch",

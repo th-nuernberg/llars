@@ -1,5 +1,5 @@
 <template>
-  <div class="evaluation-tab">
+  <div class="evaluation-tab" :class="{ 'screenshot-font-boost': isScreenshotMode }">
     <!-- Summary Cards -->
     <div class="summary-grid">
       <div class="summary-card">
@@ -567,9 +567,14 @@
                 :key="`prov-combo-${entry.id}`"
                 class="provenance-row"
               >
-                <div class="provenance-row-main">
+                <div class="provenance-row-main provenance-row-main-combination">
                   <span class="provenance-rank">#{{ index + 1 }}</span>
-                  <span class="provenance-label">{{ entry.label }}</span>
+                  <span class="provenance-label provenance-combination-label">
+                    <span class="provenance-combo-prompt">{{ getCombinationPromptLabel(entry) }}</span>
+                    <span v-if="getCombinationLLMLabel(entry)" class="provenance-combo-llm">
+                      {{ getCombinationLLMLabel(entry) }}
+                    </span>
+                  </span>
                 </div>
                 <div class="provenance-row-stats">
                   <span class="provenance-rate">{{ formatProvenanceRate(entry.top_bucket_rate) }}%</span>
@@ -582,6 +587,200 @@
             </div>
           </div>
         </div>
+
+        <div class="provenance-figures-grid" v-if="hasProvenanceBucketCharts">
+          <div
+            v-for="panel in provenanceBucketChartPanels"
+            :key="`prov-figure-${panel.key}`"
+            class="provenance-figure-card"
+          >
+            <div class="provenance-figure-header">
+              <span>{{ panel.title }}</span>
+              <div class="provenance-figure-header-actions">
+                <span>{{ $t('scenarioManager.results.bucketDistribution') }}</span>
+                <v-btn
+                  size="x-small"
+                  icon
+                  variant="text"
+                  class="provenance-figure-expand-btn"
+                  :disabled="!panel.entries?.length"
+                  title="Expand chart"
+                  @click="openProvenanceFigureDialog(panel.key)"
+                >
+                  <v-icon size="16">mdi-fullscreen</v-icon>
+                </v-btn>
+              </div>
+            </div>
+
+            <div class="provenance-figure-legend" v-if="panel.entries?.length">
+              <span
+                v-for="bucket in provenanceBucketOrder"
+                :key="`prov-legend-${panel.key}-${bucket.id}`"
+                class="provenance-figure-legend-item"
+              >
+                <span class="provenance-figure-legend-color" :style="{ backgroundColor: bucket.color }"></span>
+                <span class="provenance-figure-legend-label">{{ bucket.label }}</span>
+              </span>
+            </div>
+
+            <div class="provenance-figure-scroll" v-if="panel.entries?.length">
+              <div class="provenance-figure-groups">
+                <div
+                  v-for="(entry, entryIndex) in panel.entries"
+                  :key="`prov-figure-group-${panel.key}-${entry.id || entryIndex}`"
+                  class="provenance-figure-group"
+                >
+                  <div class="provenance-figure-bars">
+                    <div
+                      v-for="bucket in provenanceBucketOrder"
+                      :key="`prov-figure-bar-${panel.key}-${entry.id || entryIndex}-${bucket.id}`"
+                      class="provenance-figure-bar-slot"
+                    >
+                      <span class="provenance-figure-bar-label top">
+                        {{ formatProvenanceRate(getProvenanceBucketPercent(entry, bucket.id)) }}%
+                      </span>
+                      <div
+                        class="provenance-figure-bar"
+                        :style="{
+                          height: Math.max(0, Math.min(100, getProvenanceBucketPercent(entry, bucket.id))) + '%',
+                          backgroundColor: bucket.color
+                        }"
+                        :title="`${bucket.label}: ${formatProvenanceRate(getProvenanceBucketPercent(entry, bucket.id))}% (${getProvenanceBucketCount(entry, bucket.id)}/${entry.total || 0})`"
+                      ></div>
+                    </div>
+                  </div>
+
+                  <div
+                    v-if="panel.key !== 'combination'"
+                    class="provenance-figure-entry-label"
+                    :title="getProvenanceChartEntryLabel(entry, panel.key)"
+                  >
+                    {{ getProvenanceChartEntryLabel(entry, panel.key) }}
+                  </div>
+                  <div v-else class="provenance-figure-entry-label provenance-figure-entry-label-combo">
+                    <span
+                      class="provenance-figure-entry-label-prompt"
+                      :title="getCombinationPromptLabel(entry)"
+                    >
+                      {{ getCombinationPromptLabel(entry) }}
+                    </span>
+                    <span
+                      v-if="getCombinationLLMLabel(entry)"
+                      class="provenance-figure-entry-label-llm"
+                      :title="getCombinationLLMLabel(entry)"
+                    >
+                      {{ getCombinationLLMLabel(entry) }}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div v-else class="provenance-empty">
+              {{ $t('scenarioManager.results.noProvenanceData') }}
+            </div>
+          </div>
+        </div>
+
+        <v-dialog
+          :model-value="isProvenanceFigureDialogOpen"
+          fullscreen
+          @update:model-value="onProvenanceFigureDialogUpdate"
+        >
+          <v-card class="provenance-figure-dialog">
+            <div class="provenance-figure-dialog-header">
+              <div class="provenance-figure-dialog-title-group">
+                <h3 class="provenance-figure-dialog-title">
+                  {{ selectedProvenanceFigurePanel?.title || $t('scenarioManager.results.provenanceAnalysis') }}
+                </h3>
+                <span class="provenance-figure-dialog-subtitle">
+                  {{ $t('scenarioManager.results.bucketDistribution') }}
+                </span>
+              </div>
+              <v-btn
+                icon
+                variant="text"
+                title="Close"
+                @click="closeProvenanceFigureDialog"
+              >
+                <v-icon>mdi-close</v-icon>
+              </v-btn>
+            </div>
+
+            <div class="provenance-figure-dialog-content" v-if="selectedProvenanceFigurePanel">
+              <div class="provenance-figure-card provenance-figure-card-dialog">
+                <div class="provenance-figure-legend" v-if="selectedProvenanceFigurePanel.entries?.length">
+                  <span
+                    v-for="bucket in provenanceBucketOrder"
+                    :key="`prov-dialog-legend-${selectedProvenanceFigurePanel.key}-${bucket.id}`"
+                    class="provenance-figure-legend-item"
+                  >
+                    <span class="provenance-figure-legend-color" :style="{ backgroundColor: bucket.color }"></span>
+                    <span class="provenance-figure-legend-label">{{ bucket.label }}</span>
+                  </span>
+                </div>
+
+                <div
+                  class="provenance-figure-scroll provenance-figure-scroll-dialog"
+                  v-if="selectedProvenanceFigurePanel.entries?.length"
+                >
+                  <div class="provenance-figure-groups">
+                    <div
+                      v-for="(entry, entryIndex) in selectedProvenanceFigurePanel.entries"
+                      :key="`prov-dialog-group-${selectedProvenanceFigurePanel.key}-${entry.id || entryIndex}`"
+                      class="provenance-figure-group provenance-figure-group-dialog"
+                    >
+                      <div class="provenance-figure-bars provenance-figure-bars-dialog">
+                        <div
+                          v-for="bucket in provenanceBucketOrder"
+                          :key="`prov-dialog-bar-${selectedProvenanceFigurePanel.key}-${entry.id || entryIndex}-${bucket.id}`"
+                          class="provenance-figure-bar-slot"
+                        >
+                          <span class="provenance-figure-bar-label top">
+                            {{ formatProvenanceRate(getProvenanceBucketPercent(entry, bucket.id)) }}%
+                          </span>
+                          <div
+                            class="provenance-figure-bar"
+                            :style="{
+                              height: Math.max(0, Math.min(100, getProvenanceBucketPercent(entry, bucket.id))) + '%',
+                              backgroundColor: bucket.color
+                            }"
+                            :title="`${bucket.label}: ${formatProvenanceRate(getProvenanceBucketPercent(entry, bucket.id))}% (${getProvenanceBucketCount(entry, bucket.id)}/${entry.total || 0})`"
+                          ></div>
+                        </div>
+                      </div>
+
+                      <div
+                        v-if="selectedProvenanceFigurePanel.key !== 'combination'"
+                        class="provenance-figure-entry-label"
+                        :title="getProvenanceChartEntryLabel(entry, selectedProvenanceFigurePanel.key)"
+                      >
+                        {{ getProvenanceChartEntryLabel(entry, selectedProvenanceFigurePanel.key) }}
+                      </div>
+                      <div v-else class="provenance-figure-entry-label provenance-figure-entry-label-combo">
+                        <span
+                          class="provenance-figure-entry-label-prompt"
+                          :title="getCombinationPromptLabel(entry)"
+                        >
+                          {{ getCombinationPromptLabel(entry) }}
+                        </span>
+                        <span
+                          v-if="getCombinationLLMLabel(entry)"
+                          class="provenance-figure-entry-label-llm"
+                          :title="getCombinationLLMLabel(entry)"
+                        >
+                          {{ getCombinationLLMLabel(entry) }}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div v-else class="provenance-empty">
+                  {{ $t('scenarioManager.results.noProvenanceData') }}
+                </div>
+              </div>
+            </div>
+          </v-card>
+        </v-dialog>
       </div>
 
       <!-- Ranking Bucket Distribution + Agreement -->
@@ -590,7 +789,7 @@
           class="ranking-analysis-grid"
           :class="{ 'single-panel': !(hasBucketDistribution && hasRankingAgreement) }"
         >
-          <div class="ranking-analysis-panel" v-if="hasBucketDistribution">
+          <div class="ranking-analysis-panel bucket-panel" v-if="hasBucketDistribution">
             <h4 class="subsection-title">
               {{ $t('scenarioManager.results.bucketDistribution') }}
               <LTooltip :text="$t('scenarioManager.tooltips.bucketDistribution')" location="top">
@@ -621,26 +820,25 @@
             </div>
           </div>
 
-          <div class="ranking-analysis-panel" v-if="hasRankingAgreement">
+          <div class="ranking-analysis-panel heatmap-panel" v-if="hasRankingAgreement">
             <h4 class="subsection-title">
               {{ $t('scenarioManager.results.rankingAgreement') }}
               <LTooltip :text="$t('scenarioManager.tooltips.rankingAgreement')" location="top">
                 <v-icon size="16" class="help-icon">mdi-help-circle-outline</v-icon>
               </LTooltip>
             </h4>
-            <div class="heatmap-container">
-              <LAgreementHeatmap
-                :evaluators="pairwiseEvaluators"
-                :agreements="pairwiseAgreements"
-                :show-values="true"
-                :show-hover-info="true"
-                :show-legend="true"
-                :show-evaluator-type-legend="true"
-                :low-label="$t('scenarioManager.results.lowAgreement')"
-                :high-label="$t('scenarioManager.results.highAgreement')"
-                @cell-click="openAgreementDetail"
-              />
-            </div>
+            <LAgreementHeatmap
+              class="ranking-analysis-heatmap"
+              :evaluators="pairwiseEvaluators"
+              :agreements="pairwiseAgreements"
+              :show-values="true"
+              :show-hover-info="true"
+              :show-legend="true"
+              :show-evaluator-type-legend="true"
+              :low-label="$t('scenarioManager.results.lowAgreement')"
+              :high-label="$t('scenarioManager.results.highAgreement')"
+              @cell-click="openAgreementDetail"
+            />
           </div>
         </div>
       </div>
@@ -1332,7 +1530,7 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useLLMEvaluation } from '@/composables/useLLMEvaluation'
 import { useLLMModels } from '@/composables/useLLMModels'
 import { parseUserProviderModelId } from '@/utils/formatters'
@@ -1354,6 +1552,7 @@ const emit = defineEmits(['evaluation-complete', 'refresh'])
 
 const { t, locale } = useI18n()
 const router = useRouter()
+const route = useRoute()
 const { exportResults: doExport } = useScenarioManager()
 
 // LLM Models
@@ -1389,6 +1588,8 @@ const selectedDimension = ref(null)
 const showAgreementDialog = ref(false)
 const selectedAgreement = ref(null)
 const expandedAgreementPanels = ref([0])
+const isProvenanceFigureDialogOpen = ref(false)
+const selectedProvenanceFigurePanelKey = ref(null)
 
 // Spider chart constants - increased size for longer labels
 const spiderSize = 360
@@ -1414,6 +1615,13 @@ const promptTemplates = ref([
   { id: 'detailed', name: t('scenarioManager.evaluation.templates.detailed') },
   { id: 'quick', name: t('scenarioManager.evaluation.templates.quick') }
 ])
+
+const isScreenshotMode = computed(() => {
+  const queryEnabled = route.query.paper === '1' || route.query.photo === '1'
+  if (queryEnabled) return true
+  if (typeof window === 'undefined') return false
+  return ['localhost', '127.0.0.1'].includes(window.location.hostname)
+})
 
 // ===== Computed: Evaluators =====
 
@@ -2149,6 +2357,92 @@ const hasProvenanceAnalysis = computed(() => {
     (segment.by_combination?.length || 0) > 0
 })
 
+const provenanceBucketOrder = computed(() => {
+  const source = provenanceAnalysis.value?.bucket_order
+  if (Array.isArray(source) && source.length > 0) {
+    return source
+      .map((bucket, index) => {
+        if (!bucket) return null
+        const bucketId = bucket.id || bucket.bucket || `bucket_${index + 1}`
+        const localizedBackendLabel = resolveLocalizedText({
+          de: bucket.label_de,
+          en: bucket.label_en,
+          label: bucket.label
+        }, '')
+        return {
+          id: String(bucketId),
+          label: resolveLocalizedBucketLabel(bucketId, localizedBackendLabel || bucket.label || bucketId),
+          color: bucket.color || '#88c4c8'
+        }
+      })
+      .filter(Boolean)
+  }
+
+  return bucketDistribution.value
+    .map((bucket, index) => {
+      if (!bucket) return null
+      const bucketId = bucket.bucket || bucket.id || `bucket_${index + 1}`
+      return {
+        id: String(bucketId),
+        label: resolveLocalizedBucketLabel(bucketId, bucket.label || bucketId),
+        color: bucket.color || '#88c4c8'
+      }
+    })
+    .filter(Boolean)
+})
+
+const provenanceBucketChartPanels = computed(() => {
+  const segment = currentProvenanceSegment.value
+  if (!segment) {
+    return [
+      { key: 'llm', title: t('scenarioManager.results.modelRanking'), entries: [] },
+      { key: 'prompt', title: t('scenarioManager.results.promptRanking'), entries: [] },
+      { key: 'combination', title: t('scenarioManager.results.combinationRanking'), entries: [] }
+    ]
+  }
+
+  const panels = [
+    {
+      key: 'llm',
+      title: t('scenarioManager.results.modelRanking'),
+      entries: (segment.by_llm || []).slice(0, 8)
+    },
+    {
+      key: 'prompt',
+      title: t('scenarioManager.results.promptRanking'),
+      entries: (segment.by_prompt || []).slice(0, 8)
+    },
+    {
+      key: 'combination',
+      title: t('scenarioManager.results.combinationRanking'),
+      entries: (segment.by_combination || []).slice(0, 8)
+    }
+  ]
+
+  return panels
+})
+
+const hasProvenanceBucketCharts = computed(() => {
+  return hasProvenanceAnalysis.value &&
+    provenanceBucketOrder.value.length > 0 &&
+    provenanceBucketChartPanels.value.some(panel => panel.entries.length > 0)
+})
+
+const selectedProvenanceFigurePanel = computed(() => {
+  if (!selectedProvenanceFigurePanelKey.value) return null
+  return provenanceBucketChartPanels.value.find(
+    panel => panel.key === selectedProvenanceFigurePanelKey.value
+  ) || null
+})
+
+watch(provenanceBucketChartPanels, (panels) => {
+  if (!isProvenanceFigureDialogOpen.value) return
+  const panelExists = panels.some(panel => panel.key === selectedProvenanceFigurePanelKey.value)
+  if (!panelExists) {
+    closeProvenanceFigureDialog()
+  }
+})
+
 // ===== Computed: Ranking Agreement Matrix =====
 
 const rankingAgreement = computed(() => {
@@ -2828,6 +3122,112 @@ function formatProvenanceRate(value) {
   return numeric.toFixed(1)
 }
 
+function getCombinationParts(entry) {
+  const promptLabel = String(entry?.prompt_label || '').trim()
+  const llmLabel = String(entry?.llm_label || '').trim()
+  if (promptLabel || llmLabel) {
+    return {
+      prompt: promptLabel || '-',
+      llm: llmLabel
+    }
+  }
+
+  const label = String(entry?.label || '').trim()
+  if (!label) {
+    return { prompt: '-', llm: '' }
+  }
+
+  const separators = [' x ', ' × ', ' | ']
+  for (const separator of separators) {
+    const index = label.lastIndexOf(separator)
+    if (index > 0) {
+      return {
+        prompt: label.slice(0, index).trim() || '-',
+        llm: label.slice(index + separator.length).trim()
+      }
+    }
+  }
+
+  return { prompt: label, llm: '' }
+}
+
+function getCombinationPromptLabel(entry) {
+  return getCombinationParts(entry).prompt
+}
+
+function getCombinationLLMLabel(entry) {
+  return getCombinationParts(entry).llm
+}
+
+function getProvenanceBucketMapValue(mapLike, bucketId) {
+  if (!mapLike || typeof mapLike !== 'object') return null
+
+  if (Object.prototype.hasOwnProperty.call(mapLike, bucketId)) {
+    return mapLike[bucketId]
+  }
+
+  const normalizedTarget = normalizeAgreementBucketValue(bucketId)
+  if (normalizedTarget && Object.prototype.hasOwnProperty.call(mapLike, normalizedTarget)) {
+    return mapLike[normalizedTarget]
+  }
+
+  for (const [key, value] of Object.entries(mapLike)) {
+    if (normalizeAgreementBucketValue(key) === normalizedTarget) {
+      return value
+    }
+  }
+
+  return null
+}
+
+function getProvenanceBucketPercent(entry, bucketId) {
+  const percentages = entry?.bucket_percentages || {}
+  const directPercent = Number(getProvenanceBucketMapValue(percentages, bucketId))
+  if (Number.isFinite(directPercent)) {
+    return Math.max(0, Math.min(100, directPercent))
+  }
+
+  const total = Number(entry?.total || 0)
+  if (total <= 0) return 0
+
+  const count = Number(getProvenanceBucketCount(entry, bucketId))
+  if (!Number.isFinite(count) || count <= 0) return 0
+  return Math.max(0, Math.min(100, (count / total) * 100))
+}
+
+function getProvenanceBucketCount(entry, bucketId) {
+  const counts = entry?.bucket_counts || {}
+  const directCount = Number(getProvenanceBucketMapValue(counts, bucketId))
+  if (!Number.isFinite(directCount)) return 0
+  return Math.max(0, directCount)
+}
+
+function getProvenanceChartEntryLabel(entry, panelKey) {
+  if (panelKey === 'combination') {
+    const prompt = getCombinationPromptLabel(entry)
+    const llm = getCombinationLLMLabel(entry)
+    return llm ? `${prompt} | ${llm}` : prompt
+  }
+  return String(entry?.label || '-')
+}
+
+function openProvenanceFigureDialog(panelKey) {
+  const panel = provenanceBucketChartPanels.value.find(item => item.key === panelKey)
+  if (!panel || !panel.entries?.length) return
+  selectedProvenanceFigurePanelKey.value = panelKey
+  isProvenanceFigureDialogOpen.value = true
+}
+
+function closeProvenanceFigureDialog() {
+  isProvenanceFigureDialogOpen.value = false
+  selectedProvenanceFigurePanelKey.value = null
+}
+
+function onProvenanceFigureDialogUpdate(value) {
+  if (value) return
+  closeProvenanceFigureDialog()
+}
+
 function formatLabel(label) {
   const labelMap = {
     'fake': t('scenarioManager.results.labels.fake') || 'Fake',
@@ -3146,6 +3546,117 @@ watch(
   flex-direction: column;
   gap: 24px;
   max-width: 1200px;
+}
+
+/* Local screenshot mode on localhost: keep compact layout for screenshots. */
+.evaluation-tab.screenshot-font-boost {
+  max-width: none;
+  gap: 14px;
+}
+
+.evaluation-tab.screenshot-font-boost .summary-grid {
+  gap: 10px;
+}
+
+.evaluation-tab.screenshot-font-boost .summary-card {
+  gap: 10px;
+  padding: 12px;
+}
+
+.evaluation-tab.screenshot-font-boost .section-header {
+  padding: 10px 14px;
+}
+
+.evaluation-tab.screenshot-font-boost .metrics-section,
+.evaluation-tab.screenshot-font-boost .provenance-section,
+.evaluation-tab.screenshot-font-boost .ranking-analysis-grid-section {
+  padding: 14px;
+}
+
+.evaluation-tab.screenshot-font-boost .ranking-analysis-grid {
+  gap: 12px;
+}
+
+.evaluation-tab.screenshot-font-boost .ranking-analysis-panel {
+  padding: 12px;
+}
+
+.evaluation-tab.screenshot-font-boost .provenance-best-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.evaluation-tab.screenshot-font-boost .provenance-best-card {
+  gap: 4px;
+  padding: 10px;
+}
+
+.evaluation-tab.screenshot-font-boost .provenance-lists-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.evaluation-tab.screenshot-font-boost .provenance-list-card {
+  padding: 8px;
+}
+
+.evaluation-tab.screenshot-font-boost .provenance-list-header {
+  gap: 6px;
+  margin-bottom: 6px;
+  padding-bottom: 6px;
+}
+
+.evaluation-tab.screenshot-font-boost .provenance-figures-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.evaluation-tab.screenshot-font-boost .provenance-figure-card {
+  padding: 8px;
+}
+
+.evaluation-tab.screenshot-font-boost .provenance-figure-bars {
+  height: 120px;
+  gap: 5px;
+}
+
+.evaluation-tab.screenshot-font-boost .provenance-figure-group {
+  min-width: 104px;
+}
+
+.evaluation-tab.screenshot-font-boost .provenance-figure-bar-slot {
+  width: 16px;
+  min-width: 16px;
+  padding-top: 20px;
+}
+
+.evaluation-tab.screenshot-font-boost .provenance-figure-bar-label {
+  font-size: 0.52rem;
+  padding: 1px 2px;
+}
+
+.evaluation-tab.screenshot-font-boost .provenance-figure-entry-label {
+  font-size: 0.67rem;
+  min-height: 2.2em;
+}
+
+.evaluation-tab.screenshot-font-boost .provenance-figure-entry-label-llm {
+  font-size: 0.64rem;
+}
+
+.evaluation-tab.screenshot-font-boost .provenance-row {
+  gap: 6px;
+  padding: 6px 8px;
+}
+
+.evaluation-tab.screenshot-font-boost .bucket-bar-container {
+  grid-template-columns: 76px 1fr 46px;
+  gap: 8px;
+}
+
+.evaluation-tab.screenshot-font-boost .bucket-bar-wrapper {
+  height: 24px;
 }
 
 /* Summary Grid */
@@ -3618,8 +4129,9 @@ watch(
 /* Ranking Analysis Layout */
 .ranking-analysis-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 20px;
+  align-items: start;
 }
 
 .ranking-analysis-grid.single-panel {
@@ -3627,6 +4139,9 @@ watch(
 }
 
 .ranking-analysis-panel {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
   background-color: rgba(var(--v-theme-on-surface), 0.02);
   border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
   border-radius: 12px;
@@ -3637,12 +4152,12 @@ watch(
   margin-bottom: 12px;
 }
 
-.ranking-analysis-panel .heatmap-container {
-  background-color: rgba(var(--v-theme-on-surface), 0.02);
-  border-radius: 12px;
+.ranking-analysis-panel.heatmap-panel {
   padding: 16px;
-  display: flex;
-  justify-content: center;
+}
+
+.ranking-analysis-heatmap {
+  width: 100%;
 }
 
 /* Bucket Distribution Styles */
@@ -3708,7 +4223,7 @@ watch(
 /* Provenance Analysis */
 .provenance-best-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
   margin-bottom: 16px;
 }
@@ -3742,7 +4257,7 @@ watch(
 
 .provenance-lists-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
 }
 
@@ -3764,10 +4279,11 @@ watch(
 }
 
 .provenance-list-card {
-  background-color: rgba(var(--v-theme-on-surface), 0.02);
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
-  border-radius: 10px;
-  padding: 10px;
+  background: linear-gradient(180deg, rgba(var(--v-theme-on-surface), 0.02) 0%, rgba(var(--v-theme-on-surface), 0.03) 100%);
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.1);
+  border-radius: 12px;
+  padding: 10px 11px;
+  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.03);
 }
 
 .provenance-list-header {
@@ -3795,7 +4311,14 @@ watch(
   gap: 10px;
   padding: 8px 10px;
   border-radius: 8px;
-  background-color: rgba(var(--v-theme-on-surface), 0.03);
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.06);
+  background-color: rgba(var(--v-theme-on-surface), 0.035);
+  transition: background-color 0.18s ease, border-color 0.18s ease;
+}
+
+.provenance-row:hover {
+  background-color: rgba(var(--v-theme-on-surface), 0.05);
+  border-color: rgba(var(--v-theme-on-surface), 0.14);
 }
 
 .provenance-row-main {
@@ -3803,6 +4326,10 @@ watch(
   align-items: center;
   gap: 8px;
   min-width: 0;
+}
+
+.provenance-row-main-combination {
+  align-items: flex-start;
 }
 
 .provenance-rank {
@@ -3817,6 +4344,36 @@ watch(
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.provenance-combination-label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  white-space: normal;
+}
+
+.provenance-combo-prompt,
+.provenance-combo-llm {
+  display: block;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.2;
+}
+
+.provenance-combo-prompt {
+  font-size: 0.8rem;
+  color: rgba(var(--v-theme-on-surface), 0.9);
+  font-weight: 500;
+}
+
+.provenance-combo-llm {
+  font-size: 0.74rem;
+  color: rgba(var(--v-theme-on-surface), 0.65);
 }
 
 .provenance-row-stats {
@@ -3840,6 +4397,290 @@ watch(
   padding: 12px 4px 6px;
   font-size: 0.8rem;
   color: rgba(var(--v-theme-on-surface), 0.5);
+}
+
+.provenance-figures-grid {
+  margin-top: 14px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  align-items: stretch;
+}
+
+.provenance-figure-card {
+  background: linear-gradient(180deg, rgba(var(--v-theme-on-surface), 0.018) 0%, rgba(var(--v-theme-on-surface), 0.032) 100%);
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.1);
+  border-radius: 12px;
+  padding: 12px;
+  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.03), 0 6px 16px rgba(0, 0, 0, 0.04);
+}
+
+.provenance-figure-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+  font-size: 0.77rem;
+  color: rgba(var(--v-theme-on-surface), 0.62);
+}
+
+.provenance-figure-header span:first-child {
+  font-weight: 600;
+  color: rgba(var(--v-theme-on-surface), 0.86);
+}
+
+.provenance-figure-header span:last-child {
+  white-space: nowrap;
+}
+
+.provenance-figure-header-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.provenance-figure-expand-btn {
+  color: rgba(var(--v-theme-on-surface), 0.65);
+}
+
+.provenance-figure-expand-btn:hover {
+  color: rgba(var(--v-theme-on-surface), 0.88);
+}
+
+.provenance-figure-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 11px;
+}
+
+.provenance-figure-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  background-color: rgba(var(--v-theme-on-surface), 0.035);
+}
+
+.provenance-figure-legend-color {
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.18);
+}
+
+.provenance-figure-legend-label {
+  font-size: 0.71rem;
+  color: rgba(var(--v-theme-on-surface), 0.78);
+  line-height: 1.1;
+}
+
+.provenance-figure-scroll {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0 2px 4px;
+}
+
+.provenance-figure-groups {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 9px;
+  min-width: 100%;
+}
+
+.provenance-figure-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  min-width: 118px;
+  flex: 1 1 0;
+}
+
+.provenance-figure-bars {
+  width: 100%;
+  height: 140px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 6px 7px;
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.1);
+  border-radius: 10px;
+  background-color: rgba(var(--v-theme-on-surface), 0.015);
+  background:
+    linear-gradient(to top, rgba(var(--v-theme-on-surface), 0.055) 1px, transparent 1px) 0 0 / 100% 25%;
+}
+
+.provenance-figure-bar-slot {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  height: 100%;
+  width: 20px;
+  min-width: 20px;
+  padding-top: 26px;
+  cursor: pointer;
+}
+
+.provenance-figure-bar {
+  width: 100%;
+  min-height: 3px;
+  border-radius: 4px 4px 2px 2px;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.08);
+  transition: height 0.25s ease-out, transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
+}
+
+.provenance-figure-bar-slot:hover .provenance-figure-bar {
+  transform: translateY(-2px);
+  filter: brightness(0.95);
+  box-shadow:
+    inset 0 0 0 1px rgba(0, 0, 0, 0.08),
+    0 4px 8px rgba(0, 0, 0, 0.16);
+}
+
+.provenance-figure-bar-label {
+  position: absolute;
+  top: 9px;
+  left: 50%;
+  transform: translateX(-50%) rotate(-90deg);
+  padding: 1px 3px;
+  border-radius: 4px;
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.12);
+  background-color: rgba(var(--v-theme-surface), 0.88);
+  font-size: 0.62rem;
+  line-height: 1;
+  font-weight: 600;
+  color: rgba(var(--v-theme-on-surface), 0.78);
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.provenance-figure-bar-slot:hover .provenance-figure-bar-label {
+  border-color: rgba(var(--v-theme-on-surface), 0.22);
+  background-color: rgba(var(--v-theme-surface), 0.96);
+}
+
+.provenance-figure-entry-label {
+  width: 100%;
+  text-align: center;
+  font-size: 0.73rem;
+  color: rgba(var(--v-theme-on-surface), 0.84);
+  line-height: 1.25;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  min-height: 2.5em;
+}
+
+.provenance-figure-entry-label-combo {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  white-space: normal;
+}
+
+.provenance-figure-entry-label-prompt,
+.provenance-figure-entry-label-llm {
+  display: block;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.2;
+}
+
+.provenance-figure-entry-label-prompt {
+  font-weight: 600;
+}
+
+.provenance-figure-entry-label-llm {
+  font-size: 0.67rem;
+  color: rgba(var(--v-theme-on-surface), 0.64);
+}
+
+.provenance-figure-scroll::-webkit-scrollbar {
+  height: 7px;
+}
+
+.provenance-figure-scroll::-webkit-scrollbar-track {
+  background: rgba(var(--v-theme-on-surface), 0.08);
+  border-radius: 999px;
+}
+
+.provenance-figure-scroll::-webkit-scrollbar-thumb {
+  background: rgba(var(--v-theme-on-surface), 0.25);
+  border-radius: 999px;
+}
+
+.provenance-figure-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(var(--v-theme-on-surface), 0.25) rgba(var(--v-theme-on-surface), 0.08);
+}
+
+.provenance-figure-dialog {
+  display: flex;
+  flex-direction: column;
+  background-color: rgb(var(--v-theme-surface));
+}
+
+.provenance-figure-dialog-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 18px;
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.1);
+  background-color: rgba(var(--v-theme-on-surface), 0.02);
+}
+
+.provenance-figure-dialog-title-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.provenance-figure-dialog-title {
+  margin: 0;
+  font-size: 1rem;
+  line-height: 1.2;
+  color: rgba(var(--v-theme-on-surface), 0.9);
+}
+
+.provenance-figure-dialog-subtitle {
+  font-size: 0.78rem;
+  color: rgba(var(--v-theme-on-surface), 0.6);
+}
+
+.provenance-figure-dialog-content {
+  flex: 1;
+  min-height: 0;
+  padding: 18px;
+}
+
+.provenance-figure-card-dialog {
+  height: 100%;
+  min-height: 0;
+}
+
+.provenance-figure-scroll-dialog {
+  max-height: calc(100vh - 220px);
+  overflow-y: auto;
+}
+
+.provenance-figure-group-dialog {
+  min-width: 180px;
+}
+
+.provenance-figure-bars-dialog {
+  height: 240px;
 }
 
 /* Ranking Agreement Matrix Styles */
@@ -4256,6 +5097,10 @@ watch(
   }
 
   .provenance-lists-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .provenance-figures-grid {
     grid-template-columns: 1fr;
   }
 }
@@ -5001,6 +5846,10 @@ watch(
   }
 
   .ranking-analysis-panel {
+    padding: 14px;
+  }
+
+  .ranking-analysis-panel.heatmap-panel {
     padding: 14px;
   }
 

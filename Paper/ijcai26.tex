@@ -246,47 +246,45 @@ Prompts can also be downloaded as JSON for use outside LLARS, but within the pla
 While the prompt editor allows rapid testing with sample values, a single example cannot validate whether a prompt generalizes across diverse inputs.
 Batch generation addresses this: users select from available prompts---self-authored or shared by collaborators---and any registered model to apply to their data, producing the Cartesian product of prompts\,$\times$\,models\,$\times$\,data items.
 A generation matrix previews this combination and estimates cost based on model pricing and projected token counts; optional budget caps pause jobs that exceed a threshold.
-A wizard offers three data source modes, each suited to a different stage of development: upload data (provide new CSV or JSON input), previous generation (reuse data from a completed batch job) and prompt only (generate without source data).
-
-In upload-data mode, users provide a CSV or JSON file whose columns map to the prompt's template variables---for example, 50~counselling email threads as JSON, each entry containing \texttt{subject} and \texttt{content} fields matching the variables defined during prompt engineering.
-Combined with two prompts and two models, LLARS produces 50\,$\times$\,2\,$\times$\,2\,=\,200~outputs.
-Previous-generation mode works identically but reuses the data from a completed batch job, so that new prompts or additional models can be tested on exactly the same dataset without re-uploading.
-Prompt-only mode requires no data upload and sends selected prompts to selected models directly---two prompts across two models yield 2\,$\times$\,2\,=\,4~outputs, with any template variables filled from their sample values.
+A wizard offers three data source modes: upload data (CSV or JSON whose columns map to the prompt's template variables), previous generation (reuse data from a completed batch to test new prompts or models on the same dataset) and prompt only (generate without source data, filling variables from sample values).
+For example, 50~counselling email threads combined with two prompts and two models produce 50\,$\times$\,2\,$\times$\,2\,=\,200~outputs.
 
 Results stream in real time and every output records its full provenance---source item, prompt version, model, parameters, token count and cost---exportable as CSV or JSON.
-This provenance is central to the pipeline: when outputs reach evaluation, evaluators see only the generated text without any indication of which model or prompt produced it and the platform traces their ratings back to specific model--prompt combinations, directly informing selection.
-Completed batches transfer into evaluation with a single click, preserving all attribution.
+Evaluators see only the generated text without any indication of which model or prompt produced it; completed batches transfer into evaluation with a single click, preserving all attribution for downstream provenance analysis.
 
 \subsection{Evaluation}
 
-The evaluation module automates human and LLM-based evaluation across six configurable types---rating, ranking, labeling, comparison and the domain-specific presets mail rating and authenticity (Figure~\ref{fig:scenario-wizard}).
-Scenarios are typically created from batch generation outputs with a single click, preserving full provenance, but can also be set up independently via the AI-assisted Scenario Wizard that analyzes uploaded data and recommends a suitable evaluation type.
+Each evaluation is organized as a \emph{scenario}---a self-contained campaign that defines the type, assigns evaluators and distributes items---supporting six types: rating, ranking, labeling, comparison, mail rating and authenticity.
+Scenarios are created from batch outputs with a single click or via an AI-assisted Scenario Wizard; owners control whether all items go to every evaluator or configurable subsets are distributed for faster throughput.
+Where most tools limit LLMs to pairwise judging~\cite{zheng2024judging}, LLARS treats them as full participants alongside humans.
 
-Scenario owners control how items are distributed---all items to every evaluator for full inter-rater analysis or configurable subsets for faster throughput.
-Where most tools limit LLMs to pairwise judging~\cite{zheng2024judging}, LLARS treats them as full evaluation participants that rate, rank, label and compare alongside humans using customizable type-specific prompts.
-Agreement metrics update live---Krippendorff's~$\alpha$, Cohen's and Fleiss'~$\kappa$, Kendall's~$\tau$ and ICC---filterable by evaluator pairing (human--human, LLM--LLM, human--LLM).
-All data, metrics and configurations are exportable as JSON or CSV.
+The default ranking mode is \emph{bucket ranking}: evaluators sort items into ordinal categories (e.g.\ \emph{Good}, \emph{Medium}, \emph{Bad}) and rank within each bucket---reducing cognitive load~\cite{miller1956magical} and yielding more reliable judgments than total ordering~\cite{kiritchenko2017bws}, as confirmed by domain expert interviews.
+Traditional ranking remains available.
+
+Once assessments are submitted, scenario owners inspect aggregated results: live agreement metrics (Krippendorff's~$\alpha$, Cohen's and Fleiss'~$\kappa$, Kendall's~$\tau$/$W$, ICC) filterable by evaluator pairing, bucket distribution charts and pairwise agreement heatmaps with click-through detail views.
+The central outcome is the \emph{provenance analysis} (Figure~\ref{fig:provenance}): since batch generation records which model and prompt produced each output, ratings are traced back to their source and every combination is ranked by top-bucket hit rate---across three perspectives (per model, per prompt and combined)---directly answering the practitioner's question: \emph{which pair should we deploy?}
+All data and metrics are exportable as JSON or CSV.
 
 \begin{figure}[htb]
 \centering
-\includegraphics[width=0.85\linewidth]{figures/szenario-wizard.png}
-\caption{AI-assisted Scenario Wizard: task selection step with four general and two domain-specific evaluation types. The wizard analyzes uploaded data and recommends a suitable type.}
-\label{fig:scenario-wizard}
+\includegraphics[width=\linewidth]{figures/provenance-analysis}
+\caption{Provenance analysis ranking model--prompt combinations by top-bucket hit rate (top) with per-combination bucket distributions (bottom).}
+\label{fig:provenance}
 \end{figure}
 
 \section{Deployment and User Study}
 \label{sec:counseling}
 
-LLARS is actively used in online counselling research: the Virtual Client project~\cite{rudolph2024virtualclient} uses it to develop prompts for simulated client interactions and persona generation, and CAIA~\cite{steigerwald2025caia}, a co-designed AI assistant for email counselling, relies on it for prompt development and evaluation.
-A full end-to-end case study~\cite{steigerwald2025subjectline} produced 253~subject lines across 11~LLMs and had five professionals with an LLM evaluator rate them (1,518~assessments)---determining how small a model could be while still producing meaningful results.
+LLARS is actively used in online counselling research: the Virtual Client project~\cite{rudolph2024virtualclient} uses it for prompt development of simulated client interactions, and CAIA~\cite{steigerwald2025caia}, an AI assistant for email counselling, relies on it for prompt development and evaluation.
+A full end-to-end case study~\cite{steigerwald2025subjectline} produced 253~subject lines across 11~LLMs and had five professionals with an LLM evaluator rate them (1,518~assessments), determining how small a model could be while still meeting quality requirements.
 
 Semi-structured interviews with six domain experts and three developers confirmed that consolidating the pipeline in one platform saves considerable time.
-Domain experts found prompt authoring straightforward---particularly for self-hosted models lacking external playgrounds---and rated evaluation as immediately understandable; developers valued that prompts, data and outputs remain in one place.
+Domain experts found prompt authoring straightforward and evaluation immediately understandable; developers valued that prompts, data and outputs remain in one place.
 Both groups emphasised that co-locating the workflow removed the ``translation work'' between disciplines.
 
 \section{Demo and Conclusion}
 
-Our demo walks attendees through the complete workflow with pre-built prompts, generation jobs and evaluation scenarios for hands-on exploration.
+Our demo walks attendees through the complete workflow---from collaborative prompt authoring through batch generation to evaluation with live agreement metrics, pairwise heatmaps and the provenance analysis shown in Figure~\ref{fig:provenance}---using pre-built counselling scenarios for hands-on exploration.
 By unifying prompt engineering, batch generation and evaluation, LLARS bridges the gap between domain experts and developers for interdisciplinary research.
 % TODO: Uncomment and update URLs before submission
 %\noindent\textbf{Repository:} \url{https://github.com/llars-project/llars}\\

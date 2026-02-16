@@ -783,6 +783,134 @@
         </v-dialog>
       </div>
 
+      <!-- Provenance Analysis (Rating) -->
+      <div class="provenance-section" v-if="hasRatingProvenanceAnalysis">
+        <h4 class="subsection-title">
+          {{ $t('scenarioManager.results.ratingProvenanceAnalysis') }}
+          <LTooltip :text="$t('scenarioManager.tooltips.ratingProvenanceAnalysis')" location="top">
+            <v-icon size="16" class="help-icon">mdi-help-circle-outline</v-icon>
+          </LTooltip>
+        </h4>
+        <p class="subsection-description text-medium-emphasis text-caption mb-3">
+          {{ $t('scenarioManager.results.ratingProvenanceDescription') }}
+        </p>
+        <p class="provenance-metric-explainer text-medium-emphasis text-caption mb-3">
+          {{ $t('scenarioManager.results.ratingProvenanceMetricExplanation', { threshold: ratingProvenanceHighThresholdPercent }) }}
+        </p>
+
+        <div class="provenance-best-grid">
+          <div class="provenance-best-card">
+            <span class="provenance-best-label">{{ $t('scenarioManager.results.bestLLM') }}</span>
+            <strong class="provenance-best-name">{{ bestRatingProvenanceLLM?.label || '-' }}</strong>
+            <span v-if="bestRatingProvenanceLLM" class="provenance-best-meta">
+              {{ formatProvenanceRate(bestRatingProvenanceLLM.avg_normalized_score) }}% | {{ formatProvenanceScore(bestRatingProvenanceLLM.avg_score) }} Ø
+            </span>
+          </div>
+          <div class="provenance-best-card">
+            <span class="provenance-best-label">{{ $t('scenarioManager.results.bestPrompt') }}</span>
+            <strong class="provenance-best-name">{{ bestRatingProvenancePrompt?.label || '-' }}</strong>
+            <span v-if="bestRatingProvenancePrompt" class="provenance-best-meta">
+              {{ formatProvenanceRate(bestRatingProvenancePrompt.avg_normalized_score) }}% | {{ formatProvenanceScore(bestRatingProvenancePrompt.avg_score) }} Ø
+            </span>
+          </div>
+          <div class="provenance-best-card">
+            <span class="provenance-best-label">{{ $t('scenarioManager.results.bestCombination') }}</span>
+            <strong class="provenance-best-name">{{ bestRatingProvenanceCombination?.label || '-' }}</strong>
+            <span v-if="bestRatingProvenanceCombination" class="provenance-best-meta">
+              {{ formatProvenanceRate(bestRatingProvenanceCombination.avg_normalized_score) }}% | {{ formatProvenanceScore(bestRatingProvenanceCombination.avg_score) }} Ø
+            </span>
+          </div>
+        </div>
+
+        <div class="provenance-lists-grid">
+          <div class="provenance-list-card">
+            <div class="provenance-list-header">
+              <span>{{ $t('scenarioManager.results.modelRanking') }}</span>
+              <span>
+                {{ $t('scenarioManager.results.assignments') }}: {{ currentRatingProvenanceSegment?.total_assignments || 0 }}
+                · {{ $t('scenarioManager.results.ratingProvenancePrimaryMetric') }}
+              </span>
+            </div>
+            <div v-if="currentRatingProvenanceSegment?.by_llm?.length" class="provenance-list">
+              <div
+                v-for="(entry, index) in currentRatingProvenanceSegment.by_llm.slice(0, 8)"
+                :key="`rating-prov-llm-${entry.id}`"
+                class="provenance-row"
+              >
+                <div class="provenance-row-main">
+                  <span class="provenance-rank">#{{ index + 1 }}</span>
+                  <span class="provenance-label">{{ entry.label }}</span>
+                </div>
+                <div class="provenance-row-stats">
+                  <span class="provenance-rate">{{ formatProvenanceRate(entry.avg_normalized_score) }}%</span>
+                  <span class="provenance-count">{{ formatProvenanceScore(entry.avg_score) }} Ø</span>
+                </div>
+              </div>
+            </div>
+            <div v-else class="provenance-empty">
+              {{ $t('scenarioManager.results.noProvenanceData') }}
+            </div>
+          </div>
+
+          <div class="provenance-list-card">
+            <div class="provenance-list-header">
+              <span>{{ $t('scenarioManager.results.promptRanking') }}</span>
+              <span>{{ $t('scenarioManager.results.ratingProvenancePrimaryMetric') }}</span>
+            </div>
+            <div v-if="currentRatingProvenanceSegment?.by_prompt?.length" class="provenance-list">
+              <div
+                v-for="(entry, index) in currentRatingProvenanceSegment.by_prompt.slice(0, 8)"
+                :key="`rating-prov-prompt-${entry.id}`"
+                class="provenance-row"
+              >
+                <div class="provenance-row-main">
+                  <span class="provenance-rank">#{{ index + 1 }}</span>
+                  <span class="provenance-label">{{ entry.label }}</span>
+                </div>
+                <div class="provenance-row-stats">
+                  <span class="provenance-rate">{{ formatProvenanceRate(entry.avg_normalized_score) }}%</span>
+                  <span class="provenance-count">{{ formatProvenanceScore(entry.avg_score) }} Ø</span>
+                </div>
+              </div>
+            </div>
+            <div v-else class="provenance-empty">
+              {{ $t('scenarioManager.results.noProvenanceData') }}
+            </div>
+          </div>
+
+          <div class="provenance-list-card">
+            <div class="provenance-list-header">
+              <span>{{ $t('scenarioManager.results.combinationRanking') }}</span>
+              <span>{{ $t('scenarioManager.results.ratingProvenancePrimaryMetric') }}</span>
+            </div>
+            <div v-if="currentRatingProvenanceSegment?.by_combination?.length" class="provenance-list">
+              <div
+                v-for="(entry, index) in currentRatingProvenanceSegment.by_combination.slice(0, 8)"
+                :key="`rating-prov-combo-${entry.id}`"
+                class="provenance-row"
+              >
+                <div class="provenance-row-main provenance-row-main-combination">
+                  <span class="provenance-rank">#{{ index + 1 }}</span>
+                  <span class="provenance-label provenance-combination-label">
+                    <span class="provenance-combo-prompt">{{ getCombinationPromptLabel(entry) }}</span>
+                    <span v-if="getCombinationLLMLabel(entry)" class="provenance-combo-llm">
+                      {{ getCombinationLLMLabel(entry) }}
+                    </span>
+                  </span>
+                </div>
+                <div class="provenance-row-stats">
+                  <span class="provenance-rate">{{ formatProvenanceRate(entry.avg_normalized_score) }}%</span>
+                  <span class="provenance-count">{{ formatProvenanceScore(entry.avg_score) }} Ø</span>
+                </div>
+              </div>
+            </div>
+            <div v-else class="provenance-empty">
+              {{ $t('scenarioManager.results.noProvenanceData') }}
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Ranking Bucket Distribution + Agreement -->
       <div class="ranking-analysis-grid-section" v-if="hasBucketDistribution || hasRankingAgreement">
         <div
@@ -2443,6 +2571,39 @@ watch(provenanceBucketChartPanels, (panels) => {
   }
 })
 
+// ===== Computed: Rating Provenance Analysis =====
+
+const ratingProvenanceAnalysis = computed(() => {
+  return props.liveStats?.ratingProvenanceAnalysis || props.liveStats?.rating_provenance_analysis || null
+})
+
+const currentRatingProvenanceSegment = computed(() => {
+  const segments = ratingProvenanceAnalysis.value?.segments
+  if (!segments) return null
+  if (evaluatorTypeFilter.value === 'human') return segments.human || segments.all || null
+  if (evaluatorTypeFilter.value === 'llm') return segments.llm || segments.all || null
+  return segments.all || null
+})
+
+const hasRatingProvenanceAnalysis = computed(() => {
+  if (!isRatingScenario.value) return false
+  const segment = currentRatingProvenanceSegment.value
+  if (!segment) return false
+  return (segment.by_llm?.length || 0) > 0 ||
+    (segment.by_prompt?.length || 0) > 0 ||
+    (segment.by_combination?.length || 0) > 0
+})
+
+const bestRatingProvenanceLLM = computed(() => currentRatingProvenanceSegment.value?.best_llm || null)
+const bestRatingProvenancePrompt = computed(() => currentRatingProvenanceSegment.value?.best_prompt || null)
+const bestRatingProvenanceCombination = computed(() => currentRatingProvenanceSegment.value?.best_combination || null)
+
+const ratingProvenanceHighThresholdPercent = computed(() => {
+  const rawValue = Number(ratingProvenanceAnalysis.value?.metric_definition?.high_score_threshold_percent)
+  if (!Number.isFinite(rawValue)) return '80.0'
+  return formatProvenanceRate(rawValue)
+})
+
 // ===== Computed: Ranking Agreement Matrix =====
 
 const rankingAgreement = computed(() => {
@@ -3120,6 +3281,12 @@ function formatProvenanceRate(value) {
   const numeric = Number(value)
   if (!Number.isFinite(numeric)) return '0.0'
   return numeric.toFixed(1)
+}
+
+function formatProvenanceScore(value) {
+  const numeric = Number(value)
+  if (!Number.isFinite(numeric)) return '-'
+  return numeric.toFixed(2)
 }
 
 function getCombinationParts(entry) {

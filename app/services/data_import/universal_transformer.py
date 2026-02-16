@@ -569,7 +569,11 @@ class UniversalTransformer:
 
         return None
 
-    def _detect_ranking_features(self, data: dict[str, Any]) -> tuple[str | None, list[Feature]]:
+    def _detect_ranking_features(
+        self,
+        data: dict[str, Any],
+        split_by_prompt: bool = False
+    ) -> tuple[str | None, list[Feature]]:
         """
         Detect ranking format with reference text and multiple features to rank.
 
@@ -663,18 +667,25 @@ class UniversalTransformer:
                             generated_by=generated_by
                         ))
 
-        # Enrich with actual model names from metadata if available
+        # Enrich with actual model names (and optional prompt-based feature types) from metadata.
         if "metadata" in data and isinstance(data["metadata"], dict):
             metadata = data["metadata"]
             for i, feature in enumerate(features):
                 suffix = chr(97 + i)  # a, b, c, d, ...
                 model_key = f"model_{suffix}"
                 if model_key in metadata and metadata[model_key]:
-                    feature.generated_by = metadata[model_key]
+                    feature.generated_by = str(metadata[model_key])
+
+                if split_by_prompt:
+                    prompt_key = f"prompt_{suffix}"
+                    prompt_label = metadata.get(prompt_key)
+                    if prompt_label:
+                        feature.type = str(prompt_label).strip() or feature.type
 
         logger.info(
             f"Ranking features detected: {len(features)} features, "
-            f"keys={list(found_keys)}, reference={'found' if reference_text else 'missing'}"
+            f"keys={list(found_keys)}, reference={'found' if reference_text else 'missing'}, "
+            f"split_by_prompt={split_by_prompt}"
         )
 
         return reference_text, features
@@ -690,7 +701,11 @@ class UniversalTransformer:
         if config.task_type != TaskType.RANKING:
             return False
 
-        reference_text, features = self._detect_ranking_features(data)
+        split_by_prompt = bool((config.field_mapping or {}).get("split_by_prompt"))
+        reference_text, features = self._detect_ranking_features(
+            data,
+            split_by_prompt=split_by_prompt
+        )
         return reference_text is not None and len(features) >= 2
 
     def _transform_ranking_item(
@@ -707,7 +722,11 @@ class UniversalTransformer:
         - content: The reference/source text (shown on right side)
         - features: List of Feature objects to rank (shown on left side)
         """
-        reference_text, features = self._detect_ranking_features(data)
+        split_by_prompt = bool((config.field_mapping or {}).get("split_by_prompt"))
+        reference_text, features = self._detect_ranking_features(
+            data,
+            split_by_prompt=split_by_prompt
+        )
 
         if not reference_text:
             self._warnings.append(f"Item {index}: No reference text found for ranking")

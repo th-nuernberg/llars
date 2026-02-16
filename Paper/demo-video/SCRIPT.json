@@ -433,7 +433,7 @@
     {
       "id": "prompt_eng_5_react",
       "speaker": "guest",
-      "narration": "Ah — I see those green highlighted blocks in the text. Are those variables?",
+      "narration": "Ah — I see those green highlighted blocks in the text. Are those variables? Subject and Content?",
       "actions": [
         {
           "do": "highlight",
@@ -445,7 +445,7 @@
     {
       "id": "prompt_eng_5a",
       "speaker": "moderator",
-      "narration": "Yes, exactly! Those are template variables. You can insert them by dragging from the variable sidebar, or simply type them with double curly braces — like I just did. Let me set up sample data so we can test the prompt.",
+      "narration": "Yes, exactly! Those are template variables — double curly braces. They'll be replaced with real data during batch generation. Let me set up sample values so we can test the prompt.",
       "actions": [
         {
           "do": "click",
@@ -527,33 +527,46 @@
     {
       "id": "prompt_eng_5a_try",
       "speaker": "moderator",
-      "narration": "Now David, try adding the content variable yourself — just type it after the subject with double curly braces.",
+      "narration": "Now David, log in with your account and add context for the data format — describe what subject and content actually contain.",
       "actions": [
         {
+          "do": "collab_open",
+          "user": "ijcai_reviewer_2",
+          "password": "ijcai_reviewer_123"
+        },
+        {
           "do": "wait",
-          "seconds": 0.3
+          "seconds": 0.5
+        },
+        {
+          "do": "collab_goto",
+          "url": "/promptengineering"
+        },
+        {
+          "do": "wait",
+          "seconds": 0.5
+        },
+        {
+          "do": "collab_click",
+          "target": "Situation Summary"
+        },
+        {
+          "do": "wait",
+          "seconds": 0.5
         }
       ]
     },
     {
       "id": "prompt_eng_5a_david",
       "speaker": "guest",
-      "narration": "Alright, let me try — Content, double curly braces, content, close.",
+      "narration": "Sure — the data is a subject line followed by a counselling email thread. Let me add that.",
       "actions": [
         {
-          "do": "click",
-          "target": "Last Block Editor"
-        },
-        {
-          "do": "wait",
-          "seconds": 0.2
-        },
-        {
-          "do": "type",
+          "do": "collab_type",
           "target": "Last Block Editor",
-          "text": " Content: {{content}}",
-          "speed": "fast",
-          "cursor": "end"
+          "text": "\nContent: {{content}}\nThe data below is provided as a subject line followed by the email thread content from a counselling session.",
+          "cursor": "end",
+          "delay": 0.03
         },
         {
           "do": "wait",
@@ -564,7 +577,7 @@
     {
       "id": "prompt_eng_5a_react",
       "speaker": "guest",
-      "narration": "That's intuitive. And I can test with different sample values right away — without switching to another tool?",
+      "narration": "And I can see it appearing on your screen in real time — that's actual live collaboration! Can I test the prompt right away?",
       "actions": [
         {
           "do": "wait",
@@ -643,7 +656,7 @@
     {
       "id": "prompt_eng_6",
       "speaker": "guest",
-      "narration": "Nice feedback loop. And can multiple people edit the same prompt at the same time?",
+      "narration": "Nice feedback loop. And we're already editing the same prompt together — that's real-time collaboration?",
       "actions": [
         {
           "do": "wait",
@@ -652,77 +665,13 @@
       ]
     },
     {
-      "_comment": "=== LIVE COLLAB DEMO (NEW PROMPT) ===",
+      "_comment": "=== LIVE COLLAB DEMO (BROWSER ALREADY OPEN) ===",
       "id": "collab_1",
       "speaker": "moderator",
-      "narration": "Absolutely — go ahead and log in, David. You'll find the prompt under Prompt Engineering since I shared it with you.",
-      "actions": [
-        {
-          "do": "sync",
-          "after": "second browser"
-        },
-        {
-          "do": "collab_open",
-          "user": "ijcai_reviewer_2",
-          "password": "ijcai_reviewer_123"
-        },
-        {
-          "do": "wait",
-          "seconds": 0.5
-        }
-      ]
-    },
-    {
-      "id": "collab_2",
-      "speaker": "guest",
-      "narration": "Alright, I'm logged in. And yes — I can see the Live Situation Summary prompt right here. Let me open it.",
-      "actions": [
-        {
-          "do": "collab_goto",
-          "url": "/promptengineering"
-        },
-        {
-          "do": "wait",
-          "seconds": 0.5
-        },
-        {
-          "do": "collab_click",
-          "target": "Situation Summary"
-        },
-        {
-          "do": "wait",
-          "seconds": 0.5
-        }
-      ]
-    },
-    {
-      "id": "collab_3",
-      "speaker": "moderator",
-      "narration": "There you go — your cursor appears on my screen. Every edit is tracked per user, so you always know who wrote what.",
+      "narration": "Exactly — you're already logged in side by side. Every edit, every new block, you see it appear in real time. Your cursor appears on my screen with your color.",
       "actions": [
         {
           "do": "collab_focus"
-        },
-        {
-          "do": "wait",
-          "seconds": 0.2
-        },
-        {
-          "do": "highlight",
-          "target": "Version Control Panel",
-          "duration": 1.0
-        },
-        {
-          "do": "type",
-          "target": "Last Block Editor",
-          "text": "",
-          "speed": "instant"
-        },
-        {
-          "do": "type",
-          "target": "Last Block Editor",
-          "text": "Subject: {{subject}}",
-          "speed": "instant"
         },
         {
           "do": "wait",
@@ -730,35 +679,25 @@
         },
         {
           "do": "highlight",
-          "target": "Version Control Panel",
+          "target": "Last Block Editor",
           "duration": 1.0
-        },
+        }
+      ]
+    },
+    {
+      "id": "collab_3",
+      "speaker": "moderator",
+      "narration": "Notice the version control panel — every change is tracked per user. The different colors show who wrote what, and you can commit snapshots at any time.",
+      "actions": [
         {
-          "do": "collab_type",
-          "target": "Last Block Editor",
-          "text": " Content: {{content}}",
-          "cursor": "end",
-          "delay": 0.03
-        },
-        {
-          "do": "wait",
-          "seconds": 0.2
-        },
-        {
-          "do": "collab_type",
-          "target": "Last Block Editor",
-          "text": "\nThe data below is provided as a subject line followed by the email thread content from a counselling session.",
-          "cursor": "end",
-          "delay": 0.03
-        },
-        {
-          "do": "wait",
-          "seconds": 0.2
+          "do": "highlight",
+          "target": "Version Control Panel",
+          "duration": 1.2
         },
         {
           "do": "highlight",
           "target": "Last Block Editor",
-          "duration": 1.0
+          "duration": 1.2
         }
       ]
     },
@@ -980,7 +919,14 @@
         },
         {
           "do": "wait",
-          "seconds": 0.2
+          "seconds": 0.3
+        },
+        {
+          "do": "dismiss_overlays"
+        },
+        {
+          "do": "wait",
+          "seconds": 0.3
         },
         {
           "do": "click",
@@ -1025,13 +971,18 @@
           "do": "wait_for_modal"
         },
         {
-          "do": "paste",
+          "do": "wait",
+          "seconds": 0.3
+        },
+        {
+          "do": "type",
           "target": "Share User Search",
-          "text": "ijcai_reviewer_2"
+          "text": "ijcai",
+          "speed": "fast"
         },
         {
           "do": "wait",
-          "seconds": 0.8
+          "seconds": 1.0
         },
         {
           "do": "click",
@@ -1039,7 +990,7 @@
         },
         {
           "do": "wait",
-          "seconds": 0.3
+          "seconds": 0.5
         },
         {
           "do": "click",
@@ -1047,7 +998,7 @@
         },
         {
           "do": "wait",
-          "seconds": 0.5
+          "seconds": 0.8
         },
         {
           "do": "highlight",
@@ -1118,21 +1069,43 @@
     {
       "id": "batch_gen_2b",
       "speaker": "moderator",
-      "narration": "First, the data. Here are our ten counselling cases — each entry has a subject field and a content field, matching the template variables we defined in the prompt.",
+      "narration": "First, the data. Here are our ten counselling cases in JSON format — each entry has a subject field and a content field, matching the template variables we defined in the prompt.",
       "actions": [
         {
           "do": "show_data_preview"
         },
         {
           "do": "wait",
-          "seconds": 1.0
+          "seconds": 0.5
+        },
+        {
+          "do": "highlight",
+          "target": "Data Preview Code",
+          "duration": 1.2
+        },
+        {
+          "do": "highlight",
+          "target": "Data Preview Count",
+          "duration": 1.2
+        }
+      ]
+    },
+    {
+      "id": "batch_gen_2c",
+      "speaker": "guest",
+      "narration": "So these JSON keys map directly to the curly-brace variables in the prompt? Subject maps to subject, content maps to content?",
+      "actions": [
+        {
+          "do": "highlight",
+          "target": "Data Preview Code",
+          "duration": 1.5
         }
       ]
     },
     {
       "id": "batch_gen_3",
       "speaker": "moderator",
-      "narration": "Let me paste them into the wizard. Lars maps the JSON fields to our variables automatically.",
+      "narration": "Exactly — Lars maps them automatically. Let me paste them into the wizard.",
       "actions": [
         {
           "do": "hide_title"
@@ -1650,7 +1623,7 @@
     {
       "id": "scenario_wizard_6",
       "speaker": "moderator",
-      "narration": "And we create the scenario. Now, we actually set one up earlier and both reviewers have been ranking — let me show you the progress.",
+      "narration": "And we create the scenario. We actually set one up earlier with completed evaluations — but first, let me show you what evaluation looks like from the evaluator's perspective.",
       "actions": [
         {
           "do": "wait",
@@ -1663,343 +1636,14 @@
         {
           "do": "wait",
           "seconds": 2.0
-        },
-        {
-          "do": "goto",
-          "url": "/scenarios"
-        },
-        {
-          "do": "wait",
-          "seconds": 3.0
-        },
-        {
-          "do": "wait_for",
-          "target": "Counselling Demo Scenario",
-          "timeout": 15
-        },
-        {
-          "do": "highlight",
-          "target": "Counselling Demo Scenario",
-          "duration": 1.0
-        },
-        {
-          "do": "click",
-          "target": "Counselling Demo Scenario"
-        },
-        {
-          "do": "wait_for",
-          "target": "Scenario Workspace",
-          "timeout": 60
-        },
-        {
-          "do": "wait",
-          "seconds": 1.0
         }
       ]
     },
     {
-      "_section": "=== SCENARIO MANAGER (45s) ===",
-      "id": "scenario_1",
-      "speaker": "moderator",
-      "narration": "This is the Scenario Workspace. Both IJCAI reviewers have been evaluating, and Magistral and GPT-5 Mini participated as LLM-as-Evaluators — in LLARS, LLMs evaluate exactly like human evaluators.",
-      "actions": [
-        {
-          "do": "wait",
-          "seconds": 0.2
-        },
-        {
-          "do": "highlight",
-          "target": "Scenario Tabs",
-          "duration": 1.2
-        }
-      ]
-    },
-    {
-      "id": "scenario_2",
-      "speaker": "moderator",
-      "narration": "Overview shows live progress — you can see how many rankings each evaluator has completed.",
-      "actions": [
-        {
-          "do": "click",
-          "target": "Scenario Tab Overview"
-        },
-        {
-          "do": "wait",
-          "seconds": 0.2
-        },
-        {
-          "do": "highlight",
-          "target": "Scenario Live Badge",
-          "duration": 1.0
-        },
-        {
-          "do": "highlight",
-          "target": "Scenario Progress Cards",
-          "duration": 1.0
-        }
-      ]
-    },
-    {
-      "id": "scenario_3",
-      "speaker": "guest",
-      "narration": "Wait — I can see all evaluators here side by side? The human reviewers and the LLMs together in one list?",
-      "actions": [
-        {
-          "do": "highlight",
-          "target": "Scenario Evaluator List",
-          "duration": 1.2
-        }
-      ]
-    },
-    {
-      "id": "scenario_4",
-      "speaker": "moderator",
-      "narration": "Exactly! Each of the ten counselling cases has four situation descriptions — two prompts times two models. See, David — IJCAI Reviewer 1 has already finished eight rankings, still has one in progress and one not yet started. Reviewer 2 and both LLM-as-Evaluators are already done.",
-      "actions": [
-        {
-          "do": "highlight",
-          "target": "Scenario Progress Cards",
-          "duration": 1.2
-        }
-      ]
-    },
-    {
-      "id": "scenario_5",
-      "speaker": "moderator",
-      "narration": "The Data tab shows every item's evaluation status. Green with a checkmark means done, gold with a clock icon means in progress, and grey with an empty circle means not yet started — the evaluator can pick up where they left off at any time.",
-      "actions": [
-        {
-          "do": "click",
-          "target": "Scenario Tab Data"
-        },
-        {
-          "do": "wait",
-          "seconds": 0.2
-        },
-        {
-          "do": "highlight",
-          "target": "Data Stats",
-          "duration": 1.0
-        },
-        {
-          "do": "highlight",
-          "target": "Data Threads Table",
-          "duration": 1.2
-        },
-        {
-          "do": "highlight",
-          "target": "Data Status Legend",
-          "duration": 1.0
-        }
-      ]
-    },
-    {
-      "id": "scenario_6",
-      "speaker": "moderator",
-      "narration": "The Evaluation tab shows live agreement metrics — Krippendorff's alpha, pairwise agreement, and a provenance analysis that tells you which LLM and prompt combination performed best.",
-      "actions": [
-        {
-          "do": "click",
-          "target": "Scenario Tab Evaluation"
-        },
-        {
-          "do": "wait",
-          "seconds": 2.0
-        },
-        {
-          "do": "highlight",
-          "target": "Evaluation Summary",
-          "duration": 1.2
-        }
-      ]
-    },
-    {
-      "id": "scenario_6_best",
-      "speaker": "moderator",
-      "narration": "Down here, the provenance analysis shows which generation LLM and which prompt most frequently land in the top bucket. So you immediately see the best-performing combination.",
-      "actions": [
-        {
-          "do": "scroll_to",
-          "target": "Provenance Section"
-        },
-        {
-          "do": "wait",
-          "seconds": 0.5
-        },
-        {
-          "do": "highlight",
-          "target": "Best LLM Card",
-          "duration": 1.2
-        },
-        {
-          "do": "highlight",
-          "target": "Best Prompt Card",
-          "duration": 1.2
-        }
-      ]
-    },
-    {
-      "id": "scenario_6a",
-      "speaker": "guest",
-      "narration": "That's a powerful outcome — you get the best LLM and prompt pair directly from the evaluation. What do the colors in the heatmap mean?",
-      "actions": [
-        {
-          "do": "scroll_to",
-          "target": "Agreement Heatmap"
-        },
-        {
-          "do": "wait",
-          "seconds": 0.3
-        },
-        {
-          "do": "highlight",
-          "target": "Agreement Heatmap",
-          "duration": 1.2
-        }
-      ]
-    },
-    {
-      "id": "scenario_6b",
-      "speaker": "moderator",
-      "narration": "Green means high agreement, red means low — the gradient goes red through beige to green. You can immediately spot where humans and LLMs disagree. Let me click on a cell.",
-      "actions": [
-        {
-          "do": "highlight",
-          "target": "Agreement Heatmap",
-          "duration": 1.0
-        },
-        {
-          "do": "click",
-          "target": "Heatmap Cell"
-        },
-        {
-          "do": "wait",
-          "seconds": 2.0
-        },
-        {
-          "do": "highlight",
-          "target": "Agreement Detail Score",
-          "duration": 1.2
-        },
-        {
-          "do": "highlight",
-          "target": "Agreement Detail Breakdown",
-          "duration": 1.2
-        }
-      ]
-    },
-    {
-      "id": "scenario_6c",
-      "speaker": "guest",
-      "narration": "So you get a detailed breakdown per item — which ones they agreed on and which ones they didn't?",
-      "actions": [
-        {
-          "do": "highlight",
-          "target": "Agreement Detail Breakdown",
-          "duration": 1.0
-        }
-      ]
-    },
-    {
-      "id": "scenario_6d",
-      "speaker": "moderator",
-      "narration": "Exactly — and if the disagreement is systematic, you refine the prompt and re-evaluate. That's the iterative loop. You can also export everything as JSON or CSV.",
-      "actions": [
-        {
-          "do": "click",
-          "target": "Close"
-        },
-        {
-          "do": "wait",
-          "seconds": 0.3
-        },
-        {
-          "do": "highlight",
-          "target": "Evaluation Export",
-          "duration": 1.0
-        },
-        {
-          "do": "click",
-          "target": "Evaluation Export"
-        },
-        {
-          "do": "wait",
-          "seconds": 0.4
-        },
-        {
-          "do": "click",
-          "target": "Export JSON"
-        },
-        {
-          "do": "wait",
-          "seconds": 0.1
-        }
-      ]
-    },
-    {
-      "id": "scenario_7",
-      "speaker": "moderator",
-      "narration": "Finally, the Team tab shows who is involved and how many rankings each evaluator has completed.",
-      "actions": [
-        {
-          "do": "click",
-          "target": "Scenario Tab Team"
-        },
-        {
-          "do": "wait",
-          "seconds": 0.2
-        },
-        {
-          "do": "highlight",
-          "target": "Team Members List",
-          "duration": 1.0
-        },
-        {
-          "do": "highlight",
-          "target": "Team Invite Button",
-          "duration": 1.0
-        },
-        {
-          "do": "highlight",
-          "target": "Team Add LLM Button",
-          "duration": 1.0
-        }
-      ]
-    },
-    {
-      "id": "scenario_8",
-      "speaker": "guest",
-      "narration": "Can you add more evaluators even after the evaluation has already started?",
-      "actions": [
-        {
-          "do": "highlight",
-          "target": "Team Invite Button",
-          "duration": 1.0
-        },
-        {
-          "do": "highlight",
-          "target": "Team Add LLM Button",
-          "duration": 1.0
-        }
-      ]
-    },
-    {
-      "id": "scenario_8a",
-      "speaker": "moderator",
-      "narration": "Absolutely — you can add or remove humans and LLM-as-Evaluators at any point, even mid-evaluation.",
-      "actions": [
-        {
-          "do": "highlight",
-          "target": "Team Members List",
-          "duration": 1.0
-        }
-      ]
-    },
-    {
-      "_section": "=== HUMAN EVALUATION (20s) ===",
+      "_section": "=== HUMAN EVALUATION (30s) — Show bucket ranking from evaluator perspective ===",
       "id": "human_eval_1",
       "speaker": "moderator",
-      "narration": "Now let's see the evaluator's perspective. As reviewer one, I have two rankings left to finish.",
+      "narration": "This is the evaluator's view — each assigned scenario appears here. Let me open our counselling scenario.",
       "actions": [
         {
           "do": "goto",
@@ -2033,7 +1677,7 @@
     {
       "id": "human_eval_2",
       "speaker": "guest",
-      "narration": "So these are the ten counselling cases? And I can see the status for each one — can I just click on one to start ranking?",
+      "narration": "These are the ten counselling cases? Each with four situation descriptions to rank — from the two prompts and two models?",
       "actions": [
         {
           "do": "click",
@@ -2066,7 +1710,7 @@
     {
       "id": "human_eval_3",
       "speaker": "moderator",
-      "narration": "Notice the generic labels — Item A, B, C. The evaluator never sees model names. And the order is randomized for each evaluator to prevent position bias. You drag situation descriptions into buckets to rank them.",
+      "narration": "Exactly. And this is bucket ranking — the default evaluation method in LLARS. Instead of creating a total ordering, the evaluator sorts items into quality categories by dragging them. Notice the generic labels — Item A, B, C — the evaluator never sees which model or prompt produced the text.",
       "actions": [
         {
           "do": "highlight",
@@ -2119,7 +1763,7 @@
     {
       "id": "human_eval_4",
       "speaker": "guest",
-      "narration": "Wait — can the evaluator see which model generated which text? Or is it completely blinded?",
+      "narration": "That's much easier than sorting everything into one long list. And it's completely blinded — no model names?",
       "actions": [
         {
           "do": "highlight",
@@ -2131,12 +1775,431 @@
     {
       "id": "human_eval_5",
       "speaker": "moderator",
-      "narration": "Completely blinded! No model names, no prompt labels, and a different order for every evaluator — unbiased by design.",
+      "narration": "Completely blinded — no model names, no prompt labels, and every evaluator sees items in a different random order. Unbiased by design. Now let's switch to the scenario owner's perspective and look at the aggregated results.",
       "actions": [
         {
           "do": "highlight",
           "target": "Ranking Buckets",
           "duration": 1.0
+        }
+      ]
+    },
+    {
+      "_section": "=== SCENARIO MANAGER (60s) — Overview, Data, Team briefly, then Evaluation with provenance focus ===",
+      "id": "scenario_1",
+      "speaker": "moderator",
+      "narration": "In the Scenario Manager, here's our pre-built scenario where both IJCAI reviewers and two LLM evaluators have been ranking.",
+      "actions": [
+        {
+          "do": "goto",
+          "url": "/scenarios"
+        },
+        {
+          "do": "wait",
+          "seconds": 3.0
+        },
+        {
+          "do": "wait_for",
+          "target": "Counselling Demo Scenario",
+          "timeout": 15
+        },
+        {
+          "do": "highlight",
+          "target": "Counselling Demo Scenario",
+          "duration": 1.0
+        },
+        {
+          "do": "click",
+          "target": "Counselling Demo Scenario"
+        },
+        {
+          "do": "wait_for",
+          "target": "Scenario Workspace",
+          "timeout": 60
+        },
+        {
+          "do": "wait",
+          "seconds": 1.0
+        }
+      ]
+    },
+    {
+      "id": "scenario_2",
+      "speaker": "moderator",
+      "narration": "The Overview tab shows live progress — how many rankings each evaluator has completed. Human reviewers and LLM evaluators appear side by side.",
+      "actions": [
+        {
+          "do": "click",
+          "target": "Scenario Tab Overview"
+        },
+        {
+          "do": "wait",
+          "seconds": 0.2
+        },
+        {
+          "do": "highlight",
+          "target": "Scenario Live Badge",
+          "duration": 1.0
+        },
+        {
+          "do": "highlight",
+          "target": "Scenario Progress Cards",
+          "duration": 1.0
+        },
+        {
+          "do": "highlight",
+          "target": "Scenario Evaluator List",
+          "duration": 1.2
+        }
+      ]
+    },
+    {
+      "id": "scenario_3",
+      "speaker": "moderator",
+      "narration": "The Data tab shows every item's evaluation status — green means done, gold means in progress, grey means not yet started.",
+      "actions": [
+        {
+          "do": "click",
+          "target": "Scenario Tab Data"
+        },
+        {
+          "do": "wait",
+          "seconds": 0.2
+        },
+        {
+          "do": "highlight",
+          "target": "Data Stats",
+          "duration": 1.0
+        },
+        {
+          "do": "highlight",
+          "target": "Data Threads Table",
+          "duration": 1.2
+        }
+      ]
+    },
+    {
+      "id": "scenario_4",
+      "speaker": "moderator",
+      "narration": "And the Team tab — you can add or remove human evaluators and LLM-as-Evaluators at any point, even mid-evaluation.",
+      "actions": [
+        {
+          "do": "click",
+          "target": "Scenario Tab Team"
+        },
+        {
+          "do": "wait",
+          "seconds": 0.2
+        },
+        {
+          "do": "highlight",
+          "target": "Team Members List",
+          "duration": 1.0
+        },
+        {
+          "do": "highlight",
+          "target": "Team Invite Button",
+          "duration": 1.0
+        },
+        {
+          "do": "highlight",
+          "target": "Team Add LLM Button",
+          "duration": 1.0
+        }
+      ]
+    },
+    {
+      "id": "scenario_5",
+      "speaker": "guest",
+      "narration": "Humans and LLMs as first-class evaluators in one list — nice. But where do I see the actual results?",
+      "actions": [
+        {
+          "do": "highlight",
+          "target": "Team Members List",
+          "duration": 1.0
+        }
+      ]
+    },
+    {
+      "id": "scenario_6",
+      "speaker": "moderator",
+      "narration": "The Evaluation tab. Up top we see agreement metrics — Krippendorff's alpha and others — filterable by evaluator type so you can compare human-human, LLM-LLM, and cross agreement.",
+      "actions": [
+        {
+          "do": "click",
+          "target": "Scenario Tab Evaluation"
+        },
+        {
+          "do": "wait",
+          "seconds": 2.0
+        },
+        {
+          "do": "highlight",
+          "target": "Evaluation Summary",
+          "duration": 1.5
+        }
+      ]
+    },
+    {
+      "id": "scenario_6_provenance",
+      "speaker": "moderator",
+      "narration": "But the key outcome is the provenance analysis. Since batch generation tracks which model and prompt produced each output, we trace evaluation ratings back to their source. This view ranks every model-prompt combination by how often its outputs land in the top bucket — and you see the best-performing pair right here.",
+      "actions": [
+        {
+          "do": "scroll_to",
+          "target": "Provenance Section"
+        },
+        {
+          "do": "wait",
+          "seconds": 0.5
+        },
+        {
+          "do": "highlight",
+          "target": "Best LLM Card",
+          "duration": 1.2
+        },
+        {
+          "do": "highlight",
+          "target": "Best Prompt Card",
+          "duration": 1.2
+        }
+      ]
+    },
+    {
+      "id": "scenario_6_provenance_q",
+      "speaker": "guest",
+      "narration": "So this directly tells me which model and prompt pair to deploy? That's exactly the question I started with!",
+      "actions": [
+        {
+          "do": "highlight",
+          "target": "Provenance Best Grid",
+          "duration": 1.2
+        }
+      ]
+    },
+    {
+      "id": "scenario_6_provenance_a",
+      "speaker": "moderator",
+      "narration": "Exactly — and there are separate views per model and per prompt as well, plus a full bucket distribution for each combination.",
+      "actions": [
+        {
+          "do": "wait",
+          "seconds": 0.3
+        }
+      ]
+    },
+    {
+      "id": "scenario_6_heatmap",
+      "speaker": "moderator",
+      "narration": "The agreement heatmap shows pairwise evaluator agreement — green means high, red means low. You can immediately spot where humans and LLMs disagree. Let me click a cell.",
+      "actions": [
+        {
+          "do": "scroll_to",
+          "target": "Agreement Heatmap"
+        },
+        {
+          "do": "wait",
+          "seconds": 0.3
+        },
+        {
+          "do": "highlight",
+          "target": "Agreement Heatmap",
+          "duration": 1.2
+        },
+        {
+          "do": "click",
+          "target": "Heatmap Cell"
+        },
+        {
+          "do": "wait",
+          "seconds": 2.0
+        },
+        {
+          "do": "highlight",
+          "target": "Agreement Detail Score",
+          "duration": 1.2
+        },
+        {
+          "do": "highlight",
+          "target": "Agreement Detail Breakdown",
+          "duration": 1.2
+        }
+      ]
+    },
+    {
+      "id": "scenario_6_heatmap_q",
+      "speaker": "guest",
+      "narration": "A per-item breakdown — so you can pinpoint exactly which cases caused disagreement?",
+      "actions": [
+        {
+          "do": "highlight",
+          "target": "Agreement Detail Breakdown",
+          "duration": 1.0
+        }
+      ]
+    },
+    {
+      "id": "scenario_6_heatmap_close",
+      "speaker": "moderator",
+      "narration": "Exactly. I'll close the agreement detail dialog and continue.",
+      "actions": [
+        {
+          "do": "click_if_present",
+          "target": "Agreement Detail Close"
+        },
+        {
+          "do": "wait",
+          "seconds": 0.3
+        },
+        {
+          "do": "dismiss_overlays"
+        },
+        {
+          "do": "wait",
+          "seconds": 0.2
+        }
+      ]
+    },
+    {
+      "id": "scenario_6_export",
+      "speaker": "moderator",
+      "narration": "Exactly — and if the disagreement is systematic, you refine the prompt and re-evaluate. That's the iterative loop. Everything is exportable as JSON or CSV.",
+      "actions": [
+        {
+          "do": "highlight",
+          "target": "Evaluation Export",
+          "duration": 1.0
+        },
+        {
+          "do": "click",
+          "target": "Evaluation Export"
+        },
+        {
+          "do": "wait",
+          "seconds": 0.4
+        },
+        {
+          "do": "click",
+          "target": "Export JSON"
+        },
+        {
+          "do": "wait",
+          "seconds": 0.1
+        }
+      ]
+    },
+    {
+      "id": "scenario_6_provenance_end_1",
+      "speaker": "moderator",
+      "narration": "Before we wrap up, let's look at provenance again from top to bottom. This is where evaluation becomes directly actionable.",
+      "actions": [
+        {
+          "do": "dismiss_overlays"
+        },
+        {
+          "do": "wait",
+          "seconds": 0.2
+        },
+        {
+          "do": "scroll_to",
+          "target": "Provenance Section"
+        },
+        {
+          "do": "wait",
+          "seconds": 0.4
+        },
+        {
+          "do": "highlight",
+          "target": "Provenance Section",
+          "duration": 1.2
+        },
+        {
+          "do": "highlight",
+          "target": "Provenance Best Grid",
+          "duration": 1.2
+        },
+        {
+          "do": "highlight",
+          "target": "Best LLM Card",
+          "duration": 1.0
+        },
+        {
+          "do": "highlight",
+          "target": "Best Prompt Card",
+          "duration": 1.0
+        },
+        {
+          "do": "highlight",
+          "target": "Best Combination Card",
+          "duration": 1.0
+        }
+      ]
+    },
+    {
+      "id": "scenario_6_provenance_end_2",
+      "speaker": "guest",
+      "narration": "Now I can see the complete ranking by model, by prompt, and by model-prompt combination — not just the top winner.",
+      "actions": [
+        {
+          "do": "highlight",
+          "target": "Provenance Lists Grid",
+          "duration": 1.2
+        },
+        {
+          "do": "highlight",
+          "target": "Provenance LLM List Card",
+          "duration": 1.0
+        },
+        {
+          "do": "highlight",
+          "target": "Provenance Prompt List Card",
+          "duration": 1.0
+        },
+        {
+          "do": "highlight",
+          "target": "Provenance Combination List Card",
+          "duration": 1.2
+        }
+      ]
+    },
+    {
+      "id": "scenario_6_provenance_end_3",
+      "speaker": "moderator",
+      "narration": "Exactly. And down here we also get the full bucket distribution per model, per prompt, and per combination — so you can inspect not only who wins, but how consistently.",
+      "actions": [
+        {
+          "do": "scroll_to",
+          "target": "Provenance Figures Grid"
+        },
+        {
+          "do": "wait",
+          "seconds": 0.3
+        },
+        {
+          "do": "highlight",
+          "target": "Provenance Figures Grid",
+          "duration": 1.3
+        },
+        {
+          "do": "highlight",
+          "target": "Provenance Figure Card",
+          "duration": 1.1
+        },
+        {
+          "do": "click_if_present",
+          "target": "Provenance Figure Expand"
+        },
+        {
+          "do": "wait",
+          "seconds": 0.6
+        },
+        {
+          "do": "click_if_present",
+          "target": "Provenance Figure Dialog Close"
+        },
+        {
+          "do": "wait",
+          "seconds": 0.3
         }
       ]
     },

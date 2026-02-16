@@ -2917,7 +2917,8 @@
         "lastLabel": "Letzte Position",
         "firstPlaceholder": "z.B. Höchste Priorität",
         "lastPlaceholder": "z.B. Niedrigste Priorität",
-        "selectColor": "Farbe wählen"
+        "selectColor": "Farbe wählen",
+        "splitByPrompt": "Split pro Prompt"
       },
       "labeling": {
         "labelingType": "Labeling-Typ",
@@ -3169,6 +3170,10 @@
       "topBucketHitRatio": "Top-Bucket-Treffer ({bucket})",
       "assignments": "Zuordnungen",
       "noProvenanceData": "Noch keine Provenance-Daten verfügbar",
+      "ratingProvenanceAnalysis": "Rating-Provenance-Analyse",
+      "ratingProvenanceDescription": "Zeigt, welche Generierungs-LLMs und Prompts mit höheren normalisierten Rating-Ergebnissen verbunden sind.",
+      "ratingProvenanceMetricExplanation": "Primärmetrik: durchschnittlicher normalisierter Score (0-100). Sekundärmetrik: Anteil hoher Scores (>= {threshold}%).",
+      "ratingProvenancePrimaryMetric": "Ø normalisierter Score",
       "rankingMetricsDescription": "Pro Zusammenfassung (Feature): Haben beide Evaluatoren diese Zusammenfassung in denselben Bucket einsortiert? Ordinal berechnet (Bucket-Krippendorff: gut=3 > mittel=2 > neutral=1 > schlecht=0).",
       "agreementLevel": "Übereinstimmungs-Level",
       "lowAgreement": "Niedrig",
@@ -3385,6 +3390,7 @@
       "interRaterAgreement": "Zeigt die paarweise Übereinstimmung zwischen allen Bewertern. Grün = hohe Übereinstimmung, Rot = niedrige Übereinstimmung. Berechnet als Anteil der exakt übereinstimmenden Bewertungen (gerundet auf ganze Zahlen).",
       "bucketDistribution": "Zeigt wie viele Items in welchen Bucket (Gut/Mittel/Schlecht) einsortiert wurden. Aggregiert über alle menschlichen und LLM-Evaluatoren.",
       "provenanceAnalysis": "Vergleicht die Herkunft bewerteter Inhalte (Generierungs-LLM, Prompt und Prompt+LLM) und zeigt, welche Ursprünge am häufigsten im Top-Bucket landen. Format x/y = Treffer im Top-Bucket geteilt durch alle Zuordnungen der jeweiligen Herkunft.",
+      "ratingProvenanceAnalysis": "Vergleicht die Herkunft bewerteter Inhalte (Generierungs-LLM, Prompt und Prompt+LLM) und zeigt, welche Ursprünge aktuell die höchsten normalisierten Rating-Scores erreichen.",
       "rankingAgreement": "Pro Zusammenfassung: Haben beide Evaluatoren sie in denselben Bucket sortiert? Gezählt als: Übereinstimmende Zusammenfassungen / Gemeinsam bewertete Zusammenfassungen. Metriken ordinal berechnet (Bucket-Krippendorff)."
     },
     "session": {

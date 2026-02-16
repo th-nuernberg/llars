@@ -420,7 +420,7 @@ ELEMENT_MAP = {
     "New Scenario": ".v-btn:contains('New Scenario'), .header-actions .v-btn:contains('New')",
     "Scenario List": ".scenario-list, .scenarios-grid, .scenario-cards, .v-list",
     "Scenario Card": ".scenario-card, .v-card.scenario",
-    "Counselling Demo Scenario": ".scenario-card:contains('IJCAI Counselling Evaluation'), .v-card:contains('IJCAI Counselling Evaluation'), .scenario-name:contains('IJCAI Counselling Evaluation')",
+    "Counselling Demo Scenario": ".scenario-card:contains('IJCAI Counselling Evaluation'):excludes('5 Buckets'), .v-card:contains('IJCAI Counselling Evaluation'):excludes('5 Buckets')",
     "Completed Scenario": ".scenario-card:contains('Complete'), .scenario-card.completed",
     "Demo Scenario": ".scenario-card:contains('Counselling'), .scenario-card:contains('Situation')",
     "Scenario Stats": ".scenario-stats, .stats-card",
@@ -443,8 +443,18 @@ ELEMENT_MAP = {
     "Export JSON": ".v-list-item:contains('JSON')",
     "Best LLM Card": ".provenance-best-grid .provenance-best-card:nth-child(1)",
     "Best Prompt Card": ".provenance-best-grid .provenance-best-card:nth-child(2)",
+    "Best Combination Card": ".provenance-best-grid .provenance-best-card:nth-child(3)",
     "Provenance Section": ".provenance-section",
     "Provenance Best Grid": ".provenance-best-grid",
+    "Provenance Lists Grid": ".provenance-lists-grid",
+    "Provenance LLM List Card": ".provenance-lists-grid .provenance-list-card:nth-child(1)",
+    "Provenance Prompt List Card": ".provenance-lists-grid .provenance-list-card:nth-child(2)",
+    "Provenance Combination List Card": ".provenance-lists-grid .provenance-list-card:nth-child(3)",
+    "Provenance Figures Grid": ".provenance-figures-grid",
+    "Provenance Figure Card": ".provenance-figures-grid .provenance-figure-card:first-child",
+    "Provenance Figure Expand": ".provenance-figures-grid .provenance-figure-card:first-child .provenance-figure-expand-btn:not([disabled])",
+    "Provenance Figure Dialog": ".provenance-figure-dialog",
+    "Provenance Figure Dialog Close": ".provenance-figure-dialog-header .v-btn[title='Close'], .provenance-figure-dialog-header .v-btn",
     # Scenario Data Tab
     "Data Stats": ".data-tab .data-stats, .data-stats",
     "Data Threads Table": ".data-tab .threads-table, .data-tab .threads-section, .data-tab .empty-state, .threads-table, .threads-section",
@@ -456,7 +466,7 @@ ELEMENT_MAP = {
     "Team Member Menu": ".team-tab .member-actions .v-btn, .team-tab .member-actions button",
     "Scenario Wizard Close": ".scenario-wizard .wizard-header .v-btn",
     # Human Evaluation (Evaluation Hub + Ranking UI)
-    "Evaluation Scenario Card": ".overview-content .scenario-card:contains('IJCAI Counselling Evaluation'), .scenarios-grid .scenario-card:contains('IJCAI Counselling Evaluation'), .scenario-card:contains('IJCAI Counselling Evaluation')",
+    "Evaluation Scenario Card": ".overview-content .scenario-card:contains('IJCAI Counselling Evaluation'):excludes('5 Buckets'), .scenarios-grid .scenario-card:contains('IJCAI Counselling Evaluation'):excludes('5 Buckets'), .scenario-card:contains('IJCAI Counselling Evaluation'):excludes('5 Buckets')",
     "Evaluation Items Grid": ".items-grid, .items-content",
     "Evaluation Item Card": ".items-grid .item-card:first-child, .item-card:first-child",
     "Evaluation In Progress Filter": ".filter-chip.in-progress:contains('In progress'), .filter-chip.in-progress:contains('In Progress'), .filter-chip.in-progress:contains('In Arbeit')",
@@ -523,13 +533,13 @@ ELEMENT_MAP = {
     "Sync Models Button": ".l-btn:contains('Sync'), .v-btn:contains('Sync'), .l-btn:contains('sync')",
 
     # Provider Sharing
-    "Provider Actions Menu": ".provider-actions .v-btn--icon, .provider-actions button",
-    "Provider Share Option": ".v-list-item:contains('Share')",
-    "Share User Search": ".v-dialog .l-user-search input, .l-user-search .v-field input, .l-user-search input",
-    "Share User Suggestion": ".v-list-item:contains('ijcai_reviewer_2'), .user-suggestion:contains('ijcai_reviewer_2')",
-    "Share Add Button": ".l-user-search .l-btn, .l-user-search button.l-btn",
-    "Share Chip": ".v-dialog .v-chip",
-    "Share Dialog Close": ".v-dialog .v-card-actions .l-btn, .v-dialog .v-card-actions button",
+    "Provider Actions Menu": ".provider-actions .v-btn, .provider-actions button",
+    "Provider Share Option": ".v-overlay--active .v-list-item:contains('Share')",
+    "Share User Search": ".v-dialog .l-user-search input, .l-user-search .v-field input, .v-dialog .v-autocomplete input",
+    "Share User Suggestion": ".v-overlay--active .user-suggestion, .v-overlay--active .v-list-item:contains('ijcai_reviewer_2')",
+    "Share Add Button": ".l-user-search .l-btn--primary, .l-user-search .l-btn:contains('Share'), .v-dialog .l-btn:contains('Share')",
+    "Share Chip": ".v-dialog .v-chip, .v-card .v-chip",
+    "Share Dialog Close": ".v-dialog .v-card-actions .l-btn--cancel, .v-dialog .v-card-actions .l-btn:contains('Close'), .v-dialog .v-card-actions .l-btn",
     "Model List": ".model-list, .v-list:has(.v-list-item)",
     "GPT-5 Nano Model": ".v-list-item:contains('gpt-5-nano'), .v-list-item:contains('GPT-5 Nano'), .model-item:contains('gpt-5-nano')",
     "GPT-5 Model": ".v-list-item:contains('gpt-5'):not(:contains('nano')):not(:contains('mini')):not(:contains('5.')), .model-item:contains('gpt-5'):not(:contains('nano'))",
@@ -582,12 +592,19 @@ ELEMENT_MAP = {
     "Heatmap Cell": ".heatmap-cell.clickable",
     "Heatmap Grid": ".heatmap-container",
     "Agreement Detail Dialog": ".agreement-detail-dialog .agreement-detail-card, .agreement-detail-card",
+    "Agreement Detail Close": ".agreement-detail-dialog .v-card-title .v-btn, .agreement-detail-card .v-card-title .v-btn",
     "Agreement Detail Score": ".agreement-detail-card .score-circle, .agreement-detail-body .score-circle",
     "Agreement Detail Breakdown": ".agreement-detail-card .agreement-breakdown, .agreement-breakdown",
 
     # =============================================
     # ITEM DISTRIBUTION (ScenarioWizard.vue Step 3)
     # =============================================
+
+    # Data Preview Overlay (show_data_preview)
+    "Data Preview Code": ".data-preview-code",
+    "Data Preview Count": ".data-preview-count",
+    "Data Preview Title": ".llars-overlay-title",
+    "Data Preview Keys": ".dp-key",
 
     "Distribution Settings": ".distribution-settings",
     "Distribution Mode": ".distribution-settings .config-section:first-of-type, .distribution-settings .config-section:nth-of-type(1)",
@@ -1199,6 +1216,7 @@ class Browser:
     .pipeline-container {
         display: flex; flex-direction: column;
         align-items: center; gap: 10px;
+        margin-top: 32px;
     }
     .pipeline-row {
         display: flex; align-items: center; gap: 20px;
@@ -1395,9 +1413,29 @@ class Browser:
         border: 1px solid rgba(232,160,135,0.2);
         border-radius: 20px;
         letter-spacing: 0.5px;
+        transition: transform 0.35s ease, opacity 0.35s ease, color 0.45s ease,
+                    background 0.45s ease, border-color 0.45s ease, box-shadow 0.45s ease;
+    }
+    .problem-pain.morphing {
+        opacity: 0.35;
+        transform: translateY(-4px) scale(0.96);
+        filter: blur(0.4px);
+    }
+    .problem-pain.positive {
+        color: #b0ca97;
+        background: rgba(176,202,151,0.14);
+        border-color: rgba(176,202,151,0.5);
+        box-shadow: 0 0 0 1px rgba(176,202,151,0.18), 0 6px 18px rgba(176,202,151,0.15);
+        transform: translateY(0) scale(1.0);
+        opacity: 1;
+        filter: none;
     }
     .problem-pain-dot {
         color: rgba(255,255,255,0.15); font-size: 20px;
+        transition: color 0.4s ease, opacity 0.4s ease;
+    }
+    .problem-pain-dot.positive {
+        color: rgba(176,202,151,0.6);
     }
     .problem-quote {
         margin-top: 20px;
@@ -2189,11 +2227,20 @@ class Browser:
             try:
                 # :contains() Pseudo-Selektor behandeln
                 if ':contains(' in selector:
-                    base, text = selector.split(':contains(')
+                    # Optional :excludes() support
+                    exclude_text = None
+                    sel_part = selector
+                    if ':excludes(' in sel_part:
+                        sel_part, excl = sel_part.split(':excludes(')
+                        exclude_text = excl.rstrip(')').strip("'\"").lower()
+                    base, text = sel_part.split(':contains(')
                     text = text.rstrip(')').strip("'\"")
                     elements = self.driver.find_elements(By.CSS_SELECTOR, base or '*')
                     for el in elements:
-                        if text.lower() in el.text.lower():
+                        el_text = el.text.lower()
+                        if text.lower() in el_text:
+                            if exclude_text and exclude_text in el_text:
+                                continue
                             try:
                                 if not el.is_displayed():
                                     continue
@@ -2295,11 +2342,19 @@ class Browser:
         for selector in selectors.split(', '):
             try:
                 if ':contains(' in selector:
-                    base, text = selector.split(':contains(')
+                    exclude_text = None
+                    sel_part = selector
+                    if ':excludes(' in sel_part:
+                        sel_part, excl = sel_part.split(':excludes(')
+                        exclude_text = excl.rstrip(')').strip("'\"").lower()
+                    base, text = sel_part.split(':contains(')
                     text = text.rstrip(')').strip("'\"")
                     candidates = self.driver.find_elements(By.CSS_SELECTOR, base or '*')
                     for el in candidates:
-                        if text.lower() in el.text.lower():
+                        el_text = el.text.lower()
+                        if text.lower() in el_text:
+                            if exclude_text and exclude_text in el_text:
+                                continue
                             collected.append(el)
                 else:
                     collected.extend(self.driver.find_elements(By.CSS_SELECTOR, selector))
@@ -2851,11 +2906,31 @@ class Browser:
             var painpoints = document.querySelector('.problem-painpoints');
             var quote = document.querySelector('.problem-quote');
 
-            // Fade out pain points and quote
+            // Morph pain-point pills into positive states
             if (painpoints) {
-                painpoints.style.transition = 'opacity 0.4s ease';
-                painpoints.style.opacity = '0';
+                var positiveLabels = ['Partly Automated', 'Version Controlled', 'Systematic Evaluation'];
+                var pills = painpoints.querySelectorAll('.problem-pain');
+                var dots = painpoints.querySelectorAll('.problem-pain-dot');
+
+                pills.forEach(function(pill, idx) {
+                    pill.classList.add('morphing');
+                    setTimeout(function() {
+                        if (positiveLabels[idx]) {
+                            pill.textContent = positiveLabels[idx];
+                        }
+                        pill.classList.remove('morphing');
+                        pill.classList.add('positive');
+                    }, 260 + (idx * 220));
+                });
+
+                dots.forEach(function(dot, idx) {
+                    setTimeout(function() {
+                        dot.classList.add('positive');
+                    }, 420 + (idx * 220));
+                });
             }
+
+            // Fade out quote to de-emphasize the "old world" statement
             if (quote) {
                 quote.style.transition = 'opacity 0.4s ease';
                 quote.style.opacity = '0';
@@ -3656,11 +3731,20 @@ class Browser:
             selector = selector.strip()
             try:
                 if ':contains(' in selector:
-                    base, text = selector.split(':contains(')
+                    # Optional :excludes() support
+                    exclude_text = None
+                    sel_part = selector
+                    if ':excludes(' in sel_part:
+                        sel_part, excl = sel_part.split(':excludes(')
+                        exclude_text = excl.rstrip(')').strip("'\"").lower()
+                    base, text = sel_part.split(':contains(')
                     text = text.rstrip(')').strip("'\"")
                     elements = driver.find_elements(By.CSS_SELECTOR, base or '*')
                     for el in elements:
-                        if text.lower() in el.text.lower():
+                        el_text = el.text.lower()
+                        if text.lower() in el_text:
+                            if exclude_text and exclude_text in el_text:
+                                continue
                             try:
                                 if not el.is_displayed():
                                     continue
@@ -3743,9 +3827,30 @@ class Browser:
                 )
                 time.sleep(0.1)
 
+            # Guard against duplicate appends when re-running from checkpoints
+            # or when the prompt already contains the collab text.
+            text_to_type = text
+            try:
+                existing_text = (element.text or "")
+            except Exception:
+                existing_text = ""
+
+            if existing_text and text_to_type:
+                duplicate_markers = [
+                    "Content: {{content}}",
+                    "The data below is provided as a subject line followed by the email thread content from a counselling session."
+                ]
+                for marker in duplicate_markers:
+                    if marker in existing_text and marker in text_to_type:
+                        text_to_type = text_to_type.replace(marker, "", 1)
+
+                if not text_to_type.strip():
+                    print("   👥 Collab-Eingabe übersprungen (Text bereits vorhanden)")
+                    return
+
             # Tippe jeden Buchstaben einzeln für sichtbaren Effekt
-            print(f"   👥 Collab tippt in '{target}' ({cursor_mode}): {text[:30]}...")
-            for char in text:
+            print(f"   👥 Collab tippt in '{target}' ({cursor_mode}): {text_to_type[:30]}...")
+            for char in text_to_type:
                 element.send_keys(char)
                 time.sleep(delay)
             print(f"   ✓ Collab-Eingabe abgeschlossen")

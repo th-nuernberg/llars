@@ -1261,7 +1261,37 @@ class Browser:
         align-items: center;
     }
     .problem-container {
+        position: relative;
         display: flex; align-items: stretch; gap: 0;
+    }
+    .problem-merge-border {
+        position: absolute;
+        top: -14px; left: -14px; right: -14px; bottom: -14px;
+        border: 2px dashed #b0ca97;
+        border-radius: 14px;
+        opacity: 0;
+        transition: opacity 0.8s ease;
+        pointer-events: none;
+    }
+    .problem-merge-label {
+        position: absolute;
+        top: -34px; left: 50%;
+        transform: translateX(-50%);
+        background: rgba(0,0,0,0.9);
+        padding: 4px 24px;
+        font-family: 'Segoe UI', system-ui, sans-serif;
+        font-size: 18px; font-weight: 700;
+        color: #b0ca97;
+        letter-spacing: 3px;
+        opacity: 0;
+        transition: opacity 0.8s ease 0.4s;
+        pointer-events: none;
+    }
+    .problem-container.merged .problem-merge-border {
+        opacity: 1;
+    }
+    .problem-container.merged .problem-merge-label {
+        opacity: 1;
     }
     .problem-box {
         width: 320px; padding: 32px 28px;
@@ -2627,6 +2657,8 @@ class Browser:
                             <div class="problem-item">Runs technical evaluation</div>
                         </div>
                     </div>
+                    <div class="problem-merge-border"></div>
+                    <div class="problem-merge-label">LLARS</div>
                 </div>
                 <div class="problem-painpoints" id="problem-painpoints">
                     <div class="problem-pain">Shared Documents</div>
@@ -2650,6 +2682,40 @@ class Browser:
             });
         """)
         print(f"   🎬 show_problem")
+
+    def merge_problem(self):
+        """Animates the problem boxes merging: gap shrinks, dashed LLARS border appears."""
+        self.driver.execute_script("""
+            var container = document.querySelector('.problem-container');
+            var gap = document.querySelector('.problem-gap');
+            var painpoints = document.querySelector('.problem-painpoints');
+            var quote = document.querySelector('.problem-quote');
+
+            // Fade out pain points and quote
+            if (painpoints) {
+                painpoints.style.transition = 'opacity 0.4s ease';
+                painpoints.style.opacity = '0';
+            }
+            if (quote) {
+                quote.style.transition = 'opacity 0.4s ease';
+                quote.style.opacity = '0';
+            }
+
+            // Shrink the gap (X and lines disappear)
+            if (gap) {
+                gap.style.transition = 'width 0.6s ease, opacity 0.3s ease, min-height 0.6s ease';
+                gap.style.width = '0';
+                gap.style.minHeight = '0';
+                gap.style.opacity = '0';
+                gap.style.overflow = 'hidden';
+            }
+
+            // Show dashed border + LLARS label
+            if (container) {
+                container.classList.add('merged');
+            }
+        """)
+        print(f"   🎬 merge_problem")
 
     def do_visible_login(self, username: str, password: str):
         """Performs login visibly with typed credentials (for recording)."""
@@ -4466,6 +4532,15 @@ class ScriptRunner:
             else:
                 time.sleep(0.5)  # Wait for fade-in
             print(f"   ✓ show_problem")
+            return True
+
+        elif do == 'merge_problem':
+            self.browser.merge_problem()
+            if test_mode:
+                time.sleep(0.3)
+            else:
+                time.sleep(1.5)  # Wait for merge animation
+            print(f"   ✓ merge_problem")
             return True
 
         elif do == 'scroll_to':

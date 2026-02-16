@@ -66,8 +66,15 @@
     {
       "id": "intro_2a",
       "speaker": "moderator",
-      "narration": "Exactly — a lot of translation work between disciplines. That's what LLARS solves. Here's the pipeline.",
+      "narration": "Exactly — and that's where LLARS comes in. It brings both sides together into one platform. Here's the pipeline.",
       "actions": [
+        {
+          "do": "merge_problem"
+        },
+        {
+          "do": "wait",
+          "seconds": 3.0
+        },
         {
           "do": "hide_title"
         },

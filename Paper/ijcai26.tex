@@ -252,7 +252,7 @@ A wizard offers three data source modes, each suited to a different stage of dev
 In upload-data mode, users provide a CSV or JSON file whose columns map to the prompt's template variables---for example, 50~counselling email threads as JSON, each entry containing \texttt{subject} and \texttt{content} fields matching the variables defined during prompt engineering.
 Combined with two prompts and two models, LLARS produces 50\,$\times$\,2\,$\times$\,2\,=\,200~outputs.
 Previous-generation mode works identically but reuses the data from a completed batch job, so that new prompts or additional models can be tested on exactly the same dataset without re-uploading.
-Prompt-only mode sends selected prompts to selected models without uploading data; if the prompt contains variables, the sample values from prompt engineering are used.
+Prompt-only mode requires no data upload and sends selected prompts to selected models directly---two prompts across two models yield 2\,$\times$\,2\,=\,4~outputs, with any template variables filled from their sample values.
 
 Results stream in real time and every output records its full provenance---source item, prompt version, model, parameters, token count and cost---exportable as CSV or JSON.
 This provenance is central to the pipeline: when outputs reach evaluation, assessors see only the generated text without any indication of which model or prompt produced it and the platform maps their judgments back to specific model--prompt combinations, directly informing selection.

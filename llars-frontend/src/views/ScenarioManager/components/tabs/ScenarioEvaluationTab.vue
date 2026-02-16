@@ -490,6 +490,90 @@
         </div>
       </div>
 
+      <!-- Provenance Analysis (Ranking) -->
+      <div class="provenance-section" v-if="hasProvenanceAnalysis">
+        <h4 class="subsection-title">
+          {{ $t('scenarioManager.results.provenanceAnalysis') }}
+          <LTooltip :text="$t('scenarioManager.tooltips.provenanceAnalysis')" location="top">
+            <v-icon size="16" class="help-icon">mdi-help-circle-outline</v-icon>
+          </LTooltip>
+        </h4>
+        <p class="subsection-description text-medium-emphasis text-caption mb-3">
+          {{ $t('scenarioManager.results.provenanceDescription', { bucket: provenanceTopBucketLabel }) }}
+        </p>
+
+        <div class="provenance-best-grid">
+          <div class="provenance-best-card">
+            <span class="provenance-best-label">{{ $t('scenarioManager.results.bestLLM') }}</span>
+            <strong class="provenance-best-name">{{ bestProvenanceLLM?.label || '-' }}</strong>
+            <span v-if="bestProvenanceLLM" class="provenance-best-meta">
+              {{ formatProvenanceRate(bestProvenanceLLM.top_bucket_rate) }}% | {{ bestProvenanceLLM.top_bucket_count }}/{{ bestProvenanceLLM.total }}
+            </span>
+          </div>
+          <div class="provenance-best-card">
+            <span class="provenance-best-label">{{ $t('scenarioManager.results.bestPrompt') }}</span>
+            <strong class="provenance-best-name">{{ bestProvenancePrompt?.label || '-' }}</strong>
+            <span v-if="bestProvenancePrompt" class="provenance-best-meta">
+              {{ formatProvenanceRate(bestProvenancePrompt.top_bucket_rate) }}% | {{ bestProvenancePrompt.top_bucket_count }}/{{ bestProvenancePrompt.total }}
+            </span>
+          </div>
+        </div>
+
+        <div class="provenance-lists-grid">
+          <div class="provenance-list-card">
+            <div class="provenance-list-header">
+              <span>{{ $t('scenarioManager.results.modelRanking') }}</span>
+              <span>{{ $t('scenarioManager.results.assignments') }}: {{ currentProvenanceSegment?.total_assignments || 0 }}</span>
+            </div>
+            <div v-if="currentProvenanceSegment?.by_llm?.length" class="provenance-list">
+              <div
+                v-for="(entry, index) in currentProvenanceSegment.by_llm.slice(0, 8)"
+                :key="`prov-llm-${entry.id}`"
+                class="provenance-row"
+              >
+                <div class="provenance-row-main">
+                  <span class="provenance-rank">#{{ index + 1 }}</span>
+                  <span class="provenance-label">{{ entry.label }}</span>
+                </div>
+                <div class="provenance-row-stats">
+                  <span class="provenance-rate">{{ formatProvenanceRate(entry.top_bucket_rate) }}%</span>
+                  <span class="provenance-count">{{ entry.top_bucket_count }}/{{ entry.total }}</span>
+                </div>
+              </div>
+            </div>
+            <div v-else class="provenance-empty">
+              {{ $t('scenarioManager.results.noProvenanceData') }}
+            </div>
+          </div>
+
+          <div class="provenance-list-card">
+            <div class="provenance-list-header">
+              <span>{{ $t('scenarioManager.results.promptRanking') }}</span>
+              <span>{{ $t('scenarioManager.results.topBucketShare') }}</span>
+            </div>
+            <div v-if="currentProvenanceSegment?.by_prompt?.length" class="provenance-list">
+              <div
+                v-for="(entry, index) in currentProvenanceSegment.by_prompt.slice(0, 8)"
+                :key="`prov-prompt-${entry.id}`"
+                class="provenance-row"
+              >
+                <div class="provenance-row-main">
+                  <span class="provenance-rank">#{{ index + 1 }}</span>
+                  <span class="provenance-label">{{ entry.label }}</span>
+                </div>
+                <div class="provenance-row-stats">
+                  <span class="provenance-rate">{{ formatProvenanceRate(entry.top_bucket_rate) }}%</span>
+                  <span class="provenance-count">{{ entry.top_bucket_count }}/{{ entry.total }}</span>
+                </div>
+              </div>
+            </div>
+            <div v-else class="provenance-empty">
+              {{ $t('scenarioManager.results.noProvenanceData') }}
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Ranking Agreement Heatmap (reuses LAgreementHeatmap) -->
       <div class="agreement-heatmap-section" v-if="hasRankingAgreement">
         <h4 class="subsection-title">
@@ -1660,6 +1744,43 @@ const hasBucketDistribution = computed(() => {
   return isRankingScenario.value && bucketDistribution.value.length > 0
 })
 
+// ===== Computed: Ranking Provenance Analysis =====
+
+const provenanceAnalysis = computed(() => {
+  return props.liveStats?.provenanceAnalysis || props.liveStats?.provenance_analysis || null
+})
+
+const currentProvenanceSegmentKey = computed(() => {
+  if (evaluatorTypeFilter.value === 'human') return 'human'
+  if (evaluatorTypeFilter.value === 'llm') return 'llm'
+  return 'all'
+})
+
+const currentProvenanceSegment = computed(() => {
+  const segments = provenanceAnalysis.value?.segments
+  if (!segments) return null
+  return segments[currentProvenanceSegmentKey.value] || segments.all || null
+})
+
+const provenanceTopBucketLabel = computed(() => {
+  return provenanceAnalysis.value?.top_bucket?.label || 'Top Bucket'
+})
+
+const bestProvenanceLLM = computed(() => {
+  return currentProvenanceSegment.value?.best_llm || null
+})
+
+const bestProvenancePrompt = computed(() => {
+  return currentProvenanceSegment.value?.best_prompt || null
+})
+
+const hasProvenanceAnalysis = computed(() => {
+  if (!isRankingScenario.value) return false
+  const segment = currentProvenanceSegment.value
+  if (!segment) return false
+  return (segment.by_llm?.length || 0) > 0 || (segment.by_prompt?.length || 0) > 0
+})
+
 // ===== Computed: Ranking Agreement Matrix =====
 
 const rankingAgreement = computed(() => {
@@ -2226,6 +2347,12 @@ function getAgreementExplanation(value) {
     return t('scenarioManager.results.agreementExplanation.moderate')
   }
   return t('scenarioManager.results.agreementExplanation.low')
+}
+
+function formatProvenanceRate(value) {
+  const numeric = Number(value)
+  if (!Number.isFinite(numeric)) return '0.0'
+  return numeric.toFixed(1)
 }
 
 function formatLabel(label) {
@@ -2971,6 +3098,7 @@ watch(
 .confusion-matrix-section,
 .distribution-section,
 .bucket-distribution-section,
+.provenance-section,
 .ranking-agreement-section {
   padding: 20px;
   border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.06);
@@ -2981,6 +3109,7 @@ watch(
 .confusion-matrix-section:last-child,
 .distribution-section:last-child,
 .bucket-distribution-section:last-child,
+.provenance-section:last-child,
 .ranking-agreement-section:last-child {
   border-bottom: none;
 }
@@ -3043,6 +3172,126 @@ watch(
   font-weight: 600;
   color: rgba(var(--v-theme-on-surface), 0.6);
   text-align: left;
+}
+
+/* Provenance Analysis */
+.provenance-best-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.provenance-best-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px;
+  background-color: rgba(var(--v-theme-on-surface), 0.02);
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  border-radius: 10px;
+}
+
+.provenance-best-label {
+  font-size: 0.75rem;
+  color: rgba(var(--v-theme-on-surface), 0.6);
+}
+
+.provenance-best-name {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: rgb(var(--v-theme-on-surface));
+  line-height: 1.3;
+}
+
+.provenance-best-meta {
+  font-size: 0.78rem;
+  color: rgba(var(--v-theme-on-surface), 0.65);
+}
+
+.provenance-lists-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.provenance-list-card {
+  background-color: rgba(var(--v-theme-on-surface), 0.02);
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  border-radius: 10px;
+  padding: 10px;
+}
+
+.provenance-list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  font-size: 0.75rem;
+  color: rgba(var(--v-theme-on-surface), 0.65);
+}
+
+.provenance-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.provenance-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background-color: rgba(var(--v-theme-on-surface), 0.03);
+}
+
+.provenance-row-main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.provenance-rank {
+  font-size: 0.72rem;
+  color: rgba(var(--v-theme-on-surface), 0.55);
+  min-width: 18px;
+}
+
+.provenance-label {
+  font-size: 0.82rem;
+  color: rgba(var(--v-theme-on-surface), 0.85);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.provenance-row-stats {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.provenance-rate {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: rgb(var(--v-theme-primary));
+}
+
+.provenance-count {
+  font-size: 0.75rem;
+  color: rgba(var(--v-theme-on-surface), 0.6);
+}
+
+.provenance-empty {
+  padding: 12px 4px 6px;
+  font-size: 0.8rem;
+  color: rgba(var(--v-theme-on-surface), 0.5);
 }
 
 /* Ranking Agreement Matrix Styles */
@@ -3451,6 +3700,12 @@ watch(
   gap: 20px;
   padding: 20px;
   border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.06);
+}
+
+@media (max-width: 900px) {
+  .provenance-lists-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* Heatmap Panel - Centered Content */

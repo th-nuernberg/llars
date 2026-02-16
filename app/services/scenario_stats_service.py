@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
 
+from collections import defaultdict
 import json
 import numpy as np
 
@@ -350,6 +351,7 @@ def get_progress_stats(scenario_id: int) -> Dict[str, Any]:
     dimension_averages = None
     pairwise_agreement = None
     bucket_distribution = None
+    provenance_analysis = None
     rating_alpha = None  # Krippendorff's Alpha split by evaluator type
 
     # Calculate pairwise agreement using unified dispatcher (works for all types)
@@ -366,6 +368,7 @@ def get_progress_stats(scenario_id: int) -> Dict[str, Any]:
             alpha = rating_alpha["all"]
     elif function_type.name == "ranking":
         bucket_distribution = _calculate_bucket_distribution(scenario_id)
+        provenance_analysis = _calculate_ranking_provenance_analysis(scenario_id)
 
     return {
         "rater_stats": rater_stats,
@@ -378,6 +381,7 @@ def get_progress_stats(scenario_id: int) -> Dict[str, Any]:
         "dimension_averages": dimension_averages,
         "pairwise_agreement": pairwise_agreement,
         "bucket_distribution": bucket_distribution,
+        "provenance_analysis": provenance_analysis,
         "ranking_agreement": pairwise_agreement,  # backward compatibility (deprecated)
     }
 
@@ -1491,6 +1495,437 @@ def _calculate_bucket_distribution(scenario_id: int) -> List[Dict[str, Any]]:
         })
 
     return distribution
+
+
+def _calculate_ranking_provenance_analysis(scenario_id: int) -> Dict[str, Any]:
+    """
+    Calculate provenance analysis for ranking scenarios.
+
+    The analysis links evaluator bucket assignments back to generation provenance
+    (origin LLM + prompt) and reports which origins appear most frequently in the
+    top bucket.
+    """
+    from sqlalchemy.orm import joinedload
+    from db.models import (
+        ScenarioItems,
+        UserFeatureRanking,
+        Feature,
+        Message,
+        GeneratedOutput,
+        GeneratedOutputStatus,
+        PromptTemplate,
+    )
+
+    scenario = RatingScenarios.query.get(scenario_id)
+    if not scenario:
+        return {}
+
+    config = scenario.config_json or {}
+    if isinstance(config, str):
+        try:
+            config = json.loads(config)
+        except (json.JSONDecodeError, TypeError):
+            config = {}
+    if not isinstance(config, dict):
+        config = {}
+
+    configured_buckets = config.get("buckets", [])
+    if not configured_buckets:
+        configured_buckets = [
+            {"id": "gut", "name": {"de": "Gut", "en": "Good"}, "color": "#b0ca97"},
+            {"id": "mittel", "name": {"de": "Mittel", "en": "Medium"}, "color": "#e8c87a"},
+            {"id": "schlecht", "name": {"de": "Schlecht", "en": "Bad"}, "color": "#e8a087"},
+        ]
+
+    bucket_order: List[Dict[str, Any]] = []
+    bucket_info: Dict[str, Dict[str, str]] = {}
+
+    for idx, bucket in enumerate(configured_buckets):
+        if isinstance(bucket, str):
+            label = bucket.strip() or f"Bucket {idx + 1}"
+            bucket_id = label.lower()
+            color = "#88c4c8"
+        elif isinstance(bucket, dict):
+            name_value = bucket.get("name")
+            if isinstance(name_value, dict):
+                label = name_value.get("de") or name_value.get("en") or str(bucket.get("id") or f"Bucket {idx + 1}")
+            elif isinstance(name_value, str):
+                label = name_value
+            else:
+                label = str(bucket.get("id") or f"Bucket {idx + 1}")
+            bucket_id = str(bucket.get("id") or label).strip().lower()
+            color = bucket.get("color") or "#88c4c8"
+        else:
+            continue
+
+        if not bucket_id or bucket_id in bucket_info:
+            continue
+
+        bucket_order.append({"id": bucket_id, "label": label, "color": color})
+        bucket_info[bucket_id] = {"label": label, "color": color}
+
+    if not bucket_order:
+        return {}
+
+    bucket_ids = [entry["id"] for entry in bucket_order]
+    bucket_id_set = set(bucket_ids)
+    top_bucket_id = bucket_ids[0]
+    top_bucket_label = bucket_info[top_bucket_id]["label"]
+
+    def _empty_segment() -> Dict[str, Any]:
+        return {
+            "total_assignments": 0,
+            "by_llm": [],
+            "by_prompt": [],
+            "best_llm": None,
+            "best_prompt": None,
+        }
+
+    try:
+        source_generation_job_id = int(config.get("source_generation_job_id")) if config.get("source_generation_job_id") is not None else None
+    except (TypeError, ValueError):
+        source_generation_job_id = None
+
+    response: Dict[str, Any] = {
+        "top_bucket": {"id": top_bucket_id, "label": top_bucket_label},
+        "bucket_order": bucket_order,
+        "source_generation_job_id": source_generation_job_id,
+        "matched_generation_items": 0,
+        "total_items": 0,
+        "segments": {
+            "all": _empty_segment(),
+            "human": _empty_segment(),
+            "llm": _empty_segment(),
+        },
+    }
+
+    scenario_items = (
+        ScenarioItems.query
+        .filter_by(scenario_id=scenario_id)
+        .order_by(ScenarioItems.id)
+        .all()
+    )
+    item_ids = [entry.item_id for entry in scenario_items if entry.item_id is not None]
+    response["total_items"] = len(item_ids)
+    if not item_ids:
+        return response
+
+    item_provenance: Dict[int, Dict[str, Any]] = {}
+    if source_generation_job_id:
+        outputs = (
+            GeneratedOutput.query
+            .filter_by(job_id=source_generation_job_id, status=GeneratedOutputStatus.COMPLETED)
+            .order_by(GeneratedOutput.id)
+            .all()
+        )
+
+        if outputs:
+            template_ids = {o.prompt_template_id for o in outputs if o.prompt_template_id}
+            template_names: Dict[int, str] = {}
+            if template_ids:
+                template_names = {
+                    tpl.id: tpl.name
+                    for tpl in PromptTemplate.query.filter(PromptTemplate.id.in_(template_ids)).all()
+                }
+
+            def _serialize_output_provenance(output: GeneratedOutput, source: str = "generation_output") -> Dict[str, Any]:
+                model_label = (output.llm_model_name or "").strip() or "Unknown LLM"
+                variant_name = (output.prompt_variant_name or "").strip()
+                template_name = (template_names.get(output.prompt_template_id) or "").strip()
+
+                if variant_name and template_name and variant_name.lower() != template_name.lower():
+                    prompt_label = f"{variant_name} / {template_name}"
+                else:
+                    prompt_label = variant_name or template_name or "Unknown prompt"
+
+                prompt_key = variant_name or template_name or "unknown_prompt"
+
+                return {
+                    "llm_key": model_label,
+                    "llm_label": model_label,
+                    "prompt_key": prompt_key,
+                    "prompt_label": prompt_label,
+                    "source": source,
+                }
+
+            if len(outputs) == len(item_ids):
+                for item_id, output in zip(item_ids, outputs):
+                    item_provenance[item_id] = _serialize_output_provenance(output)
+            else:
+                output_lookup: Dict[tuple, List[GeneratedOutput]] = defaultdict(list)
+                for output in outputs:
+                    output_key = (
+                        (output.llm_model_name or "").strip().lower(),
+                        (output.generated_content or "").strip(),
+                    )
+                    output_lookup[output_key].append(output)
+
+                messages = (
+                    Message.query
+                    .filter(Message.item_id.in_(item_ids))
+                    .order_by(Message.item_id.asc(), Message.message_id.desc())
+                    .all()
+                )
+
+                generated_message_by_item: Dict[int, Dict[str, str]] = {}
+                for message in messages:
+                    if message.item_id in generated_message_by_item:
+                        continue
+
+                    generated_by = (message.generated_by or "").strip()
+                    sender = (message.sender or "").strip()
+                    if generated_by and generated_by.lower() != "human" and not generated_by.lower().startswith("generation job"):
+                        model_name = generated_by
+                    else:
+                        model_name = sender
+
+                    if not model_name:
+                        continue
+
+                    generated_message_by_item[message.item_id] = {
+                        "model_name": model_name,
+                        "content": (message.content or "").strip(),
+                    }
+
+                used_output_ids = set()
+                for item_id in item_ids:
+                    message_info = generated_message_by_item.get(item_id)
+                    if not message_info:
+                        continue
+
+                    lookup_key = (
+                        message_info["model_name"].lower(),
+                        message_info["content"],
+                    )
+                    candidates = output_lookup.get(lookup_key, [])
+                    match = next((candidate for candidate in candidates if candidate.id not in used_output_ids), None)
+                    if match:
+                        used_output_ids.add(match.id)
+                        item_provenance[item_id] = _serialize_output_provenance(match)
+
+                # Last fallback: keep model provenance even when prompt cannot be matched.
+                for item_id in item_ids:
+                    if item_id in item_provenance:
+                        continue
+                    message_info = generated_message_by_item.get(item_id)
+                    if not message_info:
+                        continue
+                    model_name = message_info["model_name"]
+                    item_provenance[item_id] = {
+                        "llm_key": model_name,
+                        "llm_label": model_name,
+                        "prompt_key": "unknown_prompt",
+                        "prompt_label": "Unknown prompt",
+                        "source": "message_fallback",
+                    }
+
+    response["matched_generation_items"] = sum(
+        1 for entry in item_provenance.values() if entry.get("source") == "generation_output"
+    )
+
+    features = (
+        Feature.query
+        .options(joinedload(Feature.llm), joinedload(Feature.feature_type))
+        .filter(Feature.item_id.in_(item_ids))
+        .all()
+    )
+    if not features:
+        return response
+
+    feature_provenance: Dict[int, Dict[str, str]] = {}
+    for feature in features:
+        item_meta = item_provenance.get(feature.item_id)
+        if item_meta:
+            feature_provenance[feature.feature_id] = {
+                "llm_key": item_meta["llm_key"],
+                "llm_label": item_meta["llm_label"],
+                "prompt_key": item_meta["prompt_key"],
+                "prompt_label": item_meta["prompt_label"],
+            }
+            continue
+
+        llm_name = feature.llm.name if feature.llm else "Unknown LLM"
+        prompt_name = feature.feature_type.name if feature.feature_type else "Unknown prompt"
+        feature_provenance[feature.feature_id] = {
+            "llm_key": llm_name,
+            "llm_label": llm_name,
+            "prompt_key": prompt_name,
+            "prompt_label": prompt_name,
+        }
+
+    if not feature_provenance:
+        return response
+
+    legacy_bucket_mappings = {
+        "good": "gut",
+        "medium": "mittel",
+        "middle": "mittel",
+        "bad": "schlecht",
+        "poor": "schlecht",
+    }
+    label_to_bucket = {
+        info["label"].lower(): bucket_id
+        for bucket_id, info in bucket_info.items()
+        if info.get("label")
+    }
+
+    def _normalize_bucket_name(raw_name: Any) -> Optional[str]:
+        if raw_name is None:
+            return None
+        name = str(raw_name).strip().lower()
+        if not name:
+            return None
+        if name in bucket_id_set:
+            return name
+        mapped = legacy_bucket_mappings.get(name)
+        if mapped and mapped in bucket_id_set:
+            return mapped
+        return label_to_bucket.get(name)
+
+    assignments: List[tuple] = []
+
+    human_rankings = (
+        UserFeatureRanking.query
+        .filter(UserFeatureRanking.feature_id.in_(list(feature_provenance.keys())))
+        .filter(UserFeatureRanking.bucket.isnot(None))
+        .all()
+    )
+    for ranking in human_rankings:
+        normalized_bucket = _normalize_bucket_name(ranking.bucket)
+        if not normalized_bucket:
+            continue
+        assignments.append((ranking.feature_id, normalized_bucket, "human"))
+
+    llm_results = (
+        LLMTaskResult.query
+        .filter_by(scenario_id=scenario_id, task_type="ranking")
+        .filter(LLMTaskResult.error.is_(None))
+        .all()
+    )
+    for result in llm_results:
+        payload = result.payload_json
+        if not payload:
+            continue
+        if isinstance(payload, str):
+            try:
+                payload = json.loads(payload)
+            except (json.JSONDecodeError, TypeError):
+                continue
+        if not isinstance(payload, dict):
+            continue
+
+        for bucket_name, feature_ids in payload.items():
+            normalized_bucket = _normalize_bucket_name(bucket_name)
+            if not normalized_bucket or not isinstance(feature_ids, list):
+                continue
+            for feature_id in feature_ids:
+                try:
+                    normalized_feature_id = int(feature_id)
+                except (TypeError, ValueError):
+                    normalized_feature_id = feature_id
+                if normalized_feature_id not in feature_provenance:
+                    continue
+                assignments.append((normalized_feature_id, normalized_bucket, "llm"))
+
+    if not assignments:
+        return response
+
+    def _new_entity(entity_id: str, label: str) -> Dict[str, Any]:
+        return {
+            "id": str(entity_id),
+            "label": label,
+            "total": 0,
+            "top_bucket_count": 0,
+            "top_bucket_rate": 0.0,
+            "bucket_counts": {bucket_id: 0 for bucket_id in bucket_ids},
+            "bucket_percentages": {bucket_id: 0.0 for bucket_id in bucket_ids},
+        }
+
+    segments_internal = {
+        "all": {"total_assignments": 0, "by_llm": {}, "by_prompt": {}},
+        "human": {"total_assignments": 0, "by_llm": {}, "by_prompt": {}},
+        "llm": {"total_assignments": 0, "by_llm": {}, "by_prompt": {}},
+    }
+
+    def _increment_entity(
+        segment: Dict[str, Any],
+        key_name: str,
+        entity_id: str,
+        label: str,
+        bucket_id: str,
+    ) -> None:
+        entity_map = segment[key_name]
+        row = entity_map.get(entity_id)
+        if row is None:
+            row = _new_entity(entity_id, label)
+            entity_map[entity_id] = row
+
+        row["total"] += 1
+        row["bucket_counts"][bucket_id] = row["bucket_counts"].get(bucket_id, 0) + 1
+        if bucket_id == top_bucket_id:
+            row["top_bucket_count"] += 1
+
+    for feature_id, bucket_id, evaluator_type in assignments:
+        provenance = feature_provenance.get(feature_id)
+        if not provenance:
+            continue
+
+        for segment_key in ("all", evaluator_type):
+            segment = segments_internal[segment_key]
+            segment["total_assignments"] += 1
+            _increment_entity(
+                segment=segment,
+                key_name="by_llm",
+                entity_id=provenance["llm_key"],
+                label=provenance["llm_label"],
+                bucket_id=bucket_id,
+            )
+            _increment_entity(
+                segment=segment,
+                key_name="by_prompt",
+                entity_id=provenance["prompt_key"],
+                label=provenance["prompt_label"],
+                bucket_id=bucket_id,
+            )
+
+    def _finalize_rows(entity_map: Dict[str, Dict[str, Any]]) -> List[Dict[str, Any]]:
+        rows = list(entity_map.values())
+        for row in rows:
+            total = row["total"]
+            if total > 0:
+                row["top_bucket_rate"] = round((row["top_bucket_count"] / total) * 100, 1)
+                row["bucket_percentages"] = {
+                    bucket_id: round((row["bucket_counts"].get(bucket_id, 0) / total) * 100, 1)
+                    for bucket_id in bucket_ids
+                }
+            else:
+                row["top_bucket_rate"] = 0.0
+                row["bucket_percentages"] = {bucket_id: 0.0 for bucket_id in bucket_ids}
+
+        rows.sort(
+            key=lambda entry: (
+                -entry["top_bucket_rate"],
+                -entry["top_bucket_count"],
+                -entry["total"],
+                (entry["label"] or "").lower(),
+            )
+        )
+        return rows
+
+    finalized_segments = {}
+    for segment_key, segment_data in segments_internal.items():
+        by_llm = _finalize_rows(segment_data["by_llm"])
+        by_prompt = _finalize_rows(segment_data["by_prompt"])
+        finalized_segments[segment_key] = {
+            "total_assignments": segment_data["total_assignments"],
+            "by_llm": by_llm,
+            "by_prompt": by_prompt,
+            "best_llm": by_llm[0] if by_llm else None,
+            "best_prompt": by_prompt[0] if by_prompt else None,
+        }
+
+    response["segments"] = finalized_segments
+    return response
 
 
 def _calculate_ranking_agreement_heatmap(scenario_id: int) -> Dict[str, Any]:

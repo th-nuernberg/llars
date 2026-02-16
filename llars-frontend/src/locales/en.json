@@ -3155,6 +3155,15 @@
       "interRaterAgreement": "Inter-Rater Agreement",
       "bucketDistribution": "Bucket Distribution",
       "rankingAgreement": "Bucket Agreement",
+      "provenanceAnalysis": "Provenance Analysis",
+      "provenanceDescription": "Shows which generation LLMs and prompts most frequently land in the top bucket ({bucket}).",
+      "bestLLM": "Best Generation LLM",
+      "bestPrompt": "Best Prompt",
+      "modelRanking": "LLM Ranking",
+      "promptRanking": "Prompt Ranking",
+      "topBucketShare": "Top-Bucket Share",
+      "assignments": "Assignments",
+      "noProvenanceData": "No provenance data available yet",
       "rankingMetricsDescription": "Per feature (summary): Did both evaluators place this summary in the same bucket? Ordinal calculation (Bucket-Krippendorff: good=3 > medium=2 > neutral=1 > bad=0).",
       "agreementLevel": "Agreement Level",
       "lowAgreement": "Low",
@@ -3370,6 +3379,7 @@
       "spiderChart": "Compares average ratings between humans and LLMs across all dimensions. Larger areas = higher average values.",
       "interRaterAgreement": "Shows pairwise agreement between all raters. Green = high agreement, Red = low agreement. Calculated as the proportion of exactly matching ratings (rounded to integers).",
       "bucketDistribution": "Shows how many items were assigned to each bucket (Good/Medium/Bad). Aggregated across all human and LLM evaluators.",
+      "provenanceAnalysis": "Compares where rated content came from (generation LLM and prompt) and highlights which origins most often end up in the top bucket.",
       "rankingAgreement": "Per summary: Did both evaluators place it in the same bucket? Counted as: Matching summaries / Co-rated summaries. Metrics use ordinal calculation (Bucket-Krippendorff)."
     },
     "session": {

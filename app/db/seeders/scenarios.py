@@ -11,7 +11,28 @@ scenario type for realistic demos.
 """
 
 from datetime import datetime, timedelta
+import hashlib
 import os
+
+
+DEMO_PROVENANCE_GENERATION_MODELS = [
+    "Mistral Small",
+    "Magistral Small",
+    "GPT-5 Nano",
+    "GPT-5 Mini",
+]
+
+DEMO_PROVENANCE_PROMPTS = [
+    "Situation Summary",
+    "Client Needs",
+    "Recommended Actions",
+    "Risk Assessment",
+]
+
+DEMO_PROVENANCE_EVALUATORS = [
+    "Global/Mistral/Magistral-Small-2509",
+    "Global/OpenAI/gpt-5-mini",
+]
 
 
 def _is_development_mode() -> bool:
@@ -19,6 +40,228 @@ def _is_development_mode() -> bool:
     project_state = os.environ.get('PROJECT_STATE', '').lower()
     flask_env = os.environ.get('FLASK_ENV', '').lower()
     return project_state == 'development' or flask_env == 'development'
+
+
+def _deterministic_bucket(item_id: int, feature_id: int, evaluator_model_id: str) -> str:
+    """
+    Deterministically assign a bucket for demo LLM rankings.
+
+    Keeps results stable across restarts while still creating realistic spread.
+    """
+    token = f"{item_id}:{feature_id}:{evaluator_model_id}".encode("utf-8")
+    score = int(hashlib.sha256(token).hexdigest()[:8], 16) % 100
+    if score < 46:
+        return "gut"
+    if score < 82:
+        return "mittel"
+    return "schlecht"
+
+
+def _build_demo_feature_content(prompt_name: str, model_name: str, source_text: str) -> str:
+    """Build concise synthetic ranking feature content for demo provenance."""
+    compact_source = " ".join((source_text or "").split())
+    if len(compact_source) > 220:
+        compact_source = f"{compact_source[:217]}..."
+
+    templates = {
+        "Situation Summary": (
+            f"{model_name}: Die Situation zeigt eine komplexe Belastung mit mehreren "
+            f"gleichzeitigen Anforderungen. {compact_source}"
+        ),
+        "Client Needs": (
+            f"{model_name}: Im Fokus stehen Klärung, Struktur und alltagstaugliche "
+            f"Unterstützungsschritte. {compact_source}"
+        ),
+        "Recommended Actions": (
+            f"{model_name}: Empfohlen werden priorisierte Sofortmaßnahmen, "
+            f"ein klarer Ablaufplan und verbindliche Follow-ups. {compact_source}"
+        ),
+        "Risk Assessment": (
+            f"{model_name}: Das Risiko ist moderat bis erhöht, wenn keine "
+            f"zeitnahe Stabilisierung erfolgt. {compact_source}"
+        ),
+    }
+    return templates.get(prompt_name, f"{model_name}: {compact_source}")
+
+
+def _is_demo_ranking_already_balanced(
+    *,
+    scenario,
+    scenario_items,
+    feature_model_by_name,
+    feature_type_by_name,
+    Feature,
+    LLMTaskResult,
+) -> bool:
+    """Check whether the demo ranking scenario already matches the balanced cartesian setup."""
+    item_ids = [si.item_id for si in scenario_items if si.item_id is not None]
+    if not item_ids:
+        return False
+
+    expected_features_per_item = len(feature_model_by_name) * len(feature_type_by_name)
+    expected_total_features = len(item_ids) * expected_features_per_item
+
+    item_features = (
+        Feature.query
+        .filter(Feature.item_id.in_(item_ids))
+        .all()
+    )
+    if len(item_features) != expected_total_features:
+        return False
+
+    model_ids = {llm.llm_id for llm in feature_model_by_name.values()}
+    type_ids = {ft.type_id for ft in feature_type_by_name.values()}
+
+    per_item_combo_count = {}
+    for feature in item_features:
+        if feature.llm_id not in model_ids or feature.type_id not in type_ids:
+            return False
+        key = (feature.item_id, feature.llm_id, feature.type_id)
+        per_item_combo_count[key] = per_item_combo_count.get(key, 0) + 1
+
+    if any(count != 1 for count in per_item_combo_count.values()):
+        return False
+
+    expected_rows = len(item_ids) * len(DEMO_PROVENANCE_EVALUATORS)
+    existing_rows = (
+        LLMTaskResult.query
+        .filter_by(scenario_id=scenario.id, task_type='ranking')
+        .count()
+    )
+    return existing_rows == expected_rows
+
+
+def _rebalance_demo_ranking_provenance(db, ranking_scenario):
+    """
+    Rebuild demo ranking features/rankings into a balanced cartesian setup.
+
+    This replaces legacy SummEval-heavy demo data for scenario provenance demos.
+    """
+    from ..tables import Feature, FeatureType, LLM, Message, UserFeatureRanking
+    from db.models.scenario import ScenarioItems
+    from db.models.llm_task_result import LLMTaskResult
+
+    if not ranking_scenario or ranking_scenario.scenario_name != 'Demo Ranking Szenario':
+        return
+
+    scenario_items = (
+        ScenarioItems.query
+        .filter_by(scenario_id=ranking_scenario.id)
+        .order_by(ScenarioItems.id.asc())
+        .all()
+    )
+    item_ids = [si.item_id for si in scenario_items if si.item_id is not None]
+    if not item_ids:
+        return
+
+    # Ensure feature-generation model labels exist (legacy llms table, used by features).
+    feature_model_by_name = {}
+    for model_name in DEMO_PROVENANCE_GENERATION_MODELS:
+        llm = LLM.query.filter_by(name=model_name).first()
+        if not llm:
+            llm = LLM(name=model_name)
+            db.session.add(llm)
+            db.session.flush()
+        feature_model_by_name[model_name] = llm
+
+    # Ensure prompt types exist.
+    feature_type_by_name = {}
+    for prompt_name in DEMO_PROVENANCE_PROMPTS:
+        ft = FeatureType.query.filter_by(name=prompt_name).first()
+        if not ft:
+            ft = FeatureType(name=prompt_name)
+            db.session.add(ft)
+            db.session.flush()
+        feature_type_by_name[prompt_name] = ft
+
+    if _is_demo_ranking_already_balanced(
+        scenario=ranking_scenario,
+        scenario_items=scenario_items,
+        feature_model_by_name=feature_model_by_name,
+        feature_type_by_name=feature_type_by_name,
+        Feature=Feature,
+        LLMTaskResult=LLMTaskResult,
+    ):
+        return
+
+    existing_features = Feature.query.filter(Feature.item_id.in_(item_ids)).all()
+    existing_feature_ids = [f.feature_id for f in existing_features]
+
+    if existing_feature_ids:
+        UserFeatureRanking.query.filter(
+            UserFeatureRanking.feature_id.in_(existing_feature_ids)
+        ).delete(synchronize_session=False)
+
+    LLMTaskResult.query.filter_by(
+        scenario_id=ranking_scenario.id,
+        task_type='ranking'
+    ).delete(synchronize_session=False)
+
+    Feature.query.filter(Feature.item_id.in_(item_ids)).delete(synchronize_session=False)
+    db.session.flush()
+
+    # Recreate balanced cartesian feature set.
+    features_by_item = {}
+    for item_id in item_ids:
+        latest_message = (
+            Message.query
+            .filter_by(item_id=item_id)
+            .order_by(Message.message_id.desc())
+            .first()
+        )
+        source_text = latest_message.content if latest_message and latest_message.content else ""
+
+        created_feature_ids = []
+        for model_name in DEMO_PROVENANCE_GENERATION_MODELS:
+            llm = feature_model_by_name[model_name]
+            for prompt_name in DEMO_PROVENANCE_PROMPTS:
+                ft = feature_type_by_name[prompt_name]
+                feature = Feature(
+                    item_id=item_id,
+                    type_id=ft.type_id,
+                    llm_id=llm.llm_id,
+                    content=_build_demo_feature_content(prompt_name, model_name, source_text),
+                )
+                db.session.add(feature)
+                db.session.flush()
+                created_feature_ids.append(feature.feature_id)
+
+        features_by_item[item_id] = created_feature_ids
+
+    # Recreate LLM ranking results for demo evaluators.
+    now = datetime.utcnow()
+    for evaluator_model_id in DEMO_PROVENANCE_EVALUATORS:
+        for item_id in item_ids:
+            payload = {"gut": [], "mittel": [], "schlecht": [], "neutral": []}
+            for feature_id in features_by_item.get(item_id, []):
+                bucket = _deterministic_bucket(item_id, feature_id, evaluator_model_id)
+                payload[bucket].append(feature_id)
+
+            db.session.add(LLMTaskResult(
+                scenario_id=ranking_scenario.id,
+                item_id=item_id,
+                model_id=evaluator_model_id,
+                task_type='ranking',
+                payload_json=payload,
+                error=None,
+                created_at=now,
+                updated_at=now,
+            ))
+
+    # Keep scenario config aligned with demo evaluators and metadata.
+    config = ranking_scenario.config_json or {}
+    config['evaluation'] = 'ranking'
+    config['enable_llm_evaluation'] = True
+    config['llm_evaluators'] = DEMO_PROVENANCE_EVALUATORS
+    config['demo_generation_models'] = DEMO_PROVENANCE_GENERATION_MODELS
+    config['demo_generation_prompts'] = DEMO_PROVENANCE_PROMPTS
+    ranking_scenario.config_json = config
+
+    db.session.commit()
+    print(
+        "  Rebalanced Demo Ranking Szenario provenance "
+        f"({len(item_ids)} items, {len(item_ids) * len(DEMO_PROVENANCE_GENERATION_MODELS) * len(DEMO_PROVENANCE_PROMPTS)} features)"
+    )
 
 
 def seed_demo_scenarios(db):
@@ -1002,6 +1245,13 @@ def seed_demo_scenarios(db):
         _seed_extended_demo_data(db, ranking_scenario, mail_rating_scenario,
                                   authenticity_scenario, labeling_scenario,
                                   evaluator_user, researcher_user, admin_user)
+
+    # Ensure Demo Ranking Szenario remains cartesian-balanced for provenance demos.
+    try:
+        _rebalance_demo_ranking_provenance(db, ranking_scenario)
+    except Exception as e:
+        db.session.rollback()
+        print(f"  WARNING: Could not rebalance Demo Ranking Szenario provenance: {e}")
 
     # Seed LLM-as-Judge demo scenario (always, as it's for the new rating UI)
     try:

@@ -1142,7 +1142,7 @@ class Browser:
     .llars-overlay-title {
         font-family: 'Segoe UI', system-ui, sans-serif;
         font-size: 64px; font-weight: 700;
-        color: #fff; letter-spacing: 2px; margin-bottom: 16px;
+        color: #b0ca97; letter-spacing: 2px; margin-bottom: 16px;
     }
     .llars-overlay-subtitle {
         font-family: 'Segoe UI', system-ui, sans-serif;
@@ -1223,12 +1223,18 @@ class Browser:
         font-size: 13px; color: #777; line-height: 1.4;
     }
     .pipeline-flow {
+        display: inline-flex; align-items: center; gap: 8px;
+        transform: translateX(22px);
         font-family: 'Segoe UI', system-ui, sans-serif;
         font-size: 14px; color: rgba(255,255,255,0.35);
         letter-spacing: 1px;
     }
+    .pipeline-flow-label {
+        font-size: 13px;
+    }
     .pipeline-outcome {
         margin-top: 16px; padding: 22px 36px;
+        transform: translateX(22px);
         background: rgba(232,160,135,0.2); border: 2px solid #E8A087;
         border-radius: 6px; text-align: center;
         font-family: 'Segoe UI', system-ui, sans-serif;
@@ -2405,7 +2411,7 @@ class Browser:
                     <div class="pipeline-arrow-dash">\u27F6</div>
                     <div class="pipeline-export">Prompt</div>
                 </div>
-                <div class="pipeline-flow">\u2193 Prompts</div>
+                <div class="pipeline-flow"><span class="pipeline-flow-arrow">\u2193</span><span class="pipeline-flow-label">Prompts</span></div>
                 <div class="pipeline-row">
                     <div class="pipeline-actor">Domain<br>Data</div>
                     <div class="pipeline-arrow">\u2192</div>
@@ -2415,7 +2421,7 @@ class Browser:
                     <div class="pipeline-arrow-dash">\u27F6</div>
                     <div class="pipeline-export">LLM Outputs</div>
                 </div>
-                <div class="pipeline-flow">\u2193 Outputs</div>
+                <div class="pipeline-flow"><span class="pipeline-flow-arrow">\u2193</span><span class="pipeline-flow-label">Outputs</span></div>
                 <div class="pipeline-row">
                     <div class="pipeline-actor">Human &amp;<br>LLM Evaluators</div>
                     <div class="pipeline-arrow">\u2192</div>
@@ -2425,7 +2431,7 @@ class Browser:
                     <div class="pipeline-arrow-dash">\u27F6</div>
                     <div class="pipeline-export">Evaluation<br>Results</div>
                 </div>
-                <div class="pipeline-flow">\u2193</div>
+                <div class="pipeline-flow"><span class="pipeline-flow-arrow">\u2193</span></div>
                 <div class="pipeline-outcome" id="pipeline-outcome">
                     Best LLM &amp; Prompt Pair
                 </div>

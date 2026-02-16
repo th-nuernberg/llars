@@ -596,9 +596,9 @@
             :class="{ 'is-clickable': panel.entries?.length }"
             :tabindex="panel.entries?.length ? 0 : -1"
             :role="panel.entries?.length ? 'button' : undefined"
-            @click="openProvenanceFigureDialog(panel.key)"
-            @keydown.enter.prevent="openProvenanceFigureDialog(panel.key)"
-            @keydown.space.prevent="openProvenanceFigureDialog(panel.key)"
+            @click="openProvenanceFigurePopup(panel.key)"
+            @keydown.enter.prevent="openProvenanceFigurePopup(panel.key)"
+            @keydown.space.prevent="openProvenanceFigurePopup(panel.key)"
           >
             <div class="provenance-figure-header">
               <span>{{ panel.title }}</span>
@@ -610,8 +610,8 @@
                   variant="text"
                   class="provenance-figure-expand-btn"
                   :disabled="!panel.entries?.length"
-                  title="Expand chart"
-                  @click.stop="openProvenanceFigureDialog(panel.key)"
+                  title="Open fullscreen"
+                  @click.stop="openProvenanceFigureFullscreen(panel.key)"
                 >
                   <v-icon size="16">mdi-fullscreen</v-icon>
                 </v-btn>
@@ -688,11 +688,12 @@
         </div>
 
         <v-dialog
-          :model-value="isProvenanceFigureDialogOpen"
-          fullscreen
-          @update:model-value="onProvenanceFigureDialogUpdate"
+          :model-value="isProvenanceFigurePopupOpen"
+          max-width="1320"
+          scrollable
+          @update:model-value="onProvenanceFigurePopupUpdate"
         >
-          <v-card class="provenance-figure-dialog">
+          <v-card class="provenance-figure-popup">
             <div class="provenance-figure-dialog-header">
               <div class="provenance-figure-dialog-title-group">
                 <h3 class="provenance-figure-dialog-title">
@@ -706,18 +707,18 @@
                 icon
                 variant="text"
                 title="Close"
-                @click="closeProvenanceFigureDialog"
+                @click="closeProvenanceFigurePopup"
               >
                 <v-icon>mdi-close</v-icon>
               </v-btn>
             </div>
 
-            <div class="provenance-figure-dialog-content" v-if="selectedProvenanceFigurePanel">
+            <div class="provenance-figure-popup-content" v-if="selectedProvenanceFigurePanel">
               <div class="provenance-figure-card provenance-figure-card-dialog">
                 <div class="provenance-figure-legend" v-if="selectedProvenanceFigurePanel.entries?.length">
                   <span
                     v-for="bucket in provenanceBucketOrder"
-                    :key="`prov-dialog-legend-${selectedProvenanceFigurePanel.key}-${bucket.id}`"
+                    :key="`prov-popup-legend-${selectedProvenanceFigurePanel.key}-${bucket.id}`"
                     class="provenance-figure-legend-item"
                   >
                     <span class="provenance-figure-legend-color" :style="{ backgroundColor: bucket.color }"></span>
@@ -732,13 +733,13 @@
                   <div class="provenance-figure-groups">
                     <div
                       v-for="(entry, entryIndex) in selectedProvenanceFigurePanel.entries"
-                      :key="`prov-dialog-group-${selectedProvenanceFigurePanel.key}-${entry.id || entryIndex}`"
+                      :key="`prov-popup-group-${selectedProvenanceFigurePanel.key}-${entry.id || entryIndex}`"
                       class="provenance-figure-group provenance-figure-group-dialog"
                     >
                       <div class="provenance-figure-bars provenance-figure-bars-dialog">
                         <div
                           v-for="bucket in provenanceBucketOrder"
-                          :key="`prov-dialog-bar-${selectedProvenanceFigurePanel.key}-${entry.id || entryIndex}-${bucket.id}`"
+                          :key="`prov-popup-bar-${selectedProvenanceFigurePanel.key}-${entry.id || entryIndex}-${bucket.id}`"
                           class="provenance-figure-bar-slot"
                         >
                           <span class="provenance-figure-bar-label top">
@@ -782,6 +783,206 @@
                 </div>
                 <div v-else class="provenance-empty">
                   {{ $t('scenarioManager.results.noProvenanceData') }}
+                </div>
+              </div>
+
+              <div class="provenance-detail-card">
+                <div class="provenance-detail-card-header">
+                  <span>{{ $t('scenarioManager.results.topBucketHitRatio', { bucket: provenanceTopBucketLabel }) }}</span>
+                  <span>{{ $t('scenarioManager.results.assignments') }}</span>
+                </div>
+                <div class="provenance-detail-table-wrap" v-if="selectedProvenanceFigurePanel.entries?.length">
+                  <table class="provenance-detail-table">
+                    <thead>
+                      <tr>
+                        <th>#</th>
+                        <th>{{ selectedProvenanceFigurePanel.title }}</th>
+                        <th>{{ $t('scenarioManager.results.topBucketHitRatio', { bucket: provenanceTopBucketLabel }) }}</th>
+                        <th
+                          v-for="bucket in provenanceBucketOrder"
+                          :key="`prov-popup-th-${selectedProvenanceFigurePanel.key}-${bucket.id}`"
+                        >
+                          {{ bucket.label }}
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr
+                        v-for="(entry, entryIndex) in selectedProvenanceFigurePanel.entries"
+                        :key="`prov-popup-row-${selectedProvenanceFigurePanel.key}-${entry.id || entryIndex}`"
+                      >
+                        <td>{{ entryIndex + 1 }}</td>
+                        <td>
+                          <span v-if="selectedProvenanceFigurePanel.key !== 'combination'">
+                            {{ getProvenanceChartEntryLabel(entry, selectedProvenanceFigurePanel.key) }}
+                          </span>
+                          <span v-else class="provenance-detail-combination-label">
+                            <span class="provenance-figure-entry-label-prompt">{{ getCombinationPromptLabel(entry) }}</span>
+                            <span v-if="getCombinationLLMLabel(entry)" class="provenance-figure-entry-label-llm">
+                              {{ getCombinationLLMLabel(entry) }}
+                            </span>
+                          </span>
+                        </td>
+                        <td>
+                          {{ formatProvenanceRate(entry.top_bucket_rate) }}% ({{ entry.top_bucket_count }}/{{ entry.total }})
+                        </td>
+                        <td
+                          v-for="bucket in provenanceBucketOrder"
+                          :key="`prov-popup-td-${selectedProvenanceFigurePanel.key}-${entry.id || entryIndex}-${bucket.id}`"
+                        >
+                          {{ formatProvenanceRate(getProvenanceBucketPercent(entry, bucket.id)) }}%
+                          ({{ getProvenanceBucketCount(entry, bucket.id) }})
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+                <div v-else class="provenance-empty">
+                  {{ $t('scenarioManager.results.noProvenanceData') }}
+                </div>
+              </div>
+            </div>
+          </v-card>
+        </v-dialog>
+
+        <v-dialog
+          :model-value="isProvenanceFigureFullscreenOpen"
+          fullscreen
+          @update:model-value="onProvenanceFigureFullscreenUpdate"
+        >
+          <v-card class="provenance-figure-dialog">
+            <div class="provenance-figure-dialog-header">
+              <div class="provenance-figure-dialog-title-group">
+                <h3 class="provenance-figure-dialog-title">
+                  {{ selectedProvenanceFigurePanel?.title || $t('scenarioManager.results.provenanceAnalysis') }}
+                </h3>
+                <span class="provenance-figure-dialog-subtitle">
+                  {{ $t('scenarioManager.results.bucketDistribution') }} ·
+                  {{ $t('scenarioManager.results.topBucketHitRatio', { bucket: provenanceTopBucketLabel }) }}
+                </span>
+              </div>
+              <v-btn
+                icon
+                variant="text"
+                title="Close"
+                @click="closeProvenanceFigureFullscreen"
+              >
+                <v-icon>mdi-close</v-icon>
+              </v-btn>
+            </div>
+
+            <div class="provenance-figure-dialog-content" v-if="selectedProvenanceFigurePanel">
+              <div class="provenance-fullscreen-grid">
+                <div class="provenance-figure-card provenance-figure-card-dialog">
+                  <div class="provenance-figure-legend" v-if="selectedProvenanceFigurePanel.entries?.length">
+                    <span
+                      v-for="bucket in provenanceBucketOrder"
+                      :key="`prov-fs-legend-${selectedProvenanceFigurePanel.key}-${bucket.id}`"
+                      class="provenance-figure-legend-item"
+                    >
+                      <span class="provenance-figure-legend-color" :style="{ backgroundColor: bucket.color }"></span>
+                      <span class="provenance-figure-legend-label">{{ bucket.label }}</span>
+                    </span>
+                  </div>
+
+                  <div
+                    class="provenance-figure-scroll provenance-figure-scroll-dialog"
+                    v-if="selectedProvenanceFigurePanel.entries?.length"
+                  >
+                    <div class="provenance-figure-groups">
+                      <div
+                        v-for="(entry, entryIndex) in selectedProvenanceFigurePanel.entries"
+                        :key="`prov-fs-group-${selectedProvenanceFigurePanel.key}-${entry.id || entryIndex}`"
+                        class="provenance-figure-group provenance-figure-group-dialog"
+                      >
+                        <div class="provenance-figure-bars provenance-figure-bars-dialog">
+                          <div
+                            v-for="bucket in provenanceBucketOrder"
+                            :key="`prov-fs-bar-${selectedProvenanceFigurePanel.key}-${entry.id || entryIndex}-${bucket.id}`"
+                            class="provenance-figure-bar-slot"
+                          >
+                            <span class="provenance-figure-bar-label top">
+                              {{ formatProvenanceRate(getProvenanceBucketPercent(entry, bucket.id)) }}%
+                            </span>
+                            <div
+                              class="provenance-figure-bar"
+                              :style="{
+                                height: Math.max(0, Math.min(100, getProvenanceBucketPercent(entry, bucket.id))) + '%',
+                                backgroundColor: bucket.color
+                              }"
+                              :title="`${bucket.label}: ${formatProvenanceRate(getProvenanceBucketPercent(entry, bucket.id))}% (${getProvenanceBucketCount(entry, bucket.id)}/${entry.total || 0})`"
+                            ></div>
+                          </div>
+                        </div>
+
+                        <div
+                          v-if="selectedProvenanceFigurePanel.key !== 'combination'"
+                          class="provenance-figure-entry-label"
+                          :title="getProvenanceChartEntryLabel(entry, selectedProvenanceFigurePanel.key)"
+                        >
+                          {{ getProvenanceChartEntryLabel(entry, selectedProvenanceFigurePanel.key) }}
+                        </div>
+                        <div v-else class="provenance-figure-entry-label provenance-figure-entry-label-combo">
+                          <span
+                            class="provenance-figure-entry-label-prompt"
+                            :title="getCombinationPromptLabel(entry)"
+                          >
+                            {{ getCombinationPromptLabel(entry) }}
+                          </span>
+                          <span
+                            v-if="getCombinationLLMLabel(entry)"
+                            class="provenance-figure-entry-label-llm"
+                            :title="getCombinationLLMLabel(entry)"
+                          >
+                            {{ getCombinationLLMLabel(entry) }}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div v-else class="provenance-empty">
+                    {{ $t('scenarioManager.results.noProvenanceData') }}
+                  </div>
+                </div>
+
+                <div class="provenance-figure-card provenance-secondary-plot-card">
+                  <div class="provenance-secondary-plot-header">
+                    <span>{{ $t('scenarioManager.results.topBucketHitRatio', { bucket: provenanceTopBucketLabel }) }}</span>
+                    <span>{{ $t('scenarioManager.results.assignments') }}</span>
+                  </div>
+                  <div class="provenance-secondary-bars" v-if="selectedProvenanceFigurePanel.entries?.length">
+                    <div
+                      v-for="(entry, entryIndex) in selectedProvenanceFigurePanel.entries"
+                      :key="`prov-fs-secondary-${selectedProvenanceFigurePanel.key}-${entry.id || entryIndex}`"
+                      class="provenance-secondary-row"
+                    >
+                      <div class="provenance-secondary-row-head">
+                        <span
+                          v-if="selectedProvenanceFigurePanel.key !== 'combination'"
+                          :title="getProvenanceChartEntryLabel(entry, selectedProvenanceFigurePanel.key)"
+                        >
+                          {{ getProvenanceChartEntryLabel(entry, selectedProvenanceFigurePanel.key) }}
+                        </span>
+                        <span v-else class="provenance-detail-combination-label">
+                          <span class="provenance-figure-entry-label-prompt">{{ getCombinationPromptLabel(entry) }}</span>
+                          <span v-if="getCombinationLLMLabel(entry)" class="provenance-figure-entry-label-llm">
+                            {{ getCombinationLLMLabel(entry) }}
+                          </span>
+                        </span>
+                        <span class="provenance-secondary-rate">{{ formatProvenanceRate(entry.top_bucket_rate) }}%</span>
+                      </div>
+                      <div class="provenance-secondary-track">
+                        <div
+                          class="provenance-secondary-fill"
+                          :style="{ width: Math.max(0, Math.min(100, Number(entry.top_bucket_rate || 0))) + '%' }"
+                        ></div>
+                      </div>
+                      <div class="provenance-secondary-meta">{{ entry.top_bucket_count }}/{{ entry.total }}</div>
+                    </div>
+                  </div>
+                  <div v-else class="provenance-empty">
+                    {{ $t('scenarioManager.results.noProvenanceData') }}
+                  </div>
                 </div>
               </div>
             </div>
@@ -1722,7 +1923,8 @@ const selectedDimension = ref(null)
 const showAgreementDialog = ref(false)
 const selectedAgreement = ref(null)
 const expandedAgreementPanels = ref([0])
-const isProvenanceFigureDialogOpen = ref(false)
+const isProvenanceFigurePopupOpen = ref(false)
+const isProvenanceFigureFullscreenOpen = ref(false)
 const selectedProvenanceFigurePanelKey = ref(null)
 
 // Spider chart constants - increased size for longer labels
@@ -2570,10 +2772,10 @@ const selectedProvenanceFigurePanel = computed(() => {
 })
 
 watch(provenanceBucketChartPanels, (panels) => {
-  if (!isProvenanceFigureDialogOpen.value) return
-  const panelExists = panels.some(panel => panel.key === selectedProvenanceFigurePanelKey.value)
-  if (!panelExists) {
-    closeProvenanceFigureDialog()
+  if (!isProvenanceFigurePopupOpen.value && !isProvenanceFigureFullscreenOpen.value) return
+  const selectedPanel = panels.find(panel => panel.key === selectedProvenanceFigurePanelKey.value)
+  if (!selectedPanel || !selectedPanel.entries?.length) {
+    closeProvenanceFigureOverlays()
   }
 })
 
@@ -3384,21 +3586,57 @@ function getProvenanceChartEntryLabel(entry, panelKey) {
   return String(entry?.label || '-')
 }
 
-function openProvenanceFigureDialog(panelKey) {
-  const panel = provenanceBucketChartPanels.value.find(item => item.key === panelKey)
+function getProvenanceFigurePanel(panelKey) {
+  return provenanceBucketChartPanels.value.find(item => item.key === panelKey)
+}
+
+function selectProvenanceFigurePanel(panelKey) {
+  const panel = getProvenanceFigurePanel(panelKey)
   if (!panel || !panel.entries?.length) return
   selectedProvenanceFigurePanelKey.value = panelKey
-  isProvenanceFigureDialogOpen.value = true
+  return panel
 }
 
-function closeProvenanceFigureDialog() {
-  isProvenanceFigureDialogOpen.value = false
-  selectedProvenanceFigurePanelKey.value = null
+function openProvenanceFigurePopup(panelKey) {
+  if (!selectProvenanceFigurePanel(panelKey)) return
+  isProvenanceFigureFullscreenOpen.value = false
+  isProvenanceFigurePopupOpen.value = true
 }
 
-function onProvenanceFigureDialogUpdate(value) {
+function closeProvenanceFigurePopup() {
+  isProvenanceFigurePopupOpen.value = false
+  if (!isProvenanceFigureFullscreenOpen.value) {
+    selectedProvenanceFigurePanelKey.value = null
+  }
+}
+
+function onProvenanceFigurePopupUpdate(value) {
   if (value) return
-  closeProvenanceFigureDialog()
+  closeProvenanceFigurePopup()
+}
+
+function openProvenanceFigureFullscreen(panelKey) {
+  if (!selectProvenanceFigurePanel(panelKey)) return
+  isProvenanceFigurePopupOpen.value = false
+  isProvenanceFigureFullscreenOpen.value = true
+}
+
+function closeProvenanceFigureFullscreen() {
+  isProvenanceFigureFullscreenOpen.value = false
+  if (!isProvenanceFigurePopupOpen.value) {
+    selectedProvenanceFigurePanelKey.value = null
+  }
+}
+
+function onProvenanceFigureFullscreenUpdate(value) {
+  if (value) return
+  closeProvenanceFigureFullscreen()
+}
+
+function closeProvenanceFigureOverlays() {
+  isProvenanceFigurePopupOpen.value = false
+  isProvenanceFigureFullscreenOpen.value = false
+  selectedProvenanceFigurePanelKey.value = null
 }
 
 function formatLabel(label) {
@@ -4819,6 +5057,15 @@ watch(
   background-color: rgb(var(--v-theme-surface));
 }
 
+.provenance-figure-popup {
+  display: flex;
+  flex-direction: column;
+  max-height: min(92vh, 1020px);
+  background-color: rgb(var(--v-theme-surface));
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.1);
+  border-radius: 14px;
+}
+
 .provenance-figure-dialog-header {
   display: flex;
   align-items: center;
@@ -4854,6 +5101,23 @@ watch(
   padding: 18px;
 }
 
+.provenance-figure-popup-content {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+  gap: 16px;
+  padding: 16px;
+  max-height: calc(92vh - 92px);
+  overflow: auto;
+}
+
+.provenance-fullscreen-grid {
+  height: 100%;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+  gap: 16px;
+}
+
 .provenance-figure-card-dialog {
   height: 100%;
   min-height: 0;
@@ -4870,6 +5134,145 @@ watch(
 
 .provenance-figure-bars-dialog {
   height: 240px;
+}
+
+.provenance-detail-card {
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.1);
+  border-radius: 12px;
+  background: linear-gradient(180deg, rgba(var(--v-theme-on-surface), 0.018) 0%, rgba(var(--v-theme-on-surface), 0.03) 100%);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.provenance-detail-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  font-size: 0.78rem;
+  color: rgba(var(--v-theme-on-surface), 0.65);
+}
+
+.provenance-detail-table-wrap {
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.1);
+  border-radius: 10px;
+  background-color: rgba(var(--v-theme-surface), 0.86);
+  overflow: auto;
+}
+
+.provenance-detail-table {
+  width: 100%;
+  min-width: 740px;
+  border-collapse: collapse;
+  font-size: 0.75rem;
+}
+
+.provenance-detail-table th,
+.provenance-detail-table td {
+  padding: 8px 9px;
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  text-align: left;
+  vertical-align: top;
+}
+
+.provenance-detail-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background-color: rgba(var(--v-theme-surface), 0.98);
+  color: rgba(var(--v-theme-on-surface), 0.72);
+  font-weight: 600;
+}
+
+.provenance-detail-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.provenance-detail-combination-label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.provenance-secondary-plot-card {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.provenance-secondary-plot-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+  font-size: 0.77rem;
+  color: rgba(var(--v-theme-on-surface), 0.65);
+}
+
+.provenance-secondary-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 0;
+  overflow: auto;
+  padding-right: 2px;
+}
+
+.provenance-secondary-row {
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.1);
+  border-radius: 10px;
+  background-color: rgba(var(--v-theme-on-surface), 0.02);
+  padding: 10px;
+}
+
+.provenance-secondary-row-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 7px;
+  font-size: 0.75rem;
+  color: rgba(var(--v-theme-on-surface), 0.8);
+}
+
+.provenance-secondary-row-head > span:first-child {
+  min-width: 0;
+  max-width: calc(100% - 56px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.provenance-secondary-rate {
+  color: rgb(var(--v-theme-primary));
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.provenance-secondary-track {
+  width: 100%;
+  height: 9px;
+  border-radius: 999px;
+  background-color: rgba(var(--v-theme-on-surface), 0.11);
+  overflow: hidden;
+}
+
+.provenance-secondary-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(var(--v-theme-primary), 0.48) 0%, rgba(var(--v-theme-primary), 0.95) 100%);
+}
+
+.provenance-secondary-meta {
+  margin-top: 6px;
+  text-align: right;
+  font-size: 0.72rem;
+  color: rgba(var(--v-theme-on-surface), 0.62);
 }
 
 /* Ranking Agreement Matrix Styles */
@@ -5290,6 +5693,11 @@ watch(
   }
 
   .provenance-figures-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .provenance-figure-popup-content,
+  .provenance-fullscreen-grid {
     grid-template-columns: 1fr;
   }
 }
@@ -6161,6 +6569,23 @@ watch(
   .agreement-point-row {
     grid-template-columns: 1fr;
     row-gap: 4px;
+  }
+
+  .provenance-figure-popup-content,
+  .provenance-figure-dialog-content {
+    padding: 12px;
+  }
+
+  .provenance-figure-group-dialog {
+    min-width: 150px;
+  }
+
+  .provenance-figure-bars-dialog {
+    height: 190px;
+  }
+
+  .provenance-detail-table {
+    min-width: 560px;
   }
 }
 </style>

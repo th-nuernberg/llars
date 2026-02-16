@@ -112,10 +112,17 @@ const pendingScenarioStats = []
 const queuedScenarioIds = new Set()
 const loadingScenarioIds = new Set()
 const resolvedScenarioIds = new Set()
-const MAX_CONCURRENT_STATS_REQUESTS = 3
+const statsRetryCounts = new Map()
+const MAX_CONCURRENT_STATS_REQUESTS = 1
+const MAX_STATS_REQUEST_RETRIES = 2
+const STATS_REQUEST_SPACING_MS = 300
+const STATS_RATE_LIMIT_COOLDOWN_MS = 2000
 
 let scenarioCardObserver = null
 let activeStatsRequests = 0
+let statsQueueTimer = null
+let nextStatsRequestAt = 0
+let statsRateLimitedUntil = 0
 
 // Type configuration
 const typeConfigs = {
@@ -238,26 +245,78 @@ async function loadScenarioStats(scenarioId) {
     const response = await axios.get(`/api/scenarios/${scenarioId}/stats`)
     const scenarioIndex = allScenarios.value.findIndex(scenario => scenario.id === scenarioId)
     if (scenarioIndex < 0) {
-      return
+      return { success: true }
     }
 
     const scenario = allScenarios.value[scenarioIndex]
     const userProgress = buildUserProgressFromStats(response.data, scenario.thread_count)
     if (!userProgress) {
-      return
+      return { success: true }
     }
 
     allScenarios.value[scenarioIndex] = {
       ...scenario,
       user_progress: userProgress
     }
+    return { success: true }
   } catch (error) {
     console.warn(`Error loading stats for scenario ${scenarioId}:`, error)
+    return {
+      success: false,
+      statusCode: Number(error?.response?.status || 0),
+      retryAfterMs: parseRetryAfterMs(error?.response?.headers?.['retry-after'])
+    }
   }
 }
 
+function parseRetryAfterMs(retryAfterHeader) {
+  if (!retryAfterHeader) {
+    return 0
+  }
+
+  const headerValue = Array.isArray(retryAfterHeader) ? retryAfterHeader[0] : retryAfterHeader
+  const seconds = Number(headerValue)
+  if (Number.isFinite(seconds) && seconds > 0) {
+    return Math.round(seconds * 1000)
+  }
+
+  const timestamp = Date.parse(String(headerValue))
+  if (!Number.isFinite(timestamp)) {
+    return 0
+  }
+
+  return Math.max(0, timestamp - Date.now())
+}
+
+function scheduleStatsQueue(delayMs = 0) {
+  if (statsQueueTimer) {
+    return
+  }
+
+  statsQueueTimer = setTimeout(() => {
+    statsQueueTimer = null
+    processStatsQueue()
+  }, Math.max(0, Math.round(delayMs)))
+}
+
 function processStatsQueue() {
+  if (pendingScenarioStats.length === 0) {
+    return
+  }
+
+  const now = Date.now()
+  if (statsRateLimitedUntil > now) {
+    scheduleStatsQueue(statsRateLimitedUntil - now)
+    return
+  }
+
   while (activeStatsRequests < MAX_CONCURRENT_STATS_REQUESTS && pendingScenarioStats.length > 0) {
+    const waitForSpacingMs = nextStatsRequestAt - Date.now()
+    if (waitForSpacingMs > 0) {
+      scheduleStatsQueue(waitForSpacingMs)
+      return
+    }
+
     const scenarioId = pendingScenarioStats.shift()
     queuedScenarioIds.delete(scenarioId)
 
@@ -267,12 +326,38 @@ function processStatsQueue() {
 
     activeStatsRequests += 1
     loadingScenarioIds.add(scenarioId)
+    nextStatsRequestAt = Date.now() + STATS_REQUEST_SPACING_MS
 
     loadScenarioStats(scenarioId)
+      .then(result => {
+        if (result.success) {
+          resolvedScenarioIds.add(scenarioId)
+          statsRetryCounts.delete(scenarioId)
+          return
+        }
+
+        if (result.statusCode === 429) {
+          const cooldownMs = result.retryAfterMs || STATS_RATE_LIMIT_COOLDOWN_MS
+          statsRateLimitedUntil = Math.max(statsRateLimitedUntil, Date.now() + cooldownMs)
+        }
+
+        const retryCount = (statsRetryCounts.get(scenarioId) || 0) + 1
+        if (retryCount <= MAX_STATS_REQUEST_RETRIES) {
+          statsRetryCounts.set(scenarioId, retryCount)
+          queuedScenarioIds.add(scenarioId)
+          pendingScenarioStats.push(scenarioId)
+          if (statsRateLimitedUntil > Date.now()) {
+            scheduleStatsQueue(statsRateLimitedUntil - Date.now())
+          }
+          return
+        }
+
+        statsRetryCounts.delete(scenarioId)
+        resolvedScenarioIds.add(scenarioId)
+      })
       .finally(() => {
         activeStatsRequests -= 1
         loadingScenarioIds.delete(scenarioId)
-        resolvedScenarioIds.add(scenarioId)
         processStatsQueue()
       })
   }
@@ -376,6 +461,10 @@ onBeforeUnmount(() => {
   if (scenarioCardObserver) {
     scenarioCardObserver.disconnect()
     scenarioCardObserver = null
+  }
+  if (statsQueueTimer) {
+    clearTimeout(statsQueueTimer)
+    statsQueueTimer = null
   }
   scenarioCardElements.clear()
 })

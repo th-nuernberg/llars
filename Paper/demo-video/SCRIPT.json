@@ -5,7 +5,7 @@
   "_design_principles": [
     "Someone is always speaking",
     "Live collab with a real second browser",
-    "Dialogue style: Alex (LLARS expert) explains, David (reviewer perspective) asks smart questions — viewer should identify with David"
+    "Dialogue style: Alex (LLARS expert) explains, David (domain expert perspective) asks smart questions — viewer should identify with David"
   ],
   "config": {
     "url": "https://llars.e-beratungsinstitut.de",
@@ -31,80 +31,57 @@
         "name": "David",
         "macos_voice": "Daniel",
         "macos_rate": 150,
-        "description": "A reviewer who asks smart questions — the audience should identify with him"
+        "description": "A domain expert who asks smart questions — the audience should identify with him"
       }
     }
   },
   "_tts_naming": "TTS models say 'Lars' (without the leading L) because they mispronounce 'LLARS'. In all written text, overlays, and UI, the correct name is 'LLARS'.",
   "steps": [
     {
-      "_section": "=== INTRO (55s) — Problem animation with highlights, login behind scenes, pipeline overview ===",
+      "_section": "=== INTRO (55s) — Phased problem animation, login behind scenes, pipeline overview ===",
+      "_concept": "Phase 1: boxes slide in (auto). Phase 2: painpoints appear (on cue). Phase 3: merge. No highlights — the animation phases ARE the visual.",
       "id": "intro_1",
       "speaker": "moderator",
-      "narration": "Hey everyone, I'm Alex — and welcome to this demo of Lars, the LLM Assisted Research System. I'm here with David, who will be reviewing the platform from a researcher's perspective. But first — the problem we're solving.",
+      "narration": "Hey everyone, I'm Alex — and welcome to this demo of Lars, the LLM Assisted Research System. I'm here with David, a domain expert in psychosocial counselling. David, you've worked with LLM pipelines before — what's the biggest challenge?",
       "actions": [
         {
           "do": "show_problem"
         },
         {
           "do": "wait",
-          "seconds": 2.0
-        },
-        {
-          "do": "highlight",
-          "target": "Problem Expert",
-          "duration": 2.0
-        },
-        {
-          "do": "highlight",
-          "target": "Problem Developer",
-          "duration": 2.0
+          "seconds": 1.5
         }
       ]
     },
     {
       "id": "intro_1a",
       "speaker": "guest",
-      "narration": "Right — as a researcher, I've been on both sides of this. I know what a good output should look like, but I have no control over the prompts or models. And the developers don't fully understand my quality criteria.",
+      "narration": "As a domain expert, I know exactly what a good counselling summary should look like. But I can't control the prompts or choose the models — I describe my quality criteria, and then I have to hope the developer implements them correctly.",
       "actions": [
         {
-          "do": "highlight",
-          "target": "Problem Expert",
-          "duration": 3.0
-        },
-        {
-          "do": "highlight",
-          "target": "Problem Gap",
-          "duration": 2.0
-        },
-        {
-          "do": "highlight",
-          "target": "Problem Developer",
-          "duration": 2.0
+          "do": "wait",
+          "seconds": 0.3
         }
       ]
     },
     {
       "id": "intro_1b",
       "speaker": "moderator",
-      "narration": "Exactly. And that usually means passing prompts back and forth in shared documents, no version control, no systematic evaluation — just translation work between disciplines.",
+      "narration": "And that's the gap. Both sides end up passing prompts back and forth in shared documents — no version control, no systematic evaluation.",
       "actions": [
         {
-          "do": "highlight",
-          "target": "Problem Painpoints",
-          "duration": 3.0
+          "do": "problem_show_painpoints"
         },
         {
-          "do": "highlight",
-          "target": "Problem Quote",
-          "duration": 2.5
+          "do": "wait",
+          "seconds": 0.5
         }
       ]
     },
     {
       "id": "intro_1c",
       "speaker": "guest",
-      "narration": "So how does LLARS solve this? How do I as a researcher get more control?",
+      "narration": "Exactly — just translation work between disciplines. So how does LLARS change this? How do I as a domain expert get into the driver's seat?",
       "actions": [
         {
           "do": "wait",
@@ -198,7 +175,7 @@
     {
       "id": "intro_3",
       "speaker": "guest",
-      "narration": "That sounds like exactly what I need. Can I try it myself?",
+      "narration": "That sounds like exactly what I need as a domain expert. Can I try it myself?",
       "actions": [
         {
           "do": "highlight",
@@ -288,7 +265,7 @@
     {
       "id": "prompt_eng_2b",
       "speaker": "guest",
-      "narration": "Oh interesting — so you're adding me as a collaborator. Does that mean we can both edit this prompt live at the same time?",
+      "narration": "So you're adding me as a collaborator — does that mean we can both edit this prompt live at the same time?",
       "actions": [
         {
           "do": "type",
@@ -593,7 +570,7 @@
     {
       "id": "prompt_eng_5c",
       "speaker": "guest",
-      "narration": "Wait — so I can see the rendered prompt with my actual data and check the output quality right here? That's exactly what I'd want as a researcher.",
+      "narration": "Wait — so I can see the rendered prompt with my actual data and check the output quality right here? That's exactly what I'd want as a domain expert.",
       "actions": [
         {
           "do": "wait",
@@ -1478,7 +1455,7 @@
     {
       "id": "batch_gen_11",
       "speaker": "guest",
-      "narration": "OK — so we have forty situation descriptions now. Mistral versus GPT-5 Nano, each with two prompts. But how do I as a researcher decide which combination actually works best?",
+      "narration": "OK — so we have forty situation descriptions now. Mistral versus GPT-5 Nano, each with two prompts. But how do I as a domain expert decide which combination actually works best?",
       "actions": [
         {
           "do": "wait",
@@ -2160,7 +2137,7 @@
     {
       "id": "conclusion_2",
       "speaker": "guest",
-      "narration": "As a researcher, this is exactly what I've been missing — one platform where I can co-author prompts, run experiments, and evaluate results alongside LLMs. Thanks, Alex.",
+      "narration": "As a domain expert, this is exactly what I've been missing — one platform where I can co-author prompts, run experiments, and evaluate results alongside LLMs. Thanks, Alex.",
       "actions": [
         {
           "do": "wait",

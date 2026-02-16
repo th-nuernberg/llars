@@ -1384,6 +1384,46 @@ class Browser:
         opacity: 0;
         animation: problem-fade 0.8s ease 3.5s forwards;
     }
+    /* === Data Preview Overlay === */
+    .data-preview-wrapper {
+        display: flex; flex-direction: column;
+        align-items: center;
+    }
+    .data-preview-code {
+        font-family: 'SF Mono', Monaco, Consolas, monospace;
+        font-size: 15px;
+        color: #888;
+        text-align: left;
+        line-height: 1.7;
+        background: rgba(255,255,255,0.03);
+        border: 1px solid rgba(255,255,255,0.08);
+        border-radius: 8px;
+        padding: 28px 36px;
+        margin-top: 28px;
+        max-width: 720px;
+        white-space: pre;
+    }
+    .data-preview-code .dp-key {
+        color: #b0ca97;
+        font-weight: 700;
+    }
+    .data-preview-code .dp-str {
+        color: #d4d4d4;
+    }
+    .data-preview-code .dp-bracket {
+        color: rgba(255,255,255,0.25);
+    }
+    .data-preview-code .dp-dots {
+        color: rgba(255,255,255,0.3);
+        font-style: italic;
+    }
+    .data-preview-count {
+        margin-top: 16px;
+        font-family: 'Segoe UI', system-ui, sans-serif;
+        font-size: 14px;
+        color: rgba(255,255,255,0.35);
+        letter-spacing: 0.5px;
+    }
     """
 
     def __init__(self, url: str = "http://localhost:55080"):
@@ -2716,6 +2756,63 @@ class Browser:
             }
         """)
         print(f"   🎬 merge_problem")
+
+    def show_data_preview(self):
+        """Shows an overlay with a JSON data preview, highlighting subject/content keys."""
+        self._inject_styles()
+
+        self.driver.execute_script("""
+            var old = document.getElementById('llars-overlay');
+            if (old) old.remove();
+
+            var overlay = document.createElement('div');
+            overlay.id = 'llars-overlay';
+            overlay.className = 'llars-overlay';
+
+            var wrapper = document.createElement('div');
+            wrapper.className = 'data-preview-wrapper';
+
+            var title = document.createElement('div');
+            title.className = 'llars-overlay-title';
+            title.style.fontSize = '42px';
+            title.textContent = 'Source Data';
+            wrapper.appendChild(title);
+
+            var subtitle = document.createElement('div');
+            subtitle.className = 'llars-overlay-subtitle';
+            subtitle.textContent = '10 Counselling Cases (JSON)';
+            wrapper.appendChild(subtitle);
+
+            var code = document.createElement('div');
+            code.className = 'data-preview-code';
+            code.innerHTML = '<span class="dp-bracket">[</span>\\n' +
+                '  <span class="dp-bracket">{</span>\\n' +
+                '    <span class="dp-key">"subject"</span>: <span class="dp-str">"Custody concerns after separation"</span>,\\n' +
+                '    <span class="dp-key">"content"</span>: <span class="dp-str">"Client wrote on 12/01/2026 ..."</span>\\n' +
+                '  <span class="dp-bracket">}</span>,\\n' +
+                '  <span class="dp-bracket">{</span>\\n' +
+                '    <span class="dp-key">"subject"</span>: <span class="dp-str">"School refusal and possible bullying"</span>,\\n' +
+                '    <span class="dp-key">"content"</span>: <span class="dp-str">"Client wrote on 05/01/2026 ..."</span>\\n' +
+                '  <span class="dp-bracket">}</span>,\\n' +
+                '  <span class="dp-dots">... 8 more cases</span>\\n' +
+                '<span class="dp-bracket">]</span>';
+            wrapper.appendChild(code);
+
+            var count = document.createElement('div');
+            count.className = 'data-preview-count';
+            count.innerHTML = 'Fields <span style="color:#b0ca97;font-weight:700">subject</span> and <span style="color:#b0ca97;font-weight:700">content</span> map to template variables';
+            wrapper.appendChild(count);
+
+            overlay.appendChild(wrapper);
+            document.body.appendChild(overlay);
+
+            requestAnimationFrame(function() {
+                requestAnimationFrame(function() {
+                    overlay.classList.add('visible');
+                });
+            });
+        """)
+        print(f"   🎬 show_data_preview")
 
     def do_visible_login(self, username: str, password: str):
         """Performs login visibly with typed credentials (for recording)."""
@@ -4541,6 +4638,15 @@ class ScriptRunner:
             else:
                 time.sleep(1.5)  # Wait for merge animation
             print(f"   ✓ merge_problem")
+            return True
+
+        elif do == 'show_data_preview':
+            self.browser.show_data_preview()
+            if test_mode:
+                time.sleep(0.3)
+            else:
+                time.sleep(0.5)  # Wait for fade-in
+            print(f"   ✓ show_data_preview")
             return True
 
         elif do == 'scroll_to':

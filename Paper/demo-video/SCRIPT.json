@@ -410,7 +410,7 @@
     {
       "id": "prompt_eng_5_react",
       "speaker": "guest",
-      "narration": "Ah — those double curly braces, subject and content — those are placeholders?",
+      "narration": "Ah — I see those green highlighted blocks in the text. Are those variables?",
       "actions": [
         {
           "do": "highlight",
@@ -422,7 +422,7 @@
     {
       "id": "prompt_eng_5a",
       "speaker": "moderator",
-      "narration": "Yes — those are template variables. I can fill them with sample data right here to test the prompt. Let me add an email subject and a thread.",
+      "narration": "Yes, exactly! Those are template variables. I can fill them with sample data right here to test the prompt. Let me add an email subject and a thread.",
       "actions": [
         {
           "do": "click",
@@ -595,7 +595,7 @@
       "_comment": "=== LIVE COLLAB DEMO (NEW PROMPT) ===",
       "id": "collab_1",
       "speaker": "moderator",
-      "narration": "Yes — remember, I added you as a collaborator when we created the prompt. David, go ahead and log in on the right side — you should see it shared with you.",
+      "narration": "Absolutely — go ahead and log in, David. You'll find the prompt under Prompt Engineering since I shared it with you.",
       "actions": [
         {
           "do": "sync",
@@ -678,7 +678,7 @@
           "target": "Last Block Editor",
           "text": " Content: {{content}}",
           "cursor": "end",
-          "delay": 0.1
+          "delay": 0.03
         },
         {
           "do": "wait",
@@ -689,7 +689,7 @@
           "target": "Last Block Editor",
           "text": "The data below is provided as a subject line followed by the email thread content from a counselling session.\n",
           "cursor": "start",
-          "delay": 0.1
+          "delay": 0.03
         },
         {
           "do": "wait",
@@ -1012,10 +1012,31 @@
       ]
     },
     {
+      "id": "batch_gen_2b",
+      "speaker": "moderator",
+      "narration": "First, the data. Here are our ten counselling cases — each entry has a subject field and a content field, matching the template variables we defined in the prompt.",
+      "actions": [
+        {
+          "do": "show_data_preview"
+        },
+        {
+          "do": "wait",
+          "seconds": 1.0
+        }
+      ]
+    },
+    {
       "id": "batch_gen_3",
       "speaker": "moderator",
-      "narration": "First, the data. Remember those template variables — subject and content? This is where they come in. I'll paste ten counselling cases as JSON — each entry has a subject and content field that matches our variables. Lars fills them in automatically for every case.",
+      "narration": "Let me paste them into the wizard. Lars maps the JSON fields to our variables automatically.",
       "actions": [
+        {
+          "do": "hide_title"
+        },
+        {
+          "do": "wait",
+          "seconds": 0.3
+        },
         {
           "do": "highlight",
           "target": "Source Upload",

@@ -262,8 +262,8 @@ Completed batches transfer into evaluation with a single click, preserving all a
 
 The evaluation module brings human and LLM evaluators together in a single framework.
 Four general evaluation types are available (Figure~\ref{fig:scenario-wizard}): \emph{rating} with configurable multi-dimensional Likert scales, \emph{ranking} into ordered buckets, \emph{labeling} for binary or multi-class classification and pairwise \emph{comparison}.
-The type system is extensible: for the counselling domain, two additional types were added---\emph{mail rating} for assessing email thread quality and \emph{authenticity} for distinguishing human-written from LLM-generated text (Figure~\ref{fig:scenario-wizard}).
-An AI-assisted Scenario Wizard analyzes uploaded data to recommend the most suitable type; scenarios can also be created directly from batch generation outputs, preserving model attribution.
+The type system is extensible through domain-specific presets: \emph{mail rating} adds counselling-specific dimensions to the general rating type, while \emph{authenticity} is a specialised labeling task that classifies outputs as human-written or LLM-generated (Figure~\ref{fig:scenario-wizard}).
+Scenarios are typically created from batch generation outputs with a single click, preserving full model attribution, but can also be set up independently via the AI-assisted Scenario Wizard that analyzes uploaded data and recommends a suitable evaluation type.
 
 Scenario owners control how items are distributed---all items to every evaluator for full inter-rater analysis or configurable subsets for faster throughput.
 Where most tools limit LLMs to pairwise judging~\cite{zheng2024judging}, LLARS treats them as full evaluation participants that rate, rank, label and compare alongside humans using customizable type-specific prompts.

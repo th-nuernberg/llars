@@ -35,6 +35,8 @@ EVALUATION_MODEL_IDS = [
 # Persist prompt provenance under the exact prompt template names from batch generation.
 STRUCTURED_FEATURE_TYPE_NAME = PRESEED_PROMPT_NAME
 NARRATIVE_FEATURE_TYPE_NAME = LIVE_PROMPT_NAME
+MERGED_FEATURE_TYPE_NAME = "Situation Summary"
+DEFAULT_SPLIT_BY_PROMPT = False
 PRESEED_PROMPT_KEY = PRESEED_PROMPT_NAME.lower()
 LIVE_PROMPT_KEY = LIVE_PROMPT_NAME.lower()
 
@@ -926,14 +928,71 @@ def _normalize_prompt_key(prompt_name):
     return str(prompt_name or "").strip().lower()
 
 
-def _get_or_create_prompt_feature_types(db_session):
-    """Ensure prompt-specific feature types exist for seeded provenance demos."""
+def _to_bool(value):
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)):
+        return bool(value)
+    if isinstance(value, str):
+        return value.strip().lower() in {"1", "true", "yes", "on"}
+    return False
+
+
+def _is_split_by_prompt_enabled(config):
+    """Resolve prompt-splitting mode from scenario config (defaults to merged)."""
+    if not isinstance(config, dict):
+        return DEFAULT_SPLIT_BY_PROMPT
+
+    direct_candidates = [
+        config.get("split_by_prompt"),
+        config.get("splitByPrompt"),
+    ]
+    for value in direct_candidates:
+        if value is not None:
+            return _to_bool(value)
+
+    eval_config = config.get("eval_config")
+    if isinstance(eval_config, dict):
+        nested_candidates = [
+            eval_config.get("split_by_prompt"),
+            eval_config.get("splitByPrompt"),
+        ]
+        nested_cfg = eval_config.get("config")
+        if isinstance(nested_cfg, dict):
+            nested_candidates.extend([
+                nested_cfg.get("split_by_prompt"),
+                nested_cfg.get("splitByPrompt"),
+            ])
+
+        for value in nested_candidates:
+            if value is not None:
+                return _to_bool(value)
+
+    return DEFAULT_SPLIT_BY_PROMPT
+
+
+def _get_or_create_prompt_feature_types(
+    db_session,
+    split_by_prompt: bool = DEFAULT_SPLIT_BY_PROMPT,
+):
+    """
+    Ensure feature types exist for demo generation outputs.
+
+    Default behavior keeps all outputs in one shared feature type (no prompt split).
+    """
     from db.models.scenario import FeatureType
 
-    feature_type_specs = {
-        PRESEED_PROMPT_KEY: STRUCTURED_FEATURE_TYPE_NAME,
-        LIVE_PROMPT_KEY: NARRATIVE_FEATURE_TYPE_NAME,
-    }
+    split_mode = _to_bool(split_by_prompt)
+    if split_mode:
+        feature_type_specs = {
+            PRESEED_PROMPT_KEY: STRUCTURED_FEATURE_TYPE_NAME,
+            LIVE_PROMPT_KEY: NARRATIVE_FEATURE_TYPE_NAME,
+        }
+    else:
+        feature_type_specs = {
+            PRESEED_PROMPT_KEY: MERGED_FEATURE_TYPE_NAME,
+            LIVE_PROMPT_KEY: MERGED_FEATURE_TYPE_NAME,
+        }
 
     feature_type_by_prompt = {}
     for prompt_key, feature_type_name in feature_type_specs.items():
@@ -944,7 +1003,7 @@ def _get_or_create_prompt_feature_types(db_session):
             db_session.session.flush()
         feature_type_by_prompt[prompt_key] = feature_type
 
-    # Keep structured as deterministic fallback for unknown prompt labels.
+    # Keep structured/shared type as deterministic fallback for unknown prompt labels.
     fallback_feature_type = feature_type_by_prompt[PRESEED_PROMPT_KEY]
     return feature_type_by_prompt, fallback_feature_type
 
@@ -1004,6 +1063,7 @@ def _ensure_eval_scenario_integrity(
     fallback_feature_type,
     llm_mistral,
     llm_gpt5_nano,
+    split_by_prompt=False,
     preseed_job=None,
 ):
     """
@@ -1051,6 +1111,9 @@ def _ensure_eval_scenario_integrity(
         config_changed = True
     if config.get("demo_generation_prompts") != GENERATION_PROMPT_TEMPLATE_NAMES:
         config["demo_generation_prompts"] = list(GENERATION_PROMPT_TEMPLATE_NAMES)
+        config_changed = True
+    if config.get("split_by_prompt") != bool(split_by_prompt):
+        config["split_by_prompt"] = bool(split_by_prompt)
         config_changed = True
 
     feature_type_names = {
@@ -1273,7 +1336,10 @@ def _ensure_eval_scenario_integrity(
     if counters["features_added"]:
         actions.append(f"Backfilled ranking features: +{counters['features_added']}")
     if counters["config_updated"]:
-        actions.append("Updated demo scenario config for prompt provenance")
+        actions.append(
+            "Updated demo scenario config "
+            f"(split_by_prompt={bool(split_by_prompt)})"
+        )
 
     return actions
 
@@ -1314,8 +1380,6 @@ def _seed_evaluation_scenario(db_session, demo_user, collab_user):
         db_session.session.add(ranking_type)
         db_session.session.flush()
 
-    feature_type_by_prompt, fallback_feature_type = _get_or_create_prompt_feature_types(db_session)
-
     # Get or create LLM entries (legacy llms table, not llm_models)
     def _get_or_create_llm(name):
         llm = LLM.query.filter_by(name=name).first()
@@ -1332,6 +1396,14 @@ def _seed_evaluation_scenario(db_session, demo_user, collab_user):
     existing = RatingScenarios.query.filter_by(
         scenario_name=EVAL_SCENARIO_NAME
     ).first()
+    split_by_prompt = (
+        _is_split_by_prompt_enabled(existing.config_json)
+        if existing else DEFAULT_SPLIT_BY_PROMPT
+    )
+    feature_type_by_prompt, fallback_feature_type = _get_or_create_prompt_feature_types(
+        db_session,
+        split_by_prompt=split_by_prompt,
+    )
     if existing:
         actions.extend(_ensure_eval_scenario_integrity(
             db_session=db_session,
@@ -1342,6 +1414,7 @@ def _seed_evaluation_scenario(db_session, demo_user, collab_user):
             fallback_feature_type=fallback_feature_type,
             llm_mistral=llm_mistral,
             llm_gpt5_nano=llm_gpt5_nano,
+            split_by_prompt=split_by_prompt,
             preseed_job=preseed_job,
         ))
         actions.append(f"Eval scenario '{EVAL_SCENARIO_NAME}' already exists (id={existing.id})")
@@ -1362,6 +1435,7 @@ def _seed_evaluation_scenario(db_session, demo_user, collab_user):
         config_json={
             "evaluation": "ranking",
             "enable_llm_evaluation": True,
+            "split_by_prompt": bool(split_by_prompt),
             "llm_evaluators": list(EVALUATION_MODEL_IDS),
             "demo_generation_prompts": list(GENERATION_PROMPT_TEMPLATE_NAMES),
             "demo_prompt_feature_types": {
@@ -1665,8 +1739,6 @@ def _seed_evaluation_scenario_5_buckets(db_session, demo_user, collab_user):
         db_session.session.add(ranking_type)
         db_session.session.flush()
 
-    feature_type_by_prompt, fallback_feature_type = _get_or_create_prompt_feature_types(db_session)
-
     def _get_or_create_llm(name):
         llm = LLM.query.filter_by(name=name).first()
         if not llm:
@@ -1681,6 +1753,14 @@ def _seed_evaluation_scenario_5_buckets(db_session, demo_user, collab_user):
     existing = RatingScenarios.query.filter_by(
         scenario_name=EVAL_SCENARIO_NAME_5_BUCKETS
     ).first()
+    split_by_prompt = (
+        _is_split_by_prompt_enabled(existing.config_json)
+        if existing else DEFAULT_SPLIT_BY_PROMPT
+    )
+    feature_type_by_prompt, fallback_feature_type = _get_or_create_prompt_feature_types(
+        db_session,
+        split_by_prompt=split_by_prompt,
+    )
     if existing:
         actions.extend(_ensure_eval_scenario_integrity(
             db_session=db_session,
@@ -1691,6 +1771,7 @@ def _seed_evaluation_scenario_5_buckets(db_session, demo_user, collab_user):
             fallback_feature_type=fallback_feature_type,
             llm_mistral=llm_mistral,
             llm_gpt5_nano=llm_gpt5_nano,
+            split_by_prompt=split_by_prompt,
             preseed_job=preseed_job,
         ))
         actions.append(
@@ -1712,6 +1793,7 @@ def _seed_evaluation_scenario_5_buckets(db_session, demo_user, collab_user):
         config_json={
             "evaluation": "ranking",
             "enable_llm_evaluation": True,
+            "split_by_prompt": bool(split_by_prompt),
             "llm_evaluators": list(EVALUATION_MODEL_IDS),
             "demo_generation_prompts": list(GENERATION_PROMPT_TEMPLATE_NAMES),
             "demo_prompt_feature_types": {

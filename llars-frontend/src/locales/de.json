@@ -2799,10 +2799,12 @@
         "description": "Passen Sie die Bewertungsskala und Verteilungsoptionen an.",
         "distributionSettings": "Verteilungseinstellungen",
         "distribution": "Thread-Verteilung",
+        "distributionTooltip": "Steuert, wie Threads den Evaluatoren zugeteilt werden.\nAlle an jeden: alle evaluieren dieselben Threads (maximale Vergleichbarkeit, mehr Aufwand).\nZufällig: Threads werden zufällig verteilt (balancierte Last, weniger direkte Überschneidung).\nSequentiell: Threads werden der Reihe nach verteilt (deterministisch, nützlich für reproduzierbare Zuteilung).",
         "distributionAll": "Alle an jeden",
         "distributionRandom": "Zufällige Verteilung",
         "distributionSequential": "Sequentielle Verteilung",
         "order": "Reihenfolge",
+        "orderTooltip": "Legt fest, in welcher Reihenfolge Threads angezeigt werden.\nFeste Reihenfolge: alle sehen dieselbe Reihenfolge (vergleichbar zwischen Evaluatoren).\nZufällige Reihenfolge: Reihenfolge wird gemischt (reduziert Reihenfolgeeffekte).",
         "orderFixed": "Feste Reihenfolge",
         "orderRandom": "Zufällige Reihenfolge",
         "llmEvaluation": "LLM-Evaluierung",
@@ -2918,7 +2920,8 @@
         "firstPlaceholder": "z.B. Höchste Priorität",
         "lastPlaceholder": "z.B. Niedrigste Priorität",
         "selectColor": "Farbe wählen",
-        "splitByPrompt": "Split pro Prompt"
+        "splitByPrompt": "Split pro Prompt",
+        "splitByPromptTooltip": "Aus: Alle Outputs (z.B. 2 Prompts x 2 LLMs = 4) gemeinsam bewerten. An: Pro Prompt getrennt bewerten."
       },
       "labeling": {
         "labelingType": "Labeling-Typ",

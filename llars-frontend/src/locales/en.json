@@ -2799,10 +2799,12 @@
         "description": "Customize the rating scale and distribution options.",
         "distributionSettings": "Distribution Settings",
         "distribution": "Thread Distribution",
+        "distributionTooltip": "Controls how threads are assigned to evaluators.\nAll to everyone: everyone evaluates the same threads (maximum comparability, more effort).\nRandom distribution: threads are assigned randomly (balanced workload, less direct overlap).\nSequential distribution: threads are assigned in sequence (deterministic, useful for reproducible assignment).",
         "distributionAll": "All to everyone",
         "distributionRandom": "Random distribution",
         "distributionSequential": "Sequential distribution",
         "order": "Order",
+        "orderTooltip": "Defines in which order threads are shown.\nFixed order: everyone sees the same order (comparable across evaluators).\nRandom order: order is shuffled (reduces order effects).",
         "orderFixed": "Fixed order",
         "orderRandom": "Random order",
         "llmEvaluation": "LLM Evaluation",
@@ -2918,7 +2920,8 @@
         "firstPlaceholder": "e.g. Highest Priority",
         "lastPlaceholder": "e.g. Lowest Priority",
         "selectColor": "Select Color",
-        "splitByPrompt": "Split by Prompt"
+        "splitByPrompt": "Split by Prompt",
+        "splitByPromptTooltip": "Off: evaluate all outputs together (e.g. 2 prompts x 2 LLMs = 4). On: evaluate separately per prompt."
       },
       "labeling": {
         "labelingType": "Labeling Type",

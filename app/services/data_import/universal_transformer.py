@@ -106,6 +106,17 @@ class UniversalTransformer:
         self._errors: list[str] = []
         self._warnings: list[str] = []
 
+    @staticmethod
+    def _to_bool(value: Any) -> bool:
+        """Parse bool-like values from JSON payloads safely."""
+        if isinstance(value, bool):
+            return value
+        if isinstance(value, (int, float)):
+            return bool(value)
+        if isinstance(value, str):
+            return value.strip().lower() in {"1", "true", "yes", "on"}
+        return False
+
     def transform(
         self,
         data: Any,
@@ -701,7 +712,7 @@ class UniversalTransformer:
         if config.task_type != TaskType.RANKING:
             return False
 
-        split_by_prompt = bool((config.field_mapping or {}).get("split_by_prompt"))
+        split_by_prompt = self._to_bool((config.field_mapping or {}).get("split_by_prompt"))
         reference_text, features = self._detect_ranking_features(
             data,
             split_by_prompt=split_by_prompt
@@ -722,7 +733,7 @@ class UniversalTransformer:
         - content: The reference/source text (shown on right side)
         - features: List of Feature objects to rank (shown on left side)
         """
-        split_by_prompt = bool((config.field_mapping or {}).get("split_by_prompt"))
+        split_by_prompt = self._to_bool((config.field_mapping or {}).get("split_by_prompt"))
         reference_text, features = self._detect_ranking_features(
             data,
             split_by_prompt=split_by_prompt

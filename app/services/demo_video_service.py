@@ -616,14 +616,14 @@ def _build_eval_prompt_content():
             "Data Format Explanation": {
                 "content": (
                     "Subject: {{subject}} Content: {{content}}\n"
-                    "The data below is provided as a subject line followed by the email thread content from a counselling session."
+                    "The data above is provided as a subject line followed by the email thread content from a counselling session."
                 ),
                 "position": 2,
                 "author": COLLAB_USER,
                 "contributors": [
                     {
                         "author": DEMO_USER,
-                        "text": "The data below is provided as a subject line followed by the email thread content from a counselling session."
+                        "text": "The data above is provided as a subject line followed by the email thread content from a counselling session."
                     },
                     {
                         "author": COLLAB_USER,

@@ -83,7 +83,7 @@ def test_DEMO_PROMPT_002_live_prompt_contains_block_authorship():
     assert blocks["System Prompt"]["author"] == COLLAB_USER
     assert blocks["Task Explanation"]["author"] == DEMO_USER
     assert blocks["Data Format Explanation"]["author"] == COLLAB_USER
-    assert "The data below is provided as a subject line followed by the email thread content from a counselling session." in data_block_content
+    assert "The data above is provided as a subject line followed by the email thread content from a counselling session." in data_block_content
     assert "Subject: {{subject}}" in data_block_content
     assert "Content: {{content}}" in data_block_content
 

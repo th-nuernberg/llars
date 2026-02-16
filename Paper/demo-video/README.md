@@ -68,7 +68,7 @@ Das Video zeigt Live-Kollaboration mit **zwei Browser-Fenstern**:
 {"do": "collab_open", "user": "ijcai_reviewer_2", "password": "ijcai_reviewer_123"},
 {"do": "collab_goto", "url": "/promptengineering"},
 {"do": "collab_click", "target": "Situation Summary"},
-{"do": "collab_type", "target": "Last Block Editor", "text": "\nContent: {{content}}\nThe data below is provided as a subject line followed by the email thread content from a counselling session.", "cursor": "end"}
+{"do": "collab_type", "target": "Last Block Editor", "text": "\nContent: {{content}}\nThe data above is provided as a subject line followed by the email thread content from a counselling session.", "cursor": "end"}
 ```
 
 ### Section-basiertes Audio-Caching

@@ -227,12 +227,12 @@ Teams register proprietary or self-hosted OpenAI-compatible LLM providers and re
 \subsection{Collaborative Prompt Engineering}
 
 The collaborative prompt editor (Figure~\ref{fig:prompt-editor}), lets every keystroke appear instantly for all connected users.
-A prompt is composed of ordered blocks\--one optionally designated as system prompt, the rest concatenated into the user prompt\--each maintaining its own version history that tracks insertions and deletions (visible as \texttt{+128\,/\,{-}0} in Figure~\ref{fig:prompt-editor}), enabling diff comparison and rollback without affecting other blocks.
+A prompt is composed of ordered blocks\--one optionally designated as system prompt, the rest concatenated into the user prompt\--each maintaining its own version history that tracks insertions and deletions (visible as \texttt{+100\,/\,{-}0} in Figure~\ref{fig:prompt-editor}), enabling diff comparison and rollback without affecting other blocks.
 
 \begin{figure}[htb]
 \centering
-\includegraphics[width=0.95\columnwidth]{figures/prompt-eng.png}
-\caption{Collaborative prompt editor with a data-format explanation block containing template variables \texttt{\{\{subject\}\}} and \texttt{\{\{content\}\}}. The sidebar (left) shows actions for block management, variable management, preview and LLM testing. The Variable Palette (bottom-left) lists all extracted variables with sample values that can be dragged into blocks.}
+\includegraphics[width=1.00\columnwidth]{figures/img}
+\caption{Collaborative prompt editor with ordered blocks and template variables inserted from the Variable Palette (bottom-left).}
 \label{fig:prompt-editor}
 \end{figure}
 
@@ -255,7 +255,7 @@ Evaluators see only the generated text without any indication of which model or 
 Each evaluation is organized as a \emph{scenario}\--a self-contained campaign that defines the type, assigns evaluators and distributes items\--supporting six types: rating, ranking, labeling, comparison, mail rating and authenticity.
 Scenarios are created from batch outputs with a single click or via an AI-assisted Scenario Wizard.
 
-\begin{figure}[!t]
+\begin{figure}[htb]
 \centering
 \includegraphics[width=\linewidth]{figures/provenance-analysis}
 \caption{Provenance analysis ranking model--prompt combinations by top-bucket hit rate (top) with per-combination bucket distributions (bottom).}

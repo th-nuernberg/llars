@@ -31,6 +31,7 @@ from services.chatbot.chat_rag_retrieval import ChatRAGRetrieval
 from services.chatbot.chat_conversation_service import ChatConversationService
 from llm.openai_utils import extract_delta_text, extract_message_text
 from services.llm.llm_client_factory import LLMClientFactory
+from services.llm.llm_execution_service import LLMExecutionService
 
 logger = logging.getLogger(__name__)
 
@@ -380,17 +381,16 @@ class ChatService:
         messages.append({"role": "user", "content": message})
 
         try:
-            completion_kwargs = {
-                "model": self.api_model_id,
-                "messages": messages,
-                "temperature": self.chatbot.temperature,
-                "top_p": self.chatbot.top_p,
-                "stream": True
-            }
-            if self.chatbot.max_tokens:
-                completion_kwargs["max_tokens"] = self.chatbot.max_tokens
-
-            stream = self.llm_client.chat.completions.create(**completion_kwargs)
+            stream = LLMExecutionService.execute_chat_completion(
+                self.llm_client,
+                model=self.api_model_id,
+                messages=messages,
+                stream=True,
+                temperature=self.chatbot.temperature,
+                top_p=self.chatbot.top_p,
+                max_tokens=self.chatbot.max_tokens,
+                model_key=self.api_model_id,
+            )
 
             accumulated = ""
             for chunk in stream:
@@ -597,22 +597,22 @@ class ChatService:
         Call the LLM API and return response with token counts.
         """
         try:
-            completion_kwargs = {
-                "model": self.api_model_id,
-                "messages": messages,
-                "temperature": self.chatbot.temperature,
-                "top_p": self.chatbot.top_p
-            }
-
             max_tokens = self.chatbot.max_tokens
             if max_tokens:
                 model_info = FileProcessor.get_model_info(self.chatbot.model_name)
                 if model_info and model_info.get("supports_reasoning"):
                     max_tokens = None
-            if max_tokens:
-                completion_kwargs["max_tokens"] = max_tokens
 
-            response = self.llm_client.chat.completions.create(**completion_kwargs)
+            response = LLMExecutionService.execute_chat_completion(
+                self.llm_client,
+                model=self.api_model_id,
+                messages=messages,
+                stream=False,
+                temperature=self.chatbot.temperature,
+                top_p=self.chatbot.top_p,
+                max_tokens=max_tokens,
+                model_key=self.api_model_id,
+            )
 
             response_text = ""
             if getattr(response, 'choices', None):

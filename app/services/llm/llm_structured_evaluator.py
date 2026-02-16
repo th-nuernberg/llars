@@ -42,6 +42,7 @@ from schemas.evaluation_schemas import (
 )
 from services.evaluation import PromptTemplateService, TokenTrackingService, BudgetExceededError
 from services.llm.llm_client_factory import LLMClientFactory
+from services.llm.llm_execution_service import LLMExecutionService
 
 logger = logging.getLogger(__name__)
 
@@ -427,12 +428,14 @@ class LLMStructuredEvaluator:
                 })
 
             try:
-                response = client.chat.completions.create(
-                    model=api_model_id,
+                response = LLMExecutionService.execute_chat_completion(
+                    client,
+                    model=model_id,
                     messages=messages,
                     temperature=0.2,
                     max_tokens=2000,
                     extra_body={"response_format": {"type": "json_object"}},
+                    model_key=model_id,
                 )
 
                 # Extract content and token counts

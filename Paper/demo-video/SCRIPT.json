@@ -425,7 +425,7 @@
         {
           "do": "type",
           "target": ".editor-block:nth-child(3) .ql-editor",
-          "text": "Subject: {{subject}} Content: {{content}}",
+          "text": "Subject: {{subject}}",
           "speed": "instant"
         }
       ]
@@ -445,7 +445,7 @@
     {
       "id": "prompt_eng_5a",
       "speaker": "moderator",
-      "narration": "Yes, exactly! Those are template variables. I can fill them with sample data right here to test the prompt. Let me add an email subject and a thread.",
+      "narration": "Yes, exactly! Those are template variables. You can insert them by dragging from the variable sidebar, or simply type them with double curly braces — like I just did. Let me set up sample data so we can test the prompt.",
       "actions": [
         {
           "do": "click",
@@ -525,9 +525,46 @@
       ]
     },
     {
+      "id": "prompt_eng_5a_try",
+      "speaker": "moderator",
+      "narration": "Now David, try adding the content variable yourself — just type it after the subject with double curly braces.",
+      "actions": [
+        {
+          "do": "wait",
+          "seconds": 0.3
+        }
+      ]
+    },
+    {
+      "id": "prompt_eng_5a_david",
+      "speaker": "guest",
+      "narration": "Alright, let me try — Content, double curly braces, content, close.",
+      "actions": [
+        {
+          "do": "click",
+          "target": "Last Block Editor"
+        },
+        {
+          "do": "wait",
+          "seconds": 0.2
+        },
+        {
+          "do": "type",
+          "target": "Last Block Editor",
+          "text": " Content: {{content}}",
+          "speed": "fast",
+          "cursor": "end"
+        },
+        {
+          "do": "wait",
+          "seconds": 0.5
+        }
+      ]
+    },
+    {
       "id": "prompt_eng_5a_react",
       "speaker": "guest",
-      "narration": "Can I define sample values here to try different inputs? Without switching to another tool?",
+      "narration": "That's intuitive. And I can test with different sample values right away — without switching to another tool?",
       "actions": [
         {
           "do": "wait",

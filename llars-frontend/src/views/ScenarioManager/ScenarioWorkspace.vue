@@ -366,6 +366,7 @@ const liveStats = computed(() => ({
   pairwiseAgreement: stats.value?.pairwise_agreement || stats.value?.ranking_agreement,
   functionType: liveFunctionType.value,
   bucket_distribution: stats.value?.bucket_distribution,
+  provenanceAnalysis: stats.value?.provenance_analysis,
   ranking_agreement: stats.value?.ranking_agreement,  // Deprecated, kept for backwards compatibility
   hasHumans: hasHumans.value,
   hasLLMs: hasLLMs.value

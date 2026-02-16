@@ -1742,6 +1742,7 @@ def get_scenario_stats(scenario_id):
                 'pairwise_agreement': stats_data.get('pairwise_agreement'),
                 # Ranking-specific stats
                 'bucket_distribution': stats_data.get('bucket_distribution'),
+                'provenance_analysis': stats_data.get('provenance_analysis'),
                 'ranking_agreement': stats_data.get('ranking_agreement'),
                 'agreement_metrics': {
                     'kappa': None,

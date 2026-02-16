@@ -3155,6 +3155,15 @@
       "interRaterAgreement": "Übereinstimmung zwischen Bewertern",
       "bucketDistribution": "Bucket-Verteilung",
       "rankingAgreement": "Bucket-Übereinstimmung",
+      "provenanceAnalysis": "Provenance-Analyse",
+      "provenanceDescription": "Zeigt, welche Generierungs-LLMs und Prompts am häufigsten im Top-Bucket ({bucket}) landen.",
+      "bestLLM": "Bestes Generierungs-LLM",
+      "bestPrompt": "Bester Prompt",
+      "modelRanking": "LLM-Ranking",
+      "promptRanking": "Prompt-Ranking",
+      "topBucketShare": "Top-Bucket-Anteil",
+      "assignments": "Zuordnungen",
+      "noProvenanceData": "Noch keine Provenance-Daten verfügbar",
       "rankingMetricsDescription": "Pro Zusammenfassung (Feature): Haben beide Evaluatoren diese Zusammenfassung in denselben Bucket einsortiert? Ordinal berechnet (Bucket-Krippendorff: gut=3 > mittel=2 > neutral=1 > schlecht=0).",
       "agreementLevel": "Übereinstimmungs-Level",
       "lowAgreement": "Niedrig",
@@ -3370,6 +3379,7 @@
       "spiderChart": "Vergleicht Durchschnittsbewertungen zwischen Menschen und LLMs über alle Dimensionen. Größere Flächen = höhere Durchschnittswerte.",
       "interRaterAgreement": "Zeigt die paarweise Übereinstimmung zwischen allen Bewertern. Grün = hohe Übereinstimmung, Rot = niedrige Übereinstimmung. Berechnet als Anteil der exakt übereinstimmenden Bewertungen (gerundet auf ganze Zahlen).",
       "bucketDistribution": "Zeigt wie viele Items in welchen Bucket (Gut/Mittel/Schlecht) einsortiert wurden. Aggregiert über alle menschlichen und LLM-Evaluatoren.",
+      "provenanceAnalysis": "Vergleicht die Herkunft bewerteter Inhalte (Generierungs-LLM und Prompt) und zeigt, welche Ursprünge am häufigsten im Top-Bucket landen.",
       "rankingAgreement": "Pro Zusammenfassung: Haben beide Evaluatoren sie in denselben Bucket sortiert? Gezählt als: Übereinstimmende Zusammenfassungen / Gemeinsam bewertete Zusammenfassungen. Metriken ordinal berechnet (Bucket-Krippendorff)."
     },
     "session": {

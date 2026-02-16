@@ -2389,7 +2389,7 @@ class Browser:
                         print(f"   ⚠️ Click fehlgeschlagen: {target} ({e})")
                 return
 
-    def type(self, target: str, text: str, speed: str = "fast"):
+    def type(self, target: str, text: str, speed: str = "fast", cursor: str = None):
         """Tippt Text in Element (inkl. contenteditable für Quill Editor)"""
         element = self._find_element(target)
         if element:
@@ -2409,6 +2409,26 @@ class Browser:
             except Exception:
                 self.driver.execute_script("arguments[0].click()", element)
             time.sleep(0.1)
+
+            # Move cursor if requested
+            if cursor == "end":
+                try:
+                    element.send_keys(Keys.COMMAND + Keys.END)
+                except Exception:
+                    try:
+                        element.send_keys(Keys.CONTROL + Keys.END)
+                    except Exception:
+                        pass
+                time.sleep(0.05)
+            elif cursor == "start":
+                try:
+                    element.send_keys(Keys.COMMAND + Keys.HOME)
+                except Exception:
+                    try:
+                        element.send_keys(Keys.CONTROL + Keys.HOME)
+                    except Exception:
+                        pass
+                time.sleep(0.05)
 
             # Check if it's a contenteditable element (Quill editor)
             is_contenteditable = element.get_attribute('contenteditable') == 'true'
@@ -4653,7 +4673,8 @@ class ScriptRunner:
                 # Im Test-Modus schneller tippen
                 speed = 'fast' if test_mode else action.get('speed', 'fast')
                 text = _resolve_env_placeholders(action.get('text', ''))
-                self.browser.type(target, text, speed)
+                cursor = action.get('cursor')
+                self.browser.type(target, text, speed, cursor=cursor)
                 print(f"   ✓ type: {target}")
                 return True
             else:

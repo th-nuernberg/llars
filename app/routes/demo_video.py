@@ -44,6 +44,14 @@ def cleanup():
     return jsonify(result)
 
 
+@demo_video_bp.route('/cleanup-live-prompt', methods=['POST'])
+@system_api_key_required
+def cleanup_live_prompt():
+    from services.demo_video_service import cleanup_live_prompt_only
+    result = cleanup_live_prompt_only()
+    return jsonify(result)
+
+
 @demo_video_bp.route('/reset', methods=['POST'])
 @system_api_key_required
 def reset():

@@ -515,6 +515,7 @@ export function useScenarioStats(scenarioIdRef) {
                               statsData.ranking_agreement || data.ranking_agreement,
           // Include ranking stats
           bucket_distribution: statsData.bucket_distribution || data.bucket_distribution,
+          provenance_analysis: statsData.provenance_analysis || data.provenance_analysis,
           ranking_agreement: statsData.ranking_agreement || data.ranking_agreement  // Deprecated
         }
       })

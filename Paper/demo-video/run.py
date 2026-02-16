@@ -517,6 +517,16 @@ ELEMENT_MAP = {
     "GPT-5 Nano Select Option": ".v-overlay--active .v-list-item:contains('GPT-5 Nano')",
     "GPT-5 Mini Select Option": ".v-overlay--active .v-list-item:contains('GPT-5 Mini')",
     "Sync Models Button": ".l-btn:contains('Sync'), .v-btn:contains('Sync'), .l-btn:contains('sync')",
+
+    # Provider Sharing
+    "Provider Actions Menu": ".provider-card:contains('OpenAI') .v-btn[icon='mdi-dots-vertical'], .provider-card:contains('OpenAI') button:has(.mdi-dots-vertical)",
+    "Provider Share Option": ".v-overlay--active .v-list-item:has(.mdi-share-variant), .v-list-item:contains('Share'):contains('mdi-share-variant'), .v-overlay--active .v-list-item:nth-child(3)",
+    "Share Dialog": ".v-dialog:has(.mdi-share-variant), .v-overlay--active .v-card:has(.mdi-share-variant)",
+    "Share User Search": ".l-user-search input, .l-user-search .v-autocomplete input, .v-dialog .l-user-search input",
+    "Share User Suggestion": ".v-overlay--active .user-suggestion, .v-overlay--active .v-list-item:contains('ijcai_reviewer_2')",
+    "Share Add Button": ".l-user-search .l-btn--primary, .l-user-search .l-btn:contains('Share')",
+    "Share Chip": ".v-dialog .v-chip, .v-dialog .v-chip:contains('ijcai_reviewer_2')",
+    "Share Dialog Close": ".v-dialog .l-btn--cancel:contains('Close'), .v-dialog .v-card-actions .l-btn--cancel",
     "Model List": ".model-list, .v-list:has(.v-list-item)",
     "GPT-5 Nano Model": ".v-list-item:contains('gpt-5-nano'), .v-list-item:contains('GPT-5 Nano'), .model-item:contains('gpt-5-nano')",
     "GPT-5 Model": ".v-list-item:contains('gpt-5'):not(:contains('nano')):not(:contains('mini')):not(:contains('5.')), .model-item:contains('gpt-5'):not(:contains('nano'))",
@@ -1433,6 +1443,55 @@ class Browser:
         font-size: 14px;
         color: rgba(255,255,255,0.35);
         letter-spacing: 0.5px;
+    }
+    /* === Summary Overlay === */
+    .summary-wrapper {
+        display: flex; flex-direction: column;
+        align-items: center; gap: 36px;
+    }
+    .summary-grid {
+        display: flex; gap: 28px;
+        align-items: stretch;
+    }
+    .summary-card {
+        width: 260px;
+        padding: 28px 24px;
+        border-radius: 16px 4px 16px 4px;
+        border: 1px solid rgba(255,255,255,0.1);
+        display: flex; flex-direction: column;
+        align-items: center; text-align: center;
+        opacity: 0;
+        animation: summary-fade 0.6s ease forwards;
+    }
+    .summary-card:nth-child(1) { animation-delay: 0.3s; }
+    .summary-card:nth-child(2) { animation-delay: 0.6s; }
+    .summary-card:nth-child(3) { animation-delay: 0.9s; }
+    .summary-card:nth-child(4) { animation-delay: 1.2s; }
+    @keyframes summary-fade {
+        from { opacity: 0; transform: translateY(12px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    .summary-card-icon {
+        font-size: 28px; margin-bottom: 12px;
+    }
+    .summary-card-title {
+        font-family: 'Segoe UI', system-ui, sans-serif;
+        font-size: 16px; font-weight: 700;
+        color: #fff;
+        margin-bottom: 8px;
+    }
+    .summary-card-features {
+        font-family: 'Segoe UI', system-ui, sans-serif;
+        font-size: 13px; color: rgba(255,255,255,0.55);
+        line-height: 1.6;
+    }
+    .summary-footer {
+        margin-top: 12px;
+        font-family: 'Segoe UI', system-ui, sans-serif;
+        font-size: 14px; color: rgba(255,255,255,0.3);
+        letter-spacing: 0.5px;
+        opacity: 0;
+        animation: summary-fade 0.6s ease 1.8s forwards;
     }
     """
 
@@ -2839,6 +2898,124 @@ class Browser:
             });
         """)
         print(f"   🎬 show_data_preview")
+
+    def show_summary(self, columns: list = None):
+        """Shows a summary overlay with four feature cards, matching LLARS design colors.
+
+        Cards stagger-animate in from left to right.
+        Optional credentials columns at the bottom.
+        """
+        self._inject_styles()
+
+        columns_js = ""
+        if columns:
+            import json
+            columns_js = f"var cols = {json.dumps(columns)};"
+            columns_js += """
+            if (cols && cols.length) {
+                var cWrap = document.createElement('div');
+                cWrap.className = 'llars-overlay-columns';
+                cWrap.style.marginTop = '28px';
+                cols.forEach(function(col){
+                    var c = document.createElement('div');
+                    c.className = 'llars-overlay-column';
+                    (col || []).forEach(function(item){
+                        var l = document.createElement('div');
+                        l.className = 'llars-overlay-cred-label';
+                        l.textContent = item.label || '';
+                        var v = document.createElement('div');
+                        v.className = 'llars-overlay-cred-value';
+                        v.textContent = item.value || '';
+                        c.appendChild(l);
+                        c.appendChild(v);
+                    });
+                    cWrap.appendChild(c);
+                });
+                wrapper.appendChild(cWrap);
+            }
+            """
+
+        self.driver.execute_script(f"""
+            var old = document.getElementById('llars-overlay');
+            if (old) old.remove();
+
+            var overlay = document.createElement('div');
+            overlay.id = 'llars-overlay';
+            overlay.className = 'llars-overlay';
+
+            var t = document.createElement('div');
+            t.className = 'llars-overlay-title';
+            t.textContent = 'LLARS';
+            overlay.appendChild(t);
+
+            var s = document.createElement('div');
+            s.className = 'llars-overlay-subtitle';
+            s.textContent = 'LLM Assisted Research System';
+            overlay.appendChild(s);
+
+            var wrapper = document.createElement('div');
+            wrapper.className = 'summary-wrapper';
+
+            var grid = document.createElement('div');
+            grid.className = 'summary-grid';
+
+            var cards = [
+                {{
+                    color: '#B0CA97',
+                    icon: '\\u270F',
+                    title: 'Prompt Engineering',
+                    features: 'Real-time collaboration\\nVersion control\\nVariable system'
+                }},
+                {{
+                    color: '#88C4C8',
+                    icon: '\\u26A1',
+                    title: 'Batch Generation',
+                    features: 'Multi-model comparison\\nDataset processing\\nBring your own models'
+                }},
+                {{
+                    color: '#D1BC8A',
+                    icon: '\\u2696',
+                    title: 'Evaluation',
+                    features: 'LLM-as-Evaluator\\nBucket Ranking\\nLive agreement metrics'
+                }},
+                {{
+                    color: '#E8A087',
+                    icon: '\\u2728',
+                    title: 'Open Source',
+                    features: 'Domain-agnostic\\nSelf-hosted\\ngithub.com/llars'
+                }}
+            ];
+
+            cards.forEach(function(card) {{
+                var c = document.createElement('div');
+                c.className = 'summary-card';
+                c.style.background = 'rgba(255,255,255,0.03)';
+                c.style.borderColor = card.color + '33';
+                c.innerHTML = '<div class="summary-card-icon" style="color:' + card.color + '">' + card.icon + '</div>'
+                    + '<div class="summary-card-title" style="color:' + card.color + '">' + card.title + '</div>'
+                    + '<div class="summary-card-features">' + card.features.replace(/\\n/g, '<br>') + '</div>';
+                grid.appendChild(c);
+            }});
+
+            wrapper.appendChild(grid);
+
+            var footer = document.createElement('div');
+            footer.className = 'summary-footer';
+            footer.textContent = 'Try it live — credentials below';
+            wrapper.appendChild(footer);
+
+            {columns_js}
+
+            overlay.appendChild(wrapper);
+            document.body.appendChild(overlay);
+
+            requestAnimationFrame(function() {{
+                requestAnimationFrame(function() {{
+                    overlay.classList.add('visible');
+                }});
+            }});
+        """)
+        print(f"   🎬 show_summary")
 
     def do_visible_login(self, username: str, password: str):
         """Performs login visibly with typed credentials (for recording)."""
@@ -4673,6 +4850,16 @@ class ScriptRunner:
             else:
                 time.sleep(0.5)  # Wait for fade-in
             print(f"   ✓ show_data_preview")
+            return True
+
+        elif do == 'show_summary':
+            columns = action.get('columns', None)
+            self.browser.show_summary(columns=columns)
+            if test_mode:
+                time.sleep(0.3)
+            else:
+                time.sleep(0.5)  # Wait for fade-in
+            print(f"   ✓ show_summary")
             return True
 
         elif do == 'scroll_to':

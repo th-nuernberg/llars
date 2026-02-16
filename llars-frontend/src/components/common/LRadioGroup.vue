@@ -8,8 +8,8 @@
     role="radiogroup"
     :aria-label="label"
   >
-    <div v-if="label" class="l-radio-group__label">
-      {{ label }}
+    <div v-if="$slots.label || label" class="l-radio-group__label">
+      <slot name="label">{{ label }}</slot>
     </div>
     <div class="l-radio-group__options">
       <LRadio

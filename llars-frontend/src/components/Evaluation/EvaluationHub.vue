@@ -33,6 +33,8 @@
             :key="scenario.id"
             class="scenario-card"
             :class="{ 'is-completed': getProgress(scenario).percent === 100 }"
+            :data-scenario-id="scenario.id"
+            :ref="(element) => registerScenarioCard(scenario.id, element)"
             @click="goToEvaluation(scenario)"
           >
             <!-- Header Row: Icon, Type Tag, Status Badge -->
@@ -81,16 +83,39 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from 'axios'
+import { useAuth } from '@/composables/useAuth'
 import { useSkeletonLoading } from '@/composables/useSkeletonLoading'
 
 const router = useRouter()
+const { tokenParsed } = useAuth()
 const { isLoading, withLoading } = useSkeletonLoading(['scenarios'])
 
 // All scenarios from backend
 const allScenarios = ref([])
+const currentUserId = computed(() => {
+  return tokenParsed.value?.sub ? String(tokenParsed.value.sub) : ''
+})
+const currentUsername = computed(() => {
+  const storedUsername = typeof window !== 'undefined' ? localStorage.getItem('username') : ''
+  return tokenParsed.value?.preferred_username ||
+    tokenParsed.value?.username ||
+    tokenParsed.value?.name ||
+    storedUsername ||
+    ''
+})
+
+const scenarioCardElements = new Map()
+const pendingScenarioStats = []
+const queuedScenarioIds = new Set()
+const loadingScenarioIds = new Set()
+const resolvedScenarioIds = new Set()
+const MAX_CONCURRENT_STATS_REQUESTS = 3
+
+let scenarioCardObserver = null
+let activeStatsRequests = 0
 
 // Type configuration
 const typeConfigs = {
@@ -147,10 +172,164 @@ function getStatus(scenario) {
   return 'pending'
 }
 
+function registerScenarioCard(scenarioId, element) {
+  const existingElement = scenarioCardElements.get(scenarioId)
+  if (existingElement && scenarioCardObserver) {
+    scenarioCardObserver.unobserve(existingElement)
+  }
+
+  if (!element) {
+    scenarioCardElements.delete(scenarioId)
+    return
+  }
+
+  scenarioCardElements.set(scenarioId, element)
+  element.dataset.scenarioId = String(scenarioId)
+
+  if (scenarioCardObserver) {
+    scenarioCardObserver.observe(element)
+  }
+}
+
+function buildUserProgressFromStats(statsData, fallbackTotal = 0) {
+  const userId = currentUserId.value
+  const username = currentUsername.value
+  if (!userId && !username) {
+    return null
+  }
+  const normalizedUsername = username ? username.toLowerCase() : ''
+
+  const raterStats = Array.isArray(statsData?.rater_stats) ? statsData.rater_stats : []
+  const evaluatorStats = Array.isArray(statsData?.evaluator_stats) ? statsData.evaluator_stats : []
+  const humanEvaluatorStats = evaluatorStats.filter(entry => !entry?.is_llm)
+  const allHumanStats = [...raterStats, ...humanEvaluatorStats]
+  const userStat = allHumanStats.find(
+    entry => (
+      (userId && String(entry?.user_id || '') === userId) ||
+      (normalizedUsername && String(entry?.username || '').toLowerCase() === normalizedUsername)
+    )
+  )
+
+  if (!userStat) {
+    return null
+  }
+
+  const completed = Number(userStat.done_threads ?? userStat.voted_count ?? 0)
+  const progressing = Number(userStat.progressing_threads ?? 0)
+  const total = Number(userStat.total_threads ?? fallbackTotal)
+
+  return { completed, progressing, total }
+}
+
+async function loadScenarioStats(scenarioId) {
+  try {
+    const response = await axios.get(`/api/scenarios/${scenarioId}/stats`)
+    const scenarioIndex = allScenarios.value.findIndex(scenario => scenario.id === scenarioId)
+    if (scenarioIndex < 0) {
+      return
+    }
+
+    const scenario = allScenarios.value[scenarioIndex]
+    const userProgress = buildUserProgressFromStats(response.data, scenario.thread_count)
+    if (!userProgress) {
+      return
+    }
+
+    allScenarios.value[scenarioIndex] = {
+      ...scenario,
+      user_progress: userProgress
+    }
+  } catch (error) {
+    console.warn(`Error loading stats for scenario ${scenarioId}:`, error)
+  }
+}
+
+function processStatsQueue() {
+  while (activeStatsRequests < MAX_CONCURRENT_STATS_REQUESTS && pendingScenarioStats.length > 0) {
+    const scenarioId = pendingScenarioStats.shift()
+    queuedScenarioIds.delete(scenarioId)
+
+    if (resolvedScenarioIds.has(scenarioId) || loadingScenarioIds.has(scenarioId)) {
+      continue
+    }
+
+    activeStatsRequests += 1
+    loadingScenarioIds.add(scenarioId)
+
+    loadScenarioStats(scenarioId)
+      .finally(() => {
+        activeStatsRequests -= 1
+        loadingScenarioIds.delete(scenarioId)
+        resolvedScenarioIds.add(scenarioId)
+        processStatsQueue()
+      })
+  }
+}
+
+function queueScenarioStatsLoad(scenarioId) {
+  if (
+    resolvedScenarioIds.has(scenarioId) ||
+    queuedScenarioIds.has(scenarioId) ||
+    loadingScenarioIds.has(scenarioId)
+  ) {
+    return
+  }
+
+  queuedScenarioIds.add(scenarioId)
+  pendingScenarioStats.push(scenarioId)
+  processStatsQueue()
+}
+
+function observeScenarioCards() {
+  if (!scenarioCardObserver) {
+    return
+  }
+
+  for (const element of scenarioCardElements.values()) {
+    scenarioCardObserver.observe(element)
+  }
+}
+
+function setupScenarioCardObserver() {
+  if (scenarioCardObserver) {
+    scenarioCardObserver.disconnect()
+  }
+
+  if (typeof window === 'undefined' || typeof window.IntersectionObserver !== 'function') {
+    availableScenarios.value.forEach(scenario => queueScenarioStatsLoad(scenario.id))
+    return
+  }
+
+  scenarioCardObserver = new window.IntersectionObserver(
+    entries => {
+      entries.forEach(entry => {
+        if (!entry.isIntersecting) {
+          return
+        }
+
+        const scenarioId = Number(entry.target?.dataset?.scenarioId)
+        if (!Number.isFinite(scenarioId)) {
+          return
+        }
+
+        queueScenarioStatsLoad(scenarioId)
+        scenarioCardObserver?.unobserve(entry.target)
+      })
+    },
+    {
+      root: null,
+      rootMargin: '160px 0px',
+      threshold: 0.1
+    }
+  )
+
+  observeScenarioCards()
+}
+
 async function fetchScenarios() {
   try {
     const response = await axios.get('/api/scenarios', {
-      params: { filter: 'all', include_stats: 'true' }
+      params: { filter: 'all', include_stats: 'false' }
     })
     allScenarios.value = response.data.scenarios || []
   } catch (error) {
@@ -169,6 +348,24 @@ function goHome() {
 
 onMounted(async () => {
   await withLoading('scenarios', fetchScenarios)
+  await nextTick()
+  setupScenarioCardObserver()
+})
+
+watch(
+  () => availableScenarios.value.map(scenario => scenario.id).join(','),
+  async () => {
+    await nextTick()
+    observeScenarioCards()
+  }
+)
+
+onBeforeUnmount(() => {
+  if (scenarioCardObserver) {
+    scenarioCardObserver.disconnect()
+    scenarioCardObserver = null
+  }
+  scenarioCardElements.clear()
 })
 </script>
 

@@ -54,49 +54,43 @@
 
         <div class="source-options">
           <!-- Previous Generation Source -->
-          <LTooltip :text="$t('generation.wizard.step1.fromJobTooltip')" location="bottom">
-            <div
-              class="source-card"
-              :class="{ selected: formData.sourceType === 'from_job' }"
-              @click="selectSourceType('from_job')"
-            >
-              <div class="source-icon" style="background-color: rgba(176, 202, 151, 0.2);">
-                <LIcon color="primary" size="32">mdi-history</LIcon>
-              </div>
-              <h4>{{ $t('generation.wizard.step1.fromJobSource') }}</h4>
-              <p>{{ $t('generation.wizard.step1.fromJobSourceDesc') }}</p>
+          <div
+            class="source-card"
+            :class="{ selected: formData.sourceType === 'from_job' }"
+            @click="selectSourceType('from_job')"
+          >
+            <div class="source-icon" style="background-color: rgba(176, 202, 151, 0.2);">
+              <LIcon color="primary" size="32">mdi-history</LIcon>
             </div>
-          </LTooltip>
+            <h4>{{ $t('generation.wizard.step1.fromJobSource') }}</h4>
+            <p>{{ $t('generation.wizard.step1.fromJobSourceDesc') }}</p>
+          </div>
 
           <!-- Manual Data Source -->
-          <LTooltip :text="$t('generation.wizard.step1.manualTooltip')" location="bottom">
-            <div
-              class="source-card"
-              :class="{ selected: formData.sourceType === 'manual' }"
-              @click="selectSourceType('manual')"
-            >
-              <div class="source-icon" style="background-color: rgba(136, 196, 200, 0.2);">
-                <LIcon color="accent" size="32">mdi-file-upload-outline</LIcon>
-              </div>
-              <h4>{{ $t('generation.wizard.step1.manualSource') }}</h4>
-              <p>{{ $t('generation.wizard.step1.manualSourceDesc') }}</p>
+          <div
+            class="source-card"
+            :class="{ selected: formData.sourceType === 'manual' }"
+            @click="selectSourceType('manual')"
+          >
+            <div class="source-icon" style="background-color: rgba(136, 196, 200, 0.2);">
+              <LIcon color="accent" size="32">mdi-file-upload-outline</LIcon>
             </div>
-          </LTooltip>
+            <h4>{{ $t('generation.wizard.step1.manualSource') }}</h4>
+            <p>{{ $t('generation.wizard.step1.manualSourceDesc') }}</p>
+          </div>
 
           <!-- Prompt Template Source -->
-          <LTooltip :text="$t('generation.wizard.step1.promptOnlyTooltip')" location="bottom">
-            <div
-              class="source-card"
-              :class="{ selected: formData.sourceType === 'prompt_only' }"
-              @click="selectSourceType('prompt_only')"
-            >
-              <div class="source-icon" style="background-color: rgba(209, 188, 138, 0.2);">
-                <LIcon color="secondary" size="32">mdi-text-box-multiple-outline</LIcon>
-              </div>
-              <h4>{{ $t('generation.wizard.step1.promptOnlySource') }}</h4>
-              <p>{{ $t('generation.wizard.step1.promptOnlySourceDesc') }}</p>
+          <div
+            class="source-card"
+            :class="{ selected: formData.sourceType === 'prompt_only' }"
+            @click="selectSourceType('prompt_only')"
+          >
+            <div class="source-icon" style="background-color: rgba(209, 188, 138, 0.2);">
+              <LIcon color="secondary" size="32">mdi-text-box-multiple-outline</LIcon>
             </div>
-          </LTooltip>
+            <h4>{{ $t('generation.wizard.step1.promptOnlySource') }}</h4>
+            <p>{{ $t('generation.wizard.step1.promptOnlySourceDesc') }}</p>
+          </div>
         </div>
 
         <!-- Job Selection -->

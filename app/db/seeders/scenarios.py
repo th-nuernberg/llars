@@ -35,6 +35,14 @@ DEMO_PROVENANCE_EVALUATORS = [
 ]
 
 
+def _has_demo_model_prefix(content: str | None) -> bool:
+    """Detect legacy demo content that starts with a generation model name prefix."""
+    normalized = str(content or "").strip().lower()
+    if not normalized:
+        return False
+    return any(normalized.startswith(f"{model_name.lower()}:") for model_name in DEMO_PROVENANCE_GENERATION_MODELS)
+
+
 def _is_development_mode() -> bool:
     """Check if running in development mode for extended demo data."""
     project_state = os.environ.get('PROJECT_STATE', '').lower()
@@ -59,29 +67,30 @@ def _deterministic_bucket(item_id: int, feature_id: int, evaluator_model_id: str
 
 def _build_demo_feature_content(prompt_name: str, model_name: str, source_text: str) -> str:
     """Build concise synthetic ranking feature content for demo provenance."""
+    _ = model_name  # Model provenance stays in llm_id metadata, not visible text content.
     compact_source = " ".join((source_text or "").split())
     if len(compact_source) > 220:
         compact_source = f"{compact_source[:217]}..."
 
     templates = {
         "Situation Summary": (
-            f"{model_name}: Die Situation zeigt eine komplexe Belastung mit mehreren "
+            "Die Situation zeigt eine komplexe Belastung mit mehreren "
             f"gleichzeitigen Anforderungen. {compact_source}"
         ),
         "Client Needs": (
-            f"{model_name}: Im Fokus stehen Klärung, Struktur und alltagstaugliche "
+            "Im Fokus stehen Klärung, Struktur und alltagstaugliche "
             f"Unterstützungsschritte. {compact_source}"
         ),
         "Recommended Actions": (
-            f"{model_name}: Empfohlen werden priorisierte Sofortmaßnahmen, "
+            "Empfohlen werden priorisierte Sofortmaßnahmen, "
             f"ein klarer Ablaufplan und verbindliche Follow-ups. {compact_source}"
         ),
         "Risk Assessment": (
-            f"{model_name}: Das Risiko ist moderat bis erhöht, wenn keine "
+            "Das Risiko ist moderat bis erhöht, wenn keine "
             f"zeitnahe Stabilisierung erfolgt. {compact_source}"
         ),
     }
-    return templates.get(prompt_name, f"{model_name}: {compact_source}")
+    return templates.get(prompt_name, compact_source)
 
 
 def _is_demo_ranking_already_balanced(
@@ -115,6 +124,8 @@ def _is_demo_ranking_already_balanced(
     per_item_combo_count = {}
     for feature in item_features:
         if feature.llm_id not in model_ids or feature.type_id not in type_ids:
+            return False
+        if _has_demo_model_prefix(feature.content):
             return False
         key = (feature.item_id, feature.llm_id, feature.type_id)
         per_item_combo_count[key] = per_item_combo_count.get(key, 0) + 1

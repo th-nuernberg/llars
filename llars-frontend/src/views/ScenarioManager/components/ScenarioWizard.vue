@@ -228,7 +228,7 @@
               class="type-card"
               :class="{
                 selected: formData.evalType === type.id,
-                suggested: analysisResult?.suggestedType === type.id
+                suggested: suggestedEvalType === type.id
               }"
               @click="selectEvalType(type.id)"
             >
@@ -240,7 +240,7 @@
               <div class="type-check" v-if="formData.evalType === type.id">
                 <LIcon color="primary">mdi-check-circle</LIcon>
               </div>
-              <LTag v-if="analysisResult?.suggestedType === type.id" variant="warning" size="small" class="suggested-tag">
+              <LTag v-if="suggestedEvalType === type.id" variant="warning" size="small" class="suggested-tag">
                 {{ $t('scenarioManager.wizard.step2.recommended') }}
               </LTag>
             </div>
@@ -264,7 +264,7 @@
               class="type-card type-card--llars"
               :class="{
                 selected: formData.evalType === type.id,
-                suggested: analysisResult?.suggestedType === type.id
+                suggested: suggestedEvalType === type.id
               }"
               @click="selectEvalType(type.id)"
             >
@@ -280,7 +280,7 @@
               <div class="type-check" v-if="formData.evalType === type.id">
                 <LIcon color="accent">mdi-check-circle</LIcon>
               </div>
-              <LTag v-if="analysisResult?.suggestedType === type.id" variant="warning" size="small" class="suggested-tag">
+              <LTag v-if="suggestedEvalType === type.id" variant="warning" size="small" class="suggested-tag">
                 {{ $t('scenarioManager.wizard.step2.recommended') }}
               </LTag>
             </div>
@@ -361,26 +361,58 @@
           <div class="config-section">
             <LRadioGroup
               v-model="formData.config.distribution_mode"
-              :label="$t('scenarioManager.wizard.step3.distribution')"
               :options="distributionOptions"
               row
-            />
+            >
+              <template #label>
+                <span class="config-label-inline">
+                  <span>{{ $t('scenarioManager.wizard.step3.distribution') }}</span>
+                  <LInfoTooltip
+                    :text="$t('scenarioManager.wizard.step3.distributionTooltip')"
+                    :aria-label="$t('scenarioManager.wizard.step3.distribution')"
+                    location="bottom"
+                    max-width="420"
+                    size="x-small"
+                  />
+                </span>
+              </template>
+            </LRadioGroup>
           </div>
 
           <div class="config-section">
             <LRadioGroup
               v-model="formData.config.order_mode"
-              :label="$t('scenarioManager.wizard.step3.order')"
               :options="orderOptions"
               row
-            />
+            >
+              <template #label>
+                <span class="config-label-inline">
+                  <span>{{ $t('scenarioManager.wizard.step3.order') }}</span>
+                  <LInfoTooltip
+                    :text="$t('scenarioManager.wizard.step3.orderTooltip')"
+                    :aria-label="$t('scenarioManager.wizard.step3.order')"
+                    location="bottom"
+                    max-width="420"
+                    size="x-small"
+                  />
+                </span>
+              </template>
+            </LRadioGroup>
           </div>
 
-          <div class="config-section">
-            <LSwitch
-              v-model="formData.config.enable_llm_evaluation"
-              :label="$t('scenarioManager.wizard.step3.enableLLM')"
-            />
+          <div v-if="showSplitByPromptOption" class="config-section">
+            <LSwitch v-model="splitByPromptEnabled">
+              <span class="split-prompt-label">
+                <span>{{ $t('scenarioManager.evalConfig.ranking.splitByPrompt') }}</span>
+                <LInfoTooltip
+                  :text="$t('scenarioManager.evalConfig.ranking.splitByPromptTooltip')"
+                  :aria-label="$t('scenarioManager.evalConfig.ranking.splitByPrompt')"
+                  location="bottom"
+                  max-width="380"
+                  size="x-small"
+                />
+              </span>
+            </LSwitch>
           </div>
         </div>
       </div>
@@ -722,10 +754,10 @@
               <span class="summary-label">{{ $t('scenarioManager.wizard.step5.distribution') }}</span>
               <span class="summary-value">{{ $t(`scenarioManager.wizard.step3.distribution${capitalize(formData.config.distribution_mode)}`) }}</span>
             </div>
-            <div class="summary-row">
-              <span class="summary-label">{{ $t('scenarioManager.wizard.step5.llmEnabled') }}</span>
-              <LIcon :color="formData.config.enable_llm_evaluation ? 'success' : 'grey'">
-                {{ formData.config.enable_llm_evaluation ? 'mdi-check-circle' : 'mdi-close-circle' }}
+            <div class="summary-row" v-if="showSplitByPromptOption">
+              <span class="summary-label">{{ $t('scenarioManager.evalConfig.ranking.splitByPrompt') }}</span>
+              <LIcon :color="splitByPromptEnabled ? 'success' : 'grey'">
+                {{ splitByPromptEnabled ? 'mdi-check-circle' : 'mdi-close-circle' }}
               </LIcon>
             </div>
           </div>
@@ -957,8 +989,7 @@ const formData = ref({
   evalConfig: null,
   config: {
     distribution_mode: 'all',
-    order_mode: 'random',
-    enable_llm_evaluation: true
+    order_mode: 'random'
   }
 })
 
@@ -971,6 +1002,41 @@ const rules = {
 // Computed
 const selectedTypeInfo = computed(() => {
   return evaluationTypes.value.find(t => t.id === formData.value.evalType)
+})
+
+const suggestedEvalType = computed(() => {
+  if (props.generationJobId) return EVAL_TYPES.RANKING
+  return analysisResult.value?.suggestedType || null
+})
+
+const isGenerationData = computed(() => {
+  return Boolean(props.generationJobId) || analyzedData.value.some(item => item?._source === 'generation')
+})
+
+const isRankingType = computed(() => getBaseType(formData.value.evalType) === EVAL_TYPES.RANKING)
+
+const showSplitByPromptOption = computed(() => isRankingType.value && isGenerationData.value)
+
+function ensureEvalConfigInitialized() {
+  if (!formData.value.evalConfig) {
+    const evalType = formData.value.evalType || EVAL_TYPES.RANKING
+    formData.value.evalConfig = {
+      presetId: null,
+      config: getDefaultConfig(evalType) || {}
+    }
+  }
+
+  if (!formData.value.evalConfig.config) {
+    formData.value.evalConfig.config = {}
+  }
+}
+
+const splitByPromptEnabled = computed({
+  get: () => Boolean(formData.value.evalConfig?.config?.splitByPrompt),
+  set: (value) => {
+    ensureEvalConfigInitialized()
+    formData.value.evalConfig.config.splitByPrompt = Boolean(value)
+  }
 })
 
 // Radio options for distribution settings
@@ -1022,7 +1088,7 @@ const canProceed = computed(() => {
   }
   if (currentStep.value === 3) {
     // Step 4: Team - need at least one evaluator (human or LLM)
-    return selectedUsers.value.length > 0 || selectedLLMs.value.length > 0
+    return selectedUsers.value.length > 0 || selectedLLMs.value.length > 0 || selectedProviders.value.length > 0
   }
   return true
 })
@@ -1910,13 +1976,8 @@ async function createScenario() {
     // Map eval type to function_type_id for backend compatibility
     const functionTypeId = ID_TYPE_MAP[formData.value.evalType] || 2
 
-    const llmEvaluators = formData.value.config.enable_llm_evaluation
-      ? selectedLLMs.value.map(l => l.model_id).filter(Boolean)
-      : []
-
-    const providerEvaluators = formData.value.config.enable_llm_evaluation
-      ? selectedProviders.value.map(p => buildProviderEvaluatorId(p)).filter(Boolean)
-      : []
+    const llmEvaluators = selectedLLMs.value.map(l => l.model_id).filter(Boolean)
+    const providerEvaluators = selectedProviders.value.map(p => buildProviderEvaluatorId(p)).filter(Boolean)
 
     const combinedEvaluators = [...llmEvaluators, ...providerEvaluators]
 
@@ -1928,6 +1989,7 @@ async function createScenario() {
         ...formData.value.config,
         eval_type: formData.value.evalType,
         eval_config: formData.value.evalConfig,
+        enable_llm_evaluation: combinedEvaluators.length > 0,
         llm_evaluators: combinedEvaluators
       }
     }
@@ -2750,6 +2812,18 @@ onMounted(() => {
   font-weight: 600;
   margin-bottom: 8px;
   color: rgb(var(--v-theme-on-surface));
+}
+
+.config-label-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.split-prompt-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }
 
 /* Summary */

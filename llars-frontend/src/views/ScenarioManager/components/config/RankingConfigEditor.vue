@@ -29,12 +29,6 @@
         :label="$t('scenarioManager.evalConfig.ranking.showPositions')"
         @update:modelValue="emitUpdate"
       />
-      <LSwitch
-        v-if="localConfig.type === 'buckets'"
-        v-model="localConfig.splitByPrompt"
-        :label="$t('scenarioManager.evalConfig.ranking.splitByPrompt')"
-        @update:modelValue="emitUpdate"
-      />
     </div>
 
     <!-- Buckets Editor (for bucket-based ranking) -->

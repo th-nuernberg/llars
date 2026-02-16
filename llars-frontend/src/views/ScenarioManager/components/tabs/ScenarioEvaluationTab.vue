@@ -1902,8 +1902,9 @@ function getLocalizedBucketFallback(value) {
 
 function resolveLocalizedBucketLabel(bucketId, fallbackLabel = '') {
   const normalizedId = normalizeAgreementBucketValue(bucketId)
-  if (normalizedId && configuredBucketLabelsById.value[normalizedId]) {
-    return configuredBucketLabelsById.value[normalizedId]
+  const configuredLabels = configuredBucketLabelsById.value || {}
+  if (normalizedId && configuredLabels[normalizedId]) {
+    return configuredLabels[normalizedId]
   }
 
   const normalizedFallback = normalizeAgreementBucketValue(fallbackLabel)
@@ -1965,19 +1966,21 @@ const configuredBuckets = computed(() => {
       if (typeof bucket === 'string') {
         const id = String(bucket || `bucket_${index + 1}`).trim().toLowerCase()
         if (!id) return null
+        const fallbackLabel = getLocalizedBucketFallback(id) || String(bucket)
         return {
           id,
-          label: resolveLocalizedBucketLabel(id, bucket),
+          label: fallbackLabel,
           color: '#88c4c8'
         }
       }
       if (typeof bucket !== 'object') return null
       const id = String(bucket.id || `bucket_${index + 1}`).trim().toLowerCase()
       const name = bucket.name
-      const label = resolveLocalizedText(name, id)
+      const localizedName = resolveLocalizedText(name, '')
+      const label = String(localizedName || getLocalizedBucketFallback(id) || id)
       return {
         id,
-        label: resolveLocalizedBucketLabel(id, String(label || id)),
+        label,
         color: bucket.color || '#88c4c8'
       }
     })

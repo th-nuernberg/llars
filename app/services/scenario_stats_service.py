@@ -93,6 +93,23 @@ def _humanize_bucket_identifier(value: str) -> str:
     return " ".join(word[:1].upper() + word[1:] for word in words)
 
 
+def _normalize_provenance_text(value: Any) -> str:
+    """Normalize generated text/content for resilient provenance matching."""
+    if value is None:
+        return ""
+    return " ".join(str(value).split())
+
+
+def _normalize_model_identity(value: Any) -> str:
+    """Normalize model labels to alphanumeric lowercase for fuzzy matching."""
+    if value is None:
+        return ""
+    text = str(value).strip().lower()
+    if not text:
+        return ""
+    return "".join(ch for ch in text if ch.isalnum())
+
+
 def _extract_ranking_bucket_config(config: Dict[str, Any]) -> List[Dict[str, str]]:
     """
     Extract ranking bucket definitions from all supported config paths.
@@ -2225,6 +2242,29 @@ def _calculate_ranking_provenance_analysis(scenario_id: int) -> Dict[str, Any]:
         return response
 
     item_provenance: Dict[int, Dict[str, Any]] = {}
+    outputs: List[GeneratedOutput] = []
+    template_names: Dict[int, str] = {}
+
+    def _serialize_output_provenance(output: GeneratedOutput, source: str = "generation_output") -> Dict[str, Any]:
+        model_label = (output.llm_model_name or "").strip() or "Unknown LLM"
+        variant_name = (output.prompt_variant_name or "").strip()
+        template_name = (template_names.get(output.prompt_template_id) or "").strip()
+
+        if variant_name and template_name and variant_name.lower() != template_name.lower():
+            prompt_label = f"{variant_name} / {template_name}"
+        else:
+            prompt_label = variant_name or template_name or "Unknown prompt"
+
+        prompt_key = variant_name or template_name or "unknown_prompt"
+
+        return {
+            "llm_key": model_label,
+            "llm_label": model_label,
+            "prompt_key": prompt_key,
+            "prompt_label": prompt_label,
+            "source": source,
+        }
+
     if source_generation_job_id:
         outputs = (
             GeneratedOutput.query
@@ -2235,31 +2275,10 @@ def _calculate_ranking_provenance_analysis(scenario_id: int) -> Dict[str, Any]:
 
         if outputs:
             template_ids = {o.prompt_template_id for o in outputs if o.prompt_template_id}
-            template_names: Dict[int, str] = {}
             if template_ids:
                 template_names = {
                     tpl.id: tpl.name
                     for tpl in PromptTemplate.query.filter(PromptTemplate.id.in_(template_ids)).all()
-                }
-
-            def _serialize_output_provenance(output: GeneratedOutput, source: str = "generation_output") -> Dict[str, Any]:
-                model_label = (output.llm_model_name or "").strip() or "Unknown LLM"
-                variant_name = (output.prompt_variant_name or "").strip()
-                template_name = (template_names.get(output.prompt_template_id) or "").strip()
-
-                if variant_name and template_name and variant_name.lower() != template_name.lower():
-                    prompt_label = f"{variant_name} / {template_name}"
-                else:
-                    prompt_label = variant_name or template_name or "Unknown prompt"
-
-                prompt_key = variant_name or template_name or "unknown_prompt"
-
-                return {
-                    "llm_key": model_label,
-                    "llm_label": model_label,
-                    "prompt_key": prompt_key,
-                    "prompt_label": prompt_label,
-                    "source": source,
                 }
 
             if len(outputs) == len(item_ids):
@@ -2346,6 +2365,50 @@ def _calculate_ranking_provenance_analysis(scenario_id: int) -> Dict[str, Any]:
     if not features:
         return response
 
+    outputs_by_content: Dict[str, List[GeneratedOutput]] = defaultdict(list)
+    for output in outputs:
+        normalized_content = _normalize_provenance_text(output.generated_content)
+        if normalized_content:
+            outputs_by_content[normalized_content].append(output)
+    used_output_ids_for_feature = set()
+
+    def _find_output_for_feature(feature: Feature) -> Optional[GeneratedOutput]:
+        normalized_feature_content = _normalize_provenance_text(feature.content)
+        if not normalized_feature_content:
+            return None
+
+        candidates = outputs_by_content.get(normalized_feature_content, [])
+        if not candidates:
+            return None
+
+        feature_item_id = getattr(feature, "item_id", None)
+        if feature_item_id is not None:
+            item_matches = [
+                candidate
+                for candidate in candidates
+                if candidate.source_item_id is not None and str(candidate.source_item_id) == str(feature_item_id)
+            ]
+            if item_matches:
+                candidates = item_matches
+
+        unused_candidates = [candidate for candidate in candidates if candidate.id not in used_output_ids_for_feature]
+        if unused_candidates:
+            candidates = unused_candidates
+
+        feature_model_key = _normalize_model_identity(feature.llm.name if feature.llm else "")
+        if feature_model_key:
+            model_matches = [
+                candidate
+                for candidate in candidates
+                if feature_model_key in _normalize_model_identity(candidate.llm_model_name)
+            ]
+            if model_matches:
+                candidates = model_matches
+
+        match = candidates[0]
+        used_output_ids_for_feature.add(match.id)
+        return match
+
     feature_provenance: Dict[int, Dict[str, str]] = {}
     for feature in features:
         item_meta = item_provenance.get(feature.item_id)
@@ -2357,6 +2420,28 @@ def _calculate_ranking_provenance_analysis(scenario_id: int) -> Dict[str, Any]:
             llm_label = item_meta["llm_label"]
             prompt_key = item_meta["prompt_key"]
             prompt_label = item_meta["prompt_label"]
+            combination_key = f"{prompt_key}|||{llm_key}"
+            combination_label = f"{prompt_label} x {llm_label}"
+            feature_provenance[feature.feature_id] = {
+                "llm_key": llm_key,
+                "llm_label": llm_label,
+                "prompt_key": prompt_key,
+                "prompt_label": prompt_label,
+                "combination_key": combination_key,
+                "combination_label": combination_label,
+            }
+            continue
+
+        direct_output_match = _find_output_for_feature(feature)
+        if direct_output_match:
+            feature_meta = _serialize_output_provenance(
+                direct_output_match,
+                source="generation_output_feature_match",
+            )
+            llm_key = feature_meta["llm_key"]
+            llm_label = feature_meta["llm_label"]
+            prompt_key = feature_meta["prompt_key"]
+            prompt_label = feature_meta["prompt_label"]
             combination_key = f"{prompt_key}|||{llm_key}"
             combination_label = f"{prompt_label} x {llm_label}"
             feature_provenance[feature.feature_id] = {

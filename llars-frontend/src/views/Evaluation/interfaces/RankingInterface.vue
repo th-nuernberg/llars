@@ -261,6 +261,49 @@ function bucketLabel(bucket) {
   return bucket.name?.[loc] || bucket.name?.de || bucket.name || `Bucket ${bucket.id}`
 }
 
+function normalizeBucketKey(value) {
+  if (value === null || value === undefined) return ''
+  return String(value)
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[\s_-]+/g, '')
+}
+
+function resolveBucketIndex(rawBucketValue) {
+  const rawKey = normalizeBucketKey(rawBucketValue)
+  if (!rawKey) return -1
+
+  const cfg = bucketConfig.value
+  for (let i = 0; i < cfg.length; i += 1) {
+    const bucket = cfg[i]
+    const candidates = [
+      bucket?.id,
+      bucket?.name,
+      bucket?.name?.de,
+      bucket?.name?.en,
+      bucket?.label,
+      bucket?.label_de,
+      bucket?.label_en
+    ]
+
+    const hasMatch = candidates.some(candidate => normalizeBucketKey(candidate) === rawKey)
+    if (hasMatch) {
+      return i
+    }
+  }
+
+  return -1
+}
+
+function getBucketStorageValue(bucket) {
+  if (bucket && typeof bucket.id === 'string' && bucket.id.trim()) {
+    return bucket.id
+  }
+  return bucket?.name?.de || bucket?.name?.en || bucket?.name || String(bucket?.id ?? '')
+}
+
 // State
 const items = ref([])
 const currentItem = ref(null)
@@ -410,8 +453,8 @@ function applyServerRanking(featureMap, serverRanking) {
             minimized: true
           }
 
-          // Find matching bucket by German name
-          const bIdx = bucketConfig.value.findIndex(b => b.name.de === detail.bucket)
+          // Map server bucket robustly (id/de/en/normalized aliases)
+          const bIdx = resolveBucketIndex(detail.bucket)
           if (bIdx >= 0) {
             group.bucketLists[bIdx].push(feature)
           } else {
@@ -445,7 +488,7 @@ function prepareForServerSave() {
         model_name: detail.model_name,
         content: detail.content,
         position,
-        bucket: bucketConfig.value[bIdx].name.de
+        bucket: getBucketStorageValue(bucketConfig.value[bIdx])
       }))
     )
   }))

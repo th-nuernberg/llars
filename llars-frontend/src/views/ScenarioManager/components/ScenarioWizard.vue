@@ -2739,6 +2739,7 @@ onMounted(() => {
 
 .type-card.suggested {
   border-color: rgba(var(--v-theme-warning), 0.5);
+  padding-top: 36px;
 }
 
 .type-icon {
@@ -2773,8 +2774,10 @@ onMounted(() => {
 
 .suggested-tag {
   position: absolute;
-  top: -8px;
+  top: 10px;
   left: 12px;
+  max-width: calc(100% - 24px);
+  z-index: 1;
 }
 
 /* LLARS-specific type cards */

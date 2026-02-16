@@ -228,7 +228,7 @@ Teams register proprietary or self-hosted OpenAI-compatible LLM providers and re
 The collaborative prompt editor (Figure~\ref{fig:prompt-editor}), lets every keystroke appear instantly for all connected users.
 A prompt is composed of ordered blocks\--one optionally designated as system prompt, the rest concatenated into the user prompt\--each maintaining its own version history that tracks insertions and deletions (visible as \texttt{+128\,/\,{-}0} in Figure~\ref{fig:prompt-editor}), enabling diff comparison and rollback without affecting other blocks.
 
-\begin{figure}[ht]
+\begin{figure}[htb]
 \centering
 \includegraphics[width=\linewidth]{figures/prompt-eng.png}
 \caption{Collaborative prompt editor with a data-format explanation block containing template variables \texttt{\{\{subject\}\}} and \texttt{\{\{content\}\}}. The sidebar (left) shows actions for block management, variable management, preview and LLM testing. The Variable Palette (bottom-left) lists all extracted variables with sample values that can be dragged into blocks.}
@@ -239,9 +239,7 @@ Blocks may contain template variables (\texttt{\{\{variable\_name\}\}}) as place
 All variables are collected in the shared Variable Palette (Figure~\ref{fig:prompt-editor}, bottom-left) and annotated with sample values (e.g.\ \texttt{\{\{subject\}\}}\,=\,\textit{``School problems at home''}).
 The built-in LLM testing sends the assembled prompt\--with sample values substituted\--to a selected model and streams the response back in real time, so that multiple team members can compare different models in parallel without leaving the editor.
 Prompts are exportable as JSON and directly available in batch generation, where template variables are filled from dataset columns to scale a single prompt to hundreds of outputs.
-
 \subsection{Batch Generation}
-
 While the prompt editor supports rapid single-example testing, a single example cannot validate whether a prompt generalizes across diverse inputs.
 Batch generation addresses this: users select from available prompts\--self-authored or shared by collaborators\--and any registered model to apply to their data, producing the Cartesian product of prompts\,$\times$\,models\,$\times$\,data items.
 A generation matrix previews all resulting combinations and estimates cost based on model pricing and projected token counts. Optional budget caps pause jobs that exceed a threshold.
@@ -254,15 +252,7 @@ Evaluators see only the generated text without any indication of which model or 
 \subsection{Evaluation}
 
 Each evaluation is organized as a \emph{scenario}\--a self-contained campaign that defines the type, assigns evaluators and distributes items\--supporting six types: rating, ranking, labeling, comparison, mail rating and authenticity.
-Scenarios are created from batch outputs with a single click or via an AI-assisted Scenario Wizard. Owners control whether all items go to every evaluator or configurable subsets are distributed for faster throughput.
-
-Where most tools limit LLMs to pairwise judging~\cite{zheng2024judging}, LLARS treats LLM evaluators as full participants alongside humans\--they receive the same items, use the same interface and their judgments enter the same agreement analysis.
-
-The default evaluation mode is \emph{bucket ranking}: evaluators sort items into ordinal categories (e.g.\ \emph{Good}, \emph{Medium}, \emph{Bad}) and rank within each bucket\--reducing cognitive load~\cite{miller1956magical} and yielding more reliable judgments than total ordering~\cite{kiritchenko2017bws}, as confirmed by domain expert interviews.
-Traditional ranking remains available.
-
-Scenario owners can inspect aggregated results at any time as assessments come in, including automatically computed inter-rater reliability (e.g.\ Krippendorff's~$\alpha$).
-The central outcome is the \emph{provenance analysis} (Figure~\ref{fig:provenance}): since every item carries its generating model and prompt from batch generation, LLARS ranks each combination by top-bucket hit rate\--directly answering \emph{which pair should we deploy?}
+Scenarios are created from batch outputs with a single click or via an AI-assisted Scenario Wizard.
 
 \begin{figure}[htb]
 \centering
@@ -270,6 +260,13 @@ The central outcome is the \emph{provenance analysis} (Figure~\ref{fig:provenanc
 \caption{Provenance analysis ranking model--prompt combinations by top-bucket hit rate (top) with per-combination bucket distributions (bottom).}
 \label{fig:provenance}
 \end{figure}
+
+Owners control whether all items go to every evaluator or configurable subsets are distributed for faster throughput.
+LLARS treats LLM evaluators as full participants alongside humans\--they receive the same items, use the same interface and their judgments enter the same agreement analysis.
+Scenario owners can inspect aggregated results at any time as assessments come in, including automatically computed inter-rater reliability (e.g.\ Krippendorff's~$\alpha$).
+The central outcome is the \emph{provenance analysis} (Figure~\ref{fig:provenance}): since every item carries its generating model and prompt from batch generation, LLARS ranks each combination by top-bucket hit rate\--directly answering \emph{which pair should we deploy?}
+The default evaluation mode is \emph{bucket ranking}, evaluators sort items into ordinal categories (e.g.\ \emph{Good}, \emph{Medium}, \emph{Bad}) and rank within each bucket\--reducing cognitive load~\cite{miller1956magical} and yielding more reliable judgments than total ordering~\cite{kiritchenko2017bws}, as confirmed by domain expert interviews.
+Traditional ranking remains available.
 
 \section{Deployment and User Study}
 \label{sec:counseling}

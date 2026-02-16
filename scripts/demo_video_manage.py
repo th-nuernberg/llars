@@ -229,7 +229,7 @@ def cmd_reset():
 def _build_preseed_prompt_content():
     return {
         "blocks": {
-            "Role Definition": {
+            "System Prompt": {
                 "content": "Role definition: You are a professional news editor. Write concise, factual summaries.",
                 "position": 0
             },

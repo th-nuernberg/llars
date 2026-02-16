@@ -6,7 +6,6 @@ Used by both CLI script (scripts/demo_video_manage.py) and API routes.
 """
 
 import logging
-from collections import Counter
 from datetime import datetime, timedelta
 from types import SimpleNamespace
 
@@ -20,6 +19,24 @@ PRESEED_JOB_NAME = "Counselling Situation Extraction"
 LIVE_PROMPT_NAME = "Live Situation Summary"
 LIVE_JOB_NAME = "Live Collab Batch Job"
 EVAL_SCENARIO_NAME = "IJCAI Counselling Evaluation"
+EVAL_SCENARIO_NAME_5_BUCKETS = "IJCAI Counselling Evaluation (5 Buckets)"
+LEGACY_EVAL_SCENARIO_NAME = "Counselling Situation Extraction"
+
+GENERATION_PROMPT_TEMPLATE_NAMES = [PRESEED_PROMPT_NAME, LIVE_PROMPT_NAME]
+GENERATION_MODEL_IDS = [
+    "Global/Mistral/Mistral-Small-3.2-24B-Instruct-2506",
+    "Global/OpenAI/gpt-5-nano",
+]
+EVALUATION_MODEL_IDS = [
+    "Global/Mistral/Magistral-Small-2509",
+    "Global/OpenAI/gpt-5-mini",
+]
+
+# Persist prompt provenance under the exact prompt template names from batch generation.
+STRUCTURED_FEATURE_TYPE_NAME = PRESEED_PROMPT_NAME
+NARRATIVE_FEATURE_TYPE_NAME = LIVE_PROMPT_NAME
+PRESEED_PROMPT_KEY = PRESEED_PROMPT_NAME.lower()
+LIVE_PROMPT_KEY = LIVE_PROMPT_NAME.lower()
 
 DEMO_USER = "ijcai_reviewer_1"
 COLLAB_USER = "ijcai_reviewer_2"
@@ -183,12 +200,8 @@ def seed():
     if existing_job:
         actions.append(f"Job '{PRESEED_JOB_NAME}' already exists (id={existing_job.id})")
     else:
-        mistral = LLMModel.query.filter_by(
-            model_id='Global/Mistral/Mistral-Small-3.2-24B-Instruct-2506'
-        ).first()
-        gpt5_nano = LLMModel.query.filter_by(
-            model_id='Global/OpenAI/gpt-5-nano'
-        ).first()
+        mistral = LLMModel.query.filter_by(model_id=GENERATION_MODEL_IDS[0]).first()
+        gpt5_nano = LLMModel.query.filter_by(model_id=GENERATION_MODEL_IDS[1]).first()
 
         if not mistral or not gpt5_nano:
             actions.append("Required LLM models not found, skipping job seeding")
@@ -269,6 +282,8 @@ def seed():
     # --- 4. Seed evaluation scenario from batch generation ---
     eval_actions = _seed_evaluation_scenario(_db, demo_user, collab_user)
     actions.extend(eval_actions)
+    eval_5_bucket_actions = _seed_evaluation_scenario_5_buckets(_db, demo_user, collab_user)
+    actions.extend(eval_5_bucket_actions)
 
     return {'success': True, 'actions': actions}
 
@@ -329,7 +344,8 @@ def cleanup(include_preseed=False):
     eval_scenarios = RatingScenarios.query.filter(
         RatingScenarios.scenario_name.in_([
             EVAL_SCENARIO_NAME,
-            "Counselling Situation Extraction",  # legacy name
+            EVAL_SCENARIO_NAME_5_BUCKETS,
+            LEGACY_EVAL_SCENARIO_NAME,  # legacy name
         ])
     ).all()
 
@@ -390,8 +406,11 @@ def cleanup(include_preseed=False):
 
     # Also clean up any demo evaluation items by known chat_id range (safety net)
     demo_items = EvaluationItem.query.filter(
-        EvaluationItem.chat_id.between(20000, 20099),
         EvaluationItem.institut_id == 99,
+        (
+            EvaluationItem.chat_id.between(20000, 20099)
+            | EvaluationItem.chat_id.between(21000, 21099)
+        ),
     ).all()
     if demo_items:
         demo_item_ids = [i.item_id for i in demo_items]
@@ -421,7 +440,10 @@ def cleanup(include_preseed=False):
         EvaluationItem.query.filter(
             EvaluationItem.item_id.in_(demo_item_ids)
         ).delete(synchronize_session=False)
-        deleted.append(f"Safety-net: deleted {len(demo_items)} demo evaluation items (chat_id 20000-20099)")
+        deleted.append(
+            f"Safety-net: deleted {len(demo_items)} demo evaluation items "
+            "(chat_id 20000-20099 and 21000-21099)"
+        )
 
     # --- 5. Delete other demo-created scenarios ---
     preseed_job = GenerationJob.query.filter_by(name=PRESEED_JOB_NAME).first()
@@ -523,7 +545,7 @@ def _build_preseed_prompt_content():
             "note": "Prompt seeded with explicit block-level authorship for demo traceability."
         },
         "blocks": {
-            "Role Definition": {
+            "System Prompt": {
                 "content": (
                     "You are an assistant for professionals in psychosocial online counselling. "
                     "You support counsellors in systematically capturing the current life situation of help-seeking clients. "
@@ -579,7 +601,7 @@ def _build_eval_prompt_content():
             "note": "Live prompt seeded for collab demo; block authorship is explicit."
         },
         "blocks": {
-            "Role Definition": {
+            "System Prompt": {
                 "content": "You are a counselling assistant who helps professionals extract key facts from client communications in online psychosocial counselling.",
                 "position": 0,
                 "author": COLLAB_USER
@@ -750,8 +772,8 @@ def _ensure_demo_model_color_contrast():
     """
     from db.models.llm_model import LLMModel, NEUTRAL_COLOR_CANDIDATES
 
-    mistral_id = 'Global/Mistral/Mistral-Small-3.2-24B-Instruct-2506'
-    gpt5_nano_id = 'Global/OpenAI/gpt-5-nano'
+    mistral_id = GENERATION_MODEL_IDS[0]
+    gpt5_nano_id = GENERATION_MODEL_IDS[1]
     min_pair_distance_sq = 12000  # ~109 RGB euclidean distance
 
     target_ids = [mistral_id, gpt5_nano_id]
@@ -901,12 +923,86 @@ def _resolve_eval_llm_for_output(output, llm_mistral, llm_gpt5_nano):
     return llm_mistral
 
 
+def _normalize_prompt_key(prompt_name):
+    return str(prompt_name or "").strip().lower()
+
+
+def _get_or_create_prompt_feature_types(db_session):
+    """Ensure prompt-specific feature types exist for seeded provenance demos."""
+    from db.models.scenario import FeatureType
+
+    feature_type_specs = {
+        PRESEED_PROMPT_KEY: STRUCTURED_FEATURE_TYPE_NAME,
+        LIVE_PROMPT_KEY: NARRATIVE_FEATURE_TYPE_NAME,
+    }
+
+    feature_type_by_prompt = {}
+    for prompt_key, feature_type_name in feature_type_specs.items():
+        feature_type = FeatureType.query.filter_by(name=feature_type_name).first()
+        if not feature_type:
+            feature_type = FeatureType(name=feature_type_name)
+            db_session.session.add(feature_type)
+            db_session.session.flush()
+        feature_type_by_prompt[prompt_key] = feature_type
+
+    # Keep structured as deterministic fallback for unknown prompt labels.
+    fallback_feature_type = feature_type_by_prompt[PRESEED_PROMPT_KEY]
+    return feature_type_by_prompt, fallback_feature_type
+
+
+def _resolve_prompt_feature_type(prompt_name, feature_type_by_prompt, fallback_feature_type):
+    """
+    Resolve the seeded feature type for an output prompt label.
+
+    Handles exact prompt names and common aliases to keep provenance robust
+    when prompt labels differ slightly across runs.
+    """
+    prompt_key = _normalize_prompt_key(prompt_name)
+    if prompt_key in feature_type_by_prompt:
+        return feature_type_by_prompt[prompt_key]
+
+    if "structured" in prompt_key:
+        return feature_type_by_prompt.get(PRESEED_PROMPT_KEY, fallback_feature_type)
+    if "narrative" in prompt_key or "live situation summary" in prompt_key:
+        return feature_type_by_prompt.get(LIVE_PROMPT_KEY, fallback_feature_type)
+
+    return fallback_feature_type
+
+
+def _select_balanced_partial_features(features):
+    """
+    Pick two partial-ranking features that keep prompt/model coverage balanced.
+
+    Preferred pair:
+    - different prompt (feature type)
+    - different generation model (llm_id)
+    """
+    if len(features) <= 2:
+        return list(features)
+
+    # Best case: one per prompt and one per model.
+    for i, first in enumerate(features):
+        for second in features[i + 1:]:
+            if first.type_id != second.type_id and first.llm_id != second.llm_id:
+                return [first, second]
+
+    # Next best: at least one per prompt.
+    for i, first in enumerate(features):
+        for second in features[i + 1:]:
+            if first.type_id != second.type_id:
+                return [first, second]
+
+    # Last fallback: first and last to maximize spread.
+    return [features[0], features[-1]]
+
+
 def _ensure_eval_scenario_integrity(
     db_session,
     scenario,
     counselling_cases,
     ranking_type,
-    feature_type,
+    feature_type_by_prompt,
+    fallback_feature_type,
     llm_mistral,
     llm_gpt5_nano,
     preseed_job=None,
@@ -936,7 +1032,52 @@ def _ensure_eval_scenario_integrity(
         "distributions_created": 0,
         "messages_added": 0,
         "features_added": 0,
+        "features_retyped": 0,
+        "config_updated": 0,
     }
+
+    config = scenario.config_json or {}
+    if not isinstance(config, dict):
+        config = {}
+    config_changed = False
+
+    if config.get("evaluation") != "ranking":
+        config["evaluation"] = "ranking"
+        config_changed = True
+    if config.get("enable_llm_evaluation") is not True:
+        config["enable_llm_evaluation"] = True
+        config_changed = True
+    if config.get("llm_evaluators") != EVALUATION_MODEL_IDS:
+        config["llm_evaluators"] = list(EVALUATION_MODEL_IDS)
+        config_changed = True
+    if config.get("demo_generation_prompts") != GENERATION_PROMPT_TEMPLATE_NAMES:
+        config["demo_generation_prompts"] = list(GENERATION_PROMPT_TEMPLATE_NAMES)
+        config_changed = True
+
+    feature_type_names = {
+        "structured": feature_type_by_prompt[PRESEED_PROMPT_KEY].name,
+        "narrative": feature_type_by_prompt[LIVE_PROMPT_KEY].name,
+    }
+    if config.get("demo_prompt_feature_types") != feature_type_names:
+        config["demo_prompt_feature_types"] = feature_type_names
+        config_changed = True
+
+    if config.get("source_generation_job_name") != PRESEED_JOB_NAME:
+        config["source_generation_job_name"] = PRESEED_JOB_NAME
+        config_changed = True
+    if config.get("source_generation_models") != GENERATION_MODEL_IDS:
+        config["source_generation_models"] = list(GENERATION_MODEL_IDS)
+        config_changed = True
+    if config.get("source_generation_prompt_templates") != GENERATION_PROMPT_TEMPLATE_NAMES:
+        config["source_generation_prompt_templates"] = list(GENERATION_PROMPT_TEMPLATE_NAMES)
+        config_changed = True
+    if preseed_job and config.get("source_generation_job_id") != preseed_job.id:
+        config["source_generation_job_id"] = preseed_job.id
+        config_changed = True
+
+    if config_changed:
+        scenario.config_json = config
+        counters["config_updated"] += 1
 
     scenario_users = ScenarioUsers.query.filter_by(scenario_id=scenario.id).all()
     scenario_items = ScenarioItems.query.filter_by(scenario_id=scenario.id).order_by(ScenarioItems.id.asc()).all()
@@ -1063,34 +1204,53 @@ def _ensure_eval_scenario_integrity(
         if not case_outputs:
             continue
 
-        existing_features = Feature.query.filter_by(
-            item_id=eval_item.item_id,
-            type_id=feature_type.type_id,
-        ).all()
-        existing_counter = Counter(
-            (feature.llm_id, str(feature.content or "").strip())
-            for feature in existing_features
-            if str(feature.content or "").strip()
+        existing_features = (
+            Feature.query
+            .filter_by(item_id=eval_item.item_id)
+            .order_by(Feature.feature_id.asc())
+            .all()
         )
+        existing_by_signature = {}
+        for feature in existing_features:
+            feature_content = str(feature.content or "").strip()
+            if not feature_content:
+                continue
+            signature = (feature.llm_id, feature_content)
+            existing_by_signature.setdefault(signature, []).append(feature)
 
-        target_counter = Counter()
+        expected_features = []
         for output in case_outputs:
             rendered_content = str(output.generated_content or "").strip()
             if not rendered_content:
                 continue
             llm_ref = _resolve_eval_llm_for_output(output, llm_mistral, llm_gpt5_nano)
-            target_counter[(llm_ref.llm_id, rendered_content)] += 1
+            feature_type = _resolve_prompt_feature_type(
+                prompt_name=getattr(output, "prompt_variant_name", None),
+                feature_type_by_prompt=feature_type_by_prompt,
+                fallback_feature_type=fallback_feature_type,
+            )
+            expected_features.append((llm_ref.llm_id, rendered_content, feature_type.type_id))
 
-        for signature, expected_count in target_counter.items():
-            existing_count = existing_counter.get(signature, 0)
-            missing_count = expected_count - existing_count
-            if missing_count <= 0:
-                continue
-            llm_id, content = signature
-            for _ in range(missing_count):
+        for llm_id, content, expected_type_id in expected_features:
+            signature = (llm_id, content)
+            candidates = existing_by_signature.get(signature, [])
+
+            matched_feature = None
+            for idx, candidate in enumerate(candidates):
+                if candidate.type_id == expected_type_id:
+                    matched_feature = candidates.pop(idx)
+                    break
+
+            if matched_feature is None and candidates:
+                matched_feature = candidates.pop(0)
+                if matched_feature.type_id != expected_type_id:
+                    matched_feature.type_id = expected_type_id
+                    counters["features_retyped"] += 1
+
+            if matched_feature is None:
                 db_session.session.add(Feature(
                     item_id=eval_item.item_id,
-                    type_id=feature_type.type_id,
+                    type_id=expected_type_id,
                     llm_id=llm_id,
                     content=content,
                 ))
@@ -1109,8 +1269,12 @@ def _ensure_eval_scenario_integrity(
         actions.append(f"Repaired scenario distributions: +{counters['distributions_created']}")
     if counters["messages_added"]:
         actions.append(f"Backfilled reference messages: +{counters['messages_added']}")
+    if counters["features_retyped"]:
+        actions.append(f"Corrected prompt feature mapping: +{counters['features_retyped']}")
     if counters["features_added"]:
         actions.append(f"Backfilled ranking features: +{counters['features_added']}")
+    if counters["config_updated"]:
+        actions.append("Updated demo scenario config for prompt provenance")
 
     return actions
 
@@ -1130,7 +1294,7 @@ def _seed_evaluation_scenario(db_session, demo_user, collab_user):
     from db.models.scenario import (
         RatingScenarios, ScenarioUsers, ScenarioItems,
         ScenarioItemDistribution, ScenarioRoles,
-        EvaluationItem, Feature, FeatureType, FeatureFunctionType,
+        EvaluationItem, Feature, FeatureFunctionType,
         LLM, Message, UserFeatureRanking,
     )
     from db.models.llm_task_result import LLMTaskResult
@@ -1151,12 +1315,7 @@ def _seed_evaluation_scenario(db_session, demo_user, collab_user):
         db_session.session.add(ranking_type)
         db_session.session.flush()
 
-    # Get or create feature type for situation descriptions
-    ft = FeatureType.query.filter_by(name='Situation Summary').first()
-    if not ft:
-        ft = FeatureType(name='Situation Summary')
-        db_session.session.add(ft)
-        db_session.session.flush()
+    feature_type_by_prompt, fallback_feature_type = _get_or_create_prompt_feature_types(db_session)
 
     # Get or create LLM entries (legacy llms table, not llm_models)
     def _get_or_create_llm(name):
@@ -1180,7 +1339,8 @@ def _seed_evaluation_scenario(db_session, demo_user, collab_user):
             scenario=existing,
             counselling_cases=COUNSELLING_CASES,
             ranking_type=ranking_type,
-            feature_type=ft,
+            feature_type_by_prompt=feature_type_by_prompt,
+            fallback_feature_type=fallback_feature_type,
             llm_mistral=llm_mistral,
             llm_gpt5_nano=llm_gpt5_nano,
             preseed_job=preseed_job,
@@ -1203,10 +1363,16 @@ def _seed_evaluation_scenario(db_session, demo_user, collab_user):
         config_json={
             "evaluation": "ranking",
             "enable_llm_evaluation": True,
-            "llm_evaluators": [
-                "Global/Mistral/Magistral-Small-2509",
-                "Global/OpenAI/gpt-5-mini",
-            ],
+            "llm_evaluators": list(EVALUATION_MODEL_IDS),
+            "demo_generation_prompts": list(GENERATION_PROMPT_TEMPLATE_NAMES),
+            "demo_prompt_feature_types": {
+                "structured": feature_type_by_prompt[PRESEED_PROMPT_KEY].name,
+                "narrative": feature_type_by_prompt[LIVE_PROMPT_KEY].name,
+            },
+            "source_generation_job_id": preseed_job.id,
+            "source_generation_job_name": PRESEED_JOB_NAME,
+            "source_generation_models": list(GENERATION_MODEL_IDS),
+            "source_generation_prompt_templates": list(GENERATION_PROMPT_TEMPLATE_NAMES),
         }
     )
     db_session.session.add(scenario)
@@ -1297,10 +1463,15 @@ def _seed_evaluation_scenario(db_session, demo_user, collab_user):
         features = []
         for out in case_outputs:
             llm_ref = _resolve_eval_llm_for_output(out, llm_mistral, llm_gpt5_nano)
+            feature_type = _resolve_prompt_feature_type(
+                prompt_name=out.prompt_variant_name,
+                feature_type_by_prompt=feature_type_by_prompt,
+                fallback_feature_type=fallback_feature_type,
+            )
 
             feature = Feature(
                 item_id=item.item_id,
-                type_id=ft.type_id,
+                type_id=feature_type.type_id,
                 llm_id=llm_ref.llm_id,
                 content=out.generated_content,
             )
@@ -1384,7 +1555,7 @@ def _seed_evaluation_scenario(db_session, demo_user, collab_user):
                     user_id=user_id,
                     feature_id=feature.feature_id,
                     ranking_content=float(feat_idx + 1),
-                    type_id=ft.type_id,
+                    type_id=feature.type_id,
                     llm_id=llm_id or feature.llm_id,
                     bucket=bucket,
                 )
@@ -1399,14 +1570,20 @@ def _seed_evaluation_scenario(db_session, demo_user, collab_user):
     if item_9:
         item_9_features = item_features.get(item_9.item_id, [])
         pattern_9 = ranking_patterns[8]
-        for feat_idx in range(min(2, len(item_9_features))):
+        feature_index_by_id = {
+            feature.feature_id: idx
+            for idx, feature in enumerate(item_9_features)
+        }
+        partial_features = _select_balanced_partial_features(item_9_features)
+        for partial_rank_idx, feature in enumerate(partial_features[:2]):
+            feat_idx = feature_index_by_id.get(feature.feature_id, partial_rank_idx)
             ranking = UserFeatureRanking(
                 user_id=demo_user.id,
-                feature_id=item_9_features[feat_idx].feature_id,
-                ranking_content=float(feat_idx + 1),
-                type_id=ft.type_id,
-                llm_id=item_9_features[feat_idx].llm_id,
-                bucket=pattern_9[feat_idx],
+                feature_id=feature.feature_id,
+                ranking_content=float(partial_rank_idx + 1),
+                type_id=feature.type_id,
+                llm_id=feature.llm_id,
+                bucket=pattern_9[feat_idx] if feat_idx < len(pattern_9) else 'Neutral',
             )
             db_session.session.add(ranking)
             r1_count += 1
@@ -1445,12 +1622,329 @@ def _seed_evaluation_scenario(db_session, demo_user, collab_user):
         return count
 
     magistral_count = _add_llm_rankings(
-        "Global/Mistral/Magistral-Small-2509", ranking_patterns_magistral, 10
+        EVALUATION_MODEL_IDS[0], ranking_patterns_magistral, 10
     )
     actions.append(f"Added {magistral_count} Magistral LLM rankings (10/10 items)")
 
     gpt5mini_count = _add_llm_rankings(
-        "Global/OpenAI/gpt-5-mini", ranking_patterns_gpt5mini, 10
+        EVALUATION_MODEL_IDS[1], ranking_patterns_gpt5mini, 10
+    )
+    actions.append(f"Added {gpt5mini_count} GPT-5 Mini LLM rankings (10/10 items)")
+
+    db_session.session.commit()
+    return actions
+
+
+def _seed_evaluation_scenario_5_buckets(db_session, demo_user, collab_user):
+    """
+    Seed an additional ranking scenario from the same batch generation with 5 buckets.
+
+    Purpose:
+    - Provide a dedicated demo scenario for 5-bucket ranking workflows
+    - Keep full cartesian coverage (2 prompts x 2 models per counselling case)
+    - Pre-fill both human and LLM rankings for immediate evaluation tab demo
+    """
+    from db.models.scenario import (
+        RatingScenarios, ScenarioUsers, ScenarioItems,
+        ScenarioItemDistribution, ScenarioRoles,
+        EvaluationItem, Feature, FeatureFunctionType,
+        LLM, Message, UserFeatureRanking,
+    )
+    from db.models.llm_task_result import LLMTaskResult
+    from db.models.generation import GenerationJob, GeneratedOutput
+    from db.seeders.demo_video_data import COUNSELLING_CASES
+
+    actions = []
+
+    preseed_job = GenerationJob.query.filter_by(
+        name=PRESEED_JOB_NAME, created_by=DEMO_USER
+    ).first()
+
+    ranking_type = FeatureFunctionType.query.filter_by(name='ranking').first()
+    if not ranking_type:
+        ranking_type = FeatureFunctionType(name='ranking')
+        db_session.session.add(ranking_type)
+        db_session.session.flush()
+
+    feature_type_by_prompt, fallback_feature_type = _get_or_create_prompt_feature_types(db_session)
+
+    def _get_or_create_llm(name):
+        llm = LLM.query.filter_by(name=name).first()
+        if not llm:
+            llm = LLM(name=name)
+            db_session.session.add(llm)
+            db_session.session.flush()
+        return llm
+
+    llm_mistral = _get_or_create_llm('Mistral Small')
+    llm_gpt5_nano = _get_or_create_llm('GPT-5 Nano')
+
+    existing = RatingScenarios.query.filter_by(
+        scenario_name=EVAL_SCENARIO_NAME_5_BUCKETS
+    ).first()
+    if existing:
+        actions.extend(_ensure_eval_scenario_integrity(
+            db_session=db_session,
+            scenario=existing,
+            counselling_cases=COUNSELLING_CASES,
+            ranking_type=ranking_type,
+            feature_type_by_prompt=feature_type_by_prompt,
+            fallback_feature_type=fallback_feature_type,
+            llm_mistral=llm_mistral,
+            llm_gpt5_nano=llm_gpt5_nano,
+            preseed_job=preseed_job,
+        ))
+        actions.append(
+            f"Eval scenario '{EVAL_SCENARIO_NAME_5_BUCKETS}' already exists (id={existing.id})"
+        )
+        return actions
+
+    if not preseed_job:
+        actions.append("Pre-seed job not found, skipping 5-bucket eval scenario")
+        return actions
+
+    scenario = RatingScenarios(
+        scenario_name=EVAL_SCENARIO_NAME_5_BUCKETS,
+        function_type_id=ranking_type.function_type_id,
+        begin=datetime.utcnow() - timedelta(days=1),
+        end=datetime.utcnow() + timedelta(days=30),
+        timestamp=datetime.utcnow(),
+        created_by=DEMO_USER,
+        config_json={
+            "evaluation": "ranking",
+            "enable_llm_evaluation": True,
+            "llm_evaluators": list(EVALUATION_MODEL_IDS),
+            "demo_generation_prompts": list(GENERATION_PROMPT_TEMPLATE_NAMES),
+            "demo_prompt_feature_types": {
+                "structured": feature_type_by_prompt[PRESEED_PROMPT_KEY].name,
+                "narrative": feature_type_by_prompt[LIVE_PROMPT_KEY].name,
+            },
+            "source_generation_job_id": preseed_job.id,
+            "source_generation_job_name": PRESEED_JOB_NAME,
+            "source_generation_models": list(GENERATION_MODEL_IDS),
+            "source_generation_prompt_templates": list(GENERATION_PROMPT_TEMPLATE_NAMES),
+            "buckets": [
+                {"id": "sehr_gut", "name": {"de": "Sehr gut", "en": "Very good"}, "color": "#7FB26B"},
+                {"id": "gut", "name": {"de": "Gut", "en": "Good"}, "color": "#B0CA97"},
+                {"id": "mittel", "name": {"de": "Mittel", "en": "Medium"}, "color": "#D1BC8A"},
+                {"id": "schlecht", "name": {"de": "Schlecht", "en": "Poor"}, "color": "#E8A087"},
+                {"id": "sehr_schlecht", "name": {"de": "Sehr schlecht", "en": "Very poor"}, "color": "#D77974"},
+            ],
+        },
+    )
+    db_session.session.add(scenario)
+    db_session.session.flush()
+    actions.append(
+        f"Created eval scenario '{EVAL_SCENARIO_NAME_5_BUCKETS}' (id={scenario.id})"
+    )
+
+    reviewer_1_su = ScenarioUsers(
+        scenario_id=scenario.id,
+        user_id=demo_user.id,
+        role=ScenarioRoles.OWNER,
+    )
+    db_session.session.add(reviewer_1_su)
+    db_session.session.flush()
+
+    reviewer_2_su = None
+    if collab_user:
+        reviewer_2_su = ScenarioUsers(
+            scenario_id=scenario.id,
+            user_id=collab_user.id,
+            role=ScenarioRoles.EVALUATOR,
+        )
+        db_session.session.add(reviewer_2_su)
+        db_session.session.flush()
+
+    outputs = GeneratedOutput.query.filter_by(job_id=preseed_job.id).order_by(GeneratedOutput.id.asc()).all()
+
+    outputs_by_case = {}
+    for out in outputs:
+        try:
+            case_idx = int((out.prompt_variables_json or {}).get('source_index', -1))
+        except (TypeError, ValueError):
+            case_idx = -1
+        if case_idx < 0:
+            continue
+        outputs_by_case.setdefault(case_idx, []).append(out)
+
+    items = []
+    item_features = {}
+
+    for case_idx in range(len(COUNSELLING_CASES)):
+        case = COUNSELLING_CASES[case_idx] if case_idx < len(COUNSELLING_CASES) else None
+        case_outputs = _sort_outputs_for_case(outputs_by_case.get(case_idx, []))
+
+        item = EvaluationItem(
+            chat_id=21000 + case_idx,
+            institut_id=99,
+            subject=case['subject'] if case else f"Case {case_idx}",
+            sender='demo',
+            function_type_id=ranking_type.function_type_id,
+        )
+        db_session.session.add(item)
+        db_session.session.flush()
+        items.append(item)
+
+        if case and case.get('content'):
+            db_session.session.add(Message(
+                item_id=item.item_id,
+                sender='source',
+                content=case['content'],
+                timestamp=datetime.utcnow() - timedelta(hours=2),
+                generated_by='Human',
+            ))
+
+        si = ScenarioItems(
+            scenario_id=scenario.id,
+            thread_id=item.item_id,
+        )
+        db_session.session.add(si)
+        db_session.session.flush()
+
+        for su in [reviewer_1_su, reviewer_2_su]:
+            if su:
+                db_session.session.add(ScenarioItemDistribution(
+                    scenario_id=scenario.id,
+                    scenario_user_id=su.id,
+                    scenario_item_id=si.id,
+                ))
+
+        features = []
+        for out in case_outputs:
+            llm_ref = _resolve_eval_llm_for_output(out, llm_mistral, llm_gpt5_nano)
+            feature_type = _resolve_prompt_feature_type(
+                prompt_name=out.prompt_variant_name,
+                feature_type_by_prompt=feature_type_by_prompt,
+                fallback_feature_type=fallback_feature_type,
+            )
+
+            feature = Feature(
+                item_id=item.item_id,
+                type_id=feature_type.type_id,
+                llm_id=llm_ref.llm_id,
+                content=out.generated_content,
+            )
+            db_session.session.add(feature)
+            db_session.session.flush()
+            features.append(feature)
+
+        item_features[item.item_id] = features
+
+    actions.append(
+        f"Created {len(items)} evaluation items with features for '{EVAL_SCENARIO_NAME_5_BUCKETS}'"
+    )
+
+    ranking_patterns = [
+        ['sehr_gut', 'gut', 'mittel', 'schlecht'],
+        ['gut', 'mittel', 'schlecht', 'sehr_schlecht'],
+        ['sehr_gut', 'mittel', 'gut', 'schlecht'],
+        ['gut', 'schlecht', 'mittel', 'sehr_schlecht'],
+        ['mittel', 'gut', 'schlecht', 'sehr_gut'],
+        ['sehr_gut', 'gut', 'schlecht', 'mittel'],
+        ['mittel', 'schlecht', 'gut', 'sehr_schlecht'],
+        ['gut', 'mittel', 'sehr_gut', 'schlecht'],
+        ['schlecht', 'gut', 'mittel', 'sehr_schlecht'],
+        ['sehr_gut', 'mittel', 'gut', 'schlecht'],
+    ]
+
+    ranking_patterns_r2 = [
+        ['gut', 'gut', 'mittel', 'schlecht'],
+        ['gut', 'mittel', 'schlecht', 'sehr_schlecht'],
+        ['sehr_gut', 'mittel', 'mittel', 'schlecht'],
+        ['gut', 'schlecht', 'mittel', 'schlecht'],
+        ['mittel', 'gut', 'schlecht', 'gut'],
+        ['sehr_gut', 'mittel', 'schlecht', 'mittel'],
+        ['mittel', 'schlecht', 'gut', 'sehr_schlecht'],
+        ['gut', 'mittel', 'gut', 'schlecht'],
+        ['schlecht', 'mittel', 'mittel', 'sehr_schlecht'],
+        ['gut', 'mittel', 'gut', 'schlecht'],
+    ]
+
+    ranking_patterns_magistral = [
+        ['sehr_gut', 'gut', 'mittel', 'schlecht'],
+        ['gut', 'mittel', 'schlecht', 'sehr_schlecht'],
+        ['sehr_gut', 'mittel', 'gut', 'schlecht'],
+        ['gut', 'mittel', 'schlecht', 'sehr_schlecht'],
+        ['mittel', 'gut', 'schlecht', 'gut'],
+        ['sehr_gut', 'gut', 'schlecht', 'mittel'],
+        ['mittel', 'schlecht', 'gut', 'sehr_schlecht'],
+        ['gut', 'mittel', 'sehr_gut', 'schlecht'],
+        ['schlecht', 'gut', 'mittel', 'sehr_schlecht'],
+        ['sehr_gut', 'mittel', 'gut', 'schlecht'],
+    ]
+
+    ranking_patterns_gpt5mini = [
+        ['gut', 'gut', 'mittel', 'schlecht'],
+        ['gut', 'mittel', 'schlecht', 'sehr_schlecht'],
+        ['sehr_gut', 'mittel', 'mittel', 'schlecht'],
+        ['gut', 'schlecht', 'mittel', 'sehr_schlecht'],
+        ['mittel', 'gut', 'schlecht', 'gut'],
+        ['sehr_gut', 'mittel', 'schlecht', 'mittel'],
+        ['mittel', 'schlecht', 'gut', 'sehr_schlecht'],
+        ['gut', 'mittel', 'gut', 'schlecht'],
+        ['schlecht', 'mittel', 'mittel', 'sehr_schlecht'],
+        ['gut', 'mittel', 'gut', 'schlecht'],
+    ]
+
+    def _add_rankings(user_id, patterns, num_items):
+        count = 0
+        for case_idx in range(min(num_items, len(items))):
+            item = items[case_idx]
+            features = item_features.get(item.item_id, [])
+            pattern = patterns[case_idx] if case_idx < len(patterns) else ['mittel'] * 4
+
+            for feat_idx, feature in enumerate(features):
+                bucket = pattern[feat_idx] if feat_idx < len(pattern) else 'mittel'
+                db_session.session.add(UserFeatureRanking(
+                    user_id=user_id,
+                    feature_id=feature.feature_id,
+                    ranking_content=float(feat_idx + 1),
+                    type_id=feature.type_id,
+                    llm_id=feature.llm_id,
+                    bucket=bucket,
+                ))
+                count += 1
+        return count
+
+    r1_count = _add_rankings(demo_user.id, ranking_patterns, 10)
+    actions.append(f"Added {r1_count} rankings for {DEMO_USER} (10/10 items)")
+
+    if collab_user:
+        r2_count = _add_rankings(collab_user.id, ranking_patterns_r2, 10)
+        actions.append(f"Added {r2_count} rankings for {COLLAB_USER} (10/10 items)")
+
+    def _add_llm_rankings(model_id, patterns, num_items):
+        count = 0
+        for case_idx in range(min(num_items, len(items))):
+            item = items[case_idx]
+            features = item_features.get(item.item_id, [])
+            pattern = patterns[case_idx] if case_idx < len(patterns) else ['mittel'] * 4
+
+            bucket_map = {}
+            for feat_idx, feature in enumerate(features):
+                bucket = str(pattern[feat_idx] if feat_idx < len(pattern) else 'mittel').strip().lower()
+                bucket_map.setdefault(bucket, []).append(feature.feature_id)
+
+            db_session.session.add(LLMTaskResult(
+                scenario_id=scenario.id,
+                item_id=item.item_id,
+                model_id=model_id,
+                task_type="ranking",
+                payload_json=bucket_map,
+                raw_response=None,
+                error=None,
+            ))
+            count += 1
+        return count
+
+    magistral_count = _add_llm_rankings(
+        EVALUATION_MODEL_IDS[0], ranking_patterns_magistral, 10
+    )
+    actions.append(f"Added {magistral_count} Magistral LLM rankings (10/10 items)")
+
+    gpt5mini_count = _add_llm_rankings(
+        EVALUATION_MODEL_IDS[1], ranking_patterns_gpt5mini, 10
     )
     actions.append(f"Added {gpt5mini_count} GPT-5 Mini LLM rankings (10/10 items)")
 
@@ -1465,7 +1959,7 @@ def _get_block(prompt, name):
 
 
 def _render_system(prompt):
-    parts = [_get_block(prompt, "Role Definition"), _get_block(prompt, "Task Explanation")]
+    parts = [_get_block(prompt, "System Prompt"), _get_block(prompt, "Task Explanation")]
     return "\n\n".join(p for p in parts if p)
 
 

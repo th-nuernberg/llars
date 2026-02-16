@@ -66,7 +66,7 @@ COUNSELLING_CASES = [
 
 
 # Real LLM-generated outputs from production batch run (2026-02-15)
-# Keys: 'structured' = Structured Situation Analysis, 'narrative' = Situation Summary
+# Keys: 'structured' = Structured Situation Analysis, 'narrative' = Live Situation Summary
 # Sub-keys: 'mistral' = Mistral-Small-3.2, 'gpt5_nano' = GPT-5 Nano (via user provider)
 SAMPLE_OUTPUTS = {
     # Structured Situation Analysis outputs
@@ -193,7 +193,7 @@ def _build_live_prompt_content():
     """Build content for the live-created prompt without persisting it."""
     return {
         "blocks": {
-            "Role Definition": {
+            "System Prompt": {
                 "content": (
                     "You are a counselling assistant who helps professionals extract key facts "
                     "from client communications in online psychosocial counselling."
@@ -234,7 +234,7 @@ def seed_demo_video_prompts():
 
     def build_blocks(role_text: str, task_text: str, data_text: str):
         return {
-            "Role Definition": {
+            "System Prompt": {
                 "content": role_text,
                 "position": 0
             },
@@ -412,7 +412,7 @@ def seed_demo_video_generation_job():
 
     def render_system_prompt(prompt):
         parts = [
-            get_block_content(prompt, "Role Definition"),
+            get_block_content(prompt, "System Prompt"),
             get_block_content(prompt, "Task Explanation")
         ]
         return "\n\n".join([p for p in parts if p])

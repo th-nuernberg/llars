@@ -219,7 +219,7 @@
                   {{ liveAgreementMetrics.alpha?.toFixed(3) }}
                 </span>
                 <span class="metric-label">Krippendorff's α <v-icon size="12" class="info-icon">mdi-information-outline</v-icon></span>
-                <span class="metric-interpretation">{{ liveAgreementMetrics.interpretation || '' }}</span>
+                <span class="metric-interpretation">{{ getAlphaInterpretation(liveAgreementMetrics.alpha) }}</span>
               </div>
             </LTooltip>
           </div>
@@ -289,7 +289,7 @@
                   {{ liveAgreementMetrics.icc?.toFixed(3) }}
                 </span>
                 <span class="metric-label">ICC <v-icon size="12" class="info-icon">mdi-information-outline</v-icon></span>
-                <span class="metric-interpretation">{{ liveAgreementMetrics.iccInterpretation || '' }}</span>
+                <span class="metric-interpretation">{{ getICCInterpretation(liveAgreementMetrics.icc) }}</span>
               </div>
             </LTooltip>
           </div>
@@ -315,7 +315,7 @@
                   {{ liveAgreementMetrics.kendallW?.toFixed(3) }}
                 </span>
                 <span class="metric-label">Kendall's W <v-icon size="12" class="info-icon">mdi-information-outline</v-icon></span>
-                <span class="metric-interpretation">{{ liveAgreementMetrics.kendallWInterpretation || '' }}</span>
+                <span class="metric-interpretation">{{ getKendallWInterpretation(liveAgreementMetrics.kendallW) }}</span>
               </div>
             </LTooltip>
           </div>
@@ -458,38 +458,6 @@
         />
       </div>
 
-      <!-- Ranking Bucket Distribution Chart -->
-      <div class="bucket-distribution-section" v-if="hasBucketDistribution">
-        <h4 class="subsection-title">
-          {{ $t('scenarioManager.results.bucketDistribution') }}
-          <LTooltip :text="$t('scenarioManager.tooltips.bucketDistribution')" location="top">
-            <v-icon size="16" class="help-icon">mdi-help-circle-outline</v-icon>
-          </LTooltip>
-        </h4>
-        <div class="bucket-chart">
-          <div
-            v-for="bucket in bucketDistribution"
-            :key="bucket.bucket"
-            class="bucket-bar-container"
-          >
-            <div class="bucket-label">{{ bucket.label }}</div>
-            <div class="bucket-bar-wrapper">
-              <div
-                class="bucket-bar-fill"
-                :style="{
-                  width: bucket.percentage + '%',
-                  backgroundColor: bucket.color
-                }"
-              >
-                <span class="bucket-bar-value" v-if="bucket.percentage > 15">{{ bucket.count }}</span>
-              </div>
-              <span class="bucket-bar-value outside" v-if="bucket.percentage <= 15">{{ bucket.count }}</span>
-            </div>
-            <div class="bucket-percentage">{{ bucket.percentage }}%</div>
-          </div>
-        </div>
-      </div>
-
       <!-- Provenance Analysis (Ranking) -->
       <div class="provenance-section" v-if="hasProvenanceAnalysis">
         <h4 class="subsection-title">
@@ -501,6 +469,12 @@
         <p class="subsection-description text-medium-emphasis text-caption mb-3">
           {{ $t('scenarioManager.results.provenanceDescription', { bucket: provenanceTopBucketLabel }) }}
         </p>
+        <p class="provenance-metric-explainer text-medium-emphasis text-caption mb-3">
+          {{ $t('scenarioManager.results.provenanceMetricExplanation', { bucket: provenanceTopBucketLabel }) }}
+        </p>
+        <div class="provenance-top-bucket-note mb-3">
+          {{ $t('scenarioManager.results.topBucketTarget', { bucket: provenanceTopBucketLabel }) }}
+        </div>
 
         <div class="provenance-best-grid">
           <div class="provenance-best-card">
@@ -517,13 +491,23 @@
               {{ formatProvenanceRate(bestProvenancePrompt.top_bucket_rate) }}% | {{ bestProvenancePrompt.top_bucket_count }}/{{ bestProvenancePrompt.total }}
             </span>
           </div>
+          <div class="provenance-best-card">
+            <span class="provenance-best-label">{{ $t('scenarioManager.results.bestCombination') }}</span>
+            <strong class="provenance-best-name">{{ bestProvenanceCombination?.label || '-' }}</strong>
+            <span v-if="bestProvenanceCombination" class="provenance-best-meta">
+              {{ formatProvenanceRate(bestProvenanceCombination.top_bucket_rate) }}% | {{ bestProvenanceCombination.top_bucket_count }}/{{ bestProvenanceCombination.total }}
+            </span>
+          </div>
         </div>
 
         <div class="provenance-lists-grid">
           <div class="provenance-list-card">
             <div class="provenance-list-header">
               <span>{{ $t('scenarioManager.results.modelRanking') }}</span>
-              <span>{{ $t('scenarioManager.results.assignments') }}: {{ currentProvenanceSegment?.total_assignments || 0 }}</span>
+              <span>
+                {{ $t('scenarioManager.results.assignments') }}: {{ currentProvenanceSegment?.total_assignments || 0 }}
+                · {{ $t('scenarioManager.results.topBucketHitRatio', { bucket: provenanceTopBucketLabel }) }}
+              </span>
             </div>
             <div v-if="currentProvenanceSegment?.by_llm?.length" class="provenance-list">
               <div
@@ -549,7 +533,7 @@
           <div class="provenance-list-card">
             <div class="provenance-list-header">
               <span>{{ $t('scenarioManager.results.promptRanking') }}</span>
-              <span>{{ $t('scenarioManager.results.topBucketShare') }}</span>
+              <span>{{ $t('scenarioManager.results.topBucketHitRatio', { bucket: provenanceTopBucketLabel }) }}</span>
             </div>
             <div v-if="currentProvenanceSegment?.by_prompt?.length" class="provenance-list">
               <div
@@ -571,29 +555,93 @@
               {{ $t('scenarioManager.results.noProvenanceData') }}
             </div>
           </div>
+
+          <div class="provenance-list-card">
+            <div class="provenance-list-header">
+              <span>{{ $t('scenarioManager.results.combinationRanking') }}</span>
+              <span>{{ $t('scenarioManager.results.topBucketHitRatio', { bucket: provenanceTopBucketLabel }) }}</span>
+            </div>
+            <div v-if="currentProvenanceSegment?.by_combination?.length" class="provenance-list">
+              <div
+                v-for="(entry, index) in currentProvenanceSegment.by_combination.slice(0, 8)"
+                :key="`prov-combo-${entry.id}`"
+                class="provenance-row"
+              >
+                <div class="provenance-row-main">
+                  <span class="provenance-rank">#{{ index + 1 }}</span>
+                  <span class="provenance-label">{{ entry.label }}</span>
+                </div>
+                <div class="provenance-row-stats">
+                  <span class="provenance-rate">{{ formatProvenanceRate(entry.top_bucket_rate) }}%</span>
+                  <span class="provenance-count">{{ entry.top_bucket_count }}/{{ entry.total }}</span>
+                </div>
+              </div>
+            </div>
+            <div v-else class="provenance-empty">
+              {{ $t('scenarioManager.results.noProvenanceData') }}
+            </div>
+          </div>
         </div>
       </div>
 
-      <!-- Ranking Agreement Heatmap (reuses LAgreementHeatmap) -->
-      <div class="agreement-heatmap-section" v-if="hasRankingAgreement">
-        <h4 class="subsection-title">
-          {{ $t('scenarioManager.results.rankingAgreement') }}
-          <LTooltip :text="$t('scenarioManager.tooltips.rankingAgreement')" location="top">
-            <v-icon size="16" class="help-icon">mdi-help-circle-outline</v-icon>
-          </LTooltip>
-        </h4>
-        <div class="heatmap-container">
-          <LAgreementHeatmap
-            :evaluators="pairwiseEvaluators"
-            :agreements="pairwiseAgreements"
-            :show-values="true"
-            :show-hover-info="true"
-            :show-legend="true"
-            :show-evaluator-type-legend="true"
-            :low-label="$t('scenarioManager.results.lowAgreement')"
-            :high-label="$t('scenarioManager.results.highAgreement')"
-            @cell-click="openAgreementDetail"
-          />
+      <!-- Ranking Bucket Distribution + Agreement -->
+      <div class="ranking-analysis-grid-section" v-if="hasBucketDistribution || hasRankingAgreement">
+        <div
+          class="ranking-analysis-grid"
+          :class="{ 'single-panel': !(hasBucketDistribution && hasRankingAgreement) }"
+        >
+          <div class="ranking-analysis-panel" v-if="hasBucketDistribution">
+            <h4 class="subsection-title">
+              {{ $t('scenarioManager.results.bucketDistribution') }}
+              <LTooltip :text="$t('scenarioManager.tooltips.bucketDistribution')" location="top">
+                <v-icon size="16" class="help-icon">mdi-help-circle-outline</v-icon>
+              </LTooltip>
+            </h4>
+            <div class="bucket-chart">
+              <div
+                v-for="bucket in bucketDistribution"
+                :key="bucket.bucket"
+                class="bucket-bar-container"
+              >
+                <div class="bucket-label">{{ bucket.label }}</div>
+                <div class="bucket-bar-wrapper">
+                  <div
+                    class="bucket-bar-fill"
+                    :style="{
+                      width: bucket.percentage + '%',
+                      backgroundColor: bucket.color
+                    }"
+                  >
+                    <span class="bucket-bar-value" v-if="bucket.percentage > 15">{{ bucket.count }}</span>
+                  </div>
+                  <span class="bucket-bar-value outside" v-if="bucket.percentage <= 15">{{ bucket.count }}</span>
+                </div>
+                <div class="bucket-percentage">{{ bucket.percentage }}%</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="ranking-analysis-panel" v-if="hasRankingAgreement">
+            <h4 class="subsection-title">
+              {{ $t('scenarioManager.results.rankingAgreement') }}
+              <LTooltip :text="$t('scenarioManager.tooltips.rankingAgreement')" location="top">
+                <v-icon size="16" class="help-icon">mdi-help-circle-outline</v-icon>
+              </LTooltip>
+            </h4>
+            <div class="heatmap-container">
+              <LAgreementHeatmap
+                :evaluators="pairwiseEvaluators"
+                :agreements="pairwiseAgreements"
+                :show-values="true"
+                :show-hover-info="true"
+                :show-legend="true"
+                :show-evaluator-type-legend="true"
+                :low-label="$t('scenarioManager.results.lowAgreement')"
+                :high-label="$t('scenarioManager.results.highAgreement')"
+                @cell-click="openAgreementDetail"
+              />
+            </div>
+          </div>
         </div>
       </div>
 
@@ -1099,7 +1147,7 @@
           </div>
 
           <!-- Item-Level Breakdown -->
-          <div v-if="selectedAgreementDetail" class="agreement-breakdown">
+          <div v-if="selectedAgreementDetail" class="agreement-breakdown" :style="agreementBreakdownLayoutStyle">
             <div class="breakdown-header">
               <h5 class="breakdown-title">{{ $t('scenarioManager.results.itemBreakdown') }}</h5>
               <span v-if="isAgreementDetailTruncated" class="breakdown-note">
@@ -1128,21 +1176,56 @@
                       <summary class="agreement-point-summary">
                         <span class="point-label">{{ getAgreementItemLabel(item) }}</span>
                         <span class="point-value-preview">
-                          {{ formatAgreementEvaluatorName(selectedAgreement.eval1) }}:
-                          {{ formatAgreementItemValue(getAgreementItemValue(item, selectedAgreement.eval1?.id)) }}
-                          ·
-                          {{ formatAgreementEvaluatorName(selectedAgreement.eval2) }}:
-                          {{ formatAgreementItemValue(getAgreementItemValue(item, selectedAgreement.eval2?.id)) }}
+                          <span class="point-preview-rater">{{ formatAgreementEvaluatorName(selectedAgreement.eval1) }}:</span>
+                          <span class="point-preview-value">
+                            <span
+                              v-if="isAgreementBucketValue(getAgreementItemValue(item, selectedAgreement.eval1?.id))"
+                              class="point-bucket-chip"
+                              :style="getAgreementBucketStyle(getAgreementItemValue(item, selectedAgreement.eval1?.id))"
+                            >
+                              {{ getAgreementBucketLabel(getAgreementItemValue(item, selectedAgreement.eval1?.id)) }}
+                            </span>
+                            <strong v-else class="point-value-text">{{ formatAgreementItemValue(getAgreementItemValue(item, selectedAgreement.eval1?.id)) }}</strong>
+                          </span>
+                          <span class="point-preview-rater">{{ formatAgreementEvaluatorName(selectedAgreement.eval2) }}:</span>
+                          <span class="point-preview-value">
+                            <span
+                              v-if="isAgreementBucketValue(getAgreementItemValue(item, selectedAgreement.eval2?.id))"
+                              class="point-bucket-chip"
+                              :style="getAgreementBucketStyle(getAgreementItemValue(item, selectedAgreement.eval2?.id))"
+                            >
+                              {{ getAgreementBucketLabel(getAgreementItemValue(item, selectedAgreement.eval2?.id)) }}
+                            </span>
+                            <strong v-else class="point-value-text">{{ formatAgreementItemValue(getAgreementItemValue(item, selectedAgreement.eval2?.id)) }}</strong>
+                          </span>
                         </span>
                       </summary>
                       <div class="agreement-point-body">
                         <div class="agreement-point-row">
                           <span class="point-rater">{{ formatAgreementEvaluatorName(selectedAgreement.eval1) }}</span>
-                          <strong>{{ formatAgreementItemValue(getAgreementItemValue(item, selectedAgreement.eval1?.id)) }}</strong>
+                          <span class="point-row-value">
+                            <span
+                              v-if="isAgreementBucketValue(getAgreementItemValue(item, selectedAgreement.eval1?.id))"
+                              class="point-bucket-chip"
+                              :style="getAgreementBucketStyle(getAgreementItemValue(item, selectedAgreement.eval1?.id))"
+                            >
+                              {{ getAgreementBucketLabel(getAgreementItemValue(item, selectedAgreement.eval1?.id)) }}
+                            </span>
+                            <strong v-else class="point-value-text">{{ formatAgreementItemValue(getAgreementItemValue(item, selectedAgreement.eval1?.id)) }}</strong>
+                          </span>
                         </div>
                         <div class="agreement-point-row">
                           <span class="point-rater">{{ formatAgreementEvaluatorName(selectedAgreement.eval2) }}</span>
-                          <strong>{{ formatAgreementItemValue(getAgreementItemValue(item, selectedAgreement.eval2?.id)) }}</strong>
+                          <span class="point-row-value">
+                            <span
+                              v-if="isAgreementBucketValue(getAgreementItemValue(item, selectedAgreement.eval2?.id))"
+                              class="point-bucket-chip"
+                              :style="getAgreementBucketStyle(getAgreementItemValue(item, selectedAgreement.eval2?.id))"
+                            >
+                              {{ getAgreementBucketLabel(getAgreementItemValue(item, selectedAgreement.eval2?.id)) }}
+                            </span>
+                            <strong v-else class="point-value-text">{{ formatAgreementItemValue(getAgreementItemValue(item, selectedAgreement.eval2?.id)) }}</strong>
+                          </span>
                         </div>
                         <p v-if="item.preview" class="point-preview">{{ item.preview }}</p>
                       </div>
@@ -1174,17 +1257,56 @@
                       <summary class="agreement-point-summary">
                         <span class="point-label">{{ getAgreementItemLabel(item) }}</span>
                         <span class="point-value-preview">
-                          {{ formatAgreementItemValue(getAgreementItemValue(item, selectedAgreement.eval1?.id)) }}
+                          <span class="point-preview-rater">{{ formatAgreementEvaluatorName(selectedAgreement.eval1) }}:</span>
+                          <span class="point-preview-value">
+                            <span
+                              v-if="isAgreementBucketValue(getAgreementItemValue(item, selectedAgreement.eval1?.id))"
+                              class="point-bucket-chip"
+                              :style="getAgreementBucketStyle(getAgreementItemValue(item, selectedAgreement.eval1?.id))"
+                            >
+                              {{ getAgreementBucketLabel(getAgreementItemValue(item, selectedAgreement.eval1?.id)) }}
+                            </span>
+                            <strong v-else class="point-value-text">{{ formatAgreementItemValue(getAgreementItemValue(item, selectedAgreement.eval1?.id)) }}</strong>
+                          </span>
+                          <span class="point-preview-rater">{{ formatAgreementEvaluatorName(selectedAgreement.eval2) }}:</span>
+                          <span class="point-preview-value">
+                            <span
+                              v-if="isAgreementBucketValue(getAgreementItemValue(item, selectedAgreement.eval2?.id))"
+                              class="point-bucket-chip"
+                              :style="getAgreementBucketStyle(getAgreementItemValue(item, selectedAgreement.eval2?.id))"
+                            >
+                              {{ getAgreementBucketLabel(getAgreementItemValue(item, selectedAgreement.eval2?.id)) }}
+                            </span>
+                            <strong v-else class="point-value-text">{{ formatAgreementItemValue(getAgreementItemValue(item, selectedAgreement.eval2?.id)) }}</strong>
+                          </span>
                         </span>
                       </summary>
                       <div class="agreement-point-body">
                         <div class="agreement-point-row">
                           <span class="point-rater">{{ formatAgreementEvaluatorName(selectedAgreement.eval1) }}</span>
-                          <strong>{{ formatAgreementItemValue(getAgreementItemValue(item, selectedAgreement.eval1?.id)) }}</strong>
+                          <span class="point-row-value">
+                            <span
+                              v-if="isAgreementBucketValue(getAgreementItemValue(item, selectedAgreement.eval1?.id))"
+                              class="point-bucket-chip"
+                              :style="getAgreementBucketStyle(getAgreementItemValue(item, selectedAgreement.eval1?.id))"
+                            >
+                              {{ getAgreementBucketLabel(getAgreementItemValue(item, selectedAgreement.eval1?.id)) }}
+                            </span>
+                            <strong v-else class="point-value-text">{{ formatAgreementItemValue(getAgreementItemValue(item, selectedAgreement.eval1?.id)) }}</strong>
+                          </span>
                         </div>
                         <div class="agreement-point-row">
                           <span class="point-rater">{{ formatAgreementEvaluatorName(selectedAgreement.eval2) }}</span>
-                          <strong>{{ formatAgreementItemValue(getAgreementItemValue(item, selectedAgreement.eval2?.id)) }}</strong>
+                          <span class="point-row-value">
+                            <span
+                              v-if="isAgreementBucketValue(getAgreementItemValue(item, selectedAgreement.eval2?.id))"
+                              class="point-bucket-chip"
+                              :style="getAgreementBucketStyle(getAgreementItemValue(item, selectedAgreement.eval2?.id))"
+                            >
+                              {{ getAgreementBucketLabel(getAgreementItemValue(item, selectedAgreement.eval2?.id)) }}
+                            </span>
+                            <strong v-else class="point-value-text">{{ formatAgreementItemValue(getAgreementItemValue(item, selectedAgreement.eval2?.id)) }}</strong>
+                          </span>
                         </div>
                         <p v-if="item.preview" class="point-preview">{{ item.preview }}</p>
                       </div>
@@ -1691,6 +1813,28 @@ function getLikertColor(value, index) {
   return barColors[index % barColors.length]
 }
 
+function resolveLocalizedText(value, fallback = '') {
+  if (value === undefined || value === null) return fallback
+
+  if (typeof value === 'string') {
+    const text = value.trim()
+    return text || fallback
+  }
+
+  if (typeof value !== 'object') {
+    const text = String(value).trim()
+    return text || fallback
+  }
+
+  const lang = String(locale.value || 'en').toLowerCase()
+  const preferGerman = lang.startsWith('de')
+  const deText = typeof value.de === 'string' ? value.de.trim() : ''
+  const enText = typeof value.en === 'string' ? value.en.trim() : ''
+  const genericText = typeof value.label === 'string' ? value.label.trim() : ''
+
+  return (preferGerman ? (deText || enText || genericText) : (enText || deText || genericText)) || fallback
+}
+
 /**
  * Get localized label for distribution item.
  * Uses label_de/label_en from backend, falls back to label.
@@ -1698,10 +1842,11 @@ function getLikertColor(value, index) {
 function getLocalizedLabel(item) {
   if (!item) return ''
 
-  const lang = locale.value || 'en'
+  const lang = String(locale.value || 'en').toLowerCase()
+  const isGerman = lang.startsWith('de')
 
   // Use localized label if available
-  if (lang === 'de' && item.label_de) {
+  if (isGerman && item.label_de) {
     return item.value ? `${item.value} - ${item.label_de}` : item.label_de
   }
   if (item.label_en) {
@@ -1734,14 +1879,153 @@ const filteredDistributionData = computed(() => {
   return distributionData.value
 })
 
+function getLocalizedBucketFallback(value) {
+  const normalized = normalizeAgreementBucketValue(value)
+  if (!normalized) return ''
+
+  const lang = (locale.value || 'en').toLowerCase()
+  const isGerman = lang.startsWith('de')
+
+  const fallbackLabels = {
+    sehr_gut: { de: 'Sehr gut', en: 'Very good' },
+    gut: { de: 'Gut', en: 'Good' },
+    mittel: { de: 'Mittel', en: 'Medium' },
+    neutral: { de: 'Neutral', en: 'Neutral' },
+    schlecht: { de: 'Schlecht', en: 'Poor' },
+    sehr_schlecht: { de: 'Sehr schlecht', en: 'Very poor' }
+  }
+
+  const labelSet = fallbackLabels[normalized]
+  if (!labelSet) return ''
+  return isGerman ? labelSet.de : labelSet.en
+}
+
+function resolveLocalizedBucketLabel(bucketId, fallbackLabel = '') {
+  const normalizedId = normalizeAgreementBucketValue(bucketId)
+  if (normalizedId && configuredBucketLabelsById.value[normalizedId]) {
+    return configuredBucketLabelsById.value[normalizedId]
+  }
+
+  const normalizedFallback = normalizeAgreementBucketValue(fallbackLabel)
+  if (normalizedFallback) {
+    const localizedFallback = getLocalizedBucketFallback(normalizedFallback)
+    if (localizedFallback) return localizedFallback
+  }
+
+  if (normalizedId) {
+    const localizedById = getLocalizedBucketFallback(normalizedId)
+    if (localizedById) return localizedById
+  }
+
+  if (fallbackLabel) return String(fallbackLabel)
+  if (bucketId) return String(bucketId)
+  return ''
+}
+
 // ===== Computed: Ranking Bucket Distribution =====
 
 const bucketDistribution = computed(() => {
-  return props.liveStats?.bucket_distribution || []
+  const rawBuckets = props.liveStats?.bucket_distribution || []
+  return rawBuckets.map((bucket) => {
+    const bucketId = bucket?.bucket || bucket?.id || ''
+    const localizedBackendLabel = resolveLocalizedText({
+      de: bucket?.label_de,
+      en: bucket?.label_en,
+      label: bucket?.label
+    }, '')
+    return {
+      ...bucket,
+      label: resolveLocalizedBucketLabel(bucketId, localizedBackendLabel || bucket?.label)
+    }
+  })
 })
 
 const hasBucketDistribution = computed(() => {
   return isRankingScenario.value && bucketDistribution.value.length > 0
+})
+
+const configuredBuckets = computed(() => {
+  const rawConfig = props.scenario?.config_json ?? props.scenario?.config ?? {}
+  let config = rawConfig
+  if (typeof config === 'string') {
+    try {
+      config = JSON.parse(config)
+    } catch {
+      config = {}
+    }
+  }
+  if (!config || typeof config !== 'object') return []
+
+  const buckets = config?.buckets
+  if (!Array.isArray(buckets)) return []
+
+  return buckets
+    .map((bucket, index) => {
+      if (!bucket) return null
+      if (typeof bucket === 'string') {
+        const id = String(bucket || `bucket_${index + 1}`).trim().toLowerCase()
+        if (!id) return null
+        return {
+          id,
+          label: resolveLocalizedBucketLabel(id, bucket),
+          color: '#88c4c8'
+        }
+      }
+      if (typeof bucket !== 'object') return null
+      const id = String(bucket.id || `bucket_${index + 1}`).trim().toLowerCase()
+      const name = bucket.name
+      const label = resolveLocalizedText(name, id)
+      return {
+        id,
+        label: resolveLocalizedBucketLabel(id, String(label || id)),
+        color: bucket.color || '#88c4c8'
+      }
+    })
+    .filter(Boolean)
+})
+
+const configuredBucketLabelsById = computed(() => {
+  const map = {}
+  for (const bucket of configuredBuckets.value) {
+    const normalizedId = normalizeAgreementBucketValue(bucket.id)
+    if (!normalizedId) continue
+    map[normalizedId] = bucket.label
+  }
+  return map
+})
+
+const agreementBucketMap = computed(() => {
+  const map = {}
+
+  const addBucketMeta = (bucketId, label, color) => {
+    const idKey = normalizeAgreementBucketValue(bucketId)
+    if (idKey) {
+      map[idKey] = { id: bucketId, label, color }
+    }
+
+    const labelKey = normalizeAgreementBucketValue(label)
+    if (labelKey && !map[labelKey]) {
+      map[labelKey] = { id: bucketId, label, color }
+    }
+  }
+
+  for (const bucket of bucketDistribution.value) {
+    addBucketMeta(bucket.bucket, bucket.label || String(bucket.bucket), bucket.color || '#88c4c8')
+  }
+
+  for (const bucket of configuredBuckets.value) {
+    addBucketMeta(bucket.id, bucket.label, bucket.color)
+  }
+
+  // Final fallback only for legacy data without any bucket metadata.
+  if (Object.keys(map).length === 0) {
+    map.gut = { id: 'gut', label: getLocalizedBucketFallback('gut'), color: '#b0ca97' }
+    map.mittel = { id: 'mittel', label: getLocalizedBucketFallback('mittel'), color: '#D1BC8A' }
+    map.neutral = { id: 'neutral', label: getLocalizedBucketFallback('neutral'), color: '#88c4c8' }
+    map.schlecht = { id: 'schlecht', label: getLocalizedBucketFallback('schlecht'), color: '#e8a087' }
+  }
+
+  return map
 })
 
 // ===== Computed: Ranking Provenance Analysis =====
@@ -1763,7 +2047,14 @@ const currentProvenanceSegment = computed(() => {
 })
 
 const provenanceTopBucketLabel = computed(() => {
-  return provenanceAnalysis.value?.top_bucket?.label || 'Top Bucket'
+  const topBucket = provenanceAnalysis.value?.top_bucket
+  if (!topBucket) return 'Top Bucket'
+  const localizedBackendLabel = resolveLocalizedText({
+    de: topBucket?.label_de,
+    en: topBucket?.label_en,
+    label: topBucket?.label
+  }, '')
+  return resolveLocalizedBucketLabel(topBucket.id, localizedBackendLabel || topBucket?.label)
 })
 
 const bestProvenanceLLM = computed(() => {
@@ -1774,11 +2065,17 @@ const bestProvenancePrompt = computed(() => {
   return currentProvenanceSegment.value?.best_prompt || null
 })
 
+const bestProvenanceCombination = computed(() => {
+  return currentProvenanceSegment.value?.best_combination || null
+})
+
 const hasProvenanceAnalysis = computed(() => {
   if (!isRankingScenario.value) return false
   const segment = currentProvenanceSegment.value
   if (!segment) return false
-  return (segment.by_llm?.length || 0) > 0 || (segment.by_prompt?.length || 0) > 0
+  return (segment.by_llm?.length || 0) > 0 ||
+    (segment.by_prompt?.length || 0) > 0 ||
+    (segment.by_combination?.length || 0) > 0
 })
 
 // ===== Computed: Ranking Agreement Matrix =====
@@ -1809,7 +2106,7 @@ const dimensions = computed(() => {
   if (configDimensions.length > 0) {
     return configDimensions.map(d => ({
       id: d.id,
-      name: d.name?.de || d.name?.en || d.name || d.id,
+      name: resolveLocalizedText(d.name, d.id),
       scale: d.scale
     }))
   }
@@ -2200,6 +2497,30 @@ const isAgreementDetailTruncated = computed(() => {
   return Boolean(detail.truncated) || (omittedAgreed + omittedDisagreed > 0)
 })
 
+const agreementEvaluatorColumnWidth = computed(() => {
+  const names = [
+    formatAgreementEvaluatorName(selectedAgreement.value?.eval1),
+    formatAgreementEvaluatorName(selectedAgreement.value?.eval2)
+  ]
+  const maxLength = names.reduce((max, name) => Math.max(max, String(name || '').length), 0)
+  const widthCh = Math.max(10, Math.min(44, maxLength + 1))
+  return `${widthCh}ch`
+})
+
+const agreementValueColumnWidth = computed(() => {
+  const labels = Object.values(agreementBucketMap.value || {})
+    .map(meta => String(meta?.label || '').trim())
+    .filter(Boolean)
+  const maxLength = labels.reduce((max, label) => Math.max(max, label.length), 0)
+  const widthCh = Math.max(7, Math.min(18, maxLength + 2))
+  return `${widthCh}ch`
+})
+
+const agreementBreakdownLayoutStyle = computed(() => ({
+  '--agreement-rater-column-width': agreementEvaluatorColumnWidth.value,
+  '--agreement-value-column-width': agreementValueColumnWidth.value
+}))
+
 function getAgreementKey(id1, id2) {
   // Keys are stored as "min-max" for consistency
   const str1 = String(id1)
@@ -2248,8 +2569,89 @@ function getAgreementItemValue(item, evaluatorId) {
   return item.values?.[String(evaluatorId)] ?? null
 }
 
+function normalizeAgreementBucketValue(value) {
+  if (value === undefined || value === null) return ''
+  const normalizedRaw = String(value).trim().toLowerCase()
+  if (!normalizedRaw) return ''
+
+  const normalized = normalizedRaw
+    .replace(/\s+/g, '_')
+    .replace(/-+/g, '_')
+
+  const legacyMap = {
+    sehr_gut: 'sehr_gut',
+    very_good: 'sehr_gut',
+    excellent: 'sehr_gut',
+    good: 'gut',
+    gut: 'gut',
+    medium: 'mittel',
+    middle: 'mittel',
+    moderate: 'mittel',
+    mittel: 'mittel',
+    neutral: 'neutral',
+    sehr_schlecht: 'sehr_schlecht',
+    very_poor: 'sehr_schlecht',
+    bad: 'schlecht',
+    poor: 'schlecht',
+    schlecht: 'schlecht'
+  }
+
+  return legacyMap[normalized] || normalized
+}
+
+function toRgba(color, alpha) {
+  if (!color || typeof color !== 'string') return `rgba(var(--v-theme-on-surface), ${alpha})`
+  const hex = color.trim()
+  const shortMatch = /^#([a-fA-F0-9]{3})$/.exec(hex)
+  if (shortMatch) {
+    const chars = shortMatch[1]
+    const r = parseInt(chars[0] + chars[0], 16)
+    const g = parseInt(chars[1] + chars[1], 16)
+    const b = parseInt(chars[2] + chars[2], 16)
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`
+  }
+  const longMatch = /^#([a-fA-F0-9]{6})$/.exec(hex)
+  if (longMatch) {
+    const value = longMatch[1]
+    const r = parseInt(value.slice(0, 2), 16)
+    const g = parseInt(value.slice(2, 4), 16)
+    const b = parseInt(value.slice(4, 6), 16)
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`
+  }
+  return `rgba(var(--v-theme-on-surface), ${alpha})`
+}
+
+function getAgreementBucketMeta(value) {
+  const key = normalizeAgreementBucketValue(value)
+  if (!key) return null
+  return agreementBucketMap.value[key] || null
+}
+
+function isAgreementBucketValue(value) {
+  return Boolean(getAgreementBucketMeta(value))
+}
+
+function getAgreementBucketLabel(value) {
+  const meta = getAgreementBucketMeta(value)
+  if (!meta) return formatAgreementItemValue(value)
+  return meta.label || formatAgreementItemValue(value)
+}
+
+function getAgreementBucketStyle(value) {
+  const meta = getAgreementBucketMeta(value)
+  if (!meta) return {}
+  const color = meta.color || '#88c4c8'
+  return {
+    color,
+    borderColor: toRgba(color, 0.55),
+    backgroundColor: toRgba(color, 0.14)
+  }
+}
+
 function formatAgreementItemValue(value) {
   if (value === undefined || value === null || value === '') return '-'
+  const bucketMeta = getAgreementBucketMeta(value)
+  if (bucketMeta?.label) return bucketMeta.label
   if (typeof value === 'number') {
     return Number.isInteger(value) ? String(value) : value.toFixed(2)
   }
@@ -2459,6 +2861,32 @@ function getKappaInterpretation(kappa) {
   if (kappa >= 0.4) return t('scenarioManager.results.kappa.moderate')
   if (kappa >= 0.2) return t('scenarioManager.results.kappa.fair')
   return t('scenarioManager.results.kappa.poor')
+}
+
+function getAlphaInterpretation(alpha) {
+  if (alpha === null || alpha === undefined) return '-'
+  if (alpha < 0) return t('scenarioManager.tooltips.interpretation.worseThanChance')
+  if (alpha < 0.4) return t('scenarioManager.tooltips.interpretation.poor')
+  if (alpha < 0.67) return t('scenarioManager.tooltips.interpretation.tentative')
+  if (alpha < 0.8) return t('scenarioManager.tooltips.interpretation.acceptable')
+  return t('scenarioManager.tooltips.interpretation.reliable')
+}
+
+function getICCInterpretation(value) {
+  if (value === null || value === undefined) return '-'
+  if (value >= 0.9) return t('scenarioManager.tooltips.icc.excellent')
+  if (value >= 0.75) return t('scenarioManager.tooltips.icc.good')
+  if (value >= 0.5) return t('scenarioManager.tooltips.icc.moderate')
+  return t('scenarioManager.tooltips.icc.poor')
+}
+
+function getKendallWInterpretation(value) {
+  if (value === null || value === undefined) return '-'
+  if (value >= 0.9) return t('scenarioManager.tooltips.kendallW.veryHigh')
+  if (value >= 0.7) return t('scenarioManager.tooltips.kendallW.high')
+  if (value >= 0.5) return t('scenarioManager.tooltips.kendallW.substantial')
+  if (value >= 0.3) return t('scenarioManager.tooltips.kendallW.moderate')
+  return t('scenarioManager.tooltips.kendallW.weak')
 }
 
 function getICCClass(value) {
@@ -3099,6 +3527,7 @@ watch(
 .distribution-section,
 .bucket-distribution-section,
 .provenance-section,
+.ranking-analysis-grid-section,
 .ranking-agreement-section {
   padding: 20px;
   border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.06);
@@ -3110,8 +3539,39 @@ watch(
 .distribution-section:last-child,
 .bucket-distribution-section:last-child,
 .provenance-section:last-child,
+.ranking-analysis-grid-section:last-child,
 .ranking-agreement-section:last-child {
   border-bottom: none;
+}
+
+/* Ranking Analysis Layout */
+.ranking-analysis-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+.ranking-analysis-grid.single-panel {
+  grid-template-columns: 1fr;
+}
+
+.ranking-analysis-panel {
+  background-color: rgba(var(--v-theme-on-surface), 0.02);
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  border-radius: 12px;
+  padding: 16px;
+}
+
+.ranking-analysis-panel .subsection-title {
+  margin-bottom: 12px;
+}
+
+.ranking-analysis-panel .heatmap-container {
+  background-color: rgba(var(--v-theme-on-surface), 0.02);
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  justify-content: center;
 }
 
 /* Bucket Distribution Styles */
@@ -3211,8 +3671,25 @@ watch(
 
 .provenance-lists-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
   gap: 12px;
+}
+
+.provenance-metric-explainer {
+  line-height: 1.45;
+}
+
+.provenance-top-bucket-note {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: rgba(var(--v-theme-on-surface), 0.8);
+  background-color: rgba(var(--v-theme-on-surface), 0.06);
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.12);
 }
 
 .provenance-list-card {
@@ -3703,6 +4180,10 @@ watch(
 }
 
 @media (max-width: 900px) {
+  .ranking-analysis-grid {
+    grid-template-columns: 1fr;
+  }
+
   .provenance-lists-grid {
     grid-template-columns: 1fr;
   }
@@ -4206,6 +4687,8 @@ watch(
 }
 
 .agreement-breakdown {
+  --agreement-rater-column-width: 16ch;
+  --agreement-value-column-width: 8ch;
   margin-top: 18px;
   padding-top: 16px;
   border-top: 1px solid rgba(var(--v-theme-on-surface), 0.08);
@@ -4290,9 +4773,9 @@ watch(
 }
 
 .agreement-point-summary {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) max-content;
   align-items: flex-start;
-  justify-content: space-between;
   gap: 12px;
   padding: 12px;
   cursor: pointer;
@@ -4321,11 +4804,32 @@ watch(
 }
 
 .point-value-preview {
+  display: grid;
+  grid-template-columns: var(--agreement-rater-column-width) minmax(var(--agreement-value-column-width), max-content);
+  align-items: center;
+  justify-content: end;
+  column-gap: 8px;
+  row-gap: 4px;
   font-size: 0.78rem;
   color: rgba(var(--v-theme-on-surface), 0.62);
+  max-width: 100%;
+  min-width: 0;
+}
+
+.point-preview-rater {
+  color: rgba(var(--v-theme-on-surface), 0.62);
+  font-weight: 500;
   text-align: right;
-  max-width: 45%;
-  word-break: break-word;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.point-preview-value {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: var(--agreement-value-column-width);
 }
 
 .agreement-point-body {
@@ -4336,17 +4840,53 @@ watch(
 }
 
 .agreement-point-row {
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: var(--agreement-rater-column-width) minmax(var(--agreement-value-column-width), max-content);
   align-items: center;
-  gap: 8px;
+  column-gap: 8px;
   font-size: 0.85rem;
 }
 
 .point-rater {
   font-weight: 500;
   color: rgba(var(--v-theme-on-surface), 0.7);
-  word-break: break-word;
+  text-align: right;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.point-row-value {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: var(--agreement-value-column-width);
+}
+
+.point-value-text {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: var(--agreement-value-column-width);
+  font-size: 0.8rem;
+  font-weight: 700;
+  line-height: 1.25;
+  color: rgba(var(--v-theme-on-surface), 0.76);
+  white-space: nowrap;
+}
+
+.point-bucket-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: var(--agreement-value-column-width);
+  padding: 2px 9px;
+  border-radius: 999px;
+  border: 1px solid;
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1.25;
+  white-space: nowrap;
 }
 
 .point-preview {
@@ -4383,6 +4923,14 @@ watch(
     grid-template-columns: 1fr;
     gap: 16px;
     padding: 16px;
+  }
+
+  .ranking-analysis-grid-section {
+    padding: 16px;
+  }
+
+  .ranking-analysis-panel {
+    padding: 14px;
   }
 
   .dimension-details-grid {
@@ -4477,12 +5025,33 @@ watch(
   }
 
   .point-value-preview {
-    max-width: 100%;
+    width: 100%;
+    justify-content: start;
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: 2px;
+  }
+
+  .point-preview-rater,
+  .point-rater {
     text-align: left;
+    white-space: normal;
+  }
+
+  .point-preview-value,
+  .point-row-value,
+  .point-value-text,
+  .point-bucket-chip {
+    min-width: 0;
+    justify-content: flex-start;
   }
 
   .agreement-point-summary {
-    flex-direction: column;
+    grid-template-columns: 1fr;
+  }
+
+  .agreement-point-row {
+    grid-template-columns: 1fr;
+    row-gap: 4px;
   }
 }
 </style>

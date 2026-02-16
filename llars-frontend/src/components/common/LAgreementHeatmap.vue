@@ -19,9 +19,10 @@
           :title="getEvaluatorTooltip(evaluator)"
         >
           <LIcon v-if="evaluator.isLLM" size="10" class="llm-icon">mdi-robot</LIcon>
-          <span>{{ getAxisLabel(evaluator, 'x') }}</span>
+          <span class="axis-label-text axis-label-text-x">{{ getAxisLabel(evaluator, 'x') }}</span>
         </div>
       </div>
+      <div class="top-spacer" aria-hidden="true"></div>
 
       <!-- Y-axis labels (left side) -->
       <div class="y-labels">
@@ -36,7 +37,7 @@
           :title="getEvaluatorTooltip(evaluator)"
         >
           <LIcon v-if="evaluator.isLLM" size="12" class="mr-1">mdi-robot</LIcon>
-          <span>{{ getAxisLabel(evaluator, 'y') }}</span>
+          <span class="axis-label-text axis-label-text-y">{{ getAxisLabel(evaluator, 'y') }}</span>
         </div>
       </div>
 
@@ -68,6 +69,7 @@
           </div>
         </div>
       </div>
+      <div class="right-spacer" aria-hidden="true"></div>
     </div>
 
     <!-- Empty state -->
@@ -243,10 +245,25 @@ function normalizeEvaluatorName(evaluator) {
   return modelPart || raw
 }
 
+function compactAxisLabel(name, axis = 'y') {
+  let compact = String(name || '').trim()
+  if (!compact) return '?'
+
+  // Keep frequently used suffixes compact for tight heatmap labels.
+  compact = compact.replace(/\s*\(vision\s*\+\s*reasoning\)\s*$/i, ' (V+R)')
+
+  if (axis === 'x') {
+    compact = compact.replace(/_/g, ' ')
+  }
+
+  return compact.replace(/\s+/g, ' ').trim()
+}
+
 function getAxisLabel(evaluator, axis = 'y') {
   const normalized = normalizeEvaluatorName(evaluator)
-  const maxLength = axis === 'x' ? 18 : 30
-  return truncateMiddle(normalized, maxLength)
+  const compact = compactAxisLabel(normalized, axis)
+  const maxLength = axis === 'x' ? 12 : 24
+  return truncateMiddle(compact, maxLength)
 }
 
 function getEvaluatorTooltip(evaluator) {
@@ -395,13 +412,16 @@ function onCellClick(rowEval, colEval) {
 }
 
 .heatmap-container {
+  --y-axis-column-width: clamp(130px, 24vw, 220px);
   display: grid;
-  grid-template-columns: minmax(120px, auto) auto;
+  grid-template-columns: var(--y-axis-column-width) auto var(--y-axis-column-width);
   grid-template-rows: auto auto;
   justify-content: center;
   align-content: center;
   flex: 1;
-  width: 100%;
+  width: fit-content;
+  max-width: 100%;
+  margin: 0 auto;
   gap: 0;
 }
 
@@ -411,18 +431,19 @@ function onCellClick(rowEval, colEval) {
   grid-column: 1;
   grid-row: 2;
   justify-self: end;
+  width: var(--y-axis-column-width);
 }
 
 .corner-cell {
   grid-column: 1;
   grid-row: 1;
-  min-width: 120px;
-  height: 90px;
+  width: var(--y-axis-column-width);
+  height: 96px;
 }
 
 .y-label {
   height: 60px;
-  max-width: 220px;
+  width: 100%;
   display: flex;
   align-items: center;
   justify-content: flex-end;
@@ -449,13 +470,20 @@ function onCellClick(rowEval, colEval) {
   display: flex;
   grid-column: 2;
   grid-row: 1;
-  height: 90px;
+  height: 96px;
   align-items: flex-end;
+}
+
+.top-spacer {
+  grid-column: 3;
+  grid-row: 1;
+  width: var(--y-axis-column-width);
+  height: 96px;
 }
 
 .x-label {
   width: 60px;
-  height: 90px;
+  height: 96px;
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
@@ -474,6 +502,22 @@ function onCellClick(rowEval, colEval) {
   margin-bottom: 2px;
 }
 
+.axis-label-text {
+  display: inline-block;
+}
+
+.axis-label-text-y {
+  max-width: calc(100% - 18px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.axis-label-text-x {
+  max-height: 70px;
+  overflow: hidden;
+}
+
 .x-label.is-llm {
   color: rgb(var(--v-theme-accent));
 }
@@ -488,6 +532,12 @@ function onCellClick(rowEval, colEval) {
   flex-direction: column;
   grid-column: 2;
   grid-row: 2;
+}
+
+.right-spacer {
+  grid-column: 3;
+  grid-row: 2;
+  width: var(--y-axis-column-width);
 }
 
 .heatmap-row {
@@ -647,15 +697,25 @@ function onCellClick(rowEval, colEval) {
   }
 
   .heatmap-container {
-    grid-template-columns: minmax(90px, auto) auto;
+    --y-axis-column-width: clamp(90px, 34vw, 150px);
+    grid-template-columns: var(--y-axis-column-width) auto;
+  }
+
+  .top-spacer,
+  .right-spacer {
+    display: none;
   }
 
   .y-label, .x-label {
     font-size: 0.65rem;
   }
 
-  .heatmap-cell, .y-label, .heatmap-row, .x-label {
+  .heatmap-cell, .heatmap-row, .x-label {
     width: 48px;
+    height: 48px;
+  }
+
+  .y-label {
     height: 48px;
   }
 
@@ -664,12 +724,20 @@ function onCellClick(rowEval, colEval) {
   }
 
   .corner-cell {
-    min-width: 90px;
+    width: var(--y-axis-column-width);
     height: 64px;
   }
 
   .y-label {
-    max-width: 150px;
+    width: 100%;
+  }
+
+  .axis-label-text-y {
+    max-width: calc(100% - 16px);
+  }
+
+  .axis-label-text-x {
+    max-height: 44px;
   }
 
   .cell-value {

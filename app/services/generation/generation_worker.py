@@ -971,12 +971,13 @@ class GenerationWorker:
         Detect system blocks from Prompt Engineering content.
 
         A block is treated as system prompt when either:
-        - the block key/id is "system" (legacy behavior), or
-        - the visible block title is "system" (after renaming in editor).
+        - the block key/id is "system" or "system prompt", or
+        - the visible block title is "system" or "system prompt".
         """
+        system_names = {"system", "system prompt"}
         normalized_block_id = cls._normalize_block_name(block_id)
         normalized_title = cls._normalize_block_name(block_data.get('title'))
-        return normalized_block_id == "system" or normalized_title == "system"
+        return normalized_block_id in system_names or normalized_title in system_names
 
     @staticmethod
     def _is_empty_prompt_variable_value(value: Any) -> bool:

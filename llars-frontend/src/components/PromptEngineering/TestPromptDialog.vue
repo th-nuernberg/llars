@@ -399,8 +399,9 @@ const variableStats = computed(() => ({
 }))
 
 const normalizeBlockName = (value) => String(value || '').trim().toLowerCase()
+const SYSTEM_BLOCK_NAMES = ['system', 'system prompt']
 const isSystemBlock = (block) => (
-  normalizeBlockName(block?.id) === 'system' || normalizeBlockName(block?.title) === 'system'
+  SYSTEM_BLOCK_NAMES.includes(normalizeBlockName(block?.id)) || SYSTEM_BLOCK_NAMES.includes(normalizeBlockName(block?.title))
 )
 
 // Resolve text by replacing variables

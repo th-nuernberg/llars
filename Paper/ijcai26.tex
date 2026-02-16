@@ -25,6 +25,7 @@
 \usepackage{pifont}
 \usepackage[nointegrals]{wasysym}
 \usepackage[shortcuts]{extdash}
+\usepackage{float}
 
 \usetikzlibrary{shapes.geometric, arrows.meta, positioning, fit, backgrounds, calc}
 
@@ -82,7 +83,7 @@ Organizations building LLM-based assistants for sensitive domains~\cite{chen2024
 Public benchmarks rarely transfer to domain-specific tasks; practitioners must test models on their own data to find the smallest\--and most cost-effective\--option that still meets quality requirements, especially when replacing a model in a running system.
 Yet domain experts and developers typically work in isolation: prompts are iterated in shared documents without version control and no single tool covers the full cycle from prompt development through systematic evaluation.
 
-\begin{figure}[t]
+\begin{figure}[htb]
 \centering
 \begin{tikzpicture}[
     module/.style={
@@ -230,7 +231,7 @@ A prompt is composed of ordered blocks\--one optionally designated as system pro
 
 \begin{figure}[htb]
 \centering
-\includegraphics[width=\linewidth]{figures/prompt-eng.png}
+\includegraphics[width=0.95\columnwidth]{figures/prompt-eng.png}
 \caption{Collaborative prompt editor with a data-format explanation block containing template variables \texttt{\{\{subject\}\}} and \texttt{\{\{content\}\}}. The sidebar (left) shows actions for block management, variable management, preview and LLM testing. The Variable Palette (bottom-left) lists all extracted variables with sample values that can be dragged into blocks.}
 \label{fig:prompt-editor}
 \end{figure}
@@ -254,7 +255,7 @@ Evaluators see only the generated text without any indication of which model or 
 Each evaluation is organized as a \emph{scenario}\--a self-contained campaign that defines the type, assigns evaluators and distributes items\--supporting six types: rating, ranking, labeling, comparison, mail rating and authenticity.
 Scenarios are created from batch outputs with a single click or via an AI-assisted Scenario Wizard.
 
-\begin{figure}[htb]
+\begin{figure}[!t]
 \centering
 \includegraphics[width=\linewidth]{figures/provenance-analysis}
 \caption{Provenance analysis ranking model--prompt combinations by top-bucket hit rate (top) with per-combination bucket distributions (bottom).}

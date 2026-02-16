@@ -1381,8 +1381,9 @@ class Browser:
         display: flex; align-items: center; gap: 16px;
         margin-top: 36px;
         opacity: 0;
-        animation: problem-fade 0.8s ease 2.5s forwards;
+        transition: opacity 0.8s ease;
     }
+    .problem-painpoints.visible { opacity: 1; }
     .problem-pain {
         font-family: 'Segoe UI', system-ui, sans-serif;
         font-size: 14px; color: #E8A087;
@@ -1402,8 +1403,9 @@ class Browser:
         color: rgba(255,255,255,0.3);
         letter-spacing: 0.5px;
         opacity: 0;
-        animation: problem-fade 0.8s ease 3.5s forwards;
+        transition: opacity 0.8s ease 0.3s;
     }
+    .problem-quote.visible { opacity: 1; }
     /* === Data Preview Overlay === */
     .data-preview-wrapper {
         display: flex; flex-direction: column;
@@ -2807,6 +2809,16 @@ class Browser:
             });
         """)
         print(f"   🎬 show_problem")
+
+    def problem_show_painpoints(self):
+        """Phase 2 of problem animation: fade in pain point pills and quote."""
+        self.driver.execute_script("""
+            var painpoints = document.querySelector('.problem-painpoints');
+            var quote = document.querySelector('.problem-quote');
+            if (painpoints) painpoints.classList.add('visible');
+            if (quote) quote.classList.add('visible');
+        """)
+        print(f"   🎬 problem_show_painpoints")
 
     def merge_problem(self):
         """Animates the problem boxes merging: gap shrinks, dashed LLARS border appears."""
@@ -4832,6 +4844,15 @@ class ScriptRunner:
             else:
                 time.sleep(0.5)  # Wait for fade-in
             print(f"   ✓ show_problem")
+            return True
+
+        elif do == 'problem_show_painpoints':
+            self.browser.problem_show_painpoints()
+            if test_mode:
+                time.sleep(0.2)
+            else:
+                time.sleep(0.5)
+            print(f"   ✓ problem_show_painpoints")
             return True
 
         elif do == 'merge_problem':

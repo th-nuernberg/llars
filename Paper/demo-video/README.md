@@ -64,9 +64,11 @@ Das Video zeigt Live-Kollaboration mit **zwei Browser-Fenstern**:
 2. **Collab-Browser:** `ijcai_reviewer_2` tippt gleichzeitig
 
 ```json
+{"do": "type", "target": "Last Block Editor", "text": "Subject: {{subject}}", "speed": "instant"},
 {"do": "collab_open", "user": "ijcai_reviewer_2", "password": "ijcai_reviewer_123"},
 {"do": "collab_goto", "url": "/promptengineering"},
-{"do": "collab_type", "target": "First Block Editor", "text": "\n# Added by reviewer"}
+{"do": "collab_click", "target": "Situation Summary"},
+{"do": "collab_type", "target": "Last Block Editor", "text": "\nContent: {{content}}\nThe data below is provided as a subject line followed by the email thread content from a counselling session.", "cursor": "end"}
 ```
 
 ### Section-basiertes Audio-Caching

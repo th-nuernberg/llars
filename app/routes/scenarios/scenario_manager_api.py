@@ -1739,6 +1739,7 @@ def get_scenario_stats(scenario_id):
                 'rating_distribution': stats_data.get('rating_distribution', []),
                 'rating_alpha': stats_data.get('rating_alpha'),  # Krippendorff's Alpha split by evaluator type
                 'dimension_averages': stats_data.get('dimension_averages'),
+                'rating_provenance_analysis': stats_data.get('rating_provenance_analysis'),
                 'pairwise_agreement': stats_data.get('pairwise_agreement'),
                 # Ranking-specific stats
                 'bucket_distribution': stats_data.get('bucket_distribution'),

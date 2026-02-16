@@ -2917,7 +2917,8 @@
         "lastLabel": "Last Position",
         "firstPlaceholder": "e.g. Highest Priority",
         "lastPlaceholder": "e.g. Lowest Priority",
-        "selectColor": "Select Color"
+        "selectColor": "Select Color",
+        "splitByPrompt": "Split by Prompt"
       },
       "labeling": {
         "labelingType": "Labeling Type",
@@ -3169,6 +3170,10 @@
       "topBucketHitRatio": "Top-Bucket Hits ({bucket})",
       "assignments": "Assignments",
       "noProvenanceData": "No provenance data available yet",
+      "ratingProvenanceAnalysis": "Rating Provenance Analysis",
+      "ratingProvenanceDescription": "Shows which generation LLMs and prompts are associated with higher normalized rating outcomes.",
+      "ratingProvenanceMetricExplanation": "Primary metric: average normalized score (0-100). Secondary metric: share of high scores (>= {threshold}%).",
+      "ratingProvenancePrimaryMetric": "Avg. normalized score",
       "rankingMetricsDescription": "Per feature (summary): Did both evaluators place this summary in the same bucket? Ordinal calculation (Bucket-Krippendorff: good=3 > medium=2 > neutral=1 > bad=0).",
       "agreementLevel": "Agreement Level",
       "lowAgreement": "Low",
@@ -3385,6 +3390,7 @@
       "interRaterAgreement": "Shows pairwise agreement between all raters. Green = high agreement, Red = low agreement. Calculated as the proportion of exactly matching ratings (rounded to integers).",
       "bucketDistribution": "Shows how many items were assigned to each bucket (Good/Medium/Bad). Aggregated across all human and LLM evaluators.",
       "provenanceAnalysis": "Compares where rated content came from (generation LLM, prompt, and prompt+LLM pair) and highlights which origins most often end up in the top bucket. Format x/y = top-bucket hits divided by all assignments for that origin.",
+      "ratingProvenanceAnalysis": "Compares where rated content came from (generation LLM, prompt, and prompt+LLM pair) and highlights which origins currently achieve the highest normalized rating scores.",
       "rankingAgreement": "Per summary: Did both evaluators place it in the same bucket? Counted as: Matching summaries / Co-rated summaries. Metrics use ordinal calculation (Bucket-Krippendorff)."
     },
     "session": {

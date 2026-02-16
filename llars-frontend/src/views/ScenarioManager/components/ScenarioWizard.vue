@@ -1838,7 +1838,7 @@ function selectEvalType(typeId) {
  * The UniversalTransformer expects wide-format: { source_text, summary_a, summary_b, ... }
  * But generation items come as individual outputs: each item = 1 model output.
  */
-function transformGenerationDataForRanking(items) {
+function transformGenerationDataForRanking(items, { splitByPrompt = false } = {}) {
   const suffixes = 'abcdefghijklmnopqrstuvwxyz'
   const groups = new Map()
 
@@ -1858,15 +1858,31 @@ function transformGenerationDataForRanking(items) {
     }
     const metadata = {}
 
-    groupItems.forEach((item, i) => {
+    const sortedGroupItems = [...groupItems].sort((a, b) => {
+      const promptA = String(a._prompt_variant || a.prompt_variant || '')
+      const promptB = String(b._prompt_variant || b.prompt_variant || '')
+      const promptCmp = promptA.localeCompare(promptB)
+      if (promptCmp !== 0) return promptCmp
+
+      const modelA = String(a.llm_name || a._model || '')
+      const modelB = String(b.llm_name || b._model || '')
+      return modelA.localeCompare(modelB)
+    })
+
+    sortedGroupItems.forEach((item, i) => {
       if (i >= suffixes.length) return
       const suffix = suffixes[i]
       wideItem[`summary_${suffix}`] = item.output || item.content || ''
-      // Include prompt variant in model label so features stay unique when
-      // same model is used with different prompts (e.g., Mistral/Summary vs Mistral/Rewrite)
       const model = item.llm_name || item._model || `Model_${suffix.toUpperCase()}`
       const variant = item._prompt_variant || ''
-      metadata[`model_${suffix}`] = variant ? `${model} (${variant})` : model
+
+      if (splitByPrompt && variant) {
+        metadata[`model_${suffix}`] = model
+        metadata[`prompt_${suffix}`] = variant
+      } else {
+        // Keep model labels unique when same model was run with multiple prompts.
+        metadata[`model_${suffix}`] = variant ? `${model} (${variant})` : model
+      }
     })
 
     wideItem.metadata = metadata
@@ -1947,15 +1963,20 @@ async function createScenario() {
         let fieldMapping = aiSuggestions.value?.field_mapping || null
 
         if (taskType === 'ranking' && isFromGeneration) {
-          importData = transformGenerationDataForRanking(analyzedData.value)
+          const splitByPrompt = Boolean(formData.value.evalConfig?.config?.splitByPrompt)
+          importData = transformGenerationDataForRanking(analyzedData.value, { splitByPrompt })
           console.log('[ScenarioWizard] Ranking from generation:', {
             inputItems: analyzedData.value.length,
             groups: importData.length,
+            splitByPrompt,
             featuresPerGroup: importData.map(g =>
               Object.keys(g).filter(k => k.startsWith('summary_')).length
             )
           })
-          fieldMapping = { from_generation: true }
+          fieldMapping = {
+            from_generation: true,
+            split_by_prompt: splitByPrompt
+          }
         }
 
         const importResult = await importService.importFromData(

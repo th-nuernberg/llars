@@ -29,6 +29,12 @@
         :label="$t('scenarioManager.evalConfig.ranking.showPositions')"
         @update:modelValue="emitUpdate"
       />
+      <LSwitch
+        v-if="localConfig.type === 'buckets'"
+        v-model="localConfig.splitByPrompt"
+        :label="$t('scenarioManager.evalConfig.ranking.splitByPrompt')"
+        @update:modelValue="emitUpdate"
+      />
     </div>
 
     <!-- Buckets Editor (for bucket-based ranking) -->
@@ -180,6 +186,7 @@ const localConfig = ref({
   ],
   allowTies: false,
   dragDrop: true,
+  splitByPrompt: false,
   showPosition: true,
   labels: { first: '', last: '' }
 })
@@ -232,10 +239,12 @@ function emitUpdate() {
 function initFromProps() {
   if (props.modelValue) {
     const hasBuckets = Object.prototype.hasOwnProperty.call(props.modelValue, 'buckets')
+    const hasSplitByPrompt = Object.prototype.hasOwnProperty.call(props.modelValue, 'splitByPrompt')
     localConfig.value = {
       ...localConfig.value,
       ...props.modelValue,
       buckets: hasBuckets ? [...(props.modelValue.buckets || [])] : localConfig.value.buckets,
+      splitByPrompt: hasSplitByPrompt ? Boolean(props.modelValue.splitByPrompt) : false,
       labels: props.modelValue.labels || { first: '', last: '' }
     }
   }

@@ -537,7 +537,8 @@ export const RANKING_PRESETS = {
         { id: 3, name: { de: 'Schlecht', en: 'Poor' }, color: '#e8a087' }
       ],
       allowTies: false,
-      dragDrop: true
+      dragDrop: true,
+      splitByPrompt: false
     }
   },
   'buckets-5': {
@@ -554,7 +555,8 @@ export const RANKING_PRESETS = {
         { id: 5, name: { de: 'Sehr schlecht', en: 'Very poor' }, color: '#d46b6b' }
       ],
       allowTies: false,
-      dragDrop: true
+      dragDrop: true,
+      splitByPrompt: false
     }
   },
   'priority': {
@@ -566,6 +568,7 @@ export const RANKING_PRESETS = {
       showPosition: true,
       allowTies: false,
       dragDrop: true,
+      splitByPrompt: false,
       labels: {
         first: { de: 'Höchste Priorität', en: 'Highest priority' },
         last: { de: 'Niedrigste Priorität', en: 'Lowest priority' }
@@ -581,6 +584,7 @@ export const RANKING_PRESETS = {
       showPosition: true,
       allowTies: true,
       dragDrop: true,
+      splitByPrompt: false,
       labels: {
         first: { de: 'Sehr relevant', en: 'Very relevant' },
         last: { de: 'Nicht relevant', en: 'Not relevant' }
@@ -595,7 +599,8 @@ export const RANKING_PRESETS = {
       type: 'buckets',
       buckets: [],
       allowTies: false,
-      dragDrop: true
+      dragDrop: true,
+      splitByPrompt: false
     }
   }
 }

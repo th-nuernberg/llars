@@ -248,6 +248,67 @@ def _build_bucket_id_resolver(bucket_order: List[Dict[str, str]]):
     return _resolve_bucket_id
 
 
+def _extract_rating_scale_bounds(config: Dict[str, Any]) -> Dict[str, float]:
+    """Extract rating scale min/max from all supported config paths."""
+    if not isinstance(config, dict):
+        config = {}
+
+    eval_config = config.get("eval_config")
+    if not isinstance(eval_config, dict):
+        eval_config = {}
+
+    eval_config_inner = eval_config.get("config")
+    if not isinstance(eval_config_inner, dict):
+        eval_config_inner = {}
+
+    raw_min = config.get("min", eval_config.get("min", eval_config_inner.get("min", 1)))
+    raw_max = config.get("max", eval_config.get("max", eval_config_inner.get("max", 5)))
+
+    try:
+        scale_min = float(raw_min)
+    except (TypeError, ValueError):
+        scale_min = 1.0
+
+    try:
+        scale_max = float(raw_max)
+    except (TypeError, ValueError):
+        scale_max = 5.0
+
+    if scale_max <= scale_min:
+        scale_min, scale_max = 1.0, 5.0
+
+    return {"min": scale_min, "max": scale_max}
+
+
+def _extract_overall_rating_from_payload(payload: Any) -> Optional[float]:
+    """Extract overall rating from supported rating payload formats."""
+    if not payload:
+        return None
+    if isinstance(payload, str):
+        try:
+            payload = json.loads(payload)
+        except (json.JSONDecodeError, TypeError):
+            return None
+    if not isinstance(payload, dict):
+        return None
+
+    overall_rating = None
+    if payload.get("type") == "dimensional":
+        overall_rating = payload.get("overall_rating")
+    elif "overall_rating" in payload:
+        overall_rating = payload.get("overall_rating")
+    elif "rating" in payload:
+        overall_rating = payload.get("rating")
+
+    if overall_rating is None:
+        return None
+
+    try:
+        return float(overall_rating)
+    except (TypeError, ValueError):
+        return None
+
+
 def get_scenario_ids_for_thread(thread_id: int) -> List[int]:
     if not thread_id:
         return []
@@ -540,6 +601,7 @@ def get_progress_stats(scenario_id: int) -> Dict[str, Any]:
     pairwise_agreement = None
     bucket_distribution = None
     provenance_analysis = None
+    rating_provenance_analysis = None
     rating_alpha = None  # Krippendorff's Alpha split by evaluator type
 
     # Calculate pairwise agreement using unified dispatcher (works for all types)
@@ -551,6 +613,8 @@ def get_progress_stats(scenario_id: int) -> Dict[str, Any]:
         dimension_averages = _calculate_dimension_averages(scenario_id)
         # Calculate Krippendorff's Alpha using new rating system (ItemDimensionRating + LLMTaskResult)
         rating_alpha = _calculate_rating_krippendorff_alpha(scenario_id)
+        if function_type.name in {"rating", "mail_rating"}:
+            rating_provenance_analysis = _calculate_rating_provenance_analysis(scenario_id)
         # Use the "all" alpha as the main alpha if no legacy alpha calculated
         if alpha is None and rating_alpha and rating_alpha.get("all") is not None:
             alpha = rating_alpha["all"]
@@ -567,6 +631,7 @@ def get_progress_stats(scenario_id: int) -> Dict[str, Any]:
         "rating_alpha": rating_alpha,  # split by evaluator type {all, humans, llms}
         "rating_distribution": rating_distribution,
         "dimension_averages": dimension_averages,
+        "rating_provenance_analysis": rating_provenance_analysis,
         "pairwise_agreement": pairwise_agreement,
         "bucket_distribution": bucket_distribution,
         "provenance_analysis": provenance_analysis,
@@ -1419,6 +1484,435 @@ def _calculate_dimension_averages(scenario_id: int) -> Dict[str, Any]:
         "series": series,
         "maxValue": max_value
     }
+
+
+def _calculate_rating_provenance_analysis(scenario_id: int) -> Dict[str, Any]:
+    """
+    Calculate provenance analysis for rating scenarios.
+
+    Links each rating assignment (human + LLM) to its generation origin
+    (generation LLM + prompt) and reports which origins achieve the strongest
+    normalized rating scores.
+    """
+    from db.models import (
+        ScenarioItems,
+        Message,
+        GeneratedOutput,
+        GeneratedOutputStatus,
+        PromptTemplate,
+    )
+
+    scenario = RatingScenarios.query.get(scenario_id)
+    if not scenario:
+        return {}
+
+    config = scenario.config_json or {}
+    if isinstance(config, str):
+        try:
+            config = json.loads(config)
+        except (json.JSONDecodeError, TypeError):
+            config = {}
+    if not isinstance(config, dict):
+        config = {}
+
+    scale_bounds = _extract_rating_scale_bounds(config)
+    scale_min = scale_bounds["min"]
+    scale_max = scale_bounds["max"]
+    scale_span = scale_max - scale_min
+    high_score_threshold_normalized = 0.8
+    high_score_threshold_percent = round(high_score_threshold_normalized * 100, 1)
+
+    def _normalize_score(raw_score: Any) -> Optional[float]:
+        if raw_score is None:
+            return None
+        try:
+            score = float(raw_score)
+        except (TypeError, ValueError):
+            return None
+
+        if scale_span <= 0:
+            return None
+
+        normalized = (score - scale_min) / scale_span
+        return max(0.0, min(1.0, normalized))
+
+    def _empty_segment() -> Dict[str, Any]:
+        return {
+            "total_assignments": 0,
+            "by_llm": [],
+            "by_prompt": [],
+            "by_combination": [],
+            "best_llm": None,
+            "best_prompt": None,
+            "best_combination": None,
+        }
+
+    try:
+        source_generation_job_id = (
+            int(config.get("source_generation_job_id"))
+            if config.get("source_generation_job_id") is not None
+            else None
+        )
+    except (TypeError, ValueError):
+        source_generation_job_id = None
+
+    response: Dict[str, Any] = {
+        "scale": {"min": scale_min, "max": scale_max},
+        "metric_definition": {
+            "primary": "avg_normalized_score",
+            "secondary": "high_score_rate",
+            "secondary_count": "high_score_count/total",
+            "high_score_threshold_normalized": high_score_threshold_normalized,
+            "high_score_threshold_percent": high_score_threshold_percent,
+            "normalization_formula": "((score - min) / (max - min)) * 100",
+        },
+        "source_generation_job_id": source_generation_job_id,
+        "matched_generation_items": 0,
+        "total_items": 0,
+        "segments": {
+            "all": _empty_segment(),
+            "human": _empty_segment(),
+            "llm": _empty_segment(),
+        },
+    }
+
+    scenario_items = (
+        ScenarioItems.query
+        .filter_by(scenario_id=scenario_id)
+        .order_by(ScenarioItems.id.asc())
+        .all()
+    )
+    item_ids = [row.item_id for row in scenario_items if row.item_id is not None]
+    response["total_items"] = len(item_ids)
+    if not item_ids:
+        return response
+
+    item_provenance: Dict[int, Dict[str, Any]] = {}
+    if source_generation_job_id:
+        outputs = (
+            GeneratedOutput.query
+            .filter_by(job_id=source_generation_job_id, status=GeneratedOutputStatus.COMPLETED)
+            .order_by(GeneratedOutput.id.asc())
+            .all()
+        )
+
+        if outputs:
+            template_ids = {o.prompt_template_id for o in outputs if o.prompt_template_id}
+            template_names: Dict[int, str] = {}
+            if template_ids:
+                template_names = {
+                    tpl.id: tpl.name
+                    for tpl in PromptTemplate.query.filter(PromptTemplate.id.in_(template_ids)).all()
+                }
+
+            def _serialize_output(output: GeneratedOutput, source: str = "generation_output") -> Dict[str, Any]:
+                model_label = (output.llm_model_name or "").strip() or "Unknown LLM"
+                variant_name = (output.prompt_variant_name or "").strip()
+                template_name = (template_names.get(output.prompt_template_id) or "").strip()
+
+                if variant_name and template_name and variant_name.lower() != template_name.lower():
+                    prompt_label = f"{variant_name} / {template_name}"
+                else:
+                    prompt_label = variant_name or template_name or "Unknown prompt"
+
+                prompt_key = variant_name or template_name or "unknown_prompt"
+                return {
+                    "llm_key": model_label,
+                    "llm_label": model_label,
+                    "prompt_key": prompt_key,
+                    "prompt_label": prompt_label,
+                    "source": source,
+                }
+
+            # Preferred path for generation-exported scenarios: stable output ordering.
+            if len(outputs) == len(item_ids):
+                for item_id, output in zip(item_ids, outputs):
+                    item_provenance[item_id] = _serialize_output(output)
+            else:
+                output_lookup: Dict[tuple, List[GeneratedOutput]] = defaultdict(list)
+                for output in outputs:
+                    lookup_key = (
+                        (output.llm_model_name or "").strip().lower(),
+                        (output.generated_content or "").strip(),
+                    )
+                    output_lookup[lookup_key].append(output)
+
+                messages = (
+                    Message.query
+                    .filter(Message.item_id.in_(item_ids))
+                    .order_by(Message.item_id.asc(), Message.message_id.desc())
+                    .all()
+                )
+
+                generated_message_by_item: Dict[int, Dict[str, str]] = {}
+                for message in messages:
+                    if message.item_id in generated_message_by_item:
+                        continue
+
+                    generated_by = (message.generated_by or "").strip()
+                    sender = (message.sender or "").strip()
+                    if generated_by and generated_by.lower() != "human" and not generated_by.lower().startswith("generation job"):
+                        model_name = generated_by
+                    else:
+                        model_name = sender
+
+                    if not model_name:
+                        continue
+
+                    generated_message_by_item[message.item_id] = {
+                        "model_name": model_name,
+                        "content": (message.content or "").strip(),
+                    }
+
+                used_output_ids = set()
+                for item_id in item_ids:
+                    message_info = generated_message_by_item.get(item_id)
+                    if not message_info:
+                        continue
+
+                    lookup_key = (
+                        message_info["model_name"].lower(),
+                        message_info["content"],
+                    )
+                    candidates = output_lookup.get(lookup_key, [])
+                    match = next((candidate for candidate in candidates if candidate.id not in used_output_ids), None)
+                    if match:
+                        used_output_ids.add(match.id)
+                        item_provenance[item_id] = _serialize_output(match)
+
+    response["matched_generation_items"] = sum(
+        1 for entry in item_provenance.values() if entry.get("source") == "generation_output"
+    )
+
+    unresolved_item_ids = [item_id for item_id in item_ids if item_id not in item_provenance]
+    if unresolved_item_ids:
+        messages = (
+            Message.query
+            .filter(Message.item_id.in_(unresolved_item_ids))
+            .order_by(Message.item_id.asc(), Message.message_id.desc())
+            .all()
+        )
+        fallback_by_item: Dict[int, Dict[str, str]] = {}
+        ignored_model_markers = {
+            "human",
+            "source",
+            "client",
+            "user",
+            "system",
+            "berater",
+            "counsellor",
+            "counselor",
+        }
+        for message in messages:
+            if message.item_id in fallback_by_item:
+                continue
+
+            generated_by = (message.generated_by or "").strip()
+            sender = (message.sender or "").strip()
+            if generated_by and generated_by.lower() != "human" and not generated_by.lower().startswith("generation job"):
+                model_name = generated_by
+            else:
+                model_name = sender
+
+            model_name = (model_name or "").strip()
+            if not model_name:
+                continue
+            if model_name.lower() in ignored_model_markers:
+                continue
+
+            fallback_by_item[message.item_id] = {
+                "llm_key": model_name,
+                "llm_label": model_name,
+                "prompt_key": "unknown_prompt",
+                "prompt_label": "Unknown prompt",
+                "source": "message_fallback",
+            }
+
+        item_provenance.update(fallback_by_item)
+
+    assignments: List[tuple] = []
+
+    human_ratings = (
+        ItemDimensionRating.query
+        .filter_by(scenario_id=scenario_id)
+        .filter(ItemDimensionRating.status.in_([ProgressionStatus.DONE, ProgressionStatus.PROGRESSING]))
+        .all()
+    )
+    for rating in human_ratings:
+        score = rating.overall_score
+        if score is None:
+            dim_scores = rating.dimension_ratings or {}
+            if isinstance(dim_scores, str):
+                try:
+                    dim_scores = json.loads(dim_scores)
+                except (json.JSONDecodeError, TypeError):
+                    dim_scores = {}
+            if isinstance(dim_scores, dict) and dim_scores:
+                numeric_scores = []
+                for raw_value in dim_scores.values():
+                    try:
+                        numeric_scores.append(float(raw_value))
+                    except (TypeError, ValueError):
+                        continue
+                if numeric_scores:
+                    score = sum(numeric_scores) / len(numeric_scores)
+
+        normalized_score = _normalize_score(score)
+        if normalized_score is None:
+            continue
+        assignments.append((rating.item_id, float(score), normalized_score, "human"))
+
+    llm_results = (
+        LLMTaskResult.query
+        .filter_by(scenario_id=scenario_id)
+        .filter(
+            LLMTaskResult.task_type.in_(["rating", "mail_rating"]),
+            LLMTaskResult.error.is_(None),
+        )
+        .all()
+    )
+    for result in llm_results:
+        score = _extract_overall_rating_from_payload(result.payload_json)
+        normalized_score = _normalize_score(score)
+        if normalized_score is None:
+            continue
+        assignments.append((result.item_id, float(score), normalized_score, "llm"))
+
+    if not assignments:
+        return response
+
+    def _new_entity(entity_id: str, label: str) -> Dict[str, Any]:
+        return {
+            "id": str(entity_id),
+            "label": label,
+            "total": 0,
+            "sum_score": 0.0,
+            "avg_score": 0.0,
+            "sum_normalized_score": 0.0,
+            "avg_normalized_score": 0.0,
+            "high_score_count": 0,
+            "high_score_rate": 0.0,
+        }
+
+    segments_internal = {
+        "all": {"total_assignments": 0, "by_llm": {}, "by_prompt": {}, "by_combination": {}},
+        "human": {"total_assignments": 0, "by_llm": {}, "by_prompt": {}, "by_combination": {}},
+        "llm": {"total_assignments": 0, "by_llm": {}, "by_prompt": {}, "by_combination": {}},
+    }
+
+    def _increment_entity(
+        segment: Dict[str, Any],
+        key_name: str,
+        entity_id: str,
+        label: str,
+        score: float,
+        normalized_score: float,
+        meta: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        entity_map = segment[key_name]
+        row = entity_map.get(entity_id)
+        if row is None:
+            row = _new_entity(entity_id, label)
+            if meta:
+                row.update(meta)
+            entity_map[entity_id] = row
+
+        row["total"] += 1
+        row["sum_score"] += score
+        row["sum_normalized_score"] += normalized_score
+        if normalized_score >= high_score_threshold_normalized:
+            row["high_score_count"] += 1
+
+    for item_id, score, normalized_score, evaluator_type in assignments:
+        provenance = item_provenance.get(item_id) or {
+            "llm_key": "unknown_llm",
+            "llm_label": "Unknown LLM",
+            "prompt_key": "unknown_prompt",
+            "prompt_label": "Unknown prompt",
+        }
+        llm_key = provenance.get("llm_key") or "unknown_llm"
+        llm_label = provenance.get("llm_label") or "Unknown LLM"
+        prompt_key = provenance.get("prompt_key") or "unknown_prompt"
+        prompt_label = provenance.get("prompt_label") or "Unknown prompt"
+        combination_key = f"{prompt_key}|||{llm_key}"
+        combination_label = f"{prompt_label} x {llm_label}"
+
+        for segment_key in ("all", evaluator_type):
+            segment = segments_internal[segment_key]
+            segment["total_assignments"] += 1
+            _increment_entity(
+                segment=segment,
+                key_name="by_llm",
+                entity_id=llm_key,
+                label=llm_label,
+                score=score,
+                normalized_score=normalized_score,
+            )
+            _increment_entity(
+                segment=segment,
+                key_name="by_prompt",
+                entity_id=prompt_key,
+                label=prompt_label,
+                score=score,
+                normalized_score=normalized_score,
+            )
+            _increment_entity(
+                segment=segment,
+                key_name="by_combination",
+                entity_id=combination_key,
+                label=combination_label,
+                score=score,
+                normalized_score=normalized_score,
+                meta={
+                    "prompt_label": prompt_label,
+                    "llm_label": llm_label,
+                },
+            )
+
+    def _finalize_rows(entity_map: Dict[str, Dict[str, Any]]) -> List[Dict[str, Any]]:
+        rows = list(entity_map.values())
+        for row in rows:
+            total = row["total"]
+            if total > 0:
+                row["avg_score"] = round(row["sum_score"] / total, 2)
+                row["avg_normalized_score"] = round((row["sum_normalized_score"] / total) * 100, 1)
+                row["high_score_rate"] = round((row["high_score_count"] / total) * 100, 1)
+            else:
+                row["avg_score"] = 0.0
+                row["avg_normalized_score"] = 0.0
+                row["high_score_rate"] = 0.0
+
+            row["sum_score"] = round(row["sum_score"], 3)
+            row.pop("sum_normalized_score", None)
+
+        rows.sort(
+            key=lambda entry: (
+                -entry["avg_normalized_score"],
+                -entry["high_score_rate"],
+                -entry["high_score_count"],
+                -entry["total"],
+                (entry["label"] or "").lower(),
+            )
+        )
+        return rows
+
+    finalized_segments = {}
+    for segment_key, segment_data in segments_internal.items():
+        by_llm = _finalize_rows(segment_data["by_llm"])
+        by_prompt = _finalize_rows(segment_data["by_prompt"])
+        by_combination = _finalize_rows(segment_data["by_combination"])
+        finalized_segments[segment_key] = {
+            "total_assignments": segment_data["total_assignments"],
+            "by_llm": by_llm,
+            "by_prompt": by_prompt,
+            "by_combination": by_combination,
+            "best_llm": by_llm[0] if by_llm else None,
+            "best_prompt": by_prompt[0] if by_prompt else None,
+            "best_combination": by_combination[0] if by_combination else None,
+        }
+
+    response["segments"] = finalized_segments
+    return response
 
 
 def _calculate_pairwise_agreement(scenario_id: int) -> Dict[str, Any]:

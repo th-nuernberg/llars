@@ -403,6 +403,15 @@ function onCellClick(rowEval, colEval) {
   min-height: 280px;
 }
 
+/* Embedded usage inside a parent card (e.g. ScenarioEvaluationTab ranking panel). */
+.l-agreement-heatmap.ranking-analysis-heatmap {
+  width: 100%;
+  padding: 0;
+  background-color: transparent;
+  border-radius: 0;
+  min-height: 0;
+}
+
 .heatmap-title {
   font-size: 0.95rem;
   font-weight: 600;

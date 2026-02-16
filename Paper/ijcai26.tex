@@ -62,7 +62,7 @@ We demonstrate LLARS, an open-source platform that bridges the gap between domai
 LLARS integrates three tightly connected modules into an end-to-end pipeline:
 \textbf{Collaborative Prompt Engineering} for real-time co-authoring with version control and instant LLM testing,
 \textbf{Batch Generation} for configurable output production across user-selected prompts\,$\times$\,models\,$\times$\,data with cost control and
-\textbf{Evaluation} for human and LLM assessors to rate, rank, label or compare outputs with live inter-rater agreement metrics.
+\textbf{Evaluation} for human and LLM evaluators to rate, rank, label or compare outputs with live inter-rater agreement metrics.
 New prompts and models are automatically available for batch generation and completed batches can be turned into evaluation scenarios with a single click.
 Interviews with six domain experts and three developers in online counselling confirmed that LLARS eliminates the ``translation work'' between disciplines and enables domain experts to directly co-author prompts and conduct evaluations independently.
 
@@ -255,7 +255,7 @@ Previous-generation mode works identically but reuses the data from a completed 
 Prompt-only mode requires no data upload and sends selected prompts to selected models directly---two prompts across two models yield 2\,$\times$\,2\,=\,4~outputs, with any template variables filled from their sample values.
 
 Results stream in real time and every output records its full provenance---source item, prompt version, model, parameters, token count and cost---exportable as CSV or JSON.
-This provenance is central to the pipeline: when outputs reach evaluation, assessors see only the generated text without any indication of which model or prompt produced it and the platform maps their judgments back to specific model--prompt combinations, directly informing selection.
+This provenance is central to the pipeline: when outputs reach evaluation, evaluators see only the generated text without any indication of which model or prompt produced it and the platform traces their ratings back to specific model--prompt combinations, directly informing selection.
 Completed batches transfer into evaluation with a single click, preserving all attribution.
 
 \subsection{Evaluation}

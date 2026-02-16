@@ -60,6 +60,194 @@ def _get_function_type_or_raise(function_type_id: int) -> FeatureFunctionType:
     return function_type
 
 
+_DEFAULT_BUCKET_COLOR_PALETTE = [
+    "#b0ca97",
+    "#d8bf8f",
+    "#88c4c8",
+    "#e8a087",
+    "#c07a7a",
+]
+
+
+def _normalize_bucket_lookup_key(value: Any) -> str:
+    """Normalize bucket identifiers/labels for robust lookups."""
+    if value is None:
+        return ""
+
+    text = str(value).strip().lower()
+    if not text:
+        return ""
+
+    text = " ".join(text.split())
+    text = text.replace("-", "_").replace(" ", "_")
+    return text
+
+
+def _humanize_bucket_identifier(value: str) -> str:
+    normalized = _normalize_bucket_lookup_key(value)
+    if not normalized:
+        return "Bucket"
+    words = [part for part in normalized.split("_") if part]
+    if not words:
+        return "Bucket"
+    return " ".join(word[:1].upper() + word[1:] for word in words)
+
+
+def _extract_ranking_bucket_config(config: Dict[str, Any]) -> List[Dict[str, str]]:
+    """
+    Extract ranking bucket definitions from all supported config paths.
+
+    Supported locations:
+    - config.buckets
+    - config.eval_config.buckets
+    - config.eval_config.config.buckets
+    - config.config.buckets
+    """
+    candidate_lists: List[Any] = []
+    candidate_lists.append(config.get("buckets"))
+
+    eval_config = config.get("eval_config") if isinstance(config.get("eval_config"), dict) else {}
+    if eval_config:
+        candidate_lists.append(eval_config.get("buckets"))
+        nested_eval_config = eval_config.get("config") if isinstance(eval_config.get("config"), dict) else {}
+        if nested_eval_config:
+            candidate_lists.append(nested_eval_config.get("buckets"))
+
+    nested_config = config.get("config") if isinstance(config.get("config"), dict) else {}
+    if nested_config:
+        candidate_lists.append(nested_config.get("buckets"))
+
+    configured_buckets: List[Any] = []
+    for candidate in candidate_lists:
+        if isinstance(candidate, list) and len(candidate) > 0:
+            configured_buckets = candidate
+            break
+
+    # Fallback for legacy scenarios without explicit bucket config.
+    if not configured_buckets:
+        configured_buckets = [
+            {"id": "gut", "name": {"de": "Gut", "en": "Good"}, "color": "#b0ca97"},
+            {"id": "mittel", "name": {"de": "Mittel", "en": "Medium"}, "color": "#e8c87a"},
+            {"id": "schlecht", "name": {"de": "Schlecht", "en": "Bad"}, "color": "#e8a087"},
+        ]
+
+    bucket_order: List[Dict[str, str]] = []
+    seen_ids = set()
+
+    for idx, bucket in enumerate(configured_buckets):
+        fallback_color = _DEFAULT_BUCKET_COLOR_PALETTE[idx % len(_DEFAULT_BUCKET_COLOR_PALETTE)]
+
+        if isinstance(bucket, str):
+            raw_label = bucket.strip()
+            if not raw_label:
+                continue
+            bucket_id = _normalize_bucket_lookup_key(raw_label) or f"bucket_{idx + 1}"
+            label_de = raw_label
+            label_en = raw_label
+            color = fallback_color
+        elif isinstance(bucket, dict):
+            raw_id = bucket.get("id") or bucket.get("value")
+            name_value = bucket.get("name")
+            label_value = bucket.get("label")
+            label_de_value = bucket.get("label_de")
+            label_en_value = bucket.get("label_en")
+
+            if isinstance(name_value, dict):
+                label_de = str(
+                    name_value.get("de")
+                    or name_value.get("en")
+                    or label_de_value
+                    or label_value
+                    or raw_id
+                    or f"Bucket {idx + 1}"
+                ).strip()
+                label_en = str(
+                    name_value.get("en")
+                    or name_value.get("de")
+                    or label_en_value
+                    or label_value
+                    or raw_id
+                    or f"Bucket {idx + 1}"
+                ).strip()
+            elif isinstance(name_value, str):
+                fallback_name = name_value.strip()
+                label_de = str(label_de_value or fallback_name or label_value or raw_id or f"Bucket {idx + 1}").strip()
+                label_en = str(label_en_value or fallback_name or label_value or raw_id or f"Bucket {idx + 1}").strip()
+            else:
+                label_de = str(label_de_value or label_value or raw_id or f"Bucket {idx + 1}").strip()
+                label_en = str(label_en_value or label_de or raw_id or f"Bucket {idx + 1}").strip()
+
+            if not label_de:
+                label_de = label_en or f"Bucket {idx + 1}"
+            if not label_en:
+                label_en = label_de
+
+            bucket_id = str(raw_id or label_en or label_de).strip().lower()
+            if not bucket_id:
+                bucket_id = _normalize_bucket_lookup_key(label_en or label_de or f"bucket_{idx + 1}")
+
+            color = str(bucket.get("color") or fallback_color).strip() or fallback_color
+        else:
+            continue
+
+        bucket_id = str(bucket_id).strip().lower()
+        if not bucket_id or bucket_id in seen_ids:
+            continue
+        seen_ids.add(bucket_id)
+
+        bucket_order.append(
+            {
+                "id": bucket_id,
+                "label": label_de or label_en or _humanize_bucket_identifier(bucket_id),
+                "label_de": label_de or label_en or _humanize_bucket_identifier(bucket_id),
+                "label_en": label_en or label_de or _humanize_bucket_identifier(bucket_id),
+                "color": color,
+            }
+        )
+
+    return bucket_order
+
+
+def _build_bucket_id_resolver(bucket_order: List[Dict[str, str]]):
+    """Create a resolver for bucket ids from ids/labels with legacy alias support."""
+    lookup: Dict[str, str] = {}
+    for entry in bucket_order:
+        bucket_id = entry.get("id")
+        if not bucket_id:
+            continue
+        for candidate in [bucket_id, entry.get("label"), entry.get("label_de"), entry.get("label_en")]:
+            key = _normalize_bucket_lookup_key(candidate)
+            if key and key not in lookup:
+                lookup[key] = bucket_id
+
+    legacy_aliases = {
+        "good": "gut",
+        "very_good": "sehr_gut",
+        "excellent": "sehr_gut",
+        "medium": "mittel",
+        "middle": "mittel",
+        "bad": "schlecht",
+        "poor": "schlecht",
+        "very_poor": "sehr_schlecht",
+    }
+
+    def _resolve_bucket_id(raw_name: Any) -> Optional[str]:
+        key = _normalize_bucket_lookup_key(raw_name)
+        if not key:
+            return None
+        if key in lookup:
+            return lookup[key]
+
+        alias = legacy_aliases.get(key)
+        if not alias:
+            return None
+
+        alias_key = _normalize_bucket_lookup_key(alias)
+        return lookup.get(alias_key)
+
+    return _resolve_bucket_id
+
+
 def get_scenario_ids_for_thread(thread_id: int) -> List[int]:
     if not thread_id:
         return []
@@ -1372,66 +1560,16 @@ def _calculate_bucket_distribution(scenario_id: int) -> List[Dict[str, Any]]:
         except (json.JSONDecodeError, TypeError):
             config = {}
 
-    configured_buckets = config.get("buckets", [])
-
-    # Fallback to legacy 3-bucket system if no buckets configured
-    if not configured_buckets:
-        configured_buckets = [
-            {"id": "gut", "name": {"de": "Gut", "en": "Good"}, "color": "#b0ca97"},
-            {"id": "mittel", "name": {"de": "Mittel", "en": "Medium"}, "color": "#e8c87a"},
-            {"id": "schlecht", "name": {"de": "Schlecht", "en": "Bad"}, "color": "#e8a087"},
-        ]
-
-    # Build bucket ID mapping (normalize names to IDs)
-    bucket_ids = []
-    bucket_info = {}
-    for bucket in configured_buckets:
-        bucket_id = bucket.get("id") or bucket.get("name", {}).get("de", "").lower()
-        if not bucket_id:
-            continue
-        bucket_ids.append(bucket_id)
-        bucket_info[bucket_id] = {
-            "label": bucket.get("name", {}).get("de") or bucket_id,
-            "color": bucket.get("color", "#88c4c8")
-        }
-
-    if not bucket_ids:
+    bucket_order = _extract_ranking_bucket_config(config)
+    if not bucket_order:
         return []
+
+    bucket_ids = [entry["id"] for entry in bucket_order]
+    bucket_info = {entry["id"]: entry for entry in bucket_order}
+    resolve_bucket_id = _build_bucket_id_resolver(bucket_order)
 
     # Initialize counts for all configured buckets
     bucket_counts = {bid: 0 for bid in bucket_ids}
-
-    # Legacy bucket name mappings (for backwards compatibility)
-    legacy_mappings = {
-        "good": "gut",
-        "medium": "mittel",
-        "middle": "mittel",
-        "bad": "schlecht",
-        "poor": "schlecht",
-    }
-
-    def normalize_bucket_name(name: str) -> Optional[str]:
-        """Normalize bucket name to match configured bucket IDs."""
-        if not name:
-            return None
-        name_lower = name.lower().strip()
-
-        # Direct match
-        if name_lower in bucket_counts:
-            return name_lower
-
-        # Try legacy mapping
-        if name_lower in legacy_mappings:
-            mapped = legacy_mappings[name_lower]
-            if mapped in bucket_counts:
-                return mapped
-
-        # Try matching by label
-        for bid, info in bucket_info.items():
-            if info["label"].lower() == name_lower:
-                return bid
-
-        return None
 
     # Get all items for this scenario
     scenario_items = ScenarioItems.query.filter_by(scenario_id=scenario_id).all()
@@ -1450,7 +1588,7 @@ def _calculate_bucket_distribution(scenario_id: int) -> List[Dict[str, Any]]:
     )
 
     for ranking in human_rankings:
-        normalized = normalize_bucket_name(ranking.bucket)
+        normalized = resolve_bucket_id(ranking.bucket)
         if normalized:
             bucket_counts[normalized] += 1
 
@@ -1473,7 +1611,7 @@ def _calculate_bucket_distribution(scenario_id: int) -> List[Dict[str, Any]]:
         # Count items in each bucket from payload
         for key, value in payload.items():
             if isinstance(value, list):
-                normalized = normalize_bucket_name(key)
+                normalized = resolve_bucket_id(key)
                 if normalized:
                     bucket_counts[normalized] += len(value)
 
@@ -1488,10 +1626,12 @@ def _calculate_bucket_distribution(scenario_id: int) -> List[Dict[str, Any]]:
         info = bucket_info[bucket_id]
         distribution.append({
             "bucket": bucket_id,
-            "label": info["label"],
+            "label": info.get("label") or info.get("label_de") or info.get("label_en") or bucket_id,
+            "label_de": info.get("label_de"),
+            "label_en": info.get("label_en"),
             "count": count,
             "percentage": round((count / total) * 100) if total > 0 else 0,
-            "color": info["color"]
+            "color": info.get("color") or "#88c4c8",
         })
 
     return distribution
@@ -1529,48 +1669,16 @@ def _calculate_ranking_provenance_analysis(scenario_id: int) -> Dict[str, Any]:
     if not isinstance(config, dict):
         config = {}
 
-    configured_buckets = config.get("buckets", [])
-    if not configured_buckets:
-        configured_buckets = [
-            {"id": "gut", "name": {"de": "Gut", "en": "Good"}, "color": "#b0ca97"},
-            {"id": "mittel", "name": {"de": "Mittel", "en": "Medium"}, "color": "#e8c87a"},
-            {"id": "schlecht", "name": {"de": "Schlecht", "en": "Bad"}, "color": "#e8a087"},
-        ]
-
-    bucket_order: List[Dict[str, Any]] = []
-    bucket_info: Dict[str, Dict[str, str]] = {}
-
-    for idx, bucket in enumerate(configured_buckets):
-        if isinstance(bucket, str):
-            label = bucket.strip() or f"Bucket {idx + 1}"
-            bucket_id = label.lower()
-            color = "#88c4c8"
-        elif isinstance(bucket, dict):
-            name_value = bucket.get("name")
-            if isinstance(name_value, dict):
-                label = name_value.get("de") or name_value.get("en") or str(bucket.get("id") or f"Bucket {idx + 1}")
-            elif isinstance(name_value, str):
-                label = name_value
-            else:
-                label = str(bucket.get("id") or f"Bucket {idx + 1}")
-            bucket_id = str(bucket.get("id") or label).strip().lower()
-            color = bucket.get("color") or "#88c4c8"
-        else:
-            continue
-
-        if not bucket_id or bucket_id in bucket_info:
-            continue
-
-        bucket_order.append({"id": bucket_id, "label": label, "color": color})
-        bucket_info[bucket_id] = {"label": label, "color": color}
-
+    bucket_order = _extract_ranking_bucket_config(config)
     if not bucket_order:
         return {}
 
     bucket_ids = [entry["id"] for entry in bucket_order]
-    bucket_id_set = set(bucket_ids)
+    bucket_info = {entry["id"]: entry for entry in bucket_order}
+    resolve_bucket_id = _build_bucket_id_resolver(bucket_order)
     top_bucket_id = bucket_ids[0]
-    top_bucket_label = bucket_info[top_bucket_id]["label"]
+    top_bucket_meta = bucket_info[top_bucket_id]
+    top_bucket_label = top_bucket_meta.get("label") or top_bucket_meta.get("label_de") or top_bucket_id
 
     def _empty_segment() -> Dict[str, Any]:
         return {
@@ -1589,7 +1697,12 @@ def _calculate_ranking_provenance_analysis(scenario_id: int) -> Dict[str, Any]:
         source_generation_job_id = None
 
     response: Dict[str, Any] = {
-        "top_bucket": {"id": top_bucket_id, "label": top_bucket_label},
+        "top_bucket": {
+            "id": top_bucket_id,
+            "label": top_bucket_label,
+            "label_de": top_bucket_meta.get("label_de"),
+            "label_en": top_bucket_meta.get("label_en"),
+        },
         "bucket_order": bucket_order,
         "metric_definition": {
             "numerator": "top_bucket_count",
@@ -1778,32 +1891,6 @@ def _calculate_ranking_provenance_analysis(scenario_id: int) -> Dict[str, Any]:
     if not feature_provenance:
         return response
 
-    legacy_bucket_mappings = {
-        "good": "gut",
-        "medium": "mittel",
-        "middle": "mittel",
-        "bad": "schlecht",
-        "poor": "schlecht",
-    }
-    label_to_bucket = {
-        info["label"].lower(): bucket_id
-        for bucket_id, info in bucket_info.items()
-        if info.get("label")
-    }
-
-    def _normalize_bucket_name(raw_name: Any) -> Optional[str]:
-        if raw_name is None:
-            return None
-        name = str(raw_name).strip().lower()
-        if not name:
-            return None
-        if name in bucket_id_set:
-            return name
-        mapped = legacy_bucket_mappings.get(name)
-        if mapped and mapped in bucket_id_set:
-            return mapped
-        return label_to_bucket.get(name)
-
     assignments: List[tuple] = []
 
     human_rankings = (
@@ -1813,7 +1900,7 @@ def _calculate_ranking_provenance_analysis(scenario_id: int) -> Dict[str, Any]:
         .all()
     )
     for ranking in human_rankings:
-        normalized_bucket = _normalize_bucket_name(ranking.bucket)
+        normalized_bucket = resolve_bucket_id(ranking.bucket)
         if not normalized_bucket:
             continue
         assignments.append((ranking.feature_id, normalized_bucket, "human"))
@@ -1837,7 +1924,7 @@ def _calculate_ranking_provenance_analysis(scenario_id: int) -> Dict[str, Any]:
             continue
 
         for bucket_name, feature_ids in payload.items():
-            normalized_bucket = _normalize_bucket_name(bucket_name)
+            normalized_bucket = resolve_bucket_id(bucket_name)
             if not normalized_bucket or not isinstance(feature_ids, list):
                 continue
             for feature_id in feature_ids:
@@ -1993,73 +2080,11 @@ def _calculate_ranking_agreement_heatmap(scenario_id: int) -> Dict[str, Any]:
     if not isinstance(config, dict):
         config = {}
 
-    configured_buckets = config.get("buckets", [])
-    if not isinstance(configured_buckets, list):
-        configured_buckets = []
-
-    # Fallback for legacy scenarios without explicit bucket config.
-    if not configured_buckets:
-        configured_buckets = [
-            {"id": "gut", "name": {"de": "Gut", "en": "Good"}},
-            {"id": "mittel", "name": {"de": "Mittel", "en": "Medium"}},
-            {"id": "schlecht", "name": {"de": "Schlecht", "en": "Bad"}},
-        ]
-
-    bucket_info: Dict[str, Dict[str, str]] = {}
-    for idx, bucket in enumerate(configured_buckets):
-        if isinstance(bucket, str):
-            label = bucket.strip()
-            bucket_id = label.lower()
-        elif isinstance(bucket, dict):
-            name_value = bucket.get("name")
-            if isinstance(name_value, dict):
-                label = str(name_value.get("de") or name_value.get("en") or bucket.get("id") or "").strip()
-            elif isinstance(name_value, str):
-                label = name_value.strip()
-            else:
-                label = str(bucket.get("id") or "").strip()
-            bucket_id = str(bucket.get("id") or label).strip().lower()
-        else:
-            continue
-
-        if not bucket_id:
-            continue
-        if not label:
-            label = bucket_id
-        if bucket_id in bucket_info:
-            continue
-        bucket_info[bucket_id] = {"label": label}
-
-    if not bucket_info:
+    bucket_order = _extract_ranking_bucket_config(config)
+    if not bucket_order:
         return {"evaluators": [], "agreements": {}, "pair_details": {}}
 
-    bucket_id_set = set(bucket_info.keys())
-    legacy_bucket_mappings = {
-        "good": "gut",
-        "medium": "mittel",
-        "middle": "mittel",
-        "bad": "schlecht",
-        "poor": "schlecht",
-        "neutral": "neutral",
-    }
-    label_to_bucket = {
-        info["label"].lower(): bucket_id
-        for bucket_id, info in bucket_info.items()
-        if info.get("label")
-    }
-
-    def _normalize_bucket_name(raw_name: Any) -> Optional[str]:
-        if raw_name is None:
-            return None
-        name = str(raw_name).strip().lower()
-        if not name:
-            return None
-        if name in bucket_id_set:
-            return name
-        mapped = legacy_bucket_mappings.get(name)
-        if mapped and mapped in bucket_id_set:
-            return mapped
-        return label_to_bucket.get(name)
+    resolve_bucket_id = _build_bucket_id_resolver(bucket_order)
 
     # Get all items for this scenario
     scenario_items = ScenarioItems.query.filter_by(scenario_id=scenario_id).all()
@@ -2122,7 +2147,7 @@ def _calculate_ranking_agreement_heatmap(scenario_id: int) -> Dict[str, Any]:
     for ranking in human_rankings:
         feature_id = ranking.feature_id
         user_id = ranking.user_id
-        bucket = _normalize_bucket_name(ranking.bucket)
+        bucket = resolve_bucket_id(ranking.bucket)
         if not bucket:
             continue
 
@@ -2161,7 +2186,7 @@ def _calculate_ranking_agreement_heatmap(scenario_id: int) -> Dict[str, Any]:
 
         # Unpack: each feature_id gets its bucket directly
         for bucket_key, feature_ids in payload.items():
-            normalized_bucket = _normalize_bucket_name(bucket_key)
+            normalized_bucket = resolve_bucket_id(bucket_key)
             if not normalized_bucket or not isinstance(feature_ids, list):
                 continue
             for fid in feature_ids:

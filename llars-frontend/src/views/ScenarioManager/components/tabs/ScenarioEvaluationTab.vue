@@ -1896,8 +1896,22 @@ function getLocalizedBucketFallback(value) {
   }
 
   const labelSet = fallbackLabels[normalized]
-  if (!labelSet) return ''
-  return isGerman ? labelSet.de : labelSet.en
+  if (labelSet) {
+    return isGerman ? labelSet.de : labelSet.en
+  }
+
+  const readable = String(value || normalized)
+    .trim()
+    .replace(/[_-]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+
+  if (!readable) return ''
+  return readable
+    .split(' ')
+    .filter(Boolean)
+    .map(part => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ')
 }
 
 function resolveLocalizedBucketLabel(bucketId, fallbackLabel = '') {
@@ -1923,6 +1937,66 @@ function resolveLocalizedBucketLabel(bucketId, fallbackLabel = '') {
   return ''
 }
 
+function parseScenarioConfig(rawConfig) {
+  let config = rawConfig
+  if (typeof config === 'string') {
+    try {
+      config = JSON.parse(config)
+    } catch {
+      config = {}
+    }
+  }
+  if (!config || typeof config !== 'object') return {}
+  return config
+}
+
+function getConfiguredBucketArray(config) {
+  if (!config || typeof config !== 'object') return []
+  const candidates = [
+    config?.buckets,
+    config?.eval_config?.buckets,
+    config?.eval_config?.config?.buckets,
+    config?.config?.buckets
+  ]
+  for (const candidate of candidates) {
+    if (Array.isArray(candidate) && candidate.length > 0) {
+      return candidate
+    }
+  }
+  return []
+}
+
+function normalizeConfiguredBucket(bucket, index = 0) {
+  if (!bucket) return null
+  if (typeof bucket === 'string') {
+    const id = String(bucket || `bucket_${index + 1}`).trim().toLowerCase()
+    if (!id) return null
+    return {
+      id,
+      label: getLocalizedBucketFallback(bucket) || String(bucket),
+      color: '#88c4c8'
+    }
+  }
+  if (typeof bucket !== 'object') return null
+
+  const id = String(bucket.id || bucket.value || `bucket_${index + 1}`).trim().toLowerCase()
+  if (!id) return null
+
+  const localizedName = resolveLocalizedText(bucket.name, '')
+  const localizedLabel = resolveLocalizedText({
+    de: bucket.label_de,
+    en: bucket.label_en,
+    label: bucket.label
+  }, '')
+  const label = String(localizedName || localizedLabel || getLocalizedBucketFallback(id) || id)
+
+  return {
+    id,
+    label,
+    color: bucket.color || '#88c4c8'
+  }
+}
+
 // ===== Computed: Ranking Bucket Distribution =====
 
 const bucketDistribution = computed(() => {
@@ -1946,44 +2020,19 @@ const hasBucketDistribution = computed(() => {
 })
 
 const configuredBuckets = computed(() => {
-  const rawConfig = props.scenario?.config_json ?? props.scenario?.config ?? {}
-  let config = rawConfig
-  if (typeof config === 'string') {
-    try {
-      config = JSON.parse(config)
-    } catch {
-      config = {}
-    }
-  }
-  if (!config || typeof config !== 'object') return []
+  const config = parseScenarioConfig(props.scenario?.config_json ?? props.scenario?.config ?? {})
+  const configBuckets = getConfiguredBucketArray(config)
+  const liveProvenanceBuckets =
+    props.liveStats?.provenanceAnalysis?.bucket_order ||
+    props.liveStats?.provenance_analysis?.bucket_order ||
+    []
 
-  const buckets = config?.buckets
-  if (!Array.isArray(buckets)) return []
+  const sourceBuckets = configBuckets.length > 0
+    ? configBuckets
+    : (Array.isArray(liveProvenanceBuckets) ? liveProvenanceBuckets : [])
 
-  return buckets
-    .map((bucket, index) => {
-      if (!bucket) return null
-      if (typeof bucket === 'string') {
-        const id = String(bucket || `bucket_${index + 1}`).trim().toLowerCase()
-        if (!id) return null
-        const fallbackLabel = getLocalizedBucketFallback(id) || String(bucket)
-        return {
-          id,
-          label: fallbackLabel,
-          color: '#88c4c8'
-        }
-      }
-      if (typeof bucket !== 'object') return null
-      const id = String(bucket.id || `bucket_${index + 1}`).trim().toLowerCase()
-      const name = bucket.name
-      const localizedName = resolveLocalizedText(name, '')
-      const label = String(localizedName || getLocalizedBucketFallback(id) || id)
-      return {
-        id,
-        label,
-        color: bucket.color || '#88c4c8'
-      }
-    })
+  return sourceBuckets
+    .map((bucket, index) => normalizeConfiguredBucket(bucket, index))
     .filter(Boolean)
 })
 
@@ -2020,12 +2069,31 @@ const agreementBucketMap = computed(() => {
     addBucketMeta(bucket.id, bucket.label, bucket.color)
   }
 
-  // Final fallback only for legacy data without any bucket metadata.
+  const provenanceBuckets = provenanceAnalysis.value?.bucket_order
+  if (Array.isArray(provenanceBuckets)) {
+    for (const bucket of provenanceBuckets) {
+      if (!bucket) continue
+      const bucketId = bucket.id || bucket.bucket
+      const localizedBackendLabel = resolveLocalizedText({
+        de: bucket.label_de,
+        en: bucket.label_en,
+        label: bucket.label
+      }, '')
+      addBucketMeta(
+        bucketId,
+        resolveLocalizedBucketLabel(bucketId, localizedBackendLabel || bucketId),
+        bucket.color || '#88c4c8'
+      )
+    }
+  }
+
+  // Final fallback when no bucket metadata is available at all.
   if (Object.keys(map).length === 0) {
-    map.gut = { id: 'gut', label: getLocalizedBucketFallback('gut'), color: '#b0ca97' }
-    map.mittel = { id: 'mittel', label: getLocalizedBucketFallback('mittel'), color: '#D1BC8A' }
-    map.neutral = { id: 'neutral', label: getLocalizedBucketFallback('neutral'), color: '#88c4c8' }
-    map.schlecht = { id: 'schlecht', label: getLocalizedBucketFallback('schlecht'), color: '#e8a087' }
+    map.unknown = {
+      id: 'unknown',
+      label: t('scenarioManager.results.agreementLevels.unknown'),
+      color: '#88c4c8'
+    }
   }
 
   return map

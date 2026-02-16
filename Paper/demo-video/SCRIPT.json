@@ -270,7 +270,7 @@
         {
           "do": "type",
           "target": "Prompt Name Input",
-          "text": "Situation Summary",
+          "text": "Live Situation Summary",
           "speed": "medium"
         },
         {
@@ -638,7 +638,7 @@
     {
       "id": "collab_2",
       "speaker": "guest",
-      "narration": "Alright, I'm logged in. And yes — I can see the Situation Summary prompt right here. Let me open it.",
+      "narration": "Alright, I'm logged in. And yes — I can see the Live Situation Summary prompt right here. Let me open it.",
       "actions": [
         {
           "do": "collab_goto",

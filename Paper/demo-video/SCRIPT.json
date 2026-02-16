@@ -321,7 +321,7 @@
     {
       "id": "prompt_eng_4",
       "speaker": "moderator",
-      "narration": "Now, prompts in Lars are built from named blocks. I'll create three: Role Definition, Task Explanation, and Data Format.",
+      "narration": "Prompts in LLARS are built from named blocks. The first block I'll name System Prompt — LLARS automatically recognizes it as the system message. The remaining blocks become the user prompt. Let me create three.",
       "actions": [
         {
           "do": "click",
@@ -333,7 +333,7 @@
         {
           "do": "type",
           "target": "Block Name Input",
-          "text": "Role Definition",
+          "text": "System Prompt",
           "speed": "fast"
         },
         {
@@ -391,12 +391,12 @@
     {
       "id": "prompt_eng_4b",
       "speaker": "guest",
-      "narration": "So instead of one big text box, I'd see exactly where my instructions go? That would make it much easier for me to iterate on specific parts.",
+      "narration": "I see — the first block has a green border, so LLARS recognized it as the system prompt. And the other two blocks become the user message?",
       "actions": [
         {
           "do": "highlight",
           "target": "First Block Editor",
-          "duration": 1.2
+          "duration": 1.5
         },
         {
           "do": "highlight",
@@ -408,7 +408,7 @@
     {
       "id": "prompt_eng_5",
       "speaker": "moderator",
-      "narration": "Right. Let me fill these in now — a counselling assistant role, the extraction task, and the data format with placeholders.",
+      "narration": "Exactly — the System Prompt block sets the role, and everything else gets merged into the user message. Let me fill these in.",
       "actions": [
         {
           "do": "type",
@@ -1796,7 +1796,7 @@
     {
       "id": "scenario_6",
       "speaker": "moderator",
-      "narration": "The Evaluation tab shows live agreement metrics — Krippendorff's alpha and pairwise agreement. Since both reviewers and both LLMs have been ranking, we already have data.",
+      "narration": "The Evaluation tab shows live agreement metrics — Krippendorff's alpha, pairwise agreement, and a provenance analysis that tells you which LLM and prompt combination performed best.",
       "actions": [
         {
           "do": "click",
@@ -1808,21 +1808,49 @@
         },
         {
           "do": "highlight",
-          "target": "Agreement Heatmap",
-          "duration": 1.0
+          "target": "Evaluation Summary",
+          "duration": 1.2
+        }
+      ]
+    },
+    {
+      "id": "scenario_6_best",
+      "speaker": "moderator",
+      "narration": "Down here, the provenance analysis shows which generation LLM and which prompt most frequently land in the top bucket. So you immediately see the best-performing combination.",
+      "actions": [
+        {
+          "do": "scroll_to",
+          "target": "Provenance Section"
+        },
+        {
+          "do": "wait",
+          "seconds": 0.5
         },
         {
           "do": "highlight",
-          "target": "Evaluation Summary",
-          "duration": 1.0
+          "target": "Best LLM Card",
+          "duration": 1.2
+        },
+        {
+          "do": "highlight",
+          "target": "Best Prompt Card",
+          "duration": 1.2
         }
       ]
     },
     {
       "id": "scenario_6a",
       "speaker": "guest",
-      "narration": "Interesting — what do the colors in the heatmap mean? I see green and red cells.",
+      "narration": "That's a powerful outcome — you get the best LLM and prompt pair directly from the evaluation. What do the colors in the heatmap mean?",
       "actions": [
+        {
+          "do": "scroll_to",
+          "target": "Agreement Heatmap"
+        },
+        {
+          "do": "wait",
+          "seconds": 0.3
+        },
         {
           "do": "highlight",
           "target": "Agreement Heatmap",
@@ -1833,7 +1861,7 @@
     {
       "id": "scenario_6b",
       "speaker": "moderator",
-      "narration": "Green means high agreement, red means low agreement, and the beige tones are in between. The gradient goes from red through beige to green. You can immediately spot where humans and LLMs disagree. Let me click on a cell to show you more.",
+      "narration": "Green means high agreement, red means low — the gradient goes red through beige to green. You can immediately spot where humans and LLMs disagree. Let me click on a cell.",
       "actions": [
         {
           "do": "highlight",
@@ -1875,7 +1903,7 @@
     {
       "id": "scenario_6d",
       "speaker": "moderator",
-      "narration": "Exactly! And if the disagreement is systematic, you go back to Prompt Engineering, refine the criteria, and re-evaluate — that's the iterative loop. You can also export everything as JSON or CSV.",
+      "narration": "Exactly — and if the disagreement is systematic, you refine the prompt and re-evaluate. That's the iterative loop. You can also export everything as JSON or CSV.",
       "actions": [
         {
           "do": "click",

@@ -309,7 +309,8 @@ function logout() {
     // ignore (e.g., Safari private mode / blocked storage)
   }
 
-  router.push('/login');
+  // Use full page navigation so browser password managers re-run autofill heuristics.
+  window.location.replace('/login');
 }
 
 function containsLocalStorageItemWithString(string) {

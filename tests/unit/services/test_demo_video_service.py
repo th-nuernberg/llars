@@ -7,11 +7,17 @@ from services.demo_video_service import (
     COLLAB_USER,
     DEMO_USER,
     LIVE_PROMPT_NAME,
+    LIVE_PROMPT_KEY,
+    NARRATIVE_FEATURE_TYPE_NAME,
+    PRESEED_PROMPT_KEY,
     PRESEED_PROMPT_NAME,
+    STRUCTURED_FEATURE_TYPE_NAME,
     _build_eval_prompt_content,
     _build_preseed_prompt_content,
     _color_distance_sq,
     _ensure_demo_model_color_contrast,
+    _resolve_prompt_feature_type,
+    _select_balanced_partial_features,
     _sort_outputs_for_case,
 )
 
@@ -60,7 +66,7 @@ def test_DEMO_PROMPT_001_preseed_prompt_contains_block_authorship():
 
     assert attribution.get("owner") == DEMO_USER
     assert COLLAB_USER in attribution.get("shared_with", [])
-    assert blocks["Role Definition"]["author"] == DEMO_USER
+    assert blocks["System Prompt"]["author"] == DEMO_USER
     assert blocks["Task Explanation"]["author"] == COLLAB_USER
     assert blocks["Data Format Explanation"]["author"] == DEMO_USER
 
@@ -74,7 +80,7 @@ def test_DEMO_PROMPT_002_live_prompt_contains_block_authorship():
 
     assert attribution.get("owner") == DEMO_USER
     assert COLLAB_USER in attribution.get("shared_with", [])
-    assert blocks["Role Definition"]["author"] == COLLAB_USER
+    assert blocks["System Prompt"]["author"] == COLLAB_USER
     assert blocks["Task Explanation"]["author"] == DEMO_USER
     assert blocks["Data Format Explanation"]["author"] == COLLAB_USER
     assert "The data below is provided as a subject line followed by the email thread content from a counselling session." in data_block_content
@@ -93,3 +99,42 @@ def test_DEMO_SORT_001_outputs_are_sorted_by_prompt_then_model_then_id():
 
     sorted_outputs = _sort_outputs_for_case(outputs)
     assert [out.id for out in sorted_outputs] == [6, 7, 8, 9]
+
+
+def test_DEMO_PROVENANCE_001_prompt_feature_type_resolution_handles_aliases():
+    """Prompt-to-feature-type mapping should stay stable across label variants."""
+    structured_type = SimpleNamespace(type_id=1, name=STRUCTURED_FEATURE_TYPE_NAME)
+    narrative_type = SimpleNamespace(type_id=2, name=NARRATIVE_FEATURE_TYPE_NAME)
+    feature_type_by_prompt = {
+        PRESEED_PROMPT_KEY: structured_type,
+        LIVE_PROMPT_KEY: narrative_type,
+    }
+
+    assert _resolve_prompt_feature_type(
+        PRESEED_PROMPT_NAME, feature_type_by_prompt, structured_type
+    ) is structured_type
+    assert _resolve_prompt_feature_type(
+        LIVE_PROMPT_NAME, feature_type_by_prompt, structured_type
+    ) is narrative_type
+    assert _resolve_prompt_feature_type(
+        "Situation Summary (Narrative)", feature_type_by_prompt, structured_type
+    ) is narrative_type
+    assert _resolve_prompt_feature_type(
+        "Unknown Prompt", feature_type_by_prompt, structured_type
+    ) is structured_type
+
+
+def test_DEMO_PROVENANCE_002_partial_selection_balances_prompt_and_model():
+    """Partial selection should choose one feature per prompt and per model when possible."""
+    features = [
+        SimpleNamespace(feature_id=10, type_id=1, llm_id=101),
+        SimpleNamespace(feature_id=11, type_id=1, llm_id=202),
+        SimpleNamespace(feature_id=12, type_id=2, llm_id=101),
+        SimpleNamespace(feature_id=13, type_id=2, llm_id=202),
+    ]
+
+    selected = _select_balanced_partial_features(features)
+
+    assert len(selected) == 2
+    assert selected[0].type_id != selected[1].type_id
+    assert selected[0].llm_id != selected[1].llm_id

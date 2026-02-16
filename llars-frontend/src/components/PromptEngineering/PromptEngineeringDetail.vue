@@ -142,7 +142,7 @@
             class="draggable-container"
           >
             <template #item="{ element: block }">
-              <div class="editor-block">
+              <div class="editor-block" :class="{ 'is-system-block': isSystemBlock(block) }">
                 <div class="editor-header">
                   <div class="drag-handle" :title="$t('promptEngineering.editor.dragToSort')">
                     <LIcon size="18">mdi-drag</LIcon>
@@ -661,6 +661,10 @@ const { ydoc, socket, users, updateColor } = collaboration;
 const blocksManager = usePromptBlocks(ydoc, roomId, socket, showMessage, t);
 const { blocks, sortedBlocks, processYDoc, createBlock, deleteBlock, saveBlockTitle, handleJsonUpload, assemblePrompt, assemblePromptBlocks } = blocksManager;
 
+// System block detection (title "System" or "System Prompt")
+const SYSTEM_BLOCK_NAMES = ['system', 'system prompt']
+const isSystemBlock = (block) => SYSTEM_BLOCK_NAMES.includes(String(block?.title || '').trim().toLowerCase())
+
 // Extract variables from the assembled prompt for PlaceholderPalette
 const assembledPromptText = computed(() => assemblePrompt())
 const promptVariablesExtractor = usePromptVariables(assembledPromptText, { promptId })
@@ -1112,6 +1116,25 @@ watch(users, (newUsers, oldUsers) => {
   border-radius: 12px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
   overflow: hidden;
+  border: 1.5px solid transparent;
+  transition: border-color 0.3s ease;
+}
+
+.editor-block.is-system-block {
+  border-color: rgba(176, 202, 151, 0.45);
+}
+
+.editor-block.is-system-block .block-title::after {
+  content: 'System';
+  margin-left: 8px;
+  font-size: 0.65rem;
+  font-weight: 500;
+  color: #b0ca97;
+  background: rgba(176, 202, 151, 0.12);
+  padding: 1px 6px;
+  border-radius: 4px 1px 4px 1px;
+  vertical-align: middle;
+  letter-spacing: 0.02em;
 }
 
 .editor-header {

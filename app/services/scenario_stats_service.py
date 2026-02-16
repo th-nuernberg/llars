@@ -1577,8 +1577,10 @@ def _calculate_ranking_provenance_analysis(scenario_id: int) -> Dict[str, Any]:
             "total_assignments": 0,
             "by_llm": [],
             "by_prompt": [],
+            "by_combination": [],
             "best_llm": None,
             "best_prompt": None,
+            "best_combination": None,
         }
 
     try:
@@ -1589,6 +1591,11 @@ def _calculate_ranking_provenance_analysis(scenario_id: int) -> Dict[str, Any]:
     response: Dict[str, Any] = {
         "top_bucket": {"id": top_bucket_id, "label": top_bucket_label},
         "bucket_order": bucket_order,
+        "metric_definition": {
+            "numerator": "top_bucket_count",
+            "denominator": "origin_assignments",
+            "display_format": "top_bucket_count/total",
+        },
         "source_generation_job_id": source_generation_job_id,
         "matched_generation_items": 0,
         "total_items": 0,
@@ -1735,22 +1742,37 @@ def _calculate_ranking_provenance_analysis(scenario_id: int) -> Dict[str, Any]:
     feature_provenance: Dict[int, Dict[str, str]] = {}
     for feature in features:
         item_meta = item_provenance.get(feature.item_id)
-        if item_meta:
+        # Only trust item-level provenance when it was matched to real generation outputs.
+        # Message fallback (e.g. sender='source') can otherwise collapse provenance into
+        # "source / Unknown prompt" for all features.
+        if item_meta and item_meta.get("source") == "generation_output":
+            llm_key = item_meta["llm_key"]
+            llm_label = item_meta["llm_label"]
+            prompt_key = item_meta["prompt_key"]
+            prompt_label = item_meta["prompt_label"]
+            combination_key = f"{prompt_key}|||{llm_key}"
+            combination_label = f"{prompt_label} x {llm_label}"
             feature_provenance[feature.feature_id] = {
-                "llm_key": item_meta["llm_key"],
-                "llm_label": item_meta["llm_label"],
-                "prompt_key": item_meta["prompt_key"],
-                "prompt_label": item_meta["prompt_label"],
+                "llm_key": llm_key,
+                "llm_label": llm_label,
+                "prompt_key": prompt_key,
+                "prompt_label": prompt_label,
+                "combination_key": combination_key,
+                "combination_label": combination_label,
             }
             continue
 
         llm_name = feature.llm.name if feature.llm else "Unknown LLM"
         prompt_name = feature.feature_type.name if feature.feature_type else "Unknown prompt"
+        combination_key = f"{prompt_name}|||{llm_name}"
+        combination_label = f"{prompt_name} x {llm_name}"
         feature_provenance[feature.feature_id] = {
             "llm_key": llm_name,
             "llm_label": llm_name,
             "prompt_key": prompt_name,
             "prompt_label": prompt_name,
+            "combination_key": combination_key,
+            "combination_label": combination_label,
         }
 
     if not feature_provenance:
@@ -1842,9 +1864,9 @@ def _calculate_ranking_provenance_analysis(scenario_id: int) -> Dict[str, Any]:
         }
 
     segments_internal = {
-        "all": {"total_assignments": 0, "by_llm": {}, "by_prompt": {}},
-        "human": {"total_assignments": 0, "by_llm": {}, "by_prompt": {}},
-        "llm": {"total_assignments": 0, "by_llm": {}, "by_prompt": {}},
+        "all": {"total_assignments": 0, "by_llm": {}, "by_prompt": {}, "by_combination": {}},
+        "human": {"total_assignments": 0, "by_llm": {}, "by_prompt": {}, "by_combination": {}},
+        "llm": {"total_assignments": 0, "by_llm": {}, "by_prompt": {}, "by_combination": {}},
     }
 
     def _increment_entity(
@@ -1853,11 +1875,14 @@ def _calculate_ranking_provenance_analysis(scenario_id: int) -> Dict[str, Any]:
         entity_id: str,
         label: str,
         bucket_id: str,
+        meta: Optional[Dict[str, Any]] = None,
     ) -> None:
         entity_map = segment[key_name]
         row = entity_map.get(entity_id)
         if row is None:
             row = _new_entity(entity_id, label)
+            if meta:
+                row.update(meta)
             entity_map[entity_id] = row
 
         row["total"] += 1
@@ -1886,6 +1911,17 @@ def _calculate_ranking_provenance_analysis(scenario_id: int) -> Dict[str, Any]:
                 entity_id=provenance["prompt_key"],
                 label=provenance["prompt_label"],
                 bucket_id=bucket_id,
+            )
+            _increment_entity(
+                segment=segment,
+                key_name="by_combination",
+                entity_id=provenance["combination_key"],
+                label=provenance["combination_label"],
+                bucket_id=bucket_id,
+                meta={
+                    "prompt_label": provenance["prompt_label"],
+                    "llm_label": provenance["llm_label"],
+                },
             )
 
     def _finalize_rows(entity_map: Dict[str, Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -1916,12 +1952,15 @@ def _calculate_ranking_provenance_analysis(scenario_id: int) -> Dict[str, Any]:
     for segment_key, segment_data in segments_internal.items():
         by_llm = _finalize_rows(segment_data["by_llm"])
         by_prompt = _finalize_rows(segment_data["by_prompt"])
+        by_combination = _finalize_rows(segment_data["by_combination"])
         finalized_segments[segment_key] = {
             "total_assignments": segment_data["total_assignments"],
             "by_llm": by_llm,
             "by_prompt": by_prompt,
+            "by_combination": by_combination,
             "best_llm": by_llm[0] if by_llm else None,
             "best_prompt": by_prompt[0] if by_prompt else None,
+            "best_combination": by_combination[0] if by_combination else None,
         }
 
     response["segments"] = finalized_segments
@@ -1938,8 +1977,89 @@ def _calculate_ranking_agreement_heatmap(scenario_id: int) -> Dict[str, Any]:
 
     Example: 2 evaluators rated 40 features, agree on bucket for 23 → 57.5%
     """
-    from db.models import UserFeatureRanking, Feature, ScenarioItems
+    from db.models import UserFeatureRanking, Feature, ScenarioItems, RatingScenarios
     from collections import defaultdict
+
+    scenario = RatingScenarios.query.get(scenario_id)
+    if not scenario:
+        return {"evaluators": [], "agreements": {}, "pair_details": {}}
+
+    config = scenario.config_json or {}
+    if isinstance(config, str):
+        try:
+            config = json.loads(config)
+        except (json.JSONDecodeError, TypeError):
+            config = {}
+    if not isinstance(config, dict):
+        config = {}
+
+    configured_buckets = config.get("buckets", [])
+    if not isinstance(configured_buckets, list):
+        configured_buckets = []
+
+    # Fallback for legacy scenarios without explicit bucket config.
+    if not configured_buckets:
+        configured_buckets = [
+            {"id": "gut", "name": {"de": "Gut", "en": "Good"}},
+            {"id": "mittel", "name": {"de": "Mittel", "en": "Medium"}},
+            {"id": "schlecht", "name": {"de": "Schlecht", "en": "Bad"}},
+        ]
+
+    bucket_info: Dict[str, Dict[str, str]] = {}
+    for idx, bucket in enumerate(configured_buckets):
+        if isinstance(bucket, str):
+            label = bucket.strip()
+            bucket_id = label.lower()
+        elif isinstance(bucket, dict):
+            name_value = bucket.get("name")
+            if isinstance(name_value, dict):
+                label = str(name_value.get("de") or name_value.get("en") or bucket.get("id") or "").strip()
+            elif isinstance(name_value, str):
+                label = name_value.strip()
+            else:
+                label = str(bucket.get("id") or "").strip()
+            bucket_id = str(bucket.get("id") or label).strip().lower()
+        else:
+            continue
+
+        if not bucket_id:
+            continue
+        if not label:
+            label = bucket_id
+        if bucket_id in bucket_info:
+            continue
+        bucket_info[bucket_id] = {"label": label}
+
+    if not bucket_info:
+        return {"evaluators": [], "agreements": {}, "pair_details": {}}
+
+    bucket_id_set = set(bucket_info.keys())
+    legacy_bucket_mappings = {
+        "good": "gut",
+        "medium": "mittel",
+        "middle": "mittel",
+        "bad": "schlecht",
+        "poor": "schlecht",
+        "neutral": "neutral",
+    }
+    label_to_bucket = {
+        info["label"].lower(): bucket_id
+        for bucket_id, info in bucket_info.items()
+        if info.get("label")
+    }
+
+    def _normalize_bucket_name(raw_name: Any) -> Optional[str]:
+        if raw_name is None:
+            return None
+        name = str(raw_name).strip().lower()
+        if not name:
+            return None
+        if name in bucket_id_set:
+            return name
+        mapped = legacy_bucket_mappings.get(name)
+        if mapped and mapped in bucket_id_set:
+            return mapped
+        return label_to_bucket.get(name)
 
     # Get all items for this scenario
     scenario_items = ScenarioItems.query.filter_by(scenario_id=scenario_id).all()
@@ -1953,14 +2073,6 @@ def _calculate_ranking_agreement_heatmap(scenario_id: int) -> Dict[str, Any]:
     users_set = set()
     user_info = {}
 
-    # Bucket name normalization map
-    bucket_normalize = {
-        "gut": "gut", "good": "gut",
-        "mittel": "mittel", "medium": "mittel", "middle": "mittel",
-        "neutral": "neutral",
-        "schlecht": "schlecht", "bad": "schlecht", "poor": "schlecht",
-    }
-    valid_buckets = {"gut", "mittel", "neutral", "schlecht"}
     detail_item_limit = 250
 
     def _to_preview(value: Any, max_length: int = 220) -> str:
@@ -2010,11 +2122,8 @@ def _calculate_ranking_agreement_heatmap(scenario_id: int) -> Dict[str, Any]:
     for ranking in human_rankings:
         feature_id = ranking.feature_id
         user_id = ranking.user_id
-        raw_bucket = ranking.bucket.lower() if ranking.bucket else None
-        if not raw_bucket:
-            continue
-        bucket = bucket_normalize.get(raw_bucket, raw_bucket)
-        if bucket not in valid_buckets:
+        bucket = _normalize_bucket_name(ranking.bucket)
+        if not bucket:
             continue
 
         users_set.add(user_id)
@@ -2052,12 +2161,11 @@ def _calculate_ranking_agreement_heatmap(scenario_id: int) -> Dict[str, Any]:
 
         # Unpack: each feature_id gets its bucket directly
         for bucket_key, feature_ids in payload.items():
-            normalized = bucket_normalize.get(bucket_key.lower() if isinstance(bucket_key, str) else "", None)
-            if normalized is None or normalized not in valid_buckets:
+            normalized_bucket = _normalize_bucket_name(bucket_key)
+            if not normalized_bucket or not isinstance(feature_ids, list):
                 continue
-            if isinstance(feature_ids, list):
-                for fid in feature_ids:
-                    feature_buckets[fid][llm_user_id] = normalized
+            for fid in feature_ids:
+                feature_buckets[_normalize_id(fid)][llm_user_id] = normalized_bucket
 
     if not users_set:
         return {"evaluators": [], "agreements": {}, "pair_details": {}}

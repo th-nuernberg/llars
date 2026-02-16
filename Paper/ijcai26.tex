@@ -78,8 +78,8 @@ Interviews with six domain experts and three developers in online counselling co
 \definecolor{clrOutcome}{HTML}{E8A087}
 
 Organizations building LLM-based assistants for sensitive domains~\cite{chen2024critical,ling2025domain}---online counselling~\cite{stade2024behavioral}, legal analysis~\cite{katz2024bar}, medical documentation~\cite{vanveen2024clinical}---must write effective prompts, select suitable models and rigorously evaluate outputs, requiring both domain expertise and technical skill~\cite{zamfirescu2023johnny,schulhoff2024prompt}.
-Public benchmarks provide useful orientation but rarely transfer to domain-specific tasks; practitioners must test models on their own data to identify the smallest---and most cost-effective---option that still meets quality requirements, especially when replacing a model in a running system.
-Yet domain experts and developers typically work in isolation: prompts are iterated in shared documents without version control and no single tool supports the full cycle from prompt development through systematic evaluation.
+Public benchmarks rarely transfer to domain-specific tasks; practitioners must test models on their own data to find the smallest---and most cost-effective---option that still meets quality requirements, especially when replacing a model in a running system.
+Yet domain experts and developers typically work in isolation: prompts are iterated in shared documents without version control and no single tool covers the full cycle from prompt development through systematic evaluation.
 
 \begin{figure}[t]
 \centering
@@ -167,12 +167,11 @@ Yet domain experts and developers typically work in isolation: prompts are itera
 \label{fig:pipeline}
 \end{figure}
 
-We present LLARS (LLM Assisted Research System), an open-source platform that closes this gap with three integrated modules (Figure~\ref{fig:pipeline}).
+We present LLARS (LLM Assisted Research System), an open-source platform that closes this gap with three tightly connected modules (Figure~\ref{fig:pipeline}).
 \emph{Collaborative Prompt Engineering} lets domain experts and developers co-author prompts in a shared real-time editor with version control and instant LLM testing.
 \emph{Batch Generation} produces the user-configured Cartesian product of prompts\,$\times$\,models\,$\times$\,data items with cost estimation and budget control.
 \emph{Evaluation} lets human and LLM evaluators rate, rank, label or compare outputs with live agreement metrics.
-The modules are tightly connected: new prompts and newly registered models automatically appear in batch generation and completed batches become evaluation scenarios with a single click.
-Each module supports JSON/CSV export and connects to any OpenAI-compatible provider.
+New prompts and models automatically appear in batch generation and completed batches become evaluation scenarios with a single click; each module also supports standalone JSON/CSV export and connects to any OpenAI-compatible provider.
 
 % --- Table floats to top of page 2 ---
 \begin{table*}[t]

@@ -225,23 +225,22 @@ Teams register proprietary or self-hosted OpenAI-compatible LLM providers; regis
 
 \subsection{Collaborative Prompt Engineering}
 
-The prompt engineering module (Figure~\ref{fig:prompt-editor}) provides a shared workspace where domain experts and developers co-author prompts in real time using a collaborative editor built on Yjs~\cite{jahns2023yjs}; every keystroke is instantly visible to all connected users and online presence indicators show who is currently editing.
+The prompt engineering module (Figure~\ref{fig:prompt-editor}) lets domain experts and developers co-author prompts in a real-time collaborative editor built on Yjs~\cite{jahns2023yjs}, where every keystroke is instantly visible to all connected users.
 
 \begin{figure}[ht]
 \centering
 \includegraphics[width=\linewidth]{figures/prompt-eng.png}
-\caption{Collaborative prompt editor with a data-format explanation block containing template variables \texttt{\{\{subject\}\}} and \texttt{\{\{content\}\}}. The sidebar (left) shows actions for block management, variable management, preview and LLM testing; the Variable Palette lists all extracted variables with sample values.}
+\caption{Collaborative prompt editor with a data-format explanation block containing template variables \texttt{\{\{subject\}\}} and \texttt{\{\{content\}\}}. The sidebar (left) shows actions for block management, variable management, preview and LLM testing. The Variable Palette (bottom-left) lists all extracted variables with sample values that can be dragged into blocks.}
 \label{fig:prompt-editor}
 \end{figure}
 
-A prompt is composed of ordered blocks---each representing one part of the prompt, such as a data format description or an output instruction---that can be freely added, reordered or removed.
-One block may optionally be marked as a system block, which becomes the LLM's system prompt; all remaining blocks are concatenated into the user prompt.
-Each block maintains an independent version history that tracks insertions and deletions per save (visible as \texttt{+130\,/\,{-}0} in Figure~\ref{fig:prompt-editor}), enabling diff comparison and rollback to any prior revision without affecting other blocks.
-Blocks may contain template variables written as \texttt{\{\{variable\_name\}\}}, which act as placeholders for external data that would otherwise clutter the prompt---an entire email thread, for instance, can be captured in a single \texttt{\{\{content\}\}} variable, keeping the surrounding instructions concise and letting authors focus on prompt design rather than data formatting.
-The platform extracts all variables into a shared Variable Palette (Figure~\ref{fig:prompt-editor}, bottom-left), where each can be annotated with a sample value (e.g.\ \texttt{\{\{subject\}\}}\,=\,\textit{``School problems at home''}).
-These samples let collaborators preview the assembled prompt and serve as test inputs: any team member can send the current prompt---with samples substituted---to a selected LLM and receive a streamed response, enabling parallel testing across different models.
-The editor also functions standalone: prompts can be exported and imported as JSON for use in external systems.
-Once finalized, a prompt passes directly into batch generation, where the same template variables are systematically filled from dataset columns, scaling a single prompt to hundreds of outputs.
+A prompt is composed of ordered blocks, each representing one part of the prompt such as a data format description or an output instruction.
+One block may be marked as a system block that becomes the LLM's system prompt, while all remaining blocks are concatenated into the user prompt.
+Every block maintains its own version history tracking insertions and deletions per save (visible as \texttt{+130\,/\,{-}0} in Figure~\ref{fig:prompt-editor}), enabling diff comparison and rollback without affecting other blocks.
+Blocks may contain template variables written as \texttt{\{\{variable\_name\}\}} that act as placeholders for external data---an entire email thread, for instance, can be captured in a single \texttt{\{\{content\}\}} variable, keeping the surrounding instructions concise.
+All variables are automatically collected in the shared Variable Palette (Figure~\ref{fig:prompt-editor}, bottom-left), from which they can be dragged into any block and annotated with sample values (e.g.\ \texttt{\{\{subject\}\}}\,=\,\textit{``School problems at home''}).
+These sample values are substituted when testing the prompt against a selected LLM, with responses streaming back in real time so that multiple team members can test different models in parallel.
+Prompts can also be downloaded as JSON for use outside LLARS, but within the platform they are directly available in batch generation, where the template variables are filled from dataset columns to scale a single prompt to hundreds of outputs.
 
 \subsection{Batch Generation}
 

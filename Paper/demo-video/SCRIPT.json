@@ -45,6 +45,7 @@
       "actions": [
         {
           "do": "show_pipeline",
+          "title": "LLARS - LLM Assisted Research System",
           "columns": [
             [
               {
@@ -97,19 +98,23 @@
       "narration": "Here's the pipeline. Teams start in Prompt Engineering, where domain experts and developers co-author prompts together in real time. Those prompts feed into Batch Generation, which runs them across multiple models and datasets. And everything flows into Evaluation, where humans and LLMs assess the outputs side by side — with live agreement metrics.",
       "actions": [
         {
+          "do": "wait",
+          "seconds": 1.5
+        },
+        {
           "do": "highlight",
           "target": "Pipeline Prompt Engineering",
-          "duration": 3.0
+          "duration": 7.0
         },
         {
           "do": "highlight",
           "target": "Pipeline Batch Generation",
-          "duration": 3.0
+          "duration": 5.0
         },
         {
           "do": "highlight",
           "target": "Pipeline Evaluation",
-          "duration": 3.0
+          "duration": 6.0
         }
       ]
     },
@@ -204,7 +209,7 @@
     {
       "id": "prompt_eng_2b",
       "speaker": "guest",
-      "narration": "Oh interesting — so you're adding me as a collaborator right now? That means I'll see everything live as you build the prompt?",
+      "narration": "Oh interesting — so you're adding me as a collaborator. Does that mean we can both edit this prompt live at the same time?",
       "actions": [
         {
           "do": "type",

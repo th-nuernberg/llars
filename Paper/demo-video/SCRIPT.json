@@ -858,7 +858,7 @@
       "_section": "=== BRING YOUR OWN MODELS (30s) ===",
       "id": "providers_1",
       "speaker": "moderator",
-      "narration": "We've already connected our own Mistral and Magistral models to this instance. But the great thing is — any user can bring their own provider. Let me add OpenAI — we'll need it later for LLM-as-Evaluator.",
+      "narration": "We've connected our own Mistral and Magistral models, but any user can bring their own. Let me quickly add OpenAI.",
       "actions": [
         {
           "do": "goto",
@@ -893,8 +893,8 @@
     },
     {
       "id": "providers_2",
-      "speaker": "guest",
-      "narration": "Wait — so each user can connect their own API keys? I wouldn't have to share my credentials with the team?",
+      "speaker": "moderator",
+      "narration": "I'll add OpenAI — select the type, paste the API key, pick GPT-5 Nano and GPT-5 Mini, and save.",
       "actions": [
         {
           "do": "click",
@@ -910,7 +910,7 @@
         },
         {
           "do": "wait",
-          "seconds": 0.5
+          "seconds": 0.3
         },
         {
           "do": "paste",
@@ -919,7 +919,7 @@
         },
         {
           "do": "wait",
-          "seconds": 0.3
+          "seconds": 0.2
         },
         {
           "do": "click",
@@ -927,7 +927,7 @@
         },
         {
           "do": "wait",
-          "seconds": 0.5
+          "seconds": 0.3
         },
         {
           "do": "click",
@@ -935,7 +935,7 @@
         },
         {
           "do": "wait",
-          "seconds": 0.3
+          "seconds": 0.2
         },
         {
           "do": "click",
@@ -943,50 +943,34 @@
         },
         {
           "do": "wait",
-          "seconds": 0.3
-        }
-      ]
-    },
-    {
-      "id": "providers_3",
-      "speaker": "moderator",
-      "narration": "Exactly — credentials stay with the user who added them. Let me save and sync the available models.",
-      "actions": [
+          "seconds": 0.2
+        },
         {
           "do": "click",
           "target": "Dialog Create Button"
         },
         {
           "do": "wait",
-          "seconds": 1.5
-        },
+          "seconds": 1.0
+        }
+      ]
+    },
+    {
+      "id": "providers_3",
+      "speaker": "guest",
+      "narration": "Can I share this provider with my colleague so they can also use these models?",
+      "actions": [
         {
           "do": "highlight",
           "target": "OpenAI Provider Card",
-          "duration": 1.5
+          "duration": 1.0
         }
       ]
     },
     {
       "id": "providers_4",
-      "speaker": "guest",
-      "narration": "And I see GPT-5 Nano and GPT-5 Mini right there — so the models sync automatically? But what if I want my colleague to use these models too — do they have to set up their own provider?",
-      "actions": [
-        {
-          "do": "highlight",
-          "target": "OpenAI Provider Card",
-          "duration": 1.5
-        },
-        {
-          "do": "wait",
-          "seconds": 0.5
-        }
-      ]
-    },
-    {
-      "id": "providers_5",
       "speaker": "moderator",
-      "narration": "No — you can share your provider with other users. Let me show you. I'll share this OpenAI provider with IJCAI Reviewer 2.",
+      "narration": "Absolutely — your API key stays private, but others can use the models. Let me share it with IJCAI Reviewer 2.",
       "actions": [
         {
           "do": "click",
@@ -1004,24 +988,13 @@
           "do": "wait_for_modal"
         },
         {
-          "do": "wait",
-          "seconds": 0.3
-        }
-      ]
-    },
-    {
-      "id": "providers_6",
-      "speaker": "moderator",
-      "narration": "I search for the user, add them — and done. Now IJCAI Reviewer 2 can use these OpenAI models too, for example when testing prompts in Prompt Engineering.",
-      "actions": [
-        {
           "do": "paste",
           "target": "Share User Search",
           "text": "ijcai_reviewer_2"
         },
         {
           "do": "wait",
-          "seconds": 1.0
+          "seconds": 0.8
         },
         {
           "do": "click",
@@ -1029,7 +1002,7 @@
         },
         {
           "do": "wait",
-          "seconds": 0.5
+          "seconds": 0.3
         },
         {
           "do": "click",
@@ -1042,7 +1015,7 @@
         {
           "do": "highlight",
           "target": "Share Chip",
-          "duration": 1.5
+          "duration": 1.0
         },
         {
           "do": "click",
@@ -1050,19 +1023,7 @@
         },
         {
           "do": "wait",
-          "seconds": 0.3
-        }
-      ]
-    },
-    {
-      "id": "providers_7",
-      "speaker": "guest",
-      "narration": "That's really practical — so I keep control of my API key, but my team can use the models. No credential sharing needed.",
-      "actions": [
-        {
-          "do": "highlight",
-          "target": "OpenAI Provider Card",
-          "duration": 1.5
+          "seconds": 0.2
         }
       ]
     },

@@ -31,16 +31,22 @@
       <!-- My Scenarios Tab -->
       <template v-else-if="activeTab === 'own'">
         <div v-if="ownScenarios.length > 0" class="scenarios-grid">
-          <ScenarioOwnerCard
+          <div
             v-for="scenario in ownScenarios"
-            :key="scenario.id"
-            :scenario="scenario"
-            @open="openScenario"
-            @settings="openSettings"
-            @duplicate="duplicateScenario"
-            @archive="archiveScenario"
-            @delete="confirmDelete"
-          />
+            :key="`own-${scenario.id}`"
+            class="scenario-card-observer-target"
+            :data-scenario-id="scenario.id"
+            :ref="(element) => registerScenarioCard(scenario.id, element)"
+          >
+            <ScenarioOwnerCard
+              :scenario="scenario"
+              @open="openScenario"
+              @settings="openSettings"
+              @duplicate="duplicateScenario"
+              @archive="archiveScenario"
+              @delete="confirmDelete"
+            />
+          </div>
         </div>
         <div v-else class="empty-state">
           <LIcon size="64" color="grey-lighten-1">mdi-clipboard-plus-outline</LIcon>
@@ -56,15 +62,21 @@
       <!-- Invitations Tab -->
       <template v-else-if="activeTab === 'invitations'">
         <div v-if="invitedScenarios.length > 0" class="scenarios-grid">
-          <ScenarioInviteCard
+          <div
             v-for="scenario in invitedScenarios"
-            :key="scenario.id"
-            :scenario="scenario"
-            @accept="acceptInvitation"
-            @reject="rejectInvitation"
-            @evaluate="goToEvaluation"
-            @leave="leaveScenario"
-          />
+            :key="`invitation-${scenario.id}`"
+            class="scenario-card-observer-target"
+            :data-scenario-id="scenario.id"
+            :ref="(element) => registerScenarioCard(scenario.id, element)"
+          >
+            <ScenarioInviteCard
+              :scenario="scenario"
+              @accept="acceptInvitation"
+              @reject="rejectInvitation"
+              @evaluate="goToEvaluation"
+              @leave="leaveScenario"
+            />
+          </div>
         </div>
         <div v-else class="empty-state">
           <LIcon size="64" color="grey-lighten-1">mdi-email-outline</LIcon>
@@ -114,9 +126,10 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onBeforeUnmount, onMounted, watch, nextTick } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter, useRoute } from 'vue-router'
+import { useAuth } from '@/composables/useAuth'
 import { useScenarioManager } from './composables/useScenarioManager'
 import ScenarioOwnerCard from './components/ScenarioOwnerCard.vue'
 import ScenarioInviteCard from './components/ScenarioInviteCard.vue'
@@ -126,16 +139,43 @@ import DataFormatGuide from './components/DataFormatGuide.vue'
 const router = useRouter()
 const route = useRoute()
 const { t } = useI18n()
+const { tokenParsed } = useAuth()
 
 const {
   scenarios,
   loading,
   fetchScenarios,
+  fetchScenarioStats,
   deleteScenarioById,
   respondToInvitation,
   duplicateScenario: duplicateScenarioApi,
   archiveScenario: archiveScenarioApi
 } = useScenarioManager()
+
+const currentUserId = computed(() => {
+  return tokenParsed.value?.sub ? String(tokenParsed.value.sub) : ''
+})
+
+const currentUsername = computed(() => {
+  const storedUsername = typeof window !== 'undefined' ? localStorage.getItem('username') : ''
+  return tokenParsed.value?.preferred_username ||
+    tokenParsed.value?.username ||
+    tokenParsed.value?.name ||
+    storedUsername ||
+    ''
+})
+
+const scenarioCardElements = new Map()
+const pendingScenarioStats = []
+const queuedScenarioIds = new Set()
+const loadingScenarioIds = new Set()
+const resolvedScenarioIds = new Set()
+const cachedScenarioStats = new Map()
+const cachedUserProgress = new Map()
+const MAX_CONCURRENT_STATS_REQUESTS = 3
+
+let scenarioCardObserver = null
+let activeStatsRequests = 0
 
 // UI State
 // Read initial tab from URL query parameter
@@ -204,6 +244,275 @@ const invitedScenarios = computed(() => {
     })
 })
 
+const visibleScenarioIds = computed(() => {
+  if (activeTab.value === 'own') {
+    return ownScenarios.value.map(scenario => scenario.id)
+  }
+  if (activeTab.value === 'invitations') {
+    return invitedScenarios.value.map(scenario => scenario.id)
+  }
+  return []
+})
+
+function registerScenarioCard(scenarioId, element) {
+  const existingElement = scenarioCardElements.get(scenarioId)
+  if (existingElement && scenarioCardObserver) {
+    scenarioCardObserver.unobserve(existingElement)
+  }
+
+  if (!element) {
+    scenarioCardElements.delete(scenarioId)
+    return
+  }
+
+  scenarioCardElements.set(scenarioId, element)
+  element.dataset.scenarioId = String(scenarioId)
+
+  if (scenarioCardObserver) {
+    scenarioCardObserver.observe(element)
+  }
+}
+
+function buildUserProgressFromStats(statsData, fallbackTotal = 0) {
+  const userId = currentUserId.value
+  const username = currentUsername.value
+  if (!userId && !username) {
+    return null
+  }
+
+  const normalizedUsername = username ? username.toLowerCase() : ''
+  const raterStats = Array.isArray(statsData?.rater_stats) ? statsData.rater_stats : []
+  const evaluatorStats = Array.isArray(statsData?.evaluator_stats) ? statsData.evaluator_stats : []
+  const humanEvaluatorStats = evaluatorStats.filter(entry => !entry?.is_llm)
+  const allHumanStats = [...raterStats, ...humanEvaluatorStats]
+  const userStat = allHumanStats.find(
+    entry => (
+      (userId && String(entry?.user_id || '') === userId) ||
+      (normalizedUsername && String(entry?.username || '').toLowerCase() === normalizedUsername)
+    )
+  )
+
+  if (!userStat) {
+    return null
+  }
+
+  const completed = Number(userStat.done_threads ?? userStat.voted_count ?? 0)
+  const progressing = Number(userStat.progressing_threads ?? 0)
+  const total = Number(userStat.total_threads ?? fallbackTotal)
+
+  return {
+    completed: Number.isFinite(completed) ? completed : 0,
+    progressing: Number.isFinite(progressing) ? progressing : 0,
+    total: Number.isFinite(total) ? total : fallbackTotal
+  }
+}
+
+function buildScenarioStatsFromResponse(statsData, fallbackScenario) {
+  const raterStats = Array.isArray(statsData?.rater_stats) ? statsData.rater_stats : []
+  const evaluatorStats = Array.isArray(statsData?.evaluator_stats) ? statsData.evaluator_stats : []
+  const humanStats = [...raterStats, ...evaluatorStats.filter(entry => !entry?.is_llm)]
+  const llmStats = evaluatorStats.filter(entry => entry?.is_llm)
+
+  const humanCompleted = humanStats.reduce((sum, entry) => sum + Number(entry?.done_threads ?? entry?.voted_count ?? 0), 0)
+  const humanTotal = humanStats.reduce((sum, entry) => sum + Number(entry?.total_threads ?? 0), 0)
+  const llmCompleted = llmStats.reduce((sum, entry) => sum + Number(entry?.done_threads ?? entry?.voted_count ?? 0), 0)
+  const llmTotal = llmStats.reduce((sum, entry) => sum + Number(entry?.total_threads ?? 0), 0)
+
+  const totalEvaluations = Number(
+    statsData?.total_evaluations ??
+    fallbackScenario?.stats?.total ??
+    fallbackScenario?.thread_count ??
+    0
+  )
+  const completedEvaluations = Number(
+    statsData?.completed_evaluations ??
+    fallbackScenario?.stats?.completed ??
+    0
+  )
+
+  return {
+    total: Number.isFinite(totalEvaluations) ? totalEvaluations : 0,
+    completed: Number.isFinite(completedEvaluations) ? completedEvaluations : 0,
+    human_total: Number.isFinite(humanTotal) ? humanTotal : 0,
+    human_completed: Number.isFinite(humanCompleted) ? humanCompleted : 0,
+    llm_total: Number.isFinite(llmTotal) ? llmTotal : 0,
+    llm_completed: Number.isFinite(llmCompleted) ? llmCompleted : 0
+  }
+}
+
+async function loadScenarioStats(scenarioId) {
+  try {
+    const statsData = await fetchScenarioStats(scenarioId)
+    const scenarioIndex = scenarios.value.findIndex(scenario => scenario.id === scenarioId)
+    if (scenarioIndex < 0) {
+      return
+    }
+
+    const scenario = scenarios.value[scenarioIndex]
+    const stats = buildScenarioStatsFromResponse(statsData, scenario)
+    const userProgress = buildUserProgressFromStats(statsData, scenario.thread_count)
+
+    cachedScenarioStats.set(scenarioId, stats)
+    if (userProgress) {
+      cachedUserProgress.set(scenarioId, userProgress)
+    }
+
+    scenarios.value[scenarioIndex] = {
+      ...scenario,
+      stats,
+      user_progress: userProgress || scenario.user_progress
+    }
+  } catch (error) {
+    console.warn(`Error loading stats for scenario ${scenarioId}:`, error)
+  }
+}
+
+function processStatsQueue() {
+  while (activeStatsRequests < MAX_CONCURRENT_STATS_REQUESTS && pendingScenarioStats.length > 0) {
+    const scenarioId = pendingScenarioStats.shift()
+    queuedScenarioIds.delete(scenarioId)
+
+    if (resolvedScenarioIds.has(scenarioId) || loadingScenarioIds.has(scenarioId)) {
+      continue
+    }
+
+    activeStatsRequests += 1
+    loadingScenarioIds.add(scenarioId)
+
+    loadScenarioStats(scenarioId)
+      .finally(() => {
+        activeStatsRequests -= 1
+        loadingScenarioIds.delete(scenarioId)
+        resolvedScenarioIds.add(scenarioId)
+        processStatsQueue()
+      })
+  }
+}
+
+function queueScenarioStatsLoad(scenarioId) {
+  if (
+    resolvedScenarioIds.has(scenarioId) ||
+    queuedScenarioIds.has(scenarioId) ||
+    loadingScenarioIds.has(scenarioId)
+  ) {
+    return
+  }
+
+  queuedScenarioIds.add(scenarioId)
+  pendingScenarioStats.push(scenarioId)
+  processStatsQueue()
+}
+
+function queueVisibleScenarioStatsLoad() {
+  visibleScenarioIds.value.forEach(scenarioId => queueScenarioStatsLoad(scenarioId))
+}
+
+function observeScenarioCards() {
+  if (!scenarioCardObserver) {
+    return
+  }
+  for (const element of scenarioCardElements.values()) {
+    scenarioCardObserver.observe(element)
+  }
+}
+
+function setupScenarioCardObserver() {
+  if (scenarioCardObserver) {
+    scenarioCardObserver.disconnect()
+  }
+
+  if (typeof window === 'undefined' || typeof window.IntersectionObserver !== 'function') {
+    queueVisibleScenarioStatsLoad()
+    return
+  }
+
+  scenarioCardObserver = new window.IntersectionObserver(
+    entries => {
+      entries.forEach(entry => {
+        if (!entry.isIntersecting) {
+          return
+        }
+
+        const scenarioId = Number(entry.target?.dataset?.scenarioId)
+        if (!Number.isFinite(scenarioId)) {
+          return
+        }
+
+        queueScenarioStatsLoad(scenarioId)
+        scenarioCardObserver?.unobserve(entry.target)
+      })
+    },
+    {
+      root: null,
+      rootMargin: '160px 0px',
+      threshold: 0.1
+    }
+  )
+
+  observeScenarioCards()
+}
+
+function pruneStatsCaches() {
+  const activeIds = new Set(scenarios.value.map(scenario => scenario.id))
+
+  for (const scenarioId of resolvedScenarioIds) {
+    if (!activeIds.has(scenarioId)) {
+      resolvedScenarioIds.delete(scenarioId)
+    }
+  }
+
+  for (const scenarioId of queuedScenarioIds) {
+    if (!activeIds.has(scenarioId)) {
+      queuedScenarioIds.delete(scenarioId)
+    }
+  }
+
+  for (const scenarioId of loadingScenarioIds) {
+    if (!activeIds.has(scenarioId)) {
+      loadingScenarioIds.delete(scenarioId)
+    }
+  }
+
+  for (let index = pendingScenarioStats.length - 1; index >= 0; index -= 1) {
+    if (!activeIds.has(pendingScenarioStats[index])) {
+      pendingScenarioStats.splice(index, 1)
+    }
+  }
+
+  for (const scenarioId of cachedScenarioStats.keys()) {
+    if (!activeIds.has(scenarioId)) {
+      cachedScenarioStats.delete(scenarioId)
+    }
+  }
+
+  for (const scenarioId of cachedUserProgress.keys()) {
+    if (!activeIds.has(scenarioId)) {
+      cachedUserProgress.delete(scenarioId)
+    }
+  }
+}
+
+function applyCachedScenarioStats() {
+  scenarios.value = scenarios.value.map(scenario => {
+    const cachedStats = cachedScenarioStats.get(scenario.id)
+    const cachedProgress = cachedUserProgress.get(scenario.id)
+    if (!cachedStats && !cachedProgress) {
+      return scenario
+    }
+    return {
+      ...scenario,
+      stats: cachedStats || scenario.stats,
+      user_progress: cachedProgress || scenario.user_progress
+    }
+  })
+}
+
+async function refreshScenarios() {
+  await fetchScenarios('all', false)
+  pruneStatsCaches()
+  applyCachedScenarioStats()
+}
+
 // Actions
 function openScenario(scenario) {
   router.push({ name: 'ScenarioWorkspace', params: { id: scenario.id } })
@@ -249,18 +558,18 @@ async function deleteScenario() {
 
 async function acceptInvitation(scenario) {
   await respondToInvitation(scenario.id, 'accept')
-  await fetchScenarios('all')
+  await refreshScenarios()
 }
 
 async function rejectInvitation(scenario) {
   await respondToInvitation(scenario.id, 'reject')
-  await fetchScenarios('all')
+  await refreshScenarios()
 }
 
 async function leaveScenario(scenario) {
   // Leaving a scenario = rejecting the invitation (hides it from evaluation list)
   await respondToInvitation(scenario.id, 'reject')
-  await fetchScenarios('all')
+  await refreshScenarios()
 }
 
 function goToEvaluation(scenario) {
@@ -282,8 +591,10 @@ function closeWizard() {
   }
 }
 
-onMounted(() => {
-  fetchScenarios('all')
+onMounted(async () => {
+  await refreshScenarios()
+  await nextTick()
+  setupScenarioCardObserver()
 
   // Check if we should open wizard with data from a generation job
   const fromGeneration = route.query.fromGeneration
@@ -291,6 +602,23 @@ onMounted(() => {
     generationJobId.value = Number(fromGeneration)
     showWizard.value = true
   }
+})
+
+watch(
+  () => `${activeTab.value}:${visibleScenarioIds.value.join(',')}`,
+  async () => {
+    await nextTick()
+    observeScenarioCards()
+    queueVisibleScenarioStatsLoad()
+  }
+)
+
+onBeforeUnmount(() => {
+  if (scenarioCardObserver) {
+    scenarioCardObserver.disconnect()
+    scenarioCardObserver = null
+  }
+  scenarioCardElements.clear()
 })
 </script>
 
@@ -351,6 +679,10 @@ onMounted(() => {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
   gap: 16px;
+}
+
+.scenario-card-observer-target {
+  min-width: 0;
 }
 
 @media (max-width: 900px) {

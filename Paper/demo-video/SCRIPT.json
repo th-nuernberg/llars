@@ -564,7 +564,7 @@
         {
           "do": "collab_type",
           "target": "Last Block Editor",
-          "text": "\nContent: {{content}}\nThe data above is provided as a subject line followed by the email thread content from a counselling session.",
+          "text": "\nContent: {{content}} \nThe data above is provided as a subject line followed by the email thread content from a counselling session.",
           "cursor": "end",
           "delay": 0.03
         },

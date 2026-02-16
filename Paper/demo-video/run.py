@@ -1180,7 +1180,8 @@ class Browser:
         display: flex; align-items: center; gap: 20px;
     }
     .pipeline-actor {
-        width: 170px; padding: 14px 16px;
+        width: 170px; height: 54px; padding: 0 16px;
+        display: flex; align-items: center; justify-content: center;
         background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.2);
         border-radius: 4px; text-align: center;
         font-family: 'Segoe UI', system-ui, sans-serif;
@@ -1195,7 +1196,8 @@ class Browser:
         font-family: 'Segoe UI', system-ui, sans-serif;
     }
     .pipeline-module {
-        width: 280px; padding: 22px 24px;
+        width: 280px; height: 72px; padding: 0 24px;
+        display: flex; align-items: center; justify-content: center;
         border-radius: 6px; text-align: center;
         font-family: 'Segoe UI', system-ui, sans-serif;
         font-size: 18px; font-weight: 700; color: #222;
@@ -1216,7 +1218,8 @@ class Browser:
         to { box-shadow: 0 0 45px rgba(255,255,255,0.6); }
     }
     .pipeline-export {
-        width: 130px; padding: 10px 12px;
+        width: 130px; height: 42px; padding: 0 12px;
+        display: flex; align-items: center; justify-content: center;
         background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);
         border-radius: 4px; text-align: center;
         font-family: 'Segoe UI', system-ui, sans-serif;
@@ -1233,8 +1236,10 @@ class Browser:
         font-size: 13px;
     }
     .pipeline-outcome {
-        margin-top: 16px; padding: 22px 36px;
+        width: 280px; height: 72px; padding: 0 24px;
+        margin-top: 16px;
         transform: translateX(22px);
+        display: flex; align-items: center; justify-content: center;
         background: rgba(232,160,135,0.2); border: 2px solid #E8A087;
         border-radius: 6px; text-align: center;
         font-family: 'Segoe UI', system-ui, sans-serif;
@@ -1243,10 +1248,110 @@ class Browser:
     }
     .pipeline-llars-label {
         margin-top: 8px;
+        transform: translateX(22px);
         font-family: 'Segoe UI', system-ui, sans-serif;
         font-size: 13px; font-weight: 600;
         color: rgba(176,202,151,0.4); letter-spacing: 3px;
         text-transform: uppercase;
+    }
+    /* === Problem Animation === */
+    .problem-wrapper {
+        display: flex; flex-direction: column;
+        align-items: center;
+    }
+    .problem-container {
+        display: flex; align-items: stretch; gap: 0;
+    }
+    .problem-box {
+        width: 320px; padding: 32px 28px;
+        background: rgba(255,255,255,0.05);
+        border: 1px solid rgba(255,255,255,0.12);
+        border-radius: 8px;
+        display: flex; flex-direction: column;
+        opacity: 0;
+    }
+    .problem-box.problem-left {
+        transform: translateX(-60px);
+        animation: problem-slide-left 0.8s ease 0.3s forwards;
+    }
+    .problem-box.problem-right {
+        transform: translateX(60px);
+        animation: problem-slide-right 0.8s ease 0.5s forwards;
+    }
+    @keyframes problem-slide-left {
+        to { opacity: 1; transform: translateX(0); }
+    }
+    @keyframes problem-slide-right {
+        to { opacity: 1; transform: translateX(0); }
+    }
+    .problem-box-title {
+        font-family: 'Segoe UI', system-ui, sans-serif;
+        font-size: 22px; font-weight: 700;
+        color: #fff; margin-bottom: 6px;
+        text-align: center;
+    }
+    .problem-box-subtitle {
+        font-family: 'Segoe UI', system-ui, sans-serif;
+        font-size: 14px; color: rgba(255,255,255,0.4);
+        text-align: center; margin-bottom: 24px;
+        font-style: italic;
+    }
+    .problem-box-items {
+        display: flex; flex-direction: column; gap: 12px;
+        flex: 1;
+    }
+    .problem-item {
+        font-family: 'Segoe UI', system-ui, sans-serif;
+        font-size: 15px; color: #999; line-height: 1.5;
+        padding: 10px 16px;
+        background: rgba(255,255,255,0.03);
+        border-left: 2px solid rgba(255,255,255,0.08);
+        border-radius: 0 4px 4px 0;
+    }
+    .problem-gap {
+        display: flex; flex-direction: column;
+        align-items: center; justify-content: center;
+        width: 80px; min-height: 100px;
+        opacity: 0;
+        animation: problem-fade 0.6s ease 1.0s forwards;
+    }
+    @keyframes problem-fade {
+        to { opacity: 1; }
+    }
+    .problem-gap-line {
+        width: 2px; flex: 1;
+        background: linear-gradient(to bottom, transparent, rgba(232,160,135,0.3), transparent);
+    }
+    .problem-gap-x {
+        font-size: 28px; color: #E8A087;
+        margin: 8px 0; font-weight: 300;
+    }
+    .problem-painpoints {
+        display: flex; align-items: center; gap: 16px;
+        margin-top: 36px;
+        opacity: 0;
+        animation: problem-fade 0.8s ease 2.5s forwards;
+    }
+    .problem-pain {
+        font-family: 'Segoe UI', system-ui, sans-serif;
+        font-size: 14px; color: #E8A087;
+        padding: 6px 18px;
+        background: rgba(232,160,135,0.08);
+        border: 1px solid rgba(232,160,135,0.2);
+        border-radius: 20px;
+        letter-spacing: 0.5px;
+    }
+    .problem-pain-dot {
+        color: rgba(255,255,255,0.15); font-size: 20px;
+    }
+    .problem-quote {
+        margin-top: 20px;
+        font-family: 'Segoe UI', system-ui, sans-serif;
+        font-size: 17px; font-style: italic;
+        color: rgba(255,255,255,0.3);
+        letter-spacing: 0.5px;
+        opacity: 0;
+        animation: problem-fade 0.8s ease 3.5s forwards;
     }
     """
 
@@ -1600,6 +1705,31 @@ class Browser:
                         print(f"      🗑️ {d}")
                 for a in actions:
                     print(f"      ✓ {a}")
+
+                # Safety-net: enforce that live prompt does not exist after reset.
+                # Newer backends expose this endpoint and remove "Situation Summary"
+                # explicitly so it can be created live during recording.
+                cleanup_live_url = f"{self.base_url}/api/demo-video/cleanup-live-prompt"
+                try:
+                    cleanup_live_req = urllib.request.Request(
+                        cleanup_live_url,
+                        method='POST',
+                        headers={'X-API-Key': api_key, 'Content-Type': 'application/json'},
+                        data=b'{}'
+                    )
+                    with urllib.request.urlopen(cleanup_live_req, timeout=15) as resp:
+                        cleanup_live_result = json.loads(resp.read().decode())
+                    if cleanup_live_result.get('success'):
+                        for d in cleanup_live_result.get('deleted', []):
+                            print(f"      🗑️ {d}")
+                except urllib.error.HTTPError as e:
+                    # Backward compatibility: older backend may not expose endpoint yet.
+                    if e.code not in (404, 405):
+                        body = e.read().decode() if e.fp else ''
+                        print(f"      ⚠️ cleanup-live-prompt API-Fehler {e.code}: {body[:200]}")
+                except Exception as e:
+                    print(f"      ⚠️ cleanup-live-prompt Aufruf fehlgeschlagen: {e}")
+
                 print("   ✓ Demo-Daten erfolgreich zurückgesetzt")
                 return True
             else:
@@ -2449,6 +2579,75 @@ class Browser:
             }});
         """)
         print(f"   🎬 show_pipeline")
+
+    def show_problem(self):
+        """Shows an animated problem overlay: domain experts vs developers working in isolation.
+
+        Phase 1 (0-1s):   Two boxes slide in from left and right
+        Phase 2 (1-2.5s): Gap with X appears between them
+        Phase 3 (2.5-4s): Pain point pills and interview quote fade in
+        All phases are CSS animation-delay driven, no manual triggering needed.
+        """
+        self._inject_styles()
+
+        self.driver.execute_script("""
+            var old = document.getElementById('llars-overlay');
+            if (old) old.remove();
+
+            var overlay = document.createElement('div');
+            overlay.id = 'llars-overlay';
+            overlay.className = 'llars-overlay';
+
+            var wrapper = document.createElement('div');
+            wrapper.className = 'problem-wrapper';
+            wrapper.innerHTML = `
+                <div class="problem-container">
+                    <div class="problem-box problem-left" id="problem-expert">
+                        <div class="problem-box-title">Domain Expert</div>
+                        <div class="problem-box-subtitle">Knows what quality means</div>
+                        <div class="problem-box-items">
+                            <div class="problem-item">Defines quality criteria</div>
+                            <div class="problem-item">Writes evaluation guidelines</div>
+                            <div class="problem-item">Assesses outputs manually</div>
+                        </div>
+                    </div>
+                    <div class="problem-gap" id="problem-gap">
+                        <div class="problem-gap-line"></div>
+                        <div class="problem-gap-x">\u2715</div>
+                        <div class="problem-gap-line"></div>
+                    </div>
+                    <div class="problem-box problem-right" id="problem-developer">
+                        <div class="problem-box-title">Developer</div>
+                        <div class="problem-box-subtitle">Knows how to build pipelines</div>
+                        <div class="problem-box-items">
+                            <div class="problem-item">Configures LLM models</div>
+                            <div class="problem-item">Builds generation pipelines</div>
+                            <div class="problem-item">Runs technical evaluation</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="problem-painpoints" id="problem-painpoints">
+                    <div class="problem-pain">Shared Documents</div>
+                    <div class="problem-pain-dot">\u00B7</div>
+                    <div class="problem-pain">No Version Control</div>
+                    <div class="problem-pain-dot">\u00B7</div>
+                    <div class="problem-pain">Manual Evaluation</div>
+                </div>
+                <div class="problem-quote" id="problem-quote">
+                    \u201CTranslation work between disciplines\u201D
+                </div>
+            `;
+
+            overlay.appendChild(wrapper);
+            document.body.appendChild(overlay);
+
+            requestAnimationFrame(function() {
+                requestAnimationFrame(function() {
+                    overlay.classList.add('visible');
+                });
+            });
+        """)
+        print(f"   🎬 show_problem")
 
     def do_visible_login(self, username: str, password: str):
         """Performs login visibly with typed credentials (for recording)."""
@@ -4256,6 +4455,15 @@ class ScriptRunner:
             else:
                 time.sleep(0.5)  # Wait for fade-in
             print(f"   ✓ show_pipeline")
+            return True
+
+        elif do == 'show_problem':
+            self.browser.show_problem()
+            if test_mode:
+                time.sleep(0.3)
+            else:
+                time.sleep(0.5)  # Wait for fade-in
+            print(f"   ✓ show_problem")
             return True
 
         elif do == 'scroll_to':

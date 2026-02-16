@@ -142,8 +142,13 @@
     {
       "id": "intro_3",
       "speaker": "moderator",
-      "narration": "The credentials are on screen if you'd like to follow along. Let me log us in.",
+      "narration": "The credentials are on screen if you'd like to follow along live. Let me log us in.",
       "actions": [
+        {
+          "do": "highlight",
+          "target": "Pipeline Credentials",
+          "duration": 4.0
+        },
         {
           "do": "hide_title"
         },

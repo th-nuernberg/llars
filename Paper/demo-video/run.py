@@ -159,6 +159,7 @@ ELEMENT_MAP = {
     "Pipeline Batch Generation": "#pipeline-batch",
     "Pipeline Evaluation": "#pipeline-eval",
     "Pipeline Outcome": "#pipeline-outcome",
+    "Pipeline Credentials": "#pipeline-credentials",
 
     # Home Page Feature Cards (klickbare Karten auf /Home)
     "Prompt Engineering": ".feature-card:contains('Prompt'), .feature-title:contains('Prompt')",
@@ -2489,6 +2490,7 @@ class Browser:
             if (cols && cols.length) {
                 var cWrap = document.createElement('div');
                 cWrap.className = 'llars-overlay-columns';
+                cWrap.id = 'pipeline-credentials';
                 cols.forEach(function(col){
                     var c = document.createElement('div');
                     c.className = 'llars-overlay-column';

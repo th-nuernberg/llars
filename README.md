@@ -5,7 +5,7 @@
 <h1 align="center">LLARS - LLM Assisted Research System</h1>
 
 <p align="center">
-  <strong>Kollaborative Bewertung von E-Mails und Szenarien mit LLMs</strong>
+  <strong>An open-source platform for collaborative prompt engineering, batch generation and hybrid evaluation of LLM outputs</strong>
 </p>
 
 <p align="center">
@@ -15,142 +15,158 @@
   <img src="https://img.shields.io/badge/License-MIT-yellow" alt="License">
 </p>
 
+<p align="center">
+  <a href="https://llars.e-beratungsinstitut.de"><strong>Live Instance</strong></a> &middot;
+  <a href="https://youtu.be/FdG1nJ7OqE0"><strong>Demo Video</strong></a> &middot;
+  <a href="Paper/ijcai26.pdf"><strong>Paper (IJCAI 2026)</strong></a>
+</p>
+
+---
+
+## About
+
+LLARS bridges the gap between domain experts and developers for building LLM-based systems. It integrates three tightly connected modules into an end-to-end pipeline:
+
+1. **Collaborative Prompt Engineering** — Real-time co-authoring with version control and instant LLM testing
+2. **Batch Generation** — Configurable output production across user-selected prompts x models x data with cost control
+3. **Hybrid Evaluation** — Human and LLM evaluators jointly assess outputs through diverse assessment methods, with live agreement metrics and provenance analysis
+
+New prompts and models are automatically available for batch generation, and completed batches can be turned into evaluation scenarios with a single click.
+
+> **Paper:** *LLARS: An Open-Source Platform for Collaborative Prompt Engineering, Batch Generation and Hybrid Evaluation* — IJCAI-ECAI 2026 (Demo Track). The demo video link can be found in the footnote of the "Demo and Conclusion" section at the bottom of the paper.
+
+---
+
+## Live Instance & Demo Video
+
+| | Link |
+|---|---|
+| **Live Instance** | https://llars.e-beratungsinstitut.de |
+| **Demo Video (YouTube)** | https://youtu.be/FdG1nJ7OqE0 |
+| **Paper** | Included in this repository (`Paper/ijcai26.pdf`) |
+
 ---
 
 ## Features
 
-| Kategorie | Features |
-|-----------|----------|
-| **Evaluation** | Ranking, Rating, Mail Rating, Fake/Echt-Erkennung |
-| **LLM Evaluator** | Automatisierte paarweise Vergleiche mit Live-Streaming |
-| **RAG-Pipeline** | Dokumenten-basierte Antworten mit ChromaDB + Hybrid Search |
-| **Chatbot Builder** | Chatbots mit RAG-Integration und Web-Crawler |
-| **Collaboration** | Echtzeit-Zusammenarbeit mit YJS CRDT (Prompt Engineering, Markdown, LaTeX) |
-| **OnCoCo Analyse** | Satzbasierte Klassifikation (68 Kategorien) |
-| **Anonymisierung** | Offline PDF/DOCX/Text pseudonymisieren |
-| **KAIMO** | Fallvignetten bearbeiten und auswerten |
-| **Admin Tools** | System Monitor, Docker Monitor, DB Explorer (live) |
-| **Auth & RBAC** | Authentik OAuth2/OIDC + rollenbasierte Zugriffskontrolle |
-| **Analytics** | Matomo Self-hosted Tracking (optional SSO) |
+| Category | Features |
+|----------|----------|
+| **Prompt Engineering** | Real-time collaborative editing (YJS CRDT), version control, instant LLM testing |
+| **Batch Generation** | Multi-model x multi-prompt x multi-data generation with cost control |
+| **Evaluation** | Rating, Ranking, Pairwise Comparison, Labeling, Authenticity Detection |
+| **LLM Evaluator** | Automated evaluation using LLMs as judges with configurable metrics |
+| **Agreement Metrics** | Krippendorff's Alpha, agreement heatmaps, provenance analysis |
+| **RAG Pipeline** | Document-based retrieval with ChromaDB + hybrid search |
+| **Chatbot Builder** | Chatbots with RAG integration and web crawler |
+| **Scenario Wizard** | AI-assisted evaluation scenario setup from uploaded data (CSV, JSON, JSONL) |
+| **Auth & RBAC** | Authentik OAuth2/OIDC + role-based access control |
+| **Design System** | 35+ custom L-components with LLARS signature styling |
 
 ---
 
-## Schnellstart
+## Quick Start
 
-### Voraussetzungen
+### Prerequisites
 
-- **Docker** & **Docker Compose** ([Installation](https://docs.docker.com/get-docker/))
+- **Docker** & **Docker Compose** ([Install](https://docs.docker.com/get-docker/))
 - **Git**
 
 ### Installation
 
 ```bash
-# 1. Repository klonen
-git clone https://git.informatik.fh-nuernberg.de/kiz-nlp/llars/llars.git
+# 1. Clone the repository
+git clone https://github.com/th-nuernberg/llars.git
 cd llars
 
-# 2. Umgebungsvariablen konfigurieren
+# 2. Configure environment variables
 cp .env.template.development .env
 
-# 3. LLARS starten
+# 3. Start LLARS
 ./start_llars.sh
 ```
 
-Das Skript startet alle Docker-Container und konfiguriert Authentik automatisch.
+The script starts all Docker containers and configures Authentik automatically.
 
----
-
-## URLs
+### URLs
 
 | Service | URL |
 |---------|-----|
 | Frontend | http://localhost:55080 |
 | Backend API | http://localhost:55080/api |
 | Authentik Admin | http://localhost:55095 |
-| Matomo Analytics | http://localhost:55080/analytics/ |
-| Dokumentation | http://localhost:55080/mkdocs/ |
 
----
+### Default Users
 
-## Test-Benutzer
-
-| User | Passwort | Rolle |
-|------|----------|-------|
+| User | Password | Role |
+|------|----------|------|
 | admin | admin123 | Administrator |
-| researcher | admin123 | Researcher |
-| evaluator | admin123 | Evaluator |
+| researcher | admin123 | Researcher (can create scenarios) |
+| evaluator | admin123 | Evaluator (participates in evaluations) |
 | chatbot_manager | admin123 | Chatbot Manager |
 
 ---
 
-## Architektur
+## Architecture
 
 ```
-nginx (:80) → Reverse Proxy
-├── /           → Vue Frontend (:5173)
-├── /api/       → Flask Backend (:8081)
-├── /auth/      → Flask Auth → Authentik
-├── /authentik/ → Authentik UI (:9000)
-├── /analytics/ → Matomo (:80)
-├── /collab/    → YJS WebSocket (:8082)
-└── /mkdocs/    → MkDocs (:8000)
+nginx (:80) -> Reverse Proxy
+|-- /           -> Vue Frontend (:5173)
+|-- /api/       -> Flask Backend (:8081)
+|-- /auth/      -> Flask Auth -> Authentik
+|-- /authentik/ -> Authentik UI (:9000)
+|-- /collab/    -> YJS WebSocket (:8082)
 
 Databases:
-├── MariaDB     → Anwendungsdaten
-├── PostgreSQL  → Authentik
-└── ChromaDB    → RAG Vektoren
+|-- MariaDB     -> Application data
+|-- PostgreSQL  -> Authentik
+|-- ChromaDB    -> RAG vectors
 ```
 
 **Tech Stack:**
-- **Backend:** Flask 3.0 + MariaDB 11.2 + ChromaDB
+- **Backend:** Flask 3.0 + MariaDB 11.2 + ChromaDB + Gunicorn/gevent (production)
 - **Frontend:** Vue 3.4 + Vuetify 3.5 + Vite 5.1
 - **Realtime:** Socket.IO + YJS CRDT
 - **Auth:** Authentik (OAuth2/OIDC, RS256 JWT)
 
 ---
 
-## Projektstruktur
+## Project Structure
 
 ```
 llars/
-├── app/                    # Flask Backend
-│   ├── auth/              # Authentifizierung
-│   ├── routes/            # API Endpoints
-│   ├── services/          # Business Logic
-│   └── db/                # Database Models
-├── llars-frontend/        # Vue 3 Frontend
-│   ├── src/components/    # Vue Komponenten
-│   └── src/composables/   # Vue Composables
-├── yjs-server/            # YJS WebSocket Server
-├── docker/                # Docker Konfiguration
-├── docs/                  # MkDocs Dokumentation
-├── scripts/               # Hilfs-Skripte
-├── tests/                 # Backend Tests
-├── start_llars.sh         # Start-Skript
-├── docker-compose.yml     # Docker Compose
-├── CLAUDE.md              # Entwickler-Dokumentation
-└── AGENTS.md              # AI-Agent Referenz
+|-- app/                    # Flask Backend
+|   |-- auth/              # Authentication
+|   |-- routes/            # API Endpoints
+|   |-- services/          # Business Logic
+|   |-- db/                # Database Models
+|   |-- schemas/           # Pydantic Schemas
+|-- llars-frontend/        # Vue 3 Frontend
+|   |-- src/components/    # Vue Components (35+ L-components)
+|   |-- src/composables/   # Vue Composables
+|   |-- src/views/         # Page Views
+|-- yjs-server/            # YJS WebSocket Server
+|-- docker/                # Docker Configuration
+|-- Paper/                 # IJCAI 2026 Demo Paper
+|-- scripts/               # Utility Scripts
+|-- tests/                 # Backend Tests
+|-- start_llars.sh         # Startup Script
+|-- docker-compose.yml     # Docker Compose
 ```
 
 ---
 
-## Wichtige Befehle
+## Commands
 
 ```bash
-# Starten
-./start_llars.sh              # Development Mode
-./start_llars.sh prod         # Production Mode
+# Start (development)
+./start_llars.sh
 
-# Komplett-Neustart (LÖSCHT ALLE DATEN!)
+# Full restart (DELETES ALL DATA!)
 REMOVE_LLARS_VOLUMES=True ./start_llars.sh
 
 # Logs
 docker compose logs -f backend-flask-service
 docker compose logs -f frontend-vue-service
-
-# Authentik Setup
-./scripts/setup_authentik.sh
-./scripts/verify_authentik.sh
 
 # Tests
 pytest tests/                              # Backend
@@ -160,50 +176,43 @@ cd llars-frontend && npx playwright test   # E2E
 
 ---
 
-## Konfiguration
+## Configuration
 
-Wichtige Umgebungsvariablen in `.env`:
+Key environment variables in `.env`:
 
 ```bash
-PROJECT_STATE=development     # oder production
+PROJECT_STATE=development     # or production
 PROJECT_URL=http://localhost:55080
 NGINX_EXTERNAL_PORT=55080
-OPENAI_API_KEY=sk-...         # Für LLM-Features
-LITELLM_API_KEY=...           # Optional für Mistral
+OPENAI_API_KEY=sk-...         # For LLM features
+LITELLM_API_KEY=...           # Optional for open-source models via LiteLLM
 ```
 
 ---
 
-## Troubleshooting
+## Citation
 
-| Problem | Lösung |
-|---------|--------|
-| LLARS nicht erreichbar | `PROJECT_URL`/`NGINX_EXTERNAL_PORT` in .env prüfen |
-| Auth-Fehler | `./scripts/setup_authentik.sh` ausführen |
-| 502 Bad Gateway (Prod) | `NGINX_EXTERNAL_PORT=80` in .env setzen |
-| Container starten nicht | `docker compose down && ./start_llars.sh` |
-| Datenbank-Fehler | `REMOVE_LLARS_VOLUMES=True ./start_llars.sh` |
+If you use LLARS in your research, please cite:
 
----
-
-## Dokumentation
-
-| Datei | Beschreibung |
-|-------|--------------|
-| `CLAUDE.md` | Ausführliche Entwickler-Dokumentation |
-| `AGENTS.md` | Kompakte AI-Agent Referenz |
-| `docs/` | MkDocs Projektdokumentation |
-| `scripts/README_AUTHENTIK_SETUP.md` | Authentik Setup Guide |
+```bibtex
+@inproceedings{steigerwald2026llars,
+  title     = {{LLARS}: An Open-Source Platform for Collaborative Prompt Engineering, Batch Generation and Hybrid Evaluation},
+  author    = {Steigerwald, Philipp and Stieler, Mara and Burghardt, Jennifer and Rudolph, Eric and Albrecht, Jens},
+  booktitle = {Proceedings of the 35th International Joint Conference on Artificial Intelligence (IJCAI-ECAI 2026), Demo Track},
+  year      = {2026}
+}
+```
 
 ---
 
-## Lizenz
+## License
 
-Dieses Projekt steht unter der MIT-Lizenz.
+This project is licensed under the MIT License.
 
 ---
 
 <p align="center">
-  <strong>Entwickler:</strong> Philipp Steigerwald<br>
-  <strong>Stand:</strong> Januar 2026
+  <strong>Technische Hochschule Nurnberg Georg Simon Ohm</strong><br>
+  Faculty of Computer Science, Center for Artificial Intelligence (KIZ)<br>
+  Faculty of Social Sciences, Institute for E-Counselling
 </p>

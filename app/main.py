@@ -8,10 +8,24 @@ from flask_jwt_extended import JWTManager
 from socketio_handlers import configure_socket_routes
 from routes.registry import register_all_blueprints
 from services.api_metrics_service import create_metrics_middleware
+from werkzeug.middleware.proxy_fix import ProxyFix
+import re
 import os
 import redis
 
 app = Flask(__name__)
+
+# Trust one reverse proxy hop (nginx) by default so request.remote_addr
+# resolves to the actual client IP instead of the container network IP.
+proxy_fix_x_for = int(os.environ.get('PROXY_FIX_X_FOR', '1'))
+if proxy_fix_x_for > 0:
+    app.wsgi_app = ProxyFix(
+        app.wsgi_app,
+        x_for=proxy_fix_x_for,
+        x_proto=1,
+        x_host=1,
+        x_port=1,
+    )
 
 # Initialize API metrics collection middleware
 create_metrics_middleware(app)
@@ -96,6 +110,11 @@ def exempt_endpoints():
     """Exempt health check and high-frequency judge endpoints from rate limiting"""
     if not request.endpoint:
         return False
+    path = request.path or ''
+    # Scenario stats are lazy-loaded in list views and can legitimately create
+    # bursty request patterns when users browse many scenarios.
+    if request.method == 'GET' and re.fullmatch(r'/api/scenarios/\d+/stats', path):
+        return True
     # Exempt health checks
     if 'health_check' in request.endpoint:
         return True

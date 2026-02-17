@@ -2527,6 +2527,10 @@
         "title": "Chatbot",
         "description": "Interaktiver Chat mit LLars KI-Assistent"
       },
+      "video": {
+        "title": "Video",
+        "description": "LLARS Demo-Video ansehen"
+      },
       "promptEngineering": {
         "title": "Prompt Engineering",
         "description": "Kollaboratives Entwerfen und Testen von Prompts"
@@ -2585,6 +2589,9 @@
       "alpha": "Alpha",
       "beta": "Beta",
       "test": "Test"
+    },
+    "videoPage": {
+      "fallback": "Ihr Browser unterstuetzt das Video-Tag nicht."
     }
   },
   "scenarioManager": {

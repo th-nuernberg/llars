@@ -91,6 +91,7 @@ import EvaluationItemsOverview from "@/views/Evaluation/EvaluationItemsOverview.
 import GenerationHub from "@/components/Generation/GenerationHub.vue";
 import GenerationJobDetail from "@/components/Generation/GenerationJobDetail.vue";
 import GenerationWizard from "@/components/Generation/GenerationWizard.vue";
+import DemoVideoPage from "@/views/Video/DemoVideoPage.vue";
 
 const routes = [
     { path: '/Impressum', component: Impressum, meta: { requiresAuth: false } },
@@ -123,6 +124,7 @@ const routes = [
     },
 
     { path: '/Home', component: Home, meta: { requiresAuth: true } },
+    { path: '/video', name: 'DemoVideoPage', component: DemoVideoPage, meta: { requiresAuth: true } },
     { path: '/settings', name: 'UserSettings', component: UserSettingsPage, meta: { requiresAuth: true } },
     { path: '/evaluation', name: 'EvaluationHub', component: EvaluationHub, meta: { requiresAuth: true } },
     { path: '/evaluation/assistant/:id', name: 'EvaluationAssistant', component: EvaluationAssistant, props: true, meta: { requiresAuth: true } },

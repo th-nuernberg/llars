@@ -273,6 +273,16 @@ const allItems = computed(() => ([
     badgeColor: 'warning'
   },
   {
+    title: t('home.features.video.title'),
+    description: t('home.features.video.description'),
+    route: '/video',
+    icon: 'llars:play',
+    permission: null,
+    category: 'research',
+    badge: t('home.badges.new'),
+    badgeColor: 'success'
+  },
+  {
     title: t('home.features.markdownCollab.title'),
     description: t('home.features.markdownCollab.description'),
     route: '/MarkdownCollab',

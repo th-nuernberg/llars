@@ -68,8 +68,8 @@ $^2$Faculty of Social Sciences, Institute for E-Counselling
 \maketitle
 
 \begin{abstract}
-We demonstrate LLARS, an open-source platform that bridges the gap between domain experts and developers for building LLM-based systems.
-LLARS integrates three tightly connected modules into an end-to-end pipeline:
+We demonstrate LLARS (LLM Assisted Research System), an open-source platform that bridges the gap between domain experts and developers for building LLM-based systems.
+It integrates three tightly connected modules into an end-to-end pipeline:
 \textbf{Collaborative Prompt Engineering} for real-time co-authoring with version control and instant LLM testing,
 \textbf{Batch Generation} for configurable output production across user-selected prompts\,$\times$\,models\,$\times$\,data with cost control and
 \textbf{Hybrid Evaluation} where human and LLM evaluators jointly assess outputs through diverse assessment methods, with live agreement metrics and provenance analysis to identify the best model--prompt combination for a given use case.
@@ -89,8 +89,8 @@ Interviews with six domain experts and three developers in online counselling co
 
 Organizations building LLM-based systems for sensitive domains~\cite{chen2024critical,ling2025domain}\--online counselling~\cite{stade2024behavioral}, legal analysis~\cite{katz2024bar}, medical documentation~\cite{vanveen2024clinical}\--must write effective prompts, select suitable models and rigorously evaluate outputs, requiring both domain expertise and technical skill~\cite{zamfirescu2023johnny,schulhoff2024prompt}.
 Public benchmarks rarely transfer to domain-specific tasks, so practitioners must test open-source and proprietary models on their own data to find the most efficient option that meets their quality requirements.
-Yet domain experts and developers typically work in isolation. Prompts are iterated in shared documents without version control and often tested against the wrong model or not at all.
-LLARS addresses exactly this gap by covering the full cycle from collaborative prompt development through systematic evaluation in a single platform (Figure~\ref{fig:pipeline}).
+Yet domain experts and developers typically work in isolation. Prompts are iterated in shared documents without version control and often tested against the wrong model or not at all. Outputs end up scattered across tools and evaluation remains ad hoc without structured coordination among assessors.
+LLARS (LLM Assisted Research System) is an open-source tool that connects these three stages in a single platform (Figure~\ref{fig:pipeline}).
 
 \begin{figure}[htb]
 \centering
@@ -178,12 +178,11 @@ LLARS addresses exactly this gap by covering the full cycle from collaborative p
 \label{fig:pipeline}
 \end{figure}
 
-LLARS (LLM Assisted Research System) is open-source and integrates three tightly connected modules.
+It integrates three tightly connected modules.
 \emph{Collaborative Prompt Engineering} lets domain experts and developers co-author prompts in a shared real-time editor with version control and instant LLM testing.
 \emph{Batch Generation} produces the user-configured Cartesian product of prompts\,$\times$\,models\,$\times$\,data items with cost estimation and budget control.
 \emph{Hybrid Evaluation} combines human and LLM evaluators in shared assessment campaigns with automated agreement statistics and provenance tracing to surface the best model--prompt pair.
-New prompts, models and providers are instantly available across all modules and shareable with collaborators. Completed batches become evaluation scenarios with a single click.
-Each module also supports standalone JSON/CSV export and connects to any OpenAI-compatible provider.
+New prompts, models and providers are instantly available across all modules and shareable with collaborators. Completed batches become evaluation scenarios with a single click and each module supports JSON/CSV export.
 
 % \-- Table floats to top of page 2 \--
 \begin{table*}[t]
@@ -237,7 +236,7 @@ The three modules are tightly integrated so that prompts created in the editor f
 
 \subsection{Collaborative Prompt Engineering}
 
-The collaborative prompt editor (Figure~\ref{fig:prompt-editor}), lets every keystroke appear instantly for all connected users.
+The collaborative prompt editor (Figure~\ref{fig:prompt-editor}) lets every keystroke appear instantly for all connected users.
 A prompt is composed of ordered blocks\--one optionally designated as system prompt, the rest concatenated into the user prompt\--each maintaining its own version history that tracks insertions and deletions (visible as \texttt{+100\,/\,{-}0} in Figure~\ref{fig:prompt-editor}), enabling diff comparison and rollback without affecting other blocks.
 
 \begin{figure}[htb]
@@ -253,7 +252,7 @@ A single click sends the assembled prompt with sample values substituted to a se
 Prompts are exportable as JSON and directly available in batch generation, where template variables are filled from the uploaded data to scale a single prompt to hundreds of outputs.
 \subsection{Batch Generation}
 While the prompt editor supports rapid single-example testing, a single example cannot validate whether a prompt generalizes across diverse inputs.
-Batch generation addresses this by combining any set of prompts, models and data items into their Cartesian product of prompts\,$\times$\,models\,$\times$\,data items.
+Batch generation addresses this by combining any set of prompts, models and data items into the Cartesian product of prompts\,$\times$\,models\,$\times$\,data items.
 A generation matrix previews all resulting combinations and estimates cost. Optional budget caps pause jobs that exceed a threshold.
 For example, 50~counselling email threads combined with two prompts and two models produce 50\,$\times$\,2\,$\times$\,2\,=\,200~outputs.
 
@@ -285,7 +284,7 @@ Among the available evaluation analytics, the \emph{provenance analysis} stands 
 \label{sec:counseling}
 
 LLARS is actively used in online counselling research: the Virtual Client project~\cite{rudolph2024virtualclient} uses it for prompt development of simulated client interactions, and CAIA~\cite{steigerwald2025caia}, an AI assistant for email counselling, relies on it for prompt development and evaluation.
-A full end-to-end case study~\cite{steigerwald2025subjectline} produced 253~subject lines across 11~LLMs and had five professionals with an LLM evaluator rate them (1,518~assessments), determining how small a model could be while still meeting quality requirements.
+A full end-to-end case study~\cite{steigerwald2025subjectline} produced 253~subject lines across 11~LLMs and had five professionals and an LLM evaluator rate them (1,518~assessments), determining how small a model could be while still meeting quality requirements.
 
 Semi-structured interviews with six domain experts and three developers confirmed that consolidating the pipeline in one platform saves considerable time and makes interdisciplinary collaboration seamless.
 Domain experts described the interface as intuitive: ``as an evaluator you receive the task and immediately know what to do.'' They also noted that testing prompts directly against an LLM ``developed a feeling for how to formulate the task to get the desired output.''
@@ -294,15 +293,14 @@ Both groups emphasised that working in a shared workspace ``finally enabled us t
 
 \section{Demo and Conclusion}
 
-Our demo walks attendees through the complete workflow, from collaborative prompt authoring through batch generation to evaluation with live agreement metrics and provenance analysis, using pre-built counselling scenarios that let attendees author prompts, trigger batch runs and evaluate outputs hands-on.
+Our demo\footnote{Video: \url{https://youtu.be/FdG1nJ7OqE0}} walks attendees through the complete workflow, from collaborative prompt authoring through batch generation to evaluation with live agreement metrics and provenance analysis, using pre-built counselling scenarios that let attendees author prompts, trigger batch runs and evaluate outputs hands-on.
 
 LLARS unifies prompt engineering, batch generation and evaluation in a single open-source platform that closes the loop from prompt development to rigorous assessment.
 While currently deployed in online counselling, the platform is domain-agnostic and applicable to any text-based LLM evaluation task.
 Present limitations include the focus on single-turn generation rather than multi-turn conversations and the dependence of LLM-based evaluators on the underlying model's reasoning capability.
 Despite these constraints, interviews confirmed that centralizing all stages in one workspace saves considerable time, feels intuitive and eliminates the ``translation work'' between disciplines. Domain experts reported being able to author prompts and conduct evaluations independently without external guidance.
-By uniting domain knowledge and technical skills in a single tool, LLARS simplifies collaboration and adds tangible value to the LLM development process.
 Ultimately, LLARS bridges the gap between domain expertise and technical implementation and enables interdisciplinary work.
-% TODO: Uncomment and update URLs before submission
+
 %\noindent\textbf{Repository:} \url{https://github.com/llars-project/llars}\\
 %\textbf{Documentation:} \url{https://llars-project.github.io}
 

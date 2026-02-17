@@ -2728,19 +2728,136 @@ class Browser:
         tail = "".join(parts[keep + 1:])
         return head + tail
 
+    @staticmethod
+    def _normalize_placeholder_token(variable: str) -> Optional[str]:
+        """Normalize 'subject' -> '{{subject}}' and validate placeholder syntax."""
+        if variable is None:
+            return None
+        value = str(variable).strip()
+        if not value:
+            return None
+        if COLLAB_PLACEHOLDER_PATTERN.fullmatch(value):
+            return value
+        if re.fullmatch(r"[a-zA-Z_][a-zA-Z0-9_]*", value):
+            return f"{{{{{value}}}}}"
+        return None
+
+    @staticmethod
+    def _extract_editable_child(element):
+        """Drill down to an actual editable field when a container was targeted."""
+        if not element:
+            return element
+        try:
+            tag = (element.tag_name or '').lower()
+            if tag not in ('input', 'textarea') and element.get_attribute('contenteditable') != 'true':
+                nested = element.find_element(By.CSS_SELECTOR, 'input, textarea, [contenteditable="true"]')
+                if nested:
+                    return nested
+        except Exception:
+            pass
+        return element
+
+    @staticmethod
+    def _set_contenteditable_cursor(driver, element, cursor: str):
+        """Position caret at start or end in a contenteditable element."""
+        cursor_mode = (cursor or "end").lower()
+        if cursor_mode not in ("start", "end"):
+            return
+        try:
+            driver.execute_script(
+                """
+                const el = arguments[0];
+                const atStart = arguments[1];
+                const sel = window.getSelection();
+                if (!sel) return;
+                const range = document.createRange();
+                range.selectNodeContents(el);
+                range.collapse(atStart);
+                sel.removeAllRanges();
+                sel.addRange(range);
+                """,
+                element,
+                cursor_mode == "start"
+            )
+        except Exception:
+            pass
+
+    @staticmethod
+    def _read_element_text(driver, element) -> str:
+        """Read visible editor text via DOM with fallback to WebElement.text."""
+        try:
+            return driver.execute_script(
+                "return arguments[0].innerText || arguments[0].textContent || '';",
+                element
+            ) or ""
+        except Exception:
+            try:
+                return element.text or ""
+            except Exception:
+                return ""
+
+    def _insert_variable_once(self, driver, element, variable: str, cursor: str = "end",
+                              actor_label: str = "Editor") -> bool:
+        """Insert a single variable placeholder once, skipping if already present."""
+        token = self._normalize_placeholder_token(variable)
+        if not token:
+            print(f"   ⚠️ {actor_label}: ungültige Variable '{variable}'")
+            return False
+
+        element = self._extract_editable_child(element)
+
+        try:
+            driver.execute_script("arguments[0].click(); arguments[0].focus();", element)
+        except Exception:
+            try:
+                element.click()
+            except Exception:
+                pass
+        time.sleep(0.08)
+
+        self._set_contenteditable_cursor(driver, element, cursor)
+        time.sleep(0.04)
+
+        existing_text = self._read_element_text(driver, element)
+        if existing_text.count(token) >= 1:
+            print(f"   ↷ {actor_label}: Variable bereits vorhanden, überspringe {token}")
+            return True
+
+        inserted = self._insert_placeholder_atomically(driver, element, token)
+        if not inserted:
+            inserted = self._insert_text_atomically(driver, element, token)
+        if not inserted:
+            try:
+                element.send_keys(token)
+                inserted = True
+            except Exception:
+                inserted = False
+
+        if inserted:
+            print(f"   ✳️ {actor_label}: Variable eingefügt {token}")
+        else:
+            print(f"   ⚠️ {actor_label}: Variable konnte nicht eingefügt werden ({token})")
+        return inserted
+
+    def insert_variable(self, target: str, variable: str, cursor: str = "end") -> bool:
+        """Insert one variable placeholder in the main browser editor."""
+        element = self._find_element(target)
+        if not element:
+            print(f"   ⚠️ insert_variable: Element nicht gefunden: {target}")
+            return False
+        return self._insert_variable_once(
+            self.driver,
+            element,
+            variable,
+            cursor=cursor,
+            actor_label="Main"
+        )
+
     def type(self, target: str, text: str, speed: str = "fast", cursor: str = None):
         """Tippt Text in Element (inkl. contenteditable für Quill Editor)"""
         element = self._find_element(target)
         if element:
-            # If a container was targeted, try to drill down to an actual input
-            try:
-                tag = (element.tag_name or '').lower()
-                if tag not in ('input', 'textarea') and element.get_attribute('contenteditable') != 'true':
-                    nested = element.find_element(By.CSS_SELECTOR, 'input, textarea, [contenteditable=\"true\"]')
-                    if nested:
-                        element = nested
-            except Exception:
-                pass
+            element = self._extract_editable_child(element)
 
             # Click to focus
             try:
@@ -4399,6 +4516,25 @@ class Browser:
         else:
             print(f"   ⚠️ Collab konnte '{target}' nicht finden")
 
+    def collab_insert_variable(self, target: str, variable: str, cursor: str = "end") -> bool:
+        """Insert one variable placeholder in the collab browser editor."""
+        if not self.collab_driver:
+            print("   ⚠️ Collab-Browser nicht geöffnet!")
+            return False
+
+        element = self._find_element_in_driver(self.collab_driver, target)
+        if not element:
+            print(f"   ⚠️ Collab konnte '{target}' nicht finden")
+            return False
+
+        return self._insert_variable_once(
+            self.collab_driver,
+            element,
+            variable,
+            cursor=cursor,
+            actor_label="Collab"
+        )
+
     def collab_type(self, target: str, text: str, delay: float = 0.08, cursor: str = "end"):
         """
         Tippt Text in ein Element im Collab-Browser.
@@ -4417,20 +4553,7 @@ class Browser:
             # Optional: Cursor gezielt an den Anfang/ans Ende setzen (z.B. für "oben drüber" schreiben)
             cursor_mode = (cursor or "end").lower()
             if cursor_mode in ("start", "end"):
-                self.collab_driver.execute_script(
-                    """
-                    const el = arguments[0];
-                    const atStart = arguments[1];
-                    const sel = window.getSelection();
-                    const range = document.createRange();
-                    range.selectNodeContents(el);
-                    range.collapse(atStart);
-                    sel.removeAllRanges();
-                    sel.addRange(range);
-                    """,
-                    element,
-                    cursor_mode == "start"
-                )
+                self._set_contenteditable_cursor(self.collab_driver, element, cursor_mode)
                 time.sleep(0.1)
 
             # Guard against duplicate appends when re-running from checkpoints
@@ -5574,6 +5697,16 @@ class ScriptRunner:
                 print(f"   ✗ type: {target} (NICHT GEFUNDEN)")
                 return False
 
+        elif do == 'insert_variable':
+            variable = action.get('variable', action.get('text', ''))
+            cursor = action.get('cursor', 'end')
+            ok = self.browser.insert_variable(target, variable, cursor=cursor)
+            if ok:
+                print(f"   ✓ insert_variable: {target} ({variable})")
+                return True
+            print(f"   ✗ insert_variable: {target} ({variable})")
+            return False
+
         elif do == 'clear':
             element = self.browser._find_element(target)
             if element:
@@ -6028,6 +6161,16 @@ class ScriptRunner:
             self.browser.collab_type(target, text, delay, cursor=cursor)
             print(f"   ✓ collab_type: {target}")
             return True
+
+        elif do == 'collab_insert_variable':
+            variable = action.get('variable', action.get('text', ''))
+            cursor = action.get('cursor', 'end')
+            ok = self.browser.collab_insert_variable(target, variable, cursor=cursor)
+            if ok:
+                print(f"   ✓ collab_insert_variable: {target} ({variable})")
+                return True
+            print(f"   ✗ collab_insert_variable: {target} ({variable})")
+            return False
 
         elif do == 'collab_focus':
             self.browser.collab_focus_editor()

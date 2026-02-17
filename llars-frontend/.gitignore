@@ -31,3 +31,6 @@ test-results/
 *.sln
 *.sw?
 .auth/
+
+# Large media files (hosted externally)
+public/videos/*.mp4

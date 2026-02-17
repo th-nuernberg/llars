@@ -176,7 +176,7 @@ const statsRetryCounts = new Map()
 const MAX_CONCURRENT_STATS_REQUESTS = 1
 const MAX_STATS_REQUEST_RETRIES = 2
 const STATS_REQUEST_SPACING_MS = 300
-const STATS_RATE_LIMIT_COOLDOWN_MS = 2000
+const STATS_RATE_LIMIT_COOLDOWN_MS = 30000
 const INITIAL_STATS_PREFETCH_COUNT = 6
 
 let scenarioCardObserver = null
@@ -413,6 +413,18 @@ function parseRetryAfterMs(retryAfterHeader) {
   return Math.max(0, timestamp - Date.now())
 }
 
+function shouldRetryStatsRequest(statusCode) {
+  if (!Number.isFinite(statusCode) || statusCode <= 0) {
+    return true
+  }
+
+  if (statusCode >= 500) {
+    return true
+  }
+
+  return statusCode === 408 || statusCode === 425
+}
+
 function scheduleStatsQueue(delayMs = 0) {
   if (statsQueueTimer) {
     return
@@ -466,15 +478,17 @@ function processStatsQueue() {
           statsRateLimitedUntil = Math.max(statsRateLimitedUntil, Date.now() + cooldownMs)
         }
 
-        const retryCount = (statsRetryCounts.get(scenarioId) || 0) + 1
-        if (retryCount <= MAX_STATS_REQUEST_RETRIES) {
-          statsRetryCounts.set(scenarioId, retryCount)
-          queuedScenarioIds.add(scenarioId)
-          pendingScenarioStats.push(scenarioId)
-          if (statsRateLimitedUntil > Date.now()) {
-            scheduleStatsQueue(statsRateLimitedUntil - Date.now())
+        if (shouldRetryStatsRequest(result.statusCode)) {
+          const retryCount = (statsRetryCounts.get(scenarioId) || 0) + 1
+          if (retryCount <= MAX_STATS_REQUEST_RETRIES) {
+            statsRetryCounts.set(scenarioId, retryCount)
+            queuedScenarioIds.add(scenarioId)
+            pendingScenarioStats.push(scenarioId)
+            if (statsRateLimitedUntil > Date.now()) {
+              scheduleStatsQueue(statsRateLimitedUntil - Date.now())
+            }
+            return
           }
-          return
         }
 
         statsRetryCounts.delete(scenarioId)

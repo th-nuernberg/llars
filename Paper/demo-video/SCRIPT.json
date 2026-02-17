@@ -391,7 +391,7 @@
     {
       "id": "prompt_eng_4b",
       "speaker": "guest",
-      "narration": "Perfect, I'm in now and I can see your changes live.",
+      "narration": "Thanks for waiting, I can see the blocks.",
       "actions": [
         {
           "do": "collab_focus"
@@ -687,7 +687,7 @@
     {
       "id": "prompt_eng_7",
       "speaker": "moderator",
-      "narration": "Perfect. We now have the live co-authored prompt and a second pre-seeded prompt. We'll compare both in Batch Generation.",
+      "narration": "Perfect. We now have the live co-authored prompt and a second prepared prompt. We'll compare both in Batch Generation.",
       "actions": [
         {
           "do": "collab_close"
@@ -1207,7 +1207,7 @@
     {
       "id": "batch_gen_7",
       "speaker": "guest",
-      "narration": "Ah, here I see the generation matrix, this is a Cartesian Product, right?",
+      "narration": "Here I see the generation matrix, this is the Cartesian Product of our setup, right?",
       "actions": [
         {
           "do": "wait_for",
@@ -1237,7 +1237,7 @@
         {
           "do": "highlight",
           "target": "Matrix Items Count",
-          "duration": 1.0
+          "duration": 1.2
         },
         {
           "do": "sync",
@@ -1246,7 +1246,7 @@
         {
           "do": "highlight",
           "target": "Matrix Prompts Count",
-          "duration": 1.0
+          "duration": 1.2
         },
         {
           "do": "sync",
@@ -1255,7 +1255,7 @@
         {
           "do": "highlight",
           "target": "Matrix Models Count",
-          "duration": 1.0
+          "duration": 1.2
         },
         {
           "do": "sync",
@@ -1264,7 +1264,7 @@
         {
           "do": "highlight",
           "target": "Matrix Total",
-          "duration": 1.2
+          "duration": 1.4
         },
         {
           "do": "sync",
@@ -1273,7 +1273,7 @@
         {
           "do": "highlight",
           "target": "Cost Estimate",
-          "duration": 1.0
+          "duration": 1.2
         },
         {
           "do": "click",
@@ -1905,7 +1905,7 @@
         },
         {
           "do": "sync",
-          "after": "top-bucket hits by generation llm"
+          "after": "top-bucket hits by generation model"
         },
         {
           "do": "highlight",
@@ -1923,7 +1923,7 @@
         },
         {
           "do": "sync",
-          "after": "prompt plus llm ranking"
+          "after": "prompt plus model ranking"
         },
         {
           "do": "highlight",
@@ -1932,7 +1932,7 @@
         },
         {
           "do": "sync",
-          "after": "best prompt and llm pair block"
+          "after": "best prompt and model pair block"
         },
         {
           "do": "highlight",
@@ -1949,21 +1949,21 @@
         },
         {
           "do": "sync",
-          "after": "first number is good-bucket hits"
+          "after": "the first number is good-bucket hits"
         },
         {
           "do": "highlight",
           "target": ".provenance-best-grid .provenance-best-card:nth-child(3) .provenance-best-meta .llars-prov-first",
-          "duration": 1.2
+          "duration": 1.8
         },
         {
           "do": "sync",
-          "after": "second number is completed rankings so far"
+          "after": "the second number is completed rankings so far"
         },
         {
           "do": "highlight",
           "target": ".provenance-best-grid .provenance-best-card:nth-child(3) .provenance-best-meta .llars-prov-second",
-          "duration": 1.2
+          "duration": 1.8
         },
         {
           "do": "sync",
@@ -1997,39 +1997,39 @@
         },
         {
           "do": "sync",
-          "after": "three plots show the full distribution across buckets"
+          "after": "these three plots"
         },
         {
           "do": "highlight",
           "target": "Provenance Figures Grid",
-          "duration": 1.8
+          "duration": 1.0
         },
         {
           "do": "sync",
-          "after": "for llms"
+          "after": "for models,"
         },
         {
           "do": "highlight",
           "target": "Provenance LLM Figure Card",
-          "duration": 1.4
+          "duration": 1.8
         },
         {
           "do": "sync",
-          "after": "prompts"
+          "after": "prompts, and"
         },
         {
           "do": "highlight",
           "target": "Provenance Prompt Figure Card",
-          "duration": 1.4
+          "duration": 1.8
         },
         {
           "do": "sync",
-          "after": "prompt plus llm combinations"
+          "after": "prompt plus models combinations."
         },
         {
           "do": "highlight",
           "target": "Provenance Combination Figure Card",
-          "duration": 1.4
+          "duration": 1.8
         }
       ]
     },

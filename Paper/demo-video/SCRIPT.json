@@ -169,26 +169,47 @@
         },
         {
           "do": "wait",
-          "seconds": 1.5
+          "seconds": 0.4
         },
         {
-          "do": "highlight",
-          "target": "Pipeline Prompt Engineering",
-          "duration": 7.0
+          "do": "sync",
+          "after": "Prompt Engineering"
         },
         {
-          "do": "highlight",
-          "target": "Pipeline Batch Generation",
-          "duration": 5.0
+          "do": "highlight_on",
+          "target": "Pipeline Prompt Engineering"
         },
         {
-          "do": "highlight",
-          "target": "Pipeline Evaluation",
-          "duration": 6.0
+          "do": "sync",
+          "after": "Batch Generation"
+        },
+        {
+          "do": "highlight_off",
+          "target": "Pipeline Prompt Engineering"
+        },
+        {
+          "do": "highlight_on",
+          "target": "Pipeline Batch Generation"
+        },
+        {
+          "do": "sync",
+          "after": "Evaluation"
+        },
+        {
+          "do": "highlight_off",
+          "target": "Pipeline Batch Generation"
+        },
+        {
+          "do": "highlight_on",
+          "target": "Pipeline Evaluation"
         },
         {
           "do": "sync",
           "after": "live agreement metrics"
+        },
+        {
+          "do": "highlight_off",
+          "target": "Pipeline Evaluation"
         },
         {
           "do": "hide_title"
@@ -282,7 +303,7 @@
     {
       "id": "prompt_eng_3",
       "speaker": "moderator",
-      "narration": "Great, the prompt is shared now. David, open a second browser and sign in as reviewer two. I'll keep building while you join this same prompt.",
+      "narration": "Great, the prompt is shared now. David, open a second browser and sign in as reviewer two. While you log in, I'll already create the first block.",
       "actions": [
         {
           "do": "click",
@@ -302,17 +323,6 @@
           "user": "ijcai_reviewer_2",
           "password": "ijcai_reviewer_123"
         },
-        {
-          "do": "wait",
-          "seconds": 0.2
-        }
-      ]
-    },
-    {
-      "id": "prompt_eng_4",
-      "speaker": "moderator",
-      "narration": "I'll set up the first two blocks now: System Prompt and Task Explanation. David, stay in the shared prompt while I create them.",
-      "actions": [
         {
           "do": "click",
           "target": "New Block"
@@ -334,6 +344,24 @@
           "do": "wait",
           "seconds": 0.1
         },
+        {
+          "do": "collab_wait_ready",
+          "timeout": 45
+        },
+        {
+          "do": "collab_open_shared_prompt"
+        },
+        {
+          "do": "wait",
+          "seconds": 0.2
+        }
+      ]
+    },
+    {
+      "id": "prompt_eng_4",
+      "speaker": "moderator",
+      "narration": "Perfect. Now that you're in, I'll add the Task Explanation block.",
+      "actions": [
         {
           "do": "click",
           "target": "New Block"
@@ -360,30 +388,10 @@
     {
       "id": "prompt_eng_4b",
       "speaker": "guest",
-      "narration": "Ah okay, now I see it. We can really work on the same prompt in real time.",
+      "narration": "Perfect, I'm in now and I can see your changes live.",
       "actions": [
         {
-          "do": "collab_wait_ready",
-          "timeout": 45
-        },
-        {
-          "do": "collab_open_prompt",
-          "name": "Live Situation Summary",
-          "timeout": 14
-        },
-        {
           "do": "collab_focus"
-        },
-        {
-          "do": "wait",
-          "seconds": 0.1
-        },
-        {
-          "do": "collab_type",
-          "target": "Last Block Editor",
-          "text": "\nLooks good, I can edit this live with you.",
-          "cursor": "end",
-          "delay": 0.02
         },
         {
           "do": "wait",
@@ -422,7 +430,7 @@
     {
       "id": "prompt_eng_5",
       "speaker": "moderator",
-      "narration": "Exactly. Now I fill the blocks and insert variables for subject and content.",
+      "narration": "Great. I now fill the blocks and add Subject: {{subject}} first. David, can you add Content: {{content}} in the same block so we show live collaboration?",
       "actions": [
         {
           "do": "type",
@@ -439,15 +447,40 @@
         {
           "do": "type",
           "target": ".editor-block:nth-child(3) .ql-editor",
-          "text": "Subject: {{subject}}\nContent: {{content}}",
+          "text": "Subject: {{subject}}",
           "speed": "instant"
         }
       ]
     },
     {
       "id": "prompt_eng_5a",
+      "speaker": "guest",
+      "narration": "Sure, I add it now. See Alex, we can really edit this prompt together in real time.",
+      "actions": [
+        {
+          "do": "collab_focus"
+        },
+        {
+          "do": "wait",
+          "seconds": 0.1
+        },
+        {
+          "do": "collab_type",
+          "target": "Last Block Editor",
+          "text": "\nContent: {{content}}\nThe fields come from one counselling case: subject line and full message thread.",
+          "cursor": "end",
+          "delay": 0.02
+        },
+        {
+          "do": "wait",
+          "seconds": 0.1
+        }
+      ]
+    },
+    {
+      "id": "prompt_eng_5a_david",
       "speaker": "moderator",
-      "narration": "These braces are template variables. I add sample values so we can test immediately.",
+      "narration": "Exactly. I can see your update immediately. Now I add sample values so we can test.",
       "actions": [
         {
           "do": "click",
@@ -523,24 +556,10 @@
         },
         {
           "do": "dismiss_overlays"
-        }
-      ]
-    },
-    {
-      "id": "prompt_eng_5a_david",
-      "speaker": "guest",
-      "narration": "I'm logged in. I'll add one clarification about the data format from my side.",
-      "actions": [
-        {
-          "do": "collab_type",
-          "target": "Last Block Editor",
-          "text": "\nThe fields come from one counselling case: subject line and full message thread.",
-          "cursor": "end",
-          "delay": 0.02
         },
         {
           "do": "wait",
-          "seconds": 0.3
+          "seconds": 0.1
         }
       ]
     },
@@ -1118,6 +1137,11 @@
       "actions": [
         {
           "do": "highlight",
+          "target": "Matrix Items Count",
+          "duration": 1.0
+        },
+        {
+          "do": "highlight",
           "target": "Matrix Prompts Count",
           "duration": 1.0
         },
@@ -1193,7 +1217,7 @@
     {
       "id": "batch_gen_output_1",
       "speaker": "guest",
-      "narration": "Ah, here I see how it looks after the Batch Generation is done. Can we look at one of these outputs in Detail?",
+      "narration": "Ah, here I see how it looks after the Batch Generation is done! Can we look at one of these outputs in Detail?",
       "actions": [
         {
           "do": "highlight",
@@ -1867,59 +1891,9 @@
       ]
     },
     {
-      "id": "scenario_6_heatmap",
-      "speaker": "moderator",
-      "narration": "The agreement heatmap shows pairwise evaluator agreement — green means high, red means low. You can immediately spot where humans and LLMs disagree. Let me click a cell.",
-      "actions": [
-        {
-          "do": "scroll_to",
-          "target": "Agreement Heatmap"
-        },
-        {
-          "do": "wait",
-          "seconds": 0.3
-        },
-        {
-          "do": "highlight",
-          "target": "Agreement Heatmap",
-          "duration": 1.2
-        },
-        {
-          "do": "click",
-          "target": "Heatmap Cell"
-        },
-        {
-          "do": "wait",
-          "seconds": 2.0
-        },
-        {
-          "do": "highlight",
-          "target": "Agreement Detail Score",
-          "duration": 1.2
-        },
-        {
-          "do": "highlight",
-          "target": "Agreement Detail Breakdown",
-          "duration": 1.2
-        }
-      ]
-    },
-    {
-      "id": "scenario_6_heatmap_q",
-      "speaker": "guest",
-      "narration": "A per-item breakdown — so you can pinpoint exactly which cases caused disagreement?",
-      "actions": [
-        {
-          "do": "highlight",
-          "target": "Agreement Detail Breakdown",
-          "duration": 1.0
-        }
-      ]
-    },
-    {
       "id": "scenario_6_export",
       "speaker": "moderator",
-      "narration": "And if disagreement is systematic, you refine the prompt and run another evaluation. That's the iterative loop. Everything is exportable as JSON or CSV.",
+      "narration": "You can export the evaluation results as JSON or CSV and iterate in the next round.",
       "actions": [
         {
           "do": "click_if_present",
@@ -1982,7 +1956,7 @@
     {
       "id": "conclusion_2",
       "speaker": "guest",
-      "narration": "Great walkthrough. I'll log in again and explore it myself.",
+      "narration": "Thanks Alex! Great walkthrough. I'll log in again and explore it myself.",
       "actions": [
         {
           "do": "wait",

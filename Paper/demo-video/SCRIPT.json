@@ -16,6 +16,15 @@
     "tts_model": "custom-small",
     "output_file": "llars_demo.mp4",
     "language": "en",
+    "timing": {
+      "wait_scale": 0.68,
+      "highlight_scale": 0.62,
+      "micro_pause_scale": 0.8,
+      "post_step_pause": 0.08,
+      "min_wait": 0.06,
+      "min_highlight": 0.45,
+      "min_micro_pause": 0.04
+    },
     "login": {
       "username": "ijcai_reviewer_1",
       "password": "ijcai_reviewer_123"
@@ -92,7 +101,6 @@
     {
       "id": "intro_1c",
       "speaker": "guest",
-      "narration": "Makes sense, I understand.",
       "actions": [
         {
           "do": "wait",
@@ -103,7 +111,7 @@
     {
       "id": "intro_1d",
       "speaker": "guest",
-      "narration": "Sounds good, Alex. While you log in, I'm following along.",
+      "narration": "Sounds good, Alex. I'm following along.",
       "actions": [
         {
           "do": "hide_title"
@@ -177,6 +185,10 @@
           "do": "highlight",
           "target": "Pipeline Evaluation",
           "duration": 6.0
+        },
+        {
+          "do": "sync",
+          "after": "live agreement metrics"
         },
         {
           "do": "hide_title"
@@ -258,15 +270,19 @@
           "seconds": 0.2
         },
         {
-          "do": "click",
-          "target": "ijcai_reviewer_2"
+          "do": "click_if_present",
+          "target": "Share User Suggestion"
+        },
+        {
+          "do": "click_if_present",
+          "target": "Share Add Button"
         }
       ]
     },
     {
       "id": "prompt_eng_3",
       "speaker": "moderator",
-      "narration": "Great, the prompt is shared now. David, open the collaboration browser, sign in as reviewer two, and open the shared prompt.",
+      "narration": "Great, the prompt is shared now. David, open a second browser and sign in as reviewer two. I'll keep building while you join this same prompt.",
       "actions": [
         {
           "do": "click",
@@ -279,24 +295,12 @@
         },
         {
           "do": "sync",
-          "after": "log in"
+          "after": "sign in as reviewer two"
         },
         {
-          "do": "collab_open",
+          "do": "collab_open_async",
           "user": "ijcai_reviewer_2",
           "password": "ijcai_reviewer_123"
-        },
-        {
-          "do": "collab_goto",
-          "url": "/promptengineering"
-        },
-        {
-          "do": "wait",
-          "seconds": 0.3
-        },
-        {
-          "do": "collab_click",
-          "target": "Situation Summary"
         },
         {
           "do": "wait",
@@ -306,8 +310,8 @@
     },
     {
       "id": "prompt_eng_4",
-      "speaker": "guest",
-      "narration": "Ah, I see. So we can really work on the same prompt in real time while you set up the blocks.",
+      "speaker": "moderator",
+      "narration": "I'll set up the first two blocks now: System Prompt and Task Explanation. David, stay in the shared prompt while I create them.",
       "actions": [
         {
           "do": "click",
@@ -350,7 +354,48 @@
         {
           "do": "wait",
           "seconds": 0.1
+        }
+      ]
+    },
+    {
+      "id": "prompt_eng_4b",
+      "speaker": "guest",
+      "narration": "Ah okay, now I see it. We can really work on the same prompt in real time.",
+      "actions": [
+        {
+          "do": "collab_wait_ready",
+          "timeout": 45
         },
+        {
+          "do": "collab_open_prompt",
+          "name": "Live Situation Summary",
+          "timeout": 14
+        },
+        {
+          "do": "collab_focus"
+        },
+        {
+          "do": "wait",
+          "seconds": 0.1
+        },
+        {
+          "do": "collab_type",
+          "target": "Last Block Editor",
+          "text": "\nLooks good, I can edit this live with you.",
+          "cursor": "end",
+          "delay": 0.02
+        },
+        {
+          "do": "wait",
+          "seconds": 0.1
+        }
+      ]
+    },
+    {
+      "id": "prompt_eng_4c",
+      "speaker": "moderator",
+      "narration": "Exactly. I add the third block for the data format now.",
+      "actions": [
         {
           "do": "click",
           "target": "New Block"
@@ -486,22 +531,6 @@
       "speaker": "guest",
       "narration": "I'm logged in. I'll add one clarification about the data format from my side.",
       "actions": [
-        {
-          "do": "collab_goto",
-          "url": "/promptengineering"
-        },
-        {
-          "do": "wait",
-          "seconds": 0.3
-        },
-        {
-          "do": "collab_click",
-          "target": "Situation Summary"
-        },
-        {
-          "do": "wait",
-          "seconds": 0.3
-        },
         {
           "do": "collab_type",
           "target": "Last Block Editor",
@@ -1532,7 +1561,7 @@
     {
       "id": "human_eval_3",
       "speaker": "moderator",
-      "narration": "Here you see bucket ranking, the default evaluation mode in Lars. Instead of a full ordering, evaluators drag items into quality categories. Notice the generic labels — Item A, B, C — so model and prompt identity stay hidden.",
+      "narration": "Here you see bucket ranking, the default evaluation mode in Lars. Instead of a full ordering, evaluators drag items into quality categories. Notice there are no labels, so model and prompt identity stay hidden.",
       "actions": [
         {
           "do": "highlight",
@@ -1585,7 +1614,7 @@
     {
       "id": "human_eval_4",
       "speaker": "guest",
-      "narration": "That's much easier than sorting everything into one long list. And it's completely blinded — no model names?",
+      "narration": "That's much easier than sorting everything into one long list. And it is completely blinded evaluation.",
       "actions": [
         {
           "do": "highlight",
@@ -1817,7 +1846,7 @@
     {
       "id": "scenario_6_provenance_q",
       "speaker": "guest",
-      "narration": "So this directly tells me which model and prompt pair to deploy? That's exactly the question you started with!",
+      "narration": "So this directly tells me which model and prompt pair to deploy? That's exactly the question we started with!",
       "actions": [
         {
           "do": "highlight",
@@ -1934,12 +1963,12 @@
       "_section": "=== CONCLUSION (30s) ===",
       "id": "conclusion_1",
       "speaker": "moderator",
-      "narration": "We showed this with counselling data because that's our research domain — psychologists and social workers use Lars to craft prompts for extracting situation descriptions from client communications. In interviews, domain experts told us Lars eliminates the translation work between disciplines. But the platform is domain-agnostic — swap the email threads for medical reports or legal documents, and the workflow stays the same.",
+      "narration": "We used counselling data here, but the workflow is domain-agnostic and transfers directly to other text domains.",
       "actions": [
         {
           "do": "show_summary",
           "columns": [
-            [{"label": "URL", "value": "https://llars.e-beratungsinstitut.de"}, {"label": "Repository", "value": "https://github.com/th-nuernberg/Lars"}],
+            [{"label": "URL", "value": "https://llars.e-beratungsinstitut.de"}, {"label": "Repository", "value": "https://github.com/th-nuernberg/LLARS"}],
             [{"label": "Reviewer 1", "value": "ijcai_reviewer_1"}, {"label": "Password", "value": "ijcai_reviewer_123"}],
             [{"label": "Reviewer 2", "value": "ijcai_reviewer_2"}, {"label": "Password", "value": "ijcai_reviewer_123"}]
           ]
@@ -1953,22 +1982,22 @@
     {
       "id": "conclusion_2",
       "speaker": "guest",
-      "narration": "That walkthrough was excellent. I'll log in again and go through everything once more on my own.",
+      "narration": "Great walkthrough. I'll log in again and explore it myself.",
       "actions": [
         {
           "do": "wait",
-          "seconds": 0.3
+          "seconds": 0.15
         }
       ]
     },
     {
       "id": "conclusion_3",
       "speaker": "moderator",
-      "narration": "Thanks David. Lars is open-source — the credentials are on screen if you want to try it yourself. Check the repo and let us know what you think!",
+      "narration": "Thanks David. Live URL, credentials, and repository are on screen.",
       "actions": [
         {
           "do": "wait",
-          "seconds": 3.0
+          "seconds": 1.5
         }
       ]
     }

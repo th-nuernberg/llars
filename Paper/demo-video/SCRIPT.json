@@ -430,7 +430,7 @@
     {
       "id": "prompt_eng_5",
       "speaker": "moderator",
-      "narration": "Great. I now fill the blocks and add Subject: {{subject}} first. David, can you add Content: {{content}} in the same block so we show live collaboration?",
+      "narration": "Great. I now fill the blocks and add the Variable Subject. David, can you add the Content Variable in the same block.",
       "actions": [
         {
           "do": "type",
@@ -455,7 +455,7 @@
     {
       "id": "prompt_eng_5a",
       "speaker": "guest",
-      "narration": "Sure, I add it now. See Alex, we can really edit this prompt together in real time.",
+      "narration": "Sure, I add it now. I see, we can really edit this prompt together in real time.",
       "actions": [
         {
           "do": "collab_focus"
@@ -467,7 +467,7 @@
         {
           "do": "collab_type",
           "target": "Last Block Editor",
-          "text": "\nContent: {{content}}\nThe fields come from one counselling case: subject line and full message thread.",
+          "text": "Content: {{content}} \nThe fields come from one counselling case: subject line and full message thread.",
           "cursor": "end",
           "delay": 0.02
         },
@@ -1660,10 +1660,10 @@
       ]
     },
     {
-      "_section": "=== SCENARIO MANAGER (60s) — Overview, Data, Team briefly, then Evaluation with provenance focus ===",
+      "_section": "=== SCENARIO MANAGER (compact) — Evaluation IRR + Provenance only ===",
       "id": "scenario_1",
       "speaker": "moderator",
-      "narration": "In the Scenario Manager, here's is the pre-built scenario at which we just look. Here both IJCAI reviewers and two LLM evaluators have been ranking.",
+      "narration": "In Scenario Manager, this pre-built scenario already contains rankings from both IJCAI reviewers and two LLM evaluators.",
       "actions": [
         {
           "do": "goto",
@@ -1701,126 +1701,7 @@
     {
       "id": "scenario_2",
       "speaker": "moderator",
-      "narration": "The Overview tab shows live progress — how many rankings each evaluator has completed. Human reviewers and LLM evaluators appear side by side.",
-      "actions": [
-        {
-          "do": "click",
-          "target": "Scenario Tab Overview"
-        },
-        {
-          "do": "wait",
-          "seconds": 0.2
-        },
-        {
-          "do": "highlight",
-          "target": "Scenario Live Badge",
-          "duration": 1.0
-        },
-        {
-          "do": "highlight",
-          "target": "Scenario Progress Cards",
-          "duration": 1.0
-        },
-        {
-          "do": "highlight",
-          "target": "Scenario Evaluator List",
-          "duration": 1.2
-        }
-      ]
-    },
-    {
-      "id": "scenario_3",
-      "speaker": "moderator",
-      "narration": "In the Data tab, we can open each individual data point. I click the eye icon on one thread, and now we see the full item with its messages and how it was evaluated.",
-      "actions": [
-        {
-          "do": "click",
-          "target": "Scenario Tab Data"
-        },
-        {
-          "do": "wait",
-          "seconds": 0.2
-        },
-        {
-          "do": "highlight",
-          "target": "Data Threads Table",
-          "duration": 1.0
-        },
-        {
-          "do": "click",
-          "target": "Data Thread View Button"
-        },
-        {
-          "do": "wait_for",
-          "target": "Thread Detail Dialog",
-          "timeout": 4
-        },
-        {
-          "do": "highlight",
-          "target": "Thread Detail Subject",
-          "duration": 0.9
-        },
-        {
-          "do": "highlight",
-          "target": "Thread Detail Votes Panel",
-          "duration": 1.1
-        }
-      ]
-    },
-    {
-      "id": "scenario_4",
-      "speaker": "moderator",
-      "narration": "And the Team tab — you can add or remove human evaluators and LLM-as-Evaluators at any point, even mid-evaluation.",
-      "actions": [
-        {
-          "do": "click_if_present",
-          "target": "Thread Detail Close"
-        },
-        {
-          "do": "wait",
-          "seconds": 0.15
-        },
-        {
-          "do": "click",
-          "target": "Scenario Tab Team"
-        },
-        {
-          "do": "wait",
-          "seconds": 0.2
-        },
-        {
-          "do": "highlight",
-          "target": "Team Members List",
-          "duration": 1.0
-        },
-        {
-          "do": "highlight",
-          "target": "Team Invite Button",
-          "duration": 1.0
-        },
-        {
-          "do": "highlight",
-          "target": "Team Add LLM Button",
-          "duration": 1.0
-        }
-      ]
-    },
-    {
-      "id": "scenario_5",
-      "speaker": "guest",
-      "narration": "Humans and LLMs as first-class evaluators in one list — nice. But where do I see the actual results?",
-      "actions": [
-        {
-          "do": "highlight",
-          "target": "Team Members List",
-          "duration": 1.0
-        }
-      ]
-    },
-    {
-      "id": "scenario_6",
-      "speaker": "moderator",
-      "narration": "In the Evaluation tab. Up top we see agreement metrics — Krippendorff's alpha and others. Here, this All-Human-LLM toggle lets you switch between All, Human only, and LLM only evaluation views.",
+      "narration": "David, in the Evaluation tab you can inspect different reliability signals, including IRR metrics such as Krippendorff's alpha. I'll show that briefly, then go straight to provenance analysis.",
       "actions": [
         {
           "do": "click",
@@ -1828,24 +1709,24 @@
         },
         {
           "do": "wait",
-          "seconds": 2.0
-        },
-        {
-          "do": "highlight",
-          "target": "Evaluation Type Toggle",
-          "duration": 1.2
+          "seconds": 0.6
         },
         {
           "do": "highlight",
           "target": "Evaluation Summary",
-          "duration": 1.2
+          "duration": 1.0
+        },
+        {
+          "do": "highlight",
+          "target": "Krippendorff Alpha Metric",
+          "duration": 1.0
         }
       ]
     },
     {
-      "id": "scenario_6_provenance",
+      "id": "scenario_3",
       "speaker": "moderator",
-      "narration": "But the key outcome is the provenance analysis. Since batch generation tracks which model and prompt produced each output, we trace evaluation ratings back to their source. This view ranks every model-prompt combination by how often its outputs land in the top bucket — and you see the best-performing pair right here.",
+      "narration": "Now directly to provenance analysis: this ranks model-prompt combinations by top-bucket performance, so you immediately see the strongest pair.",
       "actions": [
         {
           "do": "scroll_to",
@@ -1853,83 +1734,17 @@
         },
         {
           "do": "wait",
-          "seconds": 0.5
+          "seconds": 0.3
         },
         {
           "do": "highlight",
           "target": "Best LLM Card",
-          "duration": 1.2
+          "duration": 1.0
         },
         {
           "do": "highlight",
           "target": "Best Prompt Card",
-          "duration": 1.2
-        }
-      ]
-    },
-    {
-      "id": "scenario_6_provenance_q",
-      "speaker": "guest",
-      "narration": "So this directly tells me which model and prompt pair to deploy? That's exactly the question we started with!",
-      "actions": [
-        {
-          "do": "highlight",
-          "target": "Provenance Best Grid",
-          "duration": 1.2
-        }
-      ]
-    },
-    {
-      "id": "scenario_6_provenance_a",
-      "speaker": "moderator",
-      "narration": "Yes — and there are separate views per model and per prompt, plus a full bucket distribution for each combination.",
-      "actions": [
-        {
-          "do": "wait",
-          "seconds": 0.3
-        }
-      ]
-    },
-    {
-      "id": "scenario_6_export",
-      "speaker": "moderator",
-      "narration": "You can export the evaluation results as JSON or CSV and iterate in the next round.",
-      "actions": [
-        {
-          "do": "click_if_present",
-          "target": "Agreement Detail Close"
-        },
-        {
-          "do": "wait",
-          "seconds": 0.3
-        },
-        {
-          "do": "dismiss_overlays"
-        },
-        {
-          "do": "wait",
-          "seconds": 0.2
-        },
-        {
-          "do": "highlight",
-          "target": "Evaluation Export",
           "duration": 1.0
-        },
-        {
-          "do": "click",
-          "target": "Evaluation Export"
-        },
-        {
-          "do": "wait",
-          "seconds": 0.4
-        },
-        {
-          "do": "click",
-          "target": "Export JSON"
-        },
-        {
-          "do": "wait",
-          "seconds": 0.1
         }
       ]
     },

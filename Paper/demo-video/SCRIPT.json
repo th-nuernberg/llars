@@ -1259,14 +1259,6 @@
           "do": "highlight",
           "target": "Output Content",
           "duration": 1.2
-        },
-        {
-          "do": "click",
-          "target": "Output Close"
-        },
-        {
-          "do": "wait",
-          "seconds": 0.2
         }
       ]
     },
@@ -1275,6 +1267,14 @@
       "speaker": "guest",
       "narration": "OK — so we have forty situation descriptions now. Mistral versus GPT-5 Nano, each with two prompts. But how do I as a reviewer decide which combination actually works best?",
       "actions": [
+        {
+          "do": "sync",
+          "after": "which combination actually works best"
+        },
+        {
+          "do": "click",
+          "target": "Output Close"
+        },
         {
           "do": "wait",
           "seconds": 0.2

@@ -577,7 +577,7 @@
     {
       "id": "prompt_eng_5b",
       "speaker": "moderator",
-      "narration": "Great. Now I can click Test, this means that the Variables are injected and the prompt is send to the LLM, then scroll down and review the output carefully.",
+      "narration": "Great. I click Test. Lars injects our variables into the prompt, we can choose the LLM in this dropdown, and then it streams the answer back live. Now let's scroll down and review the output carefully.",
       "actions": [
         {
           "do": "dismiss_overlays"
@@ -607,6 +607,19 @@
           "do": "highlight",
           "target": "Test Variables Preview",
           "duration": 1.2
+        },
+        {
+          "do": "sync",
+          "after": "choose the llm in this dropdown"
+        },
+        {
+          "do": "highlight",
+          "target": "Model Select",
+          "duration": 1.2
+        },
+        {
+          "do": "sync",
+          "after": "streams the answer back live"
         },
         {
           "do": "sync",
@@ -1650,7 +1663,7 @@
       "_section": "=== HUMAN EVALUATION (30s) — Show bucket ranking from evaluator perspective ===",
       "id": "human_eval_1",
       "speaker": "moderator",
-      "narration": "From the scenario workspace, I'll go back to Home via the Lars logo and open the Evaluation module. In this evaluator view, each assigned scenario appears as a card.",
+      "narration": "From the scenario workspace, I'll go back to Home and open the Evaluation module. In this evaluator view, each assigned scenario appears as a card.",
       "actions": [
         {
           "do": "click_if_present",

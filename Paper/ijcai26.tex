@@ -268,9 +268,9 @@ Scenarios are created from batch outputs with a single click or via an AI-assist
 \end{figure}
 
 Owners control whether all items go to every evaluator or configurable subsets are distributed for faster throughput.
-LLARS treats LLM evaluators as full participants alongside humans\--they receive the same items, use the same interface and their judgments enter the same agreement analysis.
-Scenario owners can inspect aggregated results at any time as assessments come in, including automatically computed inter-rater reliability (e.g.\ Krippendorff's~$\alpha$).
-Beyond per-item metrics, the \emph{provenance analysis} (Figure~\ref{fig:provenance}) leverages the fact that every item carries its generating model and prompt from batch generation. LLARS displays both the top-bucket hit rate and the full bucket distribution per model--prompt combination\--revealing which pair performs best overall.
+LLARS treats LLM evaluators as full participants alongside humans\--they receive the same items, use the same setup and their judgments enter the same agreement analysis.
+Scenario owners can inspect aggregated results at any time as assessments come in, including automatically computed inter-rater reliability (e.g.\ Krippendorff's~$\alpha$)\--filtered by human evaluators only, LLM evaluators only or both combined.
+Among the available evaluation analytics, the \emph{provenance analysis} stands out by leveraging that every item carries its generating model and prompt from batch generation. LLARS displays both the top-bucket hit rate and the full bucket distribution per model--prompt combination (Figure~\ref{fig:provenance})\--revealing which pair performs best overall.
 
 \section{Deployment and User Study}
 \label{sec:counseling}
@@ -288,9 +288,10 @@ Our demo walks attendees through the complete workflow\--from collaborative prom
 
 LLARS unifies prompt engineering, batch generation and evaluation in a single open-source platform that closes the loop from prompt development to rigorous assessment.
 While currently deployed in online counselling, the platform is domain-agnostic and applicable to any text-based LLM evaluation task.
-Present limitations include the focus on single-turn generation rather than multi-turn conversations, the requirement that uploaded data conform to the expected schema for variable mapping and the dependence of LLM-based evaluators on the underlying model's reasoning capability.
-Despite these constraints, interviews confirmed that co-locating all stages in one workspace saves considerable time, feels intuitive to domain experts and eliminates the ``translation work'' between disciplines.
-By letting prompts flow into generation, outputs into evaluation and provenance trace results back to their source, LLARS bridges the gap between domain expertise and technical implementation\--enabling both groups to contribute directly at every stage of the LLM development cycle.
+Present limitations include the focus on single-turn generation rather than multi-turn conversations and the dependence of LLM-based evaluators on the underlying model's reasoning capability.
+Despite these constraints, interviews confirmed that centralizing all stages in one workspace saves considerable time, feels intuitive to domain experts and eliminates the ``translation work'' between disciplines.
+By uniting domain knowledge and technical skills in a single tool, LLARS simplifies collaboration and adds tangible value to the LLM development process.
+Ultimately, LLARS bridges the gap between domain expertise and technical implementation and enables interdisciplinary work.
 % TODO: Uncomment and update URLs before submission
 %\noindent\textbf{Repository:} \url{https://github.com/llars-project/llars}\\
 %\textbf{Documentation:} \url{https://llars-project.github.io}

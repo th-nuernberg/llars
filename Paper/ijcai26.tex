@@ -39,7 +39,7 @@
 /TemplateVersion (IJCAI.2026.0)
 }
 
-\title{LLARS: Enabling Domain Experts \& Developers Collaboration for LLM Prompting, Generation and Evaluation}
+\title{LLARS: Enabling Domain Expert \& Developer Collaboration for LLM Prompting, Generation and Evaluation}
 
 \author{
 Philipp Steigerwald$^1$\and
@@ -64,9 +64,9 @@ We demonstrate LLARS, an open-source platform that bridges the gap between domai
 LLARS integrates three tightly connected modules into an end-to-end pipeline:
 \textbf{Collaborative Prompt Engineering} for real-time co-authoring with version control and instant LLM testing,
 \textbf{Batch Generation} for configurable output production across user-selected prompts\,$\times$\,models\,$\times$\,data with cost control and
-\textbf{Evaluation} for human and LLM evaluators to rate, rank, label or compare outputs with live inter-rater agreement metrics.
+\textbf{Hybrid Evaluation} where human and LLM evaluators jointly assess outputs through diverse assessment methods\--with live agreement metrics and provenance analysis to identify the best model--prompt combination for a given use case.
 New prompts and models are automatically available for batch generation and completed batches can be turned into evaluation scenarios with a single click.
-Interviews with six domain experts and three developers in online counselling confirmed that LLARS eliminates the ``translation work'' between disciplines and enables domain experts to directly co-author prompts and conduct evaluations independently.
+Interviews with six domain experts and three developers in online counselling confirmed that LLARS feels intuitive, saves considerable time by keeping everything in one place and makes interdisciplinary collaboration seamless.
 
 \vspace{0.3em}
 \noindent\textbf{Source code:} \url{github.com/th-nuernberg/llars} % TODO: Set up GitHub Pages demo site before submission
@@ -123,9 +123,9 @@ Yet domain experts and developers typically work in isolation: prompts are itera
 \node[module, draw=clrBatch!70!black, fill=clrBatch!25] (bg) at (0, -1.4)
     {Batch\\[-1pt]Generation};
 
-% === Module 3: Evaluation ===
+% === Module 3: Hybrid Evaluation ===
 \node[module, draw=clrEval!70!black, fill=clrEval!25] (ev) at (0, -2.8)
-    {Evaluation};
+    {Hybrid\\[-1pt]Evaluation};
 
 % === Actors (left side, more spacing from LLARS box) ===
 \node[actor] (dev) at (-3.7, 0) {Domain Experts\\[-1pt]\& Developers};
@@ -165,7 +165,7 @@ Yet domain experts and developers typically work in isolation: prompts are itera
 \end{scope}
 
 \end{tikzpicture}
-\caption{LLARS pipeline: domain experts and developers collaboratively develop prompts, generate outputs across LLMs and evaluate results with human and LLM evaluators. Each stage supports export; the pipeline yields a validated model--prompt combination.}
+\caption{LLARS pipeline: domain experts and developers collaboratively develop prompts, generate outputs across LLMs and run hybrid evaluation with human and LLM evaluators. Each stage supports export; the pipeline yields a validated model--prompt combination.}
 \label{fig:pipeline}
 \end{figure}
 
@@ -180,19 +180,19 @@ New prompts and models automatically appear in batch generation and completed ba
 \centering
 \caption{Comparison of GUI-first tools for prompt engineering, batch generation and hybrid LLM output evaluation.
 \yes~=~native support;\enspace \partialc~=~partial;\enspace \noo~=~not supported.\enspace
-\textbf{Collab.}~=~real-time collaborative prompt co-editing;\enspace
-\textbf{Batch}~=~systematic generation over prompts\,$\times$\,models\,$\times$\,data;\enspace
-\textbf{H-Eval}~=~structured human evaluation campaigns;\enspace
-\textbf{LLM-E}~=~LLM-as-evaluator;\enspace
-\textbf{IRR}~=~inter-rater reliability metrics;\enspace
-\textbf{E2E}~=~integrated end-to-end pipeline.}
+\textbf{Collab.}~=~simultaneous multi-user prompt editing with live synchronization;\enspace
+\textbf{Batch}~=~configurable generation over prompts\,$\times$\,models\,$\times$\,data with cost control;\enspace
+\textbf{H-Eval}~=~structured human evaluation with item distribution and role management;\enspace
+\textbf{LLM-E}~=~any form of automated LLM-based evaluation, including LLM-as-judge and LLM-as-evaluator;\enspace
+\textbf{Stats}~=~live analytics including inter-rater reliability and provenance analysis;\enspace
+\textbf{E2E}~=~integrated end-to-end pipeline from prompt to evaluation.}
 \label{tab:comparison}
 \small
 \renewcommand{\arraystretch}{1.1}
 \setlength{\tabcolsep}{0pt}
 \begin{tabular*}{\textwidth}{@{\extracolsep{\fill}} l c c c c c c c}
 \toprule
-\textbf{Tool} & \textbf{OSS} & \textbf{Collab.} & \textbf{Batch} & \textbf{H-Eval} & \textbf{LLM-E} & \textbf{IRR} & \textbf{E2E} \\
+\textbf{Tool} & \textbf{OSS} & \textbf{Collab.} & \textbf{Batch} & \textbf{H-Eval} & \textbf{LLM-E} & \textbf{Stats} & \textbf{E2E} \\
 \midrule
 \textbf{LLARS}                         & \yes & \yes      & \yes      & \yes      & \yes      & \yes      & \yes \\
 Agenta~\cite{agenta2024}               & \yes & \partialc & \partialc & \partialc & \yes      & \noo      & \partialc \\
@@ -249,15 +249,13 @@ For example, 50~counselling email threads combined with two prompts and two mode
 Results stream in real time and every output records its full provenance\--source item, prompt version, model, parameters, token count and cost\--exportable as CSV or JSON.
 Completed batches transfer into evaluation with a single click, preserving all attribution for downstream provenance analysis.
 
-\subsection{Evaluation}
+\subsection{Hybrid Evaluation}
 
 Each evaluation is organized as a \emph{scenario}\--a self-contained campaign that defines the evaluation type, assigns evaluators and distributes items.
 Items are presented in randomized order and without any provenance information, so evaluators cannot tell which model or prompt produced a given output.
 LLARS supports multi-dimensional rating with configurable Likert scales, ranking into ordinal buckets or traditional ranking, categorical labeling, pairwise comparison, mail assessment and authenticity detection.
-When a reference text has multiple LLM outputs to compare, \emph{bucket ranking} is the recommended default.
-Items are sorted into ordinal categories (e.g.\ \emph{Good}, \emph{Medium}, \emph{Bad}) and ranked within each bucket\--reducing cognitive load~\cite{miller1956magical} and yielding more reliable judgments than total ordering~\cite{kiritchenko2017bws}.
-User feedback confirmed this as the most popular evaluation method in practice.
-When only a single output per input exists, multi-dimensional rating is more appropriate\--for instance, the \emph{mail rating} preset provides Likert scales tailored to assessing an LLM's reply within an email counselling thread.
+For comparing multiple outputs per input, \emph{bucket ranking}\--sorting items into ordinal categories and ranking within each~\cite{miller1956magical,kiritchenko2017bws}\--proved the most popular method in user feedback.
+For single outputs, multi-dimensional rating is more appropriate\--for instance, the \emph{mail rating} preset provides Likert scales tailored to assessing an LLM's reply within an email counselling thread.
 Scenarios are created from batch outputs with a single click or via an AI-assisted Scenario Wizard.
 
 \begin{figure}[htb]

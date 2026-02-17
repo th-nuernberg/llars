@@ -128,7 +128,7 @@
     {
       "id": "intro_2b",
       "speaker": "moderator",
-      "narration": "Here's the Lars pipeline, which addresses this problem. Teams start in Prompt Engineering, where domain experts and developers co-author prompts together in real time. Those prompts feed into Batch Generation, which runs them across multiple models and datasets. And everything flows into Evaluation, where humans and LLMs assess the outputs side by side — with live agreement metrics.",
+      "narration": "Here's the Lars pipeline, which addresses this problem. Teams start in Prompt Engineering, where domain experts and developers co-author prompts together in real time. Those prompts feed into Batch Generation, which runs them across multiple models and datasets. And everything flows into Hybrid Evaluation, where humans and LLMs assess the outputs side by side — with live agreement metrics.",
       "actions": [
         {
           "do": "wait_for",
@@ -137,7 +137,7 @@
         },
         {
           "do": "show_pipeline",
-          "title": "Lars - LLM Assisted Research System",
+          "title": "LLars - LLM Assisted Research System",
           "columns": [
             [
               {
@@ -193,7 +193,7 @@
         },
         {
           "do": "sync",
-          "after": "Evaluation"
+          "after": "Hybrid Evaluation"
         },
         {
           "do": "highlight_off",
@@ -296,11 +296,6 @@
           "target": "Share User Suggestion"
         },
         {
-          "do": "wait_for",
-          "target": "Share Add Button",
-          "timeout": 2
-        },
-        {
           "do": "click",
           "target": "Share Add Button"
         },
@@ -314,7 +309,7 @@
     {
       "id": "prompt_eng_3",
       "speaker": "moderator",
-      "narration": "Great, the prompt is shared now. David, open a second browser and sign in as reviewer two. While you log in, I'll already create the first block.",
+      "narration": "Great, the prompt is shared now. David, please open a second browser and sign in as reviewer two. While you log in, I'll already create the first block.",
       "actions": [
         {
           "do": "click",
@@ -358,9 +353,6 @@
         {
           "do": "collab_wait_ready",
           "timeout": 45
-        },
-        {
-          "do": "collab_open_shared_prompt"
         },
         {
           "do": "wait",
@@ -441,7 +433,7 @@
     {
       "id": "prompt_eng_5",
       "speaker": "moderator",
-      "narration": "Great. I now fill the blocks and add the Variable Subject. David, can you add the Content Variable in the same block.",
+      "narration": "Great, I now fill the blocks and add the Variable Subject. David, can you add the Content Variable in the same block.",
       "actions": [
         {
           "do": "type",
@@ -671,7 +663,7 @@
       "_comment": "=== LIVE COLLAB DEMO (BROWSER OPENED EARLY) ===",
       "id": "collab_1",
       "speaker": "moderator",
-      "narration": "David is editing in the second browser now, and changes appear live on my screen. The version panel tracks who changed what.",
+      "narration": "The version panel tracks who changed what.",
       "actions": [
         {
           "do": "collab_focus"
@@ -737,7 +729,7 @@
       "_section": "=== BRING YOUR OWN MODELS (30s) ===",
       "id": "providers_1",
       "speaker": "moderator",
-      "narration": "We've connected our own Mistral and Magistral models, but any user can bring their own. Let me add OpenAI step by step.",
+      "narration": "We've connected our own Mistral and Magistral models, but any user can bring their own. Let me add OpenAI Models step by step.",
       "actions": [
         {
           "do": "goto",
@@ -777,7 +769,7 @@
     {
       "id": "providers_2",
       "speaker": "moderator",
-      "narration": "First I select the type OpenAI, then paste the API key, then pick GPT-5 Nano and GPT-5 Mini, and finally save.",
+      "narration": "First I select the type OpenAI, then paste the API key, then pick GPT-5 Nano and GPT-5 Mini, and finally click create.",
       "actions": [
         {
           "do": "sync",
@@ -1102,7 +1094,7 @@
     {
       "id": "batch_gen_4",
       "speaker": "guest",
-      "narration": "And now we pick which prompts to use? I see both our prompts listed here.",
+      "narration": "And now we pick which prompts to use? I see both our prompts.",
       "actions": [
         {
           "do": "wait",
@@ -1134,21 +1126,25 @@
         {
           "do": "click",
           "target": "Situation Summary Item"
-        },
-        {
-          "do": "click",
-          "target": "Next"
         }
       ]
     },
     {
       "id": "batch_gen_5",
       "speaker": "moderator",
-      "narration": "Yes you are right, I selected both. Next we pick models. I'll take Mistral Small — one of our connected open-source models — and GPT-5 Nano from OpenAI, so we can compare providers directly.",
+      "narration": "Yes you are right. Next we pick models. I'll take Mistral Small — one of our connected open-source models — and GPT-5 Nano from OpenAI, so we can compare providers directly.",
       "actions": [
         {
+          "do": "sync",
+          "after": "next we pick models"
+        },
+        {
+          "do": "click",
+          "target": "Next"
+        },
+        {
           "do": "wait",
-          "seconds": 0.5
+          "seconds": 0.4
         },
         {
           "do": "wait_for",
@@ -1176,6 +1172,10 @@
         {
           "do": "click",
           "target": "GPT-5 Nano Batch Model"
+        },
+        {
+          "do": "sync",
+          "after": "compare providers directly"
         },
         {
           "do": "click",
@@ -1215,8 +1215,12 @@
           "timeout": 10
         },
         {
+          "do": "sync",
+          "after": "generation matrix"
+        },
+        {
           "do": "highlight",
-          "target": "Matrix Items Count",
+          "target": "Matrix Preview",
           "duration": 1.2
         }
       ]
@@ -1328,7 +1332,7 @@
     {
       "id": "batch_gen_output_1",
       "speaker": "guest",
-      "narration": "Ah, here I see how it looks after the Batch Generation is done! Can we look at one of these outputs in Detail?",
+      "narration": "I understand, here I see how it looks after the Batch Generation is done! Can we look at one of these outputs in Detail?",
       "actions": [
         {
           "do": "highlight",
@@ -1396,7 +1400,7 @@
     {
       "id": "batch_gen_11",
       "speaker": "guest",
-      "narration": "OK — so we have forty situation descriptions now. Mistral versus GPT-5 Nano, each with two prompts. But how do I as a reviewer decide which combination actually works best?",
+      "narration": "OK — so we have forty situation descriptions now. Mistral versus GPT-5 Nano, each with two prompts. But how do I as a domain expert decide which combination actually works best for my use case?",
       "actions": [
         {
           "do": "sync",
@@ -1538,7 +1542,7 @@
     {
       "id": "scenario_wizard_4b",
       "speaker": "guest",
-      "narration": "Great. So I can choose full overlap or split items across evaluators, and still keep random order?",
+      "narration": "Great. So I can choose full overlap or split items across evaluators, and can decide if outputs are displayed in a random order?",
       "actions": [
         {
           "do": "sync",
@@ -1801,7 +1805,7 @@
     {
       "id": "human_eval_4",
       "speaker": "guest",
-      "narration": "That's much easier than sorting everything into one long list. And it is completely blinded evaluation.",
+      "narration": "That is much easier than sorting everything into one long list! I see, this is a completely blinded evaluation.",
       "actions": [
         {
           "do": "highlight",
@@ -1864,7 +1868,7 @@
     {
       "id": "scenario_2",
       "speaker": "moderator",
-      "narration": "David, the Evaluation tab offers many metrics and diagnostics. To keep this demo short, we'll focus briefly on Agreement Metrics, then move directly to provenance analysis.",
+      "narration": "David, the Evaluation tab offers many metrics and diagnostics. To keep this demo short, we'll focus on provenance analysis.",
       "actions": [
         {
           "do": "click",
@@ -1889,7 +1893,7 @@
     {
       "id": "scenario_3",
       "speaker": "moderator",
-      "narration": "Now to provenance analysis, focusing on the Prompt + LLM Ranking plot. It ranks prompt-model combinations by top-bucket performance, so the strongest pair is immediately visible. In the Best Prompt LLM Pair block, we can read that winning combination at a glance.",
+      "narration": "Now let's look at the metrics. Here we see the top-bucket hits by generation model, top-bucket hits by prompt, and prompt plus model ranking. In the Best Prompt and model Pair block, the first number is Good-bucket hits and the second number is completed rankings so far. One evaluator still has open rankings as we saw, so these totals are not final yet, and they update live as new rankings come in. Let's scroll down once more. These three plots show the full distribution across buckets for models, prompts, and prompt plus models combinations.",
       "actions": [
         {
           "do": "scroll_to",
@@ -1900,18 +1904,35 @@
           "seconds": 0.3
         },
         {
-          "do": "highlight",
-          "target": "Best LLM Card",
-          "duration": 1.0
+          "do": "sync",
+          "after": "top-bucket hits by generation llm"
         },
         {
           "do": "highlight",
-          "target": "Best Prompt Card",
+          "target": "Provenance LLM List Card",
           "duration": 1.0
         },
         {
           "do": "sync",
-          "after": "best prompt llm pair block"
+          "after": "top-bucket hits by prompt"
+        },
+        {
+          "do": "highlight",
+          "target": "Provenance Prompt List Card",
+          "duration": 1.0
+        },
+        {
+          "do": "sync",
+          "after": "prompt plus llm ranking"
+        },
+        {
+          "do": "highlight",
+          "target": "Provenance Combination List Card",
+          "duration": 1.0
+        },
+        {
+          "do": "sync",
+          "after": "best prompt and llm pair block"
         },
         {
           "do": "highlight",
@@ -1919,9 +1940,96 @@
           "duration": 1.2
         },
         {
+          "do": "js_exec",
+          "code": "(function(){ const el = document.querySelector('.provenance-best-grid .provenance-best-card:nth-child(3) .provenance-best-meta'); if(!el) return false; const raw = (el.textContent || '').trim(); const m = raw.match(/^(.*\\|\\s*)(\\d+)\\s*\\/\\s*(\\d+)(.*)$/); if(!m) return false; el.innerHTML = `${m[1]}<span class='llars-prov-first'>${m[2]}</span>/<span class='llars-prov-second'>${m[3]}</span>${m[4] || ''}`; return true; })();"
+        },
+        {
+          "do": "wait",
+          "seconds": 0.1
+        },
+        {
+          "do": "sync",
+          "after": "first number is good-bucket hits"
+        },
+        {
+          "do": "highlight",
+          "target": ".provenance-best-grid .provenance-best-card:nth-child(3) .provenance-best-meta .llars-prov-first",
+          "duration": 1.2
+        },
+        {
+          "do": "sync",
+          "after": "second number is completed rankings so far"
+        },
+        {
+          "do": "highlight",
+          "target": ".provenance-best-grid .provenance-best-card:nth-child(3) .provenance-best-meta .llars-prov-second",
+          "duration": 1.2
+        },
+        {
+          "do": "sync",
+          "after": "totals are not final yet"
+        },
+        {
+          "do": "highlight",
+          "target": "Provenance Lists Grid",
+          "duration": 1.2
+        },
+        {
+          "do": "sync",
+          "after": "update live as new rankings come in"
+        },
+        {
+          "do": "highlight",
+          "target": "Provenance Lists Grid",
+          "duration": 1.2
+        },
+        {
+          "do": "sync",
+          "after": "scroll down once more"
+        },
+        {
+          "do": "scroll_to",
+          "target": "Provenance Figures Grid"
+        },
+        {
+          "do": "wait",
+          "seconds": 0.3
+        },
+        {
+          "do": "sync",
+          "after": "three plots show the full distribution across buckets"
+        },
+        {
           "do": "highlight",
           "target": "Provenance Figures Grid",
-          "duration": 1.0
+          "duration": 1.8
+        },
+        {
+          "do": "sync",
+          "after": "for llms"
+        },
+        {
+          "do": "highlight",
+          "target": "Provenance LLM Figure Card",
+          "duration": 1.4
+        },
+        {
+          "do": "sync",
+          "after": "prompts"
+        },
+        {
+          "do": "highlight",
+          "target": "Provenance Prompt Figure Card",
+          "duration": 1.4
+        },
+        {
+          "do": "sync",
+          "after": "prompt plus llm combinations"
+        },
+        {
+          "do": "highlight",
+          "target": "Provenance Combination Figure Card",
+          "duration": 1.4
         }
       ]
     },

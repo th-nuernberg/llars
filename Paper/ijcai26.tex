@@ -69,7 +69,7 @@ New prompts and models are automatically available for batch generation and comp
 Interviews with six domain experts and three developers in online counselling confirmed that LLARS eliminates the ``translation work'' between disciplines and enables domain experts to directly co-author prompts and conduct evaluations independently.
 
 \vspace{0.3em}
-\noindent\textbf{Demo:} \url{https://llars-project.github.io/demo} % TODO: Set up GitHub Pages demo site before submission
+\noindent\textbf{Source code:} \url{github.com/th-nuernberg/llars} % TODO: Set up GitHub Pages demo site before submission
 \end{abstract}
 
 \section{Introduction}
@@ -236,23 +236,25 @@ A prompt is composed of ordered blocks\--one optionally designated as system pro
 \label{fig:prompt-editor}
 \end{figure}
 
-Blocks may contain template variables (\texttt{\{\{variable\_name\}\}}) as placeholders for external data\--an entire email thread, for instance, can be captured in a single \texttt{\{\{content\}\}} variable, keeping the surrounding instructions concise.
-All variables are collected in the shared Variable Palette (Figure~\ref{fig:prompt-editor}, bottom-left) and annotated with sample values (e.g.\ \texttt{\{\{subject\}\}}\,=\,\textit{``School problems at home''}).
-The built-in LLM testing sends the assembled prompt\--with sample values substituted\--to a selected model and streams the response back in real time, so that multiple team members can compare different models in parallel without leaving the editor.
+Blocks may contain template variables (\texttt{\{\{variable\_name\}\}}) as placeholders for external data (e.g.\ an entire email thread captured in a single \texttt{\{\{content\}\}} variable), keeping the surrounding instructions concise.
+All variables are collected in the shared Variable Palette (Figure~\ref{fig:prompt-editor}, bottom-left) and annotated with sample values.
+A single click sends the assembled prompt\--with sample values substituted\--to a selected model and streams the response back in real time.
 Prompts are exportable as JSON and directly available in batch generation, where template variables are filled from dataset columns to scale a single prompt to hundreds of outputs.
 \subsection{Batch Generation}
 While the prompt editor supports rapid single-example testing, a single example cannot validate whether a prompt generalizes across diverse inputs.
-Batch generation addresses this: users select from available prompts\--self-authored or shared by collaborators\--and any registered model to apply to their data, producing the Cartesian product of prompts\,$\times$\,models\,$\times$\,data items.
+Batch generation addresses this by combining any set of prompts, models and data items into their Cartesian product of prompts\,$\times$\,models\,$\times$\,data items.
 A generation matrix previews all resulting combinations and estimates cost based on model pricing and projected token counts. Optional budget caps pause jobs that exceed a threshold.
-A wizard offers three data-source modes: upload (CSV/JSON columns map to the prompt's template variables), previous generation (reuse data from a completed batch) and prompt only (generate without source data, where template variables are filled with their sample values when present).
 For example, 50~counselling email threads combined with two prompts and two models produce 50\,$\times$\,2\,$\times$\,2\,=\,200~outputs.
 
 Results stream in real time and every output records its full provenance\--source item, prompt version, model, parameters, token count and cost\--exportable as CSV or JSON.
-Evaluators see only the generated text without any indication of which model or prompt produced it. Completed batches transfer into evaluation with a single click, preserving all attribution for downstream provenance analysis.
+Completed batches transfer into evaluation with a single click, preserving all attribution for downstream provenance analysis.
 
 \subsection{Evaluation}
 
-Each evaluation is organized as a \emph{scenario}\--a self-contained campaign that defines the type, assigns evaluators and distributes items\--supporting six types: rating, ranking, labeling, comparison, mail rating and authenticity.
+Each evaluation is organized as a \emph{scenario}\--a self-contained campaign that defines the evaluation type, assigns evaluators and distributes items.
+LLARS supports multi-dimensional rating with configurable Likert scales, ranking into ordinal buckets or traditional ranking, categorical labeling, pairwise comparison, mail assessment and authenticity detection.
+When a reference text has multiple LLM outputs to compare, \emph{bucket ranking} is the recommended default: evaluators sort items into ordinal categories (e.g.\ \emph{Good}, \emph{Medium}, \emph{Bad}) and rank within each bucket\--reducing cognitive load~\cite{miller1956magical} and yielding more reliable judgments than total ordering~\cite{kiritchenko2017bws}, as confirmed by domain expert interviews.
+When only a single output per input exists, multi-dimensional rating is more appropriate\--for instance, the \emph{mail rating} preset provides Likert scales tailored to assessing an LLM's reply within an email counselling thread.
 Scenarios are created from batch outputs with a single click or via an AI-assisted Scenario Wizard.
 
 \begin{figure}[htb]
@@ -262,12 +264,11 @@ Scenarios are created from batch outputs with a single click or via an AI-assist
 \label{fig:provenance}
 \end{figure}
 
+Evaluators see only the generated text without any indication of which model or prompt produced it.
 Owners control whether all items go to every evaluator or configurable subsets are distributed for faster throughput.
 LLARS treats LLM evaluators as full participants alongside humans\--they receive the same items, use the same interface and their judgments enter the same agreement analysis.
 Scenario owners can inspect aggregated results at any time as assessments come in, including automatically computed inter-rater reliability (e.g.\ Krippendorff's~$\alpha$).
 The central outcome is the \emph{provenance analysis} (Figure~\ref{fig:provenance}): since every item carries its generating model and prompt from batch generation, LLARS ranks each combination by top-bucket hit rate\--directly answering \emph{which pair should we deploy?}
-The default evaluation mode is \emph{bucket ranking}, evaluators sort items into ordinal categories (e.g.\ \emph{Good}, \emph{Medium}, \emph{Bad}) and rank within each bucket\--reducing cognitive load~\cite{miller1956magical} and yielding more reliable judgments than total ordering~\cite{kiritchenko2017bws}, as confirmed by domain expert interviews.
-Traditional ranking remains available.
 
 \section{Deployment and User Study}
 \label{sec:counseling}

@@ -128,7 +128,7 @@
     {
       "id": "intro_2b",
       "speaker": "moderator",
-      "narration": "Here's the pipeline. Teams start in Prompt Engineering, where domain experts and developers co-author prompts together in real time. Those prompts feed into Batch Generation, which runs them across multiple models and datasets. And everything flows into Evaluation, where humans and LLMs assess the outputs side by side — with live agreement metrics.",
+      "narration": "Here's the Lars pipeline, which addresses this problem. Teams start in Prompt Engineering, where domain experts and developers co-author prompts together in real time. Those prompts feed into Batch Generation, which runs them across multiple models and datasets. And everything flows into Evaluation, where humans and LLMs assess the outputs side by side — with live agreement metrics.",
       "actions": [
         {
           "do": "wait_for",
@@ -277,26 +277,45 @@
         },
         {
           "do": "highlight",
-          "target": "input[placeholder='Search and add users...']",
+          "target": "Share User Search",
           "duration": 0.6
         },
         {
           "do": "type",
-          "target": "input[placeholder='Search and add users...']",
+          "target": "Share User Search",
           "text": "ijcai_reviewer_2",
           "speed": "fast"
+        },
+        {
+          "do": "wait",
+          "seconds": 0.6
+        },
+        {
+          "do": "wait_for",
+          "target": "Share User Suggestion",
+          "timeout": 6
+        },
+        {
+          "do": "click",
+          "target": "Share User Suggestion"
         },
         {
           "do": "wait",
           "seconds": 0.2
         },
         {
-          "do": "click_if_present",
-          "target": "Share User Suggestion"
+          "do": "wait_for",
+          "target": "Share Add Button",
+          "timeout": 4
         },
         {
-          "do": "click_if_present",
+          "do": "click",
           "target": "Share Add Button"
+        },
+        {
+          "do": "wait_for",
+          "target": "Share Reviewer 2 Chip",
+          "timeout": 6
         }
       ]
     },
@@ -950,7 +969,7 @@
     {
       "id": "batch_gen_2c",
       "speaker": "guest",
-      "narration": "I understand. Let's set it up.",
+      "narration": "I understand. This data is filled in our variables we just created, right? Let's set it up.",
       "actions": [
         {
           "do": "wait",
@@ -961,7 +980,7 @@
     {
       "id": "batch_gen_3",
       "speaker": "moderator",
-      "narration": "Lars maps those fields automatically. I'll paste the JSON into the wizard.",
+      "narration": "Yes, Lars maps those fields automatically. I'll paste the JSON into the wizard.",
       "actions": [
         {
           "do": "hide_title"
@@ -1133,12 +1152,20 @@
     {
       "id": "batch_gen_7b",
       "speaker": "moderator",
-      "narration": "Yes, ten data points, times two prompts, times two models — forty situation descriptions total. And notice the cost estimate — Lars calculates expected tokens and cost before you run anything.",
+      "narration": "Yes, ten data points, times two prompts, times two models — forty outputs total. And notice the cost estimate — Lars calculates expected tokens and cost before you run anything.",
       "actions": [
+        {
+          "do": "sync",
+          "after": "ten data points"
+        },
         {
           "do": "highlight",
           "target": "Matrix Items Count",
           "duration": 1.0
+        },
+        {
+          "do": "sync",
+          "after": "times two prompts"
         },
         {
           "do": "highlight",
@@ -1146,14 +1173,26 @@
           "duration": 1.0
         },
         {
+          "do": "sync",
+          "after": "times two models"
+        },
+        {
           "do": "highlight",
           "target": "Matrix Models Count",
           "duration": 1.0
         },
         {
+          "do": "sync",
+          "after": "forty outputs total"
+        },
+        {
           "do": "highlight",
           "target": "Matrix Total",
           "duration": 1.2
+        },
+        {
+          "do": "sync",
+          "after": "cost estimate"
         },
         {
           "do": "highlight",
@@ -1285,7 +1324,7 @@
       "_section": "=== SCENARIO FROM BATCH (60s) ===",
       "id": "scenario_wizard_1",
       "speaker": "moderator",
-      "narration": "From a completed batch, we can open the Scenario Wizard right away.",
+      "narration": "Good Question. From a completed batch, we can open the Scenario Wizard right away.",
       "actions": [
         {
           "do": "highlight",
@@ -1660,10 +1699,10 @@
       ]
     },
     {
-      "_section": "=== SCENARIO MANAGER (compact) — Evaluation IRR + Provenance only ===",
+      "_section": "=== SCENARIO MANAGER (compact) — Evaluation Agreement Metrics + Provenance ===",
       "id": "scenario_1",
       "speaker": "moderator",
-      "narration": "In Scenario Manager, this pre-built scenario already contains rankings from both IJCAI reviewers and two LLM evaluators.",
+      "narration": "In Scenario Manager, this pre-built scenario already contains rankings from both human evaluators and two LLM evaluators.",
       "actions": [
         {
           "do": "goto",
@@ -1701,7 +1740,7 @@
     {
       "id": "scenario_2",
       "speaker": "moderator",
-      "narration": "David, in the Evaluation tab you can inspect different reliability signals, including IRR metrics such as Krippendorff's alpha. I'll show that briefly, then go straight to provenance analysis.",
+      "narration": "David, the Evaluation tab offers many metrics and diagnostics. To keep this demo short, we'll focus briefly on Agreement Metrics, then move directly to provenance analysis.",
       "actions": [
         {
           "do": "click",
@@ -1726,7 +1765,7 @@
     {
       "id": "scenario_3",
       "speaker": "moderator",
-      "narration": "Now directly to provenance analysis: this ranks model-prompt combinations by top-bucket performance, so you immediately see the strongest pair.",
+      "narration": "Now to provenance analysis, focusing on the Prompt + LLM Ranking plot. It ranks prompt-model combinations by top-bucket performance, so the strongest pair is immediately visible.",
       "actions": [
         {
           "do": "scroll_to",
@@ -1744,6 +1783,16 @@
         {
           "do": "highlight",
           "target": "Best Prompt Card",
+          "duration": 1.0
+        },
+        {
+          "do": "highlight",
+          "target": "Best Combination Card",
+          "duration": 1.0
+        },
+        {
+          "do": "highlight",
+          "target": "Provenance Figures Grid",
           "duration": 1.0
         }
       ]

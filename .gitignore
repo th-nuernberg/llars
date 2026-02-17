@@ -131,3 +131,6 @@ app/data/rag/indexes/**
 !app/data/rag/crawls/.gitkeep
 app/data/rag/**/.DS_Store
 GITLAB_CICD_VARIABLES.txt
+
+# Large dataset files (too big for GitHub)
+app/db/seeders/datasets/german_sentiment.zip

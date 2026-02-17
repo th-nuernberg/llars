@@ -450,8 +450,20 @@
         {
           "do": "type",
           "target": ".editor-block:nth-child(3) .ql-editor",
-          "text": "Subject: {{subject}}",
-          "speed": "instant"
+          "text": "Subject: {",
+          "speed": "fast"
+        },
+        {
+          "do": "type",
+          "target": ".editor-block:nth-child(3) .ql-editor",
+          "text": "{subject}",
+          "speed": "fast"
+        },
+        {
+          "do": "type",
+          "target": ".editor-block:nth-child(3) .ql-editor",
+          "text": "}",
+          "speed": "fast"
         }
       ]
     },
@@ -470,7 +482,21 @@
         {
           "do": "collab_type",
           "target": "Last Block Editor",
-          "text": "Content: {{content}} \nThe fields come from one counselling case: subject line and full message thread.",
+          "text": "Content: {",
+          "cursor": "end",
+          "delay": 0.02
+        },
+        {
+          "do": "collab_type",
+          "target": "Last Block Editor",
+          "text": "{content}",
+          "cursor": "end",
+          "delay": 0.02
+        },
+        {
+          "do": "collab_type",
+          "target": "Last Block Editor",
+          "text": "}\nThe fields come from one counselling case: subject line and full message thread.",
           "cursor": "end",
           "delay": 0.02
         },
@@ -1647,7 +1673,7 @@
     {
       "id": "scenario_wizard_6",
       "speaker": "moderator",
-      "narration": "And we create the scenario. We actually set one up earlier with completed evaluations — but first, let me show you what evaluation looks like from the evaluator's perspective.",
+      "narration": "And we create the scenario. We actually set one up earlier with nearly completed evaluations — but first, let me show you what evaluation looks like from the evaluator's perspective.",
       "actions": [
         {
           "do": "wait",
@@ -1893,7 +1919,7 @@
     {
       "id": "scenario_3",
       "speaker": "moderator",
-      "narration": "Now let's look at the metrics. Here we see the top-bucket hits by generation model, top-bucket hits by prompt, and prompt plus model ranking. In the Best Prompt and model Pair block, the first number is Good-bucket hits and the second number is completed rankings so far. One evaluator still has open rankings as we saw, so these totals are not final yet, and they update live as new rankings come in. Let's scroll down once more. These three plots show the full distribution across buckets for models, prompts, and prompt plus models combinations.",
+      "narration": "Now let's focus on provenance. At the top, we see top-bucket hits by LLM, by prompt, and by prompt plus LLM pair. In the Best Prompt and LLM Pair card, the first number is how often this pair landed in the Good bucket, and the second number is how many rankings are completed so far. One evaluator still has open rankings, so these totals are not final yet and update live as new rankings come in. Now let's scroll down. Here are the three bucket-distribution plots. The first plot is the bucket distribution for the LLMs, the second plot is the bucket distribution for the prompts, and the third plot is the bucket distribution for the pairs.",
       "actions": [
         {
           "do": "scroll_to",
@@ -1905,39 +1931,39 @@
         },
         {
           "do": "sync",
-          "after": "top-bucket hits by generation model"
+          "after": "top-bucket hits by llm"
         },
         {
           "do": "highlight",
           "target": "Provenance LLM List Card",
-          "duration": 1.0
+          "duration": 1.5
         },
         {
           "do": "sync",
-          "after": "top-bucket hits by prompt"
+          "after": "by prompt,"
         },
         {
           "do": "highlight",
           "target": "Provenance Prompt List Card",
-          "duration": 1.0
+          "duration": 1.5
         },
         {
           "do": "sync",
-          "after": "prompt plus model ranking"
+          "after": "prompt plus llm pair"
         },
         {
           "do": "highlight",
           "target": "Provenance Combination List Card",
-          "duration": 1.0
+          "duration": 1.5
         },
         {
           "do": "sync",
-          "after": "best prompt and model pair block"
+          "after": "best prompt and llm pair card"
         },
         {
           "do": "highlight",
           "target": "Best Combination Card",
-          "duration": 1.2
+          "duration": 1.8
         },
         {
           "do": "js_exec",
@@ -1949,21 +1975,21 @@
         },
         {
           "do": "sync",
-          "after": "the first number is good-bucket hits"
+          "after": "first number is how often this pair landed in the good bucket"
         },
         {
           "do": "highlight",
           "target": ".provenance-best-grid .provenance-best-card:nth-child(3) .provenance-best-meta .llars-prov-first",
-          "duration": 1.8
+          "duration": 2.8
         },
         {
           "do": "sync",
-          "after": "the second number is completed rankings so far"
+          "after": "second number is how many rankings are completed so far"
         },
         {
           "do": "highlight",
           "target": ".provenance-best-grid .provenance-best-card:nth-child(3) .provenance-best-meta .llars-prov-second",
-          "duration": 1.8
+          "duration": 2.8
         },
         {
           "do": "sync",
@@ -1972,7 +1998,7 @@
         {
           "do": "highlight",
           "target": "Provenance Lists Grid",
-          "duration": 1.2
+          "duration": 1.6
         },
         {
           "do": "sync",
@@ -1981,11 +2007,11 @@
         {
           "do": "highlight",
           "target": "Provenance Lists Grid",
-          "duration": 1.2
+          "duration": 1.6
         },
         {
           "do": "sync",
-          "after": "scroll down once more"
+          "after": "now let's scroll down"
         },
         {
           "do": "scroll_to",
@@ -1997,39 +2023,39 @@
         },
         {
           "do": "sync",
-          "after": "these three plots"
+          "after": "three bucket-distribution plots"
         },
         {
           "do": "highlight",
           "target": "Provenance Figures Grid",
-          "duration": 1.0
+          "duration": 1.7
         },
         {
           "do": "sync",
-          "after": "for models,"
+          "after": "first plot is the bucket distribution for the llms"
         },
         {
           "do": "highlight",
           "target": "Provenance LLM Figure Card",
-          "duration": 1.8
+          "duration": 2.8
         },
         {
           "do": "sync",
-          "after": "prompts, and"
+          "after": "second plot is the bucket distribution for the prompts"
         },
         {
           "do": "highlight",
           "target": "Provenance Prompt Figure Card",
-          "duration": 1.8
+          "duration": 2.8
         },
         {
           "do": "sync",
-          "after": "prompt plus models combinations."
+          "after": "third plot is the bucket distribution for the pairs"
         },
         {
           "do": "highlight",
           "target": "Provenance Combination Figure Card",
-          "duration": 1.8
+          "duration": 2.8
         }
       ]
     },

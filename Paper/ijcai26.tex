@@ -7,6 +7,11 @@
 \pdfpageheight=11in
 
 \usepackage{ijcai26}
+
+\usepackage{xcolor}
+\usepackage{tikz}
+
+% Use the postscript times font!
 \usepackage{times}
 \usepackage{soul}
 \usepackage{url}
@@ -15,10 +20,11 @@
 \usepackage[small]{caption}
 \usepackage{graphicx}
 \usepackage{amsmath}
-\usepackage{amssymb}
+\usepackage{amsthm}
 \usepackage{booktabs}
-\usepackage{xcolor}
-\usepackage{tikz}
+\usepackage{algorithm}
+\usepackage{algorithmic}
+\usepackage[switch]{lineno}
 
 \usepackage{tabularx}
 \usepackage{threeparttable}
@@ -26,6 +32,8 @@
 \usepackage[nointegrals]{wasysym}
 \usepackage[shortcuts]{extdash}
 \usepackage{float}
+
+\linenumbers
 
 \usetikzlibrary{shapes.geometric, arrows.meta, positioning, fit, backgrounds, calc}
 
@@ -250,7 +258,7 @@ A generation matrix previews all resulting combinations and estimates cost. Opti
 For example, 50~counselling email threads combined with two prompts and two models produce 50\,$\times$\,2\,$\times$\,2\,=\,200~outputs.
 
 Results stream in real time and every output records its full provenance (source item, prompt version, model, parameters, token count and cost), exportable as CSV or JSON.
-Completed batches transfer into evaluation with a single click, preserving all attribution for downstream provenance analysis.
+Completed batches transfer into evaluation with a single click, preserving all attribution for downstream analysis.
 
 \subsection{Hybrid Evaluation}
 

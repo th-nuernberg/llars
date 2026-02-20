@@ -424,6 +424,9 @@ def seed_demo_scenarios(db):
     def _ensure_scenario_user(scenario_id: int, user_id: int, role: ScenarioRoles) -> None:
         existing = ScenarioUsers.query.filter_by(scenario_id=scenario_id, user_id=user_id).first()
         if existing:
+            if existing.role != role:
+                existing.role = role
+                db.session.flush()
             return
         db.session.add(
             ScenarioUsers(
@@ -850,14 +853,20 @@ def seed_demo_scenarios(db):
         db.session.add(ranking_scenario)
         db.session.flush()
 
-        # Add users to scenario
-        for user, role in [(evaluator_user, ScenarioRoles.VIEWER), (researcher_user, ScenarioRoles.EVALUATOR)]:
-            scenario_user = ScenarioUsers(
-                scenario_id=ranking_scenario.id,
-                user_id=user.id,
-                role=role
-            )
-            db.session.add(scenario_user)
+        # Add users to scenario: ijcai_reviewer_1=OWNER, ijcai_reviewer_2=EVALUATOR, others=VIEWER
+        for user, role in [
+            (ijcai_reviewer_1, ScenarioRoles.OWNER),
+            (ijcai_reviewer_2, ScenarioRoles.EVALUATOR),
+            (evaluator_user, ScenarioRoles.VIEWER),
+            (researcher_user, ScenarioRoles.EVALUATOR),
+        ]:
+            if user:
+                scenario_user = ScenarioUsers(
+                    scenario_id=ranking_scenario.id,
+                    user_id=user.id,
+                    role=role
+                )
+                db.session.add(scenario_user)
 
         db.session.flush()
 
@@ -895,8 +904,14 @@ def seed_demo_scenarios(db):
             ranking_scenario.config_json = config
             print(f"  Updated Ranking Scenario with LLM evaluators")
 
-    if admin_user and ranking_scenario:
-        _ensure_scenario_user(ranking_scenario.id, admin_user.id, ScenarioRoles.VIEWER)
+    # Ensure correct user roles for ranking scenario (also fixes existing scenarios)
+    if ranking_scenario:
+        if ijcai_reviewer_1:
+            _ensure_scenario_user(ranking_scenario.id, ijcai_reviewer_1.id, ScenarioRoles.OWNER)
+        if ijcai_reviewer_2:
+            _ensure_scenario_user(ranking_scenario.id, ijcai_reviewer_2.id, ScenarioRoles.EVALUATOR)
+        if admin_user:
+            _ensure_scenario_user(ranking_scenario.id, admin_user.id, ScenarioRoles.VIEWER)
 
     # Create Mail Rating Scenario (Verlauf Bewerter)
     if not existing_mail_rating:
@@ -915,14 +930,20 @@ def seed_demo_scenarios(db):
         db.session.add(mail_rating_scenario)
         db.session.flush()
 
-        # Add users to scenario
-        for user, role in [(evaluator_user, ScenarioRoles.VIEWER), (researcher_user, ScenarioRoles.EVALUATOR)]:
-            scenario_user = ScenarioUsers(
-                scenario_id=mail_rating_scenario.id,
-                user_id=user.id,
-                role=role
-            )
-            db.session.add(scenario_user)
+        # Add users to scenario: ijcai_reviewer_1=OWNER, ijcai_reviewer_2=EVALUATOR, others=VIEWER
+        for user, role in [
+            (ijcai_reviewer_1, ScenarioRoles.OWNER),
+            (ijcai_reviewer_2, ScenarioRoles.EVALUATOR),
+            (evaluator_user, ScenarioRoles.VIEWER),
+            (researcher_user, ScenarioRoles.EVALUATOR),
+        ]:
+            if user:
+                scenario_user = ScenarioUsers(
+                    scenario_id=mail_rating_scenario.id,
+                    user_id=user.id,
+                    role=role
+                )
+                db.session.add(scenario_user)
 
         db.session.flush()
 
@@ -965,8 +986,14 @@ def seed_demo_scenarios(db):
             mail_rating_scenario.config_json = config
             print(f"  Updated Mail Rating Scenario with LLM evaluators")
 
-    if admin_user and mail_rating_scenario:
-        _ensure_scenario_user(mail_rating_scenario.id, admin_user.id, ScenarioRoles.VIEWER)
+    # Ensure correct user roles for mail rating scenario
+    if mail_rating_scenario:
+        if ijcai_reviewer_1:
+            _ensure_scenario_user(mail_rating_scenario.id, ijcai_reviewer_1.id, ScenarioRoles.OWNER)
+        if ijcai_reviewer_2:
+            _ensure_scenario_user(mail_rating_scenario.id, ijcai_reviewer_2.id, ScenarioRoles.EVALUATOR)
+        if admin_user:
+            _ensure_scenario_user(mail_rating_scenario.id, admin_user.id, ScenarioRoles.VIEWER)
 
     # Create Fake/Echt Scenario (Authenticity)
     if not existing_authenticity:
@@ -987,13 +1014,19 @@ def seed_demo_scenarios(db):
         db.session.add(authenticity_scenario)
         db.session.flush()
 
-        for user, role in [(evaluator_user, ScenarioRoles.VIEWER), (researcher_user, ScenarioRoles.EVALUATOR)]:
-            scenario_user = ScenarioUsers(
-                scenario_id=authenticity_scenario.id,
-                user_id=user.id,
-                role=role
-            )
-            db.session.add(scenario_user)
+        for user, role in [
+            (ijcai_reviewer_1, ScenarioRoles.OWNER),
+            (ijcai_reviewer_2, ScenarioRoles.EVALUATOR),
+            (evaluator_user, ScenarioRoles.VIEWER),
+            (researcher_user, ScenarioRoles.EVALUATOR),
+        ]:
+            if user:
+                scenario_user = ScenarioUsers(
+                    scenario_id=authenticity_scenario.id,
+                    user_id=user.id,
+                    role=role
+                )
+                db.session.add(scenario_user)
 
         db.session.flush()
 
@@ -1071,8 +1104,14 @@ def seed_demo_scenarios(db):
                         ))
             print(f"  Added {len(new_thread_objs)} new threads to existing Authenticity Scenario")
 
-    if admin_user and authenticity_scenario:
-        _ensure_scenario_user(authenticity_scenario.id, admin_user.id, ScenarioRoles.VIEWER)
+    # Ensure correct user roles for authenticity scenario
+    if authenticity_scenario:
+        if ijcai_reviewer_1:
+            _ensure_scenario_user(authenticity_scenario.id, ijcai_reviewer_1.id, ScenarioRoles.OWNER)
+        if ijcai_reviewer_2:
+            _ensure_scenario_user(authenticity_scenario.id, ijcai_reviewer_2.id, ScenarioRoles.EVALUATOR)
+        if admin_user:
+            _ensure_scenario_user(authenticity_scenario.id, admin_user.id, ScenarioRoles.VIEWER)
 
     # Create Labeling Scenario (generalized text categorization)
     if not existing_labeling:
@@ -1099,14 +1138,20 @@ def seed_demo_scenarios(db):
         db.session.add(labeling_scenario)
         db.session.flush()
 
-        for user, role in [(evaluator_user, ScenarioRoles.VIEWER), (researcher_user, ScenarioRoles.EVALUATOR)]:
-            db.session.add(
-                ScenarioUsers(
-                    scenario_id=labeling_scenario.id,
-                    user_id=user.id,
-                    role=role
+        for user, role in [
+            (ijcai_reviewer_1, ScenarioRoles.OWNER),
+            (ijcai_reviewer_2, ScenarioRoles.EVALUATOR),
+            (evaluator_user, ScenarioRoles.VIEWER),
+            (researcher_user, ScenarioRoles.EVALUATOR),
+        ]:
+            if user:
+                db.session.add(
+                    ScenarioUsers(
+                        scenario_id=labeling_scenario.id,
+                        user_id=user.id,
+                        role=role
+                    )
                 )
-            )
 
         db.session.flush()
 
@@ -1148,8 +1193,14 @@ def seed_demo_scenarios(db):
             labeling_scenario.config_json = config
             print(f"  Updated Labeling Scenario with LLM evaluators")
 
-    if admin_user and labeling_scenario:
-        _ensure_scenario_user(labeling_scenario.id, admin_user.id, ScenarioRoles.VIEWER)
+    # Ensure correct user roles for labeling scenario
+    if labeling_scenario:
+        if ijcai_reviewer_1:
+            _ensure_scenario_user(labeling_scenario.id, ijcai_reviewer_1.id, ScenarioRoles.OWNER)
+        if ijcai_reviewer_2:
+            _ensure_scenario_user(labeling_scenario.id, ijcai_reviewer_2.id, ScenarioRoles.EVALUATOR)
+        if admin_user:
+            _ensure_scenario_user(labeling_scenario.id, admin_user.id, ScenarioRoles.VIEWER)
 
     db.session.commit()
     print("Demo scenarios seeded successfully.")

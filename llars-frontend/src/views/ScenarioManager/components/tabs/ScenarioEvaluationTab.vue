@@ -978,14 +978,14 @@
               {{ formatProvenanceRate(bestRatingProvenanceLLM.avg_normalized_score) }}% | {{ formatProvenanceScore(bestRatingProvenanceLLM.avg_score) }} Ø
             </span>
           </div>
-          <div class="provenance-best-card">
+          <div v-if="!isMailRating" class="provenance-best-card">
             <span class="provenance-best-label">{{ $t('scenarioManager.results.bestPrompt') }}</span>
             <strong class="provenance-best-name">{{ bestRatingProvenancePrompt?.label || '-' }}</strong>
             <span v-if="bestRatingProvenancePrompt" class="provenance-best-meta">
               {{ formatProvenanceRate(bestRatingProvenancePrompt.avg_normalized_score) }}% | {{ formatProvenanceScore(bestRatingProvenancePrompt.avg_score) }} Ø
             </span>
           </div>
-          <div class="provenance-best-card">
+          <div v-if="!isMailRating" class="provenance-best-card">
             <span class="provenance-best-label">{{ $t('scenarioManager.results.bestCombination') }}</span>
             <strong class="provenance-best-name">{{ bestRatingProvenanceCombination?.label || '-' }}</strong>
             <span v-if="bestRatingProvenanceCombination" class="provenance-best-meta">
@@ -1024,7 +1024,7 @@
             </div>
           </div>
 
-          <div class="provenance-list-card">
+          <div v-if="!isMailRating" class="provenance-list-card">
             <div class="provenance-list-header">
               <span>{{ $t('scenarioManager.results.promptRanking') }}</span>
               <span>{{ $t('scenarioManager.results.ratingProvenancePrimaryMetric') }}</span>
@@ -1050,7 +1050,7 @@
             </div>
           </div>
 
-          <div class="provenance-list-card">
+          <div v-if="!isMailRating" class="provenance-list-card">
             <div class="provenance-list-header">
               <span>{{ $t('scenarioManager.results.combinationRanking') }}</span>
               <span>{{ $t('scenarioManager.results.ratingProvenancePrimaryMetric') }}</span>
@@ -1114,7 +1114,7 @@
             </span>
           </div>
           <div class="provenance-best-card">
-            <span class="provenance-best-label">{{ $t('scenarioManager.results.bestCombination') }}</span>
+            <span class="provenance-best-label">{{ $t('scenarioManager.results.bestCounselorClientPair') }}</span>
             <strong class="provenance-best-name">{{ bestConversationCombination?.label || '-' }}</strong>
             <span v-if="bestConversationCombination" class="provenance-best-meta">
               {{ formatProvenanceRate(bestConversationCombination.avg_normalized_score) }}% | {{ formatProvenanceScore(bestConversationCombination.avg_score) }} Ø
@@ -1180,7 +1180,7 @@
 
           <div class="provenance-list-card">
             <div class="provenance-list-header">
-              <span>{{ $t('scenarioManager.results.combinationRanking') }}</span>
+              <span>{{ $t('scenarioManager.results.counselorClientRanking') }}</span>
               <span>{{ $t('scenarioManager.results.ratingProvenancePrimaryMetric') }}</span>
             </div>
             <div v-if="currentConversationProvenanceSegment?.by_combination?.length" class="provenance-list">
@@ -2879,6 +2879,8 @@ const hasRatingProvenanceAnalysis = computed(() => {
     (segment.by_prompt?.length || 0) > 0 ||
     (segment.by_combination?.length || 0) > 0
 })
+
+const isMailRating = computed(() => currentTaskType.value === 'mail_rating')
 
 const bestRatingProvenanceLLM = computed(() => currentRatingProvenanceSegment.value?.best_llm || null)
 const bestRatingProvenancePrompt = computed(() => currentRatingProvenanceSegment.value?.best_prompt || null)

@@ -3181,11 +3181,13 @@
       "assignments": "Assignments",
       "noProvenanceData": "No provenance data available yet",
       "conversationProvenance": "Conversation Partner Provenance",
-      "conversationProvenanceDescription": "Analyzes which conversation partner combinations (counselor source x client source) achieve the highest ratings. Sources indicate whether messages were written by humans or AI models.",
+      "conversationProvenanceDescription": "Analyzes which conversation partner combinations achieve the highest ratings. The counselor (first) and client (second) sources indicate whether messages were written by humans or AI models. Format: Counselor \u00d7 Client.",
       "bestCounselorSource": "Best Counselor Source",
       "bestClientSource": "Best Client Source",
+      "bestCounselorClientPair": "Best Counselor \u00d7 Client Pair",
       "counselorSourceRanking": "Counselor Source Ranking",
       "clientSourceRanking": "Client Source Ranking",
+      "counselorClientRanking": "Counselor \u00d7 Client Ranking",
       "ratingProvenanceAnalysis": "Rating Provenance Analysis",
       "ratingProvenanceDescription": "Shows which generation LLMs and prompts are associated with higher normalized rating outcomes.",
       "ratingProvenanceMetricExplanation": "Primary metric: average normalized score (0-100). Secondary metric: share of high scores (>= {threshold}%).",
@@ -3407,7 +3409,7 @@
       "bucketDistribution": "Shows how many items were assigned to each bucket (Good/Medium/Bad). Aggregated across all human and LLM evaluators.",
       "provenanceAnalysis": "Compares where rated content came from (generation LLM, prompt, and prompt+LLM pair) and highlights which origins most often end up in the top bucket. Format x/y = top-bucket hits divided by all assignments for that origin.",
       "ratingProvenanceAnalysis": "Compares where rated content came from (generation LLM, prompt, and prompt+LLM pair) and highlights which origins currently achieve the highest normalized rating scores.",
-      "conversationProvenance": "Analyzes conversation partner combinations. Derives who wrote the counselor and client messages (Human vs AI) and shows which combinations achieve the best ratings.",
+      "conversationProvenance": "Analyzes conversation partner combinations. Derives who wrote the counselor and client messages (Human vs AI) and shows which combinations achieve the best ratings. Format: Counselor \u00d7 Client.",
       "rankingAgreement": "Per summary: Did both evaluators place it in the same bucket? Counted as: Matching summaries / Co-rated summaries. Metrics use ordinal calculation (Bucket-Krippendorff)."
     },
     "session": {

@@ -42,6 +42,7 @@ from routes.HelperFunctions import (
     DISTRIBUTION_MODE_ALL,
 )
 from services.user_profile_service import serialize_user_brief
+from services.evaluation.dimensional_rating_service import DimensionalRatingService
 
 
 def _get_scenario_or_raise(scenario_id: int) -> RatingScenarios:
@@ -1091,31 +1092,18 @@ def _calculate_rating_distribution(scenario_id: int) -> Dict[str, Any]:
     - 'by_dimension': per-dimension distributions (for mixed scales)
     - 'has_mixed_scales': boolean indicating if dimensions have different scales
     """
-    # Get scenario config first to determine scales
-    scenario = RatingScenarios.query.get(scenario_id)
-    config = scenario.config_json if scenario else {}
-    if isinstance(config, str):
-        try:
-            config = json.loads(config)
-        except (json.JSONDecodeError, TypeError):
-            config = {}
-    if not isinstance(config, dict):
+    # Use DimensionalRatingService.get_scenario_config() for consistent dimension resolution.
+    # This ensures the same dimension IDs used by the rating UI are used for stats.
+    # Without this, wizard-created scenarios can have mismatched dimension IDs
+    # (eval_config.dimensions vs DEFAULT_DIMENSIONS) causing all-zero distributions.
+    config = DimensionalRatingService.get_scenario_config(scenario_id)
+    if not isinstance(config, dict) or 'error' in config:
         config = {}
 
-    # Get scale configuration - check root level, eval_config, and eval_config.config
-    eval_config = config.get("eval_config", {})
-    if not isinstance(eval_config, dict):
-        eval_config = {}
-
-    eval_config_inner = eval_config.get("config", {})
-    if not isinstance(eval_config_inner, dict):
-        eval_config_inner = {}
-
-    # Scale can be at root level, eval_config, or eval_config.config (from wizard)
-    global_min = config.get("min", eval_config.get("min", eval_config_inner.get("min", 1)))
-    global_max = config.get("max", eval_config.get("max", eval_config_inner.get("max", 5)))
-    global_labels = config.get("labels", eval_config.get("labels", eval_config_inner.get("labels", {})))
-    dimensions = config.get("dimensions", eval_config.get("dimensions", eval_config_inner.get("dimensions", [])))
+    global_min = config.get("min", 1)
+    global_max = config.get("max", 5)
+    global_labels = config.get("labels", {})
+    dimensions = config.get("dimensions", [])
 
     # Check if we have mixed scales (per-dimension scales)
     has_mixed_scales = False
@@ -1348,38 +1336,13 @@ def _calculate_dimension_averages(scenario_id: int) -> Dict[str, Any]:
     Returns dimension averages split by evaluator type (all, humans, LLMs).
     Includes both human ratings from ItemDimensionRating and LLM ratings from LLMTaskResult.
     """
-    # Get scenario config for dimension info
-    scenario = RatingScenarios.query.get(scenario_id)
-    if not scenario:
+    # Use DimensionalRatingService.get_scenario_config() for consistent dimension resolution.
+    # This ensures the same dimension IDs used by the rating UI are used for averages.
+    config = DimensionalRatingService.get_scenario_config(scenario_id)
+    if not isinstance(config, dict) or 'error' in config:
         return {}
 
-    config = scenario.config_json if scenario else {}
-    if isinstance(config, str):
-        try:
-            config = json.loads(config)
-        except (json.JSONDecodeError, TypeError):
-            config = {}
-    if not isinstance(config, dict):
-        config = {}
-
-    # Get dimensions and eval_config from config
-    # Dimensions can be at multiple locations:
-    # 1. config.dimensions (direct)
-    # 2. config.eval_config.dimensions (nested in eval_config)
-    # 3. config.eval_config.config.dimensions (nested in eval_config.config - from wizard)
-    eval_config = config.get("eval_config", {})
-    if not isinstance(eval_config, dict):
-        eval_config = {}
-
-    eval_config_inner = eval_config.get("config", {})
-    if not isinstance(eval_config_inner, dict):
-        eval_config_inner = {}
-
     dimensions = config.get("dimensions", [])
-    if not dimensions:
-        dimensions = eval_config.get("dimensions", [])
-    if not dimensions:
-        dimensions = eval_config_inner.get("dimensions", [])
     if not dimensions:
         return {}
 

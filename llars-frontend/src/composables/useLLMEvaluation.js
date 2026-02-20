@@ -377,8 +377,6 @@ export function useLLMEvaluation(initialScenarioId = null) {
         // New metrics
         icc: metrics.icc?.value ?? null,
         kendallW: metrics.kendall_w?.value ?? null,
-        mae: metrics.mae?.value ?? null,
-        rmse: metrics.rmse?.value ?? null,
         macroF1: metrics.macro_f1?.value ?? null,
         microF1: metrics.micro_f1?.value ?? null,
         // Interpretations

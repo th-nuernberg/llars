@@ -343,42 +343,6 @@
             </LTooltip>
           </div>
 
-          <!-- MAE (Mean Absolute Error) - Rating only -->
-          <div class="metric-item" v-if="showMAE && liveAgreementMetrics?.mae !== null && liveAgreementMetrics?.mae !== undefined">
-            <LTooltip location="top">
-              <template #content>
-                <div class="tooltip-content">
-                  <strong>{{ $t('scenarioManager.tooltips.mae.title') }}</strong>
-                  <p>{{ $t('scenarioManager.tooltips.mae.description') }}</p>
-                </div>
-              </template>
-              <div class="metric-content">
-                <span class="metric-value error-metric">
-                  {{ liveAgreementMetrics.mae?.toFixed(3) }}
-                </span>
-                <span class="metric-label">MAE <v-icon size="12" class="info-icon">mdi-information-outline</v-icon></span>
-              </div>
-            </LTooltip>
-          </div>
-
-          <!-- RMSE (Root Mean Squared Error) - Rating only -->
-          <div class="metric-item" v-if="showRMSE && liveAgreementMetrics?.rmse !== null && liveAgreementMetrics?.rmse !== undefined">
-            <LTooltip location="top">
-              <template #content>
-                <div class="tooltip-content">
-                  <strong>{{ $t('scenarioManager.tooltips.rmse.title') }}</strong>
-                  <p>{{ $t('scenarioManager.tooltips.rmse.description') }}</p>
-                </div>
-              </template>
-              <div class="metric-content">
-                <span class="metric-value error-metric">
-                  {{ liveAgreementMetrics.rmse?.toFixed(3) }}
-                </span>
-                <span class="metric-label">RMSE <v-icon size="12" class="info-icon">mdi-information-outline</v-icon></span>
-              </div>
-            </LTooltip>
-          </div>
-
           <!-- Macro F1 Score - Classification only -->
           <div class="metric-item" v-if="showF1Scores && liveAgreementMetrics?.macroF1 !== null && liveAgreementMetrics?.macroF1 !== undefined">
             <LTooltip location="top">
@@ -2109,8 +2073,6 @@ const liveAgreementMetrics = computed(() => {
     iccInterpretation: fromService?.iccInterpretation ?? null,
     kendallW: fromService?.kendallW ?? null,
     kendallWInterpretation: fromService?.kendallWInterpretation ?? null,
-    mae: fromService?.mae ?? null,
-    rmse: fromService?.rmse ?? null,
     macroF1: fromService?.macroF1 ?? null,
     microF1: fromService?.microF1 ?? null,
     // Metadata
@@ -2130,8 +2092,6 @@ const hasMetrics = computed(() => {
     m.icc !== null ||
     m.kendallW !== null ||
     m.kendall !== null ||  // Kendall's Tau
-    m.mae !== null ||
-    m.rmse !== null ||
     m.macroF1 !== null ||
     m.microF1 !== null
   )
@@ -2148,7 +2108,7 @@ const currentTaskType = computed(() => {
 // Ranking: Krippendorff's α, Kendall's W, Kendall's τ, Fleiss' κ
 const isRankingScenario = computed(() => currentTaskType.value === 'ranking')
 
-// Rating: ICC, Krippendorff's α, MAE, RMSE, Cohen's/Fleiss' κ
+// Rating: ICC, Krippendorff's α, Cohen's/Fleiss' κ (per-dimension)
 const isRatingScenario = computed(() =>
   currentTaskType.value === 'rating' || currentTaskType.value === 'mail_rating'
 )
@@ -2187,12 +2147,6 @@ const showKendallW = computed(() =>
 )
 const showKendallTau = computed(() =>
   !hasKnownTaskType.value || isRankingScenario.value
-)
-const showMAE = computed(() =>
-  !hasKnownTaskType.value || isRatingScenario.value
-)
-const showRMSE = computed(() =>
-  !hasKnownTaskType.value || isRatingScenario.value
 )
 const showF1Scores = computed(() =>
   !hasKnownTaskType.value || isClassificationScenario.value

@@ -20,6 +20,7 @@ import math
 from db import db
 from db.models import (
     Feature,
+    ItemDimensionRating,
     LLMTaskResult,
     RatingScenarios,
     ScenarioThreads,
@@ -99,16 +100,6 @@ class AgreementMetricsService:
             "description": "Measures agreement among multiple raters on rankings. Values: 0 = no agreement, 1 = perfect agreement. W > 0.7 indicates strong agreement.",
             "range": "0.0 to 1.0",
         },
-        "mae": {
-            "name": "MAE (Mean Absolute Error)",
-            "description": "Average absolute difference between predictions and ground truth. Lower is better. Useful when ground truth labels are available.",
-            "range": "0.0 to max_scale",
-        },
-        "rmse": {
-            "name": "RMSE (Root Mean Squared Error)",
-            "description": "Square root of average squared differences. Penalizes large errors more than MAE. Lower is better.",
-            "range": "0.0 to max_scale",
-        },
         "bradley_terry": {
             "name": "Bradley-Terry Score",
             "description": "Estimates item strength from pairwise comparisons. Higher scores indicate items that win more comparisons. Useful for ranking items by preference.",
@@ -171,11 +162,11 @@ class AgreementMetricsService:
         if task_type == "ranking":
             metrics = AgreementMetricsService._calculate_ranking_metrics(evaluations)
         elif task_type == "rating":
-            metrics = AgreementMetricsService._calculate_rating_metrics(evaluations)
+            metrics = AgreementMetricsService._calculate_rating_metrics(evaluations, scenario_id)
         elif task_type == "authenticity":
             metrics = AgreementMetricsService._calculate_authenticity_metrics(evaluations)
         elif task_type == "mail_rating":
-            metrics = AgreementMetricsService._calculate_mail_rating_metrics(evaluations)
+            metrics = AgreementMetricsService._calculate_mail_rating_metrics(evaluations, scenario_id)
         elif task_type == "comparison":
             metrics = AgreementMetricsService._calculate_comparison_metrics(evaluations)
         elif task_type in ("text_classification", "labeling"):
@@ -563,14 +554,253 @@ class AgreementMetricsService:
         return results
 
     @staticmethod
-    def _calculate_rating_metrics(evaluations: Dict[str, Any]) -> Dict[str, Any]:
-        """Calculate metrics for rating evaluations."""
-        return AgreementMetricsService._calculate_numeric_metrics(evaluations)
+    def _calculate_rating_metrics(
+        evaluations: Dict[str, Any],
+        scenario_id: int = None,
+    ) -> Dict[str, Any]:
+        """Calculate metrics for rating evaluations with per-dimension breakdown."""
+        return AgreementMetricsService._calculate_dimensional_metrics(
+            evaluations, scenario_id, task_type="rating"
+        )
 
     @staticmethod
-    def _calculate_mail_rating_metrics(evaluations: Dict[str, Any]) -> Dict[str, Any]:
-        """Calculate metrics for mail rating evaluations."""
-        return AgreementMetricsService._calculate_numeric_metrics(evaluations)
+    def _calculate_mail_rating_metrics(
+        evaluations: Dict[str, Any],
+        scenario_id: int = None,
+    ) -> Dict[str, Any]:
+        """Calculate metrics for mail rating evaluations with per-dimension breakdown."""
+        return AgreementMetricsService._calculate_dimensional_metrics(
+            evaluations, scenario_id, task_type="mail_rating"
+        )
+
+    @staticmethod
+    def _collect_dimensional_evaluations(
+        scenario_id: int,
+        task_type: str,
+        thread_ids: List[int],
+        raters: List[str],
+        include_llm: bool = True,
+        include_human: bool = True,
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Collect per-dimension evaluation data for rating/mail_rating scenarios.
+
+        Returns:
+            Dict with 'dimensions' (list of dim IDs), 'dim_names' (id->name map),
+            and 'per_dimension' (dim_id -> {raters, items, data}) or None if no
+            dimensional data is available.
+        """
+        from services.evaluation.dimensional_rating_service import DimensionalRatingService
+
+        config = DimensionalRatingService.get_scenario_config(scenario_id)
+        if 'error' in config:
+            return None
+
+        dimensions = config.get('dimensions', [])
+        if not dimensions:
+            return None
+
+        dim_ids = [d['id'] for d in dimensions]
+        dim_names = {
+            d['id']: d.get('name', {}).get('en', d['id'])
+            for d in dimensions
+        }
+
+        # Initialize per-dimension data structures
+        per_dim = {
+            dim_id: {"raters": set(), "items": set(), "data": defaultdict(dict)}
+            for dim_id in dim_ids
+        }
+
+        # --- Collect LLM evaluations ---
+        if include_llm:
+            llm_results = LLMTaskResult.query.filter(
+                LLMTaskResult.scenario_id == scenario_id,
+                LLMTaskResult.task_type == task_type,
+                LLMTaskResult.payload_json.isnot(None),
+            ).all()
+
+            for result in llm_results:
+                payload = result.payload_json
+                if not payload:
+                    continue
+
+                rater_id = f"llm:{result.model_id}"
+                dim_ratings = {}
+
+                # New format: dimensional_ratings list
+                if "dimensional_ratings" in payload:
+                    for dr in payload["dimensional_ratings"]:
+                        d_id = dr.get("dimension") or dr.get("id")
+                        rating = dr.get("rating")
+                        if d_id and rating is not None:
+                            dim_ratings[d_id] = rating
+
+                # Legacy format: ratings dict {"coherence": 4, ...}
+                elif "ratings" in payload and isinstance(payload["ratings"], dict):
+                    dim_ratings = payload["ratings"]
+
+                # Mail rating specific fields in payload
+                if task_type == "mail_rating":
+                    for field in ["counsellor_coherence", "client_coherence", "quality", "overall"]:
+                        if field in payload and field not in dim_ratings:
+                            dim_ratings[field] = payload[field]
+
+                for dim_id in dim_ids:
+                    val = dim_ratings.get(dim_id)
+                    if val is not None:
+                        try:
+                            per_dim[dim_id]["data"][result.thread_id][rater_id] = float(val)
+                            per_dim[dim_id]["raters"].add(rater_id)
+                            per_dim[dim_id]["items"].add(result.thread_id)
+                        except (ValueError, TypeError):
+                            continue
+
+        # --- Collect human evaluations ---
+        if include_human:
+            if task_type == "mail_rating":
+                # UserMailHistoryRating has explicit dimension columns
+                dim_column_map = {
+                    "counsellor_coherence": "counsellor_coherence_rating",
+                    "client_coherence": "client_coherence_rating",
+                    "quality": "quality_rating",
+                    "overall": "overall_rating",
+                }
+                ratings = UserMailHistoryRating.query.filter(
+                    UserMailHistoryRating.thread_id.in_(thread_ids),
+                ).all()
+
+                for rating in ratings:
+                    rater_id = f"human:{rating.user_id}"
+                    for dim_id in dim_ids:
+                        col_name = dim_column_map.get(dim_id)
+                        if col_name:
+                            val = getattr(rating, col_name, None)
+                        else:
+                            val = None
+                        if val is not None:
+                            per_dim[dim_id]["data"][rating.thread_id][rater_id] = float(val)
+                            per_dim[dim_id]["raters"].add(rater_id)
+                            per_dim[dim_id]["items"].add(rating.thread_id)
+
+            elif task_type == "rating":
+                # ItemDimensionRating has dimension_ratings JSON
+                ratings = ItemDimensionRating.query.filter(
+                    ItemDimensionRating.scenario_id == scenario_id,
+                    ItemDimensionRating.item_id.in_(thread_ids),
+                ).all()
+
+                for rating in ratings:
+                    rater_id = f"human:{rating.user_id}"
+                    dim_data = rating.dimension_ratings or {}
+                    for dim_id in dim_ids:
+                        val = dim_data.get(dim_id)
+                        if val is not None:
+                            try:
+                                per_dim[dim_id]["data"][rating.item_id][rater_id] = float(val)
+                                per_dim[dim_id]["raters"].add(rater_id)
+                                per_dim[dim_id]["items"].add(rating.item_id)
+                            except (ValueError, TypeError):
+                                continue
+
+        # Convert sets to sorted lists and filter empty dimensions
+        result = {
+            "dimensions": [],
+            "dim_names": dim_names,
+            "per_dimension": {},
+        }
+        for dim_id in dim_ids:
+            d = per_dim[dim_id]
+            if d["raters"] and d["items"]:
+                result["dimensions"].append(dim_id)
+                result["per_dimension"][dim_id] = {
+                    "raters": sorted(d["raters"]),
+                    "items": sorted(d["items"]),
+                    "data": dict(d["data"]),
+                }
+
+        return result if result["dimensions"] else None
+
+    @staticmethod
+    def _calculate_dimensional_metrics(
+        evaluations: Dict[str, Any],
+        scenario_id: int = None,
+        task_type: str = "rating",
+    ) -> Dict[str, Any]:
+        """
+        Calculate agreement metrics per dimension, then average across dimensions.
+
+        Falls back to _calculate_numeric_metrics if no dimensional data is available.
+        """
+        if not scenario_id:
+            return AgreementMetricsService._calculate_numeric_metrics(evaluations)
+
+        thread_ids = evaluations.get("items", [])
+        raters = evaluations.get("raters", [])
+
+        dim_data = AgreementMetricsService._collect_dimensional_evaluations(
+            scenario_id=scenario_id,
+            task_type=task_type,
+            thread_ids=thread_ids,
+            raters=raters,
+        )
+
+        if not dim_data:
+            return AgreementMetricsService._calculate_numeric_metrics(evaluations)
+
+        # Calculate metrics for each dimension
+        dim_results = {}
+        for dim_id in dim_data["dimensions"]:
+            d = dim_data["per_dimension"][dim_id]
+            dim_evals = {
+                "raters": d["raters"],
+                "items": d["items"],
+                "data": d["data"],
+            }
+            dim_results[dim_id] = AgreementMetricsService._calculate_numeric_metrics(dim_evals)
+
+        # Aggregate: average across dimensions for each metric type
+        metric_keys = ["krippendorff_alpha", "icc", "percent_agreement", "cohens_kappa",
+                        "spearman_rho", "kendall_w"]
+        results = {}
+
+        for metric_key in metric_keys:
+            values = []
+            per_dim_breakdown = {}
+            for dim_id in dim_data["dimensions"]:
+                metric = dim_results[dim_id].get(metric_key)
+                if metric and metric.get("value") is not None:
+                    values.append(metric["value"])
+                    per_dim_breakdown[dim_id] = {
+                        "value": metric["value"],
+                        "name": dim_data["dim_names"].get(dim_id, dim_id),
+                    }
+
+            if values:
+                avg_value = round(sum(values) / len(values), 4)
+                # Use the interpretation function for the average value
+                if metric_key == "krippendorff_alpha":
+                    interp = AgreementMetricsService._interpret_alpha(avg_value)
+                elif metric_key == "icc":
+                    interp = AgreementMetricsService._interpret_icc(avg_value)
+                elif metric_key == "percent_agreement":
+                    interp = f"{avg_value:.1f}% der Bewertungen stimmen überein"
+                elif metric_key in ("cohens_kappa",):
+                    interp = AgreementMetricsService._interpret_kappa(avg_value)
+                elif metric_key == "spearman_rho":
+                    interp = AgreementMetricsService._interpret_correlation(avg_value)
+                elif metric_key == "kendall_w":
+                    interp = AgreementMetricsService._interpret_kendall_w(avg_value)
+                else:
+                    interp = ""
+
+                results[metric_key] = {
+                    "value": avg_value,
+                    "interpretation": interp,
+                    "per_dimension": per_dim_breakdown,
+                }
+
+        return results
 
     @staticmethod
     def _calculate_numeric_metrics(evaluations: Dict[str, Any]) -> Dict[str, Any]:
@@ -638,19 +868,6 @@ class AgreementMetricsService:
                     "value": kendall_w,
                     "interpretation": AgreementMetricsService._interpret_kendall_w(kendall_w),
                 }
-
-        # MAE and RMSE (against consensus)
-        mae, rmse = AgreementMetricsService._mae_rmse(data, raters, items)
-        if mae is not None:
-            results["mae"] = {
-                "value": mae,
-                "interpretation": f"Mittlere Abweichung vom Konsens: {mae:.2f}",
-            }
-        if rmse is not None:
-            results["rmse"] = {
-                "value": rmse,
-                "interpretation": f"RMSE vom Konsens: {rmse:.2f}",
-            }
 
         return results
 

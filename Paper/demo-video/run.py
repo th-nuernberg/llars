@@ -76,6 +76,7 @@ AUDIO_DIR = str(BASE_DIR / "audio")
 OUTPUT_DIR = str(BASE_DIR / "output")
 
 ENV_VAR_PATTERN = re.compile(r"\$\{([A-Z0-9_]+)\}")
+COLLAB_PLACEHOLDER_PATTERN = re.compile(r"\{\{[a-zA-Z_][a-zA-Z0-9_]*\}\}")
 _ENV_CACHE: Optional[Dict[str, str]] = None
 
 
@@ -427,6 +428,8 @@ ELEMENT_MAP = {
     "Open Scenario": ".v-btn:contains('Open'), .scenario-card .v-btn",
     "Scenario Workspace": ".scenario-workspace",
     "Scenario Workspace Back": ".scenario-workspace .back-btn, .scenario-workspace .v-btn.back-btn",
+    "App Bar Logo Home": ".llars-appbar .toolbar-title, .llars-appbar .logo-wrapper, .llars-appbar .logo-image, .v-app-bar .toolbar-title:contains('LLars')",
+    "Sidebar Home Link": ".app-sidebar .sidebar-footer .nav-item:contains('Startseite'), .app-sidebar .sidebar-footer .nav-item:contains('Home'), .app-sidebar .sidebar-footer .nav-item .mdi-home",
     "Scenario Manager Title": ".scenario-manager .title, .page-header .title:contains('Scenario Manager'), h1.title:contains('Scenario Manager')",
     "Scenario Tabs": ".scenario-workspace .l-tabs, .tab-navigation .l-tabs, .l-tabs",
     "Scenario Tab Overview": ".tab-navigation .l-tab:contains('Overview'), .l-tab:contains('Overview'), .l-tab__label:contains('Overview')",
@@ -438,6 +441,7 @@ ELEMENT_MAP = {
     "Scenario Evaluator List": ".evaluators-list, .evaluator-row",
     "Scenario LLM Progress": ".progress-fill.llm, .progress-fill.is-llm, .progress-bar-large .progress-fill, .progress-card .progress-fill, .progress-mini .progress-fill",
     "Evaluation Summary": ".evaluation-tab .summary-grid, .evaluation-tab .summary-card",
+    "Evaluation Type Toggle": ".evaluation-tab .v-btn-toggle:contains('All'), .evaluation-tab .v-chip-group:contains('All'), .evaluation-tab .filter-chip-group:contains('All'), .evaluation-tab .toggle-group:contains('All'), .evaluation-tab .v-slide-group:contains('All'), .evaluation-tab .filters-row:contains('All')",
     "Evaluation Progress": ".evaluation-tab .progress-bar-container, .evaluation-tab .progress-bar-fill, .evaluation-tab .total-progress-section",
     "Evaluation Export": ".evaluation-tab .header-actions .l-btn, .evaluation-tab .header-actions .v-btn, .evaluation-tab .l-btn:contains('Export')",
     "Export JSON": ".v-list-item:contains('JSON')",
@@ -451,6 +455,9 @@ ELEMENT_MAP = {
     "Provenance Prompt List Card": ".provenance-lists-grid .provenance-list-card:nth-child(2)",
     "Provenance Combination List Card": ".provenance-lists-grid .provenance-list-card:nth-child(3)",
     "Provenance Figures Grid": ".provenance-figures-grid",
+    "Provenance LLM Figure Card": ".provenance-figures-grid .provenance-figure-card:nth-child(1)",
+    "Provenance Prompt Figure Card": ".provenance-figures-grid .provenance-figure-card:nth-child(2)",
+    "Provenance Combination Figure Card": ".provenance-figures-grid .provenance-figure-card:nth-child(3)",
     "Provenance Figure Card": ".provenance-figures-grid .provenance-figure-card:first-child",
     "Provenance Figure Expand": ".provenance-figures-grid .provenance-figure-card:first-child .provenance-figure-expand-btn:not([disabled])",
     "Provenance Figure Dialog": ".provenance-figure-dialog",
@@ -459,6 +466,11 @@ ELEMENT_MAP = {
     "Data Stats": ".data-tab .data-stats, .data-stats",
     "Data Threads Table": ".data-tab .threads-table, .data-tab .threads-section, .data-tab .empty-state, .threads-table, .threads-section",
     "Data Status Legend": ".data-tab .status-legend, .data-tab .empty-state, .status-legend",
+    "Data Thread View Button": ".data-tab .threads-table tbody tr:first-child td:last-child .v-btn:first-child, .threads-table tbody tr:first-child td:last-child .v-btn:first-child, .data-tab .threads-table .v-data-table__tr:first-child td:last-child .v-btn:first-child",
+    "Thread Detail Dialog": ".v-dialog .dialog-content, .v-dialog .content-split, .v-dialog .messages-panel",
+    "Thread Detail Subject": ".v-dialog .thread-subject, .v-dialog .header-text",
+    "Thread Detail Votes Panel": ".v-dialog .votes-panel, .v-dialog .panel-header:contains('Evaluations'), .v-dialog .panel-header:contains('Auswertungen')",
+    "Thread Detail Close": ".v-dialog .dialog-header .v-btn, .v-dialog .v-card-actions .l-btn:contains('Close'), .v-dialog .v-card-actions .l-btn:contains('Schließen'), .v-dialog .v-card-actions .l-btn:contains('Schliessen')",
     # Scenario Team Tab
     "Team Members List": ".team-tab .members-list, .members-list",
     "Team Invite Button": ".team-tab .tab-header .l-btn, .team-tab .l-btn:contains('Invite'), .team-tab .l-btn:contains('Add')",
@@ -536,8 +548,9 @@ ELEMENT_MAP = {
     "Provider Actions Menu": ".provider-actions .v-btn, .provider-actions button",
     "Provider Share Option": ".v-overlay--active .v-list-item:contains('Share')",
     "Share User Search": ".v-dialog .l-user-search input, .l-user-search .v-field input, .v-dialog .v-autocomplete input",
-    "Share User Suggestion": ".v-overlay--active .user-suggestion, .v-overlay--active .v-list-item:contains('ijcai_reviewer_2')",
+    "Share User Suggestion": ".v-overlay-container .v-list-item:contains('ijcai_reviewer_2'), .v-overlay-container .v-list-item:contains('reviewer_2'), .v-overlay-container [role='option']:contains('ijcai_reviewer_2'), .v-overlay-container [role='option']:contains('reviewer_2'), .v-overlay--active .v-list-item:contains('ijcai_reviewer_2'), .v-overlay--active .v-list-item:contains('reviewer_2'), .v-autocomplete__content .v-list-item:contains('ijcai_reviewer_2'), .v-autocomplete__content .v-list-item:contains('reviewer_2'), .user-suggestion:contains('ijcai_reviewer_2'), .user-suggestion:contains('reviewer_2')",
     "Share Add Button": ".l-user-search .l-btn--primary, .l-user-search .l-btn:contains('Share'), .v-dialog .l-btn:contains('Share')",
+    "Share Reviewer 2 Chip": ".v-dialog .v-chip:contains('ijcai_reviewer_2'), .v-card .v-chip:contains('ijcai_reviewer_2'), .v-chip:contains('ijcai_reviewer_2')",
     "Share Chip": ".v-dialog .v-chip, .v-card .v-chip",
     "Share Dialog Close": ".v-dialog .v-card-actions .l-btn--cancel, .v-dialog .v-card-actions .l-btn:contains('Close'), .v-dialog .v-card-actions .l-btn",
     "Model List": ".model-list, .v-list:has(.v-list-item)",
@@ -812,9 +825,13 @@ class Timeline:
 class Recorder:
     """Screen Recorder mit Audio-Sync Post-Processing"""
 
-    # Ziel-Auflösung für das Video
+    # Fallback-Auflösung (nur falls kein Display-Size-Context verfügbar ist)
     TARGET_WIDTH = 1920
     TARGET_HEIGHT = 1080
+
+    # Capture-Qualität
+    CAPTURE_FPS = 30
+    RAW_CRF = 12
 
     # Audio-Verstärkung (1.0 = normal, 2.0 = doppelt so laut)
     AUDIO_VOLUME = 3.0
@@ -884,7 +901,7 @@ class Recorder:
         1. Finds the correct screen capture device (not iPhone camera)
         2. Probes actual capture resolution (e.g. 3600x2338 on scaled Retina)
         3. Clamps crop to actual capture bounds (Chrome may extend off-screen)
-        4. Scales final output to 1920x1080
+        4. Uses native crop resolution (no forced stretch/scale)
         """
         import platform
 
@@ -895,6 +912,7 @@ class Recorder:
         if platform.system() == 'Darwin':
             # Find correct screen capture device
             screen_device = self._find_screen_device()
+            video_filter = None
 
             if self.window_bounds:
                 x, y, w, h = self.window_bounds
@@ -920,57 +938,62 @@ class Recorder:
                     pw = pw - (pw % 2)
                     ph = ph - (ph % 2)
 
-                    video_filter = f"crop={pw}:{ph}:{px}:{py},scale={self.TARGET_WIDTH}:{self.TARGET_HEIGHT}"
+                    video_filter = f"crop={pw}:{ph}:{px}:{py}"
                     print(f"   📐 Logical window: {w}x{h} at ({x},{y})")
                     print(f"   📐 Logical screen: {logical_screen_w}x{logical_screen_h}")
                     print(f"   📐 Physical crop:  {pw}x{ph} at ({px},{py}) [clamped to {cap_w}x{cap_h}]")
                 else:
-                    # Fallback: no crop, just scale
-                    video_filter = f"scale={self.TARGET_WIDTH}:{self.TARGET_HEIGHT}"
-                    print(f"   ⚠️ Could not probe capture resolution, using full screen")
-            else:
-                video_filter = f"scale={self.TARGET_WIDTH}:{self.TARGET_HEIGHT}"
+                    print("   ⚠️ Could not probe capture resolution, recording full screen without crop")
 
             cmd = [
                 'ffmpeg', '-y',
                 '-f', 'avfoundation',
-                '-framerate', '30',
+                '-framerate', str(self.CAPTURE_FPS),
                 '-capture_cursor', '1',
-                '-i', f'{screen_device}:none',
-                '-vf', video_filter,
+                '-i', f'{screen_device}:none'
+            ]
+            if video_filter:
+                cmd.extend(['-vf', video_filter])
+            cmd.extend([
                 '-c:v', 'libx264',
-                '-preset', 'ultrafast',
-                '-crf', '18',  # Gute Qualität
+                '-preset', 'veryfast',
+                '-tune', 'animation',
+                '-crf', str(self.RAW_CRF),
                 '-pix_fmt', 'yuv420p',
                 self.raw_video
-            ]
+            ])
         else:
             # Linux: x11grab
             if self.window_bounds:
                 x, y, w, h = self.window_bounds
-                video_filter = f"scale={self.TARGET_WIDTH}:{self.TARGET_HEIGHT}"
+                # Ensure even dimensions (required by libx264/yuv420p)
+                w = w - (w % 2)
+                h = h - (h % 2)
                 cmd = [
                     'ffmpeg', '-y',
                     '-f', 'x11grab',
-                    '-framerate', '30',
+                    '-framerate', str(self.CAPTURE_FPS),
                     '-video_size', f'{w}x{h}',
                     '-i', f':0.0+{x},{y}',  # x11grab mit Offset
-                    '-vf', video_filter,
                     '-c:v', 'libx264',
-                    '-preset', 'ultrafast',
-                    '-crf', '18',
+                    '-preset', 'veryfast',
+                    '-tune', 'animation',
+                    '-crf', str(self.RAW_CRF),
+                    '-pix_fmt', 'yuv420p',
                     self.raw_video
                 ]
             else:
                 cmd = [
                     'ffmpeg', '-y',
                     '-f', 'x11grab',
-                    '-framerate', '30',
+                    '-framerate', str(self.CAPTURE_FPS),
                     '-video_size', f'{self.TARGET_WIDTH}x{self.TARGET_HEIGHT}',
                     '-i', ':0.0',
                     '-c:v', 'libx264',
-                    '-preset', 'ultrafast',
-                    '-crf', '18',
+                    '-preset', 'veryfast',
+                    '-tune', 'animation',
+                    '-crf', str(self.RAW_CRF),
+                    '-pix_fmt', 'yuv420p',
                     self.raw_video
                 ]
 
@@ -1097,22 +1120,40 @@ class Recorder:
             'ffmpeg', '-y',
             '-i', self.raw_video,
             '-i', combined_audio,
-            '-c:v', 'libx264',
-            '-preset', 'medium',
-            '-crf', '18',
+            '-c:v', 'copy',
             '-c:a', 'aac',
-            '-b:a', '192k',
+            '-b:a', '256k',
             '-map', '0:v:0',
             '-map', '1:a:0',
             '-shortest',
+            '-movflags', '+faststart',
             self.final_output
         ]
 
         result = subprocess.run(cmd_merge, capture_output=True, text=True)
         if result.returncode != 0:
-            print(f"   ⚠️ Merge fehlgeschlagen: {result.stderr[:200]}")
-            os.rename(self.raw_video, self.final_output)
-            return
+            print("   ⚠️ Merge mit Video-Stream-Copy fehlgeschlagen, fallback auf Re-Encode")
+            cmd_merge_fallback = [
+                'ffmpeg', '-y',
+                '-i', self.raw_video,
+                '-i', combined_audio,
+                '-c:v', 'libx264',
+                '-preset', 'slow',
+                '-crf', '14',
+                '-pix_fmt', 'yuv420p',
+                '-c:a', 'aac',
+                '-b:a', '256k',
+                '-map', '0:v:0',
+                '-map', '1:a:0',
+                '-shortest',
+                '-movflags', '+faststart',
+                self.final_output
+            ]
+            result_fallback = subprocess.run(cmd_merge_fallback, capture_output=True, text=True)
+            if result_fallback.returncode != 0:
+                print(f"   ⚠️ Merge fehlgeschlagen: {result_fallback.stderr[:200]}")
+                os.rename(self.raw_video, self.final_output)
+                return
 
         # Aufräumen
         if os.path.exists(self.raw_video):
@@ -1154,7 +1195,7 @@ class Recorder:
 class Browser:
     """Kontrolliert Chrome mit Selenium"""
 
-    # Ziel-Fenstergröße (innere Größe des Browser-Viewports)
+    # Fallback-Werte (wird normalerweise durch logische Bildschirmgröße überschrieben)
     TARGET_WIDTH = 1920
     TARGET_HEIGHT = 1080
 
@@ -1543,6 +1584,13 @@ class Browser:
         self.driver = None
         self.window_bounds = None  # (x, y, width, height)
         self.collab_driver = None  # Zweiter Browser für Collab-Demo
+        self._original_window_bounds = None
+        self._collab_layout_bounds = None
+        self._stage_manager_was_enabled = False
+        self._original_desktop_picture = None
+        self._finder_create_desktop_before = None
+        self._desktop_icons_hidden_for_recording = False
+        self._recording_bg_applied = False
 
     @staticmethod
     def _get_logical_screen_size() -> tuple:
@@ -1599,10 +1647,10 @@ class Browser:
         # Fenster an Position (0,0) setzen
         self.driver.set_window_position(0, 0)
 
-        # Detect logical screen size and clamp Chrome to fit
+        # Detect logical screen size and use native available space
         screen_w, screen_h = self._get_logical_screen_size()
-        target_w = min(self.TARGET_WIDTH, screen_w)
-        target_h = min(self.TARGET_HEIGHT, screen_h - 39)  # Reserve space for menu bar
+        target_w = max(1, int(screen_w))
+        target_h = max(1, int(screen_h - 39))  # Reserve space for menu bar
         print(f"   🖥️ Logical screen: {screen_w}x{screen_h}")
         print(f"   🖥️ Chrome target: {target_w}x{target_h}")
 
@@ -1654,6 +1702,7 @@ class Browser:
 
             if skip_login:
                 print("   ⏭️ Login übersprungen (wird während Aufnahme durchgeführt)")
+                self._prefill_login_credentials(username, password)
             else:
                 # 2. Login durchführen
                 self._do_login_on_login_page(username, password)
@@ -2167,6 +2216,60 @@ class Browser:
         except Exception as e:
             print(f"   ⚠️ Login-Fehler: {e}")
 
+    def _prefill_login_credentials(self, username: str, password: str):
+        """Prefills login credentials but does not submit the login form."""
+        try:
+            WebDriverWait(self.driver, 10).until(
+                EC.presence_of_element_located((By.CSS_SELECTOR, ".login-form, [data-testid='login-form']"))
+            )
+            time.sleep(0.2)
+
+            username_field = None
+            for selector in [
+                "[data-testid='username-input'] input",
+                ".login-form input[name='username']",
+                ".login-form .v-text-field:first-of-type input",
+                "input#username",
+            ]:
+                try:
+                    username_field = self.driver.find_element(By.CSS_SELECTOR, selector)
+                    if username_field and username_field.is_displayed():
+                        break
+                except Exception:
+                    continue
+
+            password_field = None
+            for selector in [
+                "[data-testid='password-input'] input",
+                ".login-form input[name='password']",
+                ".login-form input[type='password']",
+                "input#password",
+            ]:
+                try:
+                    password_field = self.driver.find_element(By.CSS_SELECTOR, selector)
+                    if password_field and password_field.is_displayed():
+                        break
+                except Exception:
+                    continue
+
+            if not username_field or not password_field:
+                print("   ⚠️ Login-Felder für Prefill nicht gefunden")
+                return
+
+            username_field.click()
+            username_field.clear()
+            username_field.send_keys(username)
+            time.sleep(0.1)
+
+            password_field.click()
+            password_field.clear()
+            password_field.send_keys(password)
+            time.sleep(0.1)
+
+            print(f"   ✓ Login-Felder vorbefüllt: {username} / {'*' * len(password)}")
+        except Exception as e:
+            print(f"   ⚠️ Prefill-Login Fehler: {e}")
+
     def _do_authentik_login(self, username: str, password: str):
         """Login auf Authentik (2-Step Flow)"""
         print(f"   🔐 Authentik Login als: {username}")
@@ -2448,6 +2551,183 @@ class Browser:
                         print(f"   ⚠️ Click fehlgeschlagen: {target} ({e})")
                 return
 
+    def _insert_text_atomically(self, driver, element, text: str) -> bool:
+        """Insert text as one chunk at the current cursor position."""
+        if not text:
+            return True
+        try:
+            return bool(driver.execute_script("""
+                const editorEl = arguments[0];
+                const text = arguments[1];
+                if (!editorEl) return false;
+                let quill = null;
+
+                try {
+                    const container = editorEl.closest('.ql-container');
+                    if (container && container.__quill) {
+                        quill = container.__quill;
+                    }
+                } catch (e) {}
+
+                if (!quill && window.Quill) {
+                    try {
+                        const found = window.Quill.find(editorEl.closest('.ql-container') || editorEl);
+                        if (found && typeof found.insertText === 'function') {
+                            quill = found;
+                        }
+                    } catch (e) {}
+                }
+
+                if (quill && typeof quill.insertText === 'function') {
+                    const sel = quill.getSelection(true);
+                    const idx = (sel && typeof sel.index === 'number')
+                        ? sel.index
+                        : Math.max(0, quill.getLength() - 1);
+                    quill.insertText(idx, text, 'user');
+                    try { quill.setSelection(idx + text.length, 0, 'silent'); } catch (e) {}
+                    return true;
+                }
+
+                if (editorEl.isContentEditable) {
+                    editorEl.focus();
+                    const sel = window.getSelection();
+                    let range = null;
+                    if (sel && sel.rangeCount > 0) {
+                        range = sel.getRangeAt(0);
+                        if (!editorEl.contains(range.startContainer)) {
+                            range = null;
+                        }
+                    }
+                    if (!range) {
+                        range = document.createRange();
+                        range.selectNodeContents(editorEl);
+                        range.collapse(false);
+                    }
+
+                    if (sel) {
+                        sel.removeAllRanges();
+                        sel.addRange(range);
+                    }
+                    range.deleteContents();
+                    const node = document.createTextNode(text);
+                    range.insertNode(node);
+                    range.setStartAfter(node);
+                    range.collapse(true);
+                    if (sel) {
+                        sel.removeAllRanges();
+                        sel.addRange(range);
+                    }
+
+                    editorEl.dispatchEvent(new Event('input', { bubbles: true }));
+                    editorEl.dispatchEvent(new Event('change', { bubbles: true }));
+                    return true;
+                }
+
+                return false;
+            """, element, text))
+        except Exception:
+            return False
+
+    def _insert_placeholder_atomically(self, driver, element, placeholder: str) -> bool:
+        """Insert a {{variable}} token as Quill variable embed (preferred)."""
+        if not placeholder or not COLLAB_PLACEHOLDER_PATTERN.fullmatch(placeholder):
+            return False
+
+        try:
+            return bool(driver.execute_script("""
+                const editorEl = arguments[0];
+                const placeholder = arguments[1];
+                if (!editorEl || !placeholder) return false;
+
+                const m = placeholder.match(/^\\{\\{([a-zA-Z_][a-zA-Z0-9_]*)\\}\\}$/);
+                if (!m) return false;
+                const varName = m[1];
+                let quill = null;
+
+                try {
+                    const container = editorEl.closest('.ql-container');
+                    if (container && container.__quill) {
+                        quill = container.__quill;
+                    }
+                } catch (e) {}
+
+                if (!quill && window.Quill) {
+                    try {
+                        const found = window.Quill.find(editorEl.closest('.ql-container') || editorEl);
+                        if (found && typeof found.insertEmbed === 'function') {
+                            quill = found;
+                        }
+                    } catch (e) {}
+                }
+
+                if (!quill || typeof quill.insertEmbed !== 'function') {
+                    return false;
+                }
+
+                const sel = quill.getSelection(true);
+                const idx = (sel && typeof sel.index === 'number')
+                    ? sel.index
+                    : Math.max(0, quill.getLength() - 1);
+
+                quill.insertEmbed(idx, 'variable', varName, 'user');
+                try { quill.setSelection(idx + 1, 0, 'silent'); } catch (e) {}
+                return true;
+            """, element, placeholder))
+        except Exception:
+            return False
+
+    def _type_with_placeholder_paste(self, driver, element, text: str, delay: float):
+        """Type normal text char-by-char, but insert {{variables}} atomically."""
+        if not text:
+            return []
+
+        token_re = re.compile(f"({COLLAB_PLACEHOLDER_PATTERN.pattern})")
+        tokens = token_re.split(text)
+        token_delay = max(delay, 0.01)
+        raw_placeholder_fallbacks = []
+
+        for token in tokens:
+            if not token:
+                continue
+
+            if COLLAB_PLACEHOLDER_PATTERN.fullmatch(token):
+                embed_inserted = self._insert_placeholder_atomically(driver, element, token)
+                if not embed_inserted:
+                    inserted = self._insert_text_atomically(driver, element, token)
+                    if not inserted:
+                        element.send_keys(token)
+                    raw_placeholder_fallbacks.append(token)
+                time.sleep(token_delay)
+                continue
+
+            for char in token:
+                if char == '\n':
+                    element.send_keys(Keys.ENTER)
+                else:
+                    element.send_keys(char)
+                time.sleep(delay)
+
+        return raw_placeholder_fallbacks
+
+    @staticmethod
+    def _limit_token_occurrences(text: str, token: str, keep: int) -> str:
+        """Keep at most `keep` occurrences of `token` in text."""
+        if not text or not token:
+            return text
+        if keep < 0:
+            keep = 0
+
+        parts = text.split(token)
+        occurrences = len(parts) - 1
+        if occurrences <= keep:
+            return text
+        if keep == 0:
+            return "".join(parts)
+
+        head = token.join(parts[:keep + 1])
+        tail = "".join(parts[keep + 1:])
+        return head + tail
+
     def type(self, target: str, text: str, speed: str = "fast", cursor: str = None):
         """Tippt Text in Element (inkl. contenteditable für Quill Editor)"""
         element = self._find_element(target)
@@ -2491,6 +2771,38 @@ class Browser:
 
             # Check if it's a contenteditable element (Quill editor)
             is_contenteditable = element.get_attribute('contenteditable') == 'true'
+            contains_placeholders = bool(COLLAB_PLACEHOLDER_PATTERN.search(text or ""))
+
+            # For placeholders in editors: keep normal typing effect for text,
+            # but insert placeholders as atomic chunks to avoid duplicate embeds.
+            if speed == "instant" and is_contenteditable and contains_placeholders:
+                try:
+                    self.driver.execute_script("""
+                        const editorEl = arguments[0];
+                        let quill = null;
+                        try {
+                            const container = editorEl.closest('.ql-container');
+                            if (container && container.__quill) quill = container.__quill;
+                        } catch (e) {}
+                        if (!quill && window.Quill) {
+                            try {
+                                const found = window.Quill.find(editorEl.closest('.ql-container') || editorEl);
+                                if (found && typeof found.setText === 'function') quill = found;
+                            } catch (e) {}
+                        }
+                        if (quill && typeof quill.setText === 'function') {
+                            quill.setText('', 'api');
+                        } else {
+                            editorEl.textContent = '';
+                            editorEl.dispatchEvent(new Event('input', { bubbles: true }));
+                            editorEl.dispatchEvent(new Event('change', { bubbles: true }));
+                        }
+                    """, element)
+                except Exception:
+                    pass
+                self._type_with_placeholder_paste(self.driver, element, text, delay=0.01)
+                print(f"   ⌨️ Type: {text[:30]}...")
+                return
 
             # Instant fill for Quill/contenteditable (avoids race conditions while typing placeholders)
             if speed == "instant" and is_contenteditable:
@@ -2581,13 +2893,8 @@ class Browser:
             delay = {"slow": 0.08, "medium": 0.04, "fast": 0.02, "turbo": 0.005}.get(speed, 0.02)
 
             if is_contenteditable:
-                # For Quill/contenteditable: type character by character
-                for char in text:
-                    if char == '\n':
-                        element.send_keys(Keys.ENTER)
-                    else:
-                        element.send_keys(char)
-                    time.sleep(delay)
+                # For Quill/contenteditable: type text, but insert placeholders atomically
+                self._type_with_placeholder_paste(self.driver, element, text, delay)
             else:
                 # Standard input field
                 for char in text:
@@ -2793,7 +3100,7 @@ class Browser:
                     <div class="pipeline-actor">Human &amp;<br>LLM Evaluators</div>
                     <div class="pipeline-arrow">\u2192</div>
                     <div class="pipeline-module pipeline-eval" id="pipeline-eval">
-                        Evaluation
+                        Hybrid<br>Evaluation
                     </div>
                     <div class="pipeline-arrow-dash">\u27F6</div>
                     <div class="pipeline-export">Evaluation<br>Results</div>
@@ -3056,11 +3363,14 @@ class Browser:
             var t = document.createElement('div');
             t.className = 'llars-overlay-title';
             t.textContent = 'LLARS';
+            t.style.marginTop = '-56px';
+            t.style.marginBottom = '8px';
             overlay.appendChild(t);
 
             var s = document.createElement('div');
             s.className = 'llars-overlay-subtitle';
             s.textContent = 'LLM Assisted Research System';
+            s.style.marginBottom = '18px';
             overlay.appendChild(s);
 
             var wrapper = document.createElement('div');
@@ -3092,7 +3402,7 @@ class Browser:
                     color: '#E8A087',
                     icon: '\\u2728',
                     title: 'Open Source',
-                    features: 'Domain-agnostic\\nSelf-hosted\\ngithub.com/llars'
+                    features: 'Domain-agnostic\\nSelf-hosted\\ngithub.com/th-nuernberg/LLARS'
                 }}
             ];
 
@@ -3151,13 +3461,17 @@ class Browser:
                     continue
 
             if username_field:
-                username_field.click()
-                time.sleep(0.2)
-                username_field.clear()
-                for char in username:
-                    username_field.send_keys(char)
-                    time.sleep(0.03)
-                print(f"   ⌨️ Username: {username}")
+                current_username = (username_field.get_attribute("value") or "").strip()
+                if current_username != username:
+                    username_field.click()
+                    time.sleep(0.2)
+                    username_field.clear()
+                    for char in username:
+                        username_field.send_keys(char)
+                        time.sleep(0.03)
+                    print(f"   ⌨️ Username: {username}")
+                else:
+                    print(f"   ↷ Username bereits vorbefüllt: {username}")
             time.sleep(0.3)
 
             # Type password
@@ -3176,13 +3490,17 @@ class Browser:
                     continue
 
             if password_field:
-                password_field.click()
-                time.sleep(0.2)
-                password_field.clear()
-                for char in password:
-                    password_field.send_keys(char)
-                    time.sleep(0.03)
-                print(f"   ⌨️ Password: {'*' * len(password)}")
+                current_password = password_field.get_attribute("value") or ""
+                if current_password != password:
+                    password_field.click()
+                    time.sleep(0.2)
+                    password_field.clear()
+                    for char in password:
+                        password_field.send_keys(char)
+                        time.sleep(0.03)
+                    print(f"   ⌨️ Password: {'*' * len(password)}")
+                else:
+                    print(f"   ↷ Password bereits vorbefüllt")
             time.sleep(0.3)
 
             # Click login button
@@ -3476,6 +3794,102 @@ class Browser:
         except Exception:
             pass
 
+    def _prepare_recording_background(self):
+        """Setzt einen neutralen Desktop-Hintergrund für Aufnahmen und blendet Icons aus."""
+        import platform
+        if platform.system() != 'Darwin':
+            return
+
+        # Aktuelles Wallpaper merken
+        try:
+            result = subprocess.run(
+                ['osascript', '-e', 'tell application "System Events" to get picture of desktop 1'],
+                capture_output=True, text=True, timeout=5
+            )
+            current_picture = (result.stdout or '').strip()
+            if current_picture:
+                self._original_desktop_picture = current_picture
+        except Exception:
+            self._original_desktop_picture = None
+
+        # Soliden Hintergrund setzen (schwarz), damit kein Desktop-Inhalt sichtbar ist
+        solid_black = '/System/Library/Desktop Pictures/Solid Colors/Black.png'
+        try:
+            if os.path.exists(solid_black):
+                subprocess.run(['osascript', '-e', f'''
+                    tell application "System Events"
+                        tell every desktop to set picture to POSIX file "{solid_black}"
+                    end tell
+                '''], capture_output=True, timeout=8)
+                self._recording_bg_applied = True
+                print("   👥 Recording-Hintergrund gesetzt (Solid Black)")
+        except Exception as e:
+            print(f"   ⚠️ Recording-Hintergrund konnte nicht gesetzt werden: {e}")
+
+        # Desktop-Icons ausblenden
+        try:
+            prev = subprocess.run(
+                ['defaults', 'read', 'com.apple.finder', 'CreateDesktop'],
+                capture_output=True, text=True, timeout=5
+            )
+            prev_value = (prev.stdout or '').strip().lower()
+            if prev_value in ('0', 'false', 'no'):
+                self._finder_create_desktop_before = False
+            else:
+                self._finder_create_desktop_before = True
+        except Exception:
+            # Standardmäßig sind Desktop-Icons aktiv
+            self._finder_create_desktop_before = True
+
+        try:
+            subprocess.run(
+                ['defaults', 'write', 'com.apple.finder', 'CreateDesktop', '-bool', 'false'],
+                capture_output=True, timeout=5
+            )
+            subprocess.run(['killall', 'Finder'], capture_output=True, timeout=5)
+            self._desktop_icons_hidden_for_recording = True
+            time.sleep(0.5)
+            print("   👥 Desktop-Icons ausgeblendet")
+        except Exception as e:
+            print(f"   ⚠️ Desktop-Icons konnten nicht ausgeblendet werden: {e}")
+
+    def _restore_recording_background(self):
+        """Stellt Hintergrund- und Desktop-Icon-Zustand nach der Aufnahme wieder her."""
+        import platform
+        if platform.system() != 'Darwin':
+            return
+
+        # Desktop-Icons Zustand wiederherstellen
+        if self._desktop_icons_hidden_for_recording:
+            try:
+                restore_bool = 'true' if self._finder_create_desktop_before else 'false'
+                subprocess.run(
+                    ['defaults', 'write', 'com.apple.finder', 'CreateDesktop', '-bool', restore_bool],
+                    capture_output=True, timeout=5
+                )
+                subprocess.run(['killall', 'Finder'], capture_output=True, timeout=5)
+                print("   👥 Desktop-Icons wiederhergestellt")
+            except Exception:
+                pass
+            self._desktop_icons_hidden_for_recording = False
+
+        # Wallpaper wiederherstellen
+        if self._recording_bg_applied and self._original_desktop_picture:
+            try:
+                pic = self._original_desktop_picture.replace('"', '\\"')
+                subprocess.run(['osascript', '-e', f'''
+                    tell application "System Events"
+                        tell every desktop to set picture to POSIX file "{pic}"
+                    end tell
+                '''], capture_output=True, timeout=8)
+                print("   👥 Desktop-Hintergrund wiederhergestellt")
+            except Exception:
+                pass
+
+        self._recording_bg_applied = False
+        self._original_desktop_picture = None
+        self._finder_create_desktop_before = None
+
     def _restore_stage_manager(self):
         """Stellt den vorherigen Stage Manager Zustand wieder her."""
         import platform
@@ -3521,32 +3935,94 @@ class Browser:
         except Exception as e:
             print(f"   ⚠️ AppleScript Fenster-Tiling fehlgeschlagen: {e}")
 
-    def collab_open(self, username: str = "researcher", password: str = "admin123"):
+    def _prepare_collab_layout(self):
+        """Positions the main browser on the left half and stores layout bounds.
+
+        This must run on the main thread only. The async collab worker must not
+        issue commands on the main WebDriver session.
+        """
+        if not self.driver:
+            raise RuntimeError("Main browser is not available")
+
+        # Save original bounds once for later restoration.
+        if not getattr(self, '_original_window_bounds', None):
+            self._original_window_bounds = self.get_window_bounds()
+
+        mx, my, mw, mh = self._original_window_bounds
+        left_w = mw // 2
+        right_w = mw - left_w
+
+        # Move main browser to the left side.
+        self.driver.set_window_position(mx, my)
+        time.sleep(0.2)
+        self.driver.set_window_size(left_w, mh)
+        time.sleep(0.5)
+        print(f"   👥 Hauptbrowser → links: ({mx},{my}) {left_w}x{mh}")
+
+        # Persist bounds so async worker can place the collab browser without
+        # touching the main driver.
+        self._collab_layout_bounds = {
+            'mx': mx, 'my': my, 'mh': mh, 'left_w': left_w, 'right_w': right_w
+        }
+        return self._collab_layout_bounds
+
+    def collab_open(self, username: str = "researcher", password: str = "admin123",
+                    prepare_main: bool = True, target_url: str = None):
         """
         Öffnet einen zweiten Browser für die Kollaborations-Demo.
         Side-by-Side Layout: Hauptbrowser links (50%), Collab-Browser rechts (50%).
         Deaktiviert macOS Stage Manager falls nötig.
         """
         print(f"   👥 Öffne Collab-Browser als '{username}' (Side-by-Side)...")
+        if self.collab_driver:
+            try:
+                # Avoid starting multiple collab sessions.
+                _ = self.collab_driver.current_url
+                print("   ↷ Collab-Browser bereits geöffnet")
+                return
+            except Exception:
+                self.collab_driver = None
 
         # Stage Manager wurde bereits in ScriptRunner.run() deaktiviert
 
-        # 1. Originale Bounds speichern für späteres Restore
-        self._original_window_bounds = self.get_window_bounds()
-        mx, my, mw, mh = self._original_window_bounds
-        half_w = mw // 2
+        # 1. Main layout preparation must happen on main thread.
+        if prepare_main:
+            layout = self._prepare_collab_layout()
+        else:
+            layout = getattr(self, '_collab_layout_bounds', None)
+            if not layout:
+                # Fallback for direct async invocation without prior layout prep.
+                # Do not call main WebDriver from worker thread.
+                base_bounds = (
+                    getattr(self, '_original_window_bounds', None)
+                    or self.window_bounds
+                )
+                if not base_bounds:
+                    screen_w, screen_h = self._get_logical_screen_size()
+                    base_bounds = (0, 39, max(1, int(screen_w)), max(1, int(screen_h - 39)))
+                mx, my, mw, mh = base_bounds
+                left_w = mw // 2
+                right_w = mw - left_w
+                layout = {
+                    'mx': mx, 'my': my, 'mh': mh, 'left_w': left_w, 'right_w': right_w
+                }
+                self._collab_layout_bounds = layout
+            mx = layout['mx']
+            my = layout['my']
+            mh = layout['mh']
+            left_w = layout['left_w']
+            right_w = layout['right_w']
+        if prepare_main:
+            mx = layout['mx']
+            my = layout['my']
+            mh = layout['mh']
+            left_w = layout['left_w']
+            right_w = layout['right_w']
 
-        # 2. Hauptbrowser auf linke Hälfte — Position ZUERST (macOS Window-Manager)
-        self.driver.set_window_position(mx, my)
-        time.sleep(0.2)
-        self.driver.set_window_size(half_w, mh)
-        time.sleep(0.5)
-        print(f"   👥 Hauptbrowser → links: ({mx},{my}) {half_w}x{mh}")
-
-        # 3. Collab-Browser erstellen — Position/Size als Launch-Flags
+        # 2. Collab-Browser erstellen — Position/Size als Launch-Flags
         options = Options()
-        options.add_argument(f'--window-position={mx + half_w},{my}')
-        options.add_argument(f'--window-size={half_w},{mh}')
+        options.add_argument(f'--window-position={mx + left_w},{my}')
+        options.add_argument(f'--window-size={right_w},{mh}')
         options.add_argument('--no-first-run')
         options.add_argument('--no-default-browser-check')
         options.add_experimental_option('excludeSwitches', ['enable-automation'])
@@ -3560,17 +4036,23 @@ class Browser:
         self.collab_driver = webdriver.Chrome(service=service, options=options)
         time.sleep(1.0)
 
-        # 4. Positionen reinforcen — Collab zuerst, dann Hauptbrowser
-        self.collab_driver.set_window_position(mx + half_w, my)
-        self.collab_driver.set_window_size(half_w, mh)
+        # 3. Positionen reinforcen — avoid touching main driver in async mode.
+        self.collab_driver.set_window_position(mx + left_w, my)
+        self.collab_driver.set_window_size(right_w, mh)
         time.sleep(0.3)
-        self.driver.set_window_position(mx, my)
-        self.driver.set_window_size(half_w, mh)
+        if prepare_main and self.driver:
+            self.driver.set_window_position(mx, my)
+            self.driver.set_window_size(left_w, mh)
+            # Fallback-Tiling against 1px gaps.
+            self._tile_chrome_windows(
+                (mx, my, left_w, mh),
+                (mx + left_w, my, right_w, mh)
+            )
         time.sleep(0.5)
 
-        # 5. JETZT andere Fenster ausblenden (NACH Positionierung, sonst verschiebt macOS die Chrome-Fenster)
+        # 4. JETZT andere Fenster ausblenden (NACH Positionierung, sonst verschiebt macOS die Chrome-Fenster)
         self._hide_other_windows()
-        print(f"   👥 Collab-Browser → rechts: ({mx + half_w},{my}) {half_w}x{mh}")
+        print(f"   👥 Collab-Browser → rechts: ({mx + left_w},{my}) {right_w}x{mh}")
 
         # Zur Login-Seite navigieren
         self.collab_driver.get(self.base_url)
@@ -3580,9 +4062,27 @@ class Browser:
         self._set_language_for_driver(self.collab_driver, "en")
 
         # Login - try dev button first, then form/Authentik login
-        self._collab_login(username, password)
+        self._collab_login(username, password, target_url=target_url)
 
-    def _collab_login(self, username: str, password: str):
+    def _collab_open_post_login_target(self, target_url: str = None):
+        """Open a specific prompt URL after login if available, else Prompt Engineering."""
+        driver = self.collab_driver
+        if not driver:
+            return
+
+        # Fast path: jump directly into the already opened shared prompt.
+        if target_url and "/promptengineering" in target_url:
+            try:
+                driver.get(target_url)
+                time.sleep(0.5)
+                print("   👥 Collab öffnet direkt den geteilten Prompt (URL)")
+                return
+            except Exception as e:
+                print(f"   ⚠️ Collab konnte Ziel-URL nicht öffnen: {e}")
+
+        self._collab_open_prompt_engineering()
+
+    def _collab_login(self, username: str, password: str, target_url: str = None):
         """Login for the collab browser. Handles dev buttons, form login, and Authentik."""
         driver = self.collab_driver
 
@@ -3593,7 +4093,8 @@ class Browser:
             if dev_btn and dev_btn.is_displayed():
                 driver.execute_script("arguments[0].click()", dev_btn)
                 print(f"   ✓ Collab-User '{username}' via Dev-Button eingeloggt")
-                time.sleep(2)
+                time.sleep(1)
+                self._collab_open_post_login_target(target_url=target_url)
                 return
         except Exception:
             pass
@@ -3613,6 +4114,7 @@ class Browser:
             time.sleep(1)
             url = driver.current_url.lower()
             if '/home' in url or '/promptengineering' in url or '/generation' in url:
+                self._collab_open_post_login_target(target_url=target_url)
                 print(f"   ✓ Collab-User '{username}' eingeloggt")
                 return
             elif 'authentik' in url or '/auth/' in url:
@@ -3622,6 +4124,21 @@ class Browser:
                 # Still on LLARS login - try form
                 self._collab_form_login(driver, username, password)
         print(f"   ⚠️ Collab-Login Status unklar (URL: {driver.current_url})")
+
+    def _collab_open_prompt_engineering(self):
+        """Navigates the collab browser to Prompt Engineering right after login."""
+        driver = self.collab_driver
+        if not driver:
+            return
+        try:
+            current_url = (driver.current_url or "").lower()
+            if "/promptengineering" in current_url:
+                return
+            driver.get(f"{self.base_url}/promptengineering")
+            time.sleep(0.5)
+            print("   👥 Collab öffnet direkt Prompt Engineering")
+        except Exception as e:
+            print(f"   ⚠️ Collab Prompt-Engineering Navigation fehlgeschlagen: {e}")
 
     def _collab_form_login(self, driver, username: str, password: str):
         """Form-based login on LLARS login page for collab browser."""
@@ -3722,6 +4239,95 @@ class Browser:
         print(f"   👥 Collab navigiert zu: {path}")
         self.collab_driver.get(url)
         time.sleep(2)
+
+    def collab_open_shared_prompt(self):
+        """Opens the exact prompt page currently visible in the main browser."""
+        if not self.collab_driver or not self.driver:
+            print("   ⚠️ Collab oder Main-Browser nicht verfügbar!")
+            return
+        try:
+            main_url = self.driver.current_url
+            if not main_url:
+                print("   ⚠️ Main-URL leer, Collab bleibt auf aktueller Seite")
+                return
+            self.collab_driver.get(main_url)
+            print("   👥 Collab öffnet denselben Prompt wie im Hauptbrowser")
+            time.sleep(0.4)
+        except Exception as e:
+            print(f"   ⚠️ Collab konnte shared prompt nicht öffnen: {e}")
+
+    def collab_open_prompt(self, prompt_name: str, timeout: float = 12.0):
+        """Finds and opens a prompt card by name in the collab browser.
+
+        Falls die Karte nicht gefunden wird, wird als Fallback der aktuell geöffnete
+        Prompt aus dem Hauptbrowser geöffnet.
+        """
+        if not self.collab_driver:
+            print("   ⚠️ Collab-Browser nicht geöffnet!")
+            return
+
+        # Ensure we're on prompt list page first.
+        try:
+            self.collab_goto("/promptengineering")
+        except Exception:
+            pass
+
+        name = (prompt_name or "").strip()
+        if not name:
+            name = "Live Situation Summary"
+        name_l = name.lower()
+        fallback_key = "situation summary"
+
+        deadline = time.time() + max(2.0, float(timeout))
+        while time.time() < deadline:
+            try:
+                card = self.collab_driver.execute_script(
+                    """
+                    const wanted = arguments[0];
+                    const fallback = arguments[1];
+                    const candidates = Array.from(document.querySelectorAll(
+                      '.prompt-card, .prompt-list-item, .v-card, .v-list-item, a, button'
+                    ));
+                    for (const el of candidates) {
+                      const txt = (el.innerText || el.textContent || '').toLowerCase();
+                      if (!txt) continue;
+                      if (txt.includes(wanted) || txt.includes(fallback)) return el;
+                    }
+                    return null;
+                    """,
+                    name_l,
+                    fallback_key
+                )
+                if card:
+                    self.collab_driver.execute_script(
+                        "arguments[0].scrollIntoView({behavior:'smooth', block:'center'});",
+                        card
+                    )
+                    time.sleep(0.2)
+                    try:
+                        card.click()
+                    except Exception:
+                        self.collab_driver.execute_script("arguments[0].click();", card)
+                    print(f"   👥 Collab öffnet Prompt: {name}")
+                    time.sleep(0.8)
+                    return
+            except Exception:
+                pass
+            time.sleep(0.4)
+
+        # Fallback: open exactly what main browser currently has.
+        if self.driver:
+            try:
+                main_url = self.driver.current_url
+                if main_url and "/promptengineering" in main_url:
+                    self.collab_driver.get(main_url)
+                    print(f"   👥 Collab-Fallback: öffnet geteilten Prompt direkt ({name})")
+                    time.sleep(1.0)
+                    return
+            except Exception:
+                pass
+
+        print(f"   ⚠️ Collab konnte Prompt '{name}' nicht öffnen")
 
     def _find_element_in_driver(self, driver, target: str):
         """Findet Element in einem beliebigen WebDriver (für Collab-Support)"""
@@ -3836,8 +4442,17 @@ class Browser:
                 existing_text = ""
 
             if existing_text and text_to_type:
+                existing_placeholders = set(COLLAB_PLACEHOLDER_PATTERN.findall(existing_text))
+                if existing_placeholders:
+                    # If a placeholder already exists in the prompt, avoid typing it again.
+                    text_to_type = COLLAB_PLACEHOLDER_PATTERN.sub(
+                        lambda match: "" if match.group(0) in existing_placeholders else match.group(0),
+                        text_to_type
+                    )
+
                 duplicate_markers = [
                     "Content: {{content}}",
+                    "The fields come from one counselling case: subject line and full message thread.",
                     "The data above is provided as a subject line followed by the email thread content from a counselling session."
                 ]
                 for marker in duplicate_markers:
@@ -3848,11 +4463,76 @@ class Browser:
                     print("   👥 Collab-Eingabe übersprungen (Text bereits vorhanden)")
                     return
 
-            # Tippe jeden Buchstaben einzeln für sichtbaren Effekt
+            typed_placeholders = COLLAB_PLACEHOLDER_PATTERN.findall(text_to_type)
+            placeholder_target_counts = {}
+            if typed_placeholders:
+                for placeholder in set(typed_placeholders):
+                    existing_count = existing_text.count(placeholder) if existing_text else 0
+                    typed_count = text_to_type.count(placeholder)
+                    placeholder_target_counts[placeholder] = existing_count + typed_count
+
+            # Tippe normalen Text sichtbar, füge {{variablen}} aber atomar ein.
             print(f"   👥 Collab tippt in '{target}' ({cursor_mode}): {text_to_type[:30]}...")
-            for char in text_to_type:
-                element.send_keys(char)
-                time.sleep(delay)
+            raw_placeholder_fallbacks = self._type_with_placeholder_paste(
+                self.collab_driver, element, text_to_type, delay
+            )
+
+            # Last-resort cleanup: if Quill/Yjs produced adjacent duplicate placeholders,
+            # collapse them to a single token.
+            if placeholder_target_counts and raw_placeholder_fallbacks:
+                fallback_set = set(raw_placeholder_fallbacks)
+                try:
+                    final_text = self.collab_driver.execute_script(
+                        "return arguments[0].innerText || arguments[0].textContent || '';",
+                        element
+                    ) or ""
+                except Exception:
+                    final_text = ""
+
+                if final_text:
+                    cleaned_text = final_text
+                    for placeholder, keep_count in placeholder_target_counts.items():
+                        if placeholder not in fallback_set:
+                            continue
+                        pattern = re.compile(
+                            rf"{re.escape(placeholder)}(?:[\s\u200b\u200c\u200d\ufeff]*{re.escape(placeholder)})+"
+                        )
+                        cleaned_text = pattern.sub(placeholder, cleaned_text)
+                        cleaned_text = self._limit_token_occurrences(cleaned_text, placeholder, keep_count)
+
+                    if cleaned_text != final_text:
+                        try:
+                            self.collab_driver.execute_script("""
+                                const editorEl = arguments[0];
+                                const text = arguments[1];
+                                let quill = null;
+                                try {
+                                    const container = editorEl.closest('.ql-container');
+                                    if (container && container.__quill) {
+                                        quill = container.__quill;
+                                    }
+                                } catch (e) {}
+
+                                if (!quill && window.Quill) {
+                                    try {
+                                        const found = window.Quill.find(editorEl.closest('.ql-container') || editorEl);
+                                        if (found && typeof found.setText === 'function') {
+                                            quill = found;
+                                        }
+                                    } catch (e) {}
+                                }
+
+                                if (quill && typeof quill.setText === 'function') {
+                                    quill.setText(text, 'api');
+                                } else {
+                                    editorEl.textContent = text;
+                                    editorEl.dispatchEvent(new Event('input', { bubbles: true }));
+                                    editorEl.dispatchEvent(new Event('change', { bubbles: true }));
+                                }
+                            """, element, cleaned_text)
+                            print("   ↺ Doppelte Platzhalter bereinigt")
+                        except Exception:
+                            pass
             print(f"   ✓ Collab-Eingabe abgeschlossen")
         else:
             print(f"   ⚠️ Collab konnte '{target}' nicht finden")
@@ -3863,8 +4543,20 @@ class Browser:
             return
 
         try:
-            # Finde den Quill-Editor
-            editor = self.collab_driver.find_element(By.CSS_SELECTOR, ".ql-editor")
+            # Prefer mapped editor target, then fallback selectors.
+            editor = self._find_element_in_driver(self.collab_driver, "Last Block Editor")
+            if not editor:
+                for sel in [".ql-editor", ".editor-block .ql-editor", "[contenteditable='true']"]:
+                    try:
+                        cand = self.collab_driver.find_element(By.CSS_SELECTOR, sel)
+                        if cand and cand.is_displayed():
+                            editor = cand
+                            break
+                    except Exception:
+                        continue
+            if not editor:
+                print("   ↷ Collab-Editor-Fokus übersprungen (kein Editor sichtbar)")
+                return
             # Klicke hinein und bewege den Cursor
             self.collab_driver.execute_script("""
                 arguments[0].click();
@@ -3879,8 +4571,8 @@ class Browser:
             """, editor)
             print(f"   👥 Collab-Cursor im Editor aktiv")
             time.sleep(0.5)
-        except Exception as e:
-            print(f"   ⚠️ Collab-Editor-Fokus fehlgeschlagen: {e}")
+        except Exception:
+            print("   ↷ Collab-Editor-Fokus übersprungen")
 
     def collab_close(self):
         """Schließt den Collab-Browser und stellt Hauptbrowser auf volle Breite zurück."""
@@ -3896,6 +4588,7 @@ class Browser:
             self.driver.set_window_size(mw, mh)
             print(f"   👥 Hauptbrowser → volle Breite: ({mx},{my}) {mw}x{mh}")
             self._original_window_bounds = None
+            self._collab_layout_bounds = None
             time.sleep(0.3)
 
         # Stage Manager bleibt deaktiviert bis Aufnahme-Ende (ScriptRunner.run() stellt wieder her)
@@ -3928,6 +4621,16 @@ class ScriptRunner:
         self.recorder = None
         self.tts_model_override = None  # Überschreibt tts_model aus SCRIPT.json
         self.use_voice_cloning = False  # Voice Cloning ist SEHR langsam auf CPU!
+        self.collab_open_thread = None
+        self.collab_open_error = None
+        # Timing profile (can be overridden via SCRIPT.json -> config.timing)
+        self.wait_scale = 1.0
+        self.highlight_scale = 1.0
+        self.micro_pause_scale = 1.0
+        self.post_step_pause = 0.2
+        self.min_wait = 0.05
+        self.min_highlight = 0.25
+        self.min_micro_pause = 0.04
 
     def load_script(self):
         """Lädt Skript"""
@@ -3935,7 +4638,66 @@ class ScriptRunner:
         self.script_path = str(script_path)
         with open(self.script_path, encoding="utf-8") as f:
             self.script = json.load(f)
+        self._load_timing_profile()
         print(f"✓ Skript geladen: {len(self.script['steps'])} Schritte")
+
+    def _load_timing_profile(self):
+        """Loads optional timing overrides from SCRIPT.json config.timing."""
+        config = self.script.get('config', {}) if self.script else {}
+        timing = config.get('timing', {}) if isinstance(config, dict) else {}
+
+        def _num(name: str, default: float, min_v: float, max_v: float) -> float:
+            try:
+                value = float(timing.get(name, default))
+            except Exception:
+                value = default
+            return max(min_v, min(max_v, value))
+
+        self.wait_scale = _num('wait_scale', 1.0, 0.2, 1.0)
+        self.highlight_scale = _num('highlight_scale', 1.0, 0.2, 1.0)
+        self.micro_pause_scale = _num('micro_pause_scale', 1.0, 0.2, 1.0)
+        self.post_step_pause = _num('post_step_pause', 0.2, 0.02, 0.5)
+        self.min_wait = _num('min_wait', 0.05, 0.01, 0.5)
+        self.min_highlight = _num('min_highlight', 0.25, 0.05, 1.0)
+        self.min_micro_pause = _num('min_micro_pause', 0.04, 0.01, 0.3)
+
+    def _scaled_wait(self, seconds: float, test_mode: bool = False) -> float:
+        """Scales scripted wait times (do=wait)."""
+        try:
+            seconds = float(seconds)
+        except Exception:
+            seconds = 0.0
+        if seconds <= 0:
+            return 0.0
+        if test_mode:
+            return max(min(seconds, 1.5), 0.5)
+        return max(self.min_wait, seconds * self.wait_scale)
+
+    def _scaled_highlight(self, seconds: float, test_mode: bool = False) -> float:
+        """Scales highlight durations."""
+        try:
+            seconds = float(seconds)
+        except Exception:
+            seconds = 0.0
+        if seconds <= 0:
+            return 0.0
+        if test_mode:
+            return 0.5
+        return max(self.min_highlight, seconds * self.highlight_scale)
+
+    def _micro_sleep(self, seconds: float, test_mode: bool = False):
+        """Scales short framework/UI settle pauses."""
+        try:
+            seconds = float(seconds)
+        except Exception:
+            seconds = 0.0
+        if seconds <= 0:
+            return
+        if test_mode:
+            time.sleep(min(seconds, 0.3))
+            return
+        actual = max(self.min_micro_pause, seconds * self.micro_pause_scale)
+        time.sleep(actual)
 
     # =========================================================================
     # SECTION-BASIERTES AUDIO-CACHING
@@ -4457,6 +5219,8 @@ class ScriptRunner:
             # === PHASE 2: DESKTOP VORBEREITEN + BROWSER ÖFFNEN ===
             # Stage Manager deaktivieren und andere Fenster ausblenden VOR Chrome-Start
             self.browser._disable_stage_manager()
+            if record and not test_mode:
+                self.browser._prepare_recording_background()
             self.browser._hide_other_windows()
 
             self.browser.open()
@@ -4546,8 +5310,9 @@ class ScriptRunner:
                         highlight_before = action.get('highlight_before', 0)
                         if highlight_before > 0 and do == 'click':
                             target = action.get('target', '')
-                            self.browser.highlight(target, highlight_before, keep=True)
-                            print(f"   ✨ highlight: {target} ({highlight_before}s)")
+                            hb_duration = self._scaled_highlight(highlight_before, test_mode=False)
+                            self.browser.highlight(target, hb_duration, keep=True)
+                            print(f"   ✨ highlight: {target} ({hb_duration:.2f}s)")
 
                         # SMOOTH TRANSITION: highlight → click on same target
                         if do == 'highlight':
@@ -4562,7 +5327,8 @@ class ScriptRunner:
                                     keep = True
                                 break
                             if keep:
-                                self.browser.highlight(hl_target, action.get('duration', 2), keep=True)
+                                hl_duration = self._scaled_highlight(action.get('duration', 2), test_mode=False)
+                                self.browser.highlight(hl_target, hl_duration, keep=True)
                                 print(f"   ✨ highlight (→click): {hl_target}")
                                 continue
 
@@ -4579,7 +5345,10 @@ class ScriptRunner:
                     if remaining > 0:
                         time.sleep(remaining)
 
-                time.sleep(0.1 if test_mode else 0.2)
+                if test_mode:
+                    time.sleep(0.1)
+                else:
+                    time.sleep(self.post_step_pause)
 
             # Ergebnis
             if test_mode:
@@ -4605,7 +5374,8 @@ class ScriptRunner:
                 # Audio ins Video einfügen
                 self.recorder.merge_audio()
             if self.browser:
-                # Stage Manager wiederherstellen bevor Browser geschlossen wird
+                # Desktop-Umgebung wiederherstellen bevor Browser geschlossen wird
+                self.browser._restore_recording_background()
                 self.browser._restore_stage_manager()
                 self.browser.close()
 
@@ -4623,6 +5393,20 @@ class ScriptRunner:
             return float(result.stdout.strip())
         except ValueError:
             return 3.0  # Default 3 Sekunden
+
+    def _collab_open_worker(self, username: str, password: str, target_url: str = None):
+        """Background worker for non-blocking collab browser startup/login."""
+        try:
+            # IMPORTANT: Keep main WebDriver untouched in background thread.
+            self.browser.collab_open(
+                username,
+                password,
+                prepare_main=False,
+                target_url=target_url
+            )
+            self.collab_open_error = None
+        except Exception as e:
+            self.collab_open_error = str(e)
 
     def _execute_action(self, action: dict, test_mode: bool = False):
         """Führt eine einzelne Aktion aus. Gibt False zurück wenn Element nicht gefunden.
@@ -4706,17 +5490,17 @@ class ScriptRunner:
                     "arguments[0].scrollIntoView({behavior: 'smooth', block: 'center'})",
                     element
                 )
-                time.sleep(0.2)
+                self._micro_sleep(0.2, test_mode=test_mode)
                 self.browser.driver.execute_script(
                     "arguments[0].classList.add('llars-highlight')",
                     element
                 )
-                time.sleep(0.2)
+                self._micro_sleep(0.2, test_mode=test_mode)
                 try:
                     element.click()
                 except Exception:
                     self.browser.driver.execute_script("arguments[0].click()", element)
-                time.sleep(0.2)
+                self._micro_sleep(0.2, test_mode=test_mode)
                 self.browser.driver.execute_script(
                     "arguments[0].classList.remove('llars-highlight')",
                     element
@@ -4752,17 +5536,17 @@ class ScriptRunner:
                     "arguments[0].scrollIntoView({behavior: 'smooth', block: 'center'})",
                     element
                 )
-                time.sleep(0.2)
+                self._micro_sleep(0.2, test_mode=test_mode)
                 self.browser.driver.execute_script(
                     "arguments[0].classList.add('llars-highlight')",
                     element
                 )
-                time.sleep(0.2)
+                self._micro_sleep(0.2, test_mode=test_mode)
                 try:
                     element.click()
                 except Exception:
                     self.browser.driver.execute_script("arguments[0].click()", element)
-                time.sleep(0.2)
+                self._micro_sleep(0.2, test_mode=test_mode)
                 self.browser.driver.execute_script(
                     "arguments[0].classList.remove('llars-highlight')",
                     element
@@ -4825,13 +5609,55 @@ class ScriptRunner:
         elif do == 'highlight':
             element = self.browser._find_element(target)
             if element:
-                # Im Test-Modus kürzer highlighten
-                duration = 0.5 if test_mode else action.get('duration', 2)
+                duration = self._scaled_highlight(action.get('duration', 2), test_mode=test_mode)
                 self.browser.highlight(target, duration)
                 print(f"   ✓ highlight: {target}")
                 return True
             else:
                 print(f"   ✗ highlight: {target} (NICHT GEFUNDEN)")
+                return False
+
+        elif do == 'highlight_on':
+            element = self.browser._find_element(target)
+            if element:
+                try:
+                    self.browser.driver.execute_script(
+                        "arguments[0].scrollIntoView({behavior: 'smooth', block: 'center'})",
+                        element
+                    )
+                    self.browser.driver.execute_script(
+                        "arguments[0].classList.add('llars-highlight')",
+                        element
+                    )
+                except Exception:
+                    pass
+                print(f"   ✓ highlight_on: {target}")
+                return True
+            else:
+                print(f"   ✗ highlight_on: {target} (NICHT GEFUNDEN)")
+                return False
+
+        elif do == 'highlight_off':
+            element = self.browser._find_element(target)
+            if element:
+                try:
+                    self.browser.driver.execute_script(
+                        "arguments[0].classList.remove('llars-highlight')",
+                        element
+                    )
+                except Exception:
+                    pass
+                print(f"   ✓ highlight_off: {target}")
+                return True
+            # Fallback: avoid stale persistent highlights if target disappeared
+            try:
+                self.browser.driver.execute_script(
+                    "document.querySelectorAll('.llars-highlight').forEach(el => el.classList.remove('llars-highlight'));"
+                )
+                print(f"   ↷ highlight_off: {target} (fallback clear all)")
+                return True
+            except Exception:
+                print(f"   ✗ highlight_off: {target} (NICHT GEFUNDEN)")
                 return False
 
         elif do == 'drag':
@@ -4873,7 +5699,7 @@ class ScriptRunner:
                     element.click()
                 except Exception:
                     self.browser.driver.execute_script("arguments[0].click()", element)
-                time.sleep(0.1)
+                self._micro_sleep(0.1, test_mode=test_mode)
                 # Set value via JS using native setter (works with Vue/Vuetify reactivity)
                 try:
                     self.browser.driver.execute_script("""
@@ -4903,12 +5729,9 @@ class ScriptRunner:
                 return False
 
         elif do == 'wait':
-            seconds = action.get('seconds', 1)
-            # Im Test-Modus kürzere Wartezeiten, aber mindestens 1s für async content
-            if test_mode:
-                seconds = max(min(seconds, 1.5), 0.5)
+            seconds = self._scaled_wait(action.get('seconds', 1), test_mode=test_mode)
             time.sleep(seconds)
-            print(f"   ✓ wait: {seconds}s")
+            print(f"   ✓ wait: {seconds:.2f}s")
             return True
 
         elif do == 'wait_for':
@@ -4934,23 +5757,23 @@ class ScriptRunner:
             duration = action.get('duration', 0)
             self.browser.show_title(title, subtitle, text, columns=columns)
             if test_mode:
-                time.sleep(0.3)  # Kurz anzeigen im Test
+                self._micro_sleep(0.3, test_mode=test_mode)  # Kurz anzeigen im Test
                 if duration > 0:
-                    time.sleep(0.5)
+                    self._micro_sleep(0.5, test_mode=test_mode)
                     self.browser.hide_title()
-                    time.sleep(0.3)
+                    self._micro_sleep(0.3, test_mode=test_mode)
             else:
-                time.sleep(0.5)  # Wait for fade-in
+                self._micro_sleep(0.5, test_mode=test_mode)  # Wait for fade-in
                 if duration > 0:
-                    time.sleep(duration)
+                    time.sleep(self._scaled_wait(duration, test_mode=False))
                     self.browser.hide_title()
-                    time.sleep(0.6)  # Wait for fade-out
+                    self._micro_sleep(0.6, test_mode=test_mode)  # Wait for fade-out
             print(f"   ✓ show_title: {title}")
             return True
 
         elif do == 'hide_title':
             self.browser.hide_title()
-            time.sleep(0.3 if test_mode else 0.6)  # Wait for fade-out
+            self._micro_sleep(0.3 if test_mode else 0.6, test_mode=test_mode)  # Wait for fade-out
             print(f"   ✓ hide_title")
             return True
 
@@ -4960,45 +5783,45 @@ class ScriptRunner:
             columns = action.get('columns', None)
             self.browser.show_pipeline(title=title, subtitle=subtitle, columns=columns)
             if test_mode:
-                time.sleep(0.3)
+                self._micro_sleep(0.3, test_mode=test_mode)
             else:
-                time.sleep(0.5)  # Wait for fade-in
+                self._micro_sleep(0.5, test_mode=test_mode)  # Wait for fade-in
             print(f"   ✓ show_pipeline")
             return True
 
         elif do == 'show_problem':
             self.browser.show_problem()
             if test_mode:
-                time.sleep(0.3)
+                self._micro_sleep(0.3, test_mode=test_mode)
             else:
-                time.sleep(0.5)  # Wait for fade-in
+                self._micro_sleep(0.5, test_mode=test_mode)  # Wait for fade-in
             print(f"   ✓ show_problem")
             return True
 
         elif do == 'problem_show_painpoints':
             self.browser.problem_show_painpoints()
             if test_mode:
-                time.sleep(0.2)
+                self._micro_sleep(0.2, test_mode=test_mode)
             else:
-                time.sleep(0.5)
+                self._micro_sleep(0.5, test_mode=test_mode)
             print(f"   ✓ problem_show_painpoints")
             return True
 
         elif do == 'merge_problem':
             self.browser.merge_problem()
             if test_mode:
-                time.sleep(0.3)
+                self._micro_sleep(0.3, test_mode=test_mode)
             else:
-                time.sleep(1.5)  # Wait for merge animation
+                self._micro_sleep(1.5, test_mode=test_mode)  # Wait for merge animation
             print(f"   ✓ merge_problem")
             return True
 
         elif do == 'show_data_preview':
             self.browser.show_data_preview()
             if test_mode:
-                time.sleep(0.3)
+                self._micro_sleep(0.3, test_mode=test_mode)
             else:
-                time.sleep(0.5)  # Wait for fade-in
+                self._micro_sleep(0.5, test_mode=test_mode)  # Wait for fade-in
             print(f"   ✓ show_data_preview")
             return True
 
@@ -5006,9 +5829,9 @@ class ScriptRunner:
             columns = action.get('columns', None)
             self.browser.show_summary(columns=columns)
             if test_mode:
-                time.sleep(0.3)
+                self._micro_sleep(0.3, test_mode=test_mode)
             else:
-                time.sleep(0.5)  # Wait for fade-in
+                self._micro_sleep(0.5, test_mode=test_mode)  # Wait for fade-in
             print(f"   ✓ show_summary")
             return True
 
@@ -5017,7 +5840,7 @@ class ScriptRunner:
             if element:
                 self.browser.driver.execute_script("arguments[0].scrollIntoView({behavior: 'smooth', block: 'center'});", element)
                 print(f"   ✓ scroll_to: {target}")
-                time.sleep(0.5)
+                self._micro_sleep(0.5, test_mode=test_mode)
                 return True
             else:
                 print(f"   ✗ scroll_to: {target} (NICHT GEFUNDEN)")
@@ -5037,7 +5860,7 @@ class ScriptRunner:
                     amount
                 )
                 print(f"   ✓ scroll: {target} ({amount}px)")
-                time.sleep(0.3)
+                self._micro_sleep(0.3, test_mode=test_mode)
                 return True
             else:
                 print(f"   ✗ scroll: {target} (NICHT GEFUNDEN)")
@@ -5068,7 +5891,7 @@ class ScriptRunner:
                     return removed;
                 """)
                 print(f"   🧹 Cleaned {result} stale overlay(s)")
-                time.sleep(0.3)
+                self._micro_sleep(0.3, test_mode=test_mode)
             except Exception as e:
                 print(f"   ⚠️ dismiss_overlays error: {e}")
             return True
@@ -5102,14 +5925,93 @@ class ScriptRunner:
         elif do == 'collab_open':
             username = action.get('user', 'researcher')
             password = action.get('password', 'admin123')
-            self.browser.collab_open(username, password)
-            print(f"   ✓ collab_open: {username}")
+            target_url = action.get('target_url')
+            if not target_url:
+                try:
+                    current = self.browser.driver.current_url if self.browser and self.browser.driver else None
+                    if current and "/promptengineering" in current:
+                        target_url = current
+                except Exception:
+                    target_url = None
+            try:
+                self.browser.collab_open(
+                    username,
+                    password,
+                    prepare_main=True,
+                    target_url=target_url
+                )
+                print(f"   ✓ collab_open: {username}")
+                return True
+            except Exception as e:
+                print(f"   ⚠️ collab_open Fehler: {e}")
+                return False
+
+        elif do == 'collab_open_async':
+            username = action.get('user', 'researcher')
+            password = action.get('password', 'admin123')
+            target_url = action.get('target_url')
+            if not target_url:
+                try:
+                    current = self.browser.driver.current_url if self.browser and self.browser.driver else None
+                    if current and "/promptengineering" in current:
+                        target_url = current
+                except Exception:
+                    target_url = None
+            if self.collab_open_thread and self.collab_open_thread.is_alive():
+                print("   ↷ collab_open_async: bereits aktiv")
+                return True
+            # Prepare main window layout synchronously to avoid cross-thread
+            # WebDriver access on the main browser session.
+            try:
+                self.browser._prepare_collab_layout()
+            except Exception as e:
+                print(f"   ⚠️ collab_open_async Layout-Fehler: {e}")
+                return False
+            self.collab_open_error = None
+            self.collab_open_thread = threading.Thread(
+                target=self._collab_open_worker,
+                args=(username, password, target_url),
+                daemon=True
+            )
+            self.collab_open_thread.start()
+            if target_url:
+                print(f"   ✓ collab_open_async gestartet: {username} (Direkt-URL aktiv)")
+            else:
+                print(f"   ✓ collab_open_async gestartet: {username}")
+            return True
+
+        elif do == 'collab_wait_ready':
+            timeout = action.get('timeout', 45)
+            if self.collab_open_thread:
+                self.collab_open_thread.join(timeout=timeout)
+                if self.collab_open_thread.is_alive():
+                    print(f"   ⚠️ collab_wait_ready timeout nach {timeout}s")
+                    return False
+            if self.collab_open_error:
+                print(f"   ⚠️ collab_wait_ready Fehler: {self.collab_open_error}")
+                return False
+            if not self.browser.collab_driver:
+                print("   ⚠️ collab_wait_ready: Collab-Browser nicht verfügbar")
+                return False
+            print("   ✓ collab_wait_ready")
             return True
 
         elif do == 'collab_goto':
             path = action.get('url', action.get('path', '/'))
             self.browser.collab_goto(path)
             print(f"   ✓ collab_goto: {path}")
+            return True
+
+        elif do == 'collab_open_shared_prompt':
+            self.browser.collab_open_shared_prompt()
+            print(f"   ✓ collab_open_shared_prompt")
+            return True
+
+        elif do == 'collab_open_prompt':
+            prompt_name = action.get('name') or action.get('prompt') or target or 'Live Situation Summary'
+            timeout = action.get('timeout', 12)
+            self.browser.collab_open_prompt(prompt_name, timeout=timeout)
+            print(f"   ✓ collab_open_prompt: {prompt_name}")
             return True
 
         elif do == 'collab_click':

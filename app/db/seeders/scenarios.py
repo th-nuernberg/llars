@@ -588,142 +588,69 @@ def seed_demo_scenarios(db):
 
         mail_rating_threads.append(thread)
 
-    # Threads for Fake/Echt (Authenticity)
+    # Threads for Fake/Echt (Authenticity) - loop over AUTHENTICITY_SAMPLES
+    from .demo_datasets import AUTHENTICITY_SAMPLES
+
     authenticity_threads = []
-
-    thread6 = EmailThread.query.filter_by(chat_id=9101, institut_id=3, function_type_id=authenticity_type.function_type_id).first()
-    if not thread6:
-        thread6 = EmailThread(
-            chat_id=9101,
-            institut_id=3,
-            subject='Fake/Echt – Demo Fall (Echt)',
-            sender='demo@example.com',
+    for idx, sample in enumerate(AUTHENTICITY_SAMPLES):
+        chat_id = 9101 + idx
+        thread = EmailThread.query.filter_by(
+            chat_id=chat_id, institut_id=3,
             function_type_id=authenticity_type.function_type_id
-        )
-        db.session.add(thread6)
-        db.session.flush()
-
-        messages6 = [
-            Message(
-                thread_id=thread6.thread_id,
-                sender='Ratsuchende',
-                content='Hallo, ich habe ein Problem mit meinem Chef und weiß nicht, wie ich damit umgehen soll.',
-                timestamp=datetime.now() - timedelta(days=2, hours=10),
-                generated_by='Human'
-            ),
-            Message(
-                thread_id=thread6.thread_id,
-                sender='Beratende',
-                content='Danke für deine Nachricht. Magst du kurz beschreiben, was genau passiert ist und wie oft es vorkommt?',
-                timestamp=datetime.now() - timedelta(days=2, hours=9, minutes=30),
-                generated_by='Human'
-            ),
-        ]
-        for msg in messages6:
-            db.session.add(msg)
-
-    authenticity_threads.append(thread6)
-
-    if thread6 and not AuthenticityConversation.query.filter_by(thread_id=thread6.thread_id).first():
-        meta6 = {
-            "conversation_id": 9101,
-            "augmentation_type": "reg_single_any",
-            "replaced_positions": [],
-            "num_replacements": 0,
-            "total_messages": 2,
-            "saeule": "3",
-            "split": "train",
-            "model": None,
-            "model_short": None,
-            "generated_at": datetime.now().isoformat(),
-            "format_version": "v6",
-        }
-        db.session.add(
-            AuthenticityConversation(
-                thread_id=thread6.thread_id,
-                sample_key="v6:demo-auth-9101",
-                conversation_id=9101,
-                augmentation_type=meta6.get("augmentation_type"),
-                replaced_positions=meta6.get("replaced_positions"),
-                num_replacements=meta6.get("num_replacements"),
-                total_messages=meta6.get("total_messages"),
-                saeule=meta6.get("saeule"),
-                split=meta6.get("split"),
-                model=meta6.get("model"),
-                model_short=meta6.get("model_short"),
-                generated_at=datetime.fromisoformat(meta6.get("generated_at")),
-                format_version=meta6.get("format_version"),
-                is_fake=False,
-                metadata_json=meta6,
+        ).first()
+        if not thread:
+            thread = EmailThread(
+                chat_id=chat_id,
+                institut_id=3,
+                subject=sample['subject'],
+                sender='demo@example.com',
+                function_type_id=authenticity_type.function_type_id
             )
-        )
+            db.session.add(thread)
+            db.session.flush()
 
-    thread7 = EmailThread.query.filter_by(chat_id=9102, institut_id=3, function_type_id=authenticity_type.function_type_id).first()
-    if not thread7:
-        thread7 = EmailThread(
-            chat_id=9102,
-            institut_id=3,
-            subject='Fake/Echt – Demo Fall (Fake)',
-            sender='demo@example.com',
-            function_type_id=authenticity_type.function_type_id
-        )
-        db.session.add(thread7)
-        db.session.flush()
+            generated_by = sample.get('model') or 'Human'
+            for msg_idx, msg in enumerate(sample['messages']):
+                db.session.add(Message(
+                    thread_id=thread.thread_id,
+                    sender=msg['sender'],
+                    content=msg['content'],
+                    generated_by=generated_by,
+                    timestamp=datetime.now() - timedelta(days=20 - idx, hours=10 - msg_idx)
+                ))
 
-        messages7 = [
-            Message(
-                thread_id=thread7.thread_id,
-                sender='Ratsuchende',
-                content='Hi, ich bin total überfordert mit meinem Studium und habe Angst zu versagen.',
-                timestamp=datetime.now() - timedelta(days=1, hours=18),
-                generated_by='Human'
-            ),
-            Message(
-                thread_id=thread7.thread_id,
-                sender='Beratende',
-                content='Es tut mir leid, dass du dich so fühlst. Lass uns gemeinsam schauen, was dich am meisten belastet und welche nächsten Schritte möglich sind.',
-                timestamp=datetime.now() - timedelta(days=1, hours=17, minutes=40),
-                generated_by='gpt-5.1'
-            ),
-        ]
-        for msg in messages7:
-            db.session.add(msg)
+        authenticity_threads.append(thread)
 
-    authenticity_threads.append(thread7)
-
-    if thread7 and not AuthenticityConversation.query.filter_by(thread_id=thread7.thread_id).first():
-        meta7 = {
-            "conversation_id": 9102,
-            "augmentation_type": "reg_single_any",
-            "replaced_positions": [1],
-            "num_replacements": 1,
-            "total_messages": 2,
-            "saeule": "3",
-            "split": "train",
-            "model": "gpt-5.1",
-            "model_short": "gpt51",
-            "generated_at": datetime.now().isoformat(),
-            "format_version": "v6",
-        }
-        db.session.add(
-            AuthenticityConversation(
-                thread_id=thread7.thread_id,
-                sample_key="v6:demo-auth-9102",
-                conversation_id=9102,
-                augmentation_type=meta7.get("augmentation_type"),
-                replaced_positions=meta7.get("replaced_positions"),
-                num_replacements=meta7.get("num_replacements"),
-                total_messages=meta7.get("total_messages"),
-                saeule=meta7.get("saeule"),
-                split=meta7.get("split"),
-                model=meta7.get("model"),
-                model_short=meta7.get("model_short"),
-                generated_at=datetime.fromisoformat(meta7.get("generated_at")),
-                format_version=meta7.get("format_version"),
-                is_fake=True,
-                metadata_json=meta7,
+        # Create AuthenticityConversation metadata
+        if thread and not AuthenticityConversation.query.filter_by(thread_id=thread.thread_id).first():
+            is_fake = sample.get('is_fake', False)
+            model = sample.get('model') if is_fake else None
+            model_short = model[:10] if model else None
+            db.session.add(
+                AuthenticityConversation(
+                    thread_id=thread.thread_id,
+                    sample_key=f"v6:demo-auth-{chat_id}",
+                    conversation_id=chat_id,
+                    augmentation_type="reg_single_any",
+                    replaced_positions=[1] if is_fake else [],
+                    num_replacements=1 if is_fake else 0,
+                    total_messages=len(sample['messages']),
+                    saeule="3",
+                    split="train",
+                    model=model,
+                    model_short=model_short,
+                    generated_at=datetime.now(),
+                    format_version="v6",
+                    is_fake=is_fake,
+                    metadata_json={
+                        "conversation_id": chat_id,
+                        "augmentation_type": "reg_single_any",
+                        "model": model,
+                        "is_fake": is_fake,
+                        "indicators": sample.get('indicators', []),
+                    },
+                )
             )
-        )
 
     # Threads for Labeling (generalized text categorization)
     labeling_threads = []
@@ -1105,6 +1032,44 @@ def seed_demo_scenarios(db):
             config['llm_evaluators'] = demo_llm_evaluators
             authenticity_scenario.config_json = config
             print(f"  Updated Authenticity Scenario with LLM evaluators")
+
+        # Ensure all authenticity threads are linked to the existing scenario
+        existing_thread_ids = {
+            st.thread_id for st in ScenarioThreads.query.filter_by(
+                scenario_id=authenticity_scenario.id
+            ).all()
+        }
+        new_thread_objs = []
+        for thread in authenticity_threads:
+            if thread.thread_id not in existing_thread_ids:
+                st = ScenarioThreads(
+                    scenario_id=authenticity_scenario.id,
+                    thread_id=thread.thread_id
+                )
+                db.session.add(st)
+                new_thread_objs.append(st)
+
+        if new_thread_objs:
+            db.session.flush()
+            # Distribute new threads to existing EVALUATOR users
+            evaluator_scenario_users = ScenarioUsers.query.filter_by(
+                scenario_id=authenticity_scenario.id,
+                role=ScenarioRoles.EVALUATOR
+            ).all()
+            for rater_su in evaluator_scenario_users:
+                for st in new_thread_objs:
+                    existing_dist = ScenarioThreadDistribution.query.filter_by(
+                        scenario_id=authenticity_scenario.id,
+                        scenario_user_id=rater_su.id,
+                        scenario_thread_id=st.id
+                    ).first()
+                    if not existing_dist:
+                        db.session.add(ScenarioThreadDistribution(
+                            scenario_id=authenticity_scenario.id,
+                            scenario_user_id=rater_su.id,
+                            scenario_thread_id=st.id
+                        ))
+            print(f"  Added {len(new_thread_objs)} new threads to existing Authenticity Scenario")
 
     if admin_user and authenticity_scenario:
         _ensure_scenario_user(authenticity_scenario.id, admin_user.id, ScenarioRoles.VIEWER)

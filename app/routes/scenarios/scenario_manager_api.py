@@ -1752,7 +1752,8 @@ def get_scenario_stats(scenario_id):
                 },
                 'vote_distribution': stats_data.get('vote_distribution'),
                 'overall_accuracy': stats_data.get('overall_accuracy'),
-                'ground_truth_stats': stats_data.get('ground_truth_stats')
+                'ground_truth_stats': stats_data.get('ground_truth_stats'),
+                'authenticity_provenance': stats_data.get('authenticity_provenance'),
             }
         else:
             # Standard progress scenarios (ranking, rating, mail_rating, etc.)

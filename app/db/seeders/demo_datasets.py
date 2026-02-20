@@ -590,21 +590,15 @@ MAIL_RATING_SAMPLES = [
 # =============================================================================
 
 AUTHENTICITY_SAMPLES = [
+    # ---- 1-10: Real (Human-written) news/statements ----
     {
         "subject": "Wissenschaftliche Studie zu Klimawandel",
         "messages": [
             {"sender": "Nachricht", "content": """Eine neue Studie der Universität Hamburg, veröffentlicht im Journal "Nature Climate Change", zeigt einen Anstieg der globalen Durchschnittstemperatur um 0.8°C seit 1900. Die Forscher analysierten Daten von 4.500 Messstationen weltweit über einen Zeitraum von 120 Jahren. Professor Dr. Maria Schmidt, Leiterin der Studie, betont: "Die Ergebnisse sind konsistent mit früheren IPCC-Berichten." Die vollständige Studie ist unter DOI 10.1038/s41558-024-01234-5 einsehbar."""},
         ],
         "is_fake": False,
+        "model": None,
         "indicators": ["Quellenangabe", "DOI", "Peer-Review Journal", "Messbare Daten"]
-    },
-    {
-        "subject": "SCHOCK: Geheime Regierungspläne enthüllt!!!",
-        "messages": [
-            {"sender": "Nachricht", "content": """EXKLUSIV!!! Insider berichten von GEHEIMEN Plänen der Regierung, die SIE nicht erfahren sollen! Ein anonymer Whistleblower hat uns brisante Dokumente zugespielt, die ALLES verändern werden! Teilen Sie diesen Artikel SOFORT, bevor er GELÖSCHT wird! Die Mainstream-Medien SCHWEIGEN zu diesem Skandal! WACHT ENDLICH AUF!!!"""},
-        ],
-        "is_fake": True,
-        "indicators": ["Clickbait", "Anonyme Quellen", "Verschwörungsnarrative", "Emotionale Sprache"]
     },
     {
         "subject": "Bundestagsbeschluss zur Rentenreform",
@@ -612,15 +606,8 @@ AUTHENTICITY_SAMPLES = [
             {"sender": "Nachricht", "content": """Der Bundestag hat am gestrigen Donnerstag mit 412 zu 237 Stimmen das Rentenreformgesetz verabschiedet. Das Gesetz sieht eine schrittweise Anhebung des Renteneintrittsalters auf 67 Jahre bis 2031 vor. Bundesarbeitsminister Thomas Müller (SPD) erklärte in der Pressekonferenz: "Mit dieser Reform sichern wir die Renten für kommende Generationen." Die Opposition kritisierte den Beschluss als sozial unausgewogen."""},
         ],
         "is_fake": False,
+        "model": None,
         "indicators": ["Konkrete Zahlen", "Namentliche Quellen", "Sachlicher Ton", "Beide Seiten"]
-    },
-    {
-        "subject": "Ärzte WARNEN: Dieses Lebensmittel TÖTET Sie langsam!",
-        "messages": [
-            {"sender": "Nachricht", "content": """Führende Mediziner schlagen Alarm! Ein alltägliches Lebensmittel, das in JEDEM Haushalt zu finden ist, verursacht KREBS und andere tödliche Krankheiten! Die Pharma-Industrie VERHEIMLICHT diese Information seit Jahren! Klicken Sie HIER um zu erfahren, welches Lebensmittel Sie SOFORT aus Ihrem Kühlschrank verbannen müssen!"""},
-        ],
-        "is_fake": True,
-        "indicators": ["Gesundheitspanikmache", "Verschwörung", "Clickbait", "Keine konkreten Quellen"]
     },
     {
         "subject": "Wirtschaftswachstum im dritten Quartal",
@@ -628,15 +615,8 @@ AUTHENTICITY_SAMPLES = [
             {"sender": "Nachricht", "content": """Das Statistische Bundesamt meldet für das dritte Quartal 2024 ein Wirtschaftswachstum von 0.3 Prozent gegenüber dem Vorquartal. Im Jahresvergleich stieg das Bruttoinlandsprodukt um 1.2 Prozent. Haupttreiber waren der private Konsum (+0.5%) und die Bauinvestitionen (+1.1%). Die Exporte gingen hingegen um 0.8 Prozent zurück. Das ifo-Institut bestätigte diese Entwicklung in seiner aktuellen Konjunkturprognose."""},
         ],
         "is_fake": False,
+        "model": None,
         "indicators": ["Offizielle Statistik", "Prozentangaben", "Mehrere Quellen", "Differenzierte Analyse"]
-    },
-    {
-        "subject": "Impfungen verursachen Autismus - Neue Beweise!",
-        "messages": [
-            {"sender": "Nachricht", "content": """Eine Facebook-Gruppe mit über 50.000 Mitgliedern hat "erschreckende Beweise" gesammelt, dass Impfungen direkt zu Autismus führen. "Mein Kind war völlig normal, bis es geimpft wurde", berichtet eine betroffene Mutter. Die Schulmedizin WEIGERT sich, diese Zusammenhänge anzuerkennen. Informieren Sie sich SELBST und schützen Sie Ihre Kinder vor der Impf-Mafia!"""},
-        ],
-        "is_fake": True,
-        "indicators": ["Wissenschaftlich widerlegt", "Anekdotische Evidenz", "Verschwörung", "Anti-Wissenschaft"]
     },
     {
         "subject": "EZB erhöht Leitzins um 0.25 Prozentpunkte",
@@ -644,7 +624,109 @@ AUTHENTICITY_SAMPLES = [
             {"sender": "Nachricht", "content": """Die Europäische Zentralbank (EZB) hat heute den Leitzins um 0.25 Prozentpunkte auf 4.5 Prozent angehoben. EZB-Präsidentin Christine Lagarde begründete den Schritt mit der anhaltend hohen Inflation im Euroraum. "Wir werden die Geldpolitik so lange straffen, bis die Inflation nachhaltig auf unser Ziel von zwei Prozent sinkt", sagte Lagarde in Frankfurt. Ökonomen erwarten weitere Zinsschritte in den kommenden Monaten."""},
         ],
         "is_fake": False,
+        "model": None,
         "indicators": ["Offizielle Institution", "Zitate", "Sachlicher Ton", "Kontext"]
+    },
+    {
+        "subject": "Neue S-Bahn-Linie für München beschlossen",
+        "messages": [
+            {"sender": "Nachricht", "content": """Der Münchner Stadtrat hat am Dienstag den Bau einer neuen S-Bahn-Linie S7 genehmigt, die den Stadtteil Freiham mit dem Hauptbahnhof verbinden soll. Die Baukosten werden auf 1.8 Milliarden Euro geschätzt, die Inbetriebnahme ist für 2032 geplant. Oberbürgermeister Dieter Reiter sagte: "Diese Linie ist ein wichtiger Schritt für die Verkehrswende in München." Der Bund übernimmt 60 Prozent der Kosten gemäß dem Gemeindeverkehrsfinanzierungsgesetz."""},
+        ],
+        "is_fake": False,
+        "model": None,
+        "indicators": ["Konkrete Kostendaten", "Namentliche Quelle", "Gesetzesreferenz", "Sachlicher Ton"]
+    },
+    {
+        "subject": "Tarifverhandlungen im öffentlichen Dienst",
+        "messages": [
+            {"sender": "Nachricht", "content": """Nach 14-stündigen Verhandlungen haben sich die Gewerkschaft ver.di und die Vereinigung der kommunalen Arbeitgeberverbände (VKA) auf einen Tarifabschluss geeinigt. Die 2.5 Millionen Beschäftigten im öffentlichen Dienst erhalten ab März eine Gehaltserhöhung von 5.5 Prozent, mindestens jedoch 250 Euro monatlich. Ver.di-Vorsitzende Frank Werneke bezeichnete das Ergebnis als "soliden Kompromiss". Die Laufzeit beträgt 24 Monate."""},
+        ],
+        "is_fake": False,
+        "model": None,
+        "indicators": ["Verhandlungsdetails", "Konkrete Zahlen", "Zitat beider Seiten", "Laufzeitangabe"]
+    },
+    {
+        "subject": "Forschungsdurchbruch bei Alzheimer-Therapie",
+        "messages": [
+            {"sender": "Nachricht", "content": """Wissenschaftler der Charité Berlin haben in einer Phase-III-Studie mit 1.200 Patienten gezeigt, dass der Wirkstoff Lecanemab den kognitiven Abbau bei früher Alzheimer-Demenz um 27 Prozent verlangsamen kann. Die Ergebnisse wurden im "New England Journal of Medicine" veröffentlicht. Studienleiter Prof. Dr. Andreas Heinz warnt jedoch: "Lecanemab ist kein Heilmittel, sondern verlangsamt den Verlauf. Die Nebenwirkungen müssen sorgfältig abgewogen werden." Die EMA prüft derzeit die Zulassung."""},
+        ],
+        "is_fake": False,
+        "model": None,
+        "indicators": ["Phase-III-Studie", "Patientenzahl", "Journal-Publikation", "Risiko-Hinweis"]
+    },
+    {
+        "subject": "Hochwasserlage in Niedersachsen",
+        "messages": [
+            {"sender": "Nachricht", "content": """Nach tagelangem Dauerregen hat das niedersächsische Landesamt für Wasserwirtschaft für die Flüsse Aller und Leine die Hochwasserwarnstufe 3 ausgerufen. In den Landkreisen Celle und Hildesheim wurden vorsorglich 850 Bewohner evakuiert. Der Krisenstab des Innenministeriums tagt seit Samstagmorgen. Ministerpräsident Stephan Weil sagte in Hannover: "Wir beobachten die Lage genau und sind auf alle Szenarien vorbereitet." Der Deutsche Wetterdienst erwartet erst ab Mittwoch Entspannung."""},
+        ],
+        "is_fake": False,
+        "model": None,
+        "indicators": ["Behördliche Quelle", "Konkrete Evakuierungszahlen", "Sachliche Darstellung", "Prognose"]
+    },
+    {
+        "subject": "DSGVO-Bußgeld gegen Online-Händler",
+        "messages": [
+            {"sender": "Nachricht", "content": """Die Berliner Datenschutzbeauftragte Meike Kamp hat gegen den Online-Händler ShopExpress GmbH ein Bußgeld in Höhe von 14.5 Millionen Euro verhängt. Grund ist die systematische Speicherung von Zahlungsdaten ohne ausreichende Einwilligung der Kunden zwischen 2022 und 2024. Das Unternehmen hat Widerspruch eingelegt. Kamp erklärte: "Dieser Fall zeigt, dass auch mittelständische Unternehmen die DSGVO ernst nehmen müssen." ShopExpress kündigte an, die Datenschutzprozesse grundlegend zu überarbeiten."""},
+        ],
+        "is_fake": False,
+        "model": None,
+        "indicators": ["Behördliche Entscheidung", "Bußgeldhöhe", "Beide Seiten", "DSGVO-Referenz"]
+    },
+    {
+        "subject": "Deutschlandticket wird teurer",
+        "messages": [
+            {"sender": "Nachricht", "content": """Ab Januar 2026 steigt der Preis des Deutschlandtickets von 49 auf 58 Euro monatlich. Die Verkehrsministerkonferenz begründete den Schritt mit gestiegenen Betriebskosten und dem Ablauf der Bundessubventionen. Bundesverkehrsminister Volker Wissing betonte, dass das Ticket weiterhin günstiger sei als vergleichbare Monatskarten. Der Fahrgastverband Pro Bahn kritisierte die Erhöhung als "Signal in die falsche Richtung". Sozialverbände fordern ein vergünstigtes Ticket für Geringverdiener."""},
+        ],
+        "is_fake": False,
+        "model": None,
+        "indicators": ["Konkrete Preisangaben", "Mehrere Quellen", "Kritik einbezogen", "Politischer Kontext"]
+    },
+    # ---- 11-14: Fake (generated by gpt-5.1) ----
+    {
+        "subject": "SCHOCK: Geheime Regierungspläne enthüllt!!!",
+        "messages": [
+            {"sender": "Nachricht", "content": """EXKLUSIV!!! Insider berichten von GEHEIMEN Plänen der Regierung, die SIE nicht erfahren sollen! Ein anonymer Whistleblower hat uns brisante Dokumente zugespielt, die ALLES verändern werden! Teilen Sie diesen Artikel SOFORT, bevor er GELÖSCHT wird! Die Mainstream-Medien SCHWEIGEN zu diesem Skandal! WACHT ENDLICH AUF!!!"""},
+        ],
+        "is_fake": True,
+        "model": "gpt-5.1",
+        "indicators": ["Clickbait", "Anonyme Quellen", "Verschwörungsnarrative", "Emotionale Sprache"]
+    },
+    {
+        "subject": "Ärzte WARNEN: Dieses Lebensmittel TÖTET Sie langsam!",
+        "messages": [
+            {"sender": "Nachricht", "content": """Führende Mediziner schlagen Alarm! Ein alltägliches Lebensmittel, das in JEDEM Haushalt zu finden ist, verursacht KREBS und andere tödliche Krankheiten! Die Pharma-Industrie VERHEIMLICHT diese Information seit Jahren! Klicken Sie HIER um zu erfahren, welches Lebensmittel Sie SOFORT aus Ihrem Kühlschrank verbannen müssen!"""},
+        ],
+        "is_fake": True,
+        "model": "gpt-5.1",
+        "indicators": ["Gesundheitspanikmache", "Verschwörung", "Clickbait", "Keine konkreten Quellen"]
+    },
+    {
+        "subject": "Studie beweist: Handystrahlung verursacht Tumore",
+        "messages": [
+            {"sender": "Nachricht", "content": """Eine bisher unveröffentlichte Studie eines internationalen Forscherteams belegt eindeutig den Zusammenhang zwischen Handystrahlung und Gehirntumoren. Die Telekommunikationsbranche hat die Ergebnisse jahrelang unterdrückt, doch nun hat ein mutiger Insider die Daten an unsere Redaktion weitergegeben. Besonders betroffen sind Kinder und Jugendliche. Experten raten: Schalten Sie Ihr Handy nachts AUS und halten Sie es mindestens 30cm vom Kopf entfernt!"""},
+        ],
+        "is_fake": True,
+        "model": "gpt-5.1",
+        "indicators": ["Unveröffentlichte Studie", "Unterdrückungs-Narrativ", "Panikmache", "Keine DOI"]
+    },
+    {
+        "subject": "Geheimer EU-Plan zur Bargeld-Abschaffung aufgedeckt",
+        "messages": [
+            {"sender": "Nachricht", "content": """Vertrauliche Dokumente aus Brüssel zeigen: Die EU plant die KOMPLETTE Abschaffung des Bargelds bis 2028! In einer nicht-öffentlichen Sitzung haben EU-Kommissare beschlossen, zunächst alle Scheine über 50 Euro einzuziehen. Ziel ist die totale Überwachung aller Transaktionen. Mehrere Zentralbanker haben sich anonym geäußert: "Die Bürger sollen nicht wissen, was auf sie zukommt." Heben Sie JETZT Ihr Geld ab, bevor es zu spät ist!"""},
+        ],
+        "is_fake": True,
+        "model": "gpt-5.1",
+        "indicators": ["Anonyme Quellen", "Verschwörung", "Handlungsdruck", "Keine Belege"]
+    },
+    # ---- 15-17: Fake (generated by Mistral-Small-3.2) ----
+    {
+        "subject": "Impfungen verursachen Autismus - Neue Beweise!",
+        "messages": [
+            {"sender": "Nachricht", "content": """Eine Facebook-Gruppe mit über 50.000 Mitgliedern hat "erschreckende Beweise" gesammelt, dass Impfungen direkt zu Autismus führen. "Mein Kind war völlig normal, bis es geimpft wurde", berichtet eine betroffene Mutter. Die Schulmedizin WEIGERT sich, diese Zusammenhänge anzuerkennen. Informieren Sie sich SELBST und schützen Sie Ihre Kinder vor der Impf-Mafia!"""},
+        ],
+        "is_fake": True,
+        "model": "Mistral-Small-3.2",
+        "indicators": ["Wissenschaftlich widerlegt", "Anekdotische Evidenz", "Verschwörung", "Anti-Wissenschaft"]
     },
     {
         "subject": "5G-Masten verbreiten Corona!!!",
@@ -652,7 +734,45 @@ AUTHENTICITY_SAMPLES = [
             {"sender": "Nachricht", "content": """Die WAHRHEIT wird UNTERDRÜCKT: 5G-Strahlung AKTIVIERT das Coronavirus! Bemerken Sie, dass die höchsten Corona-Zahlen GENAU dort sind, wo 5G-Masten stehen? Das ist KEIN Zufall! Die Mobilfunkindustrie und die Regierung arbeiten zusammen, um uns krank zu machen! Schützen Sie sich: Unterschreiben Sie unsere Petition gegen 5G und teilen Sie diesen Post mit ALLEN!"""},
         ],
         "is_fake": True,
+        "model": "Mistral-Small-3.2",
         "indicators": ["Falsche Kausalität", "Verschwörungstheorie", "Panikmache", "Keine Evidenz"]
+    },
+    {
+        "subject": "Chemtrails: Piloten packen aus!",
+        "messages": [
+            {"sender": "Nachricht", "content": """Drei ehemalige Lufthansa-Piloten haben in einem anonymen Interview bestätigt, dass Verkehrsflugzeuge regelmäßig chemische Substanzen in der Atmosphäre versprühen. "Wir wurden angewiesen, bestimmte Ventile über dünn besiedelten Gebieten zu öffnen", so einer der Piloten. Die Chemikalien sollen die Bevölkerung gefügig machen. Die Luftfahrtbehörden weisen alle Vorwürfe zurück, doch die Beweislage ist erdrückend. Achten Sie auf die Streifen am Himmel!"""},
+        ],
+        "is_fake": True,
+        "model": "Mistral-Small-3.2",
+        "indicators": ["Anonyme Piloten", "Chemtrail-Verschwörung", "Keine Belege", "Panikmache"]
+    },
+    # ---- 18-20: Fake (generated by Llama-3.1-70B) ----
+    {
+        "subject": "Trinkwasser in Deutschland mit Medikamenten belastet",
+        "messages": [
+            {"sender": "Nachricht", "content": """Ein geheimer Bericht des Umweltbundesamtes, der unserer Redaktion vorliegt, belegt SCHOCKIERENDE Konzentrationen von Psychopharmaka und Hormonen im deutschen Trinkwasser. Die Grenzwerte werden in 78% aller Wasserwerke überschritten! Die Behörden wissen seit Jahren Bescheid, halten die Daten aber unter Verschluss, um keine Panik auszulösen. Ein Mitarbeiter warnt: "Ich trinke nur noch Mineralwasser aus der Flasche." Schützen Sie sich und Ihre Familie SOFORT!"""},
+        ],
+        "is_fake": True,
+        "model": "Llama-3.1-70B",
+        "indicators": ["Geheimer Bericht", "Panikmache", "Anonymer Mitarbeiter", "Handlungsdruck"]
+    },
+    {
+        "subject": "Künstliche Intelligenz manipuliert Bundestagswahl",
+        "messages": [
+            {"sender": "Nachricht", "content": """IT-Sicherheitsexperten haben Hinweise gefunden, dass bei der letzten Bundestagswahl KI-Systeme eingesetzt wurden, um Wahlcomputer zu manipulieren. "Die Algorithmen haben in mindestens 12 Wahlkreisen die Ergebnisse verfälscht", behauptet ein anonymer Hacker. Das Bundesamt für Sicherheit in der Informationstechnik (BSI) dementiert, doch Insider berichten von einer internen Untersuchung, die unter Verschluss gehalten wird. Die Demokratie ist in Gefahr!"""},
+        ],
+        "is_fake": True,
+        "model": "Llama-3.1-70B",
+        "indicators": ["Wahlmanipulations-Narrativ", "Anonyme Quellen", "Verschwörung", "Keine Beweise"]
+    },
+    {
+        "subject": "Mikroplastik im Blut: Regierung verschweigt Gesundheitskrise",
+        "messages": [
+            {"sender": "Nachricht", "content": """Eine EXPLOSIVE Studie zeigt: 97% aller Deutschen haben bereits gefährliche Mengen Mikroplastik im Blut! Die Kunststoffindustrie hat die Forschungsergebnisse systematisch unterdrückt. "Die Plastikpartikel durchdringen die Blut-Hirn-Schranke und verursachen neurologische Schäden", warnt ein Wissenschaftler, der anonym bleiben möchte. Das Gesundheitsministerium weigert sich, die Studie zu kommentieren. Vermeiden Sie SOFORT alle Plastikverpackungen!"""},
+        ],
+        "is_fake": True,
+        "model": "Llama-3.1-70B",
+        "indicators": ["Übertriebene Prozentangaben", "Anonymer Wissenschaftler", "Unterdrückungs-Narrativ", "Panikmache"]
     },
 ]
 

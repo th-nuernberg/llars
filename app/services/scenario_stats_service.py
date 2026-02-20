@@ -3807,6 +3807,13 @@ def get_authenticity_stats(scenario_id: int) -> Dict[str, Any]:
             "real_count": real_count,
         },
         "pairwise_agreement": pairwise_agreement,
+        "authenticity_provenance": _calculate_authenticity_provenance(
+            thread_ids=thread_ids,
+            ground_truth=ground_truth,
+            user_stats=user_stats,
+            user_vote_map=user_vote_map,
+            llm_vote_map=llm_vote_map,
+        ),
     }
 
 
@@ -3965,3 +3972,132 @@ def _build_llm_authenticity_stats(
 
     user_stats.sort(key=lambda entry: entry["username"].lower())
     return user_stats
+
+
+def _calculate_authenticity_provenance(
+    *,
+    thread_ids: List[int],
+    ground_truth: Dict[int, bool],
+    user_stats: List[Dict[str, Any]],
+    user_vote_map: Dict[int, Dict],
+    llm_vote_map: Dict[str, Dict],
+) -> Optional[Dict[str, Any]]:
+    """Calculate provenance analysis for authenticity scenarios.
+
+    Groups threads by their generation source (Human vs each LLM model) and
+    calculates:
+    - For fake sources: fool_rate (% of evaluator votes that said "real")
+    - For real sources: false_positive_rate (% of votes that said "fake")
+    """
+    if not thread_ids:
+        return None
+
+    # Load AuthenticityConversation rows to get model per thread
+    auth_convs = AuthenticityConversation.query.filter(
+        AuthenticityConversation.thread_id.in_(thread_ids)
+    ).all()
+
+    if not auth_convs:
+        return None
+
+    # Map thread_id -> source model (None = Human)
+    thread_source = {}
+    for ac in auth_convs:
+        thread_source[ac.thread_id] = ac.model  # None for real, model name for fake
+
+    # Group thread_ids by source
+    source_threads: Dict[str, List[int]] = defaultdict(list)
+    for tid in thread_ids:
+        source = thread_source.get(tid)
+        label = source if source else "Human"
+        source_threads[label].append(tid)
+
+    # Collect all evaluator votes per thread (human + LLM)
+    def _get_vote_string(vote_obj) -> Optional[str]:
+        if vote_obj is None:
+            return None
+        if isinstance(vote_obj, str):
+            return vote_obj.lower()
+        if hasattr(vote_obj, 'vote') and vote_obj.vote:
+            return vote_obj.vote.lower()
+        return None
+
+    # Build unified vote list: [(thread_id, vote_string), ...]
+    all_votes_by_thread: Dict[int, List[str]] = defaultdict(list)
+
+    for uid, votes_dict in user_vote_map.items():
+        for tid, vote_obj in votes_dict.items():
+            vote_str = _get_vote_string(vote_obj)
+            if vote_str:
+                all_votes_by_thread[tid].append(vote_str)
+
+    for model_id, votes_dict in llm_vote_map.items():
+        for tid, vote_str in votes_dict.items():
+            if vote_str:
+                all_votes_by_thread[tid].append(vote_str.lower())
+
+    by_source = []
+    for source_label, tids in source_threads.items():
+        is_fake = source_label != "Human"
+        source_type = "llm" if is_fake else "human"
+        total_votes = 0
+        fooled_votes = 0  # said "real" on fake content
+        detected_votes = 0  # said "fake" on fake content
+        correct_votes = 0  # said "real" on real content
+        false_positive_votes = 0  # said "fake" on real content
+
+        for tid in tids:
+            for vote_str in all_votes_by_thread.get(tid, []):
+                total_votes += 1
+                if is_fake:
+                    if vote_str == "real":
+                        fooled_votes += 1
+                    else:
+                        detected_votes += 1
+                else:
+                    if vote_str == "real":
+                        correct_votes += 1
+                    else:
+                        false_positive_votes += 1
+
+        entry = {
+            "source": source_label,
+            "source_type": source_type,
+            "is_fake": is_fake,
+            "thread_count": len(tids),
+            "total_votes": total_votes,
+        }
+
+        if is_fake:
+            entry["fooled_votes"] = fooled_votes
+            entry["detected_votes"] = detected_votes
+            entry["fool_rate"] = round(fooled_votes / total_votes * 100, 1) if total_votes > 0 else 0.0
+        else:
+            entry["correct_votes"] = correct_votes
+            entry["false_positive_votes"] = false_positive_votes
+            entry["false_positive_rate"] = round(false_positive_votes / total_votes * 100, 1) if total_votes > 0 else 0.0
+
+        by_source.append(entry)
+
+    # Sort: fake sources by fool_rate descending, human sources at end
+    fake_sources = sorted(
+        [s for s in by_source if s["is_fake"]],
+        key=lambda s: s.get("fool_rate", 0),
+        reverse=True,
+    )
+    human_sources = [s for s in by_source if not s["is_fake"]]
+    by_source_sorted = fake_sources + human_sources
+
+    # Summary
+    best_fooling = fake_sources[0] if fake_sources else None
+    human_fp_rate = human_sources[0].get("false_positive_rate") if human_sources else None
+
+    return {
+        "by_source": by_source_sorted,
+        "summary": {
+            "best_fooling_source": best_fooling["source"] if best_fooling else None,
+            "best_fool_rate": best_fooling.get("fool_rate") if best_fooling else None,
+            "human_false_positive_rate": human_fp_rate,
+            "total_sources": len(by_source_sorted),
+        },
+    }

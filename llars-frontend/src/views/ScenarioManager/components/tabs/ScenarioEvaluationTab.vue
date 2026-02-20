@@ -423,6 +423,70 @@
         />
       </div>
 
+      <!-- Authenticity Provenance Analysis -->
+      <div class="provenance-section" v-if="hasAuthenticityProvenance">
+        <h4 class="subsection-title">
+          {{ $t('scenarioManager.results.authenticityProvenance') }}
+          <LTooltip :text="$t('scenarioManager.tooltips.authenticityProvenance')" location="top">
+            <v-icon size="16" class="help-icon">mdi-help-circle-outline</v-icon>
+          </LTooltip>
+        </h4>
+        <p class="subsection-description text-medium-emphasis text-caption mb-3">
+          {{ $t('scenarioManager.results.authenticityProvenanceDescription') }}
+        </p>
+
+        <div class="provenance-best-grid">
+          <div class="provenance-best-card" v-if="bestFoolingSource">
+            <span class="provenance-best-label">{{ $t('scenarioManager.results.bestFoolingLLM') }}</span>
+            <strong class="provenance-best-name">{{ bestFoolingSource.source }}</strong>
+            <span class="provenance-best-meta">
+              {{ bestFoolingSource.fool_rate }}% {{ $t('scenarioManager.results.foolRate') }}
+            </span>
+          </div>
+          <div class="provenance-best-card" v-if="humanFalsePositiveRate !== null">
+            <span class="provenance-best-label">{{ $t('scenarioManager.results.humanFalsePositiveRate') }}</span>
+            <strong class="provenance-best-name">{{ humanFalsePositiveRate }}%</strong>
+            <span class="provenance-best-meta">
+              {{ $t('scenarioManager.results.humanFalsePositiveRateDescription') }}
+            </span>
+          </div>
+        </div>
+
+        <div class="provenance-lists-grid">
+          <div class="provenance-list-card">
+            <div class="provenance-list-header">
+              <span>{{ $t('scenarioManager.results.sourceRanking') }}</span>
+              <span>{{ $t('scenarioManager.results.foolRate') }}</span>
+            </div>
+            <div v-if="authenticityProvenanceSources.length" class="provenance-list">
+              <div
+                v-for="(entry, index) in authenticityProvenanceSources"
+                :key="`auth-prov-${entry.source}`"
+                class="provenance-row"
+              >
+                <div class="provenance-row-main">
+                  <span class="provenance-rank">#{{ index + 1 }}</span>
+                  <span class="provenance-label">
+                    {{ entry.source }}
+                    <span class="provenance-badge" :class="entry.is_fake ? 'badge-fake' : 'badge-real'">
+                      {{ entry.is_fake ? 'Fake' : 'Real' }}
+                    </span>
+                  </span>
+                </div>
+                <div class="provenance-row-stats">
+                  <span class="provenance-rate" v-if="entry.is_fake">{{ entry.fool_rate }}%</span>
+                  <span class="provenance-rate" v-else>{{ entry.false_positive_rate }}% FP</span>
+                  <span class="provenance-count">n={{ entry.thread_count }} ({{ entry.total_votes }} {{ $t('scenarioManager.results.votes') }})</span>
+                </div>
+              </div>
+            </div>
+            <div v-else class="provenance-empty">
+              {{ $t('scenarioManager.results.noProvenanceData') }}
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Provenance Analysis (Ranking) -->
       <div class="provenance-section" v-if="hasProvenanceAnalysis">
         <h4 class="subsection-title">
@@ -2925,6 +2989,30 @@ const conversationProvenanceThresholdPercent = computed(() => {
   return formatProvenanceRate(rawValue)
 })
 
+// ===== Computed: Authenticity Provenance =====
+
+const authenticityProvenance = computed(() =>
+  props.liveStats?.authenticityProvenance || props.liveStats?.authenticity_provenance || null
+)
+
+const hasAuthenticityProvenance = computed(() => {
+  if (!isAuthenticityScenario.value) return false
+  return authenticityProvenance.value?.by_source?.length > 0
+})
+
+const authenticityProvenanceSources = computed(() =>
+  authenticityProvenance.value?.by_source || []
+)
+
+const bestFoolingSource = computed(() => {
+  const sources = authenticityProvenanceSources.value.filter(s => s.is_fake)
+  return sources.sort((a, b) => b.fool_rate - a.fool_rate)[0] || null
+})
+
+const humanFalsePositiveRate = computed(() =>
+  authenticityProvenance.value?.summary?.human_false_positive_rate ?? null
+)
+
 // ===== Computed: Ranking Agreement Matrix =====
 
 const rankingAgreement = computed(() => {
@@ -4868,6 +4956,27 @@ watch(
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.provenance-badge {
+  display: inline-block;
+  font-size: 0.65rem;
+  padding: 1px 6px;
+  border-radius: 6px 2px 6px 2px;
+  font-weight: 600;
+  text-transform: uppercase;
+  margin-left: 6px;
+  vertical-align: middle;
+}
+
+.badge-fake {
+  background: rgba(232, 160, 135, 0.2);
+  color: #e8a087;
+}
+
+.badge-real {
+  background: rgba(152, 212, 187, 0.2);
+  color: #98d4bb;
 }
 
 .provenance-combination-label {

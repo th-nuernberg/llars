@@ -3188,6 +3188,14 @@
       "counselorSourceRanking": "Counselor Source Ranking",
       "clientSourceRanking": "Client Source Ranking",
       "counselorClientRanking": "Counselor \u00d7 Client Ranking",
+      "authenticityProvenance": "Authenticity Provenance Analysis",
+      "authenticityProvenanceDescription": "Analyzes which LLM generation sources best fool evaluators. Shows the fool rate (percentage of evaluator votes that incorrectly classified fake content as real) per source, and the false positive rate for human-written content.",
+      "bestFoolingLLM": "Best Fooling LLM",
+      "humanFalsePositiveRate": "Human False Positive Rate",
+      "humanFalsePositiveRateDescription": "Real content incorrectly flagged as fake",
+      "foolRate": "Fool Rate",
+      "sourceRanking": "Source Ranking",
+      "votes": "votes",
       "ratingProvenanceAnalysis": "Rating Provenance Analysis",
       "ratingProvenanceDescription": "Shows which generation LLMs and prompts are associated with higher normalized rating outcomes.",
       "ratingProvenanceMetricExplanation": "Primary metric: average normalized score (0-100). Secondary metric: share of high scores (>= {threshold}%).",
@@ -3410,6 +3418,7 @@
       "provenanceAnalysis": "Compares where rated content came from (generation LLM, prompt, and prompt+LLM pair) and highlights which origins most often end up in the top bucket. Format x/y = top-bucket hits divided by all assignments for that origin.",
       "ratingProvenanceAnalysis": "Compares where rated content came from (generation LLM, prompt, and prompt+LLM pair) and highlights which origins currently achieve the highest normalized rating scores.",
       "conversationProvenance": "Analyzes conversation partner combinations. Derives who wrote the counselor and client messages (Human vs AI) and shows which combinations achieve the best ratings. Format: Counselor \u00d7 Client.",
+      "authenticityProvenance": "Shows how well each LLM generation source fools evaluators. Fool rate = percentage of votes that incorrectly classified fake content as real. Higher fool rate means the LLM generates more convincing fake content.",
       "rankingAgreement": "Per summary: Did both evaluators place it in the same bucket? Counted as: Matching summaries / Co-rated summaries. Metrics use ordinal calculation (Bucket-Krippendorff)."
     },
     "session": {

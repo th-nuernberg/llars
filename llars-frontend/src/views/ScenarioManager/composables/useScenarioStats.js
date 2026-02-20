@@ -516,6 +516,7 @@ export function useScenarioStats(scenarioIdRef) {
           // Rating provenance stats
           rating_provenance_analysis: statsData.rating_provenance_analysis || data.rating_provenance_analysis,
           conversation_provenance: statsData.conversation_provenance || data.conversation_provenance,
+          authenticity_provenance: statsData.authenticity_provenance || data.authenticity_provenance,
           rating_alpha: statsData.rating_alpha || data.rating_alpha,
           // Include ranking stats
           bucket_distribution: statsData.bucket_distribution || data.bucket_distribution,

@@ -29,6 +29,7 @@ from db.models import (
     ScenarioThreads,
 )
 from llm.openai_utils import extract_message_text
+from services.evaluation.dimensional_rating_service import DimensionalRatingService
 from services.llm.llm_client_factory import LLMClientFactory
 from services.llm.llm_execution_service import LLMExecutionService
 from services.system_settings_service import get_setting
@@ -1030,16 +1031,13 @@ Antworte im JSON-Format:
                         for msg in messages
                     ]
 
-                    # Get dimensional rating config from scenario
-                    config = scenario.config_json or {} if scenario else {}
-                    dimensions = config.get('dimensions', [
-                        {'id': 'coherence', 'name': {'de': 'Kohärenz', 'en': 'Coherence'}},
-                        {'id': 'fluency', 'name': {'de': 'Flüssigkeit', 'en': 'Fluency'}},
-                        {'id': 'relevance', 'name': {'de': 'Relevanz', 'en': 'Relevance'}},
-                        {'id': 'consistency', 'name': {'de': 'Konsistenz', 'en': 'Consistency'}}
-                    ])
-                    scale_min = config.get('min', 1)
-                    scale_max = config.get('max', 5)
+                    # Get dimensional rating config via DimensionalRatingService (handles defaults)
+                    dim_config = DimensionalRatingService.get_scenario_config(scenario_id)
+                    if not isinstance(dim_config, dict) or 'error' in dim_config:
+                        dim_config = {}
+                    dimensions = dim_config.get("dimensions", [])
+                    scale_min = dim_config.get("min", 1)
+                    scale_max = dim_config.get("max", 5)
 
                     dimension_names = [d.get('name', {}).get('en', d.get('id', 'unknown')) for d in dimensions]
                     dim_list_str = ", ".join(dimension_names)
@@ -1317,24 +1315,13 @@ Antworte im JSON-Format:
         """Rate entire email conversations using configured dimensions."""
         client, api_model_id = LLMClientFactory.resolve_client_and_model_id(model_id)
 
-        # Load scenario config to get dimensions
-        scenario = RatingScenarios.query.get(scenario_id)
-        config = scenario.config_json if scenario else {}
-        if isinstance(config, str):
-            import json
-            try:
-                config = json.loads(config)
-            except (json.JSONDecodeError, TypeError):
-                config = {}
-
-        # Get dimensions from config (check multiple locations)
-        eval_config = config.get("eval_config", {}) or {}
-        eval_config_inner = eval_config.get("config", {}) or {}
-        dimensions = config.get("dimensions", []) or eval_config.get("dimensions", []) or eval_config_inner.get("dimensions", [])
-
-        # Get global scale settings
-        global_min = config.get("min", eval_config.get("min", eval_config_inner.get("min", 1)))
-        global_max = config.get("max", eval_config.get("max", eval_config_inner.get("max", 5)))
+        # Load scenario config with proper defaults via DimensionalRatingService
+        dim_config = DimensionalRatingService.get_scenario_config(scenario_id)
+        if not isinstance(dim_config, dict) or 'error' in dim_config:
+            dim_config = {}
+        dimensions = dim_config.get("dimensions", [])
+        global_min = dim_config.get("min", 1)
+        global_max = dim_config.get("max", 5)
 
         for thread_id in thread_ids:
             try:

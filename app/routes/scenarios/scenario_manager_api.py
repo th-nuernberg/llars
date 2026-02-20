@@ -512,19 +512,28 @@ def get_scenario_detail(scenario_id):
     is_admin = has_role(user, 'admin')
     is_owner = scenario.created_by == username
 
-    # Check if user is invited
+    # Check if user is invited and build invitation_map for ownership check
     is_member = False
+    invitation_map = {}
     if user_id:
-        is_member = ScenarioUsers.query.filter_by(
+        su = ScenarioUsers.query.filter_by(
             scenario_id=scenario_id,
             user_id=user_id
-        ).first() is not None
+        ).first()
+        if su:
+            is_member = True
+            invitation_map[scenario_id] = {
+                'status': su.invitation_status.value if su.invitation_status else 'accepted',
+                'role': su.role.value if su.role else 'EVALUATOR',
+                'invited_at': su.invited_at.isoformat() if su.invited_at else None,
+                'invited_by': su.invited_by
+            }
 
     if not (is_admin or is_owner or is_member):
         raise ForbiddenError('You do not have access to this scenario')
 
     # Get detailed stats for detail view
-    result = format_scenario_for_api(scenario, user, include_detailed_stats=True)
+    result = format_scenario_for_api(scenario, user, invitation_map=invitation_map, include_detailed_stats=True)
 
     # Get detailed user stats from progress service
     try:

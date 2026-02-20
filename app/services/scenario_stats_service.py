@@ -620,6 +620,7 @@ def get_progress_stats(scenario_id: int) -> Dict[str, Any]:
     bucket_distribution = None
     provenance_analysis = None
     rating_provenance_analysis = None
+    conversation_provenance = None
     rating_alpha = None  # Krippendorff's Alpha split by evaluator type
 
     # Calculate pairwise agreement using unified dispatcher (works for all types)
@@ -631,6 +632,8 @@ def get_progress_stats(scenario_id: int) -> Dict[str, Any]:
         dimension_averages = _calculate_dimension_averages(scenario_id)
         rating_alpha = _calculate_rating_krippendorff_alpha(scenario_id)
         rating_provenance_analysis = _calculate_rating_provenance_analysis(scenario_id)
+        if function_type.name == "mail_rating":
+            conversation_provenance = _calculate_mail_rating_conversation_provenance(scenario_id)
         if alpha is None and rating_alpha and rating_alpha.get("all") is not None:
             alpha = rating_alpha["all"]
     elif function_type.name == "labeling":
@@ -649,6 +652,7 @@ def get_progress_stats(scenario_id: int) -> Dict[str, Any]:
         "rating_distribution": rating_distribution,
         "dimension_averages": dimension_averages,
         "rating_provenance_analysis": rating_provenance_analysis,
+        "conversation_provenance": conversation_provenance,
         "pairwise_agreement": pairwise_agreement,
         "bucket_distribution": bucket_distribution,
         "provenance_analysis": provenance_analysis,
@@ -1983,6 +1987,259 @@ def _calculate_rating_provenance_analysis(scenario_id: int) -> Dict[str, Any]:
         }
 
     response["segments"] = finalized_segments
+    return response
+
+
+def _calculate_mail_rating_conversation_provenance(scenario_id: int) -> Dict[str, Any]:
+    """
+    Calculate conversation partner provenance analysis for mail_rating scenarios.
+
+    Derives counselor and client source (Human, Claude, Mistral, etc.)
+    from Message.generated_by for each thread, then aggregates ratings
+    by counselor source, client source, and their combination.
+    """
+    from db.models import ScenarioItems, Message
+
+    scenario = RatingScenarios.query.get(scenario_id)
+    if not scenario:
+        return {}
+
+    config = scenario.config_json or {}
+    if isinstance(config, str):
+        try:
+            config = json.loads(config)
+        except (json.JSONDecodeError, TypeError):
+            config = {}
+    if not isinstance(config, dict):
+        config = {}
+
+    scale_bounds = _extract_rating_scale_bounds(config)
+    scale_min = scale_bounds["min"]
+    scale_max = scale_bounds["max"]
+    scale_span = scale_max - scale_min
+    high_score_threshold_normalized = 0.8
+    high_score_threshold_percent = round(high_score_threshold_normalized * 100, 1)
+
+    def _normalize_score(raw_score):
+        if raw_score is None:
+            return None
+        try:
+            score = float(raw_score)
+        except (TypeError, ValueError):
+            return None
+        if scale_span <= 0:
+            return None
+        return max(0.0, min(1.0, (score - scale_min) / scale_span))
+
+    response = {
+        "scale": {"min": scale_min, "max": scale_max},
+        "metric_definition": {
+            "primary": "avg_normalized_score",
+            "secondary": "high_score_rate",
+            "high_score_threshold_normalized": high_score_threshold_normalized,
+            "high_score_threshold_percent": high_score_threshold_percent,
+            "normalization_formula": "((score - min) / (max - min)) * 100",
+        },
+        "total_items": 0,
+        "segments": {},
+    }
+
+    # Get all items (threads) in this scenario
+    scenario_items = (
+        ScenarioItems.query
+        .filter_by(scenario_id=scenario_id)
+        .order_by(ScenarioItems.id.asc())
+        .all()
+    )
+    item_ids = [row.item_id for row in scenario_items if row.item_id is not None]
+    response["total_items"] = len(item_ids)
+    if not item_ids:
+        return response
+
+    # Derive counselor_source and client_source per thread from Message.generated_by
+    messages = (
+        Message.query
+        .filter(Message.thread_id.in_(item_ids))
+        .order_by(Message.thread_id.asc(), Message.message_id.asc())
+        .all()
+    )
+
+    counselor_senders = {"berater", "beratende person", "counselor", "counsellor"}
+    client_senders = {"klient", "ratsuchende person", "client"}
+
+    thread_provenance = {}  # item_id -> {counselor_source, client_source}
+    from collections import Counter
+    thread_messages = defaultdict(list)
+    for msg in messages:
+        thread_messages[msg.thread_id].append(msg)
+
+    for item_id in item_ids:
+        msgs = thread_messages.get(item_id, [])
+        counselor_sources = []
+        client_sources = []
+        for msg in msgs:
+            sender_lower = (msg.sender or "").strip().lower()
+            generated_by = (msg.generated_by or "Human").strip()
+            if sender_lower in counselor_senders:
+                counselor_sources.append(generated_by)
+            elif sender_lower in client_senders:
+                client_sources.append(generated_by)
+
+        # Most common source for each role
+        counselor_source = Counter(counselor_sources).most_common(1)[0][0] if counselor_sources else "Human"
+        client_source = Counter(client_sources).most_common(1)[0][0] if client_sources else "Human"
+        thread_provenance[item_id] = {
+            "counselor_source": counselor_source,
+            "client_source": client_source,
+        }
+
+    # Collect all ratings (human + LLM) per thread
+    assignments = []  # (item_id, score, normalized_score, evaluator_type)
+
+    # Human ratings from UserMailHistoryRating
+    human_ratings = (
+        UserMailHistoryRating.query
+        .filter(UserMailHistoryRating.thread_id.in_(item_ids))
+        .all()
+    )
+    for rating in human_ratings:
+        score = rating.overall_rating
+        if score is None:
+            # Average from individual dimensions
+            dims = [rating.counsellor_coherence_rating, rating.client_coherence_rating, rating.quality_rating]
+            valid_dims = [d for d in dims if d is not None]
+            if valid_dims:
+                score = sum(valid_dims) / len(valid_dims)
+        normalized = _normalize_score(score)
+        if normalized is not None:
+            assignments.append((rating.thread_id, float(score), normalized, "human"))
+
+    # Human ratings from ItemDimensionRating (if used for mail_rating)
+    human_dim_ratings = (
+        ItemDimensionRating.query
+        .filter_by(scenario_id=scenario_id)
+        .filter(ItemDimensionRating.status.in_([ProgressionStatus.DONE, ProgressionStatus.PROGRESSING]))
+        .all()
+    )
+    for rating in human_dim_ratings:
+        score = rating.overall_score
+        if score is None:
+            dim_scores = rating.dimension_ratings or {}
+            if isinstance(dim_scores, str):
+                try:
+                    dim_scores = json.loads(dim_scores)
+                except (json.JSONDecodeError, TypeError):
+                    dim_scores = {}
+            if isinstance(dim_scores, dict) and dim_scores:
+                numeric = [float(v) for v in dim_scores.values() if v is not None]
+                if numeric:
+                    score = sum(numeric) / len(numeric)
+        normalized = _normalize_score(score)
+        if normalized is not None:
+            assignments.append((rating.item_id, float(score), normalized, "human"))
+
+    # LLM ratings from LLMTaskResult
+    llm_results = (
+        LLMTaskResult.query
+        .filter_by(scenario_id=scenario_id)
+        .filter(
+            LLMTaskResult.task_type.in_(["rating", "mail_rating"]),
+            LLMTaskResult.error.is_(None),
+        )
+        .all()
+    )
+    for result in llm_results:
+        score = _extract_overall_rating_from_payload(result.payload_json)
+        normalized = _normalize_score(score)
+        if normalized is not None:
+            assignments.append((result.item_id, float(score), normalized, "llm"))
+
+    if not assignments:
+        return response
+
+    # Aggregate by counselor_source, client_source, and combination
+    def _new_entity(entity_id, label):
+        return {
+            "id": str(entity_id),
+            "label": label,
+            "total": 0,
+            "sum_score": 0.0,
+            "avg_score": 0.0,
+            "sum_normalized_score": 0.0,
+            "avg_normalized_score": 0.0,
+            "high_score_count": 0,
+            "high_score_rate": 0.0,
+        }
+
+    segments_internal = {
+        "all": {"total_assignments": 0, "by_counselor_source": {}, "by_client_source": {}, "by_combination": {}},
+        "human": {"total_assignments": 0, "by_counselor_source": {}, "by_client_source": {}, "by_combination": {}},
+        "llm": {"total_assignments": 0, "by_counselor_source": {}, "by_client_source": {}, "by_combination": {}},
+    }
+
+    def _increment(segment, key_name, entity_id, label, score, normalized, meta=None):
+        entity_map = segment[key_name]
+        row = entity_map.get(entity_id)
+        if row is None:
+            row = _new_entity(entity_id, label)
+            if meta:
+                row.update(meta)
+            entity_map[entity_id] = row
+        row["total"] += 1
+        row["sum_score"] += score
+        row["sum_normalized_score"] += normalized
+        if normalized >= high_score_threshold_normalized:
+            row["high_score_count"] += 1
+
+    for item_id, score, normalized, evaluator_type in assignments:
+        prov = thread_provenance.get(item_id)
+        if not prov:
+            continue
+
+        counselor = prov["counselor_source"]
+        client = prov["client_source"]
+        combo_key = f"{counselor}|||{client}"
+        combo_label = f"{counselor} \u00d7 {client}"
+
+        for seg_key in ("all", evaluator_type):
+            segment = segments_internal[seg_key]
+            segment["total_assignments"] += 1
+            _increment(segment, "by_counselor_source", counselor, counselor, score, normalized)
+            _increment(segment, "by_client_source", client, client, score, normalized)
+            _increment(segment, "by_combination", combo_key, combo_label, score, normalized, meta={
+                "counselor_source": counselor,
+                "client_source": client,
+            })
+
+    def _finalize(entity_map):
+        rows = list(entity_map.values())
+        for row in rows:
+            total = row["total"]
+            if total > 0:
+                row["avg_score"] = round(row["sum_score"] / total, 2)
+                row["avg_normalized_score"] = round((row["sum_normalized_score"] / total) * 100, 1)
+                row["high_score_rate"] = round((row["high_score_count"] / total) * 100, 1)
+            row["sum_score"] = round(row["sum_score"], 3)
+            row.pop("sum_normalized_score", None)
+        rows.sort(key=lambda e: (-e["avg_normalized_score"], -e["total"], (e["label"] or "").lower()))
+        return rows
+
+    finalized = {}
+    for seg_key, seg_data in segments_internal.items():
+        by_counselor = _finalize(seg_data["by_counselor_source"])
+        by_client = _finalize(seg_data["by_client_source"])
+        by_combo = _finalize(seg_data["by_combination"])
+        finalized[seg_key] = {
+            "total_assignments": seg_data["total_assignments"],
+            "by_counselor_source": by_counselor,
+            "by_client_source": by_client,
+            "by_combination": by_combo,
+            "best_counselor_source": by_counselor[0] if by_counselor else None,
+            "best_client_source": by_client[0] if by_client else None,
+            "best_combination": by_combo[0] if by_combo else None,
+        }
+
+    response["segments"] = finalized
     return response
 
 

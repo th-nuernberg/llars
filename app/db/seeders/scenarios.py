@@ -552,103 +552,41 @@ def seed_demo_scenarios(db):
 
     threads.append(thread3)
 
-    # Thread 4 for Mail Rating (Verlauf Bewerter)
-    thread4 = EmailThread.query.filter_by(chat_id=9004, institut_id=1, function_type_id=mail_rating_type.function_type_id).first()
-    if not thread4:
-        thread4 = EmailThread(
-            chat_id=9004,
-            institut_id=1,
-            subject='Beratung: Studienabbruch und Neustart',
-            sender='klient4@example.com',
+    # Mail Rating Threads (20 diverse conversations with generated_by provenance)
+    from .demo_datasets import MAIL_RATING_SAMPLES
+
+    mail_rating_threads = []
+    for idx, sample in enumerate(MAIL_RATING_SAMPLES):
+        chat_id = 9004 + idx
+        thread = EmailThread.query.filter_by(
+            chat_id=chat_id, institut_id=1,
             function_type_id=mail_rating_type.function_type_id
-        )
-        db.session.add(thread4)
-        db.session.flush()
+        ).first()
+        if not thread:
+            thread = EmailThread(
+                chat_id=chat_id,
+                institut_id=1,
+                subject=sample['subject'],
+                sender=f'klient_mr{idx}@example.com',
+                function_type_id=mail_rating_type.function_type_id
+            )
+            db.session.add(thread)
+            db.session.flush()
 
-        messages4 = [
-            Message(
-                thread_id=thread4.thread_id,
-                sender='Klient',
-                content='Hallo, ich bin 22 und habe gerade mein Informatikstudium im 5. Semester abgebrochen. Meine Eltern sind enttäuscht und ich weiß nicht, wie es weitergehen soll. Programmieren macht mir keinen Spaß mehr.',
-                timestamp=datetime.now() - timedelta(days=6, hours=14)
-            ),
-            Message(
-                thread_id=thread4.thread_id,
-                sender='Berater',
-                content='Danke, dass Sie sich an uns wenden. Ein Studienabbruch ist keine Seltenheit und kein Weltuntergang. Wichtig ist, dass Sie jetzt herausfinden, was Sie wirklich interessiert. Was hat Sie ursprünglich zur Informatik geführt?',
-                timestamp=datetime.now() - timedelta(days=6, hours=10)
-            ),
-            Message(
-                thread_id=thread4.thread_id,
-                sender='Klient',
-                content='Ehrlich gesagt war es der Druck meiner Eltern. Sie meinten, damit verdient man gut. Aber ich interessiere mich viel mehr für kreative Dinge - Design, Fotografie, vielleicht auch Marketing.',
-                timestamp=datetime.now() - timedelta(days=5, hours=16)
-            ),
-            Message(
-                thread_id=thread4.thread_id,
-                sender='Berater',
-                content='Das ist eine wichtige Erkenntnis! Es gibt viele Berufe, die Kreativität und technisches Verständnis verbinden. Haben Sie schon einmal über Mediengestaltung oder UX/UI Design nachgedacht? Dort könnten Sie beides vereinen.',
-                timestamp=datetime.now() - timedelta(days=5, hours=12)
-            ),
-            Message(
-                thread_id=thread4.thread_id,
-                sender='Klient',
-                content='UX Design klingt interessant! Kann ich das auch ohne fertiges Studium machen? Und wie erkläre ich das meinen Eltern?',
-                timestamp=datetime.now() - timedelta(days=4, hours=20)
-            ),
-            Message(
-                thread_id=thread4.thread_id,
-                sender='Berater',
-                content='Es gibt verschiedene Wege ins UX Design - Bootcamps, Weiterbildungen oder ein neues Studium. Was Ihre Eltern betrifft: Zeigen Sie ihnen konkrete Berufsperspektiven und Gehaltsmöglichkeiten in diesem Bereich. Sollen wir gemeinsam einen Plan erarbeiten?',
-                timestamp=datetime.now() - timedelta(days=4, hours=14)
-            ),
-        ]
-        for msg in messages4:
-            db.session.add(msg)
+            counselor_source = sample.get('counselor_source', 'Human')
+            client_source = sample.get('client_source', 'Human')
 
-    # Thread 5 for Mail Rating (zweiter Fall)
-    thread5 = EmailThread.query.filter_by(chat_id=9005, institut_id=1, function_type_id=mail_rating_type.function_type_id).first()
-    if not thread5:
-        thread5 = EmailThread(
-            chat_id=9005,
-            institut_id=1,
-            subject='Wiedereinstieg nach Elternzeit',
-            sender='klient5@example.com',
-            function_type_id=mail_rating_type.function_type_id
-        )
-        db.session.add(thread5)
-        db.session.flush()
+            for msg_idx, msg in enumerate(sample['messages']):
+                generated_by = counselor_source if msg['sender'] == 'Berater' else client_source
+                db.session.add(Message(
+                    thread_id=thread.thread_id,
+                    sender=msg['sender'],
+                    content=msg['content'],
+                    generated_by=generated_by,
+                    timestamp=datetime.now() - timedelta(days=14 - idx, hours=10 - msg_idx)
+                ))
 
-        messages5 = [
-            Message(
-                thread_id=thread5.thread_id,
-                sender='Klient',
-                content='Guten Tag, nach 3 Jahren Elternzeit möchte ich wieder ins Berufsleben einsteigen. Ich war vorher Buchhalterin, aber die Digitalisierung hat vieles verändert. Bin ich noch auf dem aktuellen Stand?',
-                timestamp=datetime.now() - timedelta(days=4, hours=9)
-            ),
-            Message(
-                thread_id=thread5.thread_id,
-                sender='Berater',
-                content='Willkommen zurück! Ihre Bedenken sind verständlich, aber 3 Jahre sind gut aufzuholen. Die Grundlagen der Buchhaltung bleiben gleich, nur die Tools haben sich weiterentwickelt. Welche Software haben Sie zuletzt genutzt?',
-                timestamp=datetime.now() - timedelta(days=4, hours=5)
-            ),
-            Message(
-                thread_id=thread5.thread_id,
-                sender='Klient',
-                content='Hauptsächlich DATEV und Excel. Ich höre aber, dass jetzt viel mit Cloud-Lösungen gearbeitet wird und alles automatisiert ist. Macht mir das nicht Angst?',
-                timestamp=datetime.now() - timedelta(days=3, hours=15)
-            ),
-            Message(
-                thread_id=thread5.thread_id,
-                sender='Berater',
-                content='DATEV-Kenntnisse sind nach wie vor sehr gefragt! Die Cloud-Version ist intuitiv zu erlernen. Automatisierung betrifft vor allem repetitive Aufgaben - qualifizierte Buchhalter werden weiterhin gebraucht für Analyse und Beratung. Ich empfehle einen Auffrischungskurs.',
-                timestamp=datetime.now() - timedelta(days=3, hours=11)
-            ),
-        ]
-        for msg in messages5:
-            db.session.add(msg)
-
-    mail_rating_threads = [thread4, thread5]
+        mail_rating_threads.append(thread)
 
     # Threads for Fake/Echt (Authenticity)
     authenticity_threads = []
@@ -1397,60 +1335,7 @@ def _seed_extended_demo_data(db, ranking_scenario, mail_rating_scenario,
 
             print(f"    Created {len(ranking_samples)} ranking threads")
 
-    # =========================================================================
-    # 2. MAIL RATING SCENARIO - Extended conversation threads
-    # =========================================================================
-    if mail_rating_scenario and mail_rating_type:
-        mail_rating_samples = get_demo_data_for_scenario_type('mail_rating', count=10)
-        existing_count = ScenarioThreads.query.filter_by(scenario_id=mail_rating_scenario.id).count()
-
-        if existing_count < 5:
-            print(f"  Seeding {len(mail_rating_samples)} mail rating samples...")
-            rater_user = _get_rater_user(mail_rating_scenario.id)
-
-            for idx, sample in enumerate(mail_rating_samples):
-                chat_id = 12000 + idx
-                existing_thread = EmailThread.query.filter_by(
-                    chat_id=chat_id,
-                    function_type_id=mail_rating_type.function_type_id
-                ).first()
-
-                if existing_thread:
-                    continue
-
-                thread = EmailThread(
-                    chat_id=chat_id,
-                    institut_id=1,
-                    subject=sample['subject'],
-                    sender=f'demo_mail_{idx}@example.com',
-                    function_type_id=mail_rating_type.function_type_id
-                )
-                db.session.add(thread)
-                db.session.flush()
-
-                for msg_idx, msg in enumerate(sample['messages']):
-                    db.session.add(Message(
-                        thread_id=thread.thread_id,
-                        sender=msg['sender'],
-                        content=msg['content'],
-                        timestamp=datetime.now() - timedelta(days=14-idx, hours=10-msg_idx)
-                    ))
-
-                st = ScenarioThreads(
-                    scenario_id=mail_rating_scenario.id,
-                    thread_id=thread.thread_id
-                )
-                db.session.add(st)
-                db.session.flush()
-
-                if rater_user:
-                    db.session.add(ScenarioThreadDistribution(
-                        scenario_id=mail_rating_scenario.id,
-                        scenario_user_id=rater_user.id,
-                        scenario_thread_id=st.id
-                    ))
-
-            print(f"    Created {len(mail_rating_samples)} mail rating threads")
+    # (Mail rating extended data removed - 20 threads are created in main seeder)
 
     # =========================================================================
     # 3. AUTHENTICITY SCENARIO - Real vs AI-generated samples

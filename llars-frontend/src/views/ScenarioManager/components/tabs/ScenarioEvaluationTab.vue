@@ -1083,6 +1083,129 @@
         </div>
       </div>
 
+      <!-- Conversation Partner Provenance (Mail Rating) -->
+      <div class="provenance-section" v-if="hasConversationProvenance">
+        <h4 class="subsection-title">
+          {{ $t('scenarioManager.results.conversationProvenance') }}
+          <LTooltip :text="$t('scenarioManager.tooltips.conversationProvenance')" location="top">
+            <v-icon size="16" class="help-icon">mdi-help-circle-outline</v-icon>
+          </LTooltip>
+        </h4>
+        <p class="subsection-description text-medium-emphasis text-caption mb-3">
+          {{ $t('scenarioManager.results.conversationProvenanceDescription') }}
+        </p>
+        <p class="provenance-metric-explainer text-medium-emphasis text-caption mb-3">
+          {{ $t('scenarioManager.results.ratingProvenanceMetricExplanation', { threshold: conversationProvenanceThresholdPercent }) }}
+        </p>
+
+        <div class="provenance-best-grid">
+          <div class="provenance-best-card">
+            <span class="provenance-best-label">{{ $t('scenarioManager.results.bestCounselorSource') }}</span>
+            <strong class="provenance-best-name">{{ bestCounselorSource?.label || '-' }}</strong>
+            <span v-if="bestCounselorSource" class="provenance-best-meta">
+              {{ formatProvenanceRate(bestCounselorSource.avg_normalized_score) }}% | {{ formatProvenanceScore(bestCounselorSource.avg_score) }} Ø
+            </span>
+          </div>
+          <div class="provenance-best-card">
+            <span class="provenance-best-label">{{ $t('scenarioManager.results.bestClientSource') }}</span>
+            <strong class="provenance-best-name">{{ bestClientSource?.label || '-' }}</strong>
+            <span v-if="bestClientSource" class="provenance-best-meta">
+              {{ formatProvenanceRate(bestClientSource.avg_normalized_score) }}% | {{ formatProvenanceScore(bestClientSource.avg_score) }} Ø
+            </span>
+          </div>
+          <div class="provenance-best-card">
+            <span class="provenance-best-label">{{ $t('scenarioManager.results.bestCombination') }}</span>
+            <strong class="provenance-best-name">{{ bestConversationCombination?.label || '-' }}</strong>
+            <span v-if="bestConversationCombination" class="provenance-best-meta">
+              {{ formatProvenanceRate(bestConversationCombination.avg_normalized_score) }}% | {{ formatProvenanceScore(bestConversationCombination.avg_score) }} Ø
+            </span>
+          </div>
+        </div>
+
+        <div class="provenance-lists-grid">
+          <div class="provenance-list-card">
+            <div class="provenance-list-header">
+              <span>{{ $t('scenarioManager.results.counselorSourceRanking') }}</span>
+              <span>
+                {{ $t('scenarioManager.results.assignments') }}: {{ currentConversationProvenanceSegment?.total_assignments || 0 }}
+                · {{ $t('scenarioManager.results.ratingProvenancePrimaryMetric') }}
+              </span>
+            </div>
+            <div v-if="currentConversationProvenanceSegment?.by_counselor_source?.length" class="provenance-list">
+              <div
+                v-for="(entry, index) in currentConversationProvenanceSegment.by_counselor_source.slice(0, 8)"
+                :key="`conv-prov-counselor-${entry.id}`"
+                class="provenance-row"
+              >
+                <div class="provenance-row-main">
+                  <span class="provenance-rank">#{{ index + 1 }}</span>
+                  <span class="provenance-label">{{ entry.label }}</span>
+                </div>
+                <div class="provenance-row-stats">
+                  <span class="provenance-rate">{{ formatProvenanceRate(entry.avg_normalized_score) }}%</span>
+                  <span class="provenance-count">{{ formatProvenanceScore(entry.avg_score) }} Ø (n={{ entry.total }})</span>
+                </div>
+              </div>
+            </div>
+            <div v-else class="provenance-empty">
+              {{ $t('scenarioManager.results.noProvenanceData') }}
+            </div>
+          </div>
+
+          <div class="provenance-list-card">
+            <div class="provenance-list-header">
+              <span>{{ $t('scenarioManager.results.clientSourceRanking') }}</span>
+              <span>{{ $t('scenarioManager.results.ratingProvenancePrimaryMetric') }}</span>
+            </div>
+            <div v-if="currentConversationProvenanceSegment?.by_client_source?.length" class="provenance-list">
+              <div
+                v-for="(entry, index) in currentConversationProvenanceSegment.by_client_source.slice(0, 8)"
+                :key="`conv-prov-client-${entry.id}`"
+                class="provenance-row"
+              >
+                <div class="provenance-row-main">
+                  <span class="provenance-rank">#{{ index + 1 }}</span>
+                  <span class="provenance-label">{{ entry.label }}</span>
+                </div>
+                <div class="provenance-row-stats">
+                  <span class="provenance-rate">{{ formatProvenanceRate(entry.avg_normalized_score) }}%</span>
+                  <span class="provenance-count">{{ formatProvenanceScore(entry.avg_score) }} Ø (n={{ entry.total }})</span>
+                </div>
+              </div>
+            </div>
+            <div v-else class="provenance-empty">
+              {{ $t('scenarioManager.results.noProvenanceData') }}
+            </div>
+          </div>
+
+          <div class="provenance-list-card">
+            <div class="provenance-list-header">
+              <span>{{ $t('scenarioManager.results.combinationRanking') }}</span>
+              <span>{{ $t('scenarioManager.results.ratingProvenancePrimaryMetric') }}</span>
+            </div>
+            <div v-if="currentConversationProvenanceSegment?.by_combination?.length" class="provenance-list">
+              <div
+                v-for="(entry, index) in currentConversationProvenanceSegment.by_combination.slice(0, 8)"
+                :key="`conv-prov-combo-${entry.id}`"
+                class="provenance-row"
+              >
+                <div class="provenance-row-main">
+                  <span class="provenance-rank">#{{ index + 1 }}</span>
+                  <span class="provenance-label">{{ entry.label }}</span>
+                </div>
+                <div class="provenance-row-stats">
+                  <span class="provenance-rate">{{ formatProvenanceRate(entry.avg_normalized_score) }}%</span>
+                  <span class="provenance-count">{{ formatProvenanceScore(entry.avg_score) }} Ø (n={{ entry.total }})</span>
+                </div>
+              </div>
+            </div>
+            <div v-else class="provenance-empty">
+              {{ $t('scenarioManager.results.noProvenanceData') }}
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Ranking Bucket Distribution + Agreement -->
       <div class="ranking-analysis-grid-section" v-if="hasBucketDistribution || hasRankingAgreement">
         <div
@@ -2763,6 +2886,39 @@ const bestRatingProvenanceCombination = computed(() => currentRatingProvenanceSe
 
 const ratingProvenanceHighThresholdPercent = computed(() => {
   const rawValue = Number(ratingProvenanceAnalysis.value?.metric_definition?.high_score_threshold_percent)
+  if (!Number.isFinite(rawValue)) return '80.0'
+  return formatProvenanceRate(rawValue)
+})
+
+// ===== Computed: Conversation Partner Provenance (Mail Rating) =====
+
+const conversationProvenance = computed(() => {
+  return props.liveStats?.conversationProvenance || props.liveStats?.conversation_provenance || null
+})
+
+const currentConversationProvenanceSegment = computed(() => {
+  const segments = conversationProvenance.value?.segments
+  if (!segments) return null
+  if (evaluatorTypeFilter.value === 'human') return segments.human || segments.all || null
+  if (evaluatorTypeFilter.value === 'llm') return segments.llm || segments.all || null
+  return segments.all || null
+})
+
+const hasConversationProvenance = computed(() => {
+  if (currentTaskType.value !== 'mail_rating') return false
+  const segment = currentConversationProvenanceSegment.value
+  if (!segment) return false
+  return (segment.by_counselor_source?.length || 0) > 0 ||
+    (segment.by_client_source?.length || 0) > 0 ||
+    (segment.by_combination?.length || 0) > 0
+})
+
+const bestCounselorSource = computed(() => currentConversationProvenanceSegment.value?.best_counselor_source || null)
+const bestClientSource = computed(() => currentConversationProvenanceSegment.value?.best_client_source || null)
+const bestConversationCombination = computed(() => currentConversationProvenanceSegment.value?.best_combination || null)
+
+const conversationProvenanceThresholdPercent = computed(() => {
+  const rawValue = Number(conversationProvenance.value?.metric_definition?.high_score_threshold_percent)
   if (!Number.isFinite(rawValue)) return '80.0'
   return formatProvenanceRate(rawValue)
 })

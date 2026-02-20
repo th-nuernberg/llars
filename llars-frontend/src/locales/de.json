@@ -3180,6 +3180,12 @@
       "topBucketHitRatio": "Top-Bucket-Treffer ({bucket})",
       "assignments": "Zuordnungen",
       "noProvenanceData": "Noch keine Provenance-Daten verfügbar",
+      "conversationProvenance": "Gesprächspartner-Provenance",
+      "conversationProvenanceDescription": "Analysiert, welche Gesprächspartner-Kombinationen (Berater-Quelle x Klient-Quelle) die höchsten Bewertungen erzielen. Quellen zeigen, ob Nachrichten von Menschen oder KI-Modellen verfasst wurden.",
+      "bestCounselorSource": "Beste Berater-Quelle",
+      "bestClientSource": "Beste Klient-Quelle",
+      "counselorSourceRanking": "Berater-Quellen-Ranking",
+      "clientSourceRanking": "Klient-Quellen-Ranking",
       "ratingProvenanceAnalysis": "Rating-Provenance-Analyse",
       "ratingProvenanceDescription": "Zeigt, welche Generierungs-LLMs und Prompts mit höheren normalisierten Rating-Ergebnissen verbunden sind.",
       "ratingProvenanceMetricExplanation": "Primärmetrik: durchschnittlicher normalisierter Score (0-100). Sekundärmetrik: Anteil hoher Scores (>= {threshold}%).",
@@ -3401,6 +3407,7 @@
       "bucketDistribution": "Zeigt wie viele Items in welchen Bucket (Gut/Mittel/Schlecht) einsortiert wurden. Aggregiert über alle menschlichen und LLM-Evaluatoren.",
       "provenanceAnalysis": "Vergleicht die Herkunft bewerteter Inhalte (Generierungs-LLM, Prompt und Prompt+LLM) und zeigt, welche Ursprünge am häufigsten im Top-Bucket landen. Format x/y = Treffer im Top-Bucket geteilt durch alle Zuordnungen der jeweiligen Herkunft.",
       "ratingProvenanceAnalysis": "Vergleicht die Herkunft bewerteter Inhalte (Generierungs-LLM, Prompt und Prompt+LLM) und zeigt, welche Ursprünge aktuell die höchsten normalisierten Rating-Scores erreichen.",
+      "conversationProvenance": "Analysiert Gesprächspartner-Kombinationen. Ermittelt, wer die Berater- und Klient-Nachrichten verfasst hat (Mensch vs. KI) und zeigt, welche Kombinationen die besten Bewertungen erzielen.",
       "rankingAgreement": "Pro Zusammenfassung: Haben beide Evaluatoren sie in denselben Bucket sortiert? Gezählt als: Übereinstimmende Zusammenfassungen / Gemeinsam bewertete Zusammenfassungen. Metriken ordinal berechnet (Bucket-Krippendorff)."
     },
     "session": {

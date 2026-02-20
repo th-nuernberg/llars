@@ -326,46 +326,260 @@ RANKING_SAMPLES = [
 # =============================================================================
 # MAIL RATING SCENARIO SAMPLES (Counseling Conversations)
 # =============================================================================
+# Each sample has counselor_source and client_source to indicate who wrote
+# the messages (Human, Claude, Mistral). This enables conversation partner
+# provenance analysis.
+#
+# Distribution across 20 samples:
+#   6 Human×Human, 4 Human×Claude, 4 Human×Mistral,
+#   3 Claude×Human, 3 Mistral×Human
 
 MAIL_RATING_SAMPLES = [
+    # ---- 1-6: Human counselor × Human client ----
+    {
+        "subject": "Beratungsverlauf: Burnout im Pflegeberuf",
+        "counselor_source": "Human",
+        "client_source": "Human",
+        "messages": [
+            {"sender": "Klient", "content": "Ich arbeite seit acht Jahren als Krankenpflegerin und bin am Ende meiner Kräfte. Die Schichtarbeit, der Personalmangel und die emotionale Belastung machen mir zu schaffen."},
+            {"sender": "Berater", "content": "Vielen Dank, dass Sie sich an uns wenden. Acht Jahre in der Pflege sind eine enorme Leistung. Können Sie mir beschreiben, wann genau die Erschöpfung begonnen hat?"},
+            {"sender": "Klient", "content": "Seit Corona hat sich alles verschlechtert. Drei Kolleginnen haben gekündigt und wir müssen deren Arbeit auffangen. Ich schlafe kaum noch und habe ständig Kopfschmerzen."},
+            {"sender": "Berater", "content": "Die Pandemie hat die Belastung im Pflegebereich massiv verschärft. Ihre körperlichen Symptome sind ernst zu nehmen. Haben Sie bereits mit Ihrem Hausarzt darüber gesprochen?"},
+            {"sender": "Klient", "content": "Nein, ich habe keine Zeit für Arztbesuche. Und ehrlich gesagt habe ich Angst, krankgeschrieben zu werden - dann müssen meine Kolleginnen noch mehr arbeiten."},
+            {"sender": "Berater", "content": "Ihr Verantwortungsgefühl ehrt Sie, aber genau dieses Muster führt oft zum Burnout. Wenn Sie ausfallen, ist niemandem geholfen. Lassen Sie uns gemeinsam einen Plan erstellen, der sowohl Ihre Gesundheit als auch Ihre berufliche Situation berücksichtigt."},
+        ]
+    },
+    {
+        "subject": "Beratungsverlauf: Trennungsschmerz",
+        "counselor_source": "Human",
+        "client_source": "Human",
+        "messages": [
+            {"sender": "Klient", "content": "Mein Partner hat mich vor zwei Wochen nach sechs Jahren Beziehung verlassen. Er sagt, er liebt mich nicht mehr. Ich verstehe die Welt nicht mehr."},
+            {"sender": "Berater", "content": "Eine Trennung nach so langer Zeit ist ein tiefer Einschnitt. Zwei Wochen sind noch sehr frisch - Ihr Schmerz ist absolut berechtigt. Wie geht es Ihnen im Alltag damit?"},
+            {"sender": "Klient", "content": "Ich funktioniere nur noch. Morgens aufstehen, zur Arbeit, abends weinen. Essen schmeckt mir nicht. Meine Freunde sagen, ich soll weitermachen, aber wie?"},
+            {"sender": "Berater", "content": "Das 'Funktionieren' zeigt Ihre Stärke, auch wenn es sich nicht so anfühlt. Trauer braucht Zeit und hat kein festes Tempo. Was hilft Ihnen momentan am meisten, auch wenn es nur kleine Dinge sind?"},
+        ]
+    },
+    {
+        "subject": "Beratungsverlauf: Prüfungsangst",
+        "counselor_source": "Human",
+        "client_source": "Human",
+        "messages": [
+            {"sender": "Klient", "content": "In drei Wochen habe ich meine Abschlussprüfung und ich bin wie gelähmt. Ich sitze vor den Büchern und kann nichts aufnehmen. Letztes Jahr bin ich schon durchgefallen."},
+            {"sender": "Berater", "content": "Prüfungsangst nach einem Misserfolg ist sehr verbreitet. Die Angst vor dem erneuten Scheitern kann das Lernen blockieren. Was genau passiert, wenn Sie versuchen zu lernen?"},
+            {"sender": "Klient", "content": "Mein Herz fängt an zu rasen, ich bekomme feuchte Hände und dann denke ich nur noch: Du schaffst das sowieso nicht. Manchmal bekomme ich sogar Atemnot."},
+            {"sender": "Berater", "content": "Das sind klassische Angstsymptome. Ihr Körper geht in den Kampf-oder-Flucht-Modus. Es gibt bewährte Techniken, die helfen können - zum Beispiel progressive Muskelentspannung oder die 4-7-8-Atemtechnik. Sollen wir eine davon gemeinsam ausprobieren?"},
+            {"sender": "Klient", "content": "Ja, gerne. Irgendetwas muss ich ändern, sonst falle ich wieder durch und verliere meinen Studienplatz."},
+            {"sender": "Berater", "content": "Gut, dass Sie aktiv werden wollen. Neben der Entspannungstechnik würde ich Ihnen auch empfehlen, einen strukturierten Lernplan zu erstellen - kleine Einheiten von 25 Minuten mit Pausen. So wird die Aufgabe weniger überwältigend."},
+        ]
+    },
+    {
+        "subject": "Beratungsverlauf: Mobbing am Arbeitsplatz",
+        "counselor_source": "Human",
+        "client_source": "Human",
+        "messages": [
+            {"sender": "Klient", "content": "Seit mein neuer Chef da ist, werde ich systematisch ausgegrenzt. Er gibt mir nur noch unwichtige Aufgaben, ignoriert mich in Meetings und hat schon zweimal vor dem Team über mich gelästert."},
+            {"sender": "Berater", "content": "Was Sie beschreiben, klingt nach einer ernsthaften Mobbing-Situation. Wie lange geht das schon so und haben Sie die Vorfälle dokumentiert?"},
+            {"sender": "Klient", "content": "Seit etwa vier Monaten. Dokumentiert habe ich nichts, ich dachte, es hört von alleine auf. Aber es wird schlimmer."},
+            {"sender": "Berater", "content": "Dokumentation ist in solchen Fällen sehr wichtig - notieren Sie ab sofort Datum, Uhrzeit, Zeugen und was genau passiert ist. Gibt es in Ihrem Unternehmen einen Betriebsrat oder eine Vertrauensperson?"},
+        ]
+    },
+    {
+        "subject": "Beratungsverlauf: Erziehungsschwierigkeiten",
+        "counselor_source": "Human",
+        "client_source": "Human",
+        "messages": [
+            {"sender": "Klient", "content": "Mein 14-jähriger Sohn ist in letzter Zeit völlig verändert. Er zieht sich zurück, seine Noten sind abgestürzt und er reagiert aggressiv, wenn ich ihn anspreche."},
+            {"sender": "Berater", "content": "Verhaltensänderungen in der Pubertät sind normal, aber die Kombination aus Rückzug, Leistungsabfall und Aggression sollte ernst genommen werden. Seit wann beobachten Sie diese Veränderungen?"},
+            {"sender": "Klient", "content": "Seit etwa drei Monaten, seit er in eine neue Klasse gekommen ist. Er war vorher ein fröhliches Kind. Jetzt sitzt er nur noch vor dem Handy und redet mit niemandem."},
+            {"sender": "Berater", "content": "Der Klassenwechsel könnte ein Schlüsselfaktor sein. Vielleicht hat er Schwierigkeiten, neue Freundschaften zu knüpfen, oder wird dort ausgegrenzt. Haben Sie schon einmal versucht, mit ihm ohne Vorwürfe über seine neue Klasse zu sprechen?"},
+            {"sender": "Klient", "content": "Jedes Mal, wenn ich frage, sagt er nur 'Alles gut, lass mich in Ruhe'. Ich weiß nicht, wie ich an ihn rankomme."},
+            {"sender": "Berater", "content": "Jugendliche brauchen oft indirekte Gesprächsanlässe. Versuchen Sie gemeinsame Aktivitäten statt direkter Fragen - zum Beispiel zusammen kochen oder einen Spaziergang. In solchen Momenten öffnen sich Jugendliche eher als bei einem formellen Gespräch."},
+        ]
+    },
+    {
+        "subject": "Beratungsverlauf: Trauer nach Verlust",
+        "counselor_source": "Human",
+        "client_source": "Human",
+        "messages": [
+            {"sender": "Klient", "content": "Meine beste Freundin ist vor einem Monat bei einem Autounfall gestorben. Wir kannten uns seit der Grundschule. Ich kann es immer noch nicht fassen."},
+            {"sender": "Berater", "content": "Der plötzliche Verlust einer so langjährigen Freundin ist ein schwerer Schock. Es ist völlig normal, dass Sie es noch nicht fassen können. Wie erleben Sie die Tage seit dem Verlust?"},
+            {"sender": "Klient", "content": "Ich schwanke zwischen Taubheit und Zusammenbrüchen. Manchmal vergesse ich kurz, dass sie tot ist, und will sie anrufen. Dann trifft es mich wie ein Schlag."},
+            {"sender": "Berater", "content": "Diese Wellen der Trauer sind ein natürlicher Teil des Verarbeitungsprozesses. Das vorübergehende Vergessen zeigt, wie tief die Verbindung war. Haben Sie Menschen um sich, mit denen Sie über Ihre Freundin sprechen können?"},
+        ]
+    },
+    # ---- 7-10: Human counselor × Claude client ----
     {
         "subject": "Beratungsverlauf: Berufliche Neuorientierung",
+        "counselor_source": "Human",
+        "client_source": "Claude",
         "messages": [
-            {"sender": "Klient", "content": "Hallo, ich bin 38 Jahre alt und arbeite seit 15 Jahren in der Buchhaltung. Ich fühle mich total ausgebrannt und frage mich, ob ich den falschen Beruf gewählt habe."},
-            {"sender": "Berater", "content": "Vielen Dank für Ihre Offenheit. Nach 15 Jahren ist es absolut legitim, innezuhalten und zu reflektieren. Können Sie mir beschreiben, was genau Sie an Ihrer Arbeit erschöpft?"},
-            {"sender": "Klient", "content": "Es ist so monoton. Jeden Tag die gleichen Zahlen, die gleichen Prozesse. Ich wollte eigentlich etwas Kreatives machen, aber meine Eltern haben mir davon abgeraten."},
-            {"sender": "Berater", "content": "Das ist ein wichtiger Punkt - Sie haben Ihren ursprünglichen Wunsch zurückgestellt. Was wäre denn 'etwas Kreatives' für Sie gewesen? Und: Gibt es Möglichkeiten, kreative Elemente in Ihren Alltag zu integrieren?"},
-            {"sender": "Klient", "content": "Ich habe früher viel gezeichnet und fotografiert. Das mache ich immer noch in meiner Freizeit. Aber davon leben? Das scheint mir unrealistisch."},
-            {"sender": "Berater", "content": "Lassen Sie uns das genauer anschauen. 'Unrealistisch' ist oft ein Glaubenssatz aus der Vergangenheit. Es gibt heute viele Wege, kreative Fähigkeiten beruflich einzusetzen - von UX-Design bis Content Creation. Wären Sie offen für eine Kompetenzanalyse?"},
+            {"sender": "Klient", "content": "Ich bin 42 und arbeite seit 20 Jahren als Softwareentwickler. Die Technologie verändert sich so schnell, dass ich kaum mitkomme. Ich überlege, ob ich noch in der richtigen Branche bin."},
+            {"sender": "Berater", "content": "Zwanzig Jahre Erfahrung in der IT sind ein enormer Schatz. Der Druck, ständig neue Technologien zu lernen, ist real. Was konkret bereitet Ihnen am meisten Sorgen?"},
+            {"sender": "Klient", "content": "Vor allem KI-Tools wie Copilot und ChatGPT. Jüngere Kollegen nutzen das selbstverständlich, ich fühle mich abgehängt. Gleichzeitig höre ich überall, dass Programmierer bald ersetzt werden."},
+            {"sender": "Berater", "content": "Die Angst vor technologischer Verdrängung ist verständlich, aber Ihre Erfahrung - Architekturwissen, Teamführung, Problemlösung - lässt sich nicht so leicht ersetzen. Haben Sie schon überlegt, welche Ihrer Stärken auch in einem anderen Bereich wertvoll wären?"},
+            {"sender": "Klient", "content": "Ich bin gut im Erklären von komplexen Dingen. Kollegen kommen oft zu mir, wenn sie etwas nicht verstehen. Vielleicht wäre Schulung oder Training etwas für mich?"},
+            {"sender": "Berater", "content": "Das klingt nach einer vielversprechenden Richtung! Technical Training oder Developer Relations verbinden Ihre IT-Expertise mit Ihrer Kommunikationsstärke. Sollen wir gemeinsam einen konkreten Übergangsplan erarbeiten?"},
         ]
     },
     {
-        "subject": "Beratungsverlauf: Familienkonflikt",
+        "subject": "Beratungsverlauf: Soziale Isolation",
+        "counselor_source": "Human",
+        "client_source": "Claude",
         "messages": [
-            {"sender": "Klient", "content": "Ich brauche dringend Hilfe. Meine erwachsene Tochter (28) spricht seit drei Monaten nicht mehr mit mir. Ich weiß nicht einmal, was ich falsch gemacht habe."},
-            {"sender": "Berater", "content": "Das klingt nach einer sehr schmerzhaften Situation. Der plötzliche Kontaktabbruch eines Kindes ist für Eltern besonders belastend. Gab es ein bestimmtes Ereignis vor drei Monaten?"},
-            {"sender": "Klient", "content": "Nicht direkt. Bei ihrer Geburtstagsfeier war ich kritisch gegenüber ihrem neuen Freund. Ich fand ihn... naja, nicht gut genug für sie. Aber so etwas habe ich schon öfter gesagt."},
-            {"sender": "Berater", "content": "Ich höre, dass Sie sich Sorgen um Ihre Tochter machen. Gleichzeitig klingt 'schon öfter' so, als gäbe es ein Muster. Wie reagiert Ihre Tochter normalerweise auf Ihre Kritik?"},
-            {"sender": "Klient", "content": "Sie wird immer sehr still und zieht sich zurück. Aber sie ist doch mein Kind! Ich will nur ihr Bestes."},
-            {"sender": "Berater", "content": "Ihre Fürsorge ist spürbar. Manchmal kann gut gemeinte Kritik aber als Ablehnung wahrgenommen werden - besonders wenn sie wiederholt kommt. Wie würde es sich für Sie anfühlen, den ersten Schritt zu machen und Ihre Tochter um ein Gespräch zu bitten - ohne ihre Partnerschaft zu thematisieren?"},
+            {"sender": "Klient", "content": "Seit ich im Homeoffice arbeite, habe ich kaum noch soziale Kontakte. Abends sitze ich allein in meiner Wohnung und merke, wie einsam ich geworden bin."},
+            {"sender": "Berater", "content": "Der Übergang ins Homeoffice hat bei vielen Menschen zu sozialer Isolation geführt. Wie sah Ihr soziales Leben vor dem Homeoffice aus?"},
+            {"sender": "Klient", "content": "Ich hatte Arbeitskollegen, mit denen ich mittags essen ging. Am Wochenende habe ich manchmal etwas unternommen. Aber jetzt fehlt mir der Anlass, das Haus zu verlassen."},
+            {"sender": "Berater", "content": "Der fehlende Anlass ist ein wichtiger Punkt. Struktur und feste Termine können helfen. Gibt es Aktivitäten oder Hobbys, die Sie schon immer einmal ausprobieren wollten?"},
         ]
     },
     {
-        "subject": "Beratungsverlauf: Gesundheitsangst",
+        "subject": "Beratungsverlauf: Schlafstörungen",
+        "counselor_source": "Human",
+        "client_source": "Claude",
         "messages": [
-            {"sender": "Klient", "content": "Ich habe ständig Angst, schwer krank zu sein. Bei jedem kleinen Symptom denke ich sofort an Krebs oder andere schlimme Krankheiten. Mein Arzt sagt, ich sei gesund, aber ich kann ihm nicht glauben."},
-            {"sender": "Berater", "content": "Krankheitsängste können sehr belastend sein und das tägliche Leben stark beeinträchtigen. Wie oft denken Sie am Tag an mögliche Krankheiten?"},
-            {"sender": "Klient", "content": "Fast ständig. Ich google auch viel nach Symptomen, was es nur schlimmer macht. Ich weiß, dass ich damit aufhören sollte, aber ich kann nicht."},
-            {"sender": "Berater", "content": "Das Googeln von Symptomen ist ein häufiges Verhalten bei Gesundheitsangst - es gibt kurzfristig Erleichterung, verstärkt aber langfristig die Angst. Haben Sie schon einmal von einer kognitiven Verhaltenstherapie gehört?"},
+            {"sender": "Klient", "content": "Ich liege jede Nacht stundenlang wach und grüble. Morgens bin ich dann so müde, dass ich kaum arbeiten kann. Das geht schon seit Monaten so."},
+            {"sender": "Berater", "content": "Chronische Schlafstörungen beeinträchtigen alle Lebensbereiche. Wann hat das angefangen und gibt es etwas, das Sie besonders beschäftigt, wenn Sie nachts wach liegen?"},
+            {"sender": "Klient", "content": "Es fing an, als ich eine Beförderung bekommen habe. Plötzlich trage ich viel mehr Verantwortung und habe Angst, Fehler zu machen. Nachts gehe ich im Kopf alle Entscheidungen des Tages durch."},
+            {"sender": "Berater", "content": "Das klingt nach einem klassischen Teufelskreis: Mehr Verantwortung führt zu Sorgen, die Sorgen stören den Schlaf, und Schlafmangel macht die Arbeit noch schwieriger. Haben Sie abends eine Routine, die den Übergang zum Schlafen erleichtert?"},
+            {"sender": "Klient", "content": "Ehrlich gesagt schaue ich meist bis spät auf den Laptop und beantworte noch E-Mails. Ich weiß, das ist schlecht, aber ich habe das Gefühl, sonst nicht alles zu schaffen."},
+            {"sender": "Berater", "content": "Bildschirmarbeit vor dem Schlafen hemmt die Melatoninproduktion. Ich schlage vor: Setzen Sie sich eine feste Uhrzeit, nach der keine E-Mails mehr beantwortet werden. Stattdessen könnten Sie ein kurzes Journaling machen - schreiben Sie Ihre Sorgen auf Papier, um den Kopf zu entlasten."},
         ]
     },
     {
-        "subject": "Beratungsverlauf: Einsamkeit im Alter",
+        "subject": "Beratungsverlauf: Nachbarschaftskonflikt",
+        "counselor_source": "Human",
+        "client_source": "Claude",
         "messages": [
-            {"sender": "Klient", "content": "Ich bin 72 und seit dem Tod meines Mannes vor zwei Jahren sehr einsam. Meine Kinder leben weit weg und haben ihre eigenen Familien. Manche Tage spreche ich mit niemandem."},
-            {"sender": "Berater", "content": "Der Verlust Ihres Mannes und die Einsamkeit danach sind eine große Belastung. Zwei Jahre sind noch nicht lang für so einen Verlust. Wie verbringen Sie Ihre Tage derzeit?"},
-            {"sender": "Klient", "content": "Ich lese viel, schaue fern, kümmere mich um meinen kleinen Garten. Aber das Reden mit Menschen fehlt mir. Früher hatten wir viele Freunde, aber die meisten sind auch schon gestorben oder können nicht mehr."},
-            {"sender": "Berater", "content": "Der soziale Kreis wird im Alter leider oft kleiner. Aber es gibt Möglichkeiten, neue Kontakte zu knüpfen. Haben Sie schon einmal über eine Seniorengruppe oder einen Verein nachgedacht? In Ihrer Stadt gibt es bestimmt auch ehrenamtliche Besuchsdienste."},
+            {"sender": "Klient", "content": "Mein Nachbar über mir macht ständig Lärm - laute Musik bis Mitternacht, Möbelrücken um 6 Uhr morgens. Ich habe ihn schon mehrmals angesprochen, aber er ignoriert mich."},
+            {"sender": "Berater", "content": "Nachbarschaftskonflikte können sehr belastend sein, da man ihnen nicht ausweichen kann. Wie haben Sie ihn bisher angesprochen und wie hat er reagiert?"},
+            {"sender": "Klient", "content": "Ich bin hoch gegangen und habe geklingelt. Er hat die Tür aufgemacht, 'Ja ja' gesagt und sie wieder zugemacht. Beim dritten Mal war er sogar aggressiv und hat mich angeschrien."},
+            {"sender": "Berater", "content": "Die Eskalation zeigt, dass direkte Konfrontation hier nicht funktioniert. Es gibt aber andere Wege: ein schriftliches Lärmprotokoll führen, die Hausverwaltung einschalten oder eine Mediation vorschlagen. Welchen Weg würden Sie bevorzugen?"},
+        ]
+    },
+    # ---- 11-14: Human counselor × Mistral client ----
+    {
+        "subject": "Beratungsverlauf: Finanzielle Sorgen",
+        "counselor_source": "Human",
+        "client_source": "Mistral",
+        "messages": [
+            {"sender": "Klient", "content": "Durch die Inflation und steigende Miete komme ich finanziell nicht mehr zurecht. Ich habe angefangen, meinen Dispo zu nutzen und habe bereits 3000 Euro Schulden."},
+            {"sender": "Berater", "content": "Finanzielle Sorgen sind eine enorme Belastung. Dass Sie sich Hilfe suchen, ist ein wichtiger erster Schritt. Können Sie mir einen Überblick über Ihre monatlichen Einnahmen und Ausgaben geben?"},
+            {"sender": "Klient", "content": "Ich verdiene 2400 netto, die Miete ist auf 950 gestiegen. Dazu kommen Strom, Versicherungen, Auto - am Ende des Monats bleibt nichts übrig. Manchmal muss ich sogar für Lebensmittel den Dispo nutzen."},
+            {"sender": "Berater", "content": "Ich verstehe die Situation. Es gibt verschiedene Ansätze: kurzfristig eine Schuldnerberatung für den Dispo, mittelfristig die Ausgaben optimieren, und langfristig vielleicht die Wohnsituation überdenken. Haben Sie schon geprüft, ob Sie Anspruch auf Wohngeld haben?"},
+            {"sender": "Klient", "content": "Wohngeld? Nein, ich dachte, das gibt es nur für Arbeitslose. Ich schäme mich auch, staatliche Hilfe zu beantragen."},
+            {"sender": "Berater", "content": "Wohngeld steht auch Berufstätigen mit geringem Einkommen zu - dafür müssen Sie sich nicht schämen. Es ist eine Leistung, die Ihnen zusteht. Ich kann Ihnen die Kontaktdaten einer Beratungsstelle geben, die Ihnen beim Antrag hilft."},
+        ]
+    },
+    {
+        "subject": "Beratungsverlauf: Selbstwertprobleme",
+        "counselor_source": "Human",
+        "client_source": "Mistral",
+        "messages": [
+            {"sender": "Klient", "content": "Ich fühle mich ständig minderwertig. Egal was ich tue, ich habe das Gefühl, nicht gut genug zu sein. Auf Fotos sehe ich nur meine Fehler."},
+            {"sender": "Berater", "content": "Ein geringes Selbstwertgefühl kann den Alltag stark beeinflussen. Können Sie sich erinnern, wann dieses Gefühl zum ersten Mal aufkam?"},
+            {"sender": "Klient", "content": "Eigentlich schon als Kind. Mein Vater hat mich oft mit meiner älteren Schwester verglichen. Sie war die Schlaue, ich war die Hübsche - aber eigentlich auch nicht wirklich hübsch."},
+            {"sender": "Berater", "content": "Vergleiche in der Kindheit können tiefe Spuren hinterlassen. Der innere Kritiker, den Sie heute hören, spricht oft mit der Stimme der Vergangenheit. Wie würden Sie sich selbst beschreiben, wenn Sie einmal versuchen, wohlwollend zu sein?"},
+        ]
+    },
+    {
+        "subject": "Beratungsverlauf: Vereinbarkeit Familie und Beruf",
+        "counselor_source": "Human",
+        "client_source": "Mistral",
+        "messages": [
+            {"sender": "Klient", "content": "Ich bin Mutter von zwei Kindern (3 und 6) und arbeite Vollzeit als Projektleiterin. Ich habe ständig ein schlechtes Gewissen - gegenüber meinen Kindern und gegenüber meinem Arbeitgeber."},
+            {"sender": "Berater", "content": "Das Gefühl, es niemandem recht machen zu können, kennen viele berufstätige Eltern. Was genau löst das schlechte Gewissen aus?"},
+            {"sender": "Klient", "content": "Wenn ich pünktlich gehe, denke ich: Die Kollegen arbeiten noch. Wenn ich Überstunden mache, denke ich: Die Kinder warten zu Hause. Ich kann nicht gewinnen."},
+            {"sender": "Berater", "content": "Sie stecken in einer klassischen Doppelbindung. Wichtig ist zu erkennen: Perfektionismus in beiden Bereichen ist unrealistisch. Was wäre für Sie persönlich 'gut genug' - sowohl als Mutter als auch als Projektleiterin?"},
+            {"sender": "Klient", "content": "Gut genug wäre, wenn ich abends nicht mehr so erschöpft wäre und wenigstens eine Stunde wirklich präsent mit den Kindern sein könnte, ohne an die Arbeit zu denken."},
+            {"sender": "Berater", "content": "Eine Stunde bewusste Präsenz ist ein realistisches und wertvolles Ziel. Vielleicht hilft ein Ritual: Nach der Arbeit bewusst den 'Arbeitsmodus' abschalten - zum Beispiel durch einen kurzen Spaziergang auf dem Heimweg oder das Wechseln der Kleidung als symbolischer Übergang."},
+        ]
+    },
+    {
+        "subject": "Beratungsverlauf: Suchtproblematik",
+        "counselor_source": "Human",
+        "client_source": "Mistral",
+        "messages": [
+            {"sender": "Klient", "content": "Ich trinke seit einem Jahr jeden Abend eine Flasche Wein. Anfangs war es zum Entspannen, jetzt brauche ich es, um einschlafen zu können. Meine Frau hat mir ein Ultimatum gestellt."},
+            {"sender": "Berater", "content": "Dass Sie hier sind, zeigt, dass Ihnen die Situation bewusst ist. Eine Flasche Wein täglich liegt deutlich über dem empfohlenen Grenzwert. Wie fühlen Sie sich morgens nach dem Trinken?"},
+            {"sender": "Klient", "content": "Schlecht. Kopfschmerzen, manchmal zittern meine Hände. Ich weiß, dass es zu viel ist. Aber ohne den Wein liege ich stundenlang wach und die Gedanken rasen."},
+            {"sender": "Berater", "content": "Die körperlichen Symptome, die Sie beschreiben, deuten auf eine beginnende Abhängigkeit hin. Ein kalter Entzug wäre nicht ratsam. Ich empfehle dringend ein Gespräch mit Ihrem Hausarzt und eine spezialisierte Suchtberatung. Darf ich Ihnen eine Anlaufstelle nennen?"},
+        ]
+    },
+    # ---- 15-17: Claude counselor × Human client ----
+    {
+        "subject": "Beratungsverlauf: Generationenkonflikt",
+        "counselor_source": "Claude",
+        "client_source": "Human",
+        "messages": [
+            {"sender": "Klient", "content": "Meine Schwiegereltern mischen sich ständig in unsere Erziehung ein. Sie verwöhnen die Kinder, untergraben unsere Regeln und mein Mann steht nicht zu mir."},
+            {"sender": "Berater", "content": "Konflikte zwischen Generationen über Erziehungsfragen sind häufig und sehr belastend. Es klingt, als fühlen Sie sich allein gelassen. Können Sie mir ein konkretes Beispiel nennen?"},
+            {"sender": "Klient", "content": "Letzte Woche haben wir gesagt, kein Eis vor dem Abendessen. Die Oma hat den Kindern dann heimlich Eis gekauft. Als ich das angesprochen habe, sagte mein Mann: 'Ist doch nicht so schlimm.'"},
+            {"sender": "Berater", "content": "In dieser Situation wurden Ihre Grenzen gleich doppelt übergangen - von der Schwiegermutter und von Ihrem Mann. Das untergräbt Ihre Autorität als Mutter. Wie reagieren die Kinder auf diese widersprüchlichen Botschaften?"},
+            {"sender": "Klient", "content": "Sie wissen genau, dass sie bei Oma alles bekommen. Mein Sohn sagt schon: 'Bei Oma darf ich das aber!'"},
+            {"sender": "Berater", "content": "Es ist wichtig, dass Sie und Ihr Mann als Eltern eine gemeinsame Linie finden. Ich schlage vor, zunächst ein Vier-Augen-Gespräch mit Ihrem Mann zu führen - nicht im Streit, sondern als Planungsgespräch. Welche Regeln sind Ihnen am wichtigsten?"},
+        ]
+    },
+    {
+        "subject": "Beratungsverlauf: Chronische Krankheit",
+        "counselor_source": "Claude",
+        "client_source": "Human",
+        "messages": [
+            {"sender": "Klient", "content": "Vor sechs Monaten wurde bei mir Multiple Sklerose diagnostiziert. Ich bin 35 und hatte so viele Pläne. Jetzt weiß ich nicht, wie meine Zukunft aussieht."},
+            {"sender": "Berater", "content": "Eine MS-Diagnose verändert die Lebensperspektive grundlegend. Der Schock und die Ungewissheit, die Sie empfinden, sind absolut nachvollziehbar. Wie gehen Sie momentan mit der Diagnose um?"},
+            {"sender": "Klient", "content": "Ich habe es niemandem auf der Arbeit erzählt. Ich habe Angst, meinen Job zu verlieren oder anders behandelt zu werden. Zu Hause versuche ich, stark zu sein, aber innerlich zerfällt alles."},
+            {"sender": "Berater", "content": "Stark sein zu müssen ist eine schwere Last. Sie müssen nicht alles allein tragen. Was den Arbeitsplatz betrifft: Es gibt gesetzlichen Schutz für chronisch Erkrankte. Aber wichtiger ist gerade: Haben Sie eine Vertrauensperson, der Sie sich öffnen können?"},
+        ]
+    },
+    {
+        "subject": "Beratungsverlauf: Kulturelle Integration",
+        "counselor_source": "Claude",
+        "client_source": "Human",
+        "messages": [
+            {"sender": "Klient", "content": "Ich lebe seit drei Jahren in Deutschland, habe einen guten Job, spreche die Sprache. Aber ich fühle mich trotzdem nicht zugehörig. Ich vermisse meine Heimat und meine Familie."},
+            {"sender": "Berater", "content": "Das Gefühl der Nicht-Zugehörigkeit trotz äußerer Integration ist weit verbreitet. Man nennt es manchmal 'emotionale Heimatlosigkeit'. Was vermissen Sie am meisten?"},
+            {"sender": "Klient", "content": "Die Spontaneität. Bei uns zu Hause kommen Freunde einfach vorbei, man isst zusammen, lacht zusammen. Hier muss man Wochen vorher einen Termin ausmachen. Alles ist so geplant und kühl."},
+            {"sender": "Berater", "content": "Kulturelle Unterschiede im sozialen Umgang können sich wie eine unsichtbare Mauer anfühlen. Es kann helfen, sowohl Brücken in die deutsche Kultur zu bauen als auch Ihre eigene Kultur aktiv zu pflegen. Kennen Sie andere Menschen aus Ihrem Herkunftsland hier in der Stadt?"},
+            {"sender": "Klient", "content": "Ja, es gibt eine kleine Community. Aber ich hatte Angst, mich nur dort aufzuhalten und mich nicht zu integrieren."},
+            {"sender": "Berater", "content": "Integration bedeutet nicht, die eigene Identität aufzugeben. Ein gesundes Gleichgewicht zwischen beiden Welten ist der Schlüssel. Ihre Community kann ein wichtiger Anker sein, während Sie gleichzeitig deutsche Freundschaften aufbauen."},
+        ]
+    },
+    # ---- 18-20: Mistral counselor × Human client ----
+    {
+        "subject": "Beratungsverlauf: Digitale Überforderung",
+        "counselor_source": "Mistral",
+        "client_source": "Human",
+        "messages": [
+            {"sender": "Klient", "content": "Ich bin Lehrerin und soll jetzt alles digital machen - Tablets, Lernplattformen, KI-Tools. Ich bin 55 und fühle mich komplett überfordert."},
+            {"sender": "Berater", "content": "Die digitale Transformation im Bildungsbereich schreitet schnell voran und die Erwartungen an Lehrkräfte sind hoch. Welche konkreten Aufgaben bereiten Ihnen die größten Schwierigkeiten?"},
+            {"sender": "Klient", "content": "Am meisten die Lernplattform. Ich soll dort Materialien hochladen, Aufgaben erstellen, Feedback geben. Manchmal brauche ich für eine Aufgabe doppelt so lang wie auf Papier."},
+            {"sender": "Berater", "content": "Das ist am Anfang normal - jede neue Technologie kostet zunächst mehr Zeit. Wichtig ist: Sie müssen nicht alles auf einmal können. Gibt es Kolleginnen, die Ihnen als digitale Mentoren helfen könnten?"},
+            {"sender": "Klient", "content": "Eine jüngere Kollegin hat mir schon geholfen, aber ich möchte sie nicht ständig belästigen. Und die Fortbildungen sind immer so technisch, da verstehe ich die Hälfte nicht."},
+            {"sender": "Berater", "content": "Hilfe anzunehmen ist keine Belästigung - viele jüngere Kollegen freuen sich, wenn sie ihr Wissen teilen können. Ich empfehle: Suchen Sie sich einen festen 'Digitalpaten' und arbeiten Sie mit kleinen, konkreten Zielen. Eine Sache pro Woche neu lernen reicht völlig."},
+        ]
+    },
+    {
+        "subject": "Beratungsverlauf: Einsamkeit nach Umzug",
+        "counselor_source": "Mistral",
+        "client_source": "Human",
+        "messages": [
+            {"sender": "Klient", "content": "Ich bin vor vier Monaten berufsbedingt in eine neue Stadt gezogen. Ich kenne hier niemanden und am Wochenende sitze ich allein in meiner Wohnung."},
+            {"sender": "Berater", "content": "Ein Umzug in eine fremde Stadt ist eine große Veränderung. Vier Monate sind noch nicht lang, um neue Kontakte aufzubauen. Wie haben Sie in Ihrer alten Stadt Freundschaften geschlossen?"},
+            {"sender": "Klient", "content": "Über die Uni und den Sportverein. Aber jetzt bin ich 32 - es fühlt sich viel schwerer an, als Erwachsener neue Freunde zu finden."},
+            {"sender": "Berater", "content": "Das empfinden viele so. Der Schlüssel ist regelmäßiger Kontakt bei gemeinsamen Aktivitäten. Da Sport Ihnen liegt: Haben Sie sich nach Vereinen oder Laufgruppen in Ihrer neuen Stadt umgeschaut?"},
+        ]
+    },
+    {
+        "subject": "Beratungsverlauf: Midlife-Sinnkrise",
+        "counselor_source": "Mistral",
+        "client_source": "Human",
+        "messages": [
+            {"sender": "Klient", "content": "Ich bin 48, habe ein Haus, einen guten Job, gesunde Kinder. Eigentlich sollte ich zufrieden sein. Aber ich frage mich immer öfter: Ist das alles? War das mein Leben?"},
+            {"sender": "Berater", "content": "Diese Fragen in der Lebensmitte sind keine Seltenheit und kein Zeichen von Undankbarkeit. Sie signalisieren ein Bedürfnis nach tieferem Sinn. Was fehlt Ihnen, wenn Sie ehrlich darüber nachdenken?"},
+            {"sender": "Klient", "content": "Leidenschaft. Abenteuer. Ich fahre jeden Tag die gleiche Strecke, sitze im gleichen Büro, komme nach Hause, essen, fernsehen, schlafen. Repeat. Wo ist die Aufregung geblieben?"},
+            {"sender": "Berater", "content": "Das Gefühl der Routine kann erstickend sein. Aber die Lösung muss keine radikale Veränderung sein. Manchmal reichen kleine Ausbrüche aus dem Gewohnten. Was würden Sie tun, wenn Sie einen Monat völlig frei hätten?"},
+            {"sender": "Klient", "content": "Wandern gehen. Vielleicht den Jakobsweg. Oder endlich Gitarre lernen, was ich mit 20 immer vorhatte."},
+            {"sender": "Berater", "content": "Beide Ideen sind wunderbar und sofort umsetzbar. Sie müssen nicht gleich den ganzen Jakobsweg laufen - fangen Sie mit Tageswanderungen am Wochenende an. Und für die Gitarre gibt es hervorragende Kurse. Manchmal braucht es nur den ersten Schritt, um die Leidenschaft wiederzufinden."},
         ]
     },
 ]

@@ -513,6 +513,10 @@ export function useScenarioStats(scenarioIdRef) {
           // Unified pairwise agreement - prefer pairwise_agreement, fallback to ranking_agreement
           pairwise_agreement: statsData.pairwise_agreement || data.pairwise_agreement ||
                               statsData.ranking_agreement || data.ranking_agreement,
+          // Rating provenance stats
+          rating_provenance_analysis: statsData.rating_provenance_analysis || data.rating_provenance_analysis,
+          conversation_provenance: statsData.conversation_provenance || data.conversation_provenance,
+          rating_alpha: statsData.rating_alpha || data.rating_alpha,
           // Include ranking stats
           bucket_distribution: statsData.bucket_distribution || data.bucket_distribution,
           provenance_analysis: statsData.provenance_analysis || data.provenance_analysis,

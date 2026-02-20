@@ -363,6 +363,7 @@ const liveStats = computed(() => ({
   connected: statsConnected.value,
   ratingDistribution: stats.value?.rating_distribution,
   ratingProvenanceAnalysis: stats.value?.rating_provenance_analysis,
+  conversationProvenance: stats.value?.conversation_provenance,
   // Unified pairwise agreement - prefer pairwise_agreement, fallback to ranking_agreement
   pairwiseAgreement: stats.value?.pairwise_agreement || stats.value?.ranking_agreement,
   functionType: liveFunctionType.value,

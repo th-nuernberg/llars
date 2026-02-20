@@ -21,6 +21,8 @@ services:
     volumes:
       # SSL certificates (nginx.conf selection handled by entrypoint based on PROJECT_STATE)
       - ./docker/nginx/certs:/etc/nginx/certs:ro
+      # Static videos (persists across container rebuilds)
+      - ./static/videos:/srv/llars-static/videos:ro
     restart: unless-stopped
 
   # ============================================

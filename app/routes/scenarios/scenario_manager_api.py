@@ -239,8 +239,12 @@ def format_scenario_for_api(scenario, user, invitation_map=None, include_detaile
     user_id = getattr(user, 'id', None)
     username = getattr(user, 'username', str(user))
 
-    # Determine ownership
+    # Determine ownership: created_by, admin role, or OWNER role in scenario_users
     is_owner = (scenario.created_by == username) or has_role(user, 'admin')
+    if not is_owner and invitation_map:
+        inv_info = invitation_map.get(scenario.id)
+        if inv_info and inv_info.get('role') == ScenarioRoles.OWNER.value:
+            is_owner = True
 
     # Get function type name
     func_type = FeatureFunctionType.query.filter_by(

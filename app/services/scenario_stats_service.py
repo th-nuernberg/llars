@@ -626,16 +626,15 @@ def get_progress_stats(scenario_id: int) -> Dict[str, Any]:
     if function_type.name in {"rating", "mail_rating", "labeling", "ranking"}:
         pairwise_agreement = _calculate_unified_pairwise_agreement(scenario_id, function_type.name)
 
-    if function_type.name in {"rating", "mail_rating", "labeling"}:
+    if function_type.name in {"rating", "mail_rating"}:
         rating_distribution = _calculate_rating_distribution(scenario_id)
         dimension_averages = _calculate_dimension_averages(scenario_id)
-        # Calculate Krippendorff's Alpha using new rating system (ItemDimensionRating + LLMTaskResult)
         rating_alpha = _calculate_rating_krippendorff_alpha(scenario_id)
-        if function_type.name in {"rating", "mail_rating"}:
-            rating_provenance_analysis = _calculate_rating_provenance_analysis(scenario_id)
-        # Use the "all" alpha as the main alpha if no legacy alpha calculated
+        rating_provenance_analysis = _calculate_rating_provenance_analysis(scenario_id)
         if alpha is None and rating_alpha and rating_alpha.get("all") is not None:
             alpha = rating_alpha["all"]
+    elif function_type.name == "labeling":
+        rating_distribution = _calculate_labeling_distribution(scenario_id)
     elif function_type.name == "ranking":
         bucket_distribution = _calculate_bucket_distribution(scenario_id)
         provenance_analysis = _calculate_ranking_provenance_analysis(scenario_id)
@@ -1326,6 +1325,98 @@ def _calculate_rating_distribution(scenario_id: int) -> Dict[str, Any]:
         "llms": build_overall_distribution(llm_overall),
         "by_dimension": by_dimension,
         "has_mixed_scales": has_mixed_scales
+    }
+
+
+def _calculate_labeling_distribution(scenario_id: int) -> Dict[str, Any]:
+    """
+    Calculate label distribution for a labeling scenario.
+
+    Returns distribution of category labels from both human and LLM evaluations.
+    """
+    scenario = RatingScenarios.query.get(scenario_id)
+    if not scenario:
+        return {}
+
+    config = scenario.config_json or {}
+    if isinstance(config, str):
+        try:
+            config = json.loads(config)
+        except (json.JSONDecodeError, TypeError):
+            config = {}
+    if not isinstance(config, dict):
+        config = {}
+
+    categories = config.get("categories", [])
+    if not categories:
+        return {}
+
+    # Build category lookup
+    cat_lookup = {c.get("id"): c for c in categories if c.get("id")}
+
+    # Count human labels from ItemLabelingEvaluation
+    human_counts: Dict[str, int] = {}
+    human_evals = (
+        ItemLabelingEvaluation.query
+        .filter(
+            ItemLabelingEvaluation.scenario_id == scenario_id,
+            ItemLabelingEvaluation.category_id.isnot(None)
+        )
+        .all()
+    )
+    for ev in human_evals:
+        cat_id = ev.category_id
+        if cat_id:
+            human_counts[cat_id] = human_counts.get(cat_id, 0) + 1
+
+    # Count LLM labels from LLMTaskResult
+    llm_counts: Dict[str, int] = {}
+    llm_results = LLMTaskResult.query.filter_by(
+        scenario_id=scenario_id,
+        task_type="labeling"
+    ).filter(LLMTaskResult.error.is_(None)).all()
+
+    for result in llm_results:
+        payload = result.payload_json
+        if not payload:
+            continue
+        if isinstance(payload, str):
+            try:
+                payload = json.loads(payload)
+            except (json.JSONDecodeError, TypeError):
+                continue
+        label = payload.get("label")
+        if label:
+            llm_counts[label] = llm_counts.get(label, 0) + 1
+
+    def build_dist(counts: Dict[str, int]) -> List[Dict[str, Any]]:
+        total = sum(counts.values()) if counts else 0
+        distribution = []
+        for cat in categories:
+            cat_id = cat.get("id", "")
+            cat_name = cat.get("name", cat_id)
+            if isinstance(cat_name, dict):
+                cat_name = cat_name.get("en", cat_name.get("de", cat_id))
+            count = counts.get(cat_id, 0)
+            distribution.append({
+                "label": cat_name,
+                "value": cat_id,
+                "count": count,
+                "percentage": round((count / total) * 100) if total > 0 else 0
+            })
+        return distribution
+
+    # Combine for "all"
+    all_counts: Dict[str, int] = {}
+    for cat_id, count in human_counts.items():
+        all_counts[cat_id] = all_counts.get(cat_id, 0) + count
+    for cat_id, count in llm_counts.items():
+        all_counts[cat_id] = all_counts.get(cat_id, 0) + count
+
+    return {
+        "all": build_dist(all_counts),
+        "humans": build_dist(human_counts),
+        "llms": build_dist(llm_counts),
     }
 
 

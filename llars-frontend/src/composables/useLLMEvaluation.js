@@ -375,7 +375,7 @@ export function useLLMEvaluation(initialScenarioId = null) {
         spearman: metrics.spearman_rho?.value ?? null,
         accuracy: metrics.percent_agreement?.value ?? null,
         // New metrics
-        icc: metrics.icc?.value ?? null,
+        // icc: metrics.icc?.value ?? null,  // ICC disabled - needs more items to be meaningful
         kendallW: metrics.kendall_w?.value ?? null,
         macroF1: metrics.macro_f1?.value ?? null,
         microF1: metrics.micro_f1?.value ?? null,

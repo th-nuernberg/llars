@@ -269,7 +269,7 @@
             </LTooltip>
           </div>
 
-          <!-- ICC (Intraclass Correlation Coefficient) - Rating only -->
+          <!-- ICC disabled - needs more items (10+) to be meaningful
           <div class="metric-item" v-if="showICC && liveAgreementMetrics?.icc !== null && liveAgreementMetrics?.icc !== undefined">
             <LTooltip location="top">
               <template #content>
@@ -293,6 +293,7 @@
               </div>
             </LTooltip>
           </div>
+          -->
 
           <!-- Kendall's W (Coefficient of Concordance) - Ranking only -->
           <div class="metric-item" v-if="showKendallW && liveAgreementMetrics?.kendallW !== null && liveAgreementMetrics?.kendallW !== undefined">
@@ -2069,8 +2070,8 @@ const liveAgreementMetrics = computed(() => {
     kendall: fromService?.kendall ?? null,
     spearman: fromService?.spearman ?? null,
     // New metrics
-    icc: fromService?.icc ?? null,
-    iccInterpretation: fromService?.iccInterpretation ?? null,
+    // icc: fromService?.icc ?? null,  // ICC disabled - needs more items to be meaningful
+    // iccInterpretation: fromService?.iccInterpretation ?? null,
     kendallW: fromService?.kendallW ?? null,
     kendallWInterpretation: fromService?.kendallWInterpretation ?? null,
     macroF1: fromService?.macroF1 ?? null,
@@ -2089,7 +2090,7 @@ const hasMetrics = computed(() => {
     m.kappa !== null ||
     m.fleiss !== null ||
     m.accuracy !== null ||
-    m.icc !== null ||
+    // m.icc !== null ||  // ICC disabled
     m.kendallW !== null ||
     m.kendall !== null ||  // Kendall's Tau
     m.macroF1 !== null ||
@@ -2108,7 +2109,7 @@ const currentTaskType = computed(() => {
 // Ranking: Krippendorff's α, Kendall's W, Kendall's τ, Fleiss' κ
 const isRankingScenario = computed(() => currentTaskType.value === 'ranking')
 
-// Rating: ICC, Krippendorff's α, Cohen's/Fleiss' κ (per-dimension)
+// Rating: Krippendorff's α, Cohen's/Fleiss' κ (per-dimension)
 const isRatingScenario = computed(() =>
   currentTaskType.value === 'rating' || currentTaskType.value === 'mail_rating'
 )
@@ -2139,9 +2140,9 @@ const showFleiss = computed(() =>
 const showAccuracy = computed(() =>
   isClassificationScenario.value || isComparisonScenario.value
 )
-const showICC = computed(() =>
-  !hasKnownTaskType.value || isRatingScenario.value
-)
+// const showICC = computed(() =>  // ICC disabled - needs more items to be meaningful
+//   !hasKnownTaskType.value || isRatingScenario.value
+// )
 const showKendallW = computed(() =>
   !hasKnownTaskType.value || isRankingScenario.value
 )

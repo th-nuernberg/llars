@@ -90,11 +90,12 @@ class AgreementMetricsService:
             "description": "Simple percentage of identical ratings. Easy to interpret but doesn't account for chance agreement. Use alongside other metrics.",
             "range": "0% to 100%",
         },
-        "icc": {
-            "name": "ICC (Intraclass Correlation)",
-            "description": "Measures reliability of ratings by comparing variability within subjects to total variability. ICC(2,1) for single rater reliability. Values: <0.50 = poor, 0.50-0.75 = moderate, 0.75-0.90 = good, >0.90 = excellent.",
-            "range": "0.0 to 1.0",
-        },
+        # ICC disabled - needs more items (10+) to be meaningful
+        # "icc": {
+        #     "name": "ICC (Intraclass Correlation)",
+        #     "description": "...",
+        #     "range": "0.0 to 1.0",
+        # },
         "kendall_w": {
             "name": "Kendall's W (Concordance)",
             "description": "Measures agreement among multiple raters on rankings. Values: 0 = no agreement, 1 = perfect agreement. W > 0.7 indicates strong agreement.",
@@ -760,7 +761,8 @@ class AgreementMetricsService:
             dim_results[dim_id] = AgreementMetricsService._calculate_numeric_metrics(dim_evals)
 
         # Aggregate: average across dimensions for each metric type
-        metric_keys = ["krippendorff_alpha", "icc", "percent_agreement", "cohens_kappa",
+        # ICC disabled - needs more items (10+) to be meaningful
+        metric_keys = ["krippendorff_alpha", "percent_agreement", "cohens_kappa",
                         "spearman_rho", "kendall_w"]
         results = {}
 
@@ -819,13 +821,13 @@ class AgreementMetricsService:
                 "interpretation": AgreementMetricsService._interpret_alpha(alpha),
             }
 
-        # ICC (Intraclass Correlation Coefficient)
-        icc = AgreementMetricsService._icc(data, raters, items)
-        if icc is not None:
-            results["icc"] = {
-                "value": icc,
-                "interpretation": AgreementMetricsService._interpret_icc(icc),
-            }
+        # ICC disabled - needs more items (10+) to be meaningful
+        # icc = AgreementMetricsService._icc(data, raters, items)
+        # if icc is not None:
+        #     results["icc"] = {
+        #         "value": icc,
+        #         "interpretation": AgreementMetricsService._interpret_icc(icc),
+        #     }
 
         # Percent agreement
         percent = AgreementMetricsService._percent_agreement(data, raters, items)

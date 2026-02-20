@@ -76,10 +76,12 @@ const videoReady = ref(false)
 }
 
 .video-page__player-wrapper {
-  flex: 1;
-  min-height: 0;
   position: relative;
-  /* Video aspect ratio: 3600x2260 ≈ 1.593 */
+  width: 100%;
+  /* Video native resolution: 3600x2260 */
+  aspect-ratio: 3600 / 2260;
+  flex-shrink: 1;
+  min-height: 0;
 }
 
 .video-page__skeleton {
@@ -95,7 +97,6 @@ const videoReady = ref(false)
 .video-page__player {
   width: 100%;
   height: 100%;
-  object-fit: contain;
   border-radius: 12px;
   border: 1px solid rgba(var(--v-theme-on-surface), 0.12);
   background: #000;

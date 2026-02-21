@@ -22,9 +22,20 @@ logger = logging.getLogger(__name__)
 class UserLLMProviderService:
     """Service for managing user-owned LLM providers."""
 
+    OPENAI_COMPATIBLE_PROVIDER_TYPES = {
+        "openai",
+        "openai_compatible",
+        "litellm",
+        "ollama",
+        "vllm",
+        "custom",
+    }
+
     DEFAULT_BASE_URLS = {
         "openai": "https://api.openai.com/v1",
+        "openai_compatible": "https://api.openai.com/v1",
         "ollama": "http://localhost:11434",
+        "vllm": "http://localhost:8000/v1",
         "anthropic": "https://api.anthropic.com",
         "gemini": "https://generativelanguage.googleapis.com",
     }
@@ -328,7 +339,7 @@ class UserLLMProviderService:
 
         config = config or {}
 
-        if provider_type not in {"openai", "litellm", "custom"}:
+        if provider_type not in UserLLMProviderService.OPENAI_COMPATIBLE_PROVIDER_TYPES:
             raise ValueError("Provider type not supported for model listing")
 
         if provider_type == "openai" and not api_key:

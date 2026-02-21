@@ -27,6 +27,7 @@ OPENAI_COMPATIBLE_TYPES = {
     "ollama",
     "vllm",
     "openai_compatible",
+    "custom",
 }
 
 KNOWN_PROVIDER_TYPES = OPENAI_COMPATIBLE_TYPES | {"anthropic", "gemini", "custom"}

@@ -51,7 +51,16 @@ MANUFACTURER_API_PREFIX = {
 }
 
 # Known provider prefixes for model ID routing (e.g. "OpenAI/gpt-5-nano")
-KNOWN_PROVIDER_PREFIXES = {"openai", "litellm", "anthropic", "gemini", "ollama", "custom"}
+KNOWN_PROVIDER_PREFIXES = {
+    "openai",
+    "openai_compatible",
+    "litellm",
+    "anthropic",
+    "gemini",
+    "ollama",
+    "vllm",
+    "custom",
+}
 
 
 class LLMClientFactory:
@@ -180,7 +189,14 @@ class LLMClientFactory:
                         )
                         provider = None
                         api_key = None
-                if provider and provider.provider_type in {"openai", "litellm", "ollama", "custom"}:
+                if provider and provider.provider_type in {
+                    "openai",
+                    "openai_compatible",
+                    "litellm",
+                    "ollama",
+                    "vllm",
+                    "custom",
+                }:
                     base_url = (provider.base_url or "").strip() or None
                     client = OpenAI(api_key=api_key or "EMPTY", base_url=base_url, timeout=LLM_TIMEOUT)
                     LLMClientFactory._client_cache[cache_key] = client

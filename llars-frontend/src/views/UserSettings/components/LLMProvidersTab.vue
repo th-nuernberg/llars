@@ -223,6 +223,38 @@
               </template>
             </v-select>
 
+            <div v-if="showDynamicModelSelector" class="d-flex align-center justify-space-between mb-2">
+              <div class="text-caption text-medium-emphasis">
+                Verfügbare Modelle über `GET /models`
+              </div>
+              <LBtn
+                variant="tonal"
+                size="small"
+                :loading="loadingDiscoveredModels"
+                :disabled="!canFetchModels"
+                @click="fetchModelsForForm"
+              >
+                <v-icon start size="small">mdi-refresh</v-icon>
+                Modelle laden
+              </LBtn>
+            </div>
+
+            <v-combobox
+              v-if="showDynamicModelSelector"
+              v-model="form.selected_models"
+              :items="dynamicModelOptions"
+              :loading="loadingDiscoveredModels"
+              label="Modelle"
+              variant="outlined"
+              density="comfortable"
+              multiple
+              chips
+              closable-chips
+              clearable
+              hint="Modelle auswählen oder manuell eintragen"
+              persistent-hint
+            />
+
             <v-text-field
               v-if="selectedProviderType?.supports_base_url && form.provider_type !== 'openai'"
               v-model="form.base_url"
@@ -340,7 +372,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import LCard from '@/components/common/LCard.vue'
 import LBtn from '@/components/common/LBtn.vue'
@@ -362,6 +394,8 @@ const editingProvider = ref(null)
 const formRef = ref(null)
 const formValid = ref(false)
 const showApiKey = ref(false)
+const loadingDiscoveredModels = ref(false)
+const discoveredModels = ref([])
 
 const form = ref({
   provider_type: '',
@@ -404,8 +438,36 @@ const selectedProviderType = computed(() => {
   return providerTypes.value.find(t => t.id === form.value.provider_type)
 })
 
+const showDynamicModelSelector = computed(() => {
+  return Boolean(form.value.provider_type) &&
+    form.value.provider_type !== 'openai' &&
+    Boolean(selectedProviderType.value?.supports_model_fetch)
+})
+
+const dynamicModelOptions = computed(() => {
+  const merged = new Set([
+    ...(Array.isArray(discoveredModels.value) ? discoveredModels.value : []),
+    ...((form.value.selected_models || []).map(m => String(m || '').trim()).filter(Boolean))
+  ])
+  return Array.from(merged).sort((a, b) => a.localeCompare(b))
+})
+
+const canFetchModels = computed(() => {
+  if (!showDynamicModelSelector.value) return false
+  if (!selectedProviderType.value?.supports_base_url) return true
+  const baseUrl = (form.value.base_url || selectedProviderType.value?.default_base_url || '').trim()
+  return Boolean(baseUrl)
+})
+
 onMounted(async () => {
   await Promise.all([loadProviders(), loadProviderTypes()])
+})
+
+watch(() => form.value.provider_type, (nextType, prevType) => {
+  if (nextType === prevType) return
+  if (editingProvider.value) return
+  discoveredModels.value = []
+  form.value.selected_models = []
 })
 
 async function loadProviders() {
@@ -437,6 +499,7 @@ async function loadProviderTypes() {
 
 function openCreateDialog() {
   editingProvider.value = null
+  discoveredModels.value = []
   form.value = {
     provider_type: '',
     name: '',
@@ -451,21 +514,62 @@ function openCreateDialog() {
 
 function editProvider(provider) {
   editingProvider.value = provider
+  const selectedModels = Array.isArray(provider.config?.selected_models)
+    ? provider.config.selected_models
+    : []
+  discoveredModels.value = [...selectedModels]
   form.value = {
     provider_type: provider.provider_type,
     name: provider.name,
     api_key: '',
     base_url: provider.base_url || '',
     is_default: provider.is_default,
-    selected_models: provider.config?.selected_models || []
+    selected_models: selectedModels
   }
   showApiKey.value = false
   showDialog.value = true
 }
 
 function closeDialog() {
+  discoveredModels.value = []
   showDialog.value = false
   editingProvider.value = null
+}
+
+async function fetchModelsForForm() {
+  if (!showDynamicModelSelector.value) return
+
+  loadingDiscoveredModels.value = true
+  try {
+    const payload = {
+      provider_type: form.value.provider_type,
+      base_url: (form.value.base_url || selectedProviderType.value?.default_base_url || '').trim() || null
+    }
+
+    if (editingProvider.value?.id) {
+      payload.provider_id = editingProvider.value.id
+    }
+
+    if (form.value.api_key) {
+      payload.api_key = form.value.api_key
+    }
+
+    const response = await axios.post('/api/user/providers/models', payload)
+    const models = Array.isArray(response.data?.models)
+      ? response.data.models.map(m => String(m || '').trim()).filter(Boolean)
+      : []
+
+    discoveredModels.value = Array.from(new Set(models))
+
+    if (discoveredModels.value.length === 0) {
+      alert('Keine Modelle vom Provider zurückgegeben.')
+    }
+  } catch (error) {
+    console.error('Failed to fetch provider models:', error)
+    alert(error.response?.data?.message || error.response?.data?.error || error.message)
+  } finally {
+    loadingDiscoveredModels.value = false
+  }
 }
 
 async function saveProvider() {
@@ -474,6 +578,11 @@ async function saveProvider() {
   saving.value = true
   try {
     const isOpenai = form.value.provider_type === 'openai'
+    const selectedModels = Array.from(new Set(
+      (form.value.selected_models || [])
+        .map(m => String(m || '').trim())
+        .filter(Boolean)
+    ))
 
     const payload = {
       provider_type: form.value.provider_type,
@@ -486,8 +595,18 @@ async function saveProvider() {
       payload.api_key = form.value.api_key
     }
 
-    if (isOpenai) {
-      payload.config = { selected_models: form.value.selected_models || [] }
+    const existingConfig = editingProvider.value?.config && typeof editingProvider.value.config === 'object'
+      ? { ...editingProvider.value.config }
+      : {}
+
+    if (selectedModels.length > 0) {
+      existingConfig.selected_models = selectedModels
+    } else {
+      delete existingConfig.selected_models
+    }
+
+    if (Object.keys(existingConfig).length > 0) {
+      payload.config = existingConfig
     }
 
     if (editingProvider.value) {
@@ -610,10 +729,12 @@ async function toggleShareAll() {
 function getProviderIcon(type) {
   const icons = {
     openai: 'mdi-robot',
+    openai_compatible: 'mdi-api',
     anthropic: 'mdi-head-cog',
     gemini: 'mdi-google',
     azure: 'mdi-microsoft-azure',
     ollama: 'mdi-server',
+    vllm: 'mdi-chip',
     litellm: 'mdi-lightning-bolt',
     custom: 'mdi-api'
   }
@@ -623,10 +744,12 @@ function getProviderIcon(type) {
 function getProviderColor(type) {
   const colors = {
     openai: '#00A67E',
+    openai_compatible: '#00A67E',
     anthropic: '#D4A574',
     gemini: '#4285F4',
     azure: '#0078D4',
     ollama: '#6B7280',
+    vllm: '#7C3AED',
     litellm: '#F59E0B',
     custom: '#8B5CF6'
   }
@@ -636,10 +759,12 @@ function getProviderColor(type) {
 function getProviderTypeName(type) {
   const names = {
     openai: 'OpenAI',
+    openai_compatible: 'OpenAI Compatible',
     anthropic: 'Anthropic',
     gemini: 'Google Gemini',
     azure: 'Azure OpenAI',
     ollama: 'Ollama',
+    vllm: 'vLLM',
     litellm: 'LiteLLM',
     custom: 'Custom'
   }

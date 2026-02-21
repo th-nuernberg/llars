@@ -97,7 +97,17 @@ def create_provider():
     if not name:
         raise ValidationError("Name ist erforderlich")
 
-    valid_types = ['openai', 'anthropic', 'gemini', 'azure', 'ollama', 'litellm', 'custom']
+    valid_types = [
+        'openai',
+        'openai_compatible',
+        'anthropic',
+        'gemini',
+        'azure',
+        'ollama',
+        'vllm',
+        'litellm',
+        'custom'
+    ]
     if provider_type not in valid_types:
         raise ValidationError(f"Ungültiger Provider-Typ. Erlaubt: {', '.join(valid_types)}")
 
@@ -358,9 +368,20 @@ def get_provider_types():
             'requires_api_key': True,
             'supports_base_url': True,
             'default_base_url': 'https://api.openai.com/v1',
+            'supports_model_fetch': True,
             'config_schema': {
                 'organization': {'type': 'string', 'label': 'Organization ID (optional)'}
             }
+        },
+        {
+            'id': 'openai_compatible',
+            'name': 'OpenAI-kompatibel',
+            'description': 'Beliebiger Endpunkt mit OpenAI-API (/models)',
+            'requires_api_key': False,
+            'supports_base_url': True,
+            'default_base_url': 'https://api.openai.com/v1',
+            'supports_model_fetch': True,
+            'config_schema': {}
         },
         {
             'id': 'anthropic',
@@ -369,6 +390,7 @@ def get_provider_types():
             'requires_api_key': True,
             'supports_base_url': True,
             'default_base_url': 'https://api.anthropic.com',
+            'supports_model_fetch': False,
             'config_schema': {}
         },
         {
@@ -377,6 +399,7 @@ def get_provider_types():
             'description': 'Gemini Pro und Ultra',
             'requires_api_key': True,
             'supports_base_url': False,
+            'supports_model_fetch': False,
             'config_schema': {}
         },
         {
@@ -385,6 +408,7 @@ def get_provider_types():
             'description': 'Azure-gehostete OpenAI Modelle',
             'requires_api_key': True,
             'supports_base_url': True,
+            'supports_model_fetch': False,
             'config_schema': {
                 'deployment_name': {'type': 'string', 'label': 'Deployment Name', 'required': True},
                 'api_version': {'type': 'string', 'label': 'API Version', 'default': '2024-02-15-preview'}
@@ -397,6 +421,17 @@ def get_provider_types():
             'requires_api_key': False,
             'supports_base_url': True,
             'default_base_url': 'http://localhost:11434',
+            'supports_model_fetch': True,
+            'config_schema': {}
+        },
+        {
+            'id': 'vllm',
+            'name': 'vLLM',
+            'description': 'Self-hosted vLLM Endpoint',
+            'requires_api_key': False,
+            'supports_base_url': True,
+            'default_base_url': 'http://localhost:8000/v1',
+            'supports_model_fetch': True,
             'config_schema': {}
         },
         {
@@ -405,6 +440,7 @@ def get_provider_types():
             'description': 'LiteLLM Proxy für mehrere Provider',
             'requires_api_key': True,
             'supports_base_url': True,
+            'supports_model_fetch': True,
             'config_schema': {}
         },
         {
@@ -413,6 +449,7 @@ def get_provider_types():
             'description': 'Eigener OpenAI-kompatibler Endpunkt',
             'requires_api_key': True,
             'supports_base_url': True,
+            'supports_model_fetch': True,
             'config_schema': {
                 'model_list': {'type': 'array', 'label': 'Verfügbare Modelle'}
             }

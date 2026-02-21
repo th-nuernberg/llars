@@ -513,14 +513,14 @@
               {{ formatProvenanceRate(bestProvenanceLLM.top_bucket_rate) }}% | {{ bestProvenanceLLM.top_bucket_count }}/{{ bestProvenanceLLM.total }}
             </span>
           </div>
-          <div class="provenance-best-card">
+          <div v-if="hasMultipleProvenancePrompts" class="provenance-best-card">
             <span class="provenance-best-label">{{ $t('scenarioManager.results.bestPrompt') }}</span>
             <strong class="provenance-best-name">{{ bestProvenancePrompt?.label || '-' }}</strong>
             <span v-if="bestProvenancePrompt" class="provenance-best-meta">
               {{ formatProvenanceRate(bestProvenancePrompt.top_bucket_rate) }}% | {{ bestProvenancePrompt.top_bucket_count }}/{{ bestProvenancePrompt.total }}
             </span>
           </div>
-          <div class="provenance-best-card">
+          <div v-if="hasMultipleProvenancePrompts" class="provenance-best-card">
             <span class="provenance-best-label">{{ $t('scenarioManager.results.bestCombination') }}</span>
             <strong class="provenance-best-name">{{ bestProvenanceCombination?.label || '-' }}</strong>
             <span v-if="bestProvenanceCombination" class="provenance-best-meta">
@@ -559,7 +559,7 @@
             </div>
           </div>
 
-          <div class="provenance-list-card">
+          <div v-if="hasMultipleProvenancePrompts" class="provenance-list-card">
             <div class="provenance-list-header">
               <span>{{ $t('scenarioManager.results.promptRanking') }}</span>
               <span>{{ $t('scenarioManager.results.topBucketHitRatio', { bucket: provenanceTopBucketLabel }) }}</span>
@@ -585,7 +585,7 @@
             </div>
           </div>
 
-          <div class="provenance-list-card">
+          <div v-if="hasMultipleProvenancePrompts" class="provenance-list-card">
             <div class="provenance-list-header">
               <span>{{ $t('scenarioManager.results.combinationRanking') }}</span>
               <span>{{ $t('scenarioManager.results.topBucketHitRatio', { bucket: provenanceTopBucketLabel }) }}</span>
@@ -1042,14 +1042,14 @@
               {{ formatProvenanceRate(bestRatingProvenanceLLM.avg_normalized_score) }}% | {{ formatProvenanceScore(bestRatingProvenanceLLM.avg_score) }} Ø
             </span>
           </div>
-          <div v-if="!isMailRating" class="provenance-best-card">
+          <div v-if="!isMailRating && hasMultipleRatingProvenancePrompts" class="provenance-best-card">
             <span class="provenance-best-label">{{ $t('scenarioManager.results.bestPrompt') }}</span>
             <strong class="provenance-best-name">{{ bestRatingProvenancePrompt?.label || '-' }}</strong>
             <span v-if="bestRatingProvenancePrompt" class="provenance-best-meta">
               {{ formatProvenanceRate(bestRatingProvenancePrompt.avg_normalized_score) }}% | {{ formatProvenanceScore(bestRatingProvenancePrompt.avg_score) }} Ø
             </span>
           </div>
-          <div v-if="!isMailRating" class="provenance-best-card">
+          <div v-if="!isMailRating && hasMultipleRatingProvenancePrompts" class="provenance-best-card">
             <span class="provenance-best-label">{{ $t('scenarioManager.results.bestCombination') }}</span>
             <strong class="provenance-best-name">{{ bestRatingProvenanceCombination?.label || '-' }}</strong>
             <span v-if="bestRatingProvenanceCombination" class="provenance-best-meta">
@@ -1088,7 +1088,7 @@
             </div>
           </div>
 
-          <div v-if="!isMailRating" class="provenance-list-card">
+          <div v-if="!isMailRating && hasMultipleRatingProvenancePrompts" class="provenance-list-card">
             <div class="provenance-list-header">
               <span>{{ $t('scenarioManager.results.promptRanking') }}</span>
               <span>{{ $t('scenarioManager.results.ratingProvenancePrimaryMetric') }}</span>
@@ -1114,7 +1114,7 @@
             </div>
           </div>
 
-          <div v-if="!isMailRating" class="provenance-list-card">
+          <div v-if="!isMailRating && hasMultipleRatingProvenancePrompts" class="provenance-list-card">
             <div class="provenance-list-header">
               <span>{{ $t('scenarioManager.results.combinationRanking') }}</span>
               <span>{{ $t('scenarioManager.results.ratingProvenancePrimaryMetric') }}</span>
@@ -2826,6 +2826,10 @@ const bestProvenanceCombination = computed(() => {
   return currentProvenanceSegment.value?.best_combination || null
 })
 
+const hasMultipleProvenancePrompts = computed(() => {
+  return (currentProvenanceSegment.value?.by_prompt?.length || 0) >= 2
+})
+
 const hasProvenanceAnalysis = computed(() => {
   if (!isRankingScenario.value) return false
   const segment = currentProvenanceSegment.value
@@ -2949,6 +2953,10 @@ const isMailRating = computed(() => currentTaskType.value === 'mail_rating')
 const bestRatingProvenanceLLM = computed(() => currentRatingProvenanceSegment.value?.best_llm || null)
 const bestRatingProvenancePrompt = computed(() => currentRatingProvenanceSegment.value?.best_prompt || null)
 const bestRatingProvenanceCombination = computed(() => currentRatingProvenanceSegment.value?.best_combination || null)
+
+const hasMultipleRatingProvenancePrompts = computed(() => {
+  return (currentRatingProvenanceSegment.value?.by_prompt?.length || 0) >= 2
+})
 
 const ratingProvenanceHighThresholdPercent = computed(() => {
   const rawValue = Number(ratingProvenanceAnalysis.value?.metric_definition?.high_score_threshold_percent)

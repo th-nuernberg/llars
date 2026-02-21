@@ -8,9 +8,27 @@ from decorators.permission_decorator import has_role
 from decorators.error_handler import ForbiddenError
 
 
-def is_scenario_owner(scenario, username: str) -> bool:
-    """Check if the user is the owner of the scenario."""
-    return getattr(scenario, 'created_by', None) == username
+def is_scenario_owner(scenario, username) -> bool:
+    """Check if the user is the owner of the scenario (by created_by or OWNER role in ScenarioUsers)."""
+    # Accept both username string and user object
+    if not isinstance(username, str):
+        username = getattr(username, 'username', str(username))
+
+    if getattr(scenario, 'created_by', None) == username:
+        return True
+
+    # Also check ScenarioUsers OWNER role (for seeded scenarios where created_by may be NULL)
+    from db.models import ScenarioUsers, ScenarioRoles, Users
+    owner_entry = ScenarioUsers.query.filter_by(
+        scenario_id=scenario.id,
+        role=ScenarioRoles.OWNER.value
+    ).first()
+    if owner_entry:
+        owner_user = Users.query.get(owner_entry.user_id)
+        if owner_user and owner_user.username == username:
+            return True
+
+    return False
 
 
 def check_scenario_ownership(scenario, user) -> bool:

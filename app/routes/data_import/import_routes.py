@@ -411,6 +411,14 @@ def import_from_data():
     if session.status == "error":
         raise ValidationError(f"Import failed: {session.errors}")
 
+    if (session.imported_count or 0) <= 0:
+        warnings_preview = "; ".join(session.warnings[:3]) if session.warnings else ""
+        details = f" Warnings: {warnings_preview}" if warnings_preview else ""
+        raise ValidationError(
+            "No items could be imported for this scenario."
+            + details
+        )
+
     # Clean up session
     import_service.delete_session(session.session_id)
 

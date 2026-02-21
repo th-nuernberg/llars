@@ -289,6 +289,14 @@ const allItems = ref([
     badgeColor: 'info'
   },
   {
+    title: 'Anonymisierungs-Pipeline',
+    description: 'Konversationen batch-anonymisieren, bearbeiten und exportieren',
+    route: '/anonymization',
+    icon: 'mdi-shield-check',
+    permission: 'feature:anonymization-pipeline:view',
+    category: 'research'
+  },
+  {
     title: 'KAIMO',
     description: 'Fallvignetten durcharbeiten und neue Fälle anlegen',
     route: '/kaimo',

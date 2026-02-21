@@ -644,7 +644,18 @@ Regeln:
 
         flair.device = torch.device("cpu")
         paths = AnonymizeService._paths()
-        return SequenceTagger.load(str(paths["ner_model"]))
+
+        # Prefer local model artifact (offline-friendly), then fall back to HuggingFace.
+        local_model = paths["ner_model"]
+        if local_model.exists():
+            try:
+                logger.info(f"[Anonymize] Loading local NER model: {local_model}")
+                return SequenceTagger.load(str(local_model))
+            except Exception as e:
+                logger.warning(f"[Anonymize] Local NER model load failed, falling back to HuggingFace: {e}")
+
+        logger.info("[Anonymize] Loading NER model from HuggingFace: flair/ner-german-large")
+        return SequenceTagger.load("flair/ner-german-large")
 
     @staticmethod
     def health_check() -> dict[str, Any]:
@@ -960,6 +971,7 @@ Regeln:
         llm_model: Optional[str] = None,
     ) -> dict[str, Any]:
         group_overrides = group_overrides or {}
+        warnings: list[str] = []
         name_origin = name_origin or os.environ.get("ANONYMIZE_NAME_REGION", "Swiss_DE")
         name_count = int(name_count or os.environ.get("ANONYMIZE_NAME_COUNT", "1000"))
         engine = (engine or "offline").strip().lower()
@@ -994,9 +1006,13 @@ Regeln:
 
         ner_entities: list[EntityOccurrence] = []
         if engine in {"offline", "hybrid"}:
-            ner_entities = AnonymizeService._find_flair_ner(cleaned_text)
-            candidates.extend(ner_entities)
-            candidates.extend(AnonymizeService._find_plz_from_loc(cleaned_text, ner_entities))
+            try:
+                ner_entities = AnonymizeService._find_flair_ner(cleaned_text)
+                candidates.extend(ner_entities)
+                candidates.extend(AnonymizeService._find_plz_from_loc(cleaned_text, ner_entities))
+            except Exception as e:
+                logger.warning(f"[Anonymize] NER detection unavailable, continuing without NER: {e}")
+                warnings.append("NER_UNAVAILABLE")
 
         entities = AnonymizeService._select_entities(candidates)
 
@@ -1234,13 +1250,16 @@ Regeln:
             label = str(g.get("label", ""))
             g["can_randomize"] = label in {"PER", "LOC", "DATE", "PHONE", "AGE"}
 
-        return {
+        result = {
             "input_text": cleaned_text,
             "output_text": output_text,
             "entities": output_entities,
             "groups": group_list,
             "date_shift_days": int(date_shift_days),
         }
+        if warnings:
+            result["warnings"] = warnings
+        return result
 
     @staticmethod
     def _shift_date_string(

@@ -138,11 +138,16 @@ services:
       dockerfile: docker/flask/Dockerfile-flask
     expose:
       - "8081"
+    deploy:
+      resources:
+        limits:
+          memory: 12G  # Increased for Flair NER model (2.1GB + overhead)
     # Mount application code for hot-reloading in development
     volumes:
       - ./app:/app
       # Offline Anonymize Ressourcen (großes NER-Modell bleibt in docs/, wird hier nur gemountet)
       - ./docs/docs/projekte/anonymize/models/ner-german-large:/app/models/anonymize/ner-german-large:ro
+      - ./docs/docs/projekte/anonymize/models/recommender_system:/app/models/anonymize/recommender_system:ro
       - ./docs/docs/projekte/anonymize/database:/app/data/anonymize:ro
       - rag_storage:/app/storage
       - rag_docs:/app/rag_docs

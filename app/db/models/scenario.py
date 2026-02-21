@@ -11,6 +11,8 @@ from db import db
 class ScenarioRoles(Enum):
     VIEWER = 'Viewer'
     RATER = 'Rater'
+    EVALUATOR = 'Evaluator'
+    OWNER = 'Owner'
 
 
 class ProgressionStatus(Enum):

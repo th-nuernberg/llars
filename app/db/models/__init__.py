@@ -153,6 +153,14 @@ from db.models.authenticity import (
     UserAuthenticityVote,
 )
 
+# Anonymization Pipeline models
+from db.models.anonymization import (
+    AnonymizationConversation,
+    AnonymizationMessage,
+    AnonymizationEntity,
+    AnonymizationMessageVersion,
+)
+
 __all__ = [
     # User
     'User',
@@ -260,6 +268,11 @@ __all__ = [
     # Authenticity
     'AuthenticityConversation',
     'UserAuthenticityVote',
+    # Anonymization Pipeline
+    'AnonymizationConversation',
+    'AnonymizationMessage',
+    'AnonymizationEntity',
+    'AnonymizationMessageVersion',
     'UserPrompt',
     'UserPromptShare',
     'PromptCommit',

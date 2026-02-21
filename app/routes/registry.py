@@ -99,6 +99,10 @@ def register_all_blueprints(app: Flask) -> None:
     from routes.anonymize import anonymize_bp
     app.register_blueprint(anonymize_bp)
 
+    # Anonymization Pipeline (batch processing and manual review)
+    from routes.anonymization import anonymization_bp
+    app.register_blueprint(anonymization_bp)
+
     # Web Crawler
     from routes.crawler import crawler_bp
     app.register_blueprint(crawler_bp)
@@ -153,6 +157,7 @@ def get_blueprint_info() -> dict:
             {'name': 'markdown_collab', 'prefix': '/api/markdown-collab', 'description': 'Markdown Collab workspaces and documents'},
             {'name': 'latex_collab', 'prefix': '/api/latex-collab', 'description': 'LaTeX Collab workspaces and documents'},
             {'name': 'anonymize', 'prefix': '/api/anonymize', 'description': 'Offline pseudonymization (Anonymize tool)'},
+            {'name': 'anonymization', 'prefix': '/api/anonymization', 'description': 'Conversation anonymization pipeline'},
         ],
         'projects': [
             {'name': 'kaimo', 'prefix': '/api/kaimo', 'description': 'KAIMO project routes'},

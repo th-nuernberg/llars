@@ -94,6 +94,11 @@ try {
     $userInfoUrl = $authentikInternalBase . '/application/o/userinfo/';
     $endSessionUrl = $authentikExternalBase . '/application/o/' . $appSlug . '/end-session/';
 
+    // Matomo behind nginx reverse proxy at /analytics/ cannot detect its own public URL
+    // correctly (Url::getCurrentUrlWithoutQueryString() returns http:// without /analytics/ prefix).
+    // We must set an explicit redirect URI override.
+    $redirectUriOverride = $baseUrl . '/analytics/index.php?module=RebelOIDC&action=callback&provider=oidc';
+
     $force = filter_var(getenv('MATOMO_OIDC_FORCE_CONFIG') ?: 'false', FILTER_VALIDATE_BOOLEAN);
 
     $configuredFlag = 'llars_matomo_rebeloidc_configured';
@@ -119,6 +124,7 @@ try {
         $tokenUrl,
         $userInfoUrl,
         $endSessionUrl,
+        $redirectUriOverride,
         $clientId,
         $clientSecret,
         $configuredFlag
@@ -149,6 +155,9 @@ try {
         // (Otherwise RebelOIDC only allows POST from Matomo login form)
         $settings->disableDirectLoginUrl->setValue(false);
         $settings->disableSuperuser->setValue(false);
+
+        // Override redirect URI: Matomo behind reverse proxy cannot detect its public URL
+        $settings->redirectUriOverride->setValue($redirectUriOverride);
 
         $settings->save();
         Option::set($configuredFlag, '1');

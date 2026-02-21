@@ -1,47 +1,58 @@
 <template>
   <div class="evaluation-tab" :class="{ 'screenshot-font-boost': isScreenshotMode }">
     <!-- Summary Cards -->
-    <div class="summary-grid">
-      <div class="summary-card">
-        <div class="summary-icon" style="background-color: rgba(176, 202, 151, 0.15);">
-          <LIcon color="#b0ca97" size="24">mdi-check-circle-outline</LIcon>
+    <Transition name="eval-fade" mode="out-in">
+      <div v-if="!statsLoading" key="summary" class="summary-grid">
+        <div class="summary-card">
+          <div class="summary-icon" style="background-color: rgba(176, 202, 151, 0.15);">
+            <LIcon color="#b0ca97" size="24">mdi-check-circle-outline</LIcon>
+          </div>
+          <div class="summary-content">
+            <span class="summary-value">{{ summaryStats.totalEvaluations }}</span>
+            <span class="summary-label">{{ $t('scenarioManager.results.totalEvaluations') }}</span>
+          </div>
         </div>
-        <div class="summary-content">
-          <span class="summary-value">{{ summaryStats.totalEvaluations }}</span>
-          <span class="summary-label">{{ $t('scenarioManager.results.totalEvaluations') }}</span>
-        </div>
-      </div>
 
-      <div class="summary-card" v-if="hasHumans">
-        <div class="summary-icon" style="background-color: rgba(136, 196, 200, 0.15);">
-          <LIcon color="#88c4c8" size="24">mdi-account-multiple-outline</LIcon>
+        <div class="summary-card" v-if="hasHumans">
+          <div class="summary-icon" style="background-color: rgba(136, 196, 200, 0.15);">
+            <LIcon color="#88c4c8" size="24">mdi-account-multiple-outline</LIcon>
+          </div>
+          <div class="summary-content">
+            <span class="summary-value">{{ summaryStats.humanEvaluators }}</span>
+            <span class="summary-label">{{ $t('scenarioManager.results.humanEvaluators') }}</span>
+          </div>
         </div>
-        <div class="summary-content">
-          <span class="summary-value">{{ summaryStats.humanEvaluators }}</span>
-          <span class="summary-label">{{ $t('scenarioManager.results.humanEvaluators') }}</span>
-        </div>
-      </div>
 
-      <div class="summary-card" v-if="hasLLMs">
-        <div class="summary-icon" style="background-color: rgba(196, 160, 212, 0.15);">
-          <LIcon color="#c4a0d4" size="24">mdi-robot-outline</LIcon>
+        <div class="summary-card" v-if="hasLLMs">
+          <div class="summary-icon" style="background-color: rgba(196, 160, 212, 0.15);">
+            <LIcon color="#c4a0d4" size="24">mdi-robot-outline</LIcon>
+          </div>
+          <div class="summary-content">
+            <span class="summary-value">{{ summaryStats.llmEvaluators }}</span>
+            <span class="summary-label">{{ $t('scenarioManager.results.llmEvaluators') }}</span>
+          </div>
         </div>
-        <div class="summary-content">
-          <span class="summary-value">{{ summaryStats.llmEvaluators }}</span>
-          <span class="summary-label">{{ $t('scenarioManager.results.llmEvaluators') }}</span>
-        </div>
-      </div>
 
-      <div class="summary-card">
-        <div class="summary-icon" style="background-color: rgba(209, 188, 138, 0.15);">
-          <LIcon color="#D1BC8A" size="24">mdi-percent</LIcon>
-        </div>
-        <div class="summary-content">
-          <span class="summary-value">{{ summaryStats.agreementRate }}%</span>
-          <span class="summary-label">{{ $t('scenarioManager.results.agreementRate') }}</span>
+        <div class="summary-card">
+          <div class="summary-icon" style="background-color: rgba(209, 188, 138, 0.15);">
+            <LIcon color="#D1BC8A" size="24">mdi-percent</LIcon>
+          </div>
+          <div class="summary-content">
+            <span class="summary-value">{{ summaryStats.agreementRate }}%</span>
+            <span class="summary-label">{{ $t('scenarioManager.results.agreementRate') }}</span>
+          </div>
         </div>
       </div>
-    </div>
+      <div v-else key="summary-skeleton" class="summary-grid">
+        <div v-for="n in 4" :key="n" class="summary-card summary-card--skeleton">
+          <div class="skeleton-block" style="width: 32px; height: 32px; border-radius: 8px;" />
+          <div class="summary-content">
+            <div class="skeleton-block" style="width: 48px; height: 24px;" />
+            <div class="skeleton-block" style="width: 80px; height: 12px;" />
+          </div>
+        </div>
+      </div>
+    </Transition>
 
     <!-- Metrics & Results Section -->
     <div class="section-card metrics-results-section">
@@ -105,72 +116,79 @@
       </div>
 
       <!-- Total Progress Section -->
-      <div class="total-progress-section">
-        <div class="progress-header">
-          <h4 class="subsection-title">
-            <LIcon size="18" class="mr-2">mdi-progress-check</LIcon>
-            {{ $t('scenarioManager.evaluation.totalProgress') }}
-          </h4>
-          <div class="progress-stats">
-            <span class="progress-count">{{ filteredProgress.completed }} / {{ filteredProgress.total }}</span>
-            <span class="progress-percent">{{ filteredProgress.percent }}%</span>
+      <Transition name="eval-fade" mode="out-in">
+        <div v-if="!statsLoading" key="progress" class="total-progress-section">
+          <div class="progress-header">
+            <h4 class="subsection-title">
+              <LIcon size="18" class="mr-2">mdi-progress-check</LIcon>
+              {{ $t('scenarioManager.evaluation.totalProgress') }}
+            </h4>
+            <div class="progress-stats">
+              <span class="progress-count">{{ filteredProgress.completed }} / {{ filteredProgress.total }}</span>
+              <span class="progress-percent">{{ filteredProgress.percent }}%</span>
+            </div>
           </div>
-        </div>
 
-        <!-- Main Progress Bar -->
-        <div class="progress-bar-container">
-          <div class="progress-bar-track">
-            <div
-              class="progress-bar-fill"
-              :style="{ width: filteredProgress.percent + '%' }"
-              :class="getProgressColorClass(filteredProgress.percent)"
-            ></div>
+          <!-- Main Progress Bar -->
+          <div class="progress-bar-container">
+            <div class="progress-bar-track">
+              <div
+                class="progress-bar-fill"
+                :style="{ width: filteredProgress.percent + '%' }"
+                :class="getProgressColorClass(filteredProgress.percent)"
+              ></div>
+            </div>
           </div>
-        </div>
 
-        <!-- Progress Legend (when filter is "all") -->
-        <div class="progress-legend" v-if="evaluatorTypeFilter === 'all' && hasHumans && hasLLMs">
-          <div class="legend-item human">
-            <LIcon size="14">mdi-account</LIcon>
-            <span class="legend-label">{{ $t('scenarioManager.evaluation.filter.human') }}</span>
-            <span class="legend-value">{{ filteredProgress.human.completed }}/{{ filteredProgress.human.total }}</span>
-            <span class="legend-percent">({{ filteredProgress.human.percent }}%)</span>
+          <!-- Progress Legend (when filter is "all") -->
+          <div class="progress-legend" v-if="evaluatorTypeFilter === 'all' && hasHumans && hasLLMs">
+            <div class="legend-item human">
+              <LIcon size="14">mdi-account</LIcon>
+              <span class="legend-label">{{ $t('scenarioManager.evaluation.filter.human') }}</span>
+              <span class="legend-value">{{ filteredProgress.human.completed }}/{{ filteredProgress.human.total }}</span>
+              <span class="legend-percent">({{ filteredProgress.human.percent }}%)</span>
+            </div>
+            <div class="legend-item llm">
+              <LIcon size="14">mdi-robot</LIcon>
+              <span class="legend-label">{{ $t('scenarioManager.evaluation.filter.llm') }}</span>
+              <span class="legend-value">{{ filteredProgress.llm.completed }}/{{ filteredProgress.llm.total }}</span>
+              <span class="legend-percent">({{ filteredProgress.llm.percent }}%)</span>
+            </div>
           </div>
-          <div class="legend-item llm">
-            <LIcon size="14">mdi-robot</LIcon>
-            <span class="legend-label">{{ $t('scenarioManager.evaluation.filter.llm') }}</span>
-            <span class="legend-value">{{ filteredProgress.llm.completed }}/{{ filteredProgress.llm.total }}</span>
-            <span class="legend-percent">({{ filteredProgress.llm.percent }}%)</span>
-          </div>
-        </div>
 
-        <!-- Evaluator count info -->
-        <div class="evaluator-count-info">
-          <span v-if="evaluatorTypeFilter === 'all'">
-            {{ filteredProgress.human.count + filteredProgress.llm.count }} {{ $t('scenarioManager.evaluation.evaluators') }}
-            ({{ filteredProgress.human.count }} {{ $t('scenarioManager.evaluation.filter.human') }}, {{ filteredProgress.llm.count }} LLM)
-          </span>
-          <span v-else-if="evaluatorTypeFilter === 'human'">
-            {{ filteredProgress.human.count }} {{ $t('scenarioManager.evaluation.humanEvaluators') }}
-          </span>
-          <span v-else>
-            {{ filteredProgress.llm.count }} {{ $t('scenarioManager.evaluation.llmEvaluators') }}
-          </span>
+          <!-- Evaluator count info -->
+          <div class="evaluator-count-info">
+            <span v-if="evaluatorTypeFilter === 'all'">
+              {{ filteredProgress.human.count + filteredProgress.llm.count }} {{ $t('scenarioManager.evaluation.evaluators') }}
+              ({{ filteredProgress.human.count }} {{ $t('scenarioManager.evaluation.filter.human') }}, {{ filteredProgress.llm.count }} LLM)
+            </span>
+            <span v-else-if="evaluatorTypeFilter === 'human'">
+              {{ filteredProgress.human.count }} {{ $t('scenarioManager.evaluation.humanEvaluators') }}
+            </span>
+            <span v-else>
+              {{ filteredProgress.llm.count }} {{ $t('scenarioManager.evaluation.llmEvaluators') }}
+            </span>
+          </div>
         </div>
-      </div>
+        <div v-else key="progress-skeleton" class="total-progress-section">
+          <div class="skeleton-block" style="height: 16px; width: 140px; margin-bottom: 8px;" />
+          <div class="skeleton-block" style="height: 24px; width: 100%; border-radius: 12px;" />
+        </div>
+      </Transition>
 
       <!-- Agreement Metrics -->
-      <div class="metrics-section" v-if="hasMetrics">
-        <h4 class="subsection-title">
-          {{ $t('scenarioManager.results.agreementMetrics') }}
-          <LTooltip :text="$t('scenarioManager.tooltips.agreementMetrics')" location="top">
-            <v-icon size="16" class="help-icon">mdi-help-circle-outline</v-icon>
-          </LTooltip>
-        </h4>
-        <p v-if="isRankingScenario" class="subsection-description text-medium-emphasis text-caption mb-2">
-          {{ $t('scenarioManager.results.rankingMetricsDescription') }}
-        </p>
-        <div class="metrics-grid">
+      <Transition name="eval-fade" mode="out-in">
+        <div v-if="hasMetrics" key="metrics" class="metrics-section">
+          <h4 class="subsection-title">
+            {{ $t('scenarioManager.results.agreementMetrics') }}
+            <LTooltip :text="$t('scenarioManager.tooltips.agreementMetrics')" location="top">
+              <v-icon size="16" class="help-icon">mdi-help-circle-outline</v-icon>
+            </LTooltip>
+          </h4>
+          <p v-if="isRankingScenario" class="subsection-description text-medium-emphasis text-caption mb-2">
+            {{ $t('scenarioManager.results.rankingMetricsDescription') }}
+          </p>
+          <div class="metrics-grid">
           <!-- Cohen's Kappa (Rating, Classification) -->
           <div class="metric-item" v-if="showKappa && liveAgreementMetrics?.kappa !== null && liveAgreementMetrics?.kappa !== undefined">
             <LTooltip location="top">
@@ -393,6 +411,18 @@
           </div>
         </div>
       </div>
+        <div v-else-if="statsLoading" key="metrics-skeleton" class="metrics-section">
+          <div class="metrics-grid">
+            <div v-for="n in metricsSkeletonCount" :key="n" class="metric-item metric-item--skeleton">
+              <div class="skeleton-block" style="width: 100%; height: 60px; border-radius: 8px;" />
+            </div>
+          </div>
+        </div>
+      </Transition>
+
+      <!-- Type-Specific Sections (with skeleton fallback) -->
+      <Transition name="eval-fade" mode="out-in">
+        <div v-if="!statsLoading" key="type-content" class="type-specific-content">
 
       <!-- Confusion Matrix -->
       <div class="confusion-matrix-section" v-if="isAuthenticityScenario && hasConfusionMatrixData">
@@ -1696,6 +1726,41 @@
         <LIcon size="48" color="grey-lighten-1">mdi-chart-box-outline</LIcon>
         <p>{{ $t('scenarioManager.evaluation.noResultsYet') }}</p>
       </div>
+
+        </div>
+        <div v-else key="type-skeleton" class="type-skeleton-section">
+          <!-- Ranking skeleton -->
+          <template v-if="isRankingType">
+            <div class="skeleton-provenance-grid">
+              <div v-for="n in 3" :key="n" class="skeleton-block" style="height: 80px; border-radius: 8px;" />
+            </div>
+            <div class="skeleton-block" style="height: 200px; border-radius: 8px; margin-top: 16px;" />
+          </template>
+
+          <!-- Rating / Mail Rating skeleton -->
+          <template v-else-if="isRatingType">
+            <div class="skeleton-block" style="height: 180px; border-radius: 8px;" />
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 16px;">
+              <div class="skeleton-block" style="height: 200px; border-radius: 8px;" />
+              <div class="skeleton-block" style="height: 200px; border-radius: 8px;" />
+            </div>
+          </template>
+
+          <!-- Authenticity skeleton -->
+          <template v-else-if="isAuthenticityType">
+            <div class="skeleton-block" style="height: 200px; border-radius: 8px;" />
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 16px;">
+              <div class="skeleton-block" style="height: 80px; border-radius: 8px;" />
+              <div class="skeleton-block" style="height: 80px; border-radius: 8px;" />
+            </div>
+          </template>
+
+          <!-- Default (labeling, comparison) skeleton -->
+          <template v-else>
+            <div class="skeleton-block" style="height: 180px; border-radius: 8px;" />
+          </template>
+        </div>
+      </Transition>
     </div>
 
     <!-- Remove Evaluator Confirmation -->
@@ -2115,6 +2180,28 @@ const isScreenshotMode = computed(() => {
 
 const evaluatorStatsList = computed(() => {
   return props.liveStats?.userStatsList || []
+})
+
+// ===== Computed: Loading State =====
+const statsLoading = computed(() => {
+  return !props.liveStats?.userStatsList?.length
+})
+
+// Skeleton type helpers (use props.scenario.function_type which is available immediately)
+const scenarioFunctionType = computed(() => props.scenario?.function_type || null)
+const isRankingType = computed(() => scenarioFunctionType.value === 'ranking')
+const isRatingType = computed(() =>
+  scenarioFunctionType.value === 'rating' || scenarioFunctionType.value === 'mail_rating'
+)
+const isAuthenticityType = computed(() =>
+  scenarioFunctionType.value === 'authenticity' || scenarioFunctionType.value === 'labeling'
+)
+
+const metricsSkeletonCount = computed(() => {
+  if (isRankingType.value) return 4
+  if (isAuthenticityType.value) return 4
+  if (isRatingType.value) return 3
+  return 2
 })
 
 // ===== Computed: Evaluator Type Flags =====
@@ -6817,5 +6904,54 @@ watch(
   .provenance-detail-table {
     min-width: 560px;
   }
+}
+
+/* Smooth fade transition for section loading */
+.eval-fade-enter-active,
+.eval-fade-leave-active {
+  transition: opacity 0.3s ease;
+}
+.eval-fade-enter-from,
+.eval-fade-leave-to {
+  opacity: 0;
+}
+
+/* Skeleton pulse block */
+.skeleton-block {
+  background: linear-gradient(
+    90deg,
+    rgba(var(--v-theme-on-surface), 0.06) 25%,
+    rgba(var(--v-theme-on-surface), 0.12) 50%,
+    rgba(var(--v-theme-on-surface), 0.06) 75%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.5s ease-in-out infinite;
+  border-radius: 6px;
+}
+
+@keyframes skeleton-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* Skeleton layout helpers */
+.skeleton-provenance-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.summary-card--skeleton {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.metric-item--skeleton {
+  padding: 8px;
+}
+
+.type-skeleton-section {
+  padding: 0 20px 20px;
 }
 </style>

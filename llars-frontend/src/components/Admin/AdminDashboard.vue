@@ -9,10 +9,10 @@
       class="mobile-sidebar-drawer"
     >
       <div class="mobile-sidebar-header">
-        <v-icon color="primary" size="24" class="mr-3">mdi-shield-crown</v-icon>
+        <LIcon color="primary" size="24" class="mr-3">llars:admin-dashboard</LIcon>
         <div>
-          <div class="text-subtitle-1 font-weight-bold">Admin</div>
-          <div class="text-caption text-medium-emphasis">Dashboard</div>
+          <div class="text-subtitle-1 font-weight-bold">{{ $t('adminDashboard.title') }}</div>
+          <div class="text-caption text-medium-emphasis">{{ $t('adminDashboard.subtitle') }}</div>
         </div>
       </div>
       <v-divider />
@@ -33,7 +33,7 @@
         <v-list nav density="compact" class="pa-2">
           <v-list-item
             prepend-icon="mdi-home"
-            title="Zur Startseite"
+            :title="$t('adminDashboard.homeLink')"
             rounded="lg"
             @click="$router.push('/Home')"
           />
@@ -46,9 +46,9 @@
       v-if="!isMobile"
       v-model="activeSection"
       :items="filteredNavItems"
-      title="Admin"
-      subtitle="Dashboard"
-      icon="mdi-shield-crown"
+      :title="$t('adminDashboard.title')"
+      :subtitle="$t('adminDashboard.subtitle')"
+      icon="llars:admin-dashboard"
       storage-key="admin"
       :show-home-link="true"
     />
@@ -67,24 +67,14 @@
             class="mr-2"
             @click="mobileSidebarOpen = true"
           >
-            <v-icon>mdi-menu</v-icon>
+            <LIcon>mdi-menu</LIcon>
           </v-btn>
-          <div class="flex-grow-1 min-width-0">
+          <div v-if="currentSectionTitle" class="flex-grow-1 min-width-0">
             <h1 :class="isMobile ? 'text-h6 font-weight-bold text-truncate' : 'text-h4 font-weight-bold'">
               {{ currentSectionTitle }}
             </h1>
-            <p v-if="!isMobile" class="text-subtitle-1 text-medium-emphasis">{{ currentSectionSubtitle }}</p>
           </div>
           <v-spacer />
-          <v-chip
-            color="primary"
-            variant="flat"
-            :size="isMobile ? 'small' : 'default'"
-            class="ml-2"
-          >
-            <v-icon start :size="isMobile ? 14 : 18">mdi-account</v-icon>
-            <span v-if="!isMobile">{{ username }}</span>
-          </v-chip>
         </div>
       </div>
 
@@ -122,13 +112,23 @@
           </div>
 
           <!-- RAG Section -->
-          <div v-else-if="activeSection === 'rag'" key="rag" class="section-container">
+          <div v-else-if="activeSection === 'rag'" key="rag" class="section-container--full">
             <AdminRAGSection />
           </div>
 
           <!-- Permissions Section -->
           <div v-else-if="activeSection === 'permissions'" key="permissions" class="section-container">
             <AdminPermissionsSection />
+          </div>
+
+          <!-- LLM Providers Section -->
+          <div v-else-if="activeSection === 'llm-providers'" key="llm-providers" class="section-container--full">
+            <AdminLlmProvidersSection />
+          </div>
+
+          <!-- Referrals Section -->
+          <div v-else-if="activeSection === 'referrals'" key="referrals" class="section-container">
+            <AdminReferralSection />
           </div>
 
           <!-- System Health Section -->
@@ -139,6 +139,11 @@
           <!-- System Events Section -->
           <div v-else-if="activeSection === 'system'" key="system" class="section-container--full">
             <AdminSystemMonitorSection />
+          </div>
+
+          <!-- Presence Section -->
+          <div v-else-if="activeSection === 'presence'" key="presence" class="section-container--full">
+            <AdminPresenceSection />
           </div>
 
           <!-- Chatbot Activity Section -->
@@ -160,6 +165,11 @@
           <div v-else-if="activeSection === 'settings'" key="settings" class="section-container">
             <AdminSystemSettingsSection />
           </div>
+
+          <!-- Field Prompts Section (AI Assist) -->
+          <div v-else-if="activeSection === 'field-prompts'" key="field-prompts" class="section-container">
+            <AdminFieldPromptsSection />
+          </div>
         </v-fade-transition>
       </div>
     </main>
@@ -169,7 +179,7 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { useAuth } from '@/composables/useAuth';
+import { useI18n } from 'vue-i18n';
 import { usePermissions } from '@/composables/usePermissions';
 import { useMobile } from '@/composables/useMobile';
 
@@ -180,28 +190,31 @@ import AdminUsersSection from './sections/AdminUsersSection.vue';
 import AdminScenariosSection from './sections/AdminScenariosSection.vue';
 import AdminRAGSection from './sections/AdminRAGSection.vue';
 import AdminPermissionsSection from './sections/AdminPermissionsSection.vue';
+import AdminLlmProvidersSection from './sections/AdminLlmProvidersSection.vue';
 import AdminSystemMonitorSection from './sections/AdminSystemMonitorSection.vue';
 import AdminSystemHealthSection from './sections/AdminSystemHealthSection.vue';
 import AdminChatbotActivitySection from './sections/AdminChatbotActivitySection.vue';
 import AdminDockerMonitorSection from './sections/AdminDockerMonitorSection.vue';
 import AdminDatabaseSection from './sections/AdminDatabaseSection.vue';
 import AdminSystemSettingsSection from './sections/AdminSystemSettingsSection.vue';
+import AdminReferralSection from './sections/AdminReferralSection.vue';
+import AdminPresenceSection from './sections/AdminPresenceSection.vue';
+import AdminFieldPromptsSection from './sections/AdminFieldPromptsSection.vue';
 import ChatbotManager from './ChatbotAdmin/ChatbotManager.vue';
 import WebCrawlerTool from './CrawlerAdmin/WebCrawlerTool.vue';
 import AppSidebar from '@/components/common/AppSidebar.vue';
 
-const auth = useAuth();
 const { hasPermission, hasAnyPermission, fetchPermissions, isAdmin } = usePermissions();
 const route = useRoute();
 const router = useRouter();
+const { t } = useI18n();
 const { isMobile, isTablet, isSmallScreen } = useMobile();
-const username = computed(() => auth.tokenParsed.value?.preferred_username || 'Admin');
 
 // Mobile sidebar state
 const mobileSidebarOpen = ref(false);
 
-// Active section (synced with route query)
-const activeSection = ref('overview');
+// Active section (synced with route query) - initialize from URL immediately to prevent flash
+const activeSection = ref(route.query.tab || 'overview');
 
 // Close sidebar when section changes on mobile
 watch(activeSection, () => {
@@ -218,51 +231,38 @@ const isChatbotWizardOpen = computed(() => {
 
 // Navigation items
 const navItems = [
-  { title: 'Übersicht', value: 'overview', icon: 'mdi-view-dashboard', adminOnly: true },
-  { title: 'Analytics', value: 'analytics', icon: 'mdi-chart-bar', adminOnly: true },
-  { title: 'System Health', value: 'health', icon: 'mdi-heart-pulse', adminOnly: true },
-  { title: 'System Events', value: 'system', icon: 'mdi-monitor-dashboard', adminOnly: true },
-  { title: 'Chatbot Activity', value: 'chatbot-activity', icon: 'mdi-robot-outline', adminOnly: true },
-  { title: 'Docker', value: 'docker', icon: 'mdi-docker', adminOnly: true },
-  { title: 'DB', value: 'db', icon: 'mdi-database', adminOnly: true },
-  { title: 'Einstellungen', value: 'settings', icon: 'mdi-cog', adminOnly: true },
-  { title: 'Benutzer', value: 'users', icon: 'mdi-account-group', adminOnly: true },
-  { title: 'Szenarien', value: 'scenarios', icon: 'mdi-clipboard-list', adminOnly: true },
-  { title: 'Chatbots', value: 'chatbots', icon: 'mdi-robot', permission: 'feature:chatbots:view' },
-  { title: 'Web Crawler', value: 'crawler', icon: 'mdi-spider-web', adminOnly: true },
-  { title: 'RAG Dokumente', value: 'rag', icon: 'mdi-database-search', permission: 'feature:rag:view' },
-  { title: 'Berechtigungen', value: 'permissions', icon: 'mdi-shield-lock', adminOnly: true },
+  { titleKey: 'adminDashboard.nav.overview', value: 'overview', icon: 'mdi-view-dashboard', adminOnly: true },
+  { titleKey: 'adminDashboard.nav.analytics', value: 'analytics', icon: 'mdi-chart-bar', adminOnly: true },
+  { titleKey: 'adminDashboard.nav.health', value: 'health', icon: 'mdi-heart-pulse', adminOnly: true },
+  { titleKey: 'adminDashboard.nav.system', value: 'system', icon: 'mdi-monitor-dashboard', adminOnly: true },
+  { titleKey: 'adminDashboard.nav.presence', value: 'presence', icon: 'mdi-account-check', adminOnly: true },
+  { titleKey: 'adminDashboard.nav.chatbotActivity', value: 'chatbot-activity', icon: 'mdi-robot-outline', adminOnly: true },
+  { titleKey: 'adminDashboard.nav.docker', value: 'docker', icon: 'mdi-docker', adminOnly: true },
+  { titleKey: 'adminDashboard.nav.db', value: 'db', icon: 'mdi-database', adminOnly: true },
+  { titleKey: 'adminDashboard.nav.settings', value: 'settings', icon: 'mdi-cog', adminOnly: true },
+  { titleKey: 'adminDashboard.nav.fieldPrompts', value: 'field-prompts', icon: 'mdi-auto-fix', adminOnly: true },
+  { titleKey: 'adminDashboard.nav.users', value: 'users', icon: 'mdi-account-group', adminOnly: true },
+  { titleKey: 'adminDashboard.nav.referrals', value: 'referrals', icon: 'mdi-account-multiple-plus', adminOnly: true },
+  { titleKey: 'adminDashboard.nav.scenarios', value: 'scenarios', icon: 'mdi-clipboard-list', adminOnly: true },
+  { titleKey: 'adminDashboard.nav.chatbots', value: 'chatbots', icon: 'llars:chatbot-manage', permission: 'feature:chatbots:view' },
+  { titleKey: 'adminDashboard.nav.crawler', value: 'crawler', icon: 'mdi-spider-web', adminOnly: true },
+  { titleKey: 'adminDashboard.nav.rag', value: 'rag', icon: 'mdi-database-search', permission: 'feature:rag:view' },
+  { titleKey: 'adminDashboard.nav.permissions', value: 'permissions', icon: 'mdi-shield-lock', adminOnly: true },
+  { titleKey: 'adminDashboard.nav.llmProviders', value: 'llm-providers', icon: 'mdi-connection', adminOnly: true },
 ];
 
 const filteredNavItems = computed(() => {
-  return navItems.filter(item => {
-    if (item.adminOnly) return isAdmin.value;
-    if (item.permissionsAny) return hasAnyPermission(...item.permissionsAny);
-    if (item.permission) return hasPermission(item.permission);
-    return true;
-  });
+  return navItems
+    .filter(item => {
+      if (item.adminOnly) return isAdmin.value;
+      if (item.permissionsAny) return hasAnyPermission(...item.permissionsAny);
+      if (item.permission) return hasPermission(item.permission);
+      return true;
+    })
+    .map(item => ({ ...item, title: t(item.titleKey) }));
 });
 
-// Section titles and subtitles
-const sectionInfo = {
-  overview: { title: 'Dashboard Übersicht', subtitle: 'Schnellübersicht aller wichtigen Kennzahlen' },
-  analytics: { title: 'Analytics', subtitle: 'Matomo Dashboard und Tracking-Status' },
-  health: { title: 'System Health', subtitle: 'Host-Metriken, API Performance und WebSocket-Verbindungen (live)' },
-  system: { title: 'System Events', subtitle: 'Live System-Events und Admin-Aktionen' },
-  'chatbot-activity': { title: 'Chatbot Activity', subtitle: 'User-Aktivitäten: Chatbots, Chats, Collections, Dokumente (live)' },
-  docker: { title: 'Docker Monitor', subtitle: 'Container Status, Logs und Ressourcen-Auslastung (live)' },
-  db: { title: 'DB Explorer', subtitle: 'Read-only Einblick in die LLARS Datenbank (live)' },
-  settings: { title: 'System-Einstellungen', subtitle: 'Crawler-Timeouts, RAG-Defaults und System-Parameter' },
-  users: { title: 'Benutzerverwaltung', subtitle: 'Benutzer, Rollen und Fortschritt verwalten' },
-  scenarios: { title: 'Szenario-Verwaltung', subtitle: 'Bewertungs-Szenarien erstellen und verwalten' },
-  chatbots: { title: 'Chatbot-Verwaltung', subtitle: 'Chatbots mit RAG-Collections erstellen und konfigurieren' },
-  crawler: { title: 'Website Crawler', subtitle: 'Websites crawlen und RAG-Collections erstellen' },
-  rag: { title: 'RAG Dokumente', subtitle: 'Dokumente für die RAG-Pipeline verwalten' },
-  permissions: { title: 'Berechtigungen', subtitle: 'Rollen und Berechtigungen konfigurieren' },
-};
-
-const currentSectionTitle = computed(() => sectionInfo[activeSection.value]?.title || '');
-const currentSectionSubtitle = computed(() => sectionInfo[activeSection.value]?.subtitle || '');
+const currentSectionTitle = computed(() => '');
 
 // Route query sync for tab navigation (e.g., /admin?tab=rag)
 function initFromRoute() {

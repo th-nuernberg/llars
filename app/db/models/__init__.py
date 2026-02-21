@@ -6,7 +6,7 @@ Import: from db.models import User, Permission, JudgeSession
 """
 
 # User models
-from db.models.user import User, UserGroup
+from db.models.user import User, UserGroup, UserApiKey
 
 # Permission models
 from db.models.permission import (
@@ -104,6 +104,14 @@ from db.models.llm_model import (
     DEFAULT_LLM_MODELS,
     seed_default_models,
 )
+from db.models.llm_model_permission import LLMModelPermission
+from db.models.llm_provider import LLMProvider
+from db.models.llm_task_result import LLMTaskResult
+
+# Prompt Templates and LLM Usage Tracking
+from db.models.prompt_template import PromptTemplate
+from db.models.field_prompt_template import FieldPromptTemplate
+from db.models.llm_usage_tracking import LLMUsageTracking, UserTokenBudget
 
 # KAIMO models
 from db.models.kaimo import (
@@ -117,14 +125,25 @@ from db.models.kaimo import (
     KaimoUserAssessment,
     KaimoHintAssignment,
     KaimoCasePermission,
+    KaimoCaseShare,
 )
 
 # Scenario and Rating models
 from db.models.scenario import (
     ScenarioRoles,
+    InvitationStatus,
     ProgressionStatus,
     FeatureFunctionType,
+    MembershipStatus,
+    # New names (preferred)
+    EvaluationItem,
+    ScenarioItems,
+    ScenarioItemDistribution,
+    # Legacy aliases (deprecated)
     EmailThread,
+    ScenarioThreads,
+    ScenarioThreadDistribution,
+    # Other models
     Message,
     LLM,
     FeatureType,
@@ -135,9 +154,9 @@ from db.models.scenario import (
     UserFeatureRating,
     RatingScenarios,
     ScenarioUsers,
-    ScenarioThreads,
-    ScenarioThreadDistribution,
     UserMailHistoryRating,
+    ItemDimensionRating,  # New multi-dimensional rating model
+    ItemLabelingEvaluation,  # Labeling/classification evaluation model
     UserMessageRating,
     UserPrompt,
     UserPromptShare,
@@ -153,6 +172,38 @@ from db.models.authenticity import (
     UserAuthenticityVote,
 )
 
+# Zotero Integration models
+from db.models.zotero import (
+    ZoteroLibraryType,
+    ZoteroConnection,
+    WorkspaceZoteroLibrary,
+    ZoteroSyncLog,
+)
+
+# Referral/Invitation models
+from db.models.referral import (
+    ReferralCampaignStatus,
+    ReferralCampaign,
+    ReferralLink,
+    ReferralRegistration,
+)
+
+# User LLM Provider models
+from db.models.user_llm_provider import (
+    UserLLMProvider,
+    UserLLMProviderShare,
+)
+
+# Batch Generation models
+from db.models.generation import (
+    GenerationJobStatus,
+    GeneratedOutputStatus,
+    GenerationJob,
+    GeneratedOutput,
+    get_pending_outputs_for_job,
+    get_failed_outputs_for_job,
+)
+
 # Anonymization Pipeline models
 from db.models.anonymization import (
     AnonymizationConversation,
@@ -165,6 +216,7 @@ __all__ = [
     # User
     'User',
     'UserGroup',
+    'UserApiKey',
     # Permission
     'Permission',
     'Role',
@@ -235,6 +287,14 @@ __all__ = [
     'LLMModel',
     'DEFAULT_LLM_MODELS',
     'seed_default_models',
+    'LLMModelPermission',
+    'LLMProvider',
+    'LLMTaskResult',
+    # Prompt Templates and Usage Tracking
+    'PromptTemplate',
+    'FieldPromptTemplate',
+    'LLMUsageTracking',
+    'UserTokenBudget',
     # KAIMO
     'KaimoCase',
     'KaimoDocument',
@@ -246,11 +306,22 @@ __all__ = [
     'KaimoUserAssessment',
     'KaimoHintAssignment',
     'KaimoCasePermission',
+    'KaimoCaseShare',
     # Scenario
     'ScenarioRoles',
+    'InvitationStatus',
     'ProgressionStatus',
     'FeatureFunctionType',
+    'MembershipStatus',
+    # New names (preferred)
+    'EvaluationItem',
+    'ScenarioItems',
+    'ScenarioItemDistribution',
+    # Legacy aliases (deprecated)
     'EmailThread',
+    'ScenarioThreads',
+    'ScenarioThreadDistribution',
+    # Other models
     'Message',
     'LLM',
     'FeatureType',
@@ -261,9 +332,9 @@ __all__ = [
     'UserFeatureRating',
     'RatingScenarios',
     'ScenarioUsers',
-    'ScenarioThreads',
-    'ScenarioThreadDistribution',
     'UserMailHistoryRating',
+    'ItemDimensionRating',
+    'ItemLabelingEvaluation',
     'UserMessageRating',
     # Authenticity
     'AuthenticityConversation',
@@ -279,4 +350,24 @@ __all__ = [
     'ComparisonSession',
     'ComparisonMessage',
     'ComparisonEvaluation',
+    # Zotero
+    'ZoteroLibraryType',
+    'ZoteroConnection',
+    'WorkspaceZoteroLibrary',
+    'ZoteroSyncLog',
+    # Referral
+    'ReferralCampaignStatus',
+    'ReferralCampaign',
+    'ReferralLink',
+    'ReferralRegistration',
+    # User LLM Provider
+    'UserLLMProvider',
+    'UserLLMProviderShare',
+    # Batch Generation
+    'GenerationJobStatus',
+    'GeneratedOutputStatus',
+    'GenerationJob',
+    'GeneratedOutput',
+    'get_pending_outputs_for_job',
+    'get_failed_outputs_for_job',
 ]

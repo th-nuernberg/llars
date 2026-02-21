@@ -26,12 +26,12 @@
         <v-list density="compact" class="pa-2">
           <v-list-item
             prepend-icon="mdi-home"
-            title="Startseite"
+            :title="$t('markdownCollab.workspace.nav.home')"
             @click="router.push('/Home')"
           />
           <v-list-item
             prepend-icon="mdi-folder-multiple"
-            title="Alle Workspaces"
+            :title="$t('markdownCollab.workspace.nav.workspaces')"
             @click="router.push('/MarkdownCollab')"
           />
         </v-list>
@@ -47,14 +47,14 @@
     >
       <!-- Collapsed State -->
       <div v-if="treeCollapsed" class="tree-collapsed" @click="treeCollapsed = false">
-        <div class="collapsed-bar">
-          <div class="collapsed-icon-box">
-            <v-icon size="18">mdi-file-tree</v-icon>
+          <div class="collapsed-bar">
+            <div class="collapsed-icon-box">
+              <LIcon size="18">mdi-file-tree</LIcon>
+            </div>
+            <span class="collapsed-label">{{ $t('markdownCollab.workspace.tree.files') }}</span>
+            <v-spacer />
+            <LIcon size="18" class="expand-icon">mdi-chevron-right</LIcon>
           </div>
-          <span class="collapsed-label">Dateien</span>
-          <v-spacer />
-          <v-icon size="18" class="expand-icon">mdi-chevron-right</v-icon>
-        </div>
       </div>
 
       <!-- Expanded State -->
@@ -77,10 +77,10 @@
               icon
               variant="text"
               size="small"
-              title="Einklappen"
+              :title="$t('markdownCollab.workspace.tree.collapse')"
               @click.stop="treeCollapsed = true"
             >
-              <v-icon size="18">mdi-chevron-left</v-icon>
+              <LIcon size="18">mdi-chevron-left</LIcon>
             </v-btn>
           </template>
         </MarkdownTreePanel>
@@ -111,22 +111,22 @@
             class="mr-2"
             @click="mobileSidebarOpen = true"
           >
-            <v-icon>mdi-menu</v-icon>
+            <LIcon>mdi-menu</LIcon>
           </v-btn>
           <v-btn
             variant="text"
             size="small"
             class="header-back-btn"
-            title="Zurück zu den Workspaces"
+            :title="$t('markdownCollab.workspace.actions.backToWorkspaces')"
             @click="router.push('/MarkdownCollab')"
           >
-            <v-icon size="18">mdi-arrow-left</v-icon>
-            <span v-if="!isMobile" class="header-back-label">Workspaces</span>
+            <LIcon size="18">mdi-arrow-left</LIcon>
+            <span v-if="!isMobile" class="header-back-label">{{ $t('markdownCollab.workspace.nav.workspaces') }}</span>
           </v-btn>
-          <v-icon v-if="!isMobile" size="20" color="primary" class="mr-2">mdi-language-markdown</v-icon>
+          <LIcon v-if="!isMobile" size="20" color="primary" class="mr-2">llars:markdown-collab</LIcon>
           <div class="header-info">
-            <div class="header-title">{{ selectedNode?.title || 'Kein Dokument' }}</div>
-            <div class="header-subtitle">{{ workspace?.name || `Workspace #${workspaceId}` }}</div>
+            <div class="header-title">{{ selectedNode?.title || $t('markdownCollab.workspace.empty.noDocument') }}</div>
+            <div class="header-subtitle">{{ workspace?.name || $t('markdownCollab.workspace.fallbackName', { id: workspaceId }) }}</div>
           </div>
         </div>
 
@@ -136,36 +136,36 @@
             icon
             variant="text"
             size="small"
-            title="Workspace teilen"
+            :title="$t('markdownCollab.share.title')"
             @click="openShareDialog"
           >
-            <v-icon size="20">mdi-account-multiple-plus</v-icon>
+            <LIcon size="20">mdi-account-multiple-plus</LIcon>
           </v-btn>
 
           <div class="mode-toggle-group">
             <button
               class="mode-btn"
               :class="{ active: viewMode === 'editor' }"
-              title="Editor"
+              :title="$t('markdownCollab.workspace.view.editor')"
               @click="viewMode = 'editor'"
             >
-              <v-icon size="18">mdi-pencil</v-icon>
+              <LIcon size="18">mdi-pencil</LIcon>
             </button>
             <button
               class="mode-btn"
               :class="{ active: viewMode === 'split' }"
-              title="Split"
+              :title="$t('markdownCollab.workspace.view.split')"
               @click="viewMode = 'split'"
             >
-              <v-icon size="18">mdi-view-split-vertical</v-icon>
+              <LIcon size="18">mdi-view-split-vertical</LIcon>
             </button>
             <button
               class="mode-btn"
               :class="{ active: viewMode === 'preview' }"
-              title="Preview"
+              :title="$t('markdownCollab.workspace.view.preview')"
               @click="viewMode = 'preview'"
             >
-              <v-icon size="18">mdi-eye-outline</v-icon>
+              <LIcon size="18">mdi-eye-outline</LIcon>
             </button>
           </div>
         </div>
@@ -184,20 +184,24 @@
         <v-alert
           v-if="!hasPermission('feature:markdown_collab:view')"
           type="warning"
-          variant="tonal"
-          class="ma-4"
-        >
-          Dir fehlt die Berechtigung <code>feature:markdown_collab:view</code>.
-        </v-alert>
+        variant="tonal"
+        class="ma-4"
+      >
+        <i18n-t keypath="markdownCollab.permissions.missing" tag="span">
+          <template #permission>
+            <code>feature:markdown_collab:view</code>
+          </template>
+        </i18n-t>
+      </v-alert>
 
         <v-alert
           v-else-if="!selectedNode || selectedNode.type !== 'file'"
           type="info"
-          variant="tonal"
-          class="ma-4"
-        >
-          Wähle links eine Markdown-Datei aus, um sie zu bearbeiten.
-        </v-alert>
+        variant="tonal"
+        class="ma-4"
+      >
+        {{ $t('markdownCollab.workspace.empty.selectFile') }}
+      </v-alert>
 
         <template v-else>
           <div class="editor-layout">
@@ -210,11 +214,10 @@
               >
                 <MarkdownEditorPane
                   ref="editorRef"
-                  :key="selectedNode.id"
                   :document="selectedNode"
                   :readonly="!hasPermission('feature:markdown_collab:edit')"
                   @content-change="onEditorContentChange"
-                  @git-summary="(s) => (gitSummary = s)"
+                  @document-saved="handleDocumentSaved"
                 />
               </div>
 
@@ -234,14 +237,19 @@
               </div>
             </div>
 
-            <!-- Git Panel -->
-            <MarkdownGitPanel
-              v-if="selectedNode && selectedNode.type === 'file'"
-              :document-id="selectedNode.id"
-              :summary="gitSummary"
+            <!-- Git Panel - Workspace-Level Multi-File Commits -->
+            <LatexWorkspaceGitPanel
+              ref="gitPanelRef"
+              :workspace-id="workspaceId"
+              :selected-document-id="selectedNodeId"
               :can-commit="hasPermission('feature:markdown_collab:edit')"
-              :get-content="() => editorRef?.getCurrentContent?.()"
+              :get-content="getEditorContent"
+              :before-commit="handleBeforeCommit"
+              :before-rollback="handleBeforeRollback"
+              api-prefix="/api/markdown-collab"
               @committed="refreshCommits"
+              @rollback="handleRollback"
+              @restored="handleRestored"
             />
           </div>
         </template>
@@ -252,13 +260,13 @@
     <v-dialog v-model="shareDialog" max-width="480">
       <v-card class="share-dialog">
         <v-card-title class="share-header">
-          <v-icon class="mr-2" color="primary">mdi-account-multiple-plus</v-icon>
+          <LIcon class="mr-2" color="primary">mdi-account-multiple-plus</LIcon>
           <div>
-            <div>Workspace teilen</div>
+            <div>{{ $t('markdownCollab.share.title') }}</div>
             <div class="text-caption text-medium-emphasis">{{ workspace?.name }}</div>
           </div>
           <v-spacer />
-          <LIconBtn icon="mdi-close" tooltip="Schließen" size="small" @click="shareDialog = false" />
+          <LIconBtn icon="mdi-close" :tooltip="$t('common.close')" size="small" @click="shareDialog = false" />
         </v-card-title>
 
         <v-divider />
@@ -269,43 +277,43 @@
           </v-alert>
 
           <!-- Owner Section -->
-          <div class="section-label">Owner</div>
+          <div class="section-label">{{ $t('markdownCollab.share.ownerLabel') }}</div>
           <div class="user-card owner-card">
-            <img class="user-avatar" :src="getAvatarUrl(ownerInfo)" alt="" />
+            <LAvatar :username="ownerInfo.username" :seed="ownerInfo.avatar_seed" :src="ownerInfo.avatar_url" size="sm" />
             <div class="user-info">
               <div class="user-name">{{ formatDisplayName(ownerInfo.username) }}</div>
               <div class="user-meta">@{{ ownerInfo.username }}</div>
             </div>
-            <LTag variant="primary" size="small">Owner</LTag>
+            <LTag variant="primary" size="small">{{ $t('markdownCollab.share.ownerTag') }}</LTag>
           </div>
 
           <!-- Search Section -->
-          <div class="section-label mt-4">Nutzer einladen</div>
+          <div class="section-label mt-4">{{ $t('markdownCollab.share.inviteLabel') }}</div>
           <LUserSearch
             ref="userSearchRef"
             v-model="selectedUser"
             :exclude-usernames="excludedUsernames"
             :show-add-button="true"
-            add-button-text="Hinzufügen"
+            :add-button-text="$t('markdownCollab.share.addButton')"
             @add="inviteMember"
           />
 
           <!-- Members Section -->
           <div class="section-label mt-4">
-            Mitglieder
+            {{ $t('markdownCollab.share.members') }}
             <span v-if="members.length" class="member-count">{{ members.length }}</span>
           </div>
 
           <v-skeleton-loader v-if="membersLoading" type="list-item-avatar@3" />
 
           <div v-else-if="members.length === 0" class="empty-members">
-            <v-icon size="28" color="grey-lighten-1">mdi-account-group-outline</v-icon>
-            <span>Noch keine Mitglieder</span>
+            <LIcon size="28" color="grey-lighten-1">mdi-account-group-outline</LIcon>
+            <span>{{ $t('markdownCollab.share.emptyMembers') }}</span>
           </div>
 
           <div v-else class="members-list">
             <div v-for="m in members" :key="m.username" class="user-card">
-              <img class="user-avatar" :src="getAvatarUrl(m)" alt="" />
+              <LAvatar :username="m.username" :seed="m.avatar_seed" :src="m.avatar_url" size="sm" />
               <div class="user-info">
                 <div class="user-name">{{ formatDisplayName(m.username) }}</div>
                 <div class="user-meta">{{ formatRelativeDate(m.added_at) }}</div>
@@ -319,7 +327,7 @@
                 :loading="removingUsername === m.username"
                 @click="removeMember(m.username)"
               >
-                <v-icon size="18">mdi-close</v-icon>
+                <LIcon size="18">mdi-close</LIcon>
               </v-btn>
             </div>
           </div>
@@ -333,6 +341,7 @@
 import { computed, onMounted, onUnmounted, ref, watch, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import axios from 'axios'
+import { useI18n } from 'vue-i18n'
 import { useSkeletonLoading } from '@/composables/useSkeletonLoading'
 import { usePermissions } from '@/composables/usePermissions'
 import { useMobile } from '@/composables/useMobile'
@@ -342,12 +351,13 @@ import { useActiveDuration, useVisibilityTracker, useScrollDepth } from '@/compo
 import MarkdownTreePanel from '@/components/MarkdownCollab/MarkdownTreePanel.vue'
 import MarkdownEditorPane from '@/components/MarkdownCollab/MarkdownEditorPane.vue'
 import MarkdownPreviewPane from '@/components/MarkdownCollab/MarkdownPreviewPane.vue'
-import MarkdownGitPanel from '@/components/MarkdownCollab/MarkdownGitPanel.vue'
+import LatexWorkspaceGitPanel from '@/components/LatexCollab/LatexWorkspaceGitPanel.vue'
 import { AUTH_STORAGE_KEYS, getAuthStorageItem } from '@/utils/authStorage'
-import { getAvatarUrl, formatDisplayName, formatRelativeDate } from '@/utils/userUtils'
+import { formatDisplayName, formatRelativeDate } from '@/utils/userUtils'
 
 const route = useRoute()
 const router = useRouter()
+const { t, locale } = useI18n()
 
 const { hasPermission, fetchPermissions, username: currentUsername, isAdmin } = usePermissions()
 const { isLoading, withLoading, setLoading } = useSkeletonLoading(['tree', 'document'])
@@ -356,7 +366,7 @@ const { isMobile, isTablet } = useMobile()
 // Mobile sidebar state
 const mobileSidebarOpen = ref(false)
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:55080'
+const API_BASE = import.meta.env.VITE_API_BASE_URL || ''
 const VIEWMODE_KEY = 'markdown-collab-view-mode'
 const TREE_COLLAPSED_KEY = 'markdown-collab-tree-collapsed'
 const TREE_WIDTH_KEY = 'markdown-collab-tree-width'
@@ -366,8 +376,8 @@ const workspace = ref(null)
 const nodesFlat = ref([])
 
 const currentText = ref('')
-const gitSummary = ref({ users: [], totalChangedLines: 0 })
 const editorRef = ref(null)
+const gitPanelRef = ref(null)
 const pendingDocId = ref(null)
 
 // Panel states
@@ -574,6 +584,36 @@ function onEditorContentChange(text) {
   }
 }
 
+/**
+ * Handle document_saved events from YJS server for real-time Git panel updates.
+ *
+ * This function is the final step in the real-time update chain:
+ *   1. User types in editor → Yjs local update
+ *   2. Yjs syncs to server → 2s debounce timer starts
+ *   3. After 2s inactivity → YJS server saves to DB
+ *   4. Server broadcasts `document_saved` to workspace room
+ *   5. useYjsCollaboration receives event → calls onDocumentSaved callback
+ *   6. EditorPane emits 'document-saved' event to parent
+ *   7. This function receives the event and refreshes Git panel
+ *
+ * The workspace-level check ensures we only refresh for documents in THIS
+ * workspace, not unrelated workspaces the user might have open in other tabs.
+ *
+ * @param {Object} data - Event payload from YJS server
+ * @param {number} data.documentId - The document that was saved
+ * @param {number} data.workspaceId - Workspace containing the document
+ * @param {string} data.kind - Document type ('markdown')
+ * @param {number} data.contentLength - Length of saved content
+ * @param {string} data.savedAt - ISO timestamp of save
+ */
+function handleDocumentSaved(data) {
+  console.log('[MarkdownCollabWorkspace] document_saved empfangen:', data)
+  // Only refresh Git panel if the saved document belongs to our workspace
+  if (data.workspaceId === workspaceId.value) {
+    gitPanelRef.value?.checkForChanges?.()
+  }
+}
+
 function authHeaders() {
   const token = getAuthStorageItem(AUTH_STORAGE_KEYS.token)
   return token ? { Authorization: `Bearer ${token}` } : {}
@@ -582,7 +622,7 @@ function authHeaders() {
 function formatDate(iso) {
   if (!iso) return '—'
   try {
-    return new Date(iso).toLocaleString()
+    return new Date(iso).toLocaleString(locale.value || undefined)
   } catch {
     return iso
   }
@@ -606,7 +646,7 @@ async function loadMembers() {
     }
   } catch (e) {
     members.value = []
-    shareError.value = e?.response?.data?.error || e?.message || 'Mitglieder konnten nicht geladen werden'
+    shareError.value = e?.response?.data?.error || e?.message || t('markdownCollab.errors.membersLoadFailed')
   } finally {
     membersLoading.value = false
   }
@@ -634,7 +674,7 @@ async function inviteMember(user) {
     userSearchRef.value?.reset?.()
     await loadMembers()
   } catch (e) {
-    shareError.value = e?.response?.data?.error || e?.message || 'Einladung fehlgeschlagen'
+    shareError.value = e?.response?.data?.error || e?.message || t('markdownCollab.errors.inviteFailed')
     userSearchRef.value?.setAdding?.(false)
   }
 }
@@ -649,7 +689,7 @@ async function removeMember(username) {
     })
     await loadMembers()
   } catch (e) {
-    shareError.value = e?.response?.data?.error || e?.message || 'Entfernen fehlgeschlagen'
+    shareError.value = e?.response?.data?.error || e?.message || t('markdownCollab.errors.removeFailed')
   } finally {
     removingUsername.value = ''
   }
@@ -722,7 +762,7 @@ async function handleCreateNode({ parentId, type, title }) {
       emitNodeCreated(newNode)
     }
   } catch (e) {
-    console.error('Failed to create node:', e)
+    console.error('Konnte Knoten nicht erstellen:', e)
     await loadTree() // Fallback: reload tree
   }
 }
@@ -745,7 +785,7 @@ async function handleRenameNode({ id, parentId, title }) {
       emitNodeRenamed(id, title)
     }
   } catch (e) {
-    console.error('Failed to rename node:', e)
+    console.error('Konnte Knoten nicht umbenennen:', e)
     await loadTree() // Fallback: reload tree
   }
 }
@@ -773,7 +813,7 @@ async function handleDeleteNode({ id }) {
       router.push(`/MarkdownCollab/workspace/${workspaceId.value}`)
     }
   } catch (e) {
-    console.error('Failed to delete node:', e)
+    console.error('Konnte Knoten nicht loeschen:', e)
     await loadTree() // Fallback: reload tree
   }
 }
@@ -797,25 +837,87 @@ async function handleMoveNode({ id, parentId, orderIndex }) {
       emitNodeMoved(id, parentId ?? null, orderIndex)
     }
   } catch (e) {
-    console.error('Failed to move node:', e)
+    console.error('Konnte Knoten nicht verschieben:', e)
     await loadTree() // Fallback: reload tree
   }
+}
+
+function getEditorContent() {
+  return editorRef.value?.getCurrentContent?.() ?? ''
+}
+
+async function handleBeforeCommit(documentIds) {
+  // Save current content before commit
+  // The YJS server automatically syncs content to DB, but we ensure it's flushed
+  if (editorRef.value?.saveToDb) {
+    await editorRef.value.saveToDb()
+  }
+}
+
+async function handleBeforeRollback(documentId) {
+  // Any pre-rollback logic (e.g., saving state)
+  // Currently empty, but available for future use
 }
 
 async function refreshCommits() {
   // Refresh the git baseline after commit to update diff decorations
   await editorRef.value?.refreshBaseline?.()
   editorRef.value?.clearHighlights?.()
+  // Also refresh git panel changes
+  gitPanelRef.value?.checkForChanges?.()
 }
 
+async function handleRollback(payload) {
+  // Handle payload from LatexWorkspaceGitPanel (object with documentId) or legacy (just documentId)
+  const documentId = typeof payload === 'object' && payload !== null ? payload.documentId : payload
+  console.log('[handleRollback] Aufgerufen mit documentId:', documentId, 'selectedNodeId:', selectedNodeId.value)
+
+  // Build the room name for this document
+  const roomName = `markdown_${documentId}`
+
+  // If the rolled back document is currently open, use reloadRoom which:
+  // 1. Destroys the local ydoc (clearing all local state/history)
+  // 2. Creates a fresh ydoc
+  // 3. Sends reload_room to server which clears cache and reloads from DB
+  // 4. Server broadcasts snapshot_document to all clients
+  // This ensures a clean slate without Yjs merge conflicts
+  if (selectedNodeId.value === documentId) {
+    console.log('[handleRollback] Dokument ist derzeit geoeffnet, verwende reloadRoom fuer sauberen Reset')
+    const result = await editorRef.value?.reloadRoom?.()
+    console.log('[handleRollback] reloadRoom Ergebnis:', result)
+    // Refresh the baseline to update diff decorations
+    await editorRef.value?.refreshBaseline?.()
+    editorRef.value?.clearHighlights?.()
+  } else {
+    // If the document is NOT currently open, only invalidate the YJS server cache
+    // This is necessary because the YJS server caches room state and would serve
+    // stale content when the user later opens this document
+    console.log('[handleRollback] Dokument ist NICHT geoeffnet, invalidiere YJS-Cache fuer Raum:', roomName)
+    const cacheResult = await editorRef.value?.reloadAnyRoom?.(roomName)
+    console.log('[handleRollback] reloadAnyRoom Ergebnis:', cacheResult)
+  }
+}
+
+async function handleRestored(documentId) {
+  console.log('[handleRestored] Datei wiederhergestellt:', documentId)
+  // Refresh the tree to show the restored file
+  await loadTree()
+}
+
+// Track if this is the initial mount vs subsequent document switches
+let isInitialDocumentLoad = true
 watch(
   selectedNodeId,
   (docId) => {
     currentText.value = ''
-    gitSummary.value = { users: [], totalChangedLines: 0, hasChanges: false, insertions: 0, deletions: 0 }
     if (docId) {
-      pendingDocId.value = docId
-      setLoading('document', true)
+      // Only show loading skeleton on initial mount, not on document switches
+      // Document switches are handled smoothly by the editor's YJS room switch
+      if (isInitialDocumentLoad) {
+        pendingDocId.value = docId
+        setLoading('document', true)
+        isInitialDocumentLoad = false
+      }
     } else {
       pendingDocId.value = null
       setLoading('document', false)

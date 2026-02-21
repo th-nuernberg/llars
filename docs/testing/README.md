@@ -1,6 +1,8 @@
 # LLARS Testdokumentation
 
-**Version:** 1.0 | **Stand:** 30. Dezember 2025
+**Version:** 1.2 | **Stand:** 31. Dezember 2025
+
+**Implementierungsstatus:** 🟢 Backend komplett, Frontend in Arbeit
 
 ---
 
@@ -12,6 +14,68 @@ Diese Dokumentation enthält alle Testanforderungen für das LLARS-System (LLM A
 - Wie es getestet werden soll
 - Welche Priorität jeder Test hat
 - Wer für welche Tests verantwortlich ist
+
+### Quick Start: Tests ausführen
+
+**Backend Tests (pytest):**
+```bash
+cd /path/to/llars
+
+# Alle Backend Tests
+pytest tests/
+
+# Nur Unit Tests
+pytest tests/unit/
+
+# Nur Integration Tests
+pytest tests/integration/
+
+# Mit Coverage
+pytest --cov=app --cov-report=html tests/
+
+# Spezifische Test-Klasse
+pytest tests/unit/auth/test_decorators.py::TestAuthentikRequired -v
+```
+
+**Frontend Tests (Vitest):**
+```bash
+cd /path/to/llars/llars-frontend
+
+# Alle Frontend Tests (einmalig)
+npm run test:run
+
+# Watch Mode (interaktiv)
+npm run test
+
+# Mit Coverage
+npm run test:coverage
+
+# Vitest UI
+npm run test:ui
+```
+
+**E2E Tests (Playwright):**
+```bash
+cd /path/to/llars/llars-frontend
+
+# Alle E2E Tests
+npm run e2e
+
+# Nur Chromium
+npm run e2e:chromium
+
+# Mit Browser UI (headed)
+npm run e2e:headed
+
+# Debug Mode
+npm run e2e:debug
+
+# Playwright UI
+npm run e2e:ui
+
+# Report anzeigen
+npm run e2e:report
+```
 
 ---
 
@@ -85,26 +149,135 @@ docs/testing/
 
 ## Zusammenfassung der Testbereiche
 
-| Bereich | Dokumente | Tests | Priorität |
-|---------|-----------|-------|-----------|
-| **Frontend Seiten** | 5 | ~150 | P0-P2 |
-| **Frontend UI/UX** | 6 | ~400 | P1-P2 |
-| **Backend Routen** | 2 | ~100 | P0-P1 |
-| **Features** | 4 | ~120 | P0-P1 |
-| **Security** | 2 | ~80 | P0 |
-| **Checklisten** | 3 | ~200 | P0-P1 |
-| **Gesamt** | 22 | ~1050 | - |
+| Bereich | Tests | Status |
+|---------|-------|--------|
+| **Backend Unit Tests** | 768 | ✅ Implementiert |
+| **Backend Integration Tests** | 342 | ✅ Implementiert |
+| **Frontend Component Tests** | 1.733 | ✅ Implementiert |
+| **E2E Tests (Playwright)** | 25 | ✅ Implementiert |
+| **Gesamt** | **2.868** | ~98% ✅ |
+
+### Implementierte Backend Test-Dateien
+
+```
+tests/
+├── conftest.py                                  # ✅ Fixtures & Setup
+├── unit/                                        # ✅ 768 Tests
+│   ├── auth/
+│   │   └── test_decorators.py                   # Auth Decorators
+│   └── services/
+│       ├── chatbot/test_chatbot_service.py      # Chatbot Service
+│       ├── comparison/test_comparison_service.py
+│       ├── crawler/test_crawler_service.py      # Web Crawler
+│       ├── judge/test_judge_service.py          # LLM-as-Judge
+│       ├── latex/test_latex_compile_service.py  # LaTeX Compilation
+│       ├── llm/test_llm_service.py              # LLM Integration
+│       ├── oncoco/test_oncoco_service.py        # OnCoCo
+│       ├── permission/test_permission_service.py
+│       ├── rag/                                 # RAG Pipeline Tests
+│       │   ├── test_access_service.py
+│       │   ├── test_collection_embedding_service.py
+│       │   ├── test_document_service.py
+│       │   ├── test_embedding_model_service.py
+│       │   ├── test_lumber_chunker.py
+│       │   └── test_reranker.py
+│       ├── ranking/test_ranking_service.py
+│       ├── thread/test_thread_service.py
+│       ├── user/test_user_service.py
+│       └── wizard/test_wizard_session_service.py
+└── integration/                                 # ✅ 342 Tests
+    ├── auth/test_login.py                       # Login Flow
+    ├── rag/                                     # RAG Integration
+    │   ├── test_rag_collections.py
+    │   ├── test_rag_documents.py
+    │   └── test_rag_search.py
+    └── socketio/                                # WebSocket Events
+        ├── test_socketio_chat.py
+        ├── test_socketio_connection.py
+        ├── test_socketio_crawler.py
+        ├── test_socketio_judge.py
+        ├── test_socketio_oncoco.py
+        └── test_socketio_prompts.py
+```
+
+### Implementierte Frontend Test-Dateien
+
+```
+llars-frontend/tests/
+├── setup.js                                     # ✅ Vitest Setup
+├── utils/test-helpers.js                        # ✅ Test Utilities
+├── components/                                  # ✅ 958 Tests
+│   ├── LBtn.spec.js                             # 30 Tests (COMP_BTN_001-030)
+│   ├── LTag.spec.js                             # 25 Tests (COMP_TAG_001-025)
+│   ├── LSlider.spec.js                          # 25 Tests (COMP_SLD_001-025)
+│   ├── LCard.spec.js                            # 50 Tests (COMP_CRD_001-050)
+│   ├── LTabs.spec.js                            # 40 Tests (COMP_TAB_001-040)
+│   ├── LTooltip.spec.js                         # 35 Tests (COMP_TTP_001-035)
+│   ├── LActionGroup.spec.js                     # 48 Tests (COMP_ACT_001-048)
+│   ├── LIconBtn.spec.js                         # 45 Tests (COMP_ICB_001-045)
+│   ├── LAvatar.spec.js                          # 55 Tests (COMP_AVT_001-055)
+│   ├── LLoading.spec.js                         # 40 Tests (COMP_LDG_001-040)
+│   ├── LMessage.spec.js                         # 45 Tests (COMP_MSG_001-045)
+│   ├── LThemeToggle.spec.js                     # 40 Tests (COMP_THM_001-040)
+│   ├── LInfoTooltip.spec.js                     # 40 Tests (COMP_ITT_001-040)
+│   ├── LMessageList.spec.js                     # 45 Tests (COMP_MLS_001-045)
+│   ├── LUserSearch.spec.js                      # 50 Tests (COMP_USR_001-050)
+│   ├── LGauge.spec.js                           # 55 Tests (COMP_GAU_001-055)
+│   ├── LChart.spec.js                           # 50 Tests (COMP_CHT_001-050)
+│   ├── LEvaluationLayout.spec.js                # 55 Tests (COMP_EVL_001-055)
+│   ├── LEvaluationStatus.spec.js                # 45 Tests (COMP_EVS_001-045)
+│   ├── KatexFormula.spec.js                     # 40 Tests (COMP_KTX_001-040)
+│   ├── AppSidebar.spec.js                       # 55 Tests (COMP_SDB_001-055)
+│   └── AnalyticsConsentBanner.spec.js           # 45 Tests (COMP_ACB_001-045)
+└── composables/                                 # ✅ 775 Tests
+    ├── useAuth.spec.js                          # 60 Tests (AUTH_001-060)
+    ├── usePermissions.spec.js                   # 55 Tests (PERM_001-055)
+    ├── usePanelResize.spec.js                   # 45 Tests (RESIZE_001-045)
+    ├── useAppTheme.spec.js                      # 50 Tests (THEME_001-050)
+    ├── useMobile.spec.js                        # 55 Tests (MOBILE_001-055)
+    ├── useSkeletonLoading.spec.js               # 60 Tests (SKEL_001-060)
+    ├── useBuilderValidation.spec.js             # 60 Tests (BVAL_001-060)
+    ├── useBuilderState.spec.js                  # 85 Tests (BSTATE_001-085)
+    ├── useWizardSession.spec.js                 # 70 Tests (WSESS_001-070)
+    ├── useKIAStatusCache.spec.js                # 55 Tests (KIA_001-055)
+    ├── useAnalyticsMetrics.spec.js              # 70 Tests (AM_001-070)
+    ├── useFieldGenerationService.spec.js        # 60 Tests (FGS_001-060)
+    └── useSplitPaneResize.spec.js               # 50 Tests (SPR_001-050)
+```
 
 ### Frontend UI/UX Details
 
-| Dokument | Inhalt | Testanzahl |
-|----------|--------|------------|
-| 06_UI_KOMPONENTEN | 20+ LLARS Komponenten (LBtn, LSlider, etc.) | ~80 |
-| 07_DIALOGE_MODALS | 10 Dialog-Komponenten | ~50 |
-| 08_TOOLTIPS_QUICKLINKS | 100+ Tooltips, 20+ Quicklinks, 15 Shortcuts | ~135 |
-| 09_ACCESSIBILITY | WCAG 2.1 AA, Keyboard, Screen Reader, Kontrast | ~75 |
-| 10_EDGE_CASES_ERRORS | Empty States, Errors, Limits, Network | ~40 |
-| 11_VISUAL_RESPONSIVE | Breakpoints, Dark Mode, Browser, Animationen | ~50 |
+| Dokument | Inhalt | Geplant | Implementiert |
+|----------|--------|---------|---------------|
+| 06_UI_KOMPONENTEN | 20+ LLARS Komponenten | ~80 | ✅ 958 (22 Komponenten) |
+| 07_DIALOGE_MODALS | 10 Dialog-Komponenten | ~50 | ⏳ 0 |
+| 08_TOOLTIPS_QUICKLINKS | 100+ Tooltips, Quicklinks | ~135 | ⏳ 0 |
+| 09_ACCESSIBILITY | WCAG 2.1 AA, Keyboard | ~75 | ⏳ 0 |
+| 10_EDGE_CASES_ERRORS | Empty States, Errors | ~40 | ⏳ 0 |
+| 11_VISUAL_RESPONSIVE | Breakpoints, Dark Mode | ~50 | ⏳ 0 |
+| Composables | useAuth, usePermissions, etc. | ~120 | ✅ 775 (13 Composables) |
+
+**Implementierte Komponenten (22/22):** ✅ Alle Komponenten getestet - LBtn, LTag, LSlider, LCard, LTabs, LTooltip, LActionGroup, LIconBtn, LAvatar, LLoading, LMessage, LThemeToggle, LInfoTooltip, LMessageList, LUserSearch, LGauge, LChart, LEvaluationLayout, LEvaluationStatus, KatexFormula, AppSidebar, AnalyticsConsentBanner
+
+**Fehlende Komponenten:** Keine - alle Komponenten sind vollständig getestet!
+
+**Implementierte Composables (13/13):** ✅ Alle Composables getestet - useAuth, usePermissions, usePanelResize, useAppTheme, useMobile, useSkeletonLoading, useBuilderValidation, useBuilderState, useWizardSession, useKIAStatusCache, useAnalyticsMetrics, useFieldGenerationService, useSplitPaneResize
+
+**Fehlende Composables:** Keine - alle Composables sind vollständig getestet!
+
+### Implementierte E2E Test-Dateien (Playwright)
+
+```
+llars-frontend/e2e/
+└── login.spec.js                            # ✅ 25 Tests (E2E_LOGIN_001-025)
+    ├── Login Page (5 Tests)                 # Page load, form fields, focus, password type, visibility toggle
+    ├── Successful Login (6 Tests)           # All 4 user roles + token storage + loading state
+    ├── Failed Login (5 Tests)               # Wrong credentials, empty fields, error dismissal
+    ├── Logout (2 Tests)                     # Logout flow, token cleared
+    ├── Session & Redirects (4 Tests)        # Auth redirects, protected routes
+    ├── Keyboard Navigation (2 Tests)        # Enter submit, Tab navigation
+    └── Mobile Responsive (1 Test)           # Mobile viewport login
+```
 
 ---
 
@@ -138,4 +311,24 @@ Bei Fragen zur Testdokumentation wende dich an das Entwicklungsteam.
 
 ---
 
-**Letzte Aktualisierung:** 30. Dezember 2025
+**Letzte Aktualisierung:** 1. Januar 2026
+
+---
+
+## E2E Test Konfiguration
+
+Die E2E Tests verwenden Playwright und sind wie folgt konfiguriert:
+
+**Browser-Projekte:**
+- Chromium (Desktop Chrome)
+- Firefox (Desktop Firefox)
+- WebKit (Desktop Safari)
+- Mobile Chrome (Pixel 5)
+- Mobile Safari (iPhone 12)
+
+**Konfiguration:** `llars-frontend/playwright.config.js`
+
+**Voraussetzungen:**
+- LLARS muss unter `http://localhost:55080` laufen
+- Alle Test-Benutzer (admin, researcher, evaluator, chatbot_manager) müssen in Authentik existieren
+- Passwort für alle Test-Benutzer: `admin123`

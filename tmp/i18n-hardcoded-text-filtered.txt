@@ -1,0 +1,1502 @@
+llars-frontend/src/App.vue:7 [attr:alt] Logo
+llars-frontend/src/App.vue:52 [text-node] Profil & Einstellungen
+llars-frontend/src/App.vue:56 [text-node] Abmelden
+llars-frontend/src/components/FloatingChat.vue:31 [attr:alt] LLars Logo
+llars-frontend/src/components/FloatingChat.vue:34 [text-node] LLars
+llars-frontend/src/components/FloatingChat.vue:50 [attr:alt] LLars Logo
+llars-frontend/src/components/FloatingChat.vue:86 [attr:placeholder] Schreibe eine Nachricht...
+llars-frontend/src/components/Login.vue:11 [attr:alt] LLARS Logo
+llars-frontend/src/components/Home.vue:6 [attr:alt] LLARS Logo
+llars-frontend/src/components/ConnectionError.vue:8 [text-node] Service Temporarily Unavailable
+llars-frontend/src/components/ConnectionError.vue:14 [text-node] Try again
+llars-frontend/src/components/Chat.vue:17 [attr:alt] LLars Logo
+llars-frontend/src/components/AdminPermissions.vue:5 [text-node] Berechtigungsverwaltung
+llars-frontend/src/components/AdminPermissions.vue:23 [text-node] Benutzer
+llars-frontend/src/components/AdminPermissions.vue:24 [text-node] Rollen
+llars-frontend/src/components/AdminPermissions.vue:25 [text-node] Berechtigungen
+llars-frontend/src/components/AdminPermissions.vue:33 [text-node] Benutzer & Rollen
+llars-frontend/src/components/AdminPermissions.vue:38 [attr:label] Benutzername suchen
+llars-frontend/src/components/AdminPermissions.vue:59 [text-node] Zugewiesene Rollen:
+llars-frontend/src/components/AdminPermissions.vue:77 [attr:title] display_name
+llars-frontend/src/components/AdminPermissions.vue:79 [attr:label] Rolle zuweisen
+llars-frontend/src/components/AdminPermissions.vue:97 [text-node] Berechtigungen ({{ selectedUser.permissions.length }}):
+llars-frontend/src/components/AdminPermissions.vue:116 [text-node] Verfügbare Rollen
+llars-frontend/src/components/AdminPermissions.vue:122 [attr:title] role.display_name
+llars-frontend/src/components/AdminPermissions.vue:123 [attr:subtitle] role.description
+llars-frontend/src/components/AdminPermissions.vue:140 [text-node] Alle Berechtigungen
+llars-frontend/src/components/AdminPermissions.vue:151 [text-node] Permission Key
+llars-frontend/src/components/AdminPermissions.vue:152 [text-node] Anzeigename
+llars-frontend/src/components/AdminPermissions.vue:153 [text-node] Beschreibung
+llars-frontend/src/components/ChatWithBots.vue:16 [attr:title] sidebar.getDisplayTitle
+llars-frontend/src/components/ChatWithBots.vue:38 [attr:title] sidebar.getDisplayTitle
+llars-frontend/src/components/ChatWithBots.vue:75 [text-node] • {{ selectedChatbot.model_name }}
+llars-frontend/src/components/ChatWithBots.vue:194 [attr:alt] Screenshot
+llars-frontend/src/components/Rater/RaterDetail.vue:3 [attr:title] scenarioName
+llars-frontend/src/components/Rater/RaterDetail.vue:274 [text-node] = 0 && itemIndex
+llars-frontend/src/components/Rater/RaterDetail.vue:294 [text-node] = 0 && itemIndex
+llars-frontend/src/components/Rater/RaterDetail.vue:303 [text-node] = 0 && itemIndex
+llars-frontend/src/components/LatexCollab/LatexWorkspaceGitPanel.vue:156 [text-node] +{{ file.insertions }}
+llars-frontend/src/components/LatexCollab/LatexWorkspaceGitPanel.vue:158 [text-node] -{{ file.deletions }}
+llars-frontend/src/components/LatexCollab/LatexWorkspaceGitPanel.vue:375 [text-node] +{{ file.insertions }}
+llars-frontend/src/components/LatexCollab/LatexWorkspaceGitPanel.vue:376 [text-node] -{{ file.deletions }}
+llars-frontend/src/components/LatexCollab/LatexWorkspaceGitPanel.vue:539 [text-node] #{{ c.id }}
+llars-frontend/src/components/LatexCollab/LatexWorkspaceGitPanel.vue:600 [attr:text] diffBaseText
+llars-frontend/src/components/LatexCollab/LatexWorkspaceGitPanel.vue:601 [attr:text] diffCompareText
+llars-frontend/src/components/LatexCollab/LatexWorkspaceGitPanel.vue:602 [attr:label] diffBaseLabel
+llars-frontend/src/components/LatexCollab/LatexWorkspaceGitPanel.vue:603 [attr:label] diffCompareLabel
+llars-frontend/src/components/LatexCollab/LatexWorkspaceGitPanel.vue:734 [text-node] 0 && selectedFiles.value.length
+llars-frontend/src/components/LatexCollab/LatexPdfViewer.vue:47 [attr:label] loadingLabel
+llars-frontend/src/components/LatexCollab/LatexEditorPane.vue:72 [attr:title] t('latexCollab.comments.addToSelection')
+llars-frontend/src/components/LatexCollab/LatexEditorPane.vue:1341 [text-node] = 1 && lineNo
+llars-frontend/src/components/LatexCollab/Zotero/ZoteroPanel.vue:6 [text-node] zotero
+llars-frontend/src/components/LatexCollab/Zotero/ZoteroPanel.vue:239 [attr:title] name
+llars-frontend/src/components/LatexCollab/Zotero/ZoteroPanel.vue:263 [attr:title] name
+llars-frontend/src/components/LatexCollab/Git/GitDetailDialog.vue:115 [text-node] +{{ file.insertions }}
+llars-frontend/src/components/LatexCollab/Git/GitDetailDialog.vue:116 [text-node] -{{ file.deletions }}
+llars-frontend/src/components/LatexCollab/Git/GitDetailDialog.vue:273 [text-node] #{{ c.id }}
+llars-frontend/src/components/LatexCollab/Git/GitDetailDialog.vue:338 [attr:text] diffBaseText
+llars-frontend/src/components/LatexCollab/Git/GitDetailDialog.vue:339 [attr:text] diffCompareText
+llars-frontend/src/components/LatexCollab/Git/GitDetailDialog.vue:340 [attr:label] diffBaseLabel
+llars-frontend/src/components/LatexCollab/Git/GitDetailDialog.vue:341 [attr:label] diffCompareLabel
+llars-frontend/src/components/LatexCollab/Git/GitStatusWidget.vue:5 [text-node] 0" class="git-badge">{{ totalChanges }}
+llars-frontend/src/components/LatexCollab/Git/GitStatusWidget.vue:15 [text-node] main
+llars-frontend/src/components/LatexCollab/Git/GitStatusWidget.vue:33 [attr:tooltip] t('workspaceGit.actions.fullscreen')
+llars-frontend/src/components/LatexCollab/Git/GitStatusWidget.vue:39 [attr:tooltip] t('workspaceGit.actions.collapse')
+llars-frontend/src/components/LatexCollab/Git/GitStatusWidget.vue:46 [text-node] main
+llars-frontend/src/components/LatexCollab/Git/GitStatusWidget.vue:57 [attr:tooltip] t('workspaceGit.actions.refresh')
+llars-frontend/src/components/LatexCollab/Git/GitStatusWidget.vue:69 [attr:placeholder] t('workspaceGit.commit.placeholder')
+llars-frontend/src/components/LatexCollab/Git/GitStatusWidget.vue:100 [text-node] +{{ file.insertions }}
+llars-frontend/src/components/LatexCollab/Git/GitStatusWidget.vue:101 [text-node] -{{ file.deletions }}
+llars-frontend/src/components/Chat/AgentReasoningDisplay.vue:17 [text-node] Schritt {{ iteration }}
+llars-frontend/src/components/Chat/AgentReasoningDisplay.vue:59 [text-node] mehr
+llars-frontend/src/components/Chat/AgentReasoningDisplay.vue:71 [text-node] Agent denkt nach...
+llars-frontend/src/components/HistoryGenerator/HistoryGenerationDetail.vue:4 [attr:title] headerTitle
+llars-frontend/src/components/HistoryGenerator/HistoryGenerationDetail.vue:158 [attr:title] name
+llars-frontend/src/components/HistoryGenerator/HistoryGenerationDetail.vue:476 [text-node] currentIndex.value >= 0 && currentIndex.value
+llars-frontend/src/components/HistoryGenerator/HistoryGeneration.vue:45 [text-node] Chat #{{ thread.chat_id }}
+llars-frontend/src/components/HistoryGenerator/HistoryGeneration.vue:46 [text-node] Thread #{{ thread.thread_id }}
+llars-frontend/src/components/ChatWithBots/sidebar/ChatSidebar.vue:64 [attr:title] collapsed ? bot.display_name : undefined
+llars-frontend/src/components/ChatWithBots/messages/ChatMessageList.vue:61 [text-node] Quellen
+llars-frontend/src/components/ChatWithBots/messages/ChatMessageList.vue:73 [text-node] [{{ source.footnote_id }}]
+llars-frontend/src/components/ChatWithBots/messages/ChatMessageList.vue:138 [text-node] [${num}]
+llars-frontend/src/components/ChatWithBots/messages/ChatMessageList.vue:138 [attr:title] ${title}
+llars-frontend/src/components/ChatWithBots/input/ChatInput.vue:16 [text-node] ({{ formatFileSize(file.size) }})
+llars-frontend/src/components/ChatWithBots/input/ChatInput.vue:27 [attr:title] fileUploadTooltip
+llars-frontend/src/components/ChatWithBots/panels/SourcePanel.vue:21 [attr:text] pinned ? 'Lösen' : 'Anheften'
+llars-frontend/src/components/ChatWithBots/panels/SourcePanel.vue:30 [attr:text] Schließen
+llars-frontend/src/components/ChatWithBots/panels/SourcePanel.vue:46 [text-node] Ausschnitt
+llars-frontend/src/components/ChatWithBots/panels/SourcePanel.vue:55 [text-node] Screenshot
+llars-frontend/src/components/ChatWithBots/panels/SourcePanel.vue:64 [text-node] Dokument
+llars-frontend/src/components/ChatWithBots/panels/SourcePanel.vue:74 [text-node] Quelle auswählen
+llars-frontend/src/components/ChatWithBots/panels/SourcePanel.vue:140 [text-node] Kein Screenshot verfügbar
+llars-frontend/src/components/ChatWithBots/panels/SourcePanel.vue:176 [text-node] Kein Inhalt verfügbar
+llars-frontend/src/components/MarkdownCollab/MarkdownGitPanel.vue:16 [text-node] +{{ summary?.insertions || 0 }}
+llars-frontend/src/components/MarkdownCollab/MarkdownGitPanel.vue:18 [text-node] -{{ summary?.deletions || 0 }}
+llars-frontend/src/components/MarkdownCollab/MarkdownGitPanel.vue:170 [text-node] #{{ c.id }}
+llars-frontend/src/components/MarkdownCollab/MarkdownGitPanel.vue:385 [text-node] #{{ c.id }}
+llars-frontend/src/components/MarkdownCollab/MarkdownGitPanel.vue:440 [attr:text] diffBaseText
+llars-frontend/src/components/MarkdownCollab/MarkdownGitPanel.vue:441 [attr:text] diffCompareText
+llars-frontend/src/components/MarkdownCollab/MarkdownGitPanel.vue:442 [attr:label] diffBaseLabel
+llars-frontend/src/components/MarkdownCollab/MarkdownGitPanel.vue:443 [attr:label] diffCompareLabel
+llars-frontend/src/components/MarkdownCollab/MarkdownTreeNode.vue:65 [text-node] zotero
+llars-frontend/src/components/MarkdownCollab/MarkdownTreeNode.vue:69 [attr:title] Hauptdokument
+llars-frontend/src/components/MarkdownCollab/MarkdownTreePanel.vue:15 [text-node] file-plus
+llars-frontend/src/components/MarkdownCollab/MarkdownTreePanel.vue:25 [text-node] folder-plus
+llars-frontend/src/components/MarkdownCollab/MarkdownTreePanel.vue:98 [attr:placeholder] createType === 'folder' ? folderPlaceholderText : filePlaceholderText
+llars-frontend/src/components/MarkdownCollab/MarkdownEditorPane.vue:657 [text-node] = 1 && lineNo
+llars-frontend/src/components/PromptEngineering/PromptEngineeringDetail.vue:182 [text-node] setEditorRef(el, block)" class="editor-content">
+llars-frontend/src/components/PromptEngineering/PromptEngineeringDetail.vue:221 [text-node] Blocks & Variable Usage
+llars-frontend/src/components/PromptEngineering/PromptEngineeringDetail.vue:224 [text-node] #{{ idx + 1 }}
+llars-frontend/src/components/PromptEngineering/PromptEngineeringDetail.vue:239 [text-node] Variables ({{ userVariables.length }})
+llars-frontend/src/components/PromptEngineering/TestPromptDialog.vue:399 [text-node] ${userVar.content.replace(/\n/g, '
+llars-frontend/src/components/PromptEngineering/sidebar.vue:313 [text-node] ${escapedContent}
+llars-frontend/src/components/PromptEngineering/PromptGitPanel.vue:16 [text-node] +{{ summary?.insertions || 0 }}
+llars-frontend/src/components/PromptEngineering/PromptGitPanel.vue:18 [text-node] -{{ summary?.deletions || 0 }}
+llars-frontend/src/components/PromptEngineering/PromptGitPanel.vue:148 [text-node] #{{ c.id }}
+llars-frontend/src/components/PromptEngineering/PromptEngineering.vue:49 [attr:title] prompt.name
+llars-frontend/src/components/PromptEngineering/PromptEngineering.vue:77 [attr:title] username
+llars-frontend/src/components/PromptEngineering/PromptEngineering.vue:127 [attr:title] prompt.name
+llars-frontend/src/components/PromptEngineering/testing/DatasetUploadDialog.vue:155 [attr:title] label
+llars-frontend/src/components/PromptEngineering/testing/DatasetUploadDialog.vue:189 [attr:title] label
+llars-frontend/src/components/PromptEngineering/testing/PlaceholderPalette.vue:62 [text-node] 1" class="occurrence-badge">×{{ v.occurrences }}
+llars-frontend/src/components/PromptEngineering/testing/VariableEditor.vue:135 [text-node] JSON, CSV, TXT, MD
+llars-frontend/src/components/PromptEngineering/testing/VariableEditor.vue:157 [attr:title] label
+llars-frontend/src/components/PromptEngineering/testing/VariableEditor.vue:195 [attr:title] name
+llars-frontend/src/components/PromptEngineering/testing/VariableEditor.vue:217 [attr:title] name
+llars-frontend/src/components/Admin/AdminRAG.vue:31 [text-node] Collections
+llars-frontend/src/components/Admin/AdminRAG.vue:40 [text-node] Dokumente
+llars-frontend/src/components/Admin/AdminRAG.vue:49 [text-node] Speicher
+llars-frontend/src/components/Admin/AdminRAG.vue:58 [text-node] Chunks
+llars-frontend/src/components/Admin/AdminRAG.vue:94 [attr:label] Dokumente suchen...
+llars-frontend/src/components/Admin/AdminRAG.vue:104 [attr:title] display_name
+llars-frontend/src/components/Admin/AdminRAG.vue:106 [attr:label] Collection
+llars-frontend/src/components/Admin/AdminRAG.vue:115 [attr:label] Status
+llars-frontend/src/components/Admin/AdminRAG.vue:150 [attr:title] Details
+llars-frontend/src/components/Admin/AdminRAG.vue:153 [attr:title] Download
+llars-frontend/src/components/Admin/AdminRAG.vue:162 [attr:title] Löschen
+llars-frontend/src/components/Admin/AdminRAG.vue:245 [text-node] Dokumente hochladen
+llars-frontend/src/components/Admin/AdminRAG.vue:252 [attr:label] Dateien auswählen
+llars-frontend/src/components/Admin/AdminRAG.vue:265 [attr:title] display_name
+llars-frontend/src/components/Admin/AdminRAG.vue:267 [attr:label] Collection auswählen
+llars-frontend/src/components/Admin/AdminRAG.vue:287 [text-node] Upload Ergebnis
+llars-frontend/src/components/Admin/AdminRAG.vue:331 [attr:subtitle] `${doc.retrieval_count} Abrufe`
+llars-frontend/src/components/Admin/AdminRAG.vue:339 [text-node] Keine Daten verfügbar
+llars-frontend/src/components/Admin/AdminRAG.vue:358 [attr:subtitle] formatDate(doc.uploaded_at)
+llars-frontend/src/components/Admin/AdminRAG.vue:366 [text-node] Keine Uploads
+llars-frontend/src/components/Admin/AdminRAG.vue:411 [text-node] Original Dateiname:
+llars-frontend/src/components/Admin/AdminRAG.vue:415 [text-node] Größe:
+llars-frontend/src/components/Admin/AdminRAG.vue:419 [text-node] MIME-Type:
+llars-frontend/src/components/Admin/AdminRAG.vue:423 [text-node] Status:
+llars-frontend/src/components/Admin/AdminRAG.vue:429 [text-node] Collection:
+llars-frontend/src/components/Admin/AdminRAG.vue:433 [text-node] Sprache:
+llars-frontend/src/components/Admin/AdminRAG.vue:437 [text-node] Hochgeladen von:
+llars-frontend/src/components/Admin/AdminRAG.vue:441 [text-node] Hochgeladen am:
+llars-frontend/src/components/Admin/AdminRAG.vue:445 [text-node] Beschreibung:
+llars-frontend/src/components/Admin/AdminRAG.vue:449 [text-node] Chunks:
+llars-frontend/src/components/Admin/AdminRAG.vue:453 [text-node] Abrufe:
+llars-frontend/src/components/Admin/AdminRAG.vue:463 [text-node] Schließen
+llars-frontend/src/components/Admin/AdminRAG.vue:471 [text-node] Neue Collection erstellen
+llars-frontend/src/components/Admin/AdminRAG.vue:475 [attr:label] Interner Name (ohne Leerzeichen)
+llars-frontend/src/components/Admin/AdminRAG.vue:480 [attr:label] Anzeigename
+llars-frontend/src/components/Admin/AdminRAG.vue:485 [attr:label] Beschreibung
+llars-frontend/src/components/Admin/AdminRAG.vue:490 [attr:label] Icon (Emoji)
+llars-frontend/src/components/Admin/AdminRAG.vue:496 [text-node] Abbrechen
+llars-frontend/src/components/Admin/AdminRAG.vue:507 [text-node] Dokument löschen?
+llars-frontend/src/components/Admin/AdminRAG.vue:514 [text-node] Abbrechen
+llars-frontend/src/components/Admin/AdminHome.vue:7 [text-node] Szenarios
+llars-frontend/src/components/Admin/AdminHome.vue:8 [text-node] Übersicht der Bewertungen
+llars-frontend/src/components/Admin/AdminHome.vue:19 [attr:label] Nach Namen suchen
+llars-frontend/src/components/Admin/AdminHome.vue:32 [attr:label] Status Filter
+llars-frontend/src/components/Admin/AdminHome.vue:51 [text-node] Name
+llars-frontend/src/components/Admin/AdminHome.vue:52 [text-node] Kategorie
+llars-frontend/src/components/Admin/AdminHome.vue:53 [text-node] Beginn
+llars-frontend/src/components/Admin/AdminHome.vue:54 [text-node] Ende
+llars-frontend/src/components/Admin/AdminHome.vue:55 [text-node] Status
+llars-frontend/src/components/Admin/AdminHome.vue:56 [text-node] Aktionen
+llars-frontend/src/components/Admin/AdminRanker.vue:4 [text-node] Admin Dashboard
+llars-frontend/src/components/Admin/AdminRanker.vue:5 [text-node] Übersicht der Benutzeraktivitäten
+llars-frontend/src/components/Admin/AdminRanker.vue:22 [text-node] Benutzer
+llars-frontend/src/components/Admin/AdminRanker.vue:25 [text-node] Threads
+llars-frontend/src/components/Admin/AdminRanker.vue:28 [text-node] Fortschritt
+llars-frontend/src/components/Admin/AdminRanker.vue:31 [text-node] Aktionen
+llars-frontend/src/components/Admin/AdminRanker.vue:92 [text-node] Gesamtfortschritt:
+llars-frontend/src/components/Admin/AdminRanker.vue:114 [text-node] Thread Details für {{ selectedUser.username }}
+llars-frontend/src/components/Admin/AdminRanker.vue:117 [text-node] Bearbeitete Threads
+llars-frontend/src/components/Admin/AdminRanker.vue:130 [text-node] Nicht bearbeitete Threads
+llars-frontend/src/components/Admin/AdminRanker.vue:144 [text-node] Schließen
+llars-frontend/src/components/Admin/AdminDashboard.vue:26 [attr:title] item.title
+llars-frontend/src/components/Admin/sections/AdminPresenceSection.vue:39 [attr:placeholder] t('adminPresence.searchPlaceholder')
+llars-frontend/src/components/Admin/sections/AdminPresenceSection.vue:88 [attr:title] formatFullTime(user.last_active_at)
+llars-frontend/src/components/Admin/sections/AdminPresenceSection.vue:94 [attr:title] formatFullTime(user.last_seen_at)
+llars-frontend/src/components/Admin/sections/AdminRAGSection.vue:12 [text-node] Dokumente
+llars-frontend/src/components/Admin/sections/AdminRAGSection.vue:24 [text-node] Verarbeitet
+llars-frontend/src/components/Admin/sections/AdminRAGSection.vue:36 [text-node] Collections
+llars-frontend/src/components/Admin/sections/AdminRAGSection.vue:48 [text-node] Gesamtgröße
+llars-frontend/src/components/Admin/sections/AdminRAGSection.vue:78 [text-node] Aktives Model
+llars-frontend/src/components/Admin/sections/AdminRAGSection.vue:85 [text-node] Dimensionen
+llars-frontend/src/components/Admin/sections/AdminRAGSection.vue:98 [text-node] LiteLLM Status
+llars-frontend/src/components/Admin/sections/AdminRAGSection.vue:107 [text-node] LiteLLM URL
+llars-frontend/src/components/Admin/sections/AdminRAGSection.vue:144 [attr:label] Dokument suchen
+llars-frontend/src/components/Admin/sections/AdminRAGSection.vue:156 [attr:label] Collection Filter
+llars-frontend/src/components/Admin/sections/AdminRAGSection.vue:180 [attr:title] { item }
+llars-frontend/src/components/Admin/sections/AdminRAGSection.vue:207 [attr:tooltip] Ansehen
+llars-frontend/src/components/Admin/sections/AdminRAGSection.vue:213 [attr:tooltip] Details
+llars-frontend/src/components/Admin/sections/AdminRAGSection.vue:219 [attr:tooltip] Herunterladen
+llars-frontend/src/components/Admin/sections/AdminRAGSection.vue:226 [attr:tooltip] Loeschen
+llars-frontend/src/components/Admin/sections/AdminRAGSection.vue:242 [attr:label] Neue Collection erstellen
+llars-frontend/src/components/Admin/sections/AdminRAGSection.vue:246 [attr:placeholder] Collection-Name eingeben
+llars-frontend/src/components/Admin/sections/AdminRAGSection.vue:316 [attr:title] title
+llars-frontend/src/components/Admin/sections/AdminRAGSection.vue:318 [attr:label] Ziel-Collection
+llars-frontend/src/components/Admin/sections/AdminRAGSection.vue:328 [attr:label] Dateien auswählen
+llars-frontend/src/components/Admin/sections/AdminRAGSection.vue:350 [text-node] Unterstützte Formate:
+llars-frontend/src/components/Admin/sections/AdminRAGSection.vue:352 [text-node] Maximale Dateigröße:
+llars-frontend/src/components/Admin/sections/AdminRAGSection.vue:411 [text-node] Dokument löschen?
+llars-frontend/src/components/Admin/sections/AdminRAGSection.vue:417 [text-node] Abbrechen
+llars-frontend/src/components/Admin/sections/AdminRAGSection.vue:418 [text-node] Löschen
+llars-frontend/src/components/Admin/sections/AdminRAGSection.vue:431 [text-node] Möchten Sie die Collection "
+llars-frontend/src/components/Admin/sections/AdminRAGSection.vue:439 [text-node] Achtung:
+llars-frontend/src/components/Admin/sections/AdminRAGSection.vue:444 [text-node] Abbrechen
+llars-frontend/src/components/Admin/sections/AdminRAGSection.vue:487 [text-node] Beschreibung
+llars-frontend/src/components/Admin/sections/AdminRAGSection.vue:528 [text-node] Embedding-Verarbeitung
+llars-frontend/src/components/Admin/sections/AdminRAGSection.vue:536 [text-node] Fortschritt:
+llars-frontend/src/components/Admin/sections/AdminRAGSection.vue:573 [text-node] Dokumente in dieser Collection
+llars-frontend/src/components/Admin/sections/AdminRAGSection.vue:667 [attr:tooltip] Ansehen
+llars-frontend/src/components/Admin/sections/AdminRAGSection.vue:673 [attr:tooltip] Details
+llars-frontend/src/components/Admin/sections/AdminRAGSection.vue:679 [attr:tooltip] Herunterladen
+llars-frontend/src/components/Admin/sections/AdminRAGSection.vue:687 [text-node] Keine Dokumente in dieser Collection
+llars-frontend/src/components/Admin/sections/AdminSystemSettingsSection.vue:29 [attr:label] Crawl Timeout (Sekunden)
+llars-frontend/src/components/Admin/sections/AdminSystemSettingsSection.vue:35 [attr:hint] Standard: 3600 (1 Stunde). Für große Websites erhöhen.
+llars-frontend/src/components/Admin/sections/AdminSystemSettingsSection.vue:48 [attr:label] Embedding Timeout (Sekunden)
+llars-frontend/src/components/Admin/sections/AdminSystemSettingsSection.vue:54 [attr:hint] Standard: 7200 (2 Stunden). Für große Collections erhöhen.
+llars-frontend/src/components/Admin/sections/AdminSystemSettingsSection.vue:81 [attr:label] Standard Max-Seiten
+llars-frontend/src/components/Admin/sections/AdminSystemSettingsSection.vue:87 [attr:hint] Standard: 500. Maximale Seiten pro Crawl im Chatbot Wizard.
+llars-frontend/src/components/Admin/sections/AdminSystemSettingsSection.vue:94 [attr:label] Standard Crawl-Tiefe
+llars-frontend/src/components/Admin/sections/AdminSystemSettingsSection.vue:100 [attr:hint] Standard: 3. Wie viele Link-Ebenen verfolgt werden.
+llars-frontend/src/components/Admin/sections/AdminSystemSettingsSection.vue:121 [attr:label] Standard Chunk-Größe
+llars-frontend/src/components/Admin/sections/AdminSystemSettingsSection.vue:127 [attr:hint] Standard: 1000 Zeichen pro Chunk.
+llars-frontend/src/components/Admin/sections/AdminSystemSettingsSection.vue:134 [attr:label] Standard Chunk-Überlappung
+llars-frontend/src/components/Admin/sections/AdminSystemSettingsSection.vue:140 [attr:hint] Standard: 200 Zeichen Überlappung zwischen Chunks.
+llars-frontend/src/components/Admin/sections/AdminSystemSettingsSection.vue:161 [attr:label] Antworten loggen
+llars-frontend/src/components/Admin/sections/AdminSystemSettingsSection.vue:170 [attr:label] Prompts loggen
+llars-frontend/src/components/Admin/sections/AdminSystemSettingsSection.vue:182 [attr:label] Tasks (Komma-getrennt)
+llars-frontend/src/components/Admin/sections/AdminSystemSettingsSection.vue:185 [attr:hint] z.B. authenticity, ranking, rating – leer = alle
+llars-frontend/src/components/Admin/sections/AdminSystemSettingsSection.vue:192 [attr:label] Max Zeichen (Antworten)
+llars-frontend/src/components/Admin/sections/AdminSystemSettingsSection.vue:198 [attr:hint] Standard: 800
+llars-frontend/src/components/Admin/sections/AdminSystemSettingsSection.vue:205 [attr:label] Max Zeichen (Prompts)
+llars-frontend/src/components/Admin/sections/AdminSystemSettingsSection.vue:211 [attr:hint] Standard: 800
+llars-frontend/src/components/Admin/sections/AdminSystemSettingsSection.vue:245 [text-node] Referrals
+llars-frontend/src/components/Admin/sections/AdminSystemSettingsSection.vue:252 [attr:label] Referral-System aktivieren
+llars-frontend/src/components/Admin/sections/AdminSystemSettingsSection.vue:265 [attr:label] Selbst-Registrierung aktivieren
+llars-frontend/src/components/Admin/sections/AdminSystemSettingsSection.vue:283 [attr:title] label
+llars-frontend/src/components/Admin/sections/AdminSystemSettingsSection.vue:285 [attr:label] Standard-Rolle für neue Benutzer
+llars-frontend/src/components/Admin/sections/AdminSystemSettingsSection.vue:288 [attr:hint] Rolle, die neuen Benutzern bei der Registrierung zugewiesen wird (falls kein Link-spezifischer Override).
+llars-frontend/src/components/Admin/sections/AdminSystemSettingsSection.vue:331 [attr:label] KI-Assistent aktivieren
+llars-frontend/src/components/Admin/sections/AdminSystemSettingsSection.vue:344 [attr:label] KI-Anzeigename
+llars-frontend/src/components/Admin/sections/AdminSystemSettingsSection.vue:347 [attr:hint] Name, der als Autor bei KI-Antworten angezeigt wird.
+llars-frontend/src/components/Admin/sections/AdminSystemSettingsSection.vue:379 [attr:label] KI-Farbe (Hex)
+llars-frontend/src/components/Admin/sections/AdminSystemSettingsSection.vue:382 [attr:hint] Reservierte Farbe für KI-Änderungen. Standard: #9B59B6 (Lila)
+llars-frontend/src/components/Admin/sections/AdminSystemSettingsSection.vue:391 [text-node] Vorschau:
+llars-frontend/src/components/Admin/sections/AdminSystemSettingsSection.vue:410 [text-node] zotero
+llars-frontend/src/components/Admin/sections/AdminSystemSettingsSection.vue:439 [text-node] Priorität:
+llars-frontend/src/components/Admin/sections/AdminSystemSettingsSection.vue:462 [attr:label] ZOTERO_CLIENT_KEY
+llars-frontend/src/components/Admin/sections/AdminSystemSettingsSection.vue:472 [attr:label] ZOTERO_CLIENT_SECRET
+llars-frontend/src/components/Admin/sections/AdminSystemSettingsSection.vue:505 [attr:label] Datenbank-Fallback aktivieren
+llars-frontend/src/components/Admin/sections/AdminSystemSettingsSection.vue:514 [attr:label] Client Key
+llars-frontend/src/components/Admin/sections/AdminSystemSettingsSection.vue:524 [attr:label] Client Secret (leer = unverändert)
+llars-frontend/src/components/Admin/sections/AdminSystemSettingsSection.vue:528 [attr:placeholder] Neues Secret eingeben...
+llars-frontend/src/components/Admin/sections/AuthenticityStatsDialog.vue:17 [text-node] Fake/Echt Szenario Auswertung
+llars-frontend/src/components/Admin/sections/AuthenticityStatsDialog.vue:23 [attr:tooltip] isFullscreen ? 'Vollbild beenden' : 'Vollbild'
+llars-frontend/src/components/Admin/sections/AuthenticityStatsDialog.vue:26 [attr:tooltip] Schließen
+llars-frontend/src/components/Admin/sections/AuthenticityStatsDialog.vue:35 [text-node] Statistiken werden geladen...
+llars-frontend/src/components/Admin/sections/AuthenticityStatsDialog.vue:59 [text-node] Krippendorff's Alpha
+llars-frontend/src/components/Admin/sections/AuthenticityStatsDialog.vue:68 [text-node] Inter-Rater-Reliabilität
+llars-frontend/src/components/Admin/sections/AuthenticityStatsDialog.vue:78 [text-node] Gesamtgenauigkeit
+llars-frontend/src/components/Admin/sections/AuthenticityStatsDialog.vue:84 [text-node] vs. Ground Truth
+llars-frontend/src/components/Admin/sections/AuthenticityStatsDialog.vue:94 [text-node] F1 Score
+llars-frontend/src/components/Admin/sections/AuthenticityStatsDialog.vue:100 [text-node] Fake-Erkennung
+llars-frontend/src/components/Admin/sections/AuthenticityStatsDialog.vue:110 [text-node] Fortschritt
+llars-frontend/src/components/Admin/sections/AuthenticityStatsDialog.vue:128 [text-node] Konversationen
+llars-frontend/src/components/Admin/sections/AuthenticityStatsDialog.vue:150 [text-node] Abstimmungsverteilung
+llars-frontend/src/components/Admin/sections/AuthenticityStatsDialog.vue:185 [text-node] Echt
+llars-frontend/src/components/Admin/sections/AuthenticityStatsDialog.vue:190 [text-node] Fake
+llars-frontend/src/components/Admin/sections/AuthenticityStatsDialog.vue:195 [text-node] Ausstehend
+llars-frontend/src/components/Admin/sections/AuthenticityStatsDialog.vue:206 [text-node] Benutzer-Fortschritt
+llars-frontend/src/components/Admin/sections/AuthenticityStatsDialog.vue:212 [attr:placeholder] Benutzer suchen...
+llars-frontend/src/components/Admin/sections/AuthenticityStatsDialog.vue:225 [text-node] Benutzer
+llars-frontend/src/components/Admin/sections/AuthenticityStatsDialog.vue:226 [text-node] Fortschritt
+llars-frontend/src/components/Admin/sections/AuthenticityStatsDialog.vue:227 [text-node] Genauigkeit
+llars-frontend/src/components/Admin/sections/AuthenticityStatsDialog.vue:228 [text-node] F1 Score
+llars-frontend/src/components/Admin/sections/AuthenticityStatsDialog.vue:251 [text-node] LLM
+llars-frontend/src/components/Admin/sections/AuthenticityStatsDialog.vue:267 [text-node] ({{ user.progress_percent }}%)
+llars-frontend/src/components/Admin/sections/AuthenticityStatsDialog.vue:300 [attr:tooltip] Details
+llars-frontend/src/components/Admin/sections/AuthenticityStatsDialog.vue:307 [text-node] Keine Benutzer gefunden
+llars-frontend/src/components/Admin/sections/AuthenticityStatsDialog.vue:328 [text-node] LLM
+llars-frontend/src/components/Admin/sections/AuthenticityStatsDialog.vue:339 [text-node] Fortschritt
+llars-frontend/src/components/Admin/sections/AuthenticityStatsDialog.vue:343 [text-node] Genauigkeit
+llars-frontend/src/components/Admin/sections/AuthenticityStatsDialog.vue:349 [text-node] F1 Score
+llars-frontend/src/components/Admin/sections/AuthenticityStatsDialog.vue:353 [text-node] Bewertet
+llars-frontend/src/components/Admin/sections/AuthenticityStatsDialog.vue:362 [text-node] Fake erkannt
+llars-frontend/src/components/Admin/sections/AuthenticityStatsDialog.vue:379 [text-node] Echt erkannt
+llars-frontend/src/components/Admin/sections/AuthenticityStatsDialog.vue:399 [text-node] Bewertet ({{ selectedUser.voted_threads?.length || 0 }})
+llars-frontend/src/components/Admin/sections/AuthenticityStatsDialog.vue:429 [text-node] Ausstehend ({{ selectedUser.pending_threads?.length || 0 }})
+llars-frontend/src/components/Admin/sections/AuthenticityStatsDialog.vue:455 [text-node] Alpha: ≥0.8 Sehr gut • ≥0.667 Akzeptabel • ≥0.4 Moderat
+llars-frontend/src/components/Admin/sections/AuthenticityStatsDialog.vue:457 [text-node] Schließen
+llars-frontend/src/components/Admin/sections/AuthenticityStatsDialog.vue:476 [text-node] LLM
+llars-frontend/src/components/Admin/sections/AuthenticityStatsDialog.vue:486 [text-node] Fortschritt
+llars-frontend/src/components/Admin/sections/AuthenticityStatsDialog.vue:490 [text-node] Genauigkeit
+llars-frontend/src/components/Admin/sections/AuthenticityStatsDialog.vue:496 [text-node] F1 Score
+llars-frontend/src/components/Admin/sections/AuthenticityStatsDialog.vue:500 [text-node] Bewertet
+llars-frontend/src/components/Admin/sections/AuthenticityStatsDialog.vue:509 [text-node] Fake erkannt
+llars-frontend/src/components/Admin/sections/AuthenticityStatsDialog.vue:526 [text-node] Echt erkannt
+llars-frontend/src/components/Admin/sections/ScenarioStatsDialog.vue:23 [attr:tooltip] isFullscreen ? 'Vollbild beenden' : 'Vollbild'
+llars-frontend/src/components/Admin/sections/ScenarioStatsDialog.vue:26 [attr:tooltip] Schließen
+llars-frontend/src/components/Admin/sections/ScenarioStatsDialog.vue:35 [text-node] Statistiken werden geladen...
+llars-frontend/src/components/Admin/sections/ScenarioStatsDialog.vue:58 [text-node] Aufgaben gesamt
+llars-frontend/src/components/Admin/sections/ScenarioStatsDialog.vue:62 [text-node] Zuweisungen an Viewer
+llars-frontend/src/components/Admin/sections/ScenarioStatsDialog.vue:71 [text-node] Abgeschlossen
+llars-frontend/src/components/Admin/sections/ScenarioStatsDialog.vue:75 [text-node] Bereits bewertet
+llars-frontend/src/components/Admin/sections/ScenarioStatsDialog.vue:84 [text-node] Fortschritt
+llars-frontend/src/components/Admin/sections/ScenarioStatsDialog.vue:101 [text-node] Nutzer
+llars-frontend/src/components/Admin/sections/ScenarioStatsDialog.vue:105 [text-node] Viewer & Evaluatoren
+llars-frontend/src/components/Admin/sections/ScenarioStatsDialog.vue:114 [text-node] Benutzer-Fortschritt
+llars-frontend/src/components/Admin/sections/ScenarioStatsDialog.vue:120 [attr:placeholder] Benutzer suchen...
+llars-frontend/src/components/Admin/sections/ScenarioStatsDialog.vue:137 [text-node] Benutzer
+llars-frontend/src/components/Admin/sections/ScenarioStatsDialog.vue:138 [text-node] Fortschritt
+llars-frontend/src/components/Admin/sections/ScenarioStatsDialog.vue:139 [text-node] Status
+llars-frontend/src/components/Admin/sections/ScenarioStatsDialog.vue:160 [text-node] LLM
+llars-frontend/src/components/Admin/sections/ScenarioStatsDialog.vue:176 [text-node] ({{ Math.round(calculateProgress(user)) }}%)
+llars-frontend/src/components/Admin/sections/ScenarioStatsDialog.vue:189 [text-node] Keine Benutzer gefunden
+llars-frontend/src/components/Admin/sections/ScenarioStatsDialog.vue:202 [text-node] Fortschritt basiert auf zugewiesenen Aufgaben
+llars-frontend/src/components/Admin/sections/ScenarioStatsDialog.vue:204 [text-node] Schließen
+llars-frontend/src/components/Admin/sections/AdminAnimationShowcase.vue:7 [text-node] LLARS Animation & Icon Showcase
+llars-frontend/src/components/Admin/sections/AdminAnimationShowcase.vue:34 [attr:label] Klein (sm)
+llars-frontend/src/components/Admin/sections/AdminAnimationShowcase.vue:37 [attr:label] Mittel (md)
+llars-frontend/src/components/Admin/sections/AdminAnimationShowcase.vue:40 [attr:label] Groß (lg)
+llars-frontend/src/components/Admin/sections/AdminAnimationShowcase.vue:45 [attr:text] anim.description
+llars-frontend/src/components/Admin/sections/AdminAnimationShowcase.vue:57 [text-node] Hover zum Aktivieren
+llars-frontend/src/components/Admin/sections/AdminAnimationShowcase.vue:62 [attr:text] icon.description
+llars-frontend/src/components/Admin/sections/AdminAnimationShowcase.vue:84 [text-node] Brand Icons
+llars-frontend/src/components/Admin/sections/AdminAnimationShowcase.vue:89 [attr:text] icon.description
+llars-frontend/src/components/Admin/sections/AdminAnimationShowcase.vue:102 [text-node] UI Icons
+llars-frontend/src/components/Admin/sections/AdminAnimationShowcase.vue:107 [attr:text] icon.description
+llars-frontend/src/components/Admin/sections/AdminAnimationShowcase.vue:132 [text-node] Spin
+llars-frontend/src/components/Admin/sections/AdminAnimationShowcase.vue:138 [text-node] Pulse
+llars-frontend/src/components/Admin/sections/AdminAnimationShowcase.vue:139 [text-node] .pulse-dot
+llars-frontend/src/components/Admin/sections/AdminAnimationShowcase.vue:147 [text-node] Compile
+llars-frontend/src/components/Admin/sections/AdminAnimationShowcase.vue:148 [text-node] .compile-dot
+llars-frontend/src/components/Admin/sections/AdminAnimationShowcase.vue:157 [text-node] Typing
+llars-frontend/src/components/Admin/sections/AdminAnimationShowcase.vue:158 [text-node] .typing-dot
+llars-frontend/src/components/Admin/sections/AdminAnimationShowcase.vue:173 [text-node] Pendulum (LLARS)
+llars-frontend/src/components/Admin/sections/AdminAnimationShowcase.vue:174 [text-node] .pendulum-bar
+llars-frontend/src/components/Admin/sections/AdminAnimationShowcase.vue:182 [text-node] Indeterminate (Vuetify)
+llars-frontend/src/components/Admin/sections/AdminAnimationShowcase.vue:183 [text-node] v-progress-linear
+llars-frontend/src/components/Admin/sections/AdminAnimationShowcase.vue:189 [text-node] Buffer (Vuetify)
+llars-frontend/src/components/Admin/sections/AdminAnimationShowcase.vue:190 [text-node] :buffer-value
+llars-frontend/src/components/Admin/sections/AdminAnimationShowcase.vue:217 [attr:text] trans.usage
+llars-frontend/src/components/Admin/sections/AdminAnimationShowcase.vue:231 [text-node] Animation Registry
+llars-frontend/src/components/Admin/sections/AdminAnimationShowcase.vue:235 [text-node] Neue Animation hinzufügen
+llars-frontend/src/components/Admin/sections/AdminAnimationShowcase.vue:237 [text-node] CSS @keyframes erstellen mit Präfix
+llars-frontend/src/components/Admin/sections/AdminAnimationShowcase.vue:238 [text-node] In
+llars-frontend/src/components/Admin/sections/AdminAnimationShowcase.vue:239 [text-node] Animation erscheint automatisch hier
+llars-frontend/src/components/Admin/sections/AdminAnimationShowcase.vue:244 [text-node] src/config/animationRegistry.js
+llars-frontend/src/components/Admin/sections/AdminAnimationShowcase.vue:258 [text-node] Schließen
+llars-frontend/src/components/Admin/sections/AdminSystemHealthSection.vue:10 [text-node] System Health
+llars-frontend/src/components/Admin/sections/AdminSystemHealthSection.vue:27 [text-node] CPU
+llars-frontend/src/components/Admin/sections/AdminSystemHealthSection.vue:32 [text-node] RAM
+llars-frontend/src/components/Admin/sections/AdminSystemHealthSection.vue:37 [text-node] Errors
+llars-frontend/src/components/Admin/sections/AdminDockerMonitorSection.vue:52 [text-node] Total
+llars-frontend/src/components/Admin/sections/AdminDockerMonitorSection.vue:56 [text-node] Running
+llars-frontend/src/components/Admin/sections/AdminDockerMonitorSection.vue:60 [text-node] Exited
+llars-frontend/src/components/Admin/sections/AdminDockerMonitorSection.vue:64 [text-node] Healthy
+llars-frontend/src/components/Admin/sections/AdminDockerMonitorSection.vue:77 [text-node] CPU
+llars-frontend/src/components/Admin/sections/AdminDockerMonitorSection.vue:94 [text-node] Memory
+llars-frontend/src/components/Admin/sections/AdminDockerMonitorSection.vue:111 [text-node] Net RX
+llars-frontend/src/components/Admin/sections/AdminDockerMonitorSection.vue:128 [text-node] Net TX
+llars-frontend/src/components/Admin/sections/AdminDockerMonitorSection.vue:146 [text-node] Container
+llars-frontend/src/components/Admin/sections/AdminDockerMonitorSection.vue:154 [text-node] Name
+llars-frontend/src/components/Admin/sections/AdminDockerMonitorSection.vue:155 [text-node] State
+llars-frontend/src/components/Admin/sections/AdminDockerMonitorSection.vue:156 [text-node] Health
+llars-frontend/src/components/Admin/sections/AdminDockerMonitorSection.vue:157 [text-node] CPU
+llars-frontend/src/components/Admin/sections/AdminDockerMonitorSection.vue:158 [text-node] RAM
+llars-frontend/src/components/Admin/sections/AdminDockerMonitorSection.vue:187 [text-node] Logs
+llars-frontend/src/components/Admin/sections/AdminDockerMonitorSection.vue:196 [attr:label] Tail
+llars-frontend/src/components/Admin/sections/AdminDockerMonitorSection.vue:208 [text-node] Verbinden
+llars-frontend/src/components/Admin/sections/AdminDockerMonitorSection.vue:218 [text-node] Keine Logs (noch)
+llars-frontend/src/components/Admin/sections/AdminDockerMonitorSection.vue:444 [text-node] ${text}
+llars-frontend/src/components/Admin/sections/AdminDockerMonitorSection.vue:475 [text-node] ${text}
+llars-frontend/src/components/Admin/sections/AdminDockerMonitorSection.vue:486 [text-node] ${line}
+llars-frontend/src/components/Admin/sections/AdminDockerMonitorSection.vue:489 [text-node] ${line}
+llars-frontend/src/components/Admin/sections/AdminDockerMonitorSection.vue:492 [text-node] ${line}
+llars-frontend/src/components/Admin/sections/AdminDockerMonitorSection.vue:495 [text-node] ${line}
+llars-frontend/src/components/Admin/sections/AdminUsersSection.vue:8 [attr:label] Benutzer suchen
+llars-frontend/src/components/Admin/sections/AdminUsersSection.vue:21 [attr:label] Nach Rolle filtern
+llars-frontend/src/components/Admin/sections/AdminUsersSection.vue:53 [text-node] Benutzerdetails
+llars-frontend/src/components/Admin/sections/AdminUsersSection.vue:67 [attr:tooltip] selectedUser.is_active ? 'Sperren' : 'Entsperren'
+llars-frontend/src/components/Admin/sections/AdminUsersSection.vue:75 [attr:tooltip] Löschen
+llars-frontend/src/components/Admin/sections/AdminUsersSection.vue:134 [attr:title] display_name
+llars-frontend/src/components/Admin/sections/AdminUsersSection.vue:136 [attr:label] Rolle hinzufügen
+llars-frontend/src/components/Admin/sections/AdminUsersSection.vue:295 [text-node] Benutzer teilweise erstellt
+llars-frontend/src/components/Admin/sections/AdminUsersSection.vue:317 [attr:label] Username *
+llars-frontend/src/components/Admin/sections/AdminUsersSection.vue:322 [attr:hint] Login-Name des Benutzers
+llars-frontend/src/components/Admin/sections/AdminUsersSection.vue:329 [attr:label] E-Mail *
+llars-frontend/src/components/Admin/sections/AdminUsersSection.vue:335 [attr:hint] Wird für Authentik benötigt
+llars-frontend/src/components/Admin/sections/AdminUsersSection.vue:342 [attr:label] 'Passwort *'
+llars-frontend/src/components/Admin/sections/AdminUsersSection.vue:350 [attr:hint] Mindestens 8 Zeichen
+llars-frontend/src/components/Admin/sections/AdminUsersSection.vue:357 [attr:label] Anzeigename
+llars-frontend/src/components/Admin/sections/AdminUsersSection.vue:362 [attr:hint] Optional - wird sonst der Username verwendet
+llars-frontend/src/components/Admin/sections/AdminUsersSection.vue:368 [text-node] Kollaborationsfarbe (optional)
+llars-frontend/src/components/Admin/sections/AdminUsersSection.vue:399 [attr:label] Profilbild-Seed (optional)
+llars-frontend/src/components/Admin/sections/AdminUsersSection.vue:404 [attr:hint] Leer lassen = automatisch
+llars-frontend/src/components/Admin/sections/AdminUsersSection.vue:412 [attr:title] display_name
+llars-frontend/src/components/Admin/sections/AdminUsersSection.vue:414 [attr:label] Initiale Rollen
+llars-frontend/src/components/Admin/sections/AdminUsersSection.vue:428 [attr:label] Account aktiv
+llars-frontend/src/components/Admin/sections/AdminUsersSection.vue:433 [text-node] Abbrechen
+llars-frontend/src/components/Admin/sections/AdminUsersSection.vue:464 [text-node] Abbrechen
+llars-frontend/src/components/Admin/sections/AdminChatbotActivitySection.vue:7 [text-node] Chatbot Activity
+llars-frontend/src/components/Admin/sections/AdminChatbotActivitySection.vue:48 [text-node] Chatbots
+llars-frontend/src/components/Admin/sections/AdminChatbotActivitySection.vue:52 [text-node] wand
+llars-frontend/src/components/Admin/sections/AdminChatbotActivitySection.vue:55 [text-node] Wizard
+llars-frontend/src/components/Admin/sections/AdminChatbotActivitySection.vue:62 [text-node] Chats
+llars-frontend/src/components/Admin/sections/AdminChatbotActivitySection.vue:69 [text-node] Collections
+llars-frontend/src/components/Admin/sections/AdminChatbotActivitySection.vue:76 [text-node] Dokumente
+llars-frontend/src/components/Admin/sections/AdminChatbotActivitySection.vue:83 [text-node] Gesamt
+llars-frontend/src/components/Admin/sections/AdminChatbotActivitySection.vue:92 [attr:placeholder] Suche (User, Message)
+llars-frontend/src/components/Admin/sections/AdminChatbotActivitySection.vue:103 [attr:placeholder] Typ
+llars-frontend/src/components/Admin/sections/AdminChatbotActivitySection.vue:112 [attr:placeholder] User
+llars-frontend/src/components/Admin/sections/AdminChatbotActivitySection.vue:137 [text-node] Zeit
+llars-frontend/src/components/Admin/sections/AdminChatbotActivitySection.vue:138 [text-node] Typ
+llars-frontend/src/components/Admin/sections/AdminChatbotActivitySection.vue:139 [text-node] User
+llars-frontend/src/components/Admin/sections/AdminChatbotActivitySection.vue:140 [text-node] Aktion
+llars-frontend/src/components/Admin/sections/AdminChatbotActivitySection.vue:141 [text-node] Details
+llars-frontend/src/components/Admin/sections/AdminChatbotActivitySection.vue:172 [attr:text] Details anzeigen
+llars-frontend/src/components/Admin/sections/AdminChatbotActivitySection.vue:190 [text-node] Keine Chatbot-Aktivitaten vorhanden
+llars-frontend/src/components/Admin/sections/AdminChatbotActivitySection.vue:207 [text-node] Schliessen
+llars-frontend/src/components/Admin/sections/AdminPermissionsSection.vue:33 [text-node] Rollen
+llars-frontend/src/components/Admin/sections/AdminPermissionsSection.vue:59 [text-node] Berechtigungen:
+llars-frontend/src/components/Admin/sections/AdminPermissionsSection.vue:93 [attr:label] Berechtigung suchen
+llars-frontend/src/components/Admin/sections/AdminPermissionsSection.vue:199 [text-node] Keine Chatbots gefunden
+llars-frontend/src/components/Admin/sections/AdminPermissionsSection.vue:212 [text-node] LLM Modelle
+llars-frontend/src/components/Admin/sections/AdminPermissionsSection.vue:231 [text-node] Kategorie:
+llars-frontend/src/components/Admin/sections/AdminPermissionsSection.vue:244 [text-node] Fähigkeiten:
+llars-frontend/src/components/Admin/sections/AdminPermissionsSection.vue:373 [text-node] Keine LLM Modelle gefunden
+llars-frontend/src/components/Admin/sections/AdminPermissionsSection.vue:404 [text-node] Keine Audit-Einträge vorhanden
+llars-frontend/src/components/Admin/sections/AdminPermissionsSection.vue:437 [attr:label] Erlaubte Nutzer
+llars-frontend/src/components/Admin/sections/AdminPermissionsSection.vue:449 [attr:title] display_name
+llars-frontend/src/components/Admin/sections/AdminPermissionsSection.vue:451 [attr:label] Erlaubte Rollen (Nutzergruppen)
+llars-frontend/src/components/Admin/sections/AdminPermissionsSection.vue:467 [text-node] Abbrechen
+llars-frontend/src/components/Admin/sections/AdminPermissionsSection.vue:499 [attr:label] Erlaubte Nutzer
+llars-frontend/src/components/Admin/sections/AdminPermissionsSection.vue:511 [attr:title] display_name
+llars-frontend/src/components/Admin/sections/AdminPermissionsSection.vue:513 [attr:label] Erlaubte Rollen (Nutzergruppen)
+llars-frontend/src/components/Admin/sections/AdminPermissionsSection.vue:529 [text-node] Abbrechen
+llars-frontend/src/components/Admin/sections/AdminPermissionsSection.vue:561 [text-node] Rollenrechte bearbeiten
+llars-frontend/src/components/Admin/sections/AdminPermissionsSection.vue:566 [attr:title] permission_key
+llars-frontend/src/components/Admin/sections/AdminPermissionsSection.vue:568 [attr:label] Berechtigungen
+llars-frontend/src/components/Admin/sections/AdminPermissionsSection.vue:580 [attr:title] item.raw.permission_key
+llars-frontend/src/components/Admin/sections/AdminPermissionsSection.vue:581 [attr:subtitle] item.raw.description || item.raw.display_name || ''
+llars-frontend/src/components/Admin/sections/AdminPermissionsSection.vue:590 [text-node] Schließen
+llars-frontend/src/components/Admin/sections/AdminPermissionsSection.vue:617 [attr:label] Role Name (technisch, z.B. 'team_alpha')
+llars-frontend/src/components/Admin/sections/AdminPermissionsSection.vue:626 [attr:label] Anzeigename
+llars-frontend/src/components/Admin/sections/AdminPermissionsSection.vue:636 [attr:label] Beschreibung (optional)
+llars-frontend/src/components/Admin/sections/AdminPermissionsSection.vue:648 [attr:title] permission_key
+llars-frontend/src/components/Admin/sections/AdminPermissionsSection.vue:650 [attr:label] Initiale Berechtigungen
+llars-frontend/src/components/Admin/sections/AdminPermissionsSection.vue:663 [attr:title] item.raw.permission_key
+llars-frontend/src/components/Admin/sections/AdminPermissionsSection.vue:664 [attr:subtitle] item.raw.description || item.raw.display_name || ''
+llars-frontend/src/components/Admin/sections/AdminPermissionsSection.vue:670 [text-node] Abbrechen
+llars-frontend/src/components/Admin/sections/AdminScenariosSection.vue:8 [attr:label] Nach Namen suchen
+llars-frontend/src/components/Admin/sections/AdminScenariosSection.vue:20 [attr:label] Status Filter
+llars-frontend/src/components/Admin/sections/AdminScenariosSection.vue:30 [attr:label] Typ Filter
+llars-frontend/src/components/Admin/sections/AdminScenariosSection.vue:55 [text-node] Aktiv
+llars-frontend/src/components/Admin/sections/AdminScenariosSection.vue:66 [text-node] Ausstehend
+llars-frontend/src/components/Admin/sections/AdminScenariosSection.vue:77 [text-node] Beendet
+llars-frontend/src/components/Admin/sections/AdminScenariosSection.vue:88 [text-node] Gesamt
+llars-frontend/src/components/Admin/sections/AdminScenariosSection.vue:111 [attr:text] getFunctionTypeName(item.function_type_name)
+llars-frontend/src/components/Admin/sections/AdminScenariosSection.vue:133 [text-node] System
+llars-frontend/src/components/Admin/sections/AdminScenariosSection.vue:169 [text-node] Keine Szenarien gefunden
+llars-frontend/src/components/Admin/sections/AdminScenariosSection.vue:197 [text-node] Abbrechen
+llars-frontend/src/components/Admin/sections/AdminDatabaseSection.vue:13 [text-node] Tabellen
+llars-frontend/src/components/Admin/sections/AdminDatabaseSection.vue:19 [attr:placeholder] Suchen...
+llars-frontend/src/components/Admin/sections/AdminDatabaseSection.vue:56 [text-node] Refresh
+llars-frontend/src/components/Admin/sections/AdminDatabaseSection.vue:73 [text-node] Tabellen
+llars-frontend/src/components/Admin/sections/AdminDatabaseSection.vue:80 [attr:placeholder] Tabelle suchen...
+llars-frontend/src/components/Admin/sections/AdminDatabaseSection.vue:104 [text-node] Keine Tabellen gefunden
+llars-frontend/src/components/Admin/sections/AdminDatabaseSection.vue:126 [text-node] Tabelle
+llars-frontend/src/components/Admin/sections/AdminDatabaseSection.vue:134 [text-node] Limit
+llars-frontend/src/components/Admin/sections/AdminDatabaseSection.vue:148 [text-node] Suche
+llars-frontend/src/components/Admin/sections/AdminDatabaseSection.vue:151 [attr:placeholder] In Daten suchen...
+llars-frontend/src/components/Admin/sections/AdminDatabaseSection.vue:163 [text-node] Laden
+llars-frontend/src/components/Admin/sections/AdminDatabaseSection.vue:189 [text-node] Tabelle auswählen
+llars-frontend/src/components/Admin/sections/AdminDatabaseSection.vue:190 [text-node] Wähle eine Tabelle aus der Liste um die Daten anzuzeigen
+llars-frontend/src/components/Admin/sections/AdminDatabaseSection.vue:195 [text-node] Keine Daten
+llars-frontend/src/components/Admin/sections/AdminDatabaseSection.vue:196 [text-node] Die Tabelle
+llars-frontend/src/components/Admin/sections/AdminDatabaseSection.vue:211 [attr:title] formatCell(row[col])
+llars-frontend/src/components/Admin/sections/AdminLlmProvidersSection.vue:142 [text-node] Keine Provider verbunden
+llars-frontend/src/components/Admin/sections/AdminLlmProvidersSection.vue:300 [text-node] Keine LLM Modelle gefunden
+llars-frontend/src/components/Admin/sections/AdminLlmProvidersSection.vue:301 [text-node] Verbinde einen Provider und synchronisiere Modelle
+llars-frontend/src/components/Admin/sections/AdminLlmProvidersSection.vue:334 [attr:label] Name
+llars-frontend/src/components/Admin/sections/AdminLlmProvidersSection.vue:342 [attr:label] Base URL
+llars-frontend/src/components/Admin/sections/AdminLlmProvidersSection.vue:351 [attr:label] API Key
+llars-frontend/src/components/Admin/sections/AdminLlmProvidersSection.vue:361 [attr:label] API Version
+llars-frontend/src/components/Admin/sections/AdminLlmProvidersSection.vue:370 [attr:label] Model IDs (kommagetrennt)
+llars-frontend/src/components/Admin/sections/AdminLlmProvidersSection.vue:377 [attr:placeholder] z.B. claude-3-opus-20240229, claude-3-sonnet-20240229
+llars-frontend/src/components/Admin/sections/AdminLlmProvidersSection.vue:382 [attr:label] Als Default Provider setzen
+llars-frontend/src/components/Admin/sections/AdminLlmProvidersSection.vue:390 [attr:label] Modelle automatisch synchronisieren
+llars-frontend/src/components/Admin/sections/AdminLlmProvidersSection.vue:400 [text-node] Abbrechen
+llars-frontend/src/components/Admin/sections/AdminLlmProvidersSection.vue:428 [attr:title] title
+llars-frontend/src/components/Admin/sections/AdminLlmProvidersSection.vue:430 [attr:label] Provider Typ
+llars-frontend/src/components/Admin/sections/AdminLlmProvidersSection.vue:438 [attr:label] Name
+llars-frontend/src/components/Admin/sections/AdminLlmProvidersSection.vue:446 [attr:label] Base URL
+llars-frontend/src/components/Admin/sections/AdminLlmProvidersSection.vue:454 [attr:label] API Key (leer lassen = unverändert)
+llars-frontend/src/components/Admin/sections/AdminLlmProvidersSection.vue:463 [attr:label] API Version
+llars-frontend/src/components/Admin/sections/AdminLlmProvidersSection.vue:471 [attr:label] Model IDs (kommagetrennt)
+llars-frontend/src/components/Admin/sections/AdminLlmProvidersSection.vue:482 [attr:label] Als Default Provider setzen
+llars-frontend/src/components/Admin/sections/AdminLlmProvidersSection.vue:489 [attr:label] Provider aktiv
+llars-frontend/src/components/Admin/sections/AdminLlmProvidersSection.vue:496 [attr:label] OpenAI-kompatibel (Sync möglich)
+llars-frontend/src/components/Admin/sections/AdminLlmProvidersSection.vue:506 [text-node] Abbrechen
+llars-frontend/src/components/Admin/sections/AdminLlmProvidersSection.vue:520 [text-node] Zugriff: {{ selectedLlmModel.display_name }}
+llars-frontend/src/components/Admin/sections/AdminLlmProvidersSection.vue:560 [attr:label] Public (für alle sichtbar)
+llars-frontend/src/components/Admin/sections/AdminLlmProvidersSection.vue:579 [attr:label] Erlaubte Nutzer
+llars-frontend/src/components/Admin/sections/AdminLlmProvidersSection.vue:593 [attr:title] display_name
+llars-frontend/src/components/Admin/sections/AdminLlmProvidersSection.vue:595 [attr:label] Erlaubte Rollen
+llars-frontend/src/components/Admin/sections/AdminLlmProvidersSection.vue:619 [text-node] Abbrechen
+llars-frontend/src/components/Admin/sections/AdminOverview.vue:10 [attr:label] stat.title
+llars-frontend/src/components/Admin/sections/AdminOverview.vue:26 [text-node] Letzte Aktivitäten
+llars-frontend/src/components/Admin/sections/AdminOverview.vue:29 [attr:text] legend.label
+llars-frontend/src/components/Admin/sections/AdminOverview.vue:55 [text-node] Keine Aktivitäten
+llars-frontend/src/components/Admin/sections/AdminOverview.vue:79 [text-node] Ereignis
+llars-frontend/src/components/Admin/sections/AdminOverview.vue:83 [text-node] Benutzer
+llars-frontend/src/components/Admin/sections/AdminOverview.vue:87 [text-node] Typ
+llars-frontend/src/components/Admin/sections/AdminOverview.vue:91 [text-node] Schwere
+llars-frontend/src/components/Admin/sections/AdminOverview.vue:95 [text-node] Entität
+llars-frontend/src/components/Admin/sections/AdminOverview.vue:99 [text-node] Zeitpunkt
+llars-frontend/src/components/Admin/sections/AdminOverview.vue:109 [text-node] Schließen
+llars-frontend/src/components/Admin/sections/AdminOverview.vue:118 [text-node] Schnellaktionen
+llars-frontend/src/components/Admin/sections/AdminOverview.vue:156 [text-node] Aktive Szenarien
+llars-frontend/src/components/Admin/sections/AdminOverview.vue:167 [text-node] Name
+llars-frontend/src/components/Admin/sections/AdminOverview.vue:168 [text-node] Typ
+llars-frontend/src/components/Admin/sections/AdminOverview.vue:169 [text-node] Fortschritt
+llars-frontend/src/components/Admin/sections/AdminOverview.vue:170 [text-node] Enddatum
+llars-frontend/src/components/Admin/sections/AdminOverview.vue:211 [text-node] Keine aktiven Szenarien
+llars-frontend/src/components/Admin/sections/AdminFieldPromptsSection.vue:180 [attr:hint] Verwenden Sie {variable} als Platzhalter
+llars-frontend/src/components/Admin/sections/AdminFieldPromptsSection.vue:192 [attr:hint] Drücken Sie Enter um Variablen hinzuzufügen
+llars-frontend/src/components/Admin/sections/AdminFieldPromptsSection.vue:279 [attr:hint] JSON-Objekt mit Kontext-Variablen
+llars-frontend/src/components/Admin/sections/AdminSystemMonitorSection.vue:10 [text-node] System Events
+llars-frontend/src/components/Admin/sections/AdminSystemMonitorSection.vue:54 [attr:placeholder] Suche nach Typ, Message, User...
+llars-frontend/src/components/Admin/sections/AdminSystemMonitorSection.vue:92 [text-node] Zeit
+llars-frontend/src/components/Admin/sections/AdminSystemMonitorSection.vue:93 [text-node] Typ
+llars-frontend/src/components/Admin/sections/AdminSystemMonitorSection.vue:94 [text-node] Severity
+llars-frontend/src/components/Admin/sections/AdminSystemMonitorSection.vue:95 [text-node] User
+llars-frontend/src/components/Admin/sections/AdminSystemMonitorSection.vue:96 [text-node] Message
+llars-frontend/src/components/Admin/sections/AdminSystemMonitorSection.vue:141 [text-node] Keine Events vorhanden
+llars-frontend/src/components/Admin/sections/AdminSystemMonitorSection.vue:165 [text-node] Message
+llars-frontend/src/components/Admin/sections/AdminSystemMonitorSection.vue:170 [text-node] Benutzer
+llars-frontend/src/components/Admin/sections/AdminSystemMonitorSection.vue:175 [text-node] Entity Typ
+llars-frontend/src/components/Admin/sections/AdminSystemMonitorSection.vue:180 [text-node] Entity ID
+llars-frontend/src/components/Admin/sections/AdminSystemMonitorSection.vue:185 [text-node] Event ID
+llars-frontend/src/components/Admin/sections/AdminSystemMonitorSection.vue:195 [text-node] Schließen
+llars-frontend/src/components/Admin/sections/AdminReferralSection.vue:4 [attr:title] Referral-System
+llars-frontend/src/components/Admin/sections/AdminReferralSection.vue:22 [text-node] Kampagnen
+llars-frontend/src/components/Admin/sections/AdminReferralSection.vue:28 [text-node] Aktiv
+llars-frontend/src/components/Admin/sections/AdminReferralSection.vue:34 [text-node] Links
+llars-frontend/src/components/Admin/sections/AdminReferralSection.vue:40 [text-node] Registrierungen
+llars-frontend/src/components/Admin/sections/AdminReferralSection.vue:77 [attr:title] Kampagnen
+llars-frontend/src/components/Admin/sections/AdminReferralSection.vue:81 [attr:label] Archivierte anzeigen
+llars-frontend/src/components/Admin/sections/AdminReferralSection.vue:130 [attr:title] `Kampagne: ${selectedCampaign.name}`
+llars-frontend/src/components/Admin/sections/AdminReferralSection.vue:157 [text-node] Beschreibung
+llars-frontend/src/components/Admin/sections/AdminReferralSection.vue:161 [text-node] Status
+llars-frontend/src/components/Admin/sections/AdminReferralSection.vue:165 [attr:title] label
+llars-frontend/src/components/Admin/sections/AdminReferralSection.vue:174 [text-node] Max. Registrierungen
+llars-frontend/src/components/Admin/sections/AdminReferralSection.vue:244 [attr:title] Letzte Registrierungen
+llars-frontend/src/components/Admin/sections/AdminReferralSection.vue:324 [attr:label] Name
+llars-frontend/src/components/Admin/sections/AdminReferralSection.vue:332 [attr:label] Beschreibung (optional)
+llars-frontend/src/components/Admin/sections/AdminReferralSection.vue:342 [attr:label] Startdatum (optional)
+llars-frontend/src/components/Admin/sections/AdminReferralSection.vue:351 [attr:label] Enddatum (optional)
+llars-frontend/src/components/Admin/sections/AdminReferralSection.vue:360 [attr:label] Max. Registrierungen (optional)
+llars-frontend/src/components/Admin/sections/AdminReferralSection.vue:364 [attr:hint] Leer lassen für unbegrenzt
+llars-frontend/src/components/Admin/sections/AdminReferralSection.vue:370 [text-node] Abbrechen
+llars-frontend/src/components/Admin/sections/AdminReferralSection.vue:394 [attr:label] Custom Slug (optional)
+llars-frontend/src/components/Admin/sections/AdminReferralSection.vue:397 [attr:hint] z.B. ki-konferenz-2026 (nur Kleinbuchstaben, Zahlen, -)
+llars-frontend/src/components/Admin/sections/AdminReferralSection.vue:404 [attr:label] Label/Beschreibung (optional)
+llars-frontend/src/components/Admin/sections/AdminReferralSection.vue:412 [attr:label] Rolle für neue User
+llars-frontend/src/components/Admin/sections/AdminReferralSection.vue:419 [attr:label] Max. Verwendungen (optional)
+llars-frontend/src/components/Admin/sections/AdminReferralSection.vue:423 [attr:hint] Leer lassen für unbegrenzt
+llars-frontend/src/components/Admin/sections/AdminReferralSection.vue:428 [attr:label] Ablaufdatum (optional)
+llars-frontend/src/components/Admin/sections/AdminReferralSection.vue:437 [text-node] Abbrechen
+llars-frontend/src/components/Admin/sections/AdminReferralSection.vue:460 [text-node] Abbrechen
+llars-frontend/src/components/Admin/sections/AdminReferralSection.vue:461 [text-node] Löschen
+llars-frontend/src/components/Admin/sections/AdminAnalyticsSection.vue:28 [text-node] Matomo Analytics
+llars-frontend/src/components/Admin/sections/AdminAnalyticsSection.vue:55 [text-node] Tracking
+llars-frontend/src/components/Admin/sections/AdminAnalyticsSection.vue:61 [text-node] Tracking aktiv
+llars-frontend/src/components/Admin/sections/AdminAnalyticsSection.vue:62 [text-node] Aktiviert das Matomo-Tracking
+llars-frontend/src/components/Admin/sections/AdminAnalyticsSection.vue:69 [text-node] User-ID setzen
+llars-frontend/src/components/Admin/sections/AdminAnalyticsSection.vue:70 [text-node] Authentik username/sub tracken
+llars-frontend/src/components/Admin/sections/AdminAnalyticsSection.vue:77 [text-node] Klick-Tracking
+llars-frontend/src/components/Admin/sections/AdminAnalyticsSection.vue:78 [text-node] Button- und Link-Klicks erfassen
+llars-frontend/src/components/Admin/sections/AdminAnalyticsSection.vue:85 [text-node] Hover-Tracking
+llars-frontend/src/components/Admin/sections/AdminAnalyticsSection.vue:86 [text-node] Hover-Events erfassen (Desktop)
+llars-frontend/src/components/Admin/sections/AdminAnalyticsSection.vue:95 [attr:label] Hover Mindestdauer (ms)
+llars-frontend/src/components/Admin/sections/AdminAnalyticsSection.vue:102 [text-node] Sampling Rate: {{ (settings.hover_sample_rate * 100).toFixed(0) }}%
+llars-frontend/src/components/Admin/sections/AdminAnalyticsSection.vue:118 [text-node] Heartbeat
+llars-frontend/src/components/Admin/sections/AdminAnalyticsSection.vue:122 [text-node] Heartbeat aktiv
+llars-frontend/src/components/Admin/sections/AdminAnalyticsSection.vue:123 [text-node] Time-on-Page Messung
+llars-frontend/src/components/Admin/sections/AdminAnalyticsSection.vue:132 [attr:label] Intervall (Sekunden)
+llars-frontend/src/components/Admin/sections/AdminAnalyticsSection.vue:147 [text-node] Privacy & Config
+llars-frontend/src/components/Admin/sections/AdminAnalyticsSection.vue:153 [text-node] Cookies deaktivieren
+llars-frontend/src/components/Admin/sections/AdminAnalyticsSection.vue:154 [text-node] Tracking ohne Cookies
+llars-frontend/src/components/Admin/sections/AdminAnalyticsSection.vue:161 [text-node] Consent erforderlich
+llars-frontend/src/components/Admin/sections/AdminAnalyticsSection.vue:162 [text-node] requireConsent aktivieren
+llars-frontend/src/components/Admin/sections/AdminAnalyticsSection.vue:169 [text-node] Cookie-Consent
+llars-frontend/src/components/Admin/sections/AdminAnalyticsSection.vue:170 [text-node] requireCookieConsent aktivieren
+llars-frontend/src/components/Admin/sections/AdminAnalyticsSection.vue:177 [text-node] Query in Pageviews
+llars-frontend/src/components/Admin/sections/AdminAnalyticsSection.vue:178 [text-node] Querystring einschließen
+llars-frontend/src/components/Admin/sections/AdminAnalyticsSection.vue:187 [text-node] Matomo Server
+llars-frontend/src/components/Admin/sections/AdminAnalyticsSection.vue:190 [attr:label] Base URL
+llars-frontend/src/components/Admin/sections/AdminAnalyticsSection.vue:194 [attr:placeholder] /analytics/
+llars-frontend/src/components/Admin/sections/AdminAnalyticsSection.vue:200 [attr:label] Site ID
+llars-frontend/src/components/Admin/sections/AdminAnalyticsSection.vue:214 [text-node] Custom Dimensions
+llars-frontend/src/components/Admin/sections/AdminAnalyticsSection.vue:222 [attr:label] Route
+llars-frontend/src/components/Admin/sections/AdminAnalyticsSection.vue:238 [attr:label] Modul
+llars-frontend/src/components/Admin/sections/AdminAnalyticsSection.vue:254 [attr:label] Entity
+llars-frontend/src/components/Admin/sections/AdminAnalyticsSection.vue:270 [attr:label] View/Pane
+llars-frontend/src/components/Admin/sections/AdminAnalyticsSection.vue:286 [attr:label] Rolle
+llars-frontend/src/components/Admin/sections/AdminAnalyticsSection.vue:305 [text-node] Matomo iFrame
+llars-frontend/src/components/Admin/sections/AdminAnalyticsSection.vue:306 [text-node] Matomo schützt sich gegen Clickjacking. Dashboard wird extern geöffnet.
+llars-frontend/src/components/Admin/sections/SystemHealth/WebSocketTab.vue:25 [attr:label] Active
+llars-frontend/src/components/Admin/sections/SystemHealth/WebSocketTab.vue:29 [attr:subtitle] Connections
+llars-frontend/src/components/Admin/sections/SystemHealth/WebSocketTab.vue:35 [attr:label] Messages In
+llars-frontend/src/components/Admin/sections/SystemHealth/WebSocketTab.vue:40 [attr:subtitle] `${formatBytes(bytesInPerSec)}/s`
+llars-frontend/src/components/Admin/sections/SystemHealth/WebSocketTab.vue:46 [attr:label] Messages Out
+llars-frontend/src/components/Admin/sections/SystemHealth/WebSocketTab.vue:51 [attr:subtitle] `${formatBytes(bytesOutPerSec)}/s`
+llars-frontend/src/components/Admin/sections/SystemHealth/WebSocketTab.vue:57 [attr:label] Bandwidth
+llars-frontend/src/components/Admin/sections/SystemHealth/WebSocketTab.vue:62 [attr:subtitle] `↓${formatBytes(bytesInPerSec)} ↑${formatBytes(bytesOutPerSec)}`
+llars-frontend/src/components/Admin/sections/SystemHealth/WebSocketTab.vue:80 [attr:title] Connections (5min)
+llars-frontend/src/components/Admin/sections/SystemHealth/WebSocketTab.vue:90 [attr:title] Message Rate (5min)
+llars-frontend/src/components/Admin/sections/SystemHealth/WebSocketTab.vue:119 [text-node] Namespace
+llars-frontend/src/components/Admin/sections/SystemHealth/WebSocketTab.vue:120 [text-node] Clients
+llars-frontend/src/components/Admin/sections/SystemHealth/WebSocketTab.vue:121 [text-node] Rooms
+llars-frontend/src/components/Admin/sections/SystemHealth/WebSocketTab.vue:122 [text-node] Msg/s In
+llars-frontend/src/components/Admin/sections/SystemHealth/WebSocketTab.vue:123 [text-node] Msg/s Out
+llars-frontend/src/components/Admin/sections/SystemHealth/ApiPerformanceTab.vue:25 [attr:label] Requests/s
+llars-frontend/src/components/Admin/sections/SystemHealth/ApiPerformanceTab.vue:29 [attr:subtitle] `${requestCount} requests (5min)`
+llars-frontend/src/components/Admin/sections/SystemHealth/ApiPerformanceTab.vue:35 [attr:label] Avg Latency
+llars-frontend/src/components/Admin/sections/SystemHealth/ApiPerformanceTab.vue:39 [attr:subtitle] `P95: ${p95Latency}ms`
+llars-frontend/src/components/Admin/sections/SystemHealth/ApiPerformanceTab.vue:44 [attr:label] Success Rate
+llars-frontend/src/components/Admin/sections/SystemHealth/ApiPerformanceTab.vue:52 [attr:label] Errors
+llars-frontend/src/components/Admin/sections/SystemHealth/ApiPerformanceTab.vue:56 [attr:subtitle] `${errorRate}% error rate`
+llars-frontend/src/components/Admin/sections/SystemHealth/ApiPerformanceTab.vue:74 [attr:title] Request Rate (5min)
+llars-frontend/src/components/Admin/sections/SystemHealth/ApiPerformanceTab.vue:84 [attr:title] Latency (5min)
+llars-frontend/src/components/Admin/sections/SystemHealth/ApiPerformanceTab.vue:168 [text-node] Method
+llars-frontend/src/components/Admin/sections/SystemHealth/ApiPerformanceTab.vue:169 [text-node] Path
+llars-frontend/src/components/Admin/sections/SystemHealth/ApiPerformanceTab.vue:170 [text-node] Calls
+llars-frontend/src/components/Admin/sections/SystemHealth/ApiPerformanceTab.vue:171 [text-node] Avg
+llars-frontend/src/components/Admin/sections/SystemHealth/ApiPerformanceTab.vue:173 [text-node] Errors
+llars-frontend/src/components/Admin/sections/SystemHealth/ApiPerformanceTab.vue:185 [attr:title] ep.path
+llars-frontend/src/components/Admin/sections/SystemHealth/ApiPerformanceTab.vue:225 [attr:title] err.error
+llars-frontend/src/components/Admin/sections/SystemHealth/SystemHealthBar.vue:26 [text-node] Host
+llars-frontend/src/components/Admin/sections/SystemHealth/SystemHealthBar.vue:46 [text-node] API
+llars-frontend/src/components/Admin/sections/SystemHealth/SystemHealthBar.vue:58 [text-node] WebSocket
+llars-frontend/src/components/Admin/sections/SystemHealth/SystemHealthBar.vue:61 [text-node] conns
+llars-frontend/src/components/Admin/sections/SystemHealth/SystemHealthBar.vue:70 [text-node] Docker
+llars-frontend/src/components/Admin/sections/SystemHealth/SystemHealthBar.vue:73 [text-node] running
+llars-frontend/src/components/Admin/sections/SystemHealth/SystemHealthBar.vue:82 [text-node] DB
+llars-frontend/src/components/Admin/sections/SystemHealth/SystemHealthBar.vue:90 [text-node] Details
+llars-frontend/src/components/Admin/sections/SystemHealth/HostMetricsTab.vue:25 [attr:label] CPU
+llars-frontend/src/components/Admin/sections/SystemHealth/HostMetricsTab.vue:29 [attr:subtitle] cpuSubtitle
+llars-frontend/src/components/Admin/sections/SystemHealth/HostMetricsTab.vue:34 [attr:label] RAM
+llars-frontend/src/components/Admin/sections/SystemHealth/HostMetricsTab.vue:38 [attr:subtitle] memorySubtitle
+llars-frontend/src/components/Admin/sections/SystemHealth/HostMetricsTab.vue:43 [attr:label] Swap
+llars-frontend/src/components/Admin/sections/SystemHealth/HostMetricsTab.vue:47 [attr:subtitle] swapSubtitle
+llars-frontend/src/components/Admin/sections/SystemHealth/HostMetricsTab.vue:52 [attr:label] Network
+llars-frontend/src/components/Admin/sections/SystemHealth/HostMetricsTab.vue:57 [attr:subtitle] networkSubtitle
+llars-frontend/src/components/Admin/sections/SystemHealth/HostMetricsTab.vue:75 [attr:title] CPU Usage (60s)
+llars-frontend/src/components/Admin/sections/SystemHealth/HostMetricsTab.vue:86 [attr:title] Memory Usage (60s)
+llars-frontend/src/components/Admin/sections/SystemHealth/HostMetricsTab.vue:164 [text-node] Uptime
+llars-frontend/src/components/Admin/sections/SystemHealth/HostMetricsTab.vue:168 [text-node] Load Average
+llars-frontend/src/components/Admin/sections/SystemHealth/HostMetricsTab.vue:172 [text-node] CPU Cores
+llars-frontend/src/components/Admin/sections/SystemHealth/HostMetricsTab.vue:176 [text-node] Platform
+llars-frontend/src/components/Admin/ChatbotAdmin/CollectionAssignmentDialog.vue:14 [text-node] Collections verwalten
+llars-frontend/src/components/Admin/ChatbotAdmin/CollectionAssignmentDialog.vue:129 [attr:placeholder] Collections durchsuchen...
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotEditor.vue:63 [text-node] PRO
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotTestDialog.vue:88 [text-node] [{{ source.footnote_id || (i + 1) }}]
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotTestDialog.vue:122 [text-node] Antwortet...
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotTestDialog.vue:132 [attr:placeholder] Nachricht eingeben...
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotTestDialog.vue:187 [attr:label] Temperature
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotTestDialog.vue:199 [attr:label] Max Tokens
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotTestDialog.vue:211 [attr:label] RAG Top-K
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotTestDialog.vue:223 [attr:label] Min Relevanz
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotTestDialog.vue:237 [attr:label] System Prompt Override (leer = Original verwenden)
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotTestDialog.vue:303 [text-node] Schließen
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotBuilderWizard.vue:6 [text-node] wand
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotBuilderWizard.vue:8 [text-node] Chatbot Builder
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotBuilderWizard.vue:38 [text-node] ({{ currentProgressText }})
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotBuilderWizard.vue:112 [attr:message] errors.url || errors.general
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotBuilderWizard.vue:128 [attr:message] errors.crawl || errors.general
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotBuilderWizard.vue:145 [attr:message] errors.embedding || errors.general
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotBuilderWizard.vue:235 [text-node] Warte auf Crawling...
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotBuilderWizard.vue:236 [text-node] Chatbot erstellen (Embedding läuft weiter)
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotBuilderWizard.vue:237 [text-node] Chatbot erstellen
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotManager.vue:24 [text-node] wand
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotManager.vue:56 [text-node] Chatbots
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotManager.vue:76 [text-node] Aktiv
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotManager.vue:96 [text-node] Gespräche
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotManager.vue:116 [text-node] Collections
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotManager.vue:244 [attr:label] Primäre Collection und Dokumente mit löschen
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotManager.vue:252 [text-node] Abbrechen
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotManager.vue:253 [text-node] Löschen
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotManager.vue:265 [attr:title] Chatbot teilen
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotManager.vue:265 [attr:subtitle] Zugriff für andere Nutzer verwalten
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotManager.vue:268 [text-node] Abbrechen
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotManager.vue:269 [text-node] Speichern
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotManager.vue:292 [attr:placeholder] Nutzernamen eingeben...
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotList.vue:23 [text-node] Keine Chatbots vorhanden
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotList.vue:40 [attr:title] chatbot.display_name
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotList.vue:41 [attr:subtitle] chatbot.name
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotList.vue:94 [text-node] wand
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotList.vue:96 [text-node] Konfiguration fortsetzen
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotList.vue:102 [text-node] Bearbeiten
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotList.vue:108 [text-node] Collections verwalten
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotList.vue:114 [text-node] Duplizieren
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotList.vue:123 [text-node] Zugriff teilen
+llars-frontend/src/components/Admin/ChatbotAdmin/BuilderSteps/StepChatbotConfig.vue:24 [text-node] Chatbot konfigurieren
+llars-frontend/src/components/Admin/ChatbotAdmin/BuilderSteps/StepChatbotConfig.vue:30 [attr:label] Interner Name
+llars-frontend/src/components/Admin/ChatbotAdmin/BuilderSteps/StepChatbotConfig.vue:34 [attr:hint] Nur Kleinbuchstaben und Unterstriche
+llars-frontend/src/components/Admin/ChatbotAdmin/BuilderSteps/StepChatbotConfig.vue:57 [attr:label] Anzeigename
+llars-frontend/src/components/Admin/ChatbotAdmin/BuilderSteps/StepChatbotConfig.vue:85 [attr:label] System Prompt
+llars-frontend/src/components/Admin/ChatbotAdmin/BuilderSteps/StepChatbotConfig.vue:111 [attr:label] LLM Modell
+llars-frontend/src/components/Admin/ChatbotAdmin/BuilderSteps/StepChatbotConfig.vue:121 [attr:label] Willkommensnachricht
+llars-frontend/src/components/Admin/ChatbotAdmin/BuilderSteps/StepChatbotConfig.vue:148 [attr:label] Icon
+llars-frontend/src/components/Admin/ChatbotAdmin/BuilderSteps/StepChatbotConfig.vue:183 [attr:label] Farbe
+llars-frontend/src/components/Admin/ChatbotAdmin/BuilderSteps/StepReview.vue:5 [text-node] Chatbot erstellt!
+llars-frontend/src/components/Admin/ChatbotAdmin/BuilderSteps/StepReview.vue:29 [text-node] Embedding läuft im Hintergrund
+llars-frontend/src/components/Admin/ChatbotAdmin/BuilderSteps/StepReview.vue:52 [text-node] Quelle:
+llars-frontend/src/components/Admin/ChatbotAdmin/BuilderSteps/StepReview.vue:55 [text-node] Wissensbasis:
+llars-frontend/src/components/Admin/ChatbotAdmin/BuilderSteps/StepReview.vue:58 [text-node] (wird erweitert...)
+llars-frontend/src/components/Admin/ChatbotAdmin/BuilderSteps/StepCrawlerConfig.vue:5 [text-node] Website URL eingeben
+llars-frontend/src/components/Admin/ChatbotAdmin/BuilderSteps/StepCrawlerConfig.vue:13 [attr:label] Website URL
+llars-frontend/src/components/Admin/ChatbotAdmin/BuilderSteps/StepCrawlerConfig.vue:14 [attr:placeholder] example.com
+llars-frontend/src/components/Admin/ChatbotAdmin/BuilderSteps/StepCrawlerConfig.vue:37 [attr:label] Max. Seiten
+llars-frontend/src/components/Admin/ChatbotAdmin/BuilderSteps/StepCrawlerConfig.vue:43 [attr:hint] Maximale Anzahl zu crawlender Seiten
+llars-frontend/src/components/Admin/ChatbotAdmin/BuilderSteps/StepCrawlerConfig.vue:56 [attr:label] Max. Tiefe
+llars-frontend/src/components/Admin/ChatbotAdmin/BuilderSteps/StepCrawlerConfig.vue:62 [attr:hint] Wie tief Links verfolgt werden
+llars-frontend/src/components/Admin/ChatbotAdmin/BuilderSteps/StepCrawlerConfig.vue:77 [text-node] Crawler-Modus
+llars-frontend/src/components/Admin/ChatbotAdmin/BuilderSteps/StepCrawlerConfig.vue:92 [text-node] Playwright Browser (JavaScript-Rendering)
+llars-frontend/src/components/Admin/ChatbotAdmin/BuilderSteps/StepCrawlerConfig.vue:112 [text-node] Screenshots erstellen
+llars-frontend/src/components/Admin/ChatbotAdmin/BuilderSteps/StepCrawlerConfig.vue:133 [text-node] Vision-LLM Extraktion (Experimentell)
+llars-frontend/src/components/Admin/ChatbotAdmin/BuilderSteps/StepCrawlerConfig.vue:145 [text-node] Playwright:
+llars-frontend/src/components/Admin/ChatbotAdmin/BuilderSteps/StepCrawlerConfig.vue:146 [text-node] Basic:
+llars-frontend/src/components/Admin/ChatbotAdmin/BuilderSteps/StepCrawlerConfig.vue:157 [text-node] So funktioniert's:
+llars-frontend/src/components/Admin/ChatbotAdmin/BuilderSteps/StepCrawlerConfig.vue:159 [text-node] Der Crawler erkundet die Website und sammelt Inhalte
+llars-frontend/src/components/Admin/ChatbotAdmin/BuilderSteps/StepCrawlerConfig.vue:160 [text-node] Texte werden in Chunks aufgeteilt und als Embeddings gespeichert
+llars-frontend/src/components/Admin/ChatbotAdmin/BuilderSteps/StepCrawlerConfig.vue:161 [text-node] Der Chatbot nutzt diese Wissensbasis zur Beantwortung von Fragen
+llars-frontend/src/components/Admin/ChatbotAdmin/BuilderSteps/StepCollectionSetup.vue:94 [text-node] Embedding läuft parallel
+llars-frontend/src/components/Admin/ChatbotAdmin/BuilderSteps/StepCollectionSetup.vue:109 [text-node] Zuletzt gecrawlt:
+llars-frontend/src/components/Admin/ChatbotAdmin/BuilderSteps/StepCollectionSetup.vue:155 [text-node] Collection Details:
+llars-frontend/src/components/Admin/ChatbotAdmin/BuilderSteps/StepCollectionSetup.vue:158 [text-node] Name:
+llars-frontend/src/components/Admin/ChatbotAdmin/BuilderSteps/StepCollectionSetup.vue:162 [text-node] Embedding Modell:
+llars-frontend/src/components/Admin/ChatbotAdmin/BuilderSteps/StepCollectionSetup.vue:174 [text-node] Collection-Vorschau
+llars-frontend/src/components/Admin/ChatbotAdmin/BuilderSteps/StepCollectionSetup.vue:195 [text-node] Warte auf Crawling...
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotEditor/tabs/RagSettingsTab.vue:12 [attr:label] RAG aktivieren
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotEditor/tabs/RagSettingsTab.vue:25 [attr:label] Anzahl Dokumente (k)
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotEditor/tabs/RagSettingsTab.vue:29 [attr:hint] Wie viele relevante Dokumente abgerufen werden
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotEditor/tabs/RagSettingsTab.vue:39 [attr:label] Minimale Relevanz
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotEditor/tabs/RagSettingsTab.vue:44 [attr:hint] Schwellwert für Dokumenten-Relevanz (0-1)
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotEditor/tabs/RagSettingsTab.vue:54 [attr:label] Quellen in Antwort einbeziehen
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotEditor/tabs/RagSettingsTab.vue:76 [attr:label] Zitationen [1], [2], ... erzwingen
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotEditor/tabs/RagSettingsTab.vue:84 [attr:label] Cross-Encoder Reranking
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotEditor/tabs/RagSettingsTab.vue:91 [attr:title] Cross-Encoder Reranking
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotEditor/tabs/RagSettingsTab.vue:99 [text-node] Beispiel:
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotEditor/tabs/RagSettingsTab.vue:115 [attr:title] title
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotEditor/tabs/RagSettingsTab.vue:117 [attr:label] Reranker-Modell
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotEditor/tabs/RagSettingsTab.vue:118 [attr:hint] Welches Cross-Encoder-Modell für das Reranking verwendet wird
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotEditor/tabs/RagSettingsTab.vue:158 [attr:label] Antwort wenn nicht in Quellen
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotEditor/tabs/RagSettingsTab.vue:159 [attr:hint] Wird bei faktischen Fragen verwendet, wenn die Antwort nicht im Kontext steht.
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotEditor/tabs/RagSettingsTab.vue:168 [attr:label] Antwort-Instruktionen
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotEditor/tabs/RagSettingsTab.vue:181 [attr:label] Kontext-Prefix
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotEditor/tabs/RagSettingsTab.vue:182 [attr:hint] Überschrift vor den Quellen im Prompt
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotEditor/tabs/RagSettingsTab.vue:191 [attr:label] Kontext-Eintrag Template
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotEditor/tabs/RagSettingsTab.vue:192 [attr:hint] Platzhalter: {{id}}, {{title}}, {{excerpt}}, {{page_number}}, {{chunk_index}}, {{collection_name}}
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotEditor/tabs/AgentModeTab.vue:14 [text-node] Agent-Modi verstehen
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotEditor/tabs/AgentModeTab.vue:35 [text-node] wie
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotEditor/tabs/AgentModeTab.vue:69 [text-node] Anwendungsfall
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotEditor/tabs/AgentModeTab.vue:70 [text-node] Empfohlener Modus
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotEditor/tabs/AgentModeTab.vue:71 [text-node] Grund
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotEditor/tabs/AgentModeTab.vue:92 [text-node] Mehr erfahren...
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotEditor/tabs/AgentModeTab.vue:101 [text-node] Agent-Modus wählen
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotEditor/tabs/AgentModeTab.vue:158 [text-node] Task-Typ
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotEditor/tabs/AgentModeTab.vue:159 [attr:title] Task-Typen
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotEditor/tabs/AgentModeTab.vue:161 [text-node] Look Up: einfache Fakten-Suche mit wenigen Tool-Aufrufen.
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotEditor/tabs/AgentModeTab.vue:162 [text-node] Multi-hop: mehrschrittige Fragen, mehr Iterationen und Tokens.
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotEditor/tabs/AgentModeTab.vue:195 [text-node] m.value === formData.prompt_settings.agent_mode)?.label }}
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotEditor/tabs/AgentModeTab.vue:197 [text-node] t.value === formData.prompt_settings.task_type)?.label }}
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotEditor/tabs/AgentModeTab.vue:207 [attr:label] Max. Iterationen
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotEditor/tabs/AgentModeTab.vue:211 [attr:hint] Maximale Anzahl an Agent-Zyklen
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotEditor/tabs/AgentModeTab.vue:223 [attr:label] Aktivierte Tools
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotEditor/tabs/AgentModeTab.vue:227 [attr:hint] Welche Tools der Agent nutzen darf
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotEditor/tabs/AgentModeTab.vue:247 [attr:label] Web-Suche aktivieren
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotEditor/tabs/AgentModeTab.vue:255 [attr:label] Max. Web-Ergebnisse
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotEditor/tabs/AgentModeTab.vue:259 [attr:hint] Anzahl der Web-Suchergebnisse pro Anfrage
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotEditor/tabs/AgentModeTab.vue:284 [attr:label] ACT System-Prompt
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotEditor/tabs/AgentModeTab.vue:285 [attr:hint] Instruktionen für den Action-only Prozess
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotEditor/tabs/AgentModeTab.vue:307 [attr:label] ReAct System-Prompt
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotEditor/tabs/AgentModeTab.vue:308 [attr:hint] Instruktionen für den THOUGHT → ACTION → OBSERVATION Prozess
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotEditor/tabs/AgentModeTab.vue:330 [attr:label] ReflAct System-Prompt
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotEditor/tabs/AgentModeTab.vue:331 [attr:hint] Instruktionen für den GOAL → REFLECTION → ACTION Prozess
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotEditor/tabs/AgentModeTab.vue:353 [attr:label] Reflection Prompt
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotEditor/tabs/AgentModeTab.vue:354 [attr:hint] Instruktionen fuer die kritische Selbstpruefung der Antwort
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotEditor/tabs/GeneralTab.vue:12 [attr:label] Technischer Name
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotEditor/tabs/GeneralTab.vue:13 [attr:hint] Eindeutiger Bezeichner (z.B. support-bot)
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotEditor/tabs/GeneralTab.vue:23 [attr:label] Anzeigename
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotEditor/tabs/GeneralTab.vue:24 [attr:hint] Name wie er Benutzern angezeigt wird
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotEditor/tabs/GeneralTab.vue:34 [attr:label] Beschreibung
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotEditor/tabs/GeneralTab.vue:35 [attr:hint] Kurze Beschreibung des Chatbot-Zwecks
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotEditor/tabs/GeneralTab.vue:47 [attr:label] Icon
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotEditor/tabs/GeneralTab.vue:85 [attr:label] Farbe
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotEditor/tabs/GeneralTab.vue:118 [attr:label] Fallback-Nachricht
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotEditor/tabs/GeneralTab.vue:119 [attr:hint] Nachricht bei Fehlern oder wenn keine Antwort möglich
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotEditor/tabs/GeneralTab.vue:131 [attr:label] Chatbot aktiv
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotEditor/tabs/GeneralTab.vue:139 [attr:label] Öffentlich verfügbar
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotEditor/tabs/CollectionsTab.vue:38 [text-node] Dokumente hinzufügen
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotEditor/tabs/CollectionsTab.vue:73 [text-node] Bitte zuerst mindestens eine Collection auswählen.
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotEditor/tabs/CrawlerTab.vue:13 [text-node] Website automatisch crawlen
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotEditor/tabs/CrawlerTab.vue:23 [attr:label] URLs zum Crawlen
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotEditor/tabs/CrawlerTab.vue:24 [attr:placeholder] https://example.com&#10;https://docs.example.com
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotEditor/tabs/CrawlerTab.vue:25 [attr:hint] Eine URL pro Zeile. Der Crawler folgt internen Links automatisch.
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotEditor/tabs/CrawlerTab.vue:45 [attr:label] Max. Seiten pro URL
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotEditor/tabs/CrawlerTab.vue:57 [attr:label] Max. Link-Tiefe
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotEditor/tabs/LlmSettingsTab.vue:15 [attr:label] Modell
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotEditor/tabs/LlmSettingsTab.vue:27 [attr:label] Temperatur
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotEditor/tabs/LlmSettingsTab.vue:42 [attr:label] Max. Tokens
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotEditor/tabs/LlmSettingsTab.vue:53 [text-node] Vorlagen:
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotEditor/tabs/LlmSettingsTab.vue:84 [attr:placeholder] Definieren Sie die Rolle und das Verhalten des Chatbots...
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotEditor/tabs/LlmSettingsTab.vue:103 [attr:placeholder] Erste Nachricht beim Start eines Gesprächs...
+llars-frontend/src/components/Admin/CrawlerAdmin/WebCrawlerTool.vue:7 [text-node] Website Crawler
+llars-frontend/src/components/Admin/CrawlerAdmin/WebCrawlerTool.vue:42 [text-node] Verbindung wird wiederhergestellt...
+llars-frontend/src/components/Admin/CrawlerAdmin/WebCrawlerTool.vue:43 [text-node] Live-Updates werden fortgesetzt, sobald die Verbindung steht.
+llars-frontend/src/components/Admin/CrawlerAdmin/WebCrawlerTool.vue:63 [text-node] Verbindung fehlgeschlagen
+llars-frontend/src/components/Admin/CrawlerAdmin/WebCrawlerTool.vue:64 [text-node] Live-Updates sind nicht verfügbar.
+llars-frontend/src/components/Admin/CrawlerAdmin/WebCrawlerTool.vue:93 [text-node] 1 ? ' Crawls' : 'r Crawl' }}
+llars-frontend/src/components/Admin/CrawlerAdmin/WebCrawlerTool.vue:94 [text-node] - Klicken Sie auf "Live ansehen" um den Fortschritt zu verfolgen
+llars-frontend/src/components/Admin/CrawlerAdmin/WebCrawlerTool.vue:120 [attr:label] URLs zum Crawlen
+llars-frontend/src/components/Admin/CrawlerAdmin/WebCrawlerTool.vue:121 [attr:placeholder] https://example.com&#10;https://docs.example.com
+llars-frontend/src/components/Admin/CrawlerAdmin/WebCrawlerTool.vue:122 [attr:hint] Eine URL pro Zeile. Der Crawler folgt internen Links automatisch.
+llars-frontend/src/components/Admin/CrawlerAdmin/WebCrawlerTool.vue:136 [attr:label] Collection Name *
+llars-frontend/src/components/Admin/CrawlerAdmin/WebCrawlerTool.vue:137 [attr:placeholder] z.B. Unternehmensdokumentation
+llars-frontend/src/components/Admin/CrawlerAdmin/WebCrawlerTool.vue:141 [attr:hint] !crawlForm.collectionName?.trim() ? 'Name ist erforderlich' : ''
+llars-frontend/src/components/Admin/CrawlerAdmin/WebCrawlerTool.vue:142 [attr:hint] !crawlForm.collectionName?.trim()
+llars-frontend/src/components/Admin/CrawlerAdmin/WebCrawlerTool.vue:148 [attr:label] Beschreibung (optional)
+llars-frontend/src/components/Admin/CrawlerAdmin/WebCrawlerTool.vue:149 [attr:placeholder] Beschreibung der Dokumentensammlung...
+llars-frontend/src/components/Admin/CrawlerAdmin/WebCrawlerTool.vue:166 [text-node] Collection-Modus
+llars-frontend/src/components/Admin/CrawlerAdmin/WebCrawlerTool.vue:168 [attr:label] Neue Collection erstellen
+llars-frontend/src/components/Admin/CrawlerAdmin/WebCrawlerTool.vue:169 [attr:label] Zu bestehender Collection hinzufügen
+llars-frontend/src/components/Admin/CrawlerAdmin/WebCrawlerTool.vue:177 [attr:title] display_name
+llars-frontend/src/components/Admin/CrawlerAdmin/WebCrawlerTool.vue:179 [attr:label] Collection auswählen
+llars-frontend/src/components/Admin/CrawlerAdmin/WebCrawlerTool.vue:212 [text-node] Verlinken statt Duplizieren:
+llars-frontend/src/components/Admin/CrawlerAdmin/WebCrawlerTool.vue:222 [attr:label] Max. Seiten
+llars-frontend/src/components/Admin/CrawlerAdmin/WebCrawlerTool.vue:228 [attr:hint] Pro Start-URL
+llars-frontend/src/components/Admin/CrawlerAdmin/WebCrawlerTool.vue:235 [attr:label] Max. Tiefe
+llars-frontend/src/components/Admin/CrawlerAdmin/WebCrawlerTool.vue:241 [attr:hint] Link-Ebenen
+llars-frontend/src/components/Admin/CrawlerAdmin/WebCrawlerTool.vue:284 [text-node] URL
+llars-frontend/src/components/Admin/CrawlerAdmin/WebCrawlerTool.vue:288 [text-node] Content
+llars-frontend/src/components/Admin/CrawlerAdmin/WebCrawlerTool.vue:292 [text-node] Links
+llars-frontend/src/components/Admin/CrawlerAdmin/WebCrawlerTool.vue:297 [text-node] Content-Vorschau:
+llars-frontend/src/components/Admin/CrawlerAdmin/WebCrawlerTool.vue:322 [text-node] Live Crawl Session
+llars-frontend/src/components/Admin/CrawlerAdmin/WebCrawlerTool.vue:334 [text-node] Fortschritt
+llars-frontend/src/components/Admin/CrawlerAdmin/WebCrawlerTool.vue:361 [text-node] Aktuell wird gecrawlt:
+llars-frontend/src/components/Admin/CrawlerAdmin/WebCrawlerTool.vue:378 [text-node] Seiten
+llars-frontend/src/components/Admin/CrawlerAdmin/WebCrawlerTool.vue:384 [text-node] Dokumente
+llars-frontend/src/components/Admin/CrawlerAdmin/WebCrawlerTool.vue:392 [text-node] Verlinkt
+llars-frontend/src/components/Admin/CrawlerAdmin/WebCrawlerTool.vue:398 [text-node] Keine existierenden Dokumente verlinkt
+llars-frontend/src/components/Admin/CrawlerAdmin/WebCrawlerTool.vue:406 [text-node] Aktivitäts-Log
+llars-frontend/src/components/Admin/CrawlerAdmin/WebCrawlerTool.vue:427 [text-node] Warte auf erste Seite...
+llars-frontend/src/components/Admin/CrawlerAdmin/WebCrawlerTool.vue:441 [text-node] Crawl erfolgreich abgeschlossen!
+llars-frontend/src/components/Admin/CrawlerAdmin/WebCrawlerTool.vue:466 [text-node] Crawl fehlgeschlagen
+llars-frontend/src/components/Admin/CrawlerAdmin/WebCrawlerTool.vue:476 [text-node] Bereit zum Crawlen
+llars-frontend/src/components/Admin/CrawlerAdmin/WebCrawlerTool.vue:559 [attr:tooltip] Live ansehen
+llars-frontend/src/components/Admin/CrawlerAdmin/WebCrawlerTool.vue:567 [attr:tooltip] Collection öffnen
+llars-frontend/src/components/Admin/CrawlerAdmin/WebCrawlerTool.vue:576 [text-node] Noch keine Crawl-Jobs vorhanden
+llars-frontend/src/components/Admin/CrawlerAdmin/WebCrawlerTool.vue:587 [text-node] OK
+llars-frontend/src/components/RAG/CollectionManager.vue:47 [attr:title] collection.display_name || collection.name
+llars-frontend/src/components/RAG/CollectionManager.vue:48 [attr:subtitle] collection.name
+llars-frontend/src/components/RAG/CollectionManager.vue:62 [text-node] Dokumente
+llars-frontend/src/components/RAG/CollectionManager.vue:66 [text-node] Größe
+llars-frontend/src/components/RAG/CollectionManager.vue:110 [text-node] Keine Collections vorhanden
+llars-frontend/src/components/RAG/DocumentViewer.vue:66 [attr:alt] document?.filename
+llars-frontend/src/components/RAG/DocumentViewer.vue:74 [text-node] Vorschau nicht verfügbar
+llars-frontend/src/components/RAG/DocumentViewer.vue:94 [text-node] Inhalt
+llars-frontend/src/components/RAG/DocumentViewer.vue:95 [text-node] Screenshot
+llars-frontend/src/components/RAG/DocumentViewer.vue:101 [text-node] Dateiinformationen
+llars-frontend/src/components/RAG/DocumentViewer.vue:104 [text-node] Dateiname
+llars-frontend/src/components/RAG/DocumentViewer.vue:108 [text-node] Typ
+llars-frontend/src/components/RAG/DocumentViewer.vue:112 [text-node] Größe
+llars-frontend/src/components/RAG/DocumentViewer.vue:116 [text-node] MD5 Hash
+llars-frontend/src/components/RAG/DocumentViewer.vue:125 [text-node] Collection
+llars-frontend/src/components/RAG/DocumentViewer.vue:128 [text-node] Name
+llars-frontend/src/components/RAG/DocumentViewer.vue:142 [text-node] Quelle
+llars-frontend/src/components/RAG/DocumentViewer.vue:170 [text-node] Verarbeitungsstatus
+llars-frontend/src/components/RAG/DocumentViewer.vue:173 [text-node] Status
+llars-frontend/src/components/RAG/DocumentViewer.vue:181 [text-node] Chunks
+llars-frontend/src/components/RAG/DocumentViewer.vue:185 [text-node] Fehler
+llars-frontend/src/components/RAG/DocumentViewer.vue:194 [text-node] Statistiken
+llars-frontend/src/components/RAG/DocumentViewer.vue:197 [text-node] Abrufe
+llars-frontend/src/components/RAG/DocumentViewer.vue:201 [text-node] Hochgeladen
+llars-frontend/src/components/RAG/DocumentViewer.vue:205 [text-node] Zuletzt indexiert
+llars-frontend/src/components/RAG/DocumentViewer.vue:214 [text-node] Metadaten
+llars-frontend/src/components/RAG/DocumentViewer.vue:261 [text-node] Screenshot nicht verfügbar
+llars-frontend/src/components/RAG/DocumentViewer.vue:287 [text-node] Kein Inhalt verfügbar
+llars-frontend/src/components/RAG/DocumentViewer.vue:325 [text-node] Chunk ID: {{ chunk.id }}
+llars-frontend/src/components/RAG/DocumentViewer.vue:326 [text-node] | Zeichen: {{ chunk.content.length }}
+llars-frontend/src/components/RAG/DocumentViewer.vue:382 [text-node] Chunk ID: {{ chunk.id }}
+llars-frontend/src/components/RAG/DocumentViewer.vue:383 [text-node] | Zeichen: {{ chunk.content.length }}
+llars-frontend/src/components/RAG/DocumentViewer.vue:384 [text-node] | Hat Bild
+llars-frontend/src/components/RAG/DocumentViewer.vue:395 [text-node] Keine Chunks vorhanden
+llars-frontend/src/components/RAG/CollectionEditor.vue:20 [text-node] Basis-Informationen
+llars-frontend/src/components/RAG/CollectionEditor.vue:24 [attr:label] Technischer Name *
+llars-frontend/src/components/RAG/CollectionEditor.vue:25 [attr:hint] Eindeutiger Bezeichner (z.B. 'faq-collection')
+llars-frontend/src/components/RAG/CollectionEditor.vue:36 [attr:label] Anzeigename *
+llars-frontend/src/components/RAG/CollectionEditor.vue:37 [attr:hint] Sichtbarer Name in der Oberfläche
+llars-frontend/src/components/RAG/CollectionEditor.vue:47 [attr:label] Beschreibung
+llars-frontend/src/components/RAG/CollectionEditor.vue:48 [attr:hint] Optionale Beschreibung der Collection
+llars-frontend/src/components/RAG/CollectionEditor.vue:61 [attr:label] Icon
+llars-frontend/src/components/RAG/CollectionEditor.vue:85 [attr:label] Farbe
+llars-frontend/src/components/RAG/CollectionEditor.vue:127 [attr:label] Chunk-Größe
+llars-frontend/src/components/RAG/CollectionEditor.vue:128 [attr:hint] Anzahl der Zeichen pro Text-Chunk (Standard: 1000)
+llars-frontend/src/components/RAG/CollectionEditor.vue:139 [attr:label] Chunk-Überlappung
+llars-frontend/src/components/RAG/CollectionEditor.vue:140 [attr:hint] Überlappung zwischen Chunks in Zeichen (Standard: 200)
+llars-frontend/src/components/RAG/CollectionEditor.vue:151 [attr:label] Retrieval-K
+llars-frontend/src/components/RAG/CollectionEditor.vue:152 [attr:hint] Anzahl der abzurufenden Top-Dokumente (Standard: 5)
+llars-frontend/src/components/RAG/CollectionShareDialog.vue:8 [attr:title] title
+llars-frontend/src/components/RAG/CollectionShareDialog.vue:9 [attr:subtitle] subtitle
+llars-frontend/src/components/RAG/CollectionShareDialog.vue:13 [text-node] Abbrechen
+llars-frontend/src/components/RAG/CollectionShareDialog.vue:14 [text-node] Speichern
+llars-frontend/src/components/RAG/CollectionShareDialog.vue:48 [text-node] Lesen & Schreiben
+llars-frontend/src/components/RAG/CollectionShareDialog.vue:49 [text-node] Nur Lesen
+llars-frontend/src/components/RAG/CollectionShareDialog.vue:72 [attr:tooltip] Entfernen
+llars-frontend/src/components/RAG/CollectionShareDialog.vue:92 [attr:placeholder] Nutzernamen eingeben...
+llars-frontend/src/components/RAG/CollectionShareDialog.vue:118 [text-node] Hinweis:
+llars-frontend/src/components/RAG/DocumentUploadDialog.vue:20 [attr:label] Collection auswählen *
+llars-frontend/src/components/RAG/DocumentUploadDialog.vue:62 [text-node] oder
+llars-frontend/src/components/RAG/DocumentUploadDialog.vue:148 [text-node] Gesamtfortschritt
+llars-frontend/src/components/RAG/DocumentManager.vue:24 [attr:label] Collection filtern
+llars-frontend/src/components/RAG/DocumentManager.vue:35 [attr:label] Status filtern
+llars-frontend/src/components/RAG/DocumentManager.vue:57 [attr:label] Suche
+llars-frontend/src/components/RAG/DocumentManager.vue:168 [text-node] Keine Dokumente gefunden
+llars-frontend/src/components/RAG/FilePreviewDialog.vue:28 [attr:title] Details anzeigen
+llars-frontend/src/components/RAG/FilePreviewDialog.vue:34 [attr:title] Herunterladen
+llars-frontend/src/components/RAG/FilePreviewDialog.vue:65 [attr:alt] document?.filename
+llars-frontend/src/components/RAG/FilePreviewDialog.vue:79 [text-node] Vorschau nicht verfuegbar
+llars-frontend/src/components/Ranker/RankerDetail.vue:3 [attr:title] threadTitle
+llars-frontend/src/components/Ranker/RankerDetail.vue:247 [text-node] currentIndex.value >= 0 && currentIndex.value
+llars-frontend/src/components/Ranker/Ranker.vue:46 [text-node] Chat #{{ thread.chat_id }}
+llars-frontend/src/components/Ranker/Ranker.vue:47 [text-node] Thread #{{ thread.thread_id }}
+llars-frontend/src/components/Orga/Documentation.vue:83 [text-node] /mkdocs/
+llars-frontend/src/components/Orga/Documentation.vue:110 [text-node] http://localhost:55080
+llars-frontend/src/components/Orga/Kontakt.vue:28 [text-node] LinkedIn
+llars-frontend/src/components/Orga/Kontakt.vue:29 [text-node] Facebook
+llars-frontend/src/components/Orga/Kontakt.vue:30 [text-node] Instagram
+llars-frontend/src/components/Orga/Kontakt.vue:31 [text-node] YouTube
+llars-frontend/src/components/common/LTooltip.vue:28 [attr:text] This is a helpful hint
+llars-frontend/src/components/common/LTooltip.vue:32 [attr:text] Click to save
+llars-frontend/src/components/common/LTooltip.vue:33 [text-node] Save
+llars-frontend/src/components/common/LTooltip.vue:38 [text-node] Status
+llars-frontend/src/components/common/LTooltip.vue:40 [text-node] Details:
+llars-frontend/src/components/common/LTooltip.vue:41 [text-node] Item 1
+llars-frontend/src/components/common/LCard.vue:104 [attr:title] My Chatbot
+llars-frontend/src/components/common/LCard.vue:105 [attr:subtitle] chatbot-id
+llars-frontend/src/components/common/LCard.vue:112 [text-node] Description here
+llars-frontend/src/components/common/LCard.vue:114 [text-node] Edit
+llars-frontend/src/components/common/LGauge.vue:47 [attr:label] CPU
+llars-frontend/src/components/common/LGauge.vue:55 [attr:label] RAM
+llars-frontend/src/components/common/LGauge.vue:59 [attr:subtitle] 16.4 / 22.8 GB
+llars-frontend/src/components/common/LCheckbox.vue:45 [attr:label] I agree to terms
+llars-frontend/src/components/common/LCheckbox.vue:46 [text-node] Item 1
+llars-frontend/src/components/common/LUserSearch.vue:8 [attr:title] username
+llars-frontend/src/components/common/LUserSearch.vue:11 [attr:placeholder] placeholder
+llars-frontend/src/components/common/LUserSearch.vue:12 [attr:label] label
+llars-frontend/src/components/common/LUserSearch.vue:28 [text-node] @{{ item.raw.username }}
+llars-frontend/src/components/common/LUserSearch.vue:57 [attr:title] addButtonText
+llars-frontend/src/components/common/LAvatar.vue:13 [attr:alt] alt || username
+llars-frontend/src/components/common/LBtn.vue:6 [attr:aria-label] ariaLabel
+llars-frontend/src/components/common/LBtn.vue:45 [text-node] Default Button
+llars-frontend/src/components/common/LBtn.vue:46 [text-node] Primary Action
+llars-frontend/src/components/common/LBtn.vue:47 [text-node] Download
+llars-frontend/src/components/common/LBtn.vue:48 [text-node] Delete
+llars-frontend/src/components/common/LBtn.vue:49 [text-node] Cancel
+llars-frontend/src/components/common/AnalyticsConsentBanner.vue:7 [text-node] Analytics & Datenschutz
+llars-frontend/src/components/common/AnalyticsConsentBanner.vue:14 [text-node] Datenschutz
+llars-frontend/src/components/common/AnalyticsConsentBanner.vue:15 [text-node] Ablehnen
+llars-frontend/src/components/common/AnalyticsConsentBanner.vue:16 [text-node] Zustimmen
+llars-frontend/src/components/common/LIconBtn.vue:5 [attr:aria-label] ariaLabel
+llars-frontend/src/components/common/LIconBtn.vue:23 [attr:tooltip] Bearbeiten
+llars-frontend/src/components/common/LIconBtn.vue:24 [attr:tooltip] Löschen
+llars-frontend/src/components/common/LIconBtn.vue:25 [attr:tooltip] Statistiken
+llars-frontend/src/components/common/LSwitch.vue:33 [attr:label] Enable notifications
+llars-frontend/src/components/common/LSwitch.vue:34 [text-node] Dark Mode
+llars-frontend/src/components/common/LActionGroup.vue:12 [attr:tooltip] action.tooltip
+llars-frontend/src/components/common/LRatingScale.vue:22 [attr:aria-label] ariaLabel
+llars-frontend/src/components/common/LRatingScale.vue:35 [attr:aria-label] ariaLabel
+llars-frontend/src/components/common/LRatingScale.vue:44 [attr:aria-label] `${value} ${labels[value] || ''}`
+llars-frontend/src/components/common/LRatingScale.vue:174 [text-node] 7 && scaleCount.value
+llars-frontend/src/components/common/LRatingScale.vue:212 [text-node] 0.3 && position
+llars-frontend/src/components/common/LMessageList.vue:22 [attr:message] message
+llars-frontend/src/components/common/LMessageList.vue:27 [attr:message] message
+llars-frontend/src/components/common/AppSidebar.vue:21 [attr:title] isCollapsed ? 'Erweitern' : 'Zuklappen'
+llars-frontend/src/components/common/AppSidebar.vue:37 [attr:title] isCollapsed ? item.title : undefined
+llars-frontend/src/components/common/AppSidebar.vue:63 [attr:title] isCollapsed ? 'Zur Startseite' : undefined
+llars-frontend/src/components/common/AppSidebar.vue:68 [text-node] Zur Startseite
+llars-frontend/src/components/common/LStatCard.vue:52 [attr:label] RAG Dokumente
+llars-frontend/src/components/common/LChart.vue:41 [attr:title] CPU Usage
+llars-frontend/src/components/common/LRadioGroup.vue:9 [attr:aria-label] label
+llars-frontend/src/components/common/LRadioGroup.vue:20 [attr:label] option.label
+llars-frontend/src/components/common/LRadioGroup.vue:43 [attr:label] Choose an option
+llars-frontend/src/components/common/LSlider.vue:24 [attr:label] slotProps
+llars-frontend/src/components/common/LRadio.vue:36 [attr:label] Option 1
+llars-frontend/src/components/common/LRadio.vue:37 [text-node] Option 2
+llars-frontend/src/components/common/LInfoTooltip.vue:9 [attr:aria-label] resolvedAriaLabel
+llars-frontend/src/components/common/LlmModelSelect.vue:5 [attr:title] title
+llars-frontend/src/components/common/LlmModelSelect.vue:8 [attr:label] label
+llars-frontend/src/components/Anonymize/AnonymizeTool.vue:18 [attr:title] healthChip.title
+llars-frontend/src/components/Anonymize/AnonymizeTool.vue:210 [text-node] x{{ g.count }}
+llars-frontend/src/components/parts/CategorySelection.vue:15 [text-node] Fall Kategorie auswählen
+llars-frontend/src/components/parts/CategorySelection.vue:38 [attr:label] Anmerkungen zur Fallkategorie
+llars-frontend/src/components/parts/ScenarioDetailsDialog.vue:5 [attr:tooltip] Details anzeigen
+llars-frontend/src/components/parts/ScenarioDetailsDialog.vue:17 [attr:tooltip] Bearbeiten
+llars-frontend/src/components/parts/ScenarioDetailsDialog.vue:22 [attr:tooltip] Schließen
+llars-frontend/src/components/parts/ScenarioDetailsDialog.vue:30 [attr:label] Szenario Name
+llars-frontend/src/components/parts/ScenarioDetailsDialog.vue:39 [attr:label] Kategorie
+llars-frontend/src/components/parts/ScenarioDetailsDialog.vue:57 [attr:label] Startdatum
+llars-frontend/src/components/parts/ScenarioDetailsDialog.vue:87 [attr:label] Enddatum
+llars-frontend/src/components/parts/ScenarioDetailsDialog.vue:118 [text-node] Rater
+llars-frontend/src/components/parts/ScenarioDetailsDialog.vue:133 [text-node] ID: {{rater.user_id}}
+llars-frontend/src/components/parts/ScenarioDetailsDialog.vue:143 [text-node] Viewer
+llars-frontend/src/components/parts/ScenarioDetailsDialog.vue:158 [text-node] ID: {{viewer.user_id}}
+llars-frontend/src/components/parts/ScenarioDetailsDialog.vue:169 [text-node] Verfügbare Viewer
+llars-frontend/src/components/parts/ScenarioDetailsDialog.vue:182 [text-node] ID: {{user.id}}
+llars-frontend/src/components/parts/ScenarioDetailsDialog.vue:187 [attr:label] Auswählen
+llars-frontend/src/components/parts/ScenarioDetailsDialog.vue:212 [attr:label] Von Thread ID
+llars-frontend/src/components/parts/ScenarioDetailsDialog.vue:221 [attr:label] Bis Thread ID
+llars-frontend/src/components/parts/ScenarioDetailsDialog.vue:262 [text-node] Thread-ID: {{thread.thread_id}}
+llars-frontend/src/components/parts/ScenarioDetailsDialog.vue:272 [text-node] Verfügbare Threads
+llars-frontend/src/components/parts/ScenarioDetailsDialog.vue:285 [text-node] Thread-ID: {{thread.thread_id}}
+llars-frontend/src/components/parts/ScenarioDetailsDialog.vue:291 [attr:label] Auswählen
+llars-frontend/src/components/parts/ScenarioDetailsDialog.vue:313 [attr:label] Language-Modell 1
+llars-frontend/src/components/parts/ScenarioDetailsDialog.vue:314 [attr:hint] Z.B. mistralai/Mistral-Small-3.1-24B-Instruct-2503
+llars-frontend/src/components/parts/ScenarioDetailsDialog.vue:323 [attr:label] Language-Modell 2
+llars-frontend/src/components/parts/ScenarioDetailsDialog.vue:324 [attr:hint] Z.B. mistralai/Mistral-Small-3.1-24B-Instruct-2503
+llars-frontend/src/components/parts/ScenarioDetailsDialog.vue:346 [text-node] Abbrechen
+llars-frontend/src/components/parts/BinaryLikertScale.vue:3 [text-node] Ja
+llars-frontend/src/components/parts/BinaryLikertScale.vue:34 [text-node] Nein
+llars-frontend/src/components/parts/LikertScale.vue:3 [text-node] Gut
+llars-frontend/src/components/parts/LikertScale.vue:27 [text-node] Schlecht
+llars-frontend/src/components/parts/CreateScenarioDialog.vue:13 [text-node] Szenario erstellen
+llars-frontend/src/components/parts/CreateScenarioDialog.vue:18 [attr:label] Szenario Name
+llars-frontend/src/components/parts/CreateScenarioDialog.vue:28 [attr:label] Kategorie
+llars-frontend/src/components/parts/CreateScenarioDialog.vue:48 [attr:label] Startdatum
+llars-frontend/src/components/parts/CreateScenarioDialog.vue:85 [attr:label] Enddatum
+llars-frontend/src/components/parts/CreateScenarioDialog.vue:151 [attr:label] Evaluator
+llars-frontend/src/components/parts/CreateScenarioDialog.vue:160 [attr:label] Viewer
+llars-frontend/src/components/parts/CreateScenarioDialog.vue:175 [text-node] LLM Nutzer
+llars-frontend/src/components/parts/CreateScenarioDialog.vue:226 [attr:label] Evaluator
+llars-frontend/src/components/parts/CreateScenarioDialog.vue:252 [attr:label] Language-Modell 1
+llars-frontend/src/components/parts/CreateScenarioDialog.vue:254 [attr:hint] Erstes Modell für die Gegenüberstellung
+llars-frontend/src/components/parts/CreateScenarioDialog.vue:262 [attr:label] Language-Modell 2
+llars-frontend/src/components/parts/CreateScenarioDialog.vue:264 [attr:hint] Zweites Modell für die Gegenüberstellung
+llars-frontend/src/components/parts/CreateScenarioDialog.vue:289 [text-node] Importiere JSON-Daten im v6-Format. Du kannst
+llars-frontend/src/components/parts/CreateScenarioDialog.vue:316 [attr:label] JSON-Dateien auswählen
+llars-frontend/src/components/parts/CreateScenarioDialog.vue:323 [attr:hint] authImport.files?.length ? `${authImport.files.length} Datei(en) ausgewählt` : 'Eine oder mehrere .json Dateien'
+llars-frontend/src/components/parts/CreateScenarioDialog.vue:353 [text-node] aus Ordner geladen
+llars-frontend/src/components/parts/CreateScenarioDialog.vue:356 [text-node] Ordner auswählen
+llars-frontend/src/components/parts/CreateScenarioDialog.vue:357 [text-node] Klicken um einen Ordner mit JSON-Dateien zu wählen
+llars-frontend/src/components/parts/CreateScenarioDialog.vue:378 [attr:label] JSON einfügen
+llars-frontend/src/components/parts/CreateScenarioDialog.vue:387 [attr:hint] Ein einzelnes JSON-Objekt oder ein Array von Objekten
+llars-frontend/src/components/parts/CreateScenarioDialog.vue:426 [text-node] Import erfolgreich!
+llars-frontend/src/components/parts/CreateScenarioDialog.vue:446 [text-node] Threads
+llars-frontend/src/components/parts/CreateScenarioDialog.vue:462 [attr:label] Von Thread ID
+llars-frontend/src/components/parts/CreateScenarioDialog.vue:471 [attr:label] Bis Thread ID
+llars-frontend/src/components/parts/CreateScenarioDialog.vue:517 [text-node] Thread-ID: {{thread.thread_id}}
+llars-frontend/src/components/parts/CreateScenarioDialog.vue:523 [attr:label] Auswählen
+llars-frontend/src/components/parts/CreateScenarioDialog.vue:552 [attr:label] Thread-Verteilung
+llars-frontend/src/components/parts/CreateScenarioDialog.vue:561 [attr:label] Thread-Reihenfolge
+llars-frontend/src/components/parts/CreateScenarioDialog.vue:576 [text-node] Abbrechen
+llars-frontend/src/components/parts/CreateScenarioDialog.vue:577 [text-node] Anlegen
+llars-frontend/src/components/Authenticity/AuthenticityOverview.vue:48 [text-node] Thread #{{ thread.thread_id }}
+llars-frontend/src/components/Authenticity/AuthenticityDetail.vue:218 [text-node] currentIndex.value >= 0 && currentIndex.value
+llars-frontend/src/components/Judge/WorkerLane.vue:34 [text-node] W{{ workerId + 1 }}
+llars-frontend/src/components/Judge/WorkerLane.vue:40 [text-node] Worker {{ workerId + 1 }}
+llars-frontend/src/components/Judge/WorkerLane.vue:68 [attr:title] Vollbild
+llars-frontend/src/components/Judge/WorkerLane.vue:97 [text-node] Wartet auf Aufgabe...
+llars-frontend/src/components/Judge/WorkerLane.vue:192 [text-node] 0" class="diff-positive">A +{{ scoreDiff }}
+llars-frontend/src/components/Judge/WorkerLane.vue:193 [text-node] B +{{ Math.abs(scoreDiff) }}
+llars-frontend/src/components/Judge/WorkerLane.vue:194 [text-node] Gleichstand
+llars-frontend/src/components/Judge/WorkerLane.vue:201 [text-node] Kriterien
+llars-frontend/src/components/Judge/WorkerLane.vue:206 [text-node] Diff
+llars-frontend/src/components/Judge/WorkerLane.vue:218 [attr:title] criterion.full
+llars-frontend/src/components/Judge/WorkerLane.vue:253 [text-node] TOTAL
+llars-frontend/src/components/Judge/WorkerLane.vue:258 [text-node] 0 ? 'diff-positive' : scoreDiff
+llars-frontend/src/components/Judge/WorkerLane.vue:259 [text-node] 0 ? '+' + scoreDiff : scoreDiff
+llars-frontend/src/components/Judge/WorkerLane.vue:270 [text-node] Analyse-Fortschritt
+llars-frontend/src/components/Judge/JudgeSession.vue:61 [attr:text] getQueueStatusText
+llars-frontend/src/components/Judge/JudgeSession.vue:317 [attr:text] getStatusText
+llars-frontend/src/components/Judge/JudgeResults.vue:71 [attr:label] getBiasLabel
+llars-frontend/src/components/Judge/JudgeResults/ResultsPositionSwap.vue:51 [attr:title] Zheng et al. 2023
+llars-frontend/src/components/Judge/JudgeResults/ResultsPositionSwap.vue:60 [attr:title] Zheng et al. 2023
+llars-frontend/src/components/Judge/JudgeResults/ResultsPositionSwap.vue:69 [attr:title] Zheng et al. 2023
+llars-frontend/src/components/Judge/JudgeResults/ResultsPositionSwap.vue:78 [attr:title] Shi et al. 2024
+llars-frontend/src/components/Judge/JudgeResults/ResultsPositionSwap.vue:87 [attr:title] Shi et al. 2024
+llars-frontend/src/components/Judge/JudgeResults/ResultsPositionSwap.vue:98 [attr:title] Auto-J / Li et al. 2023
+llars-frontend/src/components/Judge/JudgeResults/ResultsPositionSwap.vue:310 [attr:title] data.source
+llars-frontend/src/components/Judge/JudgeResults/ResultsPositionSwap.vue:329 [text-node] [{{ idx + 1 }}]
+llars-frontend/src/components/Judge/JudgeResults/ResultsComparisons.vue:23 [text-node] #{{ item.comparison_index + 1 }}
+llars-frontend/src/components/Judge/JudgeResults/ResultsThreadPerformance.vue:111 [text-node] ({{ getPillarName(thread.pillar) }}, {{ Math.round(thread.win_rate * 100) }}%)
+llars-frontend/src/components/Judge/JudgeResults/ResultsThreadPerformance.vue:135 [text-node] ({{ getPillarName(thread.pillar) }}, {{ Math.round(thread.loss_rate * 100) }}%)
+llars-frontend/src/components/Judge/JudgeResults/ResultsThreadPerformance.vue:157 [text-node] #{{ item.thread_id }}
+llars-frontend/src/components/Judge/JudgeResults/ResultsThreadPerformance.vue:171 [text-node] performance.avg_usage_per_thread * 1.5 ? 'warning' : item.usage_count
+llars-frontend/src/components/Judge/JudgeSession/SessionProgressBar.vue:5 [text-node] Fortschritt
+llars-frontend/src/components/Judge/JudgeSession/WorkerLaneGrid.vue:11 [text-node] Worker-Pool Live View
+llars-frontend/src/components/Judge/JudgeSession/WorkerLaneGrid.vue:23 [text-node] /{{ displayTotal }}
+llars-frontend/src/components/Judge/JudgeSession/WorkerLaneGrid.vue:60 [text-node] Säulen im Vergleich:
+llars-frontend/src/components/Judge/JudgeSession/WorkerLaneGrid.vue:74 [text-node] Paare:
+llars-frontend/src/components/Judge/JudgeSession/MultiWorkerFullscreenDialog.vue:22 [text-node] Worker-Pool Live View
+llars-frontend/src/components/Judge/JudgeSession/MultiWorkerFullscreenDialog.vue:31 [text-node] Aktiv
+llars-frontend/src/components/Judge/JudgeSession/MultiWorkerFullscreenDialog.vue:36 [text-node] Fertig
+llars-frontend/src/components/Judge/JudgeSession/MultiWorkerFullscreenDialog.vue:41 [text-node] Total
+llars-frontend/src/components/Judge/JudgeSession/MultiWorkerFullscreenDialog.vue:67 [attr:title] Grid-Ansicht
+llars-frontend/src/components/Judge/JudgeSession/MultiWorkerFullscreenDialog.vue:70 [attr:title] Fokus-Ansicht
+llars-frontend/src/components/Judge/JudgeSession/MultiWorkerFullscreenDialog.vue:159 [text-node] Session: {{ session?.session_name }}
+llars-frontend/src/components/Judge/JudgeSession/CurrentComparisonView.vue:42 [attr:title] Vollbild
+llars-frontend/src/components/Judge/JudgeSession/CurrentComparisonView.vue:89 [text-node] Gewinner
+llars-frontend/src/components/Judge/JudgeSession/CurrentComparisonView.vue:93 [text-node] Konfidenz
+llars-frontend/src/components/Judge/JudgeSession/CurrentComparisonView.vue:126 [text-node] LLM Ausgabe
+llars-frontend/src/components/Judge/JudgeSession/CurrentComparisonView.vue:148 [attr:title] Kopieren
+llars-frontend/src/components/Judge/JudgeSession/CurrentComparisonView.vue:187 [text-node] vs
+llars-frontend/src/components/Judge/JudgeSession/CurrentComparisonView.vue:195 [text-node] Begründung
+llars-frontend/src/components/Judge/JudgeSession/SessionHeader.vue:94 [attr:title] Seite aktualisieren
+llars-frontend/src/components/Judge/JudgeSession/ComparisonHistoryTable.vue:14 [text-node] #{{ item.comparison_index + 1 }}
+llars-frontend/src/components/Judge/JudgeSession/ComparisonHistoryTable.vue:65 [text-node] Noch keine Vergleiche abgeschlossen
+llars-frontend/src/components/Judge/JudgeSession/SessionProgressCard.vue:7 [text-node] Fortschritt
+llars-frontend/src/components/Judge/JudgeSession/SessionProgressCard.vue:26 [text-node] Säulen: {{ session?.pillar_count }}
+llars-frontend/src/components/Judge/JudgeSession/SessionProgressCard.vue:27 [text-node] Samples: {{ session?.samples_per_pillar }}
+llars-frontend/src/components/Judge/JudgeSession/SessionProgressCard.vue:28 [text-node] Position-Swap: {{ session?.position_swap ? 'Ja' : 'Nein' }}
+llars-frontend/src/components/Judge/JudgeSession/SessionProgressCard.vue:29 [text-node] 1">Worker: {{ workerCount }}
+llars-frontend/src/components/Judge/JudgeSession/SessionProgressCard.vue:30 [text-node] Erstellt: {{ formatDate(session.created_at) }}
+llars-frontend/src/components/Judge/JudgeSession/MultiWorkerFocusView.vue:18 [text-node] W{{ i }}
+llars-frontend/src/components/Judge/JudgeSession/MultiWorkerFocusView.vue:21 [text-node] Worker {{ i }}
+llars-frontend/src/components/Judge/JudgeSession/MultiWorkerFocusView.vue:39 [text-node] W{{ focusedWorkerId + 1 }}
+llars-frontend/src/components/Judge/JudgeSession/MultiWorkerFocusView.vue:42 [text-node] Worker {{ focusedWorkerId + 1 }}
+llars-frontend/src/components/Judge/JudgeSession/MultiWorkerFocusView.vue:67 [text-node] Wartet auf Aufgabe...
+llars-frontend/src/components/Judge/JudgeSession/MultiWorkerFocusView.vue:98 [text-node] Konfidenz
+llars-frontend/src/components/Judge/JudgeSession/MultiWorkerFocusView.vue:119 [text-node] Kriterien-Bewertung
+llars-frontend/src/components/Judge/JudgeSession/MultiWorkerFocusView.vue:141 [text-node] vs
+llars-frontend/src/components/Judge/JudgeSession/MultiWorkerFocusView.vue:162 [text-node] Analyse-Schritte
+llars-frontend/src/components/Judge/JudgeSession/MultiWorkerFocusView.vue:192 [text-node] Abschließende Begründung
+llars-frontend/src/components/Judge/JudgeSession/MultiWorkerInlineView.vue:23 [attr:title] Vollbild
+llars-frontend/src/components/Judge/JudgeSession/MultiWorkerInlineView.vue:59 [text-node] Wartet...
+llars-frontend/src/components/Judge/JudgeSession/MultiWorkerInlineView.vue:69 [text-node] Gewinner:
+llars-frontend/src/components/Judge/JudgeSession/MultiWorkerInlineView.vue:122 [text-node] Idle
+llars-frontend/src/components/Judge/JudgeSession/MultiWorkerInlineView.vue:137 [attr:tooltip] Schließen
+llars-frontend/src/components/Judge/JudgeSession/SingleWorkerFullscreenDialog.vue:131 [text-node] Konfidenz
+llars-frontend/src/components/Judge/JudgeSession/SingleWorkerFullscreenDialog.vue:181 [text-node] vs
+llars-frontend/src/components/Judge/JudgeSession/SingleWorkerFullscreenDialog.vue:276 [text-node] Warte auf Analyse...
+llars-frontend/src/components/Judge/JudgeSession/SingleWorkerFullscreenDialog.vue:285 [text-node] Abschließende Begründung
+llars-frontend/src/components/Judge/JudgeSession/SingleWorkerFullscreenDialog.vue:297 [text-node] Raw JSON anzeigen
+llars-frontend/src/components/Judge/JudgeSession/SingleWorkerFullscreenDialog.vue:368 [text-node] Session: {{ session?.session_name }}
+llars-frontend/src/components/Judge/JudgeSession/MultiWorkerGridView.vue:25 [text-node] W{{ i }}
+llars-frontend/src/components/Judge/JudgeSession/MultiWorkerGridView.vue:27 [text-node] Worker {{ i }}
+llars-frontend/src/components/Judge/JudgeSession/MultiWorkerGridView.vue:61 [text-node] Wartet auf Aufgabe...
+llars-frontend/src/components/Judge/JudgeSession/MultiWorkerGridView.vue:148 [attr:title] stepDef.title
+llars-frontend/src/components/Judge/JudgeSession/MultiWorkerGridView.vue:159 [text-node] Begründung:
+llars-frontend/src/components/Judge/JudgeSession/MultiWorkerGridView.vue:170 [text-node] Raw Stream ({{ (workerStreams[i - 1]?.content || '').length }} Zeichen)
+llars-frontend/src/components/Judge/JudgeSession/SessionQueuePanel.vue:7 [text-node] Warteschlange
+llars-frontend/src/components/Judge/JudgeSession/SessionQueuePanel.vue:39 [text-node] #{{ item.queue_position + 1 }}
+llars-frontend/src/components/Judge/JudgeSession/SessionQueuePanel.vue:70 [text-node] Keine Vergleiche in Warteschlange
+llars-frontend/src/components/Judge/JudgeSession/tabs/HistoryTab.vue:7 [text-node] Verlauf
+llars-frontend/src/components/Judge/JudgeSession/tabs/HistoryTab.vue:35 [text-node] Gewinner:
+llars-frontend/src/components/Judge/JudgeSession/tabs/HistoryTab.vue:37 [text-node] Alle
+llars-frontend/src/components/Judge/JudgeSession/tabs/HistoryTab.vue:40 [text-node] TIE
+llars-frontend/src/components/Judge/JudgeSession/tabs/HistoryTab.vue:44 [text-node] Säule:
+llars-frontend/src/components/Judge/JudgeSession/tabs/HistoryTab.vue:85 [text-node] #{{ (comparison.comparison_index ?? comparison.queue_position ?? 0) + 1 }}
+llars-frontend/src/components/Judge/JudgeSession/tabs/HistoryTab.vue:125 [attr:title] Im Vollbild anzeigen
+llars-frontend/src/components/Judge/JudgeSession/viewers/ComparisonViewer.vue:41 [attr:title] Vollbild
+llars-frontend/src/components/Judge/JudgeSession/viewers/ComparisonViewer.vue:70 [text-node] Keine Nachrichten
+llars-frontend/src/components/Judge/JudgeSession/viewers/ComparisonViewer.vue:144 [text-node] Keine Nachrichten
+llars-frontend/src/components/Judge/JudgeSession/viewers/ComparisonViewer.vue:157 [text-node] LLM Analyse
+llars-frontend/src/components/Judge/JudgeSession/viewers/ComparisonViewer.vue:164 [attr:title] Formatiert
+llars-frontend/src/components/Judge/JudgeSession/viewers/ComparisonViewer.vue:167 [attr:title] Raw JSON
+llars-frontend/src/components/Judge/JudgeSession/viewers/ComparisonViewer.vue:177 [attr:title] Kopieren
+llars-frontend/src/components/Judge/JudgeSession/viewers/ComparisonViewer.vue:188 [text-node] Chain of Thought
+llars-frontend/src/components/Judge/JudgeSession/viewers/ComparisonViewer.vue:204 [text-node] Begründung
+llars-frontend/src/components/Judge/JudgeSession/viewers/MultiWorkerDashboard.vue:19 [attr:title] Grid Ansicht
+llars-frontend/src/components/Judge/JudgeSession/viewers/MultiWorkerDashboard.vue:22 [attr:title] Listen Ansicht
+llars-frontend/src/components/Judge/JudgeSession/viewers/MultiWorkerDashboard.vue:31 [attr:title] Vollbild
+llars-frontend/src/components/Judge/JudgeSession/viewers/MultiWorkerDashboard.vue:62 [text-node] Idle
+llars-frontend/src/components/Judge/JudgeSession/viewers/MultiWorkerDashboard.vue:85 [text-node] Gewinner:
+llars-frontend/src/components/Judge/JudgeSession/viewers/MultiWorkerDashboard.vue:140 [text-node] Wartet auf Aufgabe
+llars-frontend/src/components/Judge/JudgeSession/viewers/MultiWorkerDashboard.vue:154 [text-node] Worker {{ selectedWorkerId + 1 }} Detail
+llars-frontend/src/components/Judge/JudgeSession/viewers/MultiWorkerDashboard.vue:164 [attr:tooltip] Schließen
+llars-frontend/src/components/Judge/JudgeSession/viewers/MultiWorkerDashboard.vue:173 [text-node] vs
+llars-frontend/src/components/Judge/JudgeSession/fullscreen/CompareWorkerPanel.vue:6 [text-node] Worker auswählen
+llars-frontend/src/components/Judge/JudgeSession/fullscreen/CompareWorkerPanel.vue:15 [text-node] Analysiert
+llars-frontend/src/components/Judge/JudgeSession/fullscreen/CompareWorkerPanel.vue:19 [text-node] Fertig
+llars-frontend/src/components/Judge/JudgeSession/fullscreen/CompareWorkerPanel.vue:23 [text-node] Ausstehend
+llars-frontend/src/components/Judge/JudgeSession/fullscreen/CompareWorkerPanel.vue:27 [text-node] Idle
+llars-frontend/src/components/Judge/JudgeSession/fullscreen/CompareWorkerPanel.vue:55 [text-node] Gewinner
+llars-frontend/src/components/Judge/JudgeSession/fullscreen/CompareWorkerPanel.vue:96 [text-node] A Gesamt
+llars-frontend/src/components/Judge/JudgeSession/fullscreen/CompareWorkerPanel.vue:100 [text-node] B Gesamt
+llars-frontend/src/components/Judge/JudgeSession/fullscreen/CompareWorkerPanel.vue:110 [text-node] LLM Output
+llars-frontend/src/components/Judge/JudgeSession/fullscreen/CompareWorkerPanel.vue:120 [text-node] Worker wartet auf nächste Aufgabe
+llars-frontend/src/components/Judge/JudgeSession/fullscreen/SingleComparisonView.vue:9 [text-node] Pillar {{ comparison.pillar_a }}
+llars-frontend/src/components/Judge/JudgeSession/fullscreen/SingleComparisonView.vue:22 [text-node] Pillar {{ comparison.pillar_b }}
+llars-frontend/src/components/Judge/JudgeSession/fullscreen/SingleComparisonView.vue:39 [text-node] Gewinner
+llars-frontend/src/components/Judge/JudgeSession/fullscreen/SingleComparisonView.vue:44 [text-node] Konfidenz
+llars-frontend/src/components/Judge/JudgeSession/fullscreen/SingleComparisonView.vue:72 [text-node] LLM Analyse
+llars-frontend/src/components/Judge/JudgeSession/fullscreen/UnifiedFullscreenDialog.vue:32 [text-node] Fertig
+llars-frontend/src/components/Judge/JudgeSession/fullscreen/UnifiedFullscreenDialog.vue:43 [text-node] Gesamt
+llars-frontend/src/components/Judge/JudgeSession/fullscreen/UnifiedFullscreenDialog.vue:57 [attr:title] Übersicht
+llars-frontend/src/components/Judge/JudgeSession/fullscreen/UnifiedFullscreenDialog.vue:60 [attr:title] Vergleichen
+llars-frontend/src/components/Judge/JudgeSession/fullscreen/UnifiedFullscreenDialog.vue:63 [attr:title] Detail
+llars-frontend/src/components/Judge/JudgeSession/fullscreen/UnifiedFullscreenDialog.vue:112 [text-node] Wartet...
+llars-frontend/src/components/Judge/JudgeSession/fullscreen/UnifiedFullscreenDialog.vue:128 [text-node] Analysiert...
+llars-frontend/src/components/Judge/JudgeSession/fullscreen/UnifiedFullscreenDialog.vue:139 [text-node] Konfidenz
+llars-frontend/src/components/Judge/JudgeSession/fullscreen/UnifiedFullscreenDialog.vue:144 [text-node] Ausstehend
+llars-frontend/src/components/Judge/JudgeSession/fullscreen/UnifiedFullscreenDialog.vue:155 [text-node] vs
+llars-frontend/src/components/Judge/JudgeSession/fullscreen/UnifiedFullscreenDialog.vue:166 [text-node] Wartet auf Aufgabe
+llars-frontend/src/components/Judge/JudgeSession/fullscreen/UnifiedFullscreenDialog.vue:197 [attr:title] label
+llars-frontend/src/components/Judge/JudgeSession/fullscreen/UnifiedFullscreenDialog.vue:217 [text-node] VS
+llars-frontend/src/components/Judge/JudgeSession/fullscreen/UnifiedFullscreenDialog.vue:226 [attr:title] label
+llars-frontend/src/components/Judge/JudgeSession/fullscreen/UnifiedFullscreenDialog.vue:266 [text-node] W{{ i }}
+llars-frontend/src/components/Judge/JudgeSession/fullscreen/UnifiedFullscreenDialog.vue:270 [text-node] Idle
+llars-frontend/src/components/Judge/JudgeSession/fullscreen/UnifiedFullscreenDialog.vue:292 [text-node] Wähle einen Worker aus
+llars-frontend/src/components/Judge/JudgeSession/fullscreen/FocusWorkerView.vue:20 [text-node] Kein aktiver Vergleich
+llars-frontend/src/components/Judge/JudgeSession/fullscreen/FocusWorkerView.vue:69 [text-node] Gewinner
+llars-frontend/src/components/Judge/JudgeSession/fullscreen/FocusWorkerView.vue:72 [text-node] Konfidenz
+llars-frontend/src/components/Judge/JudgeSession/fullscreen/FocusWorkerView.vue:83 [text-node] vs
+llars-frontend/src/components/Judge/JudgeSession/fullscreen/FocusWorkerView.vue:94 [text-node] LLM analysiert die Threads...
+llars-frontend/src/components/Judge/JudgeSession/fullscreen/FocusWorkerView.vue:103 [text-node] Warte auf Analyse
+llars-frontend/src/components/Judge/JudgeSession/fullscreen/FocusWorkerView.vue:146 [text-node] Scores noch nicht verfügbar
+llars-frontend/src/components/Judge/JudgeSession/fullscreen/FocusWorkerView.vue:183 [text-node] Raw LLM Output
+llars-frontend/src/components/Judge/JudgeSession/fullscreen/FocusWorkerView.vue:199 [text-node] Worker ist inaktiv
+llars-frontend/src/components/Judge/JudgeSession/fullscreen/FocusWorkerView.vue:200 [text-node] Wartet auf den nächsten Vergleich
+llars-frontend/src/components/Evaluation/EvaluationScenario.vue:58 [text-node] #{{ index + 1 }}
+llars-frontend/src/components/Evaluation/EvaluationHub.vue:197 [text-node] 0 && stats.completed
+llars-frontend/src/components/Evaluation/rating/OverallScoreDisplay.vue:27 [text-node] /{{ maxScore }}
+llars-frontend/src/components/OnCoCo/OnCoCoOverview.vue:295 [text-node] XLM-RoBERTa-Large OnCoCo
+llars-frontend/src/components/OnCoCo/OnCoCoInfo.vue:80 [text-node] CO
+llars-frontend/src/components/OnCoCo/OnCoCoInfo.vue:86 [text-node] IF
+llars-frontend/src/components/OnCoCo/OnCoCoInfo.vue:92 [text-node] AC
+llars-frontend/src/components/OnCoCo/OnCoCoInfo.vue:98 [text-node] RF
+llars-frontend/src/components/OnCoCo/OnCoCoInfo.vue:104 [text-node] RLS-SR
+llars-frontend/src/components/OnCoCo/OnCoCoInfo.vue:113 [text-node] CO-IF-AC-RF-RLS-SR
+llars-frontend/src/components/OnCoCo/OnCoCoInfo.vue:389 [text-node] "{{ example.text }}"
+llars-frontend/src/components/OnCoCo/OnCoCoInfo.vue:435 [text-node] /api/oncoco/info
+llars-frontend/src/components/OnCoCo/TransitionHeatmap.vue:12 [attr:title] labelDisplays[label]
+llars-frontend/src/components/OnCoCo/TransitionHeatmap.vue:27 [attr:title] labelDisplays[label]
+llars-frontend/src/components/OnCoCo/OnCoCoResults.vue:411 [attr:label] { item }
+llars-frontend/src/components/OnCoCo/OnCoCoResults.vue:732 [attr:label] { item }
+llars-frontend/src/components/OnCoCo/MatrixComparisonMetrics.vue:759 [text-node] v?.p_value
+llars-frontend/src/components/comparison/Comparison.vue:48 [text-node] Session #{{ session.id }}
+llars-frontend/src/components/comparison/ComparisonDetail.vue:152 [text-node] currentIndex.value >= 0 && currentIndex.value
+llars-frontend/src/components/comparison/PersonaSidebar.vue:37 [text-node] Hauptanliegen
+llars-frontend/src/components/comparison/PersonaSidebar.vue:42 [text-node] Nebenanliegen
+llars-frontend/src/components/comparison/ComparisonChat.vue:22 [text-node] Modell 1
+llars-frontend/src/components/comparison/ComparisonChat.vue:36 [text-node] Modell 2
+llars-frontend/src/components/comparison/ComparisonChat.vue:65 [text-node] Bitte bewerten Sie die Antworten, bevor Sie fortfahren...
+llars-frontend/src/components/comparison/ComparisonChat.vue:78 [attr:placeholder] Schreiben Sie eine Nachricht...
+llars-frontend/src/components/comparison/ComparisonChat.vue:151 [text-node] Ihre Bewertung:
+llars-frontend/src/components/comparison/ComparisonChat.vue:153 [text-node] KI-Bewertung:
+llars-frontend/src/components/comparison/ComparisonChat.vue:158 [text-node] Begründung der KI:
+llars-frontend/src/components/comparison/ComparisonChat.vue:165 [text-node] Ihre Begründung (optional):
+llars-frontend/src/components/comparison/ComparisonChat.vue:168 [attr:placeholder] Warum sind Sie anderer Meinung als die KI? (Optional)
+llars-frontend/src/components/DataImporter/DataImporterWizard.vue:8 [text-node] Data Importer
+llars-frontend/src/components/DataImporter/DataImporterWizard.vue:126 [text-node] Bereit zum Import
+llars-frontend/src/components/DataImporter/DataImporterWizard.vue:134 [text-node] Dateien
+llars-frontend/src/components/DataImporter/DataImporterWizard.vue:138 [text-node] Einträge
+llars-frontend/src/components/DataImporter/DataImporterWizard.vue:142 [text-node] Task-Typ
+llars-frontend/src/components/DataImporter/DataImporterWizard.vue:146 [text-node] Benutzer
+llars-frontend/src/components/DataImporter/components/ConfigCard.vue:33 [text-node] Nicht konfiguriert
+llars-frontend/src/components/DataImporter/steps/StepScenario.vue:56 [text-node] Neues Szenario erstellen
+llars-frontend/src/components/DataImporter/steps/StepScenario.vue:64 [text-node] Zu bestehendem Szenario hinzufügen
+llars-frontend/src/components/DataImporter/steps/StepScenario.vue:82 [attr:label] Szenario auswählen
+llars-frontend/src/components/DataImporter/steps/StepScenario.vue:86 [attr:title] scenario => `${scenario.name} (${scenario.thread_count || 0} Threads)`
+llars-frontend/src/components/DataImporter/steps/StepScenario.vue:89 [attr:placeholder] Szenario suchen...
+llars-frontend/src/components/DataImporter/steps/StepScenario.vue:139 [attr:label] Szenario-Name *
+llars-frontend/src/components/DataImporter/steps/StepScenario.vue:142 [attr:placeholder] z.B. Beratungsqualität Evaluation Q1
+llars-frontend/src/components/DataImporter/steps/StepScenario.vue:146 [attr:text] KI generiert einen passenden Namen
+llars-frontend/src/components/DataImporter/steps/StepScenario.vue:157 [text-node] wand
+llars-frontend/src/components/DataImporter/steps/StepScenario.vue:168 [attr:label] Aufgabentyp *
+llars-frontend/src/components/DataImporter/steps/StepScenario.vue:172 [attr:title] name
+llars-frontend/src/components/DataImporter/steps/StepScenario.vue:194 [attr:label] Quellname
+llars-frontend/src/components/DataImporter/steps/StepScenario.vue:197 [attr:placeholder] z.B. KIA Säule 3
+llars-frontend/src/components/DataImporter/steps/StepScenario.vue:198 [attr:hint] Wird bei importierten Threads angezeigt
+llars-frontend/src/components/DataImporter/steps/StepScenario.vue:206 [attr:label] Beschreibung
+llars-frontend/src/components/DataImporter/steps/StepScenario.vue:210 [attr:placeholder] Optionale Beschreibung des Szenarios...
+llars-frontend/src/components/DataImporter/steps/StepScenario.vue:229 [attr:label] Startdatum
+llars-frontend/src/components/DataImporter/steps/StepScenario.vue:238 [attr:label] Enddatum
+llars-frontend/src/components/DataImporter/steps/StepScenario.vue:242 [attr:hint] Leer lassen für unbegrenzt
+llars-frontend/src/components/DataImporter/steps/StepScenario.vue:275 [attr:label] Verteilungsmodus
+llars-frontend/src/components/DataImporter/steps/StepScenario.vue:279 [attr:title] name
+llars-frontend/src/components/DataImporter/steps/StepScenario.vue:293 [attr:label] Reihenfolge
+llars-frontend/src/components/DataImporter/steps/StepScenario.vue:297 [attr:title] name
+llars-frontend/src/components/DataImporter/steps/StepScenario.vue:322 [text-node] "{{ localConfig.name || '(Unbenannt)' }}"
+llars-frontend/src/components/DataImporter/steps/StepReviewNew.vue:9 [text-node] Szenario-Einstellungen
+llars-frontend/src/components/DataImporter/steps/StepReviewNew.vue:15 [text-node] Name *
+llars-frontend/src/components/DataImporter/steps/StepReviewNew.vue:20 [attr:placeholder] z.B. Chatbot-Evaluation Q1 2026
+llars-frontend/src/components/DataImporter/steps/StepReviewNew.vue:26 [text-node] Evaluationstyp
+llars-frontend/src/components/DataImporter/steps/StepReviewNew.vue:43 [text-node] Zeitraum
+llars-frontend/src/components/DataImporter/steps/StepReviewNew.vue:50 [text-node] bis
+llars-frontend/src/components/DataImporter/steps/StepReviewNew.vue:66 [text-node] KI-Analyse
+llars-frontend/src/components/DataImporter/steps/StepReviewNew.vue:72 [text-node] Erkanntes Ziel
+llars-frontend/src/components/DataImporter/steps/StepReviewNew.vue:78 [text-node] Feld-Mapping
+llars-frontend/src/components/DataImporter/steps/StepReviewNew.vue:94 [text-node] Rollen
+llars-frontend/src/components/DataImporter/steps/StepReviewNew.vue:108 [text-node] Bewertungskriterien
+llars-frontend/src/components/DataImporter/steps/StepReviewNew.vue:122 [text-node] Konfidenz: {{ Math.round((analysisResult.confidence || 0.7) * 100) }}%
+llars-frontend/src/components/DataImporter/steps/StepReviewNew.vue:145 [text-node] Daten-Übersicht
+llars-frontend/src/components/DataImporter/steps/StepReviewNew.vue:153 [text-node] Dateien
+llars-frontend/src/components/DataImporter/steps/StepReviewNew.vue:157 [text-node] Einträge
+llars-frontend/src/components/DataImporter/steps/StepReviewNew.vue:161 [text-node] Format
+llars-frontend/src/components/DataImporter/steps/StepAnalyze.vue:17 [text-node] Erkanntes Format
+llars-frontend/src/components/DataImporter/steps/StepAnalyze.vue:21 [text-node] Anzahl Einträge
+llars-frontend/src/components/DataImporter/steps/StepAnalyze.vue:28 [text-node] Erkannte Felder
+llars-frontend/src/components/DataImporter/steps/StepAnalyze.vue:43 [text-node] Empfohlener Aufgabentyp
+llars-frontend/src/components/DataImporter/steps/StepAnalyze.vue:82 [text-node] Begründung
+llars-frontend/src/components/DataImporter/steps/StepAnalyze.vue:87 [text-node] Vorgeschlagenes Mapping
+llars-frontend/src/components/DataImporter/steps/StepReview.vue:9 [text-node] Einträge
+llars-frontend/src/components/DataImporter/steps/StepReview.vue:16 [text-node] Nachrichten
+llars-frontend/src/components/DataImporter/steps/StepReview.vue:23 [text-node] Rater
+llars-frontend/src/components/DataImporter/steps/StepReview.vue:30 [text-node] Evaluator
+llars-frontend/src/components/DataImporter/steps/StepReview.vue:46 [text-node] Szenario-Name
+llars-frontend/src/components/DataImporter/steps/StepReview.vue:50 [text-node] Aufgabentyp
+llars-frontend/src/components/DataImporter/steps/StepReview.vue:59 [text-node] Quell-Format
+llars-frontend/src/components/DataImporter/steps/StepReview.vue:63 [text-node] Zeitraum
+llars-frontend/src/components/DataImporter/steps/StepReview.vue:75 [text-node] Verteilung
+llars-frontend/src/components/DataImporter/steps/StepReview.vue:79 [text-node] Reihenfolge
+llars-frontend/src/components/DataImporter/steps/StepReview.vue:94 [text-node] Hinweise:
+llars-frontend/src/components/DataImporter/steps/StepReview.vue:118 [text-node] Bereit zum Import
+llars-frontend/src/components/DataImporter/steps/StepReview.vue:126 [attr:label] Ich habe die Konfiguration überprüft
+llars-frontend/src/components/DataImporter/steps/StepReview.vue:138 [text-node] Import läuft...
+llars-frontend/src/components/DataImporter/steps/StepUpload.vue:67 [text-node] Upload fehlgeschlagen
+llars-frontend/src/components/DataImporter/steps/StepUpload.vue:79 [text-node] Dateien & Ordner hochladen
+llars-frontend/src/components/DataImporter/steps/StepUpload.vue:88 [text-node] JSON · JSONL · CSV · TSV · XLSX
+llars-frontend/src/components/DataImporter/steps/StepUpload.vue:167 [text-node] Dateien
+llars-frontend/src/components/DataImporter/steps/StepUpload.vue:171 [text-node] Einträge
+llars-frontend/src/components/DataImporter/steps/StepUpload.vue:175 [text-node] Ordner
+llars-frontend/src/components/DataImporter/steps/StepUpload.vue:194 [text-node] 3">und {{ failedFiles.length - 3 }} weitere
+llars-frontend/src/components/DataImporter/steps/StepDescribe.vue:9 [text-node] Deine Daten
+llars-frontend/src/components/DataImporter/steps/StepDescribe.vue:20 [text-node] Lade Vorschau...
+llars-frontend/src/components/DataImporter/steps/StepDescribe.vue:81 [attr:placeholder] intentPlaceholder
+llars-frontend/src/components/DataImporter/steps/StepDescribe.vue:89 [text-node] Beispiele:
+llars-frontend/src/components/DataImporter/steps/StepDescribe.vue:125 [attr:message] msg
+llars-frontend/src/components/DataImporter/steps/StepDescribe.vue:130 [attr:message] { role: 'assistant', content: chat.streamingContent.value }
+llars-frontend/src/components/DataImporter/steps/StepDescribe.vue:140 [attr:placeholder] Verfeinere die Konfiguration... (Strg+Enter zum Senden)
+llars-frontend/src/components/DataImporter/steps/StepDescribe.vue:166 [text-node] Konfiguration
+llars-frontend/src/components/DataImporter/steps/StepDescribe.vue:175 [attr:title] Evaluationstyp
+llars-frontend/src/components/DataImporter/steps/StepDescribe.vue:188 [attr:title] Feld-Mapping
+llars-frontend/src/components/DataImporter/steps/StepDescribe.vue:209 [attr:title] Labels
+llars-frontend/src/components/DataImporter/steps/StepDescribe.vue:229 [attr:title] Buckets
+llars-frontend/src/components/DataImporter/steps/StepDescribe.vue:247 [attr:title] Bewertungsskalen
+llars-frontend/src/components/DataImporter/steps/StepDescribe.vue:265 [text-node] Anderen Typ wählen:
+llars-frontend/src/components/DataImporter/steps/StepDescribe.vue:287 [text-node] Verstanden!
+llars-frontend/src/components/DataImporter/steps/StepDescribe.vue:352 [text-node] Oder meintest du:
+llars-frontend/src/components/DataImporter/steps/StepTransform.vue:14 [text-node] Gesamt
+llars-frontend/src/components/DataImporter/steps/StepTransform.vue:18 [text-node] Erfolgreich
+llars-frontend/src/components/DataImporter/steps/StepTransform.vue:22 [text-node] Fehlgeschlagen
+llars-frontend/src/components/DataImporter/steps/StepTransform.vue:26 [text-node] Nachrichten
+llars-frontend/src/components/DataImporter/steps/StepTransform.vue:73 [attr:label] Anpassen
+llars-frontend/src/components/DataImporter/steps/StepTransform.vue:85 [attr:label] ID-Feld
+llars-frontend/src/components/DataImporter/steps/StepTransform.vue:88 [attr:placeholder] z.B. conversation_id
+llars-frontend/src/components/DataImporter/steps/StepTransform.vue:89 [attr:hint] Feld für eindeutige ID
+llars-frontend/src/components/DataImporter/steps/StepTransform.vue:96 [attr:label] Nachrichten-Feld
+llars-frontend/src/components/DataImporter/steps/StepTransform.vue:99 [attr:placeholder] z.B. messages, turns, conversation
+llars-frontend/src/components/DataImporter/steps/StepTransform.vue:100 [attr:hint] Feld mit Konversationsnachrichten
+llars-frontend/src/components/DataImporter/steps/StepTransform.vue:107 [attr:label] Rollen-Feld
+llars-frontend/src/components/DataImporter/steps/StepTransform.vue:110 [attr:placeholder] z.B. role, sender
+llars-frontend/src/components/DataImporter/steps/StepTransform.vue:111 [attr:hint] Feld für Nachrichtenrolle
+llars-frontend/src/components/DataImporter/steps/StepTransform.vue:118 [attr:label] Inhalt-Feld
+llars-frontend/src/components/DataImporter/steps/StepTransform.vue:121 [attr:placeholder] z.B. content, text, message
+llars-frontend/src/components/DataImporter/steps/StepTransform.vue:122 [attr:hint] Feld für Nachrichteninhalt
+llars-frontend/src/components/DataImporter/steps/StepUsers.vue:18 [text-node] Lade Benutzer...
+llars-frontend/src/components/DataImporter/steps/StepUsers.vue:39 [text-node] Benutzer
+llars-frontend/src/components/DataImporter/steps/StepUsers.vue:40 [text-node] Rater
+llars-frontend/src/components/DataImporter/steps/StepUsers.vue:41 [text-node] Evaluator
+llars-frontend/src/components/DataImporter/steps/StepUsers.vue:96 [text-node] Keine Benutzer verfügbar
+llars-frontend/src/components/DataImporter/steps/StepUsers.vue:136 [text-node] Rater:
+llars-frontend/src/components/DataImporter/steps/StepUsers.vue:137 [text-node] Evaluator:
+llars-frontend/src/components/EvaluationAssistant/EvaluationProgress.vue:70 [text-node] ${{ tokenUsage.total_cost_usd.toFixed(4) }}
+llars-frontend/src/components/EvaluationAssistant/ResultDetailDialog.vue:35 [text-node] ID: {{ result.thread_id }}
+llars-frontend/src/components/EvaluationAssistant/ResultDetailDialog.vue:90 [text-node] Template #{{ result.prompt_template_id }}
+llars-frontend/src/components/EvaluationAssistant/ResultDetailDialog.vue:100 [text-node] ${{ result.token_usage.cost_usd.toFixed(6) }}
+llars-frontend/src/components/EvaluationAssistant/EvaluatorComparison.vue:38 [attr:title] name
+llars-frontend/src/components/EvaluationAssistant/EvaluatorComparison.vue:58 [attr:title] name
+llars-frontend/src/components/EvaluationAssistant/EvaluationControls.vue:8 [attr:title] display_name
+llars-frontend/src/components/EvaluationAssistant/EvaluationControls.vue:30 [attr:title] name
+llars-frontend/src/components/EvaluationAssistant/AgreementMetricsPanel.vue:100 [text-node] ({{ evaluator.evaluation_count }})
+llars-frontend/src/components/EvaluationAssistant/ResultBadge.vue:6 [text-node] 0">{{ gutCount }}
+llars-frontend/src/components/EvaluationAssistant/ResultBadge.vue:7 [text-node] 0">{{ mittelCount }}
+llars-frontend/src/components/EvaluationAssistant/ResultBadge.vue:8 [text-node] 0">{{ schlechtCount }}
+llars-frontend/src/components/EvaluationAssistant/ResponseCard.vue:75 [text-node] ({{ bucket.feature_ids?.length || 0 }})
+llars-frontend/src/components/EvaluationAssistant/ResponseCard.vue:87 [text-node] Feature #{{ rating.feature_id }}
+llars-frontend/src/components/EvaluationAssistant/ResponseCard.vue:131 [text-node] ({{ (ind.weight * 100).toFixed(0) }}%)
+llars-frontend/src/components/EvaluationAssistant/ResponseCard.vue:225 [text-node] ${{ result.token_usage.cost_usd?.toFixed(6) }}
+llars-frontend/src/components/EvaluationAssistant/detail/RankingResult.vue:7 [text-node] ({{ bucket.feature_ids?.length || 0 }})
+llars-frontend/src/components/EvaluationAssistant/detail/RatingResult.vue:15 [text-node] Feature #{{ rating.feature_id }}
+llars-frontend/src/components/EvaluationAssistant/detail/AuthenticityResult.vue:18 [text-node] ({{ (ind.weight * 100).toFixed(0) }}%)
+llars-frontend/src/components/ScenarioWizard/AIAnalysis/DataStatsCard.vue:14 [text-node] Items
+llars-frontend/src/components/ScenarioWizard/AIAnalysis/EvalTypeCard.vue:49 [attr:title] label
+llars-frontend/src/components/ScenarioWizard/AIAnalysis/StreamingAnalysisPanel.vue:114 [attr:message] chatInitialMessage
+llars-frontend/src/components/LatexCollabAI/ai/AISelectionMenu.vue:10 [attr:text] action.tooltip
+llars-frontend/src/components/LatexCollabAI/ai/AISidebar.vue:186 [attr:title] contextTooltip(source)
+llars-frontend/src/components/LatexCollabAI/ai/AISidebar.vue:257 [attr:title] title
+llars-frontend/src/components/LatexCollabAI/ai/AISidebar.vue:284 [attr:subtitle] warning.reason
+llars-frontend/src/components/LatexCollabAI/ai/AISidebar.vue:307 [attr:subtitle] err.description
+llars-frontend/src/components/Kaimo/KaimoAssessmentView.vue:46 [attr:title] hint.content
+llars-frontend/src/components/Kaimo/KaimoAssessmentView.vue:53 [attr:title] hint.content
+llars-frontend/src/components/Kaimo/KaimoAssessmentView.vue:60 [attr:title] hint.content
+llars-frontend/src/components/Kaimo/KaimoHub.vue:17 [text-node] KAIMO
+llars-frontend/src/components/Kaimo/KaimoHintAssignmentDialog.vue:45 [attr:title] display_name
+llars-frontend/src/components/Kaimo/KaimoCaseEditor.vue:194 [attr:title] { item }
+llars-frontend/src/components/Kaimo/KaimoCaseEditor.vue:534 [attr:title] title
+llars-frontend/src/components/Kaimo/KaimoCaseEditor.vue:544 [attr:title] name
+llars-frontend/src/components/Kaimo/KaimoCaseEditor.vue:556 [attr:title] name
+llars-frontend/src/views/Register.vue:11 [attr:alt] LLARS Logo
+llars-frontend/src/views/LatexCollab/LatexCollabWorkspace.vue:35 [attr:label] outlineEmptyLabel
+llars-frontend/src/views/LatexCollab/LatexCollabWorkspace.vue:76 [attr:text] editorRef?.toggleGhostText?.()
+llars-frontend/src/views/LatexCollab/LatexCollabWorkspace.vue:99 [text-node] feature:latex_collab:view
+llars-frontend/src/views/LatexCollab/LatexCollabWorkspace.vue:145 [text-node] Zotero
+llars-frontend/src/views/LatexCollab/LatexCollabWorkspace.vue:544 [text-node] zotero
+llars-frontend/src/views/LatexCollab/components/OutlinePanelContent.vue:33 [attr:title] item.title
+llars-frontend/src/views/LatexCollab/components/LatexContentHeader.vue:58 [text-node] zotero
+llars-frontend/src/views/LatexCollab/components/OutlinePanel.vue:49 [attr:title] item.title
+llars-frontend/src/views/LatexCollab/components/LatexTreePanel.vue:82 [attr:label] outlineEmptyLabel
+llars-frontend/src/views/LatexCollab/components/LatexTreePanel.vue:214 [attr:label] outlineEmptyLabel
+llars-frontend/src/views/LatexCollab/components/ShareDialog.vue:32 [text-node] @{{ ownerInfo.username }}
+llars-frontend/src/views/LatexCollab/components/GitPanelContent.vue:11 [text-node] main
+llars-frontend/src/views/LatexCollab/components/GitPanelContent.vue:71 [attr:title] getStatusBadge(file).tooltip
+llars-frontend/src/views/LatexCollab/components/GitPanelContent.vue:75 [text-node] +{{ file.insertions }}
+llars-frontend/src/views/LatexCollab/components/GitPanelContent.vue:76 [text-node] -{{ file.deletions }}
+llars-frontend/src/views/ScenarioManager/ScenarioWorkspace.vue:81 [text-node] Live
+llars-frontend/src/views/ScenarioManager/components/ScenarioSettingsDialog.vue:136 [attr:title] label
+llars-frontend/src/views/ScenarioManager/components/ScenarioSettingsDialog.vue:149 [attr:title] label
+llars-frontend/src/views/ScenarioManager/components/ConfusionMatrix.vue:66 [text-node] TP
+llars-frontend/src/views/ScenarioManager/components/ConfusionMatrix.vue:74 [text-node] FP
+llars-frontend/src/views/ScenarioManager/components/ConfusionMatrix.vue:93 [text-node] FN
+llars-frontend/src/views/ScenarioManager/components/ConfusionMatrix.vue:101 [text-node] TN
+llars-frontend/src/views/ScenarioManager/components/ScenarioWizard.vue:243 [text-node] LLARS
+llars-frontend/src/views/ScenarioManager/components/ScenarioWizard.vue:1106 [text-node] `  "${dim.id}":
+llars-frontend/src/views/ScenarioManager/components/tabs/ScenarioEvaluationTab.vue:110 [attr:title] name
+llars-frontend/src/views/ScenarioManager/components/tabs/ScenarioEvaluationTab.vue:123 [text-node] Free
+llars-frontend/src/views/ScenarioManager/components/tabs/ScenarioEvaluationTab.vue:135 [attr:title] name
+llars-frontend/src/views/ScenarioManager/components/tabs/ScenarioEvaluationTab.vue:162 [text-node] ~${{ costEstimate.toFixed(2) }}
+llars-frontend/src/views/ScenarioManager/components/tabs/ScenarioEvaluationTab.vue:277 [text-node] JSON
+llars-frontend/src/views/ScenarioManager/components/tabs/ScenarioEvaluationTab.vue:283 [text-node] CSV
+llars-frontend/src/views/ScenarioManager/components/tabs/ScenarioEvaluationTab.vue:289 [text-node] Excel
+llars-frontend/src/views/ScenarioManager/components/tabs/ScenarioEvaluationTab.vue:310 [text-node] Cohen's Kappa (κ)
+llars-frontend/src/views/ScenarioManager/components/tabs/ScenarioEvaluationTab.vue:326 [text-node] Cohen's κ
+llars-frontend/src/views/ScenarioManager/components/tabs/ScenarioEvaluationTab.vue:337 [text-node] Krippendorff's Alpha (α)
+llars-frontend/src/views/ScenarioManager/components/tabs/ScenarioEvaluationTab.vue:352 [text-node] Krippendorff's α
+llars-frontend/src/views/ScenarioManager/components/tabs/ScenarioEvaluationTab.vue:363 [text-node] Fleiss' Kappa (κ)
+llars-frontend/src/views/ScenarioManager/components/tabs/ScenarioEvaluationTab.vue:379 [text-node] Fleiss' κ
+llars-frontend/src/views/ScenarioManager/components/tabs/ScenarioEvaluationTab.vue:422 [text-node] ICC
+llars-frontend/src/views/ScenarioManager/components/tabs/ScenarioEvaluationTab.vue:448 [text-node] Kendall's W
+llars-frontend/src/views/ScenarioManager/components/tabs/ScenarioEvaluationTab.vue:459 [text-node] Kendall's Tau (τ)
+llars-frontend/src/views/ScenarioManager/components/tabs/ScenarioEvaluationTab.vue:472 [text-node] Kendall's τ
+llars-frontend/src/views/ScenarioManager/components/tabs/ScenarioEvaluationTab.vue:490 [text-node] MAE
+llars-frontend/src/views/ScenarioManager/components/tabs/ScenarioEvaluationTab.vue:508 [text-node] RMSE
+llars-frontend/src/views/ScenarioManager/components/tabs/ScenarioEvaluationTab.vue:532 [text-node] Macro F1
+llars-frontend/src/views/ScenarioManager/components/tabs/ScenarioEvaluationTab.vue:556 [text-node] Micro F1
+llars-frontend/src/views/ScenarioManager/components/tabs/ScenarioEvaluationTab.vue:570 [attr:title] name
+llars-frontend/src/views/ScenarioManager/components/tabs/ScenarioEvaluationTab.vue:609 [text-node] 15">{{ item.count }}
+llars-frontend/src/views/ScenarioManager/components/tabs/ScenarioOverviewTab.vue:196 [text-node] Krippendorff's Alpha
+llars-frontend/src/views/ScenarioManager/components/tabs/ScenarioDataTab.vue:66 [attr:title] label
+llars-frontend/src/views/ScenarioManager/components/tabs/ScenarioTeamTab.vue:165 [attr:title] display_name
+llars-frontend/src/views/ScenarioManager/components/tabs/ScenarioTeamTab.vue:174 [attr:text] item.raw.display_name || item.raw.username
+llars-frontend/src/views/ScenarioManager/components/tabs/ScenarioTeamTab.vue:210 [attr:title] name
+llars-frontend/src/views/ScenarioManager/components/tabs/ScenarioTeamTab.vue:218 [attr:title] name
+llars-frontend/src/views/ScenarioManager/components/config/EvaluationPreview.vue:93 [text-node] Item 1
+llars-frontend/src/views/ScenarioManager/components/config/EvaluationPreview.vue:94 [text-node] Item 2
+llars-frontend/src/views/ScenarioManager/components/config/EvaluationPreview.vue:104 [text-node] Demo Item {{ i }}
+llars-frontend/src/views/ScenarioManager/components/config/EvaluationPreview.vue:163 [text-node] Option A
+llars-frontend/src/views/ScenarioManager/components/config/EvaluationPreview.vue:165 [text-node] Lorem ipsum dolor sit amet, consectetur adipiscing elit.
+llars-frontend/src/views/ScenarioManager/components/config/EvaluationPreview.vue:173 [text-node] VS
+llars-frontend/src/views/ScenarioManager/components/config/EvaluationPreview.vue:186 [text-node] Option B
+llars-frontend/src/views/ScenarioManager/components/config/EvaluationPreview.vue:188 [text-node] Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
+llars-frontend/src/views/MarkdownCollab/MarkdownCollabWorkspace.vue:192 [text-node] feature:markdown_collab:view
+llars-frontend/src/views/MarkdownCollab/MarkdownCollabWorkspace.vue:285 [text-node] @{{ ownerInfo.username }}
+llars-frontend/src/views/MarkdownCollab/MarkdownCollabHome.vue:37 [text-node] feature:markdown_collab:view
+llars-frontend/src/views/MarkdownCollab/MarkdownCollabHome.vue:70 [attr:title] ws.name
+llars-frontend/src/views/UserSettings/UserSettingsPage.vue:2 [attr:aria-label] Benutzereinstellungen
+llars-frontend/src/views/UserSettings/UserSettingsPage.vue:4 [attr:aria-label] Einstellungs-Navigation
+llars-frontend/src/views/UserSettings/UserSettingsPage.vue:31 [attr:aria-label] Einstellungs-Kategorien
+llars-frontend/src/views/UserSettings/UserSettingsPage.vue:75 [attr:aria-label] tab.label
+llars-frontend/src/views/UserSettings/components/ReferralLinksTab.vue:152 [attr:hint] z.B. 'Für Kollegen', 'IJCAI Reviewer'
+llars-frontend/src/views/UserSettings/components/ReferralLinksTab.vue:163 [attr:hint] Optionaler kurzer Name für die URL
+llars-frontend/src/views/UserSettings/components/ReferralLinksTab.vue:167 [text-node] /join/
+llars-frontend/src/views/UserSettings/components/PersonalSettingsTab.vue:2 [attr:aria-label] Persönliche Einstellungen
+llars-frontend/src/views/UserSettings/components/PersonalSettingsTab.vue:25 [attr:aria-label] Avatar-Aktionen
+llars-frontend/src/views/UserSettings/components/PersonalSettingsTab.vue:94 [attr:aria-label] `Farbe ${index + 1}`
+llars-frontend/src/views/UserSettings/components/LLMProvidersTab.vue:48 [text-node] Default
+llars-frontend/src/views/UserSettings/components/LLMProvidersTab.vue:149 [attr:title] name
+llars-frontend/src/views/UserSettings/components/LLMProvidersTab.vue:193 [attr:placeholder] selectedProviderType?.default_base_url
+llars-frontend/src/views/DataImporter/DataImporterView.vue:51 [text-node] wand
+llars-frontend/src/views/DataImporter/DataImporterView.vue:69 [text-node] wand
+llars-frontend/src/views/DataImporter/DataImporterView.vue:82 [text-node] Letzte Imports
+llars-frontend/src/views/LatexCollabAI/LatexCollabAIHome.vue:51 [text-node] feature:latex_collab:view
+llars-frontend/src/views/LatexCollabAI/LatexCollabAIHome.vue:84 [attr:title] ws.name
+llars-frontend/src/views/LatexCollabAI/LatexCollabAIWorkspace.vue:66 [attr:title] name
+llars-frontend/src/views/LatexCollabAI/LatexCollabAIWorkspace.vue:94 [attr:subtitle] citation.snippet

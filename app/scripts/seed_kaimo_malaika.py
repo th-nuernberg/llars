@@ -11,7 +11,7 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from datetime import datetime, date
-from db.db import db
+from db.database import db
 from db.models import (
     KaimoCase,
     KaimoDocument,

@@ -5,8 +5,8 @@
       <div class="header-left">
         <img src="@/assets/logo/llars-logo.png" alt="LLARS Logo" class="logo" />
         <div class="header-text">
-          <h1 class="title">Willkommen bei LLARS</h1>
-          <p class="subtitle" v-if="!isMobile">Ihre Plattform für Ranking, Labeling, Rating und KI-Analyse</p>
+          <h1 class="title">{{ $t('home.header.title') }}</h1>
+          <p class="subtitle" v-if="!isMobile">{{ $t('home.header.subtitle') }}</p>
         </div>
       </div>
       <div class="header-right">
@@ -18,10 +18,10 @@
           class="mr-2"
           @click="showMobileCategories = !showMobileCategories"
         >
-          <v-icon>{{ showMobileCategories ? 'mdi-close' : 'mdi-filter-variant' }}</v-icon>
+          <LIcon>{{ showMobileCategories ? 'mdi-close' : 'mdi-filter-variant' }}</LIcon>
         </v-btn>
         <v-chip color="primary" variant="flat" class="user-chip" :size="isMobile ? 'small' : 'default'">
-          <v-icon start :size="isMobile ? 16 : 20">mdi-account</v-icon>
+          <LIcon start :size="isMobile ? 16 : 20">mdi-account</LIcon>
           <span v-if="!isMobile">{{ username }}</span>
         </v-chip>
       </div>
@@ -32,8 +32,8 @@
       <div v-if="isMobile && showMobileCategories" class="mobile-categories-overlay">
         <div class="mobile-categories-content">
           <div class="mobile-category-header">
-            <v-icon class="mr-2">mdi-filter-variant</v-icon>
-            <span>Kategorien</span>
+            <LIcon class="mr-2">mdi-filter-variant</LIcon>
+            <span>{{ $t('home.categories.title') }}</span>
           </div>
           <div class="mobile-categories-list">
             <div
@@ -43,14 +43,14 @@
               :class="{ active: selectedCategory === cat.id }"
               @click="selectCategory(cat.id)"
             >
-              <v-icon :color="selectedCategory === cat.id ? 'primary' : undefined">
+              <LIcon :color="selectedCategory === cat.id ? 'primary' : undefined">
                 {{ cat.icon }}
-              </v-icon>
+              </LIcon>
               <span class="mobile-category-name">{{ cat.name }}</span>
               <span class="mobile-category-count">{{ getCategoryCount(cat.id) }}</span>
-              <v-icon v-if="selectedCategory === cat.id" color="primary" size="18">
+              <LIcon v-if="selectedCategory === cat.id" color="primary" size="18">
                 mdi-check
-              </v-icon>
+              </LIcon>
             </div>
           </div>
         </div>
@@ -62,8 +62,8 @@
       <!-- Left Panel: Categories (Desktop only) -->
       <div v-if="!isMobile" class="left-panel" :style="leftPanelStyle()">
         <div class="panel-header">
-          <v-icon class="mr-2">mdi-filter-variant</v-icon>
-          <span>Kategorien</span>
+          <LIcon class="mr-2">mdi-filter-variant</LIcon>
+          <span>{{ $t('home.categories.title') }}</span>
         </div>
         <div class="panel-content">
           <div class="categories-list">
@@ -74,16 +74,16 @@
               :class="{ active: selectedCategory === cat.id }"
               @click="selectCategory(cat.id)"
             >
-              <v-icon class="category-icon" :color="selectedCategory === cat.id ? 'primary' : undefined">
+              <LIcon class="category-icon" :color="selectedCategory === cat.id ? 'primary' : undefined">
                 {{ cat.icon }}
-              </v-icon>
+              </LIcon>
               <div class="category-info">
                 <span class="category-name">{{ cat.name }}</span>
-                <span class="category-count">{{ getCategoryCount(cat.id) }} Features</span>
+                <span class="category-count">{{ $t('home.categories.featuresCount', { count: getCategoryCount(cat.id) }) }}</span>
               </div>
-              <v-icon v-if="selectedCategory === cat.id" class="category-check" color="primary">
+              <LIcon v-if="selectedCategory === cat.id" class="category-check" color="primary">
                 mdi-check-circle
-              </v-icon>
+              </LIcon>
             </div>
           </div>
         </div>
@@ -102,11 +102,11 @@
       <!-- Right Panel: Features Grid -->
       <div class="right-panel" :style="isMobile ? {} : rightPanelStyle()">
         <div class="panel-header">
-          <v-icon class="mr-2">mdi-apps</v-icon>
+          <LIcon class="mr-2">mdi-apps</LIcon>
           <span>{{ selectedCategoryName }}</span>
           <v-spacer />
           <LTag variant="primary" size="sm">
-            {{ filteredItems.length }} verfügbar
+            {{ $t('home.available', { count: filteredItems.length }) }}
           </LTag>
         </div>
         <div class="panel-content">
@@ -129,7 +129,7 @@
               @click="navigateTo(item.route)"
             >
               <div class="feature-icon">
-                <v-icon size="32" color="primary">{{ item.icon }}</v-icon>
+                <LIcon size="36" color="primary">{{ item.icon }}</LIcon>
               </div>
               <div class="feature-title">
                 <span v-if="item.emoji" class="feature-emoji">{{ item.emoji }}</span>
@@ -145,8 +145,8 @@
 
             <!-- Empty State -->
             <div v-if="filteredItems.length === 0" class="empty-state">
-              <v-icon size="64" color="grey">mdi-folder-open-outline</v-icon>
-              <p>Keine Features in dieser Kategorie verfügbar</p>
+              <LIcon size="64" color="grey">mdi-folder-open-outline</LIcon>
+              <p>{{ $t('home.empty.noFeatures') }}</p>
             </div>
           </div>
         </div>
@@ -157,6 +157,7 @@
 
 <script setup>
 import { ref, onMounted, computed, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { usePermissions } from '@/composables/usePermissions'
 import { useSkeletonLoading } from '@/composables/useSkeletonLoading'
@@ -165,6 +166,7 @@ import { useAuth } from '@/composables/useAuth'
 import { useMobile } from '@/composables/useMobile'
 
 const router = useRouter()
+const { t } = useI18n()
 const { hasPermission, hasAnyPermission, fetchPermissions } = usePermissions()
 const { isLoading: isSkelLoading, withLoading } = useSkeletonLoading(['permissions'])
 const { tokenParsed } = useAuth()
@@ -188,17 +190,17 @@ const {
 })
 
 // All categories (filtered based on available items)
-const allCategories = [
-  { id: 'all', name: 'Alle Features', icon: 'mdi-view-grid-outline' },
-  { id: 'research', name: 'Forschung', icon: 'mdi-flask-outline' },
-  { id: 'rating', name: 'Bewertung', icon: 'mdi-star-outline' },
-  { id: 'ai', name: 'KI-Tools', icon: 'mdi-robot-outline' },
-  { id: 'admin', name: 'Administration', icon: 'mdi-shield-account-outline' }
-]
+const allCategories = computed(() => [
+  { id: 'all', name: t('home.categories.all'), icon: 'mdi-view-grid-outline' },
+  { id: 'research', name: t('home.categories.research'), icon: 'mdi-flask-outline' },
+  { id: 'rating', name: t('home.categories.rating'), icon: 'mdi-star-outline' },
+  { id: 'ai', name: t('home.categories.ai'), icon: 'mdi-robot-outline' },
+  { id: 'admin', name: t('home.categories.admin'), icon: 'mdi-shield-account-outline' }
+])
 
 // Only show categories that have at least one visible item
 const categories = computed(() => {
-  return allCategories.filter(cat => {
+  return allCategories.value.filter(cat => {
     if (cat.id === 'all') return true
     return items.value.some(item => item.category === cat.id)
   })
@@ -214,13 +216,32 @@ watch(selectedCategory, () => {
 })
 
 // All available features with their required permissions
-const allItems = ref([
+const allItems = computed(() => ([
   {
-    title: 'Evaluierung',
-    description: 'Ranking, Rating, Fake/Echt, Verlaufsbewertung & Gegenüberstellung',
+    title: t('home.features.promptEngineering.title'),
+    description: t('home.features.promptEngineering.description'),
+    route: '/PromptEngineering',
+    icon: 'llars:prompt-engineering',
+    permission: 'feature:prompt_engineering:view',
+    category: 'research',
+    badge: t('home.badges.beta'),
+    badgeColor: 'info'
+  },
+  {
+    title: t('home.features.batchGeneration.title'),
+    description: t('home.features.batchGeneration.description'),
+    route: '/generation',
+    icon: 'llars:batch-generation',
+    permission: 'feature:generation:view',
+    category: 'research',
+    badge: t('home.badges.beta'),
+    badgeColor: 'info'
+  },
+  {
+    title: t('home.features.evaluation.title'),
+    description: t('home.features.evaluation.description'),
     route: '/evaluation',
-    icon: 'mdi-clipboard-check-outline',
-    emoji: '🧪',
+    icon: 'llars:evaluation',
     permissionsAny: [
       'feature:ranking:view',
       'feature:rating:view',
@@ -231,61 +252,72 @@ const allItems = ref([
     category: 'rating'
   },
   {
-    title: 'Chatbot',
-    description: 'Interaktiver Chat mit LLars KI-Assistent',
+    title: t('home.features.scenarioManager.title'),
+    description: t('home.features.scenarioManager.description'),
+    route: '/scenarios',
+    icon: 'mdi-clipboard-check-multiple-outline',
+    permission: 'data:manage_scenarios',
+    permissionsAny: ['data:manage_scenarios', 'feature:ranking:view', 'feature:rating:view'],
+    category: 'rating',
+    badge: t('home.badges.new'),
+    badgeColor: 'success'
+  },
+  {
+    title: t('home.features.chatbot.title'),
+    description: t('home.features.chatbot.description'),
     route: '/chat',
-    icon: 'mdi-chat-outline',
+    icon: 'llars:chatbot',
     permission: null,
     category: 'ai',
-    badge: 'Alpha',
+    badge: t('home.badges.alpha'),
     badgeColor: 'warning'
   },
   {
-    title: 'Prompt Engineering',
-    description: 'Kollaboratives Entwerfen und Testen von Prompts',
-    route: '/PromptEngineering',
-    icon: 'mdi-text-search',
-    permission: 'feature:prompt_engineering:view',
+    title: t('home.features.video.title'),
+    description: t('home.features.video.description'),
+    route: '/video',
+    icon: 'llars:play',
+    permission: null,
     category: 'research',
-    badge: 'Beta',
-    badgeColor: 'info'
+    badge: t('home.badges.new'),
+    badgeColor: 'success'
   },
   {
-    title: 'Markdown Collab',
-    description: 'Kollaboratives Arbeiten an Markdown-Dateien mit Live-Preview',
+    title: t('home.features.markdownCollab.title'),
+    description: t('home.features.markdownCollab.description'),
     route: '/MarkdownCollab',
-    icon: 'mdi-language-markdown',
+    icon: 'llars:markdown-collab',
     permission: 'feature:markdown_collab:view',
     category: 'research',
-    badge: 'Beta',
+    badge: t('home.badges.beta'),
     badgeColor: 'info'
   },
   {
-    title: 'LaTeX Collab',
-    description: 'Overleaf-ähnlicher LaTeX-Editor mit PDF-Preview',
+    title: t('home.features.latexCollab.title'),
+    description: t('home.features.latexCollab.description'),
     route: '/LatexCollab',
-    icon: 'mdi-file-code-outline',
+    icon: 'llars:latex-collab-ai',
     permission: 'feature:latex_collab:view',
     category: 'research',
-    badge: 'Beta',
+    badge: t('home.badges.beta'),
     badgeColor: 'info'
   },
   {
-    title: 'LLM-as-Judge',
-    description: 'Automatisierte Bewertung und Vergleich von Prompt-Säulen',
+    title: t('home.features.chatbotArena.title'),
+    description: t('home.features.chatbotArena.description'),
     route: '/judge',
-    icon: 'mdi-gavel',
+    icon: 'mdi-sword-cross',
     permission: 'feature:judge:view',
     category: 'ai'
   },
   {
-    title: 'Anonymisierung',
-    description: 'Texte, DOCX und PDFs offline pseudonymisieren',
+    title: t('home.features.anonymization.title'),
+    description: t('home.features.anonymization.description'),
     route: '/Anonymize',
-    icon: 'mdi-incognito',
+    icon: 'llars:anonymize',
     permission: 'feature:anonymize:view',
     category: 'ai',
-    badge: 'Beta',
+    badge: t('home.badges.beta'),
     badgeColor: 'info'
   },
   {
@@ -297,49 +329,65 @@ const allItems = ref([
     category: 'research'
   },
   {
-    title: 'KAIMO',
-    description: 'Fallvignetten durcharbeiten und neue Fälle anlegen',
+    title: t('home.features.kaimo.title'),
+    description: t('home.features.kaimo.description'),
+    route: '/anonymization',
+    icon: 'mdi-shield-check',
+    permission: 'feature:anonymization-pipeline:view',
+    category: 'research'
+  },
+  {
+    title: t('home.features.kaimo.title'),
+    description: t('home.features.kaimo.description'),
     route: '/kaimo',
     icon: 'mdi-account-school-outline',
     permission: 'feature:kaimo:view',
     category: 'research'
   },
   {
-    title: 'OnCoCo Analyse',
-    description: 'Beratungsgespräche auf Satzebene klassifizieren (68 Kategorien)',
+    title: t('home.features.oncoco.title'),
+    description: t('home.features.oncoco.description'),
     route: '/oncoco',
-    icon: 'mdi-chart-timeline-variant-shimmer',
+    icon: 'llars:oncoco',
     permission: 'feature:oncoco:view',
     category: 'ai'
   },
   {
-    title: 'Admin Dashboard',
-    description: 'Benutzer, Rollen und Berechtigungen verwalten',
-    route: '/admin?tab=permissions',
-    icon: 'mdi-shield-account',
+    title: t('home.features.adminDashboard.title'),
+    description: t('home.features.adminDashboard.description'),
+    route: '/admin?tab=overview',
+    icon: 'llars:admin-dashboard',
     permission: 'admin:permissions:manage',
     category: 'admin'
   },
   {
-    title: 'Chatbot Verwaltung',
-    description: 'Chatbots erstellen, konfigurieren und teilen',
+    title: t('home.features.chatbotAdmin.title'),
+    description: t('home.features.chatbotAdmin.description'),
     route: '/admin?tab=chatbots',
-    icon: 'mdi-robot',
+    icon: 'llars:chatbot-manage',
     permission: 'feature:chatbots:edit',
     category: 'admin'
   },
   {
-    title: 'RAG Verwaltung',
-    description: 'Dokumente für die RAG-Pipeline verwalten und hochladen',
+    title: t('home.features.ragAdmin.title'),
+    description: t('home.features.ragAdmin.description'),
     route: '/admin?tab=rag',
-    icon: 'mdi-database-search',
+    icon: 'llars:rag',
     permission: 'feature:rag:edit',
     category: 'admin'
+  },
+  {
+    title: t('home.features.userSettings.title'),
+    description: t('home.features.userSettings.description'),
+    route: '/settings',
+    icon: 'mdi-account-cog',
+    permission: null,
+    category: 'all'
   }
-])
+]))
 
 // Computed
-const username = computed(() => tokenParsed.value?.preferred_username || 'Gast')
+const username = computed(() => tokenParsed.value?.preferred_username || t('home.user.guest'))
 
 const items = computed(() => {
   return allItems.value.filter(item => {
@@ -358,7 +406,7 @@ const filteredItems = computed(() => {
 
 const selectedCategoryName = computed(() => {
   const cat = categories.value.find(c => c.id === selectedCategory.value)
-  return cat ? cat.name : 'Features'
+  return cat ? cat.name : t('home.categories.fallback')
 })
 
 const researchCount = computed(() => {
@@ -630,8 +678,8 @@ onMounted(async () => {
 /* Features Grid */
 .features-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 14px;
   pointer-events: auto;
 }
 
@@ -639,7 +687,7 @@ onMounted(async () => {
   position: relative;
   display: flex;
   flex-direction: column;
-  padding: 20px;
+  padding: 16px;
   background-color: rgb(var(--v-theme-surface));
   border: 1px solid rgba(var(--v-theme-on-surface), 0.1);
   border-radius: 12px;
@@ -663,7 +711,7 @@ onMounted(async () => {
   height: 56px;
   border-radius: 12px;
   background-color: rgba(var(--v-theme-primary), 0.1);
-  margin-bottom: 16px;
+  margin-bottom: 12px;
 }
 
 .feature-title {

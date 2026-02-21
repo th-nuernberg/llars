@@ -6,6 +6,7 @@
  */
 
 import axios from 'axios';
+import { logI18n } from '@/utils/logI18n';
 
 export function useRAGHelpers() {
   // File size formatting
@@ -29,7 +30,15 @@ export function useRAGHelpers() {
     });
   };
 
-  // File type helpers
+  // File type helpers - supports both extensions and mime types
+  const mimeToExt = {
+    'application/pdf': 'pdf',
+    'text/plain': 'txt',
+    'text/markdown': 'md',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'docx',
+    'application/msword': 'doc'
+  };
+
   const getFileTypeIcon = (type) => {
     const icons = {
       'pdf': 'mdi-file-pdf-box',
@@ -38,7 +47,8 @@ export function useRAGHelpers() {
       'docx': 'mdi-file-word',
       'doc': 'mdi-file-word'
     };
-    return icons[type] || 'mdi-file';
+    const ext = mimeToExt[type] || type;
+    return icons[ext] || 'mdi-file';
   };
 
   const getFileTypeColor = (type) => {
@@ -49,7 +59,8 @@ export function useRAGHelpers() {
       'docx': 'blue',
       'doc': 'blue'
     };
-    return colors[type] || 'grey';
+    const ext = mimeToExt[type] || type;
+    return colors[ext] || 'grey';
   };
 
   const getFileExtension = (filename) => {
@@ -138,7 +149,7 @@ export function useRAGHelpers() {
       link.remove();
       window.URL.revokeObjectURL(url);
     } catch (error) {
-      console.error('Error downloading document:', error);
+      logI18n('error', 'logs.admin.ragSectionHelpers.downloadDocumentFailed', error);
     }
   };
 

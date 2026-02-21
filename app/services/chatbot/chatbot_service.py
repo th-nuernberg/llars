@@ -7,12 +7,13 @@ import logging
 from datetime import datetime
 from typing import List, Optional, Dict, Any
 from sqlalchemy import func
-from db.db import db
+from db.database import db
 from db.tables import (
     Chatbot, ChatbotCollection, ChatbotConversation, ChatbotMessage,
     RAGCollection, ChatbotPromptSettings
 )
 from db.models.llm_model import LLMModel
+from services.llm.llm_access_service import LLMAccessService
 
 logger = logging.getLogger(__name__)
 
@@ -20,10 +21,27 @@ logger = logging.getLogger(__name__)
 class ChatbotService:
     """Service for chatbot management operations"""
 
+    USER_PROVIDER_PREFIX = "user-provider:"
+
     @staticmethod
     def _resolve_llm_model_id(model_name: Optional[str]) -> Optional[str]:
         if not model_name:
             return None
+        if isinstance(model_name, str) and model_name.startswith(ChatbotService.USER_PROVIDER_PREFIX):
+            rest = model_name[len(ChatbotService.USER_PROVIDER_PREFIX):]
+            parts = rest.split(':', 2)
+            if len(parts) < 2:
+                raise ValueError("Invalid user-provider model id")
+            try:
+                int(parts[0])
+            except (TypeError, ValueError):
+                raise ValueError("Invalid user-provider model id")
+            # New format: provider_id:username:model (3 parts)
+            # Old format: provider_id:model (2 parts)
+            actual_model = parts[2] if len(parts) == 3 else parts[1]
+            if not actual_model.strip():
+                raise ValueError("Invalid user-provider model id")
+            return model_name
         model = LLMModel.get_by_model_id(model_name)
         if not model or not model.is_active or model.model_type != LLMModel.MODEL_TYPE_LLM:
             raise ValueError(f"Model '{model_name}' is not an active LLM model")
@@ -242,11 +260,18 @@ class ChatbotService:
         model_name = ChatbotService._coerce_model_name(data.get('model_name'))
         if model_name:
             model_name = ChatbotService._resolve_llm_model_id(model_name)
+            if not LLMAccessService.user_can_access_model(username, model_name):
+                raise ValueError(f"Model '{model_name}' is not available for this user")
         else:
-            default_model_id = LLMModel.get_default_model_id(model_type=LLMModel.MODEL_TYPE_LLM)
-            if not default_model_id:
-                raise ValueError("No default LLM model configured in llm_models")
-            model_name = default_model_id
+            accessible = LLMAccessService.get_accessible_models(
+                username,
+                active_only=True,
+                model_type=LLMModel.MODEL_TYPE_LLM,
+            )
+            if not accessible:
+                raise ValueError("No accessible LLM model configured for this user")
+            default_model = next((m for m in accessible if m.is_default), accessible[0])
+            model_name = default_model.model_id
 
         # Create chatbot
         chatbot = Chatbot(
@@ -262,7 +287,7 @@ class ChatbotService:
             max_tokens=data.get('max_tokens', 2048),
             top_p=data.get('top_p', 0.9),
             rag_enabled=data.get('rag_enabled', True),
-            rag_retrieval_k=data.get('rag_retrieval_k', 4),
+            rag_retrieval_k=data.get('rag_retrieval_k', 8),
             rag_min_relevance=data.get('rag_min_relevance', 0.3),
             rag_include_sources=data.get('rag_include_sources', True),
             rag_reranker_model=data.get('rag_reranker_model'),  # None = use system default
@@ -302,7 +327,7 @@ class ChatbotService:
         return ChatbotService.get_chatbot(chatbot.id)
 
     @staticmethod
-    def update_chatbot(chatbot_id: int, data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    def update_chatbot(chatbot_id: int, data: Dict[str, Any], username: Optional[str] = None) -> Optional[Dict[str, Any]]:
         """
         Update an existing chatbot.
         """
@@ -313,6 +338,8 @@ class ChatbotService:
             model_name = ChatbotService._coerce_model_name(data.get('model_name'))
             if model_name:
                 data['model_name'] = ChatbotService._resolve_llm_model_id(model_name)
+                if username and not LLMAccessService.user_can_access_model(username, data['model_name']):
+                    raise ValueError(f"Model '{data['model_name']}' is not available for this user")
             else:
                 data.pop('model_name', None)
 

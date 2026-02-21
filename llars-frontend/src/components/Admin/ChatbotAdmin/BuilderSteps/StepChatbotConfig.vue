@@ -43,7 +43,7 @@
               :disabled="!canGenerate"
               @click="$emit('generate-field', 'name')"
             >
-              <v-icon>mdi-auto-fix</v-icon>
+              <LIcon>mdi-auto-fix</LIcon>
               <v-tooltip activator="parent" location="top">
                 Mit KI generieren
               </v-tooltip>
@@ -69,7 +69,7 @@
               :disabled="!canGenerate"
               @click="$emit('generate-field', 'display_name')"
             >
-              <v-icon>mdi-auto-fix</v-icon>
+              <LIcon>mdi-auto-fix</LIcon>
               <v-tooltip activator="parent" location="top">
                 Mit KI generieren
               </v-tooltip>
@@ -80,6 +80,7 @@
     </v-row>
 
     <v-textarea
+      ref="systemPromptRef"
       v-model="localConfig.systemPrompt"
       label="System Prompt"
       prepend-inner-icon="mdi-text-box"
@@ -97,7 +98,7 @@
           :disabled="!canGenerate"
           @click="$emit('generate-field', 'system_prompt')"
         >
-          <v-icon>mdi-auto-fix</v-icon>
+          <LIcon>mdi-auto-fix</LIcon>
           <v-tooltip activator="parent" location="top">
             Mit KI generieren
           </v-tooltip>
@@ -105,60 +106,18 @@
       </template>
     </v-textarea>
 
-    <v-autocomplete
+    <LlmModelSelect
       v-model="localConfig.modelName"
-      :items="modelItems"
-      item-title="title"
-      item-value="value"
-      :return-object="false"
       label="LLM Modell"
-      prepend-inner-icon="mdi-brain"
-      variant="outlined"
       :rules="[rules.required]"
-      :loading="modelsLoading"
-      clearable
+      :clearable="true"
+      :allow-sync="true"
+      :include-user-providers="true"
       @update:model-value="updateConfig"
-    >
-      <template #append>
-        <v-btn
-          icon
-          variant="text"
-          size="small"
-          :loading="modelsLoading"
-          @click="$emit('refresh-models')"
-        >
-          <v-icon>mdi-refresh</v-icon>
-          <v-tooltip activator="parent" location="top">
-            Modelle synchronisieren
-          </v-tooltip>
-        </v-btn>
-      </template>
-
-      <template #item="{ props: itemProps, item }">
-        <v-list-item v-bind="itemProps">
-          <template #prepend>
-            <v-icon :color="item.raw.supports_vision ? 'success' : 'grey'">
-              {{ item.raw.supports_vision ? 'mdi-image' : 'mdi-text' }}
-            </v-icon>
-          </template>
-          <v-list-item-title>{{ item.raw.display_name }}</v-list-item-title>
-          <v-list-item-subtitle class="text-caption">
-            {{ item.raw.provider }} · {{ item.raw.model_id }}
-          </v-list-item-subtitle>
-        </v-list-item>
-      </template>
-
-      <template #selection="{ item }">
-        <div class="d-flex align-center">
-          <v-icon class="mr-2" size="18" :color="item.raw.supports_vision ? 'success' : 'grey'">
-            {{ item.raw.supports_vision ? 'mdi-image' : 'mdi-text' }}
-          </v-icon>
-          <span class="text-truncate">{{ item.raw.display_name }}</span>
-        </div>
-      </template>
-    </v-autocomplete>
+    />
 
     <v-textarea
+      ref="welcomeMessageRef"
       v-model="localConfig.welcomeMessage"
       label="Willkommensnachricht"
       prepend-inner-icon="mdi-message-text"
@@ -175,7 +134,7 @@
           :disabled="!canGenerate"
           @click="$emit('generate-field', 'welcome_message')"
         >
-          <v-icon>mdi-auto-fix</v-icon>
+          <LIcon>mdi-auto-fix</LIcon>
           <v-tooltip activator="parent" location="top">
             Mit KI generieren
           </v-tooltip>
@@ -211,7 +170,7 @@
               :disabled="!canGenerate"
               @click="$emit('generate-field', 'icon')"
             >
-              <v-icon>mdi-auto-fix</v-icon>
+              <LIcon>mdi-auto-fix</LIcon>
               <v-tooltip activator="parent" location="top">
                 Icon mit KI vorschlagen
               </v-tooltip>
@@ -250,7 +209,7 @@
               :disabled="!canGenerate"
               @click="$emit('generate-field', 'color')"
             >
-              <v-icon>mdi-auto-fix</v-icon>
+              <LIcon>mdi-auto-fix</LIcon>
               <v-tooltip activator="parent" location="top">
                 Farbe mit KI vorschlagen
               </v-tooltip>
@@ -263,7 +222,8 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, nextTick } from 'vue'
+import LlmModelSelect from '@/components/common/LlmModelSelect.vue'
 
 const props = defineProps({
   config: {
@@ -304,21 +264,15 @@ const props = defineProps({
   canGenerate: {
     type: Boolean,
     default: false
-  },
-  models: {
-    type: Array,
-    default: () => []
-  },
-  modelsLoading: {
-    type: Boolean,
-    default: false
   }
 })
 
-const emit = defineEmits(['update:config', 'generate-field', 'refresh-models'])
+const emit = defineEmits(['update:config', 'generate-field'])
 
 // Local state
 const localConfig = ref({ ...props.config })
+const systemPromptRef = ref(null)
+const welcomeMessageRef = ref(null)
 
 // Validation rules
 const rules = {
@@ -346,36 +300,38 @@ const statusText = computed(() => {
   return ''
 })
 
-const modelItems = computed(() => {
-  // Allow showing an existing model value even if it's not in the registry yet
-  const current = localConfig.value?.modelName
-  const items = Array.isArray(props.models) ? [...props.models] : []
-  const hasCurrent = current && items.some(m => m.model_id === current)
-  if (current && !hasCurrent) {
-    items.unshift({
-      model_id: current,
-      display_name: current,
-      provider: 'custom',
-      supports_vision: false
-    })
-  }
-
-  return items.map(m => ({
-    title: m.display_name || m.model_id,
-    value: m.model_id,
-    ...m
-  }))
-})
-
 // Update handler
 const updateConfig = () => {
   emit('update:config', localConfig.value)
+}
+
+const scrollTextareaToBottom = (fieldRef) => {
+  nextTick(() => {
+    requestAnimationFrame(() => {
+      const textarea = fieldRef.value?.$el?.querySelector('textarea')
+      if (textarea) {
+        textarea.scrollTop = textarea.scrollHeight
+      }
+    })
+  })
 }
 
 // Watch props for external updates
 watch(() => props.config, (newVal) => {
   localConfig.value = { ...newVal }
 }, { deep: true })
+
+watch(() => localConfig.value.systemPrompt, () => {
+  if (props.generatingFields?.system_prompt) {
+    scrollTextareaToBottom(systemPromptRef)
+  }
+})
+
+watch(() => localConfig.value.welcomeMessage, () => {
+  if (props.generatingFields?.welcome_message) {
+    scrollTextareaToBottom(welcomeMessageRef)
+  }
+})
 </script>
 
 <style scoped>

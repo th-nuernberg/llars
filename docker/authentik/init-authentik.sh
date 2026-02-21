@@ -9,9 +9,11 @@ echo "======================================="
 # Environment variables
 BACKEND_CLIENT_ID="${AUTHENTIK_BACKEND_CLIENT_ID:-llars-backend}"
 BACKEND_CLIENT_SECRET="${AUTHENTIK_BACKEND_CLIENT_SECRET:-llars-backend-secret-change-in-production}"
-# Use LLARS_ADMIN_PASSWORD for LLARS users (admin, researcher, viewer)
+# Use LLARS_ADMIN_PASSWORD for LLARS users (admin, researcher, evaluator)
 # Falls back to AUTHENTIK_BOOTSTRAP_PASSWORD for backwards compatibility
 ADMIN_PASSWORD="${LLARS_ADMIN_PASSWORD:-${AUTHENTIK_BOOTSTRAP_PASSWORD:-admin123}}"
+# IJCAI reviewer password (dev-only users)
+IJCAI_REVIEWER_PASSWORD="${IJCAI_REVIEWER_PASSWORD:-ijcai_reviewer_123}"
 
 MATOMO_CLIENT_ID="${AUTHENTIK_MATOMO_CLIENT_ID:-llars-matomo}"
 MATOMO_CLIENT_SECRET="${AUTHENTIK_MATOMO_CLIENT_SECRET:-llars-matomo-secret-change-in-production}"
@@ -21,6 +23,16 @@ PROJECT_STATE="${PROJECT_STATE:-development}"
 PROJECT_URL="${PROJECT_URL:-}"
 PROJECT_HOST="${PROJECT_HOST:-localhost}"
 NGINX_EXTERNAL_PORT="${NGINX_EXTERNAL_PORT:-80}"
+
+AK_PYTHON="/ak-root/venv/bin/python"
+if [ ! -x "$AK_PYTHON" ]; then
+  echo "WARN: $AK_PYTHON not found, falling back to system python"
+  AK_PYTHON="python"
+fi
+
+ak_shell() {
+  "$AK_PYTHON" -m manage shell -c "$1"
+}
 
 BASE_URL="${PROJECT_URL%/}"
 if [ -z "$BASE_URL" ]; then
@@ -51,7 +63,7 @@ sleep 5
 # Run all configuration via ak shell (Python Django shell)
 echo "[2/7] Creating authentication flow 'llars-api-authentication'..."
 
-ak shell -c "
+ak_shell "
 from authentik.flows.models import Flow, FlowStageBinding, FlowDesignation
 from authentik.stages.identification.models import IdentificationStage, UserFields
 from authentik.stages.password.models import PasswordStage
@@ -99,77 +111,108 @@ else:
 
 echo "[3/7] Creating OAuth2 provider 'llars-backend'..."
 
-ak shell -c "
+ak_shell "
 from authentik.providers.oauth2.models import OAuth2Provider, ScopeMapping
 from authentik.crypto.models import CertificateKeyPair
-from authentik.flows.models import Flow
+from authentik.flows.models import Flow, FlowDesignation
 from authentik.core.models import Application
+import time
 
-# Check if provider already exists
-existing = OAuth2Provider.objects.filter(name='llars-backend').first()
-if existing:
-    print('  OAuth2 provider already exists, skipping creation')
+def get_backend_auth_flow():
+    # Backend login is server-to-server and cannot click consent.
+    # Always prefer an implicit/non-interactive authorization flow.
+    flow = Flow.objects.filter(slug='default-provider-authorization-implicit-consent').first()
+    if flow:
+        return flow
+
+    flow = Flow.objects.filter(slug='llars-provider-authorization-implicit').first()
+    if flow:
+        return flow
+
+    flow = Flow.objects.create(
+        slug='llars-provider-authorization-implicit',
+        name='LLARS Provider Authorization (Implicit)',
+        designation=FlowDesignation.AUTHORIZATION,
+        title='LLARS Authorization'
+    )
+    return flow
+
+def get_default_scopes():
+    scopes = ScopeMapping.objects.none()
+    # Scope mappings may not be immediately available after Authentik bootstrap.
+    for _ in range(15):
+        scopes = ScopeMapping.objects.filter(managed__startswith='goauthentik.io/providers/oauth2/scope-')
+        if scopes.exists():
+            return scopes
+        time.sleep(1)
+    return scopes
+
+cert = CertificateKeyPair.objects.filter(name__icontains='Self-signed').first()
+if not cert:
+    cert = CertificateKeyPair.objects.first()
+if cert:
+    print(f'  Using certificate: {cert.name}')
 else:
-    # Get signing certificate (self-signed)
-    cert = CertificateKeyPair.objects.filter(name__icontains='Self-signed').first()
-    if not cert:
-        cert = CertificateKeyPair.objects.first()
-    if cert:
-        print(f'  Using certificate: {cert.name}')
-    else:
-        print('  Warning: No certificate found!')
+    print('  Warning: No certificate found!')
 
-    # Get authorization flow (implicit consent = no extra click)
-    auth_flow = Flow.objects.filter(slug='default-provider-authorization-implicit-consent').first()
-    if not auth_flow:
-        auth_flow = Flow.objects.filter(slug='default-provider-authorization-explicit-consent').first()
-    if auth_flow:
-        print(f'  Using authorization flow: {auth_flow.slug}')
+auth_flow = get_backend_auth_flow()
+print(f'  Using backend authorization flow: {auth_flow.slug}')
 
-    # Create provider with authorization flow
-    if not auth_flow:
-        print('  ERROR: No authorization flow found! Login will not work.')
-        raise Exception('No authorization flow found')
+scopes = get_default_scopes()
+if not scopes.exists():
+    raise Exception('No OAuth2 scope mappings found for llars-backend')
 
+desired_redirects = [
+    {'matching_mode': 'strict', 'url': 'http://authentik-server:9000/'},
+]
+
+provider = OAuth2Provider.objects.filter(name='llars-backend').first()
+if provider:
+    provider.client_id = '$BACKEND_CLIENT_ID'
+    provider.client_secret = '$BACKEND_CLIENT_SECRET'
+    provider.client_type = 'confidential'
+    provider.authorization_flow = auth_flow
+    provider.signing_key = cert
+    provider._redirect_uris = desired_redirects
+    provider.save()
+    print('  OAuth2 provider already exists, updated configuration')
+else:
     provider = OAuth2Provider.objects.create(
         name='llars-backend',
         client_id='$BACKEND_CLIENT_ID',
         client_secret='$BACKEND_CLIENT_SECRET',
         client_type='confidential',
         authorization_flow=auth_flow,
-        signing_key=cert
+        signing_key=cert,
+        _redirect_uris=desired_redirects
     )
     print(f'  Created provider: {provider.name}')
 
-    # Add scope mappings
-    scopes = ScopeMapping.objects.filter(managed__startswith='goauthentik.io/providers/oauth2/scope-')
-    provider.property_mappings.set(scopes)
-    provider.save()
-    print(f'  Added {scopes.count()} scope mappings')
+provider.property_mappings.set(scopes)
+provider.save()
+print(f'  Added {scopes.count()} scope mappings')
 
-    # Create application linked to provider
-    app, created = Application.objects.get_or_create(
-        slug='llars-backend',
-        defaults={
-            'name': 'LLARS Backend',
-            'provider': provider
-        }
-    )
-    if created:
-        print(f'  Created application: {app.slug}')
-    else:
-        # Link existing app to new provider
-        app.provider = provider
-        app.save()
-        print(f'  Updated application: {app.slug}')
+app, created = Application.objects.get_or_create(
+    slug='llars-backend',
+    defaults={
+        'name': 'LLARS Backend',
+        'provider': provider
+    }
+)
+if created:
+    print(f'  Created application: {app.slug}')
+else:
+    app.provider = provider
+    app.save()
+    print(f'  Updated application: {app.slug}')
 "
 
 echo "[4/7] Creating OAuth2 provider 'llars-matomo'..."
 
-ak shell -c "
+ak_shell "
 from authentik.providers.oauth2.models import OAuth2Provider, ScopeMapping
 from authentik.crypto.models import CertificateKeyPair
-from authentik.flows.models import Flow
+from authentik.flows.models import Flow, FlowDesignation
 from authentik.core.models import Application
 
 existing = OAuth2Provider.objects.filter(name='llars-matomo').first()
@@ -182,6 +225,8 @@ if cert:
 auth_flow = Flow.objects.filter(slug='default-provider-authorization-implicit-consent').first()
 if not auth_flow:
     auth_flow = Flow.objects.filter(slug='default-provider-authorization-explicit-consent').first()
+if not auth_flow:
+    auth_flow = Flow.objects.filter(designation=FlowDesignation.AUTHORIZATION).first()
 if not auth_flow:
     print('  ERROR: No authorization flow found!')
     raise Exception('No authorization flow found')
@@ -235,7 +280,7 @@ else:
 
 echo "[5/7] Creating admin user..."
 
-ak shell -c "
+ak_shell "
 from authentik.core.models import User, Group
 
 # Create or update admin user
@@ -269,9 +314,9 @@ else:
 "
 
 if [ "$PROJECT_STATE" = "development" ]; then
-    echo "[6/7] Creating additional users (researcher, viewer, chatbot_manager) - DEVELOPMENT MODE..."
+    echo "[6/7] Creating additional users (researcher, evaluator, chatbot_manager, ijcai_reviewer_1, ijcai_reviewer_2) - DEVELOPMENT MODE..."
 
-    ak shell -c "
+    ak_shell "
 from authentik.core.models import User
 
 # Researcher user
@@ -290,21 +335,21 @@ if created:
 else:
     print('  Researcher user already exists')
 
-# Viewer user
-viewer, created = User.objects.get_or_create(
-    username='viewer',
+# Evaluator user
+evaluator, created = User.objects.get_or_create(
+    username='evaluator',
     defaults={
-        'name': 'Viewer User',
-        'email': 'viewer@localhost',
+        'name': 'Evaluator User',
+        'email': 'evaluator@localhost',
         'is_active': True
     }
 )
 if created:
-    viewer.set_password('$ADMIN_PASSWORD')
-    viewer.save()
-    print('  Created viewer user')
+    evaluator.set_password('$ADMIN_PASSWORD')
+    evaluator.save()
+    print('  Created evaluator user')
 else:
-    print('  Viewer user already exists')
+    print('  Evaluator user already exists')
 
 # Chatbot Manager user
 chatbot_manager, created = User.objects.get_or_create(
@@ -321,9 +366,41 @@ if created:
     print('  Created chatbot_manager user')
 else:
     print('  Chatbot Manager user already exists')
+
+# IJCAI Reviewer 1
+ijcai_reviewer_1, created = User.objects.get_or_create(
+    username='ijcai_reviewer_1',
+    defaults={
+        'name': 'IJCAI Reviewer 1',
+        'email': 'ijcai_reviewer_1@localhost',
+        'is_active': True
+    }
+)
+ijcai_reviewer_1.set_password('$IJCAI_REVIEWER_PASSWORD')
+ijcai_reviewer_1.save()
+if created:
+    print('  Created ijcai_reviewer_1 user')
+else:
+    print('  Updated ijcai_reviewer_1 password')
+
+# IJCAI Reviewer 2
+ijcai_reviewer_2, created = User.objects.get_or_create(
+    username='ijcai_reviewer_2',
+    defaults={
+        'name': 'IJCAI Reviewer 2',
+        'email': 'ijcai_reviewer_2@localhost',
+        'is_active': True
+    }
+)
+ijcai_reviewer_2.set_password('$IJCAI_REVIEWER_PASSWORD')
+ijcai_reviewer_2.save()
+if created:
+    print('  Created ijcai_reviewer_2 user')
+else:
+    print('  Updated ijcai_reviewer_2 password')
 "
 else
-    echo "[6/7] Skipping dev users (researcher, viewer, chatbot_manager) - PRODUCTION MODE"
+    echo "[6/7] Skipping dev users (researcher, evaluator, chatbot_manager, ijcai_reviewer_1, ijcai_reviewer_2) - PRODUCTION MODE"
 fi
 
 echo "[7/8] Creating Admin API Token for LLARS..."
@@ -331,7 +408,7 @@ echo "[7/8] Creating Admin API Token for LLARS..."
 # Use predefined token from env if available (for reproducible setups)
 PREDEFINED_TOKEN="${AUTHENTIK_API_TOKEN:-}"
 
-ak shell -c "
+ak_shell "
 from authentik.core.models import Token, User
 
 # Get the akadmin (bootstrap admin) user
@@ -371,7 +448,7 @@ else:
 
 echo "[8/8] Verifying configuration..."
 
-ak shell -c "
+ak_shell "
 from authentik.flows.models import Flow
 from authentik.providers.oauth2.models import OAuth2Provider
 from authentik.core.models import User, Application
@@ -380,27 +457,27 @@ from authentik.core.models import User, Application
 flow = Flow.objects.filter(slug='llars-api-authentication').first()
 print(f'  Flow llars-api-authentication: {\"OK\" if flow else \"MISSING\"}')"
 
-ak shell -c "
+ak_shell "
 from authentik.providers.oauth2.models import OAuth2Provider
 provider = OAuth2Provider.objects.filter(name='llars-backend').first()
 print(f'  OAuth2 Provider llars-backend: {\"OK\" if provider else \"MISSING\"}')"
 
-ak shell -c "
+ak_shell "
 from authentik.providers.oauth2.models import OAuth2Provider
 provider = OAuth2Provider.objects.filter(name='llars-matomo').first()
 print(f'  OAuth2 Provider llars-matomo: {\"OK\" if provider else \"MISSING\"}')"
 
-ak shell -c "
+ak_shell "
 from authentik.core.models import Application
 app = Application.objects.filter(slug='llars-backend').first()
 print(f'  Application llars-backend: {\"OK\" if app else \"MISSING\"}')"
 
-ak shell -c "
+ak_shell "
 from authentik.core.models import Application
 app = Application.objects.filter(slug='$MATOMO_APP_SLUG').first()
 print(f'  Application $MATOMO_APP_SLUG: {\"OK\" if app else \"MISSING\"}')"
 
-ak shell -c "
+ak_shell "
 from authentik.core.models import User
 admin = User.objects.filter(username='admin').first()
 print(f'  User admin: {\"OK\" if admin else \"MISSING\"}')"
@@ -411,19 +488,19 @@ echo "  Authentik Configuration Complete!"
 echo "  Mode: $PROJECT_STATE"
 echo "======================================="
 echo ""
-echo "Login credentials:"
-echo "  Username: admin"
-echo "  Password: $ADMIN_PASSWORD"
+echo "Seeded login accounts:"
+echo "  Username: admin (password from LLARS_ADMIN_PASSWORD env var)"
 if [ "$PROJECT_STATE" = "development" ]; then
 echo ""
-echo "  Username: researcher"
-echo "  Password: $ADMIN_PASSWORD"
+echo "  Username: researcher (password from LLARS_ADMIN_PASSWORD env var)"
 echo ""
-echo "  Username: viewer"
-echo "  Password: $ADMIN_PASSWORD"
+echo "  Username: evaluator (password from LLARS_ADMIN_PASSWORD env var)"
 echo ""
-echo "  Username: chatbot_manager"
-echo "  Password: $ADMIN_PASSWORD"
+echo "  Username: chatbot_manager (password from LLARS_ADMIN_PASSWORD env var)"
+echo ""
+echo "  Username: ijcai_reviewer_1 (password from IJCAI_REVIEWER_PASSWORD env var)"
+echo ""
+echo "  Username: ijcai_reviewer_2 (password from IJCAI_REVIEWER_PASSWORD env var)"
 fi
 echo ""
 echo "Authentik Admin UI: http://localhost:55095"

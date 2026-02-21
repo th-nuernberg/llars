@@ -19,7 +19,7 @@ Drei monolithische Dateien (1.711 Zeilen) wurden in 14 fokussierte Module (1.917
 | Modul | Zweck |
 |-------|-------|
 | `scenario_crud.py` | CRUD für Szenarien (Listen, Details, Anlegen, Bearbeiten, Löschen) |
-| `scenario_management.py` | Thread- und Viewer-Zuweisung, Round-Robin-Verteilung |
+| `scenario_management.py` | Thread- und Evaluator-Zuweisung, Round-Robin-Verteilung |
 | `scenario_resources.py` | Referenzdaten (Funktionstypen, Nutzer, Threads je Typ) |
 | `scenario_stats.py` | Fortschritts- und Statusberechnung pro Nutzer |
 

@@ -36,6 +36,7 @@ def register_all_blueprints(app: Flask) -> None:
     from routes import analytics
     from routes import system_monitor
     from routes import admin  # System settings and admin config
+    from routes import ai_assist  # AI field generation
 
     # ============================================================
     # Core Features
@@ -59,13 +60,26 @@ def register_all_blueprints(app: Flask) -> None:
     # Authentik OIDC authentication
     from routes.authentik_routes import authentik_auth_blueprint
 
+    # Referral/Invitation System (self-registration via invite links)
+    from routes.referral import referral_bp
+    app.register_blueprint(referral_bp)
+
+    # User Settings (personal settings, LLM providers, user referrals)
+    from routes.user_settings import user_settings_bp
+    app.register_blueprint(user_settings_bp)
+
     # ============================================================
     # LLM & AI Features
     # ============================================================
 
     # LLM Models management
-    from routes.llm import llm_bp
+    from routes.llm import llm_bp, llm_evaluation_bp
     app.register_blueprint(llm_bp, url_prefix='/api/llm')
+    app.register_blueprint(llm_evaluation_bp)  # url_prefix already in blueprint
+
+    # Evaluation metrics (agreement metrics, etc.)
+    from routes.evaluation_routes import evaluation_bp
+    app.register_blueprint(evaluation_bp)  # url_prefix already in blueprint
 
     # LLM-as-Judge (Automated evaluation)
     from routes.judge import judge_bp
@@ -74,6 +88,15 @@ def register_all_blueprints(app: Flask) -> None:
     # OnCoCo Analysis
     from routes.oncoco import oncoco_bp
     app.register_blueprint(oncoco_bp)
+
+    # AI Writing Assistant
+    from routes.ai_writing import ai_writing_bp
+    app.register_blueprint(ai_writing_bp)
+
+    # Batch Generation (Prompt Engineering → LLM → Evaluation pipeline)
+    from routes.generation import generation_bp, generation_debug_bp
+    app.register_blueprint(generation_bp)
+    app.register_blueprint(generation_debug_bp)
 
     # ============================================================
     # Document & Knowledge Management
@@ -91,9 +114,13 @@ def register_all_blueprints(app: Flask) -> None:
     from routes.markdown_collab import markdown_collab_bp
     app.register_blueprint(markdown_collab_bp)
 
-    # LaTeX Collab
-    from routes.latex_collab import latex_collab_bp
-    app.register_blueprint(latex_collab_bp)
+    # LaTeX Collab (split into 6 sub-blueprints)
+    from routes.latex_collab import register_latex_collab_routes
+    register_latex_collab_routes(app)
+
+    # Zotero Integration (for LaTeX Collab)
+    from routes.zotero import zotero_bp
+    app.register_blueprint(zotero_bp)
 
     # Anonymize (offline pseudonymization)
     from routes.anonymize import anonymize_bp
@@ -106,6 +133,14 @@ def register_all_blueprints(app: Flask) -> None:
     # Web Crawler
     from routes.crawler import crawler_bp
     app.register_blueprint(crawler_bp)
+
+    # Data Importer (Universal data import with AI assistance)
+    from routes.data_import import bp as import_bp
+    app.register_blueprint(import_bp)
+
+    # Wizard API (Programmatic Scenario Wizard for Claude Code)
+    from routes.wizard import bp as wizard_bp
+    app.register_blueprint(wizard_bp)
 
     # ============================================================
     # Project-Specific Features
@@ -122,6 +157,24 @@ def register_all_blueprints(app: Flask) -> None:
     app.register_blueprint(authentik_auth_blueprint, url_prefix='/auth/authentik')
     app.register_blueprint(kaimo_bp)
 
+    # API Key Management
+    from routes.auth.api_key_routes import api_key_bp
+    app.register_blueprint(api_key_bp)
+
+    # Demo Video Admin API (IJCAI 2026)
+    from routes.demo_video import demo_video_bp
+    app.register_blueprint(demo_video_bp)
+
+    # ============================================================
+    # Development-Only Routes (hidden in production)
+    # ============================================================
+    # These routes are for testing and development purposes only.
+    # They are protected by a dev_only decorator that returns 404 in production.
+    import os
+    if app.debug or os.getenv('FLASK_ENV') == 'development':
+        from routes.dev import bp as dev_bp
+        app.register_blueprint(dev_bp)
+
 
 def get_blueprint_info() -> dict:
     """
@@ -135,6 +188,7 @@ def get_blueprint_info() -> dict:
         'authentication': [
             {'name': 'auth', 'prefix': '/auth', 'description': 'Legacy authentication (backwards compatibility)'},
             {'name': 'authentik_auth', 'prefix': '/auth/authentik', 'description': 'Authentik OIDC authentication'},
+            {'name': 'referral', 'prefix': '/api/referral', 'description': 'Referral/Invitation system for self-registration'},
         ],
         'authorization': [
             {'name': 'permissions', 'prefix': '/api/permissions', 'description': 'Permissions and roles management'},
@@ -147,8 +201,12 @@ def get_blueprint_info() -> dict:
         ],
         'llm_features': [
             {'name': 'llm', 'prefix': '/api/llm', 'description': 'LLM model management'},
+            {'name': 'llm_evaluation', 'prefix': '/api/evaluation/llm', 'description': 'LLM-specific evaluation progress and control'},
+            {'name': 'evaluation', 'prefix': '/api/evaluation', 'description': 'Evaluation metrics (agreement metrics)'},
             {'name': 'judge', 'prefix': '/api/judge', 'description': 'LLM-as-Judge automated evaluation'},
             {'name': 'oncoco', 'prefix': '/api/oncoco', 'description': 'OnCoCo analysis'},
+            {'name': 'ai_writing', 'prefix': '/api/ai-writing', 'description': 'AI writing assistant for LaTeX/Markdown'},
+            {'name': 'generation', 'prefix': '/api/generation', 'description': 'Batch generation pipeline (Prompt → LLM → Evaluation)'},
         ],
         'knowledge_management': [
             {'name': 'rag', 'prefix': '/api/rag', 'description': 'RAG document management and search'},
@@ -156,11 +214,17 @@ def get_blueprint_info() -> dict:
             {'name': 'crawler', 'prefix': '/api/crawler', 'description': 'Web crawler'},
             {'name': 'markdown_collab', 'prefix': '/api/markdown-collab', 'description': 'Markdown Collab workspaces and documents'},
             {'name': 'latex_collab', 'prefix': '/api/latex-collab', 'description': 'LaTeX Collab workspaces and documents'},
+            {'name': 'zotero', 'prefix': '/api/zotero', 'description': 'Zotero reference manager integration'},
             {'name': 'anonymize', 'prefix': '/api/anonymize', 'description': 'Offline pseudonymization (Anonymize tool)'},
             {'name': 'anonymization', 'prefix': '/api/anonymization', 'description': 'Conversation anonymization pipeline'},
+            {'name': 'import', 'prefix': '/api/import', 'description': 'Universal data import with AI assistance'},
+            {'name': 'wizard', 'prefix': '/api/wizard', 'description': 'Scenario Wizard API for programmatic access (Claude Code)'},
         ],
         'projects': [
             {'name': 'kaimo', 'prefix': '/api/kaimo', 'description': 'KAIMO project routes'},
+        ],
+        'development': [
+            {'name': 'dev', 'prefix': '/api/dev', 'description': 'Development-only routes for testing (hidden in production)'},
         ]
     }
 

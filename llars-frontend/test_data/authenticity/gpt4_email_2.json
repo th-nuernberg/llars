@@ -1,0 +1,29 @@
+{
+  "messages": [
+    {
+      "role": "system",
+      "content": "KI-generierte Studienberatung"
+    },
+    {
+      "role": "user",
+      "content": "Ich möchte meine Bachelorarbeit extern bei einem Unternehmen schreiben. Was muss ich beachten?"
+    },
+    {
+      "role": "assistant",
+      "content": "Eine externe Bachelorarbeit in Kooperation mit einem Unternehmen ist eine ausgezeichnete Möglichkeit, praktische Erfahrungen zu sammeln und potenzielle Arbeitgeber kennenzulernen. Folgende Punkte sollten Sie beachten:\n\n1. Zunächst benötigen Sie einen betreuenden Professor an unserer Hochschule.\n2. Das Thema muss wissenschaftlichen Anforderungen entsprechen.\n3. Ein Kooperationsvertrag zwischen Hochschule und Unternehmen ist erforderlich.\n4. Die Geheimhaltungsvereinbarungen dürfen die Veröffentlichung nicht vollständig verhindern.\n\nIch empfehle Ihnen, frühzeitig mit der Planung zu beginnen, idealerweise 3-4 Monate vor dem geplanten Starttermin."
+    },
+    {
+      "role": "user",
+      "content": "Gibt es finanzielle Unterstützung vom Unternehmen?"
+    },
+    {
+      "role": "assistant",
+      "content": "Die finanzielle Unterstützung variiert je nach Unternehmen. Viele Firmen bieten eine Vergütung zwischen 400-1200 Euro monatlich. Manche Unternehmen stellen auch Arbeitsplatz, technische Ausstattung und Zugang zu Datenbanken bereit. Es ist wichtig, diese Aspekte im Vorfeld zu klären und im Kooperationsvertrag festzuhalten. Beachten Sie auch mögliche Auswirkungen auf BAföG oder andere Förderungen."
+    }
+  ],
+  "metadata": {
+    "source": "gpt-4",
+    "subject": "Externe Bachelorarbeit",
+    "id": "gpt4_002"
+  }
+}

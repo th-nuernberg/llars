@@ -3,6 +3,7 @@ import axios from 'axios';
 import { matomoResetUserId, matomoSetUserId } from '@/plugins/llars-metrics';
 import { usePermissions } from '@/composables/usePermissions';
 import { decodeJwtPayload } from '@/utils/jwt';
+import { logI18n } from '@/utils/logI18n';
 import {
   AUTH_STORAGE_KEYS,
   clearAuthStorage,
@@ -54,7 +55,7 @@ const loadTokensFromStorage = () => {
     try {
       llarsRoles.value = JSON.parse(storedRoles);
     } catch (e) {
-      console.error('Failed to parse stored roles:', e);
+      logI18n('error', 'logs.auth.parseStoredRolesFailed', e);
       llarsRoles.value = [];
     }
   }
@@ -80,7 +81,7 @@ const loadTokensFromStorage = () => {
   if (token.value) {
     tokenParsed.value = parseJwt(token.value);
     if (!tokenParsed.value) {
-      console.error('Failed to parse token');
+      logI18n('error', 'logs.auth.parseTokenFailed');
     }
     if (isTokenExpired(token.value, 0)) {
       // Token expired → treat as logged out (avoids getting stuck with stale tokens)
@@ -103,7 +104,7 @@ const fetchUserProfile = async () => {
   if (!token.value) return null;
 
   try {
-    const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:55080';
+    const baseUrl = import.meta.env.VITE_API_BASE_URL || '';
     const response = await axios.get(`${baseUrl}/auth/authentik/me`, {
       headers: {
         Authorization: `Bearer ${token.value}`
@@ -129,7 +130,7 @@ const fetchUserProfile = async () => {
 
     return response.data;
   } catch (e) {
-    console.error('Failed to fetch user profile:', e);
+    logI18n('error', 'logs.auth.profileFetchFailed', e);
     return null;
   }
 };
@@ -139,7 +140,7 @@ const fetchUserSettings = async () => {
   if (!token.value) return null;
 
   try {
-    const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:55080';
+    const baseUrl = import.meta.env.VITE_API_BASE_URL || '';
     const response = await axios.get(`${baseUrl}/api/users/me/settings`, {
       headers: {
         Authorization: `Bearer ${token.value}`
@@ -171,7 +172,7 @@ const fetchUserSettings = async () => {
 
     return response.data;
   } catch (e) {
-    console.error('Failed to fetch user settings:', e);
+    logI18n('error', 'logs.auth.settingsFetchFailed', e);
     return null;
   }
 };
@@ -181,7 +182,7 @@ const updateCollabColor = async (color) => {
   if (!token.value) return false;
 
   try {
-    const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:55080';
+    const baseUrl = import.meta.env.VITE_API_BASE_URL || '';
     const response = await axios.patch(`${baseUrl}/api/users/me/settings`, {
       collab_color: color
     }, {
@@ -203,7 +204,7 @@ const updateCollabColor = async (color) => {
     }
     return false;
   } catch (e) {
-    console.error('Failed to update collab color:', e);
+    logI18n('error', 'logs.auth.updateCollabColorFailed', e);
     return false;
   }
 };
@@ -232,7 +233,7 @@ const uploadAvatar = async (file) => {
   if (!file) return { success: false };
 
   try {
-    const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:55080';
+    const baseUrl = import.meta.env.VITE_API_BASE_URL || '';
     const formData = new FormData();
     formData.append('file', file);
 
@@ -249,7 +250,7 @@ const uploadAvatar = async (file) => {
     }
     return { success: false, error: response.data.error };
   } catch (e) {
-    console.error('Failed to upload avatar:', e);
+    logI18n('error', 'logs.auth.uploadAvatarFailed', e);
     return { success: false, error: e?.response?.data?.error || e?.message };
   }
 };
@@ -258,7 +259,7 @@ const regenerateAvatar = async () => {
   if (!token.value) return { success: false };
 
   try {
-    const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:55080';
+    const baseUrl = import.meta.env.VITE_API_BASE_URL || '';
     const response = await axios.patch(`${baseUrl}/api/users/me/avatar`, {}, {
       headers: {
         Authorization: `Bearer ${token.value}`
@@ -271,7 +272,7 @@ const regenerateAvatar = async () => {
     }
     return { success: false, error: response.data.error };
   } catch (e) {
-    console.error('Failed to regenerate avatar:', e);
+    logI18n('error', 'logs.auth.regenerateAvatarFailed', e);
     return { success: false, error: e?.response?.data?.error || e?.message };
   }
 };
@@ -280,7 +281,7 @@ const resetAvatar = async () => {
   if (!token.value) return { success: false };
 
   try {
-    const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:55080';
+    const baseUrl = import.meta.env.VITE_API_BASE_URL || '';
     const response = await axios.delete(`${baseUrl}/api/users/me/avatar`, {
       headers: {
         Authorization: `Bearer ${token.value}`
@@ -293,7 +294,7 @@ const resetAvatar = async () => {
     }
     return { success: false, error: response.data.error };
   } catch (e) {
-    console.error('Failed to reset avatar:', e);
+    logI18n('error', 'logs.auth.resetAvatarFailed', e);
     return { success: false, error: e?.response?.data?.error || e?.message };
   }
 };
@@ -327,7 +328,7 @@ export const useAuth = () => {
 
   const login = async (username, password) => {
     // Use backend proxy endpoint for authentication (avoids CORS issues)
-    const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:55080';
+    const baseUrl = import.meta.env.VITE_API_BASE_URL || '';
     const loginUrl = `${baseUrl}/auth/authentik/login`;
 
     try {
@@ -351,7 +352,7 @@ export const useAuth = () => {
       // Parse token
       tokenParsed.value = parseJwt(access_token);
       if (!tokenParsed.value) {
-        console.error('Failed to parse token');
+        logI18n('error', 'logs.auth.parseTokenFailed');
       }
 
       // Store in sessionStorage (with safe fallback)
@@ -405,7 +406,7 @@ export const useAuth = () => {
 
       return { success: true };
     } catch (error) {
-      console.error('Login error:', error);
+      logI18n('error', 'logs.auth.loginError', error);
 
       let errorMessage = 'Ein unerwarteter Fehler ist aufgetreten.';
 

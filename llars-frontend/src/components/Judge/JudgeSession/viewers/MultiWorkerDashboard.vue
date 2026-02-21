@@ -3,7 +3,7 @@
     <!-- Header -->
     <div class="dashboard-header">
       <div class="header-left">
-        <v-icon size="20" class="mr-2">mdi-account-group</v-icon>
+        <LIcon size="20" class="mr-2">mdi-account-group</LIcon>
         <span class="header-title">{{ activeWorkerCount }}/{{ workerCount }} Worker aktiv</span>
         <v-chip
           v-if="streamingWorkerCount"
@@ -17,10 +17,10 @@
       <div class="header-right">
         <v-btn-toggle v-model="viewMode" density="compact" mandatory>
           <v-btn value="grid" size="small" variant="text" title="Grid Ansicht">
-            <v-icon size="18">mdi-view-grid</v-icon>
+            <LIcon size="18">mdi-view-grid</LIcon>
           </v-btn>
           <v-btn value="list" size="small" variant="text" title="Listen Ansicht">
-            <v-icon size="18">mdi-view-list</v-icon>
+            <LIcon size="18">mdi-view-list</LIcon>
           </v-btn>
         </v-btn-toggle>
         <v-btn
@@ -56,23 +56,23 @@
             <div class="worker-status-row">
               <template v-if="workerStreams[i - 1]?.comparison">
                 <span class="pillar-tag pillar-a">{{ getPillarShort(workerStreams[i - 1]?.comparison?.pillar_a) }}</span>
-                <v-icon size="12">mdi-arrow-left-right</v-icon>
+                <LIcon size="12">mdi-arrow-left-right</LIcon>
                 <span class="pillar-tag pillar-b">{{ getPillarShort(workerStreams[i - 1]?.comparison?.pillar_b) }}</span>
               </template>
               <span v-else class="idle-text">Idle</span>
             </div>
             <div class="worker-indicator">
-              <v-icon
+              <LIcon
                 v-if="workerStreams[i - 1]?.isStreaming"
                 size="14"
                 color="warning"
                 class="streaming-icon"
-              >mdi-circle</v-icon>
-              <v-icon
+              >mdi-circle</LIcon>
+              <LIcon
                 v-else-if="getWorkerResult(i - 1)?.winner"
                 size="14"
                 color="success"
-              >mdi-check-circle</v-icon>
+              >mdi-check-circle</LIcon>
             </div>
           </div>
 
@@ -136,7 +136,7 @@
             <!-- Idle State -->
             <template v-else>
               <div class="idle-state">
-                <v-icon size="28" color="grey-lighten-1">mdi-robot-off-outline</v-icon>
+                <LIcon size="28" color="grey-lighten-1">mdi-robot-off-outline</LIcon>
                 <span>Wartet auf Aufgabe</span>
               </div>
             </template>
@@ -150,7 +150,7 @@
       <div v-if="selectedWorkerId !== null" class="detail-panel">
         <div class="detail-header">
           <div class="detail-header-left">
-            <v-icon size="16" class="mr-1">mdi-eye</v-icon>
+            <LIcon size="16" class="mr-1">mdi-eye</LIcon>
             <span class="detail-title">Worker {{ selectedWorkerId + 1 }} Detail</span>
             <v-chip
               v-if="workerStreams[selectedWorkerId]?.isStreaming"

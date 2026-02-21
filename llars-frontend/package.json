@@ -4,7 +4,18 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "vitest",
+    "test:run": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "test:ui": "vitest --ui",
+    "test:watch": "vitest --watch",
+    "e2e": "playwright test",
+    "e2e:ui": "playwright test --ui",
+    "e2e:headed": "playwright test --headed",
+    "e2e:debug": "playwright test --debug",
+    "e2e:chromium": "playwright test --project=chromium",
+    "e2e:report": "playwright show-report"
   },
   "dependencies": {
     "@codemirror/autocomplete": "^6.18.6",
@@ -24,12 +35,14 @@
     "katex": "^0.16.25",
     "keycloak-js": "^26.0.7",
     "marked": "^12.0.2",
+    "motion-v": "^1.8.0",
     "pdfjs-dist": "^5.4.449",
     "quill": "^2.0.3",
     "quill-cursors": "^4.0.3",
     "socket.io-client": "^4.8.1",
     "uuid": "^11.0.3",
     "vue": "^3.4.0",
+    "vue-i18n": "^11.2.8",
     "vue-router": "^4.3.0",
     "vuedraggable": "^4.1.0",
     "vuetify": "^3.5.0",
@@ -39,11 +52,16 @@
     "yjs": "^13.6.20"
   },
   "devDependencies": {
+    "@playwright/test": "^1.57.0",
     "@vitejs/plugin-vue": "^5.0.4",
+    "@vitest/coverage-v8": "^4.0.16",
+    "@vue/test-utils": "^2.4.6",
+    "happy-dom": "^20.0.11",
     "sass": "^1.71.1",
     "unplugin-vue-components": "^0.26.0",
     "vite": "^5.2.12",
     "vite-plugin-static-copy": "^3.1.4",
-    "vite-plugin-vuetify": "^2.0.3"
+    "vite-plugin-vuetify": "^2.0.3",
+    "vitest": "^4.0.16"
   }
 }

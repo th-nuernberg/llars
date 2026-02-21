@@ -113,6 +113,7 @@
 import { ref, onMounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import axios from 'axios';
+import { logI18n } from '@/utils/logI18n';
 import CreateScenarioDialog from "@/components/parts/CreateScenarioDialog.vue";
 import ScenarioDetailDialog from "@/components/parts/ScenarioDetailsDialog.vue";
 const router = useRouter();
@@ -156,7 +157,7 @@ const fetchScenarios = async () => {
       ? response.data.scenarios
       : [];
   } catch (error) {
-    console.error('Error fetching scenarios:', error);
+    logI18n('error', 'logs.admin.scenariosFetchFailed', error);
 
     // Leere Liste als Fallback verwenden
     scenarios.value = [];
@@ -217,7 +218,7 @@ const deleteScenario = async (scenario) => {
     await fetchScenarios();
   }
   catch (error){
-    console.error("Fehler beim Erstellen des Szenarios:", error);
+    logI18n('error', 'logs.admin.scenarioDeleteFailed', error);
     alert("Szenario konnte nicht gelöscht werden")
   }
 

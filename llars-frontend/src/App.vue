@@ -10,52 +10,87 @@
       </v-toolbar-title>
       <v-spacer></v-spacer>
 
-      <!-- User Menu (only when logged in) -->
-      <v-menu v-if="isAuthenticated" offset-y :close-on-content-click="true">
-        <template v-slot:activator="{ props }">
-          <div v-bind="props" class="user-menu-trigger" :class="{ 'mobile-trigger': isMobile }">
-            <LAvatar
-              :seed="userAvatarSeed"
-              :src="userAvatarUrl"
-              :username="username"
-              :size="isMobile ? 'xs' : 'sm'"
-              :class="isMobile ? 'mr-1' : 'mr-2'"
-            />
-            <div v-if="!isMobile" class="user-info">
-              <LTag
-                :variant="isAdminUser ? 'danger' : 'secondary'"
-                size="sm"
-                :prepend-icon="isAdminUser ? 'mdi-shield-account' : ''"
-              >
-                {{ isAdminUser ? 'Admin ' : '' }}{{ username }}
-              </LTag>
-            </div>
-            <v-icon :size="isMobile ? 'x-small' : 'small'" :class="isMobile ? '' : 'ml-1'" color="white">mdi-chevron-down</v-icon>
-          </div>
-        </template>
+      <!-- Auth Section with Animation -->
+      <AnimatePresence mode="wait">
+        <!-- User Menu (only when logged in) -->
+        <Motion
+          v-if="isAuthenticated"
+          key="user-menu"
+          layout-id="auth-section"
+          :initial="{ opacity: 0, scale: 0.8 }"
+          :animate="{ opacity: 1, scale: 1 }"
+          :exit="{ opacity: 0, scale: 0.8 }"
+          :transition="{ duration: 0.35, ease: 'easeOut' }"
+          as="div"
+          class="auth-section-wrapper"
+        >
+          <v-menu offset-y :close-on-content-click="true">
+            <template v-slot:activator="{ props }">
+              <div v-bind="props" class="user-menu-trigger" :class="{ 'mobile-trigger': isMobile }">
+                <LAvatar
+                  :seed="userAvatarSeed"
+                  :src="userAvatarUrl"
+                  :username="username"
+                  :size="isMobile ? 'xs' : 'sm'"
+                  :class="isMobile ? 'mr-1' : 'mr-2'"
+                />
+                <div v-if="!isMobile" class="user-info">
+                  <LTag
+                    :variant="isAdminUser ? 'danger' : 'secondary'"
+                    size="sm"
+                    :prepend-icon="isAdminUser ? 'mdi-shield-account' : ''"
+                  >
+                    {{ isAdminUser ? 'Admin ' : '' }}{{ username }}
+                  </LTag>
+                </div>
+                <LIcon :size="isMobile ? 16 : 20" :class="['menu-arrow', isMobile ? '' : 'ml-1']" color="white">mdi-menu-down</LIcon>
+              </div>
+            </template>
 
-        <v-list density="compact" class="user-menu-list">
-          <v-list-item @click="openSettings" prepend-icon="mdi-account-cog">
-            <v-list-item-title>Profil & Einstellungen</v-list-item-title>
-          </v-list-item>
-          <v-divider class="my-1" />
-          <v-list-item @click="logout" prepend-icon="mdi-logout" class="text-error">
-            <v-list-item-title>Abmelden</v-list-item-title>
-          </v-list-item>
-        </v-list>
-      </v-menu>
+            <v-list density="compact" class="user-menu-list">
+              <v-list-item @click="openSettings" prepend-icon="mdi-account-cog">
+                <v-list-item-title>{{ $t('settings.title') }}</v-list-item-title>
+              </v-list-item>
+              <v-divider class="my-1" />
+              <v-list-item @click="logout" prepend-icon="mdi-logout" class="text-error">
+                <v-list-item-title>{{ $t('auth.logout') }}</v-list-item-title>
+              </v-list-item>
+            </v-list>
+          </v-menu>
+        </Motion>
 
-      <!-- Theme Toggle + Login Button (when NOT logged in) -->
-      <template v-else>
-        <LThemeToggle on-primary class="mr-2" />
-        <LBtn variant="secondary" size="small" @click="goToLogin" prepend-icon="mdi-login">
-          Anmelden
-        </LBtn>
-      </template>
+        <!-- Theme Toggle + Register/Login Buttons (when NOT logged in) -->
+        <Motion
+          v-else
+          key="login-buttons"
+          layout-id="auth-section"
+          :initial="{ opacity: 0, scale: 0.8 }"
+          :animate="{ opacity: 1, scale: 1 }"
+          :exit="{ opacity: 0, scale: 0.8 }"
+          :transition="{ duration: 0.35, ease: 'easeOut' }"
+          as="div"
+          class="auth-section-wrapper"
+        >
+          <LThemeToggle on-primary class="mr-2" />
+          <LBtn
+            v-if="registrationEnabled"
+            variant="text"
+            size="small"
+            @click="goToRegister"
+            prepend-icon="mdi-account-plus"
+            class="mr-1"
+          >
+            {{ isMobile ? '' : $t('auth.register') }}
+          </LBtn>
+          <LBtn variant="secondary" size="small" @click="goToLogin" prepend-icon="mdi-login">
+            {{ $t('auth.login') }}
+          </LBtn>
+        </Motion>
+      </AnimatePresence>
     </v-app-bar>
 
     <v-main>
-      <router-view :key="$route.fullPath"></router-view>
+      <router-view :key="routerViewKey"></router-view>
     </v-main>
 
     <AnalyticsConsentBanner />
@@ -65,6 +100,25 @@
 
     <!-- User Settings Dialog -->
     <UserSettingsDialog v-model="settingsDialogOpen" />
+
+    <!-- Global Snackbar -->
+    <v-snackbar
+      v-model="snackbarModel.show"
+      :color="snackbarModel.color"
+      :timeout="snackbarModel.timeout"
+      location="bottom"
+      class="global-snackbar"
+    >
+      <div class="d-flex align-center">
+        <LIcon v-if="snackbarModel.icon" class="mr-2">{{ snackbarModel.icon }}</LIcon>
+        {{ snackbarModel.message }}
+      </div>
+      <template v-slot:actions>
+        <v-btn variant="text" size="small" @click="snackbarModel.show = false">
+          {{ $t('common.close') }}
+        </v-btn>
+      </template>
+    </v-snackbar>
 
     <v-footer app :height="isMobile ? 24 : 30" class="llars-footer" :class="{ 'is-mobile': isMobile, 'px-2': isMobile, 'px-4': !isMobile }">
       <v-row no-gutters align="center" justify="space-between">
@@ -76,12 +130,12 @@
 
         <v-col v-if="!isMobile" cols="auto">
           <span
-            v-for="(link, index) in links"
-            :key="link"
+            v-for="link in footerLinks"
+            :key="link.key"
             class="footer-link"
             @click="navigateTo(link)"
           >
-            {{ link }}
+            {{ $t(`footer.${link.key}`) }}
           </span>
         </v-col>
       </v-row>
@@ -90,24 +144,56 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
-import { useRouter } from 'vue-router';
+import { ref, computed, onMounted, watch } from 'vue';
+import { useRouter, useRoute } from 'vue-router';
+import { useI18n } from 'vue-i18n';
+import { Motion, AnimatePresence } from 'motion-v';
 import { useAuth } from '@/composables/useAuth';
 import { useAppTheme } from '@/composables/useAppTheme';
 import { usePermissions } from '@/composables/usePermissions';
 import { useMobile } from '@/composables/useMobile';
+import { useSnackbar } from '@/composables/useSnackbar';
+import { usePresenceHeartbeat } from '@/composables/usePresenceHeartbeat';
 import FloatingChat from './components/FloatingChat.vue';
 import UserSettingsDialog from './components/UserSettingsDialog.vue';
 import AnalyticsConsentBanner from './components/common/AnalyticsConsentBanner.vue';
+import { useReferralSystem } from '@/composables/useReferralSystem';
+import { logI18n } from '@/utils/logI18n';
+
+const { t, locale } = useI18n();
+
+// Global Snackbar
+const { snackbarModel } = useSnackbar();
 
 // Globale Konstante für Chat-Aktivierung (kann der Entwickler ändern)
 const ENABLE_CHAT = false; // hier auf true/false setzen um Chat global zu aktivieren/deaktivieren
 
 const router = useRouter();
+const route = useRoute();
 const auth = useAuth();
 const permissions = usePermissions();
 const { applyTheme } = useAppTheme();
 const { isMobile } = useMobile();
+const { registrationEnabled, checkRegistrationStatus } = useReferralSystem();
+const { start: startPresence, stop: stopPresence } = usePresenceHeartbeat();
+
+/**
+ * Smart router-view key that prevents full remount on document switches.
+ * For collab workspaces (LaTeX, Markdown), use workspace-level key so switching
+ * documents only updates editor content, not the entire workspace component.
+ */
+const routerViewKey = computed(() => {
+  const path = route.path
+  // Match LaTeX/Markdown collab workspace routes with document IDs
+  // Pattern: /LatexCollab/workspace/:id/document/:docId or /LatexCollabAI/workspace/:id/document/:docId
+  const collabMatch = path.match(/^\/(LatexCollab|LatexCollabAI|MarkdownCollab)\/workspace\/(\d+)/)
+  if (collabMatch) {
+    // Return workspace-level key, ignoring document ID changes
+    return `${collabMatch[1]}-workspace-${collabMatch[2]}`
+  }
+  // For all other routes, use full path as before
+  return route.fullPath
+})
 
 const isAuthenticated = computed(() => auth.isAuthenticated.value);
 const username = computed(() => {
@@ -123,8 +209,29 @@ const username = computed(() => {
     return '';
   }
 });
+
+watch(
+  isAuthenticated,
+  (value) => {
+    if (value) {
+      startPresence();
+    } else {
+      stopPresence();
+    }
+  },
+  { immediate: true }
+);
 const isAdminUser = computed(() => auth.isAdmin.value);
-const links = ref(['Dokumentation', 'Impressum', 'Datenschutz', 'Kontakt']);
+const mkdocsUrl = computed(() => {
+  const origin = typeof window !== 'undefined' ? window.location.origin : '';
+  return `${origin}/mkdocs/en/`;
+});
+const footerLinks = computed(() => [
+  { key: 'documentation', route: mkdocsUrl.value, external: true },
+  { key: 'imprint', route: '/impressum' },
+  { key: 'privacy', route: '/datenschutz' },
+  { key: 'contact', route: '/kontakt' }
+]);
 const settingsDialogOpen = ref(false);
 
 // Avatar seed from auth composable
@@ -153,21 +260,20 @@ const cleanupOldChatMessages = () => {
       }
     }
   } catch (error) {
-    console.error('Error cleaning up chat messages:', error);
+    logI18n('error', 'logs.app.cleanupChatMessagesError', error);
   }
 };
 
 onMounted(() => {
   cleanupOldChatMessages();
   applyTheme(); // Apply theme on app mount
+  checkRegistrationStatus(); // Check if self-registration is enabled
 });
 
 function logout() {
   // Prüfen, ob es unsichere Änderungen gibt
   if (containsLocalStorageItemWithString('hasUnsaved_ratingChanges_')) {
-    const confirmLogout = window.confirm(
-      'Es gibt ungesicherte Änderungen. Möchten Sie wirklich ausloggen?'
-    );
+    const confirmLogout = window.confirm(t('auth.logoutConfirmation'));
 
     if (!confirmLogout) {
       // Abbrechen, wenn der Benutzer das Logout ablehnt
@@ -203,7 +309,8 @@ function logout() {
     // ignore (e.g., Safari private mode / blocked storage)
   }
 
-  router.push('/login');
+  // Use full page navigation so browser password managers re-run autofill heuristics.
+  window.location.replace('/login');
 }
 
 function containsLocalStorageItemWithString(string) {
@@ -230,21 +337,19 @@ function goToLogin() {
   router.push('/login');
 }
 
+function goToRegister() {
+  router.push('/register');
+}
+
 function navigateTo(link) {
-  switch (link) {
-    case 'Dokumentation':
-      // Navigate to internal documentation page
-      router.push('/docs');
-      break;
-    case 'Impressum':
-      router.push('/impressum');
-      break;
-    case 'Datenschutz':
-      router.push('/datenschutz');
-      break;
-    case 'Kontakt':
-      router.push('/kontakt');
-      break;
+  if (typeof link === 'string') {
+    // Legacy support: if just a string route is passed
+    router.push(link);
+  } else if (link.external) {
+    // External links: open in new tab
+    window.open(link.route, '_blank');
+  } else {
+    router.push(link.route);
   }
 }
 
@@ -410,7 +515,21 @@ function openSettings() {
   transform: translateY(-1px);
 }
 
+.user-menu-trigger:hover .menu-arrow :deep(.l-its-hover__svg) {
+  transform: scale(1.15);
+}
+
+.menu-arrow :deep(.l-its-hover__svg) {
+  transition: transform 0.2s ease;
+}
+
 .user-info {
+  display: flex;
+  align-items: center;
+}
+
+/* Auth Section Animation Wrapper */
+.auth-section-wrapper {
   display: flex;
   align-items: center;
 }

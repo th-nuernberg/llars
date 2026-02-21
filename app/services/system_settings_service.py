@@ -10,7 +10,7 @@ import threading
 import time
 from typing import Optional
 
-from db.db import db
+from db.database import db
 from db.models.system_settings import SystemSettings
 
 logger = logging.getLogger(__name__)
@@ -45,6 +45,16 @@ def _load_settings_to_cache() -> dict:
         'crawler_default_max_depth': settings.crawler_default_max_depth,
         'rag_default_chunk_size': settings.rag_default_chunk_size,
         'rag_default_chunk_overlap': settings.rag_default_chunk_overlap,
+        'llm_ai_log_responses': settings.llm_ai_log_responses,
+        'llm_ai_log_tasks': settings.llm_ai_log_tasks,
+        'llm_ai_log_response_max': settings.llm_ai_log_response_max,
+        'llm_ai_log_prompts': settings.llm_ai_log_prompts,
+        'llm_ai_log_prompt_max': settings.llm_ai_log_prompt_max,
+        'batch_generation_max_parallel': settings.batch_generation_max_parallel,
+        # Referral System
+        'referral_system_enabled': settings.referral_system_enabled,
+        'self_registration_enabled': settings.self_registration_enabled,
+        'default_referral_role': settings.default_referral_role,
     }
 
     with _cache_lock:
@@ -123,3 +133,8 @@ def get_default_chunk_size() -> int:
 def get_default_chunk_overlap() -> int:
     """Get default chunk overlap for RAG (default: 200)."""
     return get_setting('rag_default_chunk_overlap', 200)
+
+
+def get_batch_generation_max_parallel() -> int:
+    """Get max parallel outputs for batch generation (default: 1)."""
+    return get_setting('batch_generation_max_parallel', 1)

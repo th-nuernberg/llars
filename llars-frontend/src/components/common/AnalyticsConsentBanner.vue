@@ -4,16 +4,13 @@
       <v-card class="analytics-consent-card" elevation="6">
         <div class="analytics-consent-content">
           <div class="text">
-            <div class="title">Analytics & Datenschutz</div>
-            <div class="body">
-              Wir nutzen Matomo, um die Nutzung der Plattform zu verbessern. Sie können zustimmen oder ablehnen.
-              Details finden Sie in der Datenschutzerklärung.
-            </div>
+            <div class="title">{{ $t('consent.title') }}</div>
+            <div class="body">{{ $t('consent.body') }}</div>
           </div>
           <div class="actions">
-            <v-btn variant="text" size="small" @click="openPrivacy">Datenschutz</v-btn>
-            <v-btn variant="outlined" size="small" class="ml-2" @click="decline">Ablehnen</v-btn>
-            <v-btn color="primary" size="small" class="ml-2" @click="accept">Zustimmen</v-btn>
+            <v-btn variant="text" size="small" @click="openPrivacy">{{ $t('consent.privacy') }}</v-btn>
+            <v-btn variant="outlined" size="small" class="ml-2" @click="decline">{{ $t('consent.decline') }}</v-btn>
+            <v-btn color="primary" size="small" class="ml-2" @click="accept">{{ $t('consent.accept') }}</v-btn>
           </div>
         </div>
       </v-card>
@@ -24,12 +21,14 @@
 <script setup>
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import {
   useAnalyticsConfig,
   useAnalyticsConsent,
   setAnalyticsConsentState
 } from '@/plugins/llars-metrics'
 
+const { t } = useI18n()
 const router = useRouter()
 const analyticsConfig = useAnalyticsConfig()
 const consentState = useAnalyticsConsent()

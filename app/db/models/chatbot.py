@@ -46,7 +46,7 @@ class Chatbot(db.Model):
 
     # LLM Configuration
     system_prompt: Mapped[str] = mapped_column(db.Text, nullable=False)
-    model_name: Mapped[str] = mapped_column(db.String(100), default='mistralai/Mistral-Small-3.2-24B-Instruct-2506')
+    model_name: Mapped[str] = mapped_column(db.String(100), default='Global/Mistral/Mistral-Small-3.2-24B-Instruct-2506')
     temperature: Mapped[float] = mapped_column(db.Float, default=0.7)
     # max_tokens: None = use model's default/maximum
     max_tokens: Mapped[Optional[int]] = mapped_column(db.Integer, nullable=True, default=None)
@@ -54,7 +54,7 @@ class Chatbot(db.Model):
 
     # RAG Configuration
     rag_enabled: Mapped[bool] = mapped_column(db.Boolean, default=True)
-    rag_retrieval_k: Mapped[int] = mapped_column(db.Integer, default=4)
+    rag_retrieval_k: Mapped[int] = mapped_column(db.Integer, default=8)
     rag_min_relevance: Mapped[float] = mapped_column(db.Float, default=0.05)
     rag_include_sources: Mapped[bool] = mapped_column(db.Boolean, default=True)
     # Reranker: None = use system default, otherwise model_id from llm_models
@@ -116,8 +116,8 @@ Bei Fakten aus dem Kontext: Verweise mit [1], [2] etc. auf die Quelle.
 Bei Gespräch, Smalltalk oder Rückfragen: Antworte einfach natürlich.
 """.strip()
 
-DEFAULT_RAG_CONTEXT_PREFIX = "Kontext:"
-DEFAULT_RAG_CONTEXT_ITEM_TEMPLATE = "[{{id}}] {{title}}:\n{{excerpt}}"
+DEFAULT_RAG_CONTEXT_PREFIX = "Kontext aus der Dokumentation:"
+DEFAULT_RAG_CONTEXT_ITEM_TEMPLATE = "[{{id}}] {{title}}\nLink: {{url}}\n{{excerpt}}"
 
 # Agent mode prompts
 DEFAULT_REFLECTION_PROMPT = """

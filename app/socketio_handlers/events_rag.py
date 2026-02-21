@@ -112,7 +112,7 @@ def _get_queue_for_user(username: str):
 def _get_image_chunk_stats(collection_id: int) -> tuple[int, int]:
     """Return (total_image_chunks, completed_image_chunks) for a collection."""
     try:
-        from db.db import db
+        from db.database import db
         from db.tables import RAGDocumentChunk, CollectionDocumentLink
 
         linked_doc_ids = db.session.query(CollectionDocumentLink.document_id).filter(
@@ -530,3 +530,124 @@ def emit_collection_error(socketio, collection_id: int, error: str):
 
     except Exception as e:
         logger.error(f"[RAG Socket] Error emitting collection error: {e}")
+
+
+def emit_document_uploaded(socketio, document_id: int, collection_id: int, uploaded_by: str):
+    """
+    Emit when a new document is uploaded to a collection.
+    This notifies all users subscribed to the collection for real-time updates.
+
+    Args:
+        socketio: Flask-SocketIO instance
+        document_id: The ID of the uploaded document
+        collection_id: The collection ID the document was uploaded to
+        uploaded_by: Username who uploaded the document
+    """
+    try:
+        from db.tables import RAGDocument, RAGCollection
+        from services.rag.document_service import DocumentService
+
+        document = RAGDocument.query.get(document_id)
+        collection = RAGCollection.query.get(collection_id) if collection_id else None
+
+        if not document:
+            return
+
+        payload = {
+            'event': 'document_uploaded',
+            'document_id': document_id,
+            'collection_id': collection_id,
+            'uploaded_by': uploaded_by,
+            'document': DocumentService.serialize_document(document),
+            'collection': {
+                'id': collection.id,
+                'name': collection.name,
+                'display_name': collection.display_name,
+                'document_count': collection.document_count
+            } if collection else None
+        }
+
+        # Emit to collection room (for users viewing this collection)
+        if collection_id:
+            room = f"rag_collection_{collection_id}"
+            socketio.emit('rag:document_uploaded', payload, room=room)
+            logger.info(f"[RAG Socket] Emitted document_uploaded to room {room}")
+
+        # Also emit to queue subscribers who have access
+        if document:
+            for username in _get_queue_subscriber_usernames():
+                if RAGAccessService.can_view_document(username, document):
+                    socketio.emit('rag:document_uploaded', payload, room=_queue_room(username))
+
+    except Exception as e:
+        logger.error(f"[RAG Socket] Error emitting document uploaded: {e}")
+
+
+def emit_collection_shared(collection, permissions_result: dict, shared_by: str, previous_users: list = None):
+    """
+    Emit when a collection's permissions are changed.
+    This notifies affected users so they can see the collection in real-time.
+    Also notifies users who lost access so the collection disappears from their view.
+
+    Args:
+        collection: The RAGCollection object
+        permissions_result: Result from set_collection_permissions or set_collection_permissions_batch
+        shared_by: Username who changed the permissions
+        previous_users: Optional list of usernames who had access before the change
+    """
+    try:
+        from main import socketio
+
+        if not collection:
+            return
+
+        # Build list of users who now have access
+        current_users = set()
+
+        # From batch result format
+        if 'users' in permissions_result:
+            for user in permissions_result['users']:
+                if isinstance(user, dict):
+                    current_users.add(user.get('target'))
+                else:
+                    current_users.add(user)
+
+        # From legacy result format
+        if 'usernames' in permissions_result:
+            current_users.update(permissions_result['usernames'])
+
+        # Users who lost access (were in previous but not in current)
+        removed_users = set()
+        if previous_users:
+            removed_users = set(previous_users) - current_users
+
+        payload = {
+            'event': 'collection_shared',
+            'collection_id': collection.id,
+            'collection': {
+                'id': collection.id,
+                'name': collection.name,
+                'display_name': collection.display_name,
+                'description': collection.description,
+                'created_by': collection.created_by,
+                'document_count': collection.document_count
+            },
+            'shared_by': shared_by,
+            'current_users': list(current_users),
+            'removed_users': list(removed_users)
+        }
+
+        # Emit to all subscribed users who might be affected
+        for username in _get_queue_subscriber_usernames():
+            # Send to:
+            # - The user who shared (for confirmation)
+            # - Users who now have access (so they see the collection)
+            # - Users who lost access (so the collection disappears)
+            if username == shared_by or username in current_users or username in removed_users:
+                socketio.emit('rag:collection_shared', payload, room=_queue_room(username))
+
+        logger.info(f"[RAG Socket] Emitted collection_shared for collection {collection.id} - "
+                    f"current: {len(current_users)}, removed: {len(removed_users)}")
+
+    except Exception as e:
+        logger.error(f"[RAG Socket] Error emitting collection shared: {e}")

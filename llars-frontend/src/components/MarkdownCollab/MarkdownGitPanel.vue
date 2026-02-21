@@ -4,9 +4,9 @@
     <div v-if="!expanded && !fullscreen" class="git-panel-collapsed" @click="expanded = true">
       <div class="collapsed-content">
         <div class="collapsed-icon-box">
-          <v-icon size="18">mdi-source-branch</v-icon>
+          <LIcon size="18">mdi-source-branch</LIcon>
         </div>
-        <span class="collapsed-label">Git</span>
+        <span class="collapsed-label">{{ $t('workspaceGit.title') }}</span>
         <LTag
           v-if="summary?.hasChanges"
           variant="warning"
@@ -19,10 +19,10 @@
           </span>
         </LTag>
         <LTag v-else variant="gray" size="small">
-          Keine Änderungen
+          {{ $t('workspaceGit.tags.noChanges') }}
         </LTag>
         <v-spacer />
-        <v-icon size="18" class="expand-icon">mdi-chevron-up</v-icon>
+        <LIcon size="18" class="expand-icon">mdi-chevron-up</LIcon>
       </div>
     </div>
 
@@ -31,9 +31,9 @@
       <!-- Header -->
       <div class="panel-header">
         <div class="header-icon-box">
-          <v-icon size="20" color="white">mdi-source-branch</v-icon>
+          <LIcon size="20" color="white">mdi-source-branch</LIcon>
         </div>
-        <span class="header-title">Git Panel</span>
+        <span class="header-title">{{ $t('workspaceGit.header.title') }}</span>
         <LTag
           v-if="summary?.hasChanges"
           variant="warning"
@@ -42,7 +42,7 @@
           +{{ summary?.insertions || 0 }} / -{{ summary?.deletions || 0 }}
         </LTag>
         <LTag v-else variant="success" size="small">
-          Synced
+          {{ $t('workspaceGit.tags.synced') }}
         </LTag>
         <v-spacer />
         <div class="header-actions">
@@ -50,28 +50,28 @@
             icon
             variant="text"
             size="small"
-            title="Aktualisieren"
+            :title="$t('workspaceGit.actions.refresh')"
             @click="loadCommits(true)"
           >
-            <v-icon size="18">mdi-refresh</v-icon>
+            <LIcon size="18">mdi-refresh</LIcon>
           </v-btn>
           <v-btn
             icon
             variant="text"
             size="small"
-            title="Vollbild"
+            :title="$t('workspaceGit.actions.fullscreen')"
             @click="fullscreen = true"
           >
-            <v-icon size="18">mdi-fullscreen</v-icon>
+            <LIcon size="18">mdi-fullscreen</LIcon>
           </v-btn>
           <v-btn
             icon
             variant="text"
             size="small"
-            title="Einklappen"
+            :title="$t('workspaceGit.actions.collapse')"
             @click="expanded = false"
           >
-            <v-icon size="18">mdi-chevron-down</v-icon>
+            <LIcon size="18">mdi-chevron-down</LIcon>
           </v-btn>
         </div>
       </div>
@@ -87,8 +87,8 @@
           <!-- Left: Commit Section -->
           <div class="commit-section">
             <div class="section-title">
-              <v-icon size="16" class="mr-1">mdi-pencil-plus</v-icon>
-              Änderungen committen
+              <LIcon size="16" class="mr-1">mdi-pencil-plus</LIcon>
+              {{ $t('workspaceGit.commit.title') }}
             </div>
 
             <!-- User changes summary -->
@@ -100,7 +100,7 @@
               >
                 <span class="user-dot" :style="{ backgroundColor: u.color }" />
                 <span class="user-name">{{ u.username }}</span>
-                <span class="user-lines">{{ u.changedLines }} Zeilen</span>
+                <span class="user-lines">{{ $t('workspaceGit.commit.lines', { count: u.changedLines }) }}</span>
               </div>
             </div>
 
@@ -110,7 +110,7 @@
 
             <v-text-field
               v-model="commitMessage"
-              placeholder="Commit Message eingeben..."
+              :placeholder="$t('workspaceGit.commit.placeholder')"
               variant="outlined"
               density="compact"
               :disabled="!canCommit"
@@ -120,15 +120,26 @@
 
             <div class="commit-actions">
               <LBtn
+                v-if="canRollback"
+                variant="danger"
+                size="small"
+                :loading="rollingBack"
+                prepend-icon="mdi-undo"
+                :title="$t('workspaceGit.actions.discard')"
+                @click="confirmRollback"
+              >
+                {{ $t('workspaceGit.actions.discard') }}
+              </LBtn>
+              <LBtn
                 variant="primary"
                 size="small"
                 :loading="committing"
                 :disabled="!canSubmitCommit"
                 prepend-icon="mdi-check"
-                title="Änderungen committen"
+                :title="$t('workspaceGit.commit.submitTitle')"
                 @click="submitCommit"
               >
-                Commit
+                {{ $t('workspaceGit.commit.submit') }}
               </LBtn>
             </div>
           </div>
@@ -136,13 +147,13 @@
           <!-- Right: History Section -->
           <div class="history-section">
             <div class="section-title">
-              <v-icon size="16" class="mr-1">mdi-history</v-icon>
-              History
+              <LIcon size="16" class="mr-1">mdi-history</LIcon>
+              {{ $t('workspaceGit.history.title') }}
             </div>
 
             <v-skeleton-loader v-if="isLoading('commits')" type="list-item@4" />
             <div v-else-if="commits.length === 0" class="empty-history">
-              Noch keine Commits
+              {{ $t('workspaceGit.history.empty') }}
             </div>
             <div v-else class="history-list">
               <div
@@ -159,7 +170,7 @@
                 <LTag variant="gray" size="small">#{{ c.id }}</LTag>
               </div>
               <div v-if="commits.length > 5" class="more-commits" @click="fullscreen = true">
-                +{{ commits.length - 5 }} weitere...
+                {{ $t('workspaceGit.history.more', { count: commits.length - 5 }) }}
               </div>
             </div>
           </div>
@@ -173,9 +184,9 @@
         <!-- Fullscreen Header -->
         <div class="fullscreen-header">
           <div class="header-icon-box large">
-            <v-icon size="24" color="white">mdi-source-branch</v-icon>
+            <LIcon size="24" color="white">mdi-source-branch</LIcon>
           </div>
-          <span class="header-title">Git Panel</span>
+          <span class="header-title">{{ $t('workspaceGit.fullscreen.title') }}</span>
           <LTag
             v-if="summary?.hasChanges"
             variant="warning"
@@ -188,20 +199,20 @@
             variant="text"
             size="small"
             prepend-icon="mdi-refresh"
-            title="Commits aktualisieren"
+            :title="$t('workspaceGit.actions.refresh')"
             @click="loadCommits(true)"
           >
-            Aktualisieren
+            {{ $t('common.refresh') }}
           </LBtn>
           <LBtn
             variant="cancel"
             size="small"
             prepend-icon="mdi-fullscreen-exit"
             class="ml-2"
-            title="Vollbild schließen"
+            :title="$t('workspaceGit.actions.exitFullscreen')"
             @click="fullscreen = false"
           >
-            Schließen
+            {{ $t('common.close') }}
           </LBtn>
         </div>
 
@@ -217,29 +228,29 @@
               <!-- Commit Card -->
               <div class="git-card">
                 <div class="card-header">
-                  <v-icon size="18" class="mr-2">mdi-pencil-plus</v-icon>
-                  Neuer Commit
+                  <LIcon size="18" class="mr-2">mdi-pencil-plus</LIcon>
+                  {{ $t('workspaceGit.commit.createTitle') }}
                 </div>
                 <div class="card-content">
                   <!-- Change Stats -->
                   <div v-if="summary?.hasChanges" class="change-stats">
                     <div class="stat-item success">
-                      <v-icon size="16">mdi-plus</v-icon>
-                      <span>{{ summary?.insertions || 0 }} eingefügt</span>
+                      <LIcon size="16">mdi-plus</LIcon>
+                      <span>{{ $t('workspaceGit.commit.linesAdded', { count: summary?.insertions || 0 }) }}</span>
                     </div>
                     <div class="stat-item error">
-                      <v-icon size="16">mdi-minus</v-icon>
-                      <span>{{ summary?.deletions || 0 }} gelöscht</span>
+                      <LIcon size="16">mdi-minus</LIcon>
+                      <span>{{ $t('workspaceGit.commit.linesRemoved', { count: summary?.deletions || 0 }) }}</span>
                     </div>
                   </div>
                   <div v-else class="no-changes">
-                    <v-icon size="32" color="success" class="mb-2">mdi-check-circle</v-icon>
-                    <span>Keine uncommitted Änderungen</span>
+                    <LIcon size="32" color="success" class="mb-2">mdi-check-circle</LIcon>
+                    <span>{{ $t('workspaceGit.files.emptyUncommitted') }}</span>
                   </div>
 
                   <!-- User contributions -->
                   <div v-if="(summary?.users || []).length > 0" class="user-contributions">
-                    <div class="contributions-title">Beiträge</div>
+                    <div class="contributions-title">{{ $t('workspaceGit.commit.contributions') }}</div>
                     <div
                       v-for="u in summary.users"
                       :key="u.username"
@@ -247,7 +258,7 @@
                     >
                       <span class="user-dot large" :style="{ backgroundColor: u.color }" />
                       <span class="user-name">{{ u.username }}</span>
-                      <span class="user-lines">{{ u.changedLines }} Zeilen</span>
+                      <span class="user-lines">{{ $t('workspaceGit.commit.lines', { count: u.changedLines }) }}</span>
                     </div>
                   </div>
 
@@ -259,7 +270,7 @@
 
                   <v-textarea
                     v-model="commitMessage"
-                    placeholder="Beschreibe deine Änderungen..."
+                    :placeholder="$t('workspaceGit.commit.fullscreenPlaceholder')"
                     variant="outlined"
                     density="comfortable"
                     :disabled="!canCommit"
@@ -275,11 +286,66 @@
                       :disabled="!canSubmitCommit"
                       prepend-icon="mdi-check"
                       block
-                      title="Änderungen committen"
+                      :title="$t('workspaceGit.commit.submitTitle')"
                       @click="submitCommit"
                     >
-                      Änderungen committen
+                      {{ $t('workspaceGit.commit.submit') }}
                     </LBtn>
+                    <LBtn
+                      v-if="canRollback"
+                      variant="danger"
+                      :loading="rollingBack"
+                      prepend-icon="mdi-undo"
+                      block
+                      class="mt-2"
+                      :title="$t('workspaceGit.actions.discard')"
+                      @click="confirmRollback"
+                    >
+                      {{ $t('workspaceGit.actions.discard') }}
+                    </LBtn>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Deleted Files Card -->
+              <div v-if="deletedFiles.length > 0" class="git-card mt-4">
+                <div class="card-header deleted-header">
+                  <LIcon size="18" class="mr-2" color="error">mdi-delete</LIcon>
+                  {{ $t('workspaceGit.files.deletedTitle') }}
+                  <v-spacer />
+                  <span class="deleted-count">{{ deletedFiles.length }}</span>
+                </div>
+                <div class="card-content">
+                  <v-skeleton-loader v-if="isLoading('deleted')" type="list-item@3" />
+                  <div v-else class="deleted-files-list">
+                    <div
+                      v-for="file in deletedFiles"
+                      :key="'deleted-' + file.document_id"
+                      class="deleted-file-item"
+                    >
+                      <span class="status-badge error">D</span>
+                      <LIcon size="16" color="error" class="mr-2">mdi-file-remove-outline</LIcon>
+                      <div class="deleted-file-info">
+                        <span class="deleted-file-name">{{ file.title }}</span>
+                        <span class="deleted-file-date">{{ formatDate(file.deleted_at) }}</span>
+                      </div>
+                      <v-tooltip location="left">
+                        <template #activator="{ props: tp }">
+                          <v-btn
+                            v-bind="tp"
+                            icon
+                            variant="tonal"
+                            size="x-small"
+                            color="success"
+                            :loading="restoringFile === file.document_id"
+                            @click.stop="restoreFile(file)"
+                          >
+                            <LIcon size="14">mdi-restore</LIcon>
+                          </v-btn>
+                        </template>
+                        <span>{{ $t('workspaceGit.actions.restore') }}</span>
+                      </v-tooltip>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -289,16 +355,16 @@
             <div class="fullscreen-middle">
               <div class="git-card">
                 <div class="card-header">
-                  <v-icon size="18" class="mr-2">mdi-history</v-icon>
-                  Commit History
+                  <LIcon size="18" class="mr-2">mdi-history</LIcon>
+                  {{ $t('workspaceGit.history.title') }}
                   <v-spacer />
-                  <span class="commit-count">{{ commits.length }} Commits</span>
+                  <span class="commit-count">{{ $t('workspaceGit.history.count', { count: commits.length }) }}</span>
                 </div>
                 <div class="card-content history-content">
                   <v-skeleton-loader v-if="isLoading('commits')" type="list-item@8" />
                   <div v-else-if="commits.length === 0" class="empty-state">
-                    <v-icon size="48" color="grey-lighten-1" class="mb-2">mdi-source-commit</v-icon>
-                    <span>Noch keine Commits vorhanden</span>
+                    <LIcon size="48" color="grey-lighten-1" class="mb-2">mdi-source-commit</LIcon>
+                    <span>{{ $t('workspaceGit.history.empty') }}</span>
                   </div>
                   <div v-else class="history-list-full">
                     <div
@@ -327,8 +393,8 @@
             <div class="fullscreen-right">
               <div class="git-card">
                 <div class="card-header">
-                  <v-icon size="18" class="mr-2">mdi-file-compare</v-icon>
-                  Diff Ansicht
+                  <LIcon size="18" class="mr-2">mdi-file-compare</LIcon>
+                  {{ $t('workspaceGit.diff.title') }}
                   <v-spacer />
                   <v-btn-toggle
                     v-model="compareMode"
@@ -338,8 +404,8 @@
                     mandatory
                     class="mode-toggle"
                   >
-                    <v-btn value="working" size="small" title="Working Tree anzeigen">Working</v-btn>
-                    <v-btn value="commit-range" size="small" title="Commit-Bereich vergleichen">Commits</v-btn>
+                    <v-btn value="working" size="small" :title="$t('workspaceGit.diff.workingTitle')">{{ $t('workspaceGit.diff.working') }}</v-btn>
+                    <v-btn value="commit-range" size="small" :title="$t('workspaceGit.diff.commitTitle')">{{ $t('workspaceGit.diff.commits') }}</v-btn>
                   </v-btn-toggle>
                 </div>
                 <div class="card-content diff-content">
@@ -348,16 +414,16 @@
                     <v-select
                       v-model="baseCommitId"
                       :items="baseCommitOptions"
-                      label="Basis"
+                      :label="$t('workspaceGit.diff.baseLabel')"
                       density="compact"
                       variant="outlined"
                       hide-details
                     />
-                    <v-icon class="mx-2">mdi-arrow-right</v-icon>
+                    <LIcon class="mx-2">mdi-arrow-right</LIcon>
                     <v-select
                       v-model="compareCommitId"
                       :items="commitOptions"
-                      label="Vergleich"
+                      :label="$t('workspaceGit.diff.compareLabel')"
                       density="compact"
                       variant="outlined"
                       hide-details
@@ -384,12 +450,38 @@
         </div>
       </div>
     </v-dialog>
+
+    <!-- Rollback Confirmation Dialog -->
+    <v-dialog v-model="showRollbackConfirm" max-width="420" persistent>
+      <v-card class="rollback-confirm-card">
+        <v-card-title class="d-flex align-center ga-2">
+          <LIcon color="warning">mdi-alert-circle</LIcon>
+          {{ $t('workspaceGit.rollback.title') }}
+        </v-card-title>
+        <v-card-text>
+          <p>{{ $t('workspaceGit.rollback.simpleConfirm') }}</p>
+          <p class="text-medium-emphasis mt-2 mb-0">
+            {{ $t('workspaceGit.rollback.simpleHint') }}
+          </p>
+        </v-card-text>
+        <v-card-actions class="pa-4 pt-0">
+          <v-spacer />
+          <LBtn variant="cancel" @click="cancelRollback">
+            {{ $t('common.cancel') }}
+          </LBtn>
+          <LBtn variant="danger" prepend-icon="mdi-undo" @click="executeRollback">
+            {{ $t('workspaceGit.rollback.confirmAction') }}
+          </LBtn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </div>
 </template>
 
 <script setup>
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import axios from 'axios'
+import { useI18n } from 'vue-i18n'
 import { useSkeletonLoading } from '@/composables/useSkeletonLoading'
 import MarkdownDiffViewer from '@/components/MarkdownCollab/MarkdownDiffViewer.vue'
 import { AUTH_STORAGE_KEYS, getAuthStorageItem } from '@/utils/authStorage'
@@ -397,6 +489,7 @@ import { getSocket } from '@/services/socketService'
 
 const props = defineProps({
   documentId: { type: Number, required: true },
+  workspaceId: { type: Number, default: null },
   summary: { type: Object, default: () => ({ users: [], totalChangedLines: 0, hasChanges: false }) },
   canCommit: { type: Boolean, default: false },
   getContent: { type: Function, default: null },
@@ -404,10 +497,11 @@ const props = defineProps({
   socketNamespace: { type: String, default: 'markdown_collab' }
 })
 
-const emit = defineEmits(['committed'])
+const emit = defineEmits(['committed', 'rollback', 'restored'])
+const { t, locale } = useI18n()
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:55080'
-const { isLoading, withLoading } = useSkeletonLoading(['commits', 'diff'])
+const API_BASE = import.meta.env.VITE_API_BASE_URL || ''
+const { isLoading, withLoading } = useSkeletonLoading(['commits', 'diff', 'deleted'])
 
 const expanded = ref(false)
 const fullscreen = ref(false)
@@ -422,6 +516,10 @@ const commitError = ref('')
 const loadError = ref('')
 const diffError = ref('')
 
+// Workspace-level deleted files
+const deletedFiles = ref([])
+const restoringFile = ref(null)
+
 const diffBaseText = ref('')
 const diffCompareText = ref('')
 const diffBaseLabel = ref('')
@@ -431,20 +529,30 @@ const baselineSnapshot = ref('')
 const baselineCommitId = ref(null)
 const baselineCommitMessage = ref('')
 
+// Rollback state
+const rollingBack = ref(false)
+const showRollbackConfirm = ref(false)
+
 const commitSnapshotCache = new Map()
 let workingSyncTimer = null
 
-const commitOptions = computed(() => commits.value.map((c) => ({
-  title: `#${c.id} · ${c.message}`,
-  value: c.id
-})))
+const commitOptions = computed(() => {
+  locale.value
+  return commits.value.map((c) => ({
+    title: formatCommitLabel(c),
+    value: c.id
+  }))
+})
 
 const INITIAL_BASE = '__initial__'
 
-const baseCommitOptions = computed(() => [
-  { title: 'Initial (kein Commit)', value: INITIAL_BASE },
-  ...commitOptions.value
-])
+const baseCommitOptions = computed(() => {
+  locale.value
+  return [
+    { title: t('workspaceGit.diff.initial'), value: INITIAL_BASE },
+    ...commitOptions.value
+  ]
+})
 
 function authHeaders() {
   const token = getAuthStorageItem(AUTH_STORAGE_KEYS.token)
@@ -452,7 +560,7 @@ function authHeaders() {
 }
 
 function formatDate(iso) {
-  if (!iso) return '—'
+  if (!iso) return t('workspaceGit.diff.emptyLabel')
   try {
     const date = new Date(iso)
     const now = new Date()
@@ -461,11 +569,11 @@ function formatDate(iso) {
     const diffHours = Math.floor(diffMs / 3600000)
     const diffDays = Math.floor(diffMs / 86400000)
 
-    if (diffMins < 1) return 'Gerade eben'
-    if (diffMins < 60) return `vor ${diffMins} Min.`
-    if (diffHours < 24) return `vor ${diffHours} Std.`
-    if (diffDays < 7) return `vor ${diffDays} Tagen`
-    return date.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: '2-digit' })
+    if (diffMins < 1) return t('workspaceGit.relative.justNow')
+    if (diffMins < 60) return t('workspaceGit.relative.minutesAgo', { count: diffMins })
+    if (diffHours < 24) return t('workspaceGit.relative.hoursAgo', { count: diffHours })
+    if (diffDays < 7) return t('workspaceGit.relative.daysAgo', { count: diffDays })
+    return date.toLocaleDateString(locale.value || undefined, { day: '2-digit', month: '2-digit', year: '2-digit' })
   } catch {
     return iso
   }
@@ -476,7 +584,7 @@ function getCommitById(commitId) {
 }
 
 function formatCommitLabel(commit) {
-  if (!commit) return '—'
+  if (!commit) return t('workspaceGit.diff.emptyLabel')
   const message = commit.message ? String(commit.message).trim() : ''
   return `#${commit.id}${message ? ` · ${message}` : ''}`
 }
@@ -526,8 +634,8 @@ async function refreshDiff(force = false) {
         diffCompareText.value = props.getContent ? String(props.getContent() || '') : ''
         diffBaseLabel.value = baselineCommitId.value
           ? `#${baselineCommitId.value}${baselineCommitMessage.value ? ` · ${baselineCommitMessage.value}` : ''}`
-          : 'Initial (kein Commit)'
-        diffCompareLabel.value = 'Working tree'
+          : t('workspaceGit.diff.initial')
+        diffCompareLabel.value = t('workspaceGit.diff.workingTree')
         return
       }
 
@@ -535,8 +643,8 @@ async function refreshDiff(force = false) {
       if (!compareCommit) {
         diffBaseText.value = ''
         diffCompareText.value = ''
-        diffBaseLabel.value = '—'
-        diffCompareLabel.value = '—'
+        diffBaseLabel.value = t('workspaceGit.diff.emptyLabel')
+        diffCompareLabel.value = t('workspaceGit.diff.emptyLabel')
         return
       }
 
@@ -550,14 +658,14 @@ async function refreshDiff(force = false) {
       diffCompareText.value = compareSnapshot || ''
       diffBaseLabel.value = baseCommit
         ? formatCommitLabel(baseCommit)
-        : 'Initial (kein Commit)'
+        : t('workspaceGit.diff.initial')
       diffCompareLabel.value = formatCommitLabel(compareCommit)
     } catch (e) {
       diffBaseText.value = ''
       diffCompareText.value = ''
-      diffBaseLabel.value = '—'
-      diffCompareLabel.value = '—'
-      diffError.value = e?.response?.data?.error || e?.message || 'Diff konnte nicht geladen werden'
+      diffBaseLabel.value = t('workspaceGit.diff.emptyLabel')
+      diffCompareLabel.value = t('workspaceGit.diff.emptyLabel')
+      diffError.value = e?.response?.data?.error || e?.message || t('workspaceGit.errors.diffFailed')
     }
   })
 }
@@ -659,7 +767,7 @@ async function loadCommits(force = false) {
       commits.value = []
       compareCommitId.value = null
       baseCommitId.value = INITIAL_BASE
-      loadError.value = e?.response?.data?.error || e?.message || 'History konnte nicht geladen werden'
+      loadError.value = e?.response?.data?.error || e?.message || t('workspaceGit.errors.loadCommitsFailed')
     }
   })
   await refreshDiff(force)
@@ -691,9 +799,91 @@ async function submitCommit() {
     await loadCommits(true)
     emit('committed')
   } catch (e) {
-    commitError.value = e?.response?.data?.error || e?.message || 'Commit fehlgeschlagen'
+    commitError.value = e?.response?.data?.error || e?.message || t('workspaceGit.errors.commitFailed')
   } finally {
     committing.value = false
+  }
+}
+
+// Rollback functions
+function confirmRollback() {
+  showRollbackConfirm.value = true
+}
+
+function cancelRollback() {
+  showRollbackConfirm.value = false
+}
+
+async function executeRollback() {
+  if (!props.documentId || !baselineCommitId.value) return
+
+  rollingBack.value = true
+  showRollbackConfirm.value = false
+  commitError.value = ''
+
+  try {
+    await axios.post(
+      `${API_BASE}${props.apiPrefix}/documents/${props.documentId}/rollback`,
+      {},
+      { headers: authHeaders() }
+    )
+
+    // Emit rollback event so parent can refresh the editor
+    emit('rollback', props.documentId)
+
+    // Refresh commits and diff
+    await loadCommits(true)
+  } catch (e) {
+    commitError.value = e?.response?.data?.error || e?.message || t('workspaceGit.errors.rollbackFailed')
+  } finally {
+    rollingBack.value = false
+  }
+}
+
+// Check if rollback is possible (has baseline and has changes)
+const canRollback = computed(() => {
+  return baselineCommitId.value !== null && props.summary?.hasChanges === true
+})
+
+// Load workspace-level deleted files
+async function loadDeletedFiles() {
+  if (!props.workspaceId) return
+
+  await withLoading('deleted', async () => {
+    try {
+      const res = await axios.get(
+        `${API_BASE}${props.apiPrefix}/workspaces/${props.workspaceId}/changes`,
+        { headers: authHeaders() }
+      )
+      deletedFiles.value = res.data.deleted_files || []
+    } catch (e) {
+      console.error('Konnte geloeschte Dateien nicht laden:', e)
+      deletedFiles.value = []
+    }
+  })
+}
+
+async function restoreFile(file) {
+  if (!file || restoringFile.value) return
+
+  restoringFile.value = file.document_id
+
+  try {
+    await axios.post(
+      `${API_BASE}${props.apiPrefix}/documents/${file.document_id}/restore`,
+      {},
+      { headers: authHeaders() }
+    )
+
+    // Refresh deleted files list
+    await loadDeletedFiles()
+
+    // Emit event so parent can refresh the tree
+    emit('restored', file.document_id)
+  } catch (e) {
+    loadError.value = e?.response?.data?.error || e?.message || t('workspaceGit.errors.restoreFailed')
+  } finally {
+    restoringFile.value = null
   }
 }
 
@@ -741,6 +931,9 @@ onMounted(async () => {
   await loadCommits()
   if (props.documentId) {
     setupCommitSocket(props.documentId)
+  }
+  if (props.workspaceId) {
+    await loadDeletedFiles()
   }
 })
 
@@ -1256,5 +1449,97 @@ onUnmounted(() => {
   .fullscreen-right {
     grid-column: span 1;
   }
+}
+
+/* Rollback Confirm Dialog */
+.rollback-confirm-card {
+  border-radius: var(--llars-radius) !important;
+}
+
+.rollback-confirm-card .v-card-title {
+  font-size: 16px;
+  font-weight: 600;
+  padding-bottom: 8px;
+}
+
+.rollback-confirm-card .v-card-text p {
+  margin-bottom: 0;
+  line-height: 1.5;
+}
+
+/* Status Badges */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  font-size: 10px;
+  font-weight: 700;
+  border-radius: 3px;
+  flex-shrink: 0;
+  margin-right: 6px;
+}
+
+.status-badge.warning {
+  background: rgba(232, 200, 122, 0.25);
+  color: #f9a825;
+}
+
+.status-badge.info {
+  background: rgba(136, 196, 200, 0.25);
+  color: #0288d1;
+}
+
+.status-badge.error {
+  background: rgba(232, 160, 135, 0.25);
+  color: #c62828;
+}
+
+/* Deleted Files Section */
+.deleted-header {
+  border-bottom-color: rgba(232, 160, 135, 0.3);
+}
+
+.deleted-count {
+  font-weight: 400;
+  font-size: 12px;
+  color: rgb(var(--v-theme-error));
+}
+
+.deleted-files-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.deleted-file-item {
+  display: flex;
+  align-items: center;
+  padding: 8px 10px;
+  background: rgba(232, 160, 135, 0.08);
+  border-radius: var(--llars-radius-sm);
+}
+
+.deleted-file-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.deleted-file-name {
+  font-size: 13px;
+  font-weight: 500;
+  text-decoration: line-through;
+  color: rgb(var(--v-theme-error));
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.deleted-file-date {
+  font-size: 11px;
+  color: rgb(var(--v-theme-on-surface-variant));
 }
 </style>

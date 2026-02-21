@@ -1,151 +1,167 @@
 <template>
-  <div class="likert-scale-container">
-    <span class="likert-label-text">Gut</span>
-    <div class="likert-scale">
-      <div
-        v-for="rating in 5"
-        :key="rating"
-        @click="selectRating(rating)"
-        :class="['likert-option', {
-          'selected-rating': rating === modelValue,
-          'size-1': rating === 1 || rating === 5,
-          'size-2': rating === 2 || rating === 4,
-          'size-3': rating === 3,
-          'green-tone': rating === 1 || rating === 2,
-          'purple-tone': rating === 4 || rating === 5,
-          'gray-tone': rating === 3,
-          'disabled-rating': disabled
-        }]"
-      >
-        <span class="likert-circle">
-          <template v-if="rating === modelValue">
-            <v-icon class="white-icon">mdi-check</v-icon>
-          </template>
-        </span>
-      </div>
-    </div>
-    <span class="likert-label-text">Schlecht</span>
+  <div class="likert-scale" :class="{ disabled }">
+    <button
+      v-for="option in options"
+      :key="option.value"
+      type="button"
+      class="likert-btn"
+      :class="{
+        selected: modelValue === option.value,
+        [`level-${option.level}`]: true
+      }"
+      :disabled="disabled"
+      @click="selectRating(option.value)"
+    >
+      <span class="btn-value">{{ option.value }}</span>
+      <span v-if="option.label" class="btn-label">{{ option.label }}</span>
+    </button>
   </div>
 </template>
 
 <script setup>
-import { defineProps, defineEmits, watch } from 'vue';
+import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 const props = defineProps({
   modelValue: { type: Number, default: null },
-  disabled: { type: Boolean, default: false } // Neues Prop für das Disabled-Flag
-});
-const emit = defineEmits(['update:modelValue']);
+  disabled: { type: Boolean, default: false },
+  min: { type: Number, default: 1 },
+  max: { type: Number, default: 5 },
+  labels: { type: Object, default: null },
+  showLabels: { type: Boolean, default: true }
+})
 
+const emit = defineEmits(['update:modelValue'])
+const { t, locale } = useI18n()
 
-function selectRating(rating) {
-  if (props.disabled) return; // Keine Aktion, wenn disabled aktiv ist
+// Default labels for 5-point scale
+const defaultLabels = computed(() => ({
+  1: t('likertScale.veryGood', 'Sehr gut'),
+  2: t('likertScale.good', 'Gut'),
+  3: t('likertScale.neutral', 'Neutral'),
+  4: t('likertScale.bad', 'Schlecht'),
+  5: t('likertScale.veryBad', 'Sehr schlecht')
+}))
 
-  if (rating === props.modelValue) {
-    emit('update:modelValue', null); // Zurücksetzen auf null
-  } else {
-    emit('update:modelValue', rating); // Den neuen Wert setzen
+const options = computed(() => {
+  const result = []
+  const range = props.max - props.min
+  for (let i = props.min; i <= props.max; i++) {
+    // Calculate level (1-5) for color mapping regardless of actual scale
+    const normalizedPos = range > 0 ? (i - props.min) / range : 0.5
+    const level = Math.round(normalizedPos * 4) + 1 // 1-5
+
+    // Get label - support localized labels from config
+    let label = null
+    if (props.showLabels) {
+      if (props.labels?.[i]) {
+        // If label is an object with locale keys, get the right one
+        const rawLabel = props.labels[i]
+        if (typeof rawLabel === 'object' && rawLabel !== null) {
+          label = rawLabel[locale.value] || rawLabel.de || rawLabel.en || Object.values(rawLabel)[0]
+        } else {
+          label = rawLabel
+        }
+      } else {
+        label = defaultLabels.value[i] || null
+      }
+    }
+
+    result.push({ value: i, label, level })
   }
+  return result
+})
+
+function selectRating(value) {
+  if (props.disabled) return
+  // Toggle: if same value clicked, deselect
+  emit('update:modelValue', value === props.modelValue ? null : value)
 }
 </script>
 
-
 <style scoped>
-.likert-scale-container {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  margin-top: 10px;
-}
-
 .likert-scale {
   display: flex;
-  justify-content: space-around;
-  align-items: center;
-  margin: 0 20px;
-  gap: 5vh;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
-.likert-option {
+.likert-scale.disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.likert-btn {
   display: flex;
   flex-direction: column;
   align-items: center;
-  cursor: pointer;
-  transition: opacity 0.3s, cursor 0.3s;
-}
-
-.disabled-rating {
-  cursor: not-allowed;
-  opacity: 0.5; /* Inaktiver Stil */
-}
-
-.likert-circle {
-  border: 2.5px solid #C8E6C9;
-  border-radius: 50%;
-  margin-bottom: 4px;
-  transition: background-color 0.3s, border-color 0.3s, transform 0.3s;
-  display: flex;
   justify-content: center;
-  align-items: center;
+  min-width: 64px;
+  padding: 10px 12px;
+  border: 2px solid rgba(var(--v-theme-on-surface), 0.12);
+  /* LLARS signature asymmetric border-radius */
+  border-radius: 12px 3px 12px 3px;
+  background: rgb(var(--v-theme-surface));
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex: 1;
 }
 
-.size-1 .likert-circle {
-  width: 44px;
-  height: 44px;
+.likert-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
-.size-2 .likert-circle {
-  width: 36px;
-  height: 36px;
+.likert-btn:disabled {
+  cursor: not-allowed;
 }
 
-.size-3 .likert-circle {
-  width: 28px;
-  height: 28px;
+/* Value number */
+.btn-value {
+  font-size: 1.1rem;
+  font-weight: 700;
+  line-height: 1;
 }
 
-.green-tone .likert-circle {
-  border-color: #66BB6A;
+/* Label text */
+.btn-label {
+  font-size: 0.65rem;
+  text-align: center;
+  color: rgba(var(--v-theme-on-surface), 0.6);
+  line-height: 1.2;
+  margin-top: 4px;
+  max-width: 60px;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.purple-tone .likert-circle {
-  border-color: #AB47BC;
+/* LLARS Color Palette - level 1 (best) to level 5 (worst) */
+.level-1 { --btn-color: #b0ca97; } /* LLARS Primary - green */
+.level-2 { --btn-color: #98d4bb; } /* LLARS Success */
+.level-3 { --btn-color: #D1BC8A; } /* LLARS Secondary - neutral */
+.level-4 { --btn-color: #e8c087; } /* Warning tone */
+.level-5 { --btn-color: #e8a087; } /* LLARS Danger */
+
+.likert-btn:not(.selected) .btn-value {
+  color: var(--btn-color);
 }
 
-.gray-tone .likert-circle {
-  border-color: #BDBDBD;
+.likert-btn:not(.selected):hover:not(:disabled) {
+  border-color: var(--btn-color);
+  background: color-mix(in srgb, var(--btn-color) 12%, rgb(var(--v-theme-surface)));
 }
 
-.selected-rating.green-tone .likert-circle {
-  background-color: #66BB6A;
+.likert-btn.selected {
+  border-color: var(--btn-color);
+  background: var(--btn-color);
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--btn-color) 40%, transparent);
 }
 
-.selected-rating.purple-tone .likert-circle {
-  background-color: #AB47BC;
+.likert-btn.selected .btn-value {
+  color: white;
 }
 
-.selected-rating.gray-tone .likert-circle {
-  background-color: #BDBDBD;
-}
-
-/* Updated hover styles */
-.likert-option:hover .likert-circle {
-  transform: scale(1.1);
-}
-
-.green-tone:hover .likert-circle {
-  background-color: #68c66b;
-  border-color: #54a356;
-}
-
-.purple-tone:hover .likert-circle {
-  background-color: #bb55c1;
-  border-color: #8e4a9a;
-}
-
-.gray-tone:hover .likert-circle {
-  background-color: #d3d3d3;
-  border-color: #515151;
+.likert-btn.selected .btn-label {
+  color: rgba(255, 255, 255, 0.9);
 }
 </style>
-

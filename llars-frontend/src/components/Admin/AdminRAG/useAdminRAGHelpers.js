@@ -4,6 +4,8 @@
  * UI helper functions and formatters.
  */
 
+import { logI18n } from '@/utils/logI18n';
+
 export function useAdminRAGHelpers(state) {
   const {
     activeTab,
@@ -36,7 +38,7 @@ export function useAdminRAGHelpers(state) {
    */
   function editCollection(collection) {
     // TODO: Implement edit collection dialog
-    console.log('Edit collection:', collection);
+    logI18n('log', 'logs.admin.rag.editCollection', collection);
   }
 
   /**

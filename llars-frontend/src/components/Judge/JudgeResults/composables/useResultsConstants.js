@@ -5,53 +5,53 @@
  */
 
 // Metrics Table Headers
-export const METRICS_HEADERS = [
-  { title: 'Säule', key: 'name', sortable: true },
-  { title: 'Siege', key: 'wins', sortable: true },
-  { title: 'Niederlagen', key: 'losses', sortable: true },
-  { title: 'Siegrate', key: 'win_rate', sortable: true },
-  { title: 'Ø Konfidenz', key: 'avg_confidence', sortable: true },
-  { title: 'Score', key: 'score', sortable: true },
-  { title: 'Vergleiche', key: 'total_comparisons', sortable: true }
+export const buildMetricsHeaders = (t) => [
+  { title: t('judge.results.metrics.columns.pillar'), key: 'name', sortable: true },
+  { title: t('judge.results.metrics.columns.wins'), key: 'wins', sortable: true },
+  { title: t('judge.results.metrics.columns.losses'), key: 'losses', sortable: true },
+  { title: t('judge.results.metrics.columns.winRate'), key: 'win_rate', sortable: true },
+  { title: t('judge.results.metrics.columns.avgConfidence'), key: 'avg_confidence', sortable: true },
+  { title: t('judge.results.metrics.columns.score'), key: 'score', sortable: true },
+  { title: t('judge.results.metrics.columns.comparisons'), key: 'total_comparisons', sortable: true }
 ];
 
 // Comparison Table Headers
-export const COMPARISON_HEADERS = [
-  { title: '#', key: 'comparison_index', sortable: true },
-  { title: 'Paarung', key: 'matchup', sortable: false },
-  { title: 'Gewinner', key: 'winner', sortable: true },
-  { title: 'Konfidenz', key: 'confidence_score', sortable: true },
-  { title: 'Zeitpunkt', key: 'evaluated_at', sortable: true }
+export const buildComparisonHeaders = (t) => [
+  { title: t('judge.results.comparisons.columns.index'), key: 'comparison_index', sortable: true },
+  { title: t('judge.results.comparisons.columns.matchup'), key: 'matchup', sortable: false },
+  { title: t('judge.results.comparisons.columns.winner'), key: 'winner', sortable: true },
+  { title: t('judge.results.comparisons.columns.confidence'), key: 'confidence_score', sortable: true },
+  { title: t('judge.results.comparisons.columns.evaluatedAt'), key: 'evaluated_at', sortable: true }
 ];
 
 // Position Swap Analysis Headers (Legacy)
-export const SWAP_HEADERS = [
-  { title: 'Paarung', key: 'matchup', sortable: false },
-  { title: 'Original (Pos 1)', key: 'original', sortable: false },
-  { title: 'Swapped (Pos 2)', key: 'swapped', sortable: false },
-  { title: 'Konsistent', key: 'consistent', sortable: true }
+export const buildSwapHeaders = (t) => [
+  { title: t('judge.results.positionSwap.legacy.columns.matchup'), key: 'matchup', sortable: false },
+  { title: t('judge.results.positionSwap.legacy.columns.original'), key: 'original', sortable: false },
+  { title: t('judge.results.positionSwap.legacy.columns.swapped'), key: 'swapped', sortable: false },
+  { title: t('judge.results.positionSwap.legacy.columns.consistent'), key: 'consistent', sortable: true }
 ];
 
 // Detailed Position Swap Analysis Headers
-export const DETAILED_SWAP_HEADERS = [
-  { title: 'Threads', key: 'threads', sortable: false },
-  { title: 'Original', key: 'original', sortable: false },
-  { title: 'Swapped', key: 'swapped', sortable: false },
-  { title: 'Konsistenz', key: 'consistency', sortable: true },
-  { title: 'Bias', key: 'bias', sortable: true },
-  { title: 'Konf. Δ', key: 'conf_delta', sortable: true }
+export const buildDetailedSwapHeaders = (t) => [
+  { title: t('judge.results.positionSwap.columns.threads'), key: 'threads', sortable: false },
+  { title: t('judge.results.positionSwap.columns.original'), key: 'original', sortable: false },
+  { title: t('judge.results.positionSwap.columns.swapped'), key: 'swapped', sortable: false },
+  { title: t('judge.results.positionSwap.columns.consistency'), key: 'consistency', sortable: true },
+  { title: t('judge.results.positionSwap.columns.bias'), key: 'bias', sortable: true },
+  { title: t('judge.results.positionSwap.columns.confidenceDelta'), key: 'conf_delta', sortable: true }
 ];
 
 // Thread Performance Headers
-export const THREAD_HEADERS = [
-  { title: 'Thread', key: 'thread_id', sortable: true },
-  { title: 'Säule', key: 'pillar', sortable: true },
-  { title: 'Verwendungen', key: 'usage_count', sortable: true },
-  { title: 'Siege', key: 'wins', sortable: true },
-  { title: 'Niederlagen', key: 'losses', sortable: true },
-  { title: 'Win-Rate', key: 'win_rate', sortable: true },
-  { title: 'Likert-Konsistenz', key: 'likert_consistency_score', sortable: true },
-  { title: 'Status', key: 'status', sortable: false }
+export const buildThreadHeaders = (t) => [
+  { title: t('judge.results.threadPerformance.columns.thread'), key: 'thread_id', sortable: true },
+  { title: t('judge.results.threadPerformance.columns.pillar'), key: 'pillar', sortable: true },
+  { title: t('judge.results.threadPerformance.columns.usageCount'), key: 'usage_count', sortable: true },
+  { title: t('judge.results.threadPerformance.columns.wins'), key: 'wins', sortable: true },
+  { title: t('judge.results.threadPerformance.columns.losses'), key: 'losses', sortable: true },
+  { title: t('judge.results.threadPerformance.columns.winRate'), key: 'win_rate', sortable: true },
+  { title: t('judge.results.threadPerformance.columns.likertConsistency'), key: 'likert_consistency_score', sortable: true },
+  { title: t('judge.results.threadPerformance.columns.status'), key: 'status', sortable: false }
 ];
 
 // Likert Metrics for iteration

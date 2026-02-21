@@ -3,31 +3,97 @@
     <!-- Top Bar with Search and Filters (exactly like prototype) -->
     <div class="documents-header">
       <div class="search-wrapper">
-        <v-icon size="16" class="search-icon">mdi-magnify</v-icon>
+        <LIcon size="16" class="search-icon">mdi-magnify</LIcon>
         <input
           v-model="searchQuery"
           type="text"
-          placeholder="Textsuche"
+          :placeholder="$t('kaimo.documents.searchPlaceholder')"
           class="search-input"
         />
       </div>
 
       <div class="filter-buttons">
-        <button class="filter-btn" @click="toggleMerkmale">
-          <span>Merkmale</span>
-          <v-icon size="16">mdi-chevron-down</v-icon>
-        </button>
-        <button class="filter-btn" @click="toggleAkteure">
-          <span>Akteure</span>
-          <v-icon size="16">mdi-chevron-down</v-icon>
-        </button>
+        <!-- Merkmale Filter Dropdown -->
+        <div class="filter-dropdown" ref="merkmaleDropdownRef">
+          <button
+            class="filter-btn"
+            :class="{ 'filter-btn-active': selectedMerkmale.length > 0 }"
+            @click="toggleMerkmale"
+          >
+            <span>{{ $t('kaimo.documents.filters.attributes') }}</span>
+            <span v-if="selectedMerkmale.length > 0" class="filter-count">({{ selectedMerkmale.length }})</span>
+            <LIcon size="16">mdi-chevron-down</LIcon>
+          </button>
+          <div v-if="showMerkmaleDropdown" class="dropdown-menu">
+            <div class="dropdown-header">
+              <span>{{ $t('kaimo.documents.filters.attributes') }}</span>
+              <button v-if="selectedMerkmale.length > 0" class="clear-btn" @click.stop="clearMerkmale">
+                {{ $t('kaimo.documents.filters.clear') }}
+              </button>
+            </div>
+            <div
+              v-for="merkmal in availableMerkmale"
+              :key="merkmal.value"
+              class="dropdown-item"
+              :class="{ 'dropdown-item-selected': selectedMerkmale.includes(merkmal.value) }"
+              @click.stop="toggleMerkmalSelection(merkmal.value)"
+            >
+              <LIcon size="16">{{ selectedMerkmale.includes(merkmal.value) ? 'mdi-checkbox-marked' : 'mdi-checkbox-blank-outline' }}</LIcon>
+              <span>{{ merkmal.label }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Akteure Filter Dropdown -->
+        <div class="filter-dropdown" ref="akteureDropdownRef">
+          <button
+            class="filter-btn"
+            :class="{ 'filter-btn-active': selectedAkteure.length > 0 }"
+            @click="toggleAkteure"
+          >
+            <span>{{ $t('kaimo.documents.filters.actors') }}</span>
+            <span v-if="selectedAkteure.length > 0" class="filter-count">({{ selectedAkteure.length }})</span>
+            <LIcon size="16">mdi-chevron-down</LIcon>
+          </button>
+          <div v-if="showAkteureDropdown" class="dropdown-menu">
+            <div class="dropdown-header">
+              <span>{{ $t('kaimo.documents.filters.actors') }}</span>
+              <button v-if="selectedAkteure.length > 0" class="clear-btn" @click.stop="clearAkteure">
+                {{ $t('kaimo.documents.filters.clear') }}
+              </button>
+            </div>
+            <div
+              v-for="akteur in availableAkteure"
+              :key="akteur.value"
+              class="dropdown-item"
+              :class="{ 'dropdown-item-selected': selectedAkteure.includes(akteur.value) }"
+              @click.stop="toggleAkteurSelection(akteur.value)"
+            >
+              <LIcon size="16">{{ selectedAkteure.includes(akteur.value) ? 'mdi-checkbox-marked' : 'mdi-checkbox-blank-outline' }}</LIcon>
+              <span>{{ akteur.label }}</span>
+            </div>
+          </div>
+        </div>
       </div>
 
       <v-spacer />
 
+      <!-- Active filters chips -->
+      <div v-if="hasActiveFilters" class="active-filters">
+        <span
+          v-for="filter in activeFilterChips"
+          :key="filter.key"
+          class="filter-chip"
+          @click="removeFilter(filter)"
+        >
+          {{ filter.label }}
+          <LIcon size="14">mdi-close</LIcon>
+        </span>
+      </div>
+
       <!-- Toggle button for document list -->
       <button class="toggle-list-btn" @click="showList = !showList">
-        <v-icon size="20">{{ showList ? 'mdi-menu-open' : 'mdi-menu' }}</v-icon>
+        <LIcon size="20">{{ showList ? 'mdi-menu-open' : 'mdi-menu' }}</LIcon>
       </button>
     </div>
 
@@ -48,8 +114,8 @@
             @click="selectDocument(doc)"
           >
             <div class="document-item-indicator">
-              <v-icon v-if="selectedDocument?.id === doc.id" size="14" color="grey-darken-1">mdi-menu-right</v-icon>
-              <v-icon v-else size="14" color="grey-lighten-1">mdi-circle-outline</v-icon>
+              <LIcon v-if="selectedDocument?.id === doc.id" size="14" color="grey-darken-1">mdi-menu-right</LIcon>
+              <LIcon v-else size="14" color="grey-lighten-1">mdi-circle-outline</LIcon>
             </div>
             <div class="document-item-content">
               <div class="document-item-title">{{ doc.title }}</div>
@@ -58,7 +124,7 @@
           </div>
 
           <div v-if="filteredDocuments.length === 0" class="no-documents">
-            <span>Keine Ergebnisse gefunden</span>
+            <span>{{ $t('kaimo.documents.emptySearch') }}</span>
           </div>
         </template>
       </div>
@@ -120,7 +186,7 @@
               </div>
             </template>
             <div v-else class="no-document-selected">
-              <span>Keine Dokumente vorhanden</span>
+              <span>{{ $t('kaimo.documents.empty') }}</span>
             </div>
           </div>
         </div>
@@ -130,7 +196,8 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, nextTick } from 'vue'
+import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 const props = defineProps({
   caseData: {
@@ -143,26 +210,133 @@ const props = defineProps({
   }
 })
 
+const { t, locale } = useI18n()
+
 const searchQuery = ref('')
 const selectedDocument = ref(null)
 const showList = ref(false)  // Hidden by default like prototype
 const docRefs = ref({})
 
+// Filter state
+const showMerkmaleDropdown = ref(false)
+const showAkteureDropdown = ref(false)
+const selectedMerkmale = ref([])
+const selectedAkteure = ref([])
+const merkmaleDropdownRef = ref(null)
+const akteureDropdownRef = ref(null)
+
 const documents = computed(() => props.caseData?.documents || [])
 
+// Available Merkmale (document types and attributes)
+const availableMerkmale = computed(() => {
+  const merkmale = [
+    { value: 'aktenvermerk', label: t('kaimo.documents.types.aktenvermerk') },
+    { value: 'bericht', label: t('kaimo.documents.types.bericht') },
+    { value: 'protokoll', label: t('kaimo.documents.types.protokoll') },
+    { value: 'sonstiges', label: t('kaimo.documents.types.sonstiges') }
+  ]
+  return merkmale
+})
+
+// Extract actors from document content
+const availableAkteure = computed(() => {
+  const actors = new Set()
+  const actorPatterns = [
+    { pattern: /mutter|mama|frau\s+\w+/gi, label: t('kaimo.documents.actors.mother') },
+    { pattern: /vater|papa|herr\s+\w+/gi, label: t('kaimo.documents.actors.father') },
+    { pattern: /kind|malaika|mädchen|junge/gi, label: t('kaimo.documents.actors.child') },
+    { pattern: /lehrer(?:in)?|klassenlehr(?:er|erin)/gi, label: t('kaimo.documents.actors.teacher') },
+    { pattern: /jugendamt|sozialarbeiter(?:in)?|fachkraft/gi, label: t('kaimo.documents.actors.socialWorker') },
+    { pattern: /nachbar(?:n|in)?/gi, label: t('kaimo.documents.actors.neighbor') },
+    { pattern: /anruf(?:er|erin)?|mitteilende person/gi, label: t('kaimo.documents.actors.reporter') }
+  ]
+
+  documents.value.forEach(doc => {
+    const content = (doc.content || '').toLowerCase()
+    actorPatterns.forEach(({ pattern, label }) => {
+      if (pattern.test(content)) {
+        actors.add(label)
+      }
+    })
+  })
+
+  return Array.from(actors).map(label => ({
+    value: label.toLowerCase().replace(/\s+/g, '_'),
+    label
+  }))
+})
+
 const filteredDocuments = computed(() => {
-  if (!searchQuery.value.trim()) {
-    return documents.value
+  let result = documents.value
+
+  // Filter by search query
+  if (searchQuery.value.trim()) {
+    const query = searchQuery.value.toLowerCase()
+    result = result.filter(doc => {
+      return (
+        doc.title?.toLowerCase().includes(query) ||
+        doc.content?.toLowerCase().includes(query) ||
+        doc.document_type?.toLowerCase().includes(query)
+      )
+    })
   }
 
-  const query = searchQuery.value.toLowerCase()
-  return documents.value.filter(doc => {
-    return (
-      doc.title?.toLowerCase().includes(query) ||
-      doc.content?.toLowerCase().includes(query) ||
-      doc.document_type?.toLowerCase().includes(query)
+  // Filter by Merkmale (document types)
+  if (selectedMerkmale.value.length > 0) {
+    result = result.filter(doc =>
+      selectedMerkmale.value.includes(doc.document_type)
     )
+  }
+
+  // Filter by Akteure (actors mentioned in content)
+  if (selectedAkteure.value.length > 0) {
+    result = result.filter(doc => {
+      const content = (doc.content || '').toLowerCase()
+      return selectedAkteure.value.some(akteur => {
+        const patterns = getActorPatterns(akteur)
+        return patterns.some(pattern => pattern.test(content))
+      })
+    })
+  }
+
+  return result
+})
+
+// Get regex patterns for actor filtering
+const getActorPatterns = (akteurKey) => {
+  const patternMap = {
+    [t('kaimo.documents.actors.mother').toLowerCase().replace(/\s+/g, '_')]: [/mutter|mama|frau\s+\w+/gi],
+    [t('kaimo.documents.actors.father').toLowerCase().replace(/\s+/g, '_')]: [/vater|papa|herr\s+\w+/gi],
+    [t('kaimo.documents.actors.child').toLowerCase().replace(/\s+/g, '_')]: [/kind|malaika|mädchen|junge/gi],
+    [t('kaimo.documents.actors.teacher').toLowerCase().replace(/\s+/g, '_')]: [/lehrer(?:in)?|klassenlehr(?:er|erin)/gi],
+    [t('kaimo.documents.actors.socialWorker').toLowerCase().replace(/\s+/g, '_')]: [/jugendamt|sozialarbeiter(?:in)?|fachkraft/gi],
+    [t('kaimo.documents.actors.neighbor').toLowerCase().replace(/\s+/g, '_')]: [/nachbar(?:n|in)?/gi],
+    [t('kaimo.documents.actors.reporter').toLowerCase().replace(/\s+/g, '_')]: [/anruf(?:er|erin)?|mitteilende person/gi]
+  }
+  return patternMap[akteurKey] || []
+}
+
+// Check if any filters are active
+const hasActiveFilters = computed(() => {
+  return selectedMerkmale.value.length > 0 || selectedAkteure.value.length > 0
+})
+
+// Generate active filter chips
+const activeFilterChips = computed(() => {
+  const chips = []
+  selectedMerkmale.value.forEach(m => {
+    const merkmal = availableMerkmale.value.find(am => am.value === m)
+    if (merkmal) {
+      chips.push({ key: `merkmal_${m}`, label: merkmal.label, type: 'merkmal', value: m })
+    }
   })
+  selectedAkteure.value.forEach(a => {
+    const akteur = availableAkteure.value.find(aa => aa.value === a)
+    if (akteur) {
+      chips.push({ key: `akteur_${a}`, label: akteur.label, type: 'akteur', value: a })
+    }
+  })
+  return chips
 })
 
 // Store refs to document elements for scrolling
@@ -180,14 +354,15 @@ const isMainDocument = (doc) => {
 }
 
 // Get document type label
+const documentTypeLabels = computed(() => ({
+  'aktenvermerk': t('kaimo.documents.types.aktenvermerk'),
+  'bericht': t('kaimo.documents.types.bericht'),
+  'protokoll': t('kaimo.documents.types.protokoll'),
+  'sonstiges': t('kaimo.documents.types.sonstiges')
+}))
+
 const getDocumentTypeLabel = (type) => {
-  const labels = {
-    'aktenvermerk': 'Aktenvermerk',
-    'bericht': 'Bericht',
-    'protokoll': 'Protokoll',
-    'sonstiges': 'Dokument'
-  }
-  return labels[type] || 'Aktenvermerk'
+  return documentTypeLabels.value[type] || t('kaimo.documents.types.default')
 }
 
 // Parse content into sections (for main document with headers)
@@ -243,10 +418,10 @@ const selectDocument = (doc) => {
 }
 
 const formatDate = (dateStr) => {
-  if (!dateStr) return '—'
+  if (!dateStr) return t('kaimo.documents.placeholders.date')
   try {
     const date = new Date(dateStr)
-    return date.toLocaleDateString('de-DE', {
+    return date.toLocaleDateString(locale.value || undefined, {
       day: '2-digit',
       month: '2-digit',
       year: 'numeric'
@@ -260,8 +435,8 @@ const formatDateLong = (dateStr) => {
   if (!dateStr) return ''
   try {
     const date = new Date(dateStr)
-    const weekday = date.toLocaleDateString('de-DE', { weekday: 'long' })
-    const day = date.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' })
+    const weekday = date.toLocaleDateString(locale.value || undefined, { weekday: 'long' })
+    const day = date.toLocaleDateString(locale.value || undefined, { day: '2-digit', month: '2-digit', year: 'numeric' })
     return `${weekday}, ${day}`
   } catch (e) {
     return dateStr
@@ -269,12 +444,68 @@ const formatDateLong = (dateStr) => {
 }
 
 const toggleMerkmale = () => {
-  // Placeholder for filter functionality
+  showMerkmaleDropdown.value = !showMerkmaleDropdown.value
+  showAkteureDropdown.value = false
 }
 
 const toggleAkteure = () => {
-  // Placeholder for filter functionality
+  showAkteureDropdown.value = !showAkteureDropdown.value
+  showMerkmaleDropdown.value = false
 }
+
+const toggleMerkmalSelection = (value) => {
+  const index = selectedMerkmale.value.indexOf(value)
+  if (index === -1) {
+    selectedMerkmale.value.push(value)
+  } else {
+    selectedMerkmale.value.splice(index, 1)
+  }
+}
+
+const toggleAkteurSelection = (value) => {
+  const index = selectedAkteure.value.indexOf(value)
+  if (index === -1) {
+    selectedAkteure.value.push(value)
+  } else {
+    selectedAkteure.value.splice(index, 1)
+  }
+}
+
+const clearMerkmale = () => {
+  selectedMerkmale.value = []
+}
+
+const clearAkteure = () => {
+  selectedAkteure.value = []
+}
+
+const removeFilter = (filter) => {
+  if (filter.type === 'merkmal') {
+    const index = selectedMerkmale.value.indexOf(filter.value)
+    if (index !== -1) selectedMerkmale.value.splice(index, 1)
+  } else if (filter.type === 'akteur') {
+    const index = selectedAkteure.value.indexOf(filter.value)
+    if (index !== -1) selectedAkteure.value.splice(index, 1)
+  }
+}
+
+// Close dropdowns when clicking outside
+const handleClickOutside = (event) => {
+  if (merkmaleDropdownRef.value && !merkmaleDropdownRef.value.contains(event.target)) {
+    showMerkmaleDropdown.value = false
+  }
+  if (akteureDropdownRef.value && !akteureDropdownRef.value.contains(event.target)) {
+    showAkteureDropdown.value = false
+  }
+}
+
+onMounted(() => {
+  document.addEventListener('click', handleClickOutside)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('click', handleClickOutside)
+})
 
 // Auto-select first document when data loads
 watch(documents, (newDocs) => {
@@ -337,6 +568,10 @@ watch(documents, (newDocs) => {
   border-left: 1px solid #e2e8f0;
 }
 
+.filter-dropdown {
+  position: relative;
+}
+
 .filter-btn {
   display: flex;
   align-items: center;
@@ -356,6 +591,98 @@ watch(documents, (newDocs) => {
 
 .filter-btn:hover {
   color: #111827;
+}
+
+.filter-btn-active {
+  color: #6366f1;
+  font-weight: 500;
+}
+
+.filter-count {
+  font-size: 12px;
+  color: #6366f1;
+}
+
+/* Dropdown Menu */
+.dropdown-menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  min-width: 200px;
+  background-color: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  z-index: 100;
+  margin-top: 4px;
+}
+
+.dropdown-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid #e2e8f0;
+  font-weight: 500;
+  font-size: 14px;
+  color: #1e293b;
+}
+
+.clear-btn {
+  background: none;
+  border: none;
+  font-size: 12px;
+  color: #6366f1;
+  cursor: pointer;
+}
+
+.clear-btn:hover {
+  text-decoration: underline;
+}
+
+.dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  cursor: pointer;
+  font-size: 14px;
+  color: #374151;
+  transition: background-color 0.15s ease;
+}
+
+.dropdown-item:hover {
+  background-color: #f8fafc;
+}
+
+.dropdown-item-selected {
+  background-color: rgba(99, 102, 241, 0.05);
+  color: #6366f1;
+}
+
+/* Active Filter Chips */
+.active-filters {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-right: 16px;
+}
+
+.filter-chip {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  background-color: rgba(99, 102, 241, 0.1);
+  color: #6366f1;
+  border-radius: 16px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.filter-chip:hover {
+  background-color: rgba(99, 102, 241, 0.2);
 }
 
 .toggle-list-btn {

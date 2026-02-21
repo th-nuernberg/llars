@@ -153,6 +153,7 @@ import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import axios from 'axios';
 import { getSocket } from '@/services/socketService';
+import { logI18n, logI18nParams } from '@/utils/logI18n';
 
 const route = useRoute();
 const router = useRouter();
@@ -209,10 +210,10 @@ const fetchUserStats = async () => {
     if (Array.isArray(response.data)) {
       userStats.value = response.data;
     } else {
-      console.error('Unerwartetes Format der API-Antwort:', response.data);
+      logI18n('error', 'logs.admin.ranker.unexpectedApiFormat', response.data);
     }
   } catch (error) {
-    console.error('Fehler beim Laden der Benutzerstatistiken:', error);
+    logI18n('error', 'logs.admin.stats.userStatsLoadFailed', error);
   }
 };
 
@@ -237,12 +238,17 @@ let socket = null;
 function handleStatsUpdate(data) {
   if (data.stats && Array.isArray(data.stats)) {
     userStats.value = data.stats;
-    console.log('[Ranker] Stats-Update erhalten:', data.stats.length, 'User');
+    logI18nParams('log', 'logs.admin.ranker.statsUpdateReceived', {
+      count: data.stats.length
+    });
   }
 }
 
 function handleRankingSaved(data) {
-  console.log('[Ranker] Ranking gespeichert von User:', data.user_id, 'für Thread:', data.thread_id);
+  logI18nParams('log', 'logs.admin.ranker.rankingSaved', {
+    userId: data.user_id,
+    threadId: data.thread_id
+  });
 }
 
 // WebSocket Setup
@@ -258,13 +264,13 @@ function setupWebSocket() {
     // Subscription starten wenn verbunden
     if (socket.connected) {
       socket.emit('ranker:subscribe', { scenario_id: scenario_id });
-      console.log('[Ranker] WebSocket subscribed für Szenario:', scenario_id);
+      logI18nParams('log', 'logs.admin.ranker.socketSubscribed', { scenarioId: scenario_id });
     }
 
     // Bei Reconnect erneut subscriben
     socket.on('connect', () => {
       socket.emit('ranker:subscribe', { scenario_id: scenario_id });
-      console.log('[Ranker] WebSocket reconnected und subscribed');
+      logI18n('log', 'logs.admin.ranker.socketReconnectedSubscribed');
     });
   }
 }
@@ -276,7 +282,7 @@ function cleanupWebSocket() {
     socket.off('ranker:stats_updated', handleStatsUpdate);
     socket.off('ranker:ranking_saved', handleRankingSaved);
     socket.emit('ranker:unsubscribe', { scenario_id: scenario_id });
-    console.log('[Ranker] WebSocket unsubscribed');
+    logI18n('log', 'logs.admin.ranker.socketUnsubscribed');
   }
 }
 

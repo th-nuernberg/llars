@@ -34,8 +34,8 @@ class RAGCollection(db.Model):
     # Status
     is_active: Mapped[bool] = mapped_column(db.Boolean, default=True, index=True)
 
-    # Permissions
-    is_public: Mapped[bool] = mapped_column(db.Boolean, default=True)
+    # Permissions - default to private, share explicitly
+    is_public: Mapped[bool] = mapped_column(db.Boolean, default=False)
     created_by: Mapped[Optional[str]] = mapped_column(db.String(255), nullable=True)
 
     # Timestamps
@@ -205,8 +205,8 @@ class RAGDocument(db.Model):
     last_retrieved_at: Mapped[Optional[datetime]] = mapped_column(db.DateTime, nullable=True)
     avg_relevance_score: Mapped[Optional[float]] = mapped_column(db.Float, nullable=True)
 
-    # Permissions
-    is_public: Mapped[bool] = mapped_column(db.Boolean, default=True)
+    # Permissions - default to private, inherit from collection
+    is_public: Mapped[bool] = mapped_column(db.Boolean, default=False)
     uploaded_by: Mapped[Optional[str]] = mapped_column(db.String(255), nullable=True, index=True)
 
     # Screenshot for web crawls (Vision-LLM support)

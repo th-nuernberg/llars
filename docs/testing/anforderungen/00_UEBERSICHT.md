@@ -128,7 +128,7 @@ Workspace öffnen → Dokument editieren → Sync → Andere User sehen Änderun
 - [ ] Login/Logout funktioniert
 - [ ] Token-Validierung korrekt
 - [ ] Admin kann Admin-Dashboard sehen
-- [ ] Viewer kann NICHT Admin-Dashboard sehen
+- [ ] Evaluator kann NICHT Admin-Dashboard sehen
 - [ ] Researcher kann nur seine Kacheln sehen
 - [ ] RAG Upload funktioniert
 - [ ] Chatbot antwortet
@@ -161,7 +161,7 @@ Workspace öffnen → Dokument editieren → Sync → Andere User sehen Änderun
 
 ## Quick Reference: Rollen-Zugriff
 
-| Feature | Admin | Researcher | Chatbot_Manager | Viewer |
+| Feature | Admin | Researcher | Chatbot_Manager | Evaluator |
 |---------|-------|------------|-----------------|--------|
 | Home Dashboard | ✅ | ✅ | ✅ | ✅ |
 | Ranking/Rating | ✅ | ✅ | ❌ | ✅ (view) |

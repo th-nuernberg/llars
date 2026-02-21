@@ -21,7 +21,7 @@ Diese Checkliste dient zur systematischen Überprüfung aller Kernfunktionalitä
 |------|--------|---------|
 | Login mit admin/admin123 | ⬜ | |
 | Login mit researcher/admin123 | ⬜ | |
-| Login mit viewer/admin123 | ⬜ | |
+| Login mit evaluator/admin123 | ⬜ | |
 | Falsches Passwort → Fehler | ⬜ | |
 | Logout → Redirect zu /login | ⬜ | |
 | Token wird gelöscht | ⬜ | |
@@ -32,7 +32,7 @@ Diese Checkliste dient zur systematischen Überprüfung aller Kernfunktionalitä
 |------|--------|---------|
 | Admin sieht alle Kacheln | ⬜ | |
 | Researcher: kein Judge/OnCoCo | ⬜ | |
-| Viewer: nur View-Rechte | ⬜ | |
+| Evaluator: nur View-Rechte | ⬜ | |
 | /admin für Nicht-Admin → 403 | ⬜ | |
 
 ---

@@ -10,7 +10,7 @@
       <div class="dialog-header">
         <div class="header-content">
           <div class="header-icon">
-            <v-icon size="28">mdi-chart-box</v-icon>
+            <LIcon size="28">mdi-chart-box</LIcon>
           </div>
           <div class="header-text">
             <h2 class="header-title">{{ scenario?.name || 'Statistiken' }}</h2>
@@ -38,7 +38,7 @@
       <!-- Error State -->
       <div v-else-if="error" class="error-state">
         <div class="error-icon">
-          <v-icon size="48" color="error">mdi-alert-circle-outline</v-icon>
+          <LIcon size="48" color="error">mdi-alert-circle-outline</LIcon>
         </div>
         <p class="error-text">{{ error }}</p>
         <LBtn variant="primary" prepend-icon="mdi-refresh" @click="fetchStats">
@@ -53,7 +53,7 @@
           <!-- Krippendorff's Alpha -->
           <div class="metric-card metric-alpha">
             <div class="metric-icon" :class="alphaIconClass">
-              <v-icon>mdi-chart-bell-curve-cumulative</v-icon>
+              <LIcon>mdi-chart-bell-curve-cumulative</LIcon>
             </div>
             <div class="metric-body">
               <span class="metric-label">Krippendorff's Alpha</span>
@@ -72,7 +72,7 @@
           <!-- Accuracy -->
           <div class="metric-card metric-accuracy">
             <div class="metric-icon icon-success">
-              <v-icon>mdi-bullseye-arrow</v-icon>
+              <LIcon>mdi-bullseye-arrow</LIcon>
             </div>
             <div class="metric-body">
               <span class="metric-label">Gesamtgenauigkeit</span>
@@ -85,10 +85,26 @@
             </div>
           </div>
 
+          <!-- F1 Score -->
+          <div class="metric-card metric-f1">
+            <div class="metric-icon" :class="f1IconClass">
+              <LIcon>mdi-target</LIcon>
+            </div>
+            <div class="metric-body">
+              <span class="metric-label">F1 Score</span>
+              <div class="metric-value-row">
+                <span class="metric-value" :class="f1ColorClass">
+                  {{ overallF1 != null ? overallF1 + '%' : 'N/A' }}
+                </span>
+              </div>
+              <span class="metric-hint">Fake-Erkennung</span>
+            </div>
+          </div>
+
           <!-- Progress -->
           <div class="metric-card metric-progress">
             <div class="metric-icon icon-accent">
-              <v-icon>mdi-percent-circle</v-icon>
+              <LIcon>mdi-percent-circle</LIcon>
             </div>
             <div class="metric-body">
               <span class="metric-label">Fortschritt</span>
@@ -106,7 +122,7 @@
           <!-- Threads -->
           <div class="metric-card metric-threads">
             <div class="metric-icon icon-secondary">
-              <v-icon>mdi-message-text-outline</v-icon>
+              <LIcon>mdi-message-text-outline</LIcon>
             </div>
             <div class="metric-body">
               <span class="metric-label">Konversationen</span>
@@ -130,7 +146,7 @@
         <!-- Vote Distribution Section -->
         <div class="section-card">
           <div class="section-header">
-            <v-icon class="section-icon">mdi-chart-donut</v-icon>
+            <LIcon class="section-icon">mdi-chart-donut</LIcon>
             <h3 class="section-title">Abstimmungsverteilung</h3>
           </div>
           <div class="vote-distribution">
@@ -186,7 +202,7 @@
         <!-- User Stats Section -->
         <div class="section-card users-section">
           <div class="section-header">
-            <v-icon class="section-icon">mdi-account-group</v-icon>
+            <LIcon class="section-icon">mdi-account-group</LIcon>
             <h3 class="section-title">Benutzer-Fortschritt</h3>
             <div class="section-actions">
               <v-text-field
@@ -209,6 +225,7 @@
                   <th class="th-user">Benutzer</th>
                   <th class="th-progress">Fortschritt</th>
                   <th class="th-accuracy">Genauigkeit</th>
+                  <th class="th-f1">F1 Score</th>
                   <th class="th-action"></th>
                 </tr>
               </thead>
@@ -221,14 +238,21 @@
                 >
                   <td class="td-user">
                     <div class="user-info">
-                      <div class="user-avatar" :style="{ backgroundColor: getAvatarColor(user.username) }">
-                        {{ user.username.charAt(0).toUpperCase() }}
-                      </div>
+                      <LAvatar
+                        :username="user.username"
+                        :seed="user.is_llm ? (user.model_id || user.username) : user.avatar_seed"
+                        :src="user.is_llm ? null : user.avatar_url"
+                        :variant="user.is_llm ? 'bottts-neutral' : 'initials'"
+                        size="sm"
+                      />
                       <div class="user-details">
                         <span class="user-name">{{ user.username }}</span>
-                        <LTag :variant="user.role === 'rater' ? 'primary' : 'gray'" size="sm">
-                          {{ user.role === 'rater' ? 'Bewerter' : 'Betrachter' }}
-                        </LTag>
+                        <div class="user-tags">
+                          <LTag :variant="user.role === 'Evaluator' ? 'primary' : 'gray'" size="sm">
+                            {{ user.role === 'Evaluator' ? 'Evaluator' : 'Viewer' }}
+                          </LTag>
+                          <LTag v-if="user.is_llm" variant="info" size="sm">LLM</LTag>
+                        </div>
                       </div>
                     </div>
                   </td>
@@ -249,14 +273,25 @@
                   </td>
                   <td class="td-accuracy">
                     <div v-if="user.accuracy_percent != null" class="accuracy-cell">
-                      <v-icon :color="getAccuracyColor(user.accuracy_percent)" size="18">
+                      <LIcon :color="getAccuracyColor(user.accuracy_percent)" size="18">
                         {{ getAccuracyIcon(user.accuracy_percent) }}
-                      </v-icon>
+                      </LIcon>
                       <span class="accuracy-value" :class="getAccuracyClass(user.accuracy_percent)">
                         {{ user.accuracy_percent }}%
                       </span>
                       <span class="accuracy-detail">
                         ({{ user.correct_count }}/{{ user.correct_count + user.incorrect_count }})
+                      </span>
+                    </div>
+                    <span v-else class="no-data">—</span>
+                  </td>
+                  <td class="td-f1">
+                    <div v-if="user.f1_score_percent != null" class="f1-cell">
+                      <LIcon :color="getF1Color(user.f1_score_percent)" size="18">
+                        {{ getF1Icon(user.f1_score_percent) }}
+                      </LIcon>
+                      <span class="f1-value" :class="getF1Class(user.f1_score_percent)">
+                        {{ user.f1_score_percent }}%
                       </span>
                     </div>
                     <span v-else class="no-data">—</span>
@@ -270,8 +305,8 @@
                   </td>
                 </tr>
                 <tr v-if="!filteredUsers.length">
-                  <td colspan="4" class="empty-row">
-                    <v-icon class="empty-icon">mdi-account-search</v-icon>
+                  <td colspan="5" class="empty-row">
+                    <LIcon class="empty-icon">mdi-account-search</LIcon>
                     <span>Keine Benutzer gefunden</span>
                   </td>
                 </tr>
@@ -283,14 +318,21 @@
         <!-- User Detail Panel (Fullscreen) -->
         <div v-if="isFullscreen && selectedUser" class="section-card user-detail-panel">
           <div class="section-header">
-            <div class="user-avatar large" :style="{ backgroundColor: getAvatarColor(selectedUser.username) }">
-              {{ selectedUser.username.charAt(0).toUpperCase() }}
-            </div>
+            <LAvatar
+              :username="selectedUser.username"
+              :seed="selectedUser.is_llm ? (selectedUser.model_id || selectedUser.username) : selectedUser.avatar_seed"
+              :src="selectedUser.is_llm ? null : selectedUser.avatar_url"
+              :variant="selectedUser.is_llm ? 'bottts-neutral' : 'initials'"
+              size="md"
+            />
             <div class="detail-user-info">
               <h3 class="section-title">{{ selectedUser.username }}</h3>
-              <LTag :variant="selectedUser.role === 'rater' ? 'primary' : 'gray'" size="sm">
-                {{ selectedUser.role === 'rater' ? 'Bewerter' : 'Betrachter' }}
-              </LTag>
+              <div class="user-tags">
+                <LTag :variant="selectedUser.role === 'Evaluator' ? 'primary' : 'gray'" size="sm">
+                  {{ selectedUser.role === 'Evaluator' ? 'Evaluator' : 'Viewer' }}
+                </LTag>
+                <LTag v-if="selectedUser.is_llm" variant="info" size="sm">LLM</LTag>
+              </div>
             </div>
             <div class="section-actions">
               <LIconBtn icon="mdi-close" @click="selectedUser = null" />
@@ -307,6 +349,12 @@
               <span class="detail-stat-label">Genauigkeit</span>
             </div>
             <div class="detail-stat">
+              <span class="detail-stat-value" :class="selectedUser.f1_score_percent != null ? getF1Class(selectedUser.f1_score_percent) : ''">
+                {{ selectedUser.f1_score_percent ?? 'N/A' }}%
+              </span>
+              <span class="detail-stat-label">F1 Score</span>
+            </div>
+            <div class="detail-stat">
               <span class="detail-stat-value">{{ selectedUser.voted_count }}/{{ selectedUser.total_threads }}</span>
               <span class="detail-stat-label">Bewertet</span>
             </div>
@@ -316,7 +364,7 @@
           <div v-if="selectedUser.correct_count > 0 || selectedUser.incorrect_count > 0" class="vote-breakdown-row">
             <div class="breakdown-card fake">
               <div class="breakdown-header">
-                <v-icon size="18" color="#c87a6a">mdi-close-circle</v-icon>
+                <LIcon size="18" color="#c87a6a">mdi-close-circle</LIcon>
                 <span class="breakdown-title">Fake erkannt</span>
               </div>
               <div class="breakdown-stats">
@@ -333,7 +381,7 @@
             </div>
             <div class="breakdown-card real">
               <div class="breakdown-header">
-                <v-icon size="18" color="#4a9f7e">mdi-check-circle</v-icon>
+                <LIcon size="18" color="#4a9f7e">mdi-check-circle</LIcon>
                 <span class="breakdown-title">Echt erkannt</span>
               </div>
               <div class="breakdown-stats">
@@ -353,7 +401,7 @@
           <div class="detail-threads-grid">
             <div class="thread-column">
               <div class="thread-column-header voted">
-                <v-icon size="18">mdi-check-circle</v-icon>
+                <LIcon size="18">mdi-check-circle</LIcon>
                 <span>Bewertet ({{ selectedUser.voted_threads?.length || 0 }})</span>
               </div>
               <div class="thread-list">
@@ -362,9 +410,9 @@
                   :key="thread.thread_id"
                   class="thread-item"
                 >
-                  <v-icon :color="thread.is_correct ? 'success' : 'error'" size="16">
+                  <LIcon :color="thread.is_correct ? 'success' : 'error'" size="16">
                     {{ thread.is_correct ? 'mdi-check-circle' : 'mdi-close-circle' }}
-                  </v-icon>
+                  </LIcon>
                   <div class="thread-info">
                     <span class="thread-subject">{{ thread.subject || `Thread #${thread.thread_id}` }}</span>
                     <div class="thread-meta">
@@ -383,7 +431,7 @@
 
             <div class="thread-column">
               <div class="thread-column-header pending">
-                <v-icon size="18">mdi-clock-outline</v-icon>
+                <LIcon size="18">mdi-clock-outline</LIcon>
                 <span>Ausstehend ({{ selectedUser.pending_threads?.length || 0 }})</span>
               </div>
               <div class="thread-list">
@@ -392,7 +440,7 @@
                   :key="thread.thread_id"
                   class="thread-item pending"
                 >
-                  <v-icon color="grey" size="16">mdi-minus-circle-outline</v-icon>
+                  <LIcon color="grey" size="16">mdi-minus-circle-outline</LIcon>
                   <div class="thread-info">
                     <span class="thread-subject">{{ thread.subject || `Thread #${thread.thread_id}` }}</span>
                   </div>
@@ -409,7 +457,7 @@
       <!-- Footer -->
       <div class="dialog-footer">
         <div class="footer-info">
-          <v-icon size="14" class="mr-1">mdi-information-outline</v-icon>
+          <LIcon size="14" class="mr-1">mdi-information-outline</LIcon>
           <span>Alpha: ≥0.8 Sehr gut • ≥0.667 Akzeptabel • ≥0.4 Moderat</span>
         </div>
         <LBtn variant="cancel" @click="close">Schließen</LBtn>
@@ -421,14 +469,21 @@
   <v-dialog v-model="userDetailsDialog" max-width="650">
     <v-card v-if="selectedUser" class="user-detail-dialog">
       <div class="detail-dialog-header">
-        <div class="user-avatar large" :style="{ backgroundColor: getAvatarColor(selectedUser.username) }">
-          {{ selectedUser.username.charAt(0).toUpperCase() }}
-        </div>
+        <LAvatar
+          :username="selectedUser.username"
+          :seed="selectedUser.is_llm ? (selectedUser.model_id || selectedUser.username) : selectedUser.avatar_seed"
+          :src="selectedUser.is_llm ? null : selectedUser.avatar_url"
+          :variant="selectedUser.is_llm ? 'bottts-neutral' : 'initials'"
+          size="md"
+        />
         <div class="detail-user-info">
           <h3>{{ selectedUser.username }}</h3>
-          <LTag :variant="selectedUser.role === 'rater' ? 'primary' : 'gray'" size="sm">
-            {{ selectedUser.role === 'rater' ? 'Bewerter' : 'Betrachter' }}
-          </LTag>
+          <div class="user-tags">
+            <LTag :variant="selectedUser.role === 'Evaluator' ? 'primary' : 'gray'" size="sm">
+              {{ selectedUser.role === 'Evaluator' ? 'Evaluator' : 'Viewer' }}
+            </LTag>
+            <LTag v-if="selectedUser.is_llm" variant="info" size="sm">LLM</LTag>
+          </div>
         </div>
         <LIconBtn icon="mdi-close" @click="userDetailsDialog = false" />
       </div>
@@ -444,6 +499,12 @@
             <span class="detail-stat-label">Genauigkeit</span>
           </div>
           <div class="detail-stat">
+            <span class="detail-stat-value" :class="selectedUser.f1_score_percent != null ? getF1Class(selectedUser.f1_score_percent) : ''">
+              {{ selectedUser.f1_score_percent ?? 'N/A' }}%
+            </span>
+            <span class="detail-stat-label">F1 Score</span>
+          </div>
+          <div class="detail-stat">
             <span class="detail-stat-value">{{ selectedUser.voted_count }}/{{ selectedUser.total_threads }}</span>
             <span class="detail-stat-label">Bewertet</span>
           </div>
@@ -453,7 +514,7 @@
         <div v-if="selectedUser.correct_count > 0 || selectedUser.incorrect_count > 0" class="vote-breakdown-row compact">
           <div class="breakdown-card fake">
             <div class="breakdown-header">
-              <v-icon size="16" color="#c87a6a">mdi-close-circle</v-icon>
+              <LIcon size="16" color="#c87a6a">mdi-close-circle</LIcon>
               <span class="breakdown-title">Fake erkannt</span>
             </div>
             <div class="breakdown-stats">
@@ -470,7 +531,7 @@
           </div>
           <div class="breakdown-card real">
             <div class="breakdown-header">
-              <v-icon size="16" color="#4a9f7e">mdi-check-circle</v-icon>
+              <LIcon size="16" color="#4a9f7e">mdi-check-circle</LIcon>
               <span class="breakdown-title">Echt erkannt</span>
             </div>
             <div class="breakdown-stats">
@@ -503,9 +564,9 @@
               :key="thread.thread_id"
               class="thread-item"
             >
-              <v-icon :color="thread.is_correct ? 'success' : 'error'" size="18">
+              <LIcon :color="thread.is_correct ? 'success' : 'error'" size="18">
                 {{ thread.is_correct ? 'mdi-check-circle' : 'mdi-close-circle' }}
-              </v-icon>
+              </LIcon>
               <div class="thread-info">
                 <span class="thread-subject">{{ thread.subject || `Thread #${thread.thread_id}` }}</span>
                 <div class="thread-meta">
@@ -526,7 +587,7 @@
               :key="thread.thread_id"
               class="thread-item pending"
             >
-              <v-icon color="grey" size="18">mdi-minus-circle-outline</v-icon>
+              <LIcon color="grey" size="18">mdi-minus-circle-outline</LIcon>
               <div class="thread-info">
                 <span class="thread-subject">{{ thread.subject || `Thread #${thread.thread_id}` }}</span>
               </div>
@@ -542,8 +603,11 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onUnmounted } from 'vue'
 import axios from 'axios'
+import { getSocket } from '@/services/socketService'
+import { logI18n } from '@/utils/logI18n'
+import LAvatar from '@/components/common/LAvatar.vue'
 
 const props = defineProps({
   modelValue: {
@@ -567,6 +631,10 @@ const userSearch = ref('')
 const selectedUser = ref(null)
 const userDetailsDialog = ref(false)
 const detailTab = ref('voted')
+const subscribedScenarioId = ref(null)
+
+let socket = null
+let socketListenersAttached = false
 
 // Computed
 const dialogVisible = computed({
@@ -616,6 +684,46 @@ const alphaIconClass = computed(() => {
   return 'icon-danger'
 })
 
+const overallF1 = computed(() => {
+  if (!stats.value?.user_stats?.length) return null
+  // Calculate overall F1 from all evaluators (human + LLM)
+  let totalFakeCorrect = 0
+  let totalFakeIncorrect = 0
+  let totalRealIncorrect = 0
+  for (const user of stats.value.user_stats) {
+    totalFakeCorrect += user.fake_correct || 0
+    totalFakeIncorrect += user.fake_incorrect || 0
+    totalRealIncorrect += user.real_incorrect || 0
+  }
+  // Precision = TP / (TP + FP), Recall = TP / (TP + FN)
+  const precision = (totalFakeCorrect + totalFakeIncorrect) > 0
+    ? totalFakeCorrect / (totalFakeCorrect + totalFakeIncorrect)
+    : 0
+  const recall = (totalFakeCorrect + totalRealIncorrect) > 0
+    ? totalFakeCorrect / (totalFakeCorrect + totalRealIncorrect)
+    : 0
+  if (precision + recall === 0) return null
+  return Math.round(2 * precision * recall / (precision + recall) * 1000) / 10
+})
+
+const f1ColorClass = computed(() => {
+  const f1 = overallF1.value
+  if (f1 == null) return 'text-muted'
+  if (f1 >= 80) return 'text-success'
+  if (f1 >= 60) return 'text-accent'
+  if (f1 >= 40) return 'text-warning'
+  return 'text-danger'
+})
+
+const f1IconClass = computed(() => {
+  const f1 = overallF1.value
+  if (f1 == null) return 'icon-muted'
+  if (f1 >= 80) return 'icon-success'
+  if (f1 >= 60) return 'icon-accent'
+  if (f1 >= 40) return 'icon-warning'
+  return 'icon-danger'
+})
+
 // Methods
 async function fetchStats() {
   if (!props.scenario?.scenario_id) return
@@ -627,7 +735,7 @@ async function fetchStats() {
     const response = await axios.get(`/api/admin/scenario/${props.scenario.scenario_id}/user_stats`)
     stats.value = response.data
   } catch (err) {
-    console.error('Error fetching stats:', err)
+    logI18n('error', 'logs.admin.stats.fetchStatsFailed', err)
     error.value = err.response?.data?.message || 'Fehler beim Laden der Statistiken'
   } finally {
     loading.value = false
@@ -672,10 +780,22 @@ function getAccuracyClass(percent) {
   return 'accuracy-poor'
 }
 
-function getAvatarColor(username) {
-  const colors = ['#b0ca97', '#D1BC8A', '#88c4c8', '#98d4bb', '#a8c5e2', '#e8c87a']
-  const index = username.charCodeAt(0) % colors.length
-  return colors[index]
+function getF1Color(percent) {
+  if (percent >= 70) return 'success'
+  if (percent >= 50) return 'warning'
+  return 'error'
+}
+
+function getF1Icon(percent) {
+  if (percent >= 70) return 'mdi-check-circle'
+  if (percent >= 50) return 'mdi-minus-circle'
+  return 'mdi-close-circle'
+}
+
+function getF1Class(percent) {
+  if (percent >= 70) return 'f1-good'
+  if (percent >= 50) return 'f1-moderate'
+  return 'f1-poor'
 }
 
 function getFakeAccuracy(user) {
@@ -707,15 +827,84 @@ function close() {
   selectedUser.value = null
 }
 
-// Watch for dialog open
-watch(() => props.modelValue, (newVal) => {
-  if (newVal && props.scenario) {
-    fetchStats()
-  } else {
+function handleSocketStats(payload) {
+  if (!payload || payload.kind !== 'authenticity') return
+  if (!props.scenario?.scenario_id || payload.scenario_id !== props.scenario.scenario_id) return
+  stats.value = payload.stats
+  error.value = null
+  loading.value = false
+}
+
+function subscribeScenario(scenarioId) {
+  if (!socket || !scenarioId) return
+  if (subscribedScenarioId.value === scenarioId) return
+
+  if (subscribedScenarioId.value) {
+    socket.emit('scenario:unsubscribe', { scenario_id: subscribedScenarioId.value })
+  }
+
+  subscribedScenarioId.value = scenarioId
+  socket.emit('scenario:subscribe', { scenario_id: scenarioId })
+}
+
+function setupSocket() {
+  socket = getSocket()
+  if (!socket) return
+
+  if (socketListenersAttached) {
+    if (socket.connected && props.modelValue && props.scenario?.scenario_id) {
+      subscribeScenario(props.scenario.scenario_id)
+    }
+    return
+  }
+
+  socket.on('scenario:stats', handleSocketStats)
+  socket.on('scenario:stats_updated', handleSocketStats)
+  socket.on('connect', handleSocketConnect)
+  socketListenersAttached = true
+
+  if (socket.connected && props.modelValue && props.scenario?.scenario_id) {
+    subscribeScenario(props.scenario.scenario_id)
+  }
+}
+
+function cleanupSocket() {
+  if (!socket) return
+  socket.off('scenario:stats', handleSocketStats)
+  socket.off('scenario:stats_updated', handleSocketStats)
+  socket.off('connect', handleSocketConnect)
+  if (subscribedScenarioId.value) {
+    socket.emit('scenario:unsubscribe', { scenario_id: subscribedScenarioId.value })
+  }
+  subscribedScenarioId.value = null
+  socketListenersAttached = false
+}
+
+function handleSocketConnect() {
+  if (props.modelValue && props.scenario?.scenario_id) {
+    subscribeScenario(props.scenario.scenario_id)
+  }
+}
+
+watch(() => [props.modelValue, props.scenario?.scenario_id], ([isOpen, scenarioId], [wasOpen, prevScenarioId]) => {
+  if (!isOpen) {
+    cleanupSocket()
     stats.value = null
     error.value = null
     selectedUser.value = null
+    return
   }
+
+  setupSocket()
+
+  if (scenarioId) {
+    fetchStats()
+    subscribeScenario(scenarioId)
+  }
+})
+
+onUnmounted(() => {
+  cleanupSocket()
 })
 </script>
 
@@ -1138,6 +1327,13 @@ watch(() => props.modelValue, (newVal) => {
   gap: 4px;
 }
 
+.user-tags {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
 .user-name {
   font-weight: 500;
   color: rgba(0, 0, 0, 0.87);
@@ -1190,6 +1386,20 @@ watch(() => props.modelValue, (newVal) => {
 .accuracy-value.accuracy-good { color: #4a9f7e; }
 .accuracy-value.accuracy-moderate { color: #c9a84a; }
 .accuracy-value.accuracy-poor { color: #c87a6a; }
+
+.f1-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.f1-value {
+  font-weight: 600;
+}
+
+.f1-value.f1-good { color: #4a9f7e; }
+.f1-value.f1-moderate { color: #c9a84a; }
+.f1-value.f1-poor { color: #c87a6a; }
 
 .accuracy-detail {
   font-size: 0.8125rem;

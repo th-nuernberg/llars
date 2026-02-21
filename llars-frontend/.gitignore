@@ -15,6 +15,13 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
+# Test coverage
+coverage/
+
+# Playwright test artifacts
+playwright-report/
+test-results/
+
 # Editor directories and files
 .idea
 .vscode
@@ -23,3 +30,7 @@ pnpm-debug.log*
 *.njsproj
 *.sln
 *.sw?
+.auth/
+
+# Large media files (hosted externally)
+public/videos/*.mp4

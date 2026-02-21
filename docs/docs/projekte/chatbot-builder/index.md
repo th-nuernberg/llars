@@ -1,12 +1,12 @@
 # Chatbot Builder mit Web Crawler RAG Pipeline
 
-!!! warning "Status: Konzept"
-    Dieses Projekt befindet sich in der **Konzeptphase**.
-    Ersetzt das bisherige chatbot-rag Konzept.
+!!! success "Status: Implementiert (Stand Februar 2026)"
+    Der Chatbot Builder ist produktiv nutzbar und ersetzt das frühere `chatbot-rag` Konzept.
+    Der Wizard führt in 5 Schritten von URL → Crawl → Embedding → Konfiguration → Review.
 
 ## Übersicht
 
-Ein **integriertes Chatbot-Builder-System** das nahtlos Web Crawling, RAG-Embedding und Chatbot-Konfiguration verbindet. Benutzer können in wenigen Schritten einen vollständigen, auf einer Website basierenden Chatbot erstellen.
+Ein **integriertes Chatbot-Builder-System**, das Web Crawling, RAG-Embedding und Chatbot-Konfiguration verbindet. Benutzer können in wenigen Schritten einen vollständigen, auf einer Website basierenden Chatbot erstellen.
 
 **Kernidee:**
 ```
@@ -17,75 +17,66 @@ URL eingeben → Crawlen → Embedden → Konfigurieren → Testen → Veröffen
 
 | Dokument | Beschreibung | Status |
 |----------|--------------|--------|
-| [Konzept](konzept.md) | Vollständige Spezifikation mit DB, API, Frontend | Fertig |
-| [Hybrid Search](hybrid-search.md) | RRF-basierte Kombination von Semantic + Lexical Search | Implementiert |
+| [Konzept](konzept.md) | Technische Spezifikation (DB, API, Frontend) | Aktualisiert |
+| [Hybrid Search](hybrid-search.md) | Aktueller Such-Stack (Standard + Agent-Tools) | Implementiert |
+| [Chatbot Wizard](../../guides/chatbot-wizard.md) | Schritt-für-Schritt-Anleitung | Aktuell |
 
-## Geplante Features
+## Umgesetzte Features
 
-### Web Crawler (Fixes & Verbesserungen)
-- Hash-basierte Dokumenten-Deduplizierung
-- n:m Beziehung Collection ↔ Dokumente
-- WebSocket Live-Progress
+- 5‑Schritte Wizard: URL → Crawl → Embedding → Config → Review
+- Web Crawler mit Playwright-Option, Screenshots und optionalem Vision‑LLM
+- Hash‑basierte Deduplizierung + n:m Collection ↔ Dokumente
+- Collection‑basierter Embedding‑Fortschritt via Socket.IO
+- Feld‑Generierung (Name, Display Name, Prompt, Welcome, Icon, Farbe)
+- Pause/Resume/Cancel der Build‑Pipeline
+- Admin‑Testdialog im Chatbot Manager
 
-### RAG Pipeline
-- [x] **Hybrid Search mit RRF** - Semantic + Lexical kombiniert
-- [x] **Query Expansion** - Deutsche Synonyme (inhaber→impressum)
-- Separate `rag_embeddings` Tabelle
-- Collection-basierter Embedding-Fortschritt via WebSocket
-- Real-time Progress-Anzeige pro Collection
+## Offene Punkte
 
-### Chatbot Builder Wizard
-- 5-Schritte Wizard: URL → Crawl → Embed → Config → Test
-- Generate-Buttons (KI-gestützt) für alle Textfelder
-- Kontextbasierte Feldgenerierung
-
-### Admin-Testseite
-- Live-Test mit Quellen-Anzeige
-- Schnell-Einstellungen (Temperature, RAG-K)
-- Statistiken und Analytics
+- Sitemap.xml‑Discovery im Crawler (geplant)
+- Multi‑Collection‑Auswahl im Wizard (aktuell nachträglich im Chatbot Manager)
 
 ## Architektur
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                   Chatbot Builder Wizard                         │
-│   [URL] → [Crawl Progress] → [Embed Progress] → [Config] → [Test]│
+│   [URL] → [Crawl] → [Embedding] → [Config] → [Review/Test]        │
 └─────────────────────────────────────┬───────────────────────────┘
                                       │
                                       ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │                        Backend APIs                              │
 ├─────────────────────────────────────────────────────────────────┤
-│  /api/crawler/*        │  /api/rag/*        │  /api/chatbots/*  │
-│  /api/chatbot-builder/*│  WebSocket Events  │                   │
+│  /api/chatbots/wizard/*  /api/chatbots/*  /api/rag/*  /api/crawler/* │
+│  Socket.IO Events: wizard:*  crawler:*  rag:*                      │
 └─────────────────────────────────────────────────────────────────┘
                                       │
                                       ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │                      Datenbank (MariaDB)                        │
 ├─────────────────────────────────────────────────────────────────┤
-│  rag_documents ←→ rag_embeddings                                │
-│       ↕                                                         │
-│  collection_document_links ←→ rag_collections ←→ chatbots       │
+│  rag_documents ↔ rag_document_chunks                             │
+│  rag_collections ↔ collection_document_links ↔ rag_documents      │
+│  rag_collections ↔ collection_embeddings                          │
+│  chatbots ↔ chatbot_collections                                   │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-## Implementierungs-Phasen
+## Implementierungsstatus (Kurz)
 
-1. [ ] **Datenbank-Refactoring** - Neue Tabellen, Migrations
-2. [ ] **Embedding Worker** - Collection-basiertes Processing, WebSocket
-3. [ ] **Chatbot Builder API** - Create, Generate-Field, Status
-4. [ ] **Frontend Wizard** - 5-Schritte Komponenten
-5. [ ] **Admin-Testseite** - Tweak-Panel, Live-Chat
-6. [ ] **Testing & Polish** - E2E Tests, Performance
+- Datenbank‑Erweiterungen für Build‑Status und Embedding‑Tracking: umgesetzt
+- Wizard‑Backend + Socket.IO Progress: umgesetzt
+- Wizard‑Frontend inkl. Resume: umgesetzt
+- Admin‑Testdialog: umgesetzt
 
 ## Abgrenzung zum alten chatbot-rag Konzept
 
 | Aspekt | Alt (chatbot-rag) | Neu (chatbot-builder) |
 |--------|-------------------|----------------------|
 | Fokus | Separate Chatbot + RAG Verwaltung | Integrierter Builder Workflow |
-| Crawler | Manuell starten | In Wizard integriert |
-| Embedding Progress | Nicht sichtbar | Real-time WebSocket |
-| Konfiguration | Manuell alle Felder | KI-gestützte Generierung |
-| Testseite | Nur Test-Dialog | Vollständige Admin-Seite |
-| Dokumente | Einfache Referenz | Hash-Deduplizierung + n:m |
+| Crawler | Manuell starten | Im Wizard integriert |
+| Embedding Progress | Nicht sichtbar | Live via Socket.IO |
+| Konfiguration | Manuell alle Felder | KI‑gestützte Generierung |
+| Testseite | Einfacher Test‑Dialog | Admin‑Testdialog |
+| Dokumente | Einfache Referenz | Hash‑Deduplizierung + n:m |

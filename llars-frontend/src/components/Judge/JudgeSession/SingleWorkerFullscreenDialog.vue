@@ -10,10 +10,10 @@
       <!-- Header -->
       <v-toolbar color="primary" density="compact">
         <v-btn icon @click="$emit('close')">
-          <v-icon>mdi-close</v-icon>
+          <LIcon>mdi-close</LIcon>
         </v-btn>
         <v-toolbar-title>
-          <v-icon class="mr-2" :class="{ 'pulse-icon': isStreaming }">mdi-broadcast</v-icon>
+          <LIcon class="mr-2" :class="{ 'pulse-icon': isStreaming }">mdi-broadcast</LIcon>
           Live Vergleich #{{ (currentComparison?.comparison_index || 0) + 1 }}
         </v-toolbar-title>
         <v-spacer></v-spacer>
@@ -22,9 +22,9 @@
           class="mr-2"
           variant="flat"
         >
-          <v-icon start size="small" :class="{ 'rotating': isStreaming }">
+          <LIcon start size="small" :class="{ 'rotating': isStreaming }">
             {{ isStreaming ? 'mdi-loading' : 'mdi-check-circle' }}
-          </v-icon>
+          </LIcon>
           {{ isStreaming ? 'Streamt...' : 'Abgeschlossen' }}
         </v-chip>
         <v-chip color="white" variant="outlined" class="mr-2">
@@ -39,16 +39,16 @@
           <v-col cols="12" md="3" class="d-flex flex-column">
             <v-card class="flex-grow-1 d-flex flex-column" variant="outlined">
               <v-card-title class="bg-blue py-2">
-                <v-icon class="mr-2">mdi-alpha-a-circle</v-icon>
+                <LIcon class="mr-2">mdi-alpha-a-circle</LIcon>
                 Thread A - {{ currentComparison?.pillar_a_name }}
               </v-card-title>
               <v-divider></v-divider>
               <v-card-text class="flex-grow-1 overflow-y-auto thread-scroll">
                 <div v-for="(msg, idx) in currentComparison?.thread_a_messages" :key="idx" class="message-item mb-3">
                   <div class="message-role text-caption font-weight-bold mb-1" :class="msg.role === 'assistant' ? 'text-primary' : 'text-secondary'">
-                    <v-icon size="small" class="mr-1">
+                    <LIcon size="small" class="mr-1">
                       {{ msg.role === 'user' ? 'mdi-account' : 'mdi-message-reply' }}
-                    </v-icon>
+                    </LIcon>
                     {{ msg.role === 'assistant' ? 'BERATER' : 'RATSUCHENDE' }}
                   </div>
                   <div class="message-content text-body-2">{{ msg.content }}</div>
@@ -61,9 +61,9 @@
           <v-col cols="12" md="6" class="d-flex flex-column">
             <v-card class="flex-grow-1 d-flex flex-column" variant="outlined">
               <v-card-title class="bg-primary py-2 d-flex align-center">
-                <v-icon class="mr-2" :class="{ 'rotating': isStreaming }">
+                <LIcon class="mr-2" :class="{ 'rotating': isStreaming }">
                   {{ isStreaming ? 'mdi-loading' : 'mdi-robot' }}
-                </v-icon>
+                </LIcon>
                 LLM Live Output
                 <v-spacer></v-spacer>
                 <!-- Display Mode Toggle -->
@@ -77,11 +77,11 @@
                   variant="outlined"
                 >
                   <v-btn value="raw" size="small">
-                    <v-icon start size="small">mdi-code-braces</v-icon>
+                    <LIcon start size="small">mdi-code-braces</LIcon>
                     Raw
                   </v-btn>
                   <v-btn value="formatted" size="small">
-                    <v-icon start size="small">mdi-format-list-bulleted</v-icon>
+                    <LIcon start size="small">mdi-format-list-bulleted</LIcon>
                     Formatiert
                   </v-btn>
                 </v-btn-toggle>
@@ -122,9 +122,9 @@
                       class="mb-2"
                       :class="{ 'pulse-chip': isStreaming && !parsedStreamJson?.winner }"
                     >
-                      <v-icon start :class="{ 'rotating': isStreaming && !parsedStreamJson?.winner }">
+                      <LIcon start :class="{ 'rotating': isStreaming && !parsedStreamJson?.winner }">
                         {{ isStreaming && !parsedStreamJson?.winner ? 'mdi-loading' : 'mdi-trophy' }}
-                      </v-icon>
+                      </LIcon>
                       {{ parsedStreamJson?.winner || (isStreaming ? '...' : '?') }}
                     </v-chip>
                     <div class="text-center">
@@ -212,7 +212,7 @@
                 <!-- Empty State -->
                 <div v-if="!llmStreamContent" class="d-flex flex-column align-center justify-center h-100 text-medium-emphasis">
                   <v-progress-circular v-if="isStreaming" indeterminate size="64" color="primary" class="mb-4"></v-progress-circular>
-                  <v-icon v-else size="64" class="mb-4">mdi-text-box-outline</v-icon>
+                  <LIcon v-else size="64" class="mb-4">mdi-text-box-outline</LIcon>
                   <div class="text-h6">{{ isStreaming ? 'Warte auf LLM-Ausgabe...' : 'Stream startet wenn der Vergleich beginnt' }}</div>
                 </div>
 
@@ -240,21 +240,21 @@
                           :color="getStepByKey(stepKey) ? 'primary' : 'grey'"
                           class="mr-2"
                         >
-                          <v-icon size="16" :class="{ 'rotating': getStepByKey(stepKey)?.isStreaming }">
+                          <LIcon size="16" :class="{ 'rotating': getStepByKey(stepKey)?.isStreaming }">
                             {{ getStepByKey(stepKey)?.isStreaming ? 'mdi-loading' : stepDef.icon }}
-                          </v-icon>
+                          </LIcon>
                         </v-avatar>
                         <span class="step-title" :class="{ 'text-medium-emphasis': !getStepByKey(stepKey) }">
                           {{ stepDef.title }}
                         </span>
                         <v-spacer></v-spacer>
-                        <v-icon
+                        <LIcon
                           v-if="getStepByKey(stepKey) && !getStepByKey(stepKey)?.isStreaming"
                           size="small"
                           color="success"
                         >
                           mdi-check-circle
-                        </v-icon>
+                        </LIcon>
                         <v-progress-circular
                           v-else-if="getStepByKey(stepKey)?.isStreaming"
                           indeterminate
@@ -281,7 +281,7 @@
                   <!-- Final Justification - at the bottom -->
                   <div v-if="parsedStreamJson?.final_justification" class="justification-section mt-4">
                     <div class="d-flex align-center mb-2">
-                      <v-icon size="small" color="primary" class="mr-2">mdi-text-box-check</v-icon>
+                      <LIcon size="small" color="primary" class="mr-2">mdi-text-box-check</LIcon>
                       <span class="text-subtitle-2 font-weight-bold">Abschließende Begründung</span>
                     </div>
                     <v-card variant="tonal" color="primary" class="pa-3">
@@ -293,7 +293,7 @@
                   <v-expansion-panels class="mt-4" variant="accordion">
                     <v-expansion-panel>
                       <v-expansion-panel-title class="py-2">
-                        <v-icon size="small" class="mr-2">mdi-code-json</v-icon>
+                        <LIcon size="small" class="mr-2">mdi-code-json</LIcon>
                         <span class="text-caption">Raw JSON anzeigen</span>
                       </v-expansion-panel-title>
                       <v-expansion-panel-text>
@@ -312,7 +312,7 @@
                   rounded
                   @click="$emit('enable-auto-scroll')"
                 >
-                  <v-icon start>mdi-arrow-down</v-icon>
+                  <LIcon start>mdi-arrow-down</LIcon>
                   Folgen
                 </v-btn>
               </v-card-text>
@@ -323,16 +323,16 @@
           <v-col cols="12" md="3" class="d-flex flex-column">
             <v-card class="flex-grow-1 d-flex flex-column" variant="outlined">
               <v-card-title class="bg-green py-2">
-                <v-icon class="mr-2">mdi-alpha-b-circle</v-icon>
+                <LIcon class="mr-2">mdi-alpha-b-circle</LIcon>
                 Thread B - {{ currentComparison?.pillar_b_name }}
               </v-card-title>
               <v-divider></v-divider>
               <v-card-text class="flex-grow-1 overflow-y-auto thread-scroll">
                 <div v-for="(msg, idx) in currentComparison?.thread_b_messages" :key="idx" class="message-item mb-3">
                   <div class="message-role text-caption font-weight-bold mb-1" :class="msg.role === 'assistant' ? 'text-primary' : 'text-secondary'">
-                    <v-icon size="small" class="mr-1">
+                    <LIcon size="small" class="mr-1">
                       {{ msg.role === 'user' ? 'mdi-account' : 'mdi-message-reply' }}
-                    </v-icon>
+                    </LIcon>
                     {{ msg.role === 'assistant' ? 'BERATER' : 'RATSUCHENDE' }}
                   </div>
                   <div class="message-content text-body-2">{{ msg.content }}</div>
@@ -362,7 +362,7 @@
             </v-col>
             <v-col cols="12" md="4" class="text-right">
               <v-chip size="small" :color="getStatusColor(session?.status)" class="mr-2">
-                <v-icon start size="small">{{ getStatusIcon(session?.status) }}</v-icon>
+                <LIcon start size="small">{{ getStatusIcon(session?.status) }}</LIcon>
                 {{ getStatusText(session?.status) }}
               </v-chip>
               <span class="text-caption">Session: {{ session?.session_name }}</span>

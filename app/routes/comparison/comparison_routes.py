@@ -1,4 +1,4 @@
-from flask import jsonify, g
+from flask import jsonify, g, request
 
 from auth.decorators import authentik_required
 from decorators.error_handler import handle_api_errors, NotFoundError
@@ -15,11 +15,18 @@ from db.tables import ComparisonSession, ComparisonMessage, FeatureFunctionType
 def list_sessions_for_comparison():
     user = g.authentik_user
 
+    # Optional filtering by scenario_id
+    scenario_id_filter = request.args.get('scenario_id', type=int)
+
     comparison_function_type = FeatureFunctionType.query.filter_by(name='comparison').first()
     if not comparison_function_type:
         raise NotFoundError('Comparison function type not found')
 
     comparison_scenarios = get_user_scenarios(user.id, comparison_function_type.function_type_id)
+
+    # Filter scenarios if scenario_id provided
+    if scenario_id_filter:
+        comparison_scenarios = [s for s in comparison_scenarios if s.scenario_id == scenario_id_filter]
 
     all_sessions = []
     for scenario in comparison_scenarios:

@@ -9,7 +9,7 @@
       class="mobile-table-drawer"
     >
       <div class="drawer-header">
-        <v-icon size="18">mdi-table-multiple</v-icon>
+        <LIcon size="18">mdi-table-multiple</LIcon>
         <span>Tabellen</span>
         <LTag variant="gray" size="small" class="ml-auto">{{ tables.length }}</LTag>
       </div>
@@ -31,7 +31,7 @@
           :class="['table-item', { 'table-item--active': selectedTable === table }]"
           @click="selectTable(table); mobileTableDrawerOpen = false"
         >
-          <v-icon size="16" class="table-icon">mdi-table</v-icon>
+          <LIcon size="16" class="table-icon">mdi-table</LIcon>
           <span class="table-name">{{ table }}</span>
         </div>
       </div>
@@ -41,9 +41,9 @@
     <div class="explorer-header">
       <div class="header-left">
         <v-btn v-if="isMobile" icon variant="text" size="small" class="mr-1" @click="mobileTableDrawerOpen = true">
-          <v-icon>mdi-menu</v-icon>
+          <LIcon>mdi-menu</LIcon>
         </v-btn>
-        <v-icon :size="isMobile ? 20 : 24">mdi-database</v-icon>
+        <LIcon :size="isMobile ? 20 : 24">mdi-database</LIcon>
         <h2>{{ isMobile ? 'DB' : 'DB Explorer' }}</h2>
         <LTag :variant="connectionVariant" :prepend-icon="isMobile ? '' : connectionIcon" size="small">
           {{ isMobile ? '' : connectionLabel }}
@@ -52,7 +52,7 @@
       </div>
       <div class="header-right">
         <LBtn :icon="isMobile" :prepend-icon="isMobile ? '' : 'mdi-refresh'" variant="tonal" size="small" @click="refreshTables">
-          <v-icon v-if="isMobile">mdi-refresh</v-icon>
+          <LIcon v-if="isMobile">mdi-refresh</LIcon>
           <template v-else>Refresh</template>
         </LBtn>
       </div>
@@ -60,7 +60,7 @@
 
     <!-- Error Banner -->
     <div v-if="errorMessage" class="error-banner">
-      <v-icon size="18">mdi-alert-circle</v-icon>
+      <LIcon size="18">mdi-alert-circle</LIcon>
       <span>{{ errorMessage }}</span>
     </div>
 
@@ -69,7 +69,7 @@
       <!-- Sidebar: Table List (Desktop only) -->
       <div v-if="!isMobile" class="sidebar">
         <div class="sidebar-header">
-          <v-icon size="18">mdi-table-multiple</v-icon>
+          <LIcon size="18">mdi-table-multiple</LIcon>
           <span>Tabellen</span>
           <LTag variant="gray" size="small" class="ml-auto">{{ tables.length }}</LTag>
         </div>
@@ -95,12 +95,12 @@
               :class="['table-item', { 'table-item--active': selectedTable === table }]"
               @click="selectTable(table)"
             >
-              <v-icon size="16" class="table-icon">mdi-table</v-icon>
+              <LIcon size="16" class="table-icon">mdi-table</LIcon>
               <span class="table-name">{{ table }}</span>
-              <v-icon v-if="selectedTable === table" size="14" class="active-icon">mdi-chevron-right</v-icon>
+              <LIcon v-if="selectedTable === table" size="14" class="active-icon">mdi-chevron-right</LIcon>
             </div>
             <div v-if="filteredTables.length === 0" class="empty-tables">
-              <v-icon size="24">mdi-table-off</v-icon>
+              <LIcon size="24">mdi-table-off</LIcon>
               <span>Keine Tabellen gefunden</span>
             </div>
           </template>
@@ -114,9 +114,9 @@
           <!-- Mobile: show selected table name -->
           <div v-if="isMobile" class="control-group control-group--grow">
             <div class="selected-table" @click="mobileTableDrawerOpen = true">
-              <v-icon size="16">mdi-table</v-icon>
+              <LIcon size="16">mdi-table</LIcon>
               <span>{{ selectedTable || 'Tabelle wählen' }}</span>
-              <v-icon size="14" class="ml-auto">mdi-chevron-down</v-icon>
+              <LIcon size="14" class="ml-auto">mdi-chevron-down</LIcon>
             </div>
           </div>
 
@@ -125,7 +125,7 @@
             <div class="control-group">
               <label class="control-label">Tabelle</label>
               <div class="selected-table">
-                <v-icon size="16">mdi-table</v-icon>
+                <LIcon size="16">mdi-table</LIcon>
                 <span>{{ selectedTable || 'Keine ausgewählt' }}</span>
               </div>
             </div>
@@ -159,7 +159,7 @@
           </template>
 
           <LBtn :icon="isMobile" :prepend-icon="isMobile ? '' : 'mdi-sync'" variant="primary" size="small" @click="resubscribe">
-            <v-icon v-if="isMobile">mdi-sync</v-icon>
+            <LIcon v-if="isMobile">mdi-sync</LIcon>
             <template v-else>Laden</template>
           </LBtn>
         </div>
@@ -185,13 +185,13 @@
           <v-skeleton-loader v-if="isLoading('table')" type="table" class="skeleton-table" />
 
           <div v-else-if="!selectedTable" class="empty-state">
-            <v-icon size="64" class="empty-icon">mdi-table-arrow-left</v-icon>
+            <LIcon size="64" class="empty-icon">mdi-table-arrow-left</LIcon>
             <h3>Tabelle auswählen</h3>
             <p>Wähle eine Tabelle aus der Liste um die Daten anzuzeigen</p>
           </div>
 
           <div v-else-if="rows.length === 0" class="empty-state">
-            <v-icon size="64" class="empty-icon">mdi-database-off</v-icon>
+            <LIcon size="64" class="empty-icon">mdi-database-off</LIcon>
             <h3>Keine Daten</h3>
             <p>Die Tabelle <strong>{{ selectedTable }}</strong> enthält keine Einträge</p>
           </div>

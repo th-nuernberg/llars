@@ -4,14 +4,25 @@
       <v-row align="center" justify="space-between">
         <!-- Left Section: Links -->
         <v-col cols="12" md="6" class="text-center text-md-left">
-          <router-link
-            v-for="item in links"
-            :key="item.title"
-            :to="item.to"
-            class="footer-link mx-2"
-          >
-            {{ item.title }}
-          </router-link>
+          <template v-for="item in links" :key="item.title">
+            <!-- External links (like mkdocs) -->
+            <a
+              v-if="item.external"
+              :href="item.to"
+              class="footer-link mx-2"
+              target="_blank"
+            >
+              {{ item.title }}
+            </a>
+            <!-- Internal Vue routes -->
+            <router-link
+              v-else
+              :to="item.to"
+              class="footer-link mx-2"
+            >
+              {{ item.title }}
+            </router-link>
+          </template>
         </v-col>
 
         <!-- Right Section: Copyright -->
@@ -26,24 +37,35 @@
 </template>
 
 <script setup>
-  const links = [
+  import { computed } from 'vue'
+  import { useI18n } from 'vue-i18n'
+
+  const { t } = useI18n()
+
+  const docsUrl = computed(() => {
+    const origin = typeof window !== 'undefined' ? window.location.origin : ''
+    return `${origin}/mkdocs/en/`
+  })
+
+  const links = computed(() => [
     {
-      title: 'Dokumentation',
-      to: '/docs',
+      title: t('footer.documentation'),
+      to: docsUrl.value,
+      external: true,
     },
     {
-      title: 'Impressum',
+      title: t('footer.imprint'),
       to: '/Impressum',
     },
     {
-      title: 'Datenschutz',
+      title: t('footer.privacy'),
       to: '/Datenschutz',
     },
     {
-      title: 'Kontakt',
+      title: t('footer.contact'),
       to: '/Kontakt',
     },
-  ]
+  ])
 </script>
 
 <style scoped lang="sass">

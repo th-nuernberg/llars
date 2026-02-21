@@ -17,11 +17,11 @@
           <div class="d-flex" :class="isMobile ? 'justify-space-between w-100' : 'flex-wrap ga-2'">
             <LBtn
               variant="secondary"
-              :prepend-icon="isMobile ? undefined : 'mdi-wizard-hat'"
+              :prepend-icon="isMobile ? undefined : 'wand'"
               :size="isMobile ? 'small' : 'default'"
               @click="openWizard()"
             >
-              <v-icon v-if="isMobile" size="18" class="mr-1">mdi-wizard-hat</v-icon>
+              <LIcon v-if="isMobile" size="18" class="mr-1">wand</LIcon>
               {{ isMobile ? 'Wizard' : 'Builder Wizard' }}
             </LBtn>
             <LBtn
@@ -30,7 +30,7 @@
               :size="isMobile ? 'small' : 'default'"
               @click="openCreateDialog"
             >
-              <v-icon v-if="isMobile" size="18" class="mr-1">mdi-plus</v-icon>
+              <LIcon v-if="isMobile" size="18" class="mr-1">mdi-plus</LIcon>
               {{ isMobile ? 'Neu' : 'Neuer Chatbot' }}
             </LBtn>
           </div>
@@ -39,10 +39,18 @@
         <!-- Stats Cards -->
         <div class="stats-row" :class="isMobile ? 'mb-2 mt-2' : 'mb-3'">
           <div class="stats-card">
-            <v-skeleton-loader v-if="loading.stats" type="card" height="80" />
+            <v-card v-if="loading.stats" variant="tonal" color="primary">
+              <v-card-text class="d-flex align-center py-3">
+                <div class="stats-skeleton-icon" />
+                <div class="stats-skeleton-text">
+                  <div class="stats-skeleton-line stats-skeleton-line--value" />
+                  <div class="stats-skeleton-line stats-skeleton-line--label" />
+                </div>
+              </v-card-text>
+            </v-card>
             <v-card v-else variant="tonal" color="primary">
               <v-card-text class="d-flex align-center py-3">
-                <v-icon size="28" class="mr-3">mdi-robot</v-icon>
+                <LIcon size="28" class="mr-3">llars:chatbot-manage</LIcon>
                 <div>
                   <div class="text-h6 font-weight-bold">{{ stats.total_chatbots }}</div>
                   <div class="text-caption">Chatbots</div>
@@ -51,10 +59,18 @@
             </v-card>
           </div>
           <div class="stats-card">
-            <v-skeleton-loader v-if="loading.stats" type="card" height="80" />
+            <v-card v-if="loading.stats" variant="tonal" color="success">
+              <v-card-text class="d-flex align-center py-3">
+                <div class="stats-skeleton-icon" />
+                <div class="stats-skeleton-text">
+                  <div class="stats-skeleton-line stats-skeleton-line--value" />
+                  <div class="stats-skeleton-line stats-skeleton-line--label" />
+                </div>
+              </v-card-text>
+            </v-card>
             <v-card v-else variant="tonal" color="success">
               <v-card-text class="d-flex align-center py-3">
-                <v-icon size="28" class="mr-3">mdi-check-circle</v-icon>
+                <LIcon size="28" class="mr-3">mdi-check-circle</LIcon>
                 <div>
                   <div class="text-h6 font-weight-bold">{{ stats.active_chatbots }}</div>
                   <div class="text-caption">Aktiv</div>
@@ -63,10 +79,18 @@
             </v-card>
           </div>
           <div class="stats-card">
-            <v-skeleton-loader v-if="loading.stats" type="card" height="80" />
+            <v-card v-if="loading.stats" variant="tonal" color="info">
+              <v-card-text class="d-flex align-center py-3">
+                <div class="stats-skeleton-icon" />
+                <div class="stats-skeleton-text">
+                  <div class="stats-skeleton-line stats-skeleton-line--value" />
+                  <div class="stats-skeleton-line stats-skeleton-line--label" />
+                </div>
+              </v-card-text>
+            </v-card>
             <v-card v-else variant="tonal" color="info">
               <v-card-text class="d-flex align-center py-3">
-                <v-icon size="28" class="mr-3">mdi-message-text</v-icon>
+                <LIcon size="28" class="mr-3">mdi-message-text</LIcon>
                 <div>
                   <div class="text-h6 font-weight-bold">{{ stats.total_conversations }}</div>
                   <div class="text-caption">Gespräche</div>
@@ -75,10 +99,18 @@
             </v-card>
           </div>
           <div class="stats-card">
-            <v-skeleton-loader v-if="loading.stats" type="card" height="80" />
+            <v-card v-if="loading.stats" variant="tonal" color="warning">
+              <v-card-text class="d-flex align-center py-3">
+                <div class="stats-skeleton-icon" />
+                <div class="stats-skeleton-text">
+                  <div class="stats-skeleton-line stats-skeleton-line--value" />
+                  <div class="stats-skeleton-line stats-skeleton-line--label" />
+                </div>
+              </v-card-text>
+            </v-card>
             <v-card v-else variant="tonal" color="warning">
               <v-card-text class="d-flex align-center py-3">
-                <v-icon size="28" class="mr-3">mdi-folder-multiple</v-icon>
+                <LIcon size="28" class="mr-3">mdi-folder-multiple</LIcon>
                 <div>
                   <div class="text-h6 font-weight-bold">{{ collectionsCount }}</div>
                   <div class="text-caption">Collections</div>
@@ -94,7 +126,7 @@
         <LTabs
           v-model="activeTab"
           :tabs="[
-            { value: 'chatbots', label: 'Chatbots', icon: 'mdi-robot' },
+            { value: 'chatbots', label: 'Chatbots', icon: 'llars:chatbot-manage' },
             { value: 'collections', label: 'Collections', icon: 'mdi-folder-multiple' },
             { value: 'documents', label: 'Dokumente', icon: 'mdi-file-document-multiple' }
           ]"
@@ -240,7 +272,7 @@
         <v-skeleton-loader v-if="shareLoading" type="paragraph@2, list-item" />
         <div v-else>
           <div class="section-label mt-2">
-            <v-icon size="16" class="mr-1">mdi-account-multiple-plus</v-icon>
+            <LIcon size="16" class="mr-1">mdi-account-multiple-plus</LIcon>
             Nutzer hinzufügen
           </div>
           <div v-if="shareUsernames.length > 0" class="invited-users mb-2">
@@ -276,6 +308,7 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import axios from 'axios'
+import { logI18n } from '@/utils/logI18n'
 import { useAuth } from '@/composables/useAuth'
 import { usePermissions } from '@/composables/usePermissions'
 import { useMobile } from '@/composables/useMobile'
@@ -385,7 +418,7 @@ async function loadChatbots() {
     }
   } catch (error) {
     showSnackbar('Fehler beim Laden der Chatbots', 'error')
-    console.error('Error loading chatbots:', error)
+    logI18n('error', 'logs.admin.chatbotManager.loadChatbotsFailed', error)
   } finally {
     loading.value.chatbots = false
   }
@@ -400,7 +433,7 @@ async function loadCollections() {
     }
   } catch (error) {
     showSnackbar('Fehler beim Laden der Collections', 'error')
-    console.error('Error loading collections:', error)
+    logI18n('error', 'logs.admin.chatbotManager.loadCollectionsFailed', error)
   } finally {
     loading.value.collections = false
   }
@@ -415,7 +448,7 @@ async function loadDocuments() {
     }
   } catch (error) {
     showSnackbar('Fehler beim Laden der Dokumente', 'error')
-    console.error('Error loading documents:', error)
+    logI18n('error', 'logs.admin.chatbotManager.loadDocumentsFailed', error)
   } finally {
     loading.value.documents = false
   }
@@ -429,7 +462,7 @@ async function loadStats() {
       stats.value = response.data.stats
     }
   } catch (error) {
-    console.error('Error loading stats:', error)
+    logI18n('error', 'logs.admin.chatbotManager.loadStatsFailed', error)
   } finally {
     loading.value.stats = false
   }
@@ -493,7 +526,7 @@ async function openShareDialog(chatbot) {
     }
   } catch (error) {
     showSnackbar('Fehler beim Laden der Zugriffsrechte', 'error')
-    console.error('Error loading chatbot access:', error)
+    logI18n('error', 'logs.admin.chatbotManager.loadChatbotAccessFailed', error)
   } finally {
     shareLoading.value = false
   }
@@ -527,7 +560,7 @@ async function saveChatbotAccess() {
     }
   } catch (error) {
     showSnackbar('Fehler beim Speichern der Zugriffsrechte', 'error')
-    console.error('Error saving chatbot access:', error)
+    logI18n('error', 'logs.admin.chatbotManager.saveChatbotAccessFailed', error)
   } finally {
     shareSaving.value = false
   }
@@ -566,7 +599,7 @@ async function saveChatbot(chatbotData) {
     }
   } catch (error) {
     showSnackbar(error.response?.data?.error || 'Fehler beim Speichern', 'error')
-    console.error('Error saving chatbot:', error)
+    logI18n('error', 'logs.admin.chatbotManager.saveChatbotFailed', error)
   }
 }
 
@@ -579,7 +612,7 @@ async function duplicateChatbot(chatbot) {
     }
   } catch (error) {
     showSnackbar('Fehler beim Duplizieren', 'error')
-    console.error('Error duplicating chatbot:', error)
+    logI18n('error', 'logs.admin.chatbotManager.duplicateChatbotFailed', error)
   }
 }
 
@@ -635,7 +668,7 @@ async function executeDelete() {
     }
   } catch (error) {
     showSnackbar('Fehler beim Löschen', 'error')
-    console.error('Error deleting:', error)
+    logI18n('error', 'logs.admin.chatbotManager.deleteFailed', error)
   } finally {
     dialogs.value.deleteConfirm = false
     deleteTarget.value = null
@@ -672,7 +705,7 @@ async function saveCollection(collectionData) {
     }
   } catch (error) {
     showSnackbar(error.response?.data?.error || 'Fehler beim Speichern', 'error')
-    console.error('Error saving collection:', error)
+    logI18n('error', 'logs.admin.chatbotManager.saveCollectionFailed', error)
   }
 }
 
@@ -706,7 +739,7 @@ async function downloadDocument(document) {
     link.remove()
   } catch (error) {
     showSnackbar('Fehler beim Download', 'error')
-    console.error('Error downloading document:', error)
+    logI18n('error', 'logs.admin.chatbotManager.downloadDocumentFailed', error)
   }
 }
 
@@ -735,7 +768,7 @@ async function saveCollectionAssignment(data) {
     await loadChatbots()
   } catch (error) {
     showSnackbar('Fehler beim Zuweisen', 'error')
-    console.error('Error assigning collections:', error)
+    logI18n('error', 'logs.admin.chatbotManager.assignCollectionsFailed', error)
   }
 }
 
@@ -759,7 +792,7 @@ async function openTestDialogById(chatbotId) {
       dialogs.value.test = true
     }
   } catch (error) {
-    console.error('Error loading chatbot for test:', error)
+    logI18n('error', 'logs.admin.chatbotManager.loadChatbotForTestFailed', error)
     showSnackbar('Fehler beim Laden des Chatbots', 'error')
   }
 }
@@ -829,6 +862,51 @@ defineExpose({
 
 .stats-card {
   min-width: 0;
+}
+
+.stats-skeleton-icon,
+.stats-skeleton-line {
+  background: linear-gradient(
+    90deg,
+    rgba(var(--v-theme-on-surface), 0.06) 25%,
+    rgba(var(--v-theme-on-surface), 0.12) 37%,
+    rgba(var(--v-theme-on-surface), 0.06) 63%
+  );
+  background-size: 400% 100%;
+  animation: stats-skeleton-shimmer 1.2s ease-in-out infinite;
+}
+
+.stats-skeleton-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  margin-right: 12px;
+  flex-shrink: 0;
+}
+
+.stats-skeleton-text {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.stats-skeleton-line {
+  border-radius: 6px;
+}
+
+.stats-skeleton-line--value {
+  width: 36px;
+  height: 14px;
+}
+
+.stats-skeleton-line--label {
+  width: 64px;
+  height: 10px;
+}
+
+@keyframes stats-skeleton-shimmer {
+  0% { background-position: 100% 0; }
+  100% { background-position: 0 0; }
 }
 
 /* Tabs card fills remaining vertical space */

@@ -63,15 +63,15 @@
     <div v-if="highlightedCell" class="hover-info-panel mt-2">
       <div class="text-caption font-weight-bold">
         {{ labelDisplays[highlightedCell.from] || highlightedCell.from }}
-        <v-icon size="x-small" class="mx-1">mdi-arrow-right</v-icon>
+        <LIcon size="x-small" class="mx-1">mdi-arrow-right</LIcon>
         {{ labelDisplays[highlightedCell.to] || highlightedCell.to }}
       </div>
       <div class="d-flex justify-space-between text-caption mt-1">
-        <span>Anzahl:</span>
+        <span>{{ $t('oncoco.transitionHeatmap.countLabel') }}</span>
         <span class="font-weight-bold">{{ getCellValue(highlightedCell.from, highlightedCell.to) }}</span>
       </div>
       <div class="d-flex justify-space-between text-caption">
-        <span>Wahrsch.:</span>
+        <span>{{ $t('oncoco.transitionHeatmap.probabilityLabel') }}</span>
         <span class="font-weight-bold">{{ (getCellProbability(highlightedCell.from, highlightedCell.to) * 100).toFixed(1) }}%</span>
       </div>
     </div>

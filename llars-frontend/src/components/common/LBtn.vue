@@ -13,9 +13,9 @@
       width="2"
       class="mr-2"
     />
-    <v-icon v-else-if="prependIcon" :icon="prependIcon" class="l-btn__icon l-btn__icon--prepend" />
+    <LIcon v-else-if="prependIcon" :icon="prependIcon" class="l-btn__icon l-btn__icon--prepend" />
     <span class="l-btn__content"><slot /></span>
-    <v-icon v-if="appendIcon" :icon="appendIcon" class="l-btn__icon l-btn__icon--append" />
+    <LIcon v-if="appendIcon" :icon="appendIcon" class="l-btn__icon l-btn__icon--append" />
     <v-tooltip v-if="tooltipText" activator="parent" :location="tooltipLocation">
       {{ tooltipText }}
     </v-tooltip>

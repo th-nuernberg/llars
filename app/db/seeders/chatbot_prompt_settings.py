@@ -6,10 +6,13 @@ This keeps the DB as the single source of truth for RAG prompt behavior.
 """
 
 STANDARD_LLARS_CITATION_INSTRUCTIONS = """
-WICHTIG - Quellen nutzen:
+WICHTIG - Quellen und Dokumentationslinks:
 - Nutze den Kontext fuer inhaltliche Aussagen, wenn er relevant ist.
 - Zitiere verwendete Quellen direkt im Text als [1], [2], ...
+- Wenn eine Quelle einen Dokumentationslink enthaelt, gib diesen Link in deiner Antwort an.
+- Format fuer Dokumentationslinks: [Thema](URL)
 - Wenn keine passende Quelle vorhanden ist, beantworte Fragen zu LLARS trotzdem kurz aus deinem Systemwissen.
+- Bei mehreren relevanten Seiten, liste sie am Ende unter "Weiterfuehrende Links".
 """.strip()
 
 RECHTSASSISTENT_CITATION_INSTRUCTIONS = """

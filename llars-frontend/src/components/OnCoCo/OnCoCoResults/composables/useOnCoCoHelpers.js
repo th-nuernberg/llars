@@ -5,7 +5,11 @@
  * Extracted from OnCoCoResults.vue for better maintainability.
  */
 
+import { useI18n } from 'vue-i18n';
+
 export function useOnCoCoHelpers() {
+  const { t, locale } = useI18n();
+
   // Status helpers
   const getStatusColor = (status) => {
     const colors = {
@@ -29,19 +33,19 @@ export function useOnCoCoHelpers() {
 
   const getStatusText = (status) => {
     const texts = {
-      pending: 'Ausstehend',
-      running: 'Läuft',
-      completed: 'Abgeschlossen',
-      failed: 'Fehlgeschlagen'
+      pending: t('oncoco.status.pending'),
+      running: t('oncoco.status.running'),
+      completed: t('oncoco.status.completed'),
+      failed: t('oncoco.status.failed')
     };
     return texts[status] || status;
   };
 
   // Formatting helpers
   const formatDate = (dateString) => {
-    if (!dateString) return '-';
+    if (!dateString) return t('oncoco.results.placeholders.date');
     const date = new Date(dateString);
-    return date.toLocaleString('de-DE', {
+    return date.toLocaleString(locale.value || undefined, {
       year: 'numeric',
       month: '2-digit',
       day: '2-digit',
@@ -66,36 +70,36 @@ export function useOnCoCoHelpers() {
   // Pillar helpers
   const getPillarName = (pillarNum) => {
     const names = {
-      1: 'Rollenspiele',
-      3: 'Anonymisierte Daten',
-      5: 'Live-Testungen'
+      1: t('oncoco.pillars.one'),
+      3: t('oncoco.pillars.three'),
+      5: t('oncoco.pillars.five')
     };
-    return names[pillarNum] || `Säule ${pillarNum}`;
+    return names[pillarNum] || t('oncoco.pillars.default', { id: pillarNum });
   };
 
   // Table headers
   const distributionHeaders = [
-    { title: 'Label', key: 'label', sortable: true },
-    { title: 'Rolle', key: 'role', sortable: true },
-    { title: 'Anzahl', key: 'count', sortable: true, width: '300px' }
+    { title: t('oncoco.results.distribution.headers.label'), key: 'label', sortable: true },
+    { title: t('oncoco.results.distribution.headers.role'), key: 'role', sortable: true },
+    { title: t('oncoco.results.distribution.headers.count'), key: 'count', sortable: true, width: '300px' }
   ];
 
   const comparisonHeaders = [
-    { title: 'Säule', key: 'pillar_name', sortable: true },
-    { title: 'Sätze', key: 'metrics.total_sentences', sortable: true },
-    { title: 'Berater-Anteil', key: 'counselor_ratio', sortable: true, width: '200px' },
-    { title: 'Impact Factor', key: 'impact_factor_ratio', sortable: true },
-    { title: 'Ressourcen-Aktivierung', key: 'resource_activation_score', sortable: true },
-    { title: 'MI Score', key: 'mi_score', sortable: true },
-    { title: 'Konfidenz', key: 'avg_confidence', sortable: true }
+    { title: t('oncoco.results.comparison.headers.pillar'), key: 'pillar_name', sortable: true },
+    { title: t('oncoco.results.comparison.headers.sentences'), key: 'metrics.total_sentences', sortable: true },
+    { title: t('oncoco.results.comparison.headers.counselorRatio'), key: 'counselor_ratio', sortable: true, width: '200px' },
+    { title: t('oncoco.results.comparison.headers.impactFactor'), key: 'impact_factor_ratio', sortable: true },
+    { title: t('oncoco.results.comparison.headers.resourceActivation'), key: 'resource_activation_score', sortable: true },
+    { title: t('oncoco.results.comparison.headers.miScore'), key: 'mi_score', sortable: true },
+    { title: t('oncoco.results.comparison.headers.confidence'), key: 'avg_confidence', sortable: true }
   ];
 
   const sentenceHeaders = [
-    { title: 'Satz', key: 'sentence_text', sortable: false, width: '40%' },
-    { title: 'Rolle', key: 'role', sortable: true },
-    { title: 'Label', key: 'label', sortable: true },
-    { title: 'Konfidenz', key: 'confidence', sortable: true, width: '150px' },
-    { title: 'Säule', key: 'pillar_number', sortable: true }
+    { title: t('oncoco.results.sentences.headers.sentence'), key: 'sentence_text', sortable: false, width: '40%' },
+    { title: t('oncoco.results.sentences.headers.role'), key: 'role', sortable: true },
+    { title: t('oncoco.results.sentences.headers.label'), key: 'label', sortable: true },
+    { title: t('oncoco.results.sentences.headers.confidence'), key: 'confidence', sortable: true, width: '150px' },
+    { title: t('oncoco.results.sentences.headers.pillar'), key: 'pillar_number', sortable: true }
   ];
 
   return {

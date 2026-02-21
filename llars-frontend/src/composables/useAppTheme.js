@@ -5,6 +5,7 @@
 
 import { ref, computed, watch, onMounted } from 'vue'
 import { useTheme } from 'vuetify'
+import { logI18nParams } from '@/utils/logI18n'
 
 // Shared state (singleton pattern)
 const THEME_STORAGE_KEY = 'llars-theme-preference'
@@ -67,7 +68,10 @@ export function useAppTheme() {
     // Update HTML attribute for custom CSS
     document.documentElement.setAttribute('data-theme', targetTheme)
 
-    console.log(`Theme applied: ${targetTheme} (preference: ${themePreference.value})`)
+    logI18nParams('log', 'logs.theme.applied', {
+      theme: targetTheme,
+      preference: themePreference.value
+    })
   }
 
   /**
@@ -75,7 +79,7 @@ export function useAppTheme() {
    */
   const setThemePreference = (preference) => {
     if (!['system', 'light', 'dark'].includes(preference)) {
-      console.warn(`Invalid theme preference: ${preference}`)
+      logI18nParams('warn', 'logs.theme.invalidPreference', { preference })
       return
     }
 
@@ -111,9 +115,9 @@ export function useAppTheme() {
    * Get available theme options for UI
    */
   const themeOptions = computed(() => [
-    { value: 'system', title: 'System', icon: 'mdi-brightness-auto' },
-    { value: 'light', title: 'Hell', icon: 'mdi-white-balance-sunny' },
-    { value: 'dark', title: 'Dunkel', icon: 'mdi-moon-waning-crescent' },
+    { value: 'system', title: 'System', icon: 'llars:system-theme' },
+    { value: 'light', title: 'Hell', icon: 'llars:sun' },
+    { value: 'dark', title: 'Dunkel', icon: 'llars:moon' },
   ])
 
   /**
@@ -208,5 +212,8 @@ export function initAppTheme(vuetify = null) {
     mq.addListener(handleChange)
   }
 
-  console.log(`App theme initialized: ${targetTheme} (preference: ${savedTheme})`)
+  logI18nParams('log', 'logs.theme.initialized', {
+    theme: targetTheme,
+    preference: savedTheme
+  })
 }

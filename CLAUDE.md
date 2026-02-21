@@ -1,19 +1,20 @@
 # LLARS - LLM Assisted Research System
 
-**Version:** 3.0 | **Stand:** 25. Dezember 2025
+**Version:** 3.0 | **Stand:** 31. Januar 2026
 
 ## Projekt-Übersicht
 
 LLARS ist ein System zur kollaborativen Bewertung von E-Mails und Szenarien mit LLMs.
 
-**Features:** Rating/Ranking-System | LLM-as-Judge | RAG-Pipeline (ChromaDB) | Multi-User Collaboration (YJS) | Authentik Auth | RBAC Permissions | Offline Anonymize Tool
+**Features:** Rating/Ranking-System | LLM Evaluator | RAG-Pipeline (ChromaDB) | Multi-User Collaboration (YJS) | Authentik Auth | RBAC Permissions | Offline Anonymize Tool | Production-Ready (Gunicorn + gevent)
+
+**Quick Reference:** Dieses Dokument enthält alle wichtigen Informationen für die Entwicklung.
 
 ---
 
-## Projekt starten
+## Quick Start
 
 ```bash
-# Ersteinrichtung
 cp .env.template.development .env
 ./start_llars.sh
 
@@ -21,143 +22,18 @@ cp .env.template.development .env
 REMOVE_LLARS_VOLUMES=True ./start_llars.sh
 ```
 
-### URLs (Development)
-
 | Service | URL |
 |---------|-----|
 | Frontend | http://localhost:55080 |
 | Backend API | http://localhost:55080/api |
 | Authentik | http://localhost:55095 |
-| Matomo | http://localhost:55080/analytics/ |
-
-### Test-Benutzer
 
 | User | Passwort | Rolle |
 |------|----------|-------|
 | admin | admin123 | admin |
-| researcher | admin123 | researcher (RATER) |
-| viewer | admin123 | viewer (VIEWER) |
+| researcher | admin123 | researcher (kann Szenarien erstellen) |
+| evaluator | admin123 | evaluator (nimmt an Evaluationen teil) |
 | chatbot_manager | admin123 | chatbot_manager |
-
----
-
-## Server-Operationen
-
-### Neustart mit System-Prune
-
-```bash
-# Container stoppen
-docker compose down
-
-# System bereinigen (alle ungenutzten Images, Container, Volumes entfernen)
-docker system prune -af --volumes
-
-# Neu starten
-./start_llars.sh
-```
-
-### User-Seeder (Projekt-Benutzer anlegen)
-
-Der User-Seeder liegt in einem separaten Repository: `llars-seeder/`
-
-```bash
-cd /path/to/llars-seeder
-
-# 1. .env konfigurieren
-cat > .env << 'EOF'
-PROJECT_URL=http://localhost:55080      # Lokale Entwicklung
-# PROJECT_URL=https://llars.example.com # Produktion
-SYSTEM_ADMIN_API_KEY=llars-admin-key-change-in-production-12345
-EOF
-
-# 2. users.yaml anpassen (Benutzer definieren)
-
-# 3. Seeder ausführen
-./provision_users.sh
-```
-
-### Backup erstellen
-
-```bash
-# Vollständiges Datenbank-Backup
-docker exec llars_db_service mysqldump -u dev_user -pdev_password_change_me database_llars > backup_$(date +%Y%m%d)/full_backup.sql
-
-# Nur bestimmte Tabellen (z.B. Evaluierungsdaten)
-docker exec llars_db_service mysqldump -u dev_user -pdev_password_change_me database_llars \
-  authenticity_conversations user_authenticity_votes comparison_sessions comparison_evaluations \
-  > backup_$(date +%Y%m%d)/evaluation_data.sql
-```
-
-### Backup wiederherstellen
-
-```bash
-# SQL-Backup in Container kopieren und ausführen
-docker cp backup_20251223/evaluation_data.sql llars_db_service:/tmp/evaluation_data.sql
-docker exec llars_db_service mariadb -u dev_user -pdev_password_change_me database_llars \
-  -e "source /tmp/evaluation_data.sql"
-
-# Alternativ: Piped
-cat backup_20251223/evaluation_data.sql | docker exec -i llars_db_service \
-  mariadb -u dev_user -pdev_password_change_me database_llars
-```
-
-### Datenbank-Migrationen
-
-Bei Schema-Änderungen manuell SQL ausführen:
-
-```bash
-# Migration erstellen (Beispiel: neue Tabelle)
-cat > migrations/001_add_collection_embeddings.sql << 'EOF'
-CREATE TABLE IF NOT EXISTS collection_embeddings (
-    id INT PRIMARY KEY AUTO_INCREMENT,
-    collection_id INT NOT NULL,
-    model_id VARCHAR(255) NOT NULL,
-    model_source ENUM('local', 'litellm') NOT NULL,
-    embedding_dimensions INT NOT NULL,
-    chroma_collection_name VARCHAR(255) NOT NULL UNIQUE,
-    status ENUM('idle', 'processing', 'completed', 'failed') DEFAULT 'idle',
-    progress INT DEFAULT 0,
-    chunk_count INT DEFAULT 0,
-    error_message TEXT,
-    priority INT DEFAULT 0,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    completed_at DATETIME,
-    FOREIGN KEY (collection_id) REFERENCES rag_collections(id) ON DELETE CASCADE,
-    UNIQUE KEY unique_collection_model (collection_id, model_id),
-    INDEX idx_collection_id (collection_id),
-    INDEX idx_model_id (model_id),
-    INDEX idx_status (status),
-    INDEX idx_priority (priority)
-);
-EOF
-
-# Migration ausführen
-docker cp migrations/001_add_collection_embeddings.sql llars_db_service:/tmp/
-docker exec llars_db_service mariadb -u dev_user -pdev_password_change_me database_llars \
-  -e "source /tmp/001_add_collection_embeddings.sql"
-```
-
-**Hinweis:** SQLAlchemy erstellt fehlende Tabellen automatisch beim Start. Migrationen sind nur für Schema-Änderungen an bestehenden Tabellen nötig.
-
-### Lexical Search Index (FTS)
-
-- Trigram-basierter FTS-Index liegt unter `app/data/rag/indexes/lexical_index.sqlite`.
-- Pfad kann per `LEXICAL_INDEX_PATH` überschrieben werden.
-- Index wird bei `lexical_search` pro Collection lazy aufgebaut und beim Embedding/Update/Delete aktualisiert.
-
-### Logs prüfen
-
-```bash
-# Flask-Backend Logs
-docker logs -f llars_flask_service
-
-# Alle Container-Logs
-docker compose logs -f
-
-# Nur Fehler
-docker compose logs -f 2>&1 | grep -i error
-```
 
 ---
 
@@ -170,7 +46,7 @@ nginx (:80) → Reverse Proxy
 ├── /analytics/ → Matomo Analytics (:80)
 └── /collab/ → YJS WebSocket (:8082)
 
-Databases: MariaDB (:3306 - LLARS), MariaDB (:3306 - Matomo), PostgreSQL (:5432 - Authentik)
+Databases: MariaDB (:3306 - LLARS), PostgreSQL (:5432 - Authentik)
 ```
 
 **Backend:** Flask 3.0 + MariaDB 11.2 + ChromaDB
@@ -178,179 +54,382 @@ Databases: MariaDB (:3306 - LLARS), MariaDB (:3306 - Matomo), PostgreSQL (:5432 
 
 ---
 
-## Matomo Analytics (Self-hosted)
+## Production Server (Gunicorn + Gevent)
 
-- Auto-Setup via Docker Compose Service `matomo-init` (DB + Superuser + Site)
-- Frontend Tracking: `llars-frontend/src/plugins/llars-metrics.js` (SPA Pageviews + Click Events + optional User-ID)
-- Matomo UI: `/analytics/` (Alias: `/matomo/`), Tracking: `/metrics.js` + `/metrics.php` (first-party, weniger Blocker)
-- Optional SSO: `MATOMO_OIDC_ENABLED=true` + `AUTHENTIK_PUBLIC_URL` + `AUTHENTIK_MATOMO_*` (RebelOIDC Plugin)
-- Runtime-Config über LLARS DB (Admin Panel): `GET/PATCH /api/admin/analytics/settings` (Table `analytics_settings`)
+LLARS verwendet in Production **Gunicorn mit gevent-websocket** für echte WebSocket-Unterstützung.
 
-## Admin System Tools
+### Development vs Production
 
-- Docker Monitor (Admin → Docker): Live Container-Status, CPU/RAM und Logs via Socket.IO Namespace `/admin` (`docker:*`)
-  - Voraussetzung: `/var/run/docker.sock` ist gemountet und die Backend-User-Group darf schreiben (Dev: `start_llars.sh` setzt `DOCKER_SOCK_GID` und versucht `chmod g+w`).
-  - Security Hinweis: Zugriff auf `docker.sock` erlaubt prinzipiell Host-Docker Kontrolle → nur für Admins aktivieren.
-- DB Explorer (Admin → DB): Read-only Tabellen-Viewer (live) via Socket.IO Namespace `/admin` (`db:*`)
+| Modus | `PROJECT_STATE` | Server | WebSocket | Auto-Reload |
+|-------|-----------------|--------|-----------|-------------|
+| Development | `development` | Flask Dev Server | Polling | ✓ |
+| Production | `production` | Gunicorn + gevent | Echte WS | ✗ |
 
-## Docker Base Images
+### Wichtige Dateien
 
-- Wenn Docker Hub Probleme macht (z.B. OAuth Token 500), nutzt LLARS für die offiziellen Images die Public ECR Mirror-Registry: `public.ecr.aws/docker/library/*` (Python/Node/Nginx/Postgres/Redis/MariaDB/Matomo).
+```
+docker/flask/start_flask.sh     # Dev/Prod Mode Switch
+docker/flask/gunicorn.conf.py   # Gunicorn Konfiguration
+app/wsgi_gevent.py              # WSGI Entry Point (gevent)
+app/wsgi.py                     # WSGI Entry Point (eventlet, nicht empfohlen)
+scripts/load_test.py            # Load-Test-Skript
+```
+
+### Performance-Benchmarks (Production)
+
+| Metrik | Wert |
+|--------|------|
+| HTTP Response Time (avg) | 8-80 ms |
+| HTTP Throughput | ~100 req/s |
+| WebSocket Success Rate | 100% |
+| Idle CPU (Flask) | 0.04% |
+| Idle RAM (Flask) | ~380 MB |
+
+### Load Testing
+
+```bash
+# Quick Test
+docker exec llars_flask_service python3 /app/scripts/load_test.py --quick
+
+# Heavy Load
+python scripts/load_test.py --users 100 --requests 20 --ws-connections 50
+```
+
+### Eventlet vs Gevent
+
+**Eventlet:** DNS-Timeout-Probleme in Docker (`Lookup timed out`)
+**Gevent:** Empfohlen - Bessere Docker DNS-Kompatibilität
 
 ---
 
-## Offline Anonymize Tool
+## LLM Modelle & Sichtbarkeit
 
-- Frontend: `/Anonymize` (Kachel auf Home), Permission: `feature:anonymize:view`
-- Backend: `GET /api/anonymize/health`, `POST /api/anonymize/pseudonymize`, `POST /api/anonymize/pseudonymize-file`
-- Ressourcen: SQLite-DB liegt in `docs/docs/projekte/anonymize/database` (via Docker Compose nach `/app/data/anonymize` gemountet), Reco in `app/models/anonymize/recommender_system`, großes Flair-NER Modell wird aus `docs/docs/projekte/anonymize/models/ner-german-large` gemountet
+### Model-ID Naming Convention
+
+Globale (geseedete) Modelle verwenden das Format `Global/{Hersteller}/{Modell}`:
+
+| Model-ID | Provider-Type | API-Model |
+|----------|---------------|-----------|
+| `Global/Mistral/Mistral-Small-3.2-24B-Instruct-2506` | litellm | `mistralai/Mistral-Small-3.2-24B-Instruct-2506` |
+| `Global/Mistral/Magistral-Small-2509` | litellm | `mistralai/Magistral-Small-2509` |
+| `Global/OpenAI/gpt-5-nano` | openai | `gpt-5-nano` |
+| `Global/OpenAI/gpt-5-mini` | openai | `gpt-5-mini` |
+
+User-Provider-Modelle: `user-provider:{id}:{username}:{model}`
+
+**Routing** (`LLMClientFactory._parse_provider_prefix()`):
+- `Global/` → strip prefix → lookup manufacturer in `MANUFACTURER_TO_PROVIDER` → resolve provider-type + API-model
+- `MANUFACTURER_API_PREFIX` fügt ggf. Prefix hinzu (z.B. Mistral → `mistralai/`)
+- Legacy-Prefixe (`OpenAI/`, `LiteLLM/`) werden weiterhin unterstützt
+
+**Embedding/Reranker model_ids** bleiben unverändert (`llamaindex/...`, `sentence-transformers/...`) da hardcoded in RAG-Pipeline.
+
+### Sichtbarkeit & Allowlist
+
+- Verfügbare Modelle für Nutzer: `GET /api/llm/models/available` (Permission: `feature:llm:view`)
+- Admin-Übersicht/Allowlist: `GET /api/llm/models/access/overview`, `PUT /api/llm/models/<id>/access`
+- Standard: Keine Zuweisung = öffentlich; sobald Nutzer/Rollen gesetzt sind, gilt die Allowlist
+- **OpenAI-Modelle** sind automatisch auf `role=admin` beschränkt (via `_restrict_openai_models_to_admin()`)
+- Admin kann einzelnen Usern Zugriff geben: `PUT /api/llm/models/<id>/access` mit `{"usernames": ["evaluator"]}`
+- DB-Tabelle: `llm_model_permissions`
 
 ---
 
-## Rating/Ranking System
+## LLM Provider Registry (Admin)
 
-Das Kernfeature von LLARS: Bewertung von LLM-generierten Features für E-Mail-Konversationen.
+- Admin Endpoints: `GET/POST /api/llm/providers`, `PUT/DELETE /api/llm/providers/<id>`, `POST /api/llm/providers/<id>/test`, `POST /api/llm/providers/<id>/sync-models`
+- Routing: `llm_models.provider_id` → Provider-Config; Fallback = Default-Provider oder `LITELLM_*`/`OPENAI_API_KEY`
+- DB-Tabelle: `llm_providers`
 
-### Konzept
+---
+
+## User LLM Provider (Settings)
+
+User können eigene LLM-Provider unter Settings anlegen und mit anderen teilen.
+
+### Endpoints
+
+| Method | Endpoint | Beschreibung |
+|--------|----------|-------------|
+| GET | `/api/user/providers` | Eigene Provider |
+| GET | `/api/user/providers/available` | Eigene + geteilte Provider |
+| POST | `/api/user/providers` | Provider anlegen |
+| PUT | `/api/user/providers/<id>` | Provider bearbeiten |
+| DELETE | `/api/user/providers/<id>` | Provider löschen |
+| POST | `/api/user/providers/<id>/test` | Verbindung testen |
+| POST | `/api/user/providers/<id>/shares` | Mit User/Rolle teilen |
+| DELETE | `/api/user/providers/<id>/shares/<share_id>` | Freigabe entfernen |
+| POST | `/api/user/providers/<id>/share-all` | Mit allen teilen (Toggle) |
+
+### Sharing-Modell
+
+- **User-Share:** `share_type='user'`, `target_identifier=username` → Einzelne User
+- **Role-Share:** `share_type='role'`, `target_identifier=role_name` → Ganze Rolle
+- **Share-All:** `share_with_all=True` → Alle User
+- Optional: Token-Limits (`usage_limit_tokens`), Ablaufdatum (`expires_at`)
+- DB-Tabellen: `user_llm_providers`, `user_llm_provider_shares`
+
+### Frontend
+
+- `LlmModelSelect` zeigt automatisch eigene + geteilte Provider-Modelle (`includeUserProviders` default: `true`)
+- Settings → LLM Provider Tab: Anlegen, Testen, Teilen (Share-Dialog)
+- Geteilte Provider erscheinen als "Shared With Me" (read-only)
+
+---
+
+## Server-Operationen
+
+### Neustart / Bereinigung
+
+```bash
+docker compose down
+docker system prune -af --volumes
+./start_llars.sh
+```
+
+### Datenbank
+
+```bash
+# MariaDB Zugriff
+docker exec -it llars_db_service mariadb -u dev_user -pdev_password_change_me database_llars
+
+# SQL ausführen
+docker exec llars_db_service mariadb -u dev_user -pdev_password_change_me database_llars -e "SHOW TABLES;"
+
+# Backup erstellen
+docker exec llars_db_service mysqldump -u dev_user -pdev_password_change_me database_llars > backup.sql
+
+# Backup wiederherstellen
+cat backup.sql | docker exec -i llars_db_service mariadb -u dev_user -pdev_password_change_me database_llars
+```
+
+### Logs
+
+```bash
+docker logs -f llars_flask_service          # Backend
+docker compose logs -f                       # Alle
+docker compose logs -f 2>&1 | grep -i error  # Nur Fehler
+```
+
+---
+
+## GitLab CI/CD
 
 ```
-EmailThread (Beratungs-E-Mail)
-├── Messages[] (Klient ↔ Berater Dialog)
-└── Features[] (LLM-generierte Analysen)
-    ├── GPT-4: "Situation Summary", "Client Needs", ...
-    ├── Claude-3: "Situation Summary", "Client Needs", ...
-    └── Mistral-7B: "Situation Summary", "Client Needs", ...
-
-Scenario (Rating oder Ranking)
-├── ScenarioUsers[] (User + Rolle: VIEWER oder RATER)
-├── ScenarioThreads[] (zugewiesene Threads)
-└── ScenarioThreadDistribution[] (welcher RATER bewertet welchen Thread)
-└── config_json (distribution_mode: all|round_robin, order_mode: none|shuffle_same|shuffle_per_user)
+GitLab: git.informatik.fh-nuernberg.de/kiz-nlp/llars/llars
+Server: 141.75.150.128 (internes Netz)
+Runner: Shell-Executor direkt auf Server
 ```
 
-### Function Types
+| Stage | Jobs |
+|-------|------|
+| lint | `lint:backend`, `lint:frontend` |
+| test | `test:unit:backend`, `test:unit:frontend`, `test:integration`, `test:e2e` |
+| security | `security:routes`, `security:scan` |
+| build | `build:docker` (nur main) |
+| deploy | `deploy:staging`, `deploy:production` |
+| smoke | `smoke:production` |
+| rollback | `rollback:production` (manual) |
 
-| ID | Name | Beschreibung |
-|----|------|--------------|
-| 1 | ranking | Features nach Qualität sortieren (Drag & Drop) |
-| 2 | rating | Features einzeln bewerten (Sterne/Skala) |
-| 3 | mail_rating | Gesamte E-Mail-Konversation bewerten |
-
-### Wichtige Tabellen
-
-```sql
-feature_function_types  -- ranking(1), rating(2), mail_rating(3)
-rating_scenarios        -- Szenarien mit begin/end Zeitraum
-scenario_users          -- User-Rollen: VIEWER oder RATER
-scenario_threads        -- Threads im Szenario
-scenario_thread_distribution  -- RATER → Thread Zuweisung
-email_threads           -- E-Mail-Konversationen (function_type_id!)
-features                -- LLM-generierte Inhalte (thread_id, type_id, llm_id)
+```
+Push to develop → deploy:staging (automatisch)
+Push to main    → deploy:production → smoke:production (Auto-Rollback bei Smoke-Fail)
 ```
 
-### Zugriffskontrolle
+**Test-Requirements:** `app/requirements-test.txt` (ohne torch, transformers, flair - ~3GB gespart)
+
+### GitLab API Zugriff
+
+**Skill verfuegbar:** `.claude/skills/ci-cd-debugging/` - Automatisches CI/CD Debugging
+
+Die `.env` enthält GitLab API Credentials für Pipeline-Monitoring:
+
+```bash
+# Pipelines abrufen
+source .env
+curl -s --header "PRIVATE-TOKEN: $GITLAB_TOKEN" \
+  "https://git.informatik.fh-nuernberg.de/api/v4/projects/$GITLAB_PROJECT_ID/pipelines?per_page=5"
+
+# Jobs einer Pipeline abrufen
+curl -s --header "PRIVATE-TOKEN: $GITLAB_TOKEN" \
+  "https://git.informatik.fh-nuernberg.de/api/v4/projects/$GITLAB_PROJECT_ID/pipelines/{PIPELINE_ID}/jobs"
+
+# Job-Log abrufen (letzte 50 Zeilen)
+curl -s --header "PRIVATE-TOKEN: $GITLAB_TOKEN" \
+  "https://git.informatik.fh-nuernberg.de/api/v4/projects/$GITLAB_PROJECT_ID/jobs/{JOB_ID}/trace" | tail -50
+
+# CI-Konfiguration validieren
+curl -s --header "PRIVATE-TOKEN: $GITLAB_TOKEN" \
+  "https://git.informatik.fh-nuernberg.de/api/v4/projects/$GITLAB_PROJECT_ID/ci/lint?ref=main"
+
+# Pipeline manuell triggern
+curl -s --request POST --header "PRIVATE-TOKEN: $GITLAB_TOKEN" \
+  "https://git.informatik.fh-nuernberg.de/api/v4/projects/$GITLAB_PROJECT_ID/pipeline?ref=main"
+
+# Fehlgeschlagene Pipeline neu starten
+curl -s --request POST --header "PRIVATE-TOKEN: $GITLAB_TOKEN" \
+  "https://git.informatik.fh-nuernberg.de/api/v4/projects/$GITLAB_PROJECT_ID/pipelines/{PIPELINE_ID}/retry"
+```
+
+### Pipeline Monitoring Script
+
+```bash
+# 6h Monitoring, alle 10 Minuten (default)
+./scripts/ci/monitor_pipelines.sh
+
+# Custom Laufzeit/Intervall
+DURATION_SECONDS=21600 INTERVAL_SECONDS=600 BRANCH=main ./scripts/ci/monitor_pipelines.sh
+```
+
+**Umgebungsvariablen (.env):**
+- `GITLAB_TOKEN` - API Token mit `read_api` Scope
+- `GITLAB_PROJECT_ID` - Projekt-ID (7123)
+- `GITLAB_PROJECT_PATH` - Projekt-Pfad
+
+### CI/CD Troubleshooting
+
+| Problem | Loesung |
+|---------|---------|
+| Pipeline 0 Jobs | Auto-cancel aktiv? YAML validieren |
+| E2E Tests scheitern | App auf Server laufen? PLAYWRIGHT_BASE_URL korrekt? |
+| Job haengt bei pending | Shell-Runner online? Tags korrekt? |
+| Lint fehlschlaegt | flake8 lokal ausfuehren, .flake8 Config pruefen |
+
+---
+
+## Tests - PFLICHT!
+
+Jede neue Komponente/Service MUSS Tests haben.
+
+```bash
+# Backend
+pytest tests/
+pytest --cov=app tests/
+
+# Frontend
+cd llars-frontend
+npm run test:run
+npm run test:coverage
+```
+
+### Test-ID Konventionen
+
+| Präfix | Bereich |
+|--------|---------|
+| `AUTH_` | useAuth |
+| `PERM_` | usePermissions |
+| `COMP_BTN_` | LBtn |
+
+### Frontend Test-Pattern
+
+```javascript
+import { describe, it, expect, vi } from 'vitest'
+
+describe('useExample', () => {
+  beforeEach(() => vi.resetModules())
+
+  it('EXAMPLE_001: does something', () => {
+    expect(result).toBe('expected')
+  })
+})
+```
+
+### Mocking
+
+```javascript
+// Axios
+vi.mock('axios', () => ({ default: { get: vi.fn(), post: vi.fn() } }))
+
+// localStorage
+vi.stubGlobal('localStorage', { getItem: vi.fn(), setItem: vi.fn() })
+
+// Vue Router
+vi.mock('vue-router', () => ({ useRouter: () => ({ push: vi.fn() }) }))
+```
+
+---
+
+## CI/CD Quality Policy
+
+**KRITISCH: Robuste Pipeline ohne Workarounds!**
+
+### Grundprinzipien
+
+1. **Keine `|| true` bei Tests** - Tests MÜSSEN fehlschlagen wenn sie fehlschlagen
+2. **Keine `allow_failure: true`** bei kritischen Jobs - Nur bei optionalen Jobs erlaubt
+3. **Fix Code oder Test** - Niemals Tests überspringen oder ignorieren
+4. **E2E Tests müssen bestehen** - Deployment nur bei grüner Pipeline
+
+### Erlaubte `allow_failure` Jobs
+
+| Job | Grund |
+|-----|-------|
+| `rollback:production` | Manueller Notfall-Job |
+| `smoke:wizard` | Optionaler erweiterter Test |
+| `metrics:*` | Reporting, nicht kritisch |
+
+### Verboten
+
+```yaml
+# ❌ NIEMALS so:
+- pytest tests/ || true
+- npm run test:run || true
+- npx playwright test || true
+
+# ✅ Korrekt:
+- pytest tests/
+- npm run test:run
+- npx playwright test
+```
+
+### E2E Test Best Practices
+
+- **Keine `waitForTimeout()`** - Verwende condition-based waits
+- **Web-first assertions** - `toBeVisible()`, `toHaveURL()`, `toHaveText()`
+- **`domcontentloaded`** statt `networkidle` - Vermeidet Analytics-Timeouts
+- **Consent-Banner früh dismissieren** - Vor Element-Interaktionen
+
+### Bei Test-Fehlern
+
+1. **Analysiere den Fehler** - Lies Logs und Screenshots
+2. **Reproduziere lokal** - `npm run e2e:chromium -- --workers=1`
+3. **Fix Code ODER Test** - Je nachdem was falsch ist
+4. **Verifiziere Pipeline** - Commit, Push, Monitor
+
+---
+
+## Auth & Permissions
+
+### Auth Decorator
 
 ```python
-# app/routes/HelperFunctions.py
-def get_user_threads(user_id, function_type_id):
-    """
-    VIEWER: Sieht alle Threads im Szenario
-    RATER: Abhängig von distribution_mode
-      - all: alle Threads wie Viewer
-      - round_robin: nur zugeordnete Threads (ScenarioThreadDistribution)
-
-    Zeitprüfung: RatingScenarios.begin <= NOW <= RatingScenarios.end
-    order_mode steuert die Thread-Reihenfolge:
-      - none: sortiert nach thread_id
-      - shuffle_same: gleiche Mischung für alle (Seed = scenario_id)
-      - shuffle_per_user: unterschiedliche Mischung pro Nutzer (Seed = scenario_id:user_id)
-    """
-```
-
-### API Endpoints
-
-```
-GET /api/email_threads/rankings      # Ranking-Threads für User
-GET /api/email_threads/ratings       # Rating-Threads für User
-GET /api/email_threads/rankings/<id> # Thread-Details mit Features
-POST /api/save_ranking/<id>          # Ranking speichern
-```
-
-### Demo-Szenarien (Development)
-
-Im Dev-Mode werden automatisch Demo-Szenarien erstellt (`app/db/seeders/scenarios.py`):
-
-- **Demo Rating Szenario**: 2 Threads (function_type_id=2), researcher=RATER, viewer=VIEWER
-- **Demo Ranking Szenario**: 1 Thread (function_type_id=1), researcher=RATER, viewer=VIEWER
-- **Demo Verlauf Bewerter Szenario**: 2 Threads (function_type_id=3), researcher=RATER, viewer=VIEWER
-- 5 E-Mail-Threads mit realistischen Beratungsanfragen
-- Features für alle Threads (4 Typen × 3 LLMs)
-
----
-
-## Auth Decorator - WICHTIG!
-
-`g.authentik_user` ist ein **User-Objekt** (nicht String!):
-
-```python
-# app/auth/decorators.py
 @authentik_required
 def my_route():
-    user = g.authentik_user  # User-Objekt mit .id, .username
-    user_id = user.id        # Für DB-Queries
+    user = g.authentik_user  # User-OBJEKT (nicht String!)
+    user_id = user.id
 ```
 
-Bei Login wird der User automatisch in der DB erstellt (`get_or_create_user`).
-
----
-
-## User Profile (Avatar + Collab Color)
-
-- Einstellungen: `GET/PATCH /api/users/me/settings` (collab_color, avatar_seed, avatar_url, avatar_changes_left)
-- Avatar: `POST/PATCH/DELETE /api/users/me/avatar` (Upload, neues Standardbild, Reset)
-- Avatar-URL: `/api/users/avatar/<avatar_public_id>` (Bildauslieferung)
-- Limit: 3 Avatar-Änderungen pro Tag, Speicherort `app/storage/avatars` (Default)
-
----
-
-## Permission System
+### Permission System
 
 **Sicherheitsmodell:** Deny-by-Default | User überschreibt Rolle | Deny schlägt Grant
 
-### Rollen (Auszug)
+| Rolle | Berechtigungen |
+|-------|---------------|
+| admin | alle |
+| researcher | Evaluation + Prompt Engineering + Markdown Collab |
+| evaluator | Lesezugriff |
+| chatbot_manager | Chatbot + RAG + Prompt Engineering |
 
-- **admin**: alle Permissions
-- **researcher**: Evaluation + Prompt Engineering + Markdown Collab + Anonymize + KAIMO (kein RAG/Chatbot Admin)
-- **viewer**: Lesezugriff (u. a. Prompt Engineering, RAG, Chatbots, Markdown Collab)
-- **chatbot_manager**: Chatbot-Verwaltung (inkl. Wizard/Publish/Share) + RAG-Dokumente (eigene/geteilte) + Prompt Engineering + Markdown Collab
-
-### Chatbot/RAG Access-Logik
-
-- Chatbots: Owner darf immer, Sharing via Allowlist (User/Rollen), Admin override.
-- RAG: Sichtbar = public **oder** Owner **oder** explizit geteilt (Dokumente **oder** Collections); Bearbeiten/Löschen nur Owner/Admin bzw. mit expliziter Permission.
-- RAG Collections: Teilen via `/api/rag/collections/<id>/access` erweitert Zugriff auf alle enthaltenen Dokumente (inkl. Socket.IO Queue Updates).
-
-### Backend
-
+**Backend:**
 ```python
-from decorators.permission_decorator import require_permission
-
-@bp.route('/api/feature')
 @require_permission('feature:ranking:view')
 @handle_api_errors(logger_name='ranking')
 def my_route(): ...
 ```
 
-### Frontend
-
+**Frontend:**
 ```vue
-<script setup>
-import { usePermissions } from '@/composables/usePermissions'
-const { hasPermission } = usePermissions()
-</script>
-<template>
-  <v-card v-if="hasPermission('feature:ranking:view')">...</v-card>
-</template>
+<v-card v-if="hasPermission('feature:ranking:view')">...</v-card>
 ```
 
 ---
@@ -362,626 +441,276 @@ const { hasPermission } = usePermissions()
 ```python
 from decorators.error_handler import handle_api_errors, NotFoundError, ValidationError
 
-@bp.route('/items/<int:id>')
-@require_permission('feature:items:view')
 @handle_api_errors(logger_name='module_name')
 def get_item(id):
-    item = Item.query.get(id)
     if not item:
-        raise NotFoundError(f'Item {id} not found')
-    return jsonify({'success': True, 'item': item.to_dict()})
+        raise NotFoundError(f'Item {id} not found')  # 404
+    # ValidationError → 400, ConflictError → 409
 ```
-
-| Exception | Status |
-|-----------|--------|
-| `NotFoundError` | 404 |
-| `ValidationError` | 400 |
-| `ConflictError` | 409 |
 
 ---
 
-## RAG-Pipeline / Webcrawler
+## RAG-Pipeline
 
-### Crawler-Konfiguration
-
-```python
-# app/services/crawler/modules/playwright_crawler.py
-exclude_patterns = [
-    r'\.css$', r'\.js$', r'\.json$',  # Keine Code-Dateien
-    r'/feed/?$', r'/rss/?$',           # Keine Feeds
-    r'/wp-admin', r'/wp-login',        # Keine Admin-Seiten
-]
-```
-
-### Screenshots (lange Seiten)
-
-```python
-# app/services/crawler/modules/screenshot_capture.py
-capture_long_page()  # Splittet Seiten >4000px in mehrere Screenshots
-```
-
-### Embedding Model (Multi-Model-Architektur)
-
-LLARS unterstützt mehrere Embedding-Modelle pro Collection mit robuster Fallback-Kette:
+### Embedding Models
 
 ```
-Priorität  | Model                                | Source   | Dimensionen
------------|--------------------------------------|----------|------------
-1 (höchste)| llamaindex/vdr-2b-multi-v1           | LiteLLM  | 1024
-2          | llamaindex/vdr-2b-multi-v1           | Local    | 1024
-3 (fallback)| sentence-transformers/all-MiniLM-L6-v2| Local    | 384
+Priorität | Model                              | Dimensionen
+----------|------------------------------------|-----------
+1         | llamaindex/vdr-2b-multi-v1 (API)   | 1024
+2         | llamaindex/vdr-2b-multi-v1 (Local) | 1024
+3         | all-MiniLM-L6-v2 (Local)           | 384
 ```
 
-**Wichtige Tabellen:**
-- `llm_models`: Model-Konfiguration (model_type='embedding', is_default)
-- `collection_embeddings`: Tracking welche Models pro Collection verfügbar sind
-- `rag_document_chunks.embedding_model`: Model das für jeden Chunk verwendet wurde
-
-**KRITISCH:** Query-Embedding muss IMMER zum Document-Embedding passen (gleiche Dimensionen)!
-
-**Services:**
-- `services/rag/embedding_model_service.py`: Zentraler Service für Model-Verfügbarkeit
-- `get_best_embedding_for_collection()`: Findet bestes verfügbares Model für eine Collection
+**KRITISCH:** Query-Embedding muss zum Document-Embedding passen!
 
 ```python
 from services.rag.embedding_model_service import get_best_embedding_for_collection
-
-# Gibt (embeddings, model_id, chroma_collection_name, dimensions) zurück
 embeddings, model_id, chroma_name, dims = get_best_embedding_for_collection(collection_id)
 ```
 
-### LLM Models (DB Single Source of Truth)
+---
 
-- Tabelle: `llm_models`
-- Typen: `model_type` = llm | embedding | reranker
-- Capabilities: `supports_vision`, `supports_reasoning`, `supports_streaming`, `supports_function_calling`
-- Defaults pro Typ via `is_default`
+## Rating/Ranking System
+
+### Terminologie (Item vs Feature)
+
+| Begriff | Definition | DB-Model | IRR-Rolle |
+|---------|-----------|----------|-----------|
+| **Item** | Eltern-Entität, gruppiert zusammengehörige Features (z.B. E-Mail-Thread, Quelltext) | `EvaluationItem` | Gruppierung |
+| **Feature** | Eine generierte Alternative/Antwort FÜR ein Item (z.B. eine Zusammenfassung) | `Feature` | **Unit of analysis** (Zeile in der Rater-Matrix) |
+
+**Hierarchie:** Item → hat N Features → jedes Feature wird in genau EINEN Bucket einsortiert
+
+**IRR-Berechnung ("Bucket-Krippendorff"):**
+- Unit of analysis = Feature (jede Zusammenfassung)
+- Jeder Evaluator ordnet jedes Feature einem Bucket zu
+- Buckets sind ordinal: gut(3) > mittel(2) > neutral(1) > schlecht(0)
+- Ordinales Krippendorff's Alpha (vgl. Steigerwald & Albrecht 2025, Section 3.4)
+- Heatmap: Einfache Prozent-Übereinstimmung (gleicher Bucket ja/nein)
+
+```
+EvaluationItem (früher EmailThread)
+├── Messages[] (Klient ↔ Berater)
+└── content (Plain-Text-Inhalt)
+
+Scenario
+├── ScenarioUsers[] (OWNER, EVALUATOR oder RATER)
+├── ScenarioItems[] (früher ScenarioThreads)
+├── config_json (dimensions, labels, scale settings)
+└── ItemDimensionRating[] (Multi-dimensionale Bewertungen)
+```
+
+| function_type_id | Name | Beschreibung |
+|------------------|------|--------------|
+| 1 | ranking | Items sortieren oder kategorisieren |
+| 2 | rating | Multi-dimensionales Rating (LLM Evaluator Metriken) |
+| 3 | mail_rating | E-Mail-Verläufe bewerten (LLARS-spezifisch) |
+| 4 | comparison | Items paarweise vergleichen (A vs B) |
+| 5 | authenticity | Fake/Echt Bewertung (LLARS-spezifisch) |
+| 7 | labeling | Kategorien zuweisen (binär, multi-class) |
+
+### Evaluation Data Schemas (Ground Truth)
+
+**ZENTRALE REFERENZ für alle Evaluationsformate:**
+
+```
+Backend (Pydantic):  app/schemas/evaluation_data_schemas.py
+Frontend (JS):       llars-frontend/src/schemas/evaluationSchemas.js
+Dokumentation:       .claude/plans/evaluation-data-schemas.md
+```
+
+**Schema-Struktur:**
+```json
+{
+  "schema_version": "1.0",
+  "type": "ranking|rating|mail_rating|comparison|authenticity|labeling",
+  "reference": { "type": "text|conversation", "label": "...", "content": "..." },
+  "items": [{ "id": "item_1", "label": "...", "source": {...}, "content": "..." }],
+  "config": { /* typ-spezifische Konfiguration */ }
+}
+```
+
+**Wichtige Konventionen:**
+- `item.id` = Technische ID (z.B. "item_1") - NIEMALS LLM-Namen!
+- `item.label` = UI-Anzeigename (generische Labels)
+- `item.source.type` = "human" | "llm" | "unknown"
+
+### Multi-Dimensionales Rating (LLM Evaluator)
+
+Rating verwendet jetzt standardmäßig das multi-dimensionale Format:
+- **Layout:** Links Text, rechts mehrere Likert-Skalen pro Dimension
+- **Standard-Dimensionen:** Kohärenz, Flüssigkeit, Relevanz, Konsistenz
+- **Gewichtung:** Jede Dimension hat ein Gewicht für die Gesamtbewertung
+- **Presets:** `llm-judge-standard`, `summeval`, `response-quality`, `news-article`
+
+```json
+// Beispiel config_json für Rating
+{
+  "type": "multi-dimensional",
+  "min": 1, "max": 5, "step": 1,
+  "dimensions": [
+    {"id": "coherence", "name": {"de": "Kohärenz"}, "weight": 0.25},
+    {"id": "fluency", "name": {"de": "Flüssigkeit"}, "weight": 0.25}
+  ],
+  "labels": {"1": {"de": "Sehr schlecht"}, "5": {"de": "Sehr gut"}}
+}
+```
+
+**Backend-Service:** `app/services/evaluation/dimensional_rating_service.py`
+**Frontend-Composable:** `llars-frontend/src/composables/useDimensionalRating.js`
+
+### Scenario Wizard AI System
+
+Der Scenario Wizard nutzt KI um hochgeladene Daten zu analysieren und passende Evaluationstypen vorzuschlagen.
+
+**Wichtige Dateien:**
+```
+app/services/evaluation/schema_export_service.py  # Schema-Export für AI-Prompts
+app/services/ai_assist/field_prompt_service.py    # AI Prompt Templates (DB-gestützt)
+app/services/data_import/ai_analyzer.py           # AI Analyse-Logik
+```
+
+**Schema-Integration:**
+- `SchemaExportService` exportiert Schema-Definitionen aus `evaluation_data_schemas.py`
+- AI-Prompts erhalten konsistente Typ-Informationen und Mapping-Beispiele
+- Entscheidungsbaum für automatische Evaluationstyp-Erkennung
+
+**Unterstützte Dateiformate:**
+- CSV (mit Vergleichsdaten oder Einzeltexten)
+- JSON (verschachtelte Strukturen, Konversationen)
+- JSONL (eine JSON pro Zeile)
+- OpenAI/LMSYS Format (conversation_a/b mit winner)
+
+**Preset-Empfehlungen:**
+Die AI empfiehlt automatisch passende Presets aus `evaluationPresets.js`:
+- rating: `llm-judge-standard`, `response-quality`, `news-article`
+- ranking: `buckets-3`, `buckets-5`
+- labeling: `binary-authentic`, `sentiment-3`
+- comparison: `pairwise`, `multicriteria`
+
+### Evaluation Status-Berechnung
+
+Der Bewertungsstatus (`pending`, `in_progress`, `done`) wird an mehreren Stellen berechnet:
+
+**Wichtige Dateien:**
+- `app/services/scenario_stats_service.py` - `get_progress_stats()` für aggregierte Statistiken
+- `app/services/evaluation/session_service.py` - `_get_thread_evaluation_status()` für Einzel-Item-Status
+- `app/routes/HelperFunctions.py` - `get_thread_progression_state()` für Progress-Enum
+
+**Status-Werte:**
+- `ProgressionStatus.NOT_STARTED` / `'pending'` - Keine Bewertung vorhanden
+- `ProgressionStatus.PROGRESSING` / `'in_progress'` - Teilweise bewertet
+- `ProgressionStatus.DONE` / `'done'` - Vollständig bewertet
+
+**Dimensions-Config Lokationen (wichtig für Entwickler):**
+Die Config kann an verschiedenen Stellen sein je nach Erstellungsart:
+```python
+# Direkt (manuell erstellt)
+config.get('dimensions', [])
+# Via Wizard (nested)
+config.get('eval_config', {}).get('dimensions', [])
+config.get('eval_config', {}).get('config', {}).get('dimensions', [])
+```
+
+**ScenarioUsers Rollen:**
+- `OWNER` - Szenario-Ersteller, erhält alle Items, wird in `evaluator_stats` gezählt
+- `EVALUATOR` - Bewerter, erhält alle Items
+- `RATER` - Bewerter mit optionaler Item-Distribution
 
 ---
 
-## LLM-as-Judge
+## Frontend Layout
 
-Automatisierte paarweise Vergleiche von E-Mail-Konversationen.
+### Viewport-Layout (Fullscreen-Seiten)
 
-```
-GET/POST /api/judge/sessions
-POST     /api/judge/sessions/<id>/start|pause
-GET      /api/judge/pillars
-```
-
----
-
-## Wichtige Dateien
-
-```
-app/
-├── auth/decorators.py            # @authentik_required, get_or_create_user
-├── decorators/
-│   ├── permission_decorator.py
-│   └── error_handler.py
-├── routes/
-│   ├── HelperFunctions.py        # get_user_threads, can_access_thread
-│   └── rating/ranking_routes.py
-├── services/crawler/             # Webcrawler + Screenshots
-├── db/
-│   ├── tables.py                 # Alle Models
-│   └── seeders/scenarios.py      # Demo-Szenarien
-└── main.py
-
-llars-frontend/src/
-├── components/
-│   ├── Ranker/Ranker.vue
-│   └── Rater/Rater.vue
-└── composables/
-    ├── usePermissions.js
-    └── useAuth.js
-```
-
----
-
-## Frontend Viewport Layout
-
-Seiten die den gesamten Viewport nutzen sollen (ohne Scrolling) müssen AppBar + App-Footer berücksichtigen.
-
-### Höhenberechnung
-
-```
-AppBar:     64px
-App-Footer: 30px
-━━━━━━━━━━━━━━━━
-Gesamt:     94px → height: calc(100vh - 94px)
-```
-
-### Korrektes Layout-Pattern
-
-```vue
-<template>
-  <div class="page-container">
-    <div class="main-content">
-      <div class="left-panel">
-        <div class="panel-header">...</div>
-        <div class="panel-content">...</div>  <!-- overflow-y: auto -->
-      </div>
-      <div class="right-panel">
-        <div class="panel-header">...</div>
-        <div class="panel-content">...</div>  <!-- overflow-y: auto -->
-      </div>
-    </div>
-    <div class="action-bar">...</div>  <!-- flex-shrink: 0 -->
-  </div>
-</template>
-
-<style scoped>
+```css
 .page-container {
   height: calc(100vh - 94px);  /* 64px AppBar + 30px Footer */
   display: flex;
   flex-direction: column;
-  overflow: hidden;  /* WICHTIG! */
-}
-
-.main-content {
-  flex: 1;
-  display: flex;
-  overflow: hidden;  /* WICHTIG! */
-}
-
-.left-panel, .right-panel {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
   overflow: hidden;
 }
-
 .panel-content {
   flex: 1;
-  overflow-y: auto;  /* Nur hier scrollen! */
+  overflow-y: auto;  /* Nur hier scrollen */
 }
-
-.action-bar {
-  flex-shrink: 0;  /* Fixiert am unteren Rand */
-  padding: 8px 16px;
-}
-</style>
 ```
 
-### Wichtige Regeln
-
-1. **Keine Vuetify Container** für Viewport-Layouts: `v-container`, `v-row`, `v-col` haben eigene Styles die Flexbox stören
-2. **overflow: hidden** auf allen Containern außer dem scrollbaren Bereich
-3. **flex-shrink: 0** für fixierte Elemente (Header, Action-Bar)
-4. **Plain `<div>`** statt Vuetify-Komponenten für Layout-Struktur
+**Wichtig:** Keine Vuetify Container (`v-container`, `v-row`) für Viewport-Layouts!
 
 ### Resizable Panels
 
-Für Layouts mit verstellbaren Panels das `usePanelResize` Composable verwenden:
-
 ```javascript
 import { usePanelResize } from '@/composables/usePanelResize'
-
-const {
-  isResizing,
-  containerRef,
-  startResize,
-  leftPanelStyle,
-  rightPanelStyle
-} = usePanelResize({
-  initialLeftPercent: 50,
-  minLeftPercent: 25,
-  maxLeftPercent: 75,
-  storageKey: 'my-panel-width'  // Speichert Position in localStorage
+const { leftPanelStyle, rightPanelStyle, startResize } = usePanelResize({
+  initialLeftPercent: 50, storageKey: 'panel-width'
 })
 ```
-
-```vue
-<template>
-  <div ref="containerRef" class="main-content">
-    <div class="left-panel" :style="leftPanelStyle()">...</div>
-    <div class="resize-divider" :class="{ resizing: isResizing }" @mousedown="startResize">
-      <div class="resize-handle"></div>
-    </div>
-    <div class="right-panel" :style="rightPanelStyle()">...</div>
-  </div>
-</template>
-```
-
-### Beispiel-Komponenten
-
-- `llars-frontend/src/components/Home.vue`
-- `llars-frontend/src/components/Ranker/RankerDetail.vue`
-- `llars-frontend/src/components/Rater/RaterDetail.vue`
-- `llars-frontend/src/components/Judge/JudgeOverview.vue`
-- `llars-frontend/src/components/Judge/JudgeSession.vue`
-- `llars-frontend/src/components/Judge/JudgeConfig.vue`
-- `llars-frontend/src/composables/usePanelResize.js`
-
----
-
-## Progressive / Staggered Loading
-
-Bei Seiten mit mehreren unabhängigen Daten-Sektionen (z.B. Admin-Dashboard, Docker Monitor) sollen die Sektionen **nacheinander erscheinen** statt alle gleichzeitig zu laden und dann auf einmal zu rendern.
-
-### Warum?
-
-- **Bessere UX**: User sieht sofort ersten Content statt lange auf leere Skeleton-Loader zu starren
-- **Gefühlte Performance**: Progressives Rendering wirkt schneller, auch wenn die Gesamtladezeit gleich ist
-- **Reduzierte kognitive Last**: Inhalte erscheinen in verdaulichen Stücken
-
-### Pattern: Staggered Loading
-
-```javascript
-// Konfigurierbare Verzögerungen pro Sektion
-const STAGGER_DELAYS = {
-  summary: 0,      // Sofort
-  charts: 150,     // 150ms später
-  table: 300,      // 300ms später
-  logs: 450        // 450ms später
-}
-
-const staggeredLoadingTimers = {}
-
-const setStaggeredLoading = (sections, loading) => {
-  // Alte Timer aufräumen
-  Object.values(staggeredLoadingTimers).forEach(timer => clearTimeout(timer))
-
-  if (loading) {
-    // Loading setzen: sofort
-    sections.forEach(section => setLoading(section, true))
-  } else {
-    // Loading entfernen: gestaffelt
-    sections.forEach(section => {
-      const delay = STAGGER_DELAYS[section] || 0
-      staggeredLoadingTimers[section] = setTimeout(() => {
-        setLoading(section, false)
-      }, delay)
-    })
-  }
-}
-
-// Cleanup in onBeforeUnmount
-onBeforeUnmount(() => {
-  Object.values(staggeredLoadingTimers).forEach(timer => clearTimeout(timer))
-})
-```
-
-### Anwendungsfälle
-
-| Szenario | Empfehlung |
-|----------|------------|
-| **Mehrere unabhängige API-Calls** | Staggered Loading |
-| **Dashboard mit Widgets** | Staggered Loading |
-| **Einzelner API-Call** | Normales Loading |
-| **Abhängige Daten (A → B)** | Sequentielles Loading |
-
-### Beispiel-Komponenten
-
-- `llars-frontend/src/components/Admin/sections/AdminDockerMonitorSection.vue`
 
 ---
 
 ## LLARS Design System
 
-LLARS verwendet ein einheitliches Design-System mit Pastel-Farbpalette und asymmetrischem Styling.
-
-### Signatur-Element: Asymmetrischer Border-Radius
-
-Das charakteristische LLARS-Design nutzt asymmetrische Ecken:
+### Signatur: Asymmetrischer Border-Radius
 
 ```css
-/* Buttons */
-border-radius: 16px 4px 16px 4px;
-
-/* Tags/Chips */
-border-radius: 6px 2px 6px 2px;
+border-radius: 16px 4px 16px 4px;  /* Buttons */
+border-radius: 6px 2px 6px 2px;    /* Tags */
 ```
 
-### Farbpalette (Pastel Theme)
+### Farbpalette
 
 | Farbe | Hex | Verwendung |
 |-------|-----|------------|
-| **Primary** | `#b0ca97` | Hauptaktionen (Sage Green) |
-| **Secondary** | `#D1BC8A` | Sekundäre Aktionen (Golden Beige) |
-| **Accent** | `#88c4c8` | Hervorgehobene Aktionen (Soft Teal) |
-| **Success** | `#98d4bb` | Erfolg (Soft Mint) |
-| **Info** | `#a8c5e2` | Information (Soft Blue) |
-| **Warning** | `#e8c87a` | Warnung (Soft Gold) |
-| **Danger** | `#e8a087` | Destruktive Aktionen (Soft Coral) |
-| **Gray** | `#9e9e9e` | Neutral/Abbrechen |
+| Primary | `#b0ca97` | Hauptaktionen |
+| Secondary | `#D1BC8A` | Sekundäre Aktionen |
+| Accent | `#88c4c8` | Hervorhebung |
+| Success | `#98d4bb` | Erfolg |
+| Danger | `#e8a087` | Destruktiv |
 
-### Globale Komponenten
-
-Alle globalen Komponenten sind in `main.js` registriert und überall verfügbar:
-
-#### LBtn - Button
+### Globale Komponenten (35 L-Komponenten)
 
 ```vue
-<LBtn variant="primary" prepend-icon="mdi-plus">Erstellen</LBtn>
-<LBtn variant="secondary">Download</LBtn>
-<LBtn variant="accent">Spezial-Aktion</LBtn>
-<LBtn variant="danger">Löschen</LBtn>
-<LBtn variant="cancel">Abbrechen</LBtn>
-<LBtn variant="text">Text Button</LBtn>
-<LBtn variant="outlined">Outlined</LBtn>
-```
+<!-- Buttons & Actions -->
+<LBtn variant="primary|secondary|accent|danger|cancel|text">
+<LIconBtn icon="mdi-edit" tooltip="Bearbeiten" />
+<LActionGroup :actions="['view','edit','delete']" @action="handle" />
 
-**Props:**
-- `variant`: primary | secondary | accent | success | danger | cancel | text | outlined
-- `size`: small | default | large
-- `prepend-icon` / `append-icon`: MDI Icon Name
-- `loading`: Boolean
-- `disabled`: Boolean
-- `block`: Boolean (volle Breite)
+<!-- Formulare -->
+<LCheckbox v-model="checked" label="Option" />
+<LRadioGroup v-model="selected" :options="[...]" />
+<LSwitch v-model="enabled" label="Aktiviert" />
+<LSlider v-model="value" :min="1" :max="10" />
+<LRatingScale v-model="rating" :min="1" :max="5" />
 
-#### LTag - Tag/Chip
+<!-- Anzeige -->
+<LTag variant="success|info|warning|danger" closable>
+<LCard title="Titel" icon="mdi-robot" color="#b0ca97">
+<LTabs v-model="tab" :tabs="[{value:'a',label:'Tab A'}]" />
+<LTooltip text="Hilfetext"><v-icon>mdi-help</v-icon></LTooltip>
+<LAvatar :user="user" size="32" />
+<LStatusChip status="active|pending|error" />
+<LEvaluationStatus status="done|in_progress|pending" />
 
-```vue
-<LTag variant="primary">Status</LTag>
-<LTag variant="success" prepend-icon="mdi-check">Fertig</LTag>
-<LTag variant="danger" closable @close="handleClose">Entfernen</LTag>
-```
+<!-- Charts & Statistiken -->
+<LChart type="bar|line|pie" :data="chartData" />
+<LGauge :value="75" :max="100" label="Progress" />
+<LStatCard title="Users" :value="42" icon="mdi-account" />
+<LConfusionMatrix :data="matrix" />
+<LAgreementHeatmap :evaluators="[...]" :agreements="{...}" />
+<LRatingDistribution :distribution="[...]" />
 
-**Props:**
-- `variant`: primary | secondary | accent | success | info | warning | danger | gray
-- `size`: small | default | large
-- `prepend-icon` / `append-icon`: MDI Icon Name
-- `closable`: Boolean
+<!-- Loading & Skeleton -->
+<LLoading text="Wird geladen..." />
+<LSkeleton type="card|list|text" />
+<LCardSkeleton />
 
-#### LActionGroup - Action Button Group
-
-Gruppierte Icon-Buttons für Tabellenzeilen und Karten-Aktionen.
-
-```vue
-<!-- Einfache Preset-Nutzung -->
-<LActionGroup
-  :actions="['view', 'edit', 'delete']"
-  @action="handleAction"
-/>
-
-<!-- Mit Custom-Actions und Presets gemischt -->
-<LActionGroup
-  :actions="[
-    'stats',
-    { key: 'custom', icon: 'mdi-star', tooltip: 'Favorit' },
-    'delete'
-  ]"
-  @action="handleAction"
-/>
-
-<!-- Mit Slot für Dialog-Trigger -->
-<LActionGroup :actions="['stats', 'edit', 'delete']" @action="handleAction">
-  <template #edit>
-    <MyEditDialog :item="item" />
-  </template>
-</LActionGroup>
-```
-
-**Preset Actions:**
-- `view`: Anzeigen (mdi-eye)
-- `edit`: Bearbeiten (mdi-pencil)
-- `delete`: Löschen (mdi-delete, danger)
-- `stats`: Statistiken (mdi-chart-bar)
-- `download`: Herunterladen (mdi-download)
-- `copy`: Kopieren (mdi-content-copy)
-- `lock` / `unlock`: Sperren/Entsperren
-- `refresh`: Aktualisieren (mdi-refresh)
-- `close`: Schließen (mdi-close)
-- `add`: Hinzufügen (mdi-plus, success)
-- `play` / `pause` / `stop`: Steuerung
-
-**Props:**
-- `actions`: Array von Preset-Namen (Strings) oder Action-Objekten
-- `size`: x-small | small | default | large | x-large
-- `gap`: none | xs | sm | md | lg
-- `align`: start | center | end
-
-**Action-Objekt:**
-```javascript
-{
-  key: 'custom',      // Eindeutiger Identifier
-  icon: 'mdi-star',   // Icon
-  tooltip: 'Tooltip', // Tooltip-Text
-  variant: 'primary', // Button-Variante
-  loading: false,     // Loading-State
-  disabled: false     // Disabled-State
-}
-```
-
-#### LSlider - Farbverlauf-Slider
-
-Slider mit dynamischem Farbverlauf basierend auf dem Wert. Initial grau, wird bei Interaktion farbig.
-
-```vue
-<!-- Standard Gradient (rot → gelb → grün) -->
-<LSlider v-model="confidence" :min="0" :max="100" :step="5" />
-
-<!-- Feste Farbe -->
-<LSlider v-model="rating" :min="1" :max="5" color-mode="fixed" color="primary" />
-
-<!-- Sofort farbig (ohne initiales Grau) -->
-<LSlider v-model="value" :start-active="true" />
-```
-
-**Props:**
-- `modelValue`: v-model Wert
-- `min` / `max` / `step`: Slider-Bereich
-- `colorMode`: 'gradient' (rot→grün) | 'fixed' (feste Farbe)
-- `color`: Farbe bei colorMode='fixed'
-- `startActive`: Boolean - sofort farbig starten
-- `thumbLabel`: Boolean - Thumb-Label anzeigen
-- `density`: Vuetify density
-
-**Features:**
-- Initial grau, wird bei erster Interaktion farbig
-- Farbverlauf: niedrig=rot, mittel=gelb, hoch=grün
-- LLARS asymmetrischer Border-Radius auf Thumb
-- Smooth Transition bei Farbwechsel
-
-#### LCard - Card
-
-Flexible Card-Komponente für Entity-Listen (Chatbots, Collections, Workspaces).
-
-```vue
-<LCard
-  title="Mein Chatbot"
-  subtitle="chatbot-id"
-  icon="mdi-robot"
-  color="#b0ca97"
-  status="Aktiv"
-  status-variant="success"
-  :stats="[
-    { icon: 'mdi-folder', value: 3, label: 'Collections' },
-    { icon: 'mdi-message', value: 12, label: 'Gespräche' }
-  ]"
->
-  <p>Beschreibung hier</p>
-
-  <template #tags>
-    <LTag variant="info" size="sm">RAG</LTag>
-  </template>
-
-  <template #actions>
-    <LBtn variant="text" size="small">Bearbeiten</LBtn>
-  </template>
-</LCard>
-```
-
-**Props:**
-- `title` / `subtitle`: Titel und Untertitel
-- `icon`: MDI Icon Name für Avatar
-- `color`: Akzentfarbe (Border-Top + Avatar)
-- `status` / `status-variant`: Status-Badge (LTag)
-- `stats`: Array von `{ icon, value, label }` für Stats-Row
-- `clickable`: Macht Card klickbar mit Hover-Effekt
-- `flat`: Ohne Schatten
-- `outlined`: Outline-Style statt elevated
-
-**Slots:**
-- `default`: Hauptinhalt (Beschreibung)
-- `header`: Custom Header (ersetzt Standard-Header)
-- `avatar`: Custom Avatar-Inhalt
-- `status`: Custom Status-Badge
-- `stats`: Custom Stats-Row
-- `tags`: Tags/Badges unter Stats
-- `actions`: Action-Buttons unten
-
-#### LTabs - Tab Navigation
-
-Moderne Tab-Navigation mit LLARS-Design (Primary-Hintergrund, asymmetrischer Border-Radius).
-
-```vue
-<LTabs
-  v-model="activeTab"
-  :tabs="[
-    { value: 'chatbots', label: 'Chatbots', icon: 'mdi-robot' },
-    { value: 'collections', label: 'Collections', icon: 'mdi-folder-multiple' },
-    { value: 'documents', label: 'Dokumente', icon: 'mdi-file-document-multiple', badge: 5 }
-  ]"
-/>
-
-<!-- Tab Content (mit v-window oder v-if) -->
-<v-window v-model="activeTab">
-  <v-window-item value="chatbots">...</v-window-item>
-  <v-window-item value="collections">...</v-window-item>
-</v-window>
-```
-
-**Props:**
-- `modelValue` (v-model): Aktiver Tab-Wert
-- `tabs`: Array von `{ value, label, icon?, badge? }`
-- `variant`: `filled` (default) | `outlined` | `underlined`
-- `grow`: Boolean - Tabs nehmen gleiche Breite ein
-
-**Events:**
-- `update:modelValue`: Bei Tab-Wechsel
-
-#### LTooltip - Tooltip Wrapper
-
-Universeller Tooltip-Wrapper für beliebige Elemente. Kann mit `text`-Prop oder `#content`-Slot verwendet werden.
-
-```vue
-<!-- Einfacher Text-Tooltip -->
-<LTooltip text="Dies ist ein hilfreicher Hinweis">
-  <v-icon>mdi-help-circle</v-icon>
-</LTooltip>
-
-<!-- Mit Position -->
-<LTooltip text="Speichert das Dokument" location="top">
-  <LBtn variant="primary">Speichern</LBtn>
-</LTooltip>
-
-<!-- Mit Custom Content (HTML/Komponenten) -->
-<LTooltip>
-  <v-chip>Status</v-chip>
-  <template #content>
-    <div><strong>Details:</strong></div>
-    <ul><li>Item 1</li><li>Item 2</li></ul>
-  </template>
-</LTooltip>
-```
-
-**Props:**
-- `text`: Tooltip-Text (String)
-- `location`: 'top' | 'bottom' | 'start' | 'end' | 'left' | 'right' (default: 'bottom')
-- `openDelay`: Verzögerung vor Anzeige in ms (default: 300)
-- `closeDelay`: Verzögerung vor Ausblenden in ms (default: 0)
-- `inline`: Boolean - `display: inline` statt `inline-block`
-
-**Slots:**
-- `default`: Element das den Tooltip triggert
-- `content`: Custom Tooltip-Inhalt (ersetzt `text` Prop)
-
-### CSS Custom Properties
-
-Alle Design-Variablen sind in `llars-frontend/src/styles/global.css` definiert:
-
-```css
-:root {
-  /* Farben */
-  --llars-primary: #b0ca97;
-  --llars-secondary: #D1BC8A;
-  --llars-accent: #88c4c8;
-
-  /* Border-Radius */
-  --llars-radius: 16px 4px 16px 4px;
-  --llars-radius-sm: 8px 2px 8px 2px;
-  --llars-radius-xs: 6px 2px 6px 2px;
-
-  /* Spacing */
-  --llars-spacing-sm: 8px;
-  --llars-spacing-md: 16px;
-  --llars-spacing-lg: 24px;
-
-  /* Shadows */
-  --llars-shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.05);
-  --llars-shadow-md: 0 4px 8px rgba(0, 0, 0, 0.08);
-}
-```
-
-### Button-Verwendung nach Kontext
-
-| Kontext | Variant | Beispiel |
-|---------|---------|----------|
-| Hauptaktion | `primary` | Speichern, Erstellen, Starten |
-| Sekundäre Aktion | `secondary` | Download, Export |
-| Spezial/Hervorhebung | `accent` | Neuer Block, Testen |
-| Destruktiv | `danger` | Löschen, Abmelden |
-| Abbrechen/Schließen | `cancel` | Abbrechen, Schließen |
-| Dezent | `text` | Weniger wichtige Aktionen |
-
-### Dateien
-
-```
-llars-frontend/src/
-├── styles/global.css              # CSS Custom Properties, globale Styles
-├── components/common/
-│   ├── LBtn.vue                   # Button Komponente
-│   ├── LIconBtn.vue               # Icon Button
-│   ├── LActionGroup.vue           # Action Button Group (Tabellen-Aktionen)
-│   ├── LSlider.vue                # Farbverlauf-Slider (rot→grün)
-│   ├── LTag.vue                   # Tag/Chip Komponente
-│   ├── LCard.vue                  # Card Komponente
-│   ├── LTabs.vue                  # Tab Navigation Komponente
-│   └── LTooltip.vue               # Tooltip Wrapper
-└── main.js                        # Globale Registrierung
+<!-- Spezial -->
+<LUserSearch v-model="selectedUser" />
+<LlmModelSelect v-model="model" />
+<LLanguageToggle />
+<LThemeToggle />
 ```
 
 ---
@@ -1003,95 +732,19 @@ EOF
 
 ---
 
-## Datenbank-Zugriff
-
-### MariaDB (LLARS Hauptdatenbank)
-
-```bash
-# Via Docker (empfohlen)
-docker exec -it llars_db_service mariadb -u dev_user -pdev_password_change_me database_llars
-
-# SQL-Datei ausführen
-docker cp migration.sql llars_db_service:/tmp/migration.sql
-docker exec llars_db_service bash -c "mariadb -u dev_user -pdev_password_change_me database_llars < /tmp/migration.sql"
-
-# Einzelnen SQL-Befehl ausführen
-docker exec llars_db_service mariadb -u dev_user -pdev_password_change_me database_llars -e "SHOW TABLES;"
-```
-
-### Zugangsdaten (Development)
-
-| Parameter | Wert |
-|-----------|------|
-| Host | llars_db_service (intern) / localhost:55306 (extern) |
-| User | dev_user |
-| Passwort | dev_password_change_me |
-| Datenbank | database_llars |
-| Root-Passwort | dev_root_password_change_me |
-
-### PostgreSQL (Authentik)
-
-```bash
-docker exec -it llars_authentik_db psql -U authentik_dev -d authentik_dev
-```
-
-| Parameter | Wert |
-|-----------|------|
-| Host | llars_authentik_db (intern) |
-| User | authentik_dev |
-| Datenbank | authentik_dev |
-
----
-
 ## Troubleshooting
 
 | Problem | Lösung |
 |---------|--------|
-| Ranking/Rating leer | Zeitraum prüfen (begin/end), User-Rolle prüfen (RATER vs VIEWER) |
-| User nicht in DB | Login erstellt User automatisch via `get_or_create_user` |
+| Ranking/Rating leer | Zeitraum + User-Rolle prüfen |
 | Auth-Fehler | `./scripts/setup_authentik.sh` |
-| Crawler findet nichts | gzip-Decompression, exclude_patterns prüfen |
-| DB-Migration nötig | SQL via `docker exec` ausführen (siehe Datenbank-Zugriff) |
-| **502 Bad Gateway (Produktion)** | `NGINX_EXTERNAL_PORT=80` in `.env` setzen (siehe unten) |
-
-### 502 Bad Gateway auf Produktion
-
-**Symptom:** HTTPS via externen Reverse Proxy gibt 502 Bad Gateway, aber `curl http://localhost:55080` funktioniert.
-
-**Ursache:** Externer Reverse Proxy (z.B. auf separatem Server) erwartet Port 80, aber LLARS nginx läuft auf Port 55080.
-
-**Diagnose:**
-```bash
-# DNS prüfen - zeigt auf externen Proxy?
-dig +short llars.example.com
-
-# Server-IP prüfen
-hostname -I
-
-# Wenn unterschiedlich → externer Reverse Proxy im Einsatz
-
-# Lokaler Test
-curl -s -o /dev/null -w '%{http_code}' http://localhost:55080/  # 200 = LLARS läuft
-
-# HTTPS Test
-curl -s -I https://llars.example.com/  # 502 = Proxy kann Backend nicht erreichen
-```
-
-**Lösung:**
-```bash
-# Port auf 80 setzen für externen Proxy
-echo 'NGINX_EXTERNAL_PORT=80' >> /var/llars/.env
-
-# Nginx neu starten
-cd /var/llars && docker compose up -d nginx-service
-
-# Verifizieren
-docker port llars_nginx_service  # Sollte "80/tcp -> 0.0.0.0:80" zeigen
-```
-
-**Hintergrund:**
-- Development: `NGINX_EXTERNAL_PORT=55080` (Default) - kein Konflikt mit Host-Webserver
-- Produktion mit externem Proxy: `NGINX_EXTERNAL_PORT=80` - Proxy verbindet zu Port 80
+| 502 Bad Gateway (Prod) | `NGINX_EXTERNAL_PORT=80` in `.env` |
+| Crawler findet nichts | exclude_patterns prüfen |
+| Status "Ausstehend" obwohl bewertet | OWNER-Rolle in ScenarioUsers prüfen, Container neu starten |
+| Items-Status inkonsistent | Dimensions-Config Lokationen prüfen (siehe Evaluation Status) |
+| Eventlet DNS Timeout | Gevent verwenden: `PROJECT_STATE=production` |
+| WebSocket nur Polling | Prüfen: `PROJECT_STATE=production` + Gunicorn mit gevent |
+| 429 Too Many Requests | Rate-Limiting aktiv (1000 req/h) - normal bei Load-Tests |
 
 ---
 
@@ -1101,10 +754,82 @@ docker port llars_nginx_service  # Sollte "80/tcp -> 0.0.0.0:80" zeigen
 |------------|------|
 | Client-IDs | llars-backend, llars-frontend |
 | Flow-Slug | llars-api-authentication |
-| Interner Port | 9000 |
+| Port | 9000 |
 
-**Bei Änderung von Client-ID/Flow-Slug:** Login bricht ab!
+**Bei Änderung:** Login bricht ab!
 
 ---
 
-**Stand:** 25. Dezember 2025
+## Wichtige Dateien
+
+```
+app/
+├── auth/decorators.py            # @authentik_required
+├── decorators/
+│   ├── permission_decorator.py   # @require_permission
+│   └── error_handler.py          # @handle_api_errors
+├── routes/                       # API Endpoints
+│   ├── scenarios/                # Szenario-Management
+│   ├── evaluation_routes.py      # Bewertungs-Endpoints
+│   └── HelperFunctions.py        # Progression-State etc.
+├── services/
+│   ├── evaluation/               # Rating, Session, Dimensional
+│   └── scenario_stats_service.py # Progress-Statistiken
+├── db/
+│   ├── models/                   # SQLAlchemy Models (scenario.py, etc.)
+│   └── tables.py                 # Legacy imports
+└── main.py
+
+llars-frontend/src/
+├── components/
+│   ├── common/                   # 35 L-Komponenten (Design System)
+│   └── Evaluation/               # EvaluationHub, StatusTag, etc.
+├── composables/                  # useAuth, usePermissions, useDimensionalRating
+├── views/
+│   ├── Evaluation/               # EvaluationItemsOverview, etc.
+│   └── ScenarioManager/          # ScenarioWizard, etc.
+└── locales/                      # i18n (de.json, en.json)
+```
+
+---
+
+## Refactoring Status
+
+### Abgeschlossen (16 Major)
+
+| Task | Zeilen |
+|------|--------|
+| ChatWithBots.vue | 3299→774 |
+| LatexCollabWorkspace.vue | 3085→1259 |
+| JudgeSession.vue | 2174→579 |
+| ChatbotEditor.vue | 1967→507 |
+| chat_service.py | 1657→590 |
+| latex_collab_routes.py | 1514→56 |
+| crawler_service.py | 1415→666 |
+| chatbot_routes.py | 1273→35 |
+| anonymize_service.py | 1275→445 |
+| agent_chat_service.py | 1263→301 |
+| judge_worker_pool.py | 1067→618 |
+| collection_embedding_service.py | 1046→606 |
+| embedding_worker.py | 825→67 |
+| markdown_collab_routes.py | 798→24 |
+
+### Metriken (Stand: 2026-01-27)
+
+```
+Backend:  425 Python-Dateien, ~126,000 Zeilen
+Frontend: 577 Vue/JS-Dateien, ~193,000 Zeilen
+
+L-Komponenten: 35 (Design System)
+```
+
+### Offen
+
+| Bereich | Aktuell | Ziel |
+|---------|---------|------|
+| Backend Coverage | 21% | 50% |
+| Frontend Coverage | 14% | 40% |
+
+---
+
+**Stand:** 31. Januar 2026

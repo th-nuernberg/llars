@@ -2,10 +2,10 @@
   <div class="evaluation-status" :class="statusClass">
     <transition name="status-fade" mode="out-in">
       <div :key="displayStatus" class="status-content">
-        <v-icon v-if="saving" size="16" class="saving-icon">mdi-loading</v-icon>
-        <v-icon v-else-if="displayStatus === 'done'" size="16">mdi-check-circle</v-icon>
-        <v-icon v-else-if="displayStatus === 'in_progress'" size="16">mdi-progress-clock</v-icon>
-        <v-icon v-else size="16">mdi-circle-outline</v-icon>
+        <LIcon v-if="saving" size="16" class="saving-icon">mdi-loading</LIcon>
+        <LIcon v-else-if="displayStatus === 'done'" size="16">mdi-check-circle</LIcon>
+        <LIcon v-else-if="displayStatus === 'in_progress'" size="16">mdi-progress-clock</LIcon>
+        <LIcon v-else size="16">mdi-circle-outline</LIcon>
         <span class="status-label">{{ statusLabel }}</span>
       </div>
     </transition>
@@ -14,6 +14,7 @@
 
 <script setup>
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 const props = defineProps({
   status: {
@@ -23,6 +24,8 @@ const props = defineProps({
   },
   saving: { type: Boolean, default: false }
 })
+
+const { t } = useI18n()
 
 // Normalize different status formats
 const displayStatus = computed(() => {
@@ -47,14 +50,14 @@ const statusClass = computed(() => {
 })
 
 const statusLabel = computed(() => {
-  if (props.saving) return 'Speichert...'
+  if (props.saving) return t('evaluation.status.saving')
 
   const labels = {
-    'pending': 'Ausstehend',
-    'in_progress': 'In Bearbeitung',
-    'done': 'Abgeschlossen'
+    'pending': t('evaluation.status.pending'),
+    'in_progress': t('evaluation.status.inProgress'),
+    'done': t('evaluation.status.done')
   }
-  return labels[displayStatus.value] || 'Ausstehend'
+  return labels[displayStatus.value] || t('evaluation.status.pending')
 })
 </script>
 

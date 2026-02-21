@@ -16,7 +16,7 @@ Diese Checkliste dient zur schnellen Überprüfung der Kernfunktionalitäten nac
 
 - [ ] LLARS läuft (`docker compose up -d` erfolgreich)
 - [ ] Alle Container healthy (`docker ps`)
-- [ ] Test-User vorhanden (admin, researcher, viewer, chatbot_manager)
+- [ ] Test-User vorhanden (admin, researcher, evaluator, chatbot_manager)
 
 ---
 
@@ -165,10 +165,10 @@ Diese Checkliste dient zur schnellen Überprüfung der Kernfunktionalitäten nac
 - [ ] Admin-Kachel NICHT sichtbar
 - [ ] `/admin` → Redirect oder 403
 
-### Viewer Test
+### Evaluator Test
 
 - [ ] Logout als researcher
-- [ ] Login als `viewer` / `admin123`
+- [ ] Login als `evaluator` / `admin123`
 - [ ] Ranking-Kachel sichtbar
 - [ ] Keine Edit-Buttons (nur lesen)
 - [ ] `/admin` → Redirect oder 403

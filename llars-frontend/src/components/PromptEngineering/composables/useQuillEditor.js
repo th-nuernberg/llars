@@ -345,25 +345,54 @@ export function useQuillEditor(ydoc, socket, roomId, options = {}) {
     }
   }
 
-  // Hebt alle Vorkommen von {{complete_email_history}} hervor
-  const createHighlightFunction = (editor) => {
-    let inPlaceholderHighlight = false
+  // Regex für alle {{variablen}} Platzhalter
+  const PLACEHOLDER_REGEX = /\{\{([a-zA-Z_][a-zA-Z0-9_]*)\}\}/g
+  const INVALID_VAR_NAMES = new Set(['undefined', 'null', 'true', 'false', 'NaN', 'Infinity'])
 
-    return function highlightPlaceholders() {
-      if (inPlaceholderHighlight) return
-      inPlaceholderHighlight = true
+  // Konvertiert {{variablen}} Text zu Embed-Blots (atomare Elemente)
+  const createHighlightFunction = (editor) => {
+    let inPlaceholderConversion = false
+
+    return function convertPlaceholdersToEmbeds() {
+      if (inPlaceholderConversion) return
+      inPlaceholderConversion = true
+
       try {
-        const placeholder = '{{complete_email_history}}'
-        // Entferne alte Hervorhebungen
-        editor.formatText(0, editor.getLength(), highlightFormat, false, Quill.sources.API)
         const text = editor.getText()
-        let idx = text.indexOf(placeholder)
-        while (idx !== -1) {
-          editor.formatText(idx, placeholder.length, highlightFormat, true, Quill.sources.API)
-          idx = text.indexOf(placeholder, idx + placeholder.length)
+
+        // Finde alle {{variablen}} Platzhalter (von hinten nach vorne, um Indizes nicht zu verschieben)
+        const matches = []
+        let match
+        const regex = new RegExp(PLACEHOLDER_REGEX.source, 'g')
+        while ((match = regex.exec(text)) !== null) {
+          const varName = match[1]
+          // Überspringe ungültige Variablennamen
+          if (INVALID_VAR_NAMES.has(varName)) {
+            continue
+          }
+          matches.push({
+            index: match.index,
+            length: match[0].length,
+            varName
+          })
+        }
+
+        // Konvertiere von hinten nach vorne (um Indizes konsistent zu halten)
+        for (let i = matches.length - 1; i >= 0; i--) {
+          const m = matches[i]
+
+          // Prüfe, ob an dieser Position bereits ein Embed ist
+          const [leaf] = editor.getLeaf(m.index)
+          if (leaf && leaf.statics && leaf.statics.blotName === 'variable') {
+            continue // Bereits ein Embed-Blot
+          }
+
+          // Lösche den Text und füge ein Embed ein
+          editor.deleteText(m.index, m.length, Quill.sources.SILENT)
+          editor.insertEmbed(m.index, 'variable', m.varName, Quill.sources.SILENT)
         }
       } finally {
-        inPlaceholderHighlight = false
+        inPlaceholderConversion = false
       }
     }
   }
@@ -528,6 +557,182 @@ export function useQuillEditor(ydoc, socket, roomId, options = {}) {
             }
           }
         })
+
+        // Create drop cursor indicator element - positioned outside the contentEditable
+        let dropCursor = null
+
+        // Inject animation style once
+        if (!document.getElementById('llars-drop-cursor-style')) {
+          const style = document.createElement('style')
+          style.id = 'llars-drop-cursor-style'
+          style.textContent = `
+            @keyframes llarsDropCursorBlink {
+              0%, 100% { opacity: 1; }
+              50% { opacity: 0.3; }
+            }
+          `
+          document.head.appendChild(style)
+        }
+
+        const getDropCursor = () => {
+          if (!dropCursor) {
+            dropCursor = document.createElement('div')
+            dropCursor.className = 'ql-drop-cursor'
+            dropCursor.setAttribute('contenteditable', 'false')
+            dropCursor.style.cssText = `
+              position: fixed;
+              width: 2px;
+              height: 20px;
+              background: #88c4c8;
+              pointer-events: none;
+              z-index: 10000;
+              animation: llarsDropCursorBlink 0.8s ease-in-out infinite;
+              box-shadow: 0 0 4px rgba(136, 196, 200, 0.8);
+              border-radius: 1px;
+              display: none;
+            `
+            // Append to body to avoid contentEditable issues
+            document.body.appendChild(dropCursor)
+          }
+          return dropCursor
+        }
+
+        // Update drop cursor position based on mouse coordinates
+        const updateDropCursor = (e) => {
+          const cursor = getDropCursor()
+
+          if (document.caretRangeFromPoint) {
+            const range = document.caretRangeFromPoint(e.clientX, e.clientY)
+            if (range && editor.root.contains(range.startContainer)) {
+              // Get the bounding rect of the caret position
+              const rects = range.getClientRects()
+              if (rects.length > 0) {
+                const rect = rects[0]
+
+                // Position cursor using fixed positioning (relative to viewport)
+                cursor.style.left = `${rect.left}px`
+                cursor.style.top = `${rect.top}px`
+                cursor.style.height = `${rect.height || 20}px`
+                cursor.style.display = 'block'
+                return
+              }
+            }
+          }
+
+          // Hide cursor if we can't determine position
+          if (cursor) {
+            cursor.style.display = 'none'
+          }
+        }
+
+        const hideDropCursor = () => {
+          if (dropCursor) {
+            dropCursor.style.display = 'none'
+          }
+        }
+
+        // Remove any old cursor elements that might have been left in the editor
+        const oldCursors = editor.root.querySelectorAll('.ql-drop-cursor')
+        oldCursors.forEach(el => el.remove())
+
+        // Placeholder drop handler - allows dragging placeholders from palette or moving within editor
+        // Use capture: true to intercept events before Quill can handle them
+        editor.root.addEventListener('dragover', (e) => {
+          // Only handle variable drags
+          const isVariableDrag = window.__llarsVariableDrag || e.dataTransfer.types.includes('text/placeholder')
+          if (!isVariableDrag) {
+            hideDropCursor()
+            return
+          }
+
+          e.preventDefault()
+          e.stopPropagation()
+          // Use 'move' if moving within editor, 'copy' if from palette
+          e.dataTransfer.dropEffect = window.__llarsVariableDrag ? 'move' : 'copy'
+          editor.root.classList.add('placeholder-drop-target')
+
+          // Update drop cursor position
+          updateDropCursor(e)
+        }, { capture: true })
+
+        editor.root.addEventListener('dragleave', (e) => {
+          // Only remove class if actually leaving the editor (not entering a child)
+          if (!editor.root.contains(e.relatedTarget)) {
+            editor.root.classList.remove('placeholder-drop-target')
+            hideDropCursor()
+          }
+        }, { capture: true })
+
+        editor.root.addEventListener('drop', (e) => {
+          editor.root.classList.remove('placeholder-drop-target')
+          hideDropCursor()
+
+          // Check if this is a variable being moved within the editor
+          const variableMove = e.dataTransfer.getData('text/variable-move')
+
+          // Check if this is a placeholder drop from the palette
+          const placeholderName = e.dataTransfer.getData('text/placeholder')
+
+          if (variableMove || placeholderName) {
+            e.preventDefault()
+            e.stopPropagation()
+
+            const varName = variableMove || placeholderName
+
+            // Get drop position by finding the character offset at mouse position
+            let insertIndex = editor.getLength() - 1
+
+            // Try to get position from mouse coordinates
+            if (document.caretRangeFromPoint) {
+              const range = document.caretRangeFromPoint(e.clientX, e.clientY)
+              if (range && editor.root.contains(range.startContainer)) {
+                const blot = Quill.find(range.startContainer, true)
+                if (blot) {
+                  const blotIndex = editor.getIndex(blot)
+                  insertIndex = blotIndex + range.startOffset
+                }
+              }
+            }
+
+            // If moving a variable within the editor, we need to delete the original
+            if (variableMove && window.__llarsVariableDrag) {
+              const draggedNode = window.__llarsVariableDrag.node
+              const quillBlot = Quill.find(draggedNode)
+
+              if (quillBlot && editor.root.contains(draggedNode)) {
+                const sourceIndex = editor.getIndex(quillBlot)
+
+                // Adjust insertIndex if removing before insert position
+                if (sourceIndex < insertIndex) {
+                  insertIndex -= 1
+                }
+
+                // Delete the original
+                editor.deleteText(sourceIndex, 1, 'silent')
+              }
+
+              // Clear the drag state
+              window.__llarsVariableDrag = null
+            }
+
+            // Insert the variable as an embed blot (atomic element)
+            editor.insertEmbed(insertIndex, 'variable', varName, 'user')
+
+            // Move cursor after the inserted embed (length is 1)
+            editor.setSelection(insertIndex + 1, 0)
+          }
+        }, { capture: true })
+
+        // Also add handlers to the container (prevents Quill's default drop behavior)
+        // Note: We only preventDefault here, NOT stopPropagation, so the root handler still fires
+        editor.container.addEventListener('dragover', (e) => {
+          if (window.__llarsVariableDrag || e.dataTransfer.types.includes('text/placeholder')) {
+            e.preventDefault()
+            e.dataTransfer.dropEffect = window.__llarsVariableDrag ? 'move' : 'copy'
+          }
+        }, { capture: true })
+
+        // Variable embeds are already draggable by default (set in VariableBlot.create)
       }
 
       // NOTE: We no longer broadcast here - autoSync in useYjsCollaboration handles it!
@@ -615,11 +820,21 @@ export function useQuillEditor(ydoc, socket, roomId, options = {}) {
       editors.forEach(editor => {
         if (editor) {
           const text = editor.getText()
-          const placeholder = '{{complete_email_history}}'
-          let idx = text.indexOf(placeholder)
-          while (idx !== -1) {
-            editor.formatText(idx, placeholder.length, highlightFormat, true, Quill.sources.API)
-            idx = text.indexOf(placeholder, idx + placeholder.length)
+          const length = editor.getLength()
+
+          // Entferne alle alten Hervorhebungen
+          editor.formatText(0, length, highlightFormat, false, Quill.sources.API)
+
+          // Finde und highlighte ALLE {{variablen}} Platzhalter
+          let match
+          const regex = new RegExp(PLACEHOLDER_REGEX.source, 'g')
+          while ((match = regex.exec(text)) !== null) {
+            const varName = match[1]
+            // Überspringe ungültige Variablennamen
+            if (['undefined', 'null', 'true', 'false', 'NaN', 'Infinity'].includes(varName)) {
+              continue
+            }
+            editor.formatText(match.index, match[0].length, highlightFormat, true, Quill.sources.API)
           }
         }
       })
@@ -631,6 +846,36 @@ export function useQuillEditor(ydoc, socket, roomId, options = {}) {
     remoteCursors.delete(userId)
     cursorsModules.forEach(cursorsModule => {
       cursorsModule.removeCursor(userId)
+    })
+  }
+
+  // Update cursor color for a user (when they change their collab color)
+  const updateUserColor = (userId, newColor) => {
+    console.log('[useQuillEditor] updateUserColor called:', userId, newColor)
+    const cursor = remoteCursors.get(userId)
+    if (!cursor) {
+      console.log('[useQuillEditor] No remote cursor found for userId:', userId, 'remoteCursors keys:', Array.from(remoteCursors.keys()))
+      return
+    }
+
+    // Update the stored cursor color
+    cursor.color = newColor
+    remoteCursors.set(userId, cursor)
+
+    // Recreate cursors in all blocks with the new color
+    cursorsModules.forEach((cursorsModule, blockId) => {
+      const existingCursor = cursorsModule.cursors().find(c => c.id === userId)
+      if (existingCursor) {
+        console.log('[useQuillEditor] Recreating cursor in block:', blockId, 'with new color:', newColor)
+        // Get the current range before removing
+        const currentRange = existingCursor.range
+        // Remove and recreate with new color
+        cursorsModule.removeCursor(userId)
+        cursorsModule.createCursor(userId, cursor.username, newColor)
+        if (currentRange) {
+          cursorsModule.moveCursor(userId, currentRange)
+        }
+      }
     })
   }
 
@@ -655,6 +900,62 @@ export function useQuillEditor(ydoc, socket, roomId, options = {}) {
     })
   }
 
+  /**
+   * Update all highlight colors for the current user when their collab color changes.
+   * This re-applies formatting to all text that was highlighted by the current user.
+   * Works in two ways:
+   * 1. Updates highlights tracked in userHighlights Map (for new highlights)
+   * 2. Searches the Quill delta for the old color and replaces it (for existing highlights)
+   * @param {string} newColor - The new hex color to apply
+   * @param {string} oldColor - The previous hex color to find and replace
+   */
+  const updateAllHighlightColors = (newColor, oldColor) => {
+    if (!newColor) return
+
+    const currentUsername = getUsername()
+    console.log('[useQuillEditor] updateAllHighlightColors:', oldColor, '->', newColor, 'for user:', currentUsername)
+
+    const newHighlightColor = hexToRgba(newColor, 0.3)
+    const oldHighlightColor = oldColor ? hexToRgba(oldColor, 0.3) : null
+
+    editors.forEach((editor, blockId) => {
+      if (!editor) return
+
+      try {
+        const delta = editor.getContents()
+        let position = 0
+
+        // Iterate through the delta to find all highlights with the old color
+        delta.ops.forEach(op => {
+          const length = typeof op.insert === 'string' ? op.insert.length : 1
+          const attrs = op.attributes || {}
+          const currentHighlight = attrs['llars-user-highlight']
+
+          // Check if this has the old highlight color and replace it
+          if (currentHighlight && oldHighlightColor && currentHighlight === oldHighlightColor) {
+            editor.formatText(position, length, {
+              'llars-user-highlight': newHighlightColor
+            }, Quill.sources.API)
+          }
+
+          position += length
+        })
+
+        // Also update the userHighlights Map for this block
+        const highlights = userHighlights.get(blockId)
+        if (highlights && currentUsername) {
+          highlights.forEach((data) => {
+            if (data.username === currentUsername) {
+              data.color = newColor
+            }
+          })
+        }
+      } catch (e) {
+        console.error('[useQuillEditor] Error updating highlight colors:', e)
+      }
+    })
+  }
+
   return {
     editorsMap,
     editors,
@@ -669,7 +970,9 @@ export function useQuillEditor(ydoc, socket, roomId, options = {}) {
     cleanupAll,
     applyHighlightingToAll,
     removeCursorForUser,
+    updateUserColor,
     clearUserHighlights,
-    flushPendingHighlights
+    flushPendingHighlights,
+    updateAllHighlightColors
   }
 }

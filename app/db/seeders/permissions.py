@@ -135,6 +135,13 @@ def initialize_permissions(db):
             'category': 'feature',
             'description': 'Erlaubt das Teilen von LaTeX Collab Dateien und Ordnern'
         },
+        # Feature: LaTeX Collab AI
+        {
+            'permission_key': 'feature:latex_collab:ai',
+            'display_name': 'LaTeX Collab KI-Assistent',
+            'category': 'feature',
+            'description': 'Erlaubt die Nutzung des KI-Schreibassistenten (Ghost Text, @-Commands, Chat, Zitationssuche)'
+        },
         # Admin: Permissions Management
         {
             'permission_key': 'admin:permissions:manage',
@@ -160,6 +167,18 @@ def initialize_permissions(db):
             'category': 'admin',
             'description': 'Erlaubt Systemkonfigurationen'
         },
+        {
+            'permission_key': 'admin:referral:manage',
+            'display_name': 'Referral-System verwalten',
+            'category': 'admin',
+            'description': 'Erlaubt das Verwalten von Referral-Kampagnen und Einladungslinks'
+        },
+        {
+            'permission_key': 'admin:field_prompts:manage',
+            'display_name': 'KI-Feld-Prompts verwalten',
+            'category': 'admin',
+            'description': 'Erlaubt das Verwalten von KI-Prompts für automatische Feldgenerierung'
+        },
         # Data Operations
         {
             'permission_key': 'data:export',
@@ -172,6 +191,12 @@ def initialize_permissions(db):
             'display_name': 'Daten importieren',
             'category': 'data',
             'description': 'Erlaubt das Importieren von Daten'
+        },
+        {
+            'permission_key': 'data:manage_scenarios',
+            'display_name': 'Szenarien verwalten',
+            'category': 'data',
+            'description': 'Erlaubt das Erstellen und Verwalten von Evaluations-Szenarien'
         },
         {
             'permission_key': 'data:delete',
@@ -234,6 +259,13 @@ def initialize_permissions(db):
             'display_name': 'Chatbots teilen',
             'category': 'feature',
             'description': 'Erlaubt das Teilen von Chatbots mit anderen Benutzern'
+        },
+        # Feature: LLM Selection
+        {
+            'permission_key': 'feature:llm:view',
+            'display_name': 'LLM Modelle auswählen',
+            'category': 'feature',
+            'description': 'Erlaubt das Anzeigen und Auswählen verfügbarer LLM-Modelle'
         },
         # Feature: Anonymize
         {
@@ -306,6 +338,37 @@ def initialize_permissions(db):
             'category': 'admin',
             'description': 'Erlaubt aggregierte Ergebnisse und Statistiken zu sehen'
         },
+        # Feature: Batch Generation (Prompt → LLM → Evaluation Pipeline)
+        {
+            'permission_key': 'feature:generation:view',
+            'display_name': 'Batch Generation ansehen',
+            'category': 'feature',
+            'description': 'Erlaubt das Ansehen von Batch-Generation-Jobs'
+        },
+        {
+            'permission_key': 'feature:generation:create',
+            'display_name': 'Batch Generation erstellen',
+            'category': 'feature',
+            'description': 'Erlaubt das Erstellen neuer Batch-Generation-Jobs'
+        },
+        {
+            'permission_key': 'feature:generation:manage',
+            'display_name': 'Batch Generation verwalten',
+            'category': 'feature',
+            'description': 'Erlaubt das Starten, Pausieren und Abbrechen von Jobs'
+        },
+        {
+            'permission_key': 'feature:generation:export',
+            'display_name': 'Generation-Outputs exportieren',
+            'category': 'feature',
+            'description': 'Erlaubt den Export von generierten Outputs als CSV/JSON'
+        },
+        {
+            'permission_key': 'feature:generation:to_scenario',
+            'display_name': 'Generation zu Evaluation',
+            'category': 'feature',
+            'description': 'Erlaubt das Erstellen von Evaluation-Szenarien aus generierten Outputs'
+        },
     ]
 
     # Create permissions (idempotent)
@@ -336,7 +399,7 @@ def initialize_permissions(db):
         {
             'role_name': 'researcher',
             'display_name': 'Forscher',
-            'description': 'Zugriff auf Evaluierung, Chatbot, Prompt Engineering, Markdown Collab, Anonymisierung und KAIMO',
+            'description': 'Zugriff auf Evaluierung, Chatbot, Prompt Engineering, Batch Generation, Markdown Collab, Anonymisierung und KAIMO',
             'permissions': [
                 # Evaluierung (alle Bewertungsfeatures)
                 'feature:mail_rating:view',
@@ -351,9 +414,17 @@ def initialize_permissions(db):
                 'feature:authenticity:edit',
                 # Chatbot (nur ansehen und nutzen)
                 'feature:chatbots:view',
+                # LLM selection
+                'feature:llm:view',
                 # Prompt Engineering
                 'feature:prompt_engineering:view',
                 'feature:prompt_engineering:edit',
+                # Batch Generation (vollständig)
+                'feature:generation:view',
+                'feature:generation:create',
+                'feature:generation:manage',
+                'feature:generation:export',
+                'feature:generation:to_scenario',
                 # Markdown Collab
                 'feature:markdown_collab:view',
                 'feature:markdown_collab:edit',
@@ -362,6 +433,7 @@ def initialize_permissions(db):
                 'feature:latex_collab:view',
                 'feature:latex_collab:edit',
                 'feature:latex_collab:share',
+                'feature:latex_collab:ai',
                 # Anonymisierung
                 'feature:anonymize:view',
                 # Anonymisierungs-Pipeline
@@ -370,6 +442,9 @@ def initialize_permissions(db):
                 # KAIMO
                 'feature:kaimo:view',
                 'feature:kaimo:edit',
+                # Data Import (für Evaluation-Daten)
+                'data:import',
+                'data:manage_scenarios',
             ]
         },
         {
@@ -383,9 +458,13 @@ def initialize_permissions(db):
                 'feature:chatbots:delete',
                 'feature:chatbots:advanced',
                 'feature:chatbots:share',
+                'feature:llm:view',
                 # Prompt Engineering
                 'feature:prompt_engineering:view',
                 'feature:prompt_engineering:edit',
+                # Batch Generation (ansehen und erstellen)
+                'feature:generation:view',
+                'feature:generation:create',
                 # Markdown Collab
                 'feature:markdown_collab:view',
                 'feature:markdown_collab:edit',
@@ -394,6 +473,7 @@ def initialize_permissions(db):
                 'feature:latex_collab:view',
                 'feature:latex_collab:edit',
                 'feature:latex_collab:share',
+                'feature:latex_collab:ai',
                 # RAG Dokumente
                 'feature:rag:view',
                 'feature:rag:edit',
@@ -402,19 +482,27 @@ def initialize_permissions(db):
             ]
         },
         {
-            'role_name': 'viewer',
-            'display_name': 'Betrachter',
-            'description': 'Nur Lesezugriff auf Features',
+            'role_name': 'evaluator',
+            'display_name': 'Evaluator',
+            'description': 'Nimmt an Evaluationen teil und kann in zugewiesenen Szenarien bewerten',
             'permissions': [
+                # Evaluierungsfeatures - kann an Szenarien teilnehmen
                 'feature:mail_rating:view',
+                'feature:mail_rating:edit',
                 'feature:ranking:view',
+                'feature:ranking:edit',
                 'feature:rating:view',
+                'feature:rating:edit',
                 'feature:comparison:view',
+                'feature:comparison:edit',
                 'feature:authenticity:view',
                 'feature:authenticity:edit',
+                # Allgemeine Features
                 'feature:prompt_engineering:view',
+                'feature:generation:view',  # Kann Jobs ansehen aber nicht erstellen
                 'feature:rag:view',
                 'feature:chatbots:view',
+                'feature:llm:view',
                 'feature:markdown_collab:view',
                 'feature:latex_collab:view',
                 'feature:anonymize:view',
@@ -422,7 +510,45 @@ def initialize_permissions(db):
                 'feature:kaimo:edit',
             ]
         },
+        {
+            'role_name': 'ijcai_reviewer',
+            'display_name': 'IJCAI Reviewer',
+            'description': 'Minimaler Zugriff für IJCAI-Demo (Prompt Engineering, Batch Generation, Evaluation)',
+            'permissions': [
+                # Prompt Engineering (kollaboratives Prompting)
+                'feature:prompt_engineering:view',
+                'feature:prompt_engineering:edit',
+                # Batch Generation (inkl. Start/Export/Übergabe an Szenario)
+                'feature:generation:view',
+                'feature:generation:create',
+                'feature:generation:manage',
+                'feature:generation:export',
+                'feature:generation:to_scenario',
+                # LLM-Auswahl (Modelle in Prompt/Generation/Evaluator)
+                'feature:llm:view',
+                # Chatbots (nur ansehen/nutzen)
+                'feature:chatbots:view',
+                # Szenarien & Evaluation (Scenario Wizard + Aufgaben)
+                'data:import',
+                'data:manage_scenarios',
+                'feature:ranking:view',
+                'feature:ranking:edit',
+                'feature:rating:view',
+                'feature:rating:edit',
+                'feature:comparison:view',
+                'feature:comparison:edit',
+                'feature:authenticity:view',
+                'feature:authenticity:edit',
+                'feature:mail_rating:view',
+                'feature:mail_rating:edit',
+            ]
+        },
     ]
+
+    role_permissions_map = {
+        role["role_name"]: list(role.get("permissions", []))
+        for role in roles_data
+    }
 
     # Create roles and assign permissions (idempotent)
     for role_data in roles_data:
@@ -494,6 +620,45 @@ def initialize_permissions(db):
             else:
                 print(f"Role already exists: {role_name}")
 
+    # Keep legacy viewer role in sync with evaluator permissions (if present)
+    evaluator_permissions = role_permissions_map.get('evaluator', [])
+    viewer_role = Role.query.filter_by(role_name='viewer').first()
+    if viewer_role and evaluator_permissions:
+        existing_role_perms = RolePermission.query.filter_by(role_id=viewer_role.id).all()
+        existing_perm_ids = {rp.permission_id for rp in existing_role_perms}
+
+        target_perm_ids = set()
+        for perm_key in evaluator_permissions:
+            if perm_key in permission_map:
+                target_perm_ids.add(permission_map[perm_key].id)
+
+        added_perms = []
+        for perm_key in evaluator_permissions:
+            if perm_key in permission_map:
+                perm = permission_map[perm_key]
+                if perm.id not in existing_perm_ids:
+                    db.session.add(RolePermission(role_id=viewer_role.id, permission_id=perm.id))
+                    added_perms.append(perm_key)
+
+        removed_perms = []
+        for rp in existing_role_perms:
+            if rp.permission_id not in target_perm_ids:
+                perm_key = next(
+                    (k for k, p in permission_map.items() if p.id == rp.permission_id),
+                    f"id:{rp.permission_id}"
+                )
+                removed_perms.append(perm_key)
+                db.session.delete(rp)
+
+        if added_perms or removed_perms:
+            viewer_role.display_name = 'Evaluator'
+            viewer_role.description = 'Legacy viewer role mapped to evaluator permissions'
+            db.session.commit()
+            if added_perms:
+                print("Role 'viewer' - added: " + str(added_perms))
+            if removed_perms:
+                print("Role 'viewer' - removed: " + str(removed_perms))
+
     # Assign admin role to default admin user
     assign_default_admin_role(db)
     assign_default_demo_roles(db)
@@ -552,8 +717,10 @@ def assign_default_demo_roles(db):
 
     role_map = {
         'researcher': 'researcher',
-        'viewer': 'viewer',
+        'evaluator': 'evaluator',
         'chatbot_manager': 'chatbot_manager',
+        'ijcai_reviewer_1': 'ijcai_reviewer',
+        'ijcai_reviewer_2': 'ijcai_reviewer',
     }
 
     for username, role_name in role_map.items():

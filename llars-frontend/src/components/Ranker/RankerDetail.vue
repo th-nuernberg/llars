@@ -1,8 +1,8 @@
 <template>
   <LEvaluationLayout
     :title="threadTitle"
-    :subtitle="`Thread #${currentThreadId}`"
-    back-label="Ranking"
+    :subtitle="$t('ranker.detail.threadLabel', { id: currentThreadId })"
+    :back-label="$t('ranker.detail.backLabel')"
     :status="evaluationStatus"
     :saving="saving"
     :can-go-prev="canGoPrev"
@@ -18,8 +18,8 @@
       <!-- Feature-Bereich (links) -->
       <div class="panel features-panel" :style="leftPanelStyle()">
         <div class="panel-header">
-          <v-icon size="20" class="mr-2">mdi-format-list-bulleted</v-icon>
-          <span class="panel-title">Features</span>
+          <LIcon size="20" class="mr-2">mdi-format-list-bulleted</LIcon>
+          <span class="panel-title">{{ $t('ranker.detail.featuresTitle') }}</span>
         </div>
         <div class="panel-content">
           <v-expansion-panels>
@@ -32,7 +32,7 @@
                 <div class="buckets-row">
                   <!-- Gut Bucket -->
                   <div class="bucket good-bucket">
-                    <h4>Gut</h4>
+                    <h4>{{ $t('ranker.detail.buckets.good') }}</h4>
                     <draggable
                       v-model="feature.goodList"
                       class="bucket-content"
@@ -50,7 +50,7 @@
                             class="toggle-btn"
                             @click.stop="toggleMinimize(element)"
                           >
-                            {{ element.minimized ? 'Mehr' : 'Weniger' }}
+                            {{ element.minimized ? $t('common.more') : $t('common.less') }}
                           </v-btn>
                         </div>
                       </template>
@@ -59,7 +59,7 @@
 
                   <!-- Mittel Bucket -->
                   <div class="bucket average-bucket">
-                    <h4>Mittel</h4>
+                    <h4>{{ $t('ranker.detail.buckets.average') }}</h4>
                     <draggable
                       v-model="feature.averageList"
                       class="bucket-content"
@@ -77,7 +77,7 @@
                             class="toggle-btn"
                             @click.stop="toggleMinimize(element)"
                           >
-                            {{ element.minimized ? 'Mehr' : 'Weniger' }}
+                            {{ element.minimized ? $t('common.more') : $t('common.less') }}
                           </v-btn>
                         </div>
                       </template>
@@ -86,7 +86,7 @@
 
                   <!-- Schlecht Bucket -->
                   <div class="bucket bad-bucket">
-                    <h4>Schlecht</h4>
+                    <h4>{{ $t('ranker.detail.buckets.bad') }}</h4>
                     <draggable
                       v-model="feature.badList"
                       class="bucket-content"
@@ -104,7 +104,7 @@
                             class="toggle-btn"
                             @click.stop="toggleMinimize(element)"
                           >
-                            {{ element.minimized ? 'Mehr' : 'Weniger' }}
+                            {{ element.minimized ? $t('common.more') : $t('common.less') }}
                           </v-btn>
                         </div>
                       </template>
@@ -114,7 +114,7 @@
 
                 <!-- Neutraler Bucket -->
                 <div class="neutral-bucket">
-                  <h4>Neutral</h4>
+                  <h4>{{ $t('ranker.detail.buckets.neutral') }}</h4>
                   <draggable
                     v-model="feature.neutralList"
                     class="neutral-content"
@@ -132,7 +132,7 @@
                           class="toggle-btn"
                           @click.stop="toggleMinimize(element)"
                         >
-                          {{ element.minimized ? 'Mehr' : 'Weniger' }}
+                          {{ element.minimized ? $t('common.more') : $t('common.less') }}
                         </v-btn>
                       </div>
                     </template>
@@ -157,8 +157,8 @@
       <!-- E-Mail Verlauf (rechts, hidden on mobile) -->
       <div v-if="!isMobile" class="panel email-panel" :style="rightPanelStyle()">
         <div class="panel-header">
-          <v-icon size="20" class="mr-2">mdi-email-outline</v-icon>
-          <span class="panel-title">E-Mail Verlauf</span>
+          <LIcon size="20" class="mr-2">mdi-email-outline</LIcon>
+          <span class="panel-title">{{ $t('ranker.detail.emailHistory') }}</span>
         </div>
         <div class="panel-content">
           <LMessageList :messages="messages" />
@@ -171,6 +171,7 @@
 <script setup>
 import { ref, onMounted, watch, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import draggable from 'vuedraggable'
 import {
   useRankerFeatures,
@@ -184,6 +185,7 @@ const { isMobile } = useMobile()
 
 const route = useRoute()
 const router = useRouter()
+const { t } = useI18n()
 
 // Panel Resize
 const {
@@ -205,7 +207,7 @@ const {
   localStorageKey,
   ranked,
   saveToLocalStorage,
-  loadFromLocalStorage,
+  applyLocalStorageBuckets,
   groupFeaturesByType,
   applyServerRanking,
   prepareForServerSave
@@ -227,7 +229,7 @@ const {
 
 const messages = ref([])
 const rankingThreadsList = ref([])
-const threadTitle = ref('Feature-Ranking')
+const threadTitle = ref(t('ranker.detail.defaultTitle'))
 
 // Auto-save state
 const saving = ref(false)
@@ -335,42 +337,33 @@ const loadCaseData = async (caseId) => {
     rankingThreadsList.value = threads
     const currentThread = threads.find(t => t.thread_id === parseInt(caseId))
     if (currentThread) {
-      threadTitle.value = currentThread.subject || 'Feature-Ranking'
+      threadTitle.value = currentThread.subject || t('ranker.detail.defaultTitle')
     }
   }
 
-  let dataLoadedFromLocalStorage = false
-
-  if (loadFromLocalStorage(caseId)) {
-    dataLoadedFromLocalStorage = true
-  }
-
-  if (!dataLoadedFromLocalStorage) {
-    const threadData = await fetchEmailThreads(caseId)
-    if (!threadData) return
-
-    const serverRanking = await fetchServerRanking(caseId)
-
-    ranked.value = threadData.ranked
-    features.value = threadData.features
-
-    const featureMap = groupFeaturesByType(features.value)
-
-    if (serverRanking) {
-      applyServerRanking(featureMap, serverRanking)
-    }
-
-    groupedFeatures.value = Array.from(featureMap.values())
-    localStorageKey.value = `featureOrder_${caseId}`
-    saveToLocalStorage(caseId)
-  }
-
+  // ALWAYS fetch features from server (never rely on localStorage for feature data)
   const threadData = await fetchEmailThreads(caseId)
-  if (threadData) {
-    messages.value = threadData.messages
-    features.value = threadData.features
-    ranked.value = threadData.ranked
+  if (!threadData) return
+
+  messages.value = threadData.messages
+  features.value = threadData.features
+  ranked.value = threadData.ranked
+
+  // Group server features by type
+  const featureMap = groupFeaturesByType(features.value)
+
+  // Apply server ranking if user has already saved rankings
+  const serverRanking = await fetchServerRanking(caseId)
+  if (serverRanking) {
+    applyServerRanking(featureMap, serverRanking)
+  } else {
+    // No server ranking - try to restore from localStorage
+    // This preserves unsaved work between page reloads
+    applyLocalStorageBuckets(featureMap, caseId)
   }
+
+  groupedFeatures.value = Array.from(featureMap.values())
+  localStorageKey.value = `rankerDetail_buckets_${caseId}`
 }
 
 onMounted(() => {

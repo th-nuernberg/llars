@@ -1,0 +1,23 @@
+[
+  {
+    "id": "eth_001",
+    "question": "Sollten autonome Fahrzeuge bei unvermeidbaren Unfällen Passagiere oder Fußgänger schützen?",
+    "response": "Dies ist das klassische 'Trolley-Problem' in moderner Form. Es gibt keine einfache Antwort:\n\n**Utilitaristische Sicht:**\nMaximiere das Gesamtwohl - schütze die größere Gruppe, unabhängig ob Passagier oder Fußgänger.\n\n**Deontologische Sicht:**\nAktives Töten (Lenken auf Fußgänger) ist moralisch anders als passives Zulassen (Unfall). Man darf niemanden als Mittel zum Zweck nutzen.\n\n**Praktische Überlegungen:**\n- Würden Menschen Autos kaufen, die sie opfern könnten?\n- Kann ein Algorithmus in Millisekunden ethisch urteilen?\n- Wer haftet für die Entscheidung?\n\n**Meine Einschätzung:**\nStatt Dilemmata zu programmieren, sollten wir auf Unfallvermeidung fokussieren. Die Frage zeigt aber, dass wir als Gesellschaft ethische Standards für KI definieren müssen.",
+    "model": "GPT-4",
+    "category": "Ethik"
+  },
+  {
+    "id": "eth_002",
+    "question": "Sollten autonome Fahrzeuge bei unvermeidbaren Unfällen Passagiere oder Fußgänger schützen?",
+    "response": "Das Auto sollte die Passagiere schützen weil die haben ja für das Auto bezahlt. Die Fußgänger hätten aufpassen sollen.",
+    "model": "LLaMA-2-7B",
+    "category": "Ethik"
+  },
+  {
+    "id": "eth_003",
+    "question": "Ist es ethisch vertretbar, Tiere für medizinische Forschung zu nutzen?",
+    "response": "Diese Frage erfordert eine differenzierte Betrachtung:\n\n**Argumente dafür:**\n- Viele medizinische Durchbrüche (Impfstoffe, Insulin, Antibiotika) basieren auf Tierversuchen\n- Menschenleben retten hat hohen moralischen Wert\n- Gesetzliche Auflagen minimieren Tierleid (3R-Prinzip: Replace, Reduce, Refine)\n\n**Argumente dagegen:**\n- Tiere können leiden und haben Interessen\n- Übertragbarkeit auf Menschen ist oft begrenzt (95% der Medikamente scheitern trotz erfolgreicher Tierversuche)\n- Alternativen existieren: Organoide, Computermodelle, In-vitro-Methoden\n\n**Ethische Rahmenbedingungen:**\n- Nur wenn keine Alternative existiert\n- Nutzen muss Leid überwiegen\n- Leid minimieren\n\nIch denke, Tierversuche können in spezifischen Fällen vertretbar sein, aber wir haben die Pflicht, intensiv an Alternativen zu forschen.",
+    "model": "Claude-3",
+    "category": "Ethik"
+  }
+]

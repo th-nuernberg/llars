@@ -4,13 +4,25 @@ import json
 from typing import Optional
 from datetime import datetime
 from enum import Enum
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, synonym
 from db import db
 
 
 class ScenarioRoles(Enum):
-    VIEWER = 'Viewer'
-    RATER = 'Rater'
+    OWNER = 'Owner'          # Szenario-Ersteller - kann bearbeiten, User verwalten, löschen
+    EVALUATOR = 'Evaluator'  # Kann bewerten/interagieren (ehemals RATER)
+    VIEWER = 'Viewer'        # Nur lesend (ehemals EVALUATOR)
+
+
+class InvitationStatus(Enum):
+    ACCEPTED = 'accepted'    # Einladung angenommen (Standard für neue Einladungen)
+    REJECTED = 'rejected'    # Einladung abgelehnt - Szenario erscheint nicht mehr
+    PENDING = 'pending'      # Optional: Einladung noch nicht beantwortet
+
+
+class MembershipStatus(Enum):
+    ACTIVE = 'active'        # User ist aktiv im Szenario
+    ARCHIVED = 'archived'    # User wurde entfernt, Bewertungen bleiben erhalten
     EVALUATOR = 'Evaluator'
     OWNER = 'Owner'
 
@@ -27,32 +39,61 @@ class FeatureFunctionType(db.Model):
     name = mapped_column(db.String(255), unique=True)
 
 
-class EmailThread(db.Model):
-    __tablename__ = 'email_threads'
-    thread_id = mapped_column(db.Integer, primary_key=True)
+class EvaluationItem(db.Model):
+    """
+    Generic evaluation item that can be rated, compared, labeled, or analyzed.
+
+    Replaces the legacy EmailThread model. Supports multiple evaluation types:
+    - rating: Likert/star scale evaluations
+    - ranking: Sort/categorize items
+    - comparison: A/B comparisons
+    - labeling: Category assignment
+    - authenticity: Fake/Real voting
+    """
+    __tablename__ = 'evaluation_items'
+    item_id = mapped_column(db.Integer, primary_key=True)
     chat_id = mapped_column(db.Integer)
     institut_id = mapped_column(db.Integer)
-    subject = mapped_column(db.String(255))
-    sender = mapped_column(db.String(255))  # Neues Feld für den Sender
+    subject = mapped_column(db.Text)  # TEXT for long content (summaries, articles, etc.)
+    sender = mapped_column(db.Text)   # TEXT for flexibility
     function_type_id = mapped_column(db.Integer, db.ForeignKey('feature_function_types.function_type_id'))
 
-    messages = db.relationship('Message', backref='email_thread')
-    features = db.relationship('Feature', backref='email_thread')
-    function_type = db.relationship('FeatureFunctionType', backref='email_threads')
+    # Optional ground truth for supervised evaluation (labeling, comparison)
+    ground_truth_label = mapped_column(db.Text, nullable=True)  # TEXT for long labels
+
+    # Backwards compatibility: thread_id is a synonym for item_id (for queries)
+    thread_id = synonym('item_id')
+
+    messages = db.relationship('Message', backref='evaluation_item')
+    features = db.relationship('Feature', backref='evaluation_item')
+    function_type = db.relationship('FeatureFunctionType', backref='evaluation_items')
+
+    # Legacy backref names for backwards compatibility
+    @property
+    def email_thread(self):
+        """Backwards compatibility alias."""
+        return self
 
     __table_args__ = (
         db.UniqueConstraint('chat_id', 'institut_id', 'function_type_id', name='_chat_institut_function_uc'),
     )
 
 
+# Backwards compatibility alias (deprecated)
+EmailThread = EvaluationItem
+
+
 class Message(db.Model):
     __tablename__ = 'messages'
     message_id = mapped_column(db.Integer, primary_key=True)
-    thread_id = mapped_column(db.Integer, db.ForeignKey('email_threads.thread_id'))
+    item_id = mapped_column(db.Integer, db.ForeignKey('evaluation_items.item_id'))
     sender = mapped_column(db.String(255))
     content = mapped_column(db.TEXT)
     timestamp = mapped_column(db.DateTime)
     generated_by = mapped_column(db.String(255), default="Human")
+
+    # Backwards compatibility: thread_id is a synonym for item_id (for queries)
+    thread_id = synonym('item_id')
 
 
 class LLM(db.Model):
@@ -78,22 +119,28 @@ class UserConsultingCategorySelection(db.Model):
     __tablename__ = 'user_consulting_category_selection'
     id = mapped_column(db.Integer, primary_key=True)
     user_id = mapped_column(db.Integer, db.ForeignKey('users.id'))
-    thread_id = mapped_column(db.Integer, db.ForeignKey('email_threads.thread_id'))
+    item_id = mapped_column(db.Integer, db.ForeignKey('evaluation_items.item_id'))
     consulting_category_type_id = mapped_column(db.Integer, db.ForeignKey('consulting_category_types.id'))
     notes = mapped_column(db.String(255))
     timestamp = mapped_column(db.DateTime, default=datetime.utcnow)
+
+    # Backwards compatibility: thread_id is a synonym for item_id (for queries)
+    thread_id = synonym('item_id')
 
 
 class Feature(db.Model):
     __tablename__ = 'features'
     feature_id = mapped_column(db.Integer, primary_key=True)
-    thread_id = mapped_column(db.Integer, db.ForeignKey('email_threads.thread_id'))
+    item_id = mapped_column(db.Integer, db.ForeignKey('evaluation_items.item_id'))
     type_id = mapped_column(db.Integer, db.ForeignKey('feature_types.type_id'))
     llm_id = mapped_column(db.Integer, db.ForeignKey('llms.llm_id'))
     content = mapped_column(db.TEXT)
 
     feature_type = db.relationship('FeatureType', backref='features')
     llm = db.relationship('LLM', backref='features')
+
+    # Backwards compatibility: thread_id is a synonym for item_id (for queries)
+    thread_id = synonym('item_id')
 
 
 class UserFeatureRanking(db.Model):
@@ -133,6 +180,8 @@ class RatingScenarios(db.Model):
     begin = mapped_column(db.DateTime, default=datetime.utcnow)
     end = mapped_column(db.DateTime, default=datetime.utcnow)
     timestamp = mapped_column(db.DateTime, default=datetime.utcnow)
+    # Wer hat das Szenario erstellt (Username aus Authentik)
+    created_by: Mapped[Optional[str]] = mapped_column(db.String(255), nullable=True, index=True)
     # Modellkonfiguration für Comparison-Szenarien
     llm1_model: Mapped[Optional[str]] = mapped_column(db.String(255), nullable=True)
     llm2_model: Mapped[Optional[str]] = mapped_column(db.String(255), nullable=True)
@@ -140,9 +189,20 @@ class RatingScenarios(db.Model):
     config_json: Mapped[Optional[dict]] = mapped_column(db.JSON, nullable=True)
 
     # Definiere die Beziehungen mit Cascade-Option
-    scenario_users = db.relationship('ScenarioUsers', backref='rating_scenario', cascade="all, delete")
-    scenario_threads = db.relationship('ScenarioThreads', backref='rating_scenario', cascade="all, delete")
-    scenario_thread_distribution = db.relationship('ScenarioThreadDistribution', backref='rating_scenario', cascade="all, delete")
+    scenario_users = db.relationship('ScenarioUsers', backref='rating_scenario', cascade="all, delete-orphan")
+    scenario_items = db.relationship('ScenarioItems', backref='rating_scenario', cascade="all, delete-orphan")
+    scenario_item_distribution = db.relationship('ScenarioItemDistribution', backref='rating_scenario', cascade="all, delete-orphan")
+    # Comparison sessions (for comparison function type)
+    comparison_sessions_rel = db.relationship('ComparisonSession', back_populates="scenario", cascade="all, delete-orphan", passive_deletes=True)
+
+    # Backwards compatibility properties
+    @property
+    def scenario_threads(self):
+        return self.scenario_items
+
+    @property
+    def scenario_thread_distribution(self):
+        return self.scenario_item_distribution
 
 
 class ScenarioUsers(db.Model):
@@ -151,6 +211,29 @@ class ScenarioUsers(db.Model):
     scenario_id = mapped_column(db.Integer, db.ForeignKey('rating_scenarios.id'))
     user_id = mapped_column(db.Integer, db.ForeignKey('users.id'))
     role = mapped_column(db.Enum(ScenarioRoles))
+    # Einladungsstatus: accepted (default), rejected, pending
+    invitation_status = mapped_column(
+        db.Enum(InvitationStatus),
+        default=InvitationStatus.ACCEPTED,
+        nullable=False
+    )
+    # Zeitstempel für Einladung und Antwort
+    invited_at = mapped_column(db.DateTime, default=datetime.utcnow, nullable=True)
+    responded_at = mapped_column(db.DateTime, nullable=True)
+    # Wer hat eingeladen (für Re-Invite Tracking)
+    invited_by: Mapped[Optional[str]] = mapped_column(db.String(255), nullable=True)
+
+    # Membership status: active (default) or archived (soft-delete)
+    membership_status = mapped_column(
+        db.Enum(MembershipStatus),
+        default=MembershipStatus.ACTIVE,
+        nullable=False,
+        server_default='active'
+    )
+    # Archivierungs-Metadaten
+    archived_at = mapped_column(db.DateTime, nullable=True)
+    archived_by: Mapped[Optional[str]] = mapped_column(db.String(255), nullable=True)
+
     user = db.relationship('User', backref='scenario_users')
 
     # Definiere den Unique Constraint für die Kombination von user_id und szenario_id
@@ -159,27 +242,52 @@ class ScenarioUsers(db.Model):
     )
 
 
-class ScenarioThreads(db.Model):
-    __tablename__ = 'scenario_threads'
+class ScenarioItems(db.Model):
+    """Links EvaluationItems to Scenarios. Renamed from ScenarioThreads."""
+    __tablename__ = 'scenario_items'
     id = mapped_column(db.Integer, primary_key=True, autoincrement=True)
     scenario_id = mapped_column(db.Integer, db.ForeignKey('rating_scenarios.id'))
-    thread_id = mapped_column(db.Integer, db.ForeignKey('email_threads.thread_id'))
-    thread = db.relationship('EmailThread', backref='scenario_threads')
+    item_id = mapped_column(db.Integer, db.ForeignKey('evaluation_items.item_id'))
+    item = db.relationship('EvaluationItem', backref='scenario_items')
 
-    # Definiere den Unique Constraint für die Kombination von user_id und szenario_id
+    # Backwards compatibility: thread_id is a synonym for item_id (for queries)
+    thread_id = synonym('item_id')
+
     __table_args__ = (
-        db.UniqueConstraint('thread_id', 'scenario_id', name='uix_thread_szenario'),
+        db.UniqueConstraint('item_id', 'scenario_id', name='uix_item_scenario'),
     )
 
+    # Backwards compatibility property for relationship
+    @property
+    def thread(self):
+        return self.item
 
-class ScenarioThreadDistribution(db.Model):
-    __tablename__ = 'scenario_thread_distribution'
+
+# Backwards compatibility alias
+ScenarioThreads = ScenarioItems
+
+
+class ScenarioItemDistribution(db.Model):
+    """Distributes EvaluationItems to ScenarioUsers. Renamed from ScenarioThreadDistribution."""
+    __tablename__ = 'scenario_item_distribution'
     id = mapped_column(db.Integer, primary_key=True, autoincrement=True)
     scenario_id = mapped_column(db.Integer, db.ForeignKey('rating_scenarios.id'))
     scenario_user_id = mapped_column(db.Integer, db.ForeignKey('scenario_users.id'))
-    scenario_thread_id = mapped_column(db.Integer, db.ForeignKey('scenario_threads.id'))
-    scenario_thread = db.relationship('ScenarioThreads', backref='distributions')
-    scenario_user = db.relationship('ScenarioUsers', backref='thread_distributions')
+    scenario_item_id = mapped_column(db.Integer, db.ForeignKey('scenario_items.id'))
+    scenario_item = db.relationship('ScenarioItems', backref='distributions')
+    scenario_user = db.relationship('ScenarioUsers', backref='item_distributions')
+
+    # Backwards compatibility: scenario_thread_id is a synonym for scenario_item_id (for queries)
+    scenario_thread_id = synonym('scenario_item_id')
+
+    # Backwards compatibility property for relationship
+    @property
+    def scenario_thread(self):
+        return self.scenario_item
+
+
+# Backwards compatibility alias
+ScenarioThreadDistribution = ScenarioItemDistribution
 
 
 
@@ -187,27 +295,196 @@ class UserMailHistoryRating(db.Model):
     __tablename__ = 'user_mailhistory_ratings'
     rating_id = mapped_column(db.Integer, primary_key=True, autoincrement=True)
     user_id = mapped_column(db.Integer, db.ForeignKey('users.id'))
-    thread_id = mapped_column(db.Integer, db.ForeignKey('email_threads.thread_id'))
+    item_id = mapped_column(db.Integer, db.ForeignKey('evaluation_items.item_id'))
     counsellor_coherence_rating = mapped_column(db.Integer, nullable=True)
     client_coherence_rating = mapped_column(db.Integer, nullable=True)
     quality_rating = mapped_column(db.Integer, nullable=True)
     overall_rating = mapped_column(db.Integer, nullable=True)
-    feedback = mapped_column(db.TEXT)  # Optionales Feld für textbasiertes Feedback
+    feedback = mapped_column(db.TEXT)
     status = mapped_column(db.Enum(ProgressionStatus), default=ProgressionStatus.NOT_STARTED)
     timestamp = mapped_column(db.DateTime, default=datetime.utcnow)
 
     user = db.relationship('User', backref='mail_ratings')
-    email_thread = db.relationship('EmailThread', backref='mail_ratings')
+    evaluation_item = db.relationship('EvaluationItem', backref='mail_ratings')
+
+    # Backwards compatibility: thread_id is a synonym for item_id (for queries)
+    thread_id = synonym('item_id')
+
+    # Backwards compatibility property for relationship
+    @property
+    def email_thread(self):
+        return self.evaluation_item
+
+
+class ItemDimensionRating(db.Model):
+    """
+    Multi-dimensional rating for an evaluation item.
+
+    Used for the new generalized rating system where items are evaluated
+    on multiple configurable dimensions (e.g., Coherence, Fluency, Relevance).
+    This is the base for both generic ratings and specialized types like mail_rating.
+
+    Example dimension_ratings JSON:
+    {
+        "coherence": 4,
+        "fluency": 5,
+        "relevance": 3,
+        "consistency": 4
+    }
+    """
+    __tablename__ = 'item_dimension_ratings'
+
+    id: Mapped[int] = mapped_column(db.Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
+    item_id: Mapped[int] = mapped_column(db.Integer, db.ForeignKey('evaluation_items.item_id'), nullable=False, index=True)
+    scenario_id: Mapped[int] = mapped_column(db.Integer, db.ForeignKey('rating_scenarios.id'), nullable=False, index=True)
+
+    # Dimension scores as JSON for flexibility
+    # Example: {"coherence": 4, "fluency": 5, "relevance": 3, "consistency": 4}
+    dimension_ratings: Mapped[dict] = mapped_column(db.JSON, nullable=False)
+
+    # Calculated weighted average of all dimensions
+    overall_score: Mapped[Optional[float]] = mapped_column(db.Float, nullable=True)
+
+    # Optional user feedback/notes
+    feedback: Mapped[Optional[str]] = mapped_column(db.TEXT, nullable=True)
+
+    # Progression status tracking
+    status: Mapped[ProgressionStatus] = mapped_column(
+        db.Enum(ProgressionStatus),
+        default=ProgressionStatus.NOT_STARTED,
+        nullable=False
+    )
+
+    # Timestamps
+    created_at: Mapped[datetime] = mapped_column(db.DateTime, default=datetime.utcnow, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(
+        db.DateTime,
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
+        nullable=False
+    )
+
+    # Relationships
+    user = db.relationship('User', backref='item_dimension_ratings')
+    item = db.relationship('EvaluationItem', backref='dimension_ratings')
+    scenario = db.relationship('RatingScenarios', backref='dimension_ratings')
+
+    # Backwards compatibility: thread_id is a synonym for item_id
+    thread_id = synonym('item_id')
+
+    __table_args__ = (
+        db.UniqueConstraint('user_id', 'item_id', 'scenario_id', name='uix_user_item_scenario_dim_rating'),
+    )
+
+    def calculate_overall_score(self, weights: dict = None) -> float:
+        """
+        Calculate weighted average from dimension ratings.
+
+        Args:
+            weights: Optional dict mapping dimension_id to weight.
+                     If not provided, equal weights are used.
+
+        Returns:
+            Weighted average score
+        """
+        if not self.dimension_ratings:
+            return 0.0
+
+        if weights:
+            total_weight = 0.0
+            weighted_sum = 0.0
+            for dim_id, score in self.dimension_ratings.items():
+                weight = weights.get(dim_id, 1.0)
+                weighted_sum += score * weight
+                total_weight += weight
+            return round(weighted_sum / total_weight, 2) if total_weight > 0 else 0.0
+        else:
+            # Equal weights
+            scores = list(self.dimension_ratings.values())
+            return round(sum(scores) / len(scores), 2) if scores else 0.0
+
+    def to_dict(self) -> dict:
+        """Convert to dictionary for API responses."""
+        return {
+            'id': self.id,
+            'user_id': self.user_id,
+            'item_id': self.item_id,
+            'scenario_id': self.scenario_id,
+            'dimension_ratings': self.dimension_ratings,
+            'overall_score': self.overall_score,
+            'feedback': self.feedback,
+            'status': self.status.value if self.status else None,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None
+        }
+
+
+class ItemLabelingEvaluation(db.Model):
+    """
+    Labeling evaluation for an item - category assignment by a user.
+
+    Used for text classification/categorization tasks where users
+    assign one or more category labels to items.
+    """
+    __tablename__ = 'item_labeling_evaluations'
+
+    id: Mapped[int] = mapped_column(db.Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
+    item_id: Mapped[int] = mapped_column(db.Integer, db.ForeignKey('evaluation_items.item_id'), nullable=False, index=True)
+    scenario_id: Mapped[int] = mapped_column(db.Integer, db.ForeignKey('rating_scenarios.id'), nullable=False, index=True)
+
+    # Selected category ID (from scenario config)
+    category_id: Mapped[str] = mapped_column(db.String(255), nullable=True)
+
+    # Whether user marked as unsure
+    is_unsure: Mapped[bool] = mapped_column(db.Boolean, default=False)
+
+    # Optional feedback
+    feedback: Mapped[Optional[str]] = mapped_column(db.TEXT, nullable=True)
+
+    # Timestamps
+    created_at: Mapped[datetime] = mapped_column(db.DateTime, default=datetime.now, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(db.DateTime, default=datetime.now, onupdate=datetime.now, nullable=False)
+
+    # Relationships
+    user = db.relationship('User', backref='labeling_evaluations')
+    item = db.relationship('EvaluationItem', backref='labeling_evaluations')
+    scenario = db.relationship('RatingScenarios', backref='labeling_evaluations')
+
+    # Backwards compatibility
+    thread_id = synonym('item_id')
+
+    __table_args__ = (
+        db.UniqueConstraint('user_id', 'item_id', 'scenario_id', name='uix_user_item_scenario_labeling'),
+    )
+
+    def to_dict(self) -> dict:
+        """Convert to dictionary for API responses."""
+        return {
+            'id': self.id,
+            'user_id': self.user_id,
+            'item_id': self.item_id,
+            'scenario_id': self.scenario_id,
+            'category_id': self.category_id,
+            'is_unsure': self.is_unsure,
+            'feedback': self.feedback,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None
+        }
 
 
 class UserMessageRating(db.Model):
     __tablename__ = 'user_message_ratings'
     msg_rating_id = mapped_column(db.Integer, primary_key=True, autoincrement=True)
     user_id = mapped_column(db.Integer, db.ForeignKey('users.id'))
-    thread_id = mapped_column(db.Integer, db.ForeignKey('email_threads.thread_id'))
+    item_id = mapped_column(db.Integer, db.ForeignKey('evaluation_items.item_id'))
     message_id = mapped_column(db.Integer, db.ForeignKey('messages.message_id'))
     rating = mapped_column(db.String(4), nullable=True)
     timestamp = mapped_column(db.DateTime, default=datetime.utcnow)
+
+    # Backwards compatibility: thread_id is a synonym for item_id (for queries)
+    thread_id = synonym('item_id')
 
 
 class UserPrompt(db.Model):
@@ -216,6 +493,7 @@ class UserPrompt(db.Model):
     user_id = mapped_column(db.Integer, db.ForeignKey('users.id'))  # Verknüpfung mit einem User
     name = mapped_column(db.String(255), nullable=False)  # Name des Prompts, vom User festgelegt
     content = mapped_column(db.JSON, nullable=False)  # Prompt-Inhalt im JSON-Format
+    rendered_content = mapped_column(db.JSON, nullable=True)  # Blocks with {{var}} as text (reliable for variable substitution)
     created_at = mapped_column(db.DateTime, default=datetime.utcnow)  # Zeitpunkt der Erstellung
     updated_at = mapped_column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)  # Zeitpunkt der letzten Aktualisierung
 
@@ -243,7 +521,7 @@ class ComparisonSession(db.Model):
     messages: Mapped[list["ComparisonMessage"]] = db.relationship("ComparisonMessage", backref="session", cascade="all, delete-orphan", lazy="selectin")
 
     user = db.relationship("User", backref="comparison_sessions")
-    scenario = db.relationship("RatingScenarios", backref="comparison_sessions")
+    scenario = db.relationship("RatingScenarios", back_populates="comparison_sessions_rel")
 
 
 class ComparisonMessage(db.Model):

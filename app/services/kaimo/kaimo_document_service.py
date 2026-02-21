@@ -6,7 +6,7 @@ Business logic for managing KAIMO documents.
 from datetime import datetime
 from typing import Optional
 
-from db.db import db
+from db.database import db
 from db.models import KaimoCase, KaimoDocument
 
 

@@ -7,6 +7,7 @@
 
 import { ref, computed } from 'vue';
 import axios from 'axios';
+import { logI18n, logI18nParams } from '@/utils/logI18n';
 
 export function useRAGStats() {
   // State
@@ -64,7 +65,7 @@ export function useRAGStats() {
         stats.value = data;
       }
     } catch (error) {
-      console.error('Error fetching stats:', error);
+      logI18n('error', 'logs.admin.ragSectionStats.fetchStatsFailed', error);
     }
   };
 
@@ -76,7 +77,7 @@ export function useRAGStats() {
         embeddingInfo.value = response.data.embedding;
       }
     } catch (error) {
-      console.error('Error fetching embedding info:', error);
+      logI18n('error', 'logs.admin.ragSectionStats.fetchEmbeddingInfoFailed', error);
       embeddingInfo.value = {
         model_name: 'Error loading',
         model_type: 'error',
@@ -109,7 +110,7 @@ export function useRAGStats() {
         };
       }
     } catch (error) {
-      console.error('Error fetching processing queue:', error);
+      logI18n('error', 'logs.admin.ragSectionStats.fetchProcessingQueueFailed', error);
     }
     loadingQueue.value = false;
   };
@@ -138,12 +139,16 @@ export function useRAGStats() {
         total: data.queue.length
       };
 
-      console.log('[RAG] Queue-Update erhalten:', processingQueue.value);
+      logI18n('log', 'logs.admin.ragSectionStats.queueUpdate', processingQueue.value);
     }
   };
 
   const handleDocumentProgress = (data) => {
-    console.log('[RAG] Dokument-Progress:', data.filename, data.progress + '%', data.step);
+    logI18nParams('log', 'logs.admin.ragSectionStats.documentProgress', {
+      filename: data.filename,
+      progress: `${data.progress}%`,
+      step: data.step
+    });
 
     if (data.status === 'processing') {
       if (processingQueue.value.pending > 0) {

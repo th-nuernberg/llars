@@ -112,8 +112,12 @@ def require_permission(permission_key: str):
                 g.is_system_api_key = True
                 return f(*args, **kwargs)
 
-            # Extract username from token using centralized AuthUtils
-            username = AuthUtils.extract_username_from_token()
+            # If already authenticated via API key (g.authentik_user set by api_key_or_token_required)
+            if hasattr(g, 'authentik_user') and g.authentik_user is not None:
+                username = g.authentik_user.username if hasattr(g.authentik_user, 'username') else str(g.authentik_user)
+            else:
+                # Extract username from token using centralized AuthUtils
+                username = AuthUtils.extract_username_from_token()
 
             if not username:
                 return jsonify({
@@ -134,6 +138,14 @@ def require_permission(permission_key: str):
                     'message': f'Permission denied: {permission_key} required',
                     'required_permission': permission_key
                 }), 403
+
+            # Populate g.authentik_user for downstream handlers that rely on it.
+            if not hasattr(g, 'authentik_user') or g.authentik_user is None:
+                from auth.decorators import get_or_create_user
+
+                g.authentik_user = get_or_create_user(username)
+                if not hasattr(g, 'authentik_user_id') or g.authentik_user_id is None:
+                    g.authentik_user_id = getattr(g.authentik_user, 'id', None)
 
             # Permission granted, execute the route
             return f(*args, **kwargs)
@@ -161,8 +173,11 @@ def require_any_permission(*permission_keys):
     def decorator(f):
         @wraps(f)
         def decorated_function(*args, **kwargs):
-            # Extract username from token using centralized AuthUtils
-            username = AuthUtils.extract_username_from_token()
+            # If already authenticated via API key
+            if hasattr(g, 'authentik_user') and g.authentik_user is not None:
+                username = g.authentik_user.username if hasattr(g.authentik_user, 'username') else str(g.authentik_user)
+            else:
+                username = AuthUtils.extract_username_from_token()
 
             if not username:
                 return jsonify({
@@ -194,6 +209,28 @@ def require_any_permission(*permission_keys):
     return decorator
 
 
+def has_role(user, role_name: str) -> bool:
+    """
+    Check if a user has a specific system role.
+
+    Args:
+        user: User object or username (from g.authentik_user)
+        role_name: The role name to check (e.g., 'admin', 'researcher', 'evaluator')
+
+    Returns:
+        True if user has the role, False otherwise
+
+    Example:
+        if has_role(g.authentik_user, 'admin'):
+            # Admin-only logic
+    """
+    username = getattr(user, 'username', str(user)) if user else None
+    if not username:
+        return False
+
+    return PermissionService.user_has_role(username, role_name)
+
+
 def require_all_permissions(*permission_keys):
     """
     Decorator to require ALL of the specified permissions (AND logic).
@@ -213,8 +250,11 @@ def require_all_permissions(*permission_keys):
     def decorator(f):
         @wraps(f)
         def decorated_function(*args, **kwargs):
-            # Extract username from token using centralized AuthUtils
-            username = AuthUtils.extract_username_from_token()
+            # If already authenticated via API key
+            if hasattr(g, 'authentik_user') and g.authentik_user is not None:
+                username = g.authentik_user.username if hasattr(g.authentik_user, 'username') else str(g.authentik_user)
+            else:
+                username = AuthUtils.extract_username_from_token()
 
             if not username:
                 return jsonify({

@@ -2,18 +2,7 @@
  * User display utilities for avatars and name formatting
  */
 
-// LLARS color palette for DiceBear backgrounds
-const LLARS_COLORS = [
-  'b0ca97', // primary - sage green
-  '98d4bb', // success - soft mint
-  'a8c5e2', // info - soft blue
-  'e8c87a', // warning - soft gold
-  '88c4c8', // accent - soft teal
-  'D1BC8A', // secondary - golden beige
-  'e8a087', // danger - soft coral
-  'c5b4e3', // purple - soft lavender
-  'f0b6c2', // pink - soft rose
-]
+import { LLARS_COLORS } from '@/constants/colors'
 
 /**
  * Generate a consistent color from a seed string
@@ -30,15 +19,17 @@ export function getColorFromSeed(seed) {
 }
 
 /**
- * Generate DiceBear avatar URL with bottts-neutral style
+ * Generate DiceBear avatar URL with initials style for humans
+ * Note: bottts-neutral (robots) should only be used for AI/bot avatars
  * @param {string} seed - Seed for avatar generation
  * @param {number} size - Avatar size in pixels (default: 80)
+ * @param {string} variant - Avatar variant (default: 'initials', use 'bottts-neutral' for bots)
  * @returns {string} DiceBear avatar URL
  */
-export function getDiceBearUrl(seed, size = 80) {
+export function getDiceBearUrl(seed, size = 80, variant = 'initials') {
   const safeSeed = seed || '?'
   const bgColor = getColorFromSeed(safeSeed)
-  return `https://api.dicebear.com/7.x/bottts-neutral/svg?seed=${encodeURIComponent(safeSeed)}&size=${size}&backgroundColor=${bgColor}`
+  return `https://api.dicebear.com/7.x/${variant}/svg?seed=${encodeURIComponent(safeSeed)}&size=${size}&backgroundColor=${bgColor}`
 }
 
 /**

@@ -1,7 +1,7 @@
 import axios from 'axios'
 import { AUTH_STORAGE_KEYS, getAuthStorageItem } from '@/utils/authStorage'
 
-const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:80'
+const baseUrl = import.meta.env.VITE_API_BASE_URL || ''
 
 const getToken = () => getAuthStorageItem(AUTH_STORAGE_KEYS.token)
 
@@ -32,6 +32,31 @@ export async function createKaimoCase(payload) {
 export async function publishKaimoCase(caseId) {
   const token = getToken()
   const res = await axios.post(`${baseUrl}/api/kaimo/admin/cases/${caseId}/publish`, {}, {
+    headers: { Authorization: `Bearer ${token}` }
+  })
+  return res.data
+}
+
+// ============ Admin API - Export/Import ============
+
+export async function exportKaimoCase(caseId, includeAssessments = false) {
+  const token = getToken()
+  const params = includeAssessments ? '?include_assessments=true' : ''
+  const res = await axios.get(`${baseUrl}/api/kaimo/admin/cases/${caseId}/export${params}`, {
+    headers: { Authorization: `Bearer ${token}` }
+  })
+  return res.data
+}
+
+export async function importKaimoCase(exportData, options = {}) {
+  const token = getToken()
+  const payload = {
+    export: exportData,
+    name_override: options.nameOverride || null,
+    status_override: options.statusOverride || null,
+    publish: options.publish || false
+  }
+  const res = await axios.post(`${baseUrl}/api/kaimo/admin/cases/import`, payload, {
     headers: { Authorization: `Bearer ${token}` }
   })
   return res.data
@@ -183,6 +208,36 @@ export async function completeAssessment(assessmentId, payload) {
 export async function getKaimoUserCategories() {
   const token = getToken()
   const res = await axios.get(`${baseUrl}/api/kaimo/categories`, {
+    headers: { Authorization: `Bearer ${token}` }
+  })
+  return res.data
+}
+
+// ============ User API - Sharing ============
+
+export async function shareKaimoCase(caseId, username) {
+  const token = getToken()
+  const res = await axios.post(`${baseUrl}/api/kaimo/cases/${caseId}/share`, {
+    shared_with: username
+  }, {
+    headers: { Authorization: `Bearer ${token}` }
+  })
+  return res.data
+}
+
+export async function unshareKaimoCase(caseId, username) {
+  const token = getToken()
+  const res = await axios.post(`${baseUrl}/api/kaimo/cases/${caseId}/unshare`, {
+    unshare_with: username
+  }, {
+    headers: { Authorization: `Bearer ${token}` }
+  })
+  return res.data
+}
+
+export async function getKaimoCaseShares(caseId) {
+  const token = getToken()
+  const res = await axios.get(`${baseUrl}/api/kaimo/cases/${caseId}/shares`, {
     headers: { Authorization: `Bearer ${token}` }
   })
   return res.data

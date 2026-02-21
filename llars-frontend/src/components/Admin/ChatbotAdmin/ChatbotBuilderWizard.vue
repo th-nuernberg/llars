@@ -3,11 +3,11 @@
     <v-card class="wizard-card" variant="outlined">
       <!-- Header -->
       <v-card-title class="d-flex align-center pa-4">
-        <v-icon class="mr-2" color="primary">mdi-wizard-hat</v-icon>
+        <LIcon class="mr-2" color="primary">wand</LIcon>
         <div>
-          <div class="text-h6">Chatbot Builder</div>
+          <div class="text-h6">{{ $t('admin.chatbotBuilder.title') }}</div>
           <div class="text-caption text-medium-emphasis">
-            Website crawlen, Chunks erstellen und Chatbot konfigurieren
+            {{ $t('admin.chatbotBuilder.subtitle') }}
           </div>
         </div>
         <v-spacer />
@@ -46,7 +46,7 @@
           prepend-icon="mdi-arrow-left"
           @click="handleClose"
         >
-          Zurück
+          {{ $t('admin.chatbotBuilder.back') }}
         </LBtn>
       </v-card-title>
 
@@ -158,10 +158,7 @@
             :embedding-progress="embeddingProgress"
             :generating-fields="generating"
             :can-generate="!!chatbotId"
-            :models="llmModels"
-            :models-loading="llmModelsLoading"
             @generate-field="handleGenerateField"
-            @refresh-models="syncAndLoadModels"
           />
         </template>
 
@@ -187,7 +184,7 @@
           size="small"
           @click="handlePreviousStep"
         >
-          Zurück
+          {{ $t('admin.chatbotBuilder.back') }}
         </LBtn>
         <v-spacer />
 
@@ -200,7 +197,7 @@
           prepend-icon="mdi-rocket-launch"
           @click="handleStartWizard"
         >
-          Crawling starten
+          {{ $t('admin.chatbotBuilder.actions.startCrawling') }}
         </LBtn>
 
         <!-- Step 2/3: Progress Actions -->
@@ -213,7 +210,7 @@
             class="mr-2"
             @click="handlePauseBuild"
           >
-            Pausieren
+            {{ $t('admin.chatbotBuilder.actions.pause') }}
           </LBtn>
           <LBtn
             variant="primary"
@@ -221,7 +218,7 @@
             prepend-icon="mdi-skip-forward"
             @click="handleSkipToConfig"
           >
-            Zur Konfiguration
+            {{ $t('admin.chatbotBuilder.actions.toConfiguration') }}
           </LBtn>
         </template>
 
@@ -235,9 +232,9 @@
           prepend-icon="mdi-check"
           @click="handleFinalizeChatbot"
         >
-          <template v-if="isCrawling">Warte auf Crawling...</template>
-          <template v-else-if="isEmbedding">Chatbot erstellen (Embedding läuft weiter)</template>
-          <template v-else>Chatbot erstellen</template>
+          <template v-if="isCrawling">{{ $t('admin.chatbotBuilder.actions.waitingForCrawling') }}</template>
+          <template v-else-if="isEmbedding">{{ $t('admin.chatbotBuilder.actions.createWithEmbedding') }}</template>
+          <template v-else>{{ $t('admin.chatbotBuilder.actions.createChatbot') }}</template>
         </LBtn>
       </v-card-actions>
 
@@ -258,7 +255,11 @@
 
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import axios from 'axios'
+import { logI18n, logI18nParams } from '@/utils/logI18n'
+
+const { t } = useI18n()
 import { getSocket, useSocketState } from '@/services/socketService'
 import { useBuilderState, BUILD_STATUS, WIZARD_STEPS } from '@/composables/useBuilderState'
 import { fieldGenerationService } from '@/composables/useFieldGenerationService'
@@ -293,10 +294,6 @@ const elapsedTimeInterval = ref(null)
 const interruptedGenerations = ref([])
 // Track field generation subscriptions for cleanup
 const fieldSubscriptions = ref([])
-
-// ===== LLM Models =====
-const llmModels = ref([])
-const llmModelsLoading = ref(false)
 
 // ===== Builder State =====
 const {
@@ -336,49 +333,14 @@ const {
   startCrawlTimer
 } = useBuilderState()
 
-async function loadModels() {
-  llmModelsLoading.value = true
-  try {
-    const response = await axios.get('/api/llm/models?active_only=true&model_type=llm')
-    if (response.data?.success) {
-      llmModels.value = response.data.models || []
-
-      // Default selection (only if not set yet)
-      if (!wizardData.value.modelName) {
-        const def = llmModels.value.find(m => m.is_default) || llmModels.value[0]
-        if (def?.model_id) {
-          wizardData.value.modelName = def.model_id
-        }
-      }
-    }
-  } catch (error) {
-    console.error('[Wizard] Error loading LLM models:', error)
-    llmModels.value = []
-  } finally {
-    llmModelsLoading.value = false
-  }
-}
-
-async function syncAndLoadModels() {
-  llmModelsLoading.value = true
-  try {
-    await axios.post('/api/llm/models/sync')
-  } catch (error) {
-    console.warn('[Wizard] Model sync failed:', error)
-  } finally {
-    llmModelsLoading.value = false
-  }
-  await loadModels()
-}
-
 // ===== Stepper Config =====
-const stepItems = [
-  { title: 'URL', value: WIZARD_STEPS.URL_INPUT },
-  { title: 'Crawling', value: WIZARD_STEPS.CRAWLING },
-  { title: 'Embedding', value: WIZARD_STEPS.EMBEDDING },
-  { title: 'Konfiguration', value: WIZARD_STEPS.CONFIGURATION },
-  { title: 'Fertig', value: WIZARD_STEPS.COMPLETE }
-]
+const stepItems = computed(() => [
+  { title: t('admin.chatbotBuilder.steps.url'), value: WIZARD_STEPS.URL_INPUT },
+  { title: t('admin.chatbotBuilder.steps.crawling'), value: WIZARD_STEPS.CRAWLING },
+  { title: t('admin.chatbotBuilder.steps.embedding'), value: WIZARD_STEPS.EMBEDDING },
+  { title: t('admin.chatbotBuilder.steps.configuration'), value: WIZARD_STEPS.CONFIGURATION },
+  { title: t('admin.chatbotBuilder.steps.complete'), value: WIZARD_STEPS.COMPLETE }
+])
 
 // ===== Computed =====
 const canFinalize = computed(() => {
@@ -411,16 +373,16 @@ const overallProgressPercent = computed(() => {
 const headerStatusText = computed(() => {
   if (isCrawling.value) {
     const stage = crawlProgress.value.stage
-    if (stage === 'planning') return 'Phase 1: URL-Erkundung'
-    if (stage === 'planning_done') return 'Phase 2: Inhalte erfassen'
-    if (stage === 'crawling') return 'Phase 2: Inhalte erfassen'
-    if (stage === 'completed') return 'Crawling abgeschlossen'
-    return 'Crawling'
+    if (stage === 'planning') return t('admin.chatbotBuilder.status.phase1')
+    if (stage === 'planning_done') return t('admin.chatbotBuilder.status.phase2')
+    if (stage === 'crawling') return t('admin.chatbotBuilder.status.phase2')
+    if (stage === 'completed') return t('admin.chatbotBuilder.status.crawlingComplete')
+    return t('admin.chatbotBuilder.status.crawling')
   }
   if (isEmbedding.value) {
-    return 'Embedding'
+    return t('admin.chatbotBuilder.status.embedding')
   }
-  return 'Verarbeitung'
+  return t('admin.chatbotBuilder.status.processing')
 })
 
 const currentProgressText = computed(() => {
@@ -432,27 +394,27 @@ const currentProgressText = computed(() => {
 
     // During planning phase, show discovered URLs
     if (p.stage === 'planning') {
-      return total > 0 ? `${total} URLs gefunden` : 'Suche URLs...'
+      return total > 0 ? t('admin.chatbotBuilder.progress.urlsFound', { count: total }) : t('admin.chatbotBuilder.progress.searchingUrls')
     }
 
     // Transition from planning to crawling
     if (p.stage === 'planning_done') {
-      return `${total} URLs, starte Erfassung...`
+      return t('admin.chatbotBuilder.progress.startingCapture', { count: total })
     }
 
     // Crawling completed
     if (p.stage === 'completed') {
-      return `${total} URLs, ${docs} Dokumente`
+      return t('admin.chatbotBuilder.progress.urlsAndDocs', { urls: total, docs })
     }
 
     // During crawling phase
     if (total > 0) {
-      return `${completed}/${total} URLs, ${docs} Docs`
+      return t('admin.chatbotBuilder.progress.urlProgress', { completed, total, docs })
     }
     if (docs > 0) {
-      return `${docs} Dokumente`
+      return t('admin.chatbotBuilder.progress.documentsCount', { count: docs })
     }
-    return 'Wird gestartet...'
+    return t('admin.chatbotBuilder.progress.starting')
   }
   if (isEmbedding.value) {
     return `${embeddingProgressPercent.value}%`
@@ -495,18 +457,37 @@ function handleSkipToConfig() {
   requestCollectionDocuments({ force: true })
 }
 
+const SCHEME_REGEX = /^[a-zA-Z][a-zA-Z0-9+.-]*:\/\//
+
+const getEffectiveWizardUrl = (value) => {
+  if (!value || !value.trim()) return ''
+  const trimmed = value.trim()
+  if (SCHEME_REGEX.test(trimmed)) {
+    return trimmed
+  }
+  // Prepend https:// if no scheme is provided
+  return `https://${trimmed}`
+}
+
 // ===== Wizard Start =====
 async function handleStartWizard() {
-  if (!wizardData.value.url) {
-    setError('url', 'URL ist erforderlich')
+  const rawUrl = wizardData.value.url
+  if (!rawUrl || !rawUrl.trim()) {
+    setError('url', t('admin.chatbotBuilder.errors.urlRequired'))
     return
   }
 
+  const effectiveUrl = getEffectiveWizardUrl(rawUrl)
+
   // Validate URL
   try {
-    new URL(wizardData.value.url)
+    const parsedUrl = new URL(effectiveUrl)
+    if (!['http:', 'https:'].includes(parsedUrl.protocol)) {
+      setError('url', t('admin.chatbotBuilder.errors.urlProtocol'))
+      return
+    }
   } catch {
-    setError('url', 'Ungültige URL')
+    setError('url', t('admin.chatbotBuilder.errors.invalidUrl'))
     return
   }
 
@@ -516,7 +497,7 @@ async function handleStartWizard() {
   try {
     // Create wizard chatbot
     const response = await axios.post('/api/chatbots/wizard', {
-      url: wizardData.value.url
+      url: effectiveUrl
     })
 
     if (response.data.success) {
@@ -540,11 +521,11 @@ async function handleStartWizard() {
       // Initial document fetch
       requestCollectionDocuments({ force: true })
     } else {
-      setError('general', response.data.error || 'Fehler beim Starten des Wizards')
+      setError('general', response.data.error || t('admin.chatbotBuilder.errors.startWizardFailed'))
     }
   } catch (error) {
-    console.error('Error starting wizard:', error)
-    setError('general', error.response?.data?.error || 'Fehler beim Starten des Wizards')
+    logI18n('error', 'logs.admin.chatbotWizard.startWizardFailed', error)
+    setError('general', error.response?.data?.error || t('admin.chatbotBuilder.errors.startWizardFailed'))
   } finally {
     setLoading(false)
   }
@@ -574,19 +555,19 @@ async function startCrawl() {
         stage: 'planning',
         urlsTotal: 0,
         urlsCompleted: 0,
-        message: 'URL-Erkundung startet...',
+        message: t('admin.chatbotBuilder.errors.urlExplorationStarting'),
         crawlerType: crawlerConfig.value.usePlaywright ? 'Playwright' : 'Basic'
       })
 
       return response.data // Return the result so caller can use job_id
     } else {
-      setError('crawl', response.data.error || 'Fehler beim Starten des Crawlings')
+      setError('crawl', response.data.error || t('admin.chatbotBuilder.errors.startCrawlFailed'))
       setStatus(BUILD_STATUS.ERROR)
       return null
     }
   } catch (error) {
-    console.error('Error starting crawl:', error)
-    setError('crawl', error.response?.data?.error || 'Fehler beim Crawlen')
+    logI18n('error', 'logs.admin.chatbotWizard.startCrawlFailed', error)
+    setError('crawl', error.response?.data?.error || t('admin.chatbotBuilder.errors.crawlFailed'))
     setStatus(BUILD_STATUS.ERROR)
     return null
   }
@@ -600,8 +581,8 @@ async function handlePauseBuild() {
     setStatus(BUILD_STATUS.PAUSED)
     stopElapsedTimeUpdates()
   } catch (error) {
-    console.error('Error pausing build:', error)
-    setError('general', 'Fehler beim Pausieren')
+    logI18n('error', 'logs.admin.chatbotWizard.pauseBuildFailed', error)
+    setError('general', t('admin.chatbotBuilder.errors.pauseFailed'))
   }
 }
 
@@ -609,8 +590,8 @@ async function handlePauseBuild() {
 function subscribeToProgress(jobId = null) {
   socket.value = getSocket()
   if (!socket.value) {
-    console.warn('[Wizard] Socket not available, cannot subscribe to live updates')
-    setError('general', 'Live-Updates nicht verfügbar (Socket.IO)')
+    logI18n('warn', 'logs.admin.chatbotWizard.socketUnavailableSubscribe')
+    setError('general', t('admin.chatbotBuilder.errors.socketUnavailable'))
     return
   }
 
@@ -619,14 +600,14 @@ function subscribeToProgress(jobId = null) {
 
   // Subscribe to wizard session room (server-authoritative updates)
   if (chatbotId.value) {
-    console.log('[Wizard] Joining wizard session room:', chatbotId.value)
+    logI18nParams('log', 'logs.admin.chatbotWizard.joinWizardSession', { chatbotId: chatbotId.value })
     socket.value.emit('wizard:join_session', { chatbot_id: chatbotId.value })
   }
 
   // Subscribe to crawler job - use passed jobId or stored one
   const effectiveJobId = jobId || crawlerJobId.value
   if (effectiveJobId) {
-    console.log('[Wizard] Joining crawler session:', effectiveJobId)
+    logI18nParams('log', 'logs.admin.chatbotWizard.joinCrawlerSession', { jobId: effectiveJobId })
     socket.value.emit('crawler:join_session', { session_id: effectiveJobId })
     socket.value.emit('crawler:get_status', { session_id: effectiveJobId })
   }
@@ -660,7 +641,7 @@ function subscribeToProgress(jobId = null) {
   socket.value.on('rag:document_processed', handleDocumentProcessed)
   socket.value.on('rag:error', handleRagError)
 
-  console.log('[Wizard] Subscribed to socket events')
+  logI18n('log', 'logs.admin.chatbotWizard.socketSubscribed')
 }
 
 function unsubscribeFromProgress() {
@@ -702,7 +683,7 @@ function unsubscribeFromProgress() {
 
   socketSubscribed.value = false
   documentsLoading.value = false
-  console.log('[Wizard] Unsubscribed from socket events')
+  logI18n('log', 'logs.admin.chatbotWizard.socketUnsubscribed')
 }
 
 // ===== Wizard Socket Event Handlers (Server-Authoritative) =====
@@ -712,7 +693,7 @@ function handleWizardState(data) {
     return // Event is for a different chatbot
   }
 
-  console.log('[Wizard] Received wizard:state from server:', data)
+  logI18n('log', 'logs.admin.chatbotWizard.stateReceived', data)
 
   // Update session state from server
   if (data.session) {
@@ -754,7 +735,7 @@ function handleWizardProgress(data) {
     return // Event is for a different chatbot
   }
 
-  console.log('[Wizard] Received wizard:progress from server:', data)
+  logI18n('log', 'logs.admin.chatbotWizard.progressReceived', data)
 
   if (!data.progress) return
 
@@ -786,7 +767,7 @@ function handleWizardStatusChanged(data) {
     return // Event is for a different chatbot
   }
 
-  console.log('[Wizard] Received wizard:status_changed from server:', data)
+  logI18n('log', 'logs.admin.chatbotWizard.statusChangedReceived', data)
 
   if (data.status) {
     setStatus(data.status)
@@ -802,7 +783,7 @@ function handleWizardElapsedTime(data) {
     return // Event is for a different chatbot
   }
 
-  console.log('[Wizard] Received wizard:elapsed_time from server:', data)
+  logI18n('log', 'logs.admin.chatbotWizard.elapsedTimeReceived', data)
   // Server-side elapsed time - could be used for more accurate time display
   // For now, we continue using local timer but this could sync it
 }
@@ -813,7 +794,7 @@ function handleWizardError(data) {
     return // Event is for a different chatbot
   }
 
-  console.error('[Wizard] Received wizard:error from server:', data)
+  logI18n('error', 'logs.admin.chatbotWizard.errorReceived', data)
   if (data.message) {
     setError(data.source || 'general', data.message)
   }
@@ -830,7 +811,7 @@ function handleCrawlerProgress(data) {
     return // Event is for a different crawler job
   }
 
-  console.log('[Wizard] Crawler progress:', data)
+  logI18n('log', 'logs.admin.chatbotWizard.crawlerProgress', data)
 
   // Map backend data to frontend format
   const status = (data.status || '').toLowerCase()
@@ -865,7 +846,7 @@ function handlePageCrawled(data) {
     return // Event is for a different crawler job
   }
 
-  console.log('[Wizard] Page crawled:', data)
+  logI18n('log', 'logs.admin.chatbotWizard.pageCrawled', data)
   if (data.url) {
     addRecentPage(data.url)
   }
@@ -887,18 +868,13 @@ function handleCrawlerComplete(data) {
     return // Event is for a different crawler job
   }
 
-  console.log('[Wizard] Crawler complete:', data)
+  logI18n('log', 'logs.admin.chatbotWizard.crawlerComplete', data)
   updateCrawlProgress({
     pages_crawled: data.pages_crawled,
     documents_created: data.documents_created,
     documents_linked: data.documents_linked,
     stage: 'completed'
   })
-
-  if (data?.brand_color && (wizardData.value.color === '#5d7a4a' || !wizardData.value.color)) {
-    wizardData.value.color = data.brand_color
-    console.log('[Wizard] Auto-set brand color from crawl:', data.brand_color)
-  }
 
   // Transition to embedding
   setStatus(BUILD_STATUS.EMBEDDING)
@@ -911,8 +887,8 @@ function handleCrawlerError(data) {
     return // Event is for a different crawler job
   }
 
-  const message = data?.error || 'Crawling fehlgeschlagen'
-  console.error('[Wizard] Crawler error:', data)
+  const message = data?.error || t('admin.chatbotBuilder.errors.crawlingFailed')
+  logI18n('error', 'logs.admin.chatbotWizard.crawlerError', data)
 
   if (typeof message === 'string' && message.toLowerCase().includes('session not found')) {
     if (chatbotId.value) {
@@ -923,7 +899,7 @@ function handleCrawlerError(data) {
       }).catch(() => {})
     }
 
-    setError('crawl', 'Crawler-Session nicht mehr verfügbar (Backend neu gestartet oder Crawl beendet). Live-Updates sind nicht verfügbar.')
+    setError('crawl', t('admin.chatbotBuilder.errors.sessionUnavailable'))
     return
   }
 
@@ -966,11 +942,11 @@ function handleDocumentProcessed(data) {
 
 function handleRagError(data) {
   documentsLoading.value = false
-  console.warn('[Wizard] RAG socket error:', data)
+  logI18n('warn', 'logs.admin.chatbotWizard.ragSocketError', data)
 }
 
 function handleEmbeddingProgress(data) {
-  console.log('[Wizard] Embedding progress:', data)
+  logI18n('log', 'logs.admin.chatbotWizard.embeddingProgress', data)
   if (collectionId.value && data?.collection_id && data.collection_id !== collectionId.value) return
 
   updateEmbeddingProgress(data)
@@ -1021,12 +997,12 @@ async function syncChatbotIconAndColor() {
       }
     }
   } catch (error) {
-    console.warn('[Wizard] Failed to sync icon/color:', error)
+    logI18n('warn', 'logs.admin.chatbotWizard.iconColorSyncFailed', error)
   }
 }
 
 async function handleEmbeddingComplete(data) {
-  console.log('[Wizard] Embedding complete:', data)
+  logI18n('log', 'logs.admin.chatbotWizard.embeddingComplete', data)
   if (collectionId.value && data?.collection_id && data.collection_id !== collectionId.value) return
 
   updateEmbeddingProgress(100)
@@ -1049,10 +1025,10 @@ async function handleEmbeddingComplete(data) {
 }
 
 function handleEmbeddingError(data) {
-  console.error('[Wizard] Embedding error:', data)
+  logI18n('error', 'logs.admin.chatbotWizard.embeddingError', data)
   if (collectionId.value && data?.collection_id && data.collection_id !== collectionId.value) return
 
-  setError('embedding', data.error || 'Embedding fehlgeschlagen')
+  setError('embedding', data.error || t('admin.chatbotBuilder.errors.embeddingFailed'))
   setStatus(BUILD_STATUS.ERROR)
 }
 
@@ -1093,7 +1069,7 @@ function requestCollectionDocuments({ force = false } = {}) {
   if (!collectionId.value) return
 
   if (!socket.value) {
-    console.warn('[Wizard] Socket not available, cannot fetch collection documents')
+    logI18n('warn', 'logs.admin.chatbotWizard.socketUnavailableDocuments')
     documentsLoading.value = false
     return
   }
@@ -1171,9 +1147,9 @@ async function autoGenerateFields() {
 
   const fields = ['name', 'display_name', 'system_prompt', 'welcome_message', 'icon', 'color']
   for (const field of fields) {
-    // Skip color generation if brand color was already extracted from crawl
+    // Skip color generation if the user or backend already set a non-default value
     if (field === 'color' && wizardData.value.color && wizardData.value.color !== '#5d7a4a') {
-      console.log('[Wizard] Skipping color generation - brand color already set:', wizardData.value.color)
+      logI18nParams('log', 'logs.admin.chatbotWizard.colorGenerationSkipped', { color: wizardData.value.color })
       continue
     }
     await handleGenerateField(field)
@@ -1185,7 +1161,7 @@ async function handleGenerateField(field, options = {}) {
 
   // Check if already generating via the service
   if (fieldGenerationService.isGenerating(chatbotId.value, field)) {
-    console.log(`[Wizard] Field ${field} already generating`)
+    logI18nParams('log', 'logs.admin.chatbotWizard.fieldAlreadyGenerating', { field })
     return
   }
 
@@ -1213,7 +1189,7 @@ async function handleGenerateField(field, options = {}) {
       applyFieldValue(field, result)
     }
   } catch (error) {
-    console.error(`[Wizard] Error generating ${field}:`, error)
+    logI18nParams('error', 'logs.admin.chatbotWizard.fieldGenerateError', { field }, error)
   } finally {
     // For non-streaming fields, this is needed
     // For streaming, the onUpdate callback handles it
@@ -1297,14 +1273,16 @@ async function handleFinalizeChatbot() {
 
       // Log if embedding is still in progress
       if (response.data.embedding_in_progress) {
-        console.log(`[Wizard] Chatbot finalized, embedding still in progress: ${response.data.embedding_progress}%`)
+        logI18nParams('log', 'logs.admin.chatbotWizard.finalizedEmbeddingInProgress', {
+          progress: response.data.embedding_progress
+        })
       }
     } else {
-      setError('general', response.data.error || 'Fehler beim Erstellen')
+      setError('general', response.data.error || t('admin.chatbotBuilder.errors.createFailed'))
     }
   } catch (error) {
-    console.error('[Wizard] Finalize error:', error)
-    setError('general', error.response?.data?.error || 'Fehler beim Erstellen')
+    logI18n('error', 'logs.admin.chatbotWizard.finalizeError', error)
+    setError('general', error.response?.data?.error || t('admin.chatbotBuilder.errors.createFailed'))
   } finally {
     setLoading(false)
   }
@@ -1371,7 +1349,7 @@ async function syncWizardFromBackend(id, { overwriteWizardData = false } = {}) {
   } catch (error) {
     const status = error?.response?.status
     if (status !== 404 && status !== 403) {
-      console.warn('[Wizard] Failed to sync wizard from backend:', error)
+      logI18n('warn', 'logs.admin.chatbotWizard.syncFailed', error)
     }
     // 404/403 means chatbot doesn't exist or no access - just skip silently
   }
@@ -1457,11 +1435,9 @@ onMounted(async () => {
   if (!props.resumeChatbotId) {
     resetWizard()
     hasAutoGeneratedFields.value = false
-    await loadModels()
     return
   }
 
-  await loadModels()
   await resumeWizardForChatbot(props.resumeChatbotId)
 
   // Subscribe to field updates from the global service

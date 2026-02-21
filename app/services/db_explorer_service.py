@@ -9,7 +9,7 @@ from typing import Any, Dict, List, Optional
 
 from sqlalchemy import inspect, text
 
-from db.db import db
+from db.database import db
 
 
 class DbExplorerService:

@@ -3,6 +3,33 @@
 echo "Waiting for 2 seconds before starting the Flask app..."
 sleep 2
 
+export PYTHONPATH="/app${PYTHONPATH:+:$PYTHONPATH}"
+export FLASK_APP="main"
+# Add local pip bin to PATH for gunicorn
+export PATH="$PATH:/home/flaskuser/.local/bin"
+
+echo "App directory listing:"
+ls -la /app || true
+python - <<'PY'
+import os
+import sys
+
+print("sys.path:", sys.path)
+print("main exists:", os.path.exists("/app/main.py"))
+PY
+
+python - <<'PY'
+import importlib
+import traceback
+import sys
+
+try:
+    importlib.import_module("main")
+except Exception:
+    traceback.print_exc()
+    sys.exit(1)
+PY
+
 DB_HOST="${MYSQL_HOST:-db-maria-service}"
 DB_PORT="${MYSQL_PORT:-3306}"
 DB_NAME="${MYSQL_DATABASE:-database_llars}"
@@ -17,8 +44,29 @@ else
   echo "Skipping migration (mysql client or file missing)"
 fi
 
-# Starte die Flask-App
-# Note: Using threading async_mode for SocketIO, which works with flask run
-# WebSocket will use long-polling fallback but is fully functional
-echo "Starting Flask app on port 8081..."
-flask run --host=0.0.0.0 --port=8081 --reload
+# Determine environment: development or production
+# PROJECT_STATE is set in docker-compose.yml from .env
+PROJECT_STATE="${PROJECT_STATE:-development}"
+
+echo "Starting Flask app on port 8081 (mode: $PROJECT_STATE)..."
+
+if [ "$PROJECT_STATE" = "production" ]; then
+    # Production: Use Gunicorn with gevent-websocket for real WebSocket support
+    # - No auto-reload (code changes require restart)
+    # - Gevent worker for async/WebSocket handling (better Docker DNS than eventlet)
+    # - Lower CPU usage, better performance, real WebSockets
+    # - wsgi_gevent.py handles gevent monkey-patching before app import
+    echo "Production mode: Starting with Gunicorn + gevent-websocket..."
+    export SOCKETIO_ASYNC_MODE="gevent"
+    exec gunicorn \
+        --config /usr/local/bin/gunicorn.conf.py \
+        "wsgi_gevent:app"
+else
+    # Development: Use Flask dev server with auto-reload
+    # - Auto-reload on code changes
+    # - Threading mode (polling fallback for WebSocket)
+    # - Higher CPU usage due to file watching
+    echo "Development mode: Starting with Flask dev server + auto-reload..."
+    export SOCKETIO_ASYNC_MODE="threading"
+    exec python -m flask --app main run --host=0.0.0.0 --port=8081 --reload
+fi

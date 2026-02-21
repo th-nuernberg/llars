@@ -15,13 +15,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libgomp1 \
     default-mysql-client \
     latexmk \
-    texlive-latex-base \
-    texlive-latex-recommended \
-    texlive-latex-extra \
-    texlive-fonts-recommended \
-    texlive-lang-german \
-    texlive-bibtex-extra \
-    biber \
+    texlive-full \
     # Playwright dependencies
     libnss3 \
     libnspr4 \
@@ -70,11 +64,12 @@ COPY app /app/
 # Kopiert das Start-Skript außerhalb des Anwendungs-Verzeichnisses, damit es durch Volumes nicht überschrieben wird
 COPY docker/flask/start_flask.sh /usr/local/bin/start_flask.sh
 COPY docker/flask/healthcheck.sh /usr/local/bin/healthcheck.sh
+COPY docker/flask/gunicorn.conf.py /usr/local/bin/gunicorn.conf.py
 RUN chmod +x /usr/local/bin/start_flask.sh
 RUN chmod +x /usr/local/bin/healthcheck.sh
 
 # Setzt die benötigten Umgebungsvariablen für Flask
-ENV FLASK_APP=main.py
+ENV FLASK_APP=main
 
 # Set permissions
 RUN chown -R flaskuser:flaskuser /app && \

@@ -1,7 +1,12 @@
-# Konzept: Sampling-Strategien bei unterschiedlich großen Säulen
+# Konzept: Sampling-Strategien bei unterschiedlich großen Säulen (Legacy)
+
+!!! warning "Legacy-Konzept (Stand 2025)"
+    Dieses Dokument beschreibt Sampling-Strategien aus der Judge-UI-Phase.
+    In LLARS (Stand 2026-02-05) werden LLM-Evaluatoren primär als **Konfiguration im Scenario Manager** genutzt.
+    Die Inhalte dienen als Hintergrund und Design-Historie.
 
 **Datum:** 25. November 2025
-**Status:** Teilweise implementiert
+**Status:** Legacy (teilweise historisch implementiert)
 **Autor:** Claude / Philipp Steigerwald
 
 ---
@@ -24,7 +29,7 @@ Die KIA-Datensäulen haben unterschiedlich viele E-Mail-Threads:
 
 ## 2. Sampling-Strategien
 
-### 2.1 Strategie A: Fixed Samples per Pillar (aktuell implementiert)
+### 2.1 Strategie A: Fixed Samples per Pillar (historisch implementiert)
 
 **Prinzip:** Pro Säule wird eine feste Anzahl Threads gezogen (`samples_per_pillar`).
 
@@ -95,7 +100,7 @@ weighted_win_rate = wins * weight
 
 ---
 
-### 2.4 Strategie D: Round-Robin mit Wiederholungen (Empfohlen)
+### 2.4 Strategie D: Round-Robin mit Wiederholungen (Empfohlen, historisch)
 
 **Prinzip:** Mehrere Durchläufe (`repetitions_per_pair`), bei jedem Durchlauf zufällige Threads.
 
@@ -398,7 +403,7 @@ Zeige die verfügbare Thread-Anzahl pro Säule an:
 
 ### 9.1 Hintergrund
 
-Position-Swap Konsistenz ist ein kritisches Qualitätsmaß für LLM-as-Judge Evaluationen. Basierend auf:
+Position-Swap Konsistenz ist ein kritisches Qualitätsmaß für LLM Evaluator Evaluationen. Basierend auf:
 - [Zheng et al. (2023): "Judging LLM-as-a-Judge with MT-Bench and Chatbot Arena"](https://arxiv.org/abs/2306.05685)
 - [arXiv:2406.07791: "Judging the Judges: Position Bias in Pairwise Assessments"](https://arxiv.org/abs/2406.07791)
 

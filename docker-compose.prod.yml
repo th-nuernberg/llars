@@ -21,6 +21,8 @@ services:
     volumes:
       # SSL certificates (nginx.conf selection handled by entrypoint based on PROJECT_STATE)
       - ./docker/nginx/certs:/etc/nginx/certs:ro
+      # Static videos (persists across container rebuilds)
+      - ./static/videos:/srv/llars-static/videos:ro
     restart: unless-stopped
 
   # ============================================
@@ -41,6 +43,7 @@ services:
       - rag_docs:/app/rag_docs
       # Offline Anonymize Ressourcen (großes NER-Modell wird von Host gemountet)
       - ./docs/docs/projekte/anonymize/models/ner-german-large:/app/models/anonymize/ner-german-large:ro
+      - ./docs/docs/projekte/anonymize/models/recommender_system:/app/models/anonymize/recommender_system:ro
       - ./docs/docs/projekte/anonymize/database:/app/data/anonymize:ro
       # OnCoCo model (large, mounted to keep image slim)
       - ./app/models/oncoco:/app/models/oncoco:ro
@@ -67,7 +70,7 @@ services:
       args:
         - VITE_API_BASE_URL=${PROJECT_URL:-https://llars.e-beratungsinstitut.de}
         - VITE_PROJECT_STATE=production
-        - VITE_MKDOCS_URL=${PROJECT_URL:-https://llars.e-beratungsinstitut.de}/docs
+        - VITE_MKDOCS_URL=${PROJECT_URL:-https://llars.e-beratungsinstitut.de}/mkdocs
         - VITE_KEYCLOAK_URL=${PROJECT_URL:-https://llars.e-beratungsinstitut.de}/authentik
         - VITE_KEYCLOAK_CLIENT_ID=${AUTHENTIK_FRONTEND_CLIENT_ID:-llars-frontend}
         - VITE_KEYCLOAK_REALM=llars
@@ -198,7 +201,7 @@ services:
       retries: 5
 
   authentik-server:
-    image: ghcr.io/goauthentik/server:latest
+    image: ghcr.io/goauthentik/server:${AUTHENTIK_IMAGE_TAG:-2025.2.4}
     command: server
     environment:
       - AUTHENTIK_SECRET_KEY=${AUTHENTIK_SECRET_KEY}
@@ -229,7 +232,7 @@ services:
       - authentik_media:/media
 
   authentik-worker:
-    image: ghcr.io/goauthentik/server:latest
+    image: ghcr.io/goauthentik/server:${AUTHENTIK_IMAGE_TAG:-2025.2.4}
     command: worker
     environment:
       - AUTHENTIK_SECRET_KEY=${AUTHENTIK_SECRET_KEY}

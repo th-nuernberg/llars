@@ -13,7 +13,7 @@ import axios from 'axios'
 import { Decoration } from '@codemirror/view'
 import { AUTH_STORAGE_KEYS, getAuthStorageItem } from '@/utils/authStorage'
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:55080'
+const API_BASE = import.meta.env.VITE_API_BASE_URL || ''
 
 // Diff operation constants from diff-match-patch
 const DIFF_DELETE = -1
@@ -56,7 +56,7 @@ export function useGitDiff(options = {}) {
         baselineCommitId.value = null
       }
     } catch (e) {
-      console.error('Failed to load baseline:', e)
+      console.error('Konnte Baseline nicht laden:', e)
       error.value = e?.message || 'Failed to load baseline'
       gitBaseline.value = null
       baselineCommitId.value = null
@@ -70,8 +70,18 @@ export function useGitDiff(options = {}) {
    * Returns array of [operation, text] tuples
    */
   function computeCharacterDiffs(currentContent) {
-    // No baseline yet = compare against empty content (first commit scenario)
-    const baseline = gitBaseline.value ?? ''
+    // During baseline loading, don't compute diffs (prevents green flash during document switch)
+    if (isLoading.value) {
+      return []
+    }
+
+    // No baseline loaded yet - for initial state, return empty diffs
+    // This handles the case where baseline hasn't been fetched yet
+    if (gitBaseline.value === null) {
+      return []
+    }
+
+    const baseline = gitBaseline.value
     const current = currentContent || ''
 
     // If content is identical to baseline, no diffs
@@ -209,8 +219,10 @@ export function useGitDiff(options = {}) {
    * Check if there are any uncommitted changes
    */
   function hasChanges(currentContent) {
-    if (gitBaseline.value === null || gitBaseline.value === undefined) {
-      return (currentContent || '').length > 0
+    // During loading or when baseline hasn't been fetched, report no changes
+    // This prevents incorrect status display during document transitions
+    if (isLoading.value || gitBaseline.value === null) {
+      return false
     }
     return gitBaseline.value !== (currentContent || '')
   }

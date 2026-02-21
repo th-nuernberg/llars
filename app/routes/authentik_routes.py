@@ -5,8 +5,8 @@ Uses Authentik's OAuth2/OIDC endpoints for proper token issuance and validation.
 """
 
 from flask import Blueprint, jsonify, request, g, current_app
-from auth.decorators import authentik_required, admin_required
-from auth.oidc_validator import get_token_from_request, validate_token, get_username, get_user_id
+from auth.decorators import authentik_required, admin_required, public_endpoint
+from auth.oidc_validator import get_username, get_user_id
 from decorators.error_handler import handle_api_errors, NotFoundError, ValidationError, UnauthorizedError
 from services.user_profile_service import build_avatar_url
 from functools import wraps
@@ -29,6 +29,7 @@ def rate_limit(limit_string):
 
 
 @authentik_auth_blueprint.route('/health_check', methods=['GET'])
+@public_endpoint
 def health_check():
     """Health check endpoint - no authentication required"""
     try:
@@ -55,7 +56,7 @@ def get_current_user():
     Uses Authentik token to return user details
     Rate limit: 100 requests per hour per IP
     """
-    from db.db import db
+    from db.database import db
 
     # g.authentik_user is now a User object after decorators.py fix
     user = g.authentik_user
@@ -81,6 +82,7 @@ def get_current_user():
 
 
 @authentik_auth_blueprint.route('/validate', methods=['GET'])
+@authentik_required
 @rate_limit("200 per hour")
 @handle_api_errors(logger_name='authentik')
 def validate_token_endpoint():
@@ -88,22 +90,14 @@ def validate_token_endpoint():
     Validate token endpoint - for frontend to check if token is still valid
     Rate limit: 200 requests per hour per IP
     """
-    token = get_token_from_request()
+    token_payload = g.authentik_token
 
-    if not token:
-        raise UnauthorizedError('No token provided')
-
-    token_payload = validate_token(token)
-
-    if token_payload:
-        return jsonify({
-            'valid': True,
-            'username': get_username(token_payload),
-            'user_id': get_user_id(token_payload),
-            'roles': token_payload.get('realm_access', {}).get('roles', [])
-        }), 200
-    else:
-        raise UnauthorizedError('Invalid or expired token')
+    return jsonify({
+        'valid': True,
+        'username': get_username(token_payload),
+        'user_id': get_user_id(token_payload),
+        'roles': token_payload.get('realm_access', {}).get('roles', [])
+    }), 200
 
 
 @authentik_auth_blueprint.route('/admin/check', methods=['GET'])
@@ -119,6 +113,7 @@ def check_admin():
 
 
 @authentik_auth_blueprint.route('/login', methods=['POST'])
+@public_endpoint
 @rate_limit("10 per minute")
 @handle_api_errors(logger_name='authentik')
 def login():
@@ -406,7 +401,7 @@ def login():
 def _enrich_token_with_roles(token_data: dict, username: str) -> None:
     """Add LLARS-specific roles from MariaDB to the token response"""
     try:
-        from db.db import db
+        from db.database import db
         from sqlalchemy import text
         user_roles = ['user']
 
@@ -422,6 +417,8 @@ def _enrich_token_with_roles(token_data: dict, username: str) -> None:
 
         for row in result:
             role_name = row[0]
+            if role_name == 'viewer':
+                role_name = 'evaluator'
             if role_name not in user_roles:
                 user_roles.append(role_name)
 

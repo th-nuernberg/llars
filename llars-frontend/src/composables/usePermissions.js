@@ -18,6 +18,7 @@
 
 import { ref, computed } from 'vue'
 import axios from 'axios'
+import { logI18n } from '@/utils/logI18n'
 
 // Shared state across all instances
 const permissions = ref([])
@@ -40,7 +41,7 @@ export function usePermissions() {
 
     inflightRequest = (async () => {
       try {
-        const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:80'
+        const baseUrl = import.meta.env.VITE_API_BASE_URL || ''
         // Authorization header is injected globally via axios interceptor (main.js).
         const response = await axios.get(`${baseUrl}/api/permissions/my-permissions`)
 
@@ -52,7 +53,7 @@ export function usePermissions() {
           username.value = payload.username || null
         }
       } catch (error) {
-        console.error('Failed to fetch permissions:', error)
+        logI18n('error', 'logs.permissions.fetchFailed', error)
         if (error.response?.status === 401) {
           permissions.value = []
           roles.value = []

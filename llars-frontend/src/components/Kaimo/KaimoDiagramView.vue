@@ -1,68 +1,85 @@
 <template>
-  <div class="diagram-view">
+  <div class="diagram-view" ref="diagramViewRef">
     <v-skeleton-loader
       v-if="isLoading"
       type="card@4"
       class="pa-8"
     />
     <template v-else>
-      <div class="diagram-container">
+      <div class="diagram-container" ref="containerRef">
+        <!-- SVG for connection lines -->
+        <svg class="connection-lines" ref="svgRef">
+          <line
+            v-for="line in connectionLines"
+            :key="line.id"
+            :x1="line.x1"
+            :y1="line.y1"
+            :x2="line.x2"
+            :y2="line.y2"
+            class="connection-line"
+          />
+        </svg>
+
         <!-- Top Left: Grundversorgung -->
         <div
+          ref="cardTopLeft"
           class="category-card category-top-left"
           @click="openCategory(categoryMapping.grundversorgung)"
         >
-          <span class="category-title">{{ categoryMapping.grundversorgung?.display_name || 'Grundversorgung des jungen Menschen' }}</span>
-          <span class="category-hints">{{ getOpenHintCount(categoryMapping.grundversorgung?.id) }} Offene Hinweise</span>
+          <span class="category-title">{{ categoryMapping.grundversorgung?.display_name || $t('kaimo.diagram.categories.basicCare') }}</span>
+          <span class="category-hints">{{ getOpenHintCount(categoryMapping.grundversorgung?.id) }} {{ $t('kaimo.diagram.hints.open') }}</span>
           <div class="category-stats">
-            <span class="stat-chip stat-risk">{{ getRiskCount(categoryMapping.grundversorgung?.id) }} Risiken</span>
-            <span class="stat-chip stat-resource">{{ getResourceCount(categoryMapping.grundversorgung?.id) }} Ressourcen</span>
-            <span class="stat-chip stat-unclear">{{ getUnclearCount(categoryMapping.grundversorgung?.id) }} Unklar</span>
+            <span class="stat-chip stat-risk">{{ getRiskCount(categoryMapping.grundversorgung?.id) }} {{ $t('kaimo.ratings.riskPlural') }}</span>
+            <span class="stat-chip stat-resource">{{ getResourceCount(categoryMapping.grundversorgung?.id) }} {{ $t('kaimo.ratings.resourcePlural') }}</span>
+            <span class="stat-chip stat-unclear">{{ getUnclearCount(categoryMapping.grundversorgung?.id) }} {{ $t('kaimo.ratings.unclear') }}</span>
           </div>
         </div>
 
         <!-- Top Right: Familiensituation -->
         <div
+          ref="cardTopRight"
           class="category-card category-top-right"
           @click="openCategory(categoryMapping.familiensituation)"
         >
-          <span class="category-title">{{ categoryMapping.familiensituation?.display_name || 'Familiensituation' }}</span>
-          <span class="category-hints">{{ getOpenHintCount(categoryMapping.familiensituation?.id) }} Offene Hinweise</span>
+          <span class="category-title">{{ categoryMapping.familiensituation?.display_name || $t('kaimo.diagram.categories.family') }}</span>
+          <span class="category-hints">{{ getOpenHintCount(categoryMapping.familiensituation?.id) }} {{ $t('kaimo.diagram.hints.open') }}</span>
           <div class="category-stats">
-            <span class="stat-chip stat-risk">{{ getRiskCount(categoryMapping.familiensituation?.id) }} Risiken</span>
-            <span class="stat-chip stat-resource">{{ getResourceCount(categoryMapping.familiensituation?.id) }} Ressourcen</span>
-            <span class="stat-chip stat-unclear">{{ getUnclearCount(categoryMapping.familiensituation?.id) }} Unklar</span>
+            <span class="stat-chip stat-risk">{{ getRiskCount(categoryMapping.familiensituation?.id) }} {{ $t('kaimo.ratings.riskPlural') }}</span>
+            <span class="stat-chip stat-resource">{{ getResourceCount(categoryMapping.familiensituation?.id) }} {{ $t('kaimo.ratings.resourcePlural') }}</span>
+            <span class="stat-chip stat-unclear">{{ getUnclearCount(categoryMapping.familiensituation?.id) }} {{ $t('kaimo.ratings.unclear') }}</span>
           </div>
         </div>
 
         <!-- Center: Child Name -->
-        <span class="center-name">{{ childName }}</span>
+        <span ref="centerNameRef" class="center-name">{{ childName }}</span>
 
         <!-- Bottom Left: Entwicklung -->
         <div
+          ref="cardBottomLeft"
           class="category-card category-bottom-left"
           @click="openCategory(categoryMapping.entwicklung)"
         >
-          <span class="category-title">{{ categoryMapping.entwicklung?.display_name || 'Entwicklungssituation des jungen Menschen' }}</span>
-          <span class="category-hints">{{ getOpenHintCount(categoryMapping.entwicklung?.id) }} Offene Hinweise</span>
+          <span class="category-title">{{ categoryMapping.entwicklung?.display_name || $t('kaimo.diagram.categories.development') }}</span>
+          <span class="category-hints">{{ getOpenHintCount(categoryMapping.entwicklung?.id) }} {{ $t('kaimo.diagram.hints.open') }}</span>
           <div class="category-stats">
-            <span class="stat-chip stat-risk">{{ getRiskCount(categoryMapping.entwicklung?.id) }} Risiken</span>
-            <span class="stat-chip stat-resource">{{ getResourceCount(categoryMapping.entwicklung?.id) }} Ressourcen</span>
-            <span class="stat-chip stat-unclear">{{ getUnclearCount(categoryMapping.entwicklung?.id) }} Unklar</span>
+            <span class="stat-chip stat-risk">{{ getRiskCount(categoryMapping.entwicklung?.id) }} {{ $t('kaimo.ratings.riskPlural') }}</span>
+            <span class="stat-chip stat-resource">{{ getResourceCount(categoryMapping.entwicklung?.id) }} {{ $t('kaimo.ratings.resourcePlural') }}</span>
+            <span class="stat-chip stat-unclear">{{ getUnclearCount(categoryMapping.entwicklung?.id) }} {{ $t('kaimo.ratings.unclear') }}</span>
           </div>
         </div>
 
         <!-- Bottom Right: Eltern -->
         <div
+          ref="cardBottomRight"
           class="category-card category-bottom-right"
           @click="openCategory(categoryMapping.eltern)"
         >
-          <span class="category-title">{{ categoryMapping.eltern?.display_name || 'Eltern / Erziehungsberechtigte' }}</span>
-          <span class="category-hints">{{ getOpenHintCount(categoryMapping.eltern?.id) }} Offene Hinweise</span>
+          <span class="category-title">{{ categoryMapping.eltern?.display_name || $t('kaimo.diagram.categories.parents') }}</span>
+          <span class="category-hints">{{ getOpenHintCount(categoryMapping.eltern?.id) }} {{ $t('kaimo.diagram.hints.open') }}</span>
           <div class="category-stats">
-            <span class="stat-chip stat-risk">{{ getRiskCount(categoryMapping.eltern?.id) }} Risiken</span>
-            <span class="stat-chip stat-resource">{{ getResourceCount(categoryMapping.eltern?.id) }} Ressourcen</span>
-            <span class="stat-chip stat-unclear">{{ getUnclearCount(categoryMapping.eltern?.id) }} Unklar</span>
+            <span class="stat-chip stat-risk">{{ getRiskCount(categoryMapping.eltern?.id) }} {{ $t('kaimo.ratings.riskPlural') }}</span>
+            <span class="stat-chip stat-resource">{{ getResourceCount(categoryMapping.eltern?.id) }} {{ $t('kaimo.ratings.resourcePlural') }}</span>
+            <span class="stat-chip stat-unclear">{{ getUnclearCount(categoryMapping.eltern?.id) }} {{ $t('kaimo.ratings.unclear') }}</span>
           </div>
         </div>
       </div>
@@ -71,7 +88,21 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref, onMounted, onUnmounted, nextTick, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
+
+// Refs for DOM elements
+const diagramViewRef = ref(null)
+const containerRef = ref(null)
+const svgRef = ref(null)
+const centerNameRef = ref(null)
+const cardTopLeft = ref(null)
+const cardTopRight = ref(null)
+const cardBottomLeft = ref(null)
+const cardBottomRight = ref(null)
+
+// Connection lines data
+const connectionLines = ref([])
 
 const props = defineProps({
   caseData: {
@@ -97,10 +128,11 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['open-category'])
+const { t } = useI18n()
 
 // Get child name from case data
 const childName = computed(() => {
-  return props.caseData?.display_name || 'Kind'
+  return props.caseData?.display_name || t('kaimo.common.childFallback')
 })
 
 // Get all hints
@@ -207,6 +239,100 @@ const openCategory = (category) => {
     emit('open-category', category)
   }
 }
+
+// Calculate connection lines from cards to center
+const calculateLines = () => {
+  if (!containerRef.value || !centerNameRef.value) return
+
+  const container = containerRef.value.getBoundingClientRect()
+  const center = centerNameRef.value.getBoundingClientRect()
+
+  // Calculate center point relative to container
+  const centerX = center.left - container.left + center.width / 2
+  const centerY = center.top - container.top + center.height / 2
+
+  const cards = [
+    { ref: cardTopLeft.value, id: 'topLeft', corner: 'bottomRight' },
+    { ref: cardTopRight.value, id: 'topRight', corner: 'bottomLeft' },
+    { ref: cardBottomLeft.value, id: 'bottomLeft', corner: 'topRight' },
+    { ref: cardBottomRight.value, id: 'bottomRight', corner: 'topLeft' }
+  ]
+
+  const lines = []
+
+  cards.forEach(({ ref: cardRef, id, corner }) => {
+    if (!cardRef) return
+
+    const card = cardRef.getBoundingClientRect()
+    let cardX, cardY
+
+    // Calculate the point on the card closest to center
+    switch (corner) {
+      case 'bottomRight':
+        cardX = card.right - container.left
+        cardY = card.bottom - container.top
+        break
+      case 'bottomLeft':
+        cardX = card.left - container.left
+        cardY = card.bottom - container.top
+        break
+      case 'topRight':
+        cardX = card.right - container.left
+        cardY = card.top - container.top
+        break
+      case 'topLeft':
+        cardX = card.left - container.left
+        cardY = card.top - container.top
+        break
+    }
+
+    lines.push({
+      id,
+      x1: cardX,
+      y1: cardY,
+      x2: centerX,
+      y2: centerY
+    })
+  })
+
+  connectionLines.value = lines
+}
+
+// Resize observer to recalculate lines on window resize
+let resizeObserver = null
+
+onMounted(() => {
+  nextTick(() => {
+    calculateLines()
+
+    // Set up resize observer
+    if (diagramViewRef.value) {
+      resizeObserver = new ResizeObserver(() => {
+        calculateLines()
+      })
+      resizeObserver.observe(diagramViewRef.value)
+    }
+  })
+
+  // Also listen to window resize
+  window.addEventListener('resize', calculateLines)
+})
+
+onUnmounted(() => {
+  if (resizeObserver) {
+    resizeObserver.disconnect()
+  }
+  window.removeEventListener('resize', calculateLines)
+})
+
+// Recalculate when loading state changes
+watch(() => props.isLoading, (newVal, oldVal) => {
+  if (oldVal && !newVal) {
+    nextTick(() => {
+      calculateLines()
+    })
+  }
+})
 </script>
 
 <style scoped>
@@ -227,6 +353,23 @@ const openCategory = (category) => {
   justify-content: center;
 }
 
+/* SVG for connection lines */
+.connection-lines {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.connection-line {
+  stroke: #cbd5e1; /* slate-300 */
+  stroke-width: 2;
+  stroke-dasharray: 8 4;
+}
+
 /* Category Cards - exactly like prototype */
 .category-card {
   position: absolute;
@@ -240,6 +383,7 @@ const openCategory = (category) => {
   flex-direction: column;
   gap: 12px;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
+  z-index: 1;
 }
 
 .category-card:hover {
@@ -308,6 +452,7 @@ const openCategory = (category) => {
   font-size: 24px;
   font-weight: 500;
   color: #94a3b8;
+  z-index: 1;
 }
 
 /* Responsive adjustments */

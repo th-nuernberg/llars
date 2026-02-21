@@ -1,0 +1,29 @@
+{
+  "messages": [
+    {
+      "role": "system",
+      "content": "Dies ist eine Beratungskonversation zwischen einem Studienberater und einem Studierenden."
+    },
+    {
+      "role": "user",
+      "content": "Hallo, ich habe eine Frage bezüglich meines Studiums. Ich bin im 3. Semester Informatik und überlege, ob ich ein Auslandssemester machen soll. Was würden Sie mir empfehlen?"
+    },
+    {
+      "role": "assistant",
+      "content": "Guten Tag! Ein Auslandssemester kann eine wertvolle Erfahrung sein. Im 3. Semester ist ein guter Zeitpunkt dafür. Ich würde Ihnen empfehlen, sich zunächst über Partnerhochschulen zu informieren und die Anrechnungsmöglichkeiten zu prüfen. Soll ich Ihnen die Kontaktdaten des International Office geben?"
+    },
+    {
+      "role": "user",
+      "content": "Ja, das wäre super! Und wie sieht es mit der Finanzierung aus? Gibt es Stipendien?"
+    },
+    {
+      "role": "assistant",
+      "content": "Ja, es gibt verschiedene Fördermöglichkeiten. Das ERASMUS-Programm bietet finanzielle Unterstützung für EU-Länder. Für außereuropäische Ziele gibt es DAAD-Stipendien. Ich schicke Ihnen gleich eine Übersicht per Mail."
+    }
+  ],
+  "metadata": {
+    "source": "Human",
+    "subject": "Beratung Auslandssemester",
+    "id": "human_001"
+  }
+}

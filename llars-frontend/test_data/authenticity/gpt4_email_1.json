@@ -1,0 +1,29 @@
+{
+  "messages": [
+    {
+      "role": "system",
+      "content": "Diese Konversation wurde von GPT-4 generiert für Testzwecke."
+    },
+    {
+      "role": "user",
+      "content": "Guten Tag, ich interessiere mich für ein Masterstudium an Ihrer Hochschule. Könnten Sie mir bitte Informationen über die Zulassungsvoraussetzungen und Bewerbungsfristen mitteilen?"
+    },
+    {
+      "role": "assistant",
+      "content": "Sehr geehrte Interessentin, sehr geehrter Interessent, vielen Dank für Ihr Interesse an unserem Masterprogramm. Die Zulassungsvoraussetzungen umfassen in der Regel einen Bachelorabschluss mit mindestens 180 ECTS-Punkten in einem relevanten Fachbereich. Die Bewerbungsfrist für das Wintersemester endet am 15. Juli, für das Sommersemester am 15. Januar. Weitere detaillierte Informationen finden Sie auf unserer Website unter dem Bereich 'Studieninteressierte'. Bei weiteren Fragen stehe ich Ihnen gerne zur Verfügung."
+    },
+    {
+      "role": "user",
+      "content": "Danke für die schnelle Antwort! Benötige ich auch einen Sprachnachweis für Englisch?"
+    },
+    {
+      "role": "assistant",
+      "content": "Ja, für englischsprachige Masterstudiengänge ist in der Regel ein Sprachnachweis erforderlich. Akzeptiert werden TOEFL (mindestens 90 Punkte), IELTS (mindestens 6.5) oder Cambridge Certificate (C1 oder höher). Deutschsprachige Studiengänge erfordern hingegen einen Nachweis über deutsche Sprachkenntnisse auf dem Niveau B2 oder höher. Bitte beachten Sie, dass die genauen Anforderungen je nach Studiengang variieren können."
+    }
+  ],
+  "metadata": {
+    "source": "gpt-4",
+    "subject": "Masterstudium Anfrage",
+    "id": "gpt4_001"
+  }
+}

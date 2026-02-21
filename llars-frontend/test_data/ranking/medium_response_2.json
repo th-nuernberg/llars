@@ -1,0 +1,22 @@
+{
+  "messages": [
+    {
+      "role": "system",
+      "content": "Mittelmäßige Antwort"
+    },
+    {
+      "role": "user",
+      "content": "Ich möchte mein Praktikum anrechnen lassen."
+    },
+    {
+      "role": "assistant",
+      "content": "Für die Anrechnung brauchen Sie das Praktikumszeugnis und eine Bescheinigung über die Tätigkeiten. Das geben Sie beim Praktikumsamt ab. Die prüfen dann ob es den Anforderungen entspricht. Normalerweise dauert das 2-3 Wochen."
+    }
+  ],
+  "metadata": {
+    "source": "Human",
+    "quality": "mittel",
+    "subject": "Praktikum anrechnen",
+    "id": "ranking_medium_002"
+  }
+}

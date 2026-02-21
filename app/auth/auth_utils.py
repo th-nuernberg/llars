@@ -86,24 +86,44 @@ class AuthUtils:
     @staticmethod
     def extract_username_without_validation() -> Optional[str]:
         """
-        Extract username from JWT token WITHOUT signature verification.
+         Extract username from JWT token, preferring already-validated context.
 
-        WARNING: This should only be used in contexts where the token has already
-        been validated by decorators (e.g., @require_permission).
+        Security model:
+        1. FIRST: Check if user was already authenticated by decorators (@require_permission,
+           @authentik_required) - these set g.authentik_user with validated user info
+        2. FALLBACK: If no validated context exists, decode token WITHOUT signature verification
+           This is only safe because this method should ONLY be called from routes that
+           are already protected by authentication decorators.
 
-        This is a compatibility method for routes that decode tokens without verification.
-        Use extract_username_from_token() for new code instead.
+        WARNING: Do NOT use this method in unprotected routes. Always ensure the route
+        has @authentik_required or @require_permission decorator applied.
 
         Returns:
             Username string if found, None otherwise
         """
         from flask import g
+        import logging
 
-        # Check if already authenticated via System API Key (set by @require_permission)
-        if getattr(g, 'is_system_api_key', False) and getattr(g, 'authentik_user', None):
+        logger = logging.getLogger(__name__)
+
+        # PREFERRED: Use already-validated user from authentication decorators
+        # This is set by @authentik_required and @require_permission decorators
+        if hasattr(g, 'authentik_user') and g.authentik_user is not None:
             user = g.authentik_user
-            return getattr(user, 'username', None) or 'admin'
+            username = getattr(user, 'username', None)
+            if username:
+                return username
 
+        # Check if authenticated via System API Key
+        if getattr(g, 'is_system_api_key', False):
+            # API key auth - return admin or the user set by decorator
+            if hasattr(g, 'authentik_user') and g.authentik_user:
+                return getattr(g.authentik_user, 'username', None) or 'admin'
+            return 'admin'
+
+        # FALLBACK: Decode token without verification
+        # This path should rarely be hit if routes are properly decorated
+        # Log a warning to help identify routes that need proper decoration
         try:
             import jwt
             auth_header = request.headers.get('Authorization', '')
@@ -111,6 +131,13 @@ class AuthUtils:
                 return None
 
             token = auth_header.split(' ')[1]
+
+            # Log warning about unvalidated token extraction
+            logger.warning(
+                "extract_username_without_validation() falling back to unverified token decode. "
+                "Ensure the calling route has @authentik_required or @require_permission decorator."
+            )
+
             decoded = jwt.decode(token, options={"verify_signature": False})
 
             sub = decoded.get('sub')
@@ -121,5 +148,6 @@ class AuthUtils:
                 decoded.get('uid') or
                 (sub[:16] if sub else None)
             )
-        except Exception:
+        except Exception as e:
+            logger.debug(f"Failed to extract username from token: {e}")
             return None

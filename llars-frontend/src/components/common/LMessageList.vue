@@ -2,7 +2,7 @@
   <div class="l-message-list">
     <!-- Empty State -->
     <div v-if="!messages || messages.length === 0" class="l-message-list__empty">
-      <v-icon size="48" color="grey-lighten-1">{{ emptyIcon }}</v-icon>
+      <LIcon size="48" color="grey-lighten-1">{{ emptyIcon }}</LIcon>
       <p class="text-medium-emphasis mt-2">{{ emptyText }}</p>
     </div>
 

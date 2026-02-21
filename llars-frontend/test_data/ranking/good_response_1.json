@@ -1,0 +1,22 @@
+{
+  "messages": [
+    {
+      "role": "system",
+      "content": "Beratungskonversation mit hervorragender Qualität"
+    },
+    {
+      "role": "user",
+      "content": "Ich fühle mich total überfordert mit dem Studium. Alles ist zu viel."
+    },
+    {
+      "role": "assistant",
+      "content": "Das klingt wirklich belastend - vielen Dank, dass Sie sich mir anvertrauen. Überforderungsgefühle im Studium sind häufiger als man denkt, und es ist wichtig, dass wir gemeinsam schauen, was dahinter steckt.\n\nDarf ich fragen: Seit wann fühlen Sie sich so? Gab es einen bestimmten Auslöser, oder hat sich das schleichend entwickelt?\n\nWas auch immer die Antwort ist - es gibt verschiedene Unterstützungsangebote, die wir uns anschauen können. Aber zuerst möchte ich verstehen, wie es Ihnen wirklich geht."
+    }
+  ],
+  "metadata": {
+    "source": "Human",
+    "quality": "gut",
+    "subject": "Überforderung",
+    "id": "ranking_good_001"
+  }
+}

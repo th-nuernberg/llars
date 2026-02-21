@@ -1,25 +1,34 @@
 """
 Scenario Management Operations
 Handles thread distribution and user assignment to scenarios.
+
+Supports both admin and researcher access:
+- Admins can manage all scenarios
+- Researchers can manage only their own scenarios (via check_scenario_ownership)
 """
 
 import logging
-import random
 from flask import jsonify, request, g
 from werkzeug.exceptions import BadRequest
 from auth.decorators import admin_required
 from decorators.error_handler import (
-    handle_api_errors, NotFoundError, ValidationError, ConflictError
+    handle_api_errors, NotFoundError, ValidationError, ConflictError, ForbiddenError
 )
-from db.db import db
+from decorators.permission_decorator import require_permission, has_role
+from db.database import db
 from db.tables import (RatingScenarios, EmailThread, ScenarioThreads,
-                       ScenarioUsers, ScenarioRoles, ScenarioThreadDistribution)
+                       ScenarioUsers, ScenarioRoles, ScenarioThreadDistribution, User)
 from .. import data_blueprint
 from ..HelperFunctions import get_scenario_distribution_mode, DISTRIBUTION_MODE_ALL
+from .scenario_utils import check_scenario_ownership, distribute_threads_to_users
+from services.llm.llm_ai_task_runner import LLMAITaskRunner
+from services.user_profile_service import serialize_user_brief
+
+logger = logging.getLogger(__name__)
 
 
 @data_blueprint.route('/admin/add_threads_to_scenario', methods=['POST'])
-@admin_required
+@require_permission('data:manage_scenarios')
 @handle_api_errors(logger_name='scenarios')
 def add_threads_to_scenario():
     """Add threads to an existing scenario and distribute them to raters"""
@@ -69,7 +78,7 @@ def add_threads_to_scenario():
 
         scenario_users_ids = [
             user_id[0] for user_id in ScenarioUsers.query.with_entities(ScenarioUsers.id).filter_by(
-                scenario_id=scenario.id, role=ScenarioRoles.RATER).all()
+                scenario_id=scenario.id, role=ScenarioRoles.EVALUATOR).all()
         ]
 
         distribution_mode = get_scenario_distribution_mode(scenario, scenario.function_type_id)
@@ -95,17 +104,27 @@ def add_threads_to_scenario():
         db.session.rollback()
         raise
 
+    try:
+        if validated_threads:
+            LLMAITaskRunner.run_for_scenario_async(
+                scenario.id,
+                thread_ids=validated_threads,
+            )
+    except Exception as exc:
+        logger.warning("[LLM AI Runner] Add threads trigger failed: %s", exc)
+
     return jsonify({'message': 'Successfully added threads to the db', 'not_found_threads': failed_threads}), 200
 
 
 @data_blueprint.route('/admin/add_viewers_to_scenario', methods=['POST'])
-@admin_required
+@require_permission('data:manage_scenarios')
 @handle_api_errors(logger_name='scenarios')
 def add_viewers_to_scenario():
-    """Add or update viewers for a scenario"""
-    # Authorization handled by @admin_required decorator
-    # Current user available in g.authentik_user
+    """
+    Add or update evaluators for a scenario (legacy endpoint, uses 'viewer' for compatibility).
 
+    Deprecated: Use /admin/invite_users_to_scenario instead.
+    """
     try:
         data = request.get_json()
     except BadRequest:
@@ -119,6 +138,9 @@ def add_viewers_to_scenario():
     scenario = RatingScenarios.query.filter_by(id=scenario_id).first()
     if not scenario:
         raise NotFoundError('Scenario not found')
+
+    # Check ownership
+    check_scenario_ownership(scenario, g.authentik_user)
 
     viewers = data.get('user_ids')
     if not viewers or not all(isinstance(user_id, int) for user_id in viewers):
@@ -136,30 +158,198 @@ def add_viewers_to_scenario():
     return jsonify({'message': 'Successfully added viewers to the db'}), 200
 
 
-def distribute_threads_to_users(thread_ids, user_ids):
+@data_blueprint.route('/admin/invite_users_to_scenario', methods=['POST'])
+@require_permission('data:manage_scenarios')
+@handle_api_errors(logger_name='scenarios')
+def invite_users_to_scenario():
     """
-    Distribute threads to users in a round-robin fashion.
+    Invite users to a scenario with a specific role.
 
-    Args:
-        thread_ids: List of thread IDs to distribute
-        user_ids: List of user IDs to receive threads
+    Only the scenario owner or admin can invite users.
 
-    Returns:
-        Dictionary mapping user_id to list of thread_ids
+    Request body:
+        {
+            "scenario_id": 123,
+            "users": [
+                {"user_id": 1, "role": "rater"},
+                {"user_id": 2, "role": "evaluator"}
+            ]
+        }
+
+    Roles:
+        - "evaluator": Can rate/rank items in the scenario (can interact)
+        - "viewer": Read-only access to scenario
     """
-    if not thread_ids or not user_ids:
-        return {}
+    try:
+        data = request.get_json()
+    except BadRequest:
+        raise ValidationError('Invalid JSON format')
 
-    # Randomize the thread IDs to ensure a random distribution
-    random.shuffle(thread_ids)
-    random.shuffle(user_ids)
+    # Validate scenario_id
+    scenario_id = data.get('scenario_id')
+    if scenario_id is None or not isinstance(scenario_id, int):
+        raise ValidationError('Scenario id is missing or invalid')
 
-    # Create a dictionary to store the distribution
-    user_threads = {user_id: [] for user_id in user_ids}
+    scenario = RatingScenarios.query.filter_by(id=scenario_id).first()
+    if not scenario:
+        raise NotFoundError('Scenario not found')
 
-    # Distribute the threads round-robin style
-    for i, thread_id in enumerate(thread_ids):
-        user_id = user_ids[i % len(user_ids)]
-        user_threads[user_id].append(thread_id)
+    # Check ownership - raises ForbiddenError if not authorized
+    check_scenario_ownership(scenario, g.authentik_user)
 
-    return user_threads
+    users_to_invite = data.get('users', [])
+    if not users_to_invite:
+        raise ValidationError('No users provided')
+
+    added_users = []
+    updated_users = []
+    failed_users = []
+    for user_data in users_to_invite:
+        user_id = user_data.get('user_id')
+        role_str = user_data.get('role', 'evaluator').lower()
+
+        if not isinstance(user_id, int):
+            failed_users.append({'user_id': user_id, 'reason': 'Invalid user_id'})
+            continue
+
+        # Validate user exists
+        user = User.query.filter_by(id=user_id).first()
+        if not user:
+            failed_users.append({'user_id': user_id, 'reason': 'User not found'})
+            continue
+
+        # Map role string to enum
+        if role_str in ('evaluator', 'rater'):  # Accept 'rater' for backwards compat
+            role = ScenarioRoles.EVALUATOR
+        elif role_str == 'viewer':
+            role = ScenarioRoles.VIEWER
+        else:
+            failed_users.append({'user_id': user_id, 'reason': f'Invalid role: {role_str}'})
+            continue
+
+        # Check if user already in scenario
+        scenario_user = ScenarioUsers.query.filter_by(user_id=user_id, scenario_id=scenario_id).first()
+
+        if not scenario_user:
+            # Add new user
+            db.session.add(ScenarioUsers(user_id=user_id, scenario_id=scenario_id, role=role))
+            added_users.append({'user_id': user_id, 'username': user.username, 'role': role.value})
+        else:
+            # Update existing user's role (unless they're OWNER)
+            if scenario_user.role != ScenarioRoles.OWNER:
+                scenario_user.role = role
+                updated_users.append({'user_id': user_id, 'username': user.username, 'role': role.value})
+
+    db.session.commit()
+
+    return jsonify({
+        'message': 'Users invited successfully',
+        'added': added_users,
+        'updated': updated_users,
+        'failed': failed_users
+    }), 200
+
+
+@data_blueprint.route('/admin/remove_user_from_scenario', methods=['POST'])
+@require_permission('data:manage_scenarios')
+@handle_api_errors(logger_name='scenarios')
+def remove_user_from_scenario():
+    """
+    Remove a user from a scenario.
+
+    Only the scenario owner or admin can remove users.
+    Cannot remove the scenario owner.
+
+    Request body:
+        {
+            "scenario_id": 123,
+            "user_id": 456
+        }
+    """
+    try:
+        data = request.get_json()
+    except BadRequest:
+        raise ValidationError('Invalid JSON format')
+
+    scenario_id = data.get('scenario_id')
+    user_id = data.get('user_id')
+
+    if not scenario_id or not isinstance(scenario_id, int):
+        raise ValidationError('Scenario id is missing or invalid')
+    if not user_id or not isinstance(user_id, int):
+        raise ValidationError('User id is missing or invalid')
+
+    scenario = RatingScenarios.query.filter_by(id=scenario_id).first()
+    if not scenario:
+        raise NotFoundError('Scenario not found')
+
+    # Check ownership
+    check_scenario_ownership(scenario, g.authentik_user)
+
+    # Find the scenario user
+    scenario_user = ScenarioUsers.query.filter_by(user_id=user_id, scenario_id=scenario_id).first()
+    if not scenario_user:
+        raise NotFoundError('User not found in scenario')
+
+    # Cannot remove owner
+    if scenario_user.role == ScenarioRoles.OWNER:
+        raise ValidationError('Cannot remove the scenario owner')
+
+    # Also remove any thread distributions for this user
+    ScenarioThreadDistribution.query.filter_by(
+        scenario_id=scenario_id,
+        scenario_user_id=scenario_user.id
+    ).delete()
+
+    db.session.delete(scenario_user)
+    db.session.commit()
+
+    return jsonify({'message': 'User removed from scenario successfully'}), 200
+
+
+@data_blueprint.route('/admin/available_users_for_scenario', methods=['GET'])
+@require_permission('data:manage_scenarios')
+@handle_api_errors(logger_name='scenarios')
+def get_available_users_for_scenario():
+    """
+    Get list of users that can be invited to scenarios.
+
+    Query params:
+        - scenario_id (optional): If provided, excludes users already in this scenario
+
+    Returns list of users with their ID, username, and current roles.
+    """
+    scenario_id = request.args.get('scenario_id', type=int)
+
+    # Get all active human users
+    users = User.query.filter(
+        User.deleted_at.is_(None),
+        User.is_active == True,
+        User.is_ai == False
+    ).all()
+
+    result = []
+    for user in users:
+        avatar = serialize_user_brief(user)
+        user_data = {
+            'id': user.id,
+            'username': user.username,
+            'avatar_seed': avatar.get('avatar_seed'),
+            'avatar_url': avatar.get('avatar_url'),
+        }
+
+        # If scenario_id provided, check if user is already in scenario
+        if scenario_id:
+            scenario_user = ScenarioUsers.query.filter_by(
+                user_id=user.id,
+                scenario_id=scenario_id
+            ).first()
+            if scenario_user:
+                user_data['in_scenario'] = True
+                user_data['scenario_role'] = scenario_user.role.value
+            else:
+                user_data['in_scenario'] = False
+
+        result.append(user_data)
+
+    return jsonify({'users': result}), 200

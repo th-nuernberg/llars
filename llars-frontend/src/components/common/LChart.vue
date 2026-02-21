@@ -12,7 +12,7 @@
         <v-progress-circular indeterminate size="24" color="primary" />
       </div>
       <div v-else-if="!hasData" class="l-chart__empty">
-        <v-icon icon="mdi-chart-line" size="32" color="grey-lighten-1" />
+        <LIcon icon="mdi-chart-line" size="32" color="grey-lighten-1" />
         <span>{{ emptyText }}</span>
       </div>
     </div>

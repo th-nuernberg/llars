@@ -1,15 +1,15 @@
 <template>
   <div class="admin-rag">
     <!-- Stats Cards -->
-    <v-row class="mb-4">
+    <v-row class="mb-4 flex-grow-0 flex-shrink-0">
       <v-col cols="6" md="3">
         <v-skeleton-loader v-if="isLoading('stats')" type="card" height="100" />
         <v-card v-else variant="tonal" color="primary">
           <v-card-text class="d-flex align-center">
-            <v-icon size="32" class="mr-3">mdi-file-document-multiple</v-icon>
+            <LIcon size="32" class="mr-3">mdi-file-document-multiple</LIcon>
             <div>
               <div class="text-h5 font-weight-bold">{{ stats.total_documents }}</div>
-              <div class="text-caption">Dokumente</div>
+              <div class="text-caption">{{ $t('admin.rag.stats.documents') }}</div>
             </div>
           </v-card-text>
         </v-card>
@@ -18,10 +18,10 @@
         <v-skeleton-loader v-if="isLoading('stats')" type="card" height="100" />
         <v-card v-else variant="tonal" color="success">
           <v-card-text class="d-flex align-center">
-            <v-icon size="32" class="mr-3">mdi-check-circle</v-icon>
+            <LIcon size="32" class="mr-3">mdi-check-circle</LIcon>
             <div>
               <div class="text-h5 font-weight-bold">{{ stats.processed }}</div>
-              <div class="text-caption">Verarbeitet</div>
+              <div class="text-caption">{{ $t('admin.rag.stats.processed') }}</div>
             </div>
           </v-card-text>
         </v-card>
@@ -30,10 +30,10 @@
         <v-skeleton-loader v-if="isLoading('stats')" type="card" height="100" />
         <v-card v-else variant="tonal" color="info">
           <v-card-text class="d-flex align-center">
-            <v-icon size="32" class="mr-3">mdi-folder-multiple</v-icon>
+            <LIcon size="32" class="mr-3">mdi-folder-multiple</LIcon>
             <div>
               <div class="text-h5 font-weight-bold">{{ stats.total_collections }}</div>
-              <div class="text-caption">Collections</div>
+              <div class="text-caption">{{ $t('admin.rag.stats.collections') }}</div>
             </div>
           </v-card-text>
         </v-card>
@@ -42,10 +42,10 @@
         <v-skeleton-loader v-if="isLoading('stats')" type="card" height="100" />
         <v-card v-else variant="tonal" color="warning">
           <v-card-text class="d-flex align-center">
-            <v-icon size="32" class="mr-3">mdi-harddisk</v-icon>
+            <LIcon size="32" class="mr-3">mdi-harddisk</LIcon>
             <div>
               <div class="text-h5 font-weight-bold">{{ formatFileSize(stats.total_size) }}</div>
-              <div class="text-caption">Gesamtgröße</div>
+              <div class="text-caption">{{ $t('admin.rag.stats.totalSize') }}</div>
             </div>
           </v-card-text>
         </v-card>
@@ -53,117 +53,82 @@
     </v-row>
 
     <!-- Embedding Model Info Card -->
-    <v-skeleton-loader v-if="isLoading('embedding')" type="card" height="250" class="mb-4" />
-    <v-card v-else class="mb-4" variant="outlined">
-      <v-card-title class="d-flex align-center">
-        <v-icon start color="primary">mdi-brain</v-icon>
-        Embedding Model
+    <v-skeleton-loader v-if="isLoading('embedding')" type="card" height="120" class="mb-4 flex-grow-0 flex-shrink-0" />
+    <v-card v-else class="mb-4 flex-grow-0 flex-shrink-0" variant="outlined">
+      <v-card-title class="d-flex align-center py-2">
+        <LIcon start color="primary">mdi-brain</LIcon>
+        {{ $t('admin.rag.embedding.title') }}
         <v-spacer></v-spacer>
         <v-chip
           :color="embeddingInfo.is_primary ? 'success' : 'warning'"
           size="small"
           variant="flat"
         >
-          {{ embeddingInfo.is_primary ? 'LiteLLM Proxy' : 'Fallback (Local)' }}
+          {{ embeddingInfo.is_primary ? $t('admin.rag.embedding.litellmProxy') : $t('admin.rag.embedding.fallbackLocal') }}
         </v-chip>
       </v-card-title>
-      <v-card-text>
-        <v-row>
+      <v-card-text class="py-2">
+        <v-row dense>
           <v-col cols="12" md="6">
-            <v-list density="compact" class="bg-transparent">
-              <v-list-item>
+            <v-list density="compact" class="bg-transparent py-0">
+              <v-list-item density="compact" class="px-0">
                 <template v-slot:prepend>
-                  <v-icon color="primary" size="small">mdi-cube-outline</v-icon>
+                  <LIcon color="primary" size="small">mdi-cube-outline</LIcon>
                 </template>
-                <v-list-item-title class="text-caption text-medium-emphasis">Aktives Model</v-list-item-title>
+                <v-list-item-title class="text-caption text-medium-emphasis">{{ $t('admin.rag.embedding.activeModel') }}</v-list-item-title>
                 <v-list-item-subtitle class="font-weight-bold">{{ embeddingInfo.model_name }}</v-list-item-subtitle>
               </v-list-item>
-              <v-list-item>
+              <v-list-item density="compact" class="px-0">
                 <template v-slot:prepend>
-                  <v-icon color="primary" size="small">mdi-vector-line</v-icon>
+                  <LIcon color="primary" size="small">mdi-vector-line</LIcon>
                 </template>
-                <v-list-item-title class="text-caption text-medium-emphasis">Dimensionen</v-list-item-title>
+                <v-list-item-title class="text-caption text-medium-emphasis">{{ $t('admin.rag.embedding.dimensions') }}</v-list-item-title>
                 <v-list-item-subtitle class="font-weight-bold">{{ embeddingInfo.dimensions }}</v-list-item-subtitle>
-              </v-list-item>
-              <v-list-item>
-                <template v-slot:prepend>
-                  <v-icon color="primary" size="small">mdi-server</v-icon>
-                </template>
-                <v-list-item-title class="text-caption text-medium-emphasis">Model Typ</v-list-item-title>
-                <v-list-item-subtitle class="font-weight-bold text-uppercase">{{ embeddingInfo.model_type }}</v-list-item-subtitle>
               </v-list-item>
             </v-list>
           </v-col>
           <v-col cols="12" md="6">
-            <v-list density="compact" class="bg-transparent">
-              <v-list-item>
+            <v-list density="compact" class="bg-transparent py-0">
+              <v-list-item density="compact" class="px-0">
                 <template v-slot:prepend>
-                  <v-icon :color="embeddingInfo.litellm_configured ? 'success' : 'warning'" size="small">
+                  <LIcon :color="embeddingInfo.litellm_configured ? 'success' : 'warning'" size="small">
                     {{ embeddingInfo.litellm_configured ? 'mdi-check-circle' : 'mdi-alert-circle' }}
-                  </v-icon>
+                  </LIcon>
                 </template>
-                <v-list-item-title class="text-caption text-medium-emphasis">LiteLLM Status</v-list-item-title>
+                <v-list-item-title class="text-caption text-medium-emphasis">{{ $t('admin.rag.embedding.litellmStatus') }}</v-list-item-title>
                 <v-list-item-subtitle class="font-weight-bold">
-                  {{ embeddingInfo.litellm_configured ? 'Konfiguriert' : 'Nicht konfiguriert' }}
+                  {{ embeddingInfo.litellm_configured ? $t('admin.rag.embedding.configured') : $t('admin.rag.embedding.notConfigured') }}
                 </v-list-item-subtitle>
               </v-list-item>
-              <v-list-item v-if="embeddingInfo.litellm_configured">
+              <v-list-item v-if="embeddingInfo.litellm_configured" density="compact" class="px-0">
                 <template v-slot:prepend>
-                  <v-icon color="primary" size="small">mdi-link</v-icon>
+                  <LIcon color="primary" size="small">mdi-link</LIcon>
                 </template>
-                <v-list-item-title class="text-caption text-medium-emphasis">LiteLLM URL</v-list-item-title>
+                <v-list-item-title class="text-caption text-medium-emphasis">{{ $t('admin.rag.embedding.litellmUrl') }}</v-list-item-title>
                 <v-list-item-subtitle class="font-weight-bold text-truncate" style="max-width: 300px;">
                   {{ embeddingInfo.litellm_base_url }}
                 </v-list-item-subtitle>
               </v-list-item>
-              <v-list-item>
-                <template v-slot:prepend>
-                  <v-icon color="primary" size="small">mdi-swap-horizontal</v-icon>
-                </template>
-                <v-list-item-title class="text-caption text-medium-emphasis">Fallback Model</v-list-item-title>
-                <v-list-item-subtitle class="font-weight-bold">{{ embeddingInfo.fallback_model }}</v-list-item-subtitle>
-              </v-list-item>
             </v-list>
           </v-col>
         </v-row>
-        <v-divider class="my-2"></v-divider>
-        <v-row>
-          <v-col cols="12">
-            <div class="d-flex align-center">
-              <v-icon size="small" color="grey" class="mr-2">mdi-folder-open</v-icon>
-              <span class="text-caption text-medium-emphasis mr-2">Collection:</span>
-              <code class="text-caption">{{ embeddingInfo.collection_name }}</code>
-            </div>
-          </v-col>
-        </v-row>
       </v-card-text>
-      <v-card-actions>
-        <LBtn
-          variant="text"
-          size="small"
-          @click="fetchEmbeddingInfo"
-          :loading="loadingEmbeddingInfo"
-          prepend-icon="mdi-refresh"
-        >
-          Aktualisieren
-        </LBtn>
-      </v-card-actions>
     </v-card>
 
     <!-- Tabs for Documents and Upload -->
-    <v-card>
+    <v-card class="tabs-card">
       <v-tabs v-model="activeTab" bg-color="primary">
         <v-tab value="documents">
-          <v-icon start>mdi-file-document</v-icon>
-          Dokumente
+          <LIcon start>mdi-file-document</LIcon>
+          {{ $t('admin.rag.tabs.documents') }}
         </v-tab>
         <v-tab value="collections">
-          <v-icon start>mdi-folder</v-icon>
-          Collections
+          <LIcon start>mdi-folder</LIcon>
+          {{ $t('admin.rag.tabs.collections') }}
         </v-tab>
         <v-tab value="upload">
-          <v-icon start>mdi-upload</v-icon>
-          Hochladen
+          <LIcon start>mdi-upload</LIcon>
+          {{ $t('admin.rag.tabs.upload') }}
         </v-tab>
       </v-tabs>
 
@@ -176,7 +141,7 @@
               <v-col cols="12" md="4">
                 <v-text-field
                   v-model="documentSearch"
-                  label="Dokument suchen"
+                  :label="$t('admin.rag.documents.search')"
                   prepend-inner-icon="mdi-magnify"
                   variant="outlined"
                   density="comfortable"
@@ -188,7 +153,7 @@
                 <v-select
                   v-model="collectionFilter"
                   :items="collectionOptions"
-                  label="Collection Filter"
+                  :label="$t('admin.rag.documents.collectionFilter')"
                   variant="outlined"
                   density="comfortable"
                   hide-details
@@ -197,7 +162,7 @@
               </v-col>
               <v-col cols="12" md="4" class="d-flex justify-end">
                 <LBtn variant="primary" @click="fetchDocuments" :loading="loadingDocuments" prepend-icon="mdi-refresh">
-                  Aktualisieren
+                  {{ $t('common.refresh') }}
                 </LBtn>
               </v-col>
             </v-row>
@@ -208,18 +173,22 @@
               :items="filteredDocuments"
               :loading="loadingDocuments"
               :items-per-page="10"
+              hover
+              @click:row="(event, { item }) => openDocumentViewer(item)"
+              class="cursor-pointer"
             >
-              <template v-slot:item.filename="{ item }">
+              <template v-slot:item.title="{ item }">
                 <div class="d-flex align-center">
-                  <v-icon :color="getFileTypeColor(item.file_type)" class="mr-2">
-                    {{ getFileTypeIcon(item.file_type) }}
-                  </v-icon>
-                  <span class="font-weight-medium">{{ item.filename }}</span>
+                  <LIcon :color="getFileTypeColor(item.mime_type)" class="mr-2">
+                    {{ getFileTypeIcon(item.mime_type) }}
+                  </LIcon>
+                  <span class="font-weight-medium text-primary">{{ item.title || item.filename }}</span>
+                  <LIcon size="small" class="ml-1" color="grey">mdi-open-in-new</LIcon>
                 </div>
               </template>
 
-              <template v-slot:item.file_size="{ item }">
-                {{ formatFileSize(item.file_size) }}
+              <template v-slot:item.file_size_bytes="{ item }">
+                {{ formatFileSize(item.file_size_bytes) }}
               </template>
 
               <template v-slot:item.status="{ item }">
@@ -234,10 +203,28 @@
 
               <template v-slot:item.actions="{ item }">
                 <LIconBtn
+                  icon="mdi-eye"
+                  :tooltip="$t('admin.rag.documents.actions.view')"
+                  class="mr-1"
+                  @click.stop="openDocumentViewer(item)"
+                />
+                <LIconBtn
+                  icon="mdi-information-outline"
+                  :tooltip="$t('admin.rag.documents.actions.details')"
+                  class="mr-1"
+                  @click.stop="openDocumentPreview(item)"
+                />
+                <LIconBtn
+                  icon="mdi-download"
+                  :tooltip="$t('admin.rag.documents.actions.download')"
+                  class="mr-1"
+                  @click.stop="downloadDocument(item)"
+                />
+                <LIconBtn
                   icon="mdi-delete"
                   variant="danger"
-                  tooltip="Löschen"
-                  @click="confirmDeleteDocument(item)"
+                  :tooltip="$t('admin.rag.documents.actions.delete')"
+                  @click.stop="confirmDeleteDocument(item)"
                 />
               </template>
             </v-data-table>
@@ -252,11 +239,11 @@
               <v-col cols="12" md="8">
                 <v-text-field
                   v-model="newCollectionName"
-                  label="Neue Collection erstellen"
+                  :label="$t('admin.rag.collections.createNew')"
                   variant="outlined"
                   density="comfortable"
                   hide-details
-                  placeholder="Collection-Name eingeben"
+                  :placeholder="$t('admin.rag.collections.namePlaceholder')"
                 ></v-text-field>
               </v-col>
               <v-col cols="12" md="4">
@@ -268,7 +255,7 @@
                   block
                   prepend-icon="mdi-plus"
                 >
-                  Collection erstellen
+                  {{ $t('admin.rag.collections.create') }}
                 </LBtn>
               </v-col>
             </v-row>
@@ -285,15 +272,22 @@
             >
               <template v-slot:item.name="{ item }">
                 <div class="d-flex align-center">
-                  <v-icon color="primary" class="mr-2">mdi-folder</v-icon>
+                  <LIcon color="primary" class="mr-2">mdi-folder</LIcon>
                   <span class="font-weight-medium text-primary">{{ item.name }}</span>
-                  <v-icon size="small" class="ml-1" color="grey">mdi-open-in-new</v-icon>
+                  <LIcon size="small" class="ml-1" color="grey">mdi-open-in-new</LIcon>
                 </div>
+              </template>
+
+              <template v-slot:item.created_by="{ item }">
+                <v-chip size="small" variant="tonal" color="grey">
+                  <LIcon start size="small">mdi-account</LIcon>
+                  {{ item.created_by || $t('admin.rag.collections.unknown') }}
+                </v-chip>
               </template>
 
               <template v-slot:item.document_count="{ item }">
                 <v-chip size="small" variant="tonal" :color="item.document_count > 0 ? 'success' : 'grey'">
-                  {{ item.document_count }} Dokumente
+                  {{ $t('admin.rag.collections.documentsCount', { count: item.document_count }) }}
                 </v-chip>
               </template>
 
@@ -318,17 +312,20 @@
               <v-col cols="12" md="6">
                 <v-select
                   v-model="uploadCollection"
-                  :items="collectionOptions.filter(c => c !== 'Alle')"
-                  label="Ziel-Collection"
+                  :items="uploadCollectionOptions"
+                  item-title="title"
+                  item-value="value"
+                  :label="$t('admin.rag.upload.targetCollection')"
                   variant="outlined"
                   prepend-inner-icon="mdi-folder"
+                  clearable
                 ></v-select>
               </v-col>
             </v-row>
 
             <v-file-input
               v-model="filesToUpload"
-              label="Dateien auswählen"
+              :label="$t('admin.rag.upload.selectFiles')"
               variant="outlined"
               prepend-icon="mdi-paperclip"
               multiple
@@ -350,9 +347,9 @@
             </v-file-input>
 
             <v-alert type="info" variant="tonal" class="mb-4">
-              <strong>Unterstützte Formate:</strong> PDF, TXT, MD, DOCX, DOC
+              <strong>{{ $t('admin.rag.upload.supportedFormats') }}</strong> {{ $t('admin.rag.upload.formatList') }}
               <br>
-              <strong>Maximale Dateigröße:</strong> 50 MB pro Datei
+              <strong>{{ $t('admin.rag.upload.maxFileSize') }}</strong> {{ $t('admin.rag.upload.maxFileSizeValue') }}
             </v-alert>
 
             <LBtn
@@ -363,7 +360,7 @@
               :disabled="!filesToUpload || filesToUpload.length === 0"
               prepend-icon="mdi-upload"
             >
-              {{ filesToUpload?.length || 0 }} Datei(en) hochladen
+              {{ $t('admin.rag.upload.uploadButton', { count: filesToUpload?.length || 0 }) }}
             </LBtn>
 
             <!-- Upload Progress -->
@@ -379,6 +376,30 @@
                 {{ Math.round(value) }}%
               </template>
             </v-progress-linear>
+
+            <!-- Upload Error Message -->
+            <v-alert
+              v-if="uploadError"
+              type="error"
+              variant="tonal"
+              class="mt-4"
+              closable
+              @click:close="clearUploadMessages"
+            >
+              {{ uploadError }}
+            </v-alert>
+
+            <!-- Upload Success Message -->
+            <v-alert
+              v-if="uploadMessage"
+              type="success"
+              variant="tonal"
+              class="mt-4"
+              closable
+              @click:close="clearUploadMessages"
+            >
+              {{ uploadMessage }}
+            </v-alert>
           </v-card-text>
         </v-window-item>
       </v-window>
@@ -387,14 +408,14 @@
     <!-- Delete Document Dialog -->
     <v-dialog v-model="deleteDocDialog" max-width="400">
       <v-card>
-        <v-card-title>Dokument löschen?</v-card-title>
+        <v-card-title>{{ $t('admin.rag.deleteDocDialog.title') }}</v-card-title>
         <v-card-text>
-          Möchten Sie "{{ documentToDelete?.filename }}" wirklich löschen?
+          {{ $t('admin.rag.deleteDocDialog.confirm', { filename: documentToDelete?.filename }) }}
         </v-card-text>
         <v-card-actions>
           <v-spacer></v-spacer>
-          <LBtn variant="text" @click="deleteDocDialog = false">Abbrechen</LBtn>
-          <LBtn variant="danger" @click="deleteDocument" :loading="deletingDocument">Löschen</LBtn>
+          <LBtn variant="text" @click="deleteDocDialog = false">{{ $t('common.cancel') }}</LBtn>
+          <LBtn variant="danger" @click="deleteDocument" :loading="deletingDocument">{{ $t('common.delete') }}</LBtn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -403,11 +424,11 @@
     <v-dialog v-model="deleteCollDialog" max-width="500">
       <v-card>
         <v-card-title class="d-flex align-center">
-          <v-icon color="error" class="mr-2">mdi-delete-alert</v-icon>
-          Collection löschen?
+          <LIcon color="error" class="mr-2">mdi-delete-alert</LIcon>
+          {{ $t('admin.rag.deleteCollDialog.title') }}
         </v-card-title>
         <v-card-text>
-          <p>Möchten Sie die Collection "<strong>{{ collectionToDelete?.display_name || collectionToDelete?.name }}</strong>" löschen?</p>
+          <p><span v-html="$t('admin.rag.deleteCollDialog.confirm', { name: collectionToDelete?.display_name || collectionToDelete?.name })"></span></p>
           <v-alert
             v-if="collectionToDelete?.document_count > 0"
             type="warning"
@@ -415,19 +436,19 @@
             class="mt-3"
             density="compact"
           >
-            <strong>Achtung:</strong> Diese Collection enthält {{ collectionToDelete?.document_count }} Dokument(e).
+            <span v-html="$t('admin.rag.deleteCollDialog.warning', { count: collectionToDelete?.document_count })"></span>
           </v-alert>
         </v-card-text>
         <v-card-actions>
           <v-spacer></v-spacer>
-          <LBtn variant="text" @click="deleteCollDialog = false">Abbrechen</LBtn>
+          <LBtn variant="text" @click="deleteCollDialog = false">{{ $t('common.cancel') }}</LBtn>
           <LBtn
             v-if="collectionToDelete?.document_count > 0"
             variant="tonal"
             @click="deleteCollection(true)"
             :loading="deletingCollection"
           >
-            Inkl. Dokumente löschen
+            {{ $t('admin.rag.deleteCollDialog.includeDocuments') }}
           </LBtn>
           <LBtn
             variant="danger"
@@ -435,7 +456,7 @@
             :loading="deletingCollection"
             :disabled="collectionToDelete?.document_count > 0"
           >
-            Löschen
+            {{ $t('common.delete') }}
           </LBtn>
         </v-card-actions>
       </v-card>
@@ -452,7 +473,7 @@
     <v-dialog v-model="collectionDetailDialog" max-width="1200" scrollable>
       <v-card v-if="selectedCollection">
         <v-card-title class="d-flex align-center bg-primary">
-          <v-icon start color="white">mdi-folder-open</v-icon>
+          <LIcon start color="white">mdi-folder-open</LIcon>
           <span class="text-white">{{ selectedCollection.display_name || selectedCollection.name }}</span>
           <v-spacer></v-spacer>
           <LIconBtn icon="mdi-close" @click="collectionDetailDialog = false" />
@@ -463,20 +484,20 @@
           <v-sheet class="pa-4 bg-grey-lighten-4">
             <v-row>
               <v-col cols="12" md="8">
-                <div class="text-body-2 text-medium-emphasis mb-1">Beschreibung</div>
-                <div class="text-body-1">{{ selectedCollection.description || 'Keine Beschreibung' }}</div>
+                <div class="text-body-2 text-medium-emphasis mb-1">{{ $t('admin.rag.collectionDetail.description') }}</div>
+                <div class="text-body-1">{{ selectedCollection.description || $t('admin.rag.collectionDetail.noDescription') }}</div>
               </v-col>
               <v-col cols="12" md="4">
                 <v-row dense>
                   <v-col cols="6">
                     <v-chip color="primary" variant="flat" size="small" class="mr-1">
-                      <v-icon start size="small">mdi-file-document-multiple</v-icon>
-                      {{ selectedCollection.document_count }} Dokumente
+                      <LIcon start size="small">mdi-file-document-multiple</LIcon>
+                      {{ $t('admin.rag.collections.documentsCount', { count: selectedCollection.document_count }) }}
                     </v-chip>
                   </v-col>
                   <v-col cols="6">
                     <v-chip color="info" variant="flat" size="small">
-                      <v-icon start size="small">mdi-harddisk</v-icon>
+                      <LIcon start size="small">mdi-harddisk</LIcon>
                       {{ formatFileSize(selectedCollection.total_size_bytes) }}
                     </v-chip>
                   </v-col>
@@ -484,8 +505,8 @@
                 <v-row dense class="mt-2">
                   <v-col cols="12">
                     <div class="text-caption text-medium-emphasis">
-                      <v-icon size="x-small" class="mr-1">mdi-puzzle</v-icon>
-                      Chunk: {{ selectedCollection.chunk_size || 1000 }} Zeichen, {{ selectedCollection.chunk_overlap || 200 }} Overlap
+                      <LIcon size="x-small" class="mr-1">mdi-puzzle</LIcon>
+                      {{ $t('admin.rag.collectionDetail.chunkSettings', { size: selectedCollection.chunk_size || 1000, overlap: selectedCollection.chunk_overlap || 200 }) }}
                     </div>
                   </v-col>
                 </v-row>
@@ -503,16 +524,16 @@
             color="warning"
           >
             <v-card-title class="d-flex align-center py-2">
-              <v-icon start color="warning" size="small">mdi-progress-clock</v-icon>
-              <span class="text-body-1">Embedding-Verarbeitung</span>
+              <LIcon start color="warning" size="small">mdi-progress-clock</LIcon>
+              <span class="text-body-1">{{ $t('admin.rag.collectionDetail.embeddingProgress.title') }}</span>
               <v-spacer></v-spacer>
               <v-chip color="warning" size="x-small" variant="flat">
-                {{ collectionEmbeddingProgress.pending + collectionEmbeddingProgress.processing }} ausstehend
+                {{ collectionEmbeddingProgress.pending + collectionEmbeddingProgress.processing }} {{ $t('admin.rag.collectionDetail.embeddingProgress.pending') }}
               </v-chip>
             </v-card-title>
             <v-card-text class="pt-0">
               <div class="d-flex align-center mb-2">
-                <span class="text-body-2 mr-3">Fortschritt:</span>
+                <span class="text-body-2 mr-3">{{ $t('admin.rag.collectionDetail.embeddingProgress.progress') }}</span>
                 <v-progress-linear
                   :model-value="collectionEmbeddingProgressPercent"
                   color="primary"
@@ -527,20 +548,20 @@
               </div>
               <div class="d-flex gap-2 flex-wrap">
                 <v-chip size="x-small" color="warning" variant="tonal">
-                  <v-icon start size="x-small">mdi-clock-outline</v-icon>
-                  {{ collectionEmbeddingProgress.pending }} warten
+                  <LIcon start size="x-small">mdi-clock-outline</LIcon>
+                  {{ collectionEmbeddingProgress.pending }} {{ $t('admin.rag.collectionDetail.embeddingProgress.waiting') }}
                 </v-chip>
                 <v-chip size="x-small" color="info" variant="tonal">
-                  <v-icon start size="x-small">mdi-cog</v-icon>
-                  {{ collectionEmbeddingProgress.processing }} verarbeiten
+                  <LIcon start size="x-small">mdi-cog</LIcon>
+                  {{ collectionEmbeddingProgress.processing }} {{ $t('admin.rag.collectionDetail.embeddingProgress.processing') }}
                 </v-chip>
                 <v-chip size="x-small" color="success" variant="tonal">
-                  <v-icon start size="x-small">mdi-check</v-icon>
-                  {{ collectionEmbeddingProgress.indexed }} fertig
+                  <LIcon start size="x-small">mdi-check</LIcon>
+                  {{ collectionEmbeddingProgress.indexed }} {{ $t('admin.rag.collectionDetail.embeddingProgress.done') }}
                 </v-chip>
                 <v-chip v-if="collectionEmbeddingProgress.failed > 0" size="x-small" color="error" variant="tonal">
-                  <v-icon start size="x-small">mdi-alert</v-icon>
-                  {{ collectionEmbeddingProgress.failed }} fehlgeschlagen
+                  <LIcon start size="x-small">mdi-alert</LIcon>
+                  {{ collectionEmbeddingProgress.failed }} {{ $t('admin.rag.collectionDetail.embeddingProgress.failed') }}
                 </v-chip>
               </div>
             </v-card-text>
@@ -549,7 +570,7 @@
           <!-- Documents List -->
           <div class="pa-4">
             <div class="d-flex align-center mb-3">
-              <h3 class="text-h6">Dokumente in dieser Collection</h3>
+              <h3 class="text-h6">{{ $t('admin.rag.collectionDetail.documentsTitle') }}</h3>
               <v-spacer></v-spacer>
               <LBtn
                 size="small"
@@ -558,7 +579,7 @@
                 :loading="loadingCollectionDocs"
                 prepend-icon="mdi-refresh"
               >
-                Aktualisieren
+                {{ $t('admin.rag.collectionDetail.refresh') }}
               </LBtn>
               <LBtn
                 v-if="canReindexCollection(selectedCollection)"
@@ -570,7 +591,7 @@
                 :disabled="collectionDocuments.length === 0"
                 prepend-icon="mdi-refresh-circle"
               >
-                Neu indexieren
+                {{ $t('admin.rag.collectionDetail.reindex') }}
               </LBtn>
             </div>
 
@@ -580,14 +601,14 @@
               :loading="loadingCollectionDocs"
               :items-per-page="10"
               hover
-              @click:row="(event, { item }) => openDocumentPreview(item)"
+              @click:row="(event, { item }) => openFilePreview(item)"
               class="cursor-pointer elevation-1"
             >
               <template v-slot:item.filename="{ item }">
                 <div class="d-flex align-center">
-                  <v-icon :color="getDocumentColor(item)" class="mr-2">
+                  <LIcon :color="getDocumentColor(item)" class="mr-2">
                     {{ getDocumentIcon(item) }}
-                  </v-icon>
+                  </LIcon>
                   <div>
                     <div class="font-weight-medium text-primary d-flex align-center flex-wrap">
                       <span>{{ item.title || item.filename }}</span>
@@ -598,7 +619,7 @@
                         variant="tonal"
                         class="ml-2"
                       >
-                        Webcrawl
+                        {{ $t('admin.rag.collectionDetail.webcrawl') }}
                       </v-chip>
                       <v-chip
                         v-if="item.link_type === 'linked'"
@@ -607,14 +628,14 @@
                         variant="tonal"
                         class="ml-2"
                       >
-                        verlinkt
+                        {{ $t('admin.rag.collectionDetail.linked') }}
                       </v-chip>
                     </div>
                     <div class="text-caption text-medium-emphasis">
                       {{ item.filename }}
                     </div>
                     <div v-if="item.source_url" class="text-caption text-medium-emphasis d-flex align-center mt-1">
-                      <v-icon size="12" class="mr-1">mdi-web</v-icon>
+                      <LIcon size="12" class="mr-1">mdi-web</LIcon>
                       <a :href="item.source_url" target="_blank" class="text-truncate">
                         {{ item.source_url }}
                       </a>
@@ -623,36 +644,49 @@
                 </div>
               </template>
 
-              <template v-slot:item.file_size="{ item }">
-                {{ formatFileSize(item.file_size_bytes || item.file_size) }}
+              <template v-slot:item.file_size_bytes="{ item }">
+                {{ formatFileSize(item.file_size_bytes) }}
               </template>
 
               <template v-slot:item.status="{ item }">
                 <v-chip :color="getStatusColor(item.status)" size="small">
-                  <v-icon start size="x-small">{{ getStatusIcon(item.status) }}</v-icon>
+                  <LIcon start size="x-small">{{ getStatusIcon(item.status) }}</LIcon>
                   {{ item.status }}
                 </v-chip>
               </template>
 
               <template v-slot:item.chunk_count="{ item }">
                 <v-chip size="small" variant="tonal" color="info">
-                  {{ item.chunk_count || 0 }} Chunks
+                  {{ $t('admin.rag.collectionDetail.chunks', { count: item.chunk_count || 0 }) }}
                 </v-chip>
               </template>
 
               <template v-slot:item.actions="{ item }">
-                <LActionGroup
-                  :actions="['view', 'download']"
-                  @action="(key) => handleDocumentDetailAction(key, item)"
+                <LIconBtn
+                  icon="mdi-eye"
+                  :tooltip="$t('admin.rag.documents.actions.view')"
+                  class="mr-1"
+                  @click.stop="openFilePreview(item)"
+                />
+                <LIconBtn
+                  icon="mdi-information-outline"
+                  :tooltip="$t('admin.rag.documents.actions.details')"
+                  class="mr-1"
+                  @click.stop="openDocumentPreview(item)"
+                />
+                <LIconBtn
+                  icon="mdi-download"
+                  :tooltip="$t('admin.rag.documents.actions.download')"
+                  @click.stop="downloadDocument(item)"
                 />
               </template>
 
               <template v-slot:no-data>
                 <div class="text-center pa-8">
-                  <v-icon size="64" color="grey-lighten-1" class="mb-4">mdi-folder-open-outline</v-icon>
-                  <div class="text-h6 text-grey">Keine Dokumente in dieser Collection</div>
+                  <LIcon size="64" color="grey-lighten-1" class="mb-4">mdi-folder-open-outline</LIcon>
+                  <div class="text-h6 text-grey">{{ $t('admin.rag.collectionDetail.empty.title') }}</div>
                   <div class="text-body-2 text-grey-darken-1">
-                    Laden Sie Dokumente hoch oder starten Sie einen Crawl-Job.
+                    {{ $t('admin.rag.collectionDetail.empty.hint') }}
                   </div>
                 </div>
               </template>
@@ -669,17 +703,30 @@
       @download="downloadDocument"
       @delete="handleDeleteFromViewer"
     />
+
+    <!-- File Preview Dialog (direct PDF/image viewing) -->
+    <FilePreviewDialog
+      v-model="filePreviewDialog"
+      :document="filePreviewDocument"
+      @download="downloadDocument"
+      @showDetails="showDocumentDetails"
+    />
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
 import axios from 'axios';
+import { logI18n, logI18nParams } from '@/utils/logI18n';
+
+const { t } = useI18n();
 import { useSkeletonLoading } from '@/composables/useSkeletonLoading';
 import { usePermissions } from '@/composables/usePermissions';
 import { useAuth } from '@/composables/useAuth';
 import { getSocket } from '@/services/socketService';
 import DocumentViewer from '@/components/RAG/DocumentViewer.vue';
+import FilePreviewDialog from '@/components/RAG/FilePreviewDialog.vue';
 import CollectionShareDialog from '@/components/RAG/CollectionShareDialog.vue';
 import {
   useRAGStats,
@@ -749,15 +796,19 @@ const {
   uploadCollection,
   uploading,
   uploadProgress,
+  uploadError,
+  uploadMessage,
   deleteDocDialog,
   documentToDelete,
   deletingDocument,
   documentHeaders,
   collectionOptions,
+  uploadCollectionOptions,
   filteredDocuments,
   fetchDocuments,
   handleFileSelect,
   uploadFiles: uploadFilesFn,
+  clearUploadMessages,
   confirmDeleteDocument,
   deleteDocument: deleteDocumentFn
 } = useRAGDocuments(collections);
@@ -779,6 +830,10 @@ const {
 // Document Preview Dialog
 const documentPreviewDialog = ref(false);
 const previewDocument = ref(null);
+
+// File Preview Dialog (direct PDF/image viewing)
+const filePreviewDialog = ref(false);
+const filePreviewDocument = ref(null);
 
 // Computed property to transform previewDocument for DocumentViewer format
 const previewDocumentForViewer = computed(() => {
@@ -862,6 +917,7 @@ const createCollection = async () => {
 const uploadFiles = async () => {
   await uploadFilesFn(async () => {
     await fetchDocuments();
+    await fetchCollections();  // Update collection document counts
     await fetchStats();
     activeTab.value = 'documents';
   });
@@ -888,6 +944,24 @@ const openDocumentPreview = (doc) => {
   documentPreviewDialog.value = true;
 };
 
+// Open file preview (direct PDF/image viewing)
+const openFilePreview = (doc) => {
+  filePreviewDocument.value = doc;
+  filePreviewDialog.value = true;
+};
+
+// Open document viewer (shows file in popup) - called from table click
+const openDocumentViewer = (doc) => {
+  openFilePreview(doc);
+};
+
+// Show details from file preview (switch to detail viewer)
+const showDocumentDetails = (doc) => {
+  filePreviewDialog.value = false;
+  previewDocument.value = doc;
+  documentPreviewDialog.value = true;
+};
+
 const openCollectionShareDialog = (collection) => {
   shareCollection.value = collection;
   collectionShareDialog.value = true;
@@ -899,7 +973,7 @@ const handleCollectionShareSaved = () => {
 };
 
 const handleCollectionShareError = (message) => {
-  alert(message || 'Fehler beim Speichern der Zugriffsrechte');
+  alert(message || t('admin.rag.errors.shareAccessFailed'));
 };
 
 // Track which collection is being reindexed
@@ -913,8 +987,8 @@ const reindexCollectionById = async (collectionId) => {
     await fetchCollections();
     await fetchStats();
   } catch (error) {
-    console.error('Error reindexing collection:', error);
-    const errorMsg = error.response?.data?.error || 'Reindexierung fehlgeschlagen';
+    logI18n('error', 'logs.admin.ragSection.reindexCollectionFailed', error);
+    const errorMsg = error.response?.data?.error || t('admin.rag.errors.reindexFailed');
     alert(errorMsg);
   }
   reindexingCollectionId.value = null;
@@ -923,7 +997,7 @@ const reindexCollectionById = async (collectionId) => {
 // Get actions for collection row
 const getCollectionActions = (item) => {
   const actions = [
-    { key: 'view', icon: 'mdi-eye', tooltip: 'Details anzeigen', variant: 'primary' }
+    { key: 'view', icon: 'mdi-eye', tooltip: t('admin.rag.collections.actions.view'), variant: 'primary' }
   ];
 
   // Only show reindex button if user can reindex this collection
@@ -931,7 +1005,7 @@ const getCollectionActions = (item) => {
     actions.push({
       key: 'reindex',
       icon: 'mdi-refresh-circle',
-      tooltip: 'Neu indexieren',
+      tooltip: t('admin.rag.collections.actions.reindex'),
       variant: 'warning',
       disabled: item.document_count === 0,
       loading: reindexingCollectionId.value === item.id
@@ -942,7 +1016,7 @@ const getCollectionActions = (item) => {
     actions.push({
       key: 'share',
       icon: 'mdi-account-multiple-plus',
-      tooltip: 'Zugriff teilen',
+      tooltip: t('admin.rag.collections.actions.share'),
       variant: 'primary'
     });
   }
@@ -950,7 +1024,7 @@ const getCollectionActions = (item) => {
   actions.push({
     key: 'delete',
     icon: 'mdi-delete',
-    tooltip: 'Löschen',
+    tooltip: t('admin.rag.collections.actions.delete'),
     variant: 'danger',
     disabled: item.can_delete === false || item.name === 'default' || item.name === 'general'
   });
@@ -977,9 +1051,13 @@ const handleCollectionAction = (actionKey, item) => {
 };
 
 // Handle document detail action group clicks
-const handleDocumentDetailAction = (actionKey, item) => {
+const handleDocumentDetailAction = (actionKey, item, event) => {
+  if (event) event.stopPropagation();
   switch (actionKey) {
     case 'view':
+      openFilePreview(item);
+      break;
+    case 'details':
       openDocumentPreview(item);
       break;
     case 'download':
@@ -998,10 +1076,17 @@ function setupWebSocket() {
     socket.on('rag:queue_list', updateQueueFromWebSocket);
     socket.on('rag:queue_updated', updateQueueFromWebSocket);
     socket.on('rag:progress', (data) => {
-      console.log('[RAG] Progress-Update:', data.queue_id, data.progress_percent + '%', data.current_step);
+      logI18nParams('log', 'logs.admin.ragSection.progressUpdate', {
+        queueId: data.queue_id,
+        progress: `${data.progress_percent}%`,
+        step: data.current_step
+      });
     });
     socket.on('rag:document_processed', async (data) => {
-      console.log('[RAG] Dokument verarbeitet:', data.filename, '-', data.status);
+      logI18nParams('log', 'logs.admin.ragSection.documentProcessed', {
+        filename: data.filename,
+        status: data.status
+      });
       applyDocumentProcessed(data);
       await fetchStats();
       await fetchDocuments();
@@ -1014,14 +1099,36 @@ function setupWebSocket() {
       }
     });
 
+    // Real-time updates when another user uploads a document
+    socket.on('rag:document_uploaded', async (data) => {
+      logI18nParams('log', 'logs.admin.ragSection.documentUploadedByOther', {
+        filename: data.document?.filename,
+        collection: data.collection?.display_name
+      });
+      // Refresh data to show the new document
+      await fetchDocuments();
+      await fetchCollections();
+      await fetchStats();
+    });
+
+    // Real-time updates when a collection is shared with the current user
+    socket.on('rag:collection_shared', async (data) => {
+      logI18nParams('log', 'logs.admin.ragSection.collectionShared', {
+        collection: data.collection?.name,
+        sharedBy: data.shared_by
+      });
+      // Refresh collections to show newly shared collections
+      await fetchCollections();
+    });
+
     if (socket.connected) {
       socket.emit('rag:subscribe_queue');
-      console.log('[RAG] WebSocket subscribed');
+      logI18n('log', 'logs.admin.ragSection.socketSubscribed');
     }
 
     socket.on('connect', () => {
       socket.emit('rag:subscribe_queue');
-      console.log('[RAG] WebSocket reconnected und subscribed');
+      logI18n('log', 'logs.admin.ragSection.socketReconnectedSubscribed');
     });
   }
 }
@@ -1033,8 +1140,10 @@ function cleanupWebSocket() {
     socket.off('rag:progress');
     socket.off('rag:document_processed');
     socket.off('rag:document_progress');
+    socket.off('rag:document_uploaded');
+    socket.off('rag:collection_shared');
     socket.emit('rag:unsubscribe_queue');
-    console.log('[RAG] WebSocket unsubscribed');
+    logI18n('log', 'logs.admin.ragSection.socketUnsubscribed');
   }
 }
 
@@ -1070,6 +1179,49 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+/* Root container fills viewport */
+.admin-rag {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* Tabs card fills remaining space */
+.tabs-card {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Tabs stay fixed */
+.tabs-card :deep(.v-tabs) {
+  flex-shrink: 0;
+}
+
+/* Window fills remaining card space */
+.tabs-card :deep(.v-window) {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.tabs-card :deep(.v-window__container) {
+  height: 100%;
+}
+
+.tabs-card :deep(.v-window-item) {
+  height: 100%;
+}
+
+/* Card text scrolls */
+.tabs-card :deep(.v-window-item > .v-card-text) {
+  height: 100%;
+  overflow-y: auto;
+}
+
 .cursor-pointer {
   cursor: pointer;
 }

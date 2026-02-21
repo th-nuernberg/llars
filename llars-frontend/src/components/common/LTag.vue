@@ -3,16 +3,16 @@
     :class="tagClasses"
     @click="handleClick"
   >
-    <v-icon v-if="prependIcon" :icon="prependIcon" :size="iconSize" />
+    <LIcon v-if="prependIcon" :icon="prependIcon" :size="iconSize" />
     <slot></slot>
-    <v-icon
+    <LIcon
       v-if="closable"
       icon="mdi-close"
       :size="iconSize"
       class="close-icon"
       @click.stop="$emit('close')"
     />
-    <v-icon v-else-if="appendIcon" :icon="appendIcon" :size="iconSize" />
+    <LIcon v-else-if="appendIcon" :icon="appendIcon" :size="iconSize" />
   </span>
 </template>
 
@@ -23,12 +23,12 @@ const props = defineProps({
   variant: {
     type: String,
     default: 'primary',
-    validator: (v) => ['primary', 'secondary', 'accent', 'success', 'info', 'warning', 'danger', 'gray'].includes(v)
+    validator: (v) => ['primary', 'secondary', 'accent', 'success', 'info', 'warning', 'danger', 'gray', 'default'].includes(v)
   },
   size: {
     type: String,
     default: 'md',
-    validator: (v) => ['sm', 'small', 'md', 'default', 'lg', 'large'].includes(v)
+    validator: (v) => ['xs', 'x-small', 'sm', 'small', 'md', 'default', 'lg', 'large'].includes(v)
   },
   prependIcon: {
     type: String,
@@ -53,6 +53,7 @@ defineEmits(['click', 'close']);
 // Normalize size to internal format
 const normalizedSize = computed(() => {
   const sizeMap = {
+    'x-small': 'xs',
     small: 'sm',
     default: 'md',
     large: 'lg'

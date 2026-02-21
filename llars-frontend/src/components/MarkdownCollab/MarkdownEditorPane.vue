@@ -3,16 +3,16 @@
     <div class="editor-topbar">
       <div class="d-flex align-center">
         <v-chip v-if="readonly" size="small" color="warning" variant="tonal" class="mr-2">
-          <v-icon start size="small">mdi-lock</v-icon>
-          Read-only
+          <LIcon start size="small">mdi-lock</LIcon>
+          {{ $t('markdownCollab.editor.readonly') }}
         </v-chip>
         <v-chip v-else-if="isConnected" size="small" color="success" variant="tonal" class="mr-2">
-          <v-icon start size="small">mdi-cloud-check-outline</v-icon>
-          Live Sync
+          <LIcon start size="small">mdi-cloud-check-outline</LIcon>
+          {{ $t('markdownCollab.editor.liveSync') }}
         </v-chip>
         <v-chip v-else size="small" color="warning" variant="tonal" class="mr-2">
-          <v-icon start size="small">mdi-cloud-alert-outline</v-icon>
-          Reconnecting…
+          <LIcon start size="small">mdi-cloud-alert-outline</LIcon>
+          {{ $t('markdownCollab.editor.reconnecting') }}
         </v-chip>
       </div>
       <v-spacer />
@@ -60,18 +60,22 @@ import { EditorView, Decoration, WidgetType, highlightActiveLine, drawSelection,
 import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands'
 import { markdown } from '@codemirror/lang-markdown'
 import { defaultHighlightStyle, syntaxHighlighting } from '@codemirror/language'
+import { useI18n } from 'vue-i18n'
 
 import { useAuth } from '@/composables/useAuth'
 import { useYjsCollaboration } from '@/components/PromptEngineering/composables/useYjsCollaboration'
-import { useGitDiff } from './composables/useGitDiff'
+import { useGitDiff } from '@/composables/useGitDiff'
 import { useTypingMetrics } from '@/composables/useAnalyticsMetrics'
+import { getSocket } from '@/services/socketService'
 
 const props = defineProps({
   document: { type: Object, required: true },
   readonly: { type: Boolean, default: false }
 })
 
-const emit = defineEmits(['content-change', 'git-summary'])
+const emit = defineEmits(['content-change', 'git-summary', 'document-saved'])
+
+const { t } = useI18n()
 
 const editorEl = ref(null)
 const error = ref('')
@@ -85,9 +89,11 @@ let yhighlights = null
 const isConnected = ref(false)
 const remoteCursors = ref({})
 let cursorSendTimer = null
+const collabColorOverrides = ref({})
+const appSocket = ref(null)
 
 const { tokenParsed, collabColor } = useAuth()
-const username = computed(() => tokenParsed.value?.preferred_username || localStorage.getItem('username') || 'user')
+const username = computed(() => tokenParsed.value?.preferred_username || localStorage.getItem('username') || t('markdownCollab.editor.userFallback'))
 
 const roomId = computed(() => props.document?.yjs_doc_id || `markdown_${props.document?.id}`)
 
@@ -158,7 +164,7 @@ class DeletionMarker extends GutterMarker {
   toDOM() {
     const el = document.createElement('div')
     el.className = 'cm-diff-delete-gutter'
-    el.title = 'Gelöschter Text'
+    el.title = t('markdownCollab.editor.deletedText')
     return el
   }
 }
@@ -185,6 +191,65 @@ function rgbaFromHex(hex, alpha = 0.18) {
 
 function isValidHexColor(value) {
   return typeof value === 'string' && /^#[0-9a-fA-F]{6}$/.test(value)
+}
+
+function setUserColorOverride(name, color) {
+  if (!name || !isValidHexColor(color)) return
+  collabColorOverrides.value = { ...collabColorOverrides.value, [name]: color }
+}
+
+function resolveUserColor(name, fallback) {
+  if (!name) return fallback
+  const override = collabColorOverrides.value[name]
+  if (override) return override
+  if (users.value) {
+    for (const user of Object.values(users.value)) {
+      if (user?.username === name && isValidHexColor(user.color)) {
+        return user.color
+      }
+    }
+  }
+  return fallback
+}
+
+function updateUsersColorByUsername(name, color) {
+  if (!name || !isValidHexColor(color) || !users.value) return
+  const next = { ...users.value }
+  let updated = false
+  for (const [userId, user] of Object.entries(next)) {
+    if (user?.username === name) {
+      next[userId] = { ...user, color }
+      updated = true
+    }
+  }
+  if (updated) {
+    users.value = next
+  }
+}
+
+function updateCursorColorsByUsername(name, color) {
+  if (!name || !isValidHexColor(color)) return
+  const next = { ...remoteCursors.value }
+  let updated = false
+  for (const [userId, cursor] of Object.entries(next)) {
+    if (cursor?.username === name) {
+      next[userId] = { ...cursor, color }
+      updated = true
+    }
+  }
+  if (updated) {
+    remoteCursors.value = next
+  }
+}
+
+function handleGlobalColorUpdate(payload) {
+  const name = payload?.username
+  const color = payload?.collab_color || payload?.color
+  if (!name || !isValidHexColor(color)) return
+  setUserColorOverride(name, color)
+  updateUsersColorByUsername(name, color)
+  updateCursorColorsByUsername(name, color)
+  updateDecorations()
 }
 
 function updateLocalUserColor(newColor) {
@@ -248,7 +313,7 @@ function buildInsertDecorations(insertRanges = []) {
     const text = typeof insert === 'string' ? insert : ''
     const length = text.length
     const attrs = op?.attributes || {}
-    const color = attrs.collabColor || attrs.color
+    const color = resolveUserColor(attrs.collabUser, attrs.collabColor || attrs.color)
     if (length === 0) continue
 
     const segmentStart = pos
@@ -346,7 +411,9 @@ function updateDecorations() {
   const myUsername = username.value
 
   for (const [lineNoStr, meta] of Object.entries(highlightsData)) {
-    if (!meta || !meta.ts || !meta.color) continue
+    if (!meta || !meta.ts) continue
+    const highlightColor = resolveUserColor(meta.username, meta.color)
+    if (!highlightColor) continue
 
     // Only show other users' recent edits (not own edits)
     if (meta.username === myUsername) continue
@@ -361,7 +428,7 @@ function updateDecorations() {
       decorations.push(
         Decoration.line({
           attributes: {
-            style: `border-left: 3px solid ${meta.color}; margin-left: -3px;`
+            style: `border-left: 3px solid ${highlightColor}; margin-left: -3px;`
           }
         }).range(line.from)
       )
@@ -441,8 +508,8 @@ function computeGitSummary() {
   const byUser = new Map()
   let total = 0
   for (const [, meta] of yhighlights.entries()) {
-    const u = meta?.username || 'unknown'
-    const color = meta?.color || '#4ECDC4'
+    const u = meta?.username || t('markdownCollab.editor.userUnknown')
+    const color = resolveUserColor(u, meta?.color) || '#4ECDC4'
     total += 1
     const cur = byUser.get(u) || { username: u, color, changedLines: 0 }
     cur.changedLines += 1
@@ -672,8 +739,8 @@ function initEditorIfNeeded() {
     view.value = new EditorView({ state, parent: editorEl.value })
     nextTick(() => view.value?.focus())
   } catch (e) {
-    console.error('CodeMirror init failed:', e)
-    error.value = `Editor-Initialisierung fehlgeschlagen: ${e?.message || String(e)}`
+    console.error('CodeMirror-Initialisierung fehlgeschlagen:', e)
+    error.value = t('markdownCollab.editor.errors.initFailed', { message: e?.message || String(e) })
     fallbackMode.value = true
     fallbackText.value = ytext?.toString?.() || ''
   }
@@ -733,10 +800,12 @@ function refresh() {
   view.value?.requestMeasure?.()
 }
 
-defineExpose({ clearHighlights, refresh, refreshBaseline, getCurrentContent })
-
 // Callback for when another user updates their color
 function onColorUpdate(userId, newColor) {
+  const userName = users.value?.[userId]?.username
+  if (userName) {
+    setUserColorOverride(userName, newColor)
+  }
   // Update the remote cursor color if it exists
   if (remoteCursors.value[userId]) {
     remoteCursors.value[userId] = {
@@ -748,11 +817,37 @@ function onColorUpdate(userId, newColor) {
   updateDecorations()
 }
 
+/**
+ * Initialize Yjs collaboration with WebSocket connection.
+ *
+ * The onDocumentSaved callback enables real-time Git panel updates:
+ * - YJS server saves document to DB after 2s debounce
+ * - Server broadcasts `document_saved` to workspace room
+ * - We forward this event to parent component (MarkdownCollabWorkspace)
+ * - Parent refreshes Git panel via gitPanelRef.checkForChanges()
+ *
+ * Event flow: YJS Server → Socket.IO → useYjsCollaboration → EditorPane → Workspace → GitPanel
+ */
 const collaboration = useYjsCollaboration(roomId, username.value, processYDoc, onUpdateCursor, {
   autoSync: true,
-  onColorUpdate
+  onColorUpdate,
+  /**
+   * Handle document_saved event from YJS server.
+   * @param {Object} data - Event payload
+   * @param {number} data.documentId - Saved document ID
+   * @param {number} data.workspaceId - Workspace containing the document
+   * @param {string} data.kind - Document type ('markdown')
+   * @param {number} data.contentLength - Content length in characters
+   * @param {string} data.savedAt - ISO timestamp
+   */
+  onDocumentSaved: (data) => {
+    console.log('[MarkdownEditorPane] document_saved, an Parent weitergegeben:', data)
+    emit('document-saved', data)
+  }
 })
-const { ydoc, socket, users, updateColor } = collaboration
+const { ydoc, socket, users, updateColor, switchRoom, reloadRoom, reloadAnyRoom } = collaboration
+
+defineExpose({ clearHighlights, refresh, refreshBaseline, getCurrentContent, reloadRoom, reloadAnyRoom })
 
 let onSocketConnect = null
 let onSocketDisconnect = null
@@ -773,6 +868,8 @@ onMounted(async () => {
     updateDecorations()
 
     const sock = socket.value
+    appSocket.value = getSocket()
+    appSocket.value?.on('user:collab_color_updated', handleGlobalColorUpdate)
     isConnected.value = sock?.connected === true
 
     onSocketConnect = () => {
@@ -782,11 +879,11 @@ onMounted(async () => {
     onSocketConnectError = (err) => {
       isConnected.value = false
       const msg = err?.message || err
-      error.value = `Collab-Verbindung fehlgeschlagen: ${msg}`
+      error.value = t('markdownCollab.editor.errors.connectionFailed', { message: msg })
     }
     onSocketDisconnect = () => {
       isConnected.value = false
-      if (!props.readonly) error.value = 'Collab-Verbindung getrennt (Reconnecting …)'
+      if (!props.readonly) error.value = t('markdownCollab.editor.errors.connectionLost')
     }
 
     sock?.on('connect', onSocketConnect)
@@ -808,16 +905,62 @@ watch(
 )
 
 // Watch for collab color changes (when user updates their color in settings)
+// Use direct ref watch for cross-component reactivity (more robust than getter)
 watch(
-  () => collabColor.value,
+  collabColor,
   (newColor) => {
     if (!newColor) return
+    console.log('[MarkdownEditorPane] collabColor changed:', newColor)
+    setUserColorOverride(username.value, newColor)
     applyCollabColorChange(newColor)
     if (socket.value?.connected) {
       // Broadcast color change to other users
       updateColor(newColor)
     }
   }
+)
+
+// Watch for document changes to switch rooms without remounting the component
+// This provides a smoother experience when switching between documents
+let previousDocumentId = null
+watch(
+  () => props.document?.id,
+  async (newId, oldId) => {
+    // Skip initial mount (handled by onMounted)
+    if (!previousDocumentId) {
+      previousDocumentId = newId
+      return
+    }
+
+    // Skip if same document
+    if (newId === previousDocumentId) return
+
+    const oldRoom = props.document?.yjs_doc_id || `markdown_${previousDocumentId}`
+    const newRoom = props.document?.yjs_doc_id || `markdown_${newId}`
+    previousDocumentId = newId
+
+    // Clear remote cursors from old document
+    remoteCursors.value = {}
+
+    // Reset error state
+    error.value = ''
+
+    // Switch collaboration room (leaves old room, joins new room, creates fresh Yjs doc)
+    switchRoom(oldRoom, newRoom)
+
+    // Load new git baseline for diff comparison
+    await loadBaseline(newId)
+
+    // Wait for the server to send the snapshot
+    // Give the socket time to receive and process the snapshot
+    await new Promise(resolve => setTimeout(resolve, 100))
+    await nextTick()
+
+    // Process the new Yjs doc to emit content-change and update editor
+    processYDoc()
+    updateDecorations()
+  },
+  { immediate: false }
 )
 
 function onFallbackInput(val) {
@@ -841,6 +984,9 @@ onUnmounted(() => {
     sendCursorUpdate(null)
   } catch {}
 
+  if (appSocket.value) {
+    appSocket.value.off('user:collab_color_updated', handleGlobalColorUpdate)
+  }
   if (cursorSendTimer) clearTimeout(cursorSendTimer)
   if (socket.value) {
     if (onSocketConnect) socket.value.off('connect', onSocketConnect)

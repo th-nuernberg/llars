@@ -1,5 +1,6 @@
 import { ref, computed } from 'vue';
 import axios from 'axios';
+import { logI18n } from '@/utils/logI18n';
 
 /**
  * Composable for RAG Documents management
@@ -60,16 +61,16 @@ export function useRAGDocuments() {
       documents.value = response.data.documents || [];
       return { success: true, data: response.data };
     } catch (error) {
-      console.error('Error fetching documents:', error);
+      logI18n('error', 'logs.admin.ragDocuments.fetchDocumentsFailed', error);
       return { success: false, error };
     } finally {
       loadingDocuments.value = false;
     }
   };
 
-  const uploadFiles = async (files = null, collection = null) => {
+  const uploadFiles = async (files = null, collectionId = null) => {
     const filesToProcess = files || filesToUpload.value;
-    const targetCollection = collection || uploadCollection.value || 'default';
+    const targetCollectionId = collectionId || uploadCollection.value;
 
     if (!filesToProcess || filesToProcess.length === 0) {
       return { success: false, error: 'No files selected' };
@@ -82,10 +83,12 @@ export function useRAGDocuments() {
     for (const file of filesToProcess) {
       formData.append('files', file);
     }
-    formData.append('collection', targetCollection);
+    if (targetCollectionId) {
+      formData.append('collection_id', targetCollectionId);
+    }
 
     try {
-      const response = await axios.post('/api/rag/upload', formData, {
+      const response = await axios.post('/api/rag/documents/upload-multiple', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
         onUploadProgress: (progressEvent) => {
           uploadProgress.value = Math.round((progressEvent.loaded * 100) / progressEvent.total);
@@ -99,7 +102,7 @@ export function useRAGDocuments() {
       await fetchDocuments();
       return { success: true, data: response.data };
     } catch (error) {
-      console.error('Error uploading files:', error);
+      logI18n('error', 'logs.admin.ragDocuments.uploadFilesFailed', error);
       return { success: false, error };
     } finally {
       uploading.value = false;
@@ -124,7 +127,7 @@ export function useRAGDocuments() {
       await fetchDocuments();
       return { success: true, data: response.data };
     } catch (error) {
-      console.error('Error deleting document:', error);
+      logI18n('error', 'logs.admin.ragDocuments.deleteDocumentFailed', error);
       return { success: false, error };
     } finally {
       deletingDocument.value = false;
@@ -138,7 +141,7 @@ export function useRAGDocuments() {
       previewContent.value = response.data.content || 'Inhalt konnte nicht geladen werden.';
       return { success: true, content: previewContent.value };
     } catch (error) {
-      console.error('Error loading document content:', error);
+      logI18n('error', 'logs.admin.ragDocuments.loadDocumentContentFailed', error);
       previewContent.value = 'Fehler beim Laden des Inhalts.';
       return { success: false, error };
     } finally {
@@ -164,7 +167,7 @@ export function useRAGDocuments() {
 
       return { success: true };
     } catch (error) {
-      console.error('Error downloading document:', error);
+      logI18n('error', 'logs.admin.ragDocuments.downloadDocumentFailed', error);
       return { success: false, error };
     }
   };

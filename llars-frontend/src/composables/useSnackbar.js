@@ -1,35 +1,104 @@
 /**
- * Snackbar notification composable
- * Simple notification system for user feedback
+ * Global Snackbar Composable
+ *
+ * Provides a simple snackbar/toast notification system.
+ * Uses a shared state so notifications can be triggered from anywhere.
  */
+import { ref, readonly } from 'vue'
+
+// Shared state across all instances
+const snackbar = ref({
+  show: false,
+  message: '',
+  color: 'success',
+  timeout: 4000,
+  icon: null
+})
 
 export function useSnackbar() {
-  const showSuccess = (message) => {
-    console.log('[SUCCESS]', message)
-    // TODO: Integrate with Vuetify v-snackbar or global notification system
-    alert(`✓ ${message}`)
+  /**
+   * Show a success notification
+   */
+  const showSuccess = (message, timeout = 4000) => {
+    snackbar.value = {
+      show: true,
+      message,
+      color: 'success',
+      timeout,
+      icon: 'mdi-check-circle'
+    }
   }
 
-  const showError = (message) => {
-    console.error('[ERROR]', message)
-    // TODO: Integrate with Vuetify v-snackbar or global notification system
-    alert(`✗ ${message}`)
+  /**
+   * Show an error notification
+   */
+  const showError = (message, timeout = 6000) => {
+    snackbar.value = {
+      show: true,
+      message,
+      color: 'error',
+      timeout,
+      icon: 'mdi-alert-circle'
+    }
   }
 
-  const showInfo = (message) => {
-    console.info('[INFO]', message)
-    alert(`ℹ ${message}`)
+  /**
+   * Show an info notification
+   */
+  const showInfo = (message, timeout = 4000) => {
+    snackbar.value = {
+      show: true,
+      message,
+      color: 'info',
+      timeout,
+      icon: 'mdi-information'
+    }
   }
 
-  const showWarning = (message) => {
-    console.warn('[WARNING]', message)
-    alert(`⚠ ${message}`)
+  /**
+   * Show a warning notification
+   */
+  const showWarning = (message, timeout = 5000) => {
+    snackbar.value = {
+      show: true,
+      message,
+      color: 'warning',
+      timeout,
+      icon: 'mdi-alert'
+    }
+  }
+
+  /**
+   * Show a custom notification
+   */
+  const showMessage = (message, options = {}) => {
+    snackbar.value = {
+      show: true,
+      message,
+      color: options.color || 'primary',
+      timeout: options.timeout || 4000,
+      icon: options.icon || null
+    }
+  }
+
+  /**
+   * Hide the snackbar
+   */
+  const hideSnackbar = () => {
+    snackbar.value.show = false
   }
 
   return {
+    // State (readonly to prevent direct mutations)
+    snackbar: readonly(snackbar),
+    // For v-model binding in the snackbar component
+    snackbarModel: snackbar,
+    // Methods
     showSuccess,
     showError,
     showInfo,
-    showWarning
+    showWarning,
+    showMessage,
+    hideSnackbar
   }
 }

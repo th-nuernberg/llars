@@ -14,12 +14,13 @@ import hashlib
 import uuid
 import logging
 
-from db.db import db
+from db.database import db
 from db.models.rag import (
     RAGDocument,
     RAGDocumentChunk,
     RAGCollection,
-    RAGProcessingQueue
+    RAGProcessingQueue,
+    CollectionDocumentLink
 )
 from sqlalchemy import desc, or_
 
@@ -267,13 +268,23 @@ class DocumentService:
                 language=language,
                 status='pending',  # Will be processed by background job
                 collection_id=collection_id,
-                is_public=True,
+                is_public=False,  # Inherit visibility from collection
                 uploaded_by=uploaded_by,
                 uploaded_at=datetime.now()
             )
 
             db.session.add(new_doc)
             db.session.flush()  # Get the ID
+
+            # Create collection-document link (n:m relationship)
+            if collection_id:
+                link = CollectionDocumentLink(
+                    collection_id=collection_id,
+                    document_id=new_doc.id,
+                    link_type='new',
+                    linked_at=datetime.now()
+                )
+                db.session.add(link)
 
             # Add to processing queue
             queue_entry = RAGProcessingQueue(
@@ -390,13 +401,23 @@ class DocumentService:
                     language='de',
                     status='pending',
                     collection_id=collection_id,
-                    is_public=True,
+                    is_public=False,  # Inherit visibility from collection
                     uploaded_by=uploaded_by,
                     uploaded_at=datetime.now()
                 )
 
                 db.session.add(new_doc)
                 db.session.flush()
+
+                # Create collection-document link (n:m relationship)
+                if collection_id:
+                    link = CollectionDocumentLink(
+                        collection_id=collection_id,
+                        document_id=new_doc.id,
+                        link_type='new',
+                        linked_at=datetime.now()
+                    )
+                    db.session.add(link)
 
                 # Add to processing queue
                 queue_entry = RAGProcessingQueue(
@@ -410,6 +431,7 @@ class DocumentService:
                 results['uploaded'].append({
                     'id': new_doc.id,
                     'filename': original_filename,
+                    'file_size_bytes': file_size,
                     'file_size_mb': round(file_size / (1024*1024), 2)
                 })
 
@@ -429,9 +451,33 @@ class DocumentService:
 
         db.session.commit()
 
+        # Determine success based on results
+        uploaded_count = len(results['uploaded'])
+        error_count = len(results['errors'])
+        skipped_count = len(results['skipped'])
+
+        # If nothing was uploaded and there were errors, it's a failure
+        if uploaded_count == 0 and error_count > 0:
+            error_messages = [f"{e['filename']}: {e['error']}" for e in results['errors']]
+            return {
+                'success': False,
+                'message': f"Upload fehlgeschlagen: {'; '.join(error_messages)}",
+                'error': results['errors'][0]['error'] if results['errors'] else 'Unbekannter Fehler',
+                'results': results
+            }
+
+        # Partial success - some uploaded, some failed
+        if uploaded_count > 0 and (error_count > 0 or skipped_count > 0):
+            return {
+                'success': True,
+                'message': f"{uploaded_count} Dokument(e) hochgeladen, {skipped_count} übersprungen, {error_count} Fehler",
+                'results': results
+            }
+
+        # Full success
         return {
             'success': True,
-            'message': f"Uploaded {len(results['uploaded'])} documents",
+            'message': f"{uploaded_count} Dokument(e) erfolgreich hochgeladen",
             'results': results
         }
 

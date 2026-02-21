@@ -20,7 +20,7 @@
       <template #item="{ props, item }">
         <v-list-item v-bind="props" class="user-suggestion">
           <template #prepend>
-            <img class="user-avatar user-avatar--list" :src="getAvatarUrl(item.raw)" alt="" />
+            <LAvatar :username="item.raw.username" :seed="item.raw.avatar_seed" :src="item.raw.avatar_url" size="sm" />
           </template>
           <v-list-item-title class="user-title">
             {{ formatDisplayName(item.raw.username) }}
@@ -30,7 +30,7 @@
       </template>
       <template #selection="{ item }">
         <div class="d-flex align-center ga-2">
-          <img class="user-avatar user-avatar--selection small" :src="getAvatarUrl(item.raw)" alt="" />
+          <LAvatar :username="item.raw.username" :seed="item.raw.avatar_seed" :src="item.raw.avatar_url" size="xs" />
           <span>{{ formatDisplayName(item.raw.username) }}</span>
         </div>
       </template>
@@ -58,7 +58,7 @@
       class="mt-2"
       @click="handleAdd"
     >
-      <v-icon start size="small">mdi-account-plus</v-icon>
+      <LIcon start size="small">mdi-account-plus</LIcon>
       {{ addButtonText }}
     </LBtn>
   </div>
@@ -67,7 +67,7 @@
 <script setup>
 import { ref, watch } from 'vue'
 import axios from 'axios'
-import { getAvatarUrl, formatDisplayName } from '@/utils/userUtils'
+import { formatDisplayName } from '@/utils/userUtils'
 import { AUTH_STORAGE_KEYS, getAuthStorageItem } from '@/utils/authStorage'
 
 const props = defineProps({

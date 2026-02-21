@@ -9,7 +9,7 @@ import logging
 from typing import Optional, List, Dict, Any
 
 from db.tables import ComparisonSession, ComparisonMessage, RatingScenarios
-from db.db import db
+from db.database import db
 from sqlalchemy.orm import joinedload
 
 logger = logging.getLogger(__name__)

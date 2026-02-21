@@ -3,10 +3,10 @@
     <v-col cols="12">
       <v-card>
         <v-card-title class="d-flex align-center">
-          <v-icon class="mr-2">mdi-account-details</v-icon>
-          Thread-Performance Analyse
+          <LIcon class="mr-2">mdi-account-details</LIcon>
+          {{ $t('judge.results.threadPerformance.title') }}
           <v-chip class="ml-3" color="info" size="small">
-            {{ performance.total_threads }} Threads
+            {{ $t('judge.results.threadPerformance.threadsCount', { count: performance.total_threads }) }}
           </v-chip>
         </v-card-title>
         <v-divider></v-divider>
@@ -18,25 +18,25 @@
               <v-col cols="12" md="3">
                 <v-card variant="outlined" class="text-center pa-3">
                   <div class="text-h4 font-weight-bold text-primary">{{ performance.total_threads }}</div>
-                  <div class="text-subtitle-2 text-medium-emphasis">Threads verwendet</div>
+                  <div class="text-subtitle-2 text-medium-emphasis">{{ $t('judge.results.threadPerformance.summary.threadsUsed') }}</div>
                 </v-card>
               </v-col>
               <v-col cols="12" md="3">
                 <v-card variant="outlined" class="text-center pa-3">
                   <div class="text-h4 font-weight-bold text-info">{{ performance.avg_usage_per_thread }}</div>
-                  <div class="text-subtitle-2 text-medium-emphasis">Ø Verwendungen</div>
+                  <div class="text-subtitle-2 text-medium-emphasis">{{ $t('judge.results.threadPerformance.summary.avgUsage') }}</div>
                 </v-card>
               </v-col>
               <v-col cols="12" md="3">
                 <v-card variant="outlined" class="text-center pa-3">
                   <div class="text-h4 font-weight-bold text-success">{{ performance.consistent_winners?.length || 0 }}</div>
-                  <div class="text-subtitle-2 text-medium-emphasis">Konsistente Gewinner</div>
+                  <div class="text-subtitle-2 text-medium-emphasis">{{ $t('judge.results.threadPerformance.summary.consistentWinners') }}</div>
                 </v-card>
               </v-col>
               <v-col cols="12" md="3">
                 <v-card variant="outlined" class="text-center pa-3">
                   <div class="text-h4 font-weight-bold text-error">{{ performance.consistent_losers?.length || 0 }}</div>
-                  <div class="text-subtitle-2 text-medium-emphasis">Konsistente Verlierer</div>
+                  <div class="text-subtitle-2 text-medium-emphasis">{{ $t('judge.results.threadPerformance.summary.consistentLosers') }}</div>
                 </v-card>
               </v-col>
             </v-row>
@@ -48,17 +48,17 @@
               variant="tonal"
               class="mb-4"
             >
-              <strong>Sampling Coverage:</strong>
-              {{ performance.coverage_stats.evenly_sampled_count }} gleichmäßig,
-              {{ performance.coverage_stats.over_sampled_count }} über-verwendet,
-              {{ performance.coverage_stats.under_sampled_count }} unter-verwendet
+              <strong>{{ $t('judge.results.threadPerformance.coverage.title') }}</strong>
+              {{ $t('judge.results.threadPerformance.coverage.evenly', { count: performance.coverage_stats.evenly_sampled_count }) }},
+              {{ $t('judge.results.threadPerformance.coverage.over', { count: performance.coverage_stats.over_sampled_count }) }},
+              {{ $t('judge.results.threadPerformance.coverage.under', { count: performance.coverage_stats.under_sampled_count }) }}
             </v-alert>
 
             <!-- Likert Consistency Global -->
             <v-card variant="outlined" class="mb-4" v-if="performance.likert_consistency?.global">
               <v-card-title class="text-subtitle-1">
-                <v-icon class="mr-2" size="small">mdi-chart-bell-curve</v-icon>
-                Globale Likert-Konsistenz
+                <LIcon class="mr-2" size="small">mdi-chart-bell-curve</LIcon>
+                {{ $t('judge.results.threadPerformance.likertGlobal.title') }}
               </v-card-title>
               <v-divider></v-divider>
               <v-card-text>
@@ -70,7 +70,7 @@
                         size="x-small"
                         :color="data.is_consistent ? 'success' : 'warning'"
                       >
-                        {{ data.is_consistent ? 'Konsistent' : 'Variabel' }}
+                        {{ data.is_consistent ? $t('judge.results.threadPerformance.likertGlobal.consistent') : $t('judge.results.threadPerformance.likertGlobal.variable') }}
                       </v-chip>
                     </div>
                     <div class="d-flex align-center gap-2">
@@ -82,7 +82,7 @@
                         class="flex-grow-1"
                       ></v-progress-linear>
                       <span class="text-caption text-medium-emphasis" style="min-width: 80px">
-                        Ø {{ data.mean }} (σ {{ data.std_dev }})
+                        {{ $t('judge.results.common.averageShort') }} {{ data.mean }} (σ {{ data.std_dev }})
                       </span>
                     </div>
                   </v-col>
@@ -95,8 +95,8 @@
               <v-col cols="12" md="6" v-if="performance.consistent_winners?.length">
                 <v-card variant="tonal" color="success">
                   <v-card-title class="text-subtitle-1">
-                    <v-icon class="mr-2" size="small">mdi-trophy</v-icon>
-                    Konsistente Gewinner (≥70% Win-Rate)
+                    <LIcon class="mr-2" size="small">mdi-trophy</LIcon>
+                    {{ $t('judge.results.threadPerformance.consistentWinners.title') }}
                   </v-card-title>
                   <v-card-text>
                     <v-chip
@@ -107,11 +107,11 @@
                       color="success"
                       variant="flat"
                     >
-                      Thread #{{ thread.thread_id }}
+                      {{ $t('judge.results.threadPerformance.threadLabel', { id: thread.thread_id }) }}
                       <span class="ml-1 text-caption">({{ getPillarName(thread.pillar) }}, {{ Math.round(thread.win_rate * 100) }}%)</span>
                     </v-chip>
                     <div v-if="performance.consistent_winners.length > 10" class="text-caption mt-2">
-                      ... und {{ performance.consistent_winners.length - 10 }} weitere
+                      {{ $t('judge.results.threadPerformance.moreThreads', { count: performance.consistent_winners.length - 10 }) }}
                     </div>
                   </v-card-text>
                 </v-card>
@@ -119,8 +119,8 @@
               <v-col cols="12" md="6" v-if="performance.consistent_losers?.length">
                 <v-card variant="tonal" color="error">
                   <v-card-title class="text-subtitle-1">
-                    <v-icon class="mr-2" size="small">mdi-alert-circle</v-icon>
-                    Konsistente Verlierer (≥70% Loss-Rate)
+                    <LIcon class="mr-2" size="small">mdi-alert-circle</LIcon>
+                    {{ $t('judge.results.threadPerformance.consistentLosers.title') }}
                   </v-card-title>
                   <v-card-text>
                     <v-chip
@@ -131,11 +131,11 @@
                       color="error"
                       variant="flat"
                     >
-                      Thread #{{ thread.thread_id }}
+                      {{ $t('judge.results.threadPerformance.threadLabel', { id: thread.thread_id }) }}
                       <span class="ml-1 text-caption">({{ getPillarName(thread.pillar) }}, {{ Math.round(thread.loss_rate * 100) }}%)</span>
                     </v-chip>
                     <div v-if="performance.consistent_losers.length > 10" class="text-caption mt-2">
-                      ... und {{ performance.consistent_losers.length - 10 }} weitere
+                      {{ $t('judge.results.threadPerformance.moreThreads', { count: performance.consistent_losers.length - 10 }) }}
                     </div>
                   </v-card-text>
                 </v-card>
@@ -170,7 +170,7 @@
                   size="x-small"
                   :color="item.usage_count > performance.avg_usage_per_thread * 1.5 ? 'warning' : item.usage_count < performance.avg_usage_per_thread * 0.5 ? 'error' : 'grey'"
                 >
-                  {{ item.usage_count }}x
+                  {{ $t('judge.results.threadPerformance.usageMultiplier', { count: item.usage_count }) }}
                 </v-chip>
               </template>
 
@@ -211,9 +211,9 @@
 
               <!-- Status -->
               <template v-slot:item.status="{ item }">
-                <v-icon v-if="item.is_consistent_winner" color="success" size="small">mdi-trophy</v-icon>
-                <v-icon v-else-if="item.is_consistent_loser" color="error" size="small">mdi-alert-circle</v-icon>
-                <v-icon v-else color="grey" size="small">mdi-minus</v-icon>
+                <LIcon v-if="item.is_consistent_winner" color="success" size="small">mdi-trophy</LIcon>
+                <LIcon v-else-if="item.is_consistent_loser" color="error" size="small">mdi-alert-circle</LIcon>
+                <LIcon v-else color="grey" size="small">mdi-minus</LIcon>
               </template>
 
               <!-- Expanded Row - Likert Details -->
@@ -222,8 +222,8 @@
                   <td :colspan="columns.length" class="expanded-content pa-4">
                     <v-card variant="outlined">
                       <v-card-title class="text-subtitle-1">
-                        <v-icon class="mr-2" size="small">mdi-chart-bar</v-icon>
-                        Likert-Scores für Thread #{{ item.thread_id }}
+                        <LIcon class="mr-2" size="small">mdi-chart-bar</LIcon>
+                        {{ $t('judge.results.threadPerformance.likertScoresTitle', { id: item.thread_id }) }}
                       </v-card-title>
                       <v-divider></v-divider>
                       <v-card-text>
@@ -235,7 +235,7 @@
                                 size="x-small"
                                 :color="data.is_consistent ? 'success' : 'warning'"
                               >
-                                {{ data.count }}x bewertet
+                                {{ $t('judge.results.threadPerformance.ratedCount', { count: data.count }) }}
                               </v-chip>
                             </div>
                             <div class="d-flex align-center gap-2 mb-2">
@@ -247,18 +247,18 @@
                                 class="flex-grow-1"
                               ></v-progress-linear>
                               <span class="text-caption" style="min-width: 100px">
-                                Ø {{ data.mean }} ({{ data.min }}-{{ data.max }})
+                                {{ $t('judge.results.common.averageShort') }} {{ data.mean }} ({{ data.min }}-{{ data.max }})
                               </span>
                             </div>
                             <div class="text-caption text-medium-emphasis">
                               σ = {{ data.std_dev }}
-                              <v-icon v-if="data.is_consistent" size="x-small" color="success" class="ml-1">mdi-check</v-icon>
-                              <v-icon v-else size="x-small" color="warning" class="ml-1">mdi-alert</v-icon>
+                              <LIcon v-if="data.is_consistent" size="x-small" color="success" class="ml-1">mdi-check</LIcon>
+                              <LIcon v-else size="x-small" color="warning" class="ml-1">mdi-alert</LIcon>
                             </div>
                           </v-col>
                         </v-row>
                         <div v-else class="text-center text-medium-emphasis py-4">
-                          Keine Likert-Daten verfügbar
+                          {{ $t('judge.results.threadPerformance.noLikertData') }}
                         </div>
                       </v-card-text>
                     </v-card>
@@ -274,8 +274,9 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
-import { THREAD_HEADERS } from './composables';
+import { computed, ref } from 'vue';
+import { useI18n } from 'vue-i18n';
+import { buildThreadHeaders } from './composables';
 
 const props = defineProps({
   loading: { type: Boolean, default: false },
@@ -287,8 +288,9 @@ const props = defineProps({
   getScoreColor: { type: Function, required: true }
 });
 
+const { t } = useI18n();
 const expandedThreadRows = ref([]);
-const threadHeaders = THREAD_HEADERS;
+const threadHeaders = computed(() => buildThreadHeaders(t));
 </script>
 
 <style scoped>

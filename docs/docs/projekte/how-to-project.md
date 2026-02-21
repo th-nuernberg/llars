@@ -203,8 +203,8 @@ Diese Projektstruktur ist optimiert für die Arbeit mit Claude Code:
 ### Beispiel-Prompt
 
 ```
-Lies das Konzept in docs/projekte/mein-feature-konzept.md und
-die Umsetzung in docs/projekte/mein-feature-umsetzung.md.
+Lies das Konzept in docs/docs/projekte/mein-feature-konzept.md und
+die Umsetzung in docs/docs/projekte/mein-feature-umsetzung.md.
 Dann implementiere den nächsten offenen Punkt aus
-docs/projekte/mein-feature-progress.md.
+docs/docs/projekte/mein-feature-progress.md.
 ```

@@ -18,14 +18,21 @@ Integration:
 """
 
 import logging
-import os
 import random
 import requests
+import time
+from typing import Optional
 from flask import request
 from flask_socketio import emit
-from openai import OpenAI
 from llm.openai_utils import extract_delta_text
-from db.models.llm_model import LLMModel
+from services.llm.llm_client_factory import LLMClientFactory
+
+
+def _is_openai_model(model_id: Optional[str], api_model_id: Optional[str]) -> bool:
+    """Check if a model is an OpenAI model (requires max_completion_tokens)."""
+    mid = (model_id or "").lower()
+    api_mid = (api_model_id or "").lower()
+    return 'openai' in mid or api_mid.startswith('gpt-') or api_mid.startswith('o')
 
 
 def register_chat_events(socketio, chat_manager):
@@ -158,34 +165,42 @@ def register_chat_events(socketio, chat_manager):
                 chat_history=chat_history
             )
 
-            # Use LiteLLM Proxy with OpenAI-compatible interface
-            litellm_api_key = os.getenv("LITELLM_API_KEY", "sk-RgzbaiE9HM8w0I5IWgZz6g")
-            client = OpenAI(
-                api_key=litellm_api_key,
-                base_url="https://kiz1.in.ohmportal.de/llmproxy/v1"
-            )
-
-            model_id = LLMModel.get_default_model_id(model_type=LLMModel.MODEL_TYPE_LLM)
-            if not model_id:
+            resolve_start = time.perf_counter()
+            client, api_model = LLMClientFactory.resolve_for_chat(None)
+            resolve_ms = (time.perf_counter() - resolve_start) * 1000
+            if not client:
                 raise RuntimeError("No default LLM model configured in llm_models")
+            logging.info(f"chat_stream: resolve_for_chat took {resolve_ms:.1f}ms, api_model={api_model}")
+
+            # OpenAI models require max_completion_tokens instead of max_tokens
+            token_param = ("max_completion_tokens" if _is_openai_model(api_model, api_model)
+                           else "max_tokens")
 
             assistant_message = ""
             # Stream chat completion from LiteLLM Proxy
             metadata = {"tags": ["Technische Hochschule Nürnberg", "KIA"]}
+            create_start = time.perf_counter()
             stream = client.chat.completions.create(
-                model=model_id,
+                model=api_model,
                 messages=[{"role": "user", "content": formatted_input}],
                 temperature=temperature,
-                max_tokens=chat_manager.prompt_manager.max_new_tokens,
+                **{token_param: chat_manager.prompt_manager.max_new_tokens},
                 stream=True,
                 extra_body={"metadata": metadata}
             )
+            create_ms = (time.perf_counter() - create_start) * 1000
+            logging.info(f"chat_stream: create() returned after {create_ms:.1f}ms")
 
+            first_token_logged = False
             for chunk in stream:
                 choice = chunk.choices[0]
                 delta = choice.delta
                 content = extract_delta_text(delta)
                 if content:
+                    if not first_token_logged:
+                        ttfb_ms = (time.perf_counter() - create_start) * 1000
+                        logging.info(f"chat_stream: first token after {ttfb_ms:.1f}ms")
+                        first_token_logged = True
                     assistant_message += content
                     emit("chat_response", {
                         "content": content,
@@ -218,72 +233,81 @@ def register_chat_events(socketio, chat_manager):
         """Handle test prompt streaming with optional JSON mode and configurable parameters"""
         client_id = request.sid
         logging.info(f"handle_test_prompt_stream called. SID={client_id}")
-        user_prompt = data.get('prompt', '')
+        # Prompt Engineering test mode supports separate system/user prompts.
+        # Fallback to legacy single `prompt` payload for backward compatibility.
+        legacy_prompt = str(data.get('prompt', '') or '')
+        user_prompt = str(data.get('userPrompt', legacy_prompt) or '')
+        system_prompt = str(data.get('systemPrompt', '') or '')
 
         # Get configurable parameters from frontend
         model = data.get('model')
         temperature = data.get('temperature', 0.15)
         max_tokens = data.get('maxTokens', 4096)
 
-        if model:
-            db_model = LLMModel.get_by_model_id(str(model).strip())
-            if not db_model or not db_model.is_active or db_model.model_type != LLMModel.MODEL_TYPE_LLM:
-                model = None
-
-        if not model:
-            model = LLMModel.get_default_model_id(model_type=LLMModel.MODEL_TYPE_LLM)
-            if not model:
-                raise RuntimeError("No default LLM model configured in llm_models")
-
         # Validate parameters
         temperature = max(0.0, min(1.0, float(temperature)))
         max_tokens = max(100, min(8192, int(max_tokens)))
 
-        logging.info(f"handle_test_prompt_stream: model={model}, temp={temperature}, max_tokens={max_tokens}")
-
-        # Initialize LiteLLM client
-        litellm_api_key = os.getenv("LITELLM_API_KEY", "sk-RgzbaiE9HM8w0I5IWgZz6g")
-        client = OpenAI(
-            api_key=litellm_api_key,
-            base_url="https://kiz1.in.ohmportal.de/llmproxy/v1"
-        )
+        # Single cached call: validates model, falls back to default, resolves client.
+        # Avoids 4-6 redundant DB queries that previously ran on every request.
+        # User-provider models (user-provider:<id>:...) keep their unique API keys.
+        resolve_start = time.perf_counter()
+        client, api_model_id = LLMClientFactory.resolve_for_chat(model)
+        resolve_ms = (time.perf_counter() - resolve_start) * 1000
+        if not client:
+            logging.error("No default LLM model configured in llm_models")
+            emit(
+                "test_prompt_response",
+                {"content": "Fehler: Kein Standard-LLM-Modell konfiguriert. Bitte kontaktieren Sie den Administrator.", "complete": True},
+                room=client_id
+            )
+            return
+        logging.info(f"handle_test_prompt_stream: resolve_for_chat took {resolve_ms:.1f}ms")
+        logging.info(f"handle_test_prompt_stream: model={model}, api_model={api_model_id}, temp={temperature}, max_tokens={max_tokens}")
 
         try:
-            messages = [{"role": "user", "content": user_prompt}]
+            messages = []
+            if system_prompt.strip():
+                messages.append({"role": "system", "content": system_prompt})
+            messages.append({"role": "user", "content": user_prompt})
 
             # Optionaler JSON Mode: erzwungenes strukturierte JSON-Antworten
             json_mode = data.get('jsonMode', True)
             logging.info(f"handle_test_prompt_stream: JSON Mode = {json_mode}")
 
-            # Metadata für TH Nürnberg / KIA
-            metadata = {"tags": ["Technische Hochschule Nürnberg", "KIA"]}
+            is_openai = _is_openai_model(model, api_model_id)
 
-            # Bereite extra_body vor mit Metadata
-            extra_body = {"metadata": metadata}
+            # Build extra_body only with compatible params
+            extra_body = {}
+
+            # Metadata only for LiteLLM proxy (OpenAI API rejects array-typed tags)
+            if not is_openai:
+                extra_body["metadata"] = {"tags": ["Technische Hochschule Nürnberg", "KIA"]}
 
             if json_mode:
-                # JSON Mode: use provided schema for guided_json
                 schema = data.get('schema', {}) or {}
-                # Only add guided_json if schema is not empty and has keys
                 if schema and len(schema) > 0:
                     extra_body["guided_json"] = schema
                     logging.info(f"handle_test_prompt_stream: JSON Mode with schema: {schema}")
                 else:
-                    # Basic JSON mode - just request JSON output without guided schema
-                    # Note: response_format may not be supported by all models
                     logging.info(f"handle_test_prompt_stream: JSON Mode (basic, no schema)")
             else:
                 logging.info("handle_test_prompt_stream: JSON Mode disabled")
 
-            extra_kwargs = {"extra_body": extra_body}
+            extra_kwargs = {"extra_body": extra_body} if extra_body else {}
 
             logging.info(f"handle_test_prompt_stream: Starting stream with extra_body keys: {list(extra_body.keys())}")
 
-            # Stream test completion from LiteLLM Proxy
+            # OpenAI models require max_completion_tokens instead of max_tokens
+            token_param = ("max_completion_tokens" if _is_openai_model(model, api_model_id)
+                           else "max_tokens")
+
+            # Stream test completion
+            create_start = time.perf_counter()
             stream = client.chat.completions.create(
-                model=model,
+                model=api_model_id,
                 messages=messages,
-                max_tokens=max_tokens,
+                **{token_param: max_tokens},
                 n=1,
                 timeout=360.0,
                 frequency_penalty=0.3,
@@ -291,15 +315,22 @@ def register_chat_events(socketio, chat_manager):
                 stream=True,
                 **extra_kwargs
             )
+            create_ms = (time.perf_counter() - create_start) * 1000
+            logging.info(f"handle_test_prompt_stream: create() returned after {create_ms:.1f}ms")
 
             logging.info("handle_test_prompt_stream: Stream created, starting iteration")
             chunk_count = 0
+            first_token_logged = False
 
             for chunk in stream:
                 choice = chunk.choices[0]
                 delta = choice.delta
                 content = extract_delta_text(delta)
                 if content:
+                    if not first_token_logged:
+                        ttfb_ms = (time.perf_counter() - create_start) * 1000
+                        logging.info(f"handle_test_prompt_stream: first token after {ttfb_ms:.1f}ms")
+                        first_token_logged = True
                     chunk_count += 1
                     if chunk_count <= 3:
                         logging.info(f"handle_test_prompt_stream: Emitting chunk {chunk_count}: {content[:50]}...")

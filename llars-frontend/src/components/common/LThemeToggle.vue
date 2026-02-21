@@ -11,14 +11,14 @@
           v-bind="props"
           class="theme-toggle-btn"
           :class="{ 'on-primary': onPrimary }"
-          :title="currentThemeOption?.title || 'Theme'"
+          :title="$t('theme.' + (currentThemeOption?.value || 'system'))"
         >
-          <v-icon size="20">{{ currentIcon }}</v-icon>
+          <LIcon size="20">{{ currentIcon }}</LIcon>
         </button>
       </template>
 
       <div class="theme-menu">
-        <div class="theme-menu-header">Design</div>
+        <div class="theme-menu-header">{{ $t('theme.design') }}</div>
         <button
           v-for="option in themeOptions"
           :key="option.value"
@@ -26,15 +26,15 @@
           :class="{ active: themePreference === option.value }"
           @click="setTheme(option.value)"
         >
-          <v-icon size="18" class="option-icon">{{ option.icon }}</v-icon>
-          <span class="option-label">{{ option.title }}</span>
-          <v-icon
+          <LIcon size="18" class="option-icon">{{ option.icon }}</LIcon>
+          <span class="option-label">{{ $t('theme.' + option.value) }}</span>
+          <LIcon
             v-if="themePreference === option.value"
             size="16"
             class="check-icon"
           >
             mdi-check
-          </v-icon>
+          </LIcon>
         </button>
       </div>
     </v-menu>
@@ -63,11 +63,8 @@ const {
 const menuOpen = ref(false)
 
 const currentIcon = computed(() => {
-  // Show the effective theme icon when on 'system'
-  if (themePreference.value === 'system') {
-    return 'mdi-brightness-auto'
-  }
-  return currentThemeOption.value?.icon || 'mdi-brightness-auto'
+  // Show the current theme option icon
+  return currentThemeOption.value?.icon || 'llars:system-theme'
 })
 
 const setTheme = (value) => {

@@ -10,7 +10,7 @@ from auth.decorators import authentik_required, admin_required, roles_required
 from decorators.error_handler import (
     handle_api_errors, NotFoundError, ValidationError, ConflictError, UnauthorizedError
 )
-from db.db import db
+from db.database import db
 from db.tables import (User, EmailThread, Message, Feature, FeatureType, LLM, UserFeatureRanking,
                        FeatureFunctionType, UserFeatureRating,  UserGroup,ConsultingCategoryType, UserConsultingCategorySelection,
                        FeatureFunctionType, UserFeatureRating, UserMessageRating,
@@ -100,16 +100,18 @@ def get_user_prompts():
     # Alle Prompts des Benutzers abrufen inkl. Sharing-Informationen
     user_prompts = UserPrompt.query.filter_by(user_id=user.id).all()
 
+    from routes.HelperFunctions import serialize_user_brief
+
     # Rückgabe der Prompts als JSON mit Sharing-Informationen
     prompts_data = []
     for prompt in user_prompts:
-        # Sharing-Informationen abrufen
-        shared_users = db.session.query(User.username) \
+        # Sharing-Informationen abrufen (mit Avatar-Daten)
+        shared_users = db.session.query(User) \
             .join(UserPromptShare, User.id == UserPromptShare.shared_with_user_id) \
             .filter(UserPromptShare.prompt_id == prompt.prompt_id) \
             .all()
 
-        shared_with = [user[0] for user in shared_users]
+        shared_with = [serialize_user_brief(u) for u in shared_users]
 
         prompt_data = {
             'id': prompt.prompt_id,
@@ -117,7 +119,7 @@ def get_user_prompts():
             'content': prompt.content,
             'created_at': prompt.created_at.isoformat(),
             'updated_at': prompt.updated_at.isoformat(),
-            'shared_with': shared_with  # Liste der Benutzernamen
+            'shared_with': shared_with
         }
         prompts_data.append(prompt_data)
 
@@ -147,21 +149,24 @@ def get_user_prompt(prompt_id):
     if not prompt:
         raise NotFoundError('Prompt not found or you do not have permission to view it')
 
+    from routes.HelperFunctions import serialize_user_brief
+
     # Überprüfen, ob es ein geteiltes Prompt ist
     is_shared = prompt.user_id != user.id
 
-    # Besitzer-Informationen hinzufügen
-    owner = prompt.user.username
+    # Besitzer-Informationen hinzufügen (mit Avatar-Daten)
+    owner_data = serialize_user_brief(prompt.user)
 
     # Hole alle User mit denen das Prompt geteilt wurde
-    shared_users = db.session.query(User.username)\
+    shared_users_list = db.session.query(User)\
         .join(UserPromptShare, User.id == UserPromptShare.shared_with_user_id)\
         .filter(UserPromptShare.prompt_id == prompt_id)\
         .all()
-    shared_with = [user[0] for user in shared_users]
+    shared_with = [serialize_user_brief(u) for u in shared_users_list]
+    shared_usernames = [u.username for u in shared_users_list]
 
     # Bestimme ob der aktuelle User Zugriff auf die shared_with Liste haben soll
-    should_see_shared_with = (prompt.user_id == user.id) or (user.username in shared_with)
+    should_see_shared_with = (prompt.user_id == user.id) or (user.username in shared_usernames)
 
     return jsonify({
         'success': True,
@@ -172,8 +177,9 @@ def get_user_prompt(prompt_id):
             'created_at': prompt.created_at.isoformat(),
             'updated_at': prompt.updated_at.isoformat(),
             'is_shared': is_shared,
-            'owner': owner,
-            'shared_with': shared_with if should_see_shared_with else []  # Nur ausgeben wenn berechtigt
+            'owner': owner_data.get('username'),
+            'owner_avatar': owner_data,
+            'shared_with': shared_with if should_see_shared_with else []
         }
     }), 200
 
@@ -208,6 +214,9 @@ def update_user_prompt(prompt_id):
 
     # Prompt-Inhalt aktualisieren
     prompt.content = content
+    # Set rendered_content for reliable variable substitution in generation
+    if isinstance(content, dict) and content.get('blocks'):
+        prompt.rendered_content = content
     prompt.updated_at = datetime.utcnow()
     db.session.commit()
 
@@ -312,6 +321,87 @@ def unshare_prompt(prompt_id):
 
 
 
+@data_blueprint.route('/prompts/templates', methods=['GET'])
+@authentik_required
+@handle_api_errors(logger_name='prompts')
+def get_prompt_templates():
+    """
+    Get all prompts as templates for the Generation module.
+    Returns prompts with assembled text content for preview.
+    Includes both own and shared prompts.
+    """
+    user = g.authentik_user
+
+    # Get own prompts
+    own_prompts = UserPrompt.query.filter_by(user_id=user.id).all()
+
+    # Get shared prompts
+    shared_prompts = db.session.query(UserPrompt).join(
+        UserPromptShare, UserPrompt.prompt_id == UserPromptShare.prompt_id
+    ).filter(
+        UserPromptShare.shared_with_user_id == user.id
+    ).all()
+
+    def assemble_prompt_text(content):
+        """Assemble prompt text from blocks structure."""
+        if not isinstance(content, dict):
+            return str(content) if content else ''
+
+        # Handle YJS binary format (array of numbers) - return empty for now
+        if isinstance(content, list):
+            return '[YJS Content - Open in Prompt Engineering to view]'
+
+        blocks = content.get('blocks', {})
+        if not blocks:
+            return ''
+
+        # Sort blocks by position and concatenate content
+        sorted_blocks = sorted(
+            blocks.items(),
+            key=lambda x: x[1].get('position', 0) if isinstance(x[1], dict) else 0
+        )
+
+        text_parts = []
+        for block_id, block_data in sorted_blocks:
+            if isinstance(block_data, dict):
+                block_content = block_data.get('content', '')
+                if block_content:
+                    text_parts.append(block_content)
+
+        return '\n\n'.join(text_parts)
+
+    templates = []
+
+    # Add own prompts
+    for prompt in own_prompts:
+        templates.append({
+            'id': prompt.prompt_id,
+            'name': prompt.name,
+            'preview': assemble_prompt_text(prompt.content)[:500],  # First 500 chars
+            'full_text': assemble_prompt_text(prompt.content),
+            'owner': user.username,
+            'is_own': True,
+            'updated_at': prompt.updated_at.isoformat() if prompt.updated_at else None
+        })
+
+    # Add shared prompts
+    for prompt in shared_prompts:
+        templates.append({
+            'id': prompt.prompt_id,
+            'name': prompt.name,
+            'preview': assemble_prompt_text(prompt.content)[:500],
+            'full_text': assemble_prompt_text(prompt.content),
+            'owner': prompt.user.username if prompt.user else 'Unknown',
+            'is_own': False,
+            'updated_at': prompt.updated_at.isoformat() if prompt.updated_at else None
+        })
+
+    return jsonify({
+        'success': True,
+        'templates': templates
+    }), 200
+
+
 @data_blueprint.route('/prompts/shared', methods=['GET'])
 @authentik_required
 @handle_api_errors(logger_name='prompts')
@@ -331,17 +421,20 @@ def get_shared_prompts():
         UserPromptShare.shared_with_user_id == user.id
     ).all()
 
+    from routes.HelperFunctions import serialize_user_brief
+
     # Freigegebene Prompts formatieren
-    prompts_data = [
-        {
+    prompts_data = []
+    for prompt, shared_at in shared_prompts:
+        owner_data = serialize_user_brief(prompt.user)
+        prompts_data.append({
             'id': prompt.prompt_id,
             'name': prompt.name,
             'content': prompt.content,
-            'owner': prompt.user.username,
+            'owner': owner_data.get('username'),
+            'owner_avatar': owner_data,
             'shared_at': shared_at.isoformat() if shared_at else None
-        }
-        for prompt, shared_at in shared_prompts
-    ]
+        })
 
     return jsonify({'success': True, 'data': prompts_data}), 200
 
@@ -677,3 +770,401 @@ def create_prompt_commit(prompt_id):
         'message': 'Commit created successfully',
         'commit': commit_data
     }), 201
+
+
+@data_blueprint.route('/prompts/<int:prompt_id>/changes', methods=['GET', 'POST'])
+@authentik_required
+@handle_api_errors(logger_name='prompts')
+def get_prompt_changes(prompt_id):
+    """
+    Get block-level changes between current content and baseline.
+    Returns per-block status (M/A/D), insertions, deletions.
+
+    For POST requests, accepts current_content in body (JSON string with block titles as keys).
+    This allows comparing real-time YJS state with baseline.
+    """
+    import difflib
+
+    user = g.authentik_user
+    prompt = _check_prompt_access(prompt_id, user)
+
+    if not prompt:
+        raise NotFoundError('Prompt not found or access denied')
+
+    # Get the most recent commit as baseline
+    latest_commit = PromptCommit.query.filter_by(prompt_id=prompt_id) \
+        .order_by(PromptCommit.created_at.desc()) \
+        .first()
+
+    # Parse baseline blocks
+    baseline_blocks = {}
+    if latest_commit and latest_commit.content_snapshot:
+        try:
+            if isinstance(latest_commit.content_snapshot, str):
+                baseline_blocks = json.loads(latest_commit.content_snapshot)
+            else:
+                baseline_blocks = latest_commit.content_snapshot
+        except (json.JSONDecodeError, TypeError):
+            baseline_blocks = {}
+
+    # Parse current blocks - prefer POST body, fallback to prompt.content
+    current_blocks = {}
+
+    if request.method == 'POST':
+        # Current content sent from frontend (real-time YJS state)
+        data = request.get_json() or {}
+        current_content = data.get('current_content')
+        if current_content:
+            try:
+                if isinstance(current_content, str):
+                    current_blocks = json.loads(current_content)
+                elif isinstance(current_content, dict):
+                    current_blocks = current_content
+            except (json.JSONDecodeError, TypeError):
+                current_blocks = {}
+
+    # Fallback to prompt.content if no current_content provided
+    if not current_blocks and prompt.content and isinstance(prompt.content, dict):
+        blocks_data = prompt.content.get('blocks', {})
+        for block_id, block_info in blocks_data.items():
+            if isinstance(block_info, dict):
+                title = block_info.get('title', block_id)
+                content = block_info.get('content', '')
+                current_blocks[title] = content
+
+    # Compare blocks
+    changed_blocks = []
+    all_block_titles = set(baseline_blocks.keys()) | set(current_blocks.keys())
+
+    for title in sorted(all_block_titles):
+        baseline_content = baseline_blocks.get(title, None)
+        current_content = current_blocks.get(title, None)
+
+        if baseline_content is None and current_content is not None:
+            # New block (Added)
+            insertions = len(current_content.split('\n')) if current_content else 0
+            changed_blocks.append({
+                'id': title,
+                'title': title,
+                'status': 'A',
+                'insertions': insertions,
+                'deletions': 0,
+                'has_baseline': False
+            })
+        elif baseline_content is not None and current_content is None:
+            # Deleted block
+            deletions = len(baseline_content.split('\n')) if baseline_content else 0
+            changed_blocks.append({
+                'id': title,
+                'title': title,
+                'status': 'D',
+                'insertions': 0,
+                'deletions': deletions,
+                'has_baseline': True
+            })
+        elif baseline_content != current_content:
+            # Modified block
+            baseline_lines = (baseline_content or '').split('\n')
+            current_lines = (current_content or '').split('\n')
+
+            # Use difflib to get line-level changes
+            diff = list(difflib.unified_diff(baseline_lines, current_lines, lineterm=''))
+            insertions = sum(1 for line in diff if line.startswith('+') and not line.startswith('+++'))
+            deletions = sum(1 for line in diff if line.startswith('-') and not line.startswith('---'))
+
+            changed_blocks.append({
+                'id': title,
+                'title': title,
+                'status': 'M',
+                'insertions': insertions,
+                'deletions': deletions,
+                'has_baseline': True
+            })
+
+    return jsonify({
+        'success': True,
+        'changed_blocks': changed_blocks,
+        'total_changes': len(changed_blocks),
+        'baseline_commit_id': latest_commit.id if latest_commit else None
+    }), 200
+
+
+@data_blueprint.route('/prompts/<int:prompt_id>/blocks/<path:block_id>/diff', methods=['GET', 'POST'])
+@authentik_required
+@handle_api_errors(logger_name='prompts')
+def get_prompt_block_diff(prompt_id, block_id):
+    """
+    Get unified diff for a single block.
+    block_id is the block title (URL-encoded).
+
+    For POST requests, accepts current_content in body (JSON string with block titles as keys).
+    """
+    import difflib
+
+    user = g.authentik_user
+    prompt = _check_prompt_access(prompt_id, user)
+
+    if not prompt:
+        raise NotFoundError('Prompt not found or access denied')
+
+    # Get the most recent commit as baseline
+    latest_commit = PromptCommit.query.filter_by(prompt_id=prompt_id) \
+        .order_by(PromptCommit.created_at.desc()) \
+        .first()
+
+    # Parse baseline blocks
+    baseline_blocks = {}
+    if latest_commit and latest_commit.content_snapshot:
+        try:
+            if isinstance(latest_commit.content_snapshot, str):
+                baseline_blocks = json.loads(latest_commit.content_snapshot)
+            else:
+                baseline_blocks = latest_commit.content_snapshot
+        except (json.JSONDecodeError, TypeError):
+            baseline_blocks = {}
+
+    # Parse current blocks - prefer POST body, fallback to prompt.content
+    current_blocks = {}
+
+    if request.method == 'POST':
+        data = request.get_json() or {}
+        current_content_data = data.get('current_content')
+        if current_content_data:
+            try:
+                if isinstance(current_content_data, str):
+                    current_blocks = json.loads(current_content_data)
+                elif isinstance(current_content_data, dict):
+                    current_blocks = current_content_data
+            except (json.JSONDecodeError, TypeError):
+                current_blocks = {}
+
+    # Fallback to prompt.content
+    if not current_blocks and prompt.content and isinstance(prompt.content, dict):
+        blocks_data = prompt.content.get('blocks', {})
+        for bid, block_info in blocks_data.items():
+            if isinstance(block_info, dict):
+                title = block_info.get('title', bid)
+                content = block_info.get('content', '')
+                current_blocks[title] = content
+
+    baseline_content = baseline_blocks.get(block_id, '')
+    current_content = current_blocks.get(block_id, '')
+
+    # Generate unified diff
+    baseline_lines = (baseline_content or '').split('\n')
+    current_lines = (current_content or '').split('\n')
+
+    diff_lines = list(difflib.unified_diff(
+        baseline_lines,
+        current_lines,
+        fromfile=f'baseline/{block_id}',
+        tofile=f'current/{block_id}',
+        lineterm=''
+    ))
+
+    return jsonify({
+        'success': True,
+        'block_id': block_id,
+        'baseline_text': baseline_content or '',
+        'current_text': current_content or '',
+        'diff': '\n'.join(diff_lines),
+        'baseline_commit_id': latest_commit.id if latest_commit else None
+    }), 200
+
+
+@data_blueprint.route('/prompts/<int:prompt_id>/commits/<int:commit_id>/diff', methods=['GET'])
+@authentik_required
+@handle_api_errors(logger_name='prompts')
+def get_commit_diff(prompt_id, commit_id):
+    """
+    Get the diff for a specific commit.
+    Shows what changed between this commit and the previous commit (or initial state).
+    Returns block-level changes with before/after content.
+    """
+    import difflib
+
+    user = g.authentik_user
+    prompt = _check_prompt_access(prompt_id, user)
+
+    if not prompt:
+        raise NotFoundError('Prompt not found or access denied')
+
+    # Get the specified commit
+    target_commit = PromptCommit.query.filter_by(
+        prompt_id=prompt_id,
+        id=commit_id
+    ).first()
+
+    if not target_commit:
+        raise NotFoundError('Commit not found')
+
+    # Get the previous commit (the one before target_commit)
+    previous_commit = PromptCommit.query.filter(
+        PromptCommit.prompt_id == prompt_id,
+        PromptCommit.created_at < target_commit.created_at
+    ).order_by(PromptCommit.created_at.desc()).first()
+
+    # Parse target commit content (the "after" state)
+    after_blocks = {}
+    if target_commit.content_snapshot:
+        try:
+            if isinstance(target_commit.content_snapshot, str):
+                after_blocks = json.loads(target_commit.content_snapshot)
+            else:
+                after_blocks = target_commit.content_snapshot
+        except (json.JSONDecodeError, TypeError):
+            after_blocks = {}
+
+    # Parse previous commit content (the "before" state)
+    before_blocks = {}
+    if previous_commit and previous_commit.content_snapshot:
+        try:
+            if isinstance(previous_commit.content_snapshot, str):
+                before_blocks = json.loads(previous_commit.content_snapshot)
+            else:
+                before_blocks = previous_commit.content_snapshot
+        except (json.JSONDecodeError, TypeError):
+            before_blocks = {}
+
+    # Compare blocks
+    changed_blocks = []
+    all_block_titles = set(before_blocks.keys()) | set(after_blocks.keys())
+
+    for title in sorted(all_block_titles):
+        before_content = before_blocks.get(title, None)
+        after_content = after_blocks.get(title, None)
+
+        if before_content is None and after_content is not None:
+            # New block (Added)
+            insertions = len(after_content.split('\n')) if after_content else 0
+            changed_blocks.append({
+                'title': title,
+                'status': 'A',
+                'insertions': insertions,
+                'deletions': 0,
+                'before': '',
+                'after': after_content or ''
+            })
+        elif before_content is not None and after_content is None:
+            # Deleted block
+            deletions = len(before_content.split('\n')) if before_content else 0
+            changed_blocks.append({
+                'title': title,
+                'status': 'D',
+                'insertions': 0,
+                'deletions': deletions,
+                'before': before_content or '',
+                'after': ''
+            })
+        elif before_content != after_content:
+            # Modified block
+            before_lines = (before_content or '').split('\n')
+            after_lines = (after_content or '').split('\n')
+
+            diff = list(difflib.unified_diff(before_lines, after_lines, lineterm=''))
+            insertions = sum(1 for line in diff if line.startswith('+') and not line.startswith('+++'))
+            deletions = sum(1 for line in diff if line.startswith('-') and not line.startswith('---'))
+
+            changed_blocks.append({
+                'title': title,
+                'status': 'M',
+                'insertions': insertions,
+                'deletions': deletions,
+                'before': before_content or '',
+                'after': after_content or ''
+            })
+
+    return jsonify({
+        'success': True,
+        'commit_id': commit_id,
+        'previous_commit_id': previous_commit.id if previous_commit else None,
+        'changed_blocks': changed_blocks,
+        'total_changes': len(changed_blocks)
+    }), 200
+
+
+@data_blueprint.route('/prompts/<int:prompt_id>/rollback', methods=['POST'])
+@authentik_required
+@handle_api_errors(logger_name='prompts')
+def rollback_prompt(prompt_id):
+    """
+    Rollback prompt content to the last baseline (most recent commit).
+    Optionally can rollback a single block.
+    """
+    user = g.authentik_user
+    prompt = _check_prompt_access(prompt_id, user)
+
+    if not prompt:
+        raise NotFoundError('Prompt not found or access denied')
+
+    data = request.get_json() or {}
+    block_id = data.get('block_id')  # Optional: rollback single block
+
+    # Get the most recent commit as baseline
+    latest_commit = PromptCommit.query.filter_by(prompt_id=prompt_id) \
+        .order_by(PromptCommit.created_at.desc()) \
+        .first()
+
+    if not latest_commit:
+        raise NotFoundError('No commits found - cannot rollback')
+
+    # Parse baseline content
+    baseline_content = {}
+    if latest_commit.content_snapshot:
+        try:
+            if isinstance(latest_commit.content_snapshot, str):
+                baseline_content = json.loads(latest_commit.content_snapshot)
+            else:
+                baseline_content = latest_commit.content_snapshot
+        except (json.JSONDecodeError, TypeError):
+            raise ValidationError('Invalid baseline snapshot format')
+
+    if block_id:
+        # Rollback single block
+        if block_id not in baseline_content:
+            raise NotFoundError(f'Block "{block_id}" not found in baseline')
+
+        # Update only the specified block in prompt.content
+        if prompt.content and isinstance(prompt.content, dict):
+            blocks = prompt.content.get('blocks', {})
+            # Find the block by title
+            for bid, block_info in blocks.items():
+                if isinstance(block_info, dict) and block_info.get('title') == block_id:
+                    block_info['content'] = baseline_content[block_id]
+                    break
+            prompt.content = dict(prompt.content)  # Trigger change detection
+            db.session.commit()
+    else:
+        # Full rollback - rebuild content from baseline
+        new_blocks = {}
+        position = 0
+        for title, content in baseline_content.items():
+            block_uuid = str(uuid.uuid4())
+            new_blocks[block_uuid] = {
+                'title': title,
+                'content': content,
+                'position': position
+            }
+            position += 1
+
+        prompt.content = {'blocks': new_blocks}
+        prompt.updated_at = datetime.utcnow()
+        db.session.commit()
+
+    # Broadcast rollback event
+    try:
+        from main import socketio
+        socketio.emit('prompt:rollback', {
+            'prompt_id': prompt_id,
+            'block_id': block_id,
+            'baseline_commit_id': latest_commit.id
+        }, room=f'prompt_{prompt_id}')
+    except Exception as e:
+        logging.warning(f"Could not broadcast rollback event: {e}")
+
+    return jsonify({
+        'success': True,
+        'message': f'Rolled back {"block " + block_id if block_id else "all content"} to baseline',
+        'baseline_commit_id': latest_commit.id,
+        'baseline_content': baseline_content if not block_id else {block_id: baseline_content[block_id]}
+    }), 200

@@ -1,7 +1,7 @@
 <template>
   <v-card flat class="pa-4">
     <div class="text-center mb-6">
-      <v-icon size="64" color="primary">mdi-web</v-icon>
+      <LIcon size="64" color="primary">mdi-web</LIcon>
       <h2 class="text-h5 mt-4">Website URL eingeben</h2>
       <p class="text-medium-emphasis">
         Geben Sie die URL der Website ein, aus der der Chatbot lernen soll.
@@ -11,7 +11,7 @@
     <v-text-field
       v-model="localUrl"
       label="Website URL"
-      placeholder="https://example.com"
+      placeholder="example.com"
       prepend-inner-icon="mdi-link"
       variant="outlined"
       :rules="[rules.required, rules.url]"
@@ -26,7 +26,7 @@
     <v-expansion-panels class="mt-4">
       <v-expansion-panel>
         <v-expansion-panel-title>
-          <v-icon class="mr-2">mdi-cog</v-icon>
+          <LIcon class="mr-2">mdi-cog</LIcon>
           Erweiterte Crawler-Einstellungen
         </v-expansion-panel-title>
         <v-expansion-panel-text>
@@ -46,7 +46,7 @@
                 @update:model-value="updateConfig"
               >
                 <template #prepend-inner>
-                  <v-icon size="small">mdi-file-document-multiple</v-icon>
+                  <LIcon size="small">mdi-file-document-multiple</LIcon>
                 </template>
               </v-text-field>
             </v-col>
@@ -65,7 +65,7 @@
                 @update:model-value="updateConfig"
               >
                 <template #prepend-inner>
-                  <v-icon size="small">mdi-sitemap</v-icon>
+                  <LIcon size="small">mdi-sitemap</LIcon>
                 </template>
               </v-text-field>
             </v-col>
@@ -86,9 +86,9 @@
           >
             <template #label>
               <div class="d-flex align-center">
-                <v-icon size="small" class="mr-2" :color="localConfig.usePlaywright ? 'primary' : 'grey'">
+                <LIcon size="small" class="mr-2" :color="localConfig.usePlaywright ? 'primary' : 'grey'">
                   mdi-web
-                </v-icon>
+                </LIcon>
                 <span>Playwright Browser (JavaScript-Rendering)</span>
               </div>
             </template>
@@ -106,9 +106,9 @@
               >
                 <template #label>
                   <div class="d-flex align-center">
-                    <v-icon size="small" class="mr-2" :color="localConfig.takeScreenshots ? 'primary' : 'grey'">
+                    <LIcon size="small" class="mr-2" :color="localConfig.takeScreenshots ? 'primary' : 'grey'">
                       mdi-camera
-                    </v-icon>
+                    </LIcon>
                     <span>Screenshots erstellen</span>
                   </div>
                 </template>
@@ -127,9 +127,9 @@
               >
                 <template #label>
                   <div class="d-flex align-center">
-                    <v-icon size="small" class="mr-2" :color="localConfig.useVisionLlm ? 'deep-purple' : 'grey'">
+                    <LIcon size="small" class="mr-2" :color="localConfig.useVisionLlm ? 'deep-purple' : 'grey'">
                       mdi-eye
-                    </v-icon>
+                    </LIcon>
                     <span>Vision-LLM Extraktion (Experimentell)</span>
                   </div>
                 </template>
@@ -141,7 +141,7 @@
           </v-expand-transition>
 
           <p class="text-caption text-medium-emphasis mt-3">
-            <v-icon size="x-small" class="mr-1">mdi-information</v-icon>
+            <LIcon size="x-small" class="mr-1">mdi-information</LIcon>
             <strong>Playwright:</strong> Rendert JavaScript, extrahiert Bilder, optional Screenshots.
             <strong>Basic:</strong> Schneller, nur statisches HTML.
           </p>
@@ -152,7 +152,7 @@
     <!-- Info Card -->
     <v-card variant="tonal" color="info" class="mt-4 pa-3">
       <div class="d-flex align-start">
-        <v-icon class="mr-3 mt-1">mdi-information</v-icon>
+        <LIcon class="mr-3 mt-1">mdi-information</LIcon>
         <div>
           <div class="text-subtitle-2">So funktioniert's:</div>
           <ol class="text-body-2 text-medium-emphasis pl-4 mb-0">
@@ -216,13 +216,29 @@ const localConfig = ref({
   takeScreenshots: props.config.takeScreenshots !== false
 })
 
+const FALLBACK_URL = 'https://www.dg-agentur.de/'
+const SCHEME_REGEX = /^[a-zA-Z][a-zA-Z0-9+.-]*:\/\//
+
+const isBlank = (value) => !value || !value.trim()
+
+const getEffectiveUrl = (value) => {
+  if (isBlank(value)) return ''
+  const trimmed = value.trim()
+  if (SCHEME_REGEX.test(trimmed)) {
+    return trimmed
+  }
+  return FALLBACK_URL
+}
+
 // Validation rules
 const rules = {
-  required: v => !!v || 'URL ist erforderlich',
+  required: v => !isBlank(v) || 'URL ist erforderlich',
   url: v => {
-    if (!v) return true
+    if (isBlank(v)) return true
+    const trimmed = v.trim()
+    if (!SCHEME_REGEX.test(trimmed)) return true
     try {
-      const url = new URL(v)
+      const url = new URL(trimmed)
       if (!['http:', 'https:'].includes(url.protocol)) {
         return 'URL muss mit http:// oder https:// beginnen'
       }
@@ -249,9 +265,14 @@ const updateConfig = () => {
 }
 
 const handleStart = () => {
-  if (localUrl.value && !props.loading) {
+  if (!props.loading) {
+    const effectiveUrl = getEffectiveUrl(localUrl.value)
+    if (!effectiveUrl) return
     try {
-      new URL(localUrl.value)
+      const url = new URL(effectiveUrl)
+      if (!['http:', 'https:'].includes(url.protocol)) {
+        return
+      }
       emit('start')
     } catch {
       // Invalid URL, don't emit

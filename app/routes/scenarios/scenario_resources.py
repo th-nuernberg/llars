@@ -9,7 +9,7 @@ from auth.decorators import admin_required
 from decorators.error_handler import (
     handle_api_errors, NotFoundError, ValidationError, ConflictError
 )
-from db.db import db
+from db.database import db
 from db.tables import FeatureFunctionType, User, UserGroup, EmailThread
 from .. import data_blueprint
 
@@ -55,7 +55,12 @@ def get_users():
     # Current user available in g.authentik_user
 
     # Include admins as well (useful for demo/testing scenarios).
-    db_users = db.session.query(User).join(UserGroup, User.group_id == UserGroup.id).all()
+    db_users = (
+        db.session.query(User)
+        .join(UserGroup, User.group_id == UserGroup.id)
+        .filter(User.is_ai == False)
+        .all()
+    )
 
     users = []
     for db_user in db_users:

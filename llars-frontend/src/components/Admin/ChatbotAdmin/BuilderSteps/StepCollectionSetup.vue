@@ -13,9 +13,9 @@
           >
             <span v-if="!isIndeterminate" class="text-caption">{{ currentProgressPercent }}%</span>
           </v-progress-circular>
-          <v-icon v-else-if="isCompleted" size="40" color="success">mdi-check-circle</v-icon>
-          <v-icon v-else-if="hasError" size="40" color="error">mdi-alert-circle</v-icon>
-          <v-icon v-else size="40" color="grey">mdi-clock-outline</v-icon>
+          <LIcon v-else-if="isCompleted" size="40" color="success">mdi-check-circle</LIcon>
+          <LIcon v-else-if="hasError" size="40" color="error">mdi-alert-circle</LIcon>
+          <LIcon v-else size="40" color="grey">mdi-clock-outline</LIcon>
 
           <div class="header-text">
             <h3 class="text-subtitle-1 font-weight-medium">{{ statusTitle }}</h3>
@@ -36,11 +36,11 @@
         <!-- Phase Tags -->
         <div v-if="isCrawling" class="phase-tags mb-3">
           <LTag :variant="phase1Variant" size="sm" :class="{ 'phase-inactive': !phase1Active && !phase1Done }">
-            <v-icon start size="14">{{ phase1Done ? 'mdi-check' : 'mdi-map-search' }}</v-icon>
+            <LIcon start size="14">{{ phase1Done ? 'mdi-check' : 'mdi-map-search' }}</LIcon>
             Phase 1: Exploration
           </LTag>
           <LTag :variant="phase2Variant" size="sm" :class="{ 'phase-inactive': !phase2Active && !phase2Done }">
-            <v-icon start size="14">{{ phase2Done ? 'mdi-check' : 'mdi-spider-web' }}</v-icon>
+            <LIcon start size="14">{{ phase2Done ? 'mdi-check' : 'mdi-spider-web' }}</LIcon>
             Phase 2: Crawling
           </LTag>
         </div>
@@ -90,7 +90,7 @@
           <!-- Parallel Embedding Indicator -->
           <div v-if="embeddingProgressPercent > 0 || buildStatus === 'embedding'" class="parallel-embedding-info mb-3">
             <div class="d-flex align-center mb-1">
-              <v-icon size="14" color="info" class="mr-1">mdi-vector-polygon</v-icon>
+              <LIcon size="14" color="info" class="mr-1">mdi-vector-polygon</LIcon>
               <span class="text-caption text-medium-emphasis">Embedding läuft parallel</span>
               <v-spacer />
               <span class="text-caption font-weight-medium">{{ embeddingProgressPercent }}%</span>
@@ -109,7 +109,7 @@
             <div class="text-caption text-medium-emphasis mb-1">Zuletzt gecrawlt:</div>
             <div class="pages-list">
               <div v-for="(page, index) in displayRecentPages" :key="index" class="page-item">
-                <v-icon size="14" color="success" class="mr-1">mdi-check</v-icon>
+                <LIcon size="14" color="success" class="mr-1">mdi-check</LIcon>
                 <span class="text-body-2 text-truncate">{{ extractPageTitle(page) }}</span>
               </div>
             </div>
@@ -121,7 +121,7 @@
           <!-- Embedding Progress Info -->
           <div class="embedding-info mb-3">
             <div class="text-caption text-medium-emphasis mb-2">
-              <v-icon size="14" class="mr-1">mdi-vector-polygon</v-icon>
+              <LIcon size="14" class="mr-1">mdi-vector-polygon</LIcon>
               Dokumente werden in Vektoren umgewandelt...
             </div>
             <v-progress-linear
@@ -170,7 +170,7 @@
       <!-- Right Panel: Collection Preview -->
       <div class="panel collection-panel">
         <div class="panel-header">
-          <v-icon size="24" color="primary" class="mr-2">mdi-folder-text-outline</v-icon>
+          <LIcon size="24" color="primary" class="mr-2">mdi-folder-text-outline</LIcon>
           <span class="text-subtitle-1 font-weight-medium">Collection-Vorschau</span>
           <v-spacer />
           <v-btn
@@ -180,7 +180,7 @@
             :loading="documentsLoading"
             @click="$emit('refresh-documents')"
           >
-            <v-icon size="18">mdi-refresh</v-icon>
+            <LIcon size="18">mdi-refresh</LIcon>
           </v-btn>
         </div>
 
@@ -191,7 +191,7 @@
           />
 
           <div v-else-if="!collectionDocuments.length" class="empty-state">
-            <v-icon size="32" color="grey-lighten-1">mdi-file-document-outline</v-icon>
+            <LIcon size="32" color="grey-lighten-1">mdi-file-document-outline</LIcon>
             <div class="text-caption text-medium-emphasis">Warte auf Crawling...</div>
           </div>
 
@@ -202,7 +202,7 @@
               class="doc-item"
             >
               <v-avatar size="28" color="primary" variant="tonal" class="mr-2">
-                <v-icon size="16">{{ getDocIcon(doc.mime_type) }}</v-icon>
+                <LIcon size="16">{{ getDocIcon(doc.mime_type) }}</LIcon>
               </v-avatar>
               <div class="doc-info">
                 <div class="doc-title text-truncate">{{ doc.title || doc.filename }}</div>

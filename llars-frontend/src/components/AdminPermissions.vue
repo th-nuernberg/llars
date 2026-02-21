@@ -10,7 +10,7 @@
     <v-row v-if="!hasPermission('admin:permissions:manage')">
       <v-col cols="12">
         <v-alert type="error" prominent>
-          <v-icon large>mdi-lock</v-icon>
+          <LIcon large>mdi-lock</LIcon>
           Sie haben keine Berechtigung, diese Seite zu sehen. Erforderlich: admin:permissions:manage
         </v-alert>
       </v-col>
@@ -48,7 +48,7 @@
               <!-- User info card -->
               <v-card v-if="selectedUser" class="mt-4" elevation="2">
                 <v-card-title>
-                  <v-icon left>mdi-account</v-icon>
+                  <LIcon left>mdi-account</LIcon>
                   {{ selectedUser.username }}
                 </v-card-title>
 
@@ -123,7 +123,7 @@
                   :subtitle="role.description"
                 >
                   <template v-slot:prepend>
-                    <v-icon>mdi-shield-account</v-icon>
+                    <LIcon>mdi-shield-account</LIcon>
                   </template>
 
                   <template v-slot:append>
@@ -220,7 +220,7 @@ const availableRolesToAssign = computed(() => {
 // Methods
 async function loadAllRoles() {
   try {
-    const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:80'
+    const baseUrl = import.meta.env.VITE_API_BASE_URL || ''
     const token = sessionStorage.getItem('keycloak_token')
 
     const response = await axios.get(`${baseUrl}/api/permissions/roles`, {
@@ -232,13 +232,13 @@ async function loadAllRoles() {
     }
   } catch (error) {
     showSnackbar('Fehler beim Laden der Rollen', 'error')
-    console.error('Failed to load roles:', error)
+    console.error('Konnte Rollen nicht laden:', error)
   }
 }
 
 async function loadAllPermissions() {
   try {
-    const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:80'
+    const baseUrl = import.meta.env.VITE_API_BASE_URL || ''
     const token = sessionStorage.getItem('keycloak_token')
 
     const response = await axios.get(`${baseUrl}/api/permissions`, {
@@ -250,7 +250,7 @@ async function loadAllPermissions() {
     }
   } catch (error) {
     showSnackbar('Fehler beim Laden der Berechtigungen', 'error')
-    console.error('Failed to load permissions:', error)
+    console.error('Konnte Berechtigungen nicht laden:', error)
   }
 }
 
@@ -263,7 +263,7 @@ async function loadUserPermissions() {
   loadingUser.value = true
 
   try {
-    const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:80'
+    const baseUrl = import.meta.env.VITE_API_BASE_URL || ''
     const token = sessionStorage.getItem('keycloak_token')
 
     const response = await axios.get(
@@ -285,7 +285,7 @@ async function loadUserPermissions() {
     } else {
       showSnackbar('Fehler beim Laden der Benutzerdaten', 'error')
     }
-    console.error('Failed to load user permissions:', error)
+    console.error('Konnte Benutzerberechtigungen nicht laden:', error)
     selectedUser.value = null
   } finally {
     loadingUser.value = false
@@ -296,7 +296,7 @@ async function assignRole(username, roleName) {
   if (!roleName) return
 
   try {
-    const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:80'
+    const baseUrl = import.meta.env.VITE_API_BASE_URL || ''
     const token = sessionStorage.getItem('keycloak_token')
 
     await axios.post(
@@ -310,13 +310,13 @@ async function assignRole(username, roleName) {
     await loadUserPermissions()
   } catch (error) {
     showSnackbar('Fehler beim Zuweisen der Rolle', 'error')
-    console.error('Failed to assign role:', error)
+    console.error('Konnte Rolle nicht zuweisen:', error)
   }
 }
 
 async function unassignRole(username, roleName) {
   try {
-    const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:80'
+    const baseUrl = import.meta.env.VITE_API_BASE_URL || ''
     const token = sessionStorage.getItem('keycloak_token')
 
     await axios.post(
@@ -329,7 +329,7 @@ async function unassignRole(username, roleName) {
     await loadUserPermissions()
   } catch (error) {
     showSnackbar('Fehler beim Entfernen der Rolle', 'error')
-    console.error('Failed to unassign role:', error)
+    console.error('Konnte Rolle nicht entfernen:', error)
   }
 }
 

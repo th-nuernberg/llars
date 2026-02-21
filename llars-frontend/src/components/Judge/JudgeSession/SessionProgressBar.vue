@@ -23,19 +23,19 @@
     <!-- Session Meta (compact row) -->
     <div class="progress-meta">
       <span class="meta-item">
-        <v-icon size="12" class="mr-1">mdi-pillar</v-icon>
+        <LIcon size="12" class="mr-1">mdi-pillar</LIcon>
         {{ session?.pillar_count }} Säulen
       </span>
       <span class="meta-item">
-        <v-icon size="12" class="mr-1">mdi-file-document-multiple</v-icon>
+        <LIcon size="12" class="mr-1">mdi-file-document-multiple</LIcon>
         {{ session?.samples_per_pillar }} Samples
       </span>
       <span v-if="workerCount > 1" class="meta-item">
-        <v-icon size="12" class="mr-1">mdi-account-group</v-icon>
+        <LIcon size="12" class="mr-1">mdi-account-group</LIcon>
         {{ workerCount }} Worker
       </span>
       <span v-if="session?.position_swap" class="meta-item meta-swap">
-        <v-icon size="12" class="mr-1">mdi-swap-horizontal</v-icon>
+        <LIcon size="12" class="mr-1">mdi-swap-horizontal</LIcon>
         Swap
       </span>
     </div>

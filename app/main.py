@@ -1,6 +1,6 @@
 from flask import Flask, request
 from flask_socketio import SocketIO
-from db.db import configure_database
+from db.database import configure_database
 from flask_cors import CORS
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
@@ -8,10 +8,24 @@ from flask_jwt_extended import JWTManager
 from socketio_handlers import configure_socket_routes
 from routes.registry import register_all_blueprints
 from services.api_metrics_service import create_metrics_middleware
+from werkzeug.middleware.proxy_fix import ProxyFix
+import re
 import os
 import redis
 
 app = Flask(__name__)
+
+# Trust one reverse proxy hop (nginx) by default so request.remote_addr
+# resolves to the actual client IP instead of the container network IP.
+proxy_fix_x_for = int(os.environ.get('PROXY_FIX_X_FOR', '1'))
+if proxy_fix_x_for > 0:
+    app.wsgi_app = ProxyFix(
+        app.wsgi_app,
+        x_for=proxy_fix_x_for,
+        x_proto=1,
+        x_host=1,
+        x_port=1,
+    )
 
 # Initialize API metrics collection middleware
 create_metrics_middleware(app)
@@ -41,6 +55,10 @@ if flask_env == 'development':
     socket_cors = '*'
 else:
     socket_cors = allowed_origins
+
+
+def _skip_startup_tasks() -> bool:
+    return os.environ.get('LLARS_SKIP_STARTUP_TASKS', '').lower() in ('1', 'true', 'yes')
 
 # SocketIO with increased timeouts for long-running LLM streams
 # ping_timeout: How long to wait for pong before disconnecting (default: 20s)
@@ -75,10 +93,14 @@ socketio = SocketIO(
 )
 
 # Rate Limiting - Schützt vor Brute-Force und DoS
+# In development mode, use much higher limits to support E2E testing
+is_development = os.environ.get('FLASK_ENV', 'production') == 'development'
+rate_limit_defaults = ["10000 per day", "1000 per hour"] if is_development else ["200 per day", "50 per hour"]
+
 limiter = Limiter(
     app=app,
     key_func=get_remote_address,
-    default_limits=["200 per day", "50 per hour"],
+    default_limits=rate_limit_defaults,
     storage_uri="memory://",  # In production: Redis verwenden
 )
 
@@ -88,6 +110,11 @@ def exempt_endpoints():
     """Exempt health check and high-frequency judge endpoints from rate limiting"""
     if not request.endpoint:
         return False
+    path = request.path or ''
+    # Scenario stats are lazy-loaded in list views and can legitimately create
+    # bursty request patterns when users browse many scenarios.
+    if request.method == 'GET' and re.fullmatch(r'/api/scenarios/\d+/stats', path):
+        return True
     # Exempt health checks
     if 'health_check' in request.endpoint:
         return True
@@ -106,7 +133,13 @@ def exempt_endpoints():
     # Exempt LaTeX compile status + SyncTeX endpoints (frequently polled)
     if request.path and request.path.startswith('/api/latex-collab/compile/'):
         return True
+    # Exempt data import endpoints (bulk uploads can exceed normal limits)
+    if request.path and request.path.startswith('/api/import/'):
+        return True
     return False
+
+# Flask Secret Key (required for session management, e.g. Zotero OAuth)
+app.secret_key = os.environ.get('FLASK_SECRET_KEY', os.environ.get('JWT_SECRET_KEY', 'dev-secret-key-change-in-production'))
 
 # JWT Configuration (for legacy auth routes)
 # TODO: Complete migration to Authentik and remove legacy JWT auth
@@ -139,6 +172,8 @@ def _should_start_background_threads() -> bool:
     In development, `flask run` spawns a reloader parent process and a child process.
     The child sets `WERKZEUG_RUN_MAIN=true`. Background threads must only start once.
     """
+    if _skip_startup_tasks():
+        return False
     if os.environ.get('FLASK_ENV', 'production') == 'development':
         return os.environ.get('WERKZEUG_RUN_MAIN') == 'true'
     return True
@@ -162,20 +197,28 @@ if _should_start_background_threads():
 # This is a one-time migration for collections created before the fix
 def fix_missing_chroma_collection_names():
     """Set chroma_collection_name for collections where it's missing."""
+    if _skip_startup_tasks():
+        print("[Startup] Skipping chroma collection name fix (LLARS_SKIP_STARTUP_TASKS=true)")
+        return
     from db.tables import RAGCollection
-    from db.db import db
-    from db.models.llm_model import seed_default_models
-    from rag_pipeline import RAGPipeline
+    from db.database import db
     from services.rag.collection_embedding_service import sanitize_chroma_collection_name
 
     with app.app_context():
         try:
-            seed_default_models()
-            pipeline = RAGPipeline()
             collections = RAGCollection.query.filter(
                 RAGCollection.chroma_collection_name.is_(None),
                 RAGCollection.embedding_status == 'completed'
             ).all()
+
+            if not collections:
+                return
+
+            from db.models.llm_model import seed_default_models
+            from rag_pipeline import RAGPipeline
+
+            seed_default_models()
+            pipeline = RAGPipeline()
 
             for collection in collections:
                 chroma_name = sanitize_chroma_collection_name(collection.name, pipeline.model_name)
@@ -194,6 +237,9 @@ fix_missing_chroma_collection_names()
 # Seed default LLM models into the database
 def seed_llm_models():
     """Seed default LLM models on startup."""
+    if _skip_startup_tasks():
+        print("[Startup] Skipping LLM model seeding (LLARS_SKIP_STARTUP_TASKS=true)")
+        return
     from db.models.llm_model import seed_default_models
 
     with app.app_context():
@@ -205,6 +251,221 @@ def seed_llm_models():
             print(f"[Startup] Error seeding LLM models: {e}")
 
 seed_llm_models()
+
+
+# Ensure LLM providers from environment variables (LiteLLM, OpenAI)
+def ensure_llm_providers():
+    """Create providers from env vars and link orphaned models."""
+    if _skip_startup_tasks():
+        print("[Startup] Skipping LLM provider setup (LLARS_SKIP_STARTUP_TASKS=true)")
+        return
+    from services.llm.llm_provider_service import LLMProviderService
+
+    with app.app_context():
+        try:
+            created = LLMProviderService.ensure_env_providers()
+            if created:
+                print(f"[Startup] Created {created} LLM provider(s) from environment")
+            else:
+                # Even if no new providers created, link orphaned models
+                LLMProviderService._link_orphaned_models()
+                print("[Startup] LLM providers already configured")
+        except Exception as e:
+            print(f"[Startup] Error setting up LLM providers: {e}")
+
+ensure_llm_providers()
+
+
+# Seed default field prompts for AI-assist features
+def seed_field_prompts():
+    """Seed default field prompts on startup."""
+    if _skip_startup_tasks():
+        print("[Startup] Skipping field prompt seeding (LLARS_SKIP_STARTUP_TASKS=true)")
+        return
+    from services.ai_assist import FieldPromptService
+
+    with app.app_context():
+        try:
+            print("[Startup] Seeding field prompts...")
+            created = FieldPromptService.seed_defaults()
+            if created > 0:
+                print(f"[Startup] Created {created} new field prompts")
+            else:
+                print("[Startup] Field prompts already exist")
+        except Exception as e:
+            print(f"[Startup] Error seeding field prompts: {e}")
+
+seed_field_prompts()
+
+
+# Auto-start LLM evaluations for scenarios with configured evaluators
+def start_pending_llm_evaluations():
+    """
+    Start LLM evaluations for all scenarios that have pending evaluations.
+
+    This runs on startup to ensure LLM evaluators process any threads that
+    haven't been evaluated yet. Runs in background threads to not block startup.
+    """
+    if _skip_startup_tasks():
+        print("[Startup] Skipping LLM evaluation startup (LLARS_SKIP_STARTUP_TASKS=true)")
+        return
+
+    import json
+    import threading
+    from db.database import db
+    from db.models import (
+        RatingScenarios, ScenarioThreads, LLMTaskResult,
+        ComparisonSession, FeatureFunctionType
+    )
+
+    def _run_pending_evaluations():
+        with app.app_context():
+            try:
+                # Find all scenarios with LLM evaluators configured
+                scenarios = RatingScenarios.query.filter(
+                    RatingScenarios.config_json.isnot(None)
+                ).all()
+
+                scenarios_to_process = []
+                for scenario in scenarios:
+                    config = scenario.config_json
+                    if isinstance(config, str):
+                        try:
+                            config = json.loads(config)
+                        except (json.JSONDecodeError, TypeError):
+                            continue
+                    if not isinstance(config, dict):
+                        continue
+
+                    llm_evaluators = config.get('llm_evaluators') or config.get('selected_llms') or []
+                    if not llm_evaluators:
+                        continue
+
+                    # Get function type to handle comparison scenarios differently
+                    function_type = FeatureFunctionType.query.filter_by(
+                        function_type_id=scenario.function_type_id
+                    ).first()
+                    function_name = function_type.name if function_type else None
+
+                    # For comparison scenarios, use ComparisonSessions
+                    if function_name == "comparison":
+                        comparison_sessions = ComparisonSession.query.filter_by(
+                            scenario_id=scenario.id
+                        ).all()
+                        all_ids = {cs.id for cs in comparison_sessions}
+                    else:
+                        # For other scenarios, use ScenarioThreads
+                        scenario_threads = ScenarioThreads.query.filter_by(
+                            scenario_id=scenario.id
+                        ).all()
+                        all_ids = {st.thread_id for st in scenario_threads}
+
+                    if not all_ids:
+                        continue
+
+                    scenarios_to_process.append({
+                        'scenario': scenario,
+                        'llm_evaluators': llm_evaluators,
+                        'all_ids': all_ids,
+                        'is_comparison': function_name == "comparison",
+                    })
+
+                if not scenarios_to_process:
+                    print("[Startup] No scenarios with pending LLM evaluations")
+                    return
+
+                print(f"[Startup] Checking {len(scenarios_to_process)} scenarios for pending LLM evaluations...")
+
+                from services.llm.llm_ai_task_runner import LLMAITaskRunner
+
+                total_started = 0
+                for item in scenarios_to_process:
+                    scenario = item['scenario']
+                    llm_evaluators = item['llm_evaluators']
+                    all_ids = item['all_ids']
+
+                    for model_id in llm_evaluators:
+                        # Get IDs that already have successful results
+                        completed_rows = db.session.query(LLMTaskResult.thread_id).filter(
+                            LLMTaskResult.scenario_id == scenario.id,
+                            LLMTaskResult.model_id == model_id,
+                            LLMTaskResult.payload_json.isnot(None),
+                            LLMTaskResult.error.is_(None),
+                        ).all()
+                        completed_ids = {row[0] for row in completed_rows if row[0]}
+
+                        # Find IDs that need evaluation
+                        pending_ids = list(all_ids - completed_ids)
+
+                        if pending_ids:
+                            id_type = "sessions" if item['is_comparison'] else "threads"
+                            print(
+                                f"[Startup] Starting LLM evaluation: scenario={scenario.id} "
+                                f"({scenario.scenario_name}), model={model_id}, "
+                                f"pending_{id_type}={len(pending_ids)}/{len(all_ids)}"
+                            )
+                            LLMAITaskRunner.run_for_scenario_async(
+                                scenario.id,
+                                model_ids=[model_id],
+                                thread_ids=pending_ids,  # Works for both threads and session IDs
+                            )
+                            total_started += 1
+
+                if total_started > 0:
+                    print(f"[Startup] Started {total_started} LLM evaluation tasks")
+                else:
+                    print("[Startup] All LLM evaluations are up to date")
+
+            except Exception as e:
+                print(f"[Startup] Error starting LLM evaluations: {e}")
+
+    # Run in background thread after a short delay to let other services initialize
+    def _delayed_start():
+        import time
+        time.sleep(5)  # Wait 5 seconds for other services to be ready
+        _run_pending_evaluations()
+
+    # Start background thread - skip only if LLARS_SKIP_STARTUP_TASKS is set
+    # For Docker/Gunicorn, we always want to run this (unlike embedding worker which
+    # has special handling for Flask reloader)
+    thread = threading.Thread(target=_delayed_start, daemon=True)
+    thread.start()
+    print("[Startup] LLM evaluation checker scheduled")
+
+
+start_pending_llm_evaluations()
+
+
+# Sync LLARS documentation to RAG collection for the chatbot
+def sync_documentation_collection():
+    """
+    Synchronize MkDocs documentation with the LLARS-Documentation RAG collection.
+
+    This enables the LLARS chatbot to answer questions about the system
+    and provide direct links to relevant documentation pages.
+    """
+    if _skip_startup_tasks():
+        print("[Startup] Skipping documentation sync (LLARS_SKIP_STARTUP_TASKS=true)")
+        return
+
+    from services.docs import MkDocsLoaderService
+
+    with app.app_context():
+        try:
+            print("[Startup] Syncing LLARS documentation...")
+            loader = MkDocsLoaderService()
+            result = loader.sync_llars_documentation()
+
+            if result.get('success'):
+                print(f"[Startup] {result.get('message')}")
+            else:
+                print(f"[Startup] Documentation sync failed: {result.get('error')}")
+        except Exception as e:
+            print(f"[Startup] Error syncing documentation: {e}")
+
+
+sync_documentation_collection()
+
 
 if __name__ == '__main__':
     # Debug mode nur in development aktivieren

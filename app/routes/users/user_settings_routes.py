@@ -9,12 +9,13 @@ import uuid
 from datetime import date, datetime
 from pathlib import Path
 
-from flask import g, jsonify, request, send_file
+from flask import current_app, g, jsonify, request, send_file
 from PIL import Image
 
-from auth.decorators import authentik_required
+from auth.decorators import authentik_required, public_endpoint
 from decorators.error_handler import NotFoundError, ValidationError, handle_api_errors
-from db.db import db
+from db.database import db
+from db.tables import LatexComment
 from db.models.user import generate_avatar_seed
 from routes.auth import data_bp
 from services.user_profile_service import build_avatar_url, is_valid_collab_color, pick_collab_color
@@ -133,6 +134,7 @@ def update_user_settings():
     """
     user = g.authentik_user
     data = request.get_json() or {}
+    prev_collab_color = user.collab_color
 
     if "collab_color" in data:
         color = data["collab_color"]
@@ -143,7 +145,21 @@ def update_user_settings():
                 raise ValidationError("collab_color must be a valid hex color (#RRGGBB format)")
             user.collab_color = color
 
+    if "collab_color" in data and prev_collab_color != user.collab_color:
+        LatexComment.query.filter_by(author_username=user.username).update(
+            {LatexComment.author_color: user.collab_color},
+            synchronize_session=False
+        )
+
     db.session.commit()
+
+    if "collab_color" in data and prev_collab_color != user.collab_color:
+        socketio = current_app.extensions.get("socketio")
+        if socketio:
+            socketio.emit("user:collab_color_updated", {
+                "username": user.username,
+                "collab_color": user.collab_color
+            })
 
     return jsonify({
         "success": True,
@@ -255,6 +271,7 @@ def reset_user_avatar():
 
 
 @data_bp.route("/users/avatar/<avatar_id>", methods=["GET"])
+@public_endpoint
 @handle_api_errors(logger_name="user_settings")
 def get_user_avatar(avatar_id: str):
     from db.models import User

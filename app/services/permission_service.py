@@ -15,7 +15,7 @@ import re
 from typing import List, Optional, Set, Dict, Any
 from datetime import datetime
 from sqlalchemy import select, and_, or_
-from db.db import db
+from db.database import db
 from db.tables import (
     Permission,
     Role,
@@ -194,15 +194,57 @@ class PermissionService:
 
         roles = db.session.execute(roles_query).scalars().all()
 
-        return [
-            {
+        normalized_roles = []
+        seen = set()
+        for role in roles:
+            role_name = role.role_name
+            display_name = role.display_name
+            if role_name == 'viewer':
+                role_name = 'evaluator'
+                display_name = 'Evaluator'
+            if role_name in seen:
+                continue
+            seen.add(role_name)
+            normalized_roles.append({
                 'id': role.id,
-                'role_name': role.role_name,
-                'display_name': role.display_name,
+                'role_name': role_name,
+                'display_name': display_name,
                 'description': role.description
-            }
-            for role in roles
-        ]
+            })
+        return normalized_roles
+
+    @staticmethod
+    def user_has_role(username: str, role_name: str) -> bool:
+        """
+        Check if a user has a specific role.
+
+        Args:
+            username: The username to check
+            role_name: The role name (e.g., 'admin', 'researcher', 'evaluator')
+
+        Returns:
+            True if user has the role, False otherwise
+        """
+        if not username or not role_name:
+            return False
+
+        role_names = [role_name]
+        if role_name == 'evaluator':
+            role_names.append('viewer')
+
+        role_query = (
+            select(Role)
+            .join(UserRole, UserRole.role_id == Role.id)
+            .where(
+                and_(
+                    UserRole.username == username,
+                    Role.role_name.in_(role_names)
+                )
+            )
+        )
+
+        role = db.session.execute(role_query).scalar_one_or_none()
+        return role is not None
 
     @staticmethod
     def grant_permission(
@@ -345,6 +387,40 @@ class PermissionService:
             return False
 
     @staticmethod
+    def _resolve_role(role_name: str, seed_missing: bool = False) -> Optional[Role]:
+        lookup_name = role_name
+        if role_name == 'viewer':
+            lookup_name = 'evaluator'
+
+        role = db.session.execute(
+            select(Role).where(Role.role_name == lookup_name)
+        ).scalar_one_or_none()
+
+        if not role and role_name in ('evaluator', 'viewer'):
+            role = db.session.execute(
+                select(Role).where(Role.role_name == 'viewer')
+            ).scalar_one_or_none()
+
+        if not role and seed_missing:
+            try:
+                from db.seeders.permissions import initialize_permissions
+
+                initialize_permissions(db)
+            except Exception as exc:
+                print(f"Error seeding permissions: {exc}")
+
+            role = db.session.execute(
+                select(Role).where(Role.role_name == lookup_name)
+            ).scalar_one_or_none()
+
+            if not role and role_name in ('evaluator', 'viewer'):
+                role = db.session.execute(
+                    select(Role).where(Role.role_name == 'viewer')
+                ).scalar_one_or_none()
+
+        return role
+
+    @staticmethod
     def assign_role(
         username: str,
         role_name: str,
@@ -362,10 +438,10 @@ class PermissionService:
             True if successful, False otherwise
         """
         try:
-            # Get role
-            role = db.session.execute(
-                select(Role).where(Role.role_name == role_name)
-            ).scalar_one_or_none()
+            normalized_role_name = (role_name or '').strip().lower()
+            if not normalized_role_name:
+                return False
+            role = PermissionService._resolve_role(normalized_role_name, seed_missing=True)
 
             if not role:
                 return False
@@ -399,7 +475,7 @@ class PermissionService:
                 admin_username=admin_username,
                 target_username=username,
                 permission_key=None,
-                details={'role_name': role_name, 'role_id': role.id}
+                details={'role_name': normalized_role_name, 'role_id': role.id}
             )
 
             db.session.commit()
@@ -428,10 +504,10 @@ class PermissionService:
             True if successful, False otherwise
         """
         try:
-            # Get role
-            role = db.session.execute(
-                select(Role).where(Role.role_name == role_name)
-            ).scalar_one_or_none()
+            normalized_role_name = (role_name or '').strip().lower()
+            if not normalized_role_name:
+                return False
+            role = PermissionService._resolve_role(normalized_role_name)
 
             if not role:
                 return False
@@ -459,7 +535,7 @@ class PermissionService:
                 admin_username=admin_username,
                 target_username=username,
                 permission_key=None,
-                details={'role_name': role_name, 'role_id': role.id}
+                details={'role_name': normalized_role_name, 'role_id': role.id}
             )
 
             db.session.commit()
@@ -551,16 +627,25 @@ class PermissionService:
             for rid, perm_key in rows:
                 permissions_by_role_id.setdefault(rid, []).append(perm_key)
 
-        return [
-            {
+        normalized_roles = []
+        seen = set()
+        for r in roles:
+            role_name = r.role_name
+            display_name = r.display_name
+            if role_name == 'viewer':
+                role_name = 'evaluator'
+                display_name = 'Evaluator'
+            if role_name in seen:
+                continue
+            seen.add(role_name)
+            normalized_roles.append({
                 'id': r.id,
-                'role_name': r.role_name,
-                'display_name': r.display_name,
+                'role_name': role_name,
+                'display_name': display_name,
                 'description': r.description,
                 'permissions': permissions_by_role_id.get(r.id, []),
-            }
-            for r in roles
-        ]
+            })
+        return normalized_roles
 
     @staticmethod
     def create_role(

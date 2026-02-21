@@ -1,6 +1,7 @@
 """System-wide settings stored in the LLARS database."""
 
 from datetime import datetime
+from typing import Optional
 from sqlalchemy.orm import Mapped, mapped_column
 
 from db import db
@@ -48,17 +49,110 @@ class SystemSettings(db.Model):
         comment="Default overlap between chunks"
     )
 
+    # LLM AI Task Logging
+    llm_ai_log_responses: Mapped[bool] = mapped_column(
+        db.Boolean, default=True, nullable=False,
+        comment="Enable logging of LLM evaluator responses"
+    )
+    llm_ai_log_tasks: Mapped[str] = mapped_column(
+        db.String(255), default="authenticity", nullable=False,
+        comment="Comma-separated task types to log (empty = all)"
+    )
+    llm_ai_log_response_max: Mapped[int] = mapped_column(
+        db.Integer, default=800, nullable=False,
+        comment="Max characters for logged LLM responses"
+    )
+    llm_ai_log_prompts: Mapped[bool] = mapped_column(
+        db.Boolean, default=False, nullable=False,
+        comment="Enable logging of LLM evaluator prompts"
+    )
+    llm_ai_log_prompt_max: Mapped[int] = mapped_column(
+        db.Integer, default=800, nullable=False,
+        comment="Max characters for logged LLM prompts"
+    )
+
+    # Batch Generation Settings
+    batch_generation_max_parallel: Mapped[int] = mapped_column(
+        db.Integer, default=1, nullable=False,
+        comment="Maximum number of parallel outputs processed in batch generation"
+    )
+
+    # Zotero OAuth Settings
+    # Admin registers ONE app at zotero.org/oauth/apps and enters credentials here.
+    # All users then use "Connect with Zotero" button to authorize their accounts.
+    zotero_oauth_enabled: Mapped[bool] = mapped_column(
+        db.Boolean, default=False, nullable=False,
+        comment="Enable Zotero OAuth login for users"
+    )
+    zotero_client_key: Mapped[Optional[str]] = mapped_column(
+        db.String(255), nullable=True,
+        comment="Zotero OAuth Client Key from zotero.org/oauth/apps"
+    )
+    zotero_client_secret_encrypted: Mapped[Optional[str]] = mapped_column(
+        db.Text, nullable=True,
+        comment="Zotero OAuth Client Secret (encrypted)"
+    )
+
+    # Referral/Invitation System Settings
+    referral_system_enabled: Mapped[bool] = mapped_column(
+        db.Boolean, default=False, nullable=False,
+        comment="Enable referral/invitation link system"
+    )
+    self_registration_enabled: Mapped[bool] = mapped_column(
+        db.Boolean, default=False, nullable=False,
+        comment="Enable self-registration via referral links (shows Register button)"
+    )
+    default_referral_role: Mapped[str] = mapped_column(
+        db.String(100), default='evaluator', nullable=False,
+        comment="Default role for users registered via referral"
+    )
+
+    # AI Assistant Settings (LLARS KI for LaTeX Collab comments)
+    ai_assistant_enabled: Mapped[bool] = mapped_column(
+        db.Boolean, default=True, nullable=False,
+        comment="Enable AI assistant for comment resolution in LaTeX Collab"
+    )
+    ai_assistant_color: Mapped[str] = mapped_column(
+        db.String(7), default='#9B59B6', nullable=False,
+        comment="Reserved color for AI assistant (hex, default: purple)"
+    )
+    ai_assistant_username: Mapped[str] = mapped_column(
+        db.String(50), default='LLARS KI', nullable=False,
+        comment="Display name for AI assistant"
+    )
+
     created_at: Mapped[datetime] = mapped_column(db.DateTime, default=datetime.now, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(db.DateTime, default=datetime.now, onupdate=datetime.now, nullable=False)
 
-    def to_dict(self):
+    def to_dict(self, include_zotero_secret: bool = False):
         """Convert to dictionary for API responses."""
-        return {
+        result = {
             'crawl_timeout_seconds': self.crawl_timeout_seconds,
             'embedding_timeout_seconds': self.embedding_timeout_seconds,
             'crawler_default_max_pages': self.crawler_default_max_pages,
             'crawler_default_max_depth': self.crawler_default_max_depth,
             'rag_default_chunk_size': self.rag_default_chunk_size,
             'rag_default_chunk_overlap': self.rag_default_chunk_overlap,
+            'llm_ai_log_responses': self.llm_ai_log_responses,
+            'llm_ai_log_tasks': self.llm_ai_log_tasks,
+            'llm_ai_log_response_max': self.llm_ai_log_response_max,
+            'llm_ai_log_prompts': self.llm_ai_log_prompts,
+            'llm_ai_log_prompt_max': self.llm_ai_log_prompt_max,
+            'batch_generation_max_parallel': self.batch_generation_max_parallel,
+            'zotero_oauth_enabled': self.zotero_oauth_enabled,
+            'zotero_client_key': self.zotero_client_key,
+            'zotero_oauth_configured': bool(self.zotero_client_key and self.zotero_client_secret_encrypted),
+            # Referral System
+            'referral_system_enabled': self.referral_system_enabled,
+            'self_registration_enabled': self.self_registration_enabled,
+            'default_referral_role': self.default_referral_role,
+            # AI Assistant
+            'ai_assistant_enabled': self.ai_assistant_enabled,
+            'ai_assistant_color': self.ai_assistant_color,
+            'ai_assistant_username': self.ai_assistant_username,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None
         }
+        # Never expose the actual secret, only indicate if it's set
+        if include_zotero_secret:
+            result['zotero_client_secret_set'] = bool(self.zotero_client_secret_encrypted)
+        return result

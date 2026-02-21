@@ -1,0 +1,987 @@
+LLARS Frontend Hardcoded Text Candidates (JS/TS/Script blocks)
+===========================================================
+
+Heuristic scan for common text keys in object literals.
+False positives are possible; review each entry.
+
+llars-frontend/src/router.js:93 [name] UserSettings
+llars-frontend/src/router.js:94 [name] EvaluationHub
+llars-frontend/src/router.js:95 [name] EvaluationAssistant
+llars-frontend/src/router.js:96 [name] EvaluationScenario
+llars-frontend/src/router.js:97 [name] DataImporter
+llars-frontend/src/router.js:100 [name] ScenarioManager
+llars-frontend/src/router.js:101 [name] ScenarioWorkspace
+llars-frontend/src/router.js:105 [name] ScenarioEvaluation
+llars-frontend/src/router.js:106 [name] ScenarioWorkspace', params: { id: to.params.id }, query: { mode: 'evaluate
+llars-frontend/src/router.js:112 [name] EvaluationSession
+llars-frontend/src/router.js:119 [name] RatingSession
+llars-frontend/src/router.js:126 [name] RankingSession
+llars-frontend/src/router.js:133 [name] ComparisonSession
+llars-frontend/src/router.js:140 [name] AuthenticitySession
+llars-frontend/src/router.js:152 [name] RankerDetail
+llars-frontend/src/router.js:153 [name] RaterDetail
+llars-frontend/src/router.js:154 [name] RaterDetailFeature
+llars-frontend/src/router.js:155 [name] AuthenticityDetail
+llars-frontend/src/router.js:157 [name] HistoryGenerationDetail
+llars-frontend/src/router.js:158 [name] PromptEngineering
+llars-frontend/src/router.js:160 [name] PromptEngineeringDetail
+llars-frontend/src/router.js:164 [name] ComparisonDetail
+llars-frontend/src/router.js:171 [name] AnonymizeTool
+llars-frontend/src/router.js:174 [name] JudgeOverview
+llars-frontend/src/router.js:175 [name] JudgeConfig
+llars-frontend/src/router.js:176 [name] JudgeSession
+llars-frontend/src/router.js:177 [name] JudgeResults
+llars-frontend/src/router.js:180 [name] OnCoCoOverview
+llars-frontend/src/router.js:181 [name] OnCoCoConfig
+llars-frontend/src/router.js:182 [name] OnCoCoResults
+llars-frontend/src/router.js:183 [name] OnCoCoInfo
+llars-frontend/src/router.js:185 [name] KaimoHub
+llars-frontend/src/router.js:186 [name] KaimoPanel
+llars-frontend/src/router.js:187 [name] KaimoNewCase
+llars-frontend/src/router.js:188 [name] KaimoCaseEditor
+llars-frontend/src/router.js:189 [name] KaimoCase
+llars-frontend/src/router.js:192 [name] AdminDashboard
+llars-frontend/src/router.js:199 [name] AdminUserProgressStats
+llars-frontend/src/router.js:203 [name] Register
+llars-frontend/src/router.js:204 [name] RegisterWithCode
+llars-frontend/src/router.js:206 [name] NotFound
+llars-frontend/src/router.js:208 [name] ChatWithBots
+llars-frontend/src/router.js:212 [name] MarkdownCollabHome
+llars-frontend/src/router.js:213 [name] MarkdownCollabWorkspace
+llars-frontend/src/router.js:214 [name] MarkdownCollabWorkspaceDocument
+llars-frontend/src/router.js:217 [name] LatexCollabHome
+llars-frontend/src/router.js:218 [name] LatexCollabWorkspace
+llars-frontend/src/router.js:219 [name] LatexCollabWorkspaceDocument
+llars-frontend/src/composables/useAppTheme.js:118 [title] System', icon: 'llars:system-theme
+llars-frontend/src/composables/useAppTheme.js:119 [title] Hell', icon: 'llars:sun
+llars-frontend/src/composables/useAppTheme.js:120 [title] Dunkel', icon: 'llars:moon
+llars-frontend/src/composables/useLanguage.js:27 [title] Deutsch', short: 'DE
+llars-frontend/src/composables/useLanguage.js:28 [title] English', short: 'EN
+llars-frontend/src/composables/useGitStatus.js:136 [text] D', color: 'error', tooltip: t('workspaceGit.status.deleted
+llars-frontend/src/composables/useGitStatus.js:137 [text] A', color: 'info', tooltip: t('workspaceGit.status.added
+llars-frontend/src/composables/useGitStatus.js:138 [text] R', color: 'purple', tooltip: t('workspaceGit.status.renamed
+llars-frontend/src/composables/useGitStatus.js:139 [text] →', color: 'cyan', tooltip: t('workspaceGit.status.moved
+llars-frontend/src/composables/useGitStatus.js:140 [text] R→', color: 'purple', tooltip: t('workspaceGit.status.renamedMoved
+llars-frontend/src/composables/useGitStatus.js:141 [text] M', color: 'warning', tooltip: t('workspaceGit.status.modified
+llars-frontend/src/config/animationRegistry.js:42 [name] Float
+llars-frontend/src/config/animationRegistry.js:43 [description] Schwebendes Dokument (auf/ab)
+llars-frontend/src/config/animationRegistry.js:50 [name] Sweep
+llars-frontend/src/config/animationRegistry.js:51 [description] Glanz-Effekt über das Dokument
+llars-frontend/src/config/animationRegistry.js:58 [name] Line Pulse
+llars-frontend/src/config/animationRegistry.js:59 [description] Pulsierende Text-Zeilen
+llars-frontend/src/config/animationRegistry.js:66 [name] Progress Pendel
+llars-frontend/src/config/animationRegistry.js:67 [description] Pendelnder Progress-Balken (vor und zurück)
+llars-frontend/src/config/animationRegistry.js:84 [name] Home
+llars-frontend/src/config/animationRegistry.js:85 [description] Dach hebt sich, Tür öffnet sich
+llars-frontend/src/config/animationRegistry.js:91 [name] File
+llars-frontend/src/config/animationRegistry.js:92 [description] Eselsohr faltet sich auf
+llars-frontend/src/config/animationRegistry.js:98 [name] File Plus
+llars-frontend/src/config/animationRegistry.js:99 [description] Datei erstellen - Eselsohr faltet, Plus leuchtet
+llars-frontend/src/config/animationRegistry.js:105 [name] Folder Plus
+llars-frontend/src/config/animationRegistry.js:106 [description] Ordner erstellen - Ordner hebt sich, Plus leuchtet
+llars-frontend/src/config/animationRegistry.js:112 [name] Markdown
+llars-frontend/src/config/animationRegistry.js:113 [description] Eselsohr faltet sich auf
+llars-frontend/src/config/animationRegistry.js:119 [name] LaTeX
+llars-frontend/src/config/animationRegistry.js:120 [description] Sigma pulsiert, Cursor blinkt
+llars-frontend/src/config/animationRegistry.js:126 [name] LaTeX Doc
+llars-frontend/src/config/animationRegistry.js:127 [description] Eselsohr faltet sich auf
+llars-frontend/src/config/animationRegistry.js:133 [name] Chatbot
+llars-frontend/src/config/animationRegistry.js:134 [description] Typing-Animation, Sparkle pulsiert
+llars-frontend/src/config/animationRegistry.js:140 [name] Wizard/Wand
+llars-frontend/src/config/animationRegistry.js:141 [description] Zauberstab schwingt, Sterne leuchten
+llars-frontend/src/config/animationRegistry.js:147 [name] OnCoCo
+llars-frontend/src/config/animationRegistry.js:148 [description] Nadel schwingt, Balken wachsen
+llars-frontend/src/config/animationRegistry.js:154 [name] Database
+llars-frontend/src/config/animationRegistry.js:155 [description] Pulse-Effekt, mittlere Scheibe expandiert
+llars-frontend/src/config/animationRegistry.js:161 [name] Success
+llars-frontend/src/config/animationRegistry.js:162 [description] Haken bounced, Sterne funkeln
+llars-frontend/src/config/animationRegistry.js:168 [name] Star
+llars-frontend/src/config/animationRegistry.js:169 [description] Stern funkelt und dreht
+llars-frontend/src/config/animationRegistry.js:175 [name] Flask
+llars-frontend/src/config/animationRegistry.js:176 [description] Blasen steigen auf, Flüssigkeit brodelt
+llars-frontend/src/config/animationRegistry.js:182 [name] Refresh
+llars-frontend/src/config/animationRegistry.js:183 [description] Rotation bei Hover
+llars-frontend/src/config/animationRegistry.js:189 [name] Player
+llars-frontend/src/config/animationRegistry.js:190 [description] Scale bei Hover
+llars-frontend/src/config/animationRegistry.js:208 [name] Zotero
+llars-frontend/src/config/animationRegistry.js:209 [description] Zotero Literaturverwaltung - stilisiertes Z
+llars-frontend/src/config/animationRegistry.js:216 [name] Claude
+llars-frontend/src/config/animationRegistry.js:217 [description] Anthropic Claude AI
+llars-frontend/src/config/animationRegistry.js:223 [name] OpenAI
+llars-frontend/src/config/animationRegistry.js:224 [description] OpenAI Logo
+llars-frontend/src/config/animationRegistry.js:230 [name] Gemini
+llars-frontend/src/config/animationRegistry.js:231 [description] Google Gemini AI
+llars-frontend/src/config/animationRegistry.js:237 [name] Ollama
+llars-frontend/src/config/animationRegistry.js:238 [description] Ollama Local LLM
+llars-frontend/src/config/animationRegistry.js:244 [name] LiteLLM
+llars-frontend/src/config/animationRegistry.js:245 [description] LiteLLM Proxy
+llars-frontend/src/config/animationRegistry.js:251 [name] vLLM
+llars-frontend/src/config/animationRegistry.js:252 [description] vLLM Inference Server
+llars-frontend/src/config/animationRegistry.js:259 [name] Arrow Left
+llars-frontend/src/config/animationRegistry.js:260 [description] Pfeil nach links
+llars-frontend/src/config/animationRegistry.js:266 [name] Arrow Right
+llars-frontend/src/config/animationRegistry.js:267 [description] Pfeil nach rechts
+llars-frontend/src/config/animationRegistry.js:273 [name] Arrow Up
+llars-frontend/src/config/animationRegistry.js:274 [description] Pfeil nach oben
+llars-frontend/src/config/animationRegistry.js:280 [name] Arrow Down
+llars-frontend/src/config/animationRegistry.js:281 [description] Pfeil nach unten
+llars-frontend/src/config/animationRegistry.js:287 [name] Plus
+llars-frontend/src/config/animationRegistry.js:288 [description] Plus/Hinzufügen
+llars-frontend/src/config/animationRegistry.js:294 [name] Minus
+llars-frontend/src/config/animationRegistry.js:295 [description] Minus/Entfernen
+llars-frontend/src/config/animationRegistry.js:301 [name] Close
+llars-frontend/src/config/animationRegistry.js:302 [description] Schließen/X
+llars-frontend/src/config/animationRegistry.js:308 [name] Check
+llars-frontend/src/config/animationRegistry.js:309 [description] Häkchen/Bestätigen
+llars-frontend/src/config/animationRegistry.js:315 [name] Search
+llars-frontend/src/config/animationRegistry.js:316 [description] Suche/Lupe
+llars-frontend/src/config/animationRegistry.js:322 [name] Menu
+llars-frontend/src/config/animationRegistry.js:323 [description] Menü/Drei Punkte
+llars-frontend/src/config/animationRegistry.js:336 [name] Spin
+llars-frontend/src/config/animationRegistry.js:337 [description] Kontinuierliche Rotation (mdi-spin Klasse)
+llars-frontend/src/config/animationRegistry.js:344 [name] Compile Pulse
+llars-frontend/src/config/animationRegistry.js:345 [description] Pulsierender Punkt für Kompilier-Status
+llars-frontend/src/config/animationRegistry.js:352 [name] Typing Indicator
+llars-frontend/src/config/animationRegistry.js:353 [description] Drei bouncing Punkte für Tipp-Animation
+llars-frontend/src/config/animationRegistry.js:360 [name] Pulse
+llars-frontend/src/config/animationRegistry.js:361 [description] Einfacher Pulse-Effekt (scale + opacity)
+llars-frontend/src/config/animationRegistry.js:374 [name] Pendulum
+llars-frontend/src/config/animationRegistry.js:375 [description] Pendelnde Bewegung (vor und zurück)
+llars-frontend/src/config/animationRegistry.js:389 [name] Fade + Slide
+llars-frontend/src/config/animationRegistry.js:390 [description] Ausblenden mit Verschiebung nach oben
+llars-frontend/src/config/animationRegistry.js:396 [name] Scale
+llars-frontend/src/config/animationRegistry.js:397 [description] Ein-/Auszoomen
+llars-frontend/src/config/animationRegistry.js:403 [name] Bounce
+llars-frontend/src/config/animationRegistry.js:404 [description] Bounce-Effekt beim Einblenden
+llars-frontend/src/config/animationRegistry.js:415 [title] LLoading - Dokumenten-Ladeanimation
+llars-frontend/src/config/animationRegistry.js:417 [description] Animationen der LLoading Komponente
+llars-frontend/src/config/animationRegistry.js:422 [title] Animierte Icons (Hover)
+llars-frontend/src/config/animationRegistry.js:424 [description] Icon-Animationen die bei Hover aktiviert werden
+llars-frontend/src/config/animationRegistry.js:429 [title] Statische Icons
+llars-frontend/src/config/animationRegistry.js:431 [description] Icons ohne Animation (Brand & UI)
+llars-frontend/src/config/animationRegistry.js:436 [title] Kontinuierliche Indikatoren
+llars-frontend/src/config/animationRegistry.js:438 [description] Dauerhaft laufende Status-Animationen
+llars-frontend/src/config/animationRegistry.js:443 [title] Progress Animationen
+llars-frontend/src/config/animationRegistry.js:445 [description] Animationen für Progress-Balken
+llars-frontend/src/config/animationRegistry.js:450 [title] Vue Transitions
+llars-frontend/src/config/animationRegistry.js:452 [description] Vue Transition Effekte
+llars-frontend/src/components/LatexCollab/LatexEditorPane/constants.js:18 [label] \\documentclass', type: 'keyword', info: 'Dokumentklasse', apply: '\\documentclass{}
+llars-frontend/src/components/LatexCollab/LatexEditorPane/constants.js:19 [label] \\usepackage', type: 'keyword', info: 'Paket laden', apply: '\\usepackage{}
+llars-frontend/src/components/LatexCollab/LatexEditorPane/constants.js:20 [label] \\begin', type: 'keyword', info: 'Umgebung starten', apply: '\\begin{}
+llars-frontend/src/components/LatexCollab/LatexEditorPane/constants.js:21 [label] \\end', type: 'keyword', info: 'Umgebung beenden', apply: '\\end{}
+llars-frontend/src/components/LatexCollab/LatexEditorPane/constants.js:22 [label] \\section', type: 'keyword', info: 'Abschnitt', apply: '\\section{}
+llars-frontend/src/components/LatexCollab/LatexEditorPane/constants.js:23 [label] \\subsection', type: 'keyword', info: 'Unterabschnitt', apply: '\\subsection{}
+llars-frontend/src/components/LatexCollab/LatexEditorPane/constants.js:24 [label] \\subsubsection', type: 'keyword', info: 'Unter-Unterabschnitt', apply: '\\subsubsection{}
+llars-frontend/src/components/LatexCollab/LatexEditorPane/constants.js:25 [label] \\paragraph', type: 'keyword', info: 'Paragraph', apply: '\\paragraph{}
+llars-frontend/src/components/LatexCollab/LatexEditorPane/constants.js:26 [label] \\textbf', type: 'function', info: 'Fett', apply: '\\textbf{}
+llars-frontend/src/components/LatexCollab/LatexEditorPane/constants.js:27 [label] \\textit', type: 'function', info: 'Kursiv', apply: '\\textit{}
+llars-frontend/src/components/LatexCollab/LatexEditorPane/constants.js:28 [label] \\emph', type: 'function', info: 'Hervorheben', apply: '\\emph{}
+llars-frontend/src/components/LatexCollab/LatexEditorPane/constants.js:29 [label] \\underline', type: 'function', info: 'Unterstreichen', apply: '\\underline{}
+llars-frontend/src/components/LatexCollab/LatexEditorPane/constants.js:30 [label] \\item', type: 'keyword', info: 'Listenpunkt', apply: '\\item
+llars-frontend/src/components/LatexCollab/LatexEditorPane/constants.js:31 [label] \\label', type: 'keyword', info: 'Label', apply: '\\label{}
+llars-frontend/src/components/LatexCollab/LatexEditorPane/constants.js:32 [label] \\ref', type: 'keyword', info: 'Referenz', apply: '\\ref{}
+llars-frontend/src/components/LatexCollab/LatexEditorPane/constants.js:33 [label] \\pageref', type: 'keyword', info: 'Seitenreferenz', apply: '\\pageref{}
+llars-frontend/src/components/LatexCollab/LatexEditorPane/constants.js:34 [label] \\cite', type: 'keyword', info: 'Zitat', apply: '\\cite{}
+llars-frontend/src/components/LatexCollab/LatexEditorPane/constants.js:35 [label] \\citet', type: 'keyword', info: 'Textzitat', apply: '\\citet{}
+llars-frontend/src/components/LatexCollab/LatexEditorPane/constants.js:36 [label] \\citep', type: 'keyword', info: 'Klammerzitat', apply: '\\citep{}
+llars-frontend/src/components/LatexCollab/LatexEditorPane/constants.js:37 [label] \\includegraphics', type: 'keyword', info: 'Grafik', apply: '\\includegraphics[]{}
+llars-frontend/src/components/LatexCollab/LatexEditorPane/constants.js:38 [label] \\caption', type: 'keyword', info: 'Caption', apply: '\\caption{}
+llars-frontend/src/components/LatexCollab/LatexEditorPane/constants.js:39 [label] \\centering', type: 'keyword', info: 'Zentrieren', apply: '\\centering
+llars-frontend/src/components/LatexCollab/LatexEditorPane/constants.js:40 [label] \\footnote', type: 'keyword', info: 'Fussnote', apply: '\\footnote{}
+llars-frontend/src/components/LatexCollab/LatexEditorPane/constants.js:41 [label] \\url', type: 'keyword', info: 'URL', apply: '\\url{}
+llars-frontend/src/components/LatexCollab/LatexEditorPane/constants.js:42 [label] \\href', type: 'keyword', info: 'Link', apply: '\\href{}{}
+llars-frontend/src/components/LatexCollab/LatexEditorPane/constants.js:43 [label] \\title', type: 'keyword', info: 'Titel', apply: '\\title{}
+llars-frontend/src/components/LatexCollab/LatexEditorPane/constants.js:44 [label] \\author', type: 'keyword', info: 'Autor', apply: '\\author{}
+llars-frontend/src/components/LatexCollab/LatexEditorPane/constants.js:45 [label] \\date', type: 'keyword', info: 'Datum', apply: '\\date{}
+llars-frontend/src/components/LatexCollab/LatexEditorPane/constants.js:46 [label] \\maketitle', type: 'keyword', info: 'Titelseite', apply: '\\maketitle
+llars-frontend/src/components/LatexCollab/LatexEditorPane/constants.js:47 [label] \\tableofcontents', type: 'keyword', info: 'Inhaltsverzeichnis', apply: '\\tableofcontents
+llars-frontend/src/components/LatexCollab/LatexEditorPane/constants.js:48 [label] \\newcommand', type: 'keyword', info: 'Neues Kommando', apply: '\\newcommand{}{}
+llars-frontend/src/components/LatexCollab/LatexEditorPane/constants.js:49 [label] \\renewcommand', type: 'keyword', info: 'Kommando aendern', apply: '\\renewcommand{}{}
+llars-frontend/src/components/LatexCollab/LatexEditorPane/constants.js:50 [label] \\input', type: 'keyword', info: 'Datei einfügen', apply: '\\input{}
+llars-frontend/src/components/LatexCollab/LatexEditorPane/constants.js:51 [label] \\include', type: 'keyword', info: 'Datei einbinden', apply: '\\include{}
+llars-frontend/src/components/LatexCollab/LatexEditorPane/constants.js:52 [label] \\frac', type: 'function', info: 'Bruch', apply: '\\frac{}{}
+llars-frontend/src/components/LatexCollab/LatexEditorPane/constants.js:53 [label] \\sqrt', type: 'function', info: 'Wurzel', apply: '\\sqrt{}
+llars-frontend/src/components/LatexCollab/LatexEditorPane/constants.js:54 [label] \\sum', type: 'keyword', info: 'Summe', apply: '\\sum
+llars-frontend/src/components/LatexCollab/LatexEditorPane/constants.js:55 [label] \\int', type: 'keyword', info: 'Integral', apply: '\\int
+llars-frontend/src/components/LatexCollab/LatexEditorPane/constants.js:79 [label] @ai', type: 'text', info: 'Freie KI-Anfrage', boost: 10, apply: '@ai
+llars-frontend/src/components/LatexCollab/LatexEditorPane/constants.js:80 [label] @rewrite', type: 'text', info: 'Text umformulieren', boost: 9, apply: '@rewrite
+llars-frontend/src/components/LatexCollab/LatexEditorPane/constants.js:81 [label] @expand', type: 'text', info: 'Text erweitern', boost: 8, apply: '@expand
+llars-frontend/src/components/LatexCollab/LatexEditorPane/constants.js:82 [label] @summarize', type: 'text', info: 'Text zusammenfassen', boost: 7, apply: '@summarize
+llars-frontend/src/components/LatexCollab/LatexEditorPane/constants.js:83 [label] @fix', type: 'text', info: 'LaTeX/Grammatik korrigieren', boost: 6, apply: '@fix
+llars-frontend/src/components/LatexCollab/LatexEditorPane/constants.js:84 [label] @translate', type: 'text', info: 'Übersetzen (z.B. @translate en)', boost: 5, apply: '@translate
+llars-frontend/src/components/LatexCollab/LatexEditorPane/constants.js:85 [label] @cite', type: 'text', info: 'Zitat aus RAG finden', boost: 4, apply: '@cite
+llars-frontend/src/components/LatexCollab/LatexEditorPane/constants.js:86 [label] @abstract', type: 'text', info: 'Abstract generieren', boost: 3, apply: '@abstract
+llars-frontend/src/components/LatexCollab/LatexEditorPane/constants.js:87 [label] @titles', type: 'text', info: 'Titel vorschlagen', boost: 2, apply: '@titles
+llars-frontend/src/components/LatexCollab/LatexEditorPane/constants.js:94 [label] Fett', shortcut: 'Ctrl+B', snippet: '\\textbf{$SEL$}
+llars-frontend/src/components/LatexCollab/LatexEditorPane/constants.js:95 [label] Kursiv', shortcut: 'Ctrl+I', snippet: '\\textit{$SEL$}
+llars-frontend/src/components/LatexCollab/LatexEditorPane/constants.js:96 [label] Unterstrichen', shortcut: 'Ctrl+U', snippet: '\\underline{$SEL$}
+llars-frontend/src/components/LatexCollab/LatexEditorPane/constants.js:97 [label] Hervorheben', snippet: '\\emph{$SEL$}
+llars-frontend/src/components/LatexCollab/LatexEditorPane/constants.js:98 [label] Typewriter', snippet: '\\texttt{$SEL$}
+llars-frontend/src/components/LatexCollab/LatexEditorPane/constants.js:105 [label] Section', snippet: '\\section{$CURSOR$}\n
+llars-frontend/src/components/LatexCollab/LatexEditorPane/constants.js:106 [label] Subsection', snippet: '\\subsection{$CURSOR$}\n
+llars-frontend/src/components/LatexCollab/LatexEditorPane/constants.js:107 [label] Subsubsection', snippet: '\\subsubsection{$CURSOR$}\n
+llars-frontend/src/components/LatexCollab/LatexEditorPane/constants.js:108 [label] Paragraph', snippet: '\\paragraph{$CURSOR$}\n
+llars-frontend/src/components/LatexCollab/LatexEditorPane/constants.js:115 [label] Aufzählung (Bullets)', snippet: '\\begin{itemize}\n  \\item $CURSOR$\n\\end{itemize}\n
+llars-frontend/src/components/LatexCollab/LatexEditorPane/constants.js:116 [label] Nummerierte Liste', snippet: '\\begin{enumerate}\n  \\item $CURSOR$\n\\end{enumerate}\n
+llars-frontend/src/components/LatexCollab/LatexEditorPane/constants.js:117 [label] Description', snippet: '\\begin{description}\n  \\item[$CURSOR$] \n\\end{description}\n
+llars-frontend/src/components/LatexCollab/LatexEditorPane/constants.js:124 [label] Abbildung', snippet: '\\begin{figure}[htbp]\n  \\centering\n  \\includegraphics[width=0.8\\textwidth]{$CURSOR$}\n  \\caption{Caption}\n  \\label{fig:label}\n\\end{figure}\n
+llars-frontend/src/components/LatexCollab/LatexEditorPane/constants.js:125 [label] Tabelle
+llars-frontend/src/components/LatexCollab/LatexEditorPane/constants.js:126 [label] Code Block', snippet: '\\begin{verbatim}\n$CURSOR$\n\\end{verbatim}\n
+llars-frontend/src/components/LatexCollab/LatexEditorPane/constants.js:127 [label] Zitat', snippet: '\\begin{quote}\n  $CURSOR$\n\\end{quote}\n
+llars-frontend/src/components/LatexCollab/LatexEditorPane/constants.js:134 [label] Inline Math', snippet: '$$$SEL$$
+llars-frontend/src/components/LatexCollab/LatexEditorPane/constants.js:135 [label] Display Math', snippet: '\\[\n  $SEL$\n\\]\n
+llars-frontend/src/components/LatexCollab/LatexEditorPane/constants.js:136 [label] Equation (numbered)', snippet: '\\begin{equation}\n  $CURSOR$\n  \\label{eq:label}\n\\end{equation}\n
+llars-frontend/src/components/LatexCollab/LatexEditorPane/constants.js:137 [label] Align (multi-line)', snippet: '\\begin{align}\n  $CURSOR$ &=  \\\\\n  &= \n\\end{align}\n
+llars-frontend/src/components/LatexCollab/LatexEditorPane/constants.js:138 [label] Bruch', snippet: '\\frac{$CURSOR$}{}
+llars-frontend/src/components/LatexCollab/LatexEditorPane/constants.js:145 [label] Zitieren', snippet: '\\cite{$CURSOR$}
+llars-frontend/src/components/LatexCollab/LatexEditorPane/constants.js:146 [label] Referenz', snippet: '\\ref{$CURSOR$}
+llars-frontend/src/components/LatexCollab/LatexEditorPane/constants.js:147 [label] Label', snippet: '\\label{$CURSOR$}
+llars-frontend/src/components/LatexCollab/LatexEditorPane/constants.js:148 [label] Fußnote', snippet: '\\footnote{$CURSOR$}
+llars-frontend/src/components/LatexCollab/LatexEditorPane/constants.js:149 [label] URL', snippet: '\\url{$CURSOR$}
+llars-frontend/src/components/HistoryGenerator/HistoryGenerationDetail/composables/useHistoryNavigation.js:45 [name] HistoryGenerationDetail
+llars-frontend/src/components/HistoryGenerator/HistoryGenerationDetail/composables/useHistoryNavigation.js:68 [name] HistoryGenerationDetail
+llars-frontend/src/components/HistoryGenerator/HistoryGenerationDetail/composables/useHistoryNavigation.js:76 [name] HistoryGenerator
+llars-frontend/src/components/ChatWithBots/composables/useChatSidebar.js:237 [label] ACT', variant: 'success
+llars-frontend/src/components/ChatWithBots/composables/useChatSidebar.js:238 [label] ReAct', variant: 'accent
+llars-frontend/src/components/ChatWithBots/composables/useChatSidebar.js:239 [label] ReflAct', variant: 'secondary
+llars-frontend/src/components/ChatWithBots/composables/useChatSidebar.js:246 [label] RAG', variant: 'info
+llars-frontend/src/components/PromptEngineering/utils.js:34 [title] , value.get('title
+llars-frontend/src/components/PromptEngineering/composables/usePromptVariables.js:21 [name] input_data
+llars-frontend/src/components/PromptEngineering/composables/usePromptVariables.js:28 [description] Die Eingabedaten
+llars-frontend/src/components/Admin/sections/AdminRAGSection/composables/useRAGCollections.js:33 [title] Name', key: 'name
+llars-frontend/src/components/Admin/sections/AdminRAGSection/composables/useRAGCollections.js:34 [title] Erstellt von', key: 'created_by
+llars-frontend/src/components/Admin/sections/AdminRAGSection/composables/useRAGCollections.js:35 [title] Dokumente', key: 'document_count
+llars-frontend/src/components/Admin/sections/AdminRAGSection/composables/useRAGCollections.js:36 [title] Erstellt', key: 'created_at
+llars-frontend/src/components/Admin/sections/AdminRAGSection/composables/useRAGCollections.js:37 [title] Aktionen', key: 'actions', sortable: false, align: 'end
+llars-frontend/src/components/Admin/sections/AdminRAGSection/composables/useRAGCollections.js:41 [title] Dateiname', key: 'filename
+llars-frontend/src/components/Admin/sections/AdminRAGSection/composables/useRAGCollections.js:42 [title] Größe', key: 'file_size_bytes
+llars-frontend/src/components/Admin/sections/AdminRAGSection/composables/useRAGCollections.js:43 [title] Status', key: 'status
+llars-frontend/src/components/Admin/sections/AdminRAGSection/composables/useRAGCollections.js:44 [title] Chunks', key: 'chunk_count
+llars-frontend/src/components/Admin/sections/AdminRAGSection/composables/useRAGCollections.js:45 [title] Aktionen', key: 'actions', sortable: false, align: 'end
+llars-frontend/src/components/Admin/sections/AdminRAGSection/composables/useRAGDocuments.js:34 [title] Dateiname', key: 'title
+llars-frontend/src/components/Admin/sections/AdminRAGSection/composables/useRAGDocuments.js:35 [title] Collection', key: 'collection_name
+llars-frontend/src/components/Admin/sections/AdminRAGSection/composables/useRAGDocuments.js:36 [title] Größe', key: 'file_size_bytes
+llars-frontend/src/components/Admin/sections/AdminRAGSection/composables/useRAGDocuments.js:37 [title] Status', key: 'status
+llars-frontend/src/components/Admin/sections/AdminRAGSection/composables/useRAGDocuments.js:38 [title] Hochgeladen', key: 'uploaded_at
+llars-frontend/src/components/Admin/sections/AdminRAGSection/composables/useRAGDocuments.js:39 [title] Aktionen', key: 'actions', sortable: false, align: 'end
+llars-frontend/src/components/Admin/RAG/composables/useRAGCollections.js:29 [title] Name', key: 'name
+llars-frontend/src/components/Admin/RAG/composables/useRAGCollections.js:30 [title] Dokumente', key: 'document_count
+llars-frontend/src/components/Admin/RAG/composables/useRAGCollections.js:31 [title] Erstellt', key: 'created_at
+llars-frontend/src/components/Admin/RAG/composables/useRAGCollections.js:32 [title] Aktionen', key: 'actions', sortable: false, align: 'end
+llars-frontend/src/components/Admin/RAG/composables/useRAGCollections.js:36 [title] Dateiname', key: 'filename
+llars-frontend/src/components/Admin/RAG/composables/useRAGCollections.js:37 [title] Größe', key: 'file_size
+llars-frontend/src/components/Admin/RAG/composables/useRAGCollections.js:38 [title] Status', key: 'status
+llars-frontend/src/components/Admin/RAG/composables/useRAGCollections.js:39 [title] Chunks', key: 'chunk_count
+llars-frontend/src/components/Admin/RAG/composables/useRAGCollections.js:40 [title] Aktionen', key: 'actions', sortable: false, align: 'end
+llars-frontend/src/components/Admin/RAG/composables/useRAGDocuments.js:36 [title] Dateiname', key: 'filename
+llars-frontend/src/components/Admin/RAG/composables/useRAGDocuments.js:37 [title] Collection', key: 'collection_name
+llars-frontend/src/components/Admin/RAG/composables/useRAGDocuments.js:38 [title] Größe', key: 'file_size
+llars-frontend/src/components/Admin/RAG/composables/useRAGDocuments.js:39 [title] Status', key: 'status
+llars-frontend/src/components/Admin/RAG/composables/useRAGDocuments.js:40 [title] Hochgeladen', key: 'uploaded_at
+llars-frontend/src/components/Admin/RAG/composables/useRAGDocuments.js:41 [title] Aktionen', key: 'actions', sortable: false, align: 'end
+llars-frontend/src/components/Admin/AdminRAG/useAdminRAGState.js:64 [title] Titel', key: 'title
+llars-frontend/src/components/Admin/AdminRAG/useAdminRAGState.js:65 [title] Dateiname', key: 'filename
+llars-frontend/src/components/Admin/AdminRAG/useAdminRAGState.js:66 [title] Größe', key: 'file_size_mb
+llars-frontend/src/components/Admin/AdminRAG/useAdminRAGState.js:67 [title] Status', key: 'status
+llars-frontend/src/components/Admin/AdminRAG/useAdminRAGState.js:68 [title] Collection', key: 'collection_name
+llars-frontend/src/components/Admin/AdminRAG/useAdminRAGState.js:69 [title] Hochgeladen', key: 'uploaded_at
+llars-frontend/src/components/Admin/AdminRAG/useAdminRAGState.js:70 [title] Aktionen', key: 'actions', sortable: false, width: '150px
+llars-frontend/src/components/Admin/AdminRAG/useAdminRAGState.js:82 [name] ', display_name: '', description: '', icon: '
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotEditor/constants.js:16 [label] Standard
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotEditor/constants.js:19 [description] Klassisches RAG: Eine Anfrage, eine Antwort. Schnellste Option ohne mehrstufiges Reasoning.
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotEditor/constants.js:26 [label] ACT
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotEditor/constants.js:29 [description] Action-Only: Der Agent führt Tools aus ohne explizite Denkschritte anzuzeigen.
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotEditor/constants.js:37 [label] ReAct
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotEditor/constants.js:40 [description] Reasoning + Acting: Transparenter Denkprozess mit nachvollziehbaren Schritten.
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotEditor/constants.js:50 [label] ReflAct
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotEditor/constants.js:53 [description] Zustandsbasierte Reflexion: Bewertet bei jedem Schritt den aktuellen Zustand relativ zum Ziel.
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotEditor/constants.js:70 [label] Look Up
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotEditor/constants.js:72 [description] Einfache Fakten-Suche: "Wer ist der CEO?" - eine Suche, eine Antwort.
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotEditor/constants.js:78 [label] Multi-hop
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotEditor/constants.js:80 [description] Komplexe Verknüpfungen: "Welche Projekte leitet der CEO?" - mehrere Suchschritte nötig.
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotEditor/constants.js:92 [title] RAG-Suche (Semantisch)', value: 'rag_search
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotEditor/constants.js:93 [title] Lexikalische Suche', value: 'lexical_search
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotEditor/constants.js:94 [title] Web-Suche', value: 'web_search
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotEditor/constants.js:95 [title] Antworten', value: 'respond
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotEditor/composables/useChatbotCrawler.js:134 [message] Crawl wird gestartet...
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotEditor/composables/useChatbotCrawler.js:157 [message] Crawl gestartet, warte auf Updates...
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotEditor/composables/useChatbotForm.js:171 [title] Robot', value: 'mdi-robot
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotEditor/composables/useChatbotForm.js:172 [title] Account', value: 'mdi-account
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotEditor/composables/useChatbotForm.js:173 [title] Chat', value: 'mdi-chat
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotEditor/composables/useChatbotForm.js:174 [title] Help', value: 'mdi-help-circle
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotEditor/composables/useChatbotForm.js:175 [title] Information', value: 'mdi-information
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotEditor/composables/useChatbotForm.js:176 [title] Support', value: 'mdi-face-agent
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotEditor/composables/useChatbotForm.js:177 [title] Book', value: 'mdi-book-open-page-variant
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotEditor/composables/useChatbotForm.js:178 [title] Lightbulb', value: 'mdi-lightbulb
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotEditor/composables/useChatbotForm.js:184 [name] Support
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotEditor/composables/useChatbotForm.js:189 [name] FAQ
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotEditor/composables/useChatbotForm.js:194 [name] Onboarding
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotEditor/composables/useChatbotForm.js:199 [name] Technisch
+llars-frontend/src/components/Admin/CrawlerAdmin/WebCrawlerTool/composables/useCrawlerHelpers.js:20 [title] Status', key: 'status', width: '140px
+llars-frontend/src/components/Admin/CrawlerAdmin/WebCrawlerTool/composables/useCrawlerHelpers.js:21 [title] URLs', key: 'urls
+llars-frontend/src/components/Admin/CrawlerAdmin/WebCrawlerTool/composables/useCrawlerHelpers.js:22 [title] Seiten', key: 'pages_crawled', width: '90px', align: 'center
+llars-frontend/src/components/Admin/CrawlerAdmin/WebCrawlerTool/composables/useCrawlerHelpers.js:23 [title] Dokumente', key: 'documents_created', width: '100px', align: 'center
+llars-frontend/src/components/Admin/CrawlerAdmin/WebCrawlerTool/composables/useCrawlerHelpers.js:24 [title] Gestartet', key: 'started_at', width: '160px
+llars-frontend/src/components/Admin/CrawlerAdmin/WebCrawlerTool/composables/useCrawlerHelpers.js:25 [title] ', key: 'actions', width: '80px', sortable: false, align: 'end
+llars-frontend/src/components/Judge/JudgeConfig/useJudgeConfigActions.js:141 [name] JudgeSession
+llars-frontend/src/components/Judge/JudgeSession/composables/useSessionConstants.js:12 [name] Rollenspiele', icon: 'mdi-theater', color: '#E91E63', short: 'S1
+llars-frontend/src/components/Judge/JudgeSession/composables/useSessionConstants.js:13 [name] Feature', icon: 'mdi-star', color: '#9C27B0', short: 'S2
+llars-frontend/src/components/Judge/JudgeSession/composables/useSessionConstants.js:14 [name] Anonymisiert', icon: 'llars:anonymize', color: '#2196F3', short: 'S3
+llars-frontend/src/components/Judge/JudgeSession/composables/useSessionConstants.js:15 [name] Synthetisch', icon: 'mdi-robot', color: '#FF9800', short: 'S4
+llars-frontend/src/components/Judge/JudgeSession/composables/useSessionConstants.js:16 [name] Live-Tests', icon: 'mdi-lightning-bolt', color: '#4CAF50', short: 'S5
+llars-frontend/src/components/Judge/JudgeSession/composables/useSessionConstants.js:30 [title] Analyse Berater-Kohärenz', icon: 'mdi-account-tie
+llars-frontend/src/components/Judge/JudgeSession/composables/useSessionConstants.js:31 [title] Analyse Klienten-Kohärenz', icon: 'mdi-account
+llars-frontend/src/components/Judge/JudgeSession/composables/useSessionConstants.js:32 [title] Analyse Beratungsqualität', icon: 'mdi-star
+llars-frontend/src/components/Judge/JudgeSession/composables/useSessionConstants.js:33 [title] Analyse Empathie', icon: 'mdi-heart
+llars-frontend/src/components/Judge/JudgeSession/composables/useSessionConstants.js:34 [title] Analyse Authentizität', icon: 'mdi-check-decagram
+llars-frontend/src/components/Judge/JudgeSession/composables/useSessionConstants.js:35 [title] Analyse Lösungsorientierung', icon: 'mdi-lightbulb
+llars-frontend/src/components/Judge/JudgeSession/composables/useSessionConstants.js:40 [label] Berater-Kohärenz
+llars-frontend/src/components/Judge/JudgeSession/composables/useSessionConstants.js:41 [label] Klienten-Kohärenz
+llars-frontend/src/components/Judge/JudgeSession/composables/useSessionConstants.js:42 [label] Qualität
+llars-frontend/src/components/Judge/JudgeSession/composables/useSessionConstants.js:43 [label] Empathie
+llars-frontend/src/components/Judge/JudgeSession/composables/useSessionConstants.js:44 [label] Authentizität
+llars-frontend/src/components/Judge/JudgeSession/composables/useSessionConstants.js:45 [label] Lösungsorientierung
+llars-frontend/src/components/Judge/JudgeSession/composables/useSessionConstants.js:50 [title] #', key: 'queue_position', sortable: true, width: '60px
+llars-frontend/src/components/Judge/JudgeSession/composables/useSessionConstants.js:51 [title] Status', key: 'status', sortable: true, width: '120px
+llars-frontend/src/components/Judge/JudgeSession/composables/useSessionConstants.js:52 [title] Säule A', key: 'pillar_a
+llars-frontend/src/components/Judge/JudgeSession/composables/useSessionConstants.js:53 [title] ', key: 'vs', sortable: false, width: '50px
+llars-frontend/src/components/Judge/JudgeSession/composables/useSessionConstants.js:54 [title] Säule B', key: 'pillar_b
+llars-frontend/src/components/Judge/JudgeSession/composables/useSessionConstants.js:55 [title] Ergebnis', key: 'result', sortable: false, width: '100px
+llars-frontend/src/components/Judge/JudgeSession/composables/useSessionConstants.js:60 [title] #', key: 'comparison_index
+llars-frontend/src/components/Judge/JudgeSession/composables/useSessionConstants.js:61 [title] Säulen', key: 'pillars
+llars-frontend/src/components/Judge/JudgeSession/composables/useSessionConstants.js:62 [title] Gewinner', key: 'winner
+llars-frontend/src/components/Judge/JudgeSession/composables/useSessionConstants.js:63 [title] Konfidenz', key: 'confidence_score
+llars-frontend/src/components/Judge/JudgeSession/composables/useSessionConstants.js:64 [title] Zeitpunkt', key: 'evaluated_at
+llars-frontend/src/components/Judge/JudgeSession/composables/useSessionConstants.js:65 [title] Aktionen', key: 'actions
+llars-frontend/src/components/Judge/WorkerLane/composables/useWorkerState.js:12 [name] Rollenspiele', icon: 'mdi-theater', color: '#E91E63', short: 'S1
+llars-frontend/src/components/Judge/WorkerLane/composables/useWorkerState.js:13 [name] Feature', icon: 'mdi-star', color: '#9C27B0', short: 'S2
+llars-frontend/src/components/Judge/WorkerLane/composables/useWorkerState.js:14 [name] Anonymisiert', icon: 'llars:anonymize', color: '#2196F3', short: 'S3
+llars-frontend/src/components/Judge/WorkerLane/composables/useWorkerState.js:15 [name] Synthetisch', icon: 'mdi-robot', color: '#FF9800', short: 'S4
+llars-frontend/src/components/Judge/WorkerLane/composables/useWorkerState.js:16 [name] Live-Tests', icon: 'mdi-lightning-bolt', color: '#4CAF50', short: 'S5
+llars-frontend/src/components/Judge/WorkerLane/composables/useWorkerState.js:31 [title] Berater-Kohärenz
+llars-frontend/src/components/Judge/WorkerLane/composables/useWorkerState.js:32 [title] Klienten-Kohärenz
+llars-frontend/src/components/Judge/WorkerLane/composables/useWorkerState.js:33 [title] Qualität
+llars-frontend/src/components/Judge/WorkerLane/composables/useWorkerState.js:34 [title] Empathie
+llars-frontend/src/components/Judge/WorkerLane/composables/useWorkerState.js:35 [title] Authentizität
+llars-frontend/src/components/Judge/WorkerLane/composables/useWorkerState.js:36 [title] Lösungsorientierung
+llars-frontend/src/components/OnCoCo/OnCoCoResults/composables/useOnCoCoData.js:63 [title] Alle (Berater & Ratsuchend)', value: '
+llars-frontend/src/components/OnCoCo/OnCoCoResults/composables/useOnCoCoData.js:64 [title] Nur Berater', value: 'counselor
+llars-frontend/src/components/OnCoCo/OnCoCoResults/composables/useOnCoCoData.js:65 [title] Nur Ratsuchend', value: 'client
+llars-frontend/src/components/OnCoCo/OnCoCoResults/composables/useOnCoCoLabels.js:13 [name] Berater: Impact Factors
+llars-frontend/src/components/OnCoCo/OnCoCoResults/composables/useOnCoCoLabels.js:15 [description] Wirkfaktoren des Beraters
+llars-frontend/src/components/OnCoCo/OnCoCoResults/composables/useOnCoCoLabels.js:24 [name] Berater: Grundvariablen
+llars-frontend/src/components/OnCoCo/OnCoCoResults/composables/useOnCoCoLabels.js:26 [description] Basisvariablen der Beraterkommunikation
+llars-frontend/src/components/OnCoCo/OnCoCoResults/composables/useOnCoCoLabels.js:35 [name] Klient: Reaktionen
+llars-frontend/src/components/OnCoCo/OnCoCoResults/composables/useOnCoCoLabels.js:37 [description] Klient-Reaktionen und -Äußerungen
+llars-frontend/src/components/OnCoCo/OnCoCoResults/composables/useOnCoCoLabels.js:49 [name] Meta-Kommunikation
+llars-frontend/src/components/OnCoCo/OnCoCoResults/composables/useOnCoCoLabels.js:51 [description] Kommunikation über Kommunikation
+llars-frontend/src/components/OnCoCo/OnCoCoResults/composables/useOnCoCoLabels.js:70 [description] Appreciation & Clarification - Wertschätzende und klärende Aussagen
+llars-frontend/src/components/OnCoCo/OnCoCoResults/composables/useOnCoCoLabels.js:78 [description] Resource Activation - Aktivierung von Stärken und Ressourcen
+llars-frontend/src/components/OnCoCo/OnCoCoResults/composables/useOnCoCoLabels.js:86 [description] Problem Actualization - Vergegenwärtigung von Problemen
+llars-frontend/src/components/OnCoCo/OnCoCoResults/composables/useOnCoCoLabels.js:94 [description] Motivation Activation - Aktivierung von Veränderungsmotivation
+llars-frontend/src/components/OnCoCo/OnCoCoResults/composables/useOnCoCoLabels.js:104 [description] Psychosocial - Psychosoziale Themen
+llars-frontend/src/components/OnCoCo/OnCoCoResults/composables/useOnCoCoLabels.js:112 [description] Emotional - Emotionale Aspekte
+llars-frontend/src/components/OnCoCo/OnCoCoResults/composables/useOnCoCoLabels.js:120 [description] Cognitive - Kognitive Aspekte
+llars-frontend/src/components/OnCoCo/OnCoCoResults/composables/useOnCoCoLabels.js:128 [description] Motivational - Motivationale Aspekte
+llars-frontend/src/components/OnCoCo/OnCoCoResults/composables/useOnCoCoLabels.js:138 [description] Resource Expression - Äußerung von Ressourcen
+llars-frontend/src/components/OnCoCo/OnCoCoResults/composables/useOnCoCoLabels.js:146 [description] Problem Expression - Äußerung von Problemen
+llars-frontend/src/components/OnCoCo/OnCoCoResults/composables/useOnCoCoLabels.js:154 [description] Neutral Expression - Neutrale Äußerung
+llars-frontend/src/components/OnCoCo/OnCoCoResults/composables/useOnCoCoLabels.js:162 [description] Resource Expression Positive - Positive Ressourcenäußerung
+llars-frontend/src/components/OnCoCo/OnCoCoResults/composables/useOnCoCoLabels.js:170 [description] Resource Expression Negative - Negative Ressourcenäußerung
+llars-frontend/src/components/OnCoCo/OnCoCoResults/composables/useOnCoCoLabels.js:178 [description] Problem Expression Emotional - Emotionale Problemäußerung
+llars-frontend/src/components/OnCoCo/OnCoCoResults/composables/useOnCoCoLabels.js:186 [description] Problem Expression Cognitive - Kognitive Problemäußerung
+llars-frontend/src/components/OnCoCo/OnCoCoResults/composables/useOnCoCoLabels.js:196 [description] Organizational - Organisatorische Meta-Kommunikation
+llars-frontend/src/components/OnCoCo/OnCoCoResults/composables/useOnCoCoLabels.js:204 [description] Process - Prozessbezogene Meta-Kommunikation
+llars-frontend/src/components/OnCoCo/OnCoCoResults/composables/useOnCoCoLabels.js:212 [description] Relational - Beziehungsbezogene Meta-Kommunikation
+llars-frontend/src/workers/anonymizePreview.worker.js:14 [label] EMAIL
+llars-frontend/src/workers/anonymizePreview.worker.js:19 [label] PHONE
+llars-frontend/src/workers/anonymizePreview.worker.js:24 [label] DATE
+llars-frontend/src/workers/anonymizePreview.worker.js:29 [label] PLZ
+llars-frontend/src/workers/anonymizePreview.worker.js:34 [label] TIME
+llars-frontend/src/workers/anonymizePreview.worker.js:39 [label] SVN
+llars-frontend/src/workers/anonymizePreview.worker.js:44 [label] AHV
+llars-frontend/src/workers/anonymizePreview.worker.js:49 [label] IBAN
+llars-frontend/src/workers/anonymizePreview.worker.js:54 [label] URL
+llars-frontend/src/workers/anonymizePreview.worker.js:59 [label] STREET
+llars-frontend/src/workers/anonymizePreview.worker.js:68 [label] PER
+llars-frontend/src/workers/anonymizePreview.worker.js:114 [label] PER
+llars-frontend/src/views/LatexCollab/composables/useLatexOutline.js:15 [label] Part
+llars-frontend/src/views/LatexCollab/composables/useLatexOutline.js:16 [label] Chapter
+llars-frontend/src/views/LatexCollab/composables/useLatexOutline.js:17 [label] Section
+llars-frontend/src/views/LatexCollab/composables/useLatexOutline.js:18 [label] Subsection
+llars-frontend/src/views/LatexCollab/composables/useLatexOutline.js:19 [label] Subsubsection
+llars-frontend/src/views/LatexCollab/composables/useLatexOutline.js:20 [label] Paragraph
+llars-frontend/src/views/ScenarioManager/config/evaluationPresets.js:78 [name] Binär (0-1)
+llars-frontend/src/views/ScenarioManager/config/evaluationPresets.js:79 [description] Einfache Ja/Nein Bewertung
+llars-frontend/src/views/ScenarioManager/config/evaluationPresets.js:96 [name] 4-Punkte (0-3)
+llars-frontend/src/views/ScenarioManager/config/evaluationPresets.js:97 [description] 4-Punkte Skala beginnend bei 0
+llars-frontend/src/views/ScenarioManager/config/evaluationPresets.js:116 [name] Likert-5
+llars-frontend/src/views/ScenarioManager/config/evaluationPresets.js:117 [description] 5-Punkte Likert-Skala (Standard)
+llars-frontend/src/views/ScenarioManager/config/evaluationPresets.js:137 [name] 5-Punkte (0-4)
+llars-frontend/src/views/ScenarioManager/config/evaluationPresets.js:138 [description] 5-Punkte Skala beginnend bei 0
+llars-frontend/src/views/ScenarioManager/config/evaluationPresets.js:158 [name] Likert-7
+llars-frontend/src/views/ScenarioManager/config/evaluationPresets.js:159 [description] 7-Punkte Likert-Skala (feinere Abstufung)
+llars-frontend/src/views/ScenarioManager/config/evaluationPresets.js:181 [name] 10-Punkte (0-9)
+llars-frontend/src/views/ScenarioManager/config/evaluationPresets.js:182 [description] 10-Punkte Skala für feine Abstufung
+llars-frontend/src/views/ScenarioManager/config/evaluationPresets.js:202 [name] 10-Punkte (1-10)
+llars-frontend/src/views/ScenarioManager/config/evaluationPresets.js:203 [description] 10-Punkte Skala (klassisch)
+llars-frontend/src/views/ScenarioManager/config/evaluationPresets.js:221 [name] 5-Sterne
+llars-frontend/src/views/ScenarioManager/config/evaluationPresets.js:222 [description] Klassische 5-Sterne Bewertung
+llars-frontend/src/views/ScenarioManager/config/evaluationPresets.js:235 [name] 10-Punkte
+llars-frontend/src/views/ScenarioManager/config/evaluationPresets.js:236 [description] 10-Punkte Skala für detaillierte Bewertung
+llars-frontend/src/views/ScenarioManager/config/evaluationPresets.js:253 [name] Prozent
+llars-frontend/src/views/ScenarioManager/config/evaluationPresets.js:254 [description] Bewertung in Prozent (0-100)
+llars-frontend/src/views/ScenarioManager/config/evaluationPresets.js:271 [name] Benutzerdefiniert
+llars-frontend/src/views/ScenarioManager/config/evaluationPresets.js:272 [description] Eigene Skala definieren
+llars-frontend/src/views/ScenarioManager/config/evaluationPresets.js:287 [name] LLM-as-Judge Standard
+llars-frontend/src/views/ScenarioManager/config/evaluationPresets.js:288 [description] Standard-Metriken für Text-Evaluation (Coherence, Fluency, Relevance, Consistency)
+llars-frontend/src/views/ScenarioManager/config/evaluationPresets.js:334 [name] SummEval
+llars-frontend/src/views/ScenarioManager/config/evaluationPresets.js:335 [description] Metriken aus dem SummEval-Benchmark für Zusammenfassungen
+llars-frontend/src/views/ScenarioManager/config/evaluationPresets.js:381 [name] Antwort-Qualität
+llars-frontend/src/views/ScenarioManager/config/evaluationPresets.js:382 [description] Bewertung von LLM-generierten Antworten auf Nutzerfragen
+llars-frontend/src/views/ScenarioManager/config/evaluationPresets.js:428 [name] Textqualität (3 Dimensionen)
+llars-frontend/src/views/ScenarioManager/config/evaluationPresets.js:429 [description] Kompakte Bewertung mit 3 Kerndimensionen
+llars-frontend/src/views/ScenarioManager/config/evaluationPresets.js:469 [name] Nachrichtenartikel
+llars-frontend/src/views/ScenarioManager/config/evaluationPresets.js:470 [description] Bewertung von Nachrichtenartikeln nach journalistischen Standards
+llars-frontend/src/views/ScenarioManager/config/evaluationPresets.js:516 [name] Multi-Dimensional (Benutzerdefiniert)
+llars-frontend/src/views/ScenarioManager/config/evaluationPresets.js:517 [description] Eigene Dimensionen definieren für mehrdimensionales Rating
+llars-frontend/src/views/ScenarioManager/config/evaluationPresets.js:542 [name] 3 Kategorien
+llars-frontend/src/views/ScenarioManager/config/evaluationPresets.js:543 [description] Gut / Mittel / Schlecht
+llars-frontend/src/views/ScenarioManager/config/evaluationPresets.js:557 [name] 5 Kategorien
+llars-frontend/src/views/ScenarioManager/config/evaluationPresets.js:558 [description] Sehr gut bis Sehr schlecht
+llars-frontend/src/views/ScenarioManager/config/evaluationPresets.js:574 [name] Prioritäts-Ranking
+llars-frontend/src/views/ScenarioManager/config/evaluationPresets.js:575 [description] Items nach Priorität sortieren
+llars-frontend/src/views/ScenarioManager/config/evaluationPresets.js:589 [name] Relevanz-Ranking
+llars-frontend/src/views/ScenarioManager/config/evaluationPresets.js:590 [description] Nach Relevanz sortieren
+llars-frontend/src/views/ScenarioManager/config/evaluationPresets.js:604 [name] Benutzerdefiniert
+llars-frontend/src/views/ScenarioManager/config/evaluationPresets.js:605 [description] Eigene Kategorien definieren
+llars-frontend/src/views/ScenarioManager/config/evaluationPresets.js:619 [name] Fake/Echt
+llars-frontend/src/views/ScenarioManager/config/evaluationPresets.js:620 [description] Binäre Authentizitätsprüfung
+llars-frontend/src/views/ScenarioManager/config/evaluationPresets.js:634 [name] Positiv/Negativ
+llars-frontend/src/views/ScenarioManager/config/evaluationPresets.js:635 [description] Sentiment-Analyse
+llars-frontend/src/views/ScenarioManager/config/evaluationPresets.js:649 [name] 3-Klassen Sentiment
+llars-frontend/src/views/ScenarioManager/config/evaluationPresets.js:650 [description] Positiv / Neutral / Negativ
+llars-frontend/src/views/ScenarioManager/config/evaluationPresets.js:664 [name] Themen-Tags
+llars-frontend/src/views/ScenarioManager/config/evaluationPresets.js:665 [description] Mehrere Themen pro Item auswählen
+llars-frontend/src/views/ScenarioManager/config/evaluationPresets.js:677 [name] Benutzerdefiniert
+llars-frontend/src/views/ScenarioManager/config/evaluationPresets.js:678 [description] Eigene Kategorien definieren
+llars-frontend/src/views/ScenarioManager/config/evaluationPresets.js:693 [name] Paarweiser Vergleich
+llars-frontend/src/views/ScenarioManager/config/evaluationPresets.js:694 [description] A vs B - welches ist besser?
+llars-frontend/src/views/ScenarioManager/config/evaluationPresets.js:707 [name] Paarweise mit Konfidenz
+llars-frontend/src/views/ScenarioManager/config/evaluationPresets.js:708 [description] A vs B mit Konfidenzbewertung
+llars-frontend/src/views/ScenarioManager/config/evaluationPresets.js:722 [name] Multi-Kriterien
+llars-frontend/src/views/ScenarioManager/config/evaluationPresets.js:723 [description] Vergleich nach mehreren Kriterien
+llars-frontend/src/views/ScenarioManager/config/evaluationPresets.js:738 [name] Turnier
+llars-frontend/src/views/ScenarioManager/config/evaluationPresets.js:739 [description] Eliminierungs-Turnier Format
+llars-frontend/src/views/ScenarioManager/config/evaluationPresets.js:752 [name] Benutzerdefiniert
+llars-frontend/src/views/ScenarioManager/config/evaluationPresets.js:753 [description] Eigene Vergleichskriterien definieren
+llars-frontend/src/views/ScenarioManager/config/evaluationPresets.js:776 [name] Beratungsqualität
+llars-frontend/src/views/ScenarioManager/config/evaluationPresets.js:777 [description] Mehrdimensionale Bewertung der Beratungsqualität in E-Mail-Konversationen
+llars-frontend/src/views/ScenarioManager/config/evaluationPresets.js:830 [name] Antwortqualität
+llars-frontend/src/views/ScenarioManager/config/evaluationPresets.js:831 [description] Bewertung der Qualität einzelner Beraterantworten
+llars-frontend/src/views/ScenarioManager/config/evaluationPresets.js:878 [name] Einfache Bewertung
+llars-frontend/src/views/ScenarioManager/config/evaluationPresets.js:879 [description] Schnelle Gesamtbewertung ohne Dimensionen
+llars-frontend/src/views/ScenarioManager/config/evaluationPresets.js:901 [name] Benutzerdefiniert
+llars-frontend/src/views/ScenarioManager/config/evaluationPresets.js:902 [description] Eigene Bewertungsdimensionen definieren
+llars-frontend/src/views/ScenarioManager/config/evaluationPresets.js:926 [name] Nachrichten-Echtheit
+llars-frontend/src/views/ScenarioManager/config/evaluationPresets.js:927 [description] Erkennung von echten vs. gefälschten Beratungsnachrichten
+llars-frontend/src/views/ScenarioManager/config/evaluationPresets.js:963 [name] KI-Erkennung
+llars-frontend/src/views/ScenarioManager/config/evaluationPresets.js:964 [description] Erkennung von KI-generierten vs. menschlichen Texten
+llars-frontend/src/views/ScenarioManager/config/evaluationPresets.js:998 [name] Dringlichkeits-Einschätzung
+llars-frontend/src/views/ScenarioManager/config/evaluationPresets.js:999 [description] Einschätzung der Dringlichkeit einer Beratungsanfrage
+llars-frontend/src/views/ScenarioManager/config/evaluationPresets.js:1041 [name] Benutzerdefiniert
+llars-frontend/src/views/ScenarioManager/config/evaluationPresets.js:1042 [description] Eigene Kategorien definieren
+llars-frontend/src/components/AppFooter.vue:31 [title] Dokumentation
+llars-frontend/src/components/AppFooter.vue:35 [title] Impressum
+llars-frontend/src/components/AppFooter.vue:39 [title] Datenschutz
+llars-frontend/src/components/AppFooter.vue:43 [title] Kontakt
+llars-frontend/src/components/ChatWithBots.vue:347 [text] ', color: 'success
+llars-frontend/src/components/Rater/Rater.vue:121 [name] EvaluationHub
+llars-frontend/src/components/Rater/Rater.vue:125 [name] RaterDetail
+llars-frontend/src/components/Rater/RaterDetailFeature.vue:458 [name] RaterDetail
+llars-frontend/src/components/Rater/RaterDetail.vue:314 [name] EvaluationScenario
+llars-frontend/src/components/LatexCollab/LatexWorkspaceGitPanel.vue:982 [text] D', color: 'error', tooltip: t('workspaceGit.status.deleted
+llars-frontend/src/components/LatexCollab/LatexWorkspaceGitPanel.vue:983 [text] A', color: 'info', tooltip: t('workspaceGit.status.added
+llars-frontend/src/components/LatexCollab/LatexWorkspaceGitPanel.vue:984 [text] M', color: 'warning', tooltip: t('workspaceGit.status.modified
+llars-frontend/src/components/HistoryGenerator/HistoryGenerationDetail.vue:468 [name] EvaluationScenario
+llars-frontend/src/components/HistoryGenerator/HistoryGenerationDetail.vue:470 [name] EvaluationHub
+llars-frontend/src/components/HistoryGenerator/HistoryGenerationDetail.vue:482 [name] HistoryGenerationDetail
+llars-frontend/src/components/HistoryGenerator/HistoryGenerationDetail.vue:492 [name] HistoryGenerationDetail
+llars-frontend/src/components/HistoryGenerator/HistoryGeneration.vue:94 [name] EvaluationHub
+llars-frontend/src/components/HistoryGenerator/HistoryGeneration.vue:98 [name] HistoryGenerationDetail
+llars-frontend/src/components/MarkdownCollab/MarkdownTreeNode.vue:149 [name] MarkdownTreeNode
+llars-frontend/src/components/PromptEngineering/PromptEngineeringDetail.vue:581 [name] editor
+llars-frontend/src/components/Admin/AdminHome.vue:127 [title] Alle', value: 'all
+llars-frontend/src/components/Admin/AdminHome.vue:128 [title] Aktiv', value: 'aktiv
+llars-frontend/src/components/Admin/AdminHome.vue:129 [title] Ausstehend', value: 'ausstehend
+llars-frontend/src/components/Admin/AdminHome.vue:130 [title] Beendet', value: 'beendet
+llars-frontend/src/components/Admin/AdminHome.vue:204 [name] AdminUserProgressStats
+llars-frontend/src/components/Admin/AdminTester.vue:78 [name] John 1
+llars-frontend/src/components/Admin/AdminTester.vue:79 [name] Joao 2
+llars-frontend/src/components/Admin/AdminTester.vue:80 [name] Jean 3
+llars-frontend/src/components/Admin/AdminTester.vue:81 [name] Jonny 4
+llars-frontend/src/components/Admin/AdminTester.vue:82 [name] Guisepe 5
+llars-frontend/src/components/Admin/sections/AdminRAGSection.vue:997 [tooltip] Details anzeigen', variant: 'primary
+llars-frontend/src/components/Admin/sections/AdminRAGSection.vue:1005 [tooltip] Neu indexieren
+llars-frontend/src/components/Admin/sections/AdminRAGSection.vue:1016 [tooltip] Zugriff teilen
+llars-frontend/src/components/Admin/sections/AdminRAGSection.vue:1024 [tooltip] Löschen
+llars-frontend/src/components/Admin/sections/AdminSystemSettingsSection.vue:616 [label] Evaluator
+llars-frontend/src/components/Admin/sections/AdminSystemSettingsSection.vue:617 [label] Researcher
+llars-frontend/src/components/Admin/sections/AdminSystemSettingsSection.vue:618 [label] Chatbot Manager
+llars-frontend/src/components/Admin/sections/AdminSystemHealthSection.vue:77 [label] Host Metrics', icon: 'mdi-server
+llars-frontend/src/components/Admin/sections/AdminSystemHealthSection.vue:78 [label] API Performance', icon: 'mdi-api
+llars-frontend/src/components/Admin/sections/AdminSystemHealthSection.vue:79 [label] WebSocket', icon: 'mdi-connection
+llars-frontend/src/components/Admin/sections/AdminSystemHealthSection.vue:115 [label] Critical', color: '#f44336
+llars-frontend/src/components/Admin/sections/AdminSystemHealthSection.vue:120 [label] Warning', color: '#FF9800
+llars-frontend/src/components/Admin/sections/AdminSystemHealthSection.vue:125 [label] Healthy', color: '#4CAF50
+llars-frontend/src/components/Admin/sections/AdminSystemHealthSection.vue:128 [label] Unknown', color: '#9E9E9E
+llars-frontend/src/components/Admin/sections/AdminDockerMonitorSection.vue:256 [title] LLARS', value: 'project
+llars-frontend/src/components/Admin/sections/AdminDockerMonitorSection.vue:257 [title] Alle', value: 'all
+llars-frontend/src/components/Admin/sections/AdminDockerMonitorSection.vue:400 [title] System', value: 'system' }, { title: 'Container', value: 'container
+llars-frontend/src/components/Admin/sections/AdminDockerMonitorSection.vue:734 [name] LiveChart
+llars-frontend/src/components/Admin/sections/AdminUsersSection.vue:526 [title] Benutzer', key: 'username
+llars-frontend/src/components/Admin/sections/AdminUsersSection.vue:527 [title] ', key: 'actions', sortable: false, align: 'end', width: '80px
+llars-frontend/src/components/Admin/sections/AdminUsersSection.vue:531 [title] Benutzer', key: 'username
+llars-frontend/src/components/Admin/sections/AdminUsersSection.vue:532 [title] Status', key: 'status
+llars-frontend/src/components/Admin/sections/AdminUsersSection.vue:533 [title] Rollen', key: 'roles
+llars-frontend/src/components/Admin/sections/AdminUsersSection.vue:534 [title] Aktionen', key: 'actions', sortable: false, align: 'end
+llars-frontend/src/components/Admin/sections/AdminUsersSection.vue:599 [label] Nicht angelegt', variant: 'warning
+llars-frontend/src/components/Admin/sections/AdminUsersSection.vue:614 [tooltip] Details
+llars-frontend/src/components/Admin/sections/AdminUsersSection.vue:623 [tooltip] Bearbeiten
+llars-frontend/src/components/Admin/sections/AdminUsersSection.vue:637 [tooltip] Löschen
+llars-frontend/src/components/Admin/sections/AdminChatbotActivitySection.vue:245 [title] Letzte Stunde', value: '1h
+llars-frontend/src/components/Admin/sections/AdminChatbotActivitySection.vue:246 [title] Letzte 24h', value: '24h
+llars-frontend/src/components/Admin/sections/AdminChatbotActivitySection.vue:247 [title] Letzte 7 Tage', value: '7d
+llars-frontend/src/components/Admin/sections/AdminChatbotActivitySection.vue:248 [title] Letzte 30 Tage', value: '30d
+llars-frontend/src/components/Admin/sections/AdminChatbotActivitySection.vue:252 [title] Alle
+llars-frontend/src/components/Admin/sections/AdminChatbotActivitySection.vue:253 [title] Chatbot', value: 'chatbot
+llars-frontend/src/components/Admin/sections/AdminChatbotActivitySection.vue:254 [title] Wizard', value: 'wizard
+llars-frontend/src/components/Admin/sections/AdminChatbotActivitySection.vue:255 [title] Chat', value: 'chat
+llars-frontend/src/components/Admin/sections/AdminChatbotActivitySection.vue:256 [title] Collection', value: 'collection
+llars-frontend/src/components/Admin/sections/AdminChatbotActivitySection.vue:257 [title] Dokument', value: 'document
+llars-frontend/src/components/Admin/sections/AdminPermissionsSection.vue:736 [title] Aktion', key: 'action
+llars-frontend/src/components/Admin/sections/AdminPermissionsSection.vue:737 [title] Benutzer', key: 'performed_by
+llars-frontend/src/components/Admin/sections/AdminPermissionsSection.vue:738 [title] Ziel', key: 'target_username
+llars-frontend/src/components/Admin/sections/AdminPermissionsSection.vue:739 [title] Details', key: 'details
+llars-frontend/src/components/Admin/sections/AdminPermissionsSection.vue:740 [title] Zeitpunkt', key: 'timestamp
+llars-frontend/src/components/Admin/sections/AdminPermissionsSection.vue:744 [title] Chatbot', key: 'display_name
+llars-frontend/src/components/Admin/sections/AdminPermissionsSection.vue:745 [title] Sichtbarkeit', key: 'is_public
+llars-frontend/src/components/Admin/sections/AdminPermissionsSection.vue:746 [title] Zuweisungen', key: 'allowed_usernames
+llars-frontend/src/components/Admin/sections/AdminPermissionsSection.vue:747 [title] ', key: 'actions', sortable: false, align: 'end
+llars-frontend/src/components/Admin/sections/AdminPermissionsSection.vue:751 [title] Modell', key: 'display_name
+llars-frontend/src/components/Admin/sections/AdminPermissionsSection.vue:752 [title] Kategorie', key: 'model_type
+llars-frontend/src/components/Admin/sections/AdminPermissionsSection.vue:753 [title] Fähigkeiten', key: 'capabilities
+llars-frontend/src/components/Admin/sections/AdminPermissionsSection.vue:754 [title] Provider', key: 'provider
+llars-frontend/src/components/Admin/sections/AdminPermissionsSection.vue:755 [title] Sichtbarkeit', key: 'is_restricted
+llars-frontend/src/components/Admin/sections/AdminPermissionsSection.vue:756 [title] Zuweisungen', key: 'allowed_usernames
+llars-frontend/src/components/Admin/sections/AdminPermissionsSection.vue:757 [title] ', key: 'actions', sortable: false, align: 'end
+llars-frontend/src/components/Admin/sections/AdminPermissionsSection.vue:762 [label] LLM
+llars-frontend/src/components/Admin/sections/AdminPermissionsSection.vue:763 [label] Embedding
+llars-frontend/src/components/Admin/sections/AdminPermissionsSection.vue:764 [label] Reranker
+llars-frontend/src/components/Admin/sections/AdminPermissionsSection.vue:765 [label] Unbekannt
+llars-frontend/src/components/Admin/sections/AdminScenariosSection.vue:246 [title] Alle', value: 'all
+llars-frontend/src/components/Admin/sections/AdminScenariosSection.vue:247 [title] Aktiv', value: 'aktiv
+llars-frontend/src/components/Admin/sections/AdminScenariosSection.vue:248 [title] Ausstehend', value: 'ausstehend
+llars-frontend/src/components/Admin/sections/AdminScenariosSection.vue:249 [title] Beendet', value: 'beendet
+llars-frontend/src/components/Admin/sections/AdminScenariosSection.vue:253 [title] Alle', value: 'all
+llars-frontend/src/components/Admin/sections/AdminScenariosSection.vue:254 [title] 🏆 Ranking', value: 'ranking
+llars-frontend/src/components/Admin/sections/AdminScenariosSection.vue:255 [title] ⭐️ Rating', value: 'rating
+llars-frontend/src/components/Admin/sections/AdminScenariosSection.vue:256 [title] ✉️ Verlaufsbewertung', value: 'mail_rating
+llars-frontend/src/components/Admin/sections/AdminScenariosSection.vue:257 [title] ⚖️ Gegenüberstellung', value: 'comparison
+llars-frontend/src/components/Admin/sections/AdminScenariosSection.vue:258 [title] 🕵️ Fake/Echt', value: 'authenticity
+llars-frontend/src/components/Admin/sections/AdminScenariosSection.vue:263 [title] Name', key: 'name
+llars-frontend/src/components/Admin/sections/AdminScenariosSection.vue:264 [title] Typ', key: 'function_type_name
+llars-frontend/src/components/Admin/sections/AdminScenariosSection.vue:265 [title] Ersteller', key: 'created_by
+llars-frontend/src/components/Admin/sections/AdminScenariosSection.vue:266 [title] Beginn', key: 'begin_date
+llars-frontend/src/components/Admin/sections/AdminScenariosSection.vue:267 [title] Ende', key: 'end_date
+llars-frontend/src/components/Admin/sections/AdminScenariosSection.vue:268 [title] Status', key: 'status
+llars-frontend/src/components/Admin/sections/AdminScenariosSection.vue:269 [title] Aktionen', key: 'actions', sortable: false, align: 'end
+llars-frontend/src/components/Admin/sections/AdminLlmProvidersSection.vue:671 [text] ', color: 'info
+llars-frontend/src/components/Admin/sections/AdminLlmProvidersSection.vue:674 [title] Provider', key: 'name
+llars-frontend/src/components/Admin/sections/AdminLlmProvidersSection.vue:675 [title] Base URL', key: 'base_url
+llars-frontend/src/components/Admin/sections/AdminLlmProvidersSection.vue:676 [title] Default', key: 'is_default
+llars-frontend/src/components/Admin/sections/AdminLlmProvidersSection.vue:677 [title] Status', key: 'is_active
+llars-frontend/src/components/Admin/sections/AdminLlmProvidersSection.vue:678 [title] ', key: 'actions', sortable: false, align: 'end
+llars-frontend/src/components/Admin/sections/AdminLlmProvidersSection.vue:682 [title] Modell', key: 'display_name
+llars-frontend/src/components/Admin/sections/AdminLlmProvidersSection.vue:683 [title] Provider', key: 'provider_label
+llars-frontend/src/components/Admin/sections/AdminLlmProvidersSection.vue:684 [title] Erstellt von', key: 'created_by
+llars-frontend/src/components/Admin/sections/AdminLlmProvidersSection.vue:685 [title] Status', key: 'is_active
+llars-frontend/src/components/Admin/sections/AdminLlmProvidersSection.vue:686 [title] Sichtbarkeit', key: 'is_restricted
+llars-frontend/src/components/Admin/sections/AdminLlmProvidersSection.vue:687 [title] Zuweisungen', key: 'allowed_usernames
+llars-frontend/src/components/Admin/sections/AdminLlmProvidersSection.vue:688 [title] ', key: 'actions', sortable: false, align: 'end
+llars-frontend/src/components/Admin/sections/AdminLlmProvidersSection.vue:695 [title] OpenAI
+llars-frontend/src/components/Admin/sections/AdminLlmProvidersSection.vue:696 [subtitle] GPT-4o, o1, o3
+llars-frontend/src/components/Admin/sections/AdminLlmProvidersSection.vue:705 [title] Anthropic
+llars-frontend/src/components/Admin/sections/AdminLlmProvidersSection.vue:706 [subtitle] Claude 3.5, Claude 4
+llars-frontend/src/components/Admin/sections/AdminLlmProvidersSection.vue:717 [title] Google Gemini
+llars-frontend/src/components/Admin/sections/AdminLlmProvidersSection.vue:718 [subtitle] Gemini 2.0, 1.5 Pro
+llars-frontend/src/components/Admin/sections/AdminLlmProvidersSection.vue:729 [title] Ollama
+llars-frontend/src/components/Admin/sections/AdminLlmProvidersSection.vue:730 [subtitle] Lokale Modelle
+llars-frontend/src/components/Admin/sections/AdminLlmProvidersSection.vue:739 [title] vLLM
+llars-frontend/src/components/Admin/sections/AdminLlmProvidersSection.vue:740 [subtitle] Self-hosted Inference
+llars-frontend/src/components/Admin/sections/AdminLlmProvidersSection.vue:749 [title] LiteLLM
+llars-frontend/src/components/Admin/sections/AdminLlmProvidersSection.vue:750 [subtitle] Universal Proxy
+llars-frontend/src/components/Admin/sections/AdminLlmProvidersSection.vue:814 [title] OpenAI', value: 'openai
+llars-frontend/src/components/Admin/sections/AdminLlmProvidersSection.vue:815 [title] OpenAI kompatibel', value: 'openai_compatible
+llars-frontend/src/components/Admin/sections/AdminLlmProvidersSection.vue:816 [title] Ollama', value: 'ollama
+llars-frontend/src/components/Admin/sections/AdminLlmProvidersSection.vue:817 [title] vLLM', value: 'vllm
+llars-frontend/src/components/Admin/sections/AdminLlmProvidersSection.vue:818 [title] LiteLLM Proxy', value: 'litellm
+llars-frontend/src/components/Admin/sections/AdminLlmProvidersSection.vue:819 [title] Anthropic (Claude)', value: 'anthropic
+llars-frontend/src/components/Admin/sections/AdminLlmProvidersSection.vue:820 [title] Google Gemini', value: 'gemini
+llars-frontend/src/components/Admin/sections/AdminLlmProvidersSection.vue:821 [title] Custom', value: 'custom
+llars-frontend/src/components/Admin/sections/AdminOverview.vue:237 [title] Benutzer', value: '0', icon: 'mdi-account-group', color: '#b0ca97
+llars-frontend/src/components/Admin/sections/AdminOverview.vue:238 [title] Aktive Szenarien', value: '0', icon: 'mdi-clipboard-check', color: '#98d4bb
+llars-frontend/src/components/Admin/sections/AdminOverview.vue:239 [title] RAG Dokumente', value: '0', icon: 'mdi-file-document-multiple', color: '#a8c5e2
+llars-frontend/src/components/Admin/sections/AdminOverview.vue:240 [title] Abschlussrate', value: '0%', icon: 'mdi-chart-line', color: '#e8c87a
+llars-frontend/src/components/Admin/sections/AdminOverview.vue:252 [label] Login/Logout', color: '#4CAF50
+llars-frontend/src/components/Admin/sections/AdminOverview.vue:253 [label] Chatbot', color: '#9C27B0
+llars-frontend/src/components/Admin/sections/AdminOverview.vue:254 [label] Szenarien', color: '#2196F3
+llars-frontend/src/components/Admin/sections/AdminOverview.vue:255 [label] RAG/Dokumente', color: '#00BCD4
+llars-frontend/src/components/Admin/sections/AdminOverview.vue:256 [label] Fehler', color: '#f44336
+llars-frontend/src/components/Admin/sections/AdminOverview.vue:257 [label] System', color: '#607D8B
+llars-frontend/src/components/Admin/sections/AdminOverview.vue:268 [title] Name', key: 'name
+llars-frontend/src/components/Admin/sections/AdminOverview.vue:269 [title] Typ', key: 'function_type_name
+llars-frontend/src/components/Admin/sections/AdminOverview.vue:270 [title] Status', key: 'status
+llars-frontend/src/components/Admin/sections/AdminOverview.vue:271 [title] Fortschritt', key: 'progress', sortable: true, width: '180px
+llars-frontend/src/components/Admin/sections/AdminOverview.vue:272 [title] Enddatum', key: 'end_date
+llars-frontend/src/components/Admin/sections/AdminOverview.vue:293 [title] Matomo Analytics öffnen', shortTitle: 'Analytics', icon: 'mdi-chart-bar
+llars-frontend/src/components/Admin/sections/AdminOverview.vue:294 [title] Neues Szenario erstellen', shortTitle: 'Szenario', icon: 'mdi-plus-circle', action: () => navigateToSection('scenarios
+llars-frontend/src/components/Admin/sections/AdminOverview.vue:295 [title] Benutzer verwalten', shortTitle: 'Benutzer', icon: 'mdi-account-cog', action: () => navigateToSection('users
+llars-frontend/src/components/Admin/sections/AdminOverview.vue:296 [title] Animationen (Debug)', shortTitle: 'Animationen', icon: 'mdi-animation-play
+llars-frontend/src/components/Admin/sections/AdminFieldPromptsSection.vue:364 [title] Max Tokens', key: 'max_tokens', sortable: true, width: '100px
+llars-frontend/src/components/Admin/sections/AdminFieldPromptsSection.vue:365 [title] Temp.', key: 'temperature', sortable: true, width: '80px
+llars-frontend/src/components/Admin/sections/AdminSystemMonitorSection.vue:234 [label] Error', icon: 'mdi-alert-circle', variant: 'danger
+llars-frontend/src/components/Admin/sections/AdminSystemMonitorSection.vue:235 [label] Warning', icon: 'mdi-alert', variant: 'warning
+llars-frontend/src/components/Admin/sections/AdminSystemMonitorSection.vue:236 [label] Info', icon: 'mdi-information', variant: 'info
+llars-frontend/src/components/Admin/sections/AdminSystemMonitorSection.vue:237 [label] Success', icon: 'mdi-check-circle', variant: 'success
+llars-frontend/src/components/Admin/sections/AdminReferralSection.vue:527 [label] Entwurf', value: 'draft
+llars-frontend/src/components/Admin/sections/AdminReferralSection.vue:528 [label] Aktiv', value: 'active
+llars-frontend/src/components/Admin/sections/AdminReferralSection.vue:529 [label] Pausiert', value: 'paused
+llars-frontend/src/components/Admin/sections/AdminReferralSection.vue:530 [label] Abgelaufen', value: 'expired
+llars-frontend/src/components/Admin/sections/AdminReferralSection.vue:531 [label] Archiviert', value: 'archived
+llars-frontend/src/components/Admin/sections/AdminReferralSection.vue:536 [title] Name', key: 'name
+llars-frontend/src/components/Admin/sections/AdminReferralSection.vue:537 [title] Status', key: 'status
+llars-frontend/src/components/Admin/sections/AdminReferralSection.vue:538 [title] Links', key: 'link_count
+llars-frontend/src/components/Admin/sections/AdminReferralSection.vue:539 [title] Zeitraum', key: 'dates
+llars-frontend/src/components/Admin/sections/AdminReferralSection.vue:540 [title] Erstellt von', key: 'created_by
+llars-frontend/src/components/Admin/sections/AdminReferralSection.vue:541 [title] Aktionen', key: 'actions', sortable: false, align: 'end
+llars-frontend/src/components/Admin/sections/AdminReferralSection.vue:545 [title] Code/Slug', key: 'identifier
+llars-frontend/src/components/Admin/sections/AdminReferralSection.vue:546 [title] Rolle', key: 'role_name
+llars-frontend/src/components/Admin/sections/AdminReferralSection.vue:547 [title] Registrierungen', key: 'stats
+llars-frontend/src/components/Admin/sections/AdminReferralSection.vue:548 [title] Aktiv', key: 'is_active
+llars-frontend/src/components/Admin/sections/AdminReferralSection.vue:549 [title] ', key: 'actions', sortable: false, align: 'end
+llars-frontend/src/components/Admin/sections/AdminReferralSection.vue:553 [title] Benutzer', key: 'username
+llars-frontend/src/components/Admin/sections/AdminReferralSection.vue:554 [title] Quelle', key: 'source
+llars-frontend/src/components/Admin/sections/AdminReferralSection.vue:555 [title] Rolle', key: 'role_assigned
+llars-frontend/src/components/Admin/sections/AdminReferralSection.vue:556 [title] Registriert am', key: 'registered_at
+llars-frontend/src/components/Admin/sections/SystemHealth/WebSocketTab.vue:92 [label] In
+llars-frontend/src/components/Admin/sections/SystemHealth/WebSocketTab.vue:93 [label] Out
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotEditor.vue:267 [description] Verwendet das systemweite Standard-Reranker-Modell
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotBuilderWizard.vue:335 [title] URL
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotBuilderWizard.vue:336 [title] Crawling
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotBuilderWizard.vue:337 [title] Embedding
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotBuilderWizard.vue:338 [title] Konfiguration
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotBuilderWizard.vue:339 [title] Fertig
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotBuilderWizard.vue:555 [message] URL-Erkundung startet...
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotManager.vue:129 [label] Chatbots', icon: 'llars:chatbot-manage
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotManager.vue:130 [label] Collections', icon: 'mdi-folder-multiple
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotManager.vue:131 [label] Dokumente', icon: 'mdi-file-document-multiple
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotList.vue:47 [label] Collections
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotList.vue:48 [label] Gespräche
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotList.vue:238 [label] ACT', variant: 'success', icon: 'mdi-play
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotList.vue:239 [label] ReAct', variant: 'accent', icon: 'mdi-thought-bubble
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotList.vue:240 [label] ReflAct', variant: 'secondary', icon: 'mdi-target
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotList.vue:246 [label] RAG', variant: 'info', icon: 'mdi-magnify
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotEditor/tabs/AgentModeTab.vue:400 [label] Standard
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotEditor/tabs/AgentModeTab.vue:402 [text] Frage', class: 'step-query
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotEditor/tabs/AgentModeTab.vue:403 [text] LLM', class: 'step-llm
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotEditor/tabs/AgentModeTab.vue:404 [text] Antwort', class: 'step-answer
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotEditor/tabs/AgentModeTab.vue:408 [label] ACT
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotEditor/tabs/AgentModeTab.vue:410 [text] Frage', class: 'step-query
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotEditor/tabs/AgentModeTab.vue:411 [text] ACTION', class: 'step-action
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotEditor/tabs/AgentModeTab.vue:412 [text] OBSERVATION', class: 'step-observation
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotEditor/tabs/AgentModeTab.vue:413 [text] Antwort', class: 'step-answer
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotEditor/tabs/AgentModeTab.vue:417 [label] ReAct
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotEditor/tabs/AgentModeTab.vue:419 [text] Frage', class: 'step-query
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotEditor/tabs/AgentModeTab.vue:420 [text] THOUGHT', class: 'step-thought
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotEditor/tabs/AgentModeTab.vue:421 [text] ACTION', class: 'step-action
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotEditor/tabs/AgentModeTab.vue:422 [text] OBSERVATION', class: 'step-observation
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotEditor/tabs/AgentModeTab.vue:423 [text] Antwort', class: 'step-answer
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotEditor/tabs/AgentModeTab.vue:428 [label] ReflAct
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotEditor/tabs/AgentModeTab.vue:430 [text] Aufgabe', class: 'step-query
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotEditor/tabs/AgentModeTab.vue:431 [text] REFLECTION', class: 'step-reflection
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotEditor/tabs/AgentModeTab.vue:432 [text] ACTION', class: 'step-action
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotEditor/tabs/AgentModeTab.vue:433 [text] OBSERVATION', class: 'step-observation
+llars-frontend/src/components/Admin/ChatbotAdmin/ChatbotEditor/tabs/AgentModeTab.vue:434 [text] Antwort', class: 'step-answer
+llars-frontend/src/components/RAG/CollectionEditor.vue:223 [title] Buch', icon: 'mdi-book
+llars-frontend/src/components/RAG/CollectionEditor.vue:224 [title] Ordner', icon: 'mdi-folder
+llars-frontend/src/components/RAG/CollectionEditor.vue:225 [title] FAQ', icon: 'mdi-comment-question
+llars-frontend/src/components/RAG/CollectionEditor.vue:226 [title] Datenbank', icon: 'mdi-database
+llars-frontend/src/components/RAG/CollectionEditor.vue:227 [title] Text', icon: 'mdi-text-box
+llars-frontend/src/components/RAG/CollectionEditor.vue:228 [title] E-Mail', icon: 'mdi-email
+llars-frontend/src/components/RAG/CollectionEditor.vue:229 [title] Archiv', icon: 'mdi-archive
+llars-frontend/src/components/RAG/DocumentManager.vue:216 [title] Dateiname', key: 'filename
+llars-frontend/src/components/RAG/DocumentManager.vue:217 [title] Collection', key: 'collection
+llars-frontend/src/components/RAG/DocumentManager.vue:218 [title] Größe', key: 'file_size
+llars-frontend/src/components/RAG/DocumentManager.vue:219 [title] Status', key: 'status
+llars-frontend/src/components/RAG/DocumentManager.vue:220 [title] Chunks', key: 'chunk_count
+llars-frontend/src/components/RAG/DocumentManager.vue:221 [title] Abrufe', key: 'retrieval_count
+llars-frontend/src/components/RAG/DocumentManager.vue:222 [title] Hochgeladen', key: 'uploaded_at
+llars-frontend/src/components/RAG/DocumentManager.vue:223 [title] Aktionen', key: 'actions', sortable: false, align: 'end
+llars-frontend/src/components/RAG/DocumentManager.vue:234 [title] Ausstehend', color: 'warning
+llars-frontend/src/components/RAG/DocumentManager.vue:235 [title] Verarbeitung', color: 'info
+llars-frontend/src/components/RAG/DocumentManager.vue:236 [title] Indexiert', color: 'success
+llars-frontend/src/components/RAG/DocumentManager.vue:237 [title] Fehler', color: 'error
+llars-frontend/src/components/Ranker/RankerDetail.vue:386 [name] RankerDetail
+llars-frontend/src/components/Ranker/RankerDetail.vue:397 [name] RankerDetail
+llars-frontend/src/components/Ranker/RankerDetail.vue:407 [name] EvaluationScenario
+llars-frontend/src/components/Ranker/RankerDetail.vue:410 [name] EvaluationHub
+llars-frontend/src/components/Ranker/Ranker.vue:92 [name] EvaluationHub
+llars-frontend/src/components/Ranker/Ranker.vue:96 [name] RankerDetail
+llars-frontend/src/components/common/LCard.vue:110 [label] Collections
+llars-frontend/src/components/common/LTabs.vue:42 [label] Chatbots', icon: 'mdi-robot
+llars-frontend/src/components/common/LTabs.vue:43 [label] Collections', icon: 'mdi-folder-multiple
+llars-frontend/src/components/common/LTabs.vue:44 [label] Dokumente', icon: 'mdi-file-document-multiple
+llars-frontend/src/components/common/LActionGroup.vue:49 [tooltip] Favorit
+llars-frontend/src/components/common/LActionGroup.vue:110 [tooltip] Anzeigen
+llars-frontend/src/components/common/LActionGroup.vue:116 [tooltip] Bearbeiten
+llars-frontend/src/components/common/LActionGroup.vue:122 [tooltip] Löschen
+llars-frontend/src/components/common/LActionGroup.vue:128 [tooltip] Statistiken
+llars-frontend/src/components/common/LActionGroup.vue:134 [tooltip] Herunterladen
+llars-frontend/src/components/common/LActionGroup.vue:140 [tooltip] Kopieren
+llars-frontend/src/components/common/LActionGroup.vue:146 [tooltip] Sperren
+llars-frontend/src/components/common/LActionGroup.vue:152 [tooltip] Entsperren
+llars-frontend/src/components/common/LActionGroup.vue:158 [tooltip] Aktualisieren
+llars-frontend/src/components/common/LActionGroup.vue:164 [tooltip] Schließen
+llars-frontend/src/components/common/LActionGroup.vue:170 [tooltip] Hinzufügen
+llars-frontend/src/components/common/LActionGroup.vue:176 [tooltip] Einstellungen
+llars-frontend/src/components/common/LActionGroup.vue:182 [tooltip] Information
+llars-frontend/src/components/common/LActionGroup.vue:188 [tooltip] Starten
+llars-frontend/src/components/common/LActionGroup.vue:194 [tooltip] Pausieren
+llars-frontend/src/components/common/LActionGroup.vue:200 [tooltip] Stoppen
+llars-frontend/src/components/common/LChart.vue:47 [label] RX
+llars-frontend/src/components/common/LChart.vue:48 [label] TX
+llars-frontend/src/components/common/LRadioGroup.vue:45 [label] Option A
+llars-frontend/src/components/common/LRadioGroup.vue:46 [label] Option B
+llars-frontend/src/components/common/LRadioGroup.vue:47 [label] Option C
+llars-frontend/src/components/common/LRadio.vue:40 [label] A
+llars-frontend/src/components/parts/CategorySelection.vue:9 [name] Wählen Sie eine Fall Kategorie aus
+llars-frontend/src/components/parts/ScenarioDetailsDialog.vue:367 [name] ScenarioDetailDialog
+llars-frontend/src/components/parts/CreateScenarioDialog.vue:597 [name] ScenarioDialog
+llars-frontend/src/components/parts/CreateScenarioDialog.vue:814 [title] Alle erhalten alle Threads', value: 'all
+llars-frontend/src/components/parts/CreateScenarioDialog.vue:815 [title] Round Robin (gleichmäßig verteilen)', value: 'round_robin
+llars-frontend/src/components/parts/CreateScenarioDialog.vue:819 [title] Originale Reihenfolge (keine Mischung)', value: 'none
+llars-frontend/src/components/parts/CreateScenarioDialog.vue:820 [title] Gemischt – für alle gleich', value: 'shuffle_same
+llars-frontend/src/components/parts/CreateScenarioDialog.vue:821 [title] Gemischt – pro Nutzer unterschiedlich', value: 'shuffle_per_user
+llars-frontend/src/components/Authenticity/AuthenticityOverview.vue:85 [name] EvaluationHub
+llars-frontend/src/components/Authenticity/AuthenticityOverview.vue:89 [name] AuthenticityDetail
+llars-frontend/src/components/Authenticity/AuthenticityDetail.vue:261 [name] EvaluationScenario
+llars-frontend/src/components/Authenticity/AuthenticityDetail.vue:264 [name] EvaluationHub
+llars-frontend/src/components/Authenticity/AuthenticityDetail.vue:273 [name] AuthenticityDetail
+llars-frontend/src/components/Authenticity/AuthenticityDetail.vue:284 [name] AuthenticityDetail
+llars-frontend/src/components/Judge/JudgeSession.vue:21 [name] JudgeOverview
+llars-frontend/src/components/Judge/JudgeSession.vue:547 [name] JudgeResults
+llars-frontend/src/components/Judge/JudgeResults.vue:10 [name] JudgeSession
+llars-frontend/src/components/Judge/JudgeConfig.vue:9 [name] JudgeOverview
+llars-frontend/src/components/Judge/JudgeConfig.vue:465 [name] JudgeOverview
+llars-frontend/src/components/Judge/JudgeOverview.vue:278 [name] JudgeConfig
+llars-frontend/src/components/Judge/JudgeOverview.vue:283 [name] JudgeSession
+llars-frontend/src/components/Judge/JudgeOverview.vue:288 [name] JudgeResults
+llars-frontend/src/components/Judge/JudgeSession/fullscreen/UnifiedFullscreenDialog.vue:347 [name] Berater Kohärenz
+llars-frontend/src/components/Judge/JudgeSession/fullscreen/UnifiedFullscreenDialog.vue:348 [name] Klient Kohärenz
+llars-frontend/src/components/Judge/JudgeSession/fullscreen/UnifiedFullscreenDialog.vue:349 [name] Qualität
+llars-frontend/src/components/Judge/JudgeSession/fullscreen/UnifiedFullscreenDialog.vue:350 [name] Empathie
+llars-frontend/src/components/Judge/JudgeSession/fullscreen/UnifiedFullscreenDialog.vue:351 [name] Authentizität
+llars-frontend/src/components/Judge/JudgeSession/fullscreen/UnifiedFullscreenDialog.vue:352 [name] Lösungsorientierung
+llars-frontend/src/components/Judge/JudgeSession/fullscreen/UnifiedFullscreenDialog.vue:356 [name] Überblick
+llars-frontend/src/components/Judge/JudgeSession/fullscreen/UnifiedFullscreenDialog.vue:357 [name] Stärken A
+llars-frontend/src/components/Judge/JudgeSession/fullscreen/UnifiedFullscreenDialog.vue:358 [name] Stärken B
+llars-frontend/src/components/Judge/JudgeSession/fullscreen/UnifiedFullscreenDialog.vue:359 [name] Schwächen A
+llars-frontend/src/components/Judge/JudgeSession/fullscreen/UnifiedFullscreenDialog.vue:360 [name] Schwächen B
+llars-frontend/src/components/Judge/JudgeSession/fullscreen/UnifiedFullscreenDialog.vue:361 [name] Vergleich
+llars-frontend/src/components/Judge/JudgeSession/fullscreen/FocusWorkerView.vue:222 [label] Übersicht', icon: 'mdi-view-dashboard
+llars-frontend/src/components/Judge/JudgeSession/fullscreen/FocusWorkerView.vue:223 [label] Scores', icon: 'mdi-chart-bar
+llars-frontend/src/components/Judge/JudgeSession/fullscreen/FocusWorkerView.vue:224 [label] Analyse', icon: 'mdi-text-search
+llars-frontend/src/components/Judge/JudgeSession/fullscreen/FocusWorkerView.vue:225 [label] Stream', icon: 'mdi-console
+llars-frontend/src/components/Evaluation/EvaluationScenario.vue:229 [name] RankerDetail
+llars-frontend/src/components/Evaluation/EvaluationScenario.vue:238 [name] RaterDetail
+llars-frontend/src/components/Evaluation/EvaluationScenario.vue:245 [name] HistoryGenerationDetail
+llars-frontend/src/components/Evaluation/EvaluationScenario.vue:252 [name] ComparisonDetail
+llars-frontend/src/components/Evaluation/EvaluationScenario.vue:259 [name] AuthenticityDetail
+llars-frontend/src/components/Evaluation/EvaluationScenario.vue:266 [name] EvaluationSession
+llars-frontend/src/components/Evaluation/EvaluationScenario.vue:274 [name] EvaluationHub
+llars-frontend/src/components/Evaluation/EvaluationHub.vue:242 [name] EvaluationScenario
+llars-frontend/src/components/OnCoCo/OnCoCoOverview.vue:471 [name] OnCoCoConfig
+llars-frontend/src/components/OnCoCo/OnCoCoOverview.vue:475 [name] OnCoCoInfo
+llars-frontend/src/components/OnCoCo/OnCoCoOverview.vue:481 [name] OnCoCoResults
+llars-frontend/src/components/OnCoCo/OnCoCoOverview.vue:486 [name] OnCoCoResults
+llars-frontend/src/components/OnCoCo/OnCoCoInfo.vue:517 [name] OnCoCoOverview
+llars-frontend/src/components/OnCoCo/OnCoCoConfig.vue:9 [name] OnCoCoOverview
+llars-frontend/src/components/OnCoCo/OnCoCoConfig.vue:125 [name] OnCoCoOverview
+llars-frontend/src/components/OnCoCo/OnCoCoConfig.vue:275 [name] OnCoCoResults
+llars-frontend/src/components/OnCoCo/OnCoCoResults.vue:9 [name] OnCoCoOverview
+llars-frontend/src/components/comparison/ComparisonFooterBar.vue:111 [name] ComparisonDetail
+llars-frontend/src/components/comparison/ComparisonFooterBar.vue:118 [name] ComparisonDetail
+llars-frontend/src/components/comparison/ComparisonFooterBar.vue:123 [name] Comparison
+llars-frontend/src/components/comparison/Comparison.vue:95 [name] EvaluationHub
+llars-frontend/src/components/comparison/Comparison.vue:99 [name] ComparisonDetail
+llars-frontend/src/components/comparison/ComparisonDetail.vue:220 [name] EvaluationScenario
+llars-frontend/src/components/comparison/ComparisonDetail.vue:222 [name] EvaluationHub
+llars-frontend/src/components/comparison/ComparisonDetail.vue:230 [name] ComparisonDetail
+llars-frontend/src/components/comparison/ComparisonDetail.vue:240 [name] ComparisonDetail
+llars-frontend/src/components/DataImporter/DataImporterWizard.vue:283 [title] Upload', icon: 'mdi-upload
+llars-frontend/src/components/DataImporter/DataImporterWizard.vue:284 [title] Beschreiben', icon: 'mdi-chat-question
+llars-frontend/src/components/DataImporter/DataImporterWizard.vue:285 [title] Konfigurieren', icon: 'mdi-cog
+llars-frontend/src/components/DataImporter/DataImporterWizard.vue:286 [title] Benutzer', icon: 'mdi-account-group
+llars-frontend/src/components/DataImporter/DataImporterWizard.vue:287 [title] Import', icon: 'mdi-rocket-launch
+llars-frontend/src/components/DataImporter/steps/StepScenario.vue:507 [name] Rating', icon: 'mdi-star', color: 'amber', description: 'Bewertung von Features (1-5 Sterne)
+llars-frontend/src/components/DataImporter/steps/StepScenario.vue:508 [name] Ranking', icon: 'mdi-sort', color: 'blue', description: 'Sortierung von Features (Drag & Drop)
+llars-frontend/src/components/DataImporter/steps/StepScenario.vue:509 [name] Mail Rating', icon: 'mdi-email-check', color: 'green', description: 'Bewertung ganzer Konversationen
+llars-frontend/src/components/DataImporter/steps/StepScenario.vue:510 [name] Comparison', icon: 'mdi-compare', color: 'purple', description: 'Paarweiser Vergleich (A vs B)
+llars-frontend/src/components/DataImporter/steps/StepScenario.vue:511 [name] Authenticity', icon: 'mdi-shield-check', color: 'orange', description: 'Fake/Real Unterscheidung
+llars-frontend/src/components/DataImporter/steps/StepScenario.vue:512 [name] Chatbot Arena', icon: 'mdi-sword-cross', color: 'teal', description: 'Paarweise Vergleiche im Arena-Modus
+llars-frontend/src/components/DataImporter/steps/StepScenario.vue:513 [name] Labeling', icon: 'mdi-label-multiple', color: 'indigo', description: 'Texte in Kategorien einordnen
+llars-frontend/src/components/DataImporter/steps/StepScenario.vue:532 [name] Alle sehen alles', description: 'Jeder Rater sieht alle Threads
+llars-frontend/src/components/DataImporter/steps/StepScenario.vue:533 [name] Round Robin', description: 'Threads werden gleichmäßig auf Rater verteilt
+llars-frontend/src/components/DataImporter/steps/StepScenario.vue:537 [name] Original', description: 'Reihenfolge wie in den Daten
+llars-frontend/src/components/DataImporter/steps/StepScenario.vue:538 [name] Zufällig (alle gleich)', description: 'Zufällige Reihenfolge, für alle Rater gleich
+llars-frontend/src/components/DataImporter/steps/StepScenario.vue:539 [name] Zufällig (pro Nutzer)', description: 'Jeder Rater sieht andere Reihenfolge
+llars-frontend/src/components/DataImporter/steps/StepScenario.vue:543 [label] 1 Woche
+llars-frontend/src/components/DataImporter/steps/StepScenario.vue:544 [label] 2 Wochen
+llars-frontend/src/components/DataImporter/steps/StepScenario.vue:545 [label] 1 Monat
+llars-frontend/src/components/DataImporter/steps/StepScenario.vue:546 [label] 3 Monate
+llars-frontend/src/components/DataImporter/steps/StepReviewNew.vue:189 [label] Mail Rating', icon: 'mdi-email-star
+llars-frontend/src/components/DataImporter/steps/StepReviewNew.vue:190 [label] Rating', icon: 'mdi-star
+llars-frontend/src/components/DataImporter/steps/StepReviewNew.vue:191 [label] Ranking', icon: 'mdi-sort
+llars-frontend/src/components/DataImporter/steps/StepReviewNew.vue:192 [label] Vergleich', icon: 'mdi-compare
+llars-frontend/src/components/DataImporter/steps/StepReviewNew.vue:193 [label] Echt/Fake', icon: 'mdi-shield-check
+llars-frontend/src/components/DataImporter/steps/StepReviewNew.vue:194 [label] Labels', icon: 'mdi-tag-multiple
+llars-frontend/src/components/DataImporter/steps/StepAnalyze.vue:223 [name] Rating', icon: 'mdi-star
+llars-frontend/src/components/DataImporter/steps/StepAnalyze.vue:224 [name] Ranking', icon: 'mdi-sort
+llars-frontend/src/components/DataImporter/steps/StepAnalyze.vue:225 [name] Mail Rating', icon: 'mdi-email-check
+llars-frontend/src/components/DataImporter/steps/StepAnalyze.vue:226 [name] Comparison', icon: 'mdi-compare
+llars-frontend/src/components/DataImporter/steps/StepAnalyze.vue:227 [name] Authenticity', icon: 'mdi-shield-check
+llars-frontend/src/components/DataImporter/steps/StepReview.vue:214 [name] Rating', icon: 'mdi-star', color: 'amber
+llars-frontend/src/components/DataImporter/steps/StepReview.vue:215 [name] Ranking', icon: 'mdi-sort', color: 'blue
+llars-frontend/src/components/DataImporter/steps/StepReview.vue:216 [name] Mail Rating', icon: 'mdi-email-check', color: 'green
+llars-frontend/src/components/DataImporter/steps/StepReview.vue:217 [name] Comparison', icon: 'mdi-compare', color: 'purple
+llars-frontend/src/components/DataImporter/steps/StepReview.vue:218 [name] Authenticity', icon: 'mdi-shield-check', color: 'orange
+llars-frontend/src/components/DataImporter/steps/StepReview.vue:219 [name] Chatbot Arena', icon: 'mdi-sword-cross', color: 'teal
+llars-frontend/src/components/DataImporter/steps/StepReview.vue:220 [name] Labeling', icon: 'mdi-label-multiple', color: 'indigo
+llars-frontend/src/components/DataImporter/steps/StepDescribe.vue:441 [label] Rating', icon: 'mdi-star
+llars-frontend/src/components/DataImporter/steps/StepDescribe.vue:442 [label] Ranking', icon: 'mdi-sort
+llars-frontend/src/components/DataImporter/steps/StepDescribe.vue:443 [label] Vergleich', icon: 'mdi-compare
+llars-frontend/src/components/DataImporter/steps/StepDescribe.vue:444 [label] Echt/Fake', icon: 'mdi-shield-check
+llars-frontend/src/components/DataImporter/steps/StepDescribe.vue:445 [label] Klassifikation', icon: 'mdi-tag-multiple
+llars-frontend/src/components/DataImporter/steps/StepDescribe.vue:446 [label] Mail Rating', icon: 'mdi-email-star
+llars-frontend/src/components/EvaluationAssistant/EvaluationAssistant.vue:282 [name] EvaluationHub
+llars-frontend/src/components/ScenarioWizard/AIAnalysis/EvalTypeCard.vue:111 [label] Rating
+llars-frontend/src/components/ScenarioWizard/AIAnalysis/EvalTypeCard.vue:116 [label] Ranking
+llars-frontend/src/components/ScenarioWizard/AIAnalysis/EvalTypeCard.vue:121 [label] Labeling
+llars-frontend/src/components/ScenarioWizard/AIAnalysis/EvalTypeCard.vue:126 [label] Vergleich
+llars-frontend/src/components/ScenarioWizard/AIAnalysis/EvalTypeCard.vue:131 [label] Authentizität
+llars-frontend/src/components/ScenarioWizard/AIAnalysis/EvalTypeCard.vue:136 [label] Klassifikation
+llars-frontend/src/components/ScenarioWizard/AIAnalysis/EvalTypeCard.vue:141 [label] E-Mail Rating
+llars-frontend/src/components/ScenarioWizard/AIAnalysis/EvalTypeCard.vue:146 [label] Text Rating
+llars-frontend/src/components/Kaimo/KaimoDocumentsView.vue:203 [title] ', content: '
+llars-frontend/src/components/Kaimo/KaimoHub.vue:164 [name] KaimoPanel
+llars-frontend/src/components/Kaimo/KaimoHub.vue:179 [name] KaimoNewCase
+llars-frontend/src/components/Kaimo/KaimoCaseEditor.vue:1011 [name] KaimoHub
+llars-frontend/src/components/Kaimo/KaimoNewCase.vue:36 [name] KaimoHub
+llars-frontend/src/components/Kaimo/KaimoNewCase.vue:125 [name] KaimoHub
+llars-frontend/src/components/Kaimo/KaimoNewCase.vue:228 [name] KaimoPanel
+llars-frontend/src/components/Kaimo/KaimoCase.vue:154 [text] ', color: 'success
+llars-frontend/src/components/Kaimo/KaimoCase.vue:253 [name] KaimoPanel
+llars-frontend/src/components/Kaimo/KaimoPanel.vue:40 [name] KaimoNewCase
+llars-frontend/src/components/Kaimo/KaimoPanel.vue:48 [name] KaimoHub
+llars-frontend/src/components/Kaimo/KaimoPanel.vue:203 [name] KaimoNewCase
+llars-frontend/src/components/Kaimo/KaimoPanel.vue:328 [text] ', color: 'success
+llars-frontend/src/components/Kaimo/KaimoPanel.vue:373 [name] KaimoCase
+llars-frontend/src/components/Kaimo/KaimoPanel.vue:377 [name] KaimoCaseEditor
+llars-frontend/src/views/LatexCollab/LatexCollabWorkspace.vue:643 [text] ', color: 'info
+llars-frontend/src/views/LatexCollab/LatexCollabWorkspace.vue:2046 [title] Aktuell
+llars-frontend/src/views/ScenarioManager/ScenarioWorkspace.vue:257 [message] ', color: 'success
+llars-frontend/src/views/ScenarioManager/ScenarioWorkspace.vue:283 [name] ranking', variant: 'success
+llars-frontend/src/views/ScenarioManager/ScenarioWorkspace.vue:284 [name] rating', variant: 'warning
+llars-frontend/src/views/ScenarioManager/ScenarioWorkspace.vue:285 [name] mailRating', variant: 'info
+llars-frontend/src/views/ScenarioManager/ScenarioWorkspace.vue:286 [name] comparison', variant: 'primary
+llars-frontend/src/views/ScenarioManager/ScenarioWorkspace.vue:287 [name] authenticity', variant: 'danger
+llars-frontend/src/views/ScenarioManager/ScenarioWorkspace.vue:292 [label] draft
+llars-frontend/src/views/ScenarioManager/ScenarioWorkspace.vue:293 [label] dataCollection
+llars-frontend/src/views/ScenarioManager/ScenarioWorkspace.vue:294 [label] evaluating
+llars-frontend/src/views/ScenarioManager/ScenarioWorkspace.vue:295 [label] analyzing
+llars-frontend/src/views/ScenarioManager/ScenarioWorkspace.vue:296 [label] completed
+llars-frontend/src/views/ScenarioManager/ScenarioWorkspace.vue:297 [label] archived
+llars-frontend/src/views/ScenarioManager/ScenarioWorkspace.vue:345 [name] ScenarioManager
+llars-frontend/src/views/ScenarioManager/ScenarioWorkspace.vue:372 [name] ScenarioWorkspace
+llars-frontend/src/views/ScenarioManager/ScenarioWorkspace.vue:400 [name] ScenarioManager
+llars-frontend/src/views/ScenarioManager/ScenarioManagerHome.vue:215 [name] ScenarioWorkspace
+llars-frontend/src/views/ScenarioManager/ScenarioManagerHome.vue:219 [name] ScenarioWorkspace', params: { id: scenario.id }, query: { tab: 'settings
+llars-frontend/src/views/ScenarioManager/ScenarioManagerHome.vue:225 [name] ScenarioWorkspace
+llars-frontend/src/views/ScenarioManager/ScenarioManagerHome.vue:269 [name] ScenarioEvaluation
+llars-frontend/src/views/ScenarioManager/ScenarioManagerHome.vue:274 [name] ScenarioWorkspace
+llars-frontend/src/views/ScenarioManager/components/ScenarioInviteCard.vue:90 [label] Ranking
+llars-frontend/src/views/ScenarioManager/components/ScenarioInviteCard.vue:91 [label] Rating
+llars-frontend/src/views/ScenarioManager/components/ScenarioInviteCard.vue:92 [label] Mail Rating
+llars-frontend/src/views/ScenarioManager/components/ScenarioInviteCard.vue:93 [label] Comparison
+llars-frontend/src/views/ScenarioManager/components/ScenarioInviteCard.vue:94 [label] Authenticity
+llars-frontend/src/views/ScenarioManager/components/ScenarioWizard.vue:1135 [title] Evaluator
+llars-frontend/src/views/ScenarioManager/components/ScenarioWizard.vue:1136 [title] Rater
+llars-frontend/src/views/ScenarioManager/components/ScenarioOwnerCard.vue:104 [label] Ranking
+llars-frontend/src/views/ScenarioManager/components/ScenarioOwnerCard.vue:105 [label] Rating
+llars-frontend/src/views/ScenarioManager/components/ScenarioOwnerCard.vue:106 [label] Mail Rating
+llars-frontend/src/views/ScenarioManager/components/ScenarioOwnerCard.vue:107 [label] Comparison
+llars-frontend/src/views/ScenarioManager/components/ScenarioOwnerCard.vue:108 [label] Authenticity
+llars-frontend/src/views/ScenarioManager/components/ScenarioCard.vue:191 [name] ranking', variant: 'success
+llars-frontend/src/views/ScenarioManager/components/ScenarioCard.vue:192 [name] rating', variant: 'warning
+llars-frontend/src/views/ScenarioManager/components/ScenarioCard.vue:193 [name] mailRating', variant: 'info
+llars-frontend/src/views/ScenarioManager/components/ScenarioCard.vue:194 [name] comparison', variant: 'primary
+llars-frontend/src/views/ScenarioManager/components/ScenarioCard.vue:195 [name] authenticity', variant: 'danger
+llars-frontend/src/views/ScenarioManager/components/tabs/ScenarioOverviewTab.vue:238 [name] ranking
+llars-frontend/src/views/ScenarioManager/components/tabs/ScenarioOverviewTab.vue:239 [name] rating
+llars-frontend/src/views/ScenarioManager/components/tabs/ScenarioOverviewTab.vue:240 [name] mailRating
+llars-frontend/src/views/ScenarioManager/components/tabs/ScenarioOverviewTab.vue:241 [name] comparison
+llars-frontend/src/views/ScenarioManager/components/tabs/ScenarioOverviewTab.vue:242 [name] authenticity
+llars-frontend/src/views/ScenarioManager/components/tabs/ScenarioDataTab.vue:364 [title] ', key: 'actions
+llars-frontend/src/views/ScenarioManager/components/tabs/ScenarioTeamTab.vue:308 [name] GPT-4o
+llars-frontend/src/views/ScenarioManager/components/tabs/ScenarioTeamTab.vue:309 [name] GPT-4o Mini
+llars-frontend/src/views/ScenarioManager/components/tabs/ScenarioTeamTab.vue:310 [name] Claude 3.5 Sonnet
+llars-frontend/src/views/ScenarioManager/components/tabs/ScenarioTeamTab.vue:314 [name] Standard
+llars-frontend/src/views/ScenarioManager/components/tabs/ScenarioTeamTab.vue:315 [name] Detailed
+llars-frontend/src/views/ScenarioManager/components/config/RatingConfigEditor.vue:241 [title] Multi-Dimensional (LLM-as-Judge)', value: 'multi-dimensional
+llars-frontend/src/views/ScenarioManager/components/config/RatingConfigEditor.vue:242 [title] Likert', value: 'likert
+llars-frontend/src/views/ScenarioManager/components/config/RatingConfigEditor.vue:243 [title] Sterne', value: 'stars
+llars-frontend/src/views/ScenarioManager/components/config/RatingConfigEditor.vue:244 [title] Numerisch', value: 'numeric
+llars-frontend/src/views/ScenarioManager/components/config/RatingConfigEditor.vue:245 [title] Slider', value: 'slider
+llars-frontend/src/views/ScenarioManager/components/config/RatingConfigEditor.vue:250 [label] 0-1', value: '0-1
+llars-frontend/src/views/ScenarioManager/components/config/RatingConfigEditor.vue:251 [label] 1-5', value: '1-5
+llars-frontend/src/views/ScenarioManager/components/config/RatingConfigEditor.vue:252 [label] 0-4', value: '0-4
+llars-frontend/src/views/ScenarioManager/components/config/RatingConfigEditor.vue:253 [label] 1-7', value: '1-7
+llars-frontend/src/views/ScenarioManager/components/config/RatingConfigEditor.vue:254 [label] 0-9', value: '0-9
+llars-frontend/src/views/ScenarioManager/components/config/RatingConfigEditor.vue:255 [label] 1-10', value: '1-10
+llars-frontend/src/views/ScenarioManager/components/config/RankingConfigEditor.vue:162 [title] Kategorien (Buckets)', value: 'buckets
+llars-frontend/src/views/ScenarioManager/components/config/RankingConfigEditor.vue:163 [title] Geordnete Liste', value: 'ordered
+llars-frontend/src/views/ScenarioManager/components/config/LabelingConfigEditor.vue:200 [title] Binär (2 Klassen)', value: 'binary
+llars-frontend/src/views/ScenarioManager/components/config/LabelingConfigEditor.vue:201 [title] Multi-Klasse', value: 'multiclass
+llars-frontend/src/views/ScenarioManager/components/config/LabelingConfigEditor.vue:202 [title] Multi-Label', value: 'multilabel
+llars-frontend/src/views/ScenarioManager/components/config/LabelingConfigEditor.vue:206 [title] Check', value: 'mdi-check-circle
+llars-frontend/src/views/ScenarioManager/components/config/LabelingConfigEditor.vue:207 [title] Alert', value: 'mdi-alert-circle
+llars-frontend/src/views/ScenarioManager/components/config/LabelingConfigEditor.vue:208 [title] Info', value: 'mdi-information
+llars-frontend/src/views/ScenarioManager/components/config/LabelingConfigEditor.vue:209 [title] Tag', value: 'mdi-tag
+llars-frontend/src/views/ScenarioManager/components/config/LabelingConfigEditor.vue:210 [title] Star', value: 'mdi-star
+llars-frontend/src/views/ScenarioManager/components/config/LabelingConfigEditor.vue:211 [title] Heart', value: 'mdi-heart
+llars-frontend/src/views/ScenarioManager/components/config/LabelingConfigEditor.vue:212 [title] Flag', value: 'mdi-flag
+llars-frontend/src/views/ScenarioManager/components/config/LabelingConfigEditor.vue:213 [title] Shield', value: 'mdi-shield
+llars-frontend/src/views/ScenarioManager/components/config/LabelingConfigEditor.vue:214 [title] Help', value: 'mdi-help-circle
+llars-frontend/src/views/ScenarioManager/components/config/LabelingConfigEditor.vue:215 [title] Happy', value: 'mdi-emoticon-happy
+llars-frontend/src/views/ScenarioManager/components/config/LabelingConfigEditor.vue:216 [title] Sad', value: 'mdi-emoticon-sad
+llars-frontend/src/views/ScenarioManager/components/config/LabelingConfigEditor.vue:217 [title] Neutral', value: 'mdi-emoticon-neutral
+llars-frontend/src/views/ScenarioManager/components/config/ComparisonConfigEditor.vue:175 [title] Paarweiser Vergleich', value: 'pairwise
+llars-frontend/src/views/ScenarioManager/components/config/ComparisonConfigEditor.vue:176 [title] Turnier-Format', value: 'tournament
+llars-frontend/src/views/ScenarioManager/components/config/ComparisonConfigEditor.vue:180 [title] Automatisch', value: 'auto
+llars-frontend/src/views/ScenarioManager/components/config/ComparisonConfigEditor.vue:181 [title] 1 Runde
+llars-frontend/src/views/ScenarioManager/components/config/ComparisonConfigEditor.vue:182 [title] 2 Runden
+llars-frontend/src/views/ScenarioManager/components/config/ComparisonConfigEditor.vue:183 [title] 3 Runden
+llars-frontend/src/views/UserSettings/components/PersonalSettingsTab.vue:269 [label] Deutsch', flag: '🇩🇪
+llars-frontend/src/views/UserSettings/components/PersonalSettingsTab.vue:270 [label] English', flag: '🇬🇧
+llars-frontend/src/views/Evaluation/EvaluationSession.vue:191 [name] ScenarioWorkspace

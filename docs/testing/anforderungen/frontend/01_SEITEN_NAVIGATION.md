@@ -124,10 +124,10 @@ test.describe('Home Dashboard', () => {
     }
   })
 
-  test('HOME-005: viewer only sees allowed tiles', async ({ page }) => {
-    // Login als Viewer
+  test('HOME-005: evaluator only sees allowed tiles', async ({ page }) => {
+    // Login als Evaluator
     await page.goto('/login')
-    await page.fill('input[name="username"]', 'viewer')
+    await page.fill('input[name="username"]', 'evaluator')
     await page.fill('input[name="password"]', 'admin123')
     await page.click('button[type="submit"]')
     await page.waitForURL('**/Home')
@@ -236,7 +236,7 @@ test.describe('Anonymize Tool', () => {
 | NAV-002 | Token expired | Redirect zu `/login` | E2E |
 | NAV-003 | Nach Login ursprüngliche Route | Redirect zu gespeicherter URL | E2E |
 | NAV-004 | Logout löscht Token | localStorage leer | E2E |
-| NAV-005 | Admin-Route als Viewer | Redirect oder 403 | E2E |
+| NAV-005 | Admin-Route als Evaluator | Redirect oder 403 | E2E |
 
 ### E2E Test-Code
 
@@ -250,10 +250,10 @@ test.describe('Navigation Guards', () => {
     await expect(page).toHaveURL(/.*login/)
   })
 
-  test('NAV-005: viewer cannot access admin', async ({ page }) => {
-    // Login als Viewer
+  test('NAV-005: evaluator cannot access admin', async ({ page }) => {
+    // Login als Evaluator
     await page.goto('/login')
-    await page.fill('input[name="username"]', 'viewer')
+    await page.fill('input[name="username"]', 'evaluator')
     await page.fill('input[name="password"]', 'admin123')
     await page.click('button[type="submit"]')
     await page.waitForURL('**/Home')
@@ -301,7 +301,7 @@ test.describe('Navigation Guards', () => {
 
 - [ ] Admin sieht alle Kacheln
 - [ ] Researcher sieht nur erlaubte Kacheln
-- [ ] Viewer sieht eingeschränkte Kacheln
+- [ ] Evaluator sieht eingeschränkte Kacheln
 - [ ] Chatbot_Manager sieht Chatbot + RAG
 
 ---

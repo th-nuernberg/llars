@@ -7,6 +7,7 @@
 
 import { ref } from 'vue';
 import axios from 'axios';
+import { logI18n } from '@/utils/logI18n';
 
 export function useRAGCollections() {
   // State
@@ -30,6 +31,7 @@ export function useRAGCollections() {
   // Table headers
   const collectionHeaders = [
     { title: 'Name', key: 'name', sortable: true },
+    { title: 'Erstellt von', key: 'created_by', sortable: true },
     { title: 'Dokumente', key: 'document_count', sortable: true },
     { title: 'Erstellt', key: 'created_at', sortable: true },
     { title: 'Aktionen', key: 'actions', sortable: false, align: 'end' }
@@ -37,7 +39,7 @@ export function useRAGCollections() {
 
   const collectionDocHeaders = [
     { title: 'Dateiname', key: 'filename', sortable: true },
-    { title: 'Größe', key: 'file_size', sortable: true },
+    { title: 'Größe', key: 'file_size_bytes', sortable: true },
     { title: 'Status', key: 'status', sortable: true },
     { title: 'Chunks', key: 'chunk_count', sortable: true },
     { title: 'Aktionen', key: 'actions', sortable: false, align: 'end' }
@@ -50,7 +52,7 @@ export function useRAGCollections() {
       const response = await axios.get('/api/rag/collections');
       collections.value = response.data.collections || [];
     } catch (error) {
-      console.error('Error fetching collections:', error);
+      logI18n('error', 'logs.admin.ragSectionCollections.fetchCollectionsFailed', error);
     }
     loadingCollections.value = false;
   };
@@ -75,7 +77,7 @@ export function useRAGCollections() {
       newCollectionName.value = '';
       if (onSuccess) onSuccess();
     } catch (error) {
-      console.error('Error creating collection:', error);
+      logI18n('error', 'logs.admin.ragSectionCollections.createCollectionFailed', error);
     }
     creatingCollection.value = false;
   };
@@ -98,7 +100,7 @@ export function useRAGCollections() {
         if (onSuccess) onSuccess();
       }
     } catch (error) {
-      console.error('Error deleting collection:', error);
+      logI18n('error', 'logs.admin.ragSectionCollections.deleteCollectionFailed', error);
       const errorMsg = error.response?.data?.error || 'Fehler beim Löschen der Collection';
       alert(errorMsg);
     }
@@ -127,7 +129,7 @@ export function useRAGCollections() {
         collectionDocuments.value = [];
       }
     } catch (error) {
-      console.error('Error fetching collection documents:', error);
+      logI18n('error', 'logs.admin.ragSectionCollections.fetchCollectionDocumentsFailed', error);
       collectionDocuments.value = [];
     }
     loadingCollectionDocs.value = false;
@@ -183,7 +185,7 @@ export function useRAGCollections() {
       );
       await fetchCollectionDocuments();
     } catch (error) {
-      console.error('Error reindexing collection:', error);
+      logI18n('error', 'logs.admin.ragSectionCollections.reindexCollectionFailed', error);
       const errorMsg = error.response?.data?.error || 'Reindexierung fehlgeschlagen';
       alert(errorMsg);
     }

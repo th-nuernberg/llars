@@ -7,322 +7,77 @@
       multiple
       @change="handleAssetFiles"
     />
-    <!-- Mobile Navigation Drawer -->
-    <v-navigation-drawer
-      v-if="isMobile"
-      v-model="mobileSidebarOpen"
-      temporary
-      width="300"
-      class="mobile-tree-drawer"
-    >
-      <div class="mobile-tree-content">
-        <div class="tree-main">
-          <MarkdownTreePanel
-            :workspace-id="workspaceId"
-            :nodes="treeNodes"
-            :selected-id="selectedNodeId"
-            :loading="isLoading('tree')"
-            :can-edit="hasPermission('feature:latex_collab:edit')"
-            :recently-added-ids="recentlyAddedNodeIds"
-            file-placeholder="z. B. main.tex"
-            file-icon="mdi-file-code-outline"
-            file-icon-color="primary"
-            @select="(id) => { handleSelectNode(id); mobileSidebarOpen = false; }"
-            @create="handleCreateNode"
-            @rename="handleRenameNode"
-            @remove="handleDeleteNode"
-            @move="handleMoveNode"
-          />
-        </div>
-        <div class="tree-outline-panel" :class="{ collapsed: outlineCollapsed }">
-          <div class="tree-outline-header">
-            <div class="tree-outline-title">
-              <v-icon size="14">mdi-format-list-bulleted</v-icon>
-              Verzeichnis
-            </div>
-            <v-btn
-              icon
-              variant="text"
-              size="x-small"
-              :title="outlineCollapsed ? 'Verzeichnis anzeigen' : 'Verzeichnis ausblenden'"
-              @click="toggleOutlineCollapsed"
-            >
-              <v-icon size="16">{{ outlineCollapsed ? 'mdi-chevron-up' : 'mdi-chevron-down' }}</v-icon>
-            </v-btn>
-          </div>
-          <div v-if="!outlineCollapsed" class="tree-outline-list">
-            <div v-if="outlineFlatItems.length === 0" class="tree-outline-empty">
-              {{ outlineEmptyLabel }}
-            </div>
-            <div
-              v-for="item in outlineFlatItems"
-              :key="item.id"
-              class="tree-outline-item"
-              :style="{ paddingLeft: `${8 + item.depth * 12}px` }"
-            >
-              <button
-                v-if="item.hasChildren"
-                class="tree-outline-toggle"
-                type="button"
-                :title="isOutlineItemCollapsed(item.id) ? 'Aufklappen' : 'Einklappen'"
-                @click.stop="toggleOutlineItem(item.id)"
-              >
-                <v-icon size="14">
-                  {{ isOutlineItemCollapsed(item.id) ? 'mdi-chevron-right' : 'mdi-chevron-down' }}
-                </v-icon>
-              </button>
-              <span v-else class="tree-outline-spacer"></span>
-              <button
-                class="tree-outline-link"
-                type="button"
-                :title="item.title"
-                @click="jumpToOutlineItem(item)"
-              >
-                {{ item.title }}
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-      <template #append>
-        <v-divider />
-        <v-list density="compact" class="pa-2">
-          <v-list-item
-            prepend-icon="mdi-home"
-            title="Startseite"
-            @click="router.push('/Home')"
-          />
-          <v-list-item
-            prepend-icon="mdi-folder-multiple"
-            title="Alle Workspaces"
-            @click="router.push('/LatexCollab')"
-          />
-        </v-list>
-      </template>
-    </v-navigation-drawer>
-
-    <!-- Desktop: Collapsible File Tree -->
-    <div
-      v-if="!isMobile"
-      class="tree-panel"
-      :class="{ collapsed: treeCollapsed }"
-      :style="!treeCollapsed ? { width: treePanelWidth + 'px' } : {}"
-    >
-      <!-- Collapsed State -->
-      <div v-if="treeCollapsed" class="tree-collapsed" @click="treeCollapsed = false">
-        <div class="collapsed-bar">
-          <div class="collapsed-icon-box">
-            <v-icon size="18">mdi-file-tree</v-icon>
-          </div>
-          <span class="collapsed-label">Dateien</span>
-          <v-spacer />
-          <v-icon size="18" class="expand-icon">mdi-chevron-right</v-icon>
-        </div>
-      </div>
-
-      <!-- Expanded State -->
-      <div v-else class="tree-expanded">
-        <div class="tree-stack">
-          <div class="tree-main">
-            <MarkdownTreePanel
-              :workspace-id="workspaceId"
-              :nodes="treeNodes"
-              :selected-id="selectedNodeId"
-              :loading="isLoading('tree')"
-              :can-edit="hasPermission('feature:latex_collab:edit')"
-              :recently-added-ids="recentlyAddedNodeIds"
-              file-placeholder="z. B. main.tex"
-              file-icon="mdi-file-code-outline"
-              file-icon-color="primary"
-              @select="handleSelectNode"
-              @create="handleCreateNode"
-              @rename="handleRenameNode"
-              @remove="handleDeleteNode"
-              @move="handleMoveNode"
-            >
-              <template #header-append>
-                <v-btn
-                  icon
-                  variant="text"
-                  size="small"
-                  title="Asset hochladen"
-                  @click.stop="openAssetPicker"
-                >
-                  <v-icon size="18">mdi-paperclip</v-icon>
-                </v-btn>
-                <v-btn
-                  icon
-                  variant="text"
-                  size="small"
-                  title="Einklappen"
-                  @click.stop="treeCollapsed = true"
-                >
-                  <v-icon size="18">mdi-chevron-left</v-icon>
-                </v-btn>
-              </template>
-            </MarkdownTreePanel>
-          </div>
-          <div class="tree-outline-panel" :class="{ collapsed: outlineCollapsed }">
-            <div class="tree-outline-header">
-              <div class="tree-outline-title">
-                <v-icon size="14">mdi-format-list-bulleted</v-icon>
-                Verzeichnis
-              </div>
-              <v-btn
-                icon
-                variant="text"
-                size="x-small"
-                :title="outlineCollapsed ? 'Verzeichnis anzeigen' : 'Verzeichnis ausblenden'"
-                @click="toggleOutlineCollapsed"
-              >
-                <v-icon size="16">{{ outlineCollapsed ? 'mdi-chevron-up' : 'mdi-chevron-down' }}</v-icon>
-              </v-btn>
-            </div>
-            <div v-if="!outlineCollapsed" class="tree-outline-list">
-              <div v-if="outlineFlatItems.length === 0" class="tree-outline-empty">
-                {{ outlineEmptyLabel }}
-              </div>
-              <div
-                v-for="item in outlineFlatItems"
-                :key="item.id"
-                class="tree-outline-item"
-                :style="{ paddingLeft: `${8 + item.depth * 12}px` }"
-              >
-                <button
-                  v-if="item.hasChildren"
-                  class="tree-outline-toggle"
-                  type="button"
-                  :title="isOutlineItemCollapsed(item.id) ? 'Aufklappen' : 'Einklappen'"
-                  @click.stop="toggleOutlineItem(item.id)"
-                >
-                  <v-icon size="14">
-                    {{ isOutlineItemCollapsed(item.id) ? 'mdi-chevron-right' : 'mdi-chevron-down' }}
-                  </v-icon>
-                </button>
-                <span v-else class="tree-outline-spacer"></span>
-                <button
-                  class="tree-outline-link"
-                  type="button"
-                  :title="item.title"
-                  @click="jumpToOutlineItem(item)"
-                >
-                  {{ item.title }}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Resize Divider: Tree | Content (Desktop only) -->
-    <div
-      v-if="!isMobile && !treeCollapsed"
-      class="resize-divider vertical"
-      :class="{ resizing: resizingTree }"
-      @mousedown="startTreeResize"
-    >
-      <div class="resize-handle" />
-    </div>
+    <input
+      ref="zipInputRef"
+      type="file"
+      class="asset-input"
+      accept=".zip"
+      @change="handleZipImport"
+    />
+    <!-- Tree Panel (Mobile Drawer + Desktop Sidebar) -->
+    <LatexTreePanel
+      ref="treePanelRef"
+      :is-mobile="isMobile"
+      v-model:mobile-open="mobileSidebarOpen"
+      v-model:tree-collapsed="treeCollapsed"
+      v-model:files-collapsed="filesCollapsed"
+      v-model:git-collapsed="gitCollapsed"
+      v-model:outline-collapsed="outlineCollapsed"
+      :workspace-id="workspaceId"
+      :nodes="treeNodes"
+      :selected-id="selectedNodeId"
+      :loading="isLoading('tree')"
+      :can-edit="hasPermission('feature:latex_collab:edit')"
+      :can-commit="hasPermission('feature:latex_collab:edit')"
+      :recently-added-ids="recentlyAddedNodeIds"
+      :tree-panel-width="treePanelWidth"
+      :resizing-tree="resizingTree"
+      :outline-flat-items="outlineFlatItems"
+      :outline-empty-label="outlineEmptyLabel"
+      :is-outline-item-collapsed="isOutlineItemCollapsed"
+      @select="handleSelectNode"
+      @create="handleCreateNode"
+      @rename="handleRenameNode"
+      @remove="handleDeleteNode"
+      @move="handleMoveNode"
+      @open-asset-picker="openAssetPicker"
+      @start-tree-resize="startTreeResize"
+      @navigate-home="router.push('/Home')"
+      @navigate-workspaces="router.push(routeBase)"
+      @toggle-outline-item="toggleOutlineItem"
+      @jump-to-outline-item="jumpToOutlineItem"
+      @open-git-detail="gitDetailDialog = true"
+      @committed="refreshCommits"
+    />
 
     <!-- Main Content Area -->
     <div class="content-area">
-      <!-- Content Header - Subtle LLARS Design -->
-      <div class="content-header">
-        <div class="header-left">
-          <!-- Mobile menu button -->
-          <v-btn
-            v-if="isMobile"
-            icon
-            variant="text"
-            size="small"
-            class="mr-2"
-            title="Menü öffnen"
-            @click="mobileSidebarOpen = true"
-          >
-            <v-icon>mdi-menu</v-icon>
-          </v-btn>
-          <v-btn
-            variant="text"
-            size="small"
-            class="header-back-btn"
-            title="Zurück zu den Workspaces"
-            @click="router.push('/LatexCollab')"
-          >
-            <v-icon size="18">mdi-arrow-left</v-icon>
-            <span v-if="!isMobile" class="header-back-label">Workspaces</span>
-          </v-btn>
-          <v-icon v-if="!isMobile" size="20" color="primary" class="mr-2">mdi-file-code-outline</v-icon>
-          <div class="header-info">
-            <div class="header-title">{{ selectedNode?.title || 'Kein Dokument' }}</div>
-            <div class="header-subtitle">{{ workspace?.name || `Workspace #${workspaceId}` }}</div>
-          </div>
-        </div>
-
-        <div class="header-actions">
-          <v-btn
-            v-if="canShareWorkspace"
-            icon
-            variant="text"
-            size="small"
-            title="Workspace teilen"
-            @click="openShareDialog"
-          >
-            <v-icon size="20">mdi-account-multiple-plus</v-icon>
-          </v-btn>
-
-          <v-btn
-            v-if="canSetMainDocument"
-            icon
-            variant="text"
-            size="small"
-            title="Als main.tex setzen"
-            @click="setMainDocument"
-          >
-            <v-icon size="20">
-              {{ selectedNode?.id === workspace?.main_document_id ? 'mdi-star' : 'mdi-star-outline' }}
-            </v-icon>
-          </v-btn>
-
-          <v-btn
-            icon
-            variant="text"
-            size="small"
-            :color="reviewMode ? 'primary' : undefined"
-            title="Review Mode"
-            @click="reviewMode = !reviewMode"
-          >
-            <v-icon size="20">mdi-comment-text-outline</v-icon>
-          </v-btn>
-
-          <div v-if="isMobile" class="mode-toggle-group">
-            <button
-              class="mode-btn"
-              :class="{ active: viewMode === 'editor' }"
-              title="Editor"
-              @click="viewMode = 'editor'"
-            >
-              <v-icon size="18">mdi-pencil</v-icon>
-            </button>
-            <button
-              class="mode-btn"
-              :class="{ active: viewMode === 'split' }"
-              title="Split"
-              @click="viewMode = 'split'"
-            >
-              <v-icon size="18">mdi-view-split-vertical</v-icon>
-            </button>
-            <button
-              class="mode-btn"
-              :class="{ active: viewMode === 'preview' }"
-              title="PDF"
-              @click="viewMode = 'preview'"
-            >
-              <v-icon size="18">mdi-file-pdf-box</v-icon>
-            </button>
-          </div>
-        </div>
-      </div>
+      <!-- Content Header -->
+      <LatexContentHeader
+        :is-mobile="isMobile"
+        :document-title="selectedNode?.title || $t('latexCollab.workspace.empty.noDocument')"
+        :workspace-name="workspace?.name || $t('latexCollab.workspace.fallbackName', { id: workspaceId })"
+        :can-share="canShareWorkspace"
+        :can-set-main="canSetMainDocument"
+        :can-edit="hasPermission('feature:latex_collab:edit')"
+        :is-main-document="selectedNode?.id === workspace?.main_document_id"
+        :review-mode="reviewMode"
+        :show-connection-status="selectedNode?.type === 'file' && !selectedNode?.asset_id"
+        :is-connected="editorRef?.isConnected"
+        :ai-enabled="props.aiEnabled"
+        :ghost-text-enabled="props.ghostTextEnabled"
+        :active-users="editorRef?.activeUsers || []"
+        v-model:view-mode="viewMode"
+        @open-mobile-menu="mobileSidebarOpen = true"
+        @navigate-back="router.push(routeBase)"
+        @open-share="openShareDialog"
+        @open-zotero="zoteroDialog = true"
+        @set-main-document="setMainDocument"
+        @toggle-review-mode="reviewMode = !reviewMode"
+        @toggle-ghost-text="editorRef?.toggleGhostText?.()"
+        @download-zip="downloadWorkspaceZip"
+        @import-zip="openZipImportDialog"
+      />
 
       <!-- Content Body -->
       <div class="content-body">
@@ -337,29 +92,33 @@
         <v-alert
           v-if="!hasPermission('feature:latex_collab:view')"
           type="warning"
-          variant="tonal"
-          class="ma-4"
-        >
-          Dir fehlt die Berechtigung <code>feature:latex_collab:view</code>.
-        </v-alert>
+        variant="tonal"
+        class="ma-4"
+      >
+        <i18n-t keypath="latexCollab.permissions.missing" tag="span">
+          <template #permission>
+            <code>feature:latex_collab:view</code>
+          </template>
+        </i18n-t>
+      </v-alert>
 
         <v-alert
           v-else-if="selectedNode && selectedNode.asset_id"
           type="info"
-          variant="tonal"
-          class="ma-4"
-        >
-          Dieses Asset ist eine Binärdatei und kann nicht direkt im Editor bearbeitet werden.
-        </v-alert>
+        variant="tonal"
+        class="ma-4"
+      >
+        {{ $t('latexCollab.workspace.assetWarning') }}
+      </v-alert>
 
         <v-alert
           v-else-if="!selectedNode || selectedNode.type !== 'file'"
           type="info"
-          variant="tonal"
-          class="ma-4"
-        >
-          Wähle links eine LaTeX-Datei aus, um sie zu bearbeiten.
-        </v-alert>
+        variant="tonal"
+        class="ma-4"
+      >
+        {{ $t('latexCollab.workspace.empty.selectFile') }}
+      </v-alert>
 
         <template v-else>
           <div class="editor-layout">
@@ -370,16 +129,46 @@
                 class="pane editor-pane"
                 :style="editorPaneStyle"
               >
+                <!-- Zotero read-only notice -->
+                <v-alert
+                  v-if="selectedNode?.is_zotero_managed"
+                  type="info"
+                  variant="tonal"
+                  density="compact"
+                  class="zotero-readonly-notice"
+                >
+                  <template #prepend>
+                  <LIcon color="teal">mdi-bookshelf</LIcon>
+                </template>
+                <span class="text-body-2">
+                  <i18n-t keypath="latexCollab.workspace.zoteroReadonly" tag="span">
+                    <template #brand>
+                      <strong>Zotero</strong>
+                    </template>
+                  </i18n-t>
+                </span>
+                </v-alert>
                 <LatexEditorPane
                   ref="editorRef"
-                  :key="selectedNode.id"
                   :document="selectedNode"
                   :readonly="editorReadonly"
-                  :comments="comments"
+                  :comments="activeComments"
                   :active-comment-id="activeCommentId"
+                  :ai-enabled="props.aiEnabled"
+                  :ghost-text-enabled="props.ghostTextEnabled"
+                  :ghost-text-delay="props.ghostTextDelay"
                   @content-change="onEditorContentChange"
                   @git-summary="(s) => (gitSummary = s)"
                   @sync-request="handleEditorSyncRequest"
+                  @ai-command="(cmd) => emit('ai-command', cmd)"
+                  @ai-action="(e) => emit('ai-action', e)"
+                  @request-completion="(req) => emit('request-completion', req)"
+                  @selection-change="(sel) => emit('selection-change', sel)"
+                  @update:ghost-text-enabled="(val) => emit('update:ghostTextEnabled', val)"
+                  @document-saved="handleDocumentSaved"
+                  @document-updated="handleDocumentUpdated"
+                  @diff-calculated="handleDiffCalculated"
+                  @request-comment="openCommentDialog"
                 />
               </div>
 
@@ -403,15 +192,17 @@
                       :loading="isCompiling"
                       :disabled="!canCompile"
                       prepend-icon="mdi-rocket-launch-outline"
-                      title="LaTeX kompilieren"
+                      :title="$t('latexCollab.compile.actions.compile')"
                       @click="triggerCompile"
                     >
-                      Kompilieren
+                      {{ $t('latexCollab.compile.actions.compile') }}
                     </LBtn>
+                    <!-- Slot for additional toolbar buttons (e.g., AI Assistant) -->
+                    <slot name="toolbar-actions" />
                     <v-select
                       v-model="compileCommitId"
                       :items="compileCommitOptions"
-                      label="Version"
+                      :label="$t('latexCollab.compile.versionLabel')"
                       density="compact"
                       variant="outlined"
                       hide-details
@@ -426,29 +217,29 @@
                       icon
                       variant="text"
                       size="x-small"
-                      title="Logs anzeigen"
+                      :title="$t('latexCollab.compile.actions.showLogs')"
                       @click="compileLogDialog = true"
                     >
-                      <v-icon size="16">mdi-text-box-outline</v-icon>
+                      <LIcon size="16">mdi-text-box-outline</LIcon>
                     </v-btn>
                     <v-menu>
                       <template #activator="{ props: menuProps }">
-                        <v-btn icon variant="text" size="x-small" v-bind="menuProps" title="Auto-Compile">
-                          <v-icon size="16">mdi-tune-variant</v-icon>
+                        <v-btn icon variant="text" size="x-small" v-bind="menuProps" :title="$t('latexCollab.compile.auto.title')">
+                          <LIcon size="16">mdi-tune-variant</LIcon>
                         </v-btn>
                       </template>
                       <v-card class="compile-settings">
-                        <v-card-title class="text-subtitle-2">Auto-Compile</v-card-title>
+                        <v-card-title class="text-subtitle-2">{{ $t('latexCollab.compile.auto.title') }}</v-card-title>
                         <v-card-text>
                       <v-switch
                         v-model="autoCompileEnabled"
-                        label="Automatisch kompilieren"
+                        :label="$t('latexCollab.compile.auto.enable')"
                         density="compact"
                         hide-details
                       />
                       <v-text-field
                         v-model.number="autoCompileDelay"
-                        label="Latenz (ms)"
+                        :label="$t('latexCollab.compile.auto.delayLabel')"
                         type="number"
                         min="500"
                         step="250"
@@ -458,7 +249,7 @@
                       />
                       <v-switch
                         v-model="syncEnabled"
-                        label="PDF Sync (SyncTeX)"
+                        :label="$t('latexCollab.compile.auto.syncLabel')"
                         density="compact"
                         hide-details
                         :disabled="!canSync"
@@ -469,31 +260,72 @@
               </div>
             </div>
 
-                <LatexPdfViewer
-                  ref="pdfViewerRef"
-                  :workspace-id="workspaceId"
-                  :job-id="pdfJobId"
-                  :refresh-key="pdfRefreshKey"
-                  :is-compiling="isCompiling"
-                  @pdf-click="handlePdfClick"
-                />
+                <!-- PDF + Comments resizable container -->
+                <div ref="previewContentRef" class="preview-content">
+                  <LatexPdfViewer
+                    ref="pdfViewerRef"
+                    class="pdf-section"
+                    :workspace-id="workspaceId"
+                    :job-id="pdfJobId"
+                    :refresh-key="pdfRefreshKey"
+                    :is-compiling="isCompiling"
+                    @pdf-click="handlePdfClick"
+                    @no-pdf="handleNoPdf"
+                  />
 
-                <div class="comments-panel">
+                  <!-- Resize divider between PDF and Comments -->
+                  <div
+                    class="preview-resize-divider"
+                    :class="{ resizing: resizingComments }"
+                    @mousedown="startCommentsResize"
+                  >
+                    <div class="preview-resize-handle">
+                      <span /><span /><span />
+                    </div>
+                  </div>
+
+                  <div class="comments-panel" :style="commentsPanelStyle">
                   <div class="comments-header">
                     <div class="d-flex align-center ga-2">
-                      <v-icon size="18">mdi-comment-multiple-outline</v-icon>
-                      <span class="text-body-2">Kommentare</span>
+                      <LIcon size="18">{{ showCommentArchive ? 'mdi-archive' : 'mdi-comment-multiple-outline' }}</LIcon>
+                      <span class="text-body-2">
+                        {{ showCommentArchive ? $t('latexCollab.comments.archiveTitle') : $t('latexCollab.comments.title') }}
+                      </span>
+                      <LTag v-if="!showCommentArchive && activeComments.length > 0" variant="info" size="x-small">
+                        {{ activeComments.length }}
+                      </LTag>
                     </div>
                     <v-spacer />
+                    <!-- Archive Toggle Button -->
+                    <v-btn
+                      icon
+                      variant="text"
+                      size="x-small"
+                      :color="showCommentArchive ? 'primary' : undefined"
+                      :title="showCommentArchive ? $t('latexCollab.comments.showActive') : $t('latexCollab.comments.showArchive')"
+                      @click="showCommentArchive = !showCommentArchive"
+                    >
+                      <v-badge
+                        v-if="!showCommentArchive && archivedCount > 0"
+                        :content="archivedCount"
+                        color="success"
+                        offset-x="-2"
+                        offset-y="-2"
+                      >
+                        <LIcon size="18">mdi-archive</LIcon>
+                      </v-badge>
+                      <LIcon v-else size="18">{{ showCommentArchive ? 'mdi-comment-multiple-outline' : 'mdi-archive' }}</LIcon>
+                    </v-btn>
                     <LBtn
+                      v-if="!showCommentArchive"
                       variant="text"
                       size="small"
                       prepend-icon="mdi-comment-plus-outline"
                       :disabled="!canComment"
-                      title="Kommentar hinzufügen"
+                      :title="$t('latexCollab.comments.add')"
                       @click="openCommentDialog"
                     >
-                      Kommentar
+                      {{ $t('latexCollab.comments.addLabel') }}
                     </LBtn>
                   </div>
 
@@ -501,210 +333,366 @@
                     {{ commentError }}
                   </v-alert>
 
-                  <div v-if="comments.length === 0" class="comments-empty">
-                    Keine Kommentare vorhanden.
+                  <div v-if="displayedComments.length === 0" class="comments-empty">
+                    <LIcon size="24" class="mb-2 text-medium-emphasis">
+                      {{ showCommentArchive ? 'mdi-archive-off' : 'mdi-comment-off-outline' }}
+                    </LIcon>
+                    <span>{{ showCommentArchive ? $t('latexCollab.comments.archiveEmpty') : $t('latexCollab.comments.empty') }}</span>
                   </div>
 
                   <div v-else class="comment-list">
                     <div
-                      v-for="c in comments"
+                      v-for="c in displayedComments"
                       :key="c.id"
-                      class="comment-item"
-                      :class="{ active: c.id === activeCommentId }"
-                      @click="selectComment(c)"
+                      class="comment-thread"
+                      :class="{
+                        active: c.id === activeCommentId,
+                        'other-document': isCommentInOtherDocument(c),
+                        'archived': c.resolved_at
+                      }"
+                      :style="c.author_color ? { borderColor: c.author_color } : {}"
+                      :data-comment-id="c.id"
                     >
-                      <div class="comment-meta">
-                        <span class="comment-author">{{ c.author_username }}</span>
-                        <span class="comment-date">{{ formatDate(c.created_at) }}</span>
+                      <!-- Document indicator (for workspace-wide comments) -->
+                      <div
+                        v-if="c.document"
+                        class="comment-document"
+                        :class="{ clickable: isCommentInOtherDocument(c) }"
+                        @click="navigateToComment(c)"
+                      >
+                        <LIcon size="14" class="mr-1">mdi-file-document-outline</LIcon>
+                        <span class="document-title">{{ c.document.title }}</span>
+                        <LIcon
+                          v-if="isCommentInOtherDocument(c)"
+                          size="12"
+                          class="ml-1 jump-icon"
+                        >mdi-arrow-right</LIcon>
                       </div>
-                      <div class="comment-body">{{ c.body }}</div>
-                      <div class="comment-actions">
-                        <LTag v-if="c.resolved_at" variant="success" size="x-small">Resolved</LTag>
-                        <v-btn
-                          icon
-                          variant="text"
-                          size="x-small"
-                          :title="c.resolved_at ? 'Reopen' : 'Resolve'"
-                          @click.stop="toggleCommentResolved(c)"
+
+                      <!-- Top-level comment -->
+                      <div class="comment-item" @click="navigateToComment(c)">
+                        <div class="comment-meta">
+                          <span class="comment-author">
+                            <span
+                              v-if="c.author_color"
+                              class="author-color-dot"
+                              :style="{ backgroundColor: c.author_color }"
+                            />
+                            {{ c.author_username }}
+                          </span>
+                          <span class="comment-date">{{ formatDate(c.created_at) }}</span>
+                        </div>
+                        <div class="comment-body">{{ c.body }}</div>
+                        <div class="comment-actions">
+                          <LTag v-if="c.resolved_at" variant="success" size="x-small">{{ $t('latexCollab.comments.resolved') }}</LTag>
+                          <!-- AI Resolve Button -->
+                          <v-btn
+                            v-if="!c.resolved_at && aiAssistantEnabled"
+                            icon
+                            variant="text"
+                            size="x-small"
+                            color="purple"
+                            :title="aiResolvingCommentId === c.id ? $t('latexCollab.comments.aiStreamToggle') : $t('latexCollab.comments.aiResolveTitle')"
+                            :loading="aiResolvingCommentId === c.id && !aiStreamWindowOpen"
+                            :disabled="aiResolvingCommentId !== null && aiResolvingCommentId !== c.id"
+                            @click.stop="handleAiButtonClick(c)"
+                          >
+                            <LIcon size="16">mdi-robot</LIcon>
+                          </v-btn>
+                          <v-btn
+                            icon
+                            variant="text"
+                            size="x-small"
+                            :title="$t('latexCollab.comments.reply')"
+                            @click.stop="startReply(c.id)"
+                          >
+                            <LIcon size="16">mdi-reply</LIcon>
+                          </v-btn>
+                          <v-btn
+                            icon
+                            variant="text"
+                            size="x-small"
+                            :title="c.resolved_at ? $t('latexCollab.comments.reopen') : $t('latexCollab.comments.resolve')"
+                            @click.stop="toggleCommentResolved(c)"
+                          >
+                            <LIcon size="16">mdi-check</LIcon>
+                          </v-btn>
+                          <v-btn
+                            icon
+                            variant="text"
+                            size="x-small"
+                            :title="$t('common.delete')"
+                            @click.stop="deleteComment(c)"
+                          >
+                            <LIcon size="16">mdi-delete-outline</LIcon>
+                          </v-btn>
+                        </div>
+                      </div>
+
+                      <!-- Replies -->
+                      <div v-if="c.replies && c.replies.length > 0" class="comment-replies">
+                        <div
+                          v-for="reply in c.replies"
+                          :key="reply.id"
+                          class="comment-reply"
                         >
-                          <v-icon size="16">mdi-check</v-icon>
-                        </v-btn>
-                        <v-btn
-                          icon
-                          variant="text"
-                          size="x-small"
-                          title="Löschen"
-                          @click.stop="deleteComment(c)"
-                        >
-                          <v-icon size="16">mdi-delete-outline</v-icon>
-                        </v-btn>
+                          <div class="comment-meta">
+                            <span class="comment-author">
+                              <span
+                                v-if="reply.author_color"
+                                class="author-color-dot"
+                                :style="{ backgroundColor: reply.author_color }"
+                              />
+                              {{ reply.author_username }}
+                            </span>
+                            <span class="comment-date">{{ formatDate(reply.created_at) }}</span>
+                          </div>
+                          <div class="comment-body">{{ reply.body }}</div>
+                          <div class="comment-actions">
+                            <v-btn
+                              icon
+                              variant="text"
+                              size="x-small"
+                              :title="$t('common.delete')"
+                              @click.stop="deleteComment(reply)"
+                            >
+                              <LIcon size="14">mdi-delete-outline</LIcon>
+                            </v-btn>
+                          </div>
+                        </div>
+                      </div>
+
+                      <!-- Reply input -->
+                      <div v-if="replyingToId === c.id" class="reply-input">
+                        <v-textarea
+                          v-model="replyDraft"
+                          :placeholder="$t('latexCollab.comments.replyPlaceholder')"
+                          variant="outlined"
+                          density="compact"
+                          rows="2"
+                          auto-grow
+                          hide-details
+                          class="reply-textarea"
+                          @click.stop
+                        />
+                        <div class="reply-actions">
+                          <v-btn
+                            variant="text"
+                            size="x-small"
+                            @click.stop="cancelReply"
+                          >
+                            {{ $t('common.cancel') }}
+                          </v-btn>
+                          <v-btn
+                            color="primary"
+                            size="x-small"
+                            :disabled="!canSubmitReply"
+                            @click.stop="submitReply(collabColor)"
+                          >
+                            {{ $t('latexCollab.comments.reply') }}
+                          </v-btn>
+                        </div>
                       </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            </div>
+              </div>  <!-- Close preview-content -->
+            </div>  <!-- Close preview-pane -->
+          </div>  <!-- Close panes-container -->
 
-            <!-- Git Panel -->
-            <MarkdownGitPanel
-              v-if="selectedNode && selectedNode.type === 'file' && !selectedNode.asset_id"
-              :document-id="selectedNode.id"
-              :summary="gitSummary"
-              :can-commit="hasPermission('feature:latex_collab:edit')"
-              :get-content="() => editorRef?.getCurrentContent?.()"
-              api-prefix="/api/latex-collab"
-              socket-namespace="latex_collab"
-              @committed="refreshCommits"
-            />
           </div>
         </template>
       </div>
     </div>
 
-    <!-- Share / Members Dialog - Subtle Design -->
-    <v-dialog v-model="shareDialog" max-width="480">
-      <v-card class="share-dialog">
-        <v-card-title class="share-header">
-          <v-icon class="mr-2" color="primary">mdi-account-multiple-plus</v-icon>
-          <div>
-            <div>Workspace teilen</div>
-            <div class="text-caption text-medium-emphasis">{{ workspace?.name }}</div>
-          </div>
+    <!-- Share / Members Dialog -->
+    <ShareDialog
+      v-model="shareDialog"
+      :workspace-name="workspace?.name"
+      :owner-info="ownerInfo"
+      :members="members"
+      :excluded-usernames="excludedUsernames"
+      :loading="membersLoading"
+      :error="shareError"
+      :removing-username="removingUsername"
+      :can-remove="canShareWorkspace"
+      @invite="inviteMember"
+      @remove="removeMember"
+    />
+
+    <!-- Floating Git Panel (draggable window) -->
+    <FloatingGitPanel
+      v-model="gitDetailDialog"
+      :workspace-id="workspaceId"
+      :selected-document-id="selectedNodeId"
+      :can-commit-prop="hasPermission('feature:latex_collab:edit')"
+      :get-content="getEditorContent"
+      @committed="refreshCommits"
+      @rollback="handleRollback"
+      @restored="handleRestored"
+    />
+
+    <!-- Floating Comment Card (no overlay, draggable, beside text) -->
+    <Teleport to="body">
+      <div
+        v-if="commentDialog"
+        ref="floatingCommentCardRef"
+        class="floating-comment-card"
+        :style="floatingCommentCardStyle"
+        @keydown.esc="commentDialog = false"
+        @keydown.ctrl.enter="canSubmitComment && submitComment(collabColor)"
+      >
+        <!-- Draggable Header -->
+        <div
+          class="floating-comment-header"
+          @mousedown="startDragCommentCard"
+        >
+          <LIcon size="16" class="mr-1">mdi-comment-plus-outline</LIcon>
+          <span class="floating-comment-title">{{ $t('latexCollab.comments.dialog.title') }}</span>
           <v-spacer />
-          <LIconBtn icon="mdi-close" tooltip="Schließen" size="small" @click="shareDialog = false" />
-        </v-card-title>
-
-        <v-divider />
-
-        <v-card-text class="share-body">
-          <v-alert v-if="shareError" type="error" variant="tonal" class="mb-4" density="compact">
-            {{ shareError }}
-          </v-alert>
-
-          <!-- Owner Section -->
-          <div class="section-label">Owner</div>
-          <div class="user-card owner-card">
-            <img class="user-avatar" :src="getAvatarUrl(ownerInfo)" alt="" />
-            <div class="user-info">
-              <div class="user-name">{{ formatDisplayName(ownerInfo.username) }}</div>
-              <div class="user-meta">@{{ ownerInfo.username }}</div>
-            </div>
-            <LTag variant="primary" size="small">Owner</LTag>
-          </div>
-
-          <!-- Search Section -->
-          <div class="section-label mt-4">Nutzer einladen</div>
-          <LUserSearch
-            ref="userSearchRef"
-            v-model="selectedUser"
-            :exclude-usernames="excludedUsernames"
-            :show-add-button="true"
-            add-button-text="Hinzufügen"
-            @add="inviteMember"
+          <LIconBtn
+            icon="mdi-close"
+            size="x-small"
+            :tooltip="$t('common.close')"
+            @click="commentDialog = false"
           />
-
-          <!-- Members Section -->
-          <div class="section-label mt-4">
-            Mitglieder
-            <span v-if="members.length" class="member-count">{{ members.length }}</span>
-          </div>
-
-          <v-skeleton-loader v-if="membersLoading" type="list-item-avatar@3" />
-
-          <div v-else-if="members.length === 0" class="empty-members">
-            <v-icon size="28" color="grey-lighten-1">mdi-account-group-outline</v-icon>
-            <span>Noch keine Mitglieder</span>
-          </div>
-
-          <div v-else class="members-list">
-            <div v-for="m in members" :key="m.username" class="user-card">
-              <img class="user-avatar" :src="getAvatarUrl(m)" alt="" />
-              <div class="user-info">
-                <div class="user-name">{{ formatDisplayName(m.username) }}</div>
-                <div class="user-meta">{{ formatRelativeDate(m.added_at) }}</div>
-              </div>
-              <v-btn
-                v-if="canShareWorkspace"
-                icon
-                variant="text"
-                size="x-small"
-                color="error"
-                :loading="removingUsername === m.username"
-                title="Mitglied entfernen"
-                @click="removeMember(m.username)"
-              >
-                <v-icon size="18">mdi-close</v-icon>
-              </v-btn>
-            </div>
-          </div>
-        </v-card-text>
-      </v-card>
-    </v-dialog>
-
-    <v-dialog v-model="commentDialog" max-width="520">
-      <v-card>
-        <v-card-title class="d-flex align-center">
-          <v-icon class="mr-2">mdi-comment-plus-outline</v-icon>
-          Kommentar hinzufügen
-          <v-spacer />
-          <LIconBtn icon="mdi-close" tooltip="Schließen" @click="commentDialog = false" />
-        </v-card-title>
-        <v-divider />
-        <v-card-text>
-          <v-alert v-if="commentError" type="error" variant="tonal" class="mb-3" density="compact">
+        </div>
+        <!-- Content -->
+        <div class="floating-comment-body">
+          <v-alert v-if="commentError" type="error" variant="tonal" class="mb-2" density="compact">
             {{ commentError }}
           </v-alert>
           <v-textarea
+            ref="commentTextareaRef"
             v-model="commentDraft"
-            label="Kommentar"
+            :placeholder="$t('latexCollab.comments.dialog.placeholder')"
             variant="outlined"
-            density="comfortable"
+            density="compact"
+            rows="3"
             auto-grow
             hide-details
+            autofocus
+            @keydown.esc.stop="commentDialog = false"
+            @keydown.ctrl.enter="canSubmitComment && submitComment(collabColor)"
+          />
+        </div>
+        <!-- Actions -->
+        <div class="floating-comment-actions">
+          <v-btn
+            variant="text"
+            size="small"
+            :title="$t('latexCollab.comments.dialog.cancelTitle')"
+            @click="commentDialog = false"
+          >
+            {{ $t('common.cancel') }}
+          </v-btn>
+          <v-btn
+            color="primary"
+            size="small"
+            :title="$t('latexCollab.comments.dialog.saveTitle')"
+            :disabled="!canSubmitComment"
+            @click="submitComment(collabColor)"
+          >
+            {{ $t('common.save') }}
+          </v-btn>
+        </div>
+      </div>
+    </Teleport>
+
+    <!-- Floating AI Stream Window (shows streaming tokens) -->
+    <Teleport to="body">
+      <div
+        v-if="aiStreamWindowOpen && aiResolvingCommentId !== null"
+        ref="floatingAiStreamRef"
+        class="floating-ai-stream-card"
+        :style="floatingAiStreamStyle"
+      >
+        <!-- Draggable Header -->
+        <div
+          class="floating-ai-stream-header"
+          @mousedown="startDragAiStream"
+        >
+          <div class="ai-stream-header-left">
+            <div class="ai-pulse-indicator" />
+            <LIcon size="16" class="mr-1" color="purple">mdi-robot</LIcon>
+            <span class="floating-ai-stream-title">{{ $t('latexCollab.comments.aiStreaming') }}</span>
+          </div>
+          <v-spacer />
+          <LIconBtn
+            icon="mdi-close"
+            size="x-small"
+            :tooltip="$t('common.close')"
+            @click="aiStreamWindowOpen = false"
+          />
+        </div>
+        <!-- Stream Content -->
+        <div ref="aiStreamContentRef" class="floating-ai-stream-body">
+          <div v-if="!aiStreamContent" class="ai-stream-waiting">
+            <v-progress-circular indeterminate size="20" width="2" color="purple" class="mr-2" />
+            {{ $t('latexCollab.comments.aiWaiting') }}
+          </div>
+          <pre v-else class="ai-stream-content">{{ aiStreamContent }}<span class="ai-cursor" v-if="aiStreamStatus === 'streaming'">|</span></pre>
+        </div>
+        <!-- Status Footer -->
+        <div class="floating-ai-stream-footer">
+          <LTag
+            :variant="aiStreamStatus === 'completed' ? 'success' : aiStreamStatus === 'error' ? 'danger' : 'info'"
+            size="x-small"
+          >
+            {{ aiStreamStatus === 'completed' ? $t('latexCollab.comments.aiCompleted') :
+               aiStreamStatus === 'error' ? $t('latexCollab.comments.aiError', { error: '' }) :
+               $t('latexCollab.comments.aiProcessing') }}
+          </LTag>
+          <span v-if="aiStreamContent" class="ai-stream-chars">
+            {{ aiStreamContent.length }} {{ $t('latexCollab.comments.aiChars') }}
+          </span>
+        </div>
+      </div>
+    </Teleport>
+
+    <!-- Compile Log Dialog -->
+    <CompileLogDialog
+      v-model="compileLogDialog"
+      :error="compileError"
+      :issues="compileIssues"
+      :log="compileLog"
+      @jump-to-issue="jumpToIssue"
+    />
+
+    <!-- Zotero Dialog -->
+    <v-dialog v-model="zoteroDialog" max-width="600">
+      <v-card class="zotero-dialog">
+        <v-card-title class="d-flex align-center">
+          <LIcon class="mr-2">zotero</LIcon>
+          <div>
+            <div>{{ $t('latexCollab.zotero.title') }}</div>
+            <div class="text-caption text-medium-emphasis">{{ workspace?.name }}</div>
+          </div>
+          <v-spacer />
+          <LIconBtn icon="mdi-close" :tooltip="$t('common.close')" size="small" @click="zoteroDialog = false" />
+        </v-card-title>
+        <v-divider />
+        <v-card-text class="pa-0">
+          <ZoteroPanel
+            v-if="zoteroDialog && workspaceId"
+            :workspace-id="workspaceId"
+            @library-added="handleZoteroLibraryAdded"
+            @library-synced="handleZoteroLibrarySynced"
+            @library-removed="handleZoteroLibraryRemoved"
           />
         </v-card-text>
-        <v-card-actions class="justify-end">
-          <v-btn variant="text" title="Kommentar abbrechen" @click="commentDialog = false">Abbrechen</v-btn>
-          <v-btn color="primary" title="Kommentar speichern" :disabled="!canSubmitComment" @click="submitComment">Speichern</v-btn>
-        </v-card-actions>
       </v-card>
     </v-dialog>
 
-    <v-dialog v-model="compileLogDialog" max-width="760">
-      <v-card class="compile-log-dialog">
-        <v-card-title class="d-flex align-center">
-          <v-icon class="mr-2">mdi-text-box-outline</v-icon>
-          Compile Log
-          <v-spacer />
-          <LIconBtn icon="mdi-close" tooltip="Schließen" @click="compileLogDialog = false" />
-        </v-card-title>
-        <v-divider />
-        <v-card-text>
-          <v-alert v-if="compileError" type="error" variant="tonal" class="mb-3" density="compact">
-            {{ compileError }}
-          </v-alert>
-          <div v-if="compileIssues.length" class="compile-issues">
-            <div class="text-subtitle-2 mb-2">Fehler &amp; Warnungen</div>
-            <div class="issue-list">
-              <div
-                v-for="issue in compileIssues"
-                :key="issue.id"
-                class="issue-row"
-                :class="{ clickable: !!issue.document_id }"
-                @click="jumpToIssue(issue)"
-              >
-                <v-chip size="x-small" variant="tonal" :color="issue.color">
-                  {{ issue.label }}
-                </v-chip>
-                <span class="issue-message">{{ issue.message }}</span>
-                <span class="issue-location">{{ issue.location }}</span>
-              </div>
-            </div>
-          </div>
-          <pre class="compile-log">{{ compileLog || 'Noch kein Log vorhanden.' }}</pre>
-        </v-card-text>
-      </v-card>
-    </v-dialog>
+    <!-- Notification Snackbar -->
+    <v-snackbar
+      v-model="snackbar.show"
+      :color="snackbar.color"
+      :timeout="4000"
+      location="bottom right"
+    >
+      {{ snackbar.text }}
+    </v-snackbar>
   </div>
 </template>
 
@@ -712,8 +700,10 @@
 import { computed, onMounted, onUnmounted, ref, watch, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import axios from 'axios'
+import { useI18n } from 'vue-i18n'
 import { useSkeletonLoading } from '@/composables/useSkeletonLoading'
 import { usePermissions } from '@/composables/usePermissions'
+import { useAuth } from '@/composables/useAuth'
 import { useMobile } from '@/composables/useMobile'
 import { useSplitPaneResize } from '@/composables/useSplitPaneResize'
 import { useWorkspaceSocket } from '@/components/MarkdownCollab/composables/useWorkspaceSocket'
@@ -721,35 +711,94 @@ import { useActiveDuration, useVisibilityTracker, useScrollDepth } from '@/compo
 import MarkdownTreePanel from '@/components/MarkdownCollab/MarkdownTreePanel.vue'
 import LatexEditorPane from '@/components/LatexCollab/LatexEditorPane.vue'
 import LatexPdfViewer from '@/components/LatexCollab/LatexPdfViewer.vue'
-import MarkdownGitPanel from '@/components/MarkdownCollab/MarkdownGitPanel.vue'
+import FloatingGitPanel from './components/FloatingGitPanel.vue'
+import ZoteroPanel from '@/components/LatexCollab/Zotero/ZoteroPanel.vue'
 import { AUTH_STORAGE_KEYS, getAuthStorageItem } from '@/utils/authStorage'
-import { getAvatarUrl, formatDisplayName, formatRelativeDate } from '@/utils/userUtils'
+import { formatDisplayName, formatRelativeDate } from '@/utils/userUtils'
+import { getSocket } from '@/services/socketService'
+
+// Local composables - now actually used!
+import {
+  useLatexCompile,
+  useLatexComments,
+  useLatexOutline,
+  useLatexSync,
+  useLatexMembers
+} from './composables'
+
+// Local components
+import {
+  LatexTreePanel,
+  LatexContentHeader,
+  ShareDialog,
+  CompileLogDialog
+} from './components'
+
+// Props for customizable base path (used by AI wrapper)
+const props = defineProps({
+  basePath: {
+    type: String,
+    default: '/LatexCollab'
+  },
+  aiEnabled: {
+    type: Boolean,
+    default: false
+  },
+  ghostTextEnabled: {
+    type: Boolean,
+    default: false
+  },
+  ghostTextDelay: {
+    type: Number,
+    default: 800
+  }
+})
+
+// Emits for parent communication (used by AI wrapper)
+const emit = defineEmits(['document-change', 'ai-command', 'ai-action', 'request-completion', 'update:ghostTextEnabled', 'selection-change'])
 
 const route = useRoute()
 const router = useRouter()
+const { locale, t } = useI18n()
+
+// Simple snackbar for notifications
+const snackbar = ref({ show: false, text: '', color: 'info' })
+function showSnackbar(text, color = 'info') {
+  snackbar.value = { show: true, text, color }
+  setTimeout(() => { snackbar.value.show = false }, 4000)
+}
+
+// Computed route base for navigation
+const routeBase = computed(() => props.basePath)
 
 const { hasPermission, fetchPermissions, username: currentUsername, isAdmin } = usePermissions()
+const { collabColor } = useAuth()
 const { isLoading, withLoading, setLoading } = useSkeletonLoading(['tree', 'document'])
 const { isMobile, isTablet } = useMobile()
 
 // Mobile sidebar state
 const mobileSidebarOpen = ref(false)
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:55080'
+const API_BASE = import.meta.env.VITE_API_BASE_URL || ''
 const VIEWMODE_KEY = 'latex-collab-view-mode'
 const TREE_COLLAPSED_KEY = 'latex-collab-tree-collapsed'
 const TREE_WIDTH_KEY = 'latex-collab-tree-width'
 const PANES_WIDTH_KEY = 'latex-collab-panes-width'
 const OUTLINE_COLLAPSED_KEY = 'latex-outline-collapsed'
 const AUTO_COMPILE_KEY = 'latex-collab-auto-compile'
+const COMMENTS_HEIGHT_KEY = 'latex-collab-comments-height'
 const AUTO_COMPILE_DELAY_KEY = 'latex-collab-auto-compile-delay'
 const SYNC_KEY = 'latex-collab-sync-enabled'
+const AI_CONTEXT_MAX_CHARS = 3800
+const AI_CONTEXT_MAX_FILES = 6
+const AI_CONTEXT_ALLOWED_EXTS = ['.tex', '.bib']
 
 const workspace = ref(null)
 const nodesFlat = ref([])
 
 const currentText = ref('')
 const gitSummary = ref({ users: [], totalChangedLines: 0 })
+const treePanelRef = ref(null)
 const editorRef = ref(null)
 const pdfViewerRef = ref(null)
 const pendingDocId = ref(null)
@@ -760,32 +809,19 @@ const treeCollapsed = ref(localStorage.getItem(TREE_COLLAPSED_KEY) === 'true')
 const treePanelWidth = ref(parseInt(localStorage.getItem(TREE_WIDTH_KEY)) || 280)
 const viewMode = ref(localStorage.getItem(VIEWMODE_KEY) || 'split')
 const resizingTree = ref(false)
-const outlineCollapsed = ref(localStorage.getItem(OUTLINE_COLLAPSED_KEY) === 'true')
-const outlineItems = ref([])
-const outlineCollapsedIds = ref(new Set())
-const outlineFlatItems = computed(() => {
-  const items = []
-  const collapsed = outlineCollapsedIds.value
-  const walk = (nodes, depth) => {
-    for (const node of nodes) {
-      const hasChildren = Array.isArray(node.children) && node.children.length > 0
-      items.push({ ...node, depth, hasChildren })
-      if (hasChildren && !collapsed.has(node.id)) {
-        walk(node.children, depth + 1)
-      }
-    }
-  }
-  walk(outlineItems.value || [], 0)
-  return items
-})
-const outlineEmptyLabel = computed(() => {
-  if (selectedNode.value && selectedNode.value.type === 'file' && !selectedNode.value.asset_id) {
-    return 'Keine Kapitel gefunden'
-  }
-  return 'Kein Dokument'
-})
-let outlineUpdateTimer = null
-let lastOutlineText = ''
+
+// Comments panel resize state
+const commentsPanelHeight = ref(parseInt(localStorage.getItem(COMMENTS_HEIGHT_KEY)) || 200)
+const resizingComments = ref(false)
+const previewContentRef = ref(null)
+
+// Panel collapse states (for unified tree stack panels)
+const FILES_COLLAPSED_KEY = 'latex-collab-files-collapsed'
+const GIT_COLLAPSED_KEY = 'latex-collab-git-collapsed'
+const filesCollapsed = ref(localStorage.getItem(FILES_COLLAPSED_KEY) === 'true')
+const gitCollapsed = ref(localStorage.getItem(GIT_COLLAPSED_KEY) === 'true')
+const gitDetailDialog = ref(false)
+// Outline state - initialized later via useLatexOutline composable after selectedNode is available
 const {
   panesContainerRef,
   editorPaneStyle,
@@ -797,47 +833,21 @@ const {
   viewMode
 })
 
-// Sharing / members
-const shareDialog = ref(false)
-const members = ref([])
-const membersLoading = ref(false)
-const shareError = ref('')
-const removingUsername = ref('')
-const selectedUser = ref(null)
-const userSearchRef = ref(null)
-const ownerInfo = ref({ username: '', avatar_url: null, avatar_seed: null, collab_color: null })
+// Sharing / members - using composable
+// Note: We'll initialize useLatexMembers after workspaceId, workspace, hasPermission are available
 
 const reviewMode = ref(false)
 
-const autoCompileEnabled = ref(localStorage.getItem(AUTO_COMPILE_KEY) === 'true')
-const autoCompileDelay = ref(parseInt(localStorage.getItem(AUTO_COMPILE_DELAY_KEY)) || 2000)
-let autoCompileTimer = null
-const syncEnabled = ref(localStorage.getItem(SYNC_KEY) !== 'false')
-let syncTimer = null
+// Compile and sync state - initialized later via composables after selectedNode is available
 
-const compileJobId = ref(null)
-const compileStatus = ref('idle')
-const compileError = ref('')
-const compileLog = ref('')
-const compileHasPdf = ref(false)
-const compileHasSynctex = ref(false)
-const compileLogDialog = ref(false)
-const pdfRefreshKey = ref(0)
-const pdfRefreshJobId = ref(null)
-const compileCommitId = ref(null)
-const compileCommitOptions = ref([{ title: 'Aktuell', value: null }])
-let compilePollTimer = null
+// Comments state - initialized later via useLatexComments composable after selectedNode is available
 
-const comments = ref([])
-const activeCommentId = ref(null)
-const commentDialog = ref(false)
-const commentDraft = ref('')
-const commentError = ref('')
-const pendingCommentRange = ref(null)
+// Zotero dialog
+const zoteroDialog = ref(false)
 
 const assetInputRef = ref(null)
-
-const compileIssues = ref([])
+const zipInputRef = ref(null)
+const zipImporting = ref(false)
 
 // Analytics: entity dimension for this workspace/document
 const workspaceEntity = computed(() => `ws:${workspaceId.value}`)
@@ -889,30 +899,17 @@ watch(treeCollapsed, (val) => {
   localStorage.setItem(TREE_COLLAPSED_KEY, val.toString())
 })
 
-watch(outlineCollapsed, (val) => {
-  localStorage.setItem(OUTLINE_COLLAPSED_KEY, val ? 'true' : 'false')
+watch(filesCollapsed, (val) => {
+  localStorage.setItem(FILES_COLLAPSED_KEY, val.toString())
 })
 
-watch(autoCompileEnabled, (val) => {
-  localStorage.setItem(AUTO_COMPILE_KEY, val ? 'true' : 'false')
+watch(gitCollapsed, (val) => {
+  localStorage.setItem(GIT_COLLAPSED_KEY, val.toString())
 })
 
-watch(autoCompileDelay, (val) => {
-  const normalized = Number.isFinite(Number(val)) ? Math.max(250, Number(val)) : 2000
-  if (normalized !== Number(val)) {
-    autoCompileDelay.value = normalized
-    return
-  }
-  localStorage.setItem(AUTO_COMPILE_DELAY_KEY, normalized.toString())
-})
-
-watch(syncEnabled, (val) => {
-  localStorage.setItem(SYNC_KEY, val ? 'true' : 'false')
-  if (!val && syncTimer) {
-    clearTimeout(syncTimer)
-    syncTimer = null
-  }
-})
+// outlineCollapsed watcher is now handled by useLatexOutline composable
+// autoCompileEnabled, autoCompileDelay watchers are now handled by useLatexCompile composable
+// syncEnabled watcher is now handled by useLatexSync composable
 
 watch(isMobile, (val) => {
   if (!val) {
@@ -946,6 +943,7 @@ const {
     // Add the new node to the tree
     const newNode = { ...data.node, type: data.node.type }
     nodesFlat.value = [...nodesFlat.value, newNode]
+    // Git panel updates are now handled by useGitStatus composable via socket events
   },
   onNodeRenamed: (data) => {
     // Update the node title in the tree
@@ -954,6 +952,7 @@ const {
       node.title = data.newTitle
       nodesFlat.value = [...nodesFlat.value]
     }
+    // Git panel updates are now handled by useGitStatus composable via socket events
   },
   onNodeDeleted: (data) => {
     // Remove the node from the tree (and children recursively)
@@ -966,8 +965,9 @@ const {
 
     // If we're viewing the deleted document, navigate away
     if (routeDocId.value === data.nodeId) {
-      router.push(`/LatexCollab/workspace/${workspaceId.value}`)
+      router.push(`${routeBase.value}/workspace/${workspaceId.value}`)
     }
+    // Git panel updates are now handled by useGitStatus composable via socket events
   },
   onNodeMoved: (data) => {
     // Update node position in tree
@@ -980,68 +980,558 @@ const {
   }
 })
 
+// Compile status socket for real-time compile updates
+let compileSocket = null
+let compileSocketConnectHandler = null
+
+function setupCompileSocket() {
+  compileSocket = getSocket()
+  if (!compileSocket) return
+
+  // Handler for compile status updates
+  const onCompileStatus = (data) => {
+    if (data?.workspace_id !== workspaceId.value) return
+    handleCompileStatusUpdate(data)
+  }
+
+  compileSocket.on('latex_collab:compile_status', onCompileStatus)
+
+  // AI streaming event handlers
+  compileSocket.on('latex_collab:ai_resolve:token', handleAiStreamToken)
+  compileSocket.on('latex_collab:ai_resolve:completed', handleAiStreamCompleted)
+  compileSocket.on('latex_collab:ai_resolve:error', handleAiStreamError)
+
+  // Subscribe to workspace updates when connected
+  compileSocketConnectHandler = () => {
+    compileSocket.emit('latex_collab:subscribe_workspace', { workspace_id: workspaceId.value })
+  }
+
+  if (compileSocket.connected) {
+    compileSocketConnectHandler()
+  }
+  compileSocket.on('connect', compileSocketConnectHandler)
+}
+
+function cleanupCompileSocket() {
+  if (!compileSocket) return
+  compileSocket.off('latex_collab:compile_status')
+  compileSocket.off('latex_collab:ai_resolve:token', handleAiStreamToken)
+  compileSocket.off('latex_collab:ai_resolve:completed', handleAiStreamCompleted)
+  compileSocket.off('latex_collab:ai_resolve:error', handleAiStreamError)
+  if (compileSocketConnectHandler) {
+    compileSocket.off('connect', compileSocketConnectHandler)
+  }
+  if (workspaceId.value) {
+    compileSocket.emit('latex_collab:unsubscribe_workspace', { workspace_id: workspaceId.value })
+  }
+  compileSocket = null
+  compileSocketConnectHandler = null
+}
+
 const selectedNodeId = computed(() => routeDocId.value)
 const selectedNode = computed(() => {
   if (!selectedNodeId.value) return null
   return nodesFlat.value.find(n => n.id === selectedNodeId.value) || null
 })
 
-const canShareWorkspace = computed(() => {
-  if (!workspace.value) return false
-  if (!hasPermission('feature:latex_collab:share')) return false
-  return isAdmin.value || (currentUsername.value && currentUsername.value === workspace.value.owner_username)
+// ============================================================
+// COMPOSABLES INTEGRATION
+// ============================================================
+
+// Members management composable
+const {
+  shareDialog,
+  members,
+  membersLoading,
+  shareError,
+  removingUsername,
+  ownerInfo,
+  canShareWorkspace,
+  excludedUsernames,
+  loadMembers,
+  openShareDialog,
+  inviteMember,
+  removeMember
+} = useLatexMembers({
+  workspaceId,
+  workspace,
+  hasPermission,
+  currentUsername,
+  isAdmin
 })
 
-const editorReadonly = computed(() => !hasPermission('feature:latex_collab:edit') || reviewMode.value)
+// Outline management composable
+const {
+  outlineCollapsed,
+  outlineItems,
+  outlineCollapsedIds,
+  outlineFlatItems,
+  outlineEmptyLabel,
+  toggleOutlineCollapsed,
+  isOutlineItemCollapsed,
+  toggleOutlineItem,
+  scheduleOutlineUpdate,
+  jumpToOutlineItem,
+  resetOutline
+} = useLatexOutline({
+  selectedNode,
+  editorRef
+})
+
+// Comments socket for real-time comment sync
+const commentsSocket = ref(null)
+
+// Initialize comments socket
+function initCommentsSocket() {
+  commentsSocket.value = getSocket()
+}
+
+// Comments management composable
+const {
+  comments,
+  activeCommentId,
+  commentDialog,
+  commentDraft,
+  commentError,
+  pendingCommentRange,
+  commentCardPosition,
+  commentTextareaRef,
+  replyingToId,
+  replyDraft,
+  canComment,
+  canSubmitComment,
+  canSubmitReply,
+  loadComments,
+  openCommentDialog,
+  submitComment,
+  toggleCommentResolved,
+  deleteComment,
+  selectComment,
+  resetComments,
+  startReply,
+  cancelReply,
+  submitReply,
+  navigateToComment,
+  highlightCommentRange
+} = useLatexComments({
+  workspaceId,
+  selectedNode,
+  editorRef,
+  hasPermission,
+  onNavigateToDocument: handleNavigateToDocument,
+  socket: commentsSocket
+})
+
+// ============================================================
+// COMMENT ARCHIVE FEATURE
+// ============================================================
+
+/** Whether to show archived (resolved) comments instead of active ones */
+const showCommentArchive = ref(false)
+
+/** Active comments (not resolved) - shown by default and highlighted in editor */
+const activeComments = computed(() =>
+  comments.value.filter(c => !c.resolved_at)
+)
+
+/** Archived comments (resolved) - shown when archive mode is active */
+const archivedComments = computed(() =>
+  comments.value.filter(c => c.resolved_at)
+)
+
+/** Comments to display in the list based on current mode */
+const displayedComments = computed(() =>
+  showCommentArchive.value ? archivedComments.value : activeComments.value
+)
+
+/** Count of archived comments for badge display */
+const archivedCount = computed(() => archivedComments.value.length)
+
+/**
+ * Check if a comment belongs to a different document than currently selected.
+ * Uses number comparison to avoid string/number type mismatch.
+ * @param {Object} comment - The comment to check
+ * @returns {boolean} True if comment is in a different document
+ */
+function isCommentInOtherDocument(comment) {
+  if (!comment?.document_id) return false
+  const currentDocId = selectedNode.value?.id
+  if (currentDocId == null) return true
+  return Number(comment.document_id) !== Number(currentDocId)
+}
+
+/**
+ * Handle navigation to a document from a comment click.
+ * Opens the document and then highlights the comment range.
+ */
+function handleNavigateToDocument(documentId, comment) {
+  // Convert to number for consistent comparison with nodeById keys
+  const docIdNum = Number(documentId)
+  const node = nodeById.value.get(docIdNum)
+
+  if (!node) {
+    console.warn('[handleNavigateToDocument] Node not found for documentId:', documentId)
+    return
+  }
+
+  // Select the document node - use the router to navigate
+  router.push(`${routeBase.value}/workspace/${workspaceId.value}/document/${docIdNum}`)
+
+  // After document loads, highlight the comment range
+  if (comment && comment.range_start != null && comment.range_end != null) {
+    // Wait for editor to be ready then highlight
+    nextTick(() => {
+      setTimeout(() => {
+        highlightCommentRange(comment)
+      }, 400) // Delay to ensure editor has loaded the new document
+    })
+  }
+}
+
+// ============================================================
+// AI Assistant for Comment Resolution
+// ============================================================
+const aiAssistantEnabled = ref(false)
+const aiAssistantColor = ref('#9B59B6')  // LLARS KI purple
+const aiAssistantUsername = ref('LLARS KI')
+const aiResolvingCommentId = ref(null)
+
+// AI Streaming Window State
+const aiStreamWindowOpen = ref(false)
+const aiStreamContent = ref('')
+const aiStreamStatus = ref('idle') // 'idle' | 'streaming' | 'completed' | 'error'
+const aiStreamResult = ref(null)
+const floatingAiStreamRef = ref(null)
+const aiStreamDragOffset = ref({ x: 0, y: 0 })
+const isDraggingAiStream = ref(false)
+const aiStreamPosition = ref({ x: 100, y: 100 })
+const aiStreamContentRef = ref(null)
+
+const floatingAiStreamStyle = computed(() => {
+  // Ensure the window stays within viewport bounds
+  const windowWidth = 360  // CSS width of the card
+  const windowHeight = 400 // Approximate height
+  const maxX = Math.max(10, window.innerWidth - windowWidth - 10)
+  const maxY = Math.max(10, window.innerHeight - windowHeight - 10)
+
+  return {
+    left: `${Math.max(10, Math.min(maxX, aiStreamPosition.value.x))}px`,
+    top: `${Math.max(10, Math.min(maxY, aiStreamPosition.value.y))}px`
+  }
+})
+
+/**
+ * Fetch AI assistant settings from the server
+ */
+async function loadAiAssistantSettings() {
+  try {
+    const res = await axios.get(`${API_BASE}/api/system/ai-assistant`, {
+      headers: authHeaders()
+    })
+    if (res.data?.success && res.data?.ai_assistant) {
+      aiAssistantEnabled.value = res.data.ai_assistant.enabled
+      aiAssistantColor.value = res.data.ai_assistant.color
+      aiAssistantUsername.value = res.data.ai_assistant.username
+    }
+  } catch (e) {
+    console.warn('Could not load AI assistant settings:', e)
+    aiAssistantEnabled.value = false
+  }
+}
+
+/**
+ * Handle click on AI button - either start resolve or toggle stream window
+ * @param {Object} comment - The comment
+ */
+function handleAiButtonClick(comment) {
+  if (aiResolvingCommentId.value === comment.id) {
+    // Already processing this comment - toggle the stream window
+    aiStreamWindowOpen.value = !aiStreamWindowOpen.value
+  } else {
+    // Start new AI resolve
+    aiResolveComment(comment)
+  }
+}
+
+/**
+ * Use AI to resolve a comment with streaming support.
+ * @param {Object} comment - The comment to resolve
+ */
+async function aiResolveComment(comment) {
+  if (!comment || aiResolvingCommentId.value !== null) return
+
+  // Navigate to the comment's document first if needed
+  const currentDocId = selectedNode.value?.id
+  const commentDocId = comment.document_id
+  const isSameDoc = currentDocId != null && Number(currentDocId) === Number(commentDocId)
+
+  if (!isSameDoc) {
+    handleNavigateToDocument(commentDocId, comment)
+    await new Promise(resolve => setTimeout(resolve, 600))
+  }
+
+  // Reset stream state
+  aiResolvingCommentId.value = comment.id
+  aiStreamContent.value = ''
+  aiStreamStatus.value = 'streaming'
+  aiStreamResult.value = null
+  aiStreamWindowOpen.value = true  // Open stream window automatically
+
+  // Position the stream window - try to place it near the comment but within viewport
+  const windowWidth = 360
+  const windowHeight = 400
+  const commentEl = document.querySelector(`.comment-thread[data-comment-id="${comment.id}"]`)
+
+  if (commentEl) {
+    const rect = commentEl.getBoundingClientRect()
+    // Try to position to the left of the comment panel (which is on the right side)
+    let x = rect.left - windowWidth - 20
+    // If that would go off-screen, position centered on screen
+    if (x < 10) {
+      x = Math.max(10, (window.innerWidth - windowWidth) / 2)
+    }
+    let y = Math.max(10, Math.min(rect.top, window.innerHeight - windowHeight - 10))
+    aiStreamPosition.value = { x, y }
+  } else {
+    // Fallback: center on screen
+    aiStreamPosition.value = {
+      x: Math.max(10, (window.innerWidth - windowWidth) / 2),
+      y: Math.max(10, (window.innerHeight - windowHeight) / 3)
+    }
+  }
+
+  console.log('[AI Stream] State updated:', {
+    commentId: comment.id,
+    windowOpen: aiStreamWindowOpen.value,
+    position: aiStreamPosition.value,
+    status: aiStreamStatus.value
+  })
+
+  try {
+    // Check if there's an existing stream we can reconnect to
+    const statusRes = await axios.get(
+      `${API_BASE}/api/latex-collab/comments/${comment.id}/ai-resolve/status`,
+      { headers: authHeaders() }
+    )
+
+    if (statusRes.data?.active) {
+      // Reconnect to existing stream
+      aiStreamContent.value = statusRes.data.content || ''
+      aiStreamStatus.value = statusRes.data.status || 'streaming'
+      if (statusRes.data.result) {
+        aiStreamResult.value = statusRes.data.result
+      }
+      return
+    }
+
+    // Start new streaming request
+    const res = await axios.post(
+      `${API_BASE}/api/latex-collab/comments/${comment.id}/ai-resolve`,
+      { auto_resolve: true, streaming: true },
+      { headers: authHeaders() }
+    )
+
+    if (!res.data?.success) {
+      throw new Error(res.data?.error || 'Failed to start AI streaming')
+    }
+
+    // Streaming started - tokens will arrive via Socket.IO
+    // The REST response just confirms streaming has started
+  } catch (e) {
+    const errorMsg = e?.response?.data?.error || e?.message || 'Unknown error'
+    showSnackbar(t('latexCollab.comments.aiError', { error: errorMsg }), 'error')
+    console.error('AI resolve failed:', e)
+    aiResolvingCommentId.value = null
+    aiStreamStatus.value = 'error'
+  }
+}
+
+/**
+ * Handle incoming AI stream token
+ */
+function handleAiStreamToken(data) {
+  console.log('[AI Stream] Token received:', data)
+  if (data.comment_id !== aiResolvingCommentId.value) return
+
+  aiStreamContent.value += data.token
+
+  // Auto-scroll stream content
+  nextTick(() => {
+    if (aiStreamContentRef.value) {
+      aiStreamContentRef.value.scrollTop = aiStreamContentRef.value.scrollHeight
+    }
+  })
+}
+
+/**
+ * Handle AI stream completion
+ */
+function handleAiStreamCompleted(data) {
+  console.log('[AI Stream] Completed:', data)
+  if (data.comment_id !== aiResolvingCommentId.value) return
+
+  aiStreamStatus.value = 'completed'
+  aiStreamResult.value = data
+
+  // Find the original comment to get the author's color
+  const originalComment = comments.value.find(c => c.id === data.comment_id)
+  const authorColor = originalComment?.author_color || collabColor.value
+  const authorUsername = originalComment?.author_username || 'Unknown'
+
+  // Apply the text change to the editor using the original comment author's color
+  const { changes } = data
+  if (changes?.old_text && changes?.new_text && changes.range_start != null && changes.range_end != null) {
+    if (editorRef.value?.replaceRange) {
+      editorRef.value.replaceRange(
+        changes.range_start,
+        changes.range_end,
+        changes.new_text,
+        {
+          collabColor: authorColor,  // Use original comment author's color
+          collabUser: authorUsername
+        }
+      )
+      // Refresh Git panel after AI changes (wait for YJS to sync and save)
+      // YJS has a 2-second debounce, so we wait 3 seconds to be safe
+      setTimeout(() => {
+        treePanelRef.value?.refreshGit?.()
+      }, 3000)
+    }
+  }
+
+  // Update the comment's range in local state to match new text length
+  // This ensures the comment highlight covers the correct text after AI changes
+  if (data.comment_updated) {
+    const { id, range_start, range_end } = data.comment_updated
+    const commentIndex = comments.value.findIndex(c => c.id === id)
+    if (commentIndex !== -1) {
+      comments.value[commentIndex].range_start = range_start
+      comments.value[commentIndex].range_end = range_end
+      console.log('[AI Stream] Updated comment range:', { id, range_start, range_end })
+    }
+  }
+
+  showSnackbar(t('latexCollab.comments.aiSuccess'), 'success')
+
+  // Reset after a delay to allow user to see the result
+  setTimeout(() => {
+    if (aiStreamStatus.value === 'completed') {
+      aiResolvingCommentId.value = null
+      // Keep window open so user can see final result
+    }
+  }, 2000)
+}
+
+/**
+ * Handle AI stream error
+ */
+function handleAiStreamError(data) {
+  console.log('[AI Stream] Error:', data)
+  if (data.comment_id !== aiResolvingCommentId.value) return
+
+  aiStreamStatus.value = 'error'
+  showSnackbar(t('latexCollab.comments.aiError', { error: data.error }), 'error')
+
+  setTimeout(() => {
+    aiResolvingCommentId.value = null
+  }, 3000)
+}
+
+// AI Stream Window Drag Functions
+function startDragAiStream(e) {
+  if (e.button !== 0) return
+  isDraggingAiStream.value = true
+  const card = floatingAiStreamRef.value
+  if (!card) return
+  const rect = card.getBoundingClientRect()
+  aiStreamDragOffset.value = {
+    x: e.clientX - rect.left,
+    y: e.clientY - rect.top
+  }
+  document.addEventListener('mousemove', dragAiStream)
+  document.addEventListener('mouseup', stopDragAiStream)
+  e.preventDefault()
+}
+
+function dragAiStream(e) {
+  if (!isDraggingAiStream.value) return
+  aiStreamPosition.value = {
+    x: Math.max(0, e.clientX - aiStreamDragOffset.value.x),
+    y: Math.max(0, e.clientY - aiStreamDragOffset.value.y)
+  }
+}
+
+function stopDragAiStream() {
+  isDraggingAiStream.value = false
+  document.removeEventListener('mousemove', dragAiStream)
+  document.removeEventListener('mouseup', stopDragAiStream)
+}
+
+// Compile management composable
+const {
+  compileJobId,
+  compileStatus,
+  compileError,
+  compileLog,
+  compileHasPdf,
+  compileHasSynctex,
+  compileLogDialog,
+  pdfRefreshKey,
+  compileCommitId,
+  compileCommitOptions,
+  compileIssues,
+  autoCompileEnabled,
+  autoCompileDelay,
+  canCompile,
+  isCompiling,
+  compileStatusLabel,
+  compileStatusColor,
+  canSync,
+  pdfJobId,
+  loadCompileStatus,
+  loadCommitOptions,
+  scheduleAutoCompile,
+  triggerCompile,
+  handleCompileStatusUpdate
+} = useLatexCompile({
+  workspaceId,
+  selectedNode,
+  editorRef,
+  resolveDocumentIdFromPath,
+  normalizePath,
+  reviewMode,
+  hasPermission
+})
+
+// Sync management composable
+const {
+  syncEnabled,
+  handleEditorSyncRequest,
+  handlePdfClick
+} = useLatexSync({
+  selectedNode,
+  pdfViewerRef,
+  compileJobId,
+  canSync,
+  jumpToDocument
+})
+
+const editorReadonly = computed(() => {
+  // Read-only if user lacks edit permission, in review mode, or document is Zotero-managed
+  if (!hasPermission('feature:latex_collab:edit')) return true
+  if (reviewMode.value) return true
+  if (selectedNode.value?.is_zotero_managed) return true
+  return false
+})
 
 const canSetMainDocument = computed(() => {
   return !!(selectedNode.value && selectedNode.value.type === 'file' && !selectedNode.value.asset_id && hasPermission('feature:latex_collab:edit'))
 })
 
-const canCompile = computed(() => {
-  return !!(selectedNode.value && selectedNode.value.type === 'file' && !selectedNode.value.asset_id && hasPermission('feature:latex_collab:edit'))
-})
+// canCompile, canSync, pdfJobId, isCompiling, compileStatusLabel, compileStatusColor
+// now provided by useLatexCompile composable
 
-const canSync = computed(() => (
-  compileStatus.value === 'success'
-  && !!compileJobId.value
-  && compileHasSynctex.value
-))
-const pdfJobId = computed(() => (
-  compileStatus.value === 'success' && compileJobId.value ? compileJobId.value : null
-))
-
-const isCompiling = computed(() => ['queued', 'running'].includes(compileStatus.value))
-
-const compileStatusLabel = computed(() => {
-  if (compileStatus.value === 'queued') return 'Queued'
-  if (compileStatus.value === 'running') return 'Kompiliert'
-  if (compileStatus.value === 'success') return 'Fertig'
-  if (compileStatus.value === 'failed') return 'Fehler'
-  return 'Idle'
-})
-
-const compileStatusColor = computed(() => {
-  if (compileStatus.value === 'success') return 'success'
-  if (compileStatus.value === 'failed') return 'error'
-  if (compileStatus.value === 'running') return 'info'
-  if (compileStatus.value === 'queued') return 'warning'
-  return undefined
-})
-
-const canComment = computed(() => {
-  return !!(selectedNode.value && selectedNode.value.type === 'file' && !selectedNode.value.asset_id && hasPermission('feature:latex_collab:edit'))
-})
-
-const canSubmitComment = computed(() => commentDraft.value.trim().length > 0 && !!pendingCommentRange.value)
-
-// Usernames to exclude from search (owner + existing members)
-const excludedUsernames = computed(() => {
-  const excluded = []
-  if (workspace.value?.owner_username) excluded.push(workspace.value.owner_username)
-  members.value.forEach(m => excluded.push(m.username))
-  return excluded
-})
+// canComment and canSubmitComment now provided by useLatexComments composable
 
 // Tree panel resize
 function startTreeResize(event) {
@@ -1069,123 +1559,107 @@ function stopTreeResize() {
   localStorage.setItem(TREE_WIDTH_KEY, treePanelWidth.value.toString())
 }
 
-const outlineCommandLevels = {
-  part: { level: 0, label: 'Teil' },
-  chapter: { level: 1, label: 'Kapitel' },
-  section: { level: 2, label: 'Abschnitt' },
-  subsection: { level: 3, label: 'Unterabschnitt' },
-  subsubsection: { level: 4, label: 'Unter-Unterabschnitt' },
-  paragraph: { level: 5, label: 'Paragraph' }
+// Comments panel resize (vertical)
+function startCommentsResize(event) {
+  event.preventDefault()
+  resizingComments.value = true
+  document.body.style.cursor = 'row-resize'
+  document.body.style.userSelect = 'none'
+  document.addEventListener('mousemove', onCommentsMouseMove)
+  document.addEventListener('mouseup', stopCommentsResize)
 }
 
-const outlinePattern = /\\(part|chapter|section|subsection|subsubsection|paragraph)\*?\s*(?:\[[^\]]*])?\s*\{([^}]*)\}/g
-
-function toggleOutlineCollapsed() {
-  outlineCollapsed.value = !outlineCollapsed.value
+function onCommentsMouseMove(event) {
+  if (!resizingComments.value || !previewContentRef.value) return
+  const containerRect = previewContentRef.value.getBoundingClientRect()
+  const mouseY = event.clientY
+  const containerBottom = containerRect.bottom
+  // Height is from mouse position to bottom of container
+  const newHeight = containerBottom - mouseY
+  // Min 100px, max 400px
+  commentsPanelHeight.value = Math.max(100, Math.min(400, newHeight))
 }
 
-function isOutlineItemCollapsed(id) {
-  return outlineCollapsedIds.value.has(id)
+function stopCommentsResize() {
+  resizingComments.value = false
+  document.body.style.cursor = ''
+  document.body.style.userSelect = ''
+  document.removeEventListener('mousemove', onCommentsMouseMove)
+  document.removeEventListener('mouseup', stopCommentsResize)
+  localStorage.setItem(COMMENTS_HEIGHT_KEY, commentsPanelHeight.value.toString())
 }
 
-function toggleOutlineItem(id) {
-  const next = new Set(outlineCollapsedIds.value)
-  if (next.has(id)) {
-    next.delete(id)
-  } else {
-    next.add(id)
+// Computed style for comments panel
+const commentsPanelStyle = computed(() => ({
+  height: `${commentsPanelHeight.value}px`,
+  minHeight: `${commentsPanelHeight.value}px`,
+  maxHeight: `${commentsPanelHeight.value}px`
+}))
+
+// Floating comment card (inline beside text, no overlay)
+const floatingCommentCardRef = ref(null)
+const floatingCommentDragOffset = ref({ x: 0, y: 0 })
+const isDraggingCommentCard = ref(false)
+
+const floatingCommentCardStyle = computed(() => {
+  const pos = commentCardPosition.value
+  return {
+    left: `${Math.max(10, pos.x)}px`,
+    top: `${Math.max(10, pos.y)}px`
   }
-  outlineCollapsedIds.value = next
+})
+
+function startDragCommentCard(e) {
+  if (e.button !== 0) return // Only left mouse button
+  isDraggingCommentCard.value = true
+  const card = floatingCommentCardRef.value
+  if (!card) return
+  const rect = card.getBoundingClientRect()
+  floatingCommentDragOffset.value = {
+    x: e.clientX - rect.left,
+    y: e.clientY - rect.top
+  }
+  document.addEventListener('mousemove', dragCommentCard)
+  document.addEventListener('mouseup', stopDragCommentCard)
+  e.preventDefault()
 }
 
-function buildOutline(text) {
-  if (!text) return []
-  const items = []
-  const stack = []
-  const lines = text.split('\n')
-  const lineStarts = []
-  let offset = 0
-  for (const line of lines) {
-    lineStarts.push(offset)
-    offset += line.length + 1
+function dragCommentCard(e) {
+  if (!isDraggingCommentCard.value) return
+  const newX = e.clientX - floatingCommentDragOffset.value.x
+  const newY = e.clientY - floatingCommentDragOffset.value.y
+  commentCardPosition.value = {
+    x: Math.max(0, newX),
+    y: Math.max(0, newY)
   }
+}
 
-  outlinePattern.lastIndex = 0
-  let match = outlinePattern.exec(text)
-  let lineIndex = 0
-  while (match) {
-    const matchIndex = match.index
-    while (lineIndex + 1 < lineStarts.length && lineStarts[lineIndex + 1] <= matchIndex) {
-      lineIndex += 1
-    }
-    const line = lines[lineIndex] || ''
-    const trimmed = line.trim()
-    if (trimmed && !trimmed.startsWith('%')) {
-      const colIndex = matchIndex - lineStarts[lineIndex]
-      const leading = line.slice(0, Math.max(0, colIndex))
-      if (!leading.includes('%')) {
-        const cmd = match[1]
-        const meta = outlineCommandLevels[cmd] || { level: 9, label: cmd }
-        const title = (match[2] || '').trim() || meta.label
-        const item = {
-          id: `${cmd}:${lineIndex + 1}:${title}`,
-          title,
-          line: lineIndex + 1,
-          level: meta.level,
-          children: []
-        }
+function stopDragCommentCard() {
+  isDraggingCommentCard.value = false
+  document.removeEventListener('mousemove', dragCommentCard)
+  document.removeEventListener('mouseup', stopDragCommentCard)
+}
 
-        while (stack.length && stack[stack.length - 1].level >= item.level) {
-          stack.pop()
-        }
-        if (stack.length) {
-          stack[stack.length - 1].children.push(item)
-        } else {
-          items.push(item)
-        }
-        stack.push(item)
+// Outline functions now provided by useLatexOutline composable
+
+// Auto-compile when no PDF exists
+let autoCompileTriggered = false
+function handleNoPdf() {
+  // Prevent multiple auto-compile attempts per session
+  if (autoCompileTriggered) return
+  // Only auto-compile if not already compiling and user has permission
+  if (!isCompiling.value && canCompile.value) {
+    autoCompileTriggered = true
+    triggerCompile()
+  } else if (!isCompiling.value && hasPermission('feature:latex_collab:edit')) {
+    // If no document selected yet, schedule retry after short delay
+    setTimeout(() => {
+      if (!autoCompileTriggered && !isCompiling.value && canCompile.value) {
+        autoCompileTriggered = true
+        triggerCompile()
       }
-    }
-    match = outlinePattern.exec(text)
+    }, 500)
   }
-
-  return items
-}
-
-function updateOutline(text) {
-  if (text === lastOutlineText) return
-  lastOutlineText = text
-  const nextItems = buildOutline(text)
-  outlineItems.value = nextItems
-
-  const validIds = new Set()
-  const collect = (nodes) => {
-    for (const node of nodes) {
-      validIds.add(node.id)
-      if (node.children?.length) collect(node.children)
-    }
-  }
-  collect(nextItems)
-
-  if (outlineCollapsedIds.value.size) {
-    const next = new Set()
-    outlineCollapsedIds.value.forEach((id) => {
-      if (validIds.has(id)) next.add(id)
-    })
-    outlineCollapsedIds.value = next
-  }
-}
-
-function scheduleOutlineUpdate(text) {
-  if (outlineUpdateTimer) clearTimeout(outlineUpdateTimer)
-  outlineUpdateTimer = setTimeout(() => {
-    updateOutline(text)
-  }, 200)
-}
-
-function jumpToOutlineItem(item) {
-  if (!item?.line) return
-  editorRef.value?.jumpToLine?.(item.line, 1)
 }
 
 // Initialize pane width on mount
@@ -1193,14 +1667,23 @@ onMounted(async () => {
   await fetchPermissions()
   await loadTree()
 
+  // Load AI assistant settings
+  loadAiAssistantSettings()
+
   // Connect to workspace socket for real-time tree updates
   wsConnect()
+
+  // Connect to compile status socket for real-time compile updates
+  setupCompileSocket()
+
+  // Connect to comments socket for real-time comment sync
+  initCommentsSocket()
 
   // Auto-select first file if none selected
   if (!routeDocId.value) {
     const preferred = nodesFlat.value.find(n => n.id === workspace.value?.main_document_id && n.type === 'file' && !n.asset_id)
       || nodesFlat.value.find(n => n.type === 'file' && !n.asset_id)
-    if (preferred) router.replace(`/LatexCollab/workspace/${workspaceId.value}/document/${preferred.id}`)
+    if (preferred) router.replace(`${routeBase.value}/workspace/${workspaceId.value}/document/${preferred.id}`)
   }
 
   if (!isMobile.value) {
@@ -1218,10 +1701,15 @@ onMounted(async () => {
 onUnmounted(() => {
   document.removeEventListener('mousemove', onTreeMouseMove)
   document.removeEventListener('mouseup', stopTreeResize)
-  if (autoCompileTimer) clearTimeout(autoCompileTimer)
-  if (compilePollTimer) clearTimeout(compilePollTimer)
-  if (syncTimer) clearTimeout(syncTimer)
-  if (outlineUpdateTimer) clearTimeout(outlineUpdateTimer)
+  document.removeEventListener('mousemove', onCommentsMouseMove)
+  document.removeEventListener('mouseup', stopCommentsResize)
+  // Cleanup compile status socket
+  cleanupCompileSocket()
+  // Timer cleanups are now handled by composables:
+  // - autoCompileTimer, compilePollTimer by useLatexCompile
+  // - syncTimer by useLatexSync
+  // - outlineUpdateTimer by useLatexOutline
+  // - Git panel refresh is now handled by useGitStatus composable in GitStatusWidget
 })
 
 function onEditorContentChange(text) {
@@ -1232,6 +1720,72 @@ function onEditorContentChange(text) {
   }
   scheduleOutlineUpdate(text)
   scheduleAutoCompile()
+  // Git panel is updated via WebSocket 'document_saved' events (see handleDocumentSaved)
+  // No need for polling-based refresh here
+  // Emit for AI wrapper component
+  emit('document-change', text)
+}
+
+/**
+ * Handle document_saved events from YJS server for real-time Git panel updates.
+ *
+ * This function is the final step in the real-time update chain:
+ *   1. User types in editor → Yjs local update
+ *   2. Yjs syncs to server → 2s debounce timer starts
+ *   3. After 2s inactivity → YJS server saves to DB
+ *   4. Server broadcasts `document_saved` to workspace room
+ *   5. useYjsCollaboration receives event → calls onDocumentSaved callback
+ *   6. EditorPane emits 'document-saved' event to parent
+ *   7. This function receives the event and refreshes Git panel
+ *
+ * The workspace-level check ensures we only refresh for documents in THIS
+ * workspace, not unrelated workspaces the user might have open in other tabs.
+ *
+ * @param {Object} data - Event payload from YJS server
+ * @param {number} data.documentId - The document that was saved
+ * @param {number} data.workspaceId - Workspace containing the document
+ * @param {string} data.kind - Document type ('latex')
+ * @param {number} data.contentLength - Length of saved content
+ * @param {string} data.savedAt - ISO timestamp of save
+ */
+function handleDocumentSaved(data) {
+  console.log('[LatexCollabWorkspace] document_saved empfangen:', data)
+  // Refresh Git panel when document is saved to show updated changes
+  treePanelRef.value?.refreshGit?.()
+}
+
+/**
+ * Handle document_updated events from YJS server.
+ * Note: Server no longer sends diff data - clients calculate diff locally.
+ *
+ * @param {Object} data - Event payload from YJS server
+ * @param {number} data.documentId - Updated document ID
+ * @param {number} data.workspaceId - Workspace containing the document
+ * @param {string} data.kind - Document type ('latex')
+ * @param {number} data.timestamp - Event timestamp
+ */
+function handleDocumentUpdated(data) {
+  // Server event is now lightweight - local diff is handled by handleDiffCalculated
+  // This event can be used for other purposes like activity indicators
+}
+
+/**
+ * Handle local diff calculation from LatexEditorPane for INSTANT Git panel updates.
+ *
+ * This is called on every YJS update with diff calculated locally against
+ * the baseline stored in the YJS document. No server roundtrip required.
+ *
+ * @param {Object} data - Diff data from local calculation
+ * @param {number} data.documentId - Document ID
+ * @param {number} data.insertions - Characters inserted since baseline
+ * @param {number} data.deletions - Characters deleted since baseline
+ * @param {boolean} data.hasChanges - Whether document differs from baseline
+ */
+function handleDiffCalculated(data) {
+  // Real-time diff updates are now handled by the GitStatusWidget's useGitStatus composable
+  // which listens to socket events directly. This function is kept for potential future use.
+  if (!data.documentId) return
+  console.log('[LatexCollabWorkspace] Diff calculated:', data.documentId, data.insertions, data.deletions)
 }
 
 function authHeaders() {
@@ -1242,168 +1796,30 @@ function authHeaders() {
 function formatDate(iso) {
   if (!iso) return '—'
   try {
-    return new Date(iso).toLocaleString()
+    return new Date(iso).toLocaleString(locale.value || undefined)
   } catch {
     return iso
   }
 }
 
-function parseLatexLog(logText) {
-  const issues = []
-  const lines = String(logText || '').split(/\r?\n/)
-  const fileStack = []
+// parseLatexLog and decorateIssues now in useLatexCompile composable
 
-  const pushFile = (file) => {
-    if (!file) return
-    const cleaned = file.replace(/[()]/g, '').trim()
-    if (!cleaned) return
-    fileStack.push(cleaned)
-  }
+// Members functions now provided by useLatexMembers composable
 
-  const currentFile = () => fileStack[fileStack.length - 1] || null
-
-  for (let i = 0; i < lines.length; i += 1) {
-    const line = lines[i] || ''
-
-    const fileMatches = Array.from(line.matchAll(/\(([^()\s]+?\.(?:tex|bib|sty|cls|ltx|bst))\b/g))
-    fileMatches.forEach((match) => pushFile(match[1]))
-
-    const closeCount = (line.match(/\)/g) || []).length
-    for (let c = 0; c < closeCount && fileStack.length > 0; c += 1) {
-      fileStack.pop()
-    }
-
-    if (line.startsWith('! ')) {
-      let lineNo = null
-      for (let j = i + 1; j < Math.min(i + 6, lines.length); j += 1) {
-        const ln = lines[j]
-        const match = ln.match(/^l\.(\d+)/) || ln.match(/line\s+(\d+)/i)
-        if (match) {
-          lineNo = Number(match[1])
-          break
-        }
-      }
-      issues.push({
-        type: 'error',
-        message: line.replace(/^!\s*/, '').trim(),
-        file: currentFile(),
-        line: lineNo
-      })
-      continue
-    }
-
-    if (/warning/i.test(line)) {
-      const match = line.match(/line\s+(\d+)/i)
-      issues.push({
-        type: 'warning',
-        message: line.trim(),
-        file: currentFile(),
-        line: match ? Number(match[1]) : null
-      })
-      continue
-    }
-
-    if (line.includes('Overfull \\hbox')) {
-      const match = line.match(/lines?\s+(\d+)/i)
-      issues.push({
-        type: 'overfull',
-        message: line.trim(),
-        file: currentFile(),
-        line: match ? Number(match[1]) : null
-      })
-    }
-  }
-
-  return issues
+// Zotero library event handlers
+async function handleZoteroLibraryAdded(library) {
+  // Refresh the file tree to show the new .bib file
+  await loadTree()
 }
 
-function decorateIssues(issues) {
-  return issues.map((issue, index) => {
-    const filePath = issue.file ? normalizePath(issue.file) : ''
-    const fileName = filePath ? filePath.split('/').pop() : ''
-    const documentId = filePath ? resolveDocumentIdFromPath(filePath) : null
-    const location = fileName
-      ? `${fileName}${issue.line ? `:${issue.line}` : ''}`
-      : (issue.line ? `Zeile ${issue.line}` : '—')
-    const type = issue.type || 'warning'
-    const color = type === 'error' ? 'error' : (type === 'overfull' ? 'info' : 'warning')
-    const label = type === 'error' ? 'Error' : (type === 'overfull' ? 'Overfull' : 'Warning')
-    return {
-      ...issue,
-      id: `${type}-${index}-${issue.line || 0}`,
-      document_id: documentId,
-      location,
-      color,
-      label
-    }
-  })
+async function handleZoteroLibrarySynced(library) {
+  // Refresh the file tree to reflect updated .bib content
+  await loadTree()
 }
 
-async function loadMembers() {
-  if (!workspaceId.value) return
-  membersLoading.value = true
-  shareError.value = ''
-  try {
-    const res = await axios.get(`${API_BASE}/api/latex-collab/workspaces/${workspaceId.value}/members`, {
-      headers: authHeaders()
-    })
-    members.value = res.data.members || []
-    // Store owner info
-    ownerInfo.value = {
-      username: res.data.owner?.username || '',
-      avatar_url: res.data.owner?.avatar_url || null,
-      avatar_seed: res.data.owner?.avatar_seed || null,
-      collab_color: res.data.owner?.collab_color || null
-    }
-  } catch (e) {
-    members.value = []
-    shareError.value = e?.response?.data?.error || e?.message || 'Mitglieder konnten nicht geladen werden'
-  } finally {
-    membersLoading.value = false
-  }
-}
-
-// Helper functions for user display imported from @/utils/userUtils
-
-function openShareDialog() {
-  shareDialog.value = true
-  selectedUser.value = null
-  loadMembers()
-}
-
-async function inviteMember(user) {
-  const username = user?.username || selectedUser.value?.username
-  if (!username) return
-  shareError.value = ''
-  try {
-    await axios.post(
-      `${API_BASE}/api/latex-collab/workspaces/${workspaceId.value}/members`,
-      { username: username.trim() },
-      { headers: authHeaders() }
-    )
-    selectedUser.value = null
-    userSearchRef.value?.reset?.()
-    await loadMembers()
-  } catch (e) {
-    shareError.value = e?.response?.data?.error || e?.message || 'Einladung fehlgeschlagen'
-    userSearchRef.value?.setAdding?.(false)
-  }
-}
-
-async function removeMember(username) {
-  if (!username) return
-  removingUsername.value = username
-  shareError.value = ''
-  try {
-    await axios.delete(`${API_BASE}/api/latex-collab/workspaces/${workspaceId.value}/members/${encodeURIComponent(username)}`, {
-      headers: authHeaders()
-    })
-    await loadMembers()
-  } catch (e) {
-    shareError.value = e?.response?.data?.error || e?.message || 'Entfernen fehlgeschlagen'
-  } finally {
-    removingUsername.value = ''
-  }
+async function handleZoteroLibraryRemoved(library) {
+  // The .bib file is kept but no longer synced - no tree refresh needed
+  console.log('Zotero-Bibliothek entfernt:', library.library_name)
 }
 
 function buildTree(flat) {
@@ -1486,6 +1902,118 @@ function resolveDocumentIdFromPath(path) {
   return null
 }
 
+function isAiContextNode(node) {
+  if (!node || node.type !== 'file' || node.asset_id) return false
+  const title = String(node.title || '').toLowerCase()
+  return AI_CONTEXT_ALLOWED_EXTS.some(ext => title.endsWith(ext))
+}
+
+function getNodePathForAi(node) {
+  if (!node?.id) return node?.title || ''
+  return nodePathById.value.get(node.id) || node.title || ''
+}
+
+async function fetchAiContextDocuments(documentIds) {
+  if (!Array.isArray(documentIds) || documentIds.length === 0) return new Map()
+
+  try {
+    const res = await axios.post(
+      `${API_BASE}/api/latex-collab/documents/content`,
+      { document_ids: documentIds },
+      { headers: authHeaders() }
+    )
+    const docs = res.data?.documents || []
+    const map = new Map()
+    docs.forEach((doc) => {
+      map.set(doc.id, doc.content_text || '')
+    })
+    return map
+  } catch (e) {
+    console.warn('[LatexCollabWorkspace] Konnte AI-Kontext nicht laden:', e)
+    return new Map()
+  }
+}
+
+async function getAiChatContext() {
+  const currentNode = selectedNode.value
+  const currentId = currentNode?.id || null
+  const currentContent = editorRef.value?.getCurrentContent?.() || currentText.value || ''
+
+  const mainId = workspace.value?.main_document_id || null
+
+  const candidates = []
+  if (currentNode && currentNode.type === 'file' && !currentNode.asset_id) {
+    candidates.push(currentNode)
+  }
+
+  if (mainId && mainId !== currentId) {
+    const mainNode = nodesFlat.value.find(n => n.id === mainId)
+    if (isAiContextNode(mainNode)) {
+      candidates.push(mainNode)
+    }
+  }
+
+  if (candidates.length < AI_CONTEXT_MAX_FILES) {
+    const additional = nodesFlat.value.filter((node) => {
+      if (!isAiContextNode(node)) return false
+      if (node.id === currentId) return false
+      if (node.id === mainId) return false
+      return true
+    })
+    candidates.push(...additional)
+  }
+
+  const limited = candidates.slice(0, AI_CONTEXT_MAX_FILES)
+  const otherIds = limited
+    .map(node => node.id)
+    .filter(id => id && id !== currentId)
+
+  const otherContentMap = await fetchAiContextDocuments(otherIds)
+
+  let remaining = AI_CONTEXT_MAX_CHARS
+  let context = ''
+  const sources = []
+
+  for (const node of limited) {
+    const path = getNodePathForAi(node)
+    const header = `${context ? '\n\n' : ''}[FILE: ${path}]\n`
+    if (remaining <= header.length + 1) break
+
+    const rawContent = node.id === currentId ? currentContent : (otherContentMap.get(node.id) || '')
+    if (!rawContent) continue
+
+    const available = remaining - header.length
+    const truncated = rawContent.length > available
+    const contentSlice = truncated ? rawContent.slice(0, available) : rawContent
+
+    context += header + contentSlice
+    remaining -= header.length + contentSlice.length
+
+    sources.push({
+      id: node.id,
+      title: node.title || '',
+      path,
+      chars: contentSlice.length,
+      truncated
+    })
+
+    if (remaining <= 0) break
+  }
+
+  if (!context && currentContent) {
+    context = currentContent.slice(0, AI_CONTEXT_MAX_CHARS)
+    sources.push({
+      id: currentId,
+      title: currentNode?.title || '',
+      path: getNodePathForAi(currentNode),
+      chars: context.length,
+      truncated: currentContent.length > context.length
+    })
+  }
+
+  return { content: context, sources }
+}
+
 async function loadTree() {
   await withLoading('tree', async () => {
     const res = await axios.get(`${API_BASE}/api/latex-collab/workspaces/${workspaceId.value}/tree`, {
@@ -1496,22 +2024,137 @@ async function loadTree() {
   })
 }
 
+// Debounce to prevent double-click issues
+let lastSelectTime = 0
+let lastSelectNodeId = null
+
 function handleSelectNode(nodeId) {
+  // Prevent duplicate clicks within 100ms on the same node
+  const now = Date.now()
+  if (nodeId === lastSelectNodeId && now - lastSelectTime < 100) {
+    console.log('[handleSelectNode] Doppelten Klick auf nodeId ignoriert:', nodeId)
+    return
+  }
+  lastSelectTime = now
+  lastSelectNodeId = nodeId
+
   const node = nodesFlat.value.find(n => n.id === nodeId)
   if (!node) return
 
   if (node.type === 'file') {
-    router.push(`/LatexCollab/workspace/${workspaceId.value}/document/${node.id}`)
+    router.push(`${routeBase.value}/workspace/${workspaceId.value}/document/${node.id}`)
     return
   }
 
   // Folder: keep workspace route, but don't force a document selection
-  router.push(`/LatexCollab/workspace/${workspaceId.value}`)
+  router.push(`${routeBase.value}/workspace/${workspaceId.value}`)
 }
 
 function openAssetPicker() {
   if (!hasPermission('feature:latex_collab:edit')) return
   assetInputRef.value?.click()
+}
+
+// ============================================================
+// ZIP Import/Export Functions
+// ============================================================
+
+/**
+ * Download the workspace as a ZIP file
+ */
+async function downloadWorkspaceZip() {
+  if (!workspaceId.value) return
+
+  try {
+    const response = await axios.get(
+      `${API_BASE}/api/latex-collab/workspaces/${workspaceId.value}/export`,
+      {
+        headers: authHeaders(),
+        responseType: 'blob'
+      }
+    )
+
+    // Extract filename from Content-Disposition header or generate one
+    const contentDisposition = response.headers['content-disposition']
+    let filename = `workspace_${workspaceId.value}.zip`
+    if (contentDisposition) {
+      const match = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/)
+      if (match && match[1]) {
+        filename = match[1].replace(/['"]/g, '')
+      }
+    }
+
+    // Create download link
+    const blob = new Blob([response.data], { type: 'application/zip' })
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = filename
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    window.URL.revokeObjectURL(url)
+
+    showSnackbar(t('latexCollab.zip.downloadSuccess'), 'success')
+  } catch (e) {
+    console.error('ZIP download failed:', e)
+    showSnackbar(t('latexCollab.zip.downloadError'), 'error')
+  }
+}
+
+/**
+ * Open the ZIP file picker for import
+ */
+function openZipImportDialog() {
+  if (!hasPermission('feature:latex_collab:edit')) return
+  zipInputRef.value?.click()
+}
+
+/**
+ * Handle ZIP file import
+ */
+async function handleZipImport(event) {
+  const file = event?.target?.files?.[0]
+  if (!file) return
+
+  if (!file.name.toLowerCase().endsWith('.zip')) {
+    showSnackbar(t('latexCollab.zip.invalidFile'), 'error')
+    return
+  }
+
+  if (zipImporting.value) return
+  zipImporting.value = true
+
+  try {
+    const formData = new FormData()
+    formData.append('file', file)
+
+    const response = await axios.post(
+      `${API_BASE}/api/latex-collab/workspaces/${workspaceId.value}/import`,
+      formData,
+      { headers: authHeaders() }
+    )
+
+    if (response.data?.success) {
+      const { imported_count, skipped_count } = response.data
+      showSnackbar(
+        t('latexCollab.zip.importSuccess', { imported: imported_count, skipped: skipped_count }),
+        'success'
+      )
+      // Refresh the tree to show imported files
+      await loadTree()
+    }
+  } catch (e) {
+    console.error('ZIP import failed:', e)
+    const errorMsg = e?.response?.data?.error || e?.message || 'Unknown error'
+    showSnackbar(t('latexCollab.zip.importError', { error: errorMsg }), 'error')
+  } finally {
+    zipImporting.value = false
+    // Reset the input so the same file can be selected again
+    if (event?.target) {
+      event.target.value = ''
+    }
+  }
 }
 
 async function handleAssetFiles(event) {
@@ -1551,7 +2194,7 @@ async function uploadAsset(file) {
       emitNodeCreated(newNode)
     }
   } catch (e) {
-    console.error('Asset upload failed:', e)
+    console.error('Asset-Upload fehlgeschlagen:', e)
     await loadTree()
   }
 }
@@ -1578,7 +2221,7 @@ async function handleCreateNode({ parentId, type, title }) {
       emitNodeCreated(newNode)
     }
   } catch (e) {
-    console.error('Failed to create node:', e)
+    console.error('Konnte Knoten nicht erstellen:', e)
     await loadTree() // Fallback: reload tree
   }
 }
@@ -1601,7 +2244,7 @@ async function handleRenameNode({ id, parentId, title }) {
       emitNodeRenamed(id, title)
     }
   } catch (e) {
-    console.error('Failed to rename node:', e)
+    console.error('Konnte Knoten nicht umbenennen:', e)
     await loadTree() // Fallback: reload tree
   }
 }
@@ -1623,13 +2266,14 @@ async function handleDeleteNode({ id }) {
 
     // Broadcast to other users
     emitNodeDeleted(id)
+    // Git panel updates are now handled by useGitStatus composable via socket events
 
     // Navigate away if viewing deleted document
     if (routeDocId.value === id) {
-      router.push(`/LatexCollab/workspace/${workspaceId.value}`)
+      router.push(`${routeBase.value}/workspace/${workspaceId.value}`)
     }
   } catch (e) {
-    console.error('Failed to delete node:', e)
+    console.error('Konnte Knoten nicht loeschen:', e)
     await loadTree() // Fallback: reload tree
   }
 }
@@ -1653,7 +2297,7 @@ async function handleMoveNode({ id, parentId, orderIndex }) {
       emitNodeMoved(id, parentId ?? null, orderIndex)
     }
   } catch (e) {
-    console.error('Failed to move node:', e)
+    console.error('Konnte Knoten nicht verschieben:', e)
     await loadTree() // Fallback: reload tree
   }
 }
@@ -1668,317 +2312,13 @@ async function setMainDocument() {
     )
     workspace.value = res.data.workspace || workspace.value
   } catch (e) {
-    console.error('Failed to set main document:', e)
+    console.error('Konnte Hauptdokument nicht festlegen:', e)
   }
 }
 
-async function loadCommitOptions() {
-  if (!selectedNode.value || selectedNode.value.asset_id) {
-    compileCommitOptions.value = [{ title: 'Aktuell', value: null }]
-    compileCommitId.value = null
-    return
-  }
-  try {
-    const res = await axios.get(
-      `${API_BASE}/api/latex-collab/documents/${selectedNode.value.id}/commits`,
-      { headers: authHeaders() }
-    )
-    const items = (res.data?.commits || []).map((c) => ({
-      title: `#${c.id} · ${c.message}`,
-      value: c.id
-    }))
-    const options = [{ title: 'Aktuell', value: null }, ...items]
-    compileCommitOptions.value = options
-    const optionValues = new Set(options.map((opt) => opt.value))
-    if (!optionValues.has(compileCommitId.value)) {
-      compileCommitId.value = null
-    }
-  } catch (e) {
-    compileCommitOptions.value = [{ title: 'Aktuell', value: null }]
-    compileCommitId.value = null
-  }
-}
+// Compile and sync functions now provided by useLatexCompile and useLatexSync composables
 
-async function loadCompileStatus(jobId) {
-  if (!jobId) {
-    compileStatus.value = 'idle'
-    compileJobId.value = null
-    compileError.value = ''
-    compileLog.value = ''
-    compileHasPdf.value = false
-    compileHasSynctex.value = false
-    return
-  }
-  try {
-    const res = await axios.get(`${API_BASE}/api/latex-collab/compile/${jobId}`, {
-      headers: authHeaders()
-    })
-    const job = res.data?.job
-    if (job) {
-      compileJobId.value = job.id
-      compileStatus.value = job.status || 'idle'
-      compileError.value = job.error_message || ''
-      compileLog.value = job.log_text || ''
-      compileHasPdf.value = !!job.has_pdf
-      compileHasSynctex.value = !!job.has_synctex
-      if (['queued', 'running'].includes(job.status)) {
-        pollCompileJob(job.id)
-      }
-    }
-  } catch (e) {
-    console.error('Failed to load compile status:', e)
-  }
-}
-
-watch([compileLog, nodesFlat], () => {
-  compileIssues.value = decorateIssues(parseLatexLog(compileLog.value))
-}, { immediate: true })
-
-function scheduleAutoCompile() {
-  if (!autoCompileEnabled.value || !canCompile.value || reviewMode.value || isCompiling.value) return
-  if (autoCompileTimer) clearTimeout(autoCompileTimer)
-  autoCompileTimer = setTimeout(() => {
-    triggerCompile()
-  }, autoCompileDelay.value)
-}
-
-async function triggerCompile() {
-  if (!canCompile.value) return
-  compileError.value = ''
-  compileLog.value = ''
-  compileHasPdf.value = false
-  compileHasSynctex.value = false
-  pdfRefreshJobId.value = null
-  if (autoCompileTimer) clearTimeout(autoCompileTimer)
-  try {
-    if (!compileCommitId.value) {
-      await editorRef.value?.flushDocumentState?.()
-    }
-    const payload = {}
-    if (compileCommitId.value) payload.commit_id = compileCommitId.value
-    const res = await axios.post(
-      `${API_BASE}/api/latex-collab/workspaces/${workspaceId.value}/compile`,
-      payload,
-      { headers: authHeaders() }
-    )
-    const job = res.data?.job
-    if (job) {
-      compileJobId.value = job.id
-      compileStatus.value = job.status || 'queued'
-      compileHasPdf.value = !!job.has_pdf
-      compileHasSynctex.value = !!job.has_synctex
-      pollCompileJob(job.id)
-    }
-  } catch (e) {
-    compileStatus.value = 'failed'
-    compileError.value = e?.response?.data?.error || e?.message || 'Kompilierung fehlgeschlagen'
-    compileHasPdf.value = false
-    compileHasSynctex.value = false
-  }
-}
-
-async function pollCompileJob(jobId) {
-  if (!jobId) return
-  if (compilePollTimer) clearTimeout(compilePollTimer)
-  let pdfWaitAttempts = 0
-  const maxPdfWaitAttempts = 12
-  let rateLimitedCount = 0
-
-  const poll = async () => {
-    let nextDelay = 1500
-    try {
-      const res = await axios.get(`${API_BASE}/api/latex-collab/compile/${jobId}`, {
-        headers: authHeaders()
-      })
-      const job = res.data?.job
-      if (job) {
-        compileJobId.value = job.id
-        compileStatus.value = job.status || compileStatus.value
-        compileError.value = job.error_message || ''
-        compileLog.value = job.log_text || ''
-        compileHasPdf.value = !!job.has_pdf
-        compileHasSynctex.value = !!job.has_synctex
-        rateLimitedCount = 0
-        if (job.status === 'success') {
-          compileError.value = ''
-          if (pdfRefreshJobId.value !== job.id) {
-            pdfRefreshJobId.value = job.id
-            pdfRefreshKey.value += 1
-          }
-          if (job.has_pdf && job.has_synctex) {
-            compilePollTimer = null
-            return
-          }
-          pdfWaitAttempts += 1
-          nextDelay = 800
-          if (pdfWaitAttempts > maxPdfWaitAttempts) {
-            compilePollTimer = null
-            return
-          }
-        }
-        if (job.status === 'failed') {
-          compilePollTimer = null
-          return
-        }
-      }
-    } catch (e) {
-      const status = e?.response?.status
-      if (status === 429) {
-        rateLimitedCount += 1
-        nextDelay = Math.min(12000, 1200 * Math.pow(1.7, rateLimitedCount))
-      } else {
-        console.error('Compile polling failed:', e)
-      }
-    }
-    compilePollTimer = setTimeout(poll, nextDelay)
-  }
-
-  compilePollTimer = setTimeout(poll, 800)
-}
-
-function handleEditorSyncRequest(payload) {
-  if (!syncEnabled.value || !canSync.value) return
-  if (!payload || !payload.line) return
-  if (!selectedNode.value || selectedNode.value.asset_id) return
-  scheduleSyncToPdf(payload.line, payload.column)
-}
-
-function scheduleSyncToPdf(line, column = 1) {
-  if (!syncEnabled.value || !canSync.value) return
-  if (syncTimer) clearTimeout(syncTimer)
-  syncTimer = setTimeout(() => {
-    syncSourceToPdf(line, column)
-  }, 350)
-}
-
-async function syncSourceToPdf(line, column = 1) {
-  if (!compileJobId.value || !selectedNode.value) return
-  try {
-    const res = await axios.post(
-      `${API_BASE}/api/latex-collab/compile/${compileJobId.value}/synctex/forward`,
-      {
-        document_id: selectedNode.value.id,
-        line,
-        column
-      },
-      { headers: authHeaders() }
-    )
-    if (res.data?.success === false) return
-    const location = res.data?.location
-    if (location) {
-      pdfViewerRef.value?.scrollToLocation?.(location)
-    }
-  } catch (e) {
-    // Ignore sync errors to avoid blocking editor usage
-  }
-}
-
-async function handlePdfClick(payload) {
-  if (!syncEnabled.value || !canSync.value) return
-  if (!payload || !payload.page) return
-  if (!compileJobId.value) return
-
-  try {
-    const res = await axios.post(
-      `${API_BASE}/api/latex-collab/compile/${compileJobId.value}/synctex/inverse`,
-      {
-        page: payload.page,
-        x: payload.x,
-        y: payload.y
-      },
-      { headers: authHeaders() }
-    )
-    if (res.data?.success === false) return
-    const location = res.data?.location
-    if (!location) return
-    if (!location.document_id) return
-    jumpToDocument(location.document_id, location.line || 1, location.column || 1)
-  } catch (e) {
-    // Ignore sync errors to avoid interrupting normal PDF usage
-  }
-}
-
-async function loadComments() {
-  if (!selectedNode.value || selectedNode.value.asset_id) {
-    comments.value = []
-    activeCommentId.value = null
-    return
-  }
-  try {
-    const res = await axios.get(
-      `${API_BASE}/api/latex-collab/documents/${selectedNode.value.id}/comments`,
-      { headers: authHeaders() }
-    )
-    comments.value = res.data?.comments || []
-  } catch (e) {
-    console.error('Failed to load comments:', e)
-    comments.value = []
-  }
-}
-
-function openCommentDialog() {
-  commentError.value = ''
-  const range = editorRef.value?.getSelectionRange?.()
-  if (!range || range.from === range.to) {
-    commentError.value = 'Bitte markiere zuerst den Text für den Kommentar.'
-    return
-  }
-  pendingCommentRange.value = range
-  commentDraft.value = ''
-  commentDialog.value = true
-}
-
-async function submitComment() {
-  if (!pendingCommentRange.value || !selectedNode.value) return
-  commentError.value = ''
-  try {
-    await axios.post(
-      `${API_BASE}/api/latex-collab/documents/${selectedNode.value.id}/comments`,
-      {
-        range_start: pendingCommentRange.value.from,
-        range_end: pendingCommentRange.value.to,
-        body: commentDraft.value.trim()
-      },
-      { headers: authHeaders() }
-    )
-    commentDialog.value = false
-    commentDraft.value = ''
-    pendingCommentRange.value = null
-    await loadComments()
-  } catch (e) {
-    commentError.value = e?.response?.data?.error || e?.message || 'Kommentar konnte nicht gespeichert werden'
-  }
-}
-
-async function toggleCommentResolved(comment) {
-  if (!comment) return
-  try {
-    await axios.patch(
-      `${API_BASE}/api/latex-collab/comments/${comment.id}`,
-      { resolved: !comment.resolved_at },
-      { headers: authHeaders() }
-    )
-    await loadComments()
-  } catch (e) {
-    console.error('Failed to update comment:', e)
-  }
-}
-
-async function deleteComment(comment) {
-  if (!comment) return
-  try {
-    await axios.delete(`${API_BASE}/api/latex-collab/comments/${comment.id}`, {
-      headers: authHeaders()
-    })
-    await loadComments()
-  } catch (e) {
-    console.error('Failed to delete comment:', e)
-  }
-}
-
-function selectComment(comment) {
-  activeCommentId.value = comment?.id || null
-}
+// Comments functions now provided by useLatexComments composable
 
 function jumpToIssue(issue) {
   if (!issue || !issue.document_id) return
@@ -1998,7 +2338,12 @@ function jumpToDocument(documentId, line = 1, column = 1) {
     return
   }
   pendingJump.value = { documentId, line, column }
-  router.push(`/LatexCollab/workspace/${workspaceId.value}/document/${documentId}`)
+  router.push(`${routeBase.value}/workspace/${workspaceId.value}/document/${documentId}`)
+}
+
+// Get current content from editor for diff viewer in Git Panel
+function getEditorContent() {
+  return editorRef.value?.getCurrentContent?.() || ''
 }
 
 async function refreshCommits() {
@@ -2006,19 +2351,75 @@ async function refreshCommits() {
   await editorRef.value?.refreshBaseline?.()
   editorRef.value?.clearHighlights?.()
   await loadCommitOptions()
+  // Git panel updates are now handled by useGitStatus composable via socket events
 }
 
+async function handleRollback(payload) {
+  const documentId = typeof payload === 'object' && payload !== null ? payload.documentId : payload
+  const baseline = typeof payload === 'object' && payload !== null ? payload.baseline : null
+  console.log('[handleRollback] Aufgerufen mit documentId:', documentId, 'selectedNodeId:', selectedNodeId.value)
+
+  // Build the room name for this document
+  const roomName = `latex_${documentId}`
+
+  // If the rolled back document is currently open, use reloadRoom which:
+  // 1. Destroys the local ydoc (clearing all local state/history)
+  // 2. Creates a fresh ydoc
+  // 3. Sends reload_room to server which clears cache and reloads from DB
+  // 4. Server broadcasts snapshot_document to all clients
+  // This ensures a clean slate without Yjs merge conflicts
+  if (selectedNodeId.value === documentId) {
+    console.log('[handleRollback] Dokument ist derzeit geoeffnet, verwende reloadRoom fuer sauberen Reset')
+    const result = await editorRef.value?.reloadRoom?.()
+    console.log('[handleRollback] reloadRoom Ergebnis:', result)
+    // Refresh the baseline to update diff decorations
+    await editorRef.value?.refreshBaseline?.()
+    editorRef.value?.clearHighlights?.()
+  } else {
+    // If the document is NOT currently open, only invalidate the YJS server cache
+    // This is necessary because the YJS server caches room state and would serve
+    // stale content when the user later opens this document
+    console.log('[handleRollback] Dokument ist NICHT geoeffnet, invalidiere YJS-Cache fuer Raum:', roomName)
+    const cacheResult = await editorRef.value?.reloadAnyRoom?.(roomName)
+    console.log('[handleRollback] reloadAnyRoom Ergebnis:', cacheResult)
+  }
+}
+
+async function handleRestored(documentId) {
+  console.log('[handleRestored] Datei wiederhergestellt:', documentId)
+  // Refresh the tree to show the restored file
+  await loadTree()
+}
+
+async function handleBeforeRollback(documentId) {
+  if (documentId && selectedNodeId.value === documentId) {
+    await editorRef.value?.flushDocumentState?.()
+  }
+}
+
+async function handleBeforeCommit(documentIds = []) {
+  if (!Array.isArray(documentIds) || documentIds.length === 0) return
+  if (selectedNodeId.value && documentIds.includes(selectedNodeId.value)) {
+    await editorRef.value?.flushDocumentState?.()
+  }
+}
+
+// Track if this is the initial mount vs subsequent document switches
+let isInitialDocumentLoad = true
 watch(
   selectedNodeId,
   (docId) => {
     currentText.value = ''
     gitSummary.value = { users: [], totalChangedLines: 0, hasChanges: false, insertions: 0, deletions: 0 }
-    outlineItems.value = []
-    outlineCollapsedIds.value = new Set()
-    lastOutlineText = ''
+    resetOutline() // Using composable function
     if (docId) {
-      pendingDocId.value = docId
-      setLoading('document', true)
+      // Only show loading skeleton on initial mount, not on document switches
+      // Document switches are handled smoothly by the editor's YJS room switch
+      if (isInitialDocumentLoad) {
+        pendingDocId.value = docId
+        setLoading('document', true)
+        isInitialDocumentLoad = false
+      }
       const node = nodesFlat.value.find(n => n.id === docId)
       if (node?.asset_id) {
         pendingDocId.value = null
@@ -2027,7 +2428,7 @@ watch(
       activeCommentId.value = null
       commentError.value = ''
       commentDraft.value = ''
-      loadComments()
+      // Comments are loaded at workspace level now, no need to reload on document change
       loadCommitOptions()
       if (pendingJump.value && pendingJump.value.documentId === docId) {
         const { line, column } = pendingJump.value
@@ -2055,803 +2456,185 @@ watch(
   selectedNode,
   (node) => {
     if (node && node.type === 'file' && !node.asset_id) {
-      loadComments()
+      // Comments are loaded at workspace level now
       loadCommitOptions()
     }
   }
 )
+
+defineExpose({
+  getAiChatContext,
+  editorRef
+})
 </script>
 
 <style scoped>
-/* LLARS Design Variables */
-.workspace-root {
-  --llars-primary: #b0ca97;
-  --llars-accent: #88c4c8;
-  --llars-radius: 16px 4px 16px 4px;
-  --llars-radius-sm: 8px 2px 8px 2px;
+/* Import extracted styles */
+@import './styles/LatexCollabWorkspace.css';
+</style>
 
-  height: calc(100vh - 94px);
-  display: flex;
-  background-color: rgb(var(--v-theme-background));
-  overflow: hidden;
-}
-
-/* ============================================
-   TREE PANEL
-   ============================================ */
-.tree-panel {
-  flex-shrink: 0;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
+<!-- Separate non-scoped styles for Teleported elements (rendered outside component) -->
+<style>
+/* Floating AI Stream Window - must be non-scoped for Teleport to body */
+.floating-ai-stream-card {
+  position: fixed;
+  z-index: 9999;
+  width: 360px;
+  max-width: calc(100vw - 20px);
   background: rgb(var(--v-theme-surface));
-  border-right: 1px solid rgba(var(--v-theme-on-surface), 0.08);
-  min-width: 0;
+  border: 2px solid #9B59B6;
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(155, 89, 182, 0.2), 0 2px 8px rgba(0, 0, 0, 0.1);
   overflow: hidden;
 }
 
-.tree-panel.collapsed {
-  width: 48px !important;
-}
-
-.tree-expanded {
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  overflow: hidden;
-}
-
-.tree-stack {
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  overflow: hidden;
-}
-
-.tree-main {
-  flex: 1;
-  min-height: 0;
-  overflow: hidden;
-}
-
-.tree-outline-panel {
-  flex-shrink: 0;
-  margin: 0 8px 8px;
-  display: flex;
-  flex-direction: column;
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
-  border-radius: 10px;
-  background: rgba(var(--v-theme-surface-variant), 0.18);
-  overflow: hidden;
-  max-height: 240px;
-}
-
-.tree-outline-panel.collapsed {
-  height: 32px;
-  max-height: 32px;
-}
-
-.tree-outline-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 6px 8px;
-  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.08);
-}
-
-.tree-outline-title {
+.floating-ai-stream-header {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 12px;
-  font-weight: 600;
-  color: rgba(var(--v-theme-on-surface), 0.75);
+  padding: 10px 12px;
+  background: linear-gradient(135deg, rgba(155, 89, 182, 0.12) 0%, rgba(155, 89, 182, 0.06) 100%);
+  border-bottom: 1px solid rgba(155, 89, 182, 0.2);
+  cursor: grab;
+  user-select: none;
 }
 
-.tree-outline-panel.collapsed .tree-outline-list {
-  display: none;
+.floating-ai-stream-header:active {
+  cursor: grabbing;
 }
 
-.tree-outline-list {
-  overflow: auto;
-  padding: 6px 4px 8px;
-  max-height: 200px;
-}
-
-.tree-outline-empty {
-  padding: 6px 8px;
-  font-size: 12px;
-  color: rgba(var(--v-theme-on-surface), 0.6);
-}
-
-.tree-outline-item {
+.ai-stream-header-left {
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 2px 4px;
-  border-radius: 6px;
-  color: rgba(var(--v-theme-on-surface), 0.78);
+  gap: 6px;
 }
 
-.tree-outline-item:hover {
-  background: rgba(var(--v-theme-on-surface), 0.05);
+.ai-pulse-indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #9B59B6;
+  animation: ai-pulse 1.5s ease-in-out infinite;
 }
 
-.tree-outline-toggle,
-.tree-outline-link {
-  border: none;
-  background: transparent;
-  padding: 0;
-  margin: 0;
-  cursor: pointer;
-  color: inherit;
-  display: flex;
-  align-items: center;
+@keyframes ai-pulse {
+  0%, 100% { opacity: 0.4; transform: scale(0.9); }
+  50% { opacity: 1; transform: scale(1.1); }
 }
 
-.tree-outline-link {
-  font-size: 12px;
-  line-height: 1.3;
-  text-align: left;
-}
-
-.tree-outline-spacer {
-  width: 16px;
-  height: 16px;
-  display: inline-block;
-}
-
-/* Collapsed Tree */
-.tree-collapsed {
-  height: 100%;
-  cursor: pointer;
-}
-
-.collapsed-bar {
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 12px 8px;
-  gap: 12px;
-  background: linear-gradient(180deg, var(--llars-primary) 0%, var(--llars-accent) 100%);
-}
-
-.collapsed-icon-box {
-  width: 32px;
-  height: 32px;
-  background: rgba(255, 255, 255, 0.25);
-  border-radius: 6px 2px 6px 2px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-}
-
-.collapsed-label {
-  writing-mode: vertical-rl;
-  text-orientation: mixed;
-  font-weight: 600;
+.floating-ai-stream-title {
   font-size: 13px;
-  color: white;
-  letter-spacing: 1px;
+  font-weight: 600;
+  color: #9B59B6;
 }
 
-.expand-icon {
-  color: white;
-  opacity: 0.8;
-  margin-top: auto;
+.floating-ai-stream-body {
+  padding: 12px;
+  max-height: 300px;
+  overflow-y: auto;
+  background: rgba(var(--v-theme-surface-variant), 0.15);
 }
 
-/* ============================================
-   RESIZE DIVIDER
-   ============================================ */
-.resize-divider {
-  flex-shrink: 0;
+.ai-stream-waiting {
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background 0.15s;
+  padding: 20px;
+  color: rgba(var(--v-theme-on-surface), 0.6);
+  font-size: 13px;
 }
 
-.resize-divider.vertical {
-  width: 6px;
-  cursor: col-resize;
-  background: rgba(var(--v-theme-on-surface), 0.04);
+.ai-stream-content {
+  font-family: 'JetBrains Mono', 'Fira Code', 'Monaco', monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: rgb(var(--v-theme-on-surface));
+  margin: 0;
+  padding: 0;
 }
 
-.resize-divider.vertical:hover,
-.resize-divider.vertical.resizing {
-  background: rgba(var(--v-theme-primary), 0.15);
+.ai-cursor {
+  display: inline-block;
+  width: 2px;
+  height: 1em;
+  background: #9B59B6;
+  margin-left: 2px;
+  animation: ai-cursor-blink 0.8s ease-in-out infinite;
 }
 
-.resize-handle {
-  width: 3px;
-  height: 40px;
-  background: rgba(var(--v-theme-on-surface), 0.2);
-  border-radius: 2px;
-  transition: background 0.15s, height 0.15s;
+@keyframes ai-cursor-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
 }
 
-.resize-divider:hover .resize-handle,
-.resize-divider.resizing .resize-handle {
-  background: rgb(var(--v-theme-primary));
-  height: 60px;
-}
-
-/* ============================================
-   CONTENT AREA
-   ============================================ */
-.content-area {
-  flex: 1;
-  min-width: 0;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-/* ============================================
-   CONTENT HEADER - Subtle Design
-   ============================================ */
-.content-header {
-  flex-shrink: 0;
+.floating-ai-stream-footer {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 8px 12px;
+  border-top: 1px solid rgba(var(--v-theme-on-surface), 0.06);
+  background: rgba(var(--v-theme-on-surface), 0.02);
+}
+
+.ai-stream-chars {
+  font-size: 11px;
+  color: rgba(var(--v-theme-on-surface), 0.5);
+}
+
+/* Dark mode adjustments for AI stream */
+.v-theme--dark .floating-ai-stream-card {
+  box-shadow: 0 8px 32px rgba(155, 89, 182, 0.3), 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+/* Also make floating comment card non-scoped for consistency */
+.floating-comment-card {
+  position: fixed;
+  z-index: 9999;
+  width: 320px;
+  max-width: calc(100vw - 20px);
   background: rgb(var(--v-theme-surface));
-  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.08);
-  gap: 12px;
-}
-
-.header-left {
-  display: flex;
-  align-items: center;
-  min-width: 0;
-  flex: 1;
-}
-
-.header-info {
-  min-width: 0;
-  flex: 1;
-}
-
-.header-back-btn {
-  margin-right: 6px;
-}
-
-.header-back-label {
-  margin-left: 4px;
-  font-size: 12px;
-  text-transform: none;
-}
-
-.header-title {
-  font-weight: 500;
-  font-size: 14px;
-  line-height: 1.2;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  color: rgb(var(--v-theme-on-surface));
-}
-
-.header-subtitle {
-  font-size: 11px;
-  color: rgba(var(--v-theme-on-surface), 0.6);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.header-actions {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  flex-shrink: 0;
-}
-
-.mode-toggle-group {
-  display: flex;
-  background: rgba(var(--v-theme-on-surface), 0.05);
-  border-radius: 6px;
-  padding: 2px;
-}
-
-.mode-btn {
-  width: 30px;
-  height: 30px;
-  border: none;
-  background: transparent;
-  border-radius: 4px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: rgba(var(--v-theme-on-surface), 0.5);
-  transition: all 0.15s ease;
-}
-
-.mode-btn:hover {
-  color: rgba(var(--v-theme-on-surface), 0.8);
-  background: rgba(var(--v-theme-on-surface), 0.05);
-}
-
-.mode-btn.active {
-  background: var(--llars-primary);
-  color: white;
-}
-
-.content-body {
-  flex: 1;
-  overflow: hidden;
-  position: relative;
-  display: flex;
-  flex-direction: column;
-}
-
-.document-loading-overlay {
-  position: absolute;
-  inset: 0;
-  z-index: 10;
-  display: flex;
-  justify-content: center;
-  padding: 16px;
-  background: rgba(var(--v-theme-background), 0.55);
-}
-
-.document-loading-skeleton {
-  width: 100%;
-  max-width: 980px;
-}
-
-/* ============================================
-   EDITOR LAYOUT
-   ============================================ */
-.editor-layout {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  padding: 8px;
-  gap: 8px;
-  overflow: hidden;
-}
-
-.panes-container {
-  flex: 1;
-  display: flex;
-  overflow: hidden;
-  min-height: 0;
-}
-
-.pane {
-  min-height: 0;
-  overflow: hidden;
-}
-
-.preview-pane {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.preview-pane :deep(.pdf-viewer) {
-  flex: 1;
-  min-height: 0;
-}
-
-.preview-toolbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.compile-actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.compile-status {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.compile-select {
-  min-width: 180px;
-  max-width: 260px;
-}
-
-.compile-settings {
-  min-width: 260px;
-}
-
-.comments-panel {
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.12);
   border-radius: 12px;
-  background: rgba(var(--v-theme-surface), 0.7);
-  padding: 10px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  min-height: 160px;
-  max-height: 260px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15), 0 2px 8px rgba(0, 0, 0, 0.1);
   overflow: hidden;
 }
 
-.comments-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.comments-empty {
-  font-size: 12px;
-  color: rgba(var(--v-theme-on-surface), 0.55);
-  padding: 8px;
-}
-
-.comment-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  overflow-y: auto;
-}
-
-.comment-item {
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
-  border-radius: 10px;
-  padding: 8px;
-  background: rgba(var(--v-theme-on-surface), 0.02);
-  cursor: pointer;
-  transition: border-color 0.15s ease, background-color 0.15s ease;
-}
-
-.comment-item.active {
-  border-color: rgba(var(--v-theme-primary), 0.4);
-  background: rgba(var(--v-theme-primary), 0.08);
-}
-
-.comment-meta {
-  display: flex;
-  justify-content: space-between;
-  font-size: 11px;
-  color: rgba(var(--v-theme-on-surface), 0.6);
-  margin-bottom: 4px;
-}
-
-.comment-author {
-  font-weight: 600;
-}
-
-.comment-body {
-  font-size: 12px;
-  color: rgb(var(--v-theme-on-surface));
-}
-
-.comment-actions {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  margin-top: 6px;
-}
-
-.asset-input {
-  display: none;
-}
-
-/* Split mode */
-.panes-container.mode-split .editor-pane {
-  flex-shrink: 0;
-}
-
-.panes-container.mode-split .preview-pane {
-  flex: 1;
-  min-width: 0;
-}
-
-/* Editor only mode */
-.panes-container.mode-editor {
-  flex-direction: column;
-}
-
-.panes-container.mode-editor .editor-pane {
-  flex: 1;
-  width: 100% !important;
-}
-
-.panes-container.mode-editor .preview-pane {
-  display: none;
-}
-
-/* Preview only mode */
-.panes-container.mode-preview {
-  flex-direction: column;
-}
-
-.panes-container.mode-preview .editor-pane {
-  display: none;
-}
-
-.panes-container.mode-preview .preview-pane {
-  flex: 1;
-}
-
-/* ============================================
-   SHARE DIALOG - Subtle Design
-   ============================================ */
-.share-dialog {
-  border-radius: 12px !important;
-}
-
-.share-header {
-  display: flex;
-  align-items: center;
-}
-
-.share-body {
-  max-height: 50vh;
-  overflow-y: auto;
-}
-
-.section-label {
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  color: rgba(var(--v-theme-on-surface), 0.5);
-  margin-bottom: 8px;
+.floating-comment-header {
   display: flex;
   align-items: center;
   gap: 6px;
+  padding: 10px 12px;
+  background: rgba(var(--v-theme-on-surface), 0.03);
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  cursor: grab;
+  user-select: none;
 }
 
-.member-count {
-  background: rgba(var(--v-theme-on-surface), 0.1);
-  color: rgba(var(--v-theme-on-surface), 0.7);
-  font-size: 10px;
-  padding: 1px 5px;
-  border-radius: 8px;
-  font-weight: 500;
+.floating-comment-header:active {
+  cursor: grabbing;
 }
 
-.compile-log-dialog {
-  border-radius: 12px !important;
-}
-
-.compile-issues {
-  margin-bottom: 12px;
-}
-
-.issue-list {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.issue-row {
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  gap: 8px;
-  align-items: center;
-  padding: 6px 8px;
-  border-radius: 8px;
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
-  background: rgba(var(--v-theme-on-surface), 0.02);
-  font-size: 12px;
-}
-
-.issue-row.clickable {
-  cursor: pointer;
-  transition: background-color 0.15s ease, border-color 0.15s ease;
-}
-
-.issue-row.clickable:hover {
-  background: rgba(var(--v-theme-primary), 0.08);
-  border-color: rgba(var(--v-theme-primary), 0.3);
-}
-
-.issue-message {
+.floating-comment-title {
+  font-size: 13px;
+  font-weight: 600;
   color: rgb(var(--v-theme-on-surface));
 }
 
-.issue-location {
-  font-size: 11px;
-  color: rgba(var(--v-theme-on-surface), 0.55);
-}
-
-.compile-log {
-  max-height: 50vh;
-  overflow: auto;
+.floating-comment-body {
   padding: 12px;
-  font-size: 11px;
-  line-height: 1.4;
-  background: rgba(var(--v-theme-surface-variant), 0.25);
-  color: rgb(var(--v-theme-on-surface));
-  border-radius: 8px;
-  white-space: pre-wrap;
 }
 
-/* User Avatar */
-.user-avatar {
-  width: 36px;
-  height: 36px;
-  border-radius: 8px;
-  flex-shrink: 0;
-  object-fit: cover;
-}
-
-.user-avatar.small {
-  width: 28px;
-  height: 28px;
-  border-radius: 6px;
-}
-
-.user-avatar.x-small {
-  width: 22px;
-  height: 22px;
-  border-radius: 5px;
-}
-
-/* User Card */
-.user-card {
+.floating-comment-actions {
   display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 8px 10px;
-  background: rgba(var(--v-theme-on-surface), 0.02);
-  border-radius: 8px;
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.06);
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 8px 12px 12px;
+  border-top: 1px solid rgba(var(--v-theme-on-surface), 0.06);
 }
 
-.user-card.owner-card {
-  background: rgba(var(--v-theme-primary), 0.04);
-  border-color: rgba(var(--v-theme-primary), 0.12);
-}
-
-.user-info {
-  flex: 1;
-  min-width: 0;
-}
-
-.user-name {
-  font-weight: 500;
-  font-size: 13px;
-  color: rgb(var(--v-theme-on-surface));
-  line-height: 1.2;
-}
-
-.user-meta {
-  font-size: 11px;
-  color: rgba(var(--v-theme-on-surface), 0.5);
-}
-
-/* Members Section */
-.empty-members {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  padding: 20px;
-  color: rgba(var(--v-theme-on-surface), 0.4);
-  font-size: 12px;
-}
-
-.members-list {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-/* ============================================
-   MOBILE RESPONSIVE STYLES
-   ============================================ */
-.workspace-root.is-mobile {
-  /* 64px AppBar + 24px Footer = 88px */
-  height: calc(100vh - 88px);
-  height: calc(100dvh - 88px);
-  overflow: hidden;
-  max-width: 100vw;
-}
-
-.mobile-tree-drawer {
-  background-color: rgb(var(--v-theme-surface)) !important;
-}
-
-.mobile-tree-drawer :deep(.tree-panel) {
-  height: 100%;
-}
-
-.mobile-tree-content {
-  height: 100%;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-}
-
-.mobile-tree-content .tree-main {
-  flex: 1;
-  min-height: 0;
-  overflow: hidden;
-}
-
-.mobile-tree-content .tree-outline-panel {
-  margin: 0 12px 12px;
-}
-
-/* Mobile content area takes full width */
-.workspace-root.is-mobile .content-area {
-  width: 100%;
-}
-
-/* Mobile header adjustments */
-.workspace-root.is-mobile .content-header {
-  padding: 6px 8px;
-}
-
-.workspace-root.is-mobile .header-title {
-  font-size: 13px;
-}
-
-.workspace-root.is-mobile .header-subtitle {
-  font-size: 10px;
-}
-
-.workspace-root.is-mobile .mode-toggle-group {
-  padding: 1px;
-}
-
-.workspace-root.is-mobile .mode-btn {
-  width: 28px;
-  height: 28px;
-}
-
-/* Mobile editor layout */
-.workspace-root.is-mobile .editor-layout {
-  padding: 4px;
-  gap: 4px;
-}
-
-/* Mobile: On split mode, stack vertically instead of horizontal */
-.workspace-root.is-mobile .panes-container.mode-split {
-  flex-direction: column;
-}
-
-.workspace-root.is-mobile .panes-container.mode-split .editor-pane {
-  width: 100% !important;
-  flex: 1;
-}
-
-.workspace-root.is-mobile .panes-container.mode-split .preview-pane {
-  flex: 1;
-}
-
-.workspace-root.is-mobile .panes-container.mode-split .resize-divider {
-  display: none;
-}
-
-/* Hide Git panel on mobile in compact mode */
-.workspace-root.is-mobile .git-panel {
-  max-height: 120px;
-}
-
-/* Tablet adjustments */
-.workspace-root.is-tablet .tree-panel {
-  max-width: 240px;
-}
-
-/* Default 50/50 split - ensure panes container uses flexbox properly */
-.panes-container.mode-split .editor-pane,
-.panes-container.mode-split .preview-pane {
-  flex: 1 1 50%;
-  min-width: 0;
+.v-theme--dark .floating-comment-card {
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 </style>

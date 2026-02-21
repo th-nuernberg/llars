@@ -1,0 +1,495 @@
+/**
+ * LatexEditorPane Styles
+ *
+ * Comprehensive styles for the LaTeX collaborative editor component.
+ * Includes:
+ * - Editor pane layout and surface styling
+ * - Remote cursor visualization
+ * - Git diff highlighting (insertions, deletions)
+ * - Comment range highlighting
+ * - Quick formatting toolbar (Overleaf-style)
+ * - Table size picker
+ *
+ * @module LatexEditorPane/styles
+ */
+
+/* ==========================================================================
+   EDITOR LAYOUT
+   ========================================================================== */
+
+/**
+ * Main container for the editor pane.
+ * Uses flexbox for vertical layout with toolbar and editor surface.
+ */
+.editor-pane {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/**
+ * The CodeMirror editor container.
+ * Takes remaining space after toolbar.
+ */
+.editor-surface {
+  flex: 1;
+  min-height: 240px;
+}
+
+/* ==========================================================================
+   REMOTE CURSORS (COLLABORATION)
+   ========================================================================== */
+
+/**
+ * Remote user cursor indicator.
+ * Rendered as a colored vertical line at other users' cursor positions.
+ */
+:global(.remote-caret) {
+  border-left: 2px solid;
+  margin-left: -1px;
+  height: 1.2em;
+  display: inline-block;
+}
+
+/* ==========================================================================
+   GIT DIFF HIGHLIGHTING
+   ========================================================================== */
+
+/**
+ * Character-level insert highlighting.
+ * Uses success color with underline for visual distinction.
+ */
+:global(.cm-diff-insert) {
+  background: rgba(var(--v-theme-success), 0.2);
+  border-radius: 2px;
+  box-shadow: 0 0 0 1px rgba(var(--v-theme-success), 0.45);
+  text-decoration: underline;
+  text-decoration-color: rgb(var(--v-theme-success));
+  text-underline-offset: 2px;
+}
+
+/**
+ * Diff gutter column styling.
+ * Shows deletion markers in the gutter.
+ */
+:global(.cm-diff-gutter) {
+  width: 4px;
+  min-width: 4px;
+  margin-right: 2px;
+}
+
+/**
+ * Deletion marker in the gutter.
+ * Red indicator for lines with deleted content.
+ */
+:global(.cm-diff-delete-gutter) {
+  width: 4px;
+  height: 100%;
+  background: rgba(245, 101, 101, 0.8);
+  border-radius: 1px;
+}
+
+/* ==========================================================================
+   COMMENT RANGES
+
+   Comment decorations use SPACED DASHED underlines to differentiate from:
+   - Author change tracking (solid underline with text-decoration)
+   - Git diff insertions (solid box-shadow outline)
+
+   Uses repeating-linear-gradient for controllable dash/gap spacing (6px/6px).
+   Comments are author-colored when author_color is set, otherwise yellow.
+   ========================================================================== */
+
+/**
+ * Base comment range styling.
+ * Light yellow background with spaced dashed underline.
+ */
+:global(.cm-comment-range) {
+  background: rgba(var(--v-theme-warning), 0.05);
+  background-image: repeating-linear-gradient(
+    to right,
+    rgba(var(--v-theme-warning), 0.65) 0,
+    rgba(var(--v-theme-warning), 0.65) 6px,
+    transparent 6px,
+    transparent 12px
+  );
+  background-size: 100% 2px;
+  background-repeat: no-repeat;
+  background-position: bottom;
+  padding-bottom: 1px;
+  border-radius: 2px;
+}
+
+/**
+ * Resolved comment styling.
+ * Muted gray with spaced dashed underline for closed comments.
+ */
+:global(.cm-comment-range-resolved) {
+  background: rgba(var(--v-theme-surface-variant), 0.08);
+  background-image: repeating-linear-gradient(
+    to right,
+    rgba(var(--v-theme-on-surface), 0.25) 0,
+    rgba(var(--v-theme-on-surface), 0.25) 6px,
+    transparent 6px,
+    transparent 12px
+  );
+  background-size: 100% 2px;
+  background-repeat: no-repeat;
+  background-position: bottom;
+  padding-bottom: 1px;
+}
+
+/**
+ * Active/selected comment styling.
+ * Stronger highlight when comment is focused.
+ */
+:global(.cm-comment-range-active) {
+  background: rgba(var(--v-theme-warning), 0.12);
+  background-image: repeating-linear-gradient(
+    to right,
+    rgba(var(--v-theme-warning), 0.85) 0,
+    rgba(var(--v-theme-warning), 0.85) 6px,
+    transparent 6px,
+    transparent 12px
+  );
+  background-size: 100% 2px;
+  background-repeat: no-repeat;
+  background-position: bottom;
+  padding-bottom: 1px;
+}
+
+/* ==========================================================================
+   REAL-TIME COLLABORATION
+   ========================================================================== */
+
+/**
+ * Line-level edit indicator.
+ * Smooth transition for showing/hiding user activity.
+ */
+:global(.cm-user-edit-line) {
+  transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+
+/* ==========================================================================
+   QUICK FORMATTING TOOLBAR
+   ========================================================================== */
+
+/**
+ * Main toolbar container.
+ * Horizontal flexbox with wrapped buttons and dividers.
+ */
+.formatting-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 8px;
+  background: rgba(var(--v-theme-surface-variant), 0.4);
+  border-radius: 8px;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+  transition: padding 0.2s ease;
+}
+
+/**
+ * Collapsed toolbar state.
+ * Minimal padding when toolbar is hidden.
+ */
+.formatting-toolbar.collapsed {
+  padding: 2px 8px;
+  gap: 6px;
+}
+
+/**
+ * Hidden toolbar state (when selection toolbar is visible).
+ * Uses visibility to maintain layout and prevent jumping.
+ */
+.formatting-toolbar.toolbar-hidden {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+/**
+ * Toolbar collapse toggle button.
+ * Small chevron button to show/hide toolbar.
+ */
+.toolbar-toggle-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border: none;
+  background: rgba(var(--v-theme-on-surface), 0.08);
+  border-radius: 4px;
+  cursor: pointer;
+  color: rgba(var(--v-theme-on-surface), 0.5);
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.toolbar-toggle-btn:hover {
+  background: rgba(var(--v-theme-primary), 0.15);
+  color: rgb(var(--v-theme-primary));
+}
+
+/**
+ * Collapsed toolbar label.
+ * Shows "Formatierung" text when toolbar is collapsed.
+ */
+.toolbar-collapsed-label {
+  font-size: 11px;
+  color: rgba(var(--v-theme-on-surface), 0.5);
+  cursor: pointer;
+  user-select: none;
+}
+
+.toolbar-collapsed-label:hover {
+  color: rgb(var(--v-theme-primary));
+}
+
+/**
+ * Button group within toolbar.
+ * Groups related buttons together.
+ */
+.toolbar-group {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+/**
+ * Individual toolbar button.
+ * Icon button with hover effects.
+ */
+.toolbar-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  color: rgba(var(--v-theme-on-surface), 0.7);
+  transition: all 0.15s ease;
+}
+
+.toolbar-btn:hover {
+  background: rgba(var(--v-theme-primary), 0.12);
+  color: rgb(var(--v-theme-primary));
+}
+
+.toolbar-btn:active {
+  background: rgba(var(--v-theme-primary), 0.2);
+  transform: scale(0.95);
+}
+
+/**
+ * Vertical divider between button groups.
+ */
+.toolbar-divider {
+  width: 1px;
+  height: 20px;
+  background: rgba(var(--v-theme-on-surface), 0.12);
+  margin: 0 4px;
+}
+
+/* ==========================================================================
+   KEYBOARD SHORTCUTS (TOOLTIPS)
+   ========================================================================== */
+
+/**
+ * Keyboard shortcut badge in tooltips.
+ * Shows key combinations like "Ctrl+B".
+ */
+:global(.v-tooltip kbd) {
+  display: inline-block;
+  padding: 2px 5px;
+  margin-left: 6px;
+  font-size: 10px;
+  font-family: ui-monospace, monospace;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 3px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* ==========================================================================
+   TABLE SIZE PICKER
+   ========================================================================== */
+
+/**
+ * Table size picker card styling.
+ * Rounded corners and shadow for menu popup.
+ */
+.table-picker-card {
+  border-radius: 8px !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+}
+
+/**
+ * Input field styling in table picker.
+ */
+.table-picker-card :deep(.v-field) {
+  border-radius: 6px;
+}
+
+/**
+ * Centered text in number inputs.
+ */
+.table-picker-card :deep(.v-field__input) {
+  text-align: center;
+  font-weight: 500;
+}
+
+/* ==========================================================================
+   SELECTION TOOLBAR (FLOATING) - Unified Formatting + Comments
+   ========================================================================== */
+
+/**
+ * Floating toolbar that appears when text is selected.
+ * Contains formatting buttons (Bold, Italic, etc.) and Comment button.
+ * Positioned relative to the editor pane container.
+ */
+.selection-toolbar {
+  position: absolute;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px 6px;
+  background: rgb(var(--v-theme-surface));
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.12);
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
+  pointer-events: auto;
+}
+
+/**
+ * Icon-only button for formatting actions (B, I, U, etc.)
+ */
+.selection-toolbar-icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  color: rgba(var(--v-theme-on-surface), 0.7);
+  transition: all 0.15s ease;
+}
+
+.selection-toolbar-icon-btn:hover {
+  background: rgba(var(--v-theme-primary), 0.12);
+  color: rgb(var(--v-theme-primary));
+}
+
+.selection-toolbar-icon-btn:active {
+  background: rgba(var(--v-theme-primary), 0.2);
+  transform: scale(0.95);
+}
+
+/**
+ * Vertical divider between formatting and comment button.
+ */
+.selection-toolbar-divider {
+  width: 1px;
+  height: 20px;
+  background: rgba(var(--v-theme-on-surface), 0.12);
+  margin: 0 4px;
+}
+
+/**
+ * AI dropdown button.
+ */
+.selection-toolbar-ai-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border: none;
+  background: linear-gradient(135deg, rgba(176, 202, 151, 0.15), rgba(136, 196, 200, 0.15));
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  color: rgb(var(--v-theme-primary));
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.selection-toolbar-ai-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, rgba(176, 202, 151, 0.25), rgba(136, 196, 200, 0.25));
+}
+
+.selection-toolbar-ai-btn:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+/**
+ * AI action menu styling.
+ */
+.ai-action-menu {
+  min-width: 140px;
+  padding: 4px 0;
+}
+
+.ai-action-menu .v-list-item {
+  min-height: 28px;
+  padding: 0 10px;
+  font-size: 0.8rem;
+}
+
+.ai-action-menu .v-list-item .v-list-item__prepend {
+  margin-right: 8px;
+}
+
+.ai-action-menu .v-list-item .v-list-item__prepend .v-icon {
+  font-size: 16px;
+}
+
+/**
+ * Text button for comment action.
+ */
+.selection-toolbar-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border: none;
+  background: rgba(var(--v-theme-warning), 0.1);
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  color: rgb(var(--v-theme-warning));
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.selection-toolbar-btn:hover {
+  background: rgba(var(--v-theme-warning), 0.2);
+}
+
+.selection-toolbar-btn:active {
+  transform: scale(0.98);
+}
+
+/**
+ * Transition for selection toolbar appearance.
+ */
+.selection-toolbar-enter-active,
+.selection-toolbar-leave-active {
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.selection-toolbar-enter-from,
+.selection-toolbar-leave-to {
+  opacity: 0;
+  transform: translateY(4px);
+}

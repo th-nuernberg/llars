@@ -145,6 +145,8 @@ services:
     # Mount application code for hot-reloading in development
     volumes:
       - ./app:/app
+      # MkDocs documentation for RAG chatbot
+      - ./docs:/app/docs:ro
       # Offline Anonymize Ressourcen (großes NER-Modell bleibt in docs/, wird hier nur gemountet)
       - ./docs/docs/projekte/anonymize/models/ner-german-large:/app/models/anonymize/ner-german-large:ro
       - ./docs/docs/projekte/anonymize/models/recommender_system:/app/models/anonymize/recommender_system:ro
@@ -160,8 +162,9 @@ services:
       - .env
     environment:
       - TZ=Europe/Berlin
+      - PROJECT_STATE=${PROJECT_STATE:-development}
       - FLASK_ENV=${FLASK_ENV:-development}
-      - FLASK_APP=/app/main.py
+      - FLASK_APP=main
       # MariaDB (defaults are for development; override via .env for production)
       - MYSQL_DATABASE=${MYSQL_DATABASE:-database_llars}
       - MYSQL_USER=${MYSQL_USER:-dev_user}
@@ -180,6 +183,7 @@ services:
       - REDIS_HOST=${REDIS_HOST:-llars-redis}
       - REDIS_PORT=${REDIS_PORT:-6379}
       - REDIS_DB=${REDIS_DB:-0}
+      - LLARS_SKIP_STARTUP_TASKS=${LLARS_SKIP_STARTUP_TASKS:-}
     depends_on:
       db-maria-service:
         condition: service_healthy
@@ -206,9 +210,10 @@ services:
       - TZ=Europe/Berlin
       # Note: Don't set NODE_ENV here - it breaks npm install for build
       # All URLs derived from PROJECT_URL (includes protocol)
-      - VITE_API_BASE_URL=${PROJECT_URL:-http://localhost:55080}
+      # Use VITE_API_BASE_URL if set (even if empty for relative URLs), else PROJECT_URL
+      - VITE_API_BASE_URL=${VITE_API_BASE_URL-${PROJECT_URL:-http://localhost:55080}}
       - VITE_PROJECT_STATE=${PROJECT_STATE:-development}
-      - VITE_MKDOCS_URL=${PROJECT_URL:-http://localhost:55080}/docs
+      - VITE_MKDOCS_URL=${PROJECT_URL:-http://localhost:55080}/mkdocs
       - VITE_KEYCLOAK_URL=${PROJECT_URL:-http://localhost:55080}/authentik
       - VITE_KEYCLOAK_REALM=llars   # legacy variable; Authentik uses apps, not realms
       - VITE_KEYCLOAK_CLIENT_ID=${AUTHENTIK_FRONTEND_CLIENT_ID:-llars-frontend}
@@ -226,10 +231,10 @@ services:
         condition: service_started
     healthcheck:
       test: [ "CMD", "/usr/local/bin/healthcheck.sh" ]
-      start_period: 2s
-      interval: 5s
-      timeout: 5s
-      retries: 5
+      start_period: 60s  # Build takes ~30s, give it time
+      interval: 10s
+      timeout: 10s
+      retries: 6
 
   backend-supervisor-service:
     container_name: llars_supervisor_service
@@ -357,7 +362,7 @@ services:
 
   authentik-server:
     container_name: llars_authentik_server
-    image: ghcr.io/goauthentik/server:latest
+    image: ghcr.io/goauthentik/server:${AUTHENTIK_IMAGE_TAG:-2025.2.4}
     command: server
     environment:
       - AUTHENTIK_SECRET_KEY=${AUTHENTIK_SECRET_KEY:-dev-authentik-secret-key-change-me-please-64-chars-minimum-xxxxxxxx}
@@ -389,7 +394,7 @@ services:
 
   authentik-worker:
     container_name: llars_authentik_worker
-    image: ghcr.io/goauthentik/server:latest
+    image: ghcr.io/goauthentik/server:${AUTHENTIK_IMAGE_TAG:-2025.2.4}
     command: worker
     environment:
       - AUTHENTIK_SECRET_KEY=${AUTHENTIK_SECRET_KEY:-dev-authentik-secret-key-change-me-please-64-chars-minimum-xxxxxxxx}
@@ -451,7 +456,7 @@ services:
 
   authentik-init:
     container_name: llars_authentik_init
-    image: ghcr.io/goauthentik/server:latest
+    image: ghcr.io/goauthentik/server:${AUTHENTIK_IMAGE_TAG:-2025.2.4}
     environment:
       - AUTHENTIK_SECRET_KEY=${AUTHENTIK_SECRET_KEY:-dev-authentik-secret-key-change-me-please-64-chars-minimum-xxxxxxxx}
       - AUTHENTIK_POSTGRESql__HOST=authentik-db

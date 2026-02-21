@@ -28,7 +28,7 @@ from db.tables import (
 )
 from db.models.rag import CollectionEmbedding
 from db.models.llm_model import LLMModel
-from db.db import db
+from db.database import db
 from sqlalchemy import desc
 from auth.auth_utils import AuthUtils
 from services.rag.access_service import RAGAccessService
@@ -416,6 +416,8 @@ def get_collection_access(collection_id):
 @handle_api_errors(logger_name='rag')
 def set_collection_access(collection_id):
     """Replace collection access assignments (owner/admin)."""
+    from socketio_handlers.events_rag import emit_collection_shared
+
     username = AuthUtils.extract_username_without_validation()
     collection = RAGCollection.query.get(collection_id)
     if not collection:
@@ -423,19 +425,56 @@ def set_collection_access(collection_id):
     if not RAGAccessService.can_share_collection(username, collection):
         raise ForbiddenError('Keine Berechtigung für diese Collection')
 
-    data = request.get_json() or {}
-    usernames = data.get('usernames') or data.get('users') or []
-    role_names = data.get('role_names') or data.get('roles') or []
-    access = data.get('access') or {}
+    # Get previous users before changing permissions (for WebSocket notification)
+    previous_permissions = RAGAccessService.get_collection_permissions(collection_id)
+    previous_users = [u['target'] for u in previous_permissions.get('users', [])]
 
-    result = RAGAccessService.set_collection_permissions(
-        collection_id=collection_id,
-        usernames=usernames,
-        role_names=role_names,
-        granted_by=username,
-        access=access
-    )
+    data = request.get_json() or {}
+
+    # Check if using batch mode (user_permissions with individual access levels)
+    user_permissions = data.get('user_permissions')
+    if user_permissions is not None:
+        # Batch mode - individual permissions per user
+        role_names = data.get('role_names') or data.get('roles') or []
+        result = RAGAccessService.set_collection_permissions_batch(
+            collection_id=collection_id,
+            user_permissions=user_permissions,
+            role_names=role_names,
+            granted_by=username
+        )
+    else:
+        # Legacy mode - same access for all users
+        usernames = data.get('usernames') or data.get('users') or []
+        role_names = data.get('role_names') or data.get('roles') or []
+        access = data.get('access') or {}
+        result = RAGAccessService.set_collection_permissions(
+            collection_id=collection_id,
+            usernames=usernames,
+            role_names=role_names,
+            granted_by=username,
+            access=access
+        )
+
+    # Emit WebSocket event for real-time updates (includes removed users)
+    emit_collection_shared(collection, result, username, previous_users)
+
     return jsonify({'success': True, 'collection_id': collection_id, **result}), 200
+
+
+@rag_collection_bp.route('/collections/<int:collection_id>/access/required', methods=['GET'])
+@require_permission('feature:rag:view')
+@handle_api_errors(logger_name='rag')
+def get_collection_required_access(collection_id):
+    """Get users/roles who need collection access because of chatbot sharing."""
+    username = AuthUtils.extract_username_without_validation()
+    collection = RAGCollection.query.get(collection_id)
+    if not collection:
+        raise NotFoundError(f'Collection with ID {collection_id} not found')
+    if not RAGAccessService.can_view_collection(username, collection):
+        raise ForbiddenError('Keine Berechtigung für diese Collection')
+
+    required = RAGAccessService.get_chatbot_required_access(collection_id)
+    return jsonify({'success': True, 'collection_id': collection_id, **required}), 200
 
 
 # ============================================================================

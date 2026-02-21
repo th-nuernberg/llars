@@ -47,33 +47,44 @@ def _check_user_account_state(user):
     return None
 
 
-def _ensure_default_viewer_role(username: str) -> None:
+def _ensure_default_evaluator_role(username: str) -> None:
     """
-    Ensure a newly created user has at least the viewer role so basic features work.
+    Ensure a newly created user has at least the evaluator role so basic features work.
+    Falls back to legacy viewer role if evaluator is missing.
     """
     if not username:
         return
-    from db.db import db
+    from db.database import db
     from db.tables import Role, UserRole
 
     existing_role = UserRole.query.filter_by(username=username).first()
     if existing_role:
         return
 
-    viewer_role = Role.query.filter_by(role_name='viewer').first()
-    if not viewer_role:
-        logger.warning(f"Viewer role missing; cannot auto-assign for {username}")
+    evaluator_role = Role.query.filter_by(role_name='evaluator').first()
+    if not evaluator_role:
+        try:
+            from db.seeders.permissions import initialize_permissions
+
+            initialize_permissions(db)
+        except Exception as exc:
+            logger.warning(f"Failed to seed permissions while assigning evaluator role: {exc}")
+        evaluator_role = Role.query.filter_by(role_name='evaluator').first()
+    if not evaluator_role:
+        evaluator_role = Role.query.filter_by(role_name='viewer').first()
+    if not evaluator_role:
+        logger.warning(f"Evaluator role missing; cannot auto-assign for {username}")
         return
 
     try:
         db.session.add(UserRole(
             username=username,
-            role_id=viewer_role.id,
+            role_id=evaluator_role.id,
             assigned_by='system',
             assigned_at=datetime.utcnow()
         ))
         db.session.commit()
-        logger.info(f"Assigned viewer role to new user {username}")
+        logger.info(f"Assigned evaluator role to new user {username}")
     except Exception:
         db.session.rollback()
 
@@ -88,7 +99,7 @@ def get_or_create_user(username: str):
     Returns:
         User object from database
     """
-    from db.db import db
+    from db.database import db
     from db.tables import User, UserGroup
     from services.user_profile_service import pick_collab_color
 
@@ -137,7 +148,7 @@ def get_or_create_user(username: str):
         changed = True
     if changed:
         db.session.commit()
-    _ensure_default_viewer_role(username)
+    _ensure_default_evaluator_role(username)
     return user
 
 # System Admin API Key (loaded from environment)
@@ -250,6 +261,17 @@ def roles_required(*required_roles):
         return decorated_function
 
     return decorator
+
+
+def public_endpoint(f):
+    """
+    Decorator to explicitly mark a route as public (no auth required).
+
+    This is used by security tests to ensure every route is either protected
+    or intentionally public.
+    """
+    setattr(f, "_public_endpoint", True)
+    return f
 
 
 def optional_auth(f):
@@ -371,5 +393,94 @@ def debug_route_protected(f):
 
         # In development, require API key
         return system_api_key_required(f)(*args, **kwargs)
+
+    return decorated_function
+
+
+def api_key_or_token_required(f):
+    """
+    Decorator that accepts either:
+    1. User's personal API key (X-API-Key header or api_key query param)
+    2. System Admin API key
+    3. OAuth Bearer token
+
+    This is useful for programmatic access to the API.
+
+    The user's API key is stored in the users.api_key field.
+
+    Usage:
+        @app.route('/api/something')
+        @api_key_or_token_required
+        def api_route():
+            user = g.authentik_user  # User object
+            return jsonify({'message': f'Hello {user.username}'})
+    """
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        from db.models import User
+
+        # 1. Try API Key first (header or query param)
+        api_key = request.headers.get('X-API-Key') or request.args.get('api_key')
+
+        if api_key:
+            # Check if it's the System Admin API Key
+            if SYSTEM_ADMIN_API_KEY and api_key == SYSTEM_ADMIN_API_KEY:
+                g.authentik_user = get_or_create_user(SYSTEM_ADMIN_USERNAME)
+                g.authentik_user_id = SYSTEM_ADMIN_USERNAME
+                g.is_system_api_key = True
+                g.auth_method = 'system_api_key'
+
+                denied = _check_user_account_state(g.authentik_user)
+                if denied is not None:
+                    return denied
+
+                logger.debug(f"System API key authenticated for {request.path}")
+                return f(*args, **kwargs)
+
+            # Check if it's a user's personal API key
+            user = User.query.filter_by(api_key=api_key).first()
+            if user:
+                denied = _check_user_account_state(user)
+                if denied is not None:
+                    return denied
+
+                g.authentik_user = user
+                g.authentik_user_id = user.id
+                g.is_system_api_key = False
+                g.auth_method = 'user_api_key'
+
+                logger.debug(f"User API key authenticated: {user.username} for {request.path}")
+                return f(*args, **kwargs)
+
+            # Invalid API key
+            logger.warning(f"Invalid API key attempt from {request.remote_addr}")
+            return jsonify({
+                'error': 'Invalid API key',
+                'message': 'The provided API key is not valid'
+            }), 401
+
+        # 2. Try OAuth Bearer token
+        token = get_token_from_request()
+
+        if token:
+            token_payload = validate_token(token)
+            if token_payload:
+                g.authentik_token = token_payload
+                username = get_username(token_payload)
+                g.authentik_user = get_or_create_user(username)
+                g.authentik_user_id = get_user_id(token_payload)
+                g.auth_method = 'oauth_token'
+
+                denied = _check_user_account_state(g.authentik_user)
+                if denied is not None:
+                    return denied
+
+                return f(*args, **kwargs)
+
+        # 3. No valid authentication provided
+        return jsonify({
+            'error': 'Authentication required',
+            'message': 'Provide either X-API-Key header, api_key query param, or Authorization Bearer token'
+        }), 401
 
     return decorated_function

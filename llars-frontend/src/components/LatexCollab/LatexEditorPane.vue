@@ -1,35 +1,6 @@
 <template>
   <div class="editor-pane">
-    <div class="editor-topbar">
-      <div class="d-flex align-center">
-        <v-chip v-if="readonly" size="small" color="warning" variant="tonal" class="mr-2">
-          <v-icon start size="small">mdi-lock</v-icon>
-          Read-only
-        </v-chip>
-        <v-chip v-else-if="isConnected" size="small" color="success" variant="tonal" class="mr-2">
-          <v-icon start size="small">mdi-cloud-check-outline</v-icon>
-          Live Sync
-        </v-chip>
-        <v-chip v-else size="small" color="warning" variant="tonal" class="mr-2">
-          <v-icon start size="small">mdi-cloud-alert-outline</v-icon>
-          Reconnecting…
-        </v-chip>
-      </div>
-      <v-spacer />
-      <div class="d-flex align-center ga-2 users">
-        <v-chip
-          v-for="u in activeUsers"
-          :key="u.userId"
-          size="small"
-          variant="tonal"
-          :style="{ borderColor: u.color }"
-          class="user-chip"
-        >
-          <span class="user-dot" :style="{ backgroundColor: u.color }" />
-          {{ u.username }}
-        </v-chip>
-      </div>
-    </div>
+    <!-- Fixed toolbar removed - only floating selection toolbar now -->
 
     <div v-if="error" class="px-3 pb-3">
       <v-alert type="error" variant="tonal">
@@ -49,32 +20,136 @@
       @update:modelValue="onFallbackInput"
     />
     <div v-else ref="editorEl" class="editor-surface" />
+
+    <!-- Unified Selection Toolbar (floating) - Formatting + AI + Comment -->
+    <Transition name="selection-toolbar">
+      <div
+        v-if="selectionToolbar.visible && !readonly"
+        class="selection-toolbar"
+        :style="{
+          left: `${selectionToolbar.x}px`,
+          top: `${selectionToolbar.y}px`
+        }"
+        @mousedown.prevent
+      >
+        <!-- Quick Formatting Buttons -->
+        <v-tooltip v-for="btn in selectionFormatButtons" :key="btn.id" location="top">
+          <template #activator="{ props: tp }">
+            <button
+              v-bind="tp"
+              class="selection-toolbar-icon-btn"
+              @click.stop="insertSnippet(btn.snippet, btn.wrap)"
+            >
+              <v-icon size="16" :icon="btn.icon" />
+            </button>
+          </template>
+          <span>{{ btn.label }} <kbd v-if="btn.shortcut">{{ btn.shortcut }}</kbd></span>
+        </v-tooltip>
+
+        <div class="selection-toolbar-divider" />
+
+        <!-- AI Action Buttons -->
+        <v-tooltip v-for="action in aiActions" :key="action.key" location="top">
+          <template #activator="{ props: tp }">
+            <button
+              v-bind="tp"
+              class="selection-toolbar-icon-btn"
+              :disabled="aiActionLoading"
+              @click.stop="executeAiAction(action.key)"
+            >
+              <v-progress-circular v-if="aiActionLoading && aiActionKey === action.key" indeterminate size="14" width="2" />
+              <v-icon v-else size="16" :icon="action.icon" />
+            </button>
+          </template>
+          <span>{{ action.label }}</span>
+        </v-tooltip>
+
+        <div class="selection-toolbar-divider" />
+
+        <!-- Comment Button -->
+        <button
+          class="selection-toolbar-btn"
+          :title="t('latexCollab.comments.addToSelection')"
+          @click.stop="onSelectionComment"
+        >
+          <LIcon size="16">mdi-comment-plus-outline</LIcon>
+          <span>{{ t('latexCollab.comments.comment') }}</span>
+        </button>
+      </div>
+    </Transition>
   </div>
 </template>
 
 <script setup>
+/**
+ * LatexEditorPane
+ *
+ * Collaborative LaTeX editor component with real-time synchronization via Yjs.
+ * Features:
+ * - CodeMirror 6 with LaTeX syntax highlighting
+ * - Real-time collaboration with remote cursor display
+ * - Git-like diff visualization
+ * - AI ghost text completions (optional)
+ * - Rich formatting toolbar (Overleaf-style)
+ * - Comment range highlighting
+ *
+ * @component LatexEditorPane
+ * @module LatexCollab
+ */
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import * as Y from 'yjs'
 import { EditorState, StateEffect, StateField, RangeSet } from '@codemirror/state'
-import { EditorView, Decoration, WidgetType, highlightActiveLine, drawSelection, highlightSpecialChars, lineNumbers, keymap, gutter, GutterMarker } from '@codemirror/view'
+import { EditorView, Decoration, highlightActiveLine, drawSelection, highlightSpecialChars, lineNumbers, keymap, gutter } from '@codemirror/view'
 import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands'
 import { autocompletion, completionKeymap } from '@codemirror/autocomplete'
 import { stex } from '@codemirror/legacy-modes/mode/stex'
 import { StreamLanguage, defaultHighlightStyle, syntaxHighlighting } from '@codemirror/language'
+import { useI18n } from 'vue-i18n'
 
+// External composables
 import { useAuth } from '@/composables/useAuth'
 import { useYjsCollaboration } from '@/components/PromptEngineering/composables/useYjsCollaboration'
-import { useGitDiff } from '@/components/MarkdownCollab/composables/useGitDiff'
+import { useGitDiff } from '@/composables/useGitDiff'
 import { useTypingMetrics } from '@/composables/useAnalyticsMetrics'
+import { getSocket } from '@/services/socketService'
+
+// Local modules - constants (shared with LatexAI editor)
+import {
+  AI_COLLAB_COLOR,
+  AI_COLLAB_USERNAME,
+  LATEX_COMMAND_COMPLETIONS,
+  LATEX_ENVIRONMENT_NAMES,
+  AI_COMMAND_COMPLETIONS,
+  TEXT_FORMAT_BUTTONS,
+  STRUCTURE_BUTTONS,
+  LIST_BUTTONS,
+  CONTENT_BUTTONS,
+  MATH_BUTTONS,
+  REF_BUTTONS,
+  generateTableSnippet
+} from './LatexEditorPane/constants'
+
+// Local modules - CodeMirror widgets (shared with LatexAI editor)
+import { CaretWidget, GhostTextWidget, deletionMarkerInstance, setDeletionMarkerLabel } from './LatexEditorPane/widgets'
 
 const props = defineProps({
   document: { type: Object, required: true },
   readonly: { type: Boolean, default: false },
   comments: { type: Array, default: () => [] },
-  activeCommentId: { type: Number, default: null }
+  activeCommentId: { type: Number, default: null },
+  aiEnabled: { type: Boolean, default: false },
+  ghostTextEnabled: { type: Boolean, default: false },
+  ghostTextDelay: { type: Number, default: 800 }
 })
 
-const emit = defineEmits(['content-change', 'git-summary', 'cursor-change', 'sync-request'])
+const emit = defineEmits(['content-change', 'git-summary', 'cursor-change', 'selection-change', 'sync-request', 'ai-command', 'request-completion', 'update:ghostTextEnabled', 'document-saved', 'document-updated', 'diff-calculated', 'request-comment', 'ai-action'])
+
+const { t, locale } = useI18n()
+
+setDeletionMarkerLabel(t('latexCollab.editor.deletedText'))
+watch(locale, () => {
+  setDeletionMarkerLabel(t('latexCollab.editor.deletedText'))
+})
 
 const editorEl = ref(null)
 const error = ref('')
@@ -89,9 +164,185 @@ const isConnected = ref(false)
 const remoteCursors = ref({})
 let cursorSendTimer = null
 let cursorChangeTimer = null
+const collabColorOverrides = ref({})
+const appSocket = ref(null)
+
+// Ghost text (AI completion) state
+const ghostText = ref('')
+const ghostTextPosition = ref(null)
+let ghostTextTimer = null
+let ghostTextDecorationRange = null
+
+// Selection toolbar state
+const selectionToolbar = ref({
+  visible: false,
+  x: 0,
+  y: 0,
+  range: null
+})
+let selectionToolbarTimer = null
+
+// AI action state
+const aiActionLoading = ref(false)
+const aiActionKey = ref(null)
+
+// AI actions for selection toolbar - use mdi: prefix for native MDI icons
+const aiActions = computed(() => [
+  { key: 'rewrite', icon: 'mdi:mdi-cached', label: t('latexCollab.ai.rewrite') },
+  { key: 'expand', icon: 'mdi:mdi-arrow-expand-all', label: t('latexCollab.ai.expand') },
+  { key: 'summarize', icon: 'mdi:mdi-text-short', label: t('latexCollab.ai.summarize') },
+  { key: 'fix', icon: 'mdi:mdi-auto-fix', label: t('latexCollab.ai.fix') }
+])
+
+/**
+ * Execute an AI action on the selected text
+ */
+function executeAiAction(actionKey) {
+  if (!selectionToolbar.value.range || !view.value) return
+
+  const { from, to } = selectionToolbar.value.range
+  const selectedText = view.value.state.doc.sliceString(from, to)
+
+  if (!selectedText.trim()) return
+
+  // Emit action to parent for handling
+  emit('ai-action', {
+    action: actionKey,
+    selectedText,
+    range: { from, to }
+  })
+
+  hideSelectionToolbar()
+}
+
+function mapButtons(buttons, labels) {
+  return buttons.map(btn => ({
+    ...btn,
+    label: labels[btn.id] || btn.label
+  }))
+}
+
+const textFormatButtons = computed(() => mapButtons(TEXT_FORMAT_BUTTONS, {
+  bold: t('latexCollab.editor.toolbar.bold'),
+  italic: t('latexCollab.editor.toolbar.italic'),
+  underline: t('latexCollab.editor.toolbar.underline'),
+  emph: t('latexCollab.editor.toolbar.emph'),
+  typewriter: t('latexCollab.editor.toolbar.typewriter')
+}))
+
+const structureButtons = computed(() => mapButtons(STRUCTURE_BUTTONS, {
+  section: t('latexCollab.editor.toolbar.section'),
+  subsection: t('latexCollab.editor.toolbar.subsection'),
+  subsubsection: t('latexCollab.editor.toolbar.subsubsection'),
+  paragraph: t('latexCollab.editor.toolbar.paragraph')
+}))
+
+const listButtons = computed(() => mapButtons(LIST_BUTTONS, {
+  itemize: t('latexCollab.editor.toolbar.itemize'),
+  enumerate: t('latexCollab.editor.toolbar.enumerate'),
+  description: t('latexCollab.editor.toolbar.description')
+}))
+
+const contentButtons = computed(() => mapButtons(CONTENT_BUTTONS, {
+  figure: t('latexCollab.editor.toolbar.figure'),
+  table: t('latexCollab.editor.toolbar.table'),
+  code: t('latexCollab.editor.toolbar.code'),
+  quote: t('latexCollab.editor.toolbar.quote')
+}))
+
+const mathButtons = computed(() => mapButtons(MATH_BUTTONS, {
+  'inline-math': t('latexCollab.editor.toolbar.inlineMath'),
+  'display-math': t('latexCollab.editor.toolbar.displayMath'),
+  equation: t('latexCollab.editor.toolbar.equation'),
+  align: t('latexCollab.editor.toolbar.align'),
+  frac: t('latexCollab.editor.toolbar.frac')
+}))
+
+const refButtons = computed(() => mapButtons(REF_BUTTONS, {
+  cite: t('latexCollab.editor.toolbar.cite'),
+  ref: t('latexCollab.editor.toolbar.ref'),
+  label: t('latexCollab.editor.toolbar.label'),
+  footnote: t('latexCollab.editor.toolbar.footnote'),
+  url: t('latexCollab.editor.toolbar.url')
+}))
+
+// Selection toolbar: compact formatting buttons for selected text
+// Use 'mdi:' prefix to force MDI icon set (bypasses llars custom resolver)
+const selectionFormatButtons = computed(() => [
+  { id: 'bold', icon: 'mdi:mdi-format-bold', label: t('latexCollab.editor.toolbar.bold'), shortcut: 'Ctrl+B', snippet: '\\textbf{$SEL$}', wrap: true },
+  { id: 'italic', icon: 'mdi:mdi-format-italic', label: t('latexCollab.editor.toolbar.italic'), shortcut: 'Ctrl+I', snippet: '\\textit{$SEL$}', wrap: true },
+  { id: 'underline', icon: 'mdi:mdi-format-underline', label: t('latexCollab.editor.toolbar.underline'), shortcut: 'Ctrl+U', snippet: '\\underline{$SEL$}', wrap: true }
+])
+
+const latexCommandInfo = computed(() => ({
+  '\\documentclass': t('latexCollab.completions.documentclass'),
+  '\\usepackage': t('latexCollab.completions.usepackage'),
+  '\\begin': t('latexCollab.completions.begin'),
+  '\\end': t('latexCollab.completions.end'),
+  '\\section': t('latexCollab.completions.section'),
+  '\\subsection': t('latexCollab.completions.subsection'),
+  '\\subsubsection': t('latexCollab.completions.subsubsection'),
+  '\\paragraph': t('latexCollab.completions.paragraph'),
+  '\\textbf': t('latexCollab.completions.textbf'),
+  '\\textit': t('latexCollab.completions.textit'),
+  '\\emph': t('latexCollab.completions.emph'),
+  '\\underline': t('latexCollab.completions.underline'),
+  '\\item': t('latexCollab.completions.item'),
+  '\\label': t('latexCollab.completions.label'),
+  '\\ref': t('latexCollab.completions.ref'),
+  '\\pageref': t('latexCollab.completions.pageref'),
+  '\\cite': t('latexCollab.completions.cite'),
+  '\\citet': t('latexCollab.completions.citet'),
+  '\\citep': t('latexCollab.completions.citep'),
+  '\\includegraphics': t('latexCollab.completions.includegraphics'),
+  '\\caption': t('latexCollab.completions.caption'),
+  '\\centering': t('latexCollab.completions.centering'),
+  '\\footnote': t('latexCollab.completions.footnote'),
+  '\\url': t('latexCollab.completions.url'),
+  '\\href': t('latexCollab.completions.href'),
+  '\\title': t('latexCollab.completions.title'),
+  '\\author': t('latexCollab.completions.author'),
+  '\\date': t('latexCollab.completions.date'),
+  '\\maketitle': t('latexCollab.completions.maketitle'),
+  '\\tableofcontents': t('latexCollab.completions.tableofcontents'),
+  '\\newcommand': t('latexCollab.completions.newcommand'),
+  '\\renewcommand': t('latexCollab.completions.renewcommand'),
+  '\\input': t('latexCollab.completions.input'),
+  '\\include': t('latexCollab.completions.include'),
+  '\\frac': t('latexCollab.completions.frac'),
+  '\\sqrt': t('latexCollab.completions.sqrt'),
+  '\\sum': t('latexCollab.completions.sum'),
+  '\\int': t('latexCollab.completions.int')
+}))
+
+const latexCommandCompletions = computed(() => (
+  LATEX_COMMAND_COMPLETIONS.map(cmd => ({
+    ...cmd,
+    info: latexCommandInfo.value[cmd.label] || cmd.info
+  }))
+))
+
+const aiCommandInfo = computed(() => ({
+  '@ai': t('latexCollab.aiCommands.ai'),
+  '@rewrite': t('latexCollab.aiCommands.rewrite'),
+  '@expand': t('latexCollab.aiCommands.expand'),
+  '@summarize': t('latexCollab.aiCommands.summarize'),
+  '@fix': t('latexCollab.aiCommands.fix'),
+  '@translate': t('latexCollab.aiCommands.translate'),
+  '@cite': t('latexCollab.aiCommands.cite'),
+  '@abstract': t('latexCollab.aiCommands.abstract'),
+  '@titles': t('latexCollab.aiCommands.titles')
+}))
+
+const aiCommandCompletions = computed(() => (
+  AI_COMMAND_COMPLETIONS.map(cmd => ({
+    ...cmd,
+    info: aiCommandInfo.value[cmd.label] || cmd.info
+  }))
+))
 
 const { tokenParsed, collabColor } = useAuth()
-const username = computed(() => tokenParsed.value?.preferred_username || localStorage.getItem('username') || 'user')
+const username = computed(() => tokenParsed.value?.preferred_username || localStorage.getItem('username') || t('latexCollab.editor.userFallback'))
 
 const roomId = computed(() => props.document?.yjs_doc_id || `latex_${props.document?.id}`)
 
@@ -118,68 +369,51 @@ const {
 // Track deleted lines for gutter markers
 const deletedLinesRef = ref(new Set())
 
-const latexCommandCompletions = [
-  { label: '\\documentclass', type: 'keyword', info: 'Dokumentklasse', apply: '\\documentclass{}' },
-  { label: '\\usepackage', type: 'keyword', info: 'Paket laden', apply: '\\usepackage{}' },
-  { label: '\\begin', type: 'keyword', info: 'Umgebung starten', apply: '\\begin{}' },
-  { label: '\\end', type: 'keyword', info: 'Umgebung beenden', apply: '\\end{}' },
-  { label: '\\section', type: 'keyword', info: 'Abschnitt', apply: '\\section{}' },
-  { label: '\\subsection', type: 'keyword', info: 'Unterabschnitt', apply: '\\subsection{}' },
-  { label: '\\subsubsection', type: 'keyword', info: 'Unter-Unterabschnitt', apply: '\\subsubsection{}' },
-  { label: '\\paragraph', type: 'keyword', info: 'Paragraph', apply: '\\paragraph{}' },
-  { label: '\\textbf', type: 'function', info: 'Fett', apply: '\\textbf{}' },
-  { label: '\\textit', type: 'function', info: 'Kursiv', apply: '\\textit{}' },
-  { label: '\\emph', type: 'function', info: 'Hervorheben', apply: '\\emph{}' },
-  { label: '\\underline', type: 'function', info: 'Unterstreichen', apply: '\\underline{}' },
-  { label: '\\item', type: 'keyword', info: 'Listenpunkt', apply: '\\item ' },
-  { label: '\\label', type: 'keyword', info: 'Label', apply: '\\label{}' },
-  { label: '\\ref', type: 'keyword', info: 'Referenz', apply: '\\ref{}' },
-  { label: '\\pageref', type: 'keyword', info: 'Seitenreferenz', apply: '\\pageref{}' },
-  { label: '\\cite', type: 'keyword', info: 'Zitat', apply: '\\cite{}' },
-  { label: '\\citet', type: 'keyword', info: 'Textzitat', apply: '\\citet{}' },
-  { label: '\\citep', type: 'keyword', info: 'Klammerzitat', apply: '\\citep{}' },
-  { label: '\\includegraphics', type: 'keyword', info: 'Grafik', apply: '\\includegraphics[]{}' },
-  { label: '\\caption', type: 'keyword', info: 'Caption', apply: '\\caption{}' },
-  { label: '\\centering', type: 'keyword', info: 'Zentrieren', apply: '\\centering' },
-  { label: '\\footnote', type: 'keyword', info: 'Fussnote', apply: '\\footnote{}' },
-  { label: '\\url', type: 'keyword', info: 'URL', apply: '\\url{}' },
-  { label: '\\href', type: 'keyword', info: 'Link', apply: '\\href{}{}' },
-  { label: '\\title', type: 'keyword', info: 'Titel', apply: '\\title{}' },
-  { label: '\\author', type: 'keyword', info: 'Autor', apply: '\\author{}' },
-  { label: '\\date', type: 'keyword', info: 'Datum', apply: '\\date{}' },
-  { label: '\\maketitle', type: 'keyword', info: 'Titelseite', apply: '\\maketitle' },
-  { label: '\\tableofcontents', type: 'keyword', info: 'Inhaltsverzeichnis', apply: '\\tableofcontents' },
-  { label: '\\newcommand', type: 'keyword', info: 'Neues Kommando', apply: '\\newcommand{}{}' },
-  { label: '\\renewcommand', type: 'keyword', info: 'Kommando aendern', apply: '\\renewcommand{}{}' },
-  { label: '\\input', type: 'keyword', info: 'Datei einfügen', apply: '\\input{}' },
-  { label: '\\include', type: 'keyword', info: 'Datei einbinden', apply: '\\include{}' },
-  { label: '\\frac', type: 'function', info: 'Bruch', apply: '\\frac{}{}' },
-  { label: '\\sqrt', type: 'function', info: 'Wurzel', apply: '\\sqrt{}' },
-  { label: '\\sum', type: 'keyword', info: 'Summe', apply: '\\sum' },
-  { label: '\\int', type: 'keyword', info: 'Integral', apply: '\\int' }
-]
+// =============================================================================
+// TOOLBAR STATE
+// =============================================================================
 
-const latexEnvironmentNames = [
-  'itemize',
-  'enumerate',
-  'description',
-  'figure',
-  'table',
-  'tabular',
-  'equation',
-  'align',
-  'quote',
-  'verbatim',
-  'center'
-]
+// Table size picker state
+const showTablePicker = ref(false)
+const tableRows = ref(3)
+const tableCols = ref(3)
 
+// Toolbar collapsed state (persisted in localStorage)
+// Default to collapsed unless user explicitly expanded it before
+const toolbarCollapsed = ref(localStorage.getItem('latex-toolbar-collapsed') !== 'false')
+
+/**
+ * Toggle toolbar visibility and persist preference
+ */
+function toggleToolbar() {
+  toolbarCollapsed.value = !toolbarCollapsed.value
+  localStorage.setItem('latex-toolbar-collapsed', toolbarCollapsed.value)
+}
+
+/**
+ * Insert a table with the specified dimensions
+ */
+function insertTable() {
+  const snippet = generateTableSnippet(tableRows.value, tableCols.value)
+  insertSnippet(snippet, false)
+  showTablePicker.value = false
+}
+
+/**
+ * LaTeX command and environment autocompletion source.
+ * Provides completions for \commands and environment names within \begin{}/\end{}.
+ *
+ * @param {CompletionContext} context - CodeMirror completion context
+ * @returns {CompletionResult|null} Completion result or null if no match
+ */
 function latexCompletionSource(context) {
+  // Check for environment name completion inside \begin{} or \end{}
   const envMatch = context.matchBefore(/\\(begin|end)\{[A-Za-z]*$/)
   if (envMatch) {
     const braceIndex = envMatch.text.lastIndexOf('{')
     const from = braceIndex >= 0 ? envMatch.from + braceIndex + 1 : envMatch.from
     if (from === context.pos && !context.explicit) return null
-    const options = latexEnvironmentNames.map((env) => ({
+    const options = LATEX_ENVIRONMENT_NAMES.map((env) => ({
       label: env,
       type: 'keyword',
       apply: env
@@ -191,13 +425,77 @@ function latexCompletionSource(context) {
     }
   }
 
+  // Check for LaTeX command completion (starting with \)
   const word = context.matchBefore(/\\[A-Za-z]*$/)
   if (!word || (word.from === word.to && !context.explicit)) return null
   return {
     from: word.from,
-    options: latexCommandCompletions,
+    options: latexCommandCompletions.value,
     validFor: /^\\[A-Za-z]*$/
   }
+}
+
+/**
+ * AI @-command completion source.
+ * Only active when aiEnabled prop is true.
+ * Provides completions for AI commands like @ai, @rewrite, @expand, etc.
+ *
+ * @param {CompletionContext} context - CodeMirror completion context
+ * @returns {CompletionResult|null} Completion result or null if no match
+ */
+function aiCompletionSource(context) {
+  if (!props.aiEnabled) return null
+
+  // Match @-commands
+  const word = context.matchBefore(/@[A-Za-z]*$/)
+  if (!word || (word.from === word.to && !context.explicit)) return null
+
+  return {
+    from: word.from,
+    options: aiCommandCompletions.value,
+    validFor: /^@[A-Za-z]*$/
+  }
+}
+
+// Handle Enter key to execute @-commands
+function handleEnterForAICommand(view) {
+  if (!props.aiEnabled) return false
+
+  // Get current line
+  const { state } = view
+  const pos = state.selection.main.head
+  const line = state.doc.lineAt(pos)
+  const lineText = line.text.trim()
+
+  // Check if line starts with @-command
+  const cmdMatch = lineText.match(/^@(\w+)(?:\s+(.*))?$/)
+  if (!cmdMatch) return false
+
+  const command = cmdMatch[1].toLowerCase()
+  const args = (cmdMatch[2] || '').trim()
+
+  // Get selected text if any
+  const sel = state.selection.main
+  const selectedText = sel.from !== sel.to ? state.doc.sliceString(sel.from, sel.to) : ''
+
+  // Commands that work on selection
+  const selectionCommands = ['rewrite', 'expand', 'summarize', 'fix', 'translate', 'cite']
+
+  // If command needs selection but none provided, don't execute
+  if (selectionCommands.includes(command) && !selectedText && !args) {
+    return false
+  }
+
+  // Emit command for parent to handle
+  emit('ai-command', {
+    command,
+    args,
+    selectedText,
+    lineFrom: line.from,
+    lineTo: line.to
+  })
+
+  return true // Prevent default Enter behavior
 }
 
 const activeUsers = computed(() => {
@@ -224,31 +522,9 @@ const decorationsField = StateField.define({
   provide: f => EditorView.decorations.from(f)
 })
 
-class CaretWidget extends WidgetType {
-  constructor(color, label) {
-    super()
-    this.color = color
-    this.label = label
-  }
-  toDOM() {
-    const wrap = document.createElement('span')
-    wrap.className = 'remote-caret'
-    wrap.style.borderLeftColor = this.color
-    wrap.title = this.label || ''
-    return wrap
-  }
-}
-
-// Gutter marker for deleted lines (red indicator)
-class DeletionMarker extends GutterMarker {
-  toDOM() {
-    const el = document.createElement('div')
-    el.className = 'cm-diff-delete-gutter'
-    el.title = 'Gelöschter Text'
-    return el
-  }
-}
-const deletionMarkerInstance = new DeletionMarker()
+// =============================================================================
+// EDITOR STATE FLAGS
+// =============================================================================
 
 let applyingYjsToEditor = false
 let skipNextTextSync = false
@@ -271,6 +547,65 @@ function rgbaFromHex(hex, alpha = 0.18) {
 
 function isValidHexColor(value) {
   return typeof value === 'string' && /^#[0-9a-fA-F]{6}$/.test(value)
+}
+
+function setUserColorOverride(name, color) {
+  if (!name || !isValidHexColor(color)) return
+  collabColorOverrides.value = { ...collabColorOverrides.value, [name]: color }
+}
+
+function resolveUserColor(name, fallback) {
+  if (!name) return fallback
+  const override = collabColorOverrides.value[name]
+  if (override) return override
+  if (users.value) {
+    for (const user of Object.values(users.value)) {
+      if (user?.username === name && isValidHexColor(user.color)) {
+        return user.color
+      }
+    }
+  }
+  return fallback
+}
+
+function updateUsersColorByUsername(name, color) {
+  if (!name || !isValidHexColor(color) || !users.value) return
+  const next = { ...users.value }
+  let updated = false
+  for (const [userId, user] of Object.entries(next)) {
+    if (user?.username === name) {
+      next[userId] = { ...user, color }
+      updated = true
+    }
+  }
+  if (updated) {
+    users.value = next
+  }
+}
+
+function updateCursorColorsByUsername(name, color) {
+  if (!name || !isValidHexColor(color)) return
+  const next = { ...remoteCursors.value }
+  let updated = false
+  for (const [userId, cursor] of Object.entries(next)) {
+    if (cursor?.username === name) {
+      next[userId] = { ...cursor, color }
+      updated = true
+    }
+  }
+  if (updated) {
+    remoteCursors.value = next
+  }
+}
+
+function handleGlobalColorUpdate(payload) {
+  const name = payload?.username
+  const color = payload?.collab_color || payload?.color
+  if (!name || !isValidHexColor(color)) return
+  setUserColorOverride(name, color)
+  updateUsersColorByUsername(name, color)
+  updateCursorColorsByUsername(name, color)
+  updateDecorations()
 }
 
 function updateLocalUserColor(newColor) {
@@ -334,7 +669,7 @@ function buildInsertDecorations(insertRanges = []) {
     const text = typeof insert === 'string' ? insert : ''
     const length = text.length
     const attrs = op?.attributes || {}
-    const color = attrs.collabColor || attrs.color
+    const color = resolveUserColor(attrs.collabUser, attrs.collabColor || attrs.color)
     if (length === 0) continue
 
     const segmentStart = pos
@@ -391,20 +726,61 @@ function buildCommentDecorations() {
   if (!list.length) return []
   const decos = []
   const docLen = view.value.state.doc.length
+  const currentDocId = props.document?.id
+
   for (const comment of list) {
     if (!comment) continue
+    // Only show decorations for comments belonging to the current document
+    // Compare as numbers to avoid string/number type mismatch
+    if (currentDocId == null || Number(comment.document_id) !== Number(currentDocId)) continue
     const from = clampPos(comment.range_start, docLen)
     const to = clampPos(comment.range_end, docLen)
     if (from >= to) continue
-    const classes = ['cm-comment-range']
-    if (comment.resolved_at) classes.push('cm-comment-range-resolved')
-    if (comment.id === props.activeCommentId) classes.push('cm-comment-range-active')
-    decos.push(
-      Decoration.mark({
-        class: classes.join(' '),
-        attributes: { 'data-comment-id': String(comment.id || '') }
-      }).range(from, to)
-    )
+
+    // Get author color for the comment decoration
+    const authorColor = comment.author_color
+    const isActive = comment.id === props.activeCommentId
+    const isResolved = !!comment.resolved_at
+
+    if (isResolved) {
+      // Resolved comments: muted gray dashed underline
+      decos.push(
+        Decoration.mark({
+          class: 'cm-comment-range cm-comment-range-resolved',
+          attributes: { 'data-comment-id': String(comment.id || '') }
+        }).range(from, to)
+      )
+    } else if (authorColor && isValidHexColor(authorColor)) {
+      // Use author's color for the comment highlight with spaced dashed underline
+      const bgAlpha = isActive ? 0.12 : 0.05
+      const lineColor = rgbaFromHex(authorColor, isActive ? 0.85 : 0.65)
+      decos.push(
+        Decoration.mark({
+          attributes: {
+            'data-comment-id': String(comment.id || ''),
+            style: `
+              background: ${rgbaFromHex(authorColor, bgAlpha)};
+              background-image: repeating-linear-gradient(to right, ${lineColor} 0, ${lineColor} 6px, transparent 6px, transparent 12px);
+              background-size: 100% 2px;
+              background-repeat: no-repeat;
+              background-position: bottom;
+              padding-bottom: 1px;
+              border-radius: 2px;
+            `
+          }
+        }).range(from, to)
+      )
+    } else {
+      // Fallback: default warning color styling
+      const classes = ['cm-comment-range']
+      if (isActive) classes.push('cm-comment-range-active')
+      decos.push(
+        Decoration.mark({
+          class: classes.join(' '),
+          attributes: { 'data-comment-id': String(comment.id || '') }
+        }).range(from, to)
+      )
+    }
   }
   return decos
 }
@@ -461,7 +837,9 @@ function updateDecorations() {
   const myUsername = username.value
 
   for (const [lineNoStr, meta] of Object.entries(highlightsData)) {
-    if (!meta || !meta.ts || !meta.color) continue
+    if (!meta || !meta.ts) continue
+    const highlightColor = resolveUserColor(meta.username, meta.color)
+    if (!highlightColor) continue
 
     // Only show other users' recent edits (not own edits)
     if (meta.username === myUsername) continue
@@ -476,7 +854,7 @@ function updateDecorations() {
       decorations.push(
         Decoration.line({
           attributes: {
-            style: `border-left: 3px solid ${meta.color}; margin-left: -3px;`
+            style: `border-left: 3px solid ${highlightColor}; margin-left: -3px;`
           }
         }).range(line.from)
       )
@@ -532,6 +910,16 @@ function updateDecorations() {
     )
   }
 
+  // Ghost text decoration (AI completion suggestion)
+  if (ghostText.value && ghostTextPosition.value !== null && ghostTextPosition.value <= docLen) {
+    decorations.push(
+      Decoration.widget({
+        widget: new GhostTextWidget(ghostText.value),
+        side: 1
+      }).range(ghostTextPosition.value)
+    )
+  }
+
   const decoSet = Decoration.set(decorations, true)
   applyingDecorations = true
   try {
@@ -556,8 +944,8 @@ function computeGitSummary() {
   const byUser = new Map()
   let total = 0
   for (const [, meta] of yhighlights.entries()) {
-    const u = meta?.username || 'unknown'
-    const color = meta?.color || '#4ECDC4'
+    const u = meta?.username || t('latexCollab.editor.userUnknown')
+    const color = resolveUserColor(u, meta?.color) || '#4ECDC4'
     total += 1
     const cur = byUser.get(u) || { username: u, color, changedLines: 0 }
     cur.changedLines += 1
@@ -681,6 +1069,243 @@ function scheduleCursorChange() {
   }, 120)
 }
 
+// Selection toolbar functions
+function updateSelectionToolbar() {
+  if (!view.value || props.readonly) {
+    hideSelectionToolbar()
+    return
+  }
+
+  if (selectionToolbarTimer) clearTimeout(selectionToolbarTimer)
+  selectionToolbarTimer = setTimeout(() => {
+    if (!view.value) return
+
+    const sel = view.value.state.selection.main
+    const hasSelection = sel.from !== sel.to
+    const selectedText = hasSelection ? view.value.state.doc.sliceString(sel.from, sel.to) : ''
+
+    // Emit selection change for AI assistant
+    emit('selection-change', {
+      text: selectedText,
+      from: sel.from,
+      to: sel.to,
+      hasSelection
+    })
+
+    if (!hasSelection) {
+      hideSelectionToolbar()
+      return
+    }
+
+    // Get the coordinates of the selection
+    const coords = view.value.coordsAtPos(sel.to)
+    if (!coords) {
+      hideSelectionToolbar()
+      return
+    }
+
+    // Get editor container bounds
+    const editorRect = editorEl.value?.getBoundingClientRect()
+    if (!editorRect) {
+      hideSelectionToolbar()
+      return
+    }
+
+    // Position toolbar above selection end
+    // Toolbar is ~280px wide (5 format buttons + divider + comment button)
+    const toolbarWidth = 280
+    selectionToolbar.value = {
+      visible: true,
+      x: Math.max(0, Math.min(coords.left - editorRect.left - toolbarWidth / 2, editorRect.width - toolbarWidth)),
+      y: coords.top - editorRect.top - 44,
+      range: { from: sel.from, to: sel.to }
+    }
+  }, 150)
+}
+
+function hideSelectionToolbar() {
+  selectionToolbar.value.visible = false
+  selectionToolbar.value.range = null
+}
+
+function onSelectionComment() {
+  if (!selectionToolbar.value.range) return
+  // Include position info for floating comment card
+  emit('request-comment', {
+    ...selectionToolbar.value.range,
+    x: selectionToolbar.value.x,
+    y: selectionToolbar.value.y
+  })
+  hideSelectionToolbar()
+}
+
+// Ghost text (AI completion) functions
+function scheduleGhostTextRequest() {
+  if (!props.ghostTextEnabled || !props.aiEnabled || !view.value) return
+
+  // Cancel any pending request
+  cancelGhostText()
+
+  ghostTextTimer = setTimeout(() => {
+    if (!view.value) return
+
+    const pos = view.value.state.selection.main.head
+    const doc = view.value.state.doc
+
+    // Get context around cursor (500 chars before, 200 after)
+    const contextStart = Math.max(0, pos - 500)
+    const contextEnd = Math.min(doc.length, pos + 200)
+    const beforeCursor = doc.sliceString(contextStart, pos)
+    const afterCursor = doc.sliceString(pos, contextEnd)
+    const context = beforeCursor + '[CURSOR]' + afterCursor
+
+    // Emit request for parent to handle via AI service
+    emit('request-completion', {
+      context,
+      cursorPosition: beforeCursor.length,
+      documentPosition: pos
+    })
+  }, props.ghostTextDelay)
+}
+
+function setGhostText(text, position) {
+  if (!view.value || !text) {
+    cancelGhostText()
+    return
+  }
+
+  // Verify position is still valid
+  const currentPos = view.value.state.selection.main.head
+  if (position !== currentPos) {
+    // Cursor moved, don't show ghost text
+    return
+  }
+
+  ghostText.value = text
+  ghostTextPosition.value = position
+  updateDecorations()
+}
+
+function acceptGhostText() {
+  if (!ghostText.value || ghostTextPosition.value === null || !view.value || !ytext) {
+    return false
+  }
+
+  const text = ghostText.value
+  const position = ghostTextPosition.value
+
+  // Insert via Yjs with AI collab attributes so it shows as AI-generated
+  const aiAttrs = { collabColor: AI_COLLAB_COLOR, collabUser: AI_COLLAB_USERNAME }
+
+  skipNextTextSync = true
+  ydoc.value.transact(() => {
+    ytext.insert(position, text, aiAttrs)
+  }, 'ai')
+
+  // Update CodeMirror view to reflect the change
+  view.value.dispatch({
+    changes: {
+      from: position,
+      to: position,
+      insert: text
+    },
+    selection: { anchor: position + text.length }
+  })
+
+  cancelGhostText()
+  return true
+}
+
+function cancelGhostText() {
+  if (ghostTextTimer) {
+    clearTimeout(ghostTextTimer)
+    ghostTextTimer = null
+  }
+  ghostText.value = ''
+  ghostTextPosition.value = null
+  updateDecorations()
+}
+
+function toggleGhostText() {
+  emit('update:ghostTextEnabled', !props.ghostTextEnabled)
+}
+
+/**
+ * Insert a LaTeX snippet at the current cursor position
+ * @param {string} snippet - The LaTeX snippet to insert (with $CURSOR$ and $SEL$ placeholders)
+ * @param {boolean} wrap - If true, wrap selected text with the snippet
+ */
+function insertSnippet(snippet, wrap = false) {
+  if (!view.value || !ytext || props.readonly) return
+
+  const state = view.value.state
+  const sel = state.selection.main
+  const selectedText = sel.from !== sel.to ? state.doc.sliceString(sel.from, sel.to) : ''
+
+  let insertText = snippet
+  let cursorOffset = 0
+
+  if (wrap && selectedText) {
+    // Replace $SEL$ with the selected text
+    insertText = snippet.replace(/\$SEL\$/g, selectedText)
+    // Cursor goes to end of insertion
+    cursorOffset = insertText.length
+  } else if (wrap) {
+    // No selection, but wrap mode - replace $SEL$ with empty and position cursor there
+    const selPos = snippet.indexOf('$SEL$')
+    if (selPos !== -1) {
+      insertText = snippet.replace(/\$SEL\$/g, '')
+      cursorOffset = selPos
+    } else {
+      cursorOffset = insertText.length
+    }
+  } else {
+    // Replace $CURSOR$ placeholder and position cursor there
+    const cursorPos = snippet.indexOf('$CURSOR$')
+    if (cursorPos !== -1) {
+      insertText = snippet.replace(/\$CURSOR\$/g, '')
+      cursorOffset = cursorPos
+    } else {
+      cursorOffset = insertText.length
+    }
+  }
+
+  // Get user color for collab highlighting
+  let userColor = collabColor.value
+  if (!userColor && socket.value?.id && users.value?.[socket.value.id]) {
+    userColor = users.value[socket.value.id].color
+  }
+  if (!userColor) {
+    userColor = '#4ECDC4'
+  }
+  const userAttrs = { collabColor: userColor, collabUser: username.value }
+
+  // Insert via Yjs
+  skipNextTextSync = true
+  ydoc.value.transact(() => {
+    // Delete selection if any
+    if (sel.from !== sel.to) {
+      ytext.delete(sel.from, sel.to - sel.from)
+    }
+    // Insert the snippet
+    ytext.insert(sel.from, insertText, userAttrs)
+  }, 'cm')
+
+  // Update CodeMirror view
+  const newCursorPos = sel.from + cursorOffset
+  view.value.dispatch({
+    changes: {
+      from: sel.from,
+      to: sel.to,
+      insert: insertText
+    },
+    selection: { anchor: newCursorPos }
+  })
+
+  // Focus the editor
+  view.value.focus()
+}
+
 function emitSyncRequestFromEvent(event, cmView) {
   const pos = cmView.posAtCoords({ x: event.clientX, y: event.clientY })
   if (pos == null) return false
@@ -706,7 +1331,12 @@ function initEditorIfNeeded() {
       },
       '.cm-content': {
         fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
-        fontSize: '13px'
+        fontSize: '13px',
+        caretColor: 'rgb(var(--v-theme-on-surface))'
+      },
+      '.cm-cursor, .cm-dropCursor': {
+        borderLeftColor: 'rgb(var(--v-theme-on-surface))',
+        borderLeftWidth: '2px'
       },
       '.cm-gutters': {
         backgroundColor: 'transparent',
@@ -743,11 +1373,69 @@ function initEditorIfNeeded() {
       drawSelection(),
       highlightActiveLine(),
       history(),
-      keymap.of([...defaultKeymap, ...historyKeymap, ...completionKeymap, indentWithTab]),
+      // Custom keymaps for ghost text and AI commands
+      keymap.of([
+        // Tab: Accept ghost text if available, otherwise default behavior
+        {
+          key: 'Tab',
+          run: () => {
+            if (ghostText.value && ghostTextPosition.value !== null) {
+              return acceptGhostText()
+            }
+            return false // Let default Tab behavior (indent) happen
+          }
+        },
+        // Escape: Dismiss ghost text
+        {
+          key: 'Escape',
+          run: () => {
+            if (ghostText.value) {
+              cancelGhostText()
+              return true
+            }
+            return false
+          }
+        },
+        // Enter: Execute @-command if on an @-command line
+        {
+          key: 'Enter',
+          run: (cmView) => handleEnterForAICommand(cmView)
+        },
+        // Ctrl+B: Bold
+        {
+          key: 'Mod-b',
+          run: () => {
+            insertSnippet('\\textbf{$SEL$}', true)
+            return true
+          }
+        },
+        // Ctrl+I: Italic
+        {
+          key: 'Mod-i',
+          run: () => {
+            insertSnippet('\\textit{$SEL$}', true)
+            return true
+          }
+        },
+        // Ctrl+U: Underline
+        {
+          key: 'Mod-u',
+          run: () => {
+            insertSnippet('\\underline{$SEL$}', true)
+            return true
+          }
+        },
+        ...defaultKeymap,
+        ...historyKeymap,
+        ...completionKeymap,
+        indentWithTab
+      ]),
       StreamLanguage.define(stex),
       syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
       autocompletion({
-        override: [latexCompletionSource]
+        override: props.aiEnabled
+          ? [aiCompletionSource, latexCompletionSource]
+          : [latexCompletionSource]
       }),
       EditorView.lineWrapping,
       EditorView.domEventHandlers({
@@ -773,11 +1461,26 @@ function initEditorIfNeeded() {
           if (update.selectionSet) {
             scheduleCursorUpdate()
             scheduleCursorChange()
+            updateSelectionToolbar()
+            // Cancel ghost text when cursor moves
+            if (ghostText.value) {
+              cancelGhostText()
+            }
           }
 
           if (!update.docChanged || props.readonly) {
             updateDecorations()
             return
+          }
+
+          // Cancel ghost text on any document change
+          if (ghostText.value) {
+            cancelGhostText()
+          }
+
+          // Schedule new ghost text request after typing pause
+          if (props.ghostTextEnabled && props.aiEnabled) {
+            scheduleGhostTextRequest()
           }
 
           // Apply CM changes to Yjs text and update git highlights in one transaction
@@ -821,8 +1524,8 @@ function initEditorIfNeeded() {
     view.value = new EditorView({ state, parent: editorEl.value })
     nextTick(() => view.value?.focus())
   } catch (e) {
-    console.error('CodeMirror init failed:', e)
-    error.value = `Editor-Initialisierung fehlgeschlagen: ${e?.message || String(e)}`
+    console.error('CodeMirror-Initialisierung fehlgeschlagen:', e)
+    error.value = t('latexCollab.editor.errors.initFailed', { message: e?.message || String(e) })
     fallbackMode.value = true
     fallbackText.value = ytext?.toString?.() || ''
   }
@@ -857,12 +1560,50 @@ function clearHighlights() {
 }
 
 /**
- * Refresh the git baseline after a commit
- * This will update the baseline and recalculate all decorations
+ * Refresh the git baseline after a commit.
+ * This will:
+ * 1. Fetch new baseline from server (for local git diff highlighting)
+ * 2. Update the baseline in YJS Map (for real-time diff calculation)
+ * 3. Recalculate all decorations
+ *
+ * After this, all clients will see the diff as 0 changes (since current = baseline).
  */
 async function refreshBaseline() {
   await loadBaseline(props.document.id)
+
+  // Also update the baseline in YJS Map so local diff calculation shows 0 changes
+  // This syncs to all connected clients via YJS CRDT
+  if (ydoc.value && ytext) {
+    const currentContent = ytext.toString()
+    const baselineMap = ydoc.value.getMap('baseline')
+    baselineMap.set('text', currentContent)
+    console.log('[refreshBaseline] YJS-Map-Baseline aktualisiert:', currentContent.length, 'Zeichen')
+  }
+
   updateDecorations()
+}
+
+/**
+ * Replace the editor content with the provided text (used for rollback recovery).
+ */
+function replaceContent(nextText) {
+  if (!ydoc.value || !ytext) return false
+  const text = String(nextText ?? '')
+  const current = ytext.toString()
+  if (text === current) return true
+
+  ydoc.value.transact(() => {
+    if (current.length > 0) {
+      ytext.delete(0, current.length)
+    }
+    if (text) {
+      ytext.insert(0, text)
+    }
+  }, 'rollback')
+
+  emit('content-change', text)
+  emit('git-summary', computeGitSummary())
+  return true
 }
 
 /**
@@ -909,6 +1650,65 @@ function jumpToLine(line, column = 1) {
   view.value.focus()
 }
 
+/**
+ * Highlight and scroll to a character range (for comment highlighting)
+ * @param {number} from - Start position (character offset)
+ * @param {number} to - End position (character offset)
+ */
+function highlightRange(from, to) {
+  if (!view.value) return
+  const docLength = view.value.state.doc.length
+  const safeFrom = Math.max(0, Math.min(from, docLength))
+  const safeTo = Math.max(safeFrom, Math.min(to, docLength))
+  view.value.dispatch({
+    selection: { anchor: safeFrom, head: safeTo },
+    effects: EditorView.scrollIntoView(safeFrom, { y: 'center' })
+  })
+  view.value.focus()
+}
+
+/**
+ * Replace text at a specific range (for AI resolve or other programmatic changes)
+ * @param {number} from - Start position (character offset)
+ * @param {number} to - End position (character offset)
+ * @param {string} newText - Text to insert at the range
+ * @param {Object} [options] - Optional configuration
+ * @param {string} [options.collabColor] - Color for collab attribution (hex, e.g. '#9B59B6')
+ * @param {string} [options.collabUser] - Username for collab attribution (e.g. 'LLARS KI')
+ */
+function replaceRange(from, to, newText, options = {}) {
+  if (!view.value || !ytext) return
+  const docLength = view.value.state.doc.length
+  const safeFrom = Math.max(0, Math.min(from, docLength))
+  const safeTo = Math.max(safeFrom, Math.min(to, docLength))
+
+  // Build collab attributes if provided (for visual diff highlighting)
+  const attrs = {}
+  if (options.collabColor) {
+    attrs.collabColor = options.collabColor
+  }
+  if (options.collabUser) {
+    attrs.collabUser = options.collabUser
+  }
+  const hasAttrs = Object.keys(attrs).length > 0
+
+  // Apply via Yjs for proper sync
+  ydoc.value?.transact(() => {
+    ytext.delete(safeFrom, safeTo - safeFrom)
+    if (hasAttrs) {
+      // Insert with collab attributes for visual tracking
+      ytext.insert(safeFrom, newText, attrs)
+    } else {
+      ytext.insert(safeFrom, newText)
+    }
+  }, 'ai-resolve')
+
+  // Trigger decoration update to show the change immediately
+  if (hasAttrs) {
+    nextTick(() => updateDecorations())
+  }
+}
+
 function flushDocumentState() {
   return new Promise((resolve) => {
     const sock = socket.value
@@ -934,19 +1734,12 @@ function flushDocumentState() {
   })
 }
 
-defineExpose({
-  clearHighlights,
-  refresh,
-  refreshBaseline,
-  getCurrentContent,
-  getSelectionRange,
-  getSelectionText,
-  jumpToLine,
-  flushDocumentState
-})
-
 // Callback for when another user updates their color
 function onColorUpdate(userId, newColor) {
+  const userName = users.value?.[userId]?.username
+  if (userName) {
+    setUserColorOverride(userName, newColor)
+  }
   // Update the remote cursor color if it exists
   if (remoteCursors.value[userId]) {
     remoteCursors.value[userId] = {
@@ -958,11 +1751,86 @@ function onColorUpdate(userId, newColor) {
   updateDecorations()
 }
 
+/**
+ * Initialize Yjs collaboration with WebSocket connection.
+ *
+ * The onDocumentSaved callback enables real-time Git panel updates:
+ * - YJS server saves document to DB after 2s debounce
+ * - Server broadcasts `document_saved` to workspace room
+ * - We forward this event to parent component (LatexCollabWorkspace)
+ * - Parent refreshes Git panel via gitPanelRef.checkForChanges()
+ *
+ * Event flow: YJS Server → Socket.IO → useYjsCollaboration → EditorPane → Workspace → GitPanel
+ */
 const collaboration = useYjsCollaboration(roomId, username.value, processYDoc, onUpdateCursor, {
   autoSync: true,
-  onColorUpdate
+  onColorUpdate,
+  /**
+   * Handle document_saved event from YJS server.
+   * @param {Object} data - Event payload
+   * @param {number} data.documentId - Saved document ID
+   * @param {number} data.workspaceId - Workspace containing the document
+   * @param {string} data.kind - Document type ('latex')
+   * @param {number} data.contentLength - Content length in characters
+   * @param {string} data.savedAt - ISO timestamp
+   */
+  onDocumentSaved: (data) => {
+    console.log('[LatexEditorPane] document_saved, an Parent weitergegeben:', data)
+    emit('document-saved', data)
+  },
+  /**
+   * Handle document_updated event from YJS server (instant, no debounce).
+   * @param {Object} data - Event payload
+   * @param {number} data.documentId - Updated document ID
+   * @param {number} data.workspaceId - Workspace containing the document
+   * @param {string} data.kind - Document type ('latex')
+   * @param {number} data.timestamp - Event timestamp
+   */
+  onDocumentUpdated: (data) => {
+    emit('document-updated', data)
+  },
+  /**
+   * Handle local diff calculation on every YJS update.
+   * This provides INSTANT diff updates without server roundtrip.
+   * Called after every YJS update event with diff against baseline.
+   * @param {Object} diff - Calculated diff
+   * @param {number} diff.insertions - Characters inserted since baseline
+   * @param {number} diff.deletions - Characters deleted since baseline
+   * @param {boolean} diff.hasChanges - Whether document differs from baseline
+   */
+  onDiffCalculated: (diff) => {
+    // Emit with document ID so parent can update the correct file in Git panel
+    emit('diff-calculated', {
+      documentId: props.document?.id,
+      ...diff
+    })
+  }
 })
-const { ydoc, socket, users, updateColor } = collaboration
+const { ydoc, socket, users, updateColor, switchRoom, reloadRoom, reloadAnyRoom } = collaboration
+
+defineExpose({
+  clearHighlights,
+  refresh,
+  refreshBaseline,
+  replaceContent,
+  getCurrentContent,
+  getSelectionRange,
+  getSelectionText,
+  jumpToLine,
+  highlightRange,
+  replaceRange,
+  flushDocumentState,
+  reloadRoom,
+  reloadAnyRoom,
+  // Ghost text (AI completion) functions
+  setGhostText,
+  cancelGhostText,
+  acceptGhostText,
+  toggleGhostText,
+  // Connection state for parent to display
+  isConnected,
+  activeUsers
+})
 
 let onSocketConnect = null
 let onSocketDisconnect = null
@@ -970,6 +1838,8 @@ let onSocketConnectError = null
 
 onMounted(async () => {
   error.value = ''
+  // Initialize previousDocumentId so the watcher can detect document changes
+  previousDocumentId = props.document?.id
   try {
     // Load git baseline for diff comparison
     await loadBaseline(props.document.id)
@@ -983,6 +1853,8 @@ onMounted(async () => {
     updateDecorations()
 
     const sock = socket.value
+    appSocket.value = getSocket()
+    appSocket.value?.on('user:collab_color_updated', handleGlobalColorUpdate)
     isConnected.value = sock?.connected === true
 
     onSocketConnect = () => {
@@ -992,11 +1864,11 @@ onMounted(async () => {
     onSocketConnectError = (err) => {
       isConnected.value = false
       const msg = err?.message || err
-      error.value = `Collab-Verbindung fehlgeschlagen: ${msg}`
+      error.value = t('latexCollab.editor.errors.connectionFailed', { message: msg })
     }
     onSocketDisconnect = () => {
       isConnected.value = false
-      if (!props.readonly) error.value = 'Collab-Verbindung getrennt (Reconnecting …)'
+      if (!props.readonly) error.value = t('latexCollab.editor.errors.connectionLost')
     }
 
     sock?.on('connect', onSocketConnect)
@@ -1034,16 +1906,68 @@ watch(
 
 
 // Watch for collab color changes (when user updates their color in settings)
+// Use direct ref watch for cross-component reactivity (more robust than getter)
 watch(
-  () => collabColor.value,
+  collabColor,
   (newColor) => {
     if (!newColor) return
+    console.log('[LatexEditorPane] collabColor changed:', newColor)
+    setUserColorOverride(username.value, newColor)
     applyCollabColorChange(newColor)
     if (socket.value?.connected) {
       // Broadcast color change to other users
       updateColor(newColor)
     }
   }
+)
+
+// Watch for document changes to switch rooms without remounting the component
+// This provides a smoother experience when switching between documents
+let previousDocumentId = null
+watch(
+  () => props.document?.id,
+  async (newId, oldId) => {
+    // Skip initial mount (handled by onMounted)
+    if (!previousDocumentId) {
+      previousDocumentId = newId
+      return
+    }
+
+    // Skip if same document
+    if (newId === previousDocumentId) return
+
+    // Note: At this point, props.document already refers to the NEW document
+    // (because selectedNode computed updates synchronously when selectedNodeId changes).
+    // So we must use previousDocumentId for the old room name, not props.document.
+    const oldRoom = `latex_${previousDocumentId}`
+    const newRoom = props.document?.yjs_doc_id || `latex_${newId}`
+    previousDocumentId = newId
+
+    // Clear remote cursors from old document
+    remoteCursors.value = {}
+
+    // Reset error state
+    error.value = ''
+
+    // Cancel any pending ghost text
+    cancelGhostText()
+
+    // Switch collaboration room (leaves old room, joins new room, creates fresh Yjs doc)
+    switchRoom(oldRoom, newRoom)
+
+    // Load new git baseline for diff comparison
+    await loadBaseline(newId)
+
+    // Wait for the server to send the snapshot
+    // Give the socket time to receive and process the snapshot
+    await new Promise(resolve => setTimeout(resolve, 100))
+    await nextTick()
+
+    // Process the new Yjs doc to emit content-change and update editor
+    processYDoc()
+    updateDecorations()
+  },
+  { immediate: false }
 )
 
 function onFallbackInput(val) {
@@ -1067,8 +1991,18 @@ onUnmounted(() => {
     sendCursorUpdate(null)
   } catch {}
 
+  if (appSocket.value) {
+    appSocket.value.off('user:collab_color_updated', handleGlobalColorUpdate)
+  }
+
+  // Clean up all timers to prevent memory leaks
   if (cursorSendTimer) clearTimeout(cursorSendTimer)
   if (cursorChangeTimer) clearTimeout(cursorChangeTimer)
+  if (ghostTextTimer) {
+    clearTimeout(ghostTextTimer)
+    ghostTextTimer = null
+  }
+
   if (socket.value) {
     if (onSocketConnect) socket.value.off('connect', onSocketConnect)
     if (onSocketConnectError) socket.value.off('connect_error', onSocketConnectError)
@@ -1081,94 +2015,14 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-.editor-pane {
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.editor-topbar {
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-
-.editor-surface {
-  flex: 1;
-  min-height: 240px;
-}
-
-.users {
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  max-width: 60%;
-}
-
-.user-chip {
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.12);
-}
-
-.user-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  display: inline-block;
-  margin-right: 6px;
-}
-
-:global(.remote-caret) {
-  border-left: 2px solid;
-  margin-left: -1px;
-  height: 1.2em;
-  display: inline-block;
-}
-
-/* Git diff highlighting - character level with underline */
-:global(.cm-diff-insert) {
-  background: rgba(var(--v-theme-success), 0.2);
-  border-radius: 2px;
-  box-shadow: 0 0 0 1px rgba(var(--v-theme-success), 0.45);
-  text-decoration: underline;
-  text-decoration-color: rgb(var(--v-theme-success));
-  text-underline-offset: 2px;
-}
-
-/* Diff gutter styling */
-:global(.cm-diff-gutter) {
-  width: 4px;
-  min-width: 4px;
-  margin-right: 2px;
-}
-
-:global(.cm-diff-delete-gutter) {
-  width: 4px;
-  height: 100%;
-  background: rgba(245, 101, 101, 0.8);
-  border-radius: 1px;
-}
-
-/* Comment ranges */
-:global(.cm-comment-range) {
-  background: rgba(var(--v-theme-warning), 0.18);
-  border-bottom: 2px solid rgba(var(--v-theme-warning), 0.6);
-  border-radius: 2px;
-}
-
-:global(.cm-comment-range-resolved) {
-  background: rgba(var(--v-theme-surface-variant), 0.35);
-  border-bottom: 2px solid rgba(var(--v-theme-on-surface), 0.35);
-}
-
-:global(.cm-comment-range-active) {
-  background: rgba(var(--v-theme-warning), 0.32);
-  box-shadow: inset 0 -2px 0 rgba(var(--v-theme-warning), 0.75);
-}
-
-/* Real-time user edit line highlighting */
-:global(.cm-user-edit-line) {
-  transition: background-color 0.3s ease, border-color 0.3s ease;
-}
+/**
+ * LatexEditorPane Styles
+ *
+ * Imports shared styles from the LatexEditorPane module.
+ * Includes editor layout, remote cursors, git diff highlighting,
+ * comment ranges, and formatting toolbar styles.
+ *
+ * @see ./LatexEditorPane/styles/LatexEditorPane.css
+ */
+@import './LatexEditorPane/styles/LatexEditorPane.css';
 </style>

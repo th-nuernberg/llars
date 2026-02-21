@@ -1,0 +1,29 @@
+{
+  "messages": [
+    {
+      "role": "system",
+      "content": "Beratung zu Prüfungsangelegenheiten"
+    },
+    {
+      "role": "user",
+      "content": "Ich habe verschlafen und meine Klausur verpasst. Was kann ich tun?"
+    },
+    {
+      "role": "assistant",
+      "content": "Oh je, das ist natürlich ärgerlich. Aber bleiben Sie ruhig - es gibt möglicherweise noch Optionen. Wichtig ist jetzt schnelles Handeln:\n\n1. Melden Sie sich SOFORT beim Prüfungsamt - am besten noch heute\n2. Holen Sie sich ein Attest vom Arzt, falls Sie krank waren\n3. Schreiben Sie eine Stellungnahme mit dem genauen Hergang\n\nOhne triftigen Grund gilt die Prüfung leider als nicht bestanden. Aber je nach Umständen kann eine Härtefallregelung greifen."
+    },
+    {
+      "role": "user",
+      "content": "Ich war nicht krank, nur mein Wecker hat nicht geklingelt..."
+    },
+    {
+      "role": "assistant",
+      "content": "Das wird schwierig, denn ein defekter Wecker ist kein anerkannter Rücktrittsgrund. In diesem Fall zählt die Prüfung als Fehlversuch. Die gute Nachricht: Sie haben in der Regel drei Versuche. Ich empfehle Ihnen trotzdem, beim Prüfungsamt nachzufragen - manchmal gibt es Kulanz bei Erstversuchen. Und für die Zukunft: Stellen Sie sich zwei Wecker!"
+    }
+  ],
+  "metadata": {
+    "source": "Human",
+    "subject": "Verpasste Klausur",
+    "id": "rating_002"
+  }
+}

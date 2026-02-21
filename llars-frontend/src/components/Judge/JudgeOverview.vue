@@ -3,9 +3,9 @@
     <!-- Page Header -->
     <div class="page-header">
       <div class="header-content">
-        <h1 class="text-h5 font-weight-bold">LLM-as-Judge</h1>
+        <h1 class="text-h5 font-weight-bold">{{ $t('judge.overview.title') }}</h1>
         <p class="text-caption text-medium-emphasis mb-0">
-          Automatisierte Bewertung von Prompt-Säulen mit KI
+          {{ $t('judge.overview.subtitle') }}
         </p>
       </div>
       <v-spacer></v-spacer>
@@ -14,7 +14,7 @@
         prepend-icon="mdi-plus"
         @click="navigateToConfig"
       >
-        Neue Session
+        {{ $t('judge.overview.actions.newSession') }}
       </LBtn>
     </div>
 
@@ -24,7 +24,7 @@
         <v-skeleton-loader v-if="loadingStats" type="text" width="60"></v-skeleton-loader>
         <template v-else>
           <v-avatar :color="stat.color" size="40" class="stat-avatar">
-            <v-icon :icon="stat.icon" color="white" size="20"></v-icon>
+            <LIcon :icon="stat.icon" color="white" size="20"></LIcon>
           </v-avatar>
           <div class="stat-content">
             <div class="stat-value">{{ stat.value }}</div>
@@ -39,19 +39,19 @@
       <!-- Left Panel: Sessions Table -->
       <div class="left-panel" :style="leftPanelStyle()">
         <div class="panel-header">
-          <v-icon class="mr-2" size="small">mdi-format-list-bulleted</v-icon>
-          <span class="font-weight-medium">Meine Sessions</span>
+          <LIcon class="mr-2" size="small">mdi-format-list-bulleted</LIcon>
+          <span class="font-weight-medium">{{ $t('judge.overview.sessionsTitle') }}</span>
           <v-spacer></v-spacer>
           <v-chip-group v-model="statusFilter" mandatory density="compact" class="filter-chips">
-            <v-chip value="all" size="x-small" variant="tonal">Alle</v-chip>
-            <v-chip value="running" size="x-small" variant="tonal" color="info">Laufend</v-chip>
-            <v-chip value="completed" size="x-small" variant="tonal" color="success">Fertig</v-chip>
-            <v-chip value="failed" size="x-small" variant="tonal" color="error">Fehler</v-chip>
+            <v-chip value="all" size="x-small" variant="tonal">{{ $t('judge.overview.filters.all') }}</v-chip>
+            <v-chip value="running" size="x-small" variant="tonal" color="info">{{ $t('judge.overview.filters.running') }}</v-chip>
+            <v-chip value="completed" size="x-small" variant="tonal" color="success">{{ $t('judge.overview.filters.completed') }}</v-chip>
+            <v-chip value="failed" size="x-small" variant="tonal" color="error">{{ $t('judge.overview.filters.failed') }}</v-chip>
           </v-chip-group>
           <LIconBtn
             icon="mdi-refresh"
             size="small"
-            tooltip="Sessions aktualisieren"
+            :tooltip="$t('judge.overview.actions.refresh')"
             :loading="loading"
             @click="loadSessions"
           />
@@ -66,15 +66,15 @@
 
             <!-- Sessions List -->
             <div v-if="filteredSessions.length === 0" class="empty-state">
-              <v-icon size="48" color="grey-lighten-1">mdi-folder-open</v-icon>
-              <div class="text-body-1 mt-2 text-medium-emphasis">Keine Sessions</div>
+              <LIcon size="48" color="grey-lighten-1">mdi-folder-open</LIcon>
+              <div class="text-body-1 mt-2 text-medium-emphasis">{{ $t('judge.overview.empty.title') }}</div>
               <LBtn
                 variant="primary"
                 prepend-icon="mdi-plus"
                 class="mt-2"
                 @click="navigateToConfig"
               >
-                Neue Session
+                {{ $t('judge.overview.actions.newSession') }}
               </LBtn>
             </div>
 
@@ -109,7 +109,7 @@
                   <LIconBtn
                     icon="mdi-eye"
                     size="x-small"
-                    tooltip="Session anzeigen"
+                    :tooltip="$t('judge.overview.actions.viewSession')"
                     @click.stop="navigateToSession(session)"
                   />
                   <LIconBtn
@@ -117,14 +117,14 @@
                     icon="mdi-chart-box"
                     size="x-small"
                     variant="success"
-                    tooltip="Ergebnisse anzeigen"
+                    :tooltip="$t('judge.overview.actions.viewResults')"
                     @click.stop="navigateToResults(session.session_id)"
                   />
                   <LIconBtn
                     icon="mdi-delete"
                     size="x-small"
                     variant="danger"
-                    tooltip="Session löschen"
+                    :tooltip="$t('judge.overview.actions.deleteSession')"
                     @click.stop="confirmDelete(session)"
                   />
                 </div>
@@ -147,8 +147,8 @@
       <!-- Right Panel: KIA Data Sync (hidden on mobile) -->
       <div v-if="!isMobile" class="right-panel" :style="rightPanelStyle()">
         <div class="panel-header">
-          <v-icon class="mr-2" size="small">mdi-database-sync</v-icon>
-          <span class="font-weight-medium">KIA Daten-Sync</span>
+          <LIcon class="mr-2" size="small">mdi-database-sync</LIcon>
+          <span class="font-weight-medium">{{ $t('judge.kia.panelTitle') }}</span>
         </div>
         <div class="panel-content">
           <v-skeleton-loader
@@ -165,17 +165,17 @@
     <v-dialog v-model="deleteDialog" max-width="400">
       <v-card>
         <v-card-title class="text-subtitle-1">
-          <v-icon class="mr-2" color="error" size="small">mdi-alert-circle</v-icon>
-          Session löschen?
+          <LIcon class="mr-2" color="error" size="small">mdi-alert-circle</LIcon>
+          {{ $t('judge.overview.dialogs.delete.title') }}
         </v-card-title>
         <v-card-text class="text-body-2">
-          <strong>{{ deleteItem?.session_name }}</strong> wird unwiderruflich gelöscht.
+          {{ $t('judge.overview.dialogs.delete.description', { name: deleteItem?.session_name }) }}
         </v-card-text>
         <v-card-actions>
           <v-spacer></v-spacer>
-          <LBtn variant="cancel" @click="deleteDialog = false">Abbrechen</LBtn>
+          <LBtn variant="cancel" @click="deleteDialog = false">{{ $t('common.cancel') }}</LBtn>
           <LBtn variant="danger" @click="deleteSession" :loading="deleting">
-            Löschen
+            {{ $t('common.delete') }}
           </LBtn>
         </v-card-actions>
       </v-card>
@@ -188,11 +188,14 @@ import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
 import axios from 'axios';
 import { io } from 'socket.io-client';
+import { useI18n } from 'vue-i18n';
+import { logI18n } from '@/utils/logI18n';
 import { usePanelResize } from '@/composables/usePanelResize';
 import { useMobile } from '@/composables/useMobile';
 import KIADataSync from './KIADataSync.vue';
 
 const { isMobile } = useMobile();
+const { t, locale } = useI18n();
 
 const router = useRouter();
 const socket = ref(null);
@@ -237,10 +240,10 @@ const queuedSessions = computed(() =>
 );
 
 const stats = computed(() => [
-  { label: 'Gesamt', value: totalSessions.value, icon: 'mdi-folder-multiple', color: 'primary' },
-  { label: 'Fertig', value: completedSessions.value, icon: 'mdi-check-circle', color: 'success' },
-  { label: 'Laufend', value: runningSessions.value, icon: 'mdi-play-circle', color: 'info' },
-  { label: 'Wartend', value: queuedSessions.value, icon: 'mdi-clock-outline', color: 'warning' }
+  { label: t('judge.stats.total'), value: totalSessions.value, icon: 'mdi-folder-multiple', color: 'primary' },
+  { label: t('judge.stats.completed'), value: completedSessions.value, icon: 'mdi-check-circle', color: 'success' },
+  { label: t('judge.stats.running'), value: runningSessions.value, icon: 'mdi-play-circle', color: 'info' },
+  { label: t('judge.stats.queued'), value: queuedSessions.value, icon: 'mdi-clock-outline', color: 'warning' }
 ]);
 
 // Filtered Sessions
@@ -262,7 +265,7 @@ const loadSessions = async (isInitial = false) => {
     const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/judge/sessions`);
     sessions.value = response.data;
   } catch (error) {
-    console.error('Error loading sessions:', error);
+    logI18n('error', 'logs.judge.overview.loadSessionsFailed', error);
   } finally {
     loading.value = false;
     loadingTable.value = false;
@@ -301,7 +304,7 @@ const deleteSession = async () => {
     deleteDialog.value = false;
     deleteItem.value = null;
   } catch (error) {
-    console.error('Error deleting session:', error);
+    logI18n('error', 'logs.judge.overview.deleteSessionFailed', error);
   } finally {
     deleting.value = false;
   }
@@ -322,12 +325,12 @@ const getStatusColor = (status) => {
 
 const getStatusText = (status) => {
   const texts = {
-    created: 'Erstellt',
-    queued: 'Wartend',
-    running: 'Läuft',
-    paused: 'Pausiert',
-    completed: 'Fertig',
-    failed: 'Fehler'
+    created: t('judge.status.created'),
+    queued: t('judge.status.queued'),
+    running: t('judge.status.running'),
+    paused: t('judge.status.paused'),
+    completed: t('judge.status.completed'),
+    failed: t('judge.status.failed')
   };
   return texts[status] || status;
 };
@@ -345,9 +348,9 @@ const getStatusVariant = (status) => {
 };
 
 const formatDate = (dateString) => {
-  if (!dateString) return '-';
+  if (!dateString) return t('judge.overview.datePlaceholder');
   const date = new Date(dateString);
-  return date.toLocaleString('de-DE', {
+  return date.toLocaleString(locale.value || undefined, {
     day: '2-digit',
     month: '2-digit',
     hour: '2-digit',
@@ -371,24 +374,24 @@ const setupSocket = () => {
   });
 
   socket.value.on('connect', () => {
-    console.log('[JudgeOverview] Socket connected');
+    logI18n('log', 'logs.judge.overview.socketConnected');
     // Join overview room to receive updates for all sessions
     socket.value.emit('judge:join_overview');
   });
 
   socket.value.on('disconnect', () => {
-    console.log('[JudgeOverview] Socket disconnected');
+    logI18n('log', 'logs.judge.overview.socketDisconnected');
   });
 
   // Listen for progress updates from any session
   socket.value.on('judge:progress', (data) => {
-    console.log('[JudgeOverview] Progress update:', data);
+    logI18n('log', 'logs.judge.overview.progressUpdate', data);
     updateSessionProgress(data.session_id, data.completed, data.total, data.percent);
   });
 
   // Listen for comparison completions (also updates progress)
   socket.value.on('judge:comparison_complete', (data) => {
-    console.log('[JudgeOverview] Comparison complete:', data);
+    logI18n('log', 'logs.judge.overview.comparisonComplete', data);
     if (data.completed !== undefined && data.total !== undefined) {
       const percent = data.total > 0 ? (data.completed / data.total) * 100 : 0;
       updateSessionProgress(data.session_id, data.completed, data.total, percent);
@@ -397,7 +400,7 @@ const setupSocket = () => {
 
   // Listen for session status changes
   socket.value.on('judge:session_complete', (data) => {
-    console.log('[JudgeOverview] Session complete:', data);
+    logI18n('log', 'logs.judge.overview.sessionComplete', data);
     updateSessionStatus(data.session_id, 'completed');
     if (data.total !== undefined) {
       updateSessionProgress(data.session_id, data.total, data.total, 100);
@@ -406,13 +409,13 @@ const setupSocket = () => {
 
   // Listen for session start
   socket.value.on('judge:session_started', (data) => {
-    console.log('[JudgeOverview] Session started:', data);
+    logI18n('log', 'logs.judge.overview.sessionStarted', data);
     updateSessionStatus(data.session_id, 'running');
   });
 
   // Listen for session pause
   socket.value.on('judge:session_paused', (data) => {
-    console.log('[JudgeOverview] Session paused:', data);
+    logI18n('log', 'logs.judge.overview.sessionPaused', data);
     updateSessionStatus(data.session_id, 'paused');
   });
 };

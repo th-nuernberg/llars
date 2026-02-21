@@ -6,14 +6,27 @@ Handles getting and saving mail history (thread-level) ratings.
 import logging
 import traceback
 from datetime import datetime
-from flask import jsonify, request, g
+from flask import jsonify, request, g, current_app
 from auth.decorators import authentik_required
-from decorators.error_handler import handle_api_errors, NotFoundError, ValidationError
-from db.db import db
+from decorators.error_handler import handle_api_errors, NotFoundError, ValidationError, ForbiddenError
+from db.database import db
 from db.tables import (UserMailHistoryRating, ConsultingCategoryType,
                        UserConsultingCategorySelection, ProgressionStatus)
+from services.scenario_stats_service import get_scenario_ids_for_thread
 from .. import data_blueprint
 from ..HelperFunctions import can_access_thread, get_thread_progression_state, raters_receive_all_threads
+
+
+def _emit_scenario_stats_updates(thread_id: int) -> None:
+    socketio = current_app.extensions.get('socketio')
+    if not socketio:
+        return
+    try:
+        from socketio_handlers.events_scenarios import emit_scenario_stats_updated
+        for scenario_id in get_scenario_ids_for_thread(thread_id):
+            emit_scenario_stats_updated(socketio, scenario_id)
+    except Exception:
+        pass
 
 
 @data_blueprint.route('/email_threads/mailhistory_ratings/<int:thread_id>', methods=['GET'])
@@ -63,11 +76,16 @@ def get_mail_rating(thread_id):
 @handle_api_errors(logger_name='rating')
 def save_mail_rating(thread_id):
     """Save mail history rating with consulting category selection"""
+    from routes.HelperFunctions import user_can_evaluate_thread
+
     user = g.authentik_user
 
     # check if user can access thread
     if not can_access_thread(user.id, thread_id, 3):
         raise ValidationError('Access denied')
+
+    if not user_can_evaluate_thread(user.id, thread_id):
+        raise ForbiddenError('VIEWER role cannot submit evaluations')
 
     data = request.get_json()
 
@@ -216,7 +234,7 @@ def save_mail_rating(thread_id):
                 .join(RatingScenarios, RatingScenarios.id == ScenarioUsers.scenario_id)
                 .filter(
                     ScenarioUsers.user_id == user.id,
-                    ScenarioUsers.role == ScenarioRoles.RATER,
+                    ScenarioUsers.role == ScenarioRoles.EVALUATOR,
                     RatingScenarios.begin <= current_time,
                     RatingScenarios.end >= current_time,
                 )
@@ -298,5 +316,7 @@ def save_mail_rating(thread_id):
                     )
         except Exception:
             pass
+
+    _emit_scenario_stats_updates(thread_id)
 
     return jsonify({'status': 'Mail rating and feedback saved successfully'}), 201

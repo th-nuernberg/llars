@@ -1,6 +1,8 @@
 # Security Testanforderungen: Berechtigungen (RBAC)
 
-**Version:** 1.0 | **Stand:** 30. Dezember 2025
+**Version:** 1.1 | **Stand:** 30. Dezember 2025
+
+**Status:** ✅ IMPLEMENTIERT - Tests in `tests/unit/services/permission/test_permission_service.py`
 
 ---
 
@@ -14,45 +16,43 @@ Dieses Dokument beschreibt alle Tests für das LLARS Permission System (RBAC).
 
 ## 1. Alle Permissions (43 Total)
 
-### Feature Permissions (28)
+### Feature Permissions (26)
 
 | Permission | Beschreibung | Rollen |
 |------------|--------------|--------|
-| `feature:mail_rating:view` | Mail Rating ansehen | admin, researcher, viewer |
-| `feature:mail_rating:edit` | Mail Rating bearbeiten | admin, researcher |
-| `feature:ranking:view` | Ranking ansehen | admin, researcher, viewer |
+| `feature:ranking:view` | Ranking ansehen | admin, researcher, evaluator |
 | `feature:ranking:edit` | Ranking bearbeiten | admin, researcher |
-| `feature:rating:view` | Rating ansehen | admin, researcher, viewer |
+| `feature:rating:view` | Rating ansehen | admin, researcher, evaluator |
 | `feature:rating:edit` | Rating bearbeiten | admin, researcher |
-| `feature:comparison:view` | Comparison ansehen | admin, researcher, viewer |
+| `feature:comparison:view` | Comparison ansehen | admin, researcher, evaluator |
 | `feature:comparison:edit` | Comparison bearbeiten | admin, researcher |
-| `feature:authenticity:view` | Authenticity ansehen | admin, researcher, viewer |
-| `feature:authenticity:edit` | Authenticity bearbeiten | admin, researcher, viewer |
-| `feature:prompt_engineering:view` | Prompt Eng. ansehen | admin, researcher, chatbot_manager, viewer |
+| `feature:authenticity:view` | Authenticity ansehen | admin, researcher, evaluator |
+| `feature:authenticity:edit` | Authenticity bearbeiten | admin, researcher, evaluator |
+| `feature:prompt_engineering:view` | Prompt Eng. ansehen | admin, researcher, chatbot_manager, evaluator |
 | `feature:prompt_engineering:edit` | Prompt Eng. bearbeiten | admin, researcher, chatbot_manager |
-| `feature:markdown_collab:view` | Markdown ansehen | admin, researcher, chatbot_manager, viewer |
+| `feature:markdown_collab:view` | Markdown ansehen | admin, researcher, chatbot_manager, evaluator |
 | `feature:markdown_collab:edit` | Markdown bearbeiten | admin, researcher, chatbot_manager |
 | `feature:markdown_collab:share` | Markdown teilen | admin, researcher, chatbot_manager |
-| `feature:latex_collab:view` | LaTeX ansehen | admin, researcher, chatbot_manager, viewer |
+| `feature:latex_collab:view` | LaTeX ansehen | admin, researcher, chatbot_manager, evaluator |
 | `feature:latex_collab:edit` | LaTeX bearbeiten | admin, researcher, chatbot_manager |
 | `feature:latex_collab:share` | LaTeX teilen | admin, researcher, chatbot_manager |
 | `feature:latex_collab:ai` | LaTeX AI nutzen | admin, researcher, chatbot_manager |
-| `feature:rag:view` | RAG ansehen | admin, chatbot_manager, viewer |
+| `feature:rag:view` | RAG ansehen | admin, chatbot_manager, evaluator |
 | `feature:rag:edit` | RAG bearbeiten | admin, chatbot_manager |
 | `feature:rag:delete` | RAG löschen | admin, chatbot_manager |
 | `feature:rag:share` | RAG teilen | admin, chatbot_manager |
-| `feature:chatbots:view` | Chatbots ansehen | admin, researcher, chatbot_manager, viewer |
+| `feature:chatbots:view` | Chatbots ansehen | admin, researcher, chatbot_manager, evaluator |
 | `feature:chatbots:edit` | Chatbots bearbeiten | admin, chatbot_manager |
 | `feature:chatbots:delete` | Chatbots löschen | admin, chatbot_manager |
 | `feature:chatbots:advanced` | Advanced Agent Modes | admin, chatbot_manager |
 | `feature:chatbots:share` | Chatbots teilen | admin, chatbot_manager |
-| `feature:anonymize:view` | Anonymize nutzen | admin, researcher, viewer |
+| `feature:anonymize:view` | Anonymize nutzen | admin, researcher, evaluator |
 | `feature:judge:view` | Judge ansehen | admin |
 | `feature:judge:edit` | Judge bearbeiten | admin |
 | `feature:oncoco:view` | OnCoCo ansehen | admin |
 | `feature:oncoco:edit` | OnCoCo bearbeiten | admin |
-| `feature:kaimo:view` | KAIMO ansehen | admin, researcher, viewer |
-| `feature:kaimo:edit` | KAIMO bearbeiten | admin, researcher, viewer |
+| `feature:kaimo:view` | KAIMO ansehen | admin, researcher, evaluator |
+| `feature:kaimo:edit` | KAIMO bearbeiten | admin, researcher, evaluator |
 
 ### Admin Permissions (10)
 
@@ -77,40 +77,42 @@ Dieses Dokument beschreibt alle Tests für das LLARS Permission System (RBAC).
 
 ## 2. Permission Check Tests
 
+**Tests:** `tests/unit/services/permission/test_permission_service.py`
+
 ### Deny-by-Default Tests
 
-| ID | Test | Erwartung | Art |
-|----|------|-----------|-----|
-| PERM-001 | Unbekannte Permission | Return False | Unit |
-| PERM-002 | Keine Rolle, keine Permission | Return False | Unit |
-| PERM-003 | Locked User | Return False | Unit |
-| PERM-004 | Deleted User | Return False | Unit |
+| ID | Test | Erwartung | Art | Status |
+|----|------|-----------|-----|--------|
+| PERM-001 | Unbekannte Permission | Return False | Unit | ✅ |
+| PERM-002 | Keine Rolle, keine Permission | Return False | Unit | ✅ |
+| PERM-003 | Locked User | Return False | Unit | ✅ |
+| PERM-004 | Deleted User | Return False | Unit | ✅ |
 
 ### Admin Tests
 
-| ID | Test | Erwartung | Art |
-|----|------|-----------|-----|
-| PERM-010 | Admin hat alle Permissions | Return True für alles | Unit |
-| PERM-011 | Admin bypass | Keine Einzel-Check nötig | Unit |
+| ID | Test | Erwartung | Art | Status |
+|----|------|-----------|-----|--------|
+| PERM-010 | Admin hat alle Permissions | Return True für alles | Unit | ✅ |
+| PERM-011 | Admin bypass | Keine Einzel-Check nötig | Unit | ✅ |
 
 ### Role Tests
 
-| ID | Test | Erwartung | Art |
-|----|------|-----------|-----|
-| PERM-020 | Researcher hat view Permissions | Return True | Unit |
-| PERM-021 | Researcher keine Admin Permissions | Return False | Unit |
-| PERM-022 | Viewer nur view Permissions | Return True für view | Unit |
-| PERM-023 | Viewer keine edit Permissions | Return False | Unit |
-| PERM-024 | Chatbot_Manager chatbot Permissions | Return True | Unit |
-| PERM-025 | Chatbot_Manager keine ranking | Return False | Unit |
+| ID | Test | Erwartung | Art | Status |
+|----|------|-----------|-----|--------|
+| PERM-020 | Researcher hat view Permissions | Return True | Unit | ✅ |
+| PERM-021 | Researcher keine Admin Permissions | Return False | Unit | ✅ |
+| PERM-022 | Evaluator nur view Permissions | Return True für view | Unit | ✅ |
+| PERM-023 | Evaluator keine edit Permissions | Return False | Unit | ✅ |
+| PERM-024 | Chatbot_Manager chatbot Permissions | Return True | Unit | ✅ |
+| PERM-025 | Chatbot_Manager keine ranking | Return False | Unit | ✅ |
 
 ### Override Tests
 
-| ID | Test | Erwartung | Art |
-|----|------|-----------|-----|
-| PERM-030 | User Grant > Role Deny | Return True | Unit |
-| PERM-031 | User Deny > Role Grant | Return False | Unit |
-| PERM-032 | Explicit Deny > Implicit Grant | Return False | Unit |
+| ID | Test | Erwartung | Art | Status |
+|----|------|-----------|-----|--------|
+| PERM-030 | User Grant > Role Deny | Return True | Unit | ✅ |
+| PERM-031 | User Deny > Role Grant | Return False | Unit | ✅ |
+| PERM-032 | Explicit Deny > Implicit Grant | Return False | Unit | ✅ |
 
 ### Unit Test-Code
 
@@ -198,8 +200,8 @@ class TestPermissionCheck:
             assert service.check_permission(researcher_user, 'admin:permissions:manage') is False
             assert service.check_permission(researcher_user, 'admin:users:manage') is False
 
-    def test_PERM_023_viewer_no_edit_permissions(self, app, service, mock_user):
-        """Viewer hat keine edit Permissions"""
+    def test_PERM_023_evaluator_no_edit_permissions(self, app, service, mock_user):
+        """Evaluator hat keine edit Permissions"""
         with app.app_context():
             assert service.check_permission(mock_user, 'feature:ranking:edit') is False
             assert service.check_permission(mock_user, 'feature:rating:edit') is False
@@ -209,23 +211,25 @@ class TestPermissionCheck:
 
 ## 3. API Route Protection Tests
 
+**Tests:** `tests/integration/api/test_route_protection.py`
+
 ### Auth Decorator Tests
 
-| ID | Test | Erwartung | Art |
-|----|------|-----------|-----|
-| ROUTE-001 | Kein Auth Header | 401 Unauthorized | Integration |
-| ROUTE-002 | Invalid Token | 401 Unauthorized | Integration |
-| ROUTE-003 | Expired Token | 401 Unauthorized | Integration |
-| ROUTE-004 | Valid Token | 200 OK | Integration |
-| ROUTE-005 | System API Key | Bypass, 200 OK | Integration |
+| ID | Test | Erwartung | Art | Status |
+|----|------|-----------|-----|--------|
+| ROUTE-001 | Kein Auth Header | 401 Unauthorized | Integration | ✅ |
+| ROUTE-002 | Invalid Token | 401 Unauthorized | Integration | ✅ |
+| ROUTE-003 | Expired Token | 401 Unauthorized | Integration | ✅ |
+| ROUTE-004 | Valid Token | 200 OK | Integration | ✅ |
+| ROUTE-005 | System API Key | Bypass, 200 OK | Integration | ✅ |
 
 ### Permission Decorator Tests
 
-| ID | Test | Erwartung | Art |
-|----|------|-----------|-----|
-| ROUTE-010 | Permission granted | 200 OK | Integration |
-| ROUTE-011 | Permission denied | 403 Forbidden | Integration |
-| ROUTE-012 | Admin override | 200 OK | Integration |
+| ID | Test | Erwartung | Art | Status |
+|----|------|-----------|-----|--------|
+| ROUTE-010 | Permission granted | 200 OK | Integration | ✅ |
+| ROUTE-011 | Permission denied | 403 Forbidden | Integration | ✅ |
+| ROUTE-012 | Admin override | 200 OK | Integration | ✅ |
 
 ### Integration Test-Code
 
@@ -255,10 +259,10 @@ class TestRouteProtection:
         response = authenticated_client.get('/api/users/me')
         assert response.status_code == 200
 
-    def test_ROUTE_011_permission_denied(self, authenticated_client_viewer):
+    def test_ROUTE_011_permission_denied(self, authenticated_client_evaluator):
         """Fehlende Permission gibt 403"""
-        # Viewer versucht Admin-Route
-        response = authenticated_client_viewer.get('/api/admin/users')
+        # Evaluator versucht Admin-Route
+        response = authenticated_client_evaluator.get('/api/admin/users')
         assert response.status_code == 403
 
     def test_ROUTE_012_admin_override(self, authenticated_client_admin):

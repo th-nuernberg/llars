@@ -4,23 +4,23 @@
     <div class="kia-header">
       <div class="d-flex align-center">
         <div class="gitlab-icon-wrapper">
-          <v-icon size="20" color="white">mdi-gitlab</v-icon>
+          <LIcon size="20" color="white">mdi-gitlab</LIcon>
         </div>
         <div class="ml-3">
-          <div class="text-subtitle-2 font-weight-bold">KIA Datenquellen</div>
+          <div class="text-subtitle-2 font-weight-bold">{{ $t('oncoco.kiaSync.title') }}</div>
           <div class="text-caption text-medium-emphasis">
             <span v-if="gitlabConnected" class="text-success">
-              <v-icon size="12" class="mr-1">mdi-check-circle</v-icon>Verbunden
+              <LIcon size="12" class="mr-1">mdi-check-circle</LIcon>{{ $t('oncoco.kiaSync.connected') }}
             </span>
             <span v-else class="text-warning">
-              <v-icon size="12" class="mr-1">mdi-alert</v-icon>Nicht verbunden
+              <LIcon size="12" class="mr-1">mdi-alert</LIcon>{{ $t('oncoco.kiaSync.disconnected') }}
             </span>
           </div>
         </div>
       </div>
       <div class="d-flex align-center ga-1">
         <v-chip v-if="totalThreads > 0" size="small" color="primary" variant="flat">
-          {{ totalThreads }} Threads
+          {{ $t('oncoco.kiaSync.threads', { count: totalThreads }) }}
         </v-chip>
         <v-btn
           icon
@@ -29,7 +29,7 @@
           :loading="checking"
           @click="checkStatus"
         >
-          <v-icon size="18">mdi-refresh</v-icon>
+          <LIcon size="18">mdi-refresh</LIcon>
         </v-btn>
       </div>
     </div>
@@ -49,11 +49,11 @@
           <div class="pillar-name">{{ pillar.name }}</div>
           <div class="pillar-stats">
             <span v-if="pillar.db_thread_count > 0" class="stat-item">
-              <v-icon size="12">mdi-database</v-icon>
+              <LIcon size="12">mdi-database</LIcon>
               {{ pillar.db_thread_count }}
             </span>
             <span v-if="pillar.gitlab_file_count > 0" class="stat-item">
-              <v-icon size="12">mdi-file-document-multiple</v-icon>
+              <LIcon size="12">mdi-file-document-multiple</LIcon>
               {{ pillar.gitlab_file_count }}
             </span>
             <span v-if="pillar.gitlab_status !== 'available'" class="stat-item text-medium-emphasis">
@@ -70,7 +70,7 @@
           @click="syncPillar(num)"
           class="sync-btn"
         >
-          <v-icon size="16">mdi-sync</v-icon>
+          <LIcon size="16">mdi-sync</LIcon>
         </v-btn>
       </div>
     </div>
@@ -90,7 +90,7 @@
         prepend-icon="mdi-cloud-sync"
         @click="syncAll"
       >
-        Alle synchronisieren
+        {{ $t('oncoco.kiaSync.actions.syncAll') }}
       </v-btn>
     </div>
 
@@ -113,10 +113,12 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue';
+import { useI18n } from 'vue-i18n';
 import axios from 'axios';
 
 const emit = defineEmits(['loaded']);
 const API_BASE = import.meta.env.VITE_API_BASE_URL || '';
+const { t } = useI18n();
 
 const loading = ref(true);
 const checking = ref(false);
@@ -139,10 +141,10 @@ const getPillarColor = (num) => pillarColors[num] || '#9e9e9e';
 
 const getStatusText = (status) => {
   const texts = {
-    'available': 'Bereit',
-    'not_found': 'Nicht vorhanden',
-    'error': 'Fehler',
-    'syncing': 'Lädt...'
+    'available': t('oncoco.kiaSync.status.available'),
+    'not_found': t('oncoco.kiaSync.status.notFound'),
+    'error': t('oncoco.kiaSync.status.error'),
+    'syncing': t('oncoco.kiaSync.status.syncing')
   };
   return texts[status] || status;
 };
@@ -160,7 +162,7 @@ const checkStatus = async () => {
     if (error.response?.status !== 401) {
       lastSyncResult.value = {
         success: false,
-        message: error.response?.data?.error || 'Status-Abfrage fehlgeschlagen'
+        message: error.response?.data?.error || t('oncoco.kiaSync.errors.statusFailed')
       };
     }
   } finally {
@@ -179,14 +181,14 @@ const syncPillar = async (num) => {
     lastSyncResult.value = {
       success: response.data.success,
       message: response.data.success
-        ? `Säule ${num}: ${response.data.threads_created || 0} Threads erstellt`
-        : `Säule ${num}: ${response.data.errors?.[0] || 'Fehler'}`
+        ? t('oncoco.kiaSync.messages.pillarSuccess', { id: num, count: response.data.threads_created || 0 })
+        : t('oncoco.kiaSync.messages.pillarError', { id: num, message: response.data.errors?.[0] || t('oncoco.kiaSync.status.error') })
     };
     await checkStatus();
   } catch (error) {
     lastSyncResult.value = {
       success: false,
-      message: `Säule ${num}: ${error.response?.data?.error || error.message}`
+      message: t('oncoco.kiaSync.messages.pillarError', { id: num, message: error.response?.data?.error || error.message })
     };
   } finally {
     syncing.value[num] = false;
@@ -199,13 +201,13 @@ const syncAll = async () => {
     const response = await axios.post(`${API_BASE}/api/oncoco/pillars/sync`, {});
     lastSyncResult.value = {
       success: response.data.total_success > 0,
-      message: `${response.data.total_threads_created || 0} Threads erstellt`
+      message: t('oncoco.kiaSync.messages.syncAll', { count: response.data.total_threads_created || 0 })
     };
     await checkStatus();
   } catch (error) {
     lastSyncResult.value = {
       success: false,
-      message: error.response?.data?.error || 'Sync fehlgeschlagen'
+      message: error.response?.data?.error || t('oncoco.kiaSync.errors.syncFailed')
     };
   } finally {
     syncingAll.value = false;

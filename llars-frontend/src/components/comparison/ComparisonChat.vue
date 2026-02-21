@@ -19,13 +19,13 @@
           <div class="responses-grid">
             <div class="response-card" :class="{ 'selected': message.selected === 'llm1' }">
               <div class="response-header">
-                <h4>Modell 1</h4>
-                <v-chip v-if="message.selected === 'llm1'" color="success" size="small">Gewählt
+                <h4>{{ $t('comparison.chat.model1') }}</h4>
+                <v-chip v-if="message.selected === 'llm1'" color="success" size="small">{{ $t('comparison.chat.selected') }}
                 </v-chip>
               </div>
               <div class="response-content">
                 <div v-if="message.streaming?.llm1" class="typing-indicator">
-                  Schreibt<span class="typing-dots"></span>
+                  {{ $t('comparison.chat.typing') }}<span class="typing-dots"></span>
                 </div>
                 <div v-else>{{ getResponseContent(message, 'llm1') }}</div>
               </div>
@@ -33,13 +33,13 @@
 
             <div class="response-card" :class="{ 'selected': message.selected === 'llm2' }">
               <div class="response-header">
-                <h4>Modell 2</h4>
-                <v-chip v-if="message.selected === 'llm2'" color="success" size="small">Gewählt
+                <h4>{{ $t('comparison.chat.model2') }}</h4>
+                <v-chip v-if="message.selected === 'llm2'" color="success" size="small">{{ $t('comparison.chat.selected') }}
                 </v-chip>
               </div>
               <div class="response-content">
                 <div v-if="message.streaming?.llm2" class="typing-indicator">
-                  Schreibt<span class="typing-dots"></span>
+                  {{ $t('comparison.chat.typing') }}<span class="typing-dots"></span>
                 </div>
                 <div v-else>{{ getResponseContent(message, 'llm2') }}</div>
               </div>
@@ -50,19 +50,19 @@
           <div v-if="!message.selected && !isStreaming(message)" class="rating-container">
             <v-btn-group variant="outlined" divided>
               <v-btn @click="selectResponse(message.messageId, 'llm1')" color="primary">
-                <v-icon class="mr-1">mdi-thumb-up</v-icon>
-                Modell 1 ist besser
+                <LIcon class="mr-1">mdi-thumb-up</LIcon>
+                {{ $t('comparison.chat.model1Better') }}
               </v-btn>
               <v-btn @click="selectResponse(message.messageId, 'tie')" color="warning">
-                <v-icon class="mr-1">mdi-equal</v-icon>
-                Beide gleich gut
+                <LIcon class="mr-1">mdi-equal</LIcon>
+                {{ $t('comparison.chat.bothEqual') }}
               </v-btn>
               <v-btn @click="selectResponse(message.messageId, 'llm2')" color="primary">
-                <v-icon class="mr-1">mdi-thumb-up</v-icon>
-                Modell 2 ist besser
+                <LIcon class="mr-1">mdi-thumb-up</LIcon>
+                {{ $t('comparison.chat.model2Better') }}
               </v-btn>
             </v-btn-group>
-            <p class="rating-hint">Bitte bewerten Sie die Antworten, bevor Sie fortfahren...</p>
+            <p class="rating-hint">{{ $t('comparison.chat.ratingHint') }}</p>
           </div>
         </div>
       </div>
@@ -75,7 +75,7 @@
           v-model="newMessage"
           @keyup.enter.exact="sendMessage"
           @keydown.enter.shift.prevent
-          placeholder="Schreiben Sie eine Nachricht..."
+          :placeholder="$t('comparison.chat.placeholder')"
           variant="outlined"
           :loading="isProcessing"
           :disabled="isProcessing || !canSendMessage"
@@ -89,22 +89,22 @@
         >
           <template v-slot:prepend-inner>
             <div class="input-status-icon">
-              <v-icon
+              <LIcon
                 v-if="!canSendMessage"
                 color="error"
                 size="small"
                 class="status-icon lock-icon"
               >
                 mdi-lock
-              </v-icon>
-              <v-icon
+              </LIcon>
+              <LIcon
                 v-else-if="isProcessing"
                 color="primary"
                 size="small"
                 class="status-icon processing-icon"
               >
                 mdi-clock-outline
-              </v-icon>
+              </LIcon>
             </div>
           </template>
 
@@ -118,7 +118,7 @@
               class="send-button"
               :loading="isProcessing"
             >
-              <v-icon>mdi-send</v-icon>
+              <LIcon>mdi-send</LIcon>
             </v-btn>
           </template>
         </v-textarea>
@@ -126,12 +126,12 @@
 
       <transition name="hint-fade">
         <div v-if="!canSendMessage" class="input-hint error-hint">
-          <v-icon size="small" color="error" class="mr-2">mdi-information-outline</v-icon>
-          Bitte bewerten Sie zuerst die vorherigen Antworten, bevor Sie eine neue Nachricht senden.
+          <LIcon size="small" color="error" class="mr-2">mdi-information-outline</LIcon>
+          {{ $t('comparison.chat.rateFirst') }}
         </div>
         <div v-else-if="isProcessing" class="input-hint processing-hint">
-          <v-icon size="small" color="primary" class="mr-2">mdi-clock-outline</v-icon>
-          Antworten werden generiert...
+          <LIcon size="small" color="primary" class="mr-2">mdi-clock-outline</LIcon>
+          {{ $t('comparison.chat.generating') }}
         </div>
       </transition>
     </div>
@@ -140,32 +140,32 @@
     <v-dialog v-model="showJustificationDialog" max-width="600" persistent>
       <v-card>
         <v-card-title class="text-h5 bg-warning text-white pa-4">
-          <v-icon start class="mr-2">mdi-alert-circle</v-icon>
-          Bewertungsabweichung
+          <LIcon start class="mr-2">mdi-alert-circle</LIcon>
+          {{ $t('comparison.chat.justification.title') }}
         </v-card-title>
         <v-card-text class="pa-6">
           <div class="mb-4">
             <v-alert type="info" variant="tonal" class="mb-4">
-              Wir führen automatisch auch eine Bewertung der Konversation durch künstliche Intelligenz durch. Diesmal hat diese sich anders entschieden, als Sie es haben. Um das besser zu verstehen, würden wir uns freuen, wenn Sie hierfür eine Begründung angeben könnten. Vielen Dank!
+              {{ $t('comparison.chat.justification.info') }}
               <br>
-              <strong>Ihre Bewertung:</strong> {{ formatSelection(currentJustification?.user_selection) }}
+              <strong>{{ $t('comparison.chat.justification.yourRating') }}</strong> {{ formatSelection(currentJustification?.user_selection) }}
               <br>
-              <strong>KI-Bewertung:</strong> {{ formatSelection(currentJustification?.ai_selection) }}
+              <strong>{{ $t('comparison.chat.justification.aiRating') }}</strong> {{ formatSelection(currentJustification?.ai_selection) }}
             </v-alert>
           </div>
-          
+
           <div class="mb-4">
-            <h4 class="text-subtitle-1 mb-2">Begründung der KI:</h4>
+            <h4 class="text-subtitle-1 mb-2">{{ $t('comparison.chat.justification.aiReason') }}</h4>
             <v-card variant="outlined" class="pa-3">
               <p class="text-body-2">{{ currentJustification?.ai_reason }}</p>
             </v-card>
           </div>
 
           <div>
-            <h4 class="text-subtitle-1 mb-2">Ihre Begründung (optional):</h4>
+            <h4 class="text-subtitle-1 mb-2">{{ $t('comparison.chat.justification.yourReason') }}</h4>
             <v-textarea
               v-model="userJustification"
-              placeholder="Warum sind Sie anderer Meinung als die KI? (Optional)"
+              :placeholder="$t('comparison.chat.justification.yourReasonPlaceholder')"
               variant="outlined"
               hide-details
               rows="3"
@@ -181,7 +181,7 @@
             variant="text"
             @click="closeJustificationDialog(false)"
           >
-            Ohne Begründung fortfahren
+            {{ $t('comparison.chat.justification.skipButton') }}
           </v-btn>
           <v-btn
             color="primary"
@@ -189,7 +189,7 @@
             @click="closeJustificationDialog(true)"
             :disabled="!userJustification.trim()"
           >
-            Begründung speichern
+            {{ $t('comparison.chat.justification.saveButton') }}
           </v-btn>
         </v-card-actions>
       </v-card>
@@ -199,6 +199,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
+import { useI18n } from 'vue-i18n';
 import {
   useComparisonSocket,
   useComparisonHelpers,
@@ -206,6 +207,8 @@ import {
 } from './ComparisonChat/index';
 import { useActiveDuration, useScrollDepth } from '@/composables/useAnalyticsMetrics';
 import { matomoTrackEvent } from '@/plugins/llars-metrics';
+
+const { t } = useI18n();
 
 const props = defineProps<{
   sessionId: number;

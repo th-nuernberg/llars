@@ -2,9 +2,35 @@
 LaTeX Collab Routes
 
 Blueprints:
-    - latex_collab_bp: /api/latex-collab
+    - latex_workspace_bp: Workspace CRUD + members
+    - latex_document_bp: Document/node CRUD + tree
+    - latex_commit_bp: Commits, baselines, rollback
+    - latex_comment_bp: Document comments
+    - latex_asset_bp: Binary file uploads
+    - latex_compile_bp: Compilation, PDF, SyncTeX
+    - latex_zip_bp: ZIP import/export
 """
 
-from .latex_collab_routes import latex_collab_bp
+from .latex_collab_routes import (
+    latex_collab_bp,
+    latex_workspace_bp,
+    latex_document_bp,
+    latex_commit_bp,
+    latex_comment_bp,
+    latex_asset_bp,
+    latex_compile_bp,
+    latex_zip_bp,
+    register_latex_collab_routes,
+)
 
-__all__ = ["latex_collab_bp"]
+__all__ = [
+    "latex_collab_bp",
+    "latex_workspace_bp",
+    "latex_document_bp",
+    "latex_commit_bp",
+    "latex_comment_bp",
+    "latex_asset_bp",
+    "latex_compile_bp",
+    "latex_zip_bp",
+    "register_latex_collab_routes",
+]

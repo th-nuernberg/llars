@@ -10,7 +10,7 @@ Handles all feature-related business logic including:
 
 from typing import Optional, List, Dict, Any
 
-from db.db import db
+from db.database import db
 
 
 class FeatureService:

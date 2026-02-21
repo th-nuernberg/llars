@@ -15,9 +15,10 @@ from datetime import datetime
 from typing import Dict, Any, Optional
 from urllib.parse import urlparse
 
-from db.db import db
+from db.database import db
 from db.tables import Chatbot, ChatbotCollection, RAGCollection
 from db.models.llm_model import LLMModel
+from services.llm.llm_access_service import LLMAccessService
 
 logger = logging.getLogger(__name__)
 
@@ -61,10 +62,15 @@ class ChatbotCreator:
             name = f"{base_name}_{counter}"
             counter += 1
 
-        # Create draft chatbot
-        default_model = LLMModel.get_default_model(model_type=LLMModel.MODEL_TYPE_LLM)
-        if not default_model:
-            raise ValueError("No default LLM model configured in llm_models")
+        # Create draft chatbot with accessible default model
+        accessible = LLMAccessService.get_accessible_models(
+            username,
+            active_only=True,
+            model_type=LLMModel.MODEL_TYPE_LLM,
+        )
+        if not accessible:
+            raise ValueError("No accessible LLM model configured for this user")
+        default_model = next((m for m in accessible if m.is_default), accessible[0])
         chatbot = Chatbot(
             name=name,
             display_name=f"Chatbot for {parsed.netloc}",
@@ -81,13 +87,18 @@ class ChatbotCreator:
 
         logger.info(f"[ChatbotCreator] Created draft chatbot {chatbot.id} for URL: {url}")
 
+        # Return both flat fields (for frontend compatibility) and nested 'chatbot' object
+        # (for route logic that creates Redis session)
         return {
             'success': True,
-            'chatbot_id': chatbot.id,
-            'name': chatbot.name,
-            'display_name': chatbot.display_name,
-            'build_status': chatbot.build_status,
-            'source_url': url
+            'chatbot_id': chatbot.id,  # Keep for frontend: response.data.chatbot_id
+            'chatbot': {               # Required for route: result['chatbot']['id']
+                'id': chatbot.id,
+                'name': chatbot.name,
+                'display_name': chatbot.display_name,
+                'build_status': chatbot.build_status,
+                'source_url': url
+            }
         }
 
     @staticmethod

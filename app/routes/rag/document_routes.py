@@ -146,6 +146,40 @@ def download_document(document_id):
     )
 
 
+@rag_document_bp.route('/documents/<int:document_id>/view', methods=['GET'])
+@require_permission('feature:rag:view')
+@handle_api_errors(logger_name='rag')
+def view_document(document_id):
+    """View document file inline (for PDF viewer, images, etc.)"""
+    username = AuthUtils.extract_username_without_validation()
+    document = DocumentService.get_document_by_id(document_id, username=username, access='view')
+    if not document:
+        raise NotFoundError(f'Document with ID {document_id} not found')
+
+    if not os.path.exists(document.file_path):
+        raise NotFoundError('Document file not found on disk')
+
+    # Determine mime type for inline viewing
+    mime_type = document.mime_type or 'application/octet-stream'
+
+    # For viewable types, serve inline
+    viewable_types = [
+        'application/pdf',
+        'text/plain', 'text/html', 'text/markdown', 'text/csv',
+        'image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml',
+    ]
+
+    # Check if file is viewable
+    is_viewable = any(mime_type.startswith(t.split('/')[0]) for t in viewable_types) or mime_type in viewable_types
+
+    return send_file(
+        document.file_path,
+        as_attachment=not is_viewable,
+        download_name=document.original_filename,
+        mimetype=mime_type
+    )
+
+
 @rag_document_bp.route('/documents/upload', methods=['POST'])
 @require_permission('feature:rag:edit')
 @handle_api_errors(logger_name='rag')
@@ -238,14 +272,20 @@ def upload_multiple_documents():
         collection_id=collection_id
     )
 
+    # Check if upload failed completely
+    if not result.get('success'):
+        raise ValidationError(result.get('message', 'Upload fehlgeschlagen'))
+
     # Log activity for successful uploads
-    if result.get('success') and result.get('uploaded'):
+    results_data = result.get('results', {})
+    uploaded_docs = results_data.get('uploaded', [])
+
+    if uploaded_docs:
         collection_name = None
         if collection_id:
             collection = RAGCollection.query.get(collection_id)
             collection_name = collection.display_name if collection else None
 
-        uploaded_docs = result['uploaded']
         document_ids = [d.get('id') for d in uploaded_docs if d.get('id')]
         filenames = [d.get('filename') or d.get('original_filename') for d in uploaded_docs]
         total_size = sum(d.get('file_size_bytes', 0) for d in uploaded_docs)
@@ -260,6 +300,12 @@ def upload_multiple_documents():
                 collection_name=collection_name,
                 file_size_bytes=total_size
             )
+            # Emit WebSocket event for real-time updates
+            if collection_id:
+                socketio = current_app.extensions.get('socketio')
+                if socketio:
+                    from socketio_handlers.events_rag import emit_document_uploaded
+                    emit_document_uploaded(socketio, document_ids[0], collection_id, username)
         elif len(document_ids) > 1:
             # Multiple documents - use batch log
             ChatbotActivityService.log_documents_uploaded(
@@ -270,6 +316,14 @@ def upload_multiple_documents():
                 collection_name=collection_name,
                 total_size_bytes=total_size
             )
+
+        # Emit WebSocket event for real-time updates to other users
+        if collection_id:
+            socketio = current_app.extensions.get('socketio')
+            if socketio:
+                from socketio_handlers.events_rag import emit_document_uploaded
+                for doc_id in document_ids:
+                    emit_document_uploaded(socketio, doc_id, collection_id, username)
 
     return jsonify(result), 201
 

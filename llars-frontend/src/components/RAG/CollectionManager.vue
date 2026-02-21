@@ -9,7 +9,7 @@
           size="large"
           @click="$emit('create')"
         >
-          Neue Collection erstellen
+          {{ $t('rag.collectionManager.createNew') }}
         </LBtn>
       </v-col>
 
@@ -23,7 +23,13 @@
           md="4"
           lg="3"
         >
-          <v-skeleton-loader type="card" height="280"></v-skeleton-loader>
+          <LCardSkeleton
+            :min-height="280"
+            :show-status="false"
+            :tag-count="0"
+            :stat-count="2"
+            :action-items="collectionSkeletonActions"
+          />
         </v-col>
       </template>
 
@@ -45,7 +51,7 @@
           >
             <!-- Description -->
             <p class="description-text">
-              {{ collection.description || 'Keine Beschreibung vorhanden' }}
+              {{ collection.description || $t('rag.collectionManager.noDescription') }}
             </p>
 
             <!-- Stats -->
@@ -53,11 +59,11 @@
               <div class="collection-stats">
                 <div class="stat-item">
                   <div class="stat-value">{{ collection.document_count || 0 }}</div>
-                  <div class="stat-label">Dokumente</div>
+                  <div class="stat-label">{{ $t('rag.collectionManager.documents') }}</div>
                 </div>
                 <div class="stat-item">
                   <div class="stat-value">{{ formatSize(collection.total_size_bytes) }}</div>
-                  <div class="stat-label">Größe</div>
+                  <div class="stat-label">{{ $t('rag.collectionManager.size') }}</div>
                 </div>
               </div>
             </template>
@@ -70,7 +76,7 @@
                 size="small"
                 @click="$emit('view-documents', collection)"
               >
-                Dokumente
+                {{ $t('rag.collectionManager.documents') }}
               </LBtn>
               <v-spacer />
               <v-btn
@@ -100,17 +106,17 @@
         <!-- Empty State -->
         <v-col v-if="!collections || collections.length === 0" cols="12">
           <LCard outlined class="text-center pa-8">
-            <v-icon size="64" color="grey-lighten-1" class="mb-4">mdi-folder-open</v-icon>
-            <div class="text-h5 mb-2">Keine Collections vorhanden</div>
+            <LIcon size="64" color="grey-lighten-1" class="mb-4">mdi-folder-open</LIcon>
+            <div class="text-h5 mb-2">{{ $t('rag.collectionManager.empty.title') }}</div>
             <div class="text-medium-emphasis mb-4">
-              Erstellen Sie Ihre erste Collection, um Dokumente zu organisieren.
+              {{ $t('rag.collectionManager.empty.hint') }}
             </div>
             <LBtn
               variant="primary"
               prepend-icon="mdi-plus"
               @click="$emit('create')"
             >
-              Erste Collection erstellen
+              {{ $t('rag.collectionManager.empty.createFirst') }}
             </LBtn>
           </LCard>
         </v-col>
@@ -120,6 +126,10 @@
 </template>
 
 <script setup>
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
+
 const props = defineProps({
   collections: {
     type: Array,
@@ -149,6 +159,13 @@ const getIcon = (iconName) => {
   }
   return iconMap[iconName] || 'mdi-folder'
 }
+
+const collectionSkeletonActions = [
+  { width: 88, height: 28, shape: 'pill' },
+  { width: 28, height: 28, shape: 'circle' },
+  { width: 28, height: 28, shape: 'circle' },
+  { width: 28, height: 28, shape: 'circle' }
+]
 
 const formatSize = (bytes) => {
   if (!bytes || bytes === 0) return '0 B'

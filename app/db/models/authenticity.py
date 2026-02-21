@@ -9,21 +9,21 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, synonym
 
 from db import db
 
 
 class AuthenticityConversation(db.Model):
-    """Metadata for an imported authenticity sample (linked to an EmailThread)."""
+    """Metadata for an imported authenticity sample (linked to an EvaluationItem)."""
 
     __tablename__ = "authenticity_conversations"
 
     id: Mapped[int] = mapped_column(db.Integer, primary_key=True, autoincrement=True)
 
-    thread_id: Mapped[int] = mapped_column(
+    item_id: Mapped[int] = mapped_column(
         db.Integer,
-        db.ForeignKey("email_threads.thread_id", ondelete="CASCADE"),
+        db.ForeignKey("evaluation_items.item_id", ondelete="CASCADE"),
         unique=True,
         index=True,
         nullable=False,
@@ -52,7 +52,15 @@ class AuthenticityConversation(db.Model):
 
     created_at: Mapped[datetime] = mapped_column(db.DateTime, default=datetime.utcnow, index=True)
 
-    thread = db.relationship("EmailThread", backref=db.backref("authenticity_conversation", uselist=False))
+    evaluation_item = db.relationship("EvaluationItem", backref=db.backref("authenticity_conversation", uselist=False))
+
+    # Backwards compatibility: thread_id is a synonym for item_id (for queries)
+    thread_id = synonym('item_id')
+
+    # Backwards compatibility property for relationship
+    @property
+    def thread(self):
+        return self.evaluation_item
 
 
 class UserAuthenticityVote(db.Model):
@@ -67,9 +75,9 @@ class UserAuthenticityVote(db.Model):
         nullable=False,
         index=True,
     )
-    thread_id: Mapped[int] = mapped_column(
+    item_id: Mapped[int] = mapped_column(
         db.Integer,
-        db.ForeignKey("email_threads.thread_id", ondelete="CASCADE"),
+        db.ForeignKey("evaluation_items.item_id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )
@@ -83,9 +91,17 @@ class UserAuthenticityVote(db.Model):
     updated_at: Mapped[datetime] = mapped_column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     user = db.relationship("User", backref="authenticity_votes")
-    thread = db.relationship("EmailThread", backref="authenticity_votes")
+    evaluation_item = db.relationship("EvaluationItem", backref="authenticity_votes")
+
+    # Backwards compatibility: thread_id is a synonym for item_id (for queries)
+    thread_id = synonym('item_id')
 
     __table_args__ = (
-        db.UniqueConstraint("user_id", "thread_id", name="uix_user_authenticity_vote"),
+        db.UniqueConstraint("user_id", "item_id", name="uix_user_authenticity_vote"),
     )
+
+    # Backwards compatibility property for relationship
+    @property
+    def thread(self):
+        return self.evaluation_item
 

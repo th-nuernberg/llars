@@ -1,6 +1,12 @@
 <template>
   <div class="l-tabs-container">
-    <div class="l-tabs" :class="tabsClasses">
+    <div class="l-tabs" :class="tabsClasses" ref="tabsRef">
+      <!-- Sliding pill indicator for pill variant -->
+      <div
+        v-if="variant === 'pill'"
+        ref="pillRef"
+        class="l-tabs__pill"
+      />
       <button
         v-for="(tab, index) in tabs"
         :key="tab.value || index"
@@ -8,7 +14,7 @@
         :class="{ 'l-tab--active': modelValue === (tab.value || index) }"
         @click="selectTab(tab.value || index)"
       >
-        <v-icon v-if="tab.icon" class="l-tab__icon">{{ tab.icon }}</v-icon>
+        <LIcon v-if="tab.icon" class="l-tab__icon">{{ tab.icon }}</LIcon>
         <span class="l-tab__label">{{ tab.label }}</span>
         <span v-if="tab.badge !== undefined" class="l-tab__badge">{{ tab.badge }}</span>
       </button>
@@ -23,29 +29,10 @@
 /**
  * LTabs - LLARS Global Tabs Component
  *
- * A modern tab navigation component with the signature LLARS styling.
- * Features the primary color background with white text and smooth transitions.
- *
- * Props:
- *   - modelValue: Current active tab value (v-model)
- *   - tabs: Array of tab definitions { value, label, icon?, badge? }
- *   - variant: 'filled' (default) | 'outlined' | 'underlined'
- *   - grow: Boolean - tabs take equal width
- *
- * Events:
- *   - update:modelValue: Emitted when tab changes
- *
- * Usage:
- *   <LTabs
- *     v-model="activeTab"
- *     :tabs="[
- *       { value: 'chatbots', label: 'Chatbots', icon: 'mdi-robot' },
- *       { value: 'collections', label: 'Collections', icon: 'mdi-folder-multiple' },
- *       { value: 'documents', label: 'Dokumente', icon: 'mdi-file-document-multiple' }
- *     ]"
- *   />
+ * Variants: 'filled' (default) | 'outlined' | 'underlined' | 'pill'
+ * The 'pill' variant features an animated sliding indicator.
  */
-import { computed } from 'vue'
+import { computed, ref, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 
 const props = defineProps({
   modelValue: {
@@ -60,7 +47,7 @@ const props = defineProps({
   variant: {
     type: String,
     default: 'filled',
-    validator: (v) => ['filled', 'outlined', 'underlined'].includes(v)
+    validator: (v) => ['filled', 'outlined', 'underlined', 'pill'].includes(v)
   },
   grow: {
     type: Boolean,
@@ -70,6 +57,10 @@ const props = defineProps({
 
 const emit = defineEmits(['update:modelValue'])
 
+const tabsRef = ref(null)
+const pillRef = ref(null)
+let resizeObserver = null
+
 const tabsClasses = computed(() => ({
   [`l-tabs--${props.variant}`]: true,
   'l-tabs--grow': props.grow
@@ -78,6 +69,56 @@ const tabsClasses = computed(() => ({
 function selectTab(value) {
   emit('update:modelValue', value)
 }
+
+// Find active tab button via direct DOM query (bypasses Vue ref issues)
+function getActiveTabButton() {
+  if (!tabsRef.value) return null
+  const buttons = tabsRef.value.querySelectorAll('.l-tab')
+  const idx = props.tabs.findIndex((tab, i) => (tab.value || i) === props.modelValue)
+  return idx >= 0 ? buttons[idx] : null
+}
+
+// Move pill via direct inline styles - no CSS custom properties, no scoped style transition
+function movePill(animate) {
+  const pill = pillRef.value
+  const tabEl = getActiveTabButton()
+  if (!pill || !tabEl) return
+
+  // Transition is set INLINE to avoid any scoped-style interference
+  pill.style.transition = animate
+    ? 'transform 0.35s cubic-bezier(0.4, 0, 0.15, 1), width 0.3s cubic-bezier(0.4, 0, 0.15, 1)'
+    : 'none'
+
+  pill.style.transform = `translateX(${tabEl.offsetLeft}px)`
+  pill.style.width = `${tabEl.offsetWidth}px`
+}
+
+// Animate on tab change
+watch(() => props.modelValue, () => {
+  nextTick(() => movePill(true))
+})
+
+// Reposition (no animation) when tabs change
+watch(() => props.tabs, () => {
+  nextTick(() => movePill(false))
+}, { deep: true })
+
+onMounted(() => {
+  // Double nextTick: first for Vue DOM update, second for browser layout (fonts etc.)
+  nextTick(() => {
+    nextTick(() => {
+      movePill(false)
+      if (tabsRef.value && props.variant === 'pill') {
+        resizeObserver = new ResizeObserver(() => movePill(false))
+        resizeObserver.observe(tabsRef.value)
+      }
+    })
+  })
+})
+
+onBeforeUnmount(() => {
+  resizeObserver?.disconnect()
+})
 </script>
 
 <style scoped>
@@ -99,6 +140,16 @@ function selectTab(value) {
   margin-bottom: 16px;
 }
 
+/* Dark mode: use a darker, more subtle version */
+.v-theme--dark .l-tabs {
+  background: color-mix(in srgb, var(--llars-primary) 35%, #1e1e1e);
+}
+
+.v-theme--dark .l-tabs--outlined {
+  background: transparent;
+  border-color: color-mix(in srgb, var(--llars-primary) 60%, #1e1e1e);
+}
+
 .l-tabs--grow {
   gap: 0;
 }
@@ -107,7 +158,90 @@ function selectTab(value) {
   flex: 1;
 }
 
-/* Outlined Variant */
+/* ═══════════════════════════════════════════
+   Pill Variant - Sliding indicator
+   ═══════════════════════════════════════════ */
+.l-tabs--pill {
+  background: rgba(var(--v-theme-on-surface), 0.06);
+  padding: 4px;
+  position: relative;
+  gap: 2px;
+}
+
+.v-theme--dark .l-tabs--pill {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* The sliding pill - transition is set via inline style in JS */
+.l-tabs__pill {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  left: 0;
+  width: 0;
+  background: var(--llars-primary);
+  border-radius: 12px 3px 12px 3px;
+  z-index: 0;
+  pointer-events: none;
+  will-change: transform, width;
+}
+
+.v-theme--dark .l-tabs__pill {
+  background: color-mix(in srgb, var(--llars-primary) 65%, #2a2a2a);
+}
+
+/* Pill variant tab overrides */
+.l-tabs--pill .l-tab {
+  position: relative;
+  z-index: 1;
+  color: rgba(var(--v-theme-on-surface), 0.55);
+  background: transparent;
+  border-radius: 12px 3px 12px 3px;
+  padding: 10px 20px;
+  text-transform: none;
+  letter-spacing: 0.01em;
+  font-weight: 500;
+  font-size: 0.875rem;
+}
+
+.l-tabs--pill .l-tab:hover:not(.l-tab--active) {
+  color: rgba(var(--v-theme-on-surface), 0.8);
+  background: rgba(var(--v-theme-on-surface), 0.04);
+}
+
+.l-tabs--pill .l-tab--active {
+  color: white;
+  background: transparent;
+  font-weight: 600;
+}
+
+.v-theme--dark .l-tabs--pill .l-tab {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.v-theme--dark .l-tabs--pill .l-tab:hover:not(.l-tab--active) {
+  color: rgba(255, 255, 255, 0.75);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.v-theme--dark .l-tabs--pill .l-tab--active {
+  color: white;
+}
+
+/* Pill variant badge */
+.l-tabs--pill .l-tab__badge {
+  background: rgba(var(--v-theme-on-surface), 0.1);
+  color: rgba(var(--v-theme-on-surface), 0.7);
+}
+
+.l-tabs--pill .l-tab--active .l-tab__badge {
+  background: rgba(255, 255, 255, 0.25);
+  color: white;
+}
+
+/* ═══════════════════════════════════════════
+   Outlined Variant
+   ═══════════════════════════════════════════ */
 .l-tabs--outlined {
   background: transparent;
   border: 2px solid var(--llars-primary);
@@ -127,7 +261,9 @@ function selectTab(value) {
   background: rgba(var(--v-theme-on-surface), 0.08);
 }
 
-/* Underlined Variant */
+/* ═══════════════════════════════════════════
+   Underlined Variant
+   ═══════════════════════════════════════════ */
 .l-tabs--underlined {
   background: transparent;
   border-radius: 0;
@@ -155,7 +291,9 @@ function selectTab(value) {
   color: rgb(var(--v-theme-on-surface));
 }
 
-/* Individual Tab */
+/* ═══════════════════════════════════════════
+   Individual Tab (base / filled)
+   ═══════════════════════════════════════════ */
 .l-tab {
   display: flex;
   align-items: center;
@@ -183,6 +321,11 @@ function selectTab(value) {
   background: rgba(255, 255, 255, 0.25);
   color: white;
   font-weight: 600;
+}
+
+/* Dark mode: brighter active state for better contrast */
+.v-theme--dark .l-tab--active {
+  background: color-mix(in srgb, var(--llars-primary) 50%, transparent);
 }
 
 /* Tab Icon */
@@ -240,5 +383,18 @@ function selectTab(value) {
 
 .l-tabs::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.5);
+}
+
+/* Pill variant scrollbar (dark on light) */
+.l-tabs--pill::-webkit-scrollbar-track {
+  background: rgba(var(--v-theme-on-surface), 0.05);
+}
+
+.l-tabs--pill::-webkit-scrollbar-thumb {
+  background: rgba(var(--v-theme-on-surface), 0.15);
+}
+
+.l-tabs--pill::-webkit-scrollbar-thumb:hover {
+  background: rgba(var(--v-theme-on-surface), 0.25);
 }
 </style>

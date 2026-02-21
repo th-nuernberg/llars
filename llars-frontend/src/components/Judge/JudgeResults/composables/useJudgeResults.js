@@ -7,6 +7,7 @@
 
 import { ref, computed } from 'vue';
 import axios from 'axios';
+import { logI18n } from '@/utils/logI18n';
 
 export function useJudgeResults(sessionId) {
   // State
@@ -203,7 +204,7 @@ export function useJudgeResults(sessionId) {
         );
         verbosityAnalysis.value = verbosityResponse.data;
       } catch (verbosityError) {
-        console.warn('Could not load verbosity analysis:', verbosityError);
+        logI18n('warn', 'logs.judge.results.verbosityAnalysisLoadFailed', verbosityError);
       }
 
       // Load thread performance analysis
@@ -213,7 +214,7 @@ export function useJudgeResults(sessionId) {
         );
         threadPerformance.value = threadPerfResponse.data;
       } catch (threadPerfError) {
-        console.warn('Could not load thread performance:', threadPerfError);
+        logI18n('warn', 'logs.judge.results.threadPerformanceLoadFailed', threadPerfError);
       }
 
       // Load detailed position-swap analysis
@@ -223,10 +224,10 @@ export function useJudgeResults(sessionId) {
         );
         positionSwapDetailed.value = swapResponse.data;
       } catch (swapError) {
-        console.warn('Could not load position-swap analysis:', swapError);
+        logI18n('warn', 'logs.judge.results.positionSwapLoadFailed', swapError);
       }
     } catch (error) {
-      console.error('Error loading results:', error);
+      logI18n('error', 'logs.judge.results.loadResultsFailed', error);
       throw error;
     } finally {
       loading.value = false;

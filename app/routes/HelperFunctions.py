@@ -1,11 +1,12 @@
 
-from db.db import db
+from db.database import db
 from db.tables import (User, EmailThread, Message, Feature, FeatureType, LLM, UserFeatureRanking,
                        FeatureFunctionType, UserFeatureRating, UserMailHistoryRating, UserMessageRating, UserGroup,ConsultingCategoryType, UserConsultingCategorySelection,
                        FeatureFunctionType, UserFeatureRating, UserMailHistoryRating, UserMessageRating,
                        UserGroup, UserPrompt, UserPromptShare,
                        UserAuthenticityVote,
-                       ConsultingCategoryType, UserConsultingCategorySelection, RatingScenarios, ScenarioUsers, ScenarioThreadDistribution, ScenarioThreads, ScenarioRoles)
+                       ConsultingCategoryType, UserConsultingCategorySelection, RatingScenarios, ScenarioUsers, ScenarioThreadDistribution, ScenarioThreads, ScenarioRoles,
+                       ItemDimensionRating)
 from sqlalchemy import func
 from uuid import uuid4
 import uuid
@@ -18,6 +19,23 @@ import logging
 import hashlib
 
 from db.tables import ProgressionStatus
+from db.models.scenario import InvitationStatus
+from services.user_profile_service import serialize_user_brief as _serialize_user_profile_brief
+
+def serialize_user_brief(user) -> dict:
+    """
+    Single source of truth for user avatar serialization.
+
+    Returns a dict with username, avatar_seed, and avatar_url
+    that the frontend LAvatar component needs for consistent rendering.
+
+    Usage:
+        user = User.query.filter_by(username='admin').first()
+        data = serialize_user_brief(user)
+        # → {"username": "admin", "avatar_seed": "abc123", "avatar_url": "/api/users/avatar/..."}
+    """
+    return _serialize_user_profile_brief(user)
+
 
 MAIL_RATING_FUNCTION_TYPE_ID = 3
 
@@ -110,7 +128,10 @@ def deterministic_shuffle(items, seed):
 def get_progression_ranking(thread: EmailThread, user_id: int) -> ProgressionStatus:
     """ Berechnet den Fortschritt für das Feature Ranking (function_type_id=1) """
     total_features = db.session.query(Feature).filter_by(thread_id=thread.thread_id).count()
-    ranked_features = db.session.query(UserFeatureRanking).join(Feature).filter(
+    # Explicit join condition to avoid ambiguity
+    ranked_features = db.session.query(UserFeatureRanking).join(
+        Feature, UserFeatureRanking.feature_id == Feature.feature_id
+    ).filter(
         UserFeatureRanking.user_id == user_id,
         Feature.thread_id == thread.thread_id
     ).count()
@@ -123,10 +144,37 @@ def get_progression_ranking(thread: EmailThread, user_id: int) -> ProgressionSta
 
 
 def get_progression_rating(thread: EmailThread, user_id: int) -> ProgressionStatus:
-    """ Berechnet den Fortschritt für das Feature Rating (function_type_id=2) """
+    """
+    Berechnet den Fortschritt für das Rating (function_type_id=2).
+
+    Prüft zuerst das neue dimensionale Rating-System (ItemDimensionRating),
+    falls dort kein Rating gefunden wird, fällt es auf das alte Feature-basierte
+    System zurück (UserFeatureRating).
+    """
+    # First check new dimensional rating system
+    # We need to find which scenario this thread belongs to
+    scenario_thread = db.session.query(ScenarioThreads).filter_by(
+        thread_id=thread.thread_id
+    ).first()
+
+    if scenario_thread:
+        # Check ItemDimensionRating for this scenario
+        dim_rating = db.session.query(ItemDimensionRating).filter_by(
+            user_id=user_id,
+            item_id=thread.thread_id,
+            scenario_id=scenario_thread.scenario_id
+        ).first()
+
+        if dim_rating:
+            return dim_rating.status if dim_rating.status else ProgressionStatus.NOT_STARTED
+
+    # Fallback to old feature-based rating system
     total_features = db.session.query(Feature).filter_by(thread_id=thread.thread_id).count()
-    rated_features = db.session.query(UserMessageRating).join(Feature).filter(
-        UserMessageRating.user_id == user_id,
+    # Use UserFeatureRating (not UserMessageRating) with explicit join
+    rated_features = db.session.query(UserFeatureRating).join(
+        Feature, UserFeatureRating.feature_id == Feature.feature_id
+    ).filter(
+        UserFeatureRating.user_id == user_id,
         Feature.thread_id == thread.thread_id
     ).count()
 
@@ -152,6 +200,30 @@ def get_progression_authenticity(thread: EmailThread, user_id: int) -> Progressi
         user_id=user_id, thread_id=thread.thread_id
     ).first()
     return ProgressionStatus.DONE if vote else ProgressionStatus.NOT_STARTED
+
+
+def get_progression_labeling(thread: EmailThread, user_id: int) -> ProgressionStatus:
+    """
+    Berechnet den Fortschritt für das Labeling (function_type_id=7).
+
+    Prüft ItemDimensionRating für dieses Item - Labeling speichert die
+    Kategorie-Auswahl als dimension_ratings JSON.
+    """
+    scenario_thread = db.session.query(ScenarioThreads).filter_by(
+        thread_id=thread.thread_id
+    ).first()
+
+    if scenario_thread:
+        dim_rating = db.session.query(ItemDimensionRating).filter_by(
+            user_id=user_id,
+            item_id=thread.thread_id,
+            scenario_id=scenario_thread.scenario_id
+        ).first()
+
+        if dim_rating:
+            return dim_rating.status if dim_rating.status else ProgressionStatus.NOT_STARTED
+
+    return ProgressionStatus.NOT_STARTED
 
 
 
@@ -181,8 +253,8 @@ def can_access_thread(user_id, thread_id, function_type_id):
         if scenario is None:
             scenario = RatingScenarios.query.filter_by(id=scenario_id).first()
 
-        if role == ScenarioRoles.VIEWER or raters_receive_all_threads(scenario, function_type_id):
-            # Viewer oder All-Distribution-Rater sehen alle Threads des Szenarios
+        if role in (ScenarioRoles.VIEWER, ScenarioRoles.OWNER) or raters_receive_all_threads(scenario, function_type_id):
+            # Viewer, Owner oder All-Distribution-Evaluator sehen alle Threads des Szenarios
             if db.session.query(ScenarioThreads).join(
                 RatingScenarios, RatingScenarios.id == ScenarioThreads.scenario_id
             ).filter(
@@ -193,7 +265,7 @@ def can_access_thread(user_id, thread_id, function_type_id):
             ).first():
                 return True
 
-        elif role == ScenarioRoles.RATER:
+        elif role == ScenarioRoles.EVALUATOR:
             # Wenn der User Rater ist, muss der Thread zugeordnet sein
             if (
                 db.session.query(ScenarioThreadDistribution)
@@ -213,12 +285,24 @@ def can_access_thread(user_id, thread_id, function_type_id):
 
 
 def get_user_scenarios(user_id, function_type_id):
+  """
+  Get all scenarios where the user has an active role and accepted invitation.
+
+  Args:
+      user_id: The user ID
+      function_type_id: The function type ID
+
+  Returns:
+      List of ScenarioUsers objects for accepted scenarios within valid timeframe
+  """
   # Aktuellen Zeitpunkt ermitteln
   current_time = datetime.utcnow()
 
-  # Alle Szenarien, in denen der User eine Rolle hat und deren Zeitraum gültig ist
+  # Alle Szenarien, in denen der User eine Rolle hat, die Einladung akzeptiert wurde
+  # und deren Zeitraum gültig ist
   return db.session.query(ScenarioUsers).join(RatingScenarios).filter(
       ScenarioUsers.user_id == user_id,
+      ScenarioUsers.invitation_status == InvitationStatus.ACCEPTED,
       RatingScenarios.begin <= current_time,
       RatingScenarios.end >= current_time,
       RatingScenarios.function_type_id == function_type_id
@@ -265,7 +349,7 @@ def get_user_threads(user_id, function_type_id):
             scenario_order_modes[scenario_id] = get_scenario_order_mode(scenario)
 
         if role == ScenarioRoles.VIEWER or raters_receive_all_threads(scenario, function_type_id):
-            # Viewer oder All-Distribution-Rater sehen alle Threads im Szenario
+            # Viewer oder All-Distribution-Evaluator sehen alle Threads im Szenario
             threads = (
                 db.session.query(EmailThread)
                 .join(ScenarioThreads, ScenarioThreads.thread_id == EmailThread.thread_id)
@@ -277,8 +361,8 @@ def get_user_threads(user_id, function_type_id):
             )
             scenario_threads_map[scenario_id].extend(threads)
 
-        elif role == ScenarioRoles.RATER:
-            # Rater mit Thread-Zuweisung sehen nur ihre zugeordneten Threads
+        elif role == ScenarioRoles.EVALUATOR:
+            # Evaluator mit Thread-Zuweisung sehen nur ihre zugeordneten Threads
             thread_distributions = (
                 db.session.query(ScenarioThreadDistribution)
                 .join(ScenarioThreads, ScenarioThreadDistribution.scenario_thread_id == ScenarioThreads.id)
@@ -313,6 +397,48 @@ def get_user_threads(user_id, function_type_id):
     return allowed_threads
 
 
+def user_can_evaluate(user_id: int, scenario_id: int) -> bool:
+    """
+    Check if a user can submit evaluations for a scenario.
+
+    OWNER and EVALUATOR roles can submit evaluations.
+    VIEWER role is read-only.
+
+    Args:
+        user_id: The user ID to check
+        scenario_id: The scenario ID to check access for
+
+    Returns:
+        True if the user can submit evaluations, False otherwise
+    """
+    scenario_user = ScenarioUsers.query.filter_by(
+        user_id=user_id,
+        scenario_id=scenario_id
+    ).first()
+
+    if not scenario_user:
+        return False
+
+    return scenario_user.role in (ScenarioRoles.EVALUATOR, ScenarioRoles.OWNER)
+
+
+def user_can_evaluate_thread(user_id: int, thread_id: int) -> bool:
+    """
+    Check if a user can submit evaluations for any scenario containing this thread.
+
+    Args:
+        user_id: The user ID to check
+        thread_id: The thread/item ID to check
+
+    Returns:
+        True if the user has EVALUATOR role in any scenario containing this thread
+    """
+    from services.scenario_stats_service import get_scenario_ids_for_thread
+
+    scenario_ids = get_scenario_ids_for_thread(thread_id)
+    return any(user_can_evaluate(user_id, sid) for sid in scenario_ids)
+
+
 def get_thread_progression_state(thread: EmailThread, user_id: int, function_type_id: int) -> ProgressionStatus:
     """ Dynamische Auswahl der Progressionslogik basierend auf function_type_id """
     PROGRESSION_HANDLERS = {
@@ -320,6 +446,7 @@ def get_thread_progression_state(thread: EmailThread, user_id: int, function_typ
         2: get_progression_rating,
         3: get_progression_mail_rating,
         5: get_progression_authenticity,
+        7: get_progression_labeling,
     }
     handler = PROGRESSION_HANDLERS.get(function_type_id)
 

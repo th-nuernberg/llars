@@ -3,8 +3,8 @@
     <v-col cols="12">
       <v-card>
         <v-card-title class="d-flex align-center">
-          <v-icon class="mr-2">mdi-format-list-bulleted-square</v-icon>
-          Alle Vergleiche ({{ comparisons.length }})
+          <LIcon class="mr-2">mdi-format-list-bulleted-square</LIcon>
+          {{ $t('judge.results.comparisons.title', { count: comparisons.length }) }}
         </v-card-title>
         <v-divider></v-divider>
 
@@ -29,13 +29,13 @@
               <v-chip size="small" color="blue" variant="outlined">
                 {{ item.pillar_a_name }}
               </v-chip>
-              <v-icon size="small">mdi-sword-cross</v-icon>
+              <LIcon size="small">mdi-sword-cross</LIcon>
               <v-chip size="small" color="green" variant="outlined">
                 {{ item.pillar_b_name }}
               </v-chip>
               <v-chip v-if="item.position_order === 2" size="x-small" color="warning" variant="tonal">
-                <v-icon start size="x-small">mdi-swap-horizontal</v-icon>
-                Swapped
+                <LIcon start size="x-small">mdi-swap-horizontal</LIcon>
+                {{ $t('judge.results.comparisons.swapped') }}
               </v-chip>
             </div>
           </template>
@@ -47,7 +47,7 @@
               :color="item.winner === 'A' ? 'blue' : item.winner === 'B' ? 'green' : 'grey'"
               variant="flat"
             >
-              <v-icon start size="small">mdi-trophy</v-icon>
+              <LIcon start size="small">mdi-trophy</LIcon>
               {{ item.winner }}
             </v-chip>
           </template>
@@ -74,24 +74,24 @@
               <td :colspan="columns.length" class="expanded-content pa-4">
                 <v-card variant="outlined">
                   <v-card-title class="text-subtitle-1">
-                    <v-icon class="mr-2" size="small">mdi-robot</v-icon>
-                    LLM Raw Output
+                    <LIcon class="mr-2" size="small">mdi-robot</LIcon>
+                    {{ $t('judge.results.comparisons.llmOutputTitle') }}
                   </v-card-title>
                   <v-divider></v-divider>
                   <v-card-text>
                     <!-- Reasoning -->
                     <div v-if="item.reasoning" class="mb-4">
-                      <div class="text-subtitle-2 font-weight-bold mb-2">Begründung:</div>
+                      <div class="text-subtitle-2 font-weight-bold mb-2">{{ $t('judge.results.comparisons.reasoning') }}</div>
                       <div class="reasoning-text">{{ item.reasoning }}</div>
                     </div>
 
                     <!-- Scores -->
                     <div v-if="item.scores" class="mb-4">
-                      <div class="text-subtitle-2 font-weight-bold mb-2">Einzelbewertungen:</div>
+                      <div class="text-subtitle-2 font-weight-bold mb-2">{{ $t('judge.results.comparisons.scores') }}</div>
                       <v-table density="compact">
                         <thead>
                           <tr>
-                            <th>Kriterium</th>
+                            <th>{{ $t('judge.results.comparisons.criterion') }}</th>
                             <th class="text-center">A</th>
                             <th class="text-center">B</th>
                           </tr>
@@ -114,8 +114,8 @@
                     <v-expansion-panels v-if="item.raw_response">
                       <v-expansion-panel>
                         <v-expansion-panel-title>
-                          <v-icon class="mr-2" size="small">mdi-code-json</v-icon>
-                          Raw LLM Response ({{ item.raw_response?.length || 0 }} Zeichen)
+                          <LIcon class="mr-2" size="small">mdi-code-json</LIcon>
+                          {{ $t('judge.results.comparisons.rawResponseTitle', { count: item.raw_response?.length || 0 }) }}
                         </v-expansion-panel-title>
                         <v-expansion-panel-text>
                           <pre class="raw-output">{{ item.raw_response }}</pre>
@@ -134,8 +134,9 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
-import { COMPARISON_HEADERS } from './composables';
+import { computed, ref } from 'vue';
+import { useI18n } from 'vue-i18n';
+import { buildComparisonHeaders } from './composables';
 
 const props = defineProps({
   loading: { type: Boolean, default: false },
@@ -146,8 +147,9 @@ const props = defineProps({
   formatCriterionName: { type: Function, required: true }
 });
 
+const { t } = useI18n();
 const expandedRows = ref([]);
-const headers = COMPARISON_HEADERS;
+const headers = computed(() => buildComparisonHeaders(t));
 </script>
 
 <style scoped>

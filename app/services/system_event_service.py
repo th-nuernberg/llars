@@ -48,7 +48,7 @@ class SystemEventService:
             severity_normalized = "info"
 
         try:
-            from db.db import db
+            from db.database import db
             from db.models.system_event import SystemEvent
 
             request_path = None

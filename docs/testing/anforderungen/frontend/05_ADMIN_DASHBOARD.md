@@ -23,7 +23,7 @@ Dieses Dokument beschreibt alle Tests für das Admin Dashboard und seine Sektion
 | ADM-001 | Admin sieht alle Tabs | Alle Sektionen sichtbar | E2E |
 | ADM-002 | Chatbot_Manager Tabs | Nur Chatbot + RAG Tabs | E2E |
 | ADM-003 | Researcher keinen Zugang | Redirect oder 403 | E2E |
-| ADM-004 | Viewer keinen Zugang | Redirect oder 403 | E2E |
+| ADM-004 | Evaluator keinen Zugang | Redirect oder 403 | E2E |
 | ADM-005 | Tab-Navigation | Tabs wechseln korrekt | E2E |
 | ADM-006 | URL Query-Param | `?tab=` lädt korrekten Tab | E2E |
 | ADM-007 | Staggered Loading | Sections laden nacheinander | E2E |
@@ -54,8 +54,8 @@ test.describe('Admin Dashboard Access', () => {
     await expect(page).not.toHaveURL(/.*admin/)
   })
 
-  test('ADM-004: viewer cannot access', async ({ page }) => {
-    await login(page, testUsers.viewer)
+  test('ADM-004: evaluator cannot access', async ({ page }) => {
+    await login(page, testUsers.evaluator)
     await page.goto('/admin')
 
     await expect(page).not.toHaveURL(/.*admin/)
@@ -330,13 +330,13 @@ test.describe('User Management', () => {
     await adminPage.goto('/admin?tab=users')
 
     // User-Zeile finden
-    await adminPage.click('.user-row:has-text("viewer") .action-lock')
+    await adminPage.click('.user-row:has-text("evaluator") .action-lock')
 
     // Bestätigen
     await adminPage.click('button:has-text("Sperren")')
 
     // Status prüfen
-    await expect(adminPage.locator('.user-row:has-text("viewer") .status-badge')).toContainText('gesperrt')
+    await expect(adminPage.locator('.user-row:has-text("evaluator") .status-badge')).toContainText('gesperrt')
   })
 
   test('USER-C04: create user', async ({ adminPage }) => {
@@ -345,7 +345,7 @@ test.describe('User Management', () => {
     await adminPage.click('button:has-text("Neuer User")')
 
     await adminPage.fill('input[name="username"]', 'testuser_e2e')
-    await adminPage.selectOption('select[name="roles"]', 'viewer')
+    await adminPage.selectOption('select[name="roles"]', 'evaluator')
     await adminPage.click('button:has-text("Erstellen")')
 
     await expect(adminPage.locator('.v-snackbar')).toContainText('erstellt')
@@ -379,7 +379,7 @@ test.describe('User Management', () => {
 | SCEN-C03 | Typ wählen | Dropdown | E2E |
 | SCEN-C04 | Zeitraum wählen | Date Picker | E2E |
 | SCEN-C05 | Threads hinzufügen | Multi-Select | E2E |
-| SCEN-C06 | Users hinzufügen | RATER/VIEWER | E2E |
+| SCEN-C06 | Users hinzufügen | RATER/EVALUATOR | E2E |
 | SCEN-C07 | Distribution Mode | all/round_robin | E2E |
 | SCEN-C08 | Order Mode | none/shuffle | E2E |
 | SCEN-C09 | Speichern | In DB angelegt | E2E |
@@ -453,7 +453,7 @@ test.describe('Scenario Management', () => {
 - [ ] Admin sieht alle Tabs
 - [ ] Chatbot_Manager nur Chatbot + RAG
 - [ ] Researcher kein Zugang
-- [ ] Viewer kein Zugang
+- [ ] Evaluator kein Zugang
 
 ### Docker Monitor
 - [ ] Alle LLARS-Container sichtbar
@@ -491,7 +491,7 @@ test.describe('Scenario Management', () => {
 ### Szenarien
 - [ ] Szenarien anlegen
 - [ ] Threads zuweisen
-- [ ] User als RATER/VIEWER zuweisen
+- [ ] User als RATER/EVALUATOR zuweisen
 - [ ] Zeitraum korrekt
 
 ---

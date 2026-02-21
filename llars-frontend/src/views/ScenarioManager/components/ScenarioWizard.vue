@@ -838,6 +838,7 @@ import { useI18n } from 'vue-i18n'
 import axios from 'axios'
 import { parseUserProviderModelId } from '@/utils/formatters'
 import { useAuth } from '@/composables/useAuth'
+import { useSnackbar } from '@/composables/useSnackbar'
 import { useScenarioManager } from '../composables/useScenarioManager'
 import importService from '@/services/importService'
 import EvaluationConfigEditor from './EvaluationConfigEditor.vue'
@@ -866,7 +867,8 @@ const props = defineProps({
 const emit = defineEmits(['close', 'created'])
 
 const { t, locale } = useI18n()
-const { createNewScenario, inviteUsers } = useScenarioManager()
+const { showError } = useSnackbar()
+const { createNewScenario, inviteUsers, deleteScenarioById } = useScenarioManager()
 const auth = useAuth()
 
 // JSON code examples (raw strings to avoid vue-i18n placeholder parsing)
@@ -1004,8 +1006,39 @@ const selectedTypeInfo = computed(() => {
   return evaluationTypes.value.find(t => t.id === formData.value.evalType)
 })
 
+const generationVariantStats = computed(() => {
+  const generationItems = analyzedData.value.filter(item => item?._source === 'generation')
+  if (generationItems.length === 0) {
+    return {
+      sourceCount: 0,
+      maxVariantsPerSource: 0,
+      supportsRanking: false
+    }
+  }
+
+  const countsBySource = new Map()
+  generationItems.forEach((item, index) => {
+    const rawSourceId = item.source_id ?? item._source_item_id ?? item._source_index ?? item.id ?? `idx_${index}`
+    const sourceId = String(rawSourceId)
+    countsBySource.set(sourceId, (countsBySource.get(sourceId) || 0) + 1)
+  })
+
+  const counts = Array.from(countsBySource.values())
+  const maxVariantsPerSource = counts.length > 0 ? Math.max(...counts) : 0
+
+  return {
+    sourceCount: countsBySource.size,
+    maxVariantsPerSource,
+    supportsRanking: maxVariantsPerSource >= 2
+  }
+})
+
 const suggestedEvalType = computed(() => {
-  if (props.generationJobId) return EVAL_TYPES.RANKING
+  if (props.generationJobId) {
+    return generationVariantStats.value.supportsRanking
+      ? EVAL_TYPES.RANKING
+      : EVAL_TYPES.RATING
+  }
   return analysisResult.value?.suggestedType || null
 })
 
@@ -1329,10 +1362,12 @@ function buildProviderEvaluatorId(provider) {
 function getProviderIcon(provider) {
   const icons = {
     openai: 'mdi-creation',
+    openai_compatible: 'mdi-api',
     anthropic: 'mdi-head-snowflake',
     gemini: 'mdi-google',
     azure: 'mdi-microsoft-azure',
     ollama: 'mdi-llama',
+    vllm: 'mdi-chip',
     litellm: 'mdi-api',
     custom: 'mdi-cog'
   }
@@ -1343,10 +1378,12 @@ function getProviderIcon(provider) {
 function getProviderIconColor(provider) {
   const colors = {
     openai: '#10a37f',
+    openai_compatible: '#10a37f',
     anthropic: '#d4a574',
     gemini: '#4285f4',
     azure: '#0078d4',
     ollama: '#ffffff',
+    vllm: '#7c3aed',
     litellm: '#ffc107',
     custom: '#9e9e9e'
   }
@@ -1357,10 +1394,12 @@ function getProviderIconColor(provider) {
 function getProviderTypeLabel(providerType) {
   const labels = {
     openai: 'OpenAI',
+    openai_compatible: 'OpenAI Compatible',
     anthropic: 'Anthropic',
     gemini: 'Google Gemini',
     azure: 'Azure OpenAI',
     ollama: 'Ollama',
+    vllm: 'vLLM',
     litellm: 'LiteLLM',
     custom: 'Custom'
   }
@@ -1972,7 +2011,42 @@ function getTaskType(evalType) {
 // Create scenario
 async function createScenario() {
   creating.value = true
+  let scenario = null
+  let importFailed = false
+
   try {
+    const taskType = getTaskType(formData.value.evalType)
+    const isFromGeneration = analyzedData.value.some(i => i._source === 'generation')
+
+    // Validate generation → ranking upfront to avoid creating empty scenarios.
+    if (taskType === 'ranking' && isFromGeneration && !generationVariantStats.value.supportsRanking) {
+      throw new Error(
+        'Ranking aus Batch-Generierung benötigt mindestens zwei Varianten pro Eingabetext (mehrere Modelle und/oder Prompts). Bitte wähle stattdessen "Rating" oder erweitere den Generation-Job.'
+      )
+    }
+
+    // Pre-compute import data before creating the scenario.
+    let importData = analyzedData.value
+    let fieldMapping = aiSuggestions.value?.field_mapping || null
+
+    if (taskType === 'ranking' && isFromGeneration) {
+      const splitByPrompt = Boolean(formData.value.evalConfig?.config?.splitByPrompt)
+      importData = transformGenerationDataForRanking(analyzedData.value, { splitByPrompt })
+      fieldMapping = {
+        from_generation: true,
+        split_by_prompt: splitByPrompt
+      }
+
+      console.log('[ScenarioWizard] Ranking from generation:', {
+        inputItems: analyzedData.value.length,
+        groups: importData.length,
+        splitByPrompt,
+        featuresPerGroup: importData.map(g =>
+          Object.keys(g).filter(k => k.startsWith('summary_')).length
+        )
+      })
+    }
+
     // Map eval type to function_type_id for backend compatibility
     const functionTypeId = ID_TYPE_MAP[formData.value.evalType] || 2
 
@@ -1998,7 +2072,7 @@ async function createScenario() {
       delete scenarioPayload.config_json.llm_evaluators
     }
 
-    const scenario = await createNewScenario(scenarioPayload)
+    scenario = await createNewScenario(scenarioPayload)
 
     // Invite selected human users
     if (selectedUsers.value.length > 0 && scenario?.id) {
@@ -2017,30 +2091,6 @@ async function createScenario() {
     // Import file data into the scenario
     if (analyzedData.value.length > 0 && scenario?.id) {
       try {
-        const taskType = getTaskType(formData.value.evalType)
-        const isFromGeneration = analyzedData.value.some(i => i._source === 'generation')
-
-        // For ranking from generation: transform long-format → wide-format
-        let importData = analyzedData.value
-        let fieldMapping = aiSuggestions.value?.field_mapping || null
-
-        if (taskType === 'ranking' && isFromGeneration) {
-          const splitByPrompt = Boolean(formData.value.evalConfig?.config?.splitByPrompt)
-          importData = transformGenerationDataForRanking(analyzedData.value, { splitByPrompt })
-          console.log('[ScenarioWizard] Ranking from generation:', {
-            inputItems: analyzedData.value.length,
-            groups: importData.length,
-            splitByPrompt,
-            featuresPerGroup: importData.map(g =>
-              Object.keys(g).filter(k => k.startsWith('summary_')).length
-            )
-          })
-          fieldMapping = {
-            from_generation: true,
-            split_by_prompt: splitByPrompt
-          }
-        }
-
         const importResult = await importService.importFromData(
           importData,
           scenario.id,
@@ -2050,18 +2100,42 @@ async function createScenario() {
         )
         console.log('Data import result:', importResult)
 
+        const importedCount = Number(importResult?.imported_count || 0)
+        if (!importResult?.success || importedCount <= 0) {
+          throw new Error(
+            importResult?.error ||
+            importResult?.message ||
+            'Der Datenimport hat keine auswertbaren Items erzeugt.'
+          )
+        }
+
         if (importResult.warnings?.length > 0) {
           console.warn('Import warnings:', importResult.warnings)
         }
       } catch (importError) {
+        importFailed = true
         console.error('Failed to import data:', importError)
-        // Continue anyway - scenario was created, just data import failed
+        throw importError
       }
     }
 
     emit('created', scenario)
   } catch (error) {
     console.error('Failed to create scenario:', error)
+    const errorMessage = error?.response?.data?.error ||
+      error?.response?.data?.message ||
+      error?.message ||
+      'Szenario konnte nicht erstellt werden.'
+    showError(errorMessage)
+
+    // Prevent orphaned empty scenarios when import fails.
+    if (importFailed && scenario?.id) {
+      try {
+        await deleteScenarioById(scenario.id)
+      } catch (cleanupError) {
+        console.error('Failed to cleanup scenario after import failure:', cleanupError)
+      }
+    }
   } finally {
     creating.value = false
   }

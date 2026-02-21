@@ -1805,6 +1805,14 @@ def _calculate_rating_provenance_analysis(scenario_id: int) -> Dict[str, Any]:
 
         item_provenance.update(fallback_by_item)
 
+    # Provenance analysis only makes sense with 2+ distinct generators OR 2+ distinct prompts.
+    # With a single source, there is nothing to compare.
+    if item_provenance:
+        distinct_llms = {entry.get("llm_key") for entry in item_provenance.values()}
+        distinct_prompts = {entry.get("prompt_key") for entry in item_provenance.values()}
+        if len(distinct_llms) < 2 and len(distinct_prompts) < 2:
+            return response
+
     assignments: List[tuple] = []
 
     human_ratings = (
@@ -2092,6 +2100,13 @@ def _calculate_mail_rating_conversation_provenance(scenario_id: int) -> Dict[str
             "counselor_source": counselor_source,
             "client_source": client_source,
         }
+
+    # Provenance analysis only makes sense with 2+ distinct counselor OR 2+ distinct client sources.
+    if thread_provenance:
+        distinct_counselors = {entry["counselor_source"] for entry in thread_provenance.values()}
+        distinct_clients = {entry["client_source"] for entry in thread_provenance.values()}
+        if len(distinct_counselors) < 2 and len(distinct_clients) < 2:
+            return response
 
     # Collect all ratings (human + LLM) per thread
     assignments = []  # (item_id, score, normalized_score, evaluator_type)
@@ -2779,6 +2794,13 @@ def _calculate_ranking_provenance_analysis(scenario_id: int) -> Dict[str, Any]:
         }
 
     if not feature_provenance:
+        return response
+
+    # Provenance analysis only makes sense with 2+ distinct generators OR 2+ distinct prompts.
+    # With a single source, there is nothing to compare.
+    distinct_llms = {entry.get("llm_key") for entry in feature_provenance.values()}
+    distinct_prompts = {entry.get("prompt_key") for entry in feature_provenance.values()}
+    if len(distinct_llms) < 2 and len(distinct_prompts) < 2:
         return response
 
     assignments: List[tuple] = []

@@ -134,3 +134,5 @@ GITLAB_CICD_VARIABLES.txt
 
 # Large dataset files (too big for GitHub)
 app/db/seeders/datasets/german_sentiment.zip
+data/combine_generations.py
+data/test_detection.py

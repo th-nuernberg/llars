@@ -258,7 +258,7 @@ def build_completion_kwargs(
         >>> kwargs = build_completion_kwargs(chatbot, messages, stream=True)
         >>> response = llm_client.chat.completions.create(**kwargs)
     """
-    return LLMExecutionService.build_chat_completion_params(
+    params = LLMExecutionService.build_chat_completion_params(
         model=model_id or chatbot.model_name,
         messages=messages,
         stream=stream,
@@ -266,3 +266,6 @@ def build_completion_kwargs(
         top_p=chatbot.top_p,
         max_tokens=chatbot.max_tokens,
     )
+    # Keep compatibility with call sites/tests that expect explicit stream=False.
+    params.setdefault("stream", bool(stream))
+    return params

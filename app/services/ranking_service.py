@@ -91,7 +91,10 @@ class RankingService:
         Returns a structure like:
         {
             "situation_summary": {
-                "details": [{ ..., "bucket": "Gut" }, ...],
+                "goodList": [...],
+                "averageList": [...],
+                "badList": [...],
+                "details": [{ ..., "bucket": "Gut" }, ...],  # backwards-compatible aggregate
                 "neutralList": [...]
             }
         }
@@ -114,10 +117,19 @@ class RankingService:
         # Initialize structure
         rankings_data = {
             feature_type.name: {
+                "goodList": [],
+                "averageList": [],
+                "badList": [],
                 "details": [],
                 "neutralList": []
             }
             for feature_type in feature_types
+        }
+
+        bucket_key_map = {
+            'gut': 'goodList',
+            'mittel': 'averageList',
+            'schlecht': 'badList'
         }
 
         # Populate with ranked features
@@ -135,6 +147,9 @@ class RankingService:
 
             if feature_type in rankings_data:
                 rankings_data[feature_type]['details'].append(feature_data)
+                bucket_key = bucket_key_map.get((ranking.bucket or '').strip().lower())
+                if bucket_key:
+                    rankings_data[feature_type][bucket_key].append(feature_data)
 
         # Add unranked features to neutralList
         ranked_feature_ids = [ranking.feature_id for ranking in rankings]
@@ -160,9 +175,14 @@ class RankingService:
                 data['details'],
                 key=lambda x: x['position'] if x['position'] is not None else float('inf')
             )
+            for bucket_key in ('goodList', 'averageList', 'badList'):
+                data[bucket_key] = sorted(
+                    data[bucket_key],
+                    key=lambda x: x['position'] if x['position'] is not None else float('inf')
+                )
             data['neutralList'] = sorted(
                 data['neutralList'],
-                key=lambda x: x['position'] if x['position'] is not None else float('inf')
+                key=lambda x: x['feature_id']
             )
 
         return rankings_data
@@ -365,8 +385,9 @@ class RankingService:
         feature_type_rankings = {}
 
         for ranking in rankings:
+            item = getattr(ranking.feature, 'evaluation_item', None)
             key = (
-                ranking.feature.email_thread.thread_id,
+                (item.thread_id if item else ranking.feature.thread_id),
                 ranking.feature_type.name,
                 ranking.user.username
             )
@@ -394,6 +415,7 @@ class RankingService:
 
                 # Add rows
                 for bucket_position, ranking in enumerate(bucket_rankings[bucket], start=1):
+                    item = getattr(ranking.feature, 'evaluation_item', None)
                     csv_rows.append([
                         thread_id,
                         feature_type_name,
@@ -402,8 +424,8 @@ class RankingService:
                         bucket,
                         bucket_position,
                         ranking.feature_id,
-                        ranking.feature.email_thread.chat_id,
-                        ranking.feature.email_thread.institut_id,
+                        item.chat_id if item else None,
+                        item.institut_id if item else None,
                         ranking.llm.name
                     ])
                     complete_ranking_position += 1

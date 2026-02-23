@@ -23,6 +23,7 @@ logger = logging.getLogger(__name__)
 
 OPENAI_COMPATIBLE_TYPES = {
     "openai",
+    "ionos",
     "litellm",
     "ollama",
     "vllm",

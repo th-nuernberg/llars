@@ -24,6 +24,7 @@ class UserLLMProviderService:
 
     OPENAI_COMPATIBLE_PROVIDER_TYPES = {
         "openai",
+        "ionos",
         "openai_compatible",
         "litellm",
         "ollama",
@@ -33,6 +34,7 @@ class UserLLMProviderService:
 
     DEFAULT_BASE_URLS = {
         "openai": "https://api.openai.com/v1",
+        "ionos": "https://openai.inference.de-txl.ionos.com/v1",
         "openai_compatible": "https://api.openai.com/v1",
         "ollama": "http://localhost:11434",
         "vllm": "http://localhost:8000/v1",
@@ -94,6 +96,8 @@ class UserLLMProviderService:
             Created UserLLMProvider instance
         """
         from decorators.error_handler import ConflictError
+
+        provider_type = (provider_type or "").strip().lower()
 
         # Check for duplicate name
         existing = UserLLMProvider.query.filter_by(

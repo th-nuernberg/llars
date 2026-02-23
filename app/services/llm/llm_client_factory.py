@@ -40,6 +40,7 @@ GLOBAL_PREFIX = "Global/"
 # Manufacturer → provider type mapping for Global/ prefix routing
 MANUFACTURER_TO_PROVIDER = {
     "openai": "openai",
+    "ionos": "ionos",
     "mistral": "litellm",
     "anthropic": "anthropic",
     "gemini": "gemini",
@@ -53,6 +54,7 @@ MANUFACTURER_API_PREFIX = {
 # Known provider prefixes for model ID routing (e.g. "OpenAI/gpt-5-nano")
 KNOWN_PROVIDER_PREFIXES = {
     "openai",
+    "ionos",
     "openai_compatible",
     "litellm",
     "anthropic",
@@ -191,6 +193,7 @@ class LLMClientFactory:
                         api_key = None
                 if provider and provider.provider_type in {
                     "openai",
+                    "ionos",
                     "openai_compatible",
                     "litellm",
                     "ollama",

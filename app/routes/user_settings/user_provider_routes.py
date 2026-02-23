@@ -89,7 +89,7 @@ def create_provider():
     data = request.get_json() or {}
 
     # Validate required fields
-    provider_type = (data.get('provider_type') or '').strip()
+    provider_type = (data.get('provider_type') or '').strip().lower()
     name = (data.get('name') or '').strip()
 
     if not provider_type:
@@ -99,6 +99,7 @@ def create_provider():
 
     valid_types = [
         'openai',
+        'ionos',
         'openai_compatible',
         'anthropic',
         'gemini',
@@ -372,6 +373,16 @@ def get_provider_types():
             'config_schema': {
                 'organization': {'type': 'string', 'label': 'Organization ID (optional)'}
             }
+        },
+        {
+            'id': 'ionos',
+            'name': 'IONOS AI Model Hub',
+            'description': 'IONOS OpenAI-kompatibler Endpunkt (/models)',
+            'requires_api_key': True,
+            'supports_base_url': True,
+            'default_base_url': 'https://openai.inference.de-txl.ionos.com/v1',
+            'supports_model_fetch': True,
+            'config_schema': {}
         },
         {
             'id': 'openai_compatible',

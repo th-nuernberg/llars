@@ -438,10 +438,22 @@ const selectedProviderType = computed(() => {
   return providerTypes.value.find(t => t.id === form.value.provider_type)
 })
 
+const OPENAI_COMPATIBLE_PROVIDER_TYPES = new Set([
+  'openai',
+  'ionos',
+  'openai_compatible',
+  'litellm',
+  'ollama',
+  'vllm',
+  'custom'
+])
+
 const showDynamicModelSelector = computed(() => {
-  return Boolean(form.value.provider_type) &&
-    form.value.provider_type !== 'openai' &&
-    Boolean(selectedProviderType.value?.supports_model_fetch)
+  const providerType = String(form.value.provider_type || '').trim().toLowerCase()
+  if (!providerType || providerType === 'openai') return false
+  if (selectedProviderType.value?.supports_model_fetch === false) return false
+  if (selectedProviderType.value?.supports_model_fetch === true) return true
+  return OPENAI_COMPATIBLE_PROVIDER_TYPES.has(providerType)
 })
 
 const dynamicModelOptions = computed(() => {
@@ -454,7 +466,10 @@ const dynamicModelOptions = computed(() => {
 
 const canFetchModels = computed(() => {
   if (!showDynamicModelSelector.value) return false
-  if (!selectedProviderType.value?.supports_base_url) return true
+  const providerType = String(form.value.provider_type || '').trim().toLowerCase()
+  const supportsBaseUrl = selectedProviderType.value?.supports_base_url
+    ?? OPENAI_COMPATIBLE_PROVIDER_TYPES.has(providerType)
+  if (!supportsBaseUrl) return true
   const baseUrl = (form.value.base_url || selectedProviderType.value?.default_base_url || '').trim()
   return Boolean(baseUrl)
 })
@@ -729,6 +744,7 @@ async function toggleShareAll() {
 function getProviderIcon(type) {
   const icons = {
     openai: 'mdi-robot',
+    ionos: 'mdi-domain',
     openai_compatible: 'mdi-api',
     anthropic: 'mdi-head-cog',
     gemini: 'mdi-google',
@@ -744,6 +760,7 @@ function getProviderIcon(type) {
 function getProviderColor(type) {
   const colors = {
     openai: '#00A67E',
+    ionos: '#0A4CD3',
     openai_compatible: '#00A67E',
     anthropic: '#D4A574',
     gemini: '#4285F4',
@@ -759,6 +776,7 @@ function getProviderColor(type) {
 function getProviderTypeName(type) {
   const names = {
     openai: 'OpenAI',
+    ionos: 'IONOS AI Model Hub',
     openai_compatible: 'OpenAI Compatible',
     anthropic: 'Anthropic',
     gemini: 'Google Gemini',

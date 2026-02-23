@@ -1362,6 +1362,7 @@ function buildProviderEvaluatorId(provider) {
 function getProviderIcon(provider) {
   const icons = {
     openai: 'mdi-creation',
+    ionos: 'mdi-domain',
     openai_compatible: 'mdi-api',
     anthropic: 'mdi-head-snowflake',
     gemini: 'mdi-google',
@@ -1378,6 +1379,7 @@ function getProviderIcon(provider) {
 function getProviderIconColor(provider) {
   const colors = {
     openai: '#10a37f',
+    ionos: '#0a4cd3',
     openai_compatible: '#10a37f',
     anthropic: '#d4a574',
     gemini: '#4285f4',
@@ -1394,6 +1396,7 @@ function getProviderIconColor(provider) {
 function getProviderTypeLabel(providerType) {
   const labels = {
     openai: 'OpenAI',
+    ionos: 'IONOS AI Model Hub',
     openai_compatible: 'OpenAI Compatible',
     anthropic: 'Anthropic',
     gemini: 'Google Gemini',

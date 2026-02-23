@@ -302,6 +302,7 @@ export const parseUserProviderModelId = (modelId) => {
     const v = (value || '').toLowerCase().trim()
     if (!v) return null
     if (v === 'openai') return 'OpenAI'
+    if (v === 'ionos') return 'IONOS'
     if (v === 'openai_compatible' || v === 'openai-compatible') return 'OpenAI'
     if (v === 'anthropic' || v === 'claude') return 'Anthropic'
     if (v === 'gemini' || v === 'google') return 'Google'

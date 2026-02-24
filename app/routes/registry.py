@@ -98,6 +98,10 @@ def register_all_blueprints(app: Flask) -> None:
     app.register_blueprint(generation_bp)
     app.register_blueprint(generation_debug_bp)
 
+    # Automated Pipeline (Prompt → Generation → Evaluation → Analysis loop)
+    from routes.pipeline import pipeline_bp
+    app.register_blueprint(pipeline_bp)
+
     # ============================================================
     # Document & Knowledge Management
     # ============================================================

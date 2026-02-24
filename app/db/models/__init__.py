@@ -204,6 +204,15 @@ from db.models.generation import (
     get_failed_outputs_for_job,
 )
 
+# Pipeline models
+from db.models.pipeline import (
+    PipelineStatus,
+    PipelineIterationPhase,
+    PipelineIterationStatus,
+    PipelineRun,
+    PipelineIteration,
+)
+
 __all__ = [
     # User
     'User',
@@ -357,4 +366,10 @@ __all__ = [
     'GeneratedOutput',
     'get_pending_outputs_for_job',
     'get_failed_outputs_for_job',
+    # Pipeline
+    'PipelineStatus',
+    'PipelineIterationPhase',
+    'PipelineIterationStatus',
+    'PipelineRun',
+    'PipelineIteration',
 ]

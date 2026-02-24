@@ -438,10 +438,6 @@ def initialize_permissions(db):
                 'feature:generation:manage',
                 'feature:generation:export',
                 'feature:generation:to_scenario',
-                # Pipeline
-                'feature:pipeline:view',
-                'feature:pipeline:create',
-                'feature:pipeline:manage',
                 # Markdown Collab
                 'feature:markdown_collab:view',
                 'feature:markdown_collab:edit',

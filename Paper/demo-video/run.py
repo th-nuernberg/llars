@@ -829,9 +829,14 @@ class Recorder:
     TARGET_WIDTH = 1920
     TARGET_HEIGHT = 1080
 
-    # Capture-Qualität
-    CAPTURE_FPS = 30
-    RAW_CRF = 12
+    # Capture-Qualität (Apple Silicon optimiert)
+    # Capture: H.264 CRF 0 ultrafast = verlustfrei, ~0% CPU, kompakte Dateien
+    # Final-Encode: libx264 veryslow CRF 8 yuv444p = bestmögliche Delivery-Qualität
+    CAPTURE_FPS = 60
+    RAW_CRF = 0  # Lossless capture (0 = mathematisch verlustfrei)
+    RAW_PRESET = 'ultrafast'  # Schnellstes Encoding für Echtzeit-Capture
+    FINAL_CRF = 8  # Final-Encode Qualität (8 = near-lossless, visuell perfekt)
+    FINAL_PRESET = 'veryslow'  # Max Kompressionseffizienz für Delivery
 
     # Audio-Verstärkung (1.0 = normal, 2.0 = doppelt so laut)
     AUDIO_VOLUME = 3.0
@@ -954,12 +959,13 @@ class Recorder:
             ]
             if video_filter:
                 cmd.extend(['-vf', video_filter])
+
             cmd.extend([
                 '-c:v', 'libx264',
-                '-preset', 'veryfast',
+                '-preset', self.RAW_PRESET,
                 '-tune', 'animation',
                 '-crf', str(self.RAW_CRF),
-                '-pix_fmt', 'yuv420p',
+                '-pix_fmt', 'yuv444p',
                 self.raw_video
             ])
         else:
@@ -976,10 +982,10 @@ class Recorder:
                     '-video_size', f'{w}x{h}',
                     '-i', f':0.0+{x},{y}',  # x11grab mit Offset
                     '-c:v', 'libx264',
-                    '-preset', 'veryfast',
+                    '-preset', self.RAW_PRESET,
                     '-tune', 'animation',
                     '-crf', str(self.RAW_CRF),
-                    '-pix_fmt', 'yuv420p',
+                    '-pix_fmt', 'yuv444p',
                     self.raw_video
                 ]
             else:
@@ -990,10 +996,10 @@ class Recorder:
                     '-video_size', f'{self.TARGET_WIDTH}x{self.TARGET_HEIGHT}',
                     '-i', ':0.0',
                     '-c:v', 'libx264',
-                    '-preset', 'veryfast',
+                    '-preset', self.RAW_PRESET,
                     '-tune', 'animation',
                     '-crf', str(self.RAW_CRF),
-                    '-pix_fmt', 'yuv420p',
+                    '-pix_fmt', 'yuv444p',
                     self.raw_video
                 ]
 
@@ -1114,15 +1120,20 @@ class Recorder:
             os.rename(self.raw_video, self.final_output)
             return
 
-        # Schritt 2: Video + Audio zusammenfügen
-        print("   Füge Video und Audio zusammen...")
+        # Schritt 2: Video + Audio zusammenfügen (hochwertiges Final-Encode)
+        print(f"   Encode: libx264 preset={self.FINAL_PRESET} crf={self.FINAL_CRF} yuv444p")
         cmd_merge = [
             'ffmpeg', '-y',
             '-i', self.raw_video,
             '-i', combined_audio,
-            '-c:v', 'copy',
+            '-c:v', 'libx264',
+            '-preset', self.FINAL_PRESET,
+            '-tune', 'animation',
+            '-crf', str(self.FINAL_CRF),
+            '-pix_fmt', 'yuv444p',
             '-c:a', 'aac',
-            '-b:a', '256k',
+            '-b:a', '320k',
+            '-ar', '48000',
             '-map', '0:v:0',
             '-map', '1:a:0',
             '-shortest',
@@ -1132,17 +1143,15 @@ class Recorder:
 
         result = subprocess.run(cmd_merge, capture_output=True, text=True)
         if result.returncode != 0:
-            print("   ⚠️ Merge mit Video-Stream-Copy fehlgeschlagen, fallback auf Re-Encode")
+            print(f"   ⚠️ Final-Encode fehlgeschlagen, fallback auf stream copy")
             cmd_merge_fallback = [
                 'ffmpeg', '-y',
                 '-i', self.raw_video,
                 '-i', combined_audio,
-                '-c:v', 'libx264',
-                '-preset', 'slow',
-                '-crf', '14',
-                '-pix_fmt', 'yuv420p',
+                '-c:v', 'copy',
                 '-c:a', 'aac',
-                '-b:a', '256k',
+                '-b:a', '320k',
+                '-ar', '48000',
                 '-map', '0:v:0',
                 '-map', '1:a:0',
                 '-shortest',

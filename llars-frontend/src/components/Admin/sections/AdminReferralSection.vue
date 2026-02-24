@@ -478,7 +478,27 @@ import LAvatar from '@/components/common/LAvatar.vue'
 
 const { t } = useI18n()
 const referral = useReferralSystem()
-const { showSnackbar } = useSnackbar()
+const { showSuccess, showError, showInfo, showWarning, showMessage } = useSnackbar()
+
+function showSnackbar(message, color = 'success') {
+  switch (color) {
+    case 'success':
+      showSuccess(message)
+      break
+    case 'error':
+      showError(message)
+      break
+    case 'info':
+      showInfo(message)
+      break
+    case 'warning':
+      showWarning(message)
+      break
+    default:
+      showMessage(message, { color })
+      break
+  }
+}
 
 // State
 const loading = ref(false)

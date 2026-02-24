@@ -32,11 +32,45 @@ def _get_user_campaign(user) -> int:
     from db.database import db
     from db.models.referral import ReferralCampaign
 
-    # Look for existing user campaign
-    campaign = ReferralCampaign.query.filter_by(
-        created_by=user.username,
-        config_json={'type': 'user_personal'}
-    ).first()
+    # Look for existing personal campaigns for this user.
+    # NOTE: We cannot use exact JSON equality here because config_json may
+    # contain additional keys (e.g. owner_user_id), which caused duplicate
+    # campaign creation and "missing" links in the UI.
+    user_campaigns = []
+    for candidate in ReferralCampaign.query.filter_by(created_by=user.username).order_by(ReferralCampaign.id.asc()).all():
+        config = candidate.config_json if isinstance(candidate.config_json, dict) else {}
+        if config.get('type') != 'user_personal':
+            continue
+
+        owner_user_id = config.get('owner_user_id')
+        if owner_user_id is not None and owner_user_id != user.id:
+            continue
+
+        user_campaigns.append(candidate)
+
+    campaign = None
+    if user_campaigns:
+        # Keep the oldest campaign as canonical and consolidate duplicates.
+        campaign = user_campaigns[0]
+        campaign_config = dict(campaign.config_json) if isinstance(campaign.config_json, dict) else {}
+        changed = False
+
+        if campaign_config.get('type') != 'user_personal' or campaign_config.get('owner_user_id') != user.id:
+            campaign_config['type'] = 'user_personal'
+            campaign_config['owner_user_id'] = user.id
+            campaign.config_json = campaign_config
+            changed = True
+
+        for duplicate in user_campaigns[1:]:
+            ReferralLink.query.filter_by(campaign_id=duplicate.id).update(
+                {ReferralLink.campaign_id: campaign.id},
+                synchronize_session=False
+            )
+            db.session.delete(duplicate)
+            changed = True
+
+        if changed:
+            db.session.commit()
 
     if not campaign:
         # Create user's personal campaign

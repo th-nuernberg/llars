@@ -5807,7 +5807,8 @@
         "descriptionPlaceholder": "Optional description for this link",
         "maxUses": "Max Uses",
         "maxUsesPlaceholder": "Unlimited",
-        "expiresAt": "Valid Until"
+        "expiresAt": "Valid Until",
+        "optionalSettings": "Advanced Settings"
       }
     }
   },

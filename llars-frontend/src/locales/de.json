@@ -5649,7 +5649,8 @@
         "descriptionPlaceholder": "Optionale Beschreibung für diesen Link",
         "maxUses": "Max. Nutzungen",
         "maxUsesPlaceholder": "Unbegrenzt",
-        "expiresAt": "Gültig bis"
+        "expiresAt": "Gültig bis",
+        "optionalSettings": "Erweiterte Einstellungen"
       }
     }
   },

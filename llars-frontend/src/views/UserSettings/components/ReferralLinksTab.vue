@@ -248,7 +248,7 @@ import LBtn from '@/components/common/LBtn.vue'
 import LTag from '@/components/common/LTag.vue'
 import axios from 'axios'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 
 const loading = ref(true)
 const saving = ref(false)
@@ -465,7 +465,7 @@ function isExpired(link) {
 
 function formatDate(dateStr) {
   if (!dateStr) return ''
-  return new Date(dateStr).toLocaleDateString('de-DE', {
+  return new Date(dateStr).toLocaleDateString(locale.value === 'de' ? 'de-DE' : 'en-US', {
     year: 'numeric',
     month: '2-digit',
     day: '2-digit'

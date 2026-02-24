@@ -6116,6 +6116,35 @@
       "selected": "selected"
     }
   },
+  "referral": {
+    "errors": {
+      "codeRequired": "Invitation code is required",
+      "validationFailed": "Error validating the code",
+      "registrationFailed": "Registration failed",
+      "loadCampaigns": "Error loading campaigns",
+      "loadCampaign": "Error loading campaign",
+      "createCampaign": "Error creating campaign",
+      "updateCampaign": "Error updating campaign",
+      "updateStatus": "Error updating status",
+      "deleteCampaign": "Error deleting campaign",
+      "loadLinks": "Error loading links",
+      "createLink": "Error creating link",
+      "loadLink": "Error loading link",
+      "updateLink": "Error updating link",
+      "deactivateLink": "Error deactivating link",
+      "deleteLink": "Error deleting link",
+      "loadAnalytics": "Error loading analytics",
+      "loadCampaignAnalytics": "Error loading campaign analytics",
+      "loadRegistrations": "Error loading registrations"
+    },
+    "status": {
+      "draft": "Draft",
+      "active": "Active",
+      "paused": "Paused",
+      "expired": "Expired",
+      "archived": "Archived"
+    }
+  },
   "admin": {
     "systemSettings": {
       "title": "System Settings",

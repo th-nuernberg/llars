@@ -476,7 +476,7 @@ import { useReferralSystem } from '@/composables/useReferralSystem'
 import { useSnackbar } from '@/composables/useSnackbar'
 import LAvatar from '@/components/common/LAvatar.vue'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const referral = useReferralSystem()
 const { showSuccess, showError, showInfo, showWarning, showMessage } = useSnackbar()
 
@@ -671,7 +671,8 @@ function loadMoreRegistrations() {
 function formatDateTime(isoString) {
   if (!isoString) return '-'
   const date = new Date(isoString)
-  return date.toLocaleString('de-DE', {
+  const loc = locale.value === 'de' ? 'de-DE' : 'en-US'
+  return date.toLocaleString(loc, {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
@@ -699,7 +700,8 @@ function getStatusLabel(status) {
 // Date formatting
 function formatDateRange(start, end) {
   if (!start && !end) return t('admin.referral.dateRange.noPeriod')
-  const formatDate = (d) => new Date(d).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: '2-digit' })
+  const loc = locale.value === 'de' ? 'de-DE' : 'en-US'
+  const formatDate = (d) => new Date(d).toLocaleDateString(loc, { day: '2-digit', month: '2-digit', year: '2-digit' })
   if (start && end) return `${formatDate(start)} - ${formatDate(end)}`
   if (start) return t('admin.referral.dateRange.from', { date: formatDate(start) })
   return t('admin.referral.dateRange.until', { date: formatDate(end) })

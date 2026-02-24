@@ -5958,6 +5958,35 @@
       "selected": "ausgewählt"
     }
   },
+  "referral": {
+    "errors": {
+      "codeRequired": "Einladungscode ist erforderlich",
+      "validationFailed": "Fehler bei der Code-Validierung",
+      "registrationFailed": "Registrierung fehlgeschlagen",
+      "loadCampaigns": "Fehler beim Laden der Kampagnen",
+      "loadCampaign": "Fehler beim Laden der Kampagne",
+      "createCampaign": "Fehler beim Erstellen der Kampagne",
+      "updateCampaign": "Fehler beim Aktualisieren der Kampagne",
+      "updateStatus": "Fehler beim Aktualisieren des Status",
+      "deleteCampaign": "Fehler beim Löschen der Kampagne",
+      "loadLinks": "Fehler beim Laden der Links",
+      "createLink": "Fehler beim Erstellen des Links",
+      "loadLink": "Fehler beim Laden des Links",
+      "updateLink": "Fehler beim Aktualisieren des Links",
+      "deactivateLink": "Fehler beim Deaktivieren des Links",
+      "deleteLink": "Fehler beim Löschen des Links",
+      "loadAnalytics": "Fehler beim Laden der Analytics",
+      "loadCampaignAnalytics": "Fehler beim Laden der Kampagnen-Analytics",
+      "loadRegistrations": "Fehler beim Laden der Registrierungen"
+    },
+    "status": {
+      "draft": "Entwurf",
+      "active": "Aktiv",
+      "paused": "Pausiert",
+      "expired": "Abgelaufen",
+      "archived": "Archiviert"
+    }
+  },
   "admin": {
     "systemSettings": {
       "title": "System-Einstellungen",

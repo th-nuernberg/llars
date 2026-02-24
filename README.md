@@ -190,21 +190,6 @@ LITELLM_API_KEY=...           # Optional for open-source models via LiteLLM
 
 ---
 
-## Citation
-
-If you use LLARS in your research, please cite:
-
-```bibtex
-@inproceedings{steigerwald2026llars,
-  title     = {{LLARS}: An Open-Source Platform for Collaborative Prompt Engineering, Batch Generation and Hybrid Evaluation},
-  author    = {Steigerwald, Philipp and Stieler, Mara and Burghardt, Jennifer and Rudolph, Eric and Albrecht, Jens},
-  booktitle = {Proceedings of the 35th International Joint Conference on Artificial Intelligence (IJCAI-ECAI 2026), Demo Track},
-  year      = {2026}
-}
-```
-
----
-
 ## License
 
 This project is licensed under the MIT License.

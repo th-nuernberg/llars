@@ -176,9 +176,9 @@
               </template>
             </v-select>
 
-            <!-- Name field: hidden for OpenAI (auto-generated) -->
+            <!-- Name field: hidden for OpenAI/IONOS (auto-generated) -->
             <v-text-field
-              v-if="form.provider_type !== 'openai'"
+              v-if="!isFixedCatalogProvider"
               v-model="form.name"
               :label="$t('userSettings.providers.form.name')"
               :rules="[v => !!v || $t('userSettings.providers.form.nameRequired')]"
@@ -193,7 +193,7 @@
               :type="showApiKey ? 'text' : 'password'"
               variant="outlined"
               density="comfortable"
-              :placeholder="editingProvider ? $t('userSettings.providers.form.apiKeyUnchanged') : 'sk-...'"
+              :placeholder="editingProvider ? $t('userSettings.providers.form.apiKeyUnchanged') : form.provider_type === 'ionos' ? 'IONOS API Token' : 'sk-...'"
               :append-inner-icon="showApiKey ? 'mdi-eye-off' : 'mdi-eye'"
               @click:append-inner="showApiKey = !showApiKey"
             />
@@ -206,6 +206,31 @@
               item-title="title"
               item-value="id"
               label="OpenAI Modelle"
+              variant="outlined"
+              density="comfortable"
+              multiple
+              chips
+              closable-chips
+              hint="Modelle auswählen die verfügbar sein sollen"
+              persistent-hint
+            >
+              <template #item="{ item, props }">
+                <v-list-item v-bind="props">
+                  <template #append>
+                    <span class="text-caption text-medium-emphasis">{{ item.raw.meta }}</span>
+                  </template>
+                </v-list-item>
+              </template>
+            </v-select>
+
+            <!-- IONOS: Multi-select dropdown with predefined models -->
+            <v-select
+              v-if="form.provider_type === 'ionos'"
+              v-model="form.selected_models"
+              :items="ionosModelCatalog"
+              item-title="title"
+              item-value="id"
+              label="IONOS Modelle"
               variant="outlined"
               density="comfortable"
               multiple
@@ -256,7 +281,7 @@
             />
 
             <v-text-field
-              v-if="selectedProviderType?.supports_base_url && form.provider_type !== 'openai'"
+              v-if="selectedProviderType?.supports_base_url && !isFixedCatalogProvider"
               v-model="form.base_url"
               :label="$t('userSettings.providers.form.baseUrl')"
               variant="outlined"
@@ -422,6 +447,21 @@ const openaiModelCatalog = [
   { id: 'o4-mini', title: 'o4 Mini', meta: '200K ctx · 100K out', context_window: 200000, max_output_tokens: 100000, supports_vision: true, supports_reasoning: true },
 ]
 
+const ionosModelCatalog = [
+  { id: 'meta-llama/Meta-Llama-3.1-8B-Instruct', title: 'Llama 3.1 8B Instruct', meta: '8B · 128K ctx' },
+  { id: 'mistralai/Mistral-Nemo-Instruct-2407', title: 'Mistral Nemo 12B', meta: '12.2B · 128K ctx' },
+  { id: 'mistralai/Mistral-Small-24B-Instruct', title: 'Mistral Small 24B', meta: '24B · 128K ctx · Vision' },
+  { id: 'meta-llama/Llama-3.3-70B-Instruct', title: 'Llama 3.3 70B Instruct', meta: '70.6B · 128K ctx' },
+  { id: 'openai/gpt-oss-120b', title: 'GPT-OSS 120B', meta: '120B MoE · 128K ctx' },
+  { id: 'meta-llama/Meta-Llama-3.1-405B-Instruct-FP8', title: 'Llama 3.1 405B Instruct', meta: '405B · 128K ctx' },
+  { id: 'meta-llama/CodeLlama-13b-Instruct-hf', title: 'Code Llama 13B', meta: '13B · 16K ctx · Code' },
+  { id: 'openGPT-X/Teuken-7B-instruct-commercial', title: 'Teuken 7B (German)', meta: '7B · EU Sovereign AI' },
+]
+
+const isFixedCatalogProvider = computed(() =>
+  ['openai', 'ionos'].includes(form.value.provider_type)
+)
+
 const showShareDialog = ref(false)
 const sharingProvider = ref(null)
 const newShare = ref({ type: 'user', target: '' })
@@ -450,7 +490,7 @@ const OPENAI_COMPATIBLE_PROVIDER_TYPES = new Set([
 
 const showDynamicModelSelector = computed(() => {
   const providerType = String(form.value.provider_type || '').trim().toLowerCase()
-  if (!providerType || providerType === 'openai') return false
+  if (!providerType || providerType === 'openai' || providerType === 'ionos') return false
   if (selectedProviderType.value?.supports_model_fetch === false) return false
   if (selectedProviderType.value?.supports_model_fetch === true) return true
   return OPENAI_COMPATIBLE_PROVIDER_TYPES.has(providerType)
@@ -593,6 +633,8 @@ async function saveProvider() {
   saving.value = true
   try {
     const isOpenai = form.value.provider_type === 'openai'
+    const isIonos = form.value.provider_type === 'ionos'
+    const isFixed = isOpenai || isIonos
     const selectedModels = Array.from(new Set(
       (form.value.selected_models || [])
         .map(m => String(m || '').trim())
@@ -601,8 +643,8 @@ async function saveProvider() {
 
     const payload = {
       provider_type: form.value.provider_type,
-      name: isOpenai ? 'OpenAI' : form.value.name,
-      base_url: isOpenai ? null : (form.value.base_url || null),
+      name: isOpenai ? 'OpenAI' : isIonos ? 'IONOS AI' : form.value.name,
+      base_url: isFixed ? null : (form.value.base_url || null),
       is_default: form.value.is_default
     }
 

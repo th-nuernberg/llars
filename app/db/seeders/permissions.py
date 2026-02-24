@@ -174,6 +174,12 @@ def initialize_permissions(db):
             'description': 'Erlaubt das Verwalten von Referral-Kampagnen und Einladungslinks'
         },
         {
+            'permission_key': 'feature:referral:create_links',
+            'display_name': 'Einladungslinks erstellen',
+            'category': 'feature',
+            'description': 'Erlaubt das Erstellen und Verwalten eigener Einladungslinks'
+        },
+        {
             'permission_key': 'admin:field_prompts:manage',
             'display_name': 'KI-Feld-Prompts verwalten',
             'category': 'admin',
@@ -356,6 +362,26 @@ def initialize_permissions(db):
             'category': 'feature',
             'description': 'Erlaubt das Erstellen von Evaluation-Szenarien aus generierten Outputs'
         },
+
+        # Feature: Pipeline (Automated LLM Evaluation Loop)
+        {
+            'permission_key': 'feature:pipeline:view',
+            'display_name': 'Pipeline ansehen',
+            'category': 'feature',
+            'description': 'Erlaubt das Ansehen von Pipeline-Runs'
+        },
+        {
+            'permission_key': 'feature:pipeline:create',
+            'display_name': 'Pipeline erstellen',
+            'category': 'feature',
+            'description': 'Erlaubt das Erstellen und Starten neuer Pipeline-Runs'
+        },
+        {
+            'permission_key': 'feature:pipeline:manage',
+            'display_name': 'Pipeline verwalten',
+            'category': 'feature',
+            'description': 'Erlaubt das Verwalten von Pipeline-Runs (Review, Löschen)'
+        },
     ]
 
     # Create permissions (idempotent)
@@ -412,6 +438,10 @@ def initialize_permissions(db):
                 'feature:generation:manage',
                 'feature:generation:export',
                 'feature:generation:to_scenario',
+                # Pipeline
+                'feature:pipeline:view',
+                'feature:pipeline:create',
+                'feature:pipeline:manage',
                 # Markdown Collab
                 'feature:markdown_collab:view',
                 'feature:markdown_collab:edit',
@@ -426,6 +456,8 @@ def initialize_permissions(db):
                 # KAIMO
                 'feature:kaimo:view',
                 'feature:kaimo:edit',
+                # Referral Links
+                'feature:referral:create_links',
                 # Data Import (für Evaluation-Daten)
                 'data:import',
                 'data:manage_scenarios',
@@ -463,6 +495,8 @@ def initialize_permissions(db):
                 'feature:rag:edit',
                 'feature:rag:delete',
                 'feature:rag:share',
+                # Referral Links
+                'feature:referral:create_links',
             ]
         },
         {
@@ -492,6 +526,8 @@ def initialize_permissions(db):
                 'feature:anonymize:view',
                 'feature:kaimo:view',
                 'feature:kaimo:edit',
+                # Referral Links
+                'feature:referral:create_links',
             ]
         },
         {

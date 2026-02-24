@@ -160,11 +160,18 @@
               density="comfortable"
               :placeholder="$t('userSettings.referrals.form.slugPlaceholder')"
               :disabled="!!editingLink"
-              hint="Optionaler kurzer Name für die URL"
-              persistent-hint
+              :error-messages="slugError"
+              :loading="slugChecking"
+              :hint="slugAvailable === true ? $t('userSettings.referrals.form.slugAvailable') : $t('userSettings.referrals.form.slugHint')"
+              :persistent-hint="true"
+              :color="slugAvailable === true ? 'success' : undefined"
+              @update:model-value="onSlugInput"
             >
               <template #prepend-inner>
                 <span class="text-grey">/join/</span>
+              </template>
+              <template v-if="slugAvailable === true && form.slug.length >= 3" #append-inner>
+                <v-icon color="success" size="small">mdi-check-circle</v-icon>
               </template>
             </v-text-field>
 
@@ -200,7 +207,7 @@
         <v-card-actions>
           <v-spacer />
           <LBtn variant="cancel" @click="closeDialog">{{ $t('common.cancel') }}</LBtn>
-          <LBtn variant="primary" :loading="saving" @click="saveLink">
+          <LBtn variant="primary" :loading="saving" :disabled="slugAvailable === false || slugChecking" @click="saveLink">
             {{ editingLink ? $t('common.save') : $t('common.create') }}
           </LBtn>
         </v-card-actions>
@@ -238,6 +245,44 @@ const form = ref({
   expires_at: ''
 })
 
+const slugChecking = ref(false)
+const slugAvailable = ref(null) // null = not checked, true = available, false = taken
+const slugError = ref('')
+let slugCheckTimer = null
+
+function onSlugInput(value) {
+  const slug = (value || '').trim().toLowerCase().replace(/\s+/g, '-')
+  slugAvailable.value = null
+  slugError.value = ''
+
+  if (slugCheckTimer) clearTimeout(slugCheckTimer)
+
+  if (!slug) return
+  if (slug.length < 3) {
+    slugError.value = t('userSettings.referrals.form.slugTooShort')
+    return
+  }
+
+  slugChecking.value = true
+  slugCheckTimer = setTimeout(async () => {
+    try {
+      const { data } = await axios.get('/api/user/referrals/check-slug', { params: { slug } })
+      if (data.available) {
+        slugAvailable.value = true
+        slugError.value = ''
+      } else {
+        slugAvailable.value = false
+        slugError.value = t('userSettings.referrals.form.slugTaken')
+      }
+    } catch {
+      slugAvailable.value = null
+      slugError.value = ''
+    } finally {
+      slugChecking.value = false
+    }
+  }, 400)
+}
+
 onMounted(async () => {
   await loadData()
 })
@@ -270,6 +315,9 @@ function openCreateDialog() {
     max_uses: null,
     expires_at: ''
   }
+  slugAvailable.value = null
+  slugError.value = ''
+  slugChecking.value = false
   showDialog.value = true
 }
 

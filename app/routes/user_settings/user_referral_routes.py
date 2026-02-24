@@ -87,6 +87,20 @@ def _get_user_campaign(user) -> int:
     return campaign.id
 
 
+@user_referral_bp.route('/check-slug', methods=['GET'])
+@authentik_required
+@require_permission(REFERRAL_CREATE_PERMISSION)
+@handle_api_errors(logger_name='user_referrals')
+def check_slug():
+    """Check if a slug is available."""
+    slug = (request.args.get('slug') or '').strip().lower().replace(' ', '-')
+    if not slug or len(slug) < 3:
+        return jsonify({'available': False, 'reason': 'too_short'})
+
+    existing = ReferralLink.query.filter_by(slug=slug).first()
+    return jsonify({'available': existing is None})
+
+
 @user_referral_bp.route('/can-create', methods=['GET'])
 @authentik_required
 @handle_api_errors(logger_name='user_referrals')

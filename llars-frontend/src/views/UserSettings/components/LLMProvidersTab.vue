@@ -448,14 +448,17 @@ const openaiModelCatalog = [
 ]
 
 const ionosModelCatalog = [
-  { id: 'meta-llama/Meta-Llama-3.1-8B-Instruct', title: 'Llama 3.1 8B Instruct', meta: '8B · 128K ctx' },
-  { id: 'mistralai/Mistral-Nemo-Instruct-2407', title: 'Mistral Nemo 12B', meta: '12.2B · 128K ctx' },
-  { id: 'mistralai/Mistral-Small-24B-Instruct', title: 'Mistral Small 24B', meta: '24B · 128K ctx · Vision' },
-  { id: 'meta-llama/Llama-3.3-70B-Instruct', title: 'Llama 3.3 70B Instruct', meta: '70.6B · 128K ctx' },
-  { id: 'openai/gpt-oss-120b', title: 'GPT-OSS 120B', meta: '120B MoE · 128K ctx' },
-  { id: 'meta-llama/Meta-Llama-3.1-405B-Instruct-FP8', title: 'Llama 3.1 405B Instruct', meta: '405B · 128K ctx' },
-  { id: 'meta-llama/CodeLlama-13b-Instruct-hf', title: 'Code Llama 13B', meta: '13B · 16K ctx · Code' },
-  { id: 'openGPT-X/Teuken-7B-instruct-commercial', title: 'Teuken 7B (German)', meta: '7B · EU Sovereign AI' },
+  // Standard (0,15€/1M)
+  { id: 'meta-llama/Meta-Llama-3.1-8B-Instruct', title: 'Llama 3.1 8B Instruct', meta: '8B · 128K ctx · 0,15€/1M', input_cost: 0.15, output_cost: 0.15 },
+  { id: 'openGPT-X/Teuken-7B-instruct-commercial', title: 'Teuken 7B (German)', meta: '7B · EU Sovereign AI · 0,15€/1M', input_cost: 0.15, output_cost: 0.15 },
+  { id: 'mistralai/Mistral-Nemo-Instruct-2407', title: 'Mistral Nemo 12B', meta: '12.2B · 128K ctx · 0,15€/1M', input_cost: 0.15, output_cost: 0.15 },
+  // Plus
+  { id: 'meta-llama/CodeLlama-13b-Instruct-hf', title: 'Code Llama 13B', meta: '13B · 16K ctx · Code · 0,45€/1M', input_cost: 0.45, output_cost: 0.45 },
+  { id: 'mistralai/Mistral-Small-24B-Instruct', title: 'Mistral Small 24B', meta: '24B · 128K ctx · Vision · 0,10/0,30€', input_cost: 0.10, output_cost: 0.30 },
+  // Premium
+  { id: 'openai/gpt-oss-120b', title: 'GPT-OSS 120B', meta: '120B MoE · 128K ctx · 0,15/0,65€', input_cost: 0.15, output_cost: 0.65 },
+  { id: 'meta-llama/Llama-3.3-70B-Instruct', title: 'Llama 3.3 70B Instruct', meta: '70.6B · 128K ctx · 0,65€/1M', input_cost: 0.65, output_cost: 0.65 },
+  { id: 'meta-llama/Meta-Llama-3.1-405B-Instruct-FP8', title: 'Llama 3.1 405B Instruct', meta: '405B · 128K ctx · 1,75€/1M', input_cost: 1.75, output_cost: 1.75 },
 ]
 
 const isFixedCatalogProvider = computed(() =>
@@ -660,6 +663,18 @@ async function saveProvider() {
       existingConfig.selected_models = selectedModels
     } else {
       delete existingConfig.selected_models
+    }
+
+    // Store model costs for fixed catalog providers (IONOS, OpenAI)
+    if (isIonos && selectedModels.length > 0) {
+      const costs = {}
+      for (const modelId of selectedModels) {
+        const entry = ionosModelCatalog.find(m => m.id === modelId)
+        if (entry) {
+          costs[modelId] = { input: entry.input_cost, output: entry.output_cost }
+        }
+      }
+      existingConfig.model_costs = costs
     }
 
     if (Object.keys(existingConfig).length > 0) {

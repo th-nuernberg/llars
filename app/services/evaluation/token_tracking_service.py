@@ -59,6 +59,15 @@ MODEL_COSTS: Dict[str, Dict[str, float]] = {
     "claude-3-opus-20240229": {"input": 15.00, "output": 75.00},
     "claude-3-sonnet-20240229": {"input": 3.00, "output": 15.00},
     "claude-3-haiku-20240307": {"input": 0.25, "output": 1.25},
+    # IONOS AI Model Hub (EUR per 1M tokens)
+    "Meta-Llama-3.1-8B-Instruct": {"input": 0.15, "output": 0.15},
+    "Teuken-7B-instruct-commercial": {"input": 0.15, "output": 0.15},
+    "Mistral-Nemo-Instruct-2407": {"input": 0.15, "output": 0.15},
+    "CodeLlama-13b-Instruct-hf": {"input": 0.45, "output": 0.45},
+    "Mistral-Small-24B-Instruct": {"input": 0.10, "output": 0.30},
+    "gpt-oss-120b": {"input": 0.15, "output": 0.65},
+    "Llama-3.3-70B-Instruct": {"input": 0.65, "output": 0.65},
+    "Meta-Llama-3.1-405B-Instruct-FP8": {"input": 1.75, "output": 1.75},
     # Default for unknown models
     "_default": {"input": 1.00, "output": 3.00},
 }

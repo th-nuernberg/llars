@@ -638,17 +638,9 @@ function shouldActivateOutputStream(outputId) {
   return (Date.now() - activeLastToken) > STREAM_SWITCH_INACTIVITY_MS
 }
 
-// Model color helpers (seeded in DB, neutral fallback if missing)
-const NEUTRAL_HUE_RANGES = [
-  { start: 25, end: 80 },   // warm amber/orange
-  { start: 160, end: 240 }, // teal/blue
-  { start: 260, end: 320 }  // purple/magenta
-]
-const NEUTRAL_SAT_RANGE = { min: 38, max: 56 }
-const NEUTRAL_LIGHT_RANGE = { min: 42, max: 56 }
-const NEUTRAL_HUE_RANGE_SIZE = NEUTRAL_HUE_RANGES.reduce((sum, range) => (
-  sum + (range.end - range.start)
-), 0)
+// Model color helpers (seeded in DB, evenly-spaced fallback if missing)
+const NEUTRAL_SAT_RANGE = { min: 40, max: 58 }
+const NEUTRAL_LIGHT_RANGE = { min: 40, max: 55 }
 
 const normalizeHex = (value) => {
   if (!value || typeof value !== 'string') return null
@@ -665,16 +657,6 @@ const hashString = (value) => {
     hash = Math.imul(hash, 0x01000193) >>> 0
   }
   return hash
-}
-
-const pickNeutralHue = (seed) => {
-  let offset = seed % NEUTRAL_HUE_RANGE_SIZE
-  for (const range of NEUTRAL_HUE_RANGES) {
-    const span = range.end - range.start
-    if (offset < span) return range.start + offset
-    offset -= span
-  }
-  return NEUTRAL_HUE_RANGES[0].start
 }
 
 const hslToHex = (h, s, l) => {
@@ -708,7 +690,8 @@ const hslToHex = (h, s, l) => {
 
 const seedColor = (modelName) => {
   const seed = hashString(modelName || '')
-  const hue = pickNeutralHue(seed)
+  // Use full 360° hue range for maximum color variety
+  const hue = seed % 360
   const satSpan = NEUTRAL_SAT_RANGE.max - NEUTRAL_SAT_RANGE.min
   const lightSpan = NEUTRAL_LIGHT_RANGE.max - NEUTRAL_LIGHT_RANGE.min
   const saturation = NEUTRAL_SAT_RANGE.min + ((seed >>> 8) % (satSpan + 1))
@@ -718,6 +701,8 @@ const seedColor = (modelName) => {
 
 const modelColorMap = computed(() => {
   const map = {}
+
+  // 1. Collect explicit DB colors
   outputs.value.forEach(o => {
     if (o?.llm_model_name && o?.llm_model_color) {
       const normalized = normalizeHex(o.llm_model_color)
@@ -733,6 +718,23 @@ const modelColorMap = computed(() => {
     const normalized = normalizeHex(currentlyProcessing.value.modelColor)
     if (normalized) map[currentlyProcessing.value.model] = normalized
   }
+
+  // 2. For models without explicit colors, assign evenly-spaced hues
+  //    using the golden angle (137.508°) for maximum visual separation
+  const allModels = [...new Set(outputs.value.map(o => o?.llm_model_name).filter(Boolean))]
+  const uncolored = allModels.filter(m => !map[m])
+  if (uncolored.length > 0) {
+    const goldenAngle = 137.508
+    // Start hue offset based on count to avoid clashing with explicit colors
+    const startHue = (Object.keys(map).length * goldenAngle) % 360
+    uncolored.forEach((modelName, idx) => {
+      const hue = (startHue + idx * goldenAngle) % 360
+      const sat = NEUTRAL_SAT_RANGE.min + (idx % 3) * 6  // slight sat variation
+      const light = NEUTRAL_LIGHT_RANGE.min + ((idx + 1) % 4) * 4  // slight light variation
+      map[modelName] = hslToHex(hue, sat, light)
+    })
+  }
+
   return map
 })
 

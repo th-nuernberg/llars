@@ -151,9 +151,10 @@ const hashString = (value) => {
 
 const seedColor = (modelName) => {
   const seed = hashString(modelName || '')
-  const hue = (seed % 300 + 30) % 360
-  const saturation = 38 + ((seed >>> 8) % 19)
-  const lightness = 42 + ((seed >>> 16) % 15)
+  // Use full 360° hue range for maximum color variety
+  const hue = seed % 360
+  const saturation = 40 + ((seed >>> 8) % 19)
+  const lightness = 40 + ((seed >>> 16) % 16)
   return hslToHex(hue, saturation, lightness)
 }
 

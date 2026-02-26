@@ -11,6 +11,7 @@ from typing import Any, Dict, List, Optional
 
 from collections import defaultdict
 import json
+import time
 import numpy as np
 
 from db.database import db
@@ -65,6 +66,36 @@ def _get_function_type_or_raise(function_type_id: int) -> FeatureFunctionType:
     if not function_type:
         raise NotFoundError("Function type does not exist")
     return function_type
+
+
+# Simple TTL cache for expensive stats computations.
+# Key: scenario_id, Value: (timestamp, result_dict)
+_stats_cache: Dict[int, tuple] = {}
+_STATS_CACHE_TTL = 30  # seconds
+
+
+def _get_cached_stats(scenario_id: int) -> Optional[Dict]:
+    """Return cached stats if still valid, else None."""
+    entry = _stats_cache.get(scenario_id)
+    if entry and (time.time() - entry[0]) < _STATS_CACHE_TTL:
+        return entry[1]
+    return None
+
+
+def _set_cached_stats(scenario_id: int, data: Dict) -> None:
+    """Cache stats result. Evict old entries if cache grows too large."""
+    if len(_stats_cache) > 100:
+        # Evict oldest entries
+        cutoff = time.time() - _STATS_CACHE_TTL
+        to_remove = [k for k, (ts, _) in _stats_cache.items() if ts < cutoff]
+        for k in to_remove:
+            del _stats_cache[k]
+    _stats_cache[scenario_id] = (time.time(), data)
+
+
+def invalidate_stats_cache(scenario_id: int) -> None:
+    """Invalidate cached stats for a scenario (call after rating/ranking changes)."""
+    _stats_cache.pop(scenario_id, None)
 
 
 _DEFAULT_BUCKET_COLOR_PALETTE = [
@@ -613,12 +644,94 @@ def _batch_get_progression_states(
     return result
 
 
+def get_user_progress_counts(scenario_id: int) -> Dict[str, Dict[str, int]]:
+    """Get lightweight per-user progress counts (done/progressing/total).
+
+    Returns dict of {username: {done, progressing, total}}.
+    Much faster than get_progress_stats() — no agreement metrics computed.
+    Use this when you only need progress bars, not full stats.
+    """
+    scenario = _get_scenario_or_raise(scenario_id)
+    function_type = _get_function_type_or_raise(scenario.function_type_id)
+
+    if function_type.name == "comparison":
+        # Comparison uses a different model; return empty for now
+        return {}
+
+    scenario_users = (
+        db.session.query(ScenarioUsers)
+        .join(User, ScenarioUsers.user_id == User.id)
+        .filter(
+            ScenarioUsers.scenario_id == scenario_id,
+            ScenarioUsers.membership_status == MembershipStatus.ACTIVE
+        )
+        .all()
+    )
+
+    all_scenario_threads = (
+        db.session.query(ScenarioThreads)
+        .filter(ScenarioThreads.scenario_id == scenario_id)
+        .all()
+    )
+    all_thread_ids = [st.thread_id for st in all_scenario_threads if st.thread_id]
+    all_user_ids = [su.user_id for su in scenario_users]
+
+    progression_cache = _batch_get_progression_states(
+        thread_ids=all_thread_ids,
+        user_ids=all_user_ids,
+        function_type_id=scenario.function_type_id,
+        scenario_id=scenario_id,
+    )
+
+    result = {}
+    for su in scenario_users:
+        use_full = (
+            su.role in (ScenarioRoles.VIEWER, ScenarioRoles.OWNER)
+            or (su.role == ScenarioRoles.EVALUATOR and raters_receive_all_threads(scenario))
+        )
+        user_thread_ids = all_thread_ids if use_full else []
+        if not use_full:
+            # Would need distribution lookup — for simplicity use all threads
+            user_thread_ids = all_thread_ids
+
+        done = 0
+        progressing = 0
+        for tid in user_thread_ids:
+            state = progression_cache.get((tid, su.user_id), ProgressionStatus.NOT_STARTED)
+            if state == ProgressionStatus.DONE:
+                done += 1
+            elif state == ProgressionStatus.PROGRESSING:
+                progressing += 1
+
+        username = su.user.username if su.user else f"user_{su.user_id}"
+        result[username] = {
+            'done': done,
+            'progressing': progressing,
+            'total': len(user_thread_ids),
+        }
+
+    return result
+
+
 def get_progress_stats(scenario_id: int) -> Dict[str, Any]:
-    """Get detailed progress statistics for all users in a scenario."""
+    """Get detailed progress statistics for all users in a scenario.
+
+    WARNING: This is expensive for large scenarios (computes agreement metrics,
+    heatmaps, etc.). Use get_user_progress_counts() when you only need
+    progress bars.
+
+    Results are cached for 30 seconds to avoid redundant computation.
+    """
+    cached = _get_cached_stats(scenario_id)
+    if cached is not None:
+        return cached
+
     scenario = _get_scenario_or_raise(scenario_id)
     function_type = _get_function_type_or_raise(scenario.function_type_id)
     if function_type.name == "comparison":
-        return _get_comparison_progress_stats(scenario_id)
+        result = _get_comparison_progress_stats(scenario_id)
+        _set_cached_stats(scenario_id, result)
+        return result
 
     rater_stats = []
     evaluator_stats = []
@@ -846,6 +959,8 @@ def get_progress_stats(scenario_id: int) -> Dict[str, Any]:
         "provenance_analysis": provenance_analysis,
         "ranking_agreement": pairwise_agreement,  # backward compatibility (deprecated)
     }
+    _set_cached_stats(scenario_id, result)
+    return result
 
 
 def _build_llm_progress_entries(

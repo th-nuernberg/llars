@@ -37,7 +37,7 @@ from db.tables import (
 from db.models.authenticity import UserAuthenticityVote
 from db.models.llm_task_result import LLMTaskResult
 from schemas.evaluation_data_schemas import EvaluationType
-from services.scenario_stats_service import get_progress_stats, get_authenticity_stats, get_scenario_stats_payload
+from services.scenario_stats_service import get_authenticity_stats, get_scenario_stats_payload
 from services.user_profile_service import serialize_user_brief
 from .. import data_blueprint
 from .scenario_utils import is_scenario_owner, check_scenario_ownership
@@ -287,86 +287,41 @@ def format_scenario_for_api(scenario, user, invitation_map=None, include_detaile
     user_progress = {'completed': 0, 'progressing': 0, 'total': thread_count}
 
     if include_detailed_stats and thread_count > 0:
-        # Calculate detailed progress stats from actual evaluations
+        # Use lightweight progress counts instead of full stats (no agreement metrics)
         try:
-            progress_data = get_progress_stats(scenario.id)
-            rater_stats = progress_data.get('rater_stats', [])
-            evaluator_stats = progress_data.get('evaluator_stats', [])
+            from services.scenario_stats_service import get_user_progress_counts
+            progress_counts = get_user_progress_counts(scenario.id)
 
-            # Find current user's progress (check both raters and evaluators)
-            all_user_stats = rater_stats + [e for e in evaluator_stats if not e.get('is_llm')]
-            user_found = False
-            for user_stat in all_user_stats:
-                if user_stat.get('username') == username:
-                    user_progress = {
-                        'completed': user_stat.get('done_threads', 0),
-                        'progressing': user_stat.get('progressing_threads', 0),
-                        'total': user_stat.get('total_threads', thread_count)
-                    }
-                    user_found = True
-                    break
+            # Find current user's progress
+            if username in progress_counts:
+                up = progress_counts[username]
+                user_progress = {
+                    'completed': up['done'],
+                    'progressing': up['progressing'],
+                    'total': up['total'],
+                }
 
-            # Fallback for owners not in ScenarioUsers: calculate progress directly
-            if not user_found and is_owner:
-                from db.models import ItemDimensionRating, ProgressionStatus
-                from db.models import ScenarioThreads as ST, UserMailHistoryRating
-                scenario_thread_ids = [
-                    st.thread_id for st in ST.query.filter_by(scenario_id=scenario.id).all()
-                ]
-                if scenario_thread_ids:
-                    # Check ItemDimensionRating for this user's progress
-                    user_ratings = ItemDimensionRating.query.filter(
-                        ItemDimensionRating.user_id == user_id,
-                        ItemDimensionRating.scenario_id == scenario.id,
-                        ItemDimensionRating.item_id.in_(scenario_thread_ids)
-                    ).all()
+            # Aggregate all user stats
+            human_done = sum(p['done'] for p in progress_counts.values())
+            human_total = sum(p['total'] for p in progress_counts.values())
+            raters_done = sum(
+                1 for p in progress_counts.values()
+                if p['done'] == p['total'] and p['total'] > 0
+            )
 
-                    completed = sum(1 for r in user_ratings if r.status == ProgressionStatus.DONE)
-                    progressing = sum(1 for r in user_ratings if r.status == ProgressionStatus.PROGRESSING)
-
-                    # Also check mail_rating if function_type is mail_rating (3)
-                    if scenario.function_type_id == 3:
-                        mail_ratings = UserMailHistoryRating.query.filter(
-                            UserMailHistoryRating.user_id == user_id,
-                            UserMailHistoryRating.thread_id.in_(scenario_thread_ids)
-                        ).all()
-                        completed = sum(1 for r in mail_ratings if r.status == ProgressionStatus.DONE)
-                        progressing = sum(1 for r in mail_ratings if r.status == ProgressionStatus.PROGRESSING)
-
-                    user_progress = {
-                        'completed': completed,
-                        'progressing': progressing,
-                        'total': thread_count
-                    }
-
-            # Aggregate human evaluator stats
-            human_stats = rater_stats + [e for e in evaluator_stats if not e.get('is_llm')]
-            human_done = sum(u.get('done_threads', 0) for u in human_stats)
-            human_total = sum(u.get('total_threads', 0) for u in human_stats)
-
-            # Aggregate LLM evaluator stats
-            llm_stats = [e for e in evaluator_stats if e.get('is_llm')]
-            llm_done = sum(u.get('done_threads', 0) for u in llm_stats)
-            llm_total = sum(u.get('total_threads', 0) for u in llm_stats)
-
-            # Count users who are fully done
-            raters_done = len([u for u in rater_stats if u.get('done_threads', 0) == u.get('total_threads', 0) and u.get('total_threads', 0) > 0])
-
-            # Total evaluations = sum of expected evaluations from all evaluators
-            # This ensures progress calculation is correct (completed/total <= 100%)
-            total_expected = human_total + llm_total
+            # LLM progress is computed separately by the /stats endpoint
             stats = {
-                'total': total_expected if total_expected > 0 else thread_count,
-                'completed': human_done + llm_done,
+                'total': human_total if human_total > 0 else thread_count,
+                'completed': human_done,
                 'human_total': human_total,
                 'human_completed': human_done,
-                'llm_total': llm_total,
-                'llm_completed': llm_done,
+                'llm_total': 0,
+                'llm_completed': 0,
                 'raters_done': raters_done,
-                'total_raters': len(rater_stats)
+                'total_raters': len(progress_counts)
             }
         except Exception as e:
-            logger.warning(f"Failed to calculate detailed stats for scenario {scenario.id}: {e}")
+            logger.warning(f"Failed to calculate progress for scenario {scenario.id}: {e}")
             stats = {
                 'total': thread_count,
                 'completed': 0,
@@ -535,21 +490,14 @@ def get_scenario_detail(scenario_id):
     # Get detailed stats for detail view
     result = format_scenario_for_api(scenario, user, invitation_map=invitation_map, include_detailed_stats=True)
 
-    # Get detailed user stats from progress service
+    # Get lightweight user progress counts (no expensive agreement metrics)
     try:
-        progress_data = get_progress_stats(scenario.id)
-        user_stats_map = {}
-        for rater in progress_data.get('rater_stats', []):
-            user_stats_map[rater['username']] = {
-                'done': rater.get('done_threads', 0),
-                'total': rater.get('total_threads', 0)
-            }
-        for evaluator in progress_data.get('evaluator_stats', []):
-            if not evaluator.get('is_llm'):
-                user_stats_map[evaluator['username']] = {
-                    'done': evaluator.get('done_threads', 0),
-                    'total': evaluator.get('total_threads', 0)
-                }
+        from services.scenario_stats_service import get_user_progress_counts
+        progress_counts = get_user_progress_counts(scenario.id)
+        user_stats_map = {
+            uname: {'done': p['done'], 'total': p['total']}
+            for uname, p in progress_counts.items()
+        }
     except Exception:
         user_stats_map = {}
 

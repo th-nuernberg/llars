@@ -137,22 +137,23 @@
     <v-dialog v-model="showDialog" max-width="500" persistent>
       <v-card>
         <v-card-title class="d-flex align-center">
-          <v-icon start>{{ editingLink ? 'mdi-pencil' : 'mdi-plus' }}</v-icon>
+          <v-icon start>{{ editingLink ? 'mdi-pencil' : 'mdi-link-plus' }}</v-icon>
           {{ editingLink ? $t('userSettings.referrals.editLink') : $t('userSettings.referrals.createLink') }}
         </v-card-title>
 
         <v-card-text>
           <v-form ref="formRef" v-model="formValid">
+            <!-- Label -->
             <v-text-field
               v-model="form.label"
               :label="$t('userSettings.referrals.form.label')"
               variant="outlined"
               density="comfortable"
               :placeholder="$t('userSettings.referrals.form.labelPlaceholder')"
-              hint="z.B. 'Für Kollegen', 'IJCAI Reviewer'"
-              persistent-hint
+              @update:model-value="onLabelInput"
             />
 
+            <!-- Slug with URL preview -->
             <v-text-field
               v-model="form.slug"
               :label="$t('userSettings.referrals.form.slug')"
@@ -160,47 +161,77 @@
               density="comfortable"
               :placeholder="$t('userSettings.referrals.form.slugPlaceholder')"
               :disabled="!!editingLink"
-              hint="Optionaler kurzer Name für die URL"
-              persistent-hint
+              :error-messages="slugError"
+              :loading="slugChecking"
+              :color="slugAvailable === true ? 'success' : undefined"
+              @update:model-value="onSlugInput"
+              @focus="slugManuallyEdited = true"
             >
               <template #prepend-inner>
-                <span class="text-grey">/join/</span>
+                <span class="text-medium-emphasis text-body-2">/join/</span>
+              </template>
+              <template v-if="slugAvailable === true && form.slug.length >= 3" #append-inner>
+                <v-icon color="success" size="small">mdi-check-circle</v-icon>
+              </template>
+              <template v-else-if="slugAvailable === false" #append-inner>
+                <v-icon color="error" size="small">mdi-close-circle</v-icon>
               </template>
             </v-text-field>
 
-            <v-textarea
-              v-model="form.description"
-              :label="$t('userSettings.referrals.form.description')"
-              variant="outlined"
-              density="comfortable"
-              rows="2"
-              :placeholder="$t('userSettings.referrals.form.descriptionPlaceholder')"
-            />
+            <!-- URL Preview -->
+            <div v-if="form.slug && form.slug.length >= 3 && !slugError" class="url-preview mb-4">
+              <v-icon size="small" class="mr-1">mdi-link-variant</v-icon>
+              <code>{{ urlPreview }}</code>
+            </div>
 
-            <v-text-field
-              v-model.number="form.max_uses"
-              :label="$t('userSettings.referrals.form.maxUses')"
-              type="number"
-              variant="outlined"
-              density="comfortable"
-              min="1"
-              :placeholder="$t('userSettings.referrals.form.maxUsesPlaceholder')"
-            />
+            <!-- Optional settings in expandable section -->
+            <v-expansion-panels variant="accordion" flat class="mb-2 optional-settings">
+              <v-expansion-panel>
+                <v-expansion-panel-title class="text-body-2 px-0">
+                  <v-icon size="small" class="mr-2">mdi-cog-outline</v-icon>
+                  {{ $t('userSettings.referrals.form.optionalSettings') }}
+                </v-expansion-panel-title>
+                <v-expansion-panel-text>
+                  <v-textarea
+                    v-model="form.description"
+                    :label="$t('userSettings.referrals.form.description')"
+                    variant="outlined"
+                    density="comfortable"
+                    rows="2"
+                    :placeholder="$t('userSettings.referrals.form.descriptionPlaceholder')"
+                  />
 
-            <v-text-field
-              v-model="form.expires_at"
-              :label="$t('userSettings.referrals.form.expiresAt')"
-              type="date"
-              variant="outlined"
-              density="comfortable"
-            />
+                  <div class="d-flex gap-3">
+                    <v-text-field
+                      v-model.number="form.max_uses"
+                      :label="$t('userSettings.referrals.form.maxUses')"
+                      type="number"
+                      variant="outlined"
+                      density="comfortable"
+                      min="1"
+                      :placeholder="$t('userSettings.referrals.form.maxUsesPlaceholder')"
+                      class="flex-1"
+                    />
+
+                    <v-text-field
+                      v-model="form.expires_at"
+                      :label="$t('userSettings.referrals.form.expiresAt')"
+                      type="date"
+                      variant="outlined"
+                      density="comfortable"
+                      class="flex-1"
+                    />
+                  </div>
+                </v-expansion-panel-text>
+              </v-expansion-panel>
+            </v-expansion-panels>
           </v-form>
         </v-card-text>
 
         <v-card-actions>
           <v-spacer />
           <LBtn variant="cancel" @click="closeDialog">{{ $t('common.cancel') }}</LBtn>
-          <LBtn variant="primary" :loading="saving" @click="saveLink">
+          <LBtn variant="primary" :loading="saving" :disabled="slugAvailable === false || slugChecking" @click="saveLink">
             {{ editingLink ? $t('common.save') : $t('common.create') }}
           </LBtn>
         </v-card-actions>
@@ -210,14 +241,14 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import LCard from '@/components/common/LCard.vue'
 import LBtn from '@/components/common/LBtn.vue'
 import LTag from '@/components/common/LTag.vue'
 import axios from 'axios'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 
 const loading = ref(true)
 const saving = ref(false)
@@ -237,6 +268,75 @@ const form = ref({
   max_uses: null,
   expires_at: ''
 })
+
+const slugChecking = ref(false)
+const slugAvailable = ref(null) // null = not checked, true = available, false = taken
+const slugError = ref('')
+const slugManuallyEdited = ref(false)
+let slugCheckTimer = null
+
+function slugify(text) {
+  return (text || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[äÄ]/g, 'ae')
+    .replace(/[öÖ]/g, 'oe')
+    .replace(/[üÜ]/g, 'ue')
+    .replace(/ß/g, 'ss')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+}
+
+const urlPreview = computed(() => {
+  const base = window.location.origin
+  return `${base}/join/${form.value.slug}`
+})
+
+function onLabelInput(value) {
+  if (!slugManuallyEdited.value && !editingLink.value) {
+    const slug = slugify(value)
+    form.value.slug = slug
+    if (slug) {
+      onSlugInput(slug)
+    } else {
+      slugAvailable.value = null
+      slugError.value = ''
+    }
+  }
+}
+
+function onSlugInput(value) {
+  const slug = (value || '').trim().toLowerCase().replace(/\s+/g, '-')
+  slugAvailable.value = null
+  slugError.value = ''
+
+  if (slugCheckTimer) clearTimeout(slugCheckTimer)
+
+  if (!slug) return
+  if (slug.length < 3) {
+    slugError.value = t('userSettings.referrals.form.slugTooShort')
+    return
+  }
+
+  slugChecking.value = true
+  slugCheckTimer = setTimeout(async () => {
+    try {
+      const { data } = await axios.get('/api/user/referrals/check-slug', { params: { slug } })
+      if (data.available) {
+        slugAvailable.value = true
+        slugError.value = ''
+      } else {
+        slugAvailable.value = false
+        slugError.value = t('userSettings.referrals.form.slugTaken')
+      }
+    } catch {
+      slugAvailable.value = null
+      slugError.value = ''
+    } finally {
+      slugChecking.value = false
+    }
+  }, 400)
+}
 
 onMounted(async () => {
   await loadData()
@@ -270,6 +370,10 @@ function openCreateDialog() {
     max_uses: null,
     expires_at: ''
   }
+  slugAvailable.value = null
+  slugError.value = ''
+  slugChecking.value = false
+  slugManuallyEdited.value = false
   showDialog.value = true
 }
 
@@ -361,7 +465,7 @@ function isExpired(link) {
 
 function formatDate(dateStr) {
   if (!dateStr) return ''
-  return new Date(dateStr).toLocaleDateString('de-DE', {
+  return new Date(dateStr).toLocaleDateString(locale.value === 'de' ? 'de-DE' : 'en-US', {
     year: 'numeric',
     month: '2-digit',
     day: '2-digit'
@@ -492,5 +596,34 @@ function formatDate(dateStr) {
   margin-top: 8px;
   font-size: 0.875rem;
   color: rgba(var(--v-theme-on-surface), 0.7);
+}
+
+.url-preview {
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  background: rgba(var(--v-theme-primary), 0.06);
+  border-radius: 6px;
+  font-size: 0.8125rem;
+  color: rgba(var(--v-theme-on-surface), 0.7);
+}
+
+.url-preview code {
+  color: rgb(var(--v-theme-primary));
+  word-break: break-all;
+}
+
+.optional-settings :deep(.v-expansion-panel) {
+  background: transparent !important;
+}
+
+.optional-settings :deep(.v-expansion-panel-title) {
+  min-height: 36px;
+  padding: 4px 0;
+  color: rgba(var(--v-theme-on-surface), 0.6);
+}
+
+.optional-settings :deep(.v-expansion-panel-text__wrapper) {
+  padding: 8px 0 0;
 }
 </style>

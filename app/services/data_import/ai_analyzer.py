@@ -58,10 +58,20 @@ class AIAnalyzer:
         self._schema_detector = SchemaDetector()
 
     def _get_default_model(self) -> str:
-        """Get the default LLM model ID."""
+        """
+        Get the default LLM model ID for API calls.
+
+        Returns the API-ready model ID (e.g., 'mistralai/...')
+        not the LLARS internal ID (e.g., 'Global/Mistral/...').
+        """
+        from services.llm.llm_client_factory import LLMClientFactory
+
         model = LLMModel.get_default_model()
         if model:
-            return model.model_id
+            # Resolve the API model ID using the factory's routing
+            _, api_model_id = LLMClientFactory.resolve_client_and_model_id(model.model_id)
+            if api_model_id:
+                return api_model_id
         return "gpt-4o-mini"  # Fallback
 
     def detect_type_from_structure(

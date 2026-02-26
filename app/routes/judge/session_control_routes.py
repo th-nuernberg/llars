@@ -9,6 +9,7 @@ from db.tables import (
     JudgeComparison, JudgeComparisonStatus
 )
 from auth.decorators import authentik_required
+from auth.access_control import require_judge_session_owner
 from decorators.permission_decorator import require_permission
 from decorators.error_handler import (
     handle_api_errors, NotFoundError, ValidationError, ConflictError
@@ -34,6 +35,8 @@ def start_session(session_id: int):
     session = JudgeSession.query.get(session_id)
     if not session:
         raise NotFoundError(f'Session {session_id} not found')
+
+    require_judge_session_owner(session_id, g.authentik_user)
 
     # Allow starting from CREATED, QUEUED, or PAUSED status
     if session.status not in [JudgeSessionStatus.CREATED, JudgeSessionStatus.QUEUED, JudgeSessionStatus.PAUSED]:
@@ -106,6 +109,8 @@ def resume_session(session_id: int):
     session = JudgeSession.query.get(session_id)
     if not session:
         raise NotFoundError(f'Session {session_id} not found')
+
+    require_judge_session_owner(session_id, g.authentik_user)
 
     # Allow resuming from RUNNING, PAUSED, or QUEUED status
     if session.status not in [JudgeSessionStatus.RUNNING, JudgeSessionStatus.PAUSED, JudgeSessionStatus.QUEUED]:
@@ -224,6 +229,8 @@ def pause_session(session_id: int):
     if not session:
         raise NotFoundError(f'Session {session_id} not found')
 
+    require_judge_session_owner(session_id, g.authentik_user)
+
     if session.status != JudgeSessionStatus.RUNNING:
         raise ValidationError(
             f'Session ist nicht am Laufen (Status: {session.status.value})'
@@ -257,6 +264,8 @@ def delete_session(session_id: int):
     session = JudgeSession.query.get(session_id)
     if not session:
         raise NotFoundError(f'Session {session_id} not found')
+
+    require_judge_session_owner(session_id, g.authentik_user)
 
     # Stop worker pool if running
     if session.status == JudgeSessionStatus.RUNNING:

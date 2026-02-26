@@ -228,9 +228,10 @@
               class="type-card"
               :class="{
                 selected: formData.evalType === type.id,
-                suggested: suggestedEvalType === type.id
+                suggested: suggestedEvalType === type.id,
+                disabled: disabledEvalTypes.has(type.id)
               }"
-              @click="selectEvalType(type.id)"
+              @click="!disabledEvalTypes.has(type.id) && selectEvalType(type.id)"
             >
               <div class="type-icon" :style="{ backgroundColor: type.color + '20' }">
                 <LIcon :color="type.color" size="32">{{ type.icon }}</LIcon>
@@ -243,6 +244,9 @@
               <LTag v-if="suggestedEvalType === type.id" variant="warning" size="small" class="suggested-tag">
                 {{ $t('scenarioManager.wizard.step2.recommended') }}
               </LTag>
+              <LTooltip v-if="disabledEvalTypes.has(type.id)" :text="$t('scenarioManager.wizard.step2.rankingDisabledHint')" location="top">
+                <LIcon size="16" color="grey" class="disabled-hint-icon">mdi-information-outline</LIcon>
+              </LTooltip>
             </div>
           </div>
         </div>
@@ -838,6 +842,7 @@ import { useI18n } from 'vue-i18n'
 import axios from 'axios'
 import { parseUserProviderModelId } from '@/utils/formatters'
 import { useAuth } from '@/composables/useAuth'
+import { useSnackbar } from '@/composables/useSnackbar'
 import { useScenarioManager } from '../composables/useScenarioManager'
 import importService from '@/services/importService'
 import EvaluationConfigEditor from './EvaluationConfigEditor.vue'
@@ -866,7 +871,8 @@ const props = defineProps({
 const emit = defineEmits(['close', 'created'])
 
 const { t, locale } = useI18n()
-const { createNewScenario, inviteUsers } = useScenarioManager()
+const { showError } = useSnackbar()
+const { createNewScenario, inviteUsers, deleteScenarioById } = useScenarioManager()
 const auth = useAuth()
 
 // JSON code examples (raw strings to avoid vue-i18n placeholder parsing)
@@ -1004,8 +1010,46 @@ const selectedTypeInfo = computed(() => {
   return evaluationTypes.value.find(t => t.id === formData.value.evalType)
 })
 
+const generationVariantStats = computed(() => {
+  const generationItems = analyzedData.value.filter(item => item?._source === 'generation')
+  if (generationItems.length === 0) {
+    return {
+      sourceCount: 0,
+      maxVariantsPerSource: 0,
+      supportsRanking: false
+    }
+  }
+
+  const countsBySource = new Map()
+  generationItems.forEach((item, index) => {
+    const rawSourceId = item.source_id ?? item._source_item_id ?? item._source_index ?? item.id ?? `idx_${index}`
+    const sourceId = String(rawSourceId)
+    countsBySource.set(sourceId, (countsBySource.get(sourceId) || 0) + 1)
+  })
+
+  const counts = Array.from(countsBySource.values())
+  const maxVariantsPerSource = counts.length > 0 ? Math.max(...counts) : 0
+
+  return {
+    sourceCount: countsBySource.size,
+    maxVariantsPerSource,
+    supportsRanking: maxVariantsPerSource >= 2
+  }
+})
+
+const disabledEvalTypes = computed(() => {
+  if (props.generationJobId && !generationVariantStats.value.supportsRanking) {
+    return new Set([EVAL_TYPES.RANKING])
+  }
+  return new Set()
+})
+
 const suggestedEvalType = computed(() => {
-  if (props.generationJobId) return EVAL_TYPES.RANKING
+  if (props.generationJobId) {
+    return generationVariantStats.value.supportsRanking
+      ? EVAL_TYPES.RANKING
+      : EVAL_TYPES.RATING
+  }
   return analysisResult.value?.suggestedType || null
 })
 
@@ -1329,10 +1373,13 @@ function buildProviderEvaluatorId(provider) {
 function getProviderIcon(provider) {
   const icons = {
     openai: 'mdi-creation',
+    ionos: 'mdi-domain',
+    openai_compatible: 'mdi-api',
     anthropic: 'mdi-head-snowflake',
     gemini: 'mdi-google',
     azure: 'mdi-microsoft-azure',
     ollama: 'mdi-llama',
+    vllm: 'mdi-chip',
     litellm: 'mdi-api',
     custom: 'mdi-cog'
   }
@@ -1343,10 +1390,13 @@ function getProviderIcon(provider) {
 function getProviderIconColor(provider) {
   const colors = {
     openai: '#10a37f',
+    ionos: '#0a4cd3',
+    openai_compatible: '#10a37f',
     anthropic: '#d4a574',
     gemini: '#4285f4',
     azure: '#0078d4',
     ollama: '#ffffff',
+    vllm: '#7c3aed',
     litellm: '#ffc107',
     custom: '#9e9e9e'
   }
@@ -1357,10 +1407,13 @@ function getProviderIconColor(provider) {
 function getProviderTypeLabel(providerType) {
   const labels = {
     openai: 'OpenAI',
+    ionos: 'IONOS AI Model Hub',
+    openai_compatible: 'OpenAI Compatible',
     anthropic: 'Anthropic',
     gemini: 'Google Gemini',
     azure: 'Azure OpenAI',
     ollama: 'Ollama',
+    vllm: 'vLLM',
     litellm: 'LiteLLM',
     custom: 'Custom'
   }
@@ -1942,12 +1995,11 @@ function transformGenerationDataForRanking(items, { splitByPrompt = false } = {}
       const model = item.llm_name || item._model || `Model_${suffix.toUpperCase()}`
       const variant = item._prompt_variant || ''
 
-      if (splitByPrompt && variant) {
-        metadata[`model_${suffix}`] = model
+      // Always store model and prompt separately to keep llms table clean.
+      // Previously: model = "Model (variant)" which polluted the llms table.
+      metadata[`model_${suffix}`] = model
+      if (variant) {
         metadata[`prompt_${suffix}`] = variant
-      } else {
-        // Keep model labels unique when same model was run with multiple prompts.
-        metadata[`model_${suffix}`] = variant ? `${model} (${variant})` : model
       }
     })
 
@@ -1972,7 +2024,50 @@ function getTaskType(evalType) {
 // Create scenario
 async function createScenario() {
   creating.value = true
+  let scenario = null
+  let importFailed = false
+
   try {
+    const taskType = getTaskType(formData.value.evalType)
+    const isFromGeneration = analyzedData.value.some(i => i._source === 'generation')
+
+    // Validate generation → ranking upfront to avoid creating empty scenarios.
+    if (taskType === 'ranking' && isFromGeneration && !generationVariantStats.value.supportsRanking) {
+      throw new Error(
+        'Ranking aus Batch-Generierung benötigt mindestens zwei Varianten pro Eingabetext (mehrere Modelle und/oder Prompts). Bitte wähle stattdessen "Rating" oder erweitere den Generation-Job.'
+      )
+    }
+
+    // Pre-compute import data before creating the scenario.
+    let importData = analyzedData.value
+    let fieldMapping = aiSuggestions.value?.field_mapping || null
+
+    // Set from_generation for ALL eval types so the backend:
+    // - skips long-format detection (which misdetects generation data)
+    // - uses force_new_threads=True (needed for generic IDs "0","1","2")
+    if (isFromGeneration) {
+      fieldMapping = { ...(fieldMapping || {}), from_generation: true }
+
+      if (taskType === 'ranking') {
+        const splitByPrompt = Boolean(formData.value.evalConfig?.config?.splitByPrompt)
+        importData = transformGenerationDataForRanking(analyzedData.value, { splitByPrompt })
+        fieldMapping.split_by_prompt = splitByPrompt
+
+        console.log('[ScenarioWizard] Ranking from generation:', {
+          inputItems: analyzedData.value.length,
+          groups: importData.length,
+          splitByPrompt,
+          featuresPerGroup: importData.map(g =>
+            Object.keys(g).filter(k => k.startsWith('summary_')).length
+          )
+        })
+      } else {
+        console.log(`[ScenarioWizard] ${taskType} from generation:`, {
+          items: importData.length
+        })
+      }
+    }
+
     // Map eval type to function_type_id for backend compatibility
     const functionTypeId = ID_TYPE_MAP[formData.value.evalType] || 2
 
@@ -1998,7 +2093,7 @@ async function createScenario() {
       delete scenarioPayload.config_json.llm_evaluators
     }
 
-    const scenario = await createNewScenario(scenarioPayload)
+    scenario = await createNewScenario(scenarioPayload)
 
     // Invite selected human users
     if (selectedUsers.value.length > 0 && scenario?.id) {
@@ -2017,30 +2112,6 @@ async function createScenario() {
     // Import file data into the scenario
     if (analyzedData.value.length > 0 && scenario?.id) {
       try {
-        const taskType = getTaskType(formData.value.evalType)
-        const isFromGeneration = analyzedData.value.some(i => i._source === 'generation')
-
-        // For ranking from generation: transform long-format → wide-format
-        let importData = analyzedData.value
-        let fieldMapping = aiSuggestions.value?.field_mapping || null
-
-        if (taskType === 'ranking' && isFromGeneration) {
-          const splitByPrompt = Boolean(formData.value.evalConfig?.config?.splitByPrompt)
-          importData = transformGenerationDataForRanking(analyzedData.value, { splitByPrompt })
-          console.log('[ScenarioWizard] Ranking from generation:', {
-            inputItems: analyzedData.value.length,
-            groups: importData.length,
-            splitByPrompt,
-            featuresPerGroup: importData.map(g =>
-              Object.keys(g).filter(k => k.startsWith('summary_')).length
-            )
-          })
-          fieldMapping = {
-            from_generation: true,
-            split_by_prompt: splitByPrompt
-          }
-        }
-
         const importResult = await importService.importFromData(
           importData,
           scenario.id,
@@ -2050,18 +2121,42 @@ async function createScenario() {
         )
         console.log('Data import result:', importResult)
 
+        const importedCount = Number(importResult?.imported_count || 0)
+        if (!importResult?.success || importedCount <= 0) {
+          throw new Error(
+            importResult?.error ||
+            importResult?.message ||
+            'Der Datenimport hat keine auswertbaren Items erzeugt.'
+          )
+        }
+
         if (importResult.warnings?.length > 0) {
           console.warn('Import warnings:', importResult.warnings)
         }
       } catch (importError) {
+        importFailed = true
         console.error('Failed to import data:', importError)
-        // Continue anyway - scenario was created, just data import failed
+        throw importError
       }
     }
 
     emit('created', scenario)
   } catch (error) {
     console.error('Failed to create scenario:', error)
+    const errorMessage = error?.response?.data?.error ||
+      error?.response?.data?.message ||
+      error?.message ||
+      'Szenario konnte nicht erstellt werden.'
+    showError(errorMessage)
+
+    // Prevent orphaned empty scenarios when import fails.
+    if (importFailed && scenario?.id) {
+      try {
+        await deleteScenarioById(scenario.id)
+      } catch (cleanupError) {
+        console.error('Failed to cleanup scenario after import failure:', cleanupError)
+      }
+    }
   } finally {
     creating.value = false
   }
@@ -2086,12 +2181,47 @@ async function loadFromGenerationJob() {
 
   loadingFromGeneration.value = true
   try {
-    // Fetch all completed outputs from the generation job
-    const response = await axios.get(`/api/generation/jobs/${props.generationJobId}/outputs`, {
-      params: { status: 'completed', per_page: 1000, include_prompts: true }
-    })
+    // Fetch all completed outputs from the generation job.
+    // The backend caps per_page at 100, so we page through the full result set.
+    const outputs = []
+    let page = 1
+    let pages = 1
 
-    const outputs = response.data.items || []
+    while (page <= pages) {
+      let response
+      try {
+        response = await axios.get(`/api/generation/jobs/${props.generationJobId}/outputs`, {
+          params: { status: 'completed', page, per_page: 100, include_prompts: true }
+        })
+      } catch (err) {
+        console.error(`[ScenarioWizard] Failed to load page ${page}/${pages}:`, err.message)
+        if (outputs.length === 0) {
+          throw new Error(`Fehler beim Laden der Generation-Daten (Seite ${page}): ${err.message}`)
+        }
+        // Partial data loaded – warn and continue with what we have
+        console.warn(`[ScenarioWizard] Continuing with ${outputs.length} outputs loaded before error`)
+        break
+      }
+
+      const pageItems = response.data.items || []
+      if (pageItems.length === 0) {
+        if (page === 1) {
+          console.warn('[ScenarioWizard] First page returned 0 items')
+        } else {
+          console.warn(`[ScenarioWizard] Page ${page} returned 0 items, stopping pagination`)
+        }
+        break
+      }
+
+      outputs.push(...pageItems)
+
+      const reportedPages = Number(response.data.pages || 1)
+      pages = Number.isFinite(reportedPages) && reportedPages > 0 ? reportedPages : 1
+      page += 1
+    }
+
+    console.log(`[ScenarioWizard] Loaded ${outputs.length} generation outputs across ${page - 1} page(s)`)
+
     if (outputs.length === 0) {
       console.warn('No completed outputs found in generation job')
       return
@@ -2740,6 +2870,23 @@ onMounted(() => {
 .type-card.suggested {
   border-color: rgba(var(--v-theme-warning), 0.5);
   padding-top: 36px;
+}
+
+.type-card.disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  pointer-events: auto;
+}
+
+.type-card.disabled:hover {
+  border-color: rgba(var(--v-theme-on-surface), 0.1);
+  background-color: transparent;
+}
+
+.disabled-hint-icon {
+  position: absolute;
+  top: 8px;
+  right: 8px;
 }
 
 .type-icon {

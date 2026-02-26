@@ -18,13 +18,13 @@ def is_scenario_owner(scenario, username) -> bool:
         return True
 
     # Also check ScenarioUsers OWNER role (for seeded scenarios where created_by may be NULL)
-    from db.models import ScenarioUsers, ScenarioRoles, Users
+    from db.models import ScenarioUsers, ScenarioRoles, User
     owner_entry = ScenarioUsers.query.filter_by(
         scenario_id=scenario.id,
         role=ScenarioRoles.OWNER.value
     ).first()
     if owner_entry:
-        owner_user = Users.query.get(owner_entry.user_id)
+        owner_user = User.query.get(owner_entry.user_id)
         if owner_user and owner_user.username == username:
             return True
 

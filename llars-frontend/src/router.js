@@ -97,6 +97,11 @@ import GenerationJobDetail from "@/components/Generation/GenerationJobDetail.vue
 import GenerationWizard from "@/components/Generation/GenerationWizard.vue";
 import DemoVideoPage from "@/views/Video/DemoVideoPage.vue";
 
+// Pipeline
+import PipelineHub from "@/views/Pipeline/PipelineHub.vue";
+import PipelineSession from "@/views/Pipeline/PipelineSession.vue";
+import PipelineWizard from "@/views/Pipeline/PipelineWizard.vue";
+
 const routes = [
     { path: '/Impressum', component: Impressum, meta: { requiresAuth: false } },
     { path: '/Datenschutz', component: Datenschutz, meta: { requiresAuth: false } },
@@ -186,6 +191,11 @@ const routes = [
     { path: '/generation', name: 'GenerationHub', component: GenerationHub, meta: { requiresAuth: true } },
     { path: '/generation/new', name: 'GenerationWizard', component: GenerationWizard, meta: { requiresAuth: true } },
     { path: '/generation/:jobId', name: 'GenerationJobDetail', component: GenerationJobDetail, props: true, meta: { requiresAuth: true } },
+
+    // Pipeline
+    { path: '/pipeline', name: 'PipelineHub', component: PipelineHub, meta: { requiresAuth: true } },
+    { path: '/pipeline/new', name: 'PipelineWizard', component: PipelineWizard, meta: { requiresAuth: true } },
+    { path: '/pipeline/:runId', name: 'PipelineSession', component: PipelineSession, props: true, meta: { requiresAuth: true } },
 
     { path : '/comparison', name:'Comparison', component: Comparison, meta: { requiresAuth: true } },
     {

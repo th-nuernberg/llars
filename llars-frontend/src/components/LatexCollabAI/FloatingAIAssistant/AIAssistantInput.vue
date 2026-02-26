@@ -6,7 +6,7 @@
         v-for="action in quickActions"
         :key="action.id"
         :variant="action.requiresSelection && !hasSelection ? 'outlined' : 'secondary'"
-        size="x-small"
+        size="small"
         :disabled="action.requiresSelection && !hasSelection"
         :title="action.requiresSelection && !hasSelection ? $t('floatingAi.quickActions.selectFirst') : ''"
         @click="$emit('quick-action', action.id)"

@@ -3,6 +3,7 @@ OIDC Authentication Decorators for Flask (Authentik-backed)
 Provides decorators for protecting routes with bearer tokens
 """
 
+import hmac
 import os
 import uuid
 import logging
@@ -313,12 +314,9 @@ def system_api_key_required(f):
     """
     Decorator to require valid System Admin API Key for debug/admin endpoints.
 
-    The API key should be passed via:
-    - Header: X-API-Key: <key>
-    - Or Query param: ?api_key=<key>
-
-    This decorator sets g.authentik_user to 'admin' for compatibility
-    with existing code that uses the username.
+    The API key must be passed via the X-API-Key header.
+    Query parameter authentication is NOT supported (keys would leak in
+    server logs, browser history, and referrer headers).
 
     Usage:
         @app.route('/debug/something')
@@ -336,17 +334,17 @@ def system_api_key_required(f):
                 'message': 'System API key not configured'
             }), 500
 
-        # Get API key from request (header or query param)
-        api_key = request.headers.get('X-API-Key') or request.args.get('api_key')
+        # API key only via header (never via URL query parameter)
+        api_key = request.headers.get('X-API-Key') or ''
 
         if not api_key:
             return jsonify({
                 'error': 'Missing API key',
-                'message': 'X-API-Key header or api_key query parameter is required'
+                'message': 'X-API-Key header is required'
             }), 401
 
-        # Validate API key
-        if api_key != SYSTEM_ADMIN_API_KEY:
+        # Timing-safe comparison to prevent timing attacks
+        if not hmac.compare_digest(api_key, SYSTEM_ADMIN_API_KEY):
             logger.warning(f"Invalid API key attempt from {request.remote_addr}")
             return jsonify({
                 'error': 'Invalid API key',
@@ -400,13 +398,12 @@ def debug_route_protected(f):
 def api_key_or_token_required(f):
     """
     Decorator that accepts either:
-    1. User's personal API key (X-API-Key header or api_key query param)
-    2. System Admin API key
-    3. OAuth Bearer token
+    1. User's personal API key (X-API-Key header)
+    2. System Admin API key (X-API-Key header)
+    3. OAuth Bearer token (Authorization header)
 
-    This is useful for programmatic access to the API.
-
-    The user's API key is stored in the users.api_key field.
+    API keys must be passed via the X-API-Key header.
+    Query parameter authentication is NOT supported for security reasons.
 
     Usage:
         @app.route('/api/something')
@@ -419,12 +416,12 @@ def api_key_or_token_required(f):
     def decorated_function(*args, **kwargs):
         from db.models import User
 
-        # 1. Try API Key first (header or query param)
-        api_key = request.headers.get('X-API-Key') or request.args.get('api_key')
+        # 1. Try API Key from header only (never from URL query parameter)
+        api_key = request.headers.get('X-API-Key') or ''
 
         if api_key:
-            # Check if it's the System Admin API Key
-            if SYSTEM_ADMIN_API_KEY and api_key == SYSTEM_ADMIN_API_KEY:
+            # Check if it's the System Admin API Key (timing-safe comparison)
+            if SYSTEM_ADMIN_API_KEY and hmac.compare_digest(api_key, SYSTEM_ADMIN_API_KEY):
                 g.authentik_user = get_or_create_user(SYSTEM_ADMIN_USERNAME)
                 g.authentik_user_id = SYSTEM_ADMIN_USERNAME
                 g.is_system_api_key = True
@@ -480,7 +477,7 @@ def api_key_or_token_required(f):
         # 3. No valid authentication provided
         return jsonify({
             'error': 'Authentication required',
-            'message': 'Provide either X-API-Key header, api_key query param, or Authorization Bearer token'
+            'message': 'Provide either X-API-Key header or Authorization Bearer token'
         }), 401
 
     return decorated_function

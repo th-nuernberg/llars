@@ -343,6 +343,28 @@
               />
             </v-col>
           </v-row>
+
+          <v-divider class="mb-4" />
+
+          <!-- Parallelism -->
+          <h4 class="subsection-title">{{ $t('generation.wizard.step4.parallelism') }}</h4>
+
+          <v-row>
+            <v-col cols="12" md="8">
+              <v-slider
+                v-model="formData.maxParallel"
+                :label="$t('generation.wizard.step4.maxParallel')"
+                :min="1"
+                :max="adminMaxParallel"
+                :step="1"
+                thumb-label
+                show-ticks="always"
+                :hint="$t('generation.wizard.step4.maxParallelHint')"
+                persistent-hint
+                class="mb-4"
+              />
+            </v-col>
+          </v-row>
         </div>
       </div>
 
@@ -361,6 +383,10 @@
             <div class="review-item">
               <span class="review-label">{{ $t('generation.wizard.step4.jobName') }}:</span>
               <span class="review-value">{{ formData.name }}</span>
+            </div>
+            <div class="review-item">
+              <span class="review-label">{{ $t('generation.wizard.step4.parallelism') }}:</span>
+              <span class="review-value">{{ formData.maxParallel }}x</span>
             </div>
           </div>
 
@@ -482,6 +508,7 @@ import { useI18n } from 'vue-i18n'
 import axios from 'axios'
 import { useGeneration } from '@/composables/useGeneration'
 import { parseUserProviderModelId } from '@/utils/formatters'
+import { generationApi } from '@/services/generationApi'
 
 const emit = defineEmits(['close', 'created'])
 
@@ -513,6 +540,7 @@ const promptTemplates = ref([])
 const availableModels = ref([])
 const selectedJobInfo = ref(null)
 const costEstimate = ref(null)
+const adminMaxParallel = ref(5)
 
 // Form data
 const formData = ref({
@@ -527,7 +555,8 @@ const formData = ref({
     max_tokens: null,  // null = unlimited (good for reasoning models like Magistral)
     retry_count: 3
   },
-  budgetLimit: null
+  budgetLimit: null,
+  maxParallel: 3
 })
 
 // Computed
@@ -869,7 +898,10 @@ function buildJobConfig() {
     prompts: formData.value.prompts,
     llm_models: formData.value.llmModels,
     generation_params: formData.value.generationParams,
-    budget_limit_usd: formData.value.budgetLimit
+    budget_limit_usd: formData.value.budgetLimit,
+    limits: {
+      max_parallel: formData.value.maxParallel
+    }
   }
 }
 
@@ -892,8 +924,20 @@ async function createJob() {
 }
 
 // Lifecycle
-onMounted(() => {
+onMounted(async () => {
   loadJobs()
+  try {
+    const res = await generationApi.getMaxParallel()
+    if (res.data?.max_parallel) {
+      adminMaxParallel.value = res.data.max_parallel
+      // Clamp formData if default exceeds admin max
+      if (formData.value.maxParallel > adminMaxParallel.value) {
+        formData.value.maxParallel = adminMaxParallel.value
+      }
+    }
+  } catch (e) {
+    console.warn('[GenerationWizard] Could not load max parallel setting:', e)
+  }
 })
 </script>
 

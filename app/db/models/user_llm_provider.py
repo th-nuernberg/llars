@@ -40,7 +40,7 @@ class UserLLMProvider(db.Model):
     provider_type: Mapped[str] = mapped_column(
         db.String(50),
         nullable=False,
-        comment="Provider type: openai, anthropic, gemini, ollama, litellm, custom"
+        comment="Provider type: openai, openai_compatible, anthropic, gemini, ollama, vllm, litellm, custom"
     )
     name: Mapped[str] = mapped_column(
         db.String(100),

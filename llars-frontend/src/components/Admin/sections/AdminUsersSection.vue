@@ -453,7 +453,7 @@
         </v-card-title>
         <v-divider></v-divider>
         <v-card-text>
-          <span v-html="$t('admin.users.deleteDialog.confirm', { username: userToDelete?.username })"></span>
+          <span v-html="$t('admin.users.deleteDialog.confirm', { username: stripHtml(userToDelete?.username) })"></span>
           <div class="text-caption text-medium-emphasis mt-2">
             {{ $t('admin.users.deleteDialog.info') }}
           </div>
@@ -483,6 +483,7 @@ import { useSkeletonLoading } from '@/composables/useSkeletonLoading';
 import { useMobile } from '@/composables/useMobile';
 import { logI18n } from '@/utils/logI18n';
 import { COLLAB_COLOR_PRESETS, isColorInAiReservedRange } from '@/constants/colors';
+import { stripHtml } from '@/utils/sanitize';
 
 const { t } = useI18n();
 const { isMobile } = useMobile();

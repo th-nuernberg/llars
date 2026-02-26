@@ -377,6 +377,16 @@ const allItems = computed(() => ([
     category: 'admin'
   },
   {
+    title: t('home.features.pipeline.title'),
+    description: t('home.features.pipeline.description'),
+    route: '/pipeline',
+    icon: 'mdi-transit-connection-variant',
+    permission: 'feature:pipeline:view',
+    category: 'research',
+    badge: t('home.badges.alpha'),
+    badgeColor: 'warning'
+  },
+  {
     title: t('home.features.userSettings.title'),
     description: t('home.features.userSettings.description'),
     route: '/settings',

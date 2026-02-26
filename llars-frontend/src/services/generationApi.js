@@ -234,6 +234,19 @@ export const generationApi = {
   },
 
   // ===========================================================================
+  // SETTINGS
+  // ===========================================================================
+
+  /**
+   * Get admin-configured max parallelism for generation jobs.
+   *
+   * @returns {Promise<Object>} { max_parallel: N }
+   */
+  getMaxParallel() {
+    return axios.get(`${API_BASE}/settings/max-parallel`)
+  },
+
+  // ===========================================================================
   // HEALTH CHECK
   // ===========================================================================
 

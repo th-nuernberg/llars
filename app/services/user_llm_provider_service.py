@@ -12,6 +12,7 @@ from datetime import datetime
 
 import requests
 
+from auth.url_validator import validate_url_not_internal
 from db.database import db
 from db.models.user_llm_provider import UserLLMProvider, UserLLMProviderShare
 from services.llm.secret_encryption import encrypt_api_key, decrypt_api_key
@@ -22,11 +23,28 @@ logger = logging.getLogger(__name__)
 class UserLLMProviderService:
     """Service for managing user-owned LLM providers."""
 
+    OPENAI_COMPATIBLE_PROVIDER_TYPES = {
+        "openai",
+        "ionos",
+        "openai_compatible",
+        "litellm",
+        "ollama",
+        "vllm",
+        "mistral",
+        "deepseek",
+        "custom",
+    }
+
     DEFAULT_BASE_URLS = {
         "openai": "https://api.openai.com/v1",
+        "ionos": "https://openai.inference.de-txl.ionos.com/v1",
+        "openai_compatible": "https://api.openai.com/v1",
         "ollama": "http://localhost:11434",
+        "vllm": "http://localhost:8000/v1",
         "anthropic": "https://api.anthropic.com",
         "gemini": "https://generativelanguage.googleapis.com",
+        "mistral": "https://api.mistral.ai/v1",
+        "deepseek": "https://api.deepseek.com",
     }
 
     @staticmethod
@@ -83,6 +101,8 @@ class UserLLMProviderService:
             Created UserLLMProvider instance
         """
         from decorators.error_handler import ConflictError
+
+        provider_type = (provider_type or "").strip().lower()
 
         # Check for duplicate name
         existing = UserLLMProvider.query.filter_by(
@@ -285,7 +305,11 @@ class UserLLMProviderService:
 
             base_url = provider.base_url or UserLLMProviderService._default_base_url(provider.provider_type)
 
-            # Test with a simple request
+            # SSRF-Schutz: User-Provider dürfen NICHT auf interne Netze zugreifen
+            if base_url:
+                validate_url_not_internal(base_url, allow_private=False)
+
+            # Test with a simple request (config ohne _admin_provider → strikt)
             test_result = LLMProviderService.test_connection(
                 provider_type=provider.provider_type,
                 api_key=api_key,
@@ -328,7 +352,7 @@ class UserLLMProviderService:
 
         config = config or {}
 
-        if provider_type not in {"openai", "litellm", "custom"}:
+        if provider_type not in UserLLMProviderService.OPENAI_COMPATIBLE_PROVIDER_TYPES:
             raise ValueError("Provider type not supported for model listing")
 
         if provider_type == "openai" and not api_key:
@@ -337,6 +361,9 @@ class UserLLMProviderService:
         resolved_base_url = (base_url or UserLLMProviderService._default_base_url(provider_type) or "").rstrip("/")
         if not resolved_base_url:
             raise ValueError("base_url ist erforderlich")
+
+        # SSRF-Schutz: User-Provider dürfen NICHT auf interne Netze zugreifen
+        validate_url_not_internal(resolved_base_url, allow_private=False)
 
         headers = {}
         if api_key:

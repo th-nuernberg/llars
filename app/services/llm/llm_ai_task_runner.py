@@ -344,6 +344,80 @@ class LLMAITaskRunner:
         return available
 
     @staticmethod
+    def _get_comparison_prompt_settings(scenario_id: int) -> Tuple[str, List[str]]:
+        """
+        Resolve comparison prompt settings from scenario config.
+
+        Supports both flat config_json and nested config_json.eval_config.config.
+        Returns a tuple of (test_instruction, criteria_list).
+        """
+        default_question = "Welche Antwort ist besser?"
+
+        def _to_config_dict(raw: Any) -> Dict[str, Any]:
+            if isinstance(raw, str):
+                try:
+                    raw = json.loads(raw)
+                except (json.JSONDecodeError, TypeError):
+                    return {}
+            return raw if isinstance(raw, dict) else {}
+
+        def _as_localized_text(value: Any) -> str:
+            if isinstance(value, str):
+                return value.strip()
+            if isinstance(value, dict):
+                for key in ("de", "en"):
+                    text = value.get(key)
+                    if isinstance(text, str) and text.strip():
+                        return text.strip()
+                for text in value.values():
+                    if isinstance(text, str) and text.strip():
+                        return text.strip()
+            return ""
+
+        scenario = RatingScenarios.query.get(scenario_id)
+        if not scenario:
+            return default_question, []
+
+        config = _to_config_dict(scenario.config_json)
+        eval_config = config.get("eval_config")
+        if isinstance(eval_config, dict):
+            nested = eval_config.get("config")
+            if isinstance(nested, dict):
+                eval_config = nested
+        if not isinstance(eval_config, dict):
+            eval_config = config
+
+        question = _as_localized_text(eval_config.get("question")) or default_question
+
+        criteria_raw = eval_config.get("criteria") or []
+        normalized_criteria: List[str] = []
+        if isinstance(criteria_raw, list):
+            for criterion in criteria_raw:
+                if isinstance(criterion, str):
+                    name = criterion.strip()
+                    if name:
+                        normalized_criteria.append(name)
+                    continue
+
+                if isinstance(criterion, dict):
+                    name_value = (
+                        criterion.get("name")
+                        or criterion.get("label")
+                        or criterion.get("id")
+                    )
+                    name = _as_localized_text(name_value)
+                    if not name:
+                        continue
+
+                    weight = criterion.get("weight")
+                    if isinstance(weight, (int, float)):
+                        normalized_criteria.append(f"{name} ({round(float(weight) * 100)}%)")
+                    else:
+                        normalized_criteria.append(name)
+
+        return question, normalized_criteria
+
+    @staticmethod
     def _run_comparison_sessions(
         model_id: str,
         session_ids: Iterable[int],
@@ -356,6 +430,12 @@ class LLMAITaskRunner:
         compares the two responses and picks a winner.
         """
         client, api_model_id = LLMClientFactory.resolve_client_and_model_id(model_id)
+        comparison_question, comparison_criteria = LLMAITaskRunner._get_comparison_prompt_settings(scenario_id)
+
+        criteria_block = ""
+        if comparison_criteria:
+            criteria_lines = "\n".join(f"- {criterion}" for criterion in comparison_criteria)
+            criteria_block = f"Bewertungskriterien:\n{criteria_lines}\n\n"
 
         for session_id in session_ids:
             try:
@@ -415,10 +495,12 @@ class LLMAITaskRunner:
                         "Antworte ausschließlich im JSON-Format."
                     )
                     user_prompt = (
+                        f"Testanweisung: {comparison_question}\n\n"
+                        f"{criteria_block}"
                         f"Nutzeranfrage: {user_question}\n\n"
                         f"Antwort A (LLM 1):\n{llm1_response}\n\n"
                         f"Antwort B (LLM 2):\n{llm2_response}\n\n"
-                        "Welche Antwort ist besser? Gib JSON im Format:\n"
+                        "Halte dich an die Testanweisung und gib JSON im Format:\n"
                         "{\n"
                         '  "winner": "A" | "B" | "tie",\n'
                         '  "confidence": 1-5,\n'
@@ -1671,6 +1753,12 @@ Antworte im JSON-Format:
     def _run_comparison(model_id: str, thread_ids: Iterable[int], scenario_id: int) -> None:
         """Compare two responses/texts and choose the better one."""
         client, api_model_id = LLMClientFactory.resolve_client_and_model_id(model_id)
+        comparison_question, comparison_criteria = LLMAITaskRunner._get_comparison_prompt_settings(scenario_id)
+
+        criteria_block = ""
+        if comparison_criteria:
+            criteria_lines = "\n".join(f"- {criterion}" for criterion in comparison_criteria)
+            criteria_block = f"Bewertungskriterien:\n{criteria_lines}\n\n"
 
         for thread_id in thread_ids:
             try:
@@ -1702,10 +1790,12 @@ Antworte im JSON-Format:
                     "Antworte ausschließlich im JSON-Format."
                 )
                 user_prompt = (
+                    f"Testanweisung: {comparison_question}\n\n"
+                    f"{criteria_block}"
                     "Vergleiche die folgenden zwei Texte/Antworten.\n\n"
                     f"Text A:\n{text_a}\n\n"
                     f"Text B:\n{text_b}\n\n"
-                    "Gib JSON im Format:\n"
+                    "Halte dich an die Testanweisung und gib JSON im Format:\n"
                     "{\n"
                     '  "winner": "A" | "B" | "tie",\n'
                     '  "confidence": 1-5,\n'

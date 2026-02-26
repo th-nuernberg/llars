@@ -3,6 +3,12 @@ Scenario Schema API
 
 API-Endpoints für das einheitliche EvaluationData Schema-Format.
 
+SECURITY:
+---------
+Alle szenario-bezogenen Endpoints prüfen die Mitgliedschaft des anfragenden
+Users über ScenarioUsers. Nur eingeladene User (OWNER, EVALUATOR, VIEWER)
+und Admins erhalten Zugriff auf Szenario-Daten.
+
 SCHEMA GROUND TRUTH:
 -------------------
 Die Schemas sind definiert in:
@@ -29,11 +35,13 @@ Verwendung:
 import logging
 from flask import jsonify, request, g
 from auth.decorators import authentik_required
+from auth.access_control import require_scenario_membership
 from decorators.error_handler import (
     handle_api_errors, NotFoundError, ValidationError, ForbiddenError
 )
+from decorators.permission_decorator import has_role
 from db.models import (
-    RatingScenarios, ScenarioItems, EvaluationItem
+    RatingScenarios, ScenarioItems, ScenarioUsers, EvaluationItem
 )
 from services.evaluation.schema_transformer_service import SchemaTransformer
 from schemas.evaluation_data_schemas import EvaluationType
@@ -90,6 +98,9 @@ def get_scenario_schema_overview(scenario_id: int):
     scenario = RatingScenarios.query.get(scenario_id)
     if not scenario:
         raise NotFoundError(f'Scenario {scenario_id} not found')
+
+    # Zugriffskontrolle: Nur eingeladene User und Admins
+    require_scenario_membership(scenario_id, g.authentik_user)
 
     # Evaluation Type bestimmen
     eval_type = SchemaTransformer.get_evaluation_type_for_scenario(scenario)
@@ -171,6 +182,9 @@ def get_item_schema_data(scenario_id: int, item_id: int):
     if not scenario:
         raise NotFoundError(f'Scenario {scenario_id} not found')
 
+    # Zugriffskontrolle: Nur eingeladene User und Admins
+    require_scenario_membership(scenario_id, g.authentik_user)
+
     # Verify item is in this scenario
     scenario_item = ScenarioItems.query.filter_by(
         scenario_id=scenario_id,
@@ -183,8 +197,10 @@ def get_item_schema_data(scenario_id: int, item_id: int):
     # Ground Truth nur für Owner/Admin
     include_ground_truth = request.args.get('include_ground_truth', 'false').lower() == 'true'
     if include_ground_truth:
-        # TODO: Check if user is owner/admin
-        pass
+        username = getattr(g.authentik_user, 'username', '')
+        is_owner = scenario.created_by == username
+        if not is_owner and not has_role(g.authentik_user, 'admin'):
+            include_ground_truth = False
 
     # Transform to schema format
     try:
@@ -240,9 +256,19 @@ def get_items_schema_batch(scenario_id: int):
     if not scenario:
         raise NotFoundError(f'Scenario {scenario_id} not found')
 
+    # Zugriffskontrolle: Nur eingeladene User und Admins
+    require_scenario_membership(scenario_id, g.authentik_user)
+
     data = request.get_json() or {}
     item_ids = data.get('item_ids', [])
     include_ground_truth = data.get('include_ground_truth', False)
+
+    # Ground Truth nur für Owner/Admin
+    if include_ground_truth:
+        username = getattr(g.authentik_user, 'username', '')
+        is_owner = scenario.created_by == username
+        if not is_owner and not has_role(g.authentik_user, 'admin'):
+            include_ground_truth = False
 
     if not item_ids:
         raise ValidationError('item_ids is required')
@@ -273,7 +299,7 @@ def get_items_schema_batch(scenario_id: int):
             results.append(schema_data.model_dump())
         except Exception as e:
             logger.warning(f'Failed to transform item {item_id}: {e}')
-            failed.append({'item_id': item_id, 'error': str(e)})
+            failed.append({'item_id': item_id, 'error': 'Schema transformation failed'})
 
     return jsonify({
         'items': results,

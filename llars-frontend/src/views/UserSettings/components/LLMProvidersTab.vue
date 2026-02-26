@@ -176,9 +176,9 @@
               </template>
             </v-select>
 
-            <!-- Name field: hidden for OpenAI (auto-generated) -->
+            <!-- Name field: hidden for OpenAI/IONOS (auto-generated) -->
             <v-text-field
-              v-if="form.provider_type !== 'openai'"
+              v-if="!isFixedCatalogProvider"
               v-model="form.name"
               :label="$t('userSettings.providers.form.name')"
               :rules="[v => !!v || $t('userSettings.providers.form.nameRequired')]"
@@ -193,7 +193,7 @@
               :type="showApiKey ? 'text' : 'password'"
               variant="outlined"
               density="comfortable"
-              :placeholder="editingProvider ? $t('userSettings.providers.form.apiKeyUnchanged') : 'sk-...'"
+              :placeholder="apiKeyPlaceholder"
               :append-inner-icon="showApiKey ? 'mdi-eye-off' : 'mdi-eye'"
               @click:append-inner="showApiKey = !showApiKey"
             />
@@ -223,8 +223,165 @@
               </template>
             </v-select>
 
+            <!-- IONOS: Multi-select dropdown with predefined models -->
+            <v-select
+              v-if="form.provider_type === 'ionos'"
+              v-model="form.selected_models"
+              :items="ionosModelCatalog"
+              item-title="title"
+              item-value="id"
+              label="IONOS Modelle"
+              variant="outlined"
+              density="comfortable"
+              multiple
+              chips
+              closable-chips
+              hint="Modelle auswählen die verfügbar sein sollen"
+              persistent-hint
+            >
+              <template #item="{ item, props }">
+                <v-list-item v-bind="props">
+                  <template #append>
+                    <span class="text-caption text-medium-emphasis">{{ item.raw.meta }}</span>
+                  </template>
+                </v-list-item>
+              </template>
+            </v-select>
+
+            <!-- Anthropic: Multi-select dropdown with predefined models -->
+            <v-select
+              v-if="form.provider_type === 'anthropic'"
+              v-model="form.selected_models"
+              :items="anthropicModelCatalog"
+              item-title="title"
+              item-value="id"
+              label="Claude Modelle"
+              variant="outlined"
+              density="comfortable"
+              multiple
+              chips
+              closable-chips
+              hint="Modelle auswählen die verfügbar sein sollen"
+              persistent-hint
+            >
+              <template #item="{ item, props }">
+                <v-list-item v-bind="props">
+                  <template #append>
+                    <span class="text-caption text-medium-emphasis">{{ item.raw.meta }}</span>
+                  </template>
+                </v-list-item>
+              </template>
+            </v-select>
+
+            <!-- Gemini: Multi-select dropdown with predefined models -->
+            <v-select
+              v-if="form.provider_type === 'gemini'"
+              v-model="form.selected_models"
+              :items="geminiModelCatalog"
+              item-title="title"
+              item-value="id"
+              label="Gemini Modelle"
+              variant="outlined"
+              density="comfortable"
+              multiple
+              chips
+              closable-chips
+              hint="Modelle auswählen die verfügbar sein sollen"
+              persistent-hint
+            >
+              <template #item="{ item, props }">
+                <v-list-item v-bind="props">
+                  <template #append>
+                    <span class="text-caption text-medium-emphasis">{{ item.raw.meta }}</span>
+                  </template>
+                </v-list-item>
+              </template>
+            </v-select>
+
+            <!-- Mistral: Multi-select dropdown with predefined models -->
+            <v-select
+              v-if="form.provider_type === 'mistral'"
+              v-model="form.selected_models"
+              :items="mistralModelCatalog"
+              item-title="title"
+              item-value="id"
+              label="Mistral Modelle"
+              variant="outlined"
+              density="comfortable"
+              multiple
+              chips
+              closable-chips
+              hint="Modelle auswählen die verfügbar sein sollen"
+              persistent-hint
+            >
+              <template #item="{ item, props }">
+                <v-list-item v-bind="props">
+                  <template #append>
+                    <span class="text-caption text-medium-emphasis">{{ item.raw.meta }}</span>
+                  </template>
+                </v-list-item>
+              </template>
+            </v-select>
+
+            <!-- DeepSeek: Multi-select dropdown with predefined models -->
+            <v-select
+              v-if="form.provider_type === 'deepseek'"
+              v-model="form.selected_models"
+              :items="deepseekModelCatalog"
+              item-title="title"
+              item-value="id"
+              label="DeepSeek Modelle"
+              variant="outlined"
+              density="comfortable"
+              multiple
+              chips
+              closable-chips
+              hint="Modelle auswählen die verfügbar sein sollen"
+              persistent-hint
+            >
+              <template #item="{ item, props }">
+                <v-list-item v-bind="props">
+                  <template #append>
+                    <span class="text-caption text-medium-emphasis">{{ item.raw.meta }}</span>
+                  </template>
+                </v-list-item>
+              </template>
+            </v-select>
+
+            <div v-if="showDynamicModelSelector" class="d-flex align-center justify-space-between mb-2">
+              <div class="text-caption text-medium-emphasis">
+                Verfügbare Modelle über `GET /models`
+              </div>
+              <LBtn
+                variant="tonal"
+                size="small"
+                :loading="loadingDiscoveredModels"
+                :disabled="!canFetchModels"
+                @click="fetchModelsForForm"
+              >
+                <v-icon start size="small">mdi-refresh</v-icon>
+                Modelle laden
+              </LBtn>
+            </div>
+
+            <v-combobox
+              v-if="showDynamicModelSelector"
+              v-model="form.selected_models"
+              :items="dynamicModelOptions"
+              :loading="loadingDiscoveredModels"
+              label="Modelle"
+              variant="outlined"
+              density="comfortable"
+              multiple
+              chips
+              closable-chips
+              clearable
+              hint="Modelle auswählen oder manuell eintragen"
+              persistent-hint
+            />
+
             <v-text-field
-              v-if="selectedProviderType?.supports_base_url && form.provider_type !== 'openai'"
+              v-if="selectedProviderType?.supports_base_url && !isFixedCatalogProvider"
               v-model="form.base_url"
               :label="$t('userSettings.providers.form.baseUrl')"
               variant="outlined"
@@ -340,7 +497,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import LCard from '@/components/common/LCard.vue'
 import LBtn from '@/components/common/LBtn.vue'
@@ -362,6 +519,8 @@ const editingProvider = ref(null)
 const formRef = ref(null)
 const formValid = ref(false)
 const showApiKey = ref(false)
+const loadingDiscoveredModels = ref(false)
+const discoveredModels = ref([])
 
 const form = ref({
   provider_type: '',
@@ -388,6 +547,62 @@ const openaiModelCatalog = [
   { id: 'o4-mini', title: 'o4 Mini', meta: '200K ctx · 100K out', context_window: 200000, max_output_tokens: 100000, supports_vision: true, supports_reasoning: true },
 ]
 
+const ionosModelCatalog = [
+  // Standard (0,15€/1M)
+  { id: 'meta-llama/Meta-Llama-3.1-8B-Instruct', title: 'Llama 3.1 8B Instruct', meta: '8B · 128K ctx · 0,15€/1M', input_cost: 0.15, output_cost: 0.15 },
+  { id: 'openGPT-X/Teuken-7B-instruct-commercial', title: 'Teuken 7B (German)', meta: '7B · EU Sovereign AI · 0,15€/1M', input_cost: 0.15, output_cost: 0.15 },
+  { id: 'mistralai/Mistral-Nemo-Instruct-2407', title: 'Mistral Nemo 12B', meta: '12.2B · 128K ctx · 0,15€/1M', input_cost: 0.15, output_cost: 0.15 },
+  // Plus
+  { id: 'meta-llama/CodeLlama-13b-Instruct-hf', title: 'Code Llama 13B', meta: '13B · 16K ctx · Code · 0,45€/1M', input_cost: 0.45, output_cost: 0.45 },
+  { id: 'mistralai/Mistral-Small-24B-Instruct', title: 'Mistral Small 24B', meta: '24B · 128K ctx · Vision · 0,10/0,30€', input_cost: 0.10, output_cost: 0.30 },
+  // Premium
+  { id: 'openai/gpt-oss-120b', title: 'GPT-OSS 120B', meta: '120B MoE · 128K ctx · 0,15/0,65€', input_cost: 0.15, output_cost: 0.65 },
+  { id: 'meta-llama/Llama-3.3-70B-Instruct', title: 'Llama 3.3 70B Instruct', meta: '70.6B · 128K ctx · 0,65€/1M', input_cost: 0.65, output_cost: 0.65 },
+  { id: 'meta-llama/Meta-Llama-3.1-405B-Instruct-FP8', title: 'Llama 3.1 405B Instruct', meta: '405B · 128K ctx · 1,75€/1M', input_cost: 1.75, output_cost: 1.75 },
+]
+
+const anthropicModelCatalog = [
+  { id: 'claude-opus-4-6', title: 'Claude Opus 4.6', meta: '200K ctx · 128K out · $5/$25', input_cost: 5.00, output_cost: 25.00 },
+  { id: 'claude-sonnet-4-6', title: 'Claude Sonnet 4.6', meta: '200K ctx · 64K out · $3/$15', input_cost: 3.00, output_cost: 15.00 },
+  { id: 'claude-haiku-4-5-20251001', title: 'Claude Haiku 4.5', meta: '200K ctx · 64K out · $1/$5', input_cost: 1.00, output_cost: 5.00 },
+  { id: 'claude-sonnet-4-5-20250929', title: 'Claude Sonnet 4.5', meta: '200K ctx · 64K out · $3/$15', input_cost: 3.00, output_cost: 15.00 },
+  { id: 'claude-3-5-haiku-20241022', title: 'Claude Haiku 3.5', meta: '200K ctx · 64K out · $0.80/$4', input_cost: 0.80, output_cost: 4.00 },
+]
+
+const geminiModelCatalog = [
+  { id: 'gemini-2.5-pro', title: 'Gemini 2.5 Pro', meta: '1M ctx · Reasoning · $1.25/$10', input_cost: 1.25, output_cost: 10.00 },
+  { id: 'gemini-2.5-flash', title: 'Gemini 2.5 Flash', meta: '1M ctx · $0.30/$2.50', input_cost: 0.30, output_cost: 2.50 },
+  { id: 'gemini-2.5-flash-lite', title: 'Gemini 2.5 Flash-Lite', meta: '1M ctx · $0.10/$0.40', input_cost: 0.10, output_cost: 0.40 },
+  { id: 'gemini-2.0-flash', title: 'Gemini 2.0 Flash', meta: '1M ctx · $0.10/$0.40', input_cost: 0.10, output_cost: 0.40 },
+  { id: 'gemini-2.0-flash-lite', title: 'Gemini 2.0 Flash-Lite', meta: '1M ctx · $0.075/$0.30', input_cost: 0.075, output_cost: 0.30 },
+]
+
+const mistralModelCatalog = [
+  { id: 'mistral-large-latest', title: 'Mistral Large 3', meta: '256K ctx · Vision · $0.50/$1.50', input_cost: 0.50, output_cost: 1.50 },
+  { id: 'mistral-medium-latest', title: 'Mistral Medium 3.1', meta: '131K ctx · Vision · $0.40/$2', input_cost: 0.40, output_cost: 2.00 },
+  { id: 'mistral-small-latest', title: 'Mistral Small 3.2', meta: '131K ctx · $0.10/$0.30', input_cost: 0.10, output_cost: 0.30 },
+  { id: 'codestral-latest', title: 'Codestral', meta: '256K ctx · Code · $0.30/$0.90', input_cost: 0.30, output_cost: 0.90 },
+  { id: 'magistral-medium-latest', title: 'Magistral Medium', meta: '40K ctx · Reasoning · $2/$5', input_cost: 2.00, output_cost: 5.00 },
+  { id: 'magistral-small-latest', title: 'Magistral Small', meta: '40K ctx · Reasoning · $0.50/$1.50', input_cost: 0.50, output_cost: 1.50 },
+  { id: 'open-mistral-nemo', title: 'Mistral Nemo', meta: '131K ctx · $0.02/$0.04', input_cost: 0.02, output_cost: 0.04 },
+  { id: 'pixtral-large-latest', title: 'Pixtral Large', meta: '128K ctx · Vision · $2/$6', input_cost: 2.00, output_cost: 6.00 },
+]
+
+const deepseekModelCatalog = [
+  { id: 'deepseek-chat', title: 'DeepSeek Chat (V3.2)', meta: '128K ctx · $0.27/$1.10', input_cost: 0.27, output_cost: 1.10 },
+  { id: 'deepseek-reasoner', title: 'DeepSeek Reasoner (V3.2)', meta: '128K ctx · Reasoning · $0.55/$2.19', input_cost: 0.55, output_cost: 2.19 },
+]
+
+const isFixedCatalogProvider = computed(() =>
+  ['openai', 'ionos', 'anthropic', 'gemini', 'mistral', 'deepseek'].includes(form.value.provider_type)
+)
+
+const apiKeyPlaceholder = computed(() => {
+  if (editingProvider.value) return t('userSettings.providers.form.apiKeyUnchanged')
+  const hints = { ionos: 'IONOS API Token', anthropic: 'sk-ant-...', gemini: 'AIza...' }
+  return hints[form.value.provider_type] || 'sk-...'
+})
+
 const showShareDialog = ref(false)
 const sharingProvider = ref(null)
 const newShare = ref({ type: 'user', target: '' })
@@ -404,8 +619,51 @@ const selectedProviderType = computed(() => {
   return providerTypes.value.find(t => t.id === form.value.provider_type)
 })
 
+const OPENAI_COMPATIBLE_PROVIDER_TYPES = new Set([
+  'openai',
+  'ionos',
+  'openai_compatible',
+  'litellm',
+  'ollama',
+  'vllm',
+  'custom'
+])
+
+const showDynamicModelSelector = computed(() => {
+  const providerType = String(form.value.provider_type || '').trim().toLowerCase()
+  if (!providerType || ['openai', 'ionos', 'anthropic', 'gemini', 'mistral', 'deepseek'].includes(providerType)) return false
+  if (selectedProviderType.value?.supports_model_fetch === false) return false
+  if (selectedProviderType.value?.supports_model_fetch === true) return true
+  return OPENAI_COMPATIBLE_PROVIDER_TYPES.has(providerType)
+})
+
+const dynamicModelOptions = computed(() => {
+  const merged = new Set([
+    ...(Array.isArray(discoveredModels.value) ? discoveredModels.value : []),
+    ...((form.value.selected_models || []).map(m => String(m || '').trim()).filter(Boolean))
+  ])
+  return Array.from(merged).sort((a, b) => a.localeCompare(b))
+})
+
+const canFetchModels = computed(() => {
+  if (!showDynamicModelSelector.value) return false
+  const providerType = String(form.value.provider_type || '').trim().toLowerCase()
+  const supportsBaseUrl = selectedProviderType.value?.supports_base_url
+    ?? OPENAI_COMPATIBLE_PROVIDER_TYPES.has(providerType)
+  if (!supportsBaseUrl) return true
+  const baseUrl = (form.value.base_url || selectedProviderType.value?.default_base_url || '').trim()
+  return Boolean(baseUrl)
+})
+
 onMounted(async () => {
   await Promise.all([loadProviders(), loadProviderTypes()])
+})
+
+watch(() => form.value.provider_type, (nextType, prevType) => {
+  if (nextType === prevType) return
+  if (editingProvider.value) return
+  discoveredModels.value = []
+  form.value.selected_models = []
 })
 
 async function loadProviders() {
@@ -437,6 +695,7 @@ async function loadProviderTypes() {
 
 function openCreateDialog() {
   editingProvider.value = null
+  discoveredModels.value = []
   form.value = {
     provider_type: '',
     name: '',
@@ -451,21 +710,62 @@ function openCreateDialog() {
 
 function editProvider(provider) {
   editingProvider.value = provider
+  const selectedModels = Array.isArray(provider.config?.selected_models)
+    ? provider.config.selected_models
+    : []
+  discoveredModels.value = [...selectedModels]
   form.value = {
     provider_type: provider.provider_type,
     name: provider.name,
     api_key: '',
     base_url: provider.base_url || '',
     is_default: provider.is_default,
-    selected_models: provider.config?.selected_models || []
+    selected_models: selectedModels
   }
   showApiKey.value = false
   showDialog.value = true
 }
 
 function closeDialog() {
+  discoveredModels.value = []
   showDialog.value = false
   editingProvider.value = null
+}
+
+async function fetchModelsForForm() {
+  if (!showDynamicModelSelector.value) return
+
+  loadingDiscoveredModels.value = true
+  try {
+    const payload = {
+      provider_type: form.value.provider_type,
+      base_url: (form.value.base_url || selectedProviderType.value?.default_base_url || '').trim() || null
+    }
+
+    if (editingProvider.value?.id) {
+      payload.provider_id = editingProvider.value.id
+    }
+
+    if (form.value.api_key) {
+      payload.api_key = form.value.api_key
+    }
+
+    const response = await axios.post('/api/user/providers/models', payload)
+    const models = Array.isArray(response.data?.models)
+      ? response.data.models.map(m => String(m || '').trim()).filter(Boolean)
+      : []
+
+    discoveredModels.value = Array.from(new Set(models))
+
+    if (discoveredModels.value.length === 0) {
+      alert('Keine Modelle vom Provider zurückgegeben.')
+    }
+  } catch (error) {
+    console.error('Failed to fetch provider models:', error)
+    alert(error.response?.data?.message || error.response?.data?.error || error.message)
+  } finally {
+    loadingDiscoveredModels.value = false
+  }
 }
 
 async function saveProvider() {
@@ -473,12 +773,19 @@ async function saveProvider() {
 
   saving.value = true
   try {
-    const isOpenai = form.value.provider_type === 'openai'
+    const provType = form.value.provider_type
+    const autoNames = { openai: 'OpenAI', ionos: 'IONOS AI', anthropic: 'Anthropic', gemini: 'Google Gemini', mistral: 'Mistral', deepseek: 'DeepSeek' }
+    const isFixed = provType in autoNames
+    const selectedModels = Array.from(new Set(
+      (form.value.selected_models || [])
+        .map(m => String(m || '').trim())
+        .filter(Boolean)
+    ))
 
     const payload = {
-      provider_type: form.value.provider_type,
-      name: isOpenai ? 'OpenAI' : form.value.name,
-      base_url: isOpenai ? null : (form.value.base_url || null),
+      provider_type: provType,
+      name: autoNames[provType] || form.value.name,
+      base_url: isFixed ? null : (form.value.base_url || null),
       is_default: form.value.is_default
     }
 
@@ -486,8 +793,32 @@ async function saveProvider() {
       payload.api_key = form.value.api_key
     }
 
-    if (isOpenai) {
-      payload.config = { selected_models: form.value.selected_models || [] }
+    const existingConfig = editingProvider.value?.config && typeof editingProvider.value.config === 'object'
+      ? { ...editingProvider.value.config }
+      : {}
+
+    if (selectedModels.length > 0) {
+      existingConfig.selected_models = selectedModels
+    } else {
+      delete existingConfig.selected_models
+    }
+
+    // Store model costs for fixed catalog providers
+    const catalogMap = { ionos: ionosModelCatalog, anthropic: anthropicModelCatalog, gemini: geminiModelCatalog, mistral: mistralModelCatalog, deepseek: deepseekModelCatalog }
+    const catalog = catalogMap[provType]
+    if (catalog && selectedModels.length > 0) {
+      const costs = {}
+      for (const modelId of selectedModels) {
+        const entry = catalog.find(m => m.id === modelId)
+        if (entry) {
+          costs[modelId] = { input: entry.input_cost, output: entry.output_cost }
+        }
+      }
+      existingConfig.model_costs = costs
+    }
+
+    if (Object.keys(existingConfig).length > 0) {
+      payload.config = existingConfig
     }
 
     if (editingProvider.value) {
@@ -610,10 +941,15 @@ async function toggleShareAll() {
 function getProviderIcon(type) {
   const icons = {
     openai: 'mdi-robot',
+    ionos: 'mdi-domain',
+    openai_compatible: 'mdi-api',
     anthropic: 'mdi-head-cog',
     gemini: 'mdi-google',
+    mistral: 'mdi-weather-windy',
+    deepseek: 'mdi-brain',
     azure: 'mdi-microsoft-azure',
     ollama: 'mdi-server',
+    vllm: 'mdi-chip',
     litellm: 'mdi-lightning-bolt',
     custom: 'mdi-api'
   }
@@ -623,10 +959,15 @@ function getProviderIcon(type) {
 function getProviderColor(type) {
   const colors = {
     openai: '#00A67E',
+    ionos: '#0A4CD3',
+    openai_compatible: '#00A67E',
     anthropic: '#D4A574',
     gemini: '#4285F4',
+    mistral: '#FF7000',
+    deepseek: '#4D6BFE',
     azure: '#0078D4',
     ollama: '#6B7280',
+    vllm: '#7C3AED',
     litellm: '#F59E0B',
     custom: '#8B5CF6'
   }
@@ -636,10 +977,15 @@ function getProviderColor(type) {
 function getProviderTypeName(type) {
   const names = {
     openai: 'OpenAI',
+    ionos: 'IONOS AI Model Hub',
+    openai_compatible: 'OpenAI Compatible',
     anthropic: 'Anthropic',
     gemini: 'Google Gemini',
+    mistral: 'Mistral',
+    deepseek: 'DeepSeek',
     azure: 'Azure OpenAI',
     ollama: 'Ollama',
+    vllm: 'vLLM',
     litellm: 'LiteLLM',
     custom: 'Custom'
   }

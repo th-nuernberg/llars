@@ -174,6 +174,12 @@ def initialize_permissions(db):
             'description': 'Erlaubt das Verwalten von Referral-Kampagnen und Einladungslinks'
         },
         {
+            'permission_key': 'feature:referral:create_links',
+            'display_name': 'Einladungslinks erstellen',
+            'category': 'feature',
+            'description': 'Erlaubt das Erstellen und Verwalten eigener Einladungslinks'
+        },
+        {
             'permission_key': 'admin:field_prompts:manage',
             'display_name': 'KI-Feld-Prompts verwalten',
             'category': 'admin',
@@ -369,6 +375,26 @@ def initialize_permissions(db):
             'category': 'feature',
             'description': 'Erlaubt das Erstellen von Evaluation-Szenarien aus generierten Outputs'
         },
+
+        # Feature: Pipeline (Automated LLM Evaluation Loop)
+        {
+            'permission_key': 'feature:pipeline:view',
+            'display_name': 'Pipeline ansehen',
+            'category': 'feature',
+            'description': 'Erlaubt das Ansehen von Pipeline-Runs'
+        },
+        {
+            'permission_key': 'feature:pipeline:create',
+            'display_name': 'Pipeline erstellen',
+            'category': 'feature',
+            'description': 'Erlaubt das Erstellen und Starten neuer Pipeline-Runs'
+        },
+        {
+            'permission_key': 'feature:pipeline:manage',
+            'display_name': 'Pipeline verwalten',
+            'category': 'feature',
+            'description': 'Erlaubt das Verwalten von Pipeline-Runs (Review, Löschen)'
+        },
     ]
 
     # Create permissions (idempotent)
@@ -442,6 +468,8 @@ def initialize_permissions(db):
                 # KAIMO
                 'feature:kaimo:view',
                 'feature:kaimo:edit',
+                # Referral Links
+                'feature:referral:create_links',
                 # Data Import (für Evaluation-Daten)
                 'data:import',
                 'data:manage_scenarios',
@@ -479,6 +507,8 @@ def initialize_permissions(db):
                 'feature:rag:edit',
                 'feature:rag:delete',
                 'feature:rag:share',
+                # Referral Links
+                'feature:referral:create_links',
             ]
         },
         {
@@ -508,6 +538,8 @@ def initialize_permissions(db):
                 'feature:anonymize:view',
                 'feature:kaimo:view',
                 'feature:kaimo:edit',
+                # Referral Links
+                'feature:referral:create_links',
             ]
         },
         {
@@ -668,8 +700,8 @@ def initialize_permissions(db):
 
 def assign_default_admin_role(db):
     """
-    Automatically assign admin role to the default 'admin' user.
-    This ensures the admin user always has admin permissions after database reset.
+    Automatically assign admin role to all default admin users.
+    This ensures admin users always have admin permissions after database reset.
 
     Args:
         db: SQLAlchemy database instance
@@ -683,25 +715,26 @@ def assign_default_admin_role(db):
         print("Warning: Admin role not found. Skipping default admin assignment.")
         return
 
-    # Check if admin user already has admin role
-    existing = UserRole.query.filter_by(
-        username='admin',
-        role_id=admin_role.id
-    ).first()
+    admin_usernames = ['admin', 'admin_2']
 
-    if not existing:
-        # Assign admin role to admin user
-        user_role = UserRole(
-            username='admin',
-            role_id=admin_role.id,
-            assigned_by='system',
-            assigned_at=datetime.utcnow()
-        )
-        db.session.add(user_role)
-        db.session.commit()
-        print("✅ Assigned admin role to user 'admin' automatically.")
-    else:
-        print("✅ User 'admin' already has admin role.")
+    for username in admin_usernames:
+        existing = UserRole.query.filter_by(
+            username=username,
+            role_id=admin_role.id
+        ).first()
+
+        if not existing:
+            user_role = UserRole(
+                username=username,
+                role_id=admin_role.id,
+                assigned_by='system',
+                assigned_at=datetime.utcnow()
+            )
+            db.session.add(user_role)
+            db.session.commit()
+            print(f"Assigned admin role to user '{username}' automatically.")
+        else:
+            print(f"User '{username}' already has admin role.")
 
 
 def assign_default_demo_roles(db):

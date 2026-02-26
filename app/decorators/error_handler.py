@@ -3,6 +3,12 @@ Error Handler Decorator
 
 Provides @handle_errors decorator for standardized error handling in Flask routes.
 
+SECURITY:
+---------
+Interne Fehlerdetails (str(e), Tracebacks, DB-Details) werden NUR an Admins
+und User mit aktiviertem Debug-Modus zurückgegeben. Normale User erhalten
+generische Fehlermeldungen. Dies verhindert Information Disclosure (CWE-209).
+
 Usage:
     @app.route('/api/endpoint')
     @handle_errors(logger_name='my_module')
@@ -15,15 +21,60 @@ The decorator:
 2. Catches all other exceptions and returns 500 Internal Server Error
 3. Logs errors with the specified logger
 4. Returns standardized JSON error responses
+5. Hides internal details from non-admin users in production
 """
 
 from functools import wraps
-from flask import jsonify
+from flask import jsonify, g
 import logging
+import os
 from typing import Optional, Callable, Dict, Any, Tuple, Union
 
 # Response type for Flask
 FlaskResponse = Tuple[Any, int]
+
+# Generic error messages for non-privileged users (CWE-209 prevention)
+_GENERIC_500_MESSAGE = 'An internal error occurred. Please try again or contact an administrator.'
+_GENERIC_400_MESSAGE = 'Invalid request. Please check your input.'
+
+_is_development = os.environ.get('FLASK_ENV', 'production') == 'development'
+
+
+def _user_may_see_details() -> bool:
+    """
+    Bestimmt ob der aktuelle User detaillierte Fehlermeldungen sehen darf.
+
+    Erlaubt für:
+    - Development-Modus (immer)
+    - Admins (über has_role)
+    - User mit aktivem Debug-Modus (Redis-Flag, gesetzt von Admin)
+
+    Returns:
+        True wenn Fehlerdetails angezeigt werden dürfen
+    """
+    if _is_development:
+        return True
+
+    try:
+        user = getattr(g, 'authentik_user', None)
+        if not user:
+            return False
+
+        # Admin-Check (lazy import um Circular Imports zu vermeiden)
+        from decorators.permission_decorator import has_role
+        if has_role(user, 'admin'):
+            return True
+
+        # Per-User Debug-Modus aus Redis prüfen
+        from services.debug_log_service import is_user_debug_enabled
+        username = getattr(user, 'username', None)
+        if username and is_user_debug_enabled(username):
+            return True
+    except Exception:
+        # Bei Fehlern im Check selbst: sicherheitshalber keine Details
+        pass
+
+    return False
 
 
 def handle_errors(
@@ -69,18 +120,20 @@ def handle_errors(
             except ValueError as e:
                 # Client error - bad input
                 logger.warning(f"ValueError in {f.__name__}: {str(e)}")
+                error_msg = str(e) if _user_may_see_details() else _GENERIC_400_MESSAGE
                 return jsonify({
                     'success': False,
-                    'error': str(e),
+                    'error': error_msg,
                     'error_type': 'validation_error'
                 }), 400
 
             except KeyError as e:
                 # Missing required field
                 logger.warning(f"KeyError in {f.__name__}: {str(e)}")
+                error_msg = f'Missing required field: {str(e)}' if _user_may_see_details() else _GENERIC_400_MESSAGE
                 return jsonify({
                     'success': False,
-                    'error': f'Missing required field: {str(e)}',
+                    'error': error_msg,
                     'error_type': 'missing_field'
                 }), 400
 
@@ -91,7 +144,7 @@ def handle_errors(
                         if isinstance(e, exc_type):
                             return handler(e)
 
-                # Default: Internal server error
+                # Always log full details server-side
                 if log_traceback:
                     logger.error(
                         f"Error in {f.__name__}: {str(e)}",
@@ -100,9 +153,11 @@ def handle_errors(
                 else:
                     logger.error(f"Error in {f.__name__}: {str(e)}")
 
+                # Return internal details only to admins and debug-enabled users
+                error_msg = str(e) if _user_may_see_details() else _GENERIC_500_MESSAGE
                 return jsonify({
                     'success': False,
-                    'error': str(e),
+                    'error': error_msg,
                     'error_type': 'internal_error'
                 }), 500
 
@@ -258,25 +313,31 @@ def handle_api_errors(logger_name: Optional[str] = None):
 
             except ValueError as e:
                 logger.warning(f"ValueError in {f.__name__}: {str(e)}")
+                error_msg = str(e) if _user_may_see_details() else _GENERIC_400_MESSAGE
                 return jsonify({
                     'success': False,
-                    'error': str(e),
+                    'error': error_msg,
                     'error_type': 'validation_error'
                 }), 400
 
             except KeyError as e:
                 logger.warning(f"KeyError in {f.__name__}: {str(e)}")
+                error_msg = f'Missing required field: {str(e)}' if _user_may_see_details() else _GENERIC_400_MESSAGE
                 return jsonify({
                     'success': False,
-                    'error': f'Missing required field: {str(e)}',
+                    'error': error_msg,
                     'error_type': 'missing_field'
                 }), 400
 
             except Exception as e:
+                # Always log full details server-side
                 logger.error(f"Error in {f.__name__}: {str(e)}", exc_info=True)
+
+                # Return internal details only to admins and debug-enabled users
+                error_msg = str(e) if _user_may_see_details() else _GENERIC_500_MESSAGE
                 return jsonify({
                     'success': False,
-                    'error': str(e),
+                    'error': error_msg,
                     'error_type': 'internal_error'
                 }), 500
 

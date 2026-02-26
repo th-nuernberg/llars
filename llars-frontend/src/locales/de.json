@@ -2579,6 +2579,10 @@
         "title": "RAG Verwaltung",
         "description": "Dokumente für die RAG-Pipeline verwalten und hochladen"
       },
+      "pipeline": {
+        "title": "Pipeline",
+        "description": "Automatisierte LLM-Evaluation: Prompt-Optimierung, Generierung, Bewertung im Loop"
+      },
       "userSettings": {
         "title": "Einstellungen",
         "description": "Persönliche Einstellungen, LLM-Provider und Einladungslinks"
@@ -2799,7 +2803,8 @@
         "descriptionField": "Beschreibung",
         "descriptionHint": "Optional: Beschreiben Sie den Zweck dieses Szenarios",
         "startDate": "Startdatum",
-        "endDate": "Enddatum"
+        "endDate": "Enddatum",
+        "rankingDisabledHint": "Ranking benötigt mindestens 2 Varianten pro Eingabe (mehrere Modelle oder Prompts)"
       },
       "step3": {
         "title": "Konfiguration",
@@ -2954,6 +2959,8 @@
       },
       "comparison": {
         "comparisonType": "Vergleichs-Typ",
+        "testInstruction": "Testanweisung",
+        "testInstructionPlaceholder": "z.B. Welche Option ist inhaltlich klarer und hilfreicher?",
         "typeOptions": {
           "pairwise": "Paarweiser Vergleich",
           "tournament": "Turnier-Format"
@@ -5637,11 +5644,16 @@
         "labelPlaceholder": "z.B. IJCAI Reviewer",
         "slug": "Kurz-URL",
         "slugPlaceholder": "z.B. ijcai-2026",
+        "slugHint": "Optionaler kurzer Name für die URL",
+        "slugTooShort": "Slug muss mindestens 3 Zeichen haben",
+        "slugTaken": "Dieser Slug ist bereits vergeben",
+        "slugAvailable": "Slug ist verfügbar",
         "description": "Beschreibung",
         "descriptionPlaceholder": "Optionale Beschreibung für diesen Link",
         "maxUses": "Max. Nutzungen",
         "maxUsesPlaceholder": "Unbegrenzt",
-        "expiresAt": "Gültig bis"
+        "expiresAt": "Gültig bis",
+        "optionalSettings": "Erweiterte Einstellungen"
       }
     }
   },
@@ -5793,7 +5805,10 @@
         "budget": "Budget-Limit",
         "budgetLimit": "Max. Kosten (USD)",
         "budgetHint": "Leer lassen für kein Limit",
-        "retryCount": "Wiederholungen"
+        "retryCount": "Wiederholungen",
+        "parallelism": "Parallelismus",
+        "maxParallel": "Gleichzeitige Streams",
+        "maxParallelHint": "Anzahl gleichzeitig verarbeiteter Outputs. Mehr = schneller, aber höhere API-Last."
       },
       "step5": {
         "title": "Prüfen & Erstellen",
@@ -5826,6 +5841,9 @@
       "generatedContent": "Generierter Inhalt",
       "errorMessage": "Fehlermeldung",
       "currentlyProcessing": "Wird verarbeitet",
+      "liveStreams": "Live-Streams",
+      "active": "aktiv",
+      "waitingForBatch": "Warte auf nächsten Batch...",
       "waitingForResponse": "Warte auf LLM-Antwort...",
       "reconnecting": "Verbinde zum laufenden Stream...",
       "inputPrompt": "Eingabe-Prompt",
@@ -5837,6 +5855,193 @@
       "name": "Szenario-Name",
       "evaluationType": "Evaluationstyp",
       "info": "{count} abgeschlossene Ausgaben werden verwendet um Evaluations-Items zu erstellen."
+    }
+  },
+  "pipeline": {
+    "title": "Pipeline",
+    "subtitle": "Automatisierte LLM-Evaluation im Loop",
+    "backToHub": "Zurück zur Übersicht",
+    "newRun": "Neue Pipeline",
+    "allStatuses": "Alle Status",
+    "activeRuns": "Aktive Pipelines",
+    "allRuns": "Alle Pipelines",
+    "emptyTitle": "Keine Pipelines vorhanden",
+    "emptyHint": "Erstelle deine erste automatisierte Pipeline.",
+    "emptyFilterHint": "Keine Pipelines mit diesem Status.",
+    "createFirst": "Erste Pipeline erstellen",
+    "iteration": "Iteration",
+    "iterations": "Iterationen",
+    "iterationLabel": "Iteration {n}",
+    "budget": "Budget",
+    "models": "Modelle",
+    "bestScore": "Bester Score",
+    "bestSetup": "Bestes Setup",
+    "avgScore": "Durchschn. Score",
+    "threshold": "Schwellenwert",
+    "scoreChart": "Score-Verlauf",
+    "noScoresYet": "Noch keine Scores vorhanden",
+    "noIterationsYet": "Noch keine Iterationen gestartet",
+    "notFound": "Pipeline nicht gefunden",
+    "variantsGenerated": "Varianten generiert",
+    "pause": "Pausieren",
+    "start": "Starten",
+    "cancel": "Abbrechen",
+    "status": {
+      "created": "Erstellt",
+      "running": "Läuft",
+      "paused": "Pausiert",
+      "waitingForReview": "Wartet auf Review",
+      "completed": "Abgeschlossen",
+      "failed": "Fehlgeschlagen",
+      "cancelled": "Abgebrochen"
+    },
+    "phases": {
+      "prompts": "Prompts",
+      "generation": "Generierung",
+      "evaluation": "Evaluation",
+      "promptGeneration": "Prompts werden generiert...",
+      "batchGeneration": "Ausgaben werden generiert...",
+      "evaluating": "Evaluation läuft...",
+      "analyzing": "Analyse läuft..."
+    },
+    "review": {
+      "title": "Human Review erforderlich",
+      "bestConfig": "Beste Konfiguration",
+      "deploy": "Übernehmen",
+      "continue": "Weiterlaufen lassen",
+      "reject": "Verwerfen",
+      "reason": {
+        "plateau": "Die Pipeline hat ein Plateau erreicht — keine signifikante Verbesserung mehr.",
+        "budget_exhausted": "Das Token-Budget ist erschöpft.",
+        "max_iterations": "Die maximale Anzahl an Iterationen wurde erreicht."
+      }
+    },
+    "messages": {
+      "created": "Pipeline erstellt",
+      "createFailed": "Pipeline konnte nicht erstellt werden",
+      "started": "Pipeline gestartet",
+      "startFailed": "Pipeline konnte nicht gestartet werden",
+      "paused": "Pipeline pausiert",
+      "pauseFailed": "Pipeline konnte nicht pausiert werden",
+      "cancelled": "Pipeline abgebrochen",
+      "cancelFailed": "Pipeline konnte nicht abgebrochen werden",
+      "deleted": "Pipeline gelöscht",
+      "deleteFailed": "Pipeline konnte nicht gelöscht werden",
+      "reviewSubmitted": "Review-Entscheidung übermittelt",
+      "reviewFailed": "Review-Entscheidung konnte nicht übermittelt werden",
+      "runFailed": "Pipeline ist fehlgeschlagen"
+    },
+    "session": {
+      "config": "Konfiguration",
+      "taskSpec": "Aufgabenstellung",
+      "candidateModels": "Kandidaten-Modelle",
+      "evalModel": "Evaluations-Modell",
+      "metaModel": "Meta-Modell",
+      "thresholds": "Schwellenwerte",
+      "globalThreshold": "Global",
+      "tokensUsed": "Tokens verbraucht",
+      "tokenBudget": "Token-Budget",
+      "maxIterations": "Max. Iterationen",
+      "duration": "Dauer",
+      "decision": "Entscheidung",
+      "decisionContinue": "Weiter optimieren",
+      "decisionConverged": "Konvergiert",
+      "decisionEscalate": "Eskaliert",
+      "promptVariants": "Prompt-Varianten",
+      "systemPrompt": "System-Prompt",
+      "userTemplate": "User-Template",
+      "thresholdMet": "Erreicht",
+      "thresholdNotMet": "Nicht erreicht",
+      "dimensions": "Dimensionen",
+      "dimension": "Dimension",
+      "score": "Score",
+      "status": "Status",
+      "bestPrompts": "Beste Prompt-Varianten",
+      "totalRatings": "Bewertungen",
+      "clickToExpand": "Klicken für Details",
+      "generationJobId": "Generierungs-Job",
+      "evalScenarioId": "Eval-Szenario",
+      "agentReasoning": "Agent-Begründung",
+      "convergenceDecision": "Konvergenz-Entscheidung",
+      "metaInfo": "Meta-Informationen",
+      "noTaskSpec": "Keine Aufgabenstellung angegeben"
+    },
+    "wizard": {
+      "title": "Neue Pipeline erstellen",
+      "subtitle": "Konfiguriere die automatisierte LLM-Evaluation",
+      "step1": "Grundkonfiguration",
+      "step2": "Modelle & Daten",
+      "step3": "Limits & Schwellenwerte",
+      "name": "Name",
+      "nameRequired": "Name ist erforderlich",
+      "description": "Beschreibung",
+      "taskSpec": "Task-Spezifikation",
+      "taskSpecHint": "Beschreibe die Aufgabe, die das LLM lösen soll (z.B. 'Erstelle empathische Beratungsantworten')",
+      "scenarioType": "Szenario-Typ",
+      "greenfield": "Greenfield (neues Projekt)",
+      "migration": "Migration (bestehendes Modell ersetzen)",
+      "evaluationType": "Evaluationstyp",
+      "evalTypeRating": "Rating (Multi-dimensional)",
+      "evalTypeRanking": "Ranking (Kategorisierung)",
+      "evalTypeComparison": "Vergleich (Paarweise)",
+      "candidateModels": "Kandidaten-Modelle",
+      "evalModel": "Evaluations-Modell",
+      "evalModelHint": "LLM-Modell für die automatische Bewertung",
+      "metaModel": "Meta-Modell",
+      "metaModelHint": "LLM-Modell für Prompt-Generierung und Analyse",
+      "referenceModel": "Referenz-Modell (aktuelles Produktionsmodell)",
+      "maxIterations": "Maximale Iterationen",
+      "budgetTokens": "Token-Budget",
+      "tokens": "Tokens",
+      "globalThreshold": "Globaler Schwellenwert (1-5)",
+      "numVariants": "Prompt-Varianten pro Iteration",
+      "autoStart": "Pipeline sofort starten",
+      "create": "Erstellen",
+      "createAndStart": "Erstellen & Starten",
+      "summary": "Zusammenfassung",
+      "selected": "ausgewählt"
+    },
+    "research": {
+      "title": "Forschung & Methodik",
+      "description": "Die LLARS-Pipeline kombiniert Ansätze aus aktueller Forschung zu automatisierter Prompt-Optimierung und LLM-Evaluation.",
+      "approach": "Unser Ansatz: Iterative Prompt-Optimierung mit automatischer LLM-Evaluation in einem geschlossenen Feedback-Loop, inspiriert von DSPy und TextGrad.",
+      "papers": {
+        "dspy": "DSPy — Deklarative Sprache für LLM-Pipelines mit automatischer Compile-Time-Optimierung (Stanford, 2024)",
+        "textgrad": "TextGrad — Automatische Differenzierung über Text für iterative Verfeinerung (MIT, 2024)",
+        "agentJudge": "Agent-as-a-Judge — Agent-basierte Evaluation statt statischer Metriken (2025)",
+        "llmJudgeSurvey": "LLM-as-a-Judge Survey — Umfassende Übersicht zu LLM-Evaluationsmethoden (2025)",
+        "promptomatix": "Promptomatix — Feedback-basierte Prompt-Optimierung mit Kostensteuerung (2025)",
+        "opro": "OPRO — LLM-gesteuerte Prompt-Suche via Optimization by PROmpting (Google DeepMind, 2023)"
+      }
+    }
+  },
+  "referral": {
+    "errors": {
+      "codeRequired": "Einladungscode ist erforderlich",
+      "validationFailed": "Fehler bei der Code-Validierung",
+      "registrationFailed": "Registrierung fehlgeschlagen",
+      "loadCampaigns": "Fehler beim Laden der Kampagnen",
+      "loadCampaign": "Fehler beim Laden der Kampagne",
+      "createCampaign": "Fehler beim Erstellen der Kampagne",
+      "updateCampaign": "Fehler beim Aktualisieren der Kampagne",
+      "updateStatus": "Fehler beim Aktualisieren des Status",
+      "deleteCampaign": "Fehler beim Löschen der Kampagne",
+      "loadLinks": "Fehler beim Laden der Links",
+      "createLink": "Fehler beim Erstellen des Links",
+      "loadLink": "Fehler beim Laden des Links",
+      "updateLink": "Fehler beim Aktualisieren des Links",
+      "deactivateLink": "Fehler beim Deaktivieren des Links",
+      "deleteLink": "Fehler beim Löschen des Links",
+      "loadAnalytics": "Fehler beim Laden der Analytics",
+      "loadCampaignAnalytics": "Fehler beim Laden der Kampagnen-Analytics",
+      "loadRegistrations": "Fehler beim Laden der Registrierungen"
+    },
+    "status": {
+      "draft": "Entwurf",
+      "active": "Aktiv",
+      "paused": "Pausiert",
+      "expired": "Abgelaufen",
+      "archived": "Archiviert"
     }
   },
   "admin": {

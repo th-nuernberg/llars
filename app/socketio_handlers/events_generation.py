@@ -58,6 +58,7 @@ def register_generation_events(socketio):
                     "status": job_data.get("status"),
                     "progress": job_data.get("progress"),
                     "currently_processing": job_data.get("currently_processing"),
+                    "active_streams": job_data.get("active_streams", []),
                 },
             )
         except Exception as e:

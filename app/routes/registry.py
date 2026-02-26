@@ -98,6 +98,11 @@ def register_all_blueprints(app: Flask) -> None:
     app.register_blueprint(generation_bp)
     app.register_blueprint(generation_debug_bp)
 
+    # Automated Pipeline (Prompt → Generation → Evaluation → Analysis loop)
+    from routes.pipeline import pipeline_bp, pipeline_admin_bp
+    app.register_blueprint(pipeline_bp)
+    app.register_blueprint(pipeline_admin_bp)
+
     # ============================================================
     # Document & Knowledge Management
     # ============================================================
@@ -207,6 +212,7 @@ def get_blueprint_info() -> dict:
             {'name': 'oncoco', 'prefix': '/api/oncoco', 'description': 'OnCoCo analysis'},
             {'name': 'ai_writing', 'prefix': '/api/ai-writing', 'description': 'AI writing assistant for LaTeX/Markdown'},
             {'name': 'generation', 'prefix': '/api/generation', 'description': 'Batch generation pipeline (Prompt → LLM → Evaluation)'},
+            {'name': 'pipeline_admin', 'prefix': '/api/pipeline/admin', 'description': 'Pipeline Admin API (system API key, E2E testing)'},
         ],
         'knowledge_management': [
             {'name': 'rag', 'prefix': '/api/rag', 'description': 'RAG document management and search'},

@@ -6,7 +6,7 @@ Based on methodologies from:
 """
 
 import statistics as stats_module
-from flask import Blueprint, jsonify
+from flask import Blueprint, jsonify, g
 from collections import defaultdict
 
 from db.database import db
@@ -16,7 +16,9 @@ from db.tables import (
     JudgeEvaluation, JudgeWinner
 )
 from auth.decorators import authentik_required
+from auth.access_control import require_judge_session_owner
 from decorators.permission_decorator import require_permission
+from decorators.error_handler import handle_api_errors
 
 statistics_position_bp = Blueprint('judge_statistics_position', __name__)
 
@@ -27,6 +29,7 @@ LIKERT_METRICS = ['counsellor_coherence', 'client_coherence', 'quality', 'empath
 @statistics_position_bp.route('/sessions/<int:session_id>/position-swap-analysis', methods=['GET'])
 @authentik_required
 @require_permission('feature:comparison:view')
+@handle_api_errors(logger_name='judge_statistics')
 def get_position_swap_analysis(session_id: int):
     """
     Detailed Position-Swap Consistency Analysis following best practices from:
@@ -43,6 +46,7 @@ def get_position_swap_analysis(session_id: int):
     Returns detailed pair-by-pair analysis for inspection.
     """
     session = JudgeSession.query.get_or_404(session_id)
+    require_judge_session_owner(session_id, g.authentik_user)
 
     # Get all completed comparisons
     comparisons = JudgeComparison.query.filter_by(

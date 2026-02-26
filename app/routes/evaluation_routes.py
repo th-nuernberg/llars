@@ -14,6 +14,7 @@ import logging
 from flask import Blueprint, jsonify, request, g
 
 from auth.decorators import authentik_required
+from auth.access_control import require_scenario_membership
 from decorators.error_handler import handle_api_errors, NotFoundError, ValidationError, ForbiddenError
 
 logger = logging.getLogger(__name__)
@@ -54,6 +55,8 @@ def get_agreement_metrics(scenario_id):
     scenario = RatingScenarios.query.get(scenario_id)
     if not scenario:
         raise NotFoundError(f'Scenario {scenario_id} not found')
+
+    require_scenario_membership(scenario_id, g.authentik_user)
 
     # Parse query parameters
     include_llm = request.args.get('include_llm', 'true').lower() == 'true'
@@ -103,6 +106,7 @@ def get_session_data(scenario_id):
     from services.evaluation.session_service import EvaluationSessionService
 
     user = g.authentik_user
+    require_scenario_membership(scenario_id, user)
     data = EvaluationSessionService.get_session_data(scenario_id, user.id)
 
     if 'error' in data:
@@ -130,6 +134,7 @@ def get_thread_features(scenario_id, thread_id):
     from services.evaluation.session_service import EvaluationSessionService
 
     user = g.authentik_user
+    require_scenario_membership(scenario_id, user)
     data = EvaluationSessionService.get_thread_features(scenario_id, thread_id, user.id)
 
     if 'error' in data:
@@ -165,6 +170,7 @@ def rate_feature(scenario_id, feature_id):
     from flask import current_app
 
     user = g.authentik_user
+    require_scenario_membership(scenario_id, user)
     data = request.get_json()
 
     if not data:
@@ -240,6 +246,7 @@ def submit_evaluation(scenario_id, item_id):
     from routes.HelperFunctions import user_can_evaluate
 
     user = g.authentik_user
+    require_scenario_membership(scenario_id, user)
 
     if not user_can_evaluate(user.id, scenario_id):
         raise ForbiddenError('VIEWER role cannot submit evaluations')
@@ -324,6 +331,7 @@ def get_rating_config(scenario_id):
     """
     from services.evaluation.dimensional_rating_service import DimensionalRatingService
 
+    require_scenario_membership(scenario_id, g.authentik_user)
     config = DimensionalRatingService.get_scenario_config(scenario_id)
 
     if 'error' in config:
@@ -350,6 +358,7 @@ def get_rating_items(scenario_id):
     from services.evaluation.dimensional_rating_service import DimensionalRatingService
 
     user = g.authentik_user
+    require_scenario_membership(scenario_id, user)
     items = DimensionalRatingService.get_items_for_user(scenario_id, user.id)
 
     return jsonify({
@@ -379,6 +388,7 @@ def get_rating_item_content(scenario_id, item_id):
     from services.evaluation.dimensional_rating_service import DimensionalRatingService
 
     user = g.authentik_user
+    require_scenario_membership(scenario_id, user)
     data = DimensionalRatingService.get_item_with_content(scenario_id, item_id, user.id)
 
     if 'error' in data:
@@ -413,6 +423,7 @@ def submit_dimensional_rating(scenario_id, item_id):
     from flask import current_app
 
     user = g.authentik_user
+    require_scenario_membership(scenario_id, user)
 
     if not user_can_evaluate(user.id, scenario_id):
         raise ForbiddenError('VIEWER role cannot submit evaluations')
@@ -473,6 +484,7 @@ def get_rating_progress(scenario_id):
     from services.evaluation.dimensional_rating_service import DimensionalRatingService
 
     user = g.authentik_user
+    require_scenario_membership(scenario_id, user)
     progress = DimensionalRatingService.get_user_progress(scenario_id, user.id)
 
     return jsonify({
@@ -499,6 +511,7 @@ def get_rating_statistics(scenario_id):
     """
     from services.evaluation.dimensional_rating_service import DimensionalRatingService
 
+    require_scenario_membership(scenario_id, g.authentik_user)
     stats = DimensionalRatingService.get_scenario_statistics(scenario_id)
 
     if 'error' in stats:
@@ -552,6 +565,8 @@ def trigger_llm_evaluation(scenario_id, item_id):
     if not scenario:
         raise NotFoundError(f'Scenario {scenario_id} not found')
 
+    require_scenario_membership(scenario_id, user)
+
     save_rating = data.get('save_rating', False)
     locale = data.get('locale', 'de')
 
@@ -594,6 +609,8 @@ def get_llm_evaluations(scenario_id):
     scenario = RatingScenarios.query.get(scenario_id)
     if not scenario:
         raise NotFoundError(f'Scenario {scenario_id} not found')
+
+    require_scenario_membership(scenario_id, g.authentik_user)
 
     evaluations = DimensionalRatingService.get_llm_evaluations(scenario_id)
 

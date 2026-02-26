@@ -11,6 +11,19 @@
       @update:modelValue="emitUpdate"
     />
 
+    <!-- Test Instruction -->
+    <v-textarea
+      :model-value="getQuestionText(localConfig.question)"
+      :label="$t('scenarioManager.evalConfig.comparison.testInstruction')"
+      :placeholder="$t('scenarioManager.evalConfig.comparison.testInstructionPlaceholder')"
+      variant="outlined"
+      density="compact"
+      rows="2"
+      auto-grow
+      class="mb-3"
+      @update:modelValue="updateQuestion"
+    />
+
     <!-- Options -->
     <div class="config-options mb-4">
       <LSwitch
@@ -169,7 +182,7 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['update:modelValue'])
-const { t } = useI18n()
+const { t, locale } = useI18n()
 
 const comparisonTypes = computed(() => [
   { title: t('scenarioManager.evalConfig.comparison.typeOptions.pairwise'), value: 'pairwise' },
@@ -185,6 +198,7 @@ const roundOptions = computed(() => [
 
 const localConfig = ref({
   type: 'pairwise',
+  question: { de: 'Welche Option ist besser?', en: 'Which option is better?' },
   itemsPerComparison: 2,
   allowTie: true,
   showConfidence: false,
@@ -196,6 +210,25 @@ const localConfig = ref({
 const totalWeight = computed(() => {
   return localConfig.value.criteria.reduce((sum, c) => sum + (c.weight || 0), 0)
 })
+
+function getQuestionText(question) {
+  if (!question) return ''
+  if (typeof question === 'string') return question
+  return question[locale.value] || question.de || question.en || ''
+}
+
+function updateQuestion(value) {
+  const current = localConfig.value.question
+  if (current && typeof current === 'object') {
+    localConfig.value.question = {
+      ...current,
+      [locale.value]: value
+    }
+  } else {
+    localConfig.value.question = { de: value, en: value }
+  }
+  emitUpdate()
+}
 
 function addCriterion() {
   const remainingWeight = Math.max(0, 1 - totalWeight.value)

@@ -212,13 +212,13 @@ def verify_api_key():
     """
     Verify an API key without full authentication.
 
-    Send the API key via X-API-Key header or api_key query param.
+    Send the API key via X-API-Key header only.
 
     Returns:
         200: Key is valid with user info
         401: Invalid key
     """
-    api_key_value = request.headers.get('X-API-Key') or request.args.get('api_key')
+    api_key_value = request.headers.get('X-API-Key') or ''
 
     if not api_key_value:
         return jsonify({
@@ -308,7 +308,6 @@ def get_legacy_api_key():
         'message': 'This endpoint is deprecated. Use /api/auth/api-keys instead.',
         'usage': {
             'header': 'X-API-Key: <your-api-key>',
-            'query': '?api_key=<your-api-key>',
         }
     })
 

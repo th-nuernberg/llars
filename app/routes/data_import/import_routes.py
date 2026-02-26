@@ -332,6 +332,14 @@ def import_from_data():
         and field_mapping.get('from_generation')
     )
 
+    if skip_long_format:
+        sample_keys = list(items[0].keys()) if items else []
+        logger.info(
+            f"Generation import: from_generation=True, skip_long_format=True, "
+            f"items={len(items)}, task_type={task_type}, "
+            f"sample_keys={sample_keys[:15]}"
+        )
+
     ai_analyzer = get_ai_analyzer()
 
     if not skip_long_format and ai_analyzer._detect_long_format(items):
@@ -410,6 +418,14 @@ def import_from_data():
 
     if session.status == "error":
         raise ValidationError(f"Import failed: {session.errors}")
+
+    if (session.imported_count or 0) <= 0:
+        warnings_preview = "; ".join(session.warnings[:3]) if session.warnings else ""
+        details = f" Warnings: {warnings_preview}" if warnings_preview else ""
+        raise ValidationError(
+            "No items could be imported for this scenario."
+            + details
+        )
 
     # Clean up session
     import_service.delete_session(session.session_id)

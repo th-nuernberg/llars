@@ -302,10 +302,13 @@ export const parseUserProviderModelId = (modelId) => {
     const v = (value || '').toLowerCase().trim()
     if (!v) return null
     if (v === 'openai') return 'OpenAI'
+    if (v === 'ionos') return 'IONOS'
+    if (v === 'openai_compatible' || v === 'openai-compatible') return 'OpenAI'
     if (v === 'anthropic' || v === 'claude') return 'Anthropic'
     if (v === 'gemini' || v === 'google') return 'Google'
     if (v === 'mistral' || v === 'mistralai' || v === 'magistral') return 'Mistral'
     if (v === 'ollama') return 'Ollama'
+    if (v === 'vllm') return 'vLLM'
     if (v === 'litellm') return 'LiteLLM'
     if (v === 'custom') return 'Custom'
     return null

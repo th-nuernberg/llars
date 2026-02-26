@@ -2579,6 +2579,10 @@
         "title": "RAG Management",
         "description": "Manage and upload documents for the RAG pipeline"
       },
+      "pipeline": {
+        "title": "Pipeline",
+        "description": "Automated LLM evaluation: prompt optimization, generation, evaluation in a loop"
+      },
       "userSettings": {
         "title": "Settings",
         "description": "Personal settings, LLM providers, and invitation links"
@@ -2799,7 +2803,8 @@
         "descriptionField": "Description",
         "descriptionHint": "Optional: Describe the purpose of this scenario",
         "startDate": "Start Date",
-        "endDate": "End Date"
+        "endDate": "End Date",
+        "rankingDisabledHint": "Ranking requires at least 2 variants per input (multiple models or prompts)"
       },
       "step3": {
         "title": "Configuration",
@@ -2954,6 +2959,8 @@
       },
       "comparison": {
         "comparisonType": "Comparison Type",
+        "testInstruction": "Test instruction",
+        "testInstructionPlaceholder": "e.g. Which option is clearer and more helpful?",
         "typeOptions": {
           "pairwise": "Pairwise comparison",
           "tournament": "Tournament format"
@@ -5795,11 +5802,16 @@
         "labelPlaceholder": "e.g., IJCAI Reviewer",
         "slug": "Short URL",
         "slugPlaceholder": "e.g., ijcai-2026",
+        "slugHint": "Optional short name for the URL",
+        "slugTooShort": "Slug must be at least 3 characters",
+        "slugTaken": "This slug is already taken",
+        "slugAvailable": "Slug is available",
         "description": "Description",
         "descriptionPlaceholder": "Optional description for this link",
         "maxUses": "Max Uses",
         "maxUsesPlaceholder": "Unlimited",
-        "expiresAt": "Valid Until"
+        "expiresAt": "Valid Until",
+        "optionalSettings": "Advanced Settings"
       }
     }
   },
@@ -5951,7 +5963,10 @@
         "budget": "Budget Limit",
         "budgetLimit": "Max Cost (USD)",
         "budgetHint": "Leave empty for no limit",
-        "retryCount": "Retry Count"
+        "retryCount": "Retry Count",
+        "parallelism": "Parallelism",
+        "maxParallel": "Concurrent Streams",
+        "maxParallelHint": "Number of outputs processed simultaneously. More = faster, but higher API load."
       },
       "step5": {
         "title": "Review & Create",
@@ -5984,6 +5999,9 @@
       "generatedContent": "Generated Content",
       "errorMessage": "Error Message",
       "currentlyProcessing": "Currently Processing",
+      "liveStreams": "Live Streams",
+      "active": "active",
+      "waitingForBatch": "Waiting for next batch...",
       "waitingForResponse": "Waiting for LLM response...",
       "reconnecting": "Reconnecting to running stream...",
       "inputPrompt": "Input Prompt",
@@ -5995,6 +6013,193 @@
       "name": "Scenario Name",
       "evaluationType": "Evaluation Type",
       "info": "{count} completed outputs will be used to create evaluation items."
+    }
+  },
+  "pipeline": {
+    "title": "Pipeline",
+    "subtitle": "Automated LLM evaluation loop",
+    "backToHub": "Back to overview",
+    "newRun": "New Pipeline",
+    "allStatuses": "All statuses",
+    "activeRuns": "Active Pipelines",
+    "allRuns": "All Pipelines",
+    "emptyTitle": "No pipelines yet",
+    "emptyHint": "Create your first automated pipeline.",
+    "emptyFilterHint": "No pipelines with this status.",
+    "createFirst": "Create first pipeline",
+    "iteration": "Iteration",
+    "iterations": "Iterations",
+    "iterationLabel": "Iteration {n}",
+    "budget": "Budget",
+    "models": "Models",
+    "bestScore": "Best Score",
+    "bestSetup": "Best Setup",
+    "avgScore": "Avg. Score",
+    "threshold": "Threshold",
+    "scoreChart": "Score Trend",
+    "noScoresYet": "No scores yet",
+    "noIterationsYet": "No iterations started yet",
+    "notFound": "Pipeline not found",
+    "variantsGenerated": "variants generated",
+    "pause": "Pause",
+    "start": "Start",
+    "cancel": "Cancel",
+    "status": {
+      "created": "Created",
+      "running": "Running",
+      "paused": "Paused",
+      "waitingForReview": "Waiting for Review",
+      "completed": "Completed",
+      "failed": "Failed",
+      "cancelled": "Cancelled"
+    },
+    "phases": {
+      "prompts": "Prompts",
+      "generation": "Generation",
+      "evaluation": "Evaluation",
+      "promptGeneration": "Generating prompts...",
+      "batchGeneration": "Generating outputs...",
+      "evaluating": "Evaluating...",
+      "analyzing": "Analyzing..."
+    },
+    "review": {
+      "title": "Human Review Required",
+      "bestConfig": "Best Configuration",
+      "deploy": "Deploy",
+      "continue": "Continue Running",
+      "reject": "Reject",
+      "reason": {
+        "plateau": "The pipeline has reached a plateau — no significant improvement.",
+        "budget_exhausted": "The token budget has been exhausted.",
+        "max_iterations": "Maximum number of iterations reached."
+      }
+    },
+    "messages": {
+      "created": "Pipeline created",
+      "createFailed": "Failed to create pipeline",
+      "started": "Pipeline started",
+      "startFailed": "Failed to start pipeline",
+      "paused": "Pipeline paused",
+      "pauseFailed": "Failed to pause pipeline",
+      "cancelled": "Pipeline cancelled",
+      "cancelFailed": "Failed to cancel pipeline",
+      "deleted": "Pipeline deleted",
+      "deleteFailed": "Failed to delete pipeline",
+      "reviewSubmitted": "Review decision submitted",
+      "reviewFailed": "Failed to submit review decision",
+      "runFailed": "Pipeline failed"
+    },
+    "session": {
+      "config": "Configuration",
+      "taskSpec": "Task Specification",
+      "candidateModels": "Candidate Models",
+      "evalModel": "Evaluation Model",
+      "metaModel": "Meta Model",
+      "thresholds": "Thresholds",
+      "globalThreshold": "Global",
+      "tokensUsed": "Tokens used",
+      "tokenBudget": "Token Budget",
+      "maxIterations": "Max Iterations",
+      "duration": "Duration",
+      "decision": "Decision",
+      "decisionContinue": "Continue optimizing",
+      "decisionConverged": "Converged",
+      "decisionEscalate": "Escalated",
+      "promptVariants": "Prompt Variants",
+      "systemPrompt": "System Prompt",
+      "userTemplate": "User Template",
+      "thresholdMet": "Met",
+      "thresholdNotMet": "Not met",
+      "dimensions": "Dimensions",
+      "dimension": "Dimension",
+      "score": "Score",
+      "status": "Status",
+      "bestPrompts": "Best Prompt Variants",
+      "totalRatings": "Ratings",
+      "clickToExpand": "Click for details",
+      "generationJobId": "Generation Job",
+      "evalScenarioId": "Eval Scenario",
+      "agentReasoning": "Agent Reasoning",
+      "convergenceDecision": "Convergence Decision",
+      "metaInfo": "Meta Information",
+      "noTaskSpec": "No task specification provided"
+    },
+    "wizard": {
+      "title": "Create New Pipeline",
+      "subtitle": "Configure the automated LLM evaluation",
+      "step1": "Basic Configuration",
+      "step2": "Models & Data",
+      "step3": "Limits & Thresholds",
+      "name": "Name",
+      "nameRequired": "Name is required",
+      "description": "Description",
+      "taskSpec": "Task Specification",
+      "taskSpecHint": "Describe the task the LLM should solve (e.g., 'Generate empathetic counseling responses')",
+      "scenarioType": "Scenario Type",
+      "greenfield": "Greenfield (new project)",
+      "migration": "Migration (replace existing model)",
+      "evaluationType": "Evaluation Type",
+      "evalTypeRating": "Rating (Multi-dimensional)",
+      "evalTypeRanking": "Ranking (Categorization)",
+      "evalTypeComparison": "Comparison (Pairwise)",
+      "candidateModels": "Candidate Models",
+      "evalModel": "Evaluation Model",
+      "evalModelHint": "LLM model for automatic evaluation",
+      "metaModel": "Meta Model",
+      "metaModelHint": "LLM model for prompt generation and analysis",
+      "referenceModel": "Reference Model (current production model)",
+      "maxIterations": "Maximum Iterations",
+      "budgetTokens": "Token Budget",
+      "tokens": "Tokens",
+      "globalThreshold": "Global Threshold (1-5)",
+      "numVariants": "Prompt Variants per Iteration",
+      "autoStart": "Start pipeline immediately",
+      "create": "Create",
+      "createAndStart": "Create & Start",
+      "summary": "Summary",
+      "selected": "selected"
+    },
+    "research": {
+      "title": "Research & Methodology",
+      "description": "The LLARS pipeline combines approaches from current research on automated prompt optimization and LLM evaluation.",
+      "approach": "Our approach: Iterative prompt optimization with automatic LLM evaluation in a closed feedback loop, inspired by DSPy and TextGrad.",
+      "papers": {
+        "dspy": "DSPy — Declarative language for LLM pipelines with automatic compile-time optimization (Stanford, 2024)",
+        "textgrad": "TextGrad — Automatic differentiation via text for iterative refinement (MIT, 2024)",
+        "agentJudge": "Agent-as-a-Judge — Agent-based evaluation instead of static metrics (2025)",
+        "llmJudgeSurvey": "LLM-as-a-Judge Survey — Comprehensive survey of LLM evaluation methods (2025)",
+        "promptomatix": "Promptomatix — Feedback-based prompt optimization with cost awareness (2025)",
+        "opro": "OPRO — LLM-driven prompt search via Optimization by PROmpting (Google DeepMind, 2023)"
+      }
+    }
+  },
+  "referral": {
+    "errors": {
+      "codeRequired": "Invitation code is required",
+      "validationFailed": "Error validating the code",
+      "registrationFailed": "Registration failed",
+      "loadCampaigns": "Error loading campaigns",
+      "loadCampaign": "Error loading campaign",
+      "createCampaign": "Error creating campaign",
+      "updateCampaign": "Error updating campaign",
+      "updateStatus": "Error updating status",
+      "deleteCampaign": "Error deleting campaign",
+      "loadLinks": "Error loading links",
+      "createLink": "Error creating link",
+      "loadLink": "Error loading link",
+      "updateLink": "Error updating link",
+      "deactivateLink": "Error deactivating link",
+      "deleteLink": "Error deleting link",
+      "loadAnalytics": "Error loading analytics",
+      "loadCampaignAnalytics": "Error loading campaign analytics",
+      "loadRegistrations": "Error loading registrations"
+    },
+    "status": {
+      "draft": "Draft",
+      "active": "Active",
+      "paused": "Paused",
+      "expired": "Expired",
+      "archived": "Archived"
     }
   },
   "admin": {

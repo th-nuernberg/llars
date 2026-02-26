@@ -75,7 +75,7 @@ except ImportError:
 # =============================================================================
 
 # Default limits
-DEFAULT_MAX_PARALLEL = 1
+DEFAULT_MAX_PARALLEL = 5
 DEFAULT_MAX_RETRIES = 3
 DEFAULT_BATCH_SIZE = 10
 

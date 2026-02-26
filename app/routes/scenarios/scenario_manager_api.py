@@ -1878,7 +1878,14 @@ def sm_invite_users(scenario_id):
     added = 0
     reinvited = 0
     restored = 0
+    skipped_invalid = 0
     for uid in user_ids:
+        # Validate user exists before attempting to add
+        from db.models import User
+        if not User.query.get(uid):
+            skipped_invalid += 1
+            continue
+
         # Check if already added (including archived users)
         existing = ScenarioUsers.query.filter_by(
             scenario_id=scenario_id,
@@ -1918,7 +1925,7 @@ def sm_invite_users(scenario_id):
 
     db.session.commit()
 
-    logger.info(f"User {username} invited {added} users (reinvited {reinvited}, restored {restored}) to scenario {scenario_id}")
+    logger.info(f"User {username} invited {added} users (reinvited {reinvited}, restored {restored}, skipped_invalid {skipped_invalid}) to scenario {scenario_id}")
 
     msg_parts = []
     if added:
@@ -1927,12 +1934,15 @@ def sm_invite_users(scenario_id):
         msg_parts.append(f'reinvited {reinvited}')
     if restored:
         msg_parts.append(f'restored {restored}')
+    if skipped_invalid:
+        msg_parts.append(f'skipped {skipped_invalid} invalid user IDs')
 
     return jsonify({
         'message': ', '.join(msg_parts) if msg_parts else 'No changes made',
         'added': added,
         'reinvited': reinvited,
-        'restored': restored
+        'restored': restored,
+        'skipped_invalid': skipped_invalid
     }), 200
 
 

@@ -415,7 +415,9 @@ class ImportService:
             raise ValueError(f"Session not found: {session_id}")
 
         if not session.transformed_items:
+            session.status = "error"
             session.errors.append("No items to import")
+            logger.warning(f"Import aborted for session {session_id}: no transformed items available")
             return session
 
         session.status = "importing"

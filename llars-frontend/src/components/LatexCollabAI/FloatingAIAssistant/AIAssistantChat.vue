@@ -124,6 +124,7 @@
 <script setup>
 import { ref } from 'vue'
 import { marked } from 'marked'
+import DOMPurify from 'dompurify'
 
 const props = defineProps({
   messages: {
@@ -147,9 +148,10 @@ const chatContainer = ref(null)
 function formatMessage(content) {
   if (!content) return ''
   try {
-    return marked.parse(content, { breaks: true })
+    const html = marked.parse(content, { breaks: true })
+    return DOMPurify.sanitize(html, { USE_PROFILES: { html: true } })
   } catch {
-    return content
+    return DOMPurify.sanitize(content)
   }
 }
 

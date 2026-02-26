@@ -17,12 +17,13 @@ The decorator:
 5. Returns 401 Unauthorized if not authenticated
 """
 
+import hmac
+import os
+import logging
 from functools import wraps
 from flask import request, jsonify, g
 from services.permission_service import PermissionService
 from auth.auth_utils import AuthUtils
-import os
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +34,10 @@ SYSTEM_ADMIN_USERNAME = 'admin'
 
 def _check_system_api_key() -> bool:
     """
-    Check if request contains a valid System Admin API Key.
+    Check if request contains a valid System Admin API Key via X-API-Key header.
+
+    API keys via URL query parameters are NOT accepted (they leak in
+    server logs, browser history, and referrer headers).
 
     Returns:
         True if valid API key provided, False otherwise
@@ -41,11 +45,12 @@ def _check_system_api_key() -> bool:
     if not SYSTEM_ADMIN_API_KEY:
         return False
 
-    api_key = request.headers.get('X-API-Key') or request.args.get('api_key')
+    api_key = request.headers.get('X-API-Key') or ''
     if not api_key:
         return False
 
-    if api_key == SYSTEM_ADMIN_API_KEY:
+    # Timing-safe comparison to prevent timing attacks
+    if hmac.compare_digest(api_key, SYSTEM_ADMIN_API_KEY):
         logger.debug(f"System API key authenticated for {request.path}")
         return True
 

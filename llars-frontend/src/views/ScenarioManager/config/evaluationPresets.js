@@ -687,6 +687,7 @@ export const COMPARISON_PRESETS = {
     description: { de: 'A vs B - welches ist besser?', en: 'A vs B - which is better?' },
     config: {
       type: 'pairwise',
+      question: { de: 'Welche Option ist besser?', en: 'Which option is better?' },
       itemsPerComparison: 2,
       allowTie: true,
       showConfidence: false,
@@ -701,6 +702,7 @@ export const COMPARISON_PRESETS = {
     description: { de: 'A vs B mit Konfidenzbewertung', en: 'A vs B with confidence rating' },
     config: {
       type: 'pairwise',
+      question: { de: 'Welche Option ist besser?', en: 'Which option is better?' },
       itemsPerComparison: 2,
       allowTie: true,
       showConfidence: true,
@@ -716,6 +718,7 @@ export const COMPARISON_PRESETS = {
     description: { de: 'Vergleich nach mehreren Kriterien', en: 'Compare by multiple criteria' },
     config: {
       type: 'pairwise',
+      question: { de: 'Welche Option ist insgesamt besser?', en: 'Which option is better overall?' },
       itemsPerComparison: 2,
       allowTie: true,
       showConfidence: false,
@@ -732,6 +735,7 @@ export const COMPARISON_PRESETS = {
     description: { de: 'Eliminierungs-Turnier Format', en: 'Single-elimination tournament format' },
     config: {
       type: 'tournament',
+      question: { de: 'Welche Option gewinnt diese Runde?', en: 'Which option wins this round?' },
       itemsPerComparison: 2,
       allowTie: false,
       rounds: 'auto',
@@ -746,6 +750,7 @@ export const COMPARISON_PRESETS = {
     description: { de: 'Eigene Vergleichskriterien definieren', en: 'Define your own comparison criteria' },
     config: {
       type: 'pairwise',
+      question: { de: 'Welche Option ist besser?', en: 'Which option is better?' },
       itemsPerComparison: 2,
       allowTie: true,
       showConfidence: false,

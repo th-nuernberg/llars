@@ -69,6 +69,75 @@
         @review="handleReview"
       />
 
+      <!-- Configuration Section (collapsible) -->
+      <div class="config-section mb-4">
+        <div class="section-toggle" @click="configExpanded = !configExpanded">
+          <h3 class="section-title mb-0">
+            <v-icon size="20" class="mr-2">mdi-cog-outline</v-icon>
+            {{ $t('pipeline.session.config') }}
+          </h3>
+          <v-icon size="20">{{ configExpanded ? 'mdi-chevron-up' : 'mdi-chevron-down' }}</v-icon>
+        </div>
+        <div v-if="configExpanded" class="config-body">
+          <!-- Task Spec -->
+          <div class="config-row">
+            <span class="config-key">{{ $t('pipeline.session.taskSpec') }}</span>
+            <span class="config-val">{{ currentRun.config?.task_spec || $t('pipeline.session.noTaskSpec') }}</span>
+          </div>
+
+          <!-- Candidate Models -->
+          <div v-if="currentRun.candidate_models?.length" class="config-row">
+            <span class="config-key">{{ $t('pipeline.session.candidateModels') }}</span>
+            <div class="config-tags">
+              <LTag v-for="m in currentRun.candidate_models" :key="m" variant="info" size="sm">{{ m }}</LTag>
+            </div>
+          </div>
+
+          <!-- Eval Model + Meta Model -->
+          <div class="config-row-grid">
+            <div v-if="configEvalModel" class="config-row">
+              <span class="config-key">{{ $t('pipeline.session.evalModel') }}</span>
+              <LTag variant="info" size="sm">{{ configEvalModel }}</LTag>
+            </div>
+            <div v-if="configMetaModel" class="config-row">
+              <span class="config-key">{{ $t('pipeline.session.metaModel') }}</span>
+              <LTag variant="info" size="sm">{{ configMetaModel }}</LTag>
+            </div>
+          </div>
+
+          <!-- Thresholds -->
+          <div v-if="currentRun.config?.thresholds" class="config-row">
+            <span class="config-key">{{ $t('pipeline.session.thresholds') }}</span>
+            <div class="threshold-list">
+              <div v-if="configGlobalThreshold != null" class="threshold-item">
+                <span class="threshold-dim">{{ $t('pipeline.session.globalThreshold') }}</span>
+                <span class="threshold-val">{{ configGlobalThreshold }}</span>
+              </div>
+              <div
+                v-for="(val, dimId) in configDimThresholds"
+                :key="dimId"
+                class="threshold-item"
+              >
+                <span class="threshold-dim">{{ dimId }}</span>
+                <span class="threshold-val">{{ val }}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Token Budget + Max Iterations -->
+          <div class="config-row-grid">
+            <div v-if="currentRun.config?.budget_tokens" class="config-row">
+              <span class="config-key">{{ $t('pipeline.session.tokenBudget') }}</span>
+              <span class="config-val">{{ currentRun.config.budget_tokens.toLocaleString() }}</span>
+            </div>
+            <div class="config-row">
+              <span class="config-key">{{ $t('pipeline.session.maxIterations') }}</span>
+              <span class="config-val">{{ currentRun.max_iterations }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Live Phase -->
       <PipelineLivePhase
         v-if="livePhase"
@@ -89,6 +158,7 @@
             :iteration="it"
             :is-live="livePhase && livePhase.iteration === it.iteration_number"
             :live-phase="livePhase && livePhase.iteration === it.iteration_number ? livePhase : null"
+            :thresholds="currentRun.config?.thresholds"
           />
         </div>
         <div v-if="!iterations.length && !livePhase" class="no-iterations">
@@ -115,13 +185,64 @@
           {{ $t('pipeline.bestSetup') }}
         </h3>
         <div class="best-card">
-          <div class="best-stat">
-            <span class="best-label">{{ $t('pipeline.avgScore') }}</span>
-            <span class="best-value">{{ bestConfig.avg_score?.toFixed(2) || '—' }} / 5.00</span>
+          <!-- Stats row -->
+          <div class="best-stats-row">
+            <div class="best-stat">
+              <span class="best-label">{{ $t('pipeline.avgScore') }}</span>
+              <span class="best-value">{{ bestConfig.avg_score?.toFixed(2) || '—' }} / 5.00</span>
+            </div>
+            <div class="best-stat">
+              <span class="best-label">{{ $t('pipeline.iteration') }}</span>
+              <span class="best-value">{{ bestConfig.iteration || '—' }}</span>
+            </div>
           </div>
-          <div class="best-stat">
-            <span class="best-label">{{ $t('pipeline.iteration') }}</span>
-            <span class="best-value">{{ bestConfig.iteration || '—' }}</span>
+
+          <!-- Dimension scores with threshold comparison -->
+          <div v-if="bestConfig.dimension_scores && Object.keys(bestConfig.dimension_scores).length" class="best-dimensions">
+            <div class="best-dim-header">{{ $t('pipeline.session.dimensions') }}</div>
+            <table class="dim-table">
+              <thead>
+                <tr>
+                  <th>{{ $t('pipeline.session.dimension') }}</th>
+                  <th>{{ $t('pipeline.session.score') }}</th>
+                  <th>{{ $t('pipeline.threshold') }}</th>
+                  <th>{{ $t('pipeline.session.status') }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="(score, dimId) in bestConfig.dimension_scores" :key="dimId">
+                  <td>{{ dimId }}</td>
+                  <td class="score-cell">{{ score.toFixed(2) }}</td>
+                  <td class="threshold-cell">{{ getDimThreshold(dimId) ?? '—' }}</td>
+                  <td>
+                    <v-icon
+                      v-if="getDimThreshold(dimId) != null"
+                      :color="score >= getDimThreshold(dimId) ? 'success' : 'error'"
+                      size="18"
+                    >
+                      {{ score >= getDimThreshold(dimId) ? 'mdi-check-circle' : 'mdi-close-circle' }}
+                    </v-icon>
+                    <span v-else class="dim-na">—</span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Best prompt variants -->
+          <div v-if="bestConfig.prompt_variants?.length" class="best-prompts">
+            <div class="best-dim-header">{{ $t('pipeline.session.bestPrompts') }}</div>
+            <div v-for="(pv, idx) in bestConfig.prompt_variants" :key="idx" class="prompt-variant-block">
+              <div class="prompt-variant-name">{{ pv.variant_name || pv.name || `Variant ${idx + 1}` }}</div>
+              <div v-if="pv.system_prompt" class="prompt-section">
+                <span class="prompt-label">{{ $t('pipeline.session.systemPrompt') }}</span>
+                <pre class="prompt-code">{{ pv.system_prompt }}</pre>
+              </div>
+              <div v-if="pv.user_prompt_template || pv.user_template" class="prompt-section">
+                <span class="prompt-label">{{ $t('pipeline.session.userTemplate') }}</span>
+                <pre class="prompt-code">{{ pv.user_prompt_template || pv.user_template }}</pre>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -137,7 +258,7 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { usePipeline, RUN_STATUS } from './composables/usePipeline'
@@ -147,6 +268,7 @@ import PipelineLivePhase from './components/PipelineLivePhase.vue'
 import PipelineReviewPanel from './components/PipelineReviewPanel.vue'
 import LBtn from '@/components/common/LBtn.vue'
 import LStatusChip from '@/components/common/LStatusChip.vue'
+import LTag from '@/components/common/LTag.vue'
 
 const props = defineProps({
   runId: { type: [Number, String], required: true },
@@ -154,6 +276,8 @@ const props = defineProps({
 
 const router = useRouter()
 const { t } = useI18n()
+
+const configExpanded = ref(true)
 
 const {
   currentRun,
@@ -188,6 +312,36 @@ const statusChipValue = computed(() => {
   }
   return map[currentRun.value.status] || 'pending'
 })
+
+// Config field helpers — support both naming conventions
+const configEvalModel = computed(() => {
+  const c = currentRun.value?.config
+  return c?.eval_model_id || c?.eval_model || null
+})
+
+const configMetaModel = computed(() => {
+  const c = currentRun.value?.config
+  return c?.meta_model_id || c?.meta_model || null
+})
+
+const configGlobalThreshold = computed(() => {
+  const t = currentRun.value?.config?.thresholds
+  if (!t) return null
+  return t.global_threshold ?? t.global ?? null
+})
+
+const configDimThresholds = computed(() => {
+  const t = currentRun.value?.config?.thresholds
+  if (!t) return {}
+  return t.dimension_thresholds || t.dimensions || {}
+})
+
+function getDimThreshold(dimId) {
+  const t = currentRun.value?.config?.thresholds
+  if (!t) return null
+  const dims = t.dimension_thresholds || t.dimensions || {}
+  return dims[dimId] ?? t.global_threshold ?? t.global ?? null
+}
 
 function goBack() {
   router.push({ name: 'PipelineHub' })
@@ -292,13 +446,105 @@ function handleReview(decision) {
   margin-bottom: 24px;
 }
 
-.best-card {
+/* Configuration Section */
+.config-section {
+  background: rgb(var(--v-theme-surface));
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  border-radius: 12px 3px 12px 3px;
+  overflow: hidden;
+}
+
+.section-toggle {
   display: flex;
-  gap: 24px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.15s;
+}
+
+.section-toggle:hover {
+  background: rgba(var(--v-theme-on-surface), 0.03);
+}
+
+.config-body {
+  padding: 0 16px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  border-top: 1px solid rgba(var(--v-theme-on-surface), 0.06);
+  padding-top: 12px;
+}
+
+.config-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.config-row-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.config-key {
+  font-size: 0.7rem;
+  color: rgba(var(--v-theme-on-surface), 0.5);
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+.config-val {
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
+
+.config-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.threshold-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.threshold-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  background: rgba(var(--v-theme-on-surface), 0.04);
+  border-radius: 4px;
+  font-size: 0.8rem;
+}
+
+.threshold-dim {
+  color: rgba(var(--v-theme-on-surface), 0.6);
+}
+
+.threshold-val {
+  font-weight: 600;
+}
+
+/* Best Config */
+.best-card {
   padding: 16px;
   background: rgb(var(--v-theme-surface));
   border: 1px solid rgba(var(--v-theme-success), 0.2);
   border-radius: 12px 3px 12px 3px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.best-stats-row {
+  display: flex;
+  gap: 24px;
 }
 
 .best-stat {
@@ -318,6 +564,101 @@ function handleReview(decision) {
   font-weight: 700;
 }
 
+.best-dimensions {
+  border-top: 1px solid rgba(var(--v-theme-on-surface), 0.06);
+  padding-top: 12px;
+}
+
+.best-dim-header {
+  font-size: 0.75rem;
+  color: rgba(var(--v-theme-on-surface), 0.5);
+  text-transform: uppercase;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.dim-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+
+.dim-table th {
+  text-align: left;
+  font-weight: 600;
+  font-size: 0.72rem;
+  color: rgba(var(--v-theme-on-surface), 0.5);
+  text-transform: uppercase;
+  padding: 4px 8px;
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+}
+
+.dim-table td {
+  padding: 6px 8px;
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.04);
+}
+
+.score-cell {
+  font-weight: 600;
+}
+
+.threshold-cell {
+  color: rgba(var(--v-theme-on-surface), 0.6);
+}
+
+.dim-na {
+  color: rgba(var(--v-theme-on-surface), 0.3);
+}
+
+.best-prompts {
+  border-top: 1px solid rgba(var(--v-theme-on-surface), 0.06);
+  padding-top: 12px;
+}
+
+.prompt-variant-block {
+  background: rgba(var(--v-theme-on-surface), 0.02);
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.06);
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 8px;
+}
+
+.prompt-variant-name {
+  font-weight: 600;
+  font-size: 0.85rem;
+  margin-bottom: 8px;
+}
+
+.prompt-section {
+  margin-bottom: 8px;
+}
+
+.prompt-section:last-child {
+  margin-bottom: 0;
+}
+
+.prompt-label {
+  font-size: 0.7rem;
+  color: rgba(var(--v-theme-on-surface), 0.5);
+  text-transform: uppercase;
+  font-weight: 600;
+  display: block;
+  margin-bottom: 4px;
+}
+
+.prompt-code {
+  font-size: 0.75rem;
+  line-height: 1.5;
+  background: rgba(var(--v-theme-on-surface), 0.04);
+  padding: 8px 10px;
+  border-radius: 4px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  margin: 0;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
 .session-error {
   flex: 1;
   display: flex;
@@ -335,9 +676,13 @@ function handleReview(decision) {
     gap: 8px;
   }
 
-  .best-card {
+  .best-stats-row {
     flex-direction: column;
     gap: 12px;
+  }
+
+  .config-row-grid {
+    grid-template-columns: 1fr;
   }
 }
 </style>

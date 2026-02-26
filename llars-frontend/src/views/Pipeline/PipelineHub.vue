@@ -90,6 +90,29 @@
           </LBtn>
         </div>
       </div>
+
+      <!-- Research & Methodology -->
+      <div class="research-section">
+        <button class="research-toggle" @click="showResearch = !showResearch">
+          <v-icon size="18" class="mr-2">mdi-book-open-variant</v-icon>
+          {{ $t('pipeline.research.title') }}
+          <v-icon size="16" class="ml-auto">
+            {{ showResearch ? 'mdi-chevron-up' : 'mdi-chevron-down' }}
+          </v-icon>
+        </button>
+        <div v-if="showResearch" class="research-content">
+          <p class="research-description">{{ $t('pipeline.research.description') }}</p>
+          <p class="research-approach">{{ $t('pipeline.research.approach') }}</p>
+          <ul class="research-papers">
+            <li v-for="paper in researchPapers" :key="paper.key">
+              <a :href="paper.url" target="_blank" rel="noopener noreferrer" class="paper-link">
+                <v-icon size="14" class="mr-1">mdi-open-in-new</v-icon>
+                {{ $t(`pipeline.research.papers.${paper.key}`) }}
+              </a>
+            </li>
+          </ul>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -113,6 +136,16 @@ const {
 } = usePipeline({ autoLoadRuns: true })
 
 const activeFilter = ref(null)
+const showResearch = ref(false)
+
+const researchPapers = [
+  { key: 'dspy', url: 'https://arxiv.org/abs/2310.03714' },
+  { key: 'textgrad', url: 'https://arxiv.org/abs/2406.07496' },
+  { key: 'agentJudge', url: 'https://arxiv.org/abs/2508.02994' },
+  { key: 'llmJudgeSurvey', url: 'https://arxiv.org/abs/2411.15594' },
+  { key: 'promptomatix', url: 'https://arxiv.org/abs/2507.14241' },
+  { key: 'opro', url: 'https://arxiv.org/abs/2309.03409' },
+]
 
 const STATUS_OPTIONS = computed(() => [
   { value: RUN_STATUS.RUNNING, label: t('pipeline.status.running') },
@@ -226,6 +259,76 @@ function navigateToRun(run) {
   color: rgba(var(--v-theme-on-surface), 0.5);
   font-size: 0.85rem;
   margin: 0;
+}
+
+.research-section {
+  margin-top: 16px;
+  border-top: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  padding-top: 12px;
+}
+
+.research-toggle {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 8px 12px;
+  background: none;
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  border-radius: 6px 2px 6px 2px;
+  color: rgba(var(--v-theme-on-surface), 0.6);
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.research-toggle:hover {
+  background: rgba(var(--v-theme-on-surface), 0.04);
+  color: rgba(var(--v-theme-on-surface), 0.8);
+}
+
+.research-content {
+  padding: 16px;
+  margin-top: 8px;
+  background: rgba(var(--v-theme-on-surface), 0.02);
+  border-radius: 6px 2px 6px 2px;
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.06);
+}
+
+.research-description {
+  font-size: 0.82rem;
+  color: rgba(var(--v-theme-on-surface), 0.6);
+  margin: 0 0 8px;
+}
+
+.research-approach {
+  font-size: 0.82rem;
+  color: rgba(var(--v-theme-on-surface), 0.7);
+  font-style: italic;
+  margin: 0 0 12px;
+}
+
+.research-papers {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.paper-link {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.8rem;
+  color: rgb(var(--v-theme-primary));
+  text-decoration: none;
+  transition: opacity 0.15s ease;
+}
+
+.paper-link:hover {
+  opacity: 0.8;
+  text-decoration: underline;
 }
 
 @media (max-width: 768px) {

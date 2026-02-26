@@ -193,7 +193,7 @@
               :type="showApiKey ? 'text' : 'password'"
               variant="outlined"
               density="comfortable"
-              :placeholder="editingProvider ? $t('userSettings.providers.form.apiKeyUnchanged') : form.provider_type === 'ionos' ? 'IONOS API Token' : 'sk-...'"
+              :placeholder="apiKeyPlaceholder"
               :append-inner-icon="showApiKey ? 'mdi-eye-off' : 'mdi-eye'"
               @click:append-inner="showApiKey = !showApiKey"
             />
@@ -231,6 +231,106 @@
               item-title="title"
               item-value="id"
               label="IONOS Modelle"
+              variant="outlined"
+              density="comfortable"
+              multiple
+              chips
+              closable-chips
+              hint="Modelle auswählen die verfügbar sein sollen"
+              persistent-hint
+            >
+              <template #item="{ item, props }">
+                <v-list-item v-bind="props">
+                  <template #append>
+                    <span class="text-caption text-medium-emphasis">{{ item.raw.meta }}</span>
+                  </template>
+                </v-list-item>
+              </template>
+            </v-select>
+
+            <!-- Anthropic: Multi-select dropdown with predefined models -->
+            <v-select
+              v-if="form.provider_type === 'anthropic'"
+              v-model="form.selected_models"
+              :items="anthropicModelCatalog"
+              item-title="title"
+              item-value="id"
+              label="Claude Modelle"
+              variant="outlined"
+              density="comfortable"
+              multiple
+              chips
+              closable-chips
+              hint="Modelle auswählen die verfügbar sein sollen"
+              persistent-hint
+            >
+              <template #item="{ item, props }">
+                <v-list-item v-bind="props">
+                  <template #append>
+                    <span class="text-caption text-medium-emphasis">{{ item.raw.meta }}</span>
+                  </template>
+                </v-list-item>
+              </template>
+            </v-select>
+
+            <!-- Gemini: Multi-select dropdown with predefined models -->
+            <v-select
+              v-if="form.provider_type === 'gemini'"
+              v-model="form.selected_models"
+              :items="geminiModelCatalog"
+              item-title="title"
+              item-value="id"
+              label="Gemini Modelle"
+              variant="outlined"
+              density="comfortable"
+              multiple
+              chips
+              closable-chips
+              hint="Modelle auswählen die verfügbar sein sollen"
+              persistent-hint
+            >
+              <template #item="{ item, props }">
+                <v-list-item v-bind="props">
+                  <template #append>
+                    <span class="text-caption text-medium-emphasis">{{ item.raw.meta }}</span>
+                  </template>
+                </v-list-item>
+              </template>
+            </v-select>
+
+            <!-- Mistral: Multi-select dropdown with predefined models -->
+            <v-select
+              v-if="form.provider_type === 'mistral'"
+              v-model="form.selected_models"
+              :items="mistralModelCatalog"
+              item-title="title"
+              item-value="id"
+              label="Mistral Modelle"
+              variant="outlined"
+              density="comfortable"
+              multiple
+              chips
+              closable-chips
+              hint="Modelle auswählen die verfügbar sein sollen"
+              persistent-hint
+            >
+              <template #item="{ item, props }">
+                <v-list-item v-bind="props">
+                  <template #append>
+                    <span class="text-caption text-medium-emphasis">{{ item.raw.meta }}</span>
+                  </template>
+                </v-list-item>
+              </template>
+            </v-select>
+
+            <!-- DeepSeek: Multi-select dropdown with predefined models -->
+            <v-select
+              v-if="form.provider_type === 'deepseek'"
+              v-model="form.selected_models"
+              :items="deepseekModelCatalog"
+              item-title="title"
+              item-value="id"
+              label="DeepSeek Modelle"
               variant="outlined"
               density="comfortable"
               multiple
@@ -461,9 +561,47 @@ const ionosModelCatalog = [
   { id: 'meta-llama/Meta-Llama-3.1-405B-Instruct-FP8', title: 'Llama 3.1 405B Instruct', meta: '405B · 128K ctx · 1,75€/1M', input_cost: 1.75, output_cost: 1.75 },
 ]
 
+const anthropicModelCatalog = [
+  { id: 'claude-opus-4-6', title: 'Claude Opus 4.6', meta: '200K ctx · 128K out · $5/$25', input_cost: 5.00, output_cost: 25.00 },
+  { id: 'claude-sonnet-4-6', title: 'Claude Sonnet 4.6', meta: '200K ctx · 64K out · $3/$15', input_cost: 3.00, output_cost: 15.00 },
+  { id: 'claude-haiku-4-5-20251001', title: 'Claude Haiku 4.5', meta: '200K ctx · 64K out · $1/$5', input_cost: 1.00, output_cost: 5.00 },
+  { id: 'claude-sonnet-4-5-20250929', title: 'Claude Sonnet 4.5', meta: '200K ctx · 64K out · $3/$15', input_cost: 3.00, output_cost: 15.00 },
+  { id: 'claude-3-5-haiku-20241022', title: 'Claude Haiku 3.5', meta: '200K ctx · 64K out · $0.80/$4', input_cost: 0.80, output_cost: 4.00 },
+]
+
+const geminiModelCatalog = [
+  { id: 'gemini-2.5-pro', title: 'Gemini 2.5 Pro', meta: '1M ctx · Reasoning · $1.25/$10', input_cost: 1.25, output_cost: 10.00 },
+  { id: 'gemini-2.5-flash', title: 'Gemini 2.5 Flash', meta: '1M ctx · $0.30/$2.50', input_cost: 0.30, output_cost: 2.50 },
+  { id: 'gemini-2.5-flash-lite', title: 'Gemini 2.5 Flash-Lite', meta: '1M ctx · $0.10/$0.40', input_cost: 0.10, output_cost: 0.40 },
+  { id: 'gemini-2.0-flash', title: 'Gemini 2.0 Flash', meta: '1M ctx · $0.10/$0.40', input_cost: 0.10, output_cost: 0.40 },
+  { id: 'gemini-2.0-flash-lite', title: 'Gemini 2.0 Flash-Lite', meta: '1M ctx · $0.075/$0.30', input_cost: 0.075, output_cost: 0.30 },
+]
+
+const mistralModelCatalog = [
+  { id: 'mistral-large-latest', title: 'Mistral Large 3', meta: '256K ctx · Vision · $0.50/$1.50', input_cost: 0.50, output_cost: 1.50 },
+  { id: 'mistral-medium-latest', title: 'Mistral Medium 3.1', meta: '131K ctx · Vision · $0.40/$2', input_cost: 0.40, output_cost: 2.00 },
+  { id: 'mistral-small-latest', title: 'Mistral Small 3.2', meta: '131K ctx · $0.10/$0.30', input_cost: 0.10, output_cost: 0.30 },
+  { id: 'codestral-latest', title: 'Codestral', meta: '256K ctx · Code · $0.30/$0.90', input_cost: 0.30, output_cost: 0.90 },
+  { id: 'magistral-medium-latest', title: 'Magistral Medium', meta: '40K ctx · Reasoning · $2/$5', input_cost: 2.00, output_cost: 5.00 },
+  { id: 'magistral-small-latest', title: 'Magistral Small', meta: '40K ctx · Reasoning · $0.50/$1.50', input_cost: 0.50, output_cost: 1.50 },
+  { id: 'open-mistral-nemo', title: 'Mistral Nemo', meta: '131K ctx · $0.02/$0.04', input_cost: 0.02, output_cost: 0.04 },
+  { id: 'pixtral-large-latest', title: 'Pixtral Large', meta: '128K ctx · Vision · $2/$6', input_cost: 2.00, output_cost: 6.00 },
+]
+
+const deepseekModelCatalog = [
+  { id: 'deepseek-chat', title: 'DeepSeek Chat (V3.2)', meta: '128K ctx · $0.27/$1.10', input_cost: 0.27, output_cost: 1.10 },
+  { id: 'deepseek-reasoner', title: 'DeepSeek Reasoner (V3.2)', meta: '128K ctx · Reasoning · $0.55/$2.19', input_cost: 0.55, output_cost: 2.19 },
+]
+
 const isFixedCatalogProvider = computed(() =>
-  ['openai', 'ionos'].includes(form.value.provider_type)
+  ['openai', 'ionos', 'anthropic', 'gemini', 'mistral', 'deepseek'].includes(form.value.provider_type)
 )
+
+const apiKeyPlaceholder = computed(() => {
+  if (editingProvider.value) return t('userSettings.providers.form.apiKeyUnchanged')
+  const hints = { ionos: 'IONOS API Token', anthropic: 'sk-ant-...', gemini: 'AIza...' }
+  return hints[form.value.provider_type] || 'sk-...'
+})
 
 const showShareDialog = ref(false)
 const sharingProvider = ref(null)
@@ -493,7 +631,7 @@ const OPENAI_COMPATIBLE_PROVIDER_TYPES = new Set([
 
 const showDynamicModelSelector = computed(() => {
   const providerType = String(form.value.provider_type || '').trim().toLowerCase()
-  if (!providerType || providerType === 'openai' || providerType === 'ionos') return false
+  if (!providerType || ['openai', 'ionos', 'anthropic', 'gemini', 'mistral', 'deepseek'].includes(providerType)) return false
   if (selectedProviderType.value?.supports_model_fetch === false) return false
   if (selectedProviderType.value?.supports_model_fetch === true) return true
   return OPENAI_COMPATIBLE_PROVIDER_TYPES.has(providerType)
@@ -635,9 +773,9 @@ async function saveProvider() {
 
   saving.value = true
   try {
-    const isOpenai = form.value.provider_type === 'openai'
-    const isIonos = form.value.provider_type === 'ionos'
-    const isFixed = isOpenai || isIonos
+    const provType = form.value.provider_type
+    const autoNames = { openai: 'OpenAI', ionos: 'IONOS AI', anthropic: 'Anthropic', gemini: 'Google Gemini', mistral: 'Mistral', deepseek: 'DeepSeek' }
+    const isFixed = provType in autoNames
     const selectedModels = Array.from(new Set(
       (form.value.selected_models || [])
         .map(m => String(m || '').trim())
@@ -645,8 +783,8 @@ async function saveProvider() {
     ))
 
     const payload = {
-      provider_type: form.value.provider_type,
-      name: isOpenai ? 'OpenAI' : isIonos ? 'IONOS AI' : form.value.name,
+      provider_type: provType,
+      name: autoNames[provType] || form.value.name,
       base_url: isFixed ? null : (form.value.base_url || null),
       is_default: form.value.is_default
     }
@@ -665,11 +803,13 @@ async function saveProvider() {
       delete existingConfig.selected_models
     }
 
-    // Store model costs for fixed catalog providers (IONOS, OpenAI)
-    if (isIonos && selectedModels.length > 0) {
+    // Store model costs for fixed catalog providers
+    const catalogMap = { ionos: ionosModelCatalog, anthropic: anthropicModelCatalog, gemini: geminiModelCatalog, mistral: mistralModelCatalog, deepseek: deepseekModelCatalog }
+    const catalog = catalogMap[provType]
+    if (catalog && selectedModels.length > 0) {
       const costs = {}
       for (const modelId of selectedModels) {
-        const entry = ionosModelCatalog.find(m => m.id === modelId)
+        const entry = catalog.find(m => m.id === modelId)
         if (entry) {
           costs[modelId] = { input: entry.input_cost, output: entry.output_cost }
         }
@@ -805,6 +945,8 @@ function getProviderIcon(type) {
     openai_compatible: 'mdi-api',
     anthropic: 'mdi-head-cog',
     gemini: 'mdi-google',
+    mistral: 'mdi-weather-windy',
+    deepseek: 'mdi-brain',
     azure: 'mdi-microsoft-azure',
     ollama: 'mdi-server',
     vllm: 'mdi-chip',
@@ -821,6 +963,8 @@ function getProviderColor(type) {
     openai_compatible: '#00A67E',
     anthropic: '#D4A574',
     gemini: '#4285F4',
+    mistral: '#FF7000',
+    deepseek: '#4D6BFE',
     azure: '#0078D4',
     ollama: '#6B7280',
     vllm: '#7C3AED',
@@ -837,6 +981,8 @@ function getProviderTypeName(type) {
     openai_compatible: 'OpenAI Compatible',
     anthropic: 'Anthropic',
     gemini: 'Google Gemini',
+    mistral: 'Mistral',
+    deepseek: 'DeepSeek',
     azure: 'Azure OpenAI',
     ollama: 'Ollama',
     vllm: 'vLLM',

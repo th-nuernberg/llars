@@ -54,11 +54,38 @@ MODEL_COSTS: Dict[str, Dict[str, float]] = {
     "o3": {"input": 2.00, "output": 8.00},
     "o3-mini": {"input": 1.10, "output": 4.40},
     "o4-mini": {"input": 1.10, "output": 4.40},
-    # Anthropic
-    "claude-3-5-sonnet-20241022": {"input": 3.00, "output": 15.00},
-    "claude-3-opus-20240229": {"input": 15.00, "output": 75.00},
-    "claude-3-sonnet-20240229": {"input": 3.00, "output": 15.00},
-    "claude-3-haiku-20240307": {"input": 0.25, "output": 1.25},
+    # Anthropic Claude 4.x
+    "claude-opus-4-6": {"input": 5.00, "output": 25.00},
+    "claude-sonnet-4-6": {"input": 3.00, "output": 15.00},
+    "claude-haiku-4-5": {"input": 1.00, "output": 5.00},
+    "claude-sonnet-4-5": {"input": 3.00, "output": 15.00},
+    "claude-opus-4-5": {"input": 5.00, "output": 25.00},
+    "claude-opus-4-1": {"input": 15.00, "output": 75.00},
+    "claude-sonnet-4": {"input": 3.00, "output": 15.00},
+    "claude-opus-4": {"input": 15.00, "output": 75.00},
+    # Anthropic Claude 3.x (legacy)
+    "claude-3-5-haiku": {"input": 0.80, "output": 4.00},
+    "claude-3-5-sonnet": {"input": 3.00, "output": 15.00},
+    "claude-3-opus": {"input": 15.00, "output": 75.00},
+    "claude-3-haiku": {"input": 0.25, "output": 1.25},
+    # Google Gemini
+    "gemini-2.5-pro": {"input": 1.25, "output": 10.00},
+    "gemini-2.5-flash": {"input": 0.30, "output": 2.50},
+    "gemini-2.5-flash-lite": {"input": 0.10, "output": 0.40},
+    "gemini-2.0-flash": {"input": 0.10, "output": 0.40},
+    "gemini-2.0-flash-lite": {"input": 0.075, "output": 0.30},
+    # Mistral
+    "mistral-large-latest": {"input": 0.50, "output": 1.50},
+    "mistral-medium-latest": {"input": 0.40, "output": 2.00},
+    "mistral-small-latest": {"input": 0.10, "output": 0.30},
+    "codestral-latest": {"input": 0.30, "output": 0.90},
+    "magistral-medium-latest": {"input": 2.00, "output": 5.00},
+    "magistral-small-latest": {"input": 0.50, "output": 1.50},
+    "open-mistral-nemo": {"input": 0.02, "output": 0.04},
+    "pixtral-large-latest": {"input": 2.00, "output": 6.00},
+    # DeepSeek
+    "deepseek-chat": {"input": 0.27, "output": 1.10},
+    "deepseek-reasoner": {"input": 0.55, "output": 2.19},
     # IONOS AI Model Hub (EUR per 1M tokens)
     "Meta-Llama-3.1-8B-Instruct": {"input": 0.15, "output": 0.15},
     "Teuken-7B-instruct-commercial": {"input": 0.15, "output": 0.15},

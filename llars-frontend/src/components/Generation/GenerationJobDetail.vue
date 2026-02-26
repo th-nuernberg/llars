@@ -128,8 +128,8 @@
             </div>
           </div>
 
-          <!-- Generation Matrix -->
-          <div v-if="generationMatrix" class="generation-matrix">
+          <!-- Generation Matrix (hidden for single model+prompt) -->
+          <div v-if="generationMatrix && !isSingleConfig" class="generation-matrix">
             <div class="matrix-formula">
               <span class="matrix-value">{{ generationMatrix.items }}</span>
               <span class="matrix-label">{{ $t('generation.detail.matrixItems') }}</span>
@@ -181,7 +181,32 @@
             </LTag>
           </div>
 
-          <div class="config-section">
+          <!-- Compact single-config summary -->
+          <div v-if="isSingleConfig" class="config-section config-single-summary">
+            <div v-if="resolvedModelNames.length > 0" class="single-config-row">
+              <span class="config-label">Model:</span>
+              <LTag
+                variant="default"
+                size="small"
+                :style="getModelTagStyle(resolveModelColor(resolvedModelNames[0]), resolvedModelNames[0])"
+              >
+                {{ formatModelDisplayName(resolvedModelNames[0]) }}
+              </LTag>
+            </div>
+            <div v-if="jobConfig.prompts?.[0]" class="single-config-row">
+              <span class="config-label">Prompt:</span>
+              <LTag
+                variant="default"
+                size="small"
+                :style="getPromptTagStyle(jobConfig.prompts[0].template_name || `Template #${jobConfig.prompts[0].template_id}`)"
+              >
+                {{ jobConfig.prompts[0].template_name || `Template #${jobConfig.prompts[0].template_id}` }}
+              </LTag>
+            </div>
+          </div>
+
+          <!-- Full models/prompts sections for multi-config -->
+          <div v-if="!isSingleConfig" class="config-section">
             <h4>{{ $t('generation.detail.models') }}</h4>
             <div class="config-tags">
               <span
@@ -201,7 +226,7 @@
             </div>
           </div>
 
-          <div class="config-section">
+          <div v-if="!isSingleConfig" class="config-section">
             <h4>{{ $t('generation.detail.prompts') }}</h4>
             <div class="config-tags">
               <span
@@ -272,24 +297,12 @@
             </v-menu>
           </template>
 
-          <!-- Live Streaming Preview -->
-          <div v-if="currentlyProcessing" class="streaming-preview">
-            <div class="streaming-header">
-              <v-progress-circular indeterminate size="14" width="2" color="primary" class="mr-2" />
-              <LTag
-                variant="default"
-                size="small"
-                :style="getModelTagStyle(currentlyProcessing.modelColor, currentlyProcessing.model)"
-              >
-                {{ formatModelDisplayName(currentlyProcessing.model) }}
-              </LTag>
-              <span class="streaming-item-name">{{ currentlyProcessing.itemName }}</span>
-            </div>
-            <div ref="streamingContentRef" class="streaming-content">
-              {{ streamingContent || t('generation.detail.waitingForResponse') }}
-              <span class="cursor">|</span>
-            </div>
-          </div>
+          <!-- Live Multi-Stream Preview -->
+          <GenerationLiveStreams
+            :streams="activeStreams"
+            :max-parallel="jobMaxParallel"
+            :is-job-running="isJobRunning"
+          />
 
           <!-- Outputs List -->
           <div v-if="isLoadingOutputs" class="loading-state">
@@ -317,11 +330,12 @@
                   {{ getOutputStatusIcon(output.status) }}
                 </LIcon>
                 <span
+                  v-if="!isSingleConfig"
                   class="dot dot--model"
                   :style="{ background: resolveModelColor(output.llm_model_name, output.llm_model_color) }"
                 ></span>
                 <span
-                  v-if="output.prompt_variant_name"
+                  v-if="!isSingleConfig && output.prompt_variant_name"
                   class="dot dot--prompt"
                   :style="{ background: promptColorMap[output.prompt_variant_name] || PROMPT_COLORS[0] }"
                 ></span>
@@ -477,6 +491,7 @@ import { useMobile } from '@/composables/useMobile'
 import { useGeneration, JOB_STATUS, OUTPUT_STATUS } from '@/composables/useGeneration'
 import { getSocket } from '@/services/socketService'
 import { parseUserProviderModelId } from '@/utils/formatters'
+import GenerationLiveStreams from './GenerationLiveStreams.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -516,7 +531,6 @@ const currentlyProcessing = ref(null)  // { model: 'gpt-4', outputId: 123, conte
 const streamingContent = ref('')  // Current streaming content
 
 // Auto-scroll refs
-const streamingContentRef = ref(null)
 const outputsListRef = ref(null)
 
 // Keep per-output stream buffers so rejoin + parallel processing remains stable.
@@ -525,6 +539,10 @@ const streamMeta = new Map()
 const streamLastTokenAt = new Map()
 const activeStreamOutputId = ref(null)
 const STREAM_SWITCH_INACTIVITY_MS = 1500
+
+// Multi-stream state
+const liveStreamOutputIds = ref(new Set())
+const streamUpdateTrigger = ref(0)
 
 function normalizeNumericId(value) {
   const parsed = Number(value)
@@ -579,6 +597,7 @@ function clearStreamState() {
   activeStreamOutputId.value = null
   currentlyProcessing.value = null
   streamingContent.value = ''
+  liveStreamOutputIds.value = new Set()
 }
 
 function activateStreamOutput(outputId, fallbackMeta = null) {
@@ -822,6 +841,12 @@ const groupedOutputs = computed(() => {
   return Array.from(groups.values())
 })
 
+const isSingleConfig = computed(() => {
+  const models = jobConfig.value?.llm_models?.length || 0
+  const prompts = jobConfig.value?.prompts?.length || 0
+  return models <= 1 && prompts <= 1
+})
+
 const generationMatrix = computed(() => {
   const total = currentJob.value?.progress?.total
   const prompts = jobConfig.value?.prompts?.length
@@ -900,6 +925,34 @@ const isJobRunning = computed(() =>
   currentJob.value?.status === JOB_STATUS.RUNNING ||
   currentJob.value?.status === JOB_STATUS.QUEUED
 )
+
+// Max parallelism from job config
+const jobMaxParallel = computed(() => {
+  const limits = currentJob.value?.config?.limits
+  return limits?.max_parallel || 1
+})
+
+// Active streams array for GenerationLiveStreams component
+const activeStreams = computed(() => {
+  // Touch trigger to force re-computation on token updates
+  void streamUpdateTrigger.value
+  const ids = Array.from(liveStreamOutputIds.value)
+  return ids.map(outputId => {
+    const key = streamKey(outputId)
+    const meta = streamMeta.get(key) || {}
+    const content = streamBuffers.get(key) || ''
+    return {
+      outputId,
+      model: meta.model || 'Model',
+      modelColor: meta.modelColor || null,
+      itemName: meta.itemName || `Item #${outputId}`,
+      content,
+      justCompleted: meta._justCompleted || false,
+      justFailed: meta._justFailed || false,
+      tokenCount: content ? content.split(/\s+/).length : 0
+    }
+  })
+})
 
 const canCancel = computed(() =>
   currentJob.value?.status === JOB_STATUS.RUNNING ||
@@ -1016,18 +1069,6 @@ watch(outputFilter, () => {
   loadOutputs(jobId.value, { page: 1, status: outputFilter.value })
 })
 
-// Auto-scroll streaming content when new tokens arrive
-watch(streamingContent, () => {
-  if (streamingContentRef.value) {
-    // Use nextTick to ensure DOM is updated before scrolling
-    // Store ref locally to avoid null issues in setTimeout callback
-    const el = streamingContentRef.value
-    setTimeout(() => {
-      if (el) el.scrollTop = el.scrollHeight
-    }, 0)
-  }
-})
-
 // Auto-scroll outputs list when new items are added
 watch(outputs, () => {
   if (outputsListRef.value) {
@@ -1042,9 +1083,41 @@ watch(outputs, () => {
 // Socket.IO Event Handlers
 // =============================================================================
 
-function applyStreamSnapshot(currentlyProcessingState) {
+function applyStreamSnapshot(currentlyProcessingState, activeStreamsList = null) {
+  // If we have a full active_streams array, apply all of them
+  if (activeStreamsList && activeStreamsList.length > 0) {
+    const newIds = new Set()
+    activeStreamsList.forEach((stream, index) => {
+      const outputId = normalizeNumericId(stream.output_id) ?? stream.output_id
+      const snapshotMeta = {
+        model: stream.model_name,
+        modelColor: stream.model_color,
+        itemName: stream.item_name
+      }
+      setStreamMetaForOutput(outputId, snapshotMeta)
+
+      const fromState = stream.partial_content || ''
+      const processingOutput = outputs.value.find(o => idsMatch(o.id, outputId))
+      const fromOutputs = processingOutput?.generated_content || ''
+      const snapshotContent = (fromOutputs.length > fromState.length ? fromOutputs : fromState)
+      setStreamBufferForOutput(outputId, snapshotContent)
+      streamLastTokenAt.set(streamKey(outputId), 0)
+      newIds.add(outputId)
+
+      // Activate the first stream as the primary display
+      if (index === 0) {
+        activateStreamOutput(outputId, snapshotMeta)
+      }
+    })
+    liveStreamOutputIds.value = newIds
+    streamUpdateTrigger.value++
+    return
+  }
+
+  // Fallback: single currently_processing state
   if (!currentlyProcessingState) {
     clearStreamState()
+    liveStreamOutputIds.value = new Set()
     return
   }
   const outputId = normalizeNumericId(currentlyProcessingState.output_id) ?? currentlyProcessingState.output_id
@@ -1055,16 +1128,14 @@ function applyStreamSnapshot(currentlyProcessingState) {
   }
   setStreamMetaForOutput(outputId, snapshotMeta)
 
-  // Load partial content that was streamed before (re)join.
-  // New tokens will be appended via Socket.IO.
-  // Fallback to outputs payload in case state snapshot is slightly behind.
   const fromState = currentlyProcessingState.partial_content || ''
   const processingOutput = outputs.value.find(o => idsMatch(o.id, outputId))
   const fromOutputs = processingOutput?.generated_content || ''
   const snapshotContent = (fromOutputs.length > fromState.length ? fromOutputs : fromState)
   setStreamBufferForOutput(outputId, snapshotContent)
-  streamLastTokenAt.set(streamKey(outputId), 0) // Unknown freshness; allow quick handover on incoming tokens.
+  streamLastTokenAt.set(streamKey(outputId), 0)
   activateStreamOutput(outputId, snapshotMeta)
+  liveStreamOutputIds.value = new Set([outputId])
 }
 
 function setupSocketListeners() {
@@ -1089,7 +1160,7 @@ function setupSocketListeners() {
 
   socket.on('generation:state', (data) => {
     if (!isCurrentJobEvent(data)) return
-    applyStreamSnapshot(data.currently_processing)
+    applyStreamSnapshot(data.currently_processing, data.active_streams)
   })
 
   // Job started
@@ -1135,6 +1206,9 @@ function setupSocketListeners() {
       setStreamBufferForOutput(outputId, '')
       setOutputStatus(outputId, OUTPUT_STATUS.PROCESSING)
 
+      // Add to multi-stream set
+      liveStreamOutputIds.value = new Set([...liveStreamOutputIds.value, outputId])
+
       const shouldActivate = (
         !activeStreamOutputId.value ||
         idsMatch(activeStreamOutputId.value, outputId) ||
@@ -1175,6 +1249,7 @@ function setupSocketListeners() {
   socket.on('generation:item:token', (data) => {
     if (!isCurrentJobEvent(data)) return
     ensureProcessingStateFromToken(data)
+    streamUpdateTrigger.value++
   })
 
   // Aggregated partial update (fallback for reconnect/missed token chunks)
@@ -1214,9 +1289,9 @@ function setupSocketListeners() {
   // Item completed
   socket.on('generation:item:completed', (data) => {
     if (isCurrentJobEvent(data)) {
+      const outputId = normalizeNumericId(data.output_id) ?? data.output_id
       // Clear processing state if this was the current item
       const wasActiveStream = idsMatch(activeStreamOutputId.value, data.output_id)
-      removeStreamOutput(data.output_id)
       // Update the output locally if it exists in the list
       const output = setOutputStatus(data.output_id, OUTPUT_STATUS.COMPLETED)
       if (output) {
@@ -1228,6 +1303,21 @@ function setupSocketListeners() {
           output.llm_model_color = data.model_color
         }
       }
+
+      // Mark as justCompleted for green flash, then remove after delay
+      const key = streamKey(outputId)
+      const existingMeta = streamMeta.get(key) || {}
+      streamMeta.set(key, { ...existingMeta, _justCompleted: true })
+      streamUpdateTrigger.value++
+
+      setTimeout(() => {
+        removeStreamOutput(data.output_id)
+        const newSet = new Set(liveStreamOutputIds.value)
+        newSet.delete(outputId)
+        liveStreamOutputIds.value = newSet
+        streamUpdateTrigger.value++
+      }, 800)
+
       if (wasActiveStream) {
         const nextProcessingOutput = outputs.value.find(o => o.status === OUTPUT_STATUS.PROCESSING)
         if (nextProcessingOutput) {
@@ -1250,8 +1340,8 @@ function setupSocketListeners() {
   // Item failed
   socket.on('generation:item:failed', (data) => {
     if (isCurrentJobEvent(data)) {
+      const outputId = normalizeNumericId(data.output_id) ?? data.output_id
       const wasActiveStream = idsMatch(activeStreamOutputId.value, data.output_id)
-      removeStreamOutput(data.output_id)
       // Update the output locally if it exists in the list
       const output = setOutputStatus(data.output_id, OUTPUT_STATUS.FAILED)
       if (output) {
@@ -1260,6 +1350,21 @@ function setupSocketListeners() {
           output.llm_model_color = data.model_color
         }
       }
+
+      // Mark as justFailed for red flash, then remove after delay
+      const key = streamKey(outputId)
+      const existingMeta = streamMeta.get(key) || {}
+      streamMeta.set(key, { ...existingMeta, _justFailed: true })
+      streamUpdateTrigger.value++
+
+      setTimeout(() => {
+        removeStreamOutput(data.output_id)
+        const newSet = new Set(liveStreamOutputIds.value)
+        newSet.delete(outputId)
+        liveStreamOutputIds.value = newSet
+        streamUpdateTrigger.value++
+      }, 800)
+
       if (wasActiveStream) {
         const nextProcessingOutput = outputs.value.find(o => o.status === OUTPUT_STATUS.PROCESSING)
         if (nextProcessingOutput) {
@@ -1339,8 +1444,10 @@ onMounted(async () => {
   await loadJob(jobId.value)
   await loadOutputs(jobId.value)
 
-  // Check if there's a currently processing item (for reconnection support)
-  if (currentJob.value?.currently_processing) {
+  // Check if there are currently processing items (for reconnection support)
+  if (currentJob.value?.active_streams?.length > 0) {
+    applyStreamSnapshot(currentJob.value.currently_processing, currentJob.value.active_streams)
+  } else if (currentJob.value?.currently_processing) {
     applyStreamSnapshot(currentJob.value.currently_processing)
   }
 })
@@ -1477,51 +1584,6 @@ onUnmounted(() => {
   font-size: 0.75rem;
 }
 
-/* Streaming Preview */
-.streaming-preview {
-  margin-bottom: 16px;
-  padding: 16px;
-  background: linear-gradient(135deg, rgba(var(--v-theme-primary), 0.08), rgba(var(--v-theme-secondary), 0.05));
-  border-radius: 12px 4px 12px 4px;
-  border: 1px solid rgba(var(--v-theme-primary), 0.2);
-}
-
-.streaming-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 12px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.08);
-}
-
-.streaming-item-name {
-  font-size: 0.8rem;
-  color: rgba(var(--v-theme-on-surface), 0.6);
-  margin-left: auto;
-}
-
-.streaming-content {
-  font-family: monospace;
-  font-size: 0.85rem;
-  line-height: 1.6;
-  max-height: 200px;
-  overflow-y: auto;
-  white-space: pre-wrap;
-  word-break: break-word;
-  color: rgba(var(--v-theme-on-surface), 0.9);
-}
-
-.streaming-content .cursor {
-  animation: blink 1s infinite;
-  color: var(--llars-primary, #b0ca97);
-}
-
-@keyframes blink {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0; }
-}
-
 .generation-matrix {
   margin-top: 16px;
   padding: 12px 14px;
@@ -1616,6 +1678,27 @@ onUnmounted(() => {
   text-transform: uppercase;
   letter-spacing: 0.5px;
   margin: 0 0 8px 0;
+}
+
+.config-single-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.single-config-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.single-config-row .config-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: rgba(var(--v-theme-on-surface), 0.6);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  min-width: 56px;
 }
 
 .config-tags {

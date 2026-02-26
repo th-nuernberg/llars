@@ -13,6 +13,7 @@ from urllib.parse import urlparse
 
 import requests
 
+from auth.url_validator import validate_url_not_internal
 from db.database import db
 from db.models.llm_model import LLMModel
 from db.models.llm_provider import LLMProvider
@@ -28,6 +29,8 @@ OPENAI_COMPATIBLE_TYPES = {
     "ollama",
     "vllm",
     "openai_compatible",
+    "mistral",
+    "deepseek",
     "custom",
 }
 
@@ -292,6 +295,15 @@ class LLMProviderService:
         config = config or {}
         is_openai_compatible = provider_type in OPENAI_COMPATIBLE_TYPES
 
+        # SSRF-Schutz: Admin-Provider dürfen auf interne Netze zugreifen
+        # (z.B. Ollama auf localhost), User-Provider nicht (geprüft in UserLLMProviderService)
+        allow_private = config.get("_admin_provider", False)
+        if base_url:
+            try:
+                validate_url_not_internal(base_url, allow_private=allow_private)
+            except ValueError as e:
+                return {"success": False, "error": f"URL blocked: {e}"}
+
         try:
             if is_openai_compatible:
                 if not base_url:
@@ -334,12 +346,20 @@ class LLMProviderService:
 
     @staticmethod
     def test_provider(provider: LLMProvider) -> Dict[str, Any]:
+        """Test an admin-managed provider. Private IPs allowed (e.g. local Ollama)."""
         if not provider:
             raise ValueError("Provider not found")
 
         provider_type = (provider.provider_type or "").lower()
         base_url = (provider.base_url or "").rstrip("/")
         api_key = LLMProviderService._get_api_key(provider)
+
+        # Admin-Provider dürfen auf interne Netze (allow_private=True)
+        if base_url:
+            try:
+                validate_url_not_internal(base_url, allow_private=True)
+            except ValueError as e:
+                return {"success": False, "error": f"URL blocked: {e}"}
 
         try:
             if provider.is_openai_compatible:

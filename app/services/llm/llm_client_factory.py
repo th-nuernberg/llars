@@ -42,6 +42,7 @@ MANUFACTURER_TO_PROVIDER = {
     "openai": "openai",
     "ionos": "ionos",
     "mistral": "litellm",
+    "deepseek": "deepseek",
     "anthropic": "anthropic",
     "gemini": "gemini",
 }
@@ -59,6 +60,8 @@ KNOWN_PROVIDER_PREFIXES = {
     "litellm",
     "anthropic",
     "gemini",
+    "mistral",
+    "deepseek",
     "ollama",
     "vllm",
     "custom",

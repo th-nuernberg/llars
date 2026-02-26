@@ -103,6 +103,8 @@ def create_provider():
         'openai_compatible',
         'anthropic',
         'gemini',
+        'mistral',
+        'deepseek',
         'azure',
         'ollama',
         'vllm',
@@ -410,6 +412,26 @@ def get_provider_types():
             'description': 'Gemini Pro und Ultra',
             'requires_api_key': True,
             'supports_base_url': False,
+            'supports_model_fetch': False,
+            'config_schema': {}
+        },
+        {
+            'id': 'mistral',
+            'name': 'Mistral',
+            'description': 'Mistral Large, Small, Codestral und Magistral Modelle',
+            'requires_api_key': True,
+            'supports_base_url': True,
+            'default_base_url': 'https://api.mistral.ai/v1',
+            'supports_model_fetch': False,
+            'config_schema': {}
+        },
+        {
+            'id': 'deepseek',
+            'name': 'DeepSeek',
+            'description': 'DeepSeek Chat und Reasoner Modelle',
+            'requires_api_key': True,
+            'supports_base_url': True,
+            'default_base_url': 'https://api.deepseek.com',
             'supports_model_fetch': False,
             'config_schema': {}
         },

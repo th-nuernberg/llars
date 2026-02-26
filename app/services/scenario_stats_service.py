@@ -33,7 +33,13 @@ from db.models import (
     ItemDimensionRating,
     ItemLabelingEvaluation,
     UserMailHistoryRating,
+    Feature,
+    UserFeatureRanking,
+    UserFeatureRating,
+    ScenarioItems,
 )
+from sqlalchemy import func
+from sqlalchemy.orm import joinedload
 from decorators.error_handler import NotFoundError, ValidationError
 from routes.HelperFunctions import (
     get_thread_progression_state,
@@ -448,6 +454,165 @@ def _calculate_ranking_agreement(
     return _calculate_krippendorff_alpha(ratings_matrix)
 
 
+def _batch_get_progression_states(
+    thread_ids: List[int],
+    user_ids: List[int],
+    function_type_id: int,
+    scenario_id: int,
+) -> Dict[tuple, ProgressionStatus]:
+    """Batch-load progression states for all (thread_id, user_id) combinations.
+
+    Returns dict of {(thread_id, user_id): ProgressionStatus}.
+    Replaces N+1 per-item calls to get_thread_progression_state().
+    """
+    if not thread_ids or not user_ids:
+        return {}
+
+    result = {}
+
+    if function_type_id == 1:
+        # RANKING: count features per item, count ranked features per (item, user)
+        feature_counts = dict(
+            db.session.query(Feature.item_id, func.count(Feature.feature_id))
+            .filter(Feature.item_id.in_(thread_ids))
+            .group_by(Feature.item_id)
+            .all()
+        )
+        for uid in user_ids:
+            ranked_counts = dict(
+                db.session.query(Feature.item_id, func.count(UserFeatureRanking.ranking_id))
+                .join(Feature, UserFeatureRanking.feature_id == Feature.feature_id)
+                .filter(
+                    UserFeatureRanking.user_id == uid,
+                    Feature.item_id.in_(thread_ids),
+                )
+                .group_by(Feature.item_id)
+                .all()
+            )
+            for tid in thread_ids:
+                total = feature_counts.get(tid, 0)
+                ranked = ranked_counts.get(tid, 0)
+                if ranked == 0:
+                    result[(tid, uid)] = ProgressionStatus.NOT_STARTED
+                elif ranked < total:
+                    result[(tid, uid)] = ProgressionStatus.PROGRESSING
+                else:
+                    result[(tid, uid)] = ProgressionStatus.DONE
+
+    elif function_type_id in (2, 7):
+        # RATING / LABELING: check ItemDimensionRating first, fallback to feature ratings
+        dim_ratings = {}
+        for row in (
+            db.session.query(
+                ItemDimensionRating.item_id,
+                ItemDimensionRating.user_id,
+                ItemDimensionRating.status,
+            )
+            .filter(
+                ItemDimensionRating.scenario_id == scenario_id,
+                ItemDimensionRating.user_id.in_(user_ids),
+                ItemDimensionRating.item_id.in_(thread_ids),
+            )
+            .all()
+        ):
+            dim_ratings[(row.item_id, row.user_id)] = row.status
+
+        # Find items without dim_rating per user (for rating fallback)
+        missing_items_by_user = defaultdict(list)
+        for uid in user_ids:
+            for tid in thread_ids:
+                key = (tid, uid)
+                if key in dim_ratings:
+                    status = dim_ratings[key]
+                    result[key] = status if status else ProgressionStatus.NOT_STARTED
+                else:
+                    missing_items_by_user[uid].append(tid)
+
+        # Fallback for rating: feature-based rating check
+        if function_type_id == 2 and missing_items_by_user:
+            all_missing = list({tid for tids in missing_items_by_user.values() for tid in tids})
+            feature_counts = dict(
+                db.session.query(Feature.item_id, func.count(Feature.feature_id))
+                .filter(Feature.item_id.in_(all_missing))
+                .group_by(Feature.item_id)
+                .all()
+            ) if all_missing else {}
+
+            for uid, tids in missing_items_by_user.items():
+                if not tids:
+                    continue
+                rated_counts = dict(
+                    db.session.query(Feature.item_id, func.count(UserFeatureRating.rating_id))
+                    .join(Feature, UserFeatureRating.feature_id == Feature.feature_id)
+                    .filter(
+                        UserFeatureRating.user_id == uid,
+                        Feature.item_id.in_(tids),
+                    )
+                    .group_by(Feature.item_id)
+                    .all()
+                )
+                for tid in tids:
+                    total = feature_counts.get(tid, 0)
+                    rated = rated_counts.get(tid, 0)
+                    if rated == 0:
+                        result[(tid, uid)] = ProgressionStatus.NOT_STARTED
+                    elif rated < total:
+                        result[(tid, uid)] = ProgressionStatus.PROGRESSING
+                    else:
+                        result[(tid, uid)] = ProgressionStatus.DONE
+        elif function_type_id == 7:
+            # Labeling: no fallback, items without dim_rating are NOT_STARTED
+            for uid, tids in missing_items_by_user.items():
+                for tid in tids:
+                    result[(tid, uid)] = ProgressionStatus.NOT_STARTED
+
+    elif function_type_id == 3:
+        # MAIL_RATING: check UserMailHistoryRating
+        for uid in user_ids:
+            mail_ratings = (
+                db.session.query(
+                    UserMailHistoryRating.thread_id,
+                    UserMailHistoryRating.status,
+                )
+                .filter(
+                    UserMailHistoryRating.user_id == uid,
+                    UserMailHistoryRating.thread_id.in_(thread_ids),
+                )
+                .order_by(UserMailHistoryRating.timestamp.desc())
+                .all()
+            )
+            seen = set()
+            for row in mail_ratings:
+                if row.thread_id not in seen:
+                    seen.add(row.thread_id)
+                    result[(row.thread_id, uid)] = row.status if row.status else ProgressionStatus.NOT_STARTED
+            for tid in thread_ids:
+                if (tid, uid) not in result:
+                    result[(tid, uid)] = ProgressionStatus.NOT_STARTED
+
+    elif function_type_id == 5:
+        # AUTHENTICITY: existence of vote = DONE
+        votes = set(
+            db.session.query(
+                UserAuthenticityVote.thread_id,
+                UserAuthenticityVote.user_id,
+            )
+            .filter(
+                UserAuthenticityVote.user_id.in_(user_ids),
+                UserAuthenticityVote.thread_id.in_(thread_ids),
+            )
+            .all()
+        )
+        for uid in user_ids:
+            for tid in thread_ids:
+                if (tid, uid) in votes:
+                    result[(tid, uid)] = ProgressionStatus.DONE
+                else:
+                    result[(tid, uid)] = ProgressionStatus.NOT_STARTED
+
+    return result
+
+
 def get_progress_stats(scenario_id: int) -> Dict[str, Any]:
     """Get detailed progress statistics for all users in a scenario."""
     scenario = _get_scenario_or_raise(scenario_id)
@@ -469,6 +634,46 @@ def get_progress_stats(scenario_id: int) -> Dict[str, Any]:
         .all()
     )
 
+    # Pre-load all scenario threads and thread objects to avoid N+1
+    all_scenario_threads = (
+        db.session.query(ScenarioThreads)
+        .options(joinedload(ScenarioItems.item))
+        .filter(ScenarioThreads.scenario_id == scenario_id)
+        .all()
+    )
+    all_thread_ids = [st.thread_id for st in all_scenario_threads if st.thread_id]
+    all_user_ids = [su.user_id for su in scenario_users]
+
+    # Batch-load all progression states in a few queries instead of per-item
+    progression_cache = _batch_get_progression_states(
+        thread_ids=all_thread_ids,
+        user_ids=all_user_ids,
+        function_type_id=scenario.function_type_id,
+        scenario_id=scenario_id,
+    )
+
+    # Build a lookup for distributed threads per user
+    distributed_thread_ids_by_user = defaultdict(set)
+    if any(
+        su.role not in (ScenarioRoles.VIEWER, ScenarioRoles.OWNER)
+        and not raters_receive_all_threads(scenario)
+        for su in scenario_users
+    ):
+        distributions = (
+            db.session.query(
+                ScenarioUsers.user_id,
+                ScenarioThreadDistribution.scenario_thread_id,
+            )
+            .join(ScenarioUsers, ScenarioThreadDistribution.scenario_user_id == ScenarioUsers.id)
+            .filter(ScenarioUsers.scenario_id == scenario_id)
+            .all()
+        )
+        st_id_to_thread_id = {st.id: st.thread_id for st in all_scenario_threads}
+        for uid, st_id in distributions:
+            tid = st_id_to_thread_id.get(st_id)
+            if tid:
+                distributed_thread_ids_by_user[uid].add(tid)
+
     for scenario_user in scenario_users:
         done_threads_list = []
         not_started_threads_list = []
@@ -484,36 +689,19 @@ def get_progress_stats(scenario_id: int) -> Dict[str, Any]:
         )
 
         if use_full_threads:
-            user_threads = (
-                db.session.query(ScenarioThreads)
-                .filter(ScenarioThreads.scenario_id == scenario_id)
-                .all()
-            )
+            user_threads = all_scenario_threads
         else:
-            user_threads = (
-                db.session.query(ScenarioThreads)
-                .join(
-                    ScenarioThreadDistribution,
-                    ScenarioThreadDistribution.scenario_thread_id == ScenarioThreads.id,
-                )
-                .join(ScenarioUsers, ScenarioThreadDistribution.scenario_user_id == ScenarioUsers.id)
-                .filter(
-                    ScenarioThreads.scenario_id == scenario_id,
-                    ScenarioUsers.user_id == scenario_user.user_id,
-                )
-                .all()
-            )
-
-        if not user_threads:
-            user_threads = []
+            user_dist_ids = distributed_thread_ids_by_user.get(scenario_user.user_id, set())
+            user_threads = [st for st in all_scenario_threads if st.thread_id in user_dist_ids]
 
         for user_thread in user_threads:
             thread = user_thread.thread
+            if not thread:
+                continue
 
-            progression_state = get_thread_progression_state(
-                thread=thread,
-                user_id=scenario_user.user_id,
-                function_type_id=scenario.function_type_id,
+            progression_state = progression_cache.get(
+                (thread.thread_id, scenario_user.user_id),
+                ProgressionStatus.NOT_STARTED,
             )
 
             if progression_state:
@@ -2482,7 +2670,6 @@ def _calculate_ranking_provenance_analysis(scenario_id: int) -> Dict[str, Any]:
     (origin LLM + prompt) and reports which origins appear most frequently in the
     top bucket.
     """
-    from sqlalchemy.orm import joinedload
     from db.models import (
         ScenarioItems,
         UserFeatureRanking,
@@ -3010,7 +3197,7 @@ def _calculate_ranking_agreement_heatmap(scenario_id: int) -> Dict[str, Any]:
     users_set = set()
     user_info = {}
 
-    detail_item_limit = 250
+    detail_item_limit = 30
 
     def _to_preview(value: Any, max_length: int = 220) -> str:
         if value is None:

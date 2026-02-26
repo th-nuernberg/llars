@@ -722,10 +722,11 @@ class OutputExportService:
         groups = defaultdict(list)
         for output in outputs:
             variables = output.prompt_variables_json or {}
+            # Use source_index if present (can be 0!), then source_item_id, then output.id
+            source_index = variables.get('source_index')
             source_key = (
-                variables.get('source_index')
-                or output.source_item_id
-                or output.id
+                source_index if source_index is not None
+                else (output.source_item_id or output.id)
             )
             if split_by_prompt:
                 # Further split by prompt variant

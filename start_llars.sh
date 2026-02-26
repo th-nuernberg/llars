@@ -335,11 +335,16 @@ if [ "$UPDATE_MODE" = "true" ]; then
     echo "Restarting..."
     $COMPOSE_CMD up -d --no-deps $CODE_SERVICES
 
+    # Restart nginx to pick up new container IPs (avoids 502 Bad Gateway)
+    echo "Restarting nginx..."
+    docker restart llars_nginx_service 2>/dev/null || true
+
     echo ""
     echo "============================================"
     echo "Update complete. Rebuilt services:"
     echo "  - backend-flask-service"
     echo "  - frontend-vue-service"
+    echo "  - nginx (restarted)"
     echo ""
     echo "View logs:"
     echo "  docker compose -p llars logs -f backend-flask-service frontend-vue-service"

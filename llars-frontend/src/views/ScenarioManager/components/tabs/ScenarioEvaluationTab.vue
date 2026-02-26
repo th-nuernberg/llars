@@ -538,7 +538,7 @@
         <div class="provenance-best-grid">
           <div class="provenance-best-card">
             <span class="provenance-best-label">{{ $t('scenarioManager.results.bestLLM') }}</span>
-            <strong class="provenance-best-name">{{ bestProvenanceLLM?.label || '-' }}</strong>
+            <strong class="provenance-best-name">{{ bestProvenanceLLM ? formatProvenanceLabel(bestProvenanceLLM.label) : '-' }}</strong>
             <span v-if="bestProvenanceLLM" class="provenance-best-meta">
               {{ formatProvenanceRate(bestProvenanceLLM.top_bucket_rate) }}% | {{ bestProvenanceLLM.top_bucket_count }}/{{ bestProvenanceLLM.total }}
             </span>
@@ -552,7 +552,7 @@
           </div>
           <div v-if="hasMultipleProvenancePrompts" class="provenance-best-card">
             <span class="provenance-best-label">{{ $t('scenarioManager.results.bestCombination') }}</span>
-            <strong class="provenance-best-name">{{ bestProvenanceCombination?.label || '-' }}</strong>
+            <strong class="provenance-best-name">{{ bestProvenanceCombination ? formatProvenanceLabel(bestProvenanceCombination.label) : '-' }}</strong>
             <span v-if="bestProvenanceCombination" class="provenance-best-meta">
               {{ formatProvenanceRate(bestProvenanceCombination.top_bucket_rate) }}% | {{ bestProvenanceCombination.top_bucket_count }}/{{ bestProvenanceCombination.total }}
             </span>
@@ -576,7 +576,7 @@
               >
                 <div class="provenance-row-main">
                   <span class="provenance-rank">#{{ index + 1 }}</span>
-                  <span class="provenance-label">{{ entry.label }}</span>
+                  <span class="provenance-label">{{ formatProvenanceLabel(entry.label) }}</span>
                 </div>
                 <div class="provenance-row-stats">
                   <span class="provenance-rate">{{ formatProvenanceRate(entry.top_bucket_rate) }}%</span>
@@ -1067,7 +1067,7 @@
         <div class="provenance-best-grid">
           <div class="provenance-best-card">
             <span class="provenance-best-label">{{ $t('scenarioManager.results.bestLLM') }}</span>
-            <strong class="provenance-best-name">{{ bestRatingProvenanceLLM?.label || '-' }}</strong>
+            <strong class="provenance-best-name">{{ bestRatingProvenanceLLM ? formatProvenanceLabel(bestRatingProvenanceLLM.label) : '-' }}</strong>
             <span v-if="bestRatingProvenanceLLM" class="provenance-best-meta">
               {{ formatProvenanceRate(bestRatingProvenanceLLM.avg_normalized_score) }}% | {{ formatProvenanceScore(bestRatingProvenanceLLM.avg_score) }} Ø
             </span>
@@ -1081,7 +1081,7 @@
           </div>
           <div v-if="!isMailRating && hasMultipleRatingProvenancePrompts" class="provenance-best-card">
             <span class="provenance-best-label">{{ $t('scenarioManager.results.bestCombination') }}</span>
-            <strong class="provenance-best-name">{{ bestRatingProvenanceCombination?.label || '-' }}</strong>
+            <strong class="provenance-best-name">{{ bestRatingProvenanceCombination ? formatProvenanceLabel(bestRatingProvenanceCombination.label) : '-' }}</strong>
             <span v-if="bestRatingProvenanceCombination" class="provenance-best-meta">
               {{ formatProvenanceRate(bestRatingProvenanceCombination.avg_normalized_score) }}% | {{ formatProvenanceScore(bestRatingProvenanceCombination.avg_score) }} Ø
             </span>
@@ -1105,7 +1105,7 @@
               >
                 <div class="provenance-row-main">
                   <span class="provenance-rank">#{{ index + 1 }}</span>
-                  <span class="provenance-label">{{ entry.label }}</span>
+                  <span class="provenance-label">{{ formatProvenanceLabel(entry.label) }}</span>
                 </div>
                 <div class="provenance-row-stats">
                   <span class="provenance-rate">{{ formatProvenanceRate(entry.avg_normalized_score) }}%</span>
@@ -3787,6 +3787,25 @@ function formatProvenanceRate(value) {
   return numeric.toFixed(1)
 }
 
+function formatProvenanceLabel(label) {
+  if (!label) return 'Unknown'
+  // Combination labels: "prompt x user-provider:..." → format the LLM part
+  if (label.includes(' x ')) {
+    const parts = label.split(' x ')
+    return parts.map(p => formatProvenanceLabel(p.trim())).join(' x ')
+  }
+  // user-provider:29:ieb-rudolph:mistralai/Mistral-Nemo → Mistral/Mistral-Nemo
+  if (label.startsWith('user-provider:')) {
+    const parsed = parseUserProviderModelId(label)
+    if (parsed) return `${parsed.providerLabel}/${parsed.modelName}`
+  }
+  // Global/Mistral/Mistral-Small-3.2 → Mistral/Mistral-Small-3.2
+  if (label.startsWith('Global/')) {
+    return label.slice('Global/'.length)
+  }
+  return label
+}
+
 function formatProvenanceScore(value) {
   const numeric = Number(value)
   if (!Number.isFinite(numeric)) return '-'
@@ -3827,7 +3846,7 @@ function getCombinationPromptLabel(entry) {
 }
 
 function getCombinationLLMLabel(entry) {
-  return getCombinationParts(entry).llm
+  return formatProvenanceLabel(getCombinationParts(entry).llm)
 }
 
 function getProvenanceBucketMapValue(mapLike, bucketId) {

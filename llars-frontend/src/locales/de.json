@@ -2803,7 +2803,8 @@
         "descriptionField": "Beschreibung",
         "descriptionHint": "Optional: Beschreiben Sie den Zweck dieses Szenarios",
         "startDate": "Startdatum",
-        "endDate": "Enddatum"
+        "endDate": "Enddatum",
+        "rankingDisabledHint": "Ranking benötigt mindestens 2 Varianten pro Eingabe (mehrere Modelle oder Prompts)"
       },
       "step3": {
         "title": "Konfiguration",
@@ -5804,7 +5805,10 @@
         "budget": "Budget-Limit",
         "budgetLimit": "Max. Kosten (USD)",
         "budgetHint": "Leer lassen für kein Limit",
-        "retryCount": "Wiederholungen"
+        "retryCount": "Wiederholungen",
+        "parallelism": "Parallelismus",
+        "maxParallel": "Gleichzeitige Streams",
+        "maxParallelHint": "Anzahl gleichzeitig verarbeiteter Outputs. Mehr = schneller, aber höhere API-Last."
       },
       "step5": {
         "title": "Prüfen & Erstellen",
@@ -5837,6 +5841,9 @@
       "generatedContent": "Generierter Inhalt",
       "errorMessage": "Fehlermeldung",
       "currentlyProcessing": "Wird verarbeitet",
+      "liveStreams": "Live-Streams",
+      "active": "aktiv",
+      "waitingForBatch": "Warte auf nächsten Batch...",
       "waitingForResponse": "Warte auf LLM-Antwort...",
       "reconnecting": "Verbinde zum laufenden Stream...",
       "inputPrompt": "Eingabe-Prompt",
@@ -5924,6 +5931,41 @@
       "reviewFailed": "Review-Entscheidung konnte nicht übermittelt werden",
       "runFailed": "Pipeline ist fehlgeschlagen"
     },
+    "session": {
+      "config": "Konfiguration",
+      "taskSpec": "Aufgabenstellung",
+      "candidateModels": "Kandidaten-Modelle",
+      "evalModel": "Evaluations-Modell",
+      "metaModel": "Meta-Modell",
+      "thresholds": "Schwellenwerte",
+      "globalThreshold": "Global",
+      "tokensUsed": "Tokens verbraucht",
+      "tokenBudget": "Token-Budget",
+      "maxIterations": "Max. Iterationen",
+      "duration": "Dauer",
+      "decision": "Entscheidung",
+      "decisionContinue": "Weiter optimieren",
+      "decisionConverged": "Konvergiert",
+      "decisionEscalate": "Eskaliert",
+      "promptVariants": "Prompt-Varianten",
+      "systemPrompt": "System-Prompt",
+      "userTemplate": "User-Template",
+      "thresholdMet": "Erreicht",
+      "thresholdNotMet": "Nicht erreicht",
+      "dimensions": "Dimensionen",
+      "dimension": "Dimension",
+      "score": "Score",
+      "status": "Status",
+      "bestPrompts": "Beste Prompt-Varianten",
+      "totalRatings": "Bewertungen",
+      "clickToExpand": "Klicken für Details",
+      "generationJobId": "Generierungs-Job",
+      "evalScenarioId": "Eval-Szenario",
+      "agentReasoning": "Agent-Begründung",
+      "convergenceDecision": "Konvergenz-Entscheidung",
+      "metaInfo": "Meta-Informationen",
+      "noTaskSpec": "Keine Aufgabenstellung angegeben"
+    },
     "wizard": {
       "title": "Neue Pipeline erstellen",
       "subtitle": "Konfiguriere die automatisierte LLM-Evaluation",
@@ -5958,6 +6000,19 @@
       "createAndStart": "Erstellen & Starten",
       "summary": "Zusammenfassung",
       "selected": "ausgewählt"
+    },
+    "research": {
+      "title": "Forschung & Methodik",
+      "description": "Die LLARS-Pipeline kombiniert Ansätze aus aktueller Forschung zu automatisierter Prompt-Optimierung und LLM-Evaluation.",
+      "approach": "Unser Ansatz: Iterative Prompt-Optimierung mit automatischer LLM-Evaluation in einem geschlossenen Feedback-Loop, inspiriert von DSPy und TextGrad.",
+      "papers": {
+        "dspy": "DSPy — Deklarative Sprache für LLM-Pipelines mit automatischer Compile-Time-Optimierung (Stanford, 2024)",
+        "textgrad": "TextGrad — Automatische Differenzierung über Text für iterative Verfeinerung (MIT, 2024)",
+        "agentJudge": "Agent-as-a-Judge — Agent-basierte Evaluation statt statischer Metriken (2025)",
+        "llmJudgeSurvey": "LLM-as-a-Judge Survey — Umfassende Übersicht zu LLM-Evaluationsmethoden (2025)",
+        "promptomatix": "Promptomatix — Feedback-basierte Prompt-Optimierung mit Kostensteuerung (2025)",
+        "opro": "OPRO — LLM-gesteuerte Prompt-Suche via Optimization by PROmpting (Google DeepMind, 2023)"
+      }
     }
   },
   "referral": {

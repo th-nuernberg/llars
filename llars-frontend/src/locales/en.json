@@ -2803,7 +2803,8 @@
         "descriptionField": "Description",
         "descriptionHint": "Optional: Describe the purpose of this scenario",
         "startDate": "Start Date",
-        "endDate": "End Date"
+        "endDate": "End Date",
+        "rankingDisabledHint": "Ranking requires at least 2 variants per input (multiple models or prompts)"
       },
       "step3": {
         "title": "Configuration",
@@ -5962,7 +5963,10 @@
         "budget": "Budget Limit",
         "budgetLimit": "Max Cost (USD)",
         "budgetHint": "Leave empty for no limit",
-        "retryCount": "Retry Count"
+        "retryCount": "Retry Count",
+        "parallelism": "Parallelism",
+        "maxParallel": "Concurrent Streams",
+        "maxParallelHint": "Number of outputs processed simultaneously. More = faster, but higher API load."
       },
       "step5": {
         "title": "Review & Create",
@@ -5995,6 +5999,9 @@
       "generatedContent": "Generated Content",
       "errorMessage": "Error Message",
       "currentlyProcessing": "Currently Processing",
+      "liveStreams": "Live Streams",
+      "active": "active",
+      "waitingForBatch": "Waiting for next batch...",
       "waitingForResponse": "Waiting for LLM response...",
       "reconnecting": "Reconnecting to running stream...",
       "inputPrompt": "Input Prompt",
@@ -6082,6 +6089,41 @@
       "reviewFailed": "Failed to submit review decision",
       "runFailed": "Pipeline failed"
     },
+    "session": {
+      "config": "Configuration",
+      "taskSpec": "Task Specification",
+      "candidateModels": "Candidate Models",
+      "evalModel": "Evaluation Model",
+      "metaModel": "Meta Model",
+      "thresholds": "Thresholds",
+      "globalThreshold": "Global",
+      "tokensUsed": "Tokens used",
+      "tokenBudget": "Token Budget",
+      "maxIterations": "Max Iterations",
+      "duration": "Duration",
+      "decision": "Decision",
+      "decisionContinue": "Continue optimizing",
+      "decisionConverged": "Converged",
+      "decisionEscalate": "Escalated",
+      "promptVariants": "Prompt Variants",
+      "systemPrompt": "System Prompt",
+      "userTemplate": "User Template",
+      "thresholdMet": "Met",
+      "thresholdNotMet": "Not met",
+      "dimensions": "Dimensions",
+      "dimension": "Dimension",
+      "score": "Score",
+      "status": "Status",
+      "bestPrompts": "Best Prompt Variants",
+      "totalRatings": "Ratings",
+      "clickToExpand": "Click for details",
+      "generationJobId": "Generation Job",
+      "evalScenarioId": "Eval Scenario",
+      "agentReasoning": "Agent Reasoning",
+      "convergenceDecision": "Convergence Decision",
+      "metaInfo": "Meta Information",
+      "noTaskSpec": "No task specification provided"
+    },
     "wizard": {
       "title": "Create New Pipeline",
       "subtitle": "Configure the automated LLM evaluation",
@@ -6116,6 +6158,19 @@
       "createAndStart": "Create & Start",
       "summary": "Summary",
       "selected": "selected"
+    },
+    "research": {
+      "title": "Research & Methodology",
+      "description": "The LLARS pipeline combines approaches from current research on automated prompt optimization and LLM evaluation.",
+      "approach": "Our approach: Iterative prompt optimization with automatic LLM evaluation in a closed feedback loop, inspired by DSPy and TextGrad.",
+      "papers": {
+        "dspy": "DSPy — Declarative language for LLM pipelines with automatic compile-time optimization (Stanford, 2024)",
+        "textgrad": "TextGrad — Automatic differentiation via text for iterative refinement (MIT, 2024)",
+        "agentJudge": "Agent-as-a-Judge — Agent-based evaluation instead of static metrics (2025)",
+        "llmJudgeSurvey": "LLM-as-a-Judge Survey — Comprehensive survey of LLM evaluation methods (2025)",
+        "promptomatix": "Promptomatix — Feedback-based prompt optimization with cost awareness (2025)",
+        "opro": "OPRO — LLM-driven prompt search via Optimization by PROmpting (Google DeepMind, 2023)"
+      }
     }
   },
   "referral": {

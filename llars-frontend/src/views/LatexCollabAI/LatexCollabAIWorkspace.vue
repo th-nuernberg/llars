@@ -242,8 +242,8 @@ const shortcuts = computed(() => ([
 
 // Computed for reactive editor access
 const editorRefValue = computed(() => {
-  // editorRef is exposed as a ref, so access .value to get the actual editor component
-  return workspaceRef.value?.editorRef?.value || null
+  // Vue auto-unwraps refs from defineExpose via proxyRefs, so no .value needed
+  return workspaceRef.value?.editorRef || null
 })
 
 // Methods

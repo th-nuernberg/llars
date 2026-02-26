@@ -287,12 +287,12 @@ async function loadData() {
   error.value = null
 
   try {
-    // Load scenario details
-    const scenarioResponse = await axios.get(`/api/scenarios/${props.scenarioId}`)
+    // Load scenario details and items in parallel
+    const [scenarioResponse, sessionResponse] = await Promise.all([
+      axios.get(`/api/scenarios/${props.scenarioId}`),
+      axios.get(`/api/evaluation/session/${props.scenarioId}`)
+    ])
     scenario.value = scenarioResponse.data
-
-    // Load items via evaluation session endpoint
-    const sessionResponse = await axios.get(`/api/evaluation/session/${props.scenarioId}`)
     items.value = sessionResponse.data.items || []
     canEvaluate.value = sessionResponse.data.scenario?.can_evaluate !== false
   } catch (err) {

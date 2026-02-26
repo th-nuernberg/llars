@@ -11,6 +11,7 @@ from decorators.permission_decorator import require_permission
 from decorators.error_handler import handle_api_errors, NotFoundError, ValidationError, ConflictError
 from services.crawler.web_crawler import crawler_service, WebCrawler
 from auth.auth_utils import AuthUtils
+from auth.url_validator import validate_url_not_internal
 
 logger = logging.getLogger(__name__)
 
@@ -75,10 +76,14 @@ def start_crawl():
     if not urls:
         raise ValidationError('No URLs provided')
 
-    # Validate URLs
+    # Validate URLs: Schema + SSRF-Schutz (keine internen IPs/Hostnames)
     for url in urls:
         if not url.startswith(('http://', 'https://')):
             raise ValidationError(f'Invalid URL format: {url}')
+        try:
+            validate_url_not_internal(url)
+        except ValueError as e:
+            raise ValidationError(f'URL rejected: {url} - {str(e)}')
 
     # Collection mode: existing or new
     existing_collection_id = data.get('existing_collection_id')

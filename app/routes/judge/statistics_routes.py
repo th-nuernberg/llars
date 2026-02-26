@@ -7,7 +7,7 @@ are split into separate modules:
 - statistics_position_routes.py: Position-swap consistency analysis
 """
 
-from flask import Blueprint, jsonify
+from flask import Blueprint, jsonify, g
 
 from db.database import db
 from db.tables import (
@@ -15,7 +15,9 @@ from db.tables import (
     PillarStatistics
 )
 from auth.decorators import authentik_required
+from auth.access_control import require_judge_session_owner
 from decorators.permission_decorator import require_permission
+from decorators.error_handler import handle_api_errors
 
 statistics_bp = Blueprint('judge_statistics', __name__)
 
@@ -27,6 +29,7 @@ statistics_bp = Blueprint('judge_statistics', __name__)
 @statistics_bp.route('/sessions/<int:session_id>/results', methods=['GET'])
 @authentik_required
 @require_permission('feature:comparison:view')
+@handle_api_errors(logger_name='judge_statistics')
 def get_session_results(session_id: int):
     """
     Get aggregated results for a session.
@@ -35,6 +38,7 @@ def get_session_results(session_id: int):
         JSON with pillar_metrics, win_matrix, and total_comparisons
     """
     session = JudgeSession.query.get_or_404(session_id)
+    require_judge_session_owner(session_id, g.authentik_user)
 
     # Pillar names for display
     pillar_names = {
@@ -119,6 +123,7 @@ def get_session_results(session_id: int):
 @statistics_bp.route('/sessions/<int:session_id>/statistics', methods=['GET'])
 @authentik_required
 @require_permission('feature:comparison:view')
+@handle_api_errors(logger_name='judge_statistics')
 def get_pillar_statistics(session_id: int):
     """
     Get aggregated pillar statistics for a session.
@@ -126,6 +131,7 @@ def get_pillar_statistics(session_id: int):
     Returns:
         JSON with pillar matrix and overall stats
     """
+    require_judge_session_owner(session_id, g.authentik_user)
     stats = PillarStatistics.query.filter_by(session_id=session_id).all()
 
     # Build matrix

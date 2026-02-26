@@ -19,6 +19,7 @@ from db.tables import (
     PillarThread, PillarStatistics, EmailThread
 )
 from auth.decorators import authentik_required
+from auth.access_control import require_judge_session_owner
 from decorators.permission_decorator import require_permission
 from decorators.error_handler import (
     handle_api_errors, NotFoundError, ValidationError, ConflictError
@@ -209,6 +210,8 @@ def get_session(session_id: int):
     if not session:
         raise NotFoundError(f'Session {session_id} not found')
 
+    require_judge_session_owner(session_id, g.authentik_user)
+
     # Get current comparison if running
     current_comparison = None
     if session.current_comparison_id:
@@ -348,6 +351,8 @@ def configure_session(session_id: int):
     session = JudgeSession.query.get(session_id)
     if not session:
         raise NotFoundError(f'Session {session_id} not found')
+
+    require_judge_session_owner(session_id, g.authentik_user)
 
     if session.status not in [JudgeSessionStatus.CREATED, JudgeSessionStatus.QUEUED]:
         raise ValidationError(

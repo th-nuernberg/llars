@@ -15,6 +15,9 @@ import redis
 
 app = Flask(__name__)
 
+# Limit upload size to 50 MB to prevent oversized file uploads
+app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024
+
 # Trust one reverse proxy hop (nginx) by default so request.remote_addr
 # resolves to the actual client IP instead of the container network IP.
 proxy_fix_x_for = int(os.environ.get('PROXY_FIX_X_FOR', '1'))
@@ -95,11 +98,30 @@ socketio = SocketIO(
 # Rate Limiting - Schützt vor Brute-Force und DoS
 # In development mode, use much higher limits to support E2E testing
 is_development = os.environ.get('FLASK_ENV', 'production') == 'development'
-rate_limit_defaults = ["10000 per day", "1000 per hour"] if is_development else ["200 per day", "50 per hour"]
+rate_limit_defaults = ["10000 per day", "1000 per hour"] if is_development else ["5000 per day", "500 per hour"]
+
+
+def _get_real_client_ip():
+    """
+    Ermittelt die echte Client-IP hinter dem nginx Reverse Proxy.
+
+    Ohne diese Funktion sehen alle User wie eine einzige IP aus (nginx-Container-IP),
+    und das Rate-Limit wird für ALLE User gemeinsam gezählt.
+    """
+    # X-Forwarded-For: client, proxy1, proxy2 → erstes Element = echte Client-IP
+    forwarded_for = request.headers.get('X-Forwarded-For')
+    if forwarded_for:
+        return forwarded_for.split(',')[0].strip()
+    # X-Real-IP wird von nginx gesetzt wenn konfiguriert
+    real_ip = request.headers.get('X-Real-Ip')
+    if real_ip:
+        return real_ip.strip()
+    return get_remote_address()
+
 
 limiter = Limiter(
     app=app,
-    key_func=get_remote_address,
+    key_func=_get_real_client_ip,
     default_limits=rate_limit_defaults,
     storage_uri="memory://",  # In production: Redis verwenden
 )
@@ -136,14 +158,42 @@ def exempt_endpoints():
     # Exempt data import endpoints (bulk uploads can exceed normal limits)
     if request.path and request.path.startswith('/api/import/'):
         return True
+    # Exempt generation endpoints (pagination through outputs + WebSocket polling)
+    if request.path and request.path.startswith('/api/generation/'):
+        return True
+    # Exempt evaluation session endpoints (frequent polling during active evaluation)
+    if request.path and request.path.startswith('/api/evaluation/'):
+        return True
+    # Exempt scenario data endpoints (pagination, schema batch loads)
+    if request.path and request.path.startswith('/api/scenarios/'):
+        return True
     return False
 
 # Flask Secret Key (required for session management, e.g. Zotero OAuth)
-app.secret_key = os.environ.get('FLASK_SECRET_KEY', os.environ.get('JWT_SECRET_KEY', 'dev-secret-key-change-in-production'))
+_DEFAULT_SECRET_KEY = 'dev-secret-key-change-in-production'
+_flask_secret = os.environ.get('FLASK_SECRET_KEY', os.environ.get('JWT_SECRET_KEY', _DEFAULT_SECRET_KEY))
+_jwt_secret = os.environ.get('JWT_SECRET_KEY', _DEFAULT_SECRET_KEY)
+
+# Security: Refuse to start in production with default secret keys
+if not is_development:
+    if _flask_secret == _DEFAULT_SECRET_KEY or _jwt_secret == _DEFAULT_SECRET_KEY:
+        raise RuntimeError(
+            "SECURITY ERROR: Default secret keys detected in production! "
+            "Set FLASK_SECRET_KEY and JWT_SECRET_KEY to unique, cryptographically random values. "
+            "Example: python3 -c \"import secrets; print(secrets.token_hex(64))\""
+        )
+    _system_api_key = os.environ.get('SYSTEM_ADMIN_API_KEY', '')
+    if _system_api_key and 'change-in-production' in _system_api_key.lower():
+        raise RuntimeError(
+            "SECURITY ERROR: Default SYSTEM_ADMIN_API_KEY detected in production! "
+            "Set SYSTEM_ADMIN_API_KEY to a unique, cryptographically random value."
+        )
+
+app.secret_key = _flask_secret
 
 # JWT Configuration (for legacy auth routes)
 # TODO: Complete migration to Authentik and remove legacy JWT auth
-app.config['JWT_SECRET_KEY'] = os.environ.get('JWT_SECRET_KEY', 'dev-secret-key-change-in-production')
+app.config['JWT_SECRET_KEY'] = _jwt_secret
 jwt = JWTManager(app)
 
 configure_database(app)

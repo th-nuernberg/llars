@@ -8,6 +8,7 @@ import logging
 
 from flask import Blueprint, g, jsonify, request
 from auth.decorators import authentik_required
+from auth.access_control import require_pipeline_run_owner
 from decorators.error_handler import handle_api_errors, NotFoundError, ValidationError
 from decorators.permission_decorator import require_permission
 
@@ -106,6 +107,8 @@ def get_run(run_id: int):
     if not run:
         raise NotFoundError(f'Pipeline run {run_id} not found')
 
+    require_pipeline_run_owner(run_id, g.authentik_user)
+
     return jsonify({
         'success': True,
         'run': run.to_dict(include_iterations=True),
@@ -124,6 +127,8 @@ def delete_run(run_id: int):
     run = PipelineRun.query.get(run_id)
     if not run:
         raise NotFoundError(f'Pipeline run {run_id} not found')
+
+    require_pipeline_run_owner(run_id, g.authentik_user)
 
     if run.status == PipelineStatus.RUNNING:
         raise ValidationError("Cannot delete a running pipeline. Pause or cancel it first.")
@@ -148,6 +153,7 @@ def start_run(run_id: int):
     """Start or resume a pipeline run."""
     from services.pipeline.pipeline_orchestrator_service import PipelineOrchestratorService
 
+    require_pipeline_run_owner(run_id, g.authentik_user)
     run = PipelineOrchestratorService.start_run(run_id)
 
     logger.info("[PipelineAPI] Started run %d", run_id)
@@ -165,6 +171,7 @@ def pause_run(run_id: int):
     """Pause a running pipeline."""
     from services.pipeline.pipeline_orchestrator_service import PipelineOrchestratorService
 
+    require_pipeline_run_owner(run_id, g.authentik_user)
     run = PipelineOrchestratorService.pause_run(run_id)
 
     logger.info("[PipelineAPI] Paused run %d", run_id)
@@ -182,6 +189,7 @@ def cancel_run(run_id: int):
     """Cancel a pipeline run."""
     from services.pipeline.pipeline_orchestrator_service import PipelineOrchestratorService
 
+    require_pipeline_run_owner(run_id, g.authentik_user)
     run = PipelineOrchestratorService.cancel_run(run_id)
 
     logger.info("[PipelineAPI] Cancelled run %d", run_id)
@@ -199,6 +207,7 @@ def submit_review(run_id: int):
     """Submit human review decision (continue, deploy, or reject)."""
     from services.pipeline.pipeline_orchestrator_service import PipelineOrchestratorService
 
+    require_pipeline_run_owner(run_id, g.authentik_user)
     data = request.get_json() or {}
     decision = data.get('decision')
 
@@ -227,6 +236,8 @@ def get_iteration(run_id: int, iteration_number: int):
     """Get details of a specific iteration."""
     from db.models.pipeline import PipelineIteration
 
+    require_pipeline_run_owner(run_id, g.authentik_user)
+
     iteration = PipelineIteration.query.filter_by(
         run_id=run_id,
         iteration_number=iteration_number,
@@ -254,6 +265,8 @@ def get_best_configs(run_id: int):
     run = PipelineRun.query.get(run_id)
     if not run:
         raise NotFoundError(f'Pipeline run {run_id} not found')
+
+    require_pipeline_run_owner(run_id, g.authentik_user)
 
     limit = min(int(request.args.get('limit', 5)), 20)
 

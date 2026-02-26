@@ -297,14 +297,17 @@ class TestSystemApiKeyRequired:
         # Route might not exist in test, check for non-auth error
         assert response.status_code != 401 or response.status_code == 404
 
-    def test_AUTH_K02_valid_key_query(self, client, system_api_key, app_context):
+    def test_AUTH_K02_query_param_rejected(self, client, system_api_key, app_context):
         """
-        [AUTH-K02] Korrekter API Key als Query Parameter funktioniert
+        [AUTH-K02] API Key als Query Parameter wird abgelehnt
 
-        ?api_key=... soll ebenfalls akzeptiert werden.
+        ?api_key=... wird aus Sicherheitsgründen NICHT akzeptiert
+        (Keys würden in Server-Logs, Browser-History und Referrer-Headers leaken).
+        Nur X-API-Key Header ist erlaubt.
         """
         response = client.get(f'/debug/info?api_key={system_api_key}')
-        assert response.status_code != 401 or response.status_code == 404
+        # Should be 401 (no valid auth) or 404 (route not registered in test)
+        assert response.status_code in [401, 404]
 
     def test_AUTH_K03_invalid_key(self, client, app_context):
         """

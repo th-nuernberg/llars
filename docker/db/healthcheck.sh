@@ -13,7 +13,6 @@ echo "Starting health check script..."
 echo "DB_HOST=$DB_HOST"
 echo "DB_PORT=$DB_PORT"
 echo "DB_USER=$DB_USER"
-echo "DB_PASSWORD=$DB_PASSWORD"
 echo "DB_NAME=$DB_NAME"
 
 while true; do

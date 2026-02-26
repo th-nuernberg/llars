@@ -15,10 +15,12 @@ from typing import Optional
 from flask import Blueprint, g, jsonify, request, send_file
 
 from auth.decorators import authentik_required, api_key_or_token_required
+from auth.access_control import require_generation_job_owner
 from db.models import GeneratedOutputStatus, GenerationJobStatus
 from decorators.error_handler import handle_api_errors, ValidationError
 from decorators.permission_decorator import require_permission
 from services.generation import BatchGenerationService, OutputExportService
+from services.system_settings_service import get_batch_generation_max_parallel
 
 logger = logging.getLogger(__name__)
 
@@ -148,6 +150,7 @@ def get_job(job_id: int):
         200: Job details
         404: Job not found
     """
+    require_generation_job_owner(job_id, g.authentik_user)
     # Use get_job_status to include currently_processing for reconnection support
     job_data = BatchGenerationService.get_job_status(job_id)
 
@@ -172,6 +175,7 @@ def delete_job(job_id: int):
         400: Job cannot be deleted (still active)
         404: Job not found
     """
+    require_generation_job_owner(job_id, g.authentik_user)
     BatchGenerationService.delete_job(job_id)
 
     logger.info("[GenAPI] Deleted job %d", job_id)
@@ -202,6 +206,7 @@ def start_job(job_id: int):
         400: Job cannot be started
         404: Job not found
     """
+    require_generation_job_owner(job_id, g.authentik_user)
     # Get socketio instance for progress events
     try:
         from main import socketio
@@ -232,6 +237,7 @@ def pause_job(job_id: int):
         400: Job cannot be paused
         404: Job not found
     """
+    require_generation_job_owner(job_id, g.authentik_user)
     job = BatchGenerationService.pause_job(job_id)
 
     logger.info("[GenAPI] Paused job %d", job_id)
@@ -256,6 +262,7 @@ def cancel_job(job_id: int):
         400: Job cannot be cancelled
         404: Job not found
     """
+    require_generation_job_owner(job_id, g.authentik_user)
     job = BatchGenerationService.cancel_job(job_id)
 
     logger.info("[GenAPI] Cancelled job %d", job_id)
@@ -290,6 +297,7 @@ def get_job_outputs(job_id: int):
         200: Paginated outputs
         404: Job not found
     """
+    require_generation_job_owner(job_id, g.authentik_user)
     # Parse query params
     page = int(request.args.get('page', 1))
     per_page = min(int(request.args.get('per_page', 50)), 100)
@@ -325,6 +333,7 @@ def get_output(output_id: int):
         404: Output not found
     """
     output = BatchGenerationService.get_output(output_id)
+    require_generation_job_owner(output['job_id'], g.authentik_user)
 
     return jsonify({
         'success': True,
@@ -355,6 +364,7 @@ def export_csv(job_id: int):
         200: CSV file download
         404: Job not found
     """
+    require_generation_job_owner(job_id, g.authentik_user)
     data = request.get_json() or {}
 
     include_prompts = data.get('include_prompts', False)
@@ -400,6 +410,7 @@ def export_json(job_id: int):
         200: JSON export
         404: Job not found
     """
+    require_generation_job_owner(job_id, g.authentik_user)
     data = request.get_json() or {}
 
     include_prompts = data.get('include_prompts', True)
@@ -446,6 +457,7 @@ def create_scenario_from_job(job_id: int):
         400: Invalid request or no outputs
         404: Job not found
     """
+    require_generation_job_owner(job_id, g.authentik_user)
     data = request.get_json() or {}
 
     # Validate required fields
@@ -497,6 +509,7 @@ def get_job_statistics(job_id: int):
         200: Job statistics
         404: Job not found
     """
+    require_generation_job_owner(job_id, g.authentik_user)
     stats = OutputExportService.get_job_statistics(job_id)
 
     return jsonify({
@@ -536,6 +549,32 @@ def estimate_cost():
     return jsonify({
         'success': True,
         'estimate': estimate,
+    })
+
+
+# =============================================================================
+# SETTINGS
+# =============================================================================
+
+
+@generation_bp.route('/settings/max-parallel', methods=['GET'])
+@authentik_required
+@require_permission('feature:generation:view')
+@handle_api_errors(logger_name='generation')
+def get_max_parallel():
+    """
+    Get the admin-configured maximum parallelism for generation jobs.
+
+    Frontend uses this to set the slider max for user-selectable parallelism.
+
+    Returns:
+        200: { max_parallel: N }
+    """
+    max_parallel = max(1, min(int(get_batch_generation_max_parallel() or 5), 16))
+
+    return jsonify({
+        'success': True,
+        'max_parallel': max_parallel,
     })
 
 

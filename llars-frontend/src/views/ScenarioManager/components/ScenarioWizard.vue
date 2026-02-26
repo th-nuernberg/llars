@@ -228,9 +228,10 @@
               class="type-card"
               :class="{
                 selected: formData.evalType === type.id,
-                suggested: suggestedEvalType === type.id
+                suggested: suggestedEvalType === type.id,
+                disabled: disabledEvalTypes.has(type.id)
               }"
-              @click="selectEvalType(type.id)"
+              @click="!disabledEvalTypes.has(type.id) && selectEvalType(type.id)"
             >
               <div class="type-icon" :style="{ backgroundColor: type.color + '20' }">
                 <LIcon :color="type.color" size="32">{{ type.icon }}</LIcon>
@@ -243,6 +244,9 @@
               <LTag v-if="suggestedEvalType === type.id" variant="warning" size="small" class="suggested-tag">
                 {{ $t('scenarioManager.wizard.step2.recommended') }}
               </LTag>
+              <LTooltip v-if="disabledEvalTypes.has(type.id)" :text="$t('scenarioManager.wizard.step2.rankingDisabledHint')" location="top">
+                <LIcon size="16" color="grey" class="disabled-hint-icon">mdi-information-outline</LIcon>
+              </LTooltip>
             </div>
           </div>
         </div>
@@ -1031,6 +1035,13 @@ const generationVariantStats = computed(() => {
     maxVariantsPerSource,
     supportsRanking: maxVariantsPerSource >= 2
   }
+})
+
+const disabledEvalTypes = computed(() => {
+  if (props.generationJobId && !generationVariantStats.value.supportsRanking) {
+    return new Set([EVAL_TYPES.RANKING])
+  }
+  return new Set()
 })
 
 const suggestedEvalType = computed(() => {
@@ -1984,12 +1995,11 @@ function transformGenerationDataForRanking(items, { splitByPrompt = false } = {}
       const model = item.llm_name || item._model || `Model_${suffix.toUpperCase()}`
       const variant = item._prompt_variant || ''
 
-      if (splitByPrompt && variant) {
-        metadata[`model_${suffix}`] = model
+      // Always store model and prompt separately to keep llms table clean.
+      // Previously: model = "Model (variant)" which polluted the llms table.
+      metadata[`model_${suffix}`] = model
+      if (variant) {
         metadata[`prompt_${suffix}`] = variant
-      } else {
-        // Keep model labels unique when same model was run with multiple prompts.
-        metadata[`model_${suffix}`] = variant ? `${model} (${variant})` : model
       }
     })
 
@@ -2032,22 +2042,30 @@ async function createScenario() {
     let importData = analyzedData.value
     let fieldMapping = aiSuggestions.value?.field_mapping || null
 
-    if (taskType === 'ranking' && isFromGeneration) {
-      const splitByPrompt = Boolean(formData.value.evalConfig?.config?.splitByPrompt)
-      importData = transformGenerationDataForRanking(analyzedData.value, { splitByPrompt })
-      fieldMapping = {
-        from_generation: true,
-        split_by_prompt: splitByPrompt
-      }
+    // Set from_generation for ALL eval types so the backend:
+    // - skips long-format detection (which misdetects generation data)
+    // - uses force_new_threads=True (needed for generic IDs "0","1","2")
+    if (isFromGeneration) {
+      fieldMapping = { ...(fieldMapping || {}), from_generation: true }
 
-      console.log('[ScenarioWizard] Ranking from generation:', {
-        inputItems: analyzedData.value.length,
-        groups: importData.length,
-        splitByPrompt,
-        featuresPerGroup: importData.map(g =>
-          Object.keys(g).filter(k => k.startsWith('summary_')).length
-        )
-      })
+      if (taskType === 'ranking') {
+        const splitByPrompt = Boolean(formData.value.evalConfig?.config?.splitByPrompt)
+        importData = transformGenerationDataForRanking(analyzedData.value, { splitByPrompt })
+        fieldMapping.split_by_prompt = splitByPrompt
+
+        console.log('[ScenarioWizard] Ranking from generation:', {
+          inputItems: analyzedData.value.length,
+          groups: importData.length,
+          splitByPrompt,
+          featuresPerGroup: importData.map(g =>
+            Object.keys(g).filter(k => k.startsWith('summary_')).length
+          )
+        })
+      } else {
+        console.log(`[ScenarioWizard] ${taskType} from generation:`, {
+          items: importData.length
+        })
+      }
     }
 
     // Map eval type to function_type_id for backend compatibility
@@ -2170,21 +2188,39 @@ async function loadFromGenerationJob() {
     let pages = 1
 
     while (page <= pages) {
-      const response = await axios.get(`/api/generation/jobs/${props.generationJobId}/outputs`, {
-        params: { status: 'completed', page, per_page: 100, include_prompts: true }
-      })
+      let response
+      try {
+        response = await axios.get(`/api/generation/jobs/${props.generationJobId}/outputs`, {
+          params: { status: 'completed', page, per_page: 100, include_prompts: true }
+        })
+      } catch (err) {
+        console.error(`[ScenarioWizard] Failed to load page ${page}/${pages}:`, err.message)
+        if (outputs.length === 0) {
+          throw new Error(`Fehler beim Laden der Generation-Daten (Seite ${page}): ${err.message}`)
+        }
+        // Partial data loaded – warn and continue with what we have
+        console.warn(`[ScenarioWizard] Continuing with ${outputs.length} outputs loaded before error`)
+        break
+      }
 
       const pageItems = response.data.items || []
+      if (pageItems.length === 0) {
+        if (page === 1) {
+          console.warn('[ScenarioWizard] First page returned 0 items')
+        } else {
+          console.warn(`[ScenarioWizard] Page ${page} returned 0 items, stopping pagination`)
+        }
+        break
+      }
+
       outputs.push(...pageItems)
 
       const reportedPages = Number(response.data.pages || 1)
       pages = Number.isFinite(reportedPages) && reportedPages > 0 ? reportedPages : 1
       page += 1
-
-      if (pageItems.length === 0 && page > pages) {
-        break
-      }
     }
+
+    console.log(`[ScenarioWizard] Loaded ${outputs.length} generation outputs across ${page - 1} page(s)`)
 
     if (outputs.length === 0) {
       console.warn('No completed outputs found in generation job')
@@ -2834,6 +2870,23 @@ onMounted(() => {
 .type-card.suggested {
   border-color: rgba(var(--v-theme-warning), 0.5);
   padding-top: 36px;
+}
+
+.type-card.disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  pointer-events: auto;
+}
+
+.type-card.disabled:hover {
+  border-color: rgba(var(--v-theme-on-surface), 0.1);
+  background-color: transparent;
+}
+
+.disabled-hint-icon {
+  position: absolute;
+  top: 8px;
+  right: 8px;
 }
 
 .type-icon {

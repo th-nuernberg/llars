@@ -646,12 +646,24 @@ class UniversalTransformer:
         seen_feature_keys: set[str] = set()
         detected_fields: list[tuple[tuple[int, int | str], int, str, str]] = []
 
+        # Suffixes that look like features but are actually metadata fields
+        # e.g. "output_tokens", "response_time", "summary_count"
+        excluded_suffixes = {
+            "tokens", "count", "type", "format", "id", "ids",
+            "time", "length", "size", "index", "score", "status",
+            "name", "label", "path", "url", "key", "date",
+        }
+
         for actual_key, value in data.items():
             if not value:
                 continue
 
             match = feature_pattern.match(actual_key)
             if not match:
+                continue
+
+            suffix = match.group(2).lower()
+            if suffix in excluded_suffixes:
                 continue
 
             normalized_key = actual_key.lower()

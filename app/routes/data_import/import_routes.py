@@ -332,6 +332,14 @@ def import_from_data():
         and field_mapping.get('from_generation')
     )
 
+    if skip_long_format:
+        sample_keys = list(items[0].keys()) if items else []
+        logger.info(
+            f"Generation import: from_generation=True, skip_long_format=True, "
+            f"items={len(items)}, task_type={task_type}, "
+            f"sample_keys={sample_keys[:15]}"
+        )
+
     ai_analyzer = get_ai_analyzer()
 
     if not skip_long_format and ai_analyzer._detect_long_format(items):

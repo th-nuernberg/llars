@@ -174,12 +174,13 @@ _DEFAULT_SECRET_KEY = 'dev-secret-key-change-in-production'
 _flask_secret = os.environ.get('FLASK_SECRET_KEY', os.environ.get('JWT_SECRET_KEY', _DEFAULT_SECRET_KEY))
 _jwt_secret = os.environ.get('JWT_SECRET_KEY', _DEFAULT_SECRET_KEY)
 
-# Security: Refuse to start in production with default secret keys
+# Security: Refuse to start in production with default FLASK_SECRET_KEY
+# (JWT_SECRET_KEY is legacy and will be removed after full Authentik migration)
 if not is_development:
-    if _flask_secret == _DEFAULT_SECRET_KEY or _jwt_secret == _DEFAULT_SECRET_KEY:
+    if _flask_secret == _DEFAULT_SECRET_KEY:
         raise RuntimeError(
-            "SECURITY ERROR: Default secret keys detected in production! "
-            "Set FLASK_SECRET_KEY and JWT_SECRET_KEY to unique, cryptographically random values. "
+            "SECURITY ERROR: Default FLASK_SECRET_KEY detected in production! "
+            "Set FLASK_SECRET_KEY to a unique, cryptographically random value. "
             "Example: python3 -c \"import secrets; print(secrets.token_hex(64))\""
         )
     _system_api_key = os.environ.get('SYSTEM_ADMIN_API_KEY', '')

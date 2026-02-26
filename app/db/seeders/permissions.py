@@ -684,8 +684,8 @@ def initialize_permissions(db):
 
 def assign_default_admin_role(db):
     """
-    Automatically assign admin role to the default 'admin' user.
-    This ensures the admin user always has admin permissions after database reset.
+    Automatically assign admin role to all default admin users.
+    This ensures admin users always have admin permissions after database reset.
 
     Args:
         db: SQLAlchemy database instance
@@ -699,25 +699,26 @@ def assign_default_admin_role(db):
         print("Warning: Admin role not found. Skipping default admin assignment.")
         return
 
-    # Check if admin user already has admin role
-    existing = UserRole.query.filter_by(
-        username='admin',
-        role_id=admin_role.id
-    ).first()
+    admin_usernames = ['admin', 'admin_2']
 
-    if not existing:
-        # Assign admin role to admin user
-        user_role = UserRole(
-            username='admin',
-            role_id=admin_role.id,
-            assigned_by='system',
-            assigned_at=datetime.utcnow()
-        )
-        db.session.add(user_role)
-        db.session.commit()
-        print("✅ Assigned admin role to user 'admin' automatically.")
-    else:
-        print("✅ User 'admin' already has admin role.")
+    for username in admin_usernames:
+        existing = UserRole.query.filter_by(
+            username=username,
+            role_id=admin_role.id
+        ).first()
+
+        if not existing:
+            user_role = UserRole(
+                username=username,
+                role_id=admin_role.id,
+                assigned_by='system',
+                assigned_at=datetime.utcnow()
+            )
+            db.session.add(user_role)
+            db.session.commit()
+            print(f"Assigned admin role to user '{username}' automatically.")
+        else:
+            print(f"User '{username}' already has admin role.")
 
 
 def assign_default_demo_roles(db):

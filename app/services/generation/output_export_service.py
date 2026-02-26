@@ -152,8 +152,9 @@ class OutputExportService:
         if include_prompts:
             columns.extend(["rendered_system_prompt", "rendered_user_prompt"])
 
-        # Create CSV
+        # Create CSV with LLARS generation export marker
         output_buffer = io.StringIO()
+        output_buffer.write("# _llars_generation_export=true,schema_version=1.0\n")
         writer = csv.DictWriter(output_buffer, fieldnames=columns, extrasaction='ignore')
         writer.writeheader()
 
@@ -242,6 +243,8 @@ class OutputExportService:
             },
             "outputs": [o.to_dict(include_prompts=include_prompts) for o in outputs],
             "metadata": {
+                "_llars_generation_export": True,
+                "schema_version": "1.0",
                 "exported_at": datetime.utcnow().isoformat(),
                 "total_outputs": len(outputs),
                 "filter": status_filter.value if status_filter else "all",
@@ -263,6 +266,7 @@ class OutputExportService:
         description: Optional[str] = None,
         config_json: Optional[Dict[str, Any]] = None,
         use_legacy_format: bool = False,
+        split_by_prompt: bool = False,
     ) -> RatingScenarios:
         """
         Create an evaluation scenario from generated outputs.
@@ -281,6 +285,7 @@ class OutputExportService:
             description: Optional scenario description
             config_json: Optional scenario configuration
             use_legacy_format: If True, uses old format (DEPRECATED)
+            split_by_prompt: If True, group ranking items by prompt variant
 
         Returns:
             Created RatingScenarios instance
@@ -298,6 +303,7 @@ class OutputExportService:
                 created_by=created_by,
                 description=description,
                 config_json=config_json,
+                split_by_prompt=split_by_prompt,
             )
 
         # Legacy format (deprecated) - only used if explicitly requested
@@ -465,6 +471,7 @@ class OutputExportService:
         description: Optional[str] = None,
         config_json: Optional[Dict[str, Any]] = None,
         response_role: Optional[str] = None,
+        split_by_prompt: bool = False,
     ) -> RatingScenarios:
         """
         Create an evaluation scenario with CORRECT message formats.
@@ -475,6 +482,9 @@ class OutputExportService:
         3. Determines response role dynamically (or uses explicit response_role)
         4. Links generated content with LLM model attribution
 
+        For ranking: Groups outputs by source, creates one EvaluationItem per source
+        with one Feature per model/variant combination.
+
         Args:
             job_id: The generation job ID
             scenario_name: Name for the new scenario
@@ -484,6 +494,7 @@ class OutputExportService:
             config_json: Optional scenario configuration
             response_role: Optional explicit role for generated responses.
                           If not provided, role is determined from conversation pattern.
+            split_by_prompt: If True, group ranking items by prompt variant
 
         Returns:
             Created RatingScenarios instance
@@ -503,8 +514,8 @@ class OutputExportService:
             raise ValidationError(f"Job {job_id} has no completed outputs to create scenario from")
 
         logger.info(
-            "[Export] Creating %s scenario '%s' from job %d (%d outputs)",
-            evaluation_type, scenario_name, job_id, len(outputs)
+            "[Export] Creating %s scenario '%s' from job %d (%d outputs, split_by_prompt=%s)",
+            evaluation_type, scenario_name, job_id, len(outputs), split_by_prompt
         )
 
         # Get source items from job config
@@ -546,15 +557,24 @@ class OutputExportService:
         db.session.add(scenario)
         db.session.flush()
 
-        # Create EvaluationItems with correct message format
-        item_ids = cls._create_items_with_correct_format(
-            outputs=outputs,
-            function_type_id=function_type_id,
-            evaluation_type=evaluation_type,
-            source_items=source_items_by_id,
-            job_name=job.name,
-            response_role=response_role,
-        )
+        # Create EvaluationItems - use ranking grouping for ranking type
+        if evaluation_type == 'ranking':
+            item_ids = cls._create_ranking_items(
+                outputs=outputs,
+                function_type_id=function_type_id,
+                job_name=job.name,
+                source_items=source_items_by_id,
+                split_by_prompt=split_by_prompt,
+            )
+        else:
+            item_ids = cls._create_items_with_correct_format(
+                outputs=outputs,
+                function_type_id=function_type_id,
+                evaluation_type=evaluation_type,
+                source_items=source_items_by_id,
+                job_name=job.name,
+                response_role=response_role,
+            )
 
         # Link items to scenario
         for item_id in item_ids:
@@ -564,14 +584,14 @@ class OutputExportService:
             )
             db.session.add(scenario_item)
 
-        # Add creator as viewer (ownership is determined by created_by field)
+        # Add creator as OWNER
         from db.models import User
         user = User.query.filter_by(username=created_by).first()
         if user:
             scenario_user = ScenarioUsers(
                 scenario_id=scenario.id,
                 user_id=user.id,
-                role=ScenarioRoles.VIEWER
+                role=ScenarioRoles.OWNER
             )
             db.session.add(scenario_user)
 
@@ -581,7 +601,7 @@ class OutputExportService:
         db.session.commit()
 
         logger.info(
-            "[Export] Created FIXED scenario %d with %d items from job %d",
+            "[Export] Created scenario %d with %d items from job %d",
             scenario.id, len(item_ids), job_id
         )
 
@@ -661,6 +681,136 @@ class OutputExportService:
                 variables=variables,
                 response_role=response_role,
             )
+
+            item_ids.append(item.item_id)
+
+        return item_ids
+
+    @classmethod
+    def _create_ranking_items(
+        cls,
+        outputs: List[GeneratedOutput],
+        function_type_id: int,
+        job_name: str,
+        source_items: Dict[int, Dict[str, Any]],
+        split_by_prompt: bool = False,
+    ) -> List[int]:
+        """
+        Create EvaluationItems grouped by source for ranking evaluation.
+
+        Groups outputs by source_item_id, creating one EvaluationItem per source
+        with one Feature per model/variant combination.
+
+        Args:
+            outputs: List of completed generated outputs
+            function_type_id: Evaluation function type
+            job_name: Name of the generation job
+            source_items: Source items from job config
+            split_by_prompt: If True, further group by prompt variant
+        """
+        from collections import defaultdict
+        from sqlalchemy import func
+        from db.models import Feature, FeatureType, LLM
+
+        item_ids = []
+
+        # Get unique base for chat_id
+        max_chat_id_result = db.session.query(func.max(EvaluationItem.chat_id)).scalar()
+        base_chat_id = max(max_chat_id_result or 0, 1_000_000) + 1
+
+        # Group outputs by source
+        groups = defaultdict(list)
+        for output in outputs:
+            variables = output.prompt_variables_json or {}
+            source_key = (
+                variables.get('source_index')
+                or output.source_item_id
+                or output.id
+            )
+            if split_by_prompt:
+                # Further split by prompt variant
+                prompt_key = output.prompt_variant_name or 'default'
+                group_key = f"{source_key}__prompt__{prompt_key}"
+            else:
+                group_key = str(source_key)
+            groups[group_key].append(output)
+
+        logger.info(
+            "[Export] Ranking grouping: %d outputs → %d groups (split_by_prompt=%s)",
+            len(outputs), len(groups), split_by_prompt
+        )
+
+        # Get or create a FeatureType for generated content
+        feature_type = FeatureType.query.filter_by(name='generated_summary').first()
+        if not feature_type:
+            feature_type = FeatureType(name='generated_summary')
+            db.session.add(feature_type)
+            db.session.flush()
+
+        for group_idx, (group_key, group_outputs) in enumerate(groups.items()):
+            if len(group_outputs) < 2:
+                # Ranking needs at least 2 items per group - skip single outputs
+                logger.debug(
+                    "[Export] Skipping group %s with only %d output(s)",
+                    group_key, len(group_outputs)
+                )
+                continue
+
+            # Use first output to get source text
+            first_output = group_outputs[0]
+            first_vars = first_output.prompt_variables_json or {}
+
+            # Build source/reference content
+            source_text = (
+                first_vars.get('input')
+                or first_vars.get('content')
+                or first_vars.get('text')
+                or first_output.rendered_user_prompt
+                or ''
+            )
+            subject = first_vars.get('subject') or first_vars.get('title') or ''
+
+            unique_chat_id = base_chat_id + group_idx
+
+            # Create the EvaluationItem (one per source group)
+            item = EvaluationItem(
+                chat_id=unique_chat_id,
+                institut_id=None,
+                subject=subject or f"Source {group_idx + 1}",
+                sender=job_name,
+                function_type_id=function_type_id,
+            )
+            db.session.add(item)
+            db.session.flush()
+
+            # Create source text as a Message (reference)
+            if source_text:
+                source_msg = Message(
+                    item_id=item.item_id,
+                    sender="Source",
+                    content=str(source_text),
+                    timestamp=datetime.utcnow(),
+                    generated_by="Human",
+                )
+                db.session.add(source_msg)
+
+            # Create one Feature per output variant
+            for output in group_outputs:
+                # Get or create LLM entry
+                llm_name = output.llm_model_name or 'unknown'
+                llm = LLM.query.filter_by(name=llm_name).first()
+                if not llm:
+                    llm = LLM(name=llm_name)
+                    db.session.add(llm)
+                    db.session.flush()
+
+                feature = Feature(
+                    item_id=item.item_id,
+                    type_id=feature_type.type_id,
+                    llm_id=llm.llm_id,
+                    content=output.generated_content or '',
+                )
+                db.session.add(feature)
 
             item_ids.append(item.item_id)
 

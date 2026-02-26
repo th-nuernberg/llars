@@ -623,45 +623,67 @@ class UniversalTransformer:
             "summary", "response", "output", "text", "answer",
             "generation", "completion", "result"
         ]
-        feature_suffixes = ["_a", "_b", "_c", "_d", "_e", "_1", "_2", "_3", "_4", "_5"]
 
         features: list[Feature] = []
         found_keys: set[str] = set()
 
-        # Search for pattern-based features
-        for prefix in feature_prefixes:
-            for suffix in feature_suffixes:
-                key_patterns = [
-                    f"{prefix}{suffix}",           # summary_a
-                    f"{prefix.title()}{suffix}",   # Summary_a
-                    f"{prefix.upper()}{suffix}",   # SUMMARY_a
-                ]
+        # Search for pattern-based features dynamically so >5 variants are supported.
+        # Matches keys like summary_a, summary_i, response_10, output_2, ...
+        feature_pattern = re.compile(
+            rf"^({'|'.join(re.escape(prefix) for prefix in feature_prefixes)})_([a-z0-9]+)$",
+            re.IGNORECASE
+        )
+        prefix_order = {prefix: idx for idx, prefix in enumerate(feature_prefixes)}
 
-                for key_pattern in key_patterns:
-                    # Direct match
-                    if key_pattern in data and data[key_pattern] and key_pattern not in found_keys:
-                        # Generate a label from suffix (A, B, C or 1, 2, 3)
-                        label_char = suffix[-1].upper()
-                        features.append(Feature(
-                            type="Summary",
-                            content=str(data[key_pattern]),
-                            generated_by=f"Model_{label_char}"
-                        ))
-                        found_keys.add(key_pattern)
-                        break
+        def _suffix_sort_key(suffix: str) -> tuple[int, int | str]:
+            """Sort lettered variants before numeric variants, then naturally."""
+            if len(suffix) == 1 and suffix.isalpha():
+                return (0, ord(suffix.lower()) - ord("a"))
+            if suffix.isdigit():
+                return (1, int(suffix))
+            return (2, suffix.lower())
 
-                    # Case-insensitive search
-                    for actual_key in data.keys():
-                        if actual_key.lower() == key_pattern.lower() and actual_key not in found_keys:
-                            if data[actual_key]:
-                                label_char = suffix[-1].upper()
-                                features.append(Feature(
-                                    type="Summary",
-                                    content=str(data[actual_key]),
-                                    generated_by=f"Model_{label_char}"
-                                ))
-                                found_keys.add(actual_key)
-                                break
+        seen_feature_keys: set[str] = set()
+        detected_fields: list[tuple[tuple[int, int | str], int, str, str]] = []
+
+        for actual_key, value in data.items():
+            if not value:
+                continue
+
+            match = feature_pattern.match(actual_key)
+            if not match:
+                continue
+
+            normalized_key = actual_key.lower()
+            if normalized_key in seen_feature_keys:
+                continue
+            seen_feature_keys.add(normalized_key)
+
+            prefix = match.group(1).lower()
+            suffix = match.group(2)
+            detected_fields.append(
+                (
+                    _suffix_sort_key(suffix),
+                    prefix_order.get(prefix, len(feature_prefixes)),
+                    normalized_key,
+                    actual_key,
+                )
+            )
+
+        detected_fields.sort(key=lambda item: (item[0], item[1], item[2]))
+
+        for _, _, _, actual_key in detected_fields:
+            match = feature_pattern.match(actual_key)
+            if not match:
+                continue
+            suffix = match.group(2)
+            label_token = suffix.upper() if suffix.isalpha() else suffix
+            features.append(Feature(
+                type="Summary",
+                content=str(data[actual_key]),
+                generated_by=f"Model_{label_token}"
+            ))
+            found_keys.add(actual_key)
 
         # Also check for numbered/lettered items array (summaries: [...])
         array_keys = ["summaries", "responses", "outputs", "items", "texts"]
@@ -682,16 +704,24 @@ class UniversalTransformer:
         if "metadata" in data and isinstance(data["metadata"], dict):
             metadata = data["metadata"]
             for i, feature in enumerate(features):
-                suffix = chr(97 + i)  # a, b, c, d, ...
-                model_key = f"model_{suffix}"
-                if model_key in metadata and metadata[model_key]:
-                    feature.generated_by = str(metadata[model_key])
+                suffix_keys: list[str] = []
+                if i < 26:
+                    suffix_keys.append(chr(97 + i))  # a, b, c, ...
+                suffix_keys.append(str(i + 1))  # 1, 2, 3, ...
+
+                for suffix in suffix_keys:
+                    model_key = f"model_{suffix}"
+                    if model_key in metadata and metadata[model_key]:
+                        feature.generated_by = str(metadata[model_key])
+                        break
 
                 if split_by_prompt:
-                    prompt_key = f"prompt_{suffix}"
-                    prompt_label = metadata.get(prompt_key)
-                    if prompt_label:
-                        feature.type = str(prompt_label).strip() or feature.type
+                    for suffix in suffix_keys:
+                        prompt_key = f"prompt_{suffix}"
+                        prompt_label = metadata.get(prompt_key)
+                        if prompt_label:
+                            feature.type = str(prompt_label).strip() or feature.type
+                            break
 
         logger.info(
             f"Ranking features detected: {len(features)} features, "

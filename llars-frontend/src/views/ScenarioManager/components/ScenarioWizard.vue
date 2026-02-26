@@ -2163,12 +2163,29 @@ async function loadFromGenerationJob() {
 
   loadingFromGeneration.value = true
   try {
-    // Fetch all completed outputs from the generation job
-    const response = await axios.get(`/api/generation/jobs/${props.generationJobId}/outputs`, {
-      params: { status: 'completed', per_page: 1000, include_prompts: true }
-    })
+    // Fetch all completed outputs from the generation job.
+    // The backend caps per_page at 100, so we page through the full result set.
+    const outputs = []
+    let page = 1
+    let pages = 1
 
-    const outputs = response.data.items || []
+    while (page <= pages) {
+      const response = await axios.get(`/api/generation/jobs/${props.generationJobId}/outputs`, {
+        params: { status: 'completed', page, per_page: 100, include_prompts: true }
+      })
+
+      const pageItems = response.data.items || []
+      outputs.push(...pageItems)
+
+      const reportedPages = Number(response.data.pages || 1)
+      pages = Number.isFinite(reportedPages) && reportedPages > 0 ? reportedPages : 1
+      page += 1
+
+      if (pageItems.length === 0 && page > pages) {
+        break
+      }
+    }
+
     if (outputs.length === 0) {
       console.warn('No completed outputs found in generation job')
       return

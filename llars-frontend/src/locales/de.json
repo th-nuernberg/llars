@@ -2958,6 +2958,8 @@
       },
       "comparison": {
         "comparisonType": "Vergleichs-Typ",
+        "testInstruction": "Testanweisung",
+        "testInstructionPlaceholder": "z.B. Welche Option ist inhaltlich klarer und hilfreicher?",
         "typeOptions": {
           "pairwise": "Paarweiser Vergleich",
           "tournament": "Turnier-Format"

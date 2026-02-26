@@ -158,6 +158,11 @@
     <div v-else-if="resolvedType === 'comparison'" class="preview-comparison">
       <div class="preview-label">{{ $t('scenarioManager.evalConfig.preview.comparisonDemo') }}</div>
 
+      <div v-if="config?.question" class="criteria-preview mb-3">
+        <span class="criteria-label">{{ $t('scenarioManager.evalConfig.comparison.testInstruction') }}:</span>
+        <span>{{ getLocalizedText(config.question) }}</span>
+      </div>
+
       <div class="comparison-layout">
         <div class="compare-item" :class="{ winner: selectedWinner === 'A' }" @click="selectedWinner = 'A'">
           <div class="item-header">Option A</div>
@@ -258,11 +263,15 @@ const scaleValues = computed(() => {
 })
 
 // Methods
+function getLocalizedText(value) {
+  if (!value) return ''
+  if (typeof value === 'string') return value
+  return value[locale.value] || value.de || value.en || ''
+}
+
 function getLabel(value) {
   if (!props.config?.labels?.[value]) return null
-  const label = props.config.labels[value]
-  if (typeof label === 'string') return label
-  return label[locale.value] || label.de || label.en || ''
+  return getLocalizedText(props.config.labels[value])
 }
 
 function getBucketName(bucket) {

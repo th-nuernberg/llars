@@ -302,51 +302,54 @@
             :streams="activeStreams"
             :max-parallel="jobMaxParallel"
             :is-job-running="isJobRunning"
+            :user-provider-names="userProviderNameMap"
           />
 
           <!-- Outputs List -->
-          <div v-if="isLoadingOutputs" class="loading-state">
+          <div v-if="isLoadingOutputs && outputs.length === 0" class="loading-state">
             <v-progress-circular indeterminate color="primary" />
           </div>
 
           <div v-else-if="outputs.length > 0 || currentlyProcessing" ref="outputsListRef" class="outputs-list">
-            <div
-              v-for="group in groupedOutputs"
-              :key="group.key"
-              class="output-group"
-            >
-              <div class="output-group-header">
-                <span class="output-group-label">{{ group.label }}</span>
-                <span class="output-group-count">{{ group.items.length }}</span>
-              </div>
+            <TransitionGroup name="group-reveal">
               <div
-                v-for="output in group.items"
-                :key="output.id"
-                class="output-item"
-                :class="{ 'is-failed': output.status === 'failed' }"
-                @click="selectOutput(output)"
+                v-for="group in visibleGroupedOutputs"
+                :key="group.key"
+                class="output-group"
               >
-                <LIcon :color="getOutputStatusColor(output.status)" size="16">
-                  {{ getOutputStatusIcon(output.status) }}
-                </LIcon>
-                <span
-                  v-if="!isSingleConfig"
-                  class="dot dot--model"
-                  :style="{ background: resolveModelColor(output.llm_model_name, output.llm_model_color) }"
-                ></span>
-                <span
-                  v-if="!isSingleConfig && output.prompt_variant_name"
-                  class="dot dot--prompt"
-                  :style="{ background: promptColorMap[output.prompt_variant_name] || PROMPT_COLORS[0] }"
-                ></span>
-                <span class="output-preview">
-                  {{ output.content_preview || output.error_message || '-' }}
-                </span>
-                <span v-if="output.tokens?.output" class="output-tokens">
-                  {{ output.tokens.output }} tok
-                </span>
+                <div class="output-group-header">
+                  <span class="output-group-label">{{ group.label }}</span>
+                  <span class="output-group-count">{{ group.items.length }}</span>
+                </div>
+                <div
+                  v-for="output in group.items"
+                  :key="output.id"
+                  class="output-item"
+                  :class="{ 'is-failed': output.status === 'failed' }"
+                  @click="selectOutput(output)"
+                >
+                  <LIcon :color="getOutputStatusColor(output.status)" size="16">
+                    {{ getOutputStatusIcon(output.status) }}
+                  </LIcon>
+                  <span
+                    v-if="!isSingleConfig"
+                    class="dot dot--model"
+                    :style="{ background: resolveModelColor(output.llm_model_name, output.llm_model_color) }"
+                  ></span>
+                  <span
+                    v-if="!isSingleConfig && output.prompt_variant_name"
+                    class="dot dot--prompt"
+                    :style="{ background: promptColorMap[output.prompt_variant_name] || PROMPT_COLORS[0] }"
+                  ></span>
+                  <span class="output-preview">
+                    {{ output.content_preview || output.error_message || '-' }}
+                  </span>
+                  <span v-if="output.tokens?.output" class="output-tokens">
+                    {{ output.tokens.output }} tok
+                  </span>
+                </div>
               </div>
-            </div>
+            </TransitionGroup>
           </div>
 
           <div v-else class="empty-outputs">
@@ -719,21 +722,12 @@ const modelColorMap = computed(() => {
     if (normalized) map[currentlyProcessing.value.model] = normalized
   }
 
-  // 2. For models without explicit colors, assign evenly-spaced hues
-  //    using the golden angle (137.508°) for maximum visual separation
+  // 2. For models without explicit colors, use deterministic seed color
+  //    (FNV-1a hash of model name → stable across reloads/pagination)
   const allModels = [...new Set(outputs.value.map(o => o?.llm_model_name).filter(Boolean))]
-  const uncolored = allModels.filter(m => !map[m])
-  if (uncolored.length > 0) {
-    const goldenAngle = 137.508
-    // Start hue offset based on count to avoid clashing with explicit colors
-    const startHue = (Object.keys(map).length * goldenAngle) % 360
-    uncolored.forEach((modelName, idx) => {
-      const hue = (startHue + idx * goldenAngle) % 360
-      const sat = NEUTRAL_SAT_RANGE.min + (idx % 3) * 6  // slight sat variation
-      const light = NEUTRAL_LIGHT_RANGE.min + ((idx + 1) % 4) * 4  // slight light variation
-      map[modelName] = hslToHex(hue, sat, light)
-    })
-  }
+  allModels.filter(m => !map[m]).forEach(modelName => {
+    map[modelName] = seedColor(modelName)
+  })
 
   return map
 })
@@ -745,8 +739,20 @@ const resolveModelColor = (modelName, explicitColor = null) => {
   return seedColor(modelName || '')
 }
 
+// Map model IDs to their resolved provider names from backend
+const userProviderNameMap = computed(() => {
+  const map = {}
+  for (const o of outputs.value) {
+    if (o?.user_provider_name && o?.llm_model_name) {
+      map[o.llm_model_name] = o.user_provider_name
+    }
+  }
+  return map
+})
+
 function formatModelDisplayName(modelId) {
-  const parsed = parseUserProviderModelId(modelId)
+  const providerName = userProviderNameMap.value[modelId] || null
+  const parsed = parseUserProviderModelId(modelId, providerName)
   if (parsed) return parsed.displayName
   return modelId
 }
@@ -841,6 +847,44 @@ const groupedOutputs = computed(() => {
     groups.get(key).items.push(output)
   }
   return Array.from(groups.values())
+})
+
+// Progressive group reveal - groups appear one by one with staggered animation
+const visibleGroupCount = ref(0)
+let revealTimers = []
+
+const visibleGroupedOutputs = computed(() => {
+  return groupedOutputs.value.slice(0, visibleGroupCount.value)
+})
+
+function revealGroupsProgressively() {
+  revealTimers.forEach(t => clearTimeout(t))
+  revealTimers = []
+  visibleGroupCount.value = 0
+
+  const total = groupedOutputs.value.length
+  if (total === 0) return
+
+  // Show first group immediately
+  visibleGroupCount.value = 1
+
+  // Reveal remaining groups with stagger
+  for (let i = 1; i < total; i++) {
+    revealTimers.push(setTimeout(() => {
+      visibleGroupCount.value = i + 1
+    }, i * 80))
+  }
+}
+
+// Track group keys to detect structural changes vs. individual output updates
+let lastGroupKeys = ''
+
+watch(groupedOutputs, (newGroups) => {
+  const newKeys = newGroups.map(g => g.key).join(',')
+  if (newKeys !== lastGroupKeys) {
+    lastGroupKeys = newKeys
+    revealGroupsProgressively()
+  }
 })
 
 const isSingleConfig = computed(() => {
@@ -1455,6 +1499,7 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
+  revealTimers.forEach(t => clearTimeout(t))
   cleanupSocketListeners()
 })
 </script>
@@ -1747,6 +1792,24 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   gap: 12px;
+}
+
+/* Progressive group reveal transitions */
+.group-reveal-enter-active {
+  transition: opacity 0.35s ease, transform 0.35s ease;
+}
+
+.group-reveal-enter-from {
+  opacity: 0;
+  transform: translateY(16px);
+}
+
+.group-reveal-leave-active {
+  transition: opacity 0.2s ease;
+}
+
+.group-reveal-leave-to {
+  opacity: 0;
 }
 
 /* Output Group (per source item / Datenpunkt) */

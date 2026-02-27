@@ -4,9 +4,7 @@
       <LIcon color="primary" class="mr-2">mdi-cog-outline</LIcon>
       {{ $t('scenarioManager.settings.title') }}
       <v-spacer />
-      <v-btn icon variant="text" @click="$emit('close')">
-        <LIcon>mdi-close</LIcon>
-      </v-btn>
+      <LIconBtn icon="mdi-close" @click="$emit('close')" />
     </v-card-title>
 
     <v-card-text>
@@ -86,56 +84,74 @@
 
         <!-- Distribution Settings -->
         <div class="settings-section">
-          <h4 class="section-title">{{ $t('scenarioManager.settings.distribution') }}</h4>
+          <h4 class="section-title">
+            {{ $t('scenarioManager.settings.distribution') }}
+            <LTooltip :text="$t('scenarioManager.settings.distributionTooltip')" location="right">
+              <LIcon size="16" class="section-help-icon">mdi-help-circle-outline</LIcon>
+            </LTooltip>
+          </h4>
 
-          <v-radio-group v-model="formData.config.distribution_mode">
-            <v-radio value="all">
-              <template #label>
-                <div class="radio-label">
-                  <span class="radio-title">{{ $t('scenarioManager.settings.distributionAll') }}</span>
-                  <span class="radio-desc">{{ $t('scenarioManager.settings.distributionAllDesc') }}</span>
-                </div>
-              </template>
-            </v-radio>
-            <v-radio value="random">
-              <template #label>
-                <div class="radio-label">
-                  <span class="radio-title">{{ $t('scenarioManager.settings.distributionRandom') }}</span>
-                  <span class="radio-desc">{{ $t('scenarioManager.settings.distributionRandomDesc') }}</span>
-                </div>
-              </template>
-            </v-radio>
-            <v-radio value="sequential">
-              <template #label>
-                <div class="radio-label">
-                  <span class="radio-title">{{ $t('scenarioManager.settings.distributionSequential') }}</span>
-                  <span class="radio-desc">{{ $t('scenarioManager.settings.distributionSequentialDesc') }}</span>
-                </div>
-              </template>
-            </v-radio>
-          </v-radio-group>
+          <div class="l-radio-list">
+            <LRadio
+              v-model="formData.config.distribution_mode"
+              value="all"
+              name="distribution"
+            >
+              <div class="radio-label">
+                <span class="radio-title">{{ $t('scenarioManager.settings.distributionAll') }}</span>
+                <span class="radio-desc">{{ $t('scenarioManager.settings.distributionAllDesc') }}</span>
+              </div>
+            </LRadio>
+            <LRadio
+              v-model="formData.config.distribution_mode"
+              value="random"
+              name="distribution"
+            >
+              <div class="radio-label">
+                <span class="radio-title">{{ $t('scenarioManager.settings.distributionRandom') }}</span>
+                <span class="radio-desc">{{ $t('scenarioManager.settings.distributionRandomDesc') }}</span>
+              </div>
+            </LRadio>
+            <LRadio
+              v-model="formData.config.distribution_mode"
+              value="sequential"
+              name="distribution"
+            >
+              <div class="radio-label">
+                <span class="radio-title">{{ $t('scenarioManager.settings.distributionSequential') }}</span>
+                <span class="radio-desc">{{ $t('scenarioManager.settings.distributionSequentialDesc') }}</span>
+              </div>
+            </LRadio>
+          </div>
         </div>
 
         <!-- Order Settings -->
         <div class="settings-section">
-          <h4 class="section-title">{{ $t('scenarioManager.settings.order') }}</h4>
+          <h4 class="section-title">
+            {{ $t('scenarioManager.settings.order') }}
+            <LTooltip :text="$t('scenarioManager.settings.orderTooltip')" location="right">
+              <LIcon size="16" class="section-help-icon">mdi-help-circle-outline</LIcon>
+            </LTooltip>
+          </h4>
 
-          <v-radio-group v-model="formData.config.order_mode">
-            <v-radio value="fixed" :label="$t('scenarioManager.settings.orderFixed')" />
-            <v-radio value="random" :label="$t('scenarioManager.settings.orderRandom')" />
-          </v-radio-group>
+          <LRadioGroup
+            v-model="formData.config.order_mode"
+            :options="orderOptions"
+          />
         </div>
 
         <!-- Visibility -->
         <div class="settings-section">
-          <h4 class="section-title">{{ $t('scenarioManager.settings.visibility') }}</h4>
+          <h4 class="section-title">
+            {{ $t('scenarioManager.settings.visibility') }}
+            <LTooltip :text="$t('scenarioManager.settings.visibilityTooltip')" location="right">
+              <LIcon size="16" class="section-help-icon">mdi-help-circle-outline</LIcon>
+            </LTooltip>
+          </h4>
 
-          <v-select
+          <LRadioGroup
             v-model="formData.visibility"
-            :items="visibilityOptions"
-            item-title="label"
-            item-value="value"
-            variant="outlined"
+            :options="visibilityOptions"
           />
         </div>
 
@@ -155,12 +171,11 @@
     </v-card-text>
 
     <v-card-actions>
-      <LBtn variant="text" color="error" @click="confirmDelete">
-        <LIcon start>mdi-delete-outline</LIcon>
+      <LBtn variant="danger" prepend-icon="mdi-delete-outline" @click="confirmDelete">
         {{ $t('scenarioManager.settings.delete') }}
       </LBtn>
       <v-spacer />
-      <LBtn variant="text" @click="$emit('close')">
+      <LBtn variant="cancel" @click="$emit('close')">
         {{ $t('common.cancel') }}
       </LBtn>
       <LBtn variant="primary" :loading="saving" :disabled="!formValid" @click="saveSettings">
@@ -206,6 +221,11 @@ const formData = ref({
 })
 
 // Options
+const orderOptions = computed(() => [
+  { value: 'fixed', label: t('scenarioManager.settings.orderFixed') },
+  { value: 'random', label: t('scenarioManager.settings.orderRandom') }
+])
+
 const visibilityOptions = computed(() => [
   { value: 'private', label: t('scenarioManager.settings.visibilityPrivate') },
   { value: 'team', label: t('scenarioManager.settings.visibilityTeam') },
@@ -298,6 +318,25 @@ onMounted(() => {
   font-weight: 600;
   color: rgb(var(--v-theme-on-surface));
   margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.section-help-icon {
+  opacity: 0.45;
+  cursor: help;
+  transition: opacity 0.2s ease;
+}
+
+.section-help-icon:hover {
+  opacity: 0.8;
+}
+
+.l-radio-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
 .radio-label {

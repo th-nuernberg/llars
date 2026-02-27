@@ -50,6 +50,7 @@ from routes.HelperFunctions import (
 )
 from services.user_profile_service import serialize_user_brief
 from services.evaluation.dimensional_rating_service import DimensionalRatingService
+from services.llm_registry_service import resolve_model_registry
 
 
 def _get_scenario_or_raise(scenario_id: int) -> RatingScenarios:
@@ -943,7 +944,19 @@ def get_progress_stats(scenario_id: int) -> Dict[str, Any]:
         bucket_distribution = _calculate_bucket_distribution(scenario_id)
         provenance_analysis = _calculate_ranking_provenance_analysis(scenario_id)
 
-    return {
+    # Build model_registry for all LLM model_ids in evaluator_stats
+    all_model_ids = [e['model_id'] for e in evaluator_stats if e.get('model_id')]
+    # Also collect LLM labels from provenance analyses
+    for analysis in (rating_provenance_analysis, provenance_analysis):
+        if analysis and isinstance(analysis, dict):
+            for segment in (analysis.get('segments') or {}).values():
+                if isinstance(segment, dict):
+                    for entry in segment.get('by_llm', []):
+                        if entry.get('id'):
+                            all_model_ids.append(entry['id'])
+    model_registry = resolve_model_registry(all_model_ids) if all_model_ids else {}
+
+    result = {
         "rater_stats": rater_stats,
         "evaluator_stats": evaluator_stats,
         "viewer_stats": evaluator_stats,  # backward compatibility
@@ -958,6 +971,7 @@ def get_progress_stats(scenario_id: int) -> Dict[str, Any]:
         "bucket_distribution": bucket_distribution,
         "provenance_analysis": provenance_analysis,
         "ranking_agreement": pairwise_agreement,  # backward compatibility (deprecated)
+        "model_registry": model_registry,
     }
     _set_cached_stats(scenario_id, result)
     return result

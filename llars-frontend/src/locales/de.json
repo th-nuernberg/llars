@@ -3188,13 +3188,13 @@
       "assignments": "Zuordnungen",
       "noProvenanceData": "Noch keine Provenance-Daten verfügbar",
       "conversationProvenance": "Gesprächspartner-Provenance",
-      "conversationProvenanceDescription": "Analysiert, welche Gesprächspartner-Kombinationen die höchsten Bewertungen erzielen. Berater (erster Wert) und Klient (zweiter Wert) zeigen, ob Nachrichten von Menschen oder KI-Modellen verfasst wurden. Format: Berater \u00d7 Klient.",
+      "conversationProvenanceDescription": "Analysiert, welche Gesprächspartner-Kombinationen die höchsten Bewertungen erzielen. Berater (erster Wert) und Klient (zweiter Wert) zeigen, ob Nachrichten von Menschen oder KI-Modellen verfasst wurden. Format: Berater × Klient.",
       "bestCounselorSource": "Beste Berater-Quelle",
       "bestClientSource": "Beste Klient-Quelle",
-      "bestCounselorClientPair": "Bestes Berater \u00d7 Klient-Paar",
+      "bestCounselorClientPair": "Bestes Berater × Klient-Paar",
       "counselorSourceRanking": "Berater-Quellen-Ranking",
       "clientSourceRanking": "Klient-Quellen-Ranking",
-      "counselorClientRanking": "Berater \u00d7 Klient-Ranking",
+      "counselorClientRanking": "Berater × Klient-Ranking",
       "authenticityProvenance": "Authentizitäts-Provenance-Analyse",
       "authenticityProvenanceDescription": "Analysiert, welche LLM-Generierungsquellen Bewerter am besten täuschen. Zeigt die Täuschungsrate (Prozentsatz der Bewertungen, die gefälschten Inhalt fälschlicherweise als echt klassifiziert haben) pro Quelle und die Falsch-Positiv-Rate für menschlich geschriebene Inhalte.",
       "bestFoolingLLM": "Überzeugendste KI-Quelle",
@@ -3346,7 +3346,10 @@
       "visibilityTeam": "Team (eingeladene Nutzer)",
       "visibilityPublic": "Öffentlich",
       "status": "Status",
-      "delete": "Szenario löschen"
+      "delete": "Szenario löschen",
+      "distributionTooltip": "Legt fest, wie Items an Evaluatoren verteilt werden. \"Alle\" gibt jedem alle Items, \"Zufällig\" verteilt zufällig, und \"Sequentiell\" weist der Reihe nach zu.",
+      "orderTooltip": "Legt die Reihenfolge fest, in der Items angezeigt werden. \"Fest\" zeigt allen die gleiche Reihenfolge, \"Zufällig\" mischt die Reihenfolge pro Evaluator.",
+      "visibilityTooltip": "Legt fest, wer dieses Szenario sehen kann. \"Privat\" ist nur für Sie sichtbar, \"Team\" für eingeladene Nutzer, und \"Öffentlich\" für alle Nutzer."
     },
     "distribution": {
       "all": "Alle an jeden",
@@ -3424,7 +3427,7 @@
       "bucketDistribution": "Zeigt wie viele Items in welchen Bucket (Gut/Mittel/Schlecht) einsortiert wurden. Aggregiert über alle menschlichen und LLM-Evaluatoren.",
       "provenanceAnalysis": "Vergleicht die Herkunft bewerteter Inhalte (Generierungs-LLM, Prompt und Prompt+LLM) und zeigt, welche Ursprünge am häufigsten im Top-Bucket landen. Format x/y = Treffer im Top-Bucket geteilt durch alle Zuordnungen der jeweiligen Herkunft.",
       "ratingProvenanceAnalysis": "Vergleicht die Herkunft bewerteter Inhalte (Generierungs-LLM, Prompt und Prompt+LLM) und zeigt, welche Ursprünge aktuell die höchsten normalisierten Rating-Scores erreichen.",
-      "conversationProvenance": "Analysiert Gesprächspartner-Kombinationen. Ermittelt, wer die Berater- und Klient-Nachrichten verfasst hat (Mensch vs. KI) und zeigt, welche Kombinationen die besten Bewertungen erzielen. Format: Berater \u00d7 Klient.",
+      "conversationProvenance": "Analysiert Gesprächspartner-Kombinationen. Ermittelt, wer die Berater- und Klient-Nachrichten verfasst hat (Mensch vs. KI) und zeigt, welche Kombinationen die besten Bewertungen erzielen. Format: Berater × Klient.",
       "authenticityProvenance": "Zeigt, wie gut jede LLM-Generierungsquelle Bewerter täuscht. Täuschungsrate = Prozentsatz der Stimmen, die gefälschten Inhalt fälschlicherweise als echt klassifiziert haben. Höhere Rate bedeutet überzeugendere Fälschung.",
       "rankingAgreement": "Pro Zusammenfassung: Haben beide Evaluatoren sie in denselben Bucket sortiert? Gezählt als: Übereinstimmende Zusammenfassungen / Gemeinsam bewertete Zusammenfassungen. Metriken ordinal berechnet (Bucket-Krippendorff)."
     },

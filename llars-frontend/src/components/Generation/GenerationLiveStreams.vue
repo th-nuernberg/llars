@@ -87,6 +87,10 @@ const props = defineProps({
   isJobRunning: {
     type: Boolean,
     default: false
+  },
+  userProviderNames: {
+    type: Object,
+    default: () => ({})
   }
 })
 
@@ -126,7 +130,8 @@ const idleSlotCount = computed(() => {
 })
 
 function formatModelName(modelId) {
-  const parsed = parseUserProviderModelId(modelId)
+  const providerName = props.userProviderNames[modelId] || null
+  const parsed = parseUserProviderModelId(modelId, providerName)
   if (parsed) return parsed.displayName
   return modelId
 }

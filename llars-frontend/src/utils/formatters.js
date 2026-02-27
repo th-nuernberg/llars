@@ -255,7 +255,7 @@ export const getBiasLabel = (bias) => {
  * @param {string} modelId - The full model ID string
  * @returns {{ providerId: string, username: string|null, modelName: string, providerLabel: string, displayName: string } | null}
  */
-export const parseUserProviderModelId = (modelId) => {
+export const parseUserProviderModelId = (modelId, providerNameHint = null) => {
   if (!modelId || typeof modelId !== 'string' || !modelId.startsWith('user-provider:')) return null
 
   const rest = modelId.slice('user-provider:'.length).trim()
@@ -329,6 +329,9 @@ export const parseUserProviderModelId = (modelId) => {
     } else if (prefixLabel) {
       providerLabel = prefixLabel
       normalizedModelName = modelName
+    } else if (providerNameHint && remainder) {
+      // Unknown API prefix (e.g. "meta-llama/") - strip it when we have a real provider name
+      normalizedModelName = remainder
     }
   } else if (lower.startsWith('gpt-') || lower.startsWith('o1') || lower.startsWith('o3') || lower.startsWith('o4')) {
     providerLabel = 'OpenAI'
@@ -338,6 +341,11 @@ export const parseUserProviderModelId = (modelId) => {
     providerLabel = 'Google'
   } else if (lower.startsWith('mistral') || lower.startsWith('magistral')) {
     providerLabel = 'Mistral'
+  }
+
+  // Explicit provider name hint from backend takes priority over all inference
+  if (providerNameHint && typeof providerNameHint === 'string') {
+    providerLabel = providerNameHint
   }
 
   const safeModelName = normalizedModelName || modelName || modelId

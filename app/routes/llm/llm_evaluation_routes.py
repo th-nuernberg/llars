@@ -11,6 +11,7 @@ from flask import Blueprint, jsonify, g, request
 
 from auth.decorators import authentik_required
 from decorators.error_handler import handle_api_errors, NotFoundError, ValidationError
+from services.llm_registry_service import resolve_model_registry
 
 logger = logging.getLogger(__name__)
 
@@ -119,6 +120,7 @@ def get_evaluation_progress(scenario_id):
         'total_threads': total_threads,
         'llm_evaluators': llm_evaluators,
         'model_progress': model_progress,
+        'model_registry': resolve_model_registry(llm_evaluators) if llm_evaluators else {},
         'results': [],  # Full results require separate call
         'agreement_metrics': None,  # Calculated on demand
         'token_usage': {

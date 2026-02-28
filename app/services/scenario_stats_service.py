@@ -2999,7 +2999,7 @@ def _calculate_ranking_provenance_analysis(scenario_id: int) -> Dict[str, Any]:
 
     features = (
         Feature.query
-        .options(joinedload(Feature.llm), joinedload(Feature.feature_type))
+        .options(joinedload(Feature.feature_type))
         .filter(Feature.item_id.in_(item_ids))
         .all()
     )

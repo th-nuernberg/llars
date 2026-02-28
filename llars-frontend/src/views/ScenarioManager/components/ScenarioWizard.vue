@@ -43,7 +43,7 @@
     <!-- Step Content -->
     <v-card-text class="wizard-content">
       <!-- Step 1: Data Upload & AI Analysis -->
-      <div v-if="currentStep === 0" class="step-content">
+      <div v-if="currentStepKey === 'data'" class="step-content">
         <div class="step-title-row">
           <h3 class="step-title">{{ $t('scenarioManager.wizard.step1.title') }}</h3>
           <LInfoTooltip
@@ -183,7 +183,7 @@
       </div>
 
       <!-- Step 2: Task Definition -->
-      <div v-if="currentStep === 1" class="step-content">
+      <div v-if="currentStepKey === 'task'" class="step-content">
         <h3 class="step-title">{{ $t('scenarioManager.wizard.step2.title') }}</h3>
         <p class="step-description">{{ $t('scenarioManager.wizard.step2.description') }}</p>
 
@@ -343,7 +343,7 @@
       </div>
 
       <!-- Step 3: Configuration -->
-      <div v-if="currentStep === 2" class="step-content">
+      <div v-if="currentStepKey === 'config'" class="step-content">
         <h3 class="step-title">{{ $t('scenarioManager.wizard.step3.title') }}</h3>
         <p class="step-description">{{ $t('scenarioManager.wizard.step3.description') }}</p>
 
@@ -422,7 +422,7 @@
       </div>
 
       <!-- Step 4: Team (Users & AI) -->
-      <div v-if="currentStep === 3" class="step-content">
+      <div v-if="currentStepKey === 'team'" class="step-content">
         <h3 class="step-title">{{ $t('scenarioManager.wizard.step4.teamTitle') }}</h3>
         <p class="step-description">{{ $t('scenarioManager.wizard.step4.teamDescription') }}</p>
 
@@ -608,7 +608,7 @@
       </div>
 
       <!-- Step 5: Summary & Create -->
-      <div v-if="currentStep === 4" class="step-content">
+      <div v-if="currentStepKey === 'summary'" class="step-content">
         <h3 class="step-title">{{ $t('scenarioManager.wizard.step5.title') }}</h3>
         <p class="step-description">{{ $t('scenarioManager.wizard.step5.description') }}</p>
 
@@ -655,26 +655,30 @@
               <LIcon class="mr-2" color="primary">mdi-database-outline</LIcon>
               {{ $t('scenarioManager.wizard.step5.data') }}
             </h5>
-            <div class="summary-row">
-              <span class="summary-label">{{ $t('scenarioManager.wizard.step5.files') }}</span>
-              <span class="summary-value">
-                {{ uploadedFiles.length > 0 ? `${uploadedFiles.length} ${$t('scenarioManager.wizard.step1.filesSelected')}` : '-' }}
-              </span>
-            </div>
-            <div class="summary-row" v-if="analysisResult">
-              <span class="summary-label">{{ $t('scenarioManager.wizard.step5.items') }}</span>
-              <span class="summary-value">{{ analysisResult.itemCount }}</span>
-            </div>
-            <!-- Server-side import hint for generation jobs -->
-            <div v-if="props.generationJobId && generationJobMeta" class="server-import-hint mt-2">
-              <LIcon size="16" color="accent" class="mr-1">mdi-server</LIcon>
-              <span>
-                {{ generationJobMeta.totalOutputs }} Outputs werden direkt auf dem Server verarbeitet
-                <span v-if="generationJobMeta.models.length > 0" class="text-medium-emphasis">
-                  ({{ generationJobMeta.models.length }} Modell{{ generationJobMeta.models.length > 1 ? 'e' : '' }})
+            <!-- Generation mode: show metadata from stats -->
+            <template v-if="props.generationJobId && generationJobMeta">
+              <div class="server-import-hint mt-2">
+                <LIcon size="16" color="accent" class="mr-1">mdi-server</LIcon>
+                <span>
+                  {{ generationJobMeta.totalOutputs }} Outputs
+                  ({{ generationJobMeta.models.length }} Modell{{ generationJobMeta.models.length > 1 ? 'e' : '' }},
+                  {{ generationJobMeta.variants.length || 1 }} Variante{{ (generationJobMeta.variants.length || 1) > 1 ? 'n' : '' }})
                 </span>
-              </span>
-            </div>
+              </div>
+            </template>
+            <!-- File-upload mode -->
+            <template v-else>
+              <div class="summary-row">
+                <span class="summary-label">{{ $t('scenarioManager.wizard.step5.files') }}</span>
+                <span class="summary-value">
+                  {{ uploadedFiles.length > 0 ? `${uploadedFiles.length} ${$t('scenarioManager.wizard.step1.filesSelected')}` : '-' }}
+                </span>
+              </div>
+              <div class="summary-row" v-if="analysisResult">
+                <span class="summary-label">{{ $t('scenarioManager.wizard.step5.items') }}</span>
+                <span class="summary-value">{{ analysisResult.itemCount }}</span>
+              </div>
+            </template>
           </div>
 
           <v-divider class="my-3" />
@@ -923,7 +927,7 @@ const transformingData = ref(false) // Long-format transformation in progress
 const availableUsers = ref([])
 const selectedUsers = ref([])
 const loadingUsers = ref(false)
-const inviteRole = ref('EVALUATOR')
+const inviteRole = ref('ASSESSOR')
 
 // LLM state - System models (admin-configured)
 const availableLLMs = ref([])
@@ -935,14 +939,19 @@ const userProviders = ref([])
 const selectedProviders = ref([])
 const loadingUserProviders = ref(false)
 
-// Steps definition
-const steps = computed(() => [
-  { key: 'data', label: t('scenarioManager.wizard.steps.data'), icon: 'mdi-database-import-outline' },
-  { key: 'task', label: t('scenarioManager.wizard.steps.task'), icon: 'mdi-clipboard-list-outline' },
-  { key: 'config', label: t('scenarioManager.wizard.steps.config'), icon: 'mdi-tune' },
-  { key: 'team', label: t('scenarioManager.wizard.steps.team'), icon: 'mdi-account-group' },
-  { key: 'summary', label: t('scenarioManager.wizard.steps.summary'), icon: 'mdi-check-all' }
-])
+// Steps definition - dynamically filtered when coming from generation (skip data tab)
+const steps = computed(() => {
+  const allSteps = [
+    { key: 'data', label: t('scenarioManager.wizard.steps.data'), icon: 'mdi-database-import-outline' },
+    { key: 'task', label: t('scenarioManager.wizard.steps.task'), icon: 'mdi-clipboard-list-outline' },
+    { key: 'config', label: t('scenarioManager.wizard.steps.config'), icon: 'mdi-tune' },
+    { key: 'team', label: t('scenarioManager.wizard.steps.team'), icon: 'mdi-account-group' },
+    { key: 'summary', label: t('scenarioManager.wizard.steps.summary'), icon: 'mdi-check-all' }
+  ]
+  return props.generationJobId ? allSteps.filter(s => s.key !== 'data') : allSteps
+})
+
+const currentStepKey = computed(() => steps.value[currentStep.value]?.key || '')
 
 // Evaluation types - grouped by category
 const evaluationTypesGrouped = computed(() => {
@@ -1021,6 +1030,18 @@ const selectedTypeInfo = computed(() => {
 })
 
 const generationVariantStats = computed(() => {
+  // Generation mode with metadata from stats API
+  if (props.generationJobId && generationJobMeta.value) {
+    const meta = generationJobMeta.value
+    const variantsPerItem = meta.models.length * (meta.variants.length || 1)
+    return {
+      sourceCount: Math.ceil(meta.totalOutputs / Math.max(variantsPerItem, 1)),
+      maxVariantsPerSource: variantsPerItem,
+      supportsRanking: variantsPerItem >= 2
+    }
+  }
+
+  // File-upload mode: derive from analyzedData
   const generationItems = analyzedData.value.filter(item => item?._source === 'generation')
   if (generationItems.length === 0) {
     return {
@@ -1126,31 +1147,28 @@ const dataSummaryForPanel = computed(() => {
 })
 
 const canProceed = computed(() => {
-  if (currentStep.value === 0) {
-    // Step 1: Need files and analysis
+  const key = currentStepKey.value
+  if (key === 'data') {
     return uploadedFiles.value.length > 0 && analysisResult.value !== null
   }
-  if (currentStep.value === 1) {
-    // Step 2: Need type and name
+  if (key === 'task') {
     return formData.value.evalType !== null &&
            formData.value.scenario_name &&
            formData.value.scenario_name.length >= 3
   }
-  if (currentStep.value === 2) {
-    // Step 3: Need config
+  if (key === 'config') {
     return formData.value.evalConfig !== null
   }
-  if (currentStep.value === 3) {
-    // Step 4: Team - need at least one evaluator (human or LLM)
+  if (key === 'team') {
     return selectedUsers.value.length > 0 || selectedLLMs.value.length > 0 || selectedProviders.value.length > 0
   }
   return true
 })
 
 // Role options for user invitations
-// EVALUATOR can interact (rate/evaluate), VIEWER is read-only
+// ASSESSOR can interact (rate/evaluate), VIEWER is read-only
 const roleOptions = [
-  { value: 'EVALUATOR', title: 'Evaluator' },
+  { value: 'ASSESSOR', title: 'Assessor' },
   { value: 'VIEWER', title: 'Viewer' }
 ]
 
@@ -1167,7 +1185,7 @@ function goToStep(index) {
 }
 
 function nextStep() {
-  if (currentStep.value === 1 && infoForm.value) {
+  if (currentStepKey.value === 'task' && infoForm.value) {
     infoForm.value.validate()
     if (!infoFormValid.value) return
   }
@@ -2053,7 +2071,7 @@ async function createScenario() {
 
   try {
     const taskType = getTaskType(formData.value.evalType)
-    const isFromGeneration = analyzedData.value.some(i => i._source === 'generation')
+    const isFromGeneration = Boolean(props.generationJobId) || analyzedData.value.some(i => i._source === 'generation')
 
     // Validate generation → ranking upfront to avoid creating empty scenarios.
     if (taskType === 'ranking' && isFromGeneration && !generationVariantStats.value.supportsRanking) {
@@ -2080,7 +2098,7 @@ async function createScenario() {
           enable_llm_evaluation: combinedEvaluators.length > 0,
           ...(combinedEvaluators.length > 0 ? { llm_evaluators: combinedEvaluators } : {}),
         },
-        invited_users: selectedUsers.value.map(u => ({ user_id: u.id, role: u.role || 'EVALUATOR' })),
+        invited_users: selectedUsers.value.map(u => ({ user_id: u.id, role: u.role || 'ASSESSOR' })),
         split_by_prompt: Boolean(formData.value.evalConfig?.config?.splitByPrompt),
       }
 
@@ -2162,11 +2180,11 @@ async function createScenario() {
 
     // Invite selected human users
     if (selectedUsers.value.length > 0 && scenario?.id) {
-      const evaluators = selectedUsers.value.filter(u => u.role === 'EVALUATOR').map(u => u.id)
+      const assessors = selectedUsers.value.filter(u => u.role === 'ASSESSOR' || u.role === 'EVALUATOR').map(u => u.id)
       const viewers = selectedUsers.value.filter(u => u.role === 'VIEWER').map(u => u.id)
 
-      if (evaluators.length > 0) {
-        await inviteUsers(scenario.id, evaluators, 'EVALUATOR')
+      if (assessors.length > 0) {
+        await inviteUsers(scenario.id, assessors, 'ASSESSOR')
       }
       if (viewers.length > 0) {
         await inviteUsers(scenario.id, viewers, 'VIEWER')
@@ -2329,58 +2347,27 @@ async function loadFromGenerationJob() {
 
   loadingFromGeneration.value = true
   try {
-    // Load only FIRST PAGE (preview) + job metadata — not all data.
+    // Load only lightweight stats + job info — no output content needed.
     // The actual scenario creation happens server-side via /to-scenario.
-    const response = await axios.get(`/api/generation/jobs/${props.generationJobId}/outputs`, {
-      params: { status: 'completed', page: 1, per_page: 100, include_prompts: true }
-    })
-    const previewOutputs = response.data.items || []
-    const totalOutputs = response.data.total || previewOutputs.length
-    const totalPages = response.data.pages || 1
+    const [statsRes, jobRes] = await Promise.all([
+      axios.get(`/api/generation/jobs/${props.generationJobId}/statistics`),
+      axios.get(`/api/generation/jobs/${props.generationJobId}`)
+    ])
+    const stats = statsRes.data.statistics
+    const job = jobRes.data.job
 
-    if (previewOutputs.length === 0) {
-      console.warn('[ScenarioWizard] No completed outputs found in generation job')
-      return
-    }
-
-    // Fetch job info for the name
-    const jobResponse = await axios.get(`/api/generation/jobs/${props.generationJobId}`)
-    generationJobName.value = jobResponse.data.job?.name || `Generation Job #${props.generationJobId}`
-
-    // Store metadata for UI (total counts, models, etc.)
+    generationJobName.value = job?.name || `Generation Job #${props.generationJobId}`
     generationJobMeta.value = {
-      totalOutputs,
-      totalPages,
-      previewCount: previewOutputs.length,
-      models: [...new Set(previewOutputs.map(o => o.llm_model_name).filter(Boolean))],
-      variants: [...new Set(previewOutputs.filter(o => o.prompt_variant_name).map(o => o.prompt_variant_name))],
+      totalOutputs: stats.overall?.completed || 0,
+      models: Object.keys(stats.by_model || {}),
+      variants: Object.keys(stats.by_prompt_variant || {}),
     }
 
-    console.log(`[ScenarioWizard] Loaded ${previewOutputs.length}/${totalOutputs} preview outputs (${totalPages} pages total)`)
-
-    // Transform preview outputs for AI analysis and type detection
-    const items = previewOutputs.map(output => normalizeGenerationOutput(output))
-
-    // Set the data
-    analyzedData.value = items
-
-    // Create a virtual "file" entry to show in the UI
-    uploadedFiles.value = [{
-      name: `${generationJobName.value}.json`,
-      size: totalOutputs, // Show total count, not byte size
-      _isVirtual: true,
-      _generationJobId: props.generationJobId,
-      _totalOutputs: totalOutputs,
-    }]
-
-    // Pre-fill scenario name based on job name
     formData.value.scenario_name = generationJobName.value
-
-    // Auto-advance to step 1 (task type selection) since we have data
-    currentStep.value = 1
+    // currentStep starts at 0, which is 'task' (data tab is skipped)
 
   } catch (error) {
-    console.error('Failed to load generation job data:', error)
+    console.error('Failed to load generation job metadata:', error)
   } finally {
     loadingFromGeneration.value = false
   }

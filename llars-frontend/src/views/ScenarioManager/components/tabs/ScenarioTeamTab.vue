@@ -3,7 +3,7 @@
     <!-- Header -->
     <div class="tab-header">
       <h3>{{ $t('scenarioManager.team.title') }}</h3>
-      <LBtn v-if="scenario?.is_owner" variant="primary" @click="showInviteDialog = true">
+      <LBtn v-if="canManage" variant="primary" @click="showInviteDialog = true">
         <LIcon start>mdi-account-plus</LIcon>
         {{ $t('scenarioManager.team.invite') }}
       </LBtn>
@@ -57,7 +57,7 @@
               </LTag>
               <!-- Invitation Status Badge -->
               <LTag
-                v-if="member.invitation_status && member.invitation_status !== 'accepted' && member.role !== 'OWNER'"
+                v-if="member.invitation_status && member.invitation_status !== 'accepted' && member.role !== 'Owner'"
                 :variant="getInvitationVariant(member.invitation_status)"
                 size="sm"
               >
@@ -71,7 +71,7 @@
               {{ member.completed || 0 }} / {{ member.total || 0 }}
             </span>
           </div>
-          <div class="member-actions" v-if="scenario?.is_owner && member.role !== 'OWNER'">
+          <div class="member-actions" v-if="canManage && member.role !== 'Owner'">
             <!-- Re-invite button for rejected members -->
             <LBtn
               v-if="member.invitation_status === 'rejected'"
@@ -117,7 +117,7 @@
     <div class="section">
       <div class="section-header">
         <h4 class="section-title">{{ $t('scenarioManager.team.llmEvaluators') }}</h4>
-        <LBtn v-if="scenario?.is_owner" variant="secondary" size="small" @click="showAddLLMDialog = true">
+        <LBtn v-if="canManage" variant="secondary" size="small" @click="showAddLLMDialog = true">
           <LIcon start size="16">mdi-plus</LIcon>
           {{ $t('scenarioManager.team.addLLM') }}
         </LBtn>
@@ -145,7 +145,7 @@
               {{ llm.cost.toFixed(4) }}
             </span>
           </div>
-          <div class="member-actions" v-if="scenario?.is_owner">
+          <div class="member-actions" v-if="canManage">
             <v-btn icon size="small" variant="text" color="error" @click="confirmRemoveLLM(llm)">
               <LIcon size="18">mdi-delete-outline</LIcon>
             </v-btn>
@@ -313,7 +313,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useScenarioManager } from '../../composables/useScenarioManager'
-import { parseUserProviderModelId } from '@/utils/formatters'
+import { useModelRegistry } from '@/composables/useModelRegistry'
 import LAvatar from '@/components/common/LAvatar.vue'
 import LUserSearch from '@/components/common/LUserSearch.vue'
 
@@ -325,6 +325,10 @@ const props = defineProps({
   liveStats: {
     type: Object,
     default: null
+  },
+  canManage: {
+    type: Boolean,
+    default: false
   }
 })
 
@@ -338,6 +342,7 @@ const {
   updateUserRole,
   getScenarioTeam
 } = useScenarioManager()
+const { formatModelName: registryFormatModelName } = useModelRegistry()
 
 // State
 const showInviteDialog = ref(false)
@@ -346,7 +351,7 @@ const teamData = ref(null)
 const showAddLLMDialog = ref(false)
 const showRemoveDialog = ref(false)
 const selectedUsers = ref([])  // Array of user objects { username, display_name, ... }
-const inviteRole = ref('EVALUATOR')
+const inviteRole = ref('ASSESSOR')
 const inviting = ref(false)
 const memberToRemove = ref(null)
 const removing = ref(false)
@@ -359,7 +364,7 @@ const addingLLM = ref(false)
 // Role change dialog
 const showRoleDialog = ref(false)
 const memberToChangeRole = ref(null)
-const newRole = ref('EVALUATOR')
+const newRole = ref('ASSESSOR')
 const changingRole = ref(false)
 
 // Mock data
@@ -375,7 +380,7 @@ const availableTemplates = ref([
 ])
 
 const roleOptions = computed(() => [
-  { title: t('scenarioManager.team.roles.evaluator'), value: 'EVALUATOR' },
+  { title: t('scenarioManager.team.roles.assessor'), value: 'ASSESSOR' },
   { title: t('scenarioManager.team.roles.viewer'), value: 'VIEWER' }
 ])
 
@@ -386,6 +391,9 @@ const excludedUsernames = computed(() => {
   return [...new Set([...selected, ...existing])]
 })
 
+// Assessor-type roles (shown in the Assessors tab)
+const ASSESSOR_ROLES = ['Assessor', 'Evaluator', 'Owner']
+
 // Computed
 const evaluators = computed(() => {
   // Use team data if available (includes invitation_status), otherwise fall back to scenario.users
@@ -395,6 +403,9 @@ const evaluators = computed(() => {
   } else {
     users = props.scenario?.users?.filter(u => !u.is_llm) || []
   }
+
+  // Filter: only show Assessors (and Owner). Manager and Viewer belong to Collaboration in Settings.
+  users = users.filter(u => ASSESSOR_ROLES.includes(u.role))
 
   // Merge with live stats to get completed/total counts
   // userStatsList contains all human users with their progress
@@ -427,19 +438,17 @@ const llmEvaluators = computed(() => {
     if (typeof modelId === 'object' && modelId !== null) {
       return modelId
     }
-    // Otherwise, parse the model ID string
+
+    // Use the central model registry for consistent display names
+    const displayName = registryFormatModelName(modelId)
+
+    // Extract model_name and provider from the formatted display name
     let provider = 'Unknown'
-    let modelName = modelId
-    const parsed = parseUserProviderModelId(modelId)
-    if (parsed) {
-      provider = parsed.username
-        ? `${parsed.username}/${parsed.providerLabel}`
-        : parsed.providerLabel
-      modelName = parsed.modelName
-    } else {
-      const parts = modelId.split('/')
-      provider = parts.length > 1 ? parts[0] : 'Unknown'
-      modelName = parts.length > 1 ? parts.slice(1).join('/') : modelId
+    let modelName = displayName
+    const parts = displayName.split('/')
+    if (parts.length > 1) {
+      provider = parts[0]
+      modelName = parts.slice(1).join('/')
     }
 
     // Find matching live stats (name or id contains the model_id for LLMs)
@@ -466,9 +475,11 @@ function isOwner(member) {
 
 function getRoleVariant(role) {
   const map = {
-    'OWNER': 'primary',
-    'EVALUATOR': 'info',
-    'VIEWER': 'default'
+    'Owner': 'primary',
+    'Manager': 'secondary',
+    'Assessor': 'info',
+    'Evaluator': 'info',
+    'Viewer': 'default'
   }
   return map[role] || 'default'
 }
@@ -495,7 +506,7 @@ async function doReinvite(member) {
 }
 
 async function loadTeamData() {
-  if (props.scenario?.id && props.scenario?.is_owner) {
+  if (props.scenario?.id && props.canManage) {
     try {
       teamData.value = await getScenarioTeam(props.scenario.id)
     } catch (err) {
@@ -556,7 +567,7 @@ async function removeMember() {
 function changeRole(member) {
   memberToChangeRole.value = member
   // Set current role as default, but allow changing to other role
-  newRole.value = member.role === 'EVALUATOR' ? 'VIEWER' : 'EVALUATOR'
+  newRole.value = (member.role === 'Assessor' || member.role === 'Evaluator') ? 'VIEWER' : 'ASSESSOR'
   showRoleDialog.value = true
 }
 

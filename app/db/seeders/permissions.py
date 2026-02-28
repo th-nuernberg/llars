@@ -363,6 +363,20 @@ def initialize_permissions(db):
             'description': 'Erlaubt das Erstellen von Evaluation-Szenarien aus generierten Outputs'
         },
 
+        # Feature: Conference Manager
+        {
+            'permission_key': 'feature:conference_manager:view',
+            'display_name': 'Conference Manager ansehen',
+            'category': 'feature',
+            'description': 'Erlaubt das Ansehen von Konferenzen und Papers'
+        },
+        {
+            'permission_key': 'feature:conference_manager:edit',
+            'display_name': 'Conference Manager bearbeiten',
+            'category': 'feature',
+            'description': 'Erlaubt das Erstellen und Bearbeiten von Konferenzen und Papers'
+        },
+
         # Feature: Pipeline (Automated LLM Evaluation Loop)
         {
             'permission_key': 'feature:pipeline:view',
@@ -457,6 +471,9 @@ def initialize_permissions(db):
                 # Data Import (für Evaluation-Daten)
                 'data:import',
                 'data:manage_scenarios',
+                # Conference Manager
+                'feature:conference_manager:view',
+                'feature:conference_manager:edit',
             ]
         },
         {
@@ -522,6 +539,8 @@ def initialize_permissions(db):
                 'feature:anonymize:view',
                 'feature:kaimo:view',
                 'feature:kaimo:edit',
+                # Conference Manager (read-only)
+                'feature:conference_manager:view',
                 # Referral Links
                 'feature:referral:create_links',
             ]

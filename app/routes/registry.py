@@ -131,6 +131,10 @@ def register_all_blueprints(app: Flask) -> None:
     from routes.anonymize import anonymize_bp
     app.register_blueprint(anonymize_bp)
 
+    # Conference Manager (conference tracking, paper management)
+    from routes.conference_manager import conference_manager_bp
+    app.register_blueprint(conference_manager_bp)
+
     # Web Crawler
     from routes.crawler import crawler_bp
     app.register_blueprint(crawler_bp)
@@ -218,6 +222,7 @@ def get_blueprint_info() -> dict:
             {'name': 'latex_collab', 'prefix': '/api/latex-collab', 'description': 'LaTeX Collab workspaces and documents'},
             {'name': 'zotero', 'prefix': '/api/zotero', 'description': 'Zotero reference manager integration'},
             {'name': 'anonymize', 'prefix': '/api/anonymize', 'description': 'Offline pseudonymization (Anonymize tool)'},
+            {'name': 'conference_manager', 'prefix': '/api/conference-manager', 'description': 'Conference tracking and paper management'},
             {'name': 'import', 'prefix': '/api/import', 'description': 'Universal data import with AI assistance'},
             {'name': 'wizard', 'prefix': '/api/wizard', 'description': 'Scenario Wizard API for programmatic access (Claude Code)'},
         ],

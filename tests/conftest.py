@@ -217,6 +217,7 @@ def app():
         from db.models.prompt_template import PromptTemplate  # noqa: F401
         from db.models.llm_usage_tracking import LLMUsageTracking, UserTokenBudget  # noqa: F401
         from db.models.llm_task_result import LLMTaskResult  # noqa: F401
+        from db.models.conference import Conference, Paper, PaperAuthor  # noqa: F401
 
         # Create all tables
         _test_db_instance.create_all()
@@ -579,6 +580,7 @@ def db(app):
         from db.models.prompt_template import PromptTemplate  # noqa: F401
         from db.models.llm_usage_tracking import LLMUsageTracking, UserTokenBudget  # noqa: F401
         from db.models.llm_task_result import LLMTaskResult  # noqa: F401
+        from db.models.conference import Conference, Paper, PaperAuthor  # noqa: F401
 
         _db.create_all()
 

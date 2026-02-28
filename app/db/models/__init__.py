@@ -212,6 +212,15 @@ from db.models.pipeline import (
     PipelineIteration,
 )
 
+# Conference Manager models
+from db.models.conference import (
+    CoreRanking,
+    PaperStatus,
+    Conference,
+    Paper,
+    PaperAuthor,
+)
+
 __all__ = [
     # User
     'User',
@@ -370,4 +379,10 @@ __all__ = [
     'PipelineIterationStatus',
     'PipelineRun',
     'PipelineIteration',
+    # Conference Manager
+    'CoreRanking',
+    'PaperStatus',
+    'Conference',
+    'Paper',
+    'PaperAuthor',
 ]

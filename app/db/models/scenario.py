@@ -11,8 +11,8 @@ from db import db
 class ScenarioRoles(Enum):
     OWNER = 'Owner'          # Szenario-Ersteller - kann bearbeiten, User verwalten, löschen
     MANAGER = 'Manager'      # Kann Szenario mitverwalten (Settings, Assessors einladen), aber nicht löschen
-    ASSESSOR = 'Evaluator'   # Kann bewerten/interagieren - DB value bleibt 'Evaluator' für Kompatibilität
-    EVALUATOR = 'Evaluator'  # Alias für ASSESSOR (deprecated name, same DB value)
+    EVALUATOR = 'Evaluator'  # Kann bewerten/interagieren (DB speichert 'EVALUATOR')
+    ASSESSOR = 'Evaluator'   # Alias für EVALUATOR - Display-Name "Gutachter/Assessor"
     VIEWER = 'Viewer'        # Nur lesend - sieht alle Tabs
 
 

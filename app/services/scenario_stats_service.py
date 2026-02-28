@@ -687,7 +687,7 @@ def get_user_progress_counts(scenario_id: int) -> Dict[str, Dict[str, int]]:
     result = {}
     for su in scenario_users:
         use_full = (
-            su.role in (ScenarioRoles.VIEWER, ScenarioRoles.OWNER)
+            su.role in (ScenarioRoles.VIEWER, ScenarioRoles.OWNER, ScenarioRoles.MANAGER)
             or (su.role == ScenarioRoles.EVALUATOR and raters_receive_all_threads(scenario))
         )
         user_thread_ids = all_thread_ids if use_full else []
@@ -769,7 +769,7 @@ def get_progress_stats(scenario_id: int) -> Dict[str, Any]:
     # Build a lookup for distributed threads per user
     distributed_thread_ids_by_user = defaultdict(set)
     if any(
-        su.role not in (ScenarioRoles.VIEWER, ScenarioRoles.OWNER)
+        su.role not in (ScenarioRoles.VIEWER, ScenarioRoles.OWNER, ScenarioRoles.MANAGER)
         and not raters_receive_all_threads(scenario)
         for su in scenario_users
     ):
@@ -797,8 +797,7 @@ def get_progress_stats(scenario_id: int) -> Dict[str, Any]:
         total_not_started_threads = 0
 
         use_full_threads = (
-            scenario_user.role == ScenarioRoles.VIEWER
-            or scenario_user.role == ScenarioRoles.OWNER
+            scenario_user.role in (ScenarioRoles.VIEWER, ScenarioRoles.OWNER, ScenarioRoles.MANAGER)
             or (scenario_user.role == ScenarioRoles.EVALUATOR and raters_receive_all_threads(scenario))
         )
 
@@ -866,10 +865,10 @@ def get_progress_stats(scenario_id: int) -> Dict[str, Any]:
         }
 
         if scenario_user.role == ScenarioRoles.EVALUATOR:
-            # EVALUATOR can interact (rate/evaluate)
+            # ASSESSOR/EVALUATOR can interact (rate/evaluate)
             rater_stats.append(new_data)
-        elif scenario_user.role == ScenarioRoles.OWNER:
-            # OWNER shown in stats for overview purposes
+        elif scenario_user.role in (ScenarioRoles.OWNER, ScenarioRoles.MANAGER):
+            # OWNER/MANAGER shown in stats for overview purposes
             evaluator_stats.append(new_data)
         # VIEWER: excluded from stats entirely (read-only, no evaluation)
 
@@ -1127,10 +1126,10 @@ def _get_comparison_progress_stats(scenario_id: int) -> Dict[str, Any]:
         }
 
         if scenario_user.role == ScenarioRoles.EVALUATOR:
-            # EVALUATOR can interact (rate/evaluate)
+            # ASSESSOR/EVALUATOR can interact (rate/evaluate)
             rater_stats.append(new_data)
-        elif scenario_user.role == ScenarioRoles.OWNER:
-            # OWNER shown in stats for overview purposes
+        elif scenario_user.role in (ScenarioRoles.OWNER, ScenarioRoles.MANAGER):
+            # OWNER/MANAGER shown in stats for overview purposes
             evaluator_stats.append(new_data)
         # VIEWER: excluded from stats entirely (read-only, no evaluation)
 
@@ -3037,7 +3036,7 @@ def _calculate_ranking_provenance_analysis(scenario_id: int) -> Dict[str, Any]:
         if unused_candidates:
             candidates = unused_candidates
 
-        feature_model_key = _normalize_model_identity(feature.llm.name if feature.llm else "")
+        feature_model_key = _normalize_model_identity(feature.model_id or "")
         if feature_model_key:
             model_matches = [
                 candidate
@@ -3096,7 +3095,7 @@ def _calculate_ranking_provenance_analysis(scenario_id: int) -> Dict[str, Any]:
             }
             continue
 
-        llm_name = feature.llm.name if feature.llm else "Unknown LLM"
+        llm_name = feature.model_id or "Unknown LLM"
         prompt_name = feature.feature_type.name if feature.feature_type else "Unknown prompt"
         combination_key = f"{prompt_name}|||{llm_name}"
         combination_label = f"{prompt_name} x {llm_name}"

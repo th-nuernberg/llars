@@ -93,7 +93,7 @@ def get_email_thread_for_ratings(thread_id):
         features = Feature.query.filter_by(item_id=thread_id).all()
         thread_data['features'] = [
             {
-                'model_name': feature.llm.name if feature.llm else 'Unknown',
+                'model_name': feature.model_id or 'Unknown',
                 'type': feature.feature_type.name if feature.feature_type else 'Summary',
                 'content': feature.content,
                 'user_rating': ratings_by_feature_id.get(feature.feature_id).rating_content
@@ -139,7 +139,7 @@ def get_email_thread_for_ratings(thread_id):
         ],
         'features': [
             {
-                'model_name': feature.llm.name if feature.llm else 'Unknown',
+                'model_name': feature.model_id or 'Unknown',
                 'type': feature.feature_type.name if feature.feature_type else 'Summary',
                 'content': feature.content,
                 'user_rating': ratings_by_feature_id.get(feature.feature_id).rating_content
@@ -177,7 +177,7 @@ def get_feature_and_messages(thread_id, feature_id):
         raise NotFoundError('No messages found for the given thread_id')
 
     feature_data = {
-        'model_name': feature.llm.name if feature.llm else 'Unknown',
+        'model_name': feature.model_id or 'Unknown',
         'type': feature.feature_type.name if feature.feature_type else 'Summary',
         'content': feature.content,
         'feature_id': feature.feature_id

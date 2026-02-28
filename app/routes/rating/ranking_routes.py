@@ -251,7 +251,7 @@ def get_email_thread_for_rankings(thread_id):
         ],
         'features': [
             {
-                'model_name': feature.llm.name if feature.llm else 'Unknown',
+                'model_name': feature.model_id or 'Unknown',
                 'type': feature.feature_type.name if feature.feature_type else 'Summary',
                 'content': feature.content,
                 'feature_id': feature.feature_id
@@ -327,16 +327,11 @@ def save_ranking(thread_id):
                 if not feature_type_entry:
                     raise NotFoundError(f'Feature type {type_name} not found')
 
-                # Use FeatureService to find the LLM
-                llm_entry = FeatureService.get_llm_by_name(model_name)
-                if not llm_entry:
-                    raise NotFoundError(f'LLM {model_name} not found')
-
                 # Use FeatureService to find the feature
                 feature = FeatureService.get_feature_by_attributes(
                     thread_id=thread_id,
                     type_id=feature_type_entry.type_id,
-                    llm_id=llm_entry.llm_id,
+                    model_id=model_name,
                     content=content
                 )
 
@@ -347,7 +342,7 @@ def save_ranking(thread_id):
                         thread_id=thread_id,
                         feature_id=feature.feature_id,
                         type_id=feature_type_entry.type_id,
-                        llm_id=llm_entry.llm_id,
+                        model_id=model_name,
                         position=position,
                         bucket=bucket,
                         commit=False

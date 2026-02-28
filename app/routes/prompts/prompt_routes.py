@@ -11,7 +11,7 @@ from decorators.error_handler import (
     handle_api_errors, NotFoundError, ValidationError, ConflictError, UnauthorizedError
 )
 from db.database import db
-from db.tables import (User, EmailThread, Message, Feature, FeatureType, LLM, UserFeatureRanking,
+from db.tables import (User, EmailThread, Message, Feature, FeatureType, UserFeatureRanking,
                        FeatureFunctionType, UserFeatureRating,  UserGroup,ConsultingCategoryType, UserConsultingCategorySelection,
                        FeatureFunctionType, UserFeatureRating, UserMessageRating,
                        UserGroup, UserPrompt, UserPromptShare, PromptCommit,

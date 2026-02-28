@@ -118,16 +118,16 @@ def _is_demo_ranking_already_balanced(
     if len(item_features) != expected_total_features:
         return False
 
-    model_ids = {llm.llm_id for llm in feature_model_by_name.values()}
+    model_ids = set(feature_model_by_name.values())
     type_ids = {ft.type_id for ft in feature_type_by_name.values()}
 
     per_item_combo_count = {}
     for feature in item_features:
-        if feature.llm_id not in model_ids or feature.type_id not in type_ids:
+        if feature.model_id not in model_ids or feature.type_id not in type_ids:
             return False
         if _has_demo_model_prefix(feature.content):
             return False
-        key = (feature.item_id, feature.llm_id, feature.type_id)
+        key = (feature.item_id, feature.model_id, feature.type_id)
         per_item_combo_count[key] = per_item_combo_count.get(key, 0) + 1
 
     if any(count != 1 for count in per_item_combo_count.values()):
@@ -148,7 +148,7 @@ def _rebalance_demo_ranking_provenance(db, ranking_scenario):
 
     This replaces legacy SummEval-heavy demo data for scenario provenance demos.
     """
-    from ..tables import Feature, FeatureType, LLM, Message, UserFeatureRanking
+    from ..tables import Feature, FeatureType, Message, UserFeatureRanking
     from db.models.scenario import ScenarioItems
     from db.models.llm_task_result import LLMTaskResult
 
@@ -165,15 +165,8 @@ def _rebalance_demo_ranking_provenance(db, ranking_scenario):
     if not item_ids:
         return
 
-    # Ensure feature-generation model labels exist (legacy llms table, used by features).
-    feature_model_by_name = {}
-    for model_name in DEMO_PROVENANCE_GENERATION_MODELS:
-        llm = LLM.query.filter_by(name=model_name).first()
-        if not llm:
-            llm = LLM(name=model_name)
-            db.session.add(llm)
-            db.session.flush()
-        feature_model_by_name[model_name] = llm
+    # Model ID strings for features (no longer need LLM table entries).
+    feature_model_by_name = {name: name for name in DEMO_PROVENANCE_GENERATION_MODELS}
 
     # Ensure prompt types exist.
     feature_type_by_name = {}
@@ -224,13 +217,13 @@ def _rebalance_demo_ranking_provenance(db, ranking_scenario):
 
         created_feature_ids = []
         for model_name in DEMO_PROVENANCE_GENERATION_MODELS:
-            llm = feature_model_by_name[model_name]
+            model_id = feature_model_by_name[model_name]
             for prompt_name in DEMO_PROVENANCE_PROMPTS:
                 ft = feature_type_by_name[prompt_name]
                 feature = Feature(
                     item_id=item_id,
                     type_id=ft.type_id,
-                    llm_id=llm.llm_id,
+                    model_id=model_id,
                     content=_build_demo_feature_content(prompt_name, model_name, source_text),
                 )
                 db.session.add(feature)
@@ -289,7 +282,7 @@ def seed_demo_scenarios(db):
         db: SQLAlchemy database instance
     """
     from ..tables import (
-        User, UserGroup, EmailThread, Message, Feature, FeatureType, LLM,
+        User, UserGroup, EmailThread, Message, Feature, FeatureType,
         FeatureFunctionType, RatingScenarios, ScenarioUsers,
         ScenarioThreads, ScenarioThreadDistribution, ScenarioRoles,
         AuthenticityConversation,
@@ -380,29 +373,11 @@ def seed_demo_scenarios(db):
         print("  ERROR: FeatureFunctionTypes not found. Run initialize_feature_function_types first.")
         return
 
-    # Create or get LLMs
-    llm_gpt4 = LLM.query.filter_by(name='GPT-4').first()
-    if not llm_gpt4:
-        llm_gpt4 = LLM(name='GPT-4')
-        db.session.add(llm_gpt4)
-
-    llm_claude = LLM.query.filter_by(name='Claude-3').first()
-    if not llm_claude:
-        llm_claude = LLM(name='Claude-3')
-        db.session.add(llm_claude)
-
-    llm_mistral = LLM.query.filter_by(name='Mistral-7B').first()
-    if not llm_mistral:
-        llm_mistral = LLM(name='Mistral-7B')
-        db.session.add(llm_mistral)
-
-    # Create LLM entry for SummEval dataset (for ranking features)
-    llm_summeval = LLM.query.filter_by(name='SummEval').first()
-    if not llm_summeval:
-        llm_summeval = LLM(name='SummEval')
-        db.session.add(llm_summeval)
-
-    db.session.flush()
+    # Model ID strings for features (no longer need LLM table entries)
+    llm_gpt4 = 'Global/OpenAI/gpt-4'
+    llm_claude = 'Global/Anthropic/claude-3'
+    llm_mistral = 'Global/Mistral/Mistral-7B'
+    llm_summeval = 'SummEval'
 
     # Create or get Feature Types
     feature_types = {}
@@ -773,14 +748,14 @@ def seed_demo_scenarios(db):
                 existing = Feature.query.filter_by(
                     thread_id=thread.thread_id,
                     type_id=ft.type_id,
-                    llm_id=llm.llm_id
+                    model_id=llm
                 ).first()
 
                 if not existing:
                     feature = Feature(
                         thread_id=thread.thread_id,
                         type_id=ft.type_id,
-                        llm_id=llm.llm_id,
+                        model_id=llm,
                         content=contents[i]
                     )
                     db.session.add(feature)
@@ -816,14 +791,14 @@ def seed_demo_scenarios(db):
                 existing = Feature.query.filter_by(
                     thread_id=thread.thread_id,
                     type_id=ft.type_id,
-                    llm_id=llm.llm_id
+                    model_id=llm
                 ).first()
 
                 if not existing:
                     feature = Feature(
                         thread_id=thread.thread_id,
                         type_id=ft.type_id,
-                        llm_id=llm.llm_id,
+                        model_id=llm,
                         content=contents[i]
                     )
                     db.session.add(feature)
@@ -1243,7 +1218,7 @@ def _seed_extended_demo_data(db, ranking_scenario, mail_rating_scenario,
     """
     from .demo_datasets import get_demo_data_for_scenario_type
     from ..tables import (
-        EmailThread, Message, Feature, FeatureType, LLM, ScenarioThreads,
+        EmailThread, Message, Feature, FeatureType, ScenarioThreads,
         ScenarioThreadDistribution, ScenarioUsers, ScenarioRoles,
         AuthenticityConversation, FeatureFunctionType,
     )
@@ -1259,11 +1234,11 @@ def _seed_extended_demo_data(db, ranking_scenario, mail_rating_scenario,
     if not labeling_type:
         labeling_type = FeatureFunctionType.query.filter_by(name='text_classification').first()
 
-    # Get or create LLMs
-    llm_gpt4 = LLM.query.filter_by(name='GPT-4').first()
-    llm_claude = LLM.query.filter_by(name='Claude-3').first()
-    llm_mistral = LLM.query.filter_by(name='Mistral-7B').first()
-    llms = [l for l in [llm_gpt4, llm_claude, llm_mistral] if l]
+    # Model ID strings for features
+    llm_gpt4 = 'Global/OpenAI/gpt-4'
+    llm_claude = 'Global/Anthropic/claude-3'
+    llm_mistral = 'Global/Mistral/Mistral-7B'
+    llms = [llm_gpt4, llm_claude, llm_mistral]
 
     # Get or create Feature Types
     feature_types = {}
@@ -1318,20 +1293,19 @@ def _seed_extended_demo_data(db, ranking_scenario, mail_rating_scenario,
                     timestamp=datetime.now() - timedelta(days=idx, hours=5)
                 ))
 
-                # Get Summary FeatureType and SummEval LLM for ranking features
+                # Get Summary FeatureType for ranking features
                 summary_ft = feature_types.get('Summary')
-                summeval_llm = LLM.query.filter_by(name='SummEval').first()
 
                 # Add each summary ONLY as a Feature (for ranking in left panel)
                 # Do NOT create Messages for summaries - they should only appear
                 # in the left panel as rankable items, not in the right panel
                 for sum_idx, summary in enumerate(sample.get('summaries', [])):
                     # Create Feature for ranking (this is what users actually rank)
-                    if summary_ft and summeval_llm:
+                    if summary_ft:
                         db.session.add(Feature(
                             thread_id=thread.thread_id,
                             type_id=summary_ft.type_id,
-                            llm_id=summeval_llm.llm_id,
+                            model_id='SummEval',
                             content=summary['content']
                         ))
 

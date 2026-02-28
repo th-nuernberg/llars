@@ -36,7 +36,7 @@ class TestUserRankingsForThread:
         from services.ranking_service import RankingService
         from db.models import (
             User, UserGroup, EmailThread, Feature, FeatureType,
-            LLM, UserFeatureRanking, FeatureFunctionType
+            UserFeatureRanking, FeatureFunctionType
         )
 
         # Setup
@@ -65,16 +65,13 @@ class TestUserRankingsForThread:
 
         feature_type = FeatureType(type_id=101, name='test_type_001')
         db.session.add(feature_type)
-
-        llm = LLM(llm_id=101, name='TestLLM001')
-        db.session.add(llm)
         db.session.commit()
 
         feature = Feature(
             feature_id=1001,
             thread_id=1001,
             type_id=101,
-            llm_id=101,
+            model_id='TestLLM001',
             content='Test feature content'
         )
         db.session.add(feature)
@@ -87,7 +84,7 @@ class TestUserRankingsForThread:
             ranking_content=1,
             bucket='Gut',
             type_id=101,
-            llm_id=101
+            model_id='TestLLM001'
         )
         db.session.add(ranking)
         db.session.commit()
@@ -132,7 +129,7 @@ class TestUserRankingsForThread:
         from services.ranking_service import RankingService
         from db.models import (
             User, UserGroup, EmailThread, Feature, FeatureType,
-            LLM, UserFeatureRanking, FeatureFunctionType
+            UserFeatureRanking, FeatureFunctionType
         )
 
         # Setup
@@ -161,9 +158,6 @@ class TestUserRankingsForThread:
 
         feature_type = FeatureType(type_id=103, name='test_type_003')
         db.session.add(feature_type)
-
-        llm = LLM(llm_id=103, name='TestLLM003')
-        db.session.add(llm)
         db.session.commit()
 
         # Create multiple features
@@ -172,7 +166,7 @@ class TestUserRankingsForThread:
                 feature_id=1030 + i,
                 thread_id=1003,
                 type_id=103,
-                llm_id=103,
+                model_id='TestLLM003',
                 content=f'Test feature {i}'
             )
             db.session.add(feature)
@@ -186,7 +180,7 @@ class TestUserRankingsForThread:
                 ranking_content=i + 1,
                 bucket='Gut' if i == 0 else 'Mittel',
                 type_id=103,
-                llm_id=103
+                model_id='TestLLM003'
             )
             db.session.add(ranking)
         db.session.commit()
@@ -213,7 +207,7 @@ class TestRankingStatusChecks:
         from services.ranking_service import RankingService
         from db.models import (
             User, UserGroup, EmailThread, Feature, FeatureType,
-            LLM, UserFeatureRanking, FeatureFunctionType
+            UserFeatureRanking, FeatureFunctionType
         )
 
         # Setup
@@ -242,16 +236,13 @@ class TestRankingStatusChecks:
 
         feature_type = FeatureType(type_id=120, name='test_type_020')
         db.session.add(feature_type)
-
-        llm = LLM(llm_id=120, name='TestLLM020')
-        db.session.add(llm)
         db.session.commit()
 
         feature = Feature(
             feature_id=1020,
             thread_id=1020,
             type_id=120,
-            llm_id=120,
+            model_id='TestLLM020',
             content='Test feature'
         )
         db.session.add(feature)
@@ -263,7 +254,7 @@ class TestRankingStatusChecks:
             ranking_content=1,
             bucket='Gut',
             type_id=120,
-            llm_id=120
+            model_id='TestLLM020'
         )
         db.session.add(ranking)
         db.session.commit()
@@ -306,7 +297,7 @@ class TestRankingStatusChecks:
         from services.ranking_service import RankingService
         from db.models import (
             User, UserGroup, EmailThread, Feature, FeatureType,
-            LLM, UserFeatureRanking, FeatureFunctionType
+            UserFeatureRanking, FeatureFunctionType
         )
 
         # Setup
@@ -335,9 +326,6 @@ class TestRankingStatusChecks:
 
         feature_type = FeatureType(type_id=122, name='test_type_022')
         db.session.add(feature_type)
-
-        llm = LLM(llm_id=122, name='TestLLM022')
-        db.session.add(llm)
         db.session.commit()
 
         # Create 2 features
@@ -346,7 +334,7 @@ class TestRankingStatusChecks:
                 feature_id=1220 + i,
                 thread_id=1022,
                 type_id=122,
-                llm_id=122,
+                model_id='TestLLM022',
                 content=f'Feature {i}'
             )
             db.session.add(feature)
@@ -360,7 +348,7 @@ class TestRankingStatusChecks:
                 ranking_content=i + 1,
                 bucket='Gut',
                 type_id=122,
-                llm_id=122
+                model_id='TestLLM022'
             )
             db.session.add(ranking)
         db.session.commit()
@@ -379,7 +367,7 @@ class TestRankingStatusChecks:
         from services.ranking_service import RankingService
         from db.models import (
             User, UserGroup, EmailThread, Feature, FeatureType,
-            LLM, UserFeatureRanking, FeatureFunctionType
+            UserFeatureRanking, FeatureFunctionType
         )
 
         # Setup
@@ -408,9 +396,6 @@ class TestRankingStatusChecks:
 
         feature_type = FeatureType(type_id=123, name='test_type_023')
         db.session.add(feature_type)
-
-        llm = LLM(llm_id=123, name='TestLLM023')
-        db.session.add(llm)
         db.session.commit()
 
         # Create 3 features
@@ -419,7 +404,7 @@ class TestRankingStatusChecks:
                 feature_id=1230 + i,
                 thread_id=1023,
                 type_id=123,
-                llm_id=123,
+                model_id='TestLLM023',
                 content=f'Feature {i}'
             )
             db.session.add(feature)
@@ -432,7 +417,7 @@ class TestRankingStatusChecks:
             ranking_content=1,
             bucket='Gut',
             type_id=123,
-            llm_id=123
+            model_id='TestLLM023'
         )
         db.session.add(ranking)
         db.session.commit()
@@ -497,7 +482,7 @@ class TestGetRankingsByType:
         from services.ranking_service import RankingService
         from db.models import (
             User, UserGroup, EmailThread, Feature, FeatureType,
-            LLM, UserFeatureRanking, FeatureFunctionType
+            UserFeatureRanking, FeatureFunctionType
         )
 
         # Setup
@@ -526,16 +511,13 @@ class TestGetRankingsByType:
 
         feature_type = FeatureType(type_id=140, name='situation_summary')
         db.session.add(feature_type)
-
-        llm = LLM(llm_id=140, name='TestLLM040')
-        db.session.add(llm)
         db.session.commit()
 
         feature = Feature(
             feature_id=1040,
             thread_id=1040,
             type_id=140,
-            llm_id=140,
+            model_id='TestLLM040',
             content='Test summary'
         )
         db.session.add(feature)
@@ -547,7 +529,7 @@ class TestGetRankingsByType:
             ranking_content=1,
             bucket='Gut',
             type_id=140,
-            llm_id=140
+            model_id='TestLLM040'
         )
         db.session.add(ranking)
         db.session.commit()
@@ -571,7 +553,7 @@ class TestGetRankingsByType:
         from services.ranking_service import RankingService
         from db.models import (
             User, UserGroup, EmailThread, Feature, FeatureType,
-            LLM, UserFeatureRanking, FeatureFunctionType
+            UserFeatureRanking, FeatureFunctionType
         )
 
         # Setup
@@ -600,9 +582,6 @@ class TestGetRankingsByType:
 
         feature_type = FeatureType(type_id=141, name='bucket_test_type')
         db.session.add(feature_type)
-
-        llm = LLM(llm_id=141, name='TestLLM041')
-        db.session.add(llm)
         db.session.commit()
 
         # Create features for each bucket
@@ -612,7 +591,7 @@ class TestGetRankingsByType:
                 feature_id=1410 + i,
                 thread_id=1041,
                 type_id=141,
-                llm_id=141,
+                model_id='TestLLM041',
                 content=f'{bucket} feature'
             )
             db.session.add(feature)
@@ -625,7 +604,7 @@ class TestGetRankingsByType:
                 ranking_content=1,
                 bucket=bucket,
                 type_id=141,
-                llm_id=141
+                model_id='TestLLM041'
             )
             db.session.add(ranking)
         db.session.commit()
@@ -647,7 +626,7 @@ class TestGetRankingsByType:
         from services.ranking_service import RankingService
         from db.models import (
             User, UserGroup, EmailThread, Feature, FeatureType,
-            LLM, FeatureFunctionType
+            FeatureFunctionType
         )
 
         # Setup
@@ -676,9 +655,6 @@ class TestGetRankingsByType:
 
         feature_type = FeatureType(type_id=142, name='neutral_test_type')
         db.session.add(feature_type)
-
-        llm = LLM(llm_id=142, name='TestLLM042')
-        db.session.add(llm)
         db.session.commit()
 
         # Create unranked feature
@@ -686,7 +662,7 @@ class TestGetRankingsByType:
             feature_id=1042,
             thread_id=1042,
             type_id=142,
-            llm_id=142,
+            model_id='TestLLM042',
             content='Unranked feature'
         )
         db.session.add(feature)
@@ -718,7 +694,7 @@ class TestSaveRanking:
         from services.ranking_service import RankingService
         from db.models import (
             User, UserGroup, EmailThread, Feature, FeatureType,
-            LLM, UserFeatureRanking, FeatureFunctionType
+            UserFeatureRanking, FeatureFunctionType
         )
 
         # Setup
@@ -747,16 +723,13 @@ class TestSaveRanking:
 
         feature_type = FeatureType(type_id=160, name='save_test_type')
         db.session.add(feature_type)
-
-        llm = LLM(llm_id=160, name='TestLLM060')
-        db.session.add(llm)
         db.session.commit()
 
         feature = Feature(
             feature_id=1060,
             thread_id=1060,
             type_id=160,
-            llm_id=160,
+            model_id='TestLLM060',
             content='Save test feature'
         )
         db.session.add(feature)
@@ -768,7 +741,7 @@ class TestSaveRanking:
             thread_id=1060,
             feature_id=1060,
             type_id=160,
-            llm_id=160,
+            model_id='TestLLM060',
             position=1,
             bucket='Gut'
         )
@@ -794,7 +767,7 @@ class TestSaveRanking:
         from services.ranking_service import RankingService
         from db.models import (
             User, UserGroup, EmailThread, Feature, FeatureType,
-            LLM, UserFeatureRanking, FeatureFunctionType
+            UserFeatureRanking, FeatureFunctionType
         )
 
         # Setup
@@ -823,16 +796,13 @@ class TestSaveRanking:
 
         feature_type = FeatureType(type_id=161, name='update_test_type')
         db.session.add(feature_type)
-
-        llm = LLM(llm_id=161, name='TestLLM061')
-        db.session.add(llm)
         db.session.commit()
 
         feature = Feature(
             feature_id=1061,
             thread_id=1061,
             type_id=161,
-            llm_id=161,
+            model_id='TestLLM061',
             content='Update test feature'
         )
         db.session.add(feature)
@@ -845,7 +815,7 @@ class TestSaveRanking:
             ranking_content=1,
             bucket='Gut',
             type_id=161,
-            llm_id=161
+            model_id='TestLLM061'
         )
         db.session.add(ranking)
         db.session.commit()
@@ -856,7 +826,7 @@ class TestSaveRanking:
             thread_id=1061,
             feature_id=1061,
             type_id=161,
-            llm_id=161,
+            model_id='TestLLM061',
             position=3,
             bucket='Schlecht'
         )
@@ -881,7 +851,7 @@ class TestSaveRanking:
         from services.ranking_service import RankingService
         from db.models import (
             User, UserGroup, EmailThread, Feature, FeatureType,
-            LLM, UserFeatureRanking, FeatureFunctionType
+            UserFeatureRanking, FeatureFunctionType
         )
 
         # Setup
@@ -910,16 +880,13 @@ class TestSaveRanking:
 
         feature_type = FeatureType(type_id=162, name='nocommit_test_type')
         db.session.add(feature_type)
-
-        llm = LLM(llm_id=162, name='TestLLM062')
-        db.session.add(llm)
         db.session.commit()
 
         feature = Feature(
             feature_id=1062,
             thread_id=1062,
             type_id=162,
-            llm_id=162,
+            model_id='TestLLM062',
             content='No commit test'
         )
         db.session.add(feature)
@@ -931,7 +898,7 @@ class TestSaveRanking:
             thread_id=1062,
             feature_id=1062,
             type_id=162,
-            llm_id=162,
+            model_id='TestLLM062',
             position=1,
             bucket='Mittel',
             commit=False
@@ -966,7 +933,7 @@ class TestClearRankings:
         from services.ranking_service import RankingService
         from db.models import (
             User, UserGroup, EmailThread, Feature, FeatureType,
-            LLM, UserFeatureRanking, FeatureFunctionType
+            UserFeatureRanking, FeatureFunctionType
         )
 
         # Setup
@@ -995,9 +962,6 @@ class TestClearRankings:
 
         feature_type = FeatureType(type_id=190, name='clear_test_type')
         db.session.add(feature_type)
-
-        llm = LLM(llm_id=190, name='TestLLM090')
-        db.session.add(llm)
         db.session.commit()
 
         # Create features and rankings
@@ -1006,7 +970,7 @@ class TestClearRankings:
                 feature_id=1900 + i,
                 thread_id=1090,
                 type_id=190,
-                llm_id=190,
+                model_id='TestLLM090',
                 content=f'Clear test {i}'
             )
             db.session.add(feature)
@@ -1019,7 +983,7 @@ class TestClearRankings:
                 ranking_content=i + 1,
                 bucket='Gut',
                 type_id=190,
-                llm_id=190
+                model_id='TestLLM090'
             )
             db.session.add(ranking)
         db.session.commit()
@@ -1080,7 +1044,7 @@ class TestRankingStatistics:
         from services.ranking_service import RankingService
         from db.models import (
             User, UserGroup, EmailThread, Feature, FeatureType,
-            LLM, UserFeatureRanking, FeatureFunctionType
+            UserFeatureRanking, FeatureFunctionType
         )
 
         # Setup
@@ -1110,16 +1074,13 @@ class TestRankingStatistics:
 
         feature_type = FeatureType(type_id=1100, name='stats_type')
         db.session.add(feature_type)
-
-        llm = LLM(llm_id=1100, name='TestLLM110')
-        db.session.add(llm)
         db.session.commit()
 
         feature = Feature(
             feature_id=11100,
             thread_id=1110,
             type_id=1100,
-            llm_id=1100,
+            model_id='TestLLM110',
             content='Stats feature'
         )
         db.session.add(feature)
@@ -1132,7 +1093,7 @@ class TestRankingStatistics:
             ranking_content=1,
             bucket='Gut',
             type_id=1100,
-            llm_id=1100
+            model_id='TestLLM110'
         )
         db.session.add(ranking)
         db.session.commit()
@@ -1163,7 +1124,7 @@ class TestCSVExport:
         from services.ranking_service import RankingService
         from db.models import (
             User, UserGroup, EmailThread, Feature, FeatureType,
-            LLM, UserFeatureRanking, FeatureFunctionType
+            UserFeatureRanking, FeatureFunctionType
         )
 
         # Setup
@@ -1192,16 +1153,13 @@ class TestCSVExport:
 
         feature_type = FeatureType(type_id=1130, name='csv_type')
         db.session.add(feature_type)
-
-        llm = LLM(llm_id=1130, name='TestLLM130')
-        db.session.add(llm)
         db.session.commit()
 
         feature = Feature(
             feature_id=11300,
             thread_id=1130,
             type_id=1130,
-            llm_id=1130,
+            model_id='TestLLM130',
             content='CSV feature'
         )
         db.session.add(feature)
@@ -1213,7 +1171,7 @@ class TestCSVExport:
             ranking_content=1,
             bucket='Gut',
             type_id=1130,
-            llm_id=1130
+            model_id='TestLLM130'
         )
         db.session.add(ranking)
         db.session.commit()
@@ -1233,7 +1191,7 @@ class TestCSVExport:
         from services.ranking_service import RankingService
         from db.models import (
             User, UserGroup, EmailThread, Feature, FeatureType,
-            LLM, UserFeatureRanking, FeatureFunctionType
+            UserFeatureRanking, FeatureFunctionType
         )
 
         # Setup
@@ -1262,16 +1220,13 @@ class TestCSVExport:
 
         feature_type = FeatureType(type_id=1131, name='csv_type_131')
         db.session.add(feature_type)
-
-        llm = LLM(llm_id=1131, name='TestLLM131')
-        db.session.add(llm)
         db.session.commit()
 
         feature = Feature(
             feature_id=11310,
             thread_id=1131,
             type_id=1131,
-            llm_id=1131,
+            model_id='TestLLM131',
             content='CSV feature 2'
         )
         db.session.add(feature)
@@ -1283,7 +1238,7 @@ class TestCSVExport:
             ranking_content=1,
             bucket='Mittel',
             type_id=1131,
-            llm_id=1131
+            model_id='TestLLM131'
         )
         db.session.add(ranking)
         db.session.commit()

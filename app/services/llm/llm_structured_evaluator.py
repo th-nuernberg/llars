@@ -349,7 +349,7 @@ class LLMStructuredEvaluator:
         feature_lines = []
         for f in shuffled_features:
             feature_lines.append(
-                f"- ID {f.feature_id} (Typ: {f.feature_type.name}, Modell: {f.llm.name}): {f.content}"
+                f"- ID {f.feature_id} (Typ: {f.feature_type.name}, Modell: {f.model_id or 'Unknown'}): {f.content}"
             )
         features_text = "\n".join(feature_lines)
 

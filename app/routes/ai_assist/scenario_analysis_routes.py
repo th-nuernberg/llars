@@ -144,12 +144,14 @@ def analyze_scenario_data():
     user_prompt = FieldPromptService.render_prompt(template, context)
 
     try:
-        # Get LLM client and admin-configured default model
+        # Get LLM client and resolve model (strips Global/ prefix etc.)
         from db.models.llm_model import LLMModel
-        client = LLMClientFactory.get_client_for_model(None)
-        model = LLMModel.get_default_model_id(model_type=LLMModel.MODEL_TYPE_LLM)
-        if not model:
+        default_model_id = LLMModel.get_default_model_id(model_type=LLMModel.MODEL_TYPE_LLM)
+        if not default_model_id:
             raise ValidationError("No default LLM model configured")
+        client, model = LLMClientFactory.resolve_client_and_model_id(default_model_id)
+        if not client:
+            raise ValidationError("No LLM provider available for default model")
 
         # Call LLM with structured output (using template's settings)
         response = client.chat.completions.create(
@@ -296,16 +298,19 @@ def analyze_scenario_data_stream():
             mimetype='text/event-stream'
         )
 
-    # Get LLM model (requires app context)
-    model_id = LLMModel.get_default_model_id(model_type=LLMModel.MODEL_TYPE_LLM)
-    if not model_id:
+    # Get LLM client and resolve model (strips Global/ prefix etc.)
+    default_model_id = LLMModel.get_default_model_id(model_type=LLMModel.MODEL_TYPE_LLM)
+    if not default_model_id:
         return Response(
             f"event: error\ndata: {json.dumps({'error': 'No default LLM model configured'})}\n\n",
             mimetype='text/event-stream'
         )
-
-    # Get LLM client (requires app context for config lookup)
-    client = LLMClientFactory.get_client_for_model(None)
+    client, model_id = LLMClientFactory.resolve_client_and_model_id(default_model_id)
+    if not client:
+        return Response(
+            f"event: error\ndata: {json.dumps({'error': 'No LLM provider available for default model'})}\n\n",
+            mimetype='text/event-stream'
+        )
 
     # Extract template settings for use in generator
     system_prompt = template.system_prompt

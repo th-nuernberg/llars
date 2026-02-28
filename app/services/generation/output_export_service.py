@@ -710,7 +710,7 @@ class OutputExportService:
         """
         from collections import defaultdict
         from sqlalchemy import func
-        from db.models import Feature, FeatureType, LLM
+        from db.models import Feature, FeatureType
 
         item_ids = []
 
@@ -797,18 +797,10 @@ class OutputExportService:
 
             # Create one Feature per output variant
             for output in group_outputs:
-                # Get or create LLM entry
-                llm_name = output.llm_model_name or 'unknown'
-                llm = LLM.query.filter_by(name=llm_name).first()
-                if not llm:
-                    llm = LLM(name=llm_name)
-                    db.session.add(llm)
-                    db.session.flush()
-
                 feature = Feature(
                     item_id=item.item_id,
                     type_id=feature_type.type_id,
-                    llm_id=llm.llm_id,
+                    model_id=output.llm_model_name or 'unknown',
                     content=output.generated_content or '',
                 )
                 db.session.add(feature)

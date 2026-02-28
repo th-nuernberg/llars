@@ -916,6 +916,7 @@ def _sort_outputs_for_case(outputs):
 
 
 def _resolve_eval_llm_for_output(output, llm_mistral, llm_gpt5_nano):
+    """Resolve a model_id string for an output based on its llm_model_name."""
     model_name = str(getattr(output, "llm_model_name", "") or "").lower()
     if "gpt-5" in model_name or "gpt5" in model_name:
         return llm_gpt5_nano
@@ -1033,7 +1034,7 @@ def _select_balanced_partial_features(features):
 
     Preferred pair:
     - different prompt (feature type)
-    - different generation model (llm_id)
+    - different generation model (model_id)
     """
     if len(features) <= 2:
         return list(features)
@@ -1041,7 +1042,7 @@ def _select_balanced_partial_features(features):
     # Best case: one per prompt and one per model.
     for i, first in enumerate(features):
         for second in features[i + 1:]:
-            if first.type_id != second.type_id and first.llm_id != second.llm_id:
+            if first.type_id != second.type_id and first.model_id != second.model_id:
                 return [first, second]
 
     # Next best: at least one per prompt.
@@ -1277,7 +1278,7 @@ def _ensure_eval_scenario_integrity(
             feature_content = str(feature.content or "").strip()
             if not feature_content:
                 continue
-            signature = (feature.llm_id, feature_content)
+            signature = (feature.model_id, feature_content)
             existing_by_signature.setdefault(signature, []).append(feature)
 
         expected_features = []
@@ -1291,10 +1292,10 @@ def _ensure_eval_scenario_integrity(
                 feature_type_by_prompt=feature_type_by_prompt,
                 fallback_feature_type=fallback_feature_type,
             )
-            expected_features.append((llm_ref.llm_id, rendered_content, feature_type.type_id))
+            expected_features.append((llm_ref, rendered_content, feature_type.type_id))
 
-        for llm_id, content, expected_type_id in expected_features:
-            signature = (llm_id, content)
+        for model_id, content, expected_type_id in expected_features:
+            signature = (model_id, content)
             candidates = existing_by_signature.get(signature, [])
 
             matched_feature = None
@@ -1313,7 +1314,7 @@ def _ensure_eval_scenario_integrity(
                 db_session.session.add(Feature(
                     item_id=eval_item.item_id,
                     type_id=expected_type_id,
-                    llm_id=llm_id,
+                    model_id=model_id,
                     content=content,
                 ))
                 counters["features_added"] += 1
@@ -1360,7 +1361,7 @@ def _seed_evaluation_scenario(db_session, demo_user, collab_user):
         RatingScenarios, ScenarioUsers, ScenarioItems,
         ScenarioItemDistribution, ScenarioRoles,
         EvaluationItem, Feature, FeatureFunctionType,
-        LLM, Message, UserFeatureRanking,
+        Message, UserFeatureRanking,
     )
     from db.models.llm_task_result import LLMTaskResult
     from db.models.generation import GenerationJob, GeneratedOutput
@@ -1380,17 +1381,9 @@ def _seed_evaluation_scenario(db_session, demo_user, collab_user):
         db_session.session.add(ranking_type)
         db_session.session.flush()
 
-    # Get or create LLM entries (legacy llms table, not llm_models)
-    def _get_or_create_llm(name):
-        llm = LLM.query.filter_by(name=name).first()
-        if not llm:
-            llm = LLM(name=name)
-            db_session.session.add(llm)
-            db_session.session.flush()
-        return llm
-
-    llm_mistral = _get_or_create_llm('Mistral Small')
-    llm_gpt5_nano = _get_or_create_llm('GPT-5 Nano')
+    # Model ID strings for features (no longer need LLM table entries)
+    llm_mistral = 'Global/Mistral/Mistral-Small-3.2-24B-Instruct-2506'
+    llm_gpt5_nano = 'Global/OpenAI/gpt-5-nano'
 
     # Check if scenario already exists. If yes, repair missing demo integrity and keep it.
     existing = RatingScenarios.query.filter_by(
@@ -1545,7 +1538,7 @@ def _seed_evaluation_scenario(db_session, demo_user, collab_user):
             feature = Feature(
                 item_id=item.item_id,
                 type_id=feature_type.type_id,
-                llm_id=llm_ref.llm_id,
+                model_id=llm_ref,
                 content=out.generated_content,
             )
             db_session.session.add(feature)
@@ -1614,8 +1607,8 @@ def _seed_evaluation_scenario(db_session, demo_user, collab_user):
         ['Gut', 'Mittel', 'Gut', 'Schlecht'],
     ]
 
-    def _add_rankings(user_id, patterns, num_items, llm_id=None):
-        """Add ranking entries for a user/LLM for the first num_items items."""
+    def _add_rankings(user_id, patterns, num_items):
+        """Add ranking entries for a user for the first num_items items."""
         count = 0
         for case_idx in range(min(num_items, len(items))):
             item = items[case_idx]
@@ -1629,7 +1622,7 @@ def _seed_evaluation_scenario(db_session, demo_user, collab_user):
                     feature_id=feature.feature_id,
                     ranking_content=float(feat_idx + 1),
                     type_id=feature.type_id,
-                    llm_id=llm_id or feature.llm_id,
+                    model_id=feature.model_id,
                     bucket=bucket,
                 )
                 db_session.session.add(ranking)
@@ -1655,7 +1648,7 @@ def _seed_evaluation_scenario(db_session, demo_user, collab_user):
                 feature_id=feature.feature_id,
                 ranking_content=float(partial_rank_idx + 1),
                 type_id=feature.type_id,
-                llm_id=feature.llm_id,
+                model_id=feature.model_id,
                 bucket=pattern_9[feat_idx] if feat_idx < len(pattern_9) else 'Neutral',
             )
             db_session.session.add(ranking)
@@ -1721,7 +1714,7 @@ def _seed_evaluation_scenario_5_buckets(db_session, demo_user, collab_user):
         RatingScenarios, ScenarioUsers, ScenarioItems,
         ScenarioItemDistribution, ScenarioRoles,
         EvaluationItem, Feature, FeatureFunctionType,
-        LLM, Message, UserFeatureRanking,
+        Message, UserFeatureRanking,
     )
     from db.models.llm_task_result import LLMTaskResult
     from db.models.generation import GenerationJob, GeneratedOutput
@@ -1903,7 +1896,7 @@ def _seed_evaluation_scenario_5_buckets(db_session, demo_user, collab_user):
             feature = Feature(
                 item_id=item.item_id,
                 type_id=feature_type.type_id,
-                llm_id=llm_ref.llm_id,
+                model_id=llm_ref,
                 content=out.generated_content,
             )
             db_session.session.add(feature)
@@ -1982,7 +1975,7 @@ def _seed_evaluation_scenario_5_buckets(db_session, demo_user, collab_user):
                     feature_id=feature.feature_id,
                     ranking_content=float(feat_idx + 1),
                     type_id=feature.type_id,
-                    llm_id=feature.llm_id,
+                    model_id=feature.model_id,
                     bucket=bucket,
                 ))
                 count += 1

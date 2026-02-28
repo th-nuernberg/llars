@@ -583,7 +583,7 @@ class EvaluationSessionService:
             features_data.append({
                 'id': feature.feature_id,
                 'feature_id': feature.feature_id,
-                'model_name': feature.llm.name if feature.llm else 'Unknown',
+                'model_name': feature.model_id or 'Unknown',
                 'feature_type': feature.feature_type.name if feature.feature_type else 'other',
                 'content': feature.content,
                 'evaluated': existing_rating is not None,

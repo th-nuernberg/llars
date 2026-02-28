@@ -1187,7 +1187,7 @@ Antworte im JSON-Format:
                     feature_lines = []
                     for feature in features:
                         feature_lines.append(
-                            f"- ID {feature.feature_id} (Typ: {feature.feature_type.name}, Modell: {feature.llm.name}): {feature.content}"
+                            f"- ID {feature.feature_id} (Typ: {feature.feature_type.name}, Modell: {feature.model_id or 'Unknown'}): {feature.content}"
                         )
 
                     system_prompt = (

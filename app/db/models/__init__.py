@@ -145,7 +145,6 @@ from db.models.scenario import (
     ScenarioThreadDistribution,
     # Other models
     Message,
-    LLM,
     FeatureType,
     ConsultingCategoryType,
     UserConsultingCategorySelection,
@@ -324,7 +323,6 @@ __all__ = [
     'ScenarioThreadDistribution',
     # Other models
     'Message',
-    'LLM',
     'FeatureType',
     'ConsultingCategoryType',
     'UserConsultingCategorySelection',

@@ -171,7 +171,7 @@ def app():
         )
         # Scenario models (includes ComparisonSession, ComparisonMessage, etc.)
         from db.models.scenario import (  # noqa: F401
-            FeatureFunctionType, EmailThread, Message, LLM, FeatureType,
+            FeatureFunctionType, EmailThread, Message, FeatureType,
             ConsultingCategoryType, UserConsultingCategorySelection, Feature,
             UserFeatureRanking, UserFeatureRating, RatingScenarios, ScenarioUsers,
             ScenarioThreads, ScenarioThreadDistribution, UserMailHistoryRating,
@@ -533,7 +533,7 @@ def db(app):
         )
         # Scenario models (includes ComparisonSession, ComparisonMessage, etc.)
         from db.models.scenario import (  # noqa: F401
-            FeatureFunctionType, EmailThread, Message, LLM, FeatureType,
+            FeatureFunctionType, EmailThread, Message, FeatureType,
             ConsultingCategoryType, UserConsultingCategorySelection, Feature,
             UserFeatureRanking, UserFeatureRating, RatingScenarios, ScenarioUsers,
             ScenarioThreads, ScenarioThreadDistribution, UserMailHistoryRating,

@@ -477,6 +477,50 @@ class LLMModel(db.Model):
         return cls.query.filter_by(model_id=model_id).first()
 
     @classmethod
+    def get_or_register(cls, model_id: str, **kwargs) -> 'LLMModel':
+        """Get existing model or auto-register a new one.
+
+        Used when features reference a model_id that isn't yet in llm_models.
+        Infers display_name and provider from the model_id string.
+        """
+        if not model_id:
+            return None
+
+        existing = cls.query.filter_by(model_id=model_id).first()
+        if existing:
+            return existing
+
+        # Infer defaults from model_id
+        display_name = model_id
+        provider = 'unknown'
+
+        if model_id.startswith('Global/'):
+            parts = model_id.split('/', 2)
+            if len(parts) >= 3:
+                provider = parts[1].lower()
+                display_name = parts[2]
+            elif len(parts) == 2:
+                display_name = parts[1]
+        elif model_id.startswith('user-provider:'):
+            provider = 'user-provider'
+            parts = model_id.split(':')
+            display_name = parts[-1] if len(parts) > 1 else model_id
+
+        model = cls(
+            model_id=model_id,
+            display_name=kwargs.get('display_name', display_name),
+            provider=kwargs.get('provider', provider),
+            model_type=kwargs.get('model_type', cls.MODEL_TYPE_LLM),
+            color=cls.generate_color(model_id),
+            context_window=kwargs.get('context_window', 0),
+            max_output_tokens=kwargs.get('max_output_tokens', 0),
+            is_active=True,
+        )
+        db.session.add(model)
+        db.session.flush()
+        return model
+
+    @classmethod
     def get_default_model_id(
         cls,
         model_type: Optional[str] = None,

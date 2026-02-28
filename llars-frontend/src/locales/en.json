@@ -2583,6 +2583,10 @@
         "title": "Pipeline",
         "description": "Automated LLM evaluation: prompt optimization, generation, evaluation in a loop"
       },
+      "conferenceManager": {
+        "title": "Conference Manager",
+        "description": "Track conferences, deadlines, and paper submissions"
+      },
       "userSettings": {
         "title": "Settings",
         "description": "Personal settings, LLM providers, and invitation links"
@@ -2692,6 +2696,7 @@
       "evaluation": "Evaluation",
       "results": "Results",
       "team": "Team",
+      "assessors": "Assessors",
       "myScenarios": "My Scenarios",
       "invitations": "Invitations",
       "dataFormat": "Data format"
@@ -3292,18 +3297,18 @@
       }
     },
     "team": {
-      "title": "Team",
+      "title": "Assessors",
       "invite": "Invite",
-      "evaluators": "Evaluators",
+      "evaluators": "Assessors",
       "llmModels": "LLM Models",
-      "humanEvaluators": "Human Evaluators",
+      "humanEvaluators": "Human Assessors",
       "llmEvaluators": "LLM Evaluators",
       "addLLM": "Add LLM",
-      "noEvaluators": "No evaluators invited yet",
+      "noEvaluators": "No assessors invited yet",
       "noLLM": "No LLM models configured yet",
       "changeRole": "Change Role",
       "remove": "Remove",
-      "inviteTitle": "Invite Users",
+      "inviteTitle": "Invite Assessors",
       "selectUsers": "Select users",
       "searchUsers": "Search users...",
       "role": "Role",
@@ -3319,7 +3324,9 @@
       "viewerHint": "Viewers have read-only access and cannot submit ratings.",
       "roles": {
         "owner": "Owner",
-        "evaluator": "Evaluator",
+        "manager": "Manager",
+        "assessor": "Assessor",
+        "evaluator": "Assessor",
         "viewer": "Viewer"
       }
     },
@@ -3333,23 +3340,27 @@
       "endDate": "End Date",
       "distribution": "Distribution",
       "distributionAll": "All to everyone",
-      "distributionAllDesc": "Every evaluator evaluates all threads",
+      "distributionAllDesc": "Every assessor evaluates all items",
       "distributionRandom": "Random",
-      "distributionRandomDesc": "Threads are randomly distributed to evaluators",
+      "distributionRandomDesc": "Items are randomly distributed to assessors",
       "distributionSequential": "Sequential",
-      "distributionSequentialDesc": "Threads are assigned in sequence",
+      "distributionSequentialDesc": "Items are assigned in sequence",
       "order": "Order",
       "orderFixed": "Fixed order",
       "orderRandom": "Random order",
-      "visibility": "Visibility",
-      "visibilityPrivate": "Private (only me)",
-      "visibilityTeam": "Team (invited users)",
-      "visibilityPublic": "Public",
+      "collaboration": "Collaboration",
+      "collaborationTooltip": "Add colleagues as managers (can edit settings and invite assessors) or viewers (can see all tabs read-only).",
+      "addCollaborator": "Add Collaborator",
+      "roleManager": "Manager",
+      "roleManagerDesc": "Can edit settings and manage assessors",
+      "roleViewer": "Viewer",
+      "roleViewerDesc": "Can view all tabs but not make changes",
+      "noCollaborators": "No collaborators added yet",
+      "removeCollaborator": "Remove collaborator",
       "status": "Status",
       "delete": "Delete Scenario",
-      "distributionTooltip": "Controls how items are assigned to evaluators. \"All\" gives every item to everyone, \"Random\" distributes randomly, and \"Sequential\" assigns in order.",
-      "orderTooltip": "Controls the order in which items are presented. \"Fixed\" shows items in the same order for everyone, \"Random\" shuffles the order per evaluator.",
-      "visibilityTooltip": "Controls who can see this scenario. \"Private\" is only visible to you, \"Team\" to invited users, and \"Public\" to all users."
+      "distributionTooltip": "Controls how items are assigned to assessors. \"All\" gives every item to everyone, \"Random\" distributes randomly, and \"Sequential\" assigns in order.",
+      "orderTooltip": "Controls the order in which items are presented. \"Fixed\" shows items in the same order for everyone, \"Random\" shuffles the order per assessor."
     },
     "distribution": {
       "all": "All to everyone",
@@ -6735,6 +6746,95 @@
           "positiveNumber": "Must be greater than 0"
         }
       }
+    }
+  },
+  "conferenceManager": {
+    "title": "Conference Manager",
+    "tabs": {
+      "conferences": "Conferences",
+      "papers": "Papers",
+      "calendar": "Calendar",
+      "kanban": "Kanban Board"
+    },
+    "conference": {
+      "name": "Name",
+      "acronym": "Acronym",
+      "year": "Year",
+      "coreRanking": "CORE Ranking",
+      "submissionDeadline": "Submission Deadline",
+      "notificationDate": "Notification",
+      "startDate": "Start Date",
+      "endDate": "End Date",
+      "city": "City",
+      "country": "Country",
+      "website": "Website",
+      "keywords": "Keywords",
+      "notes": "Notes",
+      "location": "Location",
+      "create": "New Conference",
+      "edit": "Edit Conference"
+    },
+    "paper": {
+      "title": "Title",
+      "status": "Status",
+      "conference": "Conference",
+      "authors": "Authors",
+      "authorName": "Author Name",
+      "addAuthor": "Add Author",
+      "noAuthors": "No authors added yet.",
+      "corresponding": "Corresponding",
+      "overleafUrl": "Overleaf URL",
+      "externalUrl": "External URL",
+      "keywords": "Keywords",
+      "description": "Description",
+      "notes": "Notes",
+      "updated": "Updated",
+      "create": "New Paper",
+      "edit": "Edit Paper",
+      "statuses": {
+        "planning": "Planning",
+        "inProgress": "In Progress",
+        "submitted": "Submitted",
+        "accepted": "Accepted",
+        "rejected": "Rejected"
+      }
+    },
+    "filters": {
+      "search": "Search...",
+      "allRankings": "All Rankings",
+      "allStatuses": "All Statuses",
+      "allConferences": "All Conferences"
+    },
+    "stats": {
+      "conferences": "Conferences",
+      "papers": "Papers",
+      "upcomingDeadlines": "upcoming deadlines"
+    },
+    "actions": {
+      "cancel": "Cancel",
+      "save": "Save",
+      "create": "Create",
+      "delete": "Delete",
+      "confirmDelete": "Confirm Deletion",
+      "confirmDeleteConference": "Are you sure you want to delete \"{name}\"? Papers linked to this conference will keep their data.",
+      "confirmDeletePaper": "Are you sure you want to delete \"{name}\"?"
+    },
+    "empty": {
+      "conferences": "No conferences yet. Create your first one!",
+      "papers": "No papers yet. Create your first one!"
+    },
+    "calendar": {
+      "legend": "Legend",
+      "deadline": "Submission Deadline",
+      "notification": "Notification",
+      "conference": "Conference"
+    },
+    "kanban": {
+      "emptyColumn": "No papers",
+      "dragHint": "Drag to change status"
+    },
+    "validation": {
+      "required": "This field is required"
     }
   }
 }

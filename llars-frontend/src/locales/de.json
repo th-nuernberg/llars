@@ -2583,6 +2583,10 @@
         "title": "Pipeline",
         "description": "Automatisierte LLM-Evaluation: Prompt-Optimierung, Generierung, Bewertung im Loop"
       },
+      "conferenceManager": {
+        "title": "Konferenz-Manager",
+        "description": "Konferenzen, Deadlines und Paper-Einreichungen verfolgen"
+      },
       "userSettings": {
         "title": "Einstellungen",
         "description": "Persönliche Einstellungen, LLM-Provider und Einladungslinks"
@@ -2692,6 +2696,7 @@
       "evaluation": "Evaluierung",
       "results": "Ergebnisse",
       "team": "Team",
+      "assessors": "Gutachter",
       "myScenarios": "Meine Szenarien",
       "invitations": "Einladungen",
       "dataFormat": "Datenformat"
@@ -3292,18 +3297,18 @@
       }
     },
     "team": {
-      "title": "Team",
+      "title": "Gutachter",
       "invite": "Einladen",
-      "evaluators": "Evaluatoren",
+      "evaluators": "Gutachter",
       "llmModels": "LLM Modelle",
-      "humanEvaluators": "Human Evaluators",
-      "llmEvaluators": "LLM Evaluators",
+      "humanEvaluators": "Menschliche Gutachter",
+      "llmEvaluators": "LLM Evaluatoren",
       "addLLM": "LLM hinzufügen",
-      "noEvaluators": "Noch keine Evaluatoren eingeladen",
+      "noEvaluators": "Noch keine Gutachter eingeladen",
       "noLLM": "Noch keine LLM-Modelle konfiguriert",
       "changeRole": "Rolle ändern",
       "remove": "Entfernen",
-      "inviteTitle": "Nutzer einladen",
+      "inviteTitle": "Gutachter einladen",
       "selectUsers": "Nutzer auswählen",
       "searchUsers": "Benutzer suchen...",
       "role": "Rolle",
@@ -3316,10 +3321,12 @@
       "removeConfirm": "Möchten Sie {name} wirklich aus diesem Szenario entfernen?",
       "changeRoleFor": "Rolle ändern für {name}:",
       "newRole": "Neue Rolle",
-      "viewerHint": "Viewer haben nur Lesezugriff und können keine Bewertungen abgeben.",
+      "viewerHint": "Betrachter haben nur Lesezugriff und können keine Bewertungen abgeben.",
       "roles": {
         "owner": "Besitzer",
-        "evaluator": "Evaluator",
+        "manager": "Manager",
+        "assessor": "Gutachter",
+        "evaluator": "Gutachter",
         "viewer": "Betrachter"
       }
     },
@@ -3333,23 +3340,27 @@
       "endDate": "Enddatum",
       "distribution": "Verteilung",
       "distributionAll": "Alle an jeden",
-      "distributionAllDesc": "Jeder Evaluator bewertet alle Threads",
+      "distributionAllDesc": "Jeder Gutachter bewertet alle Items",
       "distributionRandom": "Zufällig",
-      "distributionRandomDesc": "Threads werden zufällig auf Evaluatoren verteilt",
+      "distributionRandomDesc": "Items werden zufällig auf Gutachter verteilt",
       "distributionSequential": "Sequentiell",
-      "distributionSequentialDesc": "Threads werden der Reihe nach zugewiesen",
+      "distributionSequentialDesc": "Items werden der Reihe nach zugewiesen",
       "order": "Reihenfolge",
       "orderFixed": "Feste Reihenfolge",
       "orderRandom": "Zufällige Reihenfolge",
-      "visibility": "Sichtbarkeit",
-      "visibilityPrivate": "Privat (nur für mich)",
-      "visibilityTeam": "Team (eingeladene Nutzer)",
-      "visibilityPublic": "Öffentlich",
+      "collaboration": "Zusammenarbeit",
+      "collaborationTooltip": "Fügen Sie Kollegen als Manager (können Einstellungen bearbeiten und Gutachter einladen) oder Betrachter (können alle Tabs einsehen) hinzu.",
+      "addCollaborator": "Mitarbeiter hinzufügen",
+      "roleManager": "Manager",
+      "roleManagerDesc": "Kann Einstellungen bearbeiten und Gutachter verwalten",
+      "roleViewer": "Betrachter",
+      "roleViewerDesc": "Kann alle Tabs einsehen aber nichts ändern",
+      "noCollaborators": "Noch keine Mitarbeiter hinzugefügt",
+      "removeCollaborator": "Mitarbeiter entfernen",
       "status": "Status",
       "delete": "Szenario löschen",
-      "distributionTooltip": "Legt fest, wie Items an Evaluatoren verteilt werden. \"Alle\" gibt jedem alle Items, \"Zufällig\" verteilt zufällig, und \"Sequentiell\" weist der Reihe nach zu.",
-      "orderTooltip": "Legt die Reihenfolge fest, in der Items angezeigt werden. \"Fest\" zeigt allen die gleiche Reihenfolge, \"Zufällig\" mischt die Reihenfolge pro Evaluator.",
-      "visibilityTooltip": "Legt fest, wer dieses Szenario sehen kann. \"Privat\" ist nur für Sie sichtbar, \"Team\" für eingeladene Nutzer, und \"Öffentlich\" für alle Nutzer."
+      "distributionTooltip": "Legt fest, wie Items an Gutachter verteilt werden. \"Alle\" gibt jedem alle Items, \"Zufällig\" verteilt zufällig, und \"Sequentiell\" weist der Reihe nach zu.",
+      "orderTooltip": "Legt die Reihenfolge fest, in der Items angezeigt werden. \"Fest\" zeigt allen die gleiche Reihenfolge, \"Zufällig\" mischt die Reihenfolge pro Gutachter."
     },
     "distribution": {
       "all": "Alle an jeden",
@@ -6577,6 +6588,95 @@
           "positiveNumber": "Muss größer als 0 sein"
         }
       }
+    }
+  },
+  "conferenceManager": {
+    "title": "Konferenz-Manager",
+    "tabs": {
+      "conferences": "Konferenzen",
+      "papers": "Papers",
+      "calendar": "Kalender",
+      "kanban": "Kanban Board"
+    },
+    "conference": {
+      "name": "Name",
+      "acronym": "Akronym",
+      "year": "Jahr",
+      "coreRanking": "CORE Ranking",
+      "submissionDeadline": "Einreichungsfrist",
+      "notificationDate": "Benachrichtigung",
+      "startDate": "Startdatum",
+      "endDate": "Enddatum",
+      "city": "Stadt",
+      "country": "Land",
+      "website": "Website",
+      "keywords": "Schlagwörter",
+      "notes": "Notizen",
+      "location": "Ort",
+      "create": "Neue Konferenz",
+      "edit": "Konferenz bearbeiten"
+    },
+    "paper": {
+      "title": "Titel",
+      "status": "Status",
+      "conference": "Konferenz",
+      "authors": "Autoren",
+      "authorName": "Autorenname",
+      "addAuthor": "Autor hinzufügen",
+      "noAuthors": "Noch keine Autoren hinzugefügt.",
+      "corresponding": "Korrespondierend",
+      "overleafUrl": "Overleaf URL",
+      "externalUrl": "Externe URL",
+      "keywords": "Schlagwörter",
+      "description": "Beschreibung",
+      "notes": "Notizen",
+      "updated": "Aktualisiert",
+      "create": "Neues Paper",
+      "edit": "Paper bearbeiten",
+      "statuses": {
+        "planning": "Planung",
+        "inProgress": "In Bearbeitung",
+        "submitted": "Eingereicht",
+        "accepted": "Akzeptiert",
+        "rejected": "Abgelehnt"
+      }
+    },
+    "filters": {
+      "search": "Suchen...",
+      "allRankings": "Alle Rankings",
+      "allStatuses": "Alle Status",
+      "allConferences": "Alle Konferenzen"
+    },
+    "stats": {
+      "conferences": "Konferenzen",
+      "papers": "Papers",
+      "upcomingDeadlines": "anstehende Deadlines"
+    },
+    "actions": {
+      "cancel": "Abbrechen",
+      "save": "Speichern",
+      "create": "Erstellen",
+      "delete": "Löschen",
+      "confirmDelete": "Löschen bestätigen",
+      "confirmDeleteConference": "Möchten Sie \"{name}\" wirklich löschen? Papers, die mit dieser Konferenz verknüpft sind, behalten ihre Daten.",
+      "confirmDeletePaper": "Möchten Sie \"{name}\" wirklich löschen?"
+    },
+    "empty": {
+      "conferences": "Noch keine Konferenzen. Erstellen Sie die erste!",
+      "papers": "Noch keine Papers. Erstellen Sie das erste!"
+    },
+    "calendar": {
+      "legend": "Legende",
+      "deadline": "Einreichungsfrist",
+      "notification": "Benachrichtigung",
+      "conference": "Konferenz"
+    },
+    "kanban": {
+      "emptyColumn": "Keine Paper",
+      "dragHint": "Ziehen um Status zu ändern"
+    },
+    "validation": {
+      "required": "Dieses Feld ist erforderlich"
     }
   }
 }

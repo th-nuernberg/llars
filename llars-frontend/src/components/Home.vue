@@ -361,6 +361,16 @@ const allItems = computed(() => ([
     category: 'admin'
   },
   {
+    title: t('home.features.conferenceManager.title'),
+    description: t('home.features.conferenceManager.description'),
+    route: '/conferences',
+    icon: 'mdi-school-outline',
+    permission: 'feature:conference_manager:view',
+    category: 'research',
+    badge: t('home.badges.new'),
+    badgeColor: 'success'
+  },
+  {
     title: t('home.features.pipeline.title'),
     description: t('home.features.pipeline.description'),
     route: '/pipeline',

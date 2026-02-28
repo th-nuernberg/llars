@@ -2085,7 +2085,7 @@ import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import { useLLMEvaluation } from '@/composables/useLLMEvaluation'
 import { useLLMModels } from '@/composables/useLLMModels'
-import { parseUserProviderModelId } from '@/utils/formatters'
+import { useModelRegistry } from '@/composables/useModelRegistry'
 import { useScenarioManager } from '../../composables/useScenarioManager'
 import LAvatar from '@/components/common/LAvatar.vue'
 
@@ -2124,6 +2124,9 @@ const {
   stopEvaluation: doStopEvaluation,
   fetchAgreementMetrics
 } = useLLMEvaluation()
+
+// Model registry for consistent LLM display names
+const { formatModelName: registryFormatModelName } = useModelRegistry()
 
 // State
 const selectedModel = ref(null)
@@ -2240,12 +2243,10 @@ const llmEvaluators = computed(() => {
 
   return configList.map(item => {
     const modelId = typeof item === 'string' ? item : (item.model_id || item.modelId || item.id)
-    const parsed = parseUserProviderModelId(modelId)
-    let displayName = parsed ? parsed.displayName : modelId
     return {
       id: modelId,
       modelId: modelId,
-      name: displayName,
+      name: registryFormatModelName(modelId),
       isLLM: true,
       completed: 0,
       total: props.scenario?.thread_count || 0,
@@ -3789,21 +3790,12 @@ function formatProvenanceRate(value) {
 
 function formatProvenanceLabel(label) {
   if (!label) return 'Unknown'
-  // Combination labels: "prompt x user-provider:..." → format the LLM part
+  // Combination labels: "prompt x model" → format each part
   if (label.includes(' x ')) {
     const parts = label.split(' x ')
     return parts.map(p => formatProvenanceLabel(p.trim())).join(' x ')
   }
-  // user-provider:29:ieb-rudolph:mistralai/Mistral-Nemo → Mistral/Mistral-Nemo
-  if (label.startsWith('user-provider:')) {
-    const parsed = parseUserProviderModelId(label)
-    if (parsed) return `${parsed.providerLabel}/${parsed.modelName}`
-  }
-  // Global/Mistral/Mistral-Small-3.2 → Mistral/Mistral-Small-3.2
-  if (label.startsWith('Global/')) {
-    return label.slice('Global/'.length)
-  }
-  return label
+  return registryFormatModelName(label)
 }
 
 function formatProvenanceScore(value) {

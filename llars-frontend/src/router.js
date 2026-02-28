@@ -98,6 +98,9 @@ import PipelineHub from "@/views/Pipeline/PipelineHub.vue";
 import PipelineSession from "@/views/Pipeline/PipelineSession.vue";
 import PipelineWizard from "@/views/Pipeline/PipelineWizard.vue";
 
+// Conference Manager
+import ConferenceManagerHome from "@/views/ConferenceManager/ConferenceManagerHome.vue";
+
 const routes = [
     { path: '/Impressum', component: Impressum, meta: { requiresAuth: false } },
     { path: '/Datenschutz', component: Datenschutz, meta: { requiresAuth: false } },
@@ -187,6 +190,9 @@ const routes = [
     { path: '/generation', name: 'GenerationHub', component: GenerationHub, meta: { requiresAuth: true } },
     { path: '/generation/new', name: 'GenerationWizard', component: GenerationWizard, meta: { requiresAuth: true } },
     { path: '/generation/:jobId', name: 'GenerationJobDetail', component: GenerationJobDetail, props: true, meta: { requiresAuth: true } },
+
+    // Conference Manager
+    { path: '/conferences', name: 'ConferenceManager', component: ConferenceManagerHome, meta: { requiresAuth: true } },
 
     // Pipeline
     { path: '/pipeline', name: 'PipelineHub', component: PipelineHub, meta: { requiresAuth: true } },

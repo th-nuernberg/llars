@@ -483,6 +483,16 @@
       </LCard>
     </v-dialog>
 
+    <!-- Scenario Wizard Dialog (inline, no navigation) -->
+    <v-dialog v-model="showScenarioWizard" max-width="900" persistent>
+      <ScenarioWizard
+        v-if="showScenarioWizard"
+        :generation-job-id="Number(jobId)"
+        @close="showScenarioWizard = false"
+        @created="onScenarioCreated"
+      />
+    </v-dialog>
+
   </div>
 </template>
 
@@ -495,6 +505,7 @@ import { useGeneration, JOB_STATUS, OUTPUT_STATUS } from '@/composables/useGener
 import { getSocket } from '@/services/socketService'
 import { parseUserProviderModelId } from '@/utils/formatters'
 import GenerationLiveStreams from './GenerationLiveStreams.vue'
+import ScenarioWizard from '@/views/ScenarioManager/components/ScenarioWizard.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -526,6 +537,7 @@ const {
 const outputFilter = ref(null)
 const outputsPage = ref(1)
 const showOutputDialog = ref(false)
+const showScenarioWizard = ref(false)
 const selectedOutput = ref(null)
 const isLoadingOutput = ref(false)
 
@@ -1101,12 +1113,12 @@ function formatDate(dateStr) {
 }
 
 function openScenarioWizard() {
-  // Navigate to Scenario Manager with the generation job ID
-  // The wizard will open automatically and load the generated outputs
-  router.push({
-    name: 'ScenarioManager',
-    query: { fromGeneration: jobId.value }
-  })
+  showScenarioWizard.value = true
+}
+
+function onScenarioCreated(scenario) {
+  showScenarioWizard.value = false
+  router.push({ name: 'ScenarioWorkspace', params: { id: scenario.id } })
 }
 
 // Watch for filter changes

@@ -13,6 +13,7 @@ import { ref, computed, onMounted, onUnmounted, watch, readonly } from 'vue'
 import axios from 'axios'
 import { getSocket } from '@/services/socketService'
 import { useAuth } from '@/composables/useAuth'
+import { useModelRegistry } from '@/composables/useModelRegistry'
 
 // Module-level subscription generation counter.
 // Prevents race condition where old composable's onUnmounted fires AFTER
@@ -27,6 +28,7 @@ let subscriptionGeneration = 0
  */
 export function useScenarioStats(scenarioIdRef) {
   const { getToken } = useAuth()
+  const { updateRegistry } = useModelRegistry()
 
   // ===== State =====
   const stats = ref(null)
@@ -312,6 +314,11 @@ export function useScenarioStats(scenarioIdRef) {
       ...evaluatorStats.value.filter(e => !e.is_llm)
     ]
 
+    // Feed model registry from backend stats
+    if (data.stats?.model_registry) {
+      updateRegistry(data.stats.model_registry)
+    }
+
     console.log('[ScenarioStats] After processing - LLM stats:', llmStats.value.map(s => ({
       model_id: s.model_id,
       done_threads: s.done_threads,
@@ -521,7 +528,9 @@ export function useScenarioStats(scenarioIdRef) {
           // Include ranking stats
           bucket_distribution: statsData.bucket_distribution || data.bucket_distribution,
           provenance_analysis: statsData.provenance_analysis || data.provenance_analysis,
-          ranking_agreement: statsData.ranking_agreement || data.ranking_agreement  // Deprecated
+          ranking_agreement: statsData.ranking_agreement || data.ranking_agreement,  // Deprecated
+          // Model registry for consistent LLM display names
+          model_registry: statsData.model_registry || data.model_registry
         }
       })
 

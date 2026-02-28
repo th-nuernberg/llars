@@ -21,7 +21,7 @@
         <LBtn variant="text" @click="refreshScenario" :loading="loading">
           <LIcon>mdi-refresh</LIcon>
         </LBtn>
-        <v-menu v-if="isOwner">
+        <v-menu v-if="canManage">
           <template #activator="{ props }">
             <LBtn variant="text" v-bind="props">
               <LIcon>mdi-dots-vertical</LIcon>
@@ -40,20 +40,22 @@
               </template>
               <v-list-item-title>{{ $t('scenarioManager.actions.duplicate') }}</v-list-item-title>
             </v-list-item>
-            <v-divider />
-            <v-list-item @click="confirmArchive" class="text-warning">
-              <template #prepend>
-                <LIcon size="18" class="mr-2" color="warning">mdi-archive-outline</LIcon>
-              </template>
-              <v-list-item-title>{{ $t('scenarioManager.actions.archive') }}</v-list-item-title>
-            </v-list-item>
+            <template v-if="isOwner">
+              <v-divider />
+              <v-list-item @click="confirmArchive" class="text-warning">
+                <template #prepend>
+                  <LIcon size="18" class="mr-2" color="warning">mdi-archive-outline</LIcon>
+                </template>
+                <v-list-item-title>{{ $t('scenarioManager.actions.archive') }}</v-list-item-title>
+              </v-list-item>
+            </template>
           </v-list>
         </v-menu>
       </div>
     </div>
 
-    <!-- Quick Stats Bar (only for owners) -->
-    <div class="stats-bar" v-if="scenario && isOwner">
+    <!-- Quick Stats Bar (for owners, managers, viewers) -->
+    <div class="stats-bar" v-if="scenario && canViewAll">
       <div class="stat-item">
         <LIcon size="18" color="grey">mdi-email-outline</LIcon>
         <span class="stat-value">{{ scenario.thread_count || 0 }}</span>
@@ -121,11 +123,12 @@
         @evaluation-complete="refreshScenario"
       />
 
-      <!-- Team Tab -->
+      <!-- Assessors Tab (formerly Team) -->
       <ScenarioTeamTab
-        v-else-if="activeTab === 'team'"
+        v-else-if="activeTab === 'assessors'"
         :scenario="scenario"
         :live-stats="liveStats"
+        :can-manage="canManage"
         @team-updated="refreshScenario"
       />
     </div>
@@ -135,6 +138,7 @@
       <ScenarioSettingsDialog
         v-if="showSettings"
         :scenario="scenario"
+        :is-owner="isOwner"
         @close="showSettings = false"
         @saved="onSettingsSaved"
       />
@@ -279,25 +283,27 @@ const duplicating = ref(false)
 const archiving = ref(false)
 const snackbar = ref({ show: false, message: '', color: 'success' })
 
-// Access control: Check if user is owner or in evaluate mode
-const isEvaluatorMode = computed(() => {
-  return route.query.mode === 'evaluate' || scenario.value?.is_owner === false
-})
-
+// Access control
 const isOwner = computed(() => scenario.value?.is_owner === true)
+const canManage = computed(() => isOwner.value || scenario.value?.can_manage === true)
+const canViewAll = computed(() => canManage.value || scenario.value?.user_role === 'Viewer')
 
-// Tabs configuration - evaluators only see the evaluation tab
+// Tabs configuration based on role:
+// - Owner/Manager: all tabs + settings menu
+// - Viewer: all tabs (read-only), no settings menu
+// - Assessor: only evaluation tab
 const tabs = computed(() => {
-  if (isEvaluatorMode.value) {
+  if (canViewAll.value) {
     return [
-      { value: 'evaluation', label: t('scenarioManager.tabs.evaluation'), icon: 'mdi-clipboard-edit-outline' }
+      { value: 'overview', label: t('scenarioManager.tabs.overview'), icon: 'mdi-view-dashboard-outline' },
+      { value: 'data', label: t('scenarioManager.tabs.data'), icon: 'mdi-database-outline' },
+      { value: 'evaluation', label: t('scenarioManager.tabs.evaluation'), icon: 'mdi-clipboard-edit-outline' },
+      { value: 'assessors', label: t('scenarioManager.tabs.assessors'), icon: 'mdi-account-group-outline' }
     ]
   }
+  // Assessors only see the evaluation tab
   return [
-    { value: 'overview', label: t('scenarioManager.tabs.overview'), icon: 'mdi-view-dashboard-outline' },
-    { value: 'data', label: t('scenarioManager.tabs.data'), icon: 'mdi-database-outline' },
-    { value: 'evaluation', label: t('scenarioManager.tabs.evaluation'), icon: 'mdi-clipboard-edit-outline' },
-    { value: 'team', label: t('scenarioManager.tabs.team'), icon: 'mdi-account-group-outline' }
+    { value: 'evaluation', label: t('scenarioManager.tabs.evaluation'), icon: 'mdi-clipboard-edit-outline' }
   ]
 })
 
@@ -468,10 +474,11 @@ watch(activeTab, (newTab) => {
   }
 })
 
-// Redirect non-owners to the dedicated evaluation interface
+// Redirect assessors to the dedicated evaluation interface
+// Managers and Viewers stay in the workspace (they can see all tabs)
 watch(scenario, (sc) => {
-  if (sc && !sc.is_owner) {
-    // Non-owners should use the evaluation items overview, not the workspace
+  if (sc && !sc.is_owner && !sc.can_manage && sc.user_role !== 'Viewer') {
+    // Assessors should use the evaluation items overview, not the workspace
     router.replace({ name: 'EvaluationItemsOverview', params: { scenarioId: sc.id } })
   }
 }, { immediate: true })

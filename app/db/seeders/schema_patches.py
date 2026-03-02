@@ -708,6 +708,13 @@ def apply_schema_patches(db) -> None:
             column_name="ai_assistant_username",
             column_definition_sql="`ai_assistant_username` VARCHAR(50) NOT NULL DEFAULT 'LLARS KI'",
         )
+        # Communication settings (messaging/calls master toggle)
+        changed |= _ensure_column(
+            db,
+            table_name="system_settings",
+            column_name="communication_enabled",
+            column_definition_sql="`communication_enabled` TINYINT(1) NOT NULL DEFAULT 0",
+        )
 
         # =========================================================================
         # Evaluation Assistant: Prompt Templates, LLM Usage Tracking, Budgets

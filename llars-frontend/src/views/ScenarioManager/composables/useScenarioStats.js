@@ -100,14 +100,16 @@ export function useScenarioStats(scenarioIdRef) {
    */
   const llmProgress = computed(() => {
     const llm = evaluatorStats.value.filter(e => e.is_llm)
-    if (llm.length === 0) return { done: 0, total: 0, percent: 0 }
+    if (llm.length === 0) return { done: 0, total: 0, errors: 0, percent: 0 }
 
     const done = llm.reduce((sum, s) => sum + (s.done_threads || s.voted_count || 0), 0)
     const total = llm.reduce((sum, s) => sum + (s.total_threads || 0), 0)
+    const errors = llm.reduce((sum, s) => sum + (s.error_threads || 0), 0)
 
     return {
       done,
       total,
+      errors,
       percent: total > 0 ? Math.round((done / total) * 100) : 0
     }
   })
@@ -204,6 +206,8 @@ export function useScenarioStats(scenarioIdRef) {
         total: llm.total_threads || 0,
         inProgress: 0,
         notStarted: llm.not_started_threads || llm.pending_count || 0,
+        errorCount: llm.error_threads || 0,
+        recentErrors: llm.recent_errors || [],
         accuracy: llm.accuracy_percent,
         f1Score: llm.f1_score_percent,
         progress: llm.progress_percent ?? (llm.total_threads > 0

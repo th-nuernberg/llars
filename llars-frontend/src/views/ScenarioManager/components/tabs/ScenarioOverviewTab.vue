@@ -78,9 +78,18 @@
               class="progress-fill llm"
               :style="{ width: llmProgressPercent + '%' }"
             ></div>
+            <div
+              v-if="llmErrors > 0"
+              class="progress-fill error"
+              :style="{ width: llmErrorPercent + '%' }"
+            ></div>
           </div>
           <div class="progress-details">
             <span>{{ llmDone }} / {{ llmTotal }}</span>
+            <span v-if="llmErrors > 0" class="progress-errors">
+              <LIcon size="14" color="#e8a087">mdi-alert-circle</LIcon>
+              {{ llmErrors }} {{ $t('scenarioManager.overview.failed') }}
+            </span>
             <span class="progress-percent">{{ llmProgressPercent }}%</span>
           </div>
         </div>
@@ -117,6 +126,10 @@
             <div class="stat">
               <span class="stat-value pending">{{ user.notStarted }}</span>
               <span class="stat-label">{{ $t('scenarioManager.overview.pending') || 'Pending' }}</span>
+            </div>
+            <div class="stat" v-if="user.isLLM && user.errorCount > 0">
+              <span class="stat-value failed">{{ user.errorCount }}</span>
+              <span class="stat-label">{{ $t('scenarioManager.overview.failed') || 'Failed' }}</span>
             </div>
             <div class="stat" v-if="user.accuracy !== null && user.accuracy !== undefined">
               <span class="stat-value accuracy" :class="getAccuracyClass(user.accuracy)">{{ user.accuracy }}%</span>
@@ -297,6 +310,16 @@ const llmProgressPercent = computed(() => {
   const { llm_completed, llm_total } = props.scenario.stats
   if (!llm_total) return 0
   return Math.round((llm_completed / llm_total) * 100)
+})
+
+const llmErrors = computed(() => {
+  return props.liveStats?.llmProgress?.errors || 0
+})
+
+const llmErrorPercent = computed(() => {
+  const total = llmTotal.value
+  if (total === 0) return 0
+  return Math.round((llmErrors.value / total) * 100)
 })
 
 const userStatsList = computed(() => {
@@ -486,6 +509,10 @@ function getF1Class(f1) {
   background-color: rgb(var(--v-theme-accent));
 }
 
+.progress-fill.error {
+  background-color: #e8a087;
+}
+
 .progress-details {
   display: flex;
   justify-content: space-between;
@@ -602,6 +629,19 @@ function getF1Class(f1) {
 
 .stat-value.pending {
   color: rgba(var(--v-theme-on-surface), 0.4);
+}
+
+.stat-value.failed {
+  color: #e8a087;
+}
+
+.progress-errors {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: #e8a087;
+  font-size: 0.8rem;
+  font-weight: 500;
 }
 
 .stat-value.accuracy,

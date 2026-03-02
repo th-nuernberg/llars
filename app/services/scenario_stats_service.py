@@ -1018,17 +1018,23 @@ def _build_llm_progress_entries(
     for model_id in all_model_ids:
         model_results = by_model.get(model_id, {})
         display_name = model_meta.get(model_id).display_name if model_meta.get(model_id) else model_id
-        done_threads_list = []
-        not_started_threads_list = []
-        total_done_threads = 0
+        total_done = 0
+        total_errors = 0
+        total_not_started = 0
+        recent_errors: List[Dict[str, Any]] = []
 
         for thread_id in thread_ids:
             result = model_results.get(thread_id)
             if result and result.payload_json and not result.error:
-                total_done_threads += 1
-                done_threads_list.append({"thread_id": thread_id})
+                total_done += 1
+            elif result and result.error:
+                total_errors += 1
+                recent_errors.append({
+                    "thread_id": thread_id,
+                    "error": (result.error or "")[:200],
+                })
             else:
-                not_started_threads_list.append({"thread_id": thread_id})
+                total_not_started += 1
 
         entries.append({
             "username": display_name,
@@ -1037,11 +1043,13 @@ def _build_llm_progress_entries(
             "avatar_seed": None,
             "avatar_url": None,
             "total_threads": len(thread_ids),
-            "done_threads": total_done_threads,
-            "not_started_threads": len(thread_ids) - total_done_threads,
+            "done_threads": total_done,
+            "not_started_threads": total_not_started,
+            "error_threads": total_errors,
+            "recent_errors": recent_errors[-3:],
             "progressing_threads": 0,
-            "done_threads_list": done_threads_list,
-            "not_started_threads_list": not_started_threads_list,
+            "done_threads_list": [],
+            "not_started_threads_list": [],
             "progressing_threads_list": [],
         })
 

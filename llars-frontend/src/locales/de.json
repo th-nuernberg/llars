@@ -29,7 +29,8 @@
     "retry": "Erneut versuchen",
     "dismiss": "Schließen",
     "copy": "Kopieren",
-    "create": "Erstellen"
+    "create": "Erstellen",
+    "download": "Herunterladen"
   },
   "auth": {
     "login": "Anmelden",
@@ -213,7 +214,8 @@
       "rag": "RAG Dokumente",
       "permissions": "Berechtigungen",
       "llmProviders": "LLM Provider",
-      "fieldPrompts": "KI-Feld-Prompts"
+      "fieldPrompts": "KI-Feld-Prompts",
+      "communication": "Kommunikation"
     }
   },
   "aiAssist": {
@@ -3028,6 +3030,7 @@
       "pending": "Ausstehend",
       "accuracy": "Genauigkeit",
       "noEvaluators": "Noch keine Evaluatoren",
+      "failed": "Fehlgeschlagen",
       "threads": "Threads",
       "users": "Nutzer",
       "agreementMetrics": "Agreement-Metriken",
@@ -3322,6 +3325,10 @@
       "changeRoleFor": "Rolle ändern für {name}:",
       "newRole": "Neue Rolle",
       "viewerHint": "Betrachter haben nur Lesezugriff und können keine Bewertungen abgeben.",
+      "retry": "Wiederholen",
+      "retryAll": "Alle wiederholen",
+      "errorDetailsTitle": "Fehlerdetails",
+      "noErrors": "Keine Fehler gefunden",
       "roles": {
         "owner": "Besitzer",
         "manager": "Manager",
@@ -4872,11 +4879,24 @@
       "emptyMembers": "Noch keine Mitglieder",
       "removeMember": "Mitglied entfernen"
     },
+    "accessRequests": {
+      "title": "Zugriffsanfragen",
+      "empty": "Keine ausstehenden Anfragen",
+      "approve": "Genehmigen",
+      "reject": "Ablehnen",
+      "approved": "Genehmigt",
+      "rejected": "Abgelehnt",
+      "requestAccess": "Zugriff anfragen",
+      "successMessage": "Anfrage erfolgreich gesendet",
+      "pendingRequests": "Ausstehende Anfragen"
+    },
     "tree": {
       "files": "Dateien",
       "filePlaceholder": "Dateiname",
       "uploadAsset": "Asset hochladen",
-      "collapse": "Dateibaum einklappen"
+      "collapse": "Dateibaum einklappen",
+      "onlineUsers": "Online ({count})",
+      "collabs": "Collabs"
     },
     "header": {
       "menuOpen": "Menü öffnen",
@@ -5248,7 +5268,12 @@
         "namePlaceholder": "z.B. KI-Entwurf",
         "visibilityLabel": "Sichtbarkeit",
         "inviteLabel": "Mitglieder einladen",
-        "userPlaceholder": "Nutzer suchen und hinzufügen..."
+        "userPlaceholder": "Nutzer suchen und hinzufügen...",
+        "modeBlank": "Leerer Workspace",
+        "modeUpload": "ZIP hochladen",
+        "dropZone": "ZIP-Datei hierher ziehen oder klicken",
+        "maxSize": "Maximal 100 MB",
+        "nameOptional": "Workspace-Name (optional, Standard: ZIP-Dateiname)"
       }
     },
     "workspace": {
@@ -6385,6 +6410,39 @@
         "linkDeleted": "Link gelöscht"
       }
     },
+    "communication": {
+      "globalSettings": "Globale Einstellungen",
+      "masterToggle": "Kommunikation aktiviert",
+      "statusEnabled": "Kommunikationsfunktionen sind aktiv. Benutzer mit Berechtigungen können Messaging und Anrufe nutzen.",
+      "statusDisabled": "Kommunikationsfunktionen sind für alle Benutzer deaktiviert.",
+      "userAccess": "Benutzerzugriff verwalten",
+      "searchUser": "Benutzer suchen...",
+      "enableAll": "Alle aktivieren",
+      "disableAll": "Alle deaktivieren",
+      "toggleSaved": "Kommunikationseinstellung gespeichert",
+      "toggleError": "Fehler beim Speichern der Kommunikationseinstellung",
+      "permError": "Fehler beim Aktualisieren der Berechtigung",
+      "bulkEnabled": "Alle Benutzer aktiviert",
+      "bulkDisabled": "Alle Benutzer deaktiviert",
+      "table": {
+        "user": "Benutzer",
+        "all": "Alle",
+        "access": "Zugriff",
+        "transcription": "Transkription"
+      },
+      "statistics": "Kommunikationsstatistiken",
+      "stats": {
+        "conversations": "Konversationen",
+        "messages": "Nachrichten",
+        "calls": "Anrufe",
+        "activeUsers": "Aktive Benutzer",
+        "perUser": "Benutzerstatistiken",
+        "messagesSent": "Nachrichten gesendet",
+        "lastActive": "Zuletzt aktiv",
+        "unread": "Ungelesen",
+        "privacyNote": "Privacy-by-Design: Es werden nur aggregierte Zahlen angezeigt. Nachrichteninhalte sind für Admins niemals sichtbar."
+      }
+    },
     "rag": {
       "stats": {
         "documents": "Dokumente",
@@ -6596,7 +6654,8 @@
       "conferences": "Konferenzen",
       "papers": "Papers",
       "calendar": "Kalender",
-      "kanban": "Kanban Board"
+      "kanban": "Kanban Board",
+      "timeline": "Zeitstrahl"
     },
     "conference": {
       "name": "Name",
@@ -6623,6 +6682,9 @@
       "authors": "Autoren",
       "authorName": "Autorenname",
       "addAuthor": "Autor hinzufügen",
+      "addExternal": "Externen Autor hinzufügen",
+      "externalAuthor": "Externer Autor",
+      "searchUser": "Nutzer suchen...",
       "noAuthors": "Noch keine Autoren hinzugefügt.",
       "corresponding": "Korrespondierend",
       "overleafUrl": "Overleaf URL",
@@ -6638,8 +6700,29 @@
         "inProgress": "In Bearbeitung",
         "submitted": "Eingereicht",
         "accepted": "Akzeptiert",
-        "rejected": "Abgelehnt"
-      }
+        "rejected": "Abgelehnt",
+        "published": "Veröffentlicht"
+      },
+      "submissions": "Einreichungsverlauf",
+      "addSubmission": "Einreichung hinzufügen",
+      "submittedAt": "Eingereicht am",
+      "decidedAt": "Entscheidung",
+      "noSubmissions": "Noch keine Einreichungen",
+      "currentSubmission": "Aktuell",
+      "resubmissions": "Wiedereinreichungen",
+      "submissionStatuses": {
+        "submitted": "Eingereicht",
+        "accepted": "Akzeptiert",
+        "rejected": "Abgelehnt",
+        "withdrawn": "Zurückgezogen"
+      },
+      "latexWorkspace": "LLARS LaTeX-Arbeitsbereich",
+      "selectWorkspace": "Arbeitsbereich auswählen",
+      "noAccess": "Kein Zugriff",
+      "requestAccess": "Zugriff anfragen",
+      "requestSent": "Anfrage gesendet",
+      "requestPending": "Anfrage ausstehend",
+      "openWorkspace": "Arbeitsbereich öffnen"
     },
     "filters": {
       "search": "Suchen...",
@@ -6661,6 +6744,10 @@
       "confirmDeleteConference": "Möchten Sie \"{name}\" wirklich löschen? Papers, die mit dieser Konferenz verknüpft sind, behalten ihre Daten.",
       "confirmDeletePaper": "Möchten Sie \"{name}\" wirklich löschen?"
     },
+    "legend": {
+      "ranking": "CORE Ranking",
+      "status": "Paper Status"
+    },
     "empty": {
       "conferences": "Noch keine Konferenzen. Erstellen Sie die erste!",
       "papers": "Noch keine Papers. Erstellen Sie das erste!"
@@ -6673,10 +6760,119 @@
     },
     "kanban": {
       "emptyColumn": "Keine Paper",
-      "dragHint": "Ziehen um Status zu ändern"
+      "dragHint": "Ziehen um Status zu ändern",
+      "addPaper": "Paper hinzufügen"
+    },
+    "timeline": {
+      "today": "Heute",
+      "zoomIn": "Vergrößern",
+      "zoomOut": "Verkleinern",
+      "months3": "3 Monate",
+      "months6": "6 Monate",
+      "months12": "12 Monate",
+      "deadline": "Deadline",
+      "notification": "Benachrichtigung",
+      "conferencePeriod": "Konferenzzeitraum",
+      "todayMarker": "Aktuelles Datum",
+      "noEvents": "Keine anstehenden Events"
+    },
+    "wizard": {
+      "title": "KI-Konferenzsuche",
+      "button": "KI-Suche",
+      "description": "Geben Sie einen Konferenznamen, ein Akronym oder eine URL ein, um die Konferenzdetails automatisch zu suchen und auszufüllen.",
+      "inputLabel": "Konferenzname, Akronym oder URL",
+      "inputPlaceholder": "z.B. NeurIPS 2026",
+      "hint": "Funktioniert am besten mit spezifischen Namen inkl. Jahreszahl",
+      "search": "Mit KI suchen",
+      "retry": "Erneut versuchen",
+      "steps": {
+        "searching": "Suche nach Konferenz...",
+        "scraping": "Lese Konferenz-Website...",
+        "analyzing": "Extrahiere Konferenzdaten...",
+        "done": "Fertig"
+      },
+      "errors": {
+        "noResults": "Keine Suchergebnisse gefunden. Versuchen Sie eine andere Suche.",
+        "failed": "Etwas ist schiefgelaufen. Bitte versuchen Sie es erneut.",
+        "noLlm": "Kein LLM-Modell konfiguriert. Bitte kontaktieren Sie einen Administrator."
+      }
     },
     "validation": {
       "required": "Dieses Feld ist erforderlich"
+    },
+    "series": {
+      "select": "Konferenz-Reihe",
+      "hint": "Verknüpfung mit einer Reihe für jährliche Editionen",
+      "create": "Neue Reihe",
+      "addEdition": "Edition hinzufügen",
+      "linkDetected": "Bestehende Reihe erkannt",
+      "standalone": "Einzelne Konferenzen",
+      "groupBySeries": "Nach Reihe gruppieren"
+    },
+    "venueMap": {
+      "distance": "von Nürnberg",
+      "geocoding": "Karte wird geladen...",
+      "geocodeFailed": "Dieser Ort konnte auf der Karte nicht gefunden werden.",
+      "error": "Karte konnte nicht geladen werden."
+    }
+  },
+  "messaging": {
+    "title": "Nachrichten",
+    "newChat": "Neuer Chat",
+    "newGroup": "Neue Gruppe",
+    "startChat": "Chat starten",
+    "createGroup": "Gruppe erstellen",
+    "selectUser": "Benutzer auswählen",
+    "groupName": "Gruppenname",
+    "groupDescription": "Beschreibung (optional)",
+    "addMembers": "Mitglieder hinzufügen",
+    "addMember": "Mitglied hinzufügen",
+    "add": "Hinzufügen",
+    "members": "Mitglieder",
+    "groupInfo": "Gruppeninfo",
+    "leaveGroup": "Gruppe verlassen",
+    "chatDisabled": "Chat ist für Ihr Konto nicht verfügbar",
+    "typeMessage": "Nachricht eingeben...",
+    "send": "Senden",
+    "reply": "Antworten",
+    "copy": "Kopieren",
+    "edit": "Bearbeiten",
+    "delete": "Löschen",
+    "edited": "bearbeitet",
+    "encrypted": "Ende-zu-Ende-verschlüsselt",
+    "messageDeleted": "Diese Nachricht wurde gelöscht",
+    "noMessages": "Noch keine Nachrichten",
+    "noConversations": "Noch keine Unterhaltungen",
+    "loading": "Unterhaltungen werden geladen...",
+    "loadingMessages": "Nachrichten werden geladen...",
+    "loadMore": "Ältere Nachrichten laden",
+    "searchPlaceholder": "Unterhaltungen durchsuchen...",
+    "selectConversation": "Unterhaltung auswählen",
+    "selectConversationHint": "Wähle einen Chat aus der Liste oder starte einen neuen",
+    "unavailable": "Messaging ist derzeit nicht verfügbar",
+    "unavailableHint": "Diese Funktion wurde von einem Administrator deaktiviert. Bitte wende dich an deinen Admin, wenn du Zugriff benötigst.",
+    "backToHome": "Zurück zur Startseite",
+    "isTyping": "tippt",
+    "areTyping": "tippen",
+    "severalTyping": "Mehrere Personen tippen",
+    "aiAccess": "KI-Zugriff",
+    "aiAccessTooltip": "KI erlauben, verschlüsselte Nachrichten für Zusammenfassungen zu lesen",
+    "close": "Schließen",
+    "call": {
+      "voice": "Sprachanruf",
+      "video": "Videoanruf",
+      "transcription": "Live-Transkript",
+      "noTranscript": "Noch kein Transkript",
+      "liveTranscription": "Live-Transkription aktiv",
+      "incoming": "Eingehender Anruf",
+      "accept": "Annehmen",
+      "decline": "Ablehnen",
+      "ended": "Anruf beendet",
+      "duration": "Dauer"
+    },
+    "errors": {
+      "sendFailed": "Nachricht konnte nicht gesendet werden",
+      "loadFailed": "Nachrichten konnten nicht geladen werden"
     }
   }
 }

@@ -140,12 +140,31 @@
               <LIcon size="16">mdi-check-circle-outline</LIcon>
               {{ llm.completed || 0 }} / {{ llm.total || 0 }}
             </span>
+            <span
+              v-if="llm.errorCount > 0"
+              class="stat error-stat"
+              @click="openErrorDialog(llm)"
+            >
+              <LIcon size="16" color="#e8a087">mdi-alert-circle</LIcon>
+              <span class="error-count">{{ llm.errorCount }}</span>
+              {{ $t('scenarioManager.overview.failed') }}
+            </span>
             <span class="stat" v-if="llm.cost">
               <LIcon size="16">mdi-currency-usd</LIcon>
               {{ llm.cost.toFixed(4) }}
             </span>
           </div>
           <div class="member-actions" v-if="canManage">
+            <LBtn
+              v-if="llm.errorCount > 0"
+              variant="accent"
+              size="small"
+              :loading="retryingModel === llm.id"
+              @click="retryLLM(llm)"
+            >
+              <LIcon start size="16">mdi-refresh</LIcon>
+              {{ $t('scenarioManager.team.retry') }}
+            </LBtn>
             <v-btn icon size="small" variant="text" color="error" @click="confirmRemoveLLM(llm)">
               <LIcon size="18">mdi-delete-outline</LIcon>
             </v-btn>
@@ -268,6 +287,51 @@
       </v-card>
     </v-dialog>
 
+    <!-- Error Details Dialog -->
+    <v-dialog v-model="showErrorDialog" max-width="600">
+      <v-card>
+        <v-card-title class="d-flex align-center">
+          <LIcon color="#e8a087" class="mr-2">mdi-alert-circle-outline</LIcon>
+          {{ $t('scenarioManager.team.errorDetailsTitle') }}
+          <span v-if="errorDialogModel" class="ml-2 text-subtitle-2 text-medium-emphasis">
+            — {{ errorDialogModel.model_name }}
+          </span>
+        </v-card-title>
+        <v-card-text>
+          <div v-if="errorDetailsLoading" class="text-center py-4">
+            <v-progress-circular indeterminate size="32" />
+          </div>
+          <div v-else-if="errorDetails.length === 0" class="text-center py-4 text-medium-emphasis">
+            {{ $t('scenarioManager.team.noErrors') }}
+          </div>
+          <div v-else class="error-list">
+            <div v-for="err in errorDetails" :key="err.id" class="error-item">
+              <div class="error-item-header">
+                <span class="error-item-label">{{ err.item_label }}</span>
+                <span class="error-item-date">{{ formatErrorDate(err.updated_at) }}</span>
+              </div>
+              <div class="error-item-message">{{ err.error }}</div>
+            </div>
+          </div>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <LBtn
+            v-if="canManage && errorDetails.length > 0"
+            variant="accent"
+            :loading="retryingModel === errorDialogModel?.id"
+            @click="retryLLM(errorDialogModel); showErrorDialog = false"
+          >
+            <LIcon start size="16">mdi-refresh</LIcon>
+            {{ $t('scenarioManager.team.retryAll') }}
+          </LBtn>
+          <LBtn variant="text" @click="showErrorDialog = false">
+            {{ $t('common.close') || $t('common.cancel') }}
+          </LBtn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
     <!-- Change Role Dialog -->
     <v-dialog v-model="showRoleDialog" max-width="400">
       <v-card>
@@ -312,8 +376,10 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
+import axios from 'axios'
 import { useScenarioManager } from '../../composables/useScenarioManager'
 import { useModelRegistry } from '@/composables/useModelRegistry'
+import { useAuth } from '@/composables/useAuth'
 import LAvatar from '@/components/common/LAvatar.vue'
 import LUserSearch from '@/components/common/LUserSearch.vue'
 
@@ -343,6 +409,7 @@ const {
   getScenarioTeam
 } = useScenarioManager()
 const { formatModelName: registryFormatModelName } = useModelRegistry()
+const { getToken } = useAuth()
 
 // State
 const showInviteDialog = ref(false)
@@ -366,6 +433,13 @@ const showRoleDialog = ref(false)
 const memberToChangeRole = ref(null)
 const newRole = ref('ASSESSOR')
 const changingRole = ref(false)
+
+// Error dialog and retry
+const showErrorDialog = ref(false)
+const errorDialogModel = ref(null)
+const errorDetails = ref([])
+const errorDetailsLoading = ref(false)
+const retryingModel = ref(null)
 
 // Mock data
 const availableLLMs = ref([
@@ -463,7 +537,9 @@ const llmEvaluators = computed(() => {
       model_name: modelName,
       provider: provider,
       completed: liveData?.completed || 0,
-      total: liveData?.total || 0
+      total: liveData?.total || 0,
+      errorCount: liveData?.errorCount || 0,
+      recentErrors: liveData?.recentErrors || [],
     }
   })
 })
@@ -587,6 +663,52 @@ async function confirmRoleChange() {
   } finally {
     changingRole.value = false
   }
+}
+
+async function openErrorDialog(llm) {
+  errorDialogModel.value = llm
+  errorDetails.value = []
+  errorDetailsLoading.value = true
+  showErrorDialog.value = true
+
+  try {
+    const response = await axios.get(
+      `/api/evaluation/llm/${props.scenario.id}/errors`,
+      {
+        params: { model_id: llm.id },
+        headers: { Authorization: `Bearer ${getToken()}` },
+      }
+    )
+    errorDetails.value = response.data.errors || []
+  } catch (err) {
+    console.error('Failed to load error details:', err)
+    errorDetails.value = []
+  } finally {
+    errorDetailsLoading.value = false
+  }
+}
+
+async function retryLLM(llm) {
+  if (!llm?.id || retryingModel.value) return
+  retryingModel.value = llm.id
+
+  try {
+    await axios.post(
+      `/api/evaluation/llm/${props.scenario.id}/start`,
+      { model_id: llm.id },
+      { headers: { Authorization: `Bearer ${getToken()}` } }
+    )
+  } catch (err) {
+    console.error('Failed to retry LLM evaluation:', err)
+  } finally {
+    retryingModel.value = null
+  }
+}
+
+function formatErrorDate(dateStr) {
+  if (!dateStr) return ''
+  const date = new Date(dateStr)
+  return date.toLocaleString()
 }
 
 function confirmRemoveLLM(llm) {
@@ -765,6 +887,63 @@ onMounted(async () => {
 .member-card.is-rejected {
   background-color: rgba(244, 67, 54, 0.04);
   opacity: 0.8;
+}
+
+/* Error styles */
+.error-stat {
+  cursor: pointer;
+  color: #e8a087 !important;
+  transition: opacity 0.2s;
+}
+
+.error-stat:hover {
+  opacity: 0.8;
+}
+
+.error-count {
+  font-weight: 600;
+  color: #e8a087;
+}
+
+.error-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.error-item {
+  padding: 12px;
+  background-color: rgba(var(--v-theme-on-surface), 0.03);
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  border-radius: 8px;
+}
+
+.error-item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.error-item-label {
+  font-weight: 500;
+  font-size: 0.85rem;
+  color: rgb(var(--v-theme-on-surface));
+}
+
+.error-item-date {
+  font-size: 0.75rem;
+  color: rgba(var(--v-theme-on-surface), 0.5);
+}
+
+.error-item-message {
+  font-size: 0.8rem;
+  color: #e8a087;
+  font-family: monospace;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 .member-meta {

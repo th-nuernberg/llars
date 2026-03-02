@@ -329,27 +329,27 @@ def broadcast_evaluation_failed(
 
 
 def _throttled_stats_emit(socketio, scenario_id: int) -> None:
-    """Emit scenario stats update, throttled to max once per _STATS_THROTTLE_SECONDS."""
+    """Mark stats dirty (throttled). Background thread handles recompute + push."""
     now = time.time()
     last = _last_stats_emission.get(scenario_id, 0)
     if (now - last) < _STATS_THROTTLE_SECONDS:
         return
     _last_stats_emission[scenario_id] = now
     try:
-        from socketio_handlers.events_scenarios import emit_scenario_stats_updated
-        emit_scenario_stats_updated(socketio, scenario_id)
+        from services.scenario_stats_cache_service import mark_dirty
+        mark_dirty(scenario_id)
     except Exception as exc:
-        logger.warning("[LLM Eval] Failed to emit scenario stats update: %s", exc)
+        logger.warning("[LLM Eval] Failed to mark stats dirty: %s", exc)
 
 
 def force_stats_emit(socketio, scenario_id: int) -> None:
-    """Force immediate stats emission (used at end of evaluation run)."""
+    """Force immediate stats dirty mark (used at end of evaluation run)."""
     _last_stats_emission.pop(scenario_id, None)
     try:
-        from socketio_handlers.events_scenarios import emit_scenario_stats_updated
-        emit_scenario_stats_updated(socketio, scenario_id)
+        from services.scenario_stats_cache_service import mark_dirty
+        mark_dirty(scenario_id)
     except Exception as exc:
-        logger.warning("[LLM Eval] Failed to emit final stats update: %s", exc)
+        logger.warning("[LLM Eval] Failed to mark stats dirty (final): %s", exc)
 
 
 def broadcast_scenario_completed(

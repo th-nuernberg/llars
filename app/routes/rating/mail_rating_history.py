@@ -18,13 +18,11 @@ from ..HelperFunctions import can_access_thread, get_thread_progression_state, r
 
 
 def _emit_scenario_stats_updates(thread_id: int) -> None:
-    socketio = current_app.extensions.get('socketio')
-    if not socketio:
-        return
+    """Mark stats dirty for all scenarios containing this thread."""
     try:
-        from socketio_handlers.events_scenarios import emit_scenario_stats_updated
+        from services.scenario_stats_cache_service import mark_dirty
         for scenario_id in get_scenario_ids_for_thread(thread_id):
-            emit_scenario_stats_updated(socketio, scenario_id)
+            mark_dirty(scenario_id)
     except Exception:
         pass
 

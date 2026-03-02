@@ -720,18 +720,13 @@ def get_progress_stats(scenario_id: int) -> Dict[str, Any]:
     heatmaps, etc.). Use get_user_progress_counts() when you only need
     progress bars.
 
-    Results are cached for 120 seconds to avoid redundant computation.
+    Caching is handled by scenario_stats_cache_service (DB-backed + in-memory).
+    This function always performs the full computation.
     """
-    cached = _get_cached_stats(scenario_id)
-    if cached is not None:
-        return cached
-
     scenario = _get_scenario_or_raise(scenario_id)
     function_type = _get_function_type_or_raise(scenario.function_type_id)
     if function_type.name == "comparison":
-        result = _get_comparison_progress_stats(scenario_id)
-        _set_cached_stats(scenario_id, result)
-        return result
+        return _get_comparison_progress_stats(scenario_id)
 
     rater_stats = []
     evaluator_stats = []
@@ -922,15 +917,10 @@ def get_progress_stats(scenario_id: int) -> Dict[str, Any]:
         _t = time.time()
         bucket_distribution = _calculate_bucket_distribution(scenario_id)
         _perf_log.info("[StatsPerf] scenario=%s _calculate_bucket_distribution: %.3fs", scenario_id, time.time() - _t)
-        # Provenance analysis skipped for large scenarios (>200 items) - too CPU intensive.
-        # Loads all Features + Messages + GeneratedOutputs for content matching.
-        thread_count = len(scenario_thread_ids) if scenario_thread_ids else 0
-        if thread_count <= 200:
-            _t = time.time()
-            provenance_analysis = _calculate_ranking_provenance_analysis(scenario_id)
-            _perf_log.info("[StatsPerf] scenario=%s _calculate_ranking_provenance: %.3fs", scenario_id, time.time() - _t)
-        else:
-            _perf_log.info("[StatsPerf] scenario=%s _calculate_ranking_provenance: SKIPPED (%d items > 200 limit)", scenario_id, thread_count)
+        # Provenance analysis now always computed (runs in background thread via cache service).
+        _t = time.time()
+        provenance_analysis = _calculate_ranking_provenance_analysis(scenario_id)
+        _perf_log.info("[StatsPerf] scenario=%s _calculate_ranking_provenance: %.3fs", scenario_id, time.time() - _t)
 
     # Build model_registry for all LLM model_ids in evaluator_stats
     all_model_ids = [e['model_id'] for e in evaluator_stats if e.get('model_id')]
@@ -968,7 +958,6 @@ def get_progress_stats(scenario_id: int) -> Dict[str, Any]:
         "ranking_agreement": pairwise_summary,  # backward compatibility (deprecated)
         "model_registry": model_registry,
     }
-    _set_cached_stats(scenario_id, result)
     return result
 
 
@@ -4077,7 +4066,8 @@ def get_scenario_stats_payload(scenario_id: int) -> Dict[str, Any]:
         stats = get_authenticity_stats(scenario_id)
         kind = "authenticity"
     else:
-        stats = get_progress_stats(scenario_id)
+        from services.scenario_stats_cache_service import get_cached_stats
+        stats = get_cached_stats(scenario_id)
         kind = "progress"
     return {
         "scenario_id": scenario_id,

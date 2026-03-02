@@ -200,16 +200,14 @@ def rate_feature(scenario_id, feature_id):
     # Emit real-time update
     emit_evaluation_update(scenario_id, feature_id, user.id)
 
-    # Emit scenario stats update
+    # Mark stats dirty for background recompute
     if thread_id:
-        socketio = current_app.extensions.get('socketio')
-        if socketio:
-            try:
-                from socketio_handlers.events_scenarios import emit_scenario_stats_updated
-                for sid in get_scenario_ids_for_thread(thread_id):
-                    emit_scenario_stats_updated(socketio, sid)
-            except Exception:
-                pass
+        try:
+            from services.scenario_stats_cache_service import mark_dirty
+            for sid in get_scenario_ids_for_thread(thread_id):
+                mark_dirty(sid)
+        except Exception:
+            pass
 
     return jsonify(result)
 
@@ -452,15 +450,13 @@ def submit_dimensional_rating(scenario_id, item_id):
     if 'error' in result:
         raise ValidationError(result['error'])
 
-    # Emit scenario stats update
-    socketio = current_app.extensions.get('socketio')
-    if socketio:
-        try:
-            from socketio_handlers.events_scenarios import emit_scenario_stats_updated
-            for sid in get_scenario_ids_for_thread(item_id):
-                emit_scenario_stats_updated(socketio, sid)
-        except Exception:
-            pass
+    # Mark stats dirty for background recompute
+    try:
+        from services.scenario_stats_cache_service import mark_dirty
+        for sid in get_scenario_ids_for_thread(item_id):
+            mark_dirty(sid)
+    except Exception:
+        pass
 
     return jsonify(result)
 

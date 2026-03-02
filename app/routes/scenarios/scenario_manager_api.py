@@ -90,16 +90,13 @@ def _normalize_llm_evaluators(config):
 
 
 def _emit_scenario_stats_update(scenario_id: int) -> None:
-    """Emit WebSocket event when scenario stats change (e.g., config updated)."""
-    socketio = current_app.extensions.get('socketio')
-    if not socketio:
-        return
+    """Mark stats dirty when scenario config changes (e.g., LLM evaluators updated)."""
     try:
-        from socketio_handlers.events_scenarios import emit_scenario_stats_updated
-        emit_scenario_stats_updated(socketio, scenario_id)
-        logger.debug(f"Emitted scenario stats update for scenario {scenario_id}")
+        from services.scenario_stats_cache_service import mark_dirty
+        mark_dirty(scenario_id)
+        logger.debug(f"Marked stats dirty for scenario {scenario_id}")
     except Exception as e:
-        logger.warning(f"Failed to emit scenario stats update: {e}")
+        logger.warning(f"Failed to mark stats dirty: {e}")
 
 
 def _extract_current_user_progress_from_stats(stats_data, user, fallback_total=0):

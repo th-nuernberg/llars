@@ -928,6 +928,13 @@ def get_progress_stats(scenario_id: int) -> Dict[str, Any]:
                             all_model_ids.append(entry['id'])
     model_registry = resolve_model_registry(all_model_ids) if all_model_ids else {}
 
+    # Strip heavy pair_details from pairwise_agreement for the stats payload.
+    # pair_details contains per-item agreement data which can be 1+ MB for large scenarios.
+    # It's still available on-demand via the full pairwise_agreement endpoint.
+    pairwise_summary = pairwise_agreement
+    if isinstance(pairwise_agreement, dict) and "pair_details" in pairwise_agreement:
+        pairwise_summary = {k: v for k, v in pairwise_agreement.items() if k != "pair_details"}
+
     result = {
         "rater_stats": rater_stats,
         "evaluator_stats": evaluator_stats,
@@ -939,10 +946,10 @@ def get_progress_stats(scenario_id: int) -> Dict[str, Any]:
         "dimension_averages": dimension_averages,
         "rating_provenance_analysis": rating_provenance_analysis,
         "conversation_provenance": conversation_provenance,
-        "pairwise_agreement": pairwise_agreement,
+        "pairwise_agreement": pairwise_summary,
         "bucket_distribution": bucket_distribution,
         "provenance_analysis": provenance_analysis,
-        "ranking_agreement": pairwise_agreement,  # backward compatibility (deprecated)
+        "ranking_agreement": pairwise_summary,  # backward compatibility (deprecated)
         "model_registry": model_registry,
     }
     _set_cached_stats(scenario_id, result)

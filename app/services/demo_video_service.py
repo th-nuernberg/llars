@@ -1732,16 +1732,9 @@ def _seed_evaluation_scenario_5_buckets(db_session, demo_user, collab_user):
         db_session.session.add(ranking_type)
         db_session.session.flush()
 
-    def _get_or_create_llm(name):
-        llm = LLM.query.filter_by(name=name).first()
-        if not llm:
-            llm = LLM(name=name)
-            db_session.session.add(llm)
-            db_session.session.flush()
-        return llm
-
-    llm_mistral = _get_or_create_llm('Mistral Small')
-    llm_gpt5_nano = _get_or_create_llm('GPT-5 Nano')
+    # Model ID strings for features (no longer need LLM table entries)
+    llm_mistral = 'Global/Mistral/Mistral-Small-3.2-24B-Instruct-2506'
+    llm_gpt5_nano = 'Global/OpenAI/gpt-5-nano'
 
     existing = RatingScenarios.query.filter_by(
         scenario_name=EVAL_SCENARIO_NAME_5_BUCKETS

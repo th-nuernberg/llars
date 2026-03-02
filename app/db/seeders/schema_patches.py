@@ -247,6 +247,66 @@ def _ensure_column_nullable(db, table_name: str, column_name: str, column_type: 
     return True
 
 
+def _migrate_scenario_roles_enum(db) -> bool:
+    """
+    Migrate scenario_users.role enum: EVALUATOR → ASSESSOR.
+
+    The ScenarioRoles enum was refactored to use ASSESSOR instead of EVALUATOR.
+    Existing databases may still have EVALUATOR in the MySQL ENUM and in row data.
+    This patch is idempotent and safe to run multiple times.
+    """
+    try:
+        result = db.session.execute(
+            text("""
+                SELECT COLUMN_TYPE
+                FROM INFORMATION_SCHEMA.COLUMNS
+                WHERE TABLE_SCHEMA = DATABASE()
+                  AND TABLE_NAME = 'scenario_users'
+                  AND COLUMN_NAME = 'role'
+            """)
+        )
+        row = result.fetchone()
+        if not row:
+            return False
+
+        column_type = str(row[0])
+
+        # Already migrated if ASSESSOR is present and EVALUATOR is not
+        if 'ASSESSOR' in column_type and 'EVALUATOR' not in column_type:
+            return False
+
+        # Step 1: Add ASSESSOR to enum (alongside EVALUATOR temporarily)
+        if 'ASSESSOR' not in column_type:
+            db.session.execute(text(
+                "ALTER TABLE `scenario_users` MODIFY COLUMN `role` "
+                "ENUM('OWNER','MANAGER','EVALUATOR','ASSESSOR','VIEWER') DEFAULT NULL"
+            ))
+            db.session.commit()
+
+        # Step 2: Migrate all EVALUATOR values to ASSESSOR
+        result = db.session.execute(text(
+            "UPDATE `scenario_users` SET `role` = 'ASSESSOR' WHERE `role` = 'EVALUATOR'"
+        ))
+        migrated = result.rowcount
+        db.session.commit()
+
+        # Step 3: Remove EVALUATOR from enum
+        db.session.execute(text(
+            "ALTER TABLE `scenario_users` MODIFY COLUMN `role` "
+            "ENUM('OWNER','MANAGER','ASSESSOR','VIEWER') DEFAULT NULL"
+        ))
+        db.session.commit()
+
+        if migrated > 0:
+            print(f"  [Schema Patch] Migrated {migrated} scenario_users role(s): EVALUATOR → ASSESSOR")
+        return migrated > 0
+
+    except Exception as exc:
+        db.session.rollback()
+        print(f"  ⚠️ scenario_users role migration failed (non-fatal): {exc}")
+        return False
+
+
 def apply_schema_patches(db) -> None:
     """Apply required schema patches (safe to run multiple times)."""
     try:
@@ -965,6 +1025,11 @@ def apply_schema_patches(db) -> None:
             column_name="invited_by",
             column_definition_sql="`invited_by` VARCHAR(255) NULL",
         )
+
+        # Migrate ScenarioRoles enum: EVALUATOR → ASSESSOR, RATER removed
+        # The role column was renamed in the code but existing DBs may still
+        # have old enum values. This patch is idempotent.
+        changed |= _migrate_scenario_roles_enum(db)
 
         # =========================================================================
         # AI Field Assist: Prompt Templates for AI-Assisted Form Fields

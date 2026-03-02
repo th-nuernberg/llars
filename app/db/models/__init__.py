@@ -88,6 +88,7 @@ from db.models.markdown_collab import (
 # LaTeX Collab models
 from db.models.latex_collab import (
     LatexWorkspaceVisibility,
+    AccessRequestStatus,
     LatexNodeType,
     LatexWorkspace,
     LatexWorkspaceMember,
@@ -96,6 +97,7 @@ from db.models.latex_collab import (
     LatexCommit,
     LatexCompileJob,
     LatexComment,
+    LatexWorkspaceAccessRequest,
 )
 
 # LLM Model configuration
@@ -221,6 +223,19 @@ from db.models.conference import (
     PaperAuthor,
 )
 
+# Messaging models
+from db.models.messaging import (
+    MessagingConversation,
+    MessagingParticipant,
+    MessagingMessage,
+    MessagingAttachment,
+    MessagingReaction,
+    MessagingReadReceipt,
+    MessagingEncryptionKey,
+    MessagingCall,
+    MessagingCallParticipant,
+)
+
 # Scenario Stats Cache
 from db.models.scenario_stats_cache import ScenarioStatsCache
 
@@ -287,6 +302,7 @@ __all__ = [
     'MarkdownCommit',
     # LaTeX Collab
     'LatexWorkspaceVisibility',
+    'AccessRequestStatus',
     'LatexNodeType',
     'LatexWorkspace',
     'LatexWorkspaceMember',
@@ -295,6 +311,7 @@ __all__ = [
     'LatexCommit',
     'LatexCompileJob',
     'LatexComment',
+    'LatexWorkspaceAccessRequest',
     # LLM Model
     'LLMModel',
     'DEFAULT_LLM_MODELS',
@@ -388,6 +405,16 @@ __all__ = [
     'Conference',
     'Paper',
     'PaperAuthor',
+    # Messaging
+    'MessagingConversation',
+    'MessagingParticipant',
+    'MessagingMessage',
+    'MessagingAttachment',
+    'MessagingReaction',
+    'MessagingReadReceipt',
+    'MessagingEncryptionKey',
+    'MessagingCall',
+    'MessagingCallParticipant',
     # Scenario Stats Cache
     'ScenarioStatsCache',
 ]

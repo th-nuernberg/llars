@@ -134,7 +134,7 @@ class MessagingParticipant(db.Model):
     )
 
     def to_dict(self) -> dict:
-        return {
+        data = {
             "id": self.id,
             "conversation_id": self.conversation_id,
             "username": self.username,
@@ -145,6 +145,17 @@ class MessagingParticipant(db.Model):
             "is_active": self.is_active,
             "joined_at": self.joined_at.isoformat() if self.joined_at else None,
         }
+        # Enrich with avatar data from User model
+        try:
+            from db.models.user import User
+            user = User.query.filter_by(username=self.username).first()
+            if user:
+                data["avatar_seed"] = user.get_avatar_seed()
+                if user.avatar_public_id:
+                    data["avatar_url"] = f"/api/users/avatar/{user.avatar_public_id}"
+        except Exception:
+            pass
+        return data
 
 
 # ── Messages ──────────────────────────────────────────────────────────

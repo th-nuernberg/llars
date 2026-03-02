@@ -6,6 +6,7 @@
   >
     <LAvatar
       :seed="avatarSeed"
+      :src="avatarUrl"
       :username="displayName"
       size="sm"
     />
@@ -52,8 +53,19 @@ const displayName = computed(() => {
   return other?.username || 'Unknown'
 })
 
+const otherParticipant = computed(() => {
+  if (props.conversation.conversation_type === 'group') return null
+  return (props.conversation.participants || []).find(
+    (p) => p.username !== username.value
+  )
+})
+
 const avatarSeed = computed(() => {
-  return props.conversation.avatar_seed || displayName.value
+  return otherParticipant.value?.avatar_seed || props.conversation.avatar_seed || displayName.value
+})
+
+const avatarUrl = computed(() => {
+  return otherParticipant.value?.avatar_url || null
 })
 
 const unreadCount = computed(() => {

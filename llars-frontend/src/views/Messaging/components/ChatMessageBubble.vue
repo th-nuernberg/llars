@@ -10,7 +10,8 @@
       <LAvatar
         v-if="!isSent && isFirstInGroup"
         :username="message.sender_username"
-        :seed="message.sender_username"
+        :seed="senderAvatar.seed"
+        :src="senderAvatar.url"
         size="xs"
       />
       <div
@@ -109,11 +110,20 @@ const props = defineProps({
   isFirstInGroup: { type: Boolean, default: true },
   isLastInGroup: { type: Boolean, default: true },
   username: { type: String, default: '' },
+  userAvatarMap: { type: Object, default: () => ({}) },
 })
 
 defineEmits(['contextmenu', 'reply', 'react'])
 
 const isSent = computed(() => props.message.sender_username === props.username)
+
+const senderAvatar = computed(() => {
+  const info = props.userAvatarMap[props.message.sender_username]
+  return {
+    seed: info?.seed || props.message.sender_username,
+    url: info?.url || null,
+  }
+})
 
 const alignment = computed(() => {
   if (props.message.message_type === 'system') return 'system'

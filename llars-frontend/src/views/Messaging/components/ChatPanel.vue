@@ -33,6 +33,7 @@
           :is-first-in-group="item.isFirstInGroup !== false"
           :is-last-in-group="item.isLastInGroup !== false"
           :username="username"
+          :user-avatar-map="userAvatarMap"
           @contextmenu="handleContextMenu"
           @reply="handleReply"
           @react="(payload) => emit('react', payload)"
@@ -112,6 +113,18 @@ const contextMenuPos = ref({ x: 0, y: 0 })
 const contextMenuMessage = ref(null)
 
 const isGroup = props.conversation?.conversation_type === 'group'
+
+// ── User avatar map (from conversation participants) ────────────
+const userAvatarMap = computed(() => {
+  const map = {}
+  for (const p of (props.conversation?.participants || [])) {
+    map[p.username] = {
+      seed: p.avatar_seed || p.username,
+      url: p.avatar_url || null,
+    }
+  }
+  return map
+})
 
 // ── Date separators + message grouping ──────────────────────────
 const GROUP_THRESHOLD_MS = 5 * 60 * 1000 // 5 minutes

@@ -33,7 +33,7 @@
         class="group-member-item"
       >
         <div class="d-flex align-center gap-2">
-          <LAvatar :username="member.username" :seed="member.username" size="xs" />
+          <LAvatar :username="member.username" :seed="member.avatar_seed || member.username" :src="member.avatar_url" size="xs" />
           <span class="text-body-2">{{ member.username }}</span>
           <LTag v-if="member.role === 'owner'" variant="info" size="sm">Owner</LTag>
           <LTag v-else-if="member.role === 'admin'" variant="secondary" size="sm">Admin</LTag>
@@ -88,7 +88,8 @@ const props = defineProps({
 
 const emit = defineEmits(['addMember', 'removeMember', 'leaveGroup'])
 
-const { username: currentUsername } = useAuth()
+const { tokenParsed } = useAuth()
+const currentUsername = computed(() => tokenParsed.value?.preferred_username || '')
 
 const showAddMember = ref(false)
 const newMember = ref(null)

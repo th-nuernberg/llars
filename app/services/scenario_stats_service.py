@@ -789,9 +789,6 @@ def get_progress_stats(scenario_id: int) -> Dict[str, Any]:
                 distributed_thread_ids_by_user[uid].add(tid)
 
     for scenario_user in scenario_users:
-        done_threads_list = []
-        not_started_threads_list = []
-        progressing_threads_list = []
         total_done_threads = 0
         total_progressing_threads = 0
         total_not_started_threads = 0
@@ -820,34 +817,10 @@ def get_progress_stats(scenario_id: int) -> Dict[str, Any]:
             if progression_state:
                 if progression_state == ProgressionStatus.PROGRESSING:
                     total_progressing_threads += 1
-                    progressing_threads_list.append(
-                        {
-                            "thread_id": thread.thread_id,
-                            "subject": thread.subject,
-                            "chat_id": thread.chat_id,
-                            "institut_id": thread.institut_id,
-                        }
-                    )
                 elif progression_state == ProgressionStatus.DONE:
                     total_done_threads += 1
-                    done_threads_list.append(
-                        {
-                            "thread_id": thread.thread_id,
-                            "subject": thread.subject,
-                            "chat_id": thread.chat_id,
-                            "institut_id": thread.institut_id,
-                        }
-                    )
                 else:
                     total_not_started_threads += 1
-                    not_started_threads_list.append(
-                        {
-                            "thread_id": thread.thread_id,
-                            "subject": thread.subject,
-                            "chat_id": thread.chat_id,
-                            "institut_id": thread.institut_id,
-                        }
-                    )
 
         avatar_data = serialize_user_brief(scenario_user.user)
         new_data = {
@@ -859,9 +832,9 @@ def get_progress_stats(scenario_id: int) -> Dict[str, Any]:
             "done_threads": total_done_threads,
             "not_started_threads": total_not_started_threads,
             "progressing_threads": total_progressing_threads,
-            "done_threads_list": done_threads_list,
-            "not_started_threads_list": not_started_threads_list,
-            "progressing_threads_list": progressing_threads_list,
+            "done_threads_list": [],
+            "not_started_threads_list": [],
+            "progressing_threads_list": [],
         }
 
         if scenario_user.role == ScenarioRoles.EVALUATOR:
@@ -1085,9 +1058,6 @@ def _get_comparison_progress_stats(scenario_id: int) -> Dict[str, Any]:
     for scenario_user in scenario_users:
         user_sessions = sessions_by_user.get(scenario_user.user_id, [])
 
-        done_threads_list = []
-        not_started_threads_list = []
-        progressing_threads_list = []
         total_done_threads = 0
         total_progressing_threads = 0
         total_not_started_threads = 0
@@ -1104,22 +1074,12 @@ def _get_comparison_progress_stats(scenario_id: int) -> Dict[str, Any]:
             total_pairs += total_pairs_session
             total_rated_pairs += rated_pairs_session
 
-            session_info = {
-                "session_id": session.id,
-                "persona_name": session.persona_name,
-                "total_pairs": total_pairs_session,
-                "rated_pairs": rated_pairs_session,
-            }
-
             if total_pairs_session == 0 or rated_pairs_session == 0:
                 total_not_started_threads += 1
-                not_started_threads_list.append(session_info)
             elif rated_pairs_session < total_pairs_session:
                 total_progressing_threads += 1
-                progressing_threads_list.append(session_info)
             else:
                 total_done_threads += 1
-                done_threads_list.append(session_info)
 
         new_data = {
             "username": scenario_user.user.username,
@@ -1128,9 +1088,9 @@ def _get_comparison_progress_stats(scenario_id: int) -> Dict[str, Any]:
             "done_threads": total_rated_pairs,
             "not_started_threads": max(total_pairs - total_rated_pairs, 0),
             "progressing_threads": total_progressing_threads,
-            "done_threads_list": done_threads_list,
-            "not_started_threads_list": not_started_threads_list,
-            "progressing_threads_list": progressing_threads_list,
+            "done_threads_list": [],
+            "not_started_threads_list": [],
+            "progressing_threads_list": [],
         }
 
         if scenario_user.role == ScenarioRoles.EVALUATOR:

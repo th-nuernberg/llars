@@ -436,6 +436,24 @@ def start_pending_llm_evaluations():
                     all_ids = item['all_ids']
 
                     for model_id in llm_evaluators:
+                        # Skip models that had recent errors (cooldown: 30 min)
+                        # This prevents restart loops for models with bad API keys etc.
+                        from datetime import datetime, timedelta
+                        cooldown_cutoff = datetime.utcnow() - timedelta(minutes=30)
+                        recent_errors = db.session.query(db.func.count()).filter(
+                            LLMTaskResult.scenario_id == scenario.id,
+                            LLMTaskResult.model_id == model_id,
+                            LLMTaskResult.error.isnot(None),
+                            LLMTaskResult.updated_at >= cooldown_cutoff,
+                        ).scalar() or 0
+
+                        if recent_errors >= 3:
+                            print(
+                                f"[Startup] Skipping model {model_id} for scenario {scenario.id} "
+                                f"- {recent_errors} recent errors (cooldown active)"
+                            )
+                            continue
+
                         # Get IDs that already have successful results
                         completed_rows = db.session.query(LLMTaskResult.thread_id).filter(
                             LLMTaskResult.scenario_id == scenario.id,
@@ -445,8 +463,16 @@ def start_pending_llm_evaluations():
                         ).all()
                         completed_ids = {row[0] for row in completed_rows if row[0]}
 
-                        # Find IDs that need evaluation
-                        pending_ids = list(all_ids - completed_ids)
+                        # Also exclude items that have errors (don't retry on startup)
+                        errored_rows = db.session.query(LLMTaskResult.thread_id).filter(
+                            LLMTaskResult.scenario_id == scenario.id,
+                            LLMTaskResult.model_id == model_id,
+                            LLMTaskResult.error.isnot(None),
+                        ).all()
+                        errored_ids = {row[0] for row in errored_rows if row[0]}
+
+                        # Only start truly pending items (not completed, not errored)
+                        pending_ids = list(all_ids - completed_ids - errored_ids)
 
                         if pending_ids:
                             id_type = "sessions" if item['is_comparison'] else "threads"
@@ -458,7 +484,7 @@ def start_pending_llm_evaluations():
                             LLMAITaskRunner.run_for_scenario_async(
                                 scenario.id,
                                 model_ids=[model_id],
-                                thread_ids=pending_ids,  # Works for both threads and session IDs
+                                thread_ids=pending_ids,
                             )
                             total_started += 1
 

@@ -288,6 +288,20 @@ export const iconAnimations = [
     description: 'Chat-Blase Animation',
     trigger: 'hover',
     file: 'ChatIcon.vue'
+  },
+  {
+    id: 'voice-call',
+    name: 'Voice Call',
+    description: 'Telefonhörer klingelt, Signalwellen pulsieren',
+    trigger: 'hover',
+    file: 'VoiceCallIcon.vue'
+  },
+  {
+    id: 'video-call',
+    name: 'Video Call',
+    description: 'Aufnahme-Punkt pulsiert, Sucher erweitert sich',
+    trigger: 'hover',
+    file: 'VideoCallIcon.vue'
   }
 ]
 
@@ -583,6 +597,20 @@ export const staticIcons = [
     description: 'Warnung/Fehler',
     category: 'ui',
     file: 'TriangleAlertIcon.vue'
+  },
+  {
+    id: 'voice-call',
+    name: 'Voice Call',
+    description: 'Sprachanruf/Telefon',
+    category: 'ui',
+    file: 'VoiceCallIcon.vue'
+  },
+  {
+    id: 'video-call',
+    name: 'Video Call',
+    description: 'Videoanruf/Kamera',
+    category: 'ui',
+    file: 'VideoCallIcon.vue'
   }
 ]
 

@@ -99,7 +99,9 @@ import UserCheckIcon from './UserCheckIcon.vue'
 import UserPlusIcon from './UserPlusIcon.vue'
 import UsersGroupIcon from './UsersGroupIcon.vue'
 import UsersIcon from './UsersIcon.vue'
+import VideoCallIcon from './VideoCallIcon.vue'
 import VllmIcon from './VllmIcon.vue'
+import VoiceCallIcon from './VoiceCallIcon.vue'
 import WandIcon from './WandIcon.vue'
 import XIcon from './XIcon.vue'
 import ZoteroIcon from './ZoteroIcon.vue'
@@ -206,7 +208,9 @@ export const iconComponents = {
   'user-plus': UserPlusIcon,
   'users-group': UsersGroupIcon,
   'users': UsersIcon,
+  'video-call': VideoCallIcon,
   'vllm': VllmIcon,
+  'voice-call': VoiceCallIcon,
   'wand': WandIcon,
   'x': XIcon,
   'zotero': ZoteroIcon,
@@ -224,6 +228,10 @@ const explicitAliases = {
   'mdi-menu-right': 'arrow-right',
   'mdi-open-in-new': 'arrow-right',
   'mdi-progress-clock': 'clock',
+  'mdi-phone': 'voice-call',
+  'mdi-phone-outline': 'voice-call',
+  'mdi-video': 'video-call',
+  'mdi-video-outline': 'video-call',
   'mdi-reply': 'reply',
   'mdi-timeline-clock-outline': 'clock',
   'mdi-timer-outline': 'clock',
@@ -326,6 +334,8 @@ export const resolveIconKey = (iconName) => {
   if (hasAny(tokens, ['cloud', 'wifi', 'ethernet', 'connection', 'network'])) return 'cloud'
 
   if (hasAny(tokens, ['reply', 'respond'])) return 'reply'
+  if (hasAny(tokens, ['video'])) return 'video-call'
+  if (hasAny(tokens, ['phone', 'call', 'dial', 'ring'])) return 'voice-call'
   if (hasAny(tokens, ['chat', 'message', 'comment', 'bubble', 'thought', 'emoticon', 'face', 'agent'])) return 'chat'
   if (tokens.includes('bell')) return 'bell'
   if (tokens.includes('calendar')) return 'calendar'

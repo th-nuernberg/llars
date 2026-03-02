@@ -302,51 +302,54 @@
             :streams="activeStreams"
             :max-parallel="jobMaxParallel"
             :is-job-running="isJobRunning"
+            :user-provider-names="userProviderNameMap"
           />
 
           <!-- Outputs List -->
-          <div v-if="isLoadingOutputs" class="loading-state">
+          <div v-if="isLoadingOutputs && outputs.length === 0" class="loading-state">
             <v-progress-circular indeterminate color="primary" />
           </div>
 
           <div v-else-if="outputs.length > 0 || currentlyProcessing" ref="outputsListRef" class="outputs-list">
-            <div
-              v-for="group in groupedOutputs"
-              :key="group.key"
-              class="output-group"
-            >
-              <div class="output-group-header">
-                <span class="output-group-label">{{ group.label }}</span>
-                <span class="output-group-count">{{ group.items.length }}</span>
-              </div>
+            <TransitionGroup name="group-reveal">
               <div
-                v-for="output in group.items"
-                :key="output.id"
-                class="output-item"
-                :class="{ 'is-failed': output.status === 'failed' }"
-                @click="selectOutput(output)"
+                v-for="group in visibleGroupedOutputs"
+                :key="group.key"
+                class="output-group"
               >
-                <LIcon :color="getOutputStatusColor(output.status)" size="16">
-                  {{ getOutputStatusIcon(output.status) }}
-                </LIcon>
-                <span
-                  v-if="!isSingleConfig"
-                  class="dot dot--model"
-                  :style="{ background: resolveModelColor(output.llm_model_name, output.llm_model_color) }"
-                ></span>
-                <span
-                  v-if="!isSingleConfig && output.prompt_variant_name"
-                  class="dot dot--prompt"
-                  :style="{ background: promptColorMap[output.prompt_variant_name] || PROMPT_COLORS[0] }"
-                ></span>
-                <span class="output-preview">
-                  {{ output.content_preview || output.error_message || '-' }}
-                </span>
-                <span v-if="output.tokens?.output" class="output-tokens">
-                  {{ output.tokens.output }} tok
-                </span>
+                <div class="output-group-header">
+                  <span class="output-group-label">{{ group.label }}</span>
+                  <span class="output-group-count">{{ group.items.length }}</span>
+                </div>
+                <div
+                  v-for="output in group.items"
+                  :key="output.id"
+                  class="output-item"
+                  :class="{ 'is-failed': output.status === 'failed' }"
+                  @click="selectOutput(output)"
+                >
+                  <LIcon :color="getOutputStatusColor(output.status)" size="16">
+                    {{ getOutputStatusIcon(output.status) }}
+                  </LIcon>
+                  <span
+                    v-if="!isSingleConfig"
+                    class="dot dot--model"
+                    :style="{ background: resolveModelColor(output.llm_model_name, output.llm_model_color) }"
+                  ></span>
+                  <span
+                    v-if="!isSingleConfig && output.prompt_variant_name"
+                    class="dot dot--prompt"
+                    :style="{ background: promptColorMap[output.prompt_variant_name] || PROMPT_COLORS[0] }"
+                  ></span>
+                  <span class="output-preview">
+                    {{ output.content_preview || output.error_message || '-' }}
+                  </span>
+                  <span v-if="output.tokens?.output" class="output-tokens">
+                    {{ output.tokens.output }} tok
+                  </span>
+                </div>
               </div>
-            </div>
+            </TransitionGroup>
           </div>
 
           <div v-else class="empty-outputs">
@@ -480,6 +483,16 @@
       </LCard>
     </v-dialog>
 
+    <!-- Scenario Wizard Dialog (inline, no navigation) -->
+    <v-dialog v-model="showScenarioWizard" max-width="900" persistent>
+      <ScenarioWizard
+        v-if="showScenarioWizard"
+        :generation-job-id="Number(jobId)"
+        @close="showScenarioWizard = false"
+        @created="onScenarioCreated"
+      />
+    </v-dialog>
+
   </div>
 </template>
 
@@ -492,6 +505,7 @@ import { useGeneration, JOB_STATUS, OUTPUT_STATUS } from '@/composables/useGener
 import { getSocket } from '@/services/socketService'
 import { parseUserProviderModelId } from '@/utils/formatters'
 import GenerationLiveStreams from './GenerationLiveStreams.vue'
+import ScenarioWizard from '@/views/ScenarioManager/components/ScenarioWizard.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -523,6 +537,7 @@ const {
 const outputFilter = ref(null)
 const outputsPage = ref(1)
 const showOutputDialog = ref(false)
+const showScenarioWizard = ref(false)
 const selectedOutput = ref(null)
 const isLoadingOutput = ref(false)
 
@@ -638,17 +653,9 @@ function shouldActivateOutputStream(outputId) {
   return (Date.now() - activeLastToken) > STREAM_SWITCH_INACTIVITY_MS
 }
 
-// Model color helpers (seeded in DB, neutral fallback if missing)
-const NEUTRAL_HUE_RANGES = [
-  { start: 25, end: 80 },   // warm amber/orange
-  { start: 160, end: 240 }, // teal/blue
-  { start: 260, end: 320 }  // purple/magenta
-]
-const NEUTRAL_SAT_RANGE = { min: 38, max: 56 }
-const NEUTRAL_LIGHT_RANGE = { min: 42, max: 56 }
-const NEUTRAL_HUE_RANGE_SIZE = NEUTRAL_HUE_RANGES.reduce((sum, range) => (
-  sum + (range.end - range.start)
-), 0)
+// Model color helpers (seeded in DB, evenly-spaced fallback if missing)
+const NEUTRAL_SAT_RANGE = { min: 40, max: 58 }
+const NEUTRAL_LIGHT_RANGE = { min: 40, max: 55 }
 
 const normalizeHex = (value) => {
   if (!value || typeof value !== 'string') return null
@@ -665,16 +672,6 @@ const hashString = (value) => {
     hash = Math.imul(hash, 0x01000193) >>> 0
   }
   return hash
-}
-
-const pickNeutralHue = (seed) => {
-  let offset = seed % NEUTRAL_HUE_RANGE_SIZE
-  for (const range of NEUTRAL_HUE_RANGES) {
-    const span = range.end - range.start
-    if (offset < span) return range.start + offset
-    offset -= span
-  }
-  return NEUTRAL_HUE_RANGES[0].start
 }
 
 const hslToHex = (h, s, l) => {
@@ -708,7 +705,8 @@ const hslToHex = (h, s, l) => {
 
 const seedColor = (modelName) => {
   const seed = hashString(modelName || '')
-  const hue = pickNeutralHue(seed)
+  // Use full 360° hue range for maximum color variety
+  const hue = seed % 360
   const satSpan = NEUTRAL_SAT_RANGE.max - NEUTRAL_SAT_RANGE.min
   const lightSpan = NEUTRAL_LIGHT_RANGE.max - NEUTRAL_LIGHT_RANGE.min
   const saturation = NEUTRAL_SAT_RANGE.min + ((seed >>> 8) % (satSpan + 1))
@@ -718,6 +716,8 @@ const seedColor = (modelName) => {
 
 const modelColorMap = computed(() => {
   const map = {}
+
+  // 1. Collect explicit DB colors
   outputs.value.forEach(o => {
     if (o?.llm_model_name && o?.llm_model_color) {
       const normalized = normalizeHex(o.llm_model_color)
@@ -733,6 +733,14 @@ const modelColorMap = computed(() => {
     const normalized = normalizeHex(currentlyProcessing.value.modelColor)
     if (normalized) map[currentlyProcessing.value.model] = normalized
   }
+
+  // 2. For models without explicit colors, use deterministic seed color
+  //    (FNV-1a hash of model name → stable across reloads/pagination)
+  const allModels = [...new Set(outputs.value.map(o => o?.llm_model_name).filter(Boolean))]
+  allModels.filter(m => !map[m]).forEach(modelName => {
+    map[modelName] = seedColor(modelName)
+  })
+
   return map
 })
 
@@ -743,8 +751,20 @@ const resolveModelColor = (modelName, explicitColor = null) => {
   return seedColor(modelName || '')
 }
 
+// Map model IDs to their resolved provider names from backend
+const userProviderNameMap = computed(() => {
+  const map = {}
+  for (const o of outputs.value) {
+    if (o?.user_provider_name && o?.llm_model_name) {
+      map[o.llm_model_name] = o.user_provider_name
+    }
+  }
+  return map
+})
+
 function formatModelDisplayName(modelId) {
-  const parsed = parseUserProviderModelId(modelId)
+  const providerName = userProviderNameMap.value[modelId] || null
+  const parsed = parseUserProviderModelId(modelId, providerName)
   if (parsed) return parsed.displayName
   return modelId
 }
@@ -839,6 +859,44 @@ const groupedOutputs = computed(() => {
     groups.get(key).items.push(output)
   }
   return Array.from(groups.values())
+})
+
+// Progressive group reveal - groups appear one by one with staggered animation
+const visibleGroupCount = ref(0)
+let revealTimers = []
+
+const visibleGroupedOutputs = computed(() => {
+  return groupedOutputs.value.slice(0, visibleGroupCount.value)
+})
+
+function revealGroupsProgressively() {
+  revealTimers.forEach(t => clearTimeout(t))
+  revealTimers = []
+  visibleGroupCount.value = 0
+
+  const total = groupedOutputs.value.length
+  if (total === 0) return
+
+  // Show first group immediately
+  visibleGroupCount.value = 1
+
+  // Reveal remaining groups with stagger
+  for (let i = 1; i < total; i++) {
+    revealTimers.push(setTimeout(() => {
+      visibleGroupCount.value = i + 1
+    }, i * 80))
+  }
+}
+
+// Track group keys to detect structural changes vs. individual output updates
+let lastGroupKeys = ''
+
+watch(groupedOutputs, (newGroups) => {
+  const newKeys = newGroups.map(g => g.key).join(',')
+  if (newKeys !== lastGroupKeys) {
+    lastGroupKeys = newKeys
+    revealGroupsProgressively()
+  }
 })
 
 const isSingleConfig = computed(() => {
@@ -1055,12 +1113,12 @@ function formatDate(dateStr) {
 }
 
 function openScenarioWizard() {
-  // Navigate to Scenario Manager with the generation job ID
-  // The wizard will open automatically and load the generated outputs
-  router.push({
-    name: 'ScenarioManager',
-    query: { fromGeneration: jobId.value }
-  })
+  showScenarioWizard.value = true
+}
+
+function onScenarioCreated(scenario) {
+  showScenarioWizard.value = false
+  router.push({ name: 'ScenarioWorkspace', params: { id: scenario.id } })
 }
 
 // Watch for filter changes
@@ -1453,6 +1511,7 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
+  revealTimers.forEach(t => clearTimeout(t))
   cleanupSocketListeners()
 })
 </script>
@@ -1745,6 +1804,24 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   gap: 12px;
+}
+
+/* Progressive group reveal transitions */
+.group-reveal-enter-active {
+  transition: opacity 0.35s ease, transform 0.35s ease;
+}
+
+.group-reveal-enter-from {
+  opacity: 0;
+  transform: translateY(16px);
+}
+
+.group-reveal-leave-active {
+  transition: opacity 0.2s ease;
+}
+
+.group-reveal-leave-to {
+  opacity: 0;
 }
 
 /* Output Group (per source item / Datenpunkt) */

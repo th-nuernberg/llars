@@ -10,7 +10,7 @@ from decorators.error_handler import handle_api_errors
 from decorators.permission_decorator import require_permission
 from db.database import db
 from db.tables import FeatureFunctionType
-from services.scenario_stats_service import get_progress_stats
+from services.scenario_stats_cache_service import get_cached_stats
 from ..HelperFunctions import get_user_threads
 from .. import data_blueprint
 
@@ -23,7 +23,7 @@ def get_scenario_user_progress_stats(scenario_id):
     # Authorization handled by @admin_required decorator
     # Current user available in g.authentik_user
 
-    stats = get_progress_stats(scenario_id)
+    stats = get_cached_stats(scenario_id)
     return jsonify(stats), 200
 
 

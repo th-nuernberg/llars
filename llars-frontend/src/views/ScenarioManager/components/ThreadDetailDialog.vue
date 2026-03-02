@@ -206,7 +206,7 @@
 
 <script setup>
 import { computed } from 'vue'
-import { parseUserProviderModelId } from '@/utils/formatters'
+import { useModelRegistry } from '@/composables/useModelRegistry'
 
 const props = defineProps({
   modelValue: {
@@ -221,6 +221,8 @@ const props = defineProps({
 
 defineEmits(['update:modelValue'])
 
+const { formatModelName: registryFormatModelName } = useModelRegistry()
+
 const humanVotes = computed(() => {
   return (props.thread?.votes || []).filter(v => v.type === 'human')
 })
@@ -230,11 +232,7 @@ const llmVotes = computed(() => {
 })
 
 function formatLlmModelName(modelId) {
-  const parsed = parseUserProviderModelId(modelId)
-  if (parsed?.displayName) {
-    return parsed.displayName
-  }
-  return modelId || 'LLM'
+  return registryFormatModelName(modelId)
 }
 
 function getMessageClass(message) {

@@ -79,6 +79,46 @@
             </v-btn>
           </div>
         </div>
+
+        <!-- Pending Access Requests (owner only) -->
+        <template v-if="canRemove && pendingRequests.length > 0">
+          <div class="section-label mt-4">
+            {{ $t('latexCollab.accessRequests.pendingRequests') }}
+            <span class="member-count">{{ pendingRequests.length }}</span>
+          </div>
+          <div class="members-list">
+            <div v-for="req in pendingRequests" :key="req.id" class="user-card pending-card">
+              <LAvatar :username="req.requester_username" size="sm" />
+              <div class="user-info">
+                <div class="user-name">{{ formatDisplayName(req.requester_username) }}</div>
+                <div v-if="req.message" class="user-meta" style="font-style: italic;">{{ req.message }}</div>
+                <div class="user-meta">{{ formatRelativeDate(req.created_at) }}</div>
+              </div>
+              <v-btn
+                icon
+                variant="text"
+                size="x-small"
+                color="success"
+                :loading="resolvingId === req.id"
+                :title="$t('latexCollab.accessRequests.approve')"
+                @click="$emit('approve-request', req.id)"
+              >
+                <LIcon size="18">mdi-check</LIcon>
+              </v-btn>
+              <v-btn
+                icon
+                variant="text"
+                size="x-small"
+                color="error"
+                :loading="rejectingId === req.id"
+                :title="$t('latexCollab.accessRequests.reject')"
+                @click="$emit('reject-request', req.id)"
+              >
+                <LIcon size="18">mdi-close</LIcon>
+              </v-btn>
+            </div>
+          </div>
+        </template>
       </v-card-text>
     </v-card>
   </v-dialog>
@@ -105,6 +145,10 @@ const props = defineProps({
     type: Array,
     default: () => []
   },
+  pendingRequests: {
+    type: Array,
+    default: () => []
+  },
   excludedUsernames: {
     type: Array,
     default: () => []
@@ -121,13 +165,21 @@ const props = defineProps({
     type: String,
     default: ''
   },
+  resolvingId: {
+    type: Number,
+    default: null
+  },
+  rejectingId: {
+    type: Number,
+    default: null
+  },
   canRemove: {
     type: Boolean,
     default: false
   }
 })
 
-const emit = defineEmits(['update:modelValue', 'invite', 'remove'])
+const emit = defineEmits(['update:modelValue', 'invite', 'remove', 'approve-request', 'reject-request'])
 
 const selectedUser = ref(null)
 const userSearchRef = ref(null)
@@ -224,5 +276,10 @@ function handleInvite(user) {
 .members-list {
   max-height: 240px;
   overflow-y: auto;
+}
+
+.pending-card {
+  border: 1px dashed rgba(var(--v-theme-warning), 0.4);
+  background: rgba(var(--v-theme-warning), 0.04);
 }
 </style>

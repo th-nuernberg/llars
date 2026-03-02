@@ -19,7 +19,7 @@ from typing import Optional, List, Dict, Any
 
 from db.models import (
     EvaluationItem, Message, Feature, RatingScenarios,
-    ScenarioItems, FeatureType, LLM,
+    ScenarioItems, FeatureType,
     AuthenticityConversation
 )
 from schemas.evaluation_data_schemas import (
@@ -416,7 +416,7 @@ class SchemaTransformer:
         """Baut Items aus Features."""
         items = []
         for idx, feature in enumerate(features, 1):
-            llm_name = feature.llm.name if feature.llm else None
+            llm_name = feature.model_id
             feature_type_name = feature.feature_type.name if feature.feature_type else "feature"
 
             # Source bestimmen

@@ -29,7 +29,8 @@
     "retry": "Retry",
     "dismiss": "Dismiss",
     "copy": "Copy",
-    "create": "Create"
+    "create": "Create",
+    "download": "Download"
   },
   "auth": {
     "login": "Login",
@@ -213,7 +214,8 @@
       "rag": "RAG documents",
       "permissions": "Permissions",
       "llmProviders": "LLM providers",
-      "fieldPrompts": "AI Field Prompts"
+      "fieldPrompts": "AI Field Prompts",
+      "communication": "Communication"
     }
   },
   "aiAssist": {
@@ -2583,6 +2585,10 @@
         "title": "Pipeline",
         "description": "Automated LLM evaluation: prompt optimization, generation, evaluation in a loop"
       },
+      "conferenceManager": {
+        "title": "Conference Manager",
+        "description": "Track conferences, deadlines, and paper submissions"
+      },
       "userSettings": {
         "title": "Settings",
         "description": "Personal settings, LLM providers, and invitation links"
@@ -2692,6 +2698,7 @@
       "evaluation": "Evaluation",
       "results": "Results",
       "team": "Team",
+      "assessors": "Assessors",
       "myScenarios": "My Scenarios",
       "invitations": "Invitations",
       "dataFormat": "Data format"
@@ -3023,6 +3030,7 @@
       "pending": "Pending",
       "accuracy": "Accuracy",
       "noEvaluators": "No evaluators yet",
+      "failed": "Failed",
       "threads": "Threads",
       "users": "Users",
       "agreementMetrics": "Agreement Metrics",
@@ -3188,13 +3196,13 @@
       "assignments": "Assignments",
       "noProvenanceData": "No provenance data available yet",
       "conversationProvenance": "Conversation Partner Provenance",
-      "conversationProvenanceDescription": "Analyzes which conversation partner combinations achieve the highest ratings. The counselor (first) and client (second) sources indicate whether messages were written by humans or AI models. Format: Counselor \u00d7 Client.",
+      "conversationProvenanceDescription": "Analyzes which conversation partner combinations achieve the highest ratings. The counselor (first) and client (second) sources indicate whether messages were written by humans or AI models. Format: Counselor × Client.",
       "bestCounselorSource": "Best Counselor Source",
       "bestClientSource": "Best Client Source",
-      "bestCounselorClientPair": "Best Counselor \u00d7 Client Pair",
+      "bestCounselorClientPair": "Best Counselor × Client Pair",
       "counselorSourceRanking": "Counselor Source Ranking",
       "clientSourceRanking": "Client Source Ranking",
-      "counselorClientRanking": "Counselor \u00d7 Client Ranking",
+      "counselorClientRanking": "Counselor × Client Ranking",
       "authenticityProvenance": "Authenticity Provenance Analysis",
       "authenticityProvenanceDescription": "Analyzes which LLM generation sources best fool evaluators. Shows the fool rate (percentage of evaluator votes that incorrectly classified fake content as real) per source, and the false positive rate for human-written content.",
       "bestFoolingLLM": "Best Fooling LLM",
@@ -3292,18 +3300,18 @@
       }
     },
     "team": {
-      "title": "Team",
+      "title": "Assessors",
       "invite": "Invite",
-      "evaluators": "Evaluators",
+      "evaluators": "Assessors",
       "llmModels": "LLM Models",
-      "humanEvaluators": "Human Evaluators",
+      "humanEvaluators": "Human Assessors",
       "llmEvaluators": "LLM Evaluators",
       "addLLM": "Add LLM",
-      "noEvaluators": "No evaluators invited yet",
+      "noEvaluators": "No assessors invited yet",
       "noLLM": "No LLM models configured yet",
       "changeRole": "Change Role",
       "remove": "Remove",
-      "inviteTitle": "Invite Users",
+      "inviteTitle": "Invite Assessors",
       "selectUsers": "Select users",
       "searchUsers": "Search users...",
       "role": "Role",
@@ -3317,9 +3325,15 @@
       "changeRoleFor": "Change role for {name}:",
       "newRole": "New role",
       "viewerHint": "Viewers have read-only access and cannot submit ratings.",
+      "retry": "Retry",
+      "retryAll": "Retry All",
+      "errorDetailsTitle": "Error Details",
+      "noErrors": "No errors found",
       "roles": {
         "owner": "Owner",
-        "evaluator": "Evaluator",
+        "manager": "Manager",
+        "assessor": "Assessor",
+        "evaluator": "Assessor",
         "viewer": "Viewer"
       }
     },
@@ -3333,20 +3347,27 @@
       "endDate": "End Date",
       "distribution": "Distribution",
       "distributionAll": "All to everyone",
-      "distributionAllDesc": "Every evaluator evaluates all threads",
+      "distributionAllDesc": "Every assessor evaluates all items",
       "distributionRandom": "Random",
-      "distributionRandomDesc": "Threads are randomly distributed to evaluators",
+      "distributionRandomDesc": "Items are randomly distributed to assessors",
       "distributionSequential": "Sequential",
-      "distributionSequentialDesc": "Threads are assigned in sequence",
+      "distributionSequentialDesc": "Items are assigned in sequence",
       "order": "Order",
       "orderFixed": "Fixed order",
       "orderRandom": "Random order",
-      "visibility": "Visibility",
-      "visibilityPrivate": "Private (only me)",
-      "visibilityTeam": "Team (invited users)",
-      "visibilityPublic": "Public",
+      "collaboration": "Collaboration",
+      "collaborationTooltip": "Add colleagues as managers (can edit settings and invite assessors) or viewers (can see all tabs read-only).",
+      "addCollaborator": "Add Collaborator",
+      "roleManager": "Manager",
+      "roleManagerDesc": "Can edit settings and manage assessors",
+      "roleViewer": "Viewer",
+      "roleViewerDesc": "Can view all tabs but not make changes",
+      "noCollaborators": "No collaborators added yet",
+      "removeCollaborator": "Remove collaborator",
       "status": "Status",
-      "delete": "Delete Scenario"
+      "delete": "Delete Scenario",
+      "distributionTooltip": "Controls how items are assigned to assessors. \"All\" gives every item to everyone, \"Random\" distributes randomly, and \"Sequential\" assigns in order.",
+      "orderTooltip": "Controls the order in which items are presented. \"Fixed\" shows items in the same order for everyone, \"Random\" shuffles the order per assessor."
     },
     "distribution": {
       "all": "All to everyone",
@@ -3424,7 +3445,7 @@
       "bucketDistribution": "Shows how many items were assigned to each bucket (Good/Medium/Bad). Aggregated across all human and LLM evaluators.",
       "provenanceAnalysis": "Compares where rated content came from (generation LLM, prompt, and prompt+LLM pair) and highlights which origins most often end up in the top bucket. Format x/y = top-bucket hits divided by all assignments for that origin.",
       "ratingProvenanceAnalysis": "Compares where rated content came from (generation LLM, prompt, and prompt+LLM pair) and highlights which origins currently achieve the highest normalized rating scores.",
-      "conversationProvenance": "Analyzes conversation partner combinations. Derives who wrote the counselor and client messages (Human vs AI) and shows which combinations achieve the best ratings. Format: Counselor \u00d7 Client.",
+      "conversationProvenance": "Analyzes conversation partner combinations. Derives who wrote the counselor and client messages (Human vs AI) and shows which combinations achieve the best ratings. Format: Counselor × Client.",
       "authenticityProvenance": "Shows how well each LLM generation source fools evaluators. Fool rate = percentage of votes that incorrectly classified fake content as real. Higher fool rate means the LLM generates more convincing fake content.",
       "rankingAgreement": "Per summary: Did both evaluators place it in the same bucket? Counted as: Matching summaries / Co-rated summaries. Metrics use ordinal calculation (Bucket-Krippendorff)."
     },
@@ -5016,11 +5037,24 @@
       "emptyMembers": "No members yet",
       "removeMember": "Remove member"
     },
+    "accessRequests": {
+      "title": "Access Requests",
+      "empty": "No pending requests",
+      "approve": "Approve",
+      "reject": "Reject",
+      "approved": "Approved",
+      "rejected": "Rejected",
+      "requestAccess": "Request access",
+      "successMessage": "Request sent successfully",
+      "pendingRequests": "Pending Requests"
+    },
     "tree": {
       "files": "Files",
       "filePlaceholder": "File name",
       "uploadAsset": "Upload asset",
-      "collapse": "Collapse file tree"
+      "collapse": "Collapse file tree",
+      "onlineUsers": "Online ({count})",
+      "collabs": "Collabs"
     },
     "header": {
       "menuOpen": "Open menu",
@@ -5392,7 +5426,12 @@
         "namePlaceholder": "e.g. AI draft",
         "visibilityLabel": "Visibility",
         "inviteLabel": "Invite members",
-        "userPlaceholder": "Search and add users..."
+        "userPlaceholder": "Search and add users...",
+        "modeBlank": "Blank Workspace",
+        "modeUpload": "Upload ZIP",
+        "dropZone": "Drop ZIP file here or click to browse",
+        "maxSize": "Maximum 100 MB",
+        "nameOptional": "Workspace name (optional, defaults to ZIP filename)"
       }
     },
     "workspace": {
@@ -6529,6 +6568,39 @@
         "linkDeleted": "Link deleted"
       }
     },
+    "communication": {
+      "globalSettings": "Global Settings",
+      "masterToggle": "Communication enabled",
+      "statusEnabled": "Communication features are active. Users with permissions can access messaging and calls.",
+      "statusDisabled": "Communication features are disabled for all users. No one can access messaging.",
+      "userAccess": "User Access Management",
+      "searchUser": "Search user...",
+      "enableAll": "Enable all",
+      "disableAll": "Disable all",
+      "toggleSaved": "Communication setting saved",
+      "toggleError": "Failed to save communication setting",
+      "permError": "Failed to update permission",
+      "bulkEnabled": "All users enabled",
+      "bulkDisabled": "All users disabled",
+      "table": {
+        "user": "User",
+        "all": "All",
+        "access": "Access",
+        "transcription": "Transcription"
+      },
+      "statistics": "Communication Statistics",
+      "stats": {
+        "conversations": "Conversations",
+        "messages": "Messages",
+        "calls": "Calls",
+        "activeUsers": "Active Users",
+        "perUser": "Per-User Statistics",
+        "messagesSent": "Messages Sent",
+        "lastActive": "Last Active",
+        "unread": "Unread",
+        "privacyNote": "Privacy-by-Design: Only aggregate counts are shown. Message contents are never visible to admins."
+      }
+    },
     "rag": {
       "stats": {
         "documents": "Documents",
@@ -6732,6 +6804,236 @@
           "positiveNumber": "Must be greater than 0"
         }
       }
+    }
+  },
+  "conferenceManager": {
+    "title": "Conference Manager",
+    "tabs": {
+      "conferences": "Conferences",
+      "papers": "Papers",
+      "calendar": "Calendar",
+      "kanban": "Kanban Board",
+      "timeline": "Timeline"
+    },
+    "conference": {
+      "name": "Name",
+      "acronym": "Acronym",
+      "year": "Year",
+      "coreRanking": "CORE Ranking",
+      "submissionDeadline": "Submission Deadline",
+      "notificationDate": "Notification",
+      "startDate": "Start Date",
+      "endDate": "End Date",
+      "city": "City",
+      "country": "Country",
+      "website": "Website",
+      "keywords": "Keywords",
+      "notes": "Notes",
+      "location": "Location",
+      "create": "New Conference",
+      "edit": "Edit Conference"
+    },
+    "paper": {
+      "title": "Title",
+      "status": "Status",
+      "conference": "Conference",
+      "authors": "Authors",
+      "authorName": "Author Name",
+      "addAuthor": "Add Author",
+      "addExternal": "Add External Author",
+      "externalAuthor": "External Author",
+      "searchUser": "Search user...",
+      "noAuthors": "No authors added yet.",
+      "corresponding": "Corresponding",
+      "overleafUrl": "Overleaf URL",
+      "externalUrl": "External URL",
+      "keywords": "Keywords",
+      "description": "Description",
+      "notes": "Notes",
+      "updated": "Updated",
+      "create": "New Paper",
+      "edit": "Edit Paper",
+      "statuses": {
+        "planning": "Planning",
+        "inProgress": "In Progress",
+        "submitted": "Submitted",
+        "accepted": "Accepted",
+        "rejected": "Rejected",
+        "published": "Published"
+      },
+      "submissions": "Submission History",
+      "addSubmission": "Add Submission",
+      "submittedAt": "Submitted",
+      "decidedAt": "Decision",
+      "noSubmissions": "No submissions yet",
+      "currentSubmission": "Current",
+      "resubmissions": "resubmissions",
+      "submissionStatuses": {
+        "submitted": "Submitted",
+        "accepted": "Accepted",
+        "rejected": "Rejected",
+        "withdrawn": "Withdrawn"
+      },
+      "latexWorkspace": "LLARS LaTeX Workspace",
+      "selectWorkspace": "Select workspace",
+      "noAccess": "No access",
+      "requestAccess": "Request access",
+      "requestSent": "Access request sent",
+      "requestPending": "Request pending",
+      "openWorkspace": "Open workspace"
+    },
+    "filters": {
+      "search": "Search...",
+      "allRankings": "All Rankings",
+      "allStatuses": "All Statuses",
+      "allConferences": "All Conferences"
+    },
+    "stats": {
+      "conferences": "Conferences",
+      "papers": "Papers",
+      "upcomingDeadlines": "upcoming deadlines"
+    },
+    "actions": {
+      "cancel": "Cancel",
+      "save": "Save",
+      "create": "Create",
+      "delete": "Delete",
+      "confirmDelete": "Confirm Deletion",
+      "confirmDeleteConference": "Are you sure you want to delete \"{name}\"? Papers linked to this conference will keep their data.",
+      "confirmDeletePaper": "Are you sure you want to delete \"{name}\"?"
+    },
+    "legend": {
+      "ranking": "CORE Ranking",
+      "status": "Paper Status"
+    },
+    "empty": {
+      "conferences": "No conferences yet. Create your first one!",
+      "papers": "No papers yet. Create your first one!"
+    },
+    "calendar": {
+      "legend": "Legend",
+      "deadline": "Submission Deadline",
+      "notification": "Notification",
+      "conference": "Conference"
+    },
+    "kanban": {
+      "emptyColumn": "No papers",
+      "dragHint": "Drag to change status",
+      "addPaper": "Add Paper"
+    },
+    "timeline": {
+      "today": "Today",
+      "zoomIn": "Zoom In",
+      "zoomOut": "Zoom Out",
+      "months3": "3 Months",
+      "months6": "6 Months",
+      "months12": "12 Months",
+      "deadline": "Deadline",
+      "notification": "Notification",
+      "conferencePeriod": "Conference Period",
+      "todayMarker": "Current Date",
+      "noEvents": "No upcoming events"
+    },
+    "wizard": {
+      "title": "AI Conference Lookup",
+      "button": "AI Lookup",
+      "description": "Enter a conference name, acronym, or URL to automatically search and fill in the conference details.",
+      "inputLabel": "Conference name, acronym, or URL",
+      "inputPlaceholder": "e.g. NeurIPS 2026",
+      "hint": "Works best with specific names including year",
+      "search": "Search with AI",
+      "retry": "Retry",
+      "steps": {
+        "searching": "Searching for conference...",
+        "scraping": "Reading conference website...",
+        "analyzing": "Extracting conference data...",
+        "done": "Done"
+      },
+      "errors": {
+        "noResults": "No search results found. Try a different query.",
+        "failed": "Something went wrong. Please try again.",
+        "noLlm": "No LLM model configured. Please contact an administrator."
+      }
+    },
+    "validation": {
+      "required": "This field is required"
+    },
+    "series": {
+      "select": "Conference Series",
+      "hint": "Link to a series for grouping yearly editions",
+      "create": "New Series",
+      "addEdition": "Add Edition",
+      "linkDetected": "Existing series detected",
+      "standalone": "Standalone Conferences",
+      "groupBySeries": "Group by Series"
+    },
+    "venueMap": {
+      "distance": "from Nuremberg",
+      "geocoding": "Loading map...",
+      "geocodeFailed": "Could not find this location on the map.",
+      "error": "Map could not be loaded."
+    }
+  },
+  "messaging": {
+    "title": "Messages",
+    "newChat": "New Chat",
+    "newGroup": "New Group",
+    "startChat": "Start Chat",
+    "createGroup": "Create Group",
+    "selectUser": "Select user",
+    "groupName": "Group name",
+    "groupDescription": "Description (optional)",
+    "addMembers": "Add members",
+    "addMember": "Add Member",
+    "add": "Add",
+    "members": "Members",
+    "groupInfo": "Group Info",
+    "leaveGroup": "Leave Group",
+    "chatDisabled": "Chat is not available for your account",
+    "typeMessage": "Type a message...",
+    "send": "Send",
+    "reply": "Reply",
+    "copy": "Copy",
+    "edit": "Edit",
+    "delete": "Delete",
+    "edited": "edited",
+    "encrypted": "End-to-end encrypted",
+    "messageDeleted": "This message was deleted",
+    "noMessages": "No messages yet",
+    "noConversations": "No conversations yet",
+    "loading": "Loading conversations...",
+    "loadingMessages": "Loading messages...",
+    "loadMore": "Load earlier messages",
+    "searchPlaceholder": "Search conversations...",
+    "selectConversation": "Select a conversation",
+    "selectConversationHint": "Choose a chat from the list or start a new one",
+    "unavailable": "Messaging is currently not available",
+    "unavailableHint": "This feature has been disabled by an administrator. Please contact your admin if you need access.",
+    "backToHome": "Back to Home",
+    "today": "Today",
+    "yesterday": "Yesterday",
+    "newMessages": "New messages",
+    "isTyping": "is typing",
+    "areTyping": "are typing",
+    "severalTyping": "Several people are typing",
+    "aiAccess": "AI Access",
+    "aiAccessTooltip": "Allow AI to access encrypted messages for summarization",
+    "close": "Close",
+    "call": {
+      "voice": "Voice Call",
+      "video": "Video Call",
+      "transcription": "Live Transcript",
+      "noTranscript": "No transcript yet",
+      "liveTranscription": "Live transcription active",
+      "incoming": "Incoming Call",
+      "accept": "Accept",
+      "decline": "Decline",
+      "ended": "Call ended",
+      "duration": "Duration"
+    },
+    "errors": {
+      "sendFailed": "Failed to send message",
+      "loadFailed": "Failed to load messages"
     }
   }
 }

@@ -171,7 +171,7 @@ export function useScenarioManager() {
   /**
    * Invite users to a scenario
    */
-  async function inviteUsers(scenarioId, userIds, role = 'EVALUATOR') {
+  async function inviteUsers(scenarioId, userIds, role = 'ASSESSOR') {
     try {
       const response = await axios.post(`/api/scenarios/${scenarioId}/invite`, {
         user_ids: userIds,

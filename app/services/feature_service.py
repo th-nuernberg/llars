@@ -112,54 +112,6 @@ class FeatureService:
         return FeatureType.query.all()
 
     @staticmethod
-    def get_llm_by_name(name: str) -> Optional['LLM']:
-        """
-        Get LLM by name.
-
-        Args:
-            name: LLM name (e.g., "gpt-4", "claude-3")
-
-        Returns:
-            LLM object if found, None otherwise
-        """
-        from db.models import LLM
-
-        return LLM.query.filter_by(name=name).first()
-
-    @staticmethod
-    def get_or_create_llm(name: str) -> 'LLM':
-        """
-        Get or create an LLM.
-
-        Args:
-            name: LLM name
-
-        Returns:
-            LLM object
-        """
-        from db.models import LLM
-
-        llm = FeatureService.get_llm_by_name(name)
-        if not llm:
-            llm = LLM(name=name)
-            db.session.add(llm)
-            db.session.flush()
-
-        return llm
-
-    @staticmethod
-    def get_all_llms() -> List['LLM']:
-        """
-        Get all LLMs.
-
-        Returns:
-            List of LLM objects
-        """
-        from db.models import LLM
-
-        return LLM.query.all()
-
-    @staticmethod
     def get_feature_by_id(feature_id: int) -> Optional['Feature']:
         """
         Get feature by ID.
@@ -193,7 +145,7 @@ class FeatureService:
     def get_feature_by_attributes(
         thread_id: int,
         type_id: int,
-        llm_id: int,
+        model_id: str,
         content: Optional[str] = None
     ) -> Optional['Feature']:
         """
@@ -202,7 +154,7 @@ class FeatureService:
         Args:
             thread_id: The thread ID
             type_id: The feature type ID
-            llm_id: The LLM ID
+            model_id: The model identifier string
             content: Optional content to match
 
         Returns:
@@ -213,7 +165,7 @@ class FeatureService:
         query = Feature.query.filter_by(
             thread_id=thread_id,
             type_id=type_id,
-            llm_id=llm_id
+            model_id=model_id
         )
 
         if content is not None:
@@ -260,24 +212,20 @@ class FeatureService:
         ).all()
 
     @staticmethod
-    def get_features_by_llm(thread_id: int, llm_name: str) -> List['Feature']:
+    def get_features_by_model(thread_id: int, model_id: str) -> List['Feature']:
         """
-        Get features for a thread filtered by LLM.
+        Get features for a thread filtered by model.
 
         Args:
             thread_id: The thread ID
-            llm_name: The LLM name
+            model_id: The model identifier string
 
         Returns:
             List of Feature objects
         """
-        from db.models import Feature, LLM
-
-        llm = FeatureService.get_llm_by_name(llm_name)
-        if not llm:
-            return []
+        from db.models import Feature
 
         return Feature.query.filter_by(
             thread_id=thread_id,
-            llm_id=llm.llm_id
+            model_id=model_id
         ).all()

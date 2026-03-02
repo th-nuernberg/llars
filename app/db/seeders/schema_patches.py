@@ -1073,6 +1073,28 @@ def apply_schema_patches(db) -> None:
             ),
         )
 
+        # Scenario Stats Cache table (DB-backed stats cache for fast retrieval)
+        changed |= _ensure_table(
+            db,
+            table_name="scenario_stats_cache",
+            create_sql=(
+                """
+                CREATE TABLE `scenario_stats_cache` (
+                    `id` INT NOT NULL AUTO_INCREMENT,
+                    `scenario_id` INT NOT NULL,
+                    `stats_json` LONGTEXT NOT NULL,
+                    `function_type` VARCHAR(50) NOT NULL,
+                    `computed_at` DATETIME NOT NULL,
+                    `item_count` INT NOT NULL DEFAULT 0,
+                    `is_computing` TINYINT(1) NOT NULL DEFAULT 0,
+                    PRIMARY KEY (`id`),
+                    UNIQUE KEY `uix_scenario` (`scenario_id`),
+                    INDEX `idx_computed_at` (`computed_at`)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+                """
+            ),
+        )
+
         # =========================================================================
         # Provider-Prefix Routing: Migrate model IDs to prefixed format
         # =========================================================================

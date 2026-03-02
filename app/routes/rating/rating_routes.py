@@ -28,14 +28,11 @@ logger = logging.getLogger(__name__)
 
 
 def _emit_scenario_stats_updates(thread_id: int) -> None:
-    """Emit scenario stats updates via SocketIO."""
-    socketio = current_app.extensions.get('socketio')
-    if not socketio:
-        return
+    """Mark stats dirty for all scenarios containing this thread."""
     try:
-        from socketio_handlers.events_scenarios import emit_scenario_stats_updated
+        from services.scenario_stats_cache_service import mark_dirty
         for scenario_id in get_scenario_ids_for_thread(thread_id):
-            emit_scenario_stats_updated(socketio, scenario_id)
+            mark_dirty(scenario_id)
     except Exception:
         pass
 
@@ -93,7 +90,7 @@ def get_email_thread_for_ratings(thread_id):
         features = Feature.query.filter_by(item_id=thread_id).all()
         thread_data['features'] = [
             {
-                'model_name': feature.llm.name if feature.llm else 'Unknown',
+                'model_name': feature.model_id or 'Unknown',
                 'type': feature.feature_type.name if feature.feature_type else 'Summary',
                 'content': feature.content,
                 'user_rating': ratings_by_feature_id.get(feature.feature_id).rating_content
@@ -139,7 +136,7 @@ def get_email_thread_for_ratings(thread_id):
         ],
         'features': [
             {
-                'model_name': feature.llm.name if feature.llm else 'Unknown',
+                'model_name': feature.model_id or 'Unknown',
                 'type': feature.feature_type.name if feature.feature_type else 'Summary',
                 'content': feature.content,
                 'user_rating': ratings_by_feature_id.get(feature.feature_id).rating_content
@@ -177,7 +174,7 @@ def get_feature_and_messages(thread_id, feature_id):
         raise NotFoundError('No messages found for the given thread_id')
 
     feature_data = {
-        'model_name': feature.llm.name if feature.llm else 'Unknown',
+        'model_name': feature.model_id or 'Unknown',
         'type': feature.feature_type.name if feature.feature_type else 'Summary',
         'content': feature.content,
         'feature_id': feature.feature_id

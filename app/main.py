@@ -436,6 +436,24 @@ def start_pending_llm_evaluations():
                     all_ids = item['all_ids']
 
                     for model_id in llm_evaluators:
+                        # Skip models that had recent errors (cooldown: 30 min)
+                        # This prevents restart loops for models with bad API keys etc.
+                        from datetime import datetime, timedelta
+                        cooldown_cutoff = datetime.utcnow() - timedelta(minutes=30)
+                        recent_errors = db.session.query(db.func.count()).filter(
+                            LLMTaskResult.scenario_id == scenario.id,
+                            LLMTaskResult.model_id == model_id,
+                            LLMTaskResult.error.isnot(None),
+                            LLMTaskResult.updated_at >= cooldown_cutoff,
+                        ).scalar() or 0
+
+                        if recent_errors >= 3:
+                            print(
+                                f"[Startup] Skipping model {model_id} for scenario {scenario.id} "
+                                f"- {recent_errors} recent errors (cooldown active)"
+                            )
+                            continue
+
                         # Get IDs that already have successful results
                         completed_rows = db.session.query(LLMTaskResult.thread_id).filter(
                             LLMTaskResult.scenario_id == scenario.id,
@@ -445,8 +463,16 @@ def start_pending_llm_evaluations():
                         ).all()
                         completed_ids = {row[0] for row in completed_rows if row[0]}
 
-                        # Find IDs that need evaluation
-                        pending_ids = list(all_ids - completed_ids)
+                        # Also exclude items that have errors (don't retry on startup)
+                        errored_rows = db.session.query(LLMTaskResult.thread_id).filter(
+                            LLMTaskResult.scenario_id == scenario.id,
+                            LLMTaskResult.model_id == model_id,
+                            LLMTaskResult.error.isnot(None),
+                        ).all()
+                        errored_ids = {row[0] for row in errored_rows if row[0]}
+
+                        # Only start truly pending items (not completed, not errored)
+                        pending_ids = list(all_ids - completed_ids - errored_ids)
 
                         if pending_ids:
                             id_type = "sessions" if item['is_comparison'] else "threads"
@@ -458,7 +484,7 @@ def start_pending_llm_evaluations():
                             LLMAITaskRunner.run_for_scenario_async(
                                 scenario.id,
                                 model_ids=[model_id],
-                                thread_ids=pending_ids,  # Works for both threads and session IDs
+                                thread_ids=pending_ids,
                             )
                             total_started += 1
 
@@ -470,18 +496,11 @@ def start_pending_llm_evaluations():
             except Exception as e:
                 print(f"[Startup] Error starting LLM evaluations: {e}")
 
-    # Run in background thread after a short delay to let other services initialize
-    def _delayed_start():
-        import time
-        time.sleep(5)  # Wait 5 seconds for other services to be ready
-        _run_pending_evaluations()
-
-    # Start background thread - skip only if LLARS_SKIP_STARTUP_TASKS is set
-    # For Docker/Gunicorn, we always want to run this (unlike embedding worker which
-    # has special handling for Flask reloader)
-    thread = threading.Thread(target=_delayed_start, daemon=True)
-    thread.start()
-    print("[Startup] LLM evaluation checker scheduled")
+    # DISABLED: Auto-starting LLM evaluations on startup caused 100% CPU.
+    # Each failed item triggers stats recomputation (6s CPU-bound), and models
+    # with bad API keys would retry 500 items on every container restart.
+    # Users can manually retry via the Retry button in the Scenario Manager.
+    print("[Startup] LLM evaluation auto-start disabled (use Retry button in UI)")
 
 
 start_pending_llm_evaluations()

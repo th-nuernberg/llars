@@ -9,7 +9,7 @@ from . import data_blueprint
 from . import auth_blueprint
 from auth.decorators import authentik_required, admin_required, roles_required
 from db.database import db
-from db.tables import (User, EmailThread, Message, Feature, FeatureType, LLM, UserFeatureRanking,
+from db.tables import (User, EmailThread, Message, Feature, FeatureType, UserFeatureRanking,
                        FeatureFunctionType, UserFeatureRating,  UserGroup,ConsultingCategoryType, UserConsultingCategorySelection,
                        FeatureFunctionType, UserFeatureRating, UserMessageRating,
                        UserGroup, UserPrompt, UserPromptShare,
@@ -446,13 +446,15 @@ def search_users():
     query = request.args.get('q', '').strip()
     limit = min(int(request.args.get('limit', 10)), 50)
 
-    if len(query) < 2:
-        return jsonify({'users': [], 'message': 'Search query must be at least 2 characters'}), 200
+    filters = [
+        User.id != current_user.id,
+        User.deleted_at.is_(None),
+        User.is_active == True,
+    ]
+    if query:
+        filters.append(User.username.ilike(f'%{query}%'))
 
-    users = User.query.filter(
-        User.username.ilike(f'%{query}%'),
-        User.id != current_user.id
-    ).limit(limit).all()
+    users = User.query.filter(*filters).limit(limit).all()
 
     def build_user_dict(u):
         # Build avatar URL if user has custom avatar

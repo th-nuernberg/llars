@@ -21,7 +21,7 @@ def is_scenario_owner(scenario, username) -> bool:
     from db.models import ScenarioUsers, ScenarioRoles, User
     owner_entry = ScenarioUsers.query.filter_by(
         scenario_id=scenario.id,
-        role=ScenarioRoles.OWNER.value
+        role=ScenarioRoles.OWNER
     ).first()
     if owner_entry:
         owner_user = User.query.get(owner_entry.user_id)
@@ -31,10 +31,28 @@ def is_scenario_owner(scenario, username) -> bool:
     return False
 
 
+def is_scenario_manager(scenario, username) -> bool:
+    """Check if the user has MANAGER role for this scenario."""
+    if not isinstance(username, str):
+        username = getattr(username, 'username', str(username))
+
+    from db.models import ScenarioUsers, ScenarioRoles, User, MembershipStatus
+    manager_entry = ScenarioUsers.query.filter(
+        ScenarioUsers.scenario_id == scenario.id,
+        ScenarioUsers.role == ScenarioRoles.MANAGER,
+        ScenarioUsers.membership_status == MembershipStatus.ACTIVE
+    ).all()
+    for entry in manager_entry:
+        manager_user = User.query.get(entry.user_id)
+        if manager_user and manager_user.username == username:
+            return True
+    return False
+
+
 def check_scenario_ownership(scenario, user) -> bool:
     """
-    Check if user can manage this scenario.
-    Returns True if user is admin or scenario owner.
+    Check if user is the scenario OWNER or admin.
+    Used for owner-only actions (delete, remove owner).
     Raises ForbiddenError if not authorized.
     """
     username = getattr(user, 'username', str(user))
@@ -48,6 +66,26 @@ def check_scenario_ownership(scenario, user) -> bool:
         return True
 
     raise ForbiddenError(f'Only the scenario owner or admin can perform this action')
+
+
+def check_scenario_management_access(scenario, user) -> bool:
+    """
+    Check if user can manage this scenario (edit settings, invite users).
+    Allowed for: Owner, Manager, Admin.
+    Raises ForbiddenError if not authorized.
+    """
+    username = getattr(user, 'username', str(user))
+
+    if has_role(user, 'admin'):
+        return True
+
+    if is_scenario_owner(scenario, username):
+        return True
+
+    if is_scenario_manager(scenario, username):
+        return True
+
+    raise ForbiddenError(f'Only the scenario owner, manager, or admin can perform this action')
 
 
 def distribute_threads_to_users(thread_ids, user_ids):

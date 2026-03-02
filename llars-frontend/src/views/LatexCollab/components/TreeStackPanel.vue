@@ -154,7 +154,10 @@ function handleHeaderClick() {
 }
 
 .panel-badge.info {
-  background: rgb(var(--v-theme-info));
+  background: none;
+  color: rgba(var(--v-theme-on-surface), 0.4);
+  font-weight: 500;
+  padding: 0;
 }
 
 .panel-badge.success {

@@ -184,6 +184,11 @@ services:
       - REDIS_PORT=${REDIS_PORT:-6379}
       - REDIS_DB=${REDIS_DB:-0}
       - LLARS_SKIP_STARTUP_TASKS=${LLARS_SKIP_STARTUP_TASKS:-}
+      # LiveKit (Voice/Video Calls)
+      - LIVEKIT_API_KEY=${LIVEKIT_API_KEY:-devkey}
+      - LIVEKIT_API_SECRET=${LIVEKIT_API_SECRET:-devsecretdevsecretdevsecretdevsecret1234567890}
+      - LIVEKIT_API_URL=${LIVEKIT_API_URL:-http://livekit-service:7880}
+      - LIVEKIT_PUBLIC_URL=${LIVEKIT_PUBLIC_URL:-ws://localhost:7881}
     depends_on:
       db-maria-service:
         condition: service_healthy
@@ -219,6 +224,8 @@ services:
       - VITE_KEYCLOAK_CLIENT_ID=${AUTHENTIK_FRONTEND_CLIENT_ID:-llars-frontend}
       # When false (default), Socket.IO sticks to polling to avoid WebSocket errors with Werkzeug/threading
       - VITE_SOCKETIO_ENABLE_WEBSOCKET=${VITE_SOCKETIO_ENABLE_WEBSOCKET:-false}
+      # LiveKit public URL for WebRTC client connections
+      - VITE_LIVEKIT_PUBLIC_URL=${LIVEKIT_PUBLIC_URL:-ws://localhost:7881}
     develop:
       watch:
         - action: sync
@@ -437,6 +444,50 @@ services:
       interval: 5s
       timeout: 3s
       retries: 5
+
+  # LiveKit SFU - Voice/Video Calls
+  livekit-service:
+    container_name: llars_livekit_service
+    image: livekit/livekit-server:v1.8
+    ports:
+      - "7881:7881"   # TCP (WebSocket signaling)
+      - "7882:7882/udp"  # UDP (WebRTC media, start of range)
+    volumes:
+      - ./docker/livekit/livekit.yaml:/etc/livekit.yaml:ro
+    command: ["--config", "/etc/livekit.yaml"]
+    environment:
+      - TZ=Europe/Berlin
+      - "LIVEKIT_KEYS=${LIVEKIT_API_KEY:-devkey}: ${LIVEKIT_API_SECRET:-devsecretdevsecretdevsecretdevsecret1234567890}"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:7880 || exit 1"]
+      start_period: 10s
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # LiveKit Agents - STT Transcription Bot
+  livekit-agents-service:
+    container_name: llars_livekit_agents
+    build:
+      context: .
+      dockerfile: docker/livekit-agents/Dockerfile
+    environment:
+      - TZ=Europe/Berlin
+      - LIVEKIT_URL=ws://livekit-service:7880
+      - LIVEKIT_API_KEY=${LIVEKIT_API_KEY:-devkey}
+      - LIVEKIT_API_SECRET=${LIVEKIT_API_SECRET:-devsecretdevsecretdevsecretdevsecret1234567890}
+      - FLASK_API_URL=http://backend-flask-service:8081
+      - STT_DEFAULT_PROVIDER=${STT_DEFAULT_PROVIDER:-openai_whisper}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - GROQ_API_KEY=${GROQ_API_KEY:-}
+      - DEEPGRAM_API_KEY=${DEEPGRAM_API_KEY:-}
+    depends_on:
+      livekit-service:
+        condition: service_healthy
+      backend-flask-service:
+        condition: service_healthy
+    restart: unless-stopped
 
   # LLARS Redis - Server-autoritative Session Storage (Wizard Sessions, etc.)
   llars-redis:

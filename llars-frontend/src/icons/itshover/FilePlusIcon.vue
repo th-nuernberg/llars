@@ -44,7 +44,6 @@
 }
 
 .l-its-hover__file-plus-icon {
-  stroke: var(--plus-color);
   stroke-width: 2;
   transform-origin: 12px 14px;
   transition: all 0.25s ease;

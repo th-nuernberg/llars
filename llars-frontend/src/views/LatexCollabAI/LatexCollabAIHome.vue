@@ -53,7 +53,53 @@
       </i18n-t>
     </v-alert>
 
-    <v-row v-else>
+    <!-- Access Requests Card (only shown to workspace owners with pending requests) -->
+    <v-expand-transition>
+      <LCard v-if="accessRequests.length > 0" outlined class="mb-4">
+        <template #header>
+          <div class="d-flex align-center w-100">
+            <LIcon class="mr-2" color="warning">mdi-account-clock</LIcon>
+            <span class="text-h6">{{ $t('latexCollab.accessRequests.title') }}</span>
+            <v-chip size="x-small" color="warning" variant="flat" class="ml-2">{{ accessRequests.length }}</v-chip>
+          </div>
+        </template>
+
+        <div class="access-requests-list">
+          <div v-for="req in accessRequests" :key="req.id" class="request-row">
+            <LAvatar :username="req.requester_username" size="sm" />
+            <div class="request-info">
+              <div class="request-username">{{ req.requester_username }}</div>
+              <div class="request-meta">
+                {{ req.workspace?.name }} · {{ formatDate(req.created_at) }}
+              </div>
+              <div v-if="req.message" class="request-message">{{ req.message }}</div>
+            </div>
+            <div class="request-actions">
+              <LBtn
+                variant="primary"
+                size="small"
+                prepend-icon="mdi-check"
+                :loading="resolvingRequestId === req.id && resolvingAction === 'approve'"
+                @click="resolveRequest(req.id, 'approve')"
+              >
+                {{ $t('latexCollab.accessRequests.approve') }}
+              </LBtn>
+              <LBtn
+                variant="danger"
+                size="small"
+                prepend-icon="mdi-close"
+                :loading="resolvingRequestId === req.id && resolvingAction === 'reject'"
+                @click="resolveRequest(req.id, 'reject')"
+              >
+                {{ $t('latexCollab.accessRequests.reject') }}
+              </LBtn>
+            </div>
+          </div>
+        </div>
+      </LCard>
+    </v-expand-transition>
+
+    <v-row v-if="hasPermission('feature:latex_collab:view')">
       <v-col cols="12">
         <v-skeleton-loader v-if="isLoading('workspaces')" type="card@3" />
 
@@ -178,12 +224,54 @@
           </div>
         </template>
 
+        <!-- Mode toggle -->
+        <v-btn-toggle v-model="createMode" mandatory density="comfortable" class="mb-4 w-100" divided variant="outlined" color="primary">
+          <v-btn value="blank" class="flex-grow-1">
+            <LIcon class="mr-1" size="18">mdi-file-outline</LIcon>
+            {{ $t('latexCollabAi.home.form.modeBlank') }}
+          </v-btn>
+          <v-btn value="upload" class="flex-grow-1">
+            <LIcon class="mr-1" size="18">mdi-folder-zip-outline</LIcon>
+            {{ $t('latexCollabAi.home.form.modeUpload') }}
+          </v-btn>
+        </v-btn-toggle>
+
         <v-alert v-if="createError" type="error" variant="tonal" class="mb-4">
           {{ createError }}
         </v-alert>
+
+        <!-- ZIP upload zone (upload mode) -->
+        <div v-if="createMode === 'upload'" class="mb-4">
+          <div
+            v-if="!selectedZipFile"
+            class="drop-zone"
+            :class="{ 'drop-zone--active': isDragOver }"
+            @dragover.prevent="isDragOver = true"
+            @dragleave.prevent="isDragOver = false"
+            @drop.prevent="handleFileDrop"
+            @click="$refs.zipFileInput.click()"
+          >
+            <LIcon size="40" color="primary" class="mb-2">mdi-cloud-upload-outline</LIcon>
+            <div class="text-body-1">{{ $t('latexCollabAi.home.form.dropZone') }}</div>
+            <div class="text-caption text-medium-emphasis mt-1">{{ $t('latexCollabAi.home.form.maxSize') }}</div>
+          </div>
+          <div v-else class="selected-file pa-3 rounded-lg">
+            <div class="d-flex align-center">
+              <LIcon class="mr-2" color="primary">mdi-folder-zip</LIcon>
+              <div class="flex-grow-1">
+                <div class="text-body-2 font-weight-medium">{{ selectedZipFile.name }}</div>
+                <div class="text-caption text-medium-emphasis">{{ formatFileSize(selectedZipFile.size) }}</div>
+              </div>
+              <LIconBtn icon="mdi-close" size="small" :tooltip="$t('common.delete')" @click="selectedZipFile = null" />
+            </div>
+            <v-progress-linear v-if="uploadProgress > 0 && creating" :model-value="uploadProgress" color="primary" class="mt-2" rounded />
+          </div>
+          <input ref="zipFileInput" type="file" accept=".zip" hidden @change="handleFileSelect" />
+        </div>
+
         <v-text-field
           v-model="newWorkspaceName"
-          :label="$t('latexCollabAi.home.form.nameLabel')"
+          :label="createMode === 'upload' ? $t('latexCollabAi.home.form.nameOptional') : $t('latexCollabAi.home.form.nameLabel')"
           :placeholder="$t('latexCollabAi.home.form.namePlaceholder')"
           prepend-inner-icon="mdi-folder"
           variant="outlined"
@@ -346,6 +434,9 @@ const API_BASE = import.meta.env.VITE_API_BASE_URL || ''
 
 const workspaces = ref([])
 const newWorkspaceIds = ref(new Set())
+const accessRequests = ref([])
+const resolvingRequestId = ref(null)
+const resolvingAction = ref(null)
 const userInfoUsername = ref('')
 const currentUsername = computed(() => userInfoUsername.value || permissionsUsername.value || '')
 
@@ -362,6 +453,10 @@ const newWorkspaceName = ref('')
 const newWorkspaceVisibility = ref('private')
 const invitedUsers = ref([])
 const userSearchRef = ref(null)
+const createMode = ref('blank')
+const selectedZipFile = ref(null)
+const uploadProgress = ref(0)
+const isDragOver = ref(false)
 
 const visibilityItems = computed(() => ([
   { title: t('latexCollabAi.visibility.private'), value: 'private' },
@@ -370,7 +465,9 @@ const visibilityItems = computed(() => ([
 ]))
 
 const canCreate = computed(() => {
-  return hasPermission('feature:latex_collab:edit') && newWorkspaceName.value.trim().length >= 2
+  if (!hasPermission('feature:latex_collab:edit')) return false
+  if (createMode.value === 'upload') return !!selectedZipFile.value
+  return newWorkspaceName.value.trim().length >= 2
 })
 
 function authHeaders() {
@@ -486,6 +583,38 @@ async function loadWorkspaces(force = false) {
   })
 }
 
+async function loadAccessRequests() {
+  try {
+    const res = await axios.get(`${API_BASE}/api/latex-collab/workspaces/access-requests`, {
+      headers: authHeaders(),
+    })
+    accessRequests.value = res.data.requests || []
+  } catch (e) {
+    console.error('Failed to load access requests:', e)
+  }
+}
+
+async function resolveRequest(requestId, action) {
+  resolvingRequestId.value = requestId
+  resolvingAction.value = action
+  try {
+    await axios.put(
+      `${API_BASE}/api/latex-collab/access-requests/${requestId}`,
+      { action },
+      { headers: authHeaders() }
+    )
+    accessRequests.value = accessRequests.value.filter(r => r.id !== requestId)
+    if (action === 'approve') {
+      await loadWorkspaces(true)
+    }
+  } catch (e) {
+    console.error('Failed to resolve request:', e)
+  } finally {
+    resolvingRequestId.value = null
+    resolvingAction.value = null
+  }
+}
+
 function openWorkspace(id) {
   router.push(`/LatexCollab/workspace/${id}`)
 }
@@ -507,21 +636,69 @@ function resetCreateDialog() {
   invitedUsers.value = []
   userSearchRef.value?.reset?.()
   createError.value = ''
+  createMode.value = 'blank'
+  selectedZipFile.value = null
+  uploadProgress.value = 0
+  isDragOver.value = false
+}
+
+function handleFileDrop(e) {
+  isDragOver.value = false
+  const file = e.dataTransfer?.files?.[0]
+  if (file && file.name.toLowerCase().endsWith('.zip')) {
+    selectedZipFile.value = file
+  }
+}
+
+function handleFileSelect(e) {
+  const file = e.target?.files?.[0]
+  if (file) selectedZipFile.value = file
+  e.target.value = ''
+}
+
+function formatFileSize(bytes) {
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }
 
 async function createWorkspace() {
   createError.value = ''
   creating.value = true
+  uploadProgress.value = 0
   try {
-    const res = await axios.post(
-      `${API_BASE}/api/latex-collab/workspaces`,
-      {
-        name: newWorkspaceName.value.trim(),
-        visibility: newWorkspaceVisibility.value
-      },
-      { headers: authHeaders() }
-    )
-    const ws = res.data.workspace
+    let ws
+
+    if (createMode.value === 'upload' && selectedZipFile.value) {
+      const formData = new FormData()
+      formData.append('file', selectedZipFile.value)
+      if (newWorkspaceName.value.trim()) {
+        formData.append('name', newWorkspaceName.value.trim())
+      }
+      formData.append('visibility', newWorkspaceVisibility.value)
+
+      const res = await axios.post(
+        `${API_BASE}/api/latex-collab/workspaces/import`,
+        formData,
+        {
+          headers: { ...authHeaders(), 'Content-Type': 'multipart/form-data' },
+          onUploadProgress: (e) => {
+            if (e.total) uploadProgress.value = Math.round((e.loaded / e.total) * 100)
+          }
+        }
+      )
+      ws = res.data.workspace
+    } else {
+      const res = await axios.post(
+        `${API_BASE}/api/latex-collab/workspaces`,
+        {
+          name: newWorkspaceName.value.trim(),
+          visibility: newWorkspaceVisibility.value
+        },
+        { headers: authHeaders() }
+      )
+      ws = res.data.workspace
+    }
 
     // Invite users if any were selected
     if (ws?.id && invitedUsers.value.length > 0) {
@@ -568,12 +745,21 @@ function handleWorkspaceShared(payload) {
   markWorkspaceNew(workspace.id)
 }
 
+function handleAccessRequestSocket(payload) {
+  const req = payload?.request
+  if (!req?.id) return
+  if (!accessRequests.value.some(r => r.id === req.id)) {
+    accessRequests.value = [req, ...accessRequests.value]
+  }
+}
+
 function setupWorkspaceSocket(userId) {
   if (!userId) return
   socket = getSocket()
   if (!socket) return
 
   socket.on('latex_collab:workspace_shared', handleWorkspaceShared)
+  socket.on('latex_collab:access_request_created', handleAccessRequestSocket)
 
   onSocketConnect = () => {
     socket.emit('latex_collab:subscribe', { user_id: userId })
@@ -589,6 +775,7 @@ function setupWorkspaceSocket(userId) {
 function cleanupWorkspaceSocket() {
   if (!socket) return
   socket.off('latex_collab:workspace_shared', handleWorkspaceShared)
+  socket.off('latex_collab:access_request_created', handleAccessRequestSocket)
   if (onSocketConnect) socket.off('connect', onSocketConnect)
   if (socketUserId) {
     socket.emit('latex_collab:unsubscribe', { user_id: socketUserId })
@@ -601,6 +788,7 @@ onMounted(async () => {
   await fetchPermissions()
   if (hasPermission('feature:latex_collab:view')) {
     await loadWorkspaces()
+    loadAccessRequests()
     const userId = await fetchUserInfo()
     if (userId) setupWorkspaceSocket(userId)
   }
@@ -659,6 +847,27 @@ onUnmounted(() => {
   }
 }
 
+/* Create Dialog - Drop Zone */
+.drop-zone {
+  border: 2px dashed rgba(var(--v-theme-primary), 0.4);
+  border-radius: 12px;
+  padding: 32px 16px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.2s, background-color 0.2s;
+}
+
+.drop-zone:hover,
+.drop-zone--active {
+  border-color: rgb(var(--v-theme-primary));
+  background-color: rgba(var(--v-theme-primary), 0.06);
+}
+
+.selected-file {
+  border: 1px solid rgba(var(--v-theme-primary), 0.3);
+  background-color: rgba(var(--v-theme-primary), 0.04);
+}
+
 /* Create Dialog - Invite Section */
 .section-label {
   font-size: 12px;
@@ -675,6 +884,50 @@ onUnmounted(() => {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+}
+
+/* Access Requests */
+.access-requests-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.request-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  background: rgba(var(--v-theme-surface-variant), 0.3);
+  border-radius: 10px 4px 10px 4px;
+}
+
+.request-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.request-username {
+  font-weight: 500;
+  font-size: 14px;
+}
+
+.request-meta {
+  font-size: 12px;
+  color: rgba(var(--v-theme-on-surface), 0.6);
+}
+
+.request-message {
+  font-size: 13px;
+  font-style: italic;
+  color: rgba(var(--v-theme-on-surface), 0.5);
+  margin-top: 2px;
+}
+
+.request-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
 }
 
 /* Page header */

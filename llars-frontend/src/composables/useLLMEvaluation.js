@@ -14,6 +14,7 @@
 import { ref, computed, onMounted, onUnmounted, readonly } from 'vue'
 import axios from 'axios'
 import { getSocket } from '@/services/socketService'
+import { useModelRegistry } from '@/composables/useModelRegistry'
 
 /**
  * Evaluation status constants
@@ -44,6 +45,8 @@ export const TASK_TYPES = {
  * @returns {Object} Evaluation state and methods
  */
 export function useLLMEvaluation(initialScenarioId = null) {
+  const { updateRegistry } = useModelRegistry()
+
   // ===== State =====
   const status = ref(EVAL_STATUS.IDLE)
   const progress = ref({
@@ -337,6 +340,11 @@ export function useLLMEvaluation(initialScenarioId = null) {
 
         if (response.data.status) {
           status.value = response.data.status
+        }
+
+        // Feed model registry for consistent LLM display names
+        if (response.data.model_registry) {
+          updateRegistry(response.data.model_registry)
         }
       }
     } catch (err) {

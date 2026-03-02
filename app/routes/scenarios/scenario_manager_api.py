@@ -18,6 +18,7 @@ This module uses the unified EvaluationData schemas for evaluation types:
 
 import json
 import logging
+import time
 from datetime import datetime
 from flask import jsonify, request, g, current_app
 from auth.decorators import authentik_required
@@ -37,12 +38,24 @@ from db.tables import (
 from db.models.authenticity import UserAuthenticityVote
 from db.models.llm_task_result import LLMTaskResult
 from schemas.evaluation_data_schemas import EvaluationType
-from services.scenario_stats_service import get_progress_stats, get_authenticity_stats, get_scenario_stats_payload
+from services.scenario_stats_service import get_authenticity_stats, get_scenario_stats_payload
 from services.user_profile_service import serialize_user_brief
 from .. import data_blueprint
-from .scenario_utils import is_scenario_owner, check_scenario_ownership
+from .scenario_utils import is_scenario_owner, check_scenario_ownership, check_scenario_management_access, is_scenario_manager
 
 logger = logging.getLogger(__name__)
+
+# Cooldown for LLM auto-start: {scenario_id: last_trigger_timestamp}
+_llm_auto_start_cooldowns: dict[int, float] = {}
+_LLM_AUTO_START_COOLDOWN_SECONDS = 300  # 5 minutes
+
+
+def _normalize_role_value(role) -> str:
+    """Normalize role value for API: map DB 'Evaluator' to display 'Assessor'."""
+    val = role.value if hasattr(role, 'value') else str(role)
+    if val == 'Evaluator':
+        return 'Assessor'
+    return val
 
 
 def _normalize_llm_evaluators(config):
@@ -77,16 +90,13 @@ def _normalize_llm_evaluators(config):
 
 
 def _emit_scenario_stats_update(scenario_id: int) -> None:
-    """Emit WebSocket event when scenario stats change (e.g., config updated)."""
-    socketio = current_app.extensions.get('socketio')
-    if not socketio:
-        return
+    """Mark stats dirty when scenario config changes (e.g., LLM evaluators updated)."""
     try:
-        from socketio_handlers.events_scenarios import emit_scenario_stats_updated
-        emit_scenario_stats_updated(socketio, scenario_id)
-        logger.debug(f"Emitted scenario stats update for scenario {scenario_id}")
+        from services.scenario_stats_cache_service import mark_dirty
+        mark_dirty(scenario_id)
+        logger.debug(f"Marked stats dirty for scenario {scenario_id}")
     except Exception as e:
-        logger.warning(f"Failed to emit scenario stats update: {e}")
+        logger.warning(f"Failed to mark stats dirty: {e}")
 
 
 def _extract_current_user_progress_from_stats(stats_data, user, fallback_total=0):
@@ -172,7 +182,7 @@ def get_user_scenarios(user, invitation_filter=None):
         for su in scenario_users:
             invitation_map[su.scenario_id] = {
                 'status': su.invitation_status.value if su.invitation_status else 'accepted',
-                'role': su.role.value if su.role else 'EVALUATOR',
+                'role': _normalize_role_value(su.role) if su.role else 'Assessor',
                 'invited_at': su.invited_at.isoformat() if su.invited_at else None,
                 'invited_by': su.invited_by
             }
@@ -246,6 +256,18 @@ def format_scenario_for_api(scenario, user, invitation_map=None, include_detaile
         if inv_info and inv_info.get('role') == ScenarioRoles.OWNER.value:
             is_owner = True
 
+    # Determine management access (Owner or Manager) and user's role
+    can_manage = is_owner or is_scenario_manager(scenario, username)
+    user_role = None
+    if is_owner:
+        user_role = 'Owner'
+    elif invitation_map and scenario.id in invitation_map:
+        user_role = _normalize_role_value(invitation_map[scenario.id].get('role', 'Assessor'))
+    elif user_id:
+        su = ScenarioUsers.query.filter_by(scenario_id=scenario.id, user_id=user_id).first()
+        if su:
+            user_role = _normalize_role_value(su.role)
+
     # Get function type name
     func_type = FeatureFunctionType.query.filter_by(
         function_type_id=scenario.function_type_id
@@ -287,86 +309,41 @@ def format_scenario_for_api(scenario, user, invitation_map=None, include_detaile
     user_progress = {'completed': 0, 'progressing': 0, 'total': thread_count}
 
     if include_detailed_stats and thread_count > 0:
-        # Calculate detailed progress stats from actual evaluations
+        # Use lightweight progress counts instead of full stats (no agreement metrics)
         try:
-            progress_data = get_progress_stats(scenario.id)
-            rater_stats = progress_data.get('rater_stats', [])
-            evaluator_stats = progress_data.get('evaluator_stats', [])
+            from services.scenario_stats_service import get_user_progress_counts
+            progress_counts = get_user_progress_counts(scenario.id)
 
-            # Find current user's progress (check both raters and evaluators)
-            all_user_stats = rater_stats + [e for e in evaluator_stats if not e.get('is_llm')]
-            user_found = False
-            for user_stat in all_user_stats:
-                if user_stat.get('username') == username:
-                    user_progress = {
-                        'completed': user_stat.get('done_threads', 0),
-                        'progressing': user_stat.get('progressing_threads', 0),
-                        'total': user_stat.get('total_threads', thread_count)
-                    }
-                    user_found = True
-                    break
+            # Find current user's progress
+            if username in progress_counts:
+                up = progress_counts[username]
+                user_progress = {
+                    'completed': up['done'],
+                    'progressing': up['progressing'],
+                    'total': up['total'],
+                }
 
-            # Fallback for owners not in ScenarioUsers: calculate progress directly
-            if not user_found and is_owner:
-                from db.models import ItemDimensionRating, ProgressionStatus
-                from db.models import ScenarioThreads as ST, UserMailHistoryRating
-                scenario_thread_ids = [
-                    st.thread_id for st in ST.query.filter_by(scenario_id=scenario.id).all()
-                ]
-                if scenario_thread_ids:
-                    # Check ItemDimensionRating for this user's progress
-                    user_ratings = ItemDimensionRating.query.filter(
-                        ItemDimensionRating.user_id == user_id,
-                        ItemDimensionRating.scenario_id == scenario.id,
-                        ItemDimensionRating.item_id.in_(scenario_thread_ids)
-                    ).all()
+            # Aggregate all user stats
+            human_done = sum(p['done'] for p in progress_counts.values())
+            human_total = sum(p['total'] for p in progress_counts.values())
+            raters_done = sum(
+                1 for p in progress_counts.values()
+                if p['done'] == p['total'] and p['total'] > 0
+            )
 
-                    completed = sum(1 for r in user_ratings if r.status == ProgressionStatus.DONE)
-                    progressing = sum(1 for r in user_ratings if r.status == ProgressionStatus.PROGRESSING)
-
-                    # Also check mail_rating if function_type is mail_rating (3)
-                    if scenario.function_type_id == 3:
-                        mail_ratings = UserMailHistoryRating.query.filter(
-                            UserMailHistoryRating.user_id == user_id,
-                            UserMailHistoryRating.thread_id.in_(scenario_thread_ids)
-                        ).all()
-                        completed = sum(1 for r in mail_ratings if r.status == ProgressionStatus.DONE)
-                        progressing = sum(1 for r in mail_ratings if r.status == ProgressionStatus.PROGRESSING)
-
-                    user_progress = {
-                        'completed': completed,
-                        'progressing': progressing,
-                        'total': thread_count
-                    }
-
-            # Aggregate human evaluator stats
-            human_stats = rater_stats + [e for e in evaluator_stats if not e.get('is_llm')]
-            human_done = sum(u.get('done_threads', 0) for u in human_stats)
-            human_total = sum(u.get('total_threads', 0) for u in human_stats)
-
-            # Aggregate LLM evaluator stats
-            llm_stats = [e for e in evaluator_stats if e.get('is_llm')]
-            llm_done = sum(u.get('done_threads', 0) for u in llm_stats)
-            llm_total = sum(u.get('total_threads', 0) for u in llm_stats)
-
-            # Count users who are fully done
-            raters_done = len([u for u in rater_stats if u.get('done_threads', 0) == u.get('total_threads', 0) and u.get('total_threads', 0) > 0])
-
-            # Total evaluations = sum of expected evaluations from all evaluators
-            # This ensures progress calculation is correct (completed/total <= 100%)
-            total_expected = human_total + llm_total
+            # LLM progress is computed separately by the /stats endpoint
             stats = {
-                'total': total_expected if total_expected > 0 else thread_count,
-                'completed': human_done + llm_done,
+                'total': human_total if human_total > 0 else thread_count,
+                'completed': human_done,
                 'human_total': human_total,
                 'human_completed': human_done,
-                'llm_total': llm_total,
-                'llm_completed': llm_done,
+                'llm_total': 0,
+                'llm_completed': 0,
                 'raters_done': raters_done,
-                'total_raters': len(rater_stats)
+                'total_raters': len(progress_counts)
             }
         except Exception as e:
-            logger.warning(f"Failed to calculate detailed stats for scenario {scenario.id}: {e}")
+            logger.warning(f"Failed to calculate progress for scenario {scenario.id}: {e}")
             stats = {
                 'total': thread_count,
                 'completed': 0,
@@ -413,7 +390,7 @@ def format_scenario_for_api(scenario, user, invitation_map=None, include_detaile
         if su:
             invitation_info = {
                 'status': su.invitation_status.value if su.invitation_status else 'accepted',
-                'role': su.role.value if su.role else 'EVALUATOR',
+                'role': _normalize_role_value(su.role) if su.role else 'Assessor',
                 'invited_at': su.invited_at.isoformat() if su.invited_at else None,
                 'invited_by': su.invited_by
             }
@@ -428,8 +405,9 @@ def format_scenario_for_api(scenario, user, invitation_map=None, include_detaile
         'end': scenario.end.isoformat() if scenario.end else None,
         'created_at': scenario.begin.isoformat() if scenario.begin else None,  # Using begin as proxy
         'status': status,
-        'visibility': getattr(scenario, 'visibility', 'private'),
         'is_owner': is_owner,
+        'can_manage': can_manage,
+        'user_role': user_role,
         'owner_name': owner_name,
         'thread_count': thread_count,
         'user_count': user_count,
@@ -535,21 +513,14 @@ def get_scenario_detail(scenario_id):
     # Get detailed stats for detail view
     result = format_scenario_for_api(scenario, user, invitation_map=invitation_map, include_detailed_stats=True)
 
-    # Get detailed user stats from progress service
+    # Get lightweight user progress counts (no expensive agreement metrics)
     try:
-        progress_data = get_progress_stats(scenario.id)
-        user_stats_map = {}
-        for rater in progress_data.get('rater_stats', []):
-            user_stats_map[rater['username']] = {
-                'done': rater.get('done_threads', 0),
-                'total': rater.get('total_threads', 0)
-            }
-        for evaluator in progress_data.get('evaluator_stats', []):
-            if not evaluator.get('is_llm'):
-                user_stats_map[evaluator['username']] = {
-                    'done': evaluator.get('done_threads', 0),
-                    'total': evaluator.get('total_threads', 0)
-                }
+        from services.scenario_stats_service import get_user_progress_counts
+        progress_counts = get_user_progress_counts(scenario.id)
+        user_stats_map = {
+            uname: {'done': p['done'], 'total': p['total']}
+            for uname, p in progress_counts.items()
+        }
     except Exception:
         user_stats_map = {}
 
@@ -568,7 +539,7 @@ def get_scenario_detail(scenario_id):
                 'user_id': su.user_id,
                 'username': db_user.username,
                 'display_name': getattr(db_user, 'display_name', db_user.username),
-                'role': su.role.value if hasattr(su.role, 'value') else str(su.role),
+                'role': _normalize_role_value(su.role) if su.role else 'Assessor',
                 'avatar_seed': avatar.get('avatar_seed'),
                 'avatar_url': avatar.get('avatar_url'),
                 'completed': user_progress.get('done', 0),
@@ -591,59 +562,8 @@ def get_scenario_detail(scenario_id):
         config['llm_evaluators'] = llm_evaluators
     result['llm_evaluators'] = llm_evaluators
 
-    if llm_evaluators and (is_admin or is_owner) and result.get('thread_count', 0) > 0:
-        try:
-            # Get all item IDs for this scenario (threads or comparison sessions)
-            function_type = FeatureFunctionType.query.filter_by(
-                function_type_id=scenario.function_type_id
-            ).first()
-            function_name = function_type.name if function_type else None
-
-            if function_name == "comparison":
-                all_thread_ids = {session.id for session in ComparisonSession.query.filter_by(scenario_id=scenario.id).all()}
-                id_label = "sessions"
-            else:
-                scenario_threads = ScenarioThreads.query.filter_by(scenario_id=scenario.id).all()
-                all_thread_ids = {st.thread_id for st in scenario_threads}
-                id_label = "threads"
-
-            if all_thread_ids:
-                # For each model, find which threads are missing evaluations
-                from services.llm.llm_ai_task_runner import LLMAITaskRunner
-
-                for model_id in llm_evaluators:
-                    # Get threads that already have results for this model
-                    completed_rows = db.session.query(LLMTaskResult.thread_id).filter(
-                        LLMTaskResult.scenario_id == scenario.id,
-                        LLMTaskResult.model_id == model_id,
-                        LLMTaskResult.payload_json.isnot(None),
-                        LLMTaskResult.error.is_(None),
-                    ).all()
-                    completed_thread_ids = {row[0] for row in completed_rows if row[0]}
-
-                    # Find threads that need evaluation
-                    pending_thread_ids = list(all_thread_ids - completed_thread_ids)
-
-                    if pending_thread_ids:
-                        logger.info(
-                            "[LLM AI Runner] Auto-starting %s for scenario %s: %d/%d %s pending",
-                            model_id,
-                            scenario.id,
-                            len(pending_thread_ids),
-                            len(all_thread_ids),
-                            id_label,
-                        )
-                        LLMAITaskRunner.run_for_scenario_async(
-                            scenario.id,
-                            model_ids=[model_id],
-                            thread_ids=pending_thread_ids,
-                        )
-        except Exception as exc:
-            logger.warning(
-                "[LLM AI Runner] Auto-start failed for scenario %s: %s",
-                scenario.id,
-                exc,
-            )
+    # LLM auto-start DISABLED - was causing 100% CPU on scenarios with failing models.
+    # Users can manually start/retry evaluations via the LLM Evaluation tab or Retry button.
 
     return jsonify(result), 200
 
@@ -1612,7 +1532,7 @@ def update_scenario(scenario_id):
     """
     Update an existing scenario.
 
-    Only the owner or admin can update a scenario.
+    Owner, Manager, or Admin can update a scenario.
     """
     user = g.authentik_user
     username = getattr(user, 'username', str(user))
@@ -1621,8 +1541,8 @@ def update_scenario(scenario_id):
     if not scenario:
         raise NotFoundError(f'Scenario {scenario_id} not found')
 
-    # Check ownership
-    check_scenario_ownership(scenario, user)  # Verifies user is owner or admin, raises ForbiddenError if not
+    # Check management access (Owner, Manager, or Admin)
+    check_scenario_management_access(scenario, user)
 
     data = request.get_json()
     if not data:
@@ -1727,7 +1647,7 @@ def get_scenario_stats(scenario_id):
             user_stats = stats_data.get('user_stats', [])
             # EVALUATOR role can interact (rate/evaluate), VIEWER is read-only
             rater_stats = [u for u in user_stats if u.get('role') == 'Evaluator' and not u.get('is_llm')]
-            evaluator_stats = [u for u in user_stats if u.get('role') in ('Viewer', 'Owner') or u.get('is_llm')]
+            evaluator_stats = [u for u in user_stats if u.get('role') in ('Viewer', 'Owner', 'Manager') or u.get('is_llm')]
 
             # Map authenticity fields to standard progress fields
             for stat in rater_stats + evaluator_stats:
@@ -1847,7 +1767,8 @@ def sm_invite_users(scenario_id):
 
     Request body:
         - user_ids: list of user IDs
-        - role: EVALUATOR (can interact) or VIEWER (read-only) (default: EVALUATOR)
+        - role: ASSESSOR|EVALUATOR (can interact), MANAGER (co-manage), or VIEWER (read-only)
+                Default: ASSESSOR
 
     Invitations are auto-accepted by default. Users can later reject them.
     """
@@ -1858,19 +1779,22 @@ def sm_invite_users(scenario_id):
     if not scenario:
         raise NotFoundError(f'Scenario {scenario_id} not found')
 
-    check_scenario_ownership(scenario, user)  # Verifies user is owner or admin, raises ForbiddenError if not
+    # Managers can also invite users
+    check_scenario_management_access(scenario, user)
 
     data = request.get_json()
     user_ids = data.get('user_ids', [])
-    role_str = data.get('role', 'EVALUATOR').lower()
+    role_str = data.get('role', 'ASSESSOR').lower()
 
     # Map role string to enum
-    if role_str in ('evaluator', 'rater'):  # Accept 'rater' for backwards compatibility
-        role_enum = ScenarioRoles.EVALUATOR
+    if role_str in ('assessor', 'evaluator', 'rater'):  # Accept legacy names
+        role_enum = ScenarioRoles.ASSESSOR
+    elif role_str == 'manager':
+        role_enum = ScenarioRoles.MANAGER
     elif role_str == 'viewer':
         role_enum = ScenarioRoles.VIEWER
     else:
-        raise ValidationError(f'Invalid role: {role_str}. Must be EVALUATOR or VIEWER.')
+        raise ValidationError(f'Invalid role: {role_str}. Must be ASSESSOR, MANAGER, or VIEWER.')
 
     if not user_ids:
         raise ValidationError('user_ids is required')
@@ -1996,7 +1920,7 @@ def sm_update_user_role(scenario_id, user_id):
     Update a user's role in a scenario.
 
     Request body:
-        - role: EVALUATOR (can interact) or VIEWER (read-only)
+        - role: ASSESSOR|EVALUATOR (can interact), MANAGER (co-manage), or VIEWER (read-only)
 
     Cannot change the OWNER role.
     """
@@ -2007,7 +1931,8 @@ def sm_update_user_role(scenario_id, user_id):
     if not scenario:
         raise NotFoundError(f'Scenario {scenario_id} not found')
 
-    check_scenario_ownership(scenario, user)  # Verifies user is owner or admin, raises ForbiddenError if not
+    # Managers can also change roles (except to Manager - only Owner can promote to Manager)
+    check_scenario_management_access(scenario, user)
     target_user = User.query.get(user_id)
     is_target_owner = bool(
         target_user
@@ -2045,12 +1970,14 @@ def sm_update_user_role(scenario_id, user_id):
     role_str = data.get('role', '').lower()
 
     # Map role string to enum
-    if role_str in ('evaluator', 'rater'):  # Accept 'rater' for backwards compatibility
-        role_enum = ScenarioRoles.EVALUATOR
+    if role_str in ('assessor', 'evaluator', 'rater'):  # Accept legacy names
+        role_enum = ScenarioRoles.ASSESSOR
+    elif role_str == 'manager':
+        role_enum = ScenarioRoles.MANAGER
     elif role_str == 'viewer':
         role_enum = ScenarioRoles.VIEWER
     else:
-        raise ValidationError(f'Invalid role: {role_str}. Must be EVALUATOR or VIEWER.')
+        raise ValidationError(f'Invalid role: {role_str}. Must be ASSESSOR, MANAGER, or VIEWER.')
 
     old_role = su.role.value
     su.role = role_enum
@@ -2584,8 +2511,8 @@ def get_scenario_team(scenario_id):
     if not scenario:
         raise NotFoundError(f'Scenario {scenario_id} not found')
 
-    # Check access (owner or admin)
-    check_scenario_ownership(scenario, user)  # Verifies user is owner or admin, raises ForbiddenError if not
+    # Check access (owner, manager, or admin)
+    check_scenario_management_access(scenario, user)
 
     # Only show active members in team view
     scenario_users = ScenarioUsers.query.filter_by(
@@ -2607,7 +2534,7 @@ def get_scenario_team(scenario_id):
             'user_id': su.user_id,
             'username': db_user.username,
             'display_name': getattr(db_user, 'display_name', db_user.username),
-            'role': su.role.value if su.role else 'EVALUATOR',
+            'role': _normalize_role_value(su.role) if su.role else 'Assessor',
             'invitation_status': su.invitation_status.value if su.invitation_status else 'accepted',
             'invited_at': su.invited_at.isoformat() if su.invited_at else None,
             'invited_by': su.invited_by,

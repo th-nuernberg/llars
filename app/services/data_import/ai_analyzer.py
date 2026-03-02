@@ -958,10 +958,12 @@ Gib NUR das JSON zurück, keine Erklärungen."""
 
         fields = list(sample.keys())
 
-        # Potential grouping fields - includes cryptic abbreviations
+        # Potential grouping fields - includes cryptic abbreviations and generation fields
         grouping_candidates = [
             'chat_id', 'id', 'item_id', 'source_id', 'reference_id',
             'conversation_id', 'thread_id', 'doc_id', 'document_id',
+            # Generation export fields
+            'source_item_id',
             # Cryptic/abbreviated versions
             'src_id', 's_id', 'sid', 'cid', 'tid', 'ref_id', 'rid',
             'grp_id', 'group_id', 'gid', 'sample_id', 'idx', 'index'
@@ -987,9 +989,11 @@ Gib NUR das JSON zurück, keine Erklärungen."""
                     return True
 
         # Check for model/llm_name fields which indicate variants
-        # Includes cryptic abbreviations
+        # Includes cryptic abbreviations and generation export fields
         variant_indicators = [
             'llm_name', 'model', 'model_name', 'model_id', 'generator', 'variant',
+            # Generation export fields
+            'llm_model_name', 'prompt_variant_name',
             # Cryptic/abbreviated versions
             'mdl', 'mod', 'm', 'llm', 'gen', 'var', 'version', 'ver', 'v',
             'source', 'src', 'type', 'kind', 'system', 'sys'

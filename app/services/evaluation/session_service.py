@@ -19,11 +19,13 @@ Uses EvaluationType from unified schemas for evaluation type handling:
 import logging
 from typing import Optional
 from datetime import datetime
+from collections import defaultdict
 
+from sqlalchemy import func
 from db.database import db
 from db.models import (
     RatingScenarios, ScenarioThreads, ScenarioUsers,
-    EmailThread, Feature, UserFeatureRating, Message,
+    EmailThread, Feature, UserFeatureRating, UserFeatureRanking, Message,
     FeatureFunctionType, User
 )
 from db.models.scenario import ScenarioRoles
@@ -121,14 +123,7 @@ class EvaluationSessionService:
     def _get_items_for_scenario(scenario_id: int, user_id: int, function_type: str) -> list:
         """
         Get evaluation items for a scenario.
-
-        Args:
-            scenario_id: Scenario ID
-            user_id: User ID for evaluation status
-            function_type: Type of evaluation (rating, ranking, etc.)
-
-        Returns:
-            List of items to evaluate
+        Optimized: batch-loads counts and statuses instead of per-item queries.
         """
         # Get threads assigned to this scenario
         scenario_threads = ScenarioThreads.query.filter_by(
@@ -143,25 +138,235 @@ class EvaluationSessionService:
             EmailThread.thread_id.in_(thread_ids)
         ).order_by(EmailThread.thread_id).all()
 
+        # Batch count messages per thread
+        message_counts = dict(
+            db.session.query(Message.thread_id, func.count(Message.message_id))
+            .filter(Message.thread_id.in_(thread_ids))
+            .group_by(Message.thread_id)
+            .all()
+        )
+
+        # Batch count features per thread
+        feature_counts = dict(
+            db.session.query(Feature.thread_id, func.count(Feature.feature_id))
+            .filter(Feature.thread_id.in_(thread_ids))
+            .group_by(Feature.thread_id)
+            .all()
+        )
+
+        # Batch-load evaluation statuses
+        status_map = EvaluationSessionService._batch_get_evaluation_statuses(
+            thread_ids, user_id, function_type, scenario_id
+        )
+
         items = []
         for thread in threads:
-            # Get evaluation status for this thread
-            status = EvaluationSessionService._get_thread_evaluation_status(
-                thread.thread_id, user_id, function_type, scenario_id
-            )
-
+            tid = thread.thread_id
+            status = status_map.get(tid, 'pending')
             items.append({
-                'id': thread.thread_id,
-                'thread_id': thread.thread_id,
+                'id': tid,
+                'thread_id': tid,
                 'subject': thread.subject,
                 'chat_id': thread.chat_id,
                 'status': status,
-                'evaluated': status == 'done',  # Backward compatibility
-                'message_count': len(thread.messages) if thread.messages else 0,
-                'feature_count': len(thread.features) if thread.features else 0
+                'evaluated': status == 'done',
+                'message_count': message_counts.get(tid, 0),
+                'feature_count': feature_counts.get(tid, 0)
             })
 
         return items
+
+    @staticmethod
+    def _batch_get_evaluation_statuses(thread_ids: list, user_id: int, function_type: str, scenario_id: int) -> dict:
+        """
+        Batch-load evaluation statuses for all thread_ids at once.
+        Returns dict: {thread_id: 'done'|'in_progress'|'pending'}
+        """
+        if not thread_ids:
+            return {}
+
+        status_map = {tid: 'pending' for tid in thread_ids}
+
+        if function_type in ('rating', 'mail_rating'):
+            status_map = EvaluationSessionService._batch_status_rating(
+                thread_ids, user_id, scenario_id
+            )
+
+        elif function_type == 'ranking':
+            status_map = EvaluationSessionService._batch_status_ranking(
+                thread_ids, user_id
+            )
+
+        elif function_type == 'authenticity':
+            from db.models import UserAuthenticityVote
+            votes = UserAuthenticityVote.query.filter(
+                UserAuthenticityVote.user_id == user_id,
+                UserAuthenticityVote.item_id.in_(thread_ids)
+            ).all()
+            voted_ids = {v.item_id for v in votes if v.vote is not None}
+            status_map = {
+                tid: ('done' if tid in voted_ids else 'pending')
+                for tid in thread_ids
+            }
+
+        elif function_type == 'labeling':
+            from db.models.scenario import ItemLabelingEvaluation
+            evals = ItemLabelingEvaluation.query.filter(
+                ItemLabelingEvaluation.user_id == user_id,
+                ItemLabelingEvaluation.scenario_id == scenario_id,
+                ItemLabelingEvaluation.item_id.in_(thread_ids)
+            ).all()
+            done_ids = {e.item_id for e in evals if e.category_id is not None or e.is_unsure}
+            status_map = {
+                tid: ('done' if tid in done_ids else 'pending')
+                for tid in thread_ids
+            }
+
+        elif function_type == 'comparison':
+            # Comparison is per-session, not per-item; fallback to per-item
+            for tid in thread_ids:
+                status_map[tid] = EvaluationSessionService._get_thread_evaluation_status(
+                    tid, user_id, function_type, scenario_id
+                )
+
+        return status_map
+
+    @staticmethod
+    def _batch_status_rating(thread_ids: list, user_id: int, scenario_id: int) -> dict:
+        """Batch-load rating/mail_rating statuses using dimensional ratings."""
+        from db.models import ItemDimensionRating
+        from db.models.scenario import ProgressionStatus
+
+        status_map = {tid: 'pending' for tid in thread_ids}
+
+        # Load all dimensional ratings for this user+scenario in one query
+        dim_ratings = ItemDimensionRating.query.filter(
+            ItemDimensionRating.user_id == user_id,
+            ItemDimensionRating.scenario_id == scenario_id,
+            ItemDimensionRating.item_id.in_(thread_ids)
+        ).all()
+
+        # Build lookup
+        dim_by_item = {dr.item_id: dr for dr in dim_ratings}
+
+        # Get dimensions config once (not per-item)
+        dimensions = []
+        scenario = RatingScenarios.query.get(scenario_id)
+        if scenario and scenario.config_json:
+            import json
+            config = scenario.config_json
+            if isinstance(config, str):
+                try:
+                    config = json.loads(config)
+                except (json.JSONDecodeError, TypeError):
+                    config = {}
+            eval_config = config.get('eval_config', {})
+            if not isinstance(eval_config, dict):
+                eval_config = {}
+            eval_config_inner = eval_config.get('config', {})
+            if not isinstance(eval_config_inner, dict):
+                eval_config_inner = {}
+            dimensions = config.get('dimensions', [])
+            if not dimensions:
+                dimensions = eval_config.get('dimensions', [])
+            if not dimensions:
+                dimensions = eval_config_inner.get('dimensions', [])
+
+        required_dims = [d.get('id') for d in dimensions if d.get('id')] if dimensions else []
+
+        # Items with dimensional ratings
+        rated_item_ids = set()
+        for tid in thread_ids:
+            dr = dim_by_item.get(tid)
+            if dr:
+                if dr.status == ProgressionStatus.DONE:
+                    status_map[tid] = 'done'
+                    rated_item_ids.add(tid)
+                elif required_dims and dr.dimension_ratings:
+                    all_rated = all(
+                        dim_id in dr.dimension_ratings and
+                        dr.dimension_ratings.get(dim_id) is not None
+                        for dim_id in required_dims
+                    )
+                    if all_rated:
+                        status_map[tid] = 'done'
+                        rated_item_ids.add(tid)
+                    else:
+                        status_map[tid] = 'in_progress'
+                        rated_item_ids.add(tid)
+                elif dr.dimension_ratings:
+                    status_map[tid] = 'in_progress'
+                    rated_item_ids.add(tid)
+
+        # For items without dimensional ratings, check legacy feature-based ratings
+        unrated = [tid for tid in thread_ids if tid not in rated_item_ids]
+        if unrated:
+            # Batch: get feature counts per thread
+            feature_counts = dict(
+                db.session.query(Feature.thread_id, func.count(Feature.feature_id))
+                .filter(Feature.thread_id.in_(unrated))
+                .group_by(Feature.thread_id)
+                .all()
+            )
+            # Batch: get user rating counts per thread
+            rating_counts = dict(
+                db.session.query(Feature.thread_id, func.count(UserFeatureRating.rating_id))
+                .join(UserFeatureRating, UserFeatureRating.feature_id == Feature.feature_id)
+                .filter(
+                    Feature.thread_id.in_(unrated),
+                    UserFeatureRating.user_id == user_id
+                )
+                .group_by(Feature.thread_id)
+                .all()
+            )
+            for tid in unrated:
+                total = feature_counts.get(tid, 0)
+                rated = rating_counts.get(tid, 0)
+                if total == 0:
+                    status_map[tid] = 'pending'
+                elif rated >= total:
+                    status_map[tid] = 'done'
+                elif rated > 0:
+                    status_map[tid] = 'in_progress'
+
+        return status_map
+
+    @staticmethod
+    def _batch_status_ranking(thread_ids: list, user_id: int) -> dict:
+        """Batch-load ranking statuses."""
+        status_map = {tid: 'pending' for tid in thread_ids}
+
+        # Batch: feature counts per thread
+        feature_counts = dict(
+            db.session.query(Feature.thread_id, func.count(Feature.feature_id))
+            .filter(Feature.thread_id.in_(thread_ids))
+            .group_by(Feature.thread_id)
+            .all()
+        )
+
+        # Batch: ranked feature counts per thread for this user
+        ranked_counts = dict(
+            db.session.query(Feature.thread_id, func.count(UserFeatureRanking.ranking_id))
+            .join(UserFeatureRanking, UserFeatureRanking.feature_id == Feature.feature_id)
+            .filter(
+                Feature.thread_id.in_(thread_ids),
+                UserFeatureRanking.user_id == user_id
+            )
+            .group_by(Feature.thread_id)
+            .all()
+        )
+
+        for tid in thread_ids:
+            total = feature_counts.get(tid, 0)
+            ranked = ranked_counts.get(tid, 0)
+            if total == 0:
+                status_map[tid] = 'pending'
+            elif ranked >= total:
+                status_map[tid] = 'done'
+            elif ranked > 0:
+                status_map[tid] = 'in_progress'
+
+        return status_map
 
     @staticmethod
     def _get_thread_evaluation_status(thread_id: int, user_id: int, function_type: str, scenario_id: int = None) -> str:
@@ -378,7 +583,7 @@ class EvaluationSessionService:
             features_data.append({
                 'id': feature.feature_id,
                 'feature_id': feature.feature_id,
-                'model_name': feature.llm.name if feature.llm else 'Unknown',
+                'model_name': feature.model_id or 'Unknown',
                 'feature_type': feature.feature_type.name if feature.feature_type else 'other',
                 'content': feature.content,
                 'evaluated': existing_rating is not None,

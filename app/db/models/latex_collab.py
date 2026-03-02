@@ -18,6 +18,12 @@ class LatexWorkspaceVisibility(Enum):
     org = "org"
 
 
+class AccessRequestStatus(Enum):
+    pending = "pending"
+    approved = "approved"
+    rejected = "rejected"
+
+
 class LatexNodeType(Enum):
     folder = "folder"
     file = "file"
@@ -259,3 +265,48 @@ class LatexComment(db.Model):
 
     document = db.relationship("LatexDocument", backref=db.backref("comments", cascade="all, delete-orphan", lazy="selectin"))
     replies = db.relationship("LatexComment", backref=db.backref("parent", remote_side=[id]), cascade="all, delete-orphan", lazy="selectin")
+
+
+class LatexWorkspaceAccessRequest(db.Model):
+    """Access request for a LaTeX workspace."""
+    __tablename__ = "latex_workspace_access_requests"
+
+    id: Mapped[int] = mapped_column(db.Integer, primary_key=True, autoincrement=True)
+    workspace_id: Mapped[int] = mapped_column(
+        db.Integer,
+        db.ForeignKey("latex_workspaces.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    requester_username: Mapped[str] = mapped_column(db.String(255), nullable=False, index=True)
+    status: Mapped[AccessRequestStatus] = mapped_column(
+        db.Enum(AccessRequestStatus, values_callable=lambda e: [m.value for m in e]),
+        nullable=False,
+        default=AccessRequestStatus.pending,
+    )
+    message: Mapped[Optional[str]] = mapped_column(db.Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(db.DateTime, default=datetime.utcnow, nullable=False)
+    resolved_at: Mapped[Optional[datetime]] = mapped_column(db.DateTime, nullable=True)
+    resolved_by: Mapped[Optional[str]] = mapped_column(db.String(255), nullable=True)
+
+    workspace = db.relationship("LatexWorkspace", lazy="selectin")
+
+    __table_args__ = (
+        db.UniqueConstraint("workspace_id", "requester_username", name="unique_workspace_access_request"),
+    )
+
+    def to_dict(self) -> dict:
+        ws_brief = None
+        if self.workspace:
+            ws_brief = {"id": self.workspace.id, "name": self.workspace.name}
+        return {
+            "id": self.id,
+            "workspace_id": self.workspace_id,
+            "workspace": ws_brief,
+            "requester_username": self.requester_username,
+            "status": self.status.value if self.status else "pending",
+            "message": self.message,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "resolved_at": self.resolved_at.isoformat() if self.resolved_at else None,
+            "resolved_by": self.resolved_by,
+        }

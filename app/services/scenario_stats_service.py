@@ -72,31 +72,74 @@ def _get_function_type_or_raise(function_type_id: int) -> FeatureFunctionType:
 # Simple TTL cache for expensive stats computations.
 # Key: scenario_id, Value: (timestamp, result_dict)
 _stats_cache: Dict[int, tuple] = {}
-_STATS_CACHE_TTL = 30  # seconds
+_STATS_CACHE_TTL = 120  # seconds - fresh data window
+_STATS_CACHE_STALE_TTL = 600  # seconds - serve stale while revalidating
+_stats_revalidating: set = set()  # scenario IDs currently being recomputed
 
 
 def _get_cached_stats(scenario_id: int) -> Optional[Dict]:
-    """Return cached stats if still valid, else None."""
+    """Return cached stats. Returns stale data if within stale TTL."""
     entry = _stats_cache.get(scenario_id)
-    if entry and (time.time() - entry[0]) < _STATS_CACHE_TTL:
+    if not entry:
+        return None
+    age = time.time() - entry[0]
+    if age < _STATS_CACHE_TTL:
+        return entry[1]
+    # Stale but still usable - return it (caller triggers background revalidation)
+    if age < _STATS_CACHE_STALE_TTL:
         return entry[1]
     return None
+
+
+def _is_cache_fresh(scenario_id: int) -> bool:
+    """Check if cached stats are still within the fresh TTL."""
+    entry = _stats_cache.get(scenario_id)
+    if not entry:
+        return False
+    return (time.time() - entry[0]) < _STATS_CACHE_TTL
 
 
 def _set_cached_stats(scenario_id: int, data: Dict) -> None:
     """Cache stats result. Evict old entries if cache grows too large."""
     if len(_stats_cache) > 100:
-        # Evict oldest entries
-        cutoff = time.time() - _STATS_CACHE_TTL
+        cutoff = time.time() - _STATS_CACHE_STALE_TTL
         to_remove = [k for k, (ts, _) in _stats_cache.items() if ts < cutoff]
         for k in to_remove:
             del _stats_cache[k]
     _stats_cache[scenario_id] = (time.time(), data)
+    _stats_revalidating.discard(scenario_id)
 
 
 def invalidate_stats_cache(scenario_id: int) -> None:
     """Invalidate cached stats for a scenario (call after rating/ranking changes)."""
     _stats_cache.pop(scenario_id, None)
+    _stats_revalidating.discard(scenario_id)
+
+
+def _recompute_stats_background(scenario_id: int) -> None:
+    """Recompute stats in a background greenlet (stale-while-revalidate)."""
+    try:
+        from flask import current_app
+        app = current_app._get_current_object()
+    except RuntimeError:
+        _stats_revalidating.discard(scenario_id)
+        return
+
+    try:
+        with app.app_context():
+            # Force recompute by temporarily removing cache
+            old_entry = _stats_cache.pop(scenario_id, None)
+            try:
+                get_progress_stats(scenario_id)
+            except Exception as e:
+                # Restore old cache on failure
+                if old_entry:
+                    _stats_cache[scenario_id] = old_entry
+                logging.getLogger(__name__).warning(
+                    f"[StatsCache] Background revalidation failed for scenario {scenario_id}: {e}"
+                )
+    finally:
+        _stats_revalidating.discard(scenario_id)
 
 
 _DEFAULT_BUCKET_COLOR_PALETTE = [
@@ -721,10 +764,17 @@ def get_progress_stats(scenario_id: int) -> Dict[str, Any]:
     heatmaps, etc.). Use get_user_progress_counts() when you only need
     progress bars.
 
-    Results are cached for 30 seconds to avoid redundant computation.
+    Uses stale-while-revalidate caching: serves stale data immediately while
+    recomputing in the background. Fresh TTL = 120s, stale TTL = 600s.
     """
     cached = _get_cached_stats(scenario_id)
     if cached is not None:
+        # If cache is stale but still usable, trigger background revalidation
+        if not _is_cache_fresh(scenario_id) and scenario_id not in _stats_revalidating:
+            _stats_revalidating.add(scenario_id)
+            import gevent
+            gevent.spawn(_recompute_stats_background, scenario_id)
+
         return cached
 
     scenario = _get_scenario_or_raise(scenario_id)

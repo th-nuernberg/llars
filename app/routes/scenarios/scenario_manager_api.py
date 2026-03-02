@@ -1805,7 +1805,6 @@ def sm_invite_users(scenario_id):
     skipped_invalid = 0
     for uid in user_ids:
         # Validate user exists before attempting to add
-        from db.models import User
         if not User.query.get(uid):
             skipped_invalid += 1
             continue

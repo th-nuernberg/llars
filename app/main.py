@@ -496,18 +496,11 @@ def start_pending_llm_evaluations():
             except Exception as e:
                 print(f"[Startup] Error starting LLM evaluations: {e}")
 
-    # Run in background thread after a short delay to let other services initialize
-    def _delayed_start():
-        import time
-        time.sleep(5)  # Wait 5 seconds for other services to be ready
-        _run_pending_evaluations()
-
-    # Start background thread - skip only if LLARS_SKIP_STARTUP_TASKS is set
-    # For Docker/Gunicorn, we always want to run this (unlike embedding worker which
-    # has special handling for Flask reloader)
-    thread = threading.Thread(target=_delayed_start, daemon=True)
-    thread.start()
-    print("[Startup] LLM evaluation checker scheduled")
+    # DISABLED: Auto-starting LLM evaluations on startup caused 100% CPU.
+    # Each failed item triggers stats recomputation (6s CPU-bound), and models
+    # with bad API keys would retry 500 items on every container restart.
+    # Users can manually retry via the Retry button in the Scenario Manager.
+    print("[Startup] LLM evaluation auto-start disabled (use Retry button in UI)")
 
 
 start_pending_llm_evaluations()

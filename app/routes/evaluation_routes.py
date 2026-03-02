@@ -16,6 +16,7 @@ from flask import Blueprint, jsonify, request, g
 from auth.decorators import authentik_required
 from auth.access_control import require_scenario_membership
 from decorators.error_handler import handle_api_errors, NotFoundError, ValidationError, ForbiddenError
+from decorators.permission_decorator import require_permission
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +24,7 @@ evaluation_bp = Blueprint('evaluation', __name__, url_prefix='/api/evaluation')
 
 
 @evaluation_bp.get('/<int:scenario_id>/agreement-metrics')
-@authentik_required
+@require_permission('feature:ranking:view')
 @handle_api_errors(logger_name='evaluation')
 def get_agreement_metrics(scenario_id):
     """
@@ -111,7 +112,7 @@ def get_agreement_metrics(scenario_id):
 
 
 @evaluation_bp.get('/session/<int:scenario_id>')
-@authentik_required
+@require_permission('feature:ranking:view')
 @handle_api_errors(logger_name='evaluation')
 def get_session_data(scenario_id):
     """
@@ -139,7 +140,7 @@ def get_session_data(scenario_id):
 
 
 @evaluation_bp.get('/session/<int:scenario_id>/threads/<int:thread_id>/features')
-@authentik_required
+@require_permission('feature:ranking:view')
 @handle_api_errors(logger_name='evaluation')
 def get_thread_features(scenario_id, thread_id):
     """
@@ -167,7 +168,7 @@ def get_thread_features(scenario_id, thread_id):
 
 
 @evaluation_bp.post('/session/<int:scenario_id>/features/<int:feature_id>/rate')
-@authentik_required
+@require_permission('feature:ranking:evaluate')
 @handle_api_errors(logger_name='evaluation')
 def rate_feature(scenario_id, feature_id):
     """
@@ -236,7 +237,7 @@ def rate_feature(scenario_id, feature_id):
 
 
 @evaluation_bp.post('/session/<int:scenario_id>/items/<int:item_id>/evaluate')
-@authentik_required
+@require_permission('feature:ranking:evaluate')
 @handle_api_errors(logger_name='evaluation')
 def submit_evaluation(scenario_id, item_id):
     """
@@ -335,7 +336,7 @@ def submit_evaluation(scenario_id, item_id):
 
 
 @evaluation_bp.get('/rating/<int:scenario_id>/config')
-@authentik_required
+@require_permission('feature:ranking:view')
 @handle_api_errors(logger_name='evaluation')
 def get_rating_config(scenario_id):
     """
@@ -362,7 +363,7 @@ def get_rating_config(scenario_id):
 
 
 @evaluation_bp.get('/rating/<int:scenario_id>/items')
-@authentik_required
+@require_permission('feature:ranking:view')
 @handle_api_errors(logger_name='evaluation')
 def get_rating_items(scenario_id):
     """
@@ -390,7 +391,7 @@ def get_rating_items(scenario_id):
 
 
 @evaluation_bp.get('/rating/<int:scenario_id>/items/<int:item_id>')
-@authentik_required
+@require_permission('feature:ranking:view')
 @handle_api_errors(logger_name='evaluation')
 def get_rating_item_content(scenario_id, item_id):
     """
@@ -419,7 +420,7 @@ def get_rating_item_content(scenario_id, item_id):
 
 
 @evaluation_bp.post('/rating/<int:scenario_id>/items/<int:item_id>/rate')
-@authentik_required
+@require_permission('feature:ranking:evaluate')
 @handle_api_errors(logger_name='evaluation')
 def submit_dimensional_rating(scenario_id, item_id):
     """
@@ -485,7 +486,7 @@ def submit_dimensional_rating(scenario_id, item_id):
 
 
 @evaluation_bp.get('/rating/<int:scenario_id>/progress')
-@authentik_required
+@require_permission('feature:ranking:view')
 @handle_api_errors(logger_name='evaluation')
 def get_rating_progress(scenario_id):
     """
@@ -513,7 +514,7 @@ def get_rating_progress(scenario_id):
 
 
 @evaluation_bp.get('/rating/<int:scenario_id>/statistics')
-@authentik_required
+@require_permission('feature:ranking:view')
 @handle_api_errors(logger_name='evaluation')
 def get_rating_statistics(scenario_id):
     """
@@ -548,7 +549,7 @@ def get_rating_statistics(scenario_id):
 
 
 @evaluation_bp.post('/rating/<int:scenario_id>/items/<int:item_id>/llm-evaluate')
-@authentik_required
+@require_permission('feature:ranking:evaluate')
 @handle_api_errors(logger_name='evaluation')
 def trigger_llm_evaluation(scenario_id, item_id):
     """
@@ -607,7 +608,7 @@ def trigger_llm_evaluation(scenario_id, item_id):
 
 
 @evaluation_bp.get('/rating/<int:scenario_id>/llm-evaluations')
-@authentik_required
+@require_permission('feature:ranking:view')
 @handle_api_errors(logger_name='evaluation')
 def get_llm_evaluations(scenario_id):
     """
@@ -646,7 +647,7 @@ def get_llm_evaluations(scenario_id):
 
 
 @evaluation_bp.get('/rating/presets')
-@authentik_required
+@require_permission('feature:ranking:view')
 @handle_api_errors(logger_name='evaluation')
 def get_rating_presets():
     """
@@ -679,7 +680,7 @@ def get_rating_presets():
 
 
 @evaluation_bp.get('/rating/presets/<preset_id>')
-@authentik_required
+@require_permission('feature:ranking:view')
 @handle_api_errors(logger_name='evaluation')
 def get_rating_preset(preset_id):
     """
@@ -702,7 +703,7 @@ def get_rating_preset(preset_id):
 
 
 @evaluation_bp.get('/rating/scale-labels/<scale_range>')
-@authentik_required
+@require_permission('feature:ranking:view')
 @handle_api_errors(logger_name='evaluation')
 def get_scale_labels(scale_range):
     """

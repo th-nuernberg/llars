@@ -78,6 +78,46 @@ else
   echo "Skipping wizard smoke test (SMOKE_WIZARD=0)"
 fi
 
+# --- Evaluation Pipeline Smoke Test ---
+SMOKE_EVALUATION="${SMOKE_EVALUATION:-1}"
+if [ "$SMOKE_EVALUATION" != "0" ] && [ -n "$SYSTEM_ADMIN_API_KEY" ]; then
+  echo ""
+  echo "Running evaluation pipeline smoke test..."
+  SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+  EVAL_SCRIPT="${SCRIPT_DIR}/smoke_test_evaluation.sh"
+  if [ ! -f "$EVAL_SCRIPT" ]; then
+    EVAL_SCRIPT="$DEPLOY_PATH/scripts/ci/smoke_test_evaluation.sh"
+  fi
+  if [ -f "$EVAL_SCRIPT" ]; then
+    BASE_URL="$BASE_URL" SYSTEM_ADMIN_API_KEY="$SYSTEM_ADMIN_API_KEY" \
+      bash "$EVAL_SCRIPT"
+  else
+    echo "WARNING: smoke_test_evaluation.sh not found; skipping."
+  fi
+else
+  echo "Skipping evaluation smoke test (SMOKE_EVALUATION=0 or no API key)"
+fi
+
+# --- Prompt Engineering Smoke Test ---
+SMOKE_PROMPT_ENG="${SMOKE_PROMPT_ENG:-1}"
+if [ "$SMOKE_PROMPT_ENG" != "0" ] && [ -n "$SYSTEM_ADMIN_API_KEY" ]; then
+  echo ""
+  echo "Running prompt engineering smoke test..."
+  SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+  PROMPT_SCRIPT="${SCRIPT_DIR}/smoke_test_prompt_eng.sh"
+  if [ ! -f "$PROMPT_SCRIPT" ]; then
+    PROMPT_SCRIPT="$DEPLOY_PATH/scripts/ci/smoke_test_prompt_eng.sh"
+  fi
+  if [ -f "$PROMPT_SCRIPT" ]; then
+    BASE_URL="$BASE_URL" SYSTEM_ADMIN_API_KEY="$SYSTEM_ADMIN_API_KEY" \
+      bash "$PROMPT_SCRIPT"
+  else
+    echo "WARNING: smoke_test_prompt_eng.sh not found; skipping."
+  fi
+else
+  echo "Skipping prompt engineering smoke test (SMOKE_PROMPT_ENG=0 or no API key)"
+fi
+
 ROLLBACK_ENV="$DEPLOY_PATH/.deploy/rollback.env"
 if [ -f "$ROLLBACK_ENV" ]; then
   set -a

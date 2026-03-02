@@ -1,0 +1,46 @@
+# =============================================================================
+# LLARS Staging Docker Compose Override
+# =============================================================================
+# Runs staging application containers in parallel with production on port 55080.
+# Shared services (DB, Redis, Authentik) use existing production containers.
+#
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml \
+#     -f docker-compose.staging.yml up -d \
+#     nginx-service backend-flask-service frontend-vue-service \
+#     backend-supervisor-service yjs-service
+# =============================================================================
+
+services:
+  # --- Staging-specific containers (separate from production) ---
+
+  nginx-service:
+    container_name: llars_staging_nginx
+    ports:
+      - "55080:80"
+    depends_on:
+      backend-flask-service:
+        condition: service_healthy
+      frontend-vue-service:
+        condition: service_healthy
+
+  backend-flask-service:
+    container_name: llars_staging_flask
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/healthcheck.sh"]
+      start_period: 90s
+      interval: 10s
+      timeout: 10s
+      retries: 10
+
+  backend-supervisor-service:
+    container_name: llars_staging_supervisor
+
+  frontend-vue-service:
+    container_name: llars_staging_frontend
+
+  yjs-service:
+    container_name: llars_staging_yjs
+
+  # Shared services use production containers - no overrides needed:
+  # db-maria-service, llars-redis, authentik-*, matomo-*

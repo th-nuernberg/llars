@@ -1,25 +1,45 @@
 # =============================================================================
 # LLARS GitLab CI/CD Pipeline
 # =============================================================================
-# Vollautomatisierte Pipeline für Test, Build und Deployment
+# Blue-Green deployment with nightly schedule:
+#
+# Push (any time):
+#   lint → unit tests → integration tests → security → build
+#
+# Nightly Schedule 02:00 CET (or FORCE_DEPLOY):
+#   deploy:staging (Port 55080)
+#     → wait:staging-health
+#     → test:e2e:staging (Playwright in container)
+#     → smoke:staging (Evaluation + Prompt Eng pipeline)
+#     → deploy:production
+#     → smoke:production
+#     → [FAIL] → rollback:production (auto)
 #
 # Stages:
-#   1. lint      - Code-Qualität prüfen
-#   2. test      - Unit & Integration Tests
-#   3. security  - Security/Route Protection Checks
-#   4. build     - Docker Images bauen
-#   5. deploy    - Deployment auf Server
-#   6. smoke     - Smoke Tests (inkl. Wizard-Workflow)
-#   7. rollback  - Rollback (manuell oder via Smoke-Fail)
+#   1. lint           - Code quality
+#   2. test           - Unit & Integration tests
+#   3. security       - Route protection & dependency audit
+#   4. build          - Docker images
+#   5. deploy-staging - Blue-Green staging deployment
+#   6. test-staging   - E2E & Smoke tests against staging
+#   7. deploy         - Production deployment
+#   8. smoke          - Production smoke tests
+#   9. rollback       - Emergency rollback
 #
-# Voraussetzungen (GitLab CI/CD Variables):
-#   - SSH_PRIVATE_KEY: Private Key für SSH Zugang zum Server
-#   - SSH_KNOWN_HOSTS: Known Hosts Eintrag des Servers
-#   - LLARS_SERVER_HOST: Hostname/IP des LLARS Servers
-#   - LLARS_SERVER_USER: SSH Username (default: llars)
-#   - LLARS_DEPLOY_PATH: Pfad zum LLARS Projekt auf dem Server
-#   - DEPLOY_TOKEN: (Optional) Für private Registry
+# Prerequisites (GitLab CI/CD Variables):
+#   - SSH_PRIVATE_KEY: Private Key for SSH access
+#   - SSH_KNOWN_HOSTS: Known Hosts entry
+#   - LLARS_SERVER_HOST: Hostname/IP of LLARS server
+#   - LLARS_SERVER_USER: SSH username (default: master)
+#   - LLARS_DEPLOY_PATH: Path to LLARS project on server
+#   - SYSTEM_ADMIN_API_KEY: API key for smoke tests
+#   - E2E_TEST_PASSWORD: Password for E2E test users
 #
+# GitLab Pipeline Schedule (create in UI):
+#   Name: "Nightly Production Deployment"
+#   Cron: 0 2 * * 1-5 (Mon-Fri 02:00 CET)
+#   Branch: main
+#   Variable: SCHEDULED_DEPLOY=true
 # =============================================================================
 
 stages:
@@ -27,19 +47,20 @@ stages:
   - test
   - security
   - build
+  - deploy-staging
+  - test-staging
   - deploy
   - smoke
   - rollback
 
 # =============================================================================
-# GLOBALE KONFIGURATION
+# GLOBAL CONFIGURATION
 # =============================================================================
 
 # Optional test-only switches (set one to run only that job)
 # - UNIT_BACKEND_ONLY
 # - UNIT_FRONTEND_ONLY
 # - INTEGRATION_ONLY
-# - E2E tests are currently disabled in CI
 
 variables:
   # Python
@@ -57,7 +78,7 @@ variables:
   LLARS_SERVER_USER: "master"
   LLARS_DEPLOY_PATH: "/var/llars"
 
-# Cache für schnellere Builds
+# Cache for faster builds
 cache:
   key: ${CI_COMMIT_REF_SLUG}
   paths:
@@ -65,7 +86,7 @@ cache:
     - .cache/npm
     - llars-frontend/node_modules/
 
-# Standard before_script für SSH Setup (Alpine Linux)
+# Standard before_script for SSH setup (Alpine Linux)
 .ssh_setup: &ssh_setup
   before_script:
     - 'command -v ssh-agent >/dev/null || apk add --no-cache openssh-client'
@@ -80,6 +101,23 @@ cache:
 .test_only_skip: &test_only_skip
   if: '$UNIT_BACKEND_ONLY || $UNIT_FRONTEND_ONLY || $INTEGRATION_ONLY'
   when: never
+
+# Common rules for CI jobs (lint, test, security)
+.ci_rules:
+  rules:
+    - *test_only_skip
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_COMMIT_BRANCH == "develop"
+
+# Deployment trigger rules: schedule, force, or manual
+.deploy_rules:
+  rules:
+    - *test_only_skip
+    - if: $CI_PIPELINE_SOURCE == "schedule" && $SCHEDULED_DEPLOY == "true"
+    - if: $FORCE_DEPLOY == "true" && $CI_COMMIT_BRANCH == "main"
+    - if: $CI_COMMIT_BRANCH == "main"
+      when: manual
 
 # =============================================================================
 # STAGE 1: LINT
@@ -216,163 +254,6 @@ test:integration:
     - job: test:unit:backend
       optional: true
 
-# E2E Tests laufen gegen eine frische CI-Umgebung (Docker Compose im Job)
-# Dies stellt sicher, dass die Tests den aktuellen Code prüfen
-test:e2e:
-  stage: test
-  image: docker:24
-  variables:
-    COMPOSE_PROJECT_NAME: "llars-ci"
-    LLARS_SKIP_STARTUP_TASKS: "true"
-  script:
-    - echo "Running E2E Tests against fresh LLARS instance..."
-    - |
-      cat > .env <<'EOF'
-      PROJECT_STATE=development
-      PROJECT_URL=http://llars_ci_frontend_service:5173
-      PROJECT_HOST=llars_ci_frontend_service
-      NGINX_EXTERNAL_PORT=55081
-      AUTHENTIK_EXTERNAL_PORT=55096
-      DB_EXTERNAL_PORT=55307
-      VITE_API_BASE_URL=http://llars_ci_flask_service:8081
-      LLARS_ADMIN_PASSWORD=admin123
-      AUTHENTIK_BOOTSTRAP_PASSWORD=admin123
-      AUTHENTIK_BOOTSTRAP_EMAIL=admin@example.com
-      AUTHENTIK_API_TOKEN=llars-dev-api-token-do-not-use-in-production
-      EOF
-    - set -a
-    - . ./.env
-    - set +a
-    - export E2E_TEST_PASSWORD="$(awk -F= '/^LLARS_ADMIN_PASSWORD=/{print substr($0,index($0,"=")+1); exit}' .env | tr -d '\r')"
-    - docker compose -f docker-compose.yml -f docker-compose.ci.yml --env-file .env up -d --build backend-flask-service db-maria-service llars-redis authentik-db authentik-redis authentik-server authentik-worker backend-supervisor-service frontend-vue-service yjs-service
-    - |
-      export BACKEND_IP="$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' llars_ci_flask_service)"
-      export FRONTEND_IP="$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' llars_ci_frontend_service)"
-      if [ -z "$BACKEND_IP" ] || [ -z "$FRONTEND_IP" ]; then
-        echo "Failed to resolve container IPs (backend=$BACKEND_IP, frontend=$FRONTEND_IP)"
-        docker compose ps
-        exit 1
-      fi
-      echo "Backend IP: $BACKEND_IP"
-      echo "Frontend IP: $FRONTEND_IP"
-    - |
-      echo "Waiting for Authentik server to be healthy..."
-      READY=false
-      for i in $(seq 1 60); do
-        status=$(docker inspect -f '{{.State.Health.Status}}' llars_ci_authentik_server 2>/dev/null || true)
-        if [ "$status" = "healthy" ]; then
-          READY=true
-          echo "Authentik server healthy."
-          break
-        fi
-        echo "Authentik not healthy yet ($i/60)..."
-        sleep 5
-      done
-      if [ "$READY" != "true" ]; then
-        echo "Authentik server did not become healthy."
-        docker logs llars_ci_authentik_server || true
-        exit 1
-      fi
-    - |
-      echo "Waiting for Authentik shell to be ready..."
-      SHELL_READY=false
-      for i in $(seq 1 120); do
-        if docker exec llars_ci_authentik_server bash -lc "/ak-root/venv/bin/python -m manage shell -c \"from django.db import connections; connections['default'].ensure_connection(); from authentik.core.models import User; User.objects.count()\""; then
-          SHELL_READY=true
-          echo "Authentik shell ready."
-          break
-        fi
-        echo "Authentik shell not ready yet ($i/120)..."
-        sleep 5
-      done
-      if [ "$SHELL_READY" != "true" ]; then
-        echo "Authentik shell did not become ready."
-        docker logs llars_ci_authentik_server || true
-        exit 1
-      fi
-    - |
-      echo "Running Authentik init script..."
-      docker cp docker/authentik/init-authentik.sh llars_ci_authentik_server:/tmp/init-authentik.sh
-      docker exec \
-        -e AUTHENTIK_BACKEND_CLIENT_ID=llars-backend \
-        -e AUTHENTIK_BACKEND_CLIENT_SECRET=llars-backend-secret-change-in-production \
-        -e AUTHENTIK_MATOMO_CLIENT_ID=llars-matomo \
-        -e AUTHENTIK_MATOMO_CLIENT_SECRET=llars-matomo-secret-change-in-production \
-        -e AUTHENTIK_MATOMO_APP_SLUG=llars-matomo \
-        -e LLARS_ADMIN_PASSWORD="${LLARS_ADMIN_PASSWORD}" \
-        -e AUTHENTIK_BOOTSTRAP_PASSWORD="${AUTHENTIK_BOOTSTRAP_PASSWORD}" \
-        -e AUTHENTIK_BOOTSTRAP_EMAIL="${AUTHENTIK_BOOTSTRAP_EMAIL}" \
-        -e PROJECT_STATE="${PROJECT_STATE}" \
-        -e PROJECT_URL="${PROJECT_URL}" \
-        -e PROJECT_HOST="${PROJECT_HOST}" \
-        -e NGINX_EXTERNAL_PORT="${NGINX_EXTERNAL_PORT}" \
-        -e AUTHENTIK_API_TOKEN="${AUTHENTIK_API_TOKEN}" \
-        llars_ci_authentik_server bash /tmp/init-authentik.sh
-    - |
-      echo "Waiting for services to be healthy..."
-      READY=false
-      for i in $(seq 1 60); do
-        if docker run --rm --network "${COMPOSE_PROJECT_NAME}_default" --entrypoint sh curlimages/curl:8.10.0 \
-          -c "curl -fsS http://${BACKEND_IP}:8081/auth/health_check >/dev/null && curl -fsS http://${BACKEND_IP}:8081/auth/authentik/health_check >/dev/null && curl -fsS http://${FRONTEND_IP}:5173/login >/dev/null"; then
-          READY=true
-          echo "Health checks OK."
-          break
-        fi
-        backend_status=$(docker inspect -f '{{.State.Status}}' llars_ci_flask_service 2>/dev/null || true)
-        if [ "$backend_status" = "exited" ] || [ "$backend_status" = "dead" ]; then
-          echo "Backend container status: $backend_status"
-          docker logs --tail 200 llars_ci_flask_service || true
-          docker compose ps
-          exit 1
-        fi
-        if [ "$i" -eq 10 ] || [ "$i" -eq 30 ]; then
-          echo "Backend container status: ${backend_status:-unknown}"
-          docker logs --tail 200 llars_ci_flask_service || true
-        fi
-        echo "Health check failed ($i/60), retrying in 5s..."
-        sleep 5
-      done
-      if [ "$READY" != "true" ]; then
-        echo "Health checks failed after retries."
-        docker compose ps
-        exit 1
-      fi
-    - chmod -R a+rwX llars-frontend
-    - |
-      E2E_SPEC=""
-      if [ -n "${E2E_ONLY:-}" ] && [ "${E2E_ONLY}" != "true" ]; then
-        case "${E2E_ONLY}" in
-          *.spec.*|*.js|*.ts|*/*)
-            E2E_SPEC="${E2E_ONLY}"
-            ;;
-        esac
-      fi
-      docker run --rm --network "${COMPOSE_PROJECT_NAME}_default" \
-        -v "$CI_PROJECT_DIR/llars-frontend:/work" \
-        -w /work \
-        -e CI=true \
-        -e E2E_ONLY="${E2E_ONLY:-}" \
-        -e PLAYWRIGHT_BASE_URL="http://${FRONTEND_IP}:5173" \
-        -e PLAYWRIGHT_API_BASE_URL="http://${BACKEND_IP}:8081" \
-        -e E2E_TEST_PASSWORD="${E2E_TEST_PASSWORD}" \
-        -e PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 \
-        mcr.microsoft.com/playwright:v1.57.0-jammy \
-        bash -lc "npm ci --prefer-offline && npx playwright test --project=chromium --workers=1 ${E2E_SPEC}"
-  after_script:
-    - docker compose -f docker-compose.yml -f docker-compose.ci.yml --env-file .env down -v || true
-    - docker system prune -af --volumes || true
-  artifacts:
-    when: always
-    paths:
-      - llars-frontend/playwright-report/
-      - llars-frontend/test-results/
-    expire_in: 1 week
-  rules:
-    - when: never
-  needs:
-    - job: test:integration
-      optional: true
-
 # =============================================================================
 # STAGE 3: SECURITY
 # =============================================================================
@@ -388,6 +269,24 @@ security:routes:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $CI_COMMIT_BRANCH == "main"
     - if: $CI_COMMIT_BRANCH == "develop"
+
+# Security Scan (informational - doesn't block pipeline)
+security:scan:
+  stage: security
+  image: python:3.11-slim
+  before_script:
+    - apt-get update && apt-get install -y --no-install-recommends nodejs npm
+  script:
+    - pip install pip-audit safety
+    - echo "Running security scan..."
+    - pip-audit -r app/requirements.txt || echo "pip-audit found vulnerabilities"
+    - cd llars-frontend && npm audit --audit-level=high || echo "npm audit found vulnerabilities"
+  rules:
+    - *test_only_skip
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_COMMIT_BRANCH == "develop"
+  allow_failure: true
 
 # =============================================================================
 # STAGE 4: BUILD
@@ -409,36 +308,101 @@ build:docker:
     - if: $CI_COMMIT_BRANCH == "main"
 
 # =============================================================================
-# STAGE 5: DEPLOY
+# STAGE 5: DEPLOY STAGING (Blue-Green)
 # =============================================================================
 
-# ------------------------------------------------------------------------------
-# Deploy zu Staging (automatisch bei Push zu develop)
-# ------------------------------------------------------------------------------
 deploy:staging:
-  stage: deploy
+  stage: deploy-staging
   tags:
-    - shell  # Runner mit Shell-Executor (direkter Server-Zugriff)
+    - shell
+  timeout: 15 minutes
   environment:
     name: staging
-    url: http://141.75.150.128
+    url: http://141.75.150.128:55080
   resource_group: staging
   script:
-    - echo "=== LLARS Staging Deployment ==="
-    - bash scripts/ci/deploy_staging.sh
+    - echo "=== LLARS Blue-Green Staging Deployment ==="
+    - echo "Timestamp:" $(date)
+    - bash scripts/ci/deploy_staging_bluegreen.sh
   rules:
     - *test_only_skip
-    - if: $CI_COMMIT_BRANCH == "develop"
+    - if: $CI_PIPELINE_SOURCE == "schedule" && $SCHEDULED_DEPLOY == "true"
+    - if: $FORCE_DEPLOY == "true" && $CI_COMMIT_BRANCH == "main"
+    - if: $CI_COMMIT_BRANCH == "main"
+      when: manual
 
-# ------------------------------------------------------------------------------
-# Deploy zu Produktion (automatisch bei Push zu main)
-# Runner ist auf dem LLARS Server - kein SSH nötig!
-# ------------------------------------------------------------------------------
+# =============================================================================
+# STAGE 6: TEST STAGING (E2E + Smoke in Container)
+# =============================================================================
+
+# E2E Tests against staging (Playwright in smoke-test container)
+test:e2e:staging:
+  stage: test-staging
+  tags:
+    - shell
+  timeout: 30 minutes
+  script:
+    - cd /var/llars
+    # Load server .env for passwords
+    - export E2E_TEST_PASSWORD=$(grep '^LLARS_ADMIN_PASSWORD=' .env | cut -d= -f2- || echo "admin123")
+    # Build smoke-test container (with Playwright + E2E tests)
+    - docker compose --profile testing build smoke-test-service
+    # Run E2E tests against staging (localhost:55080)
+    - |
+      docker compose --profile testing run --rm \
+        -e PLAYWRIGHT_BASE_URL=http://localhost:55080 \
+        -e E2E_TEST_PASSWORD="${E2E_TEST_PASSWORD}" \
+        smoke-test-service \
+        bash -c "cd /tests/e2e && npx playwright test --project=chromium --workers=1"
+  artifacts:
+    when: always
+    paths:
+      - /var/llars/llars-frontend/playwright-report/
+      - /var/llars/llars-frontend/test-results/
+    expire_in: 1 week
+  rules:
+    - *test_only_skip
+    - if: $CI_PIPELINE_SOURCE == "schedule" && $SCHEDULED_DEPLOY == "true"
+    - if: $FORCE_DEPLOY == "true" && $CI_COMMIT_BRANCH == "main"
+    - if: $CI_COMMIT_BRANCH == "main"
+      when: manual
+  needs:
+    - deploy:staging
+
+# Smoke Tests against staging (Evaluation + Prompt Engineering pipeline)
+smoke:staging:
+  stage: test-staging
+  tags:
+    - shell
+  timeout: 10 minutes
+  script:
+    - cd /var/llars
+    # Load SYSTEM_ADMIN_API_KEY from server .env
+    - export SYSTEM_ADMIN_API_KEY=$(grep '^SYSTEM_ADMIN_API_KEY=' .env | cut -d= -f2-)
+    - |
+      docker compose --profile testing run --rm \
+        -e BASE_URL=http://localhost:55080 \
+        -e SYSTEM_ADMIN_API_KEY="${SYSTEM_ADMIN_API_KEY}" \
+        smoke-test-service \
+        bash /tests/smoke/smoke_test.sh
+  rules:
+    - *test_only_skip
+    - if: $CI_PIPELINE_SOURCE == "schedule" && $SCHEDULED_DEPLOY == "true"
+    - if: $FORCE_DEPLOY == "true" && $CI_COMMIT_BRANCH == "main"
+    - if: $CI_COMMIT_BRANCH == "main"
+      when: manual
+  needs:
+    - deploy:staging
+
+# =============================================================================
+# STAGE 7: DEPLOY PRODUCTION
+# =============================================================================
+
 deploy:production:
   stage: deploy
   tags:
-    - shell  # Runner mit Shell-Executor (direkter Server-Zugriff)
-  timeout: 30 minutes  # Prevent 1-hour default timeout
+    - shell
+  timeout: 30 minutes
   environment:
     name: production
     url: http://141.75.150.128
@@ -452,59 +416,25 @@ deploy:production:
     - bash scripts/ci/deploy_production.sh
   rules:
     - *test_only_skip
-    - if: $CI_COMMIT_BRANCH == "main"
-  when: on_success
-
-# =============================================================================
-# STAGE 7: ROLLBACK
-# =============================================================================
-# Manueller Rollback (für Notfälle)
-rollback:production:
-  stage: rollback
-  tags:
-    - shell  # Runner mit Shell-Executor (direkter Server-Zugriff)
-  environment:
-    name: production
-  resource_group: production
-  script:
-    - echo "=== EMERGENCY ROLLBACK ==="
-    - bash scripts/ci/rollback_production.sh
-  rules:
-    - *test_only_skip
+    - if: $CI_PIPELINE_SOURCE == "schedule" && $SCHEDULED_DEPLOY == "true"
+    - if: $FORCE_DEPLOY == "true" && $CI_COMMIT_BRANCH == "main"
     - if: $CI_COMMIT_BRANCH == "main"
       when: manual
-  allow_failure: true
+  needs:
+    - job: test:e2e:staging
+      optional: true
+    - job: smoke:staging
+      optional: true
 
 # =============================================================================
-# ZUSÄTZLICHE JOBS
+# STAGE 8: SMOKE (Production)
 # =============================================================================
 
-# Security Scan (informational - doesn't block pipeline)
-security:scan:
-  stage: security
-  image: python:3.11-slim
-  before_script:
-    - apt-get update && apt-get install -y --no-install-recommends nodejs npm
-  script:
-    - pip install pip-audit safety
-    - echo "Running security scan..."
-    - pip-audit -r app/requirements.txt || echo "⚠️ pip-audit found vulnerabilities"
-    - cd llars-frontend && npm audit --audit-level=high || echo "⚠️ npm audit found vulnerabilities"
-  rules:
-    - *test_only_skip
-    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
-    - if: $CI_COMMIT_BRANCH == "main"
-    - if: $CI_COMMIT_BRANCH == "develop"
-  allow_failure: true  # Security scan is informational, doesn't block deployment
-
-# =============================================================================
-# STAGE 6: SMOKE
-# =============================================================================
-# Smoke Tests nach Deployment (inkl. Wizard-Workflow)
 smoke:production:
   stage: smoke
   tags:
-    - shell  # Runner mit Shell-Executor (direkter Server-Zugriff)
+    - shell
+  timeout: 10 minutes
   environment:
     name: production
   resource_group: production
@@ -519,15 +449,36 @@ smoke:production:
       fi
   rules:
     - *test_only_skip
+    - if: $CI_PIPELINE_SOURCE == "schedule" && $SCHEDULED_DEPLOY == "true"
+    - if: $FORCE_DEPLOY == "true" && $CI_COMMIT_BRANCH == "main"
     - if: $CI_COMMIT_BRANCH == "main"
+      when: manual
   needs:
     - deploy:production
-  when: on_success
+
+# =============================================================================
+# STAGE 9: ROLLBACK
+# =============================================================================
+
+rollback:production:
+  stage: rollback
+  tags:
+    - shell
+  environment:
+    name: production
+  resource_group: production
+  script:
+    - echo "=== EMERGENCY ROLLBACK ==="
+    - bash scripts/ci/rollback_production.sh
+  rules:
+    - *test_only_skip
+    - if: $CI_COMMIT_BRANCH == "main"
+      when: manual
+  allow_failure: true
 
 # =============================================================================
 # CODE METRICS COLLECTION
 # =============================================================================
-# Collects and reports code quality metrics (docstrings, coverage, file sizes)
 
 metrics:collect:
   stage: test
@@ -535,7 +486,7 @@ metrics:collect:
   before_script:
     - apt-get update && apt-get install -y --no-install-recommends nodejs npm
   script:
-    - echo "📊 Collecting Code Quality Metrics..."
+    - echo "Collecting Code Quality Metrics..."
     - pip install pytest pytest-cov
     - python scripts/metrics/collect_python_metrics.py --json > python_metrics.json
     - cd llars-frontend && npm ci --prefer-offline --silent
@@ -562,13 +513,12 @@ metrics:collect:
     - if: $CI_COMMIT_BRANCH == "develop"
   allow_failure: true
 
-# Update documentation with metrics (only on main branch)
 metrics:update-docs:
   stage: smoke
   tags:
     - shell
   script:
-    - echo "📝 Updating documentation with metrics..."
+    - echo "Updating documentation with metrics..."
     - cd /var/llars
     - python scripts/metrics/collect_python_metrics.py
     - node scripts/metrics/collect_frontend_metrics.js
@@ -579,6 +529,7 @@ metrics:update-docs:
     - if: $CI_COMMIT_BRANCH == "main"
   needs:
     - metrics:collect
-    - smoke:production
+    - job: smoke:production
+      optional: true
   when: on_success
   allow_failure: true

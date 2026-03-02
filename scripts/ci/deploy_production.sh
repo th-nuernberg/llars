@@ -108,7 +108,32 @@ DEPLOYED_COMMIT=$DEPLOYED_COMMIT
 DEPLOYED_AT=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 EOF
 
-echo "[5/6] Deployment complete"
+echo "[5/8] Waiting for production to be healthy..."
+HEALTH_SCRIPT="$DEPLOY_PATH/scripts/ci/wait_for_health.sh"
+if [ -f "$HEALTH_SCRIPT" ]; then
+  bash "$HEALTH_SCRIPT" "http://localhost/auth/health_check" 180 5
+else
+  # Fallback: simple wait
+  for i in $(seq 1 36); do
+    if curl -fsS -o /dev/null --max-time 10 "http://localhost/auth/health_check" 2>/dev/null; then
+      echo "Production healthy after $((i * 5))s"
+      break
+    fi
+    if [ "$i" -eq 36 ]; then
+      echo "WARNING: Production health check timed out after 180s"
+    fi
+    sleep 5
+  done
+fi
 
-echo "[6/6] Current status"
+echo "[6/8] Stopping staging containers (if running)..."
+STAGING_SERVICES="nginx-service backend-flask-service frontend-vue-service backend-supervisor-service yjs-service"
+if [ -f "$DEPLOY_PATH/docker-compose.staging.yml" ]; then
+  docker compose -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.staging.yml \
+    stop $STAGING_SERVICES 2>/dev/null || true
+fi
+
+echo "[7/8] Deployment complete"
+
+echo "[8/8] Current status"
 docker compose -f docker-compose.yml -f docker-compose.prod.yml ps

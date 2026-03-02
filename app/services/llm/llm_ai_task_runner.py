@@ -204,7 +204,33 @@ class LLMResponseError(Exception):
 class LLMAITaskRunner:
     """Run scenario tasks for configured LLM evaluators."""
 
-    MAX_RETRIES = 2
+    MAX_RETRIES = 3
+    MAX_CONSECUTIVE_FAILURES = 3
+    _NON_RETRYABLE_CODES = {401, 403}
+
+    @staticmethod
+    def _is_non_retryable_error(exc: Exception) -> bool:
+        """Check if an API error is non-retryable (e.g., auth failures)."""
+        status_code = getattr(exc, 'status_code', None)
+        if status_code in LLMAITaskRunner._NON_RETRYABLE_CODES:
+            return True
+        exc_str = str(exc)
+        for code in LLMAITaskRunner._NON_RETRYABLE_CODES:
+            if f"Error code: {code}" in exc_str or f"status_code={code}" in exc_str:
+                return True
+        return False
+
+    @staticmethod
+    def _check_circuit_breaker(consecutive_failures: int, model_id: str, scenario_id: int, task_type: str) -> bool:
+        """Return True if circuit breaker is tripped and loop should break."""
+        if consecutive_failures >= LLMAITaskRunner.MAX_CONSECUTIVE_FAILURES:
+            logger.error(
+                "[LLM AI Runner] Circuit breaker: %d consecutive failures for model %s "
+                "in scenario %s (%s). Aborting remaining items.",
+                consecutive_failures, model_id, scenario_id, task_type,
+            )
+            return True
+        return False
 
     @staticmethod
     def run_for_scenario_async(
@@ -437,7 +463,10 @@ class LLMAITaskRunner:
             criteria_lines = "\n".join(f"- {criterion}" for criterion in comparison_criteria)
             criteria_block = f"Bewertungskriterien:\n{criteria_lines}\n\n"
 
+        consecutive_failures = 0
         for session_id in session_ids:
+            if LLMAITaskRunner._check_circuit_breaker(consecutive_failures, model_id, scenario_id, "comparison_session"):
+                break
             try:
                 session = ComparisonSession.query.get(session_id)
                 if not session:
@@ -567,9 +596,11 @@ class LLMAITaskRunner:
                         task_type="comparison",
                         result=comparison_data,
                     )
+                consecutive_failures = 0
 
             except LLMResponseError as exc:
                 db.session.rollback()
+                consecutive_failures += 1
                 LLMAITaskRunner._store_error(
                     scenario_id=scenario_id,
                     thread_id=session_id,
@@ -587,6 +618,7 @@ class LLMAITaskRunner:
                 )
             except Exception as exc:
                 db.session.rollback()
+                consecutive_failures += 1
                 logger.warning(
                     "[LLM AI Runner] Comparison session %s failed: %s",
                     session_id,
@@ -694,8 +726,11 @@ class LLMAITaskRunner:
 
         bucket_names, bucket_keys = LLMAITaskRunner._get_bucket_config(scenario)
         thread_ids_list = list(thread_ids)
+        consecutive_failures = 0
 
         for thread_id in thread_ids_list:
+            if LLMAITaskRunner._check_circuit_breaker(consecutive_failures, model_id, scenario_id, "ranking"):
+                break
             try:
                 existing = LLMTaskResult.query.filter_by(
                     scenario_id=scenario_id,
@@ -844,9 +879,11 @@ Antworte im JSON-Format (verwende die numerischen Feature-IDs, nicht die Buchsta
                     task_type="ranking",
                     result=bucket_map,
                 )
+                consecutive_failures = 0
 
             except LLMResponseError as exc:
                 db.session.rollback()
+                consecutive_failures += 1
                 LLMAITaskRunner._store_error(
                     scenario_id=scenario_id,
                     thread_id=thread_id,
@@ -865,6 +902,7 @@ Antworte im JSON-Format (verwende die numerischen Feature-IDs, nicht die Buchsta
                 )
             except Exception as exc:
                 db.session.rollback()
+                consecutive_failures += 1
                 logger.warning("[LLM AI Runner] Ranking failed for thread %s: %s", thread_id, exc)
                 # Broadcast failure
                 _broadcast_task_failed(
@@ -1087,8 +1125,11 @@ Antworte im JSON-Format:
     def _run_rating(model_id: str, thread_ids: Iterable[int], scenario_id: int) -> None:
         client, api_model_id = LLMClientFactory.resolve_client_and_model_id(model_id)
         scenario = RatingScenarios.query.get(scenario_id)
+        consecutive_failures = 0
 
         for thread_id in thread_ids:
+            if LLMAITaskRunner._check_circuit_breaker(consecutive_failures, model_id, scenario_id, "rating"):
+                break
             try:
                 existing = LLMTaskResult.query.filter_by(
                     scenario_id=scenario_id,
@@ -1254,9 +1295,11 @@ Antworte im JSON-Format:
                     task_type="rating",
                     result=payload_out,
                 )
+                consecutive_failures = 0
 
             except LLMResponseError as exc:
                 db.session.rollback()
+                consecutive_failures += 1
                 LLMAITaskRunner._store_error(
                     scenario_id=scenario_id,
                     thread_id=thread_id,
@@ -1275,6 +1318,7 @@ Antworte im JSON-Format:
                 )
             except Exception as exc:
                 db.session.rollback()
+                consecutive_failures += 1
                 logger.warning("[LLM AI Runner] Rating failed for thread %s: %s", thread_id, exc)
                 # Broadcast failure
                 _broadcast_task_failed(
@@ -1288,8 +1332,11 @@ Antworte im JSON-Format:
     @staticmethod
     def _run_authenticity(model_id: str, thread_ids: Iterable[int], scenario_id: int) -> None:
         client, api_model_id = LLMClientFactory.resolve_client_and_model_id(model_id)
+        consecutive_failures = 0
 
         for thread_id in thread_ids:
+            if LLMAITaskRunner._check_circuit_breaker(consecutive_failures, model_id, scenario_id, "authenticity"):
+                break
             try:
                 existing = LLMTaskResult.query.filter_by(
                     scenario_id=scenario_id,
@@ -1361,9 +1408,11 @@ Antworte im JSON-Format:
                     task_type="authenticity",
                     result=vote_data,
                 )
+                consecutive_failures = 0
 
             except LLMResponseError as exc:
                 db.session.rollback()
+                consecutive_failures += 1
                 LLMAITaskRunner._store_error(
                     scenario_id=scenario_id,
                     thread_id=thread_id,
@@ -1382,6 +1431,7 @@ Antworte im JSON-Format:
                 )
             except Exception as exc:
                 db.session.rollback()
+                consecutive_failures += 1
                 logger.warning("[LLM AI Runner] Authenticity failed for thread %s: %s", thread_id, exc)
                 # Broadcast failure
                 _broadcast_task_failed(
@@ -1404,8 +1454,11 @@ Antworte im JSON-Format:
         dimensions = dim_config.get("dimensions", [])
         global_min = dim_config.get("min", 1)
         global_max = dim_config.get("max", 5)
+        consecutive_failures = 0
 
         for thread_id in thread_ids:
+            if LLMAITaskRunner._check_circuit_breaker(consecutive_failures, model_id, scenario_id, "mail_rating"):
+                break
             try:
                 existing = LLMTaskResult.query.filter_by(
                     scenario_id=scenario_id,
@@ -1526,9 +1579,11 @@ Antworte im JSON-Format:
                     task_type="mail_rating",
                     result=rating_data,
                 )
+                consecutive_failures = 0
 
             except LLMResponseError as exc:
                 db.session.rollback()
+                consecutive_failures += 1
                 LLMAITaskRunner._store_error(
                     scenario_id=scenario_id,
                     thread_id=thread_id,
@@ -1547,6 +1602,7 @@ Antworte im JSON-Format:
                 )
             except Exception as exc:
                 db.session.rollback()
+                consecutive_failures += 1
                 logger.warning("[LLM AI Runner] Mail rating failed for thread %s: %s", thread_id, exc)
                 # Broadcast failure
                 _broadcast_task_failed(
@@ -1641,7 +1697,10 @@ Antworte im JSON-Format:
             )
             descriptions_text = f"\n\nLabel-Beschreibungen:\n{descriptions_text}"
 
+        consecutive_failures = 0
         for thread_id in thread_ids:
+            if LLMAITaskRunner._check_circuit_breaker(consecutive_failures, model_id, scenario_id, task_type):
+                break
             try:
                 existing = LLMTaskResult.query.filter_by(
                     scenario_id=scenario_id,
@@ -1718,9 +1777,11 @@ Antworte im JSON-Format:
                     task_type=task_type,
                     result=classification_data,
                 )
+                consecutive_failures = 0
 
             except LLMResponseError as exc:
                 db.session.rollback()
+                consecutive_failures += 1
                 LLMAITaskRunner._store_error(
                     scenario_id=scenario_id,
                     thread_id=thread_id,
@@ -1739,6 +1800,7 @@ Antworte im JSON-Format:
                 )
             except Exception as exc:
                 db.session.rollback()
+                consecutive_failures += 1
                 logger.warning("[LLM AI Runner] %s failed for thread %s: %s", task_type, thread_id, exc)
                 # Broadcast failure
                 _broadcast_task_failed(
@@ -1760,7 +1822,10 @@ Antworte im JSON-Format:
             criteria_lines = "\n".join(f"- {criterion}" for criterion in comparison_criteria)
             criteria_block = f"Bewertungskriterien:\n{criteria_lines}\n\n"
 
+        consecutive_failures = 0
         for thread_id in thread_ids:
+            if LLMAITaskRunner._check_circuit_breaker(consecutive_failures, model_id, scenario_id, "comparison"):
+                break
             try:
                 existing = LLMTaskResult.query.filter_by(
                     scenario_id=scenario_id,
@@ -1845,9 +1910,11 @@ Antworte im JSON-Format:
                     task_type="comparison",
                     result=comparison_data,
                 )
+                consecutive_failures = 0
 
             except LLMResponseError as exc:
                 db.session.rollback()
+                consecutive_failures += 1
                 LLMAITaskRunner._store_error(
                     scenario_id=scenario_id,
                     thread_id=thread_id,
@@ -1866,6 +1933,7 @@ Antworte im JSON-Format:
                 )
             except Exception as exc:
                 db.session.rollback()
+                consecutive_failures += 1
                 logger.warning("[LLM AI Runner] Comparison failed for thread %s: %s", thread_id, exc)
                 # Broadcast failure
                 _broadcast_task_failed(
@@ -1922,13 +1990,29 @@ Antworte im JSON-Format:
                     _truncate(user_prompt, log_prompt_max),
                 )
 
-            response = LLMExecutionService.execute_chat_completion(
-                client,
-                model=model_id,
-                messages=messages,
-                extra_body={"response_format": {"type": "json_object"}},
-                model_key=model_id,
-            )
+            try:
+                response = LLMExecutionService.execute_chat_completion(
+                    client,
+                    model=model_id,
+                    messages=messages,
+                    extra_body={"response_format": {"type": "json_object"}},
+                    model_key=model_id,
+                )
+            except Exception as api_exc:
+                if LLMAITaskRunner._is_non_retryable_error(api_exc):
+                    logger.warning(
+                        "[LLM AI Runner] Non-retryable API error %s: %s",
+                        trace_label, api_exc,
+                    )
+                    raise
+                last_error = str(api_exc)
+                logger.warning(
+                    "[LLM AI Runner] API error attempt=%s %s: %s",
+                    attempt + 1, trace_label, api_exc,
+                )
+                if attempt == LLMAITaskRunner.MAX_RETRIES:
+                    raise LLMResponseError(str(api_exc), raw_response=last_raw)
+                continue
             content = extract_message_text(response.choices[0].message) if response.choices else ""
             last_raw = content or ""
             if log_responses and _should_log(trace, log_prompts=log_prompts, log_responses=log_responses, log_tasks=log_tasks):

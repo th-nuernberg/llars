@@ -181,8 +181,16 @@ class LLMStructuredEvaluator:
             "cost_usd": 0.0,
             "thread_results": {},
         }
+        consecutive_failures = 0
 
         for thread_id in thread_ids:
+            if consecutive_failures >= self.MAX_RETRIES:
+                logger.error(
+                    "[Structured Eval] Circuit breaker: %d consecutive failures for model %s "
+                    "in scenario %s. Aborting remaining items.",
+                    consecutive_failures, model_id, scenario_id,
+                )
+                break
             # Skip if already evaluated
             existing = LLMTaskResult.query.filter_by(
                 scenario_id=scenario_id,
@@ -276,8 +284,10 @@ class LLMStructuredEvaluator:
                         cost_usd=cost_usd,
                         processing_time_ms=processing_time_ms,
                     )
+                consecutive_failures = 0
 
             except Exception as e:
+                consecutive_failures += 1
                 logger.exception("[Structured Eval] Evaluation failed for thread %s", thread_id)
                 results["errors"] += 1
                 results["thread_results"][thread_id] = {"error": str(e)}

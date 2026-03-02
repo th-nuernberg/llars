@@ -18,6 +18,7 @@ This module uses the unified EvaluationData schemas for evaluation types:
 
 import json
 import logging
+import time
 from datetime import datetime
 from flask import jsonify, request, g, current_app
 from auth.decorators import authentik_required
@@ -43,6 +44,10 @@ from .. import data_blueprint
 from .scenario_utils import is_scenario_owner, check_scenario_ownership, check_scenario_management_access, is_scenario_manager
 
 logger = logging.getLogger(__name__)
+
+# Cooldown for LLM auto-start: {scenario_id: last_trigger_timestamp}
+_llm_auto_start_cooldowns: dict[int, float] = {}
+_LLM_AUTO_START_COOLDOWN_SECONDS = 300  # 5 minutes
 
 
 def _normalize_role_value(role) -> str:
@@ -560,8 +565,14 @@ def get_scenario_detail(scenario_id):
         config['llm_evaluators'] = llm_evaluators
     result['llm_evaluators'] = llm_evaluators
 
-    if llm_evaluators and (is_admin or is_owner) and result.get('thread_count', 0) > 0:
+    # Auto-start LLM evaluations with cooldown to prevent self-DDoS
+    last_trigger = _llm_auto_start_cooldowns.get(scenario.id, 0)
+    cooldown_active = (time.monotonic() - last_trigger) < _LLM_AUTO_START_COOLDOWN_SECONDS
+
+    if llm_evaluators and (is_admin or is_owner) and result.get('thread_count', 0) > 0 and not cooldown_active:
         try:
+            _llm_auto_start_cooldowns[scenario.id] = time.monotonic()
+
             # Get all item IDs for this scenario (threads or comparison sessions)
             function_type = FeatureFunctionType.query.filter_by(
                 function_type_id=scenario.function_type_id

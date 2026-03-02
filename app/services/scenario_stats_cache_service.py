@@ -92,17 +92,33 @@ def get_cached_stats(scenario_id: int) -> Dict[str, Any]:
             return stats
 
     # 3. Cold start - compute synchronously but skip expensive provenance
+    # Use recompute lock to prevent duplicate cold starts from concurrent requests
+    with _recompute_lock:
+        if scenario_id in _active_recomputes:
+            # Another thread is already computing - wait briefly and check mem cache
+            pass
+        else:
+            _active_recomputes.add(scenario_id)
+
+    # Re-check mem cache (another thread may have populated it)
+    mem = _mem_cache.get(scenario_id)
+    if mem is not None:
+        _active_recomputes.discard(scenario_id)
+        return mem[1]
+
     logger.info("[StatsCache] Cold start for scenario %s - computing synchronously (no provenance)", scenario_id)
-    stats = _compute_quick_stats(scenario_id)
-    if stats is not None:
-        _save_to_db(scenario_id, stats)
-        # Get item count for tier determination
-        try:
-            from db.models import ScenarioItems
-            item_count = ScenarioItems.query.filter_by(scenario_id=scenario_id).count()
-        except Exception:
-            item_count = 0
-        _mem_cache[scenario_id] = (time.time(), stats, item_count)
+    try:
+        stats = _compute_quick_stats(scenario_id)
+        if stats is not None:
+            _save_to_db(scenario_id, stats)
+            try:
+                from db.models import ScenarioItems
+                item_count = ScenarioItems.query.filter_by(scenario_id=scenario_id).count()
+            except Exception:
+                item_count = 0
+            _mem_cache[scenario_id] = (time.time(), stats, item_count)
+    finally:
+        _active_recomputes.discard(scenario_id)
     # Trigger background recompute for full stats (with provenance)
     trigger_recompute(scenario_id)
     return stats or {}
@@ -269,7 +285,19 @@ def _save_to_db(scenario_id: int, stats: Dict[str, Any]) -> None:
             )
             db.session.add(row)
 
-        db.session.commit()
+        try:
+            db.session.commit()
+        except Exception:
+            # Race condition: another thread inserted first - update instead
+            db.session.rollback()
+            row = ScenarioStatsCache.query.filter_by(scenario_id=scenario_id).first()
+            if row:
+                row.stats_json = stats_json
+                row.function_type = function_type_name
+                row.computed_at = now
+                row.item_count = item_count
+                row.is_computing = False
+                db.session.commit()
     except Exception as exc:
         db.session.rollback()
         logger.warning("[StatsCache] Failed to save stats to DB for scenario %s: %s", scenario_id, exc)

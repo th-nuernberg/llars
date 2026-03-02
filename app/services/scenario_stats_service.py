@@ -713,12 +713,17 @@ def get_user_progress_counts(scenario_id: int) -> Dict[str, Dict[str, int]]:
     return result
 
 
-def get_progress_stats(scenario_id: int) -> Dict[str, Any]:
+def get_progress_stats(scenario_id: int, *, skip_provenance: bool = False) -> Dict[str, Any]:
     """Get detailed progress statistics for all users in a scenario.
 
     WARNING: This is expensive for large scenarios (computes agreement metrics,
     heatmaps, etc.). Use get_user_progress_counts() when you only need
     progress bars.
+
+    Args:
+        skip_provenance: If True, skip expensive provenance analysis.
+            Used for synchronous cold-start to avoid blocking gevent workers.
+            Background threads should call with skip_provenance=False.
 
     Caching is handled by scenario_stats_cache_service (DB-backed + in-memory).
     This function always performs the full computation.
@@ -906,9 +911,11 @@ def get_progress_stats(scenario_id: int) -> Dict[str, Any]:
         rating_distribution = _calculate_rating_distribution(scenario_id)
         dimension_averages = _calculate_dimension_averages(scenario_id)
         rating_alpha = _calculate_rating_krippendorff_alpha(scenario_id)
-        rating_provenance_analysis = _calculate_rating_provenance_analysis(scenario_id)
+        if not skip_provenance:
+            rating_provenance_analysis = _calculate_rating_provenance_analysis(scenario_id)
         if function_type.name == "mail_rating":
-            conversation_provenance = _calculate_mail_rating_conversation_provenance(scenario_id)
+            if not skip_provenance:
+                conversation_provenance = _calculate_mail_rating_conversation_provenance(scenario_id)
         if alpha is None and rating_alpha and rating_alpha.get("all") is not None:
             alpha = rating_alpha["all"]
     elif function_type.name == "labeling":
@@ -917,10 +924,13 @@ def get_progress_stats(scenario_id: int) -> Dict[str, Any]:
         _t = time.time()
         bucket_distribution = _calculate_bucket_distribution(scenario_id)
         _perf_log.info("[StatsPerf] scenario=%s _calculate_bucket_distribution: %.3fs", scenario_id, time.time() - _t)
-        # Provenance analysis now always computed (runs in background thread via cache service).
-        _t = time.time()
-        provenance_analysis = _calculate_ranking_provenance_analysis(scenario_id)
-        _perf_log.info("[StatsPerf] scenario=%s _calculate_ranking_provenance: %.3fs", scenario_id, time.time() - _t)
+        # Provenance analysis: skipped on synchronous cold-start, computed in background thread.
+        if not skip_provenance:
+            _t = time.time()
+            provenance_analysis = _calculate_ranking_provenance_analysis(scenario_id)
+            _perf_log.info("[StatsPerf] scenario=%s _calculate_ranking_provenance: %.3fs", scenario_id, time.time() - _t)
+        else:
+            _perf_log.info("[StatsPerf] scenario=%s _calculate_ranking_provenance: SKIPPED (cold start)", scenario_id)
 
     # Build model_registry for all LLM model_ids in evaluator_stats
     all_model_ids = [e['model_id'] for e in evaluator_stats if e.get('model_id')]

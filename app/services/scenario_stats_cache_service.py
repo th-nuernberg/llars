@@ -91,9 +91,9 @@ def get_cached_stats(scenario_id: int) -> Dict[str, Any]:
                 trigger_recompute(scenario_id)
             return stats
 
-    # 3. Cold start - compute synchronously (first-ever call)
-    logger.info("[StatsCache] Cold start for scenario %s - computing synchronously", scenario_id)
-    stats = _compute_full_stats(scenario_id)
+    # 3. Cold start - compute synchronously but skip expensive provenance
+    logger.info("[StatsCache] Cold start for scenario %s - computing synchronously (no provenance)", scenario_id)
+    stats = _compute_quick_stats(scenario_id)
     if stats is not None:
         _save_to_db(scenario_id, stats)
         # Get item count for tier determination
@@ -103,6 +103,8 @@ def get_cached_stats(scenario_id: int) -> Dict[str, Any]:
         except Exception:
             item_count = 0
         _mem_cache[scenario_id] = (time.time(), stats, item_count)
+    # Trigger background recompute for full stats (with provenance)
+    trigger_recompute(scenario_id)
     return stats or {}
 
 
@@ -212,11 +214,21 @@ def _get_db_row(scenario_id: int) -> Optional[ScenarioStatsCache]:
         return None
 
 
-def _compute_full_stats(scenario_id: int) -> Optional[Dict[str, Any]]:
-    """Run the full stats computation (expensive)."""
+def _compute_quick_stats(scenario_id: int) -> Optional[Dict[str, Any]]:
+    """Compute stats without expensive provenance analysis (for cold start)."""
     try:
         from services.scenario_stats_service import get_progress_stats
-        return get_progress_stats(scenario_id)
+        return get_progress_stats(scenario_id, skip_provenance=True)
+    except Exception as exc:
+        logger.error("[StatsCache] Quick stats computation failed for scenario %s: %s", scenario_id, exc)
+        return None
+
+
+def _compute_full_stats(scenario_id: int) -> Optional[Dict[str, Any]]:
+    """Run the full stats computation including provenance (expensive)."""
+    try:
+        from services.scenario_stats_service import get_progress_stats
+        return get_progress_stats(scenario_id, skip_provenance=False)
     except Exception as exc:
         logger.error("[StatsCache] Full stats computation failed for scenario %s: %s", scenario_id, exc)
         return None

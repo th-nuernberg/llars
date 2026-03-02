@@ -881,10 +881,15 @@ def get_progress_stats(scenario_id: int) -> Dict[str, Any]:
         evaluator_stats.extend(llm_stats)
 
     # Calculate agreement metrics for ranking/rating scenarios
+    import logging as _logging
+    _perf_log = _logging.getLogger('stats_perf')
+
     all_stats = rater_stats + evaluator_stats
     alpha = None
     if function_type.name in {"ranking", "rating", "mail_rating"} and len(all_stats) >= 2:
+        _t = time.time()
         alpha = _calculate_ranking_agreement(all_stats, scenario_id, function_type.name)
+        _perf_log.info("[StatsPerf] scenario=%s _calculate_ranking_agreement: %.3fs", scenario_id, time.time() - _t)
 
     # Calculate distribution and agreement metrics based on scenario type
     rating_distribution = None
@@ -898,7 +903,9 @@ def get_progress_stats(scenario_id: int) -> Dict[str, Any]:
 
     # Calculate pairwise agreement using unified dispatcher (works for all types)
     if function_type.name in {"rating", "mail_rating", "labeling", "ranking"}:
+        _t = time.time()
         pairwise_agreement = _calculate_unified_pairwise_agreement(scenario_id, function_type.name)
+        _perf_log.info("[StatsPerf] scenario=%s _calculate_pairwise_agreement: %.3fs", scenario_id, time.time() - _t)
 
     if function_type.name in {"rating", "mail_rating"}:
         rating_distribution = _calculate_rating_distribution(scenario_id)
@@ -912,8 +919,12 @@ def get_progress_stats(scenario_id: int) -> Dict[str, Any]:
     elif function_type.name == "labeling":
         rating_distribution = _calculate_labeling_distribution(scenario_id)
     elif function_type.name == "ranking":
+        _t = time.time()
         bucket_distribution = _calculate_bucket_distribution(scenario_id)
+        _perf_log.info("[StatsPerf] scenario=%s _calculate_bucket_distribution: %.3fs", scenario_id, time.time() - _t)
+        _t = time.time()
         provenance_analysis = _calculate_ranking_provenance_analysis(scenario_id)
+        _perf_log.info("[StatsPerf] scenario=%s _calculate_ranking_provenance: %.3fs", scenario_id, time.time() - _t)
 
     # Build model_registry for all LLM model_ids in evaluator_stats
     all_model_ids = [e['model_id'] for e in evaluator_stats if e.get('model_id')]

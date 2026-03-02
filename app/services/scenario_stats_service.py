@@ -922,9 +922,15 @@ def get_progress_stats(scenario_id: int) -> Dict[str, Any]:
         _t = time.time()
         bucket_distribution = _calculate_bucket_distribution(scenario_id)
         _perf_log.info("[StatsPerf] scenario=%s _calculate_bucket_distribution: %.3fs", scenario_id, time.time() - _t)
-        _t = time.time()
-        provenance_analysis = _calculate_ranking_provenance_analysis(scenario_id)
-        _perf_log.info("[StatsPerf] scenario=%s _calculate_ranking_provenance: %.3fs", scenario_id, time.time() - _t)
+        # Provenance analysis skipped for large scenarios (>200 items) - too CPU intensive.
+        # Loads all Features + Messages + GeneratedOutputs for content matching.
+        thread_count = len(scenario_thread_ids) if scenario_thread_ids else 0
+        if thread_count <= 200:
+            _t = time.time()
+            provenance_analysis = _calculate_ranking_provenance_analysis(scenario_id)
+            _perf_log.info("[StatsPerf] scenario=%s _calculate_ranking_provenance: %.3fs", scenario_id, time.time() - _t)
+        else:
+            _perf_log.info("[StatsPerf] scenario=%s _calculate_ranking_provenance: SKIPPED (%d items > 200 limit)", scenario_id, thread_count)
 
     # Build model_registry for all LLM model_ids in evaluator_stats
     all_model_ids = [e['model_id'] for e in evaluator_stats if e.get('model_id')]

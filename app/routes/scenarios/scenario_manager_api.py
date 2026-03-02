@@ -592,6 +592,23 @@ def get_scenario_detail(scenario_id):
                 from services.llm.llm_ai_task_runner import LLMAITaskRunner
 
                 for model_id in llm_evaluators:
+                    # Skip models with recent errors (cooldown: 30 min)
+                    from datetime import datetime, timedelta
+                    cooldown_cutoff = datetime.utcnow() - timedelta(minutes=30)
+                    recent_errors = db.session.query(db.func.count()).filter(
+                        LLMTaskResult.scenario_id == scenario.id,
+                        LLMTaskResult.model_id == model_id,
+                        LLMTaskResult.error.isnot(None),
+                        LLMTaskResult.updated_at >= cooldown_cutoff,
+                    ).scalar() or 0
+
+                    if recent_errors >= 3:
+                        logger.info(
+                            "[LLM AI Runner] Skipping auto-start for %s in scenario %s - %d recent errors (cooldown)",
+                            model_id, scenario.id, recent_errors,
+                        )
+                        continue
+
                     # Get threads that already have results for this model
                     completed_rows = db.session.query(LLMTaskResult.thread_id).filter(
                         LLMTaskResult.scenario_id == scenario.id,
@@ -601,8 +618,16 @@ def get_scenario_detail(scenario_id):
                     ).all()
                     completed_thread_ids = {row[0] for row in completed_rows if row[0]}
 
-                    # Find threads that need evaluation
-                    pending_thread_ids = list(all_thread_ids - completed_thread_ids)
+                    # Also exclude errored threads (don't auto-retry)
+                    errored_rows = db.session.query(LLMTaskResult.thread_id).filter(
+                        LLMTaskResult.scenario_id == scenario.id,
+                        LLMTaskResult.model_id == model_id,
+                        LLMTaskResult.error.isnot(None),
+                    ).all()
+                    errored_thread_ids = {row[0] for row in errored_rows if row[0]}
+
+                    # Only start truly pending threads
+                    pending_thread_ids = list(all_thread_ids - completed_thread_ids - errored_thread_ids)
 
                     if pending_thread_ids:
                         logger.info(

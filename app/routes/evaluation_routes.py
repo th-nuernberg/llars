@@ -58,6 +58,29 @@ def get_agreement_metrics(scenario_id):
 
     require_scenario_membership(scenario_id, g.authentik_user)
 
+    # For large scenarios, return cached alpha from stats cache to avoid
+    # blocking the gevent worker with expensive Krippendorff computation.
+    from db.models import ScenarioItems
+    item_count = ScenarioItems.query.filter_by(scenario_id=scenario_id).count()
+    if item_count > 200:
+        from services.scenario_stats_cache_service import get_cached_stats
+        cached = get_cached_stats(scenario_id)
+        alpha = cached.get('krippendorff_alpha')
+        pairwise = cached.get('pairwise_agreement') or {}
+        return jsonify({
+            'scenario_id': scenario_id,
+            'item_count': item_count,
+            'metrics': {
+                'krippendorff_alpha': {
+                    'value': alpha,
+                    'interpretation': cached.get('alpha_interpretation', 'N/A'),
+                },
+            },
+            'pairwise_agreement': pairwise,
+            'note': 'Detailed metrics unavailable for large scenarios (>200 items). '
+                    'Krippendorff Alpha from cached stats.',
+        })
+
     # Parse query parameters
     include_llm = request.args.get('include_llm', 'true').lower() == 'true'
     include_human = request.args.get('include_human', 'true').lower() == 'true'

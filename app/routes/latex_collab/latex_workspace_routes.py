@@ -14,6 +14,8 @@ from db.database import db
 from db.tables import (
     LatexWorkspace,
     LatexWorkspaceMember,
+    LatexWorkspaceAccessRequest,
+    AccessRequestStatus,
     LatexDocument,
     LatexNodeType,
     LatexWorkspaceVisibility,
@@ -297,3 +299,158 @@ def remove_workspace_member(workspace_id: int, member_username: str):
     db.session.delete(member)
     db.session.commit()
     return jsonify({"success": True}), 200
+
+
+# ============================================================================
+# Access Requests
+# ============================================================================
+
+@latex_workspace_bp.route("/workspaces/<int:workspace_id>/access-requests", methods=["POST"])
+@require_permission("feature:latex_collab:view")
+@handle_api_errors(logger_name="latex_collab")
+def create_access_request(workspace_id: int):
+    """Send an access request for a workspace."""
+    username = AuthUtils.extract_username_without_validation()
+    if not username:
+        raise ValidationError("Invalid token")
+
+    ws = LatexWorkspace.query.get(workspace_id)
+    if not ws:
+        raise NotFoundError("Workspace not found")
+
+    if ws.owner_username == username:
+        raise ValidationError("Owner already has access")
+
+    existing_member = LatexWorkspaceMember.query.filter_by(
+        workspace_id=workspace_id, username=username
+    ).first()
+    if existing_member:
+        raise ValidationError("Already a member")
+
+    existing_request = LatexWorkspaceAccessRequest.query.filter_by(
+        workspace_id=workspace_id, requester_username=username
+    ).first()
+    if existing_request and existing_request.status == AccessRequestStatus.pending:
+        raise ValidationError("Request already pending")
+
+    # If a previous rejected request exists, update it to pending
+    if existing_request:
+        existing_request.status = AccessRequestStatus.pending
+        existing_request.created_at = datetime.utcnow()
+        existing_request.resolved_at = None
+        existing_request.resolved_by = None
+    else:
+        data = request.get_json() or {}
+        access_request = LatexWorkspaceAccessRequest(
+            workspace_id=workspace_id,
+            requester_username=username,
+            message=data.get("message"),
+        )
+        db.session.add(access_request)
+
+    db.session.commit()
+
+    # Emit real-time socket event to workspace owner
+    req_obj = existing_request if existing_request else access_request
+    owner = User.query.filter_by(username=ws.owner_username).first()
+    if owner:
+        socketio = current_app.extensions.get('socketio')
+        if socketio:
+            try:
+                from socketio_handlers.events_latex_collab import emit_access_request_created
+                emit_access_request_created(socketio, ws.id, owner.id, req_obj.to_dict())
+            except Exception:
+                pass
+
+    return jsonify({"success": True}), 201
+
+
+@latex_workspace_bp.route("/workspaces/access-requests", methods=["GET"])
+@require_permission("feature:latex_collab:view")
+@handle_api_errors(logger_name="latex_collab")
+def list_access_requests():
+    """List pending access requests for workspaces owned by the current user."""
+    username = AuthUtils.extract_username_without_validation()
+    if not username:
+        raise ValidationError("Invalid token")
+
+    owned_ws_ids = [
+        ws.id for ws in LatexWorkspace.query.filter_by(owner_username=username).all()
+    ]
+
+    if not owned_ws_ids:
+        return jsonify({"success": True, "requests": []}), 200
+
+    requests = (
+        LatexWorkspaceAccessRequest.query
+        .filter(
+            LatexWorkspaceAccessRequest.workspace_id.in_(owned_ws_ids),
+            LatexWorkspaceAccessRequest.status == AccessRequestStatus.pending,
+        )
+        .order_by(LatexWorkspaceAccessRequest.created_at.desc())
+        .all()
+    )
+
+    return jsonify({
+        "success": True,
+        "requests": [r.to_dict() for r in requests],
+    }), 200
+
+
+@latex_workspace_bp.route("/access-requests/<int:request_id>", methods=["PUT"])
+@require_permission("feature:latex_collab:share")
+@handle_api_errors(logger_name="latex_collab")
+def resolve_access_request(request_id: int):
+    """Approve or reject an access request."""
+    username = AuthUtils.extract_username_without_validation()
+    if not username:
+        raise ValidationError("Invalid token")
+
+    access_req = LatexWorkspaceAccessRequest.query.get(request_id)
+    if not access_req:
+        raise NotFoundError("Access request not found")
+
+    ws = LatexWorkspace.query.get(access_req.workspace_id)
+    if not ws:
+        raise NotFoundError("Workspace not found")
+    require_workspace_manage(ws, username)
+
+    data = request.get_json() or {}
+    action = data.get("action")
+    if action not in ("approve", "reject"):
+        raise ValidationError("action must be 'approve' or 'reject'")
+
+    access_req.resolved_at = datetime.utcnow()
+    access_req.resolved_by = username
+
+    if action == "approve":
+        access_req.status = AccessRequestStatus.approved
+
+        # Auto-add as member
+        existing = LatexWorkspaceMember.query.filter_by(
+            workspace_id=ws.id, username=access_req.requester_username
+        ).first()
+        if not existing:
+            member = LatexWorkspaceMember(
+                workspace_id=ws.id,
+                username=access_req.requester_username,
+                added_by=username,
+                added_at=datetime.utcnow(),
+            )
+            db.session.add(member)
+
+        # Emit socket event
+        user = User.query.filter_by(username=access_req.requester_username).first()
+        if user:
+            socketio = current_app.extensions.get('socketio')
+            if socketio:
+                try:
+                    from socketio_handlers.events_latex_collab import emit_workspace_shared
+                    emit_workspace_shared(socketio, user.id, workspace_to_dict(ws))
+                except Exception:
+                    pass
+    else:
+        access_req.status = AccessRequestStatus.rejected
+
+    db.session.commit()
+    return jsonify({"success": True, "request": access_req.to_dict()}), 200

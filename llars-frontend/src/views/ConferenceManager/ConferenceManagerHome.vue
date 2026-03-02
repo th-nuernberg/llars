@@ -54,6 +54,10 @@
           <v-icon start>mdi-calendar</v-icon>
           {{ t('conferenceManager.tabs.calendar') }}
         </v-tab>
+        <v-tab value="timeline">
+          <v-icon start>mdi-timeline-outline</v-icon>
+          {{ t('conferenceManager.tabs.timeline') }}
+        </v-tab>
         <v-tab value="kanban">
           <v-icon start>mdi-view-column-outline</v-icon>
           {{ t('conferenceManager.tabs.kanban') }}
@@ -72,6 +76,9 @@
       <v-window-item value="calendar">
         <CalendarView />
       </v-window-item>
+      <v-window-item value="timeline">
+        <TimelineView />
+      </v-window-item>
       <v-window-item value="kanban">
         <KanbanView />
       </v-window-item>
@@ -80,18 +87,33 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, watch, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useRoute, useRouter } from 'vue-router'
 import { useConferenceManager } from './composables/useConferenceManager'
 import ConferenceListView from './components/ConferenceListView.vue'
 import PaperListView from './components/PaperListView.vue'
 import CalendarView from './components/CalendarView.vue'
+import TimelineView from './components/TimelineView.vue'
 import KanbanView from './components/KanbanView.vue'
 
 const { t } = useI18n()
-const { stats, fetchStats, fetchConferences, fetchPapers } = useConferenceManager()
+const route = useRoute()
+const router = useRouter()
+const { stats, fetchStats, fetchConferences, fetchPapers, fetchSeries } = useConferenceManager()
 
-const activeTab = ref('conferences')
+const VALID_TABS = ['conferences', 'papers', 'calendar', 'timeline', 'kanban']
+
+const activeTab = ref(getInitialTab())
+
+function getInitialTab() {
+  const tab = route.query.tab
+  return VALID_TABS.includes(tab) ? tab : 'conferences'
+}
+
+watch(activeTab, (tab) => {
+  router.replace({ query: { ...route.query, tab } })
+})
 
 const statusKeyMap = {
   planning: 'planning',
@@ -99,12 +121,14 @@ const statusKeyMap = {
   submitted: 'submitted',
   accepted: 'accepted',
   rejected: 'rejected',
+  published: 'published',
 }
 
 onMounted(() => {
   fetchStats()
   fetchConferences()
   fetchPapers()
+  fetchSeries()
 })
 </script>
 

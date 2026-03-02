@@ -8,9 +8,11 @@ import { useAuth } from '@/composables/useAuth'
 // Shared state across components
 const conferences = ref([])
 const papers = ref([])
+const series = ref([])
 const stats = ref(null)
 const loading = ref(false)
 const error = ref(null)
+const latexAccessMap = ref({})
 
 export function useConferenceManager() {
   const { getToken } = useAuth()
@@ -90,6 +92,7 @@ export function useConferenceManager() {
         params,
       })
       papers.value = response.data.papers || []
+      checkLatexAccess()
       return papers.value
     } catch (err) {
       error.value = err.response?.data?.error || 'Failed to fetch papers'
@@ -144,6 +147,95 @@ export function useConferenceManager() {
     return response.data.authors
   }
 
+  // ── Submissions ──────────────────────────────────────────────
+
+  async function addSubmission(paperId, data) {
+    const response = await axios.post(`/api/conference-manager/papers/${paperId}/submissions`, data, {
+      headers: getHeaders(),
+    })
+    await fetchPapers()
+    return response.data.paper
+  }
+
+  async function updateSubmission(paperId, submissionId, data) {
+    const response = await axios.put(`/api/conference-manager/papers/${paperId}/submissions/${submissionId}`, data, {
+      headers: getHeaders(),
+    })
+    await fetchPapers()
+    return response.data.paper
+  }
+
+  async function deleteSubmission(paperId, submissionId) {
+    const response = await axios.delete(`/api/conference-manager/papers/${paperId}/submissions/${submissionId}`, {
+      headers: getHeaders(),
+    })
+    await fetchPapers()
+    return response.data.paper
+  }
+
+  // ── Series ─────────────────────────────────────────────────
+
+  async function fetchSeries(search = '') {
+    try {
+      const params = {}
+      if (search) params.search = search
+      const response = await axios.get('/api/conference-manager/series', {
+        headers: getHeaders(),
+        params,
+      })
+      series.value = response.data.series || []
+      return series.value
+    } catch (err) {
+      console.error('Failed to fetch series:', err)
+    }
+  }
+
+  async function createSeries(data) {
+    const response = await axios.post('/api/conference-manager/series', data, {
+      headers: getHeaders(),
+    })
+    await fetchSeries()
+    return response.data.series
+  }
+
+  async function findSeriesByAcronym(acronym) {
+    const response = await axios.get('/api/conference-manager/series/find-by-acronym', {
+      headers: getHeaders(),
+      params: { acronym },
+    })
+    return response.data.series
+  }
+
+  async function getNewEditionDefaults(seriesId) {
+    const response = await axios.get(`/api/conference-manager/series/${seriesId}/new-edition-defaults`, {
+      headers: getHeaders(),
+    })
+    return response.data.defaults
+  }
+
+  // ── LaTeX Access ─────────────────────────────────────────────
+
+  async function checkLatexAccess() {
+    try {
+      const response = await axios.get('/api/conference-manager/papers/latex-access', {
+        headers: getHeaders(),
+      })
+      latexAccessMap.value = response.data.access || {}
+    } catch (err) {
+      console.error('Failed to check latex access:', err)
+    }
+  }
+
+  async function requestLatexAccess(workspaceId, message = '') {
+    const response = await axios.post(
+      `/api/latex-collab/workspaces/${workspaceId}/access-requests`,
+      message ? { message } : {},
+      { headers: getHeaders() }
+    )
+    await checkLatexAccess()
+    return response.data
+  }
+
   // ── Stats ──────────────────────────────────────────────────
 
   async function fetchStats() {
@@ -162,9 +254,11 @@ export function useConferenceManager() {
     // State
     conferences,
     papers,
+    series,
     stats,
     loading,
     error,
+    latexAccessMap,
 
     // Conference methods
     fetchConferences,
@@ -172,6 +266,12 @@ export function useConferenceManager() {
     createConference,
     updateConference,
     deleteConference,
+
+    // Series methods
+    fetchSeries,
+    createSeries,
+    findSeriesByAcronym,
+    getNewEditionDefaults,
 
     // Paper methods
     fetchPapers,
@@ -181,6 +281,15 @@ export function useConferenceManager() {
     updatePaperStatus,
     deletePaper,
     setPaperAuthors,
+
+    // Submission methods
+    addSubmission,
+    updateSubmission,
+    deleteSubmission,
+
+    // LaTeX access
+    checkLatexAccess,
+    requestLatexAccess,
 
     // Stats
     fetchStats,

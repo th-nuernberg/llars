@@ -10,6 +10,38 @@
 
       <v-card-text>
         <v-form ref="formRef" @submit.prevent="save">
+          <!-- Series Selector -->
+          <v-row dense>
+            <v-col cols="12">
+              <div class="d-flex align-center ga-2">
+                <v-autocomplete
+                  v-model="form.series_id"
+                  :items="seriesItems"
+                  item-title="text"
+                  item-value="value"
+                  :label="t('conferenceManager.series.select')"
+                  :hint="t('conferenceManager.series.hint')"
+                  variant="outlined"
+                  density="compact"
+                  clearable
+                  persistent-hint
+                  prepend-inner-icon="mdi-book-multiple-outline"
+                  class="flex-grow-1"
+                  @update:model-value="onSeriesSelected"
+                />
+                <v-btn
+                  icon
+                  variant="text"
+                  size="small"
+                  :title="t('conferenceManager.series.create')"
+                  @click="showNewSeriesDialog = true"
+                >
+                  <v-icon>mdi-plus</v-icon>
+                </v-btn>
+              </div>
+            </v-col>
+          </v-row>
+
           <v-row dense>
             <v-col cols="12" sm="8">
               <v-text-field
@@ -156,17 +188,60 @@
         </v-btn>
       </v-card-actions>
     </v-card>
+
+    <!-- Inline New Series Dialog -->
+    <v-dialog v-model="showNewSeriesDialog" max-width="440" persistent>
+      <v-card>
+        <v-card-title>{{ t('conferenceManager.series.create') }}</v-card-title>
+        <v-card-text>
+          <v-text-field
+            v-model="newSeriesName"
+            :label="t('conferenceManager.conference.name') + ' *'"
+            variant="outlined"
+            density="compact"
+            class="mb-2"
+          />
+          <v-text-field
+            v-model="newSeriesAcronym"
+            :label="t('conferenceManager.conference.acronym') + ' *'"
+            variant="outlined"
+            density="compact"
+          />
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn variant="text" @click="showNewSeriesDialog = false">{{ t('conferenceManager.actions.cancel') }}</v-btn>
+          <v-btn
+            color="primary"
+            variant="flat"
+            :loading="creatingSeries"
+            :disabled="!newSeriesName || !newSeriesAcronym"
+            :style="{ borderRadius: '16px 4px 16px 4px' }"
+            @click="doCreateSeries"
+          >
+            {{ t('conferenceManager.actions.create') }}
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </v-dialog>
 </template>
 
 <script setup>
-import { ref, watch, computed } from 'vue'
+import { ref, watch, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { CORE_RANKINGS } from '../config/conferenceConfig'
 import { useConferenceManager } from '../composables/useConferenceManager'
 
 const { t } = useI18n()
-const { createConference, updateConference } = useConferenceManager()
+const {
+  series,
+  createConference,
+  updateConference,
+  fetchSeries,
+  createSeries,
+  getNewEditionDefaults,
+} = useConferenceManager()
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
@@ -183,7 +258,21 @@ const isEdit = computed(() => !!props.conference?.id)
 const saving = ref(false)
 const formRef = ref(null)
 
+// Series
+const showNewSeriesDialog = ref(false)
+const newSeriesName = ref('')
+const newSeriesAcronym = ref('')
+const creatingSeries = ref(false)
+
+const seriesItems = computed(() =>
+  (series.value || []).map((s) => ({
+    text: `${s.acronym} — ${s.name}`,
+    value: s.id,
+  }))
+)
+
 const defaultForm = () => ({
+  series_id: null,
   name: '',
   acronym: '',
   year: new Date().getFullYear(),
@@ -206,6 +295,7 @@ watch(() => props.conference, (val) => {
     form.value = {
       ...defaultForm(),
       ...val,
+      series_id: val.series_id || null,
       submission_deadline: formatDateForInput(val.submission_deadline),
       notification_date: formatDateForInput(val.notification_date),
       start_date: formatDateForInput(val.start_date),
@@ -216,6 +306,50 @@ watch(() => props.conference, (val) => {
     form.value = defaultForm()
   }
 }, { immediate: true })
+
+watch(dialogVisible, (open) => {
+  if (open) fetchSeries()
+})
+
+onMounted(() => fetchSeries())
+
+async function onSeriesSelected(seriesId) {
+  if (!seriesId || isEdit.value) return
+  try {
+    const defaults = await getNewEditionDefaults(seriesId)
+    if (defaults) {
+      form.value.name = defaults.name || form.value.name
+      form.value.acronym = defaults.acronym || form.value.acronym
+      form.value.year = defaults.year || form.value.year
+      form.value.core_ranking = defaults.core_ranking || form.value.core_ranking
+      form.value.keywords = defaults.keywords?.length ? defaults.keywords : form.value.keywords
+      form.value.website_url = defaults.website_url || form.value.website_url
+      if (defaults.city) form.value.city = defaults.city
+      if (defaults.country) form.value.country = defaults.country
+    }
+  } catch (err) {
+    console.error('Failed to get edition defaults:', err)
+  }
+}
+
+async function doCreateSeries() {
+  creatingSeries.value = true
+  try {
+    const created = await createSeries({
+      name: newSeriesName.value,
+      acronym: newSeriesAcronym.value,
+    })
+    form.value.series_id = created.id
+    showNewSeriesDialog.value = false
+    newSeriesName.value = ''
+    newSeriesAcronym.value = ''
+    await onSeriesSelected(created.id)
+  } catch (err) {
+    console.error('Create series failed:', err)
+  } finally {
+    creatingSeries.value = false
+  }
+}
 
 function formatDateForInput(isoStr) {
   if (!isoStr) return ''

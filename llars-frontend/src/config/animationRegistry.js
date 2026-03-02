@@ -197,6 +197,97 @@ export const iconAnimations = [
     description: 'Scale bei Hover',
     trigger: 'hover',
     file: 'PlayerIcon.vue'
+  },
+  {
+    id: 'reply',
+    name: 'Reply',
+    description: 'Pfeil schiebt sich nach links',
+    trigger: 'hover',
+    file: 'ReplyIcon.vue'
+  },
+  {
+    id: 'communication',
+    name: 'Communication',
+    description: 'Chat-Blase verschiebt sich, Signalwellen pulsieren',
+    trigger: 'hover',
+    file: 'CommunicationIcon.vue'
+  },
+  {
+    id: 'copy',
+    name: 'Copy',
+    description: 'Vorderes Dokument hebt sich ab',
+    trigger: 'hover',
+    file: 'CopyIcon.vue'
+  },
+  {
+    id: 'eye',
+    name: 'Eye',
+    description: 'Pupille schrumpft bei Hover',
+    trigger: 'hover',
+    file: 'EyeIcon.vue'
+  },
+  {
+    id: 'gear',
+    name: 'Gear',
+    description: 'Zahnrad rotiert 90 Grad',
+    trigger: 'hover',
+    file: 'GearIcon.vue'
+  },
+  {
+    id: 'share',
+    name: 'Share',
+    description: 'Pfeil bewegt sich nach rechts oben',
+    trigger: 'hover',
+    file: 'ShareIcon.vue'
+  },
+  {
+    id: 'evaluation',
+    name: 'Evaluation',
+    description: 'Bewertungs-Skala Animation',
+    trigger: 'hover',
+    file: 'EvaluationIcon.vue'
+  },
+  {
+    id: 'trash',
+    name: 'Trash',
+    description: 'Deckel hebt sich, Papier fällt rein',
+    trigger: 'hover',
+    file: 'TrashIcon.vue'
+  },
+  {
+    id: 'bell',
+    name: 'Bell',
+    description: 'Glocke schwingt bei Hover',
+    trigger: 'hover',
+    file: 'BellIcon.vue'
+  },
+  {
+    id: 'heart',
+    name: 'Heart',
+    description: 'Herz pulsiert bei Hover',
+    trigger: 'hover',
+    file: 'HeartIcon.vue'
+  },
+  {
+    id: 'lock',
+    name: 'Lock',
+    description: 'Schloss-Bügel hebt sich',
+    trigger: 'hover',
+    file: 'LockIcon.vue'
+  },
+  {
+    id: 'pencil',
+    name: 'Pencil',
+    description: 'Stift neigt sich zum Schreiben',
+    trigger: 'hover',
+    file: 'PencilIcon.vue'
+  },
+  {
+    id: 'chat',
+    name: 'Chat',
+    description: 'Chat-Blase Animation',
+    trigger: 'hover',
+    file: 'ChatIcon.vue'
   }
 ]
 
@@ -330,6 +421,168 @@ export const staticIcons = [
     description: 'Menü/Drei Punkte',
     category: 'ui',
     file: 'MenuIcon.vue'
+  },
+  // === MESSAGING / COMMUNICATION ===
+  {
+    id: 'reply',
+    name: 'Reply',
+    description: 'Antworten-Pfeil',
+    category: 'ui',
+    file: 'ReplyIcon.vue'
+  },
+  {
+    id: 'communication',
+    name: 'Communication',
+    description: 'Messaging mit Signalwellen',
+    category: 'ui',
+    file: 'CommunicationIcon.vue'
+  },
+  {
+    id: 'copy',
+    name: 'Copy',
+    description: 'Kopieren/Zwischenablage',
+    category: 'ui',
+    file: 'CopyIcon.vue'
+  },
+  {
+    id: 'share',
+    name: 'Share',
+    description: 'Teilen/Senden',
+    category: 'ui',
+    file: 'ShareIcon.vue'
+  },
+  {
+    id: 'link',
+    name: 'Link',
+    description: 'Verknüpfung/Anhang',
+    category: 'ui',
+    file: 'LinkIcon.vue'
+  },
+  {
+    id: 'thumb-up',
+    name: 'Thumb Up',
+    description: 'Daumen hoch',
+    category: 'ui',
+    file: 'ThumbUpIcon.vue'
+  },
+  {
+    id: 'thumb-down',
+    name: 'Thumb Down',
+    description: 'Daumen runter',
+    category: 'ui',
+    file: 'ThumbDownIcon.vue'
+  },
+  {
+    id: 'heart',
+    name: 'Heart',
+    description: 'Herz/Favorit',
+    category: 'ui',
+    file: 'HeartIcon.vue'
+  },
+  {
+    id: 'lock',
+    name: 'Lock',
+    description: 'Schloss/Verschlüsselung',
+    category: 'ui',
+    file: 'LockIcon.vue'
+  },
+  {
+    id: 'pencil',
+    name: 'Pencil',
+    description: 'Bearbeiten/Stift',
+    category: 'ui',
+    file: 'PencilIcon.vue'
+  },
+  {
+    id: 'trash',
+    name: 'Trash',
+    description: 'Löschen/Papierkorb',
+    category: 'ui',
+    file: 'TrashIcon.vue'
+  },
+  {
+    id: 'download',
+    name: 'Download',
+    description: 'Herunterladen',
+    category: 'ui',
+    file: 'DownloadIcon.vue'
+  },
+  {
+    id: 'upload',
+    name: 'Upload',
+    description: 'Hochladen',
+    category: 'ui',
+    file: 'UploadIcon.vue'
+  },
+  {
+    id: 'eye',
+    name: 'Eye',
+    description: 'Anzeigen/Sichtbar',
+    category: 'ui',
+    file: 'EyeIcon.vue'
+  },
+  {
+    id: 'eye-off',
+    name: 'Eye Off',
+    description: 'Verbergen/Unsichtbar',
+    category: 'ui',
+    file: 'EyeOffIcon.vue'
+  },
+  {
+    id: 'filter',
+    name: 'Filter',
+    description: 'Filtern/Sortieren',
+    category: 'ui',
+    file: 'FilterIcon.vue'
+  },
+  {
+    id: 'bell',
+    name: 'Bell',
+    description: 'Benachrichtigung/Glocke',
+    category: 'ui',
+    file: 'BellIcon.vue'
+  },
+  {
+    id: 'globe',
+    name: 'Globe',
+    description: 'Web/Sprache/Welt',
+    category: 'ui',
+    file: 'GlobeIcon.vue'
+  },
+  {
+    id: 'tag',
+    name: 'Tag',
+    description: 'Schlagwort/Label',
+    category: 'ui',
+    file: 'TagIcon.vue'
+  },
+  {
+    id: 'clipboard',
+    name: 'Clipboard',
+    description: 'Klemmbrett/Notizen',
+    category: 'ui',
+    file: 'ClipboardIcon.vue'
+  },
+  {
+    id: 'calendar',
+    name: 'Calendar',
+    description: 'Kalender/Datum',
+    category: 'ui',
+    file: 'CalendarIcon.vue'
+  },
+  {
+    id: 'info-circle',
+    name: 'Info',
+    description: 'Information/Hilfe',
+    category: 'ui',
+    file: 'InfoCircleIcon.vue'
+  },
+  {
+    id: 'triangle-alert',
+    name: 'Warning',
+    description: 'Warnung/Fehler',
+    category: 'ui',
+    file: 'TriangleAlertIcon.vue'
   }
 ]
 

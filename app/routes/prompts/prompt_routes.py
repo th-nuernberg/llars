@@ -578,15 +578,15 @@ def search_users_for_sharing():
     query = request.args.get('q', '').strip()
     limit = min(int(request.args.get('limit', 10)), 50)
 
-    if len(query) < 2:
-        return jsonify({'success': True, 'users': [], 'message': 'Search query must be at least 2 characters'}), 200
-
-    users = User.query.filter(
-        User.username.ilike(f'%{query}%'),
+    filters = [
         User.id != current_user.id,
-        User.deleted_at.is_(None),  # Exclude deleted users
-        User.is_active == True  # Only active users
-    ).limit(limit).all()
+        User.deleted_at.is_(None),
+        User.is_active == True,
+    ]
+    if query:
+        filters.append(User.username.ilike(f'%{query}%'))
+
+    users = User.query.filter(*filters).limit(limit).all()
 
     return jsonify({
         'success': True,

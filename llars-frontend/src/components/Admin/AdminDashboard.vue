@@ -170,6 +170,11 @@
           <div v-else-if="activeSection === 'field-prompts'" key="field-prompts" class="section-container">
             <AdminFieldPromptsSection />
           </div>
+
+          <!-- Communication Section -->
+          <div v-else-if="activeSection === 'communication'" key="communication" class="section-container">
+            <AdminCommunicationSection />
+          </div>
         </v-fade-transition>
       </div>
     </main>
@@ -200,6 +205,7 @@ import AdminSystemSettingsSection from './sections/AdminSystemSettingsSection.vu
 import AdminReferralSection from './sections/AdminReferralSection.vue';
 import AdminPresenceSection from './sections/AdminPresenceSection.vue';
 import AdminFieldPromptsSection from './sections/AdminFieldPromptsSection.vue';
+import AdminCommunicationSection from './sections/AdminCommunicationSection.vue';
 import ChatbotManager from './ChatbotAdmin/ChatbotManager.vue';
 import WebCrawlerTool from './CrawlerAdmin/WebCrawlerTool.vue';
 import AppSidebar from '@/components/common/AppSidebar.vue';
@@ -241,6 +247,7 @@ const navItems = [
   { titleKey: 'adminDashboard.nav.db', value: 'db', icon: 'mdi-database', adminOnly: true },
   { titleKey: 'adminDashboard.nav.settings', value: 'settings', icon: 'mdi-cog', adminOnly: true },
   { titleKey: 'adminDashboard.nav.fieldPrompts', value: 'field-prompts', icon: 'mdi-auto-fix', adminOnly: true },
+  { titleKey: 'adminDashboard.nav.communication', value: 'communication', icon: 'llars:communication', adminOnly: true },
   { titleKey: 'adminDashboard.nav.users', value: 'users', icon: 'mdi-account-group', adminOnly: true },
   { titleKey: 'adminDashboard.nav.referrals', value: 'referrals', icon: 'mdi-account-multiple-plus', adminOnly: true },
   { titleKey: 'adminDashboard.nav.scenarios', value: 'scenarios', icon: 'mdi-clipboard-list', adminOnly: true },

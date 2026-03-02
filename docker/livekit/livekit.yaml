@@ -1,0 +1,23 @@
+# LiveKit Server Configuration for LLARS
+# https://docs.livekit.io/realtime/self-hosting/deployment/
+
+port: 7880
+rtc:
+  port_range_start: 7882
+  port_range_end: 7892
+  use_external_ip: false
+  tcp_port: 7881
+
+# Keys are injected via environment variables
+# LIVEKIT_KEYS: "api-key: api-secret"
+
+room:
+  auto_create: true
+  empty_timeout: 300  # 5 minutes
+  max_participants: 20
+
+logging:
+  level: info
+
+# E2EE support
+# Clients handle encryption; server acts as SFU relay

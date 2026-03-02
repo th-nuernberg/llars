@@ -16,7 +16,11 @@ conference_manager_bp = Blueprint("conference_manager", __name__, url_prefix="/a
 # Import sub-blueprints
 from .conference_crud_routes import conference_crud_bp
 from .paper_crud_routes import paper_crud_bp
+from .conference_wizard_routes import conference_wizard_bp
+from .series_crud_routes import series_crud_bp
 
 # Register all sub-blueprints
 conference_manager_bp.register_blueprint(conference_crud_bp)
 conference_manager_bp.register_blueprint(paper_crud_bp)
+conference_manager_bp.register_blueprint(conference_wizard_bp)
+conference_manager_bp.register_blueprint(series_crud_bp)

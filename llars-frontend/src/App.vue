@@ -6,6 +6,7 @@
         <div class="logo-wrapper">
           <img src="./assets/logo/llars-logo.png" alt="Logo" :height="isMobile ? 24 : 28" class="logo-image">
           <span class="toolbar-text" :class="{ 'mobile-text': isMobile }">{{ isMobile ? 'LLars' : 'LLars Plattform' }}</span>
+          <LTag v-if="isDev" variant="accent" size="md" class="ml-2" style="font-size: 0.65rem; letter-spacing: 0.05em;">DEV</LTag>
         </div>
       </v-toolbar-title>
       <v-spacer></v-spacer>
@@ -24,6 +25,28 @@
           as="div"
           class="auth-section-wrapper"
         >
+          <!-- Messaging Badge (only when communication is globally enabled + user has access) -->
+          <template v-if="communicationEnabled && hasPermission('feature:communication:access')">
+            <v-badge
+              v-if="messagingUnread > 0"
+              :content="messagingUnread > 99 ? '99+' : messagingUnread"
+              color="error"
+              offset-x="-4"
+              offset-y="4"
+              class="mr-2"
+            >
+              <LIconBtn icon="mdi-message" size="small" @click="goToMessaging" style="color: white;" />
+            </v-badge>
+            <LIconBtn
+              v-else
+              icon="mdi-message-outline"
+              size="small"
+              @click="goToMessaging"
+              style="color: white; opacity: 0.7;"
+              class="mr-2"
+            />
+          </template>
+
           <v-menu offset-y :close-on-content-click="true">
             <template v-slot:activator="{ props }">
               <div v-bind="props" class="user-menu-trigger" :class="{ 'mobile-trigger': isMobile }">
@@ -158,7 +181,9 @@ import FloatingChat from './components/FloatingChat.vue';
 import UserSettingsDialog from './components/UserSettingsDialog.vue';
 import AnalyticsConsentBanner from './components/common/AnalyticsConsentBanner.vue';
 import { useReferralSystem } from '@/composables/useReferralSystem';
+import { useCommunicationAdmin } from '@/composables/useCommunicationAdmin';
 import { logI18n } from '@/utils/logI18n';
+import axios from 'axios';
 
 const { t, locale } = useI18n();
 
@@ -168,6 +193,8 @@ const { snackbarModel } = useSnackbar();
 // Globale Konstante für Chat-Aktivierung (kann der Entwickler ändern)
 const ENABLE_CHAT = false; // hier auf true/false setzen um Chat global zu aktivieren/deaktivieren
 
+const isDev = import.meta.env.DEV;
+
 const router = useRouter();
 const route = useRoute();
 const auth = useAuth();
@@ -175,7 +202,21 @@ const permissions = usePermissions();
 const { applyTheme } = useAppTheme();
 const { isMobile } = useMobile();
 const { registrationEnabled, checkRegistrationStatus } = useReferralSystem();
+const { communicationEnabled, fetchCommunicationStatus, refreshCommunicationStatus, attachSocketListeners: attachCommListeners } = useCommunicationAdmin();
+const { hasPermission, fetchPermissions } = permissions;
 const { start: startPresence, stop: stopPresence } = usePresenceHeartbeat();
+
+// Messaging unread badge (only fetch when communication is enabled AND user has access)
+const messagingUnread = ref(0);
+const fetchMessagingUnread = async () => {
+  if (!isAuthenticated.value || !communicationEnabled.value || !hasPermission('feature:communication:access')) return;
+  try {
+    const { data } = await axios.get('/api/messaging/unread');
+    messagingUnread.value = data.total || 0;
+  } catch {
+    // Silently ignore if messaging not available
+  }
+};
 
 /**
  * Smart router-view key that prevents full remount on document switches.
@@ -207,6 +248,13 @@ const username = computed(() => {
     return localStorage.getItem('username') || '';
   } catch {
     return '';
+  }
+});
+
+// Clear messaging badge when communication gets disabled
+watch(communicationEnabled, (enabled) => {
+  if (!enabled) {
+    messagingUnread.value = 0;
   }
 });
 
@@ -264,10 +312,35 @@ const cleanupOldChatMessages = () => {
   }
 };
 
-onMounted(() => {
+// Poll communication status + permissions (reliable fallback for Socket.IO in dev mode)
+let _commPollTimer = null;
+
+onMounted(async () => {
   cleanupOldChatMessages();
   applyTheme(); // Apply theme on app mount
   checkRegistrationStatus(); // Check if self-registration is enabled
+  await fetchCommunicationStatus(); // Check if communication is enabled
+  fetchMessagingUnread(); // Fetch messaging unread count (gated by communicationEnabled)
+
+  // Listen for Socket.IO events
+  try {
+    const { socketService } = require('@/services/socketService');
+    const socket = socketService.getSocket();
+    if (socket) {
+      socket.on('messaging:unread_update', (data) => {
+        messagingUnread.value = data.total || 0;
+      });
+      // Attach communication real-time listeners
+      attachCommListeners(socket);
+    }
+  } catch { /* Socket not ready yet */ }
+
+  // Poll every 10s to catch permission changes (Socket.IO fallback for dev mode)
+  _commPollTimer = setInterval(() => {
+    if (!isAuthenticated.value) return;
+    refreshCommunicationStatus();
+    fetchPermissions(true);
+  }, 10_000);
 });
 
 function logout() {
@@ -328,6 +401,10 @@ function containsLocalStorageItemWithString(string) {
 }
 
 
+
+function goToMessaging() {
+  router.push('/messaging');
+}
 
 function goHome() {
   router.push('/home');

@@ -22,6 +22,7 @@ import ClipboardIcon from './ClipboardIcon.vue'
 import ClockIcon from './ClockIcon.vue'
 import CloudIcon from './CloudIcon.vue'
 import CodeIcon from './CodeIcon.vue'
+import CommunicationIcon from './CommunicationIcon.vue'
 import CopyIcon from './CopyIcon.vue'
 import DatabaseIcon from './DatabaseIcon.vue'
 import DotIcon from './DotIcon.vue'
@@ -71,6 +72,7 @@ import PlusIcon from './PlusIcon.vue'
 import QuestionIcon from './QuestionIcon.vue'
 import RagIcon from './RagIcon.vue'
 import RefreshIcon from './RefreshIcon.vue'
+import ReplyIcon from './ReplyIcon.vue'
 import RobotIcon from './RobotIcon.vue'
 import ScaleIcon from './ScaleIcon.vue'
 import SchoolIcon from './SchoolIcon.vue'
@@ -128,6 +130,7 @@ export const iconComponents = {
   'clock': ClockIcon,
   'cloud': CloudIcon,
   'code': CodeIcon,
+  'communication': CommunicationIcon,
   'copy': CopyIcon,
   'database': DatabaseIcon,
   'dot': DotIcon,
@@ -177,6 +180,7 @@ export const iconComponents = {
   'question': QuestionIcon,
   'rag': RagIcon,
   'refresh': RefreshIcon,
+  'reply': ReplyIcon,
   'robot': RobotIcon,
   'scale': ScaleIcon,
   'school': SchoolIcon,
@@ -220,6 +224,7 @@ const explicitAliases = {
   'mdi-menu-right': 'arrow-right',
   'mdi-open-in-new': 'arrow-right',
   'mdi-progress-clock': 'clock',
+  'mdi-reply': 'reply',
   'mdi-timeline-clock-outline': 'clock',
   'mdi-timer-outline': 'clock',
   'mdi-unordered-list': 'unordered-list',
@@ -320,6 +325,7 @@ export const resolveIconKey = (iconName) => {
   if (tokens.includes('filter') || tokens.includes('tune')) return 'filter'
   if (hasAny(tokens, ['cloud', 'wifi', 'ethernet', 'connection', 'network'])) return 'cloud'
 
+  if (hasAny(tokens, ['reply', 'respond'])) return 'reply'
   if (hasAny(tokens, ['chat', 'message', 'comment', 'bubble', 'thought', 'emoticon', 'face', 'agent'])) return 'chat'
   if (tokens.includes('bell')) return 'bell'
   if (tokens.includes('calendar')) return 'calendar'

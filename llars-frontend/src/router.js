@@ -101,6 +101,10 @@ import PipelineWizard from "@/views/Pipeline/PipelineWizard.vue";
 // Conference Manager
 import ConferenceManagerHome from "@/views/ConferenceManager/ConferenceManagerHome.vue";
 
+// Messaging
+import MessagingHome from "@/views/Messaging/MessagingHome.vue";
+import { useCommunicationAdmin } from "@/composables/useCommunicationAdmin";
+
 const routes = [
     { path: '/Impressum', component: Impressum, meta: { requiresAuth: false } },
     { path: '/Datenschutz', component: Datenschutz, meta: { requiresAuth: false } },
@@ -190,6 +194,31 @@ const routes = [
     { path: '/generation', name: 'GenerationHub', component: GenerationHub, meta: { requiresAuth: true } },
     { path: '/generation/new', name: 'GenerationWizard', component: GenerationWizard, meta: { requiresAuth: true } },
     { path: '/generation/:jobId', name: 'GenerationJobDetail', component: GenerationJobDetail, props: true, meta: { requiresAuth: true } },
+
+    // Messaging (gated by communication toggle + permission)
+    {
+      path: '/messaging',
+      name: 'Messaging',
+      component: MessagingHome,
+      meta: { requiresAuth: true },
+      beforeEnter: async () => {
+        const { communicationEnabled, loaded, fetchCommunicationStatus } = useCommunicationAdmin()
+        if (!loaded.value) await fetchCommunicationStatus()
+        if (!communicationEnabled.value) return '/home'
+      },
+    },
+    {
+      path: '/messaging/:conversationId',
+      name: 'MessagingConversation',
+      component: MessagingHome,
+      props: true,
+      meta: { requiresAuth: true },
+      beforeEnter: async () => {
+        const { communicationEnabled, loaded, fetchCommunicationStatus } = useCommunicationAdmin()
+        if (!loaded.value) await fetchCommunicationStatus()
+        if (!communicationEnabled.value) return '/home'
+      },
+    },
 
     // Conference Manager
     { path: '/conferences', name: 'ConferenceManager', component: ConferenceManagerHome, meta: { requiresAuth: true } },

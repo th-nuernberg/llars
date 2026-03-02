@@ -135,6 +135,10 @@ def register_all_blueprints(app: Flask) -> None:
     from routes.conference_manager import conference_manager_bp
     app.register_blueprint(conference_manager_bp)
 
+    # Messaging (text chat, voice/video calls, E2E encryption)
+    from routes.messaging import messaging_bp
+    app.register_blueprint(messaging_bp)
+
     # Web Crawler
     from routes.crawler import crawler_bp
     app.register_blueprint(crawler_bp)

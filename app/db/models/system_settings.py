@@ -107,6 +107,12 @@ class SystemSettings(db.Model):
         comment="Default role for users registered via referral"
     )
 
+    # Communication (Messaging) Master Toggle
+    communication_enabled: Mapped[bool] = mapped_column(
+        db.Boolean, default=False, nullable=False,
+        comment="Enable communication features (messaging, calls) globally"
+    )
+
     # AI Assistant Settings (LLARS KI for LaTeX Collab comments)
     ai_assistant_enabled: Mapped[bool] = mapped_column(
         db.Boolean, default=True, nullable=False,
@@ -146,6 +152,8 @@ class SystemSettings(db.Model):
             'referral_system_enabled': self.referral_system_enabled,
             'self_registration_enabled': self.self_registration_enabled,
             'default_referral_role': self.default_referral_role,
+            # Communication
+            'communication_enabled': self.communication_enabled,
             # AI Assistant
             'ai_assistant_enabled': self.ai_assistant_enabled,
             'ai_assistant_color': self.ai_assistant_color,

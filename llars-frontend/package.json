@@ -38,6 +38,7 @@
     "jwt-decode": "^4.0.0",
     "katex": "^0.16.25",
     "keycloak-js": "^26.0.7",
+    "leaflet": "^1.9.4",
     "marked": "^12.0.2",
     "motion-v": "^1.8.0",
     "pdfjs-dist": "^5.4.449",

@@ -377,6 +377,44 @@ def initialize_permissions(db):
             'description': 'Erlaubt das Erstellen und Bearbeiten von Konferenzen und Papers'
         },
 
+        # Feature: Communication (Messaging, Calls, AI)
+        {
+            'permission_key': 'feature:communication:access',
+            'display_name': 'Communication Zugriff',
+            'category': 'feature',
+            'description': 'Feature sichtbar, Conversations einsehen'
+        },
+        {
+            'permission_key': 'feature:communication:chat',
+            'display_name': 'Text Chat',
+            'category': 'feature',
+            'description': 'Nachrichten senden und empfangen'
+        },
+        {
+            'permission_key': 'feature:communication:voice',
+            'display_name': 'Voice Calls',
+            'category': 'feature',
+            'description': 'Sprachanrufe durchführen'
+        },
+        {
+            'permission_key': 'feature:communication:video',
+            'display_name': 'Video Calls',
+            'category': 'feature',
+            'description': 'Videoanrufe durchführen'
+        },
+        {
+            'permission_key': 'feature:communication:transcription',
+            'display_name': 'Transkription',
+            'category': 'feature',
+            'description': 'Live-Transkription in Calls'
+        },
+        {
+            'permission_key': 'feature:communication:ai',
+            'display_name': 'KI-Summary',
+            'category': 'feature',
+            'description': 'KI-Zusammenfassungen in Conversations und Calls'
+        },
+
         # Feature: Pipeline (Automated LLM Evaluation Loop)
         {
             'permission_key': 'feature:pipeline:view',
@@ -421,7 +459,11 @@ def initialize_permissions(db):
             'role_name': 'admin',
             'display_name': 'Administrator',
             'description': 'Voller Zugriff auf alle Funktionen und Einstellungen',
-            'permissions': [p['permission_key'] for p in permissions_data]  # All permissions
+            # All permissions EXCEPT communication (managed per-user via Admin Panel)
+            'permissions': [
+                p['permission_key'] for p in permissions_data
+                if not p['permission_key'].startswith('feature:communication:')
+            ]
         },
         {
             'role_name': 'researcher',

@@ -16,6 +16,8 @@ services:
 
   nginx-service:
     container_name: llars_staging_nginx
+    environment:
+      - NGINX_NO_SSL=true
     ports:
       - "55080:80"
     depends_on:

@@ -352,6 +352,7 @@ test:e2e:staging:
       docker compose --profile testing run --rm --entrypoint "" \
         -e PLAYWRIGHT_BASE_URL=http://localhost:55080 \
         -e E2E_TEST_PASSWORD="${E2E_TEST_PASSWORD}" \
+        -e NODE_TLS_REJECT_UNAUTHORIZED=0 \
         smoke-test-service \
         bash -c "cd /tests/e2e && npx playwright test --project=chromium --workers=1"
   artifacts:

@@ -349,7 +349,7 @@ test:e2e:staging:
     - docker compose --profile testing build smoke-test-service
     # Run E2E tests against staging (localhost:55080)
     - |
-      docker compose --profile testing run --rm \
+      docker compose --profile testing run --rm --entrypoint "" \
         -e PLAYWRIGHT_BASE_URL=http://localhost:55080 \
         -e E2E_TEST_PASSWORD="${E2E_TEST_PASSWORD}" \
         smoke-test-service \
@@ -380,7 +380,7 @@ smoke:staging:
     # Load SYSTEM_ADMIN_API_KEY from server .env
     - export SYSTEM_ADMIN_API_KEY=$(grep '^SYSTEM_ADMIN_API_KEY=' .env | cut -d= -f2-)
     - |
-      docker compose --profile testing run --rm \
+      docker compose --profile testing run --rm --entrypoint "" \
         -e BASE_URL=http://localhost:55080 \
         -e SYSTEM_ADMIN_API_KEY="${SYSTEM_ADMIN_API_KEY}" \
         smoke-test-service \

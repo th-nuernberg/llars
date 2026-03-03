@@ -307,6 +307,40 @@ def _migrate_scenario_roles_enum(db) -> bool:
         return False
 
 
+def _migrate_paper_status_enum(db) -> bool:
+    """Add 'published' to papers.status enum if missing."""
+    try:
+        result = db.session.execute(
+            text("""
+                SELECT COLUMN_TYPE
+                FROM INFORMATION_SCHEMA.COLUMNS
+                WHERE TABLE_SCHEMA = DATABASE()
+                  AND TABLE_NAME = 'papers'
+                  AND COLUMN_NAME = 'status'
+            """)
+        )
+        row = result.fetchone()
+        if not row:
+            return False
+
+        column_type = str(row[0])
+        if 'published' in column_type:
+            return False
+
+        db.session.execute(text(
+            "ALTER TABLE `papers` MODIFY COLUMN `status` "
+            "ENUM('planning','in_progress','submitted','accepted','rejected','published') NOT NULL"
+        ))
+        db.session.commit()
+        print("  [Schema Patch] Added 'published' to papers.status enum")
+        return True
+
+    except Exception as exc:
+        db.session.rollback()
+        print(f"  ⚠️ papers.status migration failed (non-fatal): {exc}")
+        return False
+
+
 def apply_schema_patches(db) -> None:
     """Apply required schema patches (safe to run multiple times)."""
     try:
@@ -1197,6 +1231,9 @@ def apply_schema_patches(db) -> None:
             column_name="latex_workspace_id",
             column_definition_sql="`latex_workspace_id` INT NULL",
         )
+
+        # Add 'published' to papers.status enum (was missing in initial schema)
+        changed |= _migrate_paper_status_enum(db)
 
         # =========================================================================
         # Messaging: Link Previews

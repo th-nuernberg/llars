@@ -15,6 +15,7 @@ export function useChat(conversationIdRef) {
   const isLoading = ref(false)
   const hasMore = ref(true)
   const PAGE_SIZE = 50
+  let _pendingLinkPreviews = null
 
   // ── Fetch Messages ──────────────────────────────────────────────
   const fetchMessages = async (beforeId = null) => {
@@ -52,9 +53,14 @@ export function useChat(conversationIdRef) {
   }
 
   // ── Send Message ────────────────────────────────────────────────
-  const sendMessage = async (content, options = {}) => {
+  const sendMessage = async (content, options = {}, linkPreviews = null) => {
     const convId = conversationIdRef.value
     if (!convId || !content?.trim()) return null
+
+    // Store link previews to apply on the optimistic/incoming message
+    if (linkPreviews) {
+      _pendingLinkPreviews = { content: content.trim(), previews: linkPreviews }
+    }
 
     const socket = socketService.getSocket()
     if (socket?.connected) {
@@ -80,10 +86,13 @@ export function useChat(conversationIdRef) {
           encryption_metadata: options.encryptionMetadata || null,
         }
       )
+      if (linkPreviews) data.message.link_previews = linkPreviews
       messages.value.push(data.message)
+      _pendingLinkPreviews = null
       return data.message
     } catch (err) {
       console.error('[Chat] Failed to send message:', err)
+      _pendingLinkPreviews = null
       return null
     }
   }
@@ -185,6 +194,11 @@ export function useChat(conversationIdRef) {
 
     socket.on('messaging:new_message', (msg) => {
       if (msg.conversation_id === conversationIdRef.value) {
+        // Apply pending link previews from compose-time preview
+        if (_pendingLinkPreviews && msg.content === _pendingLinkPreviews.content && !msg.link_previews) {
+          msg.link_previews = _pendingLinkPreviews.previews
+          _pendingLinkPreviews = null
+        }
         // Avoid duplicates
         if (!messages.value.find((m) => m.id === msg.id)) {
           messages.value.push(msg)
@@ -219,6 +233,15 @@ export function useChat(conversationIdRef) {
         messages.value[idx].reactions = data.reactions
       }
     })
+
+    socket.on('messaging:link_preview', (data) => {
+      if (data.conversation_id === conversationIdRef.value) {
+        const idx = messages.value.findIndex((m) => m.id === data.message_id)
+        if (idx >= 0) {
+          messages.value[idx].link_previews = data.link_previews
+        }
+      }
+    })
   }
 
   const cleanupSocketListeners = () => {
@@ -228,6 +251,7 @@ export function useChat(conversationIdRef) {
       socket.off('messaging:message_edited')
       socket.off('messaging:message_deleted')
       socket.off('messaging:reaction_updated')
+      socket.off('messaging:link_preview')
     }
   }
 

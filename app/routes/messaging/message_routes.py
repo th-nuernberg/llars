@@ -47,6 +47,18 @@ def send_message(conversation_id):
     )
     if not msg:
         raise NotFoundError(f"Conversation {conversation_id} not found or access denied")
+
+    # Trigger link preview fetch in background (REST fallback)
+    msg_id = msg.get("id")
+    is_encrypted = msg.get("is_encrypted", False)
+    if msg_id and not is_encrypted:
+        try:
+            from main import socketio
+            from socketio_handlers.events_messaging import _fetch_link_previews
+            socketio.start_background_task(_fetch_link_previews, socketio, msg_id, conversation_id)
+        except Exception:
+            pass  # Non-critical: previews will be missing but message is sent
+
     return jsonify({"success": True, "message": msg}), 201
 
 
@@ -119,6 +131,61 @@ def upload_attachment(message_id):
     if not attachment:
         raise NotFoundError(f"Message {message_id} not found or access denied")
     return jsonify({"success": True, "attachment": attachment}), 201
+
+
+@message_bp.route("/link-preview", methods=["GET"])
+@require_permission("feature:communication:access")
+@handle_api_errors(logger_name="messaging")
+def get_link_preview():
+    """Fetch Open Graph preview for a URL (used by ChatInput compose area)."""
+    url = request.args.get("url", "").strip()
+    if not url:
+        raise ValidationError("url query parameter is required")
+
+    from services.link_preview_service import _is_safe_url, fetch_and_cache_preview
+
+    if not _is_safe_url(url):
+        return jsonify({"success": True, "preview": None}), 200
+
+    preview = fetch_and_cache_preview(url)
+    return jsonify({"success": True, "preview": preview}), 200
+
+
+@message_bp.route("/link-preview/image", methods=["GET"])
+@require_permission("feature:communication:access")
+@handle_api_errors(logger_name="messaging")
+def proxy_preview_image():
+    """Proxy an external image to avoid CORS issues with OG preview images."""
+    import requests as ext_requests
+    from services.link_preview_service import _is_safe_url
+
+    image_url = request.args.get("url", "").strip()
+    if not image_url:
+        raise ValidationError("url query parameter is required")
+
+    if not _is_safe_url(image_url):
+        raise ValidationError("URL not allowed")
+
+    try:
+        resp = ext_requests.get(
+            image_url,
+            timeout=5,
+            headers={"User-Agent": "LLARS-LinkPreview/1.0"},
+            stream=True,
+        )
+        content_type = resp.headers.get("Content-Type", "image/jpeg")
+        if not content_type.startswith("image/"):
+            raise ValidationError("URL does not point to an image")
+
+        image_data = resp.raw.read(2 * 1024 * 1024)  # 2MB max
+        resp.close()
+
+        return send_file(
+            BytesIO(image_data),
+            mimetype=content_type,
+        )
+    except ext_requests.RequestException:
+        raise NotFoundError("Could not fetch image")
 
 
 @message_bp.route("/attachments/<int:attachment_id>", methods=["GET"])

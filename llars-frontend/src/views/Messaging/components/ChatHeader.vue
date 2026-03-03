@@ -10,6 +10,7 @@
       />
       <LAvatar
         :seed="avatarSeed"
+        :src="avatarUrl"
         :username="displayName"
         size="sm"
       />
@@ -24,17 +25,17 @@
     <div class="chat-header-actions">
       <EncryptionBadge v-if="conversation?.encryption_enabled" />
       <LIconBtn
-        v-if="hasPermission('feature:communication:voice')"
         icon="mdi-phone"
-        :tooltip="$t('messaging.call.voice')"
-        @click="$emit('call', 'voice')"
+        :tooltip="hasPermission('feature:communication:voice') ? $t('messaging.call.voice') : $t('messaging.call.voiceDisabled')"
+        :disabled="!hasPermission('feature:communication:voice')"
+        @click="hasPermission('feature:communication:voice') && $emit('call', 'voice')"
         size="small"
       />
       <LIconBtn
-        v-if="hasPermission('feature:communication:video')"
         icon="mdi-video"
-        :tooltip="$t('messaging.call.video')"
-        @click="$emit('call', 'video')"
+        :tooltip="hasPermission('feature:communication:video') ? $t('messaging.call.video') : $t('messaging.call.videoDisabled')"
+        :disabled="!hasPermission('feature:communication:video')"
+        @click="hasPermission('feature:communication:video') && $emit('call', 'video')"
         size="small"
       />
       <LIconBtn
@@ -77,8 +78,19 @@ const displayName = computed(() => {
   return other?.username || 'Chat'
 })
 
+const otherParticipant = computed(() => {
+  if (!props.conversation || isGroup.value) return null
+  return (props.conversation.participants || []).find(
+    (p) => p.username !== username.value
+  )
+})
+
 const avatarSeed = computed(() => {
-  return props.conversation?.avatar_seed || displayName.value
+  return otherParticipant.value?.avatar_seed || props.conversation?.avatar_seed || displayName.value
+})
+
+const avatarUrl = computed(() => {
+  return otherParticipant.value?.avatar_url || null
 })
 
 const participantText = computed(() => {

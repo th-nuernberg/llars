@@ -7021,7 +7021,9 @@
     "close": "Close",
     "call": {
       "voice": "Voice Call",
+      "voiceDisabled": "Voice call not available",
       "video": "Video Call",
+      "videoDisabled": "Video call not available",
       "transcription": "Live Transcript",
       "noTranscript": "No transcript yet",
       "liveTranscription": "Live transcription active",

@@ -19,7 +19,7 @@ export function sanitizeHtml(html) {
 
   return DOMPurify.sanitize(html, {
     ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'u', 'ul', 'ol', 'li', 'div', 'span', 'a'],
-    ALLOWED_ATTR: ['href', 'class', 'style'],
+    ALLOWED_ATTR: ['href', 'class', 'style', 'target', 'rel'],
     ALLOW_DATA_ATTR: false,
   });
 }

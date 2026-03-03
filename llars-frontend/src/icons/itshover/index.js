@@ -37,6 +37,9 @@ import FilePlusIcon from './FilePlusIcon.vue'
 import FilterIcon from './FilterIcon.vue'
 import FlaskIcon from './FlaskIcon.vue'
 import FolderIcon from './FolderIcon.vue'
+import FormatBoldIcon from './FormatBoldIcon.vue'
+import FormatItalicIcon from './FormatItalicIcon.vue'
+import FormatStrikethroughIcon from './FormatStrikethroughIcon.vue'
 import FolderPlusIcon from './FolderPlusIcon.vue'
 import FullscreenIcon from './FullscreenIcon.vue'
 import GearIcon from './GearIcon.vue'
@@ -148,6 +151,9 @@ export const iconComponents = {
   'flask': FlaskIcon,
   'folder': FolderIcon,
   'folder-plus': FolderPlusIcon,
+  'format-bold': FormatBoldIcon,
+  'format-italic': FormatItalicIcon,
+  'format-strikethrough': FormatStrikethroughIcon,
   'fullscreen': FullscreenIcon,
   'gear': GearIcon,
   'gemini': GeminiIcon,
@@ -222,6 +228,10 @@ const explicitAliases = {
   'mdi-circle': 'dot',
   'mdi-circle-outline': 'dot',
   'mdi-circle-small': 'dot',
+  'mdi-format-bold': 'format-bold',
+  'mdi-format-italic': 'format-italic',
+  'mdi-format-strikethrough': 'format-strikethrough',
+  'mdi-format-strikethrough-variant': 'format-strikethrough',
   'mdi-exit-run': 'arrow-left',
   'mdi-login': 'arrow-right',
   'mdi-logout': 'arrow-left',
@@ -347,7 +357,10 @@ export const resolveIconKey = (iconName) => {
   if (hasAny(tokens, ['list', 'playlist', 'menu'])) return 'unordered-list'
 
   if (hasAny(tokens, ['code', 'braces', 'json', 'console', 'api', 'function', 'sigma', 'division', 'calculator', 'numeric', 'source', 'gitlab', 'docker', 'vector', 'polygon'])) return 'code'
-  if (hasAny(tokens, ['text', 'format', 'bold', 'italic', 'underline', 'header', 'quote', 'title', 'pilcrow', 'markdown', 'language', 'keyboard'])) return 'text'
+  if (hasAny(tokens, ['format']) && tokens.includes('bold')) return 'format-bold'
+  if (hasAny(tokens, ['format']) && tokens.includes('italic')) return 'format-italic'
+  if (hasAny(tokens, ['format']) && hasAny(tokens, ['strikethrough', 'strike'])) return 'format-strikethrough'
+  if (hasAny(tokens, ['text', 'format', 'underline', 'header', 'quote', 'title', 'pilcrow', 'markdown', 'language', 'keyboard'])) return 'text'
 
   if (hasAny(tokens, ['image', 'photo', 'camera'])) return 'image'
   if (hasAny(tokens, ['link', 'chain', 'paperclip', 'attachment'])) return 'link'

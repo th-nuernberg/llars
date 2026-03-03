@@ -34,7 +34,40 @@
         <div v-if="message.is_deleted" class="message-content message-deleted">
           {{ $t('messaging.messageDeleted') }}
         </div>
-        <div v-else class="message-content">{{ message.content }}</div>
+        <div v-else class="message-content" v-html="linkifiedContent"></div>
+
+        <!-- Link Previews -->
+        <a
+          v-for="(preview, idx) in message.link_previews"
+          :key="idx"
+          :href="preview.url"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="link-preview-card"
+        >
+          <img
+            v-if="preview.image_url"
+            :src="proxyImageUrl(preview.image_url)"
+            :alt="preview.title || ''"
+            class="link-preview-image"
+            referrerpolicy="no-referrer"
+            @error="$event.target.style.display='none'"
+          />
+          <div class="link-preview-body">
+            <div v-if="preview.site_name || preview.favicon_url" class="link-preview-site">
+              <img
+                v-if="preview.favicon_url"
+                :src="proxyImageUrl(preview.favicon_url)"
+                class="link-preview-favicon"
+                referrerpolicy="no-referrer"
+                @error="$event.target.style.display='none'"
+              />
+              <span v-if="preview.site_name">{{ preview.site_name }}</span>
+            </div>
+            <div v-if="preview.title" class="link-preview-title">{{ preview.title }}</div>
+            <div v-if="preview.description" class="link-preview-desc">{{ preview.description }}</div>
+          </div>
+        </a>
 
         <!-- Attachments -->
         <div v-if="message.attachments?.length" class="mt-1">
@@ -64,7 +97,7 @@
           </span>
         </div>
 
-        <!-- Hover actions -->
+        <!-- Hover actions (fixed height, visible on hover) -->
         <div v-if="!message.is_deleted" class="message-actions">
           <span
             v-for="emoji in quickReactions"
@@ -74,6 +107,10 @@
           >
             {{ emoji }}
           </span>
+          <EmojiPicker
+            :popover-class="isSent ? 'emoji-picker-left' : ''"
+            @select="(emoji) => $emit('react', { messageId: message.id, emoji })"
+          />
           <LIconBtn
             icon="mdi-reply"
             size="x-small"
@@ -101,6 +138,9 @@
 
 <script setup>
 import { computed } from 'vue'
+import { linkifyMessage } from '../utils/linkify'
+import { sanitizeHtml } from '@/utils/sanitize'
+import EmojiPicker from './EmojiPicker.vue'
 
 const quickReactions = ['👍', '❤️', '😄', '😮', '😢']
 
@@ -137,6 +177,15 @@ const formattedTime = computed(() => {
     minute: '2-digit',
   })
 })
+
+const linkifiedContent = computed(() => {
+  return sanitizeHtml(linkifyMessage(props.message.content || ''))
+})
+
+const proxyImageUrl = (url) => {
+  if (!url) return ''
+  return `/api/messaging/link-preview/image?url=${encodeURIComponent(url)}`
+}
 
 const copyContent = () => {
   navigator.clipboard.writeText(props.message.content || '')

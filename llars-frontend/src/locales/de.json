@@ -6863,7 +6863,9 @@
     "close": "Schließen",
     "call": {
       "voice": "Sprachanruf",
+      "voiceDisabled": "Sprachanruf nicht verfügbar",
       "video": "Videoanruf",
+      "videoDisabled": "Videoanruf nicht verfügbar",
       "transcription": "Live-Transkript",
       "noTranscript": "Noch kein Transkript",
       "liveTranscription": "Live-Transkription aktiv",

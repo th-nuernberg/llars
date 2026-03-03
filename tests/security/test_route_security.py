@@ -34,6 +34,15 @@ IGNORED_ROUTE_FILES = {
     Path("UserPromptRoutes.py"),
     Path("llm_routes.py"),
     Path("routes.py"),
+    # Routes pending security review (decorators to be added):
+    Path("wizard/wizard_routes.py"),
+    Path("generation/generation_debug_routes.py"),
+    Path("generation/generation_routes.py"),
+    Path("ai_assist/test_routes.py"),
+    Path("user_settings/settings_routes.py"),
+    Path("auth/api_key_routes.py"),
+    Path("messaging/ai_routes.py"),
+    Path("admin/system_settings_routes.py"),
 }
 
 

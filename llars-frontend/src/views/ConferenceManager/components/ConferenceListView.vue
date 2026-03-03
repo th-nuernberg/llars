@@ -418,15 +418,37 @@ function compareFn(a, b, field, asc) {
   } else if (field === 'location') {
     va = [a.city, a.country].filter(Boolean).join(', ').toLowerCase()
     vb = [b.city, b.country].filter(Boolean).join(', ').toLowerCase()
+  } else if (field === 'submission_deadline') {
+    // Smart deadline sort: future deadlines first (soonest on top), then past
+    const da = a.submission_deadline ? new Date(a.submission_deadline) : null
+    const db = b.submission_deadline ? new Date(b.submission_deadline) : null
+    if (!da && !db) return 0
+    if (!da) return 1
+    if (!db) return -1
+    const now = Date.now()
+    const fa = da.getTime() >= now  // future?
+    const fb = db.getTime() >= now
+    if (fa !== fb) {
+      // One future, one past: future always first in asc, past first in desc
+      return fa ? (asc ? -1 : 1) : (asc ? 1 : -1)
+    }
+    if (fa) {
+      // Both future: soonest first in asc
+      return asc ? da - db : db - da
+    }
+    // Both past: most recent first in asc
+    return asc ? db - da : da - db
   } else {
     va = a[field] || ''
     vb = b[field] || ''
   }
-  if (!va && !vb) return 0
-  if (!va) return 1
-  if (!vb) return -1
-  if (va < vb) return asc ? -1 : 1
-  if (va > vb) return asc ? 1 : -1
+  if (va !== undefined && vb !== undefined) {
+    if (!va && !vb) return 0
+    if (!va) return 1
+    if (!vb) return -1
+    if (va < vb) return asc ? -1 : 1
+    if (va > vb) return asc ? 1 : -1
+  }
   return 0
 }
 

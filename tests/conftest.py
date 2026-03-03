@@ -498,15 +498,12 @@ def _register_test_blueprints(app):
     # =========================================================================
     debug_bp = Blueprint('test_debug', __name__)
 
+    from auth.decorators import system_api_key_required
+
     @debug_bp.route('/info')
+    @system_api_key_required
     def debug_info():
         """Debug info - requires system API key."""
-        from flask import request
-        # Check both header and query param (matches system_api_key_required decorator)
-        api_key = request.headers.get('X-API-Key') or request.args.get('api_key')
-        expected_key = os.environ.get('SYSTEM_ADMIN_API_KEY', 'test-system-api-key-12345')
-        if api_key != expected_key:
-            return jsonify({'error': 'Invalid API key'}), 401
         return jsonify({'success': True, 'info': 'Debug endpoint'})
 
     app.register_blueprint(debug_bp, url_prefix='/debug')

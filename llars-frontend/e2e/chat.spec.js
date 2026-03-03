@@ -17,99 +17,15 @@
  */
 
 import { test, expect } from '@playwright/test'
+import { TEST_USERS, quickLogin, dismissConsentBanner } from './helpers.js'
 
 // Increase timeout for CI environment
 test.setTimeout(60000)
 
-// Test credentials
-const TEST_USER = { username: 'admin', password: process.env.E2E_TEST_PASSWORD || 'admin123' }
-
 // ==================== HELPER FUNCTIONS ====================
 
-/**
- * Dismiss consent banner if visible
- * Uses condition-based waits instead of fixed timeouts
- */
-async function dismissConsentBanner(page) {
-  try {
-    // Try old analytics-consent banner
-    const consentBtn = page.locator('.analytics-consent button').first()
-    if (await consentBtn.isVisible({ timeout: 500 }).catch(() => false)) {
-      await consentBtn.click({ force: true })
-      await consentBtn.waitFor({ state: 'hidden', timeout: 2000 }).catch(() => {})
-    }
-
-    // Try new Analytics & Datenschutz dialog - look for ZUSTIMMEN or ABLEHNEN buttons
-    const zustimmenBtn = page.locator('button:has-text("ZUSTIMMEN"), button:has-text("Zustimmen")').first()
-    if (await zustimmenBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
-      await zustimmenBtn.click({ force: true })
-      await zustimmenBtn.waitFor({ state: 'hidden', timeout: 3000 }).catch(() => {})
-    }
-  } catch (e) {
-    // Page might be closed, ignore
-  }
-}
-
-/**
- * Login using dev quick-login buttons with retry
- * Uses condition-based waits for reliable synchronization
- * Handles Datenschutz page redirect properly
- */
-async function login(page, retries = 2) {
-  for (let attempt = 1; attempt <= retries; attempt++) {
-    try {
-      // Use domcontentloaded to avoid analytics timeout
-      await page.goto('/login', { waitUntil: 'domcontentloaded', timeout: 30000 })
-      await page.evaluate(() => {
-        localStorage.clear()
-        sessionStorage.clear()
-      })
-
-      // Dismiss consent banner early
-      await dismissConsentBanner(page)
-
-      // Handle privacy/Datenschutz page redirect
-      const currentUrl = page.url()
-      const isOnPrivacyPage = currentUrl.includes('Datenschutz') || currentUrl.includes('datenschutz') ||
-        await page.locator('h1:has-text("Datenschutzerklärung")').isVisible({ timeout: 1000 }).catch(() => false)
-
-      if (isOnPrivacyPage) {
-        // After consent, click "Anmelden" button in header or navigate to /login
-        const anmeldenBtn = page.locator('button:has-text("Anmelden"), a:has-text("Anmelden")').first()
-        if (await anmeldenBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
-          await anmeldenBtn.click()
-          await page.waitForLoadState('domcontentloaded', { timeout: 10000 })
-        } else {
-          await page.goto('/login', { waitUntil: 'domcontentloaded', timeout: 30000 })
-        }
-        await dismissConsentBanner(page)
-      }
-
-      // Wait for login form
-      const loginForm = page.locator('.dev-login-buttons, #username, .login-form')
-      await loginForm.first().waitFor({ state: 'visible', timeout: 20000 })
-
-      // Try dev quick-login first
-      const devAdminBtn = page.locator('.dev-login-buttons button:not([disabled])').filter({ hasText: 'Admin' })
-      if (await devAdminBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
-        await devAdminBtn.click()
-      } else {
-        // Fallback to form login
-        await page.locator('#username, input[placeholder*="username" i]').first().fill(TEST_USER.username)
-        await page.locator('#password, input[type="password"]').first().fill(TEST_USER.password)
-        await page.locator('.login-button, button:has-text("Anmelden")').first().click()
-      }
-
-      // Wait for navigation to Home
-      await page.waitForURL(/\/Home/, { timeout: 30000 })
-      await dismissConsentBanner(page)
-      return // Success
-    } catch (error) {
-      if (attempt === retries) throw error
-      // Use page reload for retry instead of fixed timeout
-      await page.reload({ waitUntil: 'domcontentloaded', timeout: 10000 }).catch(() => {})
-    }
-  }
+async function login(page) {
+  await quickLogin(page, TEST_USERS.admin)
 }
 
 /**

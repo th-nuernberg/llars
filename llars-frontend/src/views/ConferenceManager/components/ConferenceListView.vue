@@ -376,7 +376,7 @@ const search = ref('')
 const filterRanking = ref(null)
 const filterYear = ref(null)
 const groupBySeries = ref(false)
-const sortField = ref('submission_deadline')
+const sortField = ref(null)
 const sortAsc = ref(true)
 const formDialog = ref(false)
 const editingConference = ref(null)
@@ -405,40 +405,33 @@ const filteredConferences = computed(() => {
 
 const RANKING_ORDER = { 'A*': 0, 'A': 1, 'B': 2, 'C': 3, 'Unranked': 4 }
 
+function compareFn(a, b, field, asc) {
+  let va, vb
+  if (field === 'core_ranking') {
+    va = RANKING_ORDER[a.core_ranking] ?? 5
+    vb = RANKING_ORDER[b.core_ranking] ?? 5
+  } else if (field === 'acronym') {
+    va = `${a.acronym || ''} ${a.year || 0}`.toLowerCase()
+    vb = `${b.acronym || ''} ${b.year || 0}`.toLowerCase()
+  } else if (field === 'location') {
+    va = [a.city, a.country].filter(Boolean).join(', ').toLowerCase()
+    vb = [b.city, b.country].filter(Boolean).join(', ').toLowerCase()
+  } else {
+    va = a[field] || ''
+    vb = b[field] || ''
+  }
+  if (!va && !vb) return 0
+  if (!va) return 1
+  if (!vb) return -1
+  if (va < vb) return asc ? -1 : 1
+  if (va > vb) return asc ? 1 : -1
+  return 0
+}
+
 const sortedConferences = computed(() => {
   const list = [...filteredConferences.value]
-  const field = sortField.value
-  const asc = sortAsc.value
-
-  list.sort((a, b) => {
-    let va, vb
-
-    if (field === 'core_ranking') {
-      va = RANKING_ORDER[a.core_ranking] ?? 5
-      vb = RANKING_ORDER[b.core_ranking] ?? 5
-    } else if (field === 'acronym') {
-      va = `${a.acronym || ''} ${a.year || 0}`.toLowerCase()
-      vb = `${b.acronym || ''} ${b.year || 0}`.toLowerCase()
-    } else if (field === 'location') {
-      va = [a.city, a.country].filter(Boolean).join(', ').toLowerCase()
-      vb = [b.city, b.country].filter(Boolean).join(', ').toLowerCase()
-    } else {
-      // Date fields: submission_deadline, start_date
-      va = a[field] || ''
-      vb = b[field] || ''
-    }
-
-    // Nulls/empty always last regardless of direction
-    if (!va && !vb) return 0
-    if (!va) return 1
-    if (!vb) return -1
-
-    if (va < vb) return asc ? -1 : 1
-    if (va > vb) return asc ? 1 : -1
-    return 0
-  })
-
-  return list
+  if (!sortField.value) return list
+  return list.sort((a, b) => compareFn(a, b, sortField.value, sortAsc.value))
 })
 
 const groupedConferences = computed(() => {
@@ -476,22 +469,10 @@ const groupedConferences = computed(() => {
   }
 
   // Apply current sort to items within each group
-  const field = sortField.value
-  const asc = sortAsc.value
-  for (const group of result) {
-    group.items.sort((a, b) => {
-      let va, vb
-      if (field === 'core_ranking') { va = RANKING_ORDER[a.core_ranking] ?? 5; vb = RANKING_ORDER[b.core_ranking] ?? 5 }
-      else if (field === 'acronym') { va = `${a.acronym || ''} ${a.year || 0}`.toLowerCase(); vb = `${b.acronym || ''} ${b.year || 0}`.toLowerCase() }
-      else if (field === 'location') { va = [a.city, a.country].filter(Boolean).join(', ').toLowerCase(); vb = [b.city, b.country].filter(Boolean).join(', ').toLowerCase() }
-      else { va = a[field] || ''; vb = b[field] || '' }
-      if (!va && !vb) return 0
-      if (!va) return 1
-      if (!vb) return -1
-      if (va < vb) return asc ? -1 : 1
-      if (va > vb) return asc ? 1 : -1
-      return 0
-    })
+  if (sortField.value) {
+    for (const group of result) {
+      group.items.sort((a, b) => compareFn(a, b, sortField.value, sortAsc.value))
+    }
   }
 
   return result
@@ -510,8 +491,15 @@ function loadData() {
 
 function toggleSort(field) {
   if (sortField.value === field) {
-    sortAsc.value = !sortAsc.value
+    if (!sortAsc.value) {
+      // Third click: remove sort
+      sortField.value = null
+    } else {
+      // Second click: descending
+      sortAsc.value = false
+    }
   } else {
+    // First click: ascending
     sortField.value = field
     sortAsc.value = true
   }
@@ -692,7 +680,6 @@ function isDeadlineSoon(isoStr) {
   cursor: pointer;
   display: flex;
   align-items: center;
-  gap: 3px;
   transition: color 0.15s;
 }
 
@@ -701,7 +688,9 @@ function isDeadlineSoon(isoStr) {
 }
 
 .sort-icon {
+  margin-left: auto;
   opacity: 0.7;
+  flex-shrink: 0;
 }
 
 .list-row {

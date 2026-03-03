@@ -12,7 +12,7 @@
  */
 
 const testPassword = process.env.E2E_TEST_PASSWORD || 'admin123'
-const isProduction = !!process.env.E2E_TEST_PASSWORD
+export const isProduction = !!process.env.E2E_TEST_PASSWORD
 const researcherUsername = isProduction ? 'e2e-researcher' : 'researcher'
 const evaluatorUsername = isProduction ? 'e2e-evaluator' : 'evaluator'
 const chatbotManagerUsername = isProduction ? 'e2e-chatbot-manager' : 'chatbot_manager'

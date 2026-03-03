@@ -15,12 +15,16 @@
 
 import { test, expect } from '@playwright/test'
 
+// Skip login flow tests in production/staging - temp test users are deleted by auth.setup.js
+// and dev login buttons are not available in production mode
+const isProduction = !!process.env.E2E_TEST_PASSWORD
+test.skip(isProduction, 'Login flow tests require dev environment with dev login buttons')
+
 // Increase timeout for CI environment
 test.setTimeout(60000)
 
 // Test credentials (from CLAUDE.md documentation)
 const testPassword = process.env.E2E_TEST_PASSWORD || 'admin123'
-const isProduction = !!process.env.E2E_TEST_PASSWORD
 const researcherUsername = isProduction ? 'e2e-researcher' : 'researcher'
 const evaluatorUsername = isProduction ? 'e2e-evaluator' : 'evaluator'
 const chatbotManagerUsername = isProduction ? 'e2e-chatbot-manager' : 'chatbot_manager'

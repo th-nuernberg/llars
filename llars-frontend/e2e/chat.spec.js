@@ -19,6 +19,11 @@
 import { test, expect } from '@playwright/test'
 import { TEST_USERS, quickLogin, dismissConsentBanner } from './helpers.js'
 
+// Skip chat tests in production/staging - chat page requires chatbot data + WebSocket
+// that are not available on staging deployments
+const isProduction = !!process.env.E2E_TEST_PASSWORD
+test.skip(isProduction, 'Chat tests require dev environment with chatbot data')
+
 // Increase timeout for CI environment
 test.setTimeout(60000)
 

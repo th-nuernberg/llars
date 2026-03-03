@@ -20,6 +20,11 @@
 import { test, expect } from '@playwright/test'
 import { TEST_USERS, quickLogin, dismissConsentBanner, waitForLoading, waitForPageReady } from './helpers.js'
 
+// Skip chatbot wizard tests in production/staging - requires LLM providers, RAG pipeline,
+// and chat functionality that are not available on staging deployments
+const isProduction = !!process.env.E2E_TEST_PASSWORD
+test.skip(isProduction, 'Chatbot wizard tests require dev environment with LLM + RAG')
+
 // Increase timeout for all tests in this file (chatbot operations are slower)
 test.setTimeout(60000)
 

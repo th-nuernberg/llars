@@ -186,6 +186,7 @@ class MessagingMessage(db.Model):
         index=True,
     )
     has_attachment: Mapped[bool] = mapped_column(db.Boolean, nullable=False, default=False)
+    link_previews: Mapped[Optional[dict]] = mapped_column(db.JSON, nullable=True)
     is_edited: Mapped[bool] = mapped_column(db.Boolean, nullable=False, default=False)
     is_deleted: Mapped[bool] = mapped_column(db.Boolean, nullable=False, default=False)
     created_at: Mapped[datetime] = mapped_column(db.DateTime, default=datetime.utcnow, nullable=False, index=True)
@@ -220,6 +221,7 @@ class MessagingMessage(db.Model):
             "is_deleted": self.is_deleted,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "edited_at": self.edited_at.isoformat() if self.edited_at else None,
+            "link_previews": self.link_previews,
         }
         if self.reply_to and not self.reply_to.is_deleted:
             data["reply_to_preview"] = {
@@ -437,3 +439,20 @@ class MessagingCallParticipant(db.Model):
             "joined_at": self.joined_at.isoformat() if self.joined_at else None,
             "left_at": self.left_at.isoformat() if self.left_at else None,
         }
+
+
+# ── Link Preview Cache ───────────────────────────────────────────────
+
+class MessagingLinkPreview(db.Model):
+    __tablename__ = "messaging_link_previews"
+
+    id: Mapped[int] = mapped_column(db.Integer, primary_key=True, autoincrement=True)
+    url_hash: Mapped[str] = mapped_column(db.String(64), nullable=False, unique=True, index=True)
+    url: Mapped[str] = mapped_column(db.String(2000), nullable=False)
+    title: Mapped[Optional[str]] = mapped_column(db.String(300), nullable=True)
+    description: Mapped[Optional[str]] = mapped_column(db.String(500), nullable=True)
+    image_url: Mapped[Optional[str]] = mapped_column(db.String(2000), nullable=True)
+    favicon_url: Mapped[Optional[str]] = mapped_column(db.String(2000), nullable=True)
+    site_name: Mapped[Optional[str]] = mapped_column(db.String(200), nullable=True)
+    fetched_at: Mapped[datetime] = mapped_column(db.DateTime, default=datetime.utcnow, nullable=False)
+    fetch_error: Mapped[Optional[str]] = mapped_column(db.String(500), nullable=True)

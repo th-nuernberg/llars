@@ -1154,6 +1154,87 @@ def apply_schema_patches(db) -> None:
         )
 
         # =========================================================================
+        # Conference Manager: Series support + Paper LaTeX workspace link
+        # =========================================================================
+
+        # Conference Series table (parent for recurring conferences)
+        changed |= _ensure_table(
+            db,
+            table_name="conference_series",
+            create_sql=(
+                """
+                CREATE TABLE `conference_series` (
+                    `id` INT NOT NULL AUTO_INCREMENT,
+                    `name` VARCHAR(255) NOT NULL,
+                    `acronym` VARCHAR(100) NOT NULL,
+                    `core_ranking` ENUM('A*','A','B','C','Unranked') DEFAULT NULL,
+                    `website_url` VARCHAR(2048) DEFAULT NULL,
+                    `keywords` JSON DEFAULT NULL,
+                    `notes` TEXT DEFAULT NULL,
+                    `created_by` VARCHAR(255) NOT NULL,
+                    `updated_by` VARCHAR(255) DEFAULT NULL,
+                    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                    PRIMARY KEY (`id`),
+                    UNIQUE KEY `uix_series_acronym` (`acronym`)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+                """
+            ),
+        )
+
+        # FK from conferences to conference_series
+        changed |= _ensure_column(
+            db,
+            table_name="conferences",
+            column_name="series_id",
+            column_definition_sql="`series_id` INT NULL",
+        )
+
+        # FK from papers to latex_workspaces
+        changed |= _ensure_column(
+            db,
+            table_name="papers",
+            column_name="latex_workspace_id",
+            column_definition_sql="`latex_workspace_id` INT NULL",
+        )
+
+        # =========================================================================
+        # Messaging: Link Previews
+        # =========================================================================
+
+        # JSON field on messages for storing resolved link previews
+        changed |= _ensure_column(
+            db,
+            table_name="messaging_messages",
+            column_name="link_previews",
+            column_definition_sql="`link_previews` JSON NULL",
+        )
+
+        # URL-level cache table for fetched OG metadata
+        changed |= _ensure_table(
+            db,
+            table_name="messaging_link_previews",
+            create_sql=(
+                """
+                CREATE TABLE `messaging_link_previews` (
+                    `id` INT NOT NULL AUTO_INCREMENT,
+                    `url_hash` VARCHAR(64) NOT NULL,
+                    `url` VARCHAR(2000) NOT NULL,
+                    `title` VARCHAR(300) NULL,
+                    `description` VARCHAR(500) NULL,
+                    `image_url` VARCHAR(2000) NULL,
+                    `favicon_url` VARCHAR(2000) NULL,
+                    `site_name` VARCHAR(200) NULL,
+                    `fetched_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    `fetch_error` VARCHAR(500) NULL,
+                    PRIMARY KEY (`id`),
+                    UNIQUE KEY `uix_link_preview_url_hash` (`url_hash`)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+                """
+            ),
+        )
+
+        # =========================================================================
         # Provider-Prefix Routing: Migrate model IDs to prefixed format
         # =========================================================================
         changed |= _migrate_model_id_prefixes(db)

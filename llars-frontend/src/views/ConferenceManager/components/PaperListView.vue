@@ -83,20 +83,35 @@
     </div>
 
     <!-- List -->
-    <div v-else-if="filteredPapers.length" class="list-container">
+    <div v-else-if="sortedPapers.length" class="list-container">
       <!-- Header -->
       <div class="list-header">
-        <div class="col-status">{{ t('conferenceManager.paper.status') }}</div>
-        <div class="col-title">{{ t('conferenceManager.paper.title') }}</div>
-        <div class="col-conference">{{ t('conferenceManager.paper.conference') }}</div>
-        <div class="col-authors">{{ t('conferenceManager.paper.authors') }}</div>
-        <div class="col-updated">{{ t('conferenceManager.paper.updated') }}</div>
+        <div class="col-status sortable-col" @click="toggleSort('status')">
+          {{ t('conferenceManager.paper.status') }}
+          <v-icon v-if="sortField === 'status'" size="12" class="sort-icon">{{ sortAsc ? 'mdi-arrow-up' : 'mdi-arrow-down' }}</v-icon>
+        </div>
+        <div class="col-title sortable-col" @click="toggleSort('title')">
+          {{ t('conferenceManager.paper.title') }}
+          <v-icon v-if="sortField === 'title'" size="12" class="sort-icon">{{ sortAsc ? 'mdi-arrow-up' : 'mdi-arrow-down' }}</v-icon>
+        </div>
+        <div class="col-conference sortable-col" @click="toggleSort('conference')">
+          {{ t('conferenceManager.paper.conference') }}
+          <v-icon v-if="sortField === 'conference'" size="12" class="sort-icon">{{ sortAsc ? 'mdi-arrow-up' : 'mdi-arrow-down' }}</v-icon>
+        </div>
+        <div class="col-authors sortable-col" @click="toggleSort('authors')">
+          {{ t('conferenceManager.paper.authors') }}
+          <v-icon v-if="sortField === 'authors'" size="12" class="sort-icon">{{ sortAsc ? 'mdi-arrow-up' : 'mdi-arrow-down' }}</v-icon>
+        </div>
+        <div class="col-updated sortable-col" @click="toggleSort('updated_at')">
+          {{ t('conferenceManager.paper.updated') }}
+          <v-icon v-if="sortField === 'updated_at'" size="12" class="sort-icon">{{ sortAsc ? 'mdi-arrow-up' : 'mdi-arrow-down' }}</v-icon>
+        </div>
         <div class="col-actions" />
       </div>
 
       <!-- Rows -->
       <div
-        v-for="paper in filteredPapers"
+        v-for="paper in sortedPapers"
         :key="paper.id"
         class="list-row"
         @click="editPaper(paper)"
@@ -247,7 +262,7 @@
 <script setup>
 import { ref, watch, onMounted, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { useSnackbar } from '@/composables/useSnackbar'
 import { PAPER_STATUSES, getStatusConfig } from '../config/conferenceConfig'
 import { useConferenceManager } from '../composables/useConferenceManager'
@@ -256,11 +271,14 @@ import PaperFormDialog from './PaperFormDialog.vue'
 
 const { t } = useI18n()
 const router = useRouter()
+const route = useRoute()
 const { showSuccess } = useSnackbar()
 const { conferences, papers, loading, fetchPapers, fetchConferences, deletePaper, latexAccessMap, requestLatexAccess } = useConferenceManager()
 
 const search = ref('')
-const filterStatus = ref(null)
+const filterStatus = ref(route.query.status || null)
+const sortField = ref(null)
+const sortAsc = ref(true)
 const filterConference = ref(null)
 const formDialog = ref(false)
 const editingPaper = ref(null)
@@ -275,6 +293,8 @@ const conferenceOptions = computed(() => [
   })),
 ])
 
+const STATUS_ORDER = { planning: 0, in_progress: 1, submitted: 2, accepted: 3, rejected: 4, published: 5 }
+
 const filteredPapers = computed(() => {
   let result = papers.value
   if (search.value) {
@@ -288,9 +308,61 @@ const filteredPapers = computed(() => {
   return result
 })
 
+const sortedPapers = computed(() => {
+  const list = [...filteredPapers.value]
+  const field = sortField.value
+  if (!field) return list
+  const asc = sortAsc.value
+
+  return list.sort((a, b) => {
+    let va, vb
+    if (field === 'status') {
+      va = STATUS_ORDER[a.status] ?? 9
+      vb = STATUS_ORDER[b.status] ?? 9
+    } else if (field === 'title') {
+      va = (a.title || '').toLowerCase()
+      vb = (b.title || '').toLowerCase()
+    } else if (field === 'conference') {
+      va = a.conference ? `${a.conference.acronym} ${a.conference.year}` : ''
+      vb = b.conference ? `${b.conference.acronym} ${b.conference.year}` : ''
+    } else if (field === 'authors') {
+      va = (a.authors || []).map(x => x.display_name || x.external_name || '').join(', ').toLowerCase()
+      vb = (b.authors || []).map(x => x.display_name || x.external_name || '').join(', ').toLowerCase()
+    } else {
+      va = a[field] || ''
+      vb = b[field] || ''
+    }
+    if (!va && !vb) return 0
+    if (!va) return 1
+    if (!vb) return -1
+    if (va < vb) return asc ? -1 : 1
+    if (va > vb) return asc ? 1 : -1
+    return 0
+  })
+})
+
+function toggleSort(field) {
+  if (sortField.value === field) {
+    if (!sortAsc.value) {
+      sortField.value = null
+    } else {
+      sortAsc.value = false
+    }
+  } else {
+    sortField.value = field
+    sortAsc.value = true
+  }
+}
+
 onMounted(() => {
   fetchConferences()
   loadData()
+})
+
+watch(() => route.query.status, (val) => {
+  if (val && val !== filterStatus.value) {
+    filterStatus.value = val
+  }
 })
 
 watch([filterStatus, filterConference], () => loadData())
@@ -428,6 +500,23 @@ function formatDate(isoStr) {
   border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.08);
   background: rgba(var(--v-theme-on-surface), 0.02);
   user-select: none;
+}
+
+.sortable-col {
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  transition: color 0.15s;
+}
+
+.sortable-col:hover {
+  color: rgba(var(--v-theme-on-surface), 0.75);
+}
+
+.sort-icon {
+  margin-left: auto;
+  opacity: 0.7;
+  flex-shrink: 0;
 }
 
 .list-row {

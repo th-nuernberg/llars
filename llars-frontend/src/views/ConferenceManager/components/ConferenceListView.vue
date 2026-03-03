@@ -362,6 +362,7 @@
 <script setup>
 import { ref, reactive, watch, onMounted, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useRoute } from 'vue-router'
 import { CORE_RANKINGS } from '../config/conferenceConfig'
 import { useConferenceManager } from '../composables/useConferenceManager'
 import CoreRankingChip from './CoreRankingChip.vue'
@@ -370,13 +371,14 @@ import ConferenceWizardDialog from './ConferenceWizardDialog.vue'
 import VenueMapPopup from './VenueMapPopup.vue'
 
 const { t } = useI18n()
+const route = useRoute()
 const { conferences, loading, fetchConferences, deleteConference, getNewEditionDefaults } = useConferenceManager()
 
 const search = ref('')
 const filterRanking = ref(null)
 const filterYear = ref(null)
 const groupBySeries = ref(false)
-const sortField = ref(null)
+const sortField = ref(route.query.sort || null)
 const sortAsc = ref(true)
 const formDialog = ref(false)
 const editingConference = ref(null)
@@ -479,6 +481,13 @@ const groupedConferences = computed(() => {
 })
 
 onMounted(() => loadData())
+
+watch(() => route.query.sort, (val) => {
+  if (val && val !== sortField.value) {
+    sortField.value = val
+    sortAsc.value = true
+  }
+})
 
 watch([filterRanking, filterYear], () => loadData())
 

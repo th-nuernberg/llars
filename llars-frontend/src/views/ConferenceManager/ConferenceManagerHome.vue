@@ -10,11 +10,11 @@
 
     <!-- Stats Summary -->
     <div v-if="stats" class="stats-bar mb-4">
-      <v-chip variant="tonal" class="mr-2">
+      <v-chip variant="tonal" class="stat-chip mr-2" @click="goTab('conferences')">
         <v-icon start size="16">mdi-school-outline</v-icon>
         {{ stats.total_conferences }} {{ t('conferenceManager.stats.conferences') }}
       </v-chip>
-      <v-chip variant="tonal" class="mr-2">
+      <v-chip variant="tonal" class="stat-chip mr-2" @click="goTab('papers')">
         <v-icon start size="16">mdi-file-document-outline</v-icon>
         {{ stats.total_papers }} {{ t('conferenceManager.stats.papers') }}
       </v-chip>
@@ -23,7 +23,8 @@
         :key="status"
         variant="tonal"
         size="small"
-        class="mr-1"
+        class="stat-chip mr-1"
+        @click="goTab('papers', { status })"
       >
         {{ t(`conferenceManager.paper.statuses.${statusKeyMap[status] || status}`) }}: {{ count }}
       </v-chip>
@@ -32,7 +33,8 @@
         variant="tonal"
         color="warning"
         size="small"
-        class="mr-1"
+        class="stat-chip mr-1"
+        @click="goTab('conferences', { sort: 'submission_deadline' })"
       >
         <v-icon start size="14">mdi-clock-alert-outline</v-icon>
         {{ stats.upcoming_deadlines.length }} {{ t('conferenceManager.stats.upcomingDeadlines') }}
@@ -124,6 +126,11 @@ const statusKeyMap = {
   published: 'published',
 }
 
+function goTab(tab, queryParams = {}) {
+  router.replace({ query: { tab, ...queryParams } })
+  activeTab.value = tab
+}
+
 onMounted(() => {
   fetchStats()
   fetchConferences()
@@ -163,5 +170,15 @@ onMounted(() => {
   flex-wrap: wrap;
   align-items: center;
   gap: 4px;
+}
+
+.stat-chip {
+  cursor: pointer;
+  transition: transform 0.1s, box-shadow 0.15s;
+}
+
+.stat-chip:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
 }
 </style>

@@ -25,6 +25,7 @@ from .scenarios import seed_demo_scenarios
 from .prompts import seed_demo_prompts
 from .demo_video_data import seed_demo_video_data
 from .conferences import seed_demo_conferences
+from .research_groups import seed_research_groups, seed_migrate_conferences_to_group
 from .legal_assistant import initialize_legal_assistant
 from .analytics_settings import initialize_analytics_settings
 from db.models.llm_model import seed_default_models
@@ -96,6 +97,9 @@ def run_all_seeders(db):
     # Seed default field prompts for AI-Assist feature
     FieldPromptService.seed_defaults()
 
+    # Seed research groups (runs in all modes, idempotent)
+    seed_research_groups(db)
+
     # Seed demo data in development mode only
     project_state = os.getenv('PROJECT_STATE', 'development').lower()
     if project_state == 'development':
@@ -108,6 +112,9 @@ def run_all_seeders(db):
         seed_demo_conferences(db)
     else:
         print(f"Demo-Daten übersprungen (PROJECT_STATE={project_state})")
+
+    # Migrate ungrouped conference data to NLP-Group (production fallback)
+    seed_migrate_conferences_to_group(db)
 
 
 __all__ = [
@@ -134,4 +141,6 @@ __all__ = [
     'seed_demo_prompts',
     'seed_demo_video_data',
     'seed_demo_conferences',
+    'seed_research_groups',
+    'seed_migrate_conferences_to_group',
 ]

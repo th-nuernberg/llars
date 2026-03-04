@@ -21,7 +21,8 @@ series_crud_bp = Blueprint("series_crud", __name__)
 def list_series():
     """List all conference series with optional search."""
     search = request.args.get("search")
-    series = ConferenceSeriesService.list_series(search=search)
+    group_id = request.args.get("group_id", type=int)
+    series = ConferenceSeriesService.list_series(search=search, group_id=group_id)
     return jsonify({"success": True, "series": series}), 200
 
 

@@ -23,9 +23,10 @@ def list_conferences():
     year = request.args.get("year", type=int)
     core_ranking = request.args.get("core_ranking")
     search = request.args.get("search")
+    group_id = request.args.get("group_id", type=int)
 
     conferences = ConferenceService.list_conferences(
-        year=year, core_ranking=core_ranking, search=search
+        year=year, core_ranking=core_ranking, search=search, group_id=group_id
     )
     return jsonify({"success": True, "conferences": conferences}), 200
 
@@ -95,5 +96,6 @@ def delete_conference(conference_id):
 @handle_api_errors(logger_name="conference_manager")
 def get_stats():
     """Get aggregated statistics."""
-    stats = ConferenceService.get_stats()
+    group_id = request.args.get("group_id", type=int)
+    stats = ConferenceService.get_stats(group_id=group_id)
     return jsonify({"success": True, "stats": stats}), 200

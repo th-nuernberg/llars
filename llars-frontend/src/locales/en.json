@@ -30,7 +30,9 @@
     "dismiss": "Dismiss",
     "copy": "Copy",
     "create": "Create",
-    "download": "Download"
+    "download": "Download",
+    "leave": "Leave",
+    "actions": "Actions"
   },
   "auth": {
     "login": "Login",
@@ -214,6 +216,7 @@
       "rag": "RAG documents",
       "permissions": "Permissions",
       "llmProviders": "LLM providers",
+      "researchGroups": "Research Groups",
       "fieldPrompts": "AI Field Prompts",
       "communication": "Communication"
     }
@@ -7042,6 +7045,48 @@
     "errors": {
       "sendFailed": "Failed to send message",
       "loadFailed": "Failed to load messages"
+    }
+  },
+  "researchGroup": {
+    "title": "Research Groups",
+    "loading": "Loading groups...",
+    "myGroups": "My Groups",
+    "name": "Name",
+    "slug": "Slug",
+    "description": "Description",
+    "createdBy": "Created by",
+    "create": "Create Group",
+    "edit": "Edit Group",
+    "delete": "Delete Group",
+    "selection": {
+      "title": "Select Research Group",
+      "noGroups": "You're not a member of any group yet.",
+      "otherGroups": "Other Groups"
+    },
+    "members": {
+      "title": "Members",
+      "invite": "Invite",
+      "searchUser": "Search user",
+      "role": "Role",
+      "confirmRemove": "Remove member {name}?",
+      "roles": {
+        "owner": "Owner",
+        "member": "Member",
+        "viewer": "Viewer"
+      }
+    },
+    "accessRequest": {
+      "title": "Request Access",
+      "pending": "Pending Requests",
+      "approve": "Approve",
+      "reject": "Reject",
+      "message": "Message (optional)",
+      "submit": "Send Request",
+      "sent": "Your request has been sent. You will be notified when it's been reviewed."
+    },
+    "admin": {
+      "title": "Manage Research Groups",
+      "noGroups": "No groups found"
     }
   }
 }

@@ -6,6 +6,9 @@
         <v-icon size="28" color="primary">mdi-school-outline</v-icon>
         <h1 class="title">{{ t('conferenceManager.title') }}</h1>
       </div>
+      <div class="header-right">
+        <ResearchGroupTag v-if="currentGroup" :group="currentGroup" />
+      </div>
     </div>
 
     <!-- Stats Summary -->
@@ -93,16 +96,23 @@ import { ref, watch, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import { useConferenceManager } from './composables/useConferenceManager'
+import { useResearchGroups } from './composables/useResearchGroups'
 import ConferenceListView from './components/ConferenceListView.vue'
 import PaperListView from './components/PaperListView.vue'
 import CalendarView from './components/CalendarView.vue'
 import TimelineView from './components/TimelineView.vue'
 import KanbanView from './components/KanbanView.vue'
+import ResearchGroupTag from './components/ResearchGroupTag.vue'
+
+const props = defineProps({
+  groupId: { type: [String, Number], required: true },
+})
 
 const { t } = useI18n()
 const route = useRoute()
 const router = useRouter()
-const { stats, fetchStats, fetchConferences, fetchPapers, fetchSeries } = useConferenceManager()
+const { stats, fetchStats, fetchConferences, fetchPapers, fetchSeries, setGroupId } = useConferenceManager()
+const { fetchGroup, currentGroup } = useResearchGroups()
 
 const VALID_TABS = ['conferences', 'papers', 'calendar', 'timeline', 'kanban']
 
@@ -132,6 +142,8 @@ function goTab(tab, queryParams = {}) {
 }
 
 onMounted(() => {
+  setGroupId(props.groupId)
+  fetchGroup(props.groupId).catch(() => {})
   fetchStats()
   fetchConferences()
   fetchPapers()

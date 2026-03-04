@@ -24,6 +24,7 @@ def seed_demo_conferences(db):
     from db.models.conference import (
         Conference, Paper, PaperAuthor, PaperSubmission,
         CoreRanking, PaperStatus, SubmissionStatus,
+        ResearchGroup,
     )
     from db.tables import User
 
@@ -33,6 +34,10 @@ def seed_demo_conferences(db):
         return
 
     logger.info("Seeding conference data...")
+
+    # Resolve NLP-Group for group_id assignment
+    nlp_group = ResearchGroup.query.filter_by(slug="nlp-group").first()
+    nlp_group_id = nlp_group.id if nlp_group else None
 
     # Resolve user IDs
     user_map = {}
@@ -189,6 +194,7 @@ def seed_demo_conferences(db):
             name=data["name"],
             acronym=data["acronym"],
             year=data["year"],
+            group_id=nlp_group_id,
             core_ranking=data["core_ranking"],
             submission_deadline=data.get("submission_deadline"),
             notification_date=data.get("notification_date"),
@@ -366,6 +372,7 @@ def seed_demo_conferences(db):
         paper = Paper(
             title=data["title"],
             status=data["status"],
+            group_id=nlp_group_id,
             conference_id=conf.id if conf else None,
             keywords=data.get("keywords"),
             notes=data.get("notes"),

@@ -1236,6 +1236,96 @@ def apply_schema_patches(db) -> None:
         changed |= _migrate_paper_status_enum(db)
 
         # =========================================================================
+        # Conference Manager: Research Groups
+        # =========================================================================
+
+        changed |= _ensure_table(
+            db,
+            table_name="research_groups",
+            create_sql=(
+                """
+                CREATE TABLE `research_groups` (
+                    `id` INT NOT NULL AUTO_INCREMENT,
+                    `name` VARCHAR(255) NOT NULL,
+                    `slug` VARCHAR(255) NOT NULL,
+                    `description` TEXT DEFAULT NULL,
+                    `created_by` VARCHAR(255) NOT NULL,
+                    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                    PRIMARY KEY (`id`),
+                    UNIQUE KEY `uix_research_group_slug` (`slug`)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+                """
+            ),
+        )
+
+        changed |= _ensure_table(
+            db,
+            table_name="research_group_members",
+            create_sql=(
+                """
+                CREATE TABLE `research_group_members` (
+                    `id` INT NOT NULL AUTO_INCREMENT,
+                    `group_id` INT NOT NULL,
+                    `user_id` INT NOT NULL,
+                    `role` ENUM('owner','member','viewer') NOT NULL DEFAULT 'member',
+                    `added_by` VARCHAR(255) DEFAULT NULL,
+                    `added_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (`id`),
+                    UNIQUE KEY `unique_group_user` (`group_id`, `user_id`),
+                    KEY `ix_rgm_group_id` (`group_id`),
+                    KEY `ix_rgm_user_id` (`user_id`),
+                    CONSTRAINT `fk_rgm_group` FOREIGN KEY (`group_id`) REFERENCES `research_groups` (`id`) ON DELETE CASCADE,
+                    CONSTRAINT `fk_rgm_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+                """
+            ),
+        )
+
+        changed |= _ensure_table(
+            db,
+            table_name="research_group_access_requests",
+            create_sql=(
+                """
+                CREATE TABLE `research_group_access_requests` (
+                    `id` INT NOT NULL AUTO_INCREMENT,
+                    `group_id` INT NOT NULL,
+                    `requester_username` VARCHAR(255) NOT NULL,
+                    `status` ENUM('pending','approved','rejected') NOT NULL DEFAULT 'pending',
+                    `message` TEXT DEFAULT NULL,
+                    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    `resolved_at` DATETIME DEFAULT NULL,
+                    `resolved_by` VARCHAR(255) DEFAULT NULL,
+                    PRIMARY KEY (`id`),
+                    UNIQUE KEY `unique_group_requester` (`group_id`, `requester_username`),
+                    KEY `ix_rgar_group_id` (`group_id`),
+                    CONSTRAINT `fk_rgar_group` FOREIGN KEY (`group_id`) REFERENCES `research_groups` (`id`) ON DELETE CASCADE
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+                """
+            ),
+        )
+
+        # group_id FK on conferences, papers, conference_series
+        changed |= _ensure_column(
+            db,
+            table_name="conferences",
+            column_name="group_id",
+            column_definition_sql="`group_id` INT NULL",
+        )
+        changed |= _ensure_column(
+            db,
+            table_name="papers",
+            column_name="group_id",
+            column_definition_sql="`group_id` INT NULL",
+        )
+        changed |= _ensure_column(
+            db,
+            table_name="conference_series",
+            column_name="group_id",
+            column_definition_sql="`group_id` INT NULL",
+        )
+
+        # =========================================================================
         # Messaging: Link Previews
         # =========================================================================
 

@@ -18,10 +18,12 @@ class ConferenceSeriesService:
     """Service for managing conference series (e.g. NeurIPS, AAAI)."""
 
     @staticmethod
-    def list_series(search: Optional[str] = None) -> List[Dict[str, Any]]:
+    def list_series(search: Optional[str] = None, group_id: Optional[int] = None) -> List[Dict[str, Any]]:
         from db.models import ConferenceSeries
 
         query = ConferenceSeries.query.order_by(ConferenceSeries.acronym.asc())
+        if group_id:
+            query = query.filter(ConferenceSeries.group_id == group_id)
         if search:
             pattern = f"%{search}%"
             query = query.filter(
@@ -53,6 +55,7 @@ class ConferenceSeriesService:
         series = ConferenceSeries(
             name=data["name"],
             acronym=data["acronym"],
+            group_id=data.get("group_id"),
             core_ranking=ranking,
             website_url=data.get("website_url"),
             keywords=data.get("keywords"),
@@ -150,6 +153,7 @@ class ConferenceService:
         year: Optional[int] = None,
         core_ranking: Optional[str] = None,
         search: Optional[str] = None,
+        group_id: Optional[int] = None,
     ) -> List[Dict[str, Any]]:
         """List conferences with optional filters."""
         from db.models import Conference, CoreRanking
@@ -163,6 +167,9 @@ class ConferenceService:
             Conference.submission_deadline.asc(),
             Conference.year.desc(),
         )
+
+        if group_id:
+            query = query.filter(Conference.group_id == group_id)
 
         if year:
             query = query.filter(Conference.year == year)
@@ -211,6 +218,7 @@ class ConferenceService:
             name=data["name"],
             acronym=data["acronym"],
             year=data["year"],
+            group_id=data.get("group_id"),
             series_id=data.get("series_id"),
             core_ranking=ranking,
             submission_deadline=_parse_datetime(data.get("submission_deadline")),
@@ -279,11 +287,15 @@ class ConferenceService:
         status: Optional[str] = None,
         conference_id: Optional[int] = None,
         search: Optional[str] = None,
+        group_id: Optional[int] = None,
     ) -> List[Dict[str, Any]]:
         """List papers with optional filters."""
         from db.models import Paper, PaperStatus
 
         query = Paper.query.order_by(Paper.updated_at.desc())
+
+        if group_id:
+            query = query.filter(Paper.group_id == group_id)
 
         if status:
             try:
@@ -329,6 +341,7 @@ class ConferenceService:
         paper = Paper(
             title=data["title"],
             status=status,
+            group_id=data.get("group_id"),
             conference_id=data.get("conference_id"),
             latex_workspace_id=data.get("latex_workspace_id"),
             overleaf_url=data.get("overleaf_url"),
@@ -556,24 +569,29 @@ class ConferenceService:
     # ── Statistics ───────────────────────────────────────────────
 
     @staticmethod
-    def get_stats() -> Dict[str, Any]:
+    def get_stats(group_id: Optional[int] = None) -> Dict[str, Any]:
         """Get aggregated statistics for the dashboard."""
         from db.models import Conference, Paper, PaperStatus
         from sqlalchemy import func
 
-        total_conferences = Conference.query.count()
+        conf_query = Conference.query
+        paper_query = db.session.query(Paper.status, func.count(Paper.id))
+        upcoming_query = Conference.query
+
+        if group_id:
+            conf_query = conf_query.filter(Conference.group_id == group_id)
+            paper_query = paper_query.filter(Paper.group_id == group_id)
+            upcoming_query = upcoming_query.filter(Conference.group_id == group_id)
+
+        total_conferences = conf_query.count()
 
         # Papers by status
-        status_counts = (
-            db.session.query(Paper.status, func.count(Paper.id))
-            .group_by(Paper.status)
-            .all()
-        )
+        status_counts = paper_query.group_by(Paper.status).all()
         papers_by_status = {s.value: c for s, c in status_counts}
 
         # Upcoming deadlines (next 5)
         upcoming = (
-            Conference.query
+            upcoming_query
             .filter(Conference.submission_deadline >= datetime.utcnow())
             .order_by(Conference.submission_deadline.asc())
             .limit(5)

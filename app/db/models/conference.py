@@ -1,7 +1,7 @@
 """Conference & Paper Management database models.
 
-Tables for tracking conferences (deadlines, rankings, venues)
-and papers (status, authors, submissions).
+Tables for tracking conferences (deadlines, rankings, venues),
+papers (status, authors, submissions), and research groups.
 """
 
 from __future__ import annotations
@@ -39,12 +39,147 @@ class SubmissionStatus(Enum):
     WITHDRAWN = "withdrawn"
 
 
+class ResearchGroupRole(Enum):
+    OWNER = "owner"
+    MEMBER = "member"
+    VIEWER = "viewer"
+
+
+class ResearchGroupRequestStatus(Enum):
+    PENDING = "pending"
+    APPROVED = "approved"
+    REJECTED = "rejected"
+
+
+# ── Research Group Models ────────────────────────────────────
+
+
+class ResearchGroup(db.Model):
+    __tablename__ = "research_groups"
+
+    id: Mapped[int] = mapped_column(db.Integer, primary_key=True, autoincrement=True)
+    name: Mapped[str] = mapped_column(db.String(255), nullable=False)
+    slug: Mapped[str] = mapped_column(db.String(255), nullable=False, unique=True)
+    description: Mapped[Optional[str]] = mapped_column(db.Text, nullable=True)
+    created_by: Mapped[str] = mapped_column(db.String(255), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(db.DateTime, default=datetime.utcnow, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+    members = db.relationship(
+        "ResearchGroupMember",
+        backref=db.backref("group", lazy="selectin"),
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
+
+    access_requests = db.relationship(
+        "ResearchGroupAccessRequest",
+        backref=db.backref("group", lazy="selectin"),
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
+
+    def to_dict(self) -> dict:
+        return {
+            "id": self.id,
+            "name": self.name,
+            "slug": self.slug,
+            "description": self.description,
+            "created_by": self.created_by,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+            "member_count": len(self.members) if self.members else 0,
+        }
+
+    def to_dict_brief(self) -> dict:
+        return {
+            "id": self.id,
+            "name": self.name,
+            "slug": self.slug,
+        }
+
+
+class ResearchGroupMember(db.Model):
+    __tablename__ = "research_group_members"
+
+    id: Mapped[int] = mapped_column(db.Integer, primary_key=True, autoincrement=True)
+    group_id: Mapped[int] = mapped_column(
+        db.Integer,
+        db.ForeignKey("research_groups.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    user_id: Mapped[int] = mapped_column(
+        db.Integer,
+        db.ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    role: Mapped[ResearchGroupRole] = mapped_column(
+        db.Enum(ResearchGroupRole, values_callable=lambda e: [m.value for m in e]),
+        nullable=False,
+        default=ResearchGroupRole.MEMBER,
+    )
+    added_by: Mapped[Optional[str]] = mapped_column(db.String(255), nullable=True)
+    added_at: Mapped[datetime] = mapped_column(db.DateTime, default=datetime.utcnow, nullable=False)
+
+    user = db.relationship("User", lazy="selectin")
+
+    __table_args__ = (
+        db.UniqueConstraint("group_id", "user_id", name="unique_group_user"),
+    )
+
+    def to_dict(self) -> dict:
+        return {
+            "id": self.id,
+            "group_id": self.group_id,
+            "user_id": self.user_id,
+            "username": self.user.username if self.user else None,
+            "avatar_seed": self.user.get_avatar_seed() if self.user else None,
+            "role": self.role.value if self.role else "member",
+            "added_by": self.added_by,
+            "added_at": self.added_at.isoformat() if self.added_at else None,
+        }
+
+
+class ResearchGroupAccessRequest(db.Model):
+    __tablename__ = "research_group_access_requests"
+
+    id: Mapped[int] = mapped_column(db.Integer, primary_key=True, autoincrement=True)
+    group_id: Mapped[int] = mapped_column(
+        db.Integer,
+        db.ForeignKey("research_groups.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    requester_username: Mapped[str] = mapped_column(db.String(255), nullable=False)
+    status: Mapped[ResearchGroupRequestStatus] = mapped_column(
+        db.Enum(ResearchGroupRequestStatus, values_callable=lambda e: [m.value for m in e]),
+        nullable=False,
+        default=ResearchGroupRequestStatus.PENDING,
+    )
+    message: Mapped[Optional[str]] = mapped_column(db.Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(db.DateTime, default=datetime.utcnow, nullable=False)
+    resolved_at: Mapped[Optional[datetime]] = mapped_column(db.DateTime, nullable=True)
+    resolved_by: Mapped[Optional[str]] = mapped_column(db.String(255), nullable=True)
+
+    __table_args__ = (
+        db.UniqueConstraint("group_id", "requester_username", name="unique_group_requester"),
+    )
+
+
 class ConferenceSeries(db.Model):
     __tablename__ = "conference_series"
 
     id: Mapped[int] = mapped_column(db.Integer, primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(db.String(255), nullable=False)
     acronym: Mapped[str] = mapped_column(db.String(100), nullable=False, unique=True)
+    group_id: Mapped[Optional[int]] = mapped_column(
+        db.Integer,
+        db.ForeignKey("research_groups.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
     core_ranking: Mapped[Optional[CoreRanking]] = mapped_column(
         db.Enum(CoreRanking, values_callable=lambda e: [m.value for m in e]),
         nullable=True,
@@ -90,6 +225,12 @@ class Conference(db.Model):
     name: Mapped[str] = mapped_column(db.String(255), nullable=False)
     acronym: Mapped[str] = mapped_column(db.String(100), nullable=False)
     year: Mapped[int] = mapped_column(db.Integer, nullable=False, index=True)
+    group_id: Mapped[Optional[int]] = mapped_column(
+        db.Integer,
+        db.ForeignKey("research_groups.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
     series_id: Mapped[Optional[int]] = mapped_column(
         db.Integer,
         db.ForeignKey("conference_series.id", ondelete="SET NULL"),
@@ -179,6 +320,12 @@ class Paper(db.Model):
         db.Enum(PaperStatus, values_callable=lambda e: [m.value for m in e]),
         nullable=False,
         default=PaperStatus.PLANNING,
+    )
+    group_id: Mapped[Optional[int]] = mapped_column(
+        db.Integer,
+        db.ForeignKey("research_groups.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
     )
     conference_id: Mapped[Optional[int]] = mapped_column(
         db.Integer,

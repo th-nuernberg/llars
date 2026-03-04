@@ -137,6 +137,25 @@ def _broadcast_scenario_completed(scenario_id: int, summary: dict):
     except Exception as e:
         logger.debug(f"[LLM AI Runner] Failed to broadcast scenario completion: {e}")
 
+
+def _broadcast_model_aborted(scenario_id: int, model_id: str, task_type: str, error: str):
+    """Broadcast that a model's evaluation was aborted (non-retryable error or too many failures)."""
+    from datetime import datetime
+    socketio = _get_socketio()
+    if not socketio:
+        return
+    try:
+        socketio.emit('llm_eval:model_aborted', {
+            'scenario_id': scenario_id,
+            'model_id': model_id,
+            'task_type': task_type,
+            'error': error,
+            'timestamp': datetime.utcnow().isoformat(),
+        }, room=f'llm_eval_scenario_{scenario_id}')
+    except Exception as e:
+        logger.debug(f"[LLM AI Runner] Failed to broadcast model_aborted: {e}")
+
+
 def _safe_int(value: Any, default: int) -> int:
     try:
         return int(value)
@@ -201,11 +220,19 @@ class LLMResponseError(Exception):
         self.raw_response = raw_response
 
 
+class LLMNonRetryableError(Exception):
+    """Raised for auth/permission errors that should abort entire model evaluation."""
+    def __init__(self, message: str, status_code: int = None):
+        super().__init__(message)
+        self.status_code = status_code
+
+
 class LLMAITaskRunner:
     """Run scenario tasks for configured LLM evaluators."""
 
     MAX_RETRIES = 3
     MAX_CONSECUTIVE_FAILURES = 3
+    MAX_TOTAL_FAILURES = 30
     _NON_RETRYABLE_CODES = {401, 403}
 
     @staticmethod
@@ -464,8 +491,17 @@ class LLMAITaskRunner:
             criteria_block = f"Bewertungskriterien:\n{criteria_lines}\n\n"
 
         consecutive_failures = 0
+        total_failures = 0
         for session_id in session_ids:
             if LLMAITaskRunner._check_circuit_breaker(consecutive_failures, model_id, scenario_id, "comparison_session"):
+                _broadcast_model_aborted(scenario_id, model_id, "comparison_session",
+                                         f"Circuit breaker: {consecutive_failures} consecutive failures")
+                break
+            if total_failures >= LLMAITaskRunner.MAX_TOTAL_FAILURES:
+                logger.error("[LLM AI Runner] Total failure limit (%d) reached for %s in scenario %s",
+                             total_failures, model_id, scenario_id)
+                _broadcast_model_aborted(scenario_id, model_id, "comparison_session",
+                                         f"Too many failures ({total_failures}). Evaluation stopped.")
                 break
             try:
                 session = ComparisonSession.query.get(session_id)
@@ -598,9 +634,23 @@ class LLMAITaskRunner:
                     )
                 consecutive_failures = 0
 
+            except LLMNonRetryableError as exc:
+                db.session.rollback()
+                LLMAITaskRunner._store_error(
+                    scenario_id=scenario_id,
+                    thread_id=session_id,
+                    model_id=model_id,
+                    task_type="comparison",
+                    error=str(exc),
+                )
+                _broadcast_model_aborted(scenario_id, model_id, "comparison_session", str(exc))
+                logger.error("[LLM AI Runner] Non-retryable error for %s, aborting: %s", model_id, exc)
+                return
+
             except LLMResponseError as exc:
                 db.session.rollback()
                 consecutive_failures += 1
+                total_failures += 1
                 LLMAITaskRunner._store_error(
                     scenario_id=scenario_id,
                     thread_id=session_id,
@@ -619,6 +669,7 @@ class LLMAITaskRunner:
             except Exception as exc:
                 db.session.rollback()
                 consecutive_failures += 1
+                total_failures += 1
                 logger.warning(
                     "[LLM AI Runner] Comparison session %s failed: %s",
                     session_id,
@@ -727,9 +778,18 @@ class LLMAITaskRunner:
         bucket_names, bucket_keys = LLMAITaskRunner._get_bucket_config(scenario)
         thread_ids_list = list(thread_ids)
         consecutive_failures = 0
+        total_failures = 0
 
         for thread_id in thread_ids_list:
             if LLMAITaskRunner._check_circuit_breaker(consecutive_failures, model_id, scenario_id, "ranking"):
+                _broadcast_model_aborted(scenario_id, model_id, "ranking",
+                                         f"Circuit breaker: {consecutive_failures} consecutive failures")
+                break
+            if total_failures >= LLMAITaskRunner.MAX_TOTAL_FAILURES:
+                logger.error("[LLM AI Runner] Total failure limit (%d) reached for %s in scenario %s",
+                             total_failures, model_id, scenario_id)
+                _broadcast_model_aborted(scenario_id, model_id, "ranking",
+                                         f"Too many failures ({total_failures}). Evaluation stopped.")
                 break
             try:
                 existing = LLMTaskResult.query.filter_by(
@@ -881,9 +941,23 @@ Antworte im JSON-Format (verwende die numerischen Feature-IDs, nicht die Buchsta
                 )
                 consecutive_failures = 0
 
+            except LLMNonRetryableError as exc:
+                db.session.rollback()
+                LLMAITaskRunner._store_error(
+                    scenario_id=scenario_id,
+                    thread_id=thread_id,
+                    model_id=model_id,
+                    task_type="ranking",
+                    error=str(exc),
+                )
+                _broadcast_model_aborted(scenario_id, model_id, "ranking", str(exc))
+                logger.error("[LLM AI Runner] Non-retryable error for %s, aborting: %s", model_id, exc)
+                return
+
             except LLMResponseError as exc:
                 db.session.rollback()
                 consecutive_failures += 1
+                total_failures += 1
                 LLMAITaskRunner._store_error(
                     scenario_id=scenario_id,
                     thread_id=thread_id,
@@ -903,6 +977,7 @@ Antworte im JSON-Format (verwende die numerischen Feature-IDs, nicht die Buchsta
             except Exception as exc:
                 db.session.rollback()
                 consecutive_failures += 1
+                total_failures += 1
                 logger.warning("[LLM AI Runner] Ranking failed for thread %s: %s", thread_id, exc)
                 # Broadcast failure
                 _broadcast_task_failed(
@@ -1093,6 +1168,10 @@ Antworte im JSON-Format:
                 result=result_payload,
             )
 
+        except LLMNonRetryableError:
+            db.session.rollback()
+            raise
+
         except LLMResponseError as exc:
             db.session.rollback()
             LLMAITaskRunner._store_error(
@@ -1126,9 +1205,18 @@ Antworte im JSON-Format:
         client, api_model_id = LLMClientFactory.resolve_client_and_model_id(model_id)
         scenario = RatingScenarios.query.get(scenario_id)
         consecutive_failures = 0
+        total_failures = 0
 
         for thread_id in thread_ids:
             if LLMAITaskRunner._check_circuit_breaker(consecutive_failures, model_id, scenario_id, "rating"):
+                _broadcast_model_aborted(scenario_id, model_id, "rating",
+                                         f"Circuit breaker: {consecutive_failures} consecutive failures")
+                break
+            if total_failures >= LLMAITaskRunner.MAX_TOTAL_FAILURES:
+                logger.error("[LLM AI Runner] Total failure limit (%d) reached for %s in scenario %s",
+                             total_failures, model_id, scenario_id)
+                _broadcast_model_aborted(scenario_id, model_id, "rating",
+                                         f"Too many failures ({total_failures}). Evaluation stopped.")
                 break
             try:
                 existing = LLMTaskResult.query.filter_by(
@@ -1297,9 +1385,23 @@ Antworte im JSON-Format:
                 )
                 consecutive_failures = 0
 
+            except LLMNonRetryableError as exc:
+                db.session.rollback()
+                LLMAITaskRunner._store_error(
+                    scenario_id=scenario_id,
+                    thread_id=thread_id,
+                    model_id=model_id,
+                    task_type="rating",
+                    error=str(exc),
+                )
+                _broadcast_model_aborted(scenario_id, model_id, "rating", str(exc))
+                logger.error("[LLM AI Runner] Non-retryable error for %s, aborting: %s", model_id, exc)
+                return
+
             except LLMResponseError as exc:
                 db.session.rollback()
                 consecutive_failures += 1
+                total_failures += 1
                 LLMAITaskRunner._store_error(
                     scenario_id=scenario_id,
                     thread_id=thread_id,
@@ -1319,6 +1421,7 @@ Antworte im JSON-Format:
             except Exception as exc:
                 db.session.rollback()
                 consecutive_failures += 1
+                total_failures += 1
                 logger.warning("[LLM AI Runner] Rating failed for thread %s: %s", thread_id, exc)
                 # Broadcast failure
                 _broadcast_task_failed(
@@ -1333,9 +1436,18 @@ Antworte im JSON-Format:
     def _run_authenticity(model_id: str, thread_ids: Iterable[int], scenario_id: int) -> None:
         client, api_model_id = LLMClientFactory.resolve_client_and_model_id(model_id)
         consecutive_failures = 0
+        total_failures = 0
 
         for thread_id in thread_ids:
             if LLMAITaskRunner._check_circuit_breaker(consecutive_failures, model_id, scenario_id, "authenticity"):
+                _broadcast_model_aborted(scenario_id, model_id, "authenticity",
+                                         f"Circuit breaker: {consecutive_failures} consecutive failures")
+                break
+            if total_failures >= LLMAITaskRunner.MAX_TOTAL_FAILURES:
+                logger.error("[LLM AI Runner] Total failure limit (%d) reached for %s in scenario %s",
+                             total_failures, model_id, scenario_id)
+                _broadcast_model_aborted(scenario_id, model_id, "authenticity",
+                                         f"Too many failures ({total_failures}). Evaluation stopped.")
                 break
             try:
                 existing = LLMTaskResult.query.filter_by(
@@ -1410,9 +1522,23 @@ Antworte im JSON-Format:
                 )
                 consecutive_failures = 0
 
+            except LLMNonRetryableError as exc:
+                db.session.rollback()
+                LLMAITaskRunner._store_error(
+                    scenario_id=scenario_id,
+                    thread_id=thread_id,
+                    model_id=model_id,
+                    task_type="authenticity",
+                    error=str(exc),
+                )
+                _broadcast_model_aborted(scenario_id, model_id, "authenticity", str(exc))
+                logger.error("[LLM AI Runner] Non-retryable error for %s, aborting: %s", model_id, exc)
+                return
+
             except LLMResponseError as exc:
                 db.session.rollback()
                 consecutive_failures += 1
+                total_failures += 1
                 LLMAITaskRunner._store_error(
                     scenario_id=scenario_id,
                     thread_id=thread_id,
@@ -1432,6 +1558,7 @@ Antworte im JSON-Format:
             except Exception as exc:
                 db.session.rollback()
                 consecutive_failures += 1
+                total_failures += 1
                 logger.warning("[LLM AI Runner] Authenticity failed for thread %s: %s", thread_id, exc)
                 # Broadcast failure
                 _broadcast_task_failed(
@@ -1455,9 +1582,18 @@ Antworte im JSON-Format:
         global_min = dim_config.get("min", 1)
         global_max = dim_config.get("max", 5)
         consecutive_failures = 0
+        total_failures = 0
 
         for thread_id in thread_ids:
             if LLMAITaskRunner._check_circuit_breaker(consecutive_failures, model_id, scenario_id, "mail_rating"):
+                _broadcast_model_aborted(scenario_id, model_id, "mail_rating",
+                                         f"Circuit breaker: {consecutive_failures} consecutive failures")
+                break
+            if total_failures >= LLMAITaskRunner.MAX_TOTAL_FAILURES:
+                logger.error("[LLM AI Runner] Total failure limit (%d) reached for %s in scenario %s",
+                             total_failures, model_id, scenario_id)
+                _broadcast_model_aborted(scenario_id, model_id, "mail_rating",
+                                         f"Too many failures ({total_failures}). Evaluation stopped.")
                 break
             try:
                 existing = LLMTaskResult.query.filter_by(
@@ -1581,9 +1717,23 @@ Antworte im JSON-Format:
                 )
                 consecutive_failures = 0
 
+            except LLMNonRetryableError as exc:
+                db.session.rollback()
+                LLMAITaskRunner._store_error(
+                    scenario_id=scenario_id,
+                    thread_id=thread_id,
+                    model_id=model_id,
+                    task_type="mail_rating",
+                    error=str(exc),
+                )
+                _broadcast_model_aborted(scenario_id, model_id, "mail_rating", str(exc))
+                logger.error("[LLM AI Runner] Non-retryable error for %s, aborting: %s", model_id, exc)
+                return
+
             except LLMResponseError as exc:
                 db.session.rollback()
                 consecutive_failures += 1
+                total_failures += 1
                 LLMAITaskRunner._store_error(
                     scenario_id=scenario_id,
                     thread_id=thread_id,
@@ -1603,6 +1753,7 @@ Antworte im JSON-Format:
             except Exception as exc:
                 db.session.rollback()
                 consecutive_failures += 1
+                total_failures += 1
                 logger.warning("[LLM AI Runner] Mail rating failed for thread %s: %s", thread_id, exc)
                 # Broadcast failure
                 _broadcast_task_failed(
@@ -1698,8 +1849,17 @@ Antworte im JSON-Format:
             descriptions_text = f"\n\nLabel-Beschreibungen:\n{descriptions_text}"
 
         consecutive_failures = 0
+        total_failures = 0
         for thread_id in thread_ids:
             if LLMAITaskRunner._check_circuit_breaker(consecutive_failures, model_id, scenario_id, task_type):
+                _broadcast_model_aborted(scenario_id, model_id, task_type,
+                                         f"Circuit breaker: {consecutive_failures} consecutive failures")
+                break
+            if total_failures >= LLMAITaskRunner.MAX_TOTAL_FAILURES:
+                logger.error("[LLM AI Runner] Total failure limit (%d) reached for %s in scenario %s",
+                             total_failures, model_id, scenario_id)
+                _broadcast_model_aborted(scenario_id, model_id, task_type,
+                                         f"Too many failures ({total_failures}). Evaluation stopped.")
                 break
             try:
                 existing = LLMTaskResult.query.filter_by(
@@ -1779,9 +1939,23 @@ Antworte im JSON-Format:
                 )
                 consecutive_failures = 0
 
+            except LLMNonRetryableError as exc:
+                db.session.rollback()
+                LLMAITaskRunner._store_error(
+                    scenario_id=scenario_id,
+                    thread_id=thread_id,
+                    model_id=model_id,
+                    task_type=task_type,
+                    error=str(exc),
+                )
+                _broadcast_model_aborted(scenario_id, model_id, task_type, str(exc))
+                logger.error("[LLM AI Runner] Non-retryable error for %s, aborting: %s", model_id, exc)
+                return
+
             except LLMResponseError as exc:
                 db.session.rollback()
                 consecutive_failures += 1
+                total_failures += 1
                 LLMAITaskRunner._store_error(
                     scenario_id=scenario_id,
                     thread_id=thread_id,
@@ -1801,6 +1975,7 @@ Antworte im JSON-Format:
             except Exception as exc:
                 db.session.rollback()
                 consecutive_failures += 1
+                total_failures += 1
                 logger.warning("[LLM AI Runner] %s failed for thread %s: %s", task_type, thread_id, exc)
                 # Broadcast failure
                 _broadcast_task_failed(
@@ -1823,8 +1998,17 @@ Antworte im JSON-Format:
             criteria_block = f"Bewertungskriterien:\n{criteria_lines}\n\n"
 
         consecutive_failures = 0
+        total_failures = 0
         for thread_id in thread_ids:
             if LLMAITaskRunner._check_circuit_breaker(consecutive_failures, model_id, scenario_id, "comparison"):
+                _broadcast_model_aborted(scenario_id, model_id, "comparison",
+                                         f"Circuit breaker: {consecutive_failures} consecutive failures")
+                break
+            if total_failures >= LLMAITaskRunner.MAX_TOTAL_FAILURES:
+                logger.error("[LLM AI Runner] Total failure limit (%d) reached for %s in scenario %s",
+                             total_failures, model_id, scenario_id)
+                _broadcast_model_aborted(scenario_id, model_id, "comparison",
+                                         f"Too many failures ({total_failures}). Evaluation stopped.")
                 break
             try:
                 existing = LLMTaskResult.query.filter_by(
@@ -1912,9 +2096,23 @@ Antworte im JSON-Format:
                 )
                 consecutive_failures = 0
 
+            except LLMNonRetryableError as exc:
+                db.session.rollback()
+                LLMAITaskRunner._store_error(
+                    scenario_id=scenario_id,
+                    thread_id=thread_id,
+                    model_id=model_id,
+                    task_type="comparison",
+                    error=str(exc),
+                )
+                _broadcast_model_aborted(scenario_id, model_id, "comparison", str(exc))
+                logger.error("[LLM AI Runner] Non-retryable error for %s, aborting: %s", model_id, exc)
+                return
+
             except LLMResponseError as exc:
                 db.session.rollback()
                 consecutive_failures += 1
+                total_failures += 1
                 LLMAITaskRunner._store_error(
                     scenario_id=scenario_id,
                     thread_id=thread_id,
@@ -1934,6 +2132,7 @@ Antworte im JSON-Format:
             except Exception as exc:
                 db.session.rollback()
                 consecutive_failures += 1
+                total_failures += 1
                 logger.warning("[LLM AI Runner] Comparison failed for thread %s: %s", thread_id, exc)
                 # Broadcast failure
                 _broadcast_task_failed(
@@ -2004,7 +2203,10 @@ Antworte im JSON-Format:
                         "[LLM AI Runner] Non-retryable API error %s: %s",
                         trace_label, api_exc,
                     )
-                    raise
+                    raise LLMNonRetryableError(
+                        str(api_exc),
+                        status_code=getattr(api_exc, 'status_code', None),
+                    ) from api_exc
                 last_error = str(api_exc)
                 logger.warning(
                     "[LLM AI Runner] API error attempt=%s %s: %s",

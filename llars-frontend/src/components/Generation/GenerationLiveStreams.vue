@@ -10,7 +10,7 @@
     <div class="streams-header">
       <div class="streams-title">
         <v-progress-circular
-          v-if="streams.length > 0"
+          v-if="parsedStreams.length > 0"
           indeterminate
           size="14"
           width="2"
@@ -21,7 +21,7 @@
         <span>{{ $t('generation.detail.liveStreams') }}</span>
       </div>
       <span class="streams-count">
-        {{ streams.length }}/{{ maxParallel }} {{ $t('generation.detail.active') }}
+        {{ parsedStreams.length }}/{{ maxParallel }} {{ $t('generation.detail.active') }}
       </span>
     </div>
 
@@ -29,7 +29,7 @@
     <div class="streams-grid" :class="gridClass">
       <!-- Active Streams -->
       <div
-        v-for="stream in streams"
+        v-for="stream in parsedStreams"
         :key="stream.outputId"
         class="stream-card"
         :class="{
@@ -51,9 +51,14 @@
         </div>
         <div class="stream-item-name">{{ stream.itemName }}</div>
         <div class="stream-content" :ref="el => setStreamRef(stream.outputId, el)">
-          <template v-if="stream.content">{{ stream.content }}<span class="cursor">|</span></template>
+          <template v-if="stream.visibleContent">{{ stream.visibleContent }}<span class="cursor">|</span></template>
+          <span v-else-if="stream.thoughtsContent" class="stream-waiting">{{ $t('generation.detail.thinkingHidden') }}</span>
           <span v-else class="stream-waiting">{{ $t('generation.detail.waitingForResponse') }}</span>
         </div>
+        <details v-if="stream.thoughtsContent" class="stream-thoughts">
+          <summary>{{ $t('generation.detail.showThoughts') }}</summary>
+          <pre class="stream-thoughts-pre">{{ stream.thoughtsContent }}</pre>
+        </details>
       </div>
 
       <!-- Idle Slots -->
@@ -74,6 +79,7 @@
 <script setup>
 import { computed, nextTick, watch } from 'vue'
 import { parseUserProviderModelId } from '@/utils/formatters'
+import { parseGenerationOutput } from '@/utils/generationOutputParser'
 
 const props = defineProps({
   streams: {
@@ -93,6 +99,15 @@ const props = defineProps({
     default: () => ({})
   }
 })
+
+const parsedStreams = computed(() => props.streams.map((stream) => {
+  const parsed = parseGenerationOutput(stream.content || '')
+  return {
+    ...stream,
+    visibleContent: parsed.visibleContent,
+    thoughtsContent: parsed.thoughtsContent
+  }
+}))
 
 // Stream content refs for auto-scroll
 const streamRefs = new Map()
@@ -118,7 +133,7 @@ watch(() => props.streams.map(s => s.content), () => {
 }, { deep: true })
 
 const gridClass = computed(() => {
-  const total = props.streams.length + idleSlotCount.value
+  const total = parsedStreams.value.length + idleSlotCount.value
   if (total <= 1) return 'grid-1'
   if (total <= 3) return 'grid-2'
   return 'grid-3'
@@ -126,7 +141,7 @@ const gridClass = computed(() => {
 
 const idleSlotCount = computed(() => {
   if (!props.isJobRunning) return 0
-  return Math.max(0, props.maxParallel - props.streams.length)
+  return Math.max(0, props.maxParallel - parsedStreams.value.length)
 })
 
 function formatModelName(modelId) {
@@ -323,6 +338,32 @@ function getModelTagStyle(color, modelName) {
   flex: 1;
   word-break: break-word;
   white-space: pre-wrap;
+}
+
+.stream-thoughts {
+  margin-top: 8px;
+  border-top: 1px dashed rgba(var(--v-theme-on-surface), 0.2);
+  padding-top: 6px;
+}
+
+.stream-thoughts summary {
+  cursor: pointer;
+  font-size: 0.7rem;
+  color: rgba(var(--v-theme-on-surface), 0.55);
+  user-select: none;
+}
+
+.stream-thoughts-pre {
+  margin: 6px 0 0 0;
+  padding: 8px;
+  border-radius: 6px 2px 6px 2px;
+  background: rgba(var(--v-theme-on-surface), 0.04);
+  font-size: 0.7rem;
+  line-height: 1.35;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 110px;
+  overflow-y: auto;
 }
 
 .stream-waiting {

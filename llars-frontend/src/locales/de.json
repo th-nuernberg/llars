@@ -5917,6 +5917,8 @@
       "active": "aktiv",
       "waitingForBatch": "Warte auf nächsten Batch...",
       "waitingForResponse": "Warte auf LLM-Antwort...",
+      "thinkingHidden": "Modell denkt nach (ausgeblendet)...",
+      "showThoughts": "Gedanken anzeigen",
       "reconnecting": "Verbinde zum laufenden Stream...",
       "inputPrompt": "Eingabe-Prompt",
       "noPromptData": "Prompt-Daten nicht verfügbar",

@@ -6075,6 +6075,8 @@
       "active": "active",
       "waitingForBatch": "Waiting for next batch...",
       "waitingForResponse": "Waiting for LLM response...",
+      "thinkingHidden": "Model is thinking (hidden)...",
+      "showThoughts": "Show model thoughts",
       "reconnecting": "Reconnecting to running stream...",
       "inputPrompt": "Input Prompt",
       "noPromptData": "Prompt data not available",

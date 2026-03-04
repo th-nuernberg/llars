@@ -342,7 +342,7 @@
                     :style="{ background: promptColorMap[output.prompt_variant_name] || PROMPT_COLORS[0] }"
                   ></span>
                   <span class="output-preview">
-                    {{ output.content_preview || output.error_message || '-' }}
+                    {{ getOutputPreview(output) || output.error_message || '-' }}
                   </span>
                   <span v-if="output.tokens?.output" class="output-tokens">
                     {{ output.tokens.output }} tok
@@ -460,8 +460,8 @@
                   <LIcon size="18" class="mr-1">mdi-arrow-left-circle</LIcon>
                   {{ $t('generation.detail.generatedContent') }}
                 </h4>
-                <div v-if="selectedOutput.generated_content" class="output-full-content">
-                  <pre class="content-pre">{{ selectedOutput.generated_content }}</pre>
+                <div v-if="selectedDisplayContent" class="output-full-content">
+                  <pre class="content-pre">{{ selectedDisplayContent }}</pre>
                 </div>
                 <div v-else-if="selectedOutput.error_message" class="output-error">
                   <pre class="error-pre">{{ selectedOutput.error_message }}</pre>
@@ -469,6 +469,10 @@
                 <div v-else class="text-medium-emphasis">
                   {{ $t('generation.detail.noContent') }}
                 </div>
+                <details v-if="selectedThoughtsContent" class="thoughts-details">
+                  <summary>{{ $t('generation.detail.showThoughts') }}</summary>
+                  <pre class="thoughts-pre">{{ selectedThoughtsContent }}</pre>
+                </details>
               </div>
             </div>
           </template>
@@ -504,6 +508,7 @@ import { useMobile } from '@/composables/useMobile'
 import { useGeneration, JOB_STATUS, OUTPUT_STATUS } from '@/composables/useGeneration'
 import { getSocket } from '@/services/socketService'
 import { parseUserProviderModelId } from '@/utils/formatters'
+import { parseGenerationOutput, previewGenerationOutput } from '@/utils/generationOutputParser'
 import GenerationLiveStreams from './GenerationLiveStreams.vue'
 import ScenarioWizard from '@/views/ScenarioManager/components/ScenarioWizard.vue'
 
@@ -1022,6 +1027,13 @@ const canCreateScenario = computed(() =>
   (currentJob.value?.progress?.completed || 0) > 0
 )
 
+const parsedSelectedOutput = computed(() => parseGenerationOutput(selectedOutput.value?.generated_content || ''))
+const selectedDisplayContent = computed(() => {
+  if (!selectedOutput.value?.generated_content) return ''
+  return parsedSelectedOutput.value.visibleContent || selectedOutput.value.generated_content
+})
+const selectedThoughtsContent = computed(() => parsedSelectedOutput.value.thoughtsContent || '')
+
 // Methods
 function goBack() {
   router.push({ name: 'GenerationHub' })
@@ -1052,6 +1064,15 @@ function handleExportJson() {
 
 function handlePageChange(page) {
   loadOutputs(jobId.value, { page, status: outputFilter.value })
+}
+
+function getOutputPreview(output) {
+  if (!output) return ''
+  const fromGenerated = previewGenerationOutput(output.generated_content || '')
+  if (fromGenerated) return fromGenerated
+  const fromPreview = previewGenerationOutput(output.content_preview || '')
+  if (fromPreview) return fromPreview
+  return (output.content_preview || '').trim()
 }
 
 async function selectOutput(output) {
@@ -2086,6 +2107,32 @@ onUnmounted(() => {
 
 .output-column .content-pre {
   max-height: 350px;
+}
+
+.thoughts-details {
+  margin-top: 12px;
+  border-top: 1px dashed rgba(var(--v-theme-on-surface), 0.2);
+  padding-top: 8px;
+}
+
+.thoughts-details summary {
+  cursor: pointer;
+  font-size: 0.8rem;
+  color: rgba(var(--v-theme-on-surface), 0.6);
+  user-select: none;
+}
+
+.thoughts-pre {
+  margin: 8px 0 0 0;
+  padding: 12px;
+  background: rgba(var(--v-theme-on-surface), 0.04);
+  border-radius: 8px 3px 8px 3px;
+  font-size: 0.8rem;
+  line-height: 1.4;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 200px;
+  overflow-y: auto;
 }
 
 /* Mobile Styles */

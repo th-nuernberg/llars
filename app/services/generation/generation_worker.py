@@ -82,6 +82,34 @@ DEFAULT_BATCH_SIZE = 10
 # Retry delays (exponential backoff)
 RETRY_DELAYS = [1, 5, 15]  # seconds
 
+# Reasoning tag handling (e.g. gpt-oss <think>...</think>)
+THINK_BLOCK_PATTERN = re.compile(
+    r"<\s*(think|thinking)\s*>(.*?)<\s*/\s*\1\s*>",
+    re.IGNORECASE | re.DOTALL,
+)
+THINK_TAG_PATTERN = re.compile(r"<\s*/?\s*(think|thinking)\s*>", re.IGNORECASE)
+
+
+def strip_thinking_tags(content: str) -> str:
+    """
+    Remove inline reasoning blocks from model output text.
+
+    Keeps only visible answer text for persistence and downstream use.
+    """
+    if not content:
+        return ""
+
+    text = str(content).replace("\r\n", "\n")
+    without_blocks = THINK_BLOCK_PATTERN.sub("", text)
+
+    # If stream ended mid-<think> block, hide everything from opening tag onward.
+    dangling_open = re.search(r"<\s*(think|thinking)\s*>", without_blocks, re.IGNORECASE)
+    if dangling_open:
+        without_blocks = without_blocks[:dangling_open.start()]
+
+    cleaned = THINK_TAG_PATTERN.sub("", without_blocks)
+    return cleaned.strip()
+
 
 # =============================================================================
 # YJS DECODING HELPERS
@@ -725,6 +753,11 @@ class GenerationWorker:
                 user_prompt=user_prompt,
                 output_id=output.id,
             )
+            clean_content = strip_thinking_tags(content)
+            if clean_content:
+                content = clean_content
+            else:
+                content = THINK_TAG_PATTERN.sub("", (content or "")).strip()
 
             # Calculate cost
             cost = self._calculate_cost(output.llm_model_name, tokens)
@@ -1235,6 +1268,9 @@ class GenerationWorker:
         # Get client (cached centrally in LLMClientFactory)
         client, api_model_id = LLMClientFactory.resolve_client_and_model_id(model_id)
         model_key = model_id or api_model_id
+        model_key_lower = (model_key or "").lower()
+        api_model_key_lower = (api_model_id or "").lower()
+        is_gpt_oss_model = "gpt-oss" in model_key_lower or "gpt-oss" in api_model_key_lower
 
         # Get generation params from job config (cached)
         if not hasattr(self, '_gen_params_cache'):
@@ -1299,16 +1335,18 @@ class GenerationWorker:
                 for chunk in stream:
                     if chunk.choices and chunk.choices[0].delta:
                         delta = chunk.choices[0].delta
-                        # Check content first, then reasoning_content for reasoning models (Magistral)
+                        # Check content first.
+                        # For GPT-OSS models, do not fall back to reasoning fields to avoid
+                        # mixing hidden thinking text into visible output.
                         token = None
                         if hasattr(delta, "content") and delta.content:
                             token = delta.content
-                        elif hasattr(delta, "reasoning_content") and delta.reasoning_content:
+                        elif not is_gpt_oss_model and hasattr(delta, "reasoning_content") and delta.reasoning_content:
                             token = delta.reasoning_content
                             if not used_reasoning_field:
                                 logger.debug("[GenWorker] Using reasoning_content field (reasoning model detected)")
                                 used_reasoning_field = True
-                        elif hasattr(delta, "reasoning") and delta.reasoning:
+                        elif not is_gpt_oss_model and hasattr(delta, "reasoning") and delta.reasoning:
                             token = delta.reasoning
                             if not used_reasoning_field:
                                 logger.debug("[GenWorker] Using reasoning field (reasoning model detected)")
@@ -1388,7 +1426,19 @@ class GenerationWorker:
             # Extract content
             content = ""
             if response.choices:
-                content = extract_message_text(response.choices[0].message)
+                message = response.choices[0].message
+                if is_gpt_oss_model:
+                    raw_content = (
+                        message.get("content")
+                        if isinstance(message, dict)
+                        else getattr(message, "content", None)
+                    )
+                    # Force content-only extraction first for GPT-OSS.
+                    content = extract_message_text({"content": raw_content})
+                    if not content.strip():
+                        content = extract_message_text(message)
+                else:
+                    content = extract_message_text(message)
 
             # Extract token counts
             tokens = {"input": 0, "output": 0, "total": 0}

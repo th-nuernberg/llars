@@ -167,10 +167,21 @@ for pid in all_ids:
 
 cmd_deploy() {
   echo "Triggering pipeline with FORCE_DEPLOY=true on $BRANCH..."
+  local payload
+  payload=$(python3 - <<PY
+import json
+print(json.dumps({
+  \"ref\": \"$BRANCH\",
+  \"variables\": [{\"key\": \"FORCE_DEPLOY\", \"value\": \"true\"}]
+}))
+PY
+)
+
   curl -sS --fail --max-time 20 --connect-timeout 5 \
-    --request POST --header "PRIVATE-TOKEN: $GITLAB_TOKEN" \
-    --form "ref=$BRANCH" \
-    --form "variables[FORCE_DEPLOY]=true" \
+    --request POST \
+    --header "PRIVATE-TOKEN: $GITLAB_TOKEN" \
+    --header "Content-Type: application/json" \
+    --data "$payload" \
     "$API/pipeline" | python3 -c "
 import sys, json
 p = json.load(sys.stdin)

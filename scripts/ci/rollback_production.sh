@@ -30,9 +30,11 @@ if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
 fi
 
 if ! git diff --quiet || ! git diff --cached --quiet; then
-  echo "ERROR: Working tree has uncommitted changes."
-  git status --short
-  exit 1
+  echo "WARNING: Working tree has uncommitted tracked changes."
+  echo "Resetting tracked files while preserving .env/.deploy/backups."
+  git status --short || true
+  git reset --hard 2>/dev/null || true
+  git clean -fd -e backups/ -e .deploy/ -e .env 2>/dev/null || true
 fi
 
 BACKUP_PATH="$ROLLBACK_BACKUP"

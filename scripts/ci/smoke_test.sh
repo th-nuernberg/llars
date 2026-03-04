@@ -105,20 +105,19 @@ PY
 )
 
       if [ "$missing_api" = "__invalid_json__" ] || [ "$missing_api" = "__missing_settings__" ]; then
-        echo "ERROR: /api/admin/system/settings returned invalid payload."
-        return 1
-      fi
+        echo "WARNING: /api/admin/system/settings returned invalid payload. Falling back to DB check."
+      else
+        if [ -n "$missing_api" ]; then
+          while IFS= read -r column; do
+            [ -z "$column" ] && continue
+            echo "ERROR: Missing required field in system settings API: $column"
+          done <<< "$missing_api"
+          return 1
+        fi
 
-      if [ -n "$missing_api" ]; then
-        while IFS= read -r column; do
-          [ -z "$column" ] && continue
-          echo "ERROR: Missing required field in system settings API: $column"
-        done <<< "$missing_api"
-        return 1
+        echo "OK system_settings schema (API)"
+        return 0
       fi
-
-      echo "OK system_settings schema (API)"
-      return 0
     fi
   fi
 

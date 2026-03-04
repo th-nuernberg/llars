@@ -16,6 +16,33 @@ STATE_DIR="$DEPLOY_PATH/.deploy"
 
 cd "$DEPLOY_PATH"
 
+ensure_production_nginx() {
+  local state
+  state=$(docker inspect --format='{{.State.Status}}' llars_nginx_service 2>/dev/null || echo "not_found")
+  if [ "$state" = "running" ]; then
+    return 0
+  fi
+
+  echo "llars_nginx_service is not running (status: $state). Starting production nginx..."
+  docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --no-deps nginx-service
+
+  local elapsed=0
+  local max_wait=60
+  while [ "$elapsed" -lt "$max_wait" ]; do
+    state=$(docker inspect --format='{{.State.Status}}' llars_nginx_service 2>/dev/null || echo "not_found")
+    if [ "$state" = "running" ]; then
+      echo "llars_nginx_service started successfully."
+      return 0
+    fi
+    sleep 2
+    elapsed=$((elapsed + 2))
+  done
+
+  echo "ERROR: llars_nginx_service did not start."
+  docker ps -a --filter "name=llars_nginx_service" --format "table {{.Names}}\t{{.Status}}" || true
+  return 1
+}
+
 # =============================================================================
 # Read state
 # =============================================================================
@@ -105,6 +132,8 @@ CONF
 
 echo ""
 echo "[3/4] Reloading nginx..."
+
+ensure_production_nginx
 
 if docker exec llars_nginx_service nginx -t 2>&1; then
   docker exec llars_nginx_service nginx -s reload

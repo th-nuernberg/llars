@@ -117,14 +117,43 @@ CONF
 }
 
 reload_nginx() {
-  echo "Reloading nginx..."
-  if docker exec llars_nginx_service nginx -t 2>&1; then
-    docker exec llars_nginx_service nginx -s reload
+  local container="${1:-llars_nginx_service}"
+  echo "Reloading nginx in $container..."
+  if docker exec "$container" nginx -t 2>&1; then
+    docker exec "$container" nginx -s reload
     echo "Nginx reloaded successfully"
-  else
-    echo "ERROR: Nginx config test failed!"
-    return 1
+    return 0
   fi
+
+  echo "ERROR: Nginx config test failed in $container!"
+  return 1
+}
+
+ensure_production_nginx() {
+  local state
+  state=$(docker inspect --format='{{.State.Status}}' llars_nginx_service 2>/dev/null || echo "not_found")
+  if [ "$state" = "running" ]; then
+    return 0
+  fi
+
+  echo "llars_nginx_service is not running (status: $state). Starting production nginx..."
+  docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --no-deps nginx-service
+
+  local elapsed=0
+  local max_wait=60
+  while [ "$elapsed" -lt "$max_wait" ]; do
+    state=$(docker inspect --format='{{.State.Status}}' llars_nginx_service 2>/dev/null || echo "not_found")
+    if [ "$state" = "running" ]; then
+      echo "llars_nginx_service started successfully."
+      return 0
+    fi
+    sleep 2
+    elapsed=$((elapsed + 2))
+  done
+
+  echo "ERROR: llars_nginx_service did not start."
+  docker ps -a --filter "name=llars_nginx_service" --format "table {{.Names}}\t{{.Status}}" || true
+  return 1
 }
 
 save_state() {
@@ -464,11 +493,15 @@ cmd_switch() {
   update_upstream_conf "$deploy_color"
 
   echo ""
-  echo "[2/4] Reloading nginx..."
-  reload_nginx
+  echo "[2/5] Ensuring production nginx is running..."
+  ensure_production_nginx
 
   echo ""
-  echo "[3/4] Saving state..."
+  echo "[3/5] Reloading nginx..."
+  reload_nginx llars_nginx_service
+
+  echo ""
+  echo "[4/5] Saving state..."
   save_state "$deploy_color" "$active"
   if [ -n "$active_commit" ]; then
     echo "$active_commit" > "$PREVIOUS_COMMIT_FILE"
@@ -476,7 +509,7 @@ cmd_switch() {
   echo "$candidate_commit" > "$ACTIVE_COMMIT_FILE"
 
   echo ""
-  echo "[4/4] Clearing pending switch state..."
+  echo "[5/5] Clearing pending switch state..."
   rm -f "$PENDING_SWITCH_FILE"
 
   echo ""

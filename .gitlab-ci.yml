@@ -103,12 +103,13 @@ cache:
   when: never
 
 # Common rules for CI jobs (lint, test, security)
+# Only run on: schedule, FORCE_DEPLOY, merge requests (no auto-trigger on push)
 .ci_rules:
   rules:
     - *test_only_skip
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
-    - if: $CI_COMMIT_BRANCH == "main"
-    - if: $CI_COMMIT_BRANCH == "develop"
+    - if: $CI_PIPELINE_SOURCE == "schedule" && $SCHEDULED_DEPLOY == "true"
+    - if: $FORCE_DEPLOY == "true" && $CI_COMMIT_BRANCH == "main"
 
 # Deployment trigger rules: schedule, force, or manual
 .deploy_rules:
@@ -116,8 +117,6 @@ cache:
     - *test_only_skip
     - if: $CI_PIPELINE_SOURCE == "schedule" && $SCHEDULED_DEPLOY == "true"
     - if: $FORCE_DEPLOY == "true" && $CI_COMMIT_BRANCH == "main"
-    - if: $CI_COMMIT_BRANCH == "main"
-      when: manual
 
 # =============================================================================
 # STAGE 1: LINT
@@ -126,31 +125,25 @@ cache:
 lint:backend:
   stage: lint
   image: python:3.11-slim
+  extends:
+    - .ci_rules
   script:
     - pip install flake8 black isort
     - echo "Checking Python code style..."
     - flake8 app/
     - black --check app/ --line-length=120 || true
     - isort --check-only app/ || true
-  rules:
-    - *test_only_skip
-    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
-    - if: $CI_COMMIT_BRANCH == "main"
-    - if: $CI_COMMIT_BRANCH == "develop"
 
 lint:frontend:
   stage: lint
   image: node:20-alpine
+  extends:
+    - .ci_rules
   script:
     - cd llars-frontend
     - npm ci --prefer-offline
     - echo "Checking Frontend code style..."
     - npm run lint || true
-  rules:
-    - *test_only_skip
-    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
-    - if: $CI_COMMIT_BRANCH == "main"
-    - if: $CI_COMMIT_BRANCH == "develop"
 
 # =============================================================================
 # STAGE 2: TEST
@@ -191,8 +184,8 @@ test:unit:backend:
     - if: '$UNIT_FRONTEND_ONLY || $INTEGRATION_ONLY'
       when: never
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
-    - if: $CI_COMMIT_BRANCH == "main"
-    - if: $CI_COMMIT_BRANCH == "develop"
+    - if: $CI_PIPELINE_SOURCE == "schedule" && $SCHEDULED_DEPLOY == "true"
+    - if: $FORCE_DEPLOY == "true" && $CI_COMMIT_BRANCH == "main"
 
 test:unit:frontend:
   stage: test
@@ -214,8 +207,8 @@ test:unit:frontend:
     - if: '$UNIT_BACKEND_ONLY || $INTEGRATION_ONLY'
       when: never
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
-    - if: $CI_COMMIT_BRANCH == "main"
-    - if: $CI_COMMIT_BRANCH == "develop"
+    - if: $CI_PIPELINE_SOURCE == "schedule" && $SCHEDULED_DEPLOY == "true"
+    - if: $FORCE_DEPLOY == "true" && $CI_COMMIT_BRANCH == "main"
 
 test:integration:
   stage: test
@@ -248,8 +241,8 @@ test:integration:
     - if: '$UNIT_BACKEND_ONLY || $UNIT_FRONTEND_ONLY'
       when: never
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
-    - if: $CI_COMMIT_BRANCH == "main"
-    - if: $CI_COMMIT_BRANCH == "develop"
+    - if: $CI_PIPELINE_SOURCE == "schedule" && $SCHEDULED_DEPLOY == "true"
+    - if: $FORCE_DEPLOY == "true" && $CI_COMMIT_BRANCH == "main"
   needs:
     - job: test:unit:backend
       optional: true
@@ -261,19 +254,18 @@ test:integration:
 security:routes:
   stage: security
   image: python:3.11-slim
+  extends:
+    - .ci_rules
   script:
     - pip install pytest
     - pytest tests/security/test_route_security.py -q --confcutdir=tests/security
-  rules:
-    - *test_only_skip
-    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
-    - if: $CI_COMMIT_BRANCH == "main"
-    - if: $CI_COMMIT_BRANCH == "develop"
 
 # Security Scan (informational - doesn't block pipeline)
 security:scan:
   stage: security
   image: python:3.11-slim
+  extends:
+    - .ci_rules
   before_script:
     - apt-get update && apt-get install -y --no-install-recommends nodejs npm
   script:
@@ -281,11 +273,6 @@ security:scan:
     - echo "Running security scan..."
     - pip-audit -r app/requirements.txt || echo "pip-audit found vulnerabilities"
     - cd llars-frontend && npm audit --audit-level=high || echo "npm audit found vulnerabilities"
-  rules:
-    - *test_only_skip
-    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
-    - if: $CI_COMMIT_BRANCH == "main"
-    - if: $CI_COMMIT_BRANCH == "develop"
   allow_failure: true
 
 # =============================================================================
@@ -305,7 +292,8 @@ build:docker:
     - echo "Build completed successfully"
   rules:
     - *test_only_skip
-    - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_PIPELINE_SOURCE == "schedule" && $SCHEDULED_DEPLOY == "true"
+    - if: $FORCE_DEPLOY == "true" && $CI_COMMIT_BRANCH == "main"
 
 # =============================================================================
 # STAGE 5: DEPLOY STAGING (Blue-Green)
@@ -324,12 +312,8 @@ deploy:staging:
     - echo "=== LLARS Blue-Green Staging Deployment ==="
     - echo "Timestamp:" $(date)
     - bash scripts/ci/deploy_bluegreen.sh deploy
-  rules:
-    - *test_only_skip
-    - if: $CI_PIPELINE_SOURCE == "schedule" && $SCHEDULED_DEPLOY == "true"
-    - if: $FORCE_DEPLOY == "true" && $CI_COMMIT_BRANCH == "main"
-    - if: $CI_COMMIT_BRANCH == "main"
-      when: manual
+  extends:
+    - .deploy_rules
 
 # =============================================================================
 # STAGE 6: TEST STAGING (E2E + Smoke in Container)
@@ -361,12 +345,8 @@ test:e2e:staging:
       - /var/llars/llars-frontend/playwright-report/
       - /var/llars/llars-frontend/test-results/
     expire_in: 1 week
-  rules:
-    - *test_only_skip
-    - if: $CI_PIPELINE_SOURCE == "schedule" && $SCHEDULED_DEPLOY == "true"
-    - if: $FORCE_DEPLOY == "true" && $CI_COMMIT_BRANCH == "main"
-    - if: $CI_COMMIT_BRANCH == "main"
-      when: manual
+  extends:
+    - .deploy_rules
   needs:
     - deploy:staging
 
@@ -386,12 +366,8 @@ smoke:staging:
         -e SYSTEM_ADMIN_API_KEY="${SYSTEM_ADMIN_API_KEY}" \
         smoke-test-service \
         bash /tests/smoke/smoke_test.sh
-  rules:
-    - *test_only_skip
-    - if: $CI_PIPELINE_SOURCE == "schedule" && $SCHEDULED_DEPLOY == "true"
-    - if: $FORCE_DEPLOY == "true" && $CI_COMMIT_BRANCH == "main"
-    - if: $CI_COMMIT_BRANCH == "main"
-      when: manual
+  extends:
+    - .deploy_rules
   needs:
     - deploy:staging
 
@@ -415,12 +391,8 @@ deploy:production:
     - echo "Timestamp:" $(date)
     - echo "Server:" $(hostname)
     - bash scripts/ci/deploy_bluegreen.sh switch
-  rules:
-    - *test_only_skip
-    - if: $CI_PIPELINE_SOURCE == "schedule" && $SCHEDULED_DEPLOY == "true"
-    - if: $FORCE_DEPLOY == "true" && $CI_COMMIT_BRANCH == "main"
-    - if: $CI_COMMIT_BRANCH == "main"
-      when: manual
+  extends:
+    - .deploy_rules
   needs:
     - job: test:e2e:staging
       optional: true
@@ -448,12 +420,8 @@ smoke:production:
         echo "Smoke tests failed; triggering instant rollback."
         bash scripts/ci/rollback_bluegreen.sh || bash scripts/ci/rollback_production.sh || true
       fi
-  rules:
-    - *test_only_skip
-    - if: $CI_PIPELINE_SOURCE == "schedule" && $SCHEDULED_DEPLOY == "true"
-    - if: $FORCE_DEPLOY == "true" && $CI_COMMIT_BRANCH == "main"
-    - if: $CI_COMMIT_BRANCH == "main"
-      when: manual
+  extends:
+    - .deploy_rules
   needs:
     - deploy:production
 
@@ -473,7 +441,9 @@ rollback:production:
     - bash scripts/ci/rollback_bluegreen.sh || bash scripts/ci/rollback_production.sh
   rules:
     - *test_only_skip
-    - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_PIPELINE_SOURCE == "schedule" && $SCHEDULED_DEPLOY == "true"
+      when: manual
+    - if: $FORCE_DEPLOY == "true" && $CI_COMMIT_BRANCH == "main"
       when: manual
   allow_failure: true
 
@@ -507,11 +477,8 @@ metrics:collect:
         - python_metrics.json
         - frontend_metrics.json
     expire_in: 30 days
-  rules:
-    - *test_only_skip
-    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
-    - if: $CI_COMMIT_BRANCH == "main"
-    - if: $CI_COMMIT_BRANCH == "develop"
+  extends:
+    - .ci_rules
   allow_failure: true
 
 metrics:update-docs:
@@ -525,9 +492,8 @@ metrics:update-docs:
     - node scripts/metrics/collect_frontend_metrics.js
     - python scripts/metrics/update_docs.py
     - echo "Metrics documentation updated"
-  rules:
-    - *test_only_skip
-    - if: $CI_COMMIT_BRANCH == "main"
+  extends:
+    - .deploy_rules
   needs:
     - metrics:collect
     - job: smoke:production

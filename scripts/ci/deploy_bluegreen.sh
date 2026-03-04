@@ -288,9 +288,9 @@ cmd_deploy() {
   wait_for_container_health "llars_flask_${deploy_color}" 180 5
   wait_for_container_health "llars_frontend_${deploy_color}" 120 5
 
-  # Also verify via HTTP through the Docker network (wget available in Alpine)
+  # Also verify via HTTP through the Docker network
   echo "Verifying HTTP health via Docker network..."
-  if docker exec "llars_flask_${deploy_color}" wget -q --spider --timeout=10 "http://localhost:8081/auth/health_check" 2>/dev/null; then
+  if docker exec "llars_flask_${deploy_color}" curl -fsS -o /dev/null --max-time 10 "http://localhost:8081/auth/health_check" 2>/dev/null; then
     echo "HTTP health check passed (flask)"
   else
     echo "WARNING: HTTP health check failed (container may still be starting)"

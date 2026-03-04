@@ -224,16 +224,23 @@ Runner: Shell-Executor direkt auf Server
 | Stage | Jobs |
 |-------|------|
 | lint | `lint:backend`, `lint:frontend` |
-| test | `test:unit:backend`, `test:unit:frontend`, `test:integration`, `test:e2e` |
+| test | `test:unit:backend`, `test:unit:frontend`, `test:integration`, `metrics:collect` |
 | security | `security:routes`, `security:scan` |
-| build | `build:docker` (nur main) |
-| deploy | `deploy:staging`, `deploy:production` |
-| smoke | `smoke:production` |
+| build | `build:docker` |
+| deploy-staging | `deploy:staging` |
+| test-staging | `test:e2e:staging`, `smoke:staging` |
+| deploy | `deploy:production` |
+| smoke | `smoke:production`, `metrics:update-docs` |
 | rollback | `rollback:production` (manual) |
 
 ```
-Push to develop → deploy:staging (automatisch)
-Push to main    → deploy:production → smoke:production (Auto-Rollback bei Smoke-Fail)
+Schedule (SCHEDULED_DEPLOY=true) oder FORCE_DEPLOY=true auf main:
+  deploy:staging → test:e2e:staging → smoke:staging → deploy:production → smoke:production
+
+Wichtige Guards:
+- `deploy:production` laeuft nur nach erfolgreichen Staging-Tests.
+- Blue-Green `switch` schaltet nur bei vorhandenem Pending-Candidate und no-op bei identischem Commit.
+- Bei `smoke:production` Fehler: automatischer Rollback (`rollback_bluegreen.sh`).
 ```
 
 **Test-Requirements:** `app/requirements-test.txt` (ohne torch, transformers, flair - ~3GB gespart)
@@ -286,12 +293,30 @@ DURATION_SECONDS=21600 INTERVAL_SECONDS=600 BRANCH=main ./scripts/ci/monitor_pip
 - `GITLAB_PROJECT_ID` - Projekt-ID (7123)
 - `GITLAB_PROJECT_PATH` - Projekt-Pfad
 
+### Manuelles Blue-Green Deployment (Shell)
+
+```bash
+# Status anzeigen
+bash scripts/ci/manual_bluegreen_deploy.sh status
+
+# Inaktive Farbe bauen + auf Staging (55080) bereitstellen
+bash scripts/ci/manual_bluegreen_deploy.sh prepare
+
+# Smoke gegen Staging ausfuehren (optional: RUN_E2E=1 fuer Playwright Vollsuite)
+bash scripts/ci/manual_bluegreen_deploy.sh test
+RUN_E2E=1 bash scripts/ci/manual_bluegreen_deploy.sh test
+
+# Nach erfolgreichen Tests auf Production umschalten
+bash scripts/ci/manual_bluegreen_deploy.sh switch
+```
+
 ### CI/CD Troubleshooting
 
 | Problem | Loesung |
 |---------|---------|
 | Pipeline 0 Jobs | Auto-cancel aktiv? YAML validieren |
 | E2E Tests scheitern | App auf Server laufen? PLAYWRIGHT_BASE_URL korrekt? |
+| Staging Smoke scheitert sofort | `docker compose --profile testing build smoke-test-service` neu bauen |
 | Job haengt bei pending | Shell-Runner online? Tags korrekt? |
 | Lint fehlschlaegt | flake8 lokal ausfuehren, .flake8 Config pruefen |
 

@@ -108,7 +108,10 @@ test.describe('LaTeX Workspace', () => {
       await page.waitForLoadState('load')
 
       const newUrl = page.url()
-      expect(newUrl.includes('/LatexCollab/workspace/') || newUrl !== initialUrl || newUrl.includes('/LatexCollab') || true).toBeTruthy()
+      const navigatedToWorkspace = newUrl.includes('/LatexCollab/workspace/')
+      const remainedOnModule = newUrl.includes('/LatexCollab')
+      const redirectedToFallback = newUrl.includes('/Home') || newUrl.includes('/login')
+      expect(navigatedToWorkspace || remainedOnModule || redirectedToFallback || newUrl !== initialUrl).toBeTruthy()
     } else {
       // No workspaces on staging - page loaded is sufficient
       const hasPage = await page.locator('.latex-collab, .workspace-list, .empty-state, main').first().isVisible({ timeout: 3000 }).catch(() => false)

@@ -488,8 +488,8 @@ def create_scenario_from_job(job_id: int):
     if data.get('eval_config'):
         config_json['eval_config'] = data['eval_config']
 
-    # Merge LLM evaluators
-    llm_evaluators = data.get('llm_evaluators', [])
+    # Merge LLM evaluators (may come at top level or inside config_json from wizard)
+    llm_evaluators = data.get('llm_evaluators') or config_json.get('llm_evaluators') or []
     if llm_evaluators:
         config_json['enable_llm_evaluation'] = True
         config_json['llm_evaluators'] = llm_evaluators
@@ -538,6 +538,10 @@ def create_scenario_from_job(job_id: int):
     # Auto-start LLM assessors if configured
     if llm_evaluators:
         from services.llm.llm_ai_task_runner import LLMAITaskRunner
+        logger.info(
+            "[GenAPI] Auto-starting LLM assessors for scenario %d: %s",
+            scenario.id, llm_evaluators,
+        )
         LLMAITaskRunner.run_for_scenario_async(
             scenario.id,
             model_ids=llm_evaluators,

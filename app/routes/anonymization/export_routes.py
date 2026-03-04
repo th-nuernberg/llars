@@ -27,7 +27,8 @@ def export_conversations():
     Request body:
         {
             "conversation_ids": [1, 2, 3],  // optional - export specific IDs
-            "include_all_completed": true   // export all completed conversations
+            "include_all_completed": true,  // export all completed conversations
+            "min_quality_rating": 3         // optional, default 3
         }
 
     Returns:
@@ -43,23 +44,44 @@ def export_conversations():
             }
         }
     """
-    data = request.get_json()
+    data = request.get_json() or {}
     conversation_ids = data.get("conversation_ids", [])
     include_all_completed = data.get("include_all_completed", False)
+    min_quality_rating = data.get("min_quality_rating", 3)
 
-    query = AnonymizationConversation.query
+    try:
+        min_quality_rating = int(min_quality_rating)
+    except (TypeError, ValueError):
+        raise ValidationError("min_quality_rating must be an integer between 1 and 5")
+
+    if min_quality_rating < 1 or min_quality_rating > 5:
+        raise ValidationError("min_quality_rating must be between 1 and 5")
+
+    # Finished dataset export should only contain fully reviewed conversations.
+    query = AnonymizationConversation.query.filter_by(status="completed")
 
     if include_all_completed:
-        query = query.filter_by(status="completed")
+        pass
     elif conversation_ids:
         query = query.filter(AnonymizationConversation.id.in_(conversation_ids))
     else:
         raise ValidationError("Provide conversation_ids or set include_all_completed=true")
 
+    # Export only high-quality conversations:
+    # - explicitly not excluded
+    # - quality rating at/above threshold
+    query = query.filter(
+        AnonymizationConversation.exclude_from_export.is_(False),
+        AnonymizationConversation.quality_rating.isnot(None),
+        AnonymizationConversation.quality_rating >= min_quality_rating,
+    )
+
     conversations = query.all()
 
     if not conversations:
-        raise NotFoundError("No conversations found to export")
+        raise NotFoundError(
+            f"No high-quality conversations found to export (min_quality_rating={min_quality_rating})"
+        )
 
     # Build export structure (only anonymized content)
     export_data = {
@@ -67,6 +89,11 @@ def export_conversations():
             "exported_at": datetime.utcnow().isoformat() + "Z",
             "exported_by": g.authentik_user.username,
             "conversation_count": len(conversations),
+            "quality_filter": {
+                "min_quality_rating": min_quality_rating,
+                "exclude_from_export": True,
+                "requires_rating": True,
+            },
         },
         "conversations": [],
     }
@@ -81,6 +108,12 @@ def export_conversations():
             "metadata": {
                 "entity_count": conv.entity_count,
                 "manually_edited_messages": sum(1 for msg in conv.messages if msg.is_manually_edited),
+                "quality_rating": conv.quality_rating,
+                "quality_notes": conv.quality_notes,
+                "quality_reviewed_at": (
+                    conv.quality_reviewed_at.isoformat() + "Z" if conv.quality_reviewed_at else None
+                ),
+                "quality_reviewed_by": conv.quality_reviewed_by,
             },
         }
 

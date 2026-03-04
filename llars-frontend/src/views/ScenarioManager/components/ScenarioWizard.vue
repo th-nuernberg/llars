@@ -323,6 +323,7 @@
               :hint="$t('scenarioManager.wizard.step2.descriptionHint')"
               variant="outlined"
               rows="2"
+              class="mb-3"
             >
               <template #append-inner>
                 <LAIFieldButton
@@ -338,6 +339,84 @@
                 />
               </template>
             </v-textarea>
+
+            <v-textarea
+              v-model="formData.ai_generation_prompt"
+              :label="$t('scenarioManager.wizard.step2.aiGenerationPromptField')"
+              :hint="$t('scenarioManager.wizard.step2.aiGenerationPromptHint')"
+              variant="outlined"
+              rows="2"
+              class="mb-3"
+              persistent-hint
+            />
+
+            <v-textarea
+              v-model="formData.task_description"
+              :label="$t('scenarioManager.wizard.step2.taskDescriptionField')"
+              :hint="$t('scenarioManager.wizard.step2.taskDescriptionHint')"
+              variant="outlined"
+              rows="3"
+              class="mb-3"
+              persistent-hint
+            >
+              <template #label>
+                <span class="field-label-inline">
+                  <span>{{ $t('scenarioManager.wizard.step2.taskDescriptionField') }}</span>
+                  <LInfoTooltip
+                    :title="$t('scenarioManager.wizard.step2.taskDescriptionTooltipTitle')"
+                    :aria-label="$t('scenarioManager.wizard.step2.taskDescriptionTooltipTitle')"
+                    :markdown="$t('scenarioManager.wizard.step2.taskDescriptionTooltipMarkdown')"
+                    location="bottom"
+                    max-width="460"
+                    size="x-small"
+                  />
+                </span>
+              </template>
+              <template #append-inner>
+                <LAIFieldButton
+                  field-key="scenario.settings.task_description"
+                  :context="buildScenarioAiContext()"
+                  icon-only
+                  size="small"
+                  @generated="formData.task_description = $event"
+                />
+              </template>
+            </v-textarea>
+
+            <v-combobox
+              v-model="formData.evaluation_criteria"
+              :label="$t('scenarioManager.wizard.step2.evaluationCriteriaField')"
+              :hint="$t('scenarioManager.wizard.step2.evaluationCriteriaHint')"
+              multiple
+              chips
+              closable-chips
+              clearable
+              variant="outlined"
+              persistent-hint
+            >
+              <template #label>
+                <span class="field-label-inline">
+                  <span>{{ $t('scenarioManager.wizard.step2.evaluationCriteriaField') }}</span>
+                  <LInfoTooltip
+                    :title="$t('scenarioManager.wizard.step2.evaluationCriteriaTooltipTitle')"
+                    :aria-label="$t('scenarioManager.wizard.step2.evaluationCriteriaTooltipTitle')"
+                    :markdown="$t('scenarioManager.wizard.step2.evaluationCriteriaTooltipMarkdown')"
+                    location="bottom"
+                    max-width="460"
+                    size="x-small"
+                  />
+                </span>
+              </template>
+              <template #append-inner>
+                <LAIFieldButton
+                  field-key="scenario.settings.evaluation_criteria"
+                  :context="buildScenarioAiContext()"
+                  icon-only
+                  size="small"
+                  @generated="applyGeneratedCriteria"
+                />
+              </template>
+            </v-combobox>
           </v-form>
         </div>
       </div>
@@ -625,6 +704,25 @@
             <div class="summary-row" v-if="formData.description">
               <span class="summary-label">{{ $t('scenarioManager.wizard.step5.descriptionLabel') }}</span>
               <span class="summary-value">{{ formData.description }}</span>
+            </div>
+            <div class="summary-row" v-if="formData.task_description">
+              <span class="summary-label">{{ $t('scenarioManager.wizard.step5.taskDescriptionLabel') }}</span>
+              <span class="summary-value">{{ formData.task_description }}</span>
+            </div>
+            <div class="summary-row" v-if="formData.evaluation_criteria.length > 0">
+              <span class="summary-label">{{ $t('scenarioManager.wizard.step5.evaluationCriteriaLabel') }}</span>
+              <span class="summary-value">
+                <div class="d-flex flex-wrap gap-1 justify-end">
+                  <v-chip
+                    v-for="criterion in formData.evaluation_criteria"
+                    :key="criterion"
+                    size="small"
+                    variant="tonal"
+                  >
+                    {{ criterion }}
+                  </v-chip>
+                </div>
+              </span>
             </div>
           </div>
 
@@ -1011,6 +1109,9 @@ const formData = ref({
   evalType: null,
   scenario_name: '',
   description: '',
+  ai_generation_prompt: '',
+  task_description: '',
+  evaluation_criteria: [],
   evalConfig: null,
   config: {
     distribution_mode: 'all',
@@ -1176,6 +1277,53 @@ const roleOptions = [
 function capitalize(str) {
   if (!str) return ''
   return str.charAt(0).toUpperCase() + str.slice(1)
+}
+
+function normalizeCriteriaList(value) {
+  const deduped = []
+  const seen = new Set()
+
+  if (Array.isArray(value)) {
+    value
+      .map(item => (typeof item === 'string' ? item.trim() : String(item || '').trim()))
+      .filter(Boolean)
+      .forEach(item => {
+        if (seen.has(item)) return
+        seen.add(item)
+        deduped.push(item)
+      })
+    return deduped
+  }
+
+  if (typeof value === 'string') {
+    value
+      .split(/[,\n;]/)
+      .map(item => item.trim())
+      .filter(Boolean)
+      .forEach(item => {
+        if (seen.has(item)) return
+        seen.add(item)
+        deduped.push(item)
+      })
+    return deduped
+  }
+
+  return []
+}
+
+function buildScenarioAiContext() {
+  return {
+    scenario_type: formData.value.evalType || '',
+    scenario_name: formData.value.scenario_name || '',
+    existing_description: formData.value.description || '',
+    existing_task_description: formData.value.task_description || '',
+    existing_evaluation_criteria: normalizeCriteriaList(formData.value.evaluation_criteria).join(', '),
+    generation_prompt: formData.value.ai_generation_prompt || ''
+  }
+}
+
+function applyGeneratedCriteria(value) {
+  formData.value.evaluation_criteria = normalizeCriteriaList(value)
 }
 
 function goToStep(index) {
@@ -1649,6 +1797,16 @@ async function analyzeData() {
                   if (scenarioDescription) {
                     formData.value.description = scenarioDescription
                   }
+                  const taskDescription = parsed.task_description || parsed.taskDescription
+                  if (taskDescription) {
+                    formData.value.task_description = taskDescription
+                  }
+                  const criteria = normalizeCriteriaList(
+                    parsed.evaluation_criteria || parsed.evaluationCriteria
+                  )
+                  if (criteria.length > 0) {
+                    formData.value.evaluation_criteria = criteria
+                  }
 
                   // Forward to panel for final parsing
                   if (analysisPanel.value?.processSuggestions) {
@@ -1845,6 +2003,14 @@ function handleAnalysisPanelConfigUpdate(config) {
   }
   if (config.scenarioDescription) {
     formData.value.description = config.scenarioDescription
+  }
+  if (config.taskDescription || config.task_description) {
+    formData.value.task_description = config.taskDescription || config.task_description
+  }
+  if (config.evaluationCriteria || config.evaluation_criteria) {
+    formData.value.evaluation_criteria = normalizeCriteriaList(
+      config.evaluationCriteria || config.evaluation_criteria
+    )
   }
 
   // Ensure evalConfig is initialized before applying detailed config updates
@@ -2091,10 +2257,15 @@ async function createScenario() {
         scenario_name: formData.value.scenario_name,
         evaluation_type: taskType,
         description: formData.value.description || '',
+        task_description: formData.value.task_description || '',
+        evaluation_criteria: normalizeCriteriaList(formData.value.evaluation_criteria),
         config_json: {
           ...formData.value.config,
           eval_type: formData.value.evalType,
           eval_config: formData.value.evalConfig,
+          ai_generation_prompt: formData.value.ai_generation_prompt || '',
+          task_description: formData.value.task_description || '',
+          evaluation_criteria: normalizeCriteriaList(formData.value.evaluation_criteria),
           enable_llm_evaluation: combinedEvaluators.length > 0,
           ...(combinedEvaluators.length > 0 ? { llm_evaluators: combinedEvaluators } : {}),
         },
@@ -2163,10 +2334,15 @@ async function createScenario() {
       scenario_name: formData.value.scenario_name,
       function_type_id: functionTypeId,
       description: formData.value.description,
+      task_description: formData.value.task_description,
+      evaluation_criteria: normalizeCriteriaList(formData.value.evaluation_criteria),
       config_json: {
         ...formData.value.config,
         eval_type: formData.value.evalType,
         eval_config: formData.value.evalConfig,
+        ai_generation_prompt: formData.value.ai_generation_prompt || '',
+        task_description: formData.value.task_description,
+        evaluation_criteria: normalizeCriteriaList(formData.value.evaluation_criteria),
         enable_llm_evaluation: combinedEvaluators.length > 0,
         llm_evaluators: combinedEvaluators
       }
@@ -2997,6 +3173,12 @@ onMounted(() => {
 }
 
 .config-label-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.field-label-inline {
   display: inline-flex;
   align-items: center;
   gap: 4px;

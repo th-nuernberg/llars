@@ -452,6 +452,25 @@ def apply_schema_patches(db) -> None:
             column_definition_sql="`config_json` JSON NULL",
         )
 
+        # Legacy LLM schema compatibility: features / user_feature_rankings
+        # Older DBs still have llm_id (FK to llms) but no model_id (VARCHAR).
+        # Current code queries by model_id, so ensure columns exist and backfill.
+        if _table_exists(db, "features"):
+            changed |= _ensure_column(
+                db,
+                table_name="features",
+                column_name="model_id",
+                column_definition_sql="`model_id` VARCHAR(255) NULL",
+            )
+        if _table_exists(db, "user_feature_rankings"):
+            changed |= _ensure_column(
+                db,
+                table_name="user_feature_rankings",
+                column_name="model_id",
+                column_definition_sql="`model_id` VARCHAR(255) NULL",
+            )
+        changed |= _backfill_feature_model_ids(db)
+
         # Chatbot conversations/messages: session scoping + agent traces
         changed |= _ensure_unique_constraint(
             db,
@@ -471,6 +490,18 @@ def apply_schema_patches(db) -> None:
             column_name="stream_metadata",
             column_definition_sql="`stream_metadata` JSON NULL",
         )
+
+        # Anonymization pipeline: derived model/course metadata for filtering/table views
+        if _table_exists(db, "anonymization_conversations"):
+            changed |= _ensure_column(
+                db,
+                table_name="anonymization_conversations",
+                column_name="metadata_json",
+                column_definition_sql=(
+                    "`metadata_json` JSON NULL "
+                    "COMMENT 'Original import metadata + derived model/course summaries'"
+                ),
+            )
 
         # Chatbot prompt settings: agent prompts
         changed |= _ensure_column(
@@ -1066,6 +1097,7 @@ def apply_schema_patches(db) -> None:
             column_name="invited_by",
             column_definition_sql="`invited_by` VARCHAR(255) NULL",
         )
+        changed |= _migrate_scenario_user_roles(db)
 
         # Migrate ScenarioRoles enum: EVALUATOR → ASSESSOR, RATER removed
         # The role column was renamed in the code but existing DBs may still
@@ -1529,5 +1561,134 @@ def _migrate_model_id_prefixes(db) -> bool:
     except Exception as exc:
         db.session.rollback()
         print(f"  ⚠️ Prefix migration failed (non-fatal): {exc}")
+
+    return changed
+
+
+def _migrate_scenario_user_roles(db) -> bool:
+    """
+    Migrate legacy scenario_users.role enum/value 'EVALUATOR' to 'ASSESSOR'.
+
+    Old DBs use enum('OWNER','EVALUATOR','VIEWER'). Current code expects
+    OWNER/MANAGER/ASSESSOR/VIEWER.
+    """
+    if not _table_exists(db, "scenario_users") or not _column_exists(db, "scenario_users", "role"):
+        return False
+
+    changed = False
+    try:
+        # Convert legacy role value before tightening enum definition.
+        result = db.session.execute(
+            text(
+                """
+                UPDATE scenario_users
+                SET role = 'ASSESSOR'
+                WHERE role = 'EVALUATOR'
+                """
+            )
+        )
+        if result.rowcount > 0:
+            changed = True
+            print(f"  [Role Migration] Converted {result.rowcount} scenario_users from EVALUATOR -> ASSESSOR")
+
+        # Align enum values with current model.
+        db.session.execute(
+            text(
+                """
+                ALTER TABLE scenario_users
+                MODIFY COLUMN role ENUM('OWNER','MANAGER','ASSESSOR','VIEWER') NULL
+                """
+            )
+        )
+        db.session.commit()
+        changed = True
+    except Exception as exc:
+        db.session.rollback()
+        print(f"  ⚠️ scenario_users role migration failed (non-fatal): {exc}")
+
+    return changed
+
+
+def _backfill_feature_model_ids(db) -> bool:
+    """
+    Best-effort backfill for legacy features/user_feature_rankings model_id values.
+
+    Reads from legacy llms.name via llm_id where available and writes normalized
+    model_id strings used by current code.
+    """
+    # Nothing to do if legacy tables/columns are missing.
+    if not _table_exists(db, "llms"):
+        return False
+
+    features_ready = (
+        _table_exists(db, "features")
+        and _column_exists(db, "features", "llm_id")
+        and _column_exists(db, "features", "model_id")
+    )
+    ufr_ready = (
+        _table_exists(db, "user_feature_rankings")
+        and _column_exists(db, "user_feature_rankings", "llm_id")
+        and _column_exists(db, "user_feature_rankings", "model_id")
+    )
+
+    if not features_ready and not ufr_ready:
+        return False
+
+    changed = False
+    try:
+        case_sql = """
+            CASE
+                WHEN l.name = 'GPT-4'           THEN 'Global/OpenAI/gpt-4'
+                WHEN l.name = 'GPT-5 Nano'      THEN 'Global/OpenAI/gpt-5-nano'
+                WHEN l.name = 'GPT-5 Mini'      THEN 'Global/OpenAI/gpt-5-mini'
+                WHEN l.name = 'Claude-3'        THEN 'Global/Anthropic/claude-3'
+                WHEN l.name = 'Mistral-7B'      THEN 'Global/Mistral/Mistral-7B'
+                WHEN l.name = 'Mistral Small'   THEN 'Global/Mistral/Mistral-Small-3.2-24B-Instruct-2506'
+                WHEN l.name = 'Magistral Small' THEN 'Global/Mistral/Magistral-Small-2509'
+                WHEN l.name = 'SummEval'        THEN 'SummEval'
+                WHEN l.name LIKE '% (%)'        THEN TRIM(SUBSTRING_INDEX(l.name, ' (', 1))
+                ELSE l.name
+            END
+        """
+
+        if features_ready:
+            result = db.session.execute(
+                text(
+                    f"""
+                    UPDATE features f
+                    JOIN llms l ON f.llm_id = l.llm_id
+                    SET f.model_id = {case_sql}
+                    WHERE f.llm_id IS NOT NULL
+                      AND (f.model_id IS NULL OR f.model_id = '')
+                    """
+                )
+            )
+            if result.rowcount > 0:
+                changed = True
+                print(f"  [Backfill] features.model_id set for {result.rowcount} rows")
+
+        if ufr_ready:
+            result = db.session.execute(
+                text(
+                    f"""
+                    UPDATE user_feature_rankings ufr
+                    JOIN llms l ON ufr.llm_id = l.llm_id
+                    SET ufr.model_id = {case_sql}
+                    WHERE ufr.llm_id IS NOT NULL
+                      AND (ufr.model_id IS NULL OR ufr.model_id = '')
+                    """
+                )
+            )
+            if result.rowcount > 0:
+                changed = True
+                print(f"  [Backfill] user_feature_rankings.model_id set for {result.rowcount} rows")
+
+        if changed:
+            db.session.commit()
+        else:
+            db.session.rollback()
+    except Exception as exc:
+        db.session.rollback()
+        print(f"  ⚠️ model_id backfill failed (non-fatal): {exc}")
 
     return changed

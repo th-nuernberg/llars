@@ -136,3 +136,5 @@ GITLAB_CICD_VARIABLES.txt
 app/db/seeders/datasets/german_sentiment.zip
 data/combine_generations.py
 data/test_detection.py
+
+exports/*

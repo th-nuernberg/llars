@@ -9,11 +9,44 @@ from socketio_handlers import configure_socket_routes
 from routes.registry import register_all_blueprints
 from services.api_metrics_service import create_metrics_middleware
 from werkzeug.middleware.proxy_fix import ProxyFix
+import logging
 import re
 import os
 import redis
 
+
+class _SocketIOAccessLogFilter(logging.Filter):
+    """Suppress noisy Socket.IO polling access logs."""
+
+    _socketio_path_pattern = re.compile(r'"\w+\s+/socket\.io/', re.IGNORECASE)
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        try:
+            message = record.getMessage()
+        except Exception:
+            return True
+        return not bool(self._socketio_path_pattern.search(message))
+
+
+def _configure_access_log_filters() -> None:
+    suppress_socketio_access_logs = str(
+        os.environ.get('SUPPRESS_SOCKETIO_ACCESS_LOGS', 'true')
+    ).lower() in ('1', 'true', 'yes', 'on')
+    if not suppress_socketio_access_logs:
+        return
+
+    filter_instance = _SocketIOAccessLogFilter()
+    for logger_name in ('werkzeug', 'gunicorn.access'):
+        logger = logging.getLogger(logger_name)
+        has_socketio_filter = any(
+            isinstance(existing_filter, _SocketIOAccessLogFilter)
+            for existing_filter in logger.filters
+        )
+        if not has_socketio_filter:
+            logger.addFilter(filter_instance)
+
 app = Flask(__name__)
+_configure_access_log_filters()
 
 # Limit upload size to 50 MB to prevent oversized file uploads
 app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024

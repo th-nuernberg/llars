@@ -23,6 +23,26 @@
             style="max-width: 200px"
           />
 
+          <v-select
+            v-model="filters.model"
+            :items="modelFilterOptions"
+            label="AI Model"
+            clearable
+            density="comfortable"
+            variant="outlined"
+            style="max-width: 260px"
+          />
+
+          <v-select
+            v-model="filters.course"
+            :items="courseFilterOptions"
+            label="Course"
+            clearable
+            density="comfortable"
+            variant="outlined"
+            style="max-width: 260px"
+          />
+
           <!-- Search -->
           <v-text-field
             v-model="filters.search"
@@ -35,34 +55,45 @@
             style="flex: 1; min-width: 250px"
           />
 
-          <!-- Bulk Actions -->
-          <div v-if="selectedConversations.length > 0" class="ml-auto d-flex gap-2">
+          <div class="ml-auto d-flex gap-2">
+            <!-- Bulk Actions -->
+            <template v-if="selectedConversations.length > 0">
+              <LBtn
+                variant="secondary"
+                prepend-icon="mdi-check-all"
+                :disabled="!hasEditPermission"
+                @click="bulkMarkCompleted"
+              >
+                Mark Completed ({{ selectedConversations.length }})
+              </LBtn>
+              <LBtn
+                variant="primary"
+                prepend-icon="mdi-export"
+                @click="exportSelected"
+              >
+                Export Selected
+              </LBtn>
+            </template>
+
+            <!-- Export All Completed -->
             <LBtn
-              variant="secondary"
-              prepend-icon="mdi-check-all"
-              @click="bulkMarkCompleted"
+              v-else
+              variant="accent"
+              prepend-icon="mdi-export-variant"
+              @click="exportAllCompleted"
             >
-              Mark Completed ({{ selectedConversations.length }})
+              Export All Completed
             </LBtn>
+
             <LBtn
-              variant="primary"
-              prepend-icon="mdi-export"
-              @click="exportSelected"
+              v-if="hasEditPermission"
+              variant="secondary"
+              prepend-icon="mdi-upload"
+              @click="openUploadDialog"
             >
-              Export Selected
+              Upload Conversations
             </LBtn>
           </div>
-
-          <!-- Export All Completed -->
-          <LBtn
-            v-else
-            variant="accent"
-            prepend-icon="mdi-export-variant"
-            class="ml-auto"
-            @click="exportAllCompleted"
-          >
-            Export All Completed
-          </LBtn>
         </div>
       </v-card-text>
     </v-card>
@@ -98,6 +129,44 @@
           <div class="text-center">{{ item.entity_count }}</div>
         </template>
 
+        <!-- Quality Rating -->
+        <template #[`item.quality_rating`]="{ item }">
+          <div class="d-flex align-center justify-center">
+            <span v-if="!item.quality_rating" class="text-medium-emphasis">-</span>
+            <LRatingScale
+              v-else
+              :model-value="item.quality_rating"
+              :min="1"
+              :max="5"
+              :step="1"
+              :show-labels="false"
+              :show-value-labels="false"
+              size="small"
+              variant="gradient"
+              :disabled="true"
+              aria-label="Conversation quality rating"
+              class="table-rating-scale"
+            />
+          </div>
+        </template>
+
+        <!-- Dataset State -->
+        <template #[`item.dataset_state`]="{ item }">
+          <LTag :variant="getDatasetStateVariant(item)">
+            {{ getDatasetStateLabel(item) }}
+          </LTag>
+        </template>
+
+        <!-- Models -->
+        <template #[`item.models`]="{ item }">
+          <span class="metadata-cell">{{ metadataModelsText(item) }}</span>
+        </template>
+
+        <!-- Courses -->
+        <template #[`item.courses`]="{ item }">
+          <span class="metadata-cell">{{ metadataCoursesText(item) }}</span>
+        </template>
+
         <!-- Imported Date -->
         <template #[`item.imported_at`]="{ item }">
           {{ formatDate(item.imported_at) }}
@@ -106,7 +175,7 @@
         <!-- Actions -->
         <template #[`item.actions`]="{ item }">
           <LActionGroup
-            :actions="['view', 'edit']"
+            :actions="buildActions(item)"
             size="small"
             @action="(action) => handleAction(action, item)"
           />
@@ -121,7 +190,10 @@
         <v-card-text>
           <p>Export {{ exportCount }} conversation(s) as JSON?</p>
           <p class="text-caption text-medium-emphasis mt-2">
-            Only anonymized content will be exported (original content excluded).
+            Only high-quality conversations are exported (rating > 2, not excluded from export).
+          </p>
+          <p class="text-caption text-medium-emphasis">
+            Quality ratings are included in the exported metadata.
           </p>
         </v-card-text>
         <v-card-actions>
@@ -138,6 +210,47 @@
         </v-card-actions>
       </v-card>
     </v-dialog>
+
+    <v-dialog v-model="uploadDialog" max-width="640">
+      <v-card>
+        <v-card-title>Import Conversations</v-card-title>
+        <v-card-text>
+          <v-file-input
+            v-model="uploadFile"
+            accept=".json,application/json"
+            label="Conversation JSON file"
+            prepend-icon="mdi-file-upload"
+            variant="outlined"
+            density="comfortable"
+            hide-details
+          />
+          <v-checkbox
+            v-model="uploadRunNer"
+            color="primary"
+            label="Run NER immediately after import"
+            hide-details
+            class="mt-3"
+          />
+          <p class="text-caption text-medium-emphasis mt-3 mb-0">
+            Supported format is generic JSON with one conversation object or an array of conversations.
+          </p>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <LBtn variant="cancel" :disabled="uploadLoading" @click="uploadDialog = false">
+            Cancel
+          </LBtn>
+          <LBtn
+            variant="primary"
+            prepend-icon="mdi-upload"
+            :loading="uploadLoading"
+            @click="importConversations"
+          >
+            Import
+          </LBtn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </div>
 </template>
 
@@ -146,9 +259,12 @@ import { ref, onMounted, watch, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from 'axios'
 import { useSnackbar } from '@/composables/useSnackbar'
+import { usePermissions } from '@/composables/usePermissions'
+import LRatingScale from '@/components/common/LRatingScale.vue'
 
 const router = useRouter()
 const { showSuccess, showError } = useSnackbar()
+const { hasPermission, fetchPermissions } = usePermissions()
 
 // State
 const conversations = ref([])
@@ -158,10 +274,20 @@ const totalConversations = ref(0)
 const exportDialog = ref(false)
 const exportLoading = ref(false)
 const exportMode = ref(null) // 'selected' | 'all_completed'
+const uploadDialog = ref(false)
+const uploadFile = ref(null)
+const uploadRunNer = ref(false)
+const uploadLoading = ref(false)
+const nerLoadingMap = ref({})
 const itemsPerPage = ref(50)
+const availableModels = ref([])
+const availableCourses = ref([])
+const hasConversationsWithoutModel = ref(false)
 
 const filters = ref({
   status: null,
+  model: null,
+  course: null,
   search: ''
 })
 
@@ -177,6 +303,10 @@ const headers = [
   { title: 'Status', key: 'status', sortable: true },
   { title: 'Messages', key: 'message_count', sortable: true, align: 'center' },
   { title: 'Entities', key: 'entity_count', sortable: true, align: 'center' },
+  { title: 'Rating', key: 'quality_rating', sortable: true, align: 'center' },
+  { title: 'State', key: 'dataset_state', sortable: false },
+  { title: 'Model(s)', key: 'models', sortable: false },
+  { title: 'Course(s)', key: 'courses', sortable: false },
   { title: 'Imported', key: 'imported_at', sortable: true },
   { title: 'Actions', key: 'actions', sortable: false, align: 'end' }
 ]
@@ -187,6 +317,22 @@ const statusOptions = [
   { title: 'Completed', value: 'completed' },
   { title: 'Error', value: 'error' }
 ]
+const NO_MODEL_FILTER_VALUE = '__NO_MODEL__'
+
+const modelFilterOptions = computed(() => {
+  const options = (availableModels.value || []).map(model => ({ title: model, value: model }))
+  if (hasConversationsWithoutModel.value) {
+    options.unshift({
+      title: 'No model (human-human)',
+      value: NO_MODEL_FILTER_VALUE
+    })
+  }
+  return options
+})
+
+const courseFilterOptions = computed(() =>
+  (availableCourses.value || []).map(course => ({ title: course, value: course }))
+)
 
 const exportCount = computed(() => {
   if (exportMode.value === 'selected') {
@@ -194,6 +340,46 @@ const exportCount = computed(() => {
   }
   return conversations.value.filter(c => c.status === 'completed').length
 })
+
+const hasEditPermission = computed(() =>
+  hasPermission('feature:anonymization-pipeline:edit')
+)
+const MIN_EXPORT_QUALITY = 3
+
+function getMetadataSummary(item) {
+  return item?.metadata_summary || {}
+}
+
+function metadataModelsText(item) {
+  const models = getMetadataSummary(item).models || []
+  return models.length > 0 ? models.join(', ') : 'Human-Human'
+}
+
+function metadataCoursesText(item) {
+  const courses = getMetadataSummary(item).courses || []
+  return courses.length > 0 ? courses.join(', ') : '-'
+}
+
+function isNerRunning(conversationId) {
+  return Boolean(nerLoadingMap.value[conversationId])
+}
+
+function buildActions(item) {
+  const actions = ['view']
+
+  if (hasEditPermission.value) {
+    actions.unshift({
+      preset: 'play',
+      key: 'run_ner',
+      tooltip: 'Run NER',
+      loading: isNerRunning(item.id),
+      disabled: isNerRunning(item.id) || item.status === 'in_progress'
+    })
+    actions.push('edit')
+  }
+
+  return actions
+}
 
 // Methods
 async function loadConversations() {
@@ -203,12 +389,21 @@ async function loadConversations() {
       limit: tableOptions.value.itemsPerPage,
       offset: (tableOptions.value.page - 1) * tableOptions.value.itemsPerPage,
       ...(filters.value.status && { status: filters.value.status }),
+      ...(filters.value.model && { model: filters.value.model }),
+      ...(filters.value.course && { course: filters.value.course }),
       ...(filters.value.search && { search: filters.value.search })
     }
 
     const response = await axios.get('/api/anonymization/conversations', { params })
     conversations.value = response.data.conversations
     totalConversations.value = response.data.total
+    availableModels.value = Array.isArray(response.data.available_models)
+      ? response.data.available_models
+      : []
+    availableCourses.value = Array.isArray(response.data.available_courses)
+      ? response.data.available_courses
+      : []
+    hasConversationsWithoutModel.value = Boolean(response.data.has_conversations_without_model)
   } catch (error) {
     showError('Failed to load conversations')
     console.error(error)
@@ -227,17 +422,26 @@ function openConversation(event, { item }) {
     path: `/anonymization/${item.id}`,
     query: {
       ...(filters.value.status && { status: filters.value.status }),
+      ...(filters.value.model && { model: filters.value.model }),
+      ...(filters.value.course && { course: filters.value.course }),
       ...(filters.value.search && { search: filters.value.search })
     }
   })
 }
 
 function handleAction(action, item) {
+  if (action === 'run_ner') {
+    runNerForConversation(item)
+    return
+  }
+
   if (action === 'view' || action === 'edit') {
     router.push({
       path: `/anonymization/${item.id}`,
       query: {
         ...(filters.value.status && { status: filters.value.status }),
+        ...(filters.value.model && { model: filters.value.model }),
+        ...(filters.value.course && { course: filters.value.course }),
         ...(filters.value.search && { search: filters.value.search })
       }
     })
@@ -252,6 +456,37 @@ function getStatusVariant(status) {
     error: 'danger'
   }
   return variants[status] || 'gray'
+}
+
+function getDatasetState(item) {
+  if (!item) return 'unrated'
+  if (item.exclude_from_export) return 'excluded'
+  if (item.status !== 'completed') return 'in_review'
+  if (!item.quality_rating) return 'unrated'
+  if (Number(item.quality_rating) >= MIN_EXPORT_QUALITY) return 'ready'
+  return 'low_quality'
+}
+
+function getDatasetStateLabel(item) {
+  const labels = {
+    ready: 'Ready for Export',
+    low_quality: 'Low Quality',
+    excluded: 'Excluded',
+    in_review: 'In Review',
+    unrated: 'Unrated'
+  }
+  return labels[getDatasetState(item)] || 'Unrated'
+}
+
+function getDatasetStateVariant(item) {
+  const variants = {
+    ready: 'success',
+    low_quality: 'warning',
+    excluded: 'danger',
+    in_review: 'info',
+    unrated: 'gray'
+  }
+  return variants[getDatasetState(item)] || 'gray'
 }
 
 function formatDate(dateStr) {
@@ -290,6 +525,69 @@ async function bulkMarkCompleted() {
   }
 }
 
+function openUploadDialog() {
+  uploadFile.value = null
+  uploadRunNer.value = false
+  uploadDialog.value = true
+}
+
+async function importConversations() {
+  const file = Array.isArray(uploadFile.value) ? uploadFile.value[0] : uploadFile.value
+  if (!file) {
+    showError('Please choose a JSON file')
+    return
+  }
+
+  uploadLoading.value = true
+  try {
+    const formData = new FormData()
+    formData.append('file', file)
+    formData.append('run_ner', String(uploadRunNer.value))
+
+    const response = await axios.post('/api/anonymization/import', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    })
+
+    showSuccess(`Imported ${response.data.imported_count} conversation(s)`)
+    if (response.data.failed_count > 0) {
+      showError(`${response.data.failed_count} conversation(s) could not be imported`)
+    }
+
+    uploadDialog.value = false
+    uploadFile.value = null
+    await loadConversations()
+  } catch (error) {
+    showError(error.response?.data?.error || 'Import failed')
+    console.error(error)
+  } finally {
+    uploadLoading.value = false
+  }
+}
+
+async function runNerForConversation(item) {
+  if (!hasEditPermission.value) return
+
+  const confirmed = confirm(`Run NER for conversation "${item.title || item.id}"?`)
+  if (!confirmed) return
+
+  nerLoadingMap.value = { ...nerLoadingMap.value, [item.id]: true }
+  try {
+    const response = await axios.post(`/api/anonymization/conversations/${item.id}/run-ner`)
+    const entityCount = response.data?.result?.entity_count ?? response.data?.conversation?.entity_count ?? 0
+    showSuccess(`NER completed (${entityCount} entities)`)
+    await loadConversations()
+  } catch (error) {
+    showError(error.response?.data?.error || 'NER processing failed')
+    console.error(error)
+  } finally {
+    const next = { ...nerLoadingMap.value }
+    delete next[item.id]
+    nerLoadingMap.value = next
+  }
+}
+
 function exportSelected() {
   if (selectedConversations.value.length === 0) return
   exportMode.value = 'selected'
@@ -306,8 +604,8 @@ async function confirmExport() {
   try {
     const payload =
       exportMode.value === 'selected'
-        ? { conversation_ids: selectedConversations.value }
-        : { include_all_completed: true }
+        ? { conversation_ids: selectedConversations.value, min_quality_rating: MIN_EXPORT_QUALITY }
+        : { include_all_completed: true, min_quality_rating: MIN_EXPORT_QUALITY }
 
     const response = await axios.post('/api/anonymization/export', payload)
 
@@ -344,7 +642,12 @@ watch(
 )
 
 // Lifecycle
-onMounted(() => {
+onMounted(async () => {
+  try {
+    await fetchPermissions()
+  } catch (error) {
+    console.error('Failed to fetch permissions:', error)
+  }
   loadConversations()
 })
 </script>
@@ -370,6 +673,34 @@ onMounted(() => {
 
 .gap-2 {
   gap: 8px;
+}
+
+.metadata-cell {
+  display: inline-block;
+  max-width: 280px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.table-rating-scale {
+  min-width: 145px;
+}
+
+.table-rating-scale :deep(.scale-buttons) {
+  gap: 4px;
+}
+
+.table-rating-scale :deep(.scale-button) {
+  min-width: 24px;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border-width: 1px;
+}
+
+.table-rating-scale :deep(.scale-value) {
+  font-size: 0.72rem;
 }
 
 :deep(.v-data-table tbody tr) {

@@ -8,15 +8,49 @@
           <LTag :variant="getStatusVariant(conversation?.status)">
             {{ conversation?.status }}
           </LTag>
+          <LTag :variant="getDatasetStateVariant(conversation)">
+            {{ getDatasetStateLabel(conversation) }}
+          </LTag>
           <span class="text-caption text-medium-emphasis">
             {{ conversation?.message_count }} messages · {{ conversation?.entity_count }} entities
           </span>
+          <span class="text-caption quality-rating-inline">
+            Rating: {{ getQualityRatingText(conversation?.quality_rating) }}
+          </span>
+          <v-chip
+            v-for="model in metadataModels.slice(0, 2)"
+            :key="`model-${model}`"
+            size="x-small"
+            variant="tonal"
+            color="primary"
+          >
+            {{ model }}
+          </v-chip>
+          <v-chip
+            v-for="course in metadataCourses.slice(0, 2)"
+            :key="`course-${course}`"
+            size="x-small"
+            variant="tonal"
+            color="secondary"
+          >
+            {{ course }}
+          </v-chip>
         </div>
       </div>
 
       <div class="d-flex gap-2 flex-wrap">
         <LBtn variant="cancel" prepend-icon="mdi-arrow-left" @click="goBack">
           Back
+        </LBtn>
+        <LBtn
+          v-if="hasEditPermission && conversation"
+          variant="primary"
+          prepend-icon="mdi-shield-search"
+          :loading="anonymizingConversation"
+          :disabled="anonymizingConversation"
+          @click="anonymizeConversation()"
+        >
+          Anonymize
         </LBtn>
         <LBtn
           v-if="hasEditPermission && conversation?.status === 'in_progress'"
@@ -27,6 +61,96 @@
           Mark Completed
         </LBtn>
       </div>
+    </div>
+
+    <div v-if="conversation" class="quality-panel">
+      <v-card variant="outlined" class="pa-4">
+        <div class="d-flex align-center justify-space-between flex-wrap gap-2">
+          <div>
+            <h3 class="quality-title">Quality Rating</h3>
+            <p class="text-caption text-medium-emphasis mb-0">
+              Rating > 2 and not excluded is eligible for final export.
+            </p>
+          </div>
+          <LTag :variant="getDatasetStateVariant(conversation)">
+            {{ getDatasetStateLabel(conversation) }}
+          </LTag>
+        </div>
+
+        <div class="d-flex align-center gap-3 mt-3 flex-wrap">
+          <LRatingScale
+            :model-value="conversation.quality_rating ?? null"
+            :min="1"
+            :max="5"
+            :step="1"
+            :show-labels="false"
+            :show-value-labels="false"
+            size="small"
+            variant="gradient"
+            :disabled="!hasEditPermission || qualitySaving"
+            aria-label="Conversation quality rating"
+            @update:model-value="setQualityRating"
+          />
+          <LBtn
+            v-if="hasEditPermission && conversation.quality_rating"
+            variant="text"
+            size="small"
+            :disabled="qualitySaving"
+            @click="setQualityRating(null)"
+          >
+            Clear
+          </LBtn>
+          <span class="text-caption text-medium-emphasis">
+            {{ getQualityRatingText(conversation.quality_rating) }}
+          </span>
+          <LCheckbox
+            v-if="hasEditPermission"
+            :model-value="Boolean(conversation.exclude_from_export)"
+            label="Exclude from export"
+            :disabled="qualitySaving"
+            @update:model-value="setExcludeFromExport"
+          />
+        </div>
+
+        <v-textarea
+          v-if="hasEditPermission"
+          v-model="qualityNotesDraft"
+          variant="outlined"
+          density="comfortable"
+          rows="2"
+          auto-grow
+          label="Quality notes"
+          placeholder="Optional notes for reviewers/export decisions"
+          class="mt-3"
+          :disabled="qualitySaving"
+          @blur="saveQualityNotes"
+        />
+        <p v-else-if="conversation.quality_notes" class="text-caption mt-3 mb-0">
+          {{ conversation.quality_notes }}
+        </p>
+      </v-card>
+    </div>
+
+    <div v-if="metadataEntries.length > 0" class="metadata-panel">
+      <v-expansion-panels variant="accordion">
+        <v-expansion-panel>
+          <v-expansion-panel-title>
+            Metadata Details ({{ metadataEntries.length }})
+          </v-expansion-panel-title>
+          <v-expansion-panel-text>
+            <div class="metadata-grid">
+              <div
+                v-for="entry in metadataEntries"
+                :key="entry.key"
+                class="metadata-row"
+              >
+                <span class="metadata-key">{{ entry.key }}</span>
+                <span class="metadata-value">{{ entry.value }}</span>
+              </div>
+            </div>
+          </v-expansion-panel-text>
+        </v-expansion-panel>
+      </v-expansion-panels>
     </div>
 
     <!-- Main Content -->
@@ -304,11 +428,12 @@ import axios from 'axios'
 import { useSnackbar } from '@/composables/useSnackbar'
 import { usePermissions } from '@/composables/usePermissions'
 import { usePanelResize } from '@/composables/usePanelResize'
+import LRatingScale from '@/components/common/LRatingScale.vue'
 
 const route = useRoute()
 const router = useRouter()
 const { showSuccess, showError } = useSnackbar()
-const { hasPermission } = usePermissions()
+const { hasPermission, fetchPermissions } = usePermissions()
 
 // Panel Resize
 const {
@@ -333,8 +458,11 @@ const isEditing = ref(false)
 const editedContent = ref('')
 const changeDescription = ref('')
 const saving = ref(false)
+const anonymizingConversation = ref(false)
 const showVersionHistory = ref(false)
 const loading = ref(false)
+const qualitySaving = ref(false)
+const qualityNotesDraft = ref('')
 
 // Navigation state
 const conversationsList = ref([])
@@ -342,6 +470,43 @@ const conversationsList = ref([])
 const hasEditPermission = computed(() =>
   hasPermission('feature:anonymization-pipeline:edit')
 )
+
+const metadata = computed(() => {
+  return conversation.value?.metadata || null
+})
+
+const metadataSummary = computed(() => {
+  return conversation.value?.metadata_summary || {}
+})
+
+const metadataModels = computed(() => {
+  const summaryModels = metadataSummary.value?.models
+  if (Array.isArray(summaryModels) && summaryModels.length > 0) {
+    return summaryModels
+  }
+
+  const derivedModels = metadata.value?.derived?.models
+  return Array.isArray(derivedModels) ? derivedModels : []
+})
+
+const metadataCourses = computed(() => {
+  const summaryCourses = metadataSummary.value?.courses
+  if (Array.isArray(summaryCourses) && summaryCourses.length > 0) {
+    return summaryCourses
+  }
+
+  const derivedCourses = metadata.value?.derived?.courses
+  return Array.isArray(derivedCourses) ? derivedCourses : []
+})
+
+const metadataEntries = computed(() => {
+  const source = metadata.value?.raw || metadata.value
+  if (!source || typeof source !== 'object') return []
+
+  const entries = []
+  collectMetadataEntries(source, '', entries, 0)
+  return entries
+})
 
 const filteredMessages = computed(() => {
   if (!conversation.value?.messages) return []
@@ -376,6 +541,66 @@ const entityHeaders = [
   { title: 'DB Hit', key: 'db_hit', sortable: true, align: 'center' }
 ]
 
+const MIN_EXPORT_QUALITY = 3
+
+function formatMetadataValue(value) {
+  const text = String(value ?? '').replace(/\s+/g, ' ').trim()
+  if (!text) return ''
+  return text.length > 140 ? `${text.slice(0, 137)}...` : text
+}
+
+function collectMetadataEntries(value, path, entries, depth) {
+  if (entries.length >= 80 || depth > 4 || value === null || value === undefined) {
+    return
+  }
+
+  if (Array.isArray(value)) {
+    if (value.length === 0) return
+
+    const isPrimitiveArray = value.every(item =>
+      item === null || ['string', 'number', 'boolean'].includes(typeof item)
+    )
+
+    if (isPrimitiveArray) {
+      const formatted = formatMetadataValue(value.join(', '))
+      if (formatted) {
+        entries.push({
+          key: path || 'value',
+          value: formatted
+        })
+      }
+      return
+    }
+
+    value.slice(0, 5).forEach((item, index) => {
+      collectMetadataEntries(item, `${path}[${index}]`, entries, depth + 1)
+    })
+    if (value.length > 5) {
+      entries.push({
+        key: `${path}[]`,
+        value: `+${value.length - 5} more entries`
+      })
+    }
+    return
+  }
+
+  if (typeof value === 'object') {
+    Object.entries(value).forEach(([key, item]) => {
+      const nextPath = path ? `${path}.${key}` : key
+      collectMetadataEntries(item, nextPath, entries, depth + 1)
+    })
+    return
+  }
+
+  const formatted = formatMetadataValue(value)
+  if (formatted) {
+    entries.push({
+      key: path || 'value',
+      value: formatted
+    })
+  }
+}
+
 // Methods
 async function loadConversationsList() {
   try {
@@ -386,6 +611,12 @@ async function loadConversationsList() {
 
     if (route.query.status) {
       params.append('status', route.query.status)
+    }
+    if (route.query.model) {
+      params.append('model', route.query.model)
+    }
+    if (route.query.course) {
+      params.append('course', route.query.course)
     }
     if (route.query.search) {
       params.append('search', route.query.search)
@@ -406,6 +637,7 @@ async function loadConversation() {
       `/api/anonymization/conversations/${route.params.id}`
     )
     conversation.value = response.data.conversation
+    qualityNotesDraft.value = conversation.value?.quality_notes || ''
 
     // Auto-start review if conversation is pending
     if (conversation.value.status === 'pending' && hasEditPermission.value) {
@@ -417,6 +649,94 @@ async function loadConversation() {
   } finally {
     loading.value = false
   }
+}
+
+function getDatasetState(item) {
+  if (!item) return 'unrated'
+  if (item.exclude_from_export) return 'excluded'
+  if (item.status !== 'completed') return 'in_review'
+  if (!item.quality_rating) return 'unrated'
+  if (Number(item.quality_rating) >= MIN_EXPORT_QUALITY) return 'ready'
+  return 'low_quality'
+}
+
+function getDatasetStateLabel(item) {
+  const labels = {
+    ready: 'Ready for Export',
+    low_quality: 'Low Quality',
+    excluded: 'Excluded',
+    in_review: 'In Review',
+    unrated: 'Unrated'
+  }
+  return labels[getDatasetState(item)] || 'Unrated'
+}
+
+function getDatasetStateVariant(item) {
+  const variants = {
+    ready: 'success',
+    low_quality: 'warning',
+    excluded: 'danger',
+    in_review: 'info',
+    unrated: 'gray'
+  }
+  return variants[getDatasetState(item)] || 'gray'
+}
+
+function getQualityRatingText(rating) {
+  if (!rating) return 'Not rated'
+  return `${rating}/5`
+}
+
+async function updateConversationQuality(payload, successMessage = 'Quality updated') {
+  if (!conversation.value?.id || !hasEditPermission.value) {
+    return
+  }
+
+  qualitySaving.value = true
+  try {
+    const response = await axios.patch(
+      `/api/anonymization/conversations/${conversation.value.id}/quality`,
+      payload
+    )
+    conversation.value = {
+      ...conversation.value,
+      ...response.data.conversation
+    }
+    qualityNotesDraft.value = conversation.value?.quality_notes || ''
+    showSuccess(successMessage)
+  } catch (error) {
+    showError(error.response?.data?.error || 'Failed to update quality')
+  } finally {
+    qualitySaving.value = false
+  }
+}
+
+async function setQualityRating(value) {
+  const rating = value ? Number(value) : null
+  if ((conversation.value?.quality_rating || null) === rating) {
+    return
+  }
+  await updateConversationQuality({ quality_rating: rating }, 'Quality rating updated')
+}
+
+async function setExcludeFromExport(value) {
+  const excludeFromExport = Boolean(value)
+  if (Boolean(conversation.value?.exclude_from_export) === excludeFromExport) {
+    return
+  }
+  await updateConversationQuality(
+    { exclude_from_export: excludeFromExport },
+    excludeFromExport ? 'Conversation excluded from export' : 'Conversation included in export'
+  )
+}
+
+async function saveQualityNotes() {
+  const notes = qualityNotesDraft.value.trim()
+  const currentNotes = (conversation.value?.quality_notes || '').trim()
+  if (notes === currentNotes) {
+    return
+  }
+  await updateConversationQuality({ quality_notes: notes }, 'Quality notes saved')
 }
 
 async function selectMessage(message) {
@@ -510,6 +830,56 @@ async function updateStatus(newStatus, showMessage = true) {
   }
 }
 
+async function anonymizeConversation(force = false) {
+  if (!conversation.value?.id || !hasEditPermission.value || anonymizingConversation.value) {
+    return
+  }
+
+  if (!force) {
+    const confirmed = confirm(
+      'Run anonymization (NER) for this conversation? This will regenerate anonymized text and entities.'
+    )
+    if (!confirmed) return
+  }
+
+  anonymizingConversation.value = true
+  try {
+    const response = await axios.post(
+      `/api/anonymization/conversations/${conversation.value.id}/run-ner`,
+      force ? { force: true } : {}
+    )
+
+    const result = response.data?.result || {}
+    const entityCount = result.entity_count ?? response.data?.conversation?.entity_count ?? 0
+    const errorCount = Array.isArray(result.errors) ? result.errors.length : 0
+
+    if (errorCount > 0) {
+      showError(`Anonymization finished with ${errorCount} error(s)`)
+    } else {
+      showSuccess(`Anonymization completed (${entityCount} entities)`)
+    }
+
+    await loadConversation()
+  } catch (error) {
+    const apiError = error.response?.data?.error || ''
+
+    if (!force && apiError.toLowerCase().includes('manually edited')) {
+      const overwriteConfirmed = confirm(
+        'This conversation contains manually edited messages. Force anonymization and overwrite those edits?'
+      )
+      if (overwriteConfirmed) {
+        anonymizingConversation.value = false
+        await anonymizeConversation(true)
+        return
+      }
+    }
+
+    showError(apiError || 'Failed to anonymize conversation')
+  } finally {
+    anonymizingConversation.value = false
+  }
+}
+
 function getStatusVariant(status) {
   const variants = {
     pending: 'gray',
@@ -597,7 +967,10 @@ function formatDate(dateStr) {
 }
 
 function goBack() {
-  router.push('/anonymization')
+  router.push({
+    path: '/anonymization',
+    query: route.query
+  })
 }
 
 // Navigation functions
@@ -656,7 +1029,12 @@ function handleKeyboardNavigation(event) {
 }
 
 // Lifecycle
-onMounted(() => {
+onMounted(async () => {
+  try {
+    await fetchPermissions()
+  } catch (error) {
+    console.error('Failed to fetch permissions:', error)
+  }
   loadConversationsList()
   loadConversation()
   window.addEventListener('keydown', handleKeyboardNavigation)
@@ -681,7 +1059,7 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.12);
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.12);
 }
 
 .detail-header h1 {
@@ -691,6 +1069,50 @@ onBeforeUnmount(() => {
 
 .gap-2 {
   gap: 8px;
+}
+
+.metadata-panel {
+  padding: 0 24px 12px;
+  flex-shrink: 0;
+}
+
+.quality-panel {
+  padding: 12px 24px;
+  flex-shrink: 0;
+}
+
+.quality-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: rgb(var(--v-theme-on-surface));
+}
+
+.quality-rating-inline {
+  color: rgba(var(--v-theme-on-surface), 0.72);
+}
+
+.metadata-grid {
+  display: grid;
+  gap: 8px;
+}
+
+.metadata-row {
+  display: grid;
+  grid-template-columns: minmax(220px, 300px) minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+  font-size: 0.85rem;
+}
+
+.metadata-key {
+  font-weight: 600;
+  color: rgba(var(--v-theme-on-surface), 0.72);
+  word-break: break-word;
+}
+
+.metadata-value {
+  color: rgba(var(--v-theme-on-surface), 0.9);
+  word-break: break-word;
 }
 
 .main-content {
@@ -709,7 +1131,7 @@ onBeforeUnmount(() => {
 .panel-header {
   flex-shrink: 0;
   padding: 16px;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.12);
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.12);
 }
 
 .panel-header h3 {
@@ -725,7 +1147,7 @@ onBeforeUnmount(() => {
 
 .resize-divider {
   width: 8px;
-  background: rgba(0, 0, 0, 0.05);
+  background: rgba(var(--v-theme-on-surface), 0.08);
   cursor: col-resize;
   position: relative;
   flex-shrink: 0;
@@ -743,7 +1165,7 @@ onBeforeUnmount(() => {
   transform: translate(-50%, -50%);
   width: 3px;
   height: 48px;
-  background: rgba(0, 0, 0, 0.2);
+  background: rgba(var(--v-theme-on-surface), 0.2);
   border-radius: 2px;
 }
 
@@ -751,7 +1173,7 @@ onBeforeUnmount(() => {
   font-size: 0.9rem;
   font-weight: 600;
   text-transform: uppercase;
-  color: rgba(0, 0, 0, 0.6);
+  color: rgba(var(--v-theme-on-surface), 0.65);
   margin-bottom: 8px;
 }
 
@@ -762,11 +1184,13 @@ onBeforeUnmount(() => {
   white-space: pre-wrap;
   word-wrap: break-word;
   margin: 0;
+  color: rgb(var(--v-theme-on-surface));
 }
 
 .anonymized-content {
   font-size: 0.95rem;
   line-height: 1.6;
+  color: rgb(var(--v-theme-on-surface));
 }
 
 .entity-badges {
@@ -781,7 +1205,7 @@ onBeforeUnmount(() => {
 
 /* Conversation View Styles */
 .conversation-view {
-  background: #f5f5f5;
+  background: rgba(var(--v-theme-surface-variant), 0.35);
 }
 
 .messages-container {
@@ -792,16 +1216,16 @@ onBeforeUnmount(() => {
 }
 
 .message-bubble {
-  background: white;
+  background: rgb(var(--v-theme-surface));
   border-radius: 12px;
   padding: 12px 16px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 1px 3px rgba(var(--v-theme-on-surface), 0.14);
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
 .message-bubble:hover {
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 2px 6px rgba(var(--v-theme-on-surface), 0.2);
   transform: translateY(-1px);
 }
 
@@ -833,7 +1257,7 @@ onBeforeUnmount(() => {
   margin-bottom: 8px;
   font-size: 0.85rem;
   font-weight: 600;
-  color: rgba(0, 0, 0, 0.7);
+  color: rgba(var(--v-theme-on-surface), 0.7);
 }
 
 .message-author {
@@ -849,7 +1273,7 @@ onBeforeUnmount(() => {
 .message-content {
   font-size: 0.95rem;
   line-height: 1.5;
-  color: rgba(0, 0, 0, 0.87);
+  color: rgba(var(--v-theme-on-surface), 0.88);
   white-space: pre-wrap;
   word-wrap: break-word;
 }
@@ -876,8 +1300,8 @@ onBeforeUnmount(() => {
 .action-bar {
   flex-shrink: 0;
   padding: 12px 24px;
-  border-top: 1px solid rgba(0, 0, 0, 0.12);
-  background: rgba(255, 255, 255, 0.95);
+  border-top: 1px solid rgba(var(--v-theme-on-surface), 0.12);
+  background: rgba(var(--v-theme-surface), 0.95);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -892,9 +1316,16 @@ onBeforeUnmount(() => {
 .progress-indicator {
   font-size: 0.9rem;
   font-weight: 500;
-  color: rgba(0, 0, 0, 0.6);
+  color: rgba(var(--v-theme-on-surface), 0.7);
   padding: 4px 12px;
   background: rgba(var(--v-theme-primary), 0.1);
   border-radius: 12px;
+}
+
+@media (max-width: 960px) {
+  .metadata-row {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
 }
 </style>

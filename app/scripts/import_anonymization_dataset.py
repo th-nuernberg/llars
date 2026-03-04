@@ -22,13 +22,14 @@ from datetime import datetime
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from main import app
-from db.db import db
+from db.database import db
 from db.models import (
     AnonymizationConversation,
     AnonymizationMessage,
     AnonymizationEntity,
 )
 from services.anonymize import AnonymizeService
+from services.anonymize.anonymization_pipeline_service import AnonymizationPipelineService
 
 logging.basicConfig(
     level=logging.INFO,
@@ -116,11 +117,23 @@ class AnonymizationImporter:
     ) -> Optional[AnonymizationConversation]:
         """Process a single conversation and its messages."""
         try:
-            # Extract messages
-            messages = chat_data.get('learn_counselling_messages', [])
+            # Extract messages from known conversation schemas
+            message_source_key, messages = AnonymizationPipelineService._extract_message_collection(chat_data)
             if not messages:
                 logger.warning(f"  No messages found in conversation {chat_data.get('id', 'unknown')}")
                 return None
+
+            normalized_messages = AnonymizationPipelineService._normalize_messages(messages)
+            if not normalized_messages:
+                logger.warning(f"  No valid textual messages in conversation {chat_data.get('id', 'unknown')}")
+                return None
+
+            metadata_json = AnonymizationPipelineService._build_metadata(
+                raw_conversation=chat_data,
+                message_source_key=message_source_key or 'learn_counselling_messages',
+                raw_messages=messages,
+                normalized_messages=normalized_messages
+            )
 
             # Create conversation record
             conversation = AnonymizationConversation(
@@ -130,6 +143,7 @@ class AnonymizationImporter:
                 status='pending',
                 original_created_at=self._parse_timestamp(chat_data.get('created_at')),
                 persona_json=chat_data.get('persona'),
+                metadata_json=metadata_json,
                 imported_by=self.user_id,
                 updated_by=self.user_id
             )
@@ -142,7 +156,7 @@ class AnonymizationImporter:
             conversation_entity_map = {}  # Shared map for all messages in this conversation
             date_shift_days = None  # Use same date shift for entire conversation
 
-            for msg_data in messages:
+            for msg_data in normalized_messages:
                 msg_entities, conversation_entity_map, date_shift_days = self._process_message(
                     conversation.id,
                     msg_data,
@@ -152,10 +166,10 @@ class AnonymizationImporter:
                 entity_count += msg_entities
 
             # Update counts
-            conversation.message_count = len(messages)
+            conversation.message_count = len(normalized_messages)
             conversation.entity_count = entity_count
 
-            self.stats['total_messages'] += len(messages)
+            self.stats['total_messages'] += len(normalized_messages)
             self.stats['total_entities'] += entity_count
 
             return conversation

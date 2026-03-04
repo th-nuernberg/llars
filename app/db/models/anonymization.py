@@ -7,7 +7,7 @@ anonymization tool, with manual review/editing and export functionality.
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Optional, Dict, List
+from typing import Optional, Dict, List, Any
 
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -40,6 +40,7 @@ class AnonymizationConversation(db.Model):
     entity_count: Mapped[int] = mapped_column(db.Integer, default=0, nullable=False)
     original_created_at: Mapped[Optional[datetime]] = mapped_column(db.DateTime, nullable=True)
     persona_json: Mapped[Optional[dict]] = mapped_column(db.JSON, nullable=True)
+    metadata_json: Mapped[Optional[dict]] = mapped_column(db.JSON, nullable=True)
 
     # Audit
     imported_at: Mapped[datetime] = mapped_column(db.DateTime, default=datetime.utcnow, nullable=False)
@@ -76,7 +77,37 @@ class AnonymizationConversation(db.Model):
     updated_by_user = db.relationship("User", foreign_keys=[updated_by])
     quality_reviewed_by_user = db.relationship("User", foreign_keys=[quality_reviewed_by])
 
-    def to_dict(self, include_messages: bool = False) -> Dict:
+    @staticmethod
+    def _metadata_list(metadata: Optional[dict], key: str) -> List[str]:
+        """Extract normalized string list from metadata.derived[key]."""
+        if not isinstance(metadata, dict):
+            return []
+
+        derived = metadata.get("derived")
+        if not isinstance(derived, dict):
+            return []
+
+        values = derived.get(key)
+        if not isinstance(values, list):
+            return []
+
+        normalized: List[str] = []
+        for value in values:
+            text = str(value).strip()
+            if text and text not in normalized:
+                normalized.append(text)
+        return normalized
+
+    @classmethod
+    def _build_metadata_summary(cls, metadata: Optional[dict]) -> Dict[str, Any]:
+        """Return lightweight metadata summary for table views."""
+        return {
+            "models": cls._metadata_list(metadata, "models"),
+            "providers": cls._metadata_list(metadata, "providers"),
+            "courses": cls._metadata_list(metadata, "courses"),
+        }
+
+    def to_dict(self, include_messages: bool = False, include_metadata: bool = False) -> Dict:
         """Serialize to dictionary."""
         data = {
             "id": self.id,
@@ -89,6 +120,7 @@ class AnonymizationConversation(db.Model):
             "entity_count": self.entity_count,
             "original_created_at": self.original_created_at.isoformat() if self.original_created_at else None,
             "persona": self.persona_json,
+            "metadata_summary": self._build_metadata_summary(self.metadata_json),
             "imported_at": self.imported_at.isoformat() if self.imported_at else None,
             "imported_by": self.imported_by,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
@@ -103,6 +135,9 @@ class AnonymizationConversation(db.Model):
 
         if include_messages:
             data["messages"] = [msg.to_dict(include_entities=True) for msg in self.messages]
+
+        if include_metadata:
+            data["metadata"] = self.metadata_json
 
         return data
 

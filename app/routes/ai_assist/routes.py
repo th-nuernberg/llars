@@ -47,6 +47,11 @@ def generate_field_value():
     # Get the prompt template
     template = FieldPromptService.get_by_field_key(field_key)
     if not template:
+        # Try once after seeding defaults so newly introduced field keys work
+        # without requiring a manual restart sequence.
+        FieldPromptService.seed_defaults()
+        template = FieldPromptService.get_by_field_key(field_key)
+    if not template:
         raise NotFoundError(f"No prompt template found for field: {field_key}")
 
     # Render the prompt

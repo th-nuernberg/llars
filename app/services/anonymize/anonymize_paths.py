@@ -11,6 +11,28 @@ from pathlib import Path
 from .anonymize_constants import _get_resource_base_dir
 
 
+def _resolve_ner_model_path(ner_dir: Path) -> Path:
+    """Resolve the best available local NER model artifact."""
+    explicit_model = os.environ.get("ANONYMIZE_NER_MODEL")
+    if explicit_model:
+        return Path(explicit_model)
+
+    candidates = [
+        ner_dir
+        / "6b8de9edd73722050be2547acf64c037b2df833c6e8f0e88934de08385e26c1e.4b0797effcc6ebb1889d5d29784b97f0a099c1569b319d87d7c387e44e2bba48",
+        ner_dir / "final-model.pt",
+        ner_dir / "best-model.pt",
+        ner_dir / "pytorch_model.bin",
+    ]
+
+    for candidate in candidates:
+        if candidate.exists():
+            return candidate
+
+    # Fallback preserves existing behavior for environments that fetch from HF.
+    return candidates[0]
+
+
 def get_paths() -> dict[str, Path]:
     """Get all paths for anonymize service resources."""
     base = _get_resource_base_dir()
@@ -18,10 +40,7 @@ def get_paths() -> dict[str, Path]:
     data_dir = Path(os.environ.get("ANONYMIZE_DATA_DIR", str(base / "data" / "anonymize")))
 
     ner_dir = model_dir / "ner-german-large"
-    ner_model_file = (
-        ner_dir
-        / "6b8de9edd73722050be2547acf64c037b2df833c6e8f0e88934de08385e26c1e.4b0797effcc6ebb1889d5d29784b97f0a099c1569b319d87d7c387e44e2bba48"
-    )
+    ner_model_file = _resolve_ner_model_path(ner_dir)
 
     recommender_dir = model_dir / "recommender_system"
     return {

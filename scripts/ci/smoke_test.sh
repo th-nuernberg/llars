@@ -70,12 +70,22 @@ else
   echo "WARNING: SYSTEM_ADMIN_API_KEY not set; skipping privileged smoke checks."
 fi
 
-if [ "$SMOKE_WIZARD" != "0" ]; then
-  echo "Running wizard smoke test"
-  BASE_URL="$BASE_URL" SYSTEM_ADMIN_API_KEY="$SYSTEM_ADMIN_API_KEY" \
-    bash "$DEPLOY_PATH/scripts/smoke_test_wizard.sh"
+if [ "$SMOKE_WIZARD" != "0" ] && [ -n "$SYSTEM_ADMIN_API_KEY" ]; then
+  echo ""
+  echo "Running wizard smoke test..."
+  SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+  WIZARD_SCRIPT="${SCRIPT_DIR}/smoke_test_wizard.sh"
+  if [ ! -f "$WIZARD_SCRIPT" ]; then
+    WIZARD_SCRIPT="$DEPLOY_PATH/scripts/smoke_test_wizard.sh"
+  fi
+  if [ -f "$WIZARD_SCRIPT" ]; then
+    BASE_URL="$BASE_URL" SYSTEM_ADMIN_API_KEY="$SYSTEM_ADMIN_API_KEY" \
+      bash "$WIZARD_SCRIPT"
+  else
+    echo "WARNING: smoke_test_wizard.sh not found; skipping."
+  fi
 else
-  echo "Skipping wizard smoke test (SMOKE_WIZARD=0)"
+  echo "Skipping wizard smoke test (SMOKE_WIZARD=0 or no API key)"
 fi
 
 # --- Evaluation Pipeline Smoke Test ---

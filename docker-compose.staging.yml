@@ -1,48 +1,29 @@
 # =============================================================================
-# LLARS Staging Docker Compose Override
+# LLARS Staging Docker Compose Override (Blue-Green)
 # =============================================================================
-# Runs staging application containers in parallel with production on port 55080.
-# Shared services (DB, Redis, Authentik) use existing production containers.
+# Runs staging nginx on port 55080 pointing to the inactive blue-green color.
+# The staging nginx reads active_upstream_staging.conf which is written by
+# deploy_bluegreen.sh to point to the inactive color containers.
 #
-# Usage:
+# Only the nginx service is needed for staging - the actual app containers
+# are started by deploy_bluegreen.sh using docker-compose.prod-bluegreen.yml.
+#
+# Usage (via deploy_bluegreen.sh):
 #   docker compose -f docker-compose.yml -f docker-compose.prod.yml \
-#     -f docker-compose.staging.yml up -d \
-#     nginx-service backend-flask-service frontend-vue-service \
-#     backend-supervisor-service yjs-service
+#     -f docker-compose.staging.yml up -d nginx-service
 # =============================================================================
 
 services:
-  # --- Staging-specific containers (separate from production) ---
-
   nginx-service:
     container_name: llars_staging_nginx
     environment:
       - NGINX_NO_SSL=true
     ports:
       - "55080:80"
-    depends_on:
-      backend-flask-service:
-        condition: service_healthy
-      frontend-vue-service:
-        condition: service_healthy
-
-  backend-flask-service:
-    container_name: llars_staging_flask
-    healthcheck:
-      test: ["CMD", "/usr/local/bin/healthcheck.sh"]
-      start_period: 90s
-      interval: 10s
-      timeout: 10s
-      retries: 10
-
-  backend-supervisor-service:
-    container_name: llars_staging_supervisor
-
-  frontend-vue-service:
-    container_name: llars_staging_frontend
-
-  yjs-service:
-    container_name: llars_staging_yjs
+    volumes:
+      # Override upstream to point to inactive color for staging
+      - ./docker/nginx/active_upstream_staging.conf:/etc/nginx/active_upstream.conf:ro
+    depends_on: []
 
   # Shared services use production containers - no overrides needed:
   # db-maria-service, llars-redis, authentik-*, matomo-*

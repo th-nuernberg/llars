@@ -323,7 +323,7 @@ deploy:staging:
   script:
     - echo "=== LLARS Blue-Green Staging Deployment ==="
     - echo "Timestamp:" $(date)
-    - bash scripts/ci/deploy_staging_bluegreen.sh
+    - bash scripts/ci/deploy_bluegreen.sh deploy
   rules:
     - *test_only_skip
     - if: $CI_PIPELINE_SOURCE == "schedule" && $SCHEDULED_DEPLOY == "true"
@@ -403,18 +403,18 @@ deploy:production:
   stage: deploy
   tags:
     - shell
-  timeout: 30 minutes
+  timeout: 5 minutes
   environment:
     name: production
     url: http://141.75.150.128
   resource_group: production
   script:
     - echo "=========================================="
-    - echo "=== LLARS PRODUCTION DEPLOYMENT ========="
+    - echo "=== LLARS PRODUCTION SWITCH ============="
     - echo "=========================================="
     - echo "Timestamp:" $(date)
     - echo "Server:" $(hostname)
-    - bash scripts/ci/deploy_production.sh
+    - bash scripts/ci/deploy_bluegreen.sh switch
   rules:
     - *test_only_skip
     - if: $CI_PIPELINE_SOURCE == "schedule" && $SCHEDULED_DEPLOY == "true"
@@ -445,8 +445,8 @@ smoke:production:
   after_script:
     - |
       if [ "$CI_JOB_STATUS" != "success" ]; then
-        echo "Smoke tests failed; triggering rollback."
-        bash scripts/ci/rollback_production.sh || true
+        echo "Smoke tests failed; triggering instant rollback."
+        bash scripts/ci/rollback_bluegreen.sh || bash scripts/ci/rollback_production.sh || true
       fi
   rules:
     - *test_only_skip
@@ -470,7 +470,7 @@ rollback:production:
   resource_group: production
   script:
     - echo "=== EMERGENCY ROLLBACK ==="
-    - bash scripts/ci/rollback_production.sh
+    - bash scripts/ci/rollback_bluegreen.sh || bash scripts/ci/rollback_production.sh
   rules:
     - *test_only_skip
     - if: $CI_COMMIT_BRANCH == "main"

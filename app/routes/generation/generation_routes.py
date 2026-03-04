@@ -535,6 +535,14 @@ def create_scenario_from_job(job_id: int):
         username, scenario.id, job_id, len(invited_users)
     )
 
+    # Auto-start LLM assessors if configured
+    if llm_evaluators:
+        from services.llm.llm_ai_task_runner import LLMAITaskRunner
+        LLMAITaskRunner.run_for_scenario_async(
+            scenario.id,
+            model_ids=llm_evaluators,
+        )
+
     return jsonify({
         'success': True,
         'scenario_id': scenario.id,

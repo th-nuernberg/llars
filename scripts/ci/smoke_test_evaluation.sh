@@ -38,6 +38,7 @@ if [ -z "$API_KEY" ]; then
 fi
 
 SCENARIO_ID=""
+FUNCTION_TYPE_ID=""
 
 # Colors
 RED='\033[0;31m'
@@ -48,7 +49,7 @@ log_ok()  { echo -e "${GREEN}[OK]${NC} $1"; }
 log_err() { echo -e "${RED}[ERROR]${NC} $1"; }
 
 cleanup() {
-  if [ -n "$SCENARIO_ID" ]; then
+  if [ -n "${SCENARIO_ID:-}" ]; then
     echo "Cleanup: Deleting smoke test scenario $SCENARIO_ID..."
     curl -sf -X DELETE "$BASE_URL/api/admin/delete_scenario/$SCENARIO_ID" \
       -H "X-API-Key: $API_KEY" || true
@@ -82,32 +83,92 @@ fi
 log_ok "API healthy"
 
 # -------------------------------------------------------------------------
-# [2] Create Scenario (type: rating, multi-dimensional)
+# [2] Resolve Function Type (rating)
 # -------------------------------------------------------------------------
 echo ""
-echo "[2/6] Creating rating scenario..."
-SCENARIO_RESPONSE=$(api POST "/api/admin/create_scenario" -d '{
-  "name": "smoke-test-eval-'"$(date +%s)"'",
-  "function_type": 2,
-  "start_time": "2020-01-01",
-  "end_time": "2030-12-31",
-  "config_json": {
-    "type": "multi-dimensional",
-    "min": 1,
-    "max": 5,
-    "step": 1,
-    "dimensions": [
-      {"id": "coherence", "name": {"de": "Kohaerenz", "en": "Coherence"}, "weight": 0.5},
-      {"id": "fluency", "name": {"de": "Fluessigkeit", "en": "Fluency"}, "weight": 0.5}
-    ],
-    "labels": {
-      "1": {"de": "Sehr schlecht", "en": "Very bad"},
-      "5": {"de": "Sehr gut", "en": "Very good"}
-    }
-  }
-}')
+echo "[2/6] Resolving rating function type..."
+FUNCTION_TYPES_RESPONSE="$(api GET "/api/admin/get_function_types" 2>/dev/null || echo "[]")"
+FUNCTION_TYPE_ID="$(echo "$FUNCTION_TYPES_RESPONSE" | python3 -c "
+import sys, json
+data = json.load(sys.stdin)
+if isinstance(data, list):
+    for entry in data:
+        if str(entry.get('name', '')).strip().lower() == 'rating':
+            print(entry.get('function_type_id', ''))
+            break
+" 2>/dev/null)"
 
-SCENARIO_ID=$(echo "$SCENARIO_RESPONSE" | python3 -c "import sys,json; print(json.load(sys.stdin).get('scenario_id',''))" 2>/dev/null)
+if [ -z "$FUNCTION_TYPE_ID" ]; then
+  FUNCTION_TYPE_ID="${EVAL_FUNCTION_TYPE_ID:-2}"
+  echo "WARN: Could not resolve function_type_id for 'rating' via API; using fallback=$FUNCTION_TYPE_ID"
+fi
+log_ok "Resolved rating function_type_id=$FUNCTION_TYPE_ID"
+
+# -------------------------------------------------------------------------
+# [3] Fetch candidate threads
+# -------------------------------------------------------------------------
+echo ""
+echo "[3/6] Fetching candidate threads for rating..."
+THREADS_RESPONSE="$(api GET "/api/admin/get_threads_from_function_type/$FUNCTION_TYPE_ID" 2>/dev/null || echo "[]")"
+THREAD_IDS_JSON="$(echo "$THREADS_RESPONSE" | python3 -c "
+import sys, json
+data = json.load(sys.stdin)
+if not isinstance(data, list):
+    print('[]')
+else:
+    ids = [int(i.get('thread_id')) for i in data if isinstance(i, dict) and i.get('thread_id')][:2]
+    print(json.dumps(ids))
+" 2>/dev/null)"
+THREAD_COUNT="$(echo "$THREAD_IDS_JSON" | python3 -c "import sys,json; print(len(json.load(sys.stdin)))" 2>/dev/null || echo "0")"
+if [ "$THREAD_COUNT" -gt 0 ]; then
+  log_ok "Found $THREAD_COUNT thread(s) for scenario bootstrap"
+else
+  echo "WARN: No rating threads found. Scenario will be created without threads."
+fi
+
+# -------------------------------------------------------------------------
+# [4] Create Scenario (type: rating, multi-dimensional)
+# -------------------------------------------------------------------------
+echo ""
+echo "[4/6] Creating rating scenario..."
+CREATE_PAYLOAD="$(THREAD_IDS_JSON="$THREAD_IDS_JSON" FUNCTION_TYPE_ID="$FUNCTION_TYPE_ID" python3 - <<'PY'
+import json
+import os
+import time
+
+thread_ids = json.loads(os.environ.get("THREAD_IDS_JSON", "[]"))
+function_type_id = int(os.environ["FUNCTION_TYPE_ID"])
+
+payload = {
+    "scenario_name": f"smoke-test-eval-{int(time.time())}",
+    "function_type_id": function_type_id,
+    "begin": "2020-01-01T00:00:00",
+    "end": "2030-12-31T23:59:59",
+    "evaluator": ["admin"],
+    "config_json": {
+        "type": "multi-dimensional",
+        "min": 1,
+        "max": 5,
+        "step": 1,
+        "dimensions": [
+            {"id": "coherence", "name": {"de": "Kohaerenz", "en": "Coherence"}, "weight": 0.5},
+            {"id": "fluency", "name": {"de": "Fluency", "en": "Fluency"}, "weight": 0.5}
+        ],
+        "labels": {
+            "1": {"de": "Sehr schlecht", "en": "Very bad"},
+            "5": {"de": "Sehr gut", "en": "Very good"}
+        }
+    }
+}
+if thread_ids:
+    payload["threads"] = thread_ids
+
+print(json.dumps(payload))
+PY
+)"
+
+SCENARIO_RESPONSE="$(api POST "/api/admin/create_scenario" -d "$CREATE_PAYLOAD" 2>/dev/null || true)"
+SCENARIO_ID="$(echo "$SCENARIO_RESPONSE" | python3 -c "import sys,json; print(json.load(sys.stdin).get('scenario_id',''))" 2>/dev/null || true)"
 
 if [ -z "$SCENARIO_ID" ]; then
   log_err "Failed to create scenario"
@@ -117,117 +178,56 @@ fi
 log_ok "Scenario created: ID=$SCENARIO_ID"
 
 # -------------------------------------------------------------------------
-# [3] Add Items to Scenario
+# [5] Submit rating (if item exists) and verify stats
 # -------------------------------------------------------------------------
 echo ""
-echo "[3/6] Adding items to scenario..."
-
-# First, get available items (threads/evaluation items)
-ITEMS_RESPONSE=$(api GET "/api/admin/get_unassigned_items?scenario_id=$SCENARIO_ID&limit=2" 2>/dev/null || echo '{"items":[]}')
-
-ITEM_IDS=$(echo "$ITEMS_RESPONSE" | python3 -c "
-import sys, json
-data = json.load(sys.stdin)
-items = data.get('items', data.get('threads', []))
-ids = [str(i.get('id', i.get('thread_id', ''))) for i in items[:2]]
-print(','.join(ids))
-" 2>/dev/null)
-
-if [ -z "$ITEM_IDS" ] || [ "$ITEM_IDS" = "" ]; then
-  echo "No existing items found. Creating inline items via edit_scenario..."
-  # Add items inline via scenario edit - create simple evaluation items
-  ADD_RESPONSE=$(api POST "/api/admin/edit_scenario" -d '{
-    "scenario_id": '"$SCENARIO_ID"',
-    "add_items": [
-      {"content": "This is smoke test item 1 for evaluation pipeline testing."},
-      {"content": "This is smoke test item 2 for evaluation pipeline testing."}
-    ]
-  }' 2>/dev/null || echo '{"error":"edit not supported"}')
-
-  # Try to get items from the scenario
-  RATING_ITEMS=$(api GET "/api/evaluation/rating/$SCENARIO_ID/items" 2>/dev/null || echo '{"items":[]}')
-  FIRST_ITEM_ID=$(echo "$RATING_ITEMS" | python3 -c "
+echo "[5/6] Fetching rating items..."
+RATING_ITEMS="$(api GET "/api/evaluation/rating/$SCENARIO_ID/items" 2>/dev/null || echo '{"items":[]}' )"
+FIRST_ITEM_ID="$(echo "$RATING_ITEMS" | python3 -c "
 import sys, json
 data = json.load(sys.stdin)
 items = data.get('items', [])
 if items:
-    print(items[0].get('id', items[0].get('item_id', items[0].get('thread_id', ''))))
+    item = items[0]
+    print(item.get('item_id', item.get('id', item.get('thread_id', ''))))
 else:
     print('')
-" 2>/dev/null)
-else
-  # Add the found items to the scenario
-  IFS=',' read -ra ID_ARR <<< "$ITEM_IDS"
-  THREAD_IDS_JSON=$(printf '%s\n' "${ID_ARR[@]}" | python3 -c "
-import sys, json
-ids = [int(line.strip()) for line in sys.stdin if line.strip()]
-print(json.dumps(ids))
-")
+" 2>/dev/null)"
 
-  api POST "/api/admin/add_threads_to_scenario" -d "{
-    \"scenario_id\": $SCENARIO_ID,
-    \"thread_ids\": $THREAD_IDS_JSON
-  }" > /dev/null 2>&1 || true
-
-  FIRST_ITEM_ID="${ID_ARR[0]}"
-fi
-
-if [ -z "$FIRST_ITEM_ID" ]; then
-  echo "WARN: Could not add items to scenario. Skipping rating step."
-  echo "       This may happen on a fresh database with no evaluation items."
-  log_ok "Scenario creation and API access verified (no items to rate)"
-
-  # Still verify stats endpoint works
-  echo ""
-  echo "[5/6] Verifying stats endpoint..."
-  STATS=$(api GET "/api/admin/scenario_progress_stats/$SCENARIO_ID" 2>/dev/null || echo '{}')
-  if echo "$STATS" | python3 -c "import sys,json; json.load(sys.stdin)" 2>/dev/null; then
-    log_ok "Stats endpoint returns valid JSON"
-  else
-    log_err "Stats endpoint returned invalid response"
-    exit 1
-  fi
-else
+if [ -n "$FIRST_ITEM_ID" ]; then
   log_ok "Items available: first_item=$FIRST_ITEM_ID"
-
-  # -----------------------------------------------------------------------
-  # [4] Submit Dimensional Rating
-  # -----------------------------------------------------------------------
-  echo ""
-  echo "[4/6] Submitting dimensional rating for item $FIRST_ITEM_ID..."
-  RATE_RESPONSE=$(api POST "/api/evaluation/rating/$SCENARIO_ID/items/$FIRST_ITEM_ID/rate" -d '{
+  echo "Submitting dimensional rating..."
+  RATE_RESPONSE="$(api POST "/api/evaluation/rating/$SCENARIO_ID/items/$FIRST_ITEM_ID/rate" -d '{
     "dimension_ratings": {"coherence": 4, "fluency": 5},
-    "feedback": "Smoke test rating"
-  }' 2>/dev/null || echo '{"error":"rating failed"}')
+    "feedback": "Smoke test rating",
+    "auto_complete": true
+  }' 2>/dev/null || echo '{"success":false}')"
 
-  if echo "$RATE_RESPONSE" | python3 -c "import sys,json; d=json.load(sys.stdin); assert 'error' not in d or d.get('success')" 2>/dev/null; then
+  if echo "$RATE_RESPONSE" | python3 -c "import sys,json; d=json.load(sys.stdin); assert d.get('success') is True" 2>/dev/null; then
     log_ok "Rating submitted successfully"
   else
-    echo "WARN: Rating submission returned: $RATE_RESPONSE"
-    echo "       (This may be expected if item is not assigned to admin user)"
+    echo "WARN: Rating submission did not return success=true"
+    echo "Response: $RATE_RESPONSE"
   fi
-
-  # -----------------------------------------------------------------------
-  # [5] Verify Scenario Stats
-  # -----------------------------------------------------------------------
-  echo ""
-  echo "[5/6] Verifying scenario progress stats..."
-  STATS=$(api GET "/api/admin/scenario_progress_stats/$SCENARIO_ID" 2>/dev/null || echo '{}')
-  if echo "$STATS" | python3 -c "import sys,json; json.load(sys.stdin)" 2>/dev/null; then
-    log_ok "Stats endpoint returns valid JSON"
-  else
-    log_err "Stats endpoint returned invalid response"
-    echo "Response: $STATS"
-    exit 1
-  fi
+else
+  echo "WARN: No assigned items returned. Skipping rating submission."
 fi
 
 # -------------------------------------------------------------------------
-# [6] Cleanup (via trap)
+# [6] Verify stats endpoint and cleanup (via trap)
 # -------------------------------------------------------------------------
 echo ""
-echo "[6/6] Cleaning up scenario $SCENARIO_ID..."
-# Cleanup runs via trap
+echo "[6/6] Verifying scenario progress stats..."
+STATS="$(api GET "/api/admin/scenario_progress_stats/$SCENARIO_ID" 2>/dev/null || echo '{}')"
+if echo "$STATS" | python3 -c "import sys,json; json.load(sys.stdin)" 2>/dev/null; then
+  log_ok "Stats endpoint returns valid JSON"
+else
+  log_err "Stats endpoint returned invalid response"
+  echo "Response: $STATS"
+  exit 1
+fi
+
+echo "Cleanup will run via trap..."
 
 echo ""
 echo "=== Evaluation Pipeline Smoke Test PASSED ==="

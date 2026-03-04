@@ -127,11 +127,26 @@
         <!-- Series Rows -->
         <div v-if="!group.collapsed" class="list-container">
           <div class="list-header">
-            <div class="col-ranking">{{ t('conferenceManager.conference.coreRanking') }}</div>
-            <div class="col-name">{{ t('conferenceManager.conference.name') }}</div>
-            <div class="col-deadline">{{ t('conferenceManager.conference.submissionDeadline') }}</div>
-            <div class="col-dates">{{ t('conferenceManager.conference.startDate') }}</div>
-            <div class="col-location">{{ t('conferenceManager.conference.location') }}</div>
+            <div class="col-ranking sortable-col" @click="toggleSort('core_ranking')">
+              {{ t('conferenceManager.conference.coreRanking') }}
+              <v-icon v-if="sortField === 'core_ranking'" size="12" class="sort-icon">{{ sortAsc ? 'mdi-arrow-up' : 'mdi-arrow-down' }}</v-icon>
+            </div>
+            <div class="col-name sortable-col" @click="toggleSort('acronym')">
+              {{ t('conferenceManager.conference.name') }}
+              <v-icon v-if="sortField === 'acronym'" size="12" class="sort-icon">{{ sortAsc ? 'mdi-arrow-up' : 'mdi-arrow-down' }}</v-icon>
+            </div>
+            <div class="col-deadline sortable-col" @click="toggleSort('submission_deadline')">
+              {{ t('conferenceManager.conference.submissionDeadline') }}
+              <v-icon v-if="sortField === 'submission_deadline'" size="12" class="sort-icon">{{ sortAsc ? 'mdi-arrow-up' : 'mdi-arrow-down' }}</v-icon>
+            </div>
+            <div class="col-dates sortable-col" @click="toggleSort('start_date')">
+              {{ t('conferenceManager.conference.startDate') }}
+              <v-icon v-if="sortField === 'start_date'" size="12" class="sort-icon">{{ sortAsc ? 'mdi-arrow-up' : 'mdi-arrow-down' }}</v-icon>
+            </div>
+            <div class="col-location sortable-col" @click="toggleSort('location')">
+              {{ t('conferenceManager.conference.location') }}
+              <v-icon v-if="sortField === 'location'" size="12" class="sort-icon">{{ sortAsc ? 'mdi-arrow-up' : 'mdi-arrow-down' }}</v-icon>
+            </div>
             <div class="col-actions" />
           </div>
           <div
@@ -185,20 +200,45 @@
     </template>
 
     <!-- Flat List -->
-    <div v-else-if="filteredConferences.length" class="list-container">
+    <div v-else-if="sortedConferences.length" class="list-container">
       <!-- Header -->
       <div class="list-header">
-        <div class="col-ranking">{{ t('conferenceManager.conference.coreRanking') }}</div>
-        <div class="col-name">{{ t('conferenceManager.conference.name') }}</div>
-        <div class="col-deadline">{{ t('conferenceManager.conference.submissionDeadline') }}</div>
-        <div class="col-dates">{{ t('conferenceManager.conference.startDate') }}</div>
-        <div class="col-location">{{ t('conferenceManager.conference.location') }}</div>
+        <div class="col-ranking sortable-col" @click="toggleSort('core_ranking')">
+          {{ t('conferenceManager.conference.coreRanking') }}
+          <v-icon v-if="sortField === 'core_ranking'" size="12" class="sort-icon">
+            {{ sortAsc ? 'mdi-arrow-up' : 'mdi-arrow-down' }}
+          </v-icon>
+        </div>
+        <div class="col-name sortable-col" @click="toggleSort('acronym')">
+          {{ t('conferenceManager.conference.name') }}
+          <v-icon v-if="sortField === 'acronym'" size="12" class="sort-icon">
+            {{ sortAsc ? 'mdi-arrow-up' : 'mdi-arrow-down' }}
+          </v-icon>
+        </div>
+        <div class="col-deadline sortable-col" @click="toggleSort('submission_deadline')">
+          {{ t('conferenceManager.conference.submissionDeadline') }}
+          <v-icon v-if="sortField === 'submission_deadline'" size="12" class="sort-icon">
+            {{ sortAsc ? 'mdi-arrow-up' : 'mdi-arrow-down' }}
+          </v-icon>
+        </div>
+        <div class="col-dates sortable-col" @click="toggleSort('start_date')">
+          {{ t('conferenceManager.conference.startDate') }}
+          <v-icon v-if="sortField === 'start_date'" size="12" class="sort-icon">
+            {{ sortAsc ? 'mdi-arrow-up' : 'mdi-arrow-down' }}
+          </v-icon>
+        </div>
+        <div class="col-location sortable-col" @click="toggleSort('location')">
+          {{ t('conferenceManager.conference.location') }}
+          <v-icon v-if="sortField === 'location'" size="12" class="sort-icon">
+            {{ sortAsc ? 'mdi-arrow-up' : 'mdi-arrow-down' }}
+          </v-icon>
+        </div>
         <div class="col-actions" />
       </div>
 
       <!-- Rows -->
       <div
-        v-for="conf in filteredConferences"
+        v-for="conf in sortedConferences"
         :key="conf.id"
         class="list-row"
         @click="editConference(conf)"
@@ -322,6 +362,7 @@
 <script setup>
 import { ref, reactive, watch, onMounted, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useRoute } from 'vue-router'
 import { CORE_RANKINGS } from '../config/conferenceConfig'
 import { useConferenceManager } from '../composables/useConferenceManager'
 import CoreRankingChip from './CoreRankingChip.vue'
@@ -330,12 +371,15 @@ import ConferenceWizardDialog from './ConferenceWizardDialog.vue'
 import VenueMapPopup from './VenueMapPopup.vue'
 
 const { t } = useI18n()
+const route = useRoute()
 const { conferences, loading, fetchConferences, deleteConference, getNewEditionDefaults } = useConferenceManager()
 
 const search = ref('')
 const filterRanking = ref(null)
 const filterYear = ref(null)
 const groupBySeries = ref(false)
+const sortField = ref(route.query.sort || null)
+const sortAsc = ref(true)
 const formDialog = ref(false)
 const editingConference = ref(null)
 const deleteDialog = ref(false)
@@ -359,6 +403,59 @@ const filteredConferences = computed(() => {
     )
   }
   return result
+})
+
+const RANKING_ORDER = { 'A*': 0, 'A': 1, 'B': 2, 'C': 3, 'Unranked': 4 }
+
+function compareFn(a, b, field, asc) {
+  let va, vb
+  if (field === 'core_ranking') {
+    va = RANKING_ORDER[a.core_ranking] ?? 5
+    vb = RANKING_ORDER[b.core_ranking] ?? 5
+  } else if (field === 'acronym') {
+    va = `${a.acronym || ''} ${a.year || 0}`.toLowerCase()
+    vb = `${b.acronym || ''} ${b.year || 0}`.toLowerCase()
+  } else if (field === 'location') {
+    va = [a.city, a.country].filter(Boolean).join(', ').toLowerCase()
+    vb = [b.city, b.country].filter(Boolean).join(', ').toLowerCase()
+  } else if (field === 'submission_deadline') {
+    // Smart deadline sort: future deadlines first (soonest on top), then past
+    const da = a.submission_deadline ? new Date(a.submission_deadline) : null
+    const db = b.submission_deadline ? new Date(b.submission_deadline) : null
+    if (!da && !db) return 0
+    if (!da) return 1
+    if (!db) return -1
+    const now = Date.now()
+    const fa = da.getTime() >= now  // future?
+    const fb = db.getTime() >= now
+    if (fa !== fb) {
+      // One future, one past: future always first in asc, past first in desc
+      return fa ? (asc ? -1 : 1) : (asc ? 1 : -1)
+    }
+    if (fa) {
+      // Both future: soonest first in asc
+      return asc ? da - db : db - da
+    }
+    // Both past: most recent first in asc
+    return asc ? db - da : da - db
+  } else {
+    va = a[field] || ''
+    vb = b[field] || ''
+  }
+  if (va !== undefined && vb !== undefined) {
+    if (!va && !vb) return 0
+    if (!va) return 1
+    if (!vb) return -1
+    if (va < vb) return asc ? -1 : 1
+    if (va > vb) return asc ? 1 : -1
+  }
+  return 0
+}
+
+const sortedConferences = computed(() => {
+  const list = [...filteredConferences.value]
+  if (!sortField.value) return list
+  return list.sort((a, b) => compareFn(a, b, sortField.value, sortAsc.value))
 })
 
 const groupedConferences = computed(() => {
@@ -395,10 +492,24 @@ const groupedConferences = computed(() => {
     }))
   }
 
+  // Apply current sort to items within each group
+  if (sortField.value) {
+    for (const group of result) {
+      group.items.sort((a, b) => compareFn(a, b, sortField.value, sortAsc.value))
+    }
+  }
+
   return result
 })
 
 onMounted(() => loadData())
+
+watch(() => route.query.sort, (val) => {
+  if (val && val !== sortField.value) {
+    sortField.value = val
+    sortAsc.value = true
+  }
+})
 
 watch([filterRanking, filterYear], () => loadData())
 
@@ -407,6 +518,22 @@ function loadData() {
     core_ranking: filterRanking.value,
     year: filterYear.value,
   })
+}
+
+function toggleSort(field) {
+  if (sortField.value === field) {
+    if (!sortAsc.value) {
+      // Third click: remove sort
+      sortField.value = null
+    } else {
+      // Second click: descending
+      sortAsc.value = false
+    }
+  } else {
+    // First click: ascending
+    sortField.value = field
+    sortAsc.value = true
+  }
 }
 
 function showCreate() {
@@ -578,6 +705,23 @@ function isDeadlineSoon(isoStr) {
   border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.08);
   background: rgba(var(--v-theme-on-surface), 0.02);
   user-select: none;
+}
+
+.sortable-col {
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  transition: color 0.15s;
+}
+
+.sortable-col:hover {
+  color: rgba(var(--v-theme-on-surface), 0.75);
+}
+
+.sort-icon {
+  margin-left: auto;
+  opacity: 0.7;
+  flex-shrink: 0;
 }
 
 .list-row {

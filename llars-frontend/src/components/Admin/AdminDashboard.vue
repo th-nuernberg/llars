@@ -175,6 +175,11 @@
           <div v-else-if="activeSection === 'communication'" key="communication" class="section-container">
             <AdminCommunicationSection />
           </div>
+
+          <!-- Research Groups Section -->
+          <div v-else-if="activeSection === 'research-groups'" key="research-groups" class="section-container">
+            <AdminResearchGroupsSection />
+          </div>
         </v-fade-transition>
       </div>
     </main>
@@ -206,6 +211,7 @@ import AdminReferralSection from './sections/AdminReferralSection.vue';
 import AdminPresenceSection from './sections/AdminPresenceSection.vue';
 import AdminFieldPromptsSection from './sections/AdminFieldPromptsSection.vue';
 import AdminCommunicationSection from './sections/AdminCommunicationSection.vue';
+import AdminResearchGroupsSection from './sections/AdminResearchGroupsSection.vue';
 import ChatbotManager from './ChatbotAdmin/ChatbotManager.vue';
 import WebCrawlerTool from './CrawlerAdmin/WebCrawlerTool.vue';
 import AppSidebar from '@/components/common/AppSidebar.vue';
@@ -256,6 +262,7 @@ const navItems = [
   { titleKey: 'adminDashboard.nav.rag', value: 'rag', icon: 'mdi-database-search', permission: 'feature:rag:view' },
   { titleKey: 'adminDashboard.nav.permissions', value: 'permissions', icon: 'mdi-shield-lock', adminOnly: true },
   { titleKey: 'adminDashboard.nav.llmProviders', value: 'llm-providers', icon: 'mdi-connection', adminOnly: true },
+  { titleKey: 'adminDashboard.nav.researchGroups', value: 'research-groups', icon: 'mdi-account-group', adminOnly: true },
 ];
 
 const filteredNavItems = computed(() => {

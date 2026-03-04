@@ -57,7 +57,7 @@
               </LTag>
               <!-- Invitation Status Badge -->
               <LTag
-                v-if="member.invitation_status && member.invitation_status !== 'accepted' && member.role !== 'Owner'"
+                v-if="member.invitation_status && member.invitation_status !== 'accepted' && !isOwner(member)"
                 :variant="getInvitationVariant(member.invitation_status)"
                 size="sm"
               >
@@ -71,7 +71,7 @@
               {{ member.completed || 0 }} / {{ member.total || 0 }}
             </span>
           </div>
-          <div class="member-actions" v-if="canManage && member.role !== 'Owner'">
+          <div class="member-actions" v-if="canManage && !isOwner(member)">
             <!-- Re-invite button for rejected members -->
             <LBtn
               v-if="member.invitation_status === 'rejected'"
@@ -133,7 +133,18 @@
           </div>
           <div class="member-info">
             <span class="member-name">{{ llm.model_name }}</span>
-            <span class="member-detail">{{ llm.provider }}</span>
+            <div class="member-meta">
+              <span class="member-detail">{{ llm.provider }}</span>
+              <LTag v-if="llm.status === 'failed' || llm.status === 'stopped'" variant="danger" size="sm">
+                {{ $t(`scenarioManager.team.llm${llm.status === 'failed' ? 'Failed' : 'Stopped'}`) }}
+              </LTag>
+              <LTag v-else-if="llm.status === 'completed'" variant="success" size="sm">
+                {{ $t('scenarioManager.team.llmCompleted') }}
+              </LTag>
+              <LTag v-else-if="llm.status === 'running'" variant="info" size="sm">
+                {{ $t('scenarioManager.team.llmRunning') }}
+              </LTag>
+            </div>
           </div>
           <div class="member-stats">
             <span class="stat">
@@ -155,8 +166,20 @@
             </span>
           </div>
           <div class="member-actions" v-if="canManage">
+            <!-- Start button: model has not started yet -->
             <LBtn
-              v-if="llm.errorCount > 0"
+              v-if="llm.completed === 0 && llm.errorCount === 0 && llm.status !== 'running'"
+              variant="primary"
+              size="small"
+              :loading="retryingModel === llm.id"
+              @click="retryLLM(llm)"
+            >
+              <LIcon start size="16">mdi-play</LIcon>
+              {{ $t('scenarioManager.team.startLLM') }}
+            </LBtn>
+            <!-- Retry button: model has errors -->
+            <LBtn
+              v-else-if="(llm.errorCount > 0 || llm.status === 'stopped' || llm.status === 'failed') && llm.status !== 'running'"
               variant="accent"
               size="small"
               :loading="retryingModel === llm.id"
@@ -374,12 +397,13 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useI18n } from 'vue-i18n'
 import axios from 'axios'
 import { useScenarioManager } from '../../composables/useScenarioManager'
 import { useModelRegistry } from '@/composables/useModelRegistry'
 import { useAuth } from '@/composables/useAuth'
+import { getSocket } from '@/services/socketService'
 import LAvatar from '@/components/common/LAvatar.vue'
 import LUserSearch from '@/components/common/LUserSearch.vue'
 
@@ -398,7 +422,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['team-updated'])
+const emit = defineEmits(['team-updated', 'refreshStats'])
 
 const { t } = useI18n()
 const {
@@ -466,7 +490,7 @@ const excludedUsernames = computed(() => {
 })
 
 // Assessor-type roles (shown in the Assessors tab)
-const ASSESSOR_ROLES = ['Assessor', 'Evaluator', 'Owner']
+const ASSESSOR_ROLES = ['Assessor', 'Evaluator']
 
 // Computed
 const evaluators = computed(() => {
@@ -478,8 +502,8 @@ const evaluators = computed(() => {
     users = props.scenario?.users?.filter(u => !u.is_llm) || []
   }
 
-  // Filter: only show Assessors (and Owner). Manager and Viewer belong to Collaboration in Settings.
-  users = users.filter(u => ASSESSOR_ROLES.includes(u.role))
+  // Filter: show Assessors and Owner. Manager and Viewer (non-owner) belong to Collaboration in Settings.
+  users = users.filter(u => ASSESSOR_ROLES.includes(u.role) || isOwner(u))
 
   // Merge with live stats to get completed/total counts
   // userStatsList contains all human users with their progress
@@ -532,14 +556,32 @@ const llmEvaluators = computed(() => {
       s.name?.includes(modelName)
     )
 
+    // Determine model status
+    const completed = liveData?.completed || 0
+    const total = liveData?.total || 0
+    const errorCount = liveData?.errorCount || 0
+    let status = 'pending'
+    if (liveData?.status) {
+      status = liveData.status
+    } else if (completed >= total && total > 0) {
+      status = 'completed'
+    } else if (errorCount > 0 && completed + errorCount < total) {
+      status = 'stopped'
+    } else if (errorCount > 0 && completed + errorCount >= total) {
+      status = 'failed'
+    } else if (completed > 0) {
+      status = 'running'
+    }
+
     return {
       id: modelId,
       model_name: modelName,
       provider: provider,
-      completed: liveData?.completed || 0,
-      total: liveData?.total || 0,
-      errorCount: liveData?.errorCount || 0,
+      completed,
+      total,
+      errorCount,
       recentErrors: liveData?.recentErrors || [],
+      status,
     }
   })
 })
@@ -728,10 +770,28 @@ async function addLLMEvaluator() {
   }
 }
 
+// Socket listener for model_aborted events
+const onModelAborted = () => {
+  emit('refreshStats')
+}
+
 onMounted(async () => {
   if (props.scenario?.id) {
     // Load team data with invitation status (only for owners)
     await loadTeamData()
+
+    // Listen for model aborted events to refresh stats
+    const socket = getSocket()
+    if (socket) {
+      socket.on('llm_eval:model_aborted', onModelAborted)
+    }
+  }
+})
+
+onBeforeUnmount(() => {
+  const socket = getSocket()
+  if (socket) {
+    socket.off('llm_eval:model_aborted', onModelAborted)
   }
 })
 </script>

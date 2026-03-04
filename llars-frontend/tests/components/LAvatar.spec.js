@@ -154,11 +154,11 @@ describe('LAvatar', () => {
       expect(img.attributes('src')).toContain('/identicon/')
     })
 
-    it('COMP_AVT_020: uses default variant (bottts-neutral)', () => {
+    it('COMP_AVT_020: uses default variant (initials)', () => {
       const wrapper = mountLAvatar()
       const img = wrapper.find('img')
 
-      expect(img.attributes('src')).toContain('/bottts-neutral/')
+      expect(img.attributes('src')).toContain('/initials/')
     })
 
     it('COMP_AVT_021: includes size parameter (2x for retina)', () => {
@@ -169,8 +169,8 @@ describe('LAvatar', () => {
       expect(img.attributes('src')).toContain('size=80')
     })
 
-    it('COMP_AVT_022: includes backgroundColor in DiceBear URL', () => {
-      const wrapper = mountLAvatar({ backgroundColor: 'ff0000' })
+    it('COMP_AVT_022: includes backgroundColor in DiceBear URL when gradient disabled', () => {
+      const wrapper = mountLAvatar({ backgroundColor: 'ff0000', gradient: false })
       const img = wrapper.find('img')
 
       expect(img.attributes('src')).toContain('backgroundColor=ff0000')
@@ -297,11 +297,11 @@ describe('LAvatar', () => {
   // ==================== Background Color Tests ====================
 
   describe('Background Color', () => {
-    it('COMP_AVT_034: uses custom backgroundColor in DiceBear URL', () => {
-      const wrapper = mountLAvatar({ backgroundColor: 'ff5500', username: 'test' })
+    it('COMP_AVT_034: uses custom backgroundColor in DiceBear URL when gradient disabled', () => {
+      const wrapper = mountLAvatar({ backgroundColor: 'ff5500', username: 'test', gradient: false })
       const img = wrapper.find('img')
 
-      // Custom backgroundColor is passed to DiceBear API
+      // Custom backgroundColor is passed to DiceBear API when gradient is disabled
       expect(img.attributes('src')).toContain('backgroundColor=ff5500')
     })
 
@@ -326,7 +326,7 @@ describe('LAvatar', () => {
     it('COMP_AVT_037: has transparent background when image is loaded', () => {
       const wrapper = mountLAvatar({ src: 'https://example.com/avatar.png' })
 
-      expect(wrapper.attributes('style')).toContain('background-color: transparent')
+      expect(wrapper.attributes('style')).toContain('background: transparent')
     })
   })
 
@@ -465,8 +465,10 @@ describe('LAvatar', () => {
       expect(img.attributes('src')).toContain(encodeURIComponent('John Doe'))
     })
 
-    it('COMP_AVT_055: seed takes precedence over username', () => {
-      const wrapper = mountLAvatar({ seed: 'my-seed', username: 'username' })
+    it('COMP_AVT_055: seed takes precedence over username for non-initials variants', () => {
+      // For the 'initials' variant (default), username is always used as seed
+      // to keep letter rendering consistent. For other variants, seed takes precedence.
+      const wrapper = mountLAvatar({ seed: 'my-seed', username: 'username', variant: 'shapes' })
       const img = wrapper.find('img')
 
       expect(img.attributes('src')).toContain('seed=my-seed')

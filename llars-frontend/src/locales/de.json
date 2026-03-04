@@ -30,7 +30,9 @@
     "dismiss": "Schließen",
     "copy": "Kopieren",
     "create": "Erstellen",
-    "download": "Herunterladen"
+    "download": "Herunterladen",
+    "leave": "Verlassen",
+    "actions": "Aktionen"
   },
   "auth": {
     "login": "Anmelden",
@@ -214,6 +216,7 @@
       "rag": "RAG Dokumente",
       "permissions": "Berechtigungen",
       "llmProviders": "LLM Provider",
+      "researchGroups": "Forschungsgruppen",
       "fieldPrompts": "KI-Feld-Prompts",
       "communication": "Kommunikation"
     }
@@ -3327,8 +3330,14 @@
       "viewerHint": "Betrachter haben nur Lesezugriff und können keine Bewertungen abgeben.",
       "retry": "Wiederholen",
       "retryAll": "Alle wiederholen",
+      "startLLM": "Starten",
       "errorDetailsTitle": "Fehlerdetails",
       "noErrors": "Keine Fehler gefunden",
+      "llmFailed": "Fehlgeschlagen",
+      "llmCompleted": "Abgeschlossen",
+      "llmRunning": "Läuft",
+      "llmPending": "Ausstehend",
+      "llmStopped": "Gestoppt",
       "roles": {
         "owner": "Besitzer",
         "manager": "Manager",
@@ -6863,7 +6872,9 @@
     "close": "Schließen",
     "call": {
       "voice": "Sprachanruf",
+      "voiceDisabled": "Sprachanruf nicht verfügbar",
       "video": "Videoanruf",
+      "videoDisabled": "Videoanruf nicht verfügbar",
       "transcription": "Live-Transkript",
       "noTranscript": "Noch kein Transkript",
       "liveTranscription": "Live-Transkription aktiv",
@@ -6876,6 +6887,48 @@
     "errors": {
       "sendFailed": "Nachricht konnte nicht gesendet werden",
       "loadFailed": "Nachrichten konnten nicht geladen werden"
+    }
+  },
+  "researchGroup": {
+    "title": "Forschungsgruppen",
+    "loading": "Gruppen werden geladen...",
+    "myGroups": "Meine Gruppen",
+    "name": "Name",
+    "slug": "Slug",
+    "description": "Beschreibung",
+    "createdBy": "Erstellt von",
+    "create": "Gruppe erstellen",
+    "edit": "Gruppe bearbeiten",
+    "delete": "Gruppe löschen",
+    "selection": {
+      "title": "Forschungsgruppe auswählen",
+      "noGroups": "Du bist noch in keiner Gruppe.",
+      "otherGroups": "Weitere Gruppen"
+    },
+    "members": {
+      "title": "Mitglieder",
+      "invite": "Einladen",
+      "searchUser": "Benutzer suchen",
+      "role": "Rolle",
+      "confirmRemove": "Mitglied {name} wirklich entfernen?",
+      "roles": {
+        "owner": "Eigentümer",
+        "member": "Mitglied",
+        "viewer": "Betrachter"
+      }
+    },
+    "accessRequest": {
+      "title": "Zugang beantragen",
+      "pending": "Ausstehende Anfragen",
+      "approve": "Annehmen",
+      "reject": "Ablehnen",
+      "message": "Nachricht (optional)",
+      "submit": "Anfrage senden",
+      "sent": "Deine Anfrage wurde gesendet. Du wirst benachrichtigt, sobald sie bearbeitet wurde."
+    },
+    "admin": {
+      "title": "Forschungsgruppen verwalten",
+      "noGroups": "Keine Gruppen vorhanden"
     }
   }
 }

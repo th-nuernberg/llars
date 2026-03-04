@@ -1,8 +1,8 @@
 """
-Conference Manager Demo Seeder
+Conference Manager Seeder
 
-Seeds conference and paper data for development mode.
-Data based on the research group's actual conference tracking.
+Seeds conference and paper data for the research group.
+Uses real user accounts (ieb-steigerwald, ieb-rudolph, ieb-albrecht) as authors.
 """
 
 import logging
@@ -10,20 +10,45 @@ from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
+# Author username mapping
+AUTHOR_STEIGERWALD = "ieb-steigerwald"
+AUTHOR_RUDOLPH = "ieb-rudolph"
+AUTHOR_ALBRECHT = "ieb-albrecht"
+
 
 def seed_demo_conferences(db):
     """
-    Seed demo conferences and papers for the Conference Manager.
+    Seed conferences and papers for the Conference Manager.
     Idempotent: skips if conferences already exist.
     """
-    from db.models.conference import Conference, Paper, PaperAuthor, CoreRanking, PaperStatus
+    from db.models.conference import (
+        Conference, Paper, PaperAuthor, PaperSubmission,
+        CoreRanking, PaperStatus, SubmissionStatus,
+        ResearchGroup,
+    )
+    from db.tables import User
 
     # Skip if data already exists
     if Conference.query.first():
-        logger.info("Conference demo data already exists, skipping")
+        logger.info("Conference data already exists, skipping")
         return
 
-    logger.info("Seeding conference demo data...")
+    logger.info("Seeding conference data...")
+
+    # Resolve NLP-Group for group_id assignment
+    nlp_group = ResearchGroup.query.filter_by(slug="nlp-group").first()
+    nlp_group_id = nlp_group.id if nlp_group else None
+
+    # Resolve user IDs
+    user_map = {}
+    for username in [AUTHOR_STEIGERWALD, AUTHOR_RUDOLPH, AUTHOR_ALBRECHT]:
+        user = User.query.filter_by(username=username).first()
+        if user:
+            user_map[username] = user.id
+        else:
+            logger.warning(f"User '{username}' not found, will use external_name")
+
+    created_by = AUTHOR_STEIGERWALD
 
     # ── Conferences ──────────────────────────────────────────────
 
@@ -53,7 +78,7 @@ def seed_demo_conferences(db):
             "end_date": datetime(2025, 4, 8),
             "city": "Porto",
             "country": "Portugal",
-            "website_url": "https://ict4awe.scitevents.org",
+            "website_url": "https://ict4awe.scitevents.org/?y=2025",
             "keywords": ["AI", "Evaluation"],
         },
         {
@@ -67,7 +92,7 @@ def seed_demo_conferences(db):
             "end_date": datetime(2025, 7, 23),
             "city": "Palermo",
             "country": "Italien",
-            "website_url": "https://educationaldatamining.org",
+            "website_url": "https://educationaldatamining.org/edm2025/",
             "keywords": ["AI", "Education"],
         },
         {
@@ -95,7 +120,7 @@ def seed_demo_conferences(db):
             "end_date": datetime(2025, 11, 5),
             "city": "Athen",
             "country": "Griechenland",
-            "website_url": "https://easyconferences.eu/ictai2025",
+            "website_url": "https://easyconferences.eu/ictai2025/",
             "keywords": ["AI Systems"],
         },
         {
@@ -118,9 +143,9 @@ def seed_demo_conferences(db):
             "notification_date": datetime(2026, 2, 13),
             "start_date": datetime(2026, 6, 11),
             "end_date": datetime(2026, 6, 16),
-            "city": "Palma",
-            "country": "Mallorca",
-            "website_url": "https://lrec2026.info",
+            "city": "Palma Mallorca",
+            "country": "Spain",
+            "website_url": "https://lrec2026.info/third-call-for-papers/",
             "keywords": ["AI"],
         },
         {
@@ -145,7 +170,7 @@ def seed_demo_conferences(db):
             "city": "Bremen",
             "country": "Deutschland",
             "website_url": "https://2026.ijcai.org",
-            "keywords": ["demo"],
+            "keywords": ["Demo"],
         },
         {
             "name": "Learning @ Scale / AI in Education",
@@ -169,6 +194,7 @@ def seed_demo_conferences(db):
             name=data["name"],
             acronym=data["acronym"],
             year=data["year"],
+            group_id=nlp_group_id,
             core_ranking=data["core_ranking"],
             submission_deadline=data.get("submission_deadline"),
             notification_date=data.get("notification_date"),
@@ -179,7 +205,7 @@ def seed_demo_conferences(db):
             website_url=data.get("website_url"),
             keywords=data.get("keywords"),
             notes=data.get("notes"),
-            created_by="researcher",
+            created_by=created_by,
         )
         db.session.add(conf)
         db.session.flush()
@@ -187,118 +213,155 @@ def seed_demo_conferences(db):
 
     # ── Papers ───────────────────────────────────────────────────
 
+    # Helper: create author entry with user_id if available, else external_name
+    def _make_author(paper_id, username, order, is_corresponding=False):
+        uid = user_map.get(username)
+        return PaperAuthor(
+            paper_id=paper_id,
+            user_id=uid,
+            external_name=username if not uid else None,
+            author_order=order,
+            is_corresponding=is_corresponding,
+        )
+
+    # Find IJCAI LaTeX workspace (if exists)
+    from db.models.latex_collab import LatexWorkspace
+    ijcai_workspace = LatexWorkspace.query.filter(
+        LatexWorkspace.name.contains("LLARS")
+    ).first()
+
     papers_data = [
+        # ── Accepted Papers ──
         {
-            "title": "Enhancing Psychotherapy Process Analysis with AI-Assisted Evaluation",
+            "title": "Enhancing Psychosocial Counselling with AI: A Multifaceted Support System for Professionals",
             "status": PaperStatus.ACCEPTED,
             "conference_key": "FAIEMA_2024",
-            "authors": [("Philipp Steigerwald", True)],
+            "authors": [(AUTHOR_STEIGERWALD, True)],
             "keywords": ["AI", "Ethics", "Psychotherapy"],
             "notes": "KIA Idee vorstellen",
+            "overleaf_url": "https://www.overleaf.com/project/6669c279720512af0a84a729",
+            "submission_date": datetime(2024, 8, 7),
         },
         {
-            "title": "Comparing Language Models for Counselling Conversation Evaluation",
+            "title": "Comparing Large Language Models for Automated Subject Line Generation in e-Mental Health: A Performance Study",
             "status": PaperStatus.ACCEPTED,
             "conference_key": "ICT4AWE_2025",
-            "authors": [("Philipp Steigerwald", True)],
+            "authors": [(AUTHOR_STEIGERWALD, True)],
             "keywords": ["AI", "Evaluation", "LLM"],
             "notes": "LLM Comparison",
+            "overleaf_url": "https://www.overleaf.com/project/673c4846281ac28c5ae3f387",
+            "submission_date": datetime(2024, 11, 21),
         },
         {
-            "title": "Comparing Human and AI-Based Evaluation in Educational Data Mining",
+            "title": "Comparing Human Role-Players and LLM-Simulated Clients in Online Counselling Training: An Analysis of Counselling Patterns",
             "status": PaperStatus.ACCEPTED,
             "conference_key": "EDM_2025",
-            "authors": [("Eric Rudolph", False), ("Philipp Steigerwald", True)],
+            "authors": [(AUTHOR_RUDOLPH, False), (AUTHOR_STEIGERWALD, True)],
             "keywords": ["AI", "Education"],
-            "notes": "Viki und Oncoco",
+            "notes": "Vikl und Oncoco",
+            "overleaf_url": "https://www.overleaf.com/project/67adfa59e2d2ec80613a8e10",
+            "submission_date": datetime(2025, 2, 20),
         },
         {
-            "title": "Ethical Considerations of AI in Counselling Practice",
+            "title": "Ethical Considerations in Text-Based e-Mental Health: Assessing the Role of AI from Assistive to Autonomous Systems",
             "status": PaperStatus.ACCEPTED,
             "conference_key": "FAIEMA_2025",
-            "authors": [("Philipp Steigerwald", True)],
+            "authors": [(AUTHOR_STEIGERWALD, True)],
             "keywords": ["AI", "Ethics"],
             "notes": "Ethik Paper zu KI in der Beratung",
+            "overleaf_url": "https://www.overleaf.com/project/67b83eb55639bfa8824453d9",
+            "submission_date": datetime(2025, 6, 30),
         },
         {
-            "title": "CAIA in Practice: Evaluating Conversational AI Assessment Tools",
+            "title": "CAIA in Practice: Field Evaluation of an AI-Assisted Support System for Psychosocial E-mail Counselling",
             "status": PaperStatus.ACCEPTED,
             "conference_key": "ICTAI_2025",
-            "authors": [("Philipp Steigerwald", True)],
+            "authors": [(AUTHOR_STEIGERWALD, True)],
             "keywords": ["AI Systems"],
             "notes": "KIA Testung",
+            "overleaf_url": "https://www.overleaf.com/project/683706ba066d2d532c80b486",
+            "submission_date": datetime(2025, 6, 30),
         },
         {
-            "title": "Extended Journal Paper: Comparing Language Models for ICT4AWE",
+            "title": "PostPub ICT4AWE",
             "status": PaperStatus.ACCEPTED,
             "conference_key": "PostPub ICT4AWE_2025",
-            "authors": [("Philipp Steigerwald", True)],
+            "authors": [(AUTHOR_STEIGERWALD, True)],
             "keywords": ["AI", "Evaluation"],
+            "overleaf_url": "https://www.overleaf.com/project/6821dc465be88c83a49ade2e",
+            "submission_date": datetime(2025, 8, 12),
         },
+        # ── Submitted Papers ──
         {
-            "title": "OnCoCo 1.0: A Corpus and Framework for Online Counselling Conversation Analysis",
+            "title": "OnCoCo 1.0: A Public Dataset for Fine-Grained Message Classification in Online Counseling Conversations",
             "status": PaperStatus.SUBMITTED,
             "conference_key": "LREC_2026",
-            "authors": [("Jens Albrecht", False), ("Eric Rudolph", True)],
-            "keywords": ["AI", "NLP", "Corpus"],
+            "authors": [(AUTHOR_ALBRECHT, False), (AUTHOR_RUDOLPH, False), (AUTHOR_STEIGERWALD, True)],
+            "keywords": ["AI"],
             "notes": "Gecco Introduction",
+            "overleaf_url": "https://www.overleaf.com/project/67a8d0c35ce0979066409dba",
+            "submission_date": datetime(2025, 10, 17),
         },
         {
-            "title": "Transition-Matrix Analysis for Counselling Conversation Dynamics",
+            "title": "Transition-Matrix Regularization for Next Dialogue Act Prediction in Counselling Conversations",
             "status": PaperStatus.SUBMITTED,
             "conference_key": "ARR_2026",
-            "authors": [("Eric Rudolph", False), ("Philipp Steigerwald", True)],
+            "authors": [(AUTHOR_RUDOLPH, False), (AUTHOR_STEIGERWALD, True)],
             "keywords": ["AI", "NLP"],
+            "submission_date": datetime(2026, 1, 4),
         },
+        # ── In Progress Papers ──
         {
-            "title": "LLARS: A Platform for Collaborative LLM-Assisted Research and Evaluation",
+            "title": "LLARS: A Platform for Evaluating LLM Outputs with Human and Machine Evaluators",
             "status": PaperStatus.IN_PROGRESS,
             "conference_key": "IJCAI_2026",
-            "authors": [("Philipp Steigerwald", True)],
-            "keywords": ["demo", "LLM", "Evaluation"],
-            "notes": "LLARS Vorstellen",
-            "overleaf_url": None,
+            "authors": [(AUTHOR_STEIGERWALD, True), (AUTHOR_RUDOLPH, False)],
+            "keywords": ["Demo", "LLM", "Evaluation"],
+            "notes": "LLars Vorstellen",
+            "latex_workspace_id": ijcai_workspace.id if ijcai_workspace else None,
+            "submission_date": datetime(2026, 2, 16),
         },
         {
-            "title": "Social Network Analysis of Online Counselling Interactions",
+            "title": "Social Network Graph Evaluation",
             "status": PaperStatus.IN_PROGRESS,
             "conference_key": "ARR_2026",
-            "authors": [("Philipp Steigerwald", True)],
+            "authors": [(AUTHOR_STEIGERWALD, True), (AUTHOR_RUDOLPH, False)],
             "keywords": ["AI", "Social Networks"],
         },
+        # ── Planning Papers ──
         {
-            "title": "Feedback 2.0: AI-Enhanced Feedback Mechanisms in Counselling",
+            "title": "Feedback 2.0",
             "status": PaperStatus.PLANNING,
             "conference_key": "ARR_2026",
-            "authors": [("Eric Rudolph", False), ("Philipp Steigerwald", True)],
+            "authors": [(AUTHOR_RUDOLPH, False), (AUTHOR_STEIGERWALD, True)],
             "keywords": ["AI", "Feedback"],
         },
         {
-            "title": "Viki Dataset: A Benchmark for AI-Assisted Educational Assessment",
+            "title": "ViKl Dataset",
             "status": PaperStatus.PLANNING,
             "conference_key": "L@S/AIED_2026",
-            "authors": [("Eric Rudolph", False), ("Philipp Steigerwald", True)],
+            "authors": [(AUTHOR_RUDOLPH, False), (AUTHOR_STEIGERWALD, True)],
             "keywords": ["AI", "Education", "Dataset"],
         },
         {
-            "title": "EDM Paper: New Approaches to Computational Social Science in Education",
+            "title": "EDM Paper Next (Echtdaten + mehrere LLMs) - ViKl Dataset",
             "status": PaperStatus.PLANNING,
             "conference_key": "CSS ACL Workshop_2026",
-            "authors": [("Eric Rudolph", False), ("Jens Albrecht", True)],
+            "authors": [(AUTHOR_RUDOLPH, False), (AUTHOR_ALBRECHT, False), (AUTHOR_STEIGERWALD, True)],
             "keywords": ["AI", "CSS"],
         },
         {
-            "title": "OnCoCo + OnCoCo: Combining Conversation Analysis Approaches",
+            "title": "Oncoco + OncocoNext vs. Fine-Tuning",
             "status": PaperStatus.PLANNING,
             "conference_key": None,
-            "authors": [("Eric Rudolph", False), ("Jens Albrecht", True)],
+            "authors": [(AUTHOR_RUDOLPH, False), (AUTHOR_ALBRECHT, False), (AUTHOR_STEIGERWALD, True)],
             "keywords": ["AI", "NLP"],
         },
         {
-            "title": "Systemvorstellung: Architecture and Design of the LLARS Platform",
+            "title": "Systemvorstellung Personagenerierung",
             "status": PaperStatus.PLANNING,
             "conference_key": None,
-            "authors": [("Eric Rudolph", False), ("Jens Albrecht", True)],
+            "authors": [(AUTHOR_RUDOLPH, False), (AUTHOR_ALBRECHT, False), (AUTHOR_STEIGERWALD, True)],
             "keywords": ["AI", "Systems"],
         },
     ]
@@ -309,28 +372,39 @@ def seed_demo_conferences(db):
         paper = Paper(
             title=data["title"],
             status=data["status"],
+            group_id=nlp_group_id,
             conference_id=conf.id if conf else None,
             keywords=data.get("keywords"),
             notes=data.get("notes"),
-            overleaf_url=data.get("overleaf_url"),
             description=data.get("notes"),
-            created_by="researcher",
+            overleaf_url=data.get("overleaf_url"),
+            latex_workspace_id=data.get("latex_workspace_id"),
+            created_by=created_by,
         )
         db.session.add(paper)
         db.session.flush()
 
-        # Add authors
-        for order, (name, is_corresponding) in enumerate(data.get("authors", [])):
-            author = PaperAuthor(
-                paper_id=paper.id,
-                external_name=name,
-                author_order=order,
-                is_corresponding=is_corresponding,
+        # Add authors (linked to user accounts)
+        for order, (username, is_corresponding) in enumerate(data.get("authors", [])):
+            db.session.add(_make_author(paper.id, username, order, is_corresponding))
+
+        # Add submission entry for submitted/accepted papers
+        submission_date = data.get("submission_date")
+        if conf and submission_date and data["status"] in (PaperStatus.SUBMITTED, PaperStatus.ACCEPTED):
+            sub_status = (
+                SubmissionStatus.ACCEPTED if data["status"] == PaperStatus.ACCEPTED
+                else SubmissionStatus.SUBMITTED
             )
-            db.session.add(author)
+            db.session.add(PaperSubmission(
+                paper_id=paper.id,
+                conference_id=conf.id,
+                status=sub_status,
+                submitted_at=submission_date,
+                decided_at=conf.notification_date if sub_status == SubmissionStatus.ACCEPTED else None,
+            ))
 
     db.session.commit()
     logger.info(
-        f"Conference demo data seeded: {len(conferences_data)} conferences, "
+        f"Conference data seeded: {len(conferences_data)} conferences, "
         f"{len(papers_data)} papers"
     )

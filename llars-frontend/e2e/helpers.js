@@ -12,7 +12,7 @@
  */
 
 const testPassword = process.env.E2E_TEST_PASSWORD || 'admin123'
-const isProduction = !!process.env.E2E_TEST_PASSWORD
+export const isProduction = !!process.env.E2E_TEST_PASSWORD
 const researcherUsername = isProduction ? 'e2e-researcher' : 'researcher'
 const evaluatorUsername = isProduction ? 'e2e-evaluator' : 'evaluator'
 const chatbotManagerUsername = isProduction ? 'e2e-chatbot-manager' : 'chatbot_manager'
@@ -87,16 +87,28 @@ export async function handlePrivacyPage(page) {
  * - Handles Datenschutz page redirect properly
  */
 export async function quickLogin(page, user = TEST_USERS.researcher, retries = 2) {
+  // In production mode, storageState provides auth tokens - check if already authenticated
+  if (isProduction) {
+    await page.goto('/Home', { waitUntil: 'domcontentloaded', timeout: 30000 })
+    await page.waitForLoadState('load', { timeout: 5000 }).catch(() => {})
+    if (page.url().includes('/Home')) {
+      await dismissConsentBanner(page)
+      return // Already authenticated via storageState
+    }
+  }
+
   for (let attempt = 1; attempt <= retries; attempt++) {
     try {
       // Navigate to login page - use domcontentloaded to avoid analytics timeout
       await page.goto('/login', { waitUntil: 'domcontentloaded', timeout: 30000 })
 
-      // Clear storage for clean state
-      await page.evaluate(() => {
-        localStorage.clear()
-        sessionStorage.clear()
-      })
+      // Clear storage for clean state (dev mode only - production uses storageState)
+      if (!isProduction) {
+        await page.evaluate(() => {
+          localStorage.clear()
+          sessionStorage.clear()
+        })
+      }
 
       // Handle privacy/Datenschutz page redirect - this is a common first-visit redirect
       // Check URL or page content for privacy page

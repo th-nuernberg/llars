@@ -7,8 +7,10 @@ PROJECT_STATE="${PROJECT_STATE:-development}"
 echo "[nginx-entrypoint] PROJECT_STATE=${PROJECT_STATE}"
 
 if [ "$PROJECT_STATE" = "production" ]; then
-    # Check if SSL certificates exist
-    if [ -f "/etc/nginx/certs/cert.pem" ] && [ -f "/etc/nginx/certs/key.pem" ]; then
+    if [ "${NGINX_NO_SSL:-}" = "true" ]; then
+        echo "[nginx-entrypoint] NGINX_NO_SSL=true, using production config without SSL (HTTP only)"
+        cp -f /etc/nginx/nginx.prod-no-ssl.conf /etc/nginx/nginx.conf
+    elif [ -f "/etc/nginx/certs/cert.pem" ] && [ -f "/etc/nginx/certs/key.pem" ]; then
         echo "[nginx-entrypoint] Using production config with SSL (HTTPS enabled)"
         cp -f /etc/nginx/nginx.prod.conf /etc/nginx/nginx.conf
     else

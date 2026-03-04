@@ -539,6 +539,24 @@ services:
         condition: service_healthy
     restart: "no"
 
+  # =============================================================================
+  # Smoke & E2E Test Container (only started with --profile testing)
+  # =============================================================================
+  smoke-test-service:
+    container_name: llars_smoke_test
+    build:
+      context: .
+      dockerfile: docker/smoke-test/Dockerfile
+    network_mode: host
+    environment:
+      - BASE_URL=${SMOKE_TEST_URL:-http://localhost:55080}
+      - SYSTEM_ADMIN_API_KEY=${SYSTEM_ADMIN_API_KEY:-}
+      - PLAYWRIGHT_BASE_URL=${SMOKE_TEST_URL:-http://localhost:55080}
+      - E2E_TEST_PASSWORD=${E2E_TEST_PASSWORD:-admin123}
+      - CI=true
+    profiles:
+      - testing
+
 
 volumes:
   llarsdb:

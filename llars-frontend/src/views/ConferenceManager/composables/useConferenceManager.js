@@ -13,12 +13,24 @@ const stats = ref(null)
 const loading = ref(false)
 const error = ref(null)
 const latexAccessMap = ref({})
+const activeGroupId = ref(null)
 
 export function useConferenceManager() {
   const { getToken } = useAuth()
 
   function getHeaders() {
     return { Authorization: `Bearer ${getToken()}` }
+  }
+
+  function setGroupId(groupId) {
+    activeGroupId.value = groupId ? Number(groupId) : null
+  }
+
+  function _addGroupParam(params) {
+    if (activeGroupId.value) {
+      params.group_id = activeGroupId.value
+    }
+    return params
   }
 
   // ── Conferences ────────────────────────────────────────────
@@ -31,6 +43,7 @@ export function useConferenceManager() {
       if (filters.year) params.year = filters.year
       if (filters.core_ranking) params.core_ranking = filters.core_ranking
       if (filters.search) params.search = filters.search
+      _addGroupParam(params)
 
       const response = await axios.get('/api/conference-manager/conferences', {
         headers: getHeaders(),
@@ -54,7 +67,9 @@ export function useConferenceManager() {
   }
 
   async function createConference(data) {
-    const response = await axios.post('/api/conference-manager/conferences', data, {
+    const payload = { ...data }
+    if (activeGroupId.value) payload.group_id = activeGroupId.value
+    const response = await axios.post('/api/conference-manager/conferences', payload, {
       headers: getHeaders(),
     })
     await fetchConferences()
@@ -86,6 +101,7 @@ export function useConferenceManager() {
       if (filters.status) params.status = filters.status
       if (filters.conference_id) params.conference_id = filters.conference_id
       if (filters.search) params.search = filters.search
+      _addGroupParam(params)
 
       const response = await axios.get('/api/conference-manager/papers', {
         headers: getHeaders(),
@@ -110,7 +126,9 @@ export function useConferenceManager() {
   }
 
   async function createPaper(data) {
-    const response = await axios.post('/api/conference-manager/papers', data, {
+    const payload = { ...data }
+    if (activeGroupId.value) payload.group_id = activeGroupId.value
+    const response = await axios.post('/api/conference-manager/papers', payload, {
       headers: getHeaders(),
     })
     await fetchPapers()
@@ -179,6 +197,7 @@ export function useConferenceManager() {
     try {
       const params = {}
       if (search) params.search = search
+      _addGroupParam(params)
       const response = await axios.get('/api/conference-manager/series', {
         headers: getHeaders(),
         params,
@@ -191,7 +210,9 @@ export function useConferenceManager() {
   }
 
   async function createSeries(data) {
-    const response = await axios.post('/api/conference-manager/series', data, {
+    const payload = { ...data }
+    if (activeGroupId.value) payload.group_id = activeGroupId.value
+    const response = await axios.post('/api/conference-manager/series', payload, {
       headers: getHeaders(),
     })
     await fetchSeries()
@@ -240,8 +261,11 @@ export function useConferenceManager() {
 
   async function fetchStats() {
     try {
+      const params = {}
+      _addGroupParam(params)
       const response = await axios.get('/api/conference-manager/stats', {
         headers: getHeaders(),
+        params,
       })
       stats.value = response.data.stats
       return stats.value
@@ -259,6 +283,10 @@ export function useConferenceManager() {
     loading,
     error,
     latexAccessMap,
+    activeGroupId,
+
+    // Group scope
+    setGroupId,
 
     // Conference methods
     fetchConferences,

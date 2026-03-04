@@ -1,0 +1,31 @@
+# =============================================================================
+# LLARS Blue-Green Deployment Override
+# =============================================================================
+# Override for blue-green deployment. Sets container names using $DEPLOY_COLOR
+# env var and connects to the existing production Docker network.
+#
+# Usage (via deploy_bluegreen.sh):
+#   DEPLOY_COLOR=blue docker compose --project-name llars-blue \
+#     -f docker-compose.yml -f docker-compose.prod.yml \
+#     -f docker-compose.prod-bluegreen.yml \
+#     up -d --no-deps --build \
+#     backend-flask-service frontend-vue-service yjs-service backend-supervisor-service
+# =============================================================================
+
+services:
+  backend-flask-service:
+    container_name: llars_flask_${DEPLOY_COLOR}
+
+  frontend-vue-service:
+    container_name: llars_frontend_${DEPLOY_COLOR}
+
+  yjs-service:
+    container_name: llars_yjs_${DEPLOY_COLOR}
+
+  backend-supervisor-service:
+    container_name: llars_supervisor_${DEPLOY_COLOR}
+
+networks:
+  default:
+    name: llars_default
+    external: true

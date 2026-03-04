@@ -828,9 +828,9 @@ def seed_demo_scenarios(db):
         db.session.add(ranking_scenario)
         db.session.flush()
 
-        # Add users to scenario: ijcai_reviewer_1=OWNER, ijcai_reviewer_2=EVALUATOR, others=VIEWER
+        # Add users to scenario: ijcai_reviewer_1=EVALUATOR, ijcai_reviewer_2=EVALUATOR, others=VIEWER
         for user, role in [
-            (ijcai_reviewer_1, ScenarioRoles.OWNER),
+            (ijcai_reviewer_1, ScenarioRoles.EVALUATOR),
             (ijcai_reviewer_2, ScenarioRoles.EVALUATOR),
             (evaluator_user, ScenarioRoles.VIEWER),
             (researcher_user, ScenarioRoles.EVALUATOR),
@@ -882,7 +882,7 @@ def seed_demo_scenarios(db):
     # Ensure correct user roles for ranking scenario (also fixes existing scenarios)
     if ranking_scenario:
         if ijcai_reviewer_1:
-            _ensure_scenario_user(ranking_scenario.id, ijcai_reviewer_1.id, ScenarioRoles.OWNER)
+            _ensure_scenario_user(ranking_scenario.id, ijcai_reviewer_1.id, ScenarioRoles.EVALUATOR)
         if ijcai_reviewer_2:
             _ensure_scenario_user(ranking_scenario.id, ijcai_reviewer_2.id, ScenarioRoles.EVALUATOR)
         if admin_user:
@@ -905,9 +905,9 @@ def seed_demo_scenarios(db):
         db.session.add(mail_rating_scenario)
         db.session.flush()
 
-        # Add users to scenario: ijcai_reviewer_1=OWNER, ijcai_reviewer_2=EVALUATOR, others=VIEWER
+        # Add users to scenario: ijcai_reviewer_1=EVALUATOR, ijcai_reviewer_2=EVALUATOR, others=VIEWER
         for user, role in [
-            (ijcai_reviewer_1, ScenarioRoles.OWNER),
+            (ijcai_reviewer_1, ScenarioRoles.EVALUATOR),
             (ijcai_reviewer_2, ScenarioRoles.EVALUATOR),
             (evaluator_user, ScenarioRoles.VIEWER),
             (researcher_user, ScenarioRoles.EVALUATOR),
@@ -964,7 +964,7 @@ def seed_demo_scenarios(db):
     # Ensure correct user roles for mail rating scenario
     if mail_rating_scenario:
         if ijcai_reviewer_1:
-            _ensure_scenario_user(mail_rating_scenario.id, ijcai_reviewer_1.id, ScenarioRoles.OWNER)
+            _ensure_scenario_user(mail_rating_scenario.id, ijcai_reviewer_1.id, ScenarioRoles.EVALUATOR)
         if ijcai_reviewer_2:
             _ensure_scenario_user(mail_rating_scenario.id, ijcai_reviewer_2.id, ScenarioRoles.EVALUATOR)
         if admin_user:
@@ -990,7 +990,7 @@ def seed_demo_scenarios(db):
         db.session.flush()
 
         for user, role in [
-            (ijcai_reviewer_1, ScenarioRoles.OWNER),
+            (ijcai_reviewer_1, ScenarioRoles.EVALUATOR),
             (ijcai_reviewer_2, ScenarioRoles.EVALUATOR),
             (evaluator_user, ScenarioRoles.VIEWER),
             (researcher_user, ScenarioRoles.EVALUATOR),
@@ -1082,7 +1082,7 @@ def seed_demo_scenarios(db):
     # Ensure correct user roles for authenticity scenario
     if authenticity_scenario:
         if ijcai_reviewer_1:
-            _ensure_scenario_user(authenticity_scenario.id, ijcai_reviewer_1.id, ScenarioRoles.OWNER)
+            _ensure_scenario_user(authenticity_scenario.id, ijcai_reviewer_1.id, ScenarioRoles.EVALUATOR)
         if ijcai_reviewer_2:
             _ensure_scenario_user(authenticity_scenario.id, ijcai_reviewer_2.id, ScenarioRoles.EVALUATOR)
         if admin_user:
@@ -1114,7 +1114,7 @@ def seed_demo_scenarios(db):
         db.session.flush()
 
         for user, role in [
-            (ijcai_reviewer_1, ScenarioRoles.OWNER),
+            (ijcai_reviewer_1, ScenarioRoles.EVALUATOR),
             (ijcai_reviewer_2, ScenarioRoles.EVALUATOR),
             (evaluator_user, ScenarioRoles.VIEWER),
             (researcher_user, ScenarioRoles.EVALUATOR),
@@ -1171,7 +1171,7 @@ def seed_demo_scenarios(db):
     # Ensure correct user roles for labeling scenario
     if labeling_scenario:
         if ijcai_reviewer_1:
-            _ensure_scenario_user(labeling_scenario.id, ijcai_reviewer_1.id, ScenarioRoles.OWNER)
+            _ensure_scenario_user(labeling_scenario.id, ijcai_reviewer_1.id, ScenarioRoles.EVALUATOR)
         if ijcai_reviewer_2:
             _ensure_scenario_user(labeling_scenario.id, ijcai_reviewer_2.id, ScenarioRoles.EVALUATOR)
         if admin_user:

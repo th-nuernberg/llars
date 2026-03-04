@@ -23,9 +23,10 @@ def list_papers():
     status = request.args.get("status")
     conference_id = request.args.get("conference_id", type=int)
     search = request.args.get("search")
+    group_id = request.args.get("group_id", type=int)
 
     papers = ConferenceService.list_papers(
-        status=status, conference_id=conference_id, search=search
+        status=status, conference_id=conference_id, search=search, group_id=group_id
     )
     return jsonify({"success": True, "papers": papers}), 200
 

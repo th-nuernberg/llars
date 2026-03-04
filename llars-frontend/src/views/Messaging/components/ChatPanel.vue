@@ -9,7 +9,7 @@
     />
 
     <!-- Messages -->
-    <div style="position: relative; flex: 1; overflow: hidden; display: flex; flex-direction: column;">
+    <div class="chat-messages-wrapper" :style="{ flex: messagesFlex }">
     <div ref="messagesContainer" class="chat-messages" @scroll="onScroll">
       <LLoading v-if="isLoading && messages.length === 0" :text="$t('messaging.loadingMessages')" />
 
@@ -53,6 +53,12 @@
     </div>
     </div>
 
+    <!-- Vertical Resize Divider -->
+    <div
+      class="panel-resize-divider-h"
+      @mousedown="startVerticalResize"
+    />
+
     <!-- Input -->
     <ChatInput
       ref="chatInputRef"
@@ -78,7 +84,7 @@
 </template>
 
 <script setup>
-import { ref, computed, nextTick, watch } from 'vue'
+import { ref, computed, nextTick, watch, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAuth } from '@/composables/useAuth'
 import ChatHeader from './ChatHeader.vue'
@@ -113,6 +119,38 @@ const contextMenuPos = ref({ x: 0, y: 0 })
 const contextMenuMessage = ref(null)
 
 const isGroup = props.conversation?.conversation_type === 'group'
+
+// ── Vertical resize (messages ↔ input) ──────────────────────────
+const messagesFlex = ref(parseFloat(localStorage.getItem('messaging-messages-flex') || '3'))
+
+const startVerticalResize = (e) => {
+  e.preventDefault()
+  const panel = e.target.closest('.chat-panel')
+  if (!panel) return
+
+  document.body.style.cursor = 'row-resize'
+  document.body.style.userSelect = 'none'
+
+  const onMove = (ev) => {
+    const rect = panel.getBoundingClientRect()
+    const headerH = 56 // approx chat-header height
+    const available = rect.height - headerH
+    const mouseY = ev.clientY - rect.top - headerH
+    const ratio = Math.max(1, Math.min(9, (mouseY / available) * 10))
+    messagesFlex.value = ratio
+  }
+
+  const onUp = () => {
+    document.body.style.cursor = ''
+    document.body.style.userSelect = ''
+    document.removeEventListener('mousemove', onMove)
+    document.removeEventListener('mouseup', onUp)
+    localStorage.setItem('messaging-messages-flex', messagesFlex.value.toString())
+  }
+
+  document.addEventListener('mousemove', onMove)
+  document.addEventListener('mouseup', onUp)
+}
 
 // ── User avatar map (from conversation participants) ────────────
 const userAvatarMap = computed(() => {
@@ -234,7 +272,7 @@ const onScroll = () => {
 }
 
 const handleSend = (text, options) => {
-  emit('send', text, { ...options, replyToId: replyTo.value?.id })
+  emit('send', text, { ...options, replyToId: replyTo.value?.id, linkPreviews: options?.linkPreviews || null })
   replyTo.value = null
 }
 

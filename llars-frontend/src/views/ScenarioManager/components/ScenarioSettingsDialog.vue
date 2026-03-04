@@ -311,7 +311,7 @@ const statusOptions = computed(() => [
 const collaborators = computed(() => {
   if (!teamData.value?.team) return []
   return teamData.value.team.filter(u =>
-    (u.role === 'Manager' || u.role === 'Viewer') && u.role !== 'Owner'
+    (u.role === 'Manager' || u.role === 'Viewer') && u.username !== props.scenario?.created_by
   )
 })
 

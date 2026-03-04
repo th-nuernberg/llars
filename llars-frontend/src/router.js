@@ -103,7 +103,11 @@ import PipelineSession from "@/views/Pipeline/PipelineSession.vue";
 import PipelineWizard from "@/views/Pipeline/PipelineWizard.vue";
 
 // Conference Manager
+import ConferenceEntry from "@/views/ConferenceManager/ConferenceEntry.vue";
+import ResearchGroupSelection from "@/views/ConferenceManager/ResearchGroupSelection.vue";
 import ConferenceManagerHome from "@/views/ConferenceManager/ConferenceManagerHome.vue";
+import ResearchGroupMembers from "@/views/ConferenceManager/ResearchGroupMembers.vue";
+import ResearchGroupAccessRequestPage from "@/views/ConferenceManager/ResearchGroupAccessRequestPage.vue";
 
 // Messaging
 import MessagingHome from "@/views/Messaging/MessagingHome.vue";
@@ -225,7 +229,11 @@ const routes = [
     },
 
     // Conference Manager
-    { path: '/conferences', name: 'ConferenceManager', component: ConferenceManagerHome, meta: { requiresAuth: true } },
+    { path: '/conferences', name: 'ConferenceEntry', component: ConferenceEntry, meta: { requiresAuth: true } },
+    { path: '/conferences/groups', name: 'ResearchGroupSelection', component: ResearchGroupSelection, meta: { requiresAuth: true } },
+    { path: '/conferences/groups/:groupId', name: 'ConferenceManager', component: ConferenceManagerHome, props: true, meta: { requiresAuth: true } },
+    { path: '/conferences/groups/:groupId/members', name: 'ResearchGroupMembers', component: ResearchGroupMembers, props: true, meta: { requiresAuth: true } },
+    { path: '/conferences/groups/:groupId/request-access', name: 'ResearchGroupAccessRequest', component: ResearchGroupAccessRequestPage, props: true, meta: { requiresAuth: true } },
 
     // Pipeline
     { path: '/pipeline', name: 'PipelineHub', component: PipelineHub, meta: { requiresAuth: true } },

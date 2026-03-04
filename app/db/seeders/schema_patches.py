@@ -247,6 +247,100 @@ def _ensure_column_nullable(db, table_name: str, column_name: str, column_type: 
     return True
 
 
+def _migrate_scenario_roles_enum(db) -> bool:
+    """
+    Migrate scenario_users.role enum: EVALUATOR → ASSESSOR.
+
+    The ScenarioRoles enum was refactored to use ASSESSOR instead of EVALUATOR.
+    Existing databases may still have EVALUATOR in the MySQL ENUM and in row data.
+    This patch is idempotent and safe to run multiple times.
+    """
+    try:
+        result = db.session.execute(
+            text("""
+                SELECT COLUMN_TYPE
+                FROM INFORMATION_SCHEMA.COLUMNS
+                WHERE TABLE_SCHEMA = DATABASE()
+                  AND TABLE_NAME = 'scenario_users'
+                  AND COLUMN_NAME = 'role'
+            """)
+        )
+        row = result.fetchone()
+        if not row:
+            return False
+
+        column_type = str(row[0])
+
+        # Already migrated if ASSESSOR is present and EVALUATOR is not
+        if 'ASSESSOR' in column_type and 'EVALUATOR' not in column_type:
+            return False
+
+        # Step 1: Add ASSESSOR to enum (alongside EVALUATOR temporarily)
+        if 'ASSESSOR' not in column_type:
+            db.session.execute(text(
+                "ALTER TABLE `scenario_users` MODIFY COLUMN `role` "
+                "ENUM('OWNER','MANAGER','EVALUATOR','ASSESSOR','VIEWER') DEFAULT NULL"
+            ))
+            db.session.commit()
+
+        # Step 2: Migrate all EVALUATOR values to ASSESSOR
+        result = db.session.execute(text(
+            "UPDATE `scenario_users` SET `role` = 'ASSESSOR' WHERE `role` = 'EVALUATOR'"
+        ))
+        migrated = result.rowcount
+        db.session.commit()
+
+        # Step 3: Remove EVALUATOR from enum
+        db.session.execute(text(
+            "ALTER TABLE `scenario_users` MODIFY COLUMN `role` "
+            "ENUM('OWNER','MANAGER','ASSESSOR','VIEWER') DEFAULT NULL"
+        ))
+        db.session.commit()
+
+        if migrated > 0:
+            print(f"  [Schema Patch] Migrated {migrated} scenario_users role(s): EVALUATOR → ASSESSOR")
+        return migrated > 0
+
+    except Exception as exc:
+        db.session.rollback()
+        print(f"  ⚠️ scenario_users role migration failed (non-fatal): {exc}")
+        return False
+
+
+def _migrate_paper_status_enum(db) -> bool:
+    """Add 'published' to papers.status enum if missing."""
+    try:
+        result = db.session.execute(
+            text("""
+                SELECT COLUMN_TYPE
+                FROM INFORMATION_SCHEMA.COLUMNS
+                WHERE TABLE_SCHEMA = DATABASE()
+                  AND TABLE_NAME = 'papers'
+                  AND COLUMN_NAME = 'status'
+            """)
+        )
+        row = result.fetchone()
+        if not row:
+            return False
+
+        column_type = str(row[0])
+        if 'published' in column_type:
+            return False
+
+        db.session.execute(text(
+            "ALTER TABLE `papers` MODIFY COLUMN `status` "
+            "ENUM('planning','in_progress','submitted','accepted','rejected','published') NOT NULL"
+        ))
+        db.session.commit()
+        print("  [Schema Patch] Added 'published' to papers.status enum")
+        return True
+
+    except Exception as exc:
+        db.session.rollback()
+        print(f"  ⚠️ papers.status migration failed (non-fatal): {exc}")
+        return False
+
+
 def apply_schema_patches(db) -> None:
     """Apply required schema patches (safe to run multiple times)."""
     try:
@@ -973,6 +1067,11 @@ def apply_schema_patches(db) -> None:
             column_definition_sql="`invited_by` VARCHAR(255) NULL",
         )
 
+        # Migrate ScenarioRoles enum: EVALUATOR → ASSESSOR, RATER removed
+        # The role column was renamed in the code but existing DBs may still
+        # have old enum values. This patch is idempotent.
+        changed |= _migrate_scenario_roles_enum(db)
+
         # =========================================================================
         # AI Field Assist: Prompt Templates for AI-Assisted Form Fields
         # =========================================================================
@@ -1090,6 +1189,180 @@ def apply_schema_patches(db) -> None:
                     PRIMARY KEY (`id`),
                     UNIQUE KEY `uix_scenario` (`scenario_id`),
                     INDEX `idx_computed_at` (`computed_at`)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+                """
+            ),
+        )
+
+        # =========================================================================
+        # Conference Manager: Series support + Paper LaTeX workspace link
+        # =========================================================================
+
+        # Conference Series table (parent for recurring conferences)
+        changed |= _ensure_table(
+            db,
+            table_name="conference_series",
+            create_sql=(
+                """
+                CREATE TABLE `conference_series` (
+                    `id` INT NOT NULL AUTO_INCREMENT,
+                    `name` VARCHAR(255) NOT NULL,
+                    `acronym` VARCHAR(100) NOT NULL,
+                    `core_ranking` ENUM('A*','A','B','C','Unranked') DEFAULT NULL,
+                    `website_url` VARCHAR(2048) DEFAULT NULL,
+                    `keywords` JSON DEFAULT NULL,
+                    `notes` TEXT DEFAULT NULL,
+                    `created_by` VARCHAR(255) NOT NULL,
+                    `updated_by` VARCHAR(255) DEFAULT NULL,
+                    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                    PRIMARY KEY (`id`),
+                    UNIQUE KEY `uix_series_acronym` (`acronym`)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+                """
+            ),
+        )
+
+        # FK from conferences to conference_series
+        changed |= _ensure_column(
+            db,
+            table_name="conferences",
+            column_name="series_id",
+            column_definition_sql="`series_id` INT NULL",
+        )
+
+        # FK from papers to latex_workspaces
+        changed |= _ensure_column(
+            db,
+            table_name="papers",
+            column_name="latex_workspace_id",
+            column_definition_sql="`latex_workspace_id` INT NULL",
+        )
+
+        # Add 'published' to papers.status enum (was missing in initial schema)
+        changed |= _migrate_paper_status_enum(db)
+
+        # =========================================================================
+        # Conference Manager: Research Groups
+        # =========================================================================
+
+        changed |= _ensure_table(
+            db,
+            table_name="research_groups",
+            create_sql=(
+                """
+                CREATE TABLE `research_groups` (
+                    `id` INT NOT NULL AUTO_INCREMENT,
+                    `name` VARCHAR(255) NOT NULL,
+                    `slug` VARCHAR(255) NOT NULL,
+                    `description` TEXT DEFAULT NULL,
+                    `created_by` VARCHAR(255) NOT NULL,
+                    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                    PRIMARY KEY (`id`),
+                    UNIQUE KEY `uix_research_group_slug` (`slug`)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+                """
+            ),
+        )
+
+        changed |= _ensure_table(
+            db,
+            table_name="research_group_members",
+            create_sql=(
+                """
+                CREATE TABLE `research_group_members` (
+                    `id` INT NOT NULL AUTO_INCREMENT,
+                    `group_id` INT NOT NULL,
+                    `user_id` INT NOT NULL,
+                    `role` ENUM('owner','member','viewer') NOT NULL DEFAULT 'member',
+                    `added_by` VARCHAR(255) DEFAULT NULL,
+                    `added_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (`id`),
+                    UNIQUE KEY `unique_group_user` (`group_id`, `user_id`),
+                    KEY `ix_rgm_group_id` (`group_id`),
+                    KEY `ix_rgm_user_id` (`user_id`),
+                    CONSTRAINT `fk_rgm_group` FOREIGN KEY (`group_id`) REFERENCES `research_groups` (`id`) ON DELETE CASCADE,
+                    CONSTRAINT `fk_rgm_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+                """
+            ),
+        )
+
+        changed |= _ensure_table(
+            db,
+            table_name="research_group_access_requests",
+            create_sql=(
+                """
+                CREATE TABLE `research_group_access_requests` (
+                    `id` INT NOT NULL AUTO_INCREMENT,
+                    `group_id` INT NOT NULL,
+                    `requester_username` VARCHAR(255) NOT NULL,
+                    `status` ENUM('pending','approved','rejected') NOT NULL DEFAULT 'pending',
+                    `message` TEXT DEFAULT NULL,
+                    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    `resolved_at` DATETIME DEFAULT NULL,
+                    `resolved_by` VARCHAR(255) DEFAULT NULL,
+                    PRIMARY KEY (`id`),
+                    UNIQUE KEY `unique_group_requester` (`group_id`, `requester_username`),
+                    KEY `ix_rgar_group_id` (`group_id`),
+                    CONSTRAINT `fk_rgar_group` FOREIGN KEY (`group_id`) REFERENCES `research_groups` (`id`) ON DELETE CASCADE
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
+                """
+            ),
+        )
+
+        # group_id FK on conferences, papers, conference_series
+        changed |= _ensure_column(
+            db,
+            table_name="conferences",
+            column_name="group_id",
+            column_definition_sql="`group_id` INT NULL",
+        )
+        changed |= _ensure_column(
+            db,
+            table_name="papers",
+            column_name="group_id",
+            column_definition_sql="`group_id` INT NULL",
+        )
+        changed |= _ensure_column(
+            db,
+            table_name="conference_series",
+            column_name="group_id",
+            column_definition_sql="`group_id` INT NULL",
+        )
+
+        # =========================================================================
+        # Messaging: Link Previews
+        # =========================================================================
+
+        # JSON field on messages for storing resolved link previews
+        changed |= _ensure_column(
+            db,
+            table_name="messaging_messages",
+            column_name="link_previews",
+            column_definition_sql="`link_previews` JSON NULL",
+        )
+
+        # URL-level cache table for fetched OG metadata
+        changed |= _ensure_table(
+            db,
+            table_name="messaging_link_previews",
+            create_sql=(
+                """
+                CREATE TABLE `messaging_link_previews` (
+                    `id` INT NOT NULL AUTO_INCREMENT,
+                    `url_hash` VARCHAR(64) NOT NULL,
+                    `url` VARCHAR(2000) NOT NULL,
+                    `title` VARCHAR(300) NULL,
+                    `description` VARCHAR(500) NULL,
+                    `image_url` VARCHAR(2000) NULL,
+                    `favicon_url` VARCHAR(2000) NULL,
+                    `site_name` VARCHAR(200) NULL,
+                    `fetched_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    `fetch_error` VARCHAR(500) NULL,
+                    PRIMARY KEY (`id`),
+                    UNIQUE KEY `uix_link_preview_url_hash` (`url_hash`)
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
                 """
             ),

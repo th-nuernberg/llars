@@ -291,8 +291,9 @@ def remove_user_from_scenario():
     if not scenario_user:
         raise NotFoundError('User not found in scenario')
 
-    # Cannot remove owner
-    if scenario_user.role == ScenarioRoles.OWNER:
+    # Cannot remove owner (determined by created_by field)
+    target_user = User.query.get(user_id)
+    if target_user and scenario.created_by and target_user.username == scenario.created_by:
         raise ValidationError('Cannot remove the scenario owner')
 
     # Also remove any thread distributions for this user

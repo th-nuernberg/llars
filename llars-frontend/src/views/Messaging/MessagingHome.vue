@@ -1,5 +1,5 @@
 <template>
-  <div class="messaging-page" :class="{ 'chat-active': activeConversationId }">
+  <div ref="messagingPageRef" class="messaging-page" :class="{ 'chat-active': activeConversationId }">
     <!-- Communication disabled overlay (only after status is loaded) -->
     <Transition name="fade">
       <div v-if="showDisabledOverlay" class="messaging-disabled-overlay">
@@ -21,9 +21,17 @@
       :conversations="sortedConversations"
       :active-conversation-id="activeConversationId"
       :is-loading="isLoading"
+      :style="leftPanelStyle()"
       @select="selectConversation"
       @new-chat="showNewChatDialog = true"
       @new-group="showCreateGroupDialog = true"
+    />
+
+    <!-- Resize Divider -->
+    <div
+      v-if="activeConversation"
+      class="panel-resize-divider"
+      @mousedown="startResize"
     />
 
     <!-- Chat Panel (right panel) -->
@@ -36,6 +44,7 @@
         :typing-users="typingUsers"
         :show-back-button="isMobile"
         :last-read-message-id="lastReadMessageId"
+        :style="chatPanelStyle"
         @send="handleSend"
         @edit="handleEdit"
         @delete="handleDelete"
@@ -116,6 +125,7 @@
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted, toRef, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { usePanelResize } from '@/composables/usePanelResize'
 import { useMessaging } from './composables/useMessaging'
 import { useChat } from './composables/useChat'
 import { useTypingIndicator } from './composables/useTypingIndicator'
@@ -142,6 +152,24 @@ import './styles/Messaging.css'
 const route = useRoute()
 const router = useRouter()
 const { isMobile } = useMobile()
+
+// ── Resizable Panels ─────────────────────────────────────────────
+const {
+  leftPanelWidth,
+  startResize,
+  leftPanelStyle,
+  containerRef: messagingPageRef,
+} = usePanelResize({
+  initialLeftPercent: 28,
+  minLeftPercent: 18,
+  maxLeftPercent: 45,
+  storageKey: 'messaging-panel-width',
+})
+
+const chatPanelStyle = computed(() => ({
+  flex: 1,
+  minWidth: 0,
+}))
 const { showError } = useSnackbar()
 const { communicationEnabled, loaded: commLoaded, refreshCommunicationStatus } = useCommunicationAdmin()
 const { hasPermission, fetchPermissions } = usePermissions()
@@ -272,7 +300,7 @@ const clearActiveConversation = () => {
 }
 
 const handleSend = async (text, options) => {
-  await sendMessage(text, options)
+  await sendMessage(text, options, options?.linkPreviews)
 }
 
 const handleEdit = async (messageId, newContent) => {

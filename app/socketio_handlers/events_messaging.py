@@ -21,6 +21,7 @@ Events:
         - messaging:unread_update    Unread count update
         - messaging:member_added     Member added to group
         - messaging:member_removed   Member removed from group
+        - messaging:link_preview     Link preview metadata resolved
 """
 
 import logging
@@ -49,6 +50,25 @@ def _communication_disabled():
         return not is_communication_enabled()
     except Exception:
         return False
+
+
+def _fetch_link_previews(socketio_instance, message_id: int, conversation_id: int):
+    """Background task: fetch link previews and emit update to conversation room."""
+    try:
+        from main import app
+
+        with app.app_context():
+            from services.link_preview_service import process_message_links
+            previews = process_message_links(message_id)
+            if previews:
+                room = _conv_room(conversation_id)
+                socketio_instance.emit("messaging:link_preview", {
+                    "message_id": message_id,
+                    "conversation_id": conversation_id,
+                    "link_previews": previews,
+                }, room=room)
+    except Exception as exc:
+        logger.error("[Messaging Socket] Error fetching link previews for msg %s: %s", message_id, exc)
 
 
 def register_messaging_events(socketio):
@@ -165,6 +185,14 @@ def register_messaging_events(socketio):
             room = _conv_room(conversation_id)
             socketio.emit("messaging:new_message", msg, room=room)
 
+            # Fetch link previews in the background
+            msg_id = msg.get("id")
+            is_encrypted = msg.get("is_encrypted", False)
+            if msg_id and not is_encrypted:
+                socketio.start_background_task(
+                    _fetch_link_previews, socketio, msg_id, conversation_id
+                )
+
             # Send unread updates to other participants
             from db.models.messaging import MessagingParticipant
 
@@ -274,6 +302,13 @@ def register_messaging_events(socketio):
                 },
                 room=room,
             )
+
+            # Re-fetch link previews (URLs may have changed)
+            if not msg.get("is_encrypted", False):
+                socketio.start_background_task(
+                    _fetch_link_previews, socketio, msg["id"], msg["conversation_id"]
+                )
+
         except Exception as exc:
             logger.error("[Messaging Socket] Error editing message: %s", exc)
             emit("messaging:error", {"error": str(exc)})

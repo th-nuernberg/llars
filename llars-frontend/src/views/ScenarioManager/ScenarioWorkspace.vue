@@ -130,6 +130,7 @@
         :live-stats="liveStats"
         :can-manage="canManage"
         @team-updated="refreshScenario"
+        @refresh-stats="refreshStats"
       />
     </div>
 

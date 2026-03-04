@@ -226,9 +226,17 @@ from db.models.anonymization import (
 from db.models.conference import (
     CoreRanking,
     PaperStatus,
+    SubmissionStatus,
+    ResearchGroupRole,
+    ResearchGroupRequestStatus,
+    ResearchGroup,
+    ResearchGroupMember,
+    ResearchGroupAccessRequest,
+    ConferenceSeries,
     Conference,
     Paper,
     PaperAuthor,
+    PaperSubmission,
 )
 
 # Messaging models
@@ -242,6 +250,7 @@ from db.models.messaging import (
     MessagingEncryptionKey,
     MessagingCall,
     MessagingCallParticipant,
+    MessagingLinkPreview,
 )
 
 # Scenario Stats Cache
@@ -415,9 +424,17 @@ __all__ = [
     # Conference Manager
     'CoreRanking',
     'PaperStatus',
+    'SubmissionStatus',
+    'ResearchGroupRole',
+    'ResearchGroupRequestStatus',
+    'ResearchGroup',
+    'ResearchGroupMember',
+    'ResearchGroupAccessRequest',
+    'ConferenceSeries',
     'Conference',
     'Paper',
     'PaperAuthor',
+    'PaperSubmission',
     # Messaging
     'MessagingConversation',
     'MessagingParticipant',
@@ -428,6 +445,7 @@ __all__ = [
     'MessagingEncryptionKey',
     'MessagingCall',
     'MessagingCallParticipant',
+    'MessagingLinkPreview',
     # Scenario Stats Cache
     'ScenarioStatsCache',
 ]

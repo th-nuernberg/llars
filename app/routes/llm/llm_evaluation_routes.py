@@ -85,11 +85,24 @@ def get_evaluation_progress(scenario_id):
             model_id=model_id,
         ).filter(LLMTaskResult.error.isnot(None)).count()
 
+        # Determine per-model status
+        if completed >= total_threads:
+            model_status = 'completed'
+        elif errors > 0 and completed + errors >= total_threads:
+            model_status = 'failed'
+        elif errors > 0 and completed + errors < total_threads:
+            model_status = 'stopped'
+        elif completed > 0:
+            model_status = 'running'
+        else:
+            model_status = 'pending'
+
         model_progress[model_id] = {
             'completed': completed,
             'errors': errors,
             'total': total_threads,
-            'progress_percent': (completed / total_threads * 100) if total_threads > 0 else 0
+            'progress_percent': (completed / total_threads * 100) if total_threads > 0 else 0,
+            'status': model_status,
         }
 
     # Calculate overall progress
@@ -102,7 +115,12 @@ def get_evaluation_progress(scenario_id):
         status = 'idle'
     elif total_completed >= total_tasks:
         status = 'completed'
-    elif total_completed > 0 or total_errors > 0:
+    elif total_errors > 0 and total_completed + total_errors >= total_tasks:
+        status = 'completed'  # All items attempted (some failed)
+    elif total_errors > 0 and total_completed + total_errors < total_tasks:
+        # Some items failed but not all attempted → likely stopped/aborted
+        status = 'stopped'
+    elif total_completed > 0:
         status = 'running'
     else:
         status = 'idle'

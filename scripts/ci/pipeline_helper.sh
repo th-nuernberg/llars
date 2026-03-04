@@ -168,11 +168,11 @@ for pid in all_ids:
 cmd_deploy() {
   echo "Triggering pipeline with FORCE_DEPLOY=true on $BRANCH..."
   local payload
-  payload=$(python3 - <<PY
+payload=$(python3 - <<PY
 import json
 print(json.dumps({
-  \"ref\": \"$BRANCH\",
-  \"variables\": [{\"key\": \"FORCE_DEPLOY\", \"value\": \"true\"}]
+  "ref": "$BRANCH",
+  "variables": [{"key": "FORCE_DEPLOY", "value": "true"}]
 }))
 PY
 )

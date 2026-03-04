@@ -14,7 +14,7 @@
 # Exit Codes: 0 = Erfolg, 1 = Fehler
 # =============================================================================
 
-set -e
+set -euo pipefail
 
 BASE_URL="${BASE_URL:-http://localhost}"
 # API Key Header ist X-API-Key (nicht X-API-Key!)
@@ -34,9 +34,9 @@ log_warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
 log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
 
 cleanup() {
-    if [ -n "$CHATBOT_ID" ]; then
+    if [ -n "${CHATBOT_ID:-}" ]; then
         log_info "Cleanup: Lösche Chatbot $CHATBOT_ID..."
-        curl -sf -X DELETE "$BASE_URL/api/chatbot/$CHATBOT_ID" \
+        curl -sf -X DELETE "$BASE_URL/api/chatbots/$CHATBOT_ID" \
             -H "X-API-Key: $API_KEY" || true
     fi
 }
@@ -60,19 +60,20 @@ log_info "✓ API Health OK"
 # =============================================================================
 log_info "Erstelle Wizard-Session mit URL: $TEST_URL"
 
-RESPONSE=$(curl -sf -X POST "$BASE_URL/api/chatbot/wizard" \
+RESPONSE=""
+RESPONSE=$(curl -sf -X POST "$BASE_URL/api/chatbots/wizard" \
     -H "Content-Type: application/json" \
     -H "X-API-Key: $API_KEY" \
     -d "{
         \"url\": \"$TEST_URL\",
-        \"crawl_config\": {
+        \"crawler_config\": {
             \"max_pages\": 3,
             \"max_depth\": 1,
             \"use_playwright\": false
         }
     }" 2>&1) || {
     log_error "Wizard-Session konnte nicht erstellt werden!"
-    log_error "Response: $RESPONSE"
+    log_error "Response: ${RESPONSE:-<leer>}"
     exit 1
 }
 
@@ -92,12 +93,19 @@ log_info "✓ Wizard-Session erstellt: Chatbot=$CHATBOT_ID, Session=$SESSION_ID"
 # =============================================================================
 log_info "Starte Crawling..."
 
-CRAWL_RESPONSE=$(curl -sf -X POST "$BASE_URL/api/chatbot/$CHATBOT_ID/wizard/crawl" \
+CRAWL_RESPONSE=""
+CRAWL_RESPONSE=$(curl -sf -X POST "$BASE_URL/api/chatbots/$CHATBOT_ID/wizard/crawl" \
     -H "Content-Type: application/json" \
     -H "X-API-Key: $API_KEY" \
-    -d "{}" 2>&1) || {
+    -d "{
+        \"max_pages\": 3,
+        \"max_depth\": 1,
+        \"use_playwright\": false,
+        \"use_vision_llm\": false,
+        \"take_screenshots\": false
+    }" 2>&1) || {
     log_error "Crawling konnte nicht gestartet werden!"
-    log_error "Response: $CRAWL_RESPONSE"
+    log_error "Response: ${CRAWL_RESPONSE:-<leer>}"
     exit 1
 }
 
@@ -112,7 +120,7 @@ WAITED=0
 LAST_STATUS=""
 
 while [ $WAITED -lt $MAX_WAIT_SECONDS ]; do
-    STATUS_RESPONSE=$(curl -sf "$BASE_URL/api/chatbot/$CHATBOT_ID/wizard/status" \
+    STATUS_RESPONSE=$(curl -sf "$BASE_URL/api/chatbots/$CHATBOT_ID/wizard/status" \
         -H "X-API-Key: $API_KEY" 2>/dev/null) || {
         log_warn "Status-Abfrage fehlgeschlagen, versuche erneut..."
         sleep $POLL_INTERVAL
@@ -185,22 +193,22 @@ fi
 # =============================================================================
 log_info "Konfiguriere Chatbot..."
 
-CONFIG_RESPONSE=$(curl -sf -X PATCH "$BASE_URL/api/chatbot/wizard/sessions/$SESSION_ID/data" \
+BOT_NAME="smoke-test-bot-$(date +%s)"
+CONFIG_RESPONSE=""
+CONFIG_RESPONSE=$(curl -sf -X PATCH "$BASE_URL/api/chatbots/wizard/sessions/$CHATBOT_ID/data" \
     -H "Content-Type: application/json" \
     -H "X-API-Key: $API_KEY" \
     -d "{
-        \"chatbot_config\": {
-            \"name\": \"smoke-test-bot-$(date +%s)\",
-            \"display_name\": \"Smoke Test Bot\",
-            \"system_prompt\": \"Du bist ein Test-Assistent.\",
-            \"welcome_message\": \"Hallo! Ich bin ein Test-Bot.\",
-            \"fallback_message\": \"Das kann ich leider nicht beantworten.\",
-            \"icon\": \"mdi-robot\",
-            \"primary_color\": \"#b0ca97\"
-        }
+        \"name\": \"$BOT_NAME\",
+        \"displayName\": \"Smoke Test Bot\",
+        \"systemPrompt\": \"Du bist ein Test-Assistent.\",
+        \"welcomeMessage\": \"Hallo! Ich bin ein Test-Bot.\",
+        \"fallbackMessage\": \"Das kann ich leider nicht beantworten.\",
+        \"icon\": \"mdi-robot\",
+        \"color\": \"#b0ca97\"
     }" 2>&1) || {
     log_error "Chatbot-Konfiguration fehlgeschlagen!"
-    log_error "Response: $CONFIG_RESPONSE"
+    log_error "Response: ${CONFIG_RESPONSE:-<leer>}"
     exit 1
 }
 
@@ -211,12 +219,21 @@ log_info "✓ Chatbot konfiguriert"
 # =============================================================================
 log_info "Finalisiere Chatbot..."
 
-FINALIZE_RESPONSE=$(curl -sf -X POST "$BASE_URL/api/chatbot/$CHATBOT_ID/wizard/finalize" \
+FINALIZE_RESPONSE=""
+FINALIZE_RESPONSE=$(curl -sf -X POST "$BASE_URL/api/chatbots/$CHATBOT_ID/wizard/finalize" \
     -H "Content-Type: application/json" \
     -H "X-API-Key: $API_KEY" \
-    -d "{}" 2>&1) || {
+    -d "{
+        \"name\": \"$BOT_NAME\",
+        \"display_name\": \"Smoke Test Bot\",
+        \"system_prompt\": \"Du bist ein Test-Assistent.\",
+        \"welcome_message\": \"Hallo! Ich bin ein Test-Bot.\",
+        \"fallback_message\": \"Das kann ich leider nicht beantworten.\",
+        \"icon\": \"mdi-robot\",
+        \"color\": \"#b0ca97\"
+    }" 2>&1) || {
     log_error "Chatbot-Finalisierung fehlgeschlagen!"
-    log_error "Response: $FINALIZE_RESPONSE"
+    log_error "Response: ${FINALIZE_RESPONSE:-<leer>}"
     exit 1
 }
 
@@ -227,7 +244,8 @@ log_info "✓ Chatbot finalisiert"
 # =============================================================================
 log_info "Verifiziere Chatbot..."
 
-VERIFY_RESPONSE=$(curl -sf "$BASE_URL/api/chatbot/$CHATBOT_ID" \
+VERIFY_RESPONSE=""
+VERIFY_RESPONSE=$(curl -sf "$BASE_URL/api/chatbots/$CHATBOT_ID" \
     -H "X-API-Key: $API_KEY" 2>&1) || {
     log_error "Chatbot nicht gefunden!"
     exit 1
@@ -241,7 +259,8 @@ log_info "✓ Chatbot verifiziert: $CHATBOT_NAME"
 # =============================================================================
 log_info "Lösche Test-Chatbot..."
 
-DELETE_RESPONSE=$(curl -sf -X DELETE "$BASE_URL/api/chatbot/$CHATBOT_ID" \
+DELETE_RESPONSE=""
+DELETE_RESPONSE=$(curl -sf -X DELETE "$BASE_URL/api/chatbots/$CHATBOT_ID" \
     -H "X-API-Key: $API_KEY" 2>&1) || {
     log_warn "Chatbot-Löschung fehlgeschlagen (wird im Cleanup erneut versucht)"
 }

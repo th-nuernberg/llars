@@ -154,11 +154,13 @@ def get_scenario_details(scenario_id=None):
             'role': scenario_user.role.value,
         }
 
-        if scenario_user.role == ScenarioRoles.OWNER:
+        # Owner is determined by created_by field
+        if scenario_user.user.username == scenario.created_by:
             scenario_owner = user_info
-        elif scenario_user.role == ScenarioRoles.EVALUATOR:
+
+        if scenario_user.role == ScenarioRoles.EVALUATOR:
             scenario_evaluators.append(user_info)
-        elif scenario_user.role == ScenarioRoles.VIEWER:
+        elif scenario_user.role in (ScenarioRoles.VIEWER, ScenarioRoles.OWNER):
             scenario_viewers.append(user_info)
 
     # get all the threads of the scenario
@@ -315,10 +317,17 @@ def create_scenario():
     new_scenario_users = []
     seen_user = set()
 
-    # Add the creating user as VIEWER (ownership is determined by created_by field)
+    # Build set of evaluator IDs to check if creator is among them
+    evaluator_list = client_data['evaluator']
+    if not isinstance(evaluator_list, list):
+        evaluator_list = []
+    evaluator_id_set = set(uid for uid in evaluator_list if isinstance(uid, int))
+
+    # Add the creating user: EVALUATOR if in evaluator list, otherwise VIEWER
     creating_user = User.query.filter_by(username=creating_username).first()
     if creating_user:
-        new_scenario_users.append({"id": creating_user.id, "role": ScenarioRoles.VIEWER})
+        creator_role = ScenarioRoles.EVALUATOR if creating_user.id in evaluator_id_set else ScenarioRoles.VIEWER
+        new_scenario_users.append({"id": creating_user.id, "role": creator_role})
         seen_user.add(creating_user.id)
 
     # Auto-add admin as VIEWER if not the creating user
@@ -328,9 +337,6 @@ def create_scenario():
         seen_user.add(admin_user.id)
 
     # Validate and collect evaluators (users who can interact/rate)
-    evaluator_list = client_data['evaluator']
-    if not isinstance(evaluator_list, list):
-        evaluator_list = []
     for user_id in evaluator_list:
         if not isinstance(user_id, int):
             continue

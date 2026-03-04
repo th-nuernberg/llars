@@ -386,9 +386,9 @@ def seed_summeval_demo_scenario(db):
     db.session.add(scenario)
     db.session.flush()
 
-    # Add users to scenario: ijcai_reviewer_1=OWNER, ijcai_reviewer_2=EVALUATOR
+    # Add users to scenario: ijcai_reviewer_1=EVALUATOR, ijcai_reviewer_2=EVALUATOR
     for user, role in [
-        (ijcai_reviewer_1, ScenarioRoles.OWNER),
+        (ijcai_reviewer_1, ScenarioRoles.EVALUATOR),
         (ijcai_reviewer_2, ScenarioRoles.EVALUATOR),
         (evaluator, ScenarioRoles.VIEWER),
         (researcher, ScenarioRoles.EVALUATOR),

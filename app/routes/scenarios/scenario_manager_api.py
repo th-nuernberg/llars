@@ -259,14 +259,15 @@ def format_scenario_for_api(scenario, user, invitation_map=None, include_detaile
     # Determine management access (Owner or Manager) and user's role
     can_manage = is_owner or is_scenario_manager(scenario, username)
     user_role = None
-    if is_owner:
-        user_role = 'Owner'
-    elif invitation_map and scenario.id in invitation_map:
+    if invitation_map and scenario.id in invitation_map:
         user_role = _normalize_role_value(invitation_map[scenario.id].get('role', 'Assessor'))
     elif user_id:
         su = ScenarioUsers.query.filter_by(scenario_id=scenario.id, user_id=user_id).first()
         if su:
             user_role = _normalize_role_value(su.role)
+    # Fallback for owner without ScenarioUsers row
+    if not user_role and is_owner:
+        user_role = 'Viewer'
 
     # Get function type name
     func_type = FeatureFunctionType.query.filter_by(
@@ -1896,8 +1897,9 @@ def sm_remove_user(scenario_id, user_id):
     if not su:
         raise NotFoundError('User not found in scenario')
 
-    # Cannot archive the owner
-    if su.role == ScenarioRoles.OWNER:
+    # Cannot archive the owner (determined by created_by field)
+    target_user = User.query.get(user_id)
+    if target_user and scenario.created_by and target_user.username == scenario.created_by:
         raise ValidationError('Cannot remove the scenario owner')
 
     # Archive instead of delete - preserves evaluations for potential restoration

@@ -1449,7 +1449,7 @@ def _seed_evaluation_scenario(db_session, demo_user, collab_user):
     reviewer_1_su = ScenarioUsers(
         scenario_id=scenario.id,
         user_id=demo_user.id,
-        role=ScenarioRoles.OWNER,
+        role=ScenarioRoles.EVALUATOR,
     )
     db_session.session.add(reviewer_1_su)
     db_session.session.flush()
@@ -1808,7 +1808,7 @@ def _seed_evaluation_scenario_5_buckets(db_session, demo_user, collab_user):
     reviewer_1_su = ScenarioUsers(
         scenario_id=scenario.id,
         user_id=demo_user.id,
-        role=ScenarioRoles.OWNER,
+        role=ScenarioRoles.EVALUATOR,
     )
     db_session.session.add(reviewer_1_su)
     db_session.session.flush()

@@ -82,7 +82,7 @@ CREATE_RESPONSE=$(api POST "/api/admin/field-prompts" -d '{
 TEMPLATE_ID=$(echo "$CREATE_RESPONSE" | python3 -c "
 import sys, json
 data = json.load(sys.stdin)
-tmpl = data.get('template', data)
+tmpl = data.get('template') or data.get('prompt') or data
 print(tmpl.get('id', tmpl.get('template_id', '')))
 " 2>/dev/null)
 

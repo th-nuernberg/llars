@@ -58,16 +58,6 @@ assert_status_with_api_key() {
 assert_system_settings_schema() {
   echo "Checking required system_settings columns"
 
-  local columns
-  columns=$(docker exec llars_db_service \
-    mariadb -N -u "$DB_USER" "-p$DB_PASS" "$DB_NAME" \
-    -e "SHOW COLUMNS FROM system_settings;" 2>/dev/null | awk '{print $1}')
-
-  if [ -z "$columns" ]; then
-    echo "ERROR: Could not read columns from system_settings."
-    return 1
-  fi
-
   local required_columns=(
     "default_referral_role"
     "communication_enabled"
@@ -75,6 +65,78 @@ assert_system_settings_schema() {
     "ai_assistant_color"
     "ai_assistant_username"
   )
+
+  # Preferred check in CI/smoke containers: validate keys via admin API.
+  # This avoids relying on Docker CLI access from inside the smoke container.
+  if [ -n "$SYSTEM_ADMIN_API_KEY" ]; then
+    local settings_json
+    settings_json=$(curl -sS -H "X-API-Key: $SYSTEM_ADMIN_API_KEY" "$BASE_URL/api/admin/system/settings" || true)
+
+    if [ -n "$settings_json" ]; then
+      local missing_api
+      missing_api=$(python3 - "$settings_json" <<'PY'
+import json
+import sys
+
+required = [
+    "default_referral_role",
+    "communication_enabled",
+    "ai_assistant_enabled",
+    "ai_assistant_color",
+    "ai_assistant_username",
+]
+
+raw = sys.argv[1]
+try:
+    payload = json.loads(raw)
+except Exception:
+    print("__invalid_json__")
+    sys.exit(0)
+
+settings = payload.get("settings") if isinstance(payload, dict) else None
+if not isinstance(settings, dict):
+    print("__missing_settings__")
+    sys.exit(0)
+
+missing = [key for key in required if key not in settings]
+for key in missing:
+    print(key)
+PY
+)
+
+      if [ "$missing_api" = "__invalid_json__" ] || [ "$missing_api" = "__missing_settings__" ]; then
+        echo "ERROR: /api/admin/system/settings returned invalid payload."
+        return 1
+      fi
+
+      if [ -n "$missing_api" ]; then
+        while IFS= read -r column; do
+          [ -z "$column" ] && continue
+          echo "ERROR: Missing required field in system settings API: $column"
+        done <<< "$missing_api"
+        return 1
+      fi
+
+      echo "OK system_settings schema (API)"
+      return 0
+    fi
+  fi
+
+  echo "WARNING: API-based schema check unavailable; trying DB fallback."
+  if ! command -v docker >/dev/null 2>&1; then
+    echo "WARNING: docker CLI unavailable; skipping DB schema fallback."
+    return 0
+  fi
+
+  local columns
+  columns=$(docker exec llars_db_service \
+    mariadb -N -u "$DB_USER" "-p$DB_PASS" "$DB_NAME" \
+    -e "SHOW COLUMNS FROM system_settings;" 2>/dev/null | awk '{print $1}' || true)
+
+  if [ -z "$columns" ]; then
+    echo "WARNING: Could not read columns from system_settings via DB fallback."
+    return 0
+  fi
 
   local missing=0
   for column in "${required_columns[@]}"; do

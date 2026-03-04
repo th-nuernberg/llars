@@ -123,6 +123,20 @@ echo "[4/4] Updating state..."
 
 echo "$PREVIOUS" > "$STATE_DIR/active_color"
 echo "$ACTIVE" > "$STATE_DIR/previous_color"
+rm -f "$STATE_DIR/pending_switch.env" 2>/dev/null || true
+
+ACTIVE_COMMIT_FILE="$STATE_DIR/active_commit"
+PREVIOUS_COMMIT_FILE="$STATE_DIR/previous_commit"
+if [ -f "$ACTIVE_COMMIT_FILE" ] && [ -f "$PREVIOUS_COMMIT_FILE" ]; then
+  ACTIVE_COMMIT=$(cat "$ACTIVE_COMMIT_FILE" 2>/dev/null || echo "")
+  PREVIOUS_COMMIT=$(cat "$PREVIOUS_COMMIT_FILE" 2>/dev/null || echo "")
+  if [ -n "$PREVIOUS_COMMIT" ]; then
+    echo "$PREVIOUS_COMMIT" > "$ACTIVE_COMMIT_FILE"
+  fi
+  if [ -n "$ACTIVE_COMMIT" ]; then
+    echo "$ACTIVE_COMMIT" > "$PREVIOUS_COMMIT_FILE"
+  fi
+fi
 
 echo ""
 echo "=== Rollback complete ==="

@@ -17,6 +17,8 @@
 # State files (.deploy/):
 #   active_color    - Currently active color (blue|green)
 #   previous_color  - Previously active color (for instant rollback)
+#   pending_switch.env - Candidate color/commit prepared by deploy mode
+#   active_commit   - Commit currently serving production traffic
 #   rollback.env    - Commit + backup info for full rollback
 # =============================================================================
 
@@ -28,6 +30,9 @@ BRANCH="${LLARS_PRODUCTION_BRANCH:-main}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 STATE_DIR="$DEPLOY_PATH/.deploy"
 BACKUP_DIR="$DEPLOY_PATH/backups"
+PENDING_SWITCH_FILE="$STATE_DIR/pending_switch.env"
+ACTIVE_COMMIT_FILE="$STATE_DIR/active_commit"
+PREVIOUS_COMMIT_FILE="$STATE_DIR/previous_commit"
 
 COMPOSE_FILES="-f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.prod-bluegreen.yml"
 BG_SERVICES="backend-flask-service frontend-vue-service yjs-service backend-supervisor-service"
@@ -142,6 +147,8 @@ cmd_status() {
   active=$(get_active_color)
   local previous
   previous=$(cat "$STATE_DIR/previous_color" 2>/dev/null || echo "none")
+  local active_commit
+  active_commit=$(cat "$ACTIVE_COMMIT_FILE" 2>/dev/null || echo "unknown")
 
   if [ -z "$active" ]; then
     echo "State: No blue-green deployment yet"
@@ -149,6 +156,7 @@ cmd_status() {
   else
     echo "Active color:   $active"
     echo "Previous color: $previous"
+    echo "Active commit:  $active_commit"
 
     echo ""
     echo "--- Blue containers ---"
@@ -165,6 +173,16 @@ cmd_status() {
       status=$(docker inspect --format='{{.State.Status}} (health: {{.State.Health.Status}})' "llars_${svc}_green" 2>/dev/null || echo "not running")
       echo "  llars_${svc}_green: $status"
     done
+  fi
+
+  if [ -f "$PENDING_SWITCH_FILE" ]; then
+    # shellcheck disable=SC1090
+    . "$PENDING_SWITCH_FILE"
+    echo ""
+    echo "--- Pending switch ---"
+    echo "Color:  ${PENDING_COLOR:-unknown}"
+    echo "Commit: ${PENDING_COMMIT:-unknown}"
+    echo "From:   ${PENDING_CREATED_AT:-unknown}"
   fi
 
   echo ""
@@ -354,6 +372,13 @@ DEPLOY_COLOR=${deploy_color}
 PREVIOUS_ACTIVE=${active}
 EOF
 
+  # Save pending switch candidate (consumed by switch mode)
+  cat > "$PENDING_SWITCH_FILE" <<EOF
+PENDING_COLOR=${deploy_color}
+PENDING_COMMIT=${deployed_commit}
+PENDING_CREATED_AT=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+EOF
+
   echo ""
   echo "=== Deploy complete ==="
   echo "Color: $deploy_color"
@@ -377,12 +402,41 @@ cmd_switch() {
   echo "=== LLARS Production Switch ============="
   echo "=========================================="
 
+  if [ ! -f "$PENDING_SWITCH_FILE" ]; then
+    echo "No pending deployment candidate found. Nothing to switch."
+    exit 0
+  fi
+
+  # shellcheck disable=SC1090
+  . "$PENDING_SWITCH_FILE"
+
+  local deploy_color="${PENDING_COLOR:-}"
+  local candidate_commit="${PENDING_COMMIT:-}"
+  if [ -z "$deploy_color" ] || [ -z "$candidate_commit" ]; then
+    echo "ERROR: Invalid pending switch file: $PENDING_SWITCH_FILE"
+    exit 1
+  fi
+
   local active
   active=$(get_active_color)
-  local deploy_color
-  deploy_color=$(get_inactive_color)
+  local expected_inactive
+  expected_inactive=$(get_inactive_color)
 
-  echo "Switching production: ${active:-none} → $deploy_color"
+  if [ "$deploy_color" != "$expected_inactive" ]; then
+    echo "ERROR: Pending color '$deploy_color' does not match expected inactive color '$expected_inactive'."
+    echo "Run 'deploy_bluegreen.sh deploy' again to prepare a fresh candidate."
+    exit 1
+  fi
+
+  local active_commit
+  active_commit=$(cat "$ACTIVE_COMMIT_FILE" 2>/dev/null || echo "")
+  if [ -n "$active_commit" ] && [ "$active_commit" = "$candidate_commit" ]; then
+    echo "Candidate commit is already active ($candidate_commit). Skipping switch."
+    rm -f "$PENDING_SWITCH_FILE"
+    exit 0
+  fi
+
+  echo "Switching production: ${active:-none} → $deploy_color ($candidate_commit)"
 
   # Verify inactive color containers are running and healthy
   for svc in flask frontend yjs supervisor; do
@@ -406,19 +460,28 @@ cmd_switch() {
 
   # Switch upstream
   echo ""
-  echo "[1/3] Updating upstream → $deploy_color"
+  echo "[1/4] Updating upstream → $deploy_color"
   update_upstream_conf "$deploy_color"
 
   echo ""
-  echo "[2/3] Reloading nginx..."
+  echo "[2/4] Reloading nginx..."
   reload_nginx
 
   echo ""
-  echo "[3/3] Saving state..."
+  echo "[3/4] Saving state..."
   save_state "$deploy_color" "$active"
+  if [ -n "$active_commit" ]; then
+    echo "$active_commit" > "$PREVIOUS_COMMIT_FILE"
+  fi
+  echo "$candidate_commit" > "$ACTIVE_COMMIT_FILE"
+
+  echo ""
+  echo "[4/4] Clearing pending switch state..."
+  rm -f "$PENDING_SWITCH_FILE"
 
   echo ""
   echo "=== Production switched to $deploy_color ==="
+  echo "Active commit: $candidate_commit"
   echo "Previous color: ${active:-none} (containers still running for instant rollback)"
   echo ""
   echo "To rollback: bash scripts/ci/rollback_bluegreen.sh"

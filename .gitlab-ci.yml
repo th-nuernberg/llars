@@ -115,6 +115,8 @@ cache:
 .deploy_rules:
   rules:
     - *test_only_skip
+    - if: $CI_PIPELINE_SOURCE == "web" && $CI_COMMIT_BRANCH == "main"
+      when: manual
     - if: $CI_PIPELINE_SOURCE == "schedule" && $SCHEDULED_DEPLOY == "true"
     - if: $FORCE_DEPLOY == "true" && $CI_COMMIT_BRANCH == "main"
 
@@ -324,26 +326,28 @@ test:e2e:staging:
   stage: test-staging
   tags:
     - shell
-  timeout: 30 minutes
+  timeout: 45 minutes
   script:
     - cd /var/llars
+    - mkdir -p "$CI_PROJECT_DIR/e2e-artifacts"
     # Load server .env for passwords
     - export E2E_TEST_PASSWORD=$(grep '^LLARS_ADMIN_PASSWORD=' .env | cut -d= -f2- || echo "admin123")
     # Build smoke-test container (with Playwright + E2E tests)
     - docker compose --profile testing build smoke-test-service
     # Run E2E tests against staging (localhost:55080)
     - |
+      set -o pipefail
       docker compose --profile testing run --rm --entrypoint "" \
         -e PLAYWRIGHT_BASE_URL=http://localhost:55080 \
         -e E2E_TEST_PASSWORD="${E2E_TEST_PASSWORD}" \
         -e NODE_TLS_REJECT_UNAUTHORIZED=0 \
         smoke-test-service \
-        bash -c "cd /tests/e2e && npx playwright test --project=chromium --workers=1"
+        bash -c "cd /tests/e2e && npx playwright test --project=chromium --workers=1" \
+        2>&1 | tee "$CI_PROJECT_DIR/e2e-artifacts/playwright.log"
   artifacts:
     when: always
     paths:
-      - /var/llars/llars-frontend/playwright-report/
-      - /var/llars/llars-frontend/test-results/
+      - e2e-artifacts/
     expire_in: 1 week
   extends:
     - .deploy_rules
@@ -360,6 +364,8 @@ smoke:staging:
     - cd /var/llars
     # Load SYSTEM_ADMIN_API_KEY from server .env
     - export SYSTEM_ADMIN_API_KEY=$(grep '^SYSTEM_ADMIN_API_KEY=' .env | cut -d= -f2-)
+    # Ensure smoke container reflects the current commit
+    - docker compose --profile testing build smoke-test-service
     - |
       docker compose --profile testing run --rm --entrypoint "" \
         -e BASE_URL=http://localhost:55080 \
@@ -370,6 +376,7 @@ smoke:staging:
     - .deploy_rules
   needs:
     - deploy:staging
+    - test:e2e:staging
 
 # =============================================================================
 # STAGE 7: DEPLOY PRODUCTION
@@ -394,10 +401,8 @@ deploy:production:
   extends:
     - .deploy_rules
   needs:
-    - job: test:e2e:staging
-      optional: true
-    - job: smoke:staging
-      optional: true
+    - test:e2e:staging
+    - smoke:staging
 
 # =============================================================================
 # STAGE 8: SMOKE (Production)

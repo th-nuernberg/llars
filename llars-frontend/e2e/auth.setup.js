@@ -15,6 +15,7 @@ import fs from 'fs'
 const testPassword = process.env.E2E_TEST_PASSWORD || 'admin123'
 // Production servers need temporary test users created via API
 const isProduction = !!process.env.E2E_TEST_PASSWORD
+const keepTestUsers = process.env.E2E_KEEP_TEST_USERS === 'true' || !!process.env.CI
 const baseURL = process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:55080'
 const apiBaseURL = process.env.PLAYWRIGHT_API_BASE_URL || baseURL
 const loginTimeout = process.env.CI ? 60000 : 45000
@@ -429,9 +430,15 @@ setup('authenticate as evaluator', async ({ page }) => {
   await page.context().storageState({ path: path.join(AUTH_DIR, 'evaluator.json') })
 })
 
-// Cleanup: Delete temporary test users after all setup tests complete
+// Cleanup: optional deletion of temporary test users after setup tests complete.
+// In CI we keep users so mid-run re-logins remain possible after token expiry.
 setup.afterAll(async () => {
   if (isProduction && adminToken) {
+    if (keepTestUsers) {
+      console.log('Skipping temporary test user cleanup (CI/keep mode enabled)')
+      return
+    }
+
     console.log('Cleaning up temporary test users...')
     await deleteTestUser(adminToken, TEST_USERS.researcher.username)
     await deleteTestUser(adminToken, TEST_USERS.evaluator.username)

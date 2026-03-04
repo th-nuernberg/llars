@@ -13,6 +13,8 @@
 
 const testPassword = process.env.E2E_TEST_PASSWORD || 'admin123'
 export const isProduction = !!process.env.E2E_TEST_PASSWORD
+const playwrightBaseURL = process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:55080'
+const apiBaseURL = process.env.PLAYWRIGHT_API_BASE_URL || playwrightBaseURL
 const researcherUsername = isProduction ? 'e2e-researcher' : 'researcher'
 const evaluatorUsername = isProduction ? 'e2e-evaluator' : 'evaluator'
 const chatbotManagerUsername = isProduction ? 'e2e-chatbot-manager' : 'chatbot_manager'
@@ -23,6 +25,62 @@ export const TEST_USERS = {
   evaluator: { username: evaluatorUsername, password: testPassword },
   admin: { username: 'admin', password: testPassword },
   chatbot_manager: { username: chatbotManagerUsername, password: testPassword }
+}
+
+async function apiLogin(user) {
+  const response = await fetch(`${apiBaseURL}/auth/authentik/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username: user.username, password: user.password })
+  })
+
+  const responseText = await response.text()
+  if (!response.ok) {
+    throw new Error(`API login failed for ${user.username}: ${response.status} ${responseText}`)
+  }
+
+  let data = {}
+  try {
+    data = JSON.parse(responseText)
+  } catch (error) {
+    throw new Error(`API login invalid JSON for ${user.username}: ${error.message}`)
+  }
+
+  if (!data.access_token) {
+    throw new Error(`API login missing access_token for ${user.username}`)
+  }
+
+  return data
+}
+
+async function applyAuthStorage(page, user, tokenData) {
+  await page.evaluate((payload) => {
+    const rolesValue = JSON.stringify(payload.roles || [])
+    const usernameValue = payload.username || ''
+    const store = (storage, key, value) => {
+      try {
+        storage.setItem(key, value)
+      } catch (e) {
+        // ignore storage failures
+      }
+    }
+
+    store(window.sessionStorage, 'auth_token', payload.accessToken || '')
+    store(window.sessionStorage, 'auth_refreshToken', payload.refreshToken || '')
+    store(window.sessionStorage, 'auth_idToken', payload.idToken || '')
+    store(window.sessionStorage, 'auth_llars_roles', rolesValue)
+    store(window.localStorage, 'auth_token', payload.accessToken || '')
+    store(window.localStorage, 'auth_refreshToken', payload.refreshToken || '')
+    store(window.localStorage, 'auth_idToken', payload.idToken || '')
+    store(window.localStorage, 'auth_llars_roles', rolesValue)
+    store(window.localStorage, 'username', usernameValue)
+  }, {
+    accessToken: tokenData.access_token,
+    refreshToken: tokenData.refresh_token,
+    idToken: tokenData.id_token,
+    roles: tokenData.llars_roles || [],
+    username: user.username
+  })
 }
 
 /**
@@ -94,6 +152,21 @@ export async function quickLogin(page, user = TEST_USERS.researcher, retries = 2
     if (page.url().includes('/Home')) {
       await dismissConsentBanner(page)
       return // Already authenticated via storageState
+    }
+
+    // Session expired or missing: refresh tokens via API to avoid brittle form login.
+    try {
+      const tokenData = await apiLogin(user)
+      await page.goto('/login', { waitUntil: 'domcontentloaded', timeout: 30000 }).catch(() => {})
+      await applyAuthStorage(page, user, tokenData)
+      await page.goto('/Home', { waitUntil: 'domcontentloaded', timeout: 30000 })
+      await page.waitForLoadState('load', { timeout: 5000 }).catch(() => {})
+      await dismissConsentBanner(page)
+      if (page.url().includes('/Home')) {
+        return
+      }
+    } catch (error) {
+      // Fall back to form-based login below when API login is unavailable.
     }
   }
 

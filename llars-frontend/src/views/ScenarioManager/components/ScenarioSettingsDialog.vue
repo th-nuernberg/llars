@@ -56,6 +56,84 @@
               />
             </template>
           </v-textarea>
+
+          <v-textarea
+            v-model="formData.ai_generation_prompt"
+            :label="$t('scenarioManager.settings.aiGenerationPrompt')"
+            :hint="$t('scenarioManager.settings.aiGenerationPromptHint')"
+            variant="outlined"
+            rows="2"
+            class="mb-4"
+            persistent-hint
+          />
+
+          <v-textarea
+            v-model="formData.task_description"
+            :label="$t('scenarioManager.settings.taskDescription')"
+            :hint="$t('scenarioManager.settings.taskDescriptionHint')"
+            variant="outlined"
+            rows="3"
+            class="mb-4"
+            persistent-hint
+          >
+            <template #label>
+              <span class="field-label-inline">
+                <span>{{ $t('scenarioManager.settings.taskDescription') }}</span>
+                <LInfoTooltip
+                  :title="$t('scenarioManager.settings.taskDescriptionTooltipTitle')"
+                  :aria-label="$t('scenarioManager.settings.taskDescriptionTooltipTitle')"
+                  :markdown="$t('scenarioManager.settings.taskDescriptionTooltipMarkdown')"
+                  location="bottom"
+                  max-width="460"
+                  size="x-small"
+                />
+              </span>
+            </template>
+            <template #append-inner>
+              <LAIFieldButton
+                field-key="scenario.settings.task_description"
+                :context="buildScenarioAiContext()"
+                icon-only
+                size="small"
+                @generated="formData.task_description = $event"
+              />
+            </template>
+          </v-textarea>
+
+          <v-combobox
+            v-model="formData.evaluation_criteria"
+            :label="$t('scenarioManager.settings.evaluationCriteria')"
+            :hint="$t('scenarioManager.settings.evaluationCriteriaHint')"
+            multiple
+            chips
+            closable-chips
+            clearable
+            variant="outlined"
+            persistent-hint
+          >
+            <template #label>
+              <span class="field-label-inline">
+                <span>{{ $t('scenarioManager.settings.evaluationCriteria') }}</span>
+                <LInfoTooltip
+                  :title="$t('scenarioManager.settings.evaluationCriteriaTooltipTitle')"
+                  :aria-label="$t('scenarioManager.settings.evaluationCriteriaTooltipTitle')"
+                  :markdown="$t('scenarioManager.settings.evaluationCriteriaTooltipMarkdown')"
+                  location="bottom"
+                  max-width="460"
+                  size="x-small"
+                />
+              </span>
+            </template>
+            <template #append-inner>
+              <LAIFieldButton
+                field-key="scenario.settings.evaluation_criteria"
+                :context="buildScenarioAiContext()"
+                icon-only
+                size="small"
+                @generated="applyGeneratedCriteria"
+              />
+            </template>
+          </v-combobox>
         </div>
 
         <!-- Time Period -->
@@ -272,6 +350,9 @@ const saving = ref(false)
 const formData = ref({
   scenario_name: '',
   description: '',
+  ai_generation_prompt: '',
+  task_description: '',
+  evaluation_criteria: [],
   begin: null,
   end: null,
   status: 'draft',
@@ -327,6 +408,55 @@ const rules = {
   required: v => !!v || t('validation.required')
 }
 
+function normalizeCriteriaList(value) {
+  const raw = Array.isArray(value)
+    ? value
+    : typeof value === 'string'
+      ? value.split(/[,\n;]/)
+      : []
+
+  const unique = []
+  const seen = new Set()
+
+  raw.forEach(entry => {
+    const normalized = (typeof entry === 'string' ? entry : String(entry || '')).trim()
+    if (!normalized) return
+    if (seen.has(normalized)) return
+    seen.add(normalized)
+    unique.push(normalized)
+  })
+
+  return unique
+}
+
+function buildScenarioAiContext() {
+  return {
+    scenario_type: props.scenario?.function_type || '',
+    scenario_name: formData.value.scenario_name || '',
+    existing_description: formData.value.description || '',
+    existing_task_description: formData.value.task_description || '',
+    existing_evaluation_criteria: normalizeCriteriaList(formData.value.evaluation_criteria).join(', '),
+    generation_prompt: formData.value.ai_generation_prompt || ''
+  }
+}
+
+function applyGeneratedCriteria(value) {
+  formData.value.evaluation_criteria = normalizeCriteriaList(value)
+}
+
+function parseScenarioConfig(rawConfig) {
+  if (!rawConfig) return {}
+  if (typeof rawConfig === 'string') {
+    try {
+      const parsed = JSON.parse(rawConfig)
+      return parsed && typeof parsed === 'object' ? parsed : {}
+    } catch {
+      return {}
+    }
+  }
+  return typeof rawConfig === 'object' ? rawConfig : {}
+}
+
 // Methods
 function handleCollabUserSelect(user) {
   pendingCollabUser.value = user
@@ -369,13 +499,24 @@ async function saveSettings() {
 
   saving.value = true
   try {
+    const nextConfig = {
+      ...(formData.value.config || {}),
+      distribution_mode: formData.value.config?.distribution_mode || 'all',
+      order_mode: formData.value.config?.order_mode || 'random',
+      ai_generation_prompt: formData.value.ai_generation_prompt || '',
+      task_description: formData.value.task_description || '',
+      evaluation_criteria: normalizeCriteriaList(formData.value.evaluation_criteria)
+    }
+
     await updateScenario(props.scenario.id, {
       scenario_name: formData.value.scenario_name,
       description: formData.value.description,
       begin: formData.value.begin,
       end: formData.value.end,
       status: formData.value.status,
-      config_json: formData.value.config
+      task_description: formData.value.task_description || '',
+      evaluation_criteria: normalizeCriteriaList(formData.value.evaluation_criteria),
+      config_json: nextConfig
     })
     emit('saved')
   } finally {
@@ -391,15 +532,20 @@ function confirmDelete() {
 onMounted(async () => {
   // Initialize form with scenario data
   if (props.scenario) {
+    const config = parseScenarioConfig(props.scenario.config_json)
     formData.value = {
       scenario_name: props.scenario.scenario_name || '',
       description: props.scenario.description || '',
+      ai_generation_prompt: config.ai_generation_prompt || '',
+      task_description: config.task_description || '',
+      evaluation_criteria: normalizeCriteriaList(config.evaluation_criteria),
       begin: props.scenario.begin?.split('T')[0] || null,
       end: props.scenario.end?.split('T')[0] || null,
       status: props.scenario.status || 'draft',
       config: {
-        distribution_mode: props.scenario.config_json?.distribution_mode || 'all',
-        order_mode: props.scenario.config_json?.order_mode || 'random'
+        ...config,
+        distribution_mode: config.distribution_mode || 'all',
+        order_mode: config.order_mode || 'random'
       }
     }
   }
@@ -449,6 +595,12 @@ onMounted(async () => {
 
 .section-help-icon:hover {
   opacity: 0.8;
+}
+
+.field-label-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .l-radio-list {

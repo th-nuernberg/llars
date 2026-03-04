@@ -13,6 +13,9 @@ if [ -f "$ENV_FILE" ]; then
 fi
 
 SYSTEM_ADMIN_API_KEY="${SYSTEM_ADMIN_API_KEY:-}"
+DB_USER="${MYSQL_USER:-dev_user}"
+DB_PASS="${MYSQL_PASSWORD:-dev_password_change_me}"
+DB_NAME="${MYSQL_DATABASE:-database_llars}"
 
 assert_status() {
   local url="$1"
@@ -52,7 +55,45 @@ assert_status_with_api_key() {
   return 1
 }
 
+assert_system_settings_schema() {
+  echo "Checking required system_settings columns"
+
+  local columns
+  columns=$(docker exec llars_db_service \
+    mariadb -N -u "$DB_USER" "-p$DB_PASS" "$DB_NAME" \
+    -e "SHOW COLUMNS FROM system_settings;" 2>/dev/null | awk '{print $1}')
+
+  if [ -z "$columns" ]; then
+    echo "ERROR: Could not read columns from system_settings."
+    return 1
+  fi
+
+  local required_columns=(
+    "default_referral_role"
+    "communication_enabled"
+    "ai_assistant_enabled"
+    "ai_assistant_color"
+    "ai_assistant_username"
+  )
+
+  local missing=0
+  for column in "${required_columns[@]}"; do
+    if ! grep -qx "$column" <<< "$columns"; then
+      echo "ERROR: Missing required column in system_settings: $column"
+      missing=1
+    fi
+  done
+
+  if [ "$missing" -ne 0 ]; then
+    return 1
+  fi
+
+  echo "OK system_settings schema"
+}
+
 echo "Running basic smoke checks against $BASE_URL"
+
+assert_system_settings_schema
 
 assert_status "$BASE_URL/auth/health_check" 200
 assert_status "$BASE_URL/auth/authentik/health_check" 200

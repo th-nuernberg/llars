@@ -58,6 +58,52 @@ def _normalize_role_value(role) -> str:
     return val
 
 
+def _parse_scenario_config(raw_config):
+    if isinstance(raw_config, str):
+        try:
+            raw_config = json.loads(raw_config)
+        except (json.JSONDecodeError, TypeError):
+            raw_config = {}
+    if not isinstance(raw_config, dict):
+        return {}
+    return dict(raw_config)
+
+
+def _normalize_task_description(value):
+    if value is None:
+        return ''
+    text = str(value).strip()
+    return text
+
+
+def _normalize_evaluation_criteria(value):
+    if value is None:
+        return []
+
+    if isinstance(value, str):
+        raw_items = value.replace('\r', '\n').replace(';', ',').split('\n')
+        values = []
+        for item in raw_items:
+            values.extend(item.split(','))
+    elif isinstance(value, list):
+        values = value
+    else:
+        return []
+
+    normalized = []
+    seen = set()
+    for item in values:
+        text = (item if isinstance(item, str) else str(item or '')).strip()
+        if not text:
+            continue
+        if text in seen:
+            continue
+        seen.add(text)
+        normalized.append(text)
+
+    return normalized
+
+
 def _normalize_llm_evaluators(config):
     if not isinstance(config, dict):
         return []
@@ -365,18 +411,13 @@ def format_scenario_for_api(scenario, user, invitation_map=None, include_detaile
         }
 
     # Get config - parse JSON string if needed
-    config = scenario.config_json or {}
-    if isinstance(config, str):
-        try:
-            config = json.loads(config)
-        except (json.JSONDecodeError, TypeError):
-            config = {}
-    if not isinstance(config, dict):
-        config = {}
+    config = _parse_scenario_config(scenario.config_json)
 
     llm_evaluators = _normalize_llm_evaluators(config)
     if llm_evaluators:
         config['llm_evaluators'] = llm_evaluators
+    task_description = _normalize_task_description(config.get('task_description'))
+    evaluation_criteria = _normalize_evaluation_criteria(config.get('evaluation_criteria'))
 
     # Get invitation info for current user
     invitation_info = None
@@ -413,6 +454,8 @@ def format_scenario_for_api(scenario, user, invitation_map=None, include_detaile
         'thread_count': thread_count,
         'user_count': user_count,
         'llm_evaluator_count': len(llm_evaluators),
+        'task_description': task_description,
+        'evaluation_criteria': evaluation_criteria,
         'config_json': config,
         'stats': stats,
         'user_progress': user_progress,  # Current user's evaluation progress
@@ -1438,18 +1481,26 @@ def sm_create_scenario():
         end = datetime.utcnow() + timedelta(days=30)
 
     # Build config
-    config = data.get('config_json', {})
-    if isinstance(config, str):
-        try:
-            config = json.loads(config)
-        except (json.JSONDecodeError, TypeError):
-            config = {}
-    if not isinstance(config, dict):
-        config = {}
+    config = _parse_scenario_config(data.get('config_json', {}))
     if not config.get('distribution_mode'):
         config['distribution_mode'] = 'all'
     if not config.get('order_mode'):
         config['order_mode'] = 'random'
+
+    task_description = _normalize_task_description(
+        data.get('task_description', config.get('task_description'))
+    )
+    evaluation_criteria = _normalize_evaluation_criteria(
+        data.get('evaluation_criteria', config.get('evaluation_criteria'))
+    )
+    if task_description:
+        config['task_description'] = task_description
+    else:
+        config.pop('task_description', None)
+    if evaluation_criteria:
+        config['evaluation_criteria'] = evaluation_criteria
+    else:
+        config.pop('evaluation_criteria', None)
 
     # Resolve LLM evaluators (supports legacy selected_llms from older frontends)
     raw_llm_evaluators = data.get('llm_evaluators')
@@ -1556,8 +1607,31 @@ def update_scenario(scenario_id):
         scenario.begin = datetime.fromisoformat(data['begin'].replace('Z', '+00:00'))
     if 'end' in data and data['end']:
         scenario.end = datetime.fromisoformat(data['end'].replace('Z', '+00:00'))
-    if 'config_json' in data:
-        scenario.config_json = data['config_json']
+    existing_config = _parse_scenario_config(scenario.config_json)
+    incoming_config = _parse_scenario_config(data.get('config_json')) if 'config_json' in data else None
+    next_config = {**existing_config, **(incoming_config or {})}
+
+    has_task_description_update = 'task_description' in data
+    has_criteria_update = 'evaluation_criteria' in data
+    if has_task_description_update or 'task_description' in next_config:
+        task_description = _normalize_task_description(
+            data.get('task_description', next_config.get('task_description'))
+        )
+        if task_description:
+            next_config['task_description'] = task_description
+        else:
+            next_config.pop('task_description', None)
+    if has_criteria_update or 'evaluation_criteria' in next_config:
+        evaluation_criteria = _normalize_evaluation_criteria(
+            data.get('evaluation_criteria', next_config.get('evaluation_criteria'))
+        )
+        if evaluation_criteria:
+            next_config['evaluation_criteria'] = evaluation_criteria
+        else:
+            next_config.pop('evaluation_criteria', None)
+
+    if incoming_config is not None or has_task_description_update or has_criteria_update:
+        scenario.config_json = next_config
 
     # Optional fields
     if hasattr(scenario, 'description') and 'description' in data:

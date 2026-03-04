@@ -25,6 +25,8 @@ class InvitationStatus(Enum):
 class MembershipStatus(Enum):
     ACTIVE = 'active'        # User ist aktiv im Szenario
     ARCHIVED = 'archived'    # User wurde entfernt, Bewertungen bleiben erhalten
+    EVALUATOR = 'Evaluator'
+    OWNER = 'Owner'
 
 
 class ProgressionStatus(Enum):

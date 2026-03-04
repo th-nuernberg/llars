@@ -321,6 +321,22 @@ const allItems = computed(() => ([
     badgeColor: 'info'
   },
   {
+    title: 'Anonymisierungs-Pipeline',
+    description: 'Konversationen batch-anonymisieren, bearbeiten und exportieren',
+    route: '/anonymization',
+    icon: 'mdi-shield-check',
+    permission: 'feature:anonymization-pipeline:view',
+    category: 'research'
+  },
+  {
+    title: t('home.features.kaimo.title'),
+    description: t('home.features.kaimo.description'),
+    route: '/anonymization',
+    icon: 'mdi-shield-check',
+    permission: 'feature:anonymization-pipeline:view',
+    category: 'research'
+  },
+  {
     title: t('home.features.kaimo.title'),
     description: t('home.features.kaimo.description'),
     route: '/kaimo',

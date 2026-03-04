@@ -6,7 +6,7 @@ Focus: Prompt Engineering block mapping for batch generation.
 
 from types import SimpleNamespace
 
-from services.generation.generation_worker import GenerationWorker
+from services.generation.generation_worker import GenerationWorker, strip_thinking_tags
 
 
 def _make_user_prompt(blocks):
@@ -92,3 +92,18 @@ def test_render_user_prompt_uses_prompt_engineering_variable_defaults_when_runti
 
     assert system_prompt == "Rolle: Fachberater"
     assert user_prompt_text == "Antwort in Deutsch."
+
+
+def test_strip_thinking_tags_removes_wrapped_reasoning_block():
+    text = "<think>Schritt 1\nSchritt 2</think>\n\nFinale Antwort."
+    assert strip_thinking_tags(text) == "Finale Antwort."
+
+
+def test_strip_thinking_tags_handles_multiple_blocks():
+    text = "A<think>eins</think>B<think>zwei</think>C"
+    assert strip_thinking_tags(text) == "ABC"
+
+
+def test_strip_thinking_tags_removes_dangling_open_tag_tail():
+    text = "Sichtbarer Anfang\n<think>nicht anzeigen"
+    assert strip_thinking_tags(text) == "Sichtbarer Anfang"

@@ -397,6 +397,86 @@ class LLMAITaskRunner:
         return available
 
     @staticmethod
+    def _to_config_dict(raw: Any) -> Dict[str, Any]:
+        if isinstance(raw, str):
+            try:
+                raw = json.loads(raw)
+            except (json.JSONDecodeError, TypeError):
+                return {}
+        return raw if isinstance(raw, dict) else {}
+
+    @staticmethod
+    def _normalize_scenario_criteria(value: Any) -> List[str]:
+        criteria: List[str] = []
+        seen = set()
+
+        if isinstance(value, str):
+            value = [part.strip() for part in value.replace(";", "\n").split("\n")]
+
+        if not isinstance(value, list):
+            return criteria
+
+        for item in value:
+            if isinstance(item, str):
+                text = item.strip()
+            elif isinstance(item, dict):
+                text = str(
+                    item.get("name")
+                    or item.get("label")
+                    or item.get("id")
+                    or ""
+                ).strip()
+            else:
+                text = str(item or "").strip()
+
+            if not text or text in seen:
+                continue
+            seen.add(text)
+            criteria.append(text)
+
+        return criteria
+
+    @staticmethod
+    def _build_scenario_guidance_block_from_config(config_raw: Any) -> str:
+        config = LLMAITaskRunner._to_config_dict(config_raw)
+        task_description = config.get("task_description")
+        if not isinstance(task_description, str):
+            task_description = ""
+        task_description = task_description.strip()
+        criteria = LLMAITaskRunner._normalize_scenario_criteria(
+            config.get("evaluation_criteria")
+        )
+
+        if not task_description and not criteria:
+            return ""
+
+        lines = ["Zusätzliche Szenario-Vorgaben:"]
+        if task_description:
+            lines.append(f"Aufgabenbeschreibung: {task_description}")
+        if criteria:
+            lines.append("Evaluationskriterien:")
+            lines.extend(f"- {criterion}" for criterion in criteria)
+        lines.append(
+            "Nutze diese Vorgaben als primäre Bewertungsgrundlage, sofern sie zum Inhalt passen."
+        )
+        return "\n".join(lines)
+
+    @staticmethod
+    def _build_scenario_guidance_block(scenario_id: int) -> str:
+        scenario = RatingScenarios.query.get(scenario_id)
+        if not scenario:
+            return ""
+        return LLMAITaskRunner._build_scenario_guidance_block_from_config(
+            scenario.config_json
+        )
+
+    @staticmethod
+    def _prepend_scenario_guidance(user_prompt: str, scenario_guidance: str) -> str:
+        if not scenario_guidance:
+            return user_prompt
+        return f"{scenario_guidance}\n\n{user_prompt}"
+
+    @staticmethod
     def _get_comparison_prompt_settings(scenario_id: int) -> Tuple[str, List[str]]:
         """
         Resolve comparison prompt settings from scenario config.
@@ -405,14 +485,6 @@ class LLMAITaskRunner:
         Returns a tuple of (test_instruction, criteria_list).
         """
         default_question = "Welche Antwort ist besser?"
-
-        def _to_config_dict(raw: Any) -> Dict[str, Any]:
-            if isinstance(raw, str):
-                try:
-                    raw = json.loads(raw)
-                except (json.JSONDecodeError, TypeError):
-                    return {}
-            return raw if isinstance(raw, dict) else {}
 
         def _as_localized_text(value: Any) -> str:
             if isinstance(value, str):
@@ -431,7 +503,7 @@ class LLMAITaskRunner:
         if not scenario:
             return default_question, []
 
-        config = _to_config_dict(scenario.config_json)
+        config = LLMAITaskRunner._to_config_dict(scenario.config_json)
         eval_config = config.get("eval_config")
         if isinstance(eval_config, dict):
             nested = eval_config.get("config")
@@ -484,6 +556,7 @@ class LLMAITaskRunner:
         """
         client, api_model_id = LLMClientFactory.resolve_client_and_model_id(model_id)
         comparison_question, comparison_criteria = LLMAITaskRunner._get_comparison_prompt_settings(scenario_id)
+        scenario_guidance = LLMAITaskRunner._build_scenario_guidance_block(scenario_id)
 
         criteria_block = ""
         if comparison_criteria:
@@ -571,6 +644,10 @@ class LLMAITaskRunner:
                         '  "confidence": 1-5,\n'
                         '  "reasoning": "Begründung für die Entscheidung"\n'
                         "}"
+                    )
+                    user_prompt = LLMAITaskRunner._prepend_scenario_guidance(
+                        user_prompt,
+                        scenario_guidance,
                     )
 
                     raw_response = None
@@ -776,6 +853,9 @@ class LLMAITaskRunner:
             return
 
         bucket_names, bucket_keys = LLMAITaskRunner._get_bucket_config(scenario)
+        scenario_guidance = LLMAITaskRunner._build_scenario_guidance_block_from_config(
+            scenario.config_json
+        )
         thread_ids_list = list(thread_ids)
         consecutive_failures = 0
         total_failures = 0
@@ -806,7 +886,7 @@ class LLMAITaskRunner:
                 # NEW: If no Features, try EvaluationItem/Message approach
                 if not features:
                     LLMAITaskRunner._run_ranking_for_item(
-                        client, model_id, thread_id, scenario_id, bucket_keys
+                        client, api_model_id, model_id, thread_id, scenario_id, bucket_keys
                     )
                     continue
 
@@ -896,6 +976,10 @@ Antworte im JSON-Format (verwende die numerischen Feature-IDs, nicht die Buchsta
                         + "\n".join(feature_lines)
                         + f"\n\nGib JSON im Format:\n{json_example}"
                     )
+                user_prompt = LLMAITaskRunner._prepend_scenario_guidance(
+                    user_prompt,
+                    scenario_guidance,
+                )
 
                 raw_response = None
                 payload, raw_response = LLMAITaskRunner._request_json(
@@ -991,6 +1075,7 @@ Antworte im JSON-Format (verwende die numerischen Feature-IDs, nicht die Buchsta
     @staticmethod
     def _run_ranking_for_item(
         client,
+        api_model_id: str,
         model_id: str,
         thread_id: int,
         scenario_id: int,
@@ -1003,6 +1088,7 @@ Antworte im JSON-Format (verwende die numerischen Feature-IDs, nicht die Buchsta
         The item content (from Message) is evaluated and assigned to a quality bucket.
         """
         from db.models import EvaluationItem
+        scenario_guidance = LLMAITaskRunner._build_scenario_guidance_block(scenario_id)
 
         try:
             # Check if already processed
@@ -1096,6 +1182,10 @@ Erlaubte Buckets: {", ".join(bucket_keys)}
 
 Antworte im JSON-Format:
 {{"bucket": "<bucket_name>", "reasoning": "<kurze Begründung>"}}"""
+            user_prompt = LLMAITaskRunner._prepend_scenario_guidance(
+                user_prompt,
+                scenario_guidance,
+            )
 
             raw_response = None
             payload, raw_response = LLMAITaskRunner._request_json(
@@ -1204,6 +1294,9 @@ Antworte im JSON-Format:
     def _run_rating(model_id: str, thread_ids: Iterable[int], scenario_id: int) -> None:
         client, api_model_id = LLMClientFactory.resolve_client_and_model_id(model_id)
         scenario = RatingScenarios.query.get(scenario_id)
+        scenario_guidance = LLMAITaskRunner._build_scenario_guidance_block_from_config(
+            scenario.config_json if scenario else {}
+        )
         consecutive_failures = 0
         total_failures = 0
 
@@ -1272,6 +1365,10 @@ Antworte im JSON-Format:
                         "Content:\n"
                         + "\n".join(message_lines)
                     )
+                    user_prompt = LLMAITaskRunner._prepend_scenario_guidance(
+                        user_prompt,
+                        scenario_guidance,
+                    )
 
                     raw_response = None
                     payload, raw_response = LLMAITaskRunner._request_json(
@@ -1332,6 +1429,10 @@ Antworte im JSON-Format:
                         + "\n".join(message_lines)
                         + "\n\nFeatures:\n"
                         + "\n".join(feature_lines)
+                    )
+                    user_prompt = LLMAITaskRunner._prepend_scenario_guidance(
+                        user_prompt,
+                        scenario_guidance,
                     )
 
                     raw_response = None
@@ -1435,6 +1536,7 @@ Antworte im JSON-Format:
     @staticmethod
     def _run_authenticity(model_id: str, thread_ids: Iterable[int], scenario_id: int) -> None:
         client, api_model_id = LLMClientFactory.resolve_client_and_model_id(model_id)
+        scenario_guidance = LLMAITaskRunner._build_scenario_guidance_block(scenario_id)
         consecutive_failures = 0
         total_failures = 0
 
@@ -1476,6 +1578,10 @@ Antworte im JSON-Format:
                     "}\n\n"
                     "Konversation:\n"
                     + "\n".join(message_lines)
+                )
+                user_prompt = LLMAITaskRunner._prepend_scenario_guidance(
+                    user_prompt,
+                    scenario_guidance,
                 )
 
                 raw_response = None
@@ -1573,6 +1679,7 @@ Antworte im JSON-Format:
     def _run_mail_rating(model_id: str, thread_ids: Iterable[int], scenario_id: int) -> None:
         """Rate entire email conversations using configured dimensions."""
         client, api_model_id = LLMClientFactory.resolve_client_and_model_id(model_id)
+        scenario_guidance = LLMAITaskRunner._build_scenario_guidance_block(scenario_id)
 
         # Load scenario config with proper defaults via DimensionalRatingService
         dim_config = DimensionalRatingService.get_scenario_config(scenario_id)
@@ -1654,6 +1761,10 @@ Antworte im JSON-Format:
                         "Konversation:\n"
                         + "\n".join(message_lines)
                     )
+                    user_prompt = LLMAITaskRunner._prepend_scenario_guidance(
+                        user_prompt,
+                        scenario_guidance,
+                    )
                 else:
                     # Fallback to simple rating if no dimensions configured
                     system_prompt = (
@@ -1671,6 +1782,10 @@ Antworte im JSON-Format:
                         f"Betreff: {thread.subject or 'Kein Betreff'}\n\n"
                         "Konversation:\n"
                         + "\n".join(message_lines)
+                    )
+                    user_prompt = LLMAITaskRunner._prepend_scenario_guidance(
+                        user_prompt,
+                        scenario_guidance,
                     )
 
                 raw_response = None
@@ -1784,6 +1899,7 @@ Antworte im JSON-Format:
                 config = {}
         if not isinstance(config, dict):
             config = {}
+        scenario_guidance = LLMAITaskRunner._build_scenario_guidance_block_from_config(config)
 
         custom_labels = []
         label_descriptions = {}
@@ -1894,6 +2010,10 @@ Antworte im JSON-Format:
                     "}\n\n"
                     f"Text:\n{text_content}"
                 )
+                user_prompt = LLMAITaskRunner._prepend_scenario_guidance(
+                    user_prompt,
+                    scenario_guidance,
+                )
 
                 raw_response = None
                 payload, raw_response = LLMAITaskRunner._request_json(
@@ -1991,6 +2111,7 @@ Antworte im JSON-Format:
         """Compare two responses/texts and choose the better one."""
         client, api_model_id = LLMClientFactory.resolve_client_and_model_id(model_id)
         comparison_question, comparison_criteria = LLMAITaskRunner._get_comparison_prompt_settings(scenario_id)
+        scenario_guidance = LLMAITaskRunner._build_scenario_guidance_block(scenario_id)
 
         criteria_block = ""
         if comparison_criteria:
@@ -2050,6 +2171,10 @@ Antworte im JSON-Format:
                     '  "confidence": 1-5,\n'
                     '  "reasoning": "Begründung für die Entscheidung"\n'
                     "}"
+                )
+                user_prompt = LLMAITaskRunner._prepend_scenario_guidance(
+                    user_prompt,
+                    scenario_guidance,
                 )
 
                 raw_response = None

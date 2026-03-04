@@ -214,6 +214,14 @@ from db.models.pipeline import (
     PipelineIteration,
 )
 
+# Anonymization Pipeline models
+from db.models.anonymization import (
+    AnonymizationConversation,
+    AnonymizationMessage,
+    AnonymizationEntity,
+    AnonymizationMessageVersion,
+)
+
 # Conference Manager models
 from db.models.conference import (
     CoreRanking,
@@ -376,6 +384,11 @@ __all__ = [
     # Authenticity
     'AuthenticityConversation',
     'UserAuthenticityVote',
+    # Anonymization Pipeline
+    'AnonymizationConversation',
+    'AnonymizationMessage',
+    'AnonymizationEntity',
+    'AnonymizationMessageVersion',
     'UserPrompt',
     'UserPromptShare',
     'PromptCommit',

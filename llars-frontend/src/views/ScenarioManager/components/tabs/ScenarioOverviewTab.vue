@@ -171,6 +171,25 @@
           <span class="detail-label">{{ $t('scenarioManager.overview.description') }}</span>
           <span class="detail-value">{{ scenario.description }}</span>
         </div>
+        <div class="detail-row" v-if="scenarioTaskDescription">
+          <span class="detail-label">{{ $t('scenarioManager.overview.taskDescription') }}</span>
+          <span class="detail-value">{{ scenarioTaskDescription }}</span>
+        </div>
+        <div class="detail-row" v-if="scenarioEvaluationCriteria.length > 0">
+          <span class="detail-label">{{ $t('scenarioManager.overview.evaluationCriteria') }}</span>
+          <span class="detail-value">
+            <div class="d-flex flex-wrap gap-1 justify-end">
+              <v-chip
+                v-for="criterion in scenarioEvaluationCriteria"
+                :key="criterion"
+                size="x-small"
+                variant="tonal"
+              >
+                {{ criterion }}
+              </v-chip>
+            </div>
+          </span>
+        </div>
         <div class="detail-row">
           <span class="detail-label">{{ $t('scenarioManager.overview.created') }}</span>
           <span class="detail-value">{{ formatDate(scenario?.created_at) }}</span>
@@ -328,6 +347,37 @@ const userStatsList = computed(() => {
 
 const agreementMetrics = computed(() => {
   return props.liveStats?.agreementMetrics || null
+})
+
+const scenarioConfig = computed(() => {
+  const raw = props.scenario?.config_json || {}
+  if (!raw) return {}
+  if (typeof raw === 'string') {
+    try {
+      const parsed = JSON.parse(raw)
+      return parsed && typeof parsed === 'object' ? parsed : {}
+    } catch {
+      return {}
+    }
+  }
+  return typeof raw === 'object' ? raw : {}
+})
+
+const scenarioTaskDescription = computed(() => {
+  return scenarioConfig.value.task_description || ''
+})
+
+const scenarioEvaluationCriteria = computed(() => {
+  const value = scenarioConfig.value.evaluation_criteria
+  if (Array.isArray(value)) {
+    return value
+      .map(item => (typeof item === 'string' ? item.trim() : String(item || '').trim()))
+      .filter(Boolean)
+  }
+  if (typeof value === 'string') {
+    return value.split(/[,\n;]/).map(item => item.trim()).filter(Boolean)
+  }
+  return []
 })
 
 function formatDate(dateStr) {

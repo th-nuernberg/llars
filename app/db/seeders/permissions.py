@@ -280,6 +280,19 @@ def initialize_permissions(db):
             'category': 'feature',
             'description': 'Erlaubt den Zugriff auf das Offline-Anonymisierungstool'
         },
+        # Feature: Anonymization Pipeline
+        {
+            'permission_key': 'feature:anonymization-pipeline:view',
+            'display_name': 'Anonymisierungs-Pipeline ansehen',
+            'category': 'feature',
+            'description': 'Erlaubt das Ansehen von anonymisierten Konversationen'
+        },
+        {
+            'permission_key': 'feature:anonymization-pipeline:edit',
+            'display_name': 'Anonymisierungs-Pipeline bearbeiten',
+            'category': 'feature',
+            'description': 'Erlaubt das Bearbeiten von Nachrichten und das Aktualisieren des Status'
+        },
         # Feature: LLM-as-Judge
         {
             'permission_key': 'feature:judge:view',
@@ -505,6 +518,9 @@ def initialize_permissions(db):
                 'feature:latex_collab:ai',
                 # Anonymisierung
                 'feature:anonymize:view',
+                # Anonymisierungs-Pipeline
+                'feature:anonymization-pipeline:view',
+                'feature:anonymization-pipeline:edit',
                 # KAIMO
                 'feature:kaimo:view',
                 'feature:kaimo:edit',

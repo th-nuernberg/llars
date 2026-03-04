@@ -38,6 +38,10 @@ import AdminRAG from "@/components/Admin/AdminRAG.vue"; // RAG Document Manageme
 // Anonymize Tool
 import AnonymizeTool from "@/components/Anonymize/AnonymizeTool.vue";
 
+// Anonymization Pipeline
+import AnonymizationManager from "@/components/AnonymizationPipeline/AnonymizationManager.vue";
+import AnonymizationDetail from "@/components/AnonymizationPipeline/AnonymizationDetail.vue";
+
 // Judge Components
 import JudgeOverview from "@/components/Judge/JudgeOverview.vue";
 import JudgeConfig from "@/components/Judge/JudgeConfig.vue";
@@ -247,6 +251,10 @@ const routes = [
 
     // Anonymize Tool
     { path: '/Anonymize', alias: '/anonymize', name: 'AnonymizeTool', component: AnonymizeTool, meta: { requiresAuth: true } },
+
+    // Anonymization Pipeline
+    { path: '/anonymization', name: 'AnonymizationManager', component: AnonymizationManager, meta: { requiresAuth: true, requiresPermission: 'feature:anonymization-pipeline:view' } },
+    { path: '/anonymization/:id', name: 'AnonymizationDetail', component: AnonymizationDetail, props: true, meta: { requiresAuth: true, requiresPermission: 'feature:anonymization-pipeline:view' } },
 
     // Judge Routes
     { path: '/judge', name: 'JudgeOverview', component: JudgeOverview, meta: { requiresAuth: true } },

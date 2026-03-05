@@ -104,8 +104,8 @@
             width: Math.max(span.endX - span.startX, 80) + 'px',
             top: `calc(60% + 16px + ${span.row * 38}px)`,
           }"
-          @mouseenter="hoveredSpan = span.id"
-          @mouseleave="hoveredSpan = null"
+          @mouseenter="onSpanEnter($event, span)"
+          @mouseleave="onSpanLeave"
           @click="openDetail(span.conference)"
         >
           <div class="span-icon">
@@ -115,14 +115,37 @@
             <div class="span-label">{{ span.conference.acronym }}</div>
             <div class="span-dates">{{ formatDateShort(span.date) }} – {{ formatDateShort(span.endDate || span.date) }}</div>
           </div>
-          <!-- Hover extra info -->
-          <div class="span-hover-info">
-            <div v-if="span.conference.city" class="span-hover-location">
-              <v-icon size="10">mdi-map-marker-outline</v-icon>
-              {{ span.conference.city }}
-            </div>
-          </div>
         </div>
+
+        <!-- Span tooltip (teleported to body) -->
+        <Teleport to="body">
+          <Transition name="span-tooltip-fade">
+            <div
+              v-if="hoveredSpan !== null && tooltipSpan"
+              class="span-tooltip"
+              :style="spanTooltipStyle"
+            >
+              <div class="span-tooltip-name">{{ tooltipSpan.conference.name }}</div>
+              <div class="span-tooltip-date-row">
+                <v-icon size="14" color="#327a5e">mdi-calendar-range</v-icon>
+                <span class="span-tooltip-date">{{ formatDate(tooltipSpan.date) }}</span>
+                <span class="span-tooltip-arrow">→</span>
+                <span class="span-tooltip-date">{{ formatDate(tooltipSpan.endDate || tooltipSpan.date) }}</span>
+              </div>
+              <div class="span-tooltip-duration">
+                {{ getDurationDays(tooltipSpan.date, tooltipSpan.endDate) }}
+              </div>
+              <div v-if="tooltipSpan.conference.city || tooltipSpan.conference.country" class="span-tooltip-location">
+                <v-icon size="12">mdi-map-marker-outline</v-icon>
+                {{ [tooltipSpan.conference.city, tooltipSpan.conference.country].filter(Boolean).join(', ') }}
+              </div>
+              <div v-if="tooltipSpan.conference.core_ranking" class="span-tooltip-core">
+                <v-icon size="12">mdi-star-outline</v-icon>
+                CORE {{ tooltipSpan.conference.core_ranking }}
+              </div>
+            </div>
+          </Transition>
+        </Teleport>
 
         <!-- Stem lines from cards to axis -->
         <div
@@ -132,8 +155,8 @@
           :class="'stem-' + evt.type"
           :style="{
             left: (evt.x + 55) + 'px',
-            top: `calc(60% - ${evt.row * 56 + 4}px)`,
-            height: `${4 + evt.row * 56}px`,
+            top: `calc(60% - ${(evt.row + 1) * 56 + 4}px)`,
+            height: `${4 + (evt.row + 1) * 56}px`,
           }"
         />
 
@@ -148,14 +171,13 @@
           ]"
           :style="{
             left: evt.x + 'px',
-            top: `calc(60% - ${48 + evt.row * 56}px)`,
+            top: `calc(60% - ${48 + (evt.row + 1) * 56}px)`,
             animationDelay: (i * 60) + 'ms',
           }"
-          @mouseenter="hoveredCard = i"
-          @mouseleave="hoveredCard = null"
+          @mouseenter="onCardEnter($event, i, evt)"
+          @mouseleave="onCardLeave"
           @click.stop="toggleDetail(i, evt)"
         >
-          <!-- Default: icon + acronym + date -->
           <div class="card-accent" />
           <div class="card-icon">
             <v-icon size="15">
@@ -166,15 +188,44 @@
             <div class="card-title">{{ evt.conference.acronym }}</div>
             <div class="card-date">{{ formatDateShort(evt.date) }}</div>
           </div>
-          <!-- Hover: extra info -->
-          <div class="card-extra">
-            <div class="card-extra-name">{{ evt.conference.name }}</div>
-            <div v-if="evt.conference.city" class="card-extra-location">
-              <v-icon size="10">mdi-map-marker-outline</v-icon>
-              {{ evt.conference.city }}
-            </div>
-          </div>
         </div>
+
+        <!-- Card tooltip (teleported to body) -->
+        <Teleport to="body">
+          <Transition name="card-tooltip-fade">
+            <div
+              v-if="hoveredCard !== null && tooltipCard"
+              class="card-tooltip"
+              :class="'card-tooltip--' + tooltipCard.type"
+              :style="cardTooltipStyle"
+            >
+              <div class="card-tooltip-type">
+                <v-icon size="13">
+                  {{ tooltipCard.type === 'deadline' ? 'mdi-file-document-outline' : 'mdi-bell-outline' }}
+                </v-icon>
+                {{ t(`conferenceManager.timeline.${tooltipCard.type}`) }}
+              </div>
+              <div class="card-tooltip-name">{{ tooltipCard.conference.name }}</div>
+              <div class="card-tooltip-date-row" :class="'date-row--' + tooltipCard.type">
+                <v-icon size="14">mdi-calendar</v-icon>
+                <span class="card-tooltip-date">{{ formatDate(tooltipCard.date) }}</span>
+              </div>
+              <div v-if="tooltipCard.conference.start_date" class="card-tooltip-conf-dates">
+                <v-icon size="12">mdi-calendar-range</v-icon>
+                {{ t('conferenceManager.timeline.conferencePeriod') }}:
+                {{ formatDateShort(tooltipCard.conference.start_date) }} – {{ formatDateShort(tooltipCard.conference.end_date || tooltipCard.conference.start_date) }}
+              </div>
+              <div v-if="tooltipCard.conference.city || tooltipCard.conference.country" class="card-tooltip-location">
+                <v-icon size="12">mdi-map-marker-outline</v-icon>
+                {{ [tooltipCard.conference.city, tooltipCard.conference.country].filter(Boolean).join(', ') }}
+              </div>
+              <div v-if="tooltipCard.conference.core_ranking" class="card-tooltip-core">
+                <v-icon size="12">mdi-star-outline</v-icon>
+                CORE {{ tooltipCard.conference.core_ranking }}
+              </div>
+            </div>
+          </Transition>
+        </Teleport>
 
         <!-- Detail card (Teleport) -->
         <Teleport to="body">
@@ -271,7 +322,11 @@ const selectedConference = ref(null)
 const scrollContainer = ref(null)
 const zoom = ref(6)
 const hoveredCard = ref(null)
+const tooltipCard = ref(null)
+const cardTooltipStyle = ref({})
 const hoveredSpan = ref(null)
+const tooltipSpan = ref(null)
+const spanTooltipStyle = ref({})
 const activeDot = ref(null)
 const detailEvent = ref(null)
 const detailCardStyle = ref({})
@@ -387,6 +442,48 @@ const conferenceSpans = computed(() => {
   })
 })
 
+function onCardEnter(event, i, evt) {
+  hoveredCard.value = i
+  tooltipCard.value = evt
+  const rect = event.currentTarget.getBoundingClientRect()
+  const tooltipWidth = 280
+  let left = rect.left + rect.width / 2 - tooltipWidth / 2
+  left = Math.max(12, Math.min(left, window.innerWidth - tooltipWidth - 12))
+  cardTooltipStyle.value = {
+    position: 'fixed',
+    left: left + 'px',
+    top: (rect.top - 10) + 'px',
+    width: tooltipWidth + 'px',
+    transform: 'translateY(-100%)',
+  }
+}
+
+function onCardLeave() {
+  hoveredCard.value = null
+  tooltipCard.value = null
+}
+
+function onSpanEnter(event, span) {
+  hoveredSpan.value = span.id
+  tooltipSpan.value = span
+  const rect = event.currentTarget.getBoundingClientRect()
+  const tooltipWidth = 280
+  let left = rect.left + rect.width / 2 - tooltipWidth / 2
+  left = Math.max(12, Math.min(left, window.innerWidth - tooltipWidth - 12))
+  spanTooltipStyle.value = {
+    position: 'fixed',
+    left: left + 'px',
+    top: (rect.top - 10) + 'px',
+    width: tooltipWidth + 'px',
+    transform: 'translateY(-100%)',
+  }
+}
+
+function onSpanLeave() {
+  hoveredSpan.value = null
+  tooltipSpan.value = null
+}
+
 function getTypeIcon(type) {
   if (type === 'deadline') return 'mdi-file-document-outline'
   if (type === 'notification') return 'mdi-bell-outline'
@@ -457,6 +554,15 @@ function formatDate(isoStr) {
   return new Date(isoStr).toLocaleDateString(undefined, {
     year: 'numeric', month: 'short', day: 'numeric',
   })
+}
+
+function getDurationDays(startStr, endStr) {
+  if (!startStr || !endStr) return ''
+  const start = new Date(startStr)
+  const end = new Date(endStr)
+  const days = Math.round((end - start) / (1000 * 60 * 60 * 24)) + 1
+  if (days <= 1) return t('conferenceManager.timeline.oneDay')
+  return t('conferenceManager.timeline.nDays', { n: days })
 }
 
 function formatDateShort(isoStr) {
@@ -572,8 +678,18 @@ onMounted(async () => {
   border-radius: 1px;
 }
 
+/* ── Timeline View Layout ────────────────────── */
+.timeline-view {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
 /* ── Timeline Container ───────────────────────── */
 .timeline-container {
+  flex: 1;
+  min-height: 0;
   overflow-x: auto;
   overflow-y: hidden;
   position: relative;
@@ -602,7 +718,7 @@ onMounted(async () => {
 
 .timeline-track {
   position: relative;
-  height: 360px;
+  height: 100%;
 }
 
 /* ── Axis ─────────────────────────────────────── */
@@ -741,8 +857,9 @@ onMounted(async () => {
   background: rgba(74, 158, 126, 0.16);
   border-color: rgba(74, 158, 126, 0.4);
   box-shadow: 0 2px 12px rgba(74, 158, 126, 0.12);
-  height: 36px;
+  height: 32px;
   padding-right: 14px;
+  z-index: 8;
 }
 
 .span-icon {
@@ -775,30 +892,19 @@ onMounted(async () => {
   color: rgba(var(--v-theme-on-surface), 0.4);
   white-space: nowrap;
   line-height: 1.2;
-}
-
-.span-hover-info {
-  max-width: 0;
+  max-height: 0;
   opacity: 0;
   overflow: hidden;
-  transition: max-width 0.25s ease, opacity 0.2s ease, margin-left 0.25s ease;
-  white-space: nowrap;
+  transition: max-height 0.2s ease, opacity 0.2s ease;
 }
 
-.conference-span:hover .span-hover-info,
-.conference-span.span-hovered .span-hover-info {
-  max-width: 150px;
+.conference-span:hover .span-dates,
+.conference-span.span-hovered .span-dates {
+  max-height: 16px;
   opacity: 1;
-  margin-left: 8px;
 }
 
-.span-hover-location {
-  display: flex;
-  align-items: center;
-  gap: 3px;
-  font-size: 0.6rem;
-  color: rgba(var(--v-theme-on-surface), 0.45);
-}
+/* Span tooltip styles are unscoped (teleported to body) */
 
 /* ── Event cards — above axis ─────────────────── */
 .event-card {
@@ -889,27 +995,10 @@ onMounted(async () => {
   white-space: nowrap;
 }
 
-/* Hover extra info */
-.card-extra {
-  width: 100%;
-  max-height: 0;
-  opacity: 0;
-  overflow: hidden;
-  transition: max-height 0.25s ease, opacity 0.2s ease, padding 0.25s ease;
-  padding: 0 0 0 8px;
-}
-
+/* Hover highlight */
 .event-card.card-hovered,
 .event-card.card-active {
-  width: 180px;
   z-index: 15;
-}
-
-.event-card.card-hovered .card-extra,
-.event-card.card-active .card-extra {
-  max-height: 40px;
-  opacity: 1;
-  padding: 3px 0 0 8px;
 }
 
 .event-card.card-hovered.card-deadline {
@@ -926,24 +1015,6 @@ onMounted(async () => {
 
 .event-card.card-active {
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-}
-
-.card-extra-name {
-  font-size: 0.6rem;
-  color: rgba(var(--v-theme-on-surface), 0.5);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  line-height: 1.3;
-}
-
-.card-extra-location {
-  display: flex;
-  align-items: center;
-  gap: 3px;
-  font-size: 0.55rem;
-  color: rgba(var(--v-theme-on-surface), 0.4);
-  line-height: 1.3;
 }
 
 /* ── Detail card ──────────────────────────────── */
@@ -1171,5 +1242,195 @@ onMounted(async () => {
     flex-wrap: wrap;
     gap: 12px;
   }
+}
+</style>
+
+<!-- Unscoped styles for teleported tooltip -->
+<style>
+.span-tooltip {
+  background: rgb(var(--v-theme-surface));
+  border: 1px solid rgba(74, 158, 126, 0.25);
+  border-radius: 12px 3px 12px 3px;
+  padding: 12px 16px;
+  box-shadow:
+    0 4px 6px rgba(0, 0, 0, 0.06),
+    0 10px 32px rgba(0, 0, 0, 0.12);
+  z-index: 200;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.span-tooltip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 6px solid transparent;
+  border-top-color: rgba(74, 158, 126, 0.25);
+}
+
+.span-tooltip-name {
+  font-size: 0.78rem;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.span-tooltip-date-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  background: rgba(74, 158, 126, 0.06);
+  border: 1px solid rgba(74, 158, 126, 0.12);
+  border-radius: 8px 2px 8px 2px;
+}
+
+.span-tooltip-date {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #327a5e;
+  white-space: nowrap;
+}
+
+.span-tooltip-arrow {
+  font-size: 0.82rem;
+  opacity: 0.35;
+}
+
+.span-tooltip-duration {
+  font-size: 0.68rem;
+  opacity: 0.5;
+  font-weight: 500;
+}
+
+.span-tooltip-location,
+.span-tooltip-core {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.72rem;
+  opacity: 0.55;
+}
+
+/* Transition */
+.span-tooltip-fade-enter-active {
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+.span-tooltip-fade-leave-active {
+  transition: opacity 0.1s ease;
+}
+.span-tooltip-fade-enter-from {
+  opacity: 0;
+  transform: translateY(calc(-100% + 6px)) !important;
+}
+.span-tooltip-fade-leave-to {
+  opacity: 0;
+}
+
+/* ── Card tooltip (deadline / notification) ──── */
+.card-tooltip {
+  background: rgb(var(--v-theme-surface));
+  border-radius: 12px 3px 12px 3px;
+  padding: 12px 16px;
+  box-shadow:
+    0 4px 6px rgba(0, 0, 0, 0.06),
+    0 10px 32px rgba(0, 0, 0, 0.12);
+  z-index: 200;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.card-tooltip--deadline {
+  border: 1px solid rgba(196, 115, 90, 0.25);
+}
+.card-tooltip--notification {
+  border: 1px solid rgba(74, 142, 147, 0.25);
+}
+
+.card-tooltip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 6px solid transparent;
+}
+.card-tooltip--deadline::after {
+  border-top-color: rgba(196, 115, 90, 0.25);
+}
+.card-tooltip--notification::after {
+  border-top-color: rgba(74, 142, 147, 0.25);
+}
+
+.card-tooltip-type {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.card-tooltip--deadline .card-tooltip-type { color: #c4735a; }
+.card-tooltip--notification .card-tooltip-type { color: #4a8e93; }
+
+.card-tooltip-name {
+  font-size: 0.78rem;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.card-tooltip-date-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 8px 2px 8px 2px;
+}
+.date-row--deadline {
+  background: rgba(196, 115, 90, 0.06);
+  border: 1px solid rgba(196, 115, 90, 0.12);
+}
+.date-row--notification {
+  background: rgba(74, 142, 147, 0.06);
+  border: 1px solid rgba(74, 142, 147, 0.12);
+}
+
+.card-tooltip-date {
+  font-size: 0.82rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.card-tooltip--deadline .card-tooltip-date { color: #c4735a; }
+.card-tooltip--notification .card-tooltip-date { color: #4a8e93; }
+
+.card-tooltip-conf-dates,
+.card-tooltip-location,
+.card-tooltip-core {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.72rem;
+  opacity: 0.55;
+}
+
+/* Transition */
+.card-tooltip-fade-enter-active {
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+.card-tooltip-fade-leave-active {
+  transition: opacity 0.1s ease;
+}
+.card-tooltip-fade-enter-from {
+  opacity: 0;
+  transform: translateY(calc(-100% + 6px)) !important;
+}
+.card-tooltip-fade-leave-to {
+  opacity: 0;
 }
 </style>

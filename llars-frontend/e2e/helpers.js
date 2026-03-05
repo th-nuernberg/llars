@@ -15,15 +15,18 @@ const testPassword = process.env.E2E_TEST_PASSWORD || 'admin123'
 export const isProduction = !!process.env.E2E_TEST_PASSWORD
 const playwrightBaseURL = process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:55080'
 const apiBaseURL = process.env.PLAYWRIGHT_API_BASE_URL || playwrightBaseURL
-const researcherUsername = isProduction ? 'e2e-researcher' : 'researcher'
-const evaluatorUsername = isProduction ? 'e2e-evaluator' : 'evaluator'
-const chatbotManagerUsername = isProduction ? 'e2e-chatbot-manager' : 'chatbot_manager'
+const adminUsername = isProduction ? (process.env.E2E_ADMIN_USER || 'test_admin') : 'admin'
+const researcherUsername = isProduction ? (process.env.E2E_RESEARCHER_USER || 'test_researcher') : 'researcher'
+const evaluatorUsername = isProduction ? (process.env.E2E_EVALUATOR_USER || 'test_evaluator') : 'evaluator'
+const chatbotManagerUsername = isProduction
+  ? (process.env.E2E_CHATBOT_MANAGER_USER || adminUsername)
+  : 'chatbot_manager'
 
 export const TEST_USERS = {
   rater: { username: researcherUsername, password: testPassword },
   researcher: { username: researcherUsername, password: testPassword },
   evaluator: { username: evaluatorUsername, password: testPassword },
-  admin: { username: 'admin', password: testPassword },
+  admin: { username: adminUsername, password: testPassword },
   chatbot_manager: { username: chatbotManagerUsername, password: testPassword }
 }
 

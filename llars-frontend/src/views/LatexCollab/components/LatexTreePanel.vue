@@ -242,14 +242,21 @@
           />
         </TreeStackPanel>
 
+        <!-- Resize Divider: Files | Collabs -->
+        <PanelResizeDivider
+          @resize-start="startPanelResize(0, $event)"
+          @resize-move="onPanelResize"
+          @resize-end="endPanelResize"
+        />
+
         <!-- Collabs -->
         <TreeStackPanel
-          class="collabs-panel"
           :title="$t('latexCollab.tree.collabs')"
           icon="mdi-account-multiple"
           v-model:collapsed="localOnlineCollapsed"
           :badge="collabBadge"
           :badge-variant="pendingRequests.length > 0 ? 'warning' : 'info'"
+          :style="getPanelStyle(1)"
         >
           <template #actions>
             <v-btn v-if="canShare" icon variant="text" size="x-small" :title="$t('latexCollab.share.title')" @click="$emit('open-share')">
@@ -303,10 +310,9 @@
           </div>
         </TreeStackPanel>
 
-        <!-- Resize Divider 1 -->
+        <!-- Resize Divider: Collabs | Git -->
         <PanelResizeDivider
-          v-if="!localFilesCollapsed && !localGitCollapsed"
-          @resize-start="startPanelResize(0, $event)"
+          @resize-start="startPanelResize(1, $event)"
           @resize-move="onPanelResize"
           @resize-end="endPanelResize"
         />
@@ -318,7 +324,7 @@
           v-model:collapsed="localGitCollapsed"
           :badge="gitTotalChanges > 0 ? gitTotalChanges : null"
           badge-variant="warning"
-          :style="getPanelStyle(1)"
+          :style="getPanelStyle(2)"
         >
           <template #actions>
             <v-btn icon variant="text" size="x-small" :title="$t('workspaceGit.openDetail')" @click="$emit('open-git-detail')">
@@ -336,10 +342,9 @@
           />
         </TreeStackPanel>
 
-        <!-- Resize Divider 2 -->
+        <!-- Resize Divider: Git | Outline -->
         <PanelResizeDivider
-          v-if="!localGitCollapsed && !localOutlineCollapsed"
-          @resize-start="startPanelResize(1, $event)"
+          @resize-start="startPanelResize(2, $event)"
           @resize-move="onPanelResize"
           @resize-end="endPanelResize"
         />
@@ -349,7 +354,7 @@
           :title="$t('latexCollab.outline.title')"
           icon="mdi-format-list-bulleted"
           v-model:collapsed="localOutlineCollapsed"
-          :style="getPanelStyle(2)"
+          :style="getPanelStyle(3)"
         >
           <OutlinePanelContent
             :items="outlineFlatItems"
@@ -363,15 +368,6 @@
     </div>
   </div>
 
-  <!-- Resize Divider: Tree | Content (Desktop only) -->
-  <div
-    v-if="!isMobile && !treeCollapsed"
-    class="resize-divider vertical"
-    :class="{ resizing: resizingTree }"
-    @mousedown="$emit('start-tree-resize', $event)"
-  >
-    <div class="resize-handle" />
-  </div>
 </template>
 
 <script setup>
@@ -395,7 +391,6 @@ const props = defineProps({
   recentlyAddedIds: { type: Set, default: () => new Set() },
   treeCollapsed: { type: Boolean, default: false },
   treePanelWidth: { type: Number, default: 280 },
-  resizingTree: { type: Boolean, default: false },
   outlineFlatItems: { type: Array, default: () => [] },
   outlineEmptyLabel: { type: String, default: '' },
   isOutlineItemCollapsed: { type: Function, default: () => false },
@@ -435,7 +430,6 @@ const emit = defineEmits([
   'remove',
   'move',
   'open-asset-picker',
-  'start-tree-resize',
   'navigate-home',
   'navigate-workspaces',
   'navigate-back',
@@ -547,10 +541,15 @@ function refreshGit() {
   gitPanelDesktopRef.value?.refresh?.()
 }
 
-// Panel heights for resize (percentages, 0-100 for each panel)
+// Panel heights for resize (flex proportions for each panel)
+// Order: [Files, Collabs, Git, Outline]
+const PANEL_COUNT = 4
+const DEFAULT_HEIGHTS = [35, 15, 25, 25]
+
 const treeStackRef = ref(null)
-const panelHeights = ref([50, 25, 25]) // Default: 50% files, 25% git, 25% outline
-const resizingPanelIndex = ref(-1)
+const panelHeights = ref([...DEFAULT_HEIGHTS])
+const resizingAboveIndex = ref(-1)
+const resizingBelowIndex = ref(-1)
 const resizeStartY = ref(0)
 const resizeStartHeights = ref([])
 
@@ -560,7 +559,7 @@ onMounted(() => {
     const saved = localStorage.getItem(STORAGE_KEY)
     if (saved) {
       const parsed = JSON.parse(saved)
-      if (Array.isArray(parsed) && parsed.length === 3) {
+      if (Array.isArray(parsed) && parsed.length === PANEL_COUNT) {
         panelHeights.value = parsed
       }
     }
@@ -575,7 +574,7 @@ function saveHeights() {
 
 function getPanelStyle(index) {
   // Only apply flex-basis when panel is expanded
-  const collapsed = [localFilesCollapsed.value, localGitCollapsed.value, localOutlineCollapsed.value]
+  const collapsed = [localFilesCollapsed.value, localOnlineCollapsed.value, localGitCollapsed.value, localOutlineCollapsed.value]
   if (collapsed[index]) return {}
 
   // Count expanded panels
@@ -584,40 +583,101 @@ function getPanelStyle(index) {
 
   return {
     flex: `${panelHeights.value[index]} 1 0`,
-    minHeight: '80px'
+    minHeight: '60px'
   }
 }
 
-function startPanelResize(dividerIndex, event) {
-  resizingPanelIndex.value = dividerIndex
+function findExpandedPanel(startIndex, direction) {
+  const collapsed = [localFilesCollapsed.value, localOnlineCollapsed.value, localGitCollapsed.value, localOutlineCollapsed.value]
+  const step = direction === 'up' ? -1 : 1
+  for (let i = startIndex; i >= 0 && i < PANEL_COUNT; i += step) {
+    if (!collapsed[i]) return i
+  }
+  return -1
+}
+
+function startPanelResize(dividerPosition, event) {
+  // Find nearest expanded panel above (at or before dividerPosition)
+  resizingAboveIndex.value = findExpandedPanel(dividerPosition, 'up')
+  // Find nearest expanded panel below (at or after dividerPosition+1)
+  resizingBelowIndex.value = findExpandedPanel(dividerPosition + 1, 'down')
   resizeStartY.value = event.y
   resizeStartHeights.value = [...panelHeights.value]
 }
 
 function onPanelResize(event) {
-  if (resizingPanelIndex.value < 0 || !treeStackRef.value) return
+  if (resizingAboveIndex.value < 0 || resizingBelowIndex.value < 0 || !treeStackRef.value) return
 
   const containerHeight = treeStackRef.value.clientHeight
   const deltaPercent = (event.deltaY / containerHeight) * 100
 
-  const idx = resizingPanelIndex.value
   const newHeights = [...resizeStartHeights.value]
-
-  // Get the two panels being resized (panel at idx and panel at idx+1)
-  const panelAbove = idx === 0 ? 0 : 1 // Which expanded panel is above the divider
-  const panelBelow = idx === 0 ? 1 : 2 // Which expanded panel is below the divider
-
-  // Adjust heights
-  newHeights[panelAbove] = Math.max(10, resizeStartHeights.value[panelAbove] + deltaPercent)
-  newHeights[panelBelow] = Math.max(10, resizeStartHeights.value[panelBelow] - deltaPercent)
+  newHeights[resizingAboveIndex.value] = Math.max(5, resizeStartHeights.value[resizingAboveIndex.value] + deltaPercent)
+  newHeights[resizingBelowIndex.value] = Math.max(5, resizeStartHeights.value[resizingBelowIndex.value] - deltaPercent)
 
   panelHeights.value = newHeights
 }
 
 function endPanelResize() {
-  resizingPanelIndex.value = -1
+  resizingAboveIndex.value = -1
+  resizingBelowIndex.value = -1
   saveHeights()
 }
+
+/**
+ * When a panel expands/collapses, redistribute space so that panels
+ * ABOVE the toggled panel keep their size (header stays in place).
+ * Space is taken from / given to panels BELOW.
+ */
+function handlePanelToggle(index, nowCollapsed) {
+  const collapsed = [localFilesCollapsed.value, localOnlineCollapsed.value, localGitCollapsed.value, localOutlineCollapsed.value]
+  const newHeights = [...panelHeights.value]
+
+  // Find expanded panels below and above (excluding the toggled panel)
+  const belowExpanded = []
+  for (let i = index + 1; i < PANEL_COUNT; i++) {
+    if (!collapsed[i]) belowExpanded.push(i)
+  }
+  const aboveExpanded = []
+  for (let i = 0; i < index; i++) {
+    if (!collapsed[i]) aboveExpanded.push(i)
+  }
+
+  if (nowCollapsed) {
+    // Panel collapsed — give its freed space to panels below
+    const freed = newHeights[index]
+    const targets = belowExpanded.length > 0 ? belowExpanded : aboveExpanded
+    if (targets.length > 0) {
+      const total = targets.reduce((s, i) => s + newHeights[i], 0)
+      for (const i of targets) {
+        newHeights[i] += freed * (total > 0 ? newHeights[i] / total : 1 / targets.length)
+      }
+    }
+  } else {
+    // Panel expanded — take space from panels below so header stays put
+    // Use the panel's last known height (preserved from before collapse) or default
+    const needed = newHeights[index] > 0 ? newHeights[index] : DEFAULT_HEIGHTS[index]
+    const donors = belowExpanded.length > 0 ? belowExpanded : aboveExpanded
+    if (donors.length > 0) {
+      const total = donors.reduce((s, i) => s + newHeights[i], 0)
+      for (const i of donors) {
+        const share = total > 0 ? newHeights[i] / total : 1 / donors.length
+        newHeights[i] = Math.max(5, newHeights[i] - needed * share)
+      }
+    }
+    newHeights[index] = needed
+  }
+
+  panelHeights.value = newHeights
+  saveHeights()
+}
+
+// flush:'sync' ensures heights update in the same tick as collapse state,
+// preventing a two-frame layout jump.
+watch(localFilesCollapsed, (val) => handlePanelToggle(0, val), { flush: 'sync' })
+watch(localOnlineCollapsed, (val) => handlePanelToggle(1, val), { flush: 'sync' })
+watch(localGitCollapsed, (val) => handlePanelToggle(2, val), { flush: 'sync' })
+watch(localOutlineCollapsed, (val) => handlePanelToggle(3, val), { flush: 'sync' })
 
 function handleMobileSelect(id) {
   emit('select', id)
@@ -629,6 +689,24 @@ defineExpose({ refreshGit })
 </script>
 
 <style scoped>
+/* Tree panel root element - must be styled here (not in parent)
+   because LatexTreePanel is a fragment component and parent's
+   scoped CSS cannot reach fragment root elements in Vue 3. */
+.tree-panel {
+  flex-shrink: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: rgb(var(--v-theme-surface));
+  min-width: 0;
+  overflow: hidden;
+}
+
+.tree-panel.collapsed {
+  width: 48px !important;
+  border-right: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+}
+
 .mobile-tree-drawer {
   background-color: rgb(var(--v-theme-surface)) !important;
 }
@@ -765,10 +843,6 @@ defineExpose({ refreshGit })
   gap: 0;
 }
 
-/* Collabs panel: auto-size to content, no flex-grow */
-.collabs-panel {
-  flex: none !important;
-}
 
 /* Online Users Section (inside TreeStackPanel) */
 

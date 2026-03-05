@@ -77,7 +77,7 @@
           class="footer-link overleaf"
           @click.stop
         >
-          <v-icon size="14">mdi-leaf</v-icon>
+          <v-icon size="14">overleaf</v-icon>
         </a>
         <template v-if="paper.latex_workspace_id">
           <a
@@ -85,7 +85,7 @@
             class="footer-link llars-latex"
             @click.stop="$emit('open-workspace', paper.latex_workspace_id)"
           >
-            <v-icon size="14">mdi-file-document-edit-outline</v-icon>
+            <v-icon size="14">llars-latex</v-icon>
           </a>
           <span
             v-else-if="latexAccess.requestStatus === 'pending'"

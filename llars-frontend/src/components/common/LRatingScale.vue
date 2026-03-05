@@ -102,6 +102,10 @@ const props = defineProps({
     default: 'gradient',
     validator: (v) => ['gradient', 'neutral', 'primary'].includes(v)
   },
+  reverseGradient: {
+    type: Boolean,
+    default: false
+  },
   disabled: {
     type: Boolean,
     default: false
@@ -140,12 +144,14 @@ function getButtonClasses(value) {
   const isSelected = props.modelValue === value
   const range = props.max - props.min
   const position = (value - props.min) / range // 0 to 1
+  // When reverseGradient is true, swap low/high colors (low=red, high=green)
+  const effectivePosition = props.reverseGradient ? 1 - position : position
 
   return {
     'is-selected': isSelected,
-    'is-low': position <= 0.3,
-    'is-mid': position > 0.3 && position < 0.7,
-    'is-high': position >= 0.7,
+    'is-low': effectivePosition <= 0.3,
+    'is-mid': effectivePosition > 0.3 && effectivePosition < 0.7,
+    'is-high': effectivePosition >= 0.7,
     'is-center': Math.abs(position - 0.5) < 0.1
   }
 }

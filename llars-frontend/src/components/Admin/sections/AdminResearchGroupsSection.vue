@@ -11,56 +11,172 @@
 
     <LLoading v-if="loading" />
 
-    <!-- Groups Table -->
-    <v-card v-else variant="outlined" class="groups-card">
-      <v-table>
-        <thead>
-          <tr>
-            <th>{{ t('researchGroup.name') }}</th>
-            <th>{{ t('researchGroup.slug') }}</th>
-            <th>{{ t('researchGroup.members.title') }}</th>
-            <th>{{ t('researchGroup.createdBy') }}</th>
-            <th>{{ t('common.actions') }}</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="group in groups" :key="group.id">
-            <td class="font-weight-medium">{{ group.name }}</td>
-            <td class="text-medium-emphasis">{{ group.slug }}</td>
-            <td>{{ group.member_count }}</td>
-            <td>{{ group.created_by }}</td>
-            <td>
-              <div class="d-flex gap-1">
-                <LIconBtn
-                  icon="mdi-account-group"
-                  tooltip="Members"
-                  size="small"
-                  @click="router.push({ name: 'ResearchGroupMembers', params: { groupId: group.id } })"
+    <!-- Empty State -->
+    <div v-else-if="!groups.length" class="text-center text-medium-emphasis pa-8">
+      {{ t('researchGroup.admin.noGroups') }}
+    </div>
+
+    <!-- Group Cards -->
+    <div v-else class="d-flex flex-column" style="gap: 12px;">
+      <v-card
+        v-for="group in groups"
+        :key="group.id"
+        variant="outlined"
+        class="group-card"
+      >
+        <!-- Card Header -->
+        <div class="d-flex align-center pa-4" style="gap: 12px;">
+          <v-btn
+            variant="text"
+            density="compact"
+            :icon="expandedGroups[group.id] ? 'mdi-chevron-down' : 'mdi-chevron-right'"
+            size="small"
+            @click="toggleExpand(group)"
+          />
+
+          <div class="flex-grow-1">
+            <div class="d-flex align-center" style="gap: 8px;">
+              <span class="text-subtitle-1 font-weight-medium">{{ group.name }}</span>
+              <span class="text-caption text-medium-emphasis">({{ group.slug }})</span>
+            </div>
+            <div v-if="group.description" class="text-caption text-medium-emphasis">
+              {{ group.description }}
+            </div>
+          </div>
+
+          <!-- Stat Chips -->
+          <div class="d-flex align-center" style="gap: 8px;">
+            <v-chip size="small" variant="tonal" color="primary">
+              <v-icon start size="14">mdi-account-group</v-icon>
+              {{ group.stats?.members ?? group.member_count }} {{ t('researchGroup.admin.stats.members') }}
+            </v-chip>
+            <v-chip size="small" variant="tonal" color="secondary">
+              <v-icon start size="14">mdi-calendar-star</v-icon>
+              {{ group.stats?.conferences ?? 0 }} {{ t('researchGroup.admin.stats.conferences') }}
+            </v-chip>
+            <v-chip size="small" variant="tonal" color="accent">
+              <v-icon start size="14">mdi-file-document-outline</v-icon>
+              {{ group.stats?.papers ?? 0 }} {{ t('researchGroup.admin.stats.papers') }}
+            </v-chip>
+          </div>
+
+          <!-- Actions -->
+          <div class="d-flex" style="gap: 4px;">
+            <LIconBtn
+              icon="mdi-pencil"
+              :tooltip="t('researchGroup.edit')"
+              size="small"
+              @click="editGroup(group)"
+            />
+            <LIconBtn
+              icon="mdi-delete"
+              :tooltip="t('researchGroup.delete')"
+              size="small"
+              color="error"
+              @click="confirmDelete(group)"
+            />
+          </div>
+        </div>
+
+        <!-- Expanded Members Section -->
+        <v-expand-transition>
+          <div v-if="expandedGroups[group.id]">
+            <v-divider />
+            <div class="pa-4">
+              <!-- Pending Access Requests -->
+              <div v-if="groupRequests[group.id]?.length" class="mb-4">
+                <div class="text-subtitle-2 mb-2">{{ t('researchGroup.accessRequest.pending') }}</div>
+                <div
+                  v-for="req in groupRequests[group.id]"
+                  :key="req.id"
+                  class="d-flex align-center pa-2 mb-1 rounded"
+                  style="background: rgba(var(--v-theme-warning), 0.08);"
+                >
+                  <LAvatar :username="req.username" size="sm" class="mr-2" />
+                  <span class="text-body-2 flex-grow-1">
+                    {{ req.username }}
+                    <span v-if="req.message" class="text-caption text-medium-emphasis ml-1">&mdash; {{ req.message }}</span>
+                  </span>
+                  <LBtn variant="primary" size="x-small" class="mr-1" @click="handleResolveRequest(req.id, 'approve', group.id)">
+                    {{ t('researchGroup.accessRequest.approve') }}
+                  </LBtn>
+                  <LBtn variant="cancel" size="x-small" @click="handleResolveRequest(req.id, 'reject', group.id)">
+                    {{ t('researchGroup.accessRequest.reject') }}
+                  </LBtn>
+                </div>
+              </div>
+
+              <!-- Member List -->
+              <div class="text-subtitle-2 mb-2">{{ t('researchGroup.members.title') }}</div>
+
+              <div v-if="!groupMembersMap[group.id]?.length" class="text-body-2 text-medium-emphasis mb-3">
+                {{ t('researchGroup.admin.members.noMembers') }}
+              </div>
+
+              <v-table v-else density="compact" class="mb-3 members-table">
+                <tbody>
+                  <tr v-for="member in groupMembersMap[group.id]" :key="member.id">
+                    <td style="width: 44px;">
+                      <LAvatar
+                        :username="member.username"
+                        :seed="member.avatar_seed"
+                        :src="member.avatar_url"
+                        size="sm"
+                      />
+                    </td>
+                    <td class="text-body-2 font-weight-medium">{{ member.username }}</td>
+                    <td style="width: 160px;">
+                      <v-select
+                        :model-value="member.role"
+                        :items="roleOptions"
+                        item-title="label"
+                        item-value="value"
+                        variant="outlined"
+                        density="compact"
+                        hide-details
+                        @update:model-value="handleRoleChange(group.id, member.id, $event)"
+                      />
+                    </td>
+                    <td style="width: 40px;">
+                      <LIconBtn
+                        icon="mdi-close"
+                        :tooltip="t('researchGroup.admin.members.removeMember')"
+                        size="x-small"
+                        color="error"
+                        @click="handleRemoveMember(group, member)"
+                      />
+                    </td>
+                  </tr>
+                </tbody>
+              </v-table>
+
+              <!-- Add Member Row -->
+              <div class="d-flex align-center" style="gap: 8px;">
+                <LUserSearch
+                  v-model="newMemberUser[group.id]"
+                  :placeholder="t('researchGroup.members.searchUser')"
+                  :exclude-usernames="(groupMembersMap[group.id] || []).map(m => m.username)"
+                  show-add-button
+                  :add-button-text="t('researchGroup.admin.members.add')"
+                  style="flex: 1; max-width: 400px;"
+                  @add="handleAddMember(group.id, $event)"
                 />
-                <LIconBtn
-                  icon="mdi-pencil"
-                  tooltip="Edit"
-                  size="small"
-                  @click="editGroup(group)"
-                />
-                <LIconBtn
-                  icon="mdi-delete"
-                  tooltip="Delete"
-                  size="small"
-                  color="error"
-                  @click="confirmDelete(group)"
+                <v-select
+                  v-model="newMemberRole[group.id]"
+                  :items="roleOptions"
+                  item-title="label"
+                  item-value="value"
+                  variant="outlined"
+                  density="compact"
+                  hide-details
+                  style="max-width: 140px;"
                 />
               </div>
-            </td>
-          </tr>
-          <tr v-if="!groups.length">
-            <td colspan="5" class="text-center text-medium-emphasis pa-4">
-              {{ t('researchGroup.admin.noGroups') }}
-            </td>
-          </tr>
-        </tbody>
-      </v-table>
-    </v-card>
+            </div>
+          </div>
+        </v-expand-transition>
+      </v-card>
+    </div>
 
     <!-- Create/Edit Dialog -->
     <v-dialog v-model="showCreateDialog" max-width="500" persistent>
@@ -106,14 +222,17 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useResearchGroups } from '@/views/ConferenceManager/composables/useResearchGroups'
 
 const { t } = useI18n()
-const router = useRouter()
-const { fetchAllGroups, allGroups, createGroup, updateGroup, deleteGroup } = useResearchGroups()
+const {
+  fetchAllGroups, allGroups,
+  createGroup, updateGroup, deleteGroup,
+  fetchMembers, addMember, updateMemberRole, removeMember,
+  fetchGroupRequests, resolveAccessRequest,
+} = useResearchGroups()
 
 const loading = ref(true)
 const groups = ref([])
@@ -122,6 +241,19 @@ const editingGroup = ref(null)
 const saving = ref(false)
 const formData = ref({ name: '', slug: '', description: '' })
 
+// Expand state
+const expandedGroups = reactive({})
+const groupMembersMap = reactive({})
+const groupRequests = reactive({})
+const newMemberUser = reactive({})
+const newMemberRole = reactive({})
+
+const roleOptions = computed(() => [
+  { label: t('researchGroup.members.roles.owner'), value: 'owner' },
+  { label: t('researchGroup.members.roles.member'), value: 'member' },
+  { label: t('researchGroup.members.roles.viewer'), value: 'viewer' },
+])
+
 async function loadGroups() {
   loading.value = true
   try {
@@ -129,6 +261,75 @@ async function loadGroups() {
     groups.value = allGroups.value
   } finally {
     loading.value = false
+  }
+}
+
+async function toggleExpand(group) {
+  const id = group.id
+  if (expandedGroups[id]) {
+    expandedGroups[id] = false
+    return
+  }
+  expandedGroups[id] = true
+  if (!newMemberRole[id]) newMemberRole[id] = 'member'
+  await Promise.all([
+    loadMembers(id),
+    loadRequests(id),
+  ])
+}
+
+async function loadMembers(groupId) {
+  const members = await fetchMembers(groupId)
+  groupMembersMap[groupId] = members
+}
+
+async function loadRequests(groupId) {
+  const requests = await fetchGroupRequests(groupId)
+  groupRequests[groupId] = requests
+}
+
+async function handleAddMember(groupId, user) {
+  if (!user) return
+  try {
+    await addMember(groupId, user.id, newMemberRole[groupId] || 'member')
+    await loadMembers(groupId)
+    newMemberUser[groupId] = null
+    await loadGroups()
+  } catch (err) {
+    console.error('Failed to add member:', err)
+  }
+}
+
+async function handleRoleChange(groupId, memberId, newRole) {
+  try {
+    await updateMemberRole(groupId, memberId, newRole)
+    await loadMembers(groupId)
+  } catch (err) {
+    console.error('Failed to update role:', err)
+  }
+}
+
+async function handleRemoveMember(group, member) {
+  if (!confirm(t('researchGroup.members.confirmRemove', { name: member.username }))) return
+  try {
+    await removeMember(group.id, member.id)
+    await loadMembers(group.id)
+    await loadGroups()
+  } catch (err) {
+    console.error('Failed to remove member:', err)
+  }
+}
+
+async function handleResolveRequest(requestId, action, groupId) {
+  try {
+    await resolveAccessRequest(requestId, action)
+    await Promise.all([
+      loadRequests(groupId),
+      loadMembers(groupId),
+      loadGroups(),
+    ])
+  } catch (err) {
+    console.error('Failed to resolve request:', err)
   }
 }
 
@@ -179,7 +380,16 @@ onMounted(loadGroups)
 </script>
 
 <style scoped>
-.groups-card, .dialog-card {
+.group-card, .dialog-card {
   border-radius: 16px 4px 16px 4px;
+}
+
+.members-table {
+  background: transparent;
+}
+
+.members-table :deep(td) {
+  padding-top: 4px;
+  padding-bottom: 4px;
 }
 </style>

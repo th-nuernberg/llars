@@ -277,7 +277,7 @@ const allItems = computed(() => ([
     description: t('home.features.video.description'),
     route: '/video',
     icon: 'llars:play',
-    permission: null,
+    permissionsAny: ['feature:ranking:view', 'feature:rating:view', 'admin:permissions:manage'],
     category: 'research',
     badge: t('home.badges.new'),
     badgeColor: 'success'
@@ -306,7 +306,7 @@ const allItems = computed(() => ([
     title: t('home.features.chatbotArena.title'),
     description: t('home.features.chatbotArena.description'),
     route: '/judge',
-    icon: 'mdi-sword-cross',
+    icon: 'llars:arena',
     permission: 'feature:judge:view',
     category: 'ai'
   },
@@ -323,14 +323,6 @@ const allItems = computed(() => ([
   {
     title: 'Anonymisierungs-Pipeline',
     description: 'Konversationen batch-anonymisieren, bearbeiten und exportieren',
-    route: '/anonymization',
-    icon: 'mdi-shield-check',
-    permission: 'feature:anonymization-pipeline:view',
-    category: 'research'
-  },
-  {
-    title: t('home.features.kaimo.title'),
-    description: t('home.features.kaimo.description'),
     route: '/anonymization',
     icon: 'mdi-shield-check',
     permission: 'feature:anonymization-pipeline:view',
@@ -363,18 +355,18 @@ const allItems = computed(() => ([
   {
     title: t('home.features.chatbotAdmin.title'),
     description: t('home.features.chatbotAdmin.description'),
-    route: '/admin?tab=chatbots',
+    route: '/chatbot-manager',
     icon: 'llars:chatbot-manage',
     permission: 'feature:chatbots:edit',
-    category: 'admin'
+    category: 'ai'
   },
   {
     title: t('home.features.ragAdmin.title'),
     description: t('home.features.ragAdmin.description'),
-    route: '/admin?tab=rag',
+    route: '/chatbot-manager?tab=rag',
     icon: 'llars:rag',
     permission: 'feature:rag:edit',
-    category: 'admin'
+    category: 'ai'
   },
   {
     title: t('home.features.conferenceManager.title'),

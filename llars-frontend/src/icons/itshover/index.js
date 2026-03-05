@@ -1,6 +1,11 @@
+// Global hover animations for all itshover icons
+import './hover-animations.css'
+
 import AdminDashboardIcon from './AdminDashboardIcon.vue'
+import AiLookupIcon from './AiLookupIcon.vue'
 import AnonymizeIcon from './AnonymizeIcon.vue'
 import AlphaAIcon from './AlphaAIcon.vue'
+import ArenaIcon from './ArenaIcon.vue'
 import BatchGenerationIcon from './BatchGenerationIcon.vue'
 import AlphaBIcon from './AlphaBIcon.vue'
 import ArrowBackIcon from './ArrowBackIcon.vue'
@@ -53,6 +58,7 @@ import ImageIcon from './ImageIcon.vue'
 import InfoCircleIcon from './InfoCircleIcon.vue'
 import LatexCollabAiIcon from './LatexCollabAiIcon.vue'
 import LatexDocIcon from './LatexDocIcon.vue'
+import LlarsLatexIcon from './LlarsLatexIcon.vue'
 import LightbulbIcon from './LightbulbIcon.vue'
 import LinkIcon from './LinkIcon.vue'
 import LitellmIcon from './LitellmIcon.vue'
@@ -63,6 +69,7 @@ import MenuIcon from './MenuIcon.vue'
 import MinusIcon from './MinusIcon.vue'
 import MoonIcon from './MoonIcon.vue'
 import OllamaIcon from './OllamaIcon.vue'
+import OverleafIcon from './OverleafIcon.vue'
 import OncocoIcon from './OncocoIcon.vue'
 import OpenAiIcon from './OpenAiIcon.vue'
 import PaletteIcon from './PaletteIcon.vue'
@@ -103,6 +110,8 @@ import UserPlusIcon from './UserPlusIcon.vue'
 import UsersGroupIcon from './UsersGroupIcon.vue'
 import UsersIcon from './UsersIcon.vue'
 import VideoCallIcon from './VideoCallIcon.vue'
+import ViewCardsIcon from './ViewCardsIcon.vue'
+import ViewListIcon from './ViewListIcon.vue'
 import VllmIcon from './VllmIcon.vue'
 import VoiceCallIcon from './VoiceCallIcon.vue'
 import WandIcon from './WandIcon.vue'
@@ -111,8 +120,10 @@ import ZoteroIcon from './ZoteroIcon.vue'
 
 export const iconComponents = {
   'admin-dashboard': AdminDashboardIcon,
+  'ai-lookup': AiLookupIcon,
   'anonymize': AnonymizeIcon,
   'alpha-a': AlphaAIcon,
+  'arena': ArenaIcon,
   'alpha-b': AlphaBIcon,
   'batch-generation': BatchGenerationIcon,
   'arrow-back': ArrowBackIcon,
@@ -166,6 +177,7 @@ export const iconComponents = {
   'info-circle': InfoCircleIcon,
   'latex-collab-ai': LatexCollabAiIcon,
   'latex-doc': LatexDocIcon,
+  'llars-latex': LlarsLatexIcon,
   'lightbulb': LightbulbIcon,
   'link': LinkIcon,
   'litellm': LitellmIcon,
@@ -177,6 +189,7 @@ export const iconComponents = {
   'moon': MoonIcon,
   'ollama': OllamaIcon,
   'oncoco': OncocoIcon,
+  'overleaf': OverleafIcon,
   'openai': OpenAiIcon,
   'palette': PaletteIcon,
   'pause': PauseIcon,
@@ -214,6 +227,8 @@ export const iconComponents = {
   'user-plus': UserPlusIcon,
   'users-group': UsersGroupIcon,
   'users': UsersIcon,
+  'view-cards': ViewCardsIcon,
+  'view-list': ViewListIcon,
   'video-call': VideoCallIcon,
   'vllm': VllmIcon,
   'voice-call': VoiceCallIcon,
@@ -233,6 +248,7 @@ const explicitAliases = {
   'mdi-format-strikethrough': 'format-strikethrough',
   'mdi-format-strikethrough-variant': 'format-strikethrough',
   'mdi-exit-run': 'arrow-left',
+  'mdi-leaf': 'overleaf',
   'mdi-login': 'arrow-right',
   'mdi-logout': 'arrow-left',
   'mdi-menu-right': 'arrow-right',
@@ -247,6 +263,10 @@ const explicitAliases = {
   'mdi-timer-outline': 'clock',
   'mdi-unordered-list': 'unordered-list',
   'mdi-view-list': 'unordered-list',
+  'mdi-view-grid': 'view-cards',
+  'mdi-view-grid-outline': 'view-cards',
+  'mdi-view-list-outline': 'view-list',
+  'mdi-view-module': 'view-cards',
 }
 
 const normalizeIconName = (iconName) => iconName
@@ -292,7 +312,8 @@ export const resolveIconKey = (iconName) => {
     return 'users'
   }
 
-  if (tokens.includes('shield') || tokens.includes('sword')) return 'shield-check'
+  if (tokens.includes('sword')) return 'arena'
+  if (tokens.includes('shield')) return 'shield-check'
   if (tokens.includes('lock') || tokens.includes('key') || tokens.includes('gate')) return 'lock'
 
   if (hasAny(tokens, ['trash', 'delete', 'remove'])) return 'trash'
@@ -368,6 +389,8 @@ export const resolveIconKey = (iconName) => {
   if (hasAny(tokens, ['email', 'mail'])) return 'mail'
   if (hasAny(tokens, ['book', 'library', 'bookshelf'])) return 'book'
 
+  if (hasAny(tokens, ['overleaf', 'leaf'])) return 'overleaf'
+  if (hasAny(tokens, ['latex']) && hasAny(tokens, ['llars'])) return 'llars-latex'
   if (hasAny(tokens, ['robot', 'ai', 'brain', 'openai'])) return 'robot'
   if (tokens.includes('flask')) return 'flask'
 

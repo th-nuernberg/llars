@@ -7,11 +7,11 @@
  */
 
 export const CORE_RANKINGS = [
-  { value: 'A*', label: 'A*', color: '#c4735a' },
-  { value: 'A', label: 'A', color: '#b49a52' },
-  { value: 'B', label: 'B', color: '#7da362' },
-  { value: 'C', label: 'C', color: '#5a9da1' },
-  { value: 'Unranked', label: 'Unranked', color: '#808080' },
+  { value: 'A*', label: 'A*', color: '#8B7D3C' },
+  { value: 'A', label: 'A', color: '#4A7C59' },
+  { value: 'B', label: 'B', color: '#6B8F71' },
+  { value: 'C', label: 'C', color: '#6B8CA3' },
+  { value: 'Unranked', label: 'U', color: '#808080' },
 ]
 
 export const PAPER_STATUSES = [

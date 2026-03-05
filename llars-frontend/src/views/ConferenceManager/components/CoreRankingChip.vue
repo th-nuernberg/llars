@@ -5,13 +5,13 @@
     :style="{ backgroundColor: color + '33', color: color, borderRadius: '6px 2px 6px 2px' }"
   >
     <v-icon start size="14">mdi-trophy-outline</v-icon>
-    {{ ranking }}
+    {{ displayLabel }}
   </v-chip>
 </template>
 
 <script setup>
 import { computed } from 'vue'
-import { getRankingColor } from '../config/conferenceConfig'
+import { CORE_RANKINGS, getRankingColor } from '../config/conferenceConfig'
 
 const props = defineProps({
   ranking: { type: String, default: 'Unranked' },
@@ -19,4 +19,5 @@ const props = defineProps({
 })
 
 const color = computed(() => getRankingColor(props.ranking))
+const displayLabel = computed(() => CORE_RANKINGS.find(r => r.value === props.ranking)?.label || props.ranking)
 </script>

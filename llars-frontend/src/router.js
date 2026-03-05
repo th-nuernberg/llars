@@ -113,6 +113,9 @@ import ResearchGroupAccessRequestPage from "@/views/ConferenceManager/ResearchGr
 import MessagingHome from "@/views/Messaging/MessagingHome.vue";
 import { useCommunicationAdmin } from "@/composables/useCommunicationAdmin";
 
+// Chatbot Manager (dedicated page, separated from Admin)
+import ChatbotManagerPage from "@/views/ChatbotManager/ChatbotManagerPage.vue";
+
 const routes = [
     { path: '/Impressum', component: Impressum, meta: { requiresAuth: false } },
     { path: '/Datenschutz', component: Datenschutz, meta: { requiresAuth: false } },
@@ -274,8 +277,11 @@ const routes = [
     { path: '/kaimo/edit/:id', name: 'KaimoCaseEditor', component: KaimoCaseEditor, props: true, meta: { requiresAuth: true } },
     { path: '/kaimo/:id', name: 'KaimoCase', component: KaimoCase, props: true, meta: { requiresAuth: true } },
 
-    // New unified Admin Dashboard
-    { path: '/admin', name: 'AdminDashboard', component: AdminDashboard, meta: { requiresAuth: true, requiresAdminOrChatbotManager: true } },
+    // Chatbot Manager (dedicated page for chatbot_manager role)
+    { path: '/chatbot-manager', name: 'ChatbotManagerPage', component: ChatbotManagerPage, meta: { requiresAuth: true } },
+
+    // New unified Admin Dashboard (admin only)
+    { path: '/admin', name: 'AdminDashboard', component: AdminDashboard, meta: { requiresAuth: true, requiresAdmin: true } },
 
     // Legacy Admin Routes (redirect to new dashboard with appropriate tab)
     { path: '/AdminDashboard', redirect: '/admin' },
@@ -333,7 +339,6 @@ const router = createRouter({
 router.beforeEach((to, from, next) => {
     const requiresAuth = to.matched.some(record => record.meta.requiresAuth);
     const requiresAdmin = to.matched.some(record => record.meta.requiresAdmin);
-    const requiresAdminOrChatbotManager = to.matched.some(record => record.meta.requiresAdminOrChatbotManager);
 
     const auth = useAuth();
     const rawToken = auth.getToken();
@@ -358,13 +363,14 @@ router.beforeEach((to, from, next) => {
 
     // If route requires admin role
     if (requiresAdmin && !isAdmin) {
+        // Redirect chatbot managers trying to access /admin to their dedicated page
+        if (isChatbotManager && to.path === '/admin') {
+            const tabMap = { chatbots: 'chatbots', rag: 'rag', crawler: 'crawler' };
+            const tab = tabMap[to.query.tab] || 'chatbots';
+            next({ path: '/chatbot-manager', query: { tab } });
+            return;
+        }
         logI18n("log", "logs.router.requireAdminRedirect");
-        next('/Home');
-        return;
-    }
-
-    if (requiresAdminOrChatbotManager && !(isAdmin || isChatbotManager)) {
-        logI18n("log", "logs.router.requireAdminOrManagerRedirect");
         next('/Home');
         return;
     }

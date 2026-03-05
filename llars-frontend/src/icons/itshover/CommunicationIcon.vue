@@ -15,9 +15,10 @@
       class="l-its-hover__communication-bubble"
       d="M4 6h12a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2H8l-3 3v-3H4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2z"
     />
-    <!-- Signal waves (voice/call indicator) -->
-    <path class="l-its-hover__communication-wave l-its-hover__communication-wave--inner" d="M19 4a4 4 0 0 1 0 6" />
-    <path class="l-its-hover__communication-wave l-its-hover__communication-wave--outer" d="M21 2a7 7 0 0 1 0 10" />
+    <!-- Signal waves (45deg from upper-right corner) -->
+    <path class="l-its-hover__communication-wave l-its-hover__communication-wave--inner" d="M17 4.5A2.5 2.5 0 0 1 19.5 7" />
+    <path class="l-its-hover__communication-wave l-its-hover__communication-wave--middle" d="M17 3A4 4 0 0 1 21 7" />
+    <path class="l-its-hover__communication-wave l-its-hover__communication-wave--outer" d="M17 1.5A5.5 5.5 0 0 1 22.5 7" />
   </svg>
 </template>
 
@@ -30,11 +31,15 @@
 
 .l-its-hover__communication-wave {
   transition: opacity 0.25s ease, transform 0.25s ease;
-  transform-origin: 19px 7px;
+  transform-origin: 17px 7px;
+}
+
+.l-its-hover__communication-wave--middle {
+  opacity: 0.6;
 }
 
 .l-its-hover__communication-wave--outer {
-  opacity: 0.5;
+  opacity: 0.35;
 }
 
 /* Hover: bubble shifts slightly, waves pulse */
@@ -46,8 +51,12 @@
   animation: llars-wave-pulse 1s ease-in-out infinite;
 }
 
+:is(.v-icon:hover, .v-btn:hover .v-icon, .feature-card:hover .v-icon) .l-its-hover--communication .l-its-hover__communication-wave--middle {
+  animation: llars-wave-pulse 1s ease-in-out infinite 0.15s;
+}
+
 :is(.v-icon:hover, .v-btn:hover .v-icon, .feature-card:hover .v-icon) .l-its-hover--communication .l-its-hover__communication-wave--outer {
-  animation: llars-wave-pulse 1s ease-in-out infinite 0.2s;
+  animation: llars-wave-pulse 1s ease-in-out infinite 0.3s;
 }
 
 @keyframes llars-wave-pulse {

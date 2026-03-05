@@ -64,7 +64,7 @@
         color="accent"
         variant="outlined"
         :style="{ borderRadius: '16px 4px 16px 4px' }"
-        prepend-icon="mdi-auto-fix"
+        prepend-icon="ai-lookup"
         class="mr-2"
         @click="wizardDialog = true"
       >
@@ -125,56 +125,37 @@
         </div>
 
         <!-- Series Rows -->
-        <div v-if="!group.collapsed" class="list-container">
-          <div class="list-header">
-            <div class="col-ranking sortable-col" @click="toggleSort('core_ranking')">
-              {{ t('conferenceManager.conference.coreRanking') }}
-              <v-icon v-if="sortField === 'core_ranking'" size="12" class="sort-icon">{{ sortAsc ? 'mdi-arrow-up' : 'mdi-arrow-down' }}</v-icon>
-            </div>
-            <div class="col-name sortable-col" @click="toggleSort('acronym')">
-              {{ t('conferenceManager.conference.name') }}
-              <v-icon v-if="sortField === 'acronym'" size="12" class="sort-icon">{{ sortAsc ? 'mdi-arrow-up' : 'mdi-arrow-down' }}</v-icon>
-            </div>
-            <div class="col-deadline sortable-col" @click="toggleSort('submission_deadline')">
-              {{ t('conferenceManager.conference.submissionDeadline') }}
-              <v-icon v-if="sortField === 'submission_deadline'" size="12" class="sort-icon">{{ sortAsc ? 'mdi-arrow-up' : 'mdi-arrow-down' }}</v-icon>
-            </div>
-            <div class="col-dates sortable-col" @click="toggleSort('start_date')">
-              {{ t('conferenceManager.conference.startDate') }}
-              <v-icon v-if="sortField === 'start_date'" size="12" class="sort-icon">{{ sortAsc ? 'mdi-arrow-up' : 'mdi-arrow-down' }}</v-icon>
-            </div>
-            <div class="col-location sortable-col" @click="toggleSort('location')">
-              {{ t('conferenceManager.conference.location') }}
-              <v-icon v-if="sortField === 'location'" size="12" class="sort-icon">{{ sortAsc ? 'mdi-arrow-up' : 'mdi-arrow-down' }}</v-icon>
-            </div>
-            <div class="col-actions" />
-          </div>
-          <div
-            v-for="conf in group.items"
-            :key="conf.id"
-            class="list-row"
-            @click="editConference(conf)"
-          >
-            <div class="col-ranking">
+        <LListTable
+          v-if="!group.collapsed"
+          :columns="listColumns"
+          :items="group.items"
+          item-key="id"
+          actions-width="90px"
+          v-model:sort-field="sortField"
+          v-model:sort-asc="sortAsc"
+          @row-click="editConference"
+        >
+          <template #row="{ item: conf }">
+            <div class="l-col col-ranking">
               <CoreRankingChip :ranking="conf.core_ranking" size="x-small" />
             </div>
-            <div class="col-name">
+            <div class="l-col col-name">
               <span class="row-title">{{ conf.acronym }} {{ conf.year }}</span>
               <span class="row-subtitle">{{ conf.name }}</span>
             </div>
-            <div class="col-deadline">
+            <div class="l-col col-deadline">
               <span v-if="conf.submission_deadline" :class="{ 'deadline-soon': isDeadlineSoon(conf.submission_deadline) }">
                 {{ formatDate(conf.submission_deadline) }}
               </span>
               <span v-else class="text-placeholder">—</span>
             </div>
-            <div class="col-dates">
+            <div class="l-col col-dates">
               <span v-if="conf.start_date">
                 {{ formatDateShort(conf.start_date) }}{{ conf.end_date ? ` – ${formatDateShort(conf.end_date)}` : '' }}
               </span>
               <span v-else class="text-placeholder">—</span>
             </div>
-            <div class="col-location">
+            <div class="l-col col-location">
               <template v-if="conf.city || conf.country">
                 <span class="location-link" @click.stop="showMap(conf)">
                   <v-icon size="13" class="mr-1" style="opacity: 0.5">mdi-map-marker-outline</v-icon>
@@ -183,71 +164,38 @@
               </template>
               <span v-else class="text-placeholder">—</span>
             </div>
-            <div class="col-actions">
-              <a v-if="conf.website_url" :href="conf.website_url" target="_blank" class="action-link" @click.stop>
-                <v-icon size="15">mdi-open-in-new</v-icon>
-              </a>
-              <v-btn icon size="x-small" variant="text" class="action-btn" @click.stop="editConference(conf)">
-                <v-icon size="15">mdi-pencil-outline</v-icon>
-              </v-btn>
-              <v-btn icon size="x-small" variant="text" color="error" class="action-btn" @click.stop="confirmDelete(conf)">
-                <v-icon size="15">mdi-delete-outline</v-icon>
-              </v-btn>
-            </div>
-          </div>
-        </div>
+          </template>
+          <template #row-actions="{ item: conf }">
+            <a v-if="conf.website_url" :href="conf.website_url" target="_blank" class="action-link" @click.stop>
+              <v-icon size="15">mdi-open-in-new</v-icon>
+            </a>
+            <v-btn icon size="x-small" variant="text" class="action-btn" @click.stop="editConference(conf)">
+              <v-icon size="15">mdi-pencil-outline</v-icon>
+            </v-btn>
+            <v-btn icon size="x-small" variant="text" color="error" class="action-btn" @click.stop="confirmDelete(conf)">
+              <v-icon size="15">mdi-delete-outline</v-icon>
+            </v-btn>
+          </template>
+        </LListTable>
       </div>
     </template>
 
     <!-- Flat List -->
-    <div v-else-if="sortedConferences.length" class="list-container">
-      <!-- Header -->
-      <div class="list-header">
-        <div class="col-ranking sortable-col" @click="toggleSort('core_ranking')">
-          {{ t('conferenceManager.conference.coreRanking') }}
-          <v-icon v-if="sortField === 'core_ranking'" size="12" class="sort-icon">
-            {{ sortAsc ? 'mdi-arrow-up' : 'mdi-arrow-down' }}
-          </v-icon>
-        </div>
-        <div class="col-name sortable-col" @click="toggleSort('acronym')">
-          {{ t('conferenceManager.conference.name') }}
-          <v-icon v-if="sortField === 'acronym'" size="12" class="sort-icon">
-            {{ sortAsc ? 'mdi-arrow-up' : 'mdi-arrow-down' }}
-          </v-icon>
-        </div>
-        <div class="col-deadline sortable-col" @click="toggleSort('submission_deadline')">
-          {{ t('conferenceManager.conference.submissionDeadline') }}
-          <v-icon v-if="sortField === 'submission_deadline'" size="12" class="sort-icon">
-            {{ sortAsc ? 'mdi-arrow-up' : 'mdi-arrow-down' }}
-          </v-icon>
-        </div>
-        <div class="col-dates sortable-col" @click="toggleSort('start_date')">
-          {{ t('conferenceManager.conference.startDate') }}
-          <v-icon v-if="sortField === 'start_date'" size="12" class="sort-icon">
-            {{ sortAsc ? 'mdi-arrow-up' : 'mdi-arrow-down' }}
-          </v-icon>
-        </div>
-        <div class="col-location sortable-col" @click="toggleSort('location')">
-          {{ t('conferenceManager.conference.location') }}
-          <v-icon v-if="sortField === 'location'" size="12" class="sort-icon">
-            {{ sortAsc ? 'mdi-arrow-up' : 'mdi-arrow-down' }}
-          </v-icon>
-        </div>
-        <div class="col-actions" />
-      </div>
-
-      <!-- Rows -->
-      <div
-        v-for="conf in sortedConferences"
-        :key="conf.id"
-        class="list-row"
-        @click="editConference(conf)"
-      >
-        <div class="col-ranking">
+    <LListTable
+      v-else-if="sortedConferences.length"
+      :columns="listColumns"
+      :items="sortedConferences"
+      item-key="id"
+      actions-width="90px"
+      v-model:sort-field="sortField"
+      v-model:sort-asc="sortAsc"
+      @row-click="editConference"
+    >
+      <template #row="{ item: conf }">
+        <div class="l-col col-ranking">
           <CoreRankingChip :ranking="conf.core_ranking" size="x-small" />
         </div>
-
-        <div class="col-name">
+        <div class="l-col col-name">
           <div class="d-flex align-center ga-1">
             <span class="row-title">{{ conf.acronym }} {{ conf.year }}</span>
             <v-chip
@@ -261,22 +209,19 @@
           </div>
           <span class="row-subtitle">{{ conf.name }}</span>
         </div>
-
-        <div class="col-deadline">
+        <div class="l-col col-deadline">
           <span v-if="conf.submission_deadline" :class="{ 'deadline-soon': isDeadlineSoon(conf.submission_deadline) }">
             {{ formatDate(conf.submission_deadline) }}
           </span>
           <span v-else class="text-placeholder">—</span>
         </div>
-
-        <div class="col-dates">
+        <div class="l-col col-dates">
           <span v-if="conf.start_date">
             {{ formatDateShort(conf.start_date) }}{{ conf.end_date ? ` – ${formatDateShort(conf.end_date)}` : '' }}
           </span>
           <span v-else class="text-placeholder">—</span>
         </div>
-
-        <div class="col-location">
+        <div class="l-col col-location">
           <template v-if="conf.city || conf.country">
             <span class="location-link" @click.stop="showMap(conf)">
               <v-icon size="13" class="mr-1" style="opacity: 0.5">mdi-map-marker-outline</v-icon>
@@ -285,26 +230,19 @@
           </template>
           <span v-else class="text-placeholder">—</span>
         </div>
-
-        <div class="col-actions">
-          <a
-            v-if="conf.website_url"
-            :href="conf.website_url"
-            target="_blank"
-            class="action-link"
-            @click.stop
-          >
-            <v-icon size="15">mdi-open-in-new</v-icon>
-          </a>
-          <v-btn icon size="x-small" variant="text" class="action-btn" @click.stop="editConference(conf)">
-            <v-icon size="15">mdi-pencil-outline</v-icon>
-          </v-btn>
-          <v-btn icon size="x-small" variant="text" color="error" class="action-btn" @click.stop="confirmDelete(conf)">
-            <v-icon size="15">mdi-delete-outline</v-icon>
-          </v-btn>
-        </div>
-      </div>
-    </div>
+      </template>
+      <template #row-actions="{ item: conf }">
+        <a v-if="conf.website_url" :href="conf.website_url" target="_blank" class="action-link" @click.stop>
+          <v-icon size="15">mdi-open-in-new</v-icon>
+        </a>
+        <v-btn icon size="x-small" variant="text" class="action-btn" @click.stop="editConference(conf)">
+          <v-icon size="15">mdi-pencil-outline</v-icon>
+        </v-btn>
+        <v-btn icon size="x-small" variant="text" color="error" class="action-btn" @click.stop="confirmDelete(conf)">
+          <v-icon size="15">mdi-delete-outline</v-icon>
+        </v-btn>
+      </template>
+    </LListTable>
 
     <!-- Empty State -->
     <div v-else class="empty-state">
@@ -520,21 +458,13 @@ function loadData() {
   })
 }
 
-function toggleSort(field) {
-  if (sortField.value === field) {
-    if (!sortAsc.value) {
-      // Third click: remove sort
-      sortField.value = null
-    } else {
-      // Second click: descending
-      sortAsc.value = false
-    }
-  } else {
-    // First click: ascending
-    sortField.value = field
-    sortAsc.value = true
-  }
-}
+const listColumns = computed(() => [
+  { key: 'core_ranking', label: t('conferenceManager.conference.coreRanking'), width: '72px', sortable: true },
+  { key: 'acronym', label: t('conferenceManager.conference.name'), flex: true, sortable: true },
+  { key: 'submission_deadline', label: t('conferenceManager.conference.submissionDeadline'), width: '130px', sortable: true },
+  { key: 'start_date', label: t('conferenceManager.conference.startDate'), width: '140px', sortable: true },
+  { key: 'location', label: t('conferenceManager.conference.location'), width: '140px', sortable: true },
+])
 
 function showCreate() {
   editingConference.value = null
@@ -685,113 +615,28 @@ function isDeadlineSoon(isoStr) {
   font-weight: 600;
 }
 
-/* List */
-.list-container {
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
-  border-radius: 8px;
-  overflow: hidden;
-}
-
-.list-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 16px;
-  font-size: 0.7rem;
-  font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: rgba(var(--v-theme-on-surface), 0.45);
-  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.08);
-  background: rgba(var(--v-theme-on-surface), 0.02);
-  user-select: none;
-}
-
-.sortable-col {
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  transition: color 0.15s;
-}
-
-.sortable-col:hover {
-  color: rgba(var(--v-theme-on-surface), 0.75);
-}
-
-.sort-icon {
-  margin-left: auto;
-  opacity: 0.7;
-  flex-shrink: 0;
-}
-
-.list-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 16px;
-  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.05);
-  cursor: pointer;
-  transition: background 0.15s;
-}
-
-.list-row:last-child {
-  border-bottom: none;
-}
-
-.list-row:hover {
-  background: rgba(var(--v-theme-on-surface), 0.03);
-}
-
-/* Columns */
-.col-ranking {
-  width: 72px;
-  flex-shrink: 0;
-}
-
+/* Column content styling */
 .col-name {
-  flex: 1;
-  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 1px;
 }
 
 .col-deadline {
-  width: 130px;
-  flex-shrink: 0;
   font-size: 0.82rem;
   color: rgba(var(--v-theme-on-surface), 0.7);
 }
 
 .col-dates {
-  width: 140px;
-  flex-shrink: 0;
   font-size: 0.82rem;
   color: rgba(var(--v-theme-on-surface), 0.7);
 }
 
 .col-location {
-  width: 140px;
-  flex-shrink: 0;
   font-size: 0.82rem;
   color: rgba(var(--v-theme-on-surface), 0.55);
   display: flex;
   align-items: center;
-}
-
-.col-actions {
-  width: 90px;
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 2px;
-  opacity: 0;
-  transition: opacity 0.15s;
-}
-
-.list-row:hover .col-actions {
-  opacity: 1;
 }
 
 /* Row content */

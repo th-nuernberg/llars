@@ -2,7 +2,7 @@
   <v-dialog v-model="dialogVisible" max-width="560" persistent>
     <v-card>
       <v-card-title class="d-flex align-center">
-        <v-icon start color="accent">mdi-auto-fix</v-icon>
+        <v-icon start color="accent">ai-lookup</v-icon>
         {{ t('conferenceManager.wizard.title') }}
         <v-spacer />
         <v-btn icon variant="text" @click="close"><v-icon>mdi-close</v-icon></v-btn>
@@ -67,7 +67,7 @@
           variant="flat"
           :disabled="!query.trim()"
           :style="{ borderRadius: '16px 4px 16px 4px' }"
-          prepend-icon="mdi-auto-fix"
+          prepend-icon="ai-lookup"
           @click="startSearch"
         >
           {{ t('conferenceManager.wizard.search') }}

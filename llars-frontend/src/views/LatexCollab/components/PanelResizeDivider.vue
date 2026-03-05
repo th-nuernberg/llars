@@ -63,6 +63,7 @@ onUnmounted(() => {
 
 <style scoped>
 .panel-resize-divider {
+  width: 100%;
   height: 8px;
   flex-shrink: 0;
   display: flex;

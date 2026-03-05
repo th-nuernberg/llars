@@ -132,10 +132,14 @@
           <v-chip
             v-if="paper.conference"
             size="x-small"
-            variant="tonal"
-            color="primary"
-            :style="{ borderRadius: '6px 2px 6px 2px' }"
+            variant="flat"
+            :style="{
+              borderRadius: '6px 2px 6px 2px',
+              backgroundColor: getRankingColor(paper.conference.core_ranking) + '20',
+              color: getRankingColor(paper.conference.core_ranking),
+            }"
           >
+            <span class="conf-ranking-dot" :style="{ backgroundColor: getRankingColor(paper.conference.core_ranking) }" />
             {{ paper.conference.acronym }} {{ paper.conference.year }}
             <span v-if="paper.submissions?.length > 1" class="resubmit-badge">
               (+{{ paper.submissions.length - 1 }})
@@ -167,7 +171,7 @@
             title="Overleaf"
             @click.stop
           >
-            <v-icon size="15">mdi-leaf</v-icon>
+            <v-icon size="15">overleaf</v-icon>
           </a>
           <template v-if="paper.latex_workspace_id">
             <v-tooltip v-if="getLatexAccess(paper.id).hasAccess" :text="t('conferenceManager.paper.openWorkspace')" location="top">
@@ -177,7 +181,7 @@
                   class="action-link llars-latex"
                   @click.stop="router.push(`/LatexCollab/workspace/${paper.latex_workspace_id}`)"
                 >
-                  <v-icon size="15">mdi-file-document-edit-outline</v-icon>
+                  <v-icon size="15">llars-latex</v-icon>
                 </a>
               </template>
             </v-tooltip>
@@ -264,7 +268,7 @@ import { ref, watch, onMounted, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter, useRoute } from 'vue-router'
 import { useSnackbar } from '@/composables/useSnackbar'
-import { PAPER_STATUSES, getStatusConfig } from '../config/conferenceConfig'
+import { PAPER_STATUSES, getStatusConfig, getRankingColor } from '../config/conferenceConfig'
 import { useConferenceManager } from '../composables/useConferenceManager'
 import PaperStatusChip from './PaperStatusChip.vue'
 import PaperFormDialog from './PaperFormDialog.vue'
@@ -673,6 +677,15 @@ function formatDate(isoStr) {
   display: flex;
   align-items: center;
   padding: 2px;
+}
+
+.conf-ranking-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  display: inline-block;
+  margin-right: 4px;
+  flex-shrink: 0;
 }
 
 .resubmit-badge {

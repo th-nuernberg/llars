@@ -156,6 +156,20 @@ onMounted(() => {
   max-width: 1400px;
   margin: 0 auto;
   padding: 24px;
+  height: calc(100vh - 94px); /* 64px AppBar + 30px Footer */
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.conference-manager :deep(.v-window) {
+  flex: 1;
+  min-height: 0;
+}
+
+.conference-manager :deep(.v-window__container),
+.conference-manager :deep(.v-window-item) {
+  height: 100%;
 }
 
 .page-header {

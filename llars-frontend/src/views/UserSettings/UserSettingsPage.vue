@@ -37,7 +37,7 @@
             role="tab"
             :aria-selected="activeTab === tab.value"
             :aria-controls="`panel-${tab.value}`"
-            @click="activeTab = tab.value"
+            @click="handleTabClick(tab.value)"
           >
             <LIcon size="20" class="nav-icon">{{ tab.icon }}</LIcon>
             <span class="nav-label">{{ tab.label }}</span>
@@ -73,7 +73,7 @@
               class="collapsed-icon-box"
               :class="{ active: activeTab === tab.value }"
               :aria-label="tab.label"
-              @click="activeTab = tab.value"
+              @click="handleTabClick(tab.value)"
             >
               <LIcon size="18" :color="activeTab === tab.value ? 'white' : 'rgba(255,255,255,0.7)'">{{ tab.icon }}</LIcon>
             </button>
@@ -134,8 +134,9 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useRouter, useRoute } from 'vue-router'
 import LIcon from '@/components/common/LIcon.vue'
 import LAvatar from '@/components/common/LAvatar.vue'
 import PersonalSettingsTab from './components/PersonalSettingsTab.vue'
@@ -146,12 +147,26 @@ import axios from 'axios'
 import { useAuth } from '@/composables/useAuth'
 
 const { t } = useI18n()
-const { tokenParsed, avatarUrl, avatarSeed } = useAuth()
+const router = useRouter()
+const route = useRoute()
+const { tokenParsed, avatarUrl, avatarSeed, isAdmin } = useAuth()
 
-const activeTab = ref('personal')
+const VALID_TABS = ['personal', 'apikeys', 'providers', 'referrals', 'admin']
+
+function getInitialTab() {
+  const tab = route.query.tab
+  return VALID_TABS.includes(tab) ? tab : 'personal'
+}
+
+const activeTab = ref(getInitialTab())
 const sidebarCollapsed = ref(false)
 const canCreateReferrals = ref(false)
 const autoSaveStatus = ref(null)
+
+// Sync tab to URL
+watch(activeTab, (tab) => {
+  router.replace({ query: { ...route.query, tab } })
+})
 
 // Resize state
 const isResizing = ref(false)
@@ -174,6 +189,14 @@ const availableTabs = computed(() => {
     })
   }
 
+  if (isAdmin.value) {
+    tabs.push({
+      value: 'admin',
+      label: t('userSettings.tabs.admin'),
+      icon: 'mdi-shield-crown'
+    })
+  }
+
   return tabs
 })
 
@@ -184,9 +207,18 @@ function getTabDescription(tab) {
     personal: t('userSettings.personal.description', 'Passen Sie Ihr Profil und Ihre Präferenzen an'),
     apikeys: t('userSettings.apiKeys.description', 'Erstellen und verwalten Sie API-Schlüssel für den programmatischen Zugriff'),
     providers: t('userSettings.providers.description', 'Verwalten Sie Ihre LLM-API-Keys'),
-    referrals: t('userSettings.referrals.description', 'Erstellen und verwalten Sie Einladungslinks')
+    referrals: t('userSettings.referrals.description', 'Erstellen und verwalten Sie Einladungslinks'),
+    admin: t('userSettings.admin.description', 'Schnellzugriff auf das Admin Dashboard')
   }
   return descriptions[tab] || ''
+}
+
+function handleTabClick(tab) {
+  if (tab === 'admin') {
+    router.push('/admin?tab=overview')
+    return
+  }
+  activeTab.value = tab
 }
 
 function handleSaveStatus(status) {

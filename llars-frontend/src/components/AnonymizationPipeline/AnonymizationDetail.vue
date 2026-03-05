@@ -1,50 +1,62 @@
 <template>
   <div class="page-container">
-    <!-- Header -->
-    <div class="detail-header">
-      <div>
-        <h1>{{ conversation?.title || 'Conversation' }}</h1>
-        <div class="d-flex align-center gap-2 mt-2 flex-wrap">
-          <LTag :variant="getStatusVariant(conversation?.status)">
-            {{ conversation?.status }}
-          </LTag>
-          <LTag :variant="getDatasetStateVariant(conversation)">
-            {{ getDatasetStateLabel(conversation) }}
-          </LTag>
-          <span class="text-caption text-medium-emphasis">
-            {{ conversation?.message_count }} messages · {{ conversation?.entity_count }} entities
-          </span>
-          <span class="text-caption quality-rating-inline">
-            Rating: {{ getQualityRatingText(conversation?.quality_rating) }}
-          </span>
-          <v-chip
-            v-for="model in metadataModels.slice(0, 2)"
-            :key="`model-${model}`"
-            size="x-small"
-            variant="tonal"
-            color="primary"
-          >
-            {{ model }}
-          </v-chip>
-          <v-chip
-            v-for="course in metadataCourses.slice(0, 2)"
-            :key="`course-${course}`"
-            size="x-small"
-            variant="tonal"
-            color="secondary"
-          >
-            {{ course }}
-          </v-chip>
+    <!-- Header (like EvaluationSession) -->
+    <div class="session-header">
+      <div class="header-left">
+        <LBtn variant="tonal" size="small" @click="goBack">
+          <LIcon start>mdi-arrow-left</LIcon>
+          Pipeline
+        </LBtn>
+        <div class="header-info">
+          <h1>{{ conversation?.title || 'Conversation' }}</h1>
+          <div class="header-meta">
+            <LTag :variant="getStatusVariant(conversation?.status)" size="small">
+              {{ conversation?.status }}
+            </LTag>
+            <LTag :variant="getDatasetStateVariant(conversation)" size="small">
+              {{ getDatasetStateLabel(conversation) }}
+            </LTag>
+            <span class="meta-text">
+              <LIcon size="14">mdi-message-outline</LIcon>
+              {{ conversation?.message_count }}
+            </span>
+            <span class="meta-text">
+              <LIcon size="14">mdi-tag-outline</LIcon>
+              {{ conversation?.entity_count }}
+            </span>
+            <v-chip
+              v-for="model in metadataModels.slice(0, 2)"
+              :key="`model-${model}`"
+              size="x-small"
+              variant="tonal"
+              color="primary"
+            >
+              {{ model }}
+            </v-chip>
+            <v-chip
+              v-for="course in metadataCourses.slice(0, 2)"
+              :key="`course-${course}`"
+              size="x-small"
+              variant="tonal"
+              color="secondary"
+            >
+              {{ course }}
+            </v-chip>
+          </div>
         </div>
       </div>
 
-      <div class="d-flex gap-2 flex-wrap">
-        <LBtn variant="cancel" prepend-icon="mdi-arrow-left" @click="goBack">
-          Back
-        </LBtn>
+      <div class="header-right">
+        <!-- Progress Indicator -->
+        <div v-if="currentIndex >= 0" class="progress-indicator">
+          <span class="progress-text">
+            {{ currentIndex + 1 }} / {{ conversationsList.length }}
+          </span>
+        </div>
         <LBtn
           v-if="hasEditPermission && conversation"
-          variant="primary"
+          variant="accent"
+          size="small"
           prepend-icon="mdi-shield-search"
           :loading="anonymizingConversation"
           :disabled="anonymizingConversation"
@@ -54,7 +66,8 @@
         </LBtn>
         <LBtn
           v-if="hasEditPermission && conversation?.status === 'in_progress'"
-          variant="success"
+          variant="primary"
+          size="small"
           prepend-icon="mdi-check"
           @click="updateStatus('completed')"
         >
@@ -63,102 +76,284 @@
       </div>
     </div>
 
-    <div v-if="conversation" class="quality-panel">
-      <v-card variant="outlined" class="pa-4">
-        <div class="d-flex align-center justify-space-between flex-wrap gap-2">
-          <div>
-            <h3 class="quality-title">Quality Rating</h3>
-            <p class="text-caption text-medium-emphasis mb-0">
-              Rating > 2 and not excluded is eligible for final export.
-            </p>
-          </div>
-          <LTag :variant="getDatasetStateVariant(conversation)">
-            {{ getDatasetStateLabel(conversation) }}
-          </LTag>
-        </div>
-
-        <div class="d-flex align-center gap-3 mt-3 flex-wrap">
-          <LRatingScale
-            :model-value="conversation.quality_rating ?? null"
-            :min="1"
-            :max="5"
-            :step="1"
-            :show-labels="false"
-            :show-value-labels="false"
-            size="small"
-            variant="gradient"
-            :disabled="!hasEditPermission || qualitySaving"
-            aria-label="Conversation quality rating"
-            @update:model-value="setQualityRating"
-          />
-          <LBtn
-            v-if="hasEditPermission && conversation.quality_rating"
-            variant="text"
-            size="small"
-            :disabled="qualitySaving"
-            @click="setQualityRating(null)"
-          >
-            Clear
-          </LBtn>
-          <span class="text-caption text-medium-emphasis">
-            {{ getQualityRatingText(conversation.quality_rating) }}
-          </span>
-          <LCheckbox
-            v-if="hasEditPermission"
-            :model-value="Boolean(conversation.exclude_from_export)"
-            label="Exclude from export"
-            :disabled="qualitySaving"
-            @update:model-value="setExcludeFromExport"
-          />
-        </div>
-
-        <v-textarea
-          v-if="hasEditPermission"
-          v-model="qualityNotesDraft"
-          variant="outlined"
-          density="comfortable"
-          rows="2"
-          auto-grow
-          label="Quality notes"
-          placeholder="Optional notes for reviewers/export decisions"
-          class="mt-3"
-          :disabled="qualitySaving"
-          @blur="saveQualityNotes"
-        />
-        <p v-else-if="conversation.quality_notes" class="text-caption mt-3 mb-0">
-          {{ conversation.quality_notes }}
-        </p>
-      </v-card>
-    </div>
-
-    <div v-if="metadataEntries.length > 0" class="metadata-panel">
-      <v-expansion-panels variant="accordion">
-        <v-expansion-panel>
-          <v-expansion-panel-title>
-            Metadata Details ({{ metadataEntries.length }})
-          </v-expansion-panel-title>
-          <v-expansion-panel-text>
-            <div class="metadata-grid">
-              <div
-                v-for="entry in metadataEntries"
-                :key="entry.key"
-                class="metadata-row"
-              >
-                <span class="metadata-key">{{ entry.key }}</span>
-                <span class="metadata-value">{{ entry.value }}</span>
-              </div>
-            </div>
-          </v-expansion-panel-text>
-        </v-expansion-panel>
-      </v-expansion-panels>
-    </div>
-
-    <!-- Main Content -->
-    <div ref="containerRef" class="main-content">
-      <!-- Left Panel: Message List -->
+    <!-- Main Content (like RatingInterface: left=detail, right=messages) -->
+    <div ref="containerRef" class="session-content">
+      <!-- Left Panel: Selected Message Detail + Quality -->
       <div class="left-panel" :style="leftPanelStyle()">
         <div class="panel-header">
+          <LIcon size="20" class="mr-2">mdi-clipboard-check-outline</LIcon>
+          <h3>Review</h3>
+          <v-spacer />
+          <LEvaluationStatus
+            :status="getEvalStatus()"
+            :saving="qualitySaving"
+          />
+        </div>
+
+        <div class="rating-content">
+          <!-- NER Entity Summary (all unique entities with original → replacement) -->
+          <div v-if="allEntities.length > 0" class="entity-summary">
+            <div class="entity-summary-label">NER Entities ({{ allEntities.length }})</div>
+            <div class="entity-summary-list">
+              <div
+                v-for="(ent, i) in allEntities"
+                :key="i"
+                class="entity-summary-row"
+              >
+                <span
+                  class="entity-type-badge"
+                  :style="{ backgroundColor: getEntityColor(ent.label) + '22', color: getEntityColor(ent.label), borderColor: getEntityColor(ent.label) + '44' }"
+                >
+                  {{ ent.label }}
+                </span>
+                <span class="entity-original">{{ ent.original }}</span>
+                <LIcon size="13" class="entity-arrow">mdi-arrow-right</LIcon>
+                <span class="entity-replacement">{{ ent.replacement }}</span>
+                <LIcon v-if="ent.dbHit" size="13" color="success" class="entity-db-hit">mdi-check-circle</LIcon>
+              </div>
+            </div>
+          </div>
+
+          <!-- Quality Rating Section -->
+          <div v-if="conversation" class="quality-section">
+            <div class="dimension-card">
+              <div class="dimension-header">
+                <span class="dimension-name">Quality Rating</span>
+                <span v-if="conversation.quality_rating" class="dimension-value-badge" :class="getQualityBadgeClass(conversation.quality_rating)">
+                  {{ conversation.quality_rating }}/5
+                </span>
+              </div>
+              <LRatingScale
+                :model-value="conversation.quality_rating"
+                :min="1"
+                :max="5"
+                :labels="qualityLabels"
+                :show-labels="true"
+                :disabled="!hasEditPermission || qualitySaving"
+                variant="gradient"
+                reverse-gradient
+                @update:model-value="setQualityRating"
+              />
+            </div>
+
+            <!-- Exclude from Export -->
+            <div class="option-row">
+              <LCheckbox
+                v-if="hasEditPermission"
+                :model-value="Boolean(conversation.exclude_from_export)"
+                label="Exclude from export"
+                :disabled="qualitySaving"
+                @update:model-value="setExcludeFromExport"
+              />
+            </div>
+          </div>
+
+          <!-- Quality Notes / Feedback (resizable) -->
+          <div v-if="conversation && hasEditPermission" class="feedback-section">
+            <v-textarea
+              v-model="qualityNotesDraft"
+              label="Quality Notes"
+              placeholder="Add notes about quality, issues, or observations..."
+              variant="outlined"
+              density="compact"
+              rows="2"
+              auto-grow
+              hide-details
+              class="resizable-notes"
+              @blur="saveQualityNotes"
+            />
+          </div>
+
+          <!-- Divider -->
+          <div class="section-divider" />
+
+          <!-- Selected Message Detail -->
+          <template v-if="selectedMessage">
+            <div class="message-detail-header">
+              <h4>
+                <span class="msg-num">#{{ selectedMessage.message_number }}</span>
+                {{ selectedMessage.author }}
+              </h4>
+              <div class="detail-actions">
+                <LBtn
+                  v-if="!isEditing && hasEditPermission"
+                  variant="primary"
+                  size="small"
+                  prepend-icon="mdi-pencil"
+                  @click="startEditing"
+                >
+                  Edit
+                </LBtn>
+                <LBtn
+                  v-if="selectedMessage.versions?.length > 0"
+                  variant="text"
+                  size="small"
+                  prepend-icon="mdi-history"
+                  @click="showVersionHistory = !showVersionHistory"
+                >
+                  v{{ selectedMessage.current_version }}
+                </LBtn>
+              </div>
+            </div>
+
+            <!-- Original Content -->
+            <div class="content-section">
+              <h4>Original</h4>
+              <div class="content-box original">
+                <pre>{{ selectedMessage.original_content }}</pre>
+              </div>
+            </div>
+
+            <!-- Anonymized Content -->
+            <div class="content-section">
+              <div class="section-header">
+                <h4>Anonymized</h4>
+              </div>
+
+              <div v-if="!isEditing" class="content-box anonymized">
+                <div v-html="renderContentWithEntities(selectedMessage)"></div>
+              </div>
+
+              <div v-else class="edit-area">
+                <v-textarea
+                  v-model="editedContent"
+                  variant="outlined"
+                  rows="6"
+                  auto-grow
+                  placeholder="Edit anonymized content..."
+                  hide-details
+                />
+                <v-text-field
+                  v-model="changeDescription"
+                  variant="outlined"
+                  label="Change description"
+                  placeholder="e.g., Fixed typo in name"
+                  density="compact"
+                  class="mt-2"
+                  hide-details
+                />
+                <div class="edit-actions mt-2">
+                  <LBtn variant="cancel" size="small" @click="cancelEditing">Cancel</LBtn>
+                  <LBtn
+                    variant="primary"
+                    size="small"
+                    prepend-icon="mdi-content-save"
+                    :loading="saving"
+                    @click="saveEdit"
+                  >
+                    Save
+                  </LBtn>
+                </div>
+              </div>
+            </div>
+
+            <!-- Entities -->
+            <div v-if="selectedMessage.entities?.length > 0" class="content-section">
+              <h4>Entities ({{ selectedMessage.entities.length }})</h4>
+              <div class="entities-grid">
+                <div
+                  v-for="entity in selectedMessage.entities"
+                  :key="`${entity.label}-${entity.start_pos}`"
+                  class="entity-row"
+                >
+                  <span
+                    class="entity-type-badge"
+                    :style="{ backgroundColor: getEntityColor(entity.label) + '22', color: getEntityColor(entity.label), borderColor: getEntityColor(entity.label) + '44' }"
+                  >
+                    {{ entity.label }}
+                  </span>
+                  <span class="entity-original">{{ entity.original_text }}</span>
+                  <LIcon size="14" color="grey">mdi-arrow-right</LIcon>
+                  <span class="entity-replacement">{{ entity.replacement_text }}</span>
+                  <LIcon v-if="entity.db_hit" size="14" color="success">mdi-check-circle</LIcon>
+                </div>
+              </div>
+            </div>
+
+            <!-- Version History -->
+            <v-expand-transition>
+              <div v-if="showVersionHistory && messageVersions.length > 0" class="content-section">
+                <h4>History</h4>
+                <div class="version-list">
+                  <div v-for="version in messageVersions" :key="version.id" class="version-item">
+                    <div class="version-header">
+                      <LTag variant="gray" size="small">v{{ version.version_number }}</LTag>
+                      <span class="version-meta">
+                        {{ formatDate(version.changed_at) }} by {{ version.changed_by_username }}
+                      </span>
+                    </div>
+                    <div v-if="version.change_description" class="version-desc">
+                      {{ version.change_description }}
+                    </div>
+                    <pre class="version-content">{{ version.content }}</pre>
+                  </div>
+                </div>
+              </div>
+            </v-expand-transition>
+          </template>
+
+          <!-- Metadata (collapsible, at bottom) -->
+          <div v-if="metadataEntries.length > 0" class="metadata-section">
+            <button class="metadata-toggle" @click="showMetadata = !showMetadata">
+              <LIcon size="16">mdi-information-outline</LIcon>
+              <span>Metadata ({{ metadataEntries.length }})</span>
+              <LIcon size="14">{{ showMetadata ? 'mdi-chevron-up' : 'mdi-chevron-down' }}</LIcon>
+            </button>
+            <v-expand-transition>
+              <div v-if="showMetadata" class="metadata-grid">
+                <div v-for="entry in metadataEntries" :key="entry.key" class="metadata-row">
+                  <span class="metadata-key">{{ entry.key }}</span>
+                  <span class="metadata-value">{{ entry.value }}</span>
+                </div>
+              </div>
+            </v-expand-transition>
+          </div>
+
+          <!-- Empty State (no message selected) -->
+          <div v-else class="empty-detail">
+            <LIcon size="48" color="grey-lighten-1">mdi-message-text-outline</LIcon>
+            <p>Select a message to view details</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Resize Handle -->
+      <div
+        class="resize-handle"
+        :class="{ resizing: isResizing }"
+        @mousedown="startResize"
+      >
+        <div class="handle-line" />
+      </div>
+
+      <!-- Right Panel: Conversation Messages -->
+      <div class="right-panel" :style="rightPanelStyle()">
+        <div class="panel-header">
+          <LIcon size="20" class="mr-2">mdi-message-text-outline</LIcon>
           <h3>Messages</h3>
+          <v-spacer />
+          <div class="message-view-toggle">
+            <button
+              class="toggle-btn"
+              :class="{ active: messageDisplayMode === 'original' }"
+              @click="messageDisplayMode = 'original'"
+            >
+              Original
+            </button>
+            <button
+              class="toggle-btn"
+              :class="{ active: messageDisplayMode === 'anonymized', disabled: !isAnonymized }"
+              :disabled="!isAnonymized"
+              @click="isAnonymized && (messageDisplayMode = 'anonymized')"
+            >
+              Anonymized
+            </button>
+          </div>
+          <span class="message-count">{{ filteredMessages.length }}</span>
+        </div>
+
+        <!-- Message Search -->
+        <div class="message-search">
           <v-text-field
             v-model="messageSearch"
             placeholder="Search messages..."
@@ -167,256 +362,104 @@
             variant="outlined"
             clearable
             hide-details
-            class="mt-2"
           />
         </div>
 
+        <!-- Messages List -->
         <div class="panel-content conversation-view">
           <div class="messages-container">
             <div
               v-for="message in filteredMessages"
               :key="message.id"
-              class="message-bubble"
-              :class="{
-                'user-message': message.author === 'vikl',
-                'assistant-message': message.author === 'user',
-                'selected': selectedMessage?.id === message.id
-              }"
-              @click="selectMessage(message)"
+              class="message-wrapper"
+              :class="getMessageAlignment(message)"
             >
-              <!-- Message Header -->
-              <div class="message-header">
-                <v-avatar :color="getAuthorColor(message.author)" size="24" class="mr-2">
-                  <span class="text-caption">{{ message.message_number }}</span>
-                </v-avatar>
-                <span class="message-author">{{ message.author }}</span>
-
-                <!-- Tags -->
-                <div class="message-tags ml-auto">
-                  <LTag
-                    v-if="message.is_manually_edited"
-                    variant="warning"
-                    size="small"
-                    class="mr-1"
-                  >
-                    Edited v{{ message.current_version }}
-                  </LTag>
-
-                  <!-- Entity badges -->
-                  <v-chip
-                    v-for="entityType in getUniqueEntityTypes(message)"
-                    :key="entityType"
-                    :color="getEntityColor(entityType)"
-                    size="x-small"
-                    class="mr-1"
-                  >
-                    {{ entityType }}
-                  </v-chip>
-                </div>
-              </div>
-
-              <!-- Message Content -->
-              <div class="message-content" v-html="highlightEntities(message)"></div>
-            </div>
-
-            <div v-if="filteredMessages.length === 0" class="empty-state pa-4 text-center">
-              <v-icon size="48" color="grey-lighten-1">mdi-message-off-outline</v-icon>
-              <p class="text-medium-emphasis mt-2">No messages found</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Resize Divider -->
-      <div
-        class="resize-divider"
-        :class="{ resizing: isResizing }"
-        @mousedown="startResize"
-      >
-        <div class="resize-handle"></div>
-      </div>
-
-      <!-- Right Panel: Message Editor -->
-      <div class="right-panel" :style="rightPanelStyle()">
-        <div v-if="selectedMessage" class="panel-header">
-          <div class="d-flex align-center justify-space-between">
-            <h3>Message #{{ selectedMessage.message_number }} - {{ selectedMessage.author }}</h3>
-            <LBtn
-              v-if="selectedMessage.versions?.length > 0"
-              variant="text"
-              size="small"
-              prepend-icon="mdi-history"
-              @click="showVersionHistory = !showVersionHistory"
-            >
-              History ({{ selectedMessage.current_version }})
-            </LBtn>
-          </div>
-        </div>
-
-        <div v-if="selectedMessage" class="panel-content">
-          <!-- Original Content (read-only) -->
-          <div class="content-section">
-            <h4>Original Content</h4>
-            <v-card variant="outlined" class="pa-3">
-              <pre class="original-content">{{ selectedMessage.original_content }}</pre>
-            </v-card>
-          </div>
-
-          <!-- Anonymized Content (editable) -->
-          <div class="content-section mt-4">
-            <div class="d-flex align-center justify-space-between mb-2">
-              <h4>Anonymized Content</h4>
-              <LBtn
-                v-if="!isEditing && hasEditPermission"
-                variant="primary"
-                size="small"
-                prepend-icon="mdi-pencil"
-                @click="startEditing"
+              <div
+                class="message-bubble"
+                :class="{
+                  'bubble-client': isClientMessage(message),
+                  'bubble-counselor': !isClientMessage(message),
+                  'selected': selectedMessage?.id === message.id
+                }"
+                @click="selectMessage(message)"
               >
-                Edit
-              </LBtn>
-            </div>
+                <div class="message-header">
+                  <div class="msg-author-badge" :class="isClientMessage(message) ? 'primary' : 'secondary'">
+                    {{ message.message_number }}
+                  </div>
+                  <span class="message-author">{{ message.author }}</span>
 
-            <!-- View Mode -->
-            <v-card v-if="!isEditing" variant="outlined" class="pa-3">
-              <div class="anonymized-content" v-html="renderContentWithEntities(selectedMessage)"></div>
-            </v-card>
+                  <div class="message-tags">
+                    <LTag
+                      v-if="message.is_manually_edited"
+                      variant="warning"
+                      size="small"
+                    >
+                      v{{ message.current_version }}
+                    </LTag>
+                    <span
+                      v-for="entityType in getUniqueEntityTypes(message)"
+                      :key="entityType"
+                      class="entity-badge"
+                      :style="{ backgroundColor: getEntityColor(entityType) + '33', color: getEntityColor(entityType) }"
+                    >
+                      {{ entityType }}
+                    </span>
+                  </div>
+                </div>
 
-            <!-- Edit Mode -->
-            <div v-else>
-              <v-textarea
-                v-model="editedContent"
-                variant="outlined"
-                rows="8"
-                auto-grow
-                placeholder="Edit anonymized content..."
-              />
-              <v-text-field
-                v-model="changeDescription"
-                variant="outlined"
-                label="Change description (optional)"
-                placeholder="e.g., Fixed typo in name replacement"
-                density="comfortable"
-                class="mt-2"
-              />
-              <div class="d-flex gap-2 mt-2">
-                <LBtn variant="cancel" @click="cancelEditing">Cancel</LBtn>
-                <LBtn
-                  variant="success"
-                  prepend-icon="mdi-content-save"
-                  :loading="saving"
-                  @click="saveEdit"
-                >
-                  Save Changes
-                </LBtn>
+                <div
+                  class="message-content"
+                  v-html="messageDisplayMode === 'original' ? escapeHtml(message.original_content) : highlightEntities(message)"
+                ></div>
               </div>
             </div>
-          </div>
 
-          <!-- Entities -->
-          <div class="content-section mt-4">
-            <h4>Detected Entities ({{ selectedMessage.entities?.length || 0 }})</h4>
-            <v-data-table
-              :headers="entityHeaders"
-              :items="selectedMessage.entities || []"
-              density="compact"
-              class="mt-2"
-            >
-              <template #[`item.label`]="{ item }">
-                <v-chip :color="getEntityColor(item.label)" size="small">
-                  {{ item.label }}
-                </v-chip>
-              </template>
-
-              <template #[`item.db_hit`]="{ item }">
-                <v-icon v-if="item.db_hit" color="success" size="small">
-                  mdi-check-circle
-                </v-icon>
-                <v-icon v-else color="grey" size="small">
-                  mdi-minus-circle
-                </v-icon>
-              </template>
-            </v-data-table>
-          </div>
-
-          <!-- Version History -->
-          <v-expand-transition>
-            <div v-if="showVersionHistory" class="content-section mt-4">
-              <h4>Version History</h4>
-              <v-timeline side="end" density="compact" class="mt-2">
-                <v-timeline-item
-                  v-for="version in messageVersions"
-                  :key="version.id"
-                  dot-color="primary"
-                  size="small"
-                >
-                  <template #opposite>
-                    <div class="text-caption">v{{ version.version_number }}</div>
-                  </template>
-                  <v-card variant="outlined">
-                    <v-card-text>
-                      <div class="text-caption text-medium-emphasis mb-2">
-                        {{ formatDate(version.changed_at) }} by {{ version.changed_by_username }}
-                      </div>
-                      <div v-if="version.change_description" class="text-body-2 mb-2">
-                        {{ version.change_description }}
-                      </div>
-                      <pre class="version-content">{{ version.content }}</pre>
-                    </v-card-text>
-                  </v-card>
-                </v-timeline-item>
-              </v-timeline>
+            <div v-if="filteredMessages.length === 0" class="empty-state">
+              <LIcon size="48" color="grey-lighten-1">mdi-message-off-outline</LIcon>
+              <p>No messages found</p>
             </div>
-          </v-expand-transition>
-        </div>
-
-        <!-- Empty State -->
-        <div v-else class="panel-content d-flex align-center justify-center">
-          <div class="text-center text-medium-emphasis">
-            <v-icon size="64" color="grey-lighten-1">mdi-message-text-outline</v-icon>
-            <p class="mt-4">Select a message to view details</p>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Action Bar (Navigation) -->
-    <div class="action-bar">
-      <div class="navigation-actions">
+    <!-- Navigation Footer (like EvaluationSession) -->
+    <div class="session-footer">
+      <LBtn
+        variant="tonal"
+        size="small"
+        :disabled="!canGoPrev"
+        @click="navigateToPreviousConversation"
+      >
+        <LIcon start>mdi-chevron-left</LIcon>
+        Previous
+      </LBtn>
+
+      <div class="footer-center">
         <LBtn
           variant="text"
-          prepend-icon="mdi-chevron-left"
-          :disabled="!canGoPrev"
-          @click="navigateToPreviousConversation"
+          size="small"
+          append-icon="mdi-chevron-double-right"
+          :disabled="currentIndex < 0"
+          @click="navigateToNextWithStatus('pending')"
         >
-          Vorherige
+          Next Pending
         </LBtn>
-
-        <div v-if="currentIndex >= 0" class="progress-indicator">
+        <span v-if="currentIndex >= 0" class="nav-position">
           {{ currentIndex + 1 }} / {{ conversationsList.length }}
-        </div>
-
-        <LBtn
-          variant="text"
-          append-icon="mdi-chevron-right"
-          :disabled="!canGoNext"
-          @click="navigateToNextConversation"
-        >
-          Nächste
-        </LBtn>
-
-        <LTooltip text="Zur nächsten ausstehenden Konversation springen" location="top">
-          <LBtn
-            variant="text"
-            size="small"
-            append-icon="mdi-chevron-double-right"
-            :disabled="currentIndex < 0"
-            @click="navigateToNextWithStatus('pending')"
-          >
-            Nächste Ausstehend
-          </LBtn>
-        </LTooltip>
+        </span>
       </div>
+
+      <LBtn
+        variant="primary"
+        size="small"
+        :disabled="!canGoNext"
+        @click="navigateToNextConversation"
+      >
+        Next
+        <LIcon end>mdi-chevron-right</LIcon>
+      </LBtn>
     </div>
   </div>
 </template>
@@ -428,14 +471,13 @@ import axios from 'axios'
 import { useSnackbar } from '@/composables/useSnackbar'
 import { usePermissions } from '@/composables/usePermissions'
 import { usePanelResize } from '@/composables/usePanelResize'
-import LRatingScale from '@/components/common/LRatingScale.vue'
 
 const route = useRoute()
 const router = useRouter()
 const { showSuccess, showError } = useSnackbar()
 const { hasPermission, fetchPermissions } = usePermissions()
 
-// Panel Resize
+// Panel Resize (left=review 45%, right=messages 55%)
 const {
   isResizing,
   containerRef,
@@ -443,9 +485,9 @@ const {
   leftPanelStyle,
   rightPanelStyle
 } = usePanelResize({
-  initialLeftPercent: 35,
-  minLeftPercent: 25,
-  maxLeftPercent: 50,
+  initialLeftPercent: 45,
+  minLeftPercent: 30,
+  maxLeftPercent: 60,
   storageKey: 'anonymization-detail-panel-width'
 })
 
@@ -463,6 +505,8 @@ const showVersionHistory = ref(false)
 const loading = ref(false)
 const qualitySaving = ref(false)
 const qualityNotesDraft = ref('')
+const showMetadata = ref(false)
+const messageDisplayMode = ref('original')
 
 // Navigation state
 const conversationsList = ref([])
@@ -471,30 +515,58 @@ const hasEditPermission = computed(() =>
   hasPermission('feature:anonymization-pipeline:edit')
 )
 
-const metadata = computed(() => {
-  return conversation.value?.metadata || null
+const isAnonymized = computed(() =>
+  (conversation.value?.entity_count ?? 0) > 0
+)
+
+// Quality rating labels (matching LRatingScale pattern)
+const qualityLabels = {
+  min: 'Low',
+  max: 'High',
+  1: 'Poor',
+  2: 'Below avg',
+  3: 'Average',
+  4: 'Good',
+  5: 'Excellent'
+}
+
+const metadata = computed(() => conversation.value?.metadata || null)
+
+// Collect all unique entities across all messages (deduplicated by label+original+replacement)
+const allEntities = computed(() => {
+  if (!conversation.value?.messages) return []
+  const seen = new Set()
+  const entities = []
+  for (const msg of conversation.value.messages) {
+    if (!msg.entities) continue
+    for (const entity of msg.entities) {
+      const key = `${entity.label}|${entity.original_text}|${entity.replacement_text}`
+      if (seen.has(key)) continue
+      seen.add(key)
+      entities.push({
+        label: entity.label,
+        original: entity.original_text,
+        replacement: entity.replacement_text,
+        dbHit: entity.db_hit
+      })
+    }
+  }
+  // Sort by label then by original text
+  return entities.sort((a, b) => a.label.localeCompare(b.label) || a.original.localeCompare(b.original))
 })
 
-const metadataSummary = computed(() => {
-  return conversation.value?.metadata_summary || {}
-})
+const metadataSummary = computed(() => conversation.value?.metadata_summary || {})
 
 const metadataModels = computed(() => {
   const summaryModels = metadataSummary.value?.models
-  if (Array.isArray(summaryModels) && summaryModels.length > 0) {
-    return summaryModels
-  }
-
+  if (Array.isArray(summaryModels) && summaryModels.length > 0) return summaryModels
   const derivedModels = metadata.value?.derived?.models
   return Array.isArray(derivedModels) ? derivedModels : []
 })
 
 const metadataCourses = computed(() => {
   const summaryCourses = metadataSummary.value?.courses
-  if (Array.isArray(summaryCourses) && summaryCourses.length > 0) {
-    return summaryCourses
-  }
-
+  if (Array.isArray(summaryCourses) && summaryCourses.length > 0) return summaryCourses
   const derivedCourses = metadata.value?.derived?.courses
   return Array.isArray(derivedCourses) ? derivedCourses : []
 })
@@ -502,7 +574,6 @@ const metadataCourses = computed(() => {
 const metadataEntries = computed(() => {
   const source = metadata.value?.raw || metadata.value
   if (!source || typeof source !== 'object') return []
-
   const entries = []
   collectMetadataEntries(source, '', entries, 0)
   return entries
@@ -511,16 +582,15 @@ const metadataEntries = computed(() => {
 const filteredMessages = computed(() => {
   if (!conversation.value?.messages) return []
   if (!messageSearch.value) return conversation.value.messages
-
   const search = messageSearch.value.toLowerCase()
   return conversation.value.messages.filter(
     msg =>
-      msg.anonymized_content.toLowerCase().includes(search) ||
+      (msg.anonymized_content || '').toLowerCase().includes(search) ||
+      (msg.original_content || '').toLowerCase().includes(search) ||
       msg.author.toLowerCase().includes(search)
   )
 })
 
-// Navigation computed properties
 const currentIndex = computed(() => {
   const id = parseInt(route.params.id)
   return conversationsList.value.findIndex(c => c.id === id)
@@ -533,15 +603,39 @@ const canGoNext = computed(() =>
   currentIndex.value < conversationsList.value.length - 1
 )
 
-const entityHeaders = [
-  { title: 'Type', key: 'label', sortable: true },
-  { title: 'Original', key: 'original_text', sortable: false },
-  { title: 'Replacement', key: 'replacement_text', sortable: false },
-  { title: 'Position', key: 'start_pos', sortable: false },
-  { title: 'DB Hit', key: 'db_hit', sortable: true, align: 'center' }
-]
-
 const MIN_EXPORT_QUALITY = 3
+
+function getQualityBadgeClass(rating) {
+  if (rating >= 4) return 'quality-high'
+  if (rating >= 3) return 'quality-mid'
+  return 'quality-low'
+}
+
+function isClientMessage(message) {
+  // "vikl" = Klient, "user" = Berater/Counselor
+  const author = (message.author || '').toLowerCase()
+  return author !== 'user'
+}
+
+function getMessageAlignment(message) {
+  return isClientMessage(message) ? 'align-left' : 'align-right'
+}
+
+function escapeHtml(text) {
+  if (!text) return ''
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/\n/g, '<br>')
+}
+
+function getEvalStatus() {
+  if (!conversation.value) return 'pending'
+  if (conversation.value.status === 'completed') return 'done'
+  if (conversation.value.status === 'in_progress') return 'in_progress'
+  return 'pending'
+}
 
 function formatMetadataValue(value) {
   const text = String(value ?? '').replace(/\s+/g, ' ').trim()
@@ -550,98 +644,65 @@ function formatMetadataValue(value) {
 }
 
 function collectMetadataEntries(value, path, entries, depth) {
-  if (entries.length >= 80 || depth > 4 || value === null || value === undefined) {
-    return
-  }
+  if (entries.length >= 80 || depth > 4 || value === null || value === undefined) return
 
   if (Array.isArray(value)) {
     if (value.length === 0) return
-
     const isPrimitiveArray = value.every(item =>
       item === null || ['string', 'number', 'boolean'].includes(typeof item)
     )
-
     if (isPrimitiveArray) {
       const formatted = formatMetadataValue(value.join(', '))
-      if (formatted) {
-        entries.push({
-          key: path || 'value',
-          value: formatted
-        })
-      }
+      if (formatted) entries.push({ key: path || 'value', value: formatted })
       return
     }
-
     value.slice(0, 5).forEach((item, index) => {
       collectMetadataEntries(item, `${path}[${index}]`, entries, depth + 1)
     })
-    if (value.length > 5) {
-      entries.push({
-        key: `${path}[]`,
-        value: `+${value.length - 5} more entries`
-      })
-    }
+    if (value.length > 5) entries.push({ key: `${path}[]`, value: `+${value.length - 5} more entries` })
     return
   }
 
   if (typeof value === 'object') {
     Object.entries(value).forEach(([key, item]) => {
-      const nextPath = path ? `${path}.${key}` : key
-      collectMetadataEntries(item, nextPath, entries, depth + 1)
+      collectMetadataEntries(item, path ? `${path}.${key}` : key, entries, depth + 1)
     })
     return
   }
 
   const formatted = formatMetadataValue(value)
-  if (formatted) {
-    entries.push({
-      key: path || 'value',
-      value: formatted
-    })
-  }
+  if (formatted) entries.push({ key: path || 'value', value: formatted })
 }
 
 // Methods
 async function loadConversationsList() {
   try {
-    // Read filter parameters from route query
-    const params = new URLSearchParams({
-      limit: '-1'  // Get all for navigation
-    })
-
-    if (route.query.status) {
-      params.append('status', route.query.status)
-    }
-    if (route.query.model) {
-      params.append('model', route.query.model)
-    }
-    if (route.query.course) {
-      params.append('course', route.query.course)
-    }
-    if (route.query.search) {
-      params.append('search', route.query.search)
-    }
+    const params = new URLSearchParams({ limit: '-1' })
+    if (route.query.status) params.append('status', route.query.status)
+    if (route.query.model) params.append('model', route.query.model)
+    if (route.query.course) params.append('course', route.query.course)
+    if (route.query.search) params.append('search', route.query.search)
 
     const response = await axios.get('/api/anonymization/conversations', { params })
     conversationsList.value = response.data.conversations
   } catch (error) {
     console.error('Failed to load conversations list:', error)
-    showError('Fehler beim Laden der Konversationsliste')
   }
 }
 
 async function loadConversation() {
   loading.value = true
   try {
-    const response = await axios.get(
-      `/api/anonymization/conversations/${route.params.id}`
-    )
+    const response = await axios.get(`/api/anonymization/conversations/${route.params.id}`)
     conversation.value = response.data.conversation
     qualityNotesDraft.value = conversation.value?.quality_notes || ''
 
-    // Auto-start review if conversation is pending
+    if ((conversation.value.entity_count ?? 0) > 0) {
+      messageDisplayMode.value = 'anonymized'
+    }
+
     if (conversation.value.status === 'pending' && hasEditPermission.value) {
-      await updateStatus('in_progress', false)  // Don't show message for auto-start
+      await updateStatus('in_progress', false)
     }
   } catch (error) {
     showError('Failed to load conversation')
@@ -661,47 +722,24 @@ function getDatasetState(item) {
 }
 
 function getDatasetStateLabel(item) {
-  const labels = {
-    ready: 'Ready for Export',
-    low_quality: 'Low Quality',
-    excluded: 'Excluded',
-    in_review: 'In Review',
-    unrated: 'Unrated'
-  }
+  const labels = { ready: 'Ready', low_quality: 'Low Quality', excluded: 'Excluded', in_review: 'In Review', unrated: 'Unrated' }
   return labels[getDatasetState(item)] || 'Unrated'
 }
 
 function getDatasetStateVariant(item) {
-  const variants = {
-    ready: 'success',
-    low_quality: 'warning',
-    excluded: 'danger',
-    in_review: 'info',
-    unrated: 'gray'
-  }
+  const variants = { ready: 'success', low_quality: 'warning', excluded: 'danger', in_review: 'info', unrated: 'gray' }
   return variants[getDatasetState(item)] || 'gray'
 }
 
-function getQualityRatingText(rating) {
-  if (!rating) return 'Not rated'
-  return `${rating}/5`
-}
-
 async function updateConversationQuality(payload, successMessage = 'Quality updated') {
-  if (!conversation.value?.id || !hasEditPermission.value) {
-    return
-  }
-
+  if (!conversation.value?.id || !hasEditPermission.value) return
   qualitySaving.value = true
   try {
     const response = await axios.patch(
       `/api/anonymization/conversations/${conversation.value.id}/quality`,
       payload
     )
-    conversation.value = {
-      ...conversation.value,
-      ...response.data.conversation
-    }
+    conversation.value = { ...conversation.value, ...response.data.conversation }
     qualityNotesDraft.value = conversation.value?.quality_notes || ''
     showSuccess(successMessage)
   } catch (error) {
@@ -713,17 +751,16 @@ async function updateConversationQuality(payload, successMessage = 'Quality upda
 
 async function setQualityRating(value) {
   const rating = value ? Number(value) : null
-  if ((conversation.value?.quality_rating || null) === rating) {
-    return
-  }
-  await updateConversationQuality({ quality_rating: rating }, 'Quality rating updated')
+  // Toggle off if clicking same value
+  const currentRating = conversation.value?.quality_rating || null
+  const newRating = currentRating === rating ? null : rating
+  if (currentRating === newRating) return
+  await updateConversationQuality({ quality_rating: newRating }, 'Quality rating updated')
 }
 
 async function setExcludeFromExport(value) {
   const excludeFromExport = Boolean(value)
-  if (Boolean(conversation.value?.exclude_from_export) === excludeFromExport) {
-    return
-  }
+  if (Boolean(conversation.value?.exclude_from_export) === excludeFromExport) return
   await updateConversationQuality(
     { exclude_from_export: excludeFromExport },
     excludeFromExport ? 'Conversation excluded from export' : 'Conversation included in export'
@@ -733,9 +770,7 @@ async function setExcludeFromExport(value) {
 async function saveQualityNotes() {
   const notes = qualityNotesDraft.value.trim()
   const currentNotes = (conversation.value?.quality_notes || '').trim()
-  if (notes === currentNotes) {
-    return
-  }
+  if (notes === currentNotes) return
   await updateConversationQuality({ quality_notes: notes }, 'Quality notes saved')
 }
 
@@ -744,7 +779,6 @@ async function selectMessage(message) {
   showVersionHistory.value = false
   isEditing.value = false
 
-  // Load version history if message has been edited
   if (message.is_manually_edited) {
     try {
       const response = await axios.get(`/api/anonymization/messages/${message.id}/versions`)
@@ -785,18 +819,13 @@ async function saveEdit() {
       }
     )
 
-    // Update local data
     const updatedMessage = response.data.message
-    const msgIndex = conversation.value.messages.findIndex(
-      m => m.id === updatedMessage.id
-    )
+    const msgIndex = conversation.value.messages.findIndex(m => m.id === updatedMessage.id)
     if (msgIndex !== -1) {
       conversation.value.messages[msgIndex] = updatedMessage
       selectedMessage.value = updatedMessage
     }
-
     messageVersions.value.push(response.data.version)
-
     showSuccess('Message updated successfully')
     isEditing.value = false
   } catch (error) {
@@ -813,17 +842,12 @@ async function updateStatus(newStatus, showMessage = true) {
     })
     conversation.value.status = newStatus
 
-    if (showMessage) {
-      showSuccess(`Conversation marked as ${newStatus}`)
-    }
+    if (showMessage) showSuccess(`Conversation marked as ${newStatus}`)
 
-    // Auto-advance to next conversation when marking as completed
     if (newStatus === 'completed' && canGoNext.value) {
-      setTimeout(() => {
-        navigateToNextConversation()
-      }, 500)  // Small delay so user sees success message
+      setTimeout(() => navigateToNextConversation(), 500)
     } else if (newStatus === 'completed' && !canGoNext.value) {
-      showSuccess('Alle Konversationen abgeschlossen!')
+      showSuccess('All conversations completed!')
     }
   } catch (error) {
     showError('Failed to update status')
@@ -831,14 +855,10 @@ async function updateStatus(newStatus, showMessage = true) {
 }
 
 async function anonymizeConversation(force = false) {
-  if (!conversation.value?.id || !hasEditPermission.value || anonymizingConversation.value) {
-    return
-  }
+  if (!conversation.value?.id || !hasEditPermission.value || anonymizingConversation.value) return
 
   if (!force) {
-    const confirmed = confirm(
-      'Run anonymization (NER) for this conversation? This will regenerate anonymized text and entities.'
-    )
+    const confirmed = confirm('Run anonymization (NER) for this conversation? This will regenerate anonymized text and entities.')
     if (!confirmed) return
   }
 
@@ -848,7 +868,6 @@ async function anonymizeConversation(force = false) {
       `/api/anonymization/conversations/${conversation.value.id}/run-ner`,
       force ? { force: true } : {}
     )
-
     const result = response.data?.result || {}
     const entityCount = result.entity_count ?? response.data?.conversation?.entity_count ?? 0
     const errorCount = Array.isArray(result.errors) ? result.errors.length : 0
@@ -858,22 +877,17 @@ async function anonymizeConversation(force = false) {
     } else {
       showSuccess(`Anonymization completed (${entityCount} entities)`)
     }
-
     await loadConversation()
   } catch (error) {
     const apiError = error.response?.data?.error || ''
-
     if (!force && apiError.toLowerCase().includes('manually edited')) {
-      const overwriteConfirmed = confirm(
-        'This conversation contains manually edited messages. Force anonymization and overwrite those edits?'
-      )
+      const overwriteConfirmed = confirm('This conversation contains manually edited messages. Force anonymization and overwrite those edits?')
       if (overwriteConfirmed) {
         anonymizingConversation.value = false
         await anonymizeConversation(true)
         return
       }
     }
-
     showError(apiError || 'Failed to anonymize conversation')
   } finally {
     anonymizingConversation.value = false
@@ -881,27 +895,15 @@ async function anonymizeConversation(force = false) {
 }
 
 function getStatusVariant(status) {
-  const variants = {
-    pending: 'gray',
-    in_progress: 'info',
-    completed: 'success',
-    error: 'danger'
-  }
+  const variants = { pending: 'gray', in_progress: 'info', completed: 'success', error: 'danger' }
   return variants[status] || 'gray'
 }
 
 function getEntityColor(entityType) {
   const colors = {
-    PER: '#E8A087',   // Soft Coral
-    LOC: '#A8C5E2',   // Soft Blue
-    ORG: '#D1BC8A',   // Golden Beige
-    DATE: '#98D4BB',  // Soft Mint
-    AGE: '#E8C87A',   // Soft Gold
-    PHONE: '#B0CA97', // Sage Green
-    MAIL: '#88C4C8',  // Soft Teal
-    AHV: '#C5A3D9',   // Soft Purple
-    PLZ: '#F0B8C3',   // Soft Pink
-    MISC: '#9E9E9E'   // Gray
+    PER: '#E8A087', LOC: '#A8C5E2', ORG: '#D1BC8A', DATE: '#98D4BB',
+    AGE: '#E8C87A', PHONE: '#B0CA97', MAIL: '#88C4C8', AHV: '#C5A3D9',
+    PLZ: '#F0B8C3', MISC: '#9E9E9E'
   }
   return colors[entityType] || colors.MISC
 }
@@ -911,130 +913,76 @@ function getUniqueEntityTypes(message) {
   return [...new Set(message.entities.map(e => e.label))]
 }
 
-function getAuthorColor(author) {
-  // vikl (client) = primary, user (counselor) = secondary
-  return author === 'vikl' ? 'primary' : 'secondary'
-}
-
 function highlightEntities(message) {
   let content = message.anonymized_content || ''
+  if (!message.entities || message.entities.length === 0) return content
 
-  if (!message.entities || message.entities.length === 0) {
-    return content
-  }
-
-  // Sort entities by start_pos in reverse to replace from end to start
   const sortedEntities = [...message.entities].sort((a, b) => b.start_pos - a.start_pos)
-
   for (const entity of sortedEntities) {
     const before = content.substring(0, entity.start_pos)
     const text = content.substring(entity.start_pos, entity.end_pos)
     const after = content.substring(entity.end_pos)
-
     const color = getEntityColor(entity.label)
     content = `${before}<span class="entity-highlight" style="background-color: ${color}33; border-bottom: 2px solid ${color}; padding: 2px 4px; border-radius: 3px;" title="${entity.label}: ${entity.original_text} → ${entity.replacement_text}">${text}</span>${after}`
   }
-
   return content
 }
 
 function renderContentWithEntities(message) {
   let content = message.anonymized_content
   const entities = [...(message.entities || [])].sort((a, b) => b.start_pos - a.start_pos)
-
   entities.forEach(entity => {
-    const highlighted = `<span class="entity-highlight" style="background-color: ${getEntityColor(
-      entity.label
-    )}33; padding: 2px 4px; border-radius: 4px; font-weight: 500;">${entity.replacement_text}</span>`
-    content =
-      content.substring(0, entity.start_pos) +
-      highlighted +
-      content.substring(entity.end_pos)
+    const highlighted = `<span class="entity-highlight" style="background-color: ${getEntityColor(entity.label)}33; padding: 2px 4px; border-radius: 4px; font-weight: 500;">${entity.replacement_text}</span>`
+    content = content.substring(0, entity.start_pos) + highlighted + content.substring(entity.end_pos)
   })
-
   return content.replace(/\n/g, '<br>')
 }
 
 function formatDate(dateStr) {
   if (!dateStr) return '-'
-  return new Date(dateStr).toLocaleString('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
+  return new Date(dateStr).toLocaleString('de-DE', {
+    day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
   })
 }
 
 function goBack() {
-  router.push({
-    path: '/anonymization',
-    query: route.query
-  })
+  router.push({ path: '/anonymization', query: route.query })
 }
 
-// Navigation functions
+// Navigation
 function navigateToPreviousConversation() {
   if (!canGoPrev.value) return
   const prev = conversationsList.value[currentIndex.value - 1]
-  router.push({
-    path: `/anonymization/${prev.id}`,
-    query: route.query  // Preserve filter state
-  })
+  router.push({ path: `/anonymization/${prev.id}`, query: route.query })
 }
 
 function navigateToNextConversation() {
   if (!canGoNext.value) return
   const next = conversationsList.value[currentIndex.value + 1]
-  router.push({
-    path: `/anonymization/${next.id}`,
-    query: route.query  // Preserve filter state
-  })
+  router.push({ path: `/anonymization/${next.id}`, query: route.query })
 }
 
-// Navigate to next conversation with specific status
 function navigateToNextWithStatus(targetStatus = 'pending') {
   if (currentIndex.value < 0) return
-
-  // Find next conversation matching status
   const remaining = conversationsList.value.slice(currentIndex.value + 1)
   const next = remaining.find(c => c.status === targetStatus)
-
   if (next) {
-    router.push({
-      path: `/anonymization/${next.id}`,
-      query: route.query
-    })
+    router.push({ path: `/anonymization/${next.id}`, query: route.query })
   } else {
-    showError(`Keine weiteren ${targetStatus} Konversationen`)
+    showError(`No more ${targetStatus} conversations`)
   }
 }
 
 // Keyboard navigation
 function handleKeyboardNavigation(event) {
-  // Don't interfere with text input
-  if (
-    event.target.tagName === 'INPUT' ||
-    event.target.tagName === 'TEXTAREA' ||
-    event.target.isContentEditable
-  ) {
-    return
-  }
-
-  if (event.key === 'ArrowLeft' && canGoPrev.value) {
-    navigateToPreviousConversation()
-  } else if (event.key === 'ArrowRight' && canGoNext.value) {
-    navigateToNextConversation()
-  }
+  if (event.target.tagName === 'INPUT' || event.target.tagName === 'TEXTAREA' || event.target.isContentEditable) return
+  if (event.key === 'ArrowLeft' && canGoPrev.value) navigateToPreviousConversation()
+  else if (event.key === 'ArrowRight' && canGoNext.value) navigateToNextConversation()
 }
 
 // Lifecycle
 onMounted(async () => {
-  try {
-    await fetchPermissions()
-  } catch (error) {
-    console.error('Failed to fetch permissions:', error)
-  }
+  try { await fetchPermissions() } catch (error) { console.error('Failed to fetch permissions:', error) }
   loadConversationsList()
   loadConversation()
   window.addEventListener('keydown', handleKeyboardNavigation)
@@ -1051,71 +999,75 @@ onBeforeUnmount(() => {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  background: rgb(var(--v-theme-background));
 }
 
-.detail-header {
+/* Header - matches EvaluationSession */
+.session-header {
   flex-shrink: 0;
-  padding: 24px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.12);
-}
-
-.detail-header h1 {
-  font-size: 1.5rem;
-  font-weight: 500;
-}
-
-.gap-2 {
-  gap: 8px;
-}
-
-.metadata-panel {
-  padding: 0 24px 12px;
-  flex-shrink: 0;
-}
-
-.quality-panel {
   padding: 12px 24px;
+  background: rgb(var(--v-theme-surface));
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-width: 0;
+  flex: 1;
+}
+
+.header-info {
+  min-width: 0;
+}
+
+.header-info h1 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.header-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+  flex-wrap: wrap;
+}
+
+.meta-text {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 0.75rem;
+  color: rgba(var(--v-theme-on-surface), 0.55);
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   flex-shrink: 0;
 }
 
-.quality-title {
-  font-size: 0.95rem;
-  font-weight: 600;
-  color: rgb(var(--v-theme-on-surface));
+.progress-indicator {
+  padding: 4px 12px;
+  background: rgba(var(--v-theme-primary), 0.1);
+  border-radius: 16px 4px 16px 4px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: rgba(var(--v-theme-on-surface), 0.7);
 }
 
-.quality-rating-inline {
-  color: rgba(var(--v-theme-on-surface), 0.72);
-}
-
-.metadata-grid {
-  display: grid;
-  gap: 8px;
-}
-
-.metadata-row {
-  display: grid;
-  grid-template-columns: minmax(220px, 300px) minmax(0, 1fr);
-  gap: 12px;
-  align-items: start;
-  font-size: 0.85rem;
-}
-
-.metadata-key {
-  font-weight: 600;
-  color: rgba(var(--v-theme-on-surface), 0.72);
-  word-break: break-word;
-}
-
-.metadata-value {
-  color: rgba(var(--v-theme-on-surface), 0.9);
-  word-break: break-word;
-}
-
-.main-content {
+/* Session Content - matches RatingInterface layout */
+.session-content {
   flex: 1;
   display: flex;
   overflow: hidden;
@@ -1128,15 +1080,438 @@ onBeforeUnmount(() => {
   overflow: hidden;
 }
 
+.left-panel {
+  border-right: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+}
+
 .panel-header {
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  background: rgba(var(--v-theme-surface-variant), 0.3);
   flex-shrink: 0;
-  padding: 16px;
-  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.12);
 }
 
 .panel-header h3 {
-  font-size: 1.1rem;
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: rgb(var(--v-theme-on-surface));
+}
+
+.message-count {
+  font-size: 0.72rem;
+  padding: 2px 8px;
+  background: rgba(var(--v-theme-on-surface), 0.08);
+  border-radius: 10px;
+  color: rgba(var(--v-theme-on-surface), 0.5);
+}
+
+/* Resize Handle - matches RatingInterface */
+.resize-handle {
+  width: 6px;
+  cursor: col-resize;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+  flex-shrink: 0;
+}
+
+.resize-handle:hover,
+.resize-handle.resizing {
+  background: rgba(var(--v-theme-primary), 0.15);
+}
+
+.handle-line {
+  width: 3px;
+  height: 40px;
+  background: rgba(var(--v-theme-on-surface), 0.2);
+  border-radius: 2px;
+}
+
+/* Rating Content (left panel scrollable area) */
+.rating-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* NER Entity Summary */
+.entity-summary {
+  background: rgba(var(--v-theme-surface-variant), 0.3);
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  border-radius: 8px 3px 8px 3px;
+  padding: 10px 14px;
+}
+
+.entity-summary-label {
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: rgba(var(--v-theme-on-surface), 0.45);
+  margin-bottom: 8px;
+}
+
+.entity-summary-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.entity-summary-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  background: rgba(var(--v-theme-on-surface), 0.02);
+  border-radius: 4px;
+  font-size: 0.78rem;
+}
+
+.entity-summary-row .entity-type-badge {
+  font-size: 0.62rem;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 3px;
+  border: 1px solid;
+  min-width: 32px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.entity-summary-row .entity-original {
+  color: rgba(var(--v-theme-on-surface), 0.5);
+  text-decoration: line-through;
+  font-size: 0.76rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.entity-arrow {
+  flex-shrink: 0;
+  opacity: 0.35;
+}
+
+.entity-summary-row .entity-replacement {
+  font-weight: 600;
+  color: rgb(var(--v-theme-on-surface));
+  font-size: 0.76rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.entity-db-hit {
+  flex-shrink: 0;
+}
+
+/* Quality Section - uses LRatingScale */
+.quality-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.dimension-card {
+  background: rgba(var(--v-theme-surface-variant), 0.3);
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  border-radius: 12px 4px 12px 4px;
+  padding: 14px 16px;
+}
+
+.dimension-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.dimension-name {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: rgb(var(--v-theme-on-surface));
+}
+
+.dimension-value-badge {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 2px 10px;
+  border-radius: 12px;
+}
+
+.dimension-value-badge.quality-high {
+  background: rgba(152, 212, 187, 0.2);
+  color: #5ba882;
+}
+
+.dimension-value-badge.quality-mid {
+  background: rgba(209, 188, 138, 0.2);
+  color: #b5993e;
+}
+
+.dimension-value-badge.quality-low {
+  background: rgba(232, 160, 135, 0.2);
+  color: #c4735a;
+}
+
+.option-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Feedback Section - matches RatingInterface */
+.feedback-section {
+  padding-top: 8px;
+  border-top: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+}
+
+.resizable-notes :deep(textarea) {
+  resize: vertical;
+  min-height: 48px;
+}
+
+/* Metadata Section */
+.metadata-section {
+  padding-top: 8px;
+}
+
+.metadata-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
+  color: rgba(var(--v-theme-on-surface), 0.5);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px 0;
+}
+
+.metadata-toggle:hover {
+  color: rgba(var(--v-theme-on-surface), 0.7);
+}
+
+.metadata-grid {
+  display: grid;
+  gap: 4px;
+  padding: 12px 0 0;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.metadata-row {
+  display: grid;
+  grid-template-columns: minmax(140px, 200px) minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+  font-size: 0.78rem;
+}
+
+.metadata-key {
+  font-weight: 600;
+  color: rgba(var(--v-theme-on-surface), 0.6);
+  word-break: break-word;
+}
+
+.metadata-value {
+  color: rgba(var(--v-theme-on-surface), 0.85);
+  word-break: break-word;
+}
+
+.section-divider {
+  height: 1px;
+  background: rgba(var(--v-theme-on-surface), 0.08);
+}
+
+/* Message Detail Header */
+.message-detail-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.message-detail-header h4 {
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.msg-num {
+  color: rgba(var(--v-theme-on-surface), 0.45);
   font-weight: 500;
+}
+
+.detail-actions {
+  display: flex;
+  gap: 4px;
+}
+
+/* Content Sections */
+.content-section {
+  margin-bottom: 4px;
+}
+
+.content-section h4 {
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: rgba(var(--v-theme-on-surface), 0.5);
+  margin-bottom: 8px;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.content-box {
+  padding: 12px;
+  border-radius: 8px 3px 8px 3px;
+  font-size: 0.88rem;
+  line-height: 1.6;
+}
+
+.content-box.original {
+  background: rgba(var(--v-theme-on-surface), 0.04);
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+}
+
+.content-box.original pre {
+  font-family: 'IBM Plex Mono', 'Courier New', monospace;
+  font-size: 0.82rem;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  margin: 0;
+  color: rgba(var(--v-theme-on-surface), 0.8);
+}
+
+.content-box.anonymized {
+  background: rgba(var(--v-theme-primary), 0.04);
+  border: 1px solid rgba(var(--v-theme-primary), 0.12);
+  color: rgb(var(--v-theme-on-surface));
+}
+
+.edit-area {
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.12);
+  border-radius: 8px 3px 8px 3px;
+  padding: 12px;
+}
+
+.edit-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+/* Entities */
+.entities-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.entity-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  background: rgba(var(--v-theme-on-surface), 0.03);
+  border-radius: 6px 2px 6px 2px;
+  font-size: 0.8rem;
+}
+
+.entity-type-badge {
+  font-size: 0.68rem;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: 1px solid;
+  min-width: 40px;
+  text-align: center;
+}
+
+.entity-original {
+  color: rgba(var(--v-theme-on-surface), 0.5);
+  text-decoration: line-through;
+  font-size: 0.78rem;
+}
+
+.entity-replacement {
+  font-weight: 500;
+  color: rgb(var(--v-theme-on-surface));
+  font-size: 0.78rem;
+}
+
+/* Version History */
+.version-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.version-item {
+  padding: 10px 12px;
+  background: rgba(var(--v-theme-on-surface), 0.03);
+  border-radius: 8px 3px 8px 3px;
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.06);
+}
+
+.version-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.version-meta {
+  font-size: 0.72rem;
+  color: rgba(var(--v-theme-on-surface), 0.5);
+}
+
+.version-desc {
+  font-size: 0.8rem;
+  color: rgba(var(--v-theme-on-surface), 0.7);
+  margin-bottom: 6px;
+}
+
+.version-content {
+  font-family: 'IBM Plex Mono', 'Courier New', monospace;
+  font-size: 0.78rem;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  margin: 0;
+  color: rgba(var(--v-theme-on-surface), 0.75);
+}
+
+/* Empty Detail State */
+.empty-detail {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: rgba(var(--v-theme-on-surface), 0.4);
+}
+
+/* Right Panel: Messages */
+.message-search {
+  flex-shrink: 0;
+  padding: 8px 12px;
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.06);
 }
 
 .panel-content {
@@ -1145,147 +1520,169 @@ onBeforeUnmount(() => {
   padding: 16px;
 }
 
-.resize-divider {
-  width: 8px;
-  background: rgba(var(--v-theme-on-surface), 0.08);
-  cursor: col-resize;
-  position: relative;
-  flex-shrink: 0;
-}
-
-.resize-divider:hover,
-.resize-divider.resizing {
-  background: var(--llars-primary);
-}
-
-.resize-handle {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 3px;
-  height: 48px;
-  background: rgba(var(--v-theme-on-surface), 0.2);
-  border-radius: 2px;
-}
-
-.content-section h4 {
-  font-size: 0.9rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  color: rgba(var(--v-theme-on-surface), 0.65);
-  margin-bottom: 8px;
-}
-
-.original-content,
-.version-content {
-  font-family: 'Courier New', monospace;
-  font-size: 0.9rem;
-  white-space: pre-wrap;
-  word-wrap: break-word;
-  margin: 0;
-  color: rgb(var(--v-theme-on-surface));
-}
-
-.anonymized-content {
-  font-size: 0.95rem;
-  line-height: 1.6;
-  color: rgb(var(--v-theme-on-surface));
-}
-
-.entity-badges {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-}
-
-:deep(.v-list-item--active) {
-  background-color: rgba(var(--v-theme-primary), 0.1);
-}
-
-/* Conversation View Styles */
 .conversation-view {
-  background: rgba(var(--v-theme-surface-variant), 0.35);
+  background: rgba(var(--v-theme-surface-variant), 0.25);
+}
+
+/* Message View Toggle */
+.message-view-toggle {
+  display: inline-flex;
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.15);
+  border-radius: 6px 2px 6px 2px;
+  overflow: hidden;
+  margin-right: 8px;
+}
+
+.toggle-btn {
+  font-size: 0.68rem;
+  font-weight: 600;
+  padding: 3px 10px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: rgba(var(--v-theme-on-surface), 0.45);
+  transition: all 0.15s;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.toggle-btn:first-child {
+  border-right: 1px solid rgba(var(--v-theme-on-surface), 0.15);
+}
+
+.toggle-btn:hover {
+  background: rgba(var(--v-theme-on-surface), 0.06);
+  color: rgba(var(--v-theme-on-surface), 0.7);
+}
+
+.toggle-btn.active {
+  background: rgba(var(--v-theme-primary), 0.15);
+  color: rgb(var(--v-theme-primary));
+}
+
+.toggle-btn.disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.toggle-btn.disabled:hover {
+  background: transparent;
 }
 
 .messages-container {
-  padding: 16px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
+}
+
+/* Message wrapper for left/right alignment */
+.message-wrapper {
+  display: flex;
+}
+
+.message-wrapper.align-left {
+  justify-content: flex-start;
+  padding-right: 40px;
+}
+
+.message-wrapper.align-right {
+  justify-content: flex-end;
+  padding-left: 40px;
 }
 
 .message-bubble {
   background: rgb(var(--v-theme-surface));
-  border-radius: 12px;
-  padding: 12px 16px;
-  box-shadow: 0 1px 3px rgba(var(--v-theme-on-surface), 0.14);
+  padding: 10px 14px;
   cursor: pointer;
   transition: all 0.2s ease;
+  border: 1px solid transparent;
+  max-width: 100%;
 }
 
 .message-bubble:hover {
-  box-shadow: 0 2px 6px rgba(var(--v-theme-on-surface), 0.2);
-  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(var(--v-theme-on-surface), 0.1);
 }
 
 .message-bubble.selected {
-  border: 2px solid var(--llars-primary);
+  border-color: var(--llars-primary, #b0ca97);
+}
+
+.bubble-client {
+  border-radius: 12px 4px 12px 4px;
+  border-left: 3px solid var(--llars-primary, #b0ca97);
   background: rgba(176, 202, 151, 0.05);
 }
 
-.user-message {
-  align-self: flex-end;
-  margin-left: auto;
-  max-width: 75%;
-  border-right: 4px solid var(--llars-primary);
-  border-left: none;
-  background: rgba(176, 202, 151, 0.08);
+.bubble-client.selected {
+  background: rgba(176, 202, 151, 0.1);
 }
 
-.assistant-message {
-  align-self: flex-start;
-  margin-right: auto;
-  max-width: 75%;
-  border-left: 4px solid var(--llars-secondary);
-  background: rgba(209, 188, 138, 0.08);
+.bubble-counselor {
+  border-radius: 4px 12px 4px 12px;
+  border-right: 3px solid var(--llars-secondary, #D1BC8A);
+  background: rgba(209, 188, 138, 0.05);
+}
+
+.bubble-counselor.selected {
+  background: rgba(209, 188, 138, 0.1);
 }
 
 .message-header {
   display: flex;
   align-items: center;
-  margin-bottom: 8px;
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: rgba(var(--v-theme-on-surface), 0.7);
+  gap: 8px;
+  margin-bottom: 6px;
+  font-size: 0.8rem;
+}
+
+.msg-author-badge {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px 2px 6px 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: white;
+  flex-shrink: 0;
+}
+
+.msg-author-badge.primary {
+  background: var(--llars-primary, #b0ca97);
+}
+
+.msg-author-badge.secondary {
+  background: var(--llars-secondary, #D1BC8A);
 }
 
 .message-author {
+  font-weight: 600;
+  color: rgba(var(--v-theme-on-surface), 0.7);
   text-transform: capitalize;
+  font-size: 0.78rem;
 }
 
 .message-tags {
   display: flex;
   align-items: center;
   gap: 4px;
+  margin-left: auto;
+}
+
+.entity-badge {
+  font-size: 0.6rem;
+  font-weight: 600;
+  padding: 1px 5px;
+  border-radius: 4px;
 }
 
 .message-content {
-  font-size: 0.95rem;
+  font-size: 0.88rem;
   line-height: 1.5;
-  color: rgba(var(--v-theme-on-surface), 0.88);
+  color: rgba(var(--v-theme-on-surface), 0.85);
   white-space: pre-wrap;
   word-wrap: break-word;
-}
-
-.entity-highlight {
-  display: inline;
-  transition: all 0.2s ease;
-  cursor: help;
-}
-
-.entity-highlight:hover {
-  opacity: 0.8;
 }
 
 .empty-state {
@@ -1294,38 +1691,83 @@ onBeforeUnmount(() => {
   align-items: center;
   justify-content: center;
   min-height: 200px;
+  gap: 8px;
+  color: rgba(var(--v-theme-on-surface), 0.4);
 }
 
-/* Action Bar */
-.action-bar {
+/* Navigation Footer - matches EvaluationSession */
+.session-footer {
   flex-shrink: 0;
-  padding: 12px 24px;
-  border-top: 1px solid rgba(var(--v-theme-on-surface), 0.12);
-  background: rgba(var(--v-theme-surface), 0.95);
   display: flex;
   align-items: center;
   justify-content: space-between;
+  padding: 10px 24px;
+  border-top: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  background: rgb(var(--v-theme-surface));
 }
 
-.navigation-actions {
+.footer-center {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 12px;
 }
 
-.progress-indicator {
-  font-size: 0.9rem;
+.nav-position {
+  font-size: 0.85rem;
   font-weight: 500;
   color: rgba(var(--v-theme-on-surface), 0.7);
-  padding: 4px 12px;
-  background: rgba(var(--v-theme-primary), 0.1);
-  border-radius: 12px;
+  min-width: 60px;
+  text-align: center;
 }
 
+/* Scrollbar styling */
+.rating-content::-webkit-scrollbar,
+.panel-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.rating-content::-webkit-scrollbar-track,
+.panel-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.rating-content::-webkit-scrollbar-thumb,
+.panel-content::-webkit-scrollbar-thumb {
+  background: rgba(var(--v-theme-on-surface), 0.2);
+  border-radius: 3px;
+}
+
+/* Responsive */
 @media (max-width: 960px) {
-  .metadata-row {
-    grid-template-columns: 1fr;
-    gap: 4px;
+  .session-header {
+    flex-direction: column;
+    gap: 12px;
+    align-items: flex-start;
+    padding: 12px 16px;
+  }
+
+  .header-right {
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  .session-content {
+    flex-direction: column;
+  }
+
+  .left-panel,
+  .right-panel {
+    width: 100% !important;
+  }
+
+  .left-panel {
+    max-height: 40vh;
+    border-right: none;
+    border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  }
+
+  .resize-handle {
+    display: none;
   }
 }
 </style>

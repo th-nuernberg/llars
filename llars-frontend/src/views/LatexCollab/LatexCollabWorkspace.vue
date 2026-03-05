@@ -32,7 +32,6 @@
       :can-commit="hasPermission('feature:latex_collab:edit')"
       :recently-added-ids="recentlyAddedNodeIds"
       :tree-panel-width="treePanelWidth"
-      :resizing-tree="resizingTree"
       :outline-flat-items="outlineFlatItems"
       :outline-empty-label="outlineEmptyLabel"
       :is-outline-item-collapsed="isOutlineItemCollapsed"
@@ -57,7 +56,6 @@
       @remove="handleDeleteNode"
       @move="handleMoveNode"
       @open-asset-picker="openAssetPicker"
-      @start-tree-resize="startTreeResize"
       @navigate-home="router.push('/Home')"
       @navigate-workspaces="router.push(routeBase)"
       @toggle-outline-item="toggleOutlineItem"
@@ -65,6 +63,16 @@
       @open-git-detail="gitDetailDialog = true"
       @committed="refreshCommits"
     />
+
+    <!-- Resize Divider: Tree | Content (Desktop only) -->
+    <div
+      v-if="!isMobile && !treeCollapsed"
+      class="resize-divider vertical tree-content-divider"
+      :class="{ resizing: resizingTree }"
+      @mousedown="startTreeResize"
+    >
+      <div class="resize-handle" />
+    </div>
 
     <!-- Main Content Area -->
     <div class="content-area">

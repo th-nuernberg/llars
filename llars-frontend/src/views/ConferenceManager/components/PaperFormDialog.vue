@@ -51,7 +51,7 @@
                 :label="t('conferenceManager.paper.overleafUrl')"
                 variant="outlined"
                 density="compact"
-                prepend-inner-icon="mdi-leaf"
+                prepend-inner-icon="overleaf"
               />
             </v-col>
             <v-col cols="12" sm="6">
@@ -72,7 +72,7 @@
             variant="outlined"
             density="compact"
             clearable
-            prepend-inner-icon="mdi-file-document-edit-outline"
+            prepend-inner-icon="llars-latex"
           />
 
           <v-combobox

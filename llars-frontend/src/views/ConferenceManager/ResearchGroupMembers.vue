@@ -31,7 +31,7 @@
             class="member-item"
           >
             <template #prepend>
-              <LAvatar :user="{ username: member.username, avatar_seed: member.avatar_seed }" size="md" />
+              <LAvatar :username="member.username" :seed="member.avatar_seed" :src="member.avatar_url" size="md" />
             </template>
             <v-list-item-title>{{ member.username }}</v-list-item-title>
             <v-list-item-subtitle>

@@ -29,13 +29,13 @@
   display: flex;
   flex-direction: column;
   background: rgb(var(--v-theme-surface));
-  border-right: 1px solid rgba(var(--v-theme-on-surface), 0.08);
   min-width: 0;
   overflow: hidden;
 }
 
 .tree-panel.collapsed {
   width: 48px !important;
+  border-right: 1px solid rgba(var(--v-theme-on-surface), 0.08);
 }
 
 .tree-expanded {
@@ -210,6 +210,11 @@
   width: 6px;
   cursor: col-resize;
   background: rgba(var(--v-theme-on-surface), 0.04);
+}
+
+.resize-divider.vertical.tree-content-divider {
+  width: 8px;
+  background: rgba(var(--v-theme-on-surface), 0.06);
 }
 
 .resize-divider.vertical:hover,

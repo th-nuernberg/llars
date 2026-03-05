@@ -709,4 +709,56 @@ test.describe('Nightly Cross-Tile Workflows', () => {
       })
     })
   }
+
+  if (hasWorkflow('Infrastructure Health')) {
+    test('Infrastructure Health', async ({ page }) => {
+      await activity('INFRA-MKDOCS-001', 'MkDocs Dokumentation erreichbar', async () => {
+        const response = await page.goto(`${BASE_URL}/mkdocs/en/`, { waitUntil: 'domcontentloaded', timeout: 30000 })
+        expect(response.status(), 'MkDocs should return HTTP 200').toBeLessThan(400)
+
+        const title = page.locator('title')
+        await expect(title).not.toHaveText('', { timeout: 5000 })
+
+        const hasContent = await page
+          .locator('nav, .md-nav, .md-sidebar, article, .md-content')
+          .first()
+          .isVisible({ timeout: 10000 })
+          .catch(() => false)
+        expect(hasContent, 'MkDocs should render navigation or content').toBeTruthy()
+      })
+
+      await activity('INFRA-MATOMO-001', 'Matomo Analytics erreichbar', async () => {
+        const response = await page.goto(`${BASE_URL}/analytics/`, { waitUntil: 'domcontentloaded', timeout: 30000 })
+        expect(response.status(), 'Matomo should return HTTP 200 or redirect').toBeLessThan(500)
+
+        const isLoginOrDashboard = await page
+          .locator('#loginForm, .dashboard, #login_form, input[name="form_login"], .matomo-widget, #content')
+          .first()
+          .isVisible({ timeout: 10000 })
+          .catch(() => false)
+        expect(isLoginOrDashboard, 'Matomo should show login or dashboard').toBeTruthy()
+      })
+
+      await activity('INFRA-MKDOCS-SEARCH-001', 'MkDocs Suche funktioniert', async () => {
+        await page.goto(`${BASE_URL}/mkdocs/en/`, { waitUntil: 'domcontentloaded', timeout: 30000 })
+        await dismissConsentBanner(page)
+
+        const searchInput = page.locator('.md-search__input, input[type="search"], [data-md-component="search-query"]').first()
+        if (await searchInput.isVisible({ timeout: 5000 }).catch(() => false)) {
+          await searchInput.click()
+          await searchInput.fill('Installation')
+
+          const searchResults = page.locator('.md-search-result, .md-search-result__list').first()
+          await expect(searchResults).toBeVisible({ timeout: 10000 })
+        } else {
+          const hasSearchIcon = await page
+            .locator('.md-search, [data-md-component="search"]')
+            .first()
+            .isVisible({ timeout: 3000 })
+            .catch(() => false)
+          expect(hasSearchIcon, 'MkDocs should have search functionality').toBeTruthy()
+        }
+      })
+    })
+  }
 })

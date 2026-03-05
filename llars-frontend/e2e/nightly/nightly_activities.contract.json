@@ -205,6 +205,24 @@
       "test": "Markdown Collab Navigation",
       "required": true,
       "description": "Workspace oeffnen falls vorhanden."
+    },
+    {
+      "id": "INFRA-MKDOCS-001",
+      "test": "Infrastructure Health",
+      "required": true,
+      "description": "MkDocs Dokumentation unter /mkdocs/en/ erreichbar und rendert Content."
+    },
+    {
+      "id": "INFRA-MATOMO-001",
+      "test": "Infrastructure Health",
+      "required": true,
+      "description": "Matomo Analytics unter /analytics/ erreichbar und zeigt Login oder Dashboard."
+    },
+    {
+      "id": "INFRA-MKDOCS-SEARCH-001",
+      "test": "Infrastructure Health",
+      "required": true,
+      "description": "MkDocs Suchfunktion reagiert auf Eingabe."
     }
   ]
 }

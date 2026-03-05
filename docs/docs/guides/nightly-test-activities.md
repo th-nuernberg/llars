@@ -89,6 +89,14 @@ Vor jedem produktiven Umschalten der Blue-Green-Deploymentfarbe wird geprueft, d
 | MD-NAV-001 | Markdown Collab Home oeffnen | Workspace-Liste oder Empty-State |
 | MD-WORKSPACE-001 | Workspace oeffnen (falls vorhanden) | Editor-Bereich sichtbar |
 
+### Infrastruktur (MkDocs + Matomo)
+
+| Activity-ID | Beschreibung | Erwartetes Ergebnis |
+|---|---|---|
+| INFRA-MKDOCS-001 | MkDocs Dokumentation unter /mkdocs/en/ oeffnen | HTTP 200, Navigation/Content sichtbar |
+| INFRA-MATOMO-001 | Matomo Analytics unter /analytics/ oeffnen | HTTP < 500, Login-Form oder Dashboard sichtbar |
+| INFRA-MKDOCS-SEARCH-001 | MkDocs Suchfunktion testen | Suchergebnisse erscheinen bei Eingabe |
+
 ---
 
 ## Cross-Feature Interaktionen

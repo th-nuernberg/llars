@@ -55,6 +55,7 @@ Diese Datei ist die operative Referenz für die Nightly-Kacheltests.
 | Anonymization Pipeline View | Pipeline-Manager oeffnen + View-Toggle (Cards/List) | Nein |
 | Chatbot Manager Access | chatbot_manager-Rolle oeffnet dedizierte Seite + Tab-Navigation | Ja |
 | Markdown Collab Navigation | Home oeffnen + Workspace oeffnen falls vorhanden | Nein |
+| Infrastructure Health | MkDocs + Matomo erreichbar, MkDocs-Suche funktioniert | Ja |
 
 ## Cross-Tile Interaktionen (Nightly)
 
@@ -101,6 +102,9 @@ Diese Datei ist die operative Referenz für die Nightly-Kacheltests.
 | CBM-TABS-001 | Chatbot-Manager Tabs durchklicken | Tab-Inhalte sichtbar |
 | MD-NAV-001 | Markdown Collab Home oeffnen | Workspace-Liste oder Empty-State |
 | MD-WORKSPACE-001 | Workspace oeffnen | Editor-Bereich sichtbar |
+| INFRA-MKDOCS-001 | MkDocs Dokumentation oeffnen | HTTP 200, Content sichtbar |
+| INFRA-MATOMO-001 | Matomo Analytics oeffnen | HTTP < 500, Login oder Dashboard |
+| INFRA-MKDOCS-SEARCH-001 | MkDocs Suche testen | Suchergebnisse bei Eingabe |
 
 ## Änderungsvorgehen bei neuer/angepasster Kachel
 

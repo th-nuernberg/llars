@@ -61,6 +61,12 @@
       "owner_role": "researcher",
       "dependencies": ["Markdown Collab"],
       "critical": false
+    },
+    {
+      "name": "Infrastructure Health",
+      "owner_role": "admin",
+      "dependencies": [],
+      "critical": true
     }
   ]
 }

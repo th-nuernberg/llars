@@ -493,9 +493,9 @@ metrics:update-docs:
   script:
     - echo "Updating documentation with metrics..."
     - cd /var/llars
-    - python scripts/metrics/collect_python_metrics.py
+    - python3 scripts/metrics/collect_python_metrics.py
     - node scripts/metrics/collect_frontend_metrics.js
-    - python scripts/metrics/update_docs.py
+    - python3 scripts/metrics/update_docs.py
     - echo "Metrics documentation updated"
   extends:
     - .deploy_rules

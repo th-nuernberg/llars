@@ -16,6 +16,7 @@ Der Nightly-Lauf enthält eine contract-basierte Playwright-Suite:
 
 - Tile-Contract: `llars-frontend/src/config/home_tiles.contract.json`
 - Workflow-Contract: `llars-frontend/e2e/nightly/nightly_workflows.contract.json`
+- Activity-Contract: `llars-frontend/e2e/nightly/nightly_activities.contract.json`
 - Tile-Tests: `llars-frontend/e2e/nightly/tile-regression.spec.js`
 - Workflow-Tests: `llars-frontend/e2e/nightly/workflows.spec.js`
 - Coverage-Gate: `scripts/testing/validate_nightly_coverage.py`
@@ -39,8 +40,10 @@ export E2E_ADMIN_USER="test_admin"
 export E2E_RESEARCHER_USER="test_researcher"
 export E2E_EVALUATOR_USER="test_evaluator"
 export E2E_CHATBOT_MANAGER_USER="test_chatbot_manager"
+export E2E_BOOTSTRAP_ADMIN_USER="admin"
 export E2E_BOOTSTRAP_TEST_USERS="true"
 export E2E_KEEP_TEST_USERS="false"
+export E2E_BOOTSTRAP_ADMIN_PASSWORD="${E2E_TEST_PASSWORD}"
 docker compose --profile testing build smoke-test-service
 python3 scripts/testing/validate_nightly_coverage.py
 docker compose --profile testing run --rm --entrypoint "" \
@@ -51,11 +54,14 @@ docker compose --profile testing run --rm --entrypoint "" \
   -e E2E_RESEARCHER_USER="${E2E_RESEARCHER_USER}" \
   -e E2E_EVALUATOR_USER="${E2E_EVALUATOR_USER}" \
   -e E2E_CHATBOT_MANAGER_USER="${E2E_CHATBOT_MANAGER_USER}" \
+  -e E2E_BOOTSTRAP_ADMIN_USER="${E2E_BOOTSTRAP_ADMIN_USER}" \
+  -e E2E_BOOTSTRAP_ADMIN_PASSWORD="${E2E_BOOTSTRAP_ADMIN_PASSWORD}" \
   -e E2E_BOOTSTRAP_TEST_USERS="${E2E_BOOTSTRAP_TEST_USERS}" \
   -e E2E_KEEP_TEST_USERS="${E2E_KEEP_TEST_USERS}" \
   -e NODE_TLS_REJECT_UNAUTHORIZED=0 \
   smoke-test-service \
   bash -c "cd /tests/e2e && npx playwright test --project=chromium --workers=1 nightly/tile-regression.spec.js nightly/workflows.spec.js"
+python3 scripts/testing/cleanup_nightly_test_users.py
 ```
 
 ```
@@ -234,6 +240,7 @@ deploy:staging:     # Automatisch bei develop (Shell Runner)
 test:e2e:nightly:tiles: # Contract-basierte Nightly-Playwright-Suite
 deploy:production:  # Automatisch bei main (Shell Runner)
 smoke:test:         # Nach Production Deploy
+maintenance:docker-cleanup: # Entfernt ungenutzte Docker-Artefakte (>7 Tage)
 rollback:production: # Manuell bei Problemen
 ```
 

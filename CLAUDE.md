@@ -230,17 +230,18 @@ Runner: Shell-Executor direkt auf Server
 | deploy-staging | `deploy:staging` |
 | test-staging | `test:e2e:nightly:tiles`, `smoke:staging` |
 | deploy | `deploy:production` |
-| smoke | `smoke:production`, `metrics:update-docs` |
+| smoke | `smoke:production`, `maintenance:docker-cleanup`, `metrics:update-docs` |
 | rollback | `rollback:production` (manual) |
 
 ```
 Schedule (SCHEDULED_DEPLOY=true) oder FORCE_DEPLOY=true auf main:
-  deploy:staging → test:e2e:nightly:tiles → smoke:staging → deploy:production → smoke:production
+  deploy:staging → test:e2e:nightly:tiles → smoke:staging → deploy:production → smoke:production → maintenance:docker-cleanup
 
 Wichtige Guards:
 - `deploy:production` laeuft nur nach erfolgreichen Staging-Tests.
 - Blue-Green `switch` schaltet nur bei vorhandenem Pending-Candidate und no-op bei identischem Commit.
 - Bei `smoke:production` Fehler: automatischer Rollback (`rollback_bluegreen.sh`).
+- Nightly-Cleanup entfernt ungenutzte Docker-Images/Build-Cache älter als 7 Tage, um VM-Speicher stabil zu halten.
 ```
 
 **Test-Requirements:** `app/requirements-test.txt` (ohne torch, transformers, flair - ~3GB gespart)

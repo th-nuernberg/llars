@@ -347,6 +347,7 @@ test:e2e:nightly:tiles:
     E2E_RESEARCHER_USER: "test_researcher"
     E2E_EVALUATOR_USER: "test_evaluator"
     E2E_CHATBOT_MANAGER_USER: "test_chatbot_manager"
+    E2E_BOOTSTRAP_ADMIN_USER: "admin"
     E2E_BOOTSTRAP_TEST_USERS: "true"
     E2E_KEEP_TEST_USERS: "false"
   script:
@@ -354,10 +355,12 @@ test:e2e:nightly:tiles:
     - mkdir -p "$CI_PROJECT_DIR/e2e-artifacts"
     # Load server .env for passwords
     - export E2E_TEST_PASSWORD=$(grep '^LLARS_ADMIN_PASSWORD=' .env | cut -d= -f2- || echo "admin123")
+    - export E2E_BOOTSTRAP_ADMIN_PASSWORD="${E2E_BOOTSTRAP_ADMIN_PASSWORD:-$E2E_TEST_PASSWORD}"
     - export SYSTEM_ADMIN_API_KEY=$(grep '^SYSTEM_ADMIN_API_KEY=' .env | cut -d= -f2-)
     - bash scripts/ci/log_ci_event.sh "ci_cd.nightly.e2e.start" "Nightly E2E tile/workflow suite started"
     - 'echo "Nightly E2E tag: ${E2E_RUN_TAG}"'
     - 'echo "Nightly users: admin=${E2E_ADMIN_USER}, researcher=${E2E_RESEARCHER_USER}, evaluator=${E2E_EVALUATOR_USER}, chatbot_manager=${E2E_CHATBOT_MANAGER_USER}"'
+    - 'echo "Bootstrap admin: ${E2E_BOOTSTRAP_ADMIN_USER}"'
     # Build smoke-test container (with Playwright + E2E tests)
     - docker compose --profile testing build smoke-test-service
     # Validate tile/workflow contracts before UI execution
@@ -374,6 +377,8 @@ test:e2e:nightly:tiles:
         -e E2E_RESEARCHER_USER="${E2E_RESEARCHER_USER}" \
         -e E2E_EVALUATOR_USER="${E2E_EVALUATOR_USER}" \
         -e E2E_CHATBOT_MANAGER_USER="${E2E_CHATBOT_MANAGER_USER}" \
+        -e E2E_BOOTSTRAP_ADMIN_USER="${E2E_BOOTSTRAP_ADMIN_USER}" \
+        -e E2E_BOOTSTRAP_ADMIN_PASSWORD="${E2E_BOOTSTRAP_ADMIN_PASSWORD}" \
         -e E2E_BOOTSTRAP_TEST_USERS="${E2E_BOOTSTRAP_TEST_USERS}" \
         -e E2E_KEEP_TEST_USERS="${E2E_KEEP_TEST_USERS}" \
         -e NODE_TLS_REJECT_UNAUTHORIZED=0 \
@@ -381,6 +386,11 @@ test:e2e:nightly:tiles:
         bash -c "cd /tests/e2e && npx playwright test --project=chromium --workers=1 nightly/tile-regression.spec.js nightly/workflows.spec.js" \
         2>&1 | tee "$CI_PROJECT_DIR/e2e-artifacts/playwright.log"
   after_script:
+    - |
+      export PLAYWRIGHT_BASE_URL="http://localhost:55080"
+      export E2E_TEST_PASSWORD=$(grep '^LLARS_ADMIN_PASSWORD=' /var/llars/.env | cut -d= -f2- || echo "admin123")
+      export E2E_BOOTSTRAP_ADMIN_PASSWORD="${E2E_BOOTSTRAP_ADMIN_PASSWORD:-$E2E_TEST_PASSWORD}"
+      python3 scripts/testing/cleanup_nightly_test_users.py || true
     - |
       if [ "$CI_JOB_STATUS" = "success" ]; then
         bash scripts/ci/log_ci_event.sh "ci_cd.nightly.e2e.success" "Nightly E2E tile/workflow suite passed"
@@ -473,6 +483,29 @@ smoke:production:
     - .deploy_rules
   needs:
     - deploy:production
+
+# Docker cleanup on nightly deploy pipelines.
+# Removes only unused artifacts older than 7 days to protect rollback-near images.
+maintenance:docker-cleanup:
+  stage: smoke
+  tags:
+    - shell
+  script:
+    - echo "=== Docker disk usage (before cleanup) ==="
+    - docker system df || true
+    - echo "Pruning unused images older than 7 days..."
+    - docker image prune -af --filter "until=168h" || true
+    - echo "Pruning build cache older than 7 days..."
+    - docker builder prune -af --filter "until=168h" || true
+    - echo "=== Docker disk usage (after cleanup) ==="
+    - docker system df || true
+  extends:
+    - .deploy_rules
+  needs:
+    - job: smoke:production
+      optional: true
+  when: on_success
+  allow_failure: true
 
 # =============================================================================
 # STAGE 9: ROLLBACK

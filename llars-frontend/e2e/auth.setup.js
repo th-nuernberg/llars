@@ -35,6 +35,12 @@ const evaluatorUsername = isProduction
 const chatbotManagerUsername = isProduction
   ? (process.env.E2E_CHATBOT_MANAGER_USER || adminUsername)
   : 'chatbot_manager'
+const bootstrapAdminUsername = isProduction
+  ? (process.env.E2E_BOOTSTRAP_ADMIN_USER || 'admin')
+  : adminUsername
+const bootstrapAdminPassword = isProduction
+  ? (process.env.E2E_BOOTSTRAP_ADMIN_PASSWORD || testPassword)
+  : testPassword
 
 const TEST_USERS = {
   researcher: { username: researcherUsername, password: testPassword, role: 'researcher' },
@@ -380,20 +386,20 @@ async function deleteTestUser(accessToken, username) {
 }
 
 /**
- * Gets admin access token for API calls
+ * Gets an access token for API calls
  */
-async function getAdminToken() {
+async function getApiToken(username, password) {
   const response = await fetch(`${apiBaseURL}/auth/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      username: TEST_USERS.admin.username,
-      password: TEST_USERS.admin.password
+      username,
+      password
     })
   })
 
   if (!response.ok) {
-    throw new Error(`Admin login failed: ${response.status}`)
+    throw new Error(`API login failed for ${username}: ${response.status}`)
   }
 
   const data = await response.json()
@@ -405,9 +411,6 @@ let adminToken = null
 
 // Admin authentication - always runs first
 setup('authenticate as admin', async ({ page }) => {
-  await performLogin(page, TEST_USERS.admin)
-  await page.context().storageState({ path: path.join(AUTH_DIR, 'admin.json') })
-
   // Production: by default use pre-provisioned nightly users.
   // Optional bootstrap mode can create them via API.
   if (isProduction) {
@@ -419,9 +422,12 @@ setup('authenticate as admin', async ({ page }) => {
     if (bootstrapProdUsers) {
       console.log(`[E2E][${runTag}] Bootstrap enabled: creating temporary test users via API`)
       try {
-        adminToken = await getAdminToken()
-        console.log('Got admin token, creating users...')
+        adminToken = await getApiToken(bootstrapAdminUsername, bootstrapAdminPassword)
+        console.log(`Got bootstrap token as ${bootstrapAdminUsername}, creating users...`)
 
+        if (TEST_USERS.admin.username !== bootstrapAdminUsername) {
+          await createTestUser(adminToken, TEST_USERS.admin.username, testPassword, 'admin')
+        }
         await createTestUser(adminToken, TEST_USERS.researcher.username, testPassword, 'researcher')
         await createTestUser(adminToken, TEST_USERS.evaluator.username, testPassword, 'evaluator')
 
@@ -430,6 +436,7 @@ setup('authenticate as admin', async ({ page }) => {
         }
 
         console.log('Verifying test users can log in...')
+        await waitForUserLogin(TEST_USERS.admin.username, testPassword)
         await waitForUserLogin(TEST_USERS.researcher.username, testPassword)
         await waitForUserLogin(TEST_USERS.evaluator.username, testPassword)
         if (TEST_USERS.chatbot_manager.username !== TEST_USERS.admin.username) {
@@ -442,6 +449,7 @@ setup('authenticate as admin', async ({ page }) => {
       }
     } else {
       console.log(`[E2E][${runTag}] Bootstrap disabled: validating pre-provisioned users`)
+      await waitForUserLogin(TEST_USERS.admin.username, testPassword, 3, 2000)
       await waitForUserLogin(TEST_USERS.researcher.username, testPassword, 3, 2000)
       await waitForUserLogin(TEST_USERS.evaluator.username, testPassword, 3, 2000)
       if (TEST_USERS.chatbot_manager.username !== TEST_USERS.admin.username) {
@@ -449,6 +457,9 @@ setup('authenticate as admin', async ({ page }) => {
       }
     }
   }
+
+  await performLogin(page, TEST_USERS.admin)
+  await page.context().storageState({ path: path.join(AUTH_DIR, 'admin.json') })
 })
 
 setup('authenticate as researcher', async ({ page }) => {
@@ -469,20 +480,10 @@ setup('authenticate as chatbot_manager', async ({ page }) => {
   await page.context().storageState({ path: path.join(AUTH_DIR, 'chatbot_manager.json') })
 })
 
-// Cleanup: optional deletion of temporary test users after setup tests complete.
-// In CI we keep users so mid-run re-logins remain possible after token expiry.
+// Cleanup is handled after the full nightly run in CI after_script.
+// Do not delete users in setup project, otherwise dependent test projects fail.
 setup.afterAll(async () => {
-  if (isProduction && bootstrapProdUsers && adminToken) {
-    if (keepTestUsers) {
-      console.log('Skipping temporary test user cleanup (CI/keep mode enabled)')
-      return
-    }
-
-    console.log('Cleaning up temporary test users...')
-    await deleteTestUser(adminToken, TEST_USERS.researcher.username)
-    await deleteTestUser(adminToken, TEST_USERS.evaluator.username)
-    if (TEST_USERS.chatbot_manager.username !== TEST_USERS.admin.username) {
-      await deleteTestUser(adminToken, TEST_USERS.chatbot_manager.username)
-    }
+  if (isProduction && bootstrapProdUsers && !keepTestUsers) {
+    console.log('Deferring temporary test user cleanup to CI after_script')
   }
 })

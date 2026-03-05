@@ -13,10 +13,12 @@ Vor jedem produktiven Umschalten der Blue-Green-Deploymentfarbe wird geprüft, d
 | Home Tile Open | Jede sichtbare Kachel pro Rolle wird geöffnet | Navigation, kein Login-Redirect, kein 404 |
 | Safe Button Sweep | Nicht-destruktive Buttons auf Zielseite werden geklickt | UI bleibt stabil, keine 5xx |
 | Prompt Export/Import/Test | Prompt Engineering Kernaktionen | Download/Import/Test-Aktion vorhanden und klickbar |
+| Prompt Share/Unshare | Prompt für Testnutzer freigeben und entfernen | Kollaborationsliste aktualisiert sich |
 | Batch -> Szenario Wizard | Übergang aus Batch Generation | Wizard/Scenario-Handoff erreichbar |
 | Scenario Role Assignment | Evaluator/Viewer/Role-Zuweisung | Assignment-Controls sichtbar |
 | LaTeX Resizer Drag | Split-Pane-Resize im Workspace | Divider bewegt sich messbar |
 | Conference Access Request | Zugangsanfrage zur Forschungsgruppe | Request-UI vorhanden |
+| Nightly Cleanup | Testdaten- und User-Bereinigung | Keine sichtbaren Nightly-Artefakte am Folgetag |
 
 ## Rollenabdeckung
 
@@ -33,7 +35,8 @@ Reihenfolge im Nightly-Lauf:
 
 1. `llars-frontend/src/config/home_tiles.contract.json`
 2. `llars-frontend/e2e/nightly/nightly_workflows.contract.json`
-3. `docs/testing/nightly/NIGHTLY_TILE_MATRIX.md`
+3. `llars-frontend/e2e/nightly/nightly_activities.contract.json`
+4. `docs/testing/nightly/NIGHTLY_TILE_MATRIX.md`
 
 ## CI-Gate
 
@@ -44,7 +47,17 @@ Der Check schlägt fehl, wenn:
 1. Home-Routen und Tile-Contract nicht übereinstimmen.
 2. Ein Kachelname keinen gleichnamigen Testtitel hat.
 3. Ein Workflowname keinen gleichnamigen Testtitel hat.
-4. `Home.vue` oder der Tile-Contract geändert wurde, aber Tests/Doku nicht mitgezogen wurden.
+4. Eine Pflicht-Activity-ID (`[ACT:<ID>]`) in den Nightly-Specs fehlt.
+5. `Home.vue` oder der Tile-Contract geändert wurde, aber Tests/Doku nicht mitgezogen wurden.
+
+## Nightly VM-Housekeeping
+
+Nach erfolgreichem Production-Smoke läuft `maintenance:docker-cleanup`:
+
+1. `docker image prune -af --filter "until=168h"`
+2. `docker builder prune -af --filter "until=168h"`
+
+Damit werden nur ungenutzte Artefakte älter als 7 Tage entfernt und die VM läuft nicht in Speicherengpässe.
 
 ## Änderungsvorgehen
 

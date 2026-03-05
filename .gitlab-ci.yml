@@ -356,8 +356,8 @@ test:e2e:nightly:tiles:
     - export E2E_TEST_PASSWORD=$(grep '^LLARS_ADMIN_PASSWORD=' .env | cut -d= -f2- || echo "admin123")
     - export SYSTEM_ADMIN_API_KEY=$(grep '^SYSTEM_ADMIN_API_KEY=' .env | cut -d= -f2-)
     - bash scripts/ci/log_ci_event.sh "ci_cd.nightly.e2e.start" "Nightly E2E tile/workflow suite started"
-    - echo "Nightly E2E tag: ${E2E_RUN_TAG}"
-    - echo "Nightly users: admin=${E2E_ADMIN_USER}, researcher=${E2E_RESEARCHER_USER}, evaluator=${E2E_EVALUATOR_USER}, chatbot_manager=${E2E_CHATBOT_MANAGER_USER}"
+    - 'echo "Nightly E2E tag: ${E2E_RUN_TAG}"'
+    - 'echo "Nightly users: admin=${E2E_ADMIN_USER}, researcher=${E2E_RESEARCHER_USER}, evaluator=${E2E_EVALUATOR_USER}, chatbot_manager=${E2E_CHATBOT_MANAGER_USER}"'
     # Build smoke-test container (with Playwright + E2E tests)
     - docker compose --profile testing build smoke-test-service
     # Validate tile/workflow contracts before UI execution

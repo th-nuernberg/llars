@@ -17,7 +17,7 @@ const testPassword = process.env.E2E_TEST_PASSWORD || 'admin123'
 const isProduction = !!process.env.E2E_TEST_PASSWORD
 const runTag = process.env.E2E_RUN_TAG || 'manual'
 const bootstrapProdUsers = process.env.E2E_BOOTSTRAP_TEST_USERS === 'true'
-const keepTestUsers = process.env.E2E_KEEP_TEST_USERS === 'true' || !!process.env.CI
+const keepTestUsers = process.env.E2E_KEEP_TEST_USERS === 'true'
 const baseURL = process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:55080'
 const apiBaseURL = process.env.PLAYWRIGHT_API_BASE_URL || baseURL
 const loginTimeout = process.env.CI ? 60000 : 45000
@@ -444,6 +444,9 @@ setup('authenticate as admin', async ({ page }) => {
       console.log(`[E2E][${runTag}] Bootstrap disabled: validating pre-provisioned users`)
       await waitForUserLogin(TEST_USERS.researcher.username, testPassword, 3, 2000)
       await waitForUserLogin(TEST_USERS.evaluator.username, testPassword, 3, 2000)
+      if (TEST_USERS.chatbot_manager.username !== TEST_USERS.admin.username) {
+        await waitForUserLogin(TEST_USERS.chatbot_manager.username, testPassword, 3, 2000)
+      }
     }
   }
 })
@@ -458,6 +461,12 @@ setup('authenticate as evaluator', async ({ page }) => {
   const user = TEST_USERS.evaluator
   await performLogin(page, user)
   await page.context().storageState({ path: path.join(AUTH_DIR, 'evaluator.json') })
+})
+
+setup('authenticate as chatbot_manager', async ({ page }) => {
+  const user = TEST_USERS.chatbot_manager
+  await performLogin(page, user)
+  await page.context().storageState({ path: path.join(AUTH_DIR, 'chatbot_manager.json') })
 })
 
 // Cleanup: optional deletion of temporary test users after setup tests complete.

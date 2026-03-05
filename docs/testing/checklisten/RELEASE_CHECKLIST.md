@@ -38,6 +38,8 @@ Diese Checkliste dient zur Vorbereitung und Durchführung eines LLARS-Releases.
 - [ ] Version in `app/__init__.py` aktualisiert
 - [ ] API-Dokumentation aktuell
 - [ ] CLAUDE.md aktuell
+- [ ] `docs/testing/nightly/NIGHTLY_TILE_MATRIX.md` aktuell
+- [ ] `python3 scripts/testing/validate_nightly_coverage.py` lokal/CI grün
 
 ---
 
@@ -89,6 +91,7 @@ docker exec llars_db_service mariadb -u dev_user -pdev_password_change_me \
 ### Kritische Pfade
 
 - [ ] `npm run test:e2e -- --project=chromium`
+- [ ] `npx playwright test --project=chromium e2e/nightly/tile-regression.spec.js e2e/nightly/workflows.spec.js`
 - [ ] Login/Logout Flow
 - [ ] Chatbot erstellen (Wizard)
 - [ ] RAG Document hochladen

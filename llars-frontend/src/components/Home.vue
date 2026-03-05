@@ -126,6 +126,7 @@
               v-for="item in filteredItems"
               :key="item.title"
               class="feature-card"
+              :data-testid="tileTestId(item)"
               @click="navigateTo(item.route)"
             >
               <div class="feature-icon">
@@ -441,6 +442,17 @@ function getCategoryCount(categoryId) {
 
 function navigateTo(route) {
   router.push(route)
+}
+
+function tileTestId(item) {
+  const normalized = String(item.route || '')
+    .trim()
+    .replace(/^\/+/, '')
+    .replace(/[/?=&]+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '')
+    .toLowerCase()
+  return `home-tile-${normalized || 'unknown'}`
 }
 
 function getBadgeVariant(badgeColor) {

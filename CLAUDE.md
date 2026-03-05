@@ -224,18 +224,18 @@ Runner: Shell-Executor direkt auf Server
 | Stage | Jobs |
 |-------|------|
 | lint | `lint:backend`, `lint:frontend` |
-| test | `test:unit:backend`, `test:unit:frontend`, `test:integration`, `metrics:collect` |
+| test | `test:unit:backend`, `test:unit:frontend`, `test:integration`, `test:nightly:contracts`, `metrics:collect` |
 | security | `security:routes`, `security:scan` |
 | build | `build:docker` |
 | deploy-staging | `deploy:staging` |
-| test-staging | `test:e2e:staging`, `smoke:staging` |
+| test-staging | `test:e2e:nightly:tiles`, `smoke:staging` |
 | deploy | `deploy:production` |
 | smoke | `smoke:production`, `metrics:update-docs` |
 | rollback | `rollback:production` (manual) |
 
 ```
 Schedule (SCHEDULED_DEPLOY=true) oder FORCE_DEPLOY=true auf main:
-  deploy:staging → test:e2e:staging → smoke:staging → deploy:production → smoke:production
+  deploy:staging → test:e2e:nightly:tiles → smoke:staging → deploy:production → smoke:production
 
 Wichtige Guards:
 - `deploy:production` laeuft nur nach erfolgreichen Staging-Tests.
@@ -325,6 +325,18 @@ bash scripts/ci/manual_bluegreen_deploy.sh switch
 ## Tests - PFLICHT!
 
 Jede neue Komponente/Service MUSS Tests haben.
+
+### Home Tile Change Policy (verbindlich)
+
+Wenn eine Home-Kachel hinzugefügt, entfernt oder geändert wird, sind diese Schritte Pflicht:
+
+1. `llars-frontend/src/config/home_tiles.contract.json` aktualisieren.
+2. Gleichnamigen Testtitel in `llars-frontend/e2e/nightly/tile-regression.spec.js` ergänzen/anpassen.
+3. Cross-Feature-Flows in `llars-frontend/e2e/nightly/nightly_workflows.contract.json` und `llars-frontend/e2e/nightly/workflows.spec.js` pflegen.
+4. Matrix-Doku in `docs/testing/nightly/NIGHTLY_TILE_MATRIX.md` aktualisieren.
+5. Coverage-Gate lokal ausführen: `python3 scripts/testing/validate_nightly_coverage.py`.
+
+Ohne diese Schritte darf nicht gemerged oder deployed werden.
 
 ```bash
 # Backend
@@ -420,6 +432,12 @@ vi.mock('vue-router', () => ({ useRouter: () => ({ push: vi.fn() }) }))
 2. **Reproduziere lokal** - `npm run e2e:chromium -- --workers=1`
 3. **Fix Code ODER Test** - Je nachdem was falsch ist
 4. **Verifiziere Pipeline** - Commit, Push, Monitor
+
+### CI/CD Event Logging
+
+- Nightly CI/CD-Ereignisse werden mit Severity `ci_cd` im System Monitor erfasst.
+- Event-Endpoint: `POST /api/admin/system/events/ci-cd` (System API Key via `X-API-Key`).
+- Logging-Skript: `scripts/ci/log_ci_event.sh`.
 
 ---
 

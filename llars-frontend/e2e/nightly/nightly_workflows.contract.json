@@ -1,0 +1,36 @@
+{
+  "version": "2026-03-05",
+  "description": "Nightly end-to-end workflows that cover cross-tile and cross-role interactions.",
+  "workflows": [
+    {
+      "name": "Szenario Wizard",
+      "owner_role": "researcher",
+      "dependencies": ["Batch Generation", "Scenario Manager"],
+      "critical": true
+    },
+    {
+      "name": "Prompt Engineering Collaboration",
+      "owner_role": "researcher",
+      "dependencies": ["Prompt Engineering"],
+      "critical": true
+    },
+    {
+      "name": "Latex Collab Resizer",
+      "owner_role": "researcher",
+      "dependencies": ["Latex Collab"],
+      "critical": true
+    },
+    {
+      "name": "Scenario Manager Role Assignment",
+      "owner_role": "admin",
+      "dependencies": ["Scenario Manager", "Evaluation"],
+      "critical": true
+    },
+    {
+      "name": "Conference Manager Access Request",
+      "owner_role": "researcher",
+      "dependencies": ["Conference Manager"],
+      "critical": false
+    }
+  ]
+}

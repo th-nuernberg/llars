@@ -9,7 +9,7 @@
 # Nightly Schedule 02:00 CET (or FORCE_DEPLOY):
 #   deploy:staging (Port 55080)
 #     → wait:staging-health
-#     → test:e2e:staging (Playwright in container)
+#     → test:e2e:nightly:tiles (Tile + Workflow Playwright suite)
 #     → smoke:staging (Evaluation + Prompt Eng pipeline)
 #     → deploy:production
 #     → smoke:production
@@ -21,7 +21,7 @@
 #   3. security       - Route protection & dependency audit
 #   4. build          - Docker images
 #   5. deploy-staging - Blue-Green staging deployment
-#   6. test-staging   - E2E & Smoke tests against staging
+#   6. test-staging   - Nightly E2E & Smoke tests against staging
 #   7. deploy         - Production deployment
 #   8. smoke          - Production smoke tests
 #   9. rollback       - Emergency rollback
@@ -109,6 +109,7 @@ cache:
 .ci_rules:
   rules:
     - *test_only_skip
+    - if: $CI_PIPELINE_SOURCE == "push"
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $CI_PIPELINE_SOURCE == "schedule" && $SCHEDULED_DEPLOY == "true"
     - if: $FORCE_DEPLOY == "true" && $CI_COMMIT_BRANCH == "main"
@@ -187,6 +188,7 @@ test:unit:backend:
     - if: '$UNIT_BACKEND_ONLY'
     - if: '$UNIT_FRONTEND_ONLY || $INTEGRATION_ONLY'
       when: never
+    - if: $CI_PIPELINE_SOURCE == "push"
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $CI_PIPELINE_SOURCE == "schedule" && $SCHEDULED_DEPLOY == "true"
     - if: $FORCE_DEPLOY == "true" && $CI_COMMIT_BRANCH == "main"
@@ -210,6 +212,7 @@ test:unit:frontend:
     - if: '$UNIT_FRONTEND_ONLY'
     - if: '$UNIT_BACKEND_ONLY || $INTEGRATION_ONLY'
       when: never
+    - if: $CI_PIPELINE_SOURCE == "push"
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $CI_PIPELINE_SOURCE == "schedule" && $SCHEDULED_DEPLOY == "true"
     - if: $FORCE_DEPLOY == "true" && $CI_COMMIT_BRANCH == "main"
@@ -244,12 +247,21 @@ test:integration:
     - if: '$INTEGRATION_ONLY'
     - if: '$UNIT_BACKEND_ONLY || $UNIT_FRONTEND_ONLY'
       when: never
+    - if: $CI_PIPELINE_SOURCE == "push"
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $CI_PIPELINE_SOURCE == "schedule" && $SCHEDULED_DEPLOY == "true"
     - if: $FORCE_DEPLOY == "true" && $CI_COMMIT_BRANCH == "main"
   needs:
     - job: test:unit:backend
       optional: true
+
+test:nightly:contracts:
+  stage: test
+  image: python:3.11-slim
+  extends:
+    - .ci_rules
+  script:
+    - python3 scripts/testing/validate_nightly_coverage.py
 
 # =============================================================================
 # STAGE 3: SECURITY
@@ -323,8 +335,8 @@ deploy:staging:
 # STAGE 6: TEST STAGING (E2E + Smoke in Container)
 # =============================================================================
 
-# E2E Tests against staging (Playwright in smoke-test container)
-test:e2e:staging:
+# E2E Tests against staging (Nightly tile + workflow suite in smoke-test container)
+test:e2e:nightly:tiles:
   stage: test-staging
   tags:
     - shell
@@ -334,29 +346,47 @@ test:e2e:staging:
     E2E_ADMIN_USER: "test_admin"
     E2E_RESEARCHER_USER: "test_researcher"
     E2E_EVALUATOR_USER: "test_evaluator"
+    E2E_CHATBOT_MANAGER_USER: "test_chatbot_manager"
+    E2E_BOOTSTRAP_TEST_USERS: "true"
+    E2E_KEEP_TEST_USERS: "false"
   script:
     - cd /var/llars
     - mkdir -p "$CI_PROJECT_DIR/e2e-artifacts"
     # Load server .env for passwords
     - export E2E_TEST_PASSWORD=$(grep '^LLARS_ADMIN_PASSWORD=' .env | cut -d= -f2- || echo "admin123")
+    - export SYSTEM_ADMIN_API_KEY=$(grep '^SYSTEM_ADMIN_API_KEY=' .env | cut -d= -f2-)
+    - bash scripts/ci/log_ci_event.sh "ci_cd.nightly.e2e.start" "Nightly E2E tile/workflow suite started"
     - echo "Nightly E2E tag: ${E2E_RUN_TAG}"
-    - echo "Nightly users: admin=${E2E_ADMIN_USER}, researcher=${E2E_RESEARCHER_USER}, evaluator=${E2E_EVALUATOR_USER}"
+    - echo "Nightly users: admin=${E2E_ADMIN_USER}, researcher=${E2E_RESEARCHER_USER}, evaluator=${E2E_EVALUATOR_USER}, chatbot_manager=${E2E_CHATBOT_MANAGER_USER}"
     # Build smoke-test container (with Playwright + E2E tests)
     - docker compose --profile testing build smoke-test-service
+    # Validate tile/workflow contracts before UI execution
+    - python3 scripts/testing/validate_nightly_coverage.py
     # Run E2E tests against staging (localhost:55080)
     - |
       set -o pipefail
       docker compose --profile testing run --rm --entrypoint "" \
         -e PLAYWRIGHT_BASE_URL=http://localhost:55080 \
         -e E2E_TEST_PASSWORD="${E2E_TEST_PASSWORD}" \
+        -e SYSTEM_ADMIN_API_KEY="${SYSTEM_ADMIN_API_KEY}" \
         -e E2E_RUN_TAG="${E2E_RUN_TAG}" \
         -e E2E_ADMIN_USER="${E2E_ADMIN_USER}" \
         -e E2E_RESEARCHER_USER="${E2E_RESEARCHER_USER}" \
         -e E2E_EVALUATOR_USER="${E2E_EVALUATOR_USER}" \
+        -e E2E_CHATBOT_MANAGER_USER="${E2E_CHATBOT_MANAGER_USER}" \
+        -e E2E_BOOTSTRAP_TEST_USERS="${E2E_BOOTSTRAP_TEST_USERS}" \
+        -e E2E_KEEP_TEST_USERS="${E2E_KEEP_TEST_USERS}" \
         -e NODE_TLS_REJECT_UNAUTHORIZED=0 \
         smoke-test-service \
-        bash -c "cd /tests/e2e && npx playwright test --project=chromium --workers=1" \
+        bash -c "cd /tests/e2e && npx playwright test --project=chromium --workers=1 nightly/tile-regression.spec.js nightly/workflows.spec.js" \
         2>&1 | tee "$CI_PROJECT_DIR/e2e-artifacts/playwright.log"
+  after_script:
+    - |
+      if [ "$CI_JOB_STATUS" = "success" ]; then
+        bash scripts/ci/log_ci_event.sh "ci_cd.nightly.e2e.success" "Nightly E2E tile/workflow suite passed"
+      else
+        bash scripts/ci/log_ci_event.sh "ci_cd.nightly.e2e.failed" "Nightly E2E tile/workflow suite failed" "error"
+      fi
   artifacts:
     when: always
     paths:
@@ -366,6 +396,7 @@ test:e2e:staging:
     - .deploy_rules
   needs:
     - deploy:staging
+    - test:nightly:contracts
 
 # Smoke Tests against staging (Evaluation + Prompt Engineering pipeline)
 smoke:staging:
@@ -389,7 +420,7 @@ smoke:staging:
     - .deploy_rules
   needs:
     - deploy:staging
-    - test:e2e:staging
+    - test:e2e:nightly:tiles
 
 # =============================================================================
 # STAGE 7: DEPLOY PRODUCTION
@@ -414,7 +445,7 @@ deploy:production:
   extends:
     - .deploy_rules
   needs:
-    - test:e2e:staging
+    - test:e2e:nightly:tiles
     - smoke:staging
 
 # =============================================================================

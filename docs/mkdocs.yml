@@ -44,6 +44,7 @@ nav:
       - LaTeX Collaboration: guides/latex-collaboration.md
       - Admin Dashboard: guides/admin-dashboard.md
       - LLM Provider Settings: guides/llm-provider-settings.md
+      - Nightly Test Activities: guides/nightly-test-activities.md
       - Schnellstart: guides/quick-start.md
       - Authentik Setup: guides/authentik-setup.md
       - Login Anleitung: guides/login-anleitung.md
@@ -162,6 +163,7 @@ plugins:
           Installation: Installation
           Übersicht: Overview
           LLM Provider Settings: LLM Provider Settings
+          Nightly Test Activities: Nightly Test Activities
           Projektstatus: Project State
           Berechtigungssystem: Permission System
           Szenario Wizard: Scenario Wizard

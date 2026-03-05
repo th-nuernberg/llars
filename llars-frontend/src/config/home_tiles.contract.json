@@ -1,0 +1,121 @@
+{
+  "version": "2026-03-05",
+  "description": "Source-of-truth contract for Home tiles, their routes, and expected role visibility.",
+  "roles_order": ["evaluator", "researcher", "chatbot_manager", "admin"],
+  "tiles": [
+    {
+      "name": "Prompt Engineering",
+      "route": "/PromptEngineering",
+      "allowed_roles": ["evaluator", "researcher", "chatbot_manager", "admin"],
+      "category": "research"
+    },
+    {
+      "name": "Batch Generation",
+      "route": "/generation",
+      "allowed_roles": ["evaluator", "researcher", "chatbot_manager", "admin"],
+      "category": "research"
+    },
+    {
+      "name": "Evaluation",
+      "route": "/evaluation",
+      "allowed_roles": ["evaluator", "researcher", "admin"],
+      "category": "rating"
+    },
+    {
+      "name": "Scenario Manager",
+      "route": "/scenarios",
+      "allowed_roles": ["evaluator", "researcher", "admin"],
+      "category": "rating"
+    },
+    {
+      "name": "Chatbot",
+      "route": "/chat",
+      "allowed_roles": ["evaluator", "researcher", "chatbot_manager", "admin"],
+      "category": "ai"
+    },
+    {
+      "name": "Video",
+      "route": "/video",
+      "allowed_roles": ["evaluator", "researcher", "admin"],
+      "category": "research"
+    },
+    {
+      "name": "Markdown Collab",
+      "route": "/MarkdownCollab",
+      "allowed_roles": ["evaluator", "researcher", "chatbot_manager", "admin"],
+      "category": "research"
+    },
+    {
+      "name": "Latex Collab",
+      "route": "/LatexCollab",
+      "allowed_roles": ["evaluator", "researcher", "chatbot_manager", "admin"],
+      "category": "research"
+    },
+    {
+      "name": "Chatbot Arena",
+      "route": "/judge",
+      "allowed_roles": ["admin"],
+      "category": "ai"
+    },
+    {
+      "name": "Anonymization",
+      "route": "/Anonymize",
+      "allowed_roles": ["evaluator", "researcher", "admin"],
+      "category": "ai"
+    },
+    {
+      "name": "Anonymisierungs-Pipeline",
+      "route": "/anonymization",
+      "allowed_roles": ["researcher", "admin"],
+      "category": "research"
+    },
+    {
+      "name": "KAIMO",
+      "route": "/kaimo",
+      "allowed_roles": ["evaluator", "researcher", "admin"],
+      "category": "research"
+    },
+    {
+      "name": "OnCoCo",
+      "route": "/oncoco",
+      "allowed_roles": ["admin"],
+      "category": "ai"
+    },
+    {
+      "name": "Admin Dashboard",
+      "route": "/admin?tab=overview",
+      "allowed_roles": ["admin"],
+      "category": "admin"
+    },
+    {
+      "name": "Chatbot Admin",
+      "route": "/chatbot-manager",
+      "allowed_roles": ["chatbot_manager", "admin"],
+      "category": "ai"
+    },
+    {
+      "name": "RAG Admin",
+      "route": "/chatbot-manager?tab=rag",
+      "allowed_roles": ["chatbot_manager", "admin"],
+      "category": "ai"
+    },
+    {
+      "name": "Conference Manager",
+      "route": "/conferences",
+      "allowed_roles": ["evaluator", "researcher", "admin"],
+      "category": "research"
+    },
+    {
+      "name": "Pipeline",
+      "route": "/pipeline",
+      "allowed_roles": ["admin"],
+      "category": "research"
+    },
+    {
+      "name": "User Settings",
+      "route": "/settings",
+      "allowed_roles": ["evaluator", "researcher", "chatbot_manager", "admin"],
+      "category": "all"
+    }
+  ]
+}

@@ -760,7 +760,9 @@ border-radius: 6px 2px 6px 2px;    /* Tags */
 
 ---
 
-## Git Commits
+## Git Commits & Deployment
+
+### Commit Message Format
 
 ```bash
 git commit -m "$(cat <<'EOF'
@@ -774,6 +776,37 @@ EOF
 
 **Types:** feat | fix | docs | refactor | chore
 **Scopes:** frontend | backend | auth | judge | rag | crawler | db
+
+### Deployment via Commit Tags
+
+| Commit-Tag | Lint | Tests | E2E | Staging | Smoke | Production | Dauer | Wann? |
+|---|---|---|---|---|---|---|---|---|
+| (keiner) | ja | ja | nein | nein | nein | nein | ~5 min | Nachts um 02:00 via Schedule |
+| `[deploy]` | ja | ja | ja | ja | ja | ja | ~20 min | Sofort bei Push - volle Pipeline |
+| `[hotfix]` | nein | nein | nein | ja | ja | ja | ~5 min | Sofort bei Push - Tests ueberspringen |
+
+**Normaler Push (empfohlen):**
+```bash
+git commit -m "feat(frontend): neues Feature"
+git push
+# → Lint + Tests laufen, kein Deploy. Nachts um 02:00 deployed der Schedule.
+```
+
+**Sofort deployen (dringend):**
+```bash
+git commit -m "feat(frontend): wichtiges Feature [deploy]"
+git push
+# → Volle Pipeline JETZT, deployed nach ~20 min wenn alles gruen
+```
+
+**Hotfix (Production brennt):**
+```bash
+git commit -m "fix: kritischer Auth-Bug [hotfix]"
+git push
+# → Ueberspringt Tests, deployed in ~5 min
+```
+
+**Schedule:** Mo-Fr 02:00 CET via GitLab Pipeline Schedule (`SCHEDULED_DEPLOY=true`)
 
 ---
 

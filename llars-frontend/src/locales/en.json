@@ -194,6 +194,16 @@
       "neutral": "Neutral"
     }
   },
+  "chatbotManagerPage": {
+    "title": "Chatbot Workspace",
+    "subtitle": "Create & Manage",
+    "homeLink": "Go to home",
+    "nav": {
+      "chatbots": "My Chatbots",
+      "rag": "RAG Documents",
+      "crawler": "Web Crawler"
+    }
+  },
   "adminDashboard": {
     "title": "Admin",
     "subtitle": "Dashboard",
@@ -2577,12 +2587,12 @@
         "description": "System overview and administration"
       },
       "chatbotAdmin": {
-        "title": "Chatbot Management",
+        "title": "Chatbot Workspace",
         "description": "Create, configure, and share chatbots"
       },
       "ragAdmin": {
-        "title": "RAG Management",
-        "description": "Manage and upload documents for the RAG pipeline"
+        "title": "RAG Documents",
+        "description": "Manage and upload documents and data sources"
       },
       "pipeline": {
         "title": "Pipeline",
@@ -5753,7 +5763,11 @@
       "personal": "Personal",
       "apikeys": "API Keys",
       "providers": "LLM Providers",
-      "referrals": "Invitations"
+      "referrals": "Invitations",
+      "admin": "Admin Dashboard"
+    },
+    "admin": {
+      "description": "Quick access to the Admin Dashboard"
     },
     "apiKeys": {
       "description": "Create and manage API keys for programmatic access",
@@ -6396,6 +6410,12 @@
         "unlock": "Unlock",
         "delete": "Delete"
       },
+      "consoleLogs": {
+        "enable": "Enable console logs",
+        "disable": "Disable console logs",
+        "activeLabel": "Console logs active",
+        "activeNotice": "Console logging is enabled for this account. An admin has turned this on for debugging purposes."
+      },
       "empty": {
         "noResults": "No users found",
         "searchHint": "Search for a user or load all users with roles"
@@ -6967,7 +6987,9 @@
       "notification": "Notification",
       "conferencePeriod": "Conference Period",
       "todayMarker": "Current Date",
-      "noEvents": "No upcoming events"
+      "noEvents": "No upcoming events",
+      "oneDay": "1 day",
+      "nDays": "{n} days"
     },
     "wizard": {
       "title": "AI Conference Lookup",
@@ -7112,7 +7134,18 @@
     },
     "admin": {
       "title": "Manage Research Groups",
-      "noGroups": "No groups found"
+      "noGroups": "No groups found",
+      "stats": {
+        "conferences": "Conferences",
+        "papers": "Papers",
+        "members": "Members"
+      },
+      "members": {
+        "add": "Add Member",
+        "noMembers": "No members in this group",
+        "changeRole": "Change role",
+        "removeMember": "Remove member"
+      }
     }
   }
 }

@@ -113,6 +113,19 @@
     </v-app-bar>
 
     <v-main>
+      <!-- Console logging notification banner -->
+      <v-banner
+        v-if="isAuthenticated && consoleLogsEnabled"
+        icon="mdi-console"
+        color="warning"
+        density="compact"
+        lines="one"
+        class="console-log-banner"
+      >
+        <template v-slot:text>
+          {{ $t('admin.users.consoleLogs.activeNotice') }}
+        </template>
+      </v-banner>
       <router-view :key="routerViewKey"></router-view>
     </v-main>
 
@@ -237,6 +250,7 @@ const routerViewKey = computed(() => {
 })
 
 const isAuthenticated = computed(() => auth.isAuthenticated.value);
+const consoleLogsEnabled = computed(() => auth.consoleLogsEnabled.value);
 const username = computed(() => {
   const fromToken =
     auth.tokenParsed.value?.preferred_username ||
@@ -354,7 +368,13 @@ function logout() {
     }
   }
 
-  // Logout via useAuth (löscht sessionStorage: auth_token, auth_refreshToken, auth_idToken)
+  // Navigate to login FIRST to prevent flash of intermediate pages.
+  // router.replace is synchronous for the Vue render cycle, so the login
+  // component will render instead of the current page re-rendering with
+  // cleared auth state.
+  router.replace('/login');
+
+  // Now clear auth state (Vue is already rendering /login)
   auth.logout();
   permissions.clearPermissions();
 
@@ -381,9 +401,6 @@ function logout() {
   } catch (e) {
     // ignore (e.g., Safari private mode / blocked storage)
   }
-
-  // Use full page navigation so browser password managers re-run autofill heuristics.
-  window.location.replace('/login');
 }
 
 function containsLocalStorageItemWithString(string) {
@@ -696,5 +713,9 @@ function openSettings() {
 .llars-footer.is-mobile :deep(.v-row) {
   flex-wrap: nowrap;
   min-height: auto;
+}
+
+.console-log-banner {
+  border-bottom: 2px solid rgba(var(--v-theme-warning), 0.3);
 }
 </style>

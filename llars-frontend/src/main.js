@@ -35,6 +35,8 @@ import LAvatar from '@/components/common/LAvatar.vue'
 import LChart from '@/components/common/LChart.vue'
 import LGauge from '@/components/common/LGauge.vue'
 import LThemeToggle from '@/components/common/LThemeToggle.vue'
+import LViewToggle from '@/components/common/LViewToggle.vue'
+import LListTable from '@/components/common/LListTable.vue'
 import LLanguageToggle from '@/components/common/LLanguageToggle.vue'
 import LEvaluationLayout from '@/components/common/LEvaluationLayout.vue'
 import LEvaluationStatus from '@/components/common/LEvaluationStatus.vue'
@@ -53,9 +55,13 @@ import { initAppTheme } from '@/composables/useAppTheme'
 import { initLanguage } from '@/composables/useLanguage'
 import i18n from '@/i18n'
 import { logI18n } from '@/utils/logI18n'
+import { installConsoleController } from '@/utils/consoleController'
 
 // Composables
 import { createApp } from 'vue'
+
+// Suppress console output in production (before anything else logs)
+installConsoleController()
 
 const app = createApp(App)
 const CHUNK_RELOAD_STORAGE_KEY = 'llars:chunk-reload-at'
@@ -132,6 +138,8 @@ app.component('LAvatar', LAvatar)
 app.component('LChart', LChart)
 app.component('LGauge', LGauge)
 app.component('LThemeToggle', LThemeToggle)
+app.component('LViewToggle', LViewToggle)
+app.component('LListTable', LListTable)
 app.component('LLanguageToggle', LLanguageToggle)
 app.component('LEvaluationLayout', LEvaluationLayout)
 app.component('LEvaluationStatus', LEvaluationStatus)

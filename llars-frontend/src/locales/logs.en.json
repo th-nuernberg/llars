@@ -334,7 +334,8 @@
       "toggleUserLockFailed": "Error toggling user lock:",
       "deleteUserFailed": "Error deleting user:",
       "assignRoleFailed": "Error assigning role:",
-      "unassignRoleFailed": "Error unassigning role:"
+      "unassignRoleFailed": "Error unassigning role:",
+      "toggleConsoleLogsFailed": "Error toggling console logs:"
     }
   },
   "judge": {

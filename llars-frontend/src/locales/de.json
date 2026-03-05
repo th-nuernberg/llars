@@ -194,6 +194,16 @@
       "neutral": "Neutral"
     }
   },
+  "chatbotManagerPage": {
+    "title": "Chatbot Workspace",
+    "subtitle": "Erstellen & Verwalten",
+    "homeLink": "Zur Startseite",
+    "nav": {
+      "chatbots": "Meine Chatbots",
+      "rag": "RAG Dokumente",
+      "crawler": "Web Crawler"
+    }
+  },
   "adminDashboard": {
     "title": "Admin",
     "subtitle": "Dashboard",
@@ -2577,12 +2587,12 @@
         "description": "System-Übersicht und Administration"
       },
       "chatbotAdmin": {
-        "title": "Chatbot Verwaltung",
+        "title": "Chatbot Workspace",
         "description": "Chatbots erstellen, konfigurieren und teilen"
       },
       "ragAdmin": {
-        "title": "RAG Verwaltung",
-        "description": "Dokumente für die RAG-Pipeline verwalten und hochladen"
+        "title": "RAG Dokumente",
+        "description": "Dokumente und Datenquellen verwalten und hochladen"
       },
       "pipeline": {
         "title": "Pipeline",
@@ -5595,7 +5605,11 @@
       "personal": "Persönlich",
       "apikeys": "API-Schlüssel",
       "providers": "LLM-Provider",
-      "referrals": "Einladungen"
+      "referrals": "Einladungen",
+      "admin": "Admin Dashboard"
+    },
+    "admin": {
+      "description": "Schnellzugriff auf das Admin Dashboard"
     },
     "apiKeys": {
       "description": "Erstellen und verwalten Sie API-Schlüssel für den programmatischen Zugriff",
@@ -6238,6 +6252,12 @@
         "unlock": "Entsperren",
         "delete": "Löschen"
       },
+      "consoleLogs": {
+        "enable": "Console-Logs aktivieren",
+        "disable": "Console-Logs deaktivieren",
+        "activeLabel": "Console-Logs aktiv",
+        "activeNotice": "Console-Logging ist fuer diesen Account aktiviert. Ein Admin hat dies zu Debug-Zwecken eingeschaltet."
+      },
       "empty": {
         "noResults": "Keine Benutzer gefunden",
         "searchHint": "Suchen Sie nach einem Benutzer oder laden Sie alle Benutzer mit Rollen"
@@ -6809,7 +6829,9 @@
       "notification": "Benachrichtigung",
       "conferencePeriod": "Konferenzzeitraum",
       "todayMarker": "Aktuelles Datum",
-      "noEvents": "Keine anstehenden Events"
+      "noEvents": "Keine anstehenden Events",
+      "oneDay": "1 Tag",
+      "nDays": "{n} Tage"
     },
     "wizard": {
       "title": "KI-Konferenzsuche",
@@ -6954,7 +6976,18 @@
     },
     "admin": {
       "title": "Forschungsgruppen verwalten",
-      "noGroups": "Keine Gruppen vorhanden"
+      "noGroups": "Keine Gruppen vorhanden",
+      "stats": {
+        "conferences": "Konferenzen",
+        "papers": "Paper",
+        "members": "Mitglieder"
+      },
+      "members": {
+        "add": "Mitglied hinzufügen",
+        "noMembers": "Keine Mitglieder in dieser Gruppe",
+        "changeRole": "Rolle ändern",
+        "removeMember": "Mitglied entfernen"
+      }
     }
   }
 }

@@ -30,6 +30,7 @@ from services.user_profile_service import build_avatar_url, is_valid_collab_colo
 
 
 def _serialize_user(user: User, roles: List[dict]) -> Dict[str, Any]:
+    settings = user.settings_json or {}
     return {
         "id": user.id,
         "username": user.username,
@@ -39,6 +40,7 @@ def _serialize_user(user: User, roles: List[dict]) -> Dict[str, Any]:
         "avatar_seed": user.get_avatar_seed() if hasattr(user, "get_avatar_seed") else None,
         "avatar_url": build_avatar_url(user),
         "collab_color": user.collab_color,
+        "console_logs_enabled": bool(settings.get("console_logs_enabled", False)),
         "roles": roles or [],
     }
 
@@ -260,6 +262,48 @@ def update_admin_user(username: str):
                 message=f"User '{username}' {'unlocked' if new_is_active else 'locked'} by '{acting_username}'",
                 details={"is_active": new_is_active},
             )
+    except Exception:
+        pass
+
+    roles_by_username = _get_roles_by_username([username])
+    payload = _serialize_user(user, roles_by_username.get(username, []))
+    return jsonify({"success": True, "user": payload, "data": payload}), 200
+
+
+@data_bp.route("/admin/users/<username>/console-logs", methods=["PATCH"])
+@require_permission("admin:users:manage")
+@handle_api_errors(logger_name="admin_users")
+def toggle_console_logs(username: str):
+    """Toggle console_logs_enabled for a user (stored in settings_json)."""
+    user = User.query.filter_by(username=username).first()
+    if not user or user.deleted_at is not None:
+        raise NotFoundError(f"User '{username}' not found")
+
+    data = request.get_json() or {}
+    enabled = bool(data.get("enabled", False))
+
+    settings = user.settings_json or {}
+    settings["console_logs_enabled"] = enabled
+    user.settings_json = settings
+    # SQLAlchemy may not detect in-place dict mutation
+    from sqlalchemy.orm.attributes import flag_modified
+    flag_modified(user, "settings_json")
+
+    db.session.commit()
+
+    acting_username = AuthUtils.extract_username_without_validation() or "admin"
+    try:
+        from services.system_event_service import SystemEventService
+
+        SystemEventService.log_event(
+            event_type="admin.console_logs_toggled",
+            severity="info",
+            username=acting_username,
+            entity_type="user",
+            entity_id=username,
+            message=f"Console logs {'enabled' if enabled else 'disabled'} for '{username}' by '{acting_username}'",
+            details={"console_logs_enabled": enabled},
+        )
     except Exception:
         pass
 

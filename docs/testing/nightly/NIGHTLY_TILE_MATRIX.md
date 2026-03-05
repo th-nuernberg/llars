@@ -46,10 +46,19 @@ Diese Datei ist die operative Referenz für die Nightly-Kacheltests.
 | Workflow-Testtitel | Zweck | Kritisch |
 |---|---|---|
 | Szenario Wizard | Übergang aus Batch Generation Richtung Szenariofluss | Ja |
-| Prompt Engineering Collaboration | Prompt-Testen, Import/Export, Sharing-Sichtbarkeit | Ja |
+| Prompt Engineering Collaboration | Prompt-Testen, Import/Export, Sharing + Cross-User-Sichtbarkeit | Ja |
 | Latex Collab Resizer | Drag-Resize der Pane-Aufteilung | Ja |
-| Scenario Manager Role Assignment | Rollen-/Einladungslogik in Szenarien | Ja |
-| Conference Manager Access Request | Access-Request-Fluss für Forschungsgruppen | Nein |
+| Scenario Manager Role Assignment | Rollen-/Einladungslogik inkl. Evaluator-Annahme und Evaluation-Sprung | Ja |
+| Conference Manager Access Request | Access-Request senden, sichtbar machen, genehmigen, Mitgliedschaft prüfen | Nein |
+
+## Cross-Tile Interaktionen (Nightly)
+
+| Interaktion | Rollen | Nightly Workflow |
+|---|---|---|
+| Prompt teilen -> anderer User sieht Prompt | `test_researcher` -> `test_evaluator` | Prompt Engineering Collaboration |
+| Szenario einladen -> Einladung annehmen -> Evaluation öffnen | `test_admin` -> `test_evaluator` | Scenario Manager Role Assignment |
+| Forschungsgruppe anfragen -> Request sichten -> genehmigen -> Mitglied prüfen | `test_researcher` -> `test_admin` | Conference Manager Access Request |
+| Batch Generation -> Szenario Wizard Handoff | `test_researcher` | Szenario Wizard |
 
 ## Activity-Katalog (Pflicht-IDs)
 
@@ -60,14 +69,18 @@ Diese Datei ist die operative Referenz für die Nightly-Kacheltests.
 | PE-EXPORT-001 | Export-Button im Prompt Engineering klicken | Datei wird zum Download angeboten |
 | PE-TEST-001 | Test-Button im Prompt Engineering klicken | Antwort/Resultat wird angezeigt |
 | PE-IMPORT-001 | Import aus JSON | Importierter Block ist sichtbar |
-| PE-SHARE-001 / PE-UNSHARE-001 | User hinzufügen / entfernen | Share-Liste aktualisiert sich |
+| PE-SHARE-001 / PE-SHARED-VISIBLE-001 / PE-UNSHARE-001 | User hinzufügen / als anderer User sehen / entfernen | Share-Liste und Cross-User-Sichtbarkeit funktionieren |
 | BG-WIZ-ENTRY-001 | Batch-Wizard öffnen | Wizard-UI ist stabil erreichbar |
 | BG-WIZ-HANDOFF-001 | Übergang Richtung Szenario Wizard | Handoff-Aktion/Detailflow ist erreichbar |
 | SCN-ASSIGN-INVITE-001 | Evaluator/Viewer zu Szenario hinzufügen | Zuweisung wird angezeigt |
 | SCN-ASSIGN-ROLE-001 | Rolle ändern | Rollenwechsel wird übernommen |
+| SCN-ASSIGN-VISIBLE-001 | Einladung als Evaluator sehen und annehmen | Invite-Card sichtbar und annehmbar |
+| SCN-ASSIGN-EVAL-001 | Als Evaluator in Evaluation springen | Evaluation-relevante Route erreichbar |
 | LTX-RESIZE-001 | Divider im LaTeX-Workspace ziehen | Pane-Verhältnis ändert sich |
 | CONF-REQ-SUBMIT-001 | Zugang zu Forschungsgruppe anfragen | Anfrage wird als gesendet angezeigt |
 | CONF-REQ-VISIBLE-001 | Anfrage bei Gruppenmitglied prüfen | Anfrage ist in Members sichtbar |
+| CONF-REQ-APPROVE-001 | Anfrage genehmigen | Pending-Anfrage verschwindet |
+| CONF-REQ-MEMBER-001 | Antragsteller als Mitglied prüfen | User ist in Mitgliederliste sichtbar |
 
 ## Änderungsvorgehen bei neuer/angepasster Kachel
 

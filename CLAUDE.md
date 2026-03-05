@@ -334,8 +334,9 @@ Wenn eine Home-Kachel hinzugefügt, entfernt oder geändert wird, sind diese Sch
 1. `llars-frontend/src/config/home_tiles.contract.json` aktualisieren.
 2. Gleichnamigen Testtitel in `llars-frontend/e2e/nightly/tile-regression.spec.js` ergänzen/anpassen.
 3. Cross-Feature-Flows in `llars-frontend/e2e/nightly/nightly_workflows.contract.json` und `llars-frontend/e2e/nightly/workflows.spec.js` pflegen.
-4. Matrix-Doku in `docs/testing/nightly/NIGHTLY_TILE_MATRIX.md` aktualisieren.
-5. Coverage-Gate lokal ausführen: `python3 scripts/testing/validate_nightly_coverage.py`.
+4. Activity-IDs in `llars-frontend/e2e/nightly/nightly_activities.contract.json` pflegen (inkl. Cross-Role-Flows).
+5. Matrix-Doku in `docs/testing/nightly/NIGHTLY_TILE_MATRIX.md` und Aktivitäts-Guide in `docs/docs/guides/nightly-test-activities.md` aktualisieren.
+6. Coverage-Gate lokal ausführen: `python3 scripts/testing/validate_nightly_coverage.py`.
 
 Ohne diese Schritte darf nicht gemerged oder deployed werden.
 

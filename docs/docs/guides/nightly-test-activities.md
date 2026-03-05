@@ -4,9 +4,9 @@ Diese Seite beschreibt die konkreten Aktivitäten, die im Nightly-Lauf automatis
 
 ## Ziel
 
-Vor jedem produktiven Umschalten der Blue-Green-Deploymentfarbe wird geprüft, dass zentrale Nutzerinteraktionen weiterhin funktionieren.
+Vor jedem produktiven Umschalten der Blue-Green-Deploymentfarbe wird geprüft, dass zentrale Nutzerinteraktionen sowie Cross-Role-Übergaben weiterhin funktionieren.
 
-## Kernaktivitäten
+## Kernaktivitäten (aktuell automatisiert)
 
 | Aktivität | Beschreibung | Ergebnis |
 |---|---|---|
@@ -14,11 +14,26 @@ Vor jedem produktiven Umschalten der Blue-Green-Deploymentfarbe wird geprüft, d
 | Safe Button Sweep | Nicht-destruktive Buttons auf Zielseite werden geklickt | UI bleibt stabil, keine 5xx |
 | Prompt Export/Import/Test | Prompt Engineering Kernaktionen | Download/Import/Test-Aktion vorhanden und klickbar |
 | Prompt Share/Unshare | Prompt für Testnutzer freigeben und entfernen | Kollaborationsliste aktualisiert sich |
+| Prompt Shared Visibility | Geteiltes Prompt als anderer User sichtbar/öffnbar | Cross-User Prompt-Flow ist stabil |
 | Batch -> Szenario Wizard | Übergang aus Batch Generation | Wizard/Scenario-Handoff erreichbar |
 | Scenario Role Assignment | Evaluator/Viewer/Role-Zuweisung | Assignment-Controls sichtbar |
+| Scenario Invite Accept + Eval | Einladung als Evaluator annehmen und in Evaluation springen | Rollenübergreifender Szenario-Flow funktioniert |
 | LaTeX Resizer Drag | Split-Pane-Resize im Workspace | Divider bewegt sich messbar |
-| Conference Access Request | Zugangsanfrage zur Forschungsgruppe | Request-UI vorhanden |
+| Conference Access Request | Zugangsanfrage zur Forschungsgruppe senden | Request-UI vorhanden |
+| Conference Request Approve | Request im Members-Bereich sichtbar und genehmigbar | Mitgliedschaftsfluss ist intakt |
 | Nightly Cleanup | Testdaten- und User-Bereinigung | Keine sichtbaren Nightly-Artefakte am Folgetag |
+
+## Kachel-Aktivitäten (Implementiert vs. Ausbau)
+
+| Kachel | Aktueller Nightly-Stand | Nächster Ausbau |
+|---|---|---|
+| Prompt Engineering | Voller Kernflow inkl. Share/Unshare + Cross-User Sichtbarkeit | Git-Commit und Multi-User-Bearbeitung weiter vertiefen |
+| Batch Generation | Wizard-Entry + Handoff abgesichert | Vollständiger Job-Run inkl. Ergebnisvalidierung |
+| Scenario Manager | Rollen-/Invite-Flow inkl. Evaluator-Annahme | Viewer/Assessor Sonderfälle + Thread-Zuweisungen |
+| Evaluation | Route/Grundfunktionen über Tile-Regression | Persistenz von Bewertungen pro Testdatensatz |
+| Latex Collab | Drag-Resizer + Basisnavigation abgesichert | Compile/Preview und Multi-User-Konfliktfälle |
+| Conference Manager | Request senden, Sichtbarkeit, Approve, Mitgliedschaft | Anfrageketten über mehrere Gruppenrollen |
+| Alle übrigen Kacheln | Rollen- und Sichtbarkeitsprüfung via Tile Regression | Kachel-spezifische Deep-Flows schrittweise ergänzen |
 
 ## Rollenabdeckung
 

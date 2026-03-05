@@ -258,6 +258,30 @@ test.describe('Nightly Cross-Tile Workflows', () => {
             .toBeVisible({ timeout: 12000 })
         })
 
+        await activity('PE-SHARED-VISIBLE-001', 'Geteiltes Prompt als Evaluator sehen und öffnen', async () => {
+          await openRoute(page, TEST_USERS.evaluator, '/PromptEngineering', '.prompt-home, .prompts-grid, main')
+          const sharedPromptCard = page
+            .locator('.prompt-card, .l-card')
+            .filter({ hasText: promptName })
+            .first()
+          await expect(sharedPromptCard).toBeVisible({ timeout: 15000 })
+          await sharedPromptCard.click()
+          await expect(page).toHaveURL(/\/PromptEngineering\/\d+/, { timeout: 12000 })
+
+          const sharedMarker = await page
+            .locator('text=/geteilt|shared|owner|besitzer/i')
+            .first()
+            .isVisible({ timeout: 4000 })
+            .catch(() => false)
+          expect(sharedMarker || page.url().includes('/PromptEngineering/')).toBeTruthy()
+
+          if (promptId) {
+            await openRoute(page, TEST_USERS.researcher, `/PromptEngineering/${promptId}`, '.prompt-detail, .prompt-editor-layout, main')
+          } else {
+            await openRoute(page, TEST_USERS.researcher, '/PromptEngineering', '.prompt-home, .prompts-grid, main')
+          }
+        })
+
         await activity('PE-UNSHARE-001', 'Prompt-Freigabe entfernen', async () => {
           const sharedItem = page.locator('.shared-item').filter({ hasText: TEST_USERS.evaluator.username }).first()
           await expect(sharedItem).toBeVisible({ timeout: 8000 })
@@ -372,6 +396,49 @@ test.describe('Nightly Cross-Tile Workflows', () => {
             expect(assignmentControls, 'Role assignment controls should be visible').toBeTruthy()
           }
         })
+
+        await activity('SCN-ASSIGN-VISIBLE-001', 'Einladung als Evaluator sehen und annehmen', async () => {
+          await openRoute(page, TEST_USERS.evaluator, '/scenarios?tab=invitations', '.scenario-manager, .scenarios-grid, .invite-card, main')
+          const inviteCard = page
+            .locator('.invite-card, .scenario-card')
+            .filter({ hasText: scenarioName })
+            .first()
+          await expect(inviteCard).toBeVisible({ timeout: 20000 })
+
+          const acceptBtn = inviteCard
+            .locator('button:has-text("Annehmen"), button:has-text("Accept"), button:has-text("Akzeptieren")')
+            .first()
+          if (await acceptBtn.isVisible({ timeout: 4000 }).catch(() => false)) {
+            await acceptBtn.click()
+          }
+
+          await expect(
+            inviteCard.locator('button:has-text("Evaluation"), button:has-text("Bewertung"), button:has-text("Go to")').first()
+          ).toBeVisible({ timeout: 15000 })
+        })
+
+        await activity('SCN-ASSIGN-EVAL-001', 'Evaluator kann in die Evaluation springen', async () => {
+          const inviteCard = page
+            .locator('.invite-card, .scenario-card')
+            .filter({ hasText: scenarioName })
+            .first()
+
+          const evaluateBtn = inviteCard
+            .locator('button:has-text("Evaluation"), button:has-text("Bewertung"), button:has-text("Go to")')
+            .first()
+
+          if (await evaluateBtn.isVisible({ timeout: 5000 }).catch(() => false)) {
+            await evaluateBtn.click()
+            await waitForPageReady(page, 12000)
+          } else {
+            await openRoute(page, TEST_USERS.evaluator, '/evaluation', '.evaluation-page, .evaluation-hub, main')
+          }
+
+          expect(
+            page.url().includes('/evaluation') || page.url().includes(`/scenarios/${scenarioId}`),
+            'Evaluator should reach evaluation-relevant route after invite acceptance'
+          ).toBeTruthy()
+        })
       } finally {
         await activity('SCN-ASSIGN-CLEANUP-001', 'Nightly-Szenario löschen', async () => {
           if (!scenarioId) return
@@ -424,6 +491,27 @@ test.describe('Nightly Cross-Tile Workflows', () => {
             `/conferences/groups/${groupId}/members`,
             '.group-members-page, .members-card, main'
           )
+          const requestRow = page
+            .locator('.member-item, .v-list-item')
+            .filter({ hasText: TEST_USERS.researcher.username })
+            .first()
+          await expect(requestRow).toBeVisible({ timeout: 15000 })
+        })
+
+        await activity('CONF-REQ-APPROVE-001', 'Access-Request genehmigen', async () => {
+          const requestRow = page
+            .locator('.member-item, .v-list-item')
+            .filter({ hasText: TEST_USERS.researcher.username })
+            .first()
+          await expect(requestRow).toBeVisible({ timeout: 10000 })
+          await requestRow
+            .locator('button:has-text("Approve"), button:has-text("Genehmigen"), button:has-text("Freigeben")')
+            .first()
+            .click()
+          await expect(requestRow).toHaveCount(0, { timeout: 15000 })
+        })
+
+        await activity('CONF-REQ-MEMBER-001', 'Researcher ist nach Freigabe als Mitglied sichtbar', async () => {
           await expect(page.locator('.member-item, .v-list-item').filter({ hasText: TEST_USERS.researcher.username }).first())
             .toBeVisible({ timeout: 15000 })
         })

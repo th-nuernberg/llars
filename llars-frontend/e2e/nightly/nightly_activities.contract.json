@@ -39,6 +39,12 @@
       "description": "Prompt für Test-Evaluator freigeben."
     },
     {
+      "id": "PE-SHARED-VISIBLE-001",
+      "test": "Prompt Engineering Collaboration",
+      "required": true,
+      "description": "Geteiltes Prompt als Test_Evaluator sehen und öffnen."
+    },
+    {
       "id": "PE-UNSHARE-001",
       "test": "Prompt Engineering Collaboration",
       "required": true,
@@ -87,6 +93,18 @@
       "description": "Rollenwechsel im Team-Tab durchführen."
     },
     {
+      "id": "SCN-ASSIGN-VISIBLE-001",
+      "test": "Scenario Manager Role Assignment",
+      "required": true,
+      "description": "Einladung als Test_Evaluator sehen und annehmen."
+    },
+    {
+      "id": "SCN-ASSIGN-EVAL-001",
+      "test": "Scenario Manager Role Assignment",
+      "required": true,
+      "description": "Test_Evaluator kann nach Annahme in die Evaluation wechseln."
+    },
+    {
       "id": "SCN-ASSIGN-CLEANUP-001",
       "test": "Scenario Manager Role Assignment",
       "required": true,
@@ -109,6 +127,18 @@
       "test": "Conference Manager Access Request",
       "required": true,
       "description": "Request im Members-Bereich sichtbar."
+    },
+    {
+      "id": "CONF-REQ-APPROVE-001",
+      "test": "Conference Manager Access Request",
+      "required": true,
+      "description": "Access-Request genehmigen."
+    },
+    {
+      "id": "CONF-REQ-MEMBER-001",
+      "test": "Conference Manager Access Request",
+      "required": true,
+      "description": "Requester ist nach Genehmigung als Mitglied sichtbar."
     },
     {
       "id": "CONF-REQ-CLEANUP-001",

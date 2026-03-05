@@ -27,6 +27,25 @@ Diese Dokumentation enthält alle Testanforderungen für das LLARS-System (LLM A
 
 ### Quick Start: Tests ausführen
 
+### Vor jedem Push (Pflicht für Kachel-/Flow-Änderungen)
+
+```bash
+cd /path/to/llars
+
+# 1) Contract-/Doku-Gate
+python3 scripts/testing/validate_nightly_coverage.py
+
+# 2) Backend + Frontend Kernchecks
+pytest tests/unit/ tests/integration/
+cd llars-frontend
+npm run test:run
+
+# 3) Nightly-Specs zumindest auf Test-Discovery prüfen
+npx playwright test --list e2e/nightly/tile-regression.spec.js e2e/nightly/workflows.spec.js
+```
+
+Hinweis: Die vollständigen Nightly-E2E-Deploy-Gates laufen in der geplanten Pipeline (Mo-Fr 02:00) bzw. bei erzwungenem Deploy-Run.
+
 **Backend Tests (pytest):**
 ```bash
 cd /path/to/llars

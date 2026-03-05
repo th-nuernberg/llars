@@ -130,12 +130,14 @@ class ResearchGroupMember(db.Model):
     )
 
     def to_dict(self) -> dict:
+        from services.user_profile_service import build_avatar_url
         return {
             "id": self.id,
             "group_id": self.group_id,
             "user_id": self.user_id,
             "username": self.user.username if self.user else None,
             "avatar_seed": self.user.get_avatar_seed() if self.user else None,
+            "avatar_url": build_avatar_url(self.user) if self.user else None,
             "role": self.role.value if self.role else "member",
             "added_by": self.added_by,
             "added_at": self.added_at.isoformat() if self.added_at else None,

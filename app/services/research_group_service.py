@@ -41,7 +41,10 @@ class ResearchGroupService:
                     ResearchGroup.slug.ilike(pattern),
                 )
             )
-        return [g.to_dict() for g in query.all()]
+        groups = [g.to_dict() for g in query.all()]
+        for g in groups:
+            g['stats'] = ResearchGroupService.get_group_stats(g['id'])
+        return groups
 
     @staticmethod
     def get_user_groups(username: str) -> List[Dict[str, Any]]:

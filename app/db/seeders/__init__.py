@@ -25,6 +25,7 @@ from .scenarios import seed_demo_scenarios
 from .prompts import seed_demo_prompts
 from .demo_video_data import seed_demo_video_data
 from .conferences import seed_demo_conferences
+from .anonymization_pipeline import seed_anonymization_demo_data
 from .research_groups import seed_research_groups, seed_migrate_conferences_to_group
 from .legal_assistant import initialize_legal_assistant
 from .analytics_settings import initialize_analytics_settings
@@ -110,6 +111,8 @@ def run_all_seeders(db):
         seed_demo_video_data(db)
         # Seed conference manager demo data
         seed_demo_conferences(db)
+        # Seed anonymization pipeline demo conversations
+        seed_anonymization_demo_data(db)
     else:
         print(f"Demo-Daten übersprungen (PROJECT_STATE={project_state})")
 
@@ -143,4 +146,5 @@ __all__ = [
     'seed_demo_conferences',
     'seed_research_groups',
     'seed_migrate_conferences_to_group',
+    'seed_anonymization_demo_data',
 ]

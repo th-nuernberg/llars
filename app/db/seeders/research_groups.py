@@ -3,19 +3,26 @@ Research Groups Seeder
 
 Seeds initial research groups and assigns existing conference data
 to the NLP-Group. This runs both in development and production:
-- Creates groups (idempotent)
+- Creates groups (idempotent, all modes)
+- Adds demo members only in development mode
 - Migrates ungrouped conferences/papers/series to NLP-Group
 """
 
+import os
 import logging
 
 logger = logging.getLogger(__name__)
+
+
+def _is_development():
+    return os.getenv('PROJECT_STATE', 'development').lower() == 'development'
 
 
 def seed_research_groups(db):
     """
     Seed research groups with initial members.
     Idempotent: skips if groups already exist.
+    Groups are always created; demo members only in development.
     """
     from db.models.conference import (
         ResearchGroup, ResearchGroupMember, ResearchGroupRole,
@@ -33,28 +40,12 @@ def seed_research_groups(db):
         name="NLP-Group",
         slug="nlp-group",
         description="Natural Language Processing Research Group",
-        created_by="ieb-steigerwald",
+        created_by="admin",
     )
     db.session.add(nlp_group)
     db.session.flush()
 
-    # Add members
-    members = [
-        ("ieb-steigerwald", ResearchGroupRole.OWNER),
-        ("ieb-rudolph", ResearchGroupRole.MEMBER),
-        ("ieb-albrecht", ResearchGroupRole.MEMBER),
-    ]
-    for username, role in members:
-        user = User.query.filter_by(username=username).first()
-        if user:
-            db.session.add(ResearchGroupMember(
-                group_id=nlp_group.id,
-                user_id=user.id,
-                role=role,
-                added_by="ieb-steigerwald",
-            ))
-
-    # ── KIZ (empty group for testing, no members) ──────
+    # ── KIZ ───────────────────────────────────────────
     kiz_group = ResearchGroup(
         name="KIZ",
         slug="kiz",
@@ -62,9 +53,43 @@ def seed_research_groups(db):
         created_by="admin",
     )
     db.session.add(kiz_group)
+    db.session.flush()
+
+    # ── Demo members (development only) ───────────────
+    if _is_development():
+        nlp_members = [
+            ("admin", ResearchGroupRole.OWNER),
+            ("researcher", ResearchGroupRole.MEMBER),
+        ]
+        for username, role in nlp_members:
+            user = User.query.filter_by(username=username).first()
+            if user:
+                db.session.add(ResearchGroupMember(
+                    group_id=nlp_group.id,
+                    user_id=user.id,
+                    role=role,
+                    added_by="admin",
+                ))
+
+        kiz_members = [
+            ("admin", ResearchGroupRole.OWNER),
+            ("evaluator", ResearchGroupRole.MEMBER),
+        ]
+        for username, role in kiz_members:
+            user = User.query.filter_by(username=username).first()
+            if user:
+                db.session.add(ResearchGroupMember(
+                    group_id=kiz_group.id,
+                    user_id=user.id,
+                    role=role,
+                    added_by="admin",
+                ))
+
+        logger.info("Research groups seeded with demo members: NLP-Group, KIZ")
+    else:
+        logger.info("Research groups seeded (empty, production mode): NLP-Group, KIZ")
 
     db.session.commit()
-    logger.info("Research groups seeded: NLP-Group, KIZ (empty)")
 
 
 def seed_migrate_conferences_to_group(db):

@@ -238,3 +238,73 @@ If `storageKey` is set, position and size are stored in localStorage:
 ```
 
 The window will open at the same position next time.
+
+### Exposed methods
+
+```vue
+<template>
+  <LFloatingWindow ref="windowRef" ... />
+</template>
+
+<script setup>
+const windowRef = ref(null)
+
+// Available methods:
+windowRef.value.close()           // Close the window
+windowRef.value.toggleMaximize()  // Maximize/Restore
+
+// Available refs:
+windowRef.value.position     // { x, y }
+windowRef.value.size         // { width, height }
+windowRef.value.isMaximized  // Boolean
+</script>
+```
+
+---
+
+## Best Practices
+
+### When to use LFloatingWindow?
+
+**Use for:**
+
+- Tool panels (Git, Debug, etc.)
+- AI assistants
+- Detail views that should not block the main content
+- Windows the user should freely position
+
+**Do not use for:**
+
+- Confirmation dialogs -> `v-dialog`
+- Modal actions -> `v-dialog`
+- Full-screen editors -> dedicated view
+- Permanent sidebars -> regular sidebar component
+
+### Storage Keys
+
+Use unique, descriptive storage keys:
+
+```vue
+<!-- Good -->
+storage-key="llars-git-panel"
+storage-key="llars-ai-assistant-latex"
+storage-key="llars-prompt-git-panel"
+
+<!-- Bad -->
+storage-key="window1"
+storage-key="panel"
+```
+
+### Responsive sizes
+
+Set sensible min/max values:
+
+```vue
+<LFloatingWindow
+  :width="800"
+  :height="500"
+  :min-width="400"
+  :min-height="300"
+  :max-width="1200"
+/>
+```

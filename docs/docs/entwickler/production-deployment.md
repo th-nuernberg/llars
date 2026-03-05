@@ -574,7 +574,79 @@ Flask-Limiter schützt die API automatisch:
 
 ---
 
-## 14. Troubleshooting Production
+## 14. Blue-Green Deployment
+
+Seit März 2026 nutzt LLARS Blue-Green Deployment für near-zero-downtime Updates.
+
+### Konzept
+
+```
+                    ┌─────────┐
+                    │  NGINX  │
+                    └────┬────┘
+                         │
+            ┌────────────┼────────────┐
+            ▼                         ▼
+    ┌───────────────┐        ┌───────────────┐
+    │   BLUE (alt)  │        │  GREEN (neu)  │
+    │  Flask+Vue+YJS│        │  Flask+Vue+YJS│
+    └───────────────┘        └───────────────┘
+```
+
+- **Aktive Farbe** bedient Production-Traffic
+- **Inaktive Farbe** wird für das nächste Deployment gebaut
+- **Umschaltung** erfolgt durch Nginx-Config-Update (~2 Sekunden Downtime)
+
+### Befehle
+
+```bash
+# Status anzeigen
+bash scripts/ci/manual_bluegreen_deploy.sh status
+
+# Inaktive Farbe bauen + auf Staging bereitstellen
+bash scripts/ci/manual_bluegreen_deploy.sh prepare
+
+# Smoke-Tests gegen Staging ausführen
+bash scripts/ci/manual_bluegreen_deploy.sh test
+
+# Auf Production umschalten
+bash scripts/ci/manual_bluegreen_deploy.sh switch
+```
+
+### Automatisches Deployment (CI/CD)
+
+Nightly Mo-Fr 02:00 CET via GitLab Pipeline Schedule:
+
+```
+deploy:staging → test:e2e:staging → smoke:staging → deploy:production → smoke:production
+```
+
+Bei fehlgeschlagenen Smoke-Tests: automatischer Rollback.
+
+### Rollback
+
+```bash
+# Sofort-Rollback (~2s, Nginx zurückschalten)
+bash scripts/ci/rollback_bluegreen.sh
+
+# Fallback-Rollback (DB-Restore + Rebuild, 5-10 Min)
+bash scripts/ci/rollback_production.sh
+```
+
+### Wichtige Dateien
+
+| Datei | Beschreibung |
+|-------|-------------|
+| `docker-compose.prod-bluegreen.yml` | Compose-Override für Blue/Green |
+| `docker/nginx/active_upstream.conf` | Aktive Farbe (Production) |
+| `docker/nginx/active_upstream_staging.conf` | Staging-Upstream |
+| `.deploy/active_color` | Aktuell aktive Farbe |
+| `scripts/ci/deploy_bluegreen.sh` | Deploy-Script |
+| `scripts/ci/rollback_bluegreen.sh` | Rollback-Script |
+
+---
+
+## 15. Troubleshooting Production
 
 ### Eventlet DNS-Probleme
 

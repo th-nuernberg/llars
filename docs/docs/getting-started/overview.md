@@ -350,6 +350,6 @@ Für Dissertationen im Bereich E-Beratung, KI-gestützte Kommunikationsanalyse o
 ---
 
 **Entwickler:** Philipp Steigerwald
-**Version:** 2.6
-**Stand:** November 2025
+**Version:** 3.0
+**Stand:** März 2026
 **Repository:** LLARS (LLM Assisted Research System)

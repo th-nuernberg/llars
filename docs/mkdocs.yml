@@ -91,6 +91,7 @@ nav:
       - ReACT: agentic-ai/react.md
       - ReflAct: agentic-ai/reflact.md
   - Entwickler:
+      - Docker-Architektur: entwickler/docker-architektur.md
       - Rating/Ranking Checklist: entwickler/rating-ranking-checklist.md
       - Rating/Ranking Übersicht: entwickler/rating-ranking-overview.md
       - API-Referenz: entwickler/api-referenz.md
@@ -181,6 +182,7 @@ plugins:
           Admin-Panel: Admin Panel
           Code-Qualität: Code Quality
           Production Deployment: Production Deployment
+          Docker-Architektur: Docker Architecture
 
 extra_javascript:
   - https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.min.js

@@ -242,9 +242,19 @@ Awareness update (cursor position, etc.).
 socket.emit('collab:awareness', {
   document_id: 5,
   state: {
-    cursor: { line: 10, ch: 5 },
-    user: { name: 'Philipp', color: '#b0ca97' }
+    user: { name: 'Philipp', color: '#b0ca97' },
+    cursor: { line: 10, ch: 5 }
   }
+})
+```
+
+#### `collab:leave`
+
+Leave a workspace.
+
+```javascript
+socket.emit('collab:leave', {
+  document_id: 5
 })
 ```
 
@@ -252,21 +262,41 @@ socket.emit('collab:awareness', {
 
 #### `collab:sync`
 
-Receive YJS updates from other users.
+YJS sync update from another client.
 
 ```javascript
 socket.on('collab:sync', (data) => {
-  // data = { update: '<base64>' }
+  // data = { document_id: 5, update: '<base64>' }
+  Y.applyUpdate(ydoc, decodeUpdate(data.update))
 })
 ```
 
 #### `collab:awareness`
 
-Receive awareness updates.
+Awareness update from another client.
 
 ```javascript
 socket.on('collab:awareness', (data) => {
-  // data = { users: [...], cursors: [...] }
+  // data = {
+  //   document_id: 5,
+  //   client_id: 'abc123',
+  //   state: { user: {...}, cursor: {...} }
+  // }
+})
+```
+
+#### `collab:users`
+
+List of active users in the document.
+
+```javascript
+socket.on('collab:users', (data) => {
+  // data = {
+  //   document_id: 5,
+  //   users: [
+  //     { id: 1, name: 'Max', color: '#b0ca97', cursor: {...} }
+  //   ]
+  // }
 })
 ```
 

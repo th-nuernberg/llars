@@ -230,3 +230,26 @@ admin:kaimo:results      -- View results
 | **Quick prototype** | Case 1 | Minimal effort, fast demo |
 | **Production use** | Case 2 | Good balance of effort and benefit |
 | **Long-term vision** | Case 3 | Maximum automation |
+
+**Recommended approach:**
+1. Start with **Case 1** for a quick demo
+2. Develop **Case 2** backend in parallel
+3. Add **Case 3** later as an extension
+
+---
+
+## Effort Summary
+
+| Case | Effort (Hours) | Effort (Days) | Complexity |
+|------|----------------|----------------|------------|
+| Case 1 | 19-38h | 2.5-5 days | Low |
+| Case 2 | 78-142h | 10-18 days | Medium |
+| Case 3 | 122-226h | 15-28 days | High |
+
+*Note: Effort estimates assume an experienced developer. Testing, reviews, and deployment time are partially included.*
+
+---
+
+**Created:** November 25, 2025
+**Author:** Claude Code
+**Project:** LLARS v2.2

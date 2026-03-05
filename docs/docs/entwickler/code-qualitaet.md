@@ -4,7 +4,7 @@ Diese Seite dokumentiert die aktuelle Code-Qualität, Docstring-Coverage und Ref
 
 ## Docstring-Coverage Statistik
 
-!!! info "Stand: Januar 2026"
+!!! info "Stand: März 2026"
     Die Statistiken werden regelmäßig aktualisiert.
     Quelle: `docs/metrics/*.json`, aktualisieren mit `scripts/metrics/update_docs.py`.
 

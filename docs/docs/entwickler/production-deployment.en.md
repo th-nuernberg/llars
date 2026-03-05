@@ -574,7 +574,79 @@ Flask-Limiter protects the API automatically:
 
 ---
 
-## 14. Troubleshooting production
+## 14. Blue-Green Deployment
+
+Since March 2026, LLARS uses Blue-Green Deployment for near-zero-downtime updates.
+
+### Concept
+
+```
+                    ┌─────────┐
+                    │  NGINX  │
+                    └────┬────┘
+                         │
+            ┌────────────┼────────────┐
+            ▼                         ▼
+    ┌───────────────┐        ┌───────────────┐
+    │   BLUE (old)  │        │  GREEN (new)  │
+    │  Flask+Vue+YJS│        │  Flask+Vue+YJS│
+    └───────────────┘        └───────────────┘
+```
+
+- **Active color** serves production traffic
+- **Inactive color** is built for the next deployment
+- **Switching** is done via Nginx config update (~2 seconds downtime)
+
+### Commands
+
+```bash
+# Show status
+bash scripts/ci/manual_bluegreen_deploy.sh status
+
+# Build inactive color + deploy to staging
+bash scripts/ci/manual_bluegreen_deploy.sh prepare
+
+# Run smoke tests against staging
+bash scripts/ci/manual_bluegreen_deploy.sh test
+
+# Switch to production
+bash scripts/ci/manual_bluegreen_deploy.sh switch
+```
+
+### Automated Deployment (CI/CD)
+
+Nightly Mon-Fri 02:00 CET via GitLab Pipeline Schedule:
+
+```
+deploy:staging → test:e2e:staging → smoke:staging → deploy:production → smoke:production
+```
+
+On failed smoke tests: automatic rollback.
+
+### Rollback
+
+```bash
+# Instant rollback (~2s, switch Nginx back)
+bash scripts/ci/rollback_bluegreen.sh
+
+# Fallback rollback (DB restore + rebuild, 5-10 min)
+bash scripts/ci/rollback_production.sh
+```
+
+### Key files
+
+| File | Description |
+|------|-------------|
+| `docker-compose.prod-bluegreen.yml` | Compose override for Blue/Green |
+| `docker/nginx/active_upstream.conf` | Active color (production) |
+| `docker/nginx/active_upstream_staging.conf` | Staging upstream |
+| `.deploy/active_color` | Currently active color |
+| `scripts/ci/deploy_bluegreen.sh` | Deploy script |
+| `scripts/ci/rollback_bluegreen.sh` | Rollback script |
+
+---
+
+## 15. Troubleshooting production
 
 ### Eventlet DNS issues
 

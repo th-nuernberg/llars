@@ -16,10 +16,20 @@ run_staging_smoke() {
 run_staging_e2e() {
   local e2e_password
   e2e_password="$(grep '^LLARS_ADMIN_PASSWORD=' .env | cut -d= -f2- || echo "admin123")"
+  local e2e_run_tag="${E2E_RUN_TAG:-Manual Test}"
+  local e2e_admin_user="${E2E_ADMIN_USER:-test_admin}"
+  local e2e_researcher_user="${E2E_RESEARCHER_USER:-test_researcher}"
+  local e2e_evaluator_user="${E2E_EVALUATOR_USER:-test_evaluator}"
+  local e2e_only="${E2E_ONLY:-}"
   docker compose --profile testing build smoke-test-service
   docker compose --profile testing run --rm --entrypoint "" \
     -e PLAYWRIGHT_BASE_URL="${PLAYWRIGHT_BASE_URL:-http://localhost:55080}" \
     -e E2E_TEST_PASSWORD="$e2e_password" \
+    -e E2E_RUN_TAG="$e2e_run_tag" \
+    -e E2E_ADMIN_USER="$e2e_admin_user" \
+    -e E2E_RESEARCHER_USER="$e2e_researcher_user" \
+    -e E2E_EVALUATOR_USER="$e2e_evaluator_user" \
+    -e E2E_ONLY="$e2e_only" \
     -e NODE_TLS_REJECT_UNAUTHORIZED=0 \
     smoke-test-service \
     bash -c "cd /tests/e2e && npx playwright test --project=chromium --workers=1"
@@ -42,6 +52,13 @@ Commands:
   switch   Switch production nginx to the prepared candidate
   full     prepare + test (+ optional E2E) + switch
   status   Show current blue-green state
+
+Optional env for RUN_E2E=1:
+  E2E_RUN_TAG             Default: "Manual Test"
+  E2E_ADMIN_USER          Default: test_admin
+  E2E_RESEARCHER_USER     Default: test_researcher
+  E2E_EVALUATOR_USER      Default: test_evaluator
+  E2E_ONLY                Run single spec or grep pattern
 EOF
 }
 

@@ -138,3 +138,5 @@ data/combine_generations.py
 data/test_detection.py
 
 exports/*
+
+notizen.md

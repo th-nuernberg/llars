@@ -34,6 +34,8 @@
 #   - LLARS_DEPLOY_PATH: Path to LLARS project on server
 #   - SYSTEM_ADMIN_API_KEY: API key for smoke tests
 #   - E2E_TEST_PASSWORD: Password for E2E test users
+#   - (optional) E2E_ADMIN_USER / E2E_RESEARCHER_USER / E2E_EVALUATOR_USER
+#     Defaults in nightly job: test_admin / test_researcher / test_evaluator
 #
 # GitLab Pipeline Schedule (create in UI):
 #   Name: "Nightly Production Deployment"
@@ -327,11 +329,18 @@ test:e2e:staging:
   tags:
     - shell
   timeout: 45 minutes
+  variables:
+    E2E_RUN_TAG: "Nightly Test"
+    E2E_ADMIN_USER: "test_admin"
+    E2E_RESEARCHER_USER: "test_researcher"
+    E2E_EVALUATOR_USER: "test_evaluator"
   script:
     - cd /var/llars
     - mkdir -p "$CI_PROJECT_DIR/e2e-artifacts"
     # Load server .env for passwords
     - export E2E_TEST_PASSWORD=$(grep '^LLARS_ADMIN_PASSWORD=' .env | cut -d= -f2- || echo "admin123")
+    - echo "Nightly E2E tag: ${E2E_RUN_TAG}"
+    - echo "Nightly users: admin=${E2E_ADMIN_USER}, researcher=${E2E_RESEARCHER_USER}, evaluator=${E2E_EVALUATOR_USER}"
     # Build smoke-test container (with Playwright + E2E tests)
     - docker compose --profile testing build smoke-test-service
     # Run E2E tests against staging (localhost:55080)
@@ -340,6 +349,10 @@ test:e2e:staging:
       docker compose --profile testing run --rm --entrypoint "" \
         -e PLAYWRIGHT_BASE_URL=http://localhost:55080 \
         -e E2E_TEST_PASSWORD="${E2E_TEST_PASSWORD}" \
+        -e E2E_RUN_TAG="${E2E_RUN_TAG}" \
+        -e E2E_ADMIN_USER="${E2E_ADMIN_USER}" \
+        -e E2E_RESEARCHER_USER="${E2E_RESEARCHER_USER}" \
+        -e E2E_EVALUATOR_USER="${E2E_EVALUATOR_USER}" \
         -e NODE_TLS_REJECT_UNAUTHORIZED=0 \
         smoke-test-service \
         bash -c "cd /tests/e2e && npx playwright test --project=chromium --workers=1" \

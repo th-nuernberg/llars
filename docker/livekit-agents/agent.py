@@ -122,10 +122,9 @@ async def entrypoint(ctx: agents.JobContext):
 
 
 if __name__ == "__main__":
-    # Define the worker with auto-subscribe to rooms
-    worker = agents.Worker(
-        entrypoint=entrypoint,
-        # Auto-join rooms matching the LLARS messaging call pattern
-        worker_type=agents.WorkerType.ROOM,
+    agents.cli.run_app(
+        agents.WorkerOptions(
+            entrypoint_fnc=entrypoint,
+            worker_type=agents.WorkerType.ROOM,
+        )
     )
-    agents.run_app(worker)

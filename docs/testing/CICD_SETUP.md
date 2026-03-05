@@ -10,6 +10,42 @@ Dieses Dokument beschreibt die Einrichtung der GitLab CI/CD Pipeline für automa
 
 **Wichtig:** LLARS verwendet einen **Shell Runner direkt auf dem Server** - kein SSH für Deployments nötig!
 
+### Nightly Home-Kachel-Regression
+
+Der Nightly-Lauf enthält einen dedizierten Playwright-Sweep:
+
+- Datei: `llars-frontend/e2e/home-tile-sweep.spec.js`
+- Ziel: Jede sichtbare Home-Kachel pro Rolle automatisch anklicken
+- Nightly-Accounts (Production/Staging): `test_admin`, `test_researcher`, `test_evaluator`
+- Laufkennzeichnung im CI-Log: `Nightly Test`
+- Validierung pro Kachel:
+  - Navigation verlässt `/Home`
+  - Kein Redirect auf `/login`
+  - Keine 404/NotFound-Seite
+  - Keine Backend-API-Fehler mit HTTP `5xx`
+
+Manueller Aufruf auf dem Server:
+
+```bash
+cd /var/llars
+export E2E_TEST_PASSWORD=$(grep '^LLARS_ADMIN_PASSWORD=' .env | cut -d= -f2- || echo "admin123")
+export E2E_RUN_TAG="Nightly Test"
+export E2E_ADMIN_USER="test_admin"
+export E2E_RESEARCHER_USER="test_researcher"
+export E2E_EVALUATOR_USER="test_evaluator"
+docker compose --profile testing build smoke-test-service
+docker compose --profile testing run --rm --entrypoint "" \
+  -e PLAYWRIGHT_BASE_URL=http://localhost:55080 \
+  -e E2E_TEST_PASSWORD="${E2E_TEST_PASSWORD}" \
+  -e E2E_RUN_TAG="${E2E_RUN_TAG}" \
+  -e E2E_ADMIN_USER="${E2E_ADMIN_USER}" \
+  -e E2E_RESEARCHER_USER="${E2E_RESEARCHER_USER}" \
+  -e E2E_EVALUATOR_USER="${E2E_EVALUATOR_USER}" \
+  -e NODE_TLS_REJECT_UNAUTHORIZED=0 \
+  smoke-test-service \
+  bash -c "cd /tests/e2e && npx playwright test --project=chromium e2e/home-tile-sweep.spec.js --workers=1"
+```
+
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
 │                     LLARS CI/CD PIPELINE                            │

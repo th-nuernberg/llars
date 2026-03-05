@@ -1,22 +1,31 @@
-FROM public.ecr.aws/docker/library/node:23-bookworm
+# syntax=docker/dockerfile:1
+FROM public.ecr.aws/docker/library/node:23-slim
 LABEL authors="philippsteigerwald"
 
 WORKDIR /vue
 
+# Layer 1: Scripts (aendert sich selten)
 COPY docker/vue/healthcheck.sh /usr/local/bin/healthcheck.sh
 RUN mkdir /scripts
 COPY docker/vue/start_vue.sh /scripts/start_vue.sh
-COPY llars-frontend /vue/
-
 RUN chmod +x /usr/local/bin/healthcheck.sh && \
    chmod +x /scripts/start_vue.sh
+
+# Layer 2: Dependencies (cached solange package*.json sich nicht aendert)
+# BuildKit cache mount haelt npm-Cache zwischen Builds persistent
+COPY llars-frontend/package.json llars-frontend/package-lock.json /vue/
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci && \
+    touch node_modules/.install-stamp
+
+# Layer 3: Source code (aendert sich haeufig)
+COPY llars-frontend /vue/
 
 # Create non-root user and set permissions
 RUN groupadd -r vueuser && useradd -r -g vueuser -u 1003 -m vueuser && \
     chown -R vueuser:vueuser /vue && \
     chown -R vueuser:vueuser /scripts
 
-# Switch to non-root user
 USER vueuser
 
 EXPOSE 5173

@@ -12,10 +12,41 @@
 # Frontend
 llars-frontend/node_modules
 llars-frontend/dist
+llars-frontend/.vitest
+llars-frontend/coverage
 
 # Python venvs / caches
 .venv
 venv
 
-# Large local artifacts (keep mounted instead of baked into images)
+# Large models & data (mounted via volumes at runtime, not needed in builds)
 app/models/oncoco/model.safetensors
+app/models/anonymize/
+app/data/rag/
+
+# NER models & anonymize DB (2.1GB+, mounted via volume at runtime)
+docs/docs/projekte/anonymize/models/
+docs/docs/projekte/anonymize/database/
+
+# Chat data (not needed at build time)
+data/
+
+# Media / large video files
+Paper/
+llars-frontend/public/videos/*.mp4
+static/
+
+# YJS node_modules
+yjs-server/node_modules
+
+# CI/CD and deployment state
+.deploy/
+
+# Test artifacts
+coverage/
+htmlcov/
+.pytest_cache/
+.nyc_output/
+
+# Documentation build output
+docs/site/

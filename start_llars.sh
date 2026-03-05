@@ -5,7 +5,8 @@
 # Starts LLARS based on PROJECT_STATE in .env
 #
 # USAGE:
-#   ./start_llars.sh              # Uses .env
+#   ./start_llars.sh              # Uses .env (no rebuild, fast restart)
+#   ./start_llars.sh --build      # Force rebuild all images
 #   ./start_llars.sh dev          # Force development mode
 #   ./start_llars.sh prod         # Force production mode
 #   ./start_llars.sh --update     # Rebuild & restart only code services (backend + frontend)
@@ -85,6 +86,7 @@ fi
 PROJECT_STATE_ARG="${1:-}"
 DETACH_MODE="${LLARS_DETACH:-false}"
 UPDATE_MODE=false
+BUILD_MODE=false
 
 for arg in "$@"; do
     if [ "$arg" = "--detach" ] || [ "$arg" = "--detached" ]; then
@@ -93,10 +95,13 @@ for arg in "$@"; do
     if [ "$arg" = "--update" ]; then
         UPDATE_MODE=true
     fi
+    if [ "$arg" = "--build" ]; then
+        BUILD_MODE=true
+    fi
 done
 
-# --update should not be treated as PROJECT_STATE override
-if [ "$PROJECT_STATE_ARG" = "--update" ] || [ "$PROJECT_STATE_ARG" = "--detach" ] || [ "$PROJECT_STATE_ARG" = "--detached" ]; then
+# --update/--build should not be treated as PROJECT_STATE override
+if [ "$PROJECT_STATE_ARG" = "--update" ] || [ "$PROJECT_STATE_ARG" = "--detach" ] || [ "$PROJECT_STATE_ARG" = "--detached" ] || [ "$PROJECT_STATE_ARG" = "--build" ]; then
     PROJECT_STATE_ARG=""
 fi
 
@@ -533,6 +538,19 @@ fi
 
 cd "$BASE_DIR"
 
+# Determine --build flag
+BUILD_FLAG=""
+if [ "$BUILD_MODE" = "true" ]; then
+    BUILD_FLAG="--build"
+    echo "Build mode: FORCED REBUILD (--build)"
+elif [ "$REMOVE_LLARS_VOLUMES" = "True" ] || [ "$REMOVE_LLARS_VOLUMES" = "true" ] || \
+     [ "$PRUNE_LLARS_SYSTEM" = "True" ] || [ "$PRUNE_LLARS_SYSTEM" = "true" ]; then
+    BUILD_FLAG="--build"
+    echo "Build mode: REBUILD (volumes/system pruned)"
+else
+    echo "Build mode: REUSE cached images (use --build to force rebuild)"
+fi
+
 if [ "$PROJECT_STATE" = "production" ]; then
     echo ""
     echo "============================================"
@@ -545,7 +563,7 @@ if [ "$PROJECT_STATE" = "production" ]; then
         -f docker-compose.yml \
         -f docker-compose.prod.yml \
         -p llars \
-        up --build --detach
+        up $BUILD_FLAG --detach
 
     echo ""
     echo "LLARS started in PRODUCTION mode"
@@ -576,12 +594,12 @@ else
         docker compose \
             -f docker-compose.yml \
             -p llars \
-            up --build --detach
+            up $BUILD_FLAG --detach
     else
         docker compose \
             -f docker-compose.yml \
             -p llars \
-            up --build --watch
+            up $BUILD_FLAG --watch
     fi
 
     echo ""

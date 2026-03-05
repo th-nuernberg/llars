@@ -31,6 +31,36 @@
       "owner_role": "researcher",
       "dependencies": ["Conference Manager"],
       "critical": false
+    },
+    {
+      "name": "Conference Manager Tab Navigation",
+      "owner_role": "researcher",
+      "dependencies": ["Conference Manager"],
+      "critical": true
+    },
+    {
+      "name": "User Settings Navigation",
+      "owner_role": "researcher",
+      "dependencies": ["User Settings"],
+      "critical": true
+    },
+    {
+      "name": "Anonymization Pipeline View",
+      "owner_role": "researcher",
+      "dependencies": ["Anonymisierungs-Pipeline"],
+      "critical": false
+    },
+    {
+      "name": "Chatbot Manager Access",
+      "owner_role": "chatbot_manager",
+      "dependencies": ["Chatbot Admin"],
+      "critical": true
+    },
+    {
+      "name": "Markdown Collab Navigation",
+      "owner_role": "researcher",
+      "dependencies": ["Markdown Collab"],
+      "critical": false
     }
   ]
 }

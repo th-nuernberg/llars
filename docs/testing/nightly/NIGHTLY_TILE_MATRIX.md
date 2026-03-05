@@ -45,20 +45,30 @@ Diese Datei ist die operative Referenz für die Nightly-Kacheltests.
 
 | Workflow-Testtitel | Zweck | Kritisch |
 |---|---|---|
-| Szenario Wizard | Übergang aus Batch Generation Richtung Szenariofluss | Ja |
+| Szenario Wizard | Uebergang aus Batch Generation Richtung Szenariofluss | Ja |
 | Prompt Engineering Collaboration | Prompt-Testen, Import/Export, Sharing + Cross-User-Sichtbarkeit | Ja |
 | Latex Collab Resizer | Drag-Resize der Pane-Aufteilung | Ja |
 | Scenario Manager Role Assignment | Rollen-/Einladungslogik inkl. Evaluator-Annahme und Evaluation-Sprung | Ja |
-| Conference Manager Access Request | Access-Request senden, sichtbar machen, genehmigen, Mitgliedschaft prüfen | Nein |
+| Conference Manager Access Request | Access-Request senden, sichtbar machen, genehmigen, Mitgliedschaft pruefen | Nein |
+| Conference Manager Tab Navigation | Alle 5 Tabs durchklicken (Conferences, Papers, Calendar, Timeline, Kanban) | Ja |
+| User Settings Navigation | Settings-Sidebar-Tabs durchklicken + Theme-Toggle | Ja |
+| Anonymization Pipeline View | Pipeline-Manager oeffnen + View-Toggle (Cards/List) | Nein |
+| Chatbot Manager Access | chatbot_manager-Rolle oeffnet dedizierte Seite + Tab-Navigation | Ja |
+| Markdown Collab Navigation | Home oeffnen + Workspace oeffnen falls vorhanden | Nein |
 
 ## Cross-Tile Interaktionen (Nightly)
 
 | Interaktion | Rollen | Nightly Workflow |
 |---|---|---|
 | Prompt teilen -> anderer User sieht Prompt | `test_researcher` -> `test_evaluator` | Prompt Engineering Collaboration |
-| Szenario einladen -> Einladung annehmen -> Evaluation öffnen | `test_admin` -> `test_evaluator` | Scenario Manager Role Assignment |
-| Forschungsgruppe anfragen -> Request sichten -> genehmigen -> Mitglied prüfen | `test_researcher` -> `test_admin` | Conference Manager Access Request |
+| Szenario einladen -> Einladung annehmen -> Evaluation oeffnen | `test_admin` -> `test_evaluator` | Scenario Manager Role Assignment |
+| Forschungsgruppe anfragen -> Request sichten -> genehmigen -> Mitglied pruefen | `test_researcher` -> `test_admin` | Conference Manager Access Request |
 | Batch Generation -> Szenario Wizard Handoff | `test_researcher` | Szenario Wizard |
+| Conference Manager alle Tabs navigieren | `test_researcher` | Conference Manager Tab Navigation |
+| User Settings Sidebar-Tabs + Theme | `test_researcher` | User Settings Navigation |
+| Anonymisierungs-Pipeline View-Toggle | `test_researcher` | Anonymization Pipeline View |
+| Chatbot-Manager Tab-Navigation | `test_chatbot_manager` | Chatbot Manager Access |
+| Markdown Collab Workspace oeffnen | `test_researcher` | Markdown Collab Navigation |
 
 ## Activity-Katalog (Pflicht-IDs)
 
@@ -69,18 +79,28 @@ Diese Datei ist die operative Referenz für die Nightly-Kacheltests.
 | PE-EXPORT-001 | Export-Button im Prompt Engineering klicken | Datei wird zum Download angeboten |
 | PE-TEST-001 | Test-Button im Prompt Engineering klicken | Antwort/Resultat wird angezeigt |
 | PE-IMPORT-001 | Import aus JSON | Importierter Block ist sichtbar |
-| PE-SHARE-001 / PE-SHARED-VISIBLE-001 / PE-UNSHARE-001 | User hinzufügen / als anderer User sehen / entfernen | Share-Liste und Cross-User-Sichtbarkeit funktionieren |
-| BG-WIZ-ENTRY-001 | Batch-Wizard öffnen | Wizard-UI ist stabil erreichbar |
-| BG-WIZ-HANDOFF-001 | Übergang Richtung Szenario Wizard | Handoff-Aktion/Detailflow ist erreichbar |
-| SCN-ASSIGN-INVITE-001 | Evaluator/Viewer zu Szenario hinzufügen | Zuweisung wird angezeigt |
-| SCN-ASSIGN-ROLE-001 | Rolle ändern | Rollenwechsel wird übernommen |
+| PE-SHARE-001 / PE-SHARED-VISIBLE-001 / PE-UNSHARE-001 | User hinzufuegen / als anderer User sehen / entfernen | Share-Liste und Cross-User-Sichtbarkeit funktionieren |
+| BG-WIZ-ENTRY-001 | Batch-Wizard oeffnen | Wizard-UI ist stabil erreichbar |
+| BG-WIZ-HANDOFF-001 | Uebergang Richtung Szenario Wizard | Handoff-Aktion/Detailflow ist erreichbar |
+| SCN-ASSIGN-INVITE-001 | Evaluator/Viewer zu Szenario hinzufuegen | Zuweisung wird angezeigt |
+| SCN-ASSIGN-ROLE-001 | Rolle aendern | Rollenwechsel wird uebernommen |
 | SCN-ASSIGN-VISIBLE-001 | Einladung als Evaluator sehen und annehmen | Invite-Card sichtbar und annehmbar |
 | SCN-ASSIGN-EVAL-001 | Als Evaluator in Evaluation springen | Evaluation-relevante Route erreichbar |
-| LTX-RESIZE-001 | Divider im LaTeX-Workspace ziehen | Pane-Verhältnis ändert sich |
+| LTX-RESIZE-001 | Divider im LaTeX-Workspace ziehen | Pane-Verhaeltnis aendert sich |
 | CONF-REQ-SUBMIT-001 | Zugang zu Forschungsgruppe anfragen | Anfrage wird als gesendet angezeigt |
-| CONF-REQ-VISIBLE-001 | Anfrage bei Gruppenmitglied prüfen | Anfrage ist in Members sichtbar |
+| CONF-REQ-VISIBLE-001 | Anfrage bei Gruppenmitglied pruefen | Anfrage ist in Members sichtbar |
 | CONF-REQ-APPROVE-001 | Anfrage genehmigen | Pending-Anfrage verschwindet |
-| CONF-REQ-MEMBER-001 | Antragsteller als Mitglied prüfen | User ist in Mitgliederliste sichtbar |
+| CONF-REQ-MEMBER-001 | Antragsteller als Mitglied pruefen | User ist in Mitgliederliste sichtbar |
+| CONF-TABS-001 | Conference Manager Tabs navigieren | Alle 5 Tabs zeigen Content |
+| SETTINGS-NAV-001 | Settings-Seite oeffnen | Sidebar sichtbar |
+| SETTINGS-TABS-001 | Settings-Tabs durchklicken | Jeder Tab zeigt Content |
+| SETTINGS-THEME-001 | Theme-Toggle pruefen | Toggle vorhanden und klickbar |
+| ANON-VIEW-001 | Pipeline-Manager oeffnen | Seite laedt ohne Fehler |
+| ANON-TOGGLE-001 | View-Toggle umschalten | Darstellung wechselt |
+| CBM-ACCESS-001 | Chatbot-Manager Seite oeffnen | Seite sichtbar |
+| CBM-TABS-001 | Chatbot-Manager Tabs durchklicken | Tab-Inhalte sichtbar |
+| MD-NAV-001 | Markdown Collab Home oeffnen | Workspace-Liste oder Empty-State |
+| MD-WORKSPACE-001 | Workspace oeffnen | Editor-Bereich sichtbar |
 
 ## Änderungsvorgehen bei neuer/angepasster Kachel
 

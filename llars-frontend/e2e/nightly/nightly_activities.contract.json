@@ -30,19 +30,19 @@
       "id": "PE-IMPORT-001",
       "test": "Prompt Engineering Collaboration",
       "required": true,
-      "description": "Prompt-Import aus JSON ausführen."
+      "description": "Prompt-Import aus JSON ausfuehren."
     },
     {
       "id": "PE-SHARE-001",
       "test": "Prompt Engineering Collaboration",
       "required": true,
-      "description": "Prompt für Test-Evaluator freigeben."
+      "description": "Prompt fuer Test-Evaluator freigeben."
     },
     {
       "id": "PE-SHARED-VISIBLE-001",
       "test": "Prompt Engineering Collaboration",
       "required": true,
-      "description": "Geteiltes Prompt als Test_Evaluator sehen und öffnen."
+      "description": "Geteiltes Prompt als Test_Evaluator sehen und oeffnen."
     },
     {
       "id": "PE-UNSHARE-001",
@@ -54,25 +54,25 @@
       "id": "PE-CLEANUP-001",
       "test": "Prompt Engineering Collaboration",
       "required": true,
-      "description": "Erzeugtes Nightly-Prompt löschen."
+      "description": "Erzeugtes Nightly-Prompt loeschen."
     },
     {
       "id": "BG-WIZ-ENTRY-001",
       "test": "Szenario Wizard",
       "required": true,
-      "description": "Batch Generation öffnen und Wizard-Einstieg prüfen."
+      "description": "Batch Generation oeffnen und Wizard-Einstieg pruefen."
     },
     {
       "id": "BG-WIZ-HANDOFF-001",
       "test": "Szenario Wizard",
       "required": true,
-      "description": "Übergang Richtung Szenario Wizard prüfen."
+      "description": "Uebergang Richtung Szenario Wizard pruefen."
     },
     {
       "id": "LTX-RESIZE-001",
       "test": "Latex Collab Resizer",
       "required": true,
-      "description": "Resizer ziehen und Positionsänderung prüfen."
+      "description": "Resizer ziehen und Positionsaenderung pruefen."
     },
     {
       "id": "SCN-ASSIGN-SETUP-001",
@@ -84,13 +84,13 @@
       "id": "SCN-ASSIGN-INVITE-001",
       "test": "Scenario Manager Role Assignment",
       "required": true,
-      "description": "Einen User über UI einladen."
+      "description": "Einen User ueber UI einladen."
     },
     {
       "id": "SCN-ASSIGN-ROLE-001",
       "test": "Scenario Manager Role Assignment",
       "required": true,
-      "description": "Rollenwechsel im Team-Tab durchführen."
+      "description": "Rollenwechsel im Team-Tab durchfuehren."
     },
     {
       "id": "SCN-ASSIGN-VISIBLE-001",
@@ -108,7 +108,7 @@
       "id": "SCN-ASSIGN-CLEANUP-001",
       "test": "Scenario Manager Role Assignment",
       "required": true,
-      "description": "Nightly-Test-Szenario löschen."
+      "description": "Nightly-Test-Szenario loeschen."
     },
     {
       "id": "CONF-REQ-SETUP-001",
@@ -144,13 +144,67 @@
       "id": "CONF-REQ-CLEANUP-001",
       "test": "Conference Manager Access Request",
       "required": true,
-      "description": "Nightly-Testgruppe löschen."
+      "description": "Nightly-Testgruppe loeschen."
     },
     {
-      "id": "TILE-ALL-VISIBILITY-001",
-      "test": "Prompt Engineering",
-      "required": false,
-      "description": "Platzhalter für umfassende Kachel-Interaktionsmatrix je Rolle."
+      "id": "CONF-TABS-001",
+      "test": "Conference Manager Tab Navigation",
+      "required": true,
+      "description": "Alle 5 Tabs im Conference Manager durchklicken."
+    },
+    {
+      "id": "SETTINGS-NAV-001",
+      "test": "User Settings Navigation",
+      "required": true,
+      "description": "Settings-Seite oeffnen, Sidebar sichtbar."
+    },
+    {
+      "id": "SETTINGS-TABS-001",
+      "test": "User Settings Navigation",
+      "required": true,
+      "description": "Alle Sidebar-Tabs durchklicken."
+    },
+    {
+      "id": "SETTINGS-THEME-001",
+      "test": "User Settings Navigation",
+      "required": true,
+      "description": "Theme-Toggle pruefen."
+    },
+    {
+      "id": "ANON-VIEW-001",
+      "test": "Anonymization Pipeline View",
+      "required": true,
+      "description": "Anonymisierungs-Pipeline Manager oeffnen."
+    },
+    {
+      "id": "ANON-TOGGLE-001",
+      "test": "Anonymization Pipeline View",
+      "required": true,
+      "description": "View-Toggle zwischen Cards und List umschalten."
+    },
+    {
+      "id": "CBM-ACCESS-001",
+      "test": "Chatbot Manager Access",
+      "required": true,
+      "description": "chatbot_manager oeffnet /chatbot-manager."
+    },
+    {
+      "id": "CBM-TABS-001",
+      "test": "Chatbot Manager Access",
+      "required": true,
+      "description": "Chatbot-Manager Tabs durchklicken."
+    },
+    {
+      "id": "MD-NAV-001",
+      "test": "Markdown Collab Navigation",
+      "required": true,
+      "description": "Markdown Collab Home oeffnen."
+    },
+    {
+      "id": "MD-WORKSPACE-001",
+      "test": "Markdown Collab Navigation",
+      "required": true,
+      "description": "Workspace oeffnen falls vorhanden."
     }
   ]
 }

@@ -527,4 +527,186 @@ test.describe('Nightly Cross-Tile Workflows', () => {
       }
     })
   }
+
+  if (hasWorkflow('Conference Manager Tab Navigation')) {
+    test('Conference Manager Tab Navigation', async ({ page }) => {
+      const adminToken = await apiLogin(TEST_USERS.admin)
+      const groupName = `${NIGHTLY_PREFIX}-conf-tabs`
+      let groupId = null
+
+      try {
+        groupId = await createGroupViaApi(adminToken, groupName)
+
+        await openRoute(
+          page,
+          TEST_USERS.researcher,
+          `/conferences/groups/${groupId}`,
+          '.conference-manager, .page-header, main'
+        )
+
+        await activity('CONF-TABS-001', 'Alle 5 Tabs im Conference Manager durchklicken', async () => {
+          const tabNames = ['conferences', 'papers', 'calendar', 'timeline', 'kanban']
+
+          for (const tabName of tabNames) {
+            const tab = page.locator(`.v-tab:has-text("${tabName}"), .v-tab[value="${tabName}"]`).first()
+            if (await tab.isVisible({ timeout: 5000 }).catch(() => false)) {
+              await tab.click()
+              await page.waitForLoadState('domcontentloaded', { timeout: 5000 }).catch(() => {})
+
+              const tabContent = page.locator('.v-window-item--active, .v-window__container').first()
+              await expect(tabContent).toBeVisible({ timeout: 8000 })
+            }
+          }
+
+          const visibleTabs = await page.locator('.v-tab').count()
+          expect(visibleTabs, 'Conference Manager should have tabs visible').toBeGreaterThanOrEqual(3)
+        })
+      } finally {
+        if (groupId) {
+          await deleteGroupViaApi(adminToken, groupId).catch(() => {})
+        }
+      }
+    })
+  }
+
+  if (hasWorkflow('User Settings Navigation')) {
+    test('User Settings Navigation', async ({ page }) => {
+      await activity('SETTINGS-NAV-001', 'Settings-Seite oeffnen', async () => {
+        await openRoute(page, TEST_USERS.researcher, '/settings', '.settings-workspace, .settings-sidebar, main')
+
+        const sidebar = page.locator('.settings-sidebar, aside[role="navigation"]').first()
+        await expect(sidebar).toBeVisible({ timeout: 10000 })
+      })
+
+      await activity('SETTINGS-TABS-001', 'Alle Sidebar-Tabs durchklicken', async () => {
+        const navButtons = page.locator('.settings-sidebar .nav-item, .settings-sidebar button[role="tab"]')
+        const count = await navButtons.count()
+        expect(count, 'Settings should have sidebar navigation tabs').toBeGreaterThanOrEqual(2)
+
+        for (let i = 0; i < count; i++) {
+          const btn = navButtons.nth(i)
+          if (await btn.isVisible({ timeout: 2000 }).catch(() => false)) {
+            await btn.click()
+            await page.waitForLoadState('domcontentloaded', { timeout: 3000 }).catch(() => {})
+
+            const mainContent = page.locator('.settings-main, main[role="tabpanel"]').first()
+            await expect(mainContent).toBeVisible({ timeout: 5000 })
+          }
+        }
+      })
+
+      await activity('SETTINGS-THEME-001', 'Theme-Toggle pruefen', async () => {
+        const themeToggle = page.locator(
+          '.theme-toggle, [data-testid="theme-toggle"], button:has(.mdi-brightness-4), button:has(.mdi-brightness-7), button:has(.mdi-weather-night), button:has(.mdi-weather-sunny)'
+        ).first()
+
+        const hasThemeToggle = await themeToggle.isVisible({ timeout: 5000 }).catch(() => false)
+        if (hasThemeToggle) {
+          await themeToggle.click()
+          await page.waitForLoadState('domcontentloaded', { timeout: 2000 }).catch(() => {})
+        }
+
+        const settingsPage = page.locator('.settings-workspace, main').first()
+        await expect(settingsPage).toBeVisible({ timeout: 5000 })
+      })
+    })
+  }
+
+  if (hasWorkflow('Anonymization Pipeline View')) {
+    test('Anonymization Pipeline View', async ({ page }) => {
+      await activity('ANON-VIEW-001', 'Anonymisierungs-Pipeline Manager oeffnen', async () => {
+        await openRoute(page, TEST_USERS.researcher, '/anonymization', '.anonymization-manager, .page-header, main')
+
+        const pageHeader = page.locator('.page-header, h1').first()
+        await expect(pageHeader).toBeVisible({ timeout: 10000 })
+      })
+
+      await activity('ANON-TOGGLE-001', 'View-Toggle zwischen Cards und List umschalten', async () => {
+        const viewToggle = page.locator('.l-view-toggle, .view-toggle, [data-testid="view-toggle"]').first()
+
+        if (await viewToggle.isVisible({ timeout: 5000 }).catch(() => false)) {
+          const toggleButtons = viewToggle.locator('button')
+          const buttonCount = await toggleButtons.count()
+          expect(buttonCount, 'View toggle should have at least 2 buttons').toBeGreaterThanOrEqual(2)
+
+          await toggleButtons.last().click()
+          await page.waitForLoadState('domcontentloaded', { timeout: 3000 }).catch(() => {})
+
+          await toggleButtons.first().click()
+          await page.waitForLoadState('domcontentloaded', { timeout: 3000 }).catch(() => {})
+        }
+
+        const managerPage = page.locator('.anonymization-manager, main').first()
+        await expect(managerPage).toBeVisible({ timeout: 5000 })
+      })
+    })
+  }
+
+  if (hasWorkflow('Chatbot Manager Access')) {
+    test('Chatbot Manager Access', async ({ page }) => {
+      await activity('CBM-ACCESS-001', 'chatbot_manager oeffnet /chatbot-manager', async () => {
+        await openRoute(
+          page,
+          TEST_USERS.chatbot_manager,
+          '/chatbot-manager',
+          '.chatbot-manager-page, .cm-main, main'
+        )
+
+        const mainContent = page.locator('.chatbot-manager-page, .cm-main, main').first()
+        await expect(mainContent).toBeVisible({ timeout: 10000 })
+      })
+
+      await activity('CBM-TABS-001', 'Chatbot-Manager Tabs durchklicken', async () => {
+        const sectionValues = ['chatbots', 'rag', 'crawler']
+
+        for (const section of sectionValues) {
+          const navItem = page.locator(
+            `.v-list-item[value="${section}"], .v-list-item:has-text("${section}"), .sidebar-nav .nav-item:has-text("${section}")`
+          ).first()
+
+          if (await navItem.isVisible({ timeout: 4000 }).catch(() => false)) {
+            await navItem.click()
+            await page.waitForLoadState('domcontentloaded', { timeout: 5000 }).catch(() => {})
+          } else {
+            await page.goto(`/chatbot-manager?tab=${section}`, { waitUntil: 'domcontentloaded' })
+            await dismissConsentBanner(page)
+            await waitForPageReady(page, 10000)
+          }
+
+          const mainContent = page.locator('.cm-main, .cm-content, main').first()
+          await expect(mainContent).toBeVisible({ timeout: 8000 })
+        }
+      })
+    })
+  }
+
+  if (hasWorkflow('Markdown Collab Navigation')) {
+    test('Markdown Collab Navigation', async ({ page }) => {
+      await activity('MD-NAV-001', 'Markdown Collab Home oeffnen', async () => {
+        await openRoute(page, TEST_USERS.researcher, '/MarkdownCollab', '.markdown-home, .page-header, main')
+
+        const pageContent = page.locator('.markdown-home, .page-header, main').first()
+        await expect(pageContent).toBeVisible({ timeout: 10000 })
+      })
+
+      await activity('MD-WORKSPACE-001', 'Workspace oeffnen falls vorhanden', async () => {
+        const workspaceCard = page.locator('.workspace-card, .l-card, .item-card').first()
+
+        if (await workspaceCard.isVisible({ timeout: 5000 }).catch(() => false)) {
+          await workspaceCard.click()
+          await waitForPageReady(page, 12000)
+
+          const editorArea = page.locator('.editor-area, .workspace-content, .markdown-editor, main').first()
+          await expect(editorArea).toBeVisible({ timeout: 10000 })
+        } else {
+          const hasEmptyOrContent = await page
+            .locator('.empty-state, .markdown-home, .page-header, main')
+            .first()
+            .isVisible({ timeout: 5000 })
+            .catch(() => false)
+          expect(hasEmptyOrContent, 'Markdown Collab should show workspace list or empty state').toBeTruthy()
+        }
+      })
+    })
+  }
 })

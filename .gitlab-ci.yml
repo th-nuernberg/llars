@@ -86,7 +86,6 @@ cache:
   paths:
     - .cache/pip
     - .cache/npm
-    - llars-frontend/node_modules/
 
 # Standard before_script for SSH setup (Alpine Linux)
 .ssh_setup: &ssh_setup

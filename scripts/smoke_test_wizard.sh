@@ -20,6 +20,7 @@ BASE_URL="${BASE_URL:-http://localhost}"
 # API Key Header ist X-API-Key (nicht X-API-Key!)
 API_KEY="${SYSTEM_ADMIN_API_KEY:-llars-admin-key-change-in-production-12345}"
 TEST_URL="${TEST_URL:-https://example.com}"  # Einfache Test-URL
+SMOKE_FORCE_HTTPS_HEADER="${SMOKE_FORCE_HTTPS_HEADER:-1}"
 MAX_WAIT_SECONDS=300  # Max 5 Minuten warten
 POLL_INTERVAL=5
 
@@ -33,10 +34,19 @@ log_info() { echo -e "${GREEN}[INFO]${NC} $1"; }
 log_warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
 log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
 
+CURL_HEADER_ARGS=()
+if [ "$SMOKE_FORCE_HTTPS_HEADER" = "1" ]; then
+    CURL_HEADER_ARGS+=(-H "X-Forwarded-Proto: https")
+fi
+
+smoke_curl() {
+    curl "${CURL_HEADER_ARGS[@]}" "$@"
+}
+
 cleanup() {
     if [ -n "${CHATBOT_ID:-}" ]; then
         log_info "Cleanup: Lösche Chatbot $CHATBOT_ID..."
-        curl -sf -X DELETE "$BASE_URL/api/chatbots/$CHATBOT_ID" \
+        smoke_curl -sf -X DELETE "$BASE_URL/api/chatbots/$CHATBOT_ID" \
             -H "X-API-Key: $API_KEY" || true
     fi
 }
@@ -49,7 +59,7 @@ trap cleanup EXIT
 log_info "=== LLARS Wizard Smoke Test ==="
 log_info "Prüfe API Health..."
 
-if ! curl -sf "$BASE_URL/auth/health_check" > /dev/null; then
+if ! smoke_curl -sf "$BASE_URL/auth/health_check" > /dev/null; then
     log_error "API nicht erreichbar!"
     exit 1
 fi
@@ -61,7 +71,7 @@ log_info "✓ API Health OK"
 log_info "Erstelle Wizard-Session mit URL: $TEST_URL"
 
 RESPONSE=""
-RESPONSE=$(curl -sf -X POST "$BASE_URL/api/chatbots/wizard" \
+RESPONSE=$(smoke_curl -sf -X POST "$BASE_URL/api/chatbots/wizard" \
     -H "Content-Type: application/json" \
     -H "X-API-Key: $API_KEY" \
     -d "{
@@ -94,7 +104,7 @@ log_info "✓ Wizard-Session erstellt: Chatbot=$CHATBOT_ID, Session=$SESSION_ID"
 log_info "Starte Crawling..."
 
 CRAWL_RESPONSE=""
-CRAWL_RESPONSE=$(curl -sf -X POST "$BASE_URL/api/chatbots/$CHATBOT_ID/wizard/crawl" \
+CRAWL_RESPONSE=$(smoke_curl -sf -X POST "$BASE_URL/api/chatbots/$CHATBOT_ID/wizard/crawl" \
     -H "Content-Type: application/json" \
     -H "X-API-Key: $API_KEY" \
     -d "{
@@ -120,7 +130,7 @@ WAITED=0
 LAST_STATUS=""
 
 while [ $WAITED -lt $MAX_WAIT_SECONDS ]; do
-    STATUS_RESPONSE=$(curl -sf "$BASE_URL/api/chatbots/$CHATBOT_ID/wizard/status" \
+    STATUS_RESPONSE=$(smoke_curl -sf "$BASE_URL/api/chatbots/$CHATBOT_ID/wizard/status" \
         -H "X-API-Key: $API_KEY" 2>/dev/null) || {
         log_warn "Status-Abfrage fehlgeschlagen, versuche erneut..."
         sleep $POLL_INTERVAL
@@ -195,7 +205,7 @@ log_info "Konfiguriere Chatbot..."
 
 BOT_NAME="smoke-test-bot-$(date +%s)"
 CONFIG_RESPONSE=""
-CONFIG_RESPONSE=$(curl -sf -X PATCH "$BASE_URL/api/chatbots/wizard/sessions/$CHATBOT_ID/data" \
+CONFIG_RESPONSE=$(smoke_curl -sf -X PATCH "$BASE_URL/api/chatbots/wizard/sessions/$CHATBOT_ID/data" \
     -H "Content-Type: application/json" \
     -H "X-API-Key: $API_KEY" \
     -d "{
@@ -220,7 +230,7 @@ log_info "✓ Chatbot konfiguriert"
 log_info "Finalisiere Chatbot..."
 
 FINALIZE_RESPONSE=""
-FINALIZE_RESPONSE=$(curl -sf -X POST "$BASE_URL/api/chatbots/$CHATBOT_ID/wizard/finalize" \
+FINALIZE_RESPONSE=$(smoke_curl -sf -X POST "$BASE_URL/api/chatbots/$CHATBOT_ID/wizard/finalize" \
     -H "Content-Type: application/json" \
     -H "X-API-Key: $API_KEY" \
     -d "{
@@ -245,7 +255,7 @@ log_info "✓ Chatbot finalisiert"
 log_info "Verifiziere Chatbot..."
 
 VERIFY_RESPONSE=""
-VERIFY_RESPONSE=$(curl -sf "$BASE_URL/api/chatbots/$CHATBOT_ID" \
+VERIFY_RESPONSE=$(smoke_curl -sf "$BASE_URL/api/chatbots/$CHATBOT_ID" \
     -H "X-API-Key: $API_KEY" 2>&1) || {
     log_error "Chatbot nicht gefunden!"
     exit 1
@@ -260,7 +270,7 @@ log_info "✓ Chatbot verifiziert: $CHATBOT_NAME"
 log_info "Lösche Test-Chatbot..."
 
 DELETE_RESPONSE=""
-DELETE_RESPONSE=$(curl -sf -X DELETE "$BASE_URL/api/chatbots/$CHATBOT_ID" \
+DELETE_RESPONSE=$(smoke_curl -sf -X DELETE "$BASE_URL/api/chatbots/$CHATBOT_ID" \
     -H "X-API-Key: $API_KEY" 2>&1) || {
     log_warn "Chatbot-Löschung fehlgeschlagen (wird im Cleanup erneut versucht)"
 }

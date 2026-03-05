@@ -17,6 +17,7 @@ set -euo pipefail
 BASE_URL="${BASE_URL:-http://localhost}"
 DEPLOY_PATH="${LLARS_DEPLOY_PATH:-/var/llars}"
 ENV_FILE="$DEPLOY_PATH/.env"
+SMOKE_FORCE_HTTPS_HEADER="${SMOKE_FORCE_HTTPS_HEADER:-1}"
 
 if [ -f "$ENV_FILE" ]; then
   set -a
@@ -41,10 +42,19 @@ NC='\033[0m'
 log_ok()  { echo -e "${GREEN}[OK]${NC} $1"; }
 log_err() { echo -e "${RED}[ERROR]${NC} $1"; }
 
+CURL_HEADER_ARGS=()
+if [ "$SMOKE_FORCE_HTTPS_HEADER" = "1" ]; then
+  CURL_HEADER_ARGS+=(-H "X-Forwarded-Proto: https")
+fi
+
+smoke_curl() {
+  curl "${CURL_HEADER_ARGS[@]}" "$@"
+}
+
 cleanup() {
   if [ -n "$TEMPLATE_ID" ]; then
     echo "Cleanup: Deleting smoke test template $TEMPLATE_ID..."
-    curl -sf -X DELETE "$BASE_URL/api/admin/field-prompts/$TEMPLATE_ID" \
+    smoke_curl -sf -X DELETE "$BASE_URL/api/admin/field-prompts/$TEMPLATE_ID" \
       -H "X-API-Key: $API_KEY" || true
   fi
 }
@@ -55,7 +65,7 @@ api() {
   local method="$1"
   local path="$2"
   shift 2
-  curl -sf -X "$method" "$BASE_URL$path" \
+  smoke_curl -sf -X "$method" "$BASE_URL$path" \
     -H "X-API-Key: $API_KEY" \
     -H "Content-Type: application/json" \
     "$@"

@@ -5,6 +5,7 @@ DEPLOY_PATH="${LLARS_DEPLOY_PATH:-/var/llars}"
 BASE_URL="${BASE_URL:-http://localhost}"
 ENV_FILE="$DEPLOY_PATH/.env"
 SMOKE_WIZARD="${SMOKE_WIZARD:-1}"
+SMOKE_FORCE_HTTPS_HEADER="${SMOKE_FORCE_HTTPS_HEADER:-1}"
 
 if [ -f "$ENV_FILE" ]; then
   set -a
@@ -17,13 +18,24 @@ DB_USER="${MYSQL_USER:-dev_user}"
 DB_PASS="${MYSQL_PASSWORD:-dev_password_change_me}"
 DB_NAME="${MYSQL_DATABASE:-database_llars}"
 
+CURL_HEADER_ARGS=()
+if [ "$SMOKE_FORCE_HTTPS_HEADER" = "1" ]; then
+  # Production nginx on :80 redirects to HTTPS unless proxied as HTTPS.
+  # CI smoke jobs run locally on the server and should emulate proxy headers.
+  CURL_HEADER_ARGS+=(-H "X-Forwarded-Proto: https")
+fi
+
+smoke_curl() {
+  curl "${CURL_HEADER_ARGS[@]}" "$@"
+}
+
 assert_status() {
   local url="$1"
   shift
   local expected=("$@");
   local code
   # Follow redirects (-L) to get final status code
-  code=$(curl -sL -o /dev/null -w "%{http_code}" "$url" || true)
+  code=$(smoke_curl -sL -o /dev/null -w "%{http_code}" "$url" || true)
 
   for exp in "${expected[@]}"; do
     if [ "$code" = "$exp" ]; then
@@ -42,7 +54,7 @@ assert_status_with_api_key() {
   local expected=("$@");
   local code
   # Follow redirects (-L) to get final status code
-  code=$(curl -sL -o /dev/null -w "%{http_code}" -H "X-API-Key: $SYSTEM_ADMIN_API_KEY" "$url" || true)
+  code=$(smoke_curl -sL -o /dev/null -w "%{http_code}" -H "X-API-Key: $SYSTEM_ADMIN_API_KEY" "$url" || true)
 
   for exp in "${expected[@]}"; do
     if [ "$code" = "$exp" ]; then
@@ -70,7 +82,7 @@ assert_system_settings_schema() {
   # This avoids relying on Docker CLI access from inside the smoke container.
   if [ -n "$SYSTEM_ADMIN_API_KEY" ]; then
     local settings_json
-    settings_json=$(curl -sS -H "X-API-Key: $SYSTEM_ADMIN_API_KEY" "$BASE_URL/api/admin/system/settings" || true)
+    settings_json=$(smoke_curl -sS -H "X-API-Key: $SYSTEM_ADMIN_API_KEY" "$BASE_URL/api/admin/system/settings" || true)
 
     if [ -n "$settings_json" ]; then
       local missing_api

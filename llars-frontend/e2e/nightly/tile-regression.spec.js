@@ -4,6 +4,7 @@ import tileContract from '../../src/config/home_tiles.contract.json' with { type
 import {
   TEST_USERS,
   quickLogin,
+  handlePrivacyPage,
   dismissConsentBanner,
   waitForPageReady
 } from '../helpers.js'
@@ -44,6 +45,7 @@ async function openHome(page, user) {
   }
 
   await dismissConsentBanner(page)
+  await handlePrivacyPage(page, HOME_PATH)
   await page.waitForSelector(HOME_READY_SELECTOR, { timeout: 20000 })
   await waitForPageReady(page, 15000)
 }

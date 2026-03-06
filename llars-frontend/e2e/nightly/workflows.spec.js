@@ -7,6 +7,7 @@ import workflowsContract from './nightly_workflows.contract.json' with { type: '
 import {
   TEST_USERS,
   quickLogin,
+  handlePrivacyPage,
   dismissConsentBanner,
   waitForPageReady
 } from '../helpers.js'
@@ -33,6 +34,7 @@ async function openRoute(page, user, route, readySelector = 'main, .page-contain
   }
 
   await dismissConsentBanner(page)
+  await handlePrivacyPage(page, route)
   await page.waitForSelector(readySelector, { timeout: 30000 })
   await waitForPageReady(page, 15000)
 }

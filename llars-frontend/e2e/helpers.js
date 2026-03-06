@@ -100,18 +100,27 @@ export async function dismissConsentBanner(page) {
       await consentBtn.waitFor({ state: 'hidden', timeout: 2000 }).catch(() => {})
     }
 
-    // Try new Analytics & Datenschutz dialog - look for ZUSTIMMEN or ABLEHNEN buttons
-    // These appear as uppercase in the UI
-    const zustimmenBtn = page.locator('button:has-text("ZUSTIMMEN"), button:has-text("Zustimmen")').first()
-    const ablehnenBtn = page.locator('button:has-text("ABLEHNEN"), button:has-text("Ablehnen")').first()
+    // Try new Analytics & Datenschutz dialog in German and English.
+    const acceptBtn = page.locator([
+      'button:has-text("ZUSTIMMEN")',
+      'button:has-text("Zustimmen")',
+      'button:has-text("ACCEPT")',
+      'button:has-text("Accept")'
+    ].join(', ')).first()
+    const declineBtn = page.locator([
+      'button:has-text("ABLEHNEN")',
+      'button:has-text("Ablehnen")',
+      'button:has-text("DECLINE")',
+      'button:has-text("Decline")'
+    ].join(', ')).first()
 
-    if (await zustimmenBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
-      await zustimmenBtn.click({ force: true })
+    if (await acceptBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await acceptBtn.click({ force: true })
       // Wait for dialog to close
-      await zustimmenBtn.waitFor({ state: 'hidden', timeout: 3000 }).catch(() => {})
-    } else if (await ablehnenBtn.isVisible({ timeout: 500 }).catch(() => false)) {
-      await ablehnenBtn.click({ force: true })
-      await ablehnenBtn.waitFor({ state: 'hidden', timeout: 3000 }).catch(() => {})
+      await acceptBtn.waitFor({ state: 'hidden', timeout: 3000 }).catch(() => {})
+    } else if (await declineBtn.isVisible({ timeout: 500 }).catch(() => false)) {
+      await declineBtn.click({ force: true })
+      await declineBtn.waitFor({ state: 'hidden', timeout: 3000 }).catch(() => {})
     }
   } catch (e) {
     // Page might be closed, ignore
@@ -122,13 +131,22 @@ export async function dismissConsentBanner(page) {
  * Handle privacy page redirect (Datenschutzerklärung)
  * Uses URL-based detection instead of timeouts
  */
-export async function handlePrivacyPage(page) {
+export async function handlePrivacyPage(page, redirectPath = null) {
   try {
-    const isOnPrivacyPage = page.url().includes('Datenschutz') ||
-      await page.locator('h1:has-text("Datenschutzerklärung")').isVisible({ timeout: 1000 }).catch(() => false)
+    const currentUrl = page.url().toLowerCase()
+    const isOnPrivacyPage = currentUrl.includes('datenschutz') ||
+      currentUrl.includes('privacy') ||
+      await page.locator([
+        'h1:has-text("Datenschutzerklärung")',
+        'h1:has-text("Privacy policy")'
+      ].join(', ')).first().isVisible({ timeout: 1000 }).catch(() => false)
 
     if (isOnPrivacyPage) {
       await dismissConsentBanner(page)
+      if (redirectPath) {
+        await page.goto(redirectPath, { waitUntil: 'domcontentloaded', timeout: 30000 }).catch(() => {})
+        await dismissConsentBanner(page)
+      }
       // Wait for navigation if it happens, but don't block
       await page.waitForLoadState('domcontentloaded', { timeout: 3000 }).catch(() => {})
     }
@@ -152,6 +170,7 @@ export async function quickLogin(page, user = TEST_USERS.researcher, retries = 2
   if (isProduction) {
     await page.goto('/Home', { waitUntil: 'domcontentloaded', timeout: 30000 })
     await page.waitForLoadState('load', { timeout: 5000 }).catch(() => {})
+    await handlePrivacyPage(page, '/Home')
     if (page.url().includes('/Home')) {
       await dismissConsentBanner(page)
       return // Already authenticated via storageState
@@ -165,6 +184,7 @@ export async function quickLogin(page, user = TEST_USERS.researcher, retries = 2
       await page.goto('/Home', { waitUntil: 'domcontentloaded', timeout: 30000 })
       await page.waitForLoadState('load', { timeout: 5000 }).catch(() => {})
       await dismissConsentBanner(page)
+      await handlePrivacyPage(page, '/Home')
       if (page.url().includes('/Home')) {
         return
       }

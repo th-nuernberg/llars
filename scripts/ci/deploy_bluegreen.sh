@@ -413,10 +413,13 @@ upstream yjs {
 }
 CONF
 
-  # Start/restart staging nginx (port 55080) pointing to inactive color
-  docker compose -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.staging.yml \
+  # Start/restart staging nginx (port 55080) pointing to inactive color.
+  # IMPORTANT: Do not include docker-compose.prod.yml here, otherwise staging nginx may
+  # inherit production 80/443 bindings and hijack public traffic.
+  local staging_compose_files="-f docker-compose.yml -f docker-compose.staging.yml"
+  NGINX_EXTERNAL_PORT=55080 docker compose $staging_compose_files \
     stop nginx-service 2>/dev/null || true
-  docker compose -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.staging.yml \
+  NGINX_EXTERNAL_PORT=55080 docker compose $staging_compose_files \
     up -d --no-deps nginx-service
 
   # Wait for staging to be accessible

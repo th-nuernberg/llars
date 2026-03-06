@@ -36,6 +36,7 @@ def register_pipeline_events(socketio):
             emit('pipeline:error', {'message': 'run_id required'})
             return
 
+        # TODO: Security - add ownership/membership check before joining pipeline run room
         room = pipeline_run_room(run_id)
         join_room(room)
 

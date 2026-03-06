@@ -9,6 +9,11 @@ from . import db as db_instance
 # Re-export the db instance for backwards compatibility (modules import `from db.database import db`)
 db = db_instance
 
+
+def escape_like(value: str) -> str:
+    """Escape SQL LIKE/ILIKE wildcard characters."""
+    return value.replace('\\', '\\\\').replace('%', '\\%').replace('_', '\\_')
+
 migrate = Migrate()  # Initialisiere Flask-Migrate
 
 

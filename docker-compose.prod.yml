@@ -50,7 +50,7 @@ services:
       # OnCoCo model (large, mounted to keep image slim)
       - ./app/models/oncoco:/app/models/oncoco:ro
       # Docker monitor (admin): needs access to Docker Engine
-      - /var/run/docker.sock:/var/run/docker.sock
+      - /var/run/docker.sock:/var/run/docker.sock:ro
     # No expose of port to host (only internal)
     ports: []
     restart: unless-stopped
@@ -141,6 +141,8 @@ services:
       - TZ=Europe/Berlin
       - PROJECT_STATE=production
       - MKDOCS_BIND_ADDR=0.0.0.0:8000
+    # Remove external port exposure (only internal via nginx)
+    ports: []
     # Remove volume mounts and develop mode for production
     volumes: []
     develop: {}
@@ -172,6 +174,13 @@ services:
     restart: "no"
 
   matomo-archiver:
+    restart: unless-stopped
+
+  # ============================================
+  # LiveKit - Remove external port exposure
+  # ============================================
+  livekit-service:
+    ports: []
     restart: unless-stopped
 
   # ============================================
@@ -213,7 +222,7 @@ services:
       - AUTHENTIK_POSTGRESql__PASSWORD=${AUTHENTIK_DB_PASSWORD}
       - AUTHENTIK_REDIS__HOST=authentik-redis
       - AUTHENTIK_LISTEN__PORT=9000
-      - AUTHENTIK_LISTEN__TRUSTED_PROXY_CIDRS=0.0.0.0/0,::/0
+      - AUTHENTIK_LISTEN__TRUSTED_PROXY_CIDRS=172.16.0.0/12,10.0.0.0/8,192.168.0.0/16
       - AUTHENTIK_ERROR_REPORTING__ENABLED=false
       - AUTHENTIK_BOOTSTRAP_EMAIL=${AUTHENTIK_BOOTSTRAP_EMAIL}
       - AUTHENTIK_BOOTSTRAP_PASSWORD=${AUTHENTIK_BOOTSTRAP_PASSWORD}

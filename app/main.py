@@ -72,6 +72,7 @@ redis_client = redis.Redis(
     host=os.environ.get('REDIS_HOST', 'llars-redis'),
     port=int(os.environ.get('REDIS_PORT', 6379)),
     db=int(os.environ.get('REDIS_DB', 0)),
+    password=os.environ.get('REDIS_PASSWORD', None),
     decode_responses=True,  # Return strings instead of bytes
     socket_connect_timeout=5,
     socket_timeout=5,
@@ -166,39 +167,14 @@ def exempt_endpoints():
     if not request.endpoint:
         return False
     path = request.path or ''
-    # Scenario stats are lazy-loaded in list views and can legitimately create
-    # bursty request patterns when users browse many scenarios.
-    if request.method == 'GET' and re.fullmatch(r'/api/scenarios/\d+/stats', path):
-        return True
     # Exempt health checks
     if 'health_check' in request.endpoint:
         return True
-    # Exempt judge session polling endpoints (queue, current, comparisons, workers)
-    if request.path and '/api/judge/sessions/' in request.path:
+    # Exempt Socket.IO / WebSocket endpoints
+    if path.startswith('/socket.io'):
         return True
-    # Exempt email thread endpoints (frequently accessed by judge workers)
-    if request.path and '/api/email_threads/' in request.path:
-        return True
-    # Exempt chatbot wizard endpoints (high-frequency polling/updates)
-    if request.path and '/api/chatbots/' in request.path and '/wizard/' in request.path:
-        return True
-    # Exempt crawler job status polling endpoints
-    if request.path and request.path.startswith('/api/crawler/jobs'):
-        return True
-    # Exempt LaTeX compile status + SyncTeX endpoints (frequently polled)
-    if request.path and request.path.startswith('/api/latex-collab/compile/'):
-        return True
-    # Exempt data import endpoints (bulk uploads can exceed normal limits)
-    if request.path and request.path.startswith('/api/import/'):
-        return True
-    # Exempt generation endpoints (pagination through outputs + WebSocket polling)
-    if request.path and request.path.startswith('/api/generation/'):
-        return True
-    # Exempt evaluation session endpoints (frequent polling during active evaluation)
-    if request.path and request.path.startswith('/api/evaluation/'):
-        return True
-    # Exempt scenario data endpoints (pagination, schema batch loads)
-    if request.path and request.path.startswith('/api/scenarios/'):
+    # Exempt SSE (Server-Sent Events) streaming endpoints
+    if path.startswith('/api/latex-collab/compile/'):
         return True
     return False
 

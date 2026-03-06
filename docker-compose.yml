@@ -155,7 +155,7 @@ services:
       - rag_docs:/app/rag_docs
       # OnCoCo model is now included in app/models/oncoco (part of ./app mount)
       # Docker monitor (admin): needs access to Docker Engine
-      - /var/run/docker.sock:/var/run/docker.sock
+      - /var/run/docker.sock:/var/run/docker.sock:ro
     group_add:
       - "${DOCKER_SOCK_GID:-0}"
     env_file:
@@ -183,6 +183,7 @@ services:
       - REDIS_HOST=${REDIS_HOST:-llars-redis}
       - REDIS_PORT=${REDIS_PORT:-6379}
       - REDIS_DB=${REDIS_DB:-0}
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-dev_redis_password}
       - LLARS_SKIP_STARTUP_TASKS=${LLARS_SKIP_STARTUP_TASKS:-}
       # LiveKit (Voice/Video Calls)
       - LIVEKIT_API_KEY=${LIVEKIT_API_KEY:-devkey}
@@ -379,7 +380,7 @@ services:
       - AUTHENTIK_POSTGRESql__PASSWORD=${AUTHENTIK_DB_PASSWORD:-dev_authentik_db_password}
       - AUTHENTIK_REDIS__HOST=authentik-redis
       - AUTHENTIK_LISTEN__PORT=9000
-      - AUTHENTIK_LISTEN__TRUSTED_PROXY_CIDRS=0.0.0.0/0,::/0
+      - AUTHENTIK_LISTEN__TRUSTED_PROXY_CIDRS=172.16.0.0/12,10.0.0.0/8,192.168.0.0/16
       - AUTHENTIK_ERROR_REPORTING__ENABLED=false
       - AUTHENTIK_BOOTSTRAP_EMAIL=${AUTHENTIK_BOOTSTRAP_EMAIL:-admin@example.com}
       - AUTHENTIK_BOOTSTRAP_PASSWORD=${AUTHENTIK_BOOTSTRAP_PASSWORD:-admin123}
@@ -493,13 +494,14 @@ services:
   llars-redis:
     container_name: llars_redis
     image: public.ecr.aws/docker/library/redis:7-alpine
-    command: ["redis-server", "--save", "60", "1", "--appendonly", "yes"]
+    command: ["redis-server", "--save", "60", "1", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD:-dev_redis_password}"]
     volumes:
       - llars_redis_data:/data
     environment:
       - TZ=Europe/Berlin
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-dev_redis_password}
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD-SHELL", "redis-cli -a \"$REDIS_PASSWORD\" ping"]
       interval: 5s
       timeout: 3s
       retries: 5

@@ -42,6 +42,7 @@ def register_generation_events(socketio):
             emit("generation:error", {"message": "job_id erforderlich"})
             return
 
+        # TODO: Security - add ownership/membership check before joining generation job room
         room = generation_job_room(job_id)
         join_room(room)
         logger.info("[Generation Socket] Client %s joined room %s", request.sid, room)

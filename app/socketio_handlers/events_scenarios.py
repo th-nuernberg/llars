@@ -41,6 +41,7 @@ def register_scenarios_events(socketio):
                 emit("scenario:error", {"error": "scenario_id is required"})
                 return
 
+            # TODO: Security - add ownership/membership check before joining scenario room
             room = _scenario_room(scenario_id)
             join_room(room)
 

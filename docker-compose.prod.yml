@@ -71,10 +71,12 @@ services:
       context: .
       dockerfile: docker/vue/Dockerfile-vue-production
       args:
-        - VITE_API_BASE_URL=${PROJECT_URL:-https://llars.e-beratungsinstitut.de}
+        # Build frontend URLs as relative paths so the same image works on
+        # staging (:55080) and production behind the blue-green nginx switch.
+        - VITE_API_BASE_URL=
         - VITE_PROJECT_STATE=production
-        - VITE_MKDOCS_URL=${PROJECT_URL:-https://llars.e-beratungsinstitut.de}/mkdocs
-        - VITE_KEYCLOAK_URL=${PROJECT_URL:-https://llars.e-beratungsinstitut.de}/authentik
+        - VITE_MKDOCS_URL=/mkdocs
+        - VITE_KEYCLOAK_URL=/authentik
         - VITE_KEYCLOAK_CLIENT_ID=${AUTHENTIK_FRONTEND_CLIENT_ID:-llars-frontend}
         - VITE_KEYCLOAK_REALM=llars
         - VITE_SOCKETIO_ENABLE_WEBSOCKET=${VITE_SOCKETIO_ENABLE_WEBSOCKET:-true}

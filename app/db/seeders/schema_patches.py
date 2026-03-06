@@ -431,6 +431,25 @@ def apply_schema_patches(db) -> None:
             column_name="last_active_at",
             column_definition_sql="`last_active_at` DATETIME NULL",
         )
+        # User profile name fields (required by User model and admin APIs)
+        changed |= _ensure_column(
+            db,
+            table_name="users",
+            column_name="first_name",
+            column_definition_sql="`first_name` VARCHAR(100) NULL",
+        )
+        changed |= _ensure_column(
+            db,
+            table_name="users",
+            column_name="last_name",
+            column_definition_sql="`last_name` VARCHAR(100) NULL",
+        )
+        changed |= _ensure_column(
+            db,
+            table_name="users",
+            column_name="display_name",
+            column_definition_sql="`display_name` VARCHAR(255) NULL",
+        )
 
         # Scenarios: per-scenario config + comparison model config
         changed |= _ensure_column(

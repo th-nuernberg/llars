@@ -26,7 +26,11 @@ if [ "$SMOKE_FORCE_HTTPS_HEADER" = "1" ]; then
 fi
 
 smoke_curl() {
-  curl "${CURL_HEADER_ARGS[@]}" "$@"
+  if [ "${#CURL_HEADER_ARGS[@]}" -gt 0 ]; then
+    curl "${CURL_HEADER_ARGS[@]}" "$@"
+  else
+    curl "$@"
+  fi
 }
 
 assert_status() {

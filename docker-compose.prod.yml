@@ -33,6 +33,7 @@ services:
   backend-flask-service:
     environment:
       - TZ=Europe/Berlin
+      - PROJECT_STATE=production
       - FLASK_ENV=production
       - FLASK_DEBUG=False
       # Disable Chroma telemetry (avoids noisy posthog signature errors and external telemetry calls)

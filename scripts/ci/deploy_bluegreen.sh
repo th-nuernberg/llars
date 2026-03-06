@@ -63,6 +63,19 @@ get_inactive_color() {
   fi
 }
 
+print_container_diagnostics() {
+  local container="$1"
+
+  echo ""
+  echo "--- Diagnostics for $container ---"
+  docker ps -a --filter "name=^/${container}$" --format "table {{.Names}}\t{{.Status}}\t{{.Image}}" || true
+  docker inspect --format='state={{.State.Status}} health={{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}} restarts={{.RestartCount}} exit_code={{.State.ExitCode}} started={{.State.StartedAt}} finished={{.State.FinishedAt}}' "$container" 2>/dev/null || true
+  echo "--- Last logs ($container) ---"
+  docker logs --tail 120 "$container" 2>&1 || true
+  echo "--- End diagnostics ($container) ---"
+  echo ""
+}
+
 wait_for_container_health() {
   local container="$1"
   local max_wait="${2:-180}"
@@ -88,6 +101,33 @@ wait_for_container_health() {
   done
 
   echo "ERROR: $container not healthy after ${max_wait}s"
+  print_container_diagnostics "$container"
+  return 1
+}
+
+wait_for_http_health() {
+  local container="$1"
+  local url="$2"
+  local max_wait="${3:-240}"
+  local interval="${4:-5}"
+  local elapsed=0
+
+  echo "Waiting for HTTP health on $container ($url)..."
+  while [ "$elapsed" -lt "$max_wait" ]; do
+    if docker exec "$container" curl -fsS -o /dev/null --max-time 10 "$url" 2>/dev/null; then
+      echo "HTTP health check passed for $container after ${elapsed}s"
+      return 0
+    fi
+
+    local state
+    state=$(docker inspect --format='{{.State.Status}}/{{if .State.Health}}{{.State.Health.Status}}{{else}}no-healthcheck{{end}}' "$container" 2>/dev/null || echo "not_found")
+    elapsed=$((elapsed + interval))
+    echo "  Waiting... (${elapsed}/${max_wait}s) state=$state"
+    sleep "$interval"
+  done
+
+  echo "ERROR: HTTP health check failed for $container after ${max_wait}s"
+  print_container_diagnostics "$container"
   return 1
 }
 
@@ -242,6 +282,10 @@ cmd_deploy() {
   . ./.env
   set +a
 
+  # Force production runtime semantics during blue-green deploy, independent of .env drift.
+  export PROJECT_STATE=production
+  export FLASK_ENV=production
+
   local active
   active=$(get_active_color)
   local deploy_color
@@ -332,8 +376,8 @@ cmd_deploy() {
   echo ""
   echo "[5/6] Waiting for $deploy_color to be healthy..."
 
-  wait_for_container_health "llars_flask_${deploy_color}" 180 5
-  wait_for_container_health "llars_frontend_${deploy_color}" 120 5
+  wait_for_http_health "llars_flask_${deploy_color}" "http://localhost:8081/auth/health_check" 420 5
+  wait_for_container_health "llars_frontend_${deploy_color}" 180 5
 
   # Also verify via HTTP through the Docker network
   echo "Verifying HTTP health via Docker network..."

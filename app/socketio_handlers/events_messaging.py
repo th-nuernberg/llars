@@ -29,10 +29,33 @@ import logging
 from flask import request
 from flask_socketio import emit, join_room, leave_room
 
+from auth.oidc_validator import validate_token, get_username
+
 logger = logging.getLogger(__name__)
 
 CONV_ROOM_PREFIX = "messaging_conv_"
 USER_ROOM_PREFIX = "messaging_user_"
+
+
+def _require_authenticated_user() -> str | None:
+    """Extract and validate the authenticated username from the JWT token.
+
+    Returns the username on success, or None after emitting an error.
+    Security: This MUST be used instead of trusting client-supplied usernames
+    to prevent user impersonation.
+    """
+    token = str(request.args.get("token") or "").strip()
+    payload = validate_token(token) if token else None
+    if not payload:
+        emit("messaging:error", {"error": "Unauthorized"})
+        return None
+
+    username = get_username(payload)
+    if not username:
+        emit("messaging:error", {"error": "Unauthorized"})
+        return None
+
+    return username
 
 
 def _conv_room(conversation_id: int) -> str:
@@ -81,11 +104,9 @@ def register_messaging_events(socketio):
             if _communication_disabled():
                 emit("messaging:error", {"error": "Communication is disabled"})
                 return
-            if data is None:
-                data = {}
-            username = data.get("username")
+
+            username = _require_authenticated_user()
             if not username:
-                emit("messaging:error", {"error": "username is required"})
                 return
 
             # Join personal notification room
@@ -158,12 +179,15 @@ def register_messaging_events(socketio):
             if data is None:
                 data = {}
 
+            sender = _require_authenticated_user()
+            if not sender:
+                return
+
             conversation_id = data.get("conversation_id")
-            sender = data.get("sender")
             content = data.get("content")
 
-            if not conversation_id or not sender or not content:
-                emit("messaging:error", {"error": "conversation_id, sender, and content are required"})
+            if not conversation_id or not content:
+                emit("messaging:error", {"error": "conversation_id and content are required"})
                 return
 
             from services.messaging_service import MessagingService
@@ -218,11 +242,15 @@ def register_messaging_events(socketio):
                 return
             if data is None:
                 data = {}
+
+            username = _require_authenticated_user()
+            if not username:
+                return
+
             conversation_id = data.get("conversation_id")
-            username = data.get("username")
             is_typing = data.get("is_typing", True)
 
-            if not conversation_id or not username:
+            if not conversation_id:
                 return
 
             room = _conv_room(conversation_id)
@@ -243,11 +271,15 @@ def register_messaging_events(socketio):
                 return
             if data is None:
                 data = {}
+
+            username = _require_authenticated_user()
+            if not username:
+                return
+
             conversation_id = data.get("conversation_id")
-            username = data.get("username")
             up_to_message_id = data.get("up_to_message_id")
 
-            if not conversation_id or not username or not up_to_message_id:
+            if not conversation_id or not up_to_message_id:
                 return
 
             from services.messaging_service import MessagingService
@@ -276,12 +308,16 @@ def register_messaging_events(socketio):
                 return
             if data is None:
                 data = {}
+
+            username = _require_authenticated_user()
+            if not username:
+                return
+
             message_id = data.get("message_id")
-            username = data.get("username")
             content = data.get("content")
 
-            if not message_id or not username or not content:
-                emit("messaging:error", {"error": "message_id, username, and content are required"})
+            if not message_id or not content:
+                emit("messaging:error", {"error": "message_id and content are required"})
                 return
 
             from services.messaging_service import MessagingService
@@ -322,12 +358,16 @@ def register_messaging_events(socketio):
                 return
             if data is None:
                 data = {}
+
+            username = _require_authenticated_user()
+            if not username:
+                return
+
             message_id = data.get("message_id")
-            username = data.get("username")
             conversation_id = data.get("conversation_id")
 
-            if not message_id or not username:
-                emit("messaging:error", {"error": "message_id and username are required"})
+            if not message_id:
+                emit("messaging:error", {"error": "message_id is required"})
                 return
 
             from services.messaging_service import MessagingService
@@ -359,12 +399,16 @@ def register_messaging_events(socketio):
                 return
             if data is None:
                 data = {}
+
+            username = _require_authenticated_user()
+            if not username:
+                return
+
             message_id = data.get("message_id")
-            username = data.get("username")
             emoji = data.get("emoji")
 
-            if not message_id or not username or not emoji:
-                emit("messaging:error", {"error": "message_id, username, and emoji are required"})
+            if not message_id or not emoji:
+                emit("messaging:error", {"error": "message_id and emoji are required"})
                 return
 
             from db.models.messaging import MessagingMessage, MessagingReaction
@@ -424,12 +468,16 @@ def register_messaging_events(socketio):
                 return
             if data is None:
                 data = {}
+
+            initiated_by = _require_authenticated_user()
+            if not initiated_by:
+                return
+
             conversation_id = data.get("conversation_id")
             call_type = data.get("call_type", "voice")
-            initiated_by = data.get("username")
 
-            if not conversation_id or not initiated_by:
-                emit("messaging:error", {"error": "conversation_id and username are required"})
+            if not conversation_id:
+                emit("messaging:error", {"error": "conversation_id is required"})
                 return
 
             from services.call_service import CallService
@@ -482,12 +530,16 @@ def register_messaging_events(socketio):
         try:
             if _communication_disabled():
                 return
+
+            username = _require_authenticated_user()
+            if not username:
+                return
+
             if data is None:
                 data = {}
             call_id = data.get("call_id")
-            username = data.get("username")
 
-            if not call_id or not username:
+            if not call_id:
                 return
 
             from services.call_service import CallService
@@ -511,12 +563,16 @@ def register_messaging_events(socketio):
         try:
             if _communication_disabled():
                 return
+
+            username = _require_authenticated_user()
+            if not username:
+                return
+
             if data is None:
                 data = {}
             call_id = data.get("call_id")
-            username = data.get("username")
 
-            if not call_id or not username:
+            if not call_id:
                 return
 
             from services.call_service import CallService
@@ -532,13 +588,17 @@ def register_messaging_events(socketio):
         try:
             if _communication_disabled():
                 return
+
+            username = _require_authenticated_user()
+            if not username:
+                return
+
             if data is None:
                 data = {}
             call_id = data.get("call_id")
-            username = data.get("username")
             conversation_id = data.get("conversation_id")
 
-            if not call_id or not username:
+            if not call_id:
                 return
 
             from services.call_service import CallService

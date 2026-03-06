@@ -47,7 +47,24 @@
       </div>
 
       <div class="header-right">
-        <!-- Progress Indicator -->
+        <!-- NER Live Progress -->
+        <div v-if="getNerProgress(conversationId)" class="ner-live-progress">
+          <span class="ner-live-label">
+            NER: {{ getNerProgress(conversationId).message_number }}/{{ getNerProgress(conversationId).total_messages }}
+          </span>
+          <v-progress-linear
+            :model-value="getNerProgress(conversationId).percent"
+            color="#88c4c8"
+            height="6"
+            rounded
+            style="min-width: 120px"
+          />
+          <span class="ner-live-entities">
+            {{ getNerProgress(conversationId).entities_found }} entities
+          </span>
+        </div>
+
+        <!-- Navigation Progress -->
         <div v-if="currentIndex >= 0" class="progress-indicator">
           <span class="progress-text">
             {{ currentIndex + 1 }} / {{ conversationsList.length }}
@@ -58,8 +75,8 @@
           variant="accent"
           size="small"
           prepend-icon="mdi-shield-search"
-          :loading="anonymizingConversation"
-          :disabled="anonymizingConversation"
+          :loading="anonymizingConversation || pipelineIsNerRunning(conversationId)"
+          :disabled="anonymizingConversation || pipelineIsNerRunning(conversationId)"
           @click="anonymizeConversation()"
         >
           Anonymize
@@ -465,17 +482,27 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import axios from 'axios'
 import { useSnackbar } from '@/composables/useSnackbar'
 import { usePermissions } from '@/composables/usePermissions'
 import { usePanelResize } from '@/composables/usePanelResize'
+import { useAnonymizationPipeline } from '@/composables/useAnonymizationPipeline'
 
 const route = useRoute()
 const router = useRouter()
 const { showSuccess, showError } = useSnackbar()
 const { hasPermission, fetchPermissions } = usePermissions()
+
+// Socket.IO session for live NER updates
+const conversationId = computed(() => Number(route.params.id))
+const {
+  nerProgress: pipelineNerProgress,
+  isNerRunning: pipelineIsNerRunning,
+  getNerProgress,
+  runNer: pipelineRunNer,
+} = useAnonymizationPipeline({ autoJoinOverview: false, watchConversationId: conversationId.value })
 
 // Panel Resize (left=review 45%, right=messages 55%)
 const {
@@ -627,6 +654,8 @@ function escapeHtml(text) {
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;')
     .replace(/\n/g, '<br>')
 }
 
@@ -864,23 +893,15 @@ async function anonymizeConversation(force = false) {
 
   anonymizingConversation.value = true
   try {
-    const response = await axios.post(
-      `/api/anonymization/conversations/${conversation.value.id}/run-ner`,
-      force ? { force: true } : {}
-    )
-    const result = response.data?.result || {}
-    const entityCount = result.entity_count ?? response.data?.conversation?.entity_count ?? 0
-    const errorCount = Array.isArray(result.errors) ? result.errors.length : 0
-
-    if (errorCount > 0) {
-      showError(`Anonymization finished with ${errorCount} error(s)`)
-    } else {
-      showSuccess(`Anonymization completed (${entityCount} entities)`)
+    const result = await pipelineRunNer(conversation.value.id, { force })
+    if (result?.started) {
+      // NER is now running async - progress will be shown via socket events
+      // Update local status immediately
+      conversation.value.status = 'in_progress'
     }
-    await loadConversation()
   } catch (error) {
-    const apiError = error.response?.data?.error || ''
-    if (!force && apiError.toLowerCase().includes('manually edited')) {
+    const apiError = error?.response?.data?.error || error?.error || ''
+    if (!force && typeof apiError === 'string' && apiError.toLowerCase().includes('manually edited')) {
       const overwriteConfirmed = confirm('This conversation contains manually edited messages. Force anonymization and overwrite those edits?')
       if (overwriteConfirmed) {
         anonymizingConversation.value = false
@@ -914,28 +935,39 @@ function getUniqueEntityTypes(message) {
 }
 
 function highlightEntities(message) {
-  let content = message.anonymized_content || ''
-  if (!message.entities || message.entities.length === 0) return content
+  const content = message.anonymized_content || ''
+  if (!message.entities || message.entities.length === 0) return escapeHtml(content)
 
-  const sortedEntities = [...message.entities].sort((a, b) => b.start_pos - a.start_pos)
+  const sortedEntities = [...message.entities].sort((a, b) => a.start_pos - b.start_pos)
+  const parts = []
+  let lastEnd = 0
   for (const entity of sortedEntities) {
-    const before = content.substring(0, entity.start_pos)
-    const text = content.substring(entity.start_pos, entity.end_pos)
-    const after = content.substring(entity.end_pos)
+    parts.push(escapeHtml(content.substring(lastEnd, entity.start_pos)))
+    const text = escapeHtml(content.substring(entity.start_pos, entity.end_pos))
     const color = getEntityColor(entity.label)
-    content = `${before}<span class="entity-highlight" style="background-color: ${color}33; border-bottom: 2px solid ${color}; padding: 2px 4px; border-radius: 3px;" title="${entity.label}: ${entity.original_text} → ${entity.replacement_text}">${text}</span>${after}`
+    const safeLabel = escapeHtml(entity.label)
+    const safeOriginal = escapeHtml(entity.original_text)
+    const safeReplacement = escapeHtml(entity.replacement_text)
+    parts.push(`<span class="entity-highlight" style="background-color: ${color}33; border-bottom: 2px solid ${color}; padding: 2px 4px; border-radius: 3px;" title="${safeLabel}: ${safeOriginal} → ${safeReplacement}">${text}</span>`)
+    lastEnd = entity.end_pos
   }
-  return content
+  parts.push(escapeHtml(content.substring(lastEnd)))
+  return parts.join('')
 }
 
 function renderContentWithEntities(message) {
-  let content = message.anonymized_content
-  const entities = [...(message.entities || [])].sort((a, b) => b.start_pos - a.start_pos)
+  const content = message.anonymized_content || ''
+  const entities = [...(message.entities || [])].sort((a, b) => a.start_pos - b.start_pos)
+  const parts = []
+  let lastEnd = 0
   entities.forEach(entity => {
-    const highlighted = `<span class="entity-highlight" style="background-color: ${getEntityColor(entity.label)}33; padding: 2px 4px; border-radius: 4px; font-weight: 500;">${entity.replacement_text}</span>`
-    content = content.substring(0, entity.start_pos) + highlighted + content.substring(entity.end_pos)
+    parts.push(escapeHtml(content.substring(lastEnd, entity.start_pos)))
+    const safeReplacement = escapeHtml(entity.replacement_text)
+    parts.push(`<span class="entity-highlight" style="background-color: ${getEntityColor(entity.label)}33; padding: 2px 4px; border-radius: 4px; font-weight: 500;">${safeReplacement}</span>`)
+    lastEnd = entity.end_pos
   })
-  return content.replace(/\n/g, '<br>')
+  parts.push(escapeHtml(content.substring(lastEnd)))
+  return parts.join('')
 }
 
 function formatDate(dateStr) {
@@ -981,6 +1013,17 @@ function handleKeyboardNavigation(event) {
 }
 
 // Lifecycle
+// Reload conversation when NER completes (socket event clears nerProgress entry)
+watch(
+  () => pipelineNerProgress.value[conversationId.value],
+  (newVal, oldVal) => {
+    // NER was running (oldVal existed) and now finished (newVal undefined)
+    if (oldVal && !newVal) {
+      loadConversation()
+    }
+  }
+)
+
 onMounted(async () => {
   try { await fetchPermissions() } catch (error) { console.error('Failed to fetch permissions:', error) }
   loadConversationsList()
@@ -1055,6 +1098,27 @@ onBeforeUnmount(() => {
   align-items: center;
   gap: 8px;
   flex-shrink: 0;
+}
+
+.ner-live-progress {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 12px;
+  background: rgba(136, 196, 200, 0.1);
+  border-radius: 16px 4px 16px 4px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.ner-live-label {
+  color: rgba(var(--v-theme-on-surface), 0.7);
+  white-space: nowrap;
+}
+
+.ner-live-entities {
+  color: var(--llars-accent, #88c4c8);
+  white-space: nowrap;
 }
 
 .progress-indicator {

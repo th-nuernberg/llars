@@ -12,13 +12,14 @@ from werkzeug.utils import secure_filename
 from auth.decorators import authentik_required
 from decorators.permission_decorator import require_permission
 from decorators.error_handler import handle_api_errors, NotFoundError, ValidationError
-from db.database import db
+from db.database import db, escape_like
 from db.models import (
     AnonymizationConversation,
     AnonymizationMessage,
     AnonymizationMessageVersion,
 )
 from services.anonymize import AnonymizationPipelineService
+from services.anonymize.anonymization_worker import AnonymizationWorker
 
 logger = logging.getLogger(__name__)
 # Create sub-blueprint (no url_prefix - parent handles that)
@@ -84,7 +85,7 @@ def list_conversations():
 
     # Search in title
     if search:
-        query = query.filter(AnonymizationConversation.title.ilike(f"%{search}%"))
+        query = query.filter(AnonymizationConversation.title.ilike(f"%{escape_like(search)}%"))
 
     # Load candidate set first so metadata-based filtering can run in Python.
     candidates = query.order_by(AnonymizationConversation.imported_at.desc()).all()
@@ -221,11 +222,12 @@ def import_conversations():
     filename = secure_filename(upload_file.filename) or "conversations.json"
     source_path = f"upload://{datetime.utcnow().strftime('%Y%m%d%H%M%S')}_{filename}"
 
+    # Import without running NER synchronously - we'll do it async if requested
     result = AnonymizationPipelineService.import_conversations(
         payload=payload,
         source_file_path=source_path,
         user_id=g.authentik_user.id,
-        run_ner=run_ner,
+        run_ner=False,
     )
 
     db.session.commit()
@@ -237,6 +239,30 @@ def import_conversations():
         g.authentik_user.id,
     )
 
+    # Auto-start NER in background if requested
+    ner_started = False
+    if run_ner and result["imported_conversations"]:
+        imported_ids = [c.id for c in result["imported_conversations"]]
+
+        # Mark as in_progress
+        for conv in result["imported_conversations"]:
+            conv.status = "in_progress"
+            conv.error_message = None
+        db.session.commit()
+
+        try:
+            from main import socketio
+        except ImportError:
+            socketio = None
+
+        AnonymizationWorker.start_async(
+            conversation_ids=imported_ids,
+            user_id=g.authentik_user.id,
+            socketio=socketio,
+            force=True,
+        )
+        ner_started = True
+
     return (
         jsonify(
             {
@@ -245,6 +271,7 @@ def import_conversations():
                 "failed_count": result["failed_count"],
                 "failed": result["failed"],
                 "conversations": [c.to_dict() for c in result["imported_conversations"]],
+                "ner_started": ner_started,
             }
         ),
         201,
@@ -307,7 +334,7 @@ def update_conversation_status(conversation_id: int):
 @handle_api_errors(logger_name="anonymization")
 def run_conversation_ner(conversation_id: int):
     """
-    Run NER/pseudonymization for all messages in a conversation.
+    Run NER/pseudonymization for all messages in a conversation (async with live updates).
 
     Request body (optional):
         {
@@ -318,11 +345,7 @@ def run_conversation_ner(conversation_id: int):
         {
             "success": true,
             "conversation": {...},
-            "result": {
-                "message_count": 12,
-                "entity_count": 83,
-                "errors": []
-            }
+            "started": true
         }
     """
     conversation = AnonymizationConversation.query.get(conversation_id)
@@ -332,27 +355,120 @@ def run_conversation_ner(conversation_id: int):
     data = request.get_json(silent=True) or {}
     force = bool(data.get("force", False))
 
-    result = AnonymizationPipelineService.rerun_ner(
-        conversation=conversation,
+    # Validate before starting async
+    if not force and conversation.messages:
+        if any(msg.is_manually_edited for msg in conversation.messages):
+            raise ValidationError(
+                "Conversation contains manually edited messages. Use force=true to re-run NER."
+            )
+
+    # Mark as in_progress immediately
+    conversation.status = "in_progress"
+    conversation.error_message = None
+    conversation.updated_by = g.authentik_user.id
+    conversation.updated_at = datetime.utcnow()
+    db.session.commit()
+
+    # Start async worker
+    try:
+        from main import socketio
+    except ImportError:
+        socketio = None
+
+    AnonymizationWorker.start_async(
+        conversation_ids=[conversation_id],
         user_id=g.authentik_user.id,
+        socketio=socketio,
         force=force,
     )
 
-    db.session.commit()
-
     logger.info(
-        "NER re-run for conversation %s by user %s: entities=%s errors=%s",
+        "NER started async for conversation %s by user %s",
         conversation_id,
         g.authentik_user.id,
-        result["entity_count"],
-        len(result["errors"]),
     )
 
     return jsonify(
         {
             "success": True,
             "conversation": conversation.to_dict(),
-            "result": result,
+            "started": True,
+        }
+    )
+
+
+@conversation_bp.route("/batch-ner", methods=["POST"])
+@authentik_required
+@require_permission("feature:anonymization-pipeline:edit")
+@handle_api_errors(logger_name="anonymization")
+def batch_run_ner():
+    """
+    Run NER for multiple conversations at once (async with live updates).
+
+    Request body:
+        {
+            "conversation_ids": [1, 2, 3],  # optional - if omitted, runs for all pending
+            "force": false
+        }
+
+    Returns:
+        {
+            "success": true,
+            "conversation_ids": [1, 2, 3],
+            "started": true
+        }
+    """
+    data = request.get_json(silent=True) or {}
+    force = bool(data.get("force", False))
+    conversation_ids = data.get("conversation_ids")
+
+    if conversation_ids:
+        if not isinstance(conversation_ids, list):
+            raise ValidationError("conversation_ids must be a list")
+        conversations = AnonymizationConversation.query.filter(
+            AnonymizationConversation.id.in_(conversation_ids)
+        ).all()
+    else:
+        # Run NER for all pending conversations
+        conversations = AnonymizationConversation.query.filter_by(status="pending").all()
+
+    if not conversations:
+        raise ValidationError("No conversations found to process")
+
+    ids = [c.id for c in conversations]
+
+    # Mark all as in_progress
+    for conv in conversations:
+        conv.status = "in_progress"
+        conv.error_message = None
+        conv.updated_by = g.authentik_user.id
+        conv.updated_at = datetime.utcnow()
+    db.session.commit()
+
+    try:
+        from main import socketio
+    except ImportError:
+        socketio = None
+
+    AnonymizationWorker.start_async(
+        conversation_ids=ids,
+        user_id=g.authentik_user.id,
+        socketio=socketio,
+        force=force,
+    )
+
+    logger.info(
+        "Batch NER started for %d conversations by user %s",
+        len(ids),
+        g.authentik_user.id,
+    )
+
+    return jsonify(
+        {
+            "success": True,
+            "conversation_ids": ids,
+            "count": len(ids),
+            "started": True,
         }
     )
 

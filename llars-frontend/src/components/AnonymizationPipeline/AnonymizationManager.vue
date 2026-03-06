@@ -37,6 +37,16 @@
         </LBtn>
         <LBtn
           v-if="hasEditPermission"
+          variant="secondary"
+          prepend-icon="mdi-play-circle-outline"
+          size="small"
+          :disabled="isBatchRunning"
+          @click="runBatchNer"
+        >
+          Run All NER
+        </LBtn>
+        <LBtn
+          v-if="hasEditPermission"
           variant="primary"
           prepend-icon="mdi-upload"
           size="small"
@@ -45,6 +55,23 @@
           Import
         </LBtn>
       </div>
+    </div>
+
+    <!-- Batch Progress Bar -->
+    <div v-if="batchProgress" class="batch-progress-bar">
+      <div class="batch-progress-info">
+        <LIcon size="16" color="accent">mdi-shield-sync</LIcon>
+        <span>NER Processing: {{ batchProgress.completed + batchProgress.failed }} / {{ batchProgress.total }}</span>
+        <span v-if="batchProgress.failed > 0" class="batch-failed">
+          ({{ batchProgress.failed }} failed)
+        </span>
+      </div>
+      <v-progress-linear
+        :model-value="batchProgress.percent"
+        color="#88c4c8"
+        height="6"
+        rounded
+      />
     </div>
 
     <!-- Filter Bar -->
@@ -195,6 +222,20 @@
             </span>
           </div>
 
+          <!-- NER Progress -->
+          <div v-if="getNerProgress(conv.id)" class="card-ner-progress">
+            <div class="ner-progress-label">
+              <span>NER: {{ getNerProgress(conv.id).message_number }}/{{ getNerProgress(conv.id).total_messages }} messages</span>
+              <span class="ner-entities">{{ getNerProgress(conv.id).entities_found }} entities</span>
+            </div>
+            <v-progress-linear
+              :model-value="getNerProgress(conv.id).percent"
+              color="#88c4c8"
+              height="4"
+              rounded
+            />
+          </div>
+
           <div class="card-meta">
             <span v-if="metadataModelsText(conv) !== '-'" class="meta-tag model">
               {{ metadataModelsText(conv) }}
@@ -241,7 +282,16 @@
             <span class="list-title">{{ conv.title || `Conversation ${conv.id}` }}</span>
           </div>
           <div class="l-col">
-            <LTag :variant="getStatusVariant(conv.status)" size="small">
+            <div v-if="getNerProgress(conv.id)" class="list-ner-progress">
+              <v-progress-linear
+                :model-value="getNerProgress(conv.id).percent"
+                color="#88c4c8"
+                height="4"
+                rounded
+              />
+              <span class="list-ner-label">{{ getNerProgress(conv.id).percent }}%</span>
+            </div>
+            <LTag v-else :variant="getStatusVariant(conv.status)" size="small">
               {{ conv.status }}
             </LTag>
           </div>
@@ -376,16 +426,37 @@ import { useRouter } from 'vue-router'
 import axios from 'axios'
 import { useSnackbar } from '@/composables/useSnackbar'
 import { usePermissions } from '@/composables/usePermissions'
+import { useAnonymizationPipeline } from '@/composables/useAnonymizationPipeline'
 
 const router = useRouter()
 const { showSuccess, showError } = useSnackbar()
 const { hasPermission, fetchPermissions } = usePermissions()
 
-// State
-const conversations = ref([])
+// Session management with live Socket.IO updates
+const {
+  conversations: pipelineConversations,
+  totalConversations: pipelineTotalConversations,
+  loading: pipelineLoading,
+  availableModels: pipelineModels,
+  availableCourses: pipelineCourses,
+  hasConversationsWithoutModel: pipelineHasNoModel,
+  statusCounts: pipelineStatusCounts,
+  nerProgress,
+  batchProgress,
+  isBatchRunning,
+  loadConversations: pipelineLoadConversations,
+  runNer: pipelineRunNer,
+  batchRunNer,
+  importConversations: pipelineImport,
+  isNerRunning: pipelineIsNerRunning,
+  getNerProgress,
+} = useAnonymizationPipeline({ autoJoinOverview: true })
+
+// State - use pipeline composable refs directly
+const conversations = pipelineConversations
 const selectedConversations = ref([])
-const loading = ref(false)
-const totalConversations = ref(0)
+const loading = pipelineLoading
+const totalConversations = pipelineTotalConversations
 const exportDialog = ref(false)
 const exportLoading = ref(false)
 const exportMode = ref(null)
@@ -393,12 +464,11 @@ const uploadDialog = ref(false)
 const uploadFile = ref(null)
 const uploadRunNer = ref(false)
 const uploadLoading = ref(false)
-const nerLoadingMap = ref({})
 const itemsPerPage = ref(50)
-const availableModels = ref([])
-const availableCourses = ref([])
-const hasConversationsWithoutModel = ref(false)
-const statusCounts = ref({ pending: 0, in_progress: 0, completed: 0, error: 0 })
+const availableModels = pipelineModels
+const availableCourses = pipelineCourses
+const hasConversationsWithoutModel = pipelineHasNoModel
+const statusCounts = pipelineStatusCounts
 const viewMode = ref('list')
 const listSortField = ref(null)
 const listSortAsc = ref(true)
@@ -476,7 +546,7 @@ function metadataCoursesText(item) {
 }
 
 function isNerRunning(conversationId) {
-  return Boolean(nerLoadingMap.value[conversationId])
+  return pipelineIsNerRunning(conversationId)
 }
 
 function toggleSelection(id, checked) {
@@ -497,31 +567,15 @@ function toggleSelectAll(checked) {
 
 // Methods
 async function loadConversations() {
-  loading.value = true
-  try {
-    const params = {
-      limit: tableOptions.value.itemsPerPage,
-      offset: (tableOptions.value.page - 1) * tableOptions.value.itemsPerPage,
-      ...(filters.value.status && { status: filters.value.status }),
-      ...(filters.value.model && { model: filters.value.model }),
-      ...(filters.value.course && { course: filters.value.course }),
-      ...(filters.value.search && { search: filters.value.search })
-    }
-
-    const response = await axios.get('/api/anonymization/conversations', { params })
-    conversations.value = response.data.conversations
-    totalConversations.value = response.data.total
-    availableModels.value = Array.isArray(response.data.available_models) ? response.data.available_models : []
-    availableCourses.value = Array.isArray(response.data.available_courses) ? response.data.available_courses : []
-    hasConversationsWithoutModel.value = Boolean(response.data.has_conversations_without_model)
-
-    if (response.data.status_counts) statusCounts.value = response.data.status_counts
-  } catch (error) {
-    showError('Failed to load conversations')
-    console.error(error)
-  } finally {
-    loading.value = false
+  const params = {
+    limit: tableOptions.value.itemsPerPage,
+    offset: (tableOptions.value.page - 1) * tableOptions.value.itemsPerPage,
+    ...(filters.value.status && { status: filters.value.status }),
+    ...(filters.value.model && { model: filters.value.model }),
+    ...(filters.value.course && { course: filters.value.course }),
+    ...(filters.value.search && { search: filters.value.search })
   }
+  await pipelineLoadConversations(params)
 }
 
 function goToPage(page) {
@@ -609,25 +663,12 @@ async function importConversations() {
 
   uploadLoading.value = true
   try {
-    const formData = new FormData()
-    formData.append('file', file)
-    formData.append('run_ner', String(uploadRunNer.value))
-
-    const response = await axios.post('/api/anonymization/import', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' }
-    })
-
-    showSuccess(`Imported ${response.data.imported_count} conversation(s)`)
-    if (response.data.failed_count > 0) {
-      showError(`${response.data.failed_count} conversation(s) could not be imported`)
+    const result = await pipelineImport(file, { runNer: uploadRunNer.value })
+    if (result) {
+      uploadDialog.value = false
+      uploadFile.value = null
+      await loadConversations()
     }
-
-    uploadDialog.value = false
-    uploadFile.value = null
-    await loadConversations()
-  } catch (error) {
-    showError(error.response?.data?.error || 'Import failed')
-    console.error(error)
   } finally {
     uploadLoading.value = false
   }
@@ -638,20 +679,13 @@ async function runNerForConversation(item) {
   const confirmed = confirm(`Run NER for conversation "${item.title || item.id}"?`)
   if (!confirmed) return
 
-  nerLoadingMap.value = { ...nerLoadingMap.value, [item.id]: true }
-  try {
-    const response = await axios.post(`/api/anonymization/conversations/${item.id}/run-ner`)
-    const entityCount = response.data?.result?.entity_count ?? response.data?.conversation?.entity_count ?? 0
-    showSuccess(`NER completed (${entityCount} entities)`)
-    await loadConversations()
-  } catch (error) {
-    showError(error.response?.data?.error || 'NER processing failed')
-    console.error(error)
-  } finally {
-    const next = { ...nerLoadingMap.value }
-    delete next[item.id]
-    nerLoadingMap.value = next
-  }
+  await pipelineRunNer(item.id)
+}
+
+async function runBatchNer() {
+  const confirmed = confirm('Run NER for all pending conversations?')
+  if (!confirmed) return
+  await batchRunNer()
 }
 
 function exportSelected() {
@@ -1052,6 +1086,62 @@ onMounted(async () => {
 .pagination-info {
   font-size: 0.8rem;
   color: rgba(var(--v-theme-on-surface), 0.6);
+}
+
+/* Batch Progress Bar */
+.batch-progress-bar {
+  flex-shrink: 0;
+  padding: 10px 24px;
+  background: rgba(136, 196, 200, 0.08);
+  border-bottom: 1px solid rgba(136, 196, 200, 0.2);
+}
+
+.batch-progress-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: rgba(var(--v-theme-on-surface), 0.7);
+  margin-bottom: 6px;
+}
+
+.batch-failed {
+  color: var(--llars-danger, #e8a087);
+}
+
+/* Card NER Progress */
+.card-ner-progress {
+  padding: 6px 0;
+}
+
+.ner-progress-label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.7rem;
+  color: rgba(var(--v-theme-on-surface), 0.6);
+  margin-bottom: 4px;
+}
+
+.ner-entities {
+  color: var(--llars-accent, #88c4c8);
+  font-weight: 500;
+}
+
+/* List NER Progress */
+.list-ner-progress {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 80px;
+}
+
+.list-ner-label {
+  font-size: 0.7rem;
+  font-weight: 500;
+  color: var(--llars-accent, #88c4c8);
+  white-space: nowrap;
 }
 
 /* Dialog */

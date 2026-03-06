@@ -18,6 +18,8 @@ services:
     container_name: llars_staging_nginx
     environment:
       - NGINX_NO_SSL=true
+    networks:
+      - bluegreen-shared
     ports:
       - "55080:80"
     volumes:
@@ -27,3 +29,8 @@ services:
 
   # Shared services use production containers - no overrides needed:
   # db-maria-service, llars-redis, authentik-*, matomo-*
+
+networks:
+  bluegreen-shared:
+    name: llars_default
+    external: true

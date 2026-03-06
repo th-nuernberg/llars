@@ -27,6 +27,7 @@ set -euo pipefail
 MODE="${1:-deploy}"
 DEPLOY_PATH="${LLARS_DEPLOY_PATH:-/var/llars}"
 BRANCH="${LLARS_PRODUCTION_BRANCH:-main}"
+STAGING_PROJECT_NAME="${LLARS_STAGING_PROJECT_NAME:-llars-staging}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 STATE_DIR="$DEPLOY_PATH/.deploy"
 BACKUP_DIR="$DEPLOY_PATH/backups"
@@ -450,10 +451,11 @@ upstream yjs {
 CONF
 
   # Start/restart staging nginx (port 55080) pointing to inactive color.
+  # Use a dedicated compose project so staging never replaces production nginx.
   # IMPORTANT: Do not include docker-compose.prod.yml here, otherwise staging nginx may
   # inherit production 80/443 bindings and hijack public traffic.
   local staging_compose_files="-f docker-compose.yml -f docker-compose.staging.yml"
-  NGINX_EXTERNAL_PORT=55080 docker compose $staging_compose_files \
+  NGINX_EXTERNAL_PORT=55080 docker compose --project-name "$STAGING_PROJECT_NAME" $staging_compose_files \
     up -d --force-recreate --no-deps nginx-service
 
   # Wait for staging to be accessible

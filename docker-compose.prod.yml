@@ -77,7 +77,7 @@ services:
         - VITE_KEYCLOAK_URL=${PROJECT_URL:-https://llars.e-beratungsinstitut.de}/authentik
         - VITE_KEYCLOAK_CLIENT_ID=${AUTHENTIK_FRONTEND_CLIENT_ID:-llars-frontend}
         - VITE_KEYCLOAK_REALM=llars
-        - VITE_SOCKETIO_ENABLE_WEBSOCKET=${VITE_SOCKETIO_ENABLE_WEBSOCKET:-false}
+        - VITE_SOCKETIO_ENABLE_WEBSOCKET=${VITE_SOCKETIO_ENABLE_WEBSOCKET:-true}
     environment:
       - TZ=Europe/Berlin
     # No volume mounts in production - static files baked into image

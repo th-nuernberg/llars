@@ -18,6 +18,7 @@ import Impressum from "@/components/Orga/Impressum.vue";
 import Datenschutz from "@/components/Orga/Datenschutz.vue";
 import Kontakt from "@/components/Orga/Kontakt.vue";
 import { useAuth } from "@/composables/useAuth";
+import { usePermissions } from "@/composables/usePermissions";
 import { logI18n } from "@/utils/logI18n";
 
 import AdminTester from "@/components/Admin/AdminTester.vue";
@@ -373,6 +374,16 @@ router.beforeEach((to, from, next) => {
         logI18n("log", "logs.router.requireAdminRedirect");
         next('/Home');
         return;
+    }
+
+    // If route requires specific permission
+    const requiredPermission = to.matched.find(record => record.meta.requiresPermission)?.meta.requiresPermission;
+    if (requiredPermission) {
+        const { hasPermission } = usePermissions();
+        if (!hasPermission(requiredPermission)) {
+            next({ path: '/' });
+            return;
+        }
     }
 
     // All checks passed, proceed with navigation

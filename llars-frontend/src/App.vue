@@ -7,6 +7,7 @@
           <img src="./assets/logo/llars-logo.png" alt="Logo" :height="isMobile ? 24 : 28" class="logo-image">
           <span class="toolbar-text" :class="{ 'mobile-text': isMobile }">{{ isMobile ? 'LLars' : 'LLars Plattform' }}</span>
           <LTag v-if="isDev" variant="accent" size="md" class="ml-2" style="font-size: 0.65rem; letter-spacing: 0.05em;">DEV</LTag>
+          <LTag v-if="isAuthenticated && consoleLogsEnabled" variant="danger" size="md" class="ml-2" style="font-size: 0.65rem; letter-spacing: 0.05em;" prepend-icon="mdi-console">LOGGING</LTag>
         </div>
       </v-toolbar-title>
       <v-spacer></v-spacer>
@@ -113,19 +114,6 @@
     </v-app-bar>
 
     <v-main>
-      <!-- Console logging notification banner -->
-      <v-banner
-        v-if="isAuthenticated && consoleLogsEnabled"
-        icon="mdi-console"
-        color="warning"
-        density="compact"
-        lines="one"
-        class="console-log-banner"
-      >
-        <template v-slot:text>
-          {{ $t('admin.users.consoleLogs.activeNotice') }}
-        </template>
-      </v-banner>
       <router-view :key="routerViewKey"></router-view>
     </v-main>
 
@@ -715,7 +703,4 @@ function openSettings() {
   min-height: auto;
 }
 
-.console-log-banner {
-  border-bottom: 2px solid rgba(var(--v-theme-warning), 0.3);
-}
 </style>

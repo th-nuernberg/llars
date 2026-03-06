@@ -23,7 +23,7 @@
             <LAvatar :username="item.raw.username" :seed="item.raw.avatar_seed" :src="item.raw.avatar_url" size="sm" class="user-avatar-prepend" />
           </template>
           <v-list-item-title class="user-title">
-            {{ formatDisplayName(item.raw.username) }}
+            {{ getUserDisplayName(item.raw) }}
           </v-list-item-title>
           <v-list-item-subtitle class="user-subtitle">@{{ item.raw.username }}</v-list-item-subtitle>
         </v-list-item>
@@ -31,7 +31,7 @@
       <template #selection="{ item }">
         <div class="d-flex align-center ga-2">
           <LAvatar :username="item.raw.username" :seed="item.raw.avatar_seed" :src="item.raw.avatar_url" size="xs" />
-          <span>{{ formatDisplayName(item.raw.username) }}</span>
+          <span>{{ getUserDisplayName(item.raw) }}</span>
         </div>
       </template>
       <template #no-data>
@@ -63,7 +63,7 @@
 import { ref, watch, computed, onMounted } from 'vue'
 import axios from 'axios'
 import { useI18n } from 'vue-i18n'
-import { formatDisplayName } from '@/utils/userUtils'
+import { getUserDisplayName } from '@/utils/userUtils'
 import { AUTH_STORAGE_KEYS, getAuthStorageItem } from '@/utils/authStorage'
 
 const { t } = useI18n()

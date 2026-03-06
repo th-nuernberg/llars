@@ -1,9 +1,9 @@
 /**
  * Console Controller
  *
- * In production, all console output is suppressed by default.
+ * Console output is suppressed by default (both dev and production).
  * An admin can enable console logs per user via the admin panel.
- * When enabled, the user sees a notification banner.
+ * When enabled, the LOGGING tag appears in the app bar.
  */
 
 const METHODS = ['log', 'warn', 'error', 'info', 'debug']
@@ -19,19 +19,16 @@ METHODS.forEach(method => {
 
 function noop() {}
 
-function isProduction() {
-  return import.meta.env.PROD && import.meta.env.MODE !== 'development'
-}
-
 /**
- * Install console suppression (production only).
- * Call once during app bootstrap.
+ * Install console suppression.
+ * Call once during app bootstrap. Suppresses all console output
+ * until explicitly enabled per user via admin panel.
  */
 export function installConsoleController() {
-  if (!isProduction() || initialized) return
+  if (initialized) return
   initialized = true
 
-  // Suppress all console output by default in production
+  // Suppress all console output by default
   METHODS.forEach(method => {
     console[method] = noop
   })
@@ -41,8 +38,6 @@ export function installConsoleController() {
  * Enable or disable console output for the current user.
  */
 export function setConsoleLogsEnabled(value) {
-  if (!isProduction()) return // in dev, console is always available
-
   enabled = Boolean(value)
   METHODS.forEach(method => {
     console[method] = enabled ? originalConsole[method] : noop
@@ -57,9 +52,8 @@ export function setConsoleLogsEnabled(value) {
 }
 
 /**
- * Whether console logs are currently enabled (always true in dev).
+ * Whether console logs are currently enabled.
  */
 export function isConsoleLogsEnabled() {
-  if (!isProduction()) return true
   return enabled
 }

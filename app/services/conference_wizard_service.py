@@ -178,6 +178,9 @@ class ConferenceWizardService:
     def _scrape_website(url):
         """Scrape text content from a conference website."""
         try:
+            from auth.url_validator import validate_url_not_internal
+            validate_url_not_internal(url)
+
             resp = requests.get(
                 url,
                 timeout=ConferenceWizardService.SCRAPE_TIMEOUT,

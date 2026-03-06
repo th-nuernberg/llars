@@ -26,7 +26,7 @@ from decorators.error_handler import (
     handle_api_errors, NotFoundError, ValidationError, ForbiddenError
 )
 from decorators.permission_decorator import require_permission, has_role
-from db.database import db
+from db.database import db, escape_like
 from db.tables import (
     RatingScenarios, FeatureFunctionType, ScenarioUsers,
     EmailThread, Message, ScenarioThreads, ScenarioRoles, User,
@@ -41,6 +41,7 @@ from schemas.evaluation_data_schemas import EvaluationType
 from services.scenario_stats_service import get_authenticity_stats, get_scenario_stats_payload
 from services.user_profile_service import serialize_user_brief
 from .. import data_blueprint
+from auth.access_control import require_scenario_membership
 from .scenario_utils import is_scenario_owner, check_scenario_ownership, check_scenario_management_access, is_scenario_manager
 
 logger = logging.getLogger(__name__)
@@ -899,8 +900,8 @@ def get_available_threads(scenario_id):
     if search:
         query = query.filter(
             db.or_(
-                EmailThread.subject.ilike(f'%{search}%'),
-                EmailThread.sender.ilike(f'%{search}%')
+                EmailThread.subject.ilike(f'%{escape_like(search)}%'),
+                EmailThread.sender.ilike(f'%{escape_like(search)}%')
             )
         )
 
@@ -1053,10 +1054,12 @@ def get_scenario_thread_detail(scenario_id, thread_id):
     Returns:
         - thread: Thread object with messages and votes
     """
-    # Verify scenario exists
+    # Verify scenario exists and user has access
     scenario = RatingScenarios.query.get(scenario_id)
     if not scenario:
         raise NotFoundError(f'Scenario {scenario_id} not found')
+
+    require_scenario_membership(scenario_id, g.authentik_user)
 
     # Verify thread is in this scenario
     scenario_thread = ScenarioThreads.query.filter_by(
@@ -1704,6 +1707,8 @@ def get_scenario_stats(scenario_id):
     if not scenario:
         raise NotFoundError(f'Scenario {scenario_id} not found')
 
+    require_scenario_membership(scenario_id, user)
+
     thread_count = ScenarioThreads.query.filter_by(scenario_id=scenario_id).count()
     user_count = ScenarioUsers.query.filter_by(
         scenario_id=scenario_id,
@@ -2125,6 +2130,8 @@ def export_scenario_results(scenario_id):
 
     if not scenario:
         raise NotFoundError(f'Scenario {scenario_id} not found')
+
+    require_scenario_membership(scenario_id, user)
 
     export_format = request.args.get('format', 'json')
 

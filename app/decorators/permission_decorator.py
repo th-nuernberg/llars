@@ -140,8 +140,7 @@ def require_permission(permission_key: str):
             if not has_permission:
                 return jsonify({
                     'error': 'Forbidden',
-                    'message': f'Permission denied: {permission_key} required',
-                    'required_permission': permission_key
+                    'message': 'Permission denied'
                 }), 403
 
             # Populate g.authentik_user for downstream handlers that rely on it.

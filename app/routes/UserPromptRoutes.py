@@ -8,7 +8,7 @@ from werkzeug.security import check_password_hash
 from . import data_blueprint
 from . import auth_blueprint
 from auth.decorators import authentik_required, admin_required, roles_required
-from db.database import db
+from db.database import db, escape_like
 from db.tables import (User, EmailThread, Message, Feature, FeatureType, UserFeatureRanking,
                        FeatureFunctionType, UserFeatureRating,  UserGroup,ConsultingCategoryType, UserConsultingCategorySelection,
                        FeatureFunctionType, UserFeatureRating, UserMessageRating,
@@ -452,7 +452,14 @@ def search_users():
         User.is_active == True,
     ]
     if query:
-        filters.append(User.username.ilike(f'%{query}%'))
+        from sqlalchemy import or_
+        safe_q = escape_like(query)
+        filters.append(or_(
+            User.username.ilike(f'%{safe_q}%'),
+            User.first_name.ilike(f'%{safe_q}%'),
+            User.last_name.ilike(f'%{safe_q}%'),
+            User.display_name.ilike(f'%{safe_q}%'),
+        ))
 
     users = User.query.filter(*filters).limit(limit).all()
 
@@ -464,6 +471,9 @@ def search_users():
         return {
             'id': u.id,
             'username': u.username,
+            'display_name': u.display_name,
+            'first_name': u.first_name,
+            'last_name': u.last_name,
             'avatar_url': avatar_url,
             'avatar_seed': u.avatar_seed,
             'collab_color': u.collab_color

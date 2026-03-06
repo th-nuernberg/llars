@@ -49,6 +49,9 @@ def add_threads_to_scenario():
     if not scenario:
         raise NotFoundError('Scenario not found')
 
+    # Security: Verify ownership (admins can access all, researchers only their own)
+    check_scenario_ownership(scenario)
+
     # Validate threads
     threads = data.get('thread_ids')
     if not threads or not all(isinstance(thread_id, int) for thread_id in threads):

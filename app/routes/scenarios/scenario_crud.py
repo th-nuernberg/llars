@@ -174,9 +174,6 @@ def get_scenario_list():
 @handle_api_errors(logger_name='scenarios')
 def get_scenario_details(scenario_id=None):
     """Get detailed information about a specific scenario"""
-    # Authorization handled by @admin_required decorator
-    # Current user available in g.authentik_user
-
     # check if scenario id is valid
     if not scenario_id:
         raise ValidationError('Scenario id is missing')
@@ -184,6 +181,9 @@ def get_scenario_details(scenario_id=None):
     scenario = RatingScenarios.query.filter_by(id=scenario_id).first()
     if not scenario:
         raise NotFoundError('Scenario does not exist')
+
+    # Security: Verify ownership (admins can access all, researchers only their own)
+    check_scenario_ownership(scenario)
 
     func_type = FeatureFunctionType.query.filter_by(function_type_id=scenario.function_type_id).first().name
 

@@ -4,6 +4,7 @@ import logging
 
 from flask import Blueprint, g, jsonify, request
 
+from auth.decorators import system_api_key_required
 from decorators.error_handler import handle_api_errors, NotFoundError, ValidationError
 from decorators.permission_decorator import require_permission
 from services.messaging_service import MessagingService
@@ -101,6 +102,7 @@ def summarize_conversation(conversation_id):
 
 
 @ai_bp.route("/calls/transcript-chunk", methods=["POST"])
+@system_api_key_required
 @handle_api_errors(logger_name="messaging")
 def receive_transcript_chunk():
     """Receive a transcript chunk from the LiveKit transcription agent."""

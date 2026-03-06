@@ -13,6 +13,8 @@ logger = logging.getLogger(__name__)
 
 message_bp = Blueprint("messaging_messages", __name__)
 
+MAX_ATTACHMENT_SIZE = 10 * 1024 * 1024  # 10 MB
+
 
 @message_bp.route("/conversations/<int:conversation_id>/messages", methods=["GET"])
 @require_permission("feature:communication:access")
@@ -117,6 +119,12 @@ def upload_attachment(message_id):
     file = request.files["file"]
     if not file.filename:
         raise ValidationError("filename is required")
+
+    file.seek(0, 2)
+    size = file.tell()
+    file.seek(0)
+    if size > MAX_ATTACHMENT_SIZE:
+        raise ValidationError("File too large. Maximum size is 10 MB.")
 
     username = g.authentik_user.username
     file_data = file.read()

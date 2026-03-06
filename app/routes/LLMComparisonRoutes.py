@@ -2,7 +2,7 @@ import random
 import json
 from pathlib import Path
 
-from flask import request, jsonify
+from flask import request, jsonify, g
 
 from . import data_blueprint
 from db.database import db
@@ -14,34 +14,18 @@ from db.tables import (
     RatingScenarios
 )
 from routes.HelperFunctions import get_user_scenarios
+from auth.decorators import authentik_required
 from decorators.error_handler import handle_api_errors, NotFoundError, ValidationError, UnauthorizedError
 
 BASE_DIR = Path(__file__).parent
 PERSONAS_PATH = BASE_DIR / '../static/vikl-personas.json'
 
 
-def current_user():
-    api_key = request.headers.get("Authorization")
-    return User.query.filter_by(api_key=api_key).first()
-
-
-def require_user():
-    user = current_user()
-    if not user:
-        return jsonify({"error": "Invalid or missing API-Key"}), 401
-    return user
-
-
 @data_blueprint.route('/comparison/sessions', methods=['GET'])
+@authentik_required
 @handle_api_errors(logger_name='comparison')
 def list_sessions_for_comparison():
-    api_key = request.headers.get('Authorization')
-    if not api_key:
-        raise UnauthorizedError('API key is missing')
-
-    user = User.query.filter_by(api_key=api_key).first()
-    if not user:
-        raise UnauthorizedError('Invalid API key')
+    user = g.authentik_user
 
     comparison_function_type = FeatureFunctionType.query.filter_by(name='comparison').first()
     if not comparison_function_type:
@@ -83,11 +67,10 @@ def list_sessions_for_comparison():
 
 
 @data_blueprint.route('/comparison/session/<int:session_id>', methods=['GET'])
+@authentik_required
 @handle_api_errors(logger_name='comparison')
 def get_session(session_id):
-    user = require_user()
-    if isinstance(user, tuple):
-        return user
+    user = g.authentik_user
 
     session = ComparisonSession.query.filter_by(id=session_id, user_id=user.id).first()
     if not session:

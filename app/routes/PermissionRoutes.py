@@ -14,8 +14,9 @@ Routes:
     POST /api/permissions/unassign-role - Unassign role from user
 """
 
-from flask import Blueprint, request, jsonify, current_app
+from flask import Blueprint, request, jsonify, current_app, g
 from decorators.permission_decorator import require_permission
+from auth.decorators import authentik_required
 from services.permission_service import PermissionService
 from routes import data_blueprint
 from auth.auth_utils import AuthUtils
@@ -95,17 +96,12 @@ def get_users_with_roles():
 
 
 @data_blueprint.route('/permissions/my-permissions', methods=['GET'])
+@authentik_required
 def get_my_permissions():
-    """Get current user's permissions (no admin permission required)"""
+    """Get current user's permissions (requires valid authentication)"""
     try:
-        # Extract username from token
-        username = AuthUtils.extract_username_without_validation()
-
-        if not username:
-            return jsonify({
-                'success': False,
-                'error': 'Invalid token'
-            }), 401
+        user = g.authentik_user
+        username = user.username
 
         permissions = PermissionService.get_user_permissions(username)
         roles = PermissionService.get_user_roles(username)

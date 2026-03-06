@@ -73,6 +73,18 @@ export function formatDisplayName(username) {
 }
 
 /**
+ * Get the best display name for a user object.
+ * Uses display_name from backend if available, otherwise falls back to formatDisplayName.
+ * @param {Object|string} userOrUsername - User object with display_name field, or username string
+ * @returns {string} Best available display name
+ */
+export function getUserDisplayName(userOrUsername) {
+  if (!userOrUsername) return ''
+  if (typeof userOrUsername === 'string') return formatDisplayName(userOrUsername)
+  return userOrUsername.display_name || formatDisplayName(userOrUsername.username || '')
+}
+
+/**
  * Format a date relative to now (German)
  * @param {string} isoDate - ISO date string
  * @returns {string} Relative date string

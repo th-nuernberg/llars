@@ -17,13 +17,42 @@ import time
 from datetime import datetime
 from typing import Dict, Optional
 
-from flask import current_app
+import flask
+from db.database import db
+from db.tables import (
+    JudgeSession,
+    JudgeSessionStatus,
+    JudgeComparison,
+    JudgeComparisonStatus,
+    JudgeEvaluation,
+    JudgeWinner,
+    PillarStatistics,
+    Message,
+)
+from services.judge.judge_service import JudgeService
 
 logger = logging.getLogger(__name__)
 
 # Global worker registry
 _workers: Dict[int, 'JudgeWorker'] = {}
 _worker_lock = threading.Lock()
+
+
+class _CurrentAppAccessor:
+    """Patch-friendly accessor for Flask current_app."""
+
+    def _get_current_object(self):
+        return flask.current_app._get_current_object()
+
+    @property
+    def extensions(self):
+        try:
+            return flask.current_app.extensions
+        except Exception:
+            return {}
+
+
+current_app = _CurrentAppAccessor()
 
 
 class JudgeWorker:
@@ -88,15 +117,6 @@ class JudgeWorker:
 
     def _process_queue(self):
         """Process the evaluation queue."""
-        from db.database import db
-        from db.tables import (
-            JudgeSession, JudgeSessionStatus,
-            JudgeComparison, JudgeComparisonStatus,
-            JudgeEvaluation, JudgeWinner,
-            PillarStatistics, Message
-        )
-        from services.judge.judge_service import JudgeService
-
         logger.info(f"[JudgeWorker:{self.session_id}] Processing queue...")
 
         # Initialize judge service
@@ -146,12 +166,6 @@ class JudgeWorker:
 
     def _process_comparison(self, comparison, session, judge_service):
         """Process a single comparison."""
-        from db.database import db
-        from db.tables import (
-            JudgeComparisonStatus, JudgeEvaluation, JudgeWinner,
-            PillarStatistics, Message
-        )
-
         logger.info(
             f"[JudgeWorker:{self.session_id}] Processing comparison {comparison.id}: "
             f"Thread {comparison.thread_a_id} vs {comparison.thread_b_id}"
@@ -256,8 +270,6 @@ class JudgeWorker:
 
     def _load_messages(self, thread_id: int):
         """Load messages for a thread."""
-        from db.tables import Message
-
         messages = Message.query.filter_by(
             thread_id=thread_id
         ).order_by(Message.timestamp).all()
@@ -270,9 +282,6 @@ class JudgeWorker:
 
     def _update_statistics(self, pillar_a: int, pillar_b: int, winner: str, confidence: float):
         """Update pillar statistics."""
-        from db.database import db
-        from db.tables import PillarStatistics
-
         stat = PillarStatistics.query.filter_by(
             session_id=self.session_id,
             pillar_a=pillar_a,
@@ -288,6 +297,10 @@ class JudgeWorker:
                 wins_b=0,
                 ties=0
             )
+            # Assign explicitly for test doubles where constructor kwargs are ignored.
+            stat.wins_a = 0
+            stat.wins_b = 0
+            stat.ties = 0
             db.session.add(stat)
 
         if winner == 'A':
@@ -310,9 +323,6 @@ class JudgeWorker:
 
     def _mark_session_failed(self, error: str):
         """Mark session as failed."""
-        from db.database import db
-        from db.tables import JudgeSession, JudgeSessionStatus
-
         try:
             session = db.session.get(JudgeSession, self.session_id)
             if session:
@@ -348,7 +358,6 @@ class JudgeWorker:
                 pass
 
             # Last resort: try to get from flask's current_app
-            from flask import current_app
             if hasattr(current_app, 'extensions') and 'socketio' in current_app.extensions:
                 socketio = current_app.extensions['socketio']
                 logger.debug(f"[JudgeWorker:{self.session_id}] Got socketio from current_app.extensions")
@@ -452,8 +461,6 @@ def trigger_judge_worker(session_id: int):
     Args:
         session_id: ID of the session to process
     """
-    from flask import current_app
-
     with _worker_lock:
         # Stop existing worker if any
         if session_id in _workers:

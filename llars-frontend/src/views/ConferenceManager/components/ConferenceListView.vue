@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div class="conference-list-view">
     <!-- Filter Bar -->
     <div class="filter-bar mb-4">
       <v-text-field
@@ -89,6 +89,9 @@
         {{ r.label }}
       </span>
     </div>
+
+    <!-- Scrollable Content -->
+    <div class="scroll-area">
 
     <!-- Loading Skeleton -->
     <div v-if="loading" class="list-container">
@@ -258,6 +261,8 @@
       >
         {{ t('conferenceManager.conference.create') }}
       </v-btn>
+    </div>
+
     </div>
 
     <!-- Venue Map Popup -->
@@ -541,6 +546,19 @@ function isDeadlineSoon(isoStr) {
 </script>
 
 <style scoped>
+.conference-list-view {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.scroll-area {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
 .filter-bar {
   display: flex;
   align-items: center;

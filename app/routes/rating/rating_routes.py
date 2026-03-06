@@ -8,6 +8,7 @@ Datenformate. Neue Frontend-Komponenten sollten die /schema Endpoints nutzen.
 """
 
 import logging
+import sys
 
 from flask import jsonify, request, g, current_app
 
@@ -22,9 +23,13 @@ from db.models import (
 from services.evaluation.schema_adapter_service import SchemaAdapter
 from services.feature_rating_service import FeatureRatingService
 from services.scenario_stats_service import get_scenario_ids_for_thread
+from routes.HelperFunctions import can_access_thread, user_can_evaluate_thread
 
 
 logger = logging.getLogger(__name__)
+
+# Ensure both import paths point to the same module object for test patching.
+sys.modules.setdefault('routes.rating.rating_routes', sys.modules[__name__])
 
 
 def _emit_scenario_stats_updates(thread_id: int) -> None:
@@ -46,7 +51,6 @@ def _check_rating_access(item_id: int, user_id: int) -> bool:
         return scenario is not None
 
     # Fallback to legacy check
-    from routes.HelperFunctions import can_access_thread
     return can_access_thread(user_id, item_id, 2)
 
 
@@ -296,8 +300,6 @@ def get_feature_type(identifier):
 @handle_api_errors(logger_name='rating')
 def save_rating(thread_id, feature_id):
     """Save a rating for a feature."""
-    from routes.HelperFunctions import user_can_evaluate_thread
-
     user = g.authentik_user
 
     if not _check_rating_access(thread_id, user.id):

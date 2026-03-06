@@ -76,6 +76,15 @@ class EvaluationItem(db.Model):
         """Backwards compatibility alias."""
         return self
 
+    @property
+    def content(self):
+        """Legacy alias: map historical `content` field to `subject`."""
+        return self.subject
+
+    @content.setter
+    def content(self, value):
+        self.subject = value
+
     __table_args__ = (
         db.UniqueConstraint('chat_id', 'institut_id', 'function_type_id', name='_chat_institut_function_uc'),
     )

@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div class="paper-list-view">
     <!-- Filter Bar -->
     <div class="filter-bar mb-4">
       <v-text-field
@@ -70,6 +70,9 @@
         {{ t(s.labelKey) }}
       </span>
     </div>
+
+    <!-- Scrollable Content -->
+    <div class="scroll-area">
 
     <!-- Loading Skeleton -->
     <div v-if="loading" class="list-container">
@@ -237,6 +240,8 @@
       >
         {{ t('conferenceManager.paper.create') }}
       </v-btn>
+    </div>
+
     </div>
 
     <!-- Form Dialog -->
@@ -431,6 +436,19 @@ function formatDate(isoStr) {
 </script>
 
 <style scoped>
+.paper-list-view {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.scroll-area {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
 .filter-bar {
   display: flex;
   align-items: center;

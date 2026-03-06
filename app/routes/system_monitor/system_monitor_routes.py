@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import sys
 import time
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
@@ -14,6 +15,11 @@ from db.models.system_event import SystemEvent
 from decorators.permission_decorator import require_permission
 from routes.auth import data_bp
 from services.chatbot_activity_service import ChatbotActivityService
+from services.system_event_service import SystemEventService
+
+# Keep both import paths pointing to the same module instance for test patching.
+sys.modules.setdefault("routes.system_monitor.system_monitor_routes", sys.modules[__name__])
+sys.modules.setdefault("app.routes.system_monitor.system_monitor_routes", sys.modules[__name__])
 
 
 def _serialize_event(event: SystemEvent) -> Dict[str, Any]:
@@ -140,8 +146,6 @@ def ingest_ci_cd_event():
 
     if not isinstance(details, dict):
         details = None
-
-    from services.system_event_service import SystemEventService
 
     SystemEventService.log_event(
         event_type=event_type,

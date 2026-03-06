@@ -169,6 +169,32 @@ reload_nginx() {
   return 1
 }
 
+ensure_nginx_upstream_mount_synced() {
+  local host_conf="$DEPLOY_PATH/docker/nginx/active_upstream.conf"
+  local container_conf="/etc/nginx/active_upstream.conf"
+
+  if [ ! -f "$host_conf" ]; then
+    echo "ERROR: Host upstream config not found: $host_conf"
+    return 1
+  fi
+
+  local container_state
+  container_state=$(docker inspect --format='{{.State.Status}}' llars_nginx_service 2>/dev/null || echo "not_found")
+  if [ "$container_state" != "running" ]; then
+    return 0
+  fi
+
+  local host_hash container_hash
+  host_hash=$(sha256sum "$host_conf" | awk '{print $1}')
+  container_hash=$(docker exec llars_nginx_service sh -lc "sha256sum \"$container_conf\" | awk '{print \\\$1}'" 2>/dev/null || echo "")
+
+  if [ -z "$container_hash" ] || [ "$host_hash" != "$container_hash" ]; then
+    echo "Detected stale nginx file bind mount for active_upstream.conf (host != container)."
+    echo "Recreating llars_nginx_service to refresh file mount..."
+    docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --no-deps --force-recreate nginx-service
+  fi
+}
+
 ensure_production_nginx() {
   local state
   state=$(docker inspect --format='{{.State.Status}}' llars_nginx_service 2>/dev/null || echo "not_found")
@@ -345,6 +371,16 @@ cmd_deploy() {
   deployed_commit="$(git rev-parse HEAD)"
   echo "Commit: $deployed_commit"
 
+  # Git checkout can replace bind-mounted files by inode and leave the running nginx
+  # process with a stale /etc/nginx/active_upstream.conf. Re-apply active upstream now.
+  if [ -n "$active" ]; then
+    echo "Re-applying production upstream to active color '$active' after git update..."
+    update_upstream_conf "$active"
+    ensure_production_nginx
+    ensure_nginx_upstream_mount_synced
+    reload_nginx llars_nginx_service
+  fi
+
   # -----------------------------------------------------------------------
   # [3/6] Build images for inactive color
   # -----------------------------------------------------------------------
@@ -418,9 +454,7 @@ CONF
   # inherit production 80/443 bindings and hijack public traffic.
   local staging_compose_files="-f docker-compose.yml -f docker-compose.staging.yml"
   NGINX_EXTERNAL_PORT=55080 docker compose $staging_compose_files \
-    stop nginx-service 2>/dev/null || true
-  NGINX_EXTERNAL_PORT=55080 docker compose $staging_compose_files \
-    up -d --no-deps nginx-service
+    up -d --force-recreate --no-deps nginx-service
 
   # Wait for staging to be accessible
   echo "Waiting for staging nginx..."
@@ -542,6 +576,7 @@ cmd_switch() {
   echo ""
   echo "[2/5] Ensuring production nginx is running..."
   ensure_production_nginx
+  ensure_nginx_upstream_mount_synced
 
   echo ""
   echo "[3/5] Reloading nginx..."

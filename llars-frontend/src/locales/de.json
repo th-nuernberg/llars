@@ -5040,6 +5040,9 @@
     "pdf": {
       "title": "PDF-Preview",
       "compiling": "Kompiliere...",
+      "downloadTitle": "Kompilierte PDF herunterladen",
+      "downloadSuccess": "PDF-Download gestartet",
+      "downloadError": "PDF-Download fehlgeschlagen",
       "zoomOut": "Herauszoomen",
       "zoomIn": "Hineinzoomen",
       "fitWidth": "Auf Breite anpassen",

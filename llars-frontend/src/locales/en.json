@@ -5198,6 +5198,9 @@
     "pdf": {
       "title": "PDF Preview",
       "compiling": "Compiling...",
+      "downloadTitle": "Download compiled PDF",
+      "downloadSuccess": "PDF download started",
+      "downloadError": "PDF download failed",
       "zoomOut": "Zoom out",
       "zoomIn": "Zoom in",
       "fitWidth": "Fit width",

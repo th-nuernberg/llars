@@ -253,6 +253,16 @@
                     >
                       {{ $t('latexCollab.compile.actions.compile') }}
                     </LBtn>
+                    <v-btn
+                      icon
+                      variant="text"
+                      size="x-small"
+                      :loading="isDownloadingPdf"
+                      :title="$t('latexCollab.pdf.downloadTitle')"
+                      @click="downloadCompiledPdf"
+                    >
+                      <LIcon size="18">mdi-download</LIcon>
+                    </v-btn>
                     <!-- Slot for additional toolbar buttons (e.g., AI Assistant) -->
                     <slot name="toolbar-actions" />
                     <!-- Action buttons relocated from header -->
@@ -896,6 +906,7 @@ const editorRef = ref(null)
 const pdfViewerRef = ref(null)
 const pendingDocId = ref(null)
 const pendingJump = ref(null)
+const isDownloadingPdf = ref(false)
 
 // Panel states
 const treeCollapsed = ref(localStorage.getItem(TREE_COLLAPSED_KEY) === 'true')
@@ -2344,6 +2355,52 @@ async function downloadWorkspaceZip() {
   } catch (e) {
     console.error('ZIP download failed:', e)
     showSnackbar(t('latexCollab.zip.downloadError'), 'error')
+  }
+}
+
+/**
+ * Download the latest compiled PDF (or current compile job PDF) for this workspace
+ */
+async function downloadCompiledPdf() {
+  if (!workspaceId.value || isDownloadingPdf.value) return
+
+  isDownloadingPdf.value = true
+  try {
+    const params = pdfJobId.value ? { job_id: pdfJobId.value } : undefined
+    const response = await axios.get(
+      `${API_BASE}/api/latex-collab/workspaces/${workspaceId.value}/pdf`,
+      {
+        headers: authHeaders(),
+        responseType: 'blob',
+        params
+      }
+    )
+
+    const contentDisposition = response.headers['content-disposition']
+    let filename = `workspace_${workspaceId.value}${pdfJobId.value ? `_job_${pdfJobId.value}` : ''}.pdf`
+    if (contentDisposition) {
+      const match = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/)
+      if (match && match[1]) {
+        filename = match[1].replace(/['"]/g, '')
+      }
+    }
+
+    const blob = new Blob([response.data], { type: 'application/pdf' })
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = filename
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    window.URL.revokeObjectURL(url)
+
+    showSnackbar(t('latexCollab.pdf.downloadSuccess'), 'success')
+  } catch (e) {
+    console.error('PDF download failed:', e)
+    showSnackbar(t('latexCollab.pdf.downloadError'), 'error')
+  } finally {
+    isDownloadingPdf.value = false
   }
 }
 

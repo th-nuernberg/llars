@@ -218,6 +218,15 @@ def app():
         from db.models.llm_usage_tracking import LLMUsageTracking, UserTokenBudget  # noqa: F401
         from db.models.llm_task_result import LLMTaskResult  # noqa: F401
         from db.models.conference import Conference, Paper, PaperAuthor  # noqa: F401
+        from db.models.referral import (  # noqa: F401
+            ReferralCampaign, ReferralLink, ReferralRegistration
+        )
+        from db.models.messaging import (  # noqa: F401
+            MessagingConversation, MessagingParticipant, MessagingMessage,
+            MessagingAttachment, MessagingReaction, MessagingReadReceipt,
+            MessagingEncryptionKey, MessagingAIKeyGrant,
+            MessagingCall, MessagingCallParticipant, MessagingLinkPreview
+        )
 
         # Create all tables
         _test_db_instance.create_all()
@@ -578,6 +587,15 @@ def db(app):
         from db.models.llm_usage_tracking import LLMUsageTracking, UserTokenBudget  # noqa: F401
         from db.models.llm_task_result import LLMTaskResult  # noqa: F401
         from db.models.conference import Conference, Paper, PaperAuthor  # noqa: F401
+        from db.models.referral import (  # noqa: F401
+            ReferralCampaign, ReferralLink, ReferralRegistration
+        )
+        from db.models.messaging import (  # noqa: F401
+            MessagingConversation, MessagingParticipant, MessagingMessage,
+            MessagingAttachment, MessagingReaction, MessagingReadReceipt,
+            MessagingEncryptionKey, MessagingAIKeyGrant,
+            MessagingCall, MessagingCallParticipant, MessagingLinkPreview
+        )
 
         _db.create_all()
 

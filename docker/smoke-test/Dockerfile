@@ -38,6 +38,8 @@ RUN chmod +x /tests/smoke/*.sh
 COPY llars-frontend/package.json llars-frontend/package-lock.json /tests/e2e/
 COPY llars-frontend/playwright.config.js /tests/e2e/
 COPY llars-frontend/e2e/ /tests/e2e/e2e/
+RUN mkdir -p /tests/e2e/src/config
+COPY llars-frontend/src/config/home_tiles.contract.json /tests/e2e/src/config/home_tiles.contract.json
 
 # Install Node dependencies (Playwright browsers already in base image)
 RUN cd /tests/e2e && npm ci --prefer-offline

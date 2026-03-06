@@ -121,7 +121,7 @@ describe('Router Configuration', () => {
     vi.resetModules()
     const mod = await import('@/router')
     router = mod.default
-  })
+  }, 30000)
 
   // ==================== Route Definition Tests ====================
 

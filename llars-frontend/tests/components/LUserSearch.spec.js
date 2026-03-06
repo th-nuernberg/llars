@@ -30,7 +30,12 @@ vi.mock('axios', () => ({
 // Mock userUtils
 vi.mock('@/utils/userUtils', () => ({
   getAvatarUrl: vi.fn((user) => `https://avatar.test/${user?.username || 'default'}`),
-  formatDisplayName: vi.fn((username) => username?.charAt(0).toUpperCase() + username?.slice(1) || '')
+  formatDisplayName: vi.fn((username) => username?.charAt(0).toUpperCase() + username?.slice(1) || ''),
+  getUserDisplayName: vi.fn((userOrUsername) => {
+    if (!userOrUsername) return ''
+    if (typeof userOrUsername === 'string') return userOrUsername.charAt(0).toUpperCase() + userOrUsername.slice(1)
+    return userOrUsername.display_name || (userOrUsername.username?.charAt(0).toUpperCase() + userOrUsername.username?.slice(1)) || ''
+  })
 }))
 
 // Mock authStorage

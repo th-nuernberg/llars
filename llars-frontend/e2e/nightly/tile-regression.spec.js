@@ -27,6 +27,14 @@ const ROLE_TO_USER_KEY = {
   admin: 'admin'
 }
 
+const TILE_SMOKE_PROFILES = {
+  // The nightly workflow suite already opens the Batch Generation wizard.
+  // Keep tile regression bounded here and only verify navigation/readiness.
+  'Batch Generation': {
+    maxButtons: 0
+  }
+}
+
 function routeToTileTestId(route) {
   return `home-tile-${String(route || '')
     .trim()
@@ -110,6 +118,8 @@ async function assertDirectRouteBlockedOrRestricted(page, tile) {
 async function runTileRegression(page, tileName) {
   const tile = tileContract.tiles.find((entry) => entry.name === tileName)
   expect(tile, `Tile '${tileName}' must exist in home_tiles.contract.json`).toBeTruthy()
+  const smokeProfile = TILE_SMOKE_PROFILES[tile.name] || {}
+  const maxButtons = smokeProfile.maxButtons ?? 5
 
   for (const role of ROLE_ORDER) {
     const userKey = ROLE_TO_USER_KEY[role]
@@ -144,7 +154,9 @@ async function runTileRegression(page, tileName) {
 
         await dismissConsentBanner(page)
         await waitForPageReady(page, 12000)
-        await safeButtonSweep(page)
+        if (maxButtons > 0) {
+          await safeButtonSweep(page, maxButtons)
+        }
       } else {
         await expect(tileCard, `${tile.name} should be hidden for ${role}`).toHaveCount(0)
         await assertDirectRouteBlockedOrRestricted(page, tile)

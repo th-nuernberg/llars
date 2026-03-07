@@ -15,6 +15,9 @@ const ROLE_ORDER = Array.isArray(tileContract.roles_order) && tileContract.roles
   ? tileContract.roles_order
   : ['evaluator', 'researcher', 'chatbot_manager', 'admin']
 
+// Each regression test iterates across multiple roles and lightweight UI actions.
+test.describe.configure({ timeout: 180_000 })
+
 const ROLE_TO_USER_KEY = {
   evaluator: 'evaluator',
   researcher: 'researcher',

@@ -1,19 +1,19 @@
 # =============================================================================
 # LLARS GitLab CI/CD Pipeline
 # =============================================================================
-# Blue-Green deployment with nightly schedule:
+# Two-branch Blue-Green deployment:
 #
-# Push (any time):
-#   lint → unit tests → integration tests → security → build
+# dev branch (→ llars-dev server 141.75.150.86):
+#   Push → lint → test → security → build:dev → deploy:dev → smoke:dev
+#   Auto-deploys on every push. Developers work here.
 #
-# Nightly Schedule 02:00 CET (or FORCE_DEPLOY):
-#   deploy:staging (Port 55080)
-#     → wait:staging-health
-#     → test:e2e:nightly:tiles (Tile + Workflow Playwright suite)
-#     → smoke:staging (Evaluation + Prompt Eng pipeline)
-#     → deploy:production
-#     → smoke:production
-#     → [FAIL] → rollback:production (auto)
+# main branch (→ llars production server 141.75.150.128):
+#   Push → lint → test → security (no deploy)
+#   Nightly Schedule 02:00 CET (or FORCE_DEPLOY):
+#     build → deploy:staging → e2e → smoke:staging → deploy:production
+#     → smoke:production → [FAIL] → rollback:production (auto)
+#
+# Workflow: dev → test on llars-dev → merge to main → nightly prod deploy
 #
 # Stages:
 #   1. lint           - Code quality
@@ -76,7 +76,9 @@ variables:
   DOCKER_TLS_CERTDIR: "/certs"
   DOCKER_IMAGE_TAG: $CI_COMMIT_SHORT_SHA
 
-  # Deployment (Server: 141.75.150.128)
+  # Deployment
+  # Production: 141.75.150.128 (shell runner, tag: shell)
+  # Dev:        141.75.150.86  (shell runner, tag: shell-dev)
   LLARS_SERVER_USER: "master"
   LLARS_DEPLOY_PATH: "/var/llars"
 
@@ -104,7 +106,7 @@ cache:
   when: never
 
 # Common rules for CI jobs (lint, test, security)
-# Only run on: schedule, FORCE_DEPLOY, merge requests (no auto-trigger on push)
+# Run on: push (main/dev), merge requests, schedule, force deploy
 .ci_rules:
   rules:
     - *test_only_skip
@@ -112,8 +114,9 @@ cache:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $CI_PIPELINE_SOURCE == "schedule" && $SCHEDULED_DEPLOY == "true"
     - if: $FORCE_DEPLOY == "true" && $CI_COMMIT_BRANCH == "main"
+    - if: $FORCE_DEV_DEPLOY == "true" && $CI_COMMIT_BRANCH == "dev"
 
-# Deployment trigger rules: schedule, force, or manual
+# Production deployment rules (main branch only): schedule, force, or manual
 .deploy_rules:
   rules:
     - *test_only_skip
@@ -121,6 +124,14 @@ cache:
       when: manual
     - if: $CI_PIPELINE_SOURCE == "schedule" && $SCHEDULED_DEPLOY == "true"
     - if: $FORCE_DEPLOY == "true" && $CI_COMMIT_BRANCH == "main"
+
+# Dev deployment rules (dev branch): every push auto-deploys to llars-dev
+.dev_deploy_rules:
+  rules:
+    - *test_only_skip
+    - if: $CI_COMMIT_BRANCH == "dev" && $CI_PIPELINE_SOURCE == "push"
+    - if: $CI_COMMIT_BRANCH == "dev" && $CI_PIPELINE_SOURCE == "schedule" && $SCHEDULED_DEV_DEPLOY == "true"
+    - if: $FORCE_DEV_DEPLOY == "true" && $CI_COMMIT_BRANCH == "dev"
 
 # =============================================================================
 # STAGE 1: LINT
@@ -312,8 +323,58 @@ build:docker:
     - if: $CI_PIPELINE_SOURCE == "schedule" && $SCHEDULED_DEPLOY == "true"
     - if: $FORCE_DEPLOY == "true" && $CI_COMMIT_BRANCH == "main"
 
+build:docker:dev:
+  stage: build
+  tags:
+    - shell-dev
+  script:
+    - echo "Building Docker images on dev server..."
+    - cd /var/llars
+    - docker compose build --parallel
+    - echo "Build completed successfully"
+  extends:
+    - .dev_deploy_rules
+
 # =============================================================================
-# STAGE 5: DEPLOY STAGING (Blue-Green)
+# STAGE 5a: DEPLOY DEV (Blue-Green on llars-dev)
+# =============================================================================
+# Auto-deploys every push on dev branch to llars-dev (141.75.150.86)
+# Uses identical Blue-Green mechanism as production.
+
+deploy:dev:
+  stage: deploy-staging
+  tags:
+    - shell-dev
+  timeout: 15 minutes
+  environment:
+    name: dev
+    url: http://141.75.150.86
+  resource_group: dev
+  script:
+    - echo "=== LLARS Blue-Green DEV Deployment ==="
+    - echo "Timestamp:" $(date)
+    - bash scripts/ci/deploy_bluegreen.sh deploy
+  extends:
+    - .dev_deploy_rules
+
+smoke:dev:
+  stage: test-staging
+  tags:
+    - shell-dev
+  timeout: 10 minutes
+  environment:
+    name: dev
+  resource_group: dev
+  script:
+    - echo "Running dev smoke tests..."
+    - bash scripts/ci/smoke_test.sh
+  extends:
+    - .dev_deploy_rules
+  needs:
+    - deploy:dev
+
+# =============================================================================
+# STAGE 5b: DEPLOY STAGING (Blue-Green on production server)
 # =============================================================================
 
 deploy:staging:

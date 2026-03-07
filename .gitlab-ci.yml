@@ -539,18 +539,16 @@ rollback:production:
 
 metrics:collect:
   stage: test
-  image: python:3.11-slim
+  image: node:20-alpine
   before_script:
-    - apt-get update && apt-get install -y --no-install-recommends nodejs npm
+    - apk add --no-cache python3
   script:
     - echo "Collecting Code Quality Metrics..."
-    - pip install pytest pytest-cov
-    - python scripts/metrics/collect_python_metrics.py --json > python_metrics.json
-    - cd llars-frontend && npm ci --prefer-offline --silent
-    - cd .. && node scripts/metrics/collect_frontend_metrics.js --json > frontend_metrics.json
+    - python3 scripts/metrics/collect_python_metrics.py --json > python_metrics.json
+    - node scripts/metrics/collect_frontend_metrics.js --json > frontend_metrics.json
     - echo ""
     - echo "=== PYTHON METRICS ==="
-    - python -c "import json; m=json.load(open('python_metrics.json')); s=m['summary']; print('Function Coverage:', str(s['function_coverage'])+'%'); print('Class Coverage:', str(s['class_coverage'])+'%')"
+    - python3 -c "import json; m=json.load(open('python_metrics.json')); s=m['summary']; print('Function Coverage:', str(s['function_coverage'])+'%'); print('Class Coverage:', str(s['class_coverage'])+'%')"
     - echo ""
     - echo "=== FRONTEND METRICS ==="
     - node -e "const m=require('./frontend_metrics.json'); console.log('JSDoc Coverage:', m.summary.coverage+'%')"

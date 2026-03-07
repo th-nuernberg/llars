@@ -492,14 +492,25 @@ maintenance:docker-cleanup:
   tags:
     - shell
   script:
-    - echo "=== Docker disk usage (before cleanup) ==="
+    - echo "=== Disk usage (before cleanup) ==="
+    - df -h /var || true
     - docker system df || true
     - echo "Pruning unused images older than 7 days..."
     - docker image prune -af --filter "until=168h" || true
-    - echo "Pruning build cache older than 7 days..."
-    - docker builder prune -af --filter "until=168h" || true
-    - echo "=== Docker disk usage (after cleanup) ==="
+    - echo "Pruning build cache older than 48 hours..."
+    - docker builder prune -af --filter "until=48h" || true
+    - echo "Rotating backups (keep newest 5)..."
+    - cd /var/llars/backups && ls -t *.sql 2>/dev/null | tail -n +6 | xargs -r rm -f || true
+    - echo "=== Disk usage (after cleanup) ==="
+    - df -h /var || true
     - docker system df || true
+    - |
+      AVAIL=$(df /var --output=avail | tail -1 | tr -d ' ')
+      if [ "$AVAIL" -lt 10485760 ]; then
+        echo "WARNING: /var has less than 10GB free ($((AVAIL/1024/1024))GB). Running emergency cleanup..."
+        docker image prune -af --filter "until=24h" || true
+        docker builder prune -af || true
+      fi
   extends:
     - .deploy_rules
   needs:

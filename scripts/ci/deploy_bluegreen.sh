@@ -347,6 +347,14 @@ cmd_deploy() {
     backup_file=""
   fi
 
+  # Rotate backups: keep only the 5 newest
+  local old_backups
+  old_backups=$(ls -t "$BACKUP_DIR"/*.sql 2>/dev/null | tail -n +6)
+  if [ -n "$old_backups" ]; then
+    echo "$old_backups" | xargs rm -f
+    echo "Rotated backups, kept newest 5."
+  fi
+
   # -----------------------------------------------------------------------
   # [2/6] Git pull
   # -----------------------------------------------------------------------

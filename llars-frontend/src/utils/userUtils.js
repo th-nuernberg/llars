@@ -92,9 +92,11 @@ export function getUserDisplayName(userOrUsername) {
 export function formatRelativeDate(isoDate) {
   if (!isoDate) return ''
   const date = new Date(isoDate)
+  if (Number.isNaN(date.getTime())) return ''
   const now = new Date()
-  const diffMs = now - date
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const startOfTargetDay = new Date(date.getFullYear(), date.getMonth(), date.getDate())
+  const diffDays = Math.round((startOfToday - startOfTargetDay) / (1000 * 60 * 60 * 24))
 
   if (diffDays === 0) return 'Heute'
   if (diffDays === 1) return 'Gestern'

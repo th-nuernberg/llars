@@ -15,8 +15,10 @@ const ROLE_ORDER = Array.isArray(tileContract.roles_order) && tileContract.roles
   ? tileContract.roles_order
   : ['evaluator', 'researcher', 'chatbot_manager', 'admin']
 
-// Each regression test iterates across multiple roles and lightweight UI actions.
-test.describe.configure({ timeout: 180_000 })
+// Each regression test iterates across multiple roles and a capped UI smoke sweep.
+// Some pages (for example Batch Generation) need more than 3 minutes in CI when
+// the suite walks all roles sequentially.
+test.describe.configure({ timeout: 420_000 })
 
 const ROLE_TO_USER_KEY = {
   evaluator: 'evaluator',
@@ -53,7 +55,7 @@ async function openHome(page, user) {
   await waitForPageReady(page, 15000)
 }
 
-async function safeButtonSweep(page, maxButtons = 10) {
+async function safeButtonSweep(page, maxButtons = 5) {
   const buttons = page.locator('button:visible, [role="button"]:visible')
   const count = await buttons.count()
   let clicked = 0

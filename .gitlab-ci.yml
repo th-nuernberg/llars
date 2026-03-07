@@ -301,11 +301,8 @@ security:scan:
 
 build:docker:
   stage: build
-  image: docker:24
-  services:
-    - docker:24-dind
-  variables:
-    DOCKER_TLS_CERTDIR: "/certs"
+  tags:
+    - shell
   script:
     - echo "Building Docker images..."
     - docker compose build --parallel

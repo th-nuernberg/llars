@@ -330,6 +330,8 @@ build:docker:dev:
   script:
     - echo "Building Docker images on dev server..."
     - cd /var/llars
+    - git config --global --add safe.directory /var/llars 2>/dev/null || true
+    - git fetch origin dev && git checkout dev && git pull --ff-only origin dev
     - docker compose build --parallel
     - echo "Build completed successfully"
   extends:
@@ -350,9 +352,12 @@ deploy:dev:
     name: dev
     url: http://141.75.150.86
   resource_group: dev
+  variables:
+    LLARS_PRODUCTION_BRANCH: dev
   script:
     - echo "=== LLARS Blue-Green DEV Deployment ==="
     - echo "Timestamp:" $(date)
+    - cd /var/llars
     - bash scripts/ci/deploy_bluegreen.sh deploy
   extends:
     - .dev_deploy_rules
@@ -367,6 +372,7 @@ smoke:dev:
   resource_group: dev
   script:
     - echo "Running dev smoke tests..."
+    - cd /var/llars
     - bash scripts/ci/smoke_test.sh
   extends:
     - .dev_deploy_rules

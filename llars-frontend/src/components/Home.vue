@@ -346,6 +346,16 @@ const allItems = computed(() => ([
     category: 'ai'
   },
   {
+    title: t('home.features.dbAgent.title'),
+    description: t('home.features.dbAgent.description'),
+    route: '/db-agent',
+    icon: 'llars:train',
+    permission: 'feature:db_agent:view',
+    category: 'ai',
+    badge: t('home.badges.alpha'),
+    badgeColor: 'warning'
+  },
+  {
     title: t('home.features.adminDashboard.title'),
     description: t('home.features.adminDashboard.description'),
     route: '/admin?tab=overview',

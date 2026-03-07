@@ -117,6 +117,9 @@ import { useCommunicationAdmin } from "@/composables/useCommunicationAdmin";
 // Chatbot Manager (dedicated page, separated from Admin)
 import ChatbotManagerPage from "@/views/ChatbotManager/ChatbotManagerPage.vue";
 
+// DB Price Agent (Deutsche Bahn price monitoring)
+import DbAgentDashboard from "@/views/DbAgent/DbAgentDashboard.vue";
+
 const EVALUATION_ROUTE_PERMISSIONS = [
     'feature:ranking:view',
     'feature:rating:view',
@@ -316,6 +319,7 @@ const routes = [
 
     // Chatbot Manager (dedicated page for chatbot_manager role)
     { path: '/chatbot-manager', name: 'ChatbotManagerPage', component: ChatbotManagerPage, meta: { requiresAuth: true } },
+    { path: '/db-agent/:tab?', name: 'DbAgentDashboard', component: DbAgentDashboard, props: true, meta: { requiresAuth: true } },
 
     // New unified Admin Dashboard (admin only)
     { path: '/admin', name: 'AdminDashboard', component: AdminDashboard, meta: { requiresAuth: true, requiresAdmin: true } },

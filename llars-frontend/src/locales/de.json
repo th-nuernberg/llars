@@ -2582,6 +2582,10 @@
         "title": "OnCoCo Analyse",
         "description": "Beratungsgespräche auf Satzebene klassifizieren (68 Kategorien)"
       },
+      "dbAgent": {
+        "title": "DB Preisagent",
+        "description": "Deutsche Bahn Preise überwachen und günstige Verbindungen finden"
+      },
       "adminDashboard": {
         "title": "Admin Dashboard",
         "description": "System-Übersicht und Administration"
@@ -6991,6 +6995,128 @@
         "changeRole": "Rolle ändern",
         "removeMember": "Mitglied entfernen"
       }
+    }
+  },
+  "dbAgent": {
+    "title": "DB Preisagent",
+    "subtitle": "Dortmund Hbf ↔ Nürnberg Hbf · BahnCard 25 · 2. Klasse",
+    "loading": "Lade Daten...",
+    "status": {
+      "active": "Agent aktiv",
+      "inactive": "Agent inaktiv"
+    },
+    "actions": {
+      "startAgent": "Agent starten",
+      "stopAgent": "Agent stoppen",
+      "scanNow": "Jetzt scannen",
+      "deleteData": "Daten löschen"
+    },
+    "tabs": {
+      "search": "Reise suchen",
+      "deals": "Top Deals",
+      "calendar": "Kalender",
+      "timing": "Timing",
+      "analysis": "Analyse"
+    },
+    "overview": {
+      "loading": "Aktuelle Preise werden geladen...",
+      "topDeals": "Aktuelle Top-Deals",
+      "fromScans": "Aus Scans"
+    },
+    "search": {
+      "title": "Reise suchen",
+      "stationFrom": "Von",
+      "stationTo": "Nach",
+      "dateFrom": "Hinfahrt am",
+      "dateTo": "Rückfahrt am",
+      "outbound": "Hinfahrt",
+      "returnTrip": "Rückfahrt",
+      "flexibility": "Flexibilität",
+      "go": "Suchen",
+      "results": "{count} Verbindungen gefunden",
+      "bookOnBahn": "Auf bahn.de buchen",
+      "selectOutbound": "Hinfahrt wählen",
+      "selectReturn": "Rückfahrt wählen",
+      "totalPrice": "Gesamtpreis"
+    },
+    "suggestions": {
+      "title": "Vorschläge",
+      "found": "gefunden"
+    },
+    "followup": {
+      "title": "Reiseberater",
+      "placeholder": "z.B. Vorschlag #3 passt, aber ich kann erst einen Tag später..."
+    },
+    "deals": {
+      "title": "Günstigste Verbindungen"
+    },
+    "calendar": {
+      "title": "Preiskalender",
+      "viewYear": "Jahr",
+      "viewMonth": "Monat",
+      "viewDay": "Tag",
+      "roundTrip": "Hin + Rück",
+      "tripSuggestions": "Reise-Empfehlungen",
+      "days": "Tage",
+      "cheapestShort": "ab",
+      "connections": "Verbindungen",
+      "noDataForDay": "Keine Daten für diesen Tag. Starte einen Scan oder suche eine Reise.",
+      "legend": {
+        "cheap": "Günstig (< 30€)",
+        "medium": "Mittel (30–60€)",
+        "expensive": "Teuer (60–100€)",
+        "veryExpensive": "Sehr teuer (> 100€)",
+        "stddev": "±σ = Standardabweichung",
+        "highVolatility": "Hohe Preisschwankung",
+        "tripStrip": "Reise-Empfehlung (Hin + Rück)"
+      }
+    },
+    "stats": {
+      "title": "Preisstatistik",
+      "outbound": "Hinfahrt (DO → N)",
+      "return": "Rückfahrt (N → DO)",
+      "totalEntries": "Gesamteinträge",
+      "noData": "Noch keine Preisdaten vorhanden. Starte einen Scan."
+    },
+    "weekday": {
+      "title": "Wochentag-Analyse"
+    },
+    "timing": {
+      "title": "Wann buchen?",
+      "departureTime": "Abfahrtszeit",
+      "departureTimeHint": "Durchschnittspreise nach Abfahrtszeit",
+      "leadTime": "Buchungsvorlauf",
+      "leadTimeHint": "Durchschnittspreise nach Buchungszeitpunkt vor Abreise",
+      "transfers": "Direkt vs. Umstieg",
+      "transfersHint": "Preisvergleich nach Anzahl Umstiege",
+      "priceTrend": "Preisentwicklung",
+      "priceTrendHint": "Wie sich der günstigste Preis ändert, je näher der Reisetag rückt",
+      "avgPrice": "Ø Preis",
+      "minPrice": "Min",
+      "medianPrice": "Median",
+      "connections": "Verbindungen",
+      "avgCheapest": "Ø Günstigster",
+      "datesWithData": "Reisetage",
+      "cheapest": "Am günstigsten",
+      "noData": "Noch keine Daten. Starte einen Scan, damit die Timing-Analyse gefüllt wird.",
+      "tip": "Tipp",
+      "tipLeadTime": "Am günstigsten bei {bucket} Vorlauf (Ø {price}€)",
+      "tipDeparture": "Günstigste Abfahrtszeit: {slot} (Ø {price}€)",
+      "tipTransfers": "{label} spart im Schnitt {percent}% gegenüber Direktverbindungen"
+    },
+    "analysis": {
+      "title": "KI-Analyse",
+      "run": "Analyse starten",
+      "hint": "Klicke auf 'Analyse starten' um eine KI-gestützte Preisanalyse zu erhalten."
+    },
+    "table": {
+      "date": "Datum",
+      "direction": "Richtung",
+      "departure": "Abfahrt",
+      "arrival": "Ankunft",
+      "price": "Preis",
+      "transfers": "Umstiege",
+      "trains": "Züge"
     }
   }
 }

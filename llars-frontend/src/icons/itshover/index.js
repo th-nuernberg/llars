@@ -30,6 +30,7 @@ import CodeIcon from './CodeIcon.vue'
 import CommunicationIcon from './CommunicationIcon.vue'
 import CopyIcon from './CopyIcon.vue'
 import DatabaseIcon from './DatabaseIcon.vue'
+import DealIcon from './DealIcon.vue'
 import DotIcon from './DotIcon.vue'
 import DownloadIcon from './DownloadIcon.vue'
 import EqualIcon from './EqualIcon.vue'
@@ -100,6 +101,9 @@ import TagIcon from './TagIcon.vue'
 import TextIcon from './TextIcon.vue'
 import ThumbDownIcon from './ThumbDownIcon.vue'
 import ThumbUpIcon from './ThumbUpIcon.vue'
+import TrainIcon from './TrainIcon.vue'
+import TrainOutboundIcon from './TrainOutboundIcon.vue'
+import TrainReturnIcon from './TrainReturnIcon.vue'
 import TrashIcon from './TrashIcon.vue'
 import TriangleAlertIcon from './TriangleAlertIcon.vue'
 import TrophyIcon from './TrophyIcon.vue'
@@ -149,6 +153,7 @@ export const iconComponents = {
   'communication': CommunicationIcon,
   'copy': CopyIcon,
   'database': DatabaseIcon,
+  'deal': DealIcon,
   'dot': DotIcon,
   'download': DownloadIcon,
   'equal': EqualIcon,
@@ -218,6 +223,9 @@ export const iconComponents = {
   'text': TextIcon,
   'thumb-down': ThumbDownIcon,
   'thumb-up': ThumbUpIcon,
+  'train': TrainIcon,
+  'train-outbound': TrainOutboundIcon,
+  'train-return': TrainReturnIcon,
   'trash': TrashIcon,
   'triangle-alert': TriangleAlertIcon,
   'trophy': TrophyIcon,

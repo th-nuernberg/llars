@@ -155,6 +155,10 @@ def register_all_blueprints(app: Flask) -> None:
     from routes.wizard import bp as wizard_bp
     app.register_blueprint(wizard_bp)
 
+    # DB Price Agent (Deutsche Bahn price monitoring)
+    from routes.db_agent.db_agent_routes import db_agent_bp
+    app.register_blueprint(db_agent_bp)
+
     # ============================================================
     # Project-Specific Features
     # ============================================================

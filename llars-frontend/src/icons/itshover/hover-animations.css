@@ -81,7 +81,11 @@
   .l-its-hover--view-cards,
   .l-its-hover--view-list,
   .l-its-hover--overleaf,
-  .l-its-hover--llars-latex
+  .l-its-hover--llars-latex,
+  .l-its-hover--train,
+  .l-its-hover--train-outbound,
+  .l-its-hover--train-return,
+  .l-its-hover--deal
 ) {
   transform: translateY(-1.5px);
 }
@@ -327,6 +331,42 @@
   .l-its-hover--alpha-b
 ) {
   transform: scale(1.1);
+}
+
+/* ========================================
+   TRAIN OUTBOUND/RETURN — Arrow slides
+   ======================================== */
+
+.l-its-hover__train-outbound-arrow,
+.l-its-hover__train-return-arrow {
+  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+:is(.v-icon:hover, .v-btn:hover .v-icon, .feature-card:hover .v-icon, .nav-item:hover .v-icon, .v-list-item:hover .v-icon, .icon-wrapper:hover .v-icon)
+  .l-its-hover__train-outbound-arrow {
+  transform: translateX(2px);
+}
+
+:is(.v-icon:hover, .v-btn:hover .v-icon, .feature-card:hover .v-icon, .nav-item:hover .v-icon, .v-list-item:hover .v-icon, .icon-wrapper:hover .v-icon)
+  .l-its-hover__train-return-arrow {
+  transform: translateX(-2px);
+}
+
+.l-its-hover__train-outbound-wheels,
+.l-its-hover__train-return-wheels {
+  transition: transform 0.3s ease;
+}
+
+:is(.v-icon:hover, .v-btn:hover .v-icon, .feature-card:hover .v-icon, .nav-item:hover .v-icon, .v-list-item:hover .v-icon, .icon-wrapper:hover .v-icon)
+  .l-its-hover__train-outbound-wheels {
+  transform: rotate(15deg);
+  transform-origin: center;
+}
+
+:is(.v-icon:hover, .v-btn:hover .v-icon, .feature-card:hover .v-icon, .nav-item:hover .v-icon, .v-list-item:hover .v-icon, .icon-wrapper:hover .v-icon)
+  .l-its-hover__train-return-wheels {
+  transform: rotate(-15deg);
+  transform-origin: center;
 }
 
 /* ========================================

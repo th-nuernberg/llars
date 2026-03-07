@@ -2582,6 +2582,10 @@
         "title": "OnCoCo Analysis",
         "description": "Classify counseling sessions at sentence level (68 categories)"
       },
+      "dbAgent": {
+        "title": "DB Price Agent",
+        "description": "Monitor Deutsche Bahn prices and find cheap connections"
+      },
       "adminDashboard": {
         "title": "Admin Dashboard",
         "description": "System overview and administration"
@@ -7149,6 +7153,128 @@
         "changeRole": "Change role",
         "removeMember": "Remove member"
       }
+    }
+  },
+  "dbAgent": {
+    "title": "DB Price Agent",
+    "subtitle": "Dortmund Hbf ↔ Nürnberg Hbf · BahnCard 25 · 2nd Class",
+    "loading": "Loading data...",
+    "status": {
+      "active": "Agent active",
+      "inactive": "Agent inactive"
+    },
+    "actions": {
+      "startAgent": "Start Agent",
+      "stopAgent": "Stop Agent",
+      "scanNow": "Scan Now",
+      "deleteData": "Delete Data"
+    },
+    "tabs": {
+      "search": "Search Trip",
+      "deals": "Top Deals",
+      "calendar": "Calendar",
+      "timing": "Timing",
+      "analysis": "Analysis"
+    },
+    "overview": {
+      "loading": "Loading current prices...",
+      "topDeals": "Current Top Deals",
+      "fromScans": "From Scans"
+    },
+    "search": {
+      "title": "Search Trip",
+      "stationFrom": "From",
+      "stationTo": "To",
+      "dateFrom": "Outbound on",
+      "dateTo": "Return on",
+      "outbound": "Outbound",
+      "returnTrip": "Return",
+      "flexibility": "Flexibility",
+      "go": "Search",
+      "results": "{count} connections found",
+      "bookOnBahn": "Book on bahn.de",
+      "selectOutbound": "Select outbound",
+      "selectReturn": "Select return",
+      "totalPrice": "Total price"
+    },
+    "suggestions": {
+      "title": "Suggestions",
+      "found": "found"
+    },
+    "followup": {
+      "title": "Travel Advisor",
+      "placeholder": "e.g. Suggestion #3 looks good, but I can only travel a day later..."
+    },
+    "deals": {
+      "title": "Cheapest Connections"
+    },
+    "calendar": {
+      "title": "Price Calendar",
+      "viewYear": "Year",
+      "viewMonth": "Month",
+      "viewDay": "Day",
+      "roundTrip": "Round Trip",
+      "tripSuggestions": "Trip Recommendations",
+      "days": "days",
+      "cheapestShort": "from",
+      "connections": "connections",
+      "noDataForDay": "No data for this day. Start a scan or search a trip.",
+      "legend": {
+        "cheap": "Cheap (< 30€)",
+        "medium": "Medium (30-60€)",
+        "expensive": "Expensive (60-100€)",
+        "veryExpensive": "Very expensive (> 100€)",
+        "stddev": "±σ = Standard deviation",
+        "highVolatility": "High price volatility",
+        "tripStrip": "Trip suggestion (round trip)"
+      }
+    },
+    "stats": {
+      "title": "Price Statistics",
+      "outbound": "Outbound (DO → N)",
+      "return": "Return (N → DO)",
+      "totalEntries": "Total entries",
+      "noData": "No price data yet. Start a scan."
+    },
+    "weekday": {
+      "title": "Weekday Analysis"
+    },
+    "timing": {
+      "title": "When to book?",
+      "departureTime": "Departure Time",
+      "departureTimeHint": "Average prices by departure time of day",
+      "leadTime": "Booking Lead Time",
+      "leadTimeHint": "Average prices by how far in advance you book",
+      "transfers": "Direct vs. Transfers",
+      "transfersHint": "Price comparison by number of transfers",
+      "priceTrend": "Price Trend",
+      "priceTrendHint": "How the cheapest price changes as travel date approaches",
+      "avgPrice": "Avg Price",
+      "minPrice": "Min",
+      "medianPrice": "Median",
+      "connections": "Connections",
+      "avgCheapest": "Avg Cheapest",
+      "datesWithData": "Travel dates",
+      "cheapest": "Cheapest",
+      "noData": "No data yet. Start a scan to populate the timing analysis.",
+      "tip": "Tip",
+      "tipLeadTime": "Cheapest at {bucket} lead time (avg {price}€)",
+      "tipDeparture": "Cheapest departure time: {slot} (avg {price}€)",
+      "tipTransfers": "{label} saves on average {percent}% vs direct connections"
+    },
+    "analysis": {
+      "title": "AI Analysis",
+      "run": "Run Analysis",
+      "hint": "Click 'Run Analysis' to get an AI-powered price analysis."
+    },
+    "table": {
+      "date": "Date",
+      "direction": "Direction",
+      "departure": "Departure",
+      "arrival": "Arrival",
+      "price": "Price",
+      "transfers": "Transfers",
+      "trains": "Trains"
     }
   }
 }

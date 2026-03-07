@@ -166,20 +166,16 @@ export async function handlePrivacyPage(page, redirectPath = null) {
  * - Handles Datenschutz page redirect properly
  */
 export async function quickLogin(page, user = TEST_USERS.researcher, retries = 2) {
-  // In production mode, storageState provides auth tokens - check if already authenticated
+  // Production runs frequently switch roles inside a single test. Reuse of any
+  // existing /Home session here leaks the previous user into later assertions.
   if (isProduction) {
-    await page.goto('/Home', { waitUntil: 'domcontentloaded', timeout: 30000 })
-    await page.waitForLoadState('load', { timeout: 5000 }).catch(() => {})
-    await handlePrivacyPage(page, '/Home')
-    if (page.url().includes('/Home')) {
-      await dismissConsentBanner(page)
-      return // Already authenticated via storageState
-    }
-
-    // Session expired or missing: refresh tokens via API to avoid brittle form login.
     try {
       const tokenData = await apiLogin(user)
       await page.goto('/login', { waitUntil: 'domcontentloaded', timeout: 30000 }).catch(() => {})
+      await page.evaluate(() => {
+        localStorage.clear()
+        sessionStorage.clear()
+      }).catch(() => {})
       await applyAuthStorage(page, user, tokenData)
       await page.goto('/Home', { waitUntil: 'domcontentloaded', timeout: 30000 })
       await page.waitForLoadState('load', { timeout: 5000 }).catch(() => {})

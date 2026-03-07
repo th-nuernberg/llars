@@ -93,6 +93,14 @@ vi.mock('@/composables/useAuth', () => ({
   useAuth: () => mockAuth
 }))
 
+const mockPermissions = {
+  hasPermission: vi.fn(() => true),
+  hasAnyPermission: vi.fn(() => true)
+}
+vi.mock('@/composables/usePermissions', () => ({
+  usePermissions: () => mockPermissions
+}))
+
 // Mock useCommunicationAdmin
 vi.mock('@/composables/useCommunicationAdmin', () => ({
   useCommunicationAdmin: () => ({
@@ -116,6 +124,8 @@ describe('Router Configuration', () => {
     mockAuth.isAuthenticated.value = true
     mockAuth.isAdmin.value = false
     mockAuth.userRoles.value = ['researcher']
+    mockPermissions.hasPermission.mockReturnValue(true)
+    mockPermissions.hasAnyPermission.mockReturnValue(true)
 
     // Fresh import for each test
     vi.resetModules()
@@ -308,6 +318,32 @@ describe('Router Configuration', () => {
     it('ROUTER_027: anonymization detail requires permission', () => {
       const route = router.getRoutes().find(r => r.name === 'AnonymizationDetail')
       expect(route.meta.requiresPermission).toBe('feature:anonymization-pipeline:view')
+    })
+
+    it('ROUTER_027A: evaluation routes require any evaluation permission', () => {
+      const hub = router.getRoutes().find(r => r.name === 'EvaluationHub')
+      const assistant = router.getRoutes().find(r => r.name === 'EvaluationAssistant')
+
+      expect(hub.meta.requiresAnyPermission).toEqual([
+        'feature:ranking:view',
+        'feature:rating:view',
+        'feature:mail_rating:view',
+        'feature:comparison:view',
+        'feature:authenticity:view'
+      ])
+      expect(assistant.meta.requiresAnyPermission).toEqual(hub.meta.requiresAnyPermission)
+    })
+
+    it('ROUTER_027B: scenario routes require any scenario permission', () => {
+      const manager = router.getRoutes().find(r => r.name === 'ScenarioManager')
+      const workspace = router.getRoutes().find(r => r.name === 'ScenarioWorkspace')
+
+      expect(manager.meta.requiresAnyPermission).toEqual([
+        'data:manage_scenarios',
+        'feature:ranking:view',
+        'feature:rating:view'
+      ])
+      expect(workspace.meta.requiresAnyPermission).toEqual(manager.meta.requiresAnyPermission)
     })
   })
 

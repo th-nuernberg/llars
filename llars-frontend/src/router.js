@@ -117,6 +117,20 @@ import { useCommunicationAdmin } from "@/composables/useCommunicationAdmin";
 // Chatbot Manager (dedicated page, separated from Admin)
 import ChatbotManagerPage from "@/views/ChatbotManager/ChatbotManagerPage.vue";
 
+const EVALUATION_ROUTE_PERMISSIONS = [
+    'feature:ranking:view',
+    'feature:rating:view',
+    'feature:mail_rating:view',
+    'feature:comparison:view',
+    'feature:authenticity:view'
+];
+
+const SCENARIO_ROUTE_PERMISSIONS = [
+    'data:manage_scenarios',
+    'feature:ranking:view',
+    'feature:rating:view'
+];
+
 const routes = [
     { path: '/Impressum', component: Impressum, meta: { requiresAuth: false } },
     { path: '/Datenschutz', component: Datenschutz, meta: { requiresAuth: false } },
@@ -150,13 +164,35 @@ const routes = [
     { path: '/Home', component: Home, meta: { requiresAuth: true } },
     { path: '/video', name: 'DemoVideoPage', component: DemoVideoPage, meta: { requiresAuth: true } },
     { path: '/settings', name: 'UserSettings', component: UserSettingsPage, meta: { requiresAuth: true } },
-    { path: '/evaluation', name: 'EvaluationHub', component: EvaluationHub, meta: { requiresAuth: true } },
-    { path: '/evaluation/assistant/:id', name: 'EvaluationAssistant', component: EvaluationAssistant, props: true, meta: { requiresAuth: true } },
+    {
+      path: '/evaluation',
+      name: 'EvaluationHub',
+      component: EvaluationHub,
+      meta: { requiresAuth: true, requiresAnyPermission: EVALUATION_ROUTE_PERMISSIONS }
+    },
+    {
+      path: '/evaluation/assistant/:id',
+      name: 'EvaluationAssistant',
+      component: EvaluationAssistant,
+      props: true,
+      meta: { requiresAuth: true, requiresAnyPermission: EVALUATION_ROUTE_PERMISSIONS }
+    },
     { path: '/data-import', alias: '/import', name: 'DataImporter', component: DataImporterView, meta: { requiresAuth: true } },
 
     // Scenario Manager
-    { path: '/scenarios', name: 'ScenarioManager', component: ScenarioManagerHome, meta: { requiresAuth: true } },
-    { path: '/scenarios/:id', name: 'ScenarioWorkspace', component: ScenarioWorkspace, props: true, meta: { requiresAuth: true } },
+    {
+      path: '/scenarios',
+      name: 'ScenarioManager',
+      component: ScenarioManagerHome,
+      meta: { requiresAuth: true, requiresAnyPermission: SCENARIO_ROUTE_PERMISSIONS }
+    },
+    {
+      path: '/scenarios/:id',
+      name: 'ScenarioWorkspace',
+      component: ScenarioWorkspace,
+      props: true,
+      meta: { requiresAuth: true, requiresAnyPermission: SCENARIO_ROUTE_PERMISSIONS }
+    },
     // Legacy evaluation route - redirects to new evaluation interface
     {
       path: '/evaluate/:id',
@@ -171,7 +207,7 @@ const routes = [
       name: 'EvaluationItemsOverview',
       component: EvaluationItemsOverview,
       props: true,
-      meta: { requiresAuth: true }
+      meta: { requiresAuth: true, requiresAnyPermission: EVALUATION_ROUTE_PERMISSIONS }
     },
     // Evaluation Session - for evaluating a specific item or first item
     {
@@ -179,14 +215,14 @@ const routes = [
       name: 'EvaluationSessionItem',
       component: EvaluationSession,
       props: true,
-      meta: { requiresAuth: true }
+      meta: { requiresAuth: true, requiresAnyPermission: EVALUATION_ROUTE_PERMISSIONS }
     },
     {
       path: '/scenarios/:scenarioId/evaluate/start',
       name: 'EvaluationSession',
       component: EvaluationSession,
       props: true,
-      meta: { requiresAuth: true }
+      meta: { requiresAuth: true, requiresAnyPermission: EVALUATION_ROUTE_PERMISSIONS }
     },
 
     { path: '/Ranker', name: 'Ranker', component: Ranker, meta: { requiresAuth: true } },
@@ -382,6 +418,16 @@ router.beforeEach((to, from, next) => {
         const { hasPermission } = usePermissions();
         if (!hasPermission(requiredPermission)) {
             next({ path: '/' });
+            return;
+        }
+    }
+
+    const requiredAnyPermission = to.matched.find(record => Array.isArray(record.meta.requiresAnyPermission))
+        ?.meta.requiresAnyPermission;
+    if (requiredAnyPermission?.length) {
+        const { hasAnyPermission } = usePermissions();
+        if (!hasAnyPermission(...requiredAnyPermission)) {
+            next('/Home');
             return;
         }
     }

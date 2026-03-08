@@ -207,6 +207,12 @@
       "description": "Workspace oeffnen falls vorhanden."
     },
     {
+      "id": "DBAGENT-VIEW-001",
+      "test": "DB Preisagent",
+      "required": false,
+      "description": "DB Preisagent Dashboard oeffnen und Uebersicht pruefen."
+    },
+    {
       "id": "INFRA-MKDOCS-001",
       "test": "Infrastructure Health",
       "required": true,

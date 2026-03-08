@@ -178,6 +178,7 @@ test('Anonymization', async ({ page }) => runTileRegression(page, 'Anonymization
 test('Anonymisierungs-Pipeline', async ({ page }) => runTileRegression(page, 'Anonymisierungs-Pipeline'))
 test('KAIMO', async ({ page }) => runTileRegression(page, 'KAIMO'))
 test('OnCoCo', async ({ page }) => runTileRegression(page, 'OnCoCo'))
+test('DB Preisagent', async ({ page }) => runTileRegression(page, 'DB Preisagent'))
 test('Admin Dashboard', async ({ page }) => runTileRegression(page, 'Admin Dashboard'))
 test('Chatbot Admin', async ({ page }) => runTileRegression(page, 'Chatbot Admin'))
 test('RAG Admin', async ({ page }) => runTileRegression(page, 'RAG Admin'))

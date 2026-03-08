@@ -373,7 +373,7 @@ smoke:dev:
   script:
     - echo "Running dev smoke tests..."
     - cd /var/llars
-    - bash scripts/ci/smoke_test.sh
+    - BASE_URL=http://localhost:55080 bash scripts/ci/smoke_test.sh
   extends:
     - .dev_deploy_rules
   needs:

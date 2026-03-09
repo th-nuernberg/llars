@@ -1029,11 +1029,11 @@ const initialTab = validTabs.includes(props.tab) ? props.tab : 'search'
 const activeTab = ref(initialTab)
 
 const tabs = computed(() => [
-  { value: 'search', label: t('dbAgent.tabs.search') },
-  { value: 'deals', label: t('dbAgent.tabs.deals') },
-  { value: 'calendar', label: t('dbAgent.tabs.calendar') },
-  { value: 'timing', label: t('dbAgent.tabs.timing') },
-  { value: 'analysis', label: t('dbAgent.tabs.analysis') },
+  { value: 'search', label: t('dbAgent.tabs.search'), icon: 'llars:search' },
+  { value: 'deals', label: t('dbAgent.tabs.deals'), icon: 'llars:deal' },
+  { value: 'calendar', label: t('dbAgent.tabs.calendar'), icon: 'llars:calendar' },
+  { value: 'timing', label: t('dbAgent.tabs.timing'), icon: 'mdi-clock-check-outline' },
+  { value: 'analysis', label: t('dbAgent.tabs.analysis'), icon: 'llars:robot' },
 ])
 
 // Calendar view mode from query param
@@ -3175,9 +3175,109 @@ onMounted(() => {
   font-size: 0.72rem;
 }
 
-/* ===== Mobile: Tabs scrollable ===== */
+/* ===== Mobile: Tabs — icons only, compact ===== */
 .is-mobile :deep(.l-tabs) {
   margin-top: 4px;
+}
+
+.is-mobile :deep(.l-tab__label) {
+  display: none;
+}
+
+.is-mobile :deep(.l-tab) {
+  padding: 8px 14px;
+  min-width: 0;
+}
+
+.is-mobile :deep(.l-tab__icon) {
+  margin-right: 0;
+}
+
+/* ===== Mobile: Tab content spacing ===== */
+.is-mobile .tab-content {
+  margin-top: 10px;
+}
+
+/* ===== Mobile: Trip panel headers — hide on mobile (redundant with direction toggle) ===== */
+.is-mobile .trip-panel-header {
+  padding: 6px 12px;
+  font-size: 0.8rem;
+}
+
+.is-mobile .trip-panel-header .trip-panel-date {
+  display: none;
+}
+
+/* ===== Mobile: Suggestion trains line — truncate ===== */
+.is-mobile .suggestion-trains {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 200px;
+}
+
+/* ===== Mobile: Empty state compact ===== */
+.is-mobile .empty-state {
+  padding: 24px 12px;
+}
+
+.is-mobile .empty-state-small {
+  padding: 16px;
+}
+
+/* ===== Mobile: Chat input sticky ===== */
+.is-mobile .followup-input {
+  position: sticky;
+  bottom: 0;
+  background: rgb(var(--v-theme-surface));
+  padding: 8px 0;
+  z-index: 1;
+}
+
+/* ===== Mobile: Section headers compact ===== */
+.is-mobile .section-header h3 {
+  font-size: 0.88rem;
+}
+
+/* ===== Mobile: Analysis result text ===== */
+.is-mobile .analysis-result {
+  font-size: 0.82rem;
+}
+
+/* ===== Mobile: Weekday bars ===== */
+.is-mobile .weekday-name {
+  width: 50px;
+  font-size: 0.78rem;
+}
+
+/* ===== Mobile: Stats rows ===== */
+.is-mobile .stat-row {
+  font-size: 0.82rem;
+  flex-wrap: wrap;
+  gap: 2px;
+}
+
+/* ===== Mobile: Timing tips wrap ===== */
+.is-mobile .timing-tip {
+  font-size: 0.78rem;
+  padding: 6px 10px;
+}
+
+/* ===== Mobile: bahn.de link bigger touch target ===== */
+.is-mobile .bahn-link {
+  padding: 4px 2px;
+  font-size: 0.72rem;
+}
+
+/* ===== Mobile: Calendar view-mode toggle compact ===== */
+.is-mobile .section-header .v-btn-toggle--density-compact {
+  height: 28px;
+}
+
+.is-mobile .section-header .v-btn-toggle .v-btn--size-small {
+  font-size: 0.7rem;
+  min-width: 0;
+  padding: 0 8px;
 }
 </style>
 

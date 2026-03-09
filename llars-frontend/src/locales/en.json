@@ -7156,16 +7156,43 @@
     "admin": {
       "title": "Manage Research Groups",
       "noGroups": "No groups found",
+      "selectGroup": "Select a group to view details",
+      "search": "Search groups...",
       "stats": {
         "conferences": "Conferences",
         "papers": "Papers",
         "members": "Members"
+      },
+      "tabs": {
+        "members": "Members",
+        "requests": "Requests",
+        "content": "Content"
       },
       "members": {
         "add": "Add Member",
         "noMembers": "No members in this group",
         "changeRole": "Change role",
         "removeMember": "Remove member"
+      },
+      "requests": {
+        "noRequests": "No pending requests"
+      },
+      "content": {
+        "conferences": "Conferences",
+        "papers": "Papers",
+        "noConferences": "No conferences in this group",
+        "noPapers": "No papers in this group",
+        "location": "Location",
+        "deadline": "Deadline"
+      },
+      "deleteDialog": {
+        "title": "Delete Research Group",
+        "confirm": "Delete \"{name}\"? Conferences and papers will remain but lose their group assignment.",
+        "info": "This action cannot be undone."
+      },
+      "removeMemberDialog": {
+        "title": "Remove Member",
+        "confirm": "Remove \"{name}\" from this group?"
       }
     }
   },
@@ -7210,7 +7237,10 @@
       "bookOnBahn": "Book on bahn.de",
       "selectOutbound": "Select outbound",
       "selectReturn": "Select return",
-      "totalPrice": "Total price"
+      "totalPrice": "Total price",
+      "directOnly": "Direct connections only",
+      "directConnections": "direct connections",
+      "noDirectConnections": "No direct connections available"
     },
     "suggestions": {
       "title": "Suggestions",

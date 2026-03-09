@@ -173,6 +173,32 @@ export function useResearchGroups() {
     return response.data.result
   }
 
+  async function fetchGroupConferences(groupId) {
+    try {
+      const response = await axios.get('/api/conference-manager/conferences', {
+        headers: getHeaders(),
+        params: { group_id: groupId },
+      })
+      return response.data.conferences || []
+    } catch (err) {
+      console.error('Failed to fetch group conferences:', err)
+      return []
+    }
+  }
+
+  async function fetchGroupPapers(groupId) {
+    try {
+      const response = await axios.get('/api/conference-manager/papers', {
+        headers: getHeaders(),
+        params: { group_id: groupId },
+      })
+      return response.data.papers || []
+    } catch (err) {
+      console.error('Failed to fetch group papers:', err)
+      return []
+    }
+  }
+
   return {
     // State
     myGroups,
@@ -201,5 +227,9 @@ export function useResearchGroups() {
     fetchPendingRequests,
     fetchGroupRequests,
     resolveAccessRequest,
+
+    // Content methods
+    fetchGroupConferences,
+    fetchGroupPapers,
   }
 }

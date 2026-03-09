@@ -6998,16 +6998,43 @@
     "admin": {
       "title": "Forschungsgruppen verwalten",
       "noGroups": "Keine Gruppen vorhanden",
+      "selectGroup": "Wähle eine Gruppe, um Details anzuzeigen",
+      "search": "Gruppen suchen...",
       "stats": {
         "conferences": "Konferenzen",
         "papers": "Paper",
         "members": "Mitglieder"
+      },
+      "tabs": {
+        "members": "Mitglieder",
+        "requests": "Anfragen",
+        "content": "Inhalte"
       },
       "members": {
         "add": "Mitglied hinzufügen",
         "noMembers": "Keine Mitglieder in dieser Gruppe",
         "changeRole": "Rolle ändern",
         "removeMember": "Mitglied entfernen"
+      },
+      "requests": {
+        "noRequests": "Keine ausstehenden Anfragen"
+      },
+      "content": {
+        "conferences": "Konferenzen",
+        "papers": "Paper",
+        "noConferences": "Keine Konferenzen in dieser Gruppe",
+        "noPapers": "Keine Paper in dieser Gruppe",
+        "location": "Ort",
+        "deadline": "Deadline"
+      },
+      "deleteDialog": {
+        "title": "Forschungsgruppe löschen",
+        "confirm": "\"{name}\" wirklich löschen? Konferenzen und Paper bleiben erhalten, verlieren aber ihre Gruppenzuordnung.",
+        "info": "Diese Aktion kann nicht rückgängig gemacht werden."
+      },
+      "removeMemberDialog": {
+        "title": "Mitglied entfernen",
+        "confirm": "\"{name}\" wirklich aus der Gruppe entfernen?"
       }
     }
   },
@@ -7052,7 +7079,10 @@
       "bookOnBahn": "Auf bahn.de buchen",
       "selectOutbound": "Hinfahrt wählen",
       "selectReturn": "Rückfahrt wählen",
-      "totalPrice": "Gesamtpreis"
+      "totalPrice": "Gesamtpreis",
+      "directOnly": "Nur Direktverbindungen",
+      "directConnections": "Direktverbindungen",
+      "noDirectConnections": "Keine Direktverbindungen verfügbar"
     },
     "suggestions": {
       "title": "Vorschläge",

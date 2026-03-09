@@ -14,6 +14,15 @@ import { execSync } from 'node:child_process'
 //   dev branch:  patch bumps → v3.1.1, v3.1.2, ...
 //   main branch: minor bumps → v3.2.0, v3.3.0, ...
 function getVersionInfo() {
+  // Docker builds pass version as env vars (no .git in container)
+  if (process.env.APP_VERSION) {
+    return {
+      version: process.env.APP_VERSION,
+      commitHash: process.env.APP_COMMIT_HASH || 'unknown',
+      branch: process.env.APP_BRANCH || 'unknown',
+    }
+  }
+
   const run = (cmd) => execSync(cmd, { encoding: 'utf-8', cwd: '..' }).trim()
   try {
     const commitHash = run('git rev-parse --short HEAD')

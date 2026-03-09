@@ -762,6 +762,29 @@ border-radius: 6px 2px 6px 2px;    /* Tags */
 
 ## Git Commits & Deployment
 
+### Semantic Versioning (automatisch)
+
+Versionen werden automatisch aus Git-Tags berechnet (`llars-frontend/vite.config.mjs`).
+
+**Base-Tag:** `v1.0.0` (erstellt am 2026-03-09)
+
+| Branch | Inkrement | Beispiel | Anzeige |
+|--------|-----------|----------|---------|
+| `dev` | Patch (x in v1.0.x) | v1.0.1, v1.0.2, ... | AppBar: `DEV v1.0.2 · dev@a664fa0b` |
+| `main` | Minor (y in v1.y.0) | v1.1.0, v1.2.0, ... | Footer: `v1.1.0` |
+
+**Formel:** `git describe --tags --long --match "v*"` → `v1.0.0-5-gabcdef`
+- Dev: `major.minor.(patch + commits_since_tag)`
+- Main: `major.(minor + commits_since_tag).0`
+
+**Neuen Base-Tag setzen (nur bei Major-Release):**
+```bash
+git tag v2.0.0
+git push --tags
+```
+
+**WICHTIG:** Bei `git push` immer auch `git push --tags` wenn neue Tags erstellt wurden.
+
 ### Commit Message Format
 
 ```bash
@@ -776,6 +799,28 @@ EOF
 
 **Types:** feat | fix | docs | refactor | chore
 **Scopes:** frontend | backend | auth | judge | rag | crawler | db
+
+### Commit & Push Workflow
+
+```bash
+# 1. Änderungen stagen (NIEMALS git add -A oder git add .)
+git add <spezifische-dateien>
+
+# 2. Commit mit HEREDOC-Format
+git commit -m "$(cat <<'EOF'
+feat(frontend): beschreibung
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+Co-Authored-By: Claude <noreply@anthropic.com>
+EOF
+)"
+
+# 3. Push (+ Tags falls nötig)
+git push
+git push --tags  # nur wenn neue Tags erstellt wurden
+```
+
+**WICHTIG:** Working Directory ist `llars-frontend/`, Git-Root ist `llars/`. Dateipfade in `git add` relativ zum CWD angeben (z.B. `src/App.vue`, NICHT `llars-frontend/src/App.vue`).
 
 ### Deployment via Commit Tags
 

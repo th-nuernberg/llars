@@ -1,150 +1,152 @@
 <template>
   <div class="db-agent-page" :class="{ 'is-mobile': isMobile }">
 
+    <!-- ===== MOBILE: Sub-Header Bar ===== -->
+    <div v-if="isMobile" class="mobile-subheader">
+      <div class="mobile-subheader-left">
+        <LIcon size="18" color="primary">llars:train</LIcon>
+        <div class="mobile-subheader-info">
+          <span class="mobile-subheader-route">{{ OUTBOUND_SHORT }}</span>
+          <span class="mobile-subheader-dates">{{ formatDate(searchDateFrom) }} – {{ formatDate(searchDateTo) }}</span>
+        </div>
+      </div>
+      <div class="mobile-subheader-right">
+        <LTag :variant="status.running ? 'success' : 'default'" size="sm">
+          <LIcon size="12">{{ status.running ? 'mdi-pulse' : 'mdi-pause' }}</LIcon>
+        </LTag>
+        <v-btn icon variant="text" size="small" @click="mobileDrawerOpen = true">
+          <v-icon size="20">mdi-tune</v-icon>
+        </v-btn>
+      </div>
+    </div>
+
     <!-- ===== MOBILE: Search Drawer ===== -->
     <v-navigation-drawer
       v-if="isMobile"
       v-model="mobileDrawerOpen"
       temporary
-      location="left"
+      location="right"
       :width="320"
       class="mobile-search-drawer"
     >
       <div class="mobile-drawer-content">
         <div class="mobile-drawer-header">
-          <LIcon size="20" color="primary">llars:search</LIcon>
-          <span class="mobile-drawer-title">{{ $t('dbAgent.search.go') }}</span>
+          <LIcon size="20" color="primary">llars:train</LIcon>
+          <span class="mobile-drawer-title">{{ $t('dbAgent.title') }}</span>
           <v-spacer />
           <v-btn icon variant="text" size="small" @click="mobileDrawerOpen = false">
             <v-icon size="18">mdi-close</v-icon>
           </v-btn>
         </div>
 
-        <!-- Search Form -->
-        <div class="mobile-drawer-form">
-          <v-combobox
-            v-model="searchStationFrom"
-            :items="stationSuggestions"
-            :label="$t('dbAgent.search.stationFrom')"
-            density="compact"
-            variant="outlined"
-            hide-details
-            prepend-inner-icon="llars:train-outbound"
-          />
-          <div class="mobile-swap-row">
-            <v-btn icon variant="text" size="x-small" @click="swapStations">
-              <v-icon size="16">mdi-swap-vertical</v-icon>
-            </v-btn>
+        <!-- Agent Controls -->
+        <div class="mobile-drawer-section">
+          <div class="mobile-drawer-section-title">Agent</div>
+          <div class="mobile-drawer-actions">
+            <LBtn
+              v-if="!status.running"
+              variant="primary"
+              size="small"
+              block
+              @click="startScheduler"
+              :loading="actionLoading"
+            >
+              <LIcon start size="14">mdi-play</LIcon>
+              {{ $t('dbAgent.actions.startAgent') }}
+            </LBtn>
+            <LBtn
+              v-else
+              variant="cancel"
+              size="small"
+              block
+              @click="stopScheduler"
+              :loading="actionLoading"
+            >
+              <LIcon start size="14">mdi-stop</LIcon>
+              {{ $t('dbAgent.actions.stopAgent') }}
+            </LBtn>
+            <LBtn variant="accent" size="small" block @click="triggerScan" :loading="status.is_scanning">
+              <LIcon start size="14">llars:refresh</LIcon>
+              {{ $t('dbAgent.actions.scanNow') }}
+            </LBtn>
           </div>
-          <v-combobox
-            v-model="searchStationTo"
-            :items="stationSuggestions"
-            :label="$t('dbAgent.search.stationTo')"
-            density="compact"
-            variant="outlined"
-            hide-details
-            prepend-inner-icon="llars:train-return"
-          />
-          <div class="mobile-date-row">
-            <v-text-field
-              v-model="searchDateFrom"
-              type="date"
-              :label="$t('dbAgent.search.outbound')"
-              density="compact"
-              variant="outlined"
-              hide-details
-            />
-            <v-text-field
-              v-model="searchDateTo"
-              type="date"
-              :label="$t('dbAgent.search.returnTrip')"
-              density="compact"
-              variant="outlined"
-              hide-details
-            />
-          </div>
-          <v-select
-            v-model="searchFlexibility"
-            :items="flexOptions"
-            item-title="label"
-            item-value="value"
-            :label="$t('dbAgent.search.flexibility')"
-            density="compact"
-            variant="outlined"
-            hide-details
-          />
-          <LBtn variant="primary" block @click="mobileSearchAndClose" :loading="searchLoading">
-            <LIcon start size="16">llars:search</LIcon>
-            {{ $t('dbAgent.search.go') }}
-          </LBtn>
         </div>
 
-        <!-- Search History in Drawer -->
-        <div v-if="searchHistory.length" class="mobile-drawer-history">
-          <div class="mobile-drawer-history-title">
-            <LIcon size="16" color="secondary">mdi-history</LIcon>
-            <span>{{ $t('dbAgent.history.title') }}</span>
-          </div>
-          <div
-            v-for="h in searchHistory"
-            :key="h.id"
-            class="mobile-history-item"
-            @click="restoreSearch(h); mobileDrawerOpen = false"
-          >
-            <div class="mobile-history-route">
-              {{ stationShort(h.stationFrom) }} → {{ stationShort(h.stationTo) }}
+        <v-divider class="my-2" />
+
+        <!-- Search Form -->
+        <div class="mobile-drawer-section">
+          <div class="mobile-drawer-section-title">{{ $t('dbAgent.tabs.search') }}</div>
+          <div class="mobile-drawer-form">
+            <v-combobox
+              v-model="searchStationFrom"
+              :items="stationSuggestions"
+              :label="$t('dbAgent.search.stationFrom')"
+              density="compact"
+              variant="outlined"
+              hide-details
+              prepend-inner-icon="llars:train-outbound"
+            />
+            <div class="mobile-swap-row">
+              <v-btn icon variant="text" size="x-small" @click="swapStations">
+                <v-icon size="16">mdi-swap-vertical</v-icon>
+              </v-btn>
             </div>
-            <div class="mobile-history-meta">
-              {{ formatDate(h.dateFrom) }} — {{ formatDate(h.dateTo) }}
-              <span v-if="h.cheapestOut != null" class="ml-1" :class="priceClass(h.cheapestOut)">ab {{ h.cheapestOut.toFixed(2) }}€</span>
+            <v-combobox
+              v-model="searchStationTo"
+              :items="stationSuggestions"
+              :label="$t('dbAgent.search.stationTo')"
+              density="compact"
+              variant="outlined"
+              hide-details
+              prepend-inner-icon="llars:train-return"
+            />
+            <div class="mobile-date-row">
+              <v-text-field
+                v-model="searchDateFrom"
+                type="date"
+                :label="$t('dbAgent.search.outbound')"
+                density="compact"
+                variant="outlined"
+                hide-details
+              />
+              <v-text-field
+                v-model="searchDateTo"
+                type="date"
+                :label="$t('dbAgent.search.returnTrip')"
+                density="compact"
+                variant="outlined"
+                hide-details
+              />
             </div>
-            <LIconBtn icon="mdi-close" size="x-small" @click.stop="removeSearchHistory(h.id)" tooltip="Entfernen" />
+            <v-select
+              v-model="searchFlexibility"
+              :items="flexOptions"
+              item-title="label"
+              item-value="value"
+              :label="$t('dbAgent.search.flexibility')"
+              density="compact"
+              variant="outlined"
+              hide-details
+            />
+            <LBtn variant="primary" block @click="mobileSearchAndClose" :loading="searchLoading">
+              <LIcon start size="16">llars:search</LIcon>
+              {{ $t('dbAgent.search.go') }}
+            </LBtn>
           </div>
+        </div>
+
+        <v-divider class="my-2" />
+
+        <!-- Danger Zone -->
+        <div class="mobile-drawer-section">
+          <LBtn variant="danger" size="small" block @click="deleteAllData" :loading="actionLoading">
+            <LIcon start size="14">mdi-delete</LIcon>
+            {{ $t('dbAgent.actions.deleteData') }}
+          </LBtn>
         </div>
       </div>
     </v-navigation-drawer>
-
-    <!-- ===== MOBILE: Compact Header ===== -->
-    <div v-if="isMobile" class="mobile-header">
-      <v-btn icon variant="text" size="small" @click="mobileDrawerOpen = true">
-        <v-icon size="20">mdi-menu</v-icon>
-      </v-btn>
-      <div class="mobile-header-route" @click="mobileDrawerOpen = true">
-        <span class="mobile-route-text">{{ stationShort(searchStationFrom) }} → {{ stationShort(searchStationTo) }}</span>
-        <span class="mobile-route-dates">{{ formatDate(searchDateFrom) }} – {{ formatDate(searchDateTo) }}</span>
-      </div>
-      <v-spacer />
-      <span class="mobile-status-dot" :class="status.running ? 'active' : ''"></span>
-      <v-btn icon variant="text" size="small" @click="mobileDrawerOpen = true">
-        <v-icon size="18">mdi-magnify</v-icon>
-      </v-btn>
-      <v-menu>
-        <template #activator="{ props }">
-          <v-btn icon variant="text" size="small" v-bind="props">
-            <v-icon size="18">mdi-cog</v-icon>
-          </v-btn>
-        </template>
-        <v-list density="compact">
-          <v-list-item v-if="!status.running" @click="startScheduler" :disabled="actionLoading">
-            <template #prepend><v-icon size="18">mdi-play</v-icon></template>
-            <v-list-item-title>{{ $t('dbAgent.actions.startAgent') }}</v-list-item-title>
-          </v-list-item>
-          <v-list-item v-else @click="stopScheduler" :disabled="actionLoading">
-            <template #prepend><v-icon size="18">mdi-stop</v-icon></template>
-            <v-list-item-title>{{ $t('dbAgent.actions.stopAgent') }}</v-list-item-title>
-          </v-list-item>
-          <v-list-item @click="triggerScan" :disabled="status.is_scanning">
-            <template #prepend><v-icon size="18">mdi-refresh</v-icon></template>
-            <v-list-item-title>{{ $t('dbAgent.actions.scanNow') }}</v-list-item-title>
-          </v-list-item>
-          <v-divider />
-          <v-list-item @click="deleteAllData" :disabled="actionLoading">
-            <template #prepend><v-icon size="18" color="error">mdi-delete</v-icon></template>
-            <v-list-item-title class="text-error">{{ $t('dbAgent.actions.deleteData') }}</v-list-item-title>
-          </v-list-item>
-        </v-list>
-      </v-menu>
-    </div>
 
     <!-- ===== DESKTOP: Page Header ===== -->
     <div v-if="!isMobile" class="page-header">
@@ -274,48 +276,35 @@
       </div>
     </div>
 
-    <LTabs v-model="activeTab" :tabs="tabs" class="mt-3" />
+    <LTabs v-if="!isMobile" v-model="activeTab" :tabs="tabs" class="mt-3" />
 
     <!-- ==================== TAB: REISE SUCHEN ==================== -->
     <div v-show="activeTab === 'search'" class="tab-content">
-      <!-- Mobile: Direction Toggle (replaces split panels) -->
-      <div v-if="isMobile && (outboundResults.length || returnResults.length || searchLoading)" class="mobile-direction-toggle">
-        <button
-          class="mobile-dir-btn"
-          :class="{ active: mobileTripDirection === 'outbound' }"
-          @click="mobileTripDirection = 'outbound'"
-        >
-          <LIcon size="16">llars:train-outbound</LIcon>
-          {{ $t('dbAgent.search.outbound') }}
-          <v-badge v-if="outboundResults.length" :content="outboundResults.length" color="primary" inline />
-        </button>
-        <button
-          class="mobile-dir-btn"
-          :class="{ active: mobileTripDirection === 'return' }"
-          @click="mobileTripDirection = 'return'"
-        >
-          <LIcon size="16">llars:train-return</LIcon>
-          {{ $t('dbAgent.search.returnTrip') }}
-          <v-badge v-if="returnResults.length" :content="returnResults.length" color="grey" inline />
-        </button>
+      <!-- Direct connections filter -->
+      <div v-if="outboundResults.length || returnResults.length" class="direct-filter">
+        <LCheckbox v-model="directOnly" :label="$t('dbAgent.search.directOnly')" />
+        <span v-if="directOnly" class="direct-filter-count">
+          {{ directOutboundCount + directReturnCount }} {{ $t('dbAgent.search.directConnections') }}
+        </span>
       </div>
 
-      <!-- Split Search Results: Outbound | Return (shown FIRST, above overview) -->
+      <!-- Split Search Results: Outbound | Return -->
       <div v-if="outboundResults.length || returnResults.length || searchLoading" class="trip-split-panels">
-        <!-- LEFT: Outbound (Dortmund → Nürnberg) -->
-        <div class="trip-panel" :class="{ 'mobile-hidden': isMobile && mobileTripDirection !== 'outbound' }">
+        <!-- LEFT / TOP: Outbound -->
+        <div class="trip-panel">
           <div class="trip-panel-header trip-panel-header--outbound">
             <LIcon size="18" color="primary">llars:train-outbound</LIcon>
             <span>{{ $t('dbAgent.search.outbound') }}</span>
-            <LTag variant="primary" size="sm">{{ stationShort(searchStationFrom) }} → {{ stationShort(searchStationTo) }}</LTag>
+            <LTag variant="primary" size="sm">{{ OUTBOUND_SHORT }}</LTag>
             <span class="trip-panel-date">{{ formatDate(searchDateFrom) }}</span>
-            <LTag v-if="searchLoading" variant="default" size="sm" class="ml-auto">
+            <LTag v-if="directOnly" variant="success" size="sm" class="ml-auto">{{ filteredOutbound.length }}/{{ outboundResults.length }}</LTag>
+            <LTag v-else-if="searchLoading" variant="default" size="sm" class="ml-auto">
               <LIcon size="12">mdi-loading mdi-spin</LIcon> {{ outboundResults.length }}…
             </LTag>
           </div>
-          <div v-if="outboundResults.length" class="trip-panel-list">
+          <div v-if="filteredOutbound.length" class="trip-panel-list">
             <div
-              v-for="(s, idx) in outboundResults"
+              v-for="(s, idx) in filteredOutbound"
               :key="'out-' + idx"
               class="suggestion-card suggestion-card--compact"
               :class="{ 'suggestion-card--selected': selectedOutbound === idx, 'suggestion-card--night': s.is_night }"
@@ -341,25 +330,29 @@
             </div>
           </div>
           <LLoading v-else-if="searchLoading" :text="$t('dbAgent.loading')" />
+          <div v-else-if="directOnly && outboundResults.length" class="empty-state-small">
+            <p>{{ $t('dbAgent.search.noDirectConnections') }}</p>
+          </div>
           <div v-else class="empty-state-small">
             <p>{{ $t('dbAgent.stats.noData') }}</p>
           </div>
         </div>
 
-        <!-- RIGHT: Return (Nürnberg → Dortmund) -->
-        <div class="trip-panel" :class="{ 'mobile-hidden': isMobile && mobileTripDirection !== 'return' }">
+        <!-- RIGHT / BOTTOM: Return -->
+        <div class="trip-panel">
           <div class="trip-panel-header trip-panel-header--return">
             <LIcon size="18">llars:train-return</LIcon>
             <span>{{ $t('dbAgent.search.returnTrip') }}</span>
-            <LTag variant="default" size="sm">{{ stationShort(searchStationTo) }} → {{ stationShort(searchStationFrom) }}</LTag>
+            <LTag variant="default" size="sm">{{ RETURN_SHORT }}</LTag>
             <span class="trip-panel-date">{{ formatDate(searchDateTo) }}</span>
-            <LTag v-if="searchLoading" variant="default" size="sm" class="ml-auto">
+            <LTag v-if="directOnly" variant="success" size="sm" class="ml-auto">{{ filteredReturn.length }}/{{ returnResults.length }}</LTag>
+            <LTag v-else-if="searchLoading" variant="default" size="sm" class="ml-auto">
               <LIcon size="12">mdi-loading mdi-spin</LIcon> {{ returnResults.length }}…
             </LTag>
           </div>
-          <div v-if="returnResults.length" class="trip-panel-list">
+          <div v-if="filteredReturn.length" class="trip-panel-list">
             <div
-              v-for="(s, idx) in returnResults"
+              v-for="(s, idx) in filteredReturn"
               :key="'ret-' + idx"
               class="suggestion-card suggestion-card--compact"
               :class="{ 'suggestion-card--selected': selectedReturn === idx, 'suggestion-card--night': s.is_night }"
@@ -385,6 +378,9 @@
             </div>
           </div>
           <LLoading v-else-if="searchLoading" :text="$t('dbAgent.loading')" />
+          <div v-else-if="directOnly && returnResults.length" class="empty-state-small">
+            <p>{{ $t('dbAgent.search.noDirectConnections') }}</p>
+          </div>
           <div v-else class="empty-state-small">
             <p>{{ $t('dbAgent.stats.noData') }}</p>
           </div>
@@ -395,24 +391,24 @@
       <div v-if="selectedOutboundJourney || selectedReturnJourney" class="trip-total-bar">
         <div class="trip-total-selections">
           <div v-if="selectedOutboundJourney" class="trip-total-leg">
-            <LTag variant="primary" size="sm">{{ stationShort(searchStationFrom) }} → {{ stationShort(searchStationTo) }}</LTag>
+            <LTag variant="primary" size="sm">{{ OUTBOUND_SHORT }}</LTag>
             <span>{{ formatDate(selectedOutboundJourney.travel_date) }}</span>
             <span>{{ formatTime(selectedOutboundJourney.departure) }} → {{ formatTime(selectedOutboundJourney.arrival) }}</span>
             <strong :class="priceClass(selectedOutboundJourney.price_eur)">{{ selectedOutboundJourney.price_eur.toFixed(2) }}€</strong>
           </div>
           <div v-else class="trip-total-leg trip-total-leg--empty">
-            <LTag variant="primary" size="sm">{{ stationShort(searchStationFrom) }} → {{ stationShort(searchStationTo) }}</LTag>
+            <LTag variant="primary" size="sm">{{ OUTBOUND_SHORT }}</LTag>
             <span class="text-muted">{{ $t('dbAgent.search.selectOutbound') }}</span>
           </div>
           <LIcon size="18">mdi-plus</LIcon>
           <div v-if="selectedReturnJourney" class="trip-total-leg">
-            <LTag variant="default" size="sm">{{ stationShort(searchStationTo) }} → {{ stationShort(searchStationFrom) }}</LTag>
+            <LTag variant="default" size="sm">{{ RETURN_SHORT }}</LTag>
             <span>{{ formatDate(selectedReturnJourney.travel_date) }}</span>
             <span>{{ formatTime(selectedReturnJourney.departure) }} → {{ formatTime(selectedReturnJourney.arrival) }}</span>
             <strong :class="priceClass(selectedReturnJourney.price_eur)">{{ selectedReturnJourney.price_eur.toFixed(2) }}€</strong>
           </div>
           <div v-else class="trip-total-leg trip-total-leg--empty">
-            <LTag variant="default" size="sm">{{ stationShort(searchStationTo) }} → {{ stationShort(searchStationFrom) }}</LTag>
+            <LTag variant="default" size="sm">{{ RETURN_SHORT }}</LTag>
             <span class="text-muted">{{ $t('dbAgent.search.selectReturn') }}</span>
           </div>
         </div>
@@ -460,8 +456,8 @@
         </div>
       </div>
 
-      <!-- Search History (desktop only — on mobile it's in the drawer) -->
-      <div v-if="searchHistory.length && !isMobile" class="search-history-section">
+      <!-- Search History -->
+      <div v-if="searchHistory.length" class="search-history-section">
         <div class="section-header">
           <LIcon size="20" color="secondary">mdi-history</LIcon>
           <h2>{{ $t('dbAgent.history.title') }}</h2>
@@ -517,7 +513,7 @@
             <div class="suggestion-main">
               <div class="suggestion-route">
                 <LTag :variant="s.direction === 'outbound' ? 'primary' : 'default'" size="sm">
-                  {{ s.direction === 'outbound' ? `${stationShort(searchStationFrom)} → ${stationShort(searchStationTo)}` : `${stationShort(searchStationTo)} → ${stationShort(searchStationFrom)}` }}
+                  {{ s.direction === 'outbound' ? OUTBOUND_SHORT : RETURN_SHORT }}
                 </LTag>
                 <span v-if="s.is_night" class="night-badge">
                   <LIcon size="14">mdi-weather-night</LIcon>
@@ -564,7 +560,7 @@
           <div class="suggestion-main">
             <div class="suggestion-route">
               <LTag :variant="s.direction === 'outbound' ? 'primary' : 'default'" size="sm">
-                {{ s.direction === 'outbound' ? `${stationShort(searchStationFrom)} → ${stationShort(searchStationTo)}` : `${stationShort(searchStationTo)} → ${stationShort(searchStationFrom)}` }}
+                {{ s.direction === 'outbound' ? OUTBOUND_SHORT : RETURN_SHORT }}
               </LTag>
               <span v-if="s.is_night" class="night-badge">
                 <LIcon size="14">mdi-weather-night</LIcon>
@@ -629,8 +625,8 @@
         </div>
 
         <v-btn-toggle v-model="calendarDirection" mandatory density="compact" variant="outlined" class="ml-auto">
-          <v-btn value="outbound" size="small">{{ stationShort(searchStationFrom) }} → {{ stationShort(searchStationTo) }}</v-btn>
-          <v-btn value="return" size="small">{{ stationShort(searchStationTo) }} → {{ stationShort(searchStationFrom) }}</v-btn>
+          <v-btn value="outbound" size="small">{{ OUTBOUND_SHORT }}</v-btn>
+          <v-btn value="return" size="small">{{ RETURN_SHORT }}</v-btn>
         </v-btn-toggle>
       </div>
 
@@ -789,7 +785,7 @@
               <div class="suggestion-main">
                 <div class="suggestion-route">
                   <LTag :variant="s.direction === 'outbound' ? 'primary' : 'default'" size="sm">
-                    {{ s.direction === 'outbound' ? `${stationShort(searchStationFrom)} → ${stationShort(searchStationTo)}` : `${stationShort(searchStationTo)} → ${stationShort(searchStationFrom)}` }}
+                    {{ s.direction === 'outbound' ? OUTBOUND_SHORT : RETURN_SHORT }}
                   </LTag>
                   <span v-if="s.is_night" class="night-badge">
                     <LIcon size="14">mdi-weather-night</LIcon>
@@ -1003,6 +999,39 @@
         <p v-else class="text-muted">{{ $t('dbAgent.analysis.hint') }}</p>
       </div>
     </div>
+
+    <!-- ===== MOBILE: Sticky Total Price Bar ===== -->
+    <div v-if="isMobile && (selectedOutboundJourney || selectedReturnJourney)" class="mobile-sticky-total">
+      <div class="mobile-sticky-total-legs">
+        <span v-if="selectedOutboundJourney" :class="priceClass(selectedOutboundJourney.price_eur)">
+          {{ $t('dbAgent.search.outbound') }} {{ selectedOutboundJourney.price_eur.toFixed(2) }}€
+        </span>
+        <span v-if="selectedOutboundJourney && selectedReturnJourney"> + </span>
+        <span v-if="selectedReturnJourney" :class="priceClass(selectedReturnJourney.price_eur)">
+          {{ $t('dbAgent.search.returnTrip') }} {{ selectedReturnJourney.price_eur.toFixed(2) }}€
+        </span>
+      </div>
+      <div v-if="totalPrice != null" class="mobile-sticky-total-sum">
+        <strong :class="priceClass(totalPrice)">{{ totalPrice.toFixed(2) }}€</strong>
+        <a v-if="selectedOutboundJourney" :href="buildBahnLink(selectedOutboundJourney)" target="_blank" rel="noopener" class="bahn-link">
+          <LIcon size="14">mdi-open-in-new</LIcon>
+        </a>
+      </div>
+    </div>
+
+    <!-- ===== MOBILE: Bottom Navigation ===== -->
+    <nav v-if="isMobile" class="mobile-bottom-nav">
+      <button
+        v-for="navTab in mobileNavTabs"
+        :key="navTab.value"
+        class="mobile-nav-item"
+        :class="{ 'mobile-nav-item--active': activeTab === navTab.value }"
+        @click="activeTab = navTab.value"
+      >
+        <LIcon size="20">{{ navTab.icon }}</LIcon>
+        <span class="mobile-nav-label">{{ navTab.label }}</span>
+      </button>
+    </nav>
   </div>
 </template>
 
@@ -1082,7 +1111,13 @@ const overviewSource = ref('database')
 
 // Mobile state
 const mobileDrawerOpen = ref(false)
-const mobileTripDirection = ref('outbound')
+
+const mobileNavTabs = computed(() => [
+  { value: 'search', label: t('dbAgent.tabs.search'), icon: 'llars:search' },
+  { value: 'deals', label: t('dbAgent.tabs.deals'), icon: 'llars:deal' },
+  { value: 'calendar', label: t('dbAgent.tabs.calendar'), icon: 'llars:calendar' },
+  { value: 'analysis', label: t('dbAgent.tabs.analysis'), icon: 'llars:robot' },
+])
 
 function mobileSearchAndClose() {
   mobileDrawerOpen.value = false
@@ -1092,6 +1127,12 @@ function mobileSearchAndClose() {
 // Station selection — must match backend: outbound = Dortmund→Nürnberg
 const searchStationFrom = ref('Dortmund Hbf')
 const searchStationTo = ref('Nürnberg Hbf')
+
+// Backend hardcoded directions — labels must always match these regardless of UI station order
+const OUTBOUND_LABEL = 'Dortmund → Nürnberg'
+const OUTBOUND_SHORT = 'DOR → NÜR'
+const RETURN_LABEL = 'Nürnberg → Dortmund'
+const RETURN_SHORT = 'NÜR → DOR'
 const stationSuggestions = [
   'Nürnberg Hbf',
   'Dortmund Hbf',
@@ -1134,14 +1175,27 @@ const returnResults = ref([])
 const selectedOutbound = ref(null)
 const selectedReturn = ref(null)
 
+// Direct connections filter (instant, client-side)
+const directOnly = ref(false)
+
+const filteredOutbound = computed(() =>
+  directOnly.value ? outboundResults.value.filter(s => s.is_direct) : outboundResults.value
+)
+const filteredReturn = computed(() =>
+  directOnly.value ? returnResults.value.filter(s => s.is_direct) : returnResults.value
+)
+
+const directOutboundCount = computed(() => outboundResults.value.filter(s => s.is_direct).length)
+const directReturnCount = computed(() => returnResults.value.filter(s => s.is_direct).length)
+
 // Keep legacy ref for chat context
 const suggestions = computed(() => [...outboundResults.value, ...returnResults.value])
 
 const selectedOutboundJourney = computed(() =>
-  selectedOutbound.value != null ? outboundResults.value[selectedOutbound.value] : null
+  selectedOutbound.value != null ? filteredOutbound.value[selectedOutbound.value] : null
 )
 const selectedReturnJourney = computed(() =>
-  selectedReturn.value != null ? returnResults.value[selectedReturn.value] : null
+  selectedReturn.value != null ? filteredReturn.value[selectedReturn.value] : null
 )
 const totalPrice = computed(() => {
   const o = selectedOutboundJourney.value
@@ -1740,8 +1794,9 @@ const dayViewPriceInfo = computed(() => {
 
 
 function buildBahnLink(journey) {
-  const from = journey.direction === 'outbound' ? searchStationFrom.value : searchStationTo.value
-  const to = journey.direction === 'outbound' ? searchStationTo.value : searchStationFrom.value
+  // Always use hardcoded stations to match backend direction convention
+  const from = journey.direction === 'outbound' ? 'Dortmund Hbf' : 'Nürnberg Hbf'
+  const to = journey.direction === 'outbound' ? 'Nürnberg Hbf' : 'Dortmund Hbf'
   const dep = new Date(journey.departure)
   const iso = dep.getFullYear() + '-' +
     String(dep.getMonth() + 1).padStart(2, '0') + '-' +
@@ -1809,6 +1864,12 @@ watch(() => props.tab, (newTab) => {
 
 watch(calendarDirection, () => fetchCalendar())
 watch(calendarMonthOffset, () => fetchCalendar())
+
+// Reset selection when direct-only filter toggles (indices change)
+watch(directOnly, () => {
+  selectedOutbound.value = null
+  selectedReturn.value = null
+})
 
 onMounted(() => {
   // Always load overview (status + deals for search tab)
@@ -1928,6 +1989,24 @@ onMounted(() => {
 .search-leg-label {
   font-size: 0.8rem;
   font-weight: 600;
+  white-space: nowrap;
+}
+
+/* ===== Direct Connection Filter ===== */
+.direct-filter {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+  padding: 8px 12px;
+  background: rgba(var(--v-theme-on-surface), 0.03);
+  border-radius: 8px 3px 8px 3px;
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.06);
+}
+
+.direct-filter-count {
+  font-size: 0.8rem;
+  color: rgba(var(--v-theme-on-surface), 0.5);
   white-space: nowrap;
 }
 
@@ -2804,54 +2883,62 @@ onMounted(() => {
 }
 
 /* =====================================================
-   MOBILE STYLES
+   MOBILE STYLES — v2: Inline Search + Bottom Nav
    ===================================================== */
 
-/* ===== Mobile: Page ===== */
+/* ===== Mobile: Page layout with bottom nav space ===== */
 .db-agent-page.is-mobile {
-  padding: 0 12px 12px;
+  padding: 0 12px 70px;
   max-width: 100%;
 }
 
-/* ===== Mobile: Compact Header ===== */
-.mobile-header {
+/* ===== Mobile: Sub-Header Bar ===== */
+.mobile-subheader {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 8px 0;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: rgb(var(--v-theme-surface));
   border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.08);
-  margin-bottom: 8px;
+  gap: 8px;
+  position: sticky;
+  top: 0;
+  z-index: 10;
 }
 
-.mobile-header-route {
+.mobile-subheader-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex: 1;
+}
+
+.mobile-subheader-info {
   display: flex;
   flex-direction: column;
-  cursor: pointer;
   min-width: 0;
 }
 
-.mobile-route-text {
+.mobile-subheader-route {
   font-weight: 600;
-  font-size: 0.9rem;
-  line-height: 1.2;
+  font-size: 0.88rem;
+  white-space: nowrap;
 }
 
-.mobile-route-dates {
+.mobile-subheader-dates {
   font-size: 0.7rem;
   color: rgba(var(--v-theme-on-surface), 0.5);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.mobile-status-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: rgba(var(--v-theme-on-surface), 0.2);
+.mobile-subheader-right {
+  display: flex;
+  align-items: center;
+  gap: 4px;
   flex-shrink: 0;
-}
-
-.mobile-status-dot.active {
-  background: #4caf50;
-  box-shadow: 0 0 4px rgba(76, 175, 80, 0.5);
 }
 
 /* ===== Mobile: Search Drawer ===== */
@@ -2859,9 +2946,7 @@ onMounted(() => {
   padding: 16px;
   display: flex;
   flex-direction: column;
-  gap: 0;
   height: 100%;
-  overflow-y: auto;
 }
 
 .mobile-drawer-header {
@@ -2876,17 +2961,35 @@ onMounted(() => {
   font-size: 1rem;
 }
 
+.mobile-drawer-section {
+  margin-bottom: 8px;
+}
+
+.mobile-drawer-section-title {
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: rgba(var(--v-theme-on-surface), 0.5);
+  margin-bottom: 8px;
+}
+
+.mobile-drawer-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
 .mobile-drawer-form {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  margin-bottom: 20px;
+  gap: 10px;
 }
 
 .mobile-swap-row {
   display: flex;
   justify-content: center;
-  margin: -6px 0;
+  margin: -4px 0;
 }
 
 .mobile-date-row {
@@ -2898,387 +3001,86 @@ onMounted(() => {
   flex: 1;
 }
 
-/* ===== Mobile: Drawer History ===== */
-.mobile-drawer-history {
-  border-top: 1px solid rgba(var(--v-theme-on-surface), 0.08);
-  padding-top: 12px;
-}
-
-.mobile-drawer-history-title {
+/* ===== Mobile: Bottom Navigation ===== */
+.mobile-bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
   display: flex;
-  align-items: center;
-  gap: 6px;
-  font-weight: 600;
-  font-size: 0.85rem;
-  margin-bottom: 8px;
+  background: rgb(var(--v-theme-surface));
+  border-top: 1px solid rgba(var(--v-theme-on-surface), 0.1);
+  z-index: 100;
+  padding: 4px 0 env(safe-area-inset-bottom, 4px);
 }
 
-.mobile-history-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 10px;
-  border-radius: 6px 2px 6px 2px;
-  background: rgba(var(--v-theme-on-surface), 0.03);
-  cursor: pointer;
-  margin-bottom: 6px;
-  transition: background 0.15s;
-}
-
-.mobile-history-item:active {
-  background: rgba(var(--v-theme-primary), 0.08);
-}
-
-.mobile-history-route {
-  font-weight: 600;
-  font-size: 0.8rem;
-  white-space: nowrap;
-}
-
-.mobile-history-meta {
-  flex: 1;
-  font-size: 0.75rem;
-  color: rgba(var(--v-theme-on-surface), 0.5);
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-/* ===== Mobile: Direction Toggle ===== */
-.mobile-direction-toggle {
-  display: flex;
-  gap: 0;
-  margin-bottom: 12px;
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.1);
-  border-radius: 8px 3px 8px 3px;
-  overflow: hidden;
-}
-
-.mobile-dir-btn {
+.mobile-nav-item {
   flex: 1;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 10px 8px;
+  gap: 2px;
+  padding: 8px 4px 6px;
   border: none;
   background: transparent;
-  font-size: 0.82rem;
-  font-weight: 500;
-  color: rgba(var(--v-theme-on-surface), 0.5);
+  color: rgba(var(--v-theme-on-surface), 0.45);
   cursor: pointer;
-  transition: all 0.15s;
+  transition: color 0.2s;
+  -webkit-tap-highlight-color: transparent;
 }
 
-.mobile-dir-btn.active {
-  background: rgba(var(--v-theme-primary), 0.08);
-  color: rgb(var(--v-theme-primary));
+.mobile-nav-item--active {
+  color: var(--llars-primary);
+}
+
+.mobile-nav-label {
+  font-size: 0.65rem;
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: 0.02em;
+}
+
+.mobile-nav-item--active .mobile-nav-label {
   font-weight: 600;
 }
 
-.mobile-dir-btn:first-child {
-  border-right: 1px solid rgba(var(--v-theme-on-surface), 0.1);
-}
-
-/* ===== Mobile: Hide panels via toggle ===== */
-.is-mobile .trip-panel.mobile-hidden {
-  display: none;
-}
-
-/* ===== Mobile: Split panels → single column ===== */
-.is-mobile .trip-split-panels {
-  grid-template-columns: 1fr;
-  gap: 0;
-}
-
-.is-mobile .trip-panel-list {
-  max-height: none;
-}
-
-/* ===== Mobile: Hide desktop search bar ===== */
-.is-mobile .search-bar {
-  display: none;
-}
-
-/* ===== Mobile: Total price bar ===== */
-.is-mobile .trip-total-bar {
-  flex-direction: column;
-  align-items: stretch;
-  padding: 12px;
-  gap: 10px;
-}
-
-.is-mobile .trip-total-selections {
-  flex-direction: column;
+/* ===== Mobile: Sticky Total Price Bar ===== */
+.mobile-sticky-total {
+  position: fixed;
+  bottom: 52px;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 16px;
+  background: rgb(var(--v-theme-surface));
+  border-top: 1px solid rgba(var(--v-theme-primary), 0.2);
+  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.08);
+  z-index: 99;
   gap: 8px;
 }
 
-.is-mobile .trip-total-leg {
-  flex-wrap: wrap;
-  font-size: 0.8rem;
-}
-
-.is-mobile .trip-total-price {
-  justify-content: center;
-  border-top: 1px solid rgba(var(--v-theme-primary), 0.15);
-  padding-top: 10px;
-}
-
-/* ===== Mobile: Suggestion cards compact ===== */
-.is-mobile .suggestion-card {
-  padding: 10px 12px;
-  gap: 8px;
-}
-
-.is-mobile .suggestion-details {
-  gap: 6px;
-  font-size: 0.8rem;
-}
-
-.is-mobile .suggestion-price {
-  font-size: 1rem;
-}
-
-.is-mobile .suggestion-number {
-  min-width: 22px;
-  font-size: 0.7rem;
-}
-
-/* ===== Mobile: Calendar section header ===== */
-.is-mobile .section-header {
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.is-mobile .section-header h2 {
-  font-size: 1rem;
-}
-
-.is-mobile .calendar-controls {
-  margin-left: 0;
-  order: 10;
-  width: 100%;
-  justify-content: center;
-}
-
-.is-mobile .calendar-month-label {
-  min-width: 120px;
-  font-size: 0.85rem;
-}
-
-/* ===== Mobile: Year grid → 2 columns ===== */
-.is-mobile .year-grid {
-  grid-template-columns: repeat(2, 1fr);
-  gap: 8px;
-}
-
-.is-mobile .year-month-card {
-  padding: 8px;
-}
-
-.is-mobile .year-month-name {
+.mobile-sticky-total-legs {
   font-size: 0.75rem;
-}
-
-/* ===== Mobile: Calendar cells smaller ===== */
-.is-mobile .cal-cell {
-  min-height: 52px;
-  padding: 4px;
-}
-
-.is-mobile .cal-day-num {
-  font-size: 0.7rem;
-}
-
-.is-mobile .cal-day-price {
-  font-size: 0.8rem;
-}
-
-.is-mobile .cal-day-sigma {
-  display: none;
-}
-
-/* ===== Mobile: Timing + Analysis → 1 column ===== */
-.is-mobile .timing-grid {
-  grid-template-columns: 1fr;
-}
-
-.is-mobile .analysis-cards {
-  grid-template-columns: 1fr;
-}
-
-/* ===== Mobile: Timing bars compact ===== */
-.is-mobile .timing-bar-label {
-  width: 70px;
-  font-size: 0.75rem;
-}
-
-.is-mobile .timing-bar-meta {
-  display: none;
-}
-
-.is-mobile .timing-card {
-  padding: 12px;
-}
-
-/* ===== Mobile: Calendar legend ===== */
-.is-mobile .calendar-legend {
-  gap: 8px;
-  font-size: 0.72rem;
-}
-
-/* ===== Mobile: Trip strips compact ===== */
-.is-mobile .trip-strip-card {
-  flex-wrap: wrap;
-  padding: 8px 10px;
-  gap: 6px;
-}
-
-.is-mobile .trip-strip-dates {
+  color: rgba(var(--v-theme-on-surface), 0.6);
   min-width: 0;
-  flex: 1;
-}
-
-.is-mobile .trip-strip-legs {
-  width: 100%;
-  order: 10;
-}
-
-.is-mobile .trip-strip-leg {
-  font-size: 0.75rem;
-}
-
-/* ===== Mobile: Chat ===== */
-.is-mobile .followup-messages {
-  max-height: 300px;
-}
-
-.is-mobile .chat-message {
-  max-width: 92%;
-}
-
-.is-mobile .chat-bubble {
-  font-size: 0.82rem;
-  padding: 8px 10px;
-}
-
-/* ===== Mobile: Calendar direction toggle ===== */
-.is-mobile .section-header .v-btn-toggle {
-  margin-left: 0;
-  order: 11;
-  width: 100%;
-}
-
-.is-mobile .section-header .v-btn-toggle .v-btn {
-  flex: 1;
-  font-size: 0.72rem;
-}
-
-/* ===== Mobile: Tabs — icons only, compact ===== */
-.is-mobile :deep(.l-tabs) {
-  margin-top: 4px;
-}
-
-.is-mobile :deep(.l-tab__label) {
-  display: none;
-}
-
-.is-mobile :deep(.l-tab) {
-  padding: 8px 14px;
-  min-width: 0;
-}
-
-.is-mobile :deep(.l-tab__icon) {
-  margin-right: 0;
-}
-
-/* ===== Mobile: Tab content spacing ===== */
-.is-mobile .tab-content {
-  margin-top: 10px;
-}
-
-/* ===== Mobile: Trip panel headers — hide on mobile (redundant with direction toggle) ===== */
-.is-mobile .trip-panel-header {
-  padding: 6px 12px;
-  font-size: 0.8rem;
-}
-
-.is-mobile .trip-panel-header .trip-panel-date {
-  display: none;
-}
-
-/* ===== Mobile: Suggestion trains line — truncate ===== */
-.is-mobile .suggestion-trains {
-  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 200px;
+  white-space: nowrap;
 }
 
-/* ===== Mobile: Empty state compact ===== */
-.is-mobile .empty-state {
-  padding: 24px 12px;
+.mobile-sticky-total-sum {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
 }
 
-.is-mobile .empty-state-small {
-  padding: 16px;
+.mobile-sticky-total-sum strong {
+  font-size: 1.1rem;
 }
 
-/* ===== Mobile: Chat input sticky ===== */
-.is-mobile .followup-input {
-  position: sticky;
-  bottom: 0;
-  background: rgb(var(--v-theme-surface));
-  padding: 8px 0;
-  z-index: 1;
-}
-
-/* ===== Mobile: Section headers compact ===== */
-.is-mobile .section-header h3 {
-  font-size: 0.88rem;
-}
-
-/* ===== Mobile: Analysis result text ===== */
-.is-mobile .analysis-result {
-  font-size: 0.82rem;
-}
-
-/* ===== Mobile: Weekday bars ===== */
-.is-mobile .weekday-name {
-  width: 50px;
-  font-size: 0.78rem;
-}
-
-/* ===== Mobile: Stats rows ===== */
-.is-mobile .stat-row {
-  font-size: 0.82rem;
-  flex-wrap: wrap;
-  gap: 2px;
-}
-
-/* ===== Mobile: Timing tips wrap ===== */
-.is-mobile .timing-tip {
-  font-size: 0.78rem;
-  padding: 6px 10px;
-}
-
-/* ===== Mobile: bahn.de link bigger touch target ===== */
-.is-mobile .bahn-link {
-  padding: 4px 2px;
-  font-size: 0.72rem;
-}
-
-/* ===== Mobile: Calendar view-mode toggle compact ===== */
-.is-mobile .section-header .v-btn-toggle--density-compact {
-  height: 28px;
-}
-
-.is-mobile .section-header .v-btn-toggle .v-btn--size-small {
-  font-size: 0.7rem;
-  min-width: 0;
-  padding: 0 8px;
-}
 </style>
 
 <style>
@@ -3379,4 +3181,114 @@ onMounted(() => {
   font-size: 0.75rem;
   opacity: 0.5;
 }
+
+/* =====================================================
+   RESPONSIVE: JS-based .is-mobile approach (matches useMobile composable)
+   Uses same pattern as LatexCollabWorkspace for consistent mobile detection
+   ===================================================== */
+
+/* Mobile page layout */
+.is-mobile.db-agent-page { padding: 0 12px 70px; max-width: 100%; }
+
+/* Split panels → single column */
+.is-mobile .trip-split-panels { grid-template-columns: 1fr !important; gap: 12px; }
+.is-mobile .trip-panel-list { max-height: none; }
+
+/* Hide desktop total bar */
+.is-mobile .trip-total-bar { display: none; }
+
+/* Suggestion cards compact */
+.is-mobile .suggestion-card { padding: 10px 12px; gap: 8px; }
+.is-mobile .suggestion-details { gap: 6px; font-size: 0.8rem; }
+.is-mobile .suggestion-price { font-size: 1rem; }
+.is-mobile .suggestion-number { min-width: 22px; font-size: 0.7rem; }
+
+/* Trip panel headers */
+.is-mobile .trip-panel-header { padding: 8px 12px; font-size: 0.85rem; }
+
+/* Section headers */
+.is-mobile .section-header { flex-wrap: wrap; gap: 6px; }
+.is-mobile .section-header h2 { font-size: 1rem; }
+.is-mobile .section-header h3 { font-size: 0.88rem; }
+
+/* Calendar controls */
+.is-mobile .calendar-controls { margin-left: 0; order: 10; width: 100%; justify-content: center; }
+.is-mobile .calendar-month-label { min-width: 120px; font-size: 0.85rem; }
+
+/* Calendar direction toggle full width */
+.is-mobile .section-header .v-btn-toggle { margin-left: 0; order: 11; width: 100%; }
+.is-mobile .section-header .v-btn-toggle .v-btn { flex: 1; font-size: 0.72rem; }
+
+/* Year grid → 2 columns */
+.is-mobile .year-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 8px; }
+.is-mobile .year-month-card { padding: 8px; }
+.is-mobile .year-month-name { font-size: 0.75rem; }
+
+/* Calendar cells */
+.is-mobile .cal-cell { min-height: 52px; padding: 4px; }
+.is-mobile .cal-day-num { font-size: 0.7rem; }
+.is-mobile .cal-day-price { font-size: 0.8rem; }
+.is-mobile .cal-day-sigma { display: none; }
+
+/* Calendar legend */
+.is-mobile .calendar-legend { gap: 8px; font-size: 0.72rem; }
+
+/* Timing + Analysis → 1 column */
+.is-mobile .timing-grid { grid-template-columns: 1fr !important; }
+.is-mobile .analysis-cards { grid-template-columns: 1fr !important; }
+
+/* Timing bars */
+.is-mobile .timing-bar-label { width: 70px; font-size: 0.75rem; }
+.is-mobile .timing-bar-meta { display: none; }
+.is-mobile .timing-card { padding: 12px; }
+
+/* Trip strips */
+.is-mobile .trip-strip-card { flex-wrap: wrap; padding: 8px 10px; gap: 6px; }
+.is-mobile .trip-strip-dates { min-width: 0; flex: 1; }
+.is-mobile .trip-strip-legs { width: 100%; order: 10; }
+.is-mobile .trip-strip-leg { font-size: 0.75rem; }
+
+/* Chat */
+.is-mobile .followup-messages { max-height: 300px; }
+.is-mobile .chat-message { max-width: 92%; }
+.is-mobile .chat-bubble { font-size: 0.82rem; padding: 8px 10px; }
+.is-mobile .followup-input { position: sticky; bottom: 0; background: rgb(var(--v-theme-surface)); padding: 8px 0; z-index: 1; }
+
+/* Suggestion trains truncate */
+.is-mobile .suggestion-trains { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px; }
+
+/* Empty states */
+.is-mobile .empty-state { padding: 24px 12px; }
+.is-mobile .empty-state-small { padding: 16px; }
+
+/* Analysis text */
+.is-mobile .analysis-result { font-size: 0.82rem; }
+
+/* Weekday bars */
+.is-mobile .weekday-name { width: 50px; font-size: 0.78rem; }
+
+/* Stats rows */
+.is-mobile .stat-row { font-size: 0.82rem; flex-wrap: wrap; gap: 2px; }
+
+/* Timing tips */
+.is-mobile .timing-tip { font-size: 0.78rem; padding: 6px 10px; }
+
+/* bahn.de link */
+.is-mobile .bahn-link { padding: 4px 2px; font-size: 0.72rem; }
+
+/* Calendar toggle compact */
+.is-mobile .section-header .v-btn-toggle--density-compact { height: 28px; }
+.is-mobile .section-header .v-btn-toggle .v-btn--size-small { font-size: 0.7rem; min-width: 0; padding: 0 8px; }
+
+/* Search history compact */
+.is-mobile .search-history-section { margin-top: 16px; }
+.is-mobile .search-history-card { padding: 8px 10px; }
+.is-mobile .search-history-route { flex-wrap: wrap; gap: 4px; }
+.is-mobile .search-history-dates { font-size: 0.75rem; }
+.is-mobile .search-history-stats { font-size: 0.75rem; }
+.is-mobile .search-history-actions { flex-direction: column; gap: 2px; }
+.is-mobile .search-history-time { font-size: 0.65rem; }
+
+/* Direct filter compact */
+.is-mobile .direct-filter { padding: 6px 10px; }
 </style>

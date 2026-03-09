@@ -7,7 +7,7 @@
           <img src="./assets/logo/llars-logo.png" alt="Logo" :height="isMobile ? 24 : 28" class="logo-image">
           <span class="toolbar-text" :class="{ 'mobile-text': isMobile }">{{ isMobile ? 'LLars' : 'LLars Plattform' }}</span>
           <LTag v-if="isDev" variant="accent" size="md" class="ml-2" style="font-size: 0.65rem; letter-spacing: 0.05em;">DEV</LTag>
-          <LTag v-if="isDev && appVersion.version" variant="info" size="md" class="ml-1" style="font-size: 0.6rem; letter-spacing: 0.03em; opacity: 0.85;">v{{ appVersion.version }}</LTag>
+          <LTag v-if="isDev && appVersion.version" variant="info" size="md" class="ml-1" style="font-size: 0.6rem; letter-spacing: 0.03em; opacity: 0.85;">v{{ appVersion.version }} · {{ appVersion.branch }}@{{ appVersion.commitHash }}</LTag>
           <LTag v-if="isAuthenticated && consoleLogsEnabled" variant="danger" size="md" class="ml-2" style="font-size: 0.65rem; letter-spacing: 0.05em;" prepend-icon="mdi-console">LOGGING</LTag>
         </div>
       </v-toolbar-title>

@@ -379,6 +379,25 @@ smoke:dev:
   needs:
     - deploy:dev
 
+switch:dev:
+  stage: deploy
+  tags:
+    - shell-dev
+  timeout: 5 minutes
+  environment:
+    name: dev
+    url: http://141.75.150.86
+  resource_group: dev
+  script:
+    - echo "=== LLARS Blue-Green DEV Switch ==="
+    - echo "Timestamp:" $(date)
+    - cd /var/llars
+    - bash scripts/ci/deploy_bluegreen.sh switch
+  extends:
+    - .dev_deploy_rules
+  needs:
+    - smoke:dev
+
 # =============================================================================
 # STAGE 5b: DEPLOY STAGING (Blue-Green on production server)
 # =============================================================================

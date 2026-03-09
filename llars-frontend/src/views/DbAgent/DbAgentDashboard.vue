@@ -121,9 +121,9 @@
           hide-details
           class="flex-field"
         />
-        <LBtn variant="primary" @click="searchTrip" :loading="searchLoading">
+        <LBtn variant="primary" @click="searchTrip" :loading="searchLoading" :disabled="false">
           <LIcon start size="16">llars:search</LIcon>
-          {{ $t('dbAgent.search.go') }}
+          {{ searchLoading ? $t('dbAgent.search.newSearch') : $t('dbAgent.search.go') }}
         </LBtn>
       </div>
     </div>
@@ -1135,11 +1135,17 @@ async function deleteAllData() {
   actionLoading.value = false
 }
 
+// Active search generation — incremented on each new search to cancel stale ones
+let activeSearchId = 0
+
 async function searchTrip() {
   if (!searchDateFrom.value || !searchDateTo.value) return
 
   // Save current results to history before starting new search
   saveCurrentSearch()
+
+  // Cancel any running search by bumping the generation id
+  const mySearchId = ++activeSearchId
 
   searchLoading.value = true
   outboundResults.value = []
@@ -1181,8 +1187,11 @@ async function searchTrip() {
   // Fetch outbound + return in parallel, each streaming day-by-day
   const fetchDirection = async (dates, direction) => {
     for (const d of dates) {
+      // Abort if a newer search was started
+      if (activeSearchId !== mySearchId) return
       try {
         const res = await axios.post('/api/db-agent/trip-search-live', { date: d, direction })
+        if (activeSearchId !== mySearchId) return
         if (res.data.success && res.data.data.journeys.length) {
           if (direction === 'outbound') {
             outboundResults.value = mergeResults(outboundResults.value, res.data.data.journeys)
@@ -1198,6 +1207,9 @@ async function searchTrip() {
     fetchDirection(outDates, 'outbound'),
     fetchDirection(retDates, 'return'),
   ])
+
+  // Only finalize if this is still the active search
+  if (activeSearchId !== mySearchId) return
 
   // Auto-welcome message
   const total = outboundResults.value.length + returnResults.value.length

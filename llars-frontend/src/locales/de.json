@@ -5044,6 +5044,7 @@
     "pdf": {
       "title": "PDF-Preview",
       "compiling": "Kompiliere...",
+      "download": "PDF herunterladen",
       "downloadTitle": "Kompilierte PDF herunterladen",
       "downloadSuccess": "PDF-Download gestartet",
       "downloadError": "PDF-Download fehlgeschlagen",
@@ -7033,6 +7034,7 @@
       "returnTrip": "Rückfahrt",
       "flexibility": "Flexibilität",
       "go": "Suchen",
+      "newSearch": "Neue Suche",
       "results": "{count} Verbindungen gefunden",
       "bookOnBahn": "Auf bahn.de buchen",
       "selectOutbound": "Hinfahrt wählen",

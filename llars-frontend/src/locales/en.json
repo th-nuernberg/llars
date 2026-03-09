@@ -5202,6 +5202,7 @@
     "pdf": {
       "title": "PDF Preview",
       "compiling": "Compiling...",
+      "download": "Download PDF",
       "downloadTitle": "Download compiled PDF",
       "downloadSuccess": "PDF download started",
       "downloadError": "PDF download failed",
@@ -7191,6 +7192,7 @@
       "returnTrip": "Return",
       "flexibility": "Flexibility",
       "go": "Search",
+      "newSearch": "New Search",
       "results": "{count} connections found",
       "bookOnBahn": "Book on bahn.de",
       "selectOutbound": "Select outbound",

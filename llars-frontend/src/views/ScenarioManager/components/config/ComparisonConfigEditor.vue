@@ -12,15 +12,17 @@
     />
 
     <!-- Test Instruction -->
-    <div class="editor-section mb-4">
-      <h5 class="subsection-title mb-2">{{ $t('evaluation.briefing.taskDescription') }}</h5>
-      <LMarkdownEditor
-        :model-value="getTaskDescription(localConfig.taskDescriptionMarkdown, localConfig.question)"
-        :placeholder="$t('evaluation.briefing.taskDescriptionPlaceholder')"
-        :rows="6"
-        @update:modelValue="updateTaskDescription"
-      />
-    </div>
+    <v-textarea
+      :model-value="getQuestionText(localConfig.question)"
+      :label="$t('scenarioManager.evalConfig.comparison.testInstruction')"
+      :placeholder="$t('scenarioManager.evalConfig.comparison.testInstructionPlaceholder')"
+      variant="outlined"
+      density="compact"
+      rows="2"
+      auto-grow
+      class="mb-3"
+      @update:modelValue="updateQuestion"
+    />
 
     <!-- Options -->
     <div class="config-options mb-4">
@@ -78,14 +80,78 @@
 
     <!-- Criteria Editor -->
     <div class="criteria-section">
-      <h5 class="subsection-title mb-2">{{ $t('evaluation.briefing.criteria') }}</h5>
-      <LMarkdownEditor
-        :model-value="getCriteriaMarkdown(localConfig.criteriaMarkdown)"
-        :placeholder="criteriaPlaceholder"
-        :rows="8"
-        @update:modelValue="updateCriteriaMarkdown"
-      />
+      <div class="section-header">
+        <h5 class="subsection-title">{{ $t('scenarioManager.evalConfig.comparison.criteria') }}</h5>
+        <v-btn
+          size="small"
+          variant="text"
+          color="primary"
+          prepend-icon="mdi-plus"
+          @click="addCriterion"
+        >
+          {{ $t('scenarioManager.evalConfig.comparison.addCriterion') }}
+        </v-btn>
+      </div>
 
+      <draggable
+        v-model="localConfig.criteria"
+        item-key="id"
+        handle=".drag-handle"
+        class="criteria-list"
+        @change="emitUpdate"
+      >
+        <template #item="{ element, index }">
+          <div class="criterion-row">
+            <LIcon class="drag-handle" size="18">mdi-drag-vertical</LIcon>
+            <v-text-field
+              v-model="element.name.de"
+              :placeholder="$t('scenarioManager.evalConfig.comparison.criterionName')"
+              variant="outlined"
+              density="compact"
+              hide-details
+              class="flex-grow-1"
+              @update:modelValue="updateCriterionName(index, $event)"
+            />
+            <v-text-field
+              v-model.number="element.weight"
+              :label="$t('scenarioManager.evalConfig.comparison.weight')"
+              type="number"
+              variant="outlined"
+              density="compact"
+              hide-details
+              class="weight-input"
+              :min="0"
+              :max="1"
+              :step="0.1"
+              @update:modelValue="emitUpdate"
+            />
+            <v-btn
+              icon
+              size="x-small"
+              variant="text"
+              color="error"
+              :disabled="localConfig.criteria.length <= 1"
+              @click="removeCriterion(index)"
+            >
+              <LIcon size="18">mdi-delete-outline</LIcon>
+            </v-btn>
+          </div>
+        </template>
+      </draggable>
+
+      <div class="weight-info mt-2">
+        <span class="weight-label">{{ $t('scenarioManager.evalConfig.comparison.totalWeight') }}:</span>
+        <span :class="['weight-value', { invalid: totalWeight !== 1 }]">
+          {{ totalWeight.toFixed(2) }}
+        </span>
+        <span v-if="totalWeight !== 1" class="weight-warning">
+          ({{ $t('scenarioManager.evalConfig.comparison.shouldBeOne') }})
+        </span>
+      </div>
+
+      <p v-if="localConfig.criteria.length === 0" class="hint-text">
+        {{ $t('scenarioManager.evalConfig.comparison.minCriteriaHint') }}
+      </p>
     </div>
 
     <!-- Tournament Options (when tournament type) -->
@@ -106,11 +172,7 @@
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
-import {
-  criteriaListToMarkdown,
-  getLocalizedText,
-  setLocalizedText
-} from '@/utils/scenarioBriefing'
+import draggable from 'vuedraggable'
 
 const props = defineProps({
   modelValue: {
@@ -134,18 +196,9 @@ const roundOptions = computed(() => [
   { title: t('scenarioManager.evalConfig.comparison.roundOptions.round3'), value: 3 }
 ])
 
-const criteriaPlaceholder = computed(() => [
-  locale.value === 'en' ? '## What should be evaluated?' : '## Worauf sollte geachtet werden?',
-  locale.value === 'en' ? '- Argumentation and traceability' : '- Argumentation und Nachvollziehbarkeit',
-  locale.value === 'en' ? '- Factual accuracy' : '- Fachliche Genauigkeit',
-  locale.value === 'en' ? '- Style and clarity' : '- Stil und Klarheit'
-].join('\n'))
-
 const localConfig = ref({
   type: 'pairwise',
   question: { de: 'Welche Option ist besser?', en: 'Which option is better?' },
-  taskDescriptionMarkdown: { de: '', en: '' },
-  criteriaMarkdown: { de: '', en: '' },
   itemsPerComparison: 2,
   allowTie: true,
   showConfidence: false,
@@ -154,30 +207,48 @@ const localConfig = ref({
   rounds: 'auto'
 })
 
-function getTaskDescription(taskDescriptionMarkdown, question) {
-  return getLocalizedText(taskDescriptionMarkdown, locale.value) || getLocalizedText(question, locale.value)
+const totalWeight = computed(() => {
+  return localConfig.value.criteria.reduce((sum, c) => sum + (c.weight || 0), 0)
+})
+
+function getQuestionText(question) {
+  if (!question) return ''
+  if (typeof question === 'string') return question
+  return question[locale.value] || question.de || question.en || ''
 }
 
-function getCriteriaMarkdown(criteriaMarkdown) {
-  return getLocalizedText(criteriaMarkdown, locale.value)
-}
-
-function updateTaskDescription(value) {
-  localConfig.value.taskDescriptionMarkdown = setLocalizedText(
-    localConfig.value.taskDescriptionMarkdown,
-    value,
-    locale.value
-  )
-  localConfig.value.question = setLocalizedText(localConfig.value.question, value, locale.value)
+function updateQuestion(value) {
+  const current = localConfig.value.question
+  if (current && typeof current === 'object') {
+    localConfig.value.question = {
+      ...current,
+      [locale.value]: value
+    }
+  } else {
+    localConfig.value.question = { de: value, en: value }
+  }
   emitUpdate()
 }
 
-function updateCriteriaMarkdown(value) {
-  localConfig.value.criteriaMarkdown = setLocalizedText(
-    localConfig.value.criteriaMarkdown,
-    value,
-    locale.value
-  )
+function addCriterion() {
+  const remainingWeight = Math.max(0, 1 - totalWeight.value)
+  localConfig.value.criteria.push({
+    id: `crit_${Date.now()}`,
+    name: { de: '', en: '' },
+    weight: Math.round(remainingWeight * 10) / 10
+  })
+  emitUpdate()
+}
+
+function removeCriterion(index) {
+  if (localConfig.value.criteria.length > 1) {
+    localConfig.value.criteria.splice(index, 1)
+    emitUpdate()
+  }
+}
+
+function updateCriterionName(index, value) {
+  localConfig.value.criteria[index].name = { de: value, en: value }
   emitUpdate()
 }
 
@@ -190,14 +261,6 @@ function initFromProps() {
     localConfig.value = {
       ...localConfig.value,
       ...props.modelValue,
-      taskDescriptionMarkdown: props.modelValue.taskDescriptionMarkdown || {
-        de: getLocalizedText(props.modelValue.question, 'de'),
-        en: getLocalizedText(props.modelValue.question, 'en')
-      },
-      criteriaMarkdown: props.modelValue.criteriaMarkdown || {
-        de: criteriaListToMarkdown(props.modelValue.criteria, 'de'),
-        en: criteriaListToMarkdown(props.modelValue.criteria, 'en')
-      },
       criteria: props.modelValue.criteria ? [...props.modelValue.criteria] : [],
       confidenceScale: props.modelValue.confidenceScale || { min: 1, max: 5 }
     }
@@ -221,15 +284,95 @@ onMounted(initFromProps)
   margin: 0;
 }
 
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
 .config-options {
   display: flex;
   flex-wrap: wrap;
   gap: 16px;
 }
 
-.editor-section,
-.confidence-section,
-.criteria-section,
+/* Confidence */
+.confidence-section {
+  background-color: rgba(var(--v-theme-on-surface), 0.02);
+  border-radius: 8px;
+  padding: 12px;
+}
+
+/* Criteria */
+.criteria-section {
+  background-color: rgba(var(--v-theme-on-surface), 0.02);
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.criteria-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.criterion-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  background-color: rgba(var(--v-theme-surface), 1);
+  border-radius: 6px;
+}
+
+.drag-handle {
+  cursor: grab;
+  color: rgba(var(--v-theme-on-surface), 0.4);
+}
+
+.drag-handle:hover {
+  color: rgba(var(--v-theme-on-surface), 0.7);
+}
+
+.weight-input {
+  width: 90px;
+  flex-shrink: 0;
+}
+
+.weight-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+}
+
+.weight-label {
+  color: rgba(var(--v-theme-on-surface), 0.6);
+}
+
+.weight-value {
+  font-weight: 600;
+  color: rgb(var(--v-theme-primary));
+}
+
+.weight-value.invalid {
+  color: rgb(var(--v-theme-error));
+}
+
+.weight-warning {
+  font-size: 0.75rem;
+  color: rgb(var(--v-theme-error));
+}
+
+.hint-text {
+  font-size: 0.75rem;
+  color: rgba(var(--v-theme-on-surface), 0.5);
+  margin-top: 8px;
+  font-style: italic;
+}
+
+/* Tournament */
 .tournament-section {
   background-color: rgba(var(--v-theme-on-surface), 0.02);
   border-radius: 8px;

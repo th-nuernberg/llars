@@ -71,8 +71,8 @@
     <!-- Title & Description -->
     <div class="card-body">
       <h3 class="scenario-name">{{ scenario.scenario_name }}</h3>
-      <p class="scenario-description" v-if="scenarioDescription">
-        {{ scenarioDescription }}
+      <p class="scenario-description" v-if="scenario.description">
+        {{ scenario.description }}
       </p>
       <div class="scenario-type">
         <LTag :variant="typeVariant" size="sm">{{ typeName }}</LTag>
@@ -124,7 +124,6 @@
 <script setup>
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { stripMarkdown, truncateText } from '@/utils/scenarioBriefing'
 import { useScenarioManager } from '../composables/useScenarioManager'
 
 const props = defineProps({
@@ -140,10 +139,6 @@ const { t } = useI18n()
 const { respondToInvitation } = useScenarioManager()
 
 const responding = ref(false)
-
-const scenarioDescription = computed(() => {
-  return truncateText(stripMarkdown(props.scenario.description || ''), 160)
-})
 
 // Invitation status
 const isRejected = computed(() => {

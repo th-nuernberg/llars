@@ -169,21 +169,26 @@
         </div>
         <div class="detail-row" v-if="scenario?.description">
           <span class="detail-label">{{ $t('scenarioManager.overview.description') }}</span>
-          <div class="detail-value detail-value--markdown">
-            <LMarkdownContent :markdown="scenario.description" compact />
-          </div>
+          <span class="detail-value">{{ scenario.description }}</span>
         </div>
         <div class="detail-row" v-if="scenarioTaskDescription">
           <span class="detail-label">{{ $t('scenarioManager.overview.taskDescription') }}</span>
-          <div class="detail-value detail-value--markdown">
-            <LMarkdownContent :markdown="scenarioTaskDescription" compact />
-          </div>
+          <span class="detail-value">{{ scenarioTaskDescription }}</span>
         </div>
-        <div class="detail-row" v-if="scenarioEvaluationCriteria">
+        <div class="detail-row" v-if="scenarioEvaluationCriteria.length > 0">
           <span class="detail-label">{{ $t('scenarioManager.overview.evaluationCriteria') }}</span>
-          <div class="detail-value detail-value--markdown">
-            <LMarkdownContent :markdown="scenarioEvaluationCriteria" compact />
-          </div>
+          <span class="detail-value">
+            <div class="d-flex flex-wrap gap-1 justify-end">
+              <v-chip
+                v-for="criterion in scenarioEvaluationCriteria"
+                :key="criterion"
+                size="x-small"
+                variant="tonal"
+              >
+                {{ criterion }}
+              </v-chip>
+            </div>
+          </span>
         </div>
         <div class="detail-row">
           <span class="detail-label">{{ $t('scenarioManager.overview.created') }}</span>
@@ -244,7 +249,6 @@
 <script setup>
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { resolveCriteriaMarkdown, resolveTaskMarkdown } from '@/utils/scenarioBriefing'
 
 const props = defineProps({
   scenario: {
@@ -360,11 +364,20 @@ const scenarioConfig = computed(() => {
 })
 
 const scenarioTaskDescription = computed(() => {
-  return resolveTaskMarkdown(scenarioConfig.value, 'de') || ''
+  return scenarioConfig.value.task_description || ''
 })
 
 const scenarioEvaluationCriteria = computed(() => {
-  return resolveCriteriaMarkdown(scenarioConfig.value, 'de') || ''
+  const value = scenarioConfig.value.evaluation_criteria
+  if (Array.isArray(value)) {
+    return value
+      .map(item => (typeof item === 'string' ? item.trim() : String(item || '').trim()))
+      .filter(Boolean)
+  }
+  if (typeof value === 'string') {
+    return value.split(/[,\n;]/).map(item => item.trim()).filter(Boolean)
+  }
+  return []
 })
 
 function formatDate(dateStr) {
@@ -749,10 +762,6 @@ function getF1Class(f1) {
   color: rgb(var(--v-theme-on-surface));
   text-align: right;
   max-width: 60%;
-}
-
-.detail-value--markdown {
-  text-align: left;
 }
 
 /* Metrics Grid */

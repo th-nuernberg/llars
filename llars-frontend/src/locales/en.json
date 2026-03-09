@@ -7205,6 +7205,9 @@
       "title": "Travel Advisor",
       "placeholder": "e.g. Suggestion #3 looks good, but I can only travel a day later..."
     },
+    "history": {
+      "title": "Recent Searches"
+    },
     "deals": {
       "title": "Cheapest Connections"
     },

@@ -131,50 +131,8 @@
     <LTabs v-model="activeTab" :tabs="tabs" class="mt-3" />
 
     <!-- ==================== TAB: REISE SUCHEN ==================== -->
-    <div v-if="activeTab === 'search'" class="tab-content">
-      <!-- Quick Overview (before search) -->
-      <div v-if="overviewLoading" class="overview-loading">
-        <LLoading :text="$t('dbAgent.overview.loading')" />
-      </div>
-
-      <div v-if="!overviewLoading && overviewDeals.length && !outboundResults.length && !returnResults.length" class="overview-section">
-        <div class="section-header">
-          <LIcon size="20" color="success">llars:deal</LIcon>
-          <h2>{{ $t('dbAgent.overview.topDeals') }}</h2>
-          <LTag v-if="overviewSource === 'live_sample'" variant="info" size="sm">Live</LTag>
-          <LTag v-else variant="success" size="sm">{{ $t('dbAgent.overview.fromScans') }}</LTag>
-        </div>
-        <div class="suggestions-list">
-          <div v-for="(s, idx) in overviewDeals" :key="idx" class="suggestion-card" :class="{ 'suggestion-card--night': s.is_night }">
-            <div class="suggestion-number">#{{ idx + 1 }}</div>
-            <div class="suggestion-main">
-              <div class="suggestion-route">
-                <LTag :variant="s.direction === 'outbound' ? 'primary' : 'default'" size="sm">
-                  {{ s.direction === 'outbound' ? `${stationShort(searchStationFrom)} → ${stationShort(searchStationTo)}` : `${stationShort(searchStationTo)} → ${stationShort(searchStationFrom)}` }}
-                </LTag>
-                <span v-if="s.is_night" class="night-badge">
-                  <LIcon size="14">mdi-weather-night</LIcon>
-                </span>
-              </div>
-              <div class="suggestion-details">
-                <span class="suggestion-date"><LIcon size="14">llars:calendar</LIcon> {{ formatDate(s.travel_date) }}</span>
-                <span class="suggestion-time"><LIcon size="14">llars:clock</LIcon> {{ formatTime(s.departure) }} → {{ formatTime(s.arrival) }}</span>
-                <span class="suggestion-duration">{{ s.duration_minutes }} min</span>
-                <LTag :variant="s.is_direct ? 'success' : 'default'" size="sm">{{ s.is_direct ? 'Direkt' : `${s.transfers} Umst.` }}</LTag>
-              </div>
-              <div class="suggestion-trains">{{ s.train_types }}</div>
-            </div>
-            <div class="suggestion-price-col">
-              <div class="suggestion-price" :class="priceClass(s.price_eur)">{{ s.price_eur.toFixed(2) }}€</div>
-              <a :href="buildBahnLink(s)" target="_blank" rel="noopener" class="bahn-link" :title="$t('dbAgent.search.bookOnBahn')">
-                <LIcon size="14">mdi-open-in-new</LIcon> bahn.de
-              </a>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Split Search Results: Outbound | Return -->
+    <div v-show="activeTab === 'search'" class="tab-content">
+      <!-- Split Search Results: Outbound | Return (shown FIRST, above overview) -->
       <div v-if="outboundResults.length || returnResults.length || searchLoading" class="trip-split-panels">
         <!-- LEFT: Outbound (Dortmund → Nürnberg) -->
         <div class="trip-panel">
@@ -333,10 +291,91 @@
           </LBtn>
         </div>
       </div>
+
+      <!-- Search History -->
+      <div v-if="searchHistory.length" class="search-history-section">
+        <div class="section-header">
+          <LIcon size="20" color="secondary">mdi-history</LIcon>
+          <h2>{{ $t('dbAgent.history.title') }}</h2>
+        </div>
+        <div class="search-history-list">
+          <div
+            v-for="h in searchHistory"
+            :key="h.id"
+            class="search-history-card"
+            @click="restoreSearch(h)"
+          >
+            <div class="search-history-main">
+              <div class="search-history-route">
+                <LTag variant="primary" size="sm">{{ stationShort(h.stationFrom) }} → {{ stationShort(h.stationTo) }}</LTag>
+                <span class="search-history-dates">
+                  {{ formatDate(h.dateFrom) }} — {{ formatDate(h.dateTo) }}
+                </span>
+                <LTag v-if="h.flexibility" variant="default" size="sm">±{{ h.flexibility }}d</LTag>
+              </div>
+              <div class="search-history-stats">
+                <span v-if="h.cheapestOut != null" class="search-history-price" :class="priceClass(h.cheapestOut)">
+                  {{ $t('dbAgent.search.outbound') }} ab {{ h.cheapestOut.toFixed(2) }}€
+                </span>
+                <span v-if="h.cheapestRet != null" class="search-history-price" :class="priceClass(h.cheapestRet)">
+                  {{ $t('dbAgent.search.returnTrip') }} ab {{ h.cheapestRet.toFixed(2) }}€
+                </span>
+                <span class="search-history-count">{{ h.outbound.length + h.return.length }} Verbindungen</span>
+              </div>
+            </div>
+            <div class="search-history-actions">
+              <span class="search-history-time">{{ h.timestamp }}</span>
+              <LIconBtn icon="mdi-close" size="small" @click.stop="removeSearchHistory(h.id)" tooltip="Entfernen" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Overview / Top Deals (shown when NO search results and NOT searching) -->
+      <div v-if="overviewLoading && !searchLoading && !outboundResults.length" class="overview-loading">
+        <LLoading :text="$t('dbAgent.overview.loading')" />
+      </div>
+
+      <div v-if="!overviewLoading && !searchLoading && overviewDeals.length && !outboundResults.length && !returnResults.length" class="overview-section">
+        <div class="section-header">
+          <LIcon size="20" color="success">llars:deal</LIcon>
+          <h2>{{ $t('dbAgent.overview.topDeals') }}</h2>
+          <LTag v-if="overviewSource === 'live_sample'" variant="info" size="sm">Live</LTag>
+          <LTag v-else variant="success" size="sm">{{ $t('dbAgent.overview.fromScans') }}</LTag>
+        </div>
+        <div class="suggestions-list">
+          <div v-for="(s, idx) in overviewDeals" :key="idx" class="suggestion-card" :class="{ 'suggestion-card--night': s.is_night }">
+            <div class="suggestion-number">#{{ idx + 1 }}</div>
+            <div class="suggestion-main">
+              <div class="suggestion-route">
+                <LTag :variant="s.direction === 'outbound' ? 'primary' : 'default'" size="sm">
+                  {{ s.direction === 'outbound' ? `${stationShort(searchStationFrom)} → ${stationShort(searchStationTo)}` : `${stationShort(searchStationTo)} → ${stationShort(searchStationFrom)}` }}
+                </LTag>
+                <span v-if="s.is_night" class="night-badge">
+                  <LIcon size="14">mdi-weather-night</LIcon>
+                </span>
+              </div>
+              <div class="suggestion-details">
+                <span class="suggestion-date"><LIcon size="14">llars:calendar</LIcon> {{ formatDate(s.travel_date) }}</span>
+                <span class="suggestion-time"><LIcon size="14">llars:clock</LIcon> {{ formatTime(s.departure) }} → {{ formatTime(s.arrival) }}</span>
+                <span class="suggestion-duration">{{ s.duration_minutes }} min</span>
+                <LTag :variant="s.is_direct ? 'success' : 'default'" size="sm">{{ s.is_direct ? 'Direkt' : `${s.transfers} Umst.` }}</LTag>
+              </div>
+              <div class="suggestion-trains">{{ s.train_types }}</div>
+            </div>
+            <div class="suggestion-price-col">
+              <div class="suggestion-price" :class="priceClass(s.price_eur)">{{ s.price_eur.toFixed(2) }}€</div>
+              <a :href="buildBahnLink(s)" target="_blank" rel="noopener" class="bahn-link" :title="$t('dbAgent.search.bookOnBahn')">
+                <LIcon size="14">mdi-open-in-new</LIcon> bahn.de
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- ==================== TAB: TOP DEALS ==================== -->
-    <div v-if="activeTab === 'deals'" class="tab-content">
+    <div v-show="activeTab === 'deals'" class="tab-content">
       <div class="section-header">
         <LIcon size="20" color="success">llars:deal</LIcon>
         <h2>{{ $t('dbAgent.deals.title') }}</h2>
@@ -396,7 +435,7 @@
     </div>
 
     <!-- ==================== TAB: KALENDER ==================== -->
-    <div v-if="activeTab === 'calendar'" class="tab-content">
+    <div v-show="activeTab === 'calendar'" class="tab-content">
       <div class="section-header">
         <LIcon size="20" color="primary">llars:calendar</LIcon>
         <h2>{{ $t('dbAgent.calendar.title') }}</h2>
@@ -629,7 +668,7 @@
     </div>
 
     <!-- ==================== TAB: TIMING ==================== -->
-    <div v-if="activeTab === 'timing'" class="tab-content">
+    <div v-show="activeTab === 'timing'" class="tab-content">
       <div class="section-header">
         <LIcon size="20" color="primary">mdi-clock-check-outline</LIcon>
         <h2>{{ $t('dbAgent.timing.title') }}</h2>
@@ -737,7 +776,7 @@
     </div>
 
     <!-- ==================== TAB: KI-ANALYSE ==================== -->
-    <div v-if="activeTab === 'analysis'" class="tab-content">
+    <div v-show="activeTab === 'analysis'" class="tab-content">
       <div class="analysis-cards">
         <!-- Stats -->
         <div class="analysis-card">
@@ -933,6 +972,56 @@ const totalPrice = computed(() => {
   return null
 })
 
+// Search history (cached previous searches)
+const searchHistory = ref([])
+const MAX_SEARCH_HISTORY = 10
+
+function saveCurrentSearch() {
+  if (!outboundResults.value.length && !returnResults.value.length) return
+  const entry = {
+    id: Date.now(),
+    dateFrom: searchDateFrom.value,
+    dateTo: searchDateTo.value,
+    stationFrom: searchStationFrom.value,
+    stationTo: searchStationTo.value,
+    flexibility: searchFlexibility.value,
+    outbound: [...outboundResults.value],
+    return: [...returnResults.value],
+    chat: [...chatMessages.value],
+    selectedOutbound: selectedOutbound.value,
+    selectedReturn: selectedReturn.value,
+    timestamp: new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }),
+    cheapestOut: outboundResults.value[0]?.price_eur ?? null,
+    cheapestRet: returnResults.value[0]?.price_eur ?? null,
+  }
+  // Deduplicate: remove existing entry with same params
+  searchHistory.value = searchHistory.value.filter(h =>
+    !(h.dateFrom === entry.dateFrom && h.dateTo === entry.dateTo
+      && h.stationFrom === entry.stationFrom && h.stationTo === entry.stationTo
+      && h.flexibility === entry.flexibility)
+  )
+  searchHistory.value.unshift(entry)
+  if (searchHistory.value.length > MAX_SEARCH_HISTORY) searchHistory.value.pop()
+}
+
+function restoreSearch(entry) {
+  searchDateFrom.value = entry.dateFrom
+  searchDateTo.value = entry.dateTo
+  searchStationFrom.value = entry.stationFrom
+  searchStationTo.value = entry.stationTo
+  searchFlexibility.value = entry.flexibility
+  outboundResults.value = [...entry.outbound]
+  returnResults.value = [...entry.return]
+  chatMessages.value = [...entry.chat]
+  selectedOutbound.value = entry.selectedOutbound
+  selectedReturn.value = entry.selectedReturn
+  if (activeTab.value !== 'search') activeTab.value = 'search'
+}
+
+function removeSearchHistory(id) {
+  searchHistory.value = searchHistory.value.filter(h => h.id !== id)
+}
+
 // Follow-up chat
 const chatMessages = ref([])
 const chatInput = ref('')
@@ -1048,6 +1137,10 @@ async function deleteAllData() {
 
 async function searchTrip() {
   if (!searchDateFrom.value || !searchDateTo.value) return
+
+  // Save current results to history before starting new search
+  saveCurrentSearch()
+
   searchLoading.value = true
   outboundResults.value = []
   returnResults.value = []
@@ -1125,6 +1218,9 @@ async function searchTrip() {
     }]
   }
   searchLoading.value = false
+
+  // Save completed search to history
+  saveCurrentSearch()
 }
 
 // Selection is handled inline via selectedOutbound / selectedReturn
@@ -2550,4 +2646,68 @@ onMounted(() => {
 .year-cell-tooltip .price-medium { color: #ff9800; }
 .year-cell-tooltip .price-expensive { color: #f44336; }
 .year-cell-tooltip .price-very-expensive { color: #b71c1c; }
+
+/* ===== Search History ===== */
+.search-history-section {
+  margin-top: 24px;
+}
+.search-history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.search-history-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  background: rgba(var(--v-theme-on-surface), 0.03);
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  border-radius: 6px 2px 6px 2px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.search-history-card:hover {
+  background: rgba(var(--v-theme-primary), 0.08);
+  border-color: rgba(var(--v-theme-primary), 0.3);
+}
+.search-history-main {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.search-history-route {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.search-history-dates {
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+.search-history-stats {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 0.8rem;
+  opacity: 0.8;
+}
+.search-history-price {
+  font-weight: 600;
+}
+.search-history-count {
+  opacity: 0.6;
+}
+.search-history-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.search-history-time {
+  font-size: 0.75rem;
+  opacity: 0.5;
+}
 </style>

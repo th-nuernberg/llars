@@ -11,6 +11,7 @@ import logging
 import threading
 import time
 from collections import deque
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, date, timedelta
 from typing import Optional
 
@@ -199,18 +200,28 @@ def fetch_full_day(
 
     The bahn.de API returns only ~6 results per request, so we query
     multiple start hours to cover the whole day. Results are deduplicated.
-    Uses 4 API calls: 06:00, 10:00, 14:00, 18:00.
+    Uses 4 API calls in parallel: 06:00, 10:00, 14:00, 18:00.
     """
     all_journeys = []
     seen = set()
 
-    for hour in (6, 10, 14, 18):
-        batch = fetch_journeys_for_date(travel_date, direction, transfers=transfers, departure_hour=hour)
-        for j in batch:
-            key = (j['departure'].isoformat(), j['direction'])
-            if key not in seen:
-                seen.add(key)
-                all_journeys.append(j)
+    # Parallelize the 4 API calls (I/O-bound) to reduce latency from ~36s to ~10s
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        futures = {
+            pool.submit(fetch_journeys_for_date, travel_date, direction, transfers, hour): hour
+            for hour in (6, 10, 14, 18)
+        }
+        for future in as_completed(futures):
+            try:
+                batch = future.result()
+            except Exception as e:
+                logger.warning(f'Parallel fetch failed for hour {futures[future]}: {e}')
+                continue
+            for j in batch:
+                key = (j['departure'].isoformat(), j['direction'])
+                if key not in seen:
+                    seen.add(key)
+                    all_journeys.append(j)
 
     return all_journeys
 

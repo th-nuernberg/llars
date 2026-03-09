@@ -7047,6 +7047,9 @@
       "title": "Reiseberater",
       "placeholder": "z.B. Vorschlag #3 passt, aber ich kann erst einen Tag später..."
     },
+    "history": {
+      "title": "Letzte Suchen"
+    },
     "deals": {
       "title": "Günstigste Verbindungen"
     },

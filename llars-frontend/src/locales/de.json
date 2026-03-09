@@ -5064,6 +5064,12 @@
       "preparing": "PDF wird vorbereitet...",
       "loadFailed": "PDF konnte nicht geladen werden"
     },
+    "mobile": {
+      "files": "Dateien",
+      "editor": "Editor",
+      "comments": "Kommentare",
+      "jumpToPdf": "Zur PDF-Stelle springen"
+    },
     "outline": {
       "title": "Gliederung",
       "show": "Gliederung anzeigen",
@@ -6800,6 +6806,7 @@
       "allConferences": "Alle Konferenzen"
     },
     "stats": {
+      "overview": "Übersicht",
       "conferences": "Konferenzen",
       "papers": "Papers",
       "upcomingDeadlines": "anstehende Deadlines"

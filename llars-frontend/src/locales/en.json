@@ -5222,6 +5222,12 @@
       "preparing": "Preparing preview...",
       "loadFailed": "Failed to load PDF"
     },
+    "mobile": {
+      "files": "Files",
+      "editor": "Editor",
+      "comments": "Comments",
+      "jumpToPdf": "Jump to PDF position"
+    },
     "outline": {
       "title": "Outline",
       "show": "Show outline",
@@ -6958,6 +6964,7 @@
       "allConferences": "All Conferences"
     },
     "stats": {
+      "overview": "Overview",
       "conferences": "Conferences",
       "papers": "Papers",
       "upcomingDeadlines": "upcoming deadlines"

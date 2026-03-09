@@ -1,7 +1,153 @@
 <template>
-  <div class="db-agent-page">
-    <!-- Page Header -->
-    <div class="page-header">
+  <div class="db-agent-page" :class="{ 'is-mobile': isMobile }">
+
+    <!-- ===== MOBILE: Search Drawer ===== -->
+    <v-navigation-drawer
+      v-if="isMobile"
+      v-model="mobileDrawerOpen"
+      temporary
+      location="left"
+      :width="320"
+      class="mobile-search-drawer"
+    >
+      <div class="mobile-drawer-content">
+        <div class="mobile-drawer-header">
+          <LIcon size="20" color="primary">llars:search</LIcon>
+          <span class="mobile-drawer-title">{{ $t('dbAgent.search.go') }}</span>
+          <v-spacer />
+          <v-btn icon variant="text" size="small" @click="mobileDrawerOpen = false">
+            <v-icon size="18">mdi-close</v-icon>
+          </v-btn>
+        </div>
+
+        <!-- Search Form -->
+        <div class="mobile-drawer-form">
+          <v-combobox
+            v-model="searchStationFrom"
+            :items="stationSuggestions"
+            :label="$t('dbAgent.search.stationFrom')"
+            density="compact"
+            variant="outlined"
+            hide-details
+            prepend-inner-icon="llars:train-outbound"
+          />
+          <div class="mobile-swap-row">
+            <v-btn icon variant="text" size="x-small" @click="swapStations">
+              <v-icon size="16">mdi-swap-vertical</v-icon>
+            </v-btn>
+          </div>
+          <v-combobox
+            v-model="searchStationTo"
+            :items="stationSuggestions"
+            :label="$t('dbAgent.search.stationTo')"
+            density="compact"
+            variant="outlined"
+            hide-details
+            prepend-inner-icon="llars:train-return"
+          />
+          <div class="mobile-date-row">
+            <v-text-field
+              v-model="searchDateFrom"
+              type="date"
+              :label="$t('dbAgent.search.outbound')"
+              density="compact"
+              variant="outlined"
+              hide-details
+            />
+            <v-text-field
+              v-model="searchDateTo"
+              type="date"
+              :label="$t('dbAgent.search.returnTrip')"
+              density="compact"
+              variant="outlined"
+              hide-details
+            />
+          </div>
+          <v-select
+            v-model="searchFlexibility"
+            :items="flexOptions"
+            item-title="label"
+            item-value="value"
+            :label="$t('dbAgent.search.flexibility')"
+            density="compact"
+            variant="outlined"
+            hide-details
+          />
+          <LBtn variant="primary" block @click="mobileSearchAndClose" :loading="searchLoading">
+            <LIcon start size="16">llars:search</LIcon>
+            {{ $t('dbAgent.search.go') }}
+          </LBtn>
+        </div>
+
+        <!-- Search History in Drawer -->
+        <div v-if="searchHistory.length" class="mobile-drawer-history">
+          <div class="mobile-drawer-history-title">
+            <LIcon size="16" color="secondary">mdi-history</LIcon>
+            <span>{{ $t('dbAgent.history.title') }}</span>
+          </div>
+          <div
+            v-for="h in searchHistory"
+            :key="h.id"
+            class="mobile-history-item"
+            @click="restoreSearch(h); mobileDrawerOpen = false"
+          >
+            <div class="mobile-history-route">
+              {{ stationShort(h.stationFrom) }} → {{ stationShort(h.stationTo) }}
+            </div>
+            <div class="mobile-history-meta">
+              {{ formatDate(h.dateFrom) }} — {{ formatDate(h.dateTo) }}
+              <span v-if="h.cheapestOut != null" class="ml-1" :class="priceClass(h.cheapestOut)">ab {{ h.cheapestOut.toFixed(2) }}€</span>
+            </div>
+            <LIconBtn icon="mdi-close" size="x-small" @click.stop="removeSearchHistory(h.id)" tooltip="Entfernen" />
+          </div>
+        </div>
+      </div>
+    </v-navigation-drawer>
+
+    <!-- ===== MOBILE: Compact Header ===== -->
+    <div v-if="isMobile" class="mobile-header">
+      <v-btn icon variant="text" size="small" @click="mobileDrawerOpen = true">
+        <v-icon size="20">mdi-menu</v-icon>
+      </v-btn>
+      <div class="mobile-header-route" @click="mobileDrawerOpen = true">
+        <span class="mobile-route-text">{{ stationShort(searchStationFrom) }} → {{ stationShort(searchStationTo) }}</span>
+        <span class="mobile-route-dates">{{ formatDate(searchDateFrom) }} – {{ formatDate(searchDateTo) }}</span>
+      </div>
+      <v-spacer />
+      <span class="mobile-status-dot" :class="status.running ? 'active' : ''"></span>
+      <v-btn icon variant="text" size="small" @click="mobileDrawerOpen = true">
+        <v-icon size="18">mdi-magnify</v-icon>
+      </v-btn>
+      <v-menu>
+        <template #activator="{ props }">
+          <v-btn icon variant="text" size="small" v-bind="props">
+            <v-icon size="18">mdi-cog</v-icon>
+          </v-btn>
+        </template>
+        <v-list density="compact">
+          <v-list-item v-if="!status.running" @click="startScheduler" :disabled="actionLoading">
+            <template #prepend><v-icon size="18">mdi-play</v-icon></template>
+            <v-list-item-title>{{ $t('dbAgent.actions.startAgent') }}</v-list-item-title>
+          </v-list-item>
+          <v-list-item v-else @click="stopScheduler" :disabled="actionLoading">
+            <template #prepend><v-icon size="18">mdi-stop</v-icon></template>
+            <v-list-item-title>{{ $t('dbAgent.actions.stopAgent') }}</v-list-item-title>
+          </v-list-item>
+          <v-list-item @click="triggerScan" :disabled="status.is_scanning">
+            <template #prepend><v-icon size="18">mdi-refresh</v-icon></template>
+            <v-list-item-title>{{ $t('dbAgent.actions.scanNow') }}</v-list-item-title>
+          </v-list-item>
+          <v-divider />
+          <v-list-item @click="deleteAllData" :disabled="actionLoading">
+            <template #prepend><v-icon size="18" color="error">mdi-delete</v-icon></template>
+            <v-list-item-title class="text-error">{{ $t('dbAgent.actions.deleteData') }}</v-list-item-title>
+          </v-list-item>
+        </v-list>
+      </v-menu>
+    </div>
+
+    <!-- ===== DESKTOP: Page Header ===== -->
+    <div v-if="!isMobile" class="page-header">
       <div class="header-left">
         <LIcon size="32" color="primary">llars:train</LIcon>
         <div class="header-text">
@@ -54,8 +200,8 @@
       </div>
     </div>
 
-    <!-- Search Bar (always visible, above tabs) -->
-    <div class="search-bar mt-3">
+    <!-- Search Bar (desktop only, above tabs) -->
+    <div v-if="!isMobile" class="search-bar mt-3">
       <!-- Station row -->
       <div class="search-fields search-stations">
         <v-combobox
@@ -132,10 +278,32 @@
 
     <!-- ==================== TAB: REISE SUCHEN ==================== -->
     <div v-show="activeTab === 'search'" class="tab-content">
+      <!-- Mobile: Direction Toggle (replaces split panels) -->
+      <div v-if="isMobile && (outboundResults.length || returnResults.length || searchLoading)" class="mobile-direction-toggle">
+        <button
+          class="mobile-dir-btn"
+          :class="{ active: mobileTripDirection === 'outbound' }"
+          @click="mobileTripDirection = 'outbound'"
+        >
+          <LIcon size="16">llars:train-outbound</LIcon>
+          {{ $t('dbAgent.search.outbound') }}
+          <v-badge v-if="outboundResults.length" :content="outboundResults.length" color="primary" inline />
+        </button>
+        <button
+          class="mobile-dir-btn"
+          :class="{ active: mobileTripDirection === 'return' }"
+          @click="mobileTripDirection = 'return'"
+        >
+          <LIcon size="16">llars:train-return</LIcon>
+          {{ $t('dbAgent.search.returnTrip') }}
+          <v-badge v-if="returnResults.length" :content="returnResults.length" color="grey" inline />
+        </button>
+      </div>
+
       <!-- Split Search Results: Outbound | Return (shown FIRST, above overview) -->
       <div v-if="outboundResults.length || returnResults.length || searchLoading" class="trip-split-panels">
         <!-- LEFT: Outbound (Dortmund → Nürnberg) -->
-        <div class="trip-panel">
+        <div class="trip-panel" :class="{ 'mobile-hidden': isMobile && mobileTripDirection !== 'outbound' }">
           <div class="trip-panel-header trip-panel-header--outbound">
             <LIcon size="18" color="primary">llars:train-outbound</LIcon>
             <span>{{ $t('dbAgent.search.outbound') }}</span>
@@ -179,7 +347,7 @@
         </div>
 
         <!-- RIGHT: Return (Nürnberg → Dortmund) -->
-        <div class="trip-panel">
+        <div class="trip-panel" :class="{ 'mobile-hidden': isMobile && mobileTripDirection !== 'return' }">
           <div class="trip-panel-header trip-panel-header--return">
             <LIcon size="18">llars:train-return</LIcon>
             <span>{{ $t('dbAgent.search.returnTrip') }}</span>
@@ -292,8 +460,8 @@
         </div>
       </div>
 
-      <!-- Search History -->
-      <div v-if="searchHistory.length" class="search-history-section">
+      <!-- Search History (desktop only — on mobile it's in the drawer) -->
+      <div v-if="searchHistory.length && !isMobile" class="search-history-section">
         <div class="section-header">
           <LIcon size="20" color="secondary">mdi-history</LIcon>
           <h2>{{ $t('dbAgent.history.title') }}</h2>
@@ -844,6 +1012,9 @@ import { useI18n } from 'vue-i18n'
 import { useRouter, useRoute } from 'vue-router'
 import { marked } from 'marked'
 import axios from 'axios'
+import { useMobile } from '@/composables/useMobile'
+
+const { isMobile } = useMobile()
 
 const { t, locale } = useI18n()
 const router = useRouter()
@@ -908,6 +1079,15 @@ const analysisLoading = ref(false)
 const overviewLoading = ref(false)
 const overviewDeals = ref([])
 const overviewSource = ref('database')
+
+// Mobile state
+const mobileDrawerOpen = ref(false)
+const mobileTripDirection = ref('outbound')
+
+function mobileSearchAndClose() {
+  mobileDrawerOpen.value = false
+  searchTrip()
+}
 
 // Station selection — must match backend: outbound = Dortmund→Nürnberg
 const searchStationFrom = ref('Dortmund Hbf')
@@ -2621,6 +2801,383 @@ onMounted(() => {
   gap: 8px;
   padding: 40px;
   color: rgba(var(--v-theme-on-surface), 0.4);
+}
+
+/* =====================================================
+   MOBILE STYLES
+   ===================================================== */
+
+/* ===== Mobile: Page ===== */
+.db-agent-page.is-mobile {
+  padding: 0 12px 12px;
+  max-width: 100%;
+}
+
+/* ===== Mobile: Compact Header ===== */
+.mobile-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  margin-bottom: 8px;
+}
+
+.mobile-header-route {
+  display: flex;
+  flex-direction: column;
+  cursor: pointer;
+  min-width: 0;
+}
+
+.mobile-route-text {
+  font-weight: 600;
+  font-size: 0.9rem;
+  line-height: 1.2;
+}
+
+.mobile-route-dates {
+  font-size: 0.7rem;
+  color: rgba(var(--v-theme-on-surface), 0.5);
+}
+
+.mobile-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(var(--v-theme-on-surface), 0.2);
+  flex-shrink: 0;
+}
+
+.mobile-status-dot.active {
+  background: #4caf50;
+  box-shadow: 0 0 4px rgba(76, 175, 80, 0.5);
+}
+
+/* ===== Mobile: Search Drawer ===== */
+.mobile-drawer-content {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  height: 100%;
+  overflow-y: auto;
+}
+
+.mobile-drawer-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.mobile-drawer-title {
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.mobile-drawer-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.mobile-swap-row {
+  display: flex;
+  justify-content: center;
+  margin: -6px 0;
+}
+
+.mobile-date-row {
+  display: flex;
+  gap: 8px;
+}
+
+.mobile-date-row .v-text-field {
+  flex: 1;
+}
+
+/* ===== Mobile: Drawer History ===== */
+.mobile-drawer-history {
+  border-top: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  padding-top: 12px;
+}
+
+.mobile-drawer-history-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+  font-size: 0.85rem;
+  margin-bottom: 8px;
+}
+
+.mobile-history-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 6px 2px 6px 2px;
+  background: rgba(var(--v-theme-on-surface), 0.03);
+  cursor: pointer;
+  margin-bottom: 6px;
+  transition: background 0.15s;
+}
+
+.mobile-history-item:active {
+  background: rgba(var(--v-theme-primary), 0.08);
+}
+
+.mobile-history-route {
+  font-weight: 600;
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+
+.mobile-history-meta {
+  flex: 1;
+  font-size: 0.75rem;
+  color: rgba(var(--v-theme-on-surface), 0.5);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ===== Mobile: Direction Toggle ===== */
+.mobile-direction-toggle {
+  display: flex;
+  gap: 0;
+  margin-bottom: 12px;
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.1);
+  border-radius: 8px 3px 8px 3px;
+  overflow: hidden;
+}
+
+.mobile-dir-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 8px;
+  border: none;
+  background: transparent;
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: rgba(var(--v-theme-on-surface), 0.5);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.mobile-dir-btn.active {
+  background: rgba(var(--v-theme-primary), 0.08);
+  color: rgb(var(--v-theme-primary));
+  font-weight: 600;
+}
+
+.mobile-dir-btn:first-child {
+  border-right: 1px solid rgba(var(--v-theme-on-surface), 0.1);
+}
+
+/* ===== Mobile: Hide panels via toggle ===== */
+.is-mobile .trip-panel.mobile-hidden {
+  display: none;
+}
+
+/* ===== Mobile: Split panels → single column ===== */
+.is-mobile .trip-split-panels {
+  grid-template-columns: 1fr;
+  gap: 0;
+}
+
+.is-mobile .trip-panel-list {
+  max-height: none;
+}
+
+/* ===== Mobile: Hide desktop search bar ===== */
+.is-mobile .search-bar {
+  display: none;
+}
+
+/* ===== Mobile: Total price bar ===== */
+.is-mobile .trip-total-bar {
+  flex-direction: column;
+  align-items: stretch;
+  padding: 12px;
+  gap: 10px;
+}
+
+.is-mobile .trip-total-selections {
+  flex-direction: column;
+  gap: 8px;
+}
+
+.is-mobile .trip-total-leg {
+  flex-wrap: wrap;
+  font-size: 0.8rem;
+}
+
+.is-mobile .trip-total-price {
+  justify-content: center;
+  border-top: 1px solid rgba(var(--v-theme-primary), 0.15);
+  padding-top: 10px;
+}
+
+/* ===== Mobile: Suggestion cards compact ===== */
+.is-mobile .suggestion-card {
+  padding: 10px 12px;
+  gap: 8px;
+}
+
+.is-mobile .suggestion-details {
+  gap: 6px;
+  font-size: 0.8rem;
+}
+
+.is-mobile .suggestion-price {
+  font-size: 1rem;
+}
+
+.is-mobile .suggestion-number {
+  min-width: 22px;
+  font-size: 0.7rem;
+}
+
+/* ===== Mobile: Calendar section header ===== */
+.is-mobile .section-header {
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.is-mobile .section-header h2 {
+  font-size: 1rem;
+}
+
+.is-mobile .calendar-controls {
+  margin-left: 0;
+  order: 10;
+  width: 100%;
+  justify-content: center;
+}
+
+.is-mobile .calendar-month-label {
+  min-width: 120px;
+  font-size: 0.85rem;
+}
+
+/* ===== Mobile: Year grid → 2 columns ===== */
+.is-mobile .year-grid {
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+
+.is-mobile .year-month-card {
+  padding: 8px;
+}
+
+.is-mobile .year-month-name {
+  font-size: 0.75rem;
+}
+
+/* ===== Mobile: Calendar cells smaller ===== */
+.is-mobile .cal-cell {
+  min-height: 52px;
+  padding: 4px;
+}
+
+.is-mobile .cal-day-num {
+  font-size: 0.7rem;
+}
+
+.is-mobile .cal-day-price {
+  font-size: 0.8rem;
+}
+
+.is-mobile .cal-day-sigma {
+  display: none;
+}
+
+/* ===== Mobile: Timing + Analysis → 1 column ===== */
+.is-mobile .timing-grid {
+  grid-template-columns: 1fr;
+}
+
+.is-mobile .analysis-cards {
+  grid-template-columns: 1fr;
+}
+
+/* ===== Mobile: Timing bars compact ===== */
+.is-mobile .timing-bar-label {
+  width: 70px;
+  font-size: 0.75rem;
+}
+
+.is-mobile .timing-bar-meta {
+  display: none;
+}
+
+.is-mobile .timing-card {
+  padding: 12px;
+}
+
+/* ===== Mobile: Calendar legend ===== */
+.is-mobile .calendar-legend {
+  gap: 8px;
+  font-size: 0.72rem;
+}
+
+/* ===== Mobile: Trip strips compact ===== */
+.is-mobile .trip-strip-card {
+  flex-wrap: wrap;
+  padding: 8px 10px;
+  gap: 6px;
+}
+
+.is-mobile .trip-strip-dates {
+  min-width: 0;
+  flex: 1;
+}
+
+.is-mobile .trip-strip-legs {
+  width: 100%;
+  order: 10;
+}
+
+.is-mobile .trip-strip-leg {
+  font-size: 0.75rem;
+}
+
+/* ===== Mobile: Chat ===== */
+.is-mobile .followup-messages {
+  max-height: 300px;
+}
+
+.is-mobile .chat-message {
+  max-width: 92%;
+}
+
+.is-mobile .chat-bubble {
+  font-size: 0.82rem;
+  padding: 8px 10px;
+}
+
+/* ===== Mobile: Calendar direction toggle ===== */
+.is-mobile .section-header .v-btn-toggle {
+  margin-left: 0;
+  order: 11;
+  width: 100%;
+}
+
+.is-mobile .section-header .v-btn-toggle .v-btn {
+  flex: 1;
+  font-size: 0.72rem;
+}
+
+/* ===== Mobile: Tabs scrollable ===== */
+.is-mobile :deep(.l-tabs) {
+  margin-top: 4px;
 }
 </style>
 

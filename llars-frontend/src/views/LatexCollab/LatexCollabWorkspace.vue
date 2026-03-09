@@ -76,38 +76,28 @@
 
     <!-- Main Content Area -->
     <div class="content-area">
-      <!-- Mobile toolbar (replaces header on mobile) -->
+      <!-- Mobile toolbar (compact header) -->
       <div v-if="isMobile" class="mobile-toolbar">
         <v-btn icon variant="text" size="small" @click="mobileSidebarOpen = true">
           <LIcon>mdi-menu</LIcon>
         </v-btn>
+        <span class="mobile-workspace-name text-truncate">{{ workspace?.name || '' }}</span>
         <v-spacer />
-        <div class="mode-toggle-group">
-          <button
-            class="mode-btn"
-            :class="{ active: viewMode === 'editor' }"
-            :title="$t('latexCollab.header.view.editor')"
-            @click="viewMode = 'editor'"
-          >
-            <LIcon size="18">mdi-pencil</LIcon>
-          </button>
-          <button
-            class="mode-btn"
-            :class="{ active: viewMode === 'split' }"
-            :title="$t('latexCollab.header.view.split')"
-            @click="viewMode = 'split'"
-          >
-            <LIcon size="18">mdi-view-split-vertical</LIcon>
-          </button>
-          <button
-            class="mode-btn"
-            :class="{ active: viewMode === 'preview' }"
-            :title="$t('latexCollab.header.view.preview')"
-            @click="viewMode = 'preview'"
-          >
-            <LIcon size="18">mdi-file-pdf-box</LIcon>
-          </button>
-        </div>
+        <v-btn
+          size="x-small"
+          variant="tonal"
+          :color="isCompiling ? 'primary' : 'primary'"
+          :loading="isCompiling"
+          :disabled="!canCompile"
+          class="mobile-compile-btn"
+          @click="triggerCompile"
+        >
+          <LIcon size="14" class="mr-1">mdi-rocket-launch-outline</LIcon>
+          {{ $t('latexCollab.compile.actions.compile') }}
+        </v-btn>
+        <v-chip v-if="compileStatus && !isCompiling" size="x-small" variant="tonal" :color="compileStatusColor" class="ml-1">
+          {{ compileStatusLabel }}
+        </v-chip>
       </div>
 
       <!-- Content Body -->
@@ -179,12 +169,37 @@
         <template v-else>
           <div class="editor-layout">
             <!-- Editor/Preview Panes -->
-            <div ref="panesContainerRef" class="panes-container" :class="`mode-${viewMode}`">
+            <div ref="panesContainerRef" class="panes-container" :class="isMobile ? `mobile-view-${mobileView}` : `mode-${viewMode}`">
               <!-- Editor Pane -->
               <div
                 class="pane editor-pane"
-                :style="editorPaneStyle"
+                :style="isMobile ? undefined : editorPaneStyle"
               >
+                <!-- Mobile Editor Toolbar (compile + → PDF) -->
+                <div v-if="isMobile" class="mobile-editor-toolbar">
+                  <LBtn
+                    variant="primary"
+                    size="small"
+                    :loading="isCompiling"
+                    :disabled="!canCompile"
+                    prepend-icon="mdi-rocket-launch-outline"
+                    @click="triggerCompile"
+                  >
+                    {{ $t('latexCollab.compile.actions.compile') }}
+                  </LBtn>
+                  <v-spacer />
+                  <v-btn
+                    icon
+                    variant="tonal"
+                    size="small"
+                    color="primary"
+                    :title="$t('latexCollab.mobile.jumpToPdf')"
+                    @click="handleMobileSyncForward"
+                  >
+                    <LIcon size="18">mdi-file-pdf-box</LIcon>
+                    <v-tooltip activator="parent" location="top">{{ $t('latexCollab.mobile.jumpToPdf') }}</v-tooltip>
+                  </v-btn>
+                </div>
                 <!-- Zotero read-only notice -->
                 <v-alert
                   v-if="selectedNode?.is_zotero_managed"
@@ -239,7 +254,7 @@
               </div>
 
               <!-- Preview Pane -->
-              <div class="pane preview-pane" :style="previewPaneStyle">
+              <div class="pane preview-pane" :style="isMobile ? undefined : previewPaneStyle">
                 <div class="preview-toolbar">
                   <div class="compile-actions">
                     <LBtn
@@ -456,7 +471,7 @@
                         v-if="c.document"
                         class="comment-document"
                         :class="{ clickable: isCommentInOtherDocument(c) }"
-                        @click="navigateToComment(c)"
+                        @click="onCommentNav(c)"
                       >
                         <LIcon size="14" class="mr-1">mdi-file-document-outline</LIcon>
                         <span class="document-title">{{ c.document.title }}</span>
@@ -468,7 +483,7 @@
                       </div>
 
                       <!-- Top-level comment -->
-                      <div class="comment-item" @click="navigateToComment(c)">
+                      <div class="comment-item" @click="onCommentNav(c)">
                         <div class="comment-meta">
                           <span class="comment-author">
                             <span
@@ -601,6 +616,28 @@
 
           </div>
         </template>
+      </div>
+
+      <!-- Mobile Bottom Navigation -->
+      <div v-if="isMobile" class="mobile-bottom-nav">
+        <button class="mobile-nav-btn" @click="mobileSidebarOpen = true">
+          <v-icon size="20">mdi-file-tree</v-icon>
+          <span>{{ $t('latexCollab.mobile.files') }}</span>
+        </button>
+        <button class="mobile-nav-btn" :class="{ active: mobileView === 'editor' }" @click="mobileView = 'editor'">
+          <v-icon size="20">mdi-code-tags</v-icon>
+          <span>{{ $t('latexCollab.mobile.editor') }}</span>
+        </button>
+        <button class="mobile-nav-btn" :class="{ active: mobileView === 'pdf' }" @click="mobileView = 'pdf'">
+          <v-icon size="20">mdi-file-pdf-box</v-icon>
+          <span>PDF</span>
+        </button>
+        <button class="mobile-nav-btn" :class="{ active: mobileView === 'comments' }" @click="mobileView = 'comments'">
+          <v-badge :content="activeComments.length" :model-value="activeComments.length > 0" color="primary" offset-x="-2" offset-y="-2">
+            <v-icon size="20">mdi-comment-text-outline</v-icon>
+          </v-badge>
+          <span>{{ $t('latexCollab.mobile.comments') }}</span>
+        </button>
       </div>
     </div>
 
@@ -881,6 +918,7 @@ const { isMobile, isTablet } = useMobile()
 
 // Mobile sidebar state
 const mobileSidebarOpen = ref(false)
+const mobileView = ref('editor') // 'editor' | 'pdf' | 'comments'
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || ''
 const VIEWMODE_KEY = 'latex-collab-view-mode'
@@ -925,9 +963,9 @@ const previewContentRef = ref(null)
 const FILES_COLLAPSED_KEY = 'latex-collab-files-collapsed'
 const GIT_COLLAPSED_KEY = 'latex-collab-git-collapsed'
 const ONLINE_COLLAPSED_KEY = 'latex-collab-online-collapsed'
-const filesCollapsed = ref(localStorage.getItem(FILES_COLLAPSED_KEY) === 'true')
-const gitCollapsed = ref(localStorage.getItem(GIT_COLLAPSED_KEY) === 'true')
-const onlineCollapsed = ref(localStorage.getItem(ONLINE_COLLAPSED_KEY) === 'true')
+const filesCollapsed = ref(isMobile.value ? false : localStorage.getItem(FILES_COLLAPSED_KEY) === 'true')
+const gitCollapsed = ref(isMobile.value ? true : localStorage.getItem(GIT_COLLAPSED_KEY) === 'true')
+const onlineCollapsed = ref(isMobile.value ? true : localStorage.getItem(ONLINE_COLLAPSED_KEY) === 'true')
 const gitDetailDialog = ref(false)
 // Outline state - initialized later via useLatexOutline composable after selectedNode is available
 const {
@@ -1028,8 +1066,20 @@ watch(commentsCollapsed, (val) => {
 // syncEnabled watcher is now handled by useLatexSync composable
 
 watch(isMobile, (val) => {
-  if (!val) {
+  if (val) {
+    // On mobile: collapse all drawer panels except files
+    filesCollapsed.value = false
+    gitCollapsed.value = true
+    onlineCollapsed.value = true
+  } else {
     viewMode.value = 'split'
+  }
+})
+
+// Mobile: force-expand comments when switching to comments view
+watch(mobileView, (view) => {
+  if (view === 'comments') {
+    commentsCollapsed.value = false
   }
 })
 
@@ -1418,6 +1468,9 @@ function handleNavigateToDocument(documentId, comment) {
     console.warn('[handleNavigateToDocument] Node not found for documentId:', documentId)
     return
   }
+
+  // Switch to editor on mobile
+  if (isMobile.value) mobileView.value = 'editor'
 
   // Select the document node - use the router to navigate
   router.push(`${routeBase.value}/workspace/${workspaceId.value}/document/${docIdNum}`)
@@ -2299,6 +2352,7 @@ function handleSelectNode(nodeId) {
 
   if (node.type === 'file') {
     router.push(`${routeBase.value}/workspace/${workspaceId.value}/document/${node.id}`)
+    if (isMobile.value) mobileView.value = 'editor'
     return
   }
 
@@ -2633,6 +2687,8 @@ function jumpToDocument(documentId, line = 1, column = 1) {
   if (!documentId) return
   const node = nodeById.value.get(documentId)
   if (!node || node.asset_id) return
+  // Switch to editor on mobile (covers SyncTeX inverse, outline jump, compile issue jump)
+  if (isMobile.value) mobileView.value = 'editor'
   if (selectedNodeId.value === documentId) {
     nextTick(() => {
       editorRef.value?.jumpToLine?.(line, column)
@@ -2641,6 +2697,19 @@ function jumpToDocument(documentId, line = 1, column = 1) {
   }
   pendingJump.value = { documentId, line, column }
   router.push(`${routeBase.value}/workspace/${workspaceId.value}/document/${documentId}`)
+}
+
+// Mobile navigation helpers
+function handleMobileSyncForward() {
+  handleEditorSyncRequest()
+  mobileView.value = 'pdf'
+}
+
+function onCommentNav(comment) {
+  navigateToComment(comment)
+  if (isMobile.value) {
+    mobileView.value = 'editor'
+  }
 }
 
 // Get current content from editor for diff viewer in Git Panel
@@ -2938,5 +3007,34 @@ defineExpose({
 
 .v-theme--dark .floating-comment-card {
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+/* Mobile: floating cards become bottom sheets */
+@media (max-width: 599px) {
+  .floating-comment-card {
+    bottom: 0 !important;
+    left: 0 !important;
+    top: auto !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    border-radius: 16px 16px 0 0;
+  }
+
+  .floating-comment-header {
+    cursor: default;
+  }
+
+  .floating-ai-stream-card {
+    bottom: 56px !important;
+    left: 0 !important;
+    top: auto !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    border-radius: 16px 16px 0 0;
+  }
+
+  .floating-ai-stream-header {
+    cursor: default;
+  }
 }
 </style>

@@ -89,6 +89,21 @@ echo "Deployed commit: $DEPLOYED_COMMIT"
 echo "[3/5] Building staging Docker images..."
 STAGING_SERVICES="nginx-service backend-flask-service frontend-vue-service backend-supervisor-service yjs-service"
 
+# Compute semantic version from git tags for frontend build
+COMMIT_HASH="$(git rev-parse --short HEAD)"
+DESCRIBE="$(git describe --tags --long --match 'v*' 2>/dev/null || echo '')"
+APP_VERSION="0.0.0"
+if [[ "$DESCRIBE" =~ ^v([0-9]+)\.([0-9]+)\.([0-9]+)-([0-9]+)-g ]]; then
+  V_MAJOR="${BASH_REMATCH[1]}"; V_MINOR="${BASH_REMATCH[2]}"; V_PATCH="${BASH_REMATCH[3]}"; V_COMMITS="${BASH_REMATCH[4]}"
+  if [ "$BRANCH" = "main" ]; then
+    APP_VERSION="${V_MAJOR}.$(( V_MINOR + V_COMMITS )).0"
+  else
+    APP_VERSION="${V_MAJOR}.${V_MINOR}.$(( V_PATCH + V_COMMITS ))"
+  fi
+fi
+export APP_VERSION APP_COMMIT_HASH="$COMMIT_HASH" APP_BRANCH="$BRANCH"
+echo "Version: $APP_VERSION ($APP_BRANCH@$APP_COMMIT_HASH)"
+
 docker compose -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.staging.yml \
   build --parallel $STAGING_SERVICES
 

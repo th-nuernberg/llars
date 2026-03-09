@@ -80,6 +80,10 @@ services:
         - VITE_KEYCLOAK_CLIENT_ID=${AUTHENTIK_FRONTEND_CLIENT_ID:-llars-frontend}
         - VITE_KEYCLOAK_REALM=llars
         - VITE_SOCKETIO_ENABLE_WEBSOCKET=${VITE_SOCKETIO_ENABLE_WEBSOCKET:-true}
+        # Version info (computed by deploy script from git tags)
+        - APP_VERSION=${APP_VERSION:-0.0.0}
+        - APP_COMMIT_HASH=${APP_COMMIT_HASH:-unknown}
+        - APP_BRANCH=${APP_BRANCH:-unknown}
     environment:
       - TZ=Europe/Berlin
     # No volume mounts in production - static files baked into image

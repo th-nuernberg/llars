@@ -395,6 +395,24 @@ cmd_deploy() {
   echo ""
   echo "[3/6] Building $deploy_color Docker images..."
 
+  # Compute semantic version from git tags for frontend build
+  local describe commit_hash
+  commit_hash="$(git rev-parse --short HEAD)"
+  describe="$(git describe --tags --long --match 'v*' 2>/dev/null || echo '')"
+  local app_version="0.0.0"
+  if [[ "$describe" =~ ^v([0-9]+)\.([0-9]+)\.([0-9]+)-([0-9]+)-g ]]; then
+    local major="${BASH_REMATCH[1]}" minor="${BASH_REMATCH[2]}" patch="${BASH_REMATCH[3]}" commits="${BASH_REMATCH[4]}"
+    if [ "$BRANCH" = "main" ]; then
+      app_version="${major}.$(( minor + commits )).0"
+    else
+      app_version="${major}.${minor}.$(( patch + commits ))"
+    fi
+  fi
+  export APP_VERSION="$app_version"
+  export APP_COMMIT_HASH="$commit_hash"
+  export APP_BRANCH="$BRANCH"
+  echo "Version: $APP_VERSION ($APP_BRANCH@$APP_COMMIT_HASH)"
+
   DEPLOY_COLOR="$deploy_color" docker compose --project-name "llars-${deploy_color}" \
     $COMPOSE_FILES \
     build --parallel $BG_SERVICES

@@ -258,12 +258,19 @@ function handleRowClick(item, event) {
 <style scoped>
 .l-list-table {
   width: 100%;
-  overflow: hidden;
 }
 
 .l-list-table--bordered {
   border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
   border-radius: 8px 3px 8px 3px;
+}
+
+.l-list-table--bordered .l-list-header {
+  border-radius: 7px 2px 0 0;
+}
+
+.l-list-table--bordered .l-list-row:last-child {
+  border-radius: 0 0 7px 2px;
 }
 
 /* Header */
@@ -278,7 +285,7 @@ function handleRowClick(item, event) {
   letter-spacing: 0.04em;
   color: rgba(var(--v-theme-on-surface), 0.45);
   border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.08);
-  background: rgba(var(--v-theme-on-surface), 0.02);
+  background: rgb(var(--v-theme-surface));
   user-select: none;
   position: sticky;
   top: 0;

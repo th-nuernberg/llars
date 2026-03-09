@@ -177,6 +177,11 @@
 }
 
 :is(.v-icon:hover, .v-btn:hover .v-icon, .feature-card:hover .v-icon, .nav-item:hover .v-icon, .v-list-item:hover .v-icon, .icon-wrapper:hover .v-icon)
+.l-its-hover--pdf-download {
+  transform: translateY(2px);
+}
+
+:is(.v-icon:hover, .v-btn:hover .v-icon, .feature-card:hover .v-icon, .nav-item:hover .v-icon, .v-list-item:hover .v-icon, .icon-wrapper:hover .v-icon)
 .l-its-hover--upload {
   transform: translateY(-2px);
 }

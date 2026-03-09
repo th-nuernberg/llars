@@ -74,6 +74,7 @@ import OverleafIcon from './OverleafIcon.vue'
 import OncocoIcon from './OncocoIcon.vue'
 import OpenAiIcon from './OpenAiIcon.vue'
 import PaletteIcon from './PaletteIcon.vue'
+import PdfDownloadIcon from './PdfDownloadIcon.vue'
 import PauseIcon from './PauseIcon.vue'
 import PencilIcon from './PencilIcon.vue'
 import PinIcon from './PinIcon.vue'
@@ -197,6 +198,7 @@ export const iconComponents = {
   'overleaf': OverleafIcon,
   'openai': OpenAiIcon,
   'palette': PaletteIcon,
+  'pdf-download': PdfDownloadIcon,
   'pause': PauseIcon,
   'pencil': PencilIcon,
   'pin': PinIcon,

@@ -1,5 +1,5 @@
 <template>
-  <div class="paper-list-view">
+  <div class="paper-list-view" :class="{ 'is-mobile': isMobile }">
     <!-- Filter Bar -->
     <div class="filter-bar mb-4">
       <v-text-field
@@ -33,11 +33,12 @@
           @click="filterStatus = filterStatus === s.value ? null : s.value"
         >
           <v-icon start size="14">{{ s.icon }}</v-icon>
-          {{ t(s.labelKey) }}
+          <span v-if="!isMobile">{{ t(s.labelKey) }}</span>
         </v-chip>
       </div>
 
       <v-select
+        v-if="!isMobile"
         v-model="filterConference"
         :items="conferenceOptions"
         item-title="label"
@@ -50,9 +51,10 @@
         class="filter-conference"
       />
 
-      <v-spacer />
+      <v-spacer v-if="!isMobile" />
 
       <v-btn
+        v-if="!isMobile"
         color="primary"
         :style="{ borderRadius: '16px 4px 16px 4px' }"
         prepend-icon="mdi-plus"
@@ -62,8 +64,8 @@
       </v-btn>
     </div>
 
-    <!-- Legend -->
-    <div class="legend mb-3">
+    <!-- Legend (desktop only) -->
+    <div v-if="!isMobile" class="legend mb-3">
       <span class="legend-label">{{ t('conferenceManager.legend.status') }}:</span>
       <span v-for="s in PAPER_STATUSES" :key="s.value" class="legend-item">
         <span class="legend-dot" :style="{ backgroundColor: s.color }" />
@@ -97,15 +99,15 @@
           {{ t('conferenceManager.paper.title') }}
           <v-icon v-if="sortField === 'title'" size="12" class="sort-icon">{{ sortAsc ? 'mdi-arrow-up' : 'mdi-arrow-down' }}</v-icon>
         </div>
-        <div class="col-conference sortable-col" @click="toggleSort('conference')">
+        <div v-if="!isMobile" class="col-conference sortable-col" @click="toggleSort('conference')">
           {{ t('conferenceManager.paper.conference') }}
           <v-icon v-if="sortField === 'conference'" size="12" class="sort-icon">{{ sortAsc ? 'mdi-arrow-up' : 'mdi-arrow-down' }}</v-icon>
         </div>
-        <div class="col-authors sortable-col" @click="toggleSort('authors')">
+        <div v-if="!isMobile" class="col-authors sortable-col" @click="toggleSort('authors')">
           {{ t('conferenceManager.paper.authors') }}
           <v-icon v-if="sortField === 'authors'" size="12" class="sort-icon">{{ sortAsc ? 'mdi-arrow-up' : 'mdi-arrow-down' }}</v-icon>
         </div>
-        <div class="col-updated sortable-col" @click="toggleSort('updated_at')">
+        <div v-if="!isMobile" class="col-updated sortable-col" @click="toggleSort('updated_at')">
           {{ t('conferenceManager.paper.updated') }}
           <v-icon v-if="sortField === 'updated_at'" size="12" class="sort-icon">{{ sortAsc ? 'mdi-arrow-up' : 'mdi-arrow-down' }}</v-icon>
         </div>
@@ -131,7 +133,7 @@
           </span>
         </div>
 
-        <div class="col-conference">
+        <div v-if="!isMobile" class="col-conference">
           <v-chip
             v-if="paper.conference"
             size="x-small"
@@ -151,7 +153,7 @@
           <span v-else class="text-placeholder">—</span>
         </div>
 
-        <div class="col-authors">
+        <div v-if="!isMobile" class="col-authors">
           <template v-if="paper.authors?.length">
             <span class="authors-text">
               {{ paper.authors.map(a => a.display_name || a.external_name || a.username).join(', ') }}
@@ -160,7 +162,7 @@
           <span v-else class="text-placeholder">—</span>
         </div>
 
-        <div class="col-updated">
+        <div v-if="!isMobile" class="col-updated">
           <span v-if="paper.updated_at" class="date-text">{{ formatDate(paper.updated_at) }}</span>
           <span v-else class="text-placeholder">—</span>
         </div>
@@ -251,6 +253,19 @@
       @saved="onSaved"
     />
 
+    <!-- Mobile FAB -->
+    <v-btn
+      v-if="isMobile"
+      icon
+      color="primary"
+      size="default"
+      class="mobile-fab"
+      elevation="4"
+      @click="showCreate"
+    >
+      <v-icon>mdi-plus</v-icon>
+    </v-btn>
+
     <!-- Delete Confirm -->
     <v-dialog v-model="deleteDialog" max-width="400">
       <v-card>
@@ -277,6 +292,10 @@ import { PAPER_STATUSES, getStatusConfig, getRankingColor } from '../config/conf
 import { useConferenceManager } from '../composables/useConferenceManager'
 import PaperStatusChip from './PaperStatusChip.vue'
 import PaperFormDialog from './PaperFormDialog.vue'
+
+const props = defineProps({
+  isMobile: { type: Boolean, default: false },
+})
 
 const { t } = useI18n()
 const router = useRouter()
@@ -449,11 +468,21 @@ function formatDate(isoStr) {
   overflow-y: auto;
 }
 
+.scroll-area::-webkit-scrollbar {
+  width: 6px;
+}
+
+.scroll-area::-webkit-scrollbar-thumb {
+  background: rgba(var(--v-theme-on-surface), 0.15);
+  border-radius: 3px;
+}
+
 .filter-bar {
   display: flex;
   align-items: center;
   gap: 12px;
   flex-wrap: wrap;
+  flex-shrink: 0;
 }
 
 .filter-search {
@@ -506,7 +535,6 @@ function formatDate(isoStr) {
 .list-container {
   border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
   border-radius: 8px;
-  overflow: hidden;
 }
 
 .list-header {
@@ -520,8 +548,16 @@ function formatDate(isoStr) {
   letter-spacing: 0.04em;
   color: rgba(var(--v-theme-on-surface), 0.45);
   border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.08);
-  background: rgba(var(--v-theme-on-surface), 0.02);
+  background: rgba(var(--v-theme-surface), 1);
   user-select: none;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  border-radius: 7px 7px 0 0;
+}
+
+.list-row:last-child {
+  border-radius: 0 0 7px 7px;
 }
 
 .sortable-col {
@@ -762,6 +798,53 @@ function formatDate(isoStr) {
 @keyframes shimmer {
   0% { background-position: 200% 0; }
   100% { background-position: -200% 0; }
+}
+
+/* Mobile FAB */
+.mobile-fab {
+  position: absolute;
+  bottom: 16px;
+  right: 16px;
+  z-index: 2;
+  border-radius: 16px 4px 16px 4px !important;
+}
+
+/* Mobile styles */
+.is-mobile .filter-bar {
+  gap: 8px;
+  margin-bottom: 8px !important;
+}
+
+.is-mobile .filter-search {
+  max-width: none;
+  min-width: 0;
+}
+
+.is-mobile .status-chips {
+  gap: 4px;
+}
+
+.is-mobile .status-chips .v-chip {
+  font-size: 0.7rem;
+}
+
+.is-mobile .row-title {
+  font-size: 0.82rem;
+}
+
+.is-mobile .col-status {
+  width: 70px;
+}
+
+.is-mobile .col-actions {
+  width: 60px;
+  opacity: 1;
+}
+
+.is-mobile .list-header,
+.is-mobile .list-row {
+  padding: 8px 10px;
+  gap: 6px;
 }
 
 @media (max-width: 960px) {

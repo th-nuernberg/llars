@@ -292,4 +292,27 @@ function onSaved() {
     min-width: 200px;
   }
 }
+
+@media (max-width: 600px) {
+  .kanban-board {
+    -webkit-overflow-scrolling: touch;
+    scroll-snap-type: x mandatory;
+    padding-bottom: 12px;
+  }
+
+  .kanban-column {
+    min-width: 75vw;
+    max-width: 85vw;
+    scroll-snap-align: start;
+    flex-shrink: 0;
+  }
+
+  .column-header {
+    padding: 8px 10px;
+  }
+
+  .add-btn {
+    opacity: 1;
+  }
+}
 </style>

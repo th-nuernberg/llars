@@ -37,5 +37,8 @@ CVE-2026-26007
 # ---- langchain-text-splitters (transitive dep, pinned by langchain) ----
 CVE-2025-6985
 #
+# ---- langchain-core 0.3.81 (major upgrade to 1.x required) ----
+CVE-2026-26013
+#
 # ---- sqlitedict 2.1.0 (transitive dep of chromadb, no fix available) ----
 CVE-2024-35515

@@ -305,9 +305,8 @@ cmd_deploy() {
     exit 1
   fi
 
-  set -a
-  . ./.env
-  set +a
+  # Read env vars safely (avoids source failures with special chars in passwords)
+  _env() { grep "^${1}=" .env 2>/dev/null | head -1 | cut -d= -f2-; }
 
   # Force production runtime semantics during blue-green deploy, independent of .env drift.
   export PROJECT_STATE=production
@@ -329,9 +328,9 @@ cmd_deploy() {
   # -----------------------------------------------------------------------
   echo ""
   echo "[1/6] Creating pre-deploy backup..."
-  local db_user="${MYSQL_USER:-dev_user}"
-  local db_pass="${MYSQL_PASSWORD:-dev_password_change_me}"
-  local db_name="${MYSQL_DATABASE:-database_llars}"
+  local db_user="$(_env MYSQL_USER)" ; db_user="${db_user:-dev_user}"
+  local db_pass="$(_env MYSQL_PASSWORD)" ; db_pass="${db_pass:-dev_password_change_me}"
+  local db_name="$(_env MYSQL_DATABASE)" ; db_name="${db_name:-database_llars}"
   local backup_file="$BACKUP_DIR/bluegreen_pre_deploy_$(date +%Y%m%d_%H%M%S).sql"
 
   if docker inspect -f '{{.State.Running}}' llars_db_service >/dev/null 2>&1; then
@@ -580,7 +579,7 @@ cmd_switch() {
 
   # Switch upstream
   echo ""
-  echo "[1/4] Updating upstream → $deploy_color"
+  echo "[1/5] Updating upstream → $deploy_color"
   update_upstream_conf "$deploy_color"
 
   echo ""

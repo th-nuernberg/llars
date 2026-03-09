@@ -7,6 +7,11 @@
 # containers aren't available.
 #
 # Usage: bash scripts/ci/rollback_bluegreen.sh
+#
+# LIMITATION: This rollback only switches nginx traffic. It does NOT revert
+# database migrations. If the failed deploy included forward-only schema
+# changes, the previous containers may encounter errors against the new schema.
+# In that case, use rollback_production.sh for a full DB restore.
 # =============================================================================
 
 set -euo pipefail

@@ -6,17 +6,15 @@ BASE_URL="${BASE_URL:-http://localhost}"
 ENV_FILE="$DEPLOY_PATH/.env"
 SMOKE_WIZARD="${SMOKE_WIZARD:-1}"
 SMOKE_FORCE_HTTPS_HEADER="${SMOKE_FORCE_HTTPS_HEADER:-1}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-if [ -f "$ENV_FILE" ]; then
-  set -a
-  . "$ENV_FILE"
-  set +a
-fi
+# Read env vars safely (avoids source failures with special chars in passwords)
+_env() { [ -f "$ENV_FILE" ] && grep "^${1}=" "$ENV_FILE" 2>/dev/null | head -1 | cut -d= -f2- || true; }
 
-SYSTEM_ADMIN_API_KEY="${SYSTEM_ADMIN_API_KEY:-}"
-DB_USER="${MYSQL_USER:-dev_user}"
-DB_PASS="${MYSQL_PASSWORD:-dev_password_change_me}"
-DB_NAME="${MYSQL_DATABASE:-database_llars}"
+SYSTEM_ADMIN_API_KEY="${SYSTEM_ADMIN_API_KEY:-$(_env SYSTEM_ADMIN_API_KEY)}"
+DB_USER="${MYSQL_USER:-$(_env MYSQL_USER)}" ; DB_USER="${DB_USER:-dev_user}"
+DB_PASS="${MYSQL_PASSWORD:-$(_env MYSQL_PASSWORD)}" ; DB_PASS="${DB_PASS:-dev_password_change_me}"
+DB_NAME="${MYSQL_DATABASE:-$(_env MYSQL_DATABASE)}" ; DB_NAME="${DB_NAME:-database_llars}"
 
 CURL_HEADER_ARGS=()
 if [ "$SMOKE_FORCE_HTTPS_HEADER" = "1" ]; then
@@ -191,7 +189,6 @@ fi
 if [ "$SMOKE_WIZARD" != "0" ] && [ -n "$SYSTEM_ADMIN_API_KEY" ]; then
   echo ""
   echo "Running wizard smoke test..."
-  SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
   WIZARD_SCRIPT="${SCRIPT_DIR}/smoke_test_wizard.sh"
   if [ ! -f "$WIZARD_SCRIPT" ]; then
     WIZARD_SCRIPT="$DEPLOY_PATH/scripts/smoke_test_wizard.sh"
@@ -211,7 +208,6 @@ SMOKE_EVALUATION="${SMOKE_EVALUATION:-1}"
 if [ "$SMOKE_EVALUATION" != "0" ] && [ -n "$SYSTEM_ADMIN_API_KEY" ]; then
   echo ""
   echo "Running evaluation pipeline smoke test..."
-  SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
   EVAL_SCRIPT="${SCRIPT_DIR}/smoke_test_evaluation.sh"
   if [ ! -f "$EVAL_SCRIPT" ]; then
     EVAL_SCRIPT="$DEPLOY_PATH/scripts/ci/smoke_test_evaluation.sh"
@@ -231,7 +227,6 @@ SMOKE_PROMPT_ENG="${SMOKE_PROMPT_ENG:-1}"
 if [ "$SMOKE_PROMPT_ENG" != "0" ] && [ -n "$SYSTEM_ADMIN_API_KEY" ]; then
   echo ""
   echo "Running prompt engineering smoke test..."
-  SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
   PROMPT_SCRIPT="${SCRIPT_DIR}/smoke_test_prompt_eng.sh"
   if [ ! -f "$PROMPT_SCRIPT" ]; then
     PROMPT_SCRIPT="$DEPLOY_PATH/scripts/ci/smoke_test_prompt_eng.sh"

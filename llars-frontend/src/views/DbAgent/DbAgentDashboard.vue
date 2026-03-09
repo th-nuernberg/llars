@@ -909,9 +909,9 @@ const overviewLoading = ref(false)
 const overviewDeals = ref([])
 const overviewSource = ref('database')
 
-// Station selection
-const searchStationFrom = ref('Nürnberg Hbf')
-const searchStationTo = ref('Dortmund Hbf')
+// Station selection — must match backend: outbound = Dortmund→Nürnberg
+const searchStationFrom = ref('Dortmund Hbf')
+const searchStationTo = ref('Nürnberg Hbf')
 const stationSuggestions = [
   'Nürnberg Hbf',
   'Dortmund Hbf',

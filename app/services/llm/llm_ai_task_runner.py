@@ -490,14 +490,14 @@ class LLMAITaskRunner:
         )
 
     @staticmethod
-    def _get_scenario_briefing_prompt_settings(
-        scenario_id: int,
+    def _get_scenario_briefing_prompt_settings_from_config(
+        config_raw: Any,
         default_task_description: str = "",
     ) -> Tuple[str, str]:
         """
-        Resolve briefing prompt settings from scenario config.
+        Resolve briefing prompt settings from a config object.
 
-        Supports both flat config_json and nested config_json.eval_config.config.
+        Supports both flat config and nested eval_config.config payloads.
         Returns a tuple of (task_description, criteria_markdown_or_bullets).
         """
 
@@ -516,18 +516,14 @@ class LLMAITaskRunner:
 
         def _normalize_markdown_block(value: Any) -> str:
             text = _as_localized_text(value)
-            if not text:
-                return ""
+        if not text:
+            return ""
 
             lines = [line.rstrip() for line in text.splitlines()]
             cleaned_lines = [line for line in lines if line.strip()]
             return "\n".join(cleaned_lines).strip()
 
-        scenario = RatingScenarios.query.get(scenario_id)
-        if not scenario:
-            return default_task_description, ""
-
-        config = LLMAITaskRunner._to_config_dict(scenario.config_json)
+        config = LLMAITaskRunner._to_config_dict(config_raw)
         eval_config = config.get("eval_config")
         if isinstance(eval_config, dict):
             nested = eval_config.get("config")
@@ -545,7 +541,6 @@ class LLMAITaskRunner:
             or _as_localized_text(config.get("task_description"))
             or default_task_description
         )
-
         criteria_markdown = (
             _normalize_markdown_block(eval_config.get("criteriaMarkdown"))
             or _normalize_markdown_block(eval_config.get("criteria_markdown"))
@@ -556,36 +551,36 @@ class LLMAITaskRunner:
         if criteria_markdown:
             return task_description, criteria_markdown
 
-        criteria_raw = eval_config.get("criteria") or []
-        normalized_criteria: List[str] = []
-        if isinstance(criteria_raw, list):
-            for criterion in criteria_raw:
-                if isinstance(criterion, str):
-                    name = criterion.strip()
-                    if name:
-                        normalized_criteria.append(name)
-                    continue
-
-                if isinstance(criterion, dict):
-                    name_value = (
-                        criterion.get("name")
-                        or criterion.get("label")
-                        or criterion.get("id")
-                    )
-                    name = _as_localized_text(name_value)
-                    if not name:
-                        continue
-
-                    weight = criterion.get("weight")
-                    if isinstance(weight, (int, float)):
-                        normalized_criteria.append(f"{name} ({round(float(weight) * 100)}%)")
-                    else:
-                        normalized_criteria.append(name)
-
+        criteria_raw = eval_config.get("criteria")
+        if criteria_raw is None:
+            criteria_raw = config.get("evaluation_criteria")
+        normalized_criteria = LLMAITaskRunner._normalize_scenario_criteria(criteria_raw)
         criteria_block = "\n".join(
             f"- {criterion}" for criterion in normalized_criteria if criterion
         )
+
         return task_description, criteria_block
+
+    @staticmethod
+    def _get_scenario_briefing_prompt_settings(
+        scenario_id: int,
+        default_task_description: str = "",
+    ) -> Tuple[str, str]:
+        """
+        Resolve briefing prompt settings from scenario config.
+
+        Supports both flat config_json and nested config_json.eval_config.config.
+        Returns a tuple of (task_description, criteria_markdown_or_bullets).
+        """
+
+        scenario = RatingScenarios.query.get(scenario_id)
+        if not scenario:
+            return default_task_description, ""
+
+        return LLMAITaskRunner._get_scenario_briefing_prompt_settings_from_config(
+            scenario.config_json,
+            default_task_description=default_task_description,
+        )
 
     @staticmethod
     def _run_comparison_sessions(
@@ -897,8 +892,18 @@ class LLMAITaskRunner:
             return
 
         bucket_names, bucket_keys = LLMAITaskRunner._get_bucket_config(scenario)
-        scenario_guidance = LLMAITaskRunner._build_scenario_guidance_block_from_config(
-            scenario.config_json
+        task_description, criteria_markdown = LLMAITaskRunner._get_scenario_briefing_prompt_settings(
+            scenario_id
+        )
+        task_block = (
+            f"Aufgabenbeschreibung:\n{task_description}\n\n"
+            if task_description
+            else ""
+        )
+        criteria_block = (
+            f"Bewertungskriterien:\n{criteria_markdown}\n\n"
+            if criteria_markdown
+            else ""
         )
         task_description, criteria_markdown = LLMAITaskRunner._get_scenario_briefing_prompt_settings(
             scenario_id

@@ -56,92 +56,22 @@
               :rows="8"
             />
           </div>
+        </div>
 
-          <v-textarea
-            v-model="formData.ai_generation_prompt"
-            :label="$t('scenarioManager.settings.aiGenerationPrompt')"
-            :hint="$t('scenarioManager.settings.aiGenerationPromptHint')"
-            variant="outlined"
-            rows="2"
-            class="mb-4"
-            persistent-hint
-          />
+        <div class="settings-section">
+          <h4 class="section-title">{{ $t('evaluation.briefing.title') }}</h4>
 
-          <v-textarea
-            v-model="formData.task_description"
-            :label="$t('scenarioManager.settings.taskDescription')"
-            :hint="$t('scenarioManager.settings.taskDescriptionHint')"
-            variant="outlined"
-            rows="3"
-            class="mb-4"
-            persistent-hint
-          >
-            <template #label>
-              <span class="field-label-inline">
-                <span>{{ $t('scenarioManager.settings.taskDescription') }}</span>
-                <LInfoTooltip
-                  :title="$t('scenarioManager.settings.taskDescriptionTooltipTitle')"
-                  :aria-label="$t('scenarioManager.settings.taskDescriptionTooltipTitle')"
-                  :markdown="$t('scenarioManager.settings.taskDescriptionTooltipMarkdown')"
-                  location="bottom"
-                  max-width="460"
-                  size="x-small"
-                />
-              </span>
-            </template>
-            <template #append-inner>
+          <div class="markdown-field mb-4">
+            <div class="markdown-field__header">
+              <div class="markdown-field__label">{{ $t('evaluation.briefing.taskDescription') }}</div>
               <LAIFieldButton
                 field-key="scenario.settings.task_description"
                 :context="buildScenarioAiContext()"
                 icon-only
                 size="small"
-                @generated="formData.task_description = $event"
+                @generated="updateBriefingTaskDescription($event)"
               />
-            </template>
-          </v-textarea>
-
-          <v-combobox
-            v-model="formData.evaluation_criteria"
-            :label="$t('scenarioManager.settings.evaluationCriteria')"
-            :hint="$t('scenarioManager.settings.evaluationCriteriaHint')"
-            multiple
-            chips
-            closable-chips
-            clearable
-            variant="outlined"
-            persistent-hint
-          >
-            <template #label>
-              <span class="field-label-inline">
-                <span>{{ $t('scenarioManager.settings.evaluationCriteria') }}</span>
-                <LInfoTooltip
-                  :title="$t('scenarioManager.settings.evaluationCriteriaTooltipTitle')"
-                  :aria-label="$t('scenarioManager.settings.evaluationCriteriaTooltipTitle')"
-                  :markdown="$t('scenarioManager.settings.evaluationCriteriaTooltipMarkdown')"
-                  location="bottom"
-                  max-width="460"
-                  size="x-small"
-                />
-              </span>
-            </template>
-            <template #append-inner>
-              <LAIFieldButton
-                field-key="scenario.settings.evaluation_criteria"
-                :context="buildScenarioAiContext()"
-                icon-only
-                size="small"
-                @generated="applyGeneratedCriteria"
-              />
-            </template>
-          </v-combobox>
-        </div>
-
-        <!-- Evaluation Briefing -->
-        <div class="settings-section">
-          <h4 class="section-title">{{ $t('evaluation.briefing.title') }}</h4>
-
-          <div class="markdown-field mb-4">
-            <div class="markdown-field__label">{{ $t('evaluation.briefing.taskDescription') }}</div>
+            </div>
             <LMarkdownEditor
               :model-value="briefingTaskDescription"
               :placeholder="$t('evaluation.briefing.taskDescriptionPlaceholder')"
@@ -151,7 +81,16 @@
           </div>
 
           <div class="markdown-field">
-            <div class="markdown-field__label">{{ $t('evaluation.briefing.criteria') }}</div>
+            <div class="markdown-field__header">
+              <div class="markdown-field__label">{{ $t('evaluation.briefing.criteria') }}</div>
+              <LAIFieldButton
+                field-key="scenario.settings.evaluation_criteria"
+                :context="buildScenarioAiContext()"
+                icon-only
+                size="small"
+                @generated="updateBriefingCriteria($event)"
+              />
+            </div>
             <LMarkdownEditor
               :model-value="briefingCriteria"
               :placeholder="briefingCriteriaPlaceholder"
@@ -432,7 +371,6 @@ const excludedCollabUsernames = computed(() => {
   const owner = props.scenario?.owner_name ? [props.scenario.owner_name] : []
   return [...new Set([...existing, ...owner])]
 })
-
 const isComparisonScenario = computed(() => {
   const typeId = Number(props.scenario?.function_type_id)
   const typeName = String(
@@ -453,12 +391,16 @@ const briefingEvalConfig = computed(() => {
 const briefingTaskDescription = computed(() => {
   return (
     getLocalizedText(briefingEvalConfig.value?.taskDescriptionMarkdown, locale.value) ||
-    getLocalizedText(briefingEvalConfig.value?.question, locale.value)
+    getLocalizedText(briefingEvalConfig.value?.question, locale.value) ||
+    formData.value.task_description
   )
 })
 
 const briefingCriteria = computed(() => {
-  return getLocalizedText(briefingEvalConfig.value?.criteriaMarkdown, locale.value)
+  return (
+    getLocalizedText(briefingEvalConfig.value?.criteriaMarkdown, locale.value) ||
+    criteriaListToMarkdown(formData.value.evaluation_criteria, locale.value)
+  )
 })
 
 const briefingCriteriaPlaceholder = computed(() => [
@@ -467,8 +409,6 @@ const briefingCriteriaPlaceholder = computed(() => [
   locale.value === 'en' ? '- Factual accuracy' : '- Fachliche Genauigkeit',
   locale.value === 'en' ? '- Style and clarity' : '- Stil und Klarheit'
 ].join('\n'))
-
-
 // Validation rules
 const rules = {
   required: v => !!v || t('validation.required')
@@ -496,18 +436,36 @@ function normalizeCriteriaList(value) {
 }
 
 function buildScenarioAiContext() {
+  const taskDescription = briefingTaskDescription.value || formData.value.task_description || ''
+  const criteriaList = criteriaMarkdownToList(briefingCriteria.value)
+
   return {
     scenario_type: props.scenario?.function_type || '',
     scenario_name: formData.value.scenario_name || '',
     existing_description: formData.value.description || '',
-    existing_task_description: formData.value.task_description || '',
-    existing_evaluation_criteria: normalizeCriteriaList(formData.value.evaluation_criteria).join(', '),
+    existing_task_description: taskDescription,
+    existing_evaluation_criteria: criteriaList.join(', '),
     generation_prompt: formData.value.ai_generation_prompt || ''
   }
 }
 
-function applyGeneratedCriteria(value) {
-  formData.value.evaluation_criteria = normalizeCriteriaList(value)
+function normalizeMarkdownLine(value) {
+  return String(value || '')
+    .replace(/^#{1,6}\s+/, '')
+    .replace(/^[-*+]\s+/, '')
+    .replace(/^\d+\.\s+/, '')
+    .replace(/[*_~`]/g, '')
+    .trim()
+}
+
+function criteriaMarkdownToList(markdown) {
+  if (!markdown) return []
+
+  return markdown
+    .split('\n')
+    .map(normalizeMarkdownLine)
+    .filter(Boolean)
+    .filter((value, index, array) => array.indexOf(value) === index)
 }
 
 function parseScenarioConfig(rawConfig) {
@@ -565,14 +523,20 @@ async function saveSettings() {
 
   saving.value = true
   try {
+    const nextTaskDescription = briefingTaskDescription.value || formData.value.task_description || ''
+    const nextCriteria = criteriaMarkdownToList(briefingCriteria.value)
+
+    formData.value.task_description = nextTaskDescription
+    formData.value.evaluation_criteria = nextCriteria
+
     const nextConfig = {
       ...(formData.value.config || {}),
       description: formData.value.description,
       distribution_mode: formData.value.config?.distribution_mode || 'all',
       order_mode: formData.value.config?.order_mode || 'random',
       ai_generation_prompt: formData.value.ai_generation_prompt || '',
-      task_description: formData.value.task_description || '',
-      evaluation_criteria: normalizeCriteriaList(formData.value.evaluation_criteria)
+      task_description: nextTaskDescription,
+      evaluation_criteria: nextCriteria
     }
 
     await updateScenario(props.scenario.id, {
@@ -582,8 +546,8 @@ async function saveSettings() {
       end: formData.value.end,
       status: formData.value.status,
       visibility: formData.value.visibility,
-      task_description: formData.value.task_description || '',
-      evaluation_criteria: normalizeCriteriaList(formData.value.evaluation_criteria),
+      task_description: nextTaskDescription,
+      evaluation_criteria: nextCriteria,
       config_json: nextConfig
     })
     emit('saved')
@@ -605,11 +569,19 @@ function ensureBriefingFields() {
   }
 
   const config = formData.value.config.eval_config.config
+  const rootTaskDescription = formData.value.task_description || ''
+  const rootCriteria = normalizeCriteriaList(formData.value.evaluation_criteria)
 
   if (!config.taskDescriptionMarkdown) {
-    config.taskDescriptionMarkdown = isComparisonScenario.value
-      ? setLocalizedText(config.question, getLocalizedText(config.question, locale.value), locale.value)
-      : { de: '', en: '' }
+    const fallbackTaskDescription =
+      getLocalizedText(config.question, 'de') ||
+      getLocalizedText(config.question, 'en') ||
+      rootTaskDescription
+
+    config.taskDescriptionMarkdown = {
+      de: getLocalizedText(config.taskDescriptionMarkdown, 'de') || fallbackTaskDescription || '',
+      en: getLocalizedText(config.taskDescriptionMarkdown, 'en') || fallbackTaskDescription || ''
+    }
   }
 
   if (!config.question && formData.value.config.question) {
@@ -625,8 +597,16 @@ function ensureBriefingFields() {
 
   if (!config.criteriaMarkdown) {
     config.criteriaMarkdown = {
-      de: getLocalizedText(formData.value.config.criteriaMarkdown, 'de') || criteriaListToMarkdown(config.criteria, 'de'),
-      en: getLocalizedText(formData.value.config.criteriaMarkdown, 'en') || criteriaListToMarkdown(config.criteria, 'en')
+      de:
+        getLocalizedText(formData.value.config.criteriaMarkdown, 'de') ||
+        getLocalizedText(formData.value.config.evaluation_criteria_markdown, 'de') ||
+        criteriaListToMarkdown(rootCriteria, 'de') ||
+        criteriaListToMarkdown(config.criteria, 'de'),
+      en:
+        getLocalizedText(formData.value.config.criteriaMarkdown, 'en') ||
+        getLocalizedText(formData.value.config.evaluation_criteria_markdown, 'en') ||
+        criteriaListToMarkdown(rootCriteria, 'en') ||
+        criteriaListToMarkdown(config.criteria, 'en')
     }
   }
 }
@@ -648,6 +628,8 @@ function updateBriefingTaskDescription(value) {
       locale.value
     )
   }
+
+  formData.value.task_description = value || ''
 }
 
 function updateBriefingCriteria(value) {
@@ -659,6 +641,8 @@ function updateBriefingCriteria(value) {
     value,
     locale.value
   )
+
+  formData.value.evaluation_criteria = criteriaMarkdownToList(value)
 }
 
 function confirmDelete() {
@@ -677,7 +661,7 @@ onMounted(async () => {
 
     formData.value = {
       scenario_name: props.scenario.scenario_name || '',
-      description: config.description || props.scenario.description || '',
+      description: props.scenario.description || config.description || '',
       ai_generation_prompt: config.ai_generation_prompt || '',
       task_description: config.task_description || '',
       evaluation_criteria: normalizeCriteriaList(config.evaluation_criteria),

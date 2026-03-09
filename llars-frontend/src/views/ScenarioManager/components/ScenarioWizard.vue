@@ -345,81 +345,20 @@
               :hint="$t('scenarioManager.wizard.step2.aiGenerationPromptHint')"
               variant="outlined"
               rows="2"
-              class="mb-3"
+              class="mt-4 mb-3"
               persistent-hint
             />
 
-            <v-textarea
-              v-model="formData.task_description"
-              :label="$t('scenarioManager.wizard.step2.taskDescriptionField')"
-              :hint="$t('scenarioManager.wizard.step2.taskDescriptionHint')"
-              variant="outlined"
-              rows="3"
-              class="mb-3"
-              persistent-hint
-            >
-              <template #label>
-                <span class="field-label-inline">
-                  <span>{{ $t('scenarioManager.wizard.step2.taskDescriptionField') }}</span>
-                  <LInfoTooltip
-                    :title="$t('scenarioManager.wizard.step2.taskDescriptionTooltipTitle')"
-                    :aria-label="$t('scenarioManager.wizard.step2.taskDescriptionTooltipTitle')"
-                    :markdown="$t('scenarioManager.wizard.step2.taskDescriptionTooltipMarkdown')"
-                    location="bottom"
-                    max-width="460"
-                    size="x-small"
-                  />
-                </span>
-              </template>
-              <template #append-inner>
+            <div class="wizard-markdown-field mt-4">
+              <div class="wizard-markdown-field__header">
+                <span class="wizard-markdown-field__label">{{ $t('evaluation.briefing.taskDescription') }}</span>
                 <LAIFieldButton
                   field-key="scenario.settings.task_description"
                   :context="buildScenarioAiContext()"
                   icon-only
                   size="small"
-                  @generated="formData.task_description = $event"
+                  @generated="updateBriefingTaskDescription($event)"
                 />
-              </template>
-            </v-textarea>
-
-            <v-combobox
-              v-model="formData.evaluation_criteria"
-              :label="$t('scenarioManager.wizard.step2.evaluationCriteriaField')"
-              :hint="$t('scenarioManager.wizard.step2.evaluationCriteriaHint')"
-              multiple
-              chips
-              closable-chips
-              clearable
-              variant="outlined"
-              persistent-hint
-            >
-              <template #label>
-                <span class="field-label-inline">
-                  <span>{{ $t('scenarioManager.wizard.step2.evaluationCriteriaField') }}</span>
-                  <LInfoTooltip
-                    :title="$t('scenarioManager.wizard.step2.evaluationCriteriaTooltipTitle')"
-                    :aria-label="$t('scenarioManager.wizard.step2.evaluationCriteriaTooltipTitle')"
-                    :markdown="$t('scenarioManager.wizard.step2.evaluationCriteriaTooltipMarkdown')"
-                    location="bottom"
-                    max-width="460"
-                    size="x-small"
-                  />
-                </span>
-              </template>
-              <template #append-inner>
-                <LAIFieldButton
-                  field-key="scenario.settings.evaluation_criteria"
-                  :context="buildScenarioAiContext()"
-                  icon-only
-                  size="small"
-                  @generated="applyGeneratedCriteria"
-                />
-              </template>
-            </v-combobox>
-
-            <div class="wizard-markdown-field mt-4">
-              <div class="wizard-markdown-field__label">
-                {{ $t('evaluation.briefing.taskDescription') }}
               </div>
               <LMarkdownEditor
                 :model-value="briefingTaskDescription"
@@ -430,8 +369,15 @@
             </div>
 
             <div class="wizard-markdown-field mt-4">
-              <div class="wizard-markdown-field__label">
-                {{ $t('evaluation.briefing.criteria') }}
+              <div class="wizard-markdown-field__header">
+                <span class="wizard-markdown-field__label">{{ $t('evaluation.briefing.criteria') }}</span>
+                <LAIFieldButton
+                  field-key="scenario.settings.evaluation_criteria"
+                  :context="buildScenarioAiContext()"
+                  icon-only
+                  size="small"
+                  @generated="updateBriefingCriteria($event)"
+                />
               </div>
               <LMarkdownEditor
                 :model-value="briefingCriteria"
@@ -730,24 +676,17 @@
                 <LMarkdownContent :markdown="formData.description" compact />
               </div>
             </div>
-            <div class="summary-row" v-if="formData.task_description">
+            <div class="summary-row" v-if="briefingTaskDescription">
               <span class="summary-label">{{ $t('scenarioManager.wizard.step5.taskDescriptionLabel') }}</span>
-              <span class="summary-value">{{ formData.task_description }}</span>
+              <div class="summary-value summary-value--markdown">
+                <LMarkdownContent :markdown="briefingTaskDescription" compact />
+              </div>
             </div>
-            <div class="summary-row" v-if="formData.evaluation_criteria.length > 0">
+            <div class="summary-row" v-if="briefingCriteria">
               <span class="summary-label">{{ $t('scenarioManager.wizard.step5.evaluationCriteriaLabel') }}</span>
-              <span class="summary-value">
-                <div class="d-flex flex-wrap gap-1 justify-end">
-                  <v-chip
-                    v-for="criterion in formData.evaluation_criteria"
-                    :key="criterion"
-                    size="small"
-                    variant="tonal"
-                  >
-                    {{ criterion }}
-                  </v-chip>
-                </div>
-              </span>
+              <div class="summary-value summary-value--markdown">
+                <LMarkdownContent :markdown="briefingCriteria" compact />
+              </div>
             </div>
           </div>
 
@@ -1241,11 +1180,19 @@ function ensureEvalConfigInitialized() {
 function ensureBriefingFields() {
   ensureEvalConfigInitialized()
   const config = formData.value.evalConfig.config
+  const rootTaskDescription = formData.value.task_description || ''
+  const rootCriteria = normalizeCriteriaList(formData.value.evaluation_criteria)
 
   if (!config.taskDescriptionMarkdown) {
-    config.taskDescriptionMarkdown = isComparisonType.value
-      ? setLocalizedText(config.question, getLocalizedText(config.question, locale.value), locale.value)
-      : { de: '', en: '' }
+    const fallbackTaskDescription =
+      getLocalizedText(config.question, 'de') ||
+      getLocalizedText(config.question, 'en') ||
+      rootTaskDescription
+
+    config.taskDescriptionMarkdown = {
+      de: getLocalizedText(config.taskDescriptionMarkdown, 'de') || fallbackTaskDescription || '',
+      en: getLocalizedText(config.taskDescriptionMarkdown, 'en') || fallbackTaskDescription || ''
+    }
   }
 
   if (isComparisonType.value && !config.question) {
@@ -1257,8 +1204,16 @@ function ensureBriefingFields() {
 
   if (!config.criteriaMarkdown) {
     config.criteriaMarkdown = {
-      de: criteriaListToMarkdown(config.criteria, 'de'),
-      en: criteriaListToMarkdown(config.criteria, 'en')
+      de:
+        getLocalizedText(formData.value.config?.criteriaMarkdown, 'de') ||
+        getLocalizedText(formData.value.config?.evaluation_criteria_markdown, 'de') ||
+        criteriaListToMarkdown(rootCriteria, 'de') ||
+        criteriaListToMarkdown(config.criteria, 'de'),
+      en:
+        getLocalizedText(formData.value.config?.criteriaMarkdown, 'en') ||
+        getLocalizedText(formData.value.config?.evaluation_criteria_markdown, 'en') ||
+        criteriaListToMarkdown(rootCriteria, 'en') ||
+        criteriaListToMarkdown(config.criteria, 'en')
     }
   }
 
@@ -1286,12 +1241,16 @@ function copyBriefingFields(sourceConfig, targetConfig) {
 const briefingTaskDescription = computed(() => {
   return (
     getLocalizedText(formData.value.evalConfig?.config?.taskDescriptionMarkdown, locale.value) ||
-    getLocalizedText(formData.value.evalConfig?.config?.question, locale.value)
+    getLocalizedText(formData.value.evalConfig?.config?.question, locale.value) ||
+    formData.value.task_description
   )
 })
 
 const briefingCriteria = computed(() => {
-  return getLocalizedText(formData.value.evalConfig?.config?.criteriaMarkdown, locale.value)
+  return (
+    getLocalizedText(formData.value.evalConfig?.config?.criteriaMarkdown, locale.value) ||
+    criteriaListToMarkdown(formData.value.evaluation_criteria, locale.value)
+  )
 })
 
 const briefingCriteriaPlaceholder = computed(() => [
@@ -1309,6 +1268,7 @@ function updateBriefingTaskDescription(value) {
   if (isComparisonType.value) {
     config.question = setLocalizedText(config.question, value, locale.value)
   }
+  formData.value.task_description = value || ''
   formData.value.evalConfig.presetId = 'custom'
 }
 
@@ -1317,6 +1277,7 @@ function updateBriefingCriteria(value) {
   if (!config) return
 
   config.criteriaMarkdown = setLocalizedText(config.criteriaMarkdown, value, locale.value)
+  formData.value.evaluation_criteria = criteriaMarkdownToList(value)
   formData.value.evalConfig.presetId = 'custom'
 }
 
@@ -1424,19 +1385,37 @@ function normalizeCriteriaList(value) {
   return []
 }
 
+function normalizeMarkdownLine(value) {
+  return String(value || '')
+    .replace(/^#{1,6}\s+/, '')
+    .replace(/^[-*+]\s+/, '')
+    .replace(/^\d+\.\s+/, '')
+    .replace(/[*_~`]/g, '')
+    .trim()
+}
+
+function criteriaMarkdownToList(markdown) {
+  if (!markdown) return []
+
+  return markdown
+    .split('\n')
+    .map(normalizeMarkdownLine)
+    .filter(Boolean)
+    .filter((value, index, array) => array.indexOf(value) === index)
+}
+
 function buildScenarioAiContext() {
+  const taskDescription = briefingTaskDescription.value || formData.value.task_description || ''
+  const criteriaList = criteriaMarkdownToList(briefingCriteria.value)
+
   return {
     scenario_type: formData.value.evalType || '',
     scenario_name: formData.value.scenario_name || '',
     existing_description: formData.value.description || '',
-    existing_task_description: formData.value.task_description || '',
-    existing_evaluation_criteria: normalizeCriteriaList(formData.value.evaluation_criteria).join(', '),
+    existing_task_description: taskDescription,
+    existing_evaluation_criteria: criteriaList.join(', '),
     generation_prompt: formData.value.ai_generation_prompt || ''
   }
-}
-
-function applyGeneratedCriteria(value) {
-  formData.value.evaluation_criteria = normalizeCriteriaList(value)
 }
 
 function goToStep(index) {
@@ -3355,6 +3334,33 @@ onMounted(() => {
 }
 
 .summary-value {
+  font-weight: 500;
+  color: rgb(var(--v-theme-on-surface));
+}
+
+.summary-value--markdown {
+  max-width: min(560px, 100%);
+  padding: 10px 12px;
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  border-radius: 10px;
+  background: rgba(var(--v-theme-surface), 0.9);
+}
+
+.wizard-markdown-field {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.wizard-markdown-field__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.wizard-markdown-field__label {
+  font-size: 0.875rem;
   font-weight: 500;
   color: rgb(var(--v-theme-on-surface));
 }

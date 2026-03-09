@@ -141,8 +141,8 @@ def rdb(real_app):
         yield _db
 
         _db.session.remove()
-        _db.engine.dispose()
         _db.drop_all()
+        _db.engine.dispose()
 
 
 def _seed_roles_and_permissions(db_instance):

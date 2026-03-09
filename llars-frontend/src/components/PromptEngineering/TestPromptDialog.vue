@@ -302,6 +302,7 @@
 import { ref, computed, nextTick, watch, onMounted, onUnmounted } from 'vue'
 import { io } from 'socket.io-client'
 import { sanitizeHtml } from '@/utils/sanitize'
+import { AUTH_STORAGE_KEYS, getAuthStorageItem } from '@/utils/authStorage'
 import LlmModelSelect from '@/components/common/LlmModelSelect.vue'
 import { useI18n } from 'vue-i18n'
 
@@ -516,17 +517,21 @@ function initSocket() {
   if (socket) return
 
   const username = localStorage.getItem('username') || t('promptEngineering.user.unknown')
+  const token = getAuthStorageItem(AUTH_STORAGE_KEYS.token)
   const rawBase = import.meta.env.VITE_API_BASE_URL || window.location.origin
   const trimmedBase = String(rawBase || '').replace(/\/+$/, '')
   const socketBase = trimmedBase.endsWith('/api')
     ? trimmedBase.slice(0, -4)
     : (trimmedBase || window.location.origin)
 
+  const query = { username }
+  if (token) query.token = token
+
   socket = io(socketBase, {
     path: '/socket.io/',
     transports: socketioTransports,
     upgrade: socketioEnableWebsocket,
-    query: { username },
+    query,
     headers: { 'Content-Type': 'application/json; charset=utf-8' }
   })
 

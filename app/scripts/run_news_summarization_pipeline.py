@@ -23,15 +23,9 @@ def get_or_create_feature_type(db, name: str) -> int:
     return ft.type_id
 
 
-def get_or_create_llm(db, name: str) -> int:
-    """Get or create an LLM by name."""
-    from db.models import LLM
-    llm = LLM.query.filter_by(name=name).first()
-    if not llm:
-        llm = LLM(name=name)
-        db.session.add(llm)
-        db.session.flush()
-    return llm.llm_id
+def get_model_id_for_output(model_name: str) -> str:
+    """Return a clean model_id string from a model name."""
+    return model_name or "Unknown"
 
 
 def main():
@@ -108,7 +102,7 @@ def main():
         scenario_user = ScenarioUsers(
             scenario_id=source_scenario.id,
             user_id=admin.id,
-            role=ScenarioRoles.OWNER
+            role=ScenarioRoles.VIEWER
         )
         db.session.add(scenario_user)
         db.session.commit()
@@ -272,14 +266,13 @@ def main():
 
             # Create FEATURE for each generated summary (displayed on left side for ranking)
             for output in source_outputs:
-                model_name = output.llm_model_name.split('/')[-1] if output.llm_model_name else "Unknown"
-                llm_id = get_or_create_llm(db, model_name)
+                model_id = output.llm_model_name or "Unknown"
 
                 feature = Feature(
                     item_id=ranking_item.item_id,
                     content=output.generated_content or "No content generated",
                     type_id=summary_type_id,
-                    llm_id=llm_id
+                    model_id=model_id
                 )
                 db.session.add(feature)
                 features_created += 1
@@ -288,7 +281,7 @@ def main():
             scenario_item = ScenarioItems(scenario_id=ranking_scenario.id, item_id=ranking_item.item_id)
             db.session.add(scenario_item)
 
-        ranking_user = ScenarioUsers(scenario_id=ranking_scenario.id, user_id=admin.id, role=ScenarioRoles.OWNER)
+        ranking_user = ScenarioUsers(scenario_id=ranking_scenario.id, user_id=admin.id, role=ScenarioRoles.VIEWER)
         db.session.add(ranking_user)
         db.session.commit()
 

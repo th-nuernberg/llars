@@ -20,6 +20,7 @@ cp .env.template.development .env
 | admin | admin123 |
 | researcher | admin123 |
 | evaluator | admin123 |
+| chatbot_manager | admin123 |
 
 ## 4) Matomo (Admin)
 

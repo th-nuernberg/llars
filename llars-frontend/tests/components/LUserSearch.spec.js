@@ -30,7 +30,12 @@ vi.mock('axios', () => ({
 // Mock userUtils
 vi.mock('@/utils/userUtils', () => ({
   getAvatarUrl: vi.fn((user) => `https://avatar.test/${user?.username || 'default'}`),
-  formatDisplayName: vi.fn((username) => username?.charAt(0).toUpperCase() + username?.slice(1) || '')
+  formatDisplayName: vi.fn((username) => username?.charAt(0).toUpperCase() + username?.slice(1) || ''),
+  getUserDisplayName: vi.fn((userOrUsername) => {
+    if (!userOrUsername) return ''
+    if (typeof userOrUsername === 'string') return userOrUsername.charAt(0).toUpperCase() + userOrUsername.slice(1)
+    return userOrUsername.display_name || (userOrUsername.username?.charAt(0).toUpperCase() + userOrUsername.username?.slice(1)) || ''
+  })
 }))
 
 // Mock authStorage
@@ -100,6 +105,9 @@ describe('LUserSearch', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.useFakeTimers()
+    // The component calls fetchUsers() on mount (no query → loads all users).
+    // Provide a default resolved value so that onMounted call doesn't blow up.
+    axios.get.mockResolvedValue({ data: { users: [] } })
   })
 
   afterEach(() => {
@@ -201,14 +209,24 @@ describe('LUserSearch', () => {
   // ==================== Search Functionality Tests ====================
 
   describe('Search Functionality', () => {
-    it('COMP_USR_013: does not search with less than 2 characters', async () => {
+    it('COMP_USR_013: searches even with less than 2 characters', async () => {
       const wrapper = mountLUserSearch()
+      await flushPromises() // let onMounted fetchUsers() resolve
+
+      axios.get.mockClear()
 
       await triggerSearch(wrapper, 'a')
       vi.advanceTimersByTime(300)
       await flushPromises()
 
-      expect(axios.get).not.toHaveBeenCalled()
+      // The component calls fetchUsers for any query (no min-length check)
+      expect(axios.get).toHaveBeenCalledTimes(1)
+      expect(axios.get).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          params: expect.objectContaining({ q: 'a', limit: 15 })
+        })
+      )
     })
 
     it('COMP_USR_014: searches with 2 or more characters', async () => {
@@ -224,9 +242,11 @@ describe('LUserSearch', () => {
     })
 
     it('COMP_USR_015: debounces search requests', async () => {
-      axios.get.mockResolvedValue({ data: { users: [] } })
-
       const wrapper = mountLUserSearch()
+      await flushPromises() // let onMounted fetchUsers() resolve
+
+      axios.get.mockClear()
+      axios.get.mockResolvedValue({ data: { users: [] } })
 
       await triggerSearch(wrapper, 'ab')
       vi.advanceTimersByTime(100)
@@ -236,7 +256,7 @@ describe('LUserSearch', () => {
       vi.advanceTimersByTime(300)
       await flushPromises()
 
-      // Only one call due to debouncing
+      // Only one call due to debouncing (onMounted already cleared above)
       expect(axios.get).toHaveBeenCalledTimes(1)
     })
 
@@ -293,7 +313,7 @@ describe('LUserSearch', () => {
 
   describe('Exclude Usernames', () => {
     it('COMP_USR_019: filters out excluded usernames', async () => {
-      axios.get.mockResolvedValueOnce({
+      const usersResponse = {
         data: {
           users: [
             { username: 'alice' },
@@ -301,11 +321,15 @@ describe('LUserSearch', () => {
             { username: 'charlie' }
           ]
         }
-      })
+      }
+      // First call is from onMounted, second from the search trigger
+      axios.get.mockResolvedValueOnce({ data: { users: [] } })
+        .mockResolvedValueOnce(usersResponse)
 
       const wrapper = mountLUserSearch({
         excludeUsernames: ['bob']
       })
+      await flushPromises() // let onMounted resolve
 
       await triggerSearch(wrapper, 'test')
       vi.advanceTimersByTime(300)
@@ -338,13 +362,12 @@ describe('LUserSearch', () => {
     })
 
     it('COMP_USR_021: works with empty excludeUsernames', async () => {
-      axios.get.mockResolvedValueOnce({
-        data: {
-          users: [{ username: 'test' }]
-        }
-      })
+      // First call is from onMounted, second from the search trigger
+      axios.get.mockResolvedValueOnce({ data: { users: [] } })
+        .mockResolvedValueOnce({ data: { users: [{ username: 'test' }] } })
 
       const wrapper = mountLUserSearch({ excludeUsernames: [] })
+      await flushPromises() // let onMounted resolve
 
       await triggerSearch(wrapper, 'test')
       vi.advanceTimersByTime(300)
@@ -508,12 +531,13 @@ describe('LUserSearch', () => {
 
   describe('Loading State', () => {
     it('COMP_USR_036: shows loading during search', async () => {
+      const wrapper = mountLUserSearch()
+      await flushPromises() // let onMounted fetchUsers() resolve
+
       let resolveSearch
       axios.get.mockImplementationOnce(() => new Promise(resolve => {
         resolveSearch = resolve
       }))
-
-      const wrapper = mountLUserSearch()
 
       await triggerSearch(wrapper, 'test')
       vi.advanceTimersByTime(300)
@@ -578,24 +602,45 @@ describe('LUserSearch', () => {
       expect(wrapper.vm.suggestions).toEqual([])
     })
 
-    it('COMP_USR_041: handles whitespace-only query', async () => {
+    it('COMP_USR_041: handles whitespace-only query by fetching all users', async () => {
       const wrapper = mountLUserSearch()
+      await flushPromises() // let onMounted fetchUsers() resolve
+
+      axios.get.mockClear()
 
       await triggerSearch(wrapper, '   ')
       vi.advanceTimersByTime(300)
       await flushPromises()
 
-      expect(axios.get).not.toHaveBeenCalled()
+      // Whitespace is trimmed to empty string, so fetchUsers('') is called
+      // which fetches all users (no q param, just limit)
+      expect(axios.get).toHaveBeenCalledTimes(1)
+      expect(axios.get).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          params: { limit: 15 }
+        })
+      )
     })
 
-    it('COMP_USR_042: handles null query', async () => {
+    it('COMP_USR_042: handles null query by fetching all users', async () => {
       const wrapper = mountLUserSearch()
+      await flushPromises() // let onMounted fetchUsers() resolve
+
+      axios.get.mockClear()
 
       await triggerSearch(wrapper, null)
       vi.advanceTimersByTime(300)
       await flushPromises()
 
-      expect(axios.get).not.toHaveBeenCalled()
+      // null is converted to '' via String(query || '').trim(), so fetchUsers('') is called
+      expect(axios.get).toHaveBeenCalledTimes(1)
+      expect(axios.get).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          params: { limit: 15 }
+        })
+      )
     })
 
     it('COMP_USR_043: handles special characters in query', async () => {
@@ -645,9 +690,11 @@ describe('LUserSearch', () => {
     })
 
     it('COMP_USR_046: clears previous timer on new search', async () => {
-      axios.get.mockResolvedValue({ data: { users: [] } })
-
       const wrapper = mountLUserSearch()
+      await flushPromises() // let onMounted fetchUsers() resolve
+
+      axios.get.mockClear()
+      axios.get.mockResolvedValue({ data: { users: [] } })
 
       await triggerSearch(wrapper, 'aa')
       vi.advanceTimersByTime(100)
@@ -656,7 +703,7 @@ describe('LUserSearch', () => {
       vi.advanceTimersByTime(300)
       await flushPromises()
 
-      // Should only search for 'bb', not 'aa'
+      // Should only search for 'bb', not 'aa' (debounce cancels 'aa')
       expect(axios.get).toHaveBeenCalledTimes(1)
       expect(axios.get).toHaveBeenCalledWith(
         expect.any(String),
@@ -695,9 +742,11 @@ describe('LUserSearch', () => {
     })
 
     it('COMP_USR_050: passes limit param to search endpoint', async () => {
-      axios.get.mockResolvedValueOnce({ data: { users: [] } })
-
       const wrapper = mountLUserSearch()
+      await flushPromises() // let onMounted fetchUsers() resolve
+
+      axios.get.mockClear()
+      axios.get.mockResolvedValueOnce({ data: { users: [] } })
 
       await triggerSearch(wrapper, 'test')
       vi.advanceTimersByTime(300)
@@ -706,7 +755,7 @@ describe('LUserSearch', () => {
       expect(axios.get).toHaveBeenCalledWith(
         expect.any(String),
         expect.objectContaining({
-          params: expect.objectContaining({ limit: 10 })
+          params: expect.objectContaining({ limit: 15 })
         })
       )
     })

@@ -10,6 +10,60 @@ Dieses Dokument beschreibt die Einrichtung der GitLab CI/CD Pipeline für automa
 
 **Wichtig:** LLARS verwendet einen **Shell Runner direkt auf dem Server** - kein SSH für Deployments nötig!
 
+### Nightly Kachel- und Workflow-Regression
+
+Der Nightly-Lauf enthält eine contract-basierte Playwright-Suite:
+
+- Tile-Contract: `llars-frontend/src/config/home_tiles.contract.json`
+- Workflow-Contract: `llars-frontend/e2e/nightly/nightly_workflows.contract.json`
+- Activity-Contract: `llars-frontend/e2e/nightly/nightly_activities.contract.json`
+- Tile-Tests: `llars-frontend/e2e/nightly/tile-regression.spec.js`
+- Workflow-Tests: `llars-frontend/e2e/nightly/workflows.spec.js`
+- Coverage-Gate: `scripts/testing/validate_nightly_coverage.py`
+- Matrix-Doku: `docs/testing/nightly/NIGHTLY_TILE_MATRIX.md`
+- Nightly-Accounts: `test_admin`, `test_researcher`, `test_evaluator`, `test_chatbot_manager`
+- Laufkennzeichnung: `Nightly Test`
+
+Regeln:
+
+1. Testtitel müssen exakt den Kachelnamen bzw. Workflownamen entsprechen.
+2. Bei Änderung an `Home.vue` oder am Tile-Contract sind Test- und Dokuänderungen Pflicht, sonst CI-Fehler.
+3. Nightly schaltet Produktion nur nach erfolgreichem `test:e2e:nightly:tiles`.
+
+Manueller Aufruf auf dem Server:
+
+```bash
+cd /var/llars
+export E2E_TEST_PASSWORD=$(grep '^LLARS_ADMIN_PASSWORD=' .env | cut -d= -f2- || echo "admin123")
+export E2E_RUN_TAG="Nightly Test"
+export E2E_ADMIN_USER="test_admin"
+export E2E_RESEARCHER_USER="test_researcher"
+export E2E_EVALUATOR_USER="test_evaluator"
+export E2E_CHATBOT_MANAGER_USER="test_chatbot_manager"
+export E2E_BOOTSTRAP_ADMIN_USER="admin"
+export E2E_BOOTSTRAP_TEST_USERS="true"
+export E2E_KEEP_TEST_USERS="false"
+export E2E_BOOTSTRAP_ADMIN_PASSWORD="${E2E_TEST_PASSWORD}"
+docker compose --profile testing build smoke-test-service
+python3 scripts/testing/validate_nightly_coverage.py
+docker compose --profile testing run --rm --entrypoint "" \
+  -e PLAYWRIGHT_BASE_URL=http://localhost:55080 \
+  -e E2E_TEST_PASSWORD="${E2E_TEST_PASSWORD}" \
+  -e E2E_RUN_TAG="${E2E_RUN_TAG}" \
+  -e E2E_ADMIN_USER="${E2E_ADMIN_USER}" \
+  -e E2E_RESEARCHER_USER="${E2E_RESEARCHER_USER}" \
+  -e E2E_EVALUATOR_USER="${E2E_EVALUATOR_USER}" \
+  -e E2E_CHATBOT_MANAGER_USER="${E2E_CHATBOT_MANAGER_USER}" \
+  -e E2E_BOOTSTRAP_ADMIN_USER="${E2E_BOOTSTRAP_ADMIN_USER}" \
+  -e E2E_BOOTSTRAP_ADMIN_PASSWORD="${E2E_BOOTSTRAP_ADMIN_PASSWORD}" \
+  -e E2E_BOOTSTRAP_TEST_USERS="${E2E_BOOTSTRAP_TEST_USERS}" \
+  -e E2E_KEEP_TEST_USERS="${E2E_KEEP_TEST_USERS}" \
+  -e NODE_TLS_REJECT_UNAUTHORIZED=0 \
+  smoke-test-service \
+  bash -c "cd /tests/e2e && npx playwright test --project=chromium --workers=1 nightly/tile-regression.spec.js nightly/workflows.spec.js"
+python3 scripts/testing/cleanup_nightly_test_users.py
+```
+
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
 │                     LLARS CI/CD PIPELINE                            │
@@ -139,7 +193,7 @@ lint:frontend:  # JavaScript: eslint
 test:unit:backend:     # pytest tests/unit/
 test:unit:frontend:    # npm run test:run (vitest)
 test:integration:      # pytest tests/integration/
-test:e2e:              # playwright (nur main)
+test:nightly:contracts: # Contract-Validator
 security:scan:         # pip-audit, npm audit
 ```
 
@@ -183,8 +237,10 @@ build:docker:   # docker compose build
 
 ```yaml
 deploy:staging:     # Automatisch bei develop (Shell Runner)
+test:e2e:nightly:tiles: # Contract-basierte Nightly-Playwright-Suite
 deploy:production:  # Automatisch bei main (Shell Runner)
 smoke:test:         # Nach Production Deploy
+maintenance:docker-cleanup: # Entfernt ungenutzte Docker-Artefakte (>7 Tage)
 rollback:production: # Manuell bei Problemen
 ```
 
@@ -479,7 +535,8 @@ notify:failure:
 - [ ] test:unit:backend erfolgreich
 - [ ] test:unit:frontend erfolgreich
 - [ ] test:integration erfolgreich
-- [ ] test:e2e erfolgreich
+- [ ] test:nightly:contracts erfolgreich
+- [ ] test:e2e:nightly:tiles erfolgreich
 - [ ] build:docker erfolgreich
 - [ ] deploy:production erfolgreich
 - [ ] smoke:test erfolgreich
@@ -497,4 +554,4 @@ docker compose ps
 
 ---
 
-**Letzte Aktualisierung:** 1. Januar 2026
+**Letzte Aktualisierung:** 5. März 2026

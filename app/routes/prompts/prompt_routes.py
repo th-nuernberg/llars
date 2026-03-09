@@ -10,8 +10,8 @@ from auth.decorators import authentik_required, admin_required, roles_required
 from decorators.error_handler import (
     handle_api_errors, NotFoundError, ValidationError, ConflictError, UnauthorizedError
 )
-from db.database import db
-from db.tables import (User, EmailThread, Message, Feature, FeatureType, LLM, UserFeatureRanking,
+from db.database import db, escape_like
+from db.tables import (User, EmailThread, Message, Feature, FeatureType, UserFeatureRanking,
                        FeatureFunctionType, UserFeatureRating,  UserGroup,ConsultingCategoryType, UserConsultingCategorySelection,
                        FeatureFunctionType, UserFeatureRating, UserMessageRating,
                        UserGroup, UserPrompt, UserPromptShare, PromptCommit,
@@ -578,19 +578,40 @@ def search_users_for_sharing():
     query = request.args.get('q', '').strip()
     limit = min(int(request.args.get('limit', 10)), 50)
 
-    if len(query) < 2:
-        return jsonify({'success': True, 'users': [], 'message': 'Search query must be at least 2 characters'}), 200
-
-    users = User.query.filter(
-        User.username.ilike(f'%{query}%'),
+    filters = [
         User.id != current_user.id,
-        User.deleted_at.is_(None),  # Exclude deleted users
-        User.is_active == True  # Only active users
-    ).limit(limit).all()
+        User.deleted_at.is_(None),
+        User.is_active == True,
+    ]
+    if query:
+        from sqlalchemy import or_
+        safe_q = escape_like(query)
+        filters.append(or_(
+            User.username.ilike(f'%{safe_q}%'),
+            User.first_name.ilike(f'%{safe_q}%'),
+            User.last_name.ilike(f'%{safe_q}%'),
+            User.display_name.ilike(f'%{safe_q}%'),
+        ))
+
+    users = User.query.filter(*filters).limit(limit).all()
+
+    def _build_user(u):
+        avatar_url = None
+        if u.avatar_public_id and u.avatar_file:
+            avatar_url = f"/api/users/avatar/{u.avatar_public_id}"
+        return {
+            'id': u.id,
+            'username': u.username,
+            'display_name': u.display_name,
+            'first_name': u.first_name,
+            'last_name': u.last_name,
+            'avatar_seed': u.get_avatar_seed() if hasattr(u, 'get_avatar_seed') else None,
+            'avatar_url': avatar_url,
+        }
 
     return jsonify({
         'success': True,
-        'users': [{'id': u.id, 'username': u.username, 'avatar_seed': u.get_avatar_seed() if hasattr(u, 'get_avatar_seed') else None} for u in users]
+        'users': [_build_user(u) for u in users]
     }), 200
 
 

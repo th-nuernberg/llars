@@ -8,8 +8,8 @@ from werkzeug.security import check_password_hash
 from . import data_blueprint
 from . import auth_blueprint
 from auth.decorators import authentik_required, admin_required, roles_required
-from db.database import db
-from db.tables import (User, EmailThread, Message, Feature, FeatureType, LLM, UserFeatureRanking,
+from db.database import db, escape_like
+from db.tables import (User, EmailThread, Message, Feature, FeatureType, UserFeatureRanking,
                        FeatureFunctionType, UserFeatureRating,  UserGroup,ConsultingCategoryType, UserConsultingCategorySelection,
                        FeatureFunctionType, UserFeatureRating, UserMessageRating,
                        UserGroup, UserPrompt, UserPromptShare,
@@ -446,13 +446,22 @@ def search_users():
     query = request.args.get('q', '').strip()
     limit = min(int(request.args.get('limit', 10)), 50)
 
-    if len(query) < 2:
-        return jsonify({'users': [], 'message': 'Search query must be at least 2 characters'}), 200
+    filters = [
+        User.id != current_user.id,
+        User.deleted_at.is_(None),
+        User.is_active == True,
+    ]
+    if query:
+        from sqlalchemy import or_
+        safe_q = escape_like(query)
+        filters.append(or_(
+            User.username.ilike(f'%{safe_q}%'),
+            User.first_name.ilike(f'%{safe_q}%'),
+            User.last_name.ilike(f'%{safe_q}%'),
+            User.display_name.ilike(f'%{safe_q}%'),
+        ))
 
-    users = User.query.filter(
-        User.username.ilike(f'%{query}%'),
-        User.id != current_user.id
-    ).limit(limit).all()
+    users = User.query.filter(*filters).limit(limit).all()
 
     def build_user_dict(u):
         # Build avatar URL if user has custom avatar
@@ -462,6 +471,9 @@ def search_users():
         return {
             'id': u.id,
             'username': u.username,
+            'display_name': u.display_name,
+            'first_name': u.first_name,
+            'last_name': u.last_name,
             'avatar_url': avatar_url,
             'avatar_seed': u.avatar_seed,
             'collab_color': u.collab_color

@@ -11,6 +11,7 @@ from flask import Blueprint, jsonify, g, request
 
 from auth.decorators import authentik_required
 from decorators.error_handler import handle_api_errors, NotFoundError, ValidationError
+from services.llm_registry_service import resolve_model_registry
 
 logger = logging.getLogger(__name__)
 
@@ -84,11 +85,24 @@ def get_evaluation_progress(scenario_id):
             model_id=model_id,
         ).filter(LLMTaskResult.error.isnot(None)).count()
 
+        # Determine per-model status
+        if completed >= total_threads:
+            model_status = 'completed'
+        elif errors > 0 and completed + errors >= total_threads:
+            model_status = 'failed'
+        elif errors > 0 and completed + errors < total_threads:
+            model_status = 'stopped'
+        elif completed > 0:
+            model_status = 'running'
+        else:
+            model_status = 'pending'
+
         model_progress[model_id] = {
             'completed': completed,
             'errors': errors,
             'total': total_threads,
-            'progress_percent': (completed / total_threads * 100) if total_threads > 0 else 0
+            'progress_percent': (completed / total_threads * 100) if total_threads > 0 else 0,
+            'status': model_status,
         }
 
     # Calculate overall progress
@@ -101,7 +115,12 @@ def get_evaluation_progress(scenario_id):
         status = 'idle'
     elif total_completed >= total_tasks:
         status = 'completed'
-    elif total_completed > 0 or total_errors > 0:
+    elif total_errors > 0 and total_completed + total_errors >= total_tasks:
+        status = 'completed'  # All items attempted (some failed)
+    elif total_errors > 0 and total_completed + total_errors < total_tasks:
+        # Some items failed but not all attempted → likely stopped/aborted
+        status = 'stopped'
+    elif total_completed > 0:
         status = 'running'
     else:
         status = 'idle'
@@ -119,6 +138,7 @@ def get_evaluation_progress(scenario_id):
         'total_threads': total_threads,
         'llm_evaluators': llm_evaluators,
         'model_progress': model_progress,
+        'model_registry': resolve_model_registry(llm_evaluators) if llm_evaluators else {},
         'results': [],  # Full results require separate call
         'agreement_metrics': None,  # Calculated on demand
         'token_usage': {
@@ -200,6 +220,69 @@ def start_evaluation(scenario_id):
         'scenario_id': scenario_id,
         'message': 'Evaluation start queued',
         'model_id': model_id
+    })
+
+
+@llm_evaluation_bp.get('/<int:scenario_id>/errors')
+@authentik_required
+@handle_api_errors(logger_name='llm_evaluation')
+def get_evaluation_errors(scenario_id):
+    """
+    Get LLM evaluation error details for a scenario.
+
+    Returns error details for failed evaluations, optionally filtered
+    by model_id. Used on-demand when user opens the error dialog.
+
+    Args:
+        scenario_id: Scenario ID
+
+    Query params:
+        model_id: Optional model ID to filter errors
+
+    Returns:
+        JSON with error details list
+    """
+    from db.models import RatingScenarios, LLMTaskResult, EvaluationItem
+
+    scenario = RatingScenarios.query.get(scenario_id)
+    if not scenario:
+        raise NotFoundError(f'Scenario {scenario_id} not found')
+
+    model_id = request.args.get('model_id')
+
+    query = LLMTaskResult.query.filter(
+        LLMTaskResult.scenario_id == scenario_id,
+        LLMTaskResult.error.isnot(None),
+    )
+    if model_id:
+        query = query.filter(LLMTaskResult.model_id == model_id)
+
+    error_results = query.order_by(LLMTaskResult.updated_at.desc()).all()
+
+    # Build item label lookup
+    thread_ids = [r.item_id for r in error_results]
+    items = {}
+    if thread_ids:
+        item_rows = EvaluationItem.query.filter(EvaluationItem.item_id.in_(thread_ids)).all()
+        items = {item.item_id: item for item in item_rows}
+
+    errors = []
+    for r in error_results:
+        item = items.get(r.item_id)
+        errors.append({
+            'id': r.id,
+            'model_id': r.model_id,
+            'thread_id': r.item_id,
+            'item_label': getattr(item, 'subject', None) or f'Item {r.item_id}',
+            'error': r.error,
+            'updated_at': r.updated_at.isoformat() if r.updated_at else None,
+        })
+
+    return jsonify({
+        'scenario_id': scenario_id,
+        'model_id': model_id,
+        'total_errors': len(errors),
+        'errors': errors,
     })
 
 

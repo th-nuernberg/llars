@@ -1,6 +1,11 @@
+// Global hover animations for all itshover icons
+import './hover-animations.css'
+
 import AdminDashboardIcon from './AdminDashboardIcon.vue'
+import AiLookupIcon from './AiLookupIcon.vue'
 import AnonymizeIcon from './AnonymizeIcon.vue'
 import AlphaAIcon from './AlphaAIcon.vue'
+import ArenaIcon from './ArenaIcon.vue'
 import BatchGenerationIcon from './BatchGenerationIcon.vue'
 import AlphaBIcon from './AlphaBIcon.vue'
 import ArrowBackIcon from './ArrowBackIcon.vue'
@@ -22,6 +27,7 @@ import ClipboardIcon from './ClipboardIcon.vue'
 import ClockIcon from './ClockIcon.vue'
 import CloudIcon from './CloudIcon.vue'
 import CodeIcon from './CodeIcon.vue'
+import CommunicationIcon from './CommunicationIcon.vue'
 import CopyIcon from './CopyIcon.vue'
 import DatabaseIcon from './DatabaseIcon.vue'
 import DotIcon from './DotIcon.vue'
@@ -36,6 +42,9 @@ import FilePlusIcon from './FilePlusIcon.vue'
 import FilterIcon from './FilterIcon.vue'
 import FlaskIcon from './FlaskIcon.vue'
 import FolderIcon from './FolderIcon.vue'
+import FormatBoldIcon from './FormatBoldIcon.vue'
+import FormatItalicIcon from './FormatItalicIcon.vue'
+import FormatStrikethroughIcon from './FormatStrikethroughIcon.vue'
 import FolderPlusIcon from './FolderPlusIcon.vue'
 import FullscreenIcon from './FullscreenIcon.vue'
 import GearIcon from './GearIcon.vue'
@@ -49,6 +58,7 @@ import ImageIcon from './ImageIcon.vue'
 import InfoCircleIcon from './InfoCircleIcon.vue'
 import LatexCollabAiIcon from './LatexCollabAiIcon.vue'
 import LatexDocIcon from './LatexDocIcon.vue'
+import LlarsLatexIcon from './LlarsLatexIcon.vue'
 import LightbulbIcon from './LightbulbIcon.vue'
 import LinkIcon from './LinkIcon.vue'
 import LitellmIcon from './LitellmIcon.vue'
@@ -59,6 +69,7 @@ import MenuIcon from './MenuIcon.vue'
 import MinusIcon from './MinusIcon.vue'
 import MoonIcon from './MoonIcon.vue'
 import OllamaIcon from './OllamaIcon.vue'
+import OverleafIcon from './OverleafIcon.vue'
 import OncocoIcon from './OncocoIcon.vue'
 import OpenAiIcon from './OpenAiIcon.vue'
 import PaletteIcon from './PaletteIcon.vue'
@@ -71,6 +82,7 @@ import PlusIcon from './PlusIcon.vue'
 import QuestionIcon from './QuestionIcon.vue'
 import RagIcon from './RagIcon.vue'
 import RefreshIcon from './RefreshIcon.vue'
+import ReplyIcon from './ReplyIcon.vue'
 import RobotIcon from './RobotIcon.vue'
 import ScaleIcon from './ScaleIcon.vue'
 import SchoolIcon from './SchoolIcon.vue'
@@ -97,15 +109,21 @@ import UserCheckIcon from './UserCheckIcon.vue'
 import UserPlusIcon from './UserPlusIcon.vue'
 import UsersGroupIcon from './UsersGroupIcon.vue'
 import UsersIcon from './UsersIcon.vue'
+import VideoCallIcon from './VideoCallIcon.vue'
+import ViewCardsIcon from './ViewCardsIcon.vue'
+import ViewListIcon from './ViewListIcon.vue'
 import VllmIcon from './VllmIcon.vue'
+import VoiceCallIcon from './VoiceCallIcon.vue'
 import WandIcon from './WandIcon.vue'
 import XIcon from './XIcon.vue'
 import ZoteroIcon from './ZoteroIcon.vue'
 
 export const iconComponents = {
   'admin-dashboard': AdminDashboardIcon,
+  'ai-lookup': AiLookupIcon,
   'anonymize': AnonymizeIcon,
   'alpha-a': AlphaAIcon,
+  'arena': ArenaIcon,
   'alpha-b': AlphaBIcon,
   'batch-generation': BatchGenerationIcon,
   'arrow-back': ArrowBackIcon,
@@ -128,6 +146,7 @@ export const iconComponents = {
   'clock': ClockIcon,
   'cloud': CloudIcon,
   'code': CodeIcon,
+  'communication': CommunicationIcon,
   'copy': CopyIcon,
   'database': DatabaseIcon,
   'dot': DotIcon,
@@ -143,6 +162,9 @@ export const iconComponents = {
   'flask': FlaskIcon,
   'folder': FolderIcon,
   'folder-plus': FolderPlusIcon,
+  'format-bold': FormatBoldIcon,
+  'format-italic': FormatItalicIcon,
+  'format-strikethrough': FormatStrikethroughIcon,
   'fullscreen': FullscreenIcon,
   'gear': GearIcon,
   'gemini': GeminiIcon,
@@ -155,6 +177,7 @@ export const iconComponents = {
   'info-circle': InfoCircleIcon,
   'latex-collab-ai': LatexCollabAiIcon,
   'latex-doc': LatexDocIcon,
+  'llars-latex': LlarsLatexIcon,
   'lightbulb': LightbulbIcon,
   'link': LinkIcon,
   'litellm': LitellmIcon,
@@ -166,6 +189,7 @@ export const iconComponents = {
   'moon': MoonIcon,
   'ollama': OllamaIcon,
   'oncoco': OncocoIcon,
+  'overleaf': OverleafIcon,
   'openai': OpenAiIcon,
   'palette': PaletteIcon,
   'pause': PauseIcon,
@@ -177,6 +201,7 @@ export const iconComponents = {
   'question': QuestionIcon,
   'rag': RagIcon,
   'refresh': RefreshIcon,
+  'reply': ReplyIcon,
   'robot': RobotIcon,
   'scale': ScaleIcon,
   'school': SchoolIcon,
@@ -202,7 +227,11 @@ export const iconComponents = {
   'user-plus': UserPlusIcon,
   'users-group': UsersGroupIcon,
   'users': UsersIcon,
+  'view-cards': ViewCardsIcon,
+  'view-list': ViewListIcon,
+  'video-call': VideoCallIcon,
   'vllm': VllmIcon,
+  'voice-call': VoiceCallIcon,
   'wand': WandIcon,
   'x': XIcon,
   'zotero': ZoteroIcon,
@@ -214,16 +243,30 @@ const explicitAliases = {
   'mdi-circle': 'dot',
   'mdi-circle-outline': 'dot',
   'mdi-circle-small': 'dot',
+  'mdi-format-bold': 'format-bold',
+  'mdi-format-italic': 'format-italic',
+  'mdi-format-strikethrough': 'format-strikethrough',
+  'mdi-format-strikethrough-variant': 'format-strikethrough',
   'mdi-exit-run': 'arrow-left',
+  'mdi-leaf': 'overleaf',
   'mdi-login': 'arrow-right',
   'mdi-logout': 'arrow-left',
   'mdi-menu-right': 'arrow-right',
   'mdi-open-in-new': 'arrow-right',
   'mdi-progress-clock': 'clock',
+  'mdi-phone': 'voice-call',
+  'mdi-phone-outline': 'voice-call',
+  'mdi-video': 'video-call',
+  'mdi-video-outline': 'video-call',
+  'mdi-reply': 'reply',
   'mdi-timeline-clock-outline': 'clock',
   'mdi-timer-outline': 'clock',
   'mdi-unordered-list': 'unordered-list',
   'mdi-view-list': 'unordered-list',
+  'mdi-view-grid': 'view-cards',
+  'mdi-view-grid-outline': 'view-cards',
+  'mdi-view-list-outline': 'view-list',
+  'mdi-view-module': 'view-cards',
 }
 
 const normalizeIconName = (iconName) => iconName
@@ -269,7 +312,8 @@ export const resolveIconKey = (iconName) => {
     return 'users'
   }
 
-  if (tokens.includes('shield') || tokens.includes('sword')) return 'shield-check'
+  if (tokens.includes('sword')) return 'arena'
+  if (tokens.includes('shield')) return 'shield-check'
   if (tokens.includes('lock') || tokens.includes('key') || tokens.includes('gate')) return 'lock'
 
   if (hasAny(tokens, ['trash', 'delete', 'remove'])) return 'trash'
@@ -320,6 +364,9 @@ export const resolveIconKey = (iconName) => {
   if (tokens.includes('filter') || tokens.includes('tune')) return 'filter'
   if (hasAny(tokens, ['cloud', 'wifi', 'ethernet', 'connection', 'network'])) return 'cloud'
 
+  if (hasAny(tokens, ['reply', 'respond'])) return 'reply'
+  if (hasAny(tokens, ['video'])) return 'video-call'
+  if (hasAny(tokens, ['phone', 'call', 'dial', 'ring'])) return 'voice-call'
   if (hasAny(tokens, ['chat', 'message', 'comment', 'bubble', 'thought', 'emoticon', 'face', 'agent'])) return 'chat'
   if (tokens.includes('bell')) return 'bell'
   if (tokens.includes('calendar')) return 'calendar'
@@ -331,7 +378,10 @@ export const resolveIconKey = (iconName) => {
   if (hasAny(tokens, ['list', 'playlist', 'menu'])) return 'unordered-list'
 
   if (hasAny(tokens, ['code', 'braces', 'json', 'console', 'api', 'function', 'sigma', 'division', 'calculator', 'numeric', 'source', 'gitlab', 'docker', 'vector', 'polygon'])) return 'code'
-  if (hasAny(tokens, ['text', 'format', 'bold', 'italic', 'underline', 'header', 'quote', 'title', 'pilcrow', 'markdown', 'language', 'keyboard'])) return 'text'
+  if (hasAny(tokens, ['format']) && tokens.includes('bold')) return 'format-bold'
+  if (hasAny(tokens, ['format']) && tokens.includes('italic')) return 'format-italic'
+  if (hasAny(tokens, ['format']) && hasAny(tokens, ['strikethrough', 'strike'])) return 'format-strikethrough'
+  if (hasAny(tokens, ['text', 'format', 'underline', 'header', 'quote', 'title', 'pilcrow', 'markdown', 'language', 'keyboard'])) return 'text'
 
   if (hasAny(tokens, ['image', 'photo', 'camera'])) return 'image'
   if (hasAny(tokens, ['link', 'chain', 'paperclip', 'attachment'])) return 'link'
@@ -339,6 +389,8 @@ export const resolveIconKey = (iconName) => {
   if (hasAny(tokens, ['email', 'mail'])) return 'mail'
   if (hasAny(tokens, ['book', 'library', 'bookshelf'])) return 'book'
 
+  if (hasAny(tokens, ['overleaf', 'leaf'])) return 'overleaf'
+  if (hasAny(tokens, ['latex']) && hasAny(tokens, ['llars'])) return 'llars-latex'
   if (hasAny(tokens, ['robot', 'ai', 'brain', 'openai'])) return 'robot'
   if (tokens.includes('flask')) return 'flask'
 

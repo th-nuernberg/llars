@@ -41,6 +41,7 @@ def register_scenarios_events(socketio):
                 emit("scenario:error", {"error": "scenario_id is required"})
                 return
 
+            # TODO: Security - add ownership/membership check before joining scenario room
             room = _scenario_room(scenario_id)
             join_room(room)
 
@@ -85,11 +86,14 @@ def register_scenarios_events(socketio):
 
 
 def emit_scenario_stats_updated(socketio, scenario_id: int):
-    """Emit scenario stats update to all subscribed clients."""
+    """Mark stats as dirty and trigger background recompute.
+
+    The background thread will push updated stats via Socket.IO when done.
+    This avoids blocking the calling thread with expensive stats computation.
+    """
     try:
-        payload = get_scenario_stats_payload(int(scenario_id))
-        room = _scenario_room(scenario_id)
-        socketio.emit("scenario:stats_updated", payload, room=room)
-        logger.info("[Scenario Socket] Emitted stats update to %s", room)
+        from services.scenario_stats_cache_service import mark_dirty
+        mark_dirty(int(scenario_id))
+        logger.info("[Scenario Socket] Marked stats dirty for scenario %s (background recompute triggered)", scenario_id)
     except Exception as exc:
-        logger.error("[Scenario Socket] Error emitting stats update: %s", exc)
+        logger.error("[Scenario Socket] Error marking stats dirty: %s", exc)

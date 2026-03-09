@@ -15,17 +15,24 @@
 
 import { test, expect } from '@playwright/test'
 
+// Skip login flow tests in production/staging:
+// dev-login buttons are not available and these checks are intended for local dev UX.
+const isProduction = !!process.env.E2E_TEST_PASSWORD
+test.skip(isProduction, 'Login flow tests require dev environment with dev login buttons')
+
 // Increase timeout for CI environment
 test.setTimeout(60000)
 
 // Test credentials (from CLAUDE.md documentation)
 const testPassword = process.env.E2E_TEST_PASSWORD || 'admin123'
-const isProduction = !!process.env.E2E_TEST_PASSWORD
-const researcherUsername = isProduction ? 'e2e-researcher' : 'researcher'
-const evaluatorUsername = isProduction ? 'e2e-evaluator' : 'evaluator'
-const chatbotManagerUsername = isProduction ? 'e2e-chatbot-manager' : 'chatbot_manager'
+const adminUsername = isProduction ? (process.env.E2E_ADMIN_USER || 'test_admin') : 'admin'
+const researcherUsername = isProduction ? (process.env.E2E_RESEARCHER_USER || 'test_researcher') : 'researcher'
+const evaluatorUsername = isProduction ? (process.env.E2E_EVALUATOR_USER || 'test_evaluator') : 'evaluator'
+const chatbotManagerUsername = isProduction
+  ? (process.env.E2E_CHATBOT_MANAGER_USER || adminUsername)
+  : 'chatbot_manager'
 const TEST_USERS = {
-  admin: { username: 'admin', password: testPassword, role: 'admin' },
+  admin: { username: adminUsername, password: testPassword, role: 'admin' },
   researcher: { username: researcherUsername, password: testPassword, role: 'researcher' },
   evaluator: { username: evaluatorUsername, password: testPassword, role: 'evaluator' },
   chatbot_manager: { username: chatbotManagerUsername, password: testPassword, role: 'chatbot_manager' }

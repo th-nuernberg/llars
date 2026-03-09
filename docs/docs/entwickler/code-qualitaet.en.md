@@ -4,7 +4,7 @@ This page documents the current code quality, docstring coverage, and refactorin
 
 ## Docstring coverage statistics
 
-!!! info "As of January 2026"
+!!! info "As of March 2026"
     The statistics are updated regularly.
     Source: `docs/metrics/*.json`, update via `scripts/metrics/update_docs.py`.
 
@@ -227,3 +227,22 @@ The GitLab CI/CD pipeline runs the following quality checks:
 |-------|-----|-------------|
 | lint | `lint:backend` | flake8 check |
 | lint | `lint:frontend` | eslint check |
+| test | `test:unit:backend` | pytest with coverage |
+| test | `test:unit:frontend` | vitest with coverage |
+| security | `security:scan` | Security scan |
+
+---
+
+## Next steps
+
+1. **This week**
+   - [ ] Split `ChatbotEditor.vue` into tab components
+   - [ ] Add JSDoc to `useAuth.js`
+
+2. **Next week**
+   - [ ] Extract composables from `LatexEditorPane.vue`
+   - [ ] Modularize `crawler_core.py`
+
+3. **This month**
+   - [ ] Test coverage > 35%
+   - [ ] Docstring coverage > 75%

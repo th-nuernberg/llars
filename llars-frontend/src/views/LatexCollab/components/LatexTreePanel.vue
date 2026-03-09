@@ -15,6 +15,14 @@
     class="mobile-tree-drawer"
   >
     <div class="mobile-tree-content">
+      <!-- Workspace Header (Mobile) -->
+      <div class="sidebar-workspace-header">
+        <v-btn icon variant="text" size="x-small" @click="$emit('navigate-back')">
+          <LIcon size="16">mdi-arrow-left</LIcon>
+        </v-btn>
+        <span class="sidebar-workspace-name text-truncate">{{ workspaceName }}</span>
+      </div>
+
       <!-- Files Panel (Mobile) -->
       <TreeStackPanel
         :title="$t('latexCollab.tree.files')"
@@ -47,6 +55,67 @@
           @remove="$emit('remove', $event)"
           @move="$emit('move', $event)"
         />
+      </TreeStackPanel>
+
+      <!-- Collabs (Mobile) -->
+      <TreeStackPanel
+        class="collabs-panel"
+        :title="$t('latexCollab.tree.collabs')"
+        icon="mdi-account-multiple"
+        v-model:collapsed="localOnlineCollapsed"
+        :badge="collabBadge"
+        :badge-variant="pendingRequests.length > 0 ? 'warning' : 'info'"
+      >
+        <template #actions>
+          <v-btn v-if="canShare" icon variant="text" size="x-small" @click="$emit('open-share')">
+            <LIcon size="16">mdi-account-multiple-plus</LIcon>
+          </v-btn>
+        </template>
+        <div class="online-users-list">
+          <div v-for="u in collabUsers" :key="u.username" class="online-user-item">
+            <div class="online-user-avatar-wrap" :class="{ online: u.isOnline }" :style="u.isOnline ? { borderColor: u.color } : {}">
+              <LAvatar :username="u.username" size="xs" />
+            </div>
+            <span class="online-user-name text-truncate">{{ u.username }}</span>
+            <LIcon v-if="u.isOwner" size="14" class="text-medium-emphasis">mdi-crown-outline</LIcon>
+            <span v-if="u.isOnline" class="online-user-dot" :style="{ backgroundColor: u.color }" />
+          </div>
+          <!-- Pending Access Requests (Mobile) -->
+          <template v-if="canShare && pendingRequests.length > 0">
+            <div class="pending-requests-divider">
+              <span>{{ $t('latexCollab.accessRequests.pendingRequests') }}</span>
+            </div>
+            <div v-for="req in pendingRequests" :key="'req-' + req.id" class="online-user-item pending-request-item">
+              <div class="online-user-avatar-wrap pending">
+                <LAvatar :username="req.requester_username" size="xs" />
+              </div>
+              <span class="online-user-name text-truncate">{{ req.requester_username }}</span>
+              <v-btn icon variant="text" size="x-small" color="success" :title="$t('latexCollab.accessRequests.approve')" @click.stop="$emit('approve-request', req.id)">
+                <LIcon size="14">mdi-check</LIcon>
+              </v-btn>
+              <v-btn icon variant="text" size="x-small" color="error" :title="$t('latexCollab.accessRequests.reject')" @click.stop="$emit('reject-request', req.id)">
+                <LIcon size="14">mdi-close</LIcon>
+              </v-btn>
+            </div>
+          </template>
+        </div>
+        <div v-if="showConnectionStatus" class="online-users-status">
+          <v-chip size="x-small" variant="tonal" :color="isConnected ? 'success' : 'warning'">
+            <LIcon start size="12">{{ isConnected ? 'mdi-cloud-check-outline' : 'mdi-cloud-alert-outline' }}</LIcon>
+            {{ isConnected ? $t('latexCollab.header.liveSync') : $t('latexCollab.header.reconnecting') }}
+          </v-chip>
+          <v-chip
+            v-if="aiEnabled"
+            size="x-small"
+            :color="ghostTextEnabled ? 'primary' : 'default'"
+            :variant="ghostTextEnabled ? 'flat' : 'outlined'"
+            class="cursor-pointer"
+            @click="$emit('toggle-ghost-text')"
+          >
+            <LIcon start size="12">{{ ghostTextEnabled ? 'mdi-lightning-bolt' : 'mdi-lightning-bolt-outline' }}</LIcon>
+            {{ $t('latexCollab.header.ghostText') }}
+          </v-chip>
+        </div>
       </TreeStackPanel>
 
       <!-- Git Panel (Mobile) -->
@@ -123,6 +192,14 @@
 
     <!-- Expanded State -->
     <div v-else class="tree-expanded">
+      <!-- Workspace Header -->
+      <div class="sidebar-workspace-header">
+        <v-btn icon variant="text" size="x-small" @click="$emit('navigate-back')">
+          <LIcon size="16">mdi-arrow-left</LIcon>
+        </v-btn>
+        <span class="sidebar-workspace-name text-truncate">{{ workspaceName }}</span>
+      </div>
+
       <div class="tree-stack" ref="treeStackRef">
         <!-- Files Panel -->
         <TreeStackPanel
@@ -165,10 +242,77 @@
           />
         </TreeStackPanel>
 
-        <!-- Resize Divider 1 -->
+        <!-- Resize Divider: Files | Collabs -->
         <PanelResizeDivider
-          v-if="!localFilesCollapsed && !localGitCollapsed"
           @resize-start="startPanelResize(0, $event)"
+          @resize-move="onPanelResize"
+          @resize-end="endPanelResize"
+        />
+
+        <!-- Collabs -->
+        <TreeStackPanel
+          :title="$t('latexCollab.tree.collabs')"
+          icon="mdi-account-multiple"
+          v-model:collapsed="localOnlineCollapsed"
+          :badge="collabBadge"
+          :badge-variant="pendingRequests.length > 0 ? 'warning' : 'info'"
+          :style="getPanelStyle(1)"
+        >
+          <template #actions>
+            <v-btn v-if="canShare" icon variant="text" size="x-small" :title="$t('latexCollab.share.title')" @click="$emit('open-share')">
+              <LIcon size="16">mdi-account-multiple-plus</LIcon>
+            </v-btn>
+          </template>
+          <div class="online-users-list">
+            <div v-for="u in collabUsers" :key="u.username" class="online-user-item">
+              <div class="online-user-avatar-wrap" :class="{ online: u.isOnline }" :style="u.isOnline ? { borderColor: u.color } : {}">
+                <LAvatar :username="u.username" size="xs" />
+              </div>
+              <span class="online-user-name text-truncate">{{ u.username }}</span>
+              <LIcon v-if="u.isOwner" size="14" class="text-medium-emphasis">mdi-crown-outline</LIcon>
+              <span v-if="u.isOnline" class="online-user-dot" :style="{ backgroundColor: u.color }" />
+            </div>
+            <!-- Pending Access Requests (owner only) -->
+            <template v-if="canShare && pendingRequests.length > 0">
+              <div class="pending-requests-divider">
+                <span>{{ $t('latexCollab.accessRequests.pendingRequests') }}</span>
+              </div>
+              <div v-for="req in pendingRequests" :key="'req-' + req.id" class="online-user-item pending-request-item">
+                <div class="online-user-avatar-wrap pending">
+                  <LAvatar :username="req.requester_username" size="xs" />
+                </div>
+                <span class="online-user-name text-truncate">{{ req.requester_username }}</span>
+                <v-btn icon variant="text" size="x-small" color="success" :title="$t('latexCollab.accessRequests.approve')" @click.stop="$emit('approve-request', req.id)">
+                  <LIcon size="14">mdi-check</LIcon>
+                </v-btn>
+                <v-btn icon variant="text" size="x-small" color="error" :title="$t('latexCollab.accessRequests.reject')" @click.stop="$emit('reject-request', req.id)">
+                  <LIcon size="14">mdi-close</LIcon>
+                </v-btn>
+              </div>
+            </template>
+          </div>
+          <div v-if="showConnectionStatus" class="online-users-status">
+            <v-chip size="x-small" variant="tonal" :color="isConnected ? 'success' : 'warning'">
+              <LIcon start size="12">{{ isConnected ? 'mdi-cloud-check-outline' : 'mdi-cloud-alert-outline' }}</LIcon>
+              {{ isConnected ? $t('latexCollab.header.liveSync') : $t('latexCollab.header.reconnecting') }}
+            </v-chip>
+            <v-chip
+              v-if="aiEnabled"
+              size="x-small"
+              :color="ghostTextEnabled ? 'primary' : 'default'"
+              :variant="ghostTextEnabled ? 'flat' : 'outlined'"
+              class="cursor-pointer"
+              @click="$emit('toggle-ghost-text')"
+            >
+              <LIcon start size="12">{{ ghostTextEnabled ? 'mdi-lightning-bolt' : 'mdi-lightning-bolt-outline' }}</LIcon>
+              {{ $t('latexCollab.header.ghostText') }}
+            </v-chip>
+          </div>
+        </TreeStackPanel>
+
+        <!-- Resize Divider: Collabs | Git -->
+        <PanelResizeDivider
+          @resize-start="startPanelResize(1, $event)"
           @resize-move="onPanelResize"
           @resize-end="endPanelResize"
         />
@@ -180,7 +324,7 @@
           v-model:collapsed="localGitCollapsed"
           :badge="gitTotalChanges > 0 ? gitTotalChanges : null"
           badge-variant="warning"
-          :style="getPanelStyle(1)"
+          :style="getPanelStyle(2)"
         >
           <template #actions>
             <v-btn icon variant="text" size="x-small" :title="$t('workspaceGit.openDetail')" @click="$emit('open-git-detail')">
@@ -198,10 +342,9 @@
           />
         </TreeStackPanel>
 
-        <!-- Resize Divider 2 -->
+        <!-- Resize Divider: Git | Outline -->
         <PanelResizeDivider
-          v-if="!localGitCollapsed && !localOutlineCollapsed"
-          @resize-start="startPanelResize(1, $event)"
+          @resize-start="startPanelResize(2, $event)"
           @resize-move="onPanelResize"
           @resize-end="endPanelResize"
         />
@@ -211,7 +354,7 @@
           :title="$t('latexCollab.outline.title')"
           icon="mdi-format-list-bulleted"
           v-model:collapsed="localOutlineCollapsed"
-          :style="getPanelStyle(2)"
+          :style="getPanelStyle(3)"
         >
           <OutlinePanelContent
             :items="outlineFlatItems"
@@ -225,15 +368,6 @@
     </div>
   </div>
 
-  <!-- Resize Divider: Tree | Content (Desktop only) -->
-  <div
-    v-if="!isMobile && !treeCollapsed"
-    class="resize-divider vertical"
-    :class="{ resizing: resizingTree }"
-    @mousedown="$emit('start-tree-resize', $event)"
-  >
-    <div class="resize-handle" />
-  </div>
 </template>
 
 <script setup>
@@ -257,16 +391,29 @@ const props = defineProps({
   recentlyAddedIds: { type: Set, default: () => new Set() },
   treeCollapsed: { type: Boolean, default: false },
   treePanelWidth: { type: Number, default: 280 },
-  resizingTree: { type: Boolean, default: false },
   outlineFlatItems: { type: Array, default: () => [] },
   outlineEmptyLabel: { type: String, default: '' },
   isOutlineItemCollapsed: { type: Function, default: () => false },
   // Git props
   canCommit: { type: Boolean, default: false },
   apiPrefix: { type: String, default: '/api/latex-collab' },
+  // Online users & members
+  activeUsers: { type: Array, default: () => [] },
+  members: { type: Array, default: () => [] },
+  ownerInfo: { type: Object, default: () => ({}) },
+  canShare: { type: Boolean, default: false },
+  pendingRequests: { type: Array, default: () => [] },
+  // Workspace header
+  workspaceName: { type: String, default: '' },
+  // Connection status
+  isConnected: { type: Boolean, default: false },
+  aiEnabled: { type: Boolean, default: false },
+  ghostTextEnabled: { type: Boolean, default: false },
+  showConnectionStatus: { type: Boolean, default: false },
   // Collapse states (optional external control)
   filesCollapsed: { type: Boolean, default: false },
   gitCollapsed: { type: Boolean, default: true },
+  onlineCollapsed: { type: Boolean, default: false },
   outlineCollapsed: { type: Boolean, default: false }
 })
 
@@ -275,6 +422,7 @@ const emit = defineEmits([
   'update:treeCollapsed',
   'update:filesCollapsed',
   'update:gitCollapsed',
+  'update:onlineCollapsed',
   'update:outlineCollapsed',
   'select',
   'create',
@@ -282,13 +430,17 @@ const emit = defineEmits([
   'remove',
   'move',
   'open-asset-picker',
-  'start-tree-resize',
   'navigate-home',
   'navigate-workspaces',
+  'navigate-back',
   'toggle-outline-item',
   'jump-to-outline-item',
   'open-git-detail',
-  'committed'
+  'committed',
+  'toggle-ghost-text',
+  'open-share',
+  'approve-request',
+  'reject-request'
 ])
 
 // Local collapse states with two-way binding
@@ -302,9 +454,64 @@ const localGitCollapsed = computed({
   set: (val) => emit('update:gitCollapsed', val)
 })
 
+const localOnlineCollapsed = computed({
+  get: () => props.onlineCollapsed,
+  set: (val) => emit('update:onlineCollapsed', val)
+})
+
 const localOutlineCollapsed = computed({
   get: () => props.outlineCollapsed,
   set: (val) => emit('update:outlineCollapsed', val)
+})
+
+// Collabs: merge activeUsers + members + owner into one list
+const collabUsers = computed(() => {
+  const onlineMap = new Map()
+  for (const u of props.activeUsers) {
+    onlineMap.set(u.username, u.color)
+  }
+
+  const seen = new Set()
+  const users = []
+  const ownerName = props.ownerInfo?.username || ''
+
+  function addUser(username, isOwner = false) {
+    if (!username || seen.has(username)) return
+    seen.add(username)
+    const color = onlineMap.get(username) || null
+    users.push({ username, isOnline: !!color, color, isOwner })
+  }
+
+  // 1. Owner
+  if (ownerName) addUser(ownerName, true)
+
+  // 2. Active users (currently editing — always visible)
+  for (const u of props.activeUsers) {
+    addUser(u.username, u.username === ownerName)
+  }
+
+  // 3. Invited members (offline ones too)
+  for (const m of props.members) {
+    addUser(m.username, m.username === ownerName)
+  }
+
+  // Sort: online first, owner always top
+  users.sort((a, b) => {
+    if (a.isOwner && !b.isOwner) return -1
+    if (!a.isOwner && b.isOwner) return 1
+    if (a.isOnline && !b.isOnline) return -1
+    if (!a.isOnline && b.isOnline) return 1
+    return 0
+  })
+
+  return users
+})
+
+// Badge for COLLABS panel: shows pending request count or user count
+const collabBadge = computed(() => {
+  if (props.pendingRequests.length > 0) return props.pendingRequests.length
+  if (collabUsers.value.length > 0) return collabUsers.value.length
+  return null
 })
 
 // Git changes badge
@@ -334,10 +541,15 @@ function refreshGit() {
   gitPanelDesktopRef.value?.refresh?.()
 }
 
-// Panel heights for resize (percentages, 0-100 for each panel)
+// Panel heights for resize (flex proportions for each panel)
+// Order: [Files, Collabs, Git, Outline]
+const PANEL_COUNT = 4
+const DEFAULT_HEIGHTS = [35, 15, 25, 25]
+
 const treeStackRef = ref(null)
-const panelHeights = ref([50, 25, 25]) // Default: 50% files, 25% git, 25% outline
-const resizingPanelIndex = ref(-1)
+const panelHeights = ref([...DEFAULT_HEIGHTS])
+const resizingAboveIndex = ref(-1)
+const resizingBelowIndex = ref(-1)
 const resizeStartY = ref(0)
 const resizeStartHeights = ref([])
 
@@ -347,7 +559,7 @@ onMounted(() => {
     const saved = localStorage.getItem(STORAGE_KEY)
     if (saved) {
       const parsed = JSON.parse(saved)
-      if (Array.isArray(parsed) && parsed.length === 3) {
+      if (Array.isArray(parsed) && parsed.length === PANEL_COUNT) {
         panelHeights.value = parsed
       }
     }
@@ -362,7 +574,7 @@ function saveHeights() {
 
 function getPanelStyle(index) {
   // Only apply flex-basis when panel is expanded
-  const collapsed = [localFilesCollapsed.value, localGitCollapsed.value, localOutlineCollapsed.value]
+  const collapsed = [localFilesCollapsed.value, localOnlineCollapsed.value, localGitCollapsed.value, localOutlineCollapsed.value]
   if (collapsed[index]) return {}
 
   // Count expanded panels
@@ -371,40 +583,101 @@ function getPanelStyle(index) {
 
   return {
     flex: `${panelHeights.value[index]} 1 0`,
-    minHeight: '80px'
+    minHeight: '60px'
   }
 }
 
-function startPanelResize(dividerIndex, event) {
-  resizingPanelIndex.value = dividerIndex
+function findExpandedPanel(startIndex, direction) {
+  const collapsed = [localFilesCollapsed.value, localOnlineCollapsed.value, localGitCollapsed.value, localOutlineCollapsed.value]
+  const step = direction === 'up' ? -1 : 1
+  for (let i = startIndex; i >= 0 && i < PANEL_COUNT; i += step) {
+    if (!collapsed[i]) return i
+  }
+  return -1
+}
+
+function startPanelResize(dividerPosition, event) {
+  // Find nearest expanded panel above (at or before dividerPosition)
+  resizingAboveIndex.value = findExpandedPanel(dividerPosition, 'up')
+  // Find nearest expanded panel below (at or after dividerPosition+1)
+  resizingBelowIndex.value = findExpandedPanel(dividerPosition + 1, 'down')
   resizeStartY.value = event.y
   resizeStartHeights.value = [...panelHeights.value]
 }
 
 function onPanelResize(event) {
-  if (resizingPanelIndex.value < 0 || !treeStackRef.value) return
+  if (resizingAboveIndex.value < 0 || resizingBelowIndex.value < 0 || !treeStackRef.value) return
 
   const containerHeight = treeStackRef.value.clientHeight
   const deltaPercent = (event.deltaY / containerHeight) * 100
 
-  const idx = resizingPanelIndex.value
   const newHeights = [...resizeStartHeights.value]
-
-  // Get the two panels being resized (panel at idx and panel at idx+1)
-  const panelAbove = idx === 0 ? 0 : 1 // Which expanded panel is above the divider
-  const panelBelow = idx === 0 ? 1 : 2 // Which expanded panel is below the divider
-
-  // Adjust heights
-  newHeights[panelAbove] = Math.max(10, resizeStartHeights.value[panelAbove] + deltaPercent)
-  newHeights[panelBelow] = Math.max(10, resizeStartHeights.value[panelBelow] - deltaPercent)
+  newHeights[resizingAboveIndex.value] = Math.max(5, resizeStartHeights.value[resizingAboveIndex.value] + deltaPercent)
+  newHeights[resizingBelowIndex.value] = Math.max(5, resizeStartHeights.value[resizingBelowIndex.value] - deltaPercent)
 
   panelHeights.value = newHeights
 }
 
 function endPanelResize() {
-  resizingPanelIndex.value = -1
+  resizingAboveIndex.value = -1
+  resizingBelowIndex.value = -1
   saveHeights()
 }
+
+/**
+ * When a panel expands/collapses, redistribute space so that panels
+ * ABOVE the toggled panel keep their size (header stays in place).
+ * Space is taken from / given to panels BELOW.
+ */
+function handlePanelToggle(index, nowCollapsed) {
+  const collapsed = [localFilesCollapsed.value, localOnlineCollapsed.value, localGitCollapsed.value, localOutlineCollapsed.value]
+  const newHeights = [...panelHeights.value]
+
+  // Find expanded panels below and above (excluding the toggled panel)
+  const belowExpanded = []
+  for (let i = index + 1; i < PANEL_COUNT; i++) {
+    if (!collapsed[i]) belowExpanded.push(i)
+  }
+  const aboveExpanded = []
+  for (let i = 0; i < index; i++) {
+    if (!collapsed[i]) aboveExpanded.push(i)
+  }
+
+  if (nowCollapsed) {
+    // Panel collapsed — give its freed space to panels below
+    const freed = newHeights[index]
+    const targets = belowExpanded.length > 0 ? belowExpanded : aboveExpanded
+    if (targets.length > 0) {
+      const total = targets.reduce((s, i) => s + newHeights[i], 0)
+      for (const i of targets) {
+        newHeights[i] += freed * (total > 0 ? newHeights[i] / total : 1 / targets.length)
+      }
+    }
+  } else {
+    // Panel expanded — take space from panels below so header stays put
+    // Use the panel's last known height (preserved from before collapse) or default
+    const needed = newHeights[index] > 0 ? newHeights[index] : DEFAULT_HEIGHTS[index]
+    const donors = belowExpanded.length > 0 ? belowExpanded : aboveExpanded
+    if (donors.length > 0) {
+      const total = donors.reduce((s, i) => s + newHeights[i], 0)
+      for (const i of donors) {
+        const share = total > 0 ? newHeights[i] / total : 1 / donors.length
+        newHeights[i] = Math.max(5, newHeights[i] - needed * share)
+      }
+    }
+    newHeights[index] = needed
+  }
+
+  panelHeights.value = newHeights
+  saveHeights()
+}
+
+// flush:'sync' ensures heights update in the same tick as collapse state,
+// preventing a two-frame layout jump.
+watch(localFilesCollapsed, (val) => handlePanelToggle(0, val), { flush: 'sync' })
+watch(localOnlineCollapsed, (val) => handlePanelToggle(1, val), { flush: 'sync' })
+watch(localGitCollapsed, (val) => handlePanelToggle(2, val), { flush: 'sync' })
+watch(localOutlineCollapsed, (val) => handlePanelToggle(3, val), { flush: 'sync' })
 
 function handleMobileSelect(id) {
   emit('select', id)
@@ -416,6 +689,24 @@ defineExpose({ refreshGit })
 </script>
 
 <style scoped>
+/* Tree panel root element - must be styled here (not in parent)
+   because LatexTreePanel is a fragment component and parent's
+   scoped CSS cannot reach fragment root elements in Vue 3. */
+.tree-panel {
+  flex-shrink: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: rgb(var(--v-theme-surface));
+  min-width: 0;
+  overflow: hidden;
+}
+
+.tree-panel.collapsed {
+  width: 48px !important;
+  border-right: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+}
+
 .mobile-tree-drawer {
   background-color: rgb(var(--v-theme-surface)) !important;
 }
@@ -505,6 +796,34 @@ defineExpose({ refreshGit })
   border-radius: 10px;
 }
 
+/* Sidebar Workspace Header */
+.sidebar-workspace-header {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  flex-shrink: 0;
+  min-height: 32px;
+}
+
+.sidebar-workspace-name {
+  font-size: 12px;
+  font-weight: 500;
+  color: rgba(var(--v-theme-on-surface), 0.8);
+  flex: 1;
+  min-width: 0;
+}
+
+/* Online Users Status (connection + ghost text) */
+.online-users-status {
+  display: flex;
+  gap: 4px;
+  padding: 4px 8px;
+  flex-wrap: wrap;
+  border-top: 1px solid rgba(var(--v-theme-on-surface), 0.06);
+}
+
 /* Tree Expanded */
 .tree-expanded {
   height: 100%;
@@ -522,5 +841,91 @@ defineExpose({ refreshGit })
   overflow: hidden;
   padding: 8px;
   gap: 0;
+}
+
+
+/* Online Users Section (inside TreeStackPanel) */
+
+.online-users-list {
+  padding: 2px;
+  background: rgb(var(--v-theme-surface));
+}
+
+.online-user-item {
+  display: flex;
+  align-items: center;
+  padding: 3px 8px;
+  border-radius: 4px;
+  gap: 8px;
+  min-height: 28px;
+}
+
+.online-user-item:hover {
+  background: rgba(var(--v-theme-on-surface), 0.05);
+}
+
+.online-user-avatar-wrap {
+  border: 2px solid transparent;
+  border-radius: 10px 3px 10px 3px;
+  padding: 1px;
+  flex-shrink: 0;
+  line-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 0.2s ease;
+}
+
+.online-user-avatar-wrap:not(.online):not(.pending) {
+  opacity: 0.6;
+  border-color: rgba(var(--v-theme-on-surface), 0.12);
+}
+
+.online-user-name {
+  flex: 1;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: rgb(var(--v-theme-on-surface));
+  line-height: 1;
+}
+
+.online-user-item:has(.online-user-avatar-wrap:not(.online):not(.pending)) .online-user-name {
+  opacity: 0.6;
+}
+
+.online-user-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  box-shadow: 0 0 0 2px rgb(var(--v-theme-surface));
+}
+
+/* Pending access requests in COLLABS panel */
+.pending-requests-divider {
+  padding: 6px 8px 2px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: rgb(var(--v-theme-warning));
+  border-top: 1px dashed rgba(var(--v-theme-warning), 0.3);
+  margin-top: 4px;
+}
+
+.pending-request-item {
+  background: rgba(var(--v-theme-warning), 0.06);
+  border-radius: 4px;
+}
+
+.online-user-avatar-wrap.pending {
+  border: 2px dashed rgba(var(--v-theme-warning), 0.5);
+  opacity: 0.7;
+}
+
+.pending-request-item .v-btn {
+  width: 22px !important;
+  height: 22px !important;
+  min-width: 22px !important;
 }
 </style>

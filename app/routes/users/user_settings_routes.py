@@ -110,15 +110,17 @@ def _process_avatar_image(file_storage) -> bytes:
 @handle_api_errors(logger_name="user_settings")
 def get_user_settings():
     """
-    Get current user's settings (collab_color, avatar_seed).
+    Get current user's settings (collab_color, avatar_seed, console_logs_enabled).
     """
     user = g.authentik_user
+    settings = user.settings_json or {}
     return jsonify({
         "success": True,
         "collab_color": user.collab_color,
         "avatar_seed": user.get_avatar_seed() if hasattr(user, "get_avatar_seed") else None,
         "avatar_url": build_avatar_url(user),
-        "avatar_changes_left": _avatar_changes_left(user)
+        "avatar_changes_left": _avatar_changes_left(user),
+        "console_logs_enabled": bool(settings.get("console_logs_enabled", False)),
     })
 
 

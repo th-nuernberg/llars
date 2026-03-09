@@ -9,11 +9,44 @@ from socketio_handlers import configure_socket_routes
 from routes.registry import register_all_blueprints
 from services.api_metrics_service import create_metrics_middleware
 from werkzeug.middleware.proxy_fix import ProxyFix
+import logging
 import re
 import os
 import redis
 
+
+class _SocketIOAccessLogFilter(logging.Filter):
+    """Suppress noisy Socket.IO polling access logs."""
+
+    _socketio_path_pattern = re.compile(r'"\w+\s+/socket\.io/', re.IGNORECASE)
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        try:
+            message = record.getMessage()
+        except Exception:
+            return True
+        return not bool(self._socketio_path_pattern.search(message))
+
+
+def _configure_access_log_filters() -> None:
+    suppress_socketio_access_logs = str(
+        os.environ.get('SUPPRESS_SOCKETIO_ACCESS_LOGS', 'true')
+    ).lower() in ('1', 'true', 'yes', 'on')
+    if not suppress_socketio_access_logs:
+        return
+
+    filter_instance = _SocketIOAccessLogFilter()
+    for logger_name in ('werkzeug', 'gunicorn.access'):
+        logger = logging.getLogger(logger_name)
+        has_socketio_filter = any(
+            isinstance(existing_filter, _SocketIOAccessLogFilter)
+            for existing_filter in logger.filters
+        )
+        if not has_socketio_filter:
+            logger.addFilter(filter_instance)
+
 app = Flask(__name__)
+_configure_access_log_filters()
 
 # Limit upload size to 50 MB to prevent oversized file uploads
 app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024
@@ -39,6 +72,7 @@ redis_client = redis.Redis(
     host=os.environ.get('REDIS_HOST', 'llars-redis'),
     port=int(os.environ.get('REDIS_PORT', 6379)),
     db=int(os.environ.get('REDIS_DB', 0)),
+    password=os.environ.get('REDIS_PASSWORD', None),
     decode_responses=True,  # Return strings instead of bytes
     socket_connect_timeout=5,
     socket_timeout=5,
@@ -133,39 +167,14 @@ def exempt_endpoints():
     if not request.endpoint:
         return False
     path = request.path or ''
-    # Scenario stats are lazy-loaded in list views and can legitimately create
-    # bursty request patterns when users browse many scenarios.
-    if request.method == 'GET' and re.fullmatch(r'/api/scenarios/\d+/stats', path):
-        return True
     # Exempt health checks
     if 'health_check' in request.endpoint:
         return True
-    # Exempt judge session polling endpoints (queue, current, comparisons, workers)
-    if request.path and '/api/judge/sessions/' in request.path:
+    # Exempt Socket.IO / WebSocket endpoints
+    if path.startswith('/socket.io'):
         return True
-    # Exempt email thread endpoints (frequently accessed by judge workers)
-    if request.path and '/api/email_threads/' in request.path:
-        return True
-    # Exempt chatbot wizard endpoints (high-frequency polling/updates)
-    if request.path and '/api/chatbots/' in request.path and '/wizard/' in request.path:
-        return True
-    # Exempt crawler job status polling endpoints
-    if request.path and request.path.startswith('/api/crawler/jobs'):
-        return True
-    # Exempt LaTeX compile status + SyncTeX endpoints (frequently polled)
-    if request.path and request.path.startswith('/api/latex-collab/compile/'):
-        return True
-    # Exempt data import endpoints (bulk uploads can exceed normal limits)
-    if request.path and request.path.startswith('/api/import/'):
-        return True
-    # Exempt generation endpoints (pagination through outputs + WebSocket polling)
-    if request.path and request.path.startswith('/api/generation/'):
-        return True
-    # Exempt evaluation session endpoints (frequent polling during active evaluation)
-    if request.path and request.path.startswith('/api/evaluation/'):
-        return True
-    # Exempt scenario data endpoints (pagination, schema batch loads)
-    if request.path and request.path.startswith('/api/scenarios/'):
+    # Exempt SSE (Server-Sent Events) streaming endpoints
+    if path.startswith('/api/latex-collab/compile/'):
         return True
     return False
 
@@ -436,6 +445,24 @@ def start_pending_llm_evaluations():
                     all_ids = item['all_ids']
 
                     for model_id in llm_evaluators:
+                        # Skip models that had recent errors (cooldown: 30 min)
+                        # This prevents restart loops for models with bad API keys etc.
+                        from datetime import datetime, timedelta
+                        cooldown_cutoff = datetime.utcnow() - timedelta(minutes=30)
+                        recent_errors = db.session.query(db.func.count()).filter(
+                            LLMTaskResult.scenario_id == scenario.id,
+                            LLMTaskResult.model_id == model_id,
+                            LLMTaskResult.error.isnot(None),
+                            LLMTaskResult.updated_at >= cooldown_cutoff,
+                        ).scalar() or 0
+
+                        if recent_errors >= 3:
+                            print(
+                                f"[Startup] Skipping model {model_id} for scenario {scenario.id} "
+                                f"- {recent_errors} recent errors (cooldown active)"
+                            )
+                            continue
+
                         # Get IDs that already have successful results
                         completed_rows = db.session.query(LLMTaskResult.thread_id).filter(
                             LLMTaskResult.scenario_id == scenario.id,
@@ -445,8 +472,16 @@ def start_pending_llm_evaluations():
                         ).all()
                         completed_ids = {row[0] for row in completed_rows if row[0]}
 
-                        # Find IDs that need evaluation
-                        pending_ids = list(all_ids - completed_ids)
+                        # Also exclude items that have errors (don't retry on startup)
+                        errored_rows = db.session.query(LLMTaskResult.thread_id).filter(
+                            LLMTaskResult.scenario_id == scenario.id,
+                            LLMTaskResult.model_id == model_id,
+                            LLMTaskResult.error.isnot(None),
+                        ).all()
+                        errored_ids = {row[0] for row in errored_rows if row[0]}
+
+                        # Only start truly pending items (not completed, not errored)
+                        pending_ids = list(all_ids - completed_ids - errored_ids)
 
                         if pending_ids:
                             id_type = "sessions" if item['is_comparison'] else "threads"
@@ -458,7 +493,7 @@ def start_pending_llm_evaluations():
                             LLMAITaskRunner.run_for_scenario_async(
                                 scenario.id,
                                 model_ids=[model_id],
-                                thread_ids=pending_ids,  # Works for both threads and session IDs
+                                thread_ids=pending_ids,
                             )
                             total_started += 1
 
@@ -470,18 +505,11 @@ def start_pending_llm_evaluations():
             except Exception as e:
                 print(f"[Startup] Error starting LLM evaluations: {e}")
 
-    # Run in background thread after a short delay to let other services initialize
-    def _delayed_start():
-        import time
-        time.sleep(5)  # Wait 5 seconds for other services to be ready
-        _run_pending_evaluations()
-
-    # Start background thread - skip only if LLARS_SKIP_STARTUP_TASKS is set
-    # For Docker/Gunicorn, we always want to run this (unlike embedding worker which
-    # has special handling for Flask reloader)
-    thread = threading.Thread(target=_delayed_start, daemon=True)
-    thread.start()
-    print("[Startup] LLM evaluation checker scheduled")
+    # DISABLED: Auto-starting LLM evaluations on startup caused 100% CPU.
+    # Each failed item triggers stats recomputation (6s CPU-bound), and models
+    # with bad API keys would retry 500 items on every container restart.
+    # Users can manually retry via the Retry button in the Scenario Manager.
+    print("[Startup] LLM evaluation auto-start disabled (use Retry button in UI)")
 
 
 start_pending_llm_evaluations()

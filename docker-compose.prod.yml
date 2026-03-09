@@ -23,6 +23,8 @@ services:
       - ./docker/nginx/certs:/etc/nginx/certs:ro
       # Static videos (persists across container rebuilds)
       - ./static/videos:/srv/llars-static/videos:ro
+      # Blue-Green upstream routing (managed by deploy_bluegreen.sh)
+      - ./docker/nginx/active_upstream.conf:/etc/nginx/active_upstream.conf:ro
     restart: unless-stopped
 
   # ============================================
@@ -31,6 +33,7 @@ services:
   backend-flask-service:
     environment:
       - TZ=Europe/Berlin
+      - PROJECT_STATE=production
       - FLASK_ENV=production
       - FLASK_DEBUG=False
       # Disable Chroma telemetry (avoids noisy posthog signature errors and external telemetry calls)
@@ -48,7 +51,7 @@ services:
       # OnCoCo model (large, mounted to keep image slim)
       - ./app/models/oncoco:/app/models/oncoco:ro
       # Docker monitor (admin): needs access to Docker Engine
-      - /var/run/docker.sock:/var/run/docker.sock
+      - /var/run/docker.sock:/var/run/docker.sock:ro
     # No expose of port to host (only internal)
     ports: []
     restart: unless-stopped
@@ -68,13 +71,15 @@ services:
       context: .
       dockerfile: docker/vue/Dockerfile-vue-production
       args:
-        - VITE_API_BASE_URL=${PROJECT_URL:-https://llars.e-beratungsinstitut.de}
+        # Build frontend URLs as relative paths so the same image works on
+        # staging (:55080) and production behind the blue-green nginx switch.
+        - VITE_API_BASE_URL=
         - VITE_PROJECT_STATE=production
-        - VITE_MKDOCS_URL=${PROJECT_URL:-https://llars.e-beratungsinstitut.de}/mkdocs
-        - VITE_KEYCLOAK_URL=${PROJECT_URL:-https://llars.e-beratungsinstitut.de}/authentik
+        - VITE_MKDOCS_URL=/mkdocs
+        - VITE_KEYCLOAK_URL=/authentik
         - VITE_KEYCLOAK_CLIENT_ID=${AUTHENTIK_FRONTEND_CLIENT_ID:-llars-frontend}
         - VITE_KEYCLOAK_REALM=llars
-        - VITE_SOCKETIO_ENABLE_WEBSOCKET=${VITE_SOCKETIO_ENABLE_WEBSOCKET:-false}
+        - VITE_SOCKETIO_ENABLE_WEBSOCKET=${VITE_SOCKETIO_ENABLE_WEBSOCKET:-true}
     environment:
       - TZ=Europe/Berlin
     # No volume mounts in production - static files baked into image
@@ -139,6 +144,8 @@ services:
       - TZ=Europe/Berlin
       - PROJECT_STATE=production
       - MKDOCS_BIND_ADDR=0.0.0.0:8000
+    # Remove external port exposure (only internal via nginx)
+    ports: []
     # Remove volume mounts and develop mode for production
     volumes: []
     develop: {}
@@ -170,6 +177,13 @@ services:
     restart: "no"
 
   matomo-archiver:
+    restart: unless-stopped
+
+  # ============================================
+  # LiveKit - Remove external port exposure
+  # ============================================
+  livekit-service:
+    ports: []
     restart: unless-stopped
 
   # ============================================
@@ -211,7 +225,7 @@ services:
       - AUTHENTIK_POSTGRESql__PASSWORD=${AUTHENTIK_DB_PASSWORD}
       - AUTHENTIK_REDIS__HOST=authentik-redis
       - AUTHENTIK_LISTEN__PORT=9000
-      - AUTHENTIK_LISTEN__TRUSTED_PROXY_CIDRS=0.0.0.0/0,::/0
+      - AUTHENTIK_LISTEN__TRUSTED_PROXY_CIDRS=172.16.0.0/12,10.0.0.0/8,192.168.0.0/16
       - AUTHENTIK_ERROR_REPORTING__ENABLED=false
       - AUTHENTIK_BOOTSTRAP_EMAIL=${AUTHENTIK_BOOTSTRAP_EMAIL}
       - AUTHENTIK_BOOTSTRAP_PASSWORD=${AUTHENTIK_BOOTSTRAP_PASSWORD}

@@ -21,6 +21,8 @@ Event Namespaces:
     - llm_eval:*  - LLM evaluator progress and results
     - generation:* - Batch generation rooms and stream state
     - pipeline:*  - Automated pipeline run sessions
+    - messaging:* - Real-time messaging (chat, typing, read receipts)
+    - anonymization:* - Anonymization pipeline NER sessions and progress
     - (default)   - Chat streaming, connection events
 """
 
@@ -46,6 +48,8 @@ from .events_presence import register_presence_events
 from .events_llm_evaluation import register_llm_evaluation_events
 from .events_generation import register_generation_events
 from .events_pipeline import register_pipeline_events
+from .events_messaging import register_messaging_events
+from .events_anonymization import register_anonymization_events
 
 # Enhanced logging format
 logging.basicConfig(
@@ -129,6 +133,8 @@ def configure_socket_routes(socketio, verbose=True):
     register_llm_evaluation_events(socketio)
     register_generation_events(socketio)
     register_pipeline_events(socketio)
+    register_messaging_events(socketio)
+    register_anonymization_events(socketio)
 
     logging.info("SocketIO routes configured successfully")
 

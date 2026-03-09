@@ -47,19 +47,27 @@ def generate_field_value():
     # Get the prompt template
     template = FieldPromptService.get_by_field_key(field_key)
     if not template:
+        # Try once after seeding defaults so newly introduced field keys work
+        # without requiring a manual restart sequence.
+        FieldPromptService.seed_defaults()
+        template = FieldPromptService.get_by_field_key(field_key)
+    if not template:
         raise NotFoundError(f"No prompt template found for field: {field_key}")
 
     # Render the prompt
     rendered_prompt = FieldPromptService.render_prompt(template, context)
 
-    # Get LLM client and admin-configured default model
+    # Get LLM client and resolve model (strips Global/ prefix etc.)
     try:
         from db.models.llm_model import LLMModel
-        client = LLMClientFactory.get_client_for_model(None)
-        # Use admin-configured default model
-        model = LLMModel.get_default_model_id(model_type=LLMModel.MODEL_TYPE_LLM)
-        if not model:
+        default_model_id = LLMModel.get_default_model_id(model_type=LLMModel.MODEL_TYPE_LLM)
+        if not default_model_id:
             raise ValidationError("No default LLM model configured")
+        client, model = LLMClientFactory.resolve_client_and_model_id(default_model_id)
+        if not client:
+            raise ValidationError("No LLM provider available for default model")
+    except ValidationError:
+        raise
     except Exception as e:
         logger.error(f"Failed to get LLM client: {e}")
         raise ValidationError("LLM service unavailable")

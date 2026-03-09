@@ -68,6 +68,74 @@ Antworte nur mit der Beschreibung.""",
         "max_tokens": 150,
         "temperature": 0.7,
     },
+    "scenario.settings.task_description": {
+        "display_name": "Aufgabenbeschreibung",
+        "description": "Generiert eine konkrete Aufgabenbeschreibung für Evaluatoren basierend auf Szenario-Kontext und optionalem Nutzer-Prompt.",
+        "system_prompt": """Du bist ein Experte für Evaluationsdesign in Forschungsstudien.
+Formuliere eine klare Aufgabenbeschreibung für Evaluatoren.
+
+Die Aufgabenbeschreibung sollte:
+- konkret beschreiben, was bewertet werden soll
+- 1-3 Sätze lang sein
+- neutral und präzise formuliert sein
+- auf Deutsch sein
+
+Antworte NUR mit der Aufgabenbeschreibung, ohne Anführungszeichen.""",
+        "user_prompt_template": """Erstelle eine Aufgabenbeschreibung für dieses Szenario.
+
+Szenario-Typ: {scenario_type}
+Szenario-Name: {scenario_name}
+Bestehende Beschreibung: {existing_description}
+Bestehende Aufgabenbeschreibung: {existing_task_description}
+Bestehende Evaluationskriterien: {existing_evaluation_criteria}
+Zusätzlicher Nutzerwunsch (optional): {generation_prompt}
+
+Antworte nur mit der Aufgabenbeschreibung.""",
+        "context_variables": [
+            "scenario_type",
+            "scenario_name",
+            "existing_description",
+            "existing_task_description",
+            "existing_evaluation_criteria",
+            "generation_prompt",
+        ],
+        "max_tokens": 180,
+        "temperature": 0.6,
+    },
+    "scenario.settings.evaluation_criteria": {
+        "display_name": "Evaluationskriterien",
+        "description": "Generiert passende Evaluationskriterien für ein Szenario basierend auf Kontext und optionalem Nutzer-Prompt.",
+        "system_prompt": """Du bist ein Experte für Bewertungsrubriken in Forschungsstudien.
+Generiere prägnante Evaluationskriterien.
+
+Die Kriterien sollten:
+- relevant für die gegebene Evaluationsaufgabe sein
+- möglichst nicht redundant sein
+- als kurze Stichworte formuliert sein
+- auf Deutsch sein
+
+Antworte NUR mit einer Liste, ein Kriterium pro Zeile, ohne Nummerierung.""",
+        "user_prompt_template": """Erstelle Evaluationskriterien für dieses Szenario.
+
+Szenario-Typ: {scenario_type}
+Szenario-Name: {scenario_name}
+Bestehende Beschreibung: {existing_description}
+Bestehende Aufgabenbeschreibung: {existing_task_description}
+Bestehende Evaluationskriterien: {existing_evaluation_criteria}
+Zusätzlicher Nutzerwunsch (optional): {generation_prompt}
+
+Erzeuge 4-8 Kriterien. Ein Kriterium pro Zeile.""",
+        "context_variables": [
+            "scenario_type",
+            "scenario_name",
+            "existing_description",
+            "existing_task_description",
+            "existing_evaluation_criteria",
+            "generation_prompt",
+        ],
+        "max_tokens": 220,
+        "temperature": 0.6,
+    },
     "scenario.rating.scale_labels": {
         "display_name": "Bewertungsskala-Labels",
         "description": "Generiert passende Labels für die Bewertungsskala eines Rating-Szenarios.",

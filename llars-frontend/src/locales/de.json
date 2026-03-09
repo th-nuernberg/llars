@@ -29,7 +29,10 @@
     "retry": "Erneut versuchen",
     "dismiss": "Schließen",
     "copy": "Kopieren",
-    "create": "Erstellen"
+    "create": "Erstellen",
+    "download": "Herunterladen",
+    "leave": "Verlassen",
+    "actions": "Aktionen"
   },
   "auth": {
     "login": "Anmelden",
@@ -191,6 +194,16 @@
       "neutral": "Neutral"
     }
   },
+  "chatbotManagerPage": {
+    "title": "Chatbot Workspace",
+    "subtitle": "Erstellen & Verwalten",
+    "homeLink": "Zur Startseite",
+    "nav": {
+      "chatbots": "Meine Chatbots",
+      "rag": "RAG Dokumente",
+      "crawler": "Web Crawler"
+    }
+  },
   "adminDashboard": {
     "title": "Admin",
     "subtitle": "Dashboard",
@@ -213,7 +226,9 @@
       "rag": "RAG Dokumente",
       "permissions": "Berechtigungen",
       "llmProviders": "LLM Provider",
-      "fieldPrompts": "KI-Feld-Prompts"
+      "researchGroups": "Forschungsgruppen",
+      "fieldPrompts": "KI-Feld-Prompts",
+      "communication": "Kommunikation"
     }
   },
   "aiAssist": {
@@ -2572,16 +2587,20 @@
         "description": "System-Übersicht und Administration"
       },
       "chatbotAdmin": {
-        "title": "Chatbot Verwaltung",
+        "title": "Chatbot Workspace",
         "description": "Chatbots erstellen, konfigurieren und teilen"
       },
       "ragAdmin": {
-        "title": "RAG Verwaltung",
-        "description": "Dokumente für die RAG-Pipeline verwalten und hochladen"
+        "title": "RAG Dokumente",
+        "description": "Dokumente und Datenquellen verwalten und hochladen"
       },
       "pipeline": {
         "title": "Pipeline",
         "description": "Automatisierte LLM-Evaluation: Prompt-Optimierung, Generierung, Bewertung im Loop"
+      },
+      "conferenceManager": {
+        "title": "Konferenz-Manager",
+        "description": "Konferenzen, Deadlines und Paper-Einreichungen verfolgen"
       },
       "userSettings": {
         "title": "Einstellungen",
@@ -2692,6 +2711,7 @@
       "evaluation": "Evaluierung",
       "results": "Ergebnisse",
       "team": "Team",
+      "assessors": "Gutachter",
       "myScenarios": "Meine Szenarien",
       "invitations": "Einladungen",
       "dataFormat": "Datenformat"
@@ -2802,6 +2822,16 @@
         "name": "Szenario-Name",
         "descriptionField": "Szenariobeschreibung",
         "descriptionHint": "Optional: Beschreiben Sie den Zweck dieses Szenarios",
+        "aiGenerationPromptField": "KI-Generierungs-Prompt",
+        "aiGenerationPromptHint": "Optional: Beschreiben Sie kurz, welche Perspektive oder Schwerpunkte die KI bei Aufgabenbeschreibung und Kriterien berücksichtigen soll",
+        "taskDescriptionField": "Aufgabenbeschreibung",
+        "taskDescriptionHint": "Optional: Beschreiben Sie die konkrete Bewertungsaufgabe für Evaluatoren",
+        "taskDescriptionTooltipTitle": "Was gehört in die Aufgabenbeschreibung?",
+        "taskDescriptionTooltipMarkdown": "Beschreibt den **Bewertungsauftrag** für Evaluatoren.\n\nBeispiele:\n- Welchen Aspekt sollen Evaluatoren priorisieren?\n- Welche Zielgruppe oder welcher Kontext liegt vor?\n- Wie soll bei Unsicherheit entschieden werden?",
+        "evaluationCriteriaField": "Evaluationskriterien",
+        "evaluationCriteriaHint": "Optional: Kriterien als Stichworte erfassen (Enter oder Komma)",
+        "evaluationCriteriaTooltipTitle": "Wie sollen Evaluationskriterien genutzt werden?",
+        "evaluationCriteriaTooltipMarkdown": "Kriterien definieren, **woran** bewertet wird.\n\nTipps:\n- Ein Kriterium pro Stichwort (z. B. Empathie, Klarheit, Fachlichkeit)\n- Möglichst präzise und beobachtbar formulieren\n- Kriterien sollten zur Aufgabenbeschreibung passen",
         "startDate": "Startdatum",
         "endDate": "Enddatum",
         "rankingDisabledHint": "Ranking benötigt mindestens 2 Varianten pro Eingabe (mehrere Modelle oder Prompts)"
@@ -2848,6 +2878,8 @@
         "type": "Typ",
         "name": "Name",
         "descriptionLabel": "Szenariobeschreibung",
+        "taskDescriptionLabel": "Aufgabenbeschreibung",
+        "evaluationCriteriaLabel": "Evaluationskriterien",
         "preset": "Vorlage",
         "file": "Datei",
         "files": "Dateien",
@@ -3012,6 +3044,8 @@
       "details": "Details",
       "type": "Typ",
       "description": "Beschreibung",
+      "taskDescription": "Aufgabenbeschreibung",
+      "evaluationCriteria": "Evaluationskriterien",
       "created": "Erstellt am",
       "period": "Zeitraum",
       "distribution": "Verteilung",
@@ -3023,6 +3057,7 @@
       "pending": "Ausstehend",
       "accuracy": "Genauigkeit",
       "noEvaluators": "Noch keine Evaluatoren",
+      "failed": "Fehlgeschlagen",
       "threads": "Threads",
       "users": "Nutzer",
       "agreementMetrics": "Agreement-Metriken",
@@ -3188,13 +3223,13 @@
       "assignments": "Zuordnungen",
       "noProvenanceData": "Noch keine Provenance-Daten verfügbar",
       "conversationProvenance": "Gesprächspartner-Provenance",
-      "conversationProvenanceDescription": "Analysiert, welche Gesprächspartner-Kombinationen die höchsten Bewertungen erzielen. Berater (erster Wert) und Klient (zweiter Wert) zeigen, ob Nachrichten von Menschen oder KI-Modellen verfasst wurden. Format: Berater \u00d7 Klient.",
+      "conversationProvenanceDescription": "Analysiert, welche Gesprächspartner-Kombinationen die höchsten Bewertungen erzielen. Berater (erster Wert) und Klient (zweiter Wert) zeigen, ob Nachrichten von Menschen oder KI-Modellen verfasst wurden. Format: Berater × Klient.",
       "bestCounselorSource": "Beste Berater-Quelle",
       "bestClientSource": "Beste Klient-Quelle",
-      "bestCounselorClientPair": "Bestes Berater \u00d7 Klient-Paar",
+      "bestCounselorClientPair": "Bestes Berater × Klient-Paar",
       "counselorSourceRanking": "Berater-Quellen-Ranking",
       "clientSourceRanking": "Klient-Quellen-Ranking",
-      "counselorClientRanking": "Berater \u00d7 Klient-Ranking",
+      "counselorClientRanking": "Berater × Klient-Ranking",
       "authenticityProvenance": "Authentizitäts-Provenance-Analyse",
       "authenticityProvenanceDescription": "Analysiert, welche LLM-Generierungsquellen Bewerter am besten täuschen. Zeigt die Täuschungsrate (Prozentsatz der Bewertungen, die gefälschten Inhalt fälschlicherweise als echt klassifiziert haben) pro Quelle und die Falsch-Positiv-Rate für menschlich geschriebene Inhalte.",
       "bestFoolingLLM": "Überzeugendste KI-Quelle",
@@ -3292,18 +3327,18 @@
       }
     },
     "team": {
-      "title": "Team",
+      "title": "Gutachter",
       "invite": "Einladen",
-      "evaluators": "Evaluatoren",
+      "evaluators": "Gutachter",
       "llmModels": "LLM Modelle",
-      "humanEvaluators": "Human Evaluators",
-      "llmEvaluators": "LLM Evaluators",
+      "humanEvaluators": "Menschliche Gutachter",
+      "llmEvaluators": "LLM Evaluatoren",
       "addLLM": "LLM hinzufügen",
-      "noEvaluators": "Noch keine Evaluatoren eingeladen",
+      "noEvaluators": "Noch keine Gutachter eingeladen",
       "noLLM": "Noch keine LLM-Modelle konfiguriert",
       "changeRole": "Rolle ändern",
       "remove": "Entfernen",
-      "inviteTitle": "Nutzer einladen",
+      "inviteTitle": "Gutachter einladen",
       "selectUsers": "Nutzer auswählen",
       "searchUsers": "Benutzer suchen...",
       "role": "Rolle",
@@ -3316,10 +3351,22 @@
       "removeConfirm": "Möchten Sie {name} wirklich aus diesem Szenario entfernen?",
       "changeRoleFor": "Rolle ändern für {name}:",
       "newRole": "Neue Rolle",
-      "viewerHint": "Viewer haben nur Lesezugriff und können keine Bewertungen abgeben.",
+      "viewerHint": "Betrachter haben nur Lesezugriff und können keine Bewertungen abgeben.",
+      "retry": "Wiederholen",
+      "retryAll": "Alle wiederholen",
+      "startLLM": "Starten",
+      "errorDetailsTitle": "Fehlerdetails",
+      "noErrors": "Keine Fehler gefunden",
+      "llmFailed": "Fehlgeschlagen",
+      "llmCompleted": "Abgeschlossen",
+      "llmRunning": "Läuft",
+      "llmPending": "Ausstehend",
+      "llmStopped": "Gestoppt",
       "roles": {
         "owner": "Besitzer",
-        "evaluator": "Evaluator",
+        "manager": "Manager",
+        "assessor": "Gutachter",
+        "evaluator": "Gutachter",
         "viewer": "Betrachter"
       }
     },
@@ -3328,25 +3375,42 @@
       "basicInfo": "Grundinformationen",
       "name": "Name",
       "description": "Szenariobeschreibung",
+      "aiGenerationPrompt": "KI-Generierungs-Prompt",
+      "aiGenerationPromptHint": "Optional: Freier Prompt für KI-Vorschläge zu Aufgabenbeschreibung und Evaluationskriterien",
+      "taskDescription": "Aufgabenbeschreibung",
+      "taskDescriptionHint": "Markdown-Briefing für Evaluatoren, worauf sie achten sollen",
+      "taskDescriptionTooltipTitle": "Was gehört in die Aufgabenbeschreibung?",
+      "taskDescriptionTooltipMarkdown": "Beschreibt den **Bewertungsauftrag** für Evaluatoren.\n\nBeispiele:\n- Welchen Aspekt sollen Evaluatoren priorisieren?\n- Welche Zielgruppe oder welcher Kontext liegt vor?\n- Wie soll bei Unsicherheit entschieden werden?",
+      "evaluationCriteria": "Evaluationskriterien",
+      "evaluationCriteriaHint": "Markdown mit Kriterien, Gewichtungen oder Bewertungsregeln",
+      "evaluationCriteriaTooltipTitle": "Wie sollen Evaluationskriterien genutzt werden?",
+      "evaluationCriteriaTooltipMarkdown": "Kriterien definieren, **woran** bewertet wird.\n\nTipps:\n- Ein Kriterium pro Stichwort (z. B. Empathie, Klarheit, Fachlichkeit)\n- Möglichst präzise und beobachtbar formulieren\n- Kriterien sollten zur Aufgabenbeschreibung passen",
       "timePeriod": "Zeitraum",
       "startDate": "Startdatum",
       "endDate": "Enddatum",
       "distribution": "Verteilung",
       "distributionAll": "Alle an jeden",
-      "distributionAllDesc": "Jeder Evaluator bewertet alle Threads",
+      "distributionAllDesc": "Jeder Gutachter bewertet alle Items",
       "distributionRandom": "Zufällig",
-      "distributionRandomDesc": "Threads werden zufällig auf Evaluatoren verteilt",
+      "distributionRandomDesc": "Items werden zufällig auf Gutachter verteilt",
       "distributionSequential": "Sequentiell",
-      "distributionSequentialDesc": "Threads werden der Reihe nach zugewiesen",
+      "distributionSequentialDesc": "Items werden der Reihe nach zugewiesen",
       "order": "Reihenfolge",
       "orderFixed": "Feste Reihenfolge",
       "orderRandom": "Zufällige Reihenfolge",
-      "visibility": "Sichtbarkeit",
-      "visibilityPrivate": "Privat (nur für mich)",
-      "visibilityTeam": "Team (eingeladene Nutzer)",
-      "visibilityPublic": "Öffentlich",
+      "collaboration": "Zusammenarbeit",
+      "collaborationTooltip": "Fügen Sie Kollegen als Manager (können Einstellungen bearbeiten und Gutachter einladen) oder Betrachter (können alle Tabs einsehen) hinzu.",
+      "addCollaborator": "Mitarbeiter hinzufügen",
+      "roleManager": "Manager",
+      "roleManagerDesc": "Kann Einstellungen bearbeiten und Gutachter verwalten",
+      "roleViewer": "Betrachter",
+      "roleViewerDesc": "Kann alle Tabs einsehen aber nichts ändern",
+      "noCollaborators": "Noch keine Mitarbeiter hinzugefügt",
+      "removeCollaborator": "Mitarbeiter entfernen",
       "status": "Status",
-      "delete": "Szenario löschen"
+      "delete": "Szenario löschen",
+      "distributionTooltip": "Legt fest, wie Items an Gutachter verteilt werden. \"Alle\" gibt jedem alle Items, \"Zufällig\" verteilt zufällig, und \"Sequentiell\" weist der Reihe nach zu.",
+      "orderTooltip": "Legt die Reihenfolge fest, in der Items angezeigt werden. \"Fest\" zeigt allen die gleiche Reihenfolge, \"Zufällig\" mischt die Reihenfolge pro Gutachter."
     },
     "distribution": {
       "all": "Alle an jeden",
@@ -3424,7 +3488,7 @@
       "bucketDistribution": "Zeigt wie viele Items in welchen Bucket (Gut/Mittel/Schlecht) einsortiert wurden. Aggregiert über alle menschlichen und LLM-Evaluatoren.",
       "provenanceAnalysis": "Vergleicht die Herkunft bewerteter Inhalte (Generierungs-LLM, Prompt und Prompt+LLM) und zeigt, welche Ursprünge am häufigsten im Top-Bucket landen. Format x/y = Treffer im Top-Bucket geteilt durch alle Zuordnungen der jeweiligen Herkunft.",
       "ratingProvenanceAnalysis": "Vergleicht die Herkunft bewerteter Inhalte (Generierungs-LLM, Prompt und Prompt+LLM) und zeigt, welche Ursprünge aktuell die höchsten normalisierten Rating-Scores erreichen.",
-      "conversationProvenance": "Analysiert Gesprächspartner-Kombinationen. Ermittelt, wer die Berater- und Klient-Nachrichten verfasst hat (Mensch vs. KI) und zeigt, welche Kombinationen die besten Bewertungen erzielen. Format: Berater \u00d7 Klient.",
+      "conversationProvenance": "Analysiert Gesprächspartner-Kombinationen. Ermittelt, wer die Berater- und Klient-Nachrichten verfasst hat (Mensch vs. KI) und zeigt, welche Kombinationen die besten Bewertungen erzielen. Format: Berater × Klient.",
       "authenticityProvenance": "Zeigt, wie gut jede LLM-Generierungsquelle Bewerter täuscht. Täuschungsrate = Prozentsatz der Stimmen, die gefälschten Inhalt fälschlicherweise als echt klassifiziert haben. Höhere Rate bedeutet überzeugendere Fälschung.",
       "rankingAgreement": "Pro Zusammenfassung: Haben beide Evaluatoren sie in denselben Bucket sortiert? Gezählt als: Übereinstimmende Zusammenfassungen / Gemeinsam bewertete Zusammenfassungen. Metriken ordinal berechnet (Bucket-Krippendorff)."
     },
@@ -4864,11 +4928,24 @@
       "emptyMembers": "Noch keine Mitglieder",
       "removeMember": "Mitglied entfernen"
     },
+    "accessRequests": {
+      "title": "Zugriffsanfragen",
+      "empty": "Keine ausstehenden Anfragen",
+      "approve": "Genehmigen",
+      "reject": "Ablehnen",
+      "approved": "Genehmigt",
+      "rejected": "Abgelehnt",
+      "requestAccess": "Zugriff anfragen",
+      "successMessage": "Anfrage erfolgreich gesendet",
+      "pendingRequests": "Ausstehende Anfragen"
+    },
     "tree": {
       "files": "Dateien",
       "filePlaceholder": "Dateiname",
       "uploadAsset": "Asset hochladen",
-      "collapse": "Dateibaum einklappen"
+      "collapse": "Dateibaum einklappen",
+      "onlineUsers": "Online ({count})",
+      "collabs": "Collabs"
     },
     "header": {
       "menuOpen": "Menü öffnen",
@@ -4969,6 +5046,9 @@
     "pdf": {
       "title": "PDF-Preview",
       "compiling": "Kompiliere...",
+      "downloadTitle": "Kompilierte PDF herunterladen",
+      "downloadSuccess": "PDF-Download gestartet",
+      "downloadError": "PDF-Download fehlgeschlagen",
       "zoomOut": "Herauszoomen",
       "zoomIn": "Hineinzoomen",
       "fitWidth": "Auf Breite anpassen",
@@ -5240,7 +5320,12 @@
         "namePlaceholder": "z.B. KI-Entwurf",
         "visibilityLabel": "Sichtbarkeit",
         "inviteLabel": "Mitglieder einladen",
-        "userPlaceholder": "Nutzer suchen und hinzufügen..."
+        "userPlaceholder": "Nutzer suchen und hinzufügen...",
+        "modeBlank": "Leerer Workspace",
+        "modeUpload": "ZIP hochladen",
+        "dropZone": "ZIP-Datei hierher ziehen oder klicken",
+        "maxSize": "Maximal 100 MB",
+        "nameOptional": "Workspace-Name (optional, Standard: ZIP-Dateiname)"
       }
     },
     "workspace": {
@@ -5529,7 +5614,11 @@
       "personal": "Persönlich",
       "apikeys": "API-Schlüssel",
       "providers": "LLM-Provider",
-      "referrals": "Einladungen"
+      "referrals": "Einladungen",
+      "admin": "Admin Dashboard"
+    },
+    "admin": {
+      "description": "Schnellzugriff auf das Admin Dashboard"
     },
     "apiKeys": {
       "description": "Erstellen und verwalten Sie API-Schlüssel für den programmatischen Zugriff",
@@ -5851,6 +5940,8 @@
       "active": "aktiv",
       "waitingForBatch": "Warte auf nächsten Batch...",
       "waitingForResponse": "Warte auf LLM-Antwort...",
+      "thinkingHidden": "Modell denkt nach (ausgeblendet)...",
+      "showThoughts": "Gedanken anzeigen",
       "reconnecting": "Verbinde zum laufenden Stream...",
       "inputPrompt": "Eingabe-Prompt",
       "noPromptData": "Prompt-Daten nicht verfügbar",
@@ -6170,6 +6261,12 @@
         "unlock": "Entsperren",
         "delete": "Löschen"
       },
+      "consoleLogs": {
+        "enable": "Console-Logs aktivieren",
+        "disable": "Console-Logs deaktivieren",
+        "activeLabel": "Console-Logs aktiv",
+        "activeNotice": "Console-Logging ist fuer diesen Account aktiviert. Ein Admin hat dies zu Debug-Zwecken eingeschaltet."
+      },
       "empty": {
         "noResults": "Keine Benutzer gefunden",
         "searchHint": "Suchen Sie nach einem Benutzer oder laden Sie alle Benutzer mit Rollen"
@@ -6377,6 +6474,39 @@
         "linkDeleted": "Link gelöscht"
       }
     },
+    "communication": {
+      "globalSettings": "Globale Einstellungen",
+      "masterToggle": "Kommunikation aktiviert",
+      "statusEnabled": "Kommunikationsfunktionen sind aktiv. Benutzer mit Berechtigungen können Messaging und Anrufe nutzen.",
+      "statusDisabled": "Kommunikationsfunktionen sind für alle Benutzer deaktiviert.",
+      "userAccess": "Benutzerzugriff verwalten",
+      "searchUser": "Benutzer suchen...",
+      "enableAll": "Alle aktivieren",
+      "disableAll": "Alle deaktivieren",
+      "toggleSaved": "Kommunikationseinstellung gespeichert",
+      "toggleError": "Fehler beim Speichern der Kommunikationseinstellung",
+      "permError": "Fehler beim Aktualisieren der Berechtigung",
+      "bulkEnabled": "Alle Benutzer aktiviert",
+      "bulkDisabled": "Alle Benutzer deaktiviert",
+      "table": {
+        "user": "Benutzer",
+        "all": "Alle",
+        "access": "Zugriff",
+        "transcription": "Transkription"
+      },
+      "statistics": "Kommunikationsstatistiken",
+      "stats": {
+        "conversations": "Konversationen",
+        "messages": "Nachrichten",
+        "calls": "Anrufe",
+        "activeUsers": "Aktive Benutzer",
+        "perUser": "Benutzerstatistiken",
+        "messagesSent": "Nachrichten gesendet",
+        "lastActive": "Zuletzt aktiv",
+        "unread": "Ungelesen",
+        "privacyNote": "Privacy-by-Design: Es werden nur aggregierte Zahlen angezeigt. Nachrichteninhalte sind für Admins niemals sichtbar."
+      }
+    },
     "rag": {
       "stats": {
         "documents": "Dokumente",
@@ -6579,6 +6709,293 @@
           "nameFormat": "Nur Kleinbuchstaben, Zahlen, - und _",
           "positiveNumber": "Muss größer als 0 sein"
         }
+      }
+    }
+  },
+  "conferenceManager": {
+    "title": "Konferenz-Manager",
+    "tabs": {
+      "conferences": "Konferenzen",
+      "papers": "Papers",
+      "calendar": "Kalender",
+      "kanban": "Kanban Board",
+      "timeline": "Zeitstrahl"
+    },
+    "conference": {
+      "name": "Name",
+      "acronym": "Akronym",
+      "year": "Jahr",
+      "coreRanking": "CORE Ranking",
+      "submissionDeadline": "Einreichungsfrist",
+      "notificationDate": "Benachrichtigung",
+      "startDate": "Startdatum",
+      "endDate": "Enddatum",
+      "city": "Stadt",
+      "country": "Land",
+      "website": "Website",
+      "keywords": "Schlagwörter",
+      "notes": "Notizen",
+      "location": "Ort",
+      "create": "Neue Konferenz",
+      "edit": "Konferenz bearbeiten"
+    },
+    "paper": {
+      "title": "Titel",
+      "status": "Status",
+      "conference": "Konferenz",
+      "authors": "Autoren",
+      "authorName": "Autorenname",
+      "addAuthor": "Autor hinzufügen",
+      "addExternal": "Externen Autor hinzufügen",
+      "externalAuthor": "Externer Autor",
+      "searchUser": "Nutzer suchen...",
+      "noAuthors": "Noch keine Autoren hinzugefügt.",
+      "corresponding": "Korrespondierend",
+      "overleafUrl": "Overleaf URL",
+      "externalUrl": "Externe URL",
+      "keywords": "Schlagwörter",
+      "description": "Beschreibung",
+      "notes": "Notizen",
+      "updated": "Aktualisiert",
+      "create": "Neues Paper",
+      "edit": "Paper bearbeiten",
+      "statuses": {
+        "planning": "Planung",
+        "inProgress": "In Bearbeitung",
+        "submitted": "Eingereicht",
+        "accepted": "Akzeptiert",
+        "rejected": "Abgelehnt",
+        "published": "Veröffentlicht"
+      },
+      "submissions": "Einreichungsverlauf",
+      "addSubmission": "Einreichung hinzufügen",
+      "submittedAt": "Eingereicht am",
+      "decidedAt": "Entscheidung",
+      "noSubmissions": "Noch keine Einreichungen",
+      "currentSubmission": "Aktuell",
+      "resubmissions": "Wiedereinreichungen",
+      "submissionStatuses": {
+        "submitted": "Eingereicht",
+        "accepted": "Akzeptiert",
+        "rejected": "Abgelehnt",
+        "withdrawn": "Zurückgezogen"
+      },
+      "latexWorkspace": "LLARS LaTeX-Arbeitsbereich",
+      "selectWorkspace": "Arbeitsbereich auswählen",
+      "noAccess": "Kein Zugriff",
+      "requestAccess": "Zugriff anfragen",
+      "requestSent": "Anfrage gesendet",
+      "requestPending": "Anfrage ausstehend",
+      "openWorkspace": "Arbeitsbereich öffnen"
+    },
+    "filters": {
+      "search": "Suchen...",
+      "allRankings": "Alle Rankings",
+      "allStatuses": "Alle Status",
+      "allConferences": "Alle Konferenzen"
+    },
+    "stats": {
+      "conferences": "Konferenzen",
+      "papers": "Papers",
+      "upcomingDeadlines": "anstehende Deadlines"
+    },
+    "actions": {
+      "cancel": "Abbrechen",
+      "save": "Speichern",
+      "create": "Erstellen",
+      "delete": "Löschen",
+      "confirmDelete": "Löschen bestätigen",
+      "confirmDeleteConference": "Möchten Sie \"{name}\" wirklich löschen? Papers, die mit dieser Konferenz verknüpft sind, behalten ihre Daten.",
+      "confirmDeletePaper": "Möchten Sie \"{name}\" wirklich löschen?"
+    },
+    "legend": {
+      "ranking": "CORE Ranking",
+      "status": "Paper Status"
+    },
+    "empty": {
+      "conferences": "Noch keine Konferenzen. Erstellen Sie die erste!",
+      "papers": "Noch keine Papers. Erstellen Sie das erste!"
+    },
+    "calendar": {
+      "legend": "Legende",
+      "deadline": "Einreichungsfrist",
+      "notification": "Benachrichtigung",
+      "conference": "Konferenz"
+    },
+    "kanban": {
+      "emptyColumn": "Keine Paper",
+      "dragHint": "Ziehen um Status zu ändern",
+      "addPaper": "Paper hinzufügen"
+    },
+    "timeline": {
+      "today": "Heute",
+      "zoomIn": "Vergrößern",
+      "zoomOut": "Verkleinern",
+      "months3": "3 Monate",
+      "months6": "6 Monate",
+      "months12": "12 Monate",
+      "deadline": "Deadline",
+      "notification": "Benachrichtigung",
+      "conferencePeriod": "Konferenzzeitraum",
+      "todayMarker": "Aktuelles Datum",
+      "noEvents": "Keine anstehenden Events",
+      "oneDay": "1 Tag",
+      "nDays": "{n} Tage"
+    },
+    "wizard": {
+      "title": "KI-Konferenzsuche",
+      "button": "KI-Suche",
+      "description": "Geben Sie einen Konferenznamen, ein Akronym oder eine URL ein, um die Konferenzdetails automatisch zu suchen und auszufüllen.",
+      "inputLabel": "Konferenzname, Akronym oder URL",
+      "inputPlaceholder": "z.B. NeurIPS 2026",
+      "hint": "Funktioniert am besten mit spezifischen Namen inkl. Jahreszahl",
+      "search": "Mit KI suchen",
+      "retry": "Erneut versuchen",
+      "steps": {
+        "searching": "Suche nach Konferenz...",
+        "scraping": "Lese Konferenz-Website...",
+        "analyzing": "Extrahiere Konferenzdaten...",
+        "done": "Fertig"
+      },
+      "errors": {
+        "noResults": "Keine Suchergebnisse gefunden. Versuchen Sie eine andere Suche.",
+        "failed": "Etwas ist schiefgelaufen. Bitte versuchen Sie es erneut.",
+        "noLlm": "Kein LLM-Modell konfiguriert. Bitte kontaktieren Sie einen Administrator."
+      }
+    },
+    "validation": {
+      "required": "Dieses Feld ist erforderlich"
+    },
+    "series": {
+      "select": "Konferenz-Reihe",
+      "hint": "Verknüpfung mit einer Reihe für jährliche Editionen",
+      "create": "Neue Reihe",
+      "addEdition": "Edition hinzufügen",
+      "linkDetected": "Bestehende Reihe erkannt",
+      "standalone": "Einzelne Konferenzen",
+      "groupBySeries": "Nach Reihe gruppieren"
+    },
+    "venueMap": {
+      "distance": "von Nürnberg",
+      "geocoding": "Karte wird geladen...",
+      "geocodeFailed": "Dieser Ort konnte auf der Karte nicht gefunden werden.",
+      "error": "Karte konnte nicht geladen werden."
+    }
+  },
+  "messaging": {
+    "title": "Nachrichten",
+    "newChat": "Neuer Chat",
+    "newGroup": "Neue Gruppe",
+    "startChat": "Chat starten",
+    "createGroup": "Gruppe erstellen",
+    "selectUser": "Benutzer auswählen",
+    "groupName": "Gruppenname",
+    "groupDescription": "Beschreibung (optional)",
+    "addMembers": "Mitglieder hinzufügen",
+    "addMember": "Mitglied hinzufügen",
+    "add": "Hinzufügen",
+    "members": "Mitglieder",
+    "groupInfo": "Gruppeninfo",
+    "leaveGroup": "Gruppe verlassen",
+    "chatDisabled": "Chat ist für Ihr Konto nicht verfügbar",
+    "typeMessage": "Nachricht eingeben...",
+    "send": "Senden",
+    "reply": "Antworten",
+    "copy": "Kopieren",
+    "edit": "Bearbeiten",
+    "delete": "Löschen",
+    "edited": "bearbeitet",
+    "encrypted": "Ende-zu-Ende-verschlüsselt",
+    "messageDeleted": "Diese Nachricht wurde gelöscht",
+    "noMessages": "Noch keine Nachrichten",
+    "noConversations": "Noch keine Unterhaltungen",
+    "loading": "Unterhaltungen werden geladen...",
+    "loadingMessages": "Nachrichten werden geladen...",
+    "loadMore": "Ältere Nachrichten laden",
+    "searchPlaceholder": "Unterhaltungen durchsuchen...",
+    "selectConversation": "Unterhaltung auswählen",
+    "selectConversationHint": "Wähle einen Chat aus der Liste oder starte einen neuen",
+    "unavailable": "Messaging ist derzeit nicht verfügbar",
+    "unavailableHint": "Diese Funktion wurde von einem Administrator deaktiviert. Bitte wende dich an deinen Admin, wenn du Zugriff benötigst.",
+    "backToHome": "Zurück zur Startseite",
+    "today": "Heute",
+    "yesterday": "Gestern",
+    "newMessages": "Neue Nachrichten",
+    "isTyping": "tippt",
+    "areTyping": "tippen",
+    "severalTyping": "Mehrere Personen tippen",
+    "aiAccess": "KI-Zugriff",
+    "aiAccessTooltip": "KI erlauben, verschlüsselte Nachrichten für Zusammenfassungen zu lesen",
+    "close": "Schließen",
+    "call": {
+      "voice": "Sprachanruf",
+      "voiceDisabled": "Sprachanruf nicht verfügbar",
+      "video": "Videoanruf",
+      "videoDisabled": "Videoanruf nicht verfügbar",
+      "transcription": "Live-Transkript",
+      "noTranscript": "Noch kein Transkript",
+      "liveTranscription": "Live-Transkription aktiv",
+      "incoming": "Eingehender Anruf",
+      "accept": "Annehmen",
+      "decline": "Ablehnen",
+      "ended": "Anruf beendet",
+      "duration": "Dauer"
+    },
+    "errors": {
+      "sendFailed": "Nachricht konnte nicht gesendet werden",
+      "loadFailed": "Nachrichten konnten nicht geladen werden"
+    }
+  },
+  "researchGroup": {
+    "title": "Forschungsgruppen",
+    "loading": "Gruppen werden geladen...",
+    "myGroups": "Meine Gruppen",
+    "name": "Name",
+    "slug": "Slug",
+    "description": "Beschreibung",
+    "createdBy": "Erstellt von",
+    "create": "Gruppe erstellen",
+    "edit": "Gruppe bearbeiten",
+    "delete": "Gruppe löschen",
+    "selection": {
+      "title": "Forschungsgruppe auswählen",
+      "noGroups": "Du bist noch in keiner Gruppe.",
+      "otherGroups": "Weitere Gruppen"
+    },
+    "members": {
+      "title": "Mitglieder",
+      "invite": "Einladen",
+      "searchUser": "Benutzer suchen",
+      "role": "Rolle",
+      "confirmRemove": "Mitglied {name} wirklich entfernen?",
+      "roles": {
+        "owner": "Eigentümer",
+        "member": "Mitglied",
+        "viewer": "Betrachter"
+      }
+    },
+    "accessRequest": {
+      "title": "Zugang beantragen",
+      "pending": "Ausstehende Anfragen",
+      "approve": "Annehmen",
+      "reject": "Ablehnen",
+      "message": "Nachricht (optional)",
+      "submit": "Anfrage senden",
+      "sent": "Deine Anfrage wurde gesendet. Du wirst benachrichtigt, sobald sie bearbeitet wurde."
+    },
+    "admin": {
+      "title": "Forschungsgruppen verwalten",
+      "noGroups": "Keine Gruppen vorhanden",
+      "stats": {
+        "conferences": "Konferenzen",
+        "papers": "Paper",
+        "members": "Mitglieder"
+      },
+      "members": {
+        "add": "Mitglied hinzufügen",
+        "noMembers": "Keine Mitglieder in dieser Gruppe",
+        "changeRole": "Rolle ändern",
+        "removeMember": "Mitglied entfernen"
       }
     }
   }

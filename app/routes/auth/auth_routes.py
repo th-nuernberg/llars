@@ -5,6 +5,8 @@ Provides user registration, login, logout, and health check endpoints.
 Integrates with Authentik for authentication.
 """
 
+import hmac
+import logging
 import os
 from uuid import uuid4
 
@@ -13,17 +15,29 @@ from flask_jwt_extended import jwt_required
 
 from routes.auth import auth_bp
 from services.user_service import UserService
-from auth.decorators import public_endpoint
+from auth.decorators import authentik_required, public_endpoint
 from decorators.error_handler import (
     handle_api_errors, ValidationError, ConflictError, UnauthorizedError
 )
+
+logger = logging.getLogger(__name__)
 
 
 @auth_bp.route('/register', methods=['POST'])
 @public_endpoint
 @handle_api_errors(logger_name='auth')
 def register():
-    """Register a new user"""
+    """
+    Register a new user.
+
+    Security: This endpoint is disabled in production.
+    User registration should go through Authentik OIDC flow.
+    """
+    from flask import current_app
+    if current_app.config.get('ENV') == 'production' or os.environ.get('PROJECT_STATE') == 'production':
+        logger.warning("[Auth] Registration endpoint called in production - blocked")
+        raise UnauthorizedError("Registration is disabled. Use Authentik for account creation.")
+
     data = request.get_json()
     username = data.get('username')
     password = data.get('password')
@@ -85,7 +99,7 @@ def login():
 
 
 @auth_bp.route('/logout', methods=['POST'])
-@jwt_required()
+@authentik_required
 @handle_api_errors(logger_name='auth')
 def logout():
     """Logout endpoint"""
@@ -97,15 +111,23 @@ def logout():
 @handle_api_errors(logger_name='auth')
 def register_admin():
     """Register an admin user with admin registration key"""
-    ADMIN_REGISTRATION_KEY = os.environ.get('ADMIN_REGISTRATION_KEY', '')
+    ADMIN_REGISTRATION_KEY = os.environ.get('ADMIN_REGISTRATION_KEY', '').strip()
     data = request.get_json()
     username = data.get('username')
     password = data.get('password')
     api_key = data.get('api_key', str(uuid4()))
-    admin_registration_key = data.get('admin_registration_key')
+    admin_registration_key = data.get('admin_registration_key', '')
 
-    # Verify admin registration key
-    if admin_registration_key != ADMIN_REGISTRATION_KEY:
+    # Security: Require non-empty admin registration key
+    if not ADMIN_REGISTRATION_KEY:
+        logger.error("[Auth] ADMIN_REGISTRATION_KEY not set - admin registration blocked")
+        raise UnauthorizedError("Admin registration is not configured.")
+
+    # Verify admin registration key with timing-safe comparison
+    if not isinstance(admin_registration_key, str) or not hmac.compare_digest(
+        admin_registration_key.encode('utf-8'),
+        ADMIN_REGISTRATION_KEY.encode('utf-8')
+    ):
         raise UnauthorizedError("Unauthorized. Invalid admin registration key.")
 
     if not username or not password:

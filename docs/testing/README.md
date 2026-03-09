@@ -15,7 +15,36 @@ Diese Dokumentation enthält alle Testanforderungen für das LLARS-System (LLM A
 - Welche Priorität jeder Test hat
 - Wer für welche Tests verantwortlich ist
 
+### Nightly Kachel-Governance (verbindlich)
+
+1. Home-Kacheln sind contract-basiert in `llars-frontend/src/config/home_tiles.contract.json`.
+2. Workflows sind in `llars-frontend/e2e/nightly/nightly_workflows.contract.json` definiert.
+3. Nightly-Aktivitäten sind in `llars-frontend/e2e/nightly/nightly_activities.contract.json` definiert.
+4. Nightly-Matrix und Aktivitäten stehen in `docs/testing/nightly/NIGHTLY_TILE_MATRIX.md`.
+5. Nightly räumt alte ungenutzte Docker-Images und Build-Caches (>7 Tage) automatisch auf (`maintenance:docker-cleanup`).
+6. CI-Gate: `python3 scripts/testing/validate_nightly_coverage.py`.
+7. Änderung an `Home.vue` oder Tile-Contract ohne Test- und Doku-Update führt zu CI-Fehler.
+
 ### Quick Start: Tests ausführen
+
+### Vor jedem Push (Pflicht für Kachel-/Flow-Änderungen)
+
+```bash
+cd /path/to/llars
+
+# 1) Contract-/Doku-Gate
+python3 scripts/testing/validate_nightly_coverage.py
+
+# 2) Backend + Frontend Kernchecks
+pytest tests/unit/ tests/integration/
+cd llars-frontend
+npm run test:run
+
+# 3) Nightly-Specs zumindest auf Test-Discovery prüfen
+npx playwright test --list e2e/nightly/tile-regression.spec.js e2e/nightly/workflows.spec.js
+```
+
+Hinweis: Die vollständigen Nightly-E2E-Deploy-Gates laufen in der geplanten Pipeline (Mo-Fr 02:00) bzw. bei erzwungenem Deploy-Run.
 
 **Backend Tests (pytest):**
 ```bash
@@ -123,6 +152,9 @@ docs/testing/
 │   ├── RELEASE_CHECKLIST.md          # Pre/Post Release Schritte
 │   └── REGRESSION_TESTS.md           # Vollständige Funktionsprüfung
 │
+├── nightly/
+│   └── NIGHTLY_TILE_MATRIX.md        # Kachel-/Workflow-Matrix + Activity-Katalog
+│
 └── CICD_SETUP.md                      # GitLab CI/CD Pipeline Setup
 ```
 
@@ -144,6 +176,7 @@ docs/testing/
 1. Führe die [Release Checklist](checklisten/RELEASE_CHECKLIST.md) durch
 2. Stelle sicher, dass alle kritischen Tests grün sind
 3. Dokumentiere Testergebnisse
+4. Prüfe Nightly-Coverage mit `python3 scripts/testing/validate_nightly_coverage.py`
 
 ---
 

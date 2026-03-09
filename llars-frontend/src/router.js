@@ -18,6 +18,7 @@ import Impressum from "@/components/Orga/Impressum.vue";
 import Datenschutz from "@/components/Orga/Datenschutz.vue";
 import Kontakt from "@/components/Orga/Kontakt.vue";
 import { useAuth } from "@/composables/useAuth";
+import { usePermissions } from "@/composables/usePermissions";
 import { logI18n } from "@/utils/logI18n";
 
 import AdminTester from "@/components/Admin/AdminTester.vue";
@@ -37,6 +38,10 @@ import AdminRAG from "@/components/Admin/AdminRAG.vue"; // RAG Document Manageme
 
 // Anonymize Tool
 import AnonymizeTool from "@/components/Anonymize/AnonymizeTool.vue";
+
+// Anonymization Pipeline
+import AnonymizationManager from "@/components/AnonymizationPipeline/AnonymizationManager.vue";
+import AnonymizationDetail from "@/components/AnonymizationPipeline/AnonymizationDetail.vue";
 
 // Judge Components
 import JudgeOverview from "@/components/Judge/JudgeOverview.vue";
@@ -98,6 +103,34 @@ import PipelineHub from "@/views/Pipeline/PipelineHub.vue";
 import PipelineSession from "@/views/Pipeline/PipelineSession.vue";
 import PipelineWizard from "@/views/Pipeline/PipelineWizard.vue";
 
+// Conference Manager
+import ConferenceEntry from "@/views/ConferenceManager/ConferenceEntry.vue";
+import ResearchGroupSelection from "@/views/ConferenceManager/ResearchGroupSelection.vue";
+import ConferenceManagerHome from "@/views/ConferenceManager/ConferenceManagerHome.vue";
+import ResearchGroupMembers from "@/views/ConferenceManager/ResearchGroupMembers.vue";
+import ResearchGroupAccessRequestPage from "@/views/ConferenceManager/ResearchGroupAccessRequestPage.vue";
+
+// Messaging
+import MessagingHome from "@/views/Messaging/MessagingHome.vue";
+import { useCommunicationAdmin } from "@/composables/useCommunicationAdmin";
+
+// Chatbot Manager (dedicated page, separated from Admin)
+import ChatbotManagerPage from "@/views/ChatbotManager/ChatbotManagerPage.vue";
+
+const EVALUATION_ROUTE_PERMISSIONS = [
+    'feature:ranking:view',
+    'feature:rating:view',
+    'feature:mail_rating:view',
+    'feature:comparison:view',
+    'feature:authenticity:view'
+];
+
+const SCENARIO_ROUTE_PERMISSIONS = [
+    'data:manage_scenarios',
+    'feature:ranking:view',
+    'feature:rating:view'
+];
+
 const routes = [
     { path: '/Impressum', component: Impressum, meta: { requiresAuth: false } },
     { path: '/Datenschutz', component: Datenschutz, meta: { requiresAuth: false } },
@@ -131,13 +164,35 @@ const routes = [
     { path: '/Home', component: Home, meta: { requiresAuth: true } },
     { path: '/video', name: 'DemoVideoPage', component: DemoVideoPage, meta: { requiresAuth: true } },
     { path: '/settings', name: 'UserSettings', component: UserSettingsPage, meta: { requiresAuth: true } },
-    { path: '/evaluation', name: 'EvaluationHub', component: EvaluationHub, meta: { requiresAuth: true } },
-    { path: '/evaluation/assistant/:id', name: 'EvaluationAssistant', component: EvaluationAssistant, props: true, meta: { requiresAuth: true } },
+    {
+      path: '/evaluation',
+      name: 'EvaluationHub',
+      component: EvaluationHub,
+      meta: { requiresAuth: true, requiresAnyPermission: EVALUATION_ROUTE_PERMISSIONS }
+    },
+    {
+      path: '/evaluation/assistant/:id',
+      name: 'EvaluationAssistant',
+      component: EvaluationAssistant,
+      props: true,
+      meta: { requiresAuth: true, requiresAnyPermission: EVALUATION_ROUTE_PERMISSIONS }
+    },
     { path: '/data-import', alias: '/import', name: 'DataImporter', component: DataImporterView, meta: { requiresAuth: true } },
 
     // Scenario Manager
-    { path: '/scenarios', name: 'ScenarioManager', component: ScenarioManagerHome, meta: { requiresAuth: true } },
-    { path: '/scenarios/:id', name: 'ScenarioWorkspace', component: ScenarioWorkspace, props: true, meta: { requiresAuth: true } },
+    {
+      path: '/scenarios',
+      name: 'ScenarioManager',
+      component: ScenarioManagerHome,
+      meta: { requiresAuth: true, requiresAnyPermission: SCENARIO_ROUTE_PERMISSIONS }
+    },
+    {
+      path: '/scenarios/:id',
+      name: 'ScenarioWorkspace',
+      component: ScenarioWorkspace,
+      props: true,
+      meta: { requiresAuth: true, requiresAnyPermission: SCENARIO_ROUTE_PERMISSIONS }
+    },
     // Legacy evaluation route - redirects to new evaluation interface
     {
       path: '/evaluate/:id',
@@ -152,7 +207,7 @@ const routes = [
       name: 'EvaluationItemsOverview',
       component: EvaluationItemsOverview,
       props: true,
-      meta: { requiresAuth: true }
+      meta: { requiresAuth: true, requiresAnyPermission: EVALUATION_ROUTE_PERMISSIONS }
     },
     // Evaluation Session - for evaluating a specific item or first item
     {
@@ -160,14 +215,14 @@ const routes = [
       name: 'EvaluationSessionItem',
       component: EvaluationSession,
       props: true,
-      meta: { requiresAuth: true }
+      meta: { requiresAuth: true, requiresAnyPermission: EVALUATION_ROUTE_PERMISSIONS }
     },
     {
       path: '/scenarios/:scenarioId/evaluate/start',
       name: 'EvaluationSession',
       component: EvaluationSession,
       props: true,
-      meta: { requiresAuth: true }
+      meta: { requiresAuth: true, requiresAnyPermission: EVALUATION_ROUTE_PERMISSIONS }
     },
 
     { path: '/Ranker', name: 'Ranker', component: Ranker, meta: { requiresAuth: true } },
@@ -188,6 +243,38 @@ const routes = [
     { path: '/generation/new', name: 'GenerationWizard', component: GenerationWizard, meta: { requiresAuth: true } },
     { path: '/generation/:jobId', name: 'GenerationJobDetail', component: GenerationJobDetail, props: true, meta: { requiresAuth: true } },
 
+    // Messaging (gated by communication toggle + permission)
+    {
+      path: '/messaging',
+      name: 'Messaging',
+      component: MessagingHome,
+      meta: { requiresAuth: true },
+      beforeEnter: async () => {
+        const { communicationEnabled, loaded, fetchCommunicationStatus } = useCommunicationAdmin()
+        if (!loaded.value) await fetchCommunicationStatus()
+        if (!communicationEnabled.value) return '/home'
+      },
+    },
+    {
+      path: '/messaging/:conversationId',
+      name: 'MessagingConversation',
+      component: MessagingHome,
+      props: true,
+      meta: { requiresAuth: true },
+      beforeEnter: async () => {
+        const { communicationEnabled, loaded, fetchCommunicationStatus } = useCommunicationAdmin()
+        if (!loaded.value) await fetchCommunicationStatus()
+        if (!communicationEnabled.value) return '/home'
+      },
+    },
+
+    // Conference Manager
+    { path: '/conferences', name: 'ConferenceEntry', component: ConferenceEntry, meta: { requiresAuth: true } },
+    { path: '/conferences/groups', name: 'ResearchGroupSelection', component: ResearchGroupSelection, meta: { requiresAuth: true } },
+    { path: '/conferences/groups/:groupId', name: 'ConferenceManager', component: ConferenceManagerHome, props: true, meta: { requiresAuth: true } },
+    { path: '/conferences/groups/:groupId/members', name: 'ResearchGroupMembers', component: ResearchGroupMembers, props: true, meta: { requiresAuth: true } },
+    { path: '/conferences/groups/:groupId/request-access', name: 'ResearchGroupAccessRequest', component: ResearchGroupAccessRequestPage, props: true, meta: { requiresAuth: true } },
+
     // Pipeline
     { path: '/pipeline', name: 'PipelineHub', component: PipelineHub, meta: { requiresAuth: true } },
     { path: '/pipeline/new', name: 'PipelineWizard', component: PipelineWizard, meta: { requiresAuth: true } },
@@ -204,6 +291,10 @@ const routes = [
 
     // Anonymize Tool
     { path: '/Anonymize', alias: '/anonymize', name: 'AnonymizeTool', component: AnonymizeTool, meta: { requiresAuth: true } },
+
+    // Anonymization Pipeline
+    { path: '/anonymization', name: 'AnonymizationManager', component: AnonymizationManager, meta: { requiresAuth: true, requiresPermission: 'feature:anonymization-pipeline:view' } },
+    { path: '/anonymization/:id', name: 'AnonymizationDetail', component: AnonymizationDetail, props: true, meta: { requiresAuth: true, requiresPermission: 'feature:anonymization-pipeline:view' } },
 
     // Judge Routes
     { path: '/judge', name: 'JudgeOverview', component: JudgeOverview, meta: { requiresAuth: true } },
@@ -223,8 +314,11 @@ const routes = [
     { path: '/kaimo/edit/:id', name: 'KaimoCaseEditor', component: KaimoCaseEditor, props: true, meta: { requiresAuth: true } },
     { path: '/kaimo/:id', name: 'KaimoCase', component: KaimoCase, props: true, meta: { requiresAuth: true } },
 
-    // New unified Admin Dashboard
-    { path: '/admin', name: 'AdminDashboard', component: AdminDashboard, meta: { requiresAuth: true, requiresAdminOrChatbotManager: true } },
+    // Chatbot Manager (dedicated page for chatbot_manager role)
+    { path: '/chatbot-manager', name: 'ChatbotManagerPage', component: ChatbotManagerPage, meta: { requiresAuth: true } },
+
+    // New unified Admin Dashboard (admin only)
+    { path: '/admin', name: 'AdminDashboard', component: AdminDashboard, meta: { requiresAuth: true, requiresAdmin: true } },
 
     // Legacy Admin Routes (redirect to new dashboard with appropriate tab)
     { path: '/AdminDashboard', redirect: '/admin' },
@@ -282,7 +376,6 @@ const router = createRouter({
 router.beforeEach((to, from, next) => {
     const requiresAuth = to.matched.some(record => record.meta.requiresAuth);
     const requiresAdmin = to.matched.some(record => record.meta.requiresAdmin);
-    const requiresAdminOrChatbotManager = to.matched.some(record => record.meta.requiresAdminOrChatbotManager);
 
     const auth = useAuth();
     const rawToken = auth.getToken();
@@ -307,15 +400,36 @@ router.beforeEach((to, from, next) => {
 
     // If route requires admin role
     if (requiresAdmin && !isAdmin) {
+        // Redirect chatbot managers trying to access /admin to their dedicated page
+        if (isChatbotManager && to.path === '/admin') {
+            const tabMap = { chatbots: 'chatbots', rag: 'rag', crawler: 'crawler' };
+            const tab = tabMap[to.query.tab] || 'chatbots';
+            next({ path: '/chatbot-manager', query: { tab } });
+            return;
+        }
         logI18n("log", "logs.router.requireAdminRedirect");
         next('/Home');
         return;
     }
 
-    if (requiresAdminOrChatbotManager && !(isAdmin || isChatbotManager)) {
-        logI18n("log", "logs.router.requireAdminOrManagerRedirect");
-        next('/Home');
-        return;
+    // If route requires specific permission
+    const requiredPermission = to.matched.find(record => record.meta.requiresPermission)?.meta.requiresPermission;
+    if (requiredPermission) {
+        const { hasPermission } = usePermissions();
+        if (!hasPermission(requiredPermission)) {
+            next({ path: '/' });
+            return;
+        }
+    }
+
+    const requiredAnyPermission = to.matched.find(record => Array.isArray(record.meta.requiresAnyPermission))
+        ?.meta.requiresAnyPermission;
+    if (requiredAnyPermission?.length) {
+        const { hasAnyPermission } = usePermissions();
+        if (!hasAnyPermission(...requiredAnyPermission)) {
+            next('/Home');
+            return;
+        }
     }
 
     // All checks passed, proceed with navigation

@@ -339,3 +339,11 @@ yield {"done": True, "full_response": "...", "sources": [...], "goal": "..."}
 | Maximum transparency | ReflAct |
 | Self‑correction important | ReflAct |
 | Minimal token usage | ACT or ReACT |
+
+---
+
+## See Also
+
+- [ReACT - Reasoning and Acting](react.md)
+- [RAG - Retrieval Augmented Generation](rag.md)
+- [Agentic AI Overview](index.md)

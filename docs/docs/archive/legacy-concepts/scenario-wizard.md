@@ -350,5 +350,5 @@ Der Wizard unterstützt DE und EN:
 
 - [Ranking-Szenarien im Detail](./ranking-scenarios.md)
 - [Szenario Manager Testing](./scenario-manager-testing.md)
-- [Datenbank-Schema](../docs/entwickler/datenbank-schema.md)
-- [Permission System](../docs/guides/permission-system.md)
+- [Datenbank-Schema](../../entwickler/datenbank-schema.md)
+- [Permission System](../../guides/permission-system.md)

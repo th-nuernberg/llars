@@ -10,8 +10,10 @@ from db import db
 
 class ScenarioRoles(Enum):
     OWNER = 'Owner'          # Szenario-Ersteller - kann bearbeiten, User verwalten, löschen
-    EVALUATOR = 'Evaluator'  # Kann bewerten/interagieren (ehemals RATER)
-    VIEWER = 'Viewer'        # Nur lesend (ehemals EVALUATOR)
+    MANAGER = 'Manager'      # Kann Szenario mitverwalten (Settings, Assessors einladen), aber nicht löschen
+    ASSESSOR = 'Assessor'    # Bewerter/Gutachter - kann bewerten/interagieren
+    EVALUATOR = 'Assessor'   # Legacy-Alias für ASSESSOR (DB speichert 'ASSESSOR')
+    VIEWER = 'Viewer'        # Nur lesend - sieht alle Tabs
 
 
 class InvitationStatus(Enum):
@@ -23,6 +25,8 @@ class InvitationStatus(Enum):
 class MembershipStatus(Enum):
     ACTIVE = 'active'        # User ist aktiv im Szenario
     ARCHIVED = 'archived'    # User wurde entfernt, Bewertungen bleiben erhalten
+    EVALUATOR = 'Evaluator'
+    OWNER = 'Owner'
 
 
 class ProgressionStatus(Enum):
@@ -72,6 +76,15 @@ class EvaluationItem(db.Model):
         """Backwards compatibility alias."""
         return self
 
+    @property
+    def content(self):
+        """Legacy alias: map historical `content` field to `subject`."""
+        return self.subject
+
+    @content.setter
+    def content(self, value):
+        self.subject = value
+
     __table_args__ = (
         db.UniqueConstraint('chat_id', 'institut_id', 'function_type_id', name='_chat_institut_function_uc'),
     )
@@ -92,12 +105,6 @@ class Message(db.Model):
 
     # Backwards compatibility: thread_id is a synonym for item_id (for queries)
     thread_id = synonym('item_id')
-
-
-class LLM(db.Model):
-    __tablename__ = 'llms'
-    llm_id = mapped_column(db.Integer, primary_key=True)
-    name = mapped_column(db.String(255), unique=True)
 
 
 class FeatureType(db.Model):
@@ -131,11 +138,10 @@ class Feature(db.Model):
     feature_id = mapped_column(db.Integer, primary_key=True)
     item_id = mapped_column(db.Integer, db.ForeignKey('evaluation_items.item_id'))
     type_id = mapped_column(db.Integer, db.ForeignKey('feature_types.type_id'))
-    llm_id = mapped_column(db.Integer, db.ForeignKey('llms.llm_id'))
+    model_id = mapped_column(db.String(255), index=True)
     content = mapped_column(db.TEXT)
 
     feature_type = db.relationship('FeatureType', backref='features')
-    llm = db.relationship('LLM', backref='features')
 
     # Backwards compatibility: thread_id is a synonym for item_id (for queries)
     thread_id = synonym('item_id')
@@ -147,14 +153,13 @@ class UserFeatureRanking(db.Model):
     user_id = mapped_column(db.Integer, db.ForeignKey('users.id'))
     feature_id = mapped_column(db.Integer, db.ForeignKey('features.feature_id'))
     ranking_content = mapped_column(db.Float)
-    type_id = mapped_column(db.Integer, db.ForeignKey('feature_types.type_id'))  # Neuer Typ
-    llm_id = mapped_column(db.Integer, db.ForeignKey('llms.llm_id'))
-    bucket = mapped_column(db.String(20))  # Neuer Bucket (z.B. 'Gut', 'Mittel', 'Schlecht')
+    type_id = mapped_column(db.Integer, db.ForeignKey('feature_types.type_id'))
+    model_id = mapped_column(db.String(255), index=True)
+    bucket = mapped_column(db.String(20))
 
     user = db.relationship('User', backref='feature_rankings')
     feature = db.relationship('Feature', backref='user_rankings')
-    feature_type = db.relationship('FeatureType', backref='user_rankings')  # Verknüpfung mit dem FeatureType
-    llm = db.relationship('LLM', backref='user_rankings')
+    feature_type = db.relationship('FeatureType', backref='user_rankings')
 
 
 

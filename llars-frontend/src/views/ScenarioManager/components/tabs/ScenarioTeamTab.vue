@@ -3,7 +3,7 @@
     <!-- Header -->
     <div class="tab-header">
       <h3>{{ $t('scenarioManager.team.title') }}</h3>
-      <LBtn v-if="scenario?.is_owner" variant="primary" @click="showInviteDialog = true">
+      <LBtn v-if="canManage" variant="primary" @click="showInviteDialog = true">
         <LIcon start>mdi-account-plus</LIcon>
         {{ $t('scenarioManager.team.invite') }}
       </LBtn>
@@ -57,7 +57,7 @@
               </LTag>
               <!-- Invitation Status Badge -->
               <LTag
-                v-if="member.invitation_status && member.invitation_status !== 'accepted' && member.role !== 'OWNER'"
+                v-if="member.invitation_status && member.invitation_status !== 'accepted' && !isOwner(member)"
                 :variant="getInvitationVariant(member.invitation_status)"
                 size="sm"
               >
@@ -71,7 +71,7 @@
               {{ member.completed || 0 }} / {{ member.total || 0 }}
             </span>
           </div>
-          <div class="member-actions" v-if="scenario?.is_owner && member.role !== 'OWNER'">
+          <div class="member-actions" v-if="canManage && !isOwner(member)">
             <!-- Re-invite button for rejected members -->
             <LBtn
               v-if="member.invitation_status === 'rejected'"
@@ -117,7 +117,7 @@
     <div class="section">
       <div class="section-header">
         <h4 class="section-title">{{ $t('scenarioManager.team.llmEvaluators') }}</h4>
-        <LBtn v-if="scenario?.is_owner" variant="secondary" size="small" @click="showAddLLMDialog = true">
+        <LBtn v-if="canManage" variant="secondary" size="small" @click="showAddLLMDialog = true">
           <LIcon start size="16">mdi-plus</LIcon>
           {{ $t('scenarioManager.team.addLLM') }}
         </LBtn>
@@ -133,19 +133,61 @@
           </div>
           <div class="member-info">
             <span class="member-name">{{ llm.model_name }}</span>
-            <span class="member-detail">{{ llm.provider }}</span>
+            <div class="member-meta">
+              <span class="member-detail">{{ llm.provider }}</span>
+              <LTag v-if="llm.status === 'failed' || llm.status === 'stopped'" variant="danger" size="sm">
+                {{ $t(`scenarioManager.team.llm${llm.status === 'failed' ? 'Failed' : 'Stopped'}`) }}
+              </LTag>
+              <LTag v-else-if="llm.status === 'completed'" variant="success" size="sm">
+                {{ $t('scenarioManager.team.llmCompleted') }}
+              </LTag>
+              <LTag v-else-if="llm.status === 'running'" variant="info" size="sm">
+                {{ $t('scenarioManager.team.llmRunning') }}
+              </LTag>
+            </div>
           </div>
           <div class="member-stats">
             <span class="stat">
               <LIcon size="16">mdi-check-circle-outline</LIcon>
               {{ llm.completed || 0 }} / {{ llm.total || 0 }}
             </span>
+            <span
+              v-if="llm.errorCount > 0"
+              class="stat error-stat"
+              @click="openErrorDialog(llm)"
+            >
+              <LIcon size="16" color="#e8a087">mdi-alert-circle</LIcon>
+              <span class="error-count">{{ llm.errorCount }}</span>
+              {{ $t('scenarioManager.overview.failed') }}
+            </span>
             <span class="stat" v-if="llm.cost">
               <LIcon size="16">mdi-currency-usd</LIcon>
               {{ llm.cost.toFixed(4) }}
             </span>
           </div>
-          <div class="member-actions" v-if="scenario?.is_owner">
+          <div class="member-actions" v-if="canManage">
+            <!-- Start button: model has not started yet -->
+            <LBtn
+              v-if="llm.completed === 0 && llm.errorCount === 0 && llm.status !== 'running'"
+              variant="primary"
+              size="small"
+              :loading="retryingModel === llm.id"
+              @click="retryLLM(llm)"
+            >
+              <LIcon start size="16">mdi-play</LIcon>
+              {{ $t('scenarioManager.team.startLLM') }}
+            </LBtn>
+            <!-- Retry button: model has errors -->
+            <LBtn
+              v-else-if="(llm.errorCount > 0 || llm.status === 'stopped' || llm.status === 'failed') && llm.status !== 'running'"
+              variant="accent"
+              size="small"
+              :loading="retryingModel === llm.id"
+              @click="retryLLM(llm)"
+            >
+              <LIcon start size="16">mdi-refresh</LIcon>
+              {{ $t('scenarioManager.team.retry') }}
+            </LBtn>
             <v-btn icon size="small" variant="text" color="error" @click="confirmRemoveLLM(llm)">
               <LIcon size="18">mdi-delete-outline</LIcon>
             </v-btn>
@@ -268,6 +310,51 @@
       </v-card>
     </v-dialog>
 
+    <!-- Error Details Dialog -->
+    <v-dialog v-model="showErrorDialog" max-width="600">
+      <v-card>
+        <v-card-title class="d-flex align-center">
+          <LIcon color="#e8a087" class="mr-2">mdi-alert-circle-outline</LIcon>
+          {{ $t('scenarioManager.team.errorDetailsTitle') }}
+          <span v-if="errorDialogModel" class="ml-2 text-subtitle-2 text-medium-emphasis">
+            — {{ errorDialogModel.model_name }}
+          </span>
+        </v-card-title>
+        <v-card-text>
+          <div v-if="errorDetailsLoading" class="text-center py-4">
+            <v-progress-circular indeterminate size="32" />
+          </div>
+          <div v-else-if="errorDetails.length === 0" class="text-center py-4 text-medium-emphasis">
+            {{ $t('scenarioManager.team.noErrors') }}
+          </div>
+          <div v-else class="error-list">
+            <div v-for="err in errorDetails" :key="err.id" class="error-item">
+              <div class="error-item-header">
+                <span class="error-item-label">{{ err.item_label }}</span>
+                <span class="error-item-date">{{ formatErrorDate(err.updated_at) }}</span>
+              </div>
+              <div class="error-item-message">{{ err.error }}</div>
+            </div>
+          </div>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <LBtn
+            v-if="canManage && errorDetails.length > 0"
+            variant="accent"
+            :loading="retryingModel === errorDialogModel?.id"
+            @click="retryLLM(errorDialogModel); showErrorDialog = false"
+          >
+            <LIcon start size="16">mdi-refresh</LIcon>
+            {{ $t('scenarioManager.team.retryAll') }}
+          </LBtn>
+          <LBtn variant="text" @click="showErrorDialog = false">
+            {{ $t('common.close') || $t('common.cancel') }}
+          </LBtn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
     <!-- Change Role Dialog -->
     <v-dialog v-model="showRoleDialog" max-width="400">
       <v-card>
@@ -310,10 +397,13 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useI18n } from 'vue-i18n'
+import axios from 'axios'
 import { useScenarioManager } from '../../composables/useScenarioManager'
-import { parseUserProviderModelId } from '@/utils/formatters'
+import { useModelRegistry } from '@/composables/useModelRegistry'
+import { useAuth } from '@/composables/useAuth'
+import { getSocket } from '@/services/socketService'
 import LAvatar from '@/components/common/LAvatar.vue'
 import LUserSearch from '@/components/common/LUserSearch.vue'
 
@@ -325,10 +415,14 @@ const props = defineProps({
   liveStats: {
     type: Object,
     default: null
+  },
+  canManage: {
+    type: Boolean,
+    default: false
   }
 })
 
-const emit = defineEmits(['team-updated'])
+const emit = defineEmits(['team-updated', 'refreshStats'])
 
 const { t } = useI18n()
 const {
@@ -338,6 +432,8 @@ const {
   updateUserRole,
   getScenarioTeam
 } = useScenarioManager()
+const { formatModelName: registryFormatModelName } = useModelRegistry()
+const { getToken } = useAuth()
 
 // State
 const showInviteDialog = ref(false)
@@ -346,7 +442,7 @@ const teamData = ref(null)
 const showAddLLMDialog = ref(false)
 const showRemoveDialog = ref(false)
 const selectedUsers = ref([])  // Array of user objects { username, display_name, ... }
-const inviteRole = ref('EVALUATOR')
+const inviteRole = ref('ASSESSOR')
 const inviting = ref(false)
 const memberToRemove = ref(null)
 const removing = ref(false)
@@ -359,8 +455,15 @@ const addingLLM = ref(false)
 // Role change dialog
 const showRoleDialog = ref(false)
 const memberToChangeRole = ref(null)
-const newRole = ref('EVALUATOR')
+const newRole = ref('ASSESSOR')
 const changingRole = ref(false)
+
+// Error dialog and retry
+const showErrorDialog = ref(false)
+const errorDialogModel = ref(null)
+const errorDetails = ref([])
+const errorDetailsLoading = ref(false)
+const retryingModel = ref(null)
 
 // Mock data
 const availableLLMs = ref([
@@ -375,7 +478,7 @@ const availableTemplates = ref([
 ])
 
 const roleOptions = computed(() => [
-  { title: t('scenarioManager.team.roles.evaluator'), value: 'EVALUATOR' },
+  { title: t('scenarioManager.team.roles.assessor'), value: 'ASSESSOR' },
   { title: t('scenarioManager.team.roles.viewer'), value: 'VIEWER' }
 ])
 
@@ -386,6 +489,9 @@ const excludedUsernames = computed(() => {
   return [...new Set([...selected, ...existing])]
 })
 
+// Assessor-type roles (shown in the Assessors tab)
+const ASSESSOR_ROLES = ['Assessor', 'Evaluator']
+
 // Computed
 const evaluators = computed(() => {
   // Use team data if available (includes invitation_status), otherwise fall back to scenario.users
@@ -395,6 +501,9 @@ const evaluators = computed(() => {
   } else {
     users = props.scenario?.users?.filter(u => !u.is_llm) || []
   }
+
+  // Filter: show Assessors and Owner. Manager and Viewer (non-owner) belong to Collaboration in Settings.
+  users = users.filter(u => ASSESSOR_ROLES.includes(u.role) || isOwner(u))
 
   // Merge with live stats to get completed/total counts
   // userStatsList contains all human users with their progress
@@ -427,19 +536,17 @@ const llmEvaluators = computed(() => {
     if (typeof modelId === 'object' && modelId !== null) {
       return modelId
     }
-    // Otherwise, parse the model ID string
+
+    // Use the central model registry for consistent display names
+    const displayName = registryFormatModelName(modelId)
+
+    // Extract model_name and provider from the formatted display name
     let provider = 'Unknown'
-    let modelName = modelId
-    const parsed = parseUserProviderModelId(modelId)
-    if (parsed) {
-      provider = parsed.username
-        ? `${parsed.username}/${parsed.providerLabel}`
-        : parsed.providerLabel
-      modelName = parsed.modelName
-    } else {
-      const parts = modelId.split('/')
-      provider = parts.length > 1 ? parts[0] : 'Unknown'
-      modelName = parts.length > 1 ? parts.slice(1).join('/') : modelId
+    let modelName = displayName
+    const parts = displayName.split('/')
+    if (parts.length > 1) {
+      provider = parts[0]
+      modelName = parts.slice(1).join('/')
     }
 
     // Find matching live stats (name or id contains the model_id for LLMs)
@@ -449,12 +556,32 @@ const llmEvaluators = computed(() => {
       s.name?.includes(modelName)
     )
 
+    // Determine model status
+    const completed = liveData?.completed || 0
+    const total = liveData?.total || 0
+    const errorCount = liveData?.errorCount || 0
+    let status = 'pending'
+    if (liveData?.status) {
+      status = liveData.status
+    } else if (completed >= total && total > 0) {
+      status = 'completed'
+    } else if (errorCount > 0 && completed + errorCount < total) {
+      status = 'stopped'
+    } else if (errorCount > 0 && completed + errorCount >= total) {
+      status = 'failed'
+    } else if (completed > 0) {
+      status = 'running'
+    }
+
     return {
       id: modelId,
       model_name: modelName,
       provider: provider,
-      completed: liveData?.completed || 0,
-      total: liveData?.total || 0
+      completed,
+      total,
+      errorCount,
+      recentErrors: liveData?.recentErrors || [],
+      status,
     }
   })
 })
@@ -466,9 +593,11 @@ function isOwner(member) {
 
 function getRoleVariant(role) {
   const map = {
-    'OWNER': 'primary',
-    'EVALUATOR': 'info',
-    'VIEWER': 'default'
+    'Owner': 'primary',
+    'Manager': 'secondary',
+    'Assessor': 'info',
+    'Evaluator': 'info',
+    'Viewer': 'default'
   }
   return map[role] || 'default'
 }
@@ -495,7 +624,7 @@ async function doReinvite(member) {
 }
 
 async function loadTeamData() {
-  if (props.scenario?.id && props.scenario?.is_owner) {
+  if (props.scenario?.id && props.canManage) {
     try {
       teamData.value = await getScenarioTeam(props.scenario.id)
     } catch (err) {
@@ -556,7 +685,7 @@ async function removeMember() {
 function changeRole(member) {
   memberToChangeRole.value = member
   // Set current role as default, but allow changing to other role
-  newRole.value = member.role === 'EVALUATOR' ? 'VIEWER' : 'EVALUATOR'
+  newRole.value = (member.role === 'Assessor' || member.role === 'Evaluator') ? 'VIEWER' : 'ASSESSOR'
   showRoleDialog.value = true
 }
 
@@ -578,6 +707,52 @@ async function confirmRoleChange() {
   }
 }
 
+async function openErrorDialog(llm) {
+  errorDialogModel.value = llm
+  errorDetails.value = []
+  errorDetailsLoading.value = true
+  showErrorDialog.value = true
+
+  try {
+    const response = await axios.get(
+      `/api/evaluation/llm/${props.scenario.id}/errors`,
+      {
+        params: { model_id: llm.id },
+        headers: { Authorization: `Bearer ${getToken()}` },
+      }
+    )
+    errorDetails.value = response.data.errors || []
+  } catch (err) {
+    console.error('Failed to load error details:', err)
+    errorDetails.value = []
+  } finally {
+    errorDetailsLoading.value = false
+  }
+}
+
+async function retryLLM(llm) {
+  if (!llm?.id || retryingModel.value) return
+  retryingModel.value = llm.id
+
+  try {
+    await axios.post(
+      `/api/evaluation/llm/${props.scenario.id}/start`,
+      { model_id: llm.id },
+      { headers: { Authorization: `Bearer ${getToken()}` } }
+    )
+  } catch (err) {
+    console.error('Failed to retry LLM evaluation:', err)
+  } finally {
+    retryingModel.value = null
+  }
+}
+
+function formatErrorDate(dateStr) {
+  if (!dateStr) return ''
+  const date = new Date(dateStr)
+  return date.toLocaleString()
+}
+
 function confirmRemoveLLM(llm) {
   // TODO: Implement LLM removal
   console.log('Remove LLM:', llm)
@@ -595,10 +770,28 @@ async function addLLMEvaluator() {
   }
 }
 
+// Socket listener for model_aborted events
+const onModelAborted = () => {
+  emit('refreshStats')
+}
+
 onMounted(async () => {
   if (props.scenario?.id) {
     // Load team data with invitation status (only for owners)
     await loadTeamData()
+
+    // Listen for model aborted events to refresh stats
+    const socket = getSocket()
+    if (socket) {
+      socket.on('llm_eval:model_aborted', onModelAborted)
+    }
+  }
+})
+
+onBeforeUnmount(() => {
+  const socket = getSocket()
+  if (socket) {
+    socket.off('llm_eval:model_aborted', onModelAborted)
   }
 })
 </script>
@@ -754,6 +947,63 @@ onMounted(async () => {
 .member-card.is-rejected {
   background-color: rgba(244, 67, 54, 0.04);
   opacity: 0.8;
+}
+
+/* Error styles */
+.error-stat {
+  cursor: pointer;
+  color: #e8a087 !important;
+  transition: opacity 0.2s;
+}
+
+.error-stat:hover {
+  opacity: 0.8;
+}
+
+.error-count {
+  font-weight: 600;
+  color: #e8a087;
+}
+
+.error-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.error-item {
+  padding: 12px;
+  background-color: rgba(var(--v-theme-on-surface), 0.03);
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  border-radius: 8px;
+}
+
+.error-item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.error-item-label {
+  font-weight: 500;
+  font-size: 0.85rem;
+  color: rgb(var(--v-theme-on-surface));
+}
+
+.error-item-date {
+  font-size: 0.75rem;
+  color: rgba(var(--v-theme-on-surface), 0.5);
+}
+
+.error-item-message {
+  font-size: 0.8rem;
+  color: #e8a087;
+  font-family: monospace;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 .member-meta {

@@ -538,7 +538,7 @@
         <div class="provenance-best-grid">
           <div class="provenance-best-card">
             <span class="provenance-best-label">{{ $t('scenarioManager.results.bestLLM') }}</span>
-            <strong class="provenance-best-name">{{ bestProvenanceLLM?.label || '-' }}</strong>
+            <strong class="provenance-best-name">{{ bestProvenanceLLM ? formatProvenanceLabel(bestProvenanceLLM.label) : '-' }}</strong>
             <span v-if="bestProvenanceLLM" class="provenance-best-meta">
               {{ formatProvenanceRate(bestProvenanceLLM.top_bucket_rate) }}% | {{ bestProvenanceLLM.top_bucket_count }}/{{ bestProvenanceLLM.total }}
             </span>
@@ -552,7 +552,7 @@
           </div>
           <div v-if="hasMultipleProvenancePrompts" class="provenance-best-card">
             <span class="provenance-best-label">{{ $t('scenarioManager.results.bestCombination') }}</span>
-            <strong class="provenance-best-name">{{ bestProvenanceCombination?.label || '-' }}</strong>
+            <strong class="provenance-best-name">{{ bestProvenanceCombination ? formatProvenanceLabel(bestProvenanceCombination.label) : '-' }}</strong>
             <span v-if="bestProvenanceCombination" class="provenance-best-meta">
               {{ formatProvenanceRate(bestProvenanceCombination.top_bucket_rate) }}% | {{ bestProvenanceCombination.top_bucket_count }}/{{ bestProvenanceCombination.total }}
             </span>
@@ -576,7 +576,7 @@
               >
                 <div class="provenance-row-main">
                   <span class="provenance-rank">#{{ index + 1 }}</span>
-                  <span class="provenance-label">{{ entry.label }}</span>
+                  <span class="provenance-label">{{ formatProvenanceLabel(entry.label) }}</span>
                 </div>
                 <div class="provenance-row-stats">
                   <span class="provenance-rate">{{ formatProvenanceRate(entry.top_bucket_rate) }}%</span>
@@ -1067,7 +1067,7 @@
         <div class="provenance-best-grid">
           <div class="provenance-best-card">
             <span class="provenance-best-label">{{ $t('scenarioManager.results.bestLLM') }}</span>
-            <strong class="provenance-best-name">{{ bestRatingProvenanceLLM?.label || '-' }}</strong>
+            <strong class="provenance-best-name">{{ bestRatingProvenanceLLM ? formatProvenanceLabel(bestRatingProvenanceLLM.label) : '-' }}</strong>
             <span v-if="bestRatingProvenanceLLM" class="provenance-best-meta">
               {{ formatProvenanceRate(bestRatingProvenanceLLM.avg_normalized_score) }}% | {{ formatProvenanceScore(bestRatingProvenanceLLM.avg_score) }} Ø
             </span>
@@ -1081,7 +1081,7 @@
           </div>
           <div v-if="!isMailRating && hasMultipleRatingProvenancePrompts" class="provenance-best-card">
             <span class="provenance-best-label">{{ $t('scenarioManager.results.bestCombination') }}</span>
-            <strong class="provenance-best-name">{{ bestRatingProvenanceCombination?.label || '-' }}</strong>
+            <strong class="provenance-best-name">{{ bestRatingProvenanceCombination ? formatProvenanceLabel(bestRatingProvenanceCombination.label) : '-' }}</strong>
             <span v-if="bestRatingProvenanceCombination" class="provenance-best-meta">
               {{ formatProvenanceRate(bestRatingProvenanceCombination.avg_normalized_score) }}% | {{ formatProvenanceScore(bestRatingProvenanceCombination.avg_score) }} Ø
             </span>
@@ -1105,7 +1105,7 @@
               >
                 <div class="provenance-row-main">
                   <span class="provenance-rank">#{{ index + 1 }}</span>
-                  <span class="provenance-label">{{ entry.label }}</span>
+                  <span class="provenance-label">{{ formatProvenanceLabel(entry.label) }}</span>
                 </div>
                 <div class="provenance-row-stats">
                   <span class="provenance-rate">{{ formatProvenanceRate(entry.avg_normalized_score) }}%</span>
@@ -2085,7 +2085,7 @@ import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import { useLLMEvaluation } from '@/composables/useLLMEvaluation'
 import { useLLMModels } from '@/composables/useLLMModels'
-import { parseUserProviderModelId } from '@/utils/formatters'
+import { useModelRegistry } from '@/composables/useModelRegistry'
 import { useScenarioManager } from '../../composables/useScenarioManager'
 import LAvatar from '@/components/common/LAvatar.vue'
 
@@ -2124,6 +2124,9 @@ const {
   stopEvaluation: doStopEvaluation,
   fetchAgreementMetrics
 } = useLLMEvaluation()
+
+// Model registry for consistent LLM display names
+const { formatModelName: registryFormatModelName } = useModelRegistry()
 
 // State
 const selectedModel = ref(null)
@@ -2240,12 +2243,10 @@ const llmEvaluators = computed(() => {
 
   return configList.map(item => {
     const modelId = typeof item === 'string' ? item : (item.model_id || item.modelId || item.id)
-    const parsed = parseUserProviderModelId(modelId)
-    let displayName = parsed ? parsed.displayName : modelId
     return {
       id: modelId,
       modelId: modelId,
-      name: displayName,
+      name: registryFormatModelName(modelId),
       isLLM: true,
       completed: 0,
       total: props.scenario?.thread_count || 0,
@@ -3787,6 +3788,16 @@ function formatProvenanceRate(value) {
   return numeric.toFixed(1)
 }
 
+function formatProvenanceLabel(label) {
+  if (!label) return 'Unknown'
+  // Combination labels: "prompt x model" → format each part
+  if (label.includes(' x ')) {
+    const parts = label.split(' x ')
+    return parts.map(p => formatProvenanceLabel(p.trim())).join(' x ')
+  }
+  return registryFormatModelName(label)
+}
+
 function formatProvenanceScore(value) {
   const numeric = Number(value)
   if (!Number.isFinite(numeric)) return '-'
@@ -3827,7 +3838,7 @@ function getCombinationPromptLabel(entry) {
 }
 
 function getCombinationLLMLabel(entry) {
-  return getCombinationParts(entry).llm
+  return formatProvenanceLabel(getCombinationParts(entry).llm)
 }
 
 function getProvenanceBucketMapValue(mapLike, bucketId) {

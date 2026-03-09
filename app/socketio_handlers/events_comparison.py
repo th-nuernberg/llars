@@ -216,9 +216,9 @@ def register_comparison_events(socketio) -> None:
                 return
 
             try:
-                from socketio_handlers.events_scenarios import emit_scenario_stats_updated
+                from services.scenario_stats_cache_service import mark_dirty
                 if session.scenario_id:
-                    emit_scenario_stats_updated(socketio, session.scenario_id)
+                    mark_dirty(session.scenario_id)
             except Exception:
                 pass
 

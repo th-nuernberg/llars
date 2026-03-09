@@ -280,6 +280,19 @@ def initialize_permissions(db):
             'category': 'feature',
             'description': 'Erlaubt den Zugriff auf das Offline-Anonymisierungstool'
         },
+        # Feature: Anonymization Pipeline
+        {
+            'permission_key': 'feature:anonymization-pipeline:view',
+            'display_name': 'Anonymisierungs-Pipeline ansehen',
+            'category': 'feature',
+            'description': 'Erlaubt das Ansehen von anonymisierten Konversationen'
+        },
+        {
+            'permission_key': 'feature:anonymization-pipeline:edit',
+            'display_name': 'Anonymisierungs-Pipeline bearbeiten',
+            'category': 'feature',
+            'description': 'Erlaubt das Bearbeiten von Nachrichten und das Aktualisieren des Status'
+        },
         # Feature: LLM-as-Judge
         {
             'permission_key': 'feature:judge:view',
@@ -363,6 +376,58 @@ def initialize_permissions(db):
             'description': 'Erlaubt das Erstellen von Evaluation-Szenarien aus generierten Outputs'
         },
 
+        # Feature: Conference Manager
+        {
+            'permission_key': 'feature:conference_manager:view',
+            'display_name': 'Conference Manager ansehen',
+            'category': 'feature',
+            'description': 'Erlaubt das Ansehen von Konferenzen und Papers'
+        },
+        {
+            'permission_key': 'feature:conference_manager:edit',
+            'display_name': 'Conference Manager bearbeiten',
+            'category': 'feature',
+            'description': 'Erlaubt das Erstellen und Bearbeiten von Konferenzen und Papers'
+        },
+
+        # Feature: Communication (Messaging, Calls, AI)
+        {
+            'permission_key': 'feature:communication:access',
+            'display_name': 'Communication Zugriff',
+            'category': 'feature',
+            'description': 'Feature sichtbar, Conversations einsehen'
+        },
+        {
+            'permission_key': 'feature:communication:chat',
+            'display_name': 'Text Chat',
+            'category': 'feature',
+            'description': 'Nachrichten senden und empfangen'
+        },
+        {
+            'permission_key': 'feature:communication:voice',
+            'display_name': 'Voice Calls',
+            'category': 'feature',
+            'description': 'Sprachanrufe durchführen'
+        },
+        {
+            'permission_key': 'feature:communication:video',
+            'display_name': 'Video Calls',
+            'category': 'feature',
+            'description': 'Videoanrufe durchführen'
+        },
+        {
+            'permission_key': 'feature:communication:transcription',
+            'display_name': 'Transkription',
+            'category': 'feature',
+            'description': 'Live-Transkription in Calls'
+        },
+        {
+            'permission_key': 'feature:communication:ai',
+            'display_name': 'KI-Summary',
+            'category': 'feature',
+            'description': 'KI-Zusammenfassungen in Conversations und Calls'
+        },
+
         # Feature: Pipeline (Automated LLM Evaluation Loop)
         {
             'permission_key': 'feature:pipeline:view',
@@ -407,7 +472,11 @@ def initialize_permissions(db):
             'role_name': 'admin',
             'display_name': 'Administrator',
             'description': 'Voller Zugriff auf alle Funktionen und Einstellungen',
-            'permissions': [p['permission_key'] for p in permissions_data]  # All permissions
+            # All permissions EXCEPT communication (managed per-user via Admin Panel)
+            'permissions': [
+                p['permission_key'] for p in permissions_data
+                if not p['permission_key'].startswith('feature:communication:')
+            ]
         },
         {
             'role_name': 'researcher',
@@ -449,6 +518,9 @@ def initialize_permissions(db):
                 'feature:latex_collab:ai',
                 # Anonymisierung
                 'feature:anonymize:view',
+                # Anonymisierungs-Pipeline
+                'feature:anonymization-pipeline:view',
+                'feature:anonymization-pipeline:edit',
                 # KAIMO
                 'feature:kaimo:view',
                 'feature:kaimo:edit',
@@ -457,6 +529,9 @@ def initialize_permissions(db):
                 # Data Import (für Evaluation-Daten)
                 'data:import',
                 'data:manage_scenarios',
+                # Conference Manager
+                'feature:conference_manager:view',
+                'feature:conference_manager:edit',
             ]
         },
         {
@@ -522,6 +597,8 @@ def initialize_permissions(db):
                 'feature:anonymize:view',
                 'feature:kaimo:view',
                 'feature:kaimo:edit',
+                # Conference Manager (read-only)
+                'feature:conference_manager:view',
                 # Referral Links
                 'feature:referral:create_links',
             ]

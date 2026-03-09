@@ -43,7 +43,7 @@
     <!-- Step Content -->
     <v-card-text class="wizard-content">
       <!-- Step 1: Data Upload & AI Analysis -->
-      <div v-if="currentStep === 0" class="step-content">
+      <div v-if="currentStepKey === 'data'" class="step-content">
         <div class="step-title-row">
           <h3 class="step-title">{{ $t('scenarioManager.wizard.step1.title') }}</h3>
           <LInfoTooltip
@@ -183,7 +183,7 @@
       </div>
 
       <!-- Step 2: Task Definition -->
-      <div v-if="currentStep === 1" class="step-content">
+      <div v-if="currentStepKey === 'task'" class="step-content">
         <h3 class="step-title">{{ $t('scenarioManager.wizard.step2.title') }}</h3>
         <p class="step-description">{{ $t('scenarioManager.wizard.step2.description') }}</p>
 
@@ -339,9 +339,26 @@
               />
             </div>
 
+            <v-textarea
+              v-model="formData.ai_generation_prompt"
+              :label="$t('scenarioManager.wizard.step2.aiGenerationPromptField')"
+              :hint="$t('scenarioManager.wizard.step2.aiGenerationPromptHint')"
+              variant="outlined"
+              rows="2"
+              class="mt-4 mb-3"
+              persistent-hint
+            />
+
             <div class="wizard-markdown-field mt-4">
-              <div class="wizard-markdown-field__label">
-                {{ $t('evaluation.briefing.taskDescription') }}
+              <div class="wizard-markdown-field__header">
+                <span class="wizard-markdown-field__label">{{ $t('evaluation.briefing.taskDescription') }}</span>
+                <LAIFieldButton
+                  field-key="scenario.settings.task_description"
+                  :context="buildScenarioAiContext()"
+                  icon-only
+                  size="small"
+                  @generated="updateBriefingTaskDescription($event)"
+                />
               </div>
               <LMarkdownEditor
                 :model-value="briefingTaskDescription"
@@ -352,8 +369,15 @@
             </div>
 
             <div class="wizard-markdown-field mt-4">
-              <div class="wizard-markdown-field__label">
-                {{ $t('evaluation.briefing.criteria') }}
+              <div class="wizard-markdown-field__header">
+                <span class="wizard-markdown-field__label">{{ $t('evaluation.briefing.criteria') }}</span>
+                <LAIFieldButton
+                  field-key="scenario.settings.evaluation_criteria"
+                  :context="buildScenarioAiContext()"
+                  icon-only
+                  size="small"
+                  @generated="updateBriefingCriteria($event)"
+                />
               </div>
               <LMarkdownEditor
                 :model-value="briefingCriteria"
@@ -367,7 +391,7 @@
       </div>
 
       <!-- Step 3: Configuration -->
-      <div v-if="currentStep === 2" class="step-content">
+      <div v-if="currentStepKey === 'config'" class="step-content">
         <h3 class="step-title">{{ $t('scenarioManager.wizard.step3.title') }}</h3>
         <p class="step-description">{{ $t('scenarioManager.wizard.step3.description') }}</p>
 
@@ -446,7 +470,7 @@
       </div>
 
       <!-- Step 4: Team (Users & AI) -->
-      <div v-if="currentStep === 3" class="step-content">
+      <div v-if="currentStepKey === 'team'" class="step-content">
         <h3 class="step-title">{{ $t('scenarioManager.wizard.step4.teamTitle') }}</h3>
         <p class="step-description">{{ $t('scenarioManager.wizard.step4.teamDescription') }}</p>
 
@@ -632,7 +656,7 @@
       </div>
 
       <!-- Step 5: Summary & Create -->
-      <div v-if="currentStep === 4" class="step-content">
+      <div v-if="currentStepKey === 'summary'" class="step-content">
         <h3 class="step-title">{{ $t('scenarioManager.wizard.step5.title') }}</h3>
         <p class="step-description">{{ $t('scenarioManager.wizard.step5.description') }}</p>
 
@@ -650,6 +674,18 @@
               <span class="summary-label">{{ $t('scenarioManager.wizard.step5.descriptionLabel') }}</span>
               <div class="summary-value summary-value--markdown">
                 <LMarkdownContent :markdown="formData.description" compact />
+              </div>
+            </div>
+            <div class="summary-row" v-if="briefingTaskDescription">
+              <span class="summary-label">{{ $t('scenarioManager.wizard.step5.taskDescriptionLabel') }}</span>
+              <div class="summary-value summary-value--markdown">
+                <LMarkdownContent :markdown="briefingTaskDescription" compact />
+              </div>
+            </div>
+            <div class="summary-row" v-if="briefingCriteria">
+              <span class="summary-label">{{ $t('scenarioManager.wizard.step5.evaluationCriteriaLabel') }}</span>
+              <div class="summary-value summary-value--markdown">
+                <LMarkdownContent :markdown="briefingCriteria" compact />
               </div>
             </div>
           </div>
@@ -681,16 +717,30 @@
               <LIcon class="mr-2" color="primary">mdi-database-outline</LIcon>
               {{ $t('scenarioManager.wizard.step5.data') }}
             </h5>
-            <div class="summary-row">
-              <span class="summary-label">{{ $t('scenarioManager.wizard.step5.files') }}</span>
-              <span class="summary-value">
-                {{ uploadedFiles.length > 0 ? `${uploadedFiles.length} ${$t('scenarioManager.wizard.step1.filesSelected')}` : '-' }}
-              </span>
-            </div>
-            <div class="summary-row" v-if="analysisResult">
-              <span class="summary-label">{{ $t('scenarioManager.wizard.step5.items') }}</span>
-              <span class="summary-value">{{ analysisResult.itemCount }}</span>
-            </div>
+            <!-- Generation mode: show metadata from stats -->
+            <template v-if="props.generationJobId && generationJobMeta">
+              <div class="server-import-hint mt-2">
+                <LIcon size="16" color="accent" class="mr-1">mdi-server</LIcon>
+                <span>
+                  {{ generationJobMeta.totalOutputs }} Outputs
+                  ({{ generationJobMeta.models.length }} Modell{{ generationJobMeta.models.length > 1 ? 'e' : '' }},
+                  {{ generationJobMeta.variants.length || 1 }} Variante{{ (generationJobMeta.variants.length || 1) > 1 ? 'n' : '' }})
+                </span>
+              </div>
+            </template>
+            <!-- File-upload mode -->
+            <template v-else>
+              <div class="summary-row">
+                <span class="summary-label">{{ $t('scenarioManager.wizard.step5.files') }}</span>
+                <span class="summary-value">
+                  {{ uploadedFiles.length > 0 ? `${uploadedFiles.length} ${$t('scenarioManager.wizard.step1.filesSelected')}` : '-' }}
+                </span>
+              </div>
+              <div class="summary-row" v-if="analysisResult">
+                <span class="summary-label">{{ $t('scenarioManager.wizard.step5.items') }}</span>
+                <span class="summary-value">{{ analysisResult.itemCount }}</span>
+              </div>
+            </template>
           </div>
 
           <v-divider class="my-3" />
@@ -944,7 +994,7 @@ const transformingData = ref(false) // Long-format transformation in progress
 const availableUsers = ref([])
 const selectedUsers = ref([])
 const loadingUsers = ref(false)
-const inviteRole = ref('EVALUATOR')
+const inviteRole = ref('ASSESSOR')
 
 // LLM state - System models (admin-configured)
 const availableLLMs = ref([])
@@ -956,14 +1006,19 @@ const userProviders = ref([])
 const selectedProviders = ref([])
 const loadingUserProviders = ref(false)
 
-// Steps definition
-const steps = computed(() => [
-  { key: 'data', label: t('scenarioManager.wizard.steps.data'), icon: 'mdi-database-import-outline' },
-  { key: 'task', label: t('scenarioManager.wizard.steps.task'), icon: 'mdi-clipboard-list-outline' },
-  { key: 'config', label: t('scenarioManager.wizard.steps.config'), icon: 'mdi-tune' },
-  { key: 'team', label: t('scenarioManager.wizard.steps.team'), icon: 'mdi-account-group' },
-  { key: 'summary', label: t('scenarioManager.wizard.steps.summary'), icon: 'mdi-check-all' }
-])
+// Steps definition - dynamically filtered when coming from generation (skip data tab)
+const steps = computed(() => {
+  const allSteps = [
+    { key: 'data', label: t('scenarioManager.wizard.steps.data'), icon: 'mdi-database-import-outline' },
+    { key: 'task', label: t('scenarioManager.wizard.steps.task'), icon: 'mdi-clipboard-list-outline' },
+    { key: 'config', label: t('scenarioManager.wizard.steps.config'), icon: 'mdi-tune' },
+    { key: 'team', label: t('scenarioManager.wizard.steps.team'), icon: 'mdi-account-group' },
+    { key: 'summary', label: t('scenarioManager.wizard.steps.summary'), icon: 'mdi-check-all' }
+  ]
+  return props.generationJobId ? allSteps.filter(s => s.key !== 'data') : allSteps
+})
+
+const currentStepKey = computed(() => steps.value[currentStep.value]?.key || '')
 
 // Evaluation types - grouped by category
 const evaluationTypesGrouped = computed(() => {
@@ -1023,6 +1078,9 @@ const formData = ref({
   evalType: null,
   scenario_name: '',
   description: '',
+  ai_generation_prompt: '',
+  task_description: '',
+  evaluation_criteria: [],
   evalConfig: null,
   config: {
     distribution_mode: 'all',
@@ -1042,6 +1100,18 @@ const selectedTypeInfo = computed(() => {
 })
 
 const generationVariantStats = computed(() => {
+  // Generation mode with metadata from stats API
+  if (props.generationJobId && generationJobMeta.value) {
+    const meta = generationJobMeta.value
+    const variantsPerItem = meta.models.length * (meta.variants.length || 1)
+    return {
+      sourceCount: Math.ceil(meta.totalOutputs / Math.max(variantsPerItem, 1)),
+      maxVariantsPerSource: variantsPerItem,
+      supportsRanking: variantsPerItem >= 2
+    }
+  }
+
+  // File-upload mode: derive from analyzedData
   const generationItems = analyzedData.value.filter(item => item?._source === 'generation')
   if (generationItems.length === 0) {
     return {
@@ -1110,11 +1180,19 @@ function ensureEvalConfigInitialized() {
 function ensureBriefingFields() {
   ensureEvalConfigInitialized()
   const config = formData.value.evalConfig.config
+  const rootTaskDescription = formData.value.task_description || ''
+  const rootCriteria = normalizeCriteriaList(formData.value.evaluation_criteria)
 
   if (!config.taskDescriptionMarkdown) {
-    config.taskDescriptionMarkdown = isComparisonType.value
-      ? setLocalizedText(config.question, getLocalizedText(config.question, locale.value), locale.value)
-      : { de: '', en: '' }
+    const fallbackTaskDescription =
+      getLocalizedText(config.question, 'de') ||
+      getLocalizedText(config.question, 'en') ||
+      rootTaskDescription
+
+    config.taskDescriptionMarkdown = {
+      de: getLocalizedText(config.taskDescriptionMarkdown, 'de') || fallbackTaskDescription || '',
+      en: getLocalizedText(config.taskDescriptionMarkdown, 'en') || fallbackTaskDescription || ''
+    }
   }
 
   if (isComparisonType.value && !config.question) {
@@ -1126,8 +1204,16 @@ function ensureBriefingFields() {
 
   if (!config.criteriaMarkdown) {
     config.criteriaMarkdown = {
-      de: criteriaListToMarkdown(config.criteria, 'de'),
-      en: criteriaListToMarkdown(config.criteria, 'en')
+      de:
+        getLocalizedText(formData.value.config?.criteriaMarkdown, 'de') ||
+        getLocalizedText(formData.value.config?.evaluation_criteria_markdown, 'de') ||
+        criteriaListToMarkdown(rootCriteria, 'de') ||
+        criteriaListToMarkdown(config.criteria, 'de'),
+      en:
+        getLocalizedText(formData.value.config?.criteriaMarkdown, 'en') ||
+        getLocalizedText(formData.value.config?.evaluation_criteria_markdown, 'en') ||
+        criteriaListToMarkdown(rootCriteria, 'en') ||
+        criteriaListToMarkdown(config.criteria, 'en')
     }
   }
 
@@ -1155,12 +1241,16 @@ function copyBriefingFields(sourceConfig, targetConfig) {
 const briefingTaskDescription = computed(() => {
   return (
     getLocalizedText(formData.value.evalConfig?.config?.taskDescriptionMarkdown, locale.value) ||
-    getLocalizedText(formData.value.evalConfig?.config?.question, locale.value)
+    getLocalizedText(formData.value.evalConfig?.config?.question, locale.value) ||
+    formData.value.task_description
   )
 })
 
 const briefingCriteria = computed(() => {
-  return getLocalizedText(formData.value.evalConfig?.config?.criteriaMarkdown, locale.value)
+  return (
+    getLocalizedText(formData.value.evalConfig?.config?.criteriaMarkdown, locale.value) ||
+    criteriaListToMarkdown(formData.value.evaluation_criteria, locale.value)
+  )
 })
 
 const briefingCriteriaPlaceholder = computed(() => [
@@ -1178,6 +1268,7 @@ function updateBriefingTaskDescription(value) {
   if (isComparisonType.value) {
     config.question = setLocalizedText(config.question, value, locale.value)
   }
+  formData.value.task_description = value || ''
   formData.value.evalConfig.presetId = 'custom'
 }
 
@@ -1186,6 +1277,7 @@ function updateBriefingCriteria(value) {
   if (!config) return
 
   config.criteriaMarkdown = setLocalizedText(config.criteriaMarkdown, value, locale.value)
+  formData.value.evaluation_criteria = criteriaMarkdownToList(value)
   formData.value.evalConfig.presetId = 'custom'
 }
 
@@ -1230,31 +1322,28 @@ const dataSummaryForPanel = computed(() => {
 })
 
 const canProceed = computed(() => {
-  if (currentStep.value === 0) {
-    // Step 1: Need files and analysis
+  const key = currentStepKey.value
+  if (key === 'data') {
     return uploadedFiles.value.length > 0 && analysisResult.value !== null
   }
-  if (currentStep.value === 1) {
-    // Step 2: Need type and name
+  if (key === 'task') {
     return formData.value.evalType !== null &&
            formData.value.scenario_name &&
            formData.value.scenario_name.length >= 3
   }
-  if (currentStep.value === 2) {
-    // Step 3: Need config
+  if (key === 'config') {
     return formData.value.evalConfig !== null
   }
-  if (currentStep.value === 3) {
-    // Step 4: Team - need at least one evaluator (human or LLM)
+  if (key === 'team') {
     return selectedUsers.value.length > 0 || selectedLLMs.value.length > 0 || selectedProviders.value.length > 0
   }
   return true
 })
 
 // Role options for user invitations
-// EVALUATOR can interact (rate/evaluate), VIEWER is read-only
+// ASSESSOR can interact (rate/evaluate), VIEWER is read-only
 const roleOptions = [
-  { value: 'EVALUATOR', title: 'Evaluator' },
+  { value: 'ASSESSOR', title: 'Assessor' },
   { value: 'VIEWER', title: 'Viewer' }
 ]
 
@@ -1264,6 +1353,71 @@ function capitalize(str) {
   return str.charAt(0).toUpperCase() + str.slice(1)
 }
 
+function normalizeCriteriaList(value) {
+  const deduped = []
+  const seen = new Set()
+
+  if (Array.isArray(value)) {
+    value
+      .map(item => (typeof item === 'string' ? item.trim() : String(item || '').trim()))
+      .filter(Boolean)
+      .forEach(item => {
+        if (seen.has(item)) return
+        seen.add(item)
+        deduped.push(item)
+      })
+    return deduped
+  }
+
+  if (typeof value === 'string') {
+    value
+      .split(/[,\n;]/)
+      .map(item => item.trim())
+      .filter(Boolean)
+      .forEach(item => {
+        if (seen.has(item)) return
+        seen.add(item)
+        deduped.push(item)
+      })
+    return deduped
+  }
+
+  return []
+}
+
+function normalizeMarkdownLine(value) {
+  return String(value || '')
+    .replace(/^#{1,6}\s+/, '')
+    .replace(/^[-*+]\s+/, '')
+    .replace(/^\d+\.\s+/, '')
+    .replace(/[*_~`]/g, '')
+    .trim()
+}
+
+function criteriaMarkdownToList(markdown) {
+  if (!markdown) return []
+
+  return markdown
+    .split('\n')
+    .map(normalizeMarkdownLine)
+    .filter(Boolean)
+    .filter((value, index, array) => array.indexOf(value) === index)
+}
+
+function buildScenarioAiContext() {
+  const taskDescription = briefingTaskDescription.value || formData.value.task_description || ''
+  const criteriaList = criteriaMarkdownToList(briefingCriteria.value)
+
+  return {
+    scenario_type: formData.value.evalType || '',
+    scenario_name: formData.value.scenario_name || '',
+    existing_description: formData.value.description || '',
+    existing_task_description: taskDescription,
+    existing_evaluation_criteria: criteriaList.join(', '),
+    generation_prompt: formData.value.ai_generation_prompt || ''
+  }
+}
+
 function goToStep(index) {
   if (index < currentStep.value) {
     currentStep.value = index
@@ -1271,7 +1425,7 @@ function goToStep(index) {
 }
 
 function nextStep() {
-  if (currentStep.value === 1 && infoForm.value) {
+  if (currentStepKey.value === 'task' && infoForm.value) {
     infoForm.value.validate()
     if (!infoFormValid.value) return
   }
@@ -1585,11 +1739,25 @@ async function analyzeData() {
         const ext = file.name.split('.').pop().toLowerCase()
         if (ext === 'json') {
           data = JSON.parse(text)
-          if (!Array.isArray(data)) {
+          // Detect LLARS generation export format
+          if (!Array.isArray(data) && (data?.metadata?._llars_generation_export || data?.outputs)) {
+            const outputs = data.outputs || []
+            console.log(`[ScenarioWizard] Detected LLARS generation export (${outputs.length} outputs)`)
+            data = outputs.map(o => normalizeGenerationOutput(o))
+          } else if (!Array.isArray(data)) {
             data = data.data || data.items || data.results || [data]
           }
         } else if (ext === 'csv') {
-          data = parseCSV(text)
+          // Check for LLARS generation CSV marker
+          const firstLine = text.split('\n')[0] || ''
+          if (firstLine.startsWith('# _llars_generation_export')) {
+            console.log('[ScenarioWizard] Detected LLARS generation CSV export')
+            const csvWithoutMarker = text.split('\n').slice(1).join('\n')
+            data = parseCSV(csvWithoutMarker)
+            data = data.map(row => normalizeGenerationOutput(row))
+          } else {
+            data = parseCSV(text)
+          }
         }
 
         if (Array.isArray(data)) {
@@ -1720,6 +1888,16 @@ async function analyzeData() {
                   const scenarioDescription = parsed.description || parsed.scenario_description
                   if (scenarioDescription) {
                     formData.value.description = scenarioDescription
+                  }
+                  const taskDescription = parsed.task_description || parsed.taskDescription
+                  if (taskDescription) {
+                    formData.value.task_description = taskDescription
+                  }
+                  const criteria = normalizeCriteriaList(
+                    parsed.evaluation_criteria || parsed.evaluationCriteria
+                  )
+                  if (criteria.length > 0) {
+                    formData.value.evaluation_criteria = criteria
                   }
 
                   // Forward to panel for final parsing
@@ -1917,6 +2095,14 @@ function handleAnalysisPanelConfigUpdate(config) {
   }
   if (config.scenarioDescription) {
     formData.value.description = config.scenarioDescription
+  }
+  if (config.taskDescription || config.task_description) {
+    formData.value.task_description = config.taskDescription || config.task_description
+  }
+  if (config.evaluationCriteria || config.evaluation_criteria) {
+    formData.value.evaluation_criteria = normalizeCriteriaList(
+      config.evaluationCriteria || config.evaluation_criteria
+    )
   }
 
   // Ensure evalConfig is initialized before applying detailed config updates
@@ -2150,7 +2336,7 @@ async function createScenario() {
 
   try {
     const taskType = getTaskType(formData.value.evalType)
-    const isFromGeneration = analyzedData.value.some(i => i._source === 'generation')
+    const isFromGeneration = Boolean(props.generationJobId) || analyzedData.value.some(i => i._source === 'generation')
 
     // Validate generation → ranking upfront to avoid creating empty scenarios.
     if (taskType === 'ranking' && isFromGeneration && !generationVariantStats.value.supportsRanking) {
@@ -2158,6 +2344,57 @@ async function createScenario() {
         'Ranking aus Batch-Generierung benötigt mindestens zwei Varianten pro Eingabetext (mehrere Modelle und/oder Prompts). Bitte wähle stattdessen "Rating" oder erweitere den Generation-Job.'
       )
     }
+
+    const llmEvaluators = selectedLLMs.value.map(l => l.model_id).filter(Boolean)
+    const providerEvaluators = selectedProviders.value.map(p => buildProviderEvaluatorId(p)).filter(Boolean)
+    const combinedEvaluators = [...llmEvaluators, ...providerEvaluators]
+
+    // === SERVER-SIDE IMPORT: When data comes from a generation job ===
+    // Send only config to backend, no data transfer needed.
+    if (isFromGeneration && props.generationJobId) {
+      const serverPayload = {
+        scenario_name: formData.value.scenario_name,
+        evaluation_type: taskType,
+        description: formData.value.description || '',
+        task_description: formData.value.task_description || '',
+        evaluation_criteria: normalizeCriteriaList(formData.value.evaluation_criteria),
+        config_json: {
+          ...formData.value.config,
+          eval_type: formData.value.evalType,
+          eval_config: formData.value.evalConfig,
+          ai_generation_prompt: formData.value.ai_generation_prompt || '',
+          task_description: formData.value.task_description || '',
+          evaluation_criteria: normalizeCriteriaList(formData.value.evaluation_criteria),
+          enable_llm_evaluation: combinedEvaluators.length > 0,
+          ...(combinedEvaluators.length > 0 ? { llm_evaluators: combinedEvaluators } : {}),
+        },
+        invited_users: selectedUsers.value.map(u => ({ user_id: u.id, role: u.role || 'ASSESSOR' })),
+        split_by_prompt: Boolean(formData.value.evalConfig?.config?.splitByPrompt),
+      }
+
+      console.log('[ScenarioWizard] Server-side import:', {
+        jobId: props.generationJobId,
+        evaluationType: taskType,
+        totalOutputs: generationJobMeta.value?.totalOutputs,
+        invitedUsers: serverPayload.invited_users.length,
+        splitByPrompt: serverPayload.split_by_prompt,
+      })
+
+      const response = await axios.post(
+        `/api/generation/jobs/${props.generationJobId}/to-scenario`,
+        serverPayload
+      )
+
+      scenario = {
+        id: response.data.scenario_id,
+        scenario_name: response.data.scenario_name,
+      }
+
+      emit('created', scenario)
+      return
+    }
+
+    // === CLIENT-SIDE IMPORT: File upload flow (non-generation data) ===
 
     // Pre-compute import data before creating the scenario.
     let importData = analyzedData.value
@@ -2174,7 +2411,7 @@ async function createScenario() {
         importData = transformGenerationDataForRanking(analyzedData.value, { splitByPrompt })
         fieldMapping.split_by_prompt = splitByPrompt
 
-        console.log('[ScenarioWizard] Ranking from generation:', {
+        console.log('[ScenarioWizard] Ranking from generation (client-side):', {
           inputItems: analyzedData.value.length,
           groups: importData.length,
           splitByPrompt,
@@ -2183,7 +2420,7 @@ async function createScenario() {
           )
         })
       } else {
-        console.log(`[ScenarioWizard] ${taskType} from generation:`, {
+        console.log(`[ScenarioWizard] ${taskType} from generation (client-side):`, {
           items: importData.length
         })
       }
@@ -2192,20 +2429,20 @@ async function createScenario() {
     // Map eval type to function_type_id for backend compatibility
     const functionTypeId = ID_TYPE_MAP[formData.value.evalType] || 2
 
-    const llmEvaluators = selectedLLMs.value.map(l => l.model_id).filter(Boolean)
-    const providerEvaluators = selectedProviders.value.map(p => buildProviderEvaluatorId(p)).filter(Boolean)
-
-    const combinedEvaluators = [...llmEvaluators, ...providerEvaluators]
-
     const scenarioPayload = {
       scenario_name: formData.value.scenario_name,
       function_type_id: functionTypeId,
       description: formData.value.description,
+      task_description: formData.value.task_description,
+      evaluation_criteria: normalizeCriteriaList(formData.value.evaluation_criteria),
       config_json: {
         ...formData.value.config,
         description: formData.value.description,
         eval_type: formData.value.evalType,
         eval_config: formData.value.evalConfig,
+        ai_generation_prompt: formData.value.ai_generation_prompt || '',
+        task_description: formData.value.task_description,
+        evaluation_criteria: normalizeCriteriaList(formData.value.evaluation_criteria),
         enable_llm_evaluation: combinedEvaluators.length > 0,
         llm_evaluators: combinedEvaluators
       }
@@ -2219,12 +2456,11 @@ async function createScenario() {
 
     // Invite selected human users
     if (selectedUsers.value.length > 0 && scenario?.id) {
-      // Group users by role: EVALUATOR can interact, VIEWER is read-only
-      const evaluators = selectedUsers.value.filter(u => u.role === 'EVALUATOR').map(u => u.id)
+      const assessors = selectedUsers.value.filter(u => u.role === 'ASSESSOR' || u.role === 'EVALUATOR').map(u => u.id)
       const viewers = selectedUsers.value.filter(u => u.role === 'VIEWER').map(u => u.id)
 
-      if (evaluators.length > 0) {
-        await inviteUsers(scenario.id, evaluators, 'EVALUATOR')
+      if (assessors.length > 0) {
+        await inviteUsers(scenario.id, assessors, 'ASSESSOR')
       }
       if (viewers.length > 0) {
         await inviteUsers(scenario.id, viewers, 'VIEWER')
@@ -2308,167 +2544,117 @@ watch(() => formData.value.evalConfig, (newValue, oldValue) => {
 // Load data from generation job if provided
 const loadingFromGeneration = ref(false)
 const generationJobName = ref('')
+const generationJobMeta = ref(null) // Metadata about total outputs for server-side import
+
+/**
+ * Normalize a single generation output into the wizard's internal item format.
+ * Shared between loadFromGenerationJob() and analyzeData() (JSON/CSV re-upload).
+ */
+function normalizeGenerationOutput(output) {
+  const promptVars = output.prompt_variables || {}
+  const generatedContent = output.generated_content || ''
+
+  const hashString = (value) => {
+    if (!value) return null
+    let hash = 0
+    for (let i = 0; i < value.length; i++) {
+      hash = ((hash << 5) - hash) + value.charCodeAt(i)
+      hash |= 0
+    }
+    return `h${Math.abs(hash)}`
+  }
+
+  const parseRenderedPrompt = (promptText) => {
+    if (!promptText) return { title: null, content: null }
+    const titleMatch = promptText.match(/^(Title|Headline|Titel):\s*(.*)$/m)
+    const title = titleMatch ? titleMatch[2].trim() : null
+    const parts = promptText.split(/\n\s*\n/)
+    const content = parts.length > 1 ? parts.slice(1).join('\n\n').trim() : null
+    return { title, content }
+  }
+
+  // Stable source grouping
+  const renderedPrompt = output.rendered_user_prompt || ''
+  const parsed = parseRenderedPrompt(renderedPrompt)
+  const sourceIndex = promptVars.source_index ?? promptVars._source_index ?? output.source_group_key ?? output.source_item_id ?? hashString(renderedPrompt) ?? output.id
+  const promptKey = output.prompt_template_id ?? promptVars._user_prompt_id ?? output.prompt_variant_name ?? 'prompt'
+  const groupId = `${sourceIndex}`
+
+  // Build a readable source text
+  const sourceTitle = promptVars.title || parsed.title || ''
+  const sourceBody = promptVars.content || promptVars.input || parsed.content || ''
+  const sourceText = sourceTitle
+    ? `Title: ${sourceTitle}\n\n${sourceBody}`
+    : (sourceBody || promptVars.input || renderedPrompt || '')
+
+  // Build the combined content structure
+  let messages = []
+  let text = ''
+
+  if (promptVars.messages && Array.isArray(promptVars.messages)) {
+    messages = [...promptVars.messages]
+    messages.push({ role: 'assistant', content: generatedContent })
+    text = messages.map(m => `${m.role}: ${m.content}`).join('\n\n')
+  } else if (promptVars.input) {
+    messages = [
+      { role: 'user', content: promptVars.input },
+      { role: 'assistant', content: generatedContent }
+    ]
+    text = `User: ${promptVars.input}\n\nAssistant: ${generatedContent}`
+  } else {
+    text = generatedContent
+  }
+
+  return {
+    id: String(output.id),
+    text,
+    content: generatedContent,
+    output: generatedContent,
+    messages: messages.length > 0 ? messages : undefined,
+    subject: promptVars.subject || undefined,
+    source_id: groupId,
+    source_text: sourceText,
+    llm_name: output.llm_model_name,
+    prompt_id: promptKey,
+    prompt_variant: output.prompt_variant_name || null,
+    variant: `${output.llm_model_name} / ${promptKey}${output.prompt_variant_name && output.prompt_variant_name !== promptKey ? ` / ${output.prompt_variant_name}` : ''}`,
+    title: promptVars.title || null,
+    input: promptVars.input || null,
+    _source: 'generation',
+    _model: output.llm_model_name,
+    _prompt_variant: output.prompt_variant_name,
+    _source_item_id: output.source_item_id,
+    _source_index: promptVars.source_index ?? promptVars._source_index ?? null,
+    _original_input: promptVars.input || null
+  }
+}
 
 async function loadFromGenerationJob() {
   if (!props.generationJobId) return
 
   loadingFromGeneration.value = true
   try {
-    // Fetch all completed outputs from the generation job.
-    // The backend caps per_page at 100, so we page through the full result set.
-    const outputs = []
-    let page = 1
-    let pages = 1
+    // Load only lightweight stats + job info — no output content needed.
+    // The actual scenario creation happens server-side via /to-scenario.
+    const [statsRes, jobRes] = await Promise.all([
+      axios.get(`/api/generation/jobs/${props.generationJobId}/statistics`),
+      axios.get(`/api/generation/jobs/${props.generationJobId}`)
+    ])
+    const stats = statsRes.data.statistics
+    const job = jobRes.data.job
 
-    while (page <= pages) {
-      let response
-      try {
-        response = await axios.get(`/api/generation/jobs/${props.generationJobId}/outputs`, {
-          params: { status: 'completed', page, per_page: 100, include_prompts: true }
-        })
-      } catch (err) {
-        console.error(`[ScenarioWizard] Failed to load page ${page}/${pages}:`, err.message)
-        if (outputs.length === 0) {
-          throw new Error(`Fehler beim Laden der Generation-Daten (Seite ${page}): ${err.message}`)
-        }
-        // Partial data loaded – warn and continue with what we have
-        console.warn(`[ScenarioWizard] Continuing with ${outputs.length} outputs loaded before error`)
-        break
-      }
-
-      const pageItems = response.data.items || []
-      if (pageItems.length === 0) {
-        if (page === 1) {
-          console.warn('[ScenarioWizard] First page returned 0 items')
-        } else {
-          console.warn(`[ScenarioWizard] Page ${page} returned 0 items, stopping pagination`)
-        }
-        break
-      }
-
-      outputs.push(...pageItems)
-
-      const reportedPages = Number(response.data.pages || 1)
-      pages = Number.isFinite(reportedPages) && reportedPages > 0 ? reportedPages : 1
-      page += 1
+    generationJobName.value = job?.name || `Generation Job #${props.generationJobId}`
+    generationJobMeta.value = {
+      totalOutputs: stats.overall?.completed || 0,
+      models: Object.keys(stats.by_model || {}),
+      variants: Object.keys(stats.by_prompt_variant || {}),
     }
 
-    console.log(`[ScenarioWizard] Loaded ${outputs.length} generation outputs across ${page - 1} page(s)`)
-
-    if (outputs.length === 0) {
-      console.warn('No completed outputs found in generation job')
-      return
-    }
-
-    // Fetch job info for the name
-    const jobResponse = await axios.get(`/api/generation/jobs/${props.generationJobId}`)
-    generationJobName.value = jobResponse.data.job?.name || `Generation Job #${props.generationJobId}`
-
-    const hashString = (value) => {
-      if (!value) return null
-      let hash = 0
-      for (let i = 0; i < value.length; i++) {
-        hash = ((hash << 5) - hash) + value.charCodeAt(i)
-        hash |= 0
-      }
-      return `h${Math.abs(hash)}`
-    }
-
-    const parseRenderedPrompt = (promptText) => {
-      if (!promptText) return { title: null, content: null }
-      const titleMatch = promptText.match(/^(Title|Headline|Titel):\s*(.*)$/m)
-      const title = titleMatch ? titleMatch[2].trim() : null
-      const parts = promptText.split(/\n\s*\n/)
-      const content = parts.length > 1 ? parts.slice(1).join('\n\n').trim() : null
-      return { title, content }
-    }
-
-    // Transform outputs into items for the wizard
-    // Combine original input data with generated response as a complete conversation
-    const items = outputs.map((output) => {
-      const promptVars = output.prompt_variables || {}
-      const generatedContent = output.generated_content || ''
-
-      // Stable source grouping (source_index is canonical, _source_index for backwards compat)
-      const renderedPrompt = output.rendered_user_prompt || ''
-      const parsed = parseRenderedPrompt(renderedPrompt)
-      const sourceIndex = promptVars.source_index ?? promptVars._source_index ?? output.source_group_key ?? output.source_item_id ?? hashString(renderedPrompt) ?? output.id
-      const promptKey = output.prompt_template_id ?? promptVars._user_prompt_id ?? output.prompt_variant_name ?? 'prompt'
-      const groupId = `${sourceIndex}`
-
-      // Build a readable source text (title + content if available)
-      const sourceTitle = promptVars.title || parsed.title || ''
-      const sourceBody = promptVars.content || promptVars.input || parsed.content || ''
-      const sourceText = sourceTitle
-        ? `Title: ${sourceTitle}\n\n${sourceBody}`
-        : (sourceBody || promptVars.input || renderedPrompt || '')
-
-      // Build the combined content structure (for non-ranking use cases)
-      let messages = []
-      let text = ''
-
-      if (promptVars.messages && Array.isArray(promptVars.messages)) {
-        messages = [...promptVars.messages]
-        messages.push({
-          role: 'assistant',
-          content: generatedContent
-        })
-        text = messages.map(m => `${m.role}: ${m.content}`).join('\n\n')
-      } else if (promptVars.input) {
-        messages = [
-          { role: 'user', content: promptVars.input },
-          { role: 'assistant', content: generatedContent }
-        ]
-        text = `User: ${promptVars.input}\n\nAssistant: ${generatedContent}`
-      } else {
-        text = generatedContent
-      }
-
-      return {
-        id: output.id.toString(),
-        text: text,
-        content: generatedContent,
-        output: generatedContent,
-        messages: messages.length > 0 ? messages : undefined,
-        subject: promptVars.subject || undefined,
-        source_id: groupId,
-        source_text: sourceText,
-        llm_name: output.llm_model_name,
-        prompt_id: promptKey,
-        prompt_variant: output.prompt_variant_name || null,
-        variant: `${output.llm_model_name} / ${promptKey}${output.prompt_variant_name && output.prompt_variant_name !== promptKey ? ` / ${output.prompt_variant_name}` : ''}`,
-        title: promptVars.title || null,
-        input: promptVars.input || null,
-        // Include metadata for context
-        _source: 'generation',
-        _model: output.llm_model_name,
-        _prompt_variant: output.prompt_variant_name,
-        _source_item_id: output.source_item_id,
-        _source_index: promptVars.source_index ?? promptVars._source_index ?? null,
-        _original_input: promptVars.input || null
-      }
-    })
-
-    // Set the data
-    analyzedData.value = items
-
-    // Create a virtual "file" entry to show in the UI
-    uploadedFiles.value = [{
-      name: `${generationJobName.value}.json`,
-      size: JSON.stringify(items).length,
-      _isVirtual: true,
-      _generationJobId: props.generationJobId
-    }]
-
-    // Pre-fill scenario name based on job name
     formData.value.scenario_name = generationJobName.value
-
-    // Auto-advance to step 1 (task type selection) since we have data
-    // The user can still go back to see the data if needed
-    currentStep.value = 1
+    // currentStep starts at 0, which is 'task' (data tab is skipped)
 
   } catch (error) {
-    console.error('Failed to load generation job data:', error)
+    console.error('Failed to load generation job metadata:', error)
   } finally {
     loadingFromGeneration.value = false
   }
@@ -3103,6 +3289,12 @@ onMounted(() => {
   gap: 4px;
 }
 
+.field-label-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
 .split-prompt-label {
   display: inline-flex;
   align-items: center;
@@ -3171,6 +3363,16 @@ onMounted(() => {
   font-size: 0.875rem;
   font-weight: 500;
   color: rgb(var(--v-theme-on-surface));
+}
+
+.server-import-hint {
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  background: rgba(var(--v-theme-accent), 0.08);
+  border-radius: 8px;
+  font-size: 0.85rem;
+  color: rgba(var(--v-theme-on-surface), 0.8);
 }
 
 /* Actions */

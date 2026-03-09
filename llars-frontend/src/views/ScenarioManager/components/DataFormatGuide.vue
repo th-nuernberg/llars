@@ -510,6 +510,71 @@ const evaluationTypes = [
       { name: 'min_labels', type: 'number', description: 'Minimum Labels (nur bei multi)' },
       { name: 'max_labels', type: 'number', description: 'Maximum Labels (nur bei multi)' }
     ]
+  },
+  {
+    id: 'batch_generation',
+    name: 'Batch Generation',
+    icon: 'mdi-creation',
+    color: '#b0ca97',
+    description: 'Export aus der Batch-Generation. Wird automatisch erkannt beim Upload (JSON/CSV). Alternativ: Direkt-Link aus der Generation-Ansicht.',
+    layout: 'Automatisch: Wizard erkennt Format und schlägt passenden Evaluationstyp vor',
+    minimalExample: [
+      {
+        id: 1,
+        source_item_id: 100,
+        llm_model_name: 'Global/Mistral/Mistral-Small-3.2',
+        prompt_variant_name: 'default',
+        generated_content: 'Erste generierte Zusammenfassung...',
+        prompt_variables: { input: 'Originaltext hier...' }
+      },
+      {
+        id: 2,
+        source_item_id: 100,
+        llm_model_name: 'Global/OpenAI/gpt-5-mini',
+        prompt_variant_name: 'default',
+        generated_content: 'Zweite generierte Zusammenfassung...',
+        prompt_variables: { input: 'Originaltext hier...' }
+      }
+    ],
+    completeExample: {
+      job: {
+        id: 42,
+        name: 'Summarization Comparison',
+        status: 'completed'
+      },
+      outputs: [
+        {
+          id: 1,
+          source_item_id: 100,
+          llm_model_name: 'Global/Mistral/Mistral-Small-3.2',
+          prompt_variant_name: 'default',
+          generated_content: 'Erste generierte Zusammenfassung...',
+          rendered_user_prompt: 'Fasse folgenden Text zusammen: ...',
+          prompt_variables: { input: 'Originaltext', source_index: 0 }
+        },
+        {
+          id: 2,
+          source_item_id: 100,
+          llm_model_name: 'Global/OpenAI/gpt-5-mini',
+          prompt_variant_name: 'default',
+          generated_content: 'Zweite generierte Zusammenfassung...',
+          rendered_user_prompt: 'Fasse folgenden Text zusammen: ...',
+          prompt_variables: { input: 'Originaltext', source_index: 0 }
+        }
+      ],
+      metadata: {
+        _llars_generation_export: true,
+        schema_version: '1.0',
+        total_outputs: 2
+      }
+    },
+    configFields: [
+      { name: 'source_item_id', type: 'number', description: 'Gruppierung: gleiche ID = gleicher Quelltext' },
+      { name: 'llm_model_name', type: 'string', description: 'Modell-ID (z.B. Global/OpenAI/gpt-5-mini)' },
+      { name: 'prompt_variant_name', type: 'string', description: 'Prompt-Variante (optional)' },
+      { name: 'generated_content', type: 'string', description: 'Der generierte Text' },
+      { name: 'metadata._llars_generation_export', type: 'boolean', description: 'Marker für automatische Erkennung' }
+    ]
   }
 ]
 

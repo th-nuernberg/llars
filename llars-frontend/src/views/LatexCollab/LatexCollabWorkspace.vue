@@ -22,6 +22,7 @@
       v-model:tree-collapsed="treeCollapsed"
       v-model:files-collapsed="filesCollapsed"
       v-model:git-collapsed="gitCollapsed"
+      v-model:online-collapsed="onlineCollapsed"
       v-model:outline-collapsed="outlineCollapsed"
       :workspace-id="workspaceId"
       :nodes="treeNodes"
@@ -31,17 +32,30 @@
       :can-commit="hasPermission('feature:latex_collab:edit')"
       :recently-added-ids="recentlyAddedNodeIds"
       :tree-panel-width="treePanelWidth"
-      :resizing-tree="resizingTree"
       :outline-flat-items="outlineFlatItems"
       :outline-empty-label="outlineEmptyLabel"
       :is-outline-item-collapsed="isOutlineItemCollapsed"
+      :active-users="editorRef?.activeUsers || []"
+      :members="members"
+      :owner-info="ownerInfo"
+      :can-share="canShareWorkspace"
+      :pending-requests="pendingRequests"
+      :workspace-name="workspace?.name || $t('latexCollab.workspace.fallbackName', { id: workspaceId })"
+      :is-connected="editorRef?.isConnected"
+      :ai-enabled="props.aiEnabled"
+      :ghost-text-enabled="props.ghostTextEnabled"
+      :show-connection-status="selectedNode?.type === 'file' && !selectedNode?.asset_id"
+      @navigate-back="router.push(routeBase)"
+      @toggle-ghost-text="editorRef?.toggleGhostText?.()"
+      @open-share="openShareDialog"
+      @approve-request="(id) => resolveAccessRequest(id, 'approve')"
+      @reject-request="(id) => resolveAccessRequest(id, 'reject')"
       @select="handleSelectNode"
       @create="handleCreateNode"
       @rename="handleRenameNode"
       @remove="handleDeleteNode"
       @move="handleMoveNode"
       @open-asset-picker="openAssetPicker"
-      @start-tree-resize="startTreeResize"
       @navigate-home="router.push('/Home')"
       @navigate-workspaces="router.push(routeBase)"
       @toggle-outline-item="toggleOutlineItem"
@@ -50,34 +64,51 @@
       @committed="refreshCommits"
     />
 
+    <!-- Resize Divider: Tree | Content (Desktop only) -->
+    <div
+      v-if="!isMobile && !treeCollapsed"
+      class="resize-divider vertical tree-content-divider"
+      :class="{ resizing: resizingTree }"
+      @mousedown="startTreeResize"
+    >
+      <div class="resize-handle" />
+    </div>
+
     <!-- Main Content Area -->
     <div class="content-area">
-      <!-- Content Header -->
-      <LatexContentHeader
-        :is-mobile="isMobile"
-        :document-title="selectedNode?.title || $t('latexCollab.workspace.empty.noDocument')"
-        :workspace-name="workspace?.name || $t('latexCollab.workspace.fallbackName', { id: workspaceId })"
-        :can-share="canShareWorkspace"
-        :can-set-main="canSetMainDocument"
-        :can-edit="hasPermission('feature:latex_collab:edit')"
-        :is-main-document="selectedNode?.id === workspace?.main_document_id"
-        :review-mode="reviewMode"
-        :show-connection-status="selectedNode?.type === 'file' && !selectedNode?.asset_id"
-        :is-connected="editorRef?.isConnected"
-        :ai-enabled="props.aiEnabled"
-        :ghost-text-enabled="props.ghostTextEnabled"
-        :active-users="editorRef?.activeUsers || []"
-        v-model:view-mode="viewMode"
-        @open-mobile-menu="mobileSidebarOpen = true"
-        @navigate-back="router.push(routeBase)"
-        @open-share="openShareDialog"
-        @open-zotero="zoteroDialog = true"
-        @set-main-document="setMainDocument"
-        @toggle-review-mode="reviewMode = !reviewMode"
-        @toggle-ghost-text="editorRef?.toggleGhostText?.()"
-        @download-zip="downloadWorkspaceZip"
-        @import-zip="openZipImportDialog"
-      />
+      <!-- Mobile toolbar (replaces header on mobile) -->
+      <div v-if="isMobile" class="mobile-toolbar">
+        <v-btn icon variant="text" size="small" @click="mobileSidebarOpen = true">
+          <LIcon>mdi-menu</LIcon>
+        </v-btn>
+        <v-spacer />
+        <div class="mode-toggle-group">
+          <button
+            class="mode-btn"
+            :class="{ active: viewMode === 'editor' }"
+            :title="$t('latexCollab.header.view.editor')"
+            @click="viewMode = 'editor'"
+          >
+            <LIcon size="18">mdi-pencil</LIcon>
+          </button>
+          <button
+            class="mode-btn"
+            :class="{ active: viewMode === 'split' }"
+            :title="$t('latexCollab.header.view.split')"
+            @click="viewMode = 'split'"
+          >
+            <LIcon size="18">mdi-view-split-vertical</LIcon>
+          </button>
+          <button
+            class="mode-btn"
+            :class="{ active: viewMode === 'preview' }"
+            :title="$t('latexCollab.header.view.preview')"
+            @click="viewMode = 'preview'"
+          >
+            <LIcon size="18">mdi-file-pdf-box</LIcon>
+          </button>
+        </div>
+      </div>
 
       <!-- Content Body -->
       <div class="content-body">
@@ -102,14 +133,39 @@
         </i18n-t>
       </v-alert>
 
-        <v-alert
-          v-else-if="selectedNode && selectedNode.asset_id"
-          type="info"
-        variant="tonal"
-        class="ma-4"
-      >
-        {{ $t('latexCollab.workspace.assetWarning') }}
-      </v-alert>
+        <!-- Asset Preview (images, PDFs, other files) -->
+        <div v-else-if="selectedNode && selectedNode.asset_id" class="asset-preview-container">
+          <div class="asset-preview-header">
+            <LIcon size="18" class="mr-2">{{ assetIconForNode(selectedNode) }}</LIcon>
+            <span class="asset-filename text-truncate">{{ selectedNode.title }}</span>
+            <v-spacer />
+            <LIconBtn
+              icon="mdi-download"
+              :tooltip="$t('common.download')"
+              size="small"
+              @click="downloadAsset(selectedNode)"
+            />
+          </div>
+          <div class="asset-preview-body">
+            <img
+              v-if="isImageAsset(selectedNode) && assetBlobUrl"
+              :src="assetBlobUrl"
+              :alt="selectedNode.title"
+              class="asset-preview-image"
+            />
+            <div v-else-if="isImageAsset(selectedNode) && assetLoading" class="asset-preview-loading">
+              <v-progress-circular indeterminate size="32" />
+            </div>
+            <div v-else class="asset-preview-fallback">
+              <LIcon size="64" color="grey-lighten-1">{{ assetIconForNode(selectedNode) }}</LIcon>
+              <span class="text-medium-emphasis mt-2">{{ selectedNode.title }}</span>
+              <LBtn variant="text" class="mt-2" @click="downloadAsset(selectedNode)">
+                <LIcon class="mr-1">mdi-download</LIcon>
+                {{ $t('common.download') }}
+              </LBtn>
+            </div>
+          </div>
+        </div>
 
         <v-alert
           v-else-if="!selectedNode || selectedNode.type !== 'file'"
@@ -197,8 +253,39 @@
                     >
                       {{ $t('latexCollab.compile.actions.compile') }}
                     </LBtn>
+                    <v-btn
+                      icon
+                      variant="text"
+                      size="x-small"
+                      :loading="isDownloadingPdf"
+                      :title="$t('latexCollab.pdf.downloadTitle')"
+                      @click="downloadCompiledPdf"
+                    >
+                      <LIcon size="18">mdi-download</LIcon>
+                    </v-btn>
                     <!-- Slot for additional toolbar buttons (e.g., AI Assistant) -->
                     <slot name="toolbar-actions" />
+                    <!-- Action buttons relocated from header -->
+                    <v-btn icon variant="text" size="x-small" :title="$t('latexCollab.zotero.title')" @click="zoteroDialog = true">
+                      <LIcon size="18">zotero</LIcon>
+                    </v-btn>
+                    <v-btn v-if="canSetMainDocument" icon variant="text" size="x-small" :title="$t('latexCollab.header.setMain')" @click="setMainDocument">
+                      <LIcon size="18">{{ selectedNode?.id === workspace?.main_document_id ? 'mdi-star' : 'mdi-star-outline' }}</LIcon>
+                    </v-btn>
+                    <v-btn icon variant="text" size="x-small" :color="reviewMode ? 'primary' : undefined" :title="$t('latexCollab.header.reviewMode')" @click="reviewMode = !reviewMode">
+                      <LIcon size="18">mdi-comment-text-outline</LIcon>
+                    </v-btn>
+                    <v-menu location="bottom end">
+                      <template #activator="{ props: menuProps }">
+                        <v-btn icon variant="text" size="x-small" v-bind="menuProps" :title="$t('latexCollab.zip.menuTitle')">
+                          <LIcon size="18">mdi-folder-zip</LIcon>
+                        </v-btn>
+                      </template>
+                      <v-list density="compact">
+                        <v-list-item prepend-icon="mdi-download" :title="$t('latexCollab.zip.downloadTitle')" @click="downloadWorkspaceZip" />
+                        <v-list-item v-if="hasPermission('feature:latex_collab:edit')" prepend-icon="mdi-upload" :title="$t('latexCollab.zip.importTitle')" @click="openZipImportDialog" />
+                      </v-list>
+                    </v-menu>
                     <v-select
                       v-model="compileCommitId"
                       :items="compileCommitOptions"
@@ -275,6 +362,7 @@
 
                   <!-- Resize divider between PDF and Comments -->
                   <div
+                    v-if="!commentsCollapsed"
                     class="preview-resize-divider"
                     :class="{ resizing: resizingComments }"
                     @mousedown="startCommentsResize"
@@ -284,9 +372,9 @@
                     </div>
                   </div>
 
-                  <div class="comments-panel" :style="commentsPanelStyle">
+                  <div class="comments-panel" :class="{ collapsed: commentsCollapsed }" :style="commentsCollapsed ? {} : commentsPanelStyle">
                   <div class="comments-header">
-                    <div class="d-flex align-center ga-2">
+                    <div class="d-flex align-center ga-2 cursor-pointer" @click="commentsCollapsed = !commentsCollapsed">
                       <LIcon size="18">{{ showCommentArchive ? 'mdi-archive' : 'mdi-comment-multiple-outline' }}</LIcon>
                       <span class="text-body-2">
                         {{ showCommentArchive ? $t('latexCollab.comments.archiveTitle') : $t('latexCollab.comments.title') }}
@@ -296,39 +384,49 @@
                       </LTag>
                     </div>
                     <v-spacer />
-                    <!-- Archive Toggle Button -->
-                    <v-btn
-                      icon
-                      variant="text"
-                      size="x-small"
-                      :color="showCommentArchive ? 'primary' : undefined"
-                      :title="showCommentArchive ? $t('latexCollab.comments.showActive') : $t('latexCollab.comments.showArchive')"
-                      @click="showCommentArchive = !showCommentArchive"
-                    >
-                      <v-badge
-                        v-if="!showCommentArchive && archivedCount > 0"
-                        :content="archivedCount"
-                        color="success"
-                        offset-x="-2"
-                        offset-y="-2"
+                    <template v-if="!commentsCollapsed">
+                      <!-- Archive Toggle Button -->
+                      <v-btn
+                        icon
+                        variant="text"
+                        size="x-small"
+                        :color="showCommentArchive ? 'primary' : undefined"
+                        :title="showCommentArchive ? $t('latexCollab.comments.showActive') : $t('latexCollab.comments.showArchive')"
+                        @click="showCommentArchive = !showCommentArchive"
                       >
-                        <LIcon size="18">mdi-archive</LIcon>
-                      </v-badge>
-                      <LIcon v-else size="18">{{ showCommentArchive ? 'mdi-comment-multiple-outline' : 'mdi-archive' }}</LIcon>
-                    </v-btn>
-                    <LBtn
-                      v-if="!showCommentArchive"
-                      variant="text"
-                      size="small"
-                      prepend-icon="mdi-comment-plus-outline"
-                      :disabled="!canComment"
-                      :title="$t('latexCollab.comments.add')"
-                      @click="openCommentDialog"
+                        <v-badge
+                          v-if="!showCommentArchive && archivedCount > 0"
+                          :content="archivedCount"
+                          color="success"
+                          offset-x="-2"
+                          offset-y="-2"
+                        >
+                          <LIcon size="18">mdi-archive</LIcon>
+                        </v-badge>
+                        <LIcon v-else size="18">{{ showCommentArchive ? 'mdi-comment-multiple-outline' : 'mdi-archive' }}</LIcon>
+                      </v-btn>
+                      <LBtn
+                        v-if="!showCommentArchive"
+                        variant="text"
+                        size="small"
+                        prepend-icon="mdi-comment-plus-outline"
+                        :disabled="!canComment"
+                        :title="$t('latexCollab.comments.add')"
+                        @click="openCommentDialog"
+                      >
+                        {{ $t('latexCollab.comments.addLabel') }}
+                      </LBtn>
+                    </template>
+                    <button
+                      class="comments-collapse-btn"
+                      type="button"
+                      @click="commentsCollapsed = !commentsCollapsed"
                     >
-                      {{ $t('latexCollab.comments.addLabel') }}
-                    </LBtn>
+                      <LIcon size="16">{{ commentsCollapsed ? 'mdi-chevron-up' : 'mdi-chevron-down' }}</LIcon>
+                    </button>
                   </div>
 
+                  <template v-if="!commentsCollapsed">
                   <v-alert v-if="commentError" type="error" variant="tonal" density="compact" class="mb-2">
                     {{ commentError }}
                   </v-alert>
@@ -495,6 +593,7 @@
                       </div>
                     </div>
                   </div>
+                  </template>
                 </div>
               </div>  <!-- Close preview-content -->
             </div>  <!-- Close preview-pane -->
@@ -511,13 +610,18 @@
       :workspace-name="workspace?.name"
       :owner-info="ownerInfo"
       :members="members"
+      :pending-requests="pendingRequests"
       :excluded-usernames="excludedUsernames"
       :loading="membersLoading"
       :error="shareError"
       :removing-username="removingUsername"
+      :resolving-id="resolvingRequestId"
+      :rejecting-id="rejectingRequestId"
       :can-remove="canShareWorkspace"
       @invite="inviteMember"
       @remove="removeMember"
+      @approve-request="(id) => resolveAccessRequest(id, 'approve')"
+      @reject-request="(id) => resolveAccessRequest(id, 'reject')"
     />
 
     <!-- Floating Git Panel (draggable window) -->
@@ -729,7 +833,6 @@ import {
 // Local components
 import {
   LatexTreePanel,
-  LatexContentHeader,
   ShareDialog,
   CompileLogDialog
 } from './components'
@@ -803,6 +906,7 @@ const editorRef = ref(null)
 const pdfViewerRef = ref(null)
 const pendingDocId = ref(null)
 const pendingJump = ref(null)
+const isDownloadingPdf = ref(false)
 
 // Panel states
 const treeCollapsed = ref(localStorage.getItem(TREE_COLLAPSED_KEY) === 'true')
@@ -810,7 +914,9 @@ const treePanelWidth = ref(parseInt(localStorage.getItem(TREE_WIDTH_KEY)) || 280
 const viewMode = ref(localStorage.getItem(VIEWMODE_KEY) || 'split')
 const resizingTree = ref(false)
 
-// Comments panel resize state
+// Comments panel collapse + resize state
+const COMMENTS_COLLAPSED_KEY = 'latex-collab-comments-collapsed'
+const commentsCollapsed = ref(localStorage.getItem(COMMENTS_COLLAPSED_KEY) === 'true')
 const commentsPanelHeight = ref(parseInt(localStorage.getItem(COMMENTS_HEIGHT_KEY)) || 200)
 const resizingComments = ref(false)
 const previewContentRef = ref(null)
@@ -818,8 +924,10 @@ const previewContentRef = ref(null)
 // Panel collapse states (for unified tree stack panels)
 const FILES_COLLAPSED_KEY = 'latex-collab-files-collapsed'
 const GIT_COLLAPSED_KEY = 'latex-collab-git-collapsed'
+const ONLINE_COLLAPSED_KEY = 'latex-collab-online-collapsed'
 const filesCollapsed = ref(localStorage.getItem(FILES_COLLAPSED_KEY) === 'true')
 const gitCollapsed = ref(localStorage.getItem(GIT_COLLAPSED_KEY) === 'true')
+const onlineCollapsed = ref(localStorage.getItem(ONLINE_COLLAPSED_KEY) === 'true')
 const gitDetailDialog = ref(false)
 // Outline state - initialized later via useLatexOutline composable after selectedNode is available
 const {
@@ -905,6 +1013,14 @@ watch(filesCollapsed, (val) => {
 
 watch(gitCollapsed, (val) => {
   localStorage.setItem(GIT_COLLAPSED_KEY, val.toString())
+})
+
+watch(onlineCollapsed, (val) => {
+  localStorage.setItem(ONLINE_COLLAPSED_KEY, val.toString())
+})
+
+watch(commentsCollapsed, (val) => {
+  localStorage.setItem(COMMENTS_COLLAPSED_KEY, val.toString())
 })
 
 // outlineCollapsed watcher is now handled by useLatexOutline composable
@@ -996,6 +1112,15 @@ function setupCompileSocket() {
 
   compileSocket.on('latex_collab:compile_status', onCompileStatus)
 
+  // Real-time access request notifications (owner sees new requests instantly)
+  compileSocket.on('latex_collab:access_request_created', (data) => {
+    if (data?.workspace_id !== workspaceId.value) return
+    const req = data.request
+    if (req && !pendingRequests.value.some(r => r.id === req.id)) {
+      pendingRequests.value = [...pendingRequests.value, req]
+    }
+  })
+
   // AI streaming event handlers
   compileSocket.on('latex_collab:ai_resolve:token', handleAiStreamToken)
   compileSocket.on('latex_collab:ai_resolve:completed', handleAiStreamCompleted)
@@ -1015,6 +1140,7 @@ function setupCompileSocket() {
 function cleanupCompileSocket() {
   if (!compileSocket) return
   compileSocket.off('latex_collab:compile_status')
+  compileSocket.off('latex_collab:access_request_created')
   compileSocket.off('latex_collab:ai_resolve:token', handleAiStreamToken)
   compileSocket.off('latex_collab:ai_resolve:completed', handleAiStreamCompleted)
   compileSocket.off('latex_collab:ai_resolve:error', handleAiStreamError)
@@ -1032,6 +1158,81 @@ const selectedNodeId = computed(() => routeDocId.value)
 const selectedNode = computed(() => {
   if (!selectedNodeId.value) return null
   return nodesFlat.value.find(n => n.id === selectedNodeId.value) || null
+})
+
+// ============================================================
+// ASSET PREVIEW
+// ============================================================
+
+const IMAGE_EXTENSIONS = new Set(['png', 'jpg', 'jpeg', 'gif', 'svg', 'webp', 'bmp', 'ico'])
+const assetBlobUrl = ref(null)
+const assetLoading = ref(false)
+
+function getFileExtension(filename) {
+  if (!filename) return ''
+  return filename.split('.').pop().toLowerCase()
+}
+
+function isImageAsset(node) {
+  if (!node?.asset_id || !node.title) return false
+  return IMAGE_EXTENSIONS.has(getFileExtension(node.title))
+}
+
+function assetIconForNode(node) {
+  const ext = getFileExtension(node?.title)
+  if (IMAGE_EXTENSIONS.has(ext)) return 'mdi-file-image-outline'
+  if (ext === 'pdf') return 'mdi-file-pdf-box'
+  return 'mdi-file-outline'
+}
+
+async function loadAssetPreview(node) {
+  // Revoke old blob URL
+  if (assetBlobUrl.value) {
+    URL.revokeObjectURL(assetBlobUrl.value)
+    assetBlobUrl.value = null
+  }
+  if (!node?.asset_id || !isImageAsset(node)) return
+
+  assetLoading.value = true
+  try {
+    const res = await axios.get(
+      `${API_BASE}/api/latex-collab/assets/${node.asset_id}`,
+      { headers: authHeaders(), responseType: 'blob' }
+    )
+    assetBlobUrl.value = URL.createObjectURL(res.data)
+  } catch (e) {
+    console.error('Failed to load asset preview:', e)
+  } finally {
+    assetLoading.value = false
+  }
+}
+
+async function downloadAsset(node) {
+  if (!node?.asset_id) return
+  try {
+    const res = await axios.get(
+      `${API_BASE}/api/latex-collab/assets/${node.asset_id}`,
+      { headers: authHeaders(), responseType: 'blob' }
+    )
+    const url = URL.createObjectURL(res.data)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = node.title || 'download'
+    a.click()
+    URL.revokeObjectURL(url)
+  } catch (e) {
+    console.error('Failed to download asset:', e)
+  }
+}
+
+// Load asset preview when selectedNode changes to an asset
+watch(selectedNode, (node) => {
+  if (node?.asset_id) {
+    loadAssetPreview(node)
+  } else if (assetBlobUrl.value) {
+    URL.revokeObjectURL(assetBlobUrl.value)
+    assetBlobUrl.value = null
+  }
 })
 
 // ============================================================
@@ -1059,6 +1260,50 @@ const {
   currentUsername,
   isAdmin
 })
+
+// Access requests for ShareDialog
+const pendingRequests = ref([])
+const resolvingRequestId = ref(null)
+const rejectingRequestId = ref(null)
+
+// Load pending requests on mount and when share dialog opens
+watch(shareDialog, (open) => {
+  if (open) loadPendingRequests()
+})
+
+async function loadPendingRequests() {
+  if (!canShareWorkspace.value) return
+  try {
+    const res = await axios.get(`${API_BASE}/api/latex-collab/workspaces/access-requests`, {
+      headers: authHeaders(),
+    })
+    // Filter to only requests for the current workspace
+    pendingRequests.value = (res.data.requests || []).filter(
+      r => r.workspace_id === workspaceId.value
+    )
+  } catch (e) {
+    console.error('Failed to load pending requests:', e)
+  }
+}
+
+async function resolveAccessRequest(requestId, action) {
+  if (action === 'approve') resolvingRequestId.value = requestId
+  else rejectingRequestId.value = requestId
+  try {
+    await axios.put(
+      `${API_BASE}/api/latex-collab/access-requests/${requestId}`,
+      { action },
+      { headers: authHeaders() }
+    )
+    pendingRequests.value = pendingRequests.value.filter(r => r.id !== requestId)
+    if (action === 'approve') loadMembers()
+  } catch (e) {
+    console.error('Failed to resolve access request:', e)
+  } finally {
+    resolvingRequestId.value = null
+    rejectingRequestId.value = null
+  }
+}
 
 // Outline management composable
 const {
@@ -1670,6 +1915,12 @@ onMounted(async () => {
   // Load AI assistant settings
   loadAiAssistantSettings()
 
+  // Load workspace members for Collabs panel
+  loadMembers()
+
+  // Load pending access requests for Collabs panel (owner only)
+  loadPendingRequests()
+
   // Connect to workspace socket for real-time tree updates
   wsConnect()
 
@@ -1710,6 +1961,11 @@ onUnmounted(() => {
   // - syncTimer by useLatexSync
   // - outlineUpdateTimer by useLatexOutline
   // - Git panel refresh is now handled by useGitStatus composable in GitStatusWidget
+  // Revoke asset blob URL
+  if (assetBlobUrl.value) {
+    URL.revokeObjectURL(assetBlobUrl.value)
+    assetBlobUrl.value = null
+  }
 })
 
 function onEditorContentChange(text) {
@@ -2099,6 +2355,52 @@ async function downloadWorkspaceZip() {
   } catch (e) {
     console.error('ZIP download failed:', e)
     showSnackbar(t('latexCollab.zip.downloadError'), 'error')
+  }
+}
+
+/**
+ * Download the latest compiled PDF (or current compile job PDF) for this workspace
+ */
+async function downloadCompiledPdf() {
+  if (!workspaceId.value || isDownloadingPdf.value) return
+
+  isDownloadingPdf.value = true
+  try {
+    const params = pdfJobId.value ? { job_id: pdfJobId.value } : undefined
+    const response = await axios.get(
+      `${API_BASE}/api/latex-collab/workspaces/${workspaceId.value}/pdf`,
+      {
+        headers: authHeaders(),
+        responseType: 'blob',
+        params
+      }
+    )
+
+    const contentDisposition = response.headers['content-disposition']
+    let filename = `workspace_${workspaceId.value}${pdfJobId.value ? `_job_${pdfJobId.value}` : ''}.pdf`
+    if (contentDisposition) {
+      const match = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/)
+      if (match && match[1]) {
+        filename = match[1].replace(/['"]/g, '')
+      }
+    }
+
+    const blob = new Blob([response.data], { type: 'application/pdf' })
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = filename
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    window.URL.revokeObjectURL(url)
+
+    showSnackbar(t('latexCollab.pdf.downloadSuccess'), 'success')
+  } catch (e) {
+    console.error('PDF download failed:', e)
+    showSnackbar(t('latexCollab.pdf.downloadError'), 'error')
+  } finally {
+    isDownloadingPdf.value = false
   }
 }
 

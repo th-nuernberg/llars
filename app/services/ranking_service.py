@@ -135,7 +135,7 @@ class RankingService:
         # Populate with ranked features
         for ranking in rankings:
             feature_data = {
-                'model_name': ranking.llm.name,
+                'model_name': ranking.model_id or 'Unknown',
                 'content': ranking.feature.content,
                 'feature_id': ranking.feature_id,
                 'position': int(ranking.ranking_content),
@@ -158,7 +158,7 @@ class RankingService:
         for feature in all_features:
             if feature.feature_id not in ranked_feature_ids:
                 feature_data = {
-                    'model_name': feature.llm.name,
+                    'model_name': feature.model_id or 'Unknown',
                     'content': feature.content,
                     'feature_id': feature.feature_id,
                     'position': None,
@@ -193,7 +193,7 @@ class RankingService:
         thread_id: int,
         feature_id: int,
         type_id: int,
-        llm_id: int,
+        model_id: str,
         position: int,
         bucket: str,
         commit: bool = True
@@ -206,7 +206,7 @@ class RankingService:
             thread_id: The thread ID (used for validation)
             feature_id: The feature ID
             type_id: The feature type ID
-            llm_id: The LLM ID
+            model_id: The model identifier string
             position: Position in the ranking
             bucket: Bucket name ("Gut", "Mittel", "Schlecht")
 
@@ -223,7 +223,7 @@ class RankingService:
                 user_id=user_id,
                 feature_id=feature_id,
                 type_id=type_id,
-                llm_id=llm_id
+                model_id=model_id
             ).first()
 
             if existing_ranking:
@@ -238,7 +238,7 @@ class RankingService:
                     ranking_content=position,
                     bucket=bucket,
                     type_id=type_id,
-                    llm_id=llm_id
+                    model_id=model_id
                 )
                 db.session.add(new_ranking)
 
@@ -426,7 +426,7 @@ class RankingService:
                         ranking.feature_id,
                         item.chat_id if item else None,
                         item.institut_id if item else None,
-                        ranking.llm.name
+                        ranking.model_id or 'Unknown'
                     ])
                     complete_ranking_position += 1
 

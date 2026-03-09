@@ -47,10 +47,11 @@ fi
 # Determine environment: development or production
 # PROJECT_STATE is set in docker-compose.yml from .env
 PROJECT_STATE="${PROJECT_STATE:-development}"
+FLASK_ENV_MODE="${FLASK_ENV:-}"
 
-echo "Starting Flask app on port 8081 (mode: $PROJECT_STATE)..."
+echo "Starting Flask app on port 8081 (PROJECT_STATE: $PROJECT_STATE, FLASK_ENV: $FLASK_ENV_MODE)..."
 
-if [ "$PROJECT_STATE" = "production" ]; then
+if [ "$PROJECT_STATE" = "production" ] || [ "$FLASK_ENV_MODE" = "production" ]; then
     # Production: Use Gunicorn with gevent-websocket for real WebSocket support
     # - No auto-reload (code changes require restart)
     # - Gevent worker for async/WebSocket handling (better Docker DNS than eventlet)

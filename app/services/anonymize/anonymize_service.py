@@ -99,6 +99,33 @@ class AnonymizeService:
         return recommender, scaler
 
     @staticmethod
+    @lru_cache(maxsize=1)
+    def _load_ner_tagger():
+        try:
+            import torch
+            import flair
+            from flair.models import SequenceTagger
+        except Exception as e:  # pragma: no cover
+            raise RuntimeError(
+                "Flair is not installed - install 'flair' in backend requirements."
+            ) from e
+
+        flair.device = torch.device("cpu")
+        paths = AnonymizeService._paths()
+
+        # Prefer local model artifact (offline-friendly), then fall back to HuggingFace.
+        local_model = paths["ner_model"]
+        if local_model.exists():
+            try:
+                logger.info(f"[Anonymize] Loading local NER model: {local_model}")
+                return SequenceTagger.load(str(local_model))
+            except Exception as e:
+                logger.warning(f"[Anonymize] Local NER model load failed, falling back to HuggingFace: {e}")
+
+        logger.info("[Anonymize] Loading NER model from HuggingFace: flair/ner-german-large")
+        return SequenceTagger.load("flair/ner-german-large")
+
+    @staticmethod
     def health_check() -> dict[str, Any]:
         """Full health check including model loading."""
         paths = get_paths()
@@ -535,6 +562,7 @@ class AnonymizeService:
         - {"type": "error", "error": "..."}
         """
         group_overrides = group_overrides or {}
+        warnings: list[str] = []
         name_origin = name_origin or os.environ.get("ANONYMIZE_NAME_REGION", "Swiss_DE")
         name_count = int(name_count or os.environ.get("ANONYMIZE_NAME_COUNT", "1000"))
         engine = (engine or "offline").strip().lower()

@@ -16,6 +16,7 @@ from flask import Blueprint, g, jsonify, request, send_file
 
 from auth.decorators import authentik_required, api_key_or_token_required
 from auth.access_control import require_generation_job_owner
+from db import db
 from db.models import GeneratedOutputStatus, GenerationJobStatus
 from decorators.error_handler import handle_api_errors, ValidationError
 from decorators.permission_decorator import require_permission
@@ -443,13 +444,23 @@ def export_json(job_id: int):
 @handle_api_errors(logger_name='generation')
 def create_scenario_from_job(job_id: int):
     """
-    Create an evaluation scenario from job outputs.
+    Create an evaluation scenario from job outputs (server-side).
+
+    This endpoint creates a scenario directly from the DB without requiring
+    the client to transfer all output data. The wizard sends only config.
 
     Request body:
     {
         "scenario_name": "My Evaluation",
         "evaluation_type": "ranking",
-        "config_json": {}  // optional
+        "description": "...",                   // optional
+        "config_json": {},                      // optional
+        "eval_config": {},                      // optional wizard eval config
+        "invited_users": [                      // optional
+            {"user_id": 123, "role": "EVALUATOR"}
+        ],
+        "llm_evaluators": ["Global/OpenAI/..."],// optional
+        "split_by_prompt": false                // optional, for ranking
     }
 
     Returns:
@@ -470,19 +481,71 @@ def create_scenario_from_job(job_id: int):
     user = g.authentik_user
     username = user.username if hasattr(user, 'username') else str(user)
 
+    # Build config_json by merging provided config with wizard fields
+    config_json = data.get('config_json') or {}
+
+    # Merge eval_config from wizard
+    if data.get('eval_config'):
+        config_json['eval_config'] = data['eval_config']
+
+    # Merge LLM evaluators (may come at top level or inside config_json from wizard)
+    llm_evaluators = data.get('llm_evaluators') or config_json.get('llm_evaluators') or []
+    if llm_evaluators:
+        config_json['enable_llm_evaluation'] = True
+        config_json['llm_evaluators'] = llm_evaluators
+
     # Create scenario
     scenario = OutputExportService.create_evaluation_scenario(
         job_id=job_id,
         scenario_name=data['scenario_name'],
         evaluation_type=data['evaluation_type'],
         created_by=username,
-        config_json=data.get('config_json'),
+        description=data.get('description'),
+        config_json=config_json,
+        split_by_prompt=data.get('split_by_prompt', False),
     )
 
+    # Invite users if provided
+    invited_users = data.get('invited_users', [])
+    if invited_users and scenario.id:
+        from db.models import User, ScenarioUsers, ScenarioRoles
+        for invite in invited_users:
+            invite_user_id = invite.get('user_id')
+            invite_role = invite.get('role', 'EVALUATOR')
+            if not invite_user_id:
+                continue
+            # Skip if already added (e.g. creator)
+            existing = ScenarioUsers.query.filter_by(
+                scenario_id=scenario.id,
+                user_id=invite_user_id
+            ).first()
+            if existing:
+                continue
+            role_enum = getattr(ScenarioRoles, invite_role, ScenarioRoles.EVALUATOR)
+            scenario_user = ScenarioUsers(
+                scenario_id=scenario.id,
+                user_id=invite_user_id,
+                role=role_enum
+            )
+            db.session.add(scenario_user)
+        db.session.commit()
+
     logger.info(
-        "[GenAPI] User %s created scenario %d from job %d",
-        username, scenario.id, job_id
+        "[GenAPI] User %s created scenario %d from job %d (%d invited users)",
+        username, scenario.id, job_id, len(invited_users)
     )
+
+    # Auto-start LLM assessors if configured
+    if llm_evaluators:
+        from services.llm.llm_ai_task_runner import LLMAITaskRunner
+        logger.info(
+            "[GenAPI] Auto-starting LLM assessors for scenario %d: %s",
+            scenario.id, llm_evaluators,
+        )
+        LLMAITaskRunner.run_for_scenario_async(
+            scenario.id,
+            model_ids=llm_evaluators,
+        )
 
     return jsonify({
         'success': True,

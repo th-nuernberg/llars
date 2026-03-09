@@ -1,21 +1,23 @@
 # /docker/flask/Dockerfile-flask
 # syntax=docker/dockerfile:1
 
-# Verwenden eines offiziellen Python-Images als Basis
 FROM public.ecr.aws/docker/library/python:3.10-slim
 LABEL authors="philippsteigerwald"
 
-# Setzt das Arbeitsverzeichnis im Container
 WORKDIR /app
 
-# Installiert curl und notwendige Systembibliotheken für Playwright
+# Layer 1: texlive-full in separatem Layer (cached, ~5GB, aendert sich fast nie)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    texlive-full \
+    latexmk \
+    && rm -rf /var/lib/apt/lists/*
+
+# Layer 2: Andere System-Abhaengigkeiten (klein, aendert sich selten)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     ca-certificates \
     libgomp1 \
     default-mysql-client \
-    latexmk \
-    texlive-full \
     # Playwright dependencies
     libnss3 \
     libnspr4 \
@@ -41,12 +43,18 @@ RUN curl -L https://github.com/vi/websocat/releases/download/v1.8.0/websocat.x86
     -o /usr/local/bin/websocat && \
     chmod +x /usr/local/bin/websocat
 
-# Erstellt das Verzeichnis für die Modelle
 RUN mkdir -p /app/models
 
-# Kopiert die requirements.txt und installiert nur die Abhängigkeiten
+# Layer 3a: Schwere ML-Dependencies separat (torch ~2.5GB, transformers, flair)
+# Aendert sich sehr selten → eigener cached Layer
+COPY app/requirements-heavy.txt /app/requirements-heavy.txt
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install -r /app/requirements-heavy.txt
+
+# Layer 3b: Restliche Python-Dependencies (BuildKit Cache fuer schnelle Updates)
 COPY app/requirements.txt /app/requirements.txt
-RUN pip install --no-cache-dir -r /app/requirements.txt
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install -r /app/requirements.txt
 
 # Playwright browser install location (shared, not user-home dependent)
 ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
@@ -59,24 +67,20 @@ RUN groupadd -r flaskuser && useradd -r -g flaskuser -u 1001 -m flaskuser && \
 RUN playwright install chromium && \
     chown -R flaskuser:flaskuser /ms-playwright
 
-# Kopiert den Rest des Codes
+# Layer 4: Anwendungscode (aendert sich haeufig)
 COPY app /app/
-# Kopiert das Start-Skript außerhalb des Anwendungs-Verzeichnisses, damit es durch Volumes nicht überschrieben wird
 COPY docker/flask/start_flask.sh /usr/local/bin/start_flask.sh
 COPY docker/flask/healthcheck.sh /usr/local/bin/healthcheck.sh
 COPY docker/flask/gunicorn.conf.py /usr/local/bin/gunicorn.conf.py
-RUN chmod +x /usr/local/bin/start_flask.sh
-RUN chmod +x /usr/local/bin/healthcheck.sh
+RUN chmod +x /usr/local/bin/start_flask.sh && \
+    chmod +x /usr/local/bin/healthcheck.sh
 
-# Setzt die benötigten Umgebungsvariablen für Flask
 ENV FLASK_APP=main
 
 # Set permissions
 RUN chown -R flaskuser:flaskuser /app && \
     chown -R flaskuser:flaskuser /app/models
 
-# Switch to non-root user
 USER flaskuser
 
-# Definiert den Startbefehl für den Container
 CMD ["/usr/local/bin/start_flask.sh"]

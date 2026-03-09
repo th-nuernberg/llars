@@ -23,7 +23,7 @@ The Admin Dashboard is the central management interface for LLARS. Administrator
 │  📋 Scenarios│  Recent Activity                                             │
 │  🤖 Chatbots │  Quick Actions                                               │
 │  📄 RAG      │  Active Scenarios                                            │
-│  🔐 Permissions                                                         │
+│  🔐 Permissions│                                                              │
 │  🔧 LLM      │  System Health                                               │
 │  ⚙️ Settings │                                                              │
 │  …           │  (more tabs: Presence, Chatbot Activity, Docker, DB, …)      │

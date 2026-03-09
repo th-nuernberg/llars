@@ -5,6 +5,9 @@ COPY docker/nginx/nginx.conf /etc/nginx/nginx.dev.conf
 COPY docker/nginx/nginx.prod.conf /etc/nginx/nginx.prod.conf
 COPY docker/nginx/nginx.prod-no-ssl.conf /etc/nginx/nginx.prod-no-ssl.conf
 
+# Blue-Green upstream config (default, may be overridden by volume mount)
+COPY docker/nginx/active_upstream.conf /etc/nginx/active_upstream.conf
+
 # Copy entrypoint script
 COPY docker/nginx/docker-entrypoint.sh /docker-entrypoint.sh
 RUN chmod +x /docker-entrypoint.sh

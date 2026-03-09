@@ -334,7 +334,8 @@
       "toggleUserLockFailed": "Fehler beim Sperren/Entsperren des Benutzers:",
       "deleteUserFailed": "Fehler beim Loeschen des Benutzers:",
       "assignRoleFailed": "Fehler beim Zuweisen der Rolle:",
-      "unassignRoleFailed": "Fehler beim Entfernen der Rolle:"
+      "unassignRoleFailed": "Fehler beim Entfernen der Rolle:",
+      "toggleConsoleLogsFailed": "Fehler beim Umschalten der Console-Logs:"
     }
   },
   "judge": {

@@ -42,6 +42,9 @@ class User(db.Model):
     deleted_at: Mapped[Optional[datetime]] = mapped_column(db.DateTime, nullable=True)
     avatar_seed: Mapped[Optional[str]] = mapped_column(db.String(32), nullable=True, default=generate_avatar_seed)
     collab_color: Mapped[Optional[str]] = mapped_column(db.String(7), nullable=True)  # #RRGGBB format
+    first_name: Mapped[Optional[str]] = mapped_column(db.String(100), nullable=True)
+    last_name: Mapped[Optional[str]] = mapped_column(db.String(100), nullable=True)
+    display_name: Mapped[Optional[str]] = mapped_column(db.String(255), nullable=True)
     avatar_file: Mapped[Optional[str]] = mapped_column(db.String(255), nullable=True)
     avatar_public_id: Mapped[Optional[str]] = mapped_column(db.String(64), nullable=True, unique=True)
     avatar_mime_type: Mapped[Optional[str]] = mapped_column(db.String(100), nullable=True)

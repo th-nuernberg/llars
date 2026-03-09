@@ -1,0 +1,228 @@
+{
+  "version": "2026-03-05",
+  "description": "Nightly activity contract for deep interaction coverage. Required activities must appear as [ACT:<ID>] in nightly specs.",
+  "activities": [
+    {
+      "id": "PE-CREATE-001",
+      "test": "Prompt Engineering Collaboration",
+      "required": true,
+      "description": "Prompt als Test-Artefakt anlegen."
+    },
+    {
+      "id": "PE-BLOCK-001",
+      "test": "Prompt Engineering Collaboration",
+      "required": true,
+      "description": "Prompt-Block anlegen und Inhalt bearbeiten."
+    },
+    {
+      "id": "PE-TEST-001",
+      "test": "Prompt Engineering Collaboration",
+      "required": true,
+      "description": "Test-Dialog starten und LLM-Antwort verifizieren."
+    },
+    {
+      "id": "PE-EXPORT-001",
+      "test": "Prompt Engineering Collaboration",
+      "required": true,
+      "description": "Prompt als Datei exportieren."
+    },
+    {
+      "id": "PE-IMPORT-001",
+      "test": "Prompt Engineering Collaboration",
+      "required": true,
+      "description": "Prompt-Import aus JSON ausfuehren."
+    },
+    {
+      "id": "PE-SHARE-001",
+      "test": "Prompt Engineering Collaboration",
+      "required": true,
+      "description": "Prompt fuer Test-Evaluator freigeben."
+    },
+    {
+      "id": "PE-SHARED-VISIBLE-001",
+      "test": "Prompt Engineering Collaboration",
+      "required": true,
+      "description": "Geteiltes Prompt als Test_Evaluator sehen und oeffnen."
+    },
+    {
+      "id": "PE-UNSHARE-001",
+      "test": "Prompt Engineering Collaboration",
+      "required": true,
+      "description": "Prompt-Freigabe wieder entfernen."
+    },
+    {
+      "id": "PE-CLEANUP-001",
+      "test": "Prompt Engineering Collaboration",
+      "required": true,
+      "description": "Erzeugtes Nightly-Prompt loeschen."
+    },
+    {
+      "id": "BG-WIZ-ENTRY-001",
+      "test": "Szenario Wizard",
+      "required": true,
+      "description": "Batch Generation oeffnen und Wizard-Einstieg pruefen."
+    },
+    {
+      "id": "BG-WIZ-HANDOFF-001",
+      "test": "Szenario Wizard",
+      "required": true,
+      "description": "Uebergang Richtung Szenario Wizard pruefen."
+    },
+    {
+      "id": "LTX-RESIZE-001",
+      "test": "Latex Collab Resizer",
+      "required": true,
+      "description": "Resizer ziehen und Positionsaenderung pruefen."
+    },
+    {
+      "id": "SCN-ASSIGN-SETUP-001",
+      "test": "Scenario Manager Role Assignment",
+      "required": true,
+      "description": "Nightly-Test-Szenario erzeugen."
+    },
+    {
+      "id": "SCN-ASSIGN-INVITE-001",
+      "test": "Scenario Manager Role Assignment",
+      "required": true,
+      "description": "Einen User ueber UI einladen."
+    },
+    {
+      "id": "SCN-ASSIGN-ROLE-001",
+      "test": "Scenario Manager Role Assignment",
+      "required": true,
+      "description": "Rollenwechsel im Team-Tab durchfuehren."
+    },
+    {
+      "id": "SCN-ASSIGN-VISIBLE-001",
+      "test": "Scenario Manager Role Assignment",
+      "required": true,
+      "description": "Einladung als Test_Evaluator sehen und annehmen."
+    },
+    {
+      "id": "SCN-ASSIGN-EVAL-001",
+      "test": "Scenario Manager Role Assignment",
+      "required": true,
+      "description": "Test_Evaluator kann nach Annahme in die Evaluation wechseln."
+    },
+    {
+      "id": "SCN-ASSIGN-CLEANUP-001",
+      "test": "Scenario Manager Role Assignment",
+      "required": true,
+      "description": "Nightly-Test-Szenario loeschen."
+    },
+    {
+      "id": "CONF-REQ-SETUP-001",
+      "test": "Conference Manager Access Request",
+      "required": true,
+      "description": "Nightly-Testgruppe anlegen."
+    },
+    {
+      "id": "CONF-REQ-SUBMIT-001",
+      "test": "Conference Manager Access Request",
+      "required": true,
+      "description": "Access-Request als Test_Researcher senden."
+    },
+    {
+      "id": "CONF-REQ-VISIBLE-001",
+      "test": "Conference Manager Access Request",
+      "required": true,
+      "description": "Request im Members-Bereich sichtbar."
+    },
+    {
+      "id": "CONF-REQ-APPROVE-001",
+      "test": "Conference Manager Access Request",
+      "required": true,
+      "description": "Access-Request genehmigen."
+    },
+    {
+      "id": "CONF-REQ-MEMBER-001",
+      "test": "Conference Manager Access Request",
+      "required": true,
+      "description": "Requester ist nach Genehmigung als Mitglied sichtbar."
+    },
+    {
+      "id": "CONF-REQ-CLEANUP-001",
+      "test": "Conference Manager Access Request",
+      "required": true,
+      "description": "Nightly-Testgruppe loeschen."
+    },
+    {
+      "id": "CONF-TABS-001",
+      "test": "Conference Manager Tab Navigation",
+      "required": true,
+      "description": "Alle 5 Tabs im Conference Manager durchklicken."
+    },
+    {
+      "id": "SETTINGS-NAV-001",
+      "test": "User Settings Navigation",
+      "required": true,
+      "description": "Settings-Seite oeffnen, Sidebar sichtbar."
+    },
+    {
+      "id": "SETTINGS-TABS-001",
+      "test": "User Settings Navigation",
+      "required": true,
+      "description": "Alle Sidebar-Tabs durchklicken."
+    },
+    {
+      "id": "SETTINGS-THEME-001",
+      "test": "User Settings Navigation",
+      "required": true,
+      "description": "Theme-Toggle pruefen."
+    },
+    {
+      "id": "ANON-VIEW-001",
+      "test": "Anonymization Pipeline View",
+      "required": true,
+      "description": "Anonymisierungs-Pipeline Manager oeffnen."
+    },
+    {
+      "id": "ANON-TOGGLE-001",
+      "test": "Anonymization Pipeline View",
+      "required": true,
+      "description": "View-Toggle zwischen Cards und List umschalten."
+    },
+    {
+      "id": "CBM-ACCESS-001",
+      "test": "Chatbot Manager Access",
+      "required": true,
+      "description": "chatbot_manager oeffnet /chatbot-manager."
+    },
+    {
+      "id": "CBM-TABS-001",
+      "test": "Chatbot Manager Access",
+      "required": true,
+      "description": "Chatbot-Manager Tabs durchklicken."
+    },
+    {
+      "id": "MD-NAV-001",
+      "test": "Markdown Collab Navigation",
+      "required": true,
+      "description": "Markdown Collab Home oeffnen."
+    },
+    {
+      "id": "MD-WORKSPACE-001",
+      "test": "Markdown Collab Navigation",
+      "required": true,
+      "description": "Workspace oeffnen falls vorhanden."
+    },
+    {
+      "id": "INFRA-MKDOCS-001",
+      "test": "Infrastructure Health",
+      "required": true,
+      "description": "MkDocs Dokumentation unter /mkdocs/en/ erreichbar und rendert Content."
+    },
+    {
+      "id": "INFRA-MATOMO-001",
+      "test": "Infrastructure Health",
+      "required": true,
+      "description": "Matomo Analytics unter /analytics/ erreichbar und zeigt Login oder Dashboard."
+    },
+    {
+      "id": "INFRA-MKDOCS-SEARCH-001",
+      "test": "Infrastructure Health",
+      "required": true,
+      "description": "MkDocs Suchfunktion reagiert auf Eingabe."
+    }
+  ]
+}

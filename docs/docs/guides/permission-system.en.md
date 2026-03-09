@@ -25,8 +25,8 @@ RBAC with “deny by default” across frontend and backend:
 - `permission_audit_log` (change history)
 
 **Seed data:**
-- 53 permissions (41 feature, 8 admin, 4 data)
-- 5 roles: `admin` (53), `researcher` (31), `chatbot_manager` (21), `evaluator` (20), `ijcai_reviewer` (20)
+- 54 permissions (42 feature, 8 admin, 4 data)
+- 5 roles: `admin` (54), `researcher` (31), `chatbot_manager` (21), `evaluator` (20), `ijcai_reviewer` (20)
 - Optional: legacy role `viewer` is auto-synced with `evaluator` if present
 
 ---
@@ -53,9 +53,9 @@ RBAC with “deny by default” across frontend and backend:
 
 ---
 
-## Available Permissions (53)
+## Available Permissions (54)
 
-**Feature (41):**
+**Feature (42):**
 ```
 feature:mail_rating:view
 feature:mail_rating:edit
@@ -86,6 +86,7 @@ feature:chatbots:delete
 feature:chatbots:advanced
 feature:chatbots:share
 feature:llm:view
+feature:llm:edit
 feature:anonymize:view
 feature:judge:view
 feature:judge:edit
@@ -124,7 +125,7 @@ data:delete
 
 ## Roles
 
-- **admin:** all permissions (currently 53) – platform + user management  
+- **admin:** all permissions (currently 54) – platform + user management  
 - **researcher:** 31 permissions – evaluation, prompt engineering, batch generation, Markdown/LaTeX collab, anonymization, KAIMO, scenario import  
 - **chatbot_manager:** 21 permissions – chatbots, RAG, prompt engineering, batch generation (view/create), Markdown/LaTeX collab  
 - **evaluator:** 20 permissions – evaluation, read access, selected edit rights, RAG/chatbots read-only, KAIMO edit  
@@ -135,7 +136,7 @@ data:delete
 
 ## Tests ✅
 
-- 53 permissions and 5 roles exist in the DB (plus optional `viewer`)
+- 54 permissions and 5 roles exist in the DB (plus optional `viewer`)
 - API routes registered; 401 without token, 403 without permission
 - Frontend guards active; admin dashboard visible to admins only
 

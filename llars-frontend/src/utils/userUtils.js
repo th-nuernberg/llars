@@ -73,6 +73,18 @@ export function formatDisplayName(username) {
 }
 
 /**
+ * Get the best display name for a user object.
+ * Uses display_name from backend if available, otherwise falls back to formatDisplayName.
+ * @param {Object|string} userOrUsername - User object with display_name field, or username string
+ * @returns {string} Best available display name
+ */
+export function getUserDisplayName(userOrUsername) {
+  if (!userOrUsername) return ''
+  if (typeof userOrUsername === 'string') return formatDisplayName(userOrUsername)
+  return userOrUsername.display_name || formatDisplayName(userOrUsername.username || '')
+}
+
+/**
  * Format a date relative to now (German)
  * @param {string} isoDate - ISO date string
  * @returns {string} Relative date string
@@ -80,9 +92,11 @@ export function formatDisplayName(username) {
 export function formatRelativeDate(isoDate) {
   if (!isoDate) return ''
   const date = new Date(isoDate)
+  if (Number.isNaN(date.getTime())) return ''
   const now = new Date()
-  const diffMs = now - date
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const startOfTargetDay = new Date(date.getFullYear(), date.getMonth(), date.getDate())
+  const diffDays = Math.round((startOfToday - startOfTargetDay) / (1000 * 60 * 60 * 24))
 
   if (diffDays === 0) return 'Heute'
   if (diffDays === 1) return 'Gestern'

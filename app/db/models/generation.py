@@ -759,6 +759,19 @@ class GeneratedOutput(db.Model):
     # Methods
     # -------------------------------------------------------------------------
 
+    def _resolve_user_provider_name(self) -> Optional[str]:
+        """Resolve the human-readable provider name for user-provider models."""
+        if not self.llm_model_name or not self.llm_model_name.startswith('user-provider:'):
+            return None
+        try:
+            parts = self.llm_model_name.split(':')
+            if len(parts) >= 2 and parts[1].isdigit():
+                from db.models.user_llm_provider import UserLLMProvider
+                provider = db.session.get(UserLLMProvider, int(parts[1]))
+                return provider.name if provider else None
+        except Exception:
+            return None
+
     def to_dict(self, include_prompts: bool = False) -> Dict[str, Any]:
         """
         Convert to dictionary for API responses.
@@ -787,6 +800,7 @@ class GeneratedOutput(db.Model):
             'llm_model_id': self.llm_model_id,
             'llm_model_name': self.llm_model_name,
             'llm_model_color': llm_model_color,
+            'user_provider_name': self._resolve_user_provider_name(),
             'prompt_variant_name': self.prompt_variant_name,
             'prompt_variables': self.prompt_variables_json,
             'generated_content': self.generated_content,
@@ -863,6 +877,7 @@ class GeneratedOutput(db.Model):
             'source_group_key': source_group_key,
             'llm_model_name': self.llm_model_name,
             'llm_model_color': llm_model_color,
+            'user_provider_name': self._resolve_user_provider_name(),
             'prompt_variant_name': self.prompt_variant_name,
             'status': self.status.value if self.status else None,
             'content_preview': self.content_preview,

@@ -15,6 +15,7 @@ Events:
         - latex_collab:commit_created: A new commit was created for a document
         - latex_collab:comment_changed: A comment was created, updated, or deleted
         - latex_collab:compile_status: Compile job status update
+        - latex_collab:access_request_created: A new access request was submitted
 """
 
 import logging
@@ -180,6 +181,26 @@ def emit_comment_changed(socketio, document_id: int, action: str, comment: dict 
         logger.debug(f"[LaTeX Collab] Emitted comment_changed ({action}) for document {document_id}")
     except Exception as exc:
         logger.error(f"[LaTeX Collab] Failed to emit comment_changed for document {document_id}: {exc}")
+
+
+def emit_access_request_created(socketio, workspace_id: int, owner_user_id: int, access_request: dict):
+    """Emit an access-request-created event to the workspace owner and workspace room.
+
+    Sends to both:
+    - The workspace room (for owners viewing the workspace)
+    - The owner's user room (for LatexCollabAIHome)
+    """
+    try:
+        payload = {'workspace_id': workspace_id, 'request': access_request}
+        # Workspace room → owner viewing the workspace
+        ws_room = get_workspace_updates_room(workspace_id)
+        socketio.emit('latex_collab:access_request_created', payload, room=ws_room)
+        # User room → owner on LatexCollabAIHome
+        user_room = get_workspace_room(owner_user_id)
+        socketio.emit('latex_collab:access_request_created', payload, room=user_room)
+        logger.debug(f"[LaTeX Collab] Emitted access_request_created for workspace {workspace_id}")
+    except Exception as exc:
+        logger.error(f"[LaTeX Collab] Failed to emit access_request_created for workspace {workspace_id}: {exc}")
 
 
 def emit_workspace_comment_changed(socketio, workspace_id: int, action: str, comment: dict = None):

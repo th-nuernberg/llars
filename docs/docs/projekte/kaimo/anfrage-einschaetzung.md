@@ -1,9 +1,9 @@
-# Einschatzung zur KAIMo-Weiterentwicklung
+# Einschätzung zur KAIMo-Weiterentwicklung
 
-Danke fur die Anfrage! Ich habe mir den Demonstrator und die technische Umsetzung angeschaut. Hier meine Einschatzung:
+Danke für die Anfrage! Ich habe mir den Demonstrator und die technische Umsetzung angeschaut. Hier meine Einschätzung:
 
 !!! note "Status (2026-02)"
-    Variante B (LLARS-Integration) wurde umgesetzt. Dieser Text bleibt als historische Einschaetzung erhalten.
+    Variante B (LLARS-Integration) wurde umgesetzt. Dieser Text bleibt als historische Einschätzung erhalten.
 
 ---
 
@@ -13,46 +13,46 @@ Danke fur die Anfrage! Ich habe mir den Demonstrator und die technische Umsetzun
 
 ---
 
-## Drei mogliche Wege
+## Drei mögliche Wege
 
-### Variante A: Einfache Losung (ca. 3-5 Tage Aufwand)
+### Variante A: Einfache Lösung (ca. 3-5 Tage Aufwand)
 
 Dozent\*innen erstellen Fallvignetten nach einer **Word-Vorlage**. Ein technischer Mitarbeiter pflegt diese dann in den Demonstrator ein.
 
 - **Vorteil:** Schnell umsetzbar
-- **Nachteil:** Technische Hilfe bei jedem neuen Fall notig
+- **Nachteil:** Technische Hilfe bei jedem neuen Fall nötig
 
 ### Variante B: LLars-Integration (ca. 2-3 Wochen Aufwand)
 
-KAIMo wird als **Modul in LLars** eingebaut. Dozent\*innen konnen uber eine Weboberflache selbst neue Falle anlegen - ohne technisches Wissen.
+KAIMo wird als **Modul in LLars** eingebaut. Dozent\*innen können über eine Weboberflache selbst neue Fälle anlegen - ohne technisches Wissen.
 
-- **Vorteil:** Dozent\*innen sind unabhangig, zentrale Verwaltung
+- **Vorteil:** Dozent\*innen sind unabhängig, zentrale Verwaltung
 - **Nachteil:** Mehr Entwicklungsaufwand
 
-### Variante C: Mit KI-Unterstutzung (ca. 3-4 Wochen Aufwand)
+### Variante C: Mit KI-Unterstützung (ca. 3-4 Wochen Aufwand)
 
-Wie B, aber zusatzlich generiert eine KI automatisch die Begleittexte (Zusammenfassungen, Folgenabschatzungen etc.) - editierbar durch Fachkrafte.
+Wie B, aber zusätzlich generiert eine KI automatisch die Begleittexte (Zusammenfassungen, Folgenabschätzungen etc.) - editierbar durch Fachkräfte.
 
 - **Vorteil:** Maximale Automatisierung
-- **Nachteil:** Hochster Aufwand, KI-Texte mussen gepruft werden
+- **Nachteil:** Höchster Aufwand, KI-Texte müssen geprüft werden
 
 ---
 
 ## Empfehlung
 
-Fur die **Studie im Januar** wurde ich **Variante A** empfehlen - damit konnen wir schnell 2-3 weitere Fallvignetten einpflegen.
+Für die **Studie im Januar** würde ich **Variante A** empfehlen - damit können wir schnell 2-3 weitere Fallvignetten einpflegen.
 
-**Parallel** konnen wir prufen, ob wir mittelfristig **Variante B** (LLars-Integration) umsetzen - das ware dann die nachhaltige Losung fur den Dauereinsatz in der Lehre.
+**Parallel** können wir prüfen, ob wir mittelfristig **Variante B** (LLars-Integration) umsetzen - das wäre dann die nachhaltige Lösung für den Dauereinsatz in der Lehre.
 
 ---
 
-## Nachste Schritte
+## Nächste Schritte
 
 1. **Kurzes Treffen** zur Abstimmung welche Variante priorisiert werden soll
-2. Falls Variante A: Word-Vorlage fur Fallvignetten erstellen
-3. Falls Variante B: Kapazitaten im KIA-Team einplanen
+2. Falls Variante A: Word-Vorlage für Fallvignetten erstellen
+3. Falls Variante B: Kapazitäten im KIA-Team einplanen
 
-Die studentischen Hilfskrafte konnten hier gut eingebunden werden - sowohl fur die technische Umsetzung als auch fur die Erstellung einer Dokumentation/Vorlage.
+Die studentischen Hilfskräfte könnten hier gut eingebunden werden - sowohl für die technische Umsetzung als auch für die Erstellung einer Dokumentation/Vorlage.
 
 ---
 

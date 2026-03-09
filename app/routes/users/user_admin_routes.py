@@ -11,7 +11,7 @@ from datetime import datetime
 from typing import Any, Dict, List
 
 from flask import jsonify, request
-from sqlalchemy import select
+from sqlalchemy import or_, select
 
 from auth.auth_utils import AuthUtils
 from decorators.error_handler import (
@@ -22,7 +22,7 @@ from decorators.error_handler import (
     handle_api_errors,
 )
 from decorators.permission_decorator import require_permission
-from db.database import db
+from db.database import db, escape_like
 from db.models import Role, User, UserGroup, UserPermission, UserRole
 from routes.auth import data_bp
 from services.permission_service import PermissionService
@@ -30,15 +30,20 @@ from services.user_profile_service import build_avatar_url, is_valid_collab_colo
 
 
 def _serialize_user(user: User, roles: List[dict]) -> Dict[str, Any]:
+    settings = user.settings_json or {}
     return {
         "id": user.id,
         "username": user.username,
+        "first_name": user.first_name,
+        "last_name": user.last_name,
+        "display_name": user.display_name,
         "group": user.group.name if getattr(user, "group", None) else None,
         "is_active": bool(getattr(user, "is_active", True)),
         "deleted_at": user.deleted_at.isoformat() if getattr(user, "deleted_at", None) else None,
         "avatar_seed": user.get_avatar_seed() if hasattr(user, "get_avatar_seed") else None,
         "avatar_url": build_avatar_url(user),
         "collab_color": user.collab_color,
+        "console_logs_enabled": bool(settings.get("console_logs_enabled", False)),
         "roles": roles or [],
     }
 
@@ -80,7 +85,13 @@ def list_admin_users():
     if not include_deleted:
         users_query = users_query.filter(User.deleted_at.is_(None))
     if query:
-        users_query = users_query.filter(User.username.ilike(f"%{query}%"))
+        safe_q = escape_like(query)
+        users_query = users_query.filter(or_(
+            User.username.ilike(f"%{safe_q}%"),
+            User.first_name.ilike(f"%{safe_q}%"),
+            User.last_name.ilike(f"%{safe_q}%"),
+            User.display_name.ilike(f"%{safe_q}%"),
+        ))
 
     users = users_query.order_by(User.username.asc()).all()
     usernames = [u.username for u in users]
@@ -107,10 +118,16 @@ def create_admin_user():
     collab_color = (data.get("collab_color") or "").strip() or None
     avatar_seed = (data.get("avatar_seed") or "").strip() or None
 
+    # Name fields
+    first_name = (data.get("first_name") or "").strip() or None
+    last_name = (data.get("last_name") or "").strip() or None
+    display_name = (data.get("display_name") or data.get("name") or "").strip()
+    if not display_name and (first_name or last_name):
+        display_name = " ".join(filter(None, [first_name, last_name]))
+
     # Optional Authentik fields
     email = (data.get("email") or "").strip()
     password = data.get("password") or ""
-    display_name = (data.get("display_name") or data.get("name") or "").strip()
     create_in_authentik = bool(data.get("create_in_authentik", True))
 
     if not username:
@@ -133,7 +150,9 @@ def create_admin_user():
                 email=email,
                 password=password,
                 name=display_name or username,
-                is_active=is_active
+                is_active=is_active,
+                first_name=first_name,
+                last_name=last_name,
             )
 
             if success:
@@ -175,6 +194,13 @@ def create_admin_user():
             deleted_at=None,
         )
         db.session.add(user)
+
+    if first_name:
+        user.first_name = first_name
+    if last_name:
+        user.last_name = last_name
+    if display_name:
+        user.display_name = display_name
 
     if collab_color:
         user.collab_color = collab_color
@@ -244,6 +270,21 @@ def update_admin_user(username: str):
         old_is_active = bool(getattr(user, "is_active", True))
         user.is_active = new_is_active
 
+    # Update name fields if provided
+    if "first_name" in data:
+        user.first_name = (data["first_name"] or "").strip() or None
+    if "last_name" in data:
+        user.last_name = (data["last_name"] or "").strip() or None
+    if "display_name" in data:
+        user.display_name = (data["display_name"] or "").strip() or None
+    elif ("first_name" in data or "last_name" in data):
+        # Auto-generate display_name from name parts
+        fn = user.first_name or ""
+        ln = user.last_name or ""
+        auto_dn = " ".join(filter(None, [fn, ln]))
+        if auto_dn:
+            user.display_name = auto_dn
+
     db.session.commit()
 
     try:
@@ -260,6 +301,48 @@ def update_admin_user(username: str):
                 message=f"User '{username}' {'unlocked' if new_is_active else 'locked'} by '{acting_username}'",
                 details={"is_active": new_is_active},
             )
+    except Exception:
+        pass
+
+    roles_by_username = _get_roles_by_username([username])
+    payload = _serialize_user(user, roles_by_username.get(username, []))
+    return jsonify({"success": True, "user": payload, "data": payload}), 200
+
+
+@data_bp.route("/admin/users/<username>/console-logs", methods=["PATCH"])
+@require_permission("admin:users:manage")
+@handle_api_errors(logger_name="admin_users")
+def toggle_console_logs(username: str):
+    """Toggle console_logs_enabled for a user (stored in settings_json)."""
+    user = User.query.filter_by(username=username).first()
+    if not user or user.deleted_at is not None:
+        raise NotFoundError(f"User '{username}' not found")
+
+    data = request.get_json() or {}
+    enabled = bool(data.get("enabled", False))
+
+    settings = user.settings_json or {}
+    settings["console_logs_enabled"] = enabled
+    user.settings_json = settings
+    # SQLAlchemy may not detect in-place dict mutation
+    from sqlalchemy.orm.attributes import flag_modified
+    flag_modified(user, "settings_json")
+
+    db.session.commit()
+
+    acting_username = AuthUtils.extract_username_without_validation() or "admin"
+    try:
+        from services.system_event_service import SystemEventService
+
+        SystemEventService.log_event(
+            event_type="admin.console_logs_toggled",
+            severity="info",
+            username=acting_username,
+            entity_type="user",
+            entity_id=username,
+            message=f"Console logs {'enabled' if enabled else 'disabled'} for '{username}' by '{acting_username}'",
+            details={"console_logs_enabled": enabled},
+        )
     except Exception:
         pass
 
@@ -306,3 +389,21 @@ def delete_admin_user(username: str):
         pass
 
     return jsonify({"success": True, "message": f"User '{username}' deleted"}), 200
+
+
+@data_bp.route("/admin/users/<username>/send-password-reset", methods=["POST"])
+@require_permission("admin:users:manage")
+@handle_api_errors(logger_name="admin_users")
+def send_password_reset(username: str):
+    """Send a password reset email to a user via Authentik."""
+    user = User.query.filter_by(username=username).first()
+    if not user or user.deleted_at is not None:
+        raise NotFoundError(f"User '{username}' not found")
+
+    from services.authentik_admin_service import AuthentikAdminService
+
+    success, error_msg = AuthentikAdminService.send_recovery_email(username=username)
+    if not success:
+        raise ValidationError(f"Could not send password reset: {error_msg}")
+
+    return jsonify({"success": True, "message": f"Password reset email sent to {username}"}), 200

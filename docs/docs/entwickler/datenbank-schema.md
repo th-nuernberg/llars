@@ -202,7 +202,7 @@ Benutzer-Zuordnung zu Szenarien.
 | `id` | INT | Primary Key |
 | `scenario_id` | INT | FK → RatingScenario |
 | `user_id` | INT | FK → User |
-| `role` | ENUM | OWNER, EVALUATOR, VIEWER |
+| `role` | ENUM | OWNER, MANAGER, ASSESSOR, VIEWER (Legacy-Alias: EVALUATOR → ASSESSOR) |
 | `invitation_status` | ENUM | accepted, rejected, pending |
 | `invited_at` | DATETIME | Einladung versendet |
 | `responded_at` | DATETIME | Antwortzeitpunkt |
@@ -439,4 +439,4 @@ docker exec llars_db_service mariadb -u dev_user -pdev_password_change_me databa
   -e "source /tmp/001_add_new_column.sql"
 ```
 
-Siehe [CLAUDE.md](https://github.com/your-repo/llars/blob/main/CLAUDE.md) für detaillierte Migrations-Anweisungen.
+Siehe `CLAUDE.md` im Repository-Root für detaillierte Migrations-Anweisungen.

@@ -1,0 +1,341 @@
+/**
+ * LLARS Icon Hover Animations
+ *
+ * Zentrale CSS-Datei fuer alle itshover Icon-Animationen.
+ * Jedes Icon hat eine CSS-Klasse: l-its-hover--{name}
+ *
+ * Animations-Kategorien:
+ * - lift:   translateY(-1.5px) — Feature/Tool Icons
+ * - wiggle: kurze Rotation hin und her — interaktive Icons
+ * - nudge:  translate in eine Richtung — Richtungs-Icons
+ * - pulse:  scale + opacity — Status/Feedback-Icons
+ * - spin:   90deg Rotation — Gear/Settings
+ * - custom: Icon-spezifische Keyframe-Animation
+ *
+ * Hover-Selektor: Alle Icons reagieren wenn:
+ * - das Icon selbst gehovert wird (.v-icon:hover)
+ * - ein Button gehovert wird (.v-btn:hover .v-icon)
+ * - eine Feature-Card gehovert wird (.feature-card:hover .v-icon)
+ * - ein Nav-Item gehovert wird (.nav-item:hover .v-icon)
+ * - ein List-Item gehovert wird (.v-list-item:hover .v-icon)
+ */
+
+/* ========================================
+   BASE TRANSITION (alle Icons)
+   ======================================== */
+
+.l-its-hover__svg {
+  transition: transform 0.25s ease;
+}
+
+/* ========================================
+   HOVER SELEKTOREN
+   ======================================== */
+
+:is(
+  .v-icon:hover,
+  .v-btn:hover .v-icon,
+  .feature-card:hover .v-icon,
+  .nav-item:hover .v-icon,
+  .v-list-item:hover .v-icon,
+  .icon-wrapper:hover .v-icon
+) {
+  /* Hover-State wird von individuellen Regeln unten genutzt */
+}
+
+/* ========================================
+   LIFT — Feature/Tool Icons
+   Dezentes Anheben um 1.5px
+   ======================================== */
+
+:is(.v-icon:hover, .v-btn:hover .v-icon, .feature-card:hover .v-icon, .nav-item:hover .v-icon, .v-list-item:hover .v-icon, .icon-wrapper:hover .v-icon)
+:is(
+  .l-its-hover--home,
+  .l-its-hover--admin-dashboard,
+  .l-its-hover--prompt-engineering,
+  .l-its-hover--batch-generation,
+  .l-its-hover--rag,
+  .l-its-hover--anonymize,
+  .l-its-hover--markdown-collab,
+  .l-its-hover--latex-ai,
+  .l-its-hover--oncoco,
+  .l-its-hover--player,
+  .l-its-hover--cloud,
+  .l-its-hover--globe,
+  .l-its-hover--image,
+  .l-its-hover--clipboard,
+  .l-its-hover--calendar,
+  .l-its-hover--tag,
+  .l-its-hover--filter,
+  .l-its-hover--link,
+  .l-its-hover--book,
+  .l-its-hover--code,
+  .l-its-hover--palette,
+  .l-its-hover--lightbulb,
+  .l-its-hover--grid,
+  .l-its-hover--text,
+  .l-its-hover--scale,
+  .l-its-hover--school,
+  .l-its-hover--shield-check,
+  .l-its-hover--evaluation-assistant,
+  .l-its-hover--view-cards,
+  .l-its-hover--view-list,
+  .l-its-hover--overleaf,
+  .l-its-hover--llars-latex
+) {
+  transform: translateY(-1.5px);
+}
+
+/* ========================================
+   WIGGLE — Interaktive Icons
+   Kurzes Hin-und-Her-Wackeln
+   ======================================== */
+
+:is(.v-icon:hover, .v-btn:hover .v-icon, .feature-card:hover .v-icon, .nav-item:hover .v-icon, .v-list-item:hover .v-icon, .icon-wrapper:hover .v-icon)
+:is(
+  .l-its-hover--chatbot,
+  .l-its-hover--chatbot-manage,
+  .l-its-hover--robot,
+  .l-its-hover--wand,
+  .l-its-hover--bell,
+  .l-its-hover--chat
+) {
+  animation: llars-hover-wiggle 0.4s ease;
+}
+
+@keyframes llars-hover-wiggle {
+  0%   { transform: rotate(0deg); }
+  20%  { transform: rotate(6deg); }
+  40%  { transform: rotate(-5deg); }
+  60%  { transform: rotate(3deg); }
+  80%  { transform: rotate(-2deg); }
+  100% { transform: rotate(0deg); }
+}
+
+/* ========================================
+   PULSE — Status/Feedback Icons
+   Scale + leichter Opacity-Bounce
+   ======================================== */
+
+:is(.v-icon:hover, .v-btn:hover .v-icon, .feature-card:hover .v-icon, .nav-item:hover .v-icon, .v-list-item:hover .v-icon, .icon-wrapper:hover .v-icon)
+:is(
+  .l-its-hover--heart,
+  .l-its-hover--star,
+  .l-its-hover--check-circle,
+  .l-its-hover--evaluation,
+  .l-its-hover--arena,
+  .l-its-hover--trophy,
+  .l-its-hover--info-circle,
+  .l-its-hover--triangle-alert,
+  .l-its-hover--dot,
+  .l-its-hover--spinner
+) {
+  animation: llars-hover-pulse 0.35s ease;
+}
+
+@keyframes llars-hover-pulse {
+  0%   { transform: scale(1); }
+  50%  { transform: scale(1.15); }
+  100% { transform: scale(1); }
+}
+
+/* ========================================
+   NUDGE — Richtungs-Icons
+   Kurze Verschiebung in die Pfeilrichtung
+   ======================================== */
+
+:is(.v-icon:hover, .v-btn:hover .v-icon, .feature-card:hover .v-icon, .nav-item:hover .v-icon, .v-list-item:hover .v-icon, .icon-wrapper:hover .v-icon)
+:is(
+  .l-its-hover--arrow-left,
+  .l-its-hover--arrow-back
+) {
+  transform: translateX(-2px);
+}
+
+:is(.v-icon:hover, .v-btn:hover .v-icon, .feature-card:hover .v-icon, .nav-item:hover .v-icon, .v-list-item:hover .v-icon, .icon-wrapper:hover .v-icon)
+.l-its-hover--arrow-right {
+  transform: translateX(2px);
+}
+
+:is(.v-icon:hover, .v-btn:hover .v-icon, .feature-card:hover .v-icon, .nav-item:hover .v-icon, .v-list-item:hover .v-icon, .icon-wrapper:hover .v-icon)
+.l-its-hover--arrow-up {
+  transform: translateY(-2px);
+}
+
+:is(.v-icon:hover, .v-btn:hover .v-icon, .feature-card:hover .v-icon, .nav-item:hover .v-icon, .v-list-item:hover .v-icon, .icon-wrapper:hover .v-icon)
+.l-its-hover--arrow-down {
+  transform: translateY(2px);
+}
+
+:is(.v-icon:hover, .v-btn:hover .v-icon, .feature-card:hover .v-icon, .nav-item:hover .v-icon, .v-list-item:hover .v-icon, .icon-wrapper:hover .v-icon)
+.l-its-hover--download {
+  transform: translateY(2px);
+}
+
+:is(.v-icon:hover, .v-btn:hover .v-icon, .feature-card:hover .v-icon, .nav-item:hover .v-icon, .v-list-item:hover .v-icon, .icon-wrapper:hover .v-icon)
+.l-its-hover--upload {
+  transform: translateY(-2px);
+}
+
+:is(.v-icon:hover, .v-btn:hover .v-icon, .feature-card:hover .v-icon, .nav-item:hover .v-icon, .v-list-item:hover .v-icon, .icon-wrapper:hover .v-icon)
+.l-its-hover--share {
+  transform: translate(1.5px, -1.5px);
+}
+
+/* ========================================
+   SPIN — Drehende Icons
+   90-Grad-Rotation
+   ======================================== */
+
+:is(.v-icon:hover, .v-btn:hover .v-icon, .feature-card:hover .v-icon, .nav-item:hover .v-icon, .v-list-item:hover .v-icon, .icon-wrapper:hover .v-icon)
+.l-its-hover--gear {
+  transform: rotate(90deg);
+  transition: transform 0.4s ease;
+}
+
+:is(.v-icon:hover, .v-btn:hover .v-icon, .feature-card:hover .v-icon, .nav-item:hover .v-icon, .v-list-item:hover .v-icon, .icon-wrapper:hover .v-icon)
+.l-its-hover--refresh {
+  transform: rotate(180deg);
+  transition: transform 0.4s ease;
+}
+
+/* ========================================
+   CUSTOM — Icon-spezifische Animationen
+   ======================================== */
+
+/* Pencil: leichtes Neigen zum Schreiben */
+:is(.v-icon:hover, .v-btn:hover .v-icon, .feature-card:hover .v-icon, .nav-item:hover .v-icon, .v-list-item:hover .v-icon, .icon-wrapper:hover .v-icon)
+.l-its-hover--pencil {
+  transform: rotate(-12deg) translateY(-1px);
+}
+
+/* Trash: Deckel hebt sich */
+:is(.v-icon:hover, .v-btn:hover .v-icon, .feature-card:hover .v-icon, .nav-item:hover .v-icon, .v-list-item:hover .v-icon, .icon-wrapper:hover .v-icon)
+.l-its-hover--trash {
+  animation: llars-hover-trash 0.3s ease;
+}
+
+@keyframes llars-hover-trash {
+  0%   { transform: rotate(0deg); }
+  30%  { transform: rotate(-8deg); }
+  70%  { transform: rotate(4deg); }
+  100% { transform: rotate(0deg); }
+}
+
+/* Lock: leichtes Anheben (Buegel oeffnet sich) */
+:is(.v-icon:hover, .v-btn:hover .v-icon, .feature-card:hover .v-icon, .nav-item:hover .v-icon, .v-list-item:hover .v-icon, .icon-wrapper:hover .v-icon)
+.l-its-hover--lock {
+  transform: translateY(-1px) scale(1.05);
+}
+
+/* Eye: leichtes Vergroessern (genauer hinschauen) */
+:is(.v-icon:hover, .v-btn:hover .v-icon, .feature-card:hover .v-icon, .nav-item:hover .v-icon, .v-list-item:hover .v-icon, .icon-wrapper:hover .v-icon)
+.l-its-hover--eye {
+  transform: scale(1.1);
+}
+
+:is(.v-icon:hover, .v-btn:hover .v-icon, .feature-card:hover .v-icon, .nav-item:hover .v-icon, .v-list-item:hover .v-icon, .icon-wrapper:hover .v-icon)
+.l-its-hover--eye-off {
+  transform: scale(0.92);
+}
+
+/* Copy: leichtes Verschieben (Dokument loest sich) */
+:is(.v-icon:hover, .v-btn:hover .v-icon, .feature-card:hover .v-icon, .nav-item:hover .v-icon, .v-list-item:hover .v-icon, .icon-wrapper:hover .v-icon)
+.l-its-hover--copy {
+  transform: translate(1px, -1px);
+}
+
+/* Database: Pulse */
+:is(.v-icon:hover, .v-btn:hover .v-icon, .feature-card:hover .v-icon, .nav-item:hover .v-icon, .v-list-item:hover .v-icon, .icon-wrapper:hover .v-icon)
+.l-its-hover--database {
+  animation: llars-hover-pulse 0.35s ease;
+}
+
+/* Flask: leichtes Schwenken */
+:is(.v-icon:hover, .v-btn:hover .v-icon, .feature-card:hover .v-icon, .nav-item:hover .v-icon, .v-list-item:hover .v-icon, .icon-wrapper:hover .v-icon)
+.l-its-hover--flask {
+  transform-origin: center bottom;
+  animation: llars-hover-flask 0.4s ease;
+}
+
+@keyframes llars-hover-flask {
+  0%   { transform: rotate(0deg); }
+  25%  { transform: rotate(5deg); }
+  75%  { transform: rotate(-5deg); }
+  100% { transform: rotate(0deg); }
+}
+
+/* AI Lookup: magnify + sparkle animation */
+:is(.v-icon:hover, .v-btn:hover .v-icon, .feature-card:hover .v-icon, .nav-item:hover .v-icon, .v-list-item:hover .v-icon, .icon-wrapper:hover .v-icon)
+.l-its-hover--ai-lookup {
+  transform: scale(1.08);
+}
+
+:is(.v-icon:hover, .v-btn:hover .v-icon, .feature-card:hover .v-icon, .nav-item:hover .v-icon, .v-list-item:hover .v-icon, .icon-wrapper:hover .v-icon)
+.l-its-hover--ai-lookup .l-its-hover__ai-lookup-sparkle--one {
+  animation: llars-ai-sparkle 0.6s ease infinite;
+}
+:is(.v-icon:hover, .v-btn:hover .v-icon, .feature-card:hover .v-icon, .nav-item:hover .v-icon, .v-list-item:hover .v-icon, .icon-wrapper:hover .v-icon)
+.l-its-hover--ai-lookup .l-its-hover__ai-lookup-sparkle--two {
+  animation: llars-ai-sparkle 0.6s ease 0.2s infinite;
+}
+
+@keyframes llars-ai-sparkle {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.7); }
+}
+
+/* ========================================
+   SIMPLE — Minimale Icons
+   Scale-Up fuer Plus/Minus/X/Check etc.
+   ======================================== */
+
+:is(.v-icon:hover, .v-btn:hover .v-icon, .feature-card:hover .v-icon, .nav-item:hover .v-icon, .v-list-item:hover .v-icon, .icon-wrapper:hover .v-icon)
+:is(
+  .l-its-hover--plus,
+  .l-its-hover--minus,
+  .l-its-hover--x,
+  .l-its-hover--check,
+  .l-its-hover--search,
+  .l-its-hover--menu,
+  .l-its-hover--fullscreen,
+  .l-its-hover--pin,
+  .l-its-hover--equal,
+  .l-its-hover--swap,
+  .l-its-hover--stop,
+  .l-its-hover--pause,
+  .l-its-hover--bolt,
+  .l-its-hover--clock,
+  .l-its-hover--history-circle,
+  .l-its-hover--user-check,
+  .l-its-hover--user-plus,
+  .l-its-hover--users,
+  .l-its-hover--users-group,
+  .l-its-hover--chart-bar,
+  .l-its-hover--thumb-up,
+  .l-its-hover--thumb-down,
+  .l-its-hover--mail,
+  .l-its-hover--format-bold,
+  .l-its-hover--format-italic,
+  .l-its-hover--format-strikethrough,
+  .l-its-hover--unordered-list,
+  .l-its-hover--question,
+  .l-its-hover--sun,
+  .l-its-hover--moon,
+  .l-its-hover--system-theme,
+  .l-its-hover--alpha-a,
+  .l-its-hover--alpha-b
+) {
+  transform: scale(1.1);
+}
+
+/* ========================================
+   REDUCED MOTION
+   ======================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  .l-its-hover__svg {
+    transition: none !important;
+    animation: none !important;
+  }
+}

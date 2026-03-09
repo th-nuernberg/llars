@@ -95,7 +95,6 @@
     <v-dialog v-model="showWizard" max-width="900" persistent>
       <ScenarioWizard
         v-if="showWizard"
-        :generation-job-id="generationJobId"
         @close="closeWizard"
         @created="onScenarioCreated"
       />
@@ -214,9 +213,6 @@ const showDeleteDialog = ref(false)
 const scenarioToDelete = ref(null)
 const deleting = ref(false)
 
-// Generation job ID for pre-loading data in wizard
-const generationJobId = ref(null)
-
 // Tabs
 const tabs = computed(() => [
   {
@@ -238,13 +234,13 @@ const tabs = computed(() => [
 // Filtered Lists
 const ownScenarios = computed(() => {
   return scenarios.value
-    .filter(s => s.is_owner)
+    .filter(s => s.is_owner || s.can_manage)
     .sort((a, b) => new Date(b.updated_at || b.created_at) - new Date(a.updated_at || a.created_at))
 })
 
 const invitedScenarios = computed(() => {
   return scenarios.value
-    .filter(s => !s.is_owner)
+    .filter(s => !s.is_owner && !s.can_manage)
     .sort((a, b) => {
       // Pending first, then by date
       if (a.invitation?.status === 'pending' && b.invitation?.status !== 'pending') return -1
@@ -705,11 +701,6 @@ function onScenarioCreated(scenario) {
 
 function closeWizard() {
   showWizard.value = false
-  generationJobId.value = null
-  // Clear query param from URL
-  if (route.query.fromGeneration) {
-    router.replace({ query: {} })
-  }
 }
 
 onMounted(async () => {
@@ -717,13 +708,6 @@ onMounted(async () => {
   await nextTick()
   setupScenarioCardObserver()
   queueInitialVisibleScenarioStatsLoad()
-
-  // Check if we should open wizard with data from a generation job
-  const fromGeneration = route.query.fromGeneration
-  if (fromGeneration) {
-    generationJobId.value = Number(fromGeneration)
-    showWizard.value = true
-  }
 })
 
 watch(

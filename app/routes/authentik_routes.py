@@ -9,23 +9,9 @@ from auth.decorators import authentik_required, admin_required, public_endpoint
 from auth.oidc_validator import get_username, get_user_id
 from decorators.error_handler import handle_api_errors, NotFoundError, ValidationError, UnauthorizedError
 from services.user_profile_service import build_avatar_url
-from functools import wraps
 
 # Create blueprint for Authentik-specific routes
 authentik_auth_blueprint = Blueprint('authentik_auth', __name__)
-
-
-def rate_limit(limit_string):
-    """Custom rate limit decorator that works with blueprints"""
-    def decorator(f):
-        @wraps(f)
-        def decorated_function(*args, **kwargs):
-            # Rate limiting wird durch Flask-Limiter auf App-Level gehandhabt
-            # Hier nur als Dokumentation der Limits
-            return f(*args, **kwargs)
-        decorated_function._rate_limit = limit_string
-        return decorated_function
-    return decorator
 
 
 @authentik_auth_blueprint.route('/health_check', methods=['GET'])
@@ -49,7 +35,6 @@ def health_check():
 
 @authentik_auth_blueprint.route('/me', methods=['GET'])
 @authentik_required
-@rate_limit("100 per hour")
 def get_current_user():
     """
     Get current authenticated user information
@@ -83,7 +68,6 @@ def get_current_user():
 
 @authentik_auth_blueprint.route('/validate', methods=['GET'])
 @authentik_required
-@rate_limit("200 per hour")
 @handle_api_errors(logger_name='authentik')
 def validate_token_endpoint():
     """
@@ -114,7 +98,6 @@ def check_admin():
 
 @authentik_auth_blueprint.route('/login', methods=['POST'])
 @public_endpoint
-@rate_limit("10 per minute")
 @handle_api_errors(logger_name='authentik')
 def login():
     """

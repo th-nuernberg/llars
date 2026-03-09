@@ -224,16 +224,24 @@ Runner: Shell-Executor direkt auf Server
 | Stage | Jobs |
 |-------|------|
 | lint | `lint:backend`, `lint:frontend` |
-| test | `test:unit:backend`, `test:unit:frontend`, `test:integration`, `test:e2e` |
+| test | `test:unit:backend`, `test:unit:frontend`, `test:integration`, `test:nightly:contracts`, `metrics:collect` |
 | security | `security:routes`, `security:scan` |
-| build | `build:docker` (nur main) |
-| deploy | `deploy:staging`, `deploy:production` |
-| smoke | `smoke:production` |
+| build | `build:docker` |
+| deploy-staging | `deploy:staging` |
+| test-staging | `test:e2e:nightly:tiles`, `smoke:staging` |
+| deploy | `deploy:production` |
+| smoke | `smoke:production`, `maintenance:docker-cleanup`, `metrics:update-docs` |
 | rollback | `rollback:production` (manual) |
 
 ```
-Push to develop → deploy:staging (automatisch)
-Push to main    → deploy:production → smoke:production (Auto-Rollback bei Smoke-Fail)
+Schedule (SCHEDULED_DEPLOY=true) oder FORCE_DEPLOY=true auf main:
+  deploy:staging → test:e2e:nightly:tiles → smoke:staging → deploy:production → smoke:production → maintenance:docker-cleanup
+
+Wichtige Guards:
+- `deploy:production` laeuft nur nach erfolgreichen Staging-Tests.
+- Blue-Green `switch` schaltet nur bei vorhandenem Pending-Candidate und no-op bei identischem Commit.
+- Bei `smoke:production` Fehler: automatischer Rollback (`rollback_bluegreen.sh`).
+- Nightly-Cleanup entfernt ungenutzte Docker-Images/Build-Cache älter als 7 Tage, um VM-Speicher stabil zu halten.
 ```
 
 **Test-Requirements:** `app/requirements-test.txt` (ohne torch, transformers, flair - ~3GB gespart)
@@ -286,12 +294,30 @@ DURATION_SECONDS=21600 INTERVAL_SECONDS=600 BRANCH=main ./scripts/ci/monitor_pip
 - `GITLAB_PROJECT_ID` - Projekt-ID (7123)
 - `GITLAB_PROJECT_PATH` - Projekt-Pfad
 
+### Manuelles Blue-Green Deployment (Shell)
+
+```bash
+# Status anzeigen
+bash scripts/ci/manual_bluegreen_deploy.sh status
+
+# Inaktive Farbe bauen + auf Staging (55080) bereitstellen
+bash scripts/ci/manual_bluegreen_deploy.sh prepare
+
+# Smoke gegen Staging ausfuehren (optional: RUN_E2E=1 fuer Playwright Vollsuite)
+bash scripts/ci/manual_bluegreen_deploy.sh test
+RUN_E2E=1 bash scripts/ci/manual_bluegreen_deploy.sh test
+
+# Nach erfolgreichen Tests auf Production umschalten
+bash scripts/ci/manual_bluegreen_deploy.sh switch
+```
+
 ### CI/CD Troubleshooting
 
 | Problem | Loesung |
 |---------|---------|
 | Pipeline 0 Jobs | Auto-cancel aktiv? YAML validieren |
 | E2E Tests scheitern | App auf Server laufen? PLAYWRIGHT_BASE_URL korrekt? |
+| Staging Smoke scheitert sofort | `docker compose --profile testing build smoke-test-service` neu bauen |
 | Job haengt bei pending | Shell-Runner online? Tags korrekt? |
 | Lint fehlschlaegt | flake8 lokal ausfuehren, .flake8 Config pruefen |
 
@@ -300,6 +326,19 @@ DURATION_SECONDS=21600 INTERVAL_SECONDS=600 BRANCH=main ./scripts/ci/monitor_pip
 ## Tests - PFLICHT!
 
 Jede neue Komponente/Service MUSS Tests haben.
+
+### Home Tile Change Policy (verbindlich)
+
+Wenn eine Home-Kachel hinzugefügt, entfernt oder geändert wird, sind diese Schritte Pflicht:
+
+1. `llars-frontend/src/config/home_tiles.contract.json` aktualisieren.
+2. Gleichnamigen Testtitel in `llars-frontend/e2e/nightly/tile-regression.spec.js` ergänzen/anpassen.
+3. Cross-Feature-Flows in `llars-frontend/e2e/nightly/nightly_workflows.contract.json` und `llars-frontend/e2e/nightly/workflows.spec.js` pflegen.
+4. Activity-IDs in `llars-frontend/e2e/nightly/nightly_activities.contract.json` pflegen (inkl. Cross-Role-Flows).
+5. Matrix-Doku in `docs/testing/nightly/NIGHTLY_TILE_MATRIX.md` und Aktivitäts-Guide in `docs/docs/guides/nightly-test-activities.md` aktualisieren.
+6. Coverage-Gate lokal ausführen: `python3 scripts/testing/validate_nightly_coverage.py`.
+
+Ohne diese Schritte darf nicht gemerged oder deployed werden.
 
 ```bash
 # Backend
@@ -395,6 +434,12 @@ vi.mock('vue-router', () => ({ useRouter: () => ({ push: vi.fn() }) }))
 2. **Reproduziere lokal** - `npm run e2e:chromium -- --workers=1`
 3. **Fix Code ODER Test** - Je nachdem was falsch ist
 4. **Verifiziere Pipeline** - Commit, Push, Monitor
+
+### CI/CD Event Logging
+
+- Nightly CI/CD-Ereignisse werden mit Severity `ci_cd` im System Monitor erfasst.
+- Event-Endpoint: `POST /api/admin/system/events/ci-cd` (System API Key via `X-API-Key`).
+- Logging-Skript: `scripts/ci/log_ci_event.sh`.
 
 ---
 
@@ -715,7 +760,9 @@ border-radius: 6px 2px 6px 2px;    /* Tags */
 
 ---
 
-## Git Commits
+## Git Commits & Deployment
+
+### Commit Message Format
 
 ```bash
 git commit -m "$(cat <<'EOF'
@@ -729,6 +776,37 @@ EOF
 
 **Types:** feat | fix | docs | refactor | chore
 **Scopes:** frontend | backend | auth | judge | rag | crawler | db
+
+### Deployment via Commit Tags
+
+| Commit-Tag | Lint | Tests | E2E | Staging | Smoke | Production | Dauer | Wann? |
+|---|---|---|---|---|---|---|---|---|
+| (keiner) | ja | ja | nein | nein | nein | nein | ~5 min | Nachts um 02:00 via Schedule |
+| `[deploy]` | ja | ja | ja | ja | ja | ja | ~20 min | Sofort bei Push - volle Pipeline |
+| `[hotfix]` | nein | nein | nein | ja | ja | ja | ~5 min | Sofort bei Push - Tests ueberspringen |
+
+**Normaler Push (empfohlen):**
+```bash
+git commit -m "feat(frontend): neues Feature"
+git push
+# → Lint + Tests laufen, kein Deploy. Nachts um 02:00 deployed der Schedule.
+```
+
+**Sofort deployen (dringend):**
+```bash
+git commit -m "feat(frontend): wichtiges Feature [deploy]"
+git push
+# → Volle Pipeline JETZT, deployed nach ~20 min wenn alles gruen
+```
+
+**Hotfix (Production brennt):**
+```bash
+git commit -m "fix: kritischer Auth-Bug [hotfix]"
+git push
+# → Ueberspringt Tests, deployed in ~5 min
+```
+
+**Schedule:** Mo-Fr 02:00 CET via GitLab Pipeline Schedule (`SCHEDULED_DEPLOY=true`)
 
 ---
 

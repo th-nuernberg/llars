@@ -63,6 +63,15 @@
           </LTag>
           <LIconBtn
             v-if="selectedUser.db_record_exists"
+            :icon="selectedUser.console_logs_enabled ? 'mdi-console' : 'mdi-console-line'"
+            :tooltip="selectedUser.console_logs_enabled ? $t('admin.users.consoleLogs.disable') : $t('admin.users.consoleLogs.enable')"
+            :loading="togglingConsoleLogs === selectedUser.username"
+            :disabled="selectedUser.deleted_at"
+            :color="selectedUser.console_logs_enabled ? 'success' : undefined"
+            @click="toggleConsoleLogs(selectedUser)"
+          />
+          <LIconBtn
+            v-if="selectedUser.db_record_exists"
             :icon="selectedUser.is_active ? 'mdi-lock-open-variant' : 'mdi-lock'"
             :tooltip="selectedUser.is_active ? $t('admin.users.actions.lock') : $t('admin.users.actions.unlock')"
             :loading="togglingUser === selectedUser.username"
@@ -211,7 +220,12 @@
                 class="mr-2"
               />
               <div>
-                <span class="font-weight-medium">{{ item.username }}</span>
+                <div class="d-flex align-center gap-1">
+                  <span class="font-weight-medium">{{ item.username }}</span>
+                  <LTooltip v-if="item.console_logs_enabled" :text="$t('admin.users.consoleLogs.activeLabel')">
+                    <v-icon size="16" color="warning">mdi-console</v-icon>
+                  </LTooltip>
+                </div>
                 <!-- Show status on mobile since column is hidden -->
                 <div v-if="isMobile" class="d-flex align-center gap-1 mt-1">
                   <LTag :variant="getStatusVariant(item)" size="sm">
@@ -518,6 +532,7 @@ const creatingUser = ref(false);
 const createWarning = ref('');
 const deletingUser = ref(false);
 const togglingUser = ref(null);
+const togglingConsoleLogs = ref(null);
 const { isLoading, withLoading } = useSkeletonLoading(['table']);
 
 // Table headers - responsive for mobile
@@ -625,6 +640,14 @@ const getUserActions = (user) => {
       loading: loadingUser.value === user.username
     },
     {
+      key: 'toggle-console-logs',
+      icon: user.console_logs_enabled ? 'mdi-console' : 'mdi-console-line',
+      tooltip: user.console_logs_enabled ? t('admin.users.consoleLogs.disable') : t('admin.users.consoleLogs.enable'),
+      variant: user.console_logs_enabled ? 'success' : undefined,
+      loading: togglingConsoleLogs.value === user.username,
+      disabled: user.deleted_at
+    },
+    {
       key: 'toggle-lock',
       icon: user.is_active ? 'mdi-lock-open-variant' : 'mdi-lock',
       tooltip: user.is_active ? t('admin.users.actions.lock') : t('admin.users.actions.unlock'),
@@ -647,6 +670,9 @@ const handleUserAction = (actionKey, user) => {
   switch (actionKey) {
     case 'edit':
       selectUser(user.username);
+      break;
+    case 'toggle-console-logs':
+      toggleConsoleLogs(user);
       break;
     case 'toggle-lock':
       toggleUserLock(user);
@@ -812,6 +838,29 @@ const toggleUserLock = async (user) => {
     logI18n('error', 'logs.admin.users.toggleUserLockFailed', error);
   } finally {
     togglingUser.value = null;
+  }
+};
+
+const toggleConsoleLogs = async (user) => {
+  if (!user?.username) return;
+  togglingConsoleLogs.value = user.username;
+  try {
+    const newEnabled = !user.console_logs_enabled;
+    const response = await axios.patch(
+      `/api/admin/users/${encodeURIComponent(user.username)}/console-logs`,
+      { enabled: newEnabled }
+    );
+
+    const updated = response.data.user;
+    const idx = users.value.findIndex(u => u.username === user.username);
+    if (idx !== -1) users.value[idx] = { ...users.value[idx], ...updated };
+    if (selectedUser.value?.username === user.username) {
+      selectedUser.value = { ...selectedUser.value, ...updated };
+    }
+  } catch (error) {
+    logI18n('error', 'logs.admin.users.toggleConsoleLogsFailed', error);
+  } finally {
+    togglingConsoleLogs.value = null;
   }
 };
 

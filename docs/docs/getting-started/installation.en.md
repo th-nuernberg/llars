@@ -41,16 +41,38 @@ MKDOCS_EXTERNAL_PORT=55800
 
 ```bash
 chmod +x start_llars.sh
-./start_llars.sh            # uses .env
+./start_llars.sh            # Quick start (uses cached images)
 ```
 
-**What the script does**
-1. Checks whether Docker is running
+### Start Modes
+
+| Command | Description | Duration |
+|---------|-------------|----------|
+| `./start_llars.sh` | Starts with cached images, no rebuild | ~30s |
+| `./start_llars.sh --build` | Checks Dockerfiles for changes, rebuilds if needed | ~70s |
+| `./start_llars.sh --detach` | Starts in background (no watch mode) | ~30s |
+| `./start_llars.sh --build --detach` | Rebuild check + start in background | ~70s |
+| `./start_llars.sh dev` | Force development mode | ~30s |
+| `./start_llars.sh prod` | Force production mode | ~70s |
+| `./start_llars.sh --update` | Rebuild only backend + frontend (quick update) | ~30s |
+
+!!! tip "When to use which mode?"
+    **Normal start** (code changes in Python/Vue/JS): `./start_llars.sh`
+    Code changes are picked up automatically via volume mounts.
+
+    **After dependency changes** (requirements.txt, package.json): `./start_llars.sh --build`
+    Docker detects the change and only rebuilds affected layers.
+
+    **After Dockerfile/Compose changes**: `./start_llars.sh --build`
+
+**What the script does:**
+
+1. Checks whether Docker is running (starts Docker if needed)
 2. Stops only LLARS containers
 3. Optionally removes only LLARS volumes (`REMOVE_LLARS_VOLUMES=True`)
-4. Builds and starts all services
+4. Starts all services (with or without rebuild)
 
-**Volumes affected**
+**Volumes affected:**
 `REMOVE_LLARS_VOLUMES=True` removes **all** Docker volumes with the `llars_` prefix, e.g.:
 
 - `llars_llarsdb` (MariaDB)
@@ -63,7 +85,7 @@ Other project volumes without the `llars_` prefix remain untouched.
 
 ### 4. Open services
 
-After 2-3 minutes (first start pulls images):
+After about 30 seconds (with cached images):
 
 | Service | URL |
 |---------|-----|
@@ -76,7 +98,7 @@ After 2-3 minutes (first start pulls images):
 ### 5. Verify installation
 
 ```bash
-docker compose ps
+docker compose -p llars ps
 ```
 
 All services should be `running` or `healthy`.
@@ -84,8 +106,9 @@ All services should be `running` or `healthy`.
 ## Development Mode
 
 Enabled by default (`PROJECT_STATE=development`):
-- Hot reload for frontend (Vite)
-- Backend with mounted code
+
+- Hot reload for frontend (Vite) via Docker Watch
+- Backend with mounted code (`./app:/app`)
 - Verbose logging
 - Persistent development databases
 
@@ -98,6 +121,7 @@ PROJECT_STATE=production
 ```
 
 Effect:
+
 - Optimized builds, no hot reload
 - Less logging
 - Only nginx exposed externally
@@ -109,13 +133,27 @@ Start:
 ./start_llars.sh prod
 ```
 
+## Full Reset
+
+For a clean restart with deletion of all data:
+
+```bash
+REMOVE_LLARS_VOLUMES=True ./start_llars.sh --build
+```
+
+For a complete system cleanup (images, volumes, build cache):
+
+```bash
+PRUNE_LLARS_SYSTEM=True ./start_llars.sh --build
+```
+
 ## Troubleshooting
 
 ### Service does not start
 
 ```bash
-docker compose logs backend-flask-service --tail=50
-docker compose logs frontend-vue-service --tail=50
+docker compose -p llars logs backend-flask-service --tail=50
+docker compose -p llars logs frontend-vue-service --tail=50
 ```
 
 ### Port conflicts
@@ -129,11 +167,10 @@ AUTHENTIK_EXTERNAL_PORT=56095
 
 ### Database problems
 
-**Warning: deletes data**  
-Set `REMOVE_LLARS_VOLUMES=True` in `.env` and restart:
+**Warning: deletes data**
 
 ```bash
-./start_llars.sh
+REMOVE_LLARS_VOLUMES=True ./start_llars.sh --build
 ```
 
 ### Docker not running
@@ -144,5 +181,6 @@ Set `REMOVE_LLARS_VOLUMES=True` in `.env` and restart:
 ## Next Steps
 
 - [Configuration](configuration.md)
+- [Docker Architecture & Build Caching](../entwickler/docker-architektur.md)
 - [Switch project state](../guides/project-state.md)
 - [Permission system](../guides/permission-system.md)

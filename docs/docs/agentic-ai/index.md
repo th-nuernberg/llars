@@ -119,4 +119,4 @@ web_search_enabled: bool   # Optional Tavily integration
 
 - Lewis et al. (2020): RAG - Retrieval-Augmented Generation
 - Yao et al. (2022): ReAct - Synergizing Reasoning and Acting
-- Chen et al. (2025): ReflAct - Reflection-Grounded Agent Reasoning
+- Kim et al. (2025): ReflAct - World-Grounded Decision Making in LLM Agents via Goal-State Reflection

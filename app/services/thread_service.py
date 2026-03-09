@@ -264,17 +264,10 @@ class ThreadService:
             - feature: Feature object if successful, None otherwise
             - error_message: Error message if failed, None otherwise
         """
-        from db.models import LLM, FeatureType, Feature
+        from db.models import FeatureType, Feature
         import json
 
         try:
-            # Get or create LLM
-            llm = LLM.query.filter_by(name=llm_name).first()
-            if not llm:
-                llm = LLM(name=llm_name)
-                db.session.add(llm)
-                db.session.flush()
-
             # Get or create FeatureType
             feature_type = FeatureType.query.filter_by(name=feature_type_name).first()
             if not feature_type:
@@ -286,7 +279,7 @@ class ThreadService:
             existing_feature = Feature.query.filter_by(
                 thread_id=thread_id,
                 type_id=feature_type.type_id,
-                llm_id=llm.llm_id
+                model_id=llm_name
             ).first()
 
             if existing_feature:
@@ -300,7 +293,7 @@ class ThreadService:
             feature = Feature(
                 thread_id=thread_id,
                 type_id=feature_type.type_id,
-                llm_id=llm.llm_id,
+                model_id=llm_name,
                 content=content
             )
             db.session.add(feature)
@@ -348,7 +341,7 @@ class ThreadService:
             'features': [
                 {
                     'feature_id': feature.feature_id,
-                    'model_name': feature.llm.name,
+                    'model_name': feature.model_id or 'Unknown',
                     'type': feature.feature_type.name,
                     'content': feature.content
                 } for feature in email_thread.features

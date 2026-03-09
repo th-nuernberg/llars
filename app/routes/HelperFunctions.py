@@ -1,6 +1,6 @@
 
 from db.database import db
-from db.tables import (User, EmailThread, Message, Feature, FeatureType, LLM, UserFeatureRanking,
+from db.tables import (User, EmailThread, Message, Feature, FeatureType, UserFeatureRanking,
                        FeatureFunctionType, UserFeatureRating, UserMailHistoryRating, UserMessageRating, UserGroup,ConsultingCategoryType, UserConsultingCategorySelection,
                        FeatureFunctionType, UserFeatureRating, UserMailHistoryRating, UserMessageRating,
                        UserGroup, UserPrompt, UserPromptShare,
@@ -348,8 +348,8 @@ def get_user_threads(user_id, function_type_id):
         if scenario_id not in scenario_order_modes:
             scenario_order_modes[scenario_id] = get_scenario_order_mode(scenario)
 
-        if role == ScenarioRoles.VIEWER or raters_receive_all_threads(scenario, function_type_id):
-            # Viewer oder All-Distribution-Evaluator sehen alle Threads im Szenario
+        if role in (ScenarioRoles.VIEWER, ScenarioRoles.OWNER, ScenarioRoles.MANAGER) or raters_receive_all_threads(scenario, function_type_id):
+            # Viewer/Owner/Manager oder All-Distribution-Evaluator sehen alle Threads im Szenario
             threads = (
                 db.session.query(EmailThread)
                 .join(ScenarioThreads, ScenarioThreads.thread_id == EmailThread.thread_id)
@@ -401,8 +401,8 @@ def user_can_evaluate(user_id: int, scenario_id: int) -> bool:
     """
     Check if a user can submit evaluations for a scenario.
 
-    OWNER and EVALUATOR roles can submit evaluations.
-    VIEWER role is read-only.
+    Only EVALUATOR role can submit evaluations.
+    OWNER and VIEWER roles are read-only.
 
     Args:
         user_id: The user ID to check
@@ -419,7 +419,7 @@ def user_can_evaluate(user_id: int, scenario_id: int) -> bool:
     if not scenario_user:
         return False
 
-    return scenario_user.role in (ScenarioRoles.EVALUATOR, ScenarioRoles.OWNER)
+    return scenario_user.role == ScenarioRoles.EVALUATOR
 
 
 def user_can_evaluate_thread(user_id: int, thread_id: int) -> bool:

@@ -12,17 +12,78 @@
  */
 
 const testPassword = process.env.E2E_TEST_PASSWORD || 'admin123'
-const isProduction = !!process.env.E2E_TEST_PASSWORD
-const researcherUsername = isProduction ? 'e2e-researcher' : 'researcher'
-const evaluatorUsername = isProduction ? 'e2e-evaluator' : 'evaluator'
-const chatbotManagerUsername = isProduction ? 'e2e-chatbot-manager' : 'chatbot_manager'
+export const isProduction = !!process.env.E2E_TEST_PASSWORD
+const playwrightBaseURL = process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:55080'
+const apiBaseURL = process.env.PLAYWRIGHT_API_BASE_URL || playwrightBaseURL
+const adminUsername = isProduction ? (process.env.E2E_ADMIN_USER || 'test_admin') : 'admin'
+const researcherUsername = isProduction ? (process.env.E2E_RESEARCHER_USER || 'test_researcher') : 'researcher'
+const evaluatorUsername = isProduction ? (process.env.E2E_EVALUATOR_USER || 'test_evaluator') : 'evaluator'
+const chatbotManagerUsername = isProduction
+  ? (process.env.E2E_CHATBOT_MANAGER_USER || adminUsername)
+  : 'chatbot_manager'
 
 export const TEST_USERS = {
   rater: { username: researcherUsername, password: testPassword },
   researcher: { username: researcherUsername, password: testPassword },
   evaluator: { username: evaluatorUsername, password: testPassword },
-  admin: { username: 'admin', password: testPassword },
+  admin: { username: adminUsername, password: testPassword },
   chatbot_manager: { username: chatbotManagerUsername, password: testPassword }
+}
+
+async function apiLogin(user) {
+  const response = await fetch(`${apiBaseURL}/auth/authentik/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username: user.username, password: user.password })
+  })
+
+  const responseText = await response.text()
+  if (!response.ok) {
+    throw new Error(`API login failed for ${user.username}: ${response.status} ${responseText}`)
+  }
+
+  let data = {}
+  try {
+    data = JSON.parse(responseText)
+  } catch (error) {
+    throw new Error(`API login invalid JSON for ${user.username}: ${error.message}`)
+  }
+
+  if (!data.access_token) {
+    throw new Error(`API login missing access_token for ${user.username}`)
+  }
+
+  return data
+}
+
+async function applyAuthStorage(page, user, tokenData) {
+  await page.evaluate((payload) => {
+    const rolesValue = JSON.stringify(payload.roles || [])
+    const usernameValue = payload.username || ''
+    const store = (storage, key, value) => {
+      try {
+        storage.setItem(key, value)
+      } catch (e) {
+        // ignore storage failures
+      }
+    }
+
+    store(window.sessionStorage, 'auth_token', payload.accessToken || '')
+    store(window.sessionStorage, 'auth_refreshToken', payload.refreshToken || '')
+    store(window.sessionStorage, 'auth_idToken', payload.idToken || '')
+    store(window.sessionStorage, 'auth_llars_roles', rolesValue)
+    store(window.localStorage, 'auth_token', payload.accessToken || '')
+    store(window.localStorage, 'auth_refreshToken', payload.refreshToken || '')
+    store(window.localStorage, 'auth_idToken', payload.idToken || '')
+    store(window.localStorage, 'auth_llars_roles', rolesValue)
+    store(window.localStorage, 'username', usernameValue)
+  }, {
+    accessToken: tokenData.access_token,
+    refreshToken: tokenData.refresh_token,
+    idToken: tokenData.id_token,
+    roles: tokenData.llars_roles || [],
+    username: user.username
+  })
 }
 
 /**
@@ -39,18 +100,27 @@ export async function dismissConsentBanner(page) {
       await consentBtn.waitFor({ state: 'hidden', timeout: 2000 }).catch(() => {})
     }
 
-    // Try new Analytics & Datenschutz dialog - look for ZUSTIMMEN or ABLEHNEN buttons
-    // These appear as uppercase in the UI
-    const zustimmenBtn = page.locator('button:has-text("ZUSTIMMEN"), button:has-text("Zustimmen")').first()
-    const ablehnenBtn = page.locator('button:has-text("ABLEHNEN"), button:has-text("Ablehnen")').first()
+    // Try new Analytics & Datenschutz dialog in German and English.
+    const acceptBtn = page.locator([
+      'button:has-text("ZUSTIMMEN")',
+      'button:has-text("Zustimmen")',
+      'button:has-text("ACCEPT")',
+      'button:has-text("Accept")'
+    ].join(', ')).first()
+    const declineBtn = page.locator([
+      'button:has-text("ABLEHNEN")',
+      'button:has-text("Ablehnen")',
+      'button:has-text("DECLINE")',
+      'button:has-text("Decline")'
+    ].join(', ')).first()
 
-    if (await zustimmenBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
-      await zustimmenBtn.click({ force: true })
+    if (await acceptBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await acceptBtn.click({ force: true })
       // Wait for dialog to close
-      await zustimmenBtn.waitFor({ state: 'hidden', timeout: 3000 }).catch(() => {})
-    } else if (await ablehnenBtn.isVisible({ timeout: 500 }).catch(() => false)) {
-      await ablehnenBtn.click({ force: true })
-      await ablehnenBtn.waitFor({ state: 'hidden', timeout: 3000 }).catch(() => {})
+      await acceptBtn.waitFor({ state: 'hidden', timeout: 3000 }).catch(() => {})
+    } else if (await declineBtn.isVisible({ timeout: 500 }).catch(() => false)) {
+      await declineBtn.click({ force: true })
+      await declineBtn.waitFor({ state: 'hidden', timeout: 3000 }).catch(() => {})
     }
   } catch (e) {
     // Page might be closed, ignore
@@ -61,13 +131,22 @@ export async function dismissConsentBanner(page) {
  * Handle privacy page redirect (Datenschutzerklärung)
  * Uses URL-based detection instead of timeouts
  */
-export async function handlePrivacyPage(page) {
+export async function handlePrivacyPage(page, redirectPath = null) {
   try {
-    const isOnPrivacyPage = page.url().includes('Datenschutz') ||
-      await page.locator('h1:has-text("Datenschutzerklärung")').isVisible({ timeout: 1000 }).catch(() => false)
+    const currentUrl = page.url().toLowerCase()
+    const isOnPrivacyPage = currentUrl.includes('datenschutz') ||
+      currentUrl.includes('privacy') ||
+      await page.locator([
+        'h1:has-text("Datenschutzerklärung")',
+        'h1:has-text("Privacy policy")'
+      ].join(', ')).first().isVisible({ timeout: 1000 }).catch(() => false)
 
     if (isOnPrivacyPage) {
       await dismissConsentBanner(page)
+      if (redirectPath) {
+        await page.goto(redirectPath, { waitUntil: 'domcontentloaded', timeout: 30000 }).catch(() => {})
+        await dismissConsentBanner(page)
+      }
       // Wait for navigation if it happens, but don't block
       await page.waitForLoadState('domcontentloaded', { timeout: 3000 }).catch(() => {})
     }
@@ -87,16 +166,41 @@ export async function handlePrivacyPage(page) {
  * - Handles Datenschutz page redirect properly
  */
 export async function quickLogin(page, user = TEST_USERS.researcher, retries = 2) {
+  // Production runs frequently switch roles inside a single test. Reuse of any
+  // existing /Home session here leaks the previous user into later assertions.
+  if (isProduction) {
+    try {
+      const tokenData = await apiLogin(user)
+      await page.goto('/login', { waitUntil: 'domcontentloaded', timeout: 30000 }).catch(() => {})
+      await page.evaluate(() => {
+        localStorage.clear()
+        sessionStorage.clear()
+      }).catch(() => {})
+      await applyAuthStorage(page, user, tokenData)
+      await page.goto('/Home', { waitUntil: 'domcontentloaded', timeout: 30000 })
+      await page.waitForLoadState('load', { timeout: 5000 }).catch(() => {})
+      await dismissConsentBanner(page)
+      await handlePrivacyPage(page, '/Home')
+      if (page.url().includes('/Home')) {
+        return
+      }
+    } catch (error) {
+      // Fall back to form-based login below when API login is unavailable.
+    }
+  }
+
   for (let attempt = 1; attempt <= retries; attempt++) {
     try {
       // Navigate to login page - use domcontentloaded to avoid analytics timeout
       await page.goto('/login', { waitUntil: 'domcontentloaded', timeout: 30000 })
 
-      // Clear storage for clean state
-      await page.evaluate(() => {
-        localStorage.clear()
-        sessionStorage.clear()
-      })
+      // Clear storage for clean state (dev mode only - production uses storageState)
+      if (!isProduction) {
+        await page.evaluate(() => {
+          localStorage.clear()
+          sessionStorage.clear()
+        })
+      }
 
       // Handle privacy/Datenschutz page redirect - this is a common first-visit redirect
       // Check URL or page content for privacy page

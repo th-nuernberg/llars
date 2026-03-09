@@ -4,6 +4,7 @@ import { matomoResetUserId, matomoSetUserId } from '@/plugins/llars-metrics';
 import { usePermissions } from '@/composables/usePermissions';
 import { decodeJwtPayload } from '@/utils/jwt';
 import { logI18n } from '@/utils/logI18n';
+import { setConsoleLogsEnabled } from '@/utils/consoleController';
 import {
   AUTH_STORAGE_KEYS,
   clearAuthStorage,
@@ -21,6 +22,7 @@ const avatarSeed = ref(null);
 const avatarUrl = ref(null);
 const avatarChangesLeft = ref(null);
 const collabColor = ref(null);
+const consoleLogsEnabled = ref(false);
 
 const parseJwt = (jwtToken) => {
   return decodeJwtPayload(jwtToken);
@@ -147,7 +149,11 @@ const fetchUserSettings = async () => {
       }
     });
 
-    const { collab_color, avatar_seed, avatar_url, avatar_changes_left } = response.data;
+    const { collab_color, avatar_seed, avatar_url, avatar_changes_left, console_logs_enabled } = response.data;
+
+    // Apply console logging preference
+    consoleLogsEnabled.value = Boolean(console_logs_enabled);
+    setConsoleLogsEnabled(consoleLogsEnabled.value);
 
     if (collab_color) {
       collabColor.value = collab_color;
@@ -437,6 +443,8 @@ export const useAuth = () => {
     avatarUrl.value = null;
     avatarChangesLeft.value = null;
     collabColor.value = null;
+    consoleLogsEnabled.value = false;
+    setConsoleLogsEnabled(false);
 
     clearStoredTokens();
 
@@ -463,6 +471,7 @@ export const useAuth = () => {
     avatarUrl,
     avatarChangesLeft,
     collabColor,
+    consoleLogsEnabled,
     login,
     logout,
     getToken,

@@ -217,7 +217,9 @@ class AuthentikAdminService:
         email: str,
         password: str,
         name: str = "",
-        is_active: bool = True
+        is_active: bool = True,
+        first_name: Optional[str] = None,
+        last_name: Optional[str] = None,
     ) -> Tuple[bool, Optional[str], Optional[Dict[str, Any]]]:
         """
         Create a new user in Authentik.
@@ -228,6 +230,8 @@ class AuthentikAdminService:
             password: Initial password
             name: Display name (optional, defaults to username)
             is_active: Whether the user should be active
+            first_name: First name (stored in Authentik attributes)
+            last_name: Last name (stored in Authentik attributes)
 
         Returns:
             Tuple of (success, error_message, user_data)
@@ -254,6 +258,13 @@ class AuthentikAdminService:
                     if user.get("username") == username:
                         return False, f"User '{username}' already exists in Authentik", None
 
+            # Build attributes with name fields
+            attributes = {}
+            if first_name:
+                attributes["first_name"] = first_name
+            if last_name:
+                attributes["last_name"] = last_name
+
             # Create user
             user_data = {
                 "username": username,
@@ -263,6 +274,8 @@ class AuthentikAdminService:
                 "path": "users",
                 "type": "internal",
             }
+            if attributes:
+                user_data["attributes"] = attributes
 
             create_response = cls._make_request(
                 "POST",
@@ -365,6 +378,95 @@ class AuthentikAdminService:
             return False, f"Connection error: {str(e)}"
         except Exception as e:
             logger.error(f"Unexpected error updating Authentik user: {e}")
+            return False, f"Unexpected error: {str(e)}"
+
+    @classmethod
+    def send_recovery_email(cls, username: str) -> Tuple[bool, Optional[str]]:
+        """
+        Send a password recovery email to a user via Authentik.
+
+        Args:
+            username: The username to send recovery email to
+
+        Returns:
+            Tuple of (success, error_message)
+        """
+        token = cls._get_admin_token()
+        if not token:
+            return False, "Could not authenticate with Authentik"
+
+        config = cls._get_config()
+        api_url = f"{config['base_url']}/api/v3"
+
+        try:
+            # Find user by username
+            search_response = cls._make_request(
+                "GET",
+                f"{api_url}/core/users/",
+                params={"username": username},
+                timeout=10
+            )
+
+            if search_response.status_code != 200:
+                return False, "Could not search for user in Authentik"
+
+            results = search_response.json().get("results", [])
+            user_pk = None
+            for user in results:
+                if user.get("username") == username:
+                    user_pk = user.get("pk")
+                    break
+
+            if not user_pk:
+                return False, f"User '{username}' not found in Authentik"
+
+            # Find email stage for recovery
+            stages_response = cls._make_request(
+                "GET",
+                f"{api_url}/stages/email/",
+                params={"ordering": "name"},
+                timeout=10
+            )
+
+            email_stage_pk = None
+            if stages_response.status_code == 200:
+                stages = stages_response.json().get("results", [])
+                for stage in stages:
+                    # Prefer a stage with "recovery" in the name
+                    if "recovery" in stage.get("name", "").lower():
+                        email_stage_pk = stage.get("pk")
+                        break
+                # Fallback to first email stage
+                if not email_stage_pk and stages:
+                    email_stage_pk = stages[0].get("pk")
+
+            if not email_stage_pk:
+                return False, "No email stage configured in Authentik. Configure an email stage first."
+
+            # Send recovery email
+            recovery_response = cls._make_request(
+                "POST",
+                f"{api_url}/core/users/{user_pk}/recovery_email/",
+                json={"email_stage": email_stage_pk},
+                timeout=10
+            )
+
+            if recovery_response.status_code in [200, 204]:
+                logger.info(f"Recovery email sent for user '{username}'")
+                return True, None
+            else:
+                error_detail = ""
+                try:
+                    error_detail = recovery_response.json().get("detail", recovery_response.text)
+                except Exception:
+                    error_detail = recovery_response.text
+                return False, f"Failed to send recovery email: {error_detail}"
+
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Authentik API error: {e}")
+            return False, f"Connection error: {str(e)}"
+        except Exception as e:
+            logger.error(f"Unexpected error sending recovery email: {e}")
             return False, f"Unexpected error: {str(e)}"
 
     @classmethod

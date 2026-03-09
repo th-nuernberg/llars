@@ -1,0 +1,36 @@
+# =============================================================================
+# LLARS Staging Docker Compose Override (Blue-Green)
+# =============================================================================
+# Runs staging nginx on port 55080 pointing to the inactive blue-green color.
+# The staging nginx reads active_upstream_staging.conf which is written by
+# deploy_bluegreen.sh to point to the inactive color containers.
+#
+# Only the nginx service is needed for staging - the actual app containers
+# are started by deploy_bluegreen.sh using docker-compose.prod-bluegreen.yml.
+#
+# Usage (via deploy_bluegreen.sh):
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml \
+#     -f docker-compose.staging.yml up -d nginx-service
+# =============================================================================
+
+services:
+  nginx-service:
+    container_name: llars_staging_nginx
+    environment:
+      - NGINX_NO_SSL=true
+    networks:
+      - bluegreen-shared
+    ports:
+      - "55080:80"
+    volumes:
+      # Override upstream to point to inactive color for staging
+      - ./docker/nginx/active_upstream_staging.conf:/etc/nginx/active_upstream.conf:ro
+    depends_on: []
+
+  # Shared services use production containers - no overrides needed:
+  # db-maria-service, llars-redis, authentik-*, matomo-*
+
+networks:
+  bluegreen-shared:
+    name: llars_default
+    external: true

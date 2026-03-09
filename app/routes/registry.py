@@ -131,6 +131,18 @@ def register_all_blueprints(app: Flask) -> None:
     from routes.anonymize import anonymize_bp
     app.register_blueprint(anonymize_bp)
 
+    # Anonymization Pipeline (batch processing and manual review)
+    from routes.anonymization import anonymization_bp
+    app.register_blueprint(anonymization_bp)
+
+    # Conference Manager (conference tracking, paper management)
+    from routes.conference_manager import conference_manager_bp
+    app.register_blueprint(conference_manager_bp)
+
+    # Messaging (text chat, voice/video calls, E2E encryption)
+    from routes.messaging import messaging_bp
+    app.register_blueprint(messaging_bp)
+
     # Web Crawler
     from routes.crawler import crawler_bp
     app.register_blueprint(crawler_bp)
@@ -218,6 +230,10 @@ def get_blueprint_info() -> dict:
             {'name': 'latex_collab', 'prefix': '/api/latex-collab', 'description': 'LaTeX Collab workspaces and documents'},
             {'name': 'zotero', 'prefix': '/api/zotero', 'description': 'Zotero reference manager integration'},
             {'name': 'anonymize', 'prefix': '/api/anonymize', 'description': 'Offline pseudonymization (Anonymize tool)'},
+            {'name': 'anonymization', 'prefix': '/api/anonymization', 'description': 'Conversation anonymization pipeline'},
+            {'name': 'anonymization', 'prefix': '/api/anonymization', 'description': 'Conversation anonymization pipeline'},
+            {'name': 'conference_manager', 'prefix': '/api/conference-manager', 'description': 'Conference tracking and paper management'},
+            {'name': 'messaging', 'prefix': '/api/messaging', 'description': 'Messaging with text chat, calls and encryption'},
             {'name': 'import', 'prefix': '/api/import', 'description': 'Universal data import with AI assistance'},
             {'name': 'wizard', 'prefix': '/api/wizard', 'description': 'Scenario Wizard API for programmatic access (Claude Code)'},
         ],

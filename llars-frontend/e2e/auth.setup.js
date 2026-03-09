@@ -2,19 +2,22 @@
  * LLARS E2E Authentication Setup
  *
  * Creates authenticated browser states for different user roles.
- * On production, creates temporary test users via API that are deleted after tests.
+ * On production, uses pre-provisioned test users (optional API bootstrap available).
  *
  * Run: npx playwright test --project=setup
  */
 
-import { test as setup, expect } from '@playwright/test'
+import { test as setup } from '@playwright/test'
 import path from 'path'
 import fs from 'fs'
 
 // Password can be overridden via E2E_TEST_PASSWORD env variable for production servers
 const testPassword = process.env.E2E_TEST_PASSWORD || 'admin123'
-// Production servers need temporary test users created via API
+// Production mode is enabled in CI by providing E2E_TEST_PASSWORD
 const isProduction = !!process.env.E2E_TEST_PASSWORD
+const runTag = process.env.E2E_RUN_TAG || 'manual'
+const bootstrapProdUsers = process.env.E2E_BOOTSTRAP_TEST_USERS === 'true'
+const keepTestUsers = process.env.E2E_KEEP_TEST_USERS === 'true'
 const baseURL = process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:55080'
 const apiBaseURL = process.env.PLAYWRIGHT_API_BASE_URL || baseURL
 const loginTimeout = process.env.CI ? 60000 : 45000
@@ -22,11 +25,28 @@ const setupTimeout = process.env.CI ? 120000 : 90000
 
 setup.setTimeout(setupTimeout)
 
+const adminUsername = isProduction ? (process.env.E2E_ADMIN_USER || 'test_admin') : 'admin'
+const researcherUsername = isProduction
+  ? (process.env.E2E_RESEARCHER_USER || 'test_researcher')
+  : 'researcher'
+const evaluatorUsername = isProduction
+  ? (process.env.E2E_EVALUATOR_USER || 'test_evaluator')
+  : 'evaluator'
+const chatbotManagerUsername = isProduction
+  ? (process.env.E2E_CHATBOT_MANAGER_USER || adminUsername)
+  : 'chatbot_manager'
+const bootstrapAdminUsername = isProduction
+  ? (process.env.E2E_BOOTSTRAP_ADMIN_USER || 'admin')
+  : adminUsername
+const bootstrapAdminPassword = isProduction
+  ? (process.env.E2E_BOOTSTRAP_ADMIN_PASSWORD || testPassword)
+  : testPassword
+
 const TEST_USERS = {
-  researcher: { username: 'e2e-researcher', password: testPassword, role: 'researcher' },
-  evaluator: { username: 'e2e-evaluator', password: testPassword, role: 'evaluator' },
-  chatbot_manager: { username: 'e2e-chatbot-manager', password: testPassword, role: 'chatbot_manager' },
-  admin: { username: 'admin', password: testPassword }
+  researcher: { username: researcherUsername, password: testPassword, role: 'researcher' },
+  evaluator: { username: evaluatorUsername, password: testPassword, role: 'evaluator' },
+  chatbot_manager: { username: chatbotManagerUsername, password: testPassword, role: 'chatbot_manager' },
+  admin: { username: adminUsername, password: testPassword }
 }
 
 const AUTH_DIR = path.join(process.cwd(), '.auth')
@@ -101,8 +121,8 @@ async function applyAuthStorage(page, user, tokenData) {
 }
 
 async function performLogin(page, user) {
-  console.log(`[E2E] Starting login for user: ${user.username}`)
-  console.log(`[E2E] Base URL: ${baseURL}, API Base: ${apiBaseURL}, isProduction: ${isProduction}`)
+  console.log(`[E2E][${runTag}] Starting login for user: ${user.username}`)
+  console.log(`[E2E][${runTag}] Base URL: ${baseURL}, API Base: ${apiBaseURL}, isProduction: ${isProduction}`)
 
   if (isProduction) {
     console.log('[E2E] Production mode: using API login for reliability')
@@ -366,20 +386,20 @@ async function deleteTestUser(accessToken, username) {
 }
 
 /**
- * Gets admin access token for API calls
+ * Gets an access token for API calls
  */
-async function getAdminToken() {
+async function getApiToken(username, password) {
   const response = await fetch(`${apiBaseURL}/auth/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      username: TEST_USERS.admin.username,
-      password: TEST_USERS.admin.password
+      username,
+      password
     })
   })
 
   if (!response.ok) {
-    throw new Error(`Admin login failed: ${response.status}`)
+    throw new Error(`API login failed for ${username}: ${response.status}`)
   }
 
   const data = await response.json()
@@ -391,50 +411,79 @@ let adminToken = null
 
 // Admin authentication - always runs first
 setup('authenticate as admin', async ({ page }) => {
-  await performLogin(page, TEST_USERS.admin)
-  await page.context().storageState({ path: path.join(AUTH_DIR, 'admin.json') })
-
-  // On production, create temporary test users
+  // Production: by default use pre-provisioned nightly users.
+  // Optional bootstrap mode can create them via API.
   if (isProduction) {
-    console.log('Production mode detected, creating temporary test users...')
-    try {
-      adminToken = await getAdminToken()
-      console.log('Got admin token, creating users...')
+    console.log(
+      `[E2E][${runTag}] Production users: admin=${TEST_USERS.admin.username}, ` +
+      `researcher=${TEST_USERS.researcher.username}, evaluator=${TEST_USERS.evaluator.username}`
+    )
 
-      await createTestUser(adminToken, TEST_USERS.researcher.username, testPassword, 'researcher')
-      await createTestUser(adminToken, TEST_USERS.evaluator.username, testPassword, 'evaluator')
-      await createTestUser(adminToken, TEST_USERS.chatbot_manager.username, testPassword, 'chatbot_manager')
+    if (bootstrapProdUsers) {
+      console.log(`[E2E][${runTag}] Bootstrap enabled: creating temporary test users via API`)
+      try {
+        adminToken = await getApiToken(bootstrapAdminUsername, bootstrapAdminPassword)
+        console.log(`Got bootstrap token as ${bootstrapAdminUsername}, creating users...`)
 
-      console.log('Verifying test users can log in...')
-      await waitForUserLogin(TEST_USERS.researcher.username, testPassword)
-      await waitForUserLogin(TEST_USERS.evaluator.username, testPassword)
-      await waitForUserLogin(TEST_USERS.chatbot_manager.username, testPassword)
-      console.log('Test users ready')
-    } catch (error) {
-      console.error('Failed to create test users:', error.message)
-      throw error
+        if (TEST_USERS.admin.username !== bootstrapAdminUsername) {
+          await createTestUser(adminToken, TEST_USERS.admin.username, testPassword, 'admin')
+        }
+        await createTestUser(adminToken, TEST_USERS.researcher.username, testPassword, 'researcher')
+        await createTestUser(adminToken, TEST_USERS.evaluator.username, testPassword, 'evaluator')
+
+        if (TEST_USERS.chatbot_manager.username !== TEST_USERS.admin.username) {
+          await createTestUser(adminToken, TEST_USERS.chatbot_manager.username, testPassword, 'chatbot_manager')
+        }
+
+        console.log('Verifying test users can log in...')
+        await waitForUserLogin(TEST_USERS.admin.username, testPassword)
+        await waitForUserLogin(TEST_USERS.researcher.username, testPassword)
+        await waitForUserLogin(TEST_USERS.evaluator.username, testPassword)
+        if (TEST_USERS.chatbot_manager.username !== TEST_USERS.admin.username) {
+          await waitForUserLogin(TEST_USERS.chatbot_manager.username, testPassword)
+        }
+        console.log('Test users ready')
+      } catch (error) {
+        console.error('Failed to create test users:', error.message)
+        throw error
+      }
+    } else {
+      console.log(`[E2E][${runTag}] Bootstrap disabled: validating pre-provisioned users`)
+      await waitForUserLogin(TEST_USERS.admin.username, testPassword, 3, 2000)
+      await waitForUserLogin(TEST_USERS.researcher.username, testPassword, 3, 2000)
+      await waitForUserLogin(TEST_USERS.evaluator.username, testPassword, 3, 2000)
+      if (TEST_USERS.chatbot_manager.username !== TEST_USERS.admin.username) {
+        await waitForUserLogin(TEST_USERS.chatbot_manager.username, testPassword, 3, 2000)
+      }
     }
   }
+
+  await performLogin(page, TEST_USERS.admin)
+  await page.context().storageState({ path: path.join(AUTH_DIR, 'admin.json') })
 })
 
 setup('authenticate as researcher', async ({ page }) => {
-  const user = isProduction ? TEST_USERS.researcher : { username: 'researcher', password: testPassword }
+  const user = TEST_USERS.researcher
   await performLogin(page, user)
   await page.context().storageState({ path: path.join(AUTH_DIR, 'researcher.json') })
 })
 
 setup('authenticate as evaluator', async ({ page }) => {
-  const user = isProduction ? TEST_USERS.evaluator : { username: 'evaluator', password: testPassword }
+  const user = TEST_USERS.evaluator
   await performLogin(page, user)
   await page.context().storageState({ path: path.join(AUTH_DIR, 'evaluator.json') })
 })
 
-// Cleanup: Delete temporary test users after all setup tests complete
+setup('authenticate as chatbot_manager', async ({ page }) => {
+  const user = TEST_USERS.chatbot_manager
+  await performLogin(page, user)
+  await page.context().storageState({ path: path.join(AUTH_DIR, 'chatbot_manager.json') })
+})
+
+// Cleanup is handled after the full nightly run in CI after_script.
+// Do not delete users in setup project, otherwise dependent test projects fail.
 setup.afterAll(async () => {
-  if (isProduction && adminToken) {
-    console.log('Cleaning up temporary test users...')
-    await deleteTestUser(adminToken, TEST_USERS.researcher.username)
-    await deleteTestUser(adminToken, TEST_USERS.evaluator.username)
-    await deleteTestUser(adminToken, TEST_USERS.chatbot_manager.username)
+  if (isProduction && bootstrapProdUsers && !keepTestUsers) {
+    console.log('Deferring temporary test user cleanup to CI after_script')
   }
 })

@@ -56,6 +56,21 @@ def get_ai_assistant_settings():
     })
 
 
+@data_bp.get("/system/communication-status")
+def get_communication_status():
+    """
+    Get communication feature status (public endpoint).
+
+    Returns whether communication (messaging, calls) is globally enabled.
+    Used by the frontend to gate UI elements before checking per-user permissions.
+    """
+    settings = _get_or_create_settings()
+    return jsonify({
+        'success': True,
+        'communication_enabled': settings.communication_enabled,
+    })
+
+
 @data_bp.patch("/admin/system/settings")
 @require_permission("admin:system:configure")
 def update_system_settings():
@@ -84,6 +99,7 @@ def update_system_settings():
         'referral_system_enabled',
         'self_registration_enabled',
         'ai_assistant_enabled',
+        'communication_enabled',
     }
 
     string_fields = {
@@ -182,6 +198,16 @@ def update_system_settings():
 
     # Invalidate the settings cache so changes take effect immediately
     invalidate_cache()
+
+    # Broadcast communication status change to all connected clients
+    if 'communication_enabled' in updated_fields:
+        try:
+            from main import socketio
+            socketio.emit('communication:status_changed', {
+                'communication_enabled': settings.communication_enabled,
+            })
+        except Exception:
+            pass
 
     # Log the event
     try:

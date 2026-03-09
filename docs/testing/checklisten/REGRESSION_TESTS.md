@@ -44,9 +44,18 @@ Diese Checkliste dient zur systematischen Überprüfung aller Kernfunktionalitä
 | Test | Status | Notizen |
 |------|--------|---------|
 | Home lädt | ⬜ | |
-| Alle Kacheln klickbar | ⬜ | |
+| Alle Kacheln klickbar (contract-basiert) | ⬜ | `llars-frontend/src/config/home_tiles.contract.json` |
 | Kategorien-Sidebar funktioniert | ⬜ | |
 | Mobile Responsive | ⬜ | |
+
+### Nightly Contracts
+
+| Test | Status | Notizen |
+|------|--------|---------|
+| `python3 scripts/testing/validate_nightly_coverage.py` läuft grün | ⬜ | |
+| Jede Kachel hat gleichnamigen Testtitel | ⬜ | `llars-frontend/e2e/nightly/tile-regression.spec.js` |
+| Workflow-Tests sind aktuell | ⬜ | `llars-frontend/e2e/nightly/workflows.spec.js` |
+| Matrix-Doku aktualisiert | ⬜ | `docs/testing/nightly/NIGHTLY_TILE_MATRIX.md` |
 
 ### Navigation
 

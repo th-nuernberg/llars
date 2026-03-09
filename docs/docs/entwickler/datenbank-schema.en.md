@@ -22,6 +22,7 @@ erDiagram
     RAGDocument ||--o{ CollectionDocumentLink : in_collection
     RAGDocument ||--o{ RAGDocumentChunk : has
 
+    RatingScenario ||--o{ ScenarioUser : has
     RatingScenario ||--o{ ScenarioItem : contains
     RatingScenario ||--o{ ScenarioItemDistribution : distributes
 
@@ -201,7 +202,7 @@ User assignment to scenarios.
 | `id` | INT | Primary key |
 | `scenario_id` | INT | FK → RatingScenario |
 | `user_id` | INT | FK → User |
-| `role` | ENUM | OWNER, EVALUATOR, VIEWER |
+| `role` | ENUM | OWNER, MANAGER, ASSESSOR, VIEWER (Legacy alias: EVALUATOR → ASSESSOR) |
 | `invitation_status` | ENUM | accepted, rejected, pending |
 | `invited_at` | DATETIME | Invitation sent |
 | `responded_at` | DATETIME | Response time |
@@ -438,4 +439,4 @@ docker exec llars_db_service mariadb -u dev_user -pdev_password_change_me databa
   -e "source /tmp/001_add_new_column.sql"
 ```
 
-See [CLAUDE.md](https://github.com/your-repo/llars/blob/main/CLAUDE.md) for detailed migration instructions.
+See `CLAUDE.md` in the repository root for detailed migration instructions.

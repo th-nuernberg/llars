@@ -18,7 +18,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { ref } from 'vue'
+import { createVuetify } from 'vuetify'
+import * as components from 'vuetify/components'
+import * as directives from 'vuetify/directives'
 import AnalyticsConsentBanner from '@/components/common/AnalyticsConsentBanner.vue'
+
+const vuetify = createVuetify({ components, directives })
 
 // Mock router
 const mockRouter = {
@@ -43,19 +48,7 @@ vi.mock('@/plugins/llars-metrics', () => ({
 function mountAnalyticsConsentBanner(options = {}) {
   return mount(AnalyticsConsentBanner, {
     global: {
-      stubs: {
-        'v-slide-y-reverse-transition': {
-          template: '<div class="transition-stub"><slot /></div>'
-        },
-        'v-card': {
-          template: '<div class="v-card" :class="{ [`elevation-${elevation}`]: elevation }"><slot /></div>',
-          props: ['elevation']
-        },
-        'v-btn': {
-          template: '<button class="v-btn" :class="[variant, `size-${size}`, color ? `bg-${color}` : \'\']" @click="$emit(\'click\')"><slot /></button>',
-          props: ['variant', 'size', 'color']
-        }
-      }
+      plugins: [vuetify]
     },
     ...options
   })
@@ -255,7 +248,7 @@ describe('AnalyticsConsentBanner', () => {
       const wrapper = mountAnalyticsConsentBanner()
 
       const buttons = wrapper.findAll('.actions .v-btn')
-      expect(buttons[0].classes()).toContain('text')
+      expect(buttons[0].classes()).toContain('v-btn--variant-text')
     })
 
     it('COMP_ACB_021: privacy button has correct label', () => {
@@ -273,7 +266,7 @@ describe('AnalyticsConsentBanner', () => {
       const wrapper = mountAnalyticsConsentBanner()
 
       const buttons = wrapper.findAll('.actions .v-btn')
-      expect(buttons[1].classes()).toContain('outlined')
+      expect(buttons[1].classes()).toContain('v-btn--variant-outlined')
     })
 
     it('COMP_ACB_023: decline button has correct label', () => {
@@ -310,7 +303,7 @@ describe('AnalyticsConsentBanner', () => {
 
       const buttons = wrapper.findAll('.actions .v-btn')
       buttons.forEach(btn => {
-        expect(btn.classes()).toContain('size-small')
+        expect(btn.classes()).toContain('v-btn--size-small')
       })
     })
   })

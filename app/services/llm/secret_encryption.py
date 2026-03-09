@@ -20,12 +20,26 @@ def _derive_key(secret: str) -> bytes:
     return base64.urlsafe_b64encode(key_bytes)
 
 
+_DEFAULT_DEV_SECRET = "dev-secret-key-change-in-production"
+
+
 def _get_encryption_key() -> bytes:
     env_key = os.environ.get("LLM_PROVIDER_ENCRYPTION_KEY", "").strip()
     if env_key:
         return _derive_key(env_key)
 
-    jwt_secret = os.environ.get("JWT_SECRET_KEY", "dev-secret-key-change-in-production")
+    jwt_secret = os.environ.get("JWT_SECRET_KEY", _DEFAULT_DEV_SECRET)
+
+    # Block default key in production
+    if jwt_secret == _DEFAULT_DEV_SECRET and os.environ.get("PROJECT_STATE") == "production":
+        raise RuntimeError(
+            "CRITICAL: Neither LLM_PROVIDER_ENCRYPTION_KEY nor JWT_SECRET_KEY is set in production. "
+            "Cannot encrypt/decrypt API keys with default dev key."
+        )
+
+    if jwt_secret == _DEFAULT_DEV_SECRET:
+        logger.warning("[Encryption] Using default dev key for encryption — set LLM_PROVIDER_ENCRYPTION_KEY in production!")
+
     return _derive_key(jwt_secret)
 
 

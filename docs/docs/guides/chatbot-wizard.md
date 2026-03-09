@@ -1,6 +1,6 @@
 # Chatbot Wizard
 
-**Version:** 1.0 | **Stand:** Januar 2026
+**Version:** 1.1 | **Stand:** Januar 2026
 
 Der Chatbot Wizard ist ein 5-Schritte-Assistent zur Erstellung von RAG-basierten Chatbots. Er crawlt automatisch Websites, erstellt Vektor-Embeddings und generiert KI-gestützt Namen, Icons und System-Prompts.
 

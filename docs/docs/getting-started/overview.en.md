@@ -198,3 +198,158 @@ LLARS approach:
 ```
 
 ---
+
+## 5. Technical Overview
+
+### 5.1 Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                         NGINX                                │
+│                    (Reverse Proxy)                           │
+└────────┬──────────────┬──────────────┬──────────────┬───────┘
+         │              │              │              │
+    ┌────▼────┐   ┌─────▼─────┐  ┌─────▼─────┐  ┌────▼────┐
+    │   Vue   │   │   Flask   │  │    YJS    │  │ Authentik│
+    │Frontend │   │  Backend  │  │WebSocket  │  │   Auth   │
+    └────┬────┘   └─────┬─────┘  └─────┬─────┘  └─────────┘
+         │              │              │
+         │        ┌─────┴─────────────┐│
+         │        │     MariaDB       ││
+         │        └───────────────────┘│
+         │                             │
+    ┌────┴─────────────────────────────┴────┐
+    │              External APIs            │
+    │  (LiteLLM/OpenAI, GitLab, ChromaDB)   │
+    └────────────────────────────────────────┘
+```
+
+### 5.2 Tech Stack
+
+| Component | Technology | Purpose |
+|-----------|------------|---------|
+| Frontend | Vue 3 + Vuetify | User interface |
+| Backend | Flask 3.0 | REST API, business logic |
+| Auth | Authentik | User management |
+| Collaboration | Y.js + Socket.IO | Real-time sync |
+| Database | MariaDB | Persistence |
+| LLM | LiteLLM (Mistral) + OpenAI | AI evaluations |
+| RAG | ChromaDB | Vector database |
+| NLP | XLM-RoBERTa | OnCoCo classification |
+
+### 5.3 Permission System
+
+Granular RBAC with 40 permissions:
+
+| Role | Permissions | Typical User |
+|------|-------------|--------------|
+| **Admin** | Full access (40 permissions) | Project lead |
+| **Researcher** | Evaluation + Prompt Engineering + Markdown Collab + Anonymization + KAIMO (19) | Scientist |
+| **Chatbot Manager** | Chatbots + RAG + Prompt Engineering + Markdown Collab (14) | Content owner |
+| **Evaluator** | Read access + selected edit permissions (13) | External reviewer |
+
+---
+
+## 6. Scientific Foundations
+
+### 6.1 OnCoCo Category System
+
+The category system is based on established counseling research:
+
+**Counselor Categories (CO):**
+- Formalities (greeting, closing)
+- Information Gathering (facts, emotions, goals)
+- Motivation (MI techniques, encouragement)
+- Resource Activation (social, professional)
+- Problem Solving (advice, explanations)
+
+**Client Categories (CL):**
+- Problem Clarification (presentation, definition)
+- Objectives (goals, requests)
+- Feedback (positive/negative)
+- Resource Consideration
+
+### 6.2 Methodological Foundations
+
+- **Motivational Interviewing (MI)**: Specific labels for MI techniques
+- **Dialog Act Classification**: Hierarchical category system
+- **Process Mining**: Transition matrices, Sankey diagrams
+- **Human-AI Collaboration**: LLM Evaluator paradigm
+
+---
+
+## 7. Output Formats for Dissertation
+
+### 7.1 Quantitative Data
+
+```csv
+# Example: Label distribution
+pillar,label,count,percentage
+1,CO-IF-AC-RF,245,18.3%
+1,CO-IF-Mot,189,14.1%
+3,CO-IF-AC-RF,312,21.7%
+...
+```
+
+### 7.2 Visualizations
+
+- **Transition matrix heatmaps**: PNG/SVG export
+- **Sankey diagrams**: Interactive (Plotly) or static
+- **Radar charts**: Pillar comparisons
+- **Timeline visualizations**: Conversation progressions
+
+### 7.3 Statistical Analyses
+
+- Label frequencies and distributions
+- KL divergence between pillars
+- Chi-square tests for significance
+- Cohen's Kappa for inter-rater reliability
+- ELO scores from LLM Evaluator
+
+---
+
+## 8. Research Advantages
+
+### Reproducibility
+- All analyses are documented and repeatable
+- Export functions for all raw data
+- Versioning of prompts and configurations
+
+### Scalability
+- Automated analysis of large datasets
+- Background workers for batch processing
+- API-based for integration with other tools
+
+### Collaboration
+- Multi-user support with roles
+- Real-time synchronization
+- Audit trail for traceability
+
+### Flexibility
+- Modular architecture
+- Extensible with new analysis modules
+- Open-source stack
+
+---
+
+## 9. Summary
+
+LLARS is a specialized research platform that combines three core functions for the scientific analysis of online counseling:
+
+1. **Structured evaluation**: Multi-rater system for manual evaluation
+2. **Automated analysis**: OnCoCo classification and LLM Evaluator
+3. **Visualization & export**: Publication-ready outputs
+
+For dissertations in e-counseling, AI-assisted communication analysis, or human-AI collaboration, LLARS offers:
+
+- Standardized methods for quality measurement
+- Reproducible analysis pipelines
+- Comparison capabilities across different data sources
+- Integration of manual and automated evaluation
+
+---
+
+**Developer:** Philipp Steigerwald
+**Version:** 3.0
+**Last updated:** March 2026
+**Repository:** LLARS (LLM Assisted Research System)

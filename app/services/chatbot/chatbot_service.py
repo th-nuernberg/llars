@@ -77,8 +77,15 @@ class ChatbotService:
             db.session.add(settings)
             db.session.flush()  # Ensure it's in the session before setting attributes
 
+        # Security: Only allow known safe fields to prevent mass assignment
+        allowed_fields = {
+            'system_prompt', 'temperature', 'max_tokens', 'model_id',
+            'rag_system_prompt', 'rag_prompt_template', 'rag_top_k',
+            'rag_score_threshold', 'rag_require_citations', 'rag_unknown_answer',
+            'rag_citation_instructions', 'rag_context_prefix', 'rag_context_item_template',
+        }
         for key, value in payload.items():
-            if hasattr(settings, key):
+            if key in allowed_fields and hasattr(settings, key):
                 setattr(settings, key, value)
 
         # Citations need sources for clickable [n] references.

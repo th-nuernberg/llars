@@ -138,6 +138,10 @@ services:
       dockerfile: docker/flask/Dockerfile-flask
     expose:
       - "8081"
+    deploy:
+      resources:
+        limits:
+          memory: 12G  # Increased for Flair NER model (2.1GB + overhead)
     # Mount application code for hot-reloading in development
     volumes:
       - ./app:/app
@@ -145,12 +149,13 @@ services:
       - ./docs:/app/docs:ro
       # Offline Anonymize Ressourcen (großes NER-Modell bleibt in docs/, wird hier nur gemountet)
       - ./docs/docs/projekte/anonymize/models/ner-german-large:/app/models/anonymize/ner-german-large:ro
+      - ./docs/docs/projekte/anonymize/models/recommender_system:/app/models/anonymize/recommender_system:ro
       - ./docs/docs/projekte/anonymize/database:/app/data/anonymize:ro
       - rag_storage:/app/storage
       - rag_docs:/app/rag_docs
       # OnCoCo model is now included in app/models/oncoco (part of ./app mount)
       # Docker monitor (admin): needs access to Docker Engine
-      - /var/run/docker.sock:/var/run/docker.sock
+      - /var/run/docker.sock:/var/run/docker.sock:ro
     group_add:
       - "${DOCKER_SOCK_GID:-0}"
     env_file:
@@ -178,7 +183,13 @@ services:
       - REDIS_HOST=${REDIS_HOST:-llars-redis}
       - REDIS_PORT=${REDIS_PORT:-6379}
       - REDIS_DB=${REDIS_DB:-0}
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-dev_redis_password}
       - LLARS_SKIP_STARTUP_TASKS=${LLARS_SKIP_STARTUP_TASKS:-}
+      # LiveKit (Voice/Video Calls)
+      - LIVEKIT_API_KEY=${LIVEKIT_API_KEY:-devkey}
+      - LIVEKIT_API_SECRET=${LIVEKIT_API_SECRET:-devsecretdevsecretdevsecretdevsecret1234567890}
+      - LIVEKIT_API_URL=${LIVEKIT_API_URL:-http://livekit-service:7880}
+      - LIVEKIT_PUBLIC_URL=${LIVEKIT_PUBLIC_URL:-ws://localhost:7881}
     depends_on:
       db-maria-service:
         condition: service_healthy
@@ -214,6 +225,8 @@ services:
       - VITE_KEYCLOAK_CLIENT_ID=${AUTHENTIK_FRONTEND_CLIENT_ID:-llars-frontend}
       # When false (default), Socket.IO sticks to polling to avoid WebSocket errors with Werkzeug/threading
       - VITE_SOCKETIO_ENABLE_WEBSOCKET=${VITE_SOCKETIO_ENABLE_WEBSOCKET:-false}
+      # LiveKit public URL for WebRTC client connections
+      - VITE_LIVEKIT_PUBLIC_URL=${LIVEKIT_PUBLIC_URL:-ws://localhost:7881}
     develop:
       watch:
         - action: sync
@@ -367,7 +380,7 @@ services:
       - AUTHENTIK_POSTGRESql__PASSWORD=${AUTHENTIK_DB_PASSWORD:-dev_authentik_db_password}
       - AUTHENTIK_REDIS__HOST=authentik-redis
       - AUTHENTIK_LISTEN__PORT=9000
-      - AUTHENTIK_LISTEN__TRUSTED_PROXY_CIDRS=0.0.0.0/0,::/0
+      - AUTHENTIK_LISTEN__TRUSTED_PROXY_CIDRS=172.16.0.0/12,10.0.0.0/8,192.168.0.0/16
       - AUTHENTIK_ERROR_REPORTING__ENABLED=false
       - AUTHENTIK_BOOTSTRAP_EMAIL=${AUTHENTIK_BOOTSTRAP_EMAIL:-admin@example.com}
       - AUTHENTIK_BOOTSTRAP_PASSWORD=${AUTHENTIK_BOOTSTRAP_PASSWORD:-admin123}
@@ -433,17 +446,62 @@ services:
       timeout: 3s
       retries: 5
 
+  # LiveKit SFU - Voice/Video Calls
+  livekit-service:
+    container_name: llars_livekit_service
+    image: livekit/livekit-server:v1.8
+    ports:
+      - "7881:7881"   # TCP (WebSocket signaling)
+      - "7882:7882/udp"  # UDP (WebRTC media, start of range)
+    volumes:
+      - ./docker/livekit/livekit.yaml:/etc/livekit.yaml:ro
+    command: ["--config", "/etc/livekit.yaml"]
+    environment:
+      - TZ=Europe/Berlin
+      - "LIVEKIT_KEYS=${LIVEKIT_API_KEY:-devkey}: ${LIVEKIT_API_SECRET:-devsecretdevsecretdevsecretdevsecret1234567890}"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:7880 || exit 1"]
+      start_period: 10s
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # LiveKit Agents - STT Transcription Bot
+  livekit-agents-service:
+    container_name: llars_livekit_agents
+    build:
+      context: .
+      dockerfile: docker/livekit-agents/Dockerfile
+    environment:
+      - TZ=Europe/Berlin
+      - LIVEKIT_URL=ws://livekit-service:7880
+      - LIVEKIT_API_KEY=${LIVEKIT_API_KEY:-devkey}
+      - LIVEKIT_API_SECRET=${LIVEKIT_API_SECRET:-devsecretdevsecretdevsecretdevsecret1234567890}
+      - FLASK_API_URL=http://backend-flask-service:8081
+      - STT_DEFAULT_PROVIDER=${STT_DEFAULT_PROVIDER:-openai_whisper}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - GROQ_API_KEY=${GROQ_API_KEY:-}
+      - DEEPGRAM_API_KEY=${DEEPGRAM_API_KEY:-}
+    depends_on:
+      livekit-service:
+        condition: service_healthy
+      backend-flask-service:
+        condition: service_healthy
+    restart: unless-stopped
+
   # LLARS Redis - Server-autoritative Session Storage (Wizard Sessions, etc.)
   llars-redis:
     container_name: llars_redis
     image: public.ecr.aws/docker/library/redis:7-alpine
-    command: ["redis-server", "--save", "60", "1", "--appendonly", "yes"]
+    command: ["redis-server", "--save", "60", "1", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD:-dev_redis_password}"]
     volumes:
       - llars_redis_data:/data
     environment:
       - TZ=Europe/Berlin
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-dev_redis_password}
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD-SHELL", "redis-cli -a \"$REDIS_PASSWORD\" ping"]
       interval: 5s
       timeout: 3s
       retries: 5
@@ -482,6 +540,24 @@ services:
       authentik-db:
         condition: service_healthy
     restart: "no"
+
+  # =============================================================================
+  # Smoke & E2E Test Container (only started with --profile testing)
+  # =============================================================================
+  smoke-test-service:
+    container_name: llars_smoke_test
+    build:
+      context: .
+      dockerfile: docker/smoke-test/Dockerfile
+    network_mode: host
+    environment:
+      - BASE_URL=${SMOKE_TEST_URL:-http://localhost:55080}
+      - SYSTEM_ADMIN_API_KEY=${SYSTEM_ADMIN_API_KEY:-}
+      - PLAYWRIGHT_BASE_URL=${SMOKE_TEST_URL:-http://localhost:55080}
+      - E2E_TEST_PASSWORD=${E2E_TEST_PASSWORD:-admin123}
+      - CI=true
+    profiles:
+      - testing
 
 
 volumes:

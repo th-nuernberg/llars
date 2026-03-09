@@ -9,6 +9,7 @@ Ownership Rules:
 """
 
 import logging
+import json
 from datetime import datetime
 from flask import jsonify, request, g
 from auth.decorators import admin_required
@@ -33,6 +34,53 @@ from services.llm.llm_ai_task_runner import LLMAITaskRunner
 from services.user_profile_service import serialize_user_brief
 
 logger = logging.getLogger(__name__)
+
+
+def _parse_scenario_config(raw_config):
+    if isinstance(raw_config, str):
+        try:
+            raw_config = json.loads(raw_config)
+        except (json.JSONDecodeError, TypeError):
+            raw_config = {}
+    if raw_config is None:
+        raw_config = {}
+    if not isinstance(raw_config, dict):
+        raise ValidationError("config_json must be an object")
+    return dict(raw_config)
+
+
+def _normalize_task_description(value):
+    if value is None:
+        return ''
+    return str(value).strip()
+
+
+def _normalize_evaluation_criteria(value):
+    if value is None:
+        return []
+
+    if isinstance(value, str):
+        raw_items = value.replace('\r', '\n').replace(';', ',').split('\n')
+        values = []
+        for item in raw_items:
+            values.extend(item.split(','))
+    elif isinstance(value, list):
+        values = value
+    else:
+        return []
+
+    normalized = []
+    seen = set()
+    for item in values:
+        text = (item if isinstance(item, str) else str(item or '')).strip()
+        if not text:
+            continue
+        if text in seen:
+            continue
+        seen.add(text)
+        normalized.append(text)
+
+    return normalized
 
 
 @data_blueprint.route('/admin/scenarios', methods=['GET'])
@@ -126,9 +174,6 @@ def get_scenario_list():
 @handle_api_errors(logger_name='scenarios')
 def get_scenario_details(scenario_id=None):
     """Get detailed information about a specific scenario"""
-    # Authorization handled by @admin_required decorator
-    # Current user available in g.authentik_user
-
     # check if scenario id is valid
     if not scenario_id:
         raise ValidationError('Scenario id is missing')
@@ -136,6 +181,9 @@ def get_scenario_details(scenario_id=None):
     scenario = RatingScenarios.query.filter_by(id=scenario_id).first()
     if not scenario:
         raise NotFoundError('Scenario does not exist')
+
+    # Security: Verify ownership (admins can access all, researchers only their own)
+    check_scenario_ownership(scenario)
 
     func_type = FeatureFunctionType.query.filter_by(function_type_id=scenario.function_type_id).first().name
 
@@ -154,11 +202,13 @@ def get_scenario_details(scenario_id=None):
             'role': scenario_user.role.value,
         }
 
-        if scenario_user.role == ScenarioRoles.OWNER:
+        # Owner is determined by created_by field
+        if scenario_user.user.username == scenario.created_by:
             scenario_owner = user_info
-        elif scenario_user.role == ScenarioRoles.EVALUATOR:
+
+        if scenario_user.role == ScenarioRoles.EVALUATOR:
             scenario_evaluators.append(user_info)
-        elif scenario_user.role == ScenarioRoles.VIEWER:
+        elif scenario_user.role in (ScenarioRoles.VIEWER, ScenarioRoles.OWNER):
             scenario_viewers.append(user_info)
 
     # get all the threads of the scenario
@@ -214,9 +264,7 @@ def create_scenario():
     config_json = data.get("config_json")
     if config_json is None:
         config_json = data.get("config")
-    if config_json is not None and not isinstance(config_json, dict):
-        raise ValidationError("config_json must be an object")
-    config_json = config_json or {}
+    config_json = _parse_scenario_config(config_json)
 
     distribution_mode = config_json.get("distribution_mode")
     order_mode = config_json.get("order_mode")
@@ -254,6 +302,21 @@ def create_scenario():
         config_json["llm_evaluators"] = llm_evaluators
     else:
         config_json.pop("llm_evaluators", None)
+
+    task_description = _normalize_task_description(
+        data.get("task_description", config_json.get("task_description"))
+    )
+    evaluation_criteria = _normalize_evaluation_criteria(
+        data.get("evaluation_criteria", config_json.get("evaluation_criteria"))
+    )
+    if task_description:
+        config_json["task_description"] = task_description
+    else:
+        config_json.pop("task_description", None)
+    if evaluation_criteria:
+        config_json["evaluation_criteria"] = evaluation_criteria
+    else:
+        config_json.pop("evaluation_criteria", None)
 
     # Accept various field names for backwards compatibility
     # evaluators = users who can interact (rate/evaluate)
@@ -315,10 +378,17 @@ def create_scenario():
     new_scenario_users = []
     seen_user = set()
 
-    # Add the creating user as VIEWER (ownership is determined by created_by field)
+    # Build set of evaluator IDs to check if creator is among them
+    evaluator_list = client_data['evaluator']
+    if not isinstance(evaluator_list, list):
+        evaluator_list = []
+    evaluator_id_set = set(uid for uid in evaluator_list if isinstance(uid, int))
+
+    # Add the creating user: EVALUATOR if in evaluator list, otherwise VIEWER
     creating_user = User.query.filter_by(username=creating_username).first()
     if creating_user:
-        new_scenario_users.append({"id": creating_user.id, "role": ScenarioRoles.VIEWER})
+        creator_role = ScenarioRoles.EVALUATOR if creating_user.id in evaluator_id_set else ScenarioRoles.VIEWER
+        new_scenario_users.append({"id": creating_user.id, "role": creator_role})
         seen_user.add(creating_user.id)
 
     # Auto-add admin as VIEWER if not the creating user
@@ -328,9 +398,6 @@ def create_scenario():
         seen_user.add(admin_user.id)
 
     # Validate and collect evaluators (users who can interact/rate)
-    evaluator_list = client_data['evaluator']
-    if not isinstance(evaluator_list, list):
-        evaluator_list = []
     for user_id in evaluator_list:
         if not isinstance(user_id, int):
             continue
@@ -528,7 +595,10 @@ def edit_scenario():
         "id": data.get('id'),
         "name": data.get('new_name'),
         "begin": data.get('new_begin'),
-        "end": data.get('new_end')
+        "end": data.get('new_end'),
+        "task_description": data.get('task_description', data.get('new_task_description')),
+        "evaluation_criteria": data.get('evaluation_criteria', data.get('new_evaluation_criteria')),
+        "config_json": data.get('config_json', data.get('new_config_json')),
     }
 
     # Validate scenario ID
@@ -568,6 +638,37 @@ def edit_scenario():
         scenario.scenario_name = client_data['name']
         scenario.begin = client_data['begin']
         scenario.end = client_data['end']
+
+        existing_config = _parse_scenario_config(getattr(scenario, 'config_json', {}) or {})
+        incoming_config = None
+        if client_data['config_json'] is not None:
+            incoming_config = _parse_scenario_config(client_data['config_json'])
+
+        next_config = {**existing_config, **(incoming_config or {})}
+        has_task_update = client_data['task_description'] is not None
+        has_criteria_update = client_data['evaluation_criteria'] is not None
+
+        if has_task_update or 'task_description' in next_config:
+            normalized_task = _normalize_task_description(
+                client_data['task_description'] if has_task_update else next_config.get('task_description')
+            )
+            if normalized_task:
+                next_config['task_description'] = normalized_task
+            else:
+                next_config.pop('task_description', None)
+
+        if has_criteria_update or 'evaluation_criteria' in next_config:
+            normalized_criteria = _normalize_evaluation_criteria(
+                client_data['evaluation_criteria'] if has_criteria_update else next_config.get('evaluation_criteria')
+            )
+            if normalized_criteria:
+                next_config['evaluation_criteria'] = normalized_criteria
+            else:
+                next_config.pop('evaluation_criteria', None)
+
+        if incoming_config is not None or has_task_update or has_criteria_update:
+            scenario.config_json = next_config
+
         db.session.commit()
 
         try:

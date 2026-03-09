@@ -88,6 +88,7 @@ from db.models.markdown_collab import (
 # LaTeX Collab models
 from db.models.latex_collab import (
     LatexWorkspaceVisibility,
+    AccessRequestStatus,
     LatexNodeType,
     LatexWorkspace,
     LatexWorkspaceMember,
@@ -96,6 +97,7 @@ from db.models.latex_collab import (
     LatexCommit,
     LatexCompileJob,
     LatexComment,
+    LatexWorkspaceAccessRequest,
 )
 
 # LLM Model configuration
@@ -145,7 +147,6 @@ from db.models.scenario import (
     ScenarioThreadDistribution,
     # Other models
     Message,
-    LLM,
     FeatureType,
     ConsultingCategoryType,
     UserConsultingCategorySelection,
@@ -213,6 +214,48 @@ from db.models.pipeline import (
     PipelineIteration,
 )
 
+# Anonymization Pipeline models
+from db.models.anonymization import (
+    AnonymizationConversation,
+    AnonymizationMessage,
+    AnonymizationEntity,
+    AnonymizationMessageVersion,
+)
+
+# Conference Manager models
+from db.models.conference import (
+    CoreRanking,
+    PaperStatus,
+    SubmissionStatus,
+    ResearchGroupRole,
+    ResearchGroupRequestStatus,
+    ResearchGroup,
+    ResearchGroupMember,
+    ResearchGroupAccessRequest,
+    ConferenceSeries,
+    Conference,
+    Paper,
+    PaperAuthor,
+    PaperSubmission,
+)
+
+# Messaging models
+from db.models.messaging import (
+    MessagingConversation,
+    MessagingParticipant,
+    MessagingMessage,
+    MessagingAttachment,
+    MessagingReaction,
+    MessagingReadReceipt,
+    MessagingEncryptionKey,
+    MessagingCall,
+    MessagingCallParticipant,
+    MessagingLinkPreview,
+)
+
+# Scenario Stats Cache
+from db.models.scenario_stats_cache import ScenarioStatsCache
+
 __all__ = [
     # User
     'User',
@@ -276,6 +319,7 @@ __all__ = [
     'MarkdownCommit',
     # LaTeX Collab
     'LatexWorkspaceVisibility',
+    'AccessRequestStatus',
     'LatexNodeType',
     'LatexWorkspace',
     'LatexWorkspaceMember',
@@ -284,6 +328,7 @@ __all__ = [
     'LatexCommit',
     'LatexCompileJob',
     'LatexComment',
+    'LatexWorkspaceAccessRequest',
     # LLM Model
     'LLMModel',
     'DEFAULT_LLM_MODELS',
@@ -324,7 +369,6 @@ __all__ = [
     'ScenarioThreadDistribution',
     # Other models
     'Message',
-    'LLM',
     'FeatureType',
     'ConsultingCategoryType',
     'UserConsultingCategorySelection',
@@ -340,6 +384,11 @@ __all__ = [
     # Authenticity
     'AuthenticityConversation',
     'UserAuthenticityVote',
+    # Anonymization Pipeline
+    'AnonymizationConversation',
+    'AnonymizationMessage',
+    'AnonymizationEntity',
+    'AnonymizationMessageVersion',
     'UserPrompt',
     'UserPromptShare',
     'PromptCommit',
@@ -372,4 +421,31 @@ __all__ = [
     'PipelineIterationStatus',
     'PipelineRun',
     'PipelineIteration',
+    # Conference Manager
+    'CoreRanking',
+    'PaperStatus',
+    'SubmissionStatus',
+    'ResearchGroupRole',
+    'ResearchGroupRequestStatus',
+    'ResearchGroup',
+    'ResearchGroupMember',
+    'ResearchGroupAccessRequest',
+    'ConferenceSeries',
+    'Conference',
+    'Paper',
+    'PaperAuthor',
+    'PaperSubmission',
+    # Messaging
+    'MessagingConversation',
+    'MessagingParticipant',
+    'MessagingMessage',
+    'MessagingAttachment',
+    'MessagingReaction',
+    'MessagingReadReceipt',
+    'MessagingEncryptionKey',
+    'MessagingCall',
+    'MessagingCallParticipant',
+    'MessagingLinkPreview',
+    # Scenario Stats Cache
+    'ScenarioStatsCache',
 ]

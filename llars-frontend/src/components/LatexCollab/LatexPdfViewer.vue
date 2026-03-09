@@ -27,6 +27,16 @@
       <v-chip v-if="pageCount" size="x-small" variant="tonal">
         {{ $t('latexCollab.pdf.pages', { count: pageCount }) }}
       </v-chip>
+      <v-btn
+        v-if="hasPdf"
+        icon
+        variant="text"
+        size="x-small"
+        :title="$t('latexCollab.pdf.download')"
+        @click="downloadPdf"
+      >
+        <LIcon size="18">pdf-download</LIcon>
+      </v-btn>
     </div>
 
     <div v-if="error" class="px-3 pb-3">
@@ -455,6 +465,25 @@ function zoomOut() {
 
 function resetZoom() {
   zoom.value = 1
+}
+
+async function downloadPdf() {
+  if (!props.workspaceId) return
+  try {
+    const params = props.jobId ? `?job_id=${props.jobId}` : ''
+    const res = await axios.get(
+      `${API_BASE}/api/latex-collab/workspaces/${props.workspaceId}/pdf${params}`,
+      { headers: authHeaders(), responseType: 'blob' }
+    )
+    const url = URL.createObjectURL(res.data)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `workspace-${props.workspaceId}.pdf`
+    a.click()
+    URL.revokeObjectURL(url)
+  } catch (err) {
+    console.error('PDF download failed:', err)
+  }
 }
 </script>
 

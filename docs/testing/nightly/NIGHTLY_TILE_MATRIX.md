@@ -34,6 +34,7 @@ Diese Datei ist die operative Referenz für die Nightly-Kacheltests.
 | Anonymisierungs-Pipeline | `/anonymization` | researcher, admin | Tile Regression |
 | KAIMO | `/kaimo` | evaluator, researcher, admin | Tile Regression |
 | OnCoCo | `/oncoco` | admin | Tile Regression |
+| DB Preisagent | `/db-agent` | chatbot_manager, admin | Tile Regression |
 | Admin Dashboard | `/admin?tab=overview` | admin | Tile Regression |
 | Chatbot Admin | `/chatbot-manager` | chatbot_manager, admin | Tile Regression |
 | RAG Admin | `/chatbot-manager?tab=rag` | chatbot_manager, admin | Tile Regression |

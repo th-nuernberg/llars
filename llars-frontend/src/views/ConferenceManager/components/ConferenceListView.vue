@@ -1,5 +1,5 @@
 <template>
-  <div class="conference-list-view">
+  <div class="conference-list-view" :class="{ 'is-mobile': isMobile }">
     <!-- Filter Bar -->
     <div class="filter-bar mb-4">
       <v-text-field
@@ -37,6 +37,7 @@
       </div>
 
       <v-text-field
+        v-if="!isMobile"
         v-model.number="filterYear"
         :label="t('conferenceManager.conference.year')"
         type="number"
@@ -48,6 +49,7 @@
       />
 
       <v-btn
+        v-if="!isMobile"
         :icon="true"
         variant="text"
         size="small"
@@ -58,9 +60,10 @@
         <v-icon>{{ groupBySeries ? 'mdi-format-list-group' : 'mdi-format-list-bulleted' }}</v-icon>
       </v-btn>
 
-      <v-spacer />
+      <v-spacer v-if="!isMobile" />
 
       <v-btn
+        v-if="!isMobile"
         color="accent"
         variant="outlined"
         :style="{ borderRadius: '16px 4px 16px 4px' }"
@@ -72,6 +75,7 @@
       </v-btn>
 
       <v-btn
+        v-if="!isMobile"
         color="primary"
         :style="{ borderRadius: '16px 4px 16px 4px' }"
         prepend-icon="mdi-plus"
@@ -81,8 +85,8 @@
       </v-btn>
     </div>
 
-    <!-- Legend -->
-    <div class="legend mb-3">
+    <!-- Legend (desktop only) -->
+    <div v-if="!isMobile" class="legend mb-3">
       <span class="legend-label">{{ t('conferenceManager.legend.ranking') }}:</span>
       <span v-for="r in CORE_RANKINGS" :key="r.value" class="legend-item">
         <span class="legend-dot" :style="{ backgroundColor: r.color }" />
@@ -285,6 +289,19 @@
       @saved="onSaved"
     />
 
+    <!-- Mobile FAB -->
+    <v-btn
+      v-if="isMobile"
+      icon
+      color="primary"
+      size="default"
+      class="mobile-fab"
+      elevation="4"
+      @click="showCreate"
+    >
+      <v-icon>mdi-plus</v-icon>
+    </v-btn>
+
     <!-- Delete Confirm -->
     <v-dialog v-model="deleteDialog" max-width="400">
       <v-card>
@@ -312,6 +329,10 @@ import CoreRankingChip from './CoreRankingChip.vue'
 import ConferenceFormDialog from './ConferenceFormDialog.vue'
 import ConferenceWizardDialog from './ConferenceWizardDialog.vue'
 import VenueMapPopup from './VenueMapPopup.vue'
+
+const props = defineProps({
+  isMobile: { type: Boolean, default: false },
+})
 
 const { t } = useI18n()
 const route = useRoute()
@@ -463,13 +484,22 @@ function loadData() {
   })
 }
 
-const listColumns = computed(() => [
-  { key: 'core_ranking', label: t('conferenceManager.conference.coreRanking'), width: '72px', sortable: true },
-  { key: 'acronym', label: t('conferenceManager.conference.name'), flex: true, sortable: true },
-  { key: 'submission_deadline', label: t('conferenceManager.conference.submissionDeadline'), width: '130px', sortable: true },
-  { key: 'start_date', label: t('conferenceManager.conference.startDate'), width: '140px', sortable: true },
-  { key: 'location', label: t('conferenceManager.conference.location'), width: '140px', sortable: true },
-])
+const listColumns = computed(() => {
+  if (props.isMobile) {
+    return [
+      { key: 'core_ranking', label: '', width: '40px', sortable: true },
+      { key: 'acronym', label: t('conferenceManager.conference.name'), flex: true, sortable: true },
+      { key: 'submission_deadline', label: t('conferenceManager.conference.submissionDeadline'), width: '100px', sortable: true },
+    ]
+  }
+  return [
+    { key: 'core_ranking', label: t('conferenceManager.conference.coreRanking'), width: '72px', sortable: true },
+    { key: 'acronym', label: t('conferenceManager.conference.name'), flex: true, sortable: true },
+    { key: 'submission_deadline', label: t('conferenceManager.conference.submissionDeadline'), width: '130px', sortable: true },
+    { key: 'start_date', label: t('conferenceManager.conference.startDate'), width: '140px', sortable: true },
+    { key: 'location', label: t('conferenceManager.conference.location'), width: '140px', sortable: true },
+  ]
+})
 
 function showCreate() {
   editingConference.value = null
@@ -559,11 +589,21 @@ function isDeadlineSoon(isoStr) {
   overflow-y: auto;
 }
 
+.scroll-area::-webkit-scrollbar {
+  width: 6px;
+}
+
+.scroll-area::-webkit-scrollbar-thumb {
+  background: rgba(var(--v-theme-on-surface), 0.15);
+  border-radius: 3px;
+}
+
 .filter-bar {
   display: flex;
   align-items: center;
   gap: 12px;
   flex-wrap: wrap;
+  flex-shrink: 0;
 }
 
 .filter-search {
@@ -759,6 +799,51 @@ function isDeadlineSoon(isoStr) {
 @keyframes shimmer {
   0% { background-position: 200% 0; }
   100% { background-position: -200% 0; }
+}
+
+/* Mobile FAB */
+.mobile-fab {
+  position: absolute;
+  bottom: 16px;
+  right: 16px;
+  z-index: 2;
+  border-radius: 16px 4px 16px 4px !important;
+}
+
+/* Mobile styles */
+.is-mobile .filter-bar {
+  gap: 8px;
+  margin-bottom: 8px !important;
+}
+
+.is-mobile .filter-search {
+  max-width: none;
+  min-width: 0;
+}
+
+.is-mobile .ranking-chips {
+  gap: 4px;
+}
+
+.is-mobile .ranking-chips .v-chip {
+  font-size: 0.7rem;
+}
+
+.is-mobile .row-title {
+  font-size: 0.82rem;
+}
+
+.is-mobile .row-subtitle {
+  font-size: 0.7rem;
+}
+
+.is-mobile .col-deadline {
+  font-size: 0.75rem;
+}
+
+/* On mobile, always show actions (no hover) */
+.is-mobile :deep(.l-list-row .l-col--actions) {
+  opacity: 1;
 }
 
 @media (max-width: 960px) {

@@ -7,6 +7,44 @@ import { viteStaticCopy } from 'vite-plugin-static-copy'
 // Utilities
 import { defineConfig } from 'vite'
 import { fileURLToPath, URL } from 'node:url'
+import { execSync } from 'node:child_process'
+
+// Build-time semantic version derived from git tags.
+// Tag a release (e.g. `git tag v3.1.0`), then versions auto-increment:
+//   dev branch:  patch bumps → v3.1.1, v3.1.2, ...
+//   main branch: minor bumps → v3.2.0, v3.3.0, ...
+function getVersionInfo() {
+  const run = (cmd) => execSync(cmd, { encoding: 'utf-8', cwd: '..' }).trim()
+  try {
+    const commitHash = run('git rev-parse --short HEAD')
+    const branch = run('git rev-parse --abbrev-ref HEAD')
+    // git describe: "v3.1.0-42-g66818a6f" → 42 commits since tag v3.1.0
+    const describe = run('git describe --tags --long --match "v*" 2>/dev/null || echo ""')
+
+    let version
+    const match = describe.match(/^v(\d+)\.(\d+)\.(\d+)-(\d+)-g/)
+    if (match) {
+      const [, major, minor, patch, commits] = match
+      if (branch === 'main') {
+        // Main: bump minor per commit, reset patch → v3.2.0, v3.3.0, ...
+        version = `${major}.${Number(minor) + Number(commits)}.0`
+      } else {
+        // Dev/feature branches: bump patch per commit → v3.1.1, v3.1.2, ...
+        version = `${major}.${minor}.${Number(patch) + Number(commits)}`
+      }
+    } else {
+      // No tags yet — use commit count as patch
+      const count = run('git rev-list --count HEAD')
+      version = `0.0.${count}`
+    }
+
+    return { version, commitHash, branch }
+  } catch {
+    return { version: '0.0.0', commitHash: 'unknown', branch: 'unknown' }
+  }
+}
+
+const versionInfo = getVersionInfo()
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -30,7 +68,10 @@ export default defineConfig({
       ]
     }),
   ],
-  define: { 'process.env': {} },
+  define: {
+    'process.env': {},
+    __APP_VERSION__: JSON.stringify(versionInfo),
+  },
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url))

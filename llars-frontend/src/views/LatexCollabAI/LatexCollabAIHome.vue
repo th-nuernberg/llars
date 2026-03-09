@@ -963,6 +963,27 @@ onUnmounted(() => {
   padding: 24px 12px;
 }
 
+/* Mobile: access requests card should only take content height */
+.latex-home.is-mobile :deep(.l-card) {
+  height: auto;
+}
+
+/* Mobile: compact access request rows */
+.latex-home.is-mobile .request-row {
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px 10px;
+}
+
+.latex-home.is-mobile .request-info {
+  flex: 1 1 calc(100% - 48px);
+}
+
+.latex-home.is-mobile .request-actions {
+  width: 100%;
+  justify-content: flex-end;
+}
+
 .latex-home.is-tablet .page-header {
   margin-bottom: 20px;
 }

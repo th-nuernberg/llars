@@ -433,10 +433,13 @@ class ResearchGroupService:
     @staticmethod
     def get_group_stats(group_id: int) -> Dict[str, Any]:
         """Get statistics for a specific group."""
-        from db.models import Conference, Paper, ResearchGroupMember
+        from db.models import Conference, Paper, ResearchGroupMember, ResearchGroupAccessRequest, ResearchGroupRequestStatus
 
         return {
             "conferences": Conference.query.filter_by(group_id=group_id).count(),
             "papers": Paper.query.filter_by(group_id=group_id).count(),
             "members": ResearchGroupMember.query.filter_by(group_id=group_id).count(),
+            "pending_requests": ResearchGroupAccessRequest.query.filter_by(
+                group_id=group_id, status=ResearchGroupRequestStatus.PENDING
+            ).count(),
         }

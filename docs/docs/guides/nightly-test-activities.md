@@ -152,7 +152,7 @@ Jede Kachel wird pro Rolle geprueft:
 | Kein 5xx | Keine Backend-API-Fehler waehrend Navigation |
 | Safe Button Sweep | Nicht-destruktive Buttons auf Zielseite werden geklickt |
 
-**Abgedeckte Kacheln:** Prompt Engineering, Batch Generation, Evaluation, Scenario Manager, Chatbot, Video, Markdown Collab, LaTeX Collab, Chatbot Arena, Anonymization, Anonymisierungs-Pipeline, KAIMO, OnCoCo, Admin Dashboard, Chatbot Admin, RAG Admin, Conference Manager, Pipeline, User Settings
+**Abgedeckte Kacheln:** Prompt Engineering, Batch Generation, Evaluation, Scenario Manager, Chatbot, Video, Markdown Collab, LaTeX Collab, Chatbot Arena, Anonymization, Anonymisierungs-Pipeline, KAIMO, OnCoCo, DB Preisagent, Admin Dashboard, Chatbot Admin, RAG Admin, Conference Manager, Pipeline, User Settings
 
 **Rollen:** evaluator, researcher, chatbot_manager, admin
 

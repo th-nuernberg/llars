@@ -477,14 +477,29 @@ class LLMAITaskRunner:
         return f"{scenario_guidance}\n\n{user_prompt}"
 
     @staticmethod
-    def _get_comparison_prompt_settings(scenario_id: int) -> Tuple[str, List[str]]:
+    def _get_comparison_prompt_settings(scenario_id: int) -> Tuple[str, str]:
         """
         Resolve comparison prompt settings from scenario config.
 
         Supports both flat config_json and nested config_json.eval_config.config.
-        Returns a tuple of (test_instruction, criteria_list).
+        Returns a tuple of (test_instruction, criteria_markdown_or_bullets).
         """
-        default_question = "Welche Antwort ist besser?"
+        return LLMAITaskRunner._get_scenario_briefing_prompt_settings(
+            scenario_id,
+            default_task_description="Welche Antwort ist besser?",
+        )
+
+    @staticmethod
+    def _get_scenario_briefing_prompt_settings_from_config(
+        config_raw: Any,
+        default_task_description: str = "",
+    ) -> Tuple[str, str]:
+        """
+        Resolve briefing prompt settings from a config object.
+
+        Supports both flat config and nested eval_config.config payloads.
+        Returns a tuple of (task_description, criteria_markdown_or_bullets).
+        """
 
         def _as_localized_text(value: Any) -> str:
             if isinstance(value, str):
@@ -499,11 +514,16 @@ class LLMAITaskRunner:
                         return text.strip()
             return ""
 
-        scenario = RatingScenarios.query.get(scenario_id)
-        if not scenario:
-            return default_question, []
+        def _normalize_markdown_block(value: Any) -> str:
+            text = _as_localized_text(value)
+        if not text:
+            return ""
 
-        config = LLMAITaskRunner._to_config_dict(scenario.config_json)
+            lines = [line.rstrip() for line in text.splitlines()]
+            cleaned_lines = [line for line in lines if line.strip()]
+            return "\n".join(cleaned_lines).strip()
+
+        config = LLMAITaskRunner._to_config_dict(config_raw)
         eval_config = config.get("eval_config")
         if isinstance(eval_config, dict):
             nested = eval_config.get("config")
@@ -512,35 +532,55 @@ class LLMAITaskRunner:
         if not isinstance(eval_config, dict):
             eval_config = config
 
-        question = _as_localized_text(eval_config.get("question")) or default_question
+        task_description = (
+            _normalize_markdown_block(eval_config.get("taskDescriptionMarkdown"))
+            or _normalize_markdown_block(eval_config.get("task_description_markdown"))
+            or _normalize_markdown_block(config.get("taskDescriptionMarkdown"))
+            or _normalize_markdown_block(config.get("task_description_markdown"))
+            or _as_localized_text(eval_config.get("question"))
+            or _as_localized_text(config.get("task_description"))
+            or default_task_description
+        )
+        criteria_markdown = (
+            _normalize_markdown_block(eval_config.get("criteriaMarkdown"))
+            or _normalize_markdown_block(eval_config.get("criteria_markdown"))
+            or _normalize_markdown_block(config.get("criteriaMarkdown"))
+            or _normalize_markdown_block(config.get("evaluation_criteria_markdown"))
+        )
 
-        criteria_raw = eval_config.get("criteria") or []
-        normalized_criteria: List[str] = []
-        if isinstance(criteria_raw, list):
-            for criterion in criteria_raw:
-                if isinstance(criterion, str):
-                    name = criterion.strip()
-                    if name:
-                        normalized_criteria.append(name)
-                    continue
+        if criteria_markdown:
+            return task_description, criteria_markdown
 
-                if isinstance(criterion, dict):
-                    name_value = (
-                        criterion.get("name")
-                        or criterion.get("label")
-                        or criterion.get("id")
-                    )
-                    name = _as_localized_text(name_value)
-                    if not name:
-                        continue
+        criteria_raw = eval_config.get("criteria")
+        if criteria_raw is None:
+            criteria_raw = config.get("evaluation_criteria")
+        normalized_criteria = LLMAITaskRunner._normalize_scenario_criteria(criteria_raw)
+        criteria_block = "\n".join(
+            f"- {criterion}" for criterion in normalized_criteria if criterion
+        )
 
-                    weight = criterion.get("weight")
-                    if isinstance(weight, (int, float)):
-                        normalized_criteria.append(f"{name} ({round(float(weight) * 100)}%)")
-                    else:
-                        normalized_criteria.append(name)
+        return task_description, criteria_block
 
-        return question, normalized_criteria
+    @staticmethod
+    def _get_scenario_briefing_prompt_settings(
+        scenario_id: int,
+        default_task_description: str = "",
+    ) -> Tuple[str, str]:
+        """
+        Resolve briefing prompt settings from scenario config.
+
+        Supports both flat config_json and nested config_json.eval_config.config.
+        Returns a tuple of (task_description, criteria_markdown_or_bullets).
+        """
+
+        scenario = RatingScenarios.query.get(scenario_id)
+        if not scenario:
+            return default_task_description, ""
+
+        return LLMAITaskRunner._get_scenario_briefing_prompt_settings_from_config(
+            scenario.config_json,
+            default_task_description=default_task_description,
+        )
 
     @staticmethod
     def _run_comparison_sessions(
@@ -560,8 +600,7 @@ class LLMAITaskRunner:
 
         criteria_block = ""
         if comparison_criteria:
-            criteria_lines = "\n".join(f"- {criterion}" for criterion in comparison_criteria)
-            criteria_block = f"Bewertungskriterien:\n{criteria_lines}\n\n"
+            criteria_block = f"Bewertungskriterien:\n{comparison_criteria}\n\n"
 
         consecutive_failures = 0
         total_failures = 0
@@ -853,8 +892,31 @@ class LLMAITaskRunner:
             return
 
         bucket_names, bucket_keys = LLMAITaskRunner._get_bucket_config(scenario)
-        scenario_guidance = LLMAITaskRunner._build_scenario_guidance_block_from_config(
-            scenario.config_json
+        task_description, criteria_markdown = LLMAITaskRunner._get_scenario_briefing_prompt_settings(
+            scenario_id
+        )
+        task_block = (
+            f"Aufgabenbeschreibung:\n{task_description}\n\n"
+            if task_description
+            else ""
+        )
+        criteria_block = (
+            f"Bewertungskriterien:\n{criteria_markdown}\n\n"
+            if criteria_markdown
+            else ""
+        )
+        task_description, criteria_markdown = LLMAITaskRunner._get_scenario_briefing_prompt_settings(
+            scenario_id
+        )
+        task_block = (
+            f"Aufgabenbeschreibung:\n{task_description}\n\n"
+            if task_description
+            else ""
+        )
+        criteria_block = (
+            f"Bewertungskriterien:\n{criteria_markdown}\n\n"
+            if criteria_markdown
+            else ""
         )
         thread_ids_list = list(thread_ids)
         consecutive_failures = 0
@@ -947,7 +1009,7 @@ Antworte AUSSCHLIESSLICH im JSON-Format mit den Feature-IDs (Zahlen)."""
 
                     user_prompt = f"""Bewerte die folgenden Zusammenfassungen basierend auf dem Originaltext.
 
-ORIGINALTEXT:
+{task_block}{criteria_block}ORIGINALTEXT:
 {source_text[:2000]}{"..." if len(source_text) > 2000 else ""}
 
 ZUSAMMENFASSUNGEN (zufällig sortiert):
@@ -969,6 +1031,7 @@ Antworte im JSON-Format (verwende die numerischen Feature-IDs, nicht die Buchsta
                     )
                     context_section = f"\nKONTEXT:\n{source_text[:1500]}...\n" if source_text else ""
                     user_prompt = (
+                        f"{task_block}{criteria_block}"
                         f"Ordne alle Feature-IDs genau einmal einem Bucket zu. "
                         f"Erlaubte Buckets: {buckets_list}.\n"
                         f"{context_section}\n"
@@ -1091,6 +1154,8 @@ Antworte im JSON-Format (verwende die numerischen Feature-IDs, nicht die Buchsta
         scenario_guidance = LLMAITaskRunner._build_scenario_guidance_block(scenario_id)
 
         try:
+            _, api_model_id = LLMClientFactory.resolve_client_and_model_id(model_id)
+
             # Check if already processed
             existing = LLMTaskResult.query.filter_by(
                 scenario_id=scenario_id,
@@ -1120,6 +1185,19 @@ Antworte im JSON-Format (verwende die numerischen Feature-IDs, nicht die Buchsta
             # Get the main content (typically the generated text to rank)
             item_content = messages[0].content if messages else ""
             item_subject = item.subject or "Item"
+            task_description, criteria_markdown = LLMAITaskRunner._get_scenario_briefing_prompt_settings(
+                scenario_id
+            )
+            task_block = (
+                f"Aufgabenbeschreibung:\n{task_description}\n\n"
+                if task_description
+                else ""
+            )
+            criteria_block = (
+                f"Bewertungskriterien:\n{criteria_markdown}\n\n"
+                if criteria_markdown
+                else ""
+            )
 
             # Detect if this is a summary (from sender or subject)
             is_summary = any(
@@ -1155,7 +1233,7 @@ Antworte AUSSCHLIESSLICH im JSON-Format."""
 
                 user_prompt = f"""Bewerte die folgende Zusammenfassung:
 
-TITEL: {item_subject}
+{task_block}{criteria_block}TITEL: {item_subject}
 
 INHALT:
 {item_content[:3000]}{"..." if len(item_content) > 3000 else ""}
@@ -1171,7 +1249,7 @@ Antworte im JSON-Format:
                     "Du bist ein strenger Evaluator für Qualitäts-Rankings. "
                     "Antworte ausschließlich im JSON-Format."
                 )
-                user_prompt = f"""Bewerte den folgenden Text und ordne ihn einem Bucket zu.
+                user_prompt = f"""{task_block}{criteria_block}Bewerte den folgenden Text und ordne ihn einem Bucket zu.
 
 TITEL: {item_subject}
 
@@ -2115,8 +2193,7 @@ Antworte im JSON-Format:
 
         criteria_block = ""
         if comparison_criteria:
-            criteria_lines = "\n".join(f"- {criterion}" for criterion in comparison_criteria)
-            criteria_block = f"Bewertungskriterien:\n{criteria_lines}\n\n"
+            criteria_block = f"Bewertungskriterien:\n{comparison_criteria}\n\n"
 
         consecutive_failures = 0
         total_failures = 0

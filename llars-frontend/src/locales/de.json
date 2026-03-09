@@ -2582,6 +2582,10 @@
         "title": "OnCoCo Analyse",
         "description": "Beratungsgespräche auf Satzebene klassifizieren (68 Kategorien)"
       },
+      "dbAgent": {
+        "title": "DB Preisagent",
+        "description": "Deutsche Bahn Preise überwachen und günstige Verbindungen finden"
+      },
       "adminDashboard": {
         "title": "Admin Dashboard",
         "description": "System-Übersicht und Administration"
@@ -2820,7 +2824,7 @@
         "basedOn": "Basiert auf",
         "basicInfo": "Grunddaten",
         "name": "Szenario-Name",
-        "descriptionField": "Beschreibung",
+        "descriptionField": "Szenariobeschreibung",
         "descriptionHint": "Optional: Beschreiben Sie den Zweck dieses Szenarios",
         "aiGenerationPromptField": "KI-Generierungs-Prompt",
         "aiGenerationPromptHint": "Optional: Beschreiben Sie kurz, welche Perspektive oder Schwerpunkte die KI bei Aufgabenbeschreibung und Kriterien berücksichtigen soll",
@@ -2877,7 +2881,7 @@
         "team": "Team",
         "type": "Typ",
         "name": "Name",
-        "descriptionLabel": "Beschreibung",
+        "descriptionLabel": "Szenariobeschreibung",
         "taskDescriptionLabel": "Aufgabenbeschreibung",
         "evaluationCriteriaLabel": "Evaluationskriterien",
         "preset": "Vorlage",
@@ -3374,15 +3378,15 @@
       "title": "Szenario-Einstellungen",
       "basicInfo": "Grundinformationen",
       "name": "Name",
-      "description": "Beschreibung",
+      "description": "Szenariobeschreibung",
       "aiGenerationPrompt": "KI-Generierungs-Prompt",
       "aiGenerationPromptHint": "Optional: Freier Prompt für KI-Vorschläge zu Aufgabenbeschreibung und Evaluationskriterien",
       "taskDescription": "Aufgabenbeschreibung",
-      "taskDescriptionHint": "Anweisung für Evaluatoren, worauf sie achten sollen",
+      "taskDescriptionHint": "Markdown-Briefing für Evaluatoren, worauf sie achten sollen",
       "taskDescriptionTooltipTitle": "Was gehört in die Aufgabenbeschreibung?",
       "taskDescriptionTooltipMarkdown": "Beschreibt den **Bewertungsauftrag** für Evaluatoren.\n\nBeispiele:\n- Welchen Aspekt sollen Evaluatoren priorisieren?\n- Welche Zielgruppe oder welcher Kontext liegt vor?\n- Wie soll bei Unsicherheit entschieden werden?",
       "evaluationCriteria": "Evaluationskriterien",
-      "evaluationCriteriaHint": "Kriterien als Stichworte hinzufügen (Enter oder Komma)",
+      "evaluationCriteriaHint": "Markdown mit Kriterien, Gewichtungen oder Bewertungsregeln",
       "evaluationCriteriaTooltipTitle": "Wie sollen Evaluationskriterien genutzt werden?",
       "evaluationCriteriaTooltipMarkdown": "Kriterien definieren, **woran** bewertet wird.\n\nTipps:\n- Ein Kriterium pro Stichwort (z. B. Empathie, Klarheit, Fachlichkeit)\n- Möglichst präzise und beobachtbar formulieren\n- Kriterien sollten zur Aufgabenbeschreibung passen",
       "timePeriod": "Zeitraum",
@@ -3892,6 +3896,12 @@
     "clickToView": "Klicken zum Öffnen",
     "viewerBanner": "Sie sind Betrachter. Wechseln Sie im Team-Tab zur Evaluator-Rolle, um teilzunehmen.",
     "viewerReadOnly": "Nur-Lese-Modus",
+    "briefing": {
+      "title": "Briefing",
+      "taskDescription": "Aufgabenbeschreibung",
+      "taskDescriptionPlaceholder": "z.B. Beschreiben Sie kurz die Aufgabe und den Bewertungsfokus.",
+      "criteria": "Evaluationskriterien"
+    },
     "item": "Eintrag #{num}",
     "tools": {
       "ranking": {
@@ -5040,6 +5050,7 @@
     "pdf": {
       "title": "PDF-Preview",
       "compiling": "Kompiliere...",
+      "download": "PDF herunterladen",
       "downloadTitle": "Kompilierte PDF herunterladen",
       "downloadSuccess": "PDF-Download gestartet",
       "downloadError": "PDF-Download fehlgeschlagen",
@@ -5052,6 +5063,12 @@
       "compilingStatus": "Kompiliere...",
       "preparing": "PDF wird vorbereitet...",
       "loadFailed": "PDF konnte nicht geladen werden"
+    },
+    "mobile": {
+      "files": "Dateien",
+      "editor": "Editor",
+      "comments": "Kommentare",
+      "jumpToPdf": "Zur PDF-Stelle springen"
     },
     "outline": {
       "title": "Gliederung",
@@ -6789,6 +6806,7 @@
       "allConferences": "Alle Konferenzen"
     },
     "stats": {
+      "overview": "Übersicht",
       "conferences": "Konferenzen",
       "papers": "Papers",
       "upcomingDeadlines": "anstehende Deadlines"
@@ -6980,17 +6998,173 @@
     "admin": {
       "title": "Forschungsgruppen verwalten",
       "noGroups": "Keine Gruppen vorhanden",
+      "selectGroup": "Wähle eine Gruppe, um Details anzuzeigen",
+      "search": "Gruppen suchen...",
       "stats": {
         "conferences": "Konferenzen",
         "papers": "Paper",
         "members": "Mitglieder"
+      },
+      "tabs": {
+        "members": "Mitglieder",
+        "requests": "Anfragen",
+        "content": "Inhalte"
       },
       "members": {
         "add": "Mitglied hinzufügen",
         "noMembers": "Keine Mitglieder in dieser Gruppe",
         "changeRole": "Rolle ändern",
         "removeMember": "Mitglied entfernen"
+      },
+      "requests": {
+        "noRequests": "Keine ausstehenden Anfragen"
+      },
+      "content": {
+        "conferences": "Konferenzen",
+        "papers": "Paper",
+        "noConferences": "Keine Konferenzen in dieser Gruppe",
+        "noPapers": "Keine Paper in dieser Gruppe",
+        "location": "Ort",
+        "deadline": "Deadline"
+      },
+      "deleteDialog": {
+        "title": "Forschungsgruppe löschen",
+        "confirm": "\"{name}\" wirklich löschen? Konferenzen und Paper bleiben erhalten, verlieren aber ihre Gruppenzuordnung.",
+        "info": "Diese Aktion kann nicht rückgängig gemacht werden."
+      },
+      "removeMemberDialog": {
+        "title": "Mitglied entfernen",
+        "confirm": "\"{name}\" wirklich aus der Gruppe entfernen?"
       }
+    }
+  },
+  "dbAgent": {
+    "title": "DB Preisagent",
+    "subtitle": "Dortmund Hbf ↔ Nürnberg Hbf · BahnCard 25 · 2. Klasse",
+    "loading": "Lade Daten...",
+    "status": {
+      "active": "Agent aktiv",
+      "inactive": "Agent inaktiv"
+    },
+    "actions": {
+      "startAgent": "Agent starten",
+      "stopAgent": "Agent stoppen",
+      "scanNow": "Jetzt scannen",
+      "deleteData": "Daten löschen"
+    },
+    "tabs": {
+      "search": "Reise suchen",
+      "deals": "Top Deals",
+      "calendar": "Kalender",
+      "timing": "Timing",
+      "analysis": "Analyse"
+    },
+    "overview": {
+      "loading": "Aktuelle Preise werden geladen...",
+      "topDeals": "Aktuelle Top-Deals",
+      "fromScans": "Aus Scans"
+    },
+    "search": {
+      "title": "Reise suchen",
+      "stationFrom": "Von",
+      "stationTo": "Nach",
+      "dateFrom": "Hinfahrt am",
+      "dateTo": "Rückfahrt am",
+      "outbound": "Hinfahrt",
+      "returnTrip": "Rückfahrt",
+      "flexibility": "Flexibilität",
+      "go": "Suchen",
+      "newSearch": "Neue Suche",
+      "results": "{count} Verbindungen gefunden",
+      "bookOnBahn": "Auf bahn.de buchen",
+      "selectOutbound": "Hinfahrt wählen",
+      "selectReturn": "Rückfahrt wählen",
+      "totalPrice": "Gesamtpreis",
+      "directOnly": "Nur Direktverbindungen",
+      "directConnections": "Direktverbindungen",
+      "noDirectConnections": "Keine Direktverbindungen verfügbar"
+    },
+    "suggestions": {
+      "title": "Vorschläge",
+      "found": "gefunden"
+    },
+    "followup": {
+      "title": "Reiseberater",
+      "placeholder": "z.B. Vorschlag #3 passt, aber ich kann erst einen Tag später..."
+    },
+    "history": {
+      "title": "Letzte Suchen"
+    },
+    "deals": {
+      "title": "Günstigste Verbindungen"
+    },
+    "calendar": {
+      "title": "Preiskalender",
+      "viewYear": "Jahr",
+      "viewMonth": "Monat",
+      "viewDay": "Tag",
+      "roundTrip": "Hin + Rück",
+      "tripSuggestions": "Reise-Empfehlungen",
+      "days": "Tage",
+      "cheapestShort": "ab",
+      "connections": "Verbindungen",
+      "noDataForDay": "Keine Daten für diesen Tag. Starte einen Scan oder suche eine Reise.",
+      "legend": {
+        "cheap": "Günstig (< 30€)",
+        "medium": "Mittel (30–60€)",
+        "expensive": "Teuer (60–100€)",
+        "veryExpensive": "Sehr teuer (> 100€)",
+        "stddev": "±σ = Standardabweichung",
+        "highVolatility": "Hohe Preisschwankung",
+        "tripStrip": "Reise-Empfehlung (Hin + Rück)"
+      }
+    },
+    "stats": {
+      "title": "Preisstatistik",
+      "outbound": "Hinfahrt (DO → N)",
+      "return": "Rückfahrt (N → DO)",
+      "totalEntries": "Gesamteinträge",
+      "noData": "Noch keine Preisdaten vorhanden. Starte einen Scan."
+    },
+    "weekday": {
+      "title": "Wochentag-Analyse"
+    },
+    "timing": {
+      "title": "Wann buchen?",
+      "departureTime": "Abfahrtszeit",
+      "departureTimeHint": "Durchschnittspreise nach Abfahrtszeit",
+      "leadTime": "Buchungsvorlauf",
+      "leadTimeHint": "Durchschnittspreise nach Buchungszeitpunkt vor Abreise",
+      "transfers": "Direkt vs. Umstieg",
+      "transfersHint": "Preisvergleich nach Anzahl Umstiege",
+      "priceTrend": "Preisentwicklung",
+      "priceTrendHint": "Wie sich der günstigste Preis ändert, je näher der Reisetag rückt",
+      "avgPrice": "Ø Preis",
+      "minPrice": "Min",
+      "medianPrice": "Median",
+      "connections": "Verbindungen",
+      "avgCheapest": "Ø Günstigster",
+      "datesWithData": "Reisetage",
+      "cheapest": "Am günstigsten",
+      "noData": "Noch keine Daten. Starte einen Scan, damit die Timing-Analyse gefüllt wird.",
+      "tip": "Tipp",
+      "tipLeadTime": "Am günstigsten bei {bucket} Vorlauf (Ø {price}€)",
+      "tipDeparture": "Günstigste Abfahrtszeit: {slot} (Ø {price}€)",
+      "tipTransfers": "{label} spart im Schnitt {percent}% gegenüber Direktverbindungen"
+    },
+    "analysis": {
+      "title": "KI-Analyse",
+      "run": "Analyse starten",
+      "hint": "Klicke auf 'Analyse starten' um eine KI-gestützte Preisanalyse zu erhalten."
+    },
+    "table": {
+      "date": "Datum",
+      "direction": "Richtung",
+      "departure": "Abfahrt",
+      "arrival": "Ankunft",
+      "price": "Preis",
+      "transfers": "Umstiege",
+      "trains": "Züge"
     }
   }
 }

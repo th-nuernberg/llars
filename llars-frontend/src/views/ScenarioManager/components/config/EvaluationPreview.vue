@@ -158,9 +158,11 @@
     <div v-else-if="resolvedType === 'comparison'" class="preview-comparison">
       <div class="preview-label">{{ $t('scenarioManager.evalConfig.preview.comparisonDemo') }}</div>
 
-      <div v-if="config?.question" class="criteria-preview mb-3">
-        <span class="criteria-label">{{ $t('scenarioManager.evalConfig.comparison.testInstruction') }}:</span>
-        <span>{{ getLocalizedText(config.question) }}</span>
+      <div v-if="comparisonQuestionMarkdown" class="criteria-preview mb-3">
+        <span class="criteria-label">{{ $t('evaluation.briefing.taskDescription') }}:</span>
+        <div class="criteria-markdown">
+          <LMarkdownContent :markdown="comparisonQuestionMarkdown" compact />
+        </div>
       </div>
 
       <div class="comparison-layout">
@@ -199,12 +201,10 @@
       </div>
 
       <!-- Criteria display -->
-      <div v-if="config?.criteria?.length > 1" class="criteria-preview mt-3">
-        <span class="criteria-label">{{ $t('scenarioManager.evalConfig.preview.criteriaUsed') }}:</span>
-        <div class="criteria-tags">
-          <LTag v-for="crit in config.criteria" :key="crit.id" variant="info" size="small">
-            {{ getCriterionName(crit) }} ({{ (crit.weight * 100).toFixed(0) }}%)
-          </LTag>
+      <div v-if="comparisonCriteriaMarkdown" class="criteria-preview mt-3">
+        <span class="criteria-label">{{ $t('evaluation.briefing.criteria') }}:</span>
+        <div class="criteria-markdown">
+          <LMarkdownContent :markdown="comparisonCriteriaMarkdown" compact />
         </div>
       </div>
 
@@ -227,6 +227,11 @@
 import { ref, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { getBaseType } from '../../config/evaluationPresets'
+import {
+  getLocalizedText as getLocalizedTextValue,
+  resolveTaskMarkdown,
+  resolveCriteriaMarkdown
+} from '@/utils/scenarioBriefing'
 
 const props = defineProps({
   evalType: {
@@ -264,9 +269,7 @@ const scaleValues = computed(() => {
 
 // Methods
 function getLocalizedText(value) {
-  if (!value) return ''
-  if (typeof value === 'string') return value
-  return value[locale.value] || value.de || value.en || ''
+  return getLocalizedTextValue(value, locale.value)
 }
 
 function getLabel(value) {
@@ -310,6 +313,16 @@ function toggleLabel(labelId) {
     selectedLabels.value = [labelId]
   }
 }
+
+const comparisonQuestionMarkdown = computed(() => {
+  if (resolvedType.value !== 'comparison') return ''
+  return resolveTaskMarkdown({ eval_config: { config: props.config } }, locale.value)
+})
+
+const comparisonCriteriaMarkdown = computed(() => {
+  if (resolvedType.value !== 'comparison') return ''
+  return resolveCriteriaMarkdown({ eval_config: { config: props.config } }, locale.value)
+})
 </script>
 
 <style scoped>
@@ -591,7 +604,7 @@ function toggleLabel(labelId) {
 .criteria-preview,
 .confidence-preview {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 8px;
 }
 
@@ -601,9 +614,11 @@ function toggleLabel(labelId) {
   color: rgba(var(--v-theme-on-surface), 0.6);
 }
 
-.criteria-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
+.criteria-markdown {
+  flex: 1;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(var(--v-theme-surface), 0.95);
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
 }
 </style>

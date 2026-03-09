@@ -1247,38 +1247,197 @@
   width: 100%;
 }
 
-/* Mobile toolbar adjustments */
-.workspace-root.is-mobile .mode-toggle-group {
-  padding: 1px;
+/* Mobile workspace name in header */
+.mobile-workspace-name {
+  font-size: 13px;
+  font-weight: 600;
+  max-width: 40vw;
+  margin-left: 4px;
 }
 
-.workspace-root.is-mobile .mode-btn {
-  width: 28px;
-  height: 28px;
+/* Mobile compile button in header */
+.mobile-compile-btn {
+  text-transform: none;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0;
+  padding: 0 8px;
+  min-width: 0;
+  height: 26px;
 }
 
-/* Mobile editor layout */
+/* Mobile editor layout - minimal padding for max content space */
 .workspace-root.is-mobile .editor-layout {
-  padding: 4px;
-  gap: 4px;
+  padding: 0;
+  gap: 0;
 }
 
-/* Mobile: On split mode, stack vertically instead of horizontal */
-.workspace-root.is-mobile .panes-container.mode-split {
+/* Restore small padding only for editor pane */
+.workspace-root.is-mobile .panes-container.mobile-view-editor .editor-pane {
+  padding: 0 4px;
+}
+
+/* Mobile editor toolbar (compile + → PDF) */
+.mobile-editor-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 4px 6px;
+  flex-shrink: 0;
+}
+
+/* ============================================
+   20b. MOBILE VIEW MODES (single-pane switching)
+   ============================================ */
+
+/* Hide resize dividers on mobile */
+.workspace-root.is-mobile .panes-container .resize-divider {
+  display: none;
+}
+
+/* Editor view: show editor, hide preview */
+.workspace-root.is-mobile .panes-container.mobile-view-editor .editor-pane {
+  flex: 1;
+  width: 100% !important;
+  display: flex;
   flex-direction: column;
 }
 
-.workspace-root.is-mobile .panes-container.mode-split .editor-pane {
-  width: 100% !important;
-  flex: 1;
-}
-
-.workspace-root.is-mobile .panes-container.mode-split .preview-pane {
-  flex: 1;
-}
-
-.workspace-root.is-mobile .panes-container.mode-split .resize-divider {
+.workspace-root.is-mobile .panes-container.mobile-view-editor .preview-pane {
   display: none;
+}
+
+/* PDF view: show preview (with toolbar + PDF), hide editor + comments */
+.workspace-root.is-mobile .panes-container.mobile-view-pdf .editor-pane {
+  display: none;
+}
+
+.workspace-root.is-mobile .panes-container.mobile-view-pdf .preview-pane {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.workspace-root.is-mobile .panes-container.mobile-view-pdf .comments-panel {
+  display: none;
+}
+
+.workspace-root.is-mobile .panes-container.mobile-view-pdf .preview-resize-divider {
+  display: none;
+}
+
+/* Comments view: show comments fullscreen, hide editor + pdf */
+.workspace-root.is-mobile .panes-container.mobile-view-comments .editor-pane {
+  display: none;
+}
+
+.workspace-root.is-mobile .panes-container.mobile-view-comments .preview-pane {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.workspace-root.is-mobile .panes-container.mobile-view-comments .preview-toolbar {
+  display: none;
+}
+
+.workspace-root.is-mobile .panes-container.mobile-view-comments .pdf-section {
+  display: none;
+}
+
+.workspace-root.is-mobile .panes-container.mobile-view-comments .preview-resize-divider {
+  display: none;
+}
+
+.workspace-root.is-mobile .panes-container.mobile-view-comments .comments-panel {
+  flex: 1;
+  height: 100% !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+}
+
+.workspace-root.is-mobile .panes-container.mobile-view-comments .comments-panel.collapsed {
+  flex: 1;
+  height: 100% !important;
+}
+
+/* Mobile comments: disable user-resize on comment threads */
+.workspace-root.is-mobile .comment-thread {
+  resize: none;
+  height: auto;
+  max-height: none;
+}
+
+/* Mobile: hide the entire preview toolbar (compile is in editor toolbar) */
+.workspace-root.is-mobile .preview-toolbar {
+  display: none;
+}
+
+/* Mobile: PDF section takes all available space */
+.workspace-root.is-mobile .preview-content {
+  flex: 1;
+}
+
+.workspace-root.is-mobile .preview-content .pdf-section {
+  flex: 1;
+}
+
+/* ============================================
+   20c. MOBILE BOTTOM NAVIGATION
+   ============================================ */
+.mobile-bottom-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  height: 52px;
+  border-top: 1px solid rgba(var(--v-theme-on-surface), 0.1);
+  background: rgb(var(--v-theme-surface));
+  flex-shrink: 0;
+  padding-bottom: env(safe-area-inset-bottom, 0);
+}
+
+.mobile-nav-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  border: none;
+  background: transparent;
+  color: rgba(var(--v-theme-on-surface), 0.45);
+  font-size: 10px;
+  padding: 6px 12px;
+  cursor: pointer;
+  transition: color 0.15s;
+  flex: 1;
+  min-width: 0;
+  position: relative;
+}
+
+.mobile-nav-btn.active {
+  color: rgb(var(--v-theme-primary));
+}
+
+.mobile-nav-btn span {
+  font-size: 10px;
+  font-weight: 500;
+  margin-top: 1px;
+  white-space: nowrap;
+}
+
+.mobile-nav-btn.active::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 24px;
+  height: 2px;
+  background: rgb(var(--v-theme-primary));
+  border-radius: 0 0 2px 2px;
 }
 
 /* Hide Git panel on mobile in compact mode */

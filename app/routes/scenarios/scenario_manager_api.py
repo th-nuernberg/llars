@@ -438,10 +438,12 @@ def format_scenario_for_api(scenario, user, invitation_map=None, include_detaile
                 'invited_by': su.invited_by
             }
 
+    description = getattr(scenario, 'description', None) or config.get('description')
+
     return {
         'id': scenario.id,
         'scenario_name': scenario.scenario_name,
-        'description': getattr(scenario, 'description', None),
+        'description': description,
         'function_type_id': scenario.function_type_id,
         'function_type_name': func_type_name,
         'begin': scenario.begin.isoformat() if scenario.begin else None,
@@ -1489,6 +1491,8 @@ def sm_create_scenario():
         config['distribution_mode'] = 'all'
     if not config.get('order_mode'):
         config['order_mode'] = 'random'
+    if 'description' in data:
+        config['description'] = data.get('description') or ''
 
     task_description = _normalize_task_description(
         data.get('task_description', config.get('task_description'))
@@ -1603,6 +1607,15 @@ def update_scenario(scenario_id):
     if not data:
         raise ValidationError('Request body is required')
 
+    existing_config = scenario.config_json or {}
+    if isinstance(existing_config, str):
+        try:
+            existing_config = json.loads(existing_config)
+        except (json.JSONDecodeError, TypeError):
+            existing_config = {}
+    if not isinstance(existing_config, dict):
+        existing_config = {}
+
     # Update allowed fields
     if 'scenario_name' in data:
         scenario.scenario_name = data['scenario_name']
@@ -1613,6 +1626,10 @@ def update_scenario(scenario_id):
     existing_config = _parse_scenario_config(scenario.config_json)
     incoming_config = _parse_scenario_config(data.get('config_json')) if 'config_json' in data else None
     next_config = {**existing_config, **(incoming_config or {})}
+
+    # Preserve description from existing config if not in incoming
+    if incoming_config is not None and 'description' not in (incoming_config or {}) and existing_config.get('description'):
+        next_config['description'] = existing_config.get('description')
 
     has_task_description_update = 'task_description' in data
     has_criteria_update = 'evaluation_criteria' in data
@@ -1639,6 +1656,17 @@ def update_scenario(scenario_id):
     # Optional fields
     if hasattr(scenario, 'description') and 'description' in data:
         scenario.description = data['description']
+    if 'description' in data:
+        config = scenario.config_json or {}
+        if isinstance(config, str):
+            try:
+                config = json.loads(config)
+            except (json.JSONDecodeError, TypeError):
+                config = {}
+        if not isinstance(config, dict):
+            config = {}
+        config['description'] = data['description'] or ''
+        scenario.config_json = config
     if hasattr(scenario, 'status') and 'status' in data:
         scenario.status = data['status']
     if hasattr(scenario, 'visibility') and 'visibility' in data:

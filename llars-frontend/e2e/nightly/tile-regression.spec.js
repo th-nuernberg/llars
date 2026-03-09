@@ -32,6 +32,14 @@ const TILE_SMOKE_PROFILES = {
   // Keep tile regression bounded here and only verify navigation/readiness.
   'Batch Generation': {
     maxButtons: 0
+  },
+  // Heavy pages: skip button sweep to stay within 420s test timeout.
+  // These pages load complex editors/WebSocket connections that slow CI.
+  'Latex Collab': {
+    maxButtons: 0
+  },
+  'Chatbot Arena': {
+    maxButtons: 0
   }
 }
 

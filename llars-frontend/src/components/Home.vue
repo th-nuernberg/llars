@@ -257,7 +257,7 @@ const allItems = computed(() => ([
     description: t('home.features.scenarioManager.description'),
     route: '/scenarios',
     icon: 'mdi-clipboard-check-multiple-outline',
-    permission: 'data:manage_scenarios',
+    permission: null,
     permissionsAny: ['data:manage_scenarios', 'feature:ranking:view', 'feature:rating:view'],
     category: 'rating',
     badge: t('home.badges.new'),

@@ -303,11 +303,12 @@ security:scan:
   before_script:
     - apt-get update && apt-get install -y --no-install-recommends nodejs npm
   script:
-    - pip install pip-audit safety
+    - pip install pip-audit
     - echo "Running security scan..."
-    - pip-audit -r app/requirements.txt
+    # Use ignore file for known vulnerabilities that cannot be fixed (torch, transformers, etc.)
+    - IGNORE_ARGS=$(grep -v '^#' app/.pip-audit-ignore | grep -v '^$' | sed 's/^/--ignore-vuln /' | tr '\n' ' ')
+    - eval "pip-audit -r app/requirements.txt $IGNORE_ARGS"
     - cd llars-frontend && npm audit --audit-level=high
-  allow_failure: true
 
 # =============================================================================
 # STAGE 4: BUILD

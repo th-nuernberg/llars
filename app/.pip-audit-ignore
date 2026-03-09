@@ -1,0 +1,41 @@
+# Known vulnerabilities that cannot be fixed without major dependency upgrades.
+# Reviewed: 2026-03-09
+#
+# ---- torch 2.5.1 (upgrade blocked by Python 3.10 + flair compatibility) ----
+CVE-2025-2953
+CVE-2025-3730
+PYSEC-2025-41
+#
+# ---- transformers 4.46.3 (upgrade to 4.53+ requires torch 2.6+) ----
+CVE-2024-12720
+CVE-2025-1194
+CVE-2025-3263
+CVE-2025-3264
+CVE-2025-3777
+CVE-2025-3933
+CVE-2025-5197
+CVE-2025-6051
+CVE-2025-6638
+CVE-2025-6921
+PYSEC-2024-227
+PYSEC-2024-228
+PYSEC-2024-229
+PYSEC-2025-40
+#
+# ---- eventlet 0.33.3 (not used in production, gevent is primary) ----
+CVE-2023-29483
+CVE-2025-58068
+#
+# ---- Flask-Cors 4.0.2 (CVEs require 6.0.0, major API change) ----
+CVE-2024-6844
+CVE-2024-6866
+CVE-2024-6839
+#
+# ---- cryptography 44.0.1 (remaining CVE requires 46.x, major version) ----
+CVE-2026-26007
+#
+# ---- langchain-text-splitters (transitive dep, pinned by langchain) ----
+CVE-2025-6985
+#
+# ---- sqlitedict 2.1.0 (transitive dep of chromadb, no fix available) ----
+CVE-2024-35515

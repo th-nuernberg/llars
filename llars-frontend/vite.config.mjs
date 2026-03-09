@@ -7,6 +7,22 @@ import { viteStaticCopy } from 'vite-plugin-static-copy'
 // Utilities
 import { defineConfig } from 'vite'
 import { fileURLToPath, URL } from 'node:url'
+import { execSync } from 'node:child_process'
+
+// Build-time version info
+function getGitInfo() {
+  try {
+    const commitHash = execSync('git rev-parse --short HEAD', { encoding: 'utf-8' }).trim()
+    const commitDate = execSync('git log -1 --format=%ci', { encoding: 'utf-8' }).trim()
+    const branch = execSync('git rev-parse --abbrev-ref HEAD', { encoding: 'utf-8' }).trim()
+    return { commitHash, commitDate, branch }
+  } catch {
+    return { commitHash: 'unknown', commitDate: '', branch: 'unknown' }
+  }
+}
+
+const gitInfo = getGitInfo()
+const buildTimestamp = new Date().toISOString()
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -30,7 +46,15 @@ export default defineConfig({
       ]
     }),
   ],
-  define: { 'process.env': {} },
+  define: {
+    'process.env': {},
+    __APP_VERSION__: JSON.stringify({
+      commitHash: gitInfo.commitHash,
+      commitDate: gitInfo.commitDate,
+      branch: gitInfo.branch,
+      buildTimestamp,
+    }),
+  },
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url))

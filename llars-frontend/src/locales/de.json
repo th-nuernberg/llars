@@ -2824,7 +2824,7 @@
         "basedOn": "Basiert auf",
         "basicInfo": "Grunddaten",
         "name": "Szenario-Name",
-        "descriptionField": "Beschreibung",
+        "descriptionField": "Szenariobeschreibung",
         "descriptionHint": "Optional: Beschreiben Sie den Zweck dieses Szenarios",
         "aiGenerationPromptField": "KI-Generierungs-Prompt",
         "aiGenerationPromptHint": "Optional: Beschreiben Sie kurz, welche Perspektive oder Schwerpunkte die KI bei Aufgabenbeschreibung und Kriterien berücksichtigen soll",
@@ -2881,7 +2881,7 @@
         "team": "Team",
         "type": "Typ",
         "name": "Name",
-        "descriptionLabel": "Beschreibung",
+        "descriptionLabel": "Szenariobeschreibung",
         "taskDescriptionLabel": "Aufgabenbeschreibung",
         "evaluationCriteriaLabel": "Evaluationskriterien",
         "preset": "Vorlage",
@@ -3378,7 +3378,7 @@
       "title": "Szenario-Einstellungen",
       "basicInfo": "Grundinformationen",
       "name": "Name",
-      "description": "Beschreibung",
+      "description": "Szenariobeschreibung",
       "aiGenerationPrompt": "KI-Generierungs-Prompt",
       "aiGenerationPromptHint": "Optional: Freier Prompt für KI-Vorschläge zu Aufgabenbeschreibung und Evaluationskriterien",
       "taskDescription": "Aufgabenbeschreibung",
@@ -3896,6 +3896,12 @@
     "clickToView": "Klicken zum Öffnen",
     "viewerBanner": "Sie sind Betrachter. Wechseln Sie im Team-Tab zur Evaluator-Rolle, um teilzunehmen.",
     "viewerReadOnly": "Nur-Lese-Modus",
+    "briefing": {
+      "title": "Briefing",
+      "taskDescription": "Aufgabenbeschreibung",
+      "taskDescriptionPlaceholder": "z.B. Beschreiben Sie kurz die Aufgabe und den Bewertungsfokus.",
+      "criteria": "Evaluationskriterien"
+    },
     "item": "Eintrag #{num}",
     "tools": {
       "ranking": {

@@ -141,6 +141,7 @@ def rdb(real_app):
         yield _db
 
         _db.session.remove()
+        _db.engine.dispose()
         _db.drop_all()
 
 

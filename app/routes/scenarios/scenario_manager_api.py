@@ -418,10 +418,12 @@ def format_scenario_for_api(scenario, user, invitation_map=None, include_detaile
                 'invited_by': su.invited_by
             }
 
+    description = getattr(scenario, 'description', None) or config.get('description')
+
     return {
         'id': scenario.id,
         'scenario_name': scenario.scenario_name,
-        'description': getattr(scenario, 'description', None),
+        'description': description,
         'function_type_id': scenario.function_type_id,
         'function_type_name': func_type_name,
         'begin': scenario.begin.isoformat() if scenario.begin else None,
@@ -1529,6 +1531,8 @@ def sm_create_scenario():
         config['distribution_mode'] = 'all'
     if not config.get('order_mode'):
         config['order_mode'] = 'random'
+    if 'description' in data:
+        config['description'] = data.get('description') or ''
 
     # Resolve LLM evaluators (supports legacy selected_llms from older frontends)
     raw_llm_evaluators = data.get('llm_evaluators')
@@ -1628,6 +1632,15 @@ def update_scenario(scenario_id):
     if not data:
         raise ValidationError('Request body is required')
 
+    existing_config = scenario.config_json or {}
+    if isinstance(existing_config, str):
+        try:
+            existing_config = json.loads(existing_config)
+        except (json.JSONDecodeError, TypeError):
+            existing_config = {}
+    if not isinstance(existing_config, dict):
+        existing_config = {}
+
     # Update allowed fields
     if 'scenario_name' in data:
         scenario.scenario_name = data['scenario_name']
@@ -1636,11 +1649,27 @@ def update_scenario(scenario_id):
     if 'end' in data and data['end']:
         scenario.end = datetime.fromisoformat(data['end'].replace('Z', '+00:00'))
     if 'config_json' in data:
-        scenario.config_json = data['config_json']
+        new_config = data['config_json'] or {}
+        if not isinstance(new_config, dict):
+            raise ValidationError('config_json must be an object')
+        if 'description' not in new_config and existing_config.get('description'):
+            new_config['description'] = existing_config.get('description')
+        scenario.config_json = new_config
 
     # Optional fields
     if hasattr(scenario, 'description') and 'description' in data:
         scenario.description = data['description']
+    if 'description' in data:
+        config = scenario.config_json or {}
+        if isinstance(config, str):
+            try:
+                config = json.loads(config)
+            except (json.JSONDecodeError, TypeError):
+                config = {}
+        if not isinstance(config, dict):
+            config = {}
+        config['description'] = data['description'] or ''
+        scenario.config_json = config
     if hasattr(scenario, 'status') and 'status' in data:
         scenario.status = data['status']
     if hasattr(scenario, 'visibility') and 'visibility' in data:

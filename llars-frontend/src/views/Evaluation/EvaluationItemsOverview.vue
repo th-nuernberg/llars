@@ -9,7 +9,9 @@
         </LBtn>
         <div class="header-info">
           <h1>{{ scenario?.name || $t('evaluation.session.title') }}</h1>
-          <p class="text-medium-emphasis">{{ scenario?.description }}</p>
+          <p v-if="scenario?.description && !hasBriefing" class="text-medium-emphasis">
+            {{ scenario.description }}
+          </p>
         </div>
       </div>
 
@@ -41,6 +43,17 @@
       <LIcon size="18" color="#D1BC8A">mdi-eye-outline</LIcon>
       <span>{{ $t('evaluation.viewerBanner') }}</span>
       <LTag variant="warning">{{ $t('evaluation.viewerReadOnly') }}</LTag>
+    </div>
+
+    <div v-if="hasBriefing && !loading" class="briefing-card">
+      <div v-if="taskMarkdown" class="briefing-section">
+        <span class="briefing-label">{{ $t('evaluation.briefing.taskDescription') }}</span>
+        <LMarkdownContent :markdown="taskMarkdown" compact />
+      </div>
+      <div v-if="criteriaMarkdown" class="briefing-section">
+        <span class="briefing-label">{{ $t('evaluation.briefing.criteria') }}</span>
+        <LMarkdownContent :markdown="criteriaMarkdown" compact />
+      </div>
     </div>
 
     <!-- Filter Bar -->
@@ -158,6 +171,7 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import axios from 'axios'
+import { resolveCriteriaMarkdown, resolveTaskMarkdown } from '@/utils/scenarioBriefing'
 
 const props = defineProps({
   scenarioId: {
@@ -168,11 +182,12 @@ const props = defineProps({
 
 const route = useRoute()
 const router = useRouter()
-const { t } = useI18n()
+const { t, locale } = useI18n()
 
 // State
 const scenario = ref(null)
 const items = ref([])
+const sessionConfig = ref({})
 const loading = ref(true)
 const error = ref(null)
 const activeFilter = ref('all')
@@ -207,6 +222,10 @@ const progressPercent = computed(() => {
   if (items.value.length === 0) return 0
   return Math.round((completedCount.value / items.value.length) * 100)
 })
+
+const taskMarkdown = computed(() => resolveTaskMarkdown(sessionConfig.value, locale.value))
+const criteriaMarkdown = computed(() => resolveCriteriaMarkdown(sessionConfig.value, locale.value))
+const hasBriefing = computed(() => Boolean(taskMarkdown.value || criteriaMarkdown.value))
 
 // Filtered items based on active filter
 const filteredItems = computed(() => {
@@ -294,6 +313,7 @@ async function loadData() {
     // Load items via evaluation session endpoint
     const sessionResponse = await axios.get(`/api/evaluation/session/${props.scenarioId}`)
     items.value = sessionResponse.data.items || []
+    sessionConfig.value = sessionResponse.data.config || {}
     canEvaluate.value = sessionResponse.data.scenario?.can_evaluate !== false
   } catch (err) {
     console.error('Failed to load data:', err)
@@ -431,6 +451,33 @@ watch(() => props.scenarioId, (newId) => {
   font-size: 0.85rem;
   color: rgba(var(--v-theme-on-surface), 0.8);
   flex-shrink: 0;
+}
+
+.briefing-card {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+  margin: 16px 24px 0;
+  padding: 16px 18px;
+  border-radius: 14px;
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  background: rgb(var(--v-theme-surface));
+  flex-shrink: 0;
+}
+
+.briefing-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.briefing-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(var(--v-theme-on-surface), 0.58);
 }
 
 /* Filter Bar */

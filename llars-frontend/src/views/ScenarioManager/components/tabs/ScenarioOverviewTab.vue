@@ -156,7 +156,9 @@
         </div>
         <div class="detail-row" v-if="scenario?.description">
           <span class="detail-label">{{ $t('scenarioManager.overview.description') }}</span>
-          <span class="detail-value">{{ scenario.description }}</span>
+          <div class="detail-value detail-value--markdown">
+            <LMarkdownContent :markdown="scenario.description" compact />
+          </div>
         </div>
         <div class="detail-row">
           <span class="detail-label">{{ $t('scenarioManager.overview.created') }}</span>
@@ -672,6 +674,10 @@ function getF1Class(f1) {
   color: rgb(var(--v-theme-on-surface));
   text-align: right;
   max-width: 60%;
+}
+
+.detail-value--markdown {
+  text-align: left;
 }
 
 /* Metrics Grid */

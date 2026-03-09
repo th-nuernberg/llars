@@ -2800,7 +2800,7 @@
         "basedOn": "Based on",
         "basicInfo": "Basic Info",
         "name": "Scenario Name",
-        "descriptionField": "Description",
+        "descriptionField": "Scenario description",
         "descriptionHint": "Optional: Describe the purpose of this scenario",
         "startDate": "Start Date",
         "endDate": "End Date",
@@ -2847,7 +2847,7 @@
         "team": "Team",
         "type": "Type",
         "name": "Name",
-        "descriptionLabel": "Description",
+        "descriptionLabel": "Scenario description",
         "preset": "Preset",
         "file": "File",
         "files": "Files",
@@ -3327,7 +3327,7 @@
       "title": "Scenario Settings",
       "basicInfo": "Basic Information",
       "name": "Name",
-      "description": "Description",
+      "description": "Scenario description",
       "timePeriod": "Time Period",
       "startDate": "Start Date",
       "endDate": "End Date",
@@ -3828,6 +3828,12 @@
     "clickToView": "Click to open",
     "viewerBanner": "You are a viewer. Switch to the Evaluator role in the Team tab to participate.",
     "viewerReadOnly": "Read-only mode",
+    "briefing": {
+      "title": "Briefing",
+      "taskDescription": "Task description",
+      "taskDescriptionPlaceholder": "e.g. Briefly describe the task and evaluation focus.",
+      "criteria": "Evaluation criteria"
+    },
     "item": "Item #{num}",
     "tools": {
       "ranking": {

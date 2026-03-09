@@ -35,14 +35,9 @@
             </template>
           </v-text-field>
 
-          <v-textarea
-            v-model="formData.description"
-            :label="$t('scenarioManager.settings.description')"
-            variant="outlined"
-            rows="3"
-            class="mb-4"
-          >
-            <template #append-inner>
+          <div class="markdown-field">
+            <div class="markdown-field__header">
+              <span class="markdown-field__label">{{ $t('scenarioManager.settings.description') }}</span>
               <LAIFieldButton
                 field-key="scenario.settings.description"
                 :context="{
@@ -54,8 +49,13 @@
                 size="small"
                 @generated="formData.description = $event"
               />
-            </template>
-          </v-textarea>
+            </div>
+            <LMarkdownEditor
+              v-model="formData.description"
+              :placeholder="$t('scenarioManager.settings.description')"
+              :rows="8"
+            />
+          </div>
 
           <v-textarea
             v-model="formData.ai_generation_prompt"
@@ -66,74 +66,49 @@
             class="mb-4"
             persistent-hint
           />
+        </div>
 
-          <v-textarea
-            v-model="formData.task_description"
-            :label="$t('scenarioManager.settings.taskDescription')"
-            :hint="$t('scenarioManager.settings.taskDescriptionHint')"
-            variant="outlined"
-            rows="3"
-            class="mb-4"
-            persistent-hint
-          >
-            <template #label>
-              <span class="field-label-inline">
-                <span>{{ $t('scenarioManager.settings.taskDescription') }}</span>
-                <LInfoTooltip
-                  :title="$t('scenarioManager.settings.taskDescriptionTooltipTitle')"
-                  :aria-label="$t('scenarioManager.settings.taskDescriptionTooltipTitle')"
-                  :markdown="$t('scenarioManager.settings.taskDescriptionTooltipMarkdown')"
-                  location="bottom"
-                  max-width="460"
-                  size="x-small"
-                />
-              </span>
-            </template>
-            <template #append-inner>
+        <!-- Evaluation Briefing -->
+        <div class="settings-section">
+          <h4 class="section-title">{{ $t('evaluation.briefing.title') }}</h4>
+
+          <div class="markdown-field mb-4">
+            <div class="markdown-field__header">
+              <div class="markdown-field__label">{{ $t('evaluation.briefing.taskDescription') }}</div>
               <LAIFieldButton
                 field-key="scenario.settings.task_description"
                 :context="buildScenarioAiContext()"
                 icon-only
                 size="small"
-                @generated="formData.task_description = $event"
+                @generated="updateBriefingTaskDescription($event)"
               />
-            </template>
-          </v-textarea>
+            </div>
+            <LMarkdownEditor
+              :model-value="briefingTaskDescription"
+              :placeholder="$t('evaluation.briefing.taskDescriptionPlaceholder')"
+              :rows="6"
+              @update:modelValue="updateBriefingTaskDescription"
+            />
+          </div>
 
-          <v-combobox
-            v-model="formData.evaluation_criteria"
-            :label="$t('scenarioManager.settings.evaluationCriteria')"
-            :hint="$t('scenarioManager.settings.evaluationCriteriaHint')"
-            multiple
-            chips
-            closable-chips
-            clearable
-            variant="outlined"
-            persistent-hint
-          >
-            <template #label>
-              <span class="field-label-inline">
-                <span>{{ $t('scenarioManager.settings.evaluationCriteria') }}</span>
-                <LInfoTooltip
-                  :title="$t('scenarioManager.settings.evaluationCriteriaTooltipTitle')"
-                  :aria-label="$t('scenarioManager.settings.evaluationCriteriaTooltipTitle')"
-                  :markdown="$t('scenarioManager.settings.evaluationCriteriaTooltipMarkdown')"
-                  location="bottom"
-                  max-width="460"
-                  size="x-small"
-                />
-              </span>
-            </template>
-            <template #append-inner>
+          <div class="markdown-field">
+            <div class="markdown-field__header">
+              <div class="markdown-field__label">{{ $t('evaluation.briefing.criteria') }}</div>
               <LAIFieldButton
                 field-key="scenario.settings.evaluation_criteria"
                 :context="buildScenarioAiContext()"
                 icon-only
                 size="small"
-                @generated="applyGeneratedCriteria"
+                @generated="updateBriefingCriteria($event)"
               />
-            </template>
-          </v-combobox>
+            </div>
+            <LMarkdownEditor
+              :model-value="briefingCriteria"
+              :placeholder="briefingCriteriaPlaceholder"
+              :rows="8"
+              @update:modelValue="updateBriefingCriteria"
+            />
+          </div>
         </div>
 
         <!-- Time Period -->
@@ -322,6 +297,11 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
+import {
+  criteriaListToMarkdown,
+  getLocalizedText,
+  setLocalizedText
+} from '@/utils/scenarioBriefing'
 import { useScenarioManager } from '../composables/useScenarioManager'
 import LAvatar from '@/components/common/LAvatar.vue'
 import LUserSearch from '@/components/common/LUserSearch.vue'
@@ -339,7 +319,7 @@ const props = defineProps({
 
 const emit = defineEmits(['close', 'saved'])
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const { updateScenario, inviteUsers, removeUser, getScenarioTeam } = useScenarioManager()
 
 // State
@@ -388,6 +368,45 @@ const statusOptions = computed(() => [
   { value: 'archived', label: t('scenarioManager.status.archived') }
 ])
 
+const isComparisonScenario = computed(() => {
+  const typeId = Number(props.scenario?.function_type_id)
+  const typeName = String(
+    props.scenario?.function_type_name ||
+    props.scenario?.function_type ||
+    ''
+  ).toLowerCase()
+
+  return typeId === 4 || typeName === 'comparison'
+})
+
+const briefingEvalConfig = computed(() => {
+  const evalConfig = formData.value.config?.eval_config
+  if (!evalConfig || typeof evalConfig !== 'object') return null
+  return evalConfig.config && typeof evalConfig.config === 'object' ? evalConfig.config : null
+})
+
+const briefingTaskDescription = computed(() => {
+  return (
+    getLocalizedText(briefingEvalConfig.value?.taskDescriptionMarkdown, locale.value) ||
+    getLocalizedText(briefingEvalConfig.value?.question, locale.value) ||
+    formData.value.task_description
+  )
+})
+
+const briefingCriteria = computed(() => {
+  return (
+    getLocalizedText(briefingEvalConfig.value?.criteriaMarkdown, locale.value) ||
+    criteriaListToMarkdown(formData.value.evaluation_criteria, locale.value)
+  )
+})
+
+const briefingCriteriaPlaceholder = computed(() => [
+  locale.value === 'en' ? '## What should be evaluated?' : '## Worauf sollte geachtet werden?',
+  locale.value === 'en' ? '- Argumentation and traceability' : '- Argumentation und Nachvollziehbarkeit',
+  locale.value === 'en' ? '- Factual accuracy' : '- Fachliche Genauigkeit',
+  locale.value === 'en' ? '- Style and clarity' : '- Stil und Klarheit'
+].join('\n'))
+
 // Collaborators: Manager + Viewer users from team data
 const collaborators = computed(() => {
   if (!teamData.value?.team) return []
@@ -402,7 +421,6 @@ const excludedCollabUsernames = computed(() => {
   const owner = props.scenario?.owner_name ? [props.scenario.owner_name] : []
   return [...new Set([...existing, ...owner])]
 })
-
 // Validation rules
 const rules = {
   required: v => !!v || t('validation.required')
@@ -429,19 +447,37 @@ function normalizeCriteriaList(value) {
   return unique
 }
 
+function normalizeMarkdownLine(value) {
+  return String(value || '')
+    .replace(/^#{1,6}\s+/, '')
+    .replace(/^[-*+]\s+/, '')
+    .replace(/^\d+\.\s+/, '')
+    .replace(/[*_~`]/g, '')
+    .trim()
+}
+
+function criteriaMarkdownToList(markdown) {
+  if (!markdown) return []
+
+  return markdown
+    .split('\n')
+    .map(normalizeMarkdownLine)
+    .filter(Boolean)
+    .filter((value, index, array) => array.indexOf(value) === index)
+}
+
 function buildScenarioAiContext() {
+  const taskDescription = briefingTaskDescription.value || formData.value.task_description || ''
+  const criteriaList = criteriaMarkdownToList(briefingCriteria.value)
+
   return {
     scenario_type: props.scenario?.function_type || '',
     scenario_name: formData.value.scenario_name || '',
     existing_description: formData.value.description || '',
-    existing_task_description: formData.value.task_description || '',
-    existing_evaluation_criteria: normalizeCriteriaList(formData.value.evaluation_criteria).join(', '),
+    existing_task_description: taskDescription,
+    existing_evaluation_criteria: criteriaList.join(', '),
     generation_prompt: formData.value.ai_generation_prompt || ''
   }
-}
-
-function applyGeneratedCriteria(value) {
-  formData.value.evaluation_criteria = normalizeCriteriaList(value)
 }
 
 function parseScenarioConfig(rawConfig) {
@@ -499,13 +535,19 @@ async function saveSettings() {
 
   saving.value = true
   try {
+    const nextTaskDescription = briefingTaskDescription.value || formData.value.task_description || ''
+    const nextCriteria = criteriaMarkdownToList(briefingCriteria.value)
+
+    formData.value.task_description = nextTaskDescription
+    formData.value.evaluation_criteria = nextCriteria
+
     const nextConfig = {
       ...(formData.value.config || {}),
       distribution_mode: formData.value.config?.distribution_mode || 'all',
       order_mode: formData.value.config?.order_mode || 'random',
       ai_generation_prompt: formData.value.ai_generation_prompt || '',
-      task_description: formData.value.task_description || '',
-      evaluation_criteria: normalizeCriteriaList(formData.value.evaluation_criteria)
+      task_description: nextTaskDescription,
+      evaluation_criteria: nextCriteria
     }
 
     await updateScenario(props.scenario.id, {
@@ -514,14 +556,103 @@ async function saveSettings() {
       begin: formData.value.begin,
       end: formData.value.end,
       status: formData.value.status,
-      task_description: formData.value.task_description || '',
-      evaluation_criteria: normalizeCriteriaList(formData.value.evaluation_criteria),
+      task_description: nextTaskDescription,
+      evaluation_criteria: nextCriteria,
       config_json: nextConfig
     })
     emit('saved')
   } finally {
     saving.value = false
   }
+}
+
+function ensureBriefingFields() {
+  if (!formData.value.config || typeof formData.value.config !== 'object') {
+    formData.value.config = {}
+  }
+
+  if (!formData.value.config.eval_config || typeof formData.value.config.eval_config !== 'object') {
+    formData.value.config.eval_config = { config: {} }
+  }
+  if (!formData.value.config.eval_config.config || typeof formData.value.config.eval_config.config !== 'object') {
+    formData.value.config.eval_config.config = {}
+  }
+
+  const config = formData.value.config.eval_config.config
+  const rootTaskDescription = formData.value.task_description || ''
+  const rootCriteria = normalizeCriteriaList(formData.value.evaluation_criteria)
+
+  if (!config.taskDescriptionMarkdown) {
+    const fallbackTaskDescription =
+      getLocalizedText(config.question, 'de') ||
+      getLocalizedText(config.question, 'en') ||
+      rootTaskDescription
+
+    config.taskDescriptionMarkdown = {
+      de: getLocalizedText(config.taskDescriptionMarkdown, 'de') || fallbackTaskDescription || '',
+      en: getLocalizedText(config.taskDescriptionMarkdown, 'en') || fallbackTaskDescription || ''
+    }
+  }
+
+  if (!config.question && formData.value.config.question) {
+    config.question = JSON.parse(JSON.stringify(formData.value.config.question))
+  }
+
+  if (isComparisonScenario.value && !config.question) {
+    config.question = {
+      de: 'Welche Option ist besser?',
+      en: 'Which option is better?'
+    }
+  }
+
+  if (!config.criteriaMarkdown) {
+    config.criteriaMarkdown = {
+      de:
+        getLocalizedText(formData.value.config.criteriaMarkdown, 'de') ||
+        getLocalizedText(formData.value.config.evaluation_criteria_markdown, 'de') ||
+        criteriaListToMarkdown(rootCriteria, 'de') ||
+        criteriaListToMarkdown(config.criteria, 'de'),
+      en:
+        getLocalizedText(formData.value.config.criteriaMarkdown, 'en') ||
+        getLocalizedText(formData.value.config.evaluation_criteria_markdown, 'en') ||
+        criteriaListToMarkdown(rootCriteria, 'en') ||
+        criteriaListToMarkdown(config.criteria, 'en')
+    }
+  }
+}
+
+function updateBriefingTaskDescription(value) {
+  ensureBriefingFields()
+  if (!briefingEvalConfig.value) return
+
+  briefingEvalConfig.value.taskDescriptionMarkdown = setLocalizedText(
+    briefingEvalConfig.value.taskDescriptionMarkdown,
+    value,
+    locale.value
+  )
+
+  if (isComparisonScenario.value) {
+    briefingEvalConfig.value.question = setLocalizedText(
+      briefingEvalConfig.value.question,
+      value,
+      locale.value
+    )
+  }
+
+  formData.value.task_description = value || ''
+}
+
+function updateBriefingCriteria(value) {
+  ensureBriefingFields()
+  if (!briefingEvalConfig.value) return
+
+  briefingEvalConfig.value.criteriaMarkdown = setLocalizedText(
+    briefingEvalConfig.value.criteriaMarkdown,
+    value,
+    locale.value
+  )
+
+  formData.value.evaluation_criteria = criteriaMarkdownToList(value)
 }
 
 function confirmDelete() {
@@ -535,7 +666,7 @@ onMounted(async () => {
     const config = parseScenarioConfig(props.scenario.config_json)
     formData.value = {
       scenario_name: props.scenario.scenario_name || '',
-      description: props.scenario.description || '',
+      description: props.scenario.description || config.description || '',
       ai_generation_prompt: config.ai_generation_prompt || '',
       task_description: config.task_description || '',
       evaluation_criteria: normalizeCriteriaList(config.evaluation_criteria),
@@ -548,6 +679,8 @@ onMounted(async () => {
         order_mode: config.order_mode || 'random'
       }
     }
+
+    ensureBriefingFields()
   }
   // Load team data for collaboration section
   await loadTeamData()
@@ -607,6 +740,25 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   gap: 12px;
+}
+
+.markdown-field {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.markdown-field__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.markdown-field__label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: rgb(var(--v-theme-on-surface));
 }
 
 .radio-label {

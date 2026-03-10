@@ -261,9 +261,6 @@ onMounted(() => {
     path: '/socket.io/',
     transports: socketioTransports,
     upgrade: socketioEnableWebsocket,
-    headers: {
-      'Content-Type': 'application/json; charset=utf-8'
-    }
   });
 
   socket.value.on('connect', () => logI18n('log', 'logs.chat.socketConnected'));

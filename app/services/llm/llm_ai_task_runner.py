@@ -399,7 +399,8 @@ class LLMAITaskRunner:
                         thread_ids=thread_ids,
                     )
             except Exception as exc:
-                logger.warning(f"[LLM AI Runner] Async run failed: {exc}")
+                import traceback
+                logger.warning(f"[LLM AI Runner] Async run failed: {exc}\n{traceback.format_exc()}")
 
         thread = threading.Thread(target=_runner, daemon=True)
         thread.start()
@@ -671,9 +672,8 @@ class LLMAITaskRunner:
 
         def _normalize_markdown_block(value: Any) -> str:
             text = _as_localized_text(value)
-        if not text:
-            return ""
-
+            if not text:
+                return ""
             lines = [line.rstrip() for line in text.splitlines()]
             cleaned_lines = [line for line in lines if line.strip()]
             return "\n".join(cleaned_lines).strip()
@@ -1049,6 +1049,7 @@ class LLMAITaskRunner:
             return
 
         bucket_names, bucket_keys = LLMAITaskRunner._get_bucket_config(scenario)
+        scenario_guidance = LLMAITaskRunner._build_scenario_guidance_block(scenario_id)
         task_description, criteria_markdown = LLMAITaskRunner._get_scenario_briefing_prompt_settings(
             scenario_id
         )

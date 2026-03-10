@@ -1,4 +1,3 @@
-# syntax=docker/dockerfile:1
 # 1. Offizielles Node-Image als Grundlage:
 FROM public.ecr.aws/docker/library/node:23-slim
 LABEL authors="philippsteigerwald"
@@ -11,8 +10,7 @@ RUN chmod +x /scripts/start_yjs.sh
 # 2. Dependencies (cached solange package*.json sich nicht aendert)
 # BuildKit cache mount haelt npm-Cache zwischen Builds persistent
 COPY yjs-server/package.json yjs-server/package-lock.json /yjs-server/
-RUN --mount=type=cache,target=/root/.npm \
-    npm ci && \
+RUN npm ci && \
     touch node_modules/.install-stamp
 
 # 3. Restlichen Source code kopieren

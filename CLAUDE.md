@@ -844,14 +844,14 @@ Versionen werden automatisch aus Git-Tags berechnet (`llars-frontend/vite.config
 
 **Base-Tag:** `v1.0.0` (erstellt am 2026-03-09)
 
-| Branch | Inkrement | Beispiel | Anzeige |
-|--------|-----------|----------|---------|
-| `dev` | Patch (x in v1.0.x) | v1.0.1, v1.0.2, ... | AppBar: `DEV v1.0.2 · dev@a664fa0b` |
-| `main` | Minor (y in v1.y.0) | v1.1.0, v1.2.0, ... | Footer: `v1.1.0` |
+**Formel:** `git rev-list --first-parent --count v1.0.0..HEAD` zählt nur direkte Commits (keine Merge-Inflation).
 
-**Formel:** `git describe --tags --long --match "v*"` → `v1.0.0-5-gabcdef`
-- Dev: `major.minor.(patch + commits_since_tag)`
-- Main: `major.(minor + commits_since_tag).0`
+| Branch | First-Parent Commits | Version | Anzeige |
+|--------|---------------------|---------|---------|
+| `dev` | 22 | v1.22.0 | AppBar: `DEV v1.22.0 · dev@b71397c2` |
+| `main` | 8 | v1.8.0 | Footer: `v1.8.0` |
+
+**Warum `--first-parent`?** Ohne `--first-parent` zählt git auf main die Merge-Commits MIT allen gemergten Commits aus dev. Das führt dazu, dass main MEHR Commits als dev hat (z.B. main=32, dev=22) und eine höhere Version anzeigt, obwohl dev immer voraus ist.
 
 **Neuen Base-Tag setzen (nur bei Major-Release):**
 ```bash

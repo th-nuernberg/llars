@@ -86,20 +86,23 @@ def get_evaluation_progress(scenario_id):
             model_id=model_id,
         ).filter(LLMTaskResult.error.isnot(None)).count()
 
-        # Determine per-model status (check in-memory lock for accurate "running")
+        # Determine per-model status.
+        # Uses in-memory lock (LLMAITaskRunner._active_locks) to detect "running"
+        # even before the first item completes. This prevents the frontend from
+        # showing a "Start" button while the runner is already processing.
         from services.llm.llm_ai_task_runner import LLMAITaskRunner
         is_active = LLMAITaskRunner.is_running(scenario_id, model_id)
 
         if completed >= total_threads:
             model_status = 'completed'
         elif errors > 0 and completed + errors >= total_threads:
-            model_status = 'failed'
+            model_status = 'failed'       # all items attempted, some/all failed
         elif errors > 0 and completed + errors < total_threads:
             model_status = 'stopped' if not is_active else 'running'
         elif is_active or completed > 0:
-            model_status = 'running'
+            model_status = 'running'       # lock held or partial results exist
         else:
-            model_status = 'pending'
+            model_status = 'pending'       # no results yet, no runner active
 
         model_progress[model_id] = {
             'completed': completed,
@@ -180,20 +183,18 @@ def get_evaluation_result(result_id):
 @handle_api_errors(logger_name='llm_evaluation')
 def start_evaluation(scenario_id):
     """
-    Start LLM evaluation for a scenario.
+    Manual Start/Retry for LLM evaluation (triggered by Assessors tab button).
 
-    This triggers the LLM evaluators to process all threads
-    in the scenario. Progress can be monitored via Socket.IO
-    or the progress endpoint.
+    This is the ONLY path that can retry models with permanent failures (401/403/auth).
+    It clears all error records for the model first, so the runner treats every item
+    as "pending" again. This is intentional: the user may have fixed the API key or
+    provider config since the last failure.
 
-    Args:
-        scenario_id: Scenario ID
+    Auto-start paths (server startup, scenario GET) will NOT retry permanent failures.
+    See LLMAITaskRunner docstring for the full anti-DDoS strategy.
 
     Body:
         model_id: Optional specific model to run (runs all if not specified)
-
-    Returns:
-        JSON with status
     """
     from db.models import RatingScenarios
 
@@ -211,8 +212,9 @@ def start_evaluation(scenario_id):
         if not LLMAccessService.user_can_access_model(username, model_id):
             raise ValidationError(f'No access to LLM model: {model_id}')
 
-    # Clear previous error records so the runner retries all items.
-    # This is a manual action - the user may have fixed their API key.
+    # Clear previous error records so the runner retries ALL items fresh.
+    # This is the key difference from auto-start: auto-start skips permanent failures,
+    # but manual start assumes the user has fixed the issue (e.g. rotated API key).
     from db.models import LLMTaskResult
     error_filter = LLMTaskResult.query.filter(
         LLMTaskResult.scenario_id == scenario_id,

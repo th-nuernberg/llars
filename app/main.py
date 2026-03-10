@@ -394,6 +394,15 @@ def start_pending_llm_evaluations():
     )
 
     def _run_pending_evaluations():
+        """
+        Startup task: resume pending LLM evaluations from before server restart.
+
+        Safety filters (prevent self-DDoS, see LLMAITaskRunner docstring):
+        - Skip models with permanent failures (401/403/auth) → needs manual retry
+        - Skip models with 3+ errors in last 30 min → transient cooldown
+        - Skip items that already have results (success or error)
+        - Lock per (scenario, model) in runner prevents race conditions
+        """
         with app.app_context():
             try:
                 # Find all scenarios with LLM evaluators configured

@@ -1,8 +1,20 @@
 """
 LLM AI Task Runner
 
-Executes scenario tasks (ranking, rating, authenticity) for LLM evaluators.
-Broadcasts progress updates via WebSocket for real-time UI feedback.
+Executes scenario evaluation tasks (ranking, rating, authenticity, comparison,
+labeling, mail_rating) for configured LLM evaluator models.
+
+Key responsibilities:
+- Iterate over scenario items and send each to the configured LLM model
+- Parse structured JSON responses and store results in LLMTaskResult
+- Broadcast progress updates via Socket.IO for real-time UI feedback
+- Prevent self-DDoS through 6 layers of protection (see LLMAITaskRunner docstring)
+
+Trigger points (see CLAUDE.md "LLM Evaluator Auto-Start"):
+- Server startup (main.py) - daemon thread for pending evaluations
+- Scenario GET (scenario_manager_api.py) - 5min cooldown per scenario
+- Scenario creation / thread addition - immediate, one-shot
+- Manual Start/Retry button (llm_evaluation_routes.py) - clears errors first
 """
 
 from __future__ import annotations
@@ -228,21 +240,74 @@ class LLMNonRetryableError(Exception):
 
 
 class LLMAITaskRunner:
-    """Run scenario tasks for configured LLM evaluators."""
+    """
+    Executes LLM evaluation tasks (ranking, rating, authenticity, etc.) for scenarios.
 
+    Anti-DDoS Protection (6 layers):
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    This class previously caused 100% CPU / server crashes due to race conditions
+    and uncontrolled retries (see commits b70e670d, e16d4a30, 95d1555b).
+
+    Current safeguards:
+
+    1. **Lock per (scenario_id, model_id)** - Thread-safe set (_active_locks) prevents
+       duplicate runners. If startup triggers a runner and a user opens the same scenario,
+       the second call is silently skipped instead of spawning a parallel thread.
+
+    2. **Permanent failure detection** - Errors with HTTP 401/403/404/422 or auth-related
+       keywords are classified as permanent. Auto-start paths (startup + scenario GET)
+       skip these models entirely. Only the manual "Start/Retry" button in the Assessors
+       tab can retry, and it clears old error records first (see llm_evaluation_routes.py).
+
+    3. **Cooldown per scenario** (5 min) - scenario_manager_api.py limits auto-start on
+       GET /scenarios/<id> to once per 5 minutes (in-memory dict, per worker process).
+
+    4. **Error cooldown** (30 min) - Startup skips models with 3+ errors in the last
+       30 minutes, preventing restart loops for transient failures.
+
+    5. **Circuit breaker** - MAX_CONSECUTIVE_FAILURES (3) consecutive errors for the same
+       model in one run → abort remaining items, broadcast model_aborted via Socket.IO.
+
+    6. **Total failure cap** - MAX_TOTAL_FAILURES (30) across all items in one run →
+       abort, preventing runaway loops even with intermittent successes.
+
+    Auto-Start Trigger Points:
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~
+    - Server startup (main.py) → daemon thread, skips permanent failures + errored items
+    - Scenario GET (scenario_manager_api.py) → 5min cooldown, skips running models
+    - Scenario creation (POST) → fires once, no cooldown needed
+    - Threads added to scenario (POST) → only for newly added thread_ids
+
+    Manual Start (Assessors Tab "Start/Retry" button):
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    POST /api/evaluation/llm/<scenario_id>/start clears error records first,
+    then calls run_for_scenario_async. This bypasses permanent failure detection
+    because the user may have fixed the underlying issue (e.g. rotated API key).
+    """
+
+    # JSON parse retries per LLM request (invalid JSON → re-prompt with correction)
     MAX_RETRIES = 3
+    # Consecutive failures before circuit breaker trips (aborts remaining items)
     MAX_CONSECUTIVE_FAILURES = 3
+    # Total failures across all items before aborting the entire model run
     MAX_TOTAL_FAILURES = 30
+    # HTTP status codes that trigger immediate LLMNonRetryableError (no retry within _request_json)
     _NON_RETRYABLE_CODES = {401, 403}
-    # Permanent failures: don't retry on auto-start, only via manual "Start" button
+    # HTTP status codes treated as permanent failures (no auto-retry on startup/scenario GET).
+    # Only manual "Start/Retry" button can retry these.
     _PERMANENT_FAILURE_CODES = {401, 403, 404, 422}
 
-    # --- Active task lock: prevents duplicate runners for same (scenario, model) ---
+    # --- Active task lock ---
+    # Thread-safe set tracking which (scenario_id, model_id) combinations have a
+    # runner thread currently active. Prevents duplicate parallel execution.
+    # Used by: run_for_scenario() (acquire/release), is_running() (status endpoint),
+    #          scenario_manager_api.py (pre-filter before spawning async runner).
     _active_locks: set[tuple[int, str]] = set()
     _active_locks_guard = threading.Lock()
 
     @classmethod
     def _try_acquire(cls, scenario_id: int, model_id: str) -> bool:
+        """Attempt to acquire the lock for a (scenario, model) pair. Returns False if already held."""
         key = (scenario_id, model_id)
         with cls._active_locks_guard:
             if key in cls._active_locks:
@@ -252,19 +317,24 @@ class LLMAITaskRunner:
 
     @classmethod
     def _release(cls, scenario_id: int, model_id: str) -> None:
+        """Release the lock for a (scenario, model) pair. Always called in finally block."""
         key = (scenario_id, model_id)
         with cls._active_locks_guard:
             cls._active_locks.discard(key)
 
     @classmethod
     def is_running(cls, scenario_id: int, model_id: str) -> bool:
+        """Check if a runner is active for this (scenario, model). Used by status endpoint."""
         key = (scenario_id, model_id)
         with cls._active_locks_guard:
             return key in cls._active_locks
 
     @staticmethod
     def _is_non_retryable_error(exc: Exception) -> bool:
-        """Check if an API error is non-retryable (e.g., auth failures)."""
+        """
+        Check if a live API exception should immediately abort (no retry within _request_json).
+        Raises LLMNonRetryableError which breaks the entire model's item loop.
+        """
         status_code = getattr(exc, 'status_code', None)
         if status_code in LLMAITaskRunner._NON_RETRYABLE_CODES:
             return True
@@ -276,21 +346,28 @@ class LLMAITaskRunner:
 
     @staticmethod
     def _is_permanent_failure(error_str: str) -> bool:
-        """Check if a stored error indicates a permanent failure that should not be auto-retried."""
+        """
+        Check if a *stored* error string (from DB) indicates a permanent failure.
+        Used by auto-start paths to skip items/models that will never succeed
+        without user intervention (e.g. invalid API key, model not found).
+        Manual "Start/Retry" button bypasses this by clearing error records first.
+        """
         if not error_str:
             return False
         lower = error_str.lower()
         for code in LLMAITaskRunner._PERMANENT_FAILURE_CODES:
             if f"error code: {code}" in lower or f"status_code={code}" in lower:
                 return True
-        # Auth-related keywords
         if any(kw in lower for kw in ("unauthorized", "forbidden", "authentication", "invalid api key", "invalid_api_key")):
             return True
         return False
 
     @staticmethod
     def _check_circuit_breaker(consecutive_failures: int, model_id: str, scenario_id: int, task_type: str) -> bool:
-        """Return True if circuit breaker is tripped and loop should break."""
+        """
+        Return True if circuit breaker is tripped and the item loop should break.
+        Broadcasts model_aborted via Socket.IO so the frontend shows the failure.
+        """
         if consecutive_failures >= LLMAITaskRunner.MAX_CONSECUTIVE_FAILURES:
             logger.error(
                 "[LLM AI Runner] Circuit breaker: %d consecutive failures for model %s "
@@ -307,6 +384,11 @@ class LLMAITaskRunner:
         model_ids: Optional[List[str]] = None,
         thread_ids: Optional[List[int]] = None,
     ) -> None:
+        """
+        Spawn a daemon thread to run LLM evaluations for a scenario.
+        The actual lock acquisition happens inside run_for_scenario(),
+        so callers don't need to worry about deduplication.
+        """
         def _runner():
             try:
                 from main import app
@@ -329,6 +411,13 @@ class LLMAITaskRunner:
         model_ids: Optional[List[str]] = None,
         thread_ids: Optional[List[int]] = None,
     ) -> None:
+        """
+        Main entry point: run LLM evaluations for a scenario.
+
+        Acquires a lock per (scenario_id, model_id) before starting each model's
+        runner. If the lock is already held (another thread is processing), that
+        model is silently skipped. The lock is always released in a finally block.
+        """
         scenario = RatingScenarios.query.get(scenario_id)
         if not scenario:
             logger.warning("[LLM AI Runner] Scenario not found: %s", scenario_id)
@@ -381,6 +470,7 @@ class LLMAITaskRunner:
         scenario_thread_ids: List[int],
         scenario: RatingScenarios,
     ) -> None:
+        """Dispatch to the appropriate runner method based on function_name."""
         scenario_id = scenario.id
         if function_name == "ranking":
             LLMAITaskRunner._run_ranking(model_id, scenario_thread_ids, scenario_id)

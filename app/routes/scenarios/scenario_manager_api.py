@@ -46,7 +46,10 @@ from .scenario_utils import is_scenario_owner, check_scenario_ownership, check_s
 
 logger = logging.getLogger(__name__)
 
-# Cooldown for LLM auto-start: {scenario_id: last_trigger_timestamp}
+# LLM auto-start cooldown: prevents re-triggering on every page load.
+# In-memory dict {scenario_id: last_trigger_timestamp}, per worker process.
+# Combined with the per-(scenario, model) lock in LLMAITaskRunner to prevent
+# duplicate runners. See LLMAITaskRunner docstring for full anti-DDoS strategy.
 _llm_auto_start_cooldowns: dict[int, float] = {}
 _LLM_AUTO_START_COOLDOWN_SECONDS = 300  # 5 minutes
 

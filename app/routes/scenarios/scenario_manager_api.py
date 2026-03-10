@@ -609,8 +609,8 @@ def get_scenario_detail(scenario_id):
         config['llm_evaluators'] = llm_evaluators
     result['llm_evaluators'] = llm_evaluators
 
-    # Auto-start LLM evaluations with cooldown to prevent 100% CPU from failing models.
-    # Cooldown prevents re-triggering on every page load (5 min per scenario).
+    # Auto-start LLM evaluations with cooldown to prevent self-DDoS.
+    # Guards: 5min cooldown per scenario + lock per (scenario, model) in runner.
     if llm_evaluators:
         now = time.time()
         last_trigger = _llm_auto_start_cooldowns.get(scenario_id, 0)
@@ -618,10 +618,16 @@ def get_scenario_detail(scenario_id):
             _llm_auto_start_cooldowns[scenario_id] = now
             try:
                 from services.llm.llm_ai_task_runner import LLMAITaskRunner
-                LLMAITaskRunner.run_for_scenario_async(
-                    scenario_id,
-                    model_ids=llm_evaluators,
-                )
+                # Filter out models that are already running (lock held)
+                models_to_start = [
+                    m for m in llm_evaluators
+                    if not LLMAITaskRunner.is_running(scenario_id, m)
+                ]
+                if models_to_start:
+                    LLMAITaskRunner.run_for_scenario_async(
+                        scenario_id,
+                        model_ids=models_to_start,
+                    )
             except Exception as exc:
                 logger.warning("[LLM auto-start] scenario %d failed: %s", scenario_id, exc)
 

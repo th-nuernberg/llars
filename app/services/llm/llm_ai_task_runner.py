@@ -234,6 +234,33 @@ class LLMAITaskRunner:
     MAX_CONSECUTIVE_FAILURES = 3
     MAX_TOTAL_FAILURES = 30
     _NON_RETRYABLE_CODES = {401, 403}
+    # Permanent failures: don't retry on auto-start, only via manual "Start" button
+    _PERMANENT_FAILURE_CODES = {401, 403, 404, 422}
+
+    # --- Active task lock: prevents duplicate runners for same (scenario, model) ---
+    _active_locks: set[tuple[int, str]] = set()
+    _active_locks_guard = threading.Lock()
+
+    @classmethod
+    def _try_acquire(cls, scenario_id: int, model_id: str) -> bool:
+        key = (scenario_id, model_id)
+        with cls._active_locks_guard:
+            if key in cls._active_locks:
+                return False
+            cls._active_locks.add(key)
+            return True
+
+    @classmethod
+    def _release(cls, scenario_id: int, model_id: str) -> None:
+        key = (scenario_id, model_id)
+        with cls._active_locks_guard:
+            cls._active_locks.discard(key)
+
+    @classmethod
+    def is_running(cls, scenario_id: int, model_id: str) -> bool:
+        key = (scenario_id, model_id)
+        with cls._active_locks_guard:
+            return key in cls._active_locks
 
     @staticmethod
     def _is_non_retryable_error(exc: Exception) -> bool:
@@ -245,6 +272,20 @@ class LLMAITaskRunner:
         for code in LLMAITaskRunner._NON_RETRYABLE_CODES:
             if f"Error code: {code}" in exc_str or f"status_code={code}" in exc_str:
                 return True
+        return False
+
+    @staticmethod
+    def _is_permanent_failure(error_str: str) -> bool:
+        """Check if a stored error indicates a permanent failure that should not be auto-retried."""
+        if not error_str:
+            return False
+        lower = error_str.lower()
+        for code in LLMAITaskRunner._PERMANENT_FAILURE_CODES:
+            if f"error code: {code}" in lower or f"status_code={code}" in lower:
+                return True
+        # Auth-related keywords
+        if any(kw in lower for kw in ("unauthorized", "forbidden", "authentication", "invalid api key", "invalid_api_key")):
+            return True
         return False
 
     @staticmethod
@@ -309,7 +350,13 @@ class LLMAITaskRunner:
                 logger.info("[LLM AI Runner] No comparison sessions for scenario %s", scenario_id)
                 return
             for model_id in resolved_models:
-                LLMAITaskRunner._run_comparison_sessions(model_id, session_ids, scenario.id)
+                if not LLMAITaskRunner._try_acquire(scenario_id, model_id):
+                    logger.info("[LLM AI Runner] Already running: scenario=%s model=%s", scenario_id, model_id)
+                    continue
+                try:
+                    LLMAITaskRunner._run_comparison_sessions(model_id, session_ids, scenario.id)
+                finally:
+                    LLMAITaskRunner._release(scenario_id, model_id)
             return
 
         scenario_thread_ids = LLMAITaskRunner._resolve_thread_ids(scenario, thread_ids)
@@ -317,29 +364,47 @@ class LLMAITaskRunner:
             return
 
         for model_id in resolved_models:
-            if function_name == "ranking":
-                LLMAITaskRunner._run_ranking(model_id, scenario_thread_ids, scenario.id)
-            elif function_name == "rating":
-                LLMAITaskRunner._run_rating(model_id, scenario_thread_ids, scenario.id)
-            elif function_name == "authenticity":
-                LLMAITaskRunner._run_authenticity(model_id, scenario_thread_ids, scenario.id)
-            elif function_name == "mail_rating":
-                LLMAITaskRunner._run_mail_rating(model_id, scenario_thread_ids, scenario.id)
-            elif function_name in ("labeling", "text_classification"):
-                task_type = "labeling" if function_name == "labeling" else "text_classification"
-                LLMAITaskRunner._run_text_classification(
-                    model_id,
-                    scenario_thread_ids,
-                    scenario.id,
-                    scenario,
-                    task_type=task_type,
+            if not LLMAITaskRunner._try_acquire(scenario_id, model_id):
+                logger.info("[LLM AI Runner] Already running: scenario=%s model=%s", scenario_id, model_id)
+                continue
+            try:
+                LLMAITaskRunner._run_model_for_scenario(
+                    model_id, function_name, scenario_thread_ids, scenario,
                 )
-            else:
-                logger.info(
-                    "[LLM AI Runner] Task type '%s' not supported for model %s",
-                    function_name,
-                    model_id,
-                )
+            finally:
+                LLMAITaskRunner._release(scenario_id, model_id)
+
+    @staticmethod
+    def _run_model_for_scenario(
+        model_id: str,
+        function_name: Optional[str],
+        scenario_thread_ids: List[int],
+        scenario: RatingScenarios,
+    ) -> None:
+        scenario_id = scenario.id
+        if function_name == "ranking":
+            LLMAITaskRunner._run_ranking(model_id, scenario_thread_ids, scenario_id)
+        elif function_name == "rating":
+            LLMAITaskRunner._run_rating(model_id, scenario_thread_ids, scenario_id)
+        elif function_name == "authenticity":
+            LLMAITaskRunner._run_authenticity(model_id, scenario_thread_ids, scenario_id)
+        elif function_name == "mail_rating":
+            LLMAITaskRunner._run_mail_rating(model_id, scenario_thread_ids, scenario_id)
+        elif function_name in ("labeling", "text_classification"):
+            task_type = "labeling" if function_name == "labeling" else "text_classification"
+            LLMAITaskRunner._run_text_classification(
+                model_id,
+                scenario_thread_ids,
+                scenario_id,
+                scenario,
+                task_type=task_type,
+            )
+        else:
+            logger.info(
+                "[LLM AI Runner] Task type '%s' not supported for model %s",
+                function_name,
+                model_id,
+            )
 
     @staticmethod
     def _resolve_model_ids(
@@ -644,6 +709,8 @@ class LLMAITaskRunner:
                         evaluated_indices = existing.payload_json.get('evaluated_indices', [])
                         if msg.idx in evaluated_indices:
                             continue
+                    if existing and existing.error and LLMAITaskRunner._is_permanent_failure(existing.error):
+                        continue
 
                     # Parse the bot_pair content (JSON with llm1 and llm2 responses)
                     try:
@@ -941,6 +1008,9 @@ class LLMAITaskRunner:
                     task_type="ranking",
                 ).first()
                 if existing and existing.payload_json:
+                    continue
+                # Skip items with permanent errors (auth/permission) - only manual retry
+                if existing and existing.error and LLMAITaskRunner._is_permanent_failure(existing.error):
                     continue
 
                 features = Feature.query.filter_by(thread_id=thread_id).all()
@@ -1398,6 +1468,8 @@ Antworte im JSON-Format:
                 ).first()
                 if existing and existing.payload_json:
                     continue
+                if existing and existing.error and LLMAITaskRunner._is_permanent_failure(existing.error):
+                    continue
 
                 # Try EvaluationItem model first (new model)
                 eval_item = EvaluationItem.query.filter_by(item_id=thread_id).first()
@@ -1638,6 +1710,8 @@ Antworte im JSON-Format:
                 ).first()
                 if existing and existing.payload_json:
                     continue
+                if existing and existing.error and LLMAITaskRunner._is_permanent_failure(existing.error):
+                    continue
 
                 messages = Message.query.filter_by(thread_id=thread_id).order_by(Message.timestamp.asc()).all()
                 if not messages:
@@ -1788,6 +1862,8 @@ Antworte im JSON-Format:
                     task_type="mail_rating",
                 ).first()
                 if existing and existing.payload_json:
+                    continue
+                if existing and existing.error and LLMAITaskRunner._is_permanent_failure(existing.error):
                     continue
 
                 thread = EmailThread.query.filter_by(thread_id=thread_id).first()
@@ -2064,6 +2140,8 @@ Antworte im JSON-Format:
                 ).first()
                 if existing and existing.payload_json:
                     continue
+                if existing and existing.error and LLMAITaskRunner._is_permanent_failure(existing.error):
+                    continue
 
                 messages = Message.query.filter_by(thread_id=thread_id).order_by(Message.timestamp.asc()).all()
                 if not messages:
@@ -2216,6 +2294,8 @@ Antworte im JSON-Format:
                     task_type="comparison",
                 ).first()
                 if existing and existing.payload_json:
+                    continue
+                if existing and existing.error and LLMAITaskRunner._is_permanent_failure(existing.error):
                     continue
 
                 thread = EmailThread.query.filter_by(thread_id=thread_id).first()

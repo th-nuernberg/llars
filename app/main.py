@@ -460,8 +460,25 @@ def start_pending_llm_evaluations():
                     all_ids = item['all_ids']
 
                     for model_id in llm_evaluators:
+                        # Skip models with permanent failures (401/403/auth errors).
+                        # These will never succeed without user action (fix API key).
+                        permanent_failures = db.session.query(LLMTaskResult).filter(
+                            LLMTaskResult.scenario_id == scenario.id,
+                            LLMTaskResult.model_id == model_id,
+                            LLMTaskResult.error.isnot(None),
+                        ).limit(5).all()
+                        has_permanent = any(
+                            LLMAITaskRunner._is_permanent_failure(r.error)
+                            for r in permanent_failures if r.error
+                        )
+                        if has_permanent:
+                            print(
+                                f"[Startup] Skipping model {model_id} for scenario {scenario.id} "
+                                f"- permanent failure (auth/permission error). Use manual Start."
+                            )
+                            continue
+
                         # Skip models that had recent errors (cooldown: 30 min)
-                        # This prevents restart loops for models with bad API keys etc.
                         from datetime import datetime, timedelta
                         cooldown_cutoff = datetime.utcnow() - timedelta(minutes=30)
                         recent_errors = db.session.query(db.func.count()).filter(
@@ -520,8 +537,8 @@ def start_pending_llm_evaluations():
             except Exception as e:
                 print(f"[Startup] Error starting LLM evaluations: {e}")
 
-    # Re-enabled with safeguards: 30min error cooldown + skip errored items.
-    # Only truly pending items (no prior results, no errors) are started.
+    # Safeguards: lock per (scenario, model), permanent failure detection,
+    # 30min error cooldown, skip errored items.
     threading.Thread(target=_run_pending_evaluations, daemon=True).start()
 
 

@@ -413,9 +413,13 @@ cmd_deploy() {
   export APP_BRANCH="$BRANCH"
   echo "Version: $APP_VERSION ($APP_BRANCH@$APP_COMMIT_HASH)"
 
+  # Always rebuild frontend without cache to pick up source code changes.
+  # Docker BuildKit can incorrectly cache COPY layers even when files changed
+  # on disk (especially after git pull). Backend/nginx builds are fast and
+  # also benefit from a clean build to avoid stale-layer bugs.
   DEPLOY_COLOR="$deploy_color" docker compose --project-name "llars-${deploy_color}" \
     $COMPOSE_FILES \
-    build --parallel $BG_SERVICES
+    build --no-cache --parallel $BG_SERVICES
 
   # -----------------------------------------------------------------------
   # [4/6] Start inactive color containers

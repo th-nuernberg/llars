@@ -241,6 +241,26 @@ else
   echo "Skipping prompt engineering smoke test (SMOKE_PROMPT_ENG=0 or no API key)"
 fi
 
+# --- LLM Response Smoke Test (Socket.IO test_prompt_stream) ---
+SMOKE_LLM_RESPONSE="${SMOKE_LLM_RESPONSE:-1}"
+if [ "$SMOKE_LLM_RESPONSE" != "0" ]; then
+  echo ""
+  echo "Running LLM response smoke test..."
+  LLM_SCRIPT="${SCRIPT_DIR}/smoke_test_llm_response.py"
+  if [ ! -f "$LLM_SCRIPT" ]; then
+    LLM_SCRIPT="$DEPLOY_PATH/scripts/ci/smoke_test_llm_response.py"
+  fi
+  if [ -f "$LLM_SCRIPT" ]; then
+    BASE_URL="$BASE_URL" SYSTEM_ADMIN_API_KEY="${SYSTEM_ADMIN_API_KEY:-}" \
+      SMOKE_FORCE_HTTPS_HEADER="$SMOKE_FORCE_HTTPS_HEADER" \
+      python3 "$LLM_SCRIPT" || echo "WARNING: LLM response test failed (non-blocking)"
+  else
+    echo "WARNING: smoke_test_llm_response.py not found; skipping."
+  fi
+else
+  echo "Skipping LLM response smoke test (SMOKE_LLM_RESPONSE=0)"
+fi
+
 ROLLBACK_ENV="$DEPLOY_PATH/.deploy/rollback.env"
 if [ -f "$ROLLBACK_ENV" ]; then
   set -a

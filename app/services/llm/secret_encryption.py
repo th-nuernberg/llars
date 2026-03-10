@@ -28,13 +28,18 @@ def _get_encryption_key() -> bytes:
     if env_key:
         return _derive_key(env_key)
 
-    jwt_secret = os.environ.get("JWT_SECRET_KEY", _DEFAULT_DEV_SECRET)
+    # Fallback chain: JWT_SECRET_KEY → FLASK_SECRET_KEY → default dev key
+    jwt_secret = (
+        os.environ.get("JWT_SECRET_KEY")
+        or os.environ.get("FLASK_SECRET_KEY")
+        or _DEFAULT_DEV_SECRET
+    )
 
     # Block default key in production
     if jwt_secret == _DEFAULT_DEV_SECRET and os.environ.get("PROJECT_STATE") == "production":
         raise RuntimeError(
-            "CRITICAL: Neither LLM_PROVIDER_ENCRYPTION_KEY nor JWT_SECRET_KEY is set in production. "
-            "Cannot encrypt/decrypt API keys with default dev key."
+            "CRITICAL: No encryption key found. Set LLM_PROVIDER_ENCRYPTION_KEY, "
+            "JWT_SECRET_KEY, or FLASK_SECRET_KEY in production."
         )
 
     if jwt_secret == _DEFAULT_DEV_SECRET:

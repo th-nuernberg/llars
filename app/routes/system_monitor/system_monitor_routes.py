@@ -10,7 +10,7 @@ from typing import Any, Dict, List, Optional
 from flask import Response, jsonify, request, stream_with_context
 from sqlalchemy import or_
 
-from auth.decorators import system_api_key_required
+from auth.decorators import public_endpoint, system_api_key_required
 from db.database import db
 from db.models.system_event import SystemEvent
 from decorators.permission_decorator import require_permission
@@ -40,6 +40,7 @@ def _serialize_event(event: SystemEvent) -> Dict[str, Any]:
 
 
 @data_bp.get("/version")
+@public_endpoint
 def get_version():
     """Public endpoint returning the computed app version.
 

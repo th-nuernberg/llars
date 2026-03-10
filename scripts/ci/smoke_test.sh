@@ -241,6 +241,25 @@ else
   echo "Skipping prompt engineering smoke test (SMOKE_PROMPT_ENG=0 or no API key)"
 fi
 
+# --- Batch Generation Smoke Test ---
+SMOKE_GENERATION="${SMOKE_GENERATION:-1}"
+if [ "$SMOKE_GENERATION" != "0" ] && [ -n "$SYSTEM_ADMIN_API_KEY" ]; then
+  echo ""
+  echo "Running batch generation smoke test..."
+  GEN_SCRIPT="${SCRIPT_DIR}/smoke_test_generation.sh"
+  if [ ! -f "$GEN_SCRIPT" ]; then
+    GEN_SCRIPT="$DEPLOY_PATH/scripts/ci/smoke_test_generation.sh"
+  fi
+  if [ -f "$GEN_SCRIPT" ]; then
+    BASE_URL="$BASE_URL" SYSTEM_ADMIN_API_KEY="$SYSTEM_ADMIN_API_KEY" \
+      bash "$GEN_SCRIPT"
+  else
+    echo "WARNING: smoke_test_generation.sh not found; skipping."
+  fi
+else
+  echo "Skipping batch generation smoke test (SMOKE_GENERATION=0 or no API key)"
+fi
+
 # --- LLM Response Smoke Test (Socket.IO test_prompt_stream) ---
 SMOKE_LLM_RESPONSE="${SMOKE_LLM_RESPONSE:-1}"
 if [ "$SMOKE_LLM_RESPONSE" != "0" ]; then

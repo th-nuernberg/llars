@@ -14,7 +14,7 @@
  */
 
 import { test, expect } from '@playwright/test'
-import { TEST_USERS, quickLogin, dismissConsentBanner, waitForLoading } from './helpers.js'
+import { TEST_USERS, quickLogin, dismissConsentBanner, waitForLoading, assertNotErrorResponse } from './helpers.js'
 
 // Increase timeout for CI environment
 test.setTimeout(60000)
@@ -403,11 +403,7 @@ test.describe('LLM Streaming', () => {
 
     // Verify the response is real LLM content, not an error message
     const content = await responseText.innerText()
-    const lowerContent = content.toLowerCase()
-    expect(lowerContent).not.toContain('kein standard-llm')
-    expect(lowerContent).not.toContain('failed to')
-    expect(lowerContent).not.toContain('connection refused')
-    expect(lowerContent).not.toContain('decrypt')
+    assertNotErrorResponse(expect, content)
 
     // Close the dialog
     const closeBtn = page.locator(

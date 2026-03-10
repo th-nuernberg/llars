@@ -609,8 +609,21 @@ def get_scenario_detail(scenario_id):
         config['llm_evaluators'] = llm_evaluators
     result['llm_evaluators'] = llm_evaluators
 
-    # LLM auto-start DISABLED - was causing 100% CPU on scenarios with failing models.
-    # Users can manually start/retry evaluations via the LLM Evaluation tab or Retry button.
+    # Auto-start LLM evaluations with cooldown to prevent 100% CPU from failing models.
+    # Cooldown prevents re-triggering on every page load (5 min per scenario).
+    if llm_evaluators:
+        now = time.time()
+        last_trigger = _llm_auto_start_cooldowns.get(scenario_id, 0)
+        if now - last_trigger > _LLM_AUTO_START_COOLDOWN_SECONDS:
+            _llm_auto_start_cooldowns[scenario_id] = now
+            try:
+                from services.llm.llm_ai_task_runner import LLMAITaskRunner
+                LLMAITaskRunner.run_for_scenario_async(
+                    scenario_id,
+                    model_ids=llm_evaluators,
+                )
+            except Exception as exc:
+                logger.warning("[LLM auto-start] scenario %d failed: %s", scenario_id, exc)
 
     return jsonify(result), 200
 

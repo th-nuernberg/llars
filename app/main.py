@@ -160,21 +160,36 @@ limiter = Limiter(
     storage_uri="memory://",  # In production: Redis verwenden
 )
 
-# Exempt health check and judge session endpoints from rate limiting
+# Exempt high-frequency and internal endpoints from rate limiting
 @limiter.request_filter
 def exempt_endpoints():
-    """Exempt health check and high-frequency judge endpoints from rate limiting"""
+    """Exempt health check, Socket.IO, and high-frequency endpoints from rate limiting."""
+    path = request.path or ''
+    # Exempt Socket.IO / WebSocket endpoints (check path BEFORE endpoint)
+    if path.startswith('/socket.io'):
+        return True
     if not request.endpoint:
         return False
-    path = request.path or ''
     # Exempt health checks
     if 'health_check' in request.endpoint:
         return True
-    # Exempt Socket.IO / WebSocket endpoints
-    if path.startswith('/socket.io'):
-        return True
     # Exempt SSE (Server-Sent Events) streaming endpoints
     if path.startswith('/api/latex-collab/compile/'):
+        return True
+    # Exempt judge session polling (queue, current, comparisons, workers)
+    if '/api/judge/sessions/' in path:
+        return True
+    # Exempt evaluation session endpoints (frequent polling during active evaluation)
+    if path.startswith('/api/evaluation/'):
+        return True
+    # Exempt scenario endpoints (stats polling, pagination)
+    if path.startswith('/api/scenarios/'):
+        return True
+    # Exempt generation endpoints (pagination, WebSocket polling)
+    if path.startswith('/api/generation/'):
+        return True
+    # Exempt data import endpoints (bulk uploads)
+    if path.startswith('/api/import/'):
         return True
     return False
 
@@ -505,11 +520,9 @@ def start_pending_llm_evaluations():
             except Exception as e:
                 print(f"[Startup] Error starting LLM evaluations: {e}")
 
-    # DISABLED: Auto-starting LLM evaluations on startup caused 100% CPU.
-    # Each failed item triggers stats recomputation (6s CPU-bound), and models
-    # with bad API keys would retry 500 items on every container restart.
-    # Users can manually retry via the Retry button in the Scenario Manager.
-    print("[Startup] LLM evaluation auto-start disabled (use Retry button in UI)")
+    # Re-enabled with safeguards: 30min error cooldown + skip errored items.
+    # Only truly pending items (no prior results, no errors) are started.
+    threading.Thread(target=_run_pending_evaluations, daemon=True).start()
 
 
 start_pending_llm_evaluations()

@@ -532,7 +532,6 @@ function initSocket() {
     transports: socketioTransports,
     upgrade: socketioEnableWebsocket,
     query,
-    headers: { 'Content-Type': 'application/json; charset=utf-8' }
   })
 
   socket.on('connect', () => {

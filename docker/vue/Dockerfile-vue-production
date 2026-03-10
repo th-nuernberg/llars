@@ -3,6 +3,11 @@
 # ============================================
 # Stage 1: Build the Vue app
 # Stage 2: Serve static files with nginx
+#
+# Cache strategy:
+#   - npm ci is cached as long as package*.json doesn't change
+#   - Source COPY + build is invalidated on every new commit via
+#     CACHE_BUST build-arg (set to git commit hash by deploy script)
 # ============================================
 
 # Stage 1: Build
@@ -18,6 +23,20 @@ ARG VITE_KEYCLOAK_URL
 ARG VITE_KEYCLOAK_CLIENT_ID=llars-frontend
 ARG VITE_KEYCLOAK_REALM=llars
 ARG VITE_SOCKETIO_ENABLE_WEBSOCKET=true
+
+# Copy package files first for better caching (npm ci only re-runs when these change)
+COPY llars-frontend/package*.json ./
+
+# Install dependencies (cached layer - only invalidated by package*.json changes)
+RUN npm ci
+
+# --- Cache bust: everything below re-runs on every new commit ---
+# CACHE_BUST is set to the git commit hash by deploy_bluegreen.sh.
+# Changing this ARG invalidates all subsequent layers, ensuring source
+# code changes are always picked up even if Docker's file-hash check
+# fails to detect them (known BuildKit issue with git-pulled files).
+ARG CACHE_BUST=unknown
+
 # Version info (computed by deploy script, no .git in container)
 ARG APP_VERSION=0.0.0
 ARG APP_COMMIT_HASH=unknown
@@ -35,13 +54,7 @@ ENV APP_VERSION=$APP_VERSION
 ENV APP_COMMIT_HASH=$APP_COMMIT_HASH
 ENV APP_BRANCH=$APP_BRANCH
 
-# Copy package files first for better caching
-COPY llars-frontend/package*.json ./
-
-# Install dependencies
-RUN npm ci
-
-# Copy source code
+# Copy source code (invalidated by CACHE_BUST above)
 COPY llars-frontend/ ./
 
 # Build the production bundle

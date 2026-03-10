@@ -413,6 +413,9 @@ cmd_deploy() {
   export APP_BRANCH="$BRANCH"
   echo "Version: $APP_VERSION ($APP_BRANCH@$APP_COMMIT_HASH)"
 
+  # CACHE_BUST (= commit hash) invalidates frontend source COPY + build layers.
+  # npm ci layer stays cached unless package*.json changes. This ensures
+  # source code changes are always picked up without rebuilding everything.
   DEPLOY_COLOR="$deploy_color" docker compose --project-name "llars-${deploy_color}" \
     $COMPOSE_FILES \
     build --parallel $BG_SERVICES

@@ -12,6 +12,27 @@ LLARS ist ein System zur kollaborativen Bewertung von E-Mails und Szenarien mit 
 
 ---
 
+## Code-Dokumentation (PFLICHT)
+
+**Code MUSS sauber und sinnvoll dokumentiert werden.** Bei jeder Änderung Kommentare im Code nachziehen!
+
+### Regeln
+
+1. **Klassen und Module** brauchen Docstrings die den Zweck, die Architekturentscheidungen und Sicherheitsmechanismen erklären
+2. **Nicht-triviale Funktionen** brauchen Docstrings die erklären WAS und WARUM (nicht WIE - das steht im Code)
+3. **Komplexe Logik** (Cooldowns, Locks, Circuit Breaker, Fehlerbehandlung) MUSS inline-kommentiert werden
+4. **Entscheidungen gegen offensichtliche Alternativen** kommentieren (z.B. "In-memory statt Redis weil single-worker")
+5. **Verweise auf andere Dateien** wenn die Logik verteilt ist (z.B. "See LLMAITaskRunner docstring for anti-DDoS strategy")
+6. **Bei Änderungen:** Bestehende Kommentare prüfen und aktualisieren. Veraltete Kommentare sind schlimmer als keine
+
+### Was NICHT kommentiert werden muss
+
+- Offensichtlicher Code (`user = get_user()` braucht keinen Kommentar)
+- Getter/Setter, simple CRUD-Routen
+- Standard-Framework-Patterns (Decorators, Blueprint-Registration)
+
+---
+
 ## Quick Start
 
 ```bash
@@ -662,6 +683,61 @@ config.get('eval_config', {}).get('config', {}).get('dimensions', [])
 - `OWNER` - Szenario-Ersteller, erhält alle Items, wird in `evaluator_stats` gezählt
 - `EVALUATOR` - Bewerter, erhält alle Items
 - `RATER` - Bewerter mit optionaler Item-Distribution
+
+---
+
+## LLM Evaluator Auto-Start & Anti-DDoS
+
+**KRITISCH:** LLM Evaluatoren hatten mehrfach 100% CPU / Server-Crashes verursacht (b70e670d, e16d4a30). Die aktuelle Implementierung hat 6 Schutzschichten.
+
+### Trigger-Punkte (wann startet Auto-Start?)
+
+| Trigger | Datei | Schutz |
+|---------|-------|--------|
+| Server-Start | `app/main.py` (`_run_pending_evaluations`) | Permanent-Failure-Skip + 30min Error-Cooldown + nur pending Items |
+| Szenario öffnen (GET) | `scenario_manager_api.py` | 5min Cooldown pro Szenario + Lock-Check |
+| Szenario erstellen (POST) | `scenario_manager_api.py` | Einmalig, kein Cooldown nötig |
+| Threads hinzufügen (POST) | `scenario_manager_api.py` | Nur für neue Thread-IDs |
+| **Manueller Start/Retry** | `llm_evaluation_routes.py` POST `/<id>/start` | **Löscht Error-Records**, dann fresh start |
+
+### 6 Schutzschichten
+
+| # | Schicht | Schutz gegen | Wo |
+|---|---------|-------------|-----|
+| 1 | Lock per (scenario, model) | Race Conditions, doppelte Runner | `LLMAITaskRunner._active_locks` |
+| 2 | Permanent Failure Detection | Endlos-Retry bei Auth-Fehlern (401/403) | `_is_permanent_failure()` in allen 7 Runner-Loops |
+| 3 | Cooldown 5min/Szenario | Trigger bei jedem Page Load | `_llm_auto_start_cooldowns` in scenario_manager_api |
+| 4 | Error Cooldown 30min | Restart-Loops bei transienten Fehlern | `main.py` Startup |
+| 5 | Circuit Breaker (3 consecutive) | Kaskadenfehler in einem Run | `_check_circuit_breaker()` |
+| 6 | Total Failure Cap (30) | Runaway-Loops mit intermittierenden Erfolgen | `MAX_TOTAL_FAILURES` |
+
+### Manueller Retry-Flow (Assessors Tab)
+
+1. User fixt API-Key unter Settings → LLM Provider
+2. User klickt "Retry" im Assessors-Tab (`/scenarios/<id>?tab=assessors`)
+3. Backend **löscht alle Error-Records** für dieses Model (POST `/<id>/start`)
+4. Runner startet fresh, behandelt alle Items als "pending"
+5. Lock verhindert doppelten Start
+
+### Status-Anzeige (Frontend)
+
+| Backend-Status | UI | Button |
+|---------------|-----|--------|
+| `running` (Lock gehalten oder completed > 0) | "Running" Tag | Kein Button |
+| `pending` (0 completed, 0 errors, kein Lock) | - | **Start** Button |
+| `failed` (alle Items versucht, Fehler) | "Failed" Tag | **Retry** Button |
+| `stopped` (teilweise Fehler, nicht alle versucht) | "Stopped" Tag | **Retry** Button |
+| `completed` (alle Items erfolgreich) | "Completed" Tag | Kein Button |
+
+### Wichtige Dateien
+
+```
+app/services/llm/llm_ai_task_runner.py     # Haupt-Runner (Docstring enthält alle Details)
+app/main.py                                 # Startup-Trigger (_run_pending_evaluations)
+app/routes/scenarios/scenario_manager_api.py # Scenario-GET-Trigger (5min Cooldown)
+app/routes/llm/llm_evaluation_routes.py     # Manual Start + Status-Endpoint
+llars-frontend/src/views/ScenarioManager/components/tabs/ScenarioTeamTab.vue  # UI
+```
 
 ---
 

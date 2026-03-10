@@ -300,15 +300,10 @@
 
 <script setup>
 import { ref, computed, nextTick, watch, onMounted, onUnmounted } from 'vue'
-import { io } from 'socket.io-client'
 import { sanitizeHtml } from '@/utils/sanitize'
-import { AUTH_STORAGE_KEYS, getAuthStorageItem } from '@/utils/authStorage'
+import { getSocket } from '@/services/socketService'
 import LlmModelSelect from '@/components/common/LlmModelSelect.vue'
 import { useI18n } from 'vue-i18n'
-
-// Socket.IO configuration
-const socketioEnableWebsocket = String(import.meta.env.VITE_SOCKETIO_ENABLE_WEBSOCKET || '').toLowerCase() === 'true'
-const socketioTransports = socketioEnableWebsocket ? ['polling', 'websocket'] : ['polling']
 
 const props = defineProps({
   modelValue: {
@@ -342,8 +337,9 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue'])
 const { t } = useI18n()
 
-// Socket connection
+// Socket connection (uses shared socketService singleton - already authenticated)
 let socket = null
+let boundListeners = false
 
 // Storage keys for configuration (temperature/maxTokens only - model uses server default)
 const STORAGE_KEY_TEMP = 'llars_test_prompt_temperature'
@@ -514,58 +510,49 @@ let requestId = 0
 const socketConnected = ref(false)
 
 function initSocket() {
-  if (socket) return
+  // Use shared socketService singleton (already authenticated, no duplicate connections)
+  socket = getSocket()
+  socketConnected.value = socket.connected
 
-  const username = localStorage.getItem('username') || t('promptEngineering.user.unknown')
-  const token = getAuthStorageItem(AUTH_STORAGE_KEYS.token)
-  const rawBase = import.meta.env.VITE_API_BASE_URL || window.location.origin
-  const trimmedBase = String(rawBase || '').replace(/\/+$/, '')
-  const socketBase = trimmedBase.endsWith('/api')
-    ? trimmedBase.slice(0, -4)
-    : (trimmedBase || window.location.origin)
+  if (boundListeners) return
+  boundListeners = true
 
-  const query = { username }
-  if (token) query.token = token
+  socket.on('connect', onConnect)
+  socket.on('disconnect', onDisconnect)
+  socket.on('connect_error', onConnectError)
+  socket.on('test_prompt_response', onTestPromptResponse)
+}
 
-  socket = io(socketBase, {
-    path: '/socket.io/',
-    transports: socketioTransports,
-    upgrade: socketioEnableWebsocket,
-    query,
-    headers: { 'Content-Type': 'application/json; charset=utf-8' }
-  })
+function onConnect() {
+  socketConnected.value = true
+  if (props.modelValue && pendingRequest) {
+    pendingRequest = false
+    sendTestPrompt()
+  }
+}
 
-  socket.on('connect', () => {
-    socketConnected.value = true
-    if (props.modelValue && pendingRequest) {
-      pendingRequest = false
-      sendTestPrompt()
+function onDisconnect() {
+  socketConnected.value = false
+}
+
+function onConnectError(error) {
+  isStreaming.value = false
+  response.value = t('promptEngineering.testPrompt.connectionError', { message: error.message })
+}
+
+function onTestPromptResponse(data) {
+  response.value += data.content
+
+  nextTick(() => {
+    if (follow.value && responseContainer.value) {
+      responseContainer.value.scrollTop = responseContainer.value.scrollHeight
     }
   })
 
-  socket.on('disconnect', () => {
-    socketConnected.value = false
-  })
-
-  socket.on('connect_error', (error) => {
+  if (data.complete) {
     isStreaming.value = false
-    response.value = t('promptEngineering.testPrompt.connectionError', { message: error.message })
-  })
-
-  socket.on('test_prompt_response', (data) => {
-    response.value += data.content
-
-    nextTick(() => {
-      if (follow.value && responseContainer.value) {
-        responseContainer.value.scrollTop = responseContainer.value.scrollHeight
-      }
-    })
-
-    if (data.complete) {
-      isStreaming.value = false
-      responseComplete.value = true
-    }
-  })
+    responseComplete.value = true
+  }
 }
 
 function sendTestPrompt() {
@@ -671,8 +658,13 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
+  // Remove only our listeners — do NOT disconnect the shared socket
   if (socket) {
-    socket.disconnect()
+    socket.off('connect', onConnect)
+    socket.off('disconnect', onDisconnect)
+    socket.off('connect_error', onConnectError)
+    socket.off('test_prompt_response', onTestPromptResponse)
+    boundListeners = false
     socket = null
   }
 })

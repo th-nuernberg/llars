@@ -21,7 +21,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     jq \
     python3 \
-    && rm -rf /var/lib/apt/lists/*
+    python3-pip \
+    && rm -rf /var/lib/apt/lists/* \
+    && pip3 install --no-cache-dir 'python-socketio[client]>=5.11,<6' requests
 
 WORKDIR /tests
 
@@ -29,6 +31,7 @@ WORKDIR /tests
 COPY scripts/ci/smoke_test.sh /tests/smoke/
 COPY scripts/ci/smoke_test_evaluation.sh /tests/smoke/
 COPY scripts/ci/smoke_test_prompt_eng.sh /tests/smoke/
+COPY scripts/ci/smoke_test_llm_response.py /tests/smoke/
 COPY scripts/ci/wait_for_health.sh /tests/smoke/
 COPY scripts/smoke_test_wizard.sh /tests/smoke/
 

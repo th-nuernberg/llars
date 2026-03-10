@@ -46,7 +46,10 @@ from .scenario_utils import is_scenario_owner, check_scenario_ownership, check_s
 
 logger = logging.getLogger(__name__)
 
-# Cooldown for LLM auto-start: {scenario_id: last_trigger_timestamp}
+# LLM auto-start cooldown: prevents re-triggering on every page load.
+# In-memory dict {scenario_id: last_trigger_timestamp}, per worker process.
+# Combined with the per-(scenario, model) lock in LLMAITaskRunner to prevent
+# duplicate runners. See LLMAITaskRunner docstring for full anti-DDoS strategy.
 _llm_auto_start_cooldowns: dict[int, float] = {}
 _LLM_AUTO_START_COOLDOWN_SECONDS = 300  # 5 minutes
 
@@ -609,8 +612,27 @@ def get_scenario_detail(scenario_id):
         config['llm_evaluators'] = llm_evaluators
     result['llm_evaluators'] = llm_evaluators
 
-    # LLM auto-start DISABLED - was causing 100% CPU on scenarios with failing models.
-    # Users can manually start/retry evaluations via the LLM Evaluation tab or Retry button.
+    # Auto-start LLM evaluations with cooldown to prevent self-DDoS.
+    # Guards: 5min cooldown per scenario + lock per (scenario, model) in runner.
+    if llm_evaluators:
+        now = time.time()
+        last_trigger = _llm_auto_start_cooldowns.get(scenario_id, 0)
+        if now - last_trigger > _LLM_AUTO_START_COOLDOWN_SECONDS:
+            _llm_auto_start_cooldowns[scenario_id] = now
+            try:
+                from services.llm.llm_ai_task_runner import LLMAITaskRunner
+                # Filter out models that are already running (lock held)
+                models_to_start = [
+                    m for m in llm_evaluators
+                    if not LLMAITaskRunner.is_running(scenario_id, m)
+                ]
+                if models_to_start:
+                    LLMAITaskRunner.run_for_scenario_async(
+                        scenario_id,
+                        model_ids=models_to_start,
+                    )
+            except Exception as exc:
+                logger.warning("[LLM auto-start] scenario %d failed: %s", scenario_id, exc)
 
     return jsonify(result), 200
 

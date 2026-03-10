@@ -320,9 +320,10 @@ build:docker:
     - shell
   script:
     - echo "Building Docker images..."
-    # --no-cache ensures source code changes are always picked up.
-    # Without this, Docker BuildKit can serve stale COPY layers from cache.
-    - docker compose build --no-cache --parallel
+    # CACHE_BUST build-arg (commit hash) invalidates frontend source layers.
+    # npm ci stays cached. See Dockerfile-vue-production for cache strategy.
+    - export APP_COMMIT_HASH="$(git rev-parse --short HEAD)"
+    - docker compose build --parallel
     - echo "Build completed successfully"
   rules:
     - *test_only_skip
@@ -338,9 +339,15 @@ build:docker:dev:
     - cd /var/llars
     - git config --global --add safe.directory /var/llars 2>/dev/null || true
     - git fetch origin dev && git checkout dev && git pull --ff-only origin dev
-    # --no-cache ensures frontend source changes are always picked up.
-    # Without this, Docker BuildKit can serve stale COPY layers from cache.
-    - docker compose build --no-cache --parallel
+    # Pre-build cleanup: remove unused images/build-cache to prevent disk-full failures.
+    # Only removes artifacts older than 24h to protect recent rollback images.
+    - echo "Pre-build Docker cleanup..."
+    - docker image prune -af --filter "until=24h" || true
+    - docker builder prune -af --filter "until=24h" || true
+    # CACHE_BUST build-arg (commit hash) invalidates frontend source layers.
+    # npm ci stays cached. See Dockerfile-vue-production for cache strategy.
+    - export APP_COMMIT_HASH="$(git rev-parse --short HEAD)"
+    - docker compose build --parallel
     - echo "Build completed successfully"
   extends:
     - .dev_deploy_rules

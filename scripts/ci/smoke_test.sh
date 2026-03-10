@@ -253,7 +253,7 @@ if [ "$SMOKE_LLM_RESPONSE" != "0" ]; then
   if [ -f "$LLM_SCRIPT" ]; then
     BASE_URL="$BASE_URL" SYSTEM_ADMIN_API_KEY="${SYSTEM_ADMIN_API_KEY:-}" \
       SMOKE_FORCE_HTTPS_HEADER="$SMOKE_FORCE_HTTPS_HEADER" \
-      python3 "$LLM_SCRIPT" || echo "WARNING: LLM response test failed (non-blocking)"
+      python3 "$LLM_SCRIPT"
   else
     echo "WARNING: smoke_test_llm_response.py not found; skipping."
   fi

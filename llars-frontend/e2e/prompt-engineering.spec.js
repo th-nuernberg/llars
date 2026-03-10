@@ -8,7 +8,7 @@
  * - Sharing functionality
  * - Test prompt dialog
  *
- * Test IDs: E2E_PROMPT_001 - E2E_PROMPT_020
+ * Test IDs: E2E_PROMPT_001 - E2E_PROMPT_021
  *
  * Run: npm run e2e:chromium -- e2e/prompt-engineering.spec.js
  */
@@ -327,5 +327,94 @@ test.describe('Prompt Engineering Permissions', () => {
     const hasAccess = page.url().includes('/PromptEngineering')
     const hasContent = await page.locator('.prompt-home, .prompts-grid, main').first().isVisible({ timeout: 5000 }).catch(() => false)
     expect(hasAccess || hasContent || page.url().includes('/Home')).toBeTruthy()
+  })
+})
+
+// ==================== LLM STREAMING TEST ====================
+
+test.describe('LLM Streaming', () => {
+  // This test verifies that LLM streaming works end-to-end in a real browser.
+  // It opens Prompt Engineering, navigates to a prompt detail, clicks Test,
+  // and verifies that the streamed LLM response contains real content (not errors).
+  // This catches outages like Flask/Werkzeug incompatibilities or encryption key mismatches
+  // that previously went undetected because the smoke test was non-blocking.
+  test('E2E_PROMPT_021: LLM stream produces real content in browser', async ({ page }) => {
+    test.setTimeout(120000)
+
+    await quickLogin(page, TEST_USERS.researcher)
+    await goToPromptEngineering(page)
+    await waitForLoading(page)
+
+    // Need at least one prompt to test with
+    const promptCards = getPromptCards(page)
+    const cardCount = await promptCards.count()
+    if (cardCount === 0) {
+      // No prompts available — create one via the "New Prompt" button
+      const createBtn = page.locator('button:has-text("Neues Prompt"), button:has-text("Neu"), button:has(.mdi-plus)').first()
+      const canCreate = await createBtn.isVisible({ timeout: 5000 }).catch(() => false)
+      if (!canCreate) {
+        test.skip(true, 'No prompts and no create button available')
+        return
+      }
+      await createBtn.click()
+      await page.waitForTimeout(1000)
+
+      // Fill name field and submit dialog
+      const nameInput = page.locator('.v-dialog input[type="text"], .v-dialog .v-text-field input').first()
+      if (await nameInput.isVisible({ timeout: 3000 }).catch(() => false)) {
+        await nameInput.fill('E2E LLM Stream Test')
+        // Click create/save button in dialog
+        const saveBtn = page.locator('.v-dialog button:has-text("Erstellen"), .v-dialog button:has-text("Speichern"), .v-dialog button:has-text("Create")').first()
+        if (await saveBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+          await saveBtn.click()
+          await page.waitForLoadState('load')
+        }
+      }
+    } else {
+      // Navigate to existing prompt detail
+      await promptCards.first().click()
+      await page.waitForLoadState('load')
+    }
+
+    await waitForLoading(page)
+
+    // Click the Test button (rocket icon in sidebar)
+    const testBtn = page.locator(
+      '.sidebar button:has-text("Test"), .sidebar button:has(.mdi-rocket), button:has-text("Test"), button:has-text("Testen")'
+    ).first()
+    await expect(testBtn).toBeVisible({ timeout: 10000 })
+    await testBtn.click()
+
+    // Wait for the test dialog to open
+    await expect(page.locator('.test-prompt-card, [role="dialog"]').first()).toBeVisible({ timeout: 10000 })
+
+    // Wait for the response section to appear and accumulate streamed content.
+    // The response-text element contains the pre-formatted LLM output.
+    const responseText = page.locator('.response-text, .response-content pre, .response-content').first()
+    await expect(responseText).toBeVisible({ timeout: 30000 })
+
+    // Poll until streaming produces non-empty content (LLM responses take time)
+    await expect
+      .poll(
+        async () => (await responseText.innerText().catch(() => '')).trim().length,
+        { timeout: 60000, message: 'LLM stream should produce non-empty content' }
+      )
+      .toBeGreaterThan(5)
+
+    // Verify the response is real LLM content, not an error message
+    const content = await responseText.innerText()
+    const lowerContent = content.toLowerCase()
+    expect(lowerContent).not.toContain('kein standard-llm')
+    expect(lowerContent).not.toContain('failed to')
+    expect(lowerContent).not.toContain('connection refused')
+    expect(lowerContent).not.toContain('decrypt')
+
+    // Close the dialog
+    const closeBtn = page.locator(
+      '.test-prompt-card button:has(.mdi-close), .test-prompt-card button:has-text("Schließen"), .test-prompt-card button:has-text("Close")'
+    ).first()
+    if (await closeBtn.isVisible({ timeout: 5000 }).catch(() => false)) {
+      await closeBtn.click()
+    }
   })
 })

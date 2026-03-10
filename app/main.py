@@ -170,8 +170,10 @@ def exempt_endpoints():
         return True
     if not request.endpoint:
         return False
-    # Exempt health checks
+    # Exempt health checks and version endpoint
     if 'health_check' in request.endpoint:
+        return True
+    if request.endpoint == 'data_bp.get_version':
         return True
     # Exempt SSE (Server-Sent Events) streaming endpoints
     if path.startswith('/api/latex-collab/compile/'):

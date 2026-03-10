@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import sys
 import time
 from datetime import datetime, timedelta
@@ -36,6 +37,20 @@ def _serialize_event(event: SystemEvent) -> Dict[str, Any]:
         "created_at": event.created_at.isoformat() + "Z",
         "details": event.details or None,
     }
+
+
+@data_bp.get("/version")
+def get_version():
+    """Public endpoint returning the computed app version.
+
+    Version is set via env vars at Docker build time (see vite.config.mjs, deploy_bluegreen.sh).
+    No auth required — used by CI smoke tests and monitoring.
+    """
+    return jsonify({
+        "version": os.environ.get("APP_VERSION", "0.0.0"),
+        "commit": os.environ.get("APP_COMMIT_HASH", "unknown"),
+        "branch": os.environ.get("APP_BRANCH", "unknown"),
+    }), 200
 
 
 @data_bp.get("/admin/system/events")

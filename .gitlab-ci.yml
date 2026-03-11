@@ -451,9 +451,17 @@ e2e:dev:
   timeout: 45 minutes
   variables:
     E2E_RUN_TAG: "Dev E2E"
+    E2E_ADMIN_USER: "test_admin"
+    E2E_RESEARCHER_USER: "test_researcher"
+    E2E_EVALUATOR_USER: "test_evaluator"
+    E2E_CHATBOT_MANAGER_USER: "test_chatbot_manager"
+    E2E_BOOTSTRAP_ADMIN_USER: "admin"
+    E2E_BOOTSTRAP_TEST_USERS: "true"
+    E2E_KEEP_TEST_USERS: "false"
   script:
     - cd /var/llars
     - export E2E_TEST_PASSWORD=$(grep '^LLARS_ADMIN_PASSWORD=' .env | cut -d= -f2- || echo "admin123")
+    - export E2E_BOOTSTRAP_ADMIN_PASSWORD="${E2E_BOOTSTRAP_ADMIN_PASSWORD:-$E2E_TEST_PASSWORD}"
     - export SYSTEM_ADMIN_API_KEY=$(grep '^SYSTEM_ADMIN_API_KEY=' .env | cut -d= -f2-)
     - docker compose --profile testing build smoke-test-service
     - |
@@ -463,9 +471,23 @@ e2e:dev:
         -e E2E_TEST_PASSWORD="${E2E_TEST_PASSWORD}" \
         -e SYSTEM_ADMIN_API_KEY="${SYSTEM_ADMIN_API_KEY}" \
         -e E2E_RUN_TAG="${E2E_RUN_TAG}" \
+        -e E2E_ADMIN_USER="${E2E_ADMIN_USER}" \
+        -e E2E_RESEARCHER_USER="${E2E_RESEARCHER_USER}" \
+        -e E2E_EVALUATOR_USER="${E2E_EVALUATOR_USER}" \
+        -e E2E_CHATBOT_MANAGER_USER="${E2E_CHATBOT_MANAGER_USER}" \
+        -e E2E_BOOTSTRAP_ADMIN_USER="${E2E_BOOTSTRAP_ADMIN_USER}" \
+        -e E2E_BOOTSTRAP_ADMIN_PASSWORD="${E2E_BOOTSTRAP_ADMIN_PASSWORD}" \
+        -e E2E_BOOTSTRAP_TEST_USERS="${E2E_BOOTSTRAP_TEST_USERS}" \
+        -e E2E_KEEP_TEST_USERS="${E2E_KEEP_TEST_USERS}" \
         -e NODE_TLS_REJECT_UNAUTHORIZED=0 \
         smoke-test-service \
         bash -c "cd /tests/e2e && npx playwright test --project=chromium --workers=1 nightly/tile-regression.spec.js"
+  after_script:
+    - |
+      export PLAYWRIGHT_BASE_URL="http://localhost:55080"
+      export E2E_TEST_PASSWORD=$(grep '^LLARS_ADMIN_PASSWORD=' /var/llars/.env | cut -d= -f2- || echo "admin123")
+      export E2E_BOOTSTRAP_ADMIN_PASSWORD="${E2E_BOOTSTRAP_ADMIN_PASSWORD:-$E2E_TEST_PASSWORD}"
+      python3 scripts/testing/cleanup_nightly_test_users.py || true
   rules:
     - if: $CI_COMMIT_BRANCH == "dev" && $CI_PIPELINE_SOURCE == "push"
       when: manual

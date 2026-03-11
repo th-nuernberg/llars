@@ -278,10 +278,10 @@ const routes = [
     { path: '/conferences/groups/:groupId/members', name: 'ResearchGroupMembers', component: ResearchGroupMembers, props: true, meta: { requiresAuth: true } },
     { path: '/conferences/groups/:groupId/request-access', name: 'ResearchGroupAccessRequest', component: ResearchGroupAccessRequestPage, props: true, meta: { requiresAuth: true } },
 
-    // Pipeline
-    { path: '/pipeline', name: 'PipelineHub', component: PipelineHub, meta: { requiresAuth: true } },
-    { path: '/pipeline/new', name: 'PipelineWizard', component: PipelineWizard, meta: { requiresAuth: true } },
-    { path: '/pipeline/:runId', name: 'PipelineSession', component: PipelineSession, props: true, meta: { requiresAuth: true } },
+    // Pipeline (admin-only, see home_tiles.contract.json)
+    { path: '/pipeline', name: 'PipelineHub', component: PipelineHub, meta: { requiresAuth: true, requiresAdmin: true } },
+    { path: '/pipeline/new', name: 'PipelineWizard', component: PipelineWizard, meta: { requiresAuth: true, requiresAdmin: true } },
+    { path: '/pipeline/:runId', name: 'PipelineSession', component: PipelineSession, props: true, meta: { requiresAuth: true, requiresAdmin: true } },
 
     { path : '/comparison', name:'Comparison', component: Comparison, meta: { requiresAuth: true } },
     {

@@ -106,7 +106,9 @@ async function assertDirectRouteBlockedOrRestricted(page, tile) {
   await waitForPageReady(page, 10000)
 
   const currentUrl = page.url()
-  if (currentUrl.includes('/login') || currentUrl.includes('/Home')) {
+  // Redirected away from the tile route = access was blocked
+  const tileRouteBase = tile.route.split('?')[0]
+  if (currentUrl.includes('/login') || currentUrl.includes('/Home') || !currentUrl.includes(tileRouteBase)) {
     expect(true).toBeTruthy()
     return
   }

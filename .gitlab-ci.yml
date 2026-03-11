@@ -415,6 +415,9 @@ smoke:dev:
   script:
     - echo "Running dev smoke tests..."
     - cd /var/llars
+    # Wait for nginx rate-limit bucket to refill after deploy health checks
+    - echo "Waiting 30s for rate-limit bucket refill..."
+    - sleep 30
     - BASE_URL=http://localhost:55080 bash scripts/ci/smoke_test.sh
   extends:
     - .dev_deploy_rules
@@ -583,6 +586,9 @@ smoke:staging:
   timeout: 10 minutes
   script:
     - cd /var/llars
+    # Wait for nginx rate-limit bucket to refill after E2E tests (~64 logins exhaust burst)
+    - echo "Waiting 30s for rate-limit bucket refill..."
+    - sleep 30
     # Load SYSTEM_ADMIN_API_KEY from server .env
     - export SYSTEM_ADMIN_API_KEY=$(grep '^SYSTEM_ADMIN_API_KEY=' .env | cut -d= -f2-)
     # smoke-test-service already built by test:e2e:nightly:tiles (no rebuild needed)

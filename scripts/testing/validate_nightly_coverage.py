@@ -35,7 +35,7 @@ REQUIRED_TEST_CHANGE_PREFIXES = {
 }
 
 HOME_ROUTE_PATTERN = re.compile(r"route:\s*'([^']+)'")
-TEST_TITLE_PATTERN = re.compile(r"\btest\(\s*['\"]([^'\"]+)['\"]")
+TEST_TITLE_PATTERN = re.compile(r"\btest(?:\.skip)?\(\s*['\"]([^'\"]+)['\"]")
 ACTIVITY_ID_PATTERN = re.compile(r"\[ACT:([A-Z0-9-]+)\]")
 ACTIVITY_CALL_PATTERN = re.compile(r"\bactivity\(\s*['\"]([A-Z0-9-]+)['\"]")
 

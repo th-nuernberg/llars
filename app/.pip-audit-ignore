@@ -42,3 +42,10 @@ CVE-2026-26013
 #
 # ---- sqlitedict 2.1.0 (transitive dep of chromadb, no fix available) ----
 CVE-2024-35515
+#
+# ---- Flask 3.0.3 + Werkzeug 3.0.6 (PINNED, cannot upgrade — see MEMORY.md) ----
+# Werkzeug 3.1+ breaks Flask-SocketIO session handling (read-only property).
+CVE-2026-27205
+CVE-2025-66221
+CVE-2026-21860
+CVE-2026-27199

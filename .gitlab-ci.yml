@@ -320,9 +320,23 @@ build:docker:
     - shell
   script:
     - echo "Building Docker images..."
-    # CACHE_BUST build-arg (commit hash) invalidates frontend source layers.
-    # npm ci stays cached. See Dockerfile-vue-production for cache strategy.
+    # Export version info so Docker build args match deploy_bluegreen.sh exactly.
+    # Without this, deploy rebuilds frontend layers because APP_VERSION/APP_BRANCH differ.
     - export APP_COMMIT_HASH="$(git rev-parse --short HEAD)"
+    - export APP_BRANCH="${CI_COMMIT_BRANCH:-unknown}"
+    - |
+      describe="$(git describe --tags --match 'v*' --first-parent 2>/dev/null || git describe --tags --match 'v*' 2>/dev/null || echo '')"
+      if [[ "$describe" =~ ^v([0-9]+)\.([0-9]+)\.([0-9]+)(-([0-9]+)-g[0-9a-f]+)?$ ]]; then
+        commits="${BASH_REMATCH[5]:-0}"
+        if [ "$commits" -eq 0 ]; then
+          export APP_VERSION="${BASH_REMATCH[1]}.${BASH_REMATCH[2]}.${BASH_REMATCH[3]}"
+        else
+          export APP_VERSION="${BASH_REMATCH[1]}.${BASH_REMATCH[2]}.$(( ${BASH_REMATCH[3]} + commits ))"
+        fi
+      else
+        export APP_VERSION="0.0.0"
+      fi
+    - echo "Version $APP_VERSION ($APP_BRANCH@$APP_COMMIT_HASH)"
     - docker compose build --parallel
     - echo "Build completed successfully"
   rules:
@@ -344,9 +358,22 @@ build:docker:dev:
     - echo "Pre-build Docker cleanup..."
     - docker image prune -af --filter "until=24h" || true
     - docker builder prune -af --filter "until=24h" || true
-    # CACHE_BUST build-arg (commit hash) invalidates frontend source layers.
-    # npm ci stays cached. See Dockerfile-vue-production for cache strategy.
+    # Export version info so Docker build args match deploy_bluegreen.sh exactly.
     - export APP_COMMIT_HASH="$(git rev-parse --short HEAD)"
+    - export APP_BRANCH="${CI_COMMIT_BRANCH:-unknown}"
+    - |
+      describe="$(git describe --tags --match 'v*' --first-parent 2>/dev/null || git describe --tags --match 'v*' 2>/dev/null || echo '')"
+      if [[ "$describe" =~ ^v([0-9]+)\.([0-9]+)\.([0-9]+)(-([0-9]+)-g[0-9a-f]+)?$ ]]; then
+        commits="${BASH_REMATCH[5]:-0}"
+        if [ "$commits" -eq 0 ]; then
+          export APP_VERSION="${BASH_REMATCH[1]}.${BASH_REMATCH[2]}.${BASH_REMATCH[3]}"
+        else
+          export APP_VERSION="${BASH_REMATCH[1]}.${BASH_REMATCH[2]}.$(( ${BASH_REMATCH[3]} + commits ))"
+        fi
+      else
+        export APP_VERSION="0.0.0"
+      fi
+    - echo "Version $APP_VERSION ($APP_BRANCH@$APP_COMMIT_HASH)"
     - docker compose build --parallel
     - echo "Build completed successfully"
   extends:

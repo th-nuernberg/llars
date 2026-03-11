@@ -40,6 +40,10 @@ services:
       - ANONYMIZED_TELEMETRY=False
       # Stricter CORS for production
       - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-${PROJECT_URL:-https://${PROJECT_HOST}}}
+      # Version info (computed by deploy script from git tags, served at /api/version)
+      - APP_VERSION=${APP_VERSION:-0.0.0}
+      - APP_COMMIT_HASH=${APP_COMMIT_HASH:-unknown}
+      - APP_BRANCH=${APP_BRANCH:-unknown}
     # Production volumes (no code hot-reload, but persistent RAG data)
     volumes:
       - rag_storage:/app/storage

@@ -190,6 +190,10 @@ services:
       - LIVEKIT_API_SECRET=${LIVEKIT_API_SECRET:-devsecretdevsecretdevsecretdevsecret1234567890}
       - LIVEKIT_API_URL=${LIVEKIT_API_URL:-http://livekit-service:7880}
       - LIVEKIT_PUBLIC_URL=${LIVEKIT_PUBLIC_URL:-ws://localhost:7881}
+      # Version info (computed by deploy scripts; defaults for local dev)
+      - APP_VERSION=${APP_VERSION:-dev}
+      - APP_COMMIT_HASH=${APP_COMMIT_HASH:-local}
+      - APP_BRANCH=${APP_BRANCH:-dev}
     depends_on:
       db-maria-service:
         condition: service_healthy

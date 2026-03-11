@@ -838,26 +838,38 @@ border-radius: 6px 2px 6px 2px;    /* Tags */
 
 ## Git Commits & Deployment
 
-### Semantic Versioning (automatisch)
+### Semantic Versioning (Tag-basiert)
 
-Versionen werden automatisch aus Git-Tags berechnet (`llars-frontend/vite.config.mjs`).
+Versionen werden aus Git-Tags mit `git describe` berechnet (`llars-frontend/vite.config.mjs`).
 
-**Base-Tag:** `v1.0.0` (erstellt am 2026-03-09)
+**Formel:** `git describe --tags --match "v*" --first-parent` → `v1.5.0-N-gabcdef`
+- **N=0:** Version = Tag exakt (z.B. `1.5.0`) — am getaggten Merge-Punkt
+- **N>0:** Version = `major.minor.(patch + N)` — inkrementiert Patch pro Commit seit Tag
 
-**Formel:** `git rev-list --first-parent --count v1.0.0..HEAD` zählt nur direkte Commits (keine Merge-Inflation).
+**Beide Branches zeigen die GLEICHE Version an Merge-Punkten** (wo der Tag liegt).
 
-| Branch | First-Parent Commits | Version | Anzeige |
-|--------|---------------------|---------|---------|
-| `dev` | 22 | v1.22.0 | AppBar: `DEV v1.22.0 · dev@b71397c2` |
-| `main` | 8 | v1.8.0 | Footer: `v1.8.0` |
+| Szenario | Version |
+|----------|---------|
+| Tag `v1.5.0` auf main (nach Merge) | main=`1.5.0`, dev=`1.5.0` |
+| dev bekommt 3 weitere Commits | dev=`1.5.3` |
+| Merge dev→main, Tag `v1.6.0` | main=`1.6.0`, dev=`1.6.0` |
+| dev bekommt 2 weitere Commits | dev=`1.6.2` |
 
-**Warum `--first-parent`?** Ohne `--first-parent` zählt git auf main die Merge-Commits MIT allen gemergten Commits aus dev. Das führt dazu, dass main MEHR Commits als dev hat (z.B. main=32, dev=22) und eine höhere Version anzeigt, obwohl dev immer voraus ist.
+**Nach jedem Merge dev→main:** Tag setzen!
+```bash
+git checkout main
+git merge dev
+git tag v1.{next_minor}.0
+git push && git push --tags
+```
 
-**Neuen Base-Tag setzen (nur bei Major-Release):**
+**Neuen Major-Tag setzen:**
 ```bash
 git tag v2.0.0
 git push --tags
 ```
+
+**Gleiche Formel in:** `vite.config.mjs`, `deploy_bluegreen.sh`, `.gitlab-ci.yml` (build jobs)
 
 **WICHTIG:** Bei `git push` immer auch `git push --tags` wenn neue Tags erstellt wurden.
 

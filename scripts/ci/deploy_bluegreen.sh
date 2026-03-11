@@ -395,15 +395,17 @@ cmd_deploy() {
   echo ""
   echo "[3/6] Building $deploy_color Docker images..."
 
-  # Compute semantic version from git tags for frontend build
+  # Compute semantic version from git tags using `git describe`.
+  # Formula: v1.5.0-N-gabcdef → N=0: exact tag, N>0: major.minor.(patch+N)
+  # Uses --first-parent to avoid merge-commit inflation, with fallback for main.
   local describe commit_hash
   commit_hash="$(git rev-parse --short HEAD)"
-  describe="$(git describe --tags --long --match 'v*' 2>/dev/null || echo '')"
+  describe="$(git describe --tags --match 'v*' --first-parent 2>/dev/null || git describe --tags --match 'v*' 2>/dev/null || echo '')"
   local app_version="0.0.0"
-  if [[ "$describe" =~ ^v([0-9]+)\.([0-9]+)\.([0-9]+)-([0-9]+)-g ]]; then
-    local major="${BASH_REMATCH[1]}" minor="${BASH_REMATCH[2]}" patch="${BASH_REMATCH[3]}" commits="${BASH_REMATCH[4]}"
-    if [ "$BRANCH" = "main" ]; then
-      app_version="${major}.$(( minor + commits )).0"
+  if [[ "$describe" =~ ^v([0-9]+)\.([0-9]+)\.([0-9]+)(-([0-9]+)-g[0-9a-f]+)?$ ]]; then
+    local major="${BASH_REMATCH[1]}" minor="${BASH_REMATCH[2]}" patch="${BASH_REMATCH[3]}" commits="${BASH_REMATCH[5]:-0}"
+    if [ "$commits" -eq 0 ]; then
+      app_version="${major}.${minor}.${patch}"
     else
       app_version="${major}.${minor}.$(( patch + commits ))"
     fi

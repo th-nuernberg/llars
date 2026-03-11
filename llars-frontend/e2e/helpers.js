@@ -385,3 +385,59 @@ export async function clickAndWait(page, selector, apiPattern = null) {
     await page.waitForLoadState('domcontentloaded', { timeout: 10000 }).catch(() => {})
   }
 }
+
+/**
+ * Assert that LLM response content is real output, not an error page or error message.
+ *
+ * Checks for: HTML error pages, JSON error objects, HTTP status codes,
+ * auth/permission errors, stack traces, provider/infra errors,
+ * and LLARS-specific failure patterns from past outages.
+ *
+ * @param {import('@playwright/test').Expect} expect - Playwright expect function
+ * @param {string} content - The LLM response content to validate
+ */
+export function assertNotErrorResponse(expect, content) {
+  const lower = content.toLowerCase()
+
+  // HTML Error Pages
+  expect(lower).not.toContain('<!doctype')
+  expect(lower).not.toContain('<html')
+  expect(lower).not.toContain('internal server error')
+
+  // JSON Error Objects
+  expect(lower).not.toContain('"error"')
+  expect(lower).not.toContain('"traceback"')
+
+  // HTTP Status Codes as Text
+  expect(lower).not.toContain('500 internal')
+  expect(lower).not.toContain('502 bad gateway')
+  expect(lower).not.toContain('503 service')
+  expect(lower).not.toContain('504 gateway')
+
+  // Auth/Permission Errors
+  expect(lower).not.toContain('unauthorized')
+  expect(lower).not.toContain('forbidden')
+  expect(lower).not.toContain('access denied')
+
+  // Stack Traces
+  expect(lower).not.toContain('traceback (most recent')
+  expect(lower).not.toContain('raise exception')
+
+  // Provider/Infra Errors
+  expect(lower).not.toContain('rate limit')
+  expect(lower).not.toContain('quota exceeded')
+  expect(lower).not.toContain('api key')
+  expect(lower).not.toContain('model not found')
+
+  // LLARS-specific errors (from past outages)
+  expect(lower).not.toContain('kein standard-llm')
+  expect(lower).not.toContain('failed to')
+  expect(lower).not.toContain('connection refused')
+  expect(lower).not.toContain('decrypt')
+  expect(lower).not.toContain('fernet')
+  expect(lower).not.toContain('werkzeug')
+
+  // Structural: Must be real language (more than 3 words with >1 letter)
+  const wordCount = content.split(/\s+/).filter(w => w.length > 1).length
+  expect(wordCount).toBeGreaterThan(3)
+}

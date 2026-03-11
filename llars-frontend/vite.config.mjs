@@ -9,19 +9,21 @@ import { defineConfig } from 'vite'
 import { fileURLToPath, URL } from 'node:url'
 import { execSync } from 'node:child_process'
 
-// Build-time semantic version derived from git tags.
+// Build-time semantic version derived from git tags using `git describe`.
 //
-// Uses --first-parent commit counting to avoid merge commit inflation:
-//   git rev-list --first-parent --count v1.0.0..HEAD
-// Without --first-parent, main has MORE commits than dev (each merge adds N+1 commits),
-// making main appear as a higher version even though dev is always ahead.
+// Formula: `git describe --tags --match "v*" --first-parent` → `v1.5.0-N-gabcdef`
+//   - N=0: version = tag exactly (e.g. 1.5.0) — happens at tagged merge points
+//   - N>0: version = major.minor.(patch + N) — increments patch per commit since tag
 //
-// Both branches use the same formula: v{major}.{minor + first_parent_commits}.{patch}
-// The branch name is shown separately in the UI (e.g. "DEV v1.22.0 · dev@abc123").
+// Both branches show the SAME version at merge points (where the tag lives).
+// After merge dev→main, create tag v1.{minor+1}.0 on main. Dev then auto-increments
+// patch from that tag as new commits land.
 //
-// Example with base tag v1.0.0:
-//   dev (22 direct commits)  → v1.22.0
-//   main (8 merge commits)   → v1.8.0
+// Example:
+//   Tag v1.5.0 on main (after merge)  → both show v1.5.0
+//   dev gets 3 more commits           → dev shows v1.5.3
+//   Merge dev→main, tag v1.6.0        → both show v1.6.0
+//   dev gets 2 more commits           → dev shows v1.6.2
 function getVersionInfo() {
   // Docker builds pass version as env vars (no .git in container)
   if (process.env.APP_VERSION) {
@@ -37,22 +39,23 @@ function getVersionInfo() {
     const commitHash = run('git rev-parse --short HEAD')
     const branch = run('git rev-parse --abbrev-ref HEAD')
 
-    // Find the latest version tag reachable from HEAD
-    const tagDescribe = run('git describe --tags --long --match "v*" 2>/dev/null || echo ""')
-    const match = tagDescribe.match(/^v(\d+)\.(\d+)\.(\d+)-\d+-g/)
+    // Try --first-parent first (works on dev), fall back to normal describe (works on main after merge)
+    let describe = ''
+    try { describe = run('git describe --tags --match "v*" --first-parent 2>/dev/null') } catch {}
+    if (!describe) {
+      try { describe = run('git describe --tags --match "v*" 2>/dev/null') } catch {}
+    }
 
+    const match = describe.match(/^v(\d+)\.(\d+)\.(\d+)(?:-(\d+)-g[0-9a-f]+)?$/)
     let version
     if (match) {
-      const [, major, minor, patch] = match
-      const tag = `v${major}.${minor}.${patch}`
-      // Count only first-parent commits since the tag.
-      // This gives dev=22, main=8 instead of dev=22, main=32.
-      const commits = Number(run(`git rev-list --first-parent --count ${tag}..HEAD`))
-      version = `${major}.${Number(minor) + commits}.${patch}`
+      const [, major, minor, patch, commits] = match
+      const n = Number(commits || 0)
+      version = n === 0
+        ? `${major}.${minor}.${patch}`
+        : `${major}.${minor}.${Number(patch) + n}`
     } else {
-      // No tags yet — use first-parent commit count as minor
-      const count = run('git rev-list --first-parent --count HEAD')
-      version = `0.${count}.0`
+      version = '0.0.0'
     }
 
     return { version, commitHash, branch }

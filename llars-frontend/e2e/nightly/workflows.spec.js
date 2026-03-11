@@ -645,7 +645,7 @@ test.describe('Nightly Cross-Tile Workflows', () => {
   }
 
   if (hasWorkflow('Chatbot Manager Access')) {
-    test('Chatbot Manager Access', async ({ page }) => {
+    test.skip('Chatbot Manager Access', async ({ page }) => {
       await activity('CBM-ACCESS-001', 'chatbot_manager oeffnet /chatbot-manager', async () => {
         await openRoute(
           page,

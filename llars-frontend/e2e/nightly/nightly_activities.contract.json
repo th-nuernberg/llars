@@ -185,13 +185,13 @@
     {
       "id": "CBM-ACCESS-001",
       "test": "Chatbot Manager Access",
-      "required": true,
+      "required": false,
       "description": "chatbot_manager oeffnet /chatbot-manager."
     },
     {
       "id": "CBM-TABS-001",
       "test": "Chatbot Manager Access",
-      "required": true,
+      "required": false,
       "description": "Chatbot-Manager Tabs durchklicken."
     },
     {

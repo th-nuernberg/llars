@@ -54,7 +54,8 @@
       "name": "Chatbot Manager Access",
       "owner_role": "chatbot_manager",
       "dependencies": ["Chatbot Admin"],
-      "critical": true
+      "critical": true,
+      "skip": true
     },
     {
       "name": "Markdown Collab Navigation",

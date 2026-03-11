@@ -82,12 +82,31 @@ variables:
   LLARS_SERVER_USER: "master"
   LLARS_DEPLOY_PATH: "/var/llars"
 
-# Cache for faster builds
-cache:
-  key: ${CI_COMMIT_REF_SLUG}
-  paths:
-    - .cache/pip
-    - .cache/npm
+# =============================================================================
+# CACHE TEMPLATES
+# =============================================================================
+# File-hash keys: cache busts only when dependencies change, not on every commit.
+# venv caching skips pip install entirely when requirements haven't changed.
+
+.cache_python:
+  cache:
+    key:
+      files:
+        - app/requirements-test.txt
+      prefix: py
+    paths:
+      - .cache/pip
+      - .venv/
+
+.cache_node:
+  cache:
+    key:
+      files:
+        - llars-frontend/package-lock.json
+      prefix: node
+    paths:
+      - .cache/npm
+      - llars-frontend/node_modules/
 
 # Standard before_script for SSH setup (Alpine Linux)
 .ssh_setup: &ssh_setup
@@ -142,6 +161,10 @@ lint:backend:
   image: python:3.10-slim
   extends:
     - .ci_rules
+  cache:
+    key: lint-python
+    paths:
+      - .cache/pip
   script:
     - pip install flake8 black isort
     - echo "Checking Python code style..."
@@ -154,6 +177,7 @@ lint:frontend:
   image: node:23-alpine
   extends:
     - .ci_rules
+    - .cache_node
   script:
     - cd llars-frontend
     - npm ci --prefer-offline
@@ -172,6 +196,8 @@ lint:frontend:
 test:unit:backend:
   stage: test
   image: python:3.10-slim
+  extends:
+    - .cache_python
   services:
     - name: mariadb:11.2
       alias: test-db
@@ -186,10 +212,19 @@ test:unit:backend:
     AUTHENTIK_DISABLED: "true"
   before_script:
     - apt-get update && apt-get install -y --no-install-recommends build-essential libffi-dev libssl-dev pkg-config
-    - pip install --upgrade pip
+    # Reuse cached venv if requirements haven't changed
+    - |
+      if [ -d ".venv" ] && [ -f ".venv/installed.hash" ] && echo "$(sha256sum app/requirements-test.txt | cut -d' ' -f1)" | diff -q ".venv/installed.hash" - >/dev/null 2>&1; then
+        echo "Using cached venv (requirements unchanged)"
+      else
+        echo "Installing dependencies (requirements changed or no cache)"
+        python -m venv .venv
+        .venv/bin/pip install --upgrade pip
+        .venv/bin/pip install -r app/requirements-test.txt
+        sha256sum app/requirements-test.txt | cut -d' ' -f1 > .venv/installed.hash
+      fi
   script:
-    # Use lightweight test requirements (excludes torch/flair/transformers ~3GB)
-    - pip install -r app/requirements-test.txt
+    - source .venv/bin/activate
     - echo "Running Backend Unit Tests..."
     - pytest tests/unit/ -v --cov=app --cov-report=xml --cov-report=term-missing
   coverage: '/TOTAL.*\s+(\d+%)/'
@@ -211,6 +246,8 @@ test:unit:backend:
 test:unit:frontend:
   stage: test
   image: node:23-alpine
+  extends:
+    - .cache_node
   script:
     - cd llars-frontend
     - npm ci --prefer-offline
@@ -235,6 +272,8 @@ test:unit:frontend:
 test:integration:
   stage: test
   image: python:3.10-slim
+  extends:
+    - .cache_python
   services:
     - name: mariadb:11.2
       alias: test-db
@@ -252,10 +291,19 @@ test:integration:
     AUTHENTIK_DISABLED: "true"
   before_script:
     - apt-get update && apt-get install -y --no-install-recommends build-essential libffi-dev libssl-dev pkg-config
-    - pip install --upgrade pip
+    # Reuse cached venv if requirements haven't changed
+    - |
+      if [ -d ".venv" ] && [ -f ".venv/installed.hash" ] && echo "$(sha256sum app/requirements-test.txt | cut -d' ' -f1)" | diff -q ".venv/installed.hash" - >/dev/null 2>&1; then
+        echo "Using cached venv (requirements unchanged)"
+      else
+        echo "Installing dependencies (requirements changed or no cache)"
+        python -m venv .venv
+        .venv/bin/pip install --upgrade pip
+        .venv/bin/pip install -r app/requirements-test.txt
+        sha256sum app/requirements-test.txt | cut -d' ' -f1 > .venv/installed.hash
+      fi
   script:
-    # Use lightweight test requirements (excludes torch/flair/transformers ~3GB)
-    - pip install -r app/requirements-test.txt
+    - source .venv/bin/activate
     - echo "Running Integration Tests..."
     - pytest tests/integration/ -v
   rules:
@@ -290,8 +338,15 @@ security:routes:
   image: python:3.10-slim
   extends:
     - .ci_rules
+    - .cache_python
   script:
-    - pip install pytest
+    # Reuse cached venv from test:unit:backend (same cache key based on requirements-test.txt)
+    - |
+      if [ -d ".venv" ]; then
+        source .venv/bin/activate
+      else
+        pip install pytest
+      fi
     - pytest tests/security/test_route_security.py -q --confcutdir=tests/security
 
 # Security Scan (informational - doesn't block pipeline)
@@ -300,6 +355,11 @@ security:scan:
   image: python:3.10-slim
   extends:
     - .ci_rules
+  cache:
+    key: security-scan
+    paths:
+      - .cache/pip
+      - .cache/npm
   before_script:
     - apt-get update && apt-get install -y --no-install-recommends nodejs npm
   script:
@@ -415,6 +475,9 @@ smoke:dev:
   script:
     - echo "Running dev smoke tests..."
     - cd /var/llars
+    # Wait for nginx rate-limit bucket to refill after deploy health checks
+    - echo "Waiting 30s for rate-limit bucket refill..."
+    - sleep 30
     - BASE_URL=http://localhost:55080 bash scripts/ci/smoke_test.sh
   extends:
     - .dev_deploy_rules
@@ -448,9 +511,17 @@ e2e:dev:
   timeout: 45 minutes
   variables:
     E2E_RUN_TAG: "Dev E2E"
+    E2E_ADMIN_USER: "test_admin"
+    E2E_RESEARCHER_USER: "test_researcher"
+    E2E_EVALUATOR_USER: "test_evaluator"
+    E2E_CHATBOT_MANAGER_USER: "test_chatbot_manager"
+    E2E_BOOTSTRAP_ADMIN_USER: "admin"
+    E2E_BOOTSTRAP_TEST_USERS: "true"
+    E2E_KEEP_TEST_USERS: "false"
   script:
     - cd /var/llars
     - export E2E_TEST_PASSWORD=$(grep '^LLARS_ADMIN_PASSWORD=' .env | cut -d= -f2- || echo "admin123")
+    - export E2E_BOOTSTRAP_ADMIN_PASSWORD="${E2E_BOOTSTRAP_ADMIN_PASSWORD:-$E2E_TEST_PASSWORD}"
     - export SYSTEM_ADMIN_API_KEY=$(grep '^SYSTEM_ADMIN_API_KEY=' .env | cut -d= -f2-)
     - docker compose --profile testing build smoke-test-service
     - |
@@ -460,9 +531,23 @@ e2e:dev:
         -e E2E_TEST_PASSWORD="${E2E_TEST_PASSWORD}" \
         -e SYSTEM_ADMIN_API_KEY="${SYSTEM_ADMIN_API_KEY}" \
         -e E2E_RUN_TAG="${E2E_RUN_TAG}" \
+        -e E2E_ADMIN_USER="${E2E_ADMIN_USER}" \
+        -e E2E_RESEARCHER_USER="${E2E_RESEARCHER_USER}" \
+        -e E2E_EVALUATOR_USER="${E2E_EVALUATOR_USER}" \
+        -e E2E_CHATBOT_MANAGER_USER="${E2E_CHATBOT_MANAGER_USER}" \
+        -e E2E_BOOTSTRAP_ADMIN_USER="${E2E_BOOTSTRAP_ADMIN_USER}" \
+        -e E2E_BOOTSTRAP_ADMIN_PASSWORD="${E2E_BOOTSTRAP_ADMIN_PASSWORD}" \
+        -e E2E_BOOTSTRAP_TEST_USERS="${E2E_BOOTSTRAP_TEST_USERS}" \
+        -e E2E_KEEP_TEST_USERS="${E2E_KEEP_TEST_USERS}" \
         -e NODE_TLS_REJECT_UNAUTHORIZED=0 \
         smoke-test-service \
         bash -c "cd /tests/e2e && npx playwright test --project=chromium --workers=1 nightly/tile-regression.spec.js"
+  after_script:
+    - |
+      export PLAYWRIGHT_BASE_URL="http://localhost:55080"
+      export E2E_TEST_PASSWORD=$(grep '^LLARS_ADMIN_PASSWORD=' /var/llars/.env | cut -d= -f2- || echo "admin123")
+      export E2E_BOOTSTRAP_ADMIN_PASSWORD="${E2E_BOOTSTRAP_ADMIN_PASSWORD:-$E2E_TEST_PASSWORD}"
+      python3 scripts/testing/cleanup_nightly_test_users.py || true
   rules:
     - if: $CI_COMMIT_BRANCH == "dev" && $CI_PIPELINE_SOURCE == "push"
       when: manual
@@ -583,6 +668,9 @@ smoke:staging:
   timeout: 10 minutes
   script:
     - cd /var/llars
+    # Wait for nginx rate-limit bucket to refill after E2E tests (~64 logins exhaust burst)
+    - echo "Waiting 30s for rate-limit bucket refill..."
+    - sleep 30
     # Load SYSTEM_ADMIN_API_KEY from server .env
     - export SYSTEM_ADMIN_API_KEY=$(grep '^SYSTEM_ADMIN_API_KEY=' .env | cut -d= -f2-)
     # smoke-test-service already built by test:e2e:nightly:tiles (no rebuild needed)

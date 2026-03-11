@@ -82,12 +82,31 @@ variables:
   LLARS_SERVER_USER: "master"
   LLARS_DEPLOY_PATH: "/var/llars"
 
-# Cache for faster builds
-cache:
-  key: ${CI_COMMIT_REF_SLUG}
-  paths:
-    - .cache/pip
-    - .cache/npm
+# =============================================================================
+# CACHE TEMPLATES
+# =============================================================================
+# File-hash keys: cache busts only when dependencies change, not on every commit.
+# venv caching skips pip install entirely when requirements haven't changed.
+
+.cache_python:
+  cache:
+    key:
+      files:
+        - app/requirements-test.txt
+      prefix: py
+    paths:
+      - .cache/pip
+      - .venv/
+
+.cache_node:
+  cache:
+    key:
+      files:
+        - llars-frontend/package-lock.json
+      prefix: node
+    paths:
+      - .cache/npm
+      - llars-frontend/node_modules/
 
 # Standard before_script for SSH setup (Alpine Linux)
 .ssh_setup: &ssh_setup
@@ -142,6 +161,10 @@ lint:backend:
   image: python:3.10-slim
   extends:
     - .ci_rules
+  cache:
+    key: lint-python
+    paths:
+      - .cache/pip
   script:
     - pip install flake8 black isort
     - echo "Checking Python code style..."
@@ -154,6 +177,7 @@ lint:frontend:
   image: node:23-alpine
   extends:
     - .ci_rules
+    - .cache_node
   script:
     - cd llars-frontend
     - npm ci --prefer-offline
@@ -172,6 +196,8 @@ lint:frontend:
 test:unit:backend:
   stage: test
   image: python:3.10-slim
+  extends:
+    - .cache_python
   services:
     - name: mariadb:11.2
       alias: test-db
@@ -186,10 +212,19 @@ test:unit:backend:
     AUTHENTIK_DISABLED: "true"
   before_script:
     - apt-get update && apt-get install -y --no-install-recommends build-essential libffi-dev libssl-dev pkg-config
-    - pip install --upgrade pip
+    # Reuse cached venv if requirements haven't changed
+    - |
+      if [ -d ".venv" ] && [ -f ".venv/installed.hash" ] && echo "$(sha256sum app/requirements-test.txt | cut -d' ' -f1)" | diff -q ".venv/installed.hash" - >/dev/null 2>&1; then
+        echo "Using cached venv (requirements unchanged)"
+      else
+        echo "Installing dependencies (requirements changed or no cache)"
+        python -m venv .venv
+        .venv/bin/pip install --upgrade pip
+        .venv/bin/pip install -r app/requirements-test.txt
+        sha256sum app/requirements-test.txt | cut -d' ' -f1 > .venv/installed.hash
+      fi
   script:
-    # Use lightweight test requirements (excludes torch/flair/transformers ~3GB)
-    - pip install -r app/requirements-test.txt
+    - source .venv/bin/activate
     - echo "Running Backend Unit Tests..."
     - pytest tests/unit/ -v --cov=app --cov-report=xml --cov-report=term-missing
   coverage: '/TOTAL.*\s+(\d+%)/'
@@ -211,6 +246,8 @@ test:unit:backend:
 test:unit:frontend:
   stage: test
   image: node:23-alpine
+  extends:
+    - .cache_node
   script:
     - cd llars-frontend
     - npm ci --prefer-offline
@@ -235,6 +272,8 @@ test:unit:frontend:
 test:integration:
   stage: test
   image: python:3.10-slim
+  extends:
+    - .cache_python
   services:
     - name: mariadb:11.2
       alias: test-db
@@ -252,10 +291,19 @@ test:integration:
     AUTHENTIK_DISABLED: "true"
   before_script:
     - apt-get update && apt-get install -y --no-install-recommends build-essential libffi-dev libssl-dev pkg-config
-    - pip install --upgrade pip
+    # Reuse cached venv if requirements haven't changed
+    - |
+      if [ -d ".venv" ] && [ -f ".venv/installed.hash" ] && echo "$(sha256sum app/requirements-test.txt | cut -d' ' -f1)" | diff -q ".venv/installed.hash" - >/dev/null 2>&1; then
+        echo "Using cached venv (requirements unchanged)"
+      else
+        echo "Installing dependencies (requirements changed or no cache)"
+        python -m venv .venv
+        .venv/bin/pip install --upgrade pip
+        .venv/bin/pip install -r app/requirements-test.txt
+        sha256sum app/requirements-test.txt | cut -d' ' -f1 > .venv/installed.hash
+      fi
   script:
-    # Use lightweight test requirements (excludes torch/flair/transformers ~3GB)
-    - pip install -r app/requirements-test.txt
+    - source .venv/bin/activate
     - echo "Running Integration Tests..."
     - pytest tests/integration/ -v
   rules:
@@ -290,8 +338,15 @@ security:routes:
   image: python:3.10-slim
   extends:
     - .ci_rules
+    - .cache_python
   script:
-    - pip install pytest
+    # Reuse cached venv from test:unit:backend (same cache key based on requirements-test.txt)
+    - |
+      if [ -d ".venv" ]; then
+        source .venv/bin/activate
+      else
+        pip install pytest
+      fi
     - pytest tests/security/test_route_security.py -q --confcutdir=tests/security
 
 # Security Scan (informational - doesn't block pipeline)
@@ -300,6 +355,11 @@ security:scan:
   image: python:3.10-slim
   extends:
     - .ci_rules
+  cache:
+    key: security-scan
+    paths:
+      - .cache/pip
+      - .cache/npm
   before_script:
     - apt-get update && apt-get install -y --no-install-recommends nodejs npm
   script:

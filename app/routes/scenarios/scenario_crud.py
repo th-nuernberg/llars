@@ -196,10 +196,13 @@ def get_scenario_details(scenario_id=None):
     scenario_viewers = []     # Users with read-only access
     scenario_owner = None
     for scenario_user in scenario_users:
+        avatar = serialize_user_brief(scenario_user.user)
         user_info = {
             'user_id': scenario_user.user_id,
             'username': scenario_user.user.username,
             'role': scenario_user.role.value,
+            'avatar_seed': avatar.get('avatar_seed'),
+            'avatar_url': avatar.get('avatar_url'),
         }
 
         # Owner is determined by created_by field

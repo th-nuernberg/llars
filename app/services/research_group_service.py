@@ -342,22 +342,38 @@ class ResearchGroupService:
             .all()
         )
 
-        return [
-            {
+        # Batch-load avatar data for requesters
+        requester_usernames = list({r.requester_username for r in requests})
+        user_lookup = {}
+        if requester_usernames:
+            for u in User.query.filter(User.username.in_(requester_usernames)).all():
+                avatar_url = None
+                if u.avatar_public_id and u.avatar_file:
+                    avatar_url = f"/api/users/avatar/{u.avatar_public_id}"
+                user_lookup[u.username] = {
+                    "avatar_seed": u.avatar_seed,
+                    "avatar_url": avatar_url,
+                }
+
+        results = []
+        for r in requests:
+            avatar = user_lookup.get(r.requester_username, {})
+            results.append({
                 "id": r.id,
                 "group_id": r.group_id,
                 "group_name": r.group.name if r.group else None,
                 "requester_username": r.requester_username,
+                "requester_avatar_seed": avatar.get("avatar_seed"),
+                "requester_avatar_url": avatar.get("avatar_url"),
                 "message": r.message,
                 "created_at": r.created_at.isoformat() if r.created_at else None,
-            }
-            for r in requests
-        ]
+            })
+        return results
 
     @staticmethod
     def list_group_requests(group_id: int) -> List[Dict[str, Any]]:
         """List all access requests for a specific group."""
-        from db.models import ResearchGroupAccessRequest
+        from db.models import ResearchGroupAccessRequest, User
 
         requests = (
             ResearchGroupAccessRequest.query
@@ -366,19 +382,35 @@ class ResearchGroupService:
             .all()
         )
 
-        return [
-            {
+        # Batch-load avatar data for requesters
+        requester_usernames = list({r.requester_username for r in requests})
+        user_lookup = {}
+        if requester_usernames:
+            for u in User.query.filter(User.username.in_(requester_usernames)).all():
+                avatar_url = None
+                if u.avatar_public_id and u.avatar_file:
+                    avatar_url = f"/api/users/avatar/{u.avatar_public_id}"
+                user_lookup[u.username] = {
+                    "avatar_seed": u.avatar_seed,
+                    "avatar_url": avatar_url,
+                }
+
+        results = []
+        for r in requests:
+            avatar = user_lookup.get(r.requester_username, {})
+            results.append({
                 "id": r.id,
                 "group_id": r.group_id,
                 "requester_username": r.requester_username,
+                "requester_avatar_seed": avatar.get("avatar_seed"),
+                "requester_avatar_url": avatar.get("avatar_url"),
                 "status": r.status.value,
                 "message": r.message,
                 "created_at": r.created_at.isoformat() if r.created_at else None,
                 "resolved_at": r.resolved_at.isoformat() if r.resolved_at else None,
                 "resolved_by": r.resolved_by,
-            }
-            for r in requests
-        ]
+            })
+        return results
 
     @staticmethod
     def resolve_access_request(

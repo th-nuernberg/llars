@@ -87,7 +87,7 @@
             </div>
             <div v-for="req in pendingRequests" :key="'req-' + req.id" class="online-user-item pending-request-item">
               <div class="online-user-avatar-wrap pending">
-                <LAvatar :username="req.requester_username" size="xs" />
+                <LAvatar :username="req.requester_username" :seed="req.requester_avatar_seed" :src="req.requester_avatar_url" size="xs" />
               </div>
               <span class="online-user-name text-truncate">{{ req.requester_username }}</span>
               <v-btn icon variant="text" size="x-small" color="success" :title="$t('latexCollab.accessRequests.approve')" @click.stop="$emit('approve-request', req.id)">
@@ -279,7 +279,7 @@
               </div>
               <div v-for="req in pendingRequests" :key="'req-' + req.id" class="online-user-item pending-request-item">
                 <div class="online-user-avatar-wrap pending">
-                  <LAvatar :username="req.requester_username" size="xs" />
+                  <LAvatar :username="req.requester_username" :seed="req.requester_avatar_seed" :src="req.requester_avatar_url" size="xs" />
                 </div>
                 <span class="online-user-name text-truncate">{{ req.requester_username }}</span>
                 <v-btn icon variant="text" size="x-small" color="success" :title="$t('latexCollab.accessRequests.approve')" @click.stop="$emit('approve-request', req.id)">

@@ -88,7 +88,7 @@
           </div>
           <div class="members-list">
             <div v-for="req in pendingRequests" :key="req.id" class="user-card pending-card">
-              <LAvatar :username="req.requester_username" size="sm" />
+              <LAvatar :username="req.requester_username" :seed="req.requester_avatar_seed" :src="req.requester_avatar_url" size="sm" />
               <div class="user-info">
                 <div class="user-name">{{ formatDisplayName(req.requester_username) }}</div>
                 <div v-if="req.message" class="user-meta" style="font-style: italic;">{{ req.message }}</div>

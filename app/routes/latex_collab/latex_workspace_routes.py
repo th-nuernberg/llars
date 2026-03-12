@@ -391,9 +391,30 @@ def list_access_requests():
         .all()
     )
 
+    # Batch-load avatar data for requesters
+    requester_usernames = list({r.requester_username for r in requests})
+    user_lookup = {}
+    if requester_usernames:
+        for u in User.query.filter(User.username.in_(requester_usernames)).all():
+            avatar_url = None
+            if u.avatar_public_id and u.avatar_file:
+                avatar_url = f"/api/users/avatar/{u.avatar_public_id}"
+            user_lookup[u.username] = {
+                "avatar_seed": u.avatar_seed,
+                "avatar_url": avatar_url,
+            }
+
+    enriched = []
+    for r in requests:
+        d = r.to_dict()
+        avatar = user_lookup.get(r.requester_username, {})
+        d["requester_avatar_seed"] = avatar.get("avatar_seed")
+        d["requester_avatar_url"] = avatar.get("avatar_url")
+        enriched.append(d)
+
     return jsonify({
         "success": True,
-        "requests": [r.to_dict() for r in requests],
+        "requests": enriched,
     }), 200
 
 

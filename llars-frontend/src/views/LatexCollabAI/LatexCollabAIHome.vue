@@ -67,7 +67,7 @@
 
         <div class="access-requests-list">
           <div v-for="req in accessRequests" :key="req.id" class="request-row">
-            <LAvatar :username="req.requester_username" size="sm" />
+            <LAvatar :username="req.requester_username" :seed="req.requester_avatar_seed" :src="req.requester_avatar_url" size="sm" />
             <div class="request-info">
               <div class="request-username">{{ req.requester_username }}</div>
               <div class="request-meta">

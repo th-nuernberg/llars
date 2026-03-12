@@ -218,7 +218,7 @@
                     class="rg-request-card"
                   >
                     <div class="rg-request-card__info">
-                      <LAvatar :username="req.requester_username" size="sm" />
+                      <LAvatar :username="req.requester_username" :seed="req.requester_avatar_seed" :src="req.requester_avatar_url" size="sm" />
                       <div>
                         <div class="text-body-2 font-weight-medium">{{ req.requester_username }}</div>
                         <div v-if="req.message" class="text-caption text-medium-emphasis">{{ req.message }}</div>

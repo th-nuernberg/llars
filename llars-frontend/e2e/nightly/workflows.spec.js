@@ -132,6 +132,12 @@ async function chooseUserInSearch(container, username) {
   await suggestion.click()
 }
 
+async function clickWhenReady(locator, timeout = 10000) {
+  await expect(locator).toBeVisible({ timeout })
+  await locator.scrollIntoViewIfNeeded().catch(() => {})
+  await locator.click({ timeout: Math.min(timeout, 5000) })
+}
+
 test.describe('Nightly Cross-Tile Workflows', () => {
   test.setTimeout(420000)
 
@@ -140,26 +146,28 @@ test.describe('Nightly Cross-Tile Workflows', () => {
       await openRoute(page, TEST_USERS.researcher, '/generation', '.generation-hub, .page-container, main')
 
       await activity('BG-WIZ-ENTRY-001', 'Batch Generation Wizard öffnen', async () => {
-        const newJobButton = page
-          .locator('button:has-text("Neu"), button:has-text("New"), button:has-text("Job"), button:has(.mdi-plus)')
-          .first()
-        await expect(newJobButton).toBeVisible({ timeout: 10000 })
-        await newJobButton.click()
+        const newJobButton = page.locator('[data-testid="generation-new-job-button"]').first()
+        await clickWhenReady(newJobButton)
         await expect(page.locator('.generation-wizard, .wizard-stepper, .wizard-content').first())
           .toBeVisible({ timeout: 10000 })
-        await page.locator('.generation-wizard button:has(.mdi-close), .generation-wizard button:has-text("Schließen"), .generation-wizard button:has-text("Close")').first().click().catch(() => {})
+
+        const closeWizardButton = page
+          .locator('.generation-wizard button:has(.mdi-close):visible, .generation-wizard button:has-text("Schließen"):visible, .generation-wizard button:has-text("Close"):visible')
+          .first()
+        if (await closeWizardButton.isVisible({ timeout: 3000 }).catch(() => false)) {
+          await closeWizardButton.click({ timeout: 3000 }).catch(() => {})
+        }
       })
 
       await activity('BG-WIZ-HANDOFF-001', 'Handoff Richtung Szenario Wizard prüfen', async () => {
-        const firstJobCard = page.locator('.jobs-grid .v-card, .jobs-grid .l-card, .job-card').first()
-        if (await firstJobCard.isVisible({ timeout: 4000 }).catch(() => false)) {
-          await firstJobCard.click()
+        const completedJobCard = page.locator('.job-card.is-completed').first()
+        if (await completedJobCard.isVisible({ timeout: 4000 }).catch(() => false)) {
+          await completedJobCard.click({ timeout: 5000 }).catch(() => {})
           await waitForPageReady(page, 12000)
-          const wizardAction = page
-            .locator('button:has-text("Szenario"), button:has-text("Wizard"), button:has(.mdi-wizard-hat)')
-            .first()
+
+          const wizardAction = page.locator('[data-testid="generation-open-scenario-wizard"]').first()
           if (await wizardAction.isVisible({ timeout: 3000 }).catch(() => false)) {
-            await wizardAction.click()
+            await wizardAction.click({ timeout: 5000 })
             await expect(page.locator('.scenario-wizard, .wizard-header, [class*="scenario-wizard"]').first())
               .toBeVisible({ timeout: 8000 })
             return
@@ -190,14 +198,16 @@ test.describe('Nightly Cross-Tile Workflows', () => {
 
       try {
         await activity('PE-CREATE-001', 'Prompt anlegen', async () => {
-          await page.locator('button:has-text("Neues Prompt"), button:has-text("Neu"), button:has(.mdi-plus)').first().click()
-          const dialog = page.locator('.v-dialog, [role="dialog"]').first()
+          await clickWhenReady(page.locator('[data-testid="prompt-new-button"]').first())
+          const dialog = page.locator('.v-dialog:visible, [role="dialog"]:visible').first()
           await expect(dialog).toBeVisible({ timeout: 8000 })
           await dialog.locator('input[type="text"]').first().fill(promptName)
-          await dialog.locator('button:has-text("Erstellen"), button:has-text("Create"), button:has-text("Speichern")').first().click()
+          await clickWhenReady(
+            dialog.locator('button:has-text("Erstellen"):visible, button:has-text("Create"):visible, button:has-text("Speichern"):visible').first()
+          )
           await expect(page.locator('.prompt-card, .l-card').filter({ hasText: promptName }).first())
             .toBeVisible({ timeout: 12000 })
-          await page.locator('.prompt-card, .l-card').filter({ hasText: promptName }).first().click()
+          await page.locator('.prompt-card, .l-card').filter({ hasText: promptName }).first().click({ timeout: 5000 })
           await expect(page).toHaveURL(/\/PromptEngineering\/\d+/, { timeout: 12000 })
           const match = page.url().match(/\/PromptEngineering\/(\d+)/)
           promptId = match ? Number(match[1]) : null
@@ -205,10 +215,12 @@ test.describe('Nightly Cross-Tile Workflows', () => {
         })
 
         await activity('PE-BLOCK-001', 'Block anlegen und bearbeiten', async () => {
-          await page.locator('button:has-text("Block"), button:has-text("Neu"), button:has(.mdi-plus-circle), button:has(.mdi-plus)').first().click()
-          const dialog = page.locator('.v-dialog, [role="dialog"]').first()
+          await clickWhenReady(page.locator('[data-testid="prompt-add-block-button"]').first())
+          const dialog = page.locator('.v-dialog:visible, [role="dialog"]:visible').first()
           await dialog.locator('input[type="text"]').first().fill(blockName)
-          await dialog.locator('button:has-text("Erstellen"), button:has-text("Create"), button:has-text("Speichern")').first().click()
+          await clickWhenReady(
+            dialog.locator('button:has-text("Erstellen"):visible, button:has-text("Create"):visible, button:has-text("Speichern"):visible').first()
+          )
 
           const blockCard = page.locator('.editor-block').filter({ has: page.locator(`.block-title:has-text("${blockName}")`) }).first()
           await expect(blockCard).toBeVisible({ timeout: 10000 })
@@ -220,7 +232,7 @@ test.describe('Nightly Cross-Tile Workflows', () => {
         })
 
         await activity('PE-TEST-001', 'Test-Dialog und LLM-Antwort prüfen', async () => {
-          await page.locator('.sidebar button:has-text("Test"), .sidebar button:has(.mdi-rocket), button:has-text("Test")').first().click()
+          await clickWhenReady(page.locator('[data-testid="prompt-test-button"]').first())
           const responseText = page.locator('.response-text, .response-content pre').first()
           await expect(responseText).toBeVisible({ timeout: 10000 })
           await expect
@@ -234,7 +246,7 @@ test.describe('Nightly Cross-Tile Workflows', () => {
 
         await activity('PE-EXPORT-001', 'Prompt exportieren', async () => {
           const downloadPromise = page.waitForEvent('download', { timeout: 20000 })
-          await page.locator('.sidebar button:has-text("Download"), .sidebar button:has(.mdi-download)').first().click()
+          await clickWhenReady(page.locator('[data-testid="prompt-download-button"]').first())
           const download = await downloadPromise
           expect(download.suggestedFilename()).toBeTruthy()
         })
@@ -244,19 +256,23 @@ test.describe('Nightly Cross-Tile Workflows', () => {
           const filePath = path.join(tmpDir, 'prompt-import.json')
           fs.writeFileSync(filePath, JSON.stringify({ [importedBlockName]: importedText }, null, 2), 'utf-8')
 
-          const fileInput = page.locator('input[type="file"][accept=".json"]').first()
+          const fileInput = page.locator('[data-testid="prompt-json-file-input"]').first()
           await fileInput.setInputFiles(filePath)
-          await page.locator('button:has-text("Anhängen"), button:has-text("Append"), button:has-text("Überschreiben"), button:has-text("Override")').first().click()
+          await clickWhenReady(
+            page.locator('button:has-text("Anhängen"):visible, button:has-text("Append"):visible, button:has-text("Überschreiben"):visible, button:has-text("Override"):visible').first()
+          )
           await expect(page.locator('.block-title').filter({ hasText: importedBlockName }).first())
             .toBeVisible({ timeout: 10000 })
         })
 
         await activity('PE-SHARE-001', 'Prompt mit Evaluator teilen', async () => {
-          const shareSection = page.locator('.sidebar .share-input-section').first()
+          const shareSection = page.locator('[data-testid="prompt-share-section"]').first()
           await expect(shareSection).toBeVisible({ timeout: 10000 })
           await chooseUserInSearch(shareSection, TEST_USERS.evaluator.username)
-          await shareSection.locator('button:has-text("Teilen"), button:has-text("Share"), button:has-text("Hinzufügen")').first().click()
-          await expect(page.locator('.shared-item').filter({ hasText: TEST_USERS.evaluator.username }).first())
+          await clickWhenReady(
+            shareSection.locator('button:has-text("Teilen"):visible, button:has-text("Share"):visible, button:has-text("Hinzufügen"):visible').first()
+          )
+          await expect(page.locator(`[data-testid="prompt-shared-item-${TEST_USERS.evaluator.username}"]`).first())
             .toBeVisible({ timeout: 12000 })
         })
 
@@ -285,9 +301,9 @@ test.describe('Nightly Cross-Tile Workflows', () => {
         })
 
         await activity('PE-UNSHARE-001', 'Prompt-Freigabe entfernen', async () => {
-          const sharedItem = page.locator('.shared-item').filter({ hasText: TEST_USERS.evaluator.username }).first()
+          const sharedItem = page.locator(`[data-testid="prompt-shared-item-${TEST_USERS.evaluator.username}"]`).first()
           await expect(sharedItem).toBeVisible({ timeout: 8000 })
-          await sharedItem.locator('button').last().click()
+          await sharedItem.locator('button:visible').last().click({ timeout: 5000 })
           await expect(sharedItem).toHaveCount(0, { timeout: 12000 })
         })
       } finally {

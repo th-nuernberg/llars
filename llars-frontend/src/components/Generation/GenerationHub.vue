@@ -45,7 +45,11 @@
         </v-menu>
 
         <!-- New Job Button -->
-        <LBtn variant="primary" @click="showWizard = true">
+        <LBtn
+          variant="primary"
+          data-testid="generation-new-job-button"
+          @click="showWizard = true"
+        >
           <LIcon start>mdi-plus</LIcon>
           {{ $t('generation.hub.newJob') }}
         </LBtn>

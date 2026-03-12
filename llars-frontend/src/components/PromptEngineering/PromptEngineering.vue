@@ -15,6 +15,7 @@
           variant="primary"
           :prepend-icon="isMobile ? '' : 'mdi-plus'"
           :size="isMobile ? 'small' : 'default'"
+          data-testid="prompt-new-button"
           @click="openCreateDialog"
         >
           <LIcon v-if="isMobile">mdi-plus</LIcon>

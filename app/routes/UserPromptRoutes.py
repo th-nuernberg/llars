@@ -464,17 +464,14 @@ def search_users():
     users = User.query.filter(*filters).limit(limit).all()
 
     def build_user_dict(u):
-        # Build avatar URL if user has custom avatar
-        avatar_url = None
-        if u.avatar_public_id and u.avatar_file:
-            avatar_url = f"/api/users/avatar/{u.avatar_public_id}"
+        from services.user_profile_service import build_avatar_url
         return {
             'id': u.id,
             'username': u.username,
             'display_name': u.display_name,
             'first_name': u.first_name,
             'last_name': u.last_name,
-            'avatar_url': avatar_url,
+            'avatar_url': build_avatar_url(u),
             'avatar_seed': u.avatar_seed,
             'collab_color': u.collab_color
         }

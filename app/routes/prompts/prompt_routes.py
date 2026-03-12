@@ -596,9 +596,7 @@ def search_users_for_sharing():
     users = User.query.filter(*filters).limit(limit).all()
 
     def _build_user(u):
-        avatar_url = None
-        if u.avatar_public_id and u.avatar_file:
-            avatar_url = f"/api/users/avatar/{u.avatar_public_id}"
+        from services.user_profile_service import build_avatar_url
         return {
             'id': u.id,
             'username': u.username,
@@ -606,7 +604,7 @@ def search_users_for_sharing():
             'first_name': u.first_name,
             'last_name': u.last_name,
             'avatar_seed': u.get_avatar_seed() if hasattr(u, 'get_avatar_seed') else None,
-            'avatar_url': avatar_url,
+            'avatar_url': build_avatar_url(u),
         }
 
     return jsonify({

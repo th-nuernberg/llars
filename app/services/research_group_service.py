@@ -342,18 +342,14 @@ class ResearchGroupService:
             .all()
         )
 
-        # Batch-load avatar data for requesters
+        # Batch-load avatar data for requesters via canonical helper
+        from services.user_profile_service import serialize_user_brief
+
         requester_usernames = list({r.requester_username for r in requests})
-        user_lookup = {}
-        if requester_usernames:
-            for u in User.query.filter(User.username.in_(requester_usernames)).all():
-                avatar_url = None
-                if u.avatar_public_id and u.avatar_file:
-                    avatar_url = f"/api/users/avatar/{u.avatar_public_id}"
-                user_lookup[u.username] = {
-                    "avatar_seed": u.avatar_seed,
-                    "avatar_url": avatar_url,
-                }
+        user_lookup = {
+            u.username: serialize_user_brief(u)
+            for u in User.query.filter(User.username.in_(requester_usernames)).all()
+        } if requester_usernames else {}
 
         results = []
         for r in requests:
@@ -382,18 +378,14 @@ class ResearchGroupService:
             .all()
         )
 
-        # Batch-load avatar data for requesters
+        # Batch-load avatar data for requesters via canonical helper
+        from services.user_profile_service import serialize_user_brief
+
         requester_usernames = list({r.requester_username for r in requests})
-        user_lookup = {}
-        if requester_usernames:
-            for u in User.query.filter(User.username.in_(requester_usernames)).all():
-                avatar_url = None
-                if u.avatar_public_id and u.avatar_file:
-                    avatar_url = f"/api/users/avatar/{u.avatar_public_id}"
-                user_lookup[u.username] = {
-                    "avatar_seed": u.avatar_seed,
-                    "avatar_url": avatar_url,
-                }
+        user_lookup = {
+            u.username: serialize_user_brief(u)
+            for u in User.query.filter(User.username.in_(requester_usernames)).all()
+        } if requester_usernames else {}
 
         results = []
         for r in requests:

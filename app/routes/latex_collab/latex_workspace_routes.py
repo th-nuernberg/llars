@@ -29,6 +29,7 @@ from routes.latex_collab.latex_helpers import (
     require_workspace_manage,
     workspace_to_dict,
 )
+from services.user_profile_service import build_avatar_url
 
 latex_workspace_bp = Blueprint("latex_workspace", __name__, url_prefix="/api/latex-collab")
 
@@ -195,32 +196,22 @@ def list_workspace_members(workspace_id: int):
 
     def build_member_dict(m):
         user = users_by_name.get(m.username)
-        avatar_url = None
-        avatar_seed = None
-        collab_color = None
-        if user:
-            if user.avatar_public_id and user.avatar_file:
-                avatar_url = f"/api/users/avatar/{user.avatar_public_id}"
-            avatar_seed = user.avatar_seed
-            collab_color = user.collab_color
         return {
             "username": m.username,
             "added_at": m.added_at.isoformat() if m.added_at else None,
             "added_by": m.added_by,
-            "avatar_url": avatar_url,
-            "avatar_seed": avatar_seed,
-            "collab_color": collab_color,
+            "avatar_url": build_avatar_url(user) if user else None,
+            "avatar_seed": user.avatar_seed if user else None,
+            "collab_color": user.collab_color if user else None,
         }
 
     owner_user = User.query.filter_by(username=ws.owner_username).first()
     owner_dict = {
         "username": ws.owner_username,
-        "avatar_url": None,
+        "avatar_url": build_avatar_url(owner_user),
         "avatar_seed": owner_user.avatar_seed if owner_user else None,
         "collab_color": owner_user.collab_color if owner_user else None,
     }
-    if owner_user and owner_user.avatar_public_id and owner_user.avatar_file:
-        owner_dict["avatar_url"] = f"/api/users/avatar/{owner_user.avatar_public_id}"
 
     return jsonify({
         "success": True,
@@ -391,18 +382,14 @@ def list_access_requests():
         .all()
     )
 
-    # Batch-load avatar data for requesters
+    # Batch-load avatar data for requesters via canonical helper
+    from services.user_profile_service import serialize_user_brief
+
     requester_usernames = list({r.requester_username for r in requests})
-    user_lookup = {}
-    if requester_usernames:
-        for u in User.query.filter(User.username.in_(requester_usernames)).all():
-            avatar_url = None
-            if u.avatar_public_id and u.avatar_file:
-                avatar_url = f"/api/users/avatar/{u.avatar_public_id}"
-            user_lookup[u.username] = {
-                "avatar_seed": u.avatar_seed,
-                "avatar_url": avatar_url,
-            }
+    user_lookup = {
+        u.username: serialize_user_brief(u)
+        for u in User.query.filter(User.username.in_(requester_usernames)).all()
+    } if requester_usernames else {}
 
     enriched = []
     for r in requests:

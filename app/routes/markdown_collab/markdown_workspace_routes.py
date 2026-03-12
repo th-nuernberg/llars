@@ -24,6 +24,7 @@ from db.tables import (
 )
 from decorators.error_handler import handle_api_errors, NotFoundError, ValidationError, ForbiddenError
 from decorators.permission_decorator import require_permission
+from services.user_profile_service import build_avatar_url
 from .markdown_collab_helpers import (
     _is_admin,
     _require_workspace_access,
@@ -113,35 +114,22 @@ def list_workspace_members(workspace_id: int):
 
     def build_member_dict(m):
         user = users_by_name.get(m.username)
-        avatar_url = None
-        avatar_seed = None
-        collab_color = None
-        if user:
-            if user.avatar_public_id and user.avatar_file:
-                avatar_url = f"/api/users/avatar/{user.avatar_public_id}"
-            avatar_seed = user.avatar_seed
-            collab_color = user.collab_color
         return {
             "username": m.username,
             "added_by": m.added_by,
             "added_at": m.added_at.isoformat() if m.added_at else None,
-            "avatar_url": avatar_url,
-            "avatar_seed": avatar_seed,
-            "collab_color": collab_color,
+            "avatar_url": build_avatar_url(user) if user else None,
+            "avatar_seed": user.avatar_seed if user else None,
+            "collab_color": user.collab_color if user else None,
         }
 
     payload = [build_member_dict(m) for m in members]
 
     # Also get owner info
     owner_user = User.query.filter_by(username=ws.owner_username).first()
-    owner_avatar_url = None
-    owner_avatar_seed = None
-    owner_collab_color = None
-    if owner_user:
-        if owner_user.avatar_public_id and owner_user.avatar_file:
-            owner_avatar_url = f"/api/users/avatar/{owner_user.avatar_public_id}"
-        owner_avatar_seed = owner_user.avatar_seed
-        owner_collab_color = owner_user.collab_color
+    owner_avatar_url = build_avatar_url(owner_user)
+    owner_avatar_seed = owner_user.avatar_seed if owner_user else None
+    owner_collab_color = owner_user.collab_color if owner_user else None
 
     return jsonify({
         "success": True,

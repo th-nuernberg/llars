@@ -68,14 +68,12 @@ def get_all_users_communication_permissions():
                 perms[perm_key] = entry if entry is not None else False
             else:
                 perms[perm_key] = False
-        avatar_url = None
-        if user.avatar_public_id:
-            avatar_url = f"/api/users/avatar/{user.avatar_public_id}"
+        from services.user_profile_service import build_avatar_url
 
         result.append({
             'username': user.username,
             'avatar_seed': user.avatar_seed,
-            'avatar_url': avatar_url,
+            'avatar_url': build_avatar_url(user),
             'permissions': perms,
         })
 
@@ -218,7 +216,8 @@ def get_user_stats():
                 msg.last_active,
                 COALESCE(unread.unread_count, 0) AS unread_count,
                 u.avatar_seed,
-                u.avatar_public_id
+                u.avatar_public_id,
+                u.avatar_file
             FROM messaging_participants p
             LEFT JOIN users u ON u.username = p.username
             LEFT JOIN (
@@ -236,12 +235,13 @@ def get_user_stats():
                 WHERE p2.is_active = 1
                 GROUP BY p2.username
             ) unread ON unread.username = p.username
-            GROUP BY p.username, u.avatar_seed, u.avatar_public_id
+            GROUP BY p.username, u.avatar_seed, u.avatar_public_id, u.avatar_file
             ORDER BY msg.last_active DESC
         """)).fetchall()
 
         for row in rows:
-            avatar_url = f"/api/users/avatar/{row[6]}" if row[6] else None
+            # avatar_public_id=row[6], avatar_file=row[7] — both required for valid URL
+            avatar_url = f"/api/users/avatar/{row[6]}" if row[6] and row[7] else None
             users_stats.append({
                 'username': row[0],
                 'conversation_count': row[1],

@@ -76,6 +76,7 @@
         <LBtn
           v-if="canCreateScenario"
           variant="accent"
+          data-testid="generation-open-scenario-wizard"
           @click="openScenarioWizard"
         >
           <LIcon start>mdi-wizard-hat</LIcon>

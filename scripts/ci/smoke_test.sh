@@ -7,6 +7,8 @@ ENV_FILE="$DEPLOY_PATH/.env"
 SMOKE_WIZARD="${SMOKE_WIZARD:-1}"
 SMOKE_FORCE_HTTPS_HEADER="${SMOKE_FORCE_HTTPS_HEADER:-1}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SMOKE_RETRY_ATTEMPTS="${SMOKE_RETRY_ATTEMPTS:-10}"
+SMOKE_RETRY_DELAY_SECONDS="${SMOKE_RETRY_DELAY_SECONDS:-5}"
 
 # Read env vars safely (avoids source failures with special chars in passwords)
 _env() { [ -f "$ENV_FILE" ] && grep "^${1}=" "$ENV_FILE" 2>/dev/null | head -1 | cut -d= -f2- || true; }
@@ -22,6 +24,7 @@ if [ "$SMOKE_FORCE_HTTPS_HEADER" = "1" ]; then
   # CI smoke jobs run locally on the server and should emulate proxy headers.
   CURL_HEADER_ARGS+=(-H "X-Forwarded-Proto: https")
 fi
+read -r -a SMOKE_RETRYABLE_STATUS_CODES <<< "${SMOKE_RETRYABLE_STATUS_CODES:-429 502 503 504}"
 
 smoke_curl() {
   if [ "${#CURL_HEADER_ARGS[@]}" -gt 0 ]; then
@@ -31,42 +34,90 @@ smoke_curl() {
   fi
 }
 
-assert_status() {
-  local url="$1"
-  shift
-  local expected=("$@");
+status_matches_expected() {
   local code
-  # Follow redirects (-L) to get final status code
-  code=$(smoke_curl -sL -o /dev/null -w "%{http_code}" "$url" || true)
+  code="$1"
+  shift
+  local expected=("$@")
 
   for exp in "${expected[@]}"; do
     if [ "$code" = "$exp" ]; then
-      echo "OK $url -> $code"
       return 0
     fi
   done
 
-  echo "ERROR: $url -> $code (expected: ${expected[*]})"
   return 1
+}
+
+status_is_retryable() {
+  local code="$1"
+  local retryable
+
+  for retryable in "${SMOKE_RETRYABLE_STATUS_CODES[@]}"; do
+    if [ "$code" = "$retryable" ]; then
+      return 0
+    fi
+  done
+
+  return 1
+}
+
+fetch_status_code() {
+  local url="$1"
+  local api_key="${2:-}"
+  local code
+
+  if [ -n "$api_key" ]; then
+    code=$(smoke_curl -sL -o /dev/null -w "%{http_code}" -H "X-API-Key: $api_key" "$url" || true)
+  else
+    code=$(smoke_curl -sL -o /dev/null -w "%{http_code}" "$url" || true)
+  fi
+
+  printf '%s' "$code"
+}
+
+assert_status_impl() {
+  local url="$1"
+  local label="$2"
+  local api_key="$3"
+  shift
+  shift
+  shift
+  local expected=("$@")
+  local code
+  local attempt
+
+  for ((attempt=1; attempt<=SMOKE_RETRY_ATTEMPTS; attempt++)); do
+    code=$(fetch_status_code "$url" "$api_key")
+
+    if status_matches_expected "$code" "${expected[@]}"; then
+      echo "OK ${label}${url} -> ${code}"
+      return 0
+    fi
+
+    if status_is_retryable "$code" && [ "$attempt" -lt "$SMOKE_RETRY_ATTEMPTS" ]; then
+      echo "WARN: ${label}${url} -> ${code}; retrying in ${SMOKE_RETRY_DELAY_SECONDS}s (${attempt}/${SMOKE_RETRY_ATTEMPTS})"
+      sleep "$SMOKE_RETRY_DELAY_SECONDS"
+      continue
+    fi
+
+    echo "ERROR: ${label}${url} -> ${code} (expected: ${expected[*]})"
+    return 1
+  done
+
+  return 1
+}
+
+assert_status() {
+  local url="$1"
+  shift
+  assert_status_impl "$url" "" "" "$@"
 }
 
 assert_status_with_api_key() {
   local url="$1"
   shift
-  local expected=("$@");
-  local code
-  # Follow redirects (-L) to get final status code
-  code=$(smoke_curl -sL -o /dev/null -w "%{http_code}" -H "X-API-Key: $SYSTEM_ADMIN_API_KEY" "$url" || true)
-
-  for exp in "${expected[@]}"; do
-    if [ "$code" = "$exp" ]; then
-      echo "OK (api key) $url -> $code"
-      return 0
-    fi
-  done
-
-  echo "ERROR: (api key) $url -> $code (expected: ${expected[*]})"
-  return 1
+  assert_status_impl "$url" "(api key) " "$SYSTEM_ADMIN_API_KEY" "$@"
 }
 
 assert_system_settings_schema() {

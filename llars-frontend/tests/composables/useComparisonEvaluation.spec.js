@@ -428,8 +428,9 @@ describe('useComparisonEvaluation Composable', () => {
 
       await comp.loadItem(5)
 
-      // Fallback: messages go to optionA
-      expect(comp.optionA.value.messages).toHaveLength(1)
+      // Single feature → optionA gets feature content, optionB gets messages
+      expect(comp.optionA.value.content).toBe('Only one')
+      expect(comp.optionB.value.messages).toHaveLength(1)
     })
 
     it('COMP_EVAL_028: loadItem resets selection state', async () => {

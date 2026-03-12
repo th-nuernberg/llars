@@ -20,8 +20,8 @@
       <span>{{ statusConfig.label }}</span>
     </div>
 
-    <!-- Actions Menu -->
-    <v-menu offset-y location="bottom end">
+    <!-- Actions Menu (hidden for shared jobs) -->
+    <v-menu v-if="!isShared" offset-y location="bottom end">
       <template v-slot:activator="{ props }">
         <v-btn
           icon
@@ -116,6 +116,10 @@
           <LIcon size="14" class="mr-1">mdi-clock-outline</LIcon>
           {{ formatDate(job.created_at) }}
         </span>
+        <span v-if="isShared" class="shared-owner">
+          <LIcon size="14" class="mr-1">mdi-account-outline</LIcon>
+          {{ job.created_by }}
+        </span>
       </div>
     </div>
 
@@ -144,6 +148,10 @@ const props = defineProps({
   job: {
     type: Object,
     required: true
+  },
+  isShared: {
+    type: Boolean,
+    default: false
   }
 })
 
@@ -352,7 +360,8 @@ function formatDate(dateStr) {
   justify-content: space-between;
 }
 
-.created-at {
+.created-at,
+.shared-owner {
   display: flex;
   align-items: center;
   font-size: 0.75rem;

@@ -67,6 +67,9 @@ export function useGeneration(options = {}) {
   /** @type {import('vue').Ref<Array>} List of jobs */
   const jobs = ref([])
 
+  /** @type {import('vue').Ref<Array>} Jobs shared with current user (read-only) */
+  const sharedJobs = ref([])
+
   /** @type {import('vue').Ref<Object|null>} Currently selected job */
   const currentJob = ref(null)
 
@@ -147,6 +150,7 @@ export function useGeneration(options = {}) {
     try {
       const response = await generationApi.getJobs(params)
       jobs.value = response.data.jobs || []
+      sharedJobs.value = response.data.shared_jobs || []
     } catch (err) {
       error.value = err.response?.data?.error || 'Failed to load jobs'
       console.error('[useGeneration] loadJobs error:', err)
@@ -447,6 +451,46 @@ export function useGeneration(options = {}) {
   }
 
   // ---------------------------------------------------------------------------
+  // ACTIONS - SHARING
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Share a job with another user (read-only).
+   *
+   * @param {number} jobId - Job ID
+   * @param {string} username - Target username
+   * @returns {Promise<boolean>} Success status
+   */
+  async function shareJob(jobId, username) {
+    try {
+      await generationApi.shareJob(jobId, username)
+      showSuccess(i18n.global.t('generation.share.shared'))
+      return true
+    } catch (err) {
+      showError(err.response?.data?.error || 'Failed to share job')
+      return false
+    }
+  }
+
+  /**
+   * Remove a share from a job.
+   *
+   * @param {number} jobId - Job ID
+   * @param {string} username - Target username
+   * @returns {Promise<boolean>} Success status
+   */
+  async function unshareJob(jobId, username) {
+    try {
+      await generationApi.unshareJob(jobId, username)
+      showSuccess(i18n.global.t('generation.share.unshared'))
+      return true
+    } catch (err) {
+      showError(err.response?.data?.error || 'Failed to unshare job')
+      return false
+    }
+  }
+
+  // ---------------------------------------------------------------------------
   // SOCKET.IO INTEGRATION
   // ---------------------------------------------------------------------------
 
@@ -543,6 +587,11 @@ export function useGeneration(options = {}) {
         }
       }
     })
+
+    // Share updated — refresh job list so shared/unshared jobs appear/disappear
+    socket.on('generation:share_updated', () => {
+      loadJobs()
+    })
   }
 
   /**
@@ -565,6 +614,7 @@ export function useGeneration(options = {}) {
     socket.off('generation:job:budget_exceeded')
     socket.off('generation:item:completed')
     socket.off('generation:item:failed')
+    socket.off('generation:share_updated')
   }
 
   // ---------------------------------------------------------------------------
@@ -632,6 +682,7 @@ export function useGeneration(options = {}) {
   return {
     // State
     jobs,
+    sharedJobs,
     currentJob,
     outputs,
     outputsPagination,
@@ -667,6 +718,10 @@ export function useGeneration(options = {}) {
 
     // Actions - Scenario
     createScenario,
+
+    // Actions - Sharing
+    shareJob,
+    unshareJob,
 
     // Actions - Estimation
     estimateCost,

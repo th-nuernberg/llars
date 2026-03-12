@@ -3941,12 +3941,19 @@
       "notesPlaceholder": "Optional notes..."
     },
     "comparison": {
+      "title": "Comparison",
       "pageTitle": "Comparison",
       "pageSubtitle": "Select a persona to enter the comparison chat.",
       "emptyTitle": "No sessions available",
       "emptyHint": "No comparison sessions have been created yet.",
       "scenarioLabel": "Scenario {id}",
-      "ratedMessages": "{count} messages rated"
+      "ratedMessages": "{count} messages rated",
+      "noContent": "No content available",
+      "selectA": "Select Option A",
+      "selectB": "Select Option B",
+      "tie": "Tie",
+      "notesLabel": "Notes",
+      "notesPlaceholder": "Optional notes..."
     },
     "rating": {
       "pageTitle": "Rating",
@@ -5994,7 +6001,8 @@
       "clearFilter": "Clear Filter",
       "createFirst": "Create First Job",
       "deleteTitle": "Delete Job",
-      "deleteConfirm": "Are you sure you want to delete the job \"{name}\"? This action cannot be undone."
+      "deleteConfirm": "Are you sure you want to delete the job \"{name}\"? This action cannot be undone.",
+      "sharedWithMe": "Shared with Me"
     },
     "status": {
       "created": "Created",
@@ -6116,6 +6124,16 @@
       "noPromptData": "Prompt data not available",
       "noContent": "No content generated",
       "sourceData": "Input Data"
+    },
+    "share": {
+      "title": "Sharing",
+      "shareAction": "Share",
+      "addUserPlaceholder": "Search user...",
+      "notSharedYet": "This job has not been shared yet.",
+      "shared": "Job shared successfully",
+      "unshared": "Share removed",
+      "sharedByOwner": "Shared by {owner}",
+      "readOnlyHint": "You have read-only access to this job. Starting, pausing, and deleting is only available to the owner."
     },
     "scenario": {
       "name": "Scenario Name",

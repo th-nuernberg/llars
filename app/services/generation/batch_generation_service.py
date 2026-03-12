@@ -991,6 +991,39 @@ class BatchGenerationService:
         return [job.to_summary_dict() for job in jobs]
 
     @classmethod
+    def get_shared_jobs_for_user(
+        cls,
+        user_id: int,
+        *,
+        status: Optional[GenerationJobStatus] = None,
+        limit: int = 50
+    ) -> List[Dict[str, Any]]:
+        """
+        Get jobs shared with a user via GenerationJobShare.
+
+        Returns summary dicts with 'is_shared: True' marker so the
+        frontend can distinguish own jobs from shared ones.
+        """
+        from db.models import GenerationJobShare
+
+        query = (
+            GenerationJob.query
+            .join(GenerationJobShare, GenerationJobShare.job_id == GenerationJob.id)
+            .filter(GenerationJobShare.shared_with_user_id == user_id)
+        )
+        if status:
+            query = query.filter(GenerationJob.status == status)
+        jobs = query.order_by(GenerationJob.created_at.desc()).limit(limit).all()
+
+        result = []
+        for job in jobs:
+            cls._reconcile_terminal_job_status(job)
+            summary = job.to_summary_dict()
+            summary['is_shared'] = True
+            result.append(summary)
+        return result
+
+    @classmethod
     def get_job_outputs(
         cls,
         job_id: int,

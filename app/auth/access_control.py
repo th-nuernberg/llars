@@ -94,6 +94,51 @@ def require_generation_job_owner(job_id: int, user) -> None:
     raise ForbiddenError('You do not have access to this job')
 
 
+def require_generation_job_access(job_id: int, user) -> None:
+    """
+    Prüft ob der User Zugriff auf den Generation Job hat (Owner ODER Shared).
+
+    Zugriff haben:
+    - Admins (Bypass)
+    - Job-Ersteller (created_by == username)
+    - User mit GenerationJobShare-Eintrag (Read-Only)
+
+    Args:
+        job_id: GenerationJob-ID
+        user: User-Objekt aus g.authentik_user
+
+    Raises:
+        ForbiddenError: User hat keinen Zugriff
+        NotFoundError: Job existiert nicht
+    """
+    from decorators.permission_decorator import has_role
+    if has_role(user, 'admin'):
+        return
+
+    from db.models import GenerationJob, GenerationJobShare
+
+    username = getattr(user, 'username', str(user))
+    user_id = getattr(user, 'id', None)
+
+    job = GenerationJob.query.get(job_id)
+    if not job:
+        raise NotFoundError(f'Job {job_id} not found')
+
+    if job.created_by == username:
+        return
+
+    # Check if job is shared with this user
+    if user_id:
+        share = GenerationJobShare.query.filter_by(
+            job_id=job_id,
+            shared_with_user_id=user_id
+        ).first()
+        if share:
+            return
+
+    raise ForbiddenError('You do not have access to this job')
+
+
 def require_judge_session_owner(session_id: int, user) -> None:
     """
     Prüft ob der User Eigentümer der Judge Session ist.

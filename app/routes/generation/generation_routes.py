@@ -15,10 +15,10 @@ from typing import Optional
 from flask import Blueprint, g, jsonify, request, send_file
 
 from auth.decorators import authentik_required, api_key_or_token_required
-from auth.access_control import require_generation_job_owner
+from auth.access_control import require_generation_job_owner, require_generation_job_access
 from db import db
-from db.models import GeneratedOutputStatus, GenerationJobStatus
-from decorators.error_handler import handle_api_errors, ValidationError
+from db.models import GeneratedOutputStatus, GenerationJobShare, GenerationJobStatus, User
+from decorators.error_handler import handle_api_errors, NotFoundError, ValidationError
 from decorators.permission_decorator import require_permission
 from services.generation import BatchGenerationService, OutputExportService
 from services.system_settings_service import get_batch_generation_max_parallel
@@ -125,16 +125,23 @@ def list_jobs():
     status = GenerationJobStatus(status_str) if status_str else None
     limit = min(int(request.args.get('limit', 50)), 100)
 
-    # Get jobs
+    # Get own jobs
     jobs = BatchGenerationService.get_jobs_for_user(
         username,
         status=status,
         limit=limit
     )
 
+    # Get shared jobs
+    user_id = getattr(user, 'id', None)
+    shared_jobs = BatchGenerationService.get_shared_jobs_for_user(
+        user_id, status=status, limit=limit
+    ) if user_id else []
+
     return jsonify({
         'success': True,
         'jobs': jobs,
+        'shared_jobs': shared_jobs,
         'total': len(jobs),
     })
 
@@ -151,9 +158,28 @@ def get_job(job_id: int):
         200: Job details
         404: Job not found
     """
-    require_generation_job_owner(job_id, g.authentik_user)
+    require_generation_job_access(job_id, g.authentik_user)
+
+    user = g.authentik_user
+    username = user.username if hasattr(user, 'username') else str(user)
+
     # Use get_job_status to include currently_processing for reconnection support
     job_data = BatchGenerationService.get_job_status(job_id)
+
+    # Add sharing metadata
+    is_owner = job_data.get('created_by') == username
+    job_data['is_shared'] = not is_owner
+    if is_owner:
+        shares = GenerationJobShare.query.filter_by(job_id=job_id).all()
+        job_data['shared_with'] = [
+            {
+                'share_id': s.id,
+                'user_id': s.shared_with_user_id,
+                'username': s.shared_with_user.username if s.shared_with_user else None,
+                'created_at': s.created_at.isoformat() if s.created_at else None,
+            }
+            for s in shares
+        ]
 
     return jsonify({
         'success': True,
@@ -298,7 +324,7 @@ def get_job_outputs(job_id: int):
         200: Paginated outputs
         404: Job not found
     """
-    require_generation_job_owner(job_id, g.authentik_user)
+    require_generation_job_access(job_id, g.authentik_user)
     # Parse query params
     page = int(request.args.get('page', 1))
     per_page = min(int(request.args.get('per_page', 50)), 100)
@@ -334,7 +360,7 @@ def get_output(output_id: int):
         404: Output not found
     """
     output = BatchGenerationService.get_output(output_id)
-    require_generation_job_owner(output['job_id'], g.authentik_user)
+    require_generation_job_access(output['job_id'], g.authentik_user)
 
     return jsonify({
         'success': True,
@@ -365,7 +391,7 @@ def export_csv(job_id: int):
         200: CSV file download
         404: Job not found
     """
-    require_generation_job_owner(job_id, g.authentik_user)
+    require_generation_job_access(job_id, g.authentik_user)
     data = request.get_json() or {}
 
     include_prompts = data.get('include_prompts', False)
@@ -411,7 +437,7 @@ def export_json(job_id: int):
         200: JSON export
         404: Job not found
     """
-    require_generation_job_owner(job_id, g.authentik_user)
+    require_generation_job_access(job_id, g.authentik_user)
     data = request.get_json() or {}
 
     include_prompts = data.get('include_prompts', True)
@@ -572,7 +598,7 @@ def get_job_statistics(job_id: int):
         200: Job statistics
         404: Job not found
     """
-    require_generation_job_owner(job_id, g.authentik_user)
+    require_generation_job_access(job_id, g.authentik_user)
     stats = OutputExportService.get_job_statistics(job_id)
 
     return jsonify({
@@ -639,6 +665,133 @@ def get_max_parallel():
         'success': True,
         'max_parallel': max_parallel,
     })
+
+
+# =============================================================================
+# SHARING
+# =============================================================================
+
+
+@generation_bp.route('/jobs/<int:job_id>/share', methods=['POST'])
+@authentik_required
+@require_permission('feature:generation:manage')
+@handle_api_errors(logger_name='generation')
+def share_job(job_id: int):
+    """
+    Share a job with another user (read-only access).
+
+    Request body:
+    {
+        "username": "researcher"
+    }
+
+    Returns:
+        200: Share created
+        400: Invalid username or already shared
+        404: Job or user not found
+    """
+    require_generation_job_owner(job_id, g.authentik_user)
+    data = request.get_json() or {}
+
+    target_username = data.get('username')
+    if not target_username:
+        raise ValidationError("username is required")
+
+    target_user = User.query.filter_by(username=target_username).first()
+    if not target_user:
+        raise NotFoundError(f'User "{target_username}" not found')
+
+    # Check for existing share
+    existing = GenerationJobShare.query.filter_by(
+        job_id=job_id,
+        shared_with_user_id=target_user.id
+    ).first()
+    if existing:
+        raise ValidationError(f'Job already shared with "{target_username}"')
+
+    share = GenerationJobShare(
+        job_id=job_id,
+        shared_with_user_id=target_user.id
+    )
+    db.session.add(share)
+    db.session.commit()
+
+    logger.info("[GenAPI] User shared job %d with %s", job_id, target_username)
+
+    # Notify via Socket.IO so shared user's list refreshes
+    _emit_share_updated(job_id)
+
+    return jsonify({
+        'success': True,
+        'share': {
+            'share_id': share.id,
+            'user_id': target_user.id,
+            'username': target_username,
+        },
+        'message': f'Job shared with "{target_username}"',
+    })
+
+
+@generation_bp.route('/jobs/<int:job_id>/unshare', methods=['POST'])
+@authentik_required
+@require_permission('feature:generation:manage')
+@handle_api_errors(logger_name='generation')
+def unshare_job(job_id: int):
+    """
+    Remove a share from a job.
+
+    Request body:
+    {
+        "username": "researcher"
+    }
+
+    Returns:
+        200: Share removed
+        404: Share not found
+    """
+    require_generation_job_owner(job_id, g.authentik_user)
+    data = request.get_json() or {}
+
+    target_username = data.get('username')
+    if not target_username:
+        raise ValidationError("username is required")
+
+    target_user = User.query.filter_by(username=target_username).first()
+    if not target_user:
+        raise NotFoundError(f'User "{target_username}" not found')
+
+    share = GenerationJobShare.query.filter_by(
+        job_id=job_id,
+        shared_with_user_id=target_user.id
+    ).first()
+    if not share:
+        raise NotFoundError(f'No share found for "{target_username}"')
+
+    db.session.delete(share)
+    db.session.commit()
+
+    logger.info("[GenAPI] User unshared job %d from %s", job_id, target_username)
+
+    _emit_share_updated(job_id)
+
+    return jsonify({
+        'success': True,
+        'message': f'Share removed for "{target_username}"',
+    })
+
+
+def _emit_share_updated(job_id: int) -> None:
+    """Emit Socket.IO event when shares change so clients refresh their list."""
+    try:
+        from main import socketio
+        from services.generation.socket_rooms import GENERATION_OVERVIEW_ROOM
+        socketio.emit(
+            'generation:share_updated',
+            {'job_id': job_id},
+            room=GENERATION_OVERVIEW_ROOM,
+        )
+    except Exception as e:
+        logger.warning("[GenAPI] Could not emit share_updated: %s", e)
 
 
 # =============================================================================

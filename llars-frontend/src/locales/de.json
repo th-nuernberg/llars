@@ -3941,12 +3941,19 @@
       "notesPlaceholder": "Optionale Anmerkungen..."
     },
     "comparison": {
+      "title": "Vergleich",
       "pageTitle": "Gegenüberstellung",
       "pageSubtitle": "Wähle eine Persona, um den Vergleichs-Chat zu betreten.",
       "emptyTitle": "Keine Sessions verfügbar",
       "emptyHint": "Es wurden noch keine Gegenüberstellungs-Sessions erstellt.",
       "scenarioLabel": "Szenario {id}",
-      "ratedMessages": "{count} Nachrichten bewertet"
+      "ratedMessages": "{count} Nachrichten bewertet",
+      "noContent": "Kein Inhalt vorhanden",
+      "selectA": "Option A wählen",
+      "selectB": "Option B wählen",
+      "tie": "Gleichwertig",
+      "notesLabel": "Anmerkungen",
+      "notesPlaceholder": "Optionale Anmerkungen..."
     },
     "rating": {
       "pageTitle": "Rating",
@@ -5836,7 +5843,8 @@
       "clearFilter": "Filter zurücksetzen",
       "createFirst": "Ersten Job erstellen",
       "deleteTitle": "Job löschen",
-      "deleteConfirm": "Bist du sicher, dass du den Job \"{name}\" löschen möchtest? Diese Aktion kann nicht rückgängig gemacht werden."
+      "deleteConfirm": "Bist du sicher, dass du den Job \"{name}\" löschen möchtest? Diese Aktion kann nicht rückgängig gemacht werden.",
+      "sharedWithMe": "Mit mir geteilt"
     },
     "status": {
       "created": "Erstellt",
@@ -5958,6 +5966,16 @@
       "noPromptData": "Prompt-Daten nicht verfügbar",
       "noContent": "Kein Inhalt generiert",
       "sourceData": "Eingabedaten"
+    },
+    "share": {
+      "title": "Teilen",
+      "shareAction": "Teilen",
+      "addUserPlaceholder": "Benutzer suchen...",
+      "notSharedYet": "Dieser Job wurde noch nicht geteilt.",
+      "shared": "Job erfolgreich geteilt",
+      "unshared": "Freigabe entfernt",
+      "sharedByOwner": "Geteilt von {owner}",
+      "readOnlyHint": "Sie haben Lesezugriff auf diesen Job. Starten, Pausieren und Löschen ist nur dem Ersteller möglich."
     },
     "scenario": {
       "name": "Szenario-Name",

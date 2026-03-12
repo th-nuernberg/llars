@@ -158,6 +158,7 @@ from db.models.scenario import (
     UserMailHistoryRating,
     ItemDimensionRating,  # New multi-dimensional rating model
     ItemLabelingEvaluation,  # Labeling/classification evaluation model
+    ItemComparisonEvaluation,  # A/B comparison evaluation model
     UserMessageRating,
     UserPrompt,
     UserPromptShare,
@@ -201,6 +202,7 @@ from db.models.generation import (
     GeneratedOutputStatus,
     GenerationJob,
     GeneratedOutput,
+    GenerationJobShare,
     get_pending_outputs_for_job,
     get_failed_outputs_for_job,
 )
@@ -383,6 +385,7 @@ __all__ = [
     'UserMailHistoryRating',
     'ItemDimensionRating',
     'ItemLabelingEvaluation',
+    'ItemComparisonEvaluation',
     'UserMessageRating',
     # Authenticity
     'AuthenticityConversation',
@@ -416,6 +419,7 @@ __all__ = [
     'GeneratedOutputStatus',
     'GenerationJob',
     'GeneratedOutput',
+    'GenerationJobShare',
     'get_pending_outputs_for_job',
     'get_failed_outputs_for_job',
     # Pipeline

@@ -123,6 +123,24 @@
           </div>
         </div>
       </div>
+
+      <!-- Shared With Me Section -->
+      <div v-if="sharedJobs.length > 0" class="jobs-section">
+        <h3 class="section-title">
+          <LIcon color="accent" class="mr-2">mdi-share-variant-outline</LIcon>
+          {{ $t('generation.hub.sharedWithMe') }}
+          <LTag variant="accent" size="small" class="ml-2">{{ sharedJobs.length }}</LTag>
+        </h3>
+        <div class="jobs-grid">
+          <GenerationJobCard
+            v-for="job in sharedJobs"
+            :key="'shared-' + job.id"
+            :job="job"
+            :is-shared="true"
+            @click="navigateToJob(job)"
+          />
+        </div>
+      </div>
     </div>
 
     <!-- Generation Wizard Dialog -->
@@ -179,6 +197,7 @@ const { isMobile } = useMobile()
 // Generation composable
 const {
   jobs,
+  sharedJobs,
   activeJobs,
   isLoading,
   loadJobs,

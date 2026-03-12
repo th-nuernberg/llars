@@ -203,6 +203,32 @@ export const generationApi = {
   },
 
   // ===========================================================================
+  // SHARING
+  // ===========================================================================
+
+  /**
+   * Share a job with another user (read-only access).
+   *
+   * @param {number} jobId - Job ID
+   * @param {string} username - Target username
+   * @returns {Promise<Object>} Share info
+   */
+  shareJob(jobId, username) {
+    return axios.post(`${API_BASE}/jobs/${jobId}/share`, { username })
+  },
+
+  /**
+   * Remove a share from a job.
+   *
+   * @param {number} jobId - Job ID
+   * @param {string} username - Target username
+   * @returns {Promise<Object>} Success response
+   */
+  unshareJob(jobId, username) {
+    return axios.post(`${API_BASE}/jobs/${jobId}/unshare`, { username })
+  },
+
+  // ===========================================================================
   // STATISTICS & ESTIMATION
   // ===========================================================================
 

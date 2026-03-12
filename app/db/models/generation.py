@@ -26,6 +26,7 @@ if TYPE_CHECKING:
     from db.models.scenario import EvaluationItem, RatingScenarios
     from db.models.prompt_template import PromptTemplate
     from db.models.llm_model import LLMModel
+    from db.models.user import User
 
 
 # =============================================================================
@@ -942,6 +943,72 @@ class GeneratedOutput(db.Model):
 
     def __repr__(self) -> str:
         return f"<GeneratedOutput {self.id}: job={self.job_id} model={self.llm_model_name} status={self.status.value}>"
+
+
+# =============================================================================
+# GENERATION JOB SHARE MODEL
+# =============================================================================
+
+
+class GenerationJobShare(db.Model):
+    """
+    Sharing record that grants a user read-only access to a GenerationJob.
+
+    Follows the same pattern as UserPromptShare. Shared users can view
+    the job, browse outputs, and export — but cannot start/pause/delete.
+
+    Unique constraint prevents duplicate shares for the same user+job.
+    CASCADE delete ensures shares are cleaned up when the job is deleted.
+    """
+
+    __tablename__ = 'generation_job_shares'
+
+    id: Mapped[int] = mapped_column(
+        db.Integer,
+        primary_key=True,
+        autoincrement=True
+    )
+
+    job_id: Mapped[int] = mapped_column(
+        db.Integer,
+        db.ForeignKey('generation_jobs.id', ondelete='CASCADE'),
+        nullable=False,
+        index=True,
+        comment="Shared generation job"
+    )
+
+    shared_with_user_id: Mapped[int] = mapped_column(
+        db.Integer,
+        db.ForeignKey('users.id'),
+        nullable=False,
+        index=True,
+        comment="User who received the share"
+    )
+
+    created_at: Mapped[datetime] = mapped_column(
+        db.DateTime,
+        default=datetime.utcnow,
+        nullable=False,
+        comment="When the share was created"
+    )
+
+    # Relationships
+    job: Mapped["GenerationJob"] = relationship(
+        "GenerationJob",
+        backref="shared_users"
+    )
+
+    shared_with_user: Mapped["User"] = relationship(
+        "User",
+        backref="shared_generation_jobs"
+    )
+
+    __table_args__ = (
+        db.UniqueConstraint('job_id', 'shared_with_user_id', name='uq_generation_job_share'),
+    )
+
+    def __repr__(self) -> str:
+        return f"<GenerationJobShare job={self.job_id} user={self.shared_with_user_id}>"
 
 
 # =============================================================================

@@ -21,33 +21,41 @@
         </p>
       </div>
       <div class="header-actions">
-        <!-- Job Actions -->
-        <LBtn
-          v-if="canStart"
-          variant="primary"
-          @click="handleStart"
-        >
-          <LIcon start>mdi-play</LIcon>
-          {{ $t('generation.actions.start') }}
-        </LBtn>
-        <LBtn
-          v-if="canPause"
-          variant="secondary"
-          @click="handlePause"
-        >
-          <LIcon start>mdi-pause</LIcon>
-          {{ $t('generation.actions.pause') }}
-        </LBtn>
-        <LBtn
-          v-if="canCancel"
-          variant="danger"
-          @click="handleCancel"
-        >
-          <LIcon start>mdi-stop</LIcon>
-          {{ $t('generation.actions.cancel') }}
-        </LBtn>
+        <!-- Shared info banner -->
+        <LTag v-if="isShared" variant="accent" size="small">
+          <LIcon start size="14">mdi-share-variant</LIcon>
+          {{ $t('generation.share.sharedByOwner', { owner: currentJob?.created_by }) }}
+        </LTag>
 
-        <!-- Export Menu -->
+        <!-- Job Actions (owner only) -->
+        <template v-if="isOwner">
+          <LBtn
+            v-if="canStart"
+            variant="primary"
+            @click="handleStart"
+          >
+            <LIcon start>mdi-play</LIcon>
+            {{ $t('generation.actions.start') }}
+          </LBtn>
+          <LBtn
+            v-if="canPause"
+            variant="secondary"
+            @click="handlePause"
+          >
+            <LIcon start>mdi-pause</LIcon>
+            {{ $t('generation.actions.pause') }}
+          </LBtn>
+          <LBtn
+            v-if="canCancel"
+            variant="danger"
+            @click="handleCancel"
+          >
+            <LIcon start>mdi-stop</LIcon>
+            {{ $t('generation.actions.cancel') }}
+          </LBtn>
+        </template>
+
+        <!-- Export Menu (all users with access) -->
         <v-menu offset-y>
           <template v-slot:activator="{ props }">
             <LBtn variant="tonal" v-bind="props">
@@ -72,9 +80,9 @@
           </v-list>
         </v-menu>
 
-        <!-- Open Scenario Wizard -->
+        <!-- Open Scenario Wizard (owner only) -->
         <LBtn
-          v-if="canCreateScenario"
+          v-if="canCreateScenario && isOwner"
           variant="accent"
           data-testid="generation-open-scenario-wizard"
           @click="openScenarioWizard"
@@ -258,6 +266,61 @@
             </div>
           </div>
         </LCard>
+
+        <!-- Sharing Card (owner only) -->
+        <LCard v-if="isOwner" class="sharing-card">
+          <template #title>
+            <LIcon color="accent" class="mr-2">mdi-share-variant</LIcon>
+            {{ $t('generation.share.title') }}
+          </template>
+
+          <!-- Current shares -->
+          <div v-if="currentJob?.shared_with?.length" class="shared-users-list">
+            <div
+              v-for="share in currentJob.shared_with"
+              :key="share.share_id"
+              class="shared-user-item"
+            >
+              <LAvatar :user="{ username: share.username }" size="28" />
+              <span class="shared-user-name">{{ share.username }}</span>
+              <LIconBtn
+                icon="mdi-close"
+                size="small"
+                tooltip="Entfernen"
+                @click="handleUnshare(share.username)"
+              />
+            </div>
+          </div>
+          <p v-else class="text-medium-emphasis text-body-2 mb-3">
+            {{ $t('generation.share.notSharedYet') }}
+          </p>
+
+          <!-- Add user -->
+          <div class="share-add-row">
+            <LUserSearch
+              v-model="shareUser"
+              :placeholder="$t('generation.share.addUserPlaceholder')"
+              density="compact"
+              clearable
+              class="flex-grow-1"
+            />
+            <LBtn
+              variant="primary"
+              size="small"
+              :loading="isSharing"
+              :disabled="!shareUser"
+              @click="handleShare"
+            >
+              {{ $t('generation.share.shareAction') }}
+            </LBtn>
+          </div>
+        </LCard>
+
+        <!-- Read-only hint for shared users -->
+        <div v-if="isShared" class="shared-hint">
+          <LIcon size="16" class="mr-1">mdi-information-outline</LIcon>
+          {{ $t('generation.share.readOnlyHint') }}
+        </div>
       </div>
 
       <!-- Right: Outputs Table -->
@@ -536,7 +599,9 @@ const {
   pauseJob,
   cancelJob,
   downloadCsv,
-  downloadJson
+  downloadJson,
+  shareJob,
+  unshareJob
 } = useGeneration()
 
 // Local state
@@ -546,6 +611,14 @@ const showOutputDialog = ref(false)
 const showScenarioWizard = ref(false)
 const selectedOutput = ref(null)
 const isLoadingOutput = ref(false)
+
+// Sharing state
+const shareUser = ref(null)
+const isSharing = ref(false)
+
+// Computed: whether the current user is the owner or a shared viewer
+const isShared = computed(() => currentJob.value?.is_shared === true)
+const isOwner = computed(() => !isShared.value)
 
 // Real-time streaming state
 const currentlyProcessing = ref(null)  // { model: 'gpt-4', outputId: 123, content: 'Streaming...' }
@@ -1141,6 +1214,24 @@ function openScenarioWizard() {
 function onScenarioCreated(scenario) {
   showScenarioWizard.value = false
   router.push({ name: 'ScenarioWorkspace', params: { id: scenario.id } })
+}
+
+async function handleShare() {
+  if (!shareUser.value?.username) return
+  isSharing.value = true
+  const success = await shareJob(jobId.value, shareUser.value.username)
+  if (success) {
+    shareUser.value = null
+    await loadJob(jobId.value)  // Refresh shared_with list
+  }
+  isSharing.value = false
+}
+
+async function handleUnshare(username) {
+  const success = await unshareJob(jobId.value, username)
+  if (success) {
+    await loadJob(jobId.value)  // Refresh shared_with list
+  }
 }
 
 // Watch for filter changes
@@ -2160,5 +2251,50 @@ onUnmounted(() => {
 
 .job-detail.is-mobile .info-panel {
   overflow: visible;
+}
+
+/* Sharing Card */
+.sharing-card {
+  padding: 20px;
+}
+
+.shared-users-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.shared-user-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 6px 2px 6px 2px;
+  background: rgba(var(--v-theme-on-surface), 0.04);
+}
+
+.shared-user-name {
+  flex: 1;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.share-add-row {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.shared-hint {
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  margin-top: 12px;
+  font-size: 0.85rem;
+  color: rgba(var(--v-theme-on-surface), 0.6);
+  background: rgba(var(--v-theme-accent), 0.06);
+  border-radius: 8px 3px 8px 3px;
+  border: 1px solid rgba(var(--v-theme-accent), 0.15);
 }
 </style>

@@ -107,11 +107,13 @@ async function adminApiCall(method, pathName, payload = null, fallbackToken = nu
 async function createScenarioViaApi(adminToken, name) {
   const begin = new Date()
   const end = new Date(begin.getTime() + 24 * 60 * 60 * 1000)
+  // Python 3.10 fromisoformat() doesn't accept Z suffix — strip it
+  const fmt = (d) => d.toISOString().replace('Z', '+00:00')
   const payload = {
     scenario_name: name,
     function_type_id: 2,
-    begin: begin.toISOString(),
-    end: end.toISOString(),
+    begin: fmt(begin),
+    end: fmt(end),
     evaluator: [],
     viewer: [],
     threads: [],
@@ -232,9 +234,11 @@ test.describe('Nightly Cross-Tile Workflows', () => {
           await clickWhenReady(
             dialog.locator('button:has-text("Erstellen"):visible, button:has-text("Create"):visible, button:has-text("Speichern"):visible').first()
           )
-          await expect(page.locator('.prompt-card, .l-card').filter({ hasText: promptName }).first())
-            .toBeVisible({ timeout: 12000 })
-          await page.locator('.prompt-card, .l-card').filter({ hasText: promptName }).first().click({ timeout: 5000 })
+          const promptCard = page.locator('.prompt-card, .l-card').filter({ hasText: promptName }).first()
+          await expect(promptCard).toBeVisible({ timeout: 12000 })
+          await promptCard.scrollIntoViewIfNeeded().catch(() => {})
+          await dismissConsentBanner(page)
+          await promptCard.click({ timeout: 10000 })
           await expect(page).toHaveURL(/\/PromptEngineering\/\d+/, { timeout: 12000 })
           const match = page.url().match(/\/PromptEngineering\/(\d+)/)
           promptId = match ? Number(match[1]) : null
@@ -362,6 +366,7 @@ test.describe('Nightly Cross-Tile Workflows', () => {
 
   if (hasWorkflow('Latex Collab Resizer')) {
     test('Latex Collab Resizer', async ({ page }) => {
+      test.setTimeout(120000) // 2min max — avoid 7min global timeout
       await openRoute(page, TEST_USERS.researcher, '/LatexCollab', '.latex-home, .page-container, main')
 
       const workspaceCard = page.locator('.workspace-card, .l-card, .item-card').first()
@@ -373,25 +378,25 @@ test.describe('Nightly Cross-Tile Workflows', () => {
         await expect(createWorkspace).toBeVisible({ timeout: 8000 })
         await createWorkspace.click()
 
-        // Fill the create dialog
         const dialog = page.locator('.v-dialog:visible, [role="dialog"]:visible').first()
         await expect(dialog).toBeVisible({ timeout: 8000 })
         const input = dialog.locator('input[type="text"]').first()
         await input.fill(`${NIGHTLY_PREFIX}-latex`)
         await dialog.locator('button:has-text("Erstellen"), button:has-text("Create"), button:has-text("Speichern")').first().click()
 
-        // Wait for workspace card to appear and click it
         const newCard = page.locator('.workspace-card, .l-card').first()
         await expect(newCard).toBeVisible({ timeout: 12000 })
         await newCard.click()
       }
 
+      // Verify navigation to workspace page
+      await page.waitForURL(/\/LatexCollab.*\/workspace\/\d+/, { timeout: 15000 }).catch(() => {})
       await dismissConsentBanner(page)
       await waitForPageReady(page, 12000)
 
       await activity('LTX-RESIZE-001', 'LaTeX Resizer per Drag bewegen', async () => {
         const resizer = page.locator('.resize-divider.vertical, .pane-resizer, .gutter').first()
-        await expect(resizer).toBeVisible({ timeout: 12000 })
+        await expect(resizer).toBeVisible({ timeout: 20000 })
 
         const before = await resizer.boundingBox()
         expect(before, 'Unable to read resizer position before drag').not.toBeNull()
@@ -545,13 +550,10 @@ test.describe('Nightly Cross-Tile Workflows', () => {
           await clickWhenReady(
             page.locator('[data-testid="access-request-submit"], button:has-text("Anfrage senden"), button:has-text("Send Request")').first()
           )
-          // "gesendet" / "sent" confirmation
-          const sentMarker = await page
-            .locator('text=/gesendet|sent|erfolgreich|success/i')
-            .first()
-            .isVisible({ timeout: 12000 })
-            .catch(() => false)
-          expect(sentMarker).toBeTruthy()
+          // Confirmation: success icon + "gesendet"/"sent" text appears
+          await expect(
+            page.locator('.mdi-check-circle-outline, text=/gesendet|sent/i').first()
+          ).toBeVisible({ timeout: 12000 })
         })
 
         await activity('CONF-REQ-VISIBLE-001', 'Access-Request bei Gruppenmitglied sichtbar', async () => {

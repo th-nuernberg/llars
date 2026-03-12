@@ -288,7 +288,7 @@ async function openShareDialog(job) {
   showShareDialog.value = true
   try {
     const res = await generationApi.getJob(job.id)
-    shareJobDetail.value = res.data
+    shareJobDetail.value = res.data.job
   } catch {
     shareJobDetail.value = { shared_with: [] }
   }
@@ -303,7 +303,7 @@ async function handleShareFromHub(user) {
     // Refresh job detail to update shared_with list
     try {
       const res = await generationApi.getJob(jobToShare.value.id)
-      shareJobDetail.value = res.data
+      shareJobDetail.value = res.data.job
     } catch { /* ignore */ }
   }
   isSharing.value = false
@@ -315,7 +315,7 @@ async function handleUnshareFromHub(username) {
   if (success) {
     try {
       const res = await generationApi.getJob(jobToShare.value.id)
-      shareJobDetail.value = res.data
+      shareJobDetail.value = res.data.job
     } catch { /* ignore */ }
   }
 }

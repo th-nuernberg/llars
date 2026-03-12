@@ -22,6 +22,7 @@ from decorators.error_handler import handle_api_errors, NotFoundError, Validatio
 from decorators.permission_decorator import require_permission
 from services.generation import BatchGenerationService, OutputExportService
 from services.system_settings_service import get_batch_generation_max_parallel
+from services.user_profile_service import serialize_user_brief
 
 logger = logging.getLogger(__name__)
 
@@ -174,8 +175,7 @@ def get_job(job_id: int):
         job_data['shared_with'] = [
             {
                 'share_id': s.id,
-                'user_id': s.shared_with_user_id,
-                'username': s.shared_with_user.username if s.shared_with_user else None,
+                **serialize_user_brief(s.shared_with_user),
                 'created_at': s.created_at.isoformat() if s.created_at else None,
             }
             for s in shares

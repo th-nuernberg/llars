@@ -73,6 +73,7 @@
             @click="navigateToJob(job)"
             @pause="pauseJob(job.id)"
             @cancel="cancelJob(job.id)"
+            @share="openShareDialog(job)"
           />
         </div>
       </div>
@@ -102,6 +103,7 @@
             @pause="pauseJob(job.id)"
             @cancel="cancelJob(job.id)"
             @delete="confirmDelete(job)"
+            @share="openShareDialog(job)"
           />
         </div>
 
@@ -178,6 +180,17 @@
         </v-card-actions>
       </LCard>
     </v-dialog>
+
+    <!-- Share Dialog -->
+    <LShareDialog
+      v-model="showShareDialog"
+      :title="$t('generation.share.title')"
+      :shared-users="shareJobDetail?.shared_with || []"
+      :loading="isLoadingShareData"
+      :is-sharing="isSharing"
+      @share="handleShareFromHub"
+      @unshare="handleUnshareFromHub"
+    />
   </div>
 </template>
 
@@ -187,6 +200,7 @@ import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useMobile } from '@/composables/useMobile'
 import { useGeneration, JOB_STATUS } from '@/composables/useGeneration'
+import { generationApi } from '@/services/generationApi'
 import GenerationJobCard from './GenerationJobCard.vue'
 import GenerationWizard from './GenerationWizard.vue'
 
@@ -204,7 +218,9 @@ const {
   startJob,
   pauseJob,
   cancelJob,
-  deleteJob
+  deleteJob,
+  shareJob,
+  unshareJob
 } = useGeneration({ autoLoadJobs: true })
 
 // Local state
@@ -212,6 +228,13 @@ const activeFilter = ref(null)
 const showWizard = ref(false)
 const showDeleteDialog = ref(false)
 const jobToDelete = ref(null)
+
+// Share dialog state
+const showShareDialog = ref(false)
+const jobToShare = ref(null)
+const shareJobDetail = ref(null)
+const isSharing = ref(false)
+const isLoadingShareData = ref(false)
 
 // Status filter options
 const STATUS_OPTIONS = [
@@ -254,6 +277,46 @@ async function executeDelete() {
     await deleteJob(jobToDelete.value.id)
     showDeleteDialog.value = false
     jobToDelete.value = null
+  }
+}
+
+// Share dialog: load job details (with shared_with) and open dialog
+async function openShareDialog(job) {
+  jobToShare.value = job
+  shareJobDetail.value = null
+  isLoadingShareData.value = true
+  showShareDialog.value = true
+  try {
+    const res = await generationApi.getJob(job.id)
+    shareJobDetail.value = res.data
+  } catch {
+    shareJobDetail.value = { shared_with: [] }
+  }
+  isLoadingShareData.value = false
+}
+
+async function handleShareFromHub(user) {
+  if (!user?.username || !jobToShare.value) return
+  isSharing.value = true
+  const success = await shareJob(jobToShare.value.id, user.username)
+  if (success) {
+    // Refresh job detail to update shared_with list
+    try {
+      const res = await generationApi.getJob(jobToShare.value.id)
+      shareJobDetail.value = res.data
+    } catch { /* ignore */ }
+  }
+  isSharing.value = false
+}
+
+async function handleUnshareFromHub(username) {
+  if (!jobToShare.value) return
+  const success = await unshareJob(jobToShare.value.id, username)
+  if (success) {
+    try {
+      const res = await generationApi.getJob(jobToShare.value.id)
+      shareJobDetail.value = res.data
+    } catch { /* ignore */ }
   }
 }
 

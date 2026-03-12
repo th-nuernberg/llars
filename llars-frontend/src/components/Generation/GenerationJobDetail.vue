@@ -80,6 +80,16 @@
           </v-list>
         </v-menu>
 
+        <!-- Share Button (owner only) -->
+        <LBtn
+          v-if="isOwner"
+          variant="tonal"
+          @click="showShareDialog = true"
+        >
+          <LIcon start>mdi-share-variant</LIcon>
+          {{ $t('generation.share.shareAction') }}
+        </LBtn>
+
         <!-- Open Scenario Wizard (owner only) -->
         <LBtn
           v-if="canCreateScenario && isOwner"
@@ -267,60 +277,6 @@
           </div>
         </LCard>
 
-        <!-- Sharing Card (owner only) -->
-        <LCard v-if="isOwner" class="sharing-card">
-          <template #title>
-            <LIcon color="accent" class="mr-2">mdi-share-variant</LIcon>
-            {{ $t('generation.share.title') }}
-          </template>
-
-          <!-- Current shares -->
-          <div v-if="currentJob?.shared_with?.length" class="shared-users-list">
-            <div
-              v-for="share in currentJob.shared_with"
-              :key="share.share_id"
-              class="shared-user-item"
-            >
-              <LAvatar :user="{ username: share.username }" size="28" />
-              <span class="shared-user-name">{{ share.username }}</span>
-              <LIconBtn
-                icon="mdi-close"
-                size="small"
-                tooltip="Entfernen"
-                @click="handleUnshare(share.username)"
-              />
-            </div>
-          </div>
-          <p v-else class="text-medium-emphasis text-body-2 mb-3">
-            {{ $t('generation.share.notSharedYet') }}
-          </p>
-
-          <!-- Add user -->
-          <div class="share-add-row">
-            <LUserSearch
-              v-model="shareUser"
-              :placeholder="$t('generation.share.addUserPlaceholder')"
-              density="compact"
-              clearable
-              class="flex-grow-1"
-            />
-            <LBtn
-              variant="primary"
-              size="small"
-              :loading="isSharing"
-              :disabled="!shareUser"
-              @click="handleShare"
-            >
-              {{ $t('generation.share.shareAction') }}
-            </LBtn>
-          </div>
-        </LCard>
-
-        <!-- Read-only hint for shared users -->
-        <div v-if="isShared" class="shared-hint">
-          <LIcon size="16" class="mr-1">mdi-information-outline</LIcon>
-          {{ $t('generation.share.readOnlyHint') }}
-        </div>
       </div>
 
       <!-- Right: Outputs Table -->
@@ -561,6 +517,16 @@
       />
     </v-dialog>
 
+    <!-- Share Dialog (owner only) -->
+    <LShareDialog
+      v-model="showShareDialog"
+      :title="$t('generation.share.title')"
+      :shared-users="currentJob?.shared_with || []"
+      :is-sharing="isSharing"
+      @share="handleShare"
+      @unshare="handleUnshare"
+    />
+
   </div>
 </template>
 
@@ -613,7 +579,7 @@ const selectedOutput = ref(null)
 const isLoadingOutput = ref(false)
 
 // Sharing state
-const shareUser = ref(null)
+const showShareDialog = ref(false)
 const isSharing = ref(false)
 
 // Computed: whether the current user is the owner or a shared viewer
@@ -1216,12 +1182,11 @@ function onScenarioCreated(scenario) {
   router.push({ name: 'ScenarioWorkspace', params: { id: scenario.id } })
 }
 
-async function handleShare() {
-  if (!shareUser.value?.username) return
+async function handleShare(user) {
+  if (!user?.username) return
   isSharing.value = true
-  const success = await shareJob(jobId.value, shareUser.value.username)
+  const success = await shareJob(jobId.value, user.username)
   if (success) {
-    shareUser.value = null
     await loadJob(jobId.value)  // Refresh shared_with list
   }
   isSharing.value = false
@@ -2253,48 +2218,4 @@ onUnmounted(() => {
   overflow: visible;
 }
 
-/* Sharing Card */
-.sharing-card {
-  padding: 20px;
-}
-
-.shared-users-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-bottom: 12px;
-}
-
-.shared-user-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 8px;
-  border-radius: 6px 2px 6px 2px;
-  background: rgba(var(--v-theme-on-surface), 0.04);
-}
-
-.shared-user-name {
-  flex: 1;
-  font-size: 0.9rem;
-  font-weight: 500;
-}
-
-.share-add-row {
-  display: flex;
-  gap: 8px;
-  align-items: flex-start;
-}
-
-.shared-hint {
-  display: flex;
-  align-items: center;
-  padding: 12px 16px;
-  margin-top: 12px;
-  font-size: 0.85rem;
-  color: rgba(var(--v-theme-on-surface), 0.6);
-  background: rgba(var(--v-theme-accent), 0.06);
-  border-radius: 8px 3px 8px 3px;
-  border: 1px solid rgba(var(--v-theme-accent), 0.15);
-}
 </style>

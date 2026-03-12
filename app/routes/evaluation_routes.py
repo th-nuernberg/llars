@@ -168,7 +168,7 @@ def get_thread_features(scenario_id, thread_id):
 
 
 @evaluation_bp.post('/session/<int:scenario_id>/features/<int:feature_id>/rate')
-@require_permission('feature:ranking:evaluate')
+@require_permission('feature:ranking:edit')
 @handle_api_errors(logger_name='evaluation')
 def rate_feature(scenario_id, feature_id):
     """
@@ -237,7 +237,7 @@ def rate_feature(scenario_id, feature_id):
 
 
 @evaluation_bp.post('/session/<int:scenario_id>/items/<int:item_id>/evaluate')
-@require_permission('feature:ranking:evaluate')
+@require_permission('feature:ranking:edit')
 @handle_api_errors(logger_name='evaluation')
 def submit_evaluation(scenario_id, item_id):
     """
@@ -313,6 +313,44 @@ def submit_evaluation(scenario_id, item_id):
             'evaluation': evaluation.to_dict(),
             'status': 'completed'
         }
+
+    elif function_type == 'comparison':
+        from db.models.scenario import ItemComparisonEvaluation
+
+        choice = data.get('choice')
+        if not choice or choice not in ('A', 'B', 'tie'):
+            raise ValidationError('Choice must be A, B, or tie')
+
+        notes = data.get('notes')
+
+        # Find or create comparison evaluation
+        evaluation = ItemComparisonEvaluation.query.filter_by(
+            user_id=user.id,
+            item_id=item_id,
+            scenario_id=scenario_id
+        ).first()
+
+        if evaluation:
+            evaluation.choice = choice
+            evaluation.notes = notes
+        else:
+            evaluation = ItemComparisonEvaluation(
+                user_id=user.id,
+                item_id=item_id,
+                scenario_id=scenario_id,
+                choice=choice,
+                notes=notes
+            )
+            db.session.add(evaluation)
+
+        db.session.commit()
+
+        result = {
+            'success': True,
+            'evaluation': evaluation.to_dict(),
+            'status': 'completed'
+        }
+
     else:
         # Default behavior for other types
         result = EvaluationSessionService.mark_thread_complete(
@@ -420,7 +458,7 @@ def get_rating_item_content(scenario_id, item_id):
 
 
 @evaluation_bp.post('/rating/<int:scenario_id>/items/<int:item_id>/rate')
-@require_permission('feature:ranking:evaluate')
+@require_permission('feature:ranking:edit')
 @handle_api_errors(logger_name='evaluation')
 def submit_dimensional_rating(scenario_id, item_id):
     """
@@ -549,7 +587,7 @@ def get_rating_statistics(scenario_id):
 
 
 @evaluation_bp.post('/rating/<int:scenario_id>/items/<int:item_id>/llm-evaluate')
-@require_permission('feature:ranking:evaluate')
+@require_permission('feature:ranking:edit')
 @handle_api_errors(logger_name='evaluation')
 def trigger_llm_evaluation(scenario_id, item_id):
     """

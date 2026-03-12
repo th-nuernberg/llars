@@ -49,6 +49,7 @@ import LRadio from '@/components/common/LRadio.vue'
 import LRadioGroup from '@/components/common/LRadioGroup.vue'
 import LSwitch from '@/components/common/LSwitch.vue'
 import LAIFieldButton from '@/components/common/LAIFieldButton.vue'
+import LShareDialog from '@/components/common/LShareDialog.vue'
 import { initMatomo } from '@/plugins/llars-metrics'
 import { useAuth } from '@/composables/useAuth'
 import { initAppTheme } from '@/composables/useAppTheme'
@@ -152,6 +153,7 @@ app.component('LRadio', LRadio)
 app.component('LRadioGroup', LRadioGroup)
 app.component('LSwitch', LSwitch)
 app.component('LAIFieldButton', LAIFieldButton)
+app.component('LShareDialog', LShareDialog)
 
 // Set default Axios headers
 axios.defaults.headers.common['Content-Type'] = 'application/json'

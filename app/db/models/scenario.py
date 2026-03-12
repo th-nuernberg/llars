@@ -477,6 +477,56 @@ class ItemLabelingEvaluation(db.Model):
         }
 
 
+class ItemComparisonEvaluation(db.Model):
+    """
+    Comparison evaluation for an item - A/B choice by a user.
+
+    Used for comparison tasks where users pick Option A, B, or tie
+    between two texts/features of a single item.
+    """
+    __tablename__ = 'item_comparison_evaluations'
+
+    id: Mapped[int] = mapped_column(db.Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
+    item_id: Mapped[int] = mapped_column(db.Integer, db.ForeignKey('evaluation_items.item_id'), nullable=False, index=True)
+    scenario_id: Mapped[int] = mapped_column(db.Integer, db.ForeignKey('rating_scenarios.id'), nullable=False, index=True)
+
+    # Selected option: 'A', 'B', or 'tie'
+    choice: Mapped[str] = mapped_column(db.String(10), nullable=False)
+
+    # Optional notes/justification
+    notes: Mapped[Optional[str]] = mapped_column(db.TEXT, nullable=True)
+
+    # Timestamps
+    created_at: Mapped[datetime] = mapped_column(db.DateTime, default=datetime.now, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(db.DateTime, default=datetime.now, onupdate=datetime.now, nullable=False)
+
+    # Relationships
+    user = db.relationship('User', backref='comparison_item_evaluations')
+    item = db.relationship('EvaluationItem', backref='comparison_item_evaluations')
+    scenario = db.relationship('RatingScenarios', backref='comparison_item_evaluations')
+
+    # Backwards compatibility
+    thread_id = synonym('item_id')
+
+    __table_args__ = (
+        db.UniqueConstraint('user_id', 'item_id', 'scenario_id', name='uix_user_item_scenario_comparison'),
+    )
+
+    def to_dict(self) -> dict:
+        """Convert to dictionary for API responses."""
+        return {
+            'id': self.id,
+            'user_id': self.user_id,
+            'item_id': self.item_id,
+            'scenario_id': self.scenario_id,
+            'choice': self.choice,
+            'notes': self.notes,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None
+        }
+
+
 class UserMessageRating(db.Model):
     __tablename__ = 'user_message_ratings'
     msg_rating_id = mapped_column(db.Integer, primary_key=True, autoincrement=True)

@@ -147,9 +147,13 @@ export function useComparisonEvaluation(scenarioId) {
       subject: data.subject
     }
 
-    // For comparison scenarios, features represent the two options
+    // For comparison scenarios, features represent the two options.
+    // Fallback: TEXT_PAIR imports store the two options as messages.
     const features = data.features || []
+    const messages = data.messages || []
+
     if (features.length >= 2) {
+      // Standard case: 2+ features are the comparison options
       optionA.value = {
         messages: [],
         content: features[0]?.content || '',
@@ -160,15 +164,46 @@ export function useComparisonEvaluation(scenarioId) {
         content: features[1]?.content || '',
         model: features[1]?.model_name || 'Option B'
       }
+    } else if (messages.length >= 2) {
+      // Fallback: messages represent comparison options (wizard TEXT_PAIR import)
+      // Split messages evenly between Option A and Option B
+      const midpoint = Math.ceil(messages.length / 2)
+      optionA.value = {
+        messages: messages.slice(0, midpoint),
+        content: ''
+      }
+      optionB.value = {
+        messages: messages.slice(midpoint),
+        content: ''
+      }
+    } else if (features.length === 1) {
+      // Single feature as Option A, messages as context for Option B
+      optionA.value = {
+        messages: [],
+        content: features[0]?.content || '',
+        model: features[0]?.model_name || 'Option A'
+      }
+      optionB.value = {
+        messages: messages,
+        content: ''
+      }
     } else {
-      // Fallback: use messages as content
-      optionA.value = { messages: data.messages || [], content: '' }
+      // Last resort: whatever content is available goes to Option A
+      optionA.value = { messages: messages, content: '' }
       optionB.value = { messages: [], content: '' }
     }
 
-    existingComparison.value = null
-    selectedOption.value = null
-    notes.value = ''
+    // Restore existing comparison evaluation if available
+    const existing = data.existing_comparison
+    if (existing && existing.choice) {
+      existingComparison.value = existing
+      selectedOption.value = existing.choice
+      notes.value = existing.notes || ''
+    } else {
+      existingComparison.value = null
+      selectedOption.value = null
+      notes.value = ''
+    }
 
     const index = items.value.findIndex(item =>
       (item.thread_id || item.id || item.item_id) === itemId

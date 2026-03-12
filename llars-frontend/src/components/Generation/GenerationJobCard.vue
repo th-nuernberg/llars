@@ -61,6 +61,14 @@
 
         <v-divider v-if="canStart || canPause || canCancel" />
 
+        <!-- Share -->
+        <v-list-item @click.stop="$emit('share')">
+          <template v-slot:prepend>
+            <LIcon size="18" color="accent" class="mr-2">mdi-share-variant</LIcon>
+          </template>
+          <v-list-item-title>{{ $t('generation.share.shareAction') }}</v-list-item-title>
+        </v-list-item>
+
         <!-- Delete (if not running) -->
         <v-list-item v-if="canDelete" @click.stop="$emit('delete')">
           <template v-slot:prepend>
@@ -155,7 +163,7 @@ const props = defineProps({
   }
 })
 
-defineEmits(['click', 'start', 'pause', 'cancel', 'delete'])
+defineEmits(['click', 'start', 'pause', 'cancel', 'delete', 'share'])
 
 const { t } = useI18n()
 

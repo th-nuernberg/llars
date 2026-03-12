@@ -32,7 +32,15 @@
     "create": "Create",
     "download": "Download",
     "leave": "Leave",
-    "actions": "Actions"
+    "actions": "Actions",
+    "shareDialog": {
+      "members": "Shared with",
+      "emptyMembers": "Not shared with anyone yet.",
+      "addUser": "Add user",
+      "addButton": "Share",
+      "searchPlaceholder": "Search user...",
+      "removeMember": "Remove"
+    }
   },
   "auth": {
     "login": "Login",

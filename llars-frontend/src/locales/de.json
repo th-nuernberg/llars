@@ -32,7 +32,15 @@
     "create": "Erstellen",
     "download": "Herunterladen",
     "leave": "Verlassen",
-    "actions": "Aktionen"
+    "actions": "Aktionen",
+    "shareDialog": {
+      "members": "Geteilt mit",
+      "emptyMembers": "Noch mit niemandem geteilt.",
+      "addUser": "Benutzer hinzufügen",
+      "addButton": "Teilen",
+      "searchPlaceholder": "Benutzer suchen...",
+      "removeMember": "Entfernen"
+    }
   },
   "auth": {
     "login": "Anmelden",

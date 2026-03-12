@@ -223,11 +223,17 @@ class EvaluationSessionService:
             }
 
         elif function_type == 'comparison':
-            # Comparison is per-session, not per-item; fallback to per-item
-            for tid in thread_ids:
-                status_map[tid] = EvaluationSessionService._get_thread_evaluation_status(
-                    tid, user_id, function_type, scenario_id
-                )
+            from db.models.scenario import ItemComparisonEvaluation
+            evals = ItemComparisonEvaluation.query.filter(
+                ItemComparisonEvaluation.user_id == user_id,
+                ItemComparisonEvaluation.scenario_id == scenario_id,
+                ItemComparisonEvaluation.item_id.in_(thread_ids)
+            ).all()
+            done_ids = {e.item_id for e in evals if e.choice is not None}
+            status_map = {
+                tid: ('done' if tid in done_ids else 'pending')
+                for tid in thread_ids
+            }
 
         return status_map
 
@@ -484,25 +490,15 @@ class EvaluationSessionService:
             return 'pending'
 
         elif function_type == 'comparison':
-            # Comparison uses ComparisonSession -> ComparisonMessage -> ComparisonEvaluation
-            # For now, check if any evaluation exists for this session
-            try:
-                from db.models import ComparisonSession, ComparisonEvaluation
-                session = ComparisonSession.query.filter_by(
-                    scenario_id=thread_id  # thread_id is used as scenario_id in comparison
-                ).first()
-                if session:
-                    # Check if user has made any evaluations
-                    eval_count = db.session.query(ComparisonEvaluation).join(
-                        ComparisonSession.messages
-                    ).filter(
-                        ComparisonSession.id == session.id
-                    ).count()
-                    if eval_count > 0:
-                        return 'done'
-                return 'pending'
-            except Exception:
-                return 'pending'
+            from db.models.scenario import ItemComparisonEvaluation
+            comp_eval = ItemComparisonEvaluation.query.filter_by(
+                user_id=user_id,
+                item_id=thread_id,
+                scenario_id=scenario_id
+            ).first()
+            if comp_eval is not None and comp_eval.choice is not None:
+                return 'done'
+            return 'pending'
 
         elif function_type == 'labeling':
             # Check labeling evaluations
@@ -591,12 +587,27 @@ class EvaluationSessionService:
                 'edited_content': existing_rating.edited_feature if existing_rating else None
             })
 
+        # Include existing comparison evaluation if present
+        existing_comparison = None
+        try:
+            from db.models.scenario import ItemComparisonEvaluation
+            comp_eval = ItemComparisonEvaluation.query.filter_by(
+                user_id=user_id,
+                item_id=thread_id,
+                scenario_id=scenario_id
+            ).first()
+            if comp_eval:
+                existing_comparison = comp_eval.to_dict()
+        except Exception:
+            pass
+
         return {
             'thread_id': thread_id,
             'subject': thread.subject,
             'messages': messages_data,
             'features': features_data,
-            'feature_types': feature_types
+            'feature_types': feature_types,
+            'existing_comparison': existing_comparison
         }
 
     @staticmethod

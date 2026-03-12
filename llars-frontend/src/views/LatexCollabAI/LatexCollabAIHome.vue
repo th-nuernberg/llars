@@ -20,6 +20,7 @@
         :size="isMobile ? 'small' : 'default'"
         :class="{ 'mt-3': isMobile, 'align-self-end': isMobile }"
         :disabled="!hasPermission('feature:latex_collab:edit')"
+        data-testid="latex-create-workspace-button"
         @click="createDialog = true"
       >
         <LIcon v-if="isMobile" class="mr-1">mdi-plus</LIcon>

@@ -40,7 +40,7 @@
             class="mb-4"
           />
           <div class="text-center">
-            <LBtn variant="primary" :loading="submitting" @click="submitRequest">
+            <LBtn variant="primary" :loading="submitting" data-testid="access-request-submit" @click="submitRequest">
               {{ t('researchGroup.accessRequest.submit') }}
             </LBtn>
           </div>

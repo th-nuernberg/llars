@@ -523,6 +523,8 @@
       :title="$t('generation.share.title')"
       :shared-users="currentJob?.shared_with || []"
       :is-sharing="isSharing"
+      :removing-username="removingUsername"
+      :additional-exclude-usernames="currentJob?.created_by ? [currentJob.created_by] : []"
       @share="handleShare"
       @unshare="handleUnshare"
     />
@@ -544,12 +546,24 @@ import ScenarioWizard from '@/views/ScenarioManager/components/ScenarioWizard.vu
 
 const route = useRoute()
 const router = useRouter()
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const { isMobile } = useMobile()
 
 // Socket.IO instance
 let socket = null
 let jobRoomReconnectHandler = null
+// Named handler references for targeted socket.off() cleanup
+let onStateHandler = null
+let onJobStartedHandler = null
+let onJobProgressHandler = null
+let onItemStartedHandler = null
+let onItemTokenHandler = null
+let onItemPartialHandler = null
+let onItemCompletedHandler = null
+let onItemFailedHandler = null
+let onJobCompletedHandler = null
+let onJobFailedHandler = null
+let onBudgetExceededHandler = null
 
 // Generation composable
 const {
@@ -581,6 +595,7 @@ const isLoadingOutput = ref(false)
 // Sharing state
 const showShareDialog = ref(false)
 const isSharing = ref(false)
+const removingUsername = ref(null)
 
 // Computed: whether the current user is the owner or a shared viewer
 const isShared = computed(() => currentJob.value?.is_shared === true)
@@ -1164,7 +1179,8 @@ function getOutputStatusVariant(status) {
 function formatDate(dateStr) {
   if (!dateStr) return '-'
   const date = new Date(dateStr)
-  return date.toLocaleString('de-DE', {
+  const loc = locale.value === 'de' ? 'de-DE' : 'en-US'
+  return date.toLocaleString(loc, {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
@@ -1193,10 +1209,12 @@ async function handleShare(user) {
 }
 
 async function handleUnshare(username) {
+  removingUsername.value = username
   const success = await unshareJob(jobId.value, username)
   if (success) {
     await loadJob(jobId.value)  // Refresh shared_with list
   }
+  removingUsername.value = null
 }
 
 // Watch for filter changes
@@ -1205,13 +1223,16 @@ watch(outputFilter, () => {
   loadOutputs(jobId.value, { page: 1, status: outputFilter.value })
 })
 
-// Auto-scroll outputs list when new items are added
+// Auto-scroll outputs list when new items are added (only if user is near the bottom)
 watch(outputs, () => {
   if (outputsListRef.value) {
     const el = outputsListRef.value
-    setTimeout(() => {
-      if (el) el.scrollTop = el.scrollHeight
-    }, 100)
+    const isNearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 100
+    if (isNearBottom) {
+      setTimeout(() => {
+        if (el) el.scrollTop = el.scrollHeight
+      }, 100)
+    }
   }
 }, { deep: true })
 
@@ -1346,7 +1367,7 @@ function setupSocketListeners() {
         activateStreamOutput(outputId, metadata)
       }
     }
-  })
+  }
 
   const ensureProcessingStateFromToken = (data) => {
     const outputId = normalizeNumericId(data.output_id) ?? data.output_id
@@ -1554,18 +1575,18 @@ function cleanupSocketListeners() {
       socket.off('connect', jobRoomReconnectHandler)
       jobRoomReconnectHandler = null
     }
-    socket.offAny()  // Remove the debug listener
-    socket.off('generation:state')
-    socket.off('generation:job:started')
-    socket.off('generation:job:progress')
-    socket.off('generation:item:started')
-    socket.off('generation:item:token')
-    socket.off('generation:item:partial')
-    socket.off('generation:item:completed')
-    socket.off('generation:item:failed')
-    socket.off('generation:job:completed')
-    socket.off('generation:job:failed')
-    socket.off('generation:job:budget_exceeded')
+    // Remove only our specific handlers (not other components' listeners)
+    if (onStateHandler) socket.off('generation:state', onStateHandler)
+    if (onJobStartedHandler) socket.off('generation:job:started', onJobStartedHandler)
+    if (onJobProgressHandler) socket.off('generation:job:progress', onJobProgressHandler)
+    if (onItemStartedHandler) socket.off('generation:item:started', onItemStartedHandler)
+    if (onItemTokenHandler) socket.off('generation:item:token', onItemTokenHandler)
+    if (onItemPartialHandler) socket.off('generation:item:partial', onItemPartialHandler)
+    if (onItemCompletedHandler) socket.off('generation:item:completed', onItemCompletedHandler)
+    if (onItemFailedHandler) socket.off('generation:item:failed', onItemFailedHandler)
+    if (onJobCompletedHandler) socket.off('generation:job:completed', onJobCompletedHandler)
+    if (onJobFailedHandler) socket.off('generation:job:failed', onJobFailedHandler)
+    if (onBudgetExceededHandler) socket.off('generation:job:budget_exceeded', onBudgetExceededHandler)
   }
 }
 

@@ -9,14 +9,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 LLARS uses **tag-based semantic versioning** computed via `git describe --tags --match "v*" --first-parent`.
 Given a tag `vMAJOR.MINOR.PATCH`, the formula produces `MAJOR.MINOR.(PATCH + N)` where N is the number
 of commits since the tag. At the tagged commit itself, N=0 and the version matches the tag exactly.
-Currently there is one tag: `v1.0.0` (2026-03-09). Future releases will be tagged on `main` after
+Tags: `v1.0.0` (2026-03-09), `v1.1.0` (2026-03-13). Future releases will be tagged on `main` after
 each dev-to-main merge.
 
 ---
 
-## [Unreleased] - since v1.0.0
+## [Unreleased]
 
-Changes after the v1.0.0 tag (2026-03-09 to present).
+_No changes yet._
+
+---
+
+## [1.1.0] - 2026-03-13
+
+Changes since v1.0.0 (2026-03-09).
 
 ### 2026-03-13
 

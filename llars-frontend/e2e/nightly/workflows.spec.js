@@ -149,7 +149,7 @@ async function deleteGroupViaApi(adminToken, groupId) {
   return adminApiCall('DELETE', `/api/conference-manager/groups/${groupId}`, null, adminToken)
 }
 
-async function chooseUserInSearch(container, username, maxRetries = 3) {
+async function chooseUserInSearch(page, container, username, maxRetries = 3) {
   const input = container.locator('input').first()
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
@@ -159,7 +159,9 @@ async function chooseUserInSearch(container, username, maxRetries = 3) {
 
     // Longer timeout on final attempt to handle slow user-search after creation
     const timeout = attempt === maxRetries ? 15000 : 8000
-    const suggestion = container
+    // Vuetify v-autocomplete renders its dropdown as a detached overlay at the end
+    // of <body>, not inside the container element. Must search in page scope.
+    const suggestion = page
       .locator(`.user-suggestion:has-text("${username}"), .v-list-item:has-text("${username}")`)
       .first()
 
@@ -340,7 +342,7 @@ test.describe('Nightly Cross-Tile Workflows', () => {
         await activity('PE-SHARE-001', 'Prompt mit Evaluator teilen', async () => {
           const shareSection = page.locator('[data-testid="prompt-share-section"]').first()
           await expect(shareSection).toBeVisible({ timeout: 10000 })
-          await chooseUserInSearch(shareSection, TEST_USERS.evaluator.username)
+          await chooseUserInSearch(page, shareSection, TEST_USERS.evaluator.username)
           await clickWhenReady(
             shareSection.locator('button:has-text("Teilen"):visible, button:has-text("Share"):visible, button:has-text("Hinzufügen"):visible').first()
           )
@@ -502,7 +504,7 @@ test.describe('Nightly Cross-Tile Workflows', () => {
           await expect(dialog).toBeVisible({ timeout: 10000 })
 
           const userSearch = dialog.locator('.l-user-search').first()
-          await chooseUserInSearch(userSearch, TEST_USERS.evaluator.username)
+          await chooseUserInSearch(page, userSearch, TEST_USERS.evaluator.username)
 
           await dialog.locator('button:has-text("Einladen"), button:has-text("Invite"), button:has-text("Send")').first().click()
           await expect(page.locator('.member-card').filter({ hasText: TEST_USERS.evaluator.username }).first())

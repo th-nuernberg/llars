@@ -71,10 +71,10 @@
               {{ member.completed || 0 }} / {{ member.total || 0 }}
             </span>
           </div>
-          <div class="member-actions" v-if="canManage && !isOwner(member)">
-            <!-- Re-invite button for rejected members -->
+          <div class="member-actions" v-if="canManage">
+            <!-- Re-invite button for rejected members (not applicable to owner) -->
             <LBtn
-              v-if="member.invitation_status === 'rejected'"
+              v-if="!isOwner(member) && member.invitation_status === 'rejected'"
               variant="primary"
               size="small"
               :loading="reinviting === member.user_id"
@@ -96,7 +96,8 @@
                   </template>
                   <v-list-item-title>{{ $t('scenarioManager.team.changeRole') }}</v-list-item-title>
                 </v-list-item>
-                <v-list-item @click="confirmRemoveMember(member)" class="text-error">
+                <!-- Remove option: not allowed for the scenario owner -->
+                <v-list-item v-if="!isOwner(member)" @click="confirmRemoveMember(member)" class="text-error">
                   <template #prepend>
                     <LIcon size="18" class="mr-2" color="error">mdi-account-remove</LIcon>
                   </template>
@@ -489,8 +490,8 @@ const excludedUsernames = computed(() => {
   return [...new Set([...selected, ...existing])]
 })
 
-// Assessor-type roles (shown in the Assessors tab)
-const ASSESSOR_ROLES = ['Assessor', 'Evaluator']
+// Roles shown in the Human Assessors section (Viewers appear with their own label)
+const ASSESSOR_ROLES = ['Assessor', 'Evaluator', 'Viewer']
 
 // Computed
 const evaluators = computed(() => {
@@ -502,7 +503,7 @@ const evaluators = computed(() => {
     users = props.scenario?.users?.filter(u => !u.is_llm) || []
   }
 
-  // Filter: show Assessors and Owner. Manager and Viewer (non-owner) belong to Collaboration in Settings.
+  // Filter: show Assessors, Viewers, and Owner.
   users = users.filter(u => ASSESSOR_ROLES.includes(u.role) || isOwner(u))
 
   // Merge with live stats to get completed/total counts

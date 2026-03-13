@@ -240,6 +240,8 @@ test.describe('Nightly Cross-Tile Workflows', () => {
       let promptId = null
 
       const researcherToken = await apiLogin(TEST_USERS.researcher)
+      // Pre-login evaluator so they exist in the LLARS Users table before the share step searches for them
+      await apiLogin(TEST_USERS.evaluator)
 
       await openRoute(page, TEST_USERS.researcher, '/PromptEngineering', '.prompt-home, .prompts-grid, main')
 
@@ -462,6 +464,8 @@ test.describe('Nightly Cross-Tile Workflows', () => {
       test.setTimeout(180000) // 3min max — avoid 7min global timeout
       // API key is preferred for setup/teardown; JWT is fallback
       const adminToken = await apiLogin(TEST_USERS.admin).catch(() => null)
+      // Pre-login evaluator so they exist in the LLARS Users table before the invite step searches for them
+      await apiLogin(TEST_USERS.evaluator).catch(() => {})
       const scenarioName = `${NIGHTLY_PREFIX}-scenario`
       let scenarioId = null
       let inviteSucceeded = false

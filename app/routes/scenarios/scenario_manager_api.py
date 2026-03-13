@@ -1591,6 +1591,21 @@ def sm_create_scenario():
     db.session.add(new_scenario)
     db.session.commit()
 
+    # Auto-create a VIEWER membership row for the owner so they appear in the team list.
+    # The owner can later self-promote to ASSESSOR to participate in evaluation.
+    owner_user = User.query.filter_by(username=username).first()
+    if owner_user:
+        owner_su = ScenarioUsers(
+            scenario_id=new_scenario.id,
+            user_id=owner_user.id,
+            role=ScenarioRoles.VIEWER,
+            invitation_status=InvitationStatus.ACCEPTED,
+            membership_status=MembershipStatus.ACTIVE,
+            invited_by=username
+        )
+        db.session.add(owner_su)
+        db.session.commit()
+
     logger.info(f"User {username} created scenario {new_scenario.id}: {scenario_name}")
 
     if enable_llm and config.get('llm_evaluators'):

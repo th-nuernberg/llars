@@ -18,6 +18,13 @@
           <span class="stat-label">{{ $t('scenarioManager.team.evaluators') }}</span>
         </div>
       </div>
+      <div v-if="humanViewers.length > 0" class="stat-card">
+        <LIcon size="24" color="secondary">mdi-eye-outline</LIcon>
+        <div class="stat-info">
+          <span class="stat-value">{{ humanViewers.length }}</span>
+          <span class="stat-label">{{ $t('scenarioManager.team.viewers') }}</span>
+        </div>
+      </div>
       <div class="stat-card">
         <LIcon size="24" color="accent">mdi-robot</LIcon>
         <div class="stat-info">
@@ -110,6 +117,86 @@
 
         <div v-if="evaluators.length === 0" class="empty-list">
           <p>{{ $t('scenarioManager.team.noEvaluators') }}</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Human Viewers -->
+    <div class="section" v-if="humanViewers.length > 0 || canManage">
+      <h4 class="section-title">{{ $t('scenarioManager.team.humanViewers') }}</h4>
+      <div class="members-list">
+        <div
+          v-for="member in humanViewers"
+          :key="member.user_id"
+          class="member-card"
+          :class="{ 'is-rejected': member.invitation_status === 'rejected' }"
+        >
+          <div class="member-avatar">
+            <LAvatar
+              :username="member.username"
+              :seed="member.avatar_seed"
+              :src="member.avatar_url"
+              size="md"
+            />
+          </div>
+          <div class="member-info">
+            <span class="member-name">{{ member.display_name || member.username }}</span>
+            <div class="member-meta">
+              <LTag :variant="getRoleVariant(member.role)" size="sm">
+                {{ $t(`scenarioManager.team.roles.${member.role?.toLowerCase() || 'viewer'}`) }}
+              </LTag>
+              <!-- Owner indicator -->
+              <LTag v-if="isOwner(member)" variant="primary" size="sm">
+                {{ $t('scenarioManager.team.roles.owner') }}
+              </LTag>
+              <!-- Invitation Status Badge -->
+              <LTag
+                v-if="member.invitation_status && member.invitation_status !== 'accepted' && !isOwner(member)"
+                :variant="getInvitationVariant(member.invitation_status)"
+                size="sm"
+              >
+                {{ $t(`scenarioManager.invitation.${member.invitation_status}`) }}
+              </LTag>
+            </div>
+          </div>
+          <div class="member-actions" v-if="canManage">
+            <!-- Re-invite button for rejected viewers -->
+            <LBtn
+              v-if="member.invitation_status === 'rejected'"
+              variant="primary"
+              size="small"
+              :loading="reinviting === member.user_id"
+              @click="doReinvite(member)"
+            >
+              <LIcon start size="16">mdi-email-send-outline</LIcon>
+              {{ $t('scenarioManager.invitation.reinvite') }}
+            </LBtn>
+            <v-menu v-else>
+              <template #activator="{ props }">
+                <v-btn icon size="small" variant="text" v-bind="props">
+                  <LIcon size="18">mdi-dots-vertical</LIcon>
+                </v-btn>
+              </template>
+              <v-list density="compact">
+                <v-list-item @click="changeRole(member)">
+                  <template #prepend>
+                    <LIcon size="18" class="mr-2">mdi-account-convert</LIcon>
+                  </template>
+                  <v-list-item-title>{{ $t('scenarioManager.team.changeRole') }}</v-list-item-title>
+                </v-list-item>
+                <v-list-item @click="confirmRemoveMember(member)" class="text-error">
+                  <template #prepend>
+                    <LIcon size="18" class="mr-2" color="error">mdi-account-remove</LIcon>
+                  </template>
+                  <v-list-item-title>{{ $t('scenarioManager.team.remove') }}</v-list-item-title>
+                </v-list-item>
+              </v-list>
+            </v-menu>
+          </div>
+        </div>
+
+        <div v-if="humanViewers.length === 0" class="empty-list">
+          <p>{{ $t('scenarioManager.team.noViewers') }}</p>
         </div>
       </div>
     </div>
@@ -486,16 +573,12 @@ const roleOptions = computed(() => [
 // Usernames to exclude from search (already selected + already in team)
 const excludedUsernames = computed(() => {
   const selected = selectedUsers.value.map(u => u.username)
-  const existing = evaluators.value.map(u => u.username)
+  const existing = allHumanMembers.value.map(u => u.username)
   return [...new Set([...selected, ...existing])]
 })
 
-// Roles shown in the Human Assessors section (Viewers appear with their own label)
-const ASSESSOR_ROLES = ['Assessor', 'Evaluator', 'Viewer']
-
-// Computed
-const evaluators = computed(() => {
-  // Use team data if available (includes invitation_status), otherwise fall back to scenario.users
+// Computed: all human team members enriched with live stats
+const allHumanMembers = computed(() => {
   let users = []
   if (teamData.value?.team) {
     users = teamData.value.team.filter(u => !u.is_ai)
@@ -503,21 +586,14 @@ const evaluators = computed(() => {
     users = props.scenario?.users?.filter(u => !u.is_llm) || []
   }
 
-  // Filter: show Assessors, Viewers, and Owner.
-  users = users.filter(u => ASSESSOR_ROLES.includes(u.role) || isOwner(u))
-
-  // Merge with live stats to get completed/total counts
-  // userStatsList contains all human users with their progress
   const userStats = props.liveStats?.userStatsList?.filter(e => !e.isLLM) || []
 
   return users.map(user => {
-    // Find matching stats by user_id, id, or username
     const stats = userStats.find(s =>
       s.id === user.user_id ||
       s.id === user.username ||
       s.name === user.username
     )
-
     return {
       ...user,
       completed: stats?.completed || 0,
@@ -525,6 +601,19 @@ const evaluators = computed(() => {
     }
   })
 })
+
+// Human Assessors: Assessor/Evaluator roles + Owner (unless owner is a Viewer)
+const evaluators = computed(() =>
+  allHumanMembers.value.filter(u =>
+    ['Assessor', 'Evaluator'].includes(u.role) ||
+    (isOwner(u) && u.role !== 'Viewer')
+  )
+)
+
+// Human Viewers: Viewer role (owner can also be a viewer)
+const humanViewers = computed(() =>
+  allHumanMembers.value.filter(u => u.role === 'Viewer')
+)
 
 const llmEvaluators = computed(() => {
   const evaluators = props.scenario?.llm_evaluators || []
@@ -589,7 +678,7 @@ const llmEvaluators = computed(() => {
 
 // Methods
 function isOwner(member) {
-  return member.username === props.scenario?.created_by
+  return member.username === props.scenario?.owner_name
 }
 
 function getRoleVariant(role) {
@@ -598,7 +687,7 @@ function getRoleVariant(role) {
     'Manager': 'secondary',
     'Assessor': 'info',
     'Evaluator': 'info',
-    'Viewer': 'default'
+    'Viewer': 'info'
   }
   return map[role] || 'default'
 }

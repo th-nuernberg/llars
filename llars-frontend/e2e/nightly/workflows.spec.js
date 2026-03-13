@@ -270,9 +270,9 @@ test.describe('Nightly Cross-Tile Workflows', () => {
             await promptCard.scrollIntoViewIfNeeded().catch(() => {})
             await dismissConsentBanner(page)
             await promptCard.click({ timeout: 10000 })
-            await expect(page).toHaveURL(/\/[Pp]rompt[Ee]ngineering\/\d+/, { timeout: 12000 })
+            await expect(page).toHaveURL(/\/promptengineering\/\d+/i, { timeout: 12000 })
           }
-          const match = page.url().match(/\/[Pp]rompt[Ee]ngineering\/(\d+)/)
+          const match = page.url().match(/\/promptengineering\/(\d+)/i)
           promptId = match ? Number(match[1]) : null
           expect(promptId, 'Prompt ID should be present in URL').toBeTruthy()
         })
@@ -351,9 +351,13 @@ test.describe('Nightly Cross-Tile Workflows', () => {
             .locator('button:has-text("Teilen"), button:has-text("Share"), button:has-text("Hinzufügen")')
             .first()
           await expect(shareBtn).toBeEnabled({ timeout: 5000 })
-          await shareBtn.click()
-          // The sidebar emits refreshPromptDetails which re-fetches prompt data, but Vue
-          // reactivity may not reliably re-render the shared-with list. Reload to force fresh state.
+          // Click share and wait for the backend API call to complete before reloading,
+          // otherwise the reload races with the async POST /api/prompts/:id/share.
+          await Promise.all([
+            page.waitForResponse((resp) => resp.url().includes('/api/prompts/') && resp.url().includes('/share') && resp.status() < 400, { timeout: 15000 }),
+            shareBtn.click()
+          ])
+          // Reload to see the updated shared-with list (Vue reactivity doesn't always pick up the change).
           await page.reload({ waitUntil: 'domcontentloaded' })
           await waitForPageReady(page, 10000)
           await expect(page.locator(`[data-testid="prompt-shared-item-${TEST_USERS.evaluator.username}"]`).first())
@@ -368,14 +372,14 @@ test.describe('Nightly Cross-Tile Workflows', () => {
             .first()
           await expect(sharedPromptCard).toBeVisible({ timeout: 15000 })
           await sharedPromptCard.click()
-          await expect(page).toHaveURL(/\/PromptEngineering\/\d+/, { timeout: 12000 })
+          await expect(page).toHaveURL(/\/promptengineering\/\d+/i, { timeout: 12000 })
 
           const sharedMarker = await page
             .locator('text=/geteilt|shared|owner|besitzer/i')
             .first()
             .isVisible({ timeout: 4000 })
             .catch(() => false)
-          expect(sharedMarker || page.url().includes('/PromptEngineering/')).toBeTruthy()
+          expect(sharedMarker || page.url().toLowerCase().includes('/promptengineering/')).toBeTruthy()
 
           if (promptId) {
             await openRoute(page, TEST_USERS.researcher, `/PromptEngineering/${promptId}`, '.prompt-detail, .prompt-editor-layout, main')

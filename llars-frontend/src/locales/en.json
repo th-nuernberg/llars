@@ -6143,6 +6143,9 @@
       "sharedByOwner": "Shared by {owner}",
       "readOnlyHint": "You have read-only access to this job. Starting, pausing, and deleting is only available to the owner."
     },
+    "messages": {
+      "jobDeleted": "Job deleted"
+    },
     "scenario": {
       "name": "Scenario Name",
       "evaluationType": "Evaluation Type",

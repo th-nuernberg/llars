@@ -1276,14 +1276,6 @@ function applyStreamSnapshot(currentlyProcessingState, activeStreamsList = null)
 
 function setupSocketListeners() {
   socket = getSocket()
-  console.log('[Generation] Setting up socket listeners for job', jobId.value, 'socket connected:', socket.connected)
-
-  // Debug: log all incoming events
-  socket.onAny((eventName, ...args) => {
-    if (eventName.startsWith('generation:')) {
-      console.log('[Generation] Received event:', eventName, args)
-    }
-  })
 
   const joinJobRoom = () => {
     socket.emit('generation:join_job', { job_id: jobId.value })
@@ -1294,22 +1286,22 @@ function setupSocketListeners() {
     joinJobRoom()
   }
 
-  socket.on('generation:state', (data) => {
+  onStateHandler = (data) => {
     if (!isCurrentJobEvent(data)) return
     applyStreamSnapshot(data.currently_processing, data.active_streams)
-  })
+  }
+  socket.on('generation:state', onStateHandler)
 
   // Job started
-  socket.on('generation:job:started', (data) => {
-    console.log('[Generation] job:started', data)
+  onJobStartedHandler = (data) => {
     if (isCurrentJobEvent(data)) {
       loadJob(jobId.value)
     }
-  })
+  }
+  socket.on('generation:job:started', onJobStartedHandler)
 
   // Progress update (no full reload, just update progress values)
-  socket.on('generation:job:progress', (data) => {
-    console.log('[Generation] job:progress', data)
+  onJobProgressHandler = (data) => {
     if (isCurrentJobEvent(data) && currentJob.value) {
       // Update progress without full reload
       currentJob.value.progress = {
@@ -1323,11 +1315,11 @@ function setupSocketListeners() {
         total_cost_usd: data.cost_usd
       }
     }
-  })
+  }
+  socket.on('generation:job:progress', onJobProgressHandler)
 
   // Item started processing
-  socket.on('generation:item:started', (data) => {
-    console.log('[Generation] item:started', data)
+  onItemStartedHandler = (data) => {
     if (isCurrentJobEvent(data)) {
       const outputId = normalizeNumericId(data.output_id) ?? data.output_id
       const itemLabel = data.prompt_variant
@@ -1381,15 +1373,18 @@ function setupSocketListeners() {
     }
   }
 
+  socket.on('generation:item:started', onItemStartedHandler)
+
   // Streaming token received
-  socket.on('generation:item:token', (data) => {
+  onItemTokenHandler = (data) => {
     if (!isCurrentJobEvent(data)) return
     ensureProcessingStateFromToken(data)
     streamUpdateTrigger.value++
-  })
+  }
+  socket.on('generation:item:token', onItemTokenHandler)
 
   // Aggregated partial update (fallback for reconnect/missed token chunks)
-  socket.on('generation:item:partial', (data) => {
+  onItemPartialHandler = (data) => {
     if (!isCurrentJobEvent(data)) return
 
     const outputId = normalizeNumericId(data.output_id) ?? data.output_id
@@ -1420,10 +1415,11 @@ function setupSocketListeners() {
     } else if (idsMatch(activeStreamOutputId.value, outputId)) {
       streamingContent.value = getStreamBufferForOutput(outputId)
     }
-  })
+  }
+  socket.on('generation:item:partial', onItemPartialHandler)
 
   // Item completed
-  socket.on('generation:item:completed', (data) => {
+  onItemCompletedHandler = (data) => {
     if (isCurrentJobEvent(data)) {
       const outputId = normalizeNumericId(data.output_id) ?? data.output_id
       // Clear processing state if this was the current item
@@ -1471,10 +1467,11 @@ function setupSocketListeners() {
       }
       // Don't reload - just update locally to avoid page refresh
     }
-  })
+  }
+  socket.on('generation:item:completed', onItemCompletedHandler)
 
   // Item failed
-  socket.on('generation:item:failed', (data) => {
+  onItemFailedHandler = (data) => {
     if (isCurrentJobEvent(data)) {
       const outputId = normalizeNumericId(data.output_id) ?? data.output_id
       const wasActiveStream = idsMatch(activeStreamOutputId.value, data.output_id)
@@ -1518,32 +1515,36 @@ function setupSocketListeners() {
       }
       // Don't reload - just update locally to avoid page refresh
     }
-  })
+  }
+  socket.on('generation:item:failed', onItemFailedHandler)
 
   // Job completed
-  socket.on('generation:job:completed', (data) => {
+  onJobCompletedHandler = (data) => {
     if (isCurrentJobEvent(data)) {
       clearStreamState()
       loadJob(jobId.value)
       loadOutputs(jobId.value)
     }
-  })
+  }
+  socket.on('generation:job:completed', onJobCompletedHandler)
 
   // Job failed
-  socket.on('generation:job:failed', (data) => {
+  onJobFailedHandler = (data) => {
     if (isCurrentJobEvent(data)) {
       clearStreamState()
       loadJob(jobId.value)
     }
-  })
+  }
+  socket.on('generation:job:failed', onJobFailedHandler)
 
   // Budget exceeded
-  socket.on('generation:job:budget_exceeded', (data) => {
+  onBudgetExceededHandler = (data) => {
     if (isCurrentJobEvent(data)) {
       clearStreamState()
       loadJob(jobId.value)
     }
-  })
+  }
+  socket.on('generation:job:budget_exceeded', onBudgetExceededHandler)
 }
 
 function cleanupSocketListeners() {

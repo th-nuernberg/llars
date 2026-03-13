@@ -15,11 +15,6 @@ const ROLE_ORDER = Array.isArray(tileContract.roles_order) && tileContract.roles
   ? tileContract.roles_order
   : ['evaluator', 'researcher', 'chatbot_manager', 'admin']
 
-// Each regression test iterates across multiple roles and a capped UI smoke sweep.
-// Some pages (for example Batch Generation) need more than 3 minutes in CI when
-// the suite walks all roles sequentially.
-test.describe.configure({ timeout: 420_000 })
-
 const ROLE_TO_USER_KEY = {
   evaluator: 'evaluator',
   researcher: 'researcher',
@@ -27,22 +22,12 @@ const ROLE_TO_USER_KEY = {
   admin: 'admin'
 }
 
+// Tiles with heavy API calls or complex editors — skip button sweep to stay within timeout
+// and avoid 429 rate-limit cascades in CI.
 const TILE_SMOKE_PROFILES = {
-  // The nightly workflow suite already opens the Batch Generation wizard.
-  // Keep tile regression bounded here and only verify navigation/readiness.
-  'Batch Generation': {
-    maxButtons: 0
-  },
-  // Heavy pages: skip button sweep to stay within 420s test timeout.
-  // These pages load complex editors/WebSocket connections that slow CI.
-  'Latex Collab': {
-    maxButtons: 0
-  },
-  'Chatbot Arena': {
-    maxButtons: 0
-  },
-  // Rate-limit and timeout prevention: these pages fire multiple parallel API calls
-  // on mount, causing 429s and cascading timeouts in CI when combined with button sweep.
+  'Batch Generation': { maxButtons: 0 },
+  'Latex Collab': { maxButtons: 0 },
+  'Chatbot Arena': { maxButtons: 0 },
   'Pipeline': { maxButtons: 0 },
   'Admin Dashboard': { maxButtons: 0 },
   'Conference Manager': { maxButtons: 0 }
@@ -130,73 +115,136 @@ async function assertDirectRouteBlockedOrRestricted(page, tile) {
   ).toBeTruthy()
 }
 
-async function runTileRegression(page, tileName) {
-  const tile = tileContract.tiles.find((entry) => entry.name === tileName)
-  expect(tile, `Tile '${tileName}' must exist in home_tiles.contract.json`).toBeTruthy()
-  const smokeProfile = TILE_SMOKE_PROFILES[tile.name] || {}
-  const maxButtons = smokeProfile.maxButtons ?? 5
+// ---------------------------------------------------------------------------
+// Section 1: Role Visibility (4 tests = 4 logins)
+//
+// One login per role, then DOM-check ALL 20 tiles (visible/hidden).
+// No clicks, no navigation — pure visibility assertion to stay within rate limits.
+// ---------------------------------------------------------------------------
+test.describe('Tile Visibility by Role', () => {
+  test.describe.configure({ timeout: 120_000 })
 
   for (const role of ROLE_ORDER) {
-    const userKey = ROLE_TO_USER_KEY[role]
-    const user = TEST_USERS[userKey]
-    if (!user) continue
-
-    const shouldBeVisible = Array.isArray(tile.allowed_roles) && tile.allowed_roles.includes(role)
-    const testId = routeToTileTestId(tile.route)
-
-    await test.step(`${tile.name} :: ${role}`, async () => {
+    test(`Visibility :: ${role}`, async ({ page }) => {
+      const userKey = ROLE_TO_USER_KEY[role]
+      const user = TEST_USERS[userKey]
       await quickLogin(page, user)
       await openHome(page, user)
 
-      const tileCard = page.locator(`[data-testid="${testId}"]`).first()
+      for (const tile of tileContract.tiles) {
+        const shouldBeVisible = Array.isArray(tile.allowed_roles) && tile.allowed_roles.includes(role)
+        const testId = routeToTileTestId(tile.route)
 
-      if (shouldBeVisible) {
-        await expect(tileCard, `${tile.name} should be visible for ${role}`).toBeVisible({ timeout: 10000 })
+        await test.step(`${tile.name} ${shouldBeVisible ? 'visible' : 'hidden'}`, async () => {
+          const tileCard = page.locator(`[data-testid="${testId}"]`).first()
 
-        await tileCard.scrollIntoViewIfNeeded()
-        await tileCard.click()
-
-        await expect
-          .poll(() => page.url(), {
-            timeout: 15000,
-            message: `${tile.name} did not navigate for role ${role}`
-          })
-          .not.toContain('/Home')
-
-        await expect(page.url(), `${tile.name} redirected to login for ${role}`).not.toContain('/login')
-        await expect(page.url(), `${tile.name} did not reach expected route base for ${role}`)
-          .toContain(tile.route.split('?')[0])
-
-        await dismissConsentBanner(page)
-        await waitForPageReady(page, 12000)
-        if (maxButtons > 0) {
-          await safeButtonSweep(page, maxButtons)
-        }
-      } else {
-        await expect(tileCard, `${tile.name} should be hidden for ${role}`).toHaveCount(0)
-        await assertDirectRouteBlockedOrRestricted(page, tile)
+          if (shouldBeVisible) {
+            await expect(tileCard, `${tile.name} should be visible for ${role}`).toBeVisible({ timeout: 10000 })
+          } else {
+            await expect(tileCard, `${tile.name} should be hidden for ${role}`).toHaveCount(0)
+          }
+        })
       }
     })
   }
-}
+})
 
-test('Prompt Engineering', async ({ page }) => runTileRegression(page, 'Prompt Engineering'))
-test('Batch Generation', async ({ page }) => runTileRegression(page, 'Batch Generation'))
-test('Evaluation', async ({ page }) => runTileRegression(page, 'Evaluation'))
-test('Scenario Manager', async ({ page }) => runTileRegression(page, 'Scenario Manager'))
-test('Chatbot', async ({ page }) => runTileRegression(page, 'Chatbot'))
-test('Video', async ({ page }) => runTileRegression(page, 'Video'))
-test('Markdown Collab', async ({ page }) => runTileRegression(page, 'Markdown Collab'))
-test('Latex Collab', async ({ page }) => runTileRegression(page, 'Latex Collab'))
-test('Chatbot Arena', async ({ page }) => runTileRegression(page, 'Chatbot Arena'))
-test('Anonymization', async ({ page }) => runTileRegression(page, 'Anonymization'))
-test('Anonymisierungs-Pipeline', async ({ page }) => runTileRegression(page, 'Anonymisierungs-Pipeline'))
-test('KAIMO', async ({ page }) => runTileRegression(page, 'KAIMO'))
-test.skip('OnCoCo', async ({ page }) => runTileRegression(page, 'OnCoCo'))
-test.skip('DB Preisagent', async ({ page }) => runTileRegression(page, 'DB Preisagent'))
-test('Admin Dashboard', async ({ page }) => runTileRegression(page, 'Admin Dashboard'))
-test.skip('Chatbot Admin', async ({ page }) => runTileRegression(page, 'Chatbot Admin'))
-test.skip('RAG Admin', async ({ page }) => runTileRegression(page, 'RAG Admin'))
-test('Conference Manager', async ({ page }) => runTileRegression(page, 'Conference Manager'))
-test('Pipeline', async ({ page }) => runTileRegression(page, 'Pipeline'))
-test('User Settings', async ({ page }) => runTileRegression(page, 'User Settings'))
+// ---------------------------------------------------------------------------
+// Section 2: Admin Navigation Smoke (16 active + 4 skipped = 20 tiles)
+//
+// Each tile gets its own test() to satisfy contract-validator tile-name matching.
+// Only admin: login → Home → tile click → navigation check → optional button sweep.
+// ---------------------------------------------------------------------------
+test.describe('Tile Navigation (admin)', () => {
+  test.describe.configure({ timeout: 420_000 })
+
+  async function runAdminNavigation(page, tileName) {
+    const tile = tileContract.tiles.find((entry) => entry.name === tileName)
+    expect(tile, `Tile '${tileName}' must exist in home_tiles.contract.json`).toBeTruthy()
+    const smokeProfile = TILE_SMOKE_PROFILES[tile.name] || {}
+    const maxButtons = smokeProfile.maxButtons ?? 5
+
+    const user = TEST_USERS.admin
+    await quickLogin(page, user)
+    await openHome(page, user)
+
+    const testId = routeToTileTestId(tile.route)
+    const tileCard = page.locator(`[data-testid="${testId}"]`).first()
+
+    await expect(tileCard, `${tile.name} should be visible for admin`).toBeVisible({ timeout: 10000 })
+
+    await tileCard.scrollIntoViewIfNeeded()
+    await tileCard.click()
+
+    await expect
+      .poll(() => page.url(), {
+        timeout: 15000,
+        message: `${tile.name} did not navigate`
+      })
+      .not.toContain('/Home')
+
+    await expect(page.url(), `${tile.name} redirected to login`).not.toContain('/login')
+    await expect(page.url(), `${tile.name} did not reach expected route`)
+      .toContain(tile.route.split('?')[0])
+
+    await dismissConsentBanner(page)
+    await waitForPageReady(page, 12000)
+    if (maxButtons > 0) {
+      await safeButtonSweep(page, maxButtons)
+    }
+  }
+
+  test('Prompt Engineering', async ({ page }) => runAdminNavigation(page, 'Prompt Engineering'))
+  test('Batch Generation', async ({ page }) => runAdminNavigation(page, 'Batch Generation'))
+  test('Evaluation', async ({ page }) => runAdminNavigation(page, 'Evaluation'))
+  test('Scenario Manager', async ({ page }) => runAdminNavigation(page, 'Scenario Manager'))
+  test('Chatbot', async ({ page }) => runAdminNavigation(page, 'Chatbot'))
+  test('Video', async ({ page }) => runAdminNavigation(page, 'Video'))
+  test('Markdown Collab', async ({ page }) => runAdminNavigation(page, 'Markdown Collab'))
+  test('Latex Collab', async ({ page }) => runAdminNavigation(page, 'Latex Collab'))
+  test('Chatbot Arena', async ({ page }) => runAdminNavigation(page, 'Chatbot Arena'))
+  test('Anonymization', async ({ page }) => runAdminNavigation(page, 'Anonymization'))
+  test('Anonymisierungs-Pipeline', async ({ page }) => runAdminNavigation(page, 'Anonymisierungs-Pipeline'))
+  test('KAIMO', async ({ page }) => runAdminNavigation(page, 'KAIMO'))
+  test.skip('OnCoCo', async ({ page }) => runAdminNavigation(page, 'OnCoCo'))
+  test.skip('DB Preisagent', async ({ page }) => runAdminNavigation(page, 'DB Preisagent'))
+  test('Admin Dashboard', async ({ page }) => runAdminNavigation(page, 'Admin Dashboard'))
+  test.skip('Chatbot Admin', async ({ page }) => runAdminNavigation(page, 'Chatbot Admin'))
+  test.skip('RAG Admin', async ({ page }) => runAdminNavigation(page, 'RAG Admin'))
+  test('Conference Manager', async ({ page }) => runAdminNavigation(page, 'Conference Manager'))
+  test('Pipeline', async ({ page }) => runAdminNavigation(page, 'Pipeline'))
+  test('User Settings', async ({ page }) => runAdminNavigation(page, 'User Settings'))
+})
+
+// ---------------------------------------------------------------------------
+// Section 3: Negative Route Checks (3 tests = 3 logins)
+//
+// Representative samples per non-admin role. Each test logs in once, then
+// verifies that 3 hidden tile routes are blocked or read-restricted.
+// ---------------------------------------------------------------------------
+test.describe('Negative Route Access', () => {
+  test.describe.configure({ timeout: 120_000 })
+
+  const NEGATIVE_CHECKS = {
+    evaluator: ['Chatbot Arena', 'Anonymisierungs-Pipeline', 'Admin Dashboard'],
+    researcher: ['Chatbot Arena', 'Admin Dashboard', 'Pipeline'],
+    chatbot_manager: ['Evaluation', 'Anonymization', 'Conference Manager']
+  }
+
+  for (const [role, tileNames] of Object.entries(NEGATIVE_CHECKS)) {
+    test(`Negative Routes :: ${role}`, async ({ page }) => {
+      const userKey = ROLE_TO_USER_KEY[role]
+      const user = TEST_USERS[userKey]
+      await quickLogin(page, user)
+
+      for (const tileName of tileNames) {
+        const tile = tileContract.tiles.find((t) => t.name === tileName)
+        expect(tile, `Tile '${tileName}' must exist in contract`).toBeTruthy()
+
+        await test.step(`${tileName} blocked for ${role}`, async () => {
+          await assertDirectRouteBlockedOrRestricted(page, tile)
+        })
+      }
+    })
+  }
+})

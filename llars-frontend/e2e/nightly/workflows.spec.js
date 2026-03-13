@@ -149,16 +149,33 @@ async function deleteGroupViaApi(adminToken, groupId) {
   return adminApiCall('DELETE', `/api/conference-manager/groups/${groupId}`, null, adminToken)
 }
 
-async function chooseUserInSearch(container, username) {
+async function chooseUserInSearch(container, username, maxRetries = 3) {
   const input = container.locator('input').first()
-  await input.click()
-  await input.fill(username)
 
-  const suggestion = container
-    .locator(`.user-suggestion:has-text("${username}"), .v-list-item:has-text("${username}")`)
-    .first()
-  await suggestion.waitFor({ state: 'visible', timeout: 8000 })
-  await suggestion.click()
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    await input.click()
+    await input.clear()
+    await input.fill(username)
+
+    // Longer timeout on final attempt to handle slow user-search after creation
+    const timeout = attempt === maxRetries ? 15000 : 8000
+    const suggestion = container
+      .locator(`.user-suggestion:has-text("${username}"), .v-list-item:has-text("${username}")`)
+      .first()
+
+    const found = await suggestion.waitFor({ state: 'visible', timeout })
+      .then(() => true)
+      .catch(() => false)
+
+    if (found) {
+      await suggestion.click()
+      return
+    }
+
+    if (attempt === maxRetries) {
+      throw new Error(`User "${username}" not found in search after ${maxRetries} attempts`)
+    }
+  }
 }
 
 async function clickWhenReady(locator, timeout = 10000) {

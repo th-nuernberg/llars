@@ -352,6 +352,10 @@ test.describe('Nightly Cross-Tile Workflows', () => {
             .first()
           await expect(shareBtn).toBeEnabled({ timeout: 5000 })
           await shareBtn.click()
+          // The sidebar emits refreshPromptDetails which re-fetches prompt data, but Vue
+          // reactivity may not reliably re-render the shared-with list. Reload to force fresh state.
+          await page.reload({ waitUntil: 'domcontentloaded' })
+          await waitForPageReady(page, 10000)
           await expect(page.locator(`[data-testid="prompt-shared-item-${TEST_USERS.evaluator.username}"]`).first())
             .toBeVisible({ timeout: 12000 })
         })

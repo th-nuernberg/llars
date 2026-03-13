@@ -64,16 +64,14 @@ test.describe('Authenticity Overview', () => {
     await quickLogin(page, TEST_USERS.researcher)
     await goToAuthenticity(page)
 
-    const hasTitle = await page.locator('h1, text=Fake, text=Echt, text=Authentizität').first().isVisible({ timeout: 5000 }).catch(() => false)
-    expect(hasTitle || true).toBeTruthy()
+    await expect(page.locator('h1, text=Fake, text=Echt, text=Authentizität').first()).toBeVisible({ timeout: 5000 })
   })
 
   test('E2E_AUTH_003: overview shows progress stats', async ({ page }) => {
     await quickLogin(page, TEST_USERS.researcher)
     await goToAuthenticity(page)
 
-    const hasStats = await page.locator('.header-stats, text=/\\d+\\s*\\/\\s*\\d+/, [class*="progress"]').first().isVisible({ timeout: 5000 }).catch(() => false)
-    expect(hasStats || true).toBeTruthy()
+    await expect(page.locator('.header-stats, text=/\\d+\\s*\\/\\s*\\d+/, [class*="progress"]').first()).toBeVisible({ timeout: 5000 })
   })
 
   test('E2E_AUTH_004: overview shows thread cards or empty state', async ({ page }) => {
@@ -110,8 +108,9 @@ test.describe('Authenticity Overview', () => {
     await waitForLoading(page)
 
     // Some cards might show Echt/Fake badge if already voted
+    // Vote badges may or may not be visible depending on evaluation state - use soft assertion
     const hasBadge = await page.locator('.l-tag, .v-chip, text=Echt, text=Fake').first().isVisible({ timeout: 3000 }).catch(() => false)
-    expect(hasBadge || true).toBeTruthy()
+    expect.soft(hasBadge).toBeTruthy()
   })
 })
 
@@ -160,8 +159,7 @@ test.describe('Authenticity Detail', () => {
     if (await clickFirstAuthThread(page)) {
       await waitForLoading(page)
 
-      const hasResizer = await page.locator('.resize-divider, .resize-handle').first().isVisible({ timeout: 3000 }).catch(() => false)
-      expect(hasResizer || true).toBeTruthy()
+      await expect(page.locator('.resize-divider, .resize-handle').first()).toBeVisible({ timeout: 3000 })
     }
   })
 })
@@ -196,7 +194,7 @@ test.describe('Authenticity Voting', () => {
 
         // Button should show selected state
         const isSelected = await realBtn.evaluate(el => el.classList.contains('selected') || el.classList.contains('active'))
-        expect(isSelected || true).toBeTruthy()
+        expect(isSelected).toBeTruthy()
       }
     }
   })
@@ -215,7 +213,7 @@ test.describe('Authenticity Voting', () => {
 
         // Button should show selected state
         const isSelected = await fakeBtn.evaluate(el => el.classList.contains('selected') || el.classList.contains('active'))
-        expect(isSelected || true).toBeTruthy()
+        expect(isSelected).toBeTruthy()
       }
     }
   })
@@ -227,8 +225,7 @@ test.describe('Authenticity Voting', () => {
     if (await clickFirstAuthThread(page)) {
       await waitForLoading(page)
 
-      const hasHint = await page.locator('.vote-hint, text=Menschen, text=KI').first().isVisible({ timeout: 5000 }).catch(() => false)
-      expect(hasHint || true).toBeTruthy()
+      await expect(page.locator('.vote-hint, text=Menschen, text=KI').first()).toBeVisible({ timeout: 5000 })
     }
   })
 })
@@ -249,8 +246,7 @@ test.describe('Authenticity Metadata', () => {
         await voteBtn.click()
         await page.waitForTimeout(500)
 
-        const hasSlider = await page.locator('.l-slider, .v-slider, input[type="range"]').first().isVisible({ timeout: 3000 }).catch(() => false)
-        expect(hasSlider || true).toBeTruthy()
+        await expect(page.locator('.l-slider, .v-slider, input[type="range"]').first()).toBeVisible({ timeout: 3000 })
       }
     }
   })
@@ -262,8 +258,7 @@ test.describe('Authenticity Metadata', () => {
     if (await clickFirstAuthThread(page)) {
       await waitForLoading(page)
 
-      const hasNotes = await page.locator('textarea, .v-textarea, [placeholder*="Notiz"], [placeholder*="Begründung"]').first().isVisible({ timeout: 5000 }).catch(() => false)
-      expect(hasNotes || true).toBeTruthy()
+      await expect(page.locator('textarea, .v-textarea, [placeholder*="Notiz"], [placeholder*="Begründung"]').first()).toBeVisible({ timeout: 5000 })
     }
   })
 
@@ -301,8 +296,9 @@ test.describe('Authenticity Auto-Save', () => {
         await voteBtn.click()
         await page.waitForTimeout(1000)
 
+        // Saving indicator may appear briefly - use soft assertion since timing-dependent
         const hasSaving = await page.locator('.saving-indicator, .mdi-cloud-sync, text=Speicher, text=Gespeichert').first().isVisible({ timeout: 3000 }).catch(() => false)
-        expect(hasSaving || true).toBeTruthy()
+        expect.soft(hasSaving).toBeTruthy()
       }
     }
   })
@@ -335,8 +331,7 @@ test.describe('Authenticity Navigation', () => {
     if (await clickFirstAuthThread(page)) {
       await waitForLoading(page)
 
-      const hasPrevNext = await page.locator('button:has(.mdi-chevron-left), button:has(.mdi-chevron-right), button:has-text("Vorherig"), button:has-text("Nächst")').first().isVisible({ timeout: 5000 }).catch(() => false)
-      expect(hasPrevNext || true).toBeTruthy()
+      await expect(page.locator('button:has(.mdi-chevron-left), button:has(.mdi-chevron-right), button:has-text("Vorherig"), button:has-text("Nächst")').first()).toBeVisible({ timeout: 5000 })
     }
   })
 

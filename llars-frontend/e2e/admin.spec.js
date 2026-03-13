@@ -51,8 +51,7 @@ test.describe('Admin Access', () => {
     await quickLogin(page, TEST_USERS.admin)
     await goToAdmin(page)
 
-    const hasSidebar = await page.locator('aside, nav, .admin-sidebar, .v-navigation-drawer').first().isVisible({ timeout: 5000 }).catch(() => false)
-    expect(hasSidebar || true).toBeTruthy()
+    await expect(page.locator('aside, nav, .admin-sidebar, .v-navigation-drawer').first()).toBeVisible({ timeout: 5000 })
   })
 
   test('E2E_ADMIN_003: admin page shows navigation items', async ({ page }) => {
@@ -85,8 +84,7 @@ test.describe('Admin Overview', () => {
     await quickLogin(page, TEST_USERS.admin)
     await goToAdmin(page, 'overview')
 
-    const hasOverview = await page.locator('.admin-overview, .overview-section, [class*="overview"]').first().isVisible({ timeout: 5000 }).catch(() => false)
-    expect(hasOverview || true).toBeTruthy()
+    await expect(page.locator('.admin-overview, .overview-section, [class*="overview"]').first()).toBeVisible({ timeout: 5000 })
   })
 
   test('E2E_ADMIN_006: overview shows statistics', async ({ page }) => {
@@ -95,8 +93,7 @@ test.describe('Admin Overview', () => {
 
     await waitForLoading(page)
 
-    const hasStats = await page.locator('.stat-card, .v-card, [class*="stat"]').first().isVisible({ timeout: 5000 }).catch(() => false)
-    expect(hasStats || true).toBeTruthy()
+    await expect(page.locator('.stat-card, .v-card, [class*="stat"]').first()).toBeVisible({ timeout: 5000 })
   })
 })
 
@@ -109,8 +106,7 @@ test.describe('Admin Permissions', () => {
 
     await waitForLoading(page)
 
-    const hasPermissions = await page.locator('.admin-permissions, [class*="permission"], .role-card').first().isVisible({ timeout: 8000 }).catch(() => false)
-    expect(hasPermissions || true).toBeTruthy()
+    await expect(page.locator('.admin-permissions, [class*="permission"], .role-card').first()).toBeVisible({ timeout: 8000 })
   })
 
   test('E2E_ADMIN_008: permissions tab shows roles', async ({ page }) => {
@@ -122,8 +118,7 @@ test.describe('Admin Permissions', () => {
     // Wait for skeleton to disappear
     await page.waitForSelector('.v-skeleton-loader', { state: 'hidden', timeout: 10000 }).catch(() => {})
 
-    const hasRoles = await page.locator('.role-card, text=admin, text=researcher, text=evaluator').first().isVisible({ timeout: 5000 }).catch(() => false)
-    expect(hasRoles || true).toBeTruthy()
+    await expect(page.locator('.role-card, text=admin, text=researcher, text=evaluator').first()).toBeVisible({ timeout: 5000 })
   })
 
   test('E2E_ADMIN_009: permissions has sub-tabs', async ({ page }) => {
@@ -132,8 +127,7 @@ test.describe('Admin Permissions', () => {
 
     await waitForLoading(page)
 
-    const hasTabs = await page.locator('.v-tabs, .v-tab, [role="tablist"]').first().isVisible({ timeout: 5000 }).catch(() => false)
-    expect(hasTabs || true).toBeTruthy()
+    await expect(page.locator('.v-tabs, .v-tab, [role="tablist"]').first()).toBeVisible({ timeout: 5000 })
   })
 
   test('E2E_ADMIN_010: can switch between permission sub-tabs', async ({ page }) => {
@@ -162,8 +156,7 @@ test.describe('Admin Scenarios', () => {
 
     await waitForLoading(page)
 
-    const hasScenarios = await page.locator('.scenarios-section, .scenario-row, v-table, text=Szenario').first().isVisible({ timeout: 8000 }).catch(() => false)
-    expect(hasScenarios || true).toBeTruthy()
+    await expect(page.locator('.scenarios-section, .scenario-row, v-table, text=Szenario').first()).toBeVisible({ timeout: 8000 })
   })
 
   test('E2E_ADMIN_012: scenarios shows table or list', async ({ page }) => {
@@ -174,7 +167,7 @@ test.describe('Admin Scenarios', () => {
 
     const hasTable = await page.locator('table, v-table, .v-data-table, .scenario-row').first().isVisible({ timeout: 5000 }).catch(() => false)
     const hasEmptyState = await page.locator('.empty-state, text=Keine Szenarien').first().isVisible({ timeout: 3000 }).catch(() => false)
-    expect(hasTable || hasEmptyState || true).toBeTruthy()
+    expect(hasTable || hasEmptyState).toBeTruthy()
   })
 
   test('E2E_ADMIN_013: scenarios has search field', async ({ page }) => {
@@ -183,8 +176,7 @@ test.describe('Admin Scenarios', () => {
 
     await waitForLoading(page)
 
-    const hasSearch = await page.locator('input[type="text"], .v-text-field, [placeholder*="Such"]').first().isVisible({ timeout: 5000 }).catch(() => false)
-    expect(hasSearch || true).toBeTruthy()
+    await expect(page.locator('input[type="text"], .v-text-field, [placeholder*="Such"]').first()).toBeVisible({ timeout: 5000 })
   })
 
   test('E2E_ADMIN_014: scenarios has status filter', async ({ page }) => {
@@ -193,8 +185,7 @@ test.describe('Admin Scenarios', () => {
 
     await waitForLoading(page)
 
-    const hasFilter = await page.locator('.v-select, select, [class*="filter"]').first().isVisible({ timeout: 5000 }).catch(() => false)
-    expect(hasFilter || true).toBeTruthy()
+    await expect(page.locator('.v-select, select, [class*="filter"]').first()).toBeVisible({ timeout: 5000 })
   })
 
   test('E2E_ADMIN_015: scenarios has create button', async ({ page }) => {
@@ -203,8 +194,7 @@ test.describe('Admin Scenarios', () => {
 
     await waitForLoading(page)
 
-    const hasCreateBtn = await page.locator('button:has-text("Erstellen"), button:has-text("Neu"), button:has(.mdi-plus)').first().isVisible({ timeout: 5000 }).catch(() => false)
-    expect(hasCreateBtn || true).toBeTruthy()
+    await expect(page.locator('button:has-text("Erstellen"), button:has-text("Neu"), button:has(.mdi-plus)').first()).toBeVisible({ timeout: 5000 })
   })
 })
 
@@ -217,8 +207,7 @@ test.describe('Admin Users', () => {
 
     await waitForLoading(page)
 
-    const hasUsers = await page.locator('.users-section, .user-row, table, text=Benutzer').first().isVisible({ timeout: 8000 }).catch(() => false)
-    expect(hasUsers || true).toBeTruthy()
+    await expect(page.locator('.users-section, .user-row, table, text=Benutzer').first()).toBeVisible({ timeout: 8000 })
   })
 
   test('E2E_ADMIN_017: users shows user list', async ({ page }) => {
@@ -227,8 +216,7 @@ test.describe('Admin Users', () => {
 
     await waitForLoading(page)
 
-    const hasUserList = await page.locator('table, .v-data-table, .user-card, text=admin, text=researcher').first().isVisible({ timeout: 5000 }).catch(() => false)
-    expect(hasUserList || true).toBeTruthy()
+    await expect(page.locator('table, .v-data-table, .user-card, text=admin, text=researcher').first()).toBeVisible({ timeout: 5000 })
   })
 })
 
@@ -241,8 +229,7 @@ test.describe('Admin RAG', () => {
 
     await waitForLoading(page)
 
-    const hasRag = await page.locator('.rag-section, [class*="rag"], text=RAG, text=Dokumente').first().isVisible({ timeout: 8000 }).catch(() => false)
-    expect(hasRag || true).toBeTruthy()
+    await expect(page.locator('.rag-section, [class*="rag"], text=RAG, text=Dokumente').first()).toBeVisible({ timeout: 8000 })
   })
 
   test('E2E_ADMIN_019: RAG shows document management', async ({ page }) => {
@@ -251,8 +238,7 @@ test.describe('Admin RAG', () => {
 
     await waitForLoading(page)
 
-    const hasDocuments = await page.locator('table, .document-list, .collection-list, .v-card').first().isVisible({ timeout: 5000 }).catch(() => false)
-    expect(hasDocuments || true).toBeTruthy()
+    await expect(page.locator('table, .document-list, .collection-list, .v-card').first()).toBeVisible({ timeout: 5000 })
   })
 })
 
@@ -265,8 +251,7 @@ test.describe('Admin Chatbots', () => {
 
     await waitForLoading(page)
 
-    const hasChatbots = await page.locator('.chatbot-manager, [class*="chatbot"], text=Chatbot').first().isVisible({ timeout: 8000 }).catch(() => false)
-    expect(hasChatbots || true).toBeTruthy()
+    await expect(page.locator('.chatbot-manager, [class*="chatbot"], text=Chatbot').first()).toBeVisible({ timeout: 8000 })
   })
 
   test('E2E_ADMIN_021: chatbots shows list or grid', async ({ page }) => {
@@ -275,8 +260,7 @@ test.describe('Admin Chatbots', () => {
 
     await waitForLoading(page)
 
-    const hasList = await page.locator('table, .chatbot-list, .v-card, .chatbot-card').first().isVisible({ timeout: 5000 }).catch(() => false)
-    expect(hasList || true).toBeTruthy()
+    await expect(page.locator('table, .chatbot-list, .v-card, .chatbot-card').first()).toBeVisible({ timeout: 5000 })
   })
 })
 
@@ -289,8 +273,7 @@ test.describe('Admin System Settings', () => {
 
     await waitForLoading(page)
 
-    const hasSettings = await page.locator('.settings-section, [class*="settings"], text=Einstellungen').first().isVisible({ timeout: 8000 }).catch(() => false)
-    expect(hasSettings || true).toBeTruthy()
+    await expect(page.locator('.settings-section, [class*="settings"], text=Einstellungen').first()).toBeVisible({ timeout: 8000 })
   })
 
   test('E2E_ADMIN_023: settings shows configuration options', async ({ page }) => {
@@ -299,8 +282,7 @@ test.describe('Admin System Settings', () => {
 
     await waitForLoading(page)
 
-    const hasOptions = await page.locator('.v-switch, .v-text-field, .v-select, input').first().isVisible({ timeout: 5000 }).catch(() => false)
-    expect(hasOptions || true).toBeTruthy()
+    await expect(page.locator('.v-switch, .v-text-field, .v-select, input').first()).toBeVisible({ timeout: 5000 })
   })
 })
 
@@ -313,8 +295,7 @@ test.describe('Admin Docker Monitor', () => {
 
     await waitForLoading(page)
 
-    const hasDocker = await page.locator('.docker-monitor, [class*="docker"], text=Docker, text=Container').first().isVisible({ timeout: 8000 }).catch(() => false)
-    expect(hasDocker || true).toBeTruthy()
+    await expect(page.locator('.docker-monitor, [class*="docker"], text=Docker, text=Container').first()).toBeVisible({ timeout: 8000 })
   })
 
   test('E2E_ADMIN_025: docker shows container list', async ({ page }) => {
@@ -323,8 +304,7 @@ test.describe('Admin Docker Monitor', () => {
 
     await waitForLoading(page)
 
-    const hasContainers = await page.locator('table, .container-list, .v-card, text=llars').first().isVisible({ timeout: 8000 }).catch(() => false)
-    expect(hasContainers || true).toBeTruthy()
+    await expect(page.locator('table, .container-list, .v-card, text=llars').first()).toBeVisible({ timeout: 8000 })
   })
 })
 
@@ -337,8 +317,7 @@ test.describe('Admin Database Explorer', () => {
 
     await waitForLoading(page)
 
-    const hasDb = await page.locator('.db-explorer, [class*="database"], text=Datenbank, text=Tabellen').first().isVisible({ timeout: 8000 }).catch(() => false)
-    expect(hasDb || true).toBeTruthy()
+    await expect(page.locator('.db-explorer, [class*="database"], text=Datenbank, text=Tabellen').first()).toBeVisible({ timeout: 8000 })
   })
 
   test('E2E_ADMIN_027: database shows table list', async ({ page }) => {
@@ -347,8 +326,7 @@ test.describe('Admin Database Explorer', () => {
 
     await waitForLoading(page)
 
-    const hasTables = await page.locator('table, .table-list, select, .v-select').first().isVisible({ timeout: 5000 }).catch(() => false)
-    expect(hasTables || true).toBeTruthy()
+    await expect(page.locator('table, .table-list, select, .v-select').first()).toBeVisible({ timeout: 5000 })
   })
 })
 
@@ -377,7 +355,7 @@ test.describe('Admin Navigation', () => {
     await goToAdmin(page, 'scenarios')
     const hasScenarios = await page.locator('text=Szenario, .scenario-row').first().isVisible({ timeout: 5000 }).catch(() => false)
 
-    expect(hasPermissions || hasScenarios || true).toBeTruthy()
+    expect(hasPermissions || hasScenarios).toBeTruthy()
   })
 
   test('E2E_ADMIN_030: back navigation works', async ({ page }) => {

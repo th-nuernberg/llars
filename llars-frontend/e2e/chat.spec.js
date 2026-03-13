@@ -152,10 +152,9 @@ test.describe('Floating Chat Widget', () => {
 
     // Check if floating chat toggle exists (might be disabled/hidden)
     const toggleBtn = page.locator('.chat-toggle, .floating-chat-toggle')
+    // Toggle might not be visible on all setups - use soft assertion
     const hasToggle = await toggleBtn.isVisible({ timeout: 5000 }).catch(() => false)
-
-    // Toggle might not be visible on all setups - test passes either way
-    expect(hasToggle || true).toBeTruthy()
+    expect.soft(hasToggle).toBeTruthy()
   })
 })
 

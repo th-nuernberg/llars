@@ -100,7 +100,7 @@ test.describe('Judge Overview', () => {
     const hasStats = await statCards.count() > 0
     const hasStatsRow = await page.locator('.stats-row, [class*="stat"]').first().isVisible({ timeout: 3000 }).catch(() => false)
 
-    expect(hasStats || hasStatsRow || true).toBeTruthy()
+    expect(hasStats || hasStatsRow).toBeTruthy()
   })
 
   test('E2E_JUDGE_003: overview shows sessions list or empty state', async ({ page }) => {
@@ -131,7 +131,7 @@ test.describe('Judge Overview', () => {
     // Or look for individual filter options
     const hasAllFilter = await page.locator('text=Alle, text=all').first().isVisible({ timeout: 2000 }).catch(() => false)
 
-    expect(hasFilters || hasAllFilter || true).toBeTruthy()
+    expect(hasFilters || hasAllFilter).toBeTruthy()
   })
 
   test('E2E_JUDGE_005: new session button is visible', async ({ page }) => {
@@ -141,7 +141,7 @@ test.describe('Judge Overview', () => {
     const newSessionBtn = page.locator('button:has-text("Neue Session"), button:has-text("Session erstellen"), a:has-text("Neue Session")')
     const hasNewBtn = await newSessionBtn.first().isVisible({ timeout: 5000 }).catch(() => false)
 
-    expect(hasNewBtn || true).toBeTruthy()
+    expect(hasNewBtn).toBeTruthy()
   })
 
   test('E2E_JUDGE_006: clicking new session navigates to config', async ({ page }) => {
@@ -199,7 +199,7 @@ test.describe('Judge Config', () => {
     const hasPillarSection = await page.locator('text=Pillar, text=Säulen, .pillar-chips, .v-chip-group').first().isVisible({ timeout: 5000 }).catch(() => false)
     const hasChips = await page.locator('.v-chip').count() > 0
 
-    expect(hasPillarSection || hasChips || true).toBeTruthy()
+    expect(hasPillarSection || hasChips).toBeTruthy()
   })
 
   test('E2E_JUDGE_010: config shows comparison mode options', async ({ page }) => {
@@ -212,7 +212,7 @@ test.describe('Judge Config', () => {
     const hasRadios = await page.locator('.v-radio, input[type="radio"]').count() > 0
     const hasModeText = await page.locator('text=Modus, text=mode, text=Vergleich').first().isVisible({ timeout: 3000 }).catch(() => false)
 
-    expect(hasRadioGroup || hasRadios || hasModeText || true).toBeTruthy()
+    expect(hasRadioGroup || hasRadios || hasModeText).toBeTruthy()
   })
 
   test('E2E_JUDGE_011: config shows worker count slider', async ({ page }) => {
@@ -224,7 +224,7 @@ test.describe('Judge Config', () => {
     const hasSlider = await page.locator('.v-slider, input[type="range"]').first().isVisible({ timeout: 5000 }).catch(() => false)
     const hasWorkerText = await page.locator('text=Worker, text=Arbeiter').first().isVisible({ timeout: 3000 }).catch(() => false)
 
-    expect(hasSlider || hasWorkerText || true).toBeTruthy()
+    expect(hasSlider || hasWorkerText).toBeTruthy()
   })
 
   test('E2E_JUDGE_012: config shows summary panel', async ({ page }) => {
@@ -236,7 +236,7 @@ test.describe('Judge Config', () => {
     const hasSummary = await page.locator('.right-panel, .summary-item, text=Zusammenfassung').first().isVisible({ timeout: 5000 }).catch(() => false)
     const hasTotalComparisons = await page.locator('.summary-total, text=Vergleiche, text=Comparisons').first().isVisible({ timeout: 3000 }).catch(() => false)
 
-    expect(hasSummary || hasTotalComparisons || true).toBeTruthy()
+    expect(hasSummary || hasTotalComparisons).toBeTruthy()
   })
 
   test('E2E_JUDGE_013: config shows duration estimates', async ({ page }) => {
@@ -245,9 +245,7 @@ test.describe('Judge Config', () => {
 
     await waitForLoading(page)
 
-    const hasDuration = await page.locator('.duration-grid, .duration-item, text=Dauer, text=Zeit').first().isVisible({ timeout: 5000 }).catch(() => false)
-
-    expect(hasDuration || true).toBeTruthy()
+    await expect(page.locator('.duration-grid, .duration-item, text=Dauer, text=Zeit').first()).toBeVisible({ timeout: 5000 })
   })
 
   test('E2E_JUDGE_014: config has create button', async ({ page }) => {
@@ -256,9 +254,7 @@ test.describe('Judge Config', () => {
 
     await waitForLoading(page)
 
-    const hasCreateBtn = await page.locator('button:has-text("erstellen"), button:has-text("Start"), button:has-text("Create"), .action-bar button').first().isVisible({ timeout: 5000 }).catch(() => false)
-
-    expect(hasCreateBtn || true).toBeTruthy()
+    await expect(page.locator('button:has-text("erstellen"), button:has-text("Start"), button:has-text("Create"), .action-bar button').first()).toBeVisible({ timeout: 5000 })
   })
 })
 
@@ -300,9 +296,7 @@ test.describe('Judge Session', () => {
 
       await waitForLoading(page)
 
-      const hasProgress = await page.locator('.progress-section, .progress-panel, .progress-bar, [class*="progress"]').first().isVisible({ timeout: 8000 }).catch(() => false)
-
-      expect(hasProgress || true).toBeTruthy()
+      await expect(page.locator('.progress-section, .progress-panel, .progress-bar, [class*="progress"]').first()).toBeVisible({ timeout: 8000 })
     }
   })
 
@@ -320,9 +314,7 @@ test.describe('Judge Session', () => {
 
       await waitForLoading(page)
 
-      const hasQueue = await page.locator('.queue-section, .queue-panel, text=Warteschlange, text=Queue').first().isVisible({ timeout: 8000 }).catch(() => false)
-
-      expect(hasQueue || true).toBeTruthy()
+      await expect(page.locator('.queue-section, .queue-panel, text=Warteschlange, text=Queue').first()).toBeVisible({ timeout: 8000 })
     }
   })
 
@@ -344,7 +336,7 @@ test.describe('Judge Session', () => {
       const hasLiveTab = await page.locator('text=Live, button:has-text("Live")').first().isVisible({ timeout: 3000 }).catch(() => false)
       const hasHistoryTab = await page.locator('text=Verlauf, text=History').first().isVisible({ timeout: 3000 }).catch(() => false)
 
-      expect(hasTabs || hasLiveTab || hasHistoryTab || true).toBeTruthy()
+      expect(hasTabs || hasLiveTab || hasHistoryTab).toBeTruthy()
     }
   })
 
@@ -366,7 +358,7 @@ test.describe('Judge Session', () => {
       const hasActionBar = await page.locator('.action-bar, .session-actions').first().isVisible({ timeout: 5000 }).catch(() => false)
       const hasButtons = await page.locator('button:has-text("Start"), button:has-text("Pause"), button:has-text("Ergebnisse"), button:has-text("Zurück")').first().isVisible({ timeout: 3000 }).catch(() => false)
 
-      expect(hasActionBar || hasButtons || true).toBeTruthy()
+      expect(hasActionBar || hasButtons).toBeTruthy()
     }
   })
 })
@@ -390,7 +382,7 @@ test.describe('Judge Results', () => {
       const isOnResults = page.url().includes('/judge/results')
       const hasResults = await page.locator('.judge-results, .results-header').first().isVisible({ timeout: 5000 }).catch(() => false)
 
-      expect(isOnResults || hasResults || true).toBeTruthy()
+      expect(isOnResults || hasResults).toBeTruthy()
     }
   })
 
@@ -445,7 +437,7 @@ test.describe('Judge Navigation', () => {
     // Might be hidden on mobile
     const isMobile = await page.locator('.is-mobile').isVisible().catch(() => false)
 
-    expect(hasResizer || isMobile || true).toBeTruthy()
+    expect(hasResizer || isMobile).toBeTruthy()
   })
 })
 
@@ -486,9 +478,7 @@ test.describe('Judge UI Components', () => {
     await waitForLoading(page)
 
     // Look for status badges/tags
-    const hasStatusBadge = await page.locator('.v-chip, .l-tag, [class*="status"]').first().isVisible({ timeout: 5000 }).catch(() => false)
-
-    expect(hasStatusBadge || true).toBeTruthy()
+    await expect(page.locator('.v-chip, .l-tag, [class*="status"]').first()).toBeVisible({ timeout: 5000 })
   })
 
   test('E2E_JUDGE_028: progress bars render correctly', async ({ page }) => {
@@ -501,9 +491,7 @@ test.describe('Judge UI Components', () => {
 
     if (await sessionItem.isVisible({ timeout: 3000 }).catch(() => false)) {
       // Check for progress bar in session item
-      const hasProgressBar = await page.locator('.v-progress-linear, .progress-bar, [role="progressbar"]').first().isVisible({ timeout: 3000 }).catch(() => false)
-
-      expect(hasProgressBar || true).toBeTruthy()
+      await expect(page.locator('.v-progress-linear, .progress-bar, [role="progressbar"]').first()).toBeVisible({ timeout: 3000 })
     }
   })
 })

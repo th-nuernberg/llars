@@ -54,16 +54,14 @@ test.describe('LaTeX Collab Overview', () => {
     await quickLogin(page, TEST_USERS.researcher)
     await goToLatexCollab(page)
 
-    const hasTitle = await page.locator('h1, text=LaTeX, text=Collab').first().isVisible({ timeout: 5000 }).catch(() => false)
-    expect(hasTitle || true).toBeTruthy()
+    await expect(page.locator('h1, text=LaTeX, text=Collab').first()).toBeVisible({ timeout: 5000 })
   })
 
   test('E2E_LATEX_003: create workspace button is visible', async ({ page }) => {
     await quickLogin(page, TEST_USERS.researcher)
     await goToLatexCollab(page)
 
-    const hasCreateBtn = await page.locator('button:has-text("Erstellen"), button:has-text("Neu"), button:has(.mdi-plus)').first().isVisible({ timeout: 5000 }).catch(() => false)
-    expect(hasCreateBtn || true).toBeTruthy()
+    await expect(page.locator('button:has-text("Erstellen"), button:has-text("Neu"), button:has(.mdi-plus)').first()).toBeVisible({ timeout: 5000 })
   })
 
   test('E2E_LATEX_004: shows workspaces or empty state', async ({ page }) => {
@@ -74,7 +72,7 @@ test.describe('LaTeX Collab Overview', () => {
 
     const hasWorkspaces = await getWorkspaceCards(page).count() > 0
     const hasEmptyState = await page.locator('.empty-state, text=Keine Workspaces').first().isVisible({ timeout: 3000 }).catch(() => false)
-    expect(hasWorkspaces || hasEmptyState || true).toBeTruthy()
+    expect(hasWorkspaces || hasEmptyState).toBeTruthy()
   })
 })
 
@@ -90,8 +88,7 @@ test.describe('LaTeX Workspace', () => {
     const workspaceCards = getWorkspaceCards(page)
     if (await workspaceCards.count() > 0) {
       const firstCard = workspaceCards.first()
-      const hasTitle = await firstCard.locator('.card-title, h3, .l-card__title').first().isVisible().catch(() => false)
-      expect(hasTitle || true).toBeTruthy()
+      await expect(firstCard.locator('.card-title, h3, .l-card__title').first()).toBeVisible()
     }
   })
 
@@ -118,8 +115,7 @@ test.describe('LaTeX Workspace', () => {
       expect(navigatedToWorkspace || remainedOnModule || redirectedToFallback || urlChanged || hasWorkspaceUi).toBeTruthy()
     } else {
       // No workspaces on staging - page loaded is sufficient
-      const hasPage = await page.locator('.latex-collab, .workspace-list, .empty-state, main').first().isVisible({ timeout: 3000 }).catch(() => false)
-      expect(hasPage || true).toBeTruthy()
+      await expect(page.locator('.latex-collab, .workspace-list, .empty-state, main').first()).toBeVisible({ timeout: 3000 })
     }
   })
 
@@ -136,8 +132,7 @@ test.describe('LaTeX Workspace', () => {
 
       await waitForLoading(page)
 
-      const hasFileTree = await page.locator('.file-tree, .document-list, .sidebar, aside, .v-treeview').first().isVisible({ timeout: 8000 }).catch(() => false)
-      expect(hasFileTree || true).toBeTruthy()
+      await expect(page.locator('.file-tree, .document-list, .sidebar, aside, .v-treeview').first()).toBeVisible({ timeout: 8000 })
     }
   })
 })
@@ -158,8 +153,7 @@ test.describe('LaTeX Document Editor', () => {
 
       await waitForLoading(page)
 
-      const hasEditor = await page.locator('.editor, .latex-editor, textarea, .cm-editor, [contenteditable="true"], .CodeMirror').first().isVisible({ timeout: 8000 }).catch(() => false)
-      expect(hasEditor || true).toBeTruthy()
+      await expect(page.locator('.editor, .latex-editor, textarea, .cm-editor, [contenteditable="true"], .CodeMirror').first()).toBeVisible({ timeout: 8000 })
     }
   })
 
@@ -176,8 +170,7 @@ test.describe('LaTeX Document Editor', () => {
 
       await waitForLoading(page)
 
-      const hasPreview = await page.locator('.pdf-preview, .preview-panel, iframe[src*="pdf"], canvas, .right-panel').first().isVisible({ timeout: 8000 }).catch(() => false)
-      expect(hasPreview || true).toBeTruthy()
+      await expect(page.locator('.pdf-preview, .preview-panel, iframe[src*="pdf"], canvas, .right-panel').first()).toBeVisible({ timeout: 8000 })
     }
   })
 
@@ -194,8 +187,7 @@ test.describe('LaTeX Document Editor', () => {
 
       await waitForLoading(page)
 
-      const hasCompile = await page.locator('button:has-text("Kompilieren"), button:has-text("Compile"), button:has(.mdi-play), button:has-text("PDF")').first().isVisible({ timeout: 5000 }).catch(() => false)
-      expect(hasCompile || true).toBeTruthy()
+      await expect(page.locator('button:has-text("Kompilieren"), button:has-text("Compile"), button:has(.mdi-play), button:has-text("PDF")').first()).toBeVisible({ timeout: 5000 })
     }
   })
 
@@ -212,8 +204,7 @@ test.describe('LaTeX Document Editor', () => {
 
       await waitForLoading(page)
 
-      const hasToolbar = await page.locator('.toolbar, .editor-toolbar, .formatting-buttons, .action-bar').first().isVisible({ timeout: 5000 }).catch(() => false)
-      expect(hasToolbar || true).toBeTruthy()
+      await expect(page.locator('.toolbar, .editor-toolbar, .formatting-buttons, .action-bar').first()).toBeVisible({ timeout: 5000 })
     }
   })
 })
@@ -234,8 +225,7 @@ test.describe('LaTeX Collaboration', () => {
 
       await waitForLoading(page)
 
-      const hasStatus = await page.locator('.collab-status, .connection-status, .mdi-wifi, .mdi-account-multiple, .online-users').first().isVisible({ timeout: 5000 }).catch(() => false)
-      expect(hasStatus || true).toBeTruthy()
+      await expect(page.locator('.collab-status, .connection-status, .mdi-wifi, .mdi-account-multiple, .online-users').first()).toBeVisible({ timeout: 5000 })
     }
   })
 
@@ -252,8 +242,7 @@ test.describe('LaTeX Collaboration', () => {
 
       await waitForLoading(page)
 
-      const hasShare = await page.locator('button:has-text("Teilen"), button:has(.mdi-share), button:has-text("Share")').first().isVisible({ timeout: 5000 }).catch(() => false)
-      expect(hasShare || true).toBeTruthy()
+      await expect(page.locator('button:has-text("Teilen"), button:has(.mdi-share), button:has-text("Share")').first()).toBeVisible({ timeout: 5000 })
     }
   })
 })
@@ -304,8 +293,7 @@ test.describe('LaTeX Collab Navigation', () => {
 
       await waitForLoading(page)
 
-      const hasResizer = await page.locator('.resize-divider, .resize-handle, .gutter').first().isVisible({ timeout: 3000 }).catch(() => false)
-      expect(hasResizer || true).toBeTruthy()
+      await expect(page.locator('.resize-divider, .resize-handle, .gutter').first()).toBeVisible({ timeout: 3000 })
     }
   })
 })

@@ -180,14 +180,23 @@ class LLMClientFactory:
         # 1. User-provider prefix
         provider_id, owner_username, actual_model_id = LLMClientFactory._parse_user_provider_model_id(model_id)
         if provider_id and actual_model_id:
+            # Security: Reject old 2-part format without owner_username to prevent
+            # unauthorized access to other users' API keys via guessable provider_id
+            if not owner_username:
+                logger.warning(
+                    "[LLMClientFactory] Rejected legacy 2-part user-provider model_id "
+                    "(no owner_username): %s — use format user-provider:<id>:<username>:<model>",
+                    model_id
+                )
+                return None, model_id
             cache_key = f"user-provider:{provider_id}"
             client = LLMClientFactory._client_cache.get(cache_key)
             if client is None:
                 provider, api_key = UserLLMProviderService.get_provider_with_key(provider_id)
-                # If username-hint is present (new format), enforce owner match.
-                if provider and owner_username:
+                # Enforce owner match (mandatory)
+                if provider:
                     owner = getattr(getattr(provider, "user", None), "username", None)
-                    if owner and owner != owner_username:
+                    if not owner or owner != owner_username:
                         logger.warning(
                             "[LLMClientFactory] user-provider owner mismatch: provider_id=%s owner=%s hint=%s",
                             provider_id, owner, owner_username

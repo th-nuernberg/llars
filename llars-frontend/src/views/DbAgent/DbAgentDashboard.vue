@@ -1040,6 +1040,7 @@ import { ref, onMounted, watch, computed, nextTick } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter, useRoute } from 'vue-router'
 import { marked } from 'marked'
+import DOMPurify from 'dompurify'
 import axios from 'axios'
 import { useMobile } from '@/composables/useMobile'
 
@@ -1807,7 +1808,7 @@ function buildBahnLink(journey) {
 }
 
 function renderMarkdown(text) {
-  return marked.parse(text || '')
+  return DOMPurify.sanitize(marked.parse(text || ''))
 }
 
 // Watch — sync tab with URL

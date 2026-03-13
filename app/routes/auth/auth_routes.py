@@ -110,8 +110,17 @@ def logout():
 @public_endpoint
 @handle_api_errors(logger_name='auth')
 def register_admin():
-    """Register an admin user with admin registration key"""
+    """Register an admin user with admin registration key."""
+    # Security: Block in production if key is not changed from default placeholder
     ADMIN_REGISTRATION_KEY = os.environ.get('ADMIN_REGISTRATION_KEY', '').strip()
+    project_state = os.environ.get('PROJECT_STATE', 'development')
+    default_placeholder = 'CHANGE_ME_GENERATE_NEW_UUID_FOR_PRODUCTION'
+    if project_state == 'production' and (
+        not ADMIN_REGISTRATION_KEY or ADMIN_REGISTRATION_KEY == default_placeholder
+    ):
+        logger.error("[Auth] Admin registration blocked: ADMIN_REGISTRATION_KEY is default/empty in production")
+        raise UnauthorizedError("Admin registration is not available.")
+
     data = request.get_json()
     username = data.get('username')
     password = data.get('password')

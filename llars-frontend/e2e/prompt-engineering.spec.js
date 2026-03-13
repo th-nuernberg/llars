@@ -108,8 +108,7 @@ test.describe('Prompt Cards', () => {
     const promptCards = getPromptCards(page)
     if (await promptCards.count() > 0) {
       const firstCard = promptCards.first()
-      const hasTitle = await firstCard.locator('.card-title, h3, .l-card__title').first().isVisible().catch(() => false)
-      expect(hasTitle || true).toBeTruthy()
+      await expect(firstCard.locator('.card-title, h3, .l-card__title').first()).toBeVisible()
     }
   })
 
@@ -121,8 +120,7 @@ test.describe('Prompt Cards', () => {
 
     const promptCards = getPromptCards(page)
     if (await promptCards.count() > 0) {
-      const hasDate = await page.locator('.mdi-clock-outline, text=/vor\\s+\\d+/, text=/\\d+.*ago/i').first().isVisible({ timeout: 3000 }).catch(() => false)
-      expect(hasDate || true).toBeTruthy()
+      await expect(page.locator('.mdi-clock-outline, text=/vor\\s+\\d+/, text=/\\d+.*ago/i').first()).toBeVisible({ timeout: 3000 })
     }
   })
 
@@ -135,8 +133,7 @@ test.describe('Prompt Cards', () => {
     const promptCards = getPromptCards(page)
     if (await promptCards.count() > 0) {
       const firstCard = promptCards.first()
-      const hasActions = await firstCard.locator('.l-action-group, button, .mdi-pencil, .mdi-delete').first().isVisible().catch(() => false)
-      expect(hasActions || true).toBeTruthy()
+      await expect(firstCard.locator('.l-action-group, button, .mdi-pencil, .mdi-delete').first()).toBeVisible()
     }
   })
 
@@ -171,8 +168,7 @@ test.describe('Create Prompt', () => {
       await createBtn.click()
       await page.waitForTimeout(500)
 
-      const hasDialog = await page.locator('.v-dialog, .v-overlay, [role="dialog"]').first().isVisible({ timeout: 3000 }).catch(() => false)
-      expect(hasDialog || true).toBeTruthy()
+      await expect(page.locator('.v-dialog, .v-overlay, [role="dialog"]').first()).toBeVisible({ timeout: 3000 })
     }
   })
 
@@ -185,8 +181,7 @@ test.describe('Create Prompt', () => {
       await createBtn.click()
       await page.waitForTimeout(500)
 
-      const hasNameField = await page.locator('input[type="text"], .v-text-field, [placeholder*="Name"]').first().isVisible({ timeout: 3000 }).catch(() => false)
-      expect(hasNameField || true).toBeTruthy()
+      await expect(page.locator('input[type="text"], .v-text-field, [placeholder*="Name"]').first()).toBeVisible({ timeout: 3000 })
     }
   })
 })
@@ -225,8 +220,7 @@ test.describe('Prompt Detail', () => {
 
       await waitForLoading(page)
 
-      const hasTestBtn = await page.locator('button:has-text("Test"), button:has-text("Testen"), button:has(.mdi-play)').first().isVisible({ timeout: 5000 }).catch(() => false)
-      expect(hasTestBtn || true).toBeTruthy()
+      await expect(page.locator('button:has-text("Test"), button:has-text("Testen"), button:has(.mdi-play)').first()).toBeVisible({ timeout: 5000 })
     }
   })
 
@@ -243,8 +237,7 @@ test.describe('Prompt Detail', () => {
 
       await waitForLoading(page)
 
-      const hasSave = await page.locator('button:has-text("Speichern"), button:has(.mdi-content-save), text=Gespeichert').first().isVisible({ timeout: 5000 }).catch(() => false)
-      expect(hasSave || true).toBeTruthy()
+      await expect(page.locator('button:has-text("Speichern"), button:has(.mdi-content-save), text=Gespeichert').first()).toBeVisible({ timeout: 5000 })
     }
   })
 })
@@ -258,8 +251,7 @@ test.describe('Shared Prompts', () => {
 
     await waitForLoading(page)
 
-    const hasSharedSection = await page.locator('text=Geteilt, text=Shared, text=Mit mir geteilt').first().isVisible({ timeout: 5000 }).catch(() => false)
-    expect(hasSharedSection || true).toBeTruthy()
+    await expect(page.locator('text=Geteilt, text=Shared, text=Mit mir geteilt').first()).toBeVisible({ timeout: 5000 })
   })
 
   test('E2E_PROMPT_016: shared prompts show sharing info', async ({ page }) => {
@@ -268,8 +260,7 @@ test.describe('Shared Prompts', () => {
 
     await waitForLoading(page)
 
-    const hasShareInfo = await page.locator('.mdi-share-variant, .shared-info, text=Nutzer').first().isVisible({ timeout: 3000 }).catch(() => false)
-    expect(hasShareInfo || true).toBeTruthy()
+    await expect(page.locator('.mdi-share-variant, .shared-info, text=Nutzer').first()).toBeVisible({ timeout: 3000 })
   })
 })
 

@@ -99,8 +99,9 @@ test.describe('Rating Overview', () => {
     await quickLogin(page, TEST_USERS.rater)
     await goToRater(page)
 
+    // Stats may not always be visible if no evaluation data exists - use soft assertion
     const hasStats = await page.locator('.header-stats, [class*="stats"], text=/\\d+\\s*\\/\\s*\\d+/').first().isVisible({ timeout: 3000 }).catch(() => false)
-    expect(hasStats || true).toBeTruthy()
+    expect.soft(hasStats).toBeTruthy()
   })
 
   test('E2E_RATING_005: back button is visible', async ({ page }) => {
@@ -108,8 +109,7 @@ test.describe('Rating Overview', () => {
     await goToRater(page)
 
     const backBtn = page.locator('button:has-text("Zurück"), button:has-text("Home"), button:has-text("Evaluierungen")').first()
-    const hasBackBtn = await backBtn.isVisible({ timeout: 3000 }).catch(() => false)
-    expect(hasBackBtn || true).toBeTruthy()
+    await expect(backBtn).toBeVisible({ timeout: 3000 })
   })
 })
 
@@ -208,7 +208,7 @@ test.describe('Likert Scale Rating', () => {
     if (await navigateToFeature(page)) {
       await page.waitForTimeout(500)
       const selected = await selectRating(page, 3)
-      expect(selected || true).toBeTruthy()
+      expect(selected).toBeTruthy()
     }
   })
 
@@ -219,7 +219,7 @@ test.describe('Likert Scale Rating', () => {
     if (await navigateToFeature(page)) {
       const hasGutLabel = await page.locator('text=Gut').isVisible({ timeout: 3000 }).catch(() => false)
       const hasSchlechtLabel = await page.locator('text=Schlecht').isVisible({ timeout: 2000 }).catch(() => false)
-      expect(hasGutLabel || hasSchlechtLabel || true).toBeTruthy()
+      expect(hasGutLabel || hasSchlechtLabel).toBeTruthy()
     }
   })
 })
@@ -232,8 +232,7 @@ test.describe('Auto-Save Functionality', () => {
     await goToRater(page)
 
     if (await navigateToFeature(page)) {
-      const hasSaveStatus = await page.locator('.action-bar, [class*="save"], [class*="status"]').first().isVisible({ timeout: 3000 }).catch(() => false)
-      expect(hasSaveStatus || true).toBeTruthy()
+      await expect(page.locator('.action-bar, [class*="save"], [class*="status"]').first()).toBeVisible({ timeout: 3000 })
     }
   })
 
@@ -247,8 +246,9 @@ test.describe('Auto-Save Functionality', () => {
       await selectRating(page, 4)
       await page.waitForTimeout(1500)
 
+      // Saved indicator may appear briefly - use soft assertion since timing-dependent
       const hasSaved = await page.locator('text=Gespeichert, text=gespeichert, text=saved, text=Speicher').first().isVisible({ timeout: 3000 }).catch(() => false)
-      expect(hasSaved || true).toBeTruthy()
+      expect.soft(hasSaved).toBeTruthy()
     }
   })
 })

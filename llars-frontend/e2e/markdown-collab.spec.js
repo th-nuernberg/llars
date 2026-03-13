@@ -53,16 +53,14 @@ test.describe('Markdown Collab Overview', () => {
     await quickLogin(page, TEST_USERS.researcher)
     await goToMarkdownCollab(page)
 
-    const hasTitle = await page.locator('h1, text=Markdown, text=Collab').first().isVisible({ timeout: 5000 }).catch(() => false)
-    expect(hasTitle || true).toBeTruthy()
+    await expect(page.locator('h1, text=Markdown, text=Collab').first()).toBeVisible({ timeout: 5000 })
   })
 
   test('E2E_MDCOLLAB_003: create workspace button is visible', async ({ page }) => {
     await quickLogin(page, TEST_USERS.researcher)
     await goToMarkdownCollab(page)
 
-    const hasCreateBtn = await page.locator('button:has-text("Erstellen"), button:has-text("Neu"), button:has(.mdi-plus)').first().isVisible({ timeout: 5000 }).catch(() => false)
-    expect(hasCreateBtn || true).toBeTruthy()
+    await expect(page.locator('button:has-text("Erstellen"), button:has-text("Neu"), button:has(.mdi-plus)').first()).toBeVisible({ timeout: 5000 })
   })
 
   test('E2E_MDCOLLAB_004: shows workspaces or empty state', async ({ page }) => {
@@ -73,7 +71,7 @@ test.describe('Markdown Collab Overview', () => {
 
     const hasWorkspaces = await getWorkspaceCards(page).count() > 0
     const hasEmptyState = await page.locator('.empty-state, text=Keine Workspaces').first().isVisible({ timeout: 3000 }).catch(() => false)
-    expect(hasWorkspaces || hasEmptyState || true).toBeTruthy()
+    expect(hasWorkspaces || hasEmptyState).toBeTruthy()
   })
 })
 
@@ -89,8 +87,7 @@ test.describe('Markdown Workspace', () => {
     const workspaceCards = getWorkspaceCards(page)
     if (await workspaceCards.count() > 0) {
       const firstCard = workspaceCards.first()
-      const hasTitle = await firstCard.locator('.card-title, h3, .l-card__title').first().isVisible().catch(() => false)
-      expect(hasTitle || true).toBeTruthy()
+      await expect(firstCard.locator('.card-title, h3, .l-card__title').first()).toBeVisible()
     }
   })
 
@@ -117,8 +114,7 @@ test.describe('Markdown Workspace', () => {
       expect(navigatedToWorkspace || remainedOnModule || redirectedToFallback || urlChanged || hasWorkspaceUi).toBeTruthy()
     } else {
       // No workspaces on staging - page loaded is sufficient
-      const hasPage = await page.locator('.markdown-collab, .workspace-list, .empty-state, main').first().isVisible({ timeout: 3000 }).catch(() => false)
-      expect(hasPage || true).toBeTruthy()
+      await expect(page.locator('.markdown-collab, .workspace-list, .empty-state, main').first()).toBeVisible({ timeout: 3000 })
     }
   })
 
@@ -135,8 +131,7 @@ test.describe('Markdown Workspace', () => {
 
       await waitForLoading(page)
 
-      const hasDocList = await page.locator('.document-list, .file-tree, .sidebar, aside').first().isVisible({ timeout: 8000 }).catch(() => false)
-      expect(hasDocList || true).toBeTruthy()
+      await expect(page.locator('.document-list, .file-tree, .sidebar, aside').first()).toBeVisible({ timeout: 8000 })
     }
   })
 })
@@ -157,8 +152,7 @@ test.describe('Markdown Document Editor', () => {
 
       await waitForLoading(page)
 
-      const hasEditor = await page.locator('.editor, .markdown-editor, textarea, .cm-editor, [contenteditable="true"]').first().isVisible({ timeout: 8000 }).catch(() => false)
-      expect(hasEditor || true).toBeTruthy()
+      await expect(page.locator('.editor, .markdown-editor, textarea, .cm-editor, [contenteditable="true"]').first()).toBeVisible({ timeout: 8000 })
     }
   })
 
@@ -175,8 +169,7 @@ test.describe('Markdown Document Editor', () => {
 
       await waitForLoading(page)
 
-      const hasPreview = await page.locator('.preview, .markdown-preview, .right-panel').first().isVisible({ timeout: 5000 }).catch(() => false)
-      expect(hasPreview || true).toBeTruthy()
+      await expect(page.locator('.preview, .markdown-preview, .right-panel').first()).toBeVisible({ timeout: 5000 })
     }
   })
 
@@ -193,8 +186,7 @@ test.describe('Markdown Document Editor', () => {
 
       await waitForLoading(page)
 
-      const hasToolbar = await page.locator('.toolbar, .editor-toolbar, .formatting-buttons').first().isVisible({ timeout: 5000 }).catch(() => false)
-      expect(hasToolbar || true).toBeTruthy()
+      await expect(page.locator('.toolbar, .editor-toolbar, .formatting-buttons').first()).toBeVisible({ timeout: 5000 })
     }
   })
 })
@@ -215,8 +207,7 @@ test.describe('Markdown Collaboration', () => {
 
       await waitForLoading(page)
 
-      const hasStatus = await page.locator('.collab-status, .connection-status, .mdi-wifi, .mdi-account-multiple').first().isVisible({ timeout: 5000 }).catch(() => false)
-      expect(hasStatus || true).toBeTruthy()
+      await expect(page.locator('.collab-status, .connection-status, .mdi-wifi, .mdi-account-multiple').first()).toBeVisible({ timeout: 5000 })
     }
   })
 })
@@ -267,8 +258,7 @@ test.describe('Markdown Collab Navigation', () => {
 
       await waitForLoading(page)
 
-      const hasBreadcrumb = await page.locator('.breadcrumb, .v-breadcrumbs, nav[aria-label="breadcrumb"]').first().isVisible({ timeout: 3000 }).catch(() => false)
-      expect(hasBreadcrumb || true).toBeTruthy()
+      await expect(page.locator('.breadcrumb, .v-breadcrumbs, nav[aria-label="breadcrumb"]').first()).toBeVisible({ timeout: 3000 })
     }
   })
 })

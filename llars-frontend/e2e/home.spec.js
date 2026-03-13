@@ -66,8 +66,7 @@ test.describe('Home Page Load', () => {
     await quickLogin(page, TEST_USERS.researcher)
     await goToHome(page)
 
-    const hasUserChip = await page.locator('.user-chip, [class*="user"]').first().isVisible({ timeout: 5000 }).catch(() => false)
-    expect(hasUserChip || true).toBeTruthy()
+    await expect(page.locator('.user-chip, [class*="user"]').first()).toBeVisible({ timeout: 5000 })
   })
 
   test('E2E_HOME_004: home page shows feature cards', async ({ page }) => {
@@ -143,7 +142,7 @@ test.describe('Category Navigation', () => {
         return el.classList.contains('active') ||
                window.getComputedStyle(el).backgroundColor !== 'rgba(0, 0, 0, 0)'
       })
-      expect(hasActiveState || true).toBeTruthy()
+      expect(hasActiveState).toBeTruthy()
     }
   })
 
@@ -151,8 +150,7 @@ test.describe('Category Navigation', () => {
     await quickLogin(page, TEST_USERS.researcher)
     await goToHome(page)
 
-    const hasCount = await page.locator('.category-count, text=/\\d+\\s*(Features?|Funktionen?)/i').first().isVisible({ timeout: 3000 }).catch(() => false)
-    expect(hasCount || true).toBeTruthy()
+    await expect(page.locator('.category-count, text=/\\d+\\s*(Features?|Funktionen?)/i').first()).toBeVisible({ timeout: 3000 })
   })
 })
 
@@ -182,8 +180,7 @@ test.describe('Feature Cards', () => {
 
     const featureCards = getFeatureCards(page)
     if (await featureCards.count() > 0) {
-      const hasIcon = await featureCards.first().locator('.feature-icon, .v-icon, i, svg').isVisible().catch(() => false)
-      expect(hasIcon || true).toBeTruthy()
+      await expect(featureCards.first().locator('.feature-icon, .v-icon, i, svg')).toBeVisible()
     }
   })
 
@@ -201,7 +198,7 @@ test.describe('Feature Cards', () => {
 
       // URL should change or we navigate somewhere
       const newUrl = page.url()
-      expect(newUrl !== initialUrl || true).toBeTruthy()
+      expect(newUrl).not.toBe(initialUrl)
     }
   })
 
@@ -212,8 +209,9 @@ test.describe('Feature Cards', () => {
     await waitForLoading(page)
 
     // Some cards may have badges (Alpha, Beta, Test)
+    // Badges are optional UI elements - use soft assertion
     const hasBadge = await page.locator('.feature-badge, .v-chip, .l-tag').first().isVisible({ timeout: 3000 }).catch(() => false)
-    expect(hasBadge || true).toBeTruthy()
+    expect.soft(hasBadge).toBeTruthy()
   })
 
   test('E2E_HOME_014: feature cards have hover effect', async ({ page }) => {
@@ -233,7 +231,7 @@ test.describe('Feature Cards', () => {
         const style = window.getComputedStyle(el)
         return style.boxShadow !== 'none' || style.transform !== 'none'
       })
-      expect(hasHover || true).toBeTruthy()
+      expect(hasHover).toBeTruthy()
     }
   })
 })
@@ -245,8 +243,7 @@ test.describe('Panel Resize', () => {
     await quickLogin(page, TEST_USERS.researcher)
     await goToHome(page)
 
-    const hasResizer = await page.locator('.resize-divider, .resize-handle').first().isVisible({ timeout: 3000 }).catch(() => false)
-    expect(hasResizer || true).toBeTruthy()
+    await expect(page.locator('.resize-divider, .resize-handle').first()).toBeVisible({ timeout: 3000 })
   })
 })
 
@@ -259,8 +256,9 @@ test.describe('Responsive Behavior', () => {
     await goToHome(page)
 
     // Mobile might show filter button or overlay toggle
+    // Mobile toggle may not be present on all viewport configurations - use soft assertion
     const hasMobileToggle = await page.locator('.mobile-categories-overlay, [class*="mobile"], button:has(.mdi-filter)').first().isVisible({ timeout: 3000 }).catch(() => false)
-    expect(hasMobileToggle || true).toBeTruthy()
+    expect.soft(hasMobileToggle).toBeTruthy()
   })
 
   test('E2E_HOME_017: tablet view renders correctly', async ({ page }) => {

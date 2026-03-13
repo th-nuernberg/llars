@@ -193,6 +193,8 @@ test.describe('Nightly Cross-Tile Workflows', () => {
       let promptId = null
 
       const researcherToken = await apiLogin(TEST_USERS.researcher)
+      // Pre-login evaluator so they exist in the LLARS Users table before the share step searches for them
+      await apiLogin(TEST_USERS.evaluator)
 
       await openRoute(page, TEST_USERS.researcher, '/PromptEngineering', '.prompt-home, .prompts-grid, main')
 
@@ -366,6 +368,8 @@ test.describe('Nightly Cross-Tile Workflows', () => {
   if (hasWorkflow('Scenario Manager Role Assignment')) {
     test('Scenario Manager Role Assignment', async ({ page }) => {
       const adminToken = await apiLogin(TEST_USERS.admin)
+      // Pre-login evaluator so they exist in the LLARS Users table before the invite step searches for them
+      await apiLogin(TEST_USERS.evaluator).catch(() => {})
       const scenarioName = `${NIGHTLY_PREFIX}-scenario`
       let scenarioId = null
 

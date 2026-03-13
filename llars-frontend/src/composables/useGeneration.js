@@ -96,6 +96,7 @@ export function useGeneration(options = {}) {
   /** @type {import('vue').Ref<Object|null>} Cost estimate */
   const costEstimate = ref(null)
   let socketConnectHandler = null
+  let socketHandlers = {} // Named handler references for targeted socket.off() cleanup
 
   // Snackbar notifications
   const { showSuccess, showError } = useSnackbar()
@@ -512,15 +513,15 @@ export function useGeneration(options = {}) {
       socket.on('connect', socketConnectHandler)
     }
 
-    // Job started
-    socket.on('generation:job:started', (data) => {
+    // Store handler references for proper cleanup (prevents removing other components' listeners)
+    socketHandlers.onJobStarted = (data) => {
       if (data.job_id === currentJob.value?.id) {
         currentJob.value.status = JOB_STATUS.QUEUED
       }
-    })
+    }
+    socket.on('generation:job:started', socketHandlers.onJobStarted)
 
-    // Job progress
-    socket.on('generation:job:progress', (data) => {
+    socketHandlers.onJobProgress = (data) => {
       if (data.job_id === currentJob.value?.id) {
         if (!currentJob.value.cost) currentJob.value.cost = {}
         currentJob.value.cost.total_cost_usd = data.cost_usd
@@ -532,10 +533,10 @@ export function useGeneration(options = {}) {
         }
       }
       _updateJobProgressInList(data.job_id, data)
-    })
+    }
+    socket.on('generation:job:progress', socketHandlers.onJobProgress)
 
-    // Job completed
-    socket.on('generation:job:completed', (data) => {
+    socketHandlers.onJobCompleted = (data) => {
       if (data.job_id === currentJob.value?.id) {
         currentJob.value.status = JOB_STATUS.COMPLETED
         if (currentJob.value.progress) {
@@ -545,40 +546,39 @@ export function useGeneration(options = {}) {
         showSuccess(i18n.global.t('generation.messages.jobCompleted', { count: data.completed }))
       }
       _updateJobStatusInList(data.job_id, JOB_STATUS.COMPLETED)
-    })
+    }
+    socket.on('generation:job:completed', socketHandlers.onJobCompleted)
 
-    // Job failed
-    socket.on('generation:job:failed', (data) => {
+    socketHandlers.onJobFailed = (data) => {
       if (data.job_id === currentJob.value?.id) {
         currentJob.value.status = JOB_STATUS.FAILED
         currentJob.value.error_message = data.error
         showError(i18n.global.t('generation.messages.jobFailed', { error: data.error }))
       }
       _updateJobStatusInList(data.job_id, JOB_STATUS.FAILED)
-    })
+    }
+    socket.on('generation:job:failed', socketHandlers.onJobFailed)
 
-    // Budget exceeded
-    socket.on('generation:job:budget_exceeded', (data) => {
+    socketHandlers.onBudgetExceeded = (data) => {
       if (data.job_id === currentJob.value?.id) {
         currentJob.value.status = JOB_STATUS.PAUSED
         showError(i18n.global.t('generation.messages.budgetExceeded', { cost: data.cost.toFixed(2) }))
       }
-    })
+    }
+    socket.on('generation:job:budget_exceeded', socketHandlers.onBudgetExceeded)
 
-    // Item completed
-    socket.on('generation:item:completed', (data) => {
+    socketHandlers.onItemCompleted = (data) => {
       if (data.job_id === currentJob.value?.id) {
-        // Update output in list if visible
         const output = outputs.value.find(o => o.id === data.output_id)
         if (output) {
           output.status = OUTPUT_STATUS.COMPLETED
           output.content_preview = data.content_preview
         }
       }
-    })
+    }
+    socket.on('generation:item:completed', socketHandlers.onItemCompleted)
 
-    // Item failed
-    socket.on('generation:item:failed', (data) => {
+    socketHandlers.onItemFailed = (data) => {
       if (data.job_id === currentJob.value?.id) {
         const output = outputs.value.find(o => o.id === data.output_id)
         if (output) {
@@ -586,12 +586,14 @@ export function useGeneration(options = {}) {
           output.error_message = data.error
         }
       }
-    })
+    }
+    socket.on('generation:item:failed', socketHandlers.onItemFailed)
 
     // Share updated — refresh job list so shared/unshared jobs appear/disappear
-    socket.on('generation:share_updated', () => {
+    socketHandlers.onShareUpdated = () => {
       loadJobs()
-    })
+    }
+    socket.on('generation:share_updated', socketHandlers.onShareUpdated)
   }
 
   /**
@@ -607,14 +609,16 @@ export function useGeneration(options = {}) {
       socketConnectHandler = null
     }
 
-    socket.off('generation:job:started')
-    socket.off('generation:job:progress')
-    socket.off('generation:job:completed')
-    socket.off('generation:job:failed')
-    socket.off('generation:job:budget_exceeded')
-    socket.off('generation:item:completed')
-    socket.off('generation:item:failed')
-    socket.off('generation:share_updated')
+    // Remove only our specific handlers (not other components' listeners for the same events)
+    if (socketHandlers.onJobStarted) socket.off('generation:job:started', socketHandlers.onJobStarted)
+    if (socketHandlers.onJobProgress) socket.off('generation:job:progress', socketHandlers.onJobProgress)
+    if (socketHandlers.onJobCompleted) socket.off('generation:job:completed', socketHandlers.onJobCompleted)
+    if (socketHandlers.onJobFailed) socket.off('generation:job:failed', socketHandlers.onJobFailed)
+    if (socketHandlers.onBudgetExceeded) socket.off('generation:job:budget_exceeded', socketHandlers.onBudgetExceeded)
+    if (socketHandlers.onItemCompleted) socket.off('generation:item:completed', socketHandlers.onItemCompleted)
+    if (socketHandlers.onItemFailed) socket.off('generation:item:failed', socketHandlers.onItemFailed)
+    if (socketHandlers.onShareUpdated) socket.off('generation:share_updated', socketHandlers.onShareUpdated)
+    socketHandlers = {}
   }
 
   // ---------------------------------------------------------------------------

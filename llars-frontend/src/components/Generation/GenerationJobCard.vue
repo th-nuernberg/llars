@@ -165,7 +165,7 @@ const props = defineProps({
 
 defineEmits(['click', 'start', 'pause', 'cancel', 'delete', 'share'])
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 
 // Status configuration
 const STATUS_CONFIG = {
@@ -228,7 +228,8 @@ const canDelete = computed(() =>
 function formatDate(dateStr) {
   if (!dateStr) return '-'
   const date = new Date(dateStr)
-  return date.toLocaleDateString('de-DE', {
+  const loc = locale.value === 'de' ? 'de-DE' : 'en-US'
+  return date.toLocaleDateString(loc, {
     day: '2-digit',
     month: '2-digit',
     hour: '2-digit',
@@ -297,6 +298,13 @@ function formatDate(dateStr) {
 
 .job-card:hover .card-menu-btn {
   opacity: 1;
+}
+
+/* Touch devices: always show menu button since hover is unreliable */
+@media (hover: none), (pointer: coarse) {
+  .card-menu-btn {
+    opacity: 0.7;
+  }
 }
 
 /* Card Body */

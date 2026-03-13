@@ -598,8 +598,8 @@ class EvaluationSessionService:
             ).first()
             if comp_eval:
                 existing_comparison = comp_eval.to_dict()
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning("Failed to load comparison evaluation for user=%s item=%s: %s", user_id, thread_id, e)
 
         return {
             'thread_id': thread_id,

@@ -101,7 +101,7 @@ const props = defineProps({
   /** Dialog title */
   title: {
     type: String,
-    default: 'Teilen'
+    required: true
   },
   /** Optional subtitle (e.g. resource name) */
   subtitle: {

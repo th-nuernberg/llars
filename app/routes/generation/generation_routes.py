@@ -121,10 +121,16 @@ def list_jobs():
     user = g.authentik_user
     username = user.username if hasattr(user, 'username') else str(user)
 
-    # Parse query params
+    # Parse and validate query params
     status_str = request.args.get('status')
-    status = GenerationJobStatus(status_str) if status_str else None
-    limit = min(int(request.args.get('limit', 50)), 100)
+    try:
+        status = GenerationJobStatus(status_str) if status_str else None
+    except ValueError:
+        raise ValidationError(f'Invalid status: {status_str}')
+    try:
+        limit = min(int(request.args.get('limit', 50)), 100)
+    except (ValueError, TypeError):
+        raise ValidationError('Invalid limit parameter')
 
     # Get own jobs
     jobs = BatchGenerationService.get_jobs_for_user(
@@ -697,6 +703,11 @@ def share_job(job_id: int):
     if not target_username:
         raise ValidationError("username is required")
 
+    # Prevent self-share
+    current_username = g.authentik_user.username
+    if target_username == current_username:
+        raise ValidationError("Cannot share a job with yourself")
+
     target_user = User.query.filter_by(username=target_username).first()
     if not target_user:
         raise NotFoundError(f'User "{target_username}" not found')
@@ -725,7 +736,6 @@ def share_job(job_id: int):
         'success': True,
         'share': {
             'share_id': share.id,
-            'user_id': target_user.id,
             'username': target_username,
         },
         'message': f'Job shared with "{target_username}"',

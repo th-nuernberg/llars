@@ -188,6 +188,8 @@
       :shared-users="shareJobDetail?.shared_with || []"
       :loading="isLoadingShareData"
       :is-sharing="isSharing"
+      :removing-username="removingUsername"
+      :additional-exclude-usernames="jobToShare?.created_by ? [jobToShare.created_by] : []"
       @share="handleShareFromHub"
       @unshare="handleUnshareFromHub"
     />
@@ -235,6 +237,7 @@ const jobToShare = ref(null)
 const shareJobDetail = ref(null)
 const isSharing = ref(false)
 const isLoadingShareData = ref(false)
+const removingUsername = ref(null)
 
 // Status filter options
 const STATUS_OPTIONS = [
@@ -311,6 +314,7 @@ async function handleShareFromHub(user) {
 
 async function handleUnshareFromHub(username) {
   if (!jobToShare.value) return
+  removingUsername.value = username
   const success = await unshareJob(jobToShare.value.id, username)
   if (success) {
     try {
@@ -318,6 +322,7 @@ async function handleUnshareFromHub(username) {
       shareJobDetail.value = res.data.job
     } catch { /* ignore */ }
   }
+  removingUsername.value = null
 }
 
 function goHome() {

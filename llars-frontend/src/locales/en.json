@@ -6144,7 +6144,30 @@
       "readOnlyHint": "You have read-only access to this job. Starting, pausing, and deleting is only available to the owner."
     },
     "messages": {
-      "jobDeleted": "Job deleted"
+      "jobCreated": "Job \"{name}\" created",
+      "jobDeleted": "Job deleted",
+      "jobStarted": "Job started",
+      "jobPaused": "Job paused",
+      "jobCancelled": "Job cancelled",
+      "jobCompleted": "Job completed: {count} outputs",
+      "jobFailed": "Job failed: {error}",
+      "budgetExceeded": "Budget limit reached: ${cost}",
+      "scenarioCreated": "Scenario \"{name}\" created",
+      "csvDownloaded": "CSV downloaded",
+      "csvExportFailed": "CSV export failed",
+      "jsonDownloaded": "JSON downloaded",
+      "jsonExportFailed": "JSON export failed",
+      "loadJobsFailed": "Failed to load jobs",
+      "loadJobFailed": "Failed to load job",
+      "createJobFailed": "Failed to create job",
+      "deleteJobFailed": "Failed to delete job",
+      "startJobFailed": "Failed to start job",
+      "pauseJobFailed": "Failed to pause job",
+      "cancelJobFailed": "Failed to cancel job",
+      "loadOutputFailed": "Failed to load output details",
+      "createScenarioFailed": "Failed to create scenario",
+      "shareJobFailed": "Failed to share job",
+      "unshareJobFailed": "Failed to remove share"
     },
     "scenario": {
       "name": "Scenario Name",

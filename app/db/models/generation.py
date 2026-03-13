@@ -979,7 +979,7 @@ class GenerationJobShare(db.Model):
 
     shared_with_user_id: Mapped[int] = mapped_column(
         db.Integer,
-        db.ForeignKey('users.id'),
+        db.ForeignKey('users.id', ondelete='CASCADE'),
         nullable=False,
         index=True,
         comment="User who received the share"

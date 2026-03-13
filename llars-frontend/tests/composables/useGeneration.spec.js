@@ -419,7 +419,7 @@ describe('useGeneration', () => {
       const result = await startJob(1)
 
       expect(result).toBe(true)
-      expect(mockShowSuccess).toHaveBeenCalledWith('Job gestartet')
+      expect(mockShowSuccess).toHaveBeenCalledWith('generation.messages.jobStarted')
     })
 
     it('GEN_032: returns false on startJob error', async () => {
@@ -444,7 +444,7 @@ describe('useGeneration', () => {
       const result = await pauseJob(1)
 
       expect(result).toBe(true)
-      expect(mockShowSuccess).toHaveBeenCalledWith('Job pausiert')
+      expect(mockShowSuccess).toHaveBeenCalledWith('generation.messages.jobPaused')
     })
 
     it('GEN_034: returns false on pauseJob error', async () => {
@@ -468,7 +468,7 @@ describe('useGeneration', () => {
       const result = await cancelJob(1)
 
       expect(result).toBe(true)
-      expect(mockShowSuccess).toHaveBeenCalledWith('Job abgebrochen')
+      expect(mockShowSuccess).toHaveBeenCalledWith('generation.messages.jobCancelled')
     })
 
     it('GEN_036: returns false on cancelJob error', async () => {

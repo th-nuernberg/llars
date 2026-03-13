@@ -27,5 +27,11 @@ fi
 # Test nginx config
 nginx -t
 
+# Start upstream watchdog in production (auto-reloads nginx when containers get new IPs)
+if [ "$PROJECT_STATE" = "production" ]; then
+    echo "[nginx-entrypoint] Starting upstream watchdog (auto-reload on DNS changes)"
+    /upstream-watchdog.sh &
+fi
+
 # Execute the main command
 exec "$@"

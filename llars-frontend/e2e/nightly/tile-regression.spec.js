@@ -58,6 +58,9 @@ async function openHome(page, user) {
   await dismissConsentBanner(page)
   await handlePrivacyPage(page, HOME_PATH)
   await page.waitForSelector(HOME_READY_SELECTOR, { timeout: 20000 })
+  // Wait for async permission fetch to complete so tiles are rendered
+  // (skeleton loader is shown while permissions load, then replaced by feature-cards)
+  await page.waitForSelector('.feature-card', { timeout: 20000 })
   await waitForPageReady(page, 15000)
 }
 

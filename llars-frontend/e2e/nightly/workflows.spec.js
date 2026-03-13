@@ -160,9 +160,10 @@ async function chooseUserInSearch(page, container, username, maxRetries = 3) {
     // Longer timeout on final attempt to handle slow user-search after creation
     const timeout = attempt === maxRetries ? 15000 : 8000
     // Vuetify v-autocomplete renders its dropdown as a detached overlay at the end
-    // of <body>, not inside the container element. Must search in page scope.
+    // of <body>, not inside the container element. Scope to overlay content to avoid
+    // matching unrelated v-list-items elsewhere on the page.
     const suggestion = page
-      .locator(`.user-suggestion:has-text("${username}"), .v-list-item:has-text("${username}")`)
+      .locator('.v-overlay__content .user-suggestion:has-text("' + username + '")')
       .first()
 
     const found = await suggestion.waitFor({ state: 'visible', timeout })
@@ -171,6 +172,8 @@ async function chooseUserInSearch(page, container, username, maxRetries = 3) {
 
     if (found) {
       await suggestion.click()
+      // Wait for v-autocomplete to process the selection (dropdown closes, value updates)
+      await page.waitForTimeout(300)
       return
     }
 
@@ -343,9 +346,12 @@ test.describe('Nightly Cross-Tile Workflows', () => {
           const shareSection = page.locator('[data-testid="prompt-share-section"]').first()
           await expect(shareSection).toBeVisible({ timeout: 10000 })
           await chooseUserInSearch(page, shareSection, TEST_USERS.evaluator.username)
-          await clickWhenReady(
-            shareSection.locator('button:has-text("Teilen"):visible, button:has-text("Share"):visible, button:has-text("Hinzufügen"):visible').first()
-          )
+          // Wait for the add button to become enabled (confirms user was selected in autocomplete)
+          const shareBtn = shareSection
+            .locator('button:has-text("Teilen"), button:has-text("Share"), button:has-text("Hinzufügen")')
+            .first()
+          await expect(shareBtn).toBeEnabled({ timeout: 5000 })
+          await shareBtn.click()
           await expect(page.locator(`[data-testid="prompt-shared-item-${TEST_USERS.evaluator.username}"]`).first())
             .toBeVisible({ timeout: 12000 })
         })

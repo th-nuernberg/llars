@@ -873,6 +873,24 @@ git push --tags
 
 **WICHTIG:** Bei `git push` immer auch `git push --tags` wenn neue Tags erstellt wurden.
 
+### Wann einen neuen Tag vorschlagen (Regel für Claude)
+
+Claude MUSS proaktiv einen neuen Minor-Tag (`v1.{Y+1}.0`) vorschlagen wenn:
+
+1. **Merge dev→main** steht an oder wurde durchgeführt — Tag ist Pflicht nach jedem Merge
+2. **Signifikante Features** auf dev gelandet sind (neues Feature, neue Tile, neuer Service)
+3. **Breaking Changes** vorliegen (DB-Schema-Änderungen, API-Änderungen, Dependency-Upgrades)
+4. **Sicherheitsfixes** (CVE-Patches, Auth-Fixes) — sofort taggen nach Merge
+5. **Mehr als 20 Commits** seit dem letzten Tag auf dev akkumuliert sind
+
+Claude schlägt einen **Major-Tag** (`v{X+1}.0.0`) vor bei:
+- Grundlegender Architekturänderung (z.B. neuer Auth-Provider, DB-Migration)
+- Inkompatiblen API-Änderungen
+
+**Workflow:** Claude erinnert beim Merge-Vorschlag an den Tag und schlägt die nächste Versionsnummer vor.
+
+**CHANGELOG:** Bei jedem neuen Tag den `[Unreleased]`-Abschnitt in `CHANGELOG.md` in einen versionierten Abschnitt umwandeln.
+
 ### Commit Message Format
 
 ```bash

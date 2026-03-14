@@ -2579,6 +2579,10 @@ function getBarColor(index) {
  * Uses a red-yellow-green gradient for semantic meaning.
  */
 function getLikertColor(value, index) {
+  // Comparison scenario: fixed colors for A/B/tie choices
+  const comparisonColors = { 'A': '#b0ca97', 'B': '#88c4c8', 'tie': '#D1BC8A' }
+  if (comparisonColors[value]) return comparisonColors[value]
+
   // If value is in Likert scale range (1-5), use semantic colors
   if (value >= 1 && value <= 5 && likertColors[value]) {
     return likertColors[value]

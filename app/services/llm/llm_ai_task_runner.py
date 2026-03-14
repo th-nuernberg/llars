@@ -433,21 +433,21 @@ class LLMAITaskRunner:
         if not resolved_models:
             return
 
-        # Comparison scenarios use ComparisonSessions, not ScenarioThreads
+        # Chat-based comparison uses ComparisonSessions; pairwise comparison
+        # (created via wizard/generation) uses standard items and _run_comparison.
         if function_name == "comparison":
             session_ids = LLMAITaskRunner._resolve_comparison_session_ids(scenario, thread_ids)
-            if not session_ids:
-                logger.info("[LLM AI Runner] No comparison sessions for scenario %s", scenario_id)
+            if session_ids:
+                for model_id in resolved_models:
+                    if not LLMAITaskRunner._try_acquire(scenario_id, model_id):
+                        logger.info("[LLM AI Runner] Already running: scenario=%s model=%s", scenario_id, model_id)
+                        continue
+                    try:
+                        LLMAITaskRunner._run_comparison_sessions(model_id, session_ids, scenario.id)
+                    finally:
+                        LLMAITaskRunner._release(scenario_id, model_id)
                 return
-            for model_id in resolved_models:
-                if not LLMAITaskRunner._try_acquire(scenario_id, model_id):
-                    logger.info("[LLM AI Runner] Already running: scenario=%s model=%s", scenario_id, model_id)
-                    continue
-                try:
-                    LLMAITaskRunner._run_comparison_sessions(model_id, session_ids, scenario.id)
-                finally:
-                    LLMAITaskRunner._release(scenario_id, model_id)
-            return
+            # No ComparisonSessions → pairwise comparison, fall through to item-based flow
 
         scenario_thread_ids = LLMAITaskRunner._resolve_thread_ids(scenario, thread_ids)
         if not scenario_thread_ids:
@@ -481,6 +481,8 @@ class LLMAITaskRunner:
             LLMAITaskRunner._run_authenticity(model_id, scenario_thread_ids, scenario_id)
         elif function_name == "mail_rating":
             LLMAITaskRunner._run_mail_rating(model_id, scenario_thread_ids, scenario_id)
+        elif function_name == "comparison":
+            LLMAITaskRunner._run_comparison(model_id, scenario_thread_ids, scenario_id)
         elif function_name in ("labeling", "text_classification"):
             task_type = "labeling" if function_name == "labeling" else "text_classification"
             LLMAITaskRunner._run_text_classification(

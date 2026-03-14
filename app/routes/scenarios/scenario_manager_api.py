@@ -326,9 +326,11 @@ def format_scenario_for_api(scenario, user, invitation_map=None, include_detaile
     func_type_name = func_type.name if func_type else None
 
     # Count threads/sessions and users (only count accepted users for user_count display)
-    # For comparison scenarios, count ComparisonSession instead of ScenarioThreads
+    # Chat-based comparison uses ComparisonSession; pairwise comparison uses ScenarioItems
     if func_type_name == 'comparison':
-        thread_count = ComparisonSession.query.filter_by(scenario_id=scenario.id).count()
+        session_count = ComparisonSession.query.filter_by(scenario_id=scenario.id).count()
+        item_count = ScenarioThreads.query.filter_by(scenario_id=scenario.id).count()
+        thread_count = session_count if session_count > 0 else item_count
     else:
         thread_count = ScenarioThreads.query.filter_by(scenario_id=scenario.id).count()
     user_count = ScenarioUsers.query.filter(
@@ -819,6 +821,18 @@ def get_scenario_threads(scenario_id):
                 # For labeling, having any rating means done
                 if r.dimension_ratings:
                     user_status_map[r.item_id] = 'done'
+
+        elif func_type_name == 'comparison':
+            # Pairwise comparison: check ItemComparisonEvaluation
+            from db.models.scenario import ItemComparisonEvaluation
+            comp_evals = ItemComparisonEvaluation.query.filter(
+                ItemComparisonEvaluation.scenario_id == scenario_id,
+                ItemComparisonEvaluation.user_id == user_id,
+                ItemComparisonEvaluation.item_id.in_(thread_ids)
+            ).all()
+
+            for comp_eval in comp_evals:
+                user_status_map[comp_eval.item_id] = 'done'
 
     # Also check for LLM evaluations (independent of user)
     # This ensures Data tab shows items as evaluated when LLMs have processed them
@@ -1382,6 +1396,43 @@ def get_scenario_thread_detail(scenario_id, thread_id):
                 'confidence': payload.get('confidence'),
                 'reasoning': payload.get('reasoning'),
                 'created_at': label.created_at.isoformat() if label.created_at else None
+            })
+
+    elif func_type_name == 'comparison':
+        # Human comparison choices from ItemComparisonEvaluation
+        from db.models.scenario import ItemComparisonEvaluation
+        human_comparisons = ItemComparisonEvaluation.query.filter_by(
+            scenario_id=scenario_id,
+            item_id=thread_id
+        ).all()
+
+        for comp in human_comparisons:
+            user = User.query.get(comp.user_id)
+            votes.append({
+                'type': 'human',
+                'user_id': comp.user_id,
+                'username': user.username if user else 'Unknown',
+                'vote': comp.choice,
+                'reasoning': comp.notes,
+                'created_at': comp.created_at.isoformat() if comp.created_at else None
+            })
+
+        # LLM comparison results
+        llm_comparisons = LLMTaskResult.query.filter_by(
+            scenario_id=scenario_id,
+            item_id=thread_id,
+            task_type='comparison'
+        ).filter(LLMTaskResult.error.is_(None)).all()
+
+        for comp in llm_comparisons:
+            payload = comp.payload_json or {}
+            votes.append({
+                'type': 'llm',
+                'model_id': comp.model_id,
+                'vote': payload.get('winner'),
+                'confidence': payload.get('confidence'),
+                'reasoning': payload.get('reasoning'),
+                'created_at': comp.created_at.isoformat() if comp.created_at else None
             })
 
     return jsonify({

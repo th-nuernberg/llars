@@ -32,6 +32,7 @@ from db.models import (
     LLMTaskResult,
     LLMModel,
     ItemDimensionRating,
+    ItemComparisonEvaluation,
     ItemLabelingEvaluation,
     UserMailHistoryRating,
     Feature,
@@ -385,6 +386,8 @@ def _calculate_unified_pairwise_agreement(scenario_id: int, function_type_name: 
         return _calculate_ranking_agreement_heatmap(scenario_id)
     elif function_type_name == "labeling":
         return _calculate_labeling_pairwise_agreement(scenario_id)
+    elif function_type_name == "comparison":
+        return _calculate_comparison_pairwise_agreement(scenario_id)
     elif function_type_name == "mail_rating":
         return _calculate_mail_rating_pairwise_agreement(scenario_id)
     elif function_type_name in {"rating"}:
@@ -641,6 +644,27 @@ def _batch_get_progression_states(
                 else:
                     result[(tid, uid)] = ProgressionStatus.NOT_STARTED
 
+    elif function_type_id == 4:
+        # COMPARISON (pairwise): existence of ItemComparisonEvaluation = DONE
+        evals = set(
+            db.session.query(
+                ItemComparisonEvaluation.item_id,
+                ItemComparisonEvaluation.user_id,
+            )
+            .filter(
+                ItemComparisonEvaluation.user_id.in_(user_ids),
+                ItemComparisonEvaluation.item_id.in_(thread_ids),
+                ItemComparisonEvaluation.scenario_id == scenario_id,
+            )
+            .all()
+        )
+        for uid in user_ids:
+            for tid in thread_ids:
+                if (tid, uid) in evals:
+                    result[(tid, uid)] = ProgressionStatus.DONE
+                else:
+                    result[(tid, uid)] = ProgressionStatus.NOT_STARTED
+
     return result
 
 
@@ -655,8 +679,11 @@ def get_user_progress_counts(scenario_id: int) -> Dict[str, Dict[str, int]]:
     function_type = _get_function_type_or_raise(scenario.function_type_id)
 
     if function_type.name == "comparison":
-        # Comparison uses a different model; return empty for now
-        return {}
+        # Chat-based comparison: return empty (uses ComparisonSession)
+        has_sessions = ComparisonSession.query.filter_by(scenario_id=scenario_id).first() is not None
+        if has_sessions:
+            return {}
+        # Pairwise comparison: fall through to standard item-based flow
 
     scenario_users = (
         db.session.query(ScenarioUsers)
@@ -730,8 +757,15 @@ def get_progress_stats(scenario_id: int, *, skip_provenance: bool = False) -> Di
     """
     scenario = _get_scenario_or_raise(scenario_id)
     function_type = _get_function_type_or_raise(scenario.function_type_id)
+
+    # Chat-based comparison uses ComparisonSession; pairwise comparison
+    # (created via wizard/generation) uses ItemComparisonEvaluation and
+    # the standard item-based flow below.
     if function_type.name == "comparison":
-        return _get_comparison_progress_stats(scenario_id)
+        has_sessions = ComparisonSession.query.filter_by(scenario_id=scenario_id).first() is not None
+        if has_sessions:
+            return _get_comparison_progress_stats(scenario_id)
+        # Otherwise fall through to standard item-based flow
 
     rater_stats = []
     evaluator_stats = []
@@ -844,7 +878,7 @@ def get_progress_stats(scenario_id: int, *, skip_provenance: bool = False) -> Di
             evaluator_stats.append(new_data)
         # VIEWER: excluded from stats entirely (read-only, no evaluation)
 
-    if function_type.name in {"ranking", "rating", "mail_rating", "authenticity", "labeling"}:
+    if function_type.name in {"ranking", "rating", "mail_rating", "authenticity", "labeling", "comparison"}:
         scenario_thread_ids = [
             row.thread_id
             for row in ScenarioThreads.query.filter_by(scenario_id=scenario_id).all()
@@ -902,7 +936,7 @@ def get_progress_stats(scenario_id: int, *, skip_provenance: bool = False) -> Di
     rating_alpha = None  # Krippendorff's Alpha split by evaluator type
 
     # Calculate pairwise agreement using unified dispatcher (works for all types)
-    if function_type.name in {"rating", "mail_rating", "labeling", "ranking"}:
+    if function_type.name in {"rating", "mail_rating", "labeling", "ranking", "comparison"}:
         _t = time.time()
         pairwise_agreement = _calculate_unified_pairwise_agreement(scenario_id, function_type.name)
         _perf_log.info("[StatsPerf] scenario=%s _calculate_pairwise_agreement: %.3fs", scenario_id, time.time() - _t)
@@ -920,6 +954,8 @@ def get_progress_stats(scenario_id: int, *, skip_provenance: bool = False) -> Di
             alpha = rating_alpha["all"]
     elif function_type.name == "labeling":
         rating_distribution = _calculate_labeling_distribution(scenario_id)
+    elif function_type.name == "comparison":
+        rating_distribution = _calculate_comparison_choice_distribution(scenario_id)
     elif function_type.name == "ranking":
         _t = time.time()
         bucket_distribution = _calculate_bucket_distribution(scenario_id)
@@ -1710,6 +1746,102 @@ def _calculate_labeling_distribution(scenario_id: int) -> Dict[str, Any]:
             count = counts.get(cat_id, 0)
             distribution.append({
                 "label": cat_name,
+                "value": cat_id,
+                "count": count,
+                "percentage": round((count / total) * 100) if total > 0 else 0
+            })
+        return distribution
+
+    # Combine for "all"
+    all_counts: Dict[str, int] = {}
+    for cat_id, count in human_counts.items():
+        all_counts[cat_id] = all_counts.get(cat_id, 0) + count
+    for cat_id, count in llm_counts.items():
+        all_counts[cat_id] = all_counts.get(cat_id, 0) + count
+
+    return {
+        "all": build_dist(all_counts),
+        "humans": build_dist(human_counts),
+        "llms": build_dist(llm_counts),
+    }
+
+
+def _calculate_comparison_choice_distribution(scenario_id: int) -> Dict[str, Any]:
+    """
+    Calculate choice distribution for a comparison scenario.
+
+    Counts A/B/tie choices from both human (ItemComparisonEvaluation)
+    and LLM (LLMTaskResult with task_type="comparison") evaluations.
+    """
+    # Fixed categories for comparison
+    categories = [
+        {"id": "A", "label": "A"},
+        {"id": "B", "label": "B"},
+        {"id": "tie", "label": "Tie"},
+    ]
+
+    # 1. Count human choices from ItemComparisonEvaluation
+    human_counts: Dict[str, int] = {}
+    human_evals = (
+        ItemComparisonEvaluation.query
+        .filter(
+            ItemComparisonEvaluation.scenario_id == scenario_id,
+            ItemComparisonEvaluation.choice.isnot(None)
+        )
+        .all()
+    )
+    for ev in human_evals:
+        choice = ev.choice.upper() if ev.choice else None
+        if choice == "TIE":
+            choice = "tie"
+        if choice in {"A", "B", "tie"}:
+            human_counts[choice] = human_counts.get(choice, 0) + 1
+
+    # 2. Count LLM choices from LLMTaskResult
+    llm_counts: Dict[str, int] = {}
+    llm_results = LLMTaskResult.query.filter_by(
+        scenario_id=scenario_id,
+        task_type="comparison"
+    ).filter(LLMTaskResult.error.is_(None)).all()
+
+    for result in llm_results:
+        payload = result.payload_json
+        if not payload:
+            continue
+        if isinstance(payload, str):
+            try:
+                payload = json.loads(payload)
+            except (json.JSONDecodeError, TypeError):
+                continue
+
+        # Item-based comparison: payload has direct "winner" field
+        winner = payload.get("winner")
+        if winner:
+            w = winner.upper() if isinstance(winner, str) else None
+            if w == "TIE":
+                w = "tie"
+            if w in {"A", "B", "tie"}:
+                llm_counts[w] = llm_counts.get(w, 0) + 1
+
+        # Session-based comparison: payload has "results" array with per-pair winners
+        for sub in (payload.get("results") or []):
+            if isinstance(sub, dict):
+                sw = sub.get("winner")
+                if sw:
+                    sw = sw.upper() if isinstance(sw, str) else None
+                    if sw == "TIE":
+                        sw = "tie"
+                    if sw in {"A", "B", "tie"}:
+                        llm_counts[sw] = llm_counts.get(sw, 0) + 1
+
+    def build_dist(counts: Dict[str, int]) -> List[Dict[str, Any]]:
+        total = sum(counts.values()) if counts else 0
+        distribution = []
+        for cat in categories:
+            cat_id = cat["id"]
+            count = counts.get(cat_id, 0)
+            distribution.append({
+                "label": cat["label"],
                 "value": cat_id,
                 "count": count,
                 "percentage": round((count / total) * 100) if total > 0 else 0
@@ -3519,6 +3651,121 @@ def _calculate_labeling_pairwise_agreement(scenario_id: int) -> Dict[str, Any]:
     return {
         "evaluators": evaluators,
         "agreements": agreements
+    }
+
+
+def _calculate_comparison_pairwise_agreement(scenario_id: int) -> Dict[str, Any]:
+    """
+    Calculate pairwise agreement between evaluators for comparison scenarios.
+
+    Agreement is measured by how often evaluators choose the same option (A/B/tie) for an item.
+    Handles both item-based (ItemComparisonEvaluation) and session-based (LLMTaskResult) comparisons.
+    """
+    from collections import defaultdict
+
+    # Get all items for this scenario
+    scenario_threads = ScenarioThreads.query.filter_by(scenario_id=scenario_id).all()
+    item_ids = [st.thread_id for st in scenario_threads if st.thread_id]
+
+    if not item_ids:
+        return {"evaluators": [], "agreements": {}}
+
+    # item_id -> {evaluator_id: choice}
+    item_choices = defaultdict(dict)
+    users_set = set()
+    user_info = {}
+
+    # 1. Human evaluations from ItemComparisonEvaluation
+    human_evals = (
+        ItemComparisonEvaluation.query
+        .filter(
+            ItemComparisonEvaluation.scenario_id == scenario_id,
+            ItemComparisonEvaluation.item_id.in_(item_ids),
+            ItemComparisonEvaluation.choice.isnot(None)
+        )
+        .all()
+    )
+
+    for ev in human_evals:
+        item_id = ev.item_id
+        user_id = ev.user_id
+        choice = ev.choice.upper() if ev.choice else None
+        if choice == "TIE":
+            choice = "tie"
+        if not choice or choice not in {"A", "B", "tie"}:
+            continue
+
+        users_set.add(user_id)
+        if user_id not in user_info:
+            user = User.query.get(user_id)
+            name = user.username if user else f"User {user_id}"
+            user_info[user_id] = {"id": user_id, "name": name, "isLLM": False}
+
+        item_choices[item_id][user_id] = choice
+
+    # 2. LLM evaluations from LLMTaskResult
+    llm_results = LLMTaskResult.query.filter_by(
+        scenario_id=scenario_id,
+        task_type="comparison"
+    ).filter(LLMTaskResult.error.is_(None)).all()
+
+    for result in llm_results:
+        payload = result.payload_json
+        if not payload:
+            continue
+        if isinstance(payload, str):
+            try:
+                payload = json.loads(payload)
+            except (json.JSONDecodeError, TypeError):
+                continue
+
+        model_id = result.model_id
+        llm_user_id = f"llm:{model_id}"
+        item_id = result.thread_id
+
+        if item_id not in item_ids:
+            continue
+
+        # Item-based: direct winner field
+        winner = payload.get("winner")
+        if winner:
+            w = winner.upper() if isinstance(winner, str) else None
+            if w == "TIE":
+                w = "tie"
+            if w in {"A", "B", "tie"}:
+                users_set.add(llm_user_id)
+                if llm_user_id not in user_info:
+                    llm_model = LLMModel.query.filter_by(model_id=model_id).first()
+                    name = llm_model.display_name if llm_model else model_id.split("/")[-1]
+                    user_info[llm_user_id] = {"id": llm_user_id, "name": name, "isLLM": True}
+                item_choices[item_id][llm_user_id] = w
+
+    if not users_set:
+        return {"evaluators": [], "agreements": {}}
+
+    evaluators = list(user_info.values())
+
+    # Calculate pairwise agreement (percentage of items with same choice)
+    agreements = {}
+    user_list = list(users_set)
+
+    for i, user1 in enumerate(user_list):
+        for user2 in user_list[i+1:]:
+            common_items = []
+            for item_id, user_cats in item_choices.items():
+                if user1 in user_cats and user2 in user_cats:
+                    common_items.append((user_cats[user1], user_cats[user2]))
+
+            if len(common_items) >= 1:
+                agreements_count = sum(1 for c1, c2 in common_items if c1 == c2)
+                agreement = agreements_count / len(common_items)
+
+                key = f"{min(str(user1), str(user2))}-{max(str(user1), str(user2))}"
+                agreements[key] = round(agreement, 3)
+
+    return {
+        "evaluators": evaluators,
+        "agreements": agreements,
     }
 
 

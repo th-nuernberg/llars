@@ -439,12 +439,22 @@ def user_can_evaluate_thread(user_id: int, thread_id: int) -> bool:
     return any(user_can_evaluate(user_id, sid) for sid in scenario_ids)
 
 
+def get_progression_comparison(thread: EmailThread, user_id: int) -> ProgressionStatus:
+    """Fortschritt für paarweisen Vergleich (function_type_id=4): DONE sobald eine Bewertung existiert."""
+    from db.models.scenario import ItemComparisonEvaluation
+    eval_exists = db.session.query(ItemComparisonEvaluation).filter_by(
+        user_id=user_id, item_id=thread.thread_id
+    ).first()
+    return ProgressionStatus.DONE if eval_exists else ProgressionStatus.NOT_STARTED
+
+
 def get_thread_progression_state(thread: EmailThread, user_id: int, function_type_id: int) -> ProgressionStatus:
     """ Dynamische Auswahl der Progressionslogik basierend auf function_type_id """
     PROGRESSION_HANDLERS = {
         1: get_progression_ranking,
         2: get_progression_rating,
         3: get_progression_mail_rating,
+        4: get_progression_comparison,
         5: get_progression_authenticity,
         7: get_progression_labeling,
     }

@@ -1721,8 +1721,8 @@
         </div>
       </div>
 
-      <!-- No Results Yet -->
-      <div v-if="!hasMetrics && filteredDistributionData.length === 0" class="empty-state">
+      <!-- No Results Yet — also check ranking bucket data + provenance + authenticity -->
+      <div v-if="!hasMetrics && filteredDistributionData.length === 0 && !hasBucketDistribution && !hasProvenanceAnalysis && !hasAuthenticityProvenance && !hasConfusionMatrixData" class="empty-state">
         <LIcon size="48" color="grey-lighten-1">mdi-chart-box-outline</LIcon>
         <p>{{ $t('scenarioManager.evaluation.noResultsYet') }}</p>
       </div>

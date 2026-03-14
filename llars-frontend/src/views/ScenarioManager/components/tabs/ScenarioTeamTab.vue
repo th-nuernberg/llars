@@ -491,6 +491,7 @@ import axios from 'axios'
 import { useScenarioManager } from '../../composables/useScenarioManager'
 import { useModelRegistry } from '@/composables/useModelRegistry'
 import { useAuth } from '@/composables/useAuth'
+import { useSnackbar } from '@/composables/useSnackbar'
 import { getSocket } from '@/services/socketService'
 import LAvatar from '@/components/common/LAvatar.vue'
 import LUserSearch from '@/components/common/LUserSearch.vue'
@@ -522,6 +523,7 @@ const {
 } = useScenarioManager()
 const { formatModelName: registryFormatModelName } = useModelRegistry()
 const { getToken } = useAuth()
+const { showSuccess, showError } = useSnackbar()
 
 // State
 const showInviteDialog = ref(false)
@@ -830,8 +832,12 @@ async function retryLLM(llm) {
       { model_id: llm.id },
       { headers: { Authorization: `Bearer ${getToken()}` } }
     )
+    showSuccess(t('scenarioManager.team.llmStarted', { model: llm.model_name || llm.id }))
+    emit('refreshStats')
   } catch (err) {
     console.error('Failed to retry LLM evaluation:', err)
+    const detail = err.response?.data?.error || err.message
+    showError(t('scenarioManager.team.llmStartFailed', { model: llm.model_name || llm.id, error: detail }))
   } finally {
     retryingModel.value = null
   }

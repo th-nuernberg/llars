@@ -371,7 +371,7 @@ cmd_deploy() {
     git clean -fd -e backups/ -e .deploy/ -e .env 2>/dev/null || true
   fi
 
-  git fetch origin "$BRANCH"
+  git fetch origin "$BRANCH" --tags
   git checkout "$BRANCH"
   git pull --ff-only origin "$BRANCH"
 

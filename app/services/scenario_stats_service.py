@@ -2853,12 +2853,20 @@ def _calculate_bucket_distribution(scenario_id: int) -> List[Dict[str, Any]]:
     if not item_ids:
         return []
 
-    # 1. Get human rankings
+    # 1. Get human rankings (only from active scenario members)
+    active_user_ids = {
+        su.user_id for su in
+        ScenarioUsers.query.filter_by(
+            scenario_id=scenario_id,
+            membership_status=MembershipStatus.ACTIVE,
+        ).all()
+    }
     human_rankings = (
         UserFeatureRanking.query
         .join(Feature, UserFeatureRanking.feature_id == Feature.feature_id)
         .filter(Feature.thread_id.in_(item_ids))
         .filter(UserFeatureRanking.bucket.isnot(None))
+        .filter(UserFeatureRanking.user_id.in_(active_user_ids))
         .all()
     )
 
@@ -3242,10 +3250,19 @@ def _calculate_ranking_provenance_analysis(scenario_id: int) -> Dict[str, Any]:
 
     assignments: List[tuple] = []
 
+    # Only include rankings from active scenario members
+    active_user_ids = {
+        su.user_id for su in
+        ScenarioUsers.query.filter_by(
+            scenario_id=scenario_id,
+            membership_status=MembershipStatus.ACTIVE,
+        ).all()
+    }
     human_rankings = (
         UserFeatureRanking.query
         .filter(UserFeatureRanking.feature_id.in_(list(feature_provenance.keys())))
         .filter(UserFeatureRanking.bucket.isnot(None))
+        .filter(UserFeatureRanking.user_id.in_(active_user_ids))
         .all()
     )
     for ranking in human_rankings:
@@ -3453,12 +3470,20 @@ def _calculate_ranking_agreement_heatmap(scenario_id: int) -> Dict[str, Any]:
         except (TypeError, ValueError):
             return value
 
-    # 1. Get human rankings - each row is one feature → one bucket
+    # 1. Get human rankings - each row is one feature → one bucket (active members only)
+    active_user_ids = {
+        su.user_id for su in
+        ScenarioUsers.query.filter_by(
+            scenario_id=scenario_id,
+            membership_status=MembershipStatus.ACTIVE,
+        ).all()
+    }
     human_rankings = (
         UserFeatureRanking.query
         .join(Feature, UserFeatureRanking.feature_id == Feature.feature_id)
         .filter(Feature.item_id.in_(item_ids))
         .filter(UserFeatureRanking.bucket.isnot(None))
+        .filter(UserFeatureRanking.user_id.in_(active_user_ids))
         .all()
     )
 

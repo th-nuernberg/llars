@@ -90,9 +90,9 @@
           {{ $t('generation.share.shareAction') }}
         </LBtn>
 
-        <!-- Open Scenario Wizard (owner only) -->
+        <!-- Open Scenario Wizard (owner + shared users) -->
         <LBtn
-          v-if="canCreateScenario && isOwner"
+          v-if="canCreateScenario"
           variant="accent"
           data-testid="generation-open-scenario-wizard"
           @click="openScenarioWizard"
@@ -600,6 +600,29 @@ const removingUsername = ref(null)
 // Computed: whether the current user is the owner or a shared viewer
 const isShared = computed(() => currentJob.value?.is_shared === true)
 const isOwner = computed(() => !isShared.value)
+
+// REST polling fallback when Socket.IO is unreliable (dev mode polling transport)
+let pollTimer = null
+const POLL_INTERVAL_MS = 5000
+
+function startPollingFallback() {
+  if (pollTimer) return
+  pollTimer = setInterval(async () => {
+    if (!isJobRunning.value) {
+      stopPollingFallback()
+      return
+    }
+    await loadJob(jobId.value)
+    await loadOutputs(jobId.value)
+  }, POLL_INTERVAL_MS)
+}
+
+function stopPollingFallback() {
+  if (pollTimer) {
+    clearInterval(pollTimer)
+    pollTimer = null
+  }
+}
 
 // Real-time streaming state
 const currentlyProcessing = ref(null)  // { model: 'gpt-4', outputId: 123, content: 'Streaming...' }
@@ -1543,6 +1566,7 @@ function setupSocketListeners() {
   onJobCompletedHandler = (data) => {
     if (isCurrentJobEvent(data)) {
       clearStreamState()
+      stopPollingFallback()
       loadJob(jobId.value)
       loadOutputs(jobId.value)
     }
@@ -1553,6 +1577,7 @@ function setupSocketListeners() {
   onJobFailedHandler = (data) => {
     if (isCurrentJobEvent(data)) {
       clearStreamState()
+      stopPollingFallback()
       loadJob(jobId.value)
     }
   }
@@ -1608,10 +1633,18 @@ onMounted(async () => {
   } else if (currentJob.value?.currently_processing) {
     applyStreamSnapshot(currentJob.value.currently_processing)
   }
+
+  // Start REST polling fallback for active jobs.
+  // Socket.IO in dev mode uses polling transport which can drop connections,
+  // so we poll via REST to keep job status and outputs updated.
+  if (isJobRunning.value) {
+    startPollingFallback()
+  }
 })
 
 onUnmounted(() => {
   revealTimers.forEach(t => clearTimeout(t))
+  stopPollingFallback()
   cleanupSocketListeners()
 })
 </script>

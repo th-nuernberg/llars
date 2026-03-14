@@ -97,7 +97,7 @@
         <div v-if="formData.sourceType === 'from_job'" class="source-config mt-6">
           <v-autocomplete
             v-model="formData.sourceJobId"
-            :items="completedJobs"
+            :items="allSelectableJobs"
             :loading="loadingJobs"
             item-title="name"
             item-value="id"
@@ -107,12 +107,21 @@
             @update:model-value="onJobSelected"
           >
             <template v-slot:item="{ props, item }">
-              <v-list-item v-bind="props">
+              <!-- Group header (not selectable) -->
+              <v-list-subheader v-if="item.raw._header" class="mt-2">
+                {{ item.raw._header }}
+              </v-list-subheader>
+              <v-list-item v-else v-bind="props">
                 <template v-slot:prepend>
-                  <LIcon size="20" class="mr-2">mdi-auto-fix</LIcon>
+                  <LIcon size="20" class="mr-2">
+                    {{ item.raw._shared ? 'mdi-share-variant' : 'mdi-auto-fix' }}
+                  </LIcon>
                 </template>
                 <template v-slot:subtitle>
                   {{ item.raw.total_items }} Outputs · {{ item.raw.created_at_formatted }}
+                  <span v-if="item.raw._shared && item.raw.created_by" class="ml-1">
+                    · {{ $t('generation.wizard.step1.sharedBy') }} {{ item.raw.created_by }}
+                  </span>
                 </template>
               </v-list-item>
             </template>
@@ -536,6 +545,7 @@ const loadingModels = ref(false)
 
 // Data
 const completedJobs = ref([])
+const sharedCompletedJobs = ref([])
 const promptTemplates = ref([])
 const availableModels = ref([])
 const selectedJobInfo = ref(null)
@@ -691,10 +701,13 @@ async function loadJobs() {
   loadingJobs.value = true
   try {
     const response = await axios.get('/api/generation/jobs', { params: { status: 'completed' } })
-    completedJobs.value = (response.data.jobs || []).map(j => ({
+    const formatJob = (j, shared = false) => ({
       ...j,
-      created_at_formatted: new Date(j.created_at).toLocaleDateString()
-    }))
+      created_at_formatted: new Date(j.created_at).toLocaleDateString(),
+      _shared: shared
+    })
+    completedJobs.value = (response.data.jobs || []).map(j => formatJob(j))
+    sharedCompletedJobs.value = (response.data.shared_jobs || []).map(j => formatJob(j, true))
   } catch (error) {
     console.error('Failed to load jobs:', error)
   } finally {
@@ -702,8 +715,25 @@ async function loadJobs() {
   }
 }
 
+/** All selectable jobs: own jobs + shared jobs with group headers */
+const allSelectableJobs = computed(() => {
+  const items = []
+  if (completedJobs.value.length) {
+    items.push({ _header: t('generation.wizard.step1.ownJobsHeader'), id: '__own_header', name: '' })
+    items.push(...completedJobs.value)
+  }
+  if (sharedCompletedJobs.value.length) {
+    items.push({ _header: t('generation.wizard.step1.sharedJobsHeader'), id: '__shared_header', name: '' })
+    items.push(...sharedCompletedJobs.value)
+  }
+  return items
+})
+
 function onJobSelected(jobId) {
-  selectedJobInfo.value = completedJobs.value.find(j => j.id === jobId) || null
+  selectedJobInfo.value =
+    completedJobs.value.find(j => j.id === jobId) ||
+    sharedCompletedJobs.value.find(j => j.id === jobId) ||
+    null
 }
 
 function handleFileDrop(event) {

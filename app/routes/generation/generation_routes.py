@@ -500,7 +500,8 @@ def create_scenario_from_job(job_id: int):
         400: Invalid request or no outputs
         404: Job not found
     """
-    require_generation_job_owner(job_id, g.authentik_user)
+    # Shared users can also create scenarios from batch results
+    require_generation_job_access(job_id, g.authentik_user)
     data = request.get_json() or {}
 
     # Validate required fields
